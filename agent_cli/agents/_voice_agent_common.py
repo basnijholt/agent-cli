@@ -9,14 +9,6 @@ from typing import TYPE_CHECKING
 import pyperclip
 
 from agent_cli import asr
-from agent_cli.agents._config import (
-    ASRConfig,
-    FileConfig,
-    GeneralConfig,
-    LLMConfig,
-    TTSConfig,
-    WakeWordConfig,
-)
 from agent_cli.agents._tts_common import handle_tts_playback
 from agent_cli.audio import (
     input_device,
@@ -38,6 +30,15 @@ from agent_cli.utils import (
 
 if TYPE_CHECKING:
     import pyaudio
+
+    from agent_cli.agents._config import (
+        ASRConfig,
+        FileConfig,
+        GeneralConfig,
+        LLMConfig,
+        TTSConfig,
+        WakeWordConfig,
+    )
 
 LOGGER = logging.getLogger()
 

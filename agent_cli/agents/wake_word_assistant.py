@@ -31,7 +31,7 @@ import asyncio
 import logging
 from contextlib import suppress
 from functools import partial
-from pathlib import Path
+from pathlib import Path  # noqa: TC003
 from typing import TYPE_CHECKING
 
 import agent_cli.agents._cli_options as opts
@@ -120,16 +120,17 @@ async def record_audio_with_wake_word(
         )
 
     recording_stop_event = InteractiveStopEvent()
-    record_task = asyncio.create_task(
-        asr.record_audio_to_buffer(
-            p,
-            input_device_index,
-            recording_stop_event,
-            logger,
-            quiet=quiet,
-            live=live,
-        ),
-    )
+    stream_config = asr.setup_input_stream(input_device_index)
+    with asr.open_pyaudio_stream(p, **stream_config) as stream:
+        record_task = asyncio.create_task(
+            asr.record_audio_to_buffer(
+                stream,
+                recording_stop_event,
+                logger,
+                quiet=quiet,
+                live=live,
+            ),
+        )
 
     stop_detected_word = await wake_word.detect_wake_word(
         wake_server_ip=wake_word_config.server_ip,
