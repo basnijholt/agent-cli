@@ -1,6 +1,7 @@
 """Shared Typer options for the Agent CLI agents."""
 
 from pathlib import Path
+from typing import Literal
 
 import typer
 
@@ -65,7 +66,7 @@ WAKE_WORD_SERVER_PORT: int = typer.Option(
     "--wake-server-port",
     help="Wyoming wake word server port.",
 )
-WAKE_WORD_NAME: str = typer.Option(
+WAKE_WORD_NAME: Literal["ok_nabu", "alexa", "hey_jarvis"] = typer.Option(
     "ok_nabu",
     "--wake-word",
     help="Name of wake word to detect (e.g., 'ok_nabu', 'hey_jarvis').",
