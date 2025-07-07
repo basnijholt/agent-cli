@@ -24,13 +24,12 @@ async def test_handle_conversation_turn_no_instruction():
     mock_p = MagicMock()
     stop_event = InteractiveStopEvent()
     conversation_history = []
-    general_cfg = GeneralConfig(log_level="INFO", log_file=None, quiet=True)
+    general_cfg = GeneralConfig(log_level="INFO", log_file=None, quiet=True, list_devices=True)
     asr_config = ASRConfig(
         server_ip="localhost",
         server_port=10300,
         input_device_index=None,
         input_device_name=None,
-        list_input_devices=False,
     )
     llm_config = LLMConfig(model="test-model", ollama_host="localhost")
     tts_config = TTSConfig(
@@ -42,7 +41,6 @@ async def test_handle_conversation_turn_no_instruction():
         speaker=None,
         output_device_index=None,
         output_device_name=None,
-        list_output_devices=False,
         speed=1.0,
     )
     file_config = FileConfig(save_file=None, history_dir=None)
@@ -101,15 +99,11 @@ def test_interactive_command_list_output_devices():
     """Test the list-output-devices flag."""
     runner = CliRunner()
     with (
-        patch(
-            "agent_cli.agents.interactive.setup_devices",
-        ) as mock_setup_devices,
-        patch(
-            "agent_cli.agents.interactive.pyaudio_context",
-        ) as mock_pyaudio_context,
+        patch("agent_cli.agents.interactive.setup_devices") as mock_setup_devices,
+        patch("agent_cli.agents.interactive.pyaudio_context") as mock_pyaudio_context,
     ):
         mock_setup_devices.return_value = None
-        result = runner.invoke(app, ["interactive", "--list-output-devices"])
+        result = runner.invoke(app, ["interactive", "--list-devices"])
         assert result.exit_code == 0
         mock_pyaudio_context.assert_called_once()
         mock_setup_devices.assert_called_once()
@@ -118,13 +112,12 @@ def test_interactive_command_list_output_devices():
 @pytest.mark.asyncio
 async def test_async_main_exception_handling():
     """Test that exceptions in async_main are caught and logged."""
-    general_cfg = GeneralConfig(log_level="INFO", log_file=None, quiet=False)
+    general_cfg = GeneralConfig(log_level="INFO", log_file=None, quiet=False, list_devices=True)
     asr_config = ASRConfig(
         server_ip="localhost",
         server_port=10300,
         input_device_index=None,
         input_device_name=None,
-        list_input_devices=True,
     )  # To trigger an early exit
     llm_config = LLMConfig(model="test-model", ollama_host="localhost")
     tts_config = TTSConfig(
@@ -136,16 +129,12 @@ async def test_async_main_exception_handling():
         speaker=None,
         output_device_index=None,
         output_device_name=None,
-        list_output_devices=False,
         speed=1.0,
     )
     file_config = FileConfig(save_file=None, history_dir=None)
 
     with (
-        patch(
-            "agent_cli.agents.interactive.pyaudio_context",
-            side_effect=Exception("Test error"),
-        ),
+        patch("agent_cli.agents.interactive.pyaudio_context", side_effect=Exception("Test error")),
         patch("agent_cli.agents.interactive.console") as mock_console,
     ):
         with pytest.raises(Exception, match="Test error"):

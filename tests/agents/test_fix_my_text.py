@@ -163,6 +163,7 @@ async def test_autocorrect_command_with_text(
     general_cfg = GeneralConfig(
         log_level="WARNING",
         log_file=None,
+        list_devices=False,
         quiet=True,
     )
 
@@ -205,6 +206,7 @@ async def test_autocorrect_command_from_clipboard(
     general_cfg = GeneralConfig(
         log_level="WARNING",
         log_file=None,
+        list_devices=False,
         quiet=True,
     )
 
@@ -239,6 +241,7 @@ async def test_async_autocorrect_no_text(
     general_cfg = GeneralConfig(
         log_level="WARNING",
         log_file=None,
+        list_devices=False,
         quiet=True,
     )
     await autocorrect._async_autocorrect(

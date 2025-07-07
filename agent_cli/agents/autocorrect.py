@@ -197,7 +197,12 @@ def autocorrect(
 ) -> None:
     """Correct text from clipboard using a local Ollama model."""
     llm_config = LLMConfig(model=model, ollama_host=ollama_host)
-    general_cfg = GeneralConfig(log_level=log_level, log_file=log_file, quiet=quiet)
+    general_cfg = GeneralConfig(
+        log_level=log_level,
+        log_file=log_file,
+        list_devices=False,
+        quiet=quiet,
+    )
     asyncio.run(
         _async_autocorrect(
             text=text,
