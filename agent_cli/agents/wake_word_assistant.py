@@ -58,6 +58,12 @@ if TYPE_CHECKING:
 
 LOGGER = logging.getLogger()
 
+WAKE_WORD_VARIATIONS = {
+    "ok_nabu": ["ok nabu", "okay nabu", "okay, nabu", "ok, nabu", "ok naboo", "okay naboo"],
+    "alexa": ["alexa"],
+    "hey_jarvis": ["hey jarvis"],
+}
+
 # LLM Prompts for wake word assistant
 SYSTEM_PROMPT_TEMPLATE = """\
 You are a helpful voice assistant. Respond to user questions and commands in a conversational, friendly manner.
@@ -265,7 +271,7 @@ def wake_word_assistant(
         )
 
         variations = ", ".join(
-            opts.config.WAKE_WORD_VARIATIONS.get(wake_word_config.wake_word_name, []),
+            WAKE_WORD_VARIATIONS.get(wake_word_config.wake_word_name, []),
         )
         system_prompt = SYSTEM_PROMPT_TEMPLATE.format(
             wake_word=wake_word_config.wake_word_name,
