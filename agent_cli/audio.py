@@ -426,8 +426,8 @@ def setup_devices(
     ):
         tts_output_device_index, tts_output_device_name = output_device(
             p,
-            tts_config.output_device_name if tts_config else None,
-            tts_config.output_device_index if tts_config else None,
+            tts_config.output_device_name,
+            tts_config.output_device_index,
         )
         if tts_output_device_index is not None and not quiet:
             msg = f"🔊 TTS output device [bold yellow]{tts_output_device_index}[/bold yellow] ([italic]{tts_output_device_name}[/italic])"
