@@ -9,11 +9,17 @@ from wyoming.asr import Transcribe, Transcript, TranscriptChunk, TranscriptStart
 from wyoming.audio import AudioChunk, AudioStart, AudioStop
 
 from agent_cli import config
-from agent_cli.audio import open_pyaudio_stream, read_audio_stream, setup_input_stream
+from agent_cli.audio import (
+    open_pyaudio_stream,
+    read_audio_stream,
+    read_from_queue,
+    setup_input_stream,
+)
 from agent_cli.utils import print_with_style
 from agent_cli.wyoming_utils import manage_send_receive_tasks, wyoming_client_context
 
 if TYPE_CHECKING:
+    import asyncio
     import logging
     from collections.abc import Callable
 
@@ -59,32 +65,47 @@ async def send_audio(
         logger.debug("Sent AudioStop")
 
 
-async def record_audio_to_buffer(
-    stream: pyaudio.Stream,
-    stop_event: InteractiveStopEvent,
+async def send_audio_from_queue(
+    client: AsyncClient,
+    queue: asyncio.Queue,
     logger: logging.Logger,
-    *,
-    live: Live | None = None,
-    quiet: bool = False,
-    progress_message: str = "Recording",
-    progress_style: str = "blue",
+) -> None:
+    """Read from a queue and send to Wyoming server."""
+    await client.write_event(Transcribe().event())
+    await client.write_event(AudioStart(**config.WYOMING_AUDIO_CONFIG).event())
+
+    async def send_chunk(chunk: bytes) -> None:
+        """Send audio chunk to ASR server."""
+        await client.write_event(
+            AudioChunk(audio=chunk, **config.WYOMING_AUDIO_CONFIG).event(),
+        )
+
+    try:
+        await read_from_queue(
+            queue=queue,
+            chunk_handler=send_chunk,
+            logger=logger,
+        )
+    finally:
+        await client.write_event(AudioStop().event())
+        logger.debug("Sent AudioStop")
+
+
+async def record_audio_to_buffer(
+    queue: asyncio.Queue,
+    logger: logging.Logger,
 ) -> bytes:
-    """Record audio from mic to buffer."""
+    """Record audio from a queue to a buffer."""
     audio_buffer = io.BytesIO()
 
     def buffer_chunk(chunk: bytes) -> None:
         """Buffer audio chunk."""
         audio_buffer.write(chunk)
 
-    await read_audio_stream(
-        stream=stream,
-        stop_event=stop_event,
+    await read_from_queue(
+        queue=queue,
         chunk_handler=buffer_chunk,
         logger=logger,
-        live=live,
-        quiet=quiet,
-        progress_message=progress_message,
-        progress_style=progress_style,
     )
 
     return audio_buffer.getvalue()
@@ -138,17 +159,25 @@ async def record_audio_with_manual_stop(
     if not quiet:
         print_with_style("🎤 Recording... Press hotkey to stop", style="green")
 
+    audio_buffer = io.BytesIO()
+
+    def buffer_chunk(chunk: bytes) -> None:
+        """Buffer audio chunk."""
+        audio_buffer.write(chunk)
+
     stream_config = setup_input_stream(input_device_index)
     with open_pyaudio_stream(p, **stream_config) as stream:
-        return await record_audio_to_buffer(
+        await read_audio_stream(
             stream=stream,
             stop_event=stop_event,
+            chunk_handler=buffer_chunk,
             logger=logger,
             live=live,
             quiet=quiet,
             progress_message="Recording",
             progress_style="green",
         )
+    return audio_buffer.getvalue()
 
 
 async def transcribe_recorded_audio(

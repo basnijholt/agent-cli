@@ -8,10 +8,11 @@ from wyoming.audio import AudioChunk, AudioStart, AudioStop
 from wyoming.wake import Detect, Detection, NotDetected
 
 from agent_cli import config
-from agent_cli.audio import read_audio_stream
+from agent_cli.audio import read_audio_stream, read_from_queue
 from agent_cli.wyoming_utils import manage_send_receive_tasks, wyoming_client_context
 
 if TYPE_CHECKING:
+    import asyncio
     import logging
     from collections.abc import Callable
 
@@ -61,6 +62,32 @@ async def send_audio_for_wake_detection(
             quiet=quiet,
             progress_message="Listening for wake word",
             progress_style="blue",
+        )
+    finally:
+        if client._writer is not None:
+            await client.write_event(AudioStop().event())
+            logger.debug("Sent AudioStop for wake detection")
+
+
+async def send_audio_from_queue_for_wake_detection(
+    client: AsyncClient,
+    queue: asyncio.Queue,
+    logger: logging.Logger,
+) -> None:
+    """Read from a queue and send to Wyoming wake word server."""
+    await client.write_event(AudioStart(**config.WYOMING_AUDIO_CONFIG).event())
+
+    async def send_chunk(chunk: bytes) -> None:
+        """Send audio chunk to wake word server."""
+        await client.write_event(
+            AudioChunk(audio=chunk, **config.WYOMING_AUDIO_CONFIG).event(),
+        )
+
+    try:
+        await read_from_queue(
+            queue=queue,
+            chunk_handler=send_chunk,
+            logger=logger,
         )
     finally:
         if client._writer is not None:
@@ -160,6 +187,45 @@ async def detect_wake_word(
             )
 
             # If recv_task completed first, it means we detected a wake word
+            if not recv_task.cancelled():
+                return recv_task.result()
+
+            return None
+    except (ConnectionRefusedError, Exception):
+        return None
+
+
+async def detect_wake_word_from_queue(
+    wake_server_ip: str,
+    wake_server_port: int,
+    wake_word_name: str,
+    logger: logging.Logger,
+    queue: asyncio.Queue,
+    *,
+    detection_callback: Callable[[str], None] | None = None,
+    quiet: bool = False,
+) -> str | None:
+    """Detect wake word from an audio queue."""
+    try:
+        async with wyoming_client_context(
+            wake_server_ip,
+            wake_server_port,
+            "wake word",
+            logger,
+            quiet=quiet,
+        ) as client:
+            await client.write_event(Detect(names=[wake_word_name]).event())
+
+            _send_task, recv_task = await manage_send_receive_tasks(
+                send_audio_from_queue_for_wake_detection(
+                    client,
+                    queue,
+                    logger,
+                ),
+                receive_wake_detection(client, logger, detection_callback=detection_callback),
+                return_when="FIRST_COMPLETED",
+            )
+
             if not recv_task.cancelled():
                 return recv_task.result()
 

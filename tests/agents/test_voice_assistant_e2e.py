@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import asyncio
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import ANY, AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -16,7 +16,6 @@ from agent_cli.agents._config import (
 )
 from agent_cli.agents._voice_agent_common import async_main_voice_agent
 from agent_cli.agents.voice_assistant import AGENT_INSTRUCTIONS, SYSTEM_PROMPT
-from agent_cli.asr import record_audio_with_manual_stop
 from agent_cli.utils import InteractiveStopEvent
 from tests.mocks.audio import MockPyAudio
 
@@ -61,9 +60,7 @@ def get_configs() -> tuple[GeneralConfig, ASRConfig, LLMConfig, TTSConfig, FileC
     "agent_cli.agents._voice_agent_common.get_clipboard_text",
     return_value="test clipboard text",
 )
-@patch("agent_cli.asr.record_audio_to_buffer", new_callable=AsyncMock, return_value=b"audio data")
 async def test_voice_assistant_e2e(
-    mock_record_audio: AsyncMock,  # noqa: ARG001
     mock_get_clipboard: MagicMock,
     mock_signal_context: MagicMock,
     mock_pyaudio_context: MagicMock,
@@ -71,6 +68,7 @@ async def test_voice_assistant_e2e(
     mock_process_clipboard: AsyncMock,
 ) -> None:
     """Test end-to-end voice assistant functionality with simplified mocks."""
+    mock_record_audio = AsyncMock(return_value=b"audio data")
     stop_event = InteractiveStopEvent()
     # Stop the agent after one loop
     asyncio.get_event_loop().call_later(0.1, stop_event.set)
@@ -84,7 +82,7 @@ async def test_voice_assistant_e2e(
     general_cfg, asr_config, llm_config, tts_config, file_config = get_configs()
 
     await async_main_voice_agent(
-        recording_func=record_audio_with_manual_stop,
+        recording_func=mock_record_audio,
         get_original_text_func=mock_get_clipboard,
         general_cfg=general_cfg,
         asr_config=asr_config,
@@ -96,5 +94,12 @@ async def test_voice_assistant_e2e(
     )
 
     # Assertions
-    mock_process_audio.assert_called_once()
+    mock_record_audio.assert_called_once()
+    mock_process_audio.assert_called_once_with(
+        b"audio data",
+        asr_server_ip="mock-asr-host",
+        asr_server_port=10300,
+        logger=ANY,
+        quiet=False,
+    )
     mock_process_clipboard.assert_called_once()

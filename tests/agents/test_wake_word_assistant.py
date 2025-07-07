@@ -53,14 +53,16 @@ class TestRecordAudioWithWakeWord:
     """Tests for record_audio_with_wake_word function."""
 
     @pytest.mark.asyncio
+    @patch("agent_cli.agents.wake_word_assistant.wake_word.detect_wake_word_from_queue")
     @patch("agent_cli.agents.wake_word_assistant.wake_word.detect_wake_word")
     @patch("agent_cli.agents.wake_word_assistant.asr.record_audio_to_buffer")
-    @patch("agent_cli.agents.wake_word_assistant.asyncio.create_task")
+    @patch("agent_cli.agents.wake_word_assistant.audio.tee_audio_stream")
     async def test_full_recording_cycle(
         self,
-        mock_create_task: MagicMock,
-        mock_record_buffer: MagicMock,
+        mock_tee: MagicMock,
+        mock_record_buffer: AsyncMock,
         mock_detect: AsyncMock,
+        mock_detect_from_queue: AsyncMock,
         mock_pyaudio: MagicMock,
         mock_logger: MagicMock,
         mock_stop_event: MagicMock,
@@ -69,10 +71,15 @@ class TestRecordAudioWithWakeWord:
     ) -> None:
         """Test a full recording cycle from start to stop wake word."""
         # Arrange
-        mock_detect.side_effect = ["start_word", "stop_word"]
+        mock_detect.return_value = "start_word"
+        mock_detect_from_queue.return_value = "stop_word"
         mock_record_buffer.return_value = b"test_audio"
-        mock_create_task.return_value = asyncio.Future()
-        mock_create_task.return_value.set_result(b"test_audio")
+
+        # Mock the tee context manager and the yielded tee object
+        mock_tee_instance = MagicMock()
+        mock_tee_instance.stop = AsyncMock()
+        mock_tee_instance.add_queue.return_value = asyncio.Queue()
+        mock_tee.return_value.__aenter__.return_value = mock_tee_instance
 
         # Act
         result = await record_audio_with_wake_word(
@@ -87,9 +94,10 @@ class TestRecordAudioWithWakeWord:
 
         # Assert
         assert result == b"test_audio"
-        assert mock_detect.call_count == 2
+        mock_detect.assert_called_once()
+        mock_detect_from_queue.assert_called_once()
         mock_record_buffer.assert_called_once()
-        mock_create_task.assert_called_once()
+        mock_tee_instance.stop.assert_called_once()
 
     @pytest.mark.asyncio
     @patch("agent_cli.agents.wake_word_assistant.wake_word.detect_wake_word")
@@ -122,14 +130,16 @@ class TestRecordAudioWithWakeWord:
         mock_detect.assert_called_once()
 
     @pytest.mark.asyncio
+    @patch("agent_cli.agents.wake_word_assistant.wake_word.detect_wake_word_from_queue")
     @patch("agent_cli.agents.wake_word_assistant.wake_word.detect_wake_word")
     @patch("agent_cli.agents.wake_word_assistant.asr.record_audio_to_buffer")
-    @patch("agent_cli.agents.wake_word_assistant.asyncio.create_task")
+    @patch("agent_cli.agents.wake_word_assistant.audio.tee_audio_stream")
     async def test_no_stop_word_detected(
         self,
-        mock_create_task: MagicMock,
-        mock_record_buffer: MagicMock,
+        mock_tee: MagicMock,
+        mock_record_buffer: AsyncMock,
         mock_detect: AsyncMock,
+        mock_detect_from_queue: AsyncMock,
         mock_pyaudio: MagicMock,
         mock_logger: MagicMock,
         mock_stop_event: MagicMock,
@@ -138,10 +148,15 @@ class TestRecordAudioWithWakeWord:
     ) -> None:
         """Test that None is returned if no stop word is detected."""
         # Arrange
-        mock_detect.side_effect = ["start_word", None]
+        mock_detect.return_value = "start_word"
+        mock_detect_from_queue.return_value = None
         mock_record_buffer.return_value = b"test_audio"
-        mock_create_task.return_value = asyncio.Future()
-        mock_create_task.return_value.set_result(b"test_audio")
+
+        # Mock the tee context manager and the yielded tee object
+        mock_tee_instance = MagicMock()
+        mock_tee_instance.stop = AsyncMock()
+        mock_tee_instance.add_queue.return_value = asyncio.Queue()
+        mock_tee.return_value.__aenter__.return_value = mock_tee_instance
 
         # Act
         result = await record_audio_with_wake_word(
@@ -156,7 +171,9 @@ class TestRecordAudioWithWakeWord:
 
         # Assert
         assert result is None
-        assert mock_detect.call_count == 2
+        mock_detect.assert_called_once()
+        mock_detect_from_queue.assert_called_once()
+        mock_tee_instance.stop.assert_called_once()
 
 
 class TestGetEmptyText:

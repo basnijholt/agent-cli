@@ -135,6 +135,7 @@ async def async_main_voice_agent(  # noqa: C901, PLR0912, PLR0915
                         asr_server_ip=asr_config.server_ip,
                         asr_server_port=asr_config.server_port,
                         logger=LOGGER,
+                        quiet=general_cfg.quiet,
                     )
 
                     if not instruction or not instruction.strip():

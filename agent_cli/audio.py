@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import functools
-from contextlib import contextmanager
+from contextlib import asynccontextmanager, contextmanager, suppress
 from typing import TYPE_CHECKING
 
 import pyaudio
@@ -15,9 +15,96 @@ from agent_cli.utils import InteractiveStopEvent, console
 
 if TYPE_CHECKING:
     import logging
-    from collections.abc import Awaitable, Callable, Generator
+    from collections.abc import AsyncGenerator, Awaitable, Callable, Generator
 
     from rich.live import Live
+
+
+class AudioTee:
+    """A class to tee an audio stream into multiple queues."""
+
+    def __init__(
+        self,
+        stream: pyaudio.Stream,
+        stop_event: InteractiveStopEvent,
+        logger: logging.Logger,
+    ) -> None:
+        """Initialize the AudioTee with a PyAudio stream and stop event."""
+        self.stream = stream
+        self.stop_event = stop_event
+        self.logger = logger
+        self.queues: list[asyncio.Queue] = []
+        self._task: asyncio.Task | None = None
+
+    def add_queue(self) -> asyncio.Queue:
+        """Add a new queue to the tee."""
+        queue: asyncio.Queue[bytes] = asyncio.Queue()
+        self.queues.append(queue)
+        return queue
+
+    async def run(self) -> None:
+        """Read from the stream and push to all queues."""
+        self.logger.debug("Starting audio tee")
+        try:
+            while not self.stop_event.is_set():
+                chunk = await asyncio.to_thread(
+                    self.stream.read,
+                    num_frames=config.PYAUDIO_CHUNK_SIZE,
+                    exception_on_overflow=False,
+                )
+                for queue in self.queues:
+                    await queue.put(chunk)
+        except OSError:
+            self.logger.exception("Error reading audio")
+        finally:
+            for queue in self.queues:
+                await queue.put(None)  # Signal end of stream
+            self.logger.debug("Audio tee finished")
+
+    def start(self) -> None:
+        """Start the tee in the background."""
+        if self._task is None:
+            self._task = asyncio.create_task(self.run())
+
+    async def stop(self) -> None:
+        """Stop the tee."""
+        if self._task and not self._task.done():
+            self._task.cancel()
+            with suppress(asyncio.CancelledError):
+                await self._task
+        self.logger.debug("Audio tee stopped")
+
+
+@asynccontextmanager
+async def tee_audio_stream(
+    stream: pyaudio.Stream,
+    stop_event: InteractiveStopEvent,
+    logger: logging.Logger,
+) -> AsyncGenerator[AudioTee, None]:
+    """Context manager for an AudioTee."""
+    tee = AudioTee(stream, stop_event, logger)
+    tee.start()
+    try:
+        yield tee
+    finally:
+        await tee.stop()
+
+
+async def read_from_queue(
+    queue: asyncio.Queue,
+    chunk_handler: Callable[[bytes], None] | Callable[[bytes], Awaitable[None]],
+    logger: logging.Logger,
+) -> None:
+    """Read audio chunks from a queue and call a handler."""
+    while True:
+        chunk = await queue.get()
+        if chunk is None:
+            break
+        if asyncio.iscoroutinefunction(chunk_handler):
+            await chunk_handler(chunk)
+        else:
+            chunk_handler(chunk)
+        logger.debug("Processed %d byte(s) of audio from queue", len(chunk))
 
 
 @contextmanager
@@ -225,19 +312,19 @@ def list_all_devices(p: pyaudio.PyAudio, quiet: bool = False) -> None:
     """Print a numbered list of all available audio devices with their capabilities."""
     if not quiet:
         console.print("[bold]All available audio devices:[/bold]")
-        for device in get_all_devices(p):
-            input_channels = device.get("maxInputChannels", 0)
-            output_channels = device.get("maxOutputChannels", 0)
+    for device in get_all_devices(p):
+        input_channels = device.get("maxInputChannels", 0)
+        output_channels = device.get("maxOutputChannels", 0)
 
-            capabilities = []
-            if input_channels > 0:
-                capabilities.append(f"{input_channels} input")
-            if output_channels > 0:
-                capabilities.append(f"{output_channels} output")
+        capabilities = []
+        if input_channels > 0:
+            capabilities.append(f"{input_channels} input")
+        if output_channels > 0:
+            capabilities.append(f"{output_channels} output")
 
-            if capabilities:
-                cap_str = " (" + ", ".join(capabilities) + ")"
-                console.print(f"  [yellow]{device['index']}[/yellow]: {device['name']}{cap_str}")
+        if capabilities:
+            cap_str = " (" + ", ".join(capabilities) + ")"
+            console.print(f"  [yellow]{device['index']}[/yellow]: {device['name']}{cap_str}")
 
 
 def _in_or_out_device(

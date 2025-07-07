@@ -35,7 +35,7 @@ from pathlib import Path  # noqa: TC003
 from typing import TYPE_CHECKING
 
 import agent_cli.agents._cli_options as opts
-from agent_cli import asr, process_manager, wake_word
+from agent_cli import asr, audio, process_manager, wake_word
 from agent_cli.agents._config import (
     ASRConfig,
     FileConfig,
@@ -120,30 +120,30 @@ async def record_audio_with_wake_word(
                 style="green",
             )
 
-        recording_stop_event = InteractiveStopEvent()
-        record_task = asyncio.create_task(
-            asr.record_audio_to_buffer(
-                stream,
-                recording_stop_event,
-                logger,
+        # Tee the audio stream to two queues: one for recording, one for wake word detection
+        async with audio.tee_audio_stream(stream, stop_event, logger) as tee:
+            record_queue = tee.add_queue()
+            wake_queue = tee.add_queue()
+
+            record_task = asyncio.create_task(
+                asr.record_audio_to_buffer(
+                    record_queue,
+                    logger,
+                ),
+            )
+
+            stop_detected_word = await wake_word.detect_wake_word_from_queue(
+                wake_server_ip=wake_word_config.server_ip,
+                wake_server_port=wake_word_config.server_port,
+                wake_word_name=wake_word_config.wake_word_name,
+                logger=logger,
+                queue=wake_queue,
                 quiet=quiet,
-                live=live,
-            ),
-        )
+            )
 
-        stop_detected_word = await wake_word.detect_wake_word(
-            wake_server_ip=wake_word_config.server_ip,
-            wake_server_port=wake_word_config.server_port,
-            wake_word_name=wake_word_config.wake_word_name,
-            logger=logger,
-            stream=stream,
-            stop_event=stop_event,
-            live=live,
-            quiet=quiet,
-        )
-
-        recording_stop_event.set()
-        audio_data = await record_task
+            # Stop the tee, which will signal the end of the stream to the queues
+            await tee.stop()
+            audio_data = await record_task
 
         if not stop_detected_word or stop_event.is_set():
             return None
