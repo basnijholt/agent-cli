@@ -62,7 +62,7 @@ LOGGER = logging.getLogger()
 SYSTEM_PROMPT_TEMPLATE = """\
 You are a helpful voice assistant. Respond to user questions and commands in a conversational, friendly manner.
 
-The user is using a wake word to start and stop the recording. The wake word is "{wake_word}". You should ignore the wake word and any variations of it when processing the user's command.
+The user is using a wake word to start and stop the recording. The wake word is "{wake_word}". You should ignore the wake word and any variations of it (e.g., "{variations}") when processing the user's command.
 
 Keep your responses concise but informative. If the user asks you to perform an action that requires external tools or systems, explain what you would do if you had access to those capabilities.
 
@@ -70,7 +70,7 @@ Always be helpful, accurate, and engaging in your responses.
 """
 
 AGENT_INSTRUCTIONS_TEMPLATE = """\
-The user has spoken a voice command or question. The user is using a wake word to start and stop the recording. The wake word is "{wake_word}". You should ignore the wake word and any variations of it when processing the user's command.
+The user has spoken a voice command or question. The user is using a wake word to start and stop the recording. The wake word is "{wake_word}". You should ignore the wake word and any variations of it (e.g., "{variations}") when processing the user's command.
 
 Provide a helpful, conversational response.
 
@@ -264,9 +264,16 @@ def wake_word_assistant(
             quiet=general_cfg.quiet,
         )
 
-        system_prompt = SYSTEM_PROMPT_TEMPLATE.format(wake_word=wake_word_config.wake_word_name)
+        variations = ", ".join(
+            opts.config.WAKE_WORD_VARIATIONS.get(wake_word_config.wake_word_name, []),
+        )
+        system_prompt = SYSTEM_PROMPT_TEMPLATE.format(
+            wake_word=wake_word_config.wake_word_name,
+            variations=variations,
+        )
         agent_instructions = AGENT_INSTRUCTIONS_TEMPLATE.format(
             wake_word=wake_word_config.wake_word_name,
+            variations=variations,
         )
 
         asyncio.run(

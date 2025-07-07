@@ -34,3 +34,10 @@ WYOMING_AUDIO_CONFIG = {
     "width": 2,  # 16-bit audio
     "channels": PYAUDIO_CHANNELS,
 }
+
+# --- Wake Word Variations ---
+WAKE_WORD_VARIATIONS = {
+    "ok_nabu": ["ok nabu", "okay nabu", "okay, nabu", "ok, nabu", "ok naboo", "okay naboo"],
+    "alexa": ["alexa"],
+    "hey_jarvis": ["hey jarvis"],
+}
