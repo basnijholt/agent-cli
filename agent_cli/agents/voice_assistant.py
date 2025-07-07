@@ -229,9 +229,7 @@ def voice_assistant(
     with (
         process_manager.pid_file_context(process_name),
         suppress(KeyboardInterrupt),
-        maybe_live(
-            not general_cfg.quiet,
-        ) as live,
+        maybe_live(not general_cfg.quiet) as live,
     ):
         asr_config = ASRConfig(
             server_ip=asr_server_ip,

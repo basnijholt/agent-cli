@@ -12,7 +12,7 @@ import pyperclip
 
 import agent_cli.agents._cli_options as opts
 from agent_cli import asr, process_manager
-from agent_cli.agents._config import ASRConfig, GeneralConfig, LLMConfig, TTSConfig
+from agent_cli.agents._config import ASRConfig, GeneralConfig, LLMConfig
 from agent_cli.agents._voice_agent_common import setup_devices
 from agent_cli.audio import pyaudio_context
 from agent_cli.cli import app, setup_logging
@@ -199,18 +199,7 @@ def transcribe(
         device_info = setup_devices(
             p,
             asr_config,
-            TTSConfig(
-                enabled=False,
-                server_ip="",
-                server_port=0,
-                voice_name=None,
-                language=None,
-                speaker=None,
-                output_device_index=None,
-                output_device_name=None,
-                list_output_devices=False,
-                speed=1.0,
-            ),
+            None,
             quiet,
         )
         if device_info is None:

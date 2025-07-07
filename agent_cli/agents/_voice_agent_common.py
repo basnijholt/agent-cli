@@ -39,35 +39,39 @@ LOGGER = logging.getLogger()
 
 def setup_devices(
     p: pyaudio.PyAudio,
-    asr_config: ASRConfig,
-    tts_config: TTSConfig,
+    asr_config: ASRConfig | None,
+    tts_config: TTSConfig | None,
     quiet: bool,
 ) -> tuple[int | None, str | None, int | None] | None:
     """Handle device listing and setup."""
-    if asr_config.list_input_devices:
+    if asr_config and asr_config.list_input_devices:
         list_input_devices(p)
         return None
 
-    if tts_config.list_output_devices:
+    if tts_config and tts_config.list_output_devices:
         list_output_devices(p)
         return None
 
     # Setup input device
     input_device_index, input_device_name = input_device(
         p,
-        asr_config.input_device_name,
-        asr_config.input_device_index,
+        asr_config.input_device_name if asr_config else None,
+        asr_config.input_device_index if asr_config else None,
     )
     if not quiet:
         print_device_index(input_device_index, input_device_name)
 
     # Setup output device for TTS if enabled
-    tts_output_device_index = tts_config.output_device_index
-    if tts_config.enabled and (tts_config.output_device_name or tts_config.output_device_index):
+    tts_output_device_index = tts_config.output_device_index if tts_config else None
+    if (
+        tts_config
+        and tts_config.enabled
+        and (tts_config.output_device_name or tts_config.output_device_index)
+    ):
         tts_output_device_index, tts_output_device_name = output_device(
             p,
-            tts_config.output_device_name,
-            tts_config.output_device_index,
+            tts_config.output_device_name if tts_config else None,
+            tts_config.output_device_index if tts_config else None,
         )
         if tts_output_device_index is not None and not quiet:
             msg = f"🔊 TTS output device [bold yellow]{tts_output_device_index}[/bold yellow] ([italic]{tts_output_device_name}[/italic])"
