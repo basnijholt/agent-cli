@@ -5,15 +5,14 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING
 
-import pyperclip
-
 from agent_cli import asr
+from agent_cli.agents._llm_common import process_with_llm
 from agent_cli.agents._tts_common import handle_tts_playback
-from agent_cli.llm import process_and_update_clipboard
-from agent_cli.utils import (
-    print_input_panel,
-    print_with_style,
+from agent_cli.agents._ui_common import (
+    display_input_text,
+    display_output_with_clipboard,
 )
+from agent_cli.utils import print_with_style
 
 if TYPE_CHECKING:
     from rich.live import Live
@@ -79,46 +78,67 @@ async def process_instruction_and_respond(
     logger: logging.Logger,
 ) -> None:
     """Process instruction with LLM and handle TTS response."""
-    if not general_cfg.quiet:
-        print_input_panel(
-            instruction,
-            title="🎯 Instruction",
-            style="bold yellow",
-        )
+    display_input_text(
+        instruction,
+        title="🎯 Instruction",
+        general_cfg=general_cfg,
+    )
 
     # Process with LLM if clipboard mode is enabled
     if general_cfg.clipboard:
-        await process_and_update_clipboard(
-            system_prompt=system_prompt,
-            agent_instructions=agent_instructions,
-            model=llm_config.model,
-            ollama_host=llm_config.ollama_host,
-            logger=logger,
+        # Format input for voice assistant
+        input_template = """
+<original-text>
+{original_text}
+</original-text>
+<instruction>
+{instruction}
+</instruction>
+"""
+        formatted_input = input_template.format(
             original_text=original_text,
             instruction=instruction,
-            clipboard=general_cfg.clipboard,
-            quiet=general_cfg.quiet,
-            live=live,
         )
 
+        result = await process_with_llm(
+            formatted_input,
+            llm_config,
+            system_prompt,
+            agent_instructions,
+        )
+
+        if result["success"]:
+            display_output_with_clipboard(
+                result["output"],
+                original_text=original_text,
+                elapsed=result["elapsed"],
+                title="✨ Result",
+                success_message="✅ Result copied to clipboard!",
+                general_cfg=general_cfg,
+            )
+            response_text = result["output"]
+        else:
+            # On error, don't modify clipboard
+            if not general_cfg.quiet:
+                print_with_style(f"❌ LLM processing failed: {result['error']}", style="red")
+            response_text = None
+
         # Handle TTS response if enabled
-        if tts_config.enabled:
-            response_text = pyperclip.paste()
-            if response_text and response_text.strip():
-                await handle_tts_playback(
-                    response_text,
-                    tts_server_ip=tts_config.server_ip,
-                    tts_server_port=tts_config.server_port,
-                    voice_name=tts_config.voice_name,
-                    tts_language=tts_config.language,
-                    speaker=tts_config.speaker,
-                    output_device_index=tts_output_device_index,
-                    save_file=file_config.save_file,
-                    quiet=general_cfg.quiet,
-                    logger=logger,
-                    play_audio=not file_config.save_file,
-                    status_message="🔊 Speaking response...",
-                    description="TTS audio",
-                    speed=tts_config.speed,
-                    live=live,
-                )
+        if tts_config.enabled and response_text:
+            await handle_tts_playback(
+                response_text,
+                tts_server_ip=tts_config.server_ip,
+                tts_server_port=tts_config.server_port,
+                voice_name=tts_config.voice_name,
+                tts_language=tts_config.language,
+                speaker=tts_config.speaker,
+                output_device_index=tts_output_device_index,
+                save_file=file_config.save_file,
+                quiet=general_cfg.quiet,
+                logger=logger,
+                play_audio=not file_config.save_file,
+                status_message="🔊 Speaking response...",
+                description="TTS audio",
+                speed=tts_config.speed,
+                live=live,
+            )

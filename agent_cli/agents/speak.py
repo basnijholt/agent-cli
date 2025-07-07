@@ -4,30 +4,25 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from contextlib import suppress
 from pathlib import Path  # noqa: TC003
 
 import typer
 
 import agent_cli.agents._cli_options as opts
-from agent_cli import process_manager
-from agent_cli.agents._config import FileConfig, GeneralConfig, TTSConfig
+from agent_cli.agents._command_setup import CommandConfig, setup_command, with_process_management
+from agent_cli.agents._config import FileConfig, TTSConfig
 from agent_cli.agents._tts_common import handle_tts_playback
+from agent_cli.agents._ui_common import display_input_text
 from agent_cli.audio import pyaudio_context, setup_devices
-from agent_cli.cli import app, setup_logging
-from agent_cli.utils import (
-    get_clipboard_text,
-    maybe_live,
-    print_input_panel,
-    stop_or_status_or_toggle,
-)
+from agent_cli.cli import app
+from agent_cli.utils import get_clipboard_text, maybe_live
 
 LOGGER = logging.getLogger()
 
 
 async def _async_main(
     *,
-    general_cfg: GeneralConfig,
+    config: CommandConfig,
     text: str | None,
     tts_config: TTSConfig,
     file_config: FileConfig,
@@ -37,7 +32,7 @@ async def _async_main(
         # We only use setup_devices for its output device handling
         device_info = setup_devices(
             p,
-            general_cfg,
+            config.general_cfg,
             None,
             tts_config,
         )
@@ -47,16 +42,15 @@ async def _async_main(
 
         # Get text from argument or clipboard
         if text is None:
-            text = get_clipboard_text(quiet=general_cfg.quiet)
+            text = get_clipboard_text(quiet=config.general_cfg.quiet)
             if not text:
                 return
-            if not general_cfg.quiet:
-                print_input_panel(text, title="📋 Text from Clipboard")
-        elif not general_cfg.quiet:
-            print_input_panel(text, title="📝 Text to Speak")
+            display_input_text(text, title="📋 Text from Clipboard", general_cfg=config.general_cfg)
+        else:
+            display_input_text(text, title="📝 Text to Speak", general_cfg=config.general_cfg)
 
         # Handle TTS playback and saving
-        with maybe_live(not general_cfg.quiet) as live:
+        with maybe_live(not config.general_cfg.quiet) as live:
             await handle_tts_playback(
                 text,
                 tts_server_ip=tts_config.server_ip,
@@ -66,7 +60,7 @@ async def _async_main(
                 speaker=tts_config.speaker,
                 output_device_index=output_device_index,
                 save_file=file_config.save_file,
-                quiet=general_cfg.quiet,
+                quiet=config.general_cfg.quiet,
                 logger=LOGGER,
                 play_audio=not file_config.save_file,  # Don't play if saving to file
                 status_message="🔊 Synthesizing speech...",
@@ -121,26 +115,24 @@ def speak(
     - Use specific voice: agent-cli speak "Hello" --voice en_US-lessac-medium
     - Run in background: agent-cli speak "Hello" &
     """
-    setup_logging(log_level, log_file, quiet=quiet)
-    general_cfg = GeneralConfig(
+    config = setup_command(
+        process_name="speak",
+        command_description="speak process",
+        stop=stop,
+        status=status,
+        toggle=toggle,
         log_level=log_level,
         log_file=log_file,
         quiet=quiet,
         list_devices=list_devices,
+        clipboard=False,  # Speak doesn't modify clipboard
     )
-    process_name = "speak"
-    if stop_or_status_or_toggle(
-        process_name,
-        "speak process",
-        stop,
-        status,
-        toggle,
-        quiet=general_cfg.quiet,
-    ):
+
+    if config is None:
         return
 
     # Use context manager for PID file management
-    with process_manager.pid_file_context(process_name), suppress(KeyboardInterrupt):
+    with with_process_management("speak"):
         tts_config = TTSConfig(
             enabled=True,  # Implied for speak command
             server_ip=tts_server_ip,
@@ -156,7 +148,7 @@ def speak(
 
         asyncio.run(
             _async_main(
-                general_cfg=general_cfg,
+                config=config,
                 text=text,
                 tts_config=tts_config,
                 file_config=file_config,

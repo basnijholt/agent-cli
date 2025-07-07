@@ -9,13 +9,14 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from agent_cli.agents import transcribe
+from agent_cli.agents._command_setup import CommandConfig
 from agent_cli.agents._config import ASRConfig, GeneralConfig, LLMConfig
 from tests.mocks.wyoming import MockASRClient
 
 
 @pytest.mark.asyncio
 @patch("agent_cli.asr.wyoming_client_context")
-@patch("agent_cli.agents.transcribe.pyperclip")
+@patch("agent_cli.agents._ui_common.pyperclip")
 @patch("agent_cli.agents.transcribe.pyaudio_context")
 @patch("agent_cli.agents.transcribe.signal_handling_context")
 async def test_transcribe_main(
@@ -55,15 +56,15 @@ async def test_transcribe_main(
             clipboard=True,
         )
         llm_config = LLMConfig(model="", ollama_host="")
+        config = CommandConfig(general_cfg=general_cfg, llm_config=llm_config)
+
         await transcribe._async_main(
             asr_config=asr_config,
-            general_cfg=general_cfg,
-            llm_config=llm_config,
+            config=config,
             llm_enabled=False,
             p=mock_pyaudio_instance,
         )
 
     # Assertions
-    assert "Copied transcript to clipboard." in caplog.text
     mock_pyperclip.copy.assert_called_once_with("hello world")
     mock_wyoming_client_context.assert_called_once()

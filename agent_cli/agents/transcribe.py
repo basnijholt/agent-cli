@@ -5,24 +5,23 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
-from contextlib import suppress
 from typing import TYPE_CHECKING
 
-import pyperclip
-
 import agent_cli.agents._cli_options as opts
-from agent_cli import asr, process_manager
-from agent_cli.agents._config import ASRConfig, GeneralConfig, LLMConfig
+from agent_cli import asr
+from agent_cli.agents._command_setup import CommandConfig, setup_command, with_process_management
+from agent_cli.agents._config import ASRConfig
+from agent_cli.agents._llm_common import process_with_llm
+from agent_cli.agents._ui_common import (
+    display_input_text,
+    display_no_input_warning,
+    display_output_with_clipboard,
+)
 from agent_cli.audio import pyaudio_context, setup_devices
-from agent_cli.cli import app, setup_logging
-from agent_cli.llm import process_and_update_clipboard
+from agent_cli.cli import app
 from agent_cli.utils import (
     maybe_live,
-    print_input_panel,
-    print_output_panel,
-    print_with_style,
     signal_handling_context,
-    stop_or_status_or_toggle,
 )
 
 if TYPE_CHECKING:
@@ -65,19 +64,27 @@ INSTRUCTION = """
 Please clean up this transcribed text by correcting any speech recognition errors, adding appropriate punctuation and capitalization, removing obvious filler words or false starts, and improving overall readability while preserving the original meaning and intent of the speaker.
 """
 
+INPUT_TEMPLATE = """
+<original-text>
+{text}
+</original-text>
+<instruction>
+{instruction}
+</instruction>
+"""
+
 
 async def _async_main(
     *,
     asr_config: ASRConfig,
-    general_cfg: GeneralConfig,
-    llm_config: LLMConfig,
+    config: CommandConfig,
     llm_enabled: bool,
     p: pyaudio.PyAudio,
 ) -> None:
     """Async entry point, consuming parsed args."""
     time_start = time.monotonic()
-    with maybe_live(not general_cfg.quiet) as live:
-        with signal_handling_context(LOGGER, general_cfg.quiet) as stop_event:
+    with maybe_live(not config.general_cfg.quiet) as live:
+        with signal_handling_context(LOGGER, config.general_cfg.quiet) as stop_event:
             transcript = await asr.transcribe_live_audio(
                 asr_server_ip=asr_config.server_ip,
                 asr_server_port=asr_config.server_port,
@@ -85,54 +92,59 @@ async def _async_main(
                 logger=LOGGER,
                 p=p,
                 stop_event=stop_event,
-                quiet=general_cfg.quiet,
+                quiet=config.general_cfg.quiet,
                 live=live,
             )
         elapsed = time.monotonic() - time_start
-        if llm_enabled and llm_config.model and llm_config.ollama_host and transcript:
-            if not general_cfg.quiet:
-                print_input_panel(
-                    transcript,
-                    title="📝 Raw Transcript",
-                    subtitle=f"[dim]took {elapsed:.2f}s[/dim]",
-                )
-            await process_and_update_clipboard(
-                system_prompt=SYSTEM_PROMPT,
-                agent_instructions=AGENT_INSTRUCTIONS,
-                model=llm_config.model,
-                ollama_host=llm_config.ollama_host,
-                logger=LOGGER,
-                original_text=transcript,
-                instruction=INSTRUCTION,
-                clipboard=general_cfg.clipboard,
-                quiet=general_cfg.quiet,
-                live=live,
-            )
+
+        if not transcript:
+            display_no_input_warning("transcription", config.general_cfg)
             return
 
-    # When not using LLM, show transcript in output panel for consistency
-    if transcript:
-        if general_cfg.quiet:
-            # Quiet mode: print result to stdout for Keyboard Maestro to capture
-            print(transcript)
-        else:
-            print_output_panel(
+        # If LLM is enabled, process the transcript
+        if llm_enabled and config.llm_config:
+            display_input_text(
                 transcript,
-                title="📝 Transcript",
-                subtitle="[dim]Copied to clipboard[/dim]" if general_cfg.clipboard else "",
+                title="📝 Raw Transcript",
+                general_cfg=config.general_cfg,
             )
 
-        if general_cfg.clipboard:
-            pyperclip.copy(transcript)
-            LOGGER.info("Copied transcript to clipboard.")
+            result = await process_with_llm(
+                transcript,
+                config.llm_config,
+                SYSTEM_PROMPT,
+                AGENT_INSTRUCTIONS,
+                INPUT_TEMPLATE.format(text=transcript, instruction=INSTRUCTION),
+            )
+
+            if result["success"]:
+                display_output_with_clipboard(
+                    result["output"],
+                    original_text=transcript,
+                    elapsed=elapsed + result["elapsed"],
+                    title="📝 Cleaned Transcript",
+                    success_message="✅ Cleaned transcript copied to clipboard!",
+                    general_cfg=config.general_cfg,
+                )
+            else:
+                # Fall back to raw transcript
+                display_output_with_clipboard(
+                    transcript,
+                    elapsed=elapsed,
+                    title="📝 Raw Transcript (LLM failed)",
+                    success_message="⚠️ LLM processing failed. Raw transcript copied to clipboard.",
+                    general_cfg=config.general_cfg,
+                )
         else:
-            LOGGER.info("Clipboard copy disabled.")
-    else:
-        LOGGER.info("Transcript empty.")
-        if not general_cfg.quiet:
-            print_with_style(
-                "⚠️ No transcript captured.",
-                style="yellow",
+            # No LLM processing - just copy transcript
+            display_output_with_clipboard(
+                transcript,
+                elapsed=elapsed,
+                title="📝 Transcript",
+                success_message="✅ Transcript copied to clipboard!"
+                if config.general_cfg.clipboard
+                else "",
+                general_cfg=config.general_cfg,
             )
 
 
@@ -168,23 +180,22 @@ def transcribe(
     - Check status: agent-cli transcribe --status
     - Stop background process: agent-cli transcribe --stop
     """
-    setup_logging(log_level, log_file, quiet=quiet)
-    general_cfg = GeneralConfig(
+    config = setup_command(
+        process_name="transcribe",
+        command_description="transcribe",
+        stop=stop,
+        status=status,
+        toggle=toggle,
         log_level=log_level,
         log_file=log_file,
         quiet=quiet,
         list_devices=list_devices,
         clipboard=clipboard,
+        model=model if llm else None,
+        ollama_host=ollama_host if llm else None,
     )
-    process_name = "transcribe"
-    if stop_or_status_or_toggle(
-        process_name,
-        "transcribe",
-        stop,
-        status,
-        toggle,
-        quiet=general_cfg.quiet,
-    ):
+
+    if config is None:
         return
 
     with pyaudio_context() as p:
@@ -197,7 +208,7 @@ def transcribe(
         # We only use setup_devices for its input device handling
         device_info = setup_devices(
             p,
-            general_cfg,
+            config.general_cfg,
             asr_config,
             None,
         )
@@ -207,14 +218,11 @@ def transcribe(
         asr_config.input_device_index = input_device_index
 
         # Use context manager for PID file management
-        with process_manager.pid_file_context(process_name), suppress(KeyboardInterrupt):
-            llm_config = LLMConfig(model=model, ollama_host=ollama_host)
-
+        with with_process_management("transcribe"):
             asyncio.run(
                 _async_main(
                     asr_config=asr_config,
-                    general_cfg=general_cfg,
-                    llm_config=llm_config,
+                    config=config,
                     llm_enabled=llm,
                     p=p,
                 ),
