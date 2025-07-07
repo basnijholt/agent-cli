@@ -21,6 +21,8 @@ from tests.mocks.llm import MockLLMAgent
 from tests.mocks.wyoming import MockASRClient, MockTTSClient
 
 if TYPE_CHECKING:
+    from types import TracebackType
+
     from rich.console import Console
 
 
@@ -31,15 +33,15 @@ class MockSignalContext:
         """Initialize the mock signal context."""
         self.ctrl_c_pressed = False
 
-    async def __aenter__(self) -> Self:
+    async def __enter__(self) -> Self:
         """Enter the context manager."""
         return self
 
-    async def __aexit__(
+    async def __exit__(
         self,
         exc_type: type[BaseException] | None,
         exc_val: BaseException | None,
-        exc_tb: object | None,
+        exc_tb: TracebackType | None,
     ) -> None:
         """Exit the context manager."""
 
@@ -102,9 +104,9 @@ def get_configs(
 @patch("agent_cli.llm.pyperclip.copy")
 @patch("agent_cli.agents.voice_assistant.pyperclip.paste", return_value="mocked paste")
 async def test_voice_assistant_e2e(
-    _mock_paste: MagicMock,
+    mock_paste: MagicMock,  # noqa: ARG001
     mock_copy: MagicMock,
-    _mock_get_clipboard: MagicMock,
+    mock_get_clipboard: MagicMock,  # noqa: ARG001
     mock_signal_context: MagicMock,
     mock_tts_pyaudio: MagicMock,
     mock_va_pyaudio: MagicMock,

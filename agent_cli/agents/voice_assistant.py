@@ -164,7 +164,7 @@ async def async_main(
             print_input_panel(original_text, title="📝 Text to Process")
 
         with maybe_live(not general_cfg.quiet) as live:
-            async with signal_handling_context(
+            with signal_handling_context(
                 LOGGER,
                 general_cfg.quiet,
             ) as stop_event:

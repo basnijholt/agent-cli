@@ -14,7 +14,7 @@ from agent_cli.utils import InteractiveStopEvent, console
 
 if TYPE_CHECKING:
     import logging
-    from collections.abc import Callable, Generator
+    from collections.abc import Awaitable, Callable, Generator
 
     from rich.live import Live
 
@@ -47,7 +47,7 @@ def open_pyaudio_stream(
 async def read_audio_stream(
     stream: pyaudio.Stream,
     stop_event: InteractiveStopEvent,
-    chunk_handler: Callable[[bytes], None] | Callable[[bytes], asyncio.Awaitable[None]],
+    chunk_handler: Callable[[bytes], None] | Callable[[bytes], Awaitable[None]],
     logger: logging.Logger,
     *,
     live: Live | None = None,

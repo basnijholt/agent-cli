@@ -1,5 +1,7 @@
 """Tests for the wake word assistant agent."""
 
+from pathlib import Path
+from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -97,11 +99,11 @@ class TestRecordAudioToBuffer:
     @patch("agent_cli.agents.wake_word_assistant.asr.record_audio_to_buffer")
     async def test_records_audio_to_buffer(
         self,
-        mock_asr_record,
-        mock_stream_context,
-        mock_pyaudio,
-        mock_logger,
-        mock_stop_event,
+        mock_asr_record: MagicMock,
+        mock_stream_context: MagicMock,
+        mock_pyaudio: MagicMock,
+        mock_logger: MagicMock,
+        mock_stop_event: MagicMock,
     ):
         """Test that audio is recorded to buffer."""
         # Setup mocks
@@ -135,11 +137,11 @@ class TestRecordAudioToBuffer:
     @patch("agent_cli.agents.wake_word_assistant.asr.record_audio_to_buffer")
     async def test_handles_recording_error(
         self,
-        mock_asr_record,
-        mock_stream_context,
-        mock_pyaudio,
-        mock_logger,
-        mock_stop_event,
+        mock_asr_record: MagicMock,
+        mock_stream_context: MagicMock,
+        mock_pyaudio: MagicMock,
+        mock_logger: MagicMock,
+        mock_stop_event: MagicMock,
     ):
         """Test error handling during recording."""
         # Setup mocks
@@ -165,12 +167,12 @@ class TestRecordAudioToBuffer:
     @patch("agent_cli.agents.wake_word_assistant.print_with_style")
     async def test_prints_recording_message_when_not_quiet(
         self,
-        mock_print,
-        mock_asr_record,
-        mock_stream_context,
-        mock_pyaudio,
-        mock_logger,
-        mock_stop_event,
+        mock_print: MagicMock,
+        mock_asr_record: MagicMock,
+        mock_stream_context: MagicMock,
+        mock_pyaudio: MagicMock,
+        mock_logger: MagicMock,
+        mock_stop_event: MagicMock,
     ):
         """Test that recording message is printed when not quiet."""
         # Setup mocks
@@ -199,7 +201,12 @@ class TestSaveAudioAsWav:
     @patch("agent_cli.agents.wake_word_assistant._create_wav_data")
     @patch("agent_cli.agents.wake_word_assistant.asyncio.to_thread")
     @patch("agent_cli.agents.wake_word_assistant.Path")
-    async def test_saves_audio_as_wav(self, mock_path, mock_to_thread, mock_create_wav):
+    async def test_saves_audio_as_wav(
+        self,
+        mock_path: MagicMock,
+        mock_to_thread: MagicMock,
+        mock_create_wav: MagicMock,
+    ):
         """Test that audio is saved as WAV file."""
         # Setup mocks
         test_audio_data = b"raw_audio_data"
@@ -233,9 +240,9 @@ class TestAsyncMain:
     @patch("agent_cli.agents.wake_word_assistant.list_input_devices")
     async def test_lists_input_devices_and_exits(
         self,
-        mock_list_devices,
-        mock_pyaudio_context,
-        sample_configs,
+        mock_list_devices: MagicMock,
+        mock_pyaudio_context: MagicMock,
+        sample_configs: dict[str, Any],
     ):
         """Test that input devices are listed when requested."""
         # Setup config to list devices
@@ -256,7 +263,7 @@ class TestAsyncMain:
 
         mock_list_devices.assert_called_once_with(
             mock_p,
-            False,
+            False,  # noqa: FBT003
         )  # quiet=False because not general_cfg.quiet
 
     @pytest.mark.asyncio
@@ -264,9 +271,9 @@ class TestAsyncMain:
     @patch("agent_cli.agents.wake_word_assistant.list_output_devices")
     async def test_lists_output_devices_and_exits(
         self,
-        mock_list_devices,
-        mock_pyaudio_context,
-        sample_configs,
+        mock_list_devices: MagicMock,
+        mock_pyaudio_context: MagicMock,
+        sample_configs: dict[str, Any],
     ):
         """Test that output devices are listed when requested."""
         # Setup config to list devices
@@ -287,7 +294,7 @@ class TestAsyncMain:
 
         mock_list_devices.assert_called_once_with(
             mock_p,
-            False,
+            False,  # noqa: FBT003
         )  # quiet=False because not general_cfg.quiet
 
     @pytest.mark.asyncio
@@ -298,12 +305,12 @@ class TestAsyncMain:
     @patch("agent_cli.agents.wake_word_assistant.wake_word.detect_wake_word")
     async def test_wake_word_detection_loop(
         self,
-        mock_detect,
-        mock_signal_context,
-        mock_live,
-        mock_input_device,
-        mock_pyaudio_context,
-        sample_configs,
+        mock_detect: MagicMock,
+        mock_signal_context: MagicMock,
+        mock_live: MagicMock,
+        mock_input_device: MagicMock,
+        mock_pyaudio_context: MagicMock,
+        sample_configs: dict[str, Any],
     ):
         """Test the main wake word detection loop."""
         # Setup mocks
@@ -348,16 +355,16 @@ class TestAsyncMain:
     @patch("agent_cli.agents.wake_word_assistant.process_and_update_clipboard")
     async def test_full_recording_cycle(
         self,
-        mock_process_clipboard,
-        mock_save_audio,
-        mock_record_audio,
-        mock_detect,
-        mock_signal_context,
-        mock_live,
-        mock_input_device,
-        mock_pyaudio_context,
-        sample_configs,
-        tmp_path,
+        mock_process_clipboard: MagicMock,
+        mock_save_audio: MagicMock,
+        mock_record_audio: MagicMock,
+        mock_detect: MagicMock,
+        mock_signal_context: MagicMock,
+        mock_live: MagicMock,
+        mock_input_device: MagicMock,
+        mock_pyaudio_context: MagicMock,
+        sample_configs: dict[str, Any],
+        tmp_path: Path,
     ):
         """Test a full recording cycle from start to stop wake word."""
         # Setup mocks
@@ -408,7 +415,7 @@ class TestAsyncMain:
 class TestWakeWordAssistantCommand:
     """Tests for wake_word_assistant CLI command."""
 
-    def test_command_help(self):
+    def test_command_help(self) -> None:
         """Test that the command shows help properly."""
         runner = CliRunner()
         result = runner.invoke(app, ["wake-word-assistant", "--help"])
@@ -418,7 +425,7 @@ class TestWakeWordAssistantCommand:
         assert "Wyoming wake word detection" in result.output
 
     @patch("agent_cli.agents.wake_word_assistant.stop_or_status_or_toggle")
-    def test_command_stop_and_status(self, mock_stop_or_status):
+    def test_command_stop_and_status(self, mock_stop_or_status: MagicMock) -> None:
         """Test the stop and status flags."""
         mock_stop_or_status.return_value = True  # Indicates command was handled
 
@@ -430,9 +437,9 @@ class TestWakeWordAssistantCommand:
         mock_stop_or_status.assert_called_with(
             "wake-word-assistant",
             "wake word assistant",
-            True,  # stop
-            False,  # status
-            False,  # toggle
+            True,  # stop  # noqa: FBT003
+            False,  # status  # noqa: FBT003
+            False,  # toggle  # noqa: FBT003
             quiet=False,
         )
 
@@ -443,9 +450,9 @@ class TestWakeWordAssistantCommand:
         mock_stop_or_status.assert_called_with(
             "wake-word-assistant",
             "wake word assistant",
-            False,  # stop
-            True,  # status
-            False,  # toggle
+            False,  # stop  # noqa: FBT003
+            True,  # status  # noqa: FBT003
+            False,  # toggle  # noqa: FBT003
             quiet=False,
         )
 
@@ -456,11 +463,11 @@ class TestWakeWordAssistantCommand:
     @patch("agent_cli.agents.wake_word_assistant.asyncio.run")
     def test_command_list_input_devices(
         self,
-        mock_asyncio_run,
-        mock_pid_context,
-        mock_stop_or_status,
-        mock_pyaudio_context,
-        mock_list_devices,
+        mock_asyncio_run: MagicMock,
+        mock_pid_context: MagicMock,
+        mock_stop_or_status: MagicMock,
+        mock_pyaudio_context: MagicMock,  # noqa: ARG002
+        mock_list_devices: MagicMock,  # noqa: ARG002
     ):
         """Test listing input devices."""
         mock_stop_or_status.return_value = False  # Don't handle stop/status
@@ -477,9 +484,9 @@ class TestWakeWordAssistantCommand:
     @patch("agent_cli.agents.wake_word_assistant.asyncio.run")
     def test_command_with_custom_parameters(
         self,
-        mock_asyncio_run,
-        mock_pid_context,
-        mock_stop_or_status,
+        mock_asyncio_run: MagicMock,
+        mock_pid_context: MagicMock,
+        mock_stop_or_status: MagicMock,
     ):
         """Test command with custom wake word parameters."""
         mock_stop_or_status.return_value = False
