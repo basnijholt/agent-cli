@@ -78,7 +78,7 @@ Respond as if you're having a natural conversation.
 """
 
 
-async def record_audio_with_wake_word(
+async def _record_audio_with_wake_word(
     p: pyaudio.PyAudio,
     input_device_index: int | None,
     stop_event: InteractiveStopEvent,
@@ -253,7 +253,7 @@ def wake_word_assistant(
         file_config = FileConfig(save_file=save_file)
 
         recording_func = partial(
-            record_audio_with_wake_word,
+            _record_audio_with_wake_word,
             wake_word_config=wake_word_config,
             quiet=general_cfg.quiet,
         )

@@ -30,7 +30,7 @@ if TYPE_CHECKING:
     from agent_cli.utils import InteractiveStopEvent
 
 
-async def send_audio(
+async def _send_audio(
     client: AsyncClient,
     stream: pyaudio.Stream,
     stop_event: InteractiveStopEvent,
@@ -65,7 +65,7 @@ async def send_audio(
         logger.debug("Sent AudioStop")
 
 
-async def send_audio_from_queue(
+async def _send_audio_from_queue(
     client: AsyncClient,
     queue: asyncio.Queue,
     logger: logging.Logger,
@@ -240,7 +240,7 @@ async def transcribe_live_audio(
             stream_config = setup_input_stream(input_device_index)
             with open_pyaudio_stream(p, **stream_config) as stream:
                 _, recv_task = await manage_send_receive_tasks(
-                    send_audio(client, stream, stop_event, logger, live=live, quiet=quiet),
+                    _send_audio(client, stream, stop_event, logger, live=live, quiet=quiet),
                     receive_transcript(
                         client,
                         logger,

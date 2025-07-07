@@ -269,7 +269,7 @@ def get_all_devices(p: pyaudio.PyAudio) -> list[dict]:
     return devices
 
 
-def get_device_by_index(p: pyaudio.PyAudio, input_device_index: int) -> dict:
+def _get_device_by_index(p: pyaudio.PyAudio, input_device_index: int) -> dict:
     """Get device info by index from cached device list.
 
     Args:
@@ -339,7 +339,7 @@ def _in_or_out_device(
         return None, None
 
     if input_device_index is not None:
-        info = get_device_by_index(p, input_device_index)
+        info = _get_device_by_index(p, input_device_index)
         return input_device_index, info.get("name")
     assert input_device_name is not None
     search_terms = [term.strip().lower() for term in input_device_name.split(",") if term.strip()]

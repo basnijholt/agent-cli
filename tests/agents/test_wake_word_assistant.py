@@ -8,8 +8,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from agent_cli.agents.wake_word_assistant import (
+    _record_audio_with_wake_word,
     get_empty_text,
-    record_audio_with_wake_word,
 )
 
 
@@ -50,7 +50,7 @@ def mock_wake_word_config() -> MagicMock:
 
 
 class TestRecordAudioWithWakeWord:
-    """Tests for record_audio_with_wake_word function."""
+    """Tests for _record_audio_with_wake_word function."""
 
     @pytest.mark.asyncio
     @patch("agent_cli.agents.wake_word_assistant.wake_word.detect_wake_word_from_queue")
@@ -82,7 +82,7 @@ class TestRecordAudioWithWakeWord:
         mock_tee.return_value.__aenter__.return_value = mock_tee_instance
 
         # Act
-        result = await record_audio_with_wake_word(
+        result = await _record_audio_with_wake_word(
             p=mock_pyaudio,
             input_device_index=1,
             stop_event=mock_stop_event,
@@ -115,7 +115,7 @@ class TestRecordAudioWithWakeWord:
         mock_detect.return_value = None
 
         # Act
-        result = await record_audio_with_wake_word(
+        result = await _record_audio_with_wake_word(
             p=mock_pyaudio,
             input_device_index=1,
             stop_event=mock_stop_event,
@@ -159,7 +159,7 @@ class TestRecordAudioWithWakeWord:
         mock_tee.return_value.__aenter__.return_value = mock_tee_instance
 
         # Act
-        result = await record_audio_with_wake_word(
+        result = await _record_audio_with_wake_word(
             p=mock_pyaudio,
             input_device_index=1,
             stop_event=mock_stop_event,

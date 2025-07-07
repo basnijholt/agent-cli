@@ -23,7 +23,7 @@ if TYPE_CHECKING:
     from agent_cli.utils import InteractiveStopEvent
 
 
-async def send_audio_for_wake_detection(
+async def _send_audio_for_wake_detection(
     client: AsyncClient,
     stream: pyaudio.Stream,
     stop_event: InteractiveStopEvent,
@@ -69,7 +69,7 @@ async def send_audio_for_wake_detection(
             logger.debug("Sent AudioStop for wake detection")
 
 
-async def send_audio_from_queue_for_wake_detection(
+async def _send_audio_from_queue_for_wake_detection(
     client: AsyncClient,
     queue: asyncio.Queue,
     logger: logging.Logger,
@@ -174,7 +174,7 @@ async def detect_wake_word(
             await client.write_event(Detect(names=[wake_word_name]).event())
 
             _send_task, recv_task = await manage_send_receive_tasks(
-                send_audio_for_wake_detection(
+                _send_audio_for_wake_detection(
                     client,
                     stream,
                     stop_event,
@@ -217,7 +217,7 @@ async def detect_wake_word_from_queue(
             await client.write_event(Detect(names=[wake_word_name]).event())
 
             _send_task, recv_task = await manage_send_receive_tasks(
-                send_audio_from_queue_for_wake_detection(
+                _send_audio_from_queue_for_wake_detection(
                     client,
                     queue,
                     logger,

@@ -37,7 +37,7 @@ def mock_live():
 
 
 class TestSendAudioForWakeDetection:
-    """Tests for send_audio_for_wake_detection function."""
+    """Tests for _send_audio_for_wake_detection function."""
 
     @pytest.mark.asyncio
     async def test_sends_audio_start_event(
@@ -53,7 +53,7 @@ class TestSendAudioForWakeDetection:
         # Setup stop event to stop immediately
         mock_stop_event.is_set.side_effect = [True]
 
-        await wake_word.send_audio_for_wake_detection(
+        await wake_word._send_audio_for_wake_detection(
             mock_client,
             mock_stream,
             mock_stop_event,
@@ -81,7 +81,7 @@ class TestSendAudioForWakeDetection:
         # Setup stop event to stop immediately
         mock_stop_event.is_set.side_effect = [True]
 
-        await wake_word.send_audio_for_wake_detection(
+        await wake_word._send_audio_for_wake_detection(
             mock_client,
             mock_stream,
             mock_stop_event,
@@ -111,7 +111,7 @@ class TestSendAudioForWakeDetection:
         # Setup stop event to run once then stop
         mock_stop_event.is_set.side_effect = [False, True]
 
-        await wake_word.send_audio_for_wake_detection(
+        await wake_word._send_audio_for_wake_detection(
             mock_client,
             mock_stream,
             mock_stop_event,
@@ -139,7 +139,7 @@ class TestSendAudioForWakeDetection:
         # Setup stop event to stop immediately
         mock_stop_event.is_set.side_effect = [True]
 
-        await wake_word.send_audio_for_wake_detection(
+        await wake_word._send_audio_for_wake_detection(
             mock_client,
             mock_stream,
             mock_stop_event,
@@ -357,7 +357,7 @@ class TestDetectWakeWord:
         mock_stream = MagicMock()
 
         with (
-            patch("agent_cli.wake_word.send_audio_for_wake_detection"),
+            patch("agent_cli.wake_word._send_audio_for_wake_detection"),
             patch("agent_cli.wake_word.receive_wake_detection"),
             patch("asyncio.wait") as mock_wait,
             patch("asyncio.create_task") as mock_create_task,

@@ -14,6 +14,10 @@ ASR_SERVER_PORT = 10300
 TTS_SERVER_IP = os.getenv("TTS_SERVER_IP", "localhost")
 TTS_SERVER_PORT = 10200
 
+# --- Wake Word (Wyoming) Configuration ---
+WAKE_WORD_SERVER_IP = os.getenv("WAKE_WORD_SERVER_IP", "localhost")
+WAKE_WORD_SERVER_PORT = 10400
+
 # --- Ollama LLM Configuration ---
 OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://localhost:11434")
 DEFAULT_MODEL = "devstral:24b"
