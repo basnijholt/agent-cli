@@ -59,18 +59,18 @@ if TYPE_CHECKING:
 LOGGER = logging.getLogger()
 
 # LLM Prompts for wake word assistant
-SYSTEM_PROMPT = """\
+SYSTEM_PROMPT_TEMPLATE = """\
 You are a helpful voice assistant. Respond to user questions and commands in a conversational, friendly manner.
 
-The user is using a wake word to start and stop the recording. The wake word is "ok nabu". You should ignore the wake word and any variations of it (e.g., "Okay, Naboo") when processing the user's command.
+The user is using a wake word to start and stop the recording. The wake word is "{wake_word}". You should ignore the wake word and any variations of it when processing the user's command.
 
 Keep your responses concise but informative. If the user asks you to perform an action that requires external tools or systems, explain what you would do if you had access to those capabilities.
 
 Always be helpful, accurate, and engaging in your responses.
 """
 
-AGENT_INSTRUCTIONS = """\
-The user has spoken a voice command or question. The user is using a wake word to start and stop the recording. The wake word is "ok nabu". You should ignore the wake word and any variations of it (e.g., "Okay, Naboo") when processing the user's command.
+AGENT_INSTRUCTIONS_TEMPLATE = """\
+The user has spoken a voice command or question. The user is using a wake word to start and stop the recording. The wake word is "{wake_word}". You should ignore the wake word and any variations of it when processing the user's command.
 
 Provide a helpful, conversational response.
 
@@ -264,6 +264,11 @@ def wake_word_assistant(
             quiet=general_cfg.quiet,
         )
 
+        system_prompt = SYSTEM_PROMPT_TEMPLATE.format(wake_word=wake_word_config.wake_word_name)
+        agent_instructions = AGENT_INSTRUCTIONS_TEMPLATE.format(
+            wake_word=wake_word_config.wake_word_name,
+        )
+
         asyncio.run(
             async_main_voice_agent(
                 recording_func=recording_func,
@@ -274,7 +279,7 @@ def wake_word_assistant(
                 tts_config=tts_config,
                 file_config=file_config,
                 wake_word_config=wake_word_config,
-                system_prompt=SYSTEM_PROMPT,
-                agent_instructions=AGENT_INSTRUCTIONS,
+                system_prompt=system_prompt,
+                agent_instructions=agent_instructions,
             ),
         )
