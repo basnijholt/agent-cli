@@ -68,7 +68,8 @@ WAKE_WORD_VARIATIONS = {
 SYSTEM_PROMPT_TEMPLATE = """\
 You are a helpful voice assistant. Respond to user questions and commands in a conversational, friendly manner.
 
-The user is using a wake word to start and stop the recording. The wake word is "{wake_word}". You should ignore the wake word and any variations of it (e.g., "{variations}") when processing the user's command.
+The user is using a wake word to start and stop the recording, so the wake word will always appear at the END of the transcription.
+The wake word is "{wake_word}". You should ignore the wake word and any variations of it (e.g., "{variations}") when processing the user's command.
 
 Keep your responses concise but informative. If the user asks you to perform an action that requires external tools or systems, explain what you would do if you had access to those capabilities.
 
