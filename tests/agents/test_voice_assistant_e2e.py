@@ -63,7 +63,7 @@ def get_configs() -> tuple[GeneralConfig, ASRConfig, LLMConfig, TTSConfig, FileC
 )
 @patch("agent_cli.asr.record_audio_to_buffer", new_callable=AsyncMock, return_value=b"audio data")
 async def test_voice_assistant_e2e(
-    mock_record_audio: AsyncMock,
+    mock_record_audio: AsyncMock,  # noqa: ARG001
     mock_get_clipboard: MagicMock,
     mock_signal_context: MagicMock,
     mock_pyaudio_context: MagicMock,

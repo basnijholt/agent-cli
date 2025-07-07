@@ -98,30 +98,29 @@ async def record_audio_with_wake_word(
             style="dim",
         )
 
-    detected_word = await wake_word.detect_wake_word(
-        wake_server_ip=wake_word_config.server_ip,
-        wake_server_port=wake_word_config.server_port,
-        wake_word_name=wake_word_config.wake_word_name,
-        input_device_index=input_device_index,
-        logger=logger,
-        p=p,
-        stop_event=stop_event,
-        live=live,
-        quiet=quiet,
-    )
-
-    if not detected_word or stop_event.is_set():
-        return None
-
-    if not quiet:
-        print_with_style(
-            f"✅ Wake word '{detected_word}' detected! Starting recording...",
-            style="green",
-        )
-
-    recording_stop_event = InteractiveStopEvent()
     stream_config = asr.setup_input_stream(input_device_index)
     with asr.open_pyaudio_stream(p, **stream_config) as stream:
+        detected_word = await wake_word.detect_wake_word(
+            wake_server_ip=wake_word_config.server_ip,
+            wake_server_port=wake_word_config.server_port,
+            wake_word_name=wake_word_config.wake_word_name,
+            logger=logger,
+            stream=stream,
+            stop_event=stop_event,
+            live=live,
+            quiet=quiet,
+        )
+
+        if not detected_word or stop_event.is_set():
+            return None
+
+        if not quiet:
+            print_with_style(
+                f"✅ Wake word '{detected_word}' detected! Starting recording...",
+                style="green",
+            )
+
+        recording_stop_event = InteractiveStopEvent()
         record_task = asyncio.create_task(
             asr.record_audio_to_buffer(
                 stream,
@@ -132,31 +131,30 @@ async def record_audio_with_wake_word(
             ),
         )
 
-    stop_detected_word = await wake_word.detect_wake_word(
-        wake_server_ip=wake_word_config.server_ip,
-        wake_server_port=wake_word_config.server_port,
-        wake_word_name=wake_word_config.wake_word_name,
-        input_device_index=input_device_index,
-        logger=logger,
-        p=p,
-        stop_event=stop_event,
-        live=live,
-        quiet=quiet,
-    )
-
-    recording_stop_event.set()
-    audio_data = await record_task
-
-    if not stop_detected_word or stop_event.is_set():
-        return None
-
-    if not quiet:
-        print_with_style(
-            f"🛑 Wake word '{stop_detected_word}' detected! Stopping recording...",
-            style="yellow",
+        stop_detected_word = await wake_word.detect_wake_word(
+            wake_server_ip=wake_word_config.server_ip,
+            wake_server_port=wake_word_config.server_port,
+            wake_word_name=wake_word_config.wake_word_name,
+            logger=logger,
+            stream=stream,
+            stop_event=stop_event,
+            live=live,
+            quiet=quiet,
         )
 
-    return audio_data
+        recording_stop_event.set()
+        audio_data = await record_task
+
+        if not stop_detected_word or stop_event.is_set():
+            return None
+
+        if not quiet:
+            print_with_style(
+                f"🛑 Wake word '{stop_detected_word}' detected! Stopping recording...",
+                style="yellow",
+            )
+
+        return audio_data
 
 
 def get_empty_text() -> str:

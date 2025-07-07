@@ -8,7 +8,7 @@ from wyoming.audio import AudioChunk, AudioStart, AudioStop
 from wyoming.wake import Detect, Detection, NotDetected
 
 from agent_cli import config
-from agent_cli.audio import open_pyaudio_stream, read_audio_stream, setup_input_stream
+from agent_cli.audio import read_audio_stream
 from agent_cli.wyoming_utils import manage_send_receive_tasks, wyoming_client_context
 
 if TYPE_CHECKING:
@@ -63,8 +63,9 @@ async def send_audio_for_wake_detection(
             progress_style="blue",
         )
     finally:
-        await client.write_event(AudioStop().event())
-        logger.debug("Sent AudioStop for wake detection")
+        if client._writer is not None:
+            await client.write_event(AudioStop().event())
+            logger.debug("Sent AudioStop for wake detection")
 
 
 async def receive_wake_detection(
@@ -109,9 +110,8 @@ async def detect_wake_word(
     wake_server_ip: str,
     wake_server_port: int,
     wake_word_name: str,
-    input_device_index: int | None,
     logger: logging.Logger,
-    p: pyaudio.PyAudio,
+    stream: pyaudio.Stream,
     stop_event: InteractiveStopEvent,
     *,
     live: Live,
@@ -124,9 +124,8 @@ async def detect_wake_word(
         wake_server_ip: Wyoming wake word server IP
         wake_server_port: Wyoming wake word server port
         wake_word_name: Name of wake word to detect
-        input_device_index: Audio input device index
         logger: Logger instance
-        p: PyAudio instance
+        stream: PyAudio stream to use
         stop_event: Event to stop recording
         live: Rich Live display for progress
         quiet: If True, suppress all console output
@@ -147,25 +146,23 @@ async def detect_wake_word(
             # Send detect request with specific wake word
             await client.write_event(Detect(names=[wake_word_name]).event())
 
-            stream_config = setup_input_stream(input_device_index)
-            with open_pyaudio_stream(p, **stream_config) as stream:
-                send_task, recv_task = await manage_send_receive_tasks(
-                    send_audio_for_wake_detection(
-                        client,
-                        stream,
-                        stop_event,
-                        logger,
-                        live=live,
-                        quiet=quiet,
-                    ),
-                    receive_wake_detection(client, logger, detection_callback=detection_callback),
-                    return_when="FIRST_COMPLETED",
-                )
+            _send_task, recv_task = await manage_send_receive_tasks(
+                send_audio_for_wake_detection(
+                    client,
+                    stream,
+                    stop_event,
+                    logger,
+                    live=live,
+                    quiet=quiet,
+                ),
+                receive_wake_detection(client, logger, detection_callback=detection_callback),
+                return_when="FIRST_COMPLETED",
+            )
 
-                # If recv_task completed first, it means we detected a wake word
-                if not recv_task.cancelled():
-                    return recv_task.result()
+            # If recv_task completed first, it means we detected a wake word
+            if not recv_task.cancelled():
+                return recv_task.result()
 
-                return None
+            return None
     except (ConnectionRefusedError, Exception):
         return None

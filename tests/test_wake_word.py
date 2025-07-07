@@ -246,16 +246,13 @@ class TestDetectWakeWord:
 
     @pytest.mark.asyncio
     @patch("agent_cli.wake_word.wyoming_client_context")
-    @patch("agent_cli.wake_word.open_pyaudio_stream")
-    @patch("agent_cli.wake_word.setup_input_stream")
+    @patch("agent_cli.asr.open_pyaudio_stream")
     @patch("agent_cli.wake_word.manage_send_receive_tasks")
     async def test_successful_wake_word_detection(
         self,
         mock_manage_tasks: MagicMock,
         mock_setup_stream: MagicMock,
-        mock_stream_context: MagicMock,
         mock_wyoming_context: MagicMock,
-        mock_pyaudio: MagicMock,
         mock_logger: MagicMock,
         mock_stop_event: MagicMock,
         mock_live: MagicMock,
@@ -266,7 +263,6 @@ class TestDetectWakeWord:
         mock_wyoming_context.return_value.__aenter__.return_value = mock_client
 
         mock_stream = MagicMock()
-        mock_stream_context.return_value.__enter__.return_value = mock_stream
 
         mock_setup_stream.return_value = {"format": 8, "channels": 1, "rate": 16000}
 
@@ -281,9 +277,8 @@ class TestDetectWakeWord:
             wake_server_ip="127.0.0.1",
             wake_server_port=10400,
             wake_word_name="test_word",
-            input_device_index=1,
             logger=mock_logger,
-            p=mock_pyaudio,
+            stream=mock_stream,
             stop_event=mock_stop_event,
             live=mock_live,
             quiet=True,
@@ -298,21 +293,20 @@ class TestDetectWakeWord:
     async def test_connection_refused_error(
         self,
         mock_wyoming_context: MagicMock,
-        mock_pyaudio: MagicMock,
         mock_logger: MagicMock,
         mock_stop_event: MagicMock,
         mock_live: MagicMock,
     ) -> None:
         """Test handling of connection refused error."""
         mock_wyoming_context.side_effect = ConnectionRefusedError()
+        mock_stream = MagicMock()
 
         result = await wake_word.detect_wake_word(
             wake_server_ip="127.0.0.1",
             wake_server_port=10400,
             wake_word_name="test_word",
-            input_device_index=1,
             logger=mock_logger,
-            p=mock_pyaudio,
+            stream=mock_stream,
             stop_event=mock_stop_event,
             live=mock_live,
             quiet=False,
@@ -325,21 +319,20 @@ class TestDetectWakeWord:
     async def test_generic_exception_handling(
         self,
         mock_wyoming_context: MagicMock,
-        mock_pyaudio: MagicMock,
         mock_logger: MagicMock,
         mock_stop_event: MagicMock,
         mock_live: MagicMock,
     ) -> None:
         """Test handling of generic exceptions."""
         mock_wyoming_context.side_effect = Exception("Test error")
+        mock_stream = MagicMock()
 
         result = await wake_word.detect_wake_word(
             wake_server_ip="127.0.0.1",
             wake_server_port=10400,
             wake_word_name="test_word",
-            input_device_index=1,
             logger=mock_logger,
-            p=mock_pyaudio,
+            stream=mock_stream,
             stop_event=mock_stop_event,
             live=mock_live,
             quiet=False,
@@ -349,12 +342,9 @@ class TestDetectWakeWord:
 
     @pytest.mark.asyncio
     @patch("agent_cli.wyoming_utils.AsyncClient.from_uri")
-    @patch("agent_cli.wake_word.open_pyaudio_stream")
     async def test_task_cancellation(
         self,
-        mock_stream_context: MagicMock,
         mock_client_from_uri: MagicMock,
-        mock_pyaudio: MagicMock,
         mock_logger: MagicMock,
         mock_stop_event: MagicMock,
         mock_live: MagicMock,
@@ -365,7 +355,6 @@ class TestDetectWakeWord:
         mock_client_from_uri.return_value.__aenter__.return_value = mock_client
 
         mock_stream = MagicMock()
-        mock_stream_context.return_value.__enter__.return_value = mock_stream
 
         with (
             patch("agent_cli.wake_word.send_audio_for_wake_detection"),
@@ -384,9 +373,8 @@ class TestDetectWakeWord:
                 wake_server_ip="127.0.0.1",
                 wake_server_port=10400,
                 wake_word_name="test_word",
-                input_device_index=1,
                 logger=mock_logger,
-                p=mock_pyaudio,
+                stream=mock_stream,
                 stop_event=mock_stop_event,
                 live=mock_live,
                 quiet=True,
