@@ -34,8 +34,7 @@ from agent_cli.agents._config import (
     TTSConfig,
 )
 from agent_cli.agents._tts_common import handle_tts_playback
-from agent_cli.agents._voice_agent_common import setup_devices
-from agent_cli.audio import pyaudio_context
+from agent_cli.audio import pyaudio_context, setup_devices
 from agent_cli.cli import app, setup_logging
 from agent_cli.llm import get_llm_response
 from agent_cli.utils import (

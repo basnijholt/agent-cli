@@ -46,9 +46,8 @@ from agent_cli.agents._config import (
 from agent_cli.agents._voice_agent_common import (
     get_instruction_from_audio,
     process_instruction_and_respond,
-    setup_devices,
 )
-from agent_cli.audio import pyaudio_context
+from agent_cli.audio import pyaudio_context, setup_devices
 from agent_cli.cli import app, setup_logging
 from agent_cli.utils import (
     InteractiveStopEvent,

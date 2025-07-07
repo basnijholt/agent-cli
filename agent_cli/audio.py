@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import functools
+import logging
 from contextlib import asynccontextmanager, contextmanager
 from typing import TYPE_CHECKING
 
@@ -11,13 +12,23 @@ import pyaudio
 from rich.text import Text
 
 from agent_cli import config
-from agent_cli.utils import InteractiveStopEvent, console
+from agent_cli.utils import (
+    InteractiveStopEvent,
+    console,
+    print_device_index,
+    print_with_style,
+)
 
 if TYPE_CHECKING:
     import logging
     from collections.abc import AsyncGenerator, Awaitable, Callable, Generator
 
     from rich.live import Live
+
+    from agent_cli.agents._config import (
+        ASRConfig,
+        TTSConfig,
+    )
 
 
 class _AudioTee:
@@ -380,3 +391,46 @@ def output_device(
         "maxOutputChannels",
         "output",
     )
+
+
+def setup_devices(
+    p: pyaudio.PyAudio,
+    asr_config: ASRConfig | None,
+    tts_config: TTSConfig | None,
+    quiet: bool,
+) -> tuple[int | None, str | None, int | None] | None:
+    """Handle device listing and setup."""
+    if asr_config and asr_config.list_input_devices:
+        list_input_devices(p)
+        return None
+
+    if tts_config and tts_config.list_output_devices:
+        list_output_devices(p)
+        return None
+
+    # Setup input device
+    input_device_index, input_device_name = input_device(
+        p,
+        asr_config.input_device_name if asr_config else None,
+        asr_config.input_device_index if asr_config else None,
+    )
+    if not quiet:
+        print_device_index(input_device_index, input_device_name)
+
+    # Setup output device for TTS if enabled
+    tts_output_device_index = tts_config.output_device_index if tts_config else None
+    if (
+        tts_config
+        and tts_config.enabled
+        and (tts_config.output_device_name or tts_config.output_device_index)
+    ):
+        tts_output_device_index, tts_output_device_name = output_device(
+            p,
+            tts_config.output_device_name if tts_config else None,
+            tts_config.output_device_index if tts_config else None,
+        )
+        if tts_output_device_index is not None and not quiet:
+            msg = f"🔊 TTS output device [bold yellow]{tts_output_device_index}[/bold yellow] ([italic]{tts_output_device_name}[/italic])"
+            print_with_style(msg)
+
+    return input_device_index, input_device_name, tts_output_device_index
