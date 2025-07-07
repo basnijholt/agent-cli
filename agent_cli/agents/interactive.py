@@ -16,6 +16,7 @@ import asyncio
 import json
 import logging
 import os
+import signal
 import time
 from contextlib import suppress
 from datetime import UTC, datetime
@@ -425,6 +426,7 @@ def interactive(
         status,
         toggle,
         quiet=general_cfg.quiet,
+        stop_signal=signal.SIGINT,  # Use SIGINT for graceful double-stop behavior
     ):
         return
 
