@@ -13,7 +13,11 @@ from agent_cli.agents._config import (
     LLMConfig,
     TTSConfig,
 )
-from agent_cli.agents.voice_assistant import AGENT_INSTRUCTIONS, SYSTEM_PROMPT, async_main
+from agent_cli.agents.voice_assistant import (
+    AGENT_INSTRUCTIONS,
+    SYSTEM_PROMPT,
+    _async_main,
+)
 from tests.mocks.audio import MockPyAudio
 
 
@@ -76,7 +80,7 @@ async def test_voice_assistant_e2e(
         mock_stop_event.is_set.return_value = False
         mock_signal_context.return_value.__enter__.return_value = mock_stop_event
 
-        await async_main(
+        await _async_main(
             general_cfg=general_cfg,
             asr_config=asr_config,
             llm_config=llm_config,

@@ -20,7 +20,7 @@ if TYPE_CHECKING:
     from rich.live import Live
 
 
-class AudioTee:
+class _AudioTee:
     """A class to tee an audio stream into multiple queues."""
 
     def __init__(
@@ -80,9 +80,9 @@ async def tee_audio_stream(
     stream: pyaudio.Stream,
     stop_event: InteractiveStopEvent,
     logger: logging.Logger,
-) -> AsyncGenerator[AudioTee, None]:
+) -> AsyncGenerator[_AudioTee, None]:
     """Context manager for an AudioTee."""
-    tee = AudioTee(stream, stop_event, logger)
+    tee = _AudioTee(stream, stop_event, logger)
     tee.start()
     try:
         yield tee

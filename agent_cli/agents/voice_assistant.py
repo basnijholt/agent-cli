@@ -98,7 +98,7 @@ Return ONLY the resulting text (either the edit or the answer), with no extra fo
 # --- Main Application Logic ---
 
 
-async def async_main(
+async def _async_main(
     *,
     general_cfg: GeneralConfig,
     asr_config: ASRConfig,
@@ -256,7 +256,7 @@ def voice_assistant(
         file_config = FileConfig(save_file=save_file)
 
         asyncio.run(
-            async_main(
+            _async_main(
                 general_cfg=general_cfg,
                 asr_config=asr_config,
                 llm_config=llm_config,
