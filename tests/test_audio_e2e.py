@@ -2,16 +2,12 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
 from unittest.mock import Mock, patch
 
 import pytest
 
 from agent_cli import audio
 from tests.mocks.audio import MockPyAudio
-
-if TYPE_CHECKING:
-    from rich.console import Console
 
 
 @pytest.fixture
@@ -45,7 +41,6 @@ def test_get_all_devices_caching(
 @patch("agent_cli.audio.pyaudio.PyAudio")
 def test_list_input_devices(
     mock_pyaudio_class: Mock,
-    mock_console: Console,
     mock_pyaudio_device_info: list[dict],
 ) -> None:
     """Test listing input devices."""
@@ -55,7 +50,7 @@ def test_list_input_devices(
 
     with audio.pyaudio_context() as p:
         # Test listing input devices
-        audio.list_input_devices(p, mock_console)
+        audio.list_input_devices(p)
 
     # Verify console output contains device information
     # This is more of an integration test to ensure no exceptions are raised
@@ -64,7 +59,6 @@ def test_list_input_devices(
 @patch("agent_cli.audio.pyaudio.PyAudio")
 def test_list_output_devices(
     mock_pyaudio_class: Mock,
-    mock_console: Console,
     mock_pyaudio_device_info: list[dict],
 ) -> None:
     """Test listing output devices."""
@@ -74,7 +68,7 @@ def test_list_output_devices(
 
     with audio.pyaudio_context() as p:
         # Test listing output devices
-        audio.list_output_devices(p, mock_console)
+        audio.list_output_devices(p)
 
     # Verify no exceptions are raised
 
@@ -82,7 +76,6 @@ def test_list_output_devices(
 @patch("agent_cli.audio.pyaudio.PyAudio")
 def test_list_all_devices(
     mock_pyaudio_class: Mock,
-    mock_console: Console,
     mock_pyaudio_device_info: list[dict],
 ) -> None:
     """Test listing all audio devices."""
@@ -92,7 +85,7 @@ def test_list_all_devices(
 
     with audio.pyaudio_context() as p:
         # Test listing all devices
-        audio.list_all_devices(p, mock_console)
+        audio.list_all_devices(p)
 
     # Verify no exceptions are raised
 

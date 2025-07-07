@@ -288,28 +288,25 @@ def _get_device_by_index(p: pyaudio.PyAudio, input_device_index: int) -> dict:
     raise ValueError(msg)
 
 
-def list_input_devices(p: pyaudio.PyAudio, quiet: bool = False) -> None:
+def list_input_devices(p: pyaudio.PyAudio) -> None:
     """Print a numbered list of available input devices."""
-    if not quiet:
-        console.print("[bold]Available input devices:[/bold]")
-        for device in get_all_devices(p):
-            if device.get("maxInputChannels", 0) > 0:
-                console.print(f"  [yellow]{device['index']}[/yellow]: {device['name']}")
+    console.print("[bold]Available input devices:[/bold]")
+    for device in get_all_devices(p):
+        if device.get("maxInputChannels", 0) > 0:
+            console.print(f"  [yellow]{device['index']}[/yellow]: {device['name']}")
 
 
-def list_output_devices(p: pyaudio.PyAudio, quiet: bool = False) -> None:
+def list_output_devices(p: pyaudio.PyAudio) -> None:
     """Print a numbered list of available output devices."""
-    if not quiet:
-        console.print("[bold]Available output devices:[/bold]")
-        for device in get_all_devices(p):
-            if device.get("maxOutputChannels", 0) > 0:
-                console.print(f"  [yellow]{device['index']}[/yellow]: {device['name']}")
+    console.print("[bold]Available output devices:[/bold]")
+    for device in get_all_devices(p):
+        if device.get("maxOutputChannels", 0) > 0:
+            console.print(f"  [yellow]{device['index']}[/yellow]: {device['name']}")
 
 
-def list_all_devices(p: pyaudio.PyAudio, quiet: bool = False) -> None:
+def list_all_devices(p: pyaudio.PyAudio) -> None:
     """Print a numbered list of all available audio devices with their capabilities."""
-    if not quiet:
-        console.print("[bold]All available audio devices:[/bold]")
+    console.print("[bold]All available audio devices:[/bold]")
     for device in get_all_devices(p):
         input_channels = device.get("maxInputChannels", 0)
         output_channels = device.get("maxOutputChannels", 0)

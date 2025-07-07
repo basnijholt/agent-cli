@@ -189,7 +189,7 @@ def transcribe(
 
     with pyaudio_context() as p:
         if list_input_devices:
-            audio.list_input_devices(p, quiet)
+            audio.list_input_devices(p)
             return
         input_device_index, input_device_name = input_device(
             p,

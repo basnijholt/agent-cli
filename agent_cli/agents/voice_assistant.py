@@ -55,7 +55,7 @@ from agent_cli.agents._voice_agent_common import (
     process_instruction_and_respond,
     setup_devices,
 )
-from agent_cli.audio import pyaudio_context
+from agent_cli.audio import list_input_devices, list_output_devices, pyaudio_context
 from agent_cli.cli import app, setup_logging
 from agent_cli.utils import (
     get_clipboard_text,
@@ -98,7 +98,7 @@ Return ONLY the resulting text (either the edit or the answer), with no extra fo
 # --- Main Application Logic ---
 
 
-async def _async_main(
+async def _async_main(  # noqa: PLR0911
     *,
     general_cfg: GeneralConfig,
     asr_config: ASRConfig,
@@ -109,6 +109,12 @@ async def _async_main(
 ) -> None:
     """Core asynchronous logic for the voice assistant."""
     with pyaudio_context() as p:
+        if asr_config.list_input_devices:
+            list_input_devices(p)
+            return
+        if tts_config.list_output_devices:
+            list_output_devices(p)
+            return
         device_info = setup_devices(p, asr_config, tts_config, general_cfg.quiet)
         if device_info is None:
             return

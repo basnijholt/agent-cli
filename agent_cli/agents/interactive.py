@@ -354,11 +354,11 @@ async def async_main(
         with pyaudio_context() as p:
             # Handle device listing
             if asr_config.list_input_devices:
-                list_input_devices(p, general_cfg.quiet)
+                list_input_devices(p)
                 return
 
             if tts_config.list_output_devices:
-                list_output_devices(p, general_cfg.quiet)
+                list_output_devices(p)
                 return
 
             # Setup devices

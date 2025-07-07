@@ -45,11 +45,11 @@ def setup_devices(
 ) -> tuple[int | None, str | None, int | None] | None:
     """Handle device listing and setup."""
     if asr_config.list_input_devices:
-        list_input_devices(p, not quiet)
+        list_input_devices(p)
         return None
 
     if tts_config.list_output_devices:
-        list_output_devices(p, not quiet)
+        list_output_devices(p)
         return None
 
     # Setup input device
