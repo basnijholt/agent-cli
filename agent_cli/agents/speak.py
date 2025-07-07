@@ -25,7 +25,7 @@ from agent_cli.utils import (
 LOGGER = logging.getLogger()
 
 
-async def async_main(
+async def _async_main(
     *,
     general_cfg: GeneralConfig,
     text: str | None,
@@ -151,7 +151,7 @@ def speak(
         file_config = FileConfig(save_file=save_file)
 
         asyncio.run(
-            async_main(
+            _async_main(
                 general_cfg=general_cfg,
                 text=text,
                 tts_config=tts_config,

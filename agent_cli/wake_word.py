@@ -105,7 +105,7 @@ async def _send_audio_from_queue_for_wake_detection(
             logger.debug("Sent AudioStop for wake detection")
 
 
-async def receive_wake_detection(
+async def _receive_wake_detection(
     client: AsyncClient,
     logger: logging.Logger,
     *,
@@ -195,7 +195,7 @@ async def detect_wake_word(
                     quiet=quiet,
                     progress_message=progress_message,
                 ),
-                receive_wake_detection(client, logger, detection_callback=detection_callback),
+                _receive_wake_detection(client, logger, detection_callback=detection_callback),
                 return_when=asyncio.FIRST_COMPLETED,
             )
 
@@ -240,7 +240,7 @@ async def detect_wake_word_from_queue(
                     quiet,
                     progress_message,
                 ),
-                receive_wake_detection(client, logger, detection_callback=detection_callback),
+                _receive_wake_detection(client, logger, detection_callback=detection_callback),
                 return_when=asyncio.FIRST_COMPLETED,
             )
 

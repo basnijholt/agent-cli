@@ -8,7 +8,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from agent_cli.agents._config import FileConfig, GeneralConfig, TTSConfig
-from agent_cli.agents.speak import async_main
+from agent_cli.agents.speak import _async_main
 from tests.mocks.audio import MockPyAudio
 from tests.mocks.wyoming import MockTTSClient
 
@@ -61,7 +61,7 @@ async def test_speak_e2e(
         )
         file_config = FileConfig(save_file=None)
 
-        await async_main(
+        await _async_main(
             general_cfg=general_cfg,
             text="Hello, world!",
             tts_config=tts_config,

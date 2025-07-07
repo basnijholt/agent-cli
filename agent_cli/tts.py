@@ -113,7 +113,7 @@ def _create_wav_data(
     return wav_data.getvalue()
 
 
-async def synthesize_speech(
+async def _synthesize_speech(
     text: str,
     tts_server_ip: str,
     tts_server_port: int,
@@ -332,7 +332,7 @@ async def speak_text(
 
     """
     # Synthesize speech
-    audio_data = await synthesize_speech(
+    audio_data = await _synthesize_speech(
         text=text,
         tts_server_ip=tts_server_ip,
         tts_server_port=tts_server_port,

@@ -11,7 +11,7 @@ from agent_cli.cli import app
 runner = CliRunner()
 
 
-@patch("agent_cli.agents.speak.async_main", new_callable=AsyncMock)
+@patch("agent_cli.agents.speak._async_main", new_callable=AsyncMock)
 def test_speak_agent(mock_async_main: AsyncMock) -> None:
     """Test the speak agent."""
     result = runner.invoke(app, ["speak", "hello"], catch_exceptions=False)

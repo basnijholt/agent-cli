@@ -86,7 +86,7 @@ Output format: corrected text only, no other words.
 # --- Main Application Logic ---
 
 
-async def process_text(text: str, model: str, ollama_host: str) -> tuple[str, float]:
+async def _process_text(text: str, model: str, ollama_host: str) -> tuple[str, float]:
     """Process text with the LLM and return the corrected text and elapsed time."""
     agent = build_agent(
         model=model,
@@ -104,7 +104,7 @@ async def process_text(text: str, model: str, ollama_host: str) -> tuple[str, fl
     return result.output, t_end - t_start
 
 
-def display_original_text(original_text: str, quiet: bool) -> None:
+def _display_original_text(original_text: str, quiet: bool) -> None:
     """Render the original text panel in verbose mode."""
     if not quiet:
         print_input_panel(original_text, title="📋 Original Text")
@@ -140,7 +140,7 @@ def _maybe_status(llm_config: LLMConfig, quiet: bool) -> Status | contextlib.nul
     return contextlib.nullcontext()
 
 
-async def async_autocorrect(
+async def _async_autocorrect(
     *,
     text: str | None,
     llm_config: LLMConfig,
@@ -153,11 +153,11 @@ async def async_autocorrect(
     if original_text is None:
         return
 
-    display_original_text(original_text, general_cfg.quiet)
+    _display_original_text(original_text, general_cfg.quiet)
 
     try:
         with _maybe_status(llm_config, general_cfg.quiet):
-            corrected_text, elapsed = await process_text(
+            corrected_text, elapsed = await _process_text(
                 original_text,
                 llm_config.model,
                 llm_config.ollama_host,
@@ -199,7 +199,7 @@ def autocorrect(
     llm_config = LLMConfig(model=model, ollama_host=ollama_host)
     general_cfg = GeneralConfig(log_level=log_level, log_file=log_file, quiet=quiet)
     asyncio.run(
-        async_autocorrect(
+        _async_autocorrect(
             text=text,
             llm_config=llm_config,
             general_cfg=general_cfg,

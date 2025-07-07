@@ -9,7 +9,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from agent_cli.agents._config import ASRConfig, GeneralConfig, LLMConfig
-from agent_cli.agents.transcribe import async_main
+from agent_cli.agents.transcribe import _async_main
 from tests.mocks.audio import MockPyAudio
 from tests.mocks.wyoming import MockASRClient
 
@@ -59,7 +59,7 @@ async def test_transcribe_e2e(
     llm_config = LLMConfig(model="", ollama_host="")
 
     with patch("agent_cli.utils.console", mock_console):
-        await async_main(
+        await _async_main(
             asr_config=asr_config,
             general_cfg=general_cfg,
             llm_config=llm_config,

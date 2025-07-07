@@ -62,7 +62,7 @@ async def test_receive_text() -> None:
     final_callback = MagicMock()
 
     # Act
-    result = await asr.receive_transcript(
+    result = await asr._receive_transcript(
         client,
         logger,
         chunk_callback=chunk_callback,

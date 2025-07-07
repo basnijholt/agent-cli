@@ -84,7 +84,7 @@ def format_timedelta_to_ago(td: timedelta) -> str:
     return f"{seconds} second{'s' if seconds != 1 else ''} ago"
 
 
-def create_spinner(text: str, style: str) -> Spinner:
+def _create_spinner(text: str, style: str) -> Spinner:
     """Creates a default spinner."""
     return Spinner("dots", text=Text(text, style=style))
 
@@ -237,7 +237,7 @@ def stop_or_status_or_toggle(
 def maybe_live(use_live: bool) -> AbstractContextManager[Live | None]:
     """Create a live context manager if use_live is True."""
     if use_live:
-        return Live(create_spinner("", "blue"), console=console, transient=True)
+        return Live(_create_spinner("", "blue"), console=console, transient=True)
     return nullcontext()
 
 
@@ -285,7 +285,7 @@ async def live_timer(
                 )
                 live.update(ctrl_c_text)
             else:
-                spinner = create_spinner(f"{base_message}... ({elapsed:.1f}s)", style)
+                spinner = _create_spinner(f"{base_message}... ({elapsed:.1f}s)", style)
                 live.update(spinner)
 
             await asyncio.sleep(0.1)

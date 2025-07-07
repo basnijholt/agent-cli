@@ -83,7 +83,7 @@ def test_display_original_text():
     """Test the display_original_text function."""
     mock_console = Console(file=io.StringIO(), width=80)
     with patch("agent_cli.utils.console", mock_console):
-        autocorrect.display_original_text("Test text here", quiet=False)
+        autocorrect._display_original_text("Test text here", quiet=False)
         output = mock_console.file.getvalue()
         assert "Test text here" in output
         assert "Original Text" in output
@@ -94,7 +94,7 @@ def test_display_original_text_none_console():
     mock_console = Console(file=io.StringIO(), width=80)
     with patch("agent_cli.utils.console", mock_console):
         # This should not raise an exception or print anything
-        autocorrect.display_original_text("Test text", quiet=True)
+        autocorrect._display_original_text("Test text", quiet=True)
         assert mock_console.file.getvalue() == ""
 
 
@@ -110,7 +110,7 @@ async def test_process_text_integration(mock_build_agent: MagicMock) -> None:
     mock_build_agent.return_value = mock_agent
 
     # Test the function
-    result, elapsed = await autocorrect.process_text(
+    result, elapsed = await autocorrect._process_text(
         "this is text",
         "test-model",
         "http://localhost:11434",
@@ -167,7 +167,7 @@ async def test_autocorrect_command_with_text(
     )
 
     with patch("agent_cli.agents.autocorrect.pyperclip.copy"):
-        await autocorrect.async_autocorrect(
+        await autocorrect._async_autocorrect(
             text="input text",
             llm_config=llm_config,
             general_cfg=general_cfg,
@@ -209,7 +209,7 @@ async def test_autocorrect_command_from_clipboard(
     )
 
     with patch("agent_cli.agents.autocorrect.pyperclip.copy"):
-        await autocorrect.async_autocorrect(
+        await autocorrect._async_autocorrect(
             text=None,  # No text argument provided
             llm_config=llm_config,
             general_cfg=general_cfg,
@@ -228,7 +228,7 @@ async def test_autocorrect_command_from_clipboard(
 
 
 @pytest.mark.asyncio
-@patch("agent_cli.agents.autocorrect.process_text", new_callable=AsyncMock)
+@patch("agent_cli.agents.autocorrect._process_text", new_callable=AsyncMock)
 @patch("agent_cli.agents.autocorrect.get_clipboard_text", return_value=None)
 async def test_async_autocorrect_no_text(
     mock_get_clipboard_text: MagicMock,
@@ -241,7 +241,7 @@ async def test_async_autocorrect_no_text(
         log_file=None,
         quiet=True,
     )
-    await autocorrect.async_autocorrect(
+    await autocorrect._async_autocorrect(
         text=None,
         llm_config=llm_config,
         general_cfg=general_cfg,

@@ -153,7 +153,7 @@ class TestSendAudioForWakeDetection:
 
 
 class TestReceiveWakeDetection:
-    """Tests for receive_wake_detection function."""
+    """Tests for _receive_wake_detection function."""
 
     @pytest.mark.asyncio
     async def test_returns_detected_wake_word(self, mock_logger: MagicMock) -> None:
@@ -175,7 +175,7 @@ class TestReceiveWakeDetection:
 
             mock_client.read_event.return_value = mock_event
 
-            result = await wake_word.receive_wake_detection(mock_client, mock_logger)
+            result = await wake_word._receive_wake_detection(mock_client, mock_logger)
 
             assert result == "test_wake_word"
             mock_logger.info.assert_called_with("Wake word detected: %s", "test_wake_word")
@@ -200,7 +200,7 @@ class TestReceiveWakeDetection:
 
             mock_client.read_event.return_value = mock_event
 
-            result = await wake_word.receive_wake_detection(
+            result = await wake_word._receive_wake_detection(
                 mock_client,
                 mock_logger,
                 detection_callback=mock_callback,
@@ -224,7 +224,7 @@ class TestReceiveWakeDetection:
         ):
             mock_client.read_event.return_value = mock_event
 
-            result = await wake_word.receive_wake_detection(mock_client, mock_logger)
+            result = await wake_word._receive_wake_detection(mock_client, mock_logger)
 
             assert result is None
             mock_logger.debug.assert_called_with("No wake word detected")
@@ -235,7 +235,7 @@ class TestReceiveWakeDetection:
         mock_client = AsyncMock()
         mock_client.read_event.return_value = None
 
-        result = await wake_word.receive_wake_detection(mock_client, mock_logger)
+        result = await wake_word._receive_wake_detection(mock_client, mock_logger)
 
         assert result is None
         mock_logger.warning.assert_called_with("Connection to wake word server lost.")
@@ -358,7 +358,7 @@ class TestDetectWakeWord:
 
         with (
             patch("agent_cli.wake_word._send_audio_for_wake_detection"),
-            patch("agent_cli.wake_word.receive_wake_detection"),
+            patch("agent_cli.wake_word._receive_wake_detection"),
             patch("asyncio.wait") as mock_wait,
             patch("asyncio.create_task") as mock_create_task,
         ):

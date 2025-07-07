@@ -13,7 +13,7 @@ from tests.mocks.audio import MockPyAudio
 @pytest.fixture
 def mock_pyaudio_with_cache_clear() -> None:
     """Clear the audio device cache before each test."""
-    audio.get_all_devices.cache_clear()
+    audio._get_all_devices.cache_clear()
 
 
 @patch("agent_cli.audio.pyaudio.PyAudio")
@@ -28,10 +28,10 @@ def test_get_all_devices_caching(
 
     with audio.pyaudio_context() as p:
         # First call should hit PyAudio
-        devices1 = audio.get_all_devices(p)
+        devices1 = audio._get_all_devices(p)
 
         # Second call should use cached results
-        devices2 = audio.get_all_devices(p)
+        devices2 = audio._get_all_devices(p)
 
         # Results should be identical
         assert devices1 == devices2
@@ -85,7 +85,7 @@ def test_list_all_devices(
 
     with audio.pyaudio_context() as p:
         # Test listing all devices
-        audio.list_all_devices(p)
+        audio._list_all_devices(p)
 
     # Verify no exceptions are raised
 

@@ -66,7 +66,7 @@ Please clean up this transcribed text by correcting any speech recognition error
 """
 
 
-async def async_main(
+async def _async_main(
     *,
     asr_config: ASRConfig,
     general_cfg: GeneralConfig,
@@ -211,7 +211,7 @@ def transcribe(
             llm_config = LLMConfig(model=model, ollama_host=ollama_host)
 
             asyncio.run(
-                async_main(
+                _async_main(
                     asr_config=asr_config,
                     general_cfg=general_cfg,
                     llm_config=llm_config,

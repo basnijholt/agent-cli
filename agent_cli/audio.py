@@ -258,7 +258,7 @@ def setup_output_stream(
 
 
 @functools.cache
-def get_all_devices(p: pyaudio.PyAudio) -> list[dict]:
+def _get_all_devices(p: pyaudio.PyAudio) -> list[dict]:
     """Get information for all audio devices with caching.
 
     Args:
@@ -292,7 +292,7 @@ def _get_device_by_index(p: pyaudio.PyAudio, input_device_index: int) -> dict:
         ValueError: If device index is not found
 
     """
-    for device in get_all_devices(p):
+    for device in _get_all_devices(p):
         if device["index"] == input_device_index:
             return device
     msg = f"Device index {input_device_index} not found"
@@ -302,7 +302,7 @@ def _get_device_by_index(p: pyaudio.PyAudio, input_device_index: int) -> dict:
 def list_input_devices(p: pyaudio.PyAudio) -> None:
     """Print a numbered list of available input devices."""
     console.print("[bold]Available input devices:[/bold]")
-    for device in get_all_devices(p):
+    for device in _get_all_devices(p):
         if device.get("maxInputChannels", 0) > 0:
             console.print(f"  [yellow]{device['index']}[/yellow]: {device['name']}")
 
@@ -310,15 +310,15 @@ def list_input_devices(p: pyaudio.PyAudio) -> None:
 def list_output_devices(p: pyaudio.PyAudio) -> None:
     """Print a numbered list of available output devices."""
     console.print("[bold]Available output devices:[/bold]")
-    for device in get_all_devices(p):
+    for device in _get_all_devices(p):
         if device.get("maxOutputChannels", 0) > 0:
             console.print(f"  [yellow]{device['index']}[/yellow]: {device['name']}")
 
 
-def list_all_devices(p: pyaudio.PyAudio) -> None:
+def _list_all_devices(p: pyaudio.PyAudio) -> None:
     """Print a numbered list of all available audio devices with their capabilities."""
     console.print("[bold]All available audio devices:[/bold]")
-    for device in get_all_devices(p):
+    for device in _get_all_devices(p):
         input_channels = device.get("maxInputChannels", 0)
         output_channels = device.get("maxOutputChannels", 0)
 
@@ -355,7 +355,7 @@ def _in_or_out_device(
         raise ValueError(msg)
 
     devices = []
-    for device in get_all_devices(p):
+    for device in _get_all_devices(p):
         device_info_name = device.get("name")
         if device_info_name and device.get(key, 0) > 0:
             devices.append((device["index"], device_info_name))

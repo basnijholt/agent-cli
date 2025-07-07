@@ -55,7 +55,7 @@ async def test_transcribe_main(
             clipboard=True,
         )
         llm_config = LLMConfig(model="", ollama_host="")
-        await transcribe.async_main(
+        await transcribe._async_main(
             asr_config=asr_config,
             general_cfg=general_cfg,
             llm_config=llm_config,

@@ -17,21 +17,21 @@ if TYPE_CHECKING:
 PID_DIR = Path.home() / ".cache" / "agent-cli"
 
 
-def get_pid_file(process_name: str) -> Path:
+def _get_pid_file(process_name: str) -> Path:
     """Get the path to the PID file for a given process name."""
     PID_DIR.mkdir(parents=True, exist_ok=True)
     return PID_DIR / f"{process_name}.pid"
 
 
-def get_log_file(process_name: str) -> Path:
+def _get_log_file(process_name: str) -> Path:
     """Get the path to the log file for a given process name."""
     PID_DIR.mkdir(parents=True, exist_ok=True)
     return PID_DIR / f"{process_name}.log"
 
 
-def get_running_pid(process_name: str) -> int | None:
+def _get_running_pid(process_name: str) -> int | None:
     """Get PID if process is running, None otherwise. Cleans up stale files."""
-    pid_file = get_pid_file(process_name)
+    pid_file = _get_pid_file(process_name)
 
     if not pid_file.exists():
         return None
@@ -53,26 +53,26 @@ def get_running_pid(process_name: str) -> int | None:
 
 def is_process_running(process_name: str) -> bool:
     """Check if a process is currently running."""
-    return get_running_pid(process_name) is not None
+    return _get_running_pid(process_name) is not None
 
 
 def read_pid_file(process_name: str) -> int | None:
     """Read PID from file if process is running."""
-    return get_running_pid(process_name)
+    return _get_running_pid(process_name)
 
 
 def kill_process(process_name: str) -> bool:
     """Kill a process by name. Returns True if killed or cleaned up, False if not found."""
-    pid_file = get_pid_file(process_name)
+    pid_file = _get_pid_file(process_name)
 
     # If no PID file exists at all, nothing to do
     if not pid_file.exists():
         return False
 
     # Check if we have a running process
-    pid = get_running_pid(process_name)
+    pid = _get_running_pid(process_name)
 
-    # If get_running_pid returned None but file existed, it cleaned up a stale file
+    # If _get_running_pid returned None but file existed, it cleaned up a stale file
     if pid is None:
         return True  # Cleanup of stale file is success
 
@@ -102,11 +102,11 @@ def pid_file_context(process_name: str) -> Generator[Path, None, None]:
     Exits with error if process already running.
     """
     if is_process_running(process_name):
-        existing_pid = get_running_pid(process_name)
+        existing_pid = _get_running_pid(process_name)
         print(f"Process {process_name} is already running (PID: {existing_pid})")
         sys.exit(1)
 
-    pid_file = get_pid_file(process_name)
+    pid_file = _get_pid_file(process_name)
     with pid_file.open("w") as f:
         f.write(str(os.getpid()))
 

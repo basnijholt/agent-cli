@@ -65,32 +65,6 @@ async def _send_audio(
         logger.debug("Sent AudioStop")
 
 
-async def _send_audio_from_queue(
-    client: AsyncClient,
-    queue: asyncio.Queue,
-    logger: logging.Logger,
-) -> None:
-    """Read from a queue and send to Wyoming server."""
-    await client.write_event(Transcribe().event())
-    await client.write_event(AudioStart(**config.WYOMING_AUDIO_CONFIG).event())
-
-    async def send_chunk(chunk: bytes) -> None:
-        """Send audio chunk to ASR server."""
-        await client.write_event(
-            AudioChunk(audio=chunk, **config.WYOMING_AUDIO_CONFIG).event(),
-        )
-
-    try:
-        await read_from_queue(
-            queue=queue,
-            chunk_handler=send_chunk,
-            logger=logger,
-        )
-    finally:
-        await client.write_event(AudioStop().event())
-        logger.debug("Sent AudioStop")
-
-
 async def record_audio_to_buffer(
     queue: asyncio.Queue,
     logger: logging.Logger,
@@ -111,7 +85,7 @@ async def record_audio_to_buffer(
     return audio_buffer.getvalue()
 
 
-async def receive_transcript(
+async def _receive_transcript(
     client: AsyncClient,
     logger: logging.Logger,
     *,
@@ -210,7 +184,7 @@ async def transcribe_recorded_audio(
             await client.write_event(AudioStop().event())
             logger.debug("Sent AudioStop")
 
-            return await receive_transcript(client, logger)
+            return await _receive_transcript(client, logger)
     except (ConnectionRefusedError, Exception):
         return ""
 
@@ -241,7 +215,7 @@ async def transcribe_live_audio(
             with open_pyaudio_stream(p, **stream_config) as stream:
                 _, recv_task = await manage_send_receive_tasks(
                     _send_audio(client, stream, stop_event, logger, live=live, quiet=quiet),
-                    receive_transcript(
+                    _receive_transcript(
                         client,
                         logger,
                         chunk_callback=chunk_callback,
