@@ -352,7 +352,6 @@ async def async_main(
     """Main async function, consumes parsed arguments."""
     try:
         with pyaudio_context() as p:
-            # Handle device listing
             if asr_config.list_input_devices:
                 list_input_devices(p)
                 return
