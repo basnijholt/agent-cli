@@ -31,6 +31,7 @@ async def _send_audio_for_wake_detection(
     *,
     live: Live,
     quiet: bool = False,
+    progress_message: str = "Listening for wake word",
 ) -> None:
     """Read from mic and send to Wyoming wake word server.
 
@@ -41,6 +42,7 @@ async def _send_audio_for_wake_detection(
         logger: Logger instance
         live: Rich Live display for progress
         quiet: If True, suppress all console output
+        progress_message: Message to display during listening
 
     """
     await client.write_event(AudioStart(**config.WYOMING_AUDIO_CONFIG).event())
@@ -60,7 +62,7 @@ async def _send_audio_for_wake_detection(
             logger=logger,
             live=live,
             quiet=quiet,
-            progress_message="Listening for wake word",
+            progress_message=progress_message,
             progress_style="blue",
         )
     finally:
@@ -73,15 +75,23 @@ async def _send_audio_from_queue_for_wake_detection(
     client: AsyncClient,
     queue: asyncio.Queue,
     logger: logging.Logger,
+    live: Live | None,
+    quiet: bool,
+    progress_message: str,
 ) -> None:
     """Read from a queue and send to Wyoming wake word server."""
     await client.write_event(AudioStart(**config.WYOMING_AUDIO_CONFIG).event())
+    seconds_streamed = 0.0
 
     async def send_chunk(chunk: bytes) -> None:
+        nonlocal seconds_streamed
         """Send audio chunk to wake word server."""
         await client.write_event(
             AudioChunk(audio=chunk, **config.WYOMING_AUDIO_CONFIG).event(),
         )
+        seconds_streamed += len(chunk) / (config.PYAUDIO_RATE * config.PYAUDIO_CHANNELS * 2)
+        if live and not quiet:
+            live.update(f"{progress_message}... ({seconds_streamed:.1f}s)")
 
     try:
         await read_from_queue(
@@ -144,6 +154,7 @@ async def detect_wake_word(
     live: Live,
     quiet: bool = False,
     detection_callback: Callable[[str], None] | None = None,
+    progress_message: str = "Listening for wake word",
 ) -> str | None:
     """Detect wake word in audio stream.
 
@@ -157,6 +168,7 @@ async def detect_wake_word(
         live: Rich Live display for progress
         quiet: If True, suppress all console output
         detection_callback: Callback when wake word is detected
+        progress_message: Message to display during listening
 
     Returns:
         Name of detected wake word or None if error/no detection
@@ -181,6 +193,7 @@ async def detect_wake_word(
                     logger,
                     live=live,
                     quiet=quiet,
+                    progress_message=progress_message,
                 ),
                 receive_wake_detection(client, logger, detection_callback=detection_callback),
                 return_when=asyncio.FIRST_COMPLETED,
@@ -202,8 +215,10 @@ async def detect_wake_word_from_queue(
     logger: logging.Logger,
     queue: asyncio.Queue,
     *,
+    live: Live | None = None,
     detection_callback: Callable[[str], None] | None = None,
     quiet: bool = False,
+    progress_message: str = "Listening for wake word",
 ) -> str | None:
     """Detect wake word from an audio queue."""
     try:
@@ -221,6 +236,9 @@ async def detect_wake_word_from_queue(
                     client,
                     queue,
                     logger,
+                    live,
+                    quiet,
+                    progress_message,
                 ),
                 receive_wake_detection(client, logger, detection_callback=detection_callback),
                 return_when=asyncio.FIRST_COMPLETED,

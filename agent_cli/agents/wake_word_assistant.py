@@ -159,6 +159,8 @@ async def _record_audio_with_wake_word(
                 logger=logger,
                 queue=wake_queue,
                 quiet=quiet,
+                live=live,
+                progress_message="Recording... (say wake word to stop)",
             )
         # The "tee" is now stopped by the context manager's __aexit__
         audio_data = await record_task if record_task else None
