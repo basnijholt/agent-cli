@@ -32,9 +32,9 @@ def build_agent(
     tools: list[Tool] | None = None,
 ) -> Agent:
     """Construct and return a PydanticAI agent configured for local Ollama."""
-    from pydantic_ai import Agent
-    from pydantic_ai.models.openai import OpenAIModel, OpenAIResponsesModelSettings
-    from pydantic_ai.providers.openai import OpenAIProvider
+    from pydantic_ai import Agent  # noqa: PLC0415
+    from pydantic_ai.models.openai import OpenAIModel, OpenAIResponsesModelSettings  # noqa: PLC0415
+    from pydantic_ai.providers.openai import OpenAIProvider  # noqa: PLC0415
 
     ollama_provider = OpenAIProvider(base_url=f"{ollama_host}/v1")
     ollama_model = OpenAIModel(model_name=model, provider=ollama_provider)

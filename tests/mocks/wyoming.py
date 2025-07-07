@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Self
 
 from wyoming.asr import Transcript
-from wyoming.audio import AudioChunk
+from wyoming.audio import AudioChunk, AudioStart, AudioStop
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
@@ -78,8 +78,6 @@ class MockTTSClient(MockWyomingClient):
 
     async def _generate_events(self) -> AsyncGenerator[Event, None]:
         """Generate audio synthesis events."""
-        from wyoming.audio import AudioStart, AudioStop
-
         yield AudioStart(rate=22050, width=2, channels=1).event()
         yield AudioChunk(
             rate=22050,

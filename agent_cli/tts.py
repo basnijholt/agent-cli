@@ -197,7 +197,7 @@ def _apply_speed_adjustment(
         return audio_data, False
 
     # Try AudioStretchy first (high-quality pitch-preserving method)
-    from audiostretchy.stretch import AudioStretch
+    from audiostretchy.stretch import AudioStretch  # noqa: PLC0415
 
     # AudioStretchy closes the input BytesIO during open_wav, so make a copy
     audio_data.seek(0)
@@ -237,8 +237,6 @@ async def play_audio(
         live: Live instance for timer display
 
     """
-    from agent_cli.utils import live_timer
-
     try:
         # Apply high-quality speed adjustment if possible
         wav_io = io.BytesIO(audio_data)
