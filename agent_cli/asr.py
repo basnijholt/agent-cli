@@ -90,7 +90,7 @@ async def record_audio_to_buffer(
     return audio_buffer.getvalue()
 
 
-async def receive_text(
+async def receive_transcript(
     client: AsyncClient,
     logger: logging.Logger,
     *,
@@ -151,7 +151,7 @@ async def record_audio_with_manual_stop(
         )
 
 
-async def process_recorded_audio(
+async def transcribe_recorded_audio(
     audio_data: bytes,
     asr_server_ip: str,
     asr_server_port: int,
@@ -181,12 +181,12 @@ async def process_recorded_audio(
             await client.write_event(AudioStop().event())
             logger.debug("Sent AudioStop")
 
-            return await receive_text(client, logger)
+            return await receive_transcript(client, logger)
     except (ConnectionRefusedError, Exception):
         return ""
 
 
-async def transcribe_audio(
+async def transcribe_live_audio(
     asr_server_ip: str,
     asr_server_port: int,
     input_device_index: int | None,
@@ -212,7 +212,7 @@ async def transcribe_audio(
             with open_pyaudio_stream(p, **stream_config) as stream:
                 _, recv_task = await manage_send_receive_tasks(
                     send_audio(client, stream, stop_event, logger, live=live, quiet=quiet),
-                    receive_text(
+                    receive_transcript(
                         client,
                         logger,
                         chunk_callback=chunk_callback,

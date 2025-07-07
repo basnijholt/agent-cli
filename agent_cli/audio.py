@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING
 import pyaudio
 from rich.text import Text
 
+from agent_cli import config
 from agent_cli.utils import InteractiveStopEvent, console
 
 if TYPE_CHECKING:
@@ -71,8 +72,6 @@ async def read_audio_stream(
         progress_style: Rich style for progress
 
     """
-    from agent_cli import config
-
     try:
         seconds_streamed = 0.0
         while not stop_event.is_set():
@@ -121,8 +120,6 @@ def setup_input_stream(
         Dictionary of stream parameters
 
     """
-    from agent_cli import config
-
     return {
         "format": config.PYAUDIO_FORMAT,
         "channels": config.PYAUDIO_CHANNELS,
@@ -154,8 +151,6 @@ def setup_output_stream(
         Dictionary of stream parameters
 
     """
-    from agent_cli import config
-
     return {
         "format": p.get_format_from_width(sample_width or 2),
         "channels": channels or config.PYAUDIO_CHANNELS,

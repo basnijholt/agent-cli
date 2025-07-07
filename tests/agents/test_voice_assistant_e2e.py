@@ -51,7 +51,7 @@ def get_configs() -> tuple[GeneralConfig, ASRConfig, LLMConfig, TTSConfig, FileC
 @pytest.mark.asyncio
 @patch("agent_cli.agents._voice_agent_common.process_and_update_clipboard", new_callable=AsyncMock)
 @patch(
-    "agent_cli.asr.process_recorded_audio",
+    "agent_cli.asr.transcribe_recorded_audio",
     new_callable=AsyncMock,
     return_value="this is a test",
 )

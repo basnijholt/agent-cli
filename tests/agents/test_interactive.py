@@ -211,7 +211,7 @@ async def test_async_main_full_loop(tmp_path: Path) -> None:
         patch("agent_cli.agents.interactive._setup_input_device", return_value=(1, "mock_input")),
         patch("agent_cli.agents.interactive._setup_output_device", return_value=(1, "mock_output")),
         patch(
-            "agent_cli.agents.interactive.asr.transcribe_audio",
+            "agent_cli.agents.interactive.asr.transcribe_live_audio",
             new_callable=AsyncMock,
         ) as mock_transcribe,
         patch(

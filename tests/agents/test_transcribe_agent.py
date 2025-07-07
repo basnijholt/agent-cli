@@ -11,7 +11,7 @@ from agent_cli.cli import app
 runner = CliRunner()
 
 
-@patch("agent_cli.agents.transcribe.asr.transcribe_audio", new_callable=AsyncMock)
+@patch("agent_cli.agents.transcribe.asr.transcribe_live_audio", new_callable=AsyncMock)
 @patch("agent_cli.agents.transcribe.process_manager.pid_file_context")
 def test_transcribe_agent(
     mock_pid_context: MagicMock,

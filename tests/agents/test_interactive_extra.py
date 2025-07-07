@@ -71,7 +71,7 @@ async def test_handle_conversation_turn_no_instruction():
     mock_live = MagicMock()
 
     with patch(
-        "agent_cli.agents.interactive.asr.transcribe_audio",
+        "agent_cli.agents.interactive.asr.transcribe_live_audio",
         return_value="",
     ) as mock_transcribe:
         await _handle_conversation_turn(

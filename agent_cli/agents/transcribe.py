@@ -79,7 +79,7 @@ async def async_main(
     time_start = time.monotonic()
     with maybe_live(not general_cfg.quiet) as live:
         with signal_handling_context(LOGGER, general_cfg.quiet) as stop_event:
-            transcript = await asr.transcribe_audio(
+            transcript = await asr.transcribe_live_audio(
                 asr_server_ip=asr_config.server_ip,
                 asr_server_port=asr_config.server_port,
                 input_device_index=asr_config.input_device_index,

@@ -130,7 +130,7 @@ async def async_main_voice_agent(  # noqa: C901, PLR0912, PLR0915
 
                 try:
                     # Send audio data to Wyoming ASR server for transcription
-                    instruction = await asr.process_recorded_audio(
+                    instruction = await asr.transcribe_recorded_audio(
                         audio_data,
                         asr_server_ip=asr_config.server_ip,
                         asr_server_port=asr_config.server_port,
