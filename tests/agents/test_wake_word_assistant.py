@@ -8,8 +8,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from agent_cli.agents.wake_word_assistant import (
+    _get_empty_text,
     _record_audio_with_wake_word,
-    get_empty_text,
 )
 
 
@@ -175,11 +175,11 @@ class TestRecordAudioWithWakeWord:
 
 
 class TestGetEmptyText:
-    """Tests for get_empty_text function."""
+    """Tests for _get_empty_text function."""
 
     def test_returns_empty_string(self) -> None:
         """Test that the function returns an empty string."""
-        assert get_empty_text() == ""
+        assert _get_empty_text() == ""
 
 
 # Integration-style tests for the CLI command would go here,
