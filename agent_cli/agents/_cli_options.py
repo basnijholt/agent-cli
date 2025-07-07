@@ -1,185 +1,197 @@
-"""Shared Typer options for the Agent CLI agents."""
+"""Shared CLI options for agent commands."""
 
-from pathlib import Path
+from __future__ import annotations
+
+import os
 
 import typer
 
 from agent_cli import config
 
+# --- Device Options ---
+DEVICE_INDEX = typer.Option(
+    None,
+    "--input-device-index",
+    "-i",
+    help="Index of the input device to use.",
+)
+DEVICE_NAME = typer.Option(
+    None,
+    "--input-device-name",
+    "-I",
+    help="Name of the input device to use (e.g., 'MacBook Pro Microphone').",
+)
+OUTPUT_DEVICE_INDEX = typer.Option(
+    None,
+    "--output-device-index",
+    "-o",
+    help="Index of the output device to use.",
+)
+OUTPUT_DEVICE_NAME = typer.Option(
+    None,
+    "--output-device-name",
+    "-O",
+    help="Name of the output device to use (e.g., 'MacBook Pro Speakers').",
+)
+LIST_DEVICES = typer.Option(
+    False,
+    "--list-devices",
+    "-l",
+    help="List available audio devices and exit.",
+)
+
+# --- ASR Options ---
+ASR_PROVIDER = typer.Option(
+    "wyoming",
+    "--asr-provider",
+    help='ASR provider to use ("wyoming" or "openai").',
+)
+ASR_SERVER_IP = typer.Option(
+    config.ASR_SERVER_IP,
+    "--asr-server-ip",
+    help="IP address of the ASR server.",
+)
+ASR_SERVER_PORT = typer.Option(
+    config.ASR_SERVER_PORT,
+    "--asr-server-port",
+    help="Port of the ASR server.",
+)
+WHISPER_MODEL = typer.Option(
+    "whisper-1",
+    "--whisper-model",
+    help="Name of the Whisper model to use.",
+)
+
 # --- LLM Options ---
-MODEL: str = typer.Option(
+LLM_PROVIDER = typer.Option(
+    "ollama",
+    "--llm-provider",
+    help='LLM provider to use ("ollama" or "openai").',
+)
+MODEL = typer.Option(
     config.DEFAULT_MODEL,
     "--model",
     "-m",
-    help=f"The Ollama model to use. Default is {config.DEFAULT_MODEL}.",
+    help="Name of the model to use.",
 )
-OLLAMA_HOST: str = typer.Option(
+OLLAMA_HOST = typer.Option(
     config.OLLAMA_HOST,
     "--ollama-host",
-    help=f"The Ollama server host. Default is {config.OLLAMA_HOST}.",
+    help="Ollama server host.",
 )
-LLM: bool = typer.Option(
-    False,  # noqa: FBT003
-    "--llm/--no-llm",
-    help="Use an LLM to process the transcript.",
-)
-
-
-# --- ASR (Audio) Options ---
-DEVICE_INDEX: int | None = typer.Option(
-    None,
-    "--input-device-index",
-    help="Index of the PyAudio input device to use.",
-)
-DEVICE_NAME: str | None = typer.Option(
-    None,
-    "--input-device-name",
-    help="Device name keywords for partial matching. Supports comma-separated list where each term can partially match device names (case-insensitive). First matching device is selected.",
-)
-LIST_DEVICES: bool = typer.Option(
-    False,  # noqa: FBT003
-    "--list-devices",
-    help="List available audio input and output devices and exit.",
-    is_eager=True,
-)
-ASR_SERVER_IP: str = typer.Option(
-    config.ASR_SERVER_IP,
-    "--asr-server-ip",
-    help="Wyoming ASR server IP address.",
-)
-ASR_SERVER_PORT: int = typer.Option(
-    config.ASR_SERVER_PORT,
-    "--asr-server-port",
-    help="Wyoming ASR server port.",
+LLM = typer.Option(
+    False,
+    "--llm",
+    help="Enable LLM processing of the transcript.",
 )
 
-
-# --- Wake Word Options ---
-WAKE_WORD_SERVER_IP: str = typer.Option(
-    config.WAKE_WORD_SERVER_IP,
-    "--wake-server-ip",
-    help="Wyoming wake word server IP address.",
-)
-WAKE_WORD_SERVER_PORT: int = typer.Option(
-    config.WAKE_WORD_SERVER_PORT,
-    "--wake-server-port",
-    help="Wyoming wake word server port.",
-)
-WAKE_WORD_NAME: str = typer.Option(
-    "ok_nabu",
-    "--wake-word",
-    help="Name of wake word to detect (e.g., 'ok_nabu', 'hey_jarvis').",
-)
-
-
-# --- TTS (Text-to-Speech) Options ---
-TTS_SERVER_IP: str = typer.Option(
+# --- TTS Options ---
+TTS_SERVER_IP = typer.Option(
     config.TTS_SERVER_IP,
     "--tts-server-ip",
-    help="Wyoming TTS server IP address.",
+    help="IP address of the TTS server.",
 )
-TTS_SERVER_PORT: int = typer.Option(
+TTS_SERVER_PORT = typer.Option(
     config.TTS_SERVER_PORT,
     "--tts-server-port",
-    help="Wyoming TTS server port.",
+    help="Port of the TTS server.",
 )
-VOICE_NAME: str | None = typer.Option(
+VOICE_NAME = typer.Option(
     None,
-    "--voice",
-    help="Voice name to use for TTS (e.g., 'en_US-lessac-medium').",
+    "--voice-name",
+    "-v",
+    help="Name of the voice to use for TTS.",
 )
-TTS_LANGUAGE: str | None = typer.Option(
+TTS_LANGUAGE = typer.Option(
     None,
     "--tts-language",
-    help="Language for TTS (e.g., 'en_US').",
+    help="Language to use for TTS.",
 )
-SPEAKER: str | None = typer.Option(
+SPEAKER = typer.Option(
     None,
     "--speaker",
-    help="Speaker name for TTS voice.",
+    help="Speaker to use for TTS.",
 )
-OUTPUT_DEVICE_INDEX: int | None = typer.Option(
-    None,
-    "--output-device-index",
-    help="Index of the PyAudio output device to use for TTS.",
-)
-OUTPUT_DEVICE_NAME: str | None = typer.Option(
-    None,
-    "--output-device-name",
-    help="Output device name keywords for partial matching. Supports comma-separated list where each term can partially match device names (case-insensitive). First matching device is selected.",
-)
-ENABLE_TTS: bool = typer.Option(
-    False,  # noqa: FBT003
-    "--tts/--no-tts",
-    help="Enable text-to-speech for responses.",
-)
-TTS_SPEED: float = typer.Option(
+TTS_SPEED = typer.Option(
     1.0,
     "--tts-speed",
-    help="Speech speed multiplier (1.0 = normal, 2.0 = twice as fast, 0.5 = half speed).",
+    help="TTS speech speed.",
+)
+ENABLE_TTS = typer.Option(
+    False,
+    "--enable-tts",
+    help="Enable text-to-speech output.",
 )
 
+# --- Wake Word Options ---
+WAKE_WORD_SERVER_IP = typer.Option(
+    config.WAKE_WORD_SERVER_IP,
+    "--wake-word-server-ip",
+    help="IP address of the wake word server.",
+)
+WAKE_WORD_SERVER_PORT = typer.Option(
+    config.WAKE_WORD_SERVER_PORT,
+    "--wake-word-server-port",
+    help="Port of the wake word server.",
+)
+WAKE_WORD_NAME = typer.Option(
+    "ok_nabu",
+    "--wake-word-name",
+    help="Name of the wake word to listen for.",
+)
 
-# --- Process Management Options ---
-STOP: bool = typer.Option(
-    False,  # noqa: FBT003
+# --- Process Control Options ---
+STOP = typer.Option(
+    False,
     "--stop",
-    help="Stop any running background process.",
+    help="Stop the background process.",
 )
-STATUS: bool = typer.Option(
-    False,  # noqa: FBT003
+STATUS = typer.Option(
+    False,
     "--status",
-    help="Check if a background process is running.",
+    help="Check the status of the background process.",
 )
-TOGGLE: bool = typer.Option(
-    False,  # noqa: FBT003
+TOGGLE = typer.Option(
+    False,
     "--toggle",
-    help="Toggle the background process on/off. "
-    "If the process is running, it will be stopped. "
-    "If the process is not running, it will be started.",
+    help="Toggle the background process on/off.",
 )
 
 # --- General Options ---
-
-
-def _conf_callback(ctx: typer.Context, param: typer.CallbackParam, value: str) -> str:  # noqa: ARG001
-    from agent_cli.cli import set_config_defaults  # noqa: PLC0415
-
-    set_config_defaults(ctx, value)
-    return value
-
-
-CONFIG_FILE: str | None = typer.Option(
+SAVE_FILE = typer.Option(
     None,
-    "--config",
-    help="Path to a TOML configuration file.",
-    is_eager=True,
-    callback=_conf_callback,
+    "--save-file",
+    help="Save audio to WAV file instead of playing it.",
 )
-CLIPBOARD: bool = typer.Option(
-    True,  # noqa: FBT003
+CLIPBOARD = typer.Option(
+    True,
     "--clipboard/--no-clipboard",
-    help="Copy result to clipboard.",
+    "-c/-C",
+    help="Copy the result to the clipboard.",
 )
-LOG_LEVEL: str = typer.Option(
-    "WARNING",
+LOG_LEVEL = typer.Option(
+    "INFO",
     "--log-level",
-    help="Set logging level.",
-    case_sensitive=False,
+    help="Set the log level (e.g., DEBUG, INFO, WARNING).",
 )
-LOG_FILE: str | None = typer.Option(
+LOG_FILE = typer.Option(
     None,
     "--log-file",
     help="Path to a file to write logs to.",
 )
-QUIET: bool = typer.Option(
-    False,  # noqa: FBT003
-    "-q",
+QUIET = typer.Option(
+    False,
     "--quiet",
-    help="Suppress console output from rich.",
+    "-q",
+    help="Suppress all output except for the final result.",
 )
-SAVE_FILE: Path | None = typer.Option(
+CONFIG_FILE = typer.Option(
     None,
-    "--save-file",
-    help="Save TTS response audio to WAV file.",
+    "--config-file",
+    help="Path to a custom config file.",
+)
+OPENAI_API_KEY = typer.Option(
+    os.getenv("OPENAI_API_KEY"),
+    "--openai-api-key",
+    help="OpenAI API key.",
 )

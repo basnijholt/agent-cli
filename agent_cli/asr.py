@@ -6,6 +6,7 @@ import asyncio
 import io
 from typing import TYPE_CHECKING
 
+import openai
 from wyoming.asr import Transcribe, Transcript, TranscriptChunk, TranscriptStart, TranscriptStop
 from wyoming.audio import AudioChunk, AudioStart, AudioStop
 
@@ -16,7 +17,7 @@ from agent_cli.audio import (
     read_from_queue,
     setup_input_stream,
 )
-from agent_cli.utils import print_with_style
+from agent_cli.utils import print_error_message, print_with_style
 from agent_cli.wyoming_utils import manage_send_receive_tasks, wyoming_client_context
 
 if TYPE_CHECKING:
@@ -83,6 +84,36 @@ async def record_audio_to_buffer(
     )
 
     return audio_buffer.getvalue()
+
+
+async def transcribe_audio_openai(
+    audio_data: bytes,
+    api_key: str,
+    model: str,
+    logger: logging.Logger,
+    *,
+    quiet: bool = False,
+) -> str:
+    """Transcribe audio using OpenAI's Whisper model."""
+    if not quiet:
+        print_with_style(f"🎤 Transcribing with {model}...", style="yellow")
+    try:
+        client = openai.AsyncClient(api_key=api_key)
+        audio_file = io.BytesIO(audio_data)
+        audio_file.name = "audio.wav"  # OpenAI API requires a file name
+        response = await client.audio.transcriptions.create(
+            model=model,
+            file=audio_file,
+        )
+        logger.info("Successfully transcribed audio with OpenAI.")
+        return response.text
+    except Exception as e:
+        logger.exception("An error occurred during OpenAI transcription.")
+        print_error_message(
+            f"An unexpected OpenAI error occurred: {e}",
+            "Please check your OpenAI API key and connection.",
+        )
+        return ""
 
 
 async def _receive_transcript(
@@ -156,73 +187,124 @@ async def record_audio_with_manual_stop(
 
 async def transcribe_recorded_audio(
     audio_data: bytes,
-    asr_server_ip: str,
-    asr_server_port: int,
     logger: logging.Logger,
+    *,
+    asr_provider: str = "wyoming",
+    asr_server_ip: str | None = None,
+    asr_server_port: int | None = None,
+    openai_api_key: str | None = None,
+    whisper_model: str = "whisper-1",
     quiet: bool = False,
 ) -> str:
-    """Process pre-recorded audio data with Wyoming ASR server."""
-    try:
-        async with wyoming_client_context(
-            asr_server_ip,
-            asr_server_port,
-            "ASR",
+    """Process pre-recorded audio data with the selected ASR provider."""
+    if asr_provider == "openai":
+        if not openai_api_key:
+            msg = "OpenAI API key must be provided for OpenAI ASR."
+            raise ValueError(msg)
+        return await transcribe_audio_openai(
+            audio_data,
+            openai_api_key,
+            whisper_model,
             logger,
             quiet=quiet,
-        ) as client:
-            await client.write_event(Transcribe().event())
-            await client.write_event(AudioStart(**config.WYOMING_AUDIO_CONFIG).event())
+        )
+    if asr_provider == "wyoming":
+        if not asr_server_ip or not asr_server_port:
+            raise ValueError("Wyoming server IP and port must be provided.")
+        try:
+            async with wyoming_client_context(
+                asr_server_ip,
+                asr_server_port,
+                "ASR",
+                logger,
+                quiet=quiet,
+            ) as client:
+                await client.write_event(Transcribe().event())
+                await client.write_event(AudioStart(**config.WYOMING_AUDIO_CONFIG).event())
 
-            chunk_size = config.PYAUDIO_CHUNK_SIZE * 2
-            for i in range(0, len(audio_data), chunk_size):
-                chunk = audio_data[i : i + chunk_size]
-                await client.write_event(
-                    AudioChunk(audio=chunk, **config.WYOMING_AUDIO_CONFIG).event(),
-                )
-                logger.debug("Sent %d byte(s) of audio", len(chunk))
+                chunk_size = config.PYAUDIO_CHUNK_SIZE * 2
+                for i in range(0, len(audio_data), chunk_size):
+                    chunk = audio_data[i : i + chunk_size]
+                    await client.write_event(
+                        AudioChunk(audio=chunk, **config.WYOMING_AUDIO_CONFIG).event(),
+                    )
+                    logger.debug("Sent %d byte(s) of audio", len(chunk))
 
-            await client.write_event(AudioStop().event())
-            logger.debug("Sent AudioStop")
+                await client.write_event(AudioStop().event())
+                logger.debug("Sent AudioStop")
 
-            return await _receive_transcript(client, logger)
-    except (ConnectionRefusedError, Exception):
-        return ""
+                return await _receive_transcript(client, logger)
+        except (ConnectionRefusedError, Exception):
+            return ""
+    raise ValueError(f"Unknown ASR provider: {asr_provider}")
 
 
 async def transcribe_live_audio(
-    asr_server_ip: str,
-    asr_server_port: int,
     input_device_index: int | None,
     logger: logging.Logger,
     p: pyaudio.PyAudio,
     stop_event: InteractiveStopEvent,
     *,
     live: Live,
+    asr_provider: str = "wyoming",
+    asr_server_ip: str | None = None,
+    asr_server_port: int | None = None,
+    openai_api_key: str | None = None,
+    whisper_model: str = "whisper-1",
     quiet: bool = False,
     chunk_callback: Callable[[str], None] | None = None,
     final_callback: Callable[[str], None] | None = None,
 ) -> str | None:
     """Unified ASR transcription function."""
-    try:
-        async with wyoming_client_context(
-            asr_server_ip,
-            asr_server_port,
-            "ASR",
+    if asr_provider == "openai":
+        if not openai_api_key:
+            msg = "OpenAI API key must be provided for OpenAI ASR."
+            raise ValueError(msg)
+        audio_data = await record_audio_with_manual_stop(
+            p,
+            input_device_index,
+            stop_event,
             logger,
             quiet=quiet,
-        ) as client:
-            stream_config = setup_input_stream(input_device_index)
-            with open_pyaudio_stream(p, **stream_config) as stream:
-                _, recv_task = await manage_send_receive_tasks(
-                    _send_audio(client, stream, stop_event, logger, live=live, quiet=quiet),
-                    _receive_transcript(
-                        client,
-                        logger,
-                        chunk_callback=chunk_callback,
-                        final_callback=final_callback,
-                    ),
-                    return_when=asyncio.ALL_COMPLETED,
-                )
-                return recv_task.result()
-    except (ConnectionRefusedError, Exception):
-        return None
+            live=live,
+        )
+        result = await transcribe_audio_openai(
+            audio_data,
+            openai_api_key,
+            whisper_model,
+            logger,
+            quiet=quiet,
+        )
+        if final_callback:
+            final_callback(result)
+        return result
+
+    if asr_provider == "wyoming":
+        if not asr_server_ip or not asr_server_port:
+            msg = "Wyoming server IP and port must be provided."
+            raise ValueError(msg)
+        try:
+            async with wyoming_client_context(
+                asr_server_ip,
+                asr_server_port,
+                "ASR",
+                logger,
+                quiet=quiet,
+            ) as client:
+                stream_config = setup_input_stream(input_device_index)
+                with open_pyaudio_stream(p, **stream_config) as stream:
+                    _, recv_task = await manage_send_receive_tasks(
+                        _send_audio(client, stream, stop_event, logger, live=live, quiet=quiet),
+                        _receive_transcript(
+                            client,
+                            logger,
+                            chunk_callback=chunk_callback,
+                            final_callback=final_callback,
+                        ),
+                        return_when=asyncio.ALL_COMPLETED,
+                    )
+                    return recv_task.result()
+        except (ConnectionRefusedError, Exception):
+            return None
+    msg = f"Unknown ASR provider: {asr_provider}"
+    raise ValueError(msg)

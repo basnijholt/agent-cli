@@ -14,17 +14,22 @@ class LLMConfig:
     """LLM configuration parameters."""
 
     model: str
-    ollama_host: str
+    llm_provider: str = "ollama"
+    ollama_host: str | None = None
+    openai_api_key: str | None = None
 
 
 @dataclass
 class ASRConfig:
     """ASR configuration parameters."""
 
-    server_ip: str
-    server_port: int
-    input_device_index: int | None
-    input_device_name: str | None
+    provider: str = "wyoming"
+    server_ip: str | None = None
+    server_port: int | None = None
+    openai_api_key: str | None = None
+    whisper_model: str = "whisper-1"
+    input_device_index: int | None = None
+    input_device_name: str | None = None
 
 
 @dataclass

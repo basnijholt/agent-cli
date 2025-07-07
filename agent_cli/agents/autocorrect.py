@@ -132,6 +132,8 @@ def autocorrect(
     ),
     model: str = opts.MODEL,
     ollama_host: str = opts.OLLAMA_HOST,
+    llm_provider: str = opts.LLM_PROVIDER,
+    openai_api_key: str = opts.OPENAI_API_KEY,
     log_level: str = opts.LOG_LEVEL,
     log_file: str | None = opts.LOG_FILE,
     quiet: bool = opts.QUIET,
@@ -150,6 +152,8 @@ def autocorrect(
         quiet=quiet,
         model=model,
         ollama_host=ollama_host,
+        llm_provider=llm_provider,
+        openai_api_key=openai_api_key,
     )
 
     if config is None:  # Should not happen for autocorrect

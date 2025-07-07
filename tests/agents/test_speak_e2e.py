@@ -7,6 +7,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from agent_cli.agents._command_setup import CommandConfig
 from agent_cli.agents._config import FileConfig, GeneralConfig, TTSConfig
 from agent_cli.agents.speak import _async_main
 from tests.mocks.audio import MockPyAudio
@@ -47,7 +48,7 @@ async def test_speak_e2e(
             list_devices=False,
             quiet=False,
         )
-        general_cfg.__dict__["console"] = mock_console
+        config = CommandConfig(general_cfg=general_cfg)
         tts_config = TTSConfig(
             enabled=True,
             server_ip="mock-host",
@@ -62,7 +63,7 @@ async def test_speak_e2e(
         file_config = FileConfig(save_file=None)
 
         await _async_main(
-            general_cfg=general_cfg,
+            config=config,
             text="Hello, world!",
             tts_config=tts_config,
             file_config=file_config,

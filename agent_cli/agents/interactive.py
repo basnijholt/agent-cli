@@ -177,8 +177,11 @@ async def _handle_conversation_turn(
     # 1. Transcribe user's command
     time_start = time.monotonic()
     instruction = await asr.transcribe_live_audio(
+        asr_provider=asr_config.provider,
         asr_server_ip=asr_config.server_ip,
         asr_server_port=asr_config.server_port,
+        openai_api_key=asr_config.openai_api_key,
+        whisper_model=asr_config.whisper_model,
         input_device_index=asr_config.input_device_index,
         logger=LOGGER,
         p=p,
@@ -244,7 +247,9 @@ async def _handle_conversation_turn(
             agent_instructions=AGENT_INSTRUCTIONS,
             user_input=user_message_with_context,
             model=llm_config.model,
+            llm_provider=llm_config.llm_provider,
             ollama_host=llm_config.ollama_host,
+            openai_api_key=llm_config.openai_api_key,
             logger=LOGGER,
             tools=tools,
             quiet=True,  # Suppress internal output since we're showing our own timer
@@ -368,11 +373,15 @@ def interactive(
     # ASR
     input_device_index: int | None = opts.DEVICE_INDEX,
     input_device_name: str | None = opts.DEVICE_NAME,
+    asr_provider: str = opts.ASR_PROVIDER,
     asr_server_ip: str = opts.ASR_SERVER_IP,
     asr_server_port: int = opts.ASR_SERVER_PORT,
+    whisper_model: str = opts.WHISPER_MODEL,
     # LLM
     model: str = opts.MODEL,
     ollama_host: str = opts.OLLAMA_HOST,
+    llm_provider: str = opts.LLM_PROVIDER,
+    openai_api_key: str = opts.OPENAI_API_KEY,
     # Process control
     stop: bool = opts.STOP,
     status: bool = opts.STATUS,
@@ -431,12 +440,20 @@ def interactive(
     # Use context manager for PID file management
     with process_manager.pid_file_context(process_name), suppress(KeyboardInterrupt):
         asr_config = ASRConfig(
+            provider=asr_provider,
             server_ip=asr_server_ip,
             server_port=asr_server_port,
+            openai_api_key=openai_api_key,
+            whisper_model=whisper_model,
             input_device_index=input_device_index,
             input_device_name=input_device_name,
         )
-        llm_config = LLMConfig(model=model, ollama_host=ollama_host)
+        llm_config = LLMConfig(
+            model=model,
+            llm_provider=llm_provider,
+            ollama_host=ollama_host,
+            openai_api_key=openai_api_key,
+        )
         tts_config = TTSConfig(
             enabled=enable_tts,
             server_ip=tts_server_ip,

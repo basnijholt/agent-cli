@@ -2,13 +2,19 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, NamedTuple
+from contextlib import suppress
+from typing import (
+    TYPE_CHECKING,
+    NamedTuple,
+)
 
 from agent_cli.agents._config import GeneralConfig, LLMConfig
 from agent_cli.utils import stop_or_status_or_toggle
 
 if TYPE_CHECKING:
     from contextlib import AbstractContextManager
+    from types import TracebackType
+    from typing import Self
 
 
 class CommandConfig(NamedTuple):
@@ -36,6 +42,8 @@ def setup_command(
     # LLM options (optional)
     model: str | None = None,
     ollama_host: str | None = None,
+    llm_provider: str | None = None,
+    openai_api_key: str | None = None,
 ) -> CommandConfig | None:
     """Common setup for agent commands.
 
@@ -69,22 +77,20 @@ def setup_command(
 
     # Create LLM config if model specified
     llm_config = None
-    if model and ollama_host:
-        llm_config = LLMConfig(model=model, ollama_host=ollama_host)
+    if model:
+        llm_config = LLMConfig(
+            model=model,
+            llm_provider=llm_provider or "ollama",
+            ollama_host=ollama_host,
+            openai_api_key=openai_api_key,
+        )
 
     return CommandConfig(general_cfg=general_cfg, llm_config=llm_config)
 
 
 def with_process_management(process_name: str) -> AbstractContextManager:
     """Get context manager for process management."""
-    from contextlib import suppress  # noqa: PLC0415
-    from typing import TYPE_CHECKING  # noqa: PLC0415
-
     from agent_cli import process_manager  # noqa: PLC0415
-
-    if TYPE_CHECKING:
-        from types import TracebackType  # noqa: PLC0415
-        from typing import Self  # noqa: PLC0415
 
     class ProcessContext:
         def __enter__(self) -> Self:

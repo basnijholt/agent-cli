@@ -86,8 +86,11 @@ async def _async_main(
     with maybe_live(not config.general_cfg.quiet) as live:
         with signal_handling_context(LOGGER, config.general_cfg.quiet) as stop_event:
             transcript = await asr.transcribe_live_audio(
+                asr_provider=asr_config.provider,
                 asr_server_ip=asr_config.server_ip,
                 asr_server_port=asr_config.server_port,
+                openai_api_key=asr_config.openai_api_key,
+                whisper_model=asr_config.whisper_model,
                 input_device_index=asr_config.input_device_index,
                 logger=LOGGER,
                 p=p,
@@ -154,11 +157,15 @@ def transcribe(
     # ASR
     input_device_index: int | None = opts.DEVICE_INDEX,
     input_device_name: str | None = opts.DEVICE_NAME,
+    asr_provider: str = opts.ASR_PROVIDER,
     asr_server_ip: str = opts.ASR_SERVER_IP,
     asr_server_port: int = opts.ASR_SERVER_PORT,
+    openai_api_key: str = opts.OPENAI_API_KEY,
+    whisper_model: str = opts.WHISPER_MODEL,
     # LLM
     model: str = opts.MODEL,
     ollama_host: str = opts.OLLAMA_HOST,
+    llm_provider: str = opts.LLM_PROVIDER,
     llm: bool = opts.LLM,
     # Process control
     stop: bool = opts.STOP,
@@ -193,6 +200,8 @@ def transcribe(
         clipboard=clipboard,
         model=model if llm else None,
         ollama_host=ollama_host if llm else None,
+        llm_provider=llm_provider if llm else None,
+        openai_api_key=openai_api_key,
     )
 
     if config is None:
@@ -200,8 +209,11 @@ def transcribe(
 
     with pyaudio_context() as p:
         asr_config = ASRConfig(
+            provider=asr_provider,
             server_ip=asr_server_ip,
             server_port=asr_server_port,
+            openai_api_key=openai_api_key,
+            whisper_model=whisper_model,
             input_device_index=input_device_index,
             input_device_name=input_device_name,
         )
