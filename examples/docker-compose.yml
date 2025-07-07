@@ -41,3 +41,11 @@ services:
     #         - driver: nvidia
     #           count: all
     #           capabilities: [gpu]
+
+  openwakeword:
+    image: rhasspy/wyoming-openwakeword
+    ports:
+      - "10400:10400"
+    volumes:
+      - ./openwakeword-data:/data
+    command: --preload-model ok_nabu --custom-model-dir /data
