@@ -67,3 +67,15 @@ class FileConfig:
             self.history_dir = self.history_dir.expanduser()
         if self.save_file:
             self.save_file = self.save_file.expanduser()
+
+
+@dataclass
+class WakeWordConfig:
+    """Wake Word configuration options."""
+
+    server_ip: str
+    server_port: int
+    wake_word_name: str
+    input_device_index: int | None
+    input_device_name: str | None
+    list_input_devices: bool

@@ -3,16 +3,21 @@
 from __future__ import annotations
 
 import asyncio
+import io
 from typing import TYPE_CHECKING
 
-from rich.text import Text
 from wyoming.asr import Transcribe, Transcript, TranscriptChunk, TranscriptStart, TranscriptStop
 from wyoming.audio import AudioChunk, AudioStart, AudioStop
-from wyoming.client import AsyncClient
 
 from agent_cli import config
-from agent_cli.audio import open_pyaudio_stream
-from agent_cli.utils import InteractiveStopEvent, print_error_message
+from agent_cli.audio import (
+    open_pyaudio_stream,
+    read_audio_stream,
+    read_from_queue,
+    setup_input_stream,
+)
+from agent_cli.utils import print_with_style
+from agent_cli.wyoming_utils import manage_send_receive_tasks, wyoming_client_context
 
 if TYPE_CHECKING:
     import logging
@@ -20,9 +25,12 @@ if TYPE_CHECKING:
 
     import pyaudio
     from rich.live import Live
+    from wyoming.client import AsyncClient
+
+    from agent_cli.utils import InteractiveStopEvent
 
 
-async def send_audio(
+async def _send_audio(
     client: AsyncClient,
     stream: pyaudio.Stream,
     stop_event: InteractiveStopEvent,
@@ -31,72 +39,86 @@ async def send_audio(
     live: Live,
     quiet: bool = False,
 ) -> None:
-    """Read from mic and send to Wyoming server.
-
-    Args:
-        client: Wyoming client connection
-        stream: PyAudio stream
-        stop_event: Event to stop recording
-        logger: Logger instance
-        live: Rich Live display for progress (transcribe mode)
-        quiet: If True, suppress all console output
-
-    """
+    """Read from mic and send to Wyoming server."""
     await client.write_event(Transcribe().event())
+    await client.write_event(AudioStart(**config.WYOMING_AUDIO_CONFIG).event())
 
-    await client.write_event(
-        AudioStart(rate=config.PYAUDIO_RATE, width=2, channels=config.PYAUDIO_CHANNELS).event(),
-    )
+    async def send_chunk(chunk: bytes) -> None:
+        """Send audio chunk to ASR server."""
+        await client.write_event(
+            AudioChunk(audio=chunk, **config.WYOMING_AUDIO_CONFIG).event(),
+        )
 
     try:
-        seconds_streamed = 0.0
-        while not stop_event.is_set():
-            chunk = await asyncio.to_thread(
-                stream.read,
-                num_frames=config.PYAUDIO_CHUNK_SIZE,
-                exception_on_overflow=False,
-            )
-            await client.write_event(
-                AudioChunk(
-                    rate=config.PYAUDIO_RATE,
-                    width=2,
-                    channels=config.PYAUDIO_CHANNELS,
-                    audio=chunk,
-                ).event(),
-            )
-            logger.debug("Sent %d byte(s) of audio", len(chunk))
-
-            # Update display timing
-            seconds_streamed += len(chunk) / (config.PYAUDIO_RATE * config.PYAUDIO_CHANNELS * 2)
-            if live and not quiet:
-                # Check if Ctrl+C was pressed
-                if stop_event.ctrl_c_pressed:
-                    msg = "Ctrl+C pressed. Processing transcription... (Press Ctrl+C again to force exit)"
-                    live.update(Text(msg, style="yellow"))
-                else:
-                    live.update(Text(f"Listening... ({seconds_streamed:.1f}s)", style="blue"))
-
+        await read_audio_stream(
+            stream=stream,
+            stop_event=stop_event,
+            chunk_handler=send_chunk,
+            logger=logger,
+            live=live,
+            quiet=quiet,
+            progress_message="Listening",
+            progress_style="blue",
+        )
     finally:
         await client.write_event(AudioStop().event())
         logger.debug("Sent AudioStop")
 
 
-async def receive_text(
+async def _send_audio_from_queue(
+    client: AsyncClient,
+    queue: asyncio.Queue,
+    logger: logging.Logger,
+) -> None:
+    """Read from a queue and send to Wyoming server."""
+    await client.write_event(Transcribe().event())
+    await client.write_event(AudioStart(**config.WYOMING_AUDIO_CONFIG).event())
+
+    async def send_chunk(chunk: bytes) -> None:
+        """Send audio chunk to ASR server."""
+        await client.write_event(
+            AudioChunk(audio=chunk, **config.WYOMING_AUDIO_CONFIG).event(),
+        )
+
+    try:
+        await read_from_queue(
+            queue=queue,
+            chunk_handler=send_chunk,
+            logger=logger,
+        )
+    finally:
+        await client.write_event(AudioStop().event())
+        logger.debug("Sent AudioStop")
+
+
+async def record_audio_to_buffer(
+    queue: asyncio.Queue,
+    logger: logging.Logger,
+) -> bytes:
+    """Record audio from a queue to a buffer."""
+    audio_buffer = io.BytesIO()
+
+    def buffer_chunk(chunk: bytes) -> None:
+        """Buffer audio chunk."""
+        audio_buffer.write(chunk)
+
+    await read_from_queue(
+        queue=queue,
+        chunk_handler=buffer_chunk,
+        logger=logger,
+    )
+
+    return audio_buffer.getvalue()
+
+
+async def receive_transcript(
     client: AsyncClient,
     logger: logging.Logger,
     *,
     chunk_callback: Callable[[str], None] | None = None,
     final_callback: Callable[[str], None] | None = None,
 ) -> str:
-    """Receive transcription events and return the final transcript.
-
-    Args:
-        client: Wyoming client connection
-        logger: Logger instance
-        chunk_callback: Optional callback for transcript chunks (live partial results)
-        final_callback: Optional callback for final transcript formatting
-
-    """
+    """Receive transcription events and return the final transcript."""
     transcript_text = ""
     while True:
         event = await client.read_event()
@@ -124,7 +146,76 @@ async def receive_text(
     return transcript_text
 
 
-async def transcribe_audio(
+async def record_audio_with_manual_stop(
+    p: pyaudio.PyAudio,
+    input_device_index: int | None,
+    stop_event: InteractiveStopEvent,
+    logger: logging.Logger,
+    *,
+    quiet: bool = False,
+    live: Live | None = None,
+) -> bytes:
+    """Record audio to a buffer using a manual stop signal."""
+    if not quiet:
+        print_with_style("🎤 Recording... Press hotkey to stop", style="green")
+
+    audio_buffer = io.BytesIO()
+
+    def buffer_chunk(chunk: bytes) -> None:
+        """Buffer audio chunk."""
+        audio_buffer.write(chunk)
+
+    stream_config = setup_input_stream(input_device_index)
+    with open_pyaudio_stream(p, **stream_config) as stream:
+        await read_audio_stream(
+            stream=stream,
+            stop_event=stop_event,
+            chunk_handler=buffer_chunk,
+            logger=logger,
+            live=live,
+            quiet=quiet,
+            progress_message="Recording",
+            progress_style="green",
+        )
+    return audio_buffer.getvalue()
+
+
+async def transcribe_recorded_audio(
+    audio_data: bytes,
+    asr_server_ip: str,
+    asr_server_port: int,
+    logger: logging.Logger,
+    quiet: bool = False,
+) -> str:
+    """Process pre-recorded audio data with Wyoming ASR server."""
+    try:
+        async with wyoming_client_context(
+            asr_server_ip,
+            asr_server_port,
+            "ASR",
+            logger,
+            quiet=quiet,
+        ) as client:
+            await client.write_event(Transcribe().event())
+            await client.write_event(AudioStart(**config.WYOMING_AUDIO_CONFIG).event())
+
+            chunk_size = config.PYAUDIO_CHUNK_SIZE * 2
+            for i in range(0, len(audio_data), chunk_size):
+                chunk = audio_data[i : i + chunk_size]
+                await client.write_event(
+                    AudioChunk(audio=chunk, **config.WYOMING_AUDIO_CONFIG).event(),
+                )
+                logger.debug("Sent %d byte(s) of audio", len(chunk))
+
+            await client.write_event(AudioStop().event())
+            logger.debug("Sent AudioStop")
+
+            return await receive_transcript(client, logger)
+    except (ConnectionRefusedError, Exception):
+        return ""
+
+
+async def transcribe_live_audio(
     asr_server_ip: str,
     asr_server_port: int,
     input_device_index: int | None,
@@ -137,77 +228,27 @@ async def transcribe_audio(
     chunk_callback: Callable[[str], None] | None = None,
     final_callback: Callable[[str], None] | None = None,
 ) -> str | None:
-    """Unified ASR transcription function for both transcribe and voice-assistant.
-
-    Args:
-        asr_server_ip: Wyoming server IP
-        asr_server_port: Wyoming server port
-        input_device_index: Audio input device index
-        logger: Logger instance
-        p: PyAudio instance
-        stop_event: Event to stop recording
-        live: Rich Live display for progress
-        quiet: If True, suppress all console output
-        listening_message: Message to display when starting
-        chunk_callback: Callback for transcript chunks
-        final_callback: Callback for final transcript
-
-    Returns:
-        Transcribed text or None if error
-
-    """
-    uri = f"tcp://{asr_server_ip}:{asr_server_port}"
-    logger.info("Connecting to Wyoming server at %s", uri)
-
+    """Unified ASR transcription function."""
     try:
-        async with AsyncClient.from_uri(uri) as client:
-            logger.info("ASR connection established")
-            with open_pyaudio_stream(
-                p,
-                format=config.PYAUDIO_FORMAT,
-                channels=config.PYAUDIO_CHANNELS,
-                rate=config.PYAUDIO_RATE,
-                input=True,
-                frames_per_buffer=config.PYAUDIO_CHUNK_SIZE,
-                input_device_index=input_device_index,
-            ) as stream:
-                send_task = asyncio.create_task(
-                    send_audio(
-                        client,
-                        stream,
-                        stop_event,
-                        logger,
-                        live=live,
-                        quiet=quiet,
-                    ),
-                )
-                recv_task = asyncio.create_task(
-                    receive_text(
+        async with wyoming_client_context(
+            asr_server_ip,
+            asr_server_port,
+            "ASR",
+            logger,
+            quiet=quiet,
+        ) as client:
+            stream_config = setup_input_stream(input_device_index)
+            with open_pyaudio_stream(p, **stream_config) as stream:
+                _, recv_task = await manage_send_receive_tasks(
+                    _send_audio(client, stream, stop_event, logger, live=live, quiet=quiet),
+                    receive_transcript(
                         client,
                         logger,
                         chunk_callback=chunk_callback,
                         final_callback=final_callback,
                     ),
-                )
-
-                done, pending = await asyncio.wait(
-                    [send_task, recv_task],
                     return_when=asyncio.ALL_COMPLETED,
                 )
-                for task in pending:
-                    task.cancel()
-
                 return recv_task.result()
-
-    except ConnectionRefusedError:
-        if not quiet:
-            print_error_message(
-                "ASR Connection refused.",
-                f"Is the server at {uri} running?",
-            )
-        return None
-    except Exception as e:
-        logger.exception("An error occurred during transcription.")
-        if not quiet:
-            print_error_message(f"Transcription error: {e}")
+    except (ConnectionRefusedError, Exception):
         return None

@@ -9,13 +9,13 @@ import wave
 from typing import TYPE_CHECKING
 
 from wyoming.audio import AudioChunk, AudioStart, AudioStop
-from wyoming.client import AsyncClient
 from wyoming.tts import Synthesize, SynthesizeVoice
 
 from agent_cli import config
 from agent_cli.audio import (
     open_pyaudio_stream,
     pyaudio_context,
+    setup_output_stream,
 )
 from agent_cli.utils import (
     InteractiveStopEvent,
@@ -23,11 +23,13 @@ from agent_cli.utils import (
     print_error_message,
     print_with_style,
 )
+from agent_cli.wyoming_utils import manage_send_receive_tasks, wyoming_client_context
 
 if TYPE_CHECKING:
     import logging
 
     from rich.live import Live
+    from wyoming.client import AsyncClient
 
 has_audiostretchy = importlib.util.find_spec("audiostretchy") is not None
 
@@ -140,11 +142,14 @@ async def synthesize_speech(
         WAV audio data as bytes, or None if error
 
     """
-    uri = f"tcp://{tts_server_ip}:{tts_server_port}"
-    logger.info("Connecting to Wyoming TTS server at %s", uri)
-
     try:
-        async with AsyncClient.from_uri(uri) as client:
+        async with wyoming_client_context(
+            tts_server_ip,
+            tts_server_port,
+            "TTS",
+            logger,
+            quiet=quiet,
+        ) as client:
             # Use live_timer with the provided Live instance
             async with live_timer(live, "🔊 Synthesizing text", style="blue", quiet=quiet):
                 # Create and send synthesis request
@@ -154,13 +159,13 @@ async def synthesize_speech(
                     language=language,
                     speaker=speaker,
                 )
-                await client.write_event(synthesize_event.event())
 
                 # Process audio events
-                audio_data, sample_rate, sample_width, channels = await _process_audio_events(
-                    client,
-                    logger,
+                _send_task, recv_task = await manage_send_receive_tasks(
+                    client.write_event(synthesize_event.event()),
+                    _process_audio_events(client, logger),
                 )
+                audio_data, sample_rate, sample_width, channels = recv_task.result()
 
             # Convert to WAV format if we have valid audio data and metadata
             if sample_rate and sample_width and channels and audio_data:
@@ -170,18 +175,7 @@ async def synthesize_speech(
 
             logger.warning("No audio data received from TTS server")
             return None
-
-    except ConnectionRefusedError:
-        if not quiet:
-            print_error_message(
-                "TTS Connection refused.",
-                f"Is the Wyoming TTS server running at {uri}?",
-            )
-        return None
-    except Exception as e:
-        logger.exception("An error occurred during speech synthesis.")
-        if not quiet:
-            print_error_message(f"TTS error: {e}")
+    except (ConnectionRefusedError, Exception):
         return None
 
 
@@ -266,32 +260,28 @@ async def play_audio(
 
         # Use live_timer with the provided Live instance
         async with live_timer(live, base_msg, style="blue", quiet=quiet):
-            with (
-                pyaudio_context() as p,
-                open_pyaudio_stream(
-                    p,
-                    format=p.get_format_from_width(sample_width),
+            with pyaudio_context() as p:
+                stream_config = setup_output_stream(
+                    output_device_index,
+                    sample_rate=sample_rate,
+                    sample_width=sample_width,
                     channels=channels,
-                    rate=sample_rate,
-                    output=True,
-                    frames_per_buffer=config.PYAUDIO_CHUNK_SIZE,
-                    output_device_index=output_device_index,
-                ) as stream,
-            ):
-                # Play in chunks to avoid blocking
-                chunk_size = config.PYAUDIO_CHUNK_SIZE
-                for i in range(0, len(frames), chunk_size):
-                    # Check for interruption
-                    if stop_event and stop_event.is_set():
-                        logger.info("Audio playback interrupted")
-                        if not quiet:
-                            print_with_style("⏹️ Audio playback interrupted", style="yellow")
-                        break
-                    chunk = frames[i : i + chunk_size]
-                    stream.write(chunk)
+                )
+                with open_pyaudio_stream(p, **stream_config) as stream:
+                    # Play in chunks to avoid blocking
+                    chunk_size = config.PYAUDIO_CHUNK_SIZE
+                    for i in range(0, len(frames), chunk_size):
+                        # Check for interruption
+                        if stop_event and stop_event.is_set():
+                            logger.info("Audio playback interrupted")
+                            if not quiet:
+                                print_with_style("⏹️ Audio playback interrupted", style="yellow")
+                            break
+                        chunk = frames[i : i + chunk_size]
+                        stream.write(chunk)
 
-                    # Yield control to the event loop so signal handlers can run
-                    await asyncio.sleep(0)
+                        # Yield control to the event loop so signal handlers can run
+                        await asyncio.sleep(0)
 
         if not (stop_event and stop_event.is_set()):
             logger.info("Audio playback completed (speed: %.1fx)", speed)

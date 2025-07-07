@@ -14,7 +14,7 @@ from agent_cli import asr
 
 @pytest.mark.asyncio
 async def test_send_audio() -> None:
-    """Test that send_audio sends the correct events."""
+    """Test that _send_audio sends the correct events."""
     # Arrange
     client = AsyncMock()
     stream = MagicMock()
@@ -28,7 +28,7 @@ async def test_send_audio() -> None:
     # Act
     # No need to create a task and sleep, just await the coroutine.
     # The side_effect will stop the loop.
-    await asr.send_audio(client, stream, stop_event, logger, live=MagicMock(), quiet=False)
+    await asr._send_audio(client, stream, stop_event, logger, live=MagicMock(), quiet=False)
 
     # Assert
     assert client.write_event.call_count == 4
@@ -49,7 +49,7 @@ async def test_send_audio() -> None:
 
 @pytest.mark.asyncio
 async def test_receive_text() -> None:
-    """Test that receive_text correctly processes events."""
+    """Test that receive_transcript correctly processes events."""
     # Arrange
     client = AsyncMock()
     client.read_event.side_effect = [
@@ -62,7 +62,7 @@ async def test_receive_text() -> None:
     final_callback = MagicMock()
 
     # Act
-    result = await asr.receive_text(
+    result = await asr.receive_transcript(
         client,
         logger,
         chunk_callback=chunk_callback,
@@ -77,10 +77,10 @@ async def test_receive_text() -> None:
 
 @pytest.mark.asyncio
 async def test_transcribe_audio() -> None:
-    """Test the main transcribe_audio function."""
+    """Test the main transcribe_live_audio function."""
     # Arrange
     with (
-        patch("agent_cli.asr.AsyncClient.from_uri") as mock_from_uri,
+        patch("agent_cli.wyoming_utils.AsyncClient.from_uri") as mock_from_uri,
         patch(
             "agent_cli.audio.pyaudio_context",
         ) as mock_pyaudio_context,
@@ -103,7 +103,7 @@ async def test_transcribe_audio() -> None:
 
         # Act
         transcribe_task = asyncio.create_task(
-            asr.transcribe_audio(
+            asr.transcribe_live_audio(
                 "localhost",
                 12345,
                 0,
@@ -126,11 +126,11 @@ async def test_transcribe_audio() -> None:
 
 @pytest.mark.asyncio
 async def test_transcribe_audio_connection_error() -> None:
-    """Test the main transcribe_audio function with a connection error."""
+    """Test the main transcribe_live_audio function with a connection error."""
     # Arrange
     with (
         patch(
-            "agent_cli.asr.AsyncClient.from_uri",
+            "agent_cli.wyoming_utils.AsyncClient.from_uri",
             side_effect=ConnectionRefusedError,
         ),
         patch("agent_cli.audio.pyaudio_context") as mock_pyaudio_context,
@@ -145,7 +145,7 @@ async def test_transcribe_audio_connection_error() -> None:
         logger = MagicMock()
 
         # Act
-        result = await asr.transcribe_audio(
+        result = await asr.transcribe_live_audio(
             "localhost",
             12345,
             0,

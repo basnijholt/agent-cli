@@ -18,10 +18,10 @@ from agent_cli.agents._config import (
 )
 from agent_cli.agents.interactive import (
     ConversationEntry,
+    _async_main,
     _format_conversation_for_llm,
     _load_conversation_history,
     _save_conversation_history,
-    async_main,
 )
 from agent_cli.utils import InteractiveStopEvent
 
@@ -112,17 +112,18 @@ async def test_async_main_list_devices(tmp_path: Path) -> None:
     with (
         patch("agent_cli.agents.interactive.pyaudio_context"),
         patch(
-            "agent_cli.agents.interactive.list_input_devices",
-        ) as mock_list_input_devices,
+            "agent_cli.agents.interactive.setup_devices",
+        ) as mock_setup_devices,
     ):
-        await async_main(
+        mock_setup_devices.return_value = None
+        await _async_main(
             general_cfg=general_cfg,
             asr_config=asr_config,
             llm_config=llm_config,
             tts_config=tts_config,
             file_config=file_config,
         )
-        mock_list_input_devices.assert_called_once()
+        mock_setup_devices.assert_called_once()
 
 
 @pytest.mark.asyncio
@@ -159,17 +160,18 @@ async def test_async_main_list_output_devices(tmp_path: Path) -> None:
     with (
         patch("agent_cli.agents.interactive.pyaudio_context"),
         patch(
-            "agent_cli.agents.interactive.list_output_devices",
-        ) as mock_list_output_devices,
+            "agent_cli.agents.interactive.setup_devices",
+        ) as mock_setup_devices,
     ):
-        await async_main(
+        mock_setup_devices.return_value = None
+        await _async_main(
             general_cfg=general_cfg,
             asr_config=asr_config,
             llm_config=llm_config,
             tts_config=tts_config,
             file_config=file_config,
         )
-        mock_list_output_devices.assert_called_once()
+        mock_setup_devices.assert_called_once()
 
 
 @pytest.mark.asyncio
@@ -208,10 +210,9 @@ async def test_async_main_full_loop(tmp_path: Path) -> None:
 
     with (
         patch("agent_cli.agents.interactive.pyaudio_context"),
-        patch("agent_cli.agents.interactive._setup_input_device", return_value=(1, "mock_input")),
-        patch("agent_cli.agents.interactive._setup_output_device", return_value=(1, "mock_output")),
+        patch("agent_cli.agents.interactive.setup_devices", return_value=(1, "mock_input", 1)),
         patch(
-            "agent_cli.agents.interactive.asr.transcribe_audio",
+            "agent_cli.agents.interactive.asr.transcribe_live_audio",
             new_callable=AsyncMock,
         ) as mock_transcribe,
         patch(
@@ -233,7 +234,7 @@ async def test_async_main_full_loop(tmp_path: Path) -> None:
         mock_llm_response.return_value = "Mocked response"
         mock_signal.return_value.__enter__.return_value = mock_stop_event
 
-        await async_main(
+        await _async_main(
             general_cfg=general_cfg,
             asr_config=asr_config,
             llm_config=llm_config,

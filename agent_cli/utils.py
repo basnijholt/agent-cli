@@ -299,3 +299,5 @@ async def live_timer(
         timer_task.cancel()
         with suppress(asyncio.CancelledError):
             await timer_task
+        if not quiet:
+            live.update("")

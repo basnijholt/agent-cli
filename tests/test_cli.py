@@ -18,7 +18,7 @@ runner = CliRunner()
 def test_main_no_args() -> None:
     """Test the main function with no arguments."""
     result = runner.invoke(app)
-    assert result.exit_code == 0
+    assert "No command specified" in result.stdout
     assert "Usage" in result.stdout
 
 

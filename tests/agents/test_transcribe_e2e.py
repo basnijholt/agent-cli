@@ -19,11 +19,11 @@ if TYPE_CHECKING:
 
 @pytest.mark.asyncio
 @patch("agent_cli.agents.transcribe.signal_handling_context")
-@patch("agent_cli.asr.AsyncClient")
+@patch("agent_cli.asr.wyoming_client_context")
 @patch("agent_cli.audio.pyaudio.PyAudio")
 async def test_transcribe_e2e(
     mock_pyaudio_class: MagicMock,
-    mock_async_client_class: MagicMock,
+    mock_wyoming_client_context: MagicMock,
     mock_signal_handling_context: MagicMock,
     mock_pyaudio_device_info: list[dict],
     mock_console: Console,
@@ -36,7 +36,7 @@ async def test_transcribe_e2e(
     # Setup mock Wyoming client
     transcript_text = "This is a test transcription."
     mock_asr_client = MockASRClient(transcript_text)
-    mock_async_client_class.from_uri.return_value = mock_asr_client
+    mock_wyoming_client_context.return_value.__aenter__.return_value = mock_asr_client
 
     # Setup stop event
     stop_event = asyncio.Event()
@@ -72,4 +72,4 @@ async def test_transcribe_e2e(
     assert transcript_text in output
 
     # Ensure the mock client was used
-    mock_async_client_class.from_uri.assert_called_once()
+    mock_wyoming_client_context.assert_called_once()

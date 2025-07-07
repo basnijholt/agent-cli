@@ -26,6 +26,7 @@ It provides a suite of powerful tools for voice and text interaction, designed f
   - [`transcribe`](#transcribe)
   - [`speak`](#speak)
   - [`voice-assistant`](#voice-assistant)
+  - [`wake-word-assistant`](#wake-word-assistant)
   - [`interactive`](#interactive)
 - [Development](#development)
   - [Running Tests](#running-tests)
@@ -47,6 +48,7 @@ It provides a suite of powerful tools for voice and text interaction, designed f
 - **`transcribe`**: Transcribe audio from your microphone to text in your clipboard.
 - **`speak`**: Convert text to speech using a local TTS engine.
 - **`voice-assistant`**: A voice-powered clipboard assistant that edits text based on your spoken commands.
+- **`wake-word-assistant`**: A hands-free voice assistant that starts and stops recording based on a wake word.
 - **`interactive`**: An interactive, conversational AI agent with tool-calling capabilities.
 
 ## Prerequisites
@@ -55,6 +57,7 @@ It provides a suite of powerful tools for voice and text interaction, designed f
 - **Ollama**: For `autocorrect`, `voice-assistant`, and `interactive`, you need [Ollama](https://ollama.ai/) running with a model pulled (e.g., `ollama pull mistral:latest`).
 - **Wyoming Piper**: For `speak`, `voice-assistant`, and `interactive`, you need a [Wyoming TTS server](https://github.com/rhasspy/wyoming-piper) running for text-to-speech.
 - **Wyoming Faster Whisper**: For `transcribe`, `voice-assistant`, and `interactive`, you need a [Wyoming ASR server](https://github.com/rhasspy/wyoming-faster-whisper) for speech-to-text.
+- **Wyoming openWakeWord**: For `wake-word-assistant`, you need a [Wyoming wake word server](https://github.com/rhasspy/wyoming-openwakeword) running.
 - **Clipboard Tools**: `xsel`, `xclip` (Linux), or `pbcopy`/`pbpaste` (macOS) are used by many agents.
 - **PortAudio**: Required for PyAudio to handle microphone and speaker I/O.
 
@@ -597,6 +600,38 @@ An example configuration file is provided in `example.agent-cli-config.toml`.
 ```
 
 <!-- OUTPUT:END -->
+
+</details>
+
+### `wake-word-assistant`
+
+**Purpose:** A hands-free voice assistant that starts and stops recording based on a wake word.
+
+**Workflow:** This agent continuously listens for a wake word (e.g., "Hey Nabu").
+
+1.  Run the `wake-word-assistant` command. It will start listening for the wake word.
+2.  Say the wake word to start recording.
+3.  Speak your command or question.
+4.  Say the wake word again to stop recording.
+5.  The agent transcribes your speech, sends it to the LLM, and gets a response.
+6.  The agent speaks the response back to you and then immediately starts listening for the wake word again.
+
+**How to Use It:**
+
+- **Start the agent**: `agent-cli wake-word-assistant --wake-word "ok_nabu" --input-device-index 1`
+- **With TTS**: `agent-cli wake-word-assistant --wake-word "ok_nabu" --tts --voice "en_US-lessac-medium"`
+
+<details>
+<summary>See the output of <code>agent-cli wake-word-assistant --help</code></summary>
+
+<!-- CODE:BASH:START -->
+<!-- echo '```yaml' -->
+<!-- export NO_COLOR=1 -->
+<!-- export TERM=dumb -->
+<!-- export TERMINAL_WIDTH=90 -->
+<!-- agent-cli wake-word-assistant --help -->
+<!-- echo '```' -->
+<!-- CODE:END -->
 
 </details>
 

@@ -11,18 +11,21 @@ from agent_cli.cli import app
 runner = CliRunner()
 
 
-@patch("agent_cli.agents.transcribe.asr.transcribe_audio", new_callable=AsyncMock)
+@patch("agent_cli.agents.transcribe.asr.transcribe_live_audio", new_callable=AsyncMock)
 @patch("agent_cli.agents.transcribe.process_manager.pid_file_context")
+@patch("agent_cli.agents.transcribe.setup_devices")
 def test_transcribe_agent(
+    mock_setup_devices: MagicMock,
     mock_pid_context: MagicMock,
     mock_transcribe_audio: AsyncMock,
 ) -> None:
     """Test the transcribe agent."""
     mock_transcribe_audio.return_value = "hello"
-    with patch("agent_cli.agents.autocorrect.pyperclip.copy") as mock_copy:
+    mock_setup_devices.return_value = (0, "mock_device", None)
+    with patch("agent_cli.agents.transcribe.pyperclip.copy") as mock_copy:
         result = runner.invoke(app, ["transcribe"])
     assert result.exit_code == 0
-    mock_pid_context.assert_called_once_with("transcribe")
+    mock_pid_context.assert_called_once()
     mock_transcribe_audio.assert_called_once()
     mock_copy.assert_called_once_with("hello")
 

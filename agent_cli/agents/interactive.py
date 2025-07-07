@@ -34,13 +34,7 @@ from agent_cli.agents._config import (
     TTSConfig,
 )
 from agent_cli.agents._tts_common import handle_tts_playback
-from agent_cli.audio import (
-    input_device,
-    list_input_devices,
-    list_output_devices,
-    output_device,
-    pyaudio_context,
-)
+from agent_cli.audio import pyaudio_context, setup_devices
 from agent_cli.cli import app, setup_logging
 from agent_cli.llm import get_llm_response
 from agent_cli.utils import (
@@ -49,7 +43,6 @@ from agent_cli.utils import (
     format_timedelta_to_ago,
     live_timer,
     maybe_live,
-    print_device_index,
     print_input_panel,
     print_output_panel,
     print_with_style,
@@ -124,31 +117,6 @@ USER_MESSAGE_WITH_CONTEXT_TEMPLATE = """
 # --- Helper Functions ---
 
 
-def _setup_input_device(
-    p: pyaudio.PyAudio,
-    quiet: bool,
-    input_device_name: str | None,
-    input_device_index: int | None,
-) -> tuple[int | None, str | None]:
-    input_device_index, input_device_name = input_device(p, input_device_name, input_device_index)
-    if not quiet:
-        print_device_index(input_device_index, input_device_name)
-    return input_device_index, input_device_name
-
-
-def _setup_output_device(
-    p: pyaudio.PyAudio,
-    quiet: bool,
-    input_device_name: str | None,
-    input_device_index: int | None,
-) -> tuple[int | None, str | None]:
-    input_device_index, input_device_name = output_device(p, input_device_name, input_device_index)
-    if not quiet and input_device_index is not None:
-        msg = f"🔊 TTS output device [bold yellow]{input_device_index}[/bold yellow] ([italic]{input_device_name}[/italic])"
-        print_with_style(msg)
-    return input_device_index, input_device_name
-
-
 def _load_conversation_history(history_file: Path, last_n_messages: int) -> list[ConversationEntry]:
     if last_n_messages == 0:
         return []
@@ -208,7 +176,7 @@ async def _handle_conversation_turn(
 
     # 1. Transcribe user's command
     time_start = time.monotonic()
-    instruction = await asr.transcribe_audio(
+    instruction = await asr.transcribe_live_audio(
         asr_server_ip=asr_config.server_ip,
         asr_server_port=asr_config.server_port,
         input_device_index=asr_config.input_device_index,
@@ -341,7 +309,7 @@ async def _handle_conversation_turn(
 # --- Main Application Logic ---
 
 
-async def async_main(
+async def _async_main(
     *,
     general_cfg: GeneralConfig,
     asr_config: ASRConfig,
@@ -352,32 +320,12 @@ async def async_main(
     """Main async function, consumes parsed arguments."""
     try:
         with pyaudio_context() as p:
-            # Handle device listing
-            if asr_config.list_input_devices:
-                list_input_devices(p, general_cfg.quiet)
+            device_info = setup_devices(p, asr_config, tts_config, general_cfg.quiet)
+            if device_info is None:
                 return
-
-            if tts_config.list_output_devices:
-                list_output_devices(p, general_cfg.quiet)
-                return
-
-            # Setup devices
-            input_device_index, _ = _setup_input_device(
-                p,
-                general_cfg.quiet,
-                asr_config.input_device_name,
-                asr_config.input_device_index,
-            )
-            asr_config.input_device_index = input_device_index  # Update with the selected index
-
+            input_device_index, _, tts_output_device_index = device_info
+            asr_config.input_device_index = input_device_index
             if tts_config.enabled:
-                tts_output_device_index, _ = _setup_output_device(
-                    p,
-                    general_cfg.quiet,
-                    tts_config.output_device_name,
-                    tts_config.output_device_index,
-                )
-                # Update with the selected index
                 tts_config.output_device_index = tts_output_device_index
 
             # Load conversation history
@@ -509,7 +457,7 @@ def interactive(
         )
 
         asyncio.run(
-            async_main(
+            _async_main(
                 general_cfg=general_cfg,
                 asr_config=asr_config,
                 llm_config=llm_config,

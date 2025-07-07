@@ -2,16 +2,120 @@
 
 from __future__ import annotations
 
+import asyncio
 import functools
-from contextlib import contextmanager
+import logging
+from contextlib import asynccontextmanager, contextmanager
 from typing import TYPE_CHECKING
 
 import pyaudio
+from rich.text import Text
 
-from agent_cli.utils import console
+from agent_cli import config
+from agent_cli.utils import (
+    InteractiveStopEvent,
+    console,
+    print_device_index,
+    print_with_style,
+)
 
 if TYPE_CHECKING:
-    from collections.abc import Generator
+    import logging
+    from collections.abc import AsyncGenerator, Awaitable, Callable, Generator
+
+    from rich.live import Live
+
+    from agent_cli.agents._config import (
+        ASRConfig,
+        TTSConfig,
+    )
+
+
+class _AudioTee:
+    """A class to tee an audio stream into multiple queues."""
+
+    def __init__(
+        self,
+        stream: pyaudio.Stream,
+        stop_event: InteractiveStopEvent,
+        logger: logging.Logger,
+    ) -> None:
+        """Initialize the AudioTee with a PyAudio stream and stop event."""
+        self.stream = stream
+        self.stop_event = stop_event
+        self.logger = logger
+        self.queues: list[asyncio.Queue[bytes | None]] = []
+        self._task: asyncio.Task | None = None
+        self._stop_tee_event = asyncio.Event()
+
+    def add_queue(self) -> asyncio.Queue[bytes | None]:
+        """Add a new queue to the tee."""
+        queue: asyncio.Queue[bytes | None] = asyncio.Queue()
+        self.queues.append(queue)
+        return queue
+
+    async def _run(self) -> None:
+        """Read from the stream and push to all queues."""
+        self.logger.debug("Starting audio tee")
+        try:
+            while not self.stop_event.is_set() and not self._stop_tee_event.is_set():
+                chunk = await asyncio.to_thread(
+                    self.stream.read,
+                    num_frames=config.PYAUDIO_CHUNK_SIZE,
+                    exception_on_overflow=False,
+                )
+                for queue in self.queues:
+                    await queue.put(chunk)
+        except OSError:
+            self.logger.exception("Error reading audio")
+        finally:
+            for queue in self.queues:
+                await queue.put(None)  # Signal end of stream
+            self.logger.debug("Audio tee finished")
+
+    def start(self) -> None:
+        """Start the tee in the background."""
+        if self._task is None:
+            self._task = asyncio.create_task(self._run())
+
+    async def stop(self) -> None:
+        """Stop the tee."""
+        if self._task and not self._task.done():
+            self._stop_tee_event.set()
+            await self._task
+        self.logger.debug("Audio tee stopped")
+
+
+@asynccontextmanager
+async def tee_audio_stream(
+    stream: pyaudio.Stream,
+    stop_event: InteractiveStopEvent,
+    logger: logging.Logger,
+) -> AsyncGenerator[_AudioTee, None]:
+    """Context manager for an AudioTee."""
+    tee = _AudioTee(stream, stop_event, logger)
+    tee.start()
+    try:
+        yield tee
+    finally:
+        await tee.stop()
+
+
+async def read_from_queue(
+    queue: asyncio.Queue[bytes | None],
+    chunk_handler: Callable[[bytes], None] | Callable[[bytes], Awaitable[None]],
+    logger: logging.Logger,
+) -> None:
+    """Read audio chunks from a queue and call a handler."""
+    while True:
+        chunk = await queue.get()
+        if chunk is None:
+            break
+        if asyncio.iscoroutinefunction(chunk_handler):
+            await chunk_handler(chunk)
+        else:
+            chunk_handler(chunk)
+        logger.debug("Processed %d byte(s) of audio from queue", len(chunk))
 
 
 @contextmanager
@@ -39,6 +143,120 @@ def open_pyaudio_stream(
         stream.close()
 
 
+async def read_audio_stream(
+    stream: pyaudio.Stream,
+    stop_event: InteractiveStopEvent,
+    chunk_handler: Callable[[bytes], None] | Callable[[bytes], Awaitable[None]],
+    logger: logging.Logger,
+    *,
+    live: Live | None = None,
+    quiet: bool = False,
+    progress_message: str = "Processing audio",
+    progress_style: str = "blue",
+) -> None:
+    """Core audio reading function - reads chunks and calls handler.
+
+    This is the single source of truth for audio reading logic.
+    All other audio functions should use this to avoid duplication.
+
+    Args:
+        stream: PyAudio stream
+        stop_event: Event to stop reading
+        chunk_handler: Function to handle each chunk (sync or async)
+        logger: Logger instance
+        live: Rich Live display for progress
+        quiet: If True, suppress console output
+        progress_message: Message to display
+        progress_style: Rich style for progress
+
+    """
+    try:
+        seconds_streamed = 0.0
+        while not stop_event.is_set():
+            chunk = await asyncio.to_thread(
+                stream.read,
+                num_frames=config.PYAUDIO_CHUNK_SIZE,
+                exception_on_overflow=False,
+            )
+
+            # Handle chunk (sync or async)
+            if asyncio.iscoroutinefunction(chunk_handler):
+                await chunk_handler(chunk)
+            else:
+                chunk_handler(chunk)
+
+            logger.debug("Processed %d byte(s) of audio", len(chunk))
+
+            # Update progress display
+            seconds_streamed += len(chunk) / (config.PYAUDIO_RATE * config.PYAUDIO_CHANNELS * 2)
+            if live and not quiet:
+                if stop_event.ctrl_c_pressed:
+                    msg = f"Ctrl+C pressed. Stopping {progress_message.lower()}..."
+                    live.update(Text(msg, style="yellow"))
+                else:
+                    live.update(
+                        Text(
+                            f"{progress_message}... ({seconds_streamed:.1f}s)",
+                            style=progress_style,
+                        ),
+                    )
+
+    except OSError:
+        logger.exception("Error reading audio")
+
+
+def setup_input_stream(
+    input_device_index: int | None,
+) -> dict:
+    """Get standard PyAudio input stream configuration.
+
+    Args:
+        input_device_index: Input device index
+
+    Returns:
+        Dictionary of stream parameters
+
+    """
+    return {
+        "format": config.PYAUDIO_FORMAT,
+        "channels": config.PYAUDIO_CHANNELS,
+        "rate": config.PYAUDIO_RATE,
+        "input": True,
+        "frames_per_buffer": config.PYAUDIO_CHUNK_SIZE,
+        "input_device_index": input_device_index,
+    }
+
+
+def setup_output_stream(
+    output_device_index: int | None,
+    *,
+    sample_rate: int | None = None,
+    sample_width: int | None = None,
+    channels: int | None = None,
+) -> dict:
+    """Get standard PyAudio output stream configuration.
+
+    Args:
+        p: PyAudio instance
+        output_device_index: Output device index
+        sample_rate: Custom sample rate (defaults to config)
+        sample_width: Custom sample width in bytes (defaults to config)
+        channels: Custom channel count (defaults to config)
+
+    Returns:
+        Dictionary of stream parameters
+
+    """
+    return {
+        "format": pyaudio.get_format_from_width(sample_width or 2),
+        "channels": channels or config.PYAUDIO_CHANNELS,
+        "rate": sample_rate or config.PYAUDIO_RATE,
+        "output": True,
+        "frames_per_buffer": config.PYAUDIO_CHUNK_SIZE,
+        "output_device_index": output_device_index,
+    }
+
+
 @functools.cache
 def get_all_devices(p: pyaudio.PyAudio) -> list[dict]:
     """Get information for all audio devices with caching.
@@ -60,7 +278,7 @@ def get_all_devices(p: pyaudio.PyAudio) -> list[dict]:
     return devices
 
 
-def get_device_by_index(p: pyaudio.PyAudio, input_device_index: int) -> dict:
+def _get_device_by_index(p: pyaudio.PyAudio, input_device_index: int) -> dict:
     """Get device info by index from cached device list.
 
     Args:
@@ -81,41 +299,38 @@ def get_device_by_index(p: pyaudio.PyAudio, input_device_index: int) -> dict:
     raise ValueError(msg)
 
 
-def list_input_devices(p: pyaudio.PyAudio, quiet: bool = False) -> None:
+def list_input_devices(p: pyaudio.PyAudio) -> None:
     """Print a numbered list of available input devices."""
-    if not quiet:
-        console.print("[bold]Available input devices:[/bold]")
-        for device in get_all_devices(p):
-            if device.get("maxInputChannels", 0) > 0:
-                console.print(f"  [yellow]{device['index']}[/yellow]: {device['name']}")
+    console.print("[bold]Available input devices:[/bold]")
+    for device in get_all_devices(p):
+        if device.get("maxInputChannels", 0) > 0:
+            console.print(f"  [yellow]{device['index']}[/yellow]: {device['name']}")
 
 
-def list_output_devices(p: pyaudio.PyAudio, quiet: bool = False) -> None:
+def list_output_devices(p: pyaudio.PyAudio) -> None:
     """Print a numbered list of available output devices."""
-    if not quiet:
-        console.print("[bold]Available output devices:[/bold]")
-        for device in get_all_devices(p):
-            if device.get("maxOutputChannels", 0) > 0:
-                console.print(f"  [yellow]{device['index']}[/yellow]: {device['name']}")
+    console.print("[bold]Available output devices:[/bold]")
+    for device in get_all_devices(p):
+        if device.get("maxOutputChannels", 0) > 0:
+            console.print(f"  [yellow]{device['index']}[/yellow]: {device['name']}")
 
 
-def list_all_devices(p: pyaudio.PyAudio, quiet: bool = False) -> None:
+def list_all_devices(p: pyaudio.PyAudio) -> None:
     """Print a numbered list of all available audio devices with their capabilities."""
-    if not quiet:
-        console.print("[bold]All available audio devices:[/bold]")
-        for device in get_all_devices(p):
-            input_channels = device.get("maxInputChannels", 0)
-            output_channels = device.get("maxOutputChannels", 0)
+    console.print("[bold]All available audio devices:[/bold]")
+    for device in get_all_devices(p):
+        input_channels = device.get("maxInputChannels", 0)
+        output_channels = device.get("maxOutputChannels", 0)
 
-            capabilities = []
-            if input_channels > 0:
-                capabilities.append(f"{input_channels} input")
-            if output_channels > 0:
-                capabilities.append(f"{output_channels} output")
+        capabilities = []
+        if input_channels > 0:
+            capabilities.append(f"{input_channels} input")
+        if output_channels > 0:
+            capabilities.append(f"{output_channels} output")
 
-            if capabilities:
-                cap_str = " (" + ", ".join(capabilities) + ")"
-                console.print(f"  [yellow]{device['index']}[/yellow]: {device['name']}{cap_str}")
+        if capabilities:
+            cap_str = " (" + ", ".join(capabilities) + ")"
+            console.print(f"  [yellow]{device['index']}[/yellow]: {device['name']}{cap_str}")
 
 
 def _in_or_out_device(
@@ -130,7 +345,7 @@ def _in_or_out_device(
         return None, None
 
     if input_device_index is not None:
-        info = get_device_by_index(p, input_device_index)
+        info = _get_device_by_index(p, input_device_index)
         return input_device_index, info.get("name")
     assert input_device_name is not None
     search_terms = [term.strip().lower() for term in input_device_name.split(",") if term.strip()]
@@ -176,3 +391,46 @@ def output_device(
         "maxOutputChannels",
         "output",
     )
+
+
+def setup_devices(
+    p: pyaudio.PyAudio,
+    asr_config: ASRConfig | None,
+    tts_config: TTSConfig | None,
+    quiet: bool,
+) -> tuple[int | None, str | None, int | None] | None:
+    """Handle device listing and setup."""
+    if asr_config and asr_config.list_input_devices:
+        list_input_devices(p)
+        return None
+
+    if tts_config and tts_config.list_output_devices:
+        list_output_devices(p)
+        return None
+
+    # Setup input device
+    input_device_index, input_device_name = input_device(
+        p,
+        asr_config.input_device_name if asr_config else None,
+        asr_config.input_device_index if asr_config else None,
+    )
+    if not quiet:
+        print_device_index(input_device_index, input_device_name)
+
+    # Setup output device for TTS if enabled
+    tts_output_device_index = tts_config.output_device_index if tts_config else None
+    if (
+        tts_config
+        and tts_config.enabled
+        and (tts_config.output_device_name or tts_config.output_device_index)
+    ):
+        tts_output_device_index, tts_output_device_name = output_device(
+            p,
+            tts_config.output_device_name,
+            tts_config.output_device_index,
+        )
+        if tts_output_device_index is not None and not quiet:
+            msg = f"🔊 TTS output device [bold yellow]{tts_output_device_index}[/bold yellow] ([italic]{tts_output_device_name}[/italic])"
+            print_with_style(msg)
+
+    return input_device_index, input_device_name, tts_output_device_index

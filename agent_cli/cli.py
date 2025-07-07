@@ -37,23 +37,19 @@ def set_config_defaults(ctx: typer.Context, config_file: str | None) -> None:
     """Set the default values for the CLI based on the config file."""
     config = load_config(config_file)
     wildcard_config = config.get("defaults", {})
+    subcommand = ctx.invoked_subcommand
 
-    # If there's no subcommand, we can just set the default map for the main command
-    if not ctx.invoked_subcommand:
+    if not subcommand:
         ctx.default_map = wildcard_config
         return
 
-    command_config = config.get(ctx.invoked_subcommand, {})
-    # Merge wildcard and command-specific configs, with command-specific taking precedence
-    defaults = dict(wildcard_config, **command_config)
+    command_config = config.get(subcommand, {})
+    defaults = {**wildcard_config, **command_config}
 
-    # The recommended way to set defaults dynamically is to update the command's parameters
-    if ctx.invoked_subcommand in ctx.command.commands:
-        command = ctx.command.commands[ctx.invoked_subcommand]
+    if subcommand in ctx.command.commands:
+        command = ctx.command.commands[subcommand]
         for param in command.params:
             if param.name in defaults:
-                # This callback runs before parsing for the subcommand,
-                # so we can set the default value for the parameter.
                 param.default = defaults[param.name]
 
 
@@ -73,4 +69,11 @@ def setup_logging(log_level: str, log_file: str | None, *, quiet: bool) -> None:
 
 
 # Import commands from other modules to register them
-from .agents import autocorrect, interactive, speak, transcribe, voice_assistant  # noqa: E402, F401
+from .agents import (  # noqa: E402, F401
+    autocorrect,
+    interactive,
+    speak,
+    transcribe,
+    voice_assistant,
+    wake_word_assistant,
+)

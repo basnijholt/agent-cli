@@ -11,14 +11,13 @@ from typing import TYPE_CHECKING
 import pyperclip
 
 import agent_cli.agents._cli_options as opts
-from agent_cli import asr, audio, process_manager
+from agent_cli import asr, process_manager
 from agent_cli.agents._config import ASRConfig, GeneralConfig, LLMConfig
-from agent_cli.audio import input_device, pyaudio_context
+from agent_cli.audio import pyaudio_context, setup_devices
 from agent_cli.cli import app, setup_logging
 from agent_cli.llm import process_and_update_clipboard
 from agent_cli.utils import (
     maybe_live,
-    print_device_index,
     print_input_panel,
     print_output_panel,
     print_with_style,
@@ -79,7 +78,7 @@ async def async_main(
     time_start = time.monotonic()
     with maybe_live(not general_cfg.quiet) as live:
         with signal_handling_context(LOGGER, general_cfg.quiet) as stop_event:
-            transcript = await asr.transcribe_audio(
+            transcript = await asr.transcribe_live_audio(
                 asr_server_ip=asr_config.server_ip,
                 asr_server_port=asr_config.server_port,
                 input_device_index=asr_config.input_device_index,
@@ -188,26 +187,27 @@ def transcribe(
         return
 
     with pyaudio_context() as p:
-        if list_input_devices:
-            audio.list_input_devices(p, quiet)
-            return
-        input_device_index, input_device_name = input_device(
-            p,
-            input_device_name,
-            input_device_index,
+        asr_config = ASRConfig(
+            server_ip=asr_server_ip,
+            server_port=asr_server_port,
+            input_device_index=input_device_index,
+            input_device_name=input_device_name,
+            list_input_devices=list_input_devices,
         )
-        if not quiet:
-            print_device_index(input_device_index, input_device_name)
+        # We only use setup_devices for its input device handling
+        device_info = setup_devices(
+            p,
+            asr_config,
+            None,
+            quiet,
+        )
+        if device_info is None:
+            return
+        input_device_index, _, _ = device_info
+        asr_config.input_device_index = input_device_index
 
         # Use context manager for PID file management
         with process_manager.pid_file_context(process_name), suppress(KeyboardInterrupt):
-            asr_config = ASRConfig(
-                server_ip=asr_server_ip,
-                server_port=asr_server_port,
-                input_device_index=input_device_index,
-                input_device_name=input_device_name,
-                list_input_devices=list_input_devices,
-            )
             llm_config = LLMConfig(model=model, ollama_host=ollama_host)
 
             asyncio.run(

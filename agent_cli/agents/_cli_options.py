@@ -54,6 +54,24 @@ ASR_SERVER_PORT: int = typer.Option(
 )
 
 
+# --- Wake Word Options ---
+WAKE_WORD_SERVER_IP: str = typer.Option(
+    config.WAKE_WORD_SERVER_IP,
+    "--wake-server-ip",
+    help="Wyoming wake word server IP address.",
+)
+WAKE_WORD_SERVER_PORT: int = typer.Option(
+    config.WAKE_WORD_SERVER_PORT,
+    "--wake-server-port",
+    help="Wyoming wake word server port.",
+)
+WAKE_WORD_NAME: str = typer.Option(
+    "ok_nabu",
+    "--wake-word",
+    help="Name of wake word to detect (e.g., 'ok_nabu', 'hey_jarvis').",
+)
+
+
 # --- TTS (Text-to-Speech) Options ---
 TTS_SERVER_IP: str = typer.Option(
     config.TTS_SERVER_IP,

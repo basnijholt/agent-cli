@@ -14,17 +14,15 @@ from tests.mocks.wyoming import MockASRClient
 
 
 @pytest.mark.asyncio
-@patch("agent_cli.asr.AsyncClient")
+@patch("agent_cli.asr.wyoming_client_context")
 @patch("agent_cli.agents.transcribe.pyperclip")
 @patch("agent_cli.agents.transcribe.pyaudio_context")
-@patch("agent_cli.agents.transcribe.input_device")
 @patch("agent_cli.agents.transcribe.signal_handling_context")
 async def test_transcribe_main(
     mock_signal_handling_context: MagicMock,
-    mock_input_device: MagicMock,
     mock_pyaudio_context: MagicMock,
     mock_pyperclip: MagicMock,
-    mock_async_client_class: MagicMock,
+    mock_wyoming_client_context: MagicMock,
     caplog: pytest.LogCaptureFixture,
 ) -> None:
     """Test the main function of the transcribe agent."""
@@ -34,8 +32,7 @@ async def test_transcribe_main(
 
     # Mock the Wyoming client
     mock_asr_client = MockASRClient("hello world")
-    mock_async_client_class.from_uri.return_value = mock_asr_client
-    mock_input_device.return_value = (None, None)
+    mock_wyoming_client_context.return_value.__aenter__.return_value = mock_asr_client
 
     # Setup stop event
     stop_event = asyncio.Event()
@@ -69,4 +66,4 @@ async def test_transcribe_main(
     # Assertions
     assert "Copied transcript to clipboard." in caplog.text
     mock_pyperclip.copy.assert_called_once_with("hello world")
-    mock_async_client_class.from_uri.assert_called_once_with("tcp://localhost:12345")
+    mock_wyoming_client_context.assert_called_once()
