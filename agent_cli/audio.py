@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import functools
-from contextlib import asynccontextmanager, contextmanager, suppress
+from contextlib import asynccontextmanager, contextmanager
 from typing import TYPE_CHECKING
 
 import pyaudio
@@ -35,6 +35,7 @@ class AudioTee:
         self.logger = logger
         self.queues: list[asyncio.Queue] = []
         self._task: asyncio.Task | None = None
+        self._stop_tee_event = asyncio.Event()
 
     def add_queue(self) -> asyncio.Queue:
         """Add a new queue to the tee."""
@@ -46,7 +47,7 @@ class AudioTee:
         """Read from the stream and push to all queues."""
         self.logger.debug("Starting audio tee")
         try:
-            while not self.stop_event.is_set():
+            while not self.stop_event.is_set() and not self._stop_tee_event.is_set():
                 chunk = await asyncio.to_thread(
                     self.stream.read,
                     num_frames=config.PYAUDIO_CHUNK_SIZE,
@@ -69,12 +70,9 @@ class AudioTee:
     async def stop(self) -> None:
         """Stop the tee."""
         if self._task and not self._task.done():
-            self._task.cancel()
-            with suppress(asyncio.CancelledError):
-                await self._task
-        self.logger.debug("Audio tee stopped")
-        if self._task:
+            self._stop_tee_event.set()
             await self._task
+        self.logger.debug("Audio tee stopped")
 
 
 @asynccontextmanager
