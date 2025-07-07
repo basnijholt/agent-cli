@@ -295,8 +295,6 @@ An example configuration file is provided in `example.agent-cli-config.toml`.
 │                                                      First matching device   │
 │                                                      is selected.            │
 │                                                      [default: None]         │
-│ --list-input-devices                                 List available audio    │
-│                                                      input devices and exit. │
 │ --asr-server-ip                             TEXT     Wyoming ASR server IP   │
 │                                                      address.                │
 │                                                      [default: localhost]    │
@@ -333,6 +331,9 @@ An example configuration file is provided in `example.agent-cli-config.toml`.
 │ --log-file                                  TEXT     Path to a file to write │
 │                                                      logs to.                │
 │                                                      [default: None]         │
+│ --list-devices                                       List available audio    │
+│                                                      input and output        │
+│                                                      devices and exit.       │
 │ --quiet               -q                             Suppress console output │
 │                                                      from rich.              │
 │ --config                                    TEXT     Path to a TOML          │
@@ -419,8 +420,8 @@ An example configuration file is provided in `example.agent-cli-config.toml`.
 │                                         (case-insensitive). First matching   │
 │                                         device is selected.                  │
 │                                         [default: None]                      │
-│ --list-output-devices                   List available audio output devices  │
-│                                         and exit.                            │
+│ --list-devices                          List available audio input and       │
+│                                         output devices and exit.             │
 │ --save-file                    PATH     Save audio to WAV file instead of    │
 │                                         playing it.                          │
 │                                         [default: None]                      │
@@ -504,9 +505,6 @@ An example configuration file is provided in `example.agent-cli-config.toml`.
 │                                                       First matching device  │
 │                                                       is selected.           │
 │                                                       [default: None]        │
-│ --list-input-devices                                  List available audio   │
-│                                                       input devices and      │
-│                                                       exit.                  │
 │ --asr-server-ip                              TEXT     Wyoming ASR server IP  │
 │                                                       address.               │
 │                                                       [default: localhost]   │
@@ -574,9 +572,6 @@ An example configuration file is provided in `example.agent-cli-config.toml`.
 │                                                       First matching device  │
 │                                                       is selected.           │
 │                                                       [default: None]        │
-│ --list-output-devices                                 List available audio   │
-│                                                       output devices and     │
-│                                                       exit.                  │
 │ --save-file                                  PATH     Save TTS response      │
 │                                                       audio to WAV file.     │
 │                                                       [default: None]        │
@@ -588,6 +583,9 @@ An example configuration file is provided in `example.agent-cli-config.toml`.
 │ --log-file                                   TEXT     Path to a file to      │
 │                                                       write logs to.         │
 │                                                       [default: None]        │
+│ --list-devices                                        List available audio   │
+│                                                       input and output       │
+│                                                       devices and exit.      │
 │ --quiet                -q                             Suppress console       │
 │                                                       output from rich.      │
 │ --config                                     TEXT     Path to a TOML         │
@@ -692,8 +690,6 @@ An example configuration file is provided in `example.agent-cli-config.toml`.
 │                                                 (case-insensitive). First    │
 │                                                 matching device is selected. │
 │                                                 [default: None]              │
-│ --list-input-devices                            List available audio input   │
-│                                                 devices and exit.            │
 │ --asr-server-ip                        TEXT     Wyoming ASR server IP        │
 │                                                 address.                     │
 │                                                 [default: localhost]         │
@@ -749,8 +745,6 @@ An example configuration file is provided in `example.agent-cli-config.toml`.
 │                                                 (case-insensitive). First    │
 │                                                 matching device is selected. │
 │                                                 [default: None]              │
-│ --list-output-devices                           List available audio output  │
-│                                                 devices and exit.            │
 │ --save-file                            PATH     Save TTS response audio to   │
 │                                                 WAV file.                    │
 │                                                 [default: None]              │
@@ -768,6 +762,8 @@ An example configuration file is provided in `example.agent-cli-config.toml`.
 │ --log-file                             TEXT     Path to a file to write logs │
 │                                                 to.                          │
 │                                                 [default: None]              │
+│ --list-devices                                  List available audio input   │
+│                                                 and output devices and exit. │
 │ --quiet                -q                       Suppress console output from │
 │                                                 rich.                        │
 │ --config                               TEXT     Path to a TOML configuration │
