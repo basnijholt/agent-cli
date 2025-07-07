@@ -201,26 +201,24 @@ async def async_main_voice_agent(
     agent_instructions: str,
 ) -> None:
     """Main async function for voice agents."""
-    with (
-        maybe_live(not general_cfg.quiet) as live,
-        signal_handling_context(LOGGER, general_cfg.quiet) as main_stop_event,
-    ):
-        while not main_stop_event.is_set():
-            with pyaudio_context() as p:
-                device_info = _setup_devices(p, asr_config, tts_config, general_cfg.quiet)
-                if device_info is None:
-                    return
-                input_device_index, _, tts_output_device_index = device_info
+    with pyaudio_context() as p:
+        device_info = _setup_devices(p, asr_config, tts_config, general_cfg.quiet)
+        if device_info is None:
+            return
+        input_device_index, _, tts_output_device_index = device_info
 
-                original_text = (
-                    get_original_text_func() if get_original_text_func else get_clipboard_text()
-                )
-                if original_text is None:
-                    return
+        original_text = get_original_text_func() if get_original_text_func else get_clipboard_text()
+        if original_text is None:
+            return
 
-                if not general_cfg.quiet and original_text:
-                    print_input_panel(original_text, title="📝 Text to Process")
+        if not general_cfg.quiet and original_text:
+            print_input_panel(original_text, title="📝 Text to Process")
 
+        with (
+            maybe_live(not general_cfg.quiet) as live,
+            signal_handling_context(LOGGER, general_cfg.quiet) as main_stop_event,
+        ):
+            while not main_stop_event.is_set():
                 audio_data = await recording_func(
                     p,
                     input_device_index,
@@ -228,40 +226,40 @@ async def async_main_voice_agent(
                     LOGGER,
                 )
 
-            if not audio_data:
+                if not audio_data:
+                    if not general_cfg.quiet:
+                        print_with_style("No audio recorded", style="yellow")
+                    continue
+
+                if main_stop_event.is_set():
+                    break
+
+                instruction = await _get_instruction_from_audio(
+                    audio_data,
+                    asr_config,
+                    LOGGER,
+                    general_cfg.quiet,
+                )
+                if not instruction:
+                    continue
+
+                await _process_instruction_and_respond(
+                    instruction=instruction,
+                    original_text=original_text,
+                    general_cfg=general_cfg,
+                    llm_config=llm_config,
+                    tts_config=tts_config,
+                    file_config=file_config,
+                    system_prompt=system_prompt,
+                    agent_instructions=agent_instructions,
+                    tts_output_device_index=tts_output_device_index,
+                    live=live,
+                    logger=LOGGER,
+                )
+
                 if not general_cfg.quiet:
-                    print_with_style("No audio recorded", style="yellow")
-                continue
+                    print_with_style("✨ Ready for next command...", style="green")
 
-            if main_stop_event.is_set():
-                break
-
-            instruction = await _get_instruction_from_audio(
-                audio_data,
-                asr_config,
-                LOGGER,
-                general_cfg.quiet,
-            )
-            if not instruction:
-                continue
-
-            await _process_instruction_and_respond(
-                instruction=instruction,
-                original_text=original_text,
-                general_cfg=general_cfg,
-                llm_config=llm_config,
-                tts_config=tts_config,
-                file_config=file_config,
-                system_prompt=system_prompt,
-                agent_instructions=agent_instructions,
-                tts_output_device_index=tts_output_device_index,
-                live=live,
-                logger=LOGGER,
-            )
-
-            if not general_cfg.quiet:
-                print_with_style("✨ Ready for next command...", style="green")
-
-            # For non-looping agents, break after one cycle
-            if not getattr(wake_word_config, "wake_word_name", False):
-                break
+                # For non-looping agents, break after one cycle
+                if not getattr(wake_word_config, "wake_word_name", False):
+                    break

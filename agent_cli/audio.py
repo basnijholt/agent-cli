@@ -194,11 +194,12 @@ async def read_audio_stream(
         logger.exception("Error reading audio")
 
 
-def setup_input_stream(input_device_index: int | None) -> dict:
+def setup_input_stream(
+    input_device_index: int | None,
+) -> dict:
     """Get standard PyAudio input stream configuration.
 
     Args:
-        p: PyAudio instance
         input_device_index: Input device index
 
     Returns:
@@ -225,6 +226,7 @@ def setup_output_stream(
     """Get standard PyAudio output stream configuration.
 
     Args:
+        p: PyAudio instance
         output_device_index: Output device index
         sample_rate: Custom sample rate (defaults to config)
         sample_width: Custom sample width in bytes (defaults to config)
