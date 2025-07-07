@@ -33,17 +33,17 @@ class AudioTee:
         self.stream = stream
         self.stop_event = stop_event
         self.logger = logger
-        self.queues: list[asyncio.Queue] = []
+        self.queues: list[asyncio.Queue[bytes | None]] = []
         self._task: asyncio.Task | None = None
         self._stop_tee_event = asyncio.Event()
 
-    def add_queue(self) -> asyncio.Queue:
+    def add_queue(self) -> asyncio.Queue[bytes | None]:
         """Add a new queue to the tee."""
-        queue: asyncio.Queue[bytes] = asyncio.Queue()
+        queue: asyncio.Queue[bytes | None] = asyncio.Queue()
         self.queues.append(queue)
         return queue
 
-    async def run(self) -> None:
+    async def _run(self) -> None:
         """Read from the stream and push to all queues."""
         self.logger.debug("Starting audio tee")
         try:
@@ -65,7 +65,7 @@ class AudioTee:
     def start(self) -> None:
         """Start the tee in the background."""
         if self._task is None:
-            self._task = asyncio.create_task(self.run())
+            self._task = asyncio.create_task(self._run())
 
     async def stop(self) -> None:
         """Stop the tee."""
@@ -91,7 +91,7 @@ async def tee_audio_stream(
 
 
 async def read_from_queue(
-    queue: asyncio.Queue,
+    queue: asyncio.Queue[bytes | None],
     chunk_handler: Callable[[bytes], None] | Callable[[bytes], Awaitable[None]],
     logger: logging.Logger,
 ) -> None:

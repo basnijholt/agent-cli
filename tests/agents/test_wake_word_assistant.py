@@ -97,7 +97,6 @@ class TestRecordAudioWithWakeWord:
         mock_detect.assert_called_once()
         mock_detect_from_queue.assert_called_once()
         mock_record_buffer.assert_called_once()
-        mock_tee_instance.stop.assert_called_once()
 
     @pytest.mark.asyncio
     @patch("agent_cli.agents.wake_word_assistant.wake_word.detect_wake_word")
@@ -173,7 +172,6 @@ class TestRecordAudioWithWakeWord:
         assert result is None
         mock_detect.assert_called_once()
         mock_detect_from_queue.assert_called_once()
-        mock_tee_instance.stop.assert_called_once()
 
 
 class TestGetEmptyText:

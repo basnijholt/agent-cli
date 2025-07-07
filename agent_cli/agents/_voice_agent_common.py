@@ -3,7 +3,6 @@ r"""Common functionalities for voice-based agents."""
 from __future__ import annotations
 
 import logging
-from collections.abc import Awaitable, Callable
 from typing import TYPE_CHECKING
 
 import pyperclip
@@ -15,17 +14,12 @@ from agent_cli.audio import (
     list_input_devices,
     list_output_devices,
     output_device,
-    pyaudio_context,
 )
 from agent_cli.llm import process_and_update_clipboard
 from agent_cli.utils import (
-    InteractiveStopEvent,
-    get_clipboard_text,
-    maybe_live,
     print_device_index,
     print_input_panel,
     print_with_style,
-    signal_handling_context,
 )
 
 if TYPE_CHECKING:
@@ -38,19 +32,12 @@ if TYPE_CHECKING:
         GeneralConfig,
         LLMConfig,
         TTSConfig,
-        WakeWordConfig,
     )
 
 LOGGER = logging.getLogger()
 
 
-RecordingFunc = Callable[
-    ["pyaudio.PyAudio", int | None, InteractiveStopEvent, logging.Logger],
-    Awaitable[bytes | None],
-]
-
-
-def _setup_devices(
+def setup_devices(
     p: pyaudio.PyAudio,
     asr_config: ASRConfig,
     tts_config: TTSConfig,
@@ -89,7 +76,7 @@ def _setup_devices(
     return input_device_index, input_device_name, tts_output_device_index
 
 
-async def _get_instruction_from_audio(
+async def get_instruction_from_audio(
     audio_data: bytes,
     asr_config: ASRConfig,
     logger: logging.Logger,
@@ -125,7 +112,7 @@ async def _get_instruction_from_audio(
         return None
 
 
-async def _process_instruction_and_respond(
+async def process_instruction_and_respond(
     instruction: str,
     original_text: str,
     general_cfg: GeneralConfig,
@@ -182,84 +169,3 @@ async def _process_instruction_and_respond(
                     speed=tts_config.speed,
                     live=live,
                 )
-
-
-async def async_main_voice_agent(
-    *,
-    # Functions
-    recording_func: RecordingFunc,
-    get_original_text_func: Callable[[], str | None] | None = None,
-    # Configs
-    general_cfg: GeneralConfig,
-    asr_config: ASRConfig,
-    llm_config: LLMConfig,
-    tts_config: TTSConfig,
-    file_config: FileConfig,
-    wake_word_config: WakeWordConfig | None = None,
-    # Prompts
-    system_prompt: str,
-    agent_instructions: str,
-) -> None:
-    """Main async function for voice agents."""
-    with pyaudio_context() as p:
-        device_info = _setup_devices(p, asr_config, tts_config, general_cfg.quiet)
-        if device_info is None:
-            return
-        input_device_index, _, tts_output_device_index = device_info
-
-        original_text = get_original_text_func() if get_original_text_func else get_clipboard_text()
-        if original_text is None:
-            return
-
-        if not general_cfg.quiet and original_text:
-            print_input_panel(original_text, title="📝 Text to Process")
-
-        with (
-            maybe_live(not general_cfg.quiet) as live,
-            signal_handling_context(LOGGER, general_cfg.quiet) as main_stop_event,
-        ):
-            while not main_stop_event.is_set():
-                audio_data = await recording_func(
-                    p,
-                    input_device_index,
-                    main_stop_event,
-                    LOGGER,
-                )
-
-                if not audio_data:
-                    if not general_cfg.quiet:
-                        print_with_style("No audio recorded", style="yellow")
-                    continue
-
-                if main_stop_event.is_set():
-                    break
-
-                instruction = await _get_instruction_from_audio(
-                    audio_data,
-                    asr_config,
-                    LOGGER,
-                    general_cfg.quiet,
-                )
-                if not instruction:
-                    continue
-
-                await _process_instruction_and_respond(
-                    instruction=instruction,
-                    original_text=original_text,
-                    general_cfg=general_cfg,
-                    llm_config=llm_config,
-                    tts_config=tts_config,
-                    file_config=file_config,
-                    system_prompt=system_prompt,
-                    agent_instructions=agent_instructions,
-                    tts_output_device_index=tts_output_device_index,
-                    live=live,
-                    logger=LOGGER,
-                )
-
-                if not general_cfg.quiet:
-                    print_with_style("✨ Ready for next command...", style="green")
-
-                # For non-looping agents, break after one cycle
-                if not getattr(wake_word_config, "wake_word_name", False):
-                    break

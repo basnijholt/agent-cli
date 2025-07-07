@@ -30,7 +30,6 @@ from __future__ import annotations
 import asyncio
 import logging
 from contextlib import suppress
-from functools import partial
 from pathlib import Path  # noqa: TC003
 from typing import TYPE_CHECKING
 
@@ -44,11 +43,18 @@ from agent_cli.agents._config import (
     TTSConfig,
     WakeWordConfig,
 )
-from agent_cli.agents._voice_agent_common import async_main_voice_agent
+from agent_cli.agents._voice_agent_common import (
+    get_instruction_from_audio,
+    process_instruction_and_respond,
+    setup_devices,
+)
+from agent_cli.audio import pyaudio_context
 from agent_cli.cli import app, setup_logging
 from agent_cli.utils import (
     InteractiveStopEvent,
+    maybe_live,
     print_with_style,
+    signal_handling_context,
     stop_or_status_or_toggle,
 )
 
@@ -133,7 +139,8 @@ async def _record_audio_with_wake_word(
 
     # Re-open stream to clear buffer and ensure clean recording
     with audio.open_pyaudio_stream(p, **stream_config) as stream:
-        # Tee the audio stream to two queues: one for recording, one for wake word detection
+        record_task: asyncio.Task[bytes | None] | None = None
+        stop_detected_word: str | None = None
         async with audio.tee_audio_stream(stream, stop_event, logger) as tee:
             record_queue = tee.add_queue()
             wake_queue = tee.add_queue()
@@ -153,10 +160,8 @@ async def _record_audio_with_wake_word(
                 queue=wake_queue,
                 quiet=quiet,
             )
-
-            # Stop the tee, which will signal the end of the stream to the queues
-            await tee.stop()
-            audio_data = await record_task
+        # The "tee" is now stopped by the context manager's __aexit__
+        audio_data = await record_task if record_task else None
 
     if not stop_detected_word or stop_event.is_set():
         return None
@@ -173,6 +178,72 @@ async def _record_audio_with_wake_word(
 def get_empty_text() -> str:
     """Return empty string, as this agent doesn't process existing text."""
     return ""
+
+
+async def async_main(
+    *,
+    general_cfg: GeneralConfig,
+    asr_config: ASRConfig,
+    llm_config: LLMConfig,
+    tts_config: TTSConfig,
+    file_config: FileConfig,
+    wake_word_config: WakeWordConfig,
+    system_prompt: str,
+    agent_instructions: str,
+    live: Live | None,
+) -> None:
+    """Core asynchronous logic for the wake word assistant."""
+    with pyaudio_context() as p:
+        device_info = setup_devices(p, asr_config, tts_config, general_cfg.quiet)
+        if device_info is None:
+            return
+        input_device_index, _, tts_output_device_index = device_info
+
+        with signal_handling_context(LOGGER, general_cfg.quiet) as main_stop_event:
+            while not main_stop_event.is_set():
+                audio_data = await _record_audio_with_wake_word(
+                    p,
+                    input_device_index,
+                    main_stop_event,
+                    LOGGER,
+                    wake_word_config=wake_word_config,
+                    quiet=general_cfg.quiet,
+                    live=live,
+                )
+
+                if not audio_data:
+                    if not general_cfg.quiet:
+                        print_with_style("No audio recorded", style="yellow")
+                    continue
+
+                if main_stop_event.is_set():
+                    break
+
+                instruction = await get_instruction_from_audio(
+                    audio_data,
+                    asr_config,
+                    LOGGER,
+                    general_cfg.quiet,
+                )
+                if not instruction:
+                    continue
+
+                await process_instruction_and_respond(
+                    instruction=instruction,
+                    original_text=get_empty_text(),
+                    general_cfg=general_cfg,
+                    llm_config=llm_config,
+                    tts_config=tts_config,
+                    file_config=file_config,
+                    system_prompt=system_prompt,
+                    agent_instructions=agent_instructions,
+                    tts_output_device_index=tts_output_device_index,
+                    live=live,
+                    logger=LOGGER,
+                )
+
+                if not general_cfg.quiet:
+                    print_with_style("✨ Ready for next command...", style="green")
 
 
 @app.command("wake-word-assistant")
@@ -234,7 +305,13 @@ def wake_word_assistant(
     ):
         return
 
-    with process_manager.pid_file_context(process_name), suppress(KeyboardInterrupt):
+    with (
+        process_manager.pid_file_context(process_name),
+        suppress(
+            KeyboardInterrupt,
+        ),
+        maybe_live(not general_cfg.quiet) as live,
+    ):
         wake_word_config = WakeWordConfig(
             server_ip=wake_server_ip,
             server_port=wake_server_port,
@@ -265,12 +342,6 @@ def wake_word_assistant(
         )
         file_config = FileConfig(save_file=save_file)
 
-        recording_func = partial(
-            _record_audio_with_wake_word,
-            wake_word_config=wake_word_config,
-            quiet=general_cfg.quiet,
-        )
-
         variations = ", ".join(
             WAKE_WORD_VARIATIONS.get(wake_word_config.wake_word_name, []),
         )
@@ -284,9 +355,7 @@ def wake_word_assistant(
         )
 
         asyncio.run(
-            async_main_voice_agent(
-                recording_func=recording_func,
-                get_original_text_func=get_empty_text,
+            async_main(
                 general_cfg=general_cfg,
                 asr_config=asr_config,
                 llm_config=llm_config,
@@ -295,5 +364,6 @@ def wake_word_assistant(
                 wake_word_config=wake_word_config,
                 system_prompt=system_prompt,
                 agent_instructions=agent_instructions,
+                live=live,
             ),
         )

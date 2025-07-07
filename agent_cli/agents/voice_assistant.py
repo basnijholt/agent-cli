@@ -39,6 +39,7 @@ import asyncio
 import logging
 from contextlib import suppress
 from pathlib import Path  # noqa: TC003
+from typing import TYPE_CHECKING
 
 import agent_cli.agents._cli_options as opts
 from agent_cli import asr, process_manager
@@ -49,12 +50,24 @@ from agent_cli.agents._config import (
     LLMConfig,
     TTSConfig,
 )
-from agent_cli.agents._voice_agent_common import async_main_voice_agent
+from agent_cli.agents._voice_agent_common import (
+    get_instruction_from_audio,
+    process_instruction_and_respond,
+    setup_devices,
+)
+from agent_cli.audio import pyaudio_context
 from agent_cli.cli import app, setup_logging
 from agent_cli.utils import (
     get_clipboard_text,
+    maybe_live,
+    print_input_panel,
+    print_with_style,
+    signal_handling_context,
     stop_or_status_or_toggle,
 )
+
+if TYPE_CHECKING:
+    from rich.live import Live
 
 LOGGER = logging.getLogger()
 
@@ -83,6 +96,69 @@ Return ONLY the resulting text (either the edit or the answer), with no extra fo
 
 
 # --- Main Application Logic ---
+
+
+async def async_main(
+    *,
+    general_cfg: GeneralConfig,
+    asr_config: ASRConfig,
+    llm_config: LLMConfig,
+    tts_config: TTSConfig,
+    file_config: FileConfig,
+    live: Live | None,
+) -> None:
+    """Core asynchronous logic for the voice assistant."""
+    with pyaudio_context() as p:
+        device_info = setup_devices(p, asr_config, tts_config, general_cfg.quiet)
+        if device_info is None:
+            return
+        input_device_index, _, tts_output_device_index = device_info
+
+        original_text = get_clipboard_text()
+        if original_text is None:
+            return
+
+        if not general_cfg.quiet and original_text:
+            print_input_panel(original_text, title="📝 Text to Process")
+
+        with signal_handling_context(LOGGER, general_cfg.quiet) as main_stop_event:
+            audio_data = await asr.record_audio_with_manual_stop(
+                p,
+                input_device_index,
+                main_stop_event,
+                LOGGER,
+            )
+
+            if not audio_data:
+                if not general_cfg.quiet:
+                    print_with_style("No audio recorded", style="yellow")
+                return
+
+            if main_stop_event.is_set():
+                return
+
+            instruction = await get_instruction_from_audio(
+                audio_data,
+                asr_config,
+                LOGGER,
+                general_cfg.quiet,
+            )
+            if not instruction:
+                return
+
+            await process_instruction_and_respond(
+                instruction=instruction,
+                original_text=original_text,
+                general_cfg=general_cfg,
+                llm_config=llm_config,
+                tts_config=tts_config,
+                file_config=file_config,
+                system_prompt=SYSTEM_PROMPT,
+                agent_instructions=AGENT_INSTRUCTIONS,
+                tts_output_device_index=tts_output_device_index,
+                live=live,
+                logger=LOGGER,
+            )
 
 
 @app.command("voice-assistant")
@@ -150,7 +226,13 @@ def voice_assistant(
         return
 
     # Use context manager for PID file management
-    with process_manager.pid_file_context(process_name), suppress(KeyboardInterrupt):
+    with (
+        process_manager.pid_file_context(process_name),
+        suppress(KeyboardInterrupt),
+        maybe_live(
+            not general_cfg.quiet,
+        ) as live,
+    ):
         asr_config = ASRConfig(
             server_ip=asr_server_ip,
             server_port=asr_server_port,
@@ -174,15 +256,12 @@ def voice_assistant(
         file_config = FileConfig(save_file=save_file)
 
         asyncio.run(
-            async_main_voice_agent(
-                recording_func=asr.record_audio_with_manual_stop,
-                get_original_text_func=get_clipboard_text,
+            async_main(
                 general_cfg=general_cfg,
                 asr_config=asr_config,
                 llm_config=llm_config,
                 tts_config=tts_config,
                 file_config=file_config,
-                system_prompt=SYSTEM_PROMPT,
-                agent_instructions=AGENT_INSTRUCTIONS,
+                live=live,
             ),
         )
