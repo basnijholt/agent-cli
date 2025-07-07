@@ -177,11 +177,6 @@ async def _record_audio_with_wake_word(
     return audio_data
 
 
-def _get_empty_text() -> str:
-    """Return empty string, as this agent doesn't process existing text."""
-    return ""
-
-
 async def _async_main(
     *,
     general_cfg: GeneralConfig,
@@ -232,7 +227,7 @@ async def _async_main(
 
                 await process_instruction_and_respond(
                     instruction=instruction,
-                    original_text=_get_empty_text(),
+                    original_text="",
                     general_cfg=general_cfg,
                     llm_config=llm_config,
                     tts_config=tts_config,
