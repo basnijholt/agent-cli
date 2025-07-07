@@ -32,7 +32,7 @@ import logging
 from contextlib import suppress
 from functools import partial
 from pathlib import Path  # noqa: TC003
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING
 
 import agent_cli.agents._cli_options as opts
 from agent_cli import asr, audio, process_manager, wake_word
@@ -180,7 +180,7 @@ def wake_word_assistant(
     # Wake word parameters
     wake_server_ip: str = opts.WAKE_WORD_SERVER_IP,
     wake_server_port: int = opts.WAKE_WORD_SERVER_PORT,
-    wake_word_name: Literal["ok_nabu", "alexa", "hey_jarvis"] = opts.WAKE_WORD_NAME,
+    wake_word_name: str = opts.WAKE_WORD_NAME,
     # ASR parameters
     input_device_index: int | None = opts.DEVICE_INDEX,
     input_device_name: str | None = opts.DEVICE_NAME,
