@@ -142,7 +142,6 @@ def transcribe(
     # ASR
     input_device_index: int | None = opts.DEVICE_INDEX,
     input_device_name: str | None = opts.DEVICE_NAME,
-    list_input_devices: bool = opts.LIST_DEVICES,
     asr_server_ip: str = opts.ASR_SERVER_IP,
     asr_server_port: int = opts.ASR_SERVER_PORT,
     # LLM
@@ -157,6 +156,7 @@ def transcribe(
     clipboard: bool = opts.CLIPBOARD,
     log_level: str = opts.LOG_LEVEL,
     log_file: str | None = opts.LOG_FILE,
+    list_devices: bool = opts.LIST_DEVICES,
     quiet: bool = opts.QUIET,
     config_file: str | None = opts.CONFIG_FILE,  # noqa: ARG001
 ) -> None:
@@ -173,6 +173,7 @@ def transcribe(
         log_level=log_level,
         log_file=log_file,
         quiet=quiet,
+        list_devices=list_devices,
         clipboard=clipboard,
     )
     process_name = "transcribe"
@@ -192,14 +193,13 @@ def transcribe(
             server_port=asr_server_port,
             input_device_index=input_device_index,
             input_device_name=input_device_name,
-            list_input_devices=list_input_devices,
         )
         # We only use setup_devices for its input device handling
         device_info = setup_devices(
             p,
+            general_cfg,
             asr_config,
             None,
-            quiet,
         )
         if device_info is None:
             return

@@ -38,8 +38,8 @@ DEVICE_NAME: str | None = typer.Option(
 )
 LIST_DEVICES: bool = typer.Option(
     False,  # noqa: FBT003
-    "--list-input-devices",
-    help="List available audio input devices and exit.",
+    "--list-devices",
+    help="List available audio input and output devices and exit.",
     is_eager=True,
 )
 ASR_SERVER_IP: str = typer.Option(
@@ -108,12 +108,6 @@ OUTPUT_DEVICE_NAME: str | None = typer.Option(
     "--output-device-name",
     help="Output device name keywords for partial matching. Supports comma-separated list where each term can partially match device names (case-insensitive). First matching device is selected.",
 )
-LIST_OUTPUT_DEVICES: bool = typer.Option(
-    False,  # noqa: FBT003
-    "--list-output-devices",
-    help="List available audio output devices and exit.",
-    is_eager=True,
-)
 ENABLE_TTS: bool = typer.Option(
     False,  # noqa: FBT003
     "--tts/--no-tts",
@@ -149,7 +143,7 @@ TOGGLE: bool = typer.Option(
 
 
 def _conf_callback(ctx: typer.Context, param: typer.CallbackParam, value: str) -> str:  # noqa: ARG001
-    from agent_cli.cli import set_config_defaults
+    from agent_cli.cli import set_config_defaults  # noqa: PLC0415
 
     set_config_defaults(ctx, value)
     return value

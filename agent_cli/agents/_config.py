@@ -25,7 +25,6 @@ class ASRConfig:
     server_port: int
     input_device_index: int | None
     input_device_name: str | None
-    list_input_devices: bool
 
 
 @dataclass
@@ -40,7 +39,6 @@ class TTSConfig:
     speaker: str | None
     output_device_index: int | None
     output_device_name: str | None
-    list_output_devices: bool
     speed: float = 1.0  # Speech speed multiplier (1.0 = normal, 2.0 = 2x speed, etc.)
 
 
@@ -51,6 +49,7 @@ class GeneralConfig:
     log_level: str
     log_file: str | None
     quiet: bool
+    list_devices: bool
     clipboard: bool = True  # Default value since not all agents have it
 
 
@@ -78,4 +77,3 @@ class WakeWordConfig:
     wake_word_name: str
     input_device_index: int | None
     input_device_name: str | None
-    list_input_devices: bool

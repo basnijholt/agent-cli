@@ -84,6 +84,7 @@ async def test_async_main_list_devices(tmp_path: Path) -> None:
         log_level="INFO",
         log_file=None,
         quiet=False,
+        list_devices=True,
         clipboard=False,
     )
     general_cfg.__dict__["console"] = MagicMock()
@@ -92,7 +93,6 @@ async def test_async_main_list_devices(tmp_path: Path) -> None:
         server_port=1234,
         input_device_index=None,
         input_device_name=None,
-        list_input_devices=True,
     )
     llm_config = LLMConfig(model="test-model", ollama_host="localhost")
     tts_config = TTSConfig(
@@ -104,7 +104,6 @@ async def test_async_main_list_devices(tmp_path: Path) -> None:
         speaker=None,
         output_device_index=None,
         output_device_name=None,
-        list_output_devices=False,
         speed=1.0,
     )
     file_config = FileConfig(save_file=None, history_dir=tmp_path)
@@ -128,11 +127,12 @@ async def test_async_main_list_devices(tmp_path: Path) -> None:
 
 @pytest.mark.asyncio
 async def test_async_main_list_output_devices(tmp_path: Path) -> None:
-    """Test the async_main function with list_output_devices_flag=True."""
+    """Test the async_main function with list_devices=True."""
     general_cfg = GeneralConfig(
         log_level="INFO",
         log_file=None,
         quiet=False,
+        list_devices=False,
         clipboard=False,
     )
     asr_config = ASRConfig(
@@ -140,7 +140,6 @@ async def test_async_main_list_output_devices(tmp_path: Path) -> None:
         server_port=1234,
         input_device_index=None,
         input_device_name=None,
-        list_input_devices=False,
     )
     llm_config = LLMConfig(model="test-model", ollama_host="localhost")
     tts_config = TTSConfig(
@@ -152,7 +151,6 @@ async def test_async_main_list_output_devices(tmp_path: Path) -> None:
         speaker=None,
         output_device_index=None,
         output_device_name=None,
-        list_output_devices=True,
         speed=1.0,
     )
     file_config = FileConfig(save_file=None, history_dir=tmp_path)
@@ -183,6 +181,7 @@ async def test_async_main_full_loop(tmp_path: Path) -> None:
     general_cfg = GeneralConfig(
         log_level="INFO",
         log_file=None,
+        list_devices=False,
         quiet=False,
         clipboard=False,
     )
@@ -191,7 +190,6 @@ async def test_async_main_full_loop(tmp_path: Path) -> None:
         server_port=1234,
         input_device_index=1,
         input_device_name=None,
-        list_input_devices=False,
     )
     llm_config = LLMConfig(model="test-model", ollama_host="localhost")
     tts_config = TTSConfig(
@@ -203,7 +201,6 @@ async def test_async_main_full_loop(tmp_path: Path) -> None:
         speaker=None,
         output_device_index=1,
         output_device_name=None,
-        list_output_devices=False,
         speed=1.0,
     )
     file_config = FileConfig(save_file=None, history_dir=history_dir)

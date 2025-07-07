@@ -44,6 +44,7 @@ async def test_speak_e2e(
         general_cfg = GeneralConfig(
             log_level="INFO",
             log_file=None,
+            list_devices=False,
             quiet=False,
         )
         general_cfg.__dict__["console"] = mock_console
@@ -56,7 +57,6 @@ async def test_speak_e2e(
             speaker=None,
             output_device_index=None,
             output_device_name=None,
-            list_output_devices=False,
             speed=1.0,
         )
         file_config = FileConfig(save_file=None)

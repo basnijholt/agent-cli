@@ -23,13 +23,18 @@ from tests.mocks.audio import MockPyAudio
 
 def get_configs() -> tuple[GeneralConfig, ASRConfig, LLMConfig, TTSConfig, FileConfig]:
     """Get all the necessary configs for the e2e test."""
-    general_cfg = GeneralConfig(log_level="INFO", log_file=None, quiet=False, clipboard=True)
+    general_cfg = GeneralConfig(
+        log_level="INFO",
+        log_file=None,
+        quiet=False,
+        list_devices=False,
+        clipboard=True,
+    )
     asr_config = ASRConfig(
         server_ip="mock-asr-host",
         server_port=10300,
         input_device_index=0,
         input_device_name=None,
-        list_input_devices=False,
     )
     llm_config = LLMConfig(model="test-model", ollama_host="http://localhost:11434")
     tts_config = TTSConfig(
@@ -41,7 +46,6 @@ def get_configs() -> tuple[GeneralConfig, ASRConfig, LLMConfig, TTSConfig, FileC
         speaker=None,
         output_device_index=None,
         output_device_name=None,
-        list_output_devices=False,
         speed=1.0,
     )
     file_config = FileConfig(save_file=None)

@@ -37,9 +37,9 @@ async def _async_main(
         # We only use setup_devices for its output device handling
         device_info = setup_devices(
             p,
+            general_cfg,
             None,
             tts_config,
-            general_cfg.quiet,
         )
         if device_info is None:
             return
@@ -93,7 +93,7 @@ def speak(
     # Output device
     output_device_index: int | None = opts.OUTPUT_DEVICE_INDEX,
     output_device_name: str | None = opts.OUTPUT_DEVICE_NAME,
-    list_output_devices_flag: bool = opts.LIST_OUTPUT_DEVICES,
+    list_devices: bool = opts.LIST_DEVICES,
     # Output file
     save_file: Path | None = typer.Option(  # noqa: B008
         None,
@@ -122,7 +122,12 @@ def speak(
     - Run in background: agent-cli speak "Hello" &
     """
     setup_logging(log_level, log_file, quiet=quiet)
-    general_cfg = GeneralConfig(log_level=log_level, log_file=log_file, quiet=quiet)
+    general_cfg = GeneralConfig(
+        log_level=log_level,
+        log_file=log_file,
+        quiet=quiet,
+        list_devices=list_devices,
+    )
     process_name = "speak"
     if stop_or_status_or_toggle(
         process_name,
@@ -145,7 +150,6 @@ def speak(
             speaker=speaker,
             output_device_index=output_device_index,
             output_device_name=output_device_name,
-            list_output_devices=list_output_devices_flag,
             speed=tts_speed,
         )
         file_config = FileConfig(save_file=save_file)

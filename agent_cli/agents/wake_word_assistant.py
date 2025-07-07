@@ -190,7 +190,7 @@ async def _async_main(
 ) -> None:
     """Core asynchronous logic for the wake word assistant."""
     with pyaudio_context() as p:
-        device_info = setup_devices(p, asr_config, tts_config, general_cfg.quiet)
+        device_info = setup_devices(p, general_cfg, asr_config, tts_config)
         if device_info is None:
             return
         input_device_index, _, tts_output_device_index = device_info
@@ -252,7 +252,6 @@ def wake_word_assistant(
     # ASR parameters
     input_device_index: int | None = opts.DEVICE_INDEX,
     input_device_name: str | None = opts.DEVICE_NAME,
-    list_input_devices: bool = opts.LIST_DEVICES,
     asr_server_ip: str = opts.ASR_SERVER_IP,
     asr_server_port: int = opts.ASR_SERVER_PORT,
     # LLM parameters
@@ -272,13 +271,13 @@ def wake_word_assistant(
     tts_speed: float = opts.TTS_SPEED,
     output_device_index: int | None = opts.OUTPUT_DEVICE_INDEX,
     output_device_name: str | None = opts.OUTPUT_DEVICE_NAME,
-    list_output_devices_flag: bool = opts.LIST_OUTPUT_DEVICES,
     # Output
     save_file: Path | None = opts.SAVE_FILE,
     # General
     clipboard: bool = opts.CLIPBOARD,
     log_level: str = opts.LOG_LEVEL,
     log_file: str | None = opts.LOG_FILE,
+    list_devices: bool = opts.LIST_DEVICES,
     quiet: bool = opts.QUIET,
     config_file: str | None = opts.CONFIG_FILE,  # noqa: ARG001
 ) -> None:
@@ -288,6 +287,7 @@ def wake_word_assistant(
         log_level=log_level,
         log_file=log_file,
         quiet=quiet,
+        list_devices=list_devices,
         clipboard=clipboard,
     )
     process_name = "wake-word-assistant"
@@ -314,14 +314,12 @@ def wake_word_assistant(
             wake_word_name=wake_word_name,
             input_device_index=input_device_index,
             input_device_name=input_device_name,
-            list_input_devices=list_input_devices,
         )
         asr_config = ASRConfig(
             server_ip=asr_server_ip,
             server_port=asr_server_port,
             input_device_index=input_device_index,
             input_device_name=input_device_name,
-            list_input_devices=list_input_devices,
         )
         llm_config = LLMConfig(model=model, ollama_host=ollama_host)
         tts_config = TTSConfig(
@@ -333,7 +331,6 @@ def wake_word_assistant(
             speaker=speaker,
             output_device_index=output_device_index,
             output_device_name=output_device_name,
-            list_output_devices=list_output_devices_flag,
             speed=tts_speed,
         )
         file_config = FileConfig(save_file=save_file)

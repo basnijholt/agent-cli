@@ -46,12 +46,12 @@ async def test_transcribe_main(
             server_port=12345,
             input_device_index=None,
             input_device_name=None,
-            list_input_devices=False,
         )
         general_cfg = GeneralConfig(
             log_level="INFO",
             log_file=None,
             quiet=True,
+            list_devices=False,
             clipboard=True,
         )
         llm_config = LLMConfig(model="", ollama_host="")
