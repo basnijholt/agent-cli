@@ -98,8 +98,8 @@ async def _record_audio_with_wake_word(
             style="dim",
         )
 
-    stream_config = asr.setup_input_stream(input_device_index)
-    with asr.open_pyaudio_stream(p, **stream_config) as stream:
+    stream_config = audio.setup_input_stream(input_device_index)
+    with audio.open_pyaudio_stream(p, **stream_config) as stream:
         detected_word = await wake_word.detect_wake_word(
             wake_server_ip=wake_word_config.server_ip,
             wake_server_port=wake_word_config.server_port,
@@ -111,15 +111,17 @@ async def _record_audio_with_wake_word(
             quiet=quiet,
         )
 
-        if not detected_word or stop_event.is_set():
-            return None
+    if not detected_word or stop_event.is_set():
+        return None
 
-        if not quiet:
-            print_with_style(
-                f"✅ Wake word '{detected_word}' detected! Starting recording...",
-                style="green",
-            )
+    if not quiet:
+        print_with_style(
+            f"✅ Wake word '{detected_word}' detected! Starting recording...",
+            style="green",
+        )
 
+    # Re-open stream to clear buffer and ensure clean recording
+    with audio.open_pyaudio_stream(p, **stream_config) as stream:
         # Tee the audio stream to two queues: one for recording, one for wake word detection
         async with audio.tee_audio_stream(stream, stop_event, logger) as tee:
             record_queue = tee.add_queue()
@@ -145,16 +147,16 @@ async def _record_audio_with_wake_word(
             await tee.stop()
             audio_data = await record_task
 
-        if not stop_detected_word or stop_event.is_set():
-            return None
+    if not stop_detected_word or stop_event.is_set():
+        return None
 
-        if not quiet:
-            print_with_style(
-                f"🛑 Wake word '{stop_detected_word}' detected! Stopping recording...",
-                style="yellow",
-            )
+    if not quiet:
+        print_with_style(
+            f"🛑 Wake word '{stop_detected_word}' detected! Stopping recording...",
+            style="yellow",
+        )
 
-        return audio_data
+    return audio_data
 
 
 def get_empty_text() -> str:
