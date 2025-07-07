@@ -27,6 +27,7 @@ if TYPE_CHECKING:
 
     from agent_cli.agents._config import (
         ASRConfig,
+        GeneralConfig,
         TTSConfig,
     )
 
@@ -315,22 +316,11 @@ def list_output_devices(p: pyaudio.PyAudio) -> None:
             console.print(f"  [yellow]{device['index']}[/yellow]: {device['name']}")
 
 
-def _list_all_devices(p: pyaudio.PyAudio) -> None:
+def list_all_devices(p: pyaudio.PyAudio) -> None:
     """Print a numbered list of all available audio devices with their capabilities."""
-    console.print("[bold]All available audio devices:[/bold]")
-    for device in _get_all_devices(p):
-        input_channels = device.get("maxInputChannels", 0)
-        output_channels = device.get("maxOutputChannels", 0)
-
-        capabilities = []
-        if input_channels > 0:
-            capabilities.append(f"{input_channels} input")
-        if output_channels > 0:
-            capabilities.append(f"{output_channels} output")
-
-        if capabilities:
-            cap_str = " (" + ", ".join(capabilities) + ")"
-            console.print(f"  [yellow]{device['index']}[/yellow]: {device['name']}{cap_str}")
+    list_input_devices(p)
+    console.print()
+    list_output_devices(p)
 
 
 def _in_or_out_device(
@@ -395,17 +385,13 @@ def output_device(
 
 def setup_devices(
     p: pyaudio.PyAudio,
+    general_config: GeneralConfig,
     asr_config: ASRConfig | None,
     tts_config: TTSConfig | None,
-    quiet: bool,
 ) -> tuple[int | None, str | None, int | None] | None:
     """Handle device listing and setup."""
-    if asr_config and asr_config.list_input_devices:
-        list_input_devices(p)
-        return None
-
-    if tts_config and tts_config.list_output_devices:
-        list_output_devices(p)
+    if general_config.list_devices:
+        list_all_devices(p)
         return None
 
     # Setup input device
@@ -414,7 +400,7 @@ def setup_devices(
         asr_config.input_device_name if asr_config else None,
         asr_config.input_device_index if asr_config else None,
     )
-    if not quiet:
+    if not general_config.quiet:
         print_device_index(input_device_index, input_device_name)
 
     # Setup output device for TTS if enabled
@@ -429,7 +415,7 @@ def setup_devices(
             tts_config.output_device_name,
             tts_config.output_device_index,
         )
-        if tts_output_device_index is not None and not quiet:
+        if tts_output_device_index is not None and not general_config.quiet:
             msg = f"🔊 TTS output device [bold yellow]{tts_output_device_index}[/bold yellow] ([italic]{tts_output_device_name}[/italic])"
             print_with_style(msg)
 

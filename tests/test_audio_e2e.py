@@ -85,7 +85,7 @@ def test_list_all_devices(
 
     with audio.pyaudio_context() as p:
         # Test listing all devices
-        audio._list_all_devices(p)
+        audio.list_all_devices(p)
 
     # Verify no exceptions are raised
 

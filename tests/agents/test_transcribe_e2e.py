@@ -48,12 +48,12 @@ async def test_transcribe_e2e(
         server_port=10300,
         input_device_index=0,
         input_device_name=None,
-        list_input_devices=False,
     )
     general_cfg = GeneralConfig(
         log_level="INFO",
         log_file=None,
         quiet=False,
+        list_devices=False,
         clipboard=False,
     )
     llm_config = LLMConfig(model="", ollama_host="")
