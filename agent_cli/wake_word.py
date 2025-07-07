@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from typing import TYPE_CHECKING
 
 from wyoming.audio import AudioChunk, AudioStart, AudioStop
@@ -12,7 +13,6 @@ from agent_cli.audio import read_audio_stream, read_from_queue
 from agent_cli.wyoming_utils import manage_send_receive_tasks, wyoming_client_context
 
 if TYPE_CHECKING:
-    import asyncio
     import logging
     from collections.abc import Callable
 
@@ -183,7 +183,7 @@ async def detect_wake_word(
                     quiet=quiet,
                 ),
                 receive_wake_detection(client, logger, detection_callback=detection_callback),
-                return_when="FIRST_COMPLETED",
+                return_when=asyncio.FIRST_COMPLETED,
             )
 
             # If recv_task completed first, it means we detected a wake word
@@ -223,7 +223,7 @@ async def detect_wake_word_from_queue(
                     logger,
                 ),
                 receive_wake_detection(client, logger, detection_callback=detection_callback),
-                return_when="FIRST_COMPLETED",
+                return_when=asyncio.FIRST_COMPLETED,
             )
 
             if not recv_task.cancelled():

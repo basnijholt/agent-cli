@@ -66,14 +66,14 @@ async def manage_send_receive_tasks(
     send_task_coro: Coroutine,
     receive_task_coro: Coroutine,
     *,
-    return_when: str = "ALL_COMPLETED",
+    return_when: str = asyncio.ALL_COMPLETED,
 ) -> tuple[asyncio.Task, asyncio.Task]:
     """Manage send and receive tasks with proper cancellation.
 
     Args:
         send_task_coro: Send task coroutine
         receive_task_coro: Receive task coroutine
-        return_when: When to return ("ALL_COMPLETED", "FIRST_COMPLETED")
+        return_when: When to return (e.g., asyncio.ALL_COMPLETED)
 
     Returns:
         Tuple of (send_task, receive_task) - both completed or cancelled
@@ -84,7 +84,7 @@ async def manage_send_receive_tasks(
 
     done, pending = await asyncio.wait(
         [send_task, recv_task],
-        return_when=getattr(asyncio, return_when),
+        return_when=return_when,
     )
 
     # Cancel any pending tasks

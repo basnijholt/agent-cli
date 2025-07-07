@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import io
 from typing import TYPE_CHECKING
 
@@ -19,7 +20,6 @@ from agent_cli.utils import print_with_style
 from agent_cli.wyoming_utils import manage_send_receive_tasks, wyoming_client_context
 
 if TYPE_CHECKING:
-    import asyncio
     import logging
     from collections.abc import Callable
 
@@ -247,6 +247,7 @@ async def transcribe_live_audio(
                         chunk_callback=chunk_callback,
                         final_callback=final_callback,
                     ),
+                    return_when=asyncio.ALL_COMPLETED,
                 )
                 return recv_task.result()
     except (ConnectionRefusedError, Exception):

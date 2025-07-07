@@ -200,7 +200,6 @@ def setup_input_stream(
     """Get standard PyAudio input stream configuration.
 
     Args:
-        p: PyAudio instance
         input_device_index: Input device index
 
     Returns:
@@ -218,7 +217,6 @@ def setup_input_stream(
 
 
 def setup_output_stream(
-    p: pyaudio.PyAudio,
     output_device_index: int | None,
     *,
     sample_rate: int | None = None,
@@ -239,7 +237,7 @@ def setup_output_stream(
 
     """
     return {
-        "format": p.get_format_from_width(sample_width or 2),
+        "format": pyaudio.get_format_from_width(sample_width or 2),
         "channels": channels or config.PYAUDIO_CHANNELS,
         "rate": sample_rate or config.PYAUDIO_RATE,
         "output": True,
