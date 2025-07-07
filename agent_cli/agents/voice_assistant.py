@@ -39,9 +39,6 @@ import asyncio
 import logging
 from contextlib import suppress
 from pathlib import Path  # noqa: TC003
-from typing import TYPE_CHECKING
-
-import pyperclip
 
 import agent_cli.agents._cli_options as opts
 from agent_cli import asr, process_manager
@@ -52,29 +49,12 @@ from agent_cli.agents._config import (
     LLMConfig,
     TTSConfig,
 )
-from agent_cli.agents._tts_common import handle_tts_playback
-from agent_cli.audio import (
-    input_device,
-    list_input_devices,
-    list_output_devices,
-    output_device,
-    pyaudio_context,
-)
+from agent_cli.agents._voice_agent_common import async_main_voice_agent
 from agent_cli.cli import app, setup_logging
-from agent_cli.llm import process_and_update_clipboard
 from agent_cli.utils import (
-    console,
     get_clipboard_text,
-    maybe_live,
-    print_device_index,
-    print_input_panel,
-    print_with_style,
-    signal_handling_context,
     stop_or_status_or_toggle,
 )
-
-if TYPE_CHECKING:
-    import pyaudio
 
 LOGGER = logging.getLogger()
 
@@ -103,140 +83,6 @@ Return ONLY the resulting text (either the edit or the answer), with no extra fo
 
 
 # --- Main Application Logic ---
-
-
-def _setup_input_device(
-    p: pyaudio.PyAudio,
-    quiet: bool,
-    input_device_name: str | None,
-    input_device_index: int | None,
-) -> tuple[int | None, str | None]:
-    input_device_index, input_device_name = input_device(p, input_device_name, input_device_index)
-    if not quiet:
-        print_device_index(input_device_index, input_device_name)
-    return input_device_index, input_device_name
-
-
-async def async_main(
-    *,
-    general_cfg: GeneralConfig,
-    asr_config: ASRConfig,
-    llm_config: LLMConfig,
-    tts_config: TTSConfig,
-    file_config: FileConfig,
-) -> None:
-    """Main async function, consumes parsed arguments."""
-    with pyaudio_context() as p:
-        # Handle device listing
-        if asr_config.list_input_devices:
-            list_input_devices(p, not general_cfg.quiet)
-            return
-
-        if tts_config.list_output_devices:
-            list_output_devices(p, not general_cfg.quiet)
-            return
-
-        # Setup input device for ASR
-        input_device_index, input_device_name = _setup_input_device(
-            p,
-            general_cfg.quiet,
-            asr_config.input_device_name,
-            asr_config.input_device_index,
-        )
-
-        # Setup output device for TTS if enabled
-        tts_output_device_index = tts_config.output_device_index
-        if tts_config.enabled and (tts_config.output_device_name or tts_config.output_device_index):
-            tts_output_device_index, tts_output_device_name = output_device(
-                p,
-                tts_config.output_device_name,
-                tts_config.output_device_index,
-            )
-            if tts_output_device_index is not None and not general_cfg.quiet:
-                msg = f"🔊 TTS output device [bold yellow]{tts_output_device_index}[/bold yellow] ([italic]{tts_output_device_name}[/italic])"
-                print_with_style(msg)
-
-        original_text = get_clipboard_text()
-        if not original_text:
-            return
-
-        if not general_cfg.quiet:
-            print_input_panel(original_text, title="📝 Text to Process")
-
-        with (
-            maybe_live(not general_cfg.quiet) as live,
-            signal_handling_context(LOGGER, general_cfg.quiet) as stop_event,
-        ):
-            # Define callbacks for voice assistant specific formatting
-            def chunk_callback(chunk_text: str) -> None:
-                """Handle transcript chunks as they arrive."""
-                if not general_cfg.quiet:
-                    console.print(chunk_text, end="")
-
-            def final_callback(transcript_text: str) -> None:
-                """Format the final instruction result."""
-                if not general_cfg.quiet:
-                    print_input_panel(
-                        transcript_text,
-                        title="🎯 Instruction",
-                        style="bold yellow",
-                    )
-
-            instruction = await asr.transcribe_audio(
-                asr_server_ip=asr_config.server_ip,
-                asr_server_port=asr_config.server_port,
-                input_device_index=input_device_index,
-                logger=LOGGER,
-                p=p,
-                stop_event=stop_event,
-                quiet=general_cfg.quiet,
-                live=live,
-                chunk_callback=chunk_callback,
-                final_callback=final_callback,
-            )
-
-            if not instruction or not instruction.strip():
-                if not general_cfg.quiet:
-                    print_with_style(
-                        "No instruction was transcribed. Exiting.",
-                        style="yellow",
-                    )
-                return
-
-            await process_and_update_clipboard(
-                system_prompt=SYSTEM_PROMPT,
-                agent_instructions=AGENT_INSTRUCTIONS,
-                model=llm_config.model,
-                ollama_host=llm_config.ollama_host,
-                logger=LOGGER,
-                original_text=original_text,
-                instruction=instruction,
-                clipboard=general_cfg.clipboard,
-                quiet=general_cfg.quiet,
-                live=live,
-            )
-
-            # Handle TTS response if enabled
-            if tts_config.enabled and general_cfg.clipboard:
-                response_text = pyperclip.paste()
-                if response_text and response_text.strip():
-                    await handle_tts_playback(
-                        response_text,
-                        tts_server_ip=tts_config.server_ip,
-                        tts_server_port=tts_config.server_port,
-                        voice_name=tts_config.voice_name,
-                        tts_language=tts_config.language,
-                        speaker=tts_config.speaker,
-                        output_device_index=tts_output_device_index,
-                        save_file=file_config.save_file,
-                        quiet=general_cfg.quiet,
-                        logger=LOGGER,
-                        play_audio=not file_config.save_file,  # Don't play if saving to file
-                        status_message="🔊 Speaking response...",
-                        description="TTS audio",
-                        speed=tts_config.speed,
-                        live=live,
-                    )
 
 
 @app.command("voice-assistant")
@@ -328,11 +174,15 @@ def voice_assistant(
         file_config = FileConfig(save_file=save_file)
 
         asyncio.run(
-            async_main(
+            async_main_voice_agent(
+                recording_func=asr.record_audio_with_manual_stop,
+                get_original_text_func=get_clipboard_text,
                 general_cfg=general_cfg,
                 asr_config=asr_config,
                 llm_config=llm_config,
                 tts_config=tts_config,
                 file_config=file_config,
+                system_prompt=SYSTEM_PROMPT,
+                agent_instructions=AGENT_INSTRUCTIONS,
             ),
         )
