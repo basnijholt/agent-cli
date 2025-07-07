@@ -11,33 +11,11 @@ from agent_cli.agents.interactive import (
     GeneralConfig,
     LLMConfig,
     TTSConfig,
+    _async_main,
     _handle_conversation_turn,
-    _setup_output_device,
-    async_main,
 )
 from agent_cli.cli import app
 from agent_cli.utils import InteractiveStopEvent
-
-
-def test_setup_output_device():
-    """Test the _setup_output_device function."""
-    mock_p = MagicMock()
-    mock_p.get_device_info_by_index.return_value = {"name": "Test Output Device"}
-
-    with (
-        patch("agent_cli.audio.output_device", return_value=(0, "Test Output Device")),
-        patch("agent_cli.utils.console") as mock_console,
-    ):
-        input_device_index, input_device_name = _setup_output_device(
-            mock_p,
-            quiet=False,
-            input_device_name="Test Output Device",
-            input_device_index=0,
-        )
-
-    assert input_device_index == 0
-    assert input_device_name == "Test Output Device"
-    mock_console.print.assert_called_once()
 
 
 @pytest.mark.asyncio
@@ -124,16 +102,17 @@ def test_interactive_command_list_output_devices():
     runner = CliRunner()
     with (
         patch(
-            "agent_cli.agents.interactive.list_output_devices",
-        ) as mock_list_output_devices,
+            "agent_cli.agents.interactive.setup_devices",
+        ) as mock_setup_devices,
         patch(
             "agent_cli.agents.interactive.pyaudio_context",
         ) as mock_pyaudio_context,
     ):
+        mock_setup_devices.return_value = None
         result = runner.invoke(app, ["interactive", "--list-output-devices"])
         assert result.exit_code == 0
         mock_pyaudio_context.assert_called_once()
-        mock_list_output_devices.assert_called_once()
+        mock_setup_devices.assert_called_once()
 
 
 @pytest.mark.asyncio
@@ -170,7 +149,7 @@ async def test_async_main_exception_handling():
         patch("agent_cli.agents.interactive.console") as mock_console,
     ):
         with pytest.raises(Exception, match="Test error"):
-            await async_main(
+            await _async_main(
                 general_cfg=general_cfg,
                 asr_config=asr_config,
                 llm_config=llm_config,

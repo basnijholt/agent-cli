@@ -11,15 +11,15 @@ import typer
 
 import agent_cli.agents._cli_options as opts
 from agent_cli import process_manager
-from agent_cli.agents._config import FileConfig, GeneralConfig, TTSConfig
+from agent_cli.agents._config import ASRConfig, FileConfig, GeneralConfig, TTSConfig
 from agent_cli.agents._tts_common import handle_tts_playback
-from agent_cli.audio import list_output_devices, output_device, pyaudio_context
+from agent_cli.agents._voice_agent_common import setup_devices
+from agent_cli.audio import pyaudio_context
 from agent_cli.cli import app, setup_logging
 from agent_cli.utils import (
     get_clipboard_text,
     maybe_live,
     print_input_panel,
-    print_with_style,
     stop_or_status_or_toggle,
 )
 
@@ -35,19 +35,22 @@ async def async_main(
 ) -> None:
     """Async entry point for the speak command."""
     with pyaudio_context() as p:
-        if tts_config.list_output_devices:
-            list_output_devices(p)
-            return
-
-        # Setup output device
-        output_device_index, output_device_name = output_device(
+        # We only use setup_devices for its output device handling
+        device_info = setup_devices(
             p,
-            tts_config.output_device_name,
-            tts_config.output_device_index,
+            ASRConfig(
+                server_ip="",
+                server_port=0,
+                input_device_index=None,
+                input_device_name=None,
+                list_input_devices=False,
+            ),
+            tts_config,
+            general_cfg.quiet,
         )
-        if not general_cfg.quiet and output_device_index is not None:
-            msg = f"🔊 Using output device [bold yellow]{output_device_index}[/bold yellow] ([italic]{output_device_name}[/italic])"
-            print_with_style(msg)
+        if device_info is None:
+            return
+        _, _, output_device_index = device_info
 
         # Get text from argument or clipboard
         if text is None:

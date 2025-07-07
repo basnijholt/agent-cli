@@ -17,11 +17,9 @@ from tests.mocks.wyoming import MockASRClient
 @patch("agent_cli.asr.wyoming_client_context")
 @patch("agent_cli.agents.transcribe.pyperclip")
 @patch("agent_cli.agents.transcribe.pyaudio_context")
-@patch("agent_cli.agents.transcribe.input_device")
 @patch("agent_cli.agents.transcribe.signal_handling_context")
 async def test_transcribe_main(
     mock_signal_handling_context: MagicMock,
-    mock_input_device: MagicMock,
     mock_pyaudio_context: MagicMock,
     mock_pyperclip: MagicMock,
     mock_wyoming_client_context: MagicMock,
@@ -35,7 +33,6 @@ async def test_transcribe_main(
     # Mock the Wyoming client
     mock_asr_client = MockASRClient("hello world")
     mock_wyoming_client_context.return_value.__aenter__.return_value = mock_asr_client
-    mock_input_device.return_value = (None, None)
 
     # Setup stop event
     stop_event = asyncio.Event()
