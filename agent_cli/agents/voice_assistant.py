@@ -163,81 +163,80 @@ async def async_main(
         if not general_cfg.quiet:
             print_input_panel(original_text, title="📝 Text to Process")
 
-        with maybe_live(not general_cfg.quiet) as live:
-            with signal_handling_context(
-                LOGGER,
-                general_cfg.quiet,
-            ) as stop_event:
-                # Define callbacks for voice assistant specific formatting
-                def chunk_callback(chunk_text: str) -> None:
-                    """Handle transcript chunks as they arrive."""
-                    if not general_cfg.quiet:
-                        console.print(chunk_text, end="")
+        with (
+            maybe_live(not general_cfg.quiet) as live,
+            signal_handling_context(LOGGER, general_cfg.quiet) as stop_event,
+        ):
+            # Define callbacks for voice assistant specific formatting
+            def chunk_callback(chunk_text: str) -> None:
+                """Handle transcript chunks as they arrive."""
+                if not general_cfg.quiet:
+                    console.print(chunk_text, end="")
 
-                def final_callback(transcript_text: str) -> None:
-                    """Format the final instruction result."""
-                    if not general_cfg.quiet:
-                        print_input_panel(
-                            transcript_text,
-                            title="🎯 Instruction",
-                            style="bold yellow",
-                        )
+            def final_callback(transcript_text: str) -> None:
+                """Format the final instruction result."""
+                if not general_cfg.quiet:
+                    print_input_panel(
+                        transcript_text,
+                        title="🎯 Instruction",
+                        style="bold yellow",
+                    )
 
-                instruction = await asr.transcribe_audio(
-                    asr_server_ip=asr_config.server_ip,
-                    asr_server_port=asr_config.server_port,
-                    input_device_index=input_device_index,
-                    logger=LOGGER,
-                    p=p,
-                    stop_event=stop_event,
-                    quiet=general_cfg.quiet,
-                    live=live,
-                    chunk_callback=chunk_callback,
-                    final_callback=final_callback,
-                )
+            instruction = await asr.transcribe_audio(
+                asr_server_ip=asr_config.server_ip,
+                asr_server_port=asr_config.server_port,
+                input_device_index=input_device_index,
+                logger=LOGGER,
+                p=p,
+                stop_event=stop_event,
+                quiet=general_cfg.quiet,
+                live=live,
+                chunk_callback=chunk_callback,
+                final_callback=final_callback,
+            )
 
-                if not instruction or not instruction.strip():
-                    if not general_cfg.quiet:
-                        print_with_style(
-                            "No instruction was transcribed. Exiting.",
-                            style="yellow",
-                        )
-                    return
+            if not instruction or not instruction.strip():
+                if not general_cfg.quiet:
+                    print_with_style(
+                        "No instruction was transcribed. Exiting.",
+                        style="yellow",
+                    )
+                return
 
-                await process_and_update_clipboard(
-                    system_prompt=SYSTEM_PROMPT,
-                    agent_instructions=AGENT_INSTRUCTIONS,
-                    model=llm_config.model,
-                    ollama_host=llm_config.ollama_host,
-                    logger=LOGGER,
-                    original_text=original_text,
-                    instruction=instruction,
-                    clipboard=general_cfg.clipboard,
-                    quiet=general_cfg.quiet,
-                    live=live,
-                )
+            await process_and_update_clipboard(
+                system_prompt=SYSTEM_PROMPT,
+                agent_instructions=AGENT_INSTRUCTIONS,
+                model=llm_config.model,
+                ollama_host=llm_config.ollama_host,
+                logger=LOGGER,
+                original_text=original_text,
+                instruction=instruction,
+                clipboard=general_cfg.clipboard,
+                quiet=general_cfg.quiet,
+                live=live,
+            )
 
-                # Handle TTS response if enabled
-                if tts_config.enabled and general_cfg.clipboard:
-                    response_text = pyperclip.paste()
-                    if response_text and response_text.strip():
-                        await handle_tts_playback(
-                            response_text,
-                            tts_server_ip=tts_config.server_ip,
-                            tts_server_port=tts_config.server_port,
-                            voice_name=tts_config.voice_name,
-                            tts_language=tts_config.language,
-                            speaker=tts_config.speaker,
-                            output_device_index=tts_output_device_index,
-                            save_file=file_config.save_file,
-                            quiet=general_cfg.quiet,
-                            logger=LOGGER,
-                            play_audio=not file_config.save_file,  # Don't play if saving to file
-                            status_message="🔊 Speaking response...",
-                            description="TTS audio",
-                            speed=tts_config.speed,
-                            live=live,
-                        )
+            # Handle TTS response if enabled
+            if tts_config.enabled and general_cfg.clipboard:
+                response_text = pyperclip.paste()
+                if response_text and response_text.strip():
+                    await handle_tts_playback(
+                        response_text,
+                        tts_server_ip=tts_config.server_ip,
+                        tts_server_port=tts_config.server_port,
+                        voice_name=tts_config.voice_name,
+                        tts_language=tts_config.language,
+                        speaker=tts_config.speaker,
+                        output_device_index=tts_output_device_index,
+                        save_file=file_config.save_file,
+                        quiet=general_cfg.quiet,
+                        logger=LOGGER,
+                        play_audio=not file_config.save_file,  # Don't play if saving to file
+                        status_message="🔊 Speaking response...",
+                        description="TTS audio",
+                        speed=tts_config.speed,
+                        live=live,
+                    )
 
 
 @app.command("voice-assistant")
