@@ -66,7 +66,7 @@ This might sound like a lot, but it's actually quite simple to set up.
 <details>
 <summary>See and example for NixOS</summary>
 
-Taken from [basnijholt/dotfiles](https://github.com/basnijholt/dotfiles/blob/d74b97c2a8a4a7898e97353eaa1b414043cc1243/configs/nixos/configuration.nix#L181C1-L202C1).
+Taken from [basnijholt/dotfiles](https://github.com/basnijholt/dotfiles/blob/70903ef31ac65d99d31b4d7bfad053227f79fae5/configs/nixos/configuration.nix#L182-L221).
 
 ```nix
   # --- AI & Machine Learning ---
@@ -75,20 +75,32 @@ Taken from [basnijholt/dotfiles](https://github.com/basnijholt/dotfiles/blob/d74
     acceleration = "cuda";
     host = "0.0.0.0";
     openFirewall = true;
-  };
-  services.wyoming.faster-whisper.servers.echo = {
-    enable = true;
-    model = "large-v3";
-    language = "en";
-    device = "cuda";
-    uri = "tcp://0.0.0.0:10300";
-  };
-  services.wyoming.piper = {
-    servers.main = {
-      enable = true;
-      voice = "en-us-ryan-high";
-      uri = "tcp://0.0.0.0:10200";
+    environmentVariables = {
+      OLLAMA_KEEP_ALIVE = "1h";
     };
+  };
+  services.wyoming.faster-whisper = {
+    servers.english = {
+      enable = true;
+      model = "large-v3";
+      language = "en";
+      device = "cuda";
+      uri = "tcp://0.0.0.0:10300";
+    };
+  };
+  services.wyoming.piper.servers.yoda = {
+    enable = true;
+    voice = "en-us-ryan-high";
+    uri = "tcp://0.0.0.0:10200";
+  };
+  services.wyoming.openwakeword = {
+    enable = true;
+    preloadModels = [
+      "alexa"
+      "hey_jarvis"
+      "ok_nabu"
+    ];
+    uri = "tcp://0.0.0.0:10400";
   };
 ```
 
