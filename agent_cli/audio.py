@@ -73,6 +73,8 @@ class AudioTee:
             with suppress(asyncio.CancelledError):
                 await self._task
         self.logger.debug("Audio tee stopped")
+        if self._task:
+            await self._task
 
 
 @asynccontextmanager
