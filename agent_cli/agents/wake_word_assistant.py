@@ -62,13 +62,17 @@ LOGGER = logging.getLogger()
 SYSTEM_PROMPT = """\
 You are a helpful voice assistant. Respond to user questions and commands in a conversational, friendly manner.
 
+The user is using a wake word to start and stop the recording. The wake word is "ok nabu". You should ignore the wake word and any variations of it (e.g., "Okay, Naboo") when processing the user's command.
+
 Keep your responses concise but informative. If the user asks you to perform an action that requires external tools or systems, explain what you would do if you had access to those capabilities.
 
 Always be helpful, accurate, and engaging in your responses.
 """
 
 AGENT_INSTRUCTIONS = """\
-The user has spoken a voice command or question. Provide a helpful, conversational response.
+The user has spoken a voice command or question. The user is using a wake word to start and stop the recording. The wake word is "ok nabu". You should ignore the wake word and any variations of it (e.g., "Okay, Naboo") when processing the user's command.
+
+Provide a helpful, conversational response.
 
 If it's a question, answer it clearly and concisely.
 If it's a command, explain what you would do or provide guidance on how to accomplish it.
