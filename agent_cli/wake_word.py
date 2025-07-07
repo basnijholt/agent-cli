@@ -187,11 +187,11 @@ async def detect_wake_word(
             )
 
             # If recv_task completed first, it means we detected a wake word
-            if not recv_task.cancelled():
+            if recv_task.done() and not recv_task.cancelled():
                 return recv_task.result()
 
             return None
-    except (ConnectionRefusedError, Exception):
+    except (ConnectionRefusedError, asyncio.CancelledError, Exception):
         return None
 
 
@@ -226,9 +226,9 @@ async def detect_wake_word_from_queue(
                 return_when=asyncio.FIRST_COMPLETED,
             )
 
-            if not recv_task.cancelled():
+            if recv_task.done() and not recv_task.cancelled():
                 return recv_task.result()
 
             return None
-    except (ConnectionRefusedError, Exception):
+    except (ConnectionRefusedError, asyncio.CancelledError, Exception):
         return None
