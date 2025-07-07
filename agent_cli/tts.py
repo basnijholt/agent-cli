@@ -23,7 +23,7 @@ from agent_cli.utils import (
     print_error_message,
     print_with_style,
 )
-from agent_cli.wyoming_utils import wyoming_client_context
+from agent_cli.wyoming_utils import manage_send_receive_tasks, wyoming_client_context
 
 if TYPE_CHECKING:
     import logging
@@ -159,13 +159,13 @@ async def synthesize_speech(
                     language=language,
                     speaker=speaker,
                 )
-                await client.write_event(synthesize_event.event())
 
                 # Process audio events
-                audio_data, sample_rate, sample_width, channels = await _process_audio_events(
-                    client,
-                    logger,
+                _send_task, recv_task = await manage_send_receive_tasks(
+                    client.write_event(synthesize_event.event()),
+                    _process_audio_events(client, logger),
                 )
+                audio_data, sample_rate, sample_width, channels = recv_task.result()
 
             # Convert to WAV format if we have valid audio data and metadata
             if sample_rate and sample_width and channels and audio_data:
