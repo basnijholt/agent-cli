@@ -306,9 +306,7 @@ def wake_word_assistant(
 
     with (
         process_manager.pid_file_context(process_name),
-        suppress(
-            KeyboardInterrupt,
-        ),
+        suppress(KeyboardInterrupt),
         maybe_live(not general_cfg.quiet) as live,
     ):
         wake_word_config = WakeWordConfig(

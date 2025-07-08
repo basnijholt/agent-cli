@@ -237,7 +237,7 @@ def stop_or_status_or_toggle(
 def maybe_live(use_live: bool) -> AbstractContextManager[Live | None]:
     """Create a live context manager if use_live is True."""
     if use_live:
-        return Live(_create_spinner("", "blue"), console=console, transient=True)
+        return Live(_create_spinner("Initializing", "blue"), console=console, transient=True)
     return nullcontext()
 
 
