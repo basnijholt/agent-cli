@@ -21,62 +21,38 @@ runner = CliRunner()
 
 @pytest.fixture
 def config_file(tmp_path: Path) -> Path:
+    """Provides a config file with the new flat, dashed-key format."""
     config_content = """
 [defaults]
-log_level = "INFO"
-llm_provider = "local"
-
-[llm.local]
-model = "default-local-model"
-host = "http://localhost:11434"
-
-[llm.openai]
-model = "default-openai-model"
-api_key = "default-key"
+log-level = "INFO"
+llm-provider = "local"
+ollama-model = "default-local-model"
+ollama-host = "http://localhost:11434"
+openai-llm-model = "default-openai-model"
+openai-api-key = "default-key"
 
 [autocorrect]
-llm_provider = "openai"
+llm-provider = "openai"
 quiet = true
-
-[autocorrect.llm.openai]
-model = "autocorrect-openai-model"
+openai-llm-model = "autocorrect-openai-model"
 """
     config_path = tmp_path / "config.toml"
     config_path.write_text(config_content)
     return config_path
 
 
-def test_config_loader_basic(config_file: Path) -> None:
-    """Test the config loader function directly."""
-    config = load_config(str(config_file))
-    assert config["defaults"]["log_level"] == "INFO"
-    assert config["llm"]["local"]["model"] == "default-local-model"
-    assert config["autocorrect"]["llm_provider"] == "openai"
-    assert config["autocorrect"]["llm"]["openai"]["model"] == "autocorrect-openai-model"
-
-
 def test_config_loader_key_replacement(config_file: Path) -> None:
     """Test that dashed keys are replaced with underscores."""
-    # Add a config with dashed keys
-    config_content = """
-[defaults]
-log-level = "DEBUG"
-ollama-host = "http://example.com"
-
-[test-command]
-some-option = "value"
-"""
-    config_path = config_file.parent / "dashed-config.toml"
-    config_path.write_text(config_content)
-
-    config = load_config(str(config_path))
-    assert config["defaults"]["log_level"] == "DEBUG"
-    assert config["defaults"]["ollama_host"] == "http://example.com"
-    assert config["test_command"]["some_option"] == "value"
+    config = load_config(str(config_file))
+    # Check a value from [defaults]
+    assert config["defaults"]["log_level"] == "INFO"
+    # Check a value from [autocorrect]
+    assert config["autocorrect"]["llm_provider"] == "openai"
+    assert config["autocorrect"]["openai_llm_model"] == "autocorrect-openai-model"
 
 
 def test_set_config_defaults(config_file: Path) -> None:
-    """Test the set_config_defaults function."""
+    """Test the set_config_defaults function with the new flat config."""
     mock_autocorrect_cmd = Command(name="autocorrect")
     mock_main_command = MagicMock()
     mock_main_command.commands = {"autocorrect": mock_autocorrect_cmd}
@@ -85,21 +61,32 @@ def test_set_config_defaults(config_file: Path) -> None:
     # Test with no subcommand (should only load defaults)
     ctx.invoked_subcommand = None
     set_config_defaults(ctx, str(config_file))
-    assert ctx.default_map == {"log_level": "INFO", "llm_provider": "local"}
+    expected_defaults = {
+        "log_level": "INFO",
+        "llm_provider": "local",
+        "ollama_model": "default-local-model",
+        "ollama_host": "http://localhost:11434",
+        "openai_llm_model": "default-openai-model",
+        "openai_api_key": "default-key",
+    }
+    assert ctx.default_map == expected_defaults
 
-    # Test with autocorrect subcommand
+    # Test with autocorrect subcommand (should merge defaults)
     ctx.invoked_subcommand = "autocorrect"
     ctx.default_map = {}  # Reset
     set_config_defaults(ctx, str(config_file))
 
-    # Check combined defaults
-    expected_defaults = {
+    # Check combined defaults: [autocorrect] overrides [defaults]
+    expected_merged_defaults = {
         "log_level": "INFO",
-        "llm_provider": "openai",
-        "quiet": True,
-        "llm": {"openai": {"model": "autocorrect-openai-model"}},
+        "llm_provider": "openai",  # Overridden by [autocorrect]
+        "ollama_model": "default-local-model",
+        "ollama_host": "http://localhost:11434",
+        "openai_llm_model": "autocorrect-openai-model",  # Overridden by [autocorrect]
+        "openai_api_key": "default-key",
+        "quiet": True,  # Added by [autocorrect]
     }
-    assert ctx.default_map == expected_defaults
+    assert ctx.default_map == expected_merged_defaults
 
 
 @patch("agent_cli.config_loader.CONFIG_PATH")
@@ -119,14 +106,14 @@ def test_default_config_paths(
     with config_file.open("rb") as f:
         mock_path2.open.return_value.__enter__.return_value = f
         config = load_config(None)
-        assert config["llm"]["local"]["model"] == "default-local-model"
+        assert config["defaults"]["log_level"] == "INFO"
 
     mock_path1.exists.return_value = True
     mock_path2.exists.return_value = True
     with config_file.open("rb") as f:
         mock_path1.open.return_value.__enter__.return_value = f
         config = load_config(None)
-        assert config["llm"]["local"]["model"] == "default-local-model"
+        assert config["defaults"]["log_level"] == "INFO"
 
 
 @patch("agent_cli.config_loader.console")
