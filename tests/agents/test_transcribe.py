@@ -10,12 +10,12 @@ import pytest
 
 from agent_cli.agents import transcribe
 from agent_cli.agents._config import (
-    ASRConfig,
+    AudioInputConfig,
     GeneralConfig,
-    LLMConfig,
-    OllamaLLMConfig,
+    OllamaConfig,
     OpenAIASRConfig,
     OpenAILLMConfig,
+    ProviderSelectionConfig,
     WyomingASRConfig,
 )
 from tests.mocks.wyoming import MockASRClient
@@ -49,12 +49,10 @@ async def test_transcribe_main(
 
     # The function we are testing
     with caplog.at_level(logging.INFO):
-        asr_config = ASRConfig(
-            provider="local",
-            input_device_index=None,
-            input_device_name=None,
-            local=WyomingASRConfig(server_ip="localhost", server_port=12345),
-            openai=OpenAIASRConfig(api_key=None),
+        provider_cfg = ProviderSelectionConfig(
+            asr_provider="local",
+            llm_provider="local",
+            tts_provider="local",
         )
         general_cfg = GeneralConfig(
             log_level="INFO",
@@ -63,15 +61,20 @@ async def test_transcribe_main(
             list_devices=False,
             clipboard=True,
         )
-        llm_config = LLMConfig(
-            provider="local",
-            local=OllamaLLMConfig(model="", host=""),
-            openai=OpenAILLMConfig(model="", api_key=None),
-        )
+        audio_in_cfg = AudioInputConfig()
+        wyoming_asr_cfg = WyomingASRConfig(wyoming_asr_ip="localhost", wyoming_asr_port=12345)
+        openai_asr_cfg = OpenAIASRConfig(openai_asr_model="whisper-1")
+        ollama_cfg = OllamaConfig(ollama_model="", ollama_host="")
+        openai_llm_cfg = OpenAILLMConfig(openai_llm_model="")
+
         await transcribe._async_main(
-            asr_config=asr_config,
+            provider_cfg=provider_cfg,
             general_cfg=general_cfg,
-            llm_config=llm_config,
+            audio_in_cfg=audio_in_cfg,
+            wyoming_asr_cfg=wyoming_asr_cfg,
+            openai_asr_cfg=openai_asr_cfg,
+            ollama_cfg=ollama_cfg,
+            openai_llm_cfg=openai_llm_cfg,
             llm_enabled=False,
             p=mock_pyaudio_instance,
         )

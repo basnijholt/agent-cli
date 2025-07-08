@@ -14,9 +14,9 @@ import typer
 import agent_cli.agents._cli_options as opts
 from agent_cli.agents._config import (
     GeneralConfig,
-    LLMConfig,
-    OllamaLLMConfig,
+    OllamaConfig,
     OpenAILLMConfig,
+    ProviderSelectionConfig,
 )
 from agent_cli.cli import app, setup_logging
 from agent_cli.llm import build_agent
@@ -76,10 +76,17 @@ Output format: corrected text only, no other words.
 # --- Main Application Logic ---
 
 
-async def _process_text(text: str, llm_config: LLMConfig) -> tuple[str, float]:
+async def _process_text(
+    text: str,
+    provider_cfg: ProviderSelectionConfig,
+    ollama_cfg: OllamaConfig,
+    openai_llm_cfg: OpenAILLMConfig,
+) -> tuple[str, float]:
     """Process text with the LLM and return the corrected text and elapsed time."""
     agent = build_agent(
-        llm_config=llm_config,
+        provider_config=provider_cfg,
+        ollama_config=ollama_cfg,
+        openai_config=openai_llm_cfg,
         system_prompt=SYSTEM_PROMPT,
         instructions=AGENT_INSTRUCTIONS,
     )
@@ -123,9 +130,18 @@ def _display_result(
         print_with_style("✅ Success! Corrected text has been copied to your clipboard.")
 
 
-def _maybe_status(llm_config: LLMConfig, quiet: bool) -> Status | contextlib.nullcontext:
+def _maybe_status(
+    provider_cfg: ProviderSelectionConfig,
+    ollama_cfg: OllamaConfig,
+    openai_llm_cfg: OpenAILLMConfig,
+    quiet: bool,
+) -> Status | contextlib.nullcontext:
     if not quiet:
-        model_name = llm_config.config.model
+        model_name = (
+            ollama_cfg.ollama_model
+            if provider_cfg.llm_provider == "local"
+            else openai_llm_cfg.openai_llm_model
+        )
         return create_status(f"🤖 Correcting with {model_name}...", "bold yellow")
     return contextlib.nullcontext()
 
@@ -133,7 +149,9 @@ def _maybe_status(llm_config: LLMConfig, quiet: bool) -> Status | contextlib.nul
 async def _async_autocorrect(
     *,
     text: str | None,
-    llm_config: LLMConfig,
+    provider_cfg: ProviderSelectionConfig,
+    ollama_cfg: OllamaConfig,
+    openai_llm_cfg: OpenAILLMConfig,
     general_cfg: GeneralConfig,
 ) -> None:
     """Asynchronous version of the autocorrect command."""
@@ -146,8 +164,13 @@ async def _async_autocorrect(
     _display_original_text(original_text, general_cfg.quiet)
 
     try:
-        with _maybe_status(llm_config, general_cfg.quiet):
-            corrected_text, elapsed = await _process_text(original_text, llm_config)
+        with _maybe_status(provider_cfg, ollama_cfg, openai_llm_cfg, general_cfg.quiet):
+            corrected_text, elapsed = await _process_text(
+                original_text,
+                provider_cfg,
+                ollama_cfg,
+                openai_llm_cfg,
+            )
 
         _display_result(corrected_text, original_text, elapsed, simple_output=general_cfg.quiet)
 
@@ -155,13 +178,8 @@ async def _async_autocorrect(
         if general_cfg.quiet:
             print(f"❌ {e}")
         else:
-            if llm_config.provider == "local":
-                host = (
-                    llm_config.config.host
-                    if isinstance(llm_config.config, OllamaLLMConfig)
-                    else "unknown"
-                )
-                error_details = f"Please check that your Ollama server is running at [bold cyan]{host}[/bold cyan]"
+            if provider_cfg.llm_provider == "local":
+                error_details = f"Please check that your Ollama server is running at [bold cyan]{ollama_cfg.ollama_host}[/bold cyan]"
             else:
                 error_details = "Please check your OpenAI API key and network connection."
             print_error_message(str(e), error_details)
@@ -192,27 +210,28 @@ def autocorrect(
     config_file: str | None = opts.CONFIG_FILE,  # noqa: ARG001
 ) -> None:
     """Correct text from clipboard using a local or remote LLM."""
-    # Create provider-specific configs
-    ollama_config = OllamaLLMConfig(model=ollama_model, host=ollama_host)
-    openai_config = OpenAILLMConfig(model=openai_llm_model, api_key=openai_api_key)
-
-    # Create main LLMConfig
-    llm_config = LLMConfig(
-        provider=llm_provider,  # type: ignore[arg-type]
-        local=ollama_config,
-        openai=openai_config,
+    provider_cfg = ProviderSelectionConfig(
+        llm_provider=llm_provider,
+        asr_provider="local",  # Not used, but required by model
+        tts_provider="local",  # Not used, but required by model
+    )
+    ollama_cfg = OllamaConfig(ollama_model=ollama_model, ollama_host=ollama_host)
+    openai_llm_cfg = OpenAILLMConfig(
+        openai_llm_model=openai_llm_model,
+        openai_api_key=openai_api_key,
     )
     general_cfg = GeneralConfig(
         log_level=log_level,
         log_file=log_file,
-        list_devices=False,
         quiet=quiet,
         clipboard=True,
     )
     asyncio.run(
         _async_autocorrect(
             text=text,
-            llm_config=llm_config,
+            provider_cfg=provider_cfg,
+            ollama_cfg=ollama_cfg,
+            openai_llm_cfg=openai_llm_cfg,
             general_cfg=general_cfg,
         ),
     )

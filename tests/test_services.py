@@ -8,10 +8,12 @@ import pytest
 
 from agent_cli import asr, tts
 from agent_cli.agents._config import (
-    ASRConfig,
+    AudioInputConfig,
+    AudioOutputConfig,
     OpenAIASRConfig,
+    OpenAILLMConfig,
     OpenAITTSConfig,
-    TTSConfig,
+    ProviderSelectionConfig,
     WyomingASRConfig,
     WyomingTTSConfig,
 )
@@ -23,7 +25,6 @@ from agent_cli.services import synthesize_speech_openai, transcribe_audio_openai
 async def test_transcribe_audio_openai(mock_openai_client: MagicMock) -> None:
     """Test the transcribe_audio_openai function."""
     mock_audio = b"test audio"
-    mock_api_key = "test_api_key"
     mock_logger = MagicMock()
     mock_client_instance = mock_openai_client.return_value
     mock_transcription = MagicMock()
@@ -31,12 +32,25 @@ async def test_transcribe_audio_openai(mock_openai_client: MagicMock) -> None:
     mock_client_instance.audio.transcriptions.create = AsyncMock(
         return_value=mock_transcription,
     )
+    openai_asr_config = OpenAIASRConfig(openai_asr_model="whisper-1")
+    openai_llm_config = OpenAILLMConfig(
+        openai_llm_model="gpt-4o-mini",
+        openai_api_key="test_api_key",
+    )
 
-    result = await transcribe_audio_openai(mock_audio, mock_api_key, mock_logger)
+    result = await transcribe_audio_openai(
+        mock_audio,
+        openai_asr_config,
+        openai_llm_config,
+        mock_logger,
+    )
 
     assert result == "test transcription"
-    mock_openai_client.assert_called_once_with(api_key=mock_api_key)
-    mock_client_instance.audio.transcriptions.create.assert_called_once()
+    mock_openai_client.assert_called_once_with(api_key="test_api_key")
+    mock_client_instance.audio.transcriptions.create.assert_called_once_with(
+        model="whisper-1",
+        file=mock_client_instance.audio.transcriptions.create.call_args[1]["file"],
+    )
 
 
 @pytest.mark.asyncio
@@ -44,17 +58,26 @@ async def test_transcribe_audio_openai(mock_openai_client: MagicMock) -> None:
 async def test_synthesize_speech_openai(mock_openai_client: MagicMock) -> None:
     """Test the synthesize_speech_openai function."""
     mock_text = "test text"
-    mock_api_key = "test_api_key"
     mock_logger = MagicMock()
     mock_client_instance = mock_openai_client.return_value
     mock_response = MagicMock()
     mock_response.content = b"test audio"
     mock_client_instance.audio.speech.create = AsyncMock(return_value=mock_response)
+    openai_tts_config = OpenAITTSConfig(openai_tts_model="tts-1", openai_tts_voice="alloy")
+    openai_llm_config = OpenAILLMConfig(
+        openai_llm_model="gpt-4o-mini",
+        openai_api_key="test_api_key",
+    )
 
-    result = await synthesize_speech_openai(mock_text, mock_api_key, mock_logger)
+    result = await synthesize_speech_openai(
+        mock_text,
+        openai_tts_config,
+        openai_llm_config,
+        mock_logger,
+    )
 
     assert result == b"test audio"
-    mock_openai_client.assert_called_once_with(api_key=mock_api_key)
+    mock_openai_client.assert_called_once_with(api_key="test_api_key")
     mock_client_instance.audio.speech.create.assert_called_once_with(
         model="tts-1",
         voice="alloy",
@@ -65,33 +88,50 @@ async def test_synthesize_speech_openai(mock_openai_client: MagicMock) -> None:
 
 def test_get_transcriber_wyoming() -> None:
     """Test that get_transcriber returns the Wyoming transcriber."""
-    asr_config = ASRConfig(
-        provider="local",
-        input_device_index=None,
-        input_device_name=None,
-        local=WyomingASRConfig(server_ip="localhost", server_port=1234),
-        openai=OpenAIASRConfig(api_key=None, model="whisper-1"),
+    provider_config = ProviderSelectionConfig(
+        asr_provider="local",
+        llm_provider="local",
+        tts_provider="local",
     )
-    transcriber = asr.get_transcriber(asr_config)
-    assert transcriber == asr.transcribe_live_audio_wyoming
+    audio_input_config = AudioInputConfig()
+    wyoming_asr_config = WyomingASRConfig(wyoming_asr_ip="localhost", wyoming_asr_port=1234)
+    openai_asr_config = OpenAIASRConfig(openai_asr_model="whisper-1")
+    openai_llm_config = OpenAILLMConfig(
+        openai_llm_model="gpt-4o-mini",
+        openai_api_key="fake-key",
+    )
+    transcriber = asr.get_transcriber(
+        provider_config,
+        audio_input_config,
+        wyoming_asr_config,
+        openai_asr_config,
+        openai_llm_config,
+    )
+    assert transcriber.func == asr.transcribe_live_audio_wyoming  # type: ignore[attr-defined]
 
 
 def test_get_synthesizer_wyoming() -> None:
     """Test that get_synthesizer returns the Wyoming synthesizer."""
-    tts_config = TTSConfig(
-        enabled=True,
-        provider="local",
-        output_device_index=None,
-        output_device_name=None,
-        speed=1.0,
-        local=WyomingTTSConfig(
-            server_ip="localhost",
-            server_port=1234,
-            voice_name=None,
-            language=None,
-            speaker=None,
-        ),
-        openai=OpenAITTSConfig(api_key=None, model="tts-1", voice="alloy"),
+    provider_config = ProviderSelectionConfig(
+        asr_provider="local",
+        llm_provider="local",
+        tts_provider="local",
     )
-    synthesizer = tts.get_synthesizer(tts_config)
-    assert synthesizer == tts._synthesize_speech_wyoming
+    audio_output_config = AudioOutputConfig(enable_tts=True)
+    wyoming_tts_config = WyomingTTSConfig(
+        wyoming_tts_ip="localhost",
+        wyoming_tts_port=1234,
+    )
+    openai_tts_config = OpenAITTSConfig(openai_tts_model="tts-1", openai_tts_voice="alloy")
+    openai_llm_config = OpenAILLMConfig(
+        openai_llm_model="gpt-4o-mini",
+        openai_api_key="test_api_key",
+    )
+    synthesizer = tts.get_synthesizer(
+        provider_config,
+        audio_output_config,
+        wyoming_tts_config,
+        openai_tts_config,
+        openai_llm_config,
+    )
+    assert synthesizer.func == tts._synthesize_speech_wyoming  # type: ignore[attr-defined]

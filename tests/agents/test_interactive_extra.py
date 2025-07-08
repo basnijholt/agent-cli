@@ -6,15 +6,15 @@ import pytest
 from typer.testing import CliRunner
 
 from agent_cli.agents._config import (
-    ASRConfig,
-    FileConfig,
+    AudioInputConfig,
+    AudioOutputConfig,
     GeneralConfig,
-    LLMConfig,
-    OllamaLLMConfig,
+    HistoryConfig,
+    OllamaConfig,
     OpenAIASRConfig,
     OpenAILLMConfig,
     OpenAITTSConfig,
-    TTSConfig,
+    ProviderSelectionConfig,
     WyomingASRConfig,
     WyomingTTSConfig,
 )
@@ -33,34 +33,20 @@ async def test_handle_conversation_turn_no_instruction():
     stop_event = InteractiveStopEvent()
     conversation_history = []
     general_cfg = GeneralConfig(log_level="INFO", log_file=None, quiet=True, list_devices=True)
-    asr_config = ASRConfig(
-        provider="local",
-        input_device_index=None,
-        input_device_name=None,
-        local=WyomingASRConfig(server_ip="localhost", server_port=10300),
-        openai=OpenAIASRConfig(api_key=None),
+    provider_cfg = ProviderSelectionConfig(
+        asr_provider="local",
+        llm_provider="local",
+        tts_provider="local",
     )
-    llm_config = LLMConfig(
-        provider="local",
-        local=OllamaLLMConfig(model="test-model", host="localhost"),
-        openai=OpenAILLMConfig(model="gpt-4o-mini", api_key=None),
-    )
-    tts_config = TTSConfig(
-        enabled=False,
-        provider="local",
-        output_device_index=None,
-        output_device_name=None,
-        speed=1.0,
-        local=WyomingTTSConfig(
-            server_ip="localhost",
-            server_port=10200,
-            voice_name=None,
-            language=None,
-            speaker=None,
-        ),
-        openai=OpenAITTSConfig(api_key=None),
-    )
-    file_config = FileConfig(save_file=None, history_dir=None)
+    history_cfg = HistoryConfig()
+    audio_in_cfg = AudioInputConfig()
+    wyoming_asr_cfg = WyomingASRConfig(wyoming_asr_ip="localhost", wyoming_asr_port=10300)
+    openai_asr_cfg = OpenAIASRConfig(openai_asr_model="whisper-1")
+    ollama_cfg = OllamaConfig(ollama_model="test-model", ollama_host="localhost")
+    openai_llm_cfg = OpenAILLMConfig(openai_llm_model="gpt-4o-mini")
+    audio_out_cfg = AudioOutputConfig()
+    wyoming_tts_cfg = WyomingTTSConfig(wyoming_tts_ip="localhost", wyoming_tts_port=10200)
+    openai_tts_cfg = OpenAITTSConfig(openai_tts_model="tts-1", openai_tts_voice="alloy")
     mock_live = MagicMock()
 
     with patch("agent_cli.agents.chat.asr.get_transcriber") as mock_get_transcriber:
@@ -70,11 +56,17 @@ async def test_handle_conversation_turn_no_instruction():
             p=mock_p,
             stop_event=stop_event,
             conversation_history=conversation_history,
+            provider_cfg=provider_cfg,
             general_cfg=general_cfg,
-            asr_config=asr_config,
-            llm_config=llm_config,
-            tts_config=tts_config,
-            file_config=file_config,
+            history_cfg=history_cfg,
+            audio_in_cfg=audio_in_cfg,
+            wyoming_asr_cfg=wyoming_asr_cfg,
+            openai_asr_cfg=openai_asr_cfg,
+            ollama_cfg=ollama_cfg,
+            openai_llm_cfg=openai_llm_cfg,
+            audio_out_cfg=audio_out_cfg,
+            wyoming_tts_cfg=wyoming_tts_cfg,
+            openai_tts_cfg=openai_tts_cfg,
             live=mock_live,
         )
         mock_get_transcriber.assert_called_once()
@@ -130,34 +122,20 @@ def test_chat_command_list_output_devices():
 async def test_async_main_exception_handling():
     """Test that exceptions in async_main are caught and logged."""
     general_cfg = GeneralConfig(log_level="INFO", log_file=None, quiet=False, list_devices=True)
-    asr_config = ASRConfig(
-        provider="local",
-        input_device_index=None,
-        input_device_name=None,
-        local=WyomingASRConfig(server_ip="localhost", server_port=10300),
-        openai=OpenAIASRConfig(api_key=None),
-    )  # To trigger an early exit
-    llm_config = LLMConfig(
-        provider="local",
-        local=OllamaLLMConfig(model="test-model", host="localhost"),
-        openai=OpenAILLMConfig(model="gpt-4o-mini", api_key=None),
+    provider_cfg = ProviderSelectionConfig(
+        asr_provider="local",
+        llm_provider="local",
+        tts_provider="local",
     )
-    tts_config = TTSConfig(
-        enabled=False,
-        provider="local",
-        output_device_index=None,
-        output_device_name=None,
-        speed=1.0,
-        local=WyomingTTSConfig(
-            server_ip="localhost",
-            server_port=10200,
-            voice_name=None,
-            language=None,
-            speaker=None,
-        ),
-        openai=OpenAITTSConfig(api_key=None),
-    )
-    file_config = FileConfig(save_file=None, history_dir=None)
+    history_cfg = HistoryConfig()
+    audio_in_cfg = AudioInputConfig()
+    wyoming_asr_cfg = WyomingASRConfig(wyoming_asr_ip="localhost", wyoming_asr_port=10300)
+    openai_asr_cfg = OpenAIASRConfig(openai_asr_model="whisper-1")
+    ollama_cfg = OllamaConfig(ollama_model="test-model", ollama_host="localhost")
+    openai_llm_cfg = OpenAILLMConfig(openai_llm_model="gpt-4o-mini")
+    audio_out_cfg = AudioOutputConfig()
+    wyoming_tts_cfg = WyomingTTSConfig(wyoming_tts_ip="localhost", wyoming_tts_port=10200)
+    openai_tts_cfg = OpenAITTSConfig(openai_tts_model="tts-1", openai_tts_voice="alloy")
 
     with (
         patch("agent_cli.agents.chat.pyaudio_context", side_effect=Exception("Test error")),
@@ -165,10 +143,16 @@ async def test_async_main_exception_handling():
     ):
         with pytest.raises(Exception, match="Test error"):
             await _async_main(
+                provider_cfg=provider_cfg,
                 general_cfg=general_cfg,
-                asr_config=asr_config,
-                llm_config=llm_config,
-                tts_config=tts_config,
-                file_config=file_config,
+                history_cfg=history_cfg,
+                audio_in_cfg=audio_in_cfg,
+                wyoming_asr_cfg=wyoming_asr_cfg,
+                openai_asr_cfg=openai_asr_cfg,
+                ollama_cfg=ollama_cfg,
+                openai_llm_cfg=openai_llm_cfg,
+                audio_out_cfg=audio_out_cfg,
+                wyoming_tts_cfg=wyoming_tts_cfg,
+                openai_tts_cfg=openai_tts_cfg,
             )
         mock_console.print_exception.assert_called_once()

@@ -7,15 +7,14 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from agent_cli.agents._config import (
-    ASRConfig,
-    FileConfig,
+    AudioInputConfig,
+    AudioOutputConfig,
     GeneralConfig,
-    LLMConfig,
-    OllamaLLMConfig,
+    OllamaConfig,
     OpenAIASRConfig,
     OpenAILLMConfig,
     OpenAITTSConfig,
-    TTSConfig,
+    ProviderSelectionConfig,
     WyomingASRConfig,
     WyomingTTSConfig,
 )
@@ -31,22 +30,25 @@ async def test_get_instruction_from_audio(mock_get_transcriber: MagicMock) -> No
     """Test the get_instruction_from_audio function."""
     mock_transcriber = AsyncMock(return_value="test instruction")
     mock_get_transcriber.return_value = mock_transcriber
-    asr_config = ASRConfig(
-        provider="local",
-        input_device_index=1,
-        input_device_name=None,
-        local=WyomingASRConfig(server_ip="localhost", server_port=1234),
-        openai=OpenAIASRConfig(api_key=None, model="whisper-1"),
+    provider_cfg = ProviderSelectionConfig(
+        asr_provider="local",
+        llm_provider="local",
+        tts_provider="local",
     )
-    llm_config = LLMConfig(
-        provider="local",
-        local=OllamaLLMConfig(model="test-model", host="localhost"),
-        openai=OpenAILLMConfig(api_key=None, model="gpt-4"),
-    )
+    audio_in_cfg = AudioInputConfig(input_device_index=1)
+    wyoming_asr_cfg = WyomingASRConfig(wyoming_asr_ip="localhost", wyoming_asr_port=1234)
+    openai_asr_cfg = OpenAIASRConfig(openai_asr_model="whisper-1")
+    ollama_cfg = OllamaConfig(ollama_model="test-model", ollama_host="localhost")
+    openai_llm_cfg = OpenAILLMConfig(openai_llm_model="gpt-4")
+
     result = await get_instruction_from_audio(
         audio_data=b"test audio",
-        asr_config=asr_config,
-        llm_config=llm_config,
+        provider_config=provider_cfg,
+        audio_input_config=audio_in_cfg,
+        wyoming_asr_config=wyoming_asr_cfg,
+        openai_asr_config=openai_asr_cfg,
+        ollama_config=ollama_cfg,
+        openai_llm_config=openai_llm_cfg,
         logger=MagicMock(),
         quiet=False,
     )
@@ -70,27 +72,21 @@ async def test_process_instruction_and_respond(
         quiet=False,
         clipboard=True,
     )
-    llm_config = LLMConfig(
-        provider="local",
-        local=OllamaLLMConfig(model="test-model", host="localhost"),
-        openai=OpenAILLMConfig(api_key=None, model="gpt-4"),
+    provider_cfg = ProviderSelectionConfig(
+        llm_provider="local",
+        tts_provider="local",
+        asr_provider="local",
     )
-    tts_config = TTSConfig(
-        enabled=True,
-        provider="local",
-        output_device_index=1,
-        output_device_name=None,
-        speed=1.0,
-        local=WyomingTTSConfig(
-            server_ip="localhost",
-            server_port=5678,
-            voice_name="test-voice",
-            language="en",
-            speaker=None,
-        ),
-        openai=OpenAITTSConfig(api_key=None, model="tts-1", voice="alloy"),
+    ollama_cfg = OllamaConfig(ollama_model="test-model", ollama_host="localhost")
+    openai_llm_cfg = OpenAILLMConfig(openai_llm_model="gpt-4")
+    audio_out_cfg = AudioOutputConfig(enable_tts=True, output_device_index=1)
+    wyoming_tts_cfg = WyomingTTSConfig(
+        wyoming_tts_ip="localhost",
+        wyoming_tts_port=5678,
+        wyoming_voice="test-voice",
     )
-    file_config = FileConfig(save_file=None, history_dir=None)
+    openai_tts_cfg = OpenAITTSConfig(openai_tts_model="tts-1", openai_tts_voice="alloy")
+
     with (
         patch("agent_cli.agents.autocorrect.pyperclip.copy"),
         patch("agent_cli.agents._voice_agent_common.pyperclip.paste"),
@@ -98,10 +94,13 @@ async def test_process_instruction_and_respond(
         await process_instruction_and_respond(
             instruction="test instruction",
             original_text="original text",
-            general_cfg=general_cfg,
-            llm_config=llm_config,
-            tts_config=tts_config,
-            file_config=file_config,
+            provider_config=provider_cfg,
+            general_config=general_cfg,
+            ollama_config=ollama_cfg,
+            openai_llm_config=openai_llm_cfg,
+            audio_output_config=audio_out_cfg,
+            wyoming_tts_config=wyoming_tts_cfg,
+            openai_tts_config=openai_tts_cfg,
             system_prompt="system prompt",
             agent_instructions="agent instructions",
             live=MagicMock(),

@@ -13,9 +13,9 @@ from agent_cli import config
 from agent_cli.agents import autocorrect
 from agent_cli.agents._config import (
     GeneralConfig,
-    LLMConfig,
-    OllamaLLMConfig,
+    OllamaConfig,
     OpenAILLMConfig,
+    ProviderSelectionConfig,
 )
 
 
@@ -114,16 +114,20 @@ async def test_process_text_integration(mock_build_agent: MagicMock) -> None:
     mock_agent.run = AsyncMock(return_value=mock_result)
     mock_build_agent.return_value = mock_agent
 
-    llm_config = LLMConfig(
-        provider="local",
-        local=OllamaLLMConfig(model="test-model", host="test"),
-        openai=OpenAILLMConfig(model="gpt-4o-mini", api_key=None),
+    provider_cfg = ProviderSelectionConfig(
+        llm_provider="local",
+        asr_provider="local",
+        tts_provider="local",
     )
+    ollama_cfg = OllamaConfig(ollama_model="test-model", ollama_host="test")
+    openai_llm_cfg = OpenAILLMConfig(openai_llm_model="gpt-4o-mini", openai_api_key=None)
 
     # Test the function
     result, elapsed = await autocorrect._process_text(
         "this is text",
-        llm_config,
+        provider_cfg,
+        ollama_cfg,
+        openai_llm_cfg,
     )
 
     # Verify the result
@@ -133,7 +137,9 @@ async def test_process_text_integration(mock_build_agent: MagicMock) -> None:
 
     # Verify the agent was called correctly
     mock_build_agent.assert_called_once_with(
-        llm_config=llm_config,
+        provider_config=provider_cfg,
+        ollama_config=ollama_cfg,
+        openai_config=openai_llm_cfg,
         system_prompt=autocorrect.SYSTEM_PROMPT,
         instructions=autocorrect.AGENT_INSTRUCTIONS,
     )
@@ -168,15 +174,16 @@ async def test_autocorrect_command_with_text(
     mock_agent.run = AsyncMock(return_value=mock_result)
     mock_build_agent.return_value = mock_agent
 
-    llm_config = LLMConfig(
-        provider="local",
-        local=OllamaLLMConfig(model=config.DEFAULT_MODEL, host=config.OLLAMA_HOST),
-        openai=OpenAILLMConfig(model="gpt-4o-mini", api_key=None),
+    provider_cfg = ProviderSelectionConfig(
+        llm_provider="local",
+        asr_provider="local",
+        tts_provider="local",
     )
+    ollama_cfg = OllamaConfig(ollama_model=config.DEFAULT_MODEL, ollama_host=config.OLLAMA_HOST)
+    openai_llm_cfg = OpenAILLMConfig(openai_llm_model="gpt-4o-mini", openai_api_key=None)
     general_cfg = GeneralConfig(
         log_level="WARNING",
         log_file=None,
-        list_devices=False,
         quiet=True,
         clipboard=True,
     )
@@ -184,14 +191,18 @@ async def test_autocorrect_command_with_text(
     with patch("agent_cli.agents.autocorrect.pyperclip.copy"):
         await autocorrect._async_autocorrect(
             text="input text",
-            llm_config=llm_config,
+            provider_cfg=provider_cfg,
+            ollama_cfg=ollama_cfg,
+            openai_llm_cfg=openai_llm_cfg,
             general_cfg=general_cfg,
         )
 
     # Assertions
     mock_get_clipboard.assert_not_called()
     mock_build_agent.assert_called_once_with(
-        llm_config=llm_config,
+        provider_config=provider_cfg,
+        ollama_config=ollama_cfg,
+        openai_config=openai_llm_cfg,
         system_prompt=autocorrect.SYSTEM_PROMPT,
         instructions=autocorrect.AGENT_INSTRUCTIONS,
     )
@@ -215,15 +226,16 @@ async def test_autocorrect_command_from_clipboard(
     mock_agent.run = AsyncMock(return_value=mock_result)
     mock_build_agent.return_value = mock_agent
 
-    llm_config = LLMConfig(
-        provider="local",
-        local=OllamaLLMConfig(model=config.DEFAULT_MODEL, host=config.OLLAMA_HOST),
-        openai=OpenAILLMConfig(model="gpt-4o-mini", api_key=None),
+    provider_cfg = ProviderSelectionConfig(
+        llm_provider="local",
+        asr_provider="local",
+        tts_provider="local",
     )
+    ollama_cfg = OllamaConfig(ollama_model=config.DEFAULT_MODEL, ollama_host=config.OLLAMA_HOST)
+    openai_llm_cfg = OpenAILLMConfig(openai_llm_model="gpt-4o-mini", openai_api_key=None)
     general_cfg = GeneralConfig(
         log_level="WARNING",
         log_file=None,
-        list_devices=False,
         quiet=True,
         clipboard=True,
     )
@@ -231,14 +243,18 @@ async def test_autocorrect_command_from_clipboard(
     with patch("agent_cli.agents.autocorrect.pyperclip.copy"):
         await autocorrect._async_autocorrect(
             text=None,  # No text argument provided
-            llm_config=llm_config,
+            provider_cfg=provider_cfg,
+            ollama_cfg=ollama_cfg,
+            openai_llm_cfg=openai_llm_cfg,
             general_cfg=general_cfg,
         )
 
     # Assertions
     mock_get_clipboard.assert_called_once_with(quiet=True)
     mock_build_agent.assert_called_once_with(
-        llm_config=llm_config,
+        provider_config=provider_cfg,
+        ollama_config=ollama_cfg,
+        openai_config=openai_llm_cfg,
         system_prompt=autocorrect.SYSTEM_PROMPT,
         instructions=autocorrect.AGENT_INSTRUCTIONS,
     )
@@ -254,21 +270,24 @@ async def test_async_autocorrect_no_text(
     mock_process_text: AsyncMock,
 ) -> None:
     """Test the async_autocorrect function when no text is provided."""
-    llm_config = LLMConfig(
-        provider="local",
-        local=OllamaLLMConfig(model="test", host="test"),
-        openai=OpenAILLMConfig(model="gpt-4o-mini", api_key=None),
+    provider_cfg = ProviderSelectionConfig(
+        llm_provider="local",
+        asr_provider="local",
+        tts_provider="local",
     )
+    ollama_cfg = OllamaConfig(ollama_model="test", ollama_host="test")
+    openai_llm_cfg = OpenAILLMConfig(openai_llm_model="gpt-4o-mini", openai_api_key=None)
     general_cfg = GeneralConfig(
         log_level="WARNING",
         log_file=None,
-        list_devices=False,
         quiet=True,
         clipboard=True,
     )
     await autocorrect._async_autocorrect(
         text=None,
-        llm_config=llm_config,
+        provider_cfg=provider_cfg,
+        ollama_cfg=ollama_cfg,
+        openai_llm_cfg=openai_llm_cfg,
         general_cfg=general_cfg,
     )
     mock_process_text.assert_not_called()

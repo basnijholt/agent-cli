@@ -40,19 +40,16 @@ def main(
 def set_config_defaults(ctx: typer.Context, config_file: str | None) -> None:
     """Set the default values for the CLI based on the config file."""
     config = load_config(config_file)
-    if not config:
+    wildcard_config = config.get("defaults", {})
+    subcommand = ctx.invoked_subcommand
+
+    if not subcommand:
+        ctx.default_map = wildcard_config
         return
 
-    # Get command-specific overrides and top-level defaults
-    command_config = config.get(ctx.invoked_subcommand, {}) if ctx.invoked_subcommand else {}
-    defaults_config = config.get("defaults", {})
-
-    # Combine them in order of precedence: command > defaults
-    final_defaults = {**defaults_config, **command_config}
-
-    # Set the default_map for the Typer context, which it uses to set defaults
-    # for all parameters.
-    ctx.default_map = final_defaults
+    command_config = config.get(subcommand, {})
+    defaults = {**wildcard_config, **command_config}
+    ctx.default_map = defaults
 
 
 def setup_logging(log_level: str, log_file: str | None, *, quiet: bool) -> None:

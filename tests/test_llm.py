@@ -7,7 +7,11 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from agent_cli.agents._config import LLMConfig, OllamaLLMConfig, OpenAILLMConfig
+from agent_cli.agents._config import (
+    OllamaConfig,
+    OpenAILLMConfig,
+    ProviderSelectionConfig,
+)
 from agent_cli.llm import (
     build_agent,
     get_llm_response,
@@ -18,13 +22,15 @@ from agent_cli.llm import (
 def test_build_agent(monkeypatch: pytest.MonkeyPatch) -> None:
     """Test building the agent."""
     monkeypatch.setenv("OLLAMA_HOST", "http://mockhost:1234")
-    llm_config = LLMConfig(
-        provider="local",
-        local=OllamaLLMConfig(model="test-model", host="http://mockhost:1234"),
-        openai=OpenAILLMConfig(model="gpt-4o-mini", api_key=None),
+    provider_cfg = ProviderSelectionConfig(
+        llm_provider="local",
+        asr_provider="local",
+        tts_provider="local",
     )
+    ollama_cfg = OllamaConfig(ollama_model="test-model", ollama_host="http://mockhost:1234")
+    openai_llm_cfg = OpenAILLMConfig(openai_llm_model="gpt-4o-mini", openai_api_key=None)
 
-    agent = build_agent(llm_config)
+    agent = build_agent(provider_cfg, ollama_cfg, openai_llm_cfg)
 
     assert agent.model.model_name == "test-model"
 
@@ -37,16 +43,21 @@ async def test_get_llm_response(mock_build_agent: MagicMock) -> None:
     mock_agent.run = AsyncMock(return_value=MagicMock(output="hello"))
     mock_build_agent.return_value = mock_agent
 
-    llm_config = LLMConfig(
-        provider="local",
-        local=OllamaLLMConfig(model="test", host="test"),
-        openai=OpenAILLMConfig(model="gpt-4o-mini", api_key=None),
+    provider_cfg = ProviderSelectionConfig(
+        llm_provider="local",
+        asr_provider="local",
+        tts_provider="local",
     )
+    ollama_cfg = OllamaConfig(ollama_model="test", ollama_host="test")
+    openai_llm_cfg = OpenAILLMConfig(openai_llm_model="gpt-4o-mini", openai_api_key=None)
+
     response = await get_llm_response(
         system_prompt="test",
         agent_instructions="test",
         user_input="test",
-        llm_config=llm_config,
+        provider_config=provider_cfg,
+        ollama_config=ollama_cfg,
+        openai_config=openai_llm_cfg,
         logger=MagicMock(),
         live=MagicMock(),
     )
@@ -64,16 +75,21 @@ async def test_get_llm_response_error(mock_build_agent: MagicMock) -> None:
     mock_agent.run = AsyncMock(side_effect=Exception("test error"))
     mock_build_agent.return_value = mock_agent
 
-    llm_config = LLMConfig(
-        provider="local",
-        local=OllamaLLMConfig(model="test", host="test"),
-        openai=OpenAILLMConfig(model="gpt-4o-mini", api_key=None),
+    provider_cfg = ProviderSelectionConfig(
+        llm_provider="local",
+        asr_provider="local",
+        tts_provider="local",
     )
+    ollama_cfg = OllamaConfig(ollama_model="test", ollama_host="test")
+    openai_llm_cfg = OpenAILLMConfig(openai_llm_model="gpt-4o-mini", openai_api_key=None)
+
     response = await get_llm_response(
         system_prompt="test",
         agent_instructions="test",
         user_input="test",
-        llm_config=llm_config,
+        provider_config=provider_cfg,
+        ollama_config=ollama_cfg,
+        openai_config=openai_llm_cfg,
         logger=MagicMock(),
         live=MagicMock(),
     )
@@ -91,16 +107,21 @@ def test_process_and_update_clipboard(
     mock_get_llm_response.return_value = "hello"
     mock_live = MagicMock()
 
-    llm_config = LLMConfig(
-        provider="local",
-        local=OllamaLLMConfig(model="test", host="test"),
-        openai=OpenAILLMConfig(model="gpt-4o-mini", api_key=None),
+    provider_cfg = ProviderSelectionConfig(
+        llm_provider="local",
+        asr_provider="local",
+        tts_provider="local",
     )
+    ollama_cfg = OllamaConfig(ollama_model="test", ollama_host="test")
+    openai_llm_cfg = OpenAILLMConfig(openai_llm_model="gpt-4o-mini", openai_api_key=None)
+
     asyncio.run(
         process_and_update_clipboard(
             system_prompt="test",
             agent_instructions="test",
-            llm_config=llm_config,
+            provider_config=provider_cfg,
+            ollama_config=ollama_cfg,
+            openai_config=openai_llm_cfg,
             logger=MagicMock(),
             original_text="test",
             instruction="test",

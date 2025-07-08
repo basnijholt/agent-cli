@@ -1,4 +1,4 @@
-"""Pydantic models for agent configurations."""
+"""Pydantic models for agent configurations, aligned with CLI option groups."""
 
 from __future__ import annotations
 
@@ -7,138 +7,111 @@ from typing import Literal
 
 from pydantic import BaseModel, field_validator
 
-
-def _config(cfg: BaseModel, name: str) -> BaseModel:
-    """Return the active LLM configuration based on the provider."""
-    if cfg.provider == "local":
-        if cfg.local is None:
-            msg = f"Local {name} provider selected but no config found."
-            raise ValueError(msg)
-        return cfg.local
-    if cfg.provider == "openai":
-        if cfg.openai is None:
-            msg = f"OpenAI {name} provider selected but no config found."
-            raise ValueError(msg)
-        return cfg.openai
-    msg = f"Unsupported {name} provider: {cfg.provider}"
-    raise ValueError(msg)
+# --- Panel: Provider Selection ---
 
 
-# --- LLM ---
-class OllamaLLMConfig(BaseModel):
+class ProviderSelectionConfig(BaseModel):
+    """Configuration for selecting service providers."""
+
+    llm_provider: Literal["local", "openai"]
+    asr_provider: Literal["local", "openai"]
+    tts_provider: Literal["local", "openai"]
+
+
+# --- Panel: LLM Configuration ---
+
+
+class OllamaConfig(BaseModel):
     """Configuration for the local Ollama LLM provider."""
 
-    model: str
-    host: str
+    ollama_model: str
+    ollama_host: str
 
 
 class OpenAILLMConfig(BaseModel):
     """Configuration for the OpenAI LLM provider."""
 
-    model: str
-    api_key: str | None = None
+    openai_llm_model: str
+    openai_api_key: str | None = None
 
 
-class LLMConfig(BaseModel):
-    """LLM configuration parameters."""
-
-    provider: Literal["local", "openai"]
-    local: OllamaLLMConfig | None = None
-    openai: OpenAILLMConfig | None = None
-
-    @property
-    def config(self) -> OllamaLLMConfig | OpenAILLMConfig:
-        """Return the active LLM configuration based on the provider."""
-        return _config(self, "LLM")
+# --- Panel: ASR (Audio) Configuration ---
 
 
-# --- ASR ---
+class AudioInputConfig(BaseModel):
+    """Configuration for audio input devices."""
+
+    input_device_index: int | None = None
+    input_device_name: str | None = None
+
+
 class WyomingASRConfig(BaseModel):
     """Configuration for the Wyoming ASR provider."""
 
-    server_ip: str
-    server_port: int
+    wyoming_asr_ip: str
+    wyoming_asr_port: int
 
 
 class OpenAIASRConfig(BaseModel):
     """Configuration for the OpenAI ASR provider."""
 
-    model: str = "whisper-1"
-    api_key: str | None = None
+    openai_asr_model: str
 
 
-class ASRConfig(BaseModel):
-    """ASR configuration parameters."""
-
-    input_device_index: int | None = None
-    input_device_name: str | None = None
-    # -- Providers
-    provider: Literal["local", "openai"]
-    local: WyomingASRConfig | None = None
-    openai: OpenAIASRConfig | None = None
-
-    @property
-    def config(self) -> WyomingASRConfig | OpenAIASRConfig:
-        """Return the active ASR configuration based on the provider."""
-        return _config(self, "ASR")
+# --- Panel: TTS (Text-to-Speech) Configuration ---
 
 
-# --- TTS ---
+class AudioOutputConfig(BaseModel):
+    """Configuration for audio output devices and TTS behavior."""
+
+    output_device_index: int | None = None
+    output_device_name: str | None = None
+    tts_speed: float = 1.0
+    enable_tts: bool = False
+
+
 class WyomingTTSConfig(BaseModel):
     """Configuration for the Wyoming TTS provider."""
 
-    server_ip: str
-    server_port: int
-    voice_name: str | None = None
-    language: str | None = None
-    speaker: str | None = None
+    wyoming_tts_ip: str
+    wyoming_tts_port: int
+    wyoming_voice: str | None = None
+    wyoming_tts_language: str | None = None
+    wyoming_speaker: str | None = None
 
 
 class OpenAITTSConfig(BaseModel):
     """Configuration for the OpenAI TTS provider."""
 
-    model: str = "tts-1"
-    voice: str = "alloy"
-    api_key: str | None = None
+    openai_tts_model: str
+    openai_tts_voice: str
 
 
-class TTSConfig(BaseModel):
-    """TTS configuration parameters."""
-
-    enabled: bool
-    output_device_index: int | None = None
-    output_device_name: str | None = None
-    speed: float = 1.0
-    # -- Providers
-    provider: Literal["local", "openai"]
-    local: WyomingTTSConfig | None = None
-    openai: OpenAITTSConfig | None = None
-
-    @property
-    def config(self) -> WyomingTTSConfig | OpenAITTSConfig:
-        """Return the active TTS configuration based on the provider."""
-        return _config(self, "TTS")
+# --- Panel: Wake Word Options ---
 
 
-# --- General & File Configs ---
+class WakeWordConfig(BaseModel):
+    """Configuration for wake word detection."""
+
+    wake_server_ip: str
+    wake_server_port: int
+    wake_word_name: str
+
+
+# --- Panel: General Options ---
+
+
 class GeneralConfig(BaseModel):
-    """General configuration parameters."""
+    """General configuration parameters for logging and I/O."""
 
     log_level: str
     log_file: str | None = None
     quiet: bool
-    list_devices: bool
     clipboard: bool = True
-
-
-class FileConfig(BaseModel):
-    """File-related configuration."""
-
     save_file: Path | None = None
-    last_n_messages: int = 50
-    history_dir: Path | None = None
+    list_devices: bool = False
 
-    @field_validator("history_dir", "save_file", mode="before")
+    @field_validator("save_file", mode="before")
     @classmethod
     def _expand_user_path(cls, v: str | None) -> Path | None:
         if v:
@@ -146,11 +119,18 @@ class FileConfig(BaseModel):
         return None
 
 
-class WakeWordConfig(BaseModel):
-    """Wake Word configuration options."""
+# --- Panel: History Options ---
 
-    server_ip: str
-    server_port: int
-    wake_word_name: str
-    input_device_index: int | None = None
-    input_device_name: str | None = None
+
+class HistoryConfig(BaseModel):
+    """Configuration for conversation history."""
+
+    history_dir: Path | None = None
+    last_n_messages: int = 50
+
+    @field_validator("history_dir", mode="before")
+    @classmethod
+    def _expand_user_path(cls, v: str | None) -> Path | None:
+        if v:
+            return Path(v).expanduser()
+        return None

@@ -9,12 +9,12 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from agent_cli.agents._config import (
-    ASRConfig,
+    AudioInputConfig,
     GeneralConfig,
-    LLMConfig,
-    OllamaLLMConfig,
+    OllamaConfig,
     OpenAIASRConfig,
     OpenAILLMConfig,
+    ProviderSelectionConfig,
     WyomingASRConfig,
 )
 from agent_cli.agents.transcribe import _async_main
@@ -51,12 +51,10 @@ async def test_transcribe_e2e(
     mock_signal_handling_context.return_value.__enter__.return_value = stop_event
     asyncio.get_event_loop().call_later(0.1, stop_event.set)
 
-    asr_config = ASRConfig(
-        provider="local",
-        input_device_index=0,
-        input_device_name=None,
-        local=WyomingASRConfig(server_ip="mock-host", server_port=10300),
-        openai=OpenAIASRConfig(api_key=None),
+    provider_cfg = ProviderSelectionConfig(
+        asr_provider="local",
+        llm_provider="local",
+        tts_provider="local",
     )
     general_cfg = GeneralConfig(
         log_level="INFO",
@@ -65,17 +63,21 @@ async def test_transcribe_e2e(
         list_devices=False,
         clipboard=False,
     )
-    llm_config = LLMConfig(
-        provider="local",
-        local=OllamaLLMConfig(model="", host=""),
-        openai=OpenAILLMConfig(model="", api_key=None),
-    )
+    audio_in_cfg = AudioInputConfig(input_device_index=0)
+    wyoming_asr_cfg = WyomingASRConfig(wyoming_asr_ip="mock-host", wyoming_asr_port=10300)
+    openai_asr_cfg = OpenAIASRConfig(openai_asr_model="whisper-1")
+    ollama_cfg = OllamaConfig(ollama_model="", ollama_host="")
+    openai_llm_cfg = OpenAILLMConfig(openai_llm_model="")
 
     with patch("agent_cli.utils.console", mock_console):
         await _async_main(
-            asr_config=asr_config,
+            provider_cfg=provider_cfg,
             general_cfg=general_cfg,
-            llm_config=llm_config,
+            audio_in_cfg=audio_in_cfg,
+            wyoming_asr_cfg=wyoming_asr_cfg,
+            openai_asr_cfg=openai_asr_cfg,
+            ollama_cfg=ollama_cfg,
+            openai_llm_cfg=openai_llm_cfg,
             llm_enabled=False,
             p=mock_pyaudio_instance,
         )
