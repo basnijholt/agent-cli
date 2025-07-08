@@ -394,12 +394,14 @@ def interactive(
         "~/.config/agent-cli/history",
         "--history-dir",
         help="Directory to store conversation history.",
+        rich_help_panel="History Options",
     ),
     last_n_messages: int = typer.Option(
         50,
         "--last-n-messages",
         help="Number of messages to include in the conversation history."
         " Set to 0 to disable history.",
+        rich_help_panel="History Options",
     ),
     # General
     log_level: str = opts.LOG_LEVEL,

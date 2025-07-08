@@ -187,6 +187,7 @@ def autocorrect(
     text: str | None = typer.Argument(
         None,
         help="The text to correct. If not provided, reads from clipboard.",
+        rich_help_panel="General Options",
     ),
     model: str = opts.MODEL,
     ollama_host: str = opts.OLLAMA_HOST,

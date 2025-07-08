@@ -82,6 +82,7 @@ def speak(
     text: str | None = typer.Argument(
         None,
         help="Text to speak. Reads from clipboard if not provided.",
+        rich_help_panel="General Options",
     ),
     # TTS parameters
     tts_server_ip: str = opts.TTS_SERVER_IP,
@@ -99,6 +100,7 @@ def speak(
         None,
         "--save-file",
         help="Save audio to WAV file instead of playing it.",
+        rich_help_panel="General Options",
     ),
     # Process control
     stop: bool = opts.STOP,
