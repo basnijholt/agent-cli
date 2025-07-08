@@ -704,7 +704,7 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 ```yaml
 
 
- Usage: agent-cli wake-word-assistant [OPTIONS]
+ Usage: agent-cli assistant [OPTIONS]
 
  Wake word-based voice assistant using local or remote services.
 
