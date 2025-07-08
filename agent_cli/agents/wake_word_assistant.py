@@ -95,8 +95,7 @@ Respond as if you're having a natural conversation.
 
 
 async def _record_audio_with_wake_word(
-    p: pyaudio.PyAudio,
-    input_device_index: int | None,
+    stream: pyaudio.Stream,
     stop_event: InteractiveStopEvent,
     logger: logging.Logger,
     *,
@@ -114,55 +113,53 @@ async def _record_audio_with_wake_word(
             style="dim",
         )
 
-    stream_config = audio.setup_input_stream(input_device_index)
-    with audio.open_pyaudio_stream(p, **stream_config) as stream:
-        detected_word = await wake_word.detect_wake_word(
+    async with audio.tee_audio_stream(stream, stop_event, logger) as tee:
+        # Create a queue for wake word detection
+        wake_queue = await tee.add_queue()
+
+        detected_word = await wake_word.detect_wake_word_from_queue(
             wake_server_ip=wake_word_config.server_ip,
             wake_server_port=wake_word_config.server_port,
             wake_word_name=wake_word_config.wake_word_name,
             logger=logger,
-            stream=stream,
-            stop_event=stop_event,
-            live=live,
+            queue=wake_queue,
             quiet=quiet,
+            live=live,
         )
 
-    if not detected_word or stop_event.is_set():
-        return None
+        if not detected_word or stop_event.is_set():
+            # Clean up the queue if we exit early
+            await tee.remove_queue(wake_queue)
+            return None
 
-    if not quiet:
-        print_with_style(
-            f"✅ Wake word '{detected_word}' detected! Starting recording...",
-            style="green",
+        if not quiet:
+            print_with_style(
+                f"✅ Wake word '{detected_word}' detected! Starting recording...",
+                style="green",
+            )
+
+        # Add a new queue for recording
+        record_queue = await tee.add_queue()
+        record_task = asyncio.create_task(asr.record_audio_to_buffer(record_queue, logger))
+
+        # Use the same wake_queue for stop-word detection
+        stop_detected_word = await wake_word.detect_wake_word_from_queue(
+            wake_server_ip=wake_word_config.server_ip,
+            wake_server_port=wake_word_config.server_port,
+            wake_word_name=wake_word_config.wake_word_name,
+            logger=logger,
+            queue=wake_queue,
+            quiet=quiet,
+            live=live,
+            progress_message="Recording... (say wake word to stop)",
         )
 
-    # Re-open stream to clear buffer and ensure clean recording
-    with audio.open_pyaudio_stream(p, **stream_config) as stream:
-        record_task: asyncio.Task[bytes | None] | None = None
-        stop_detected_word: str | None = None
-        async with audio.tee_audio_stream(stream, stop_event, logger) as tee:
-            record_queue = tee.add_queue()
-            wake_queue = tee.add_queue()
+        # Stop the recording task by removing its queue
+        await tee.remove_queue(record_queue)
+        audio_data = await record_task
 
-            record_task = asyncio.create_task(
-                asr.record_audio_to_buffer(
-                    record_queue,
-                    logger,
-                ),
-            )
-
-            stop_detected_word = await wake_word.detect_wake_word_from_queue(
-                wake_server_ip=wake_word_config.server_ip,
-                wake_server_port=wake_word_config.server_port,
-                wake_word_name=wake_word_config.wake_word_name,
-                logger=logger,
-                queue=wake_queue,
-                quiet=quiet,
-                live=live,
-                progress_message="Recording... (say wake word to stop)",
-            )
-        # The "tee" is now stopped by the context manager's __aexit__
-        audio_data = await record_task if record_task else None
+        # Clean up the wake queue
+        await tee.remove_queue(wake_queue)
 
     if not stop_detected_word or stop_event.is_set():
         return None
@@ -195,11 +192,20 @@ async def _async_main(
             return
         input_device_index, _, tts_output_device_index = device_info
 
-        with signal_handling_context(LOGGER, general_cfg.quiet) as main_stop_event:
+        stream_config = audio.setup_input_stream(input_device_index)
+        with (
+            audio.open_pyaudio_stream(
+                p,
+                **stream_config,
+            ) as stream,
+            signal_handling_context(
+                LOGGER,
+                general_cfg.quiet,
+            ) as main_stop_event,
+        ):
             while not main_stop_event.is_set():
                 audio_data = await _record_audio_with_wake_word(
-                    p,
-                    input_device_index,
+                    stream,
                     main_stop_event,
                     LOGGER,
                     wake_word_config=wake_word_config,
