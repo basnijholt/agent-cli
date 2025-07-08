@@ -43,10 +43,7 @@ def get_synthesizer() -> Callable[..., Awaitable[bytes | None]]:
         if not config.OPENAI_API_KEY:
             msg = "OpenAI API key is not set."
             raise ValueError(msg)
-        return functools.partial(
-            _synthesize_speech_openai,
-            api_key=config.OPENAI_API_KEY,
-        )
+        return functools.partial(_synthesize_speech_openai, api_key=config.OPENAI_API_KEY)
     return _synthesize_speech_wyoming
 
 

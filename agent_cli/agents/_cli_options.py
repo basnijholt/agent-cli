@@ -30,6 +30,7 @@ OPENAI_API_KEY: str | None = typer.Option(
     config.OPENAI_API_KEY,
     "--openai-api-key",
     help="The OpenAI API key.",
+    envvar="OPENAI_API_KEY",
     rich_help_panel="LLM Options",
 )
 LLM: bool = typer.Option(
