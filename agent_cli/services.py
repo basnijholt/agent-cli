@@ -5,8 +5,6 @@ from __future__ import annotations
 import io
 from typing import TYPE_CHECKING
 
-from openai import AsyncOpenAI
-
 if TYPE_CHECKING:
     import logging
 
@@ -17,6 +15,8 @@ async def transcribe_audio_openai(
     logger: logging.Logger,
 ) -> str:
     """Transcribe audio using OpenAI's Whisper API."""
+    from openai import AsyncOpenAI  # noqa: PLC0415
+
     logger.info("Transcribing audio with OpenAI Whisper...")
     client = AsyncOpenAI(api_key=api_key)
     audio_file = io.BytesIO(audio_data)
@@ -34,6 +34,8 @@ async def synthesize_speech_openai(
     logger: logging.Logger,
 ) -> bytes:
     """Synthesize speech using OpenAI's TTS API."""
+    from openai import AsyncOpenAI  # noqa: PLC0415
+
     logger.info("Synthesizing speech with OpenAI TTS...")
     client = AsyncOpenAI(api_key=api_key)
     response = await client.audio.speech.create(
