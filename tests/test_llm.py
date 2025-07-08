@@ -20,7 +20,7 @@ def test_build_agent(monkeypatch: pytest.MonkeyPatch) -> None:
     model = "test-model"
     host = "http://localhost:11434"
 
-    agent = build_agent(model, host)
+    agent = build_agent(model=model, ollama_host=host)
 
     assert agent.model.model_name == model
 
@@ -38,6 +38,7 @@ async def test_get_llm_response(mock_build_agent: MagicMock) -> None:
         agent_instructions="test",
         user_input="test",
         model="test",
+        llm_provider="ollama",
         ollama_host="test",
         logger=MagicMock(),
         live=MagicMock(),
@@ -61,6 +62,7 @@ async def test_get_llm_response_error(mock_build_agent: MagicMock) -> None:
         agent_instructions="test",
         user_input="test",
         model="test",
+        llm_provider="ollama",
         ollama_host="test",
         logger=MagicMock(),
         live=MagicMock(),
@@ -84,6 +86,7 @@ def test_process_and_update_clipboard(
             system_prompt="test",
             agent_instructions="test",
             model="test",
+            llm_provider="ollama",
             ollama_host="test",
             logger=MagicMock(),
             original_text="test",

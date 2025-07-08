@@ -43,10 +43,13 @@ async def get_instruction_from_audio(
         # Send audio data to Wyoming ASR server for transcription
         instruction = await asr.transcribe_recorded_audio(
             audio_data,
-            asr_server_ip=asr_config.server_ip,
-            asr_server_port=asr_config.server_port,
             logger=logger,
             quiet=quiet,
+            asr_provider=asr_config.provider,
+            asr_server_ip=asr_config.server_ip,
+            asr_server_port=asr_config.server_port,
+            openai_api_key=asr_config.openai_api_key,
+            whisper_model=asr_config.whisper_model,
         )
 
         if not instruction or not instruction.strip():

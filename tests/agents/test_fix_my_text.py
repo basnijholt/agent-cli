@@ -11,7 +11,10 @@ from rich.console import Console
 
 from agent_cli import config
 from agent_cli.agents import autocorrect
+from agent_cli.agents._command_setup import CommandConfig
 from agent_cli.agents._config import GeneralConfig, LLMConfig
+from agent_cli.agents._llm_common import process_with_llm
+from agent_cli.agents._ui_common import display_input_text, display_output_with_clipboard
 
 
 def test_system_prompt_and_instructions():
@@ -25,83 +28,118 @@ def test_system_prompt_and_instructions():
     assert "spelling" in autocorrect.AGENT_INSTRUCTIONS.lower()
 
 
-def test_display_result_quiet_mode():
-    """Test the _display_result function in quiet mode with real output."""
+def test_display_output_with_clipboard_quiet_mode():
+    """Test the display_output_with_clipboard function in quiet mode with real output."""
     # Test normal correction
-    with patch("agent_cli.agents.autocorrect.pyperclip.copy") as mock_copy:
+    with patch("agent_cli.agents._ui_common.pyperclip.copy") as mock_copy:
         output = io.StringIO()
+        general_cfg = GeneralConfig(
+            log_level="WARNING",
+            log_file=None,
+            list_devices=False,
+            quiet=True,
+            clipboard=True,
+        )
         with redirect_stdout(output):
-            autocorrect._display_result(
+            display_output_with_clipboard(
                 "Hello world!",
-                "hello world",
-                0.1,
-                simple_output=True,
+                original_text="hello world",
+                elapsed=0.1,
+                general_cfg=general_cfg,
             )
 
         assert output.getvalue().strip() == "Hello world!"
         mock_copy.assert_called_once_with("Hello world!")
 
 
-def test_display_result_no_correction_needed():
-    """Test the _display_result function when no correction is needed."""
-    with patch("agent_cli.agents.autocorrect.pyperclip.copy") as mock_copy:
+def test_display_output_no_correction_needed():
+    """Test the display_output_with_clipboard function when no correction is needed."""
+    with patch("agent_cli.agents._ui_common.pyperclip.copy") as mock_copy:
         output = io.StringIO()
+        general_cfg = GeneralConfig(
+            log_level="WARNING",
+            log_file=None,
+            list_devices=False,
+            quiet=True,
+            clipboard=True,
+        )
         with redirect_stdout(output):
-            autocorrect._display_result(
+            display_output_with_clipboard(
                 "Hello world!",
-                "Hello world!",
-                0.1,
-                simple_output=True,
+                original_text="Hello world!",
+                elapsed=0.1,
+                general_cfg=general_cfg,
             )
 
-        assert output.getvalue().strip() == "✅ No correction needed."
+        assert output.getvalue().strip() == "✅ No changes needed."
         mock_copy.assert_called_once_with("Hello world!")
 
 
-def test_display_result_verbose_mode():
-    """Test the _display_result function in verbose mode with real console output."""
+def test_display_output_verbose_mode():
+    """Test the display_output_with_clipboard function in verbose mode with real console output."""
     mock_console = Console(file=io.StringIO(), width=80)
     with (
         patch("agent_cli.utils.console", mock_console),
-        patch("agent_cli.agents.autocorrect.pyperclip.copy") as mock_copy,
+        patch("agent_cli.agents._ui_common.pyperclip.copy") as mock_copy,
     ):
-        autocorrect._display_result(
+        general_cfg = GeneralConfig(
+            log_level="WARNING",
+            log_file=None,
+            list_devices=False,
+            quiet=False,
+            clipboard=True,
+        )
+        display_output_with_clipboard(
             "Hello world!",
-            "hello world",
-            0.25,
-            simple_output=False,
+            original_text="hello world",
+            elapsed=0.25,
+            general_cfg=general_cfg,
         )
 
         output = mock_console.file.getvalue()
         assert "Hello world!" in output
-        assert "Corrected Text" in output
+        assert "Output" in output
         assert "Success!" in output
         mock_copy.assert_called_once_with("Hello world!")
 
 
-def test_display_original_text():
-    """Test the display_original_text function."""
+def test_display_input_text():
+    """Test the display_input_text function."""
     mock_console = Console(file=io.StringIO(), width=80)
     with patch("agent_cli.utils.console", mock_console):
-        autocorrect._display_original_text("Test text here", quiet=False)
+        general_cfg = GeneralConfig(
+            log_level="WARNING",
+            log_file=None,
+            list_devices=False,
+            quiet=False,
+            clipboard=True,
+        )
+        display_input_text("Test text here", general_cfg=general_cfg)
         output = mock_console.file.getvalue()
         assert "Test text here" in output
         assert "Original Text" in output
 
 
-def test_display_original_text_none_console():
-    """Test display_original_text with None console (should not crash)."""
+def test_display_input_text_quiet_mode():
+    """Test display_input_text with quiet mode (should not print anything)."""
     mock_console = Console(file=io.StringIO(), width=80)
     with patch("agent_cli.utils.console", mock_console):
+        general_cfg = GeneralConfig(
+            log_level="WARNING",
+            log_file=None,
+            list_devices=False,
+            quiet=True,
+            clipboard=True,
+        )
         # This should not raise an exception or print anything
-        autocorrect._display_original_text("Test text", quiet=True)
+        display_input_text("Test text", general_cfg=general_cfg)
         assert mock_console.file.getvalue() == ""
 
 
 @pytest.mark.asyncio
-@patch("agent_cli.agents.autocorrect.build_agent")
-async def test_process_text_integration(mock_build_agent: MagicMock) -> None:
-    """Test process_text with a more realistic mock setup."""
+@patch("agent_cli.agents._llm_common.build_agent")
+async def test_process_with_llm_integration(mock_build_agent: MagicMock) -> None:
+    """Test process_with_llm with a more realistic mock setup."""
     # Create a mock agent that behaves more like the real thing
     mock_agent = MagicMock()
     mock_result = MagicMock()
@@ -109,17 +147,23 @@ async def test_process_text_integration(mock_build_agent: MagicMock) -> None:
     mock_agent.run = AsyncMock(return_value=mock_result)
     mock_build_agent.return_value = mock_agent
 
+    llm_config = LLMConfig(model="test-model", ollama_host="http://localhost:11434")
+
     # Test the function
-    result, elapsed = await autocorrect._process_text(
+    result = await process_with_llm(
         "this is text",
-        "test-model",
-        "http://localhost:11434",
+        llm_config,
+        autocorrect.SYSTEM_PROMPT,
+        autocorrect.AGENT_INSTRUCTIONS,
+        autocorrect.INPUT_TEMPLATE,
     )
 
     # Verify the result
-    assert result == "This is corrected text."
-    assert isinstance(elapsed, float)
-    assert elapsed >= 0
+    assert result["success"] is True
+    assert result["output"] == "This is corrected text."
+    assert isinstance(result["elapsed"], float)
+    assert result["elapsed"] >= 0
+    assert result["error"] is None
 
     # Verify the agent was called correctly
     mock_build_agent.assert_called_once_with(
@@ -144,7 +188,7 @@ def test_configuration_constants():
 
 
 @pytest.mark.asyncio
-@patch("agent_cli.agents.autocorrect.build_agent")
+@patch("agent_cli.agents._llm_common.build_agent")
 @patch("agent_cli.agents.autocorrect.get_clipboard_text")
 async def test_autocorrect_command_with_text(
     mock_get_clipboard: MagicMock,
@@ -167,11 +211,12 @@ async def test_autocorrect_command_with_text(
         quiet=True,
     )
 
-    with patch("agent_cli.agents.autocorrect.pyperclip.copy"):
+    config_obj = CommandConfig(general_cfg=general_cfg, llm_config=llm_config)
+
+    with patch("agent_cli.agents._ui_common.pyperclip.copy"):
         await autocorrect._async_autocorrect(
             text="input text",
-            llm_config=llm_config,
-            general_cfg=general_cfg,
+            config=config_obj,
         )
 
     # Assertions
@@ -187,7 +232,7 @@ async def test_autocorrect_command_with_text(
 
 
 @pytest.mark.asyncio
-@patch("agent_cli.agents.autocorrect.build_agent")
+@patch("agent_cli.agents._llm_common.build_agent")
 @patch("agent_cli.agents.autocorrect.get_clipboard_text")
 async def test_autocorrect_command_from_clipboard(
     mock_get_clipboard: MagicMock,
@@ -210,11 +255,12 @@ async def test_autocorrect_command_from_clipboard(
         quiet=True,
     )
 
-    with patch("agent_cli.agents.autocorrect.pyperclip.copy"):
+    config_obj = CommandConfig(general_cfg=general_cfg, llm_config=llm_config)
+
+    with patch("agent_cli.agents._ui_common.pyperclip.copy"):
         await autocorrect._async_autocorrect(
             text=None,  # No text argument provided
-            llm_config=llm_config,
-            general_cfg=general_cfg,
+            config=config_obj,
         )
 
     # Assertions
@@ -230,11 +276,11 @@ async def test_autocorrect_command_from_clipboard(
 
 
 @pytest.mark.asyncio
-@patch("agent_cli.agents.autocorrect._process_text", new_callable=AsyncMock)
+@patch("agent_cli.agents._llm_common.process_with_llm", new_callable=AsyncMock)
 @patch("agent_cli.agents.autocorrect.get_clipboard_text", return_value=None)
 async def test_async_autocorrect_no_text(
     mock_get_clipboard_text: MagicMock,
-    mock_process_text: AsyncMock,
+    mock_process_with_llm: AsyncMock,
 ) -> None:
     """Test the async_autocorrect function when no text is provided."""
     llm_config = LLMConfig(model="test", ollama_host="test")
@@ -244,10 +290,12 @@ async def test_async_autocorrect_no_text(
         list_devices=False,
         quiet=True,
     )
+
+    config_obj = CommandConfig(general_cfg=general_cfg, llm_config=llm_config)
+
     await autocorrect._async_autocorrect(
         text=None,
-        llm_config=llm_config,
-        general_cfg=general_cfg,
+        config=config_obj,
     )
-    mock_process_text.assert_not_called()
+    mock_process_with_llm.assert_not_called()
     mock_get_clipboard_text.assert_called_once()

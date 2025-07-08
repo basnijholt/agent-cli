@@ -7,6 +7,9 @@ import time
 from typing import TYPE_CHECKING
 
 import pyperclip
+from pydantic_ai import Agent
+from pydantic_ai.models.openai import OpenAIModel, OpenAIResponsesModelSettings
+from pydantic_ai.providers.openai import OpenAIProvider
 from rich.live import Live
 
 from agent_cli.utils import (
@@ -19,27 +22,34 @@ from agent_cli.utils import (
 if TYPE_CHECKING:
     import logging
 
-    from pydantic_ai import Agent
     from pydantic_ai.tools import Tool
 
 
 def build_agent(
     model: str,
-    ollama_host: str,
     *,
+    llm_provider: str = "ollama",
+    ollama_host: str | None = None,
+    api_key: str | None = None,
     system_prompt: str | None = None,
     instructions: str | None = None,
     tools: list[Tool] | None = None,
 ) -> Agent:
-    """Construct and return a PydanticAI agent configured for local Ollama."""
-    from pydantic_ai import Agent  # noqa: PLC0415
-    from pydantic_ai.models.openai import OpenAIModel, OpenAIResponsesModelSettings  # noqa: PLC0415
-    from pydantic_ai.providers.openai import OpenAIProvider  # noqa: PLC0415
+    """Construct and return a PydanticAI agent."""
+    if llm_provider == "ollama":
+        if not ollama_host:
+            msg = "ollama_host must be provided for ollama provider"
+            raise ValueError(msg)
+        provider = OpenAIProvider(base_url=f"{ollama_host}/v1")
+    elif llm_provider == "openai":
+        provider = OpenAIProvider(api_key=api_key)
+    else:
+        msg = f"Unknown llm_provider: {llm_provider}"
+        raise ValueError(msg)
 
-    ollama_provider = OpenAIProvider(base_url=f"{ollama_host}/v1")
-    ollama_model = OpenAIModel(model_name=model, provider=ollama_provider)
+    model_instance = OpenAIModel(model_name=model, provider=provider)
     return Agent(
-        model=ollama_model,
+        model=model_instance,
         system_prompt=system_prompt or (),
         instructions=instructions,
         tools=tools or [],
@@ -66,8 +76,10 @@ async def get_llm_response(
     agent_instructions: str,
     user_input: str,
     model: str,
-    ollama_host: str,
     logger: logging.Logger,
+    llm_provider: str = "ollama",
+    ollama_host: str | None = None,
+    openai_api_key: str | None = None,
     live: Live | None = None,
     tools: list[Tool] | None = None,
     quiet: bool = False,
@@ -82,8 +94,10 @@ async def get_llm_response(
         agent_instructions: Agent instructions
         user_input: Input text for the LLM
         model: Model name
-        ollama_host: Ollama server host
         logger: Logger instance
+        llm_provider: The LLM provider to use ("ollama" or "openai")
+        ollama_host: Ollama server host
+        openai_api_key: OpenAI API key
         live: Existing Live instance
         tools: Optional list of tools for the agent
         quiet: If True, suppress timer display
@@ -97,7 +111,9 @@ async def get_llm_response(
     """
     agent = build_agent(
         model=model,
+        llm_provider=llm_provider,
         ollama_host=ollama_host,
+        api_key=openai_api_key,
         system_prompt=system_prompt,
         instructions=agent_instructions,
         tools=tools,
@@ -137,9 +153,13 @@ async def get_llm_response(
 
     except Exception as e:
         logger.exception("An error occurred during LLM processing.")
+        provider_name = "Ollama" if llm_provider == "ollama" else "OpenAI"
+        error_msg = f"Please check your {provider_name} server at [cyan]{ollama_host}[/cyan]"
+        if llm_provider == "openai":
+            error_msg = "Please check your OpenAI API key and connection."
         print_error_message(
             f"An unexpected LLM error occurred: {e}",
-            f"Please check your Ollama server at [cyan]{ollama_host}[/cyan]",
+            error_msg,
         )
         if exit_on_error:
             sys.exit(1)
@@ -151,13 +171,15 @@ async def process_and_update_clipboard(
     agent_instructions: str,
     *,
     model: str,
-    ollama_host: str,
     logger: logging.Logger,
     original_text: str,
     instruction: str,
     clipboard: bool,
     quiet: bool,
     live: Live,
+    llm_provider: str = "ollama",
+    ollama_host: str | None = None,
+    openai_api_key: str | None = None,
 ) -> None:
     """Processes the text with the LLM, updates the clipboard, and displays the result.
 
@@ -174,11 +196,13 @@ async def process_and_update_clipboard(
         agent_instructions=agent_instructions,
         user_input=user_input,
         model=model,
-        ollama_host=ollama_host,
         logger=logger,
         quiet=quiet,
         clipboard=clipboard,
         live=live,
         show_output=True,
         exit_on_error=True,
+        llm_provider=llm_provider,
+        ollama_host=ollama_host,
+        openai_api_key=openai_api_key,
     )

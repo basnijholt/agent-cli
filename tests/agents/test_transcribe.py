@@ -9,6 +9,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from agent_cli.agents import transcribe
+from agent_cli.agents._command_setup import CommandConfig
 from agent_cli.agents._config import ASRConfig, GeneralConfig, LLMConfig
 from tests.mocks.wyoming import MockASRClient
 
@@ -47,18 +48,19 @@ async def test_transcribe_main(
             input_device_index=None,
             input_device_name=None,
         )
-        general_cfg = GeneralConfig(
-            log_level="INFO",
-            log_file=None,
-            quiet=True,
-            list_devices=False,
-            clipboard=True,
+        config = CommandConfig(
+            general_cfg=GeneralConfig(
+                log_level="INFO",
+                log_file=None,
+                quiet=True,
+                list_devices=False,
+                clipboard=True,
+            ),
+            llm_config=LLMConfig(model="", ollama_host=""),
         )
-        llm_config = LLMConfig(model="", ollama_host="")
         await transcribe._async_main(
             asr_config=asr_config,
-            general_cfg=general_cfg,
-            llm_config=llm_config,
+            config=config,
             llm_enabled=False,
             p=mock_pyaudio_instance,
         )

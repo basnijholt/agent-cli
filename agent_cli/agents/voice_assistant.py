@@ -166,11 +166,15 @@ def voice_assistant(
     # ASR
     input_device_index: int | None = opts.DEVICE_INDEX,
     input_device_name: str | None = opts.DEVICE_NAME,
+    asr_provider: str = opts.ASR_PROVIDER,
     asr_server_ip: str = opts.ASR_SERVER_IP,
     asr_server_port: int = opts.ASR_SERVER_PORT,
+    whisper_model: str = opts.WHISPER_MODEL,
     # LLM
     model: str = opts.MODEL,
     ollama_host: str = opts.OLLAMA_HOST,
+    llm_provider: str = opts.LLM_PROVIDER,
+    openai_api_key: str = opts.OPENAI_API_KEY,
     # Process control
     stop: bool = opts.STOP,
     status: bool = opts.STATUS,
@@ -231,12 +235,20 @@ def voice_assistant(
         maybe_live(not general_cfg.quiet) as live,
     ):
         asr_config = ASRConfig(
+            provider=asr_provider,
             server_ip=asr_server_ip,
             server_port=asr_server_port,
+            openai_api_key=openai_api_key,
+            whisper_model=whisper_model,
             input_device_index=input_device_index,
             input_device_name=input_device_name,
         )
-        llm_config = LLMConfig(model=model, ollama_host=ollama_host)
+        llm_config = LLMConfig(
+            model=model,
+            llm_provider=llm_provider,
+            ollama_host=ollama_host,
+            openai_api_key=openai_api_key,
+        )
         tts_config = TTSConfig(
             enabled=enable_tts,
             server_ip=tts_server_ip,

@@ -104,14 +104,14 @@ async def test_transcribe_audio() -> None:
         # Act
         transcribe_task = asyncio.create_task(
             asr.transcribe_live_audio(
-                "localhost",
-                12345,
-                0,
-                logger,
-                p,
-                stop_event,
+                input_device_index=0,
+                logger=logger,
+                p=p,
+                stop_event=stop_event,
                 quiet=True,
                 live=MagicMock(),
+                asr_server_ip="localhost",
+                asr_server_port=12345,
             ),
         )
         # Simulate stopping after a brief period
@@ -146,14 +146,14 @@ async def test_transcribe_audio_connection_error() -> None:
 
         # Act
         result = await asr.transcribe_live_audio(
-            "localhost",
-            12345,
-            0,
-            logger,
-            p,
-            stop_event,
+            input_device_index=0,
+            logger=logger,
+            p=p,
+            stop_event=stop_event,
             quiet=True,
             live=MagicMock(),
+            asr_server_ip="localhost",
+            asr_server_port=12345,
         )
 
         # Assert
