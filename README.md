@@ -27,7 +27,7 @@ It provides a suite of powerful tools for voice and text interaction, designed f
   - [`transcribe`](#transcribe)
   - [`speak`](#speak)
   - [`voice-edit`](#voice-edit)
-  - [`wake-word-assistant`](#wake-word-assistant)
+  - [`assistant`](#assistant)
   - [`chat`](#chat)
 - [Development](#development)
   - [Running Tests](#running-tests)
@@ -52,7 +52,7 @@ It provides a suite of powerful tools for voice and text interaction, designed f
 - **`transcribe`**: Transcribe audio from your microphone to text in your clipboard using a local Whisper model or OpenAI's Whisper API.
 - **`speak`**: Convert text to speech using a local TTS engine or OpenAI's TTS API.
 - **`voice-edit`**: A voice-powered clipboard assistant that edits text based on your spoken commands.
-- **`wake-word-assistant`**: A hands-free voice assistant that starts and stops recording based on a wake word.
+- **`assistant`**: A hands-free voice assistant that starts and stops recording based on a wake word.
 - **`chat`**: An chat, conversational AI agent with tool-calling capabilities.
 
 ## Prerequisites
@@ -61,7 +61,7 @@ It provides a suite of powerful tools for voice and text interaction, designed f
 - **Ollama**: For `autocorrect`, `voice-edit`, and `chat` using local services, you need [Ollama](https://ollama.ai/) running with a model pulled (e.g., `ollama pull mistral:latest`).
 - **Wyoming Piper**: For `speak`, `voice-edit`, and `chat` using local services, you need a [Wyoming TTS server](https://github.com/rhasspy/wyoming-piper) running for text-to-speech.
 - **Wyoming Faster Whisper**: For `transcribe`, `voice-edit`, and `chat` using local services, you need a [Wyoming ASR server](https://github.com/rhasspy/wyoming-faster-whisper) for speech-to-text.
-- **Wyoming openWakeWord**: For `wake-word-assistant`, you need a [Wyoming wake word server](https://github.com/rhasspy/wyoming-openwakeword) running.
+- **Wyoming openWakeWord**: For `assistant`, you need a [Wyoming wake word server](https://github.com/rhasspy/wyoming-openwakeword) running.
 - **OpenAI API Key**: If you want to use OpenAI services, you need an OpenAI API key.
 - **Clipboard Tools**: `xsel`, `xclip` (Linux), or `pbcopy`/`pbpaste` (macOS) are used by many agents.
 - **PortAudio**: Required for PyAudio to handle microphone and speaker I/O.
@@ -637,13 +637,13 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 
 </details>
 
-### `wake-word-assistant`
+### `assistant`
 
 **Purpose:** A hands-free voice assistant that starts and stops recording based on a wake word.
 
 **Workflow:** This agent continuously listens for a wake word (e.g., "Hey Nabu").
 
-1.  Run the `wake-word-assistant` command. It will start listening for the wake word.
+1.  Run the `assistant` command. It will start listening for the wake word.
 2.  Say the wake word to start recording.
 3.  Speak your command or question.
 4.  Say the wake word again to stop recording.
@@ -652,18 +652,18 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 
 **How to Use It:**
 
-- **Start the agent**: `agent-cli wake-word-assistant --wake-word "ok_nabu" --input-device-index 1`
-- **With TTS**: `agent-cli wake-word-assistant --wake-word "ok_nabu" --tts --voice "en_US-lessac-medium"`
+- **Start the agent**: `agent-cli assistant --wake-word "ok_nabu" --input-device-index 1`
+- **With TTS**: `agent-cli assistant --wake-word "ok_nabu" --tts --voice "en_US-lessac-medium"`
 
 <details>
-<summary>See the output of <code>agent-cli wake-word-assistant --help</code></summary>
+<summary>See the output of <code>agent-cli assistant --help</code></summary>
 
 <!-- CODE:BASH:START -->
 <!-- echo '```yaml' -->
 <!-- export NO_COLOR=1 -->
 <!-- export TERM=dumb -->
 <!-- export TERMINAL_WIDTH=90 -->
-<!-- agent-cli wake-word-assistant --help -->
+<!-- agent-cli assistant --help -->
 <!-- echo '```' -->
 <!-- CODE:END -->
 

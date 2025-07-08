@@ -15,7 +15,7 @@ WORKFLOW:
 5. Optionally process with LLM and respond with TTS
 
 USAGE:
-- Start the agent: wake-word-assistant --wake-word "ok_nabu" --input-device-index 1
+- Start the agent: assistant --wake-word "ok_nabu" --input-device-index 1
 - The agent runs continuously until stopped with Ctrl+C or --stop
 - Uses background process management for daemon-like operation
 
@@ -243,8 +243,8 @@ async def _async_main(
                     print_with_style("✨ Ready for next command...", style="green")
 
 
-@app.command("wake-word-assistant")
-def wake_word_assistant(
+@app.command("assistant")
+def assistant(
     *,
     # Wake word parameters
     wake_server_ip: str = opts.WAKE_WORD_SERVER_IP,
@@ -293,7 +293,7 @@ def wake_word_assistant(
         list_devices=list_devices,
         clipboard=clipboard,
     )
-    process_name = "wake-word-assistant"
+    process_name = "assistant"
     if stop_or_status_or_toggle(
         process_name,
         "wake word assistant",

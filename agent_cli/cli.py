@@ -74,10 +74,10 @@ def setup_logging(log_level: str, log_file: str | None, *, quiet: bool) -> None:
 
 # Import commands from other modules to register them
 from .agents import (  # noqa: E402, F401
+    assistant,
     autocorrect,
     chat,
     speak,
     transcribe,
     voice_edit,
-    wake_word_assistant,
 )
