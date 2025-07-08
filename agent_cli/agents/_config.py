@@ -1,33 +1,29 @@
-"""Data classes for agent configurations."""
+"""Pydantic models for agent configurations."""
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import TYPE_CHECKING, Literal
+from pathlib import Path
+from typing import Literal
 
-if TYPE_CHECKING:
-    from pathlib import Path
+from pydantic import BaseModel, field_validator
 
 
 # --- LLM ---
-@dataclass
-class OllamaLLMConfig:
+class OllamaLLMConfig(BaseModel):
     """Configuration for the local Ollama LLM provider."""
 
     model: str
     host: str
 
 
-@dataclass
-class OpenAILLMConfig:
+class OpenAILLMConfig(BaseModel):
     """Configuration for the OpenAI LLM provider."""
 
     model: str
     api_key: str | None = None
 
 
-@dataclass
-class LLMConfig:
+class LLMConfig(BaseModel):
     """LLM configuration parameters."""
 
     provider: Literal["local", "openai"]
@@ -36,47 +32,42 @@ class LLMConfig:
 
 
 # --- ASR ---
-@dataclass
-class WyomingASRConfig:
+class WyomingASRConfig(BaseModel):
     """Configuration for the Wyoming ASR provider."""
 
     server_ip: str
     server_port: int
 
 
-@dataclass
-class OpenAIASRConfig:
+class OpenAIASRConfig(BaseModel):
     """Configuration for the OpenAI ASR provider."""
 
     model: str = "whisper-1"
     api_key: str | None = None
 
 
-@dataclass
-class ASRConfig:
+class ASRConfig(BaseModel):
     """ASR configuration parameters."""
 
     provider: Literal["local", "openai"]
-    input_device_index: int | None
-    input_device_name: str | None
+    input_device_index: int | None = None
+    input_device_name: str | None = None
     local: WyomingASRConfig | None = None
     openai: OpenAIASRConfig | None = None
 
 
 # --- TTS ---
-@dataclass
-class WyomingTTSConfig:
+class WyomingTTSConfig(BaseModel):
     """Configuration for the Wyoming TTS provider."""
 
     server_ip: str
     server_port: int
-    voice_name: str | None
-    language: str | None
-    speaker: str | None
+    voice_name: str | None = None
+    language: str | None = None
+    speaker: str | None = None
 
 
-@dataclass
-class OpenAITTSConfig:
+class OpenAITTSConfig(BaseModel):
     """Configuration for the OpenAI TTS provider."""
 
     model: str = "tts-1"
@@ -84,53 +75,49 @@ class OpenAITTSConfig:
     api_key: str | None = None
 
 
-@dataclass
-class TTSConfig:
+class TTSConfig(BaseModel):
     """TTS configuration parameters."""
 
     enabled: bool
     provider: Literal["local", "openai"]
-    output_device_index: int | None
-    output_device_name: str | None
+    output_device_index: int | None = None
+    output_device_name: str | None = None
     speed: float = 1.0
     local: WyomingTTSConfig | None = None
     openai: OpenAITTSConfig | None = None
 
 
 # --- General & File Configs (remain mostly unchanged) ---
-@dataclass
-class GeneralConfig:
+class GeneralConfig(BaseModel):
     """General configuration parameters."""
 
     log_level: str
-    log_file: str | None
+    log_file: str | None = None
     quiet: bool
     list_devices: bool
     clipboard: bool = True
 
 
-@dataclass
-class FileConfig:
+class FileConfig(BaseModel):
     """File-related configuration."""
 
-    save_file: Path | None
+    save_file: Path | None = None
     last_n_messages: int = 50
     history_dir: Path | None = None
 
-    def __post_init__(self) -> None:
-        """Expand user paths for history and save file."""
-        if self.history_dir:
-            self.history_dir = self.history_dir.expanduser()
-        if self.save_file:
-            self.save_file = self.save_file.expanduser()
+    @field_validator("history_dir", "save_file", mode="before")
+    @classmethod
+    def _expand_user_path(cls, v: str | None) -> Path | None:
+        if v:
+            return Path(v).expanduser()
+        return None
 
 
-@dataclass
-class WakeWordConfig:
+class WakeWordConfig(BaseModel):
     """Wake Word configuration options."""
 
     server_ip: str
     server_port: int
     wake_word_name: str
-    input_device_index: int | None
-    input_device_name: str | None
+    input_device_index: int | None = None
+    input_device_name: str | None = None
