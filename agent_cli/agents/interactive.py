@@ -25,7 +25,7 @@ from typing import TYPE_CHECKING, TypedDict
 import typer
 
 import agent_cli.agents._cli_options as opts
-from agent_cli import asr, process_manager
+from agent_cli import asr, config, process_manager
 from agent_cli.agents._config import (
     ASRConfig,
     FileConfig,
@@ -436,6 +436,8 @@ def interactive(
 
     # Use context manager for PID file management
     with process_manager.pid_file_context(process_name), suppress(KeyboardInterrupt):
+        if service_provider == "openai" and model == config.DEFAULT_MODEL:
+            model = config.DEFAULT_OPENAI_MODEL
         asr_config = ASRConfig(
             server_ip=asr_server_ip,
             server_port=asr_server_port,
