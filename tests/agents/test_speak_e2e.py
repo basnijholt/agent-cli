@@ -66,6 +66,8 @@ async def test_speak_e2e(
             text="Hello, world!",
             tts_config=tts_config,
             file_config=file_config,
+            service_provider="local",
+            openai_api_key=None,
         )
 
     # Verify that the audio was "played"

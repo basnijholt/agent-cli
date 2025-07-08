@@ -12,23 +12,25 @@ from agent_cli.tts import _apply_speed_adjustment, speak_text
 
 
 @pytest.mark.asyncio
-@patch("agent_cli.tts._synthesize_speech", new_callable=AsyncMock)
-async def test_speak_text(mock_synthesize_speech: AsyncMock) -> None:
+@patch("agent_cli.tts.get_synthesizer")
+async def test_speak_text(mock_get_synthesizer: MagicMock) -> None:
     """Test the speak_text function."""
-    mock_synthesize_speech.return_value = b"audio data"
+    mock_synthesizer = AsyncMock(return_value=b"audio data")
+    mock_get_synthesizer.return_value = mock_synthesizer
+
     audio_data = await speak_text(
         text="hello",
+        service_provider="local",
+        openai_api_key=None,
         tts_server_ip="localhost",
         tts_server_port=1234,
-        voice_name="test-voice",
-        language=None,
-        speaker=None,
-        output_device_index=None,
-        play_audio_flag=False,
         logger=MagicMock(),
+        play_audio_flag=False,
         live=MagicMock(),
     )
+
     assert audio_data == b"audio data"
+    mock_synthesizer.assert_called_once()
 
 
 def test_apply_speed_adjustment_no_change() -> None:

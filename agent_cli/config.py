@@ -22,6 +22,13 @@ WAKE_WORD_SERVER_PORT = 10400
 OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://localhost:11434")
 DEFAULT_MODEL = "devstral:24b"
 
+# --- OpenAI Configuration ---
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+DEFAULT_OPENAI_MODEL = "gpt-4o"
+
+# --- Service Provider ---
+SERVICE_PROVIDER = os.getenv("SERVICE_PROVIDER", "local")  # 'local' or 'openai'
+
 # --- PyAudio Configuration ---
 PYAUDIO_FORMAT = pyaudio.paInt16
 PYAUDIO_CHANNELS = 1
