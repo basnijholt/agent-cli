@@ -1,4 +1,4 @@
-r"""An interactive agent that you can talk to.
+r"""An chat agent that you can talk to.
 
 This agent will:
 - Listen for your voice command.
@@ -364,8 +364,8 @@ async def _async_main(
         raise
 
 
-@app.command("interactive")
-def interactive(
+@app.command("chat")
+def chat(
     *,
     # ASR
     input_device_index: int | None = opts.DEVICE_INDEX,
@@ -414,19 +414,19 @@ def interactive(
     quiet: bool = opts.QUIET,
     config_file: str | None = opts.CONFIG_FILE,  # noqa: ARG001
 ) -> None:
-    """An interactive agent that you can talk to."""
+    """An chat agent that you can talk to."""
     setup_logging(log_level, log_file, quiet=quiet)
     general_cfg = GeneralConfig(
         log_level=log_level,
         log_file=log_file,
         quiet=quiet,
         list_devices=list_devices,
-        clipboard=False,  # Not used in interactive mode
+        clipboard=False,  # Not used in chat mode
     )
-    process_name = "interactive"
+    process_name = "chat"
     if stop_or_status_or_toggle(
         process_name,
-        "interactive agent",
+        "chat agent",
         stop,
         status,
         toggle,

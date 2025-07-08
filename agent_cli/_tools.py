@@ -1,4 +1,4 @@
-"""Tool definitions for the interactive agent."""
+"""Tool definitions for the chat agent."""
 
 from __future__ import annotations
 

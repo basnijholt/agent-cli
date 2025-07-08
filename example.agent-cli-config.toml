@@ -15,7 +15,7 @@ device_output_name = "iloud,airpods,dell,macbook"
 # log_level = "INFO"
 # quiet = true
 
-[interactive]
+[chat]
 # input_device_name = "MacBook Pro Microphone"
 # model = "llama3"
 # ollama_host = "http://localhost:11434"
