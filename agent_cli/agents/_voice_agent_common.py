@@ -3,6 +3,7 @@ r"""Common functionalities for voice-based agents."""
 from __future__ import annotations
 
 import logging
+import time
 from typing import TYPE_CHECKING
 
 import pyperclip
@@ -38,6 +39,7 @@ async def get_instruction_from_audio(
     """Transcribe audio data and return the instruction."""
     try:
         # Send audio data to Wyoming ASR server for transcription
+        start_time = time.monotonic()
         instruction = await asr.transcribe_recorded_audio(
             audio_data,
             asr_server_ip=asr_config.server_ip,
@@ -45,6 +47,7 @@ async def get_instruction_from_audio(
             logger=logger,
             quiet=quiet,
         )
+        elapsed = time.monotonic() - start_time
 
         if not instruction or not instruction.strip():
             if not quiet:
@@ -53,6 +56,15 @@ async def get_instruction_from_audio(
                     style="yellow",
                 )
             return None
+
+        if not quiet:
+            print_input_panel(
+                instruction,
+                title="🎯 Instruction",
+                style="bold yellow",
+                subtitle=f"[dim]took {elapsed:.2f}s[/dim]",
+            )
+
         return instruction
 
     except Exception as e:
@@ -76,9 +88,6 @@ async def process_instruction_and_respond(
     logger: logging.Logger,
 ) -> None:
     """Process instruction with LLM and handle TTS response."""
-    if not general_cfg.quiet:
-        print_input_panel(instruction, title="🎯 Instruction", style="bold yellow")
-
     # Process with LLM if clipboard mode is enabled
     if general_cfg.clipboard:
         await process_and_update_clipboard(

@@ -75,7 +75,7 @@ async def _async_main(
     p: pyaudio.PyAudio,
 ) -> None:
     """Async entry point, consuming parsed args."""
-    time_start = time.monotonic()
+    start_time = time.monotonic()
     with maybe_live(not general_cfg.quiet) as live:
         with signal_handling_context(LOGGER, general_cfg.quiet) as stop_event:
             transcript = await asr.transcribe_live_audio(
@@ -88,7 +88,7 @@ async def _async_main(
                 quiet=general_cfg.quiet,
                 live=live,
             )
-        elapsed = time.monotonic() - time_start
+        elapsed = time.monotonic() - start_time
         if llm_enabled and llm_config.model and llm_config.ollama_host and transcript:
             if not general_cfg.quiet:
                 print_input_panel(
