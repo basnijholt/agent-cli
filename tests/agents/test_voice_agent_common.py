@@ -82,7 +82,10 @@ async def test_process_instruction_and_respond(
         speed=1.0,
     )
     file_config = FileConfig(save_file=None, history_dir=None)
-    with patch("agent_cli.agents.autocorrect.pyperclip.copy"):
+    with (
+        patch("agent_cli.agents.autocorrect.pyperclip.copy"),
+        patch("agent_cli.agents._voice_agent_common.pyperclip.paste"),
+    ):
         await process_instruction_and_respond(
             "test instruction",
             "original text",
