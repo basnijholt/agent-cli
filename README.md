@@ -258,9 +258,8 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 │                             [default: local]                                 │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ LLM Configuration: Ollama (local) ──────────────────────────────────────────╮
-│ --ollama-model        TEXT  The Ollama model to use. Default is              │
-│                             devstral:24b.                                    │
-│                             [default: devstral:24b]                          │
+│ --ollama-model        TEXT  The Ollama model to use. Default is qwen3:4b.    │
+│                             [default: qwen3:4b]                              │
 │ --ollama-host         TEXT  The Ollama server host. Default is               │
 │                             http://localhost:11434.                          │
 │                             [default: http://localhost:11434]                │
@@ -357,9 +356,8 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 │                                 [default: whisper-1]                         │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ LLM Configuration: Ollama (local) ──────────────────────────────────────────╮
-│ --ollama-model        TEXT  The Ollama model to use. Default is              │
-│                             devstral:24b.                                    │
-│                             [default: devstral:24b]                          │
+│ --ollama-model        TEXT  The Ollama model to use. Default is qwen3:4b.    │
+│                             [default: qwen3:4b]                              │
 │ --ollama-host         TEXT  The Ollama server host. Default is               │
 │                             http://localhost:11434.                          │
 │                             [default: http://localhost:11434]                │
@@ -594,9 +592,8 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 │                                 [default: whisper-1]                         │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ LLM Configuration: Ollama (local) ──────────────────────────────────────────╮
-│ --ollama-model        TEXT  The Ollama model to use. Default is              │
-│                             devstral:24b.                                    │
-│                             [default: devstral:24b]                          │
+│ --ollama-model        TEXT  The Ollama model to use. Default is qwen3:4b.    │
+│                             [default: qwen3:4b]                              │
 │ --ollama-host         TEXT  The Ollama server host. Default is               │
 │                             http://localhost:11434.                          │
 │                             [default: http://localhost:11434]                │
@@ -755,9 +752,8 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 │                                 [default: whisper-1]                         │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ LLM Configuration: Ollama (local) ──────────────────────────────────────────╮
-│ --ollama-model        TEXT  The Ollama model to use. Default is              │
-│                             devstral:24b.                                    │
-│                             [default: devstral:24b]                          │
+│ --ollama-model        TEXT  The Ollama model to use. Default is qwen3:4b.    │
+│                             [default: qwen3:4b]                              │
 │ --ollama-host         TEXT  The Ollama server host. Default is               │
 │                             http://localhost:11434.                          │
 │                             [default: http://localhost:11434]                │
@@ -914,9 +910,8 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 │                                 [default: whisper-1]                         │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ LLM Configuration: Ollama (local) ──────────────────────────────────────────╮
-│ --ollama-model        TEXT  The Ollama model to use. Default is              │
-│                             devstral:24b.                                    │
-│                             [default: devstral:24b]                          │
+│ --ollama-model        TEXT  The Ollama model to use. Default is qwen3:4b.    │
+│                             [default: qwen3:4b]                              │
 │ --ollama-host         TEXT  The Ollama server host. Default is               │
 │                             http://localhost:11434.                          │
 │                             [default: http://localhost:11434]                │
