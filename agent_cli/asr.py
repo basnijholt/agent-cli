@@ -1,4 +1,4 @@
-"""Module for Automatic Speech Recognition using Wyoming."""
+"""Module for Automatic Speech Recognition using Wyoming or OpenAI."""
 
 from __future__ import annotations
 
@@ -16,6 +16,7 @@ from agent_cli.audio import (
     read_from_queue,
     setup_input_stream,
 )
+from agent_cli.services import transcribe_audio_openai
 from agent_cli.utils import print_with_style
 from agent_cli.wyoming_utils import manage_send_receive_tasks, wyoming_client_context
 
@@ -154,7 +155,7 @@ async def record_audio_with_manual_stop(
     return audio_buffer.getvalue()
 
 
-async def transcribe_recorded_audio(
+async def transcribe_recorded_audio_wyoming(
     audio_data: bytes,
     asr_server_ip: str,
     asr_server_port: int,
@@ -189,6 +190,19 @@ async def transcribe_recorded_audio(
         return ""
 
 
+async def transcribe_recorded_audio_openai(
+    audio_data: bytes,
+    api_key: str,
+    logger: logging.Logger,
+) -> str:
+    """Process pre-recorded audio data with OpenAI Whisper."""
+    try:
+        return await transcribe_audio_openai(audio_data, api_key, logger)
+    except Exception as e:
+        logger.exception(f"Error during transcription: {e}")
+        return ""
+
+
 async def transcribe_live_audio(
     asr_server_ip: str,
     asr_server_port: int,
@@ -203,6 +217,26 @@ async def transcribe_live_audio(
     final_callback: Callable[[str], None] | None = None,
 ) -> str | None:
     """Unified ASR transcription function."""
+    if config.SERVICE_PROVIDER == "openai":
+        if not config.OPENAI_API_KEY:
+            msg = "OpenAI API key is not set."
+            raise ValueError(msg)
+        audio_data = await record_audio_with_manual_stop(
+            p,
+            input_device_index,
+            stop_event,
+            logger,
+            quiet=quiet,
+            live=live,
+        )
+        if not audio_data:
+            return None
+        return await transcribe_recorded_audio_openai(
+            audio_data,
+            config.OPENAI_API_KEY,
+            logger,
+        )
+
     try:
         async with wyoming_client_context(
             asr_server_ip,

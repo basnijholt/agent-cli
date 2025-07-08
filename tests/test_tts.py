@@ -12,7 +12,7 @@ from agent_cli.tts import _apply_speed_adjustment, speak_text
 
 
 @pytest.mark.asyncio
-@patch("agent_cli.tts._synthesize_speech", new_callable=AsyncMock)
+@patch("agent_cli.tts._synthesize_speech_wyoming", new_callable=AsyncMock)
 async def test_speak_text(mock_synthesize_speech: AsyncMock) -> None:
     """Test the speak_text function."""
     mock_synthesize_speech.return_value = b"audio data"

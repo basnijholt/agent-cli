@@ -14,7 +14,7 @@ dependencies = [
     "pyperclip",
     "pydantic-ai-slim[openai,duckduckgo]",
     "typer",
-    "pyperclip",
+    "openai",
 ]
 requires-python = ">=3.11"
 
