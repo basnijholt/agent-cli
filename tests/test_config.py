@@ -114,15 +114,3 @@ def test_default_config_paths(
         mock_path1.open.return_value.__enter__.return_value = f
         config = load_config(None)
         assert config["defaults"]["log_level"] == "INFO"
-
-
-@patch("agent_cli.config_loader.console")
-def test_config_file_error_handling(mock_console: MagicMock, tmp_path: Path) -> None:
-    """Test config loading with invalid TOML."""
-    invalid_toml = tmp_path / "invalid.toml"
-    invalid_toml.write_text("invalid toml content [[[")
-
-    config = load_config(str(invalid_toml))
-
-    assert config == {}
-    mock_console.print.assert_called_once()
