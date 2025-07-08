@@ -59,8 +59,8 @@ llm_provider = "local"
 # to define them in the sections above. For example:
 # ollama_model = "devstral:24b"
 
-[interactive]
-# Use OpenAI for the interactive agent for better tool use.
+[chat]
+# Use OpenAI for the chat agent for better tool use.
 llm_provider = "openai"
 tts_provider = "openai"
 enable_tts = true
@@ -81,7 +81,7 @@ asr_provider = "openai"
 llm = true
 llm_provider = "openai"
 
-[voice-assistant]
+[voice-edit]
 # Use a powerful local model for the voice assistant.
 llm_provider = "local"
 # ollama_model = "llama3"

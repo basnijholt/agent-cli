@@ -1,4 +1,4 @@
-"""Shared TTS utilities for speak and voice-assistant commands."""
+"""Shared TTS utilities for speak and voice-edit commands."""
 
 from __future__ import annotations
 

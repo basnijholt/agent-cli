@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from agent_cli.agents.wake_word_assistant import _record_audio_with_wake_word
+from agent_cli.agents.assistant import _record_audio_with_wake_word
 
 
 @pytest.fixture
@@ -50,9 +50,9 @@ class TestRecordAudioWithWakeWord:
     """Tests for _record_audio_with_wake_word function."""
 
     @pytest.mark.asyncio
-    @patch("agent_cli.agents.wake_word_assistant.wake_word.detect_wake_word_from_queue")
-    @patch("agent_cli.agents.wake_word_assistant.asr.record_audio_to_buffer")
-    @patch("agent_cli.agents.wake_word_assistant.audio.tee_audio_stream")
+    @patch("agent_cli.agents.assistant.wake_word.detect_wake_word_from_queue")
+    @patch("agent_cli.agents.assistant.asr.record_audio_to_buffer")
+    @patch("agent_cli.agents.assistant.audio.tee_audio_stream")
     async def test_full_recording_cycle(
         self,
         mock_tee: MagicMock,
@@ -93,8 +93,8 @@ class TestRecordAudioWithWakeWord:
         assert mock_tee_instance.remove_queue.call_count == 2
 
     @pytest.mark.asyncio
-    @patch("agent_cli.agents.wake_word_assistant.wake_word.detect_wake_word_from_queue")
-    @patch("agent_cli.agents.wake_word_assistant.audio.tee_audio_stream")
+    @patch("agent_cli.agents.assistant.wake_word.detect_wake_word_from_queue")
+    @patch("agent_cli.agents.assistant.audio.tee_audio_stream")
     async def test_no_start_word_detected(
         self,
         mock_tee: MagicMock,
@@ -129,9 +129,9 @@ class TestRecordAudioWithWakeWord:
         mock_tee_instance.remove_queue.assert_called_once()
 
     @pytest.mark.asyncio
-    @patch("agent_cli.agents.wake_word_assistant.wake_word.detect_wake_word_from_queue")
-    @patch("agent_cli.agents.wake_word_assistant.asr.record_audio_to_buffer")
-    @patch("agent_cli.agents.wake_word_assistant.audio.tee_audio_stream")
+    @patch("agent_cli.agents.assistant.wake_word.detect_wake_word_from_queue")
+    @patch("agent_cli.agents.assistant.asr.record_audio_to_buffer")
+    @patch("agent_cli.agents.assistant.audio.tee_audio_stream")
     async def test_no_stop_word_detected(
         self,
         mock_tee: MagicMock,

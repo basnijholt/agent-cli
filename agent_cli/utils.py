@@ -34,10 +34,10 @@ console = Console()
 
 
 class InteractiveStopEvent:
-    """A stop event with reset capability for interactive agents."""
+    """A stop event with reset capability for chat agents."""
 
     def __init__(self) -> None:
-        """Initialize the interactive stop event."""
+        """Initialize the chat stop event."""
         self._event = asyncio.Event()
         self._sigint_count = 0
         self._ctrl_c_pressed = False
@@ -237,7 +237,7 @@ def stop_or_status_or_toggle(
 def maybe_live(use_live: bool) -> AbstractContextManager[Live | None]:
     """Create a live context manager if use_live is True."""
     if use_live:
-        return Live(_create_spinner("", "blue"), console=console, transient=True)
+        return Live(_create_spinner("Initializing", "blue"), console=console, transient=True)
     return nullcontext()
 
 

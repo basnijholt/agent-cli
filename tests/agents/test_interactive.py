@@ -1,4 +1,4 @@
-"""Tests for the interactive agent."""
+"""Tests for the chat agent."""
 
 from __future__ import annotations
 
@@ -22,7 +22,7 @@ from agent_cli.agents._config import (
     WyomingASRConfig,
     WyomingTTSConfig,
 )
-from agent_cli.agents.interactive import (
+from agent_cli.agents.chat import (
     ConversationEntry,
     _async_main,
     _format_conversation_for_llm,
@@ -124,9 +124,9 @@ async def test_async_main_list_devices(tmp_path: Path) -> None:
     file_config = FileConfig(save_file=None, history_dir=tmp_path)
 
     with (
-        patch("agent_cli.agents.interactive.pyaudio_context"),
+        patch("agent_cli.agents.chat.pyaudio_context"),
         patch(
-            "agent_cli.agents.interactive.setup_devices",
+            "agent_cli.agents.chat.setup_devices",
         ) as mock_setup_devices,
     ):
         mock_setup_devices.return_value = None
@@ -180,9 +180,9 @@ async def test_async_main_list_output_devices(tmp_path: Path) -> None:
     file_config = FileConfig(save_file=None, history_dir=tmp_path)
 
     with (
-        patch("agent_cli.agents.interactive.pyaudio_context"),
+        patch("agent_cli.agents.chat.pyaudio_context"),
         patch(
-            "agent_cli.agents.interactive.setup_devices",
+            "agent_cli.agents.chat.setup_devices",
         ) as mock_setup_devices,
     ):
         mock_setup_devices.return_value = None
@@ -198,7 +198,7 @@ async def test_async_main_list_output_devices(tmp_path: Path) -> None:
 
 @pytest.mark.asyncio
 async def test_async_main_full_loop(tmp_path: Path) -> None:
-    """Test a full loop of the interactive agent's async_main function."""
+    """Test a full loop of the chat agent's async_main function."""
     history_dir = tmp_path / "history"
     history_dir.mkdir()
 
@@ -239,18 +239,18 @@ async def test_async_main_full_loop(tmp_path: Path) -> None:
     file_config = FileConfig(save_file=None, history_dir=history_dir)
 
     with (
-        patch("agent_cli.agents.interactive.pyaudio_context"),
-        patch("agent_cli.agents.interactive.setup_devices", return_value=(1, "mock_input", 1)),
-        patch("agent_cli.agents.interactive.asr.get_transcriber") as mock_get_transcriber,
+        patch("agent_cli.agents.chat.pyaudio_context"),
+        patch("agent_cli.agents.chat.setup_devices", return_value=(1, "mock_input", 1)),
+        patch("agent_cli.agents.chat.asr.get_transcriber") as mock_get_transcriber,
         patch(
-            "agent_cli.agents.interactive.get_llm_response",
+            "agent_cli.agents.chat.get_llm_response",
             new_callable=AsyncMock,
         ) as mock_llm_response,
         patch(
-            "agent_cli.agents.interactive.handle_tts_playback",
+            "agent_cli.agents.chat.handle_tts_playback",
             new_callable=AsyncMock,
         ) as mock_tts,
-        patch("agent_cli.agents.interactive.signal_handling_context") as mock_signal,
+        patch("agent_cli.agents.chat.signal_handling_context") as mock_signal,
     ):
         # Simulate a single loop by controlling the mock stop_event's is_set method
         mock_stop_event = MagicMock(spec=InteractiveStopEvent)

@@ -1,4 +1,35 @@
-r"""Interact with clipboard text via a voice command using local or remote services."""
+"""Interact with clipboard text via a voice command using Wyoming and an Ollama LLM.
+
+WORKFLOW:
+1. The script starts and immediately copies the current content of the clipboard.
+2. It then starts listening for a voice command via the microphone.
+3. The user triggers a stop signal (e.g., via a Keyboard Maestro hotkey sending SIGINT).
+4. The script stops recording and finalizes the transcription of the voice command.
+5. It sends the original clipboard text and the transcribed command to a local LLM.
+6. The LLM processes the text based on the instruction (either editing it or answering a question).
+7. The resulting text is then copied back to the clipboard.
+
+KEYBOARD MAESTRO INTEGRATION:
+To create a hotkey toggle for this script, set up a Keyboard Maestro macro with:
+
+1. Trigger: Hot Key (e.g., Cmd+Shift+A for "Assistant")
+
+2. If/Then/Else Action:
+   - Condition: Shell script returns success
+   - Script: voice-edit --status >/dev/null 2>&1
+
+3. Then Actions (if process is running):
+   - Display Text Briefly: "🗣️ Processing command..."
+   - Execute Shell Script: voice-edit --stop --quiet
+   - (The script will show its own "Done" notification)
+
+4. Else Actions (if process is not running):
+   - Display Text Briefly: "📋 Listening for command..."
+   - Execute Shell Script: voice-edit --input-device-index 1 --quiet &
+   - Select "Display results in a notification"
+
+This approach uses standard Unix background processes (&) instead of Python daemons!
+"""
 
 from __future__ import annotations
 
@@ -132,8 +163,8 @@ async def _async_main(
             )
 
 
-@app.command("voice-assistant")
-def voice_assistant(
+@app.command("voice-edit")
+def voice_edit(
     *,
     # --- Provider Selection ---
     asr_provider: str = opts.ASR_PROVIDER,
@@ -175,7 +206,16 @@ def voice_assistant(
     quiet: bool = opts.QUIET,
     config_file: str | None = opts.CONFIG_FILE,  # noqa: ARG001
 ) -> None:
-    """Interact with clipboard text via a voice command using local or remote services."""
+    """Interact with clipboard text via a voice command using local or remote services.
+
+    Usage:
+    - Run in foreground: agent-cli voice-edit --input-device-index 1
+    - Run in background: agent-cli voice-edit --input-device-index 1 &
+    - Check status: agent-cli voice-edit --status
+    - Stop background process: agent-cli voice-edit --stop
+    - List output devices: agent-cli voice-edit --list-output-devices
+    - Save TTS to file: agent-cli voice-edit --tts --save-file response.wav
+    """
     setup_logging(log_level, log_file, quiet=quiet)
     general_cfg = GeneralConfig(
         log_level=log_level,
@@ -184,7 +224,7 @@ def voice_assistant(
         list_devices=list_devices,
         clipboard=clipboard,
     )
-    process_name = "voice-assistant"
+    process_name = "voice-edit"
     if stop_or_status_or_toggle(
         process_name,
         "voice assistant",

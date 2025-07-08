@@ -1,4 +1,4 @@
-"""Tests for the interactive agent."""
+"""Tests for the chat agent."""
 
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -18,7 +18,7 @@ from agent_cli.agents._config import (
     WyomingASRConfig,
     WyomingTTSConfig,
 )
-from agent_cli.agents.interactive import (
+from agent_cli.agents.chat import (
     _async_main,
     _handle_conversation_turn,
 )
@@ -63,7 +63,7 @@ async def test_handle_conversation_turn_no_instruction():
     file_config = FileConfig(save_file=None, history_dir=None)
     mock_live = MagicMock()
 
-    with patch("agent_cli.agents.interactive.asr.get_transcriber") as mock_get_transcriber:
+    with patch("agent_cli.agents.chat.asr.get_transcriber") as mock_get_transcriber:
         mock_transcriber = AsyncMock(return_value="")
         mock_get_transcriber.return_value = mock_transcriber
         await _handle_conversation_turn(
@@ -82,29 +82,29 @@ async def test_handle_conversation_turn_no_instruction():
     assert not conversation_history
 
 
-def test_interactive_command_stop_and_status():
-    """Test the stop and status flags of the interactive command."""
+def test_chat_command_stop_and_status():
+    """Test the stop and status flags of the chat command."""
     runner = CliRunner()
     with patch(
-        "agent_cli.agents.interactive.stop_or_status_or_toggle",
+        "agent_cli.agents.chat.stop_or_status_or_toggle",
         return_value=True,
     ) as mock_stop_or_status:
-        result = runner.invoke(app, ["interactive", "--stop"])
+        result = runner.invoke(app, ["chat", "--stop"])
         assert result.exit_code == 0
         mock_stop_or_status.assert_called_with(
-            "interactive",
-            "interactive agent",
+            "chat",
+            "chat agent",
             True,  # noqa: FBT003, stop
             False,  # noqa: FBT003, status
             False,  # noqa: FBT003, toggle
             quiet=False,
         )
 
-        result = runner.invoke(app, ["interactive", "--status"])
+        result = runner.invoke(app, ["chat", "--status"])
         assert result.exit_code == 0
         mock_stop_or_status.assert_called_with(
-            "interactive",
-            "interactive agent",
+            "chat",
+            "chat agent",
             False,  # noqa: FBT003, stop
             True,  # noqa: FBT003, status
             False,  # noqa: FBT003, toggle
@@ -112,15 +112,15 @@ def test_interactive_command_stop_and_status():
         )
 
 
-def test_interactive_command_list_output_devices():
+def test_chat_command_list_output_devices():
     """Test the list-output-devices flag."""
     runner = CliRunner()
     with (
-        patch("agent_cli.agents.interactive.setup_devices") as mock_setup_devices,
-        patch("agent_cli.agents.interactive.pyaudio_context") as mock_pyaudio_context,
+        patch("agent_cli.agents.chat.setup_devices") as mock_setup_devices,
+        patch("agent_cli.agents.chat.pyaudio_context") as mock_pyaudio_context,
     ):
         mock_setup_devices.return_value = None
-        result = runner.invoke(app, ["interactive", "--list-devices"])
+        result = runner.invoke(app, ["chat", "--list-devices"])
         assert result.exit_code == 0
         mock_pyaudio_context.assert_called_once()
         mock_setup_devices.assert_called_once()
@@ -160,8 +160,8 @@ async def test_async_main_exception_handling():
     file_config = FileConfig(save_file=None, history_dir=None)
 
     with (
-        patch("agent_cli.agents.interactive.pyaudio_context", side_effect=Exception("Test error")),
-        patch("agent_cli.agents.interactive.console") as mock_console,
+        patch("agent_cli.agents.chat.pyaudio_context", side_effect=Exception("Test error")),
+        patch("agent_cli.agents.chat.console") as mock_console,
     ):
         with pytest.raises(Exception, match="Test error"):
             await _async_main(

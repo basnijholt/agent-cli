@@ -26,9 +26,9 @@ It provides a suite of powerful tools for voice and text interaction, designed f
   - [`autocorrect`](#autocorrect)
   - [`transcribe`](#transcribe)
   - [`speak`](#speak)
-  - [`voice-assistant`](#voice-assistant)
-  - [`wake-word-assistant`](#wake-word-assistant)
-  - [`interactive`](#interactive)
+  - [`voice-edit`](#voice-edit)
+  - [`assistant`](#assistant)
+  - [`chat`](#chat)
 - [Development](#development)
   - [Running Tests](#running-tests)
   - [Pre-commit Hooks](#pre-commit-hooks)
@@ -51,17 +51,17 @@ It provides a suite of powerful tools for voice and text interaction, designed f
 - **`autocorrect`**: Correct grammar and spelling in your text (e.g., from clipboard) using a local LLM with Ollama or OpenAI.
 - **`transcribe`**: Transcribe audio from your microphone to text in your clipboard using a local Whisper model or OpenAI's Whisper API.
 - **`speak`**: Convert text to speech using a local TTS engine or OpenAI's TTS API.
-- **`voice-assistant`**: A voice-powered clipboard assistant that edits text based on your spoken commands.
-- **`wake-word-assistant`**: A hands-free voice assistant that starts and stops recording based on a wake word.
-- **`interactive`**: An interactive, conversational AI agent with tool-calling capabilities.
+- **`voice-edit`**: A voice-powered clipboard assistant that edits text based on your spoken commands.
+- **`assistant`**: A hands-free voice assistant that starts and stops recording based on a wake word.
+- **`chat`**: A conversational AI agent with tool-calling capabilities.
 
 ## Prerequisites
 
 - **Python**: Version 3.11 or higher.
-- **Ollama**: For `autocorrect`, `voice-assistant`, and `interactive` using local services, you need [Ollama](https://ollama.ai/) running with a model pulled (e.g., `ollama pull mistral:latest`).
-- **Wyoming Piper**: For `speak`, `voice-assistant`, and `interactive` using local services, you need a [Wyoming TTS server](https://github.com/rhasspy/wyoming-piper) running for text-to-speech.
-- **Wyoming Faster Whisper**: For `transcribe`, `voice-assistant`, and `interactive` using local services, you need a [Wyoming ASR server](https://github.com/rhasspy/wyoming-faster-whisper) for speech-to-text.
-- **Wyoming openWakeWord**: For `wake-word-assistant`, you need a [Wyoming wake word server](https://github.com/rhasspy/wyoming-openwakeword) running.
+- **Ollama**: For `autocorrect`, `voice-edit`, and `chat` using local services, you need [Ollama](https://ollama.ai/) running with a model pulled (e.g., `ollama pull mistral:latest`).
+- **Wyoming Piper**: For `speak`, `voice-edit`, and `chat` using local services, you need a [Wyoming TTS server](https://github.com/rhasspy/wyoming-piper) running for text-to-speech.
+- **Wyoming Faster Whisper**: For `transcribe`, `voice-edit`, and `chat` using local services, you need a [Wyoming ASR server](https://github.com/rhasspy/wyoming-faster-whisper) for speech-to-text.
+- **Wyoming openWakeWord**: For `assistant`, you need a [Wyoming wake word server](https://github.com/rhasspy/wyoming-openwakeword) running.
 - **OpenAI API Key**: If you want to use OpenAI services, you need an OpenAI API key.
 - **Clipboard Tools**: `xsel`, `xclip` (Linux), or `pbcopy`/`pbpaste` (macOS) are used by many agents.
 - **PortAudio**: Required for PyAudio to handle microphone and speaker I/O.
@@ -143,7 +143,7 @@ To stop the services, run:
 docker compose -f examples/docker-compose.yml down
 ```
 
-> ⚠️ The `ollama` service can be memory-intensive. If you experience issues with the `autocorrect`, `voice-assistant`, or `interactive` agents, you may need to increase the memory allocated to Docker.
+> ⚠️ The `ollama` service can be memory-intensive. If you experience issues with the `autocorrect`, `voice-edit`, or `chat` agents, you may need to increase the memory allocated to Docker.
 >
 > **Note on GPU Acceleration**:
 > - **Ollama**: On macOS, Docker does not support GPU acceleration. For significantly better performance, it is recommended to install Ollama natively by downloading it from the [official website](https://ollama.com/download) or by using Homebrew. This will allow Ollama to use the Metal GPU on Apple Silicon devices. On Linux, NVIDIA GPU acceleration is supported.
@@ -515,30 +515,30 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 
 </details>
 
-### `voice-assistant`
+### `voice-edit`
 
 **Purpose:** A powerful clipboard assistant that you command with your voice.
 
 **Workflow:** This agent is designed for a hotkey-driven workflow to act on text you've already copied.
 
 1.  Copy a block of text to your clipboard (e.g., an email draft).
-2.  Press a hotkey to run `agent-cli voice-assistant &` in the background. The agent is now listening.
+2.  Press a hotkey to run `agent-cli voice-edit &` in the background. The agent is now listening.
 3.  Speak a command, such as "Make this more formal" or "Summarize the key points."
-4.  Press the same hotkey again, which should trigger `agent-cli voice-assistant --stop`.
+4.  Press the same hotkey again, which should trigger `agent-cli voice-edit --stop`.
 5.  The agent transcribes your command, sends it along with the original clipboard text to the LLM, and the LLM performs the action.
 6.  The result is copied back to your clipboard. If `--tts` is enabled, it will also speak the result.
 
-**How to Use It:** The power of this tool is unlocked with a hotkey manager like Keyboard Maestro (macOS) or AutoHotkey (Windows). See the docstring in `agent_cli/agents/voice_assistant.py` for a detailed Keyboard Maestro setup guide.
+**How to Use It:** The power of this tool is unlocked with a hotkey manager like Keyboard Maestro (macOS) or AutoHotkey (Windows). See the docstring in `agent_cli/agents/voice_edit.py` for a detailed Keyboard Maestro setup guide.
 
 <details>
-<summary>See the output of <code>agent-cli voice-assistant --help</code></summary>
+<summary>See the output of <code>agent-cli voice-edit --help</code></summary>
 
 <!-- CODE:BASH:START -->
 <!-- echo '```yaml' -->
 <!-- export NO_COLOR=1 -->
 <!-- export TERM=dumb -->
 <!-- export TERMINAL_WIDTH=90 -->
-<!-- agent-cli voice-assistant --help -->
+<!-- agent-cli voice-edit --help -->
 <!-- echo '```' -->
 <!-- CODE:END -->
 <!-- OUTPUT:START -->
@@ -546,11 +546,10 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 ```yaml
 
 
- Usage: agent-cli voice-assistant [OPTIONS]
+ Usage: agent-cli voice-edit [OPTIONS]
 
  Interact with clipboard text via a voice command using local or remote
  services.
-
 
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
 │ --help          Show this message and exit.                                  │
@@ -665,13 +664,13 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 
 </details>
 
-### `wake-word-assistant`
+### `assistant`
 
 **Purpose:** A hands-free voice assistant that starts and stops recording based on a wake word.
 
 **Workflow:** This agent continuously listens for a wake word (e.g., "Hey Nabu").
 
-1.  Run the `wake-word-assistant` command. It will start listening for the wake word.
+1.  Run the `assistant` command. It will start listening for the wake word.
 2.  Say the wake word to start recording.
 3.  Speak your command or question.
 4.  Say the wake word again to stop recording.
@@ -680,18 +679,18 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 
 **How to Use It:**
 
-- **Start the agent**: `agent-cli wake-word-assistant --wake-word "ok_nabu" --input-device-index 1`
-- **With TTS**: `agent-cli wake-word-assistant --wake-word "ok_nabu" --tts --voice "en_US-lessac-medium"`
+- **Start the agent**: `agent-cli assistant --wake-word "ok_nabu" --input-device-index 1`
+- **With TTS**: `agent-cli assistant --wake-word "ok_nabu" --tts --voice "en_US-lessac-medium"`
 
 <details>
-<summary>See the output of <code>agent-cli wake-word-assistant --help</code></summary>
+<summary>See the output of <code>agent-cli assistant --help</code></summary>
 
 <!-- CODE:BASH:START -->
 <!-- echo '```yaml' -->
 <!-- export NO_COLOR=1 -->
 <!-- export TERM=dumb -->
 <!-- export TERMINAL_WIDTH=90 -->
-<!-- agent-cli wake-word-assistant --help -->
+<!-- agent-cli assistant --help -->
 <!-- echo '```' -->
 <!-- CODE:END -->
 <!-- OUTPUT:START -->
@@ -826,13 +825,13 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 
 </details>
 
-### `interactive`
+### `chat`
 
 **Purpose:** A full-featured, conversational AI assistant that can interact with your system.
 
-**Workflow:** This is a persistent, interactive agent that you can have a conversation with.
+**Workflow:** This is a persistent, conversational agent that you can have a conversation with.
 
-1.  Run the `interactive` command. It will start listening for your voice.
+1.  Run the `chat` command. It will start listening for your voice.
 2.  Speak your command or question (e.g., "What's in my current directory?").
 3.  The agent transcribes your speech, sends it to the LLM, and gets a response. The LLM can use tools like `read_file` or `execute_code` to answer your question.
 4.  The agent speaks the response back to you and then immediately starts listening for your next command.
@@ -845,21 +844,21 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 
 **How to Use It:**
 
-- **Start the agent**: `agent-cli interactive --input-device-index 1 --tts`
+- **Start the agent**: `agent-cli chat --input-device-index 1 --tts`
 - **Have a conversation**:
   - _You_: "Read the pyproject.toml file and tell me the project version."
   - _AI_: (Reads file) "The project version is 0.1.0."
   - _You_: "Thanks!"
 
 <details>
-<summary>See the output of <code>agent-cli interactive --help</code></summary>
+<summary>See the output of <code>agent-cli chat --help</code></summary>
 
 <!-- CODE:BASH:START -->
 <!-- echo '```yaml' -->
 <!-- export NO_COLOR=1 -->
 <!-- export TERM=dumb -->
 <!-- export TERMINAL_WIDTH=90 -->
-<!-- agent-cli interactive --help -->
+<!-- agent-cli chat --help -->
 <!-- echo '```' -->
 <!-- CODE:END -->
 <!-- OUTPUT:START -->
@@ -867,9 +866,9 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 ```yaml
 
 
- Usage: agent-cli interactive [OPTIONS]
+ Usage: agent-cli chat [OPTIONS]
 
- An interactive agent that you can talk to.
+ An chat agent that you can talk to.
 
 
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
