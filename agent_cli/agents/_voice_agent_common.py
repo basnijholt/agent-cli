@@ -11,49 +11,46 @@ import pyperclip
 from agent_cli import asr
 from agent_cli.agents._tts_common import handle_tts_playback
 from agent_cli.llm import process_and_update_clipboard
-from agent_cli.utils import (
-    print_input_panel,
-    print_with_style,
-)
+from agent_cli.utils import print_input_panel, print_with_style
 
 if TYPE_CHECKING:
     from rich.live import Live
 
-    from agent_cli.agents._config import (
-        ASRConfig,
-        FileConfig,
-        GeneralConfig,
-        LLMConfig,
-        TTSConfig,
-    )
+    from agent_cli.agents import config
 
 LOGGER = logging.getLogger()
 
 
 async def get_instruction_from_audio(
+    *,
     audio_data: bytes,
-    asr_config: ASRConfig,
-    llm_config: LLMConfig,
+    provider_config: config.ProviderSelection,
+    audio_input_config: config.AudioInput,
+    wyoming_asr_config: config.WyomingASR,
+    openai_asr_config: config.OpenAIASR,
+    ollama_config: config.Ollama,
+    openai_llm_config: config.OpenAILLM,
     logger: logging.Logger,
     quiet: bool,
 ) -> str | None:
     """Transcribe audio data and return the instruction."""
     try:
         start_time = time.monotonic()
-        transcriber = asr.get_recorded_audio_transcriber(
-            llm_config.service_provider,
-            llm_config.openai_api_key,
-        )
+        transcriber = asr.get_recorded_audio_transcriber(provider_config)
         instruction = await transcriber(
             audio_data=audio_data,
-            asr_server_ip=asr_config.server_ip,
-            asr_server_port=asr_config.server_port,
+            provider_config=provider_config,
+            audio_input_config=audio_input_config,
+            wyoming_asr_config=wyoming_asr_config,
+            openai_asr_config=openai_asr_config,
+            ollama_config=ollama_config,
+            openai_llm_config=openai_llm_config,
             logger=logger,
             quiet=quiet,
         )
         elapsed = time.monotonic() - start_time
 
-        if not instruction.strip():
+        if not instruction or not instruction.strip():
             if not quiet:
                 print_with_style(
                     "No speech detected in recording",
@@ -79,53 +76,54 @@ async def get_instruction_from_audio(
 
 
 async def process_instruction_and_respond(
+    *,
     instruction: str,
     original_text: str,
-    general_cfg: GeneralConfig,
-    llm_config: LLMConfig,
-    tts_config: TTSConfig,
-    file_config: FileConfig,
+    provider_config: config.ProviderSelection,
+    general_config: config.General,
+    ollama_config: config.Ollama,
+    openai_llm_config: config.OpenAILLM,
+    audio_output_config: config.AudioOutput,
+    wyoming_tts_config: config.WyomingTTS,
+    openai_tts_config: config.OpenAITTS,
     system_prompt: str,
     agent_instructions: str,
-    tts_output_device_index: int | None,
     live: Live | None,
     logger: logging.Logger,
 ) -> None:
     """Process instruction with LLM and handle TTS response."""
     # Process with LLM if clipboard mode is enabled
-    if general_cfg.clipboard:
+    if general_config.clipboard:
         await process_and_update_clipboard(
             system_prompt=system_prompt,
             agent_instructions=agent_instructions,
-            llm_config=llm_config,
+            provider_config=provider_config,
+            ollama_config=ollama_config,
+            openai_config=openai_llm_config,
             logger=logger,
             original_text=original_text,
             instruction=instruction,
-            clipboard=general_cfg.clipboard,
-            quiet=general_cfg.quiet,
+            clipboard=general_config.clipboard,
+            quiet=general_config.quiet,
             live=live,
         )
 
         # Handle TTS response if enabled
-        if tts_config.enabled:
+        if audio_output_config.enable_tts:
             response_text = pyperclip.paste()
             if response_text and response_text.strip():
                 await handle_tts_playback(
-                    response_text,
-                    service_provider=llm_config.service_provider,  # type: ignore[arg-type]
-                    openai_api_key=llm_config.openai_api_key,
-                    tts_server_ip=tts_config.server_ip,
-                    tts_server_port=tts_config.server_port,
-                    voice_name=tts_config.voice_name,
-                    tts_language=tts_config.language,
-                    speaker=tts_config.speaker,
-                    output_device_index=tts_output_device_index,
-                    save_file=file_config.save_file,
-                    quiet=general_cfg.quiet,
+                    text=response_text,
+                    provider_config=provider_config,
+                    audio_output_config=audio_output_config,
+                    wyoming_tts_config=wyoming_tts_config,
+                    openai_tts_config=openai_tts_config,
+                    openai_llm_config=openai_llm_config,
+                    save_file=general_config.save_file,
+                    quiet=general_config.quiet,
                     logger=logger,
-                    play_audio=not file_config.save_file,
+                    play_audio=not general_config.save_file,
                     status_message="🔊 Speaking response...",
                     description="TTS audio",
-                    speed=tts_config.speed,
                     live=live,
                 )

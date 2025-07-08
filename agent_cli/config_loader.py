@@ -18,7 +18,7 @@ def _replace_dashed_keys(cfg: dict[str, Any]) -> dict[str, Any]:
 
 
 def load_config(config_path_str: str | None = None) -> dict[str, Any]:
-    """Load the TOML configuration file."""
+    """Load the TOML configuration file and process it for nested structures."""
     # Determine which config path to use
     if config_path_str:
         config_path = Path(config_path_str)
@@ -29,13 +29,13 @@ def load_config(config_path_str: str | None = None) -> dict[str, Any]:
     else:
         return {}
 
-    # Try to load the config
+    # Try to load and process the config
     if config_path.exists():
         with config_path.open("rb") as f:
             cfg = tomllib.load(f)
             return {k: _replace_dashed_keys(v) for k, v in cfg.items()}
 
-    # Report error only if explicit path was given
+    # Report error only if an explicit path was given
     if config_path_str:
         console.print(
             f"[bold red]Config file not found at {config_path_str}[/bold red]",

@@ -12,7 +12,7 @@ import pyperclip
 
 import agent_cli.agents._cli_options as opts
 from agent_cli import asr, process_manager
-from agent_cli.agents._config import ASRConfig, GeneralConfig, LLMConfig
+from agent_cli.agents import config
 from agent_cli.audio import pyaudio_context, setup_devices
 from agent_cli.cli import app, setup_logging
 from agent_cli.llm import process_and_update_clipboard
@@ -68,9 +68,13 @@ Please clean up this transcribed text by correcting any speech recognition error
 
 async def _async_main(
     *,
-    asr_config: ASRConfig,
-    general_cfg: GeneralConfig,
-    llm_config: LLMConfig,
+    provider_cfg: config.ProviderSelection,
+    general_cfg: config.General,
+    audio_in_cfg: config.AudioInput,
+    wyoming_asr_cfg: config.WyomingASR,
+    openai_asr_cfg: config.OpenAIASR,
+    ollama_cfg: config.Ollama,
+    openai_llm_cfg: config.OpenAILLM,
     llm_enabled: bool,
     p: pyaudio.PyAudio,
 ) -> None:
@@ -79,13 +83,13 @@ async def _async_main(
     with maybe_live(not general_cfg.quiet) as live:
         with signal_handling_context(LOGGER, general_cfg.quiet) as stop_event:
             transcriber = asr.get_transcriber(
-                llm_config.service_provider,
-                llm_config.openai_api_key,
+                provider_cfg,
+                audio_in_cfg,
+                wyoming_asr_cfg,
+                openai_asr_cfg,
+                openai_llm_cfg,
             )
             transcript = await transcriber(
-                asr_server_ip=asr_config.server_ip,
-                asr_server_port=asr_config.server_port,
-                input_device_index=asr_config.input_device_index,
                 logger=LOGGER,
                 p=p,
                 stop_event=stop_event,
@@ -93,7 +97,7 @@ async def _async_main(
                 live=live,
             )
         elapsed = time.monotonic() - start_time
-        if llm_enabled and llm_config.model and llm_config.ollama_host and transcript:
+        if llm_enabled and transcript:
             if not general_cfg.quiet:
                 print_input_panel(
                     transcript,
@@ -103,7 +107,9 @@ async def _async_main(
             await process_and_update_clipboard(
                 system_prompt=SYSTEM_PROMPT,
                 agent_instructions=AGENT_INSTRUCTIONS,
-                llm_config=llm_config,
+                provider_config=provider_cfg,
+                ollama_config=ollama_cfg,
+                openai_config=openai_llm_cfg,
                 logger=LOGGER,
                 original_text=transcript,
                 instruction=INSTRUCTION,
@@ -142,22 +148,26 @@ async def _async_main(
 @app.command("transcribe")
 def transcribe(
     *,
-    # ASR
-    input_device_index: int | None = opts.DEVICE_INDEX,
-    input_device_name: str | None = opts.DEVICE_NAME,
-    asr_server_ip: str = opts.ASR_SERVER_IP,
-    asr_server_port: int = opts.ASR_SERVER_PORT,
-    # LLM
-    model: str = opts.MODEL,
+    # --- Provider Selection ---
+    asr_provider: str = opts.ASR_PROVIDER,
+    llm_provider: str = opts.LLM_PROVIDER,
+    # --- ASR (Audio) Configuration ---
+    input_device_index: int | None = opts.INPUT_DEVICE_INDEX,
+    input_device_name: str | None = opts.INPUT_DEVICE_NAME,
+    wyoming_asr_ip: str = opts.WYOMING_ASR_SERVER_IP,
+    wyoming_asr_port: int = opts.WYOMING_ASR_SERVER_PORT,
+    openai_asr_model: str = opts.OPENAI_ASR_MODEL,
+    # --- LLM Configuration ---
+    ollama_model: str = opts.OLLAMA_MODEL,
     ollama_host: str = opts.OLLAMA_HOST,
-    service_provider: str = opts.SERVICE_PROVIDER,
+    openai_llm_model: str = opts.OPENAI_LLM_MODEL,
     openai_api_key: str | None = opts.OPENAI_API_KEY,
     llm: bool = opts.LLM,
-    # Process control
+    # --- Process Management ---
     stop: bool = opts.STOP,
     status: bool = opts.STATUS,
     toggle: bool = opts.TOGGLE,
-    # General
+    # --- General Options ---
     clipboard: bool = opts.CLIPBOARD,
     log_level: str = opts.LOG_LEVEL,
     log_file: str | None = opts.LOG_FILE,
@@ -165,16 +175,9 @@ def transcribe(
     quiet: bool = opts.QUIET,
     config_file: str | None = opts.CONFIG_FILE,  # noqa: ARG001
 ) -> None:
-    """Wyoming ASR Client for streaming microphone audio to a transcription server.
-
-    Usage:
-    - Run in foreground: agent-cli transcribe --input-device-index 1
-    - Run in background: agent-cli transcribe --input-device-index 1 &
-    - Check status: agent-cli transcribe --status
-    - Stop background process: agent-cli transcribe --stop
-    """
+    """Wyoming ASR Client for streaming microphone audio to a transcription server."""
     setup_logging(log_level, log_file, quiet=quiet)
-    general_cfg = GeneralConfig(
+    general_cfg = config.General(
         log_level=log_level,
         log_file=log_file,
         quiet=quiet,
@@ -193,38 +196,46 @@ def transcribe(
         return
 
     with pyaudio_context() as p:
-        asr_config = ASRConfig(
-            server_ip=asr_server_ip,
-            server_port=asr_server_port,
+        provider_cfg = config.ProviderSelection(
+            asr_provider=asr_provider,
+            llm_provider=llm_provider,
+            tts_provider="local",  # Not used
+        )
+        audio_in_cfg = config.AudioInput(
             input_device_index=input_device_index,
             input_device_name=input_device_name,
         )
-        # We only use setup_devices for its input device handling
-        device_info = setup_devices(
-            p,
-            general_cfg,
-            asr_config,
-            None,
+        wyoming_asr_cfg = config.WyomingASR(
+            wyoming_asr_ip=wyoming_asr_ip,
+            wyoming_asr_port=wyoming_asr_port,
         )
+        openai_asr_cfg = config.OpenAIASR(
+            openai_asr_model=openai_asr_model,
+        )
+        ollama_cfg = config.Ollama(ollama_model=ollama_model, ollama_host=ollama_host)
+        openai_llm_cfg = config.OpenAILLM(
+            openai_llm_model=openai_llm_model,
+            openai_api_key=openai_api_key,
+        )
+
+        # We only use setup_devices for its input device handling
+        device_info = setup_devices(p, general_cfg, audio_in_cfg, None)
         if device_info is None:
             return
         input_device_index, _, _ = device_info
-        asr_config.input_device_index = input_device_index
+        audio_in_cfg.input_device_index = input_device_index
 
         # Use context manager for PID file management
         with process_manager.pid_file_context(process_name), suppress(KeyboardInterrupt):
-            llm_config = LLMConfig(
-                model=model,
-                ollama_host=ollama_host,
-                service_provider=service_provider,  # type: ignore[arg-type]
-                openai_api_key=openai_api_key,
-            )
-
             asyncio.run(
                 _async_main(
-                    asr_config=asr_config,
+                    provider_cfg=provider_cfg,
                     general_cfg=general_cfg,
-                    llm_config=llm_config,
+                    audio_in_cfg=audio_in_cfg,
+                    wyoming_asr_cfg=wyoming_asr_cfg,
+                    openai_asr_cfg=openai_asr_cfg,
+                    ollama_cfg=ollama_cfg,
+                    openai_llm_cfg=openai_llm_cfg,
                     llm_enabled=llm,
                     p=p,
                 ),

@@ -1,40 +1,116 @@
 # Example configuration for agent-cli
 # Copy this file to ~/.config/agent-cli/config.toml or ./agent-cli-config.toml and edit
+#
+# This file demonstrates how to configure all available options.
+# Keys use dashes to match the command-line arguments.
+# Any option here can be overridden by a command-line argument.
 
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# --- Default Settings ---
+# These settings apply to all commands unless overridden in a command-specific
+# section below.
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 [defaults]
-model = "gemma3:4b"
-ollama_host = "http://localhost:11434"
-input_device_name = "logitech,airpods"
-device_output_name = "iloud,airpods,dell,macbook"
-# service_provider = "openai"  # 'local' or 'openai'
-# openai_api_key = "sk-..."
+
+# --- Provider Selection ---
+# Select the default provider for each service ("local" or "openai").
+llm-provider = "local"
+asr-provider = "local"
+tts-provider = "local"
+
+# --- API Keys ---
+# Your OpenAI API key. Can also be set via the OPENAI_API_KEY environment variable.
+openai-api-key = "sk-..."
+
+# --- Audio Device Settings ---
+# You can specify partial names for devices, and the first match will be used.
+# Use `agent-cli speak --list-devices` to see available devices.
+input-device-name = "logitech,airpods"
+output-device-name = "iloud,airpods,dell,macbook"
+# You can also specify device by index, though name is more stable.
+# input-device-index = 1
+# output-device-index = 1
+
+# --- LLM Settings ---
+# Ollama (local)
+ollama-model = "gemma3:4b"
+ollama-host = "http://localhost:11434"
+# OpenAI
+openai-llm-model = "gpt-4o-mini"
+
+# --- ASR (Speech-to-Text) Settings ---
+# Wyoming (local)
+wyoming-asr-ip = "localhost"
+wyoming-asr-port = 10300
+# OpenAI
+openai-asr-model = "whisper-1"
+
+# --- TTS (Text-to-Speech) Settings ---
+# Wyoming (local)
+wyoming-tts-ip = "localhost"
+wyoming-tts-port = 10200
+wyoming-voice = "en_US-lessac-medium"
+# wyoming-tts-language = "en_US"  # Optional: specify language for the voice
+# wyoming-speaker = "speaker_name" # Optional: specify speaker for the voice
+# OpenAI
+openai-tts-model = "tts-1"
+openai-tts-voice = "alloy"
+
+# --- General Behavior ---
+log-level = "WARNING"  # Logging level (e.g., DEBUG, INFO, WARNING, ERROR)
+# log-file = "/path/to/agent-cli.log" # Path to a file to write logs to
+quiet = false # Suppress most console output
+clipboard = true # Copy results to clipboard by default
+# save-file = "/path/to/output.wav" # Save TTS audio to a file instead of playing
+
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# --- Command-Specific Overrides ---
+# Settings in these sections will override the [defaults] for that specific
+# command.
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+[assistant]
+# Wake-word specific settings
+wake-server-ip = "localhost"
+wake-server-port = 10400
+wake-word-name = "ok_nabu" # e.g., "ok_nabu", "hey_jarvis"
+# The assistant agent also uses ASR, LLM, and TTS settings from [defaults]
+enable-tts = true
 
 [autocorrect]
-# model = "devstral:24b"
-# ollama_host = "http://localhost:11434"
-# log_level = "INFO"
-# quiet = true
+# Use a more powerful model specifically for the autocorrect command.
+llm-provider = "local"
+ollama-model = "devstral:24b"
 
 [chat]
-# input_device_name = "MacBook Pro Microphone"
-# model = "llama3"
-# ollama_host = "http://localhost:11434"
-# enable_tts = true
-# voice_name = "en_US-lessac-medium"
-# tts_speed = 1.2
+# By default, chat uses local providers.
+# For better tool use, you might want to switch to OpenAI:
+# llm-provider = "openai"
+# tts-provider = "openai"
+# openai-llm-model = "gpt-4-turbo"
+enable-tts = true
+tts-speed = 1.2
+# Conversation history settings
+history-dir = "~/.config/agent-cli/history"
+last-n-messages = 50 # Number of messages to load from history
 
 [speak]
-# output_device_name = "MacBook Pro Speakers"
-# voice_name = "en_US-lessac-medium"
-# tts_speed = 1.0
+# Use a specific voice for the speak command.
+tts-provider = "local"
+wyoming-voice = "en_US-ryan-high"
+tts-speed = 1.0
 
 [transcribe]
-# input_device_name = "MacBook Pro Microphone"
-# llm = true
-# model = "llama3"
+# By default, transcription uses local providers.
+# For higher accuracy, you can switch to OpenAI:
+# asr-provider = "openai"
+# llm-provider = "openai"
+# Enable LLM cleanup for the transcript.
+llm = true
 
 [voice-edit]
-# input_device_name = "MacBook Pro Microphone"
-# model = "llama3"
-# enable_tts = true
-# output_device_name = "MacBook Pro Speakers"
+# Use a powerful local model for the voice assistant.
+llm-provider = "local"
+ollama-model = "llama3"
+enable-tts = true

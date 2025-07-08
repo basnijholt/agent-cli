@@ -38,7 +38,7 @@ def mock_live() -> MagicMock:
 
 @pytest.fixture
 def mock_wake_word_config() -> MagicMock:
-    """Mock WakeWordConfig."""
+    """Mock config.WakeWord."""
     config = MagicMock()
     config.wake_word_name = "test_word"
     config.server_ip = "127.0.0.1"

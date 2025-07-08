@@ -9,13 +9,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from agent_cli.agents._config import (
-    ASRConfig,
-    FileConfig,
-    GeneralConfig,
-    LLMConfig,
-    TTSConfig,
-)
+from agent_cli.agents import config
 from agent_cli.agents.chat import (
     ConversationEntry,
     _async_main,
@@ -80,38 +74,27 @@ def test_format_conversation_for_llm() -> None:
 @pytest.mark.asyncio
 async def test_async_main_list_devices(tmp_path: Path) -> None:
     """Test the async_main function with list_input_devices=True."""
-    general_cfg = GeneralConfig(
+    general_cfg = config.General(
         log_level="INFO",
         log_file=None,
         quiet=False,
         list_devices=True,
         clipboard=False,
     )
-    general_cfg.__dict__["console"] = MagicMock()
-    asr_config = ASRConfig(
-        server_ip="localhost",
-        server_port=1234,
-        input_device_index=None,
-        input_device_name=None,
+    provider_cfg = config.ProviderSelection(
+        asr_provider="local",
+        llm_provider="local",
+        tts_provider="local",
     )
-    llm_config = LLMConfig(
-        model="test-model",
-        ollama_host="localhost",
-        service_provider="local",
-        openai_api_key=None,
-    )
-    tts_config = TTSConfig(
-        enabled=False,
-        server_ip="localhost",
-        server_port=5678,
-        voice_name=None,
-        language=None,
-        speaker=None,
-        output_device_index=None,
-        output_device_name=None,
-        speed=1.0,
-    )
-    file_config = FileConfig(save_file=None, history_dir=tmp_path)
+    history_cfg = config.History(history_dir=tmp_path)
+    audio_in_cfg = config.AudioInput()
+    wyoming_asr_cfg = config.WyomingASR(wyoming_asr_ip="localhost", wyoming_asr_port=1234)
+    openai_asr_cfg = config.OpenAIASR(openai_asr_model="whisper-1")
+    ollama_cfg = config.Ollama(ollama_model="test-model", ollama_host="localhost")
+    openai_llm_cfg = config.OpenAILLM(openai_llm_model="gpt-4")
+    audio_out_cfg = config.AudioOutput()
+    wyoming_tts_cfg = config.WyomingTTS(wyoming_tts_ip="localhost", wyoming_tts_port=5678)
+    openai_tts_cfg = config.OpenAITTS(openai_tts_model="tts-1", openai_tts_voice="alloy")
 
     with (
         patch("agent_cli.agents.chat.pyaudio_context"),
@@ -121,11 +104,17 @@ async def test_async_main_list_devices(tmp_path: Path) -> None:
     ):
         mock_setup_devices.return_value = None
         await _async_main(
+            provider_cfg=provider_cfg,
             general_cfg=general_cfg,
-            asr_config=asr_config,
-            llm_config=llm_config,
-            tts_config=tts_config,
-            file_config=file_config,
+            history_cfg=history_cfg,
+            audio_in_cfg=audio_in_cfg,
+            wyoming_asr_cfg=wyoming_asr_cfg,
+            openai_asr_cfg=openai_asr_cfg,
+            ollama_cfg=ollama_cfg,
+            openai_llm_cfg=openai_llm_cfg,
+            audio_out_cfg=audio_out_cfg,
+            wyoming_tts_cfg=wyoming_tts_cfg,
+            openai_tts_cfg=openai_tts_cfg,
         )
         mock_setup_devices.assert_called_once()
 
@@ -133,37 +122,27 @@ async def test_async_main_list_devices(tmp_path: Path) -> None:
 @pytest.mark.asyncio
 async def test_async_main_list_output_devices(tmp_path: Path) -> None:
     """Test the async_main function with list_devices=True."""
-    general_cfg = GeneralConfig(
+    general_cfg = config.General(
         log_level="INFO",
         log_file=None,
         quiet=False,
         list_devices=False,
         clipboard=False,
     )
-    asr_config = ASRConfig(
-        server_ip="localhost",
-        server_port=1234,
-        input_device_index=None,
-        input_device_name=None,
+    provider_cfg = config.ProviderSelection(
+        asr_provider="local",
+        llm_provider="local",
+        tts_provider="local",
     )
-    llm_config = LLMConfig(
-        model="test-model",
-        ollama_host="localhost",
-        service_provider="local",
-        openai_api_key=None,
-    )
-    tts_config = TTSConfig(
-        enabled=False,
-        server_ip="localhost",
-        server_port=5678,
-        voice_name=None,
-        language=None,
-        speaker=None,
-        output_device_index=None,
-        output_device_name=None,
-        speed=1.0,
-    )
-    file_config = FileConfig(save_file=None, history_dir=tmp_path)
+    history_cfg = config.History(history_dir=tmp_path)
+    audio_in_cfg = config.AudioInput()
+    wyoming_asr_cfg = config.WyomingASR(wyoming_asr_ip="localhost", wyoming_asr_port=1234)
+    openai_asr_cfg = config.OpenAIASR(openai_asr_model="whisper-1")
+    ollama_cfg = config.Ollama(ollama_model="test-model", ollama_host="localhost")
+    openai_llm_cfg = config.OpenAILLM(openai_llm_model="gpt-4")
+    audio_out_cfg = config.AudioOutput()
+    wyoming_tts_cfg = config.WyomingTTS(wyoming_tts_ip="localhost", wyoming_tts_port=5678)
+    openai_tts_cfg = config.OpenAITTS(openai_tts_model="tts-1", openai_tts_voice="alloy")
 
     with (
         patch("agent_cli.agents.chat.pyaudio_context"),
@@ -173,11 +152,17 @@ async def test_async_main_list_output_devices(tmp_path: Path) -> None:
     ):
         mock_setup_devices.return_value = None
         await _async_main(
+            provider_cfg=provider_cfg,
             general_cfg=general_cfg,
-            asr_config=asr_config,
-            llm_config=llm_config,
-            tts_config=tts_config,
-            file_config=file_config,
+            history_cfg=history_cfg,
+            audio_in_cfg=audio_in_cfg,
+            wyoming_asr_cfg=wyoming_asr_cfg,
+            openai_asr_cfg=openai_asr_cfg,
+            ollama_cfg=ollama_cfg,
+            openai_llm_cfg=openai_llm_cfg,
+            audio_out_cfg=audio_out_cfg,
+            wyoming_tts_cfg=wyoming_tts_cfg,
+            openai_tts_cfg=openai_tts_cfg,
         )
         mock_setup_devices.assert_called_once()
 
@@ -188,37 +173,31 @@ async def test_async_main_full_loop(tmp_path: Path) -> None:
     history_dir = tmp_path / "history"
     history_dir.mkdir()
 
-    general_cfg = GeneralConfig(
+    general_cfg = config.General(
         log_level="INFO",
         log_file=None,
         list_devices=False,
         quiet=False,
         clipboard=False,
     )
-    asr_config = ASRConfig(
-        server_ip="localhost",
-        server_port=1234,
-        input_device_index=1,
-        input_device_name=None,
+    provider_cfg = config.ProviderSelection(
+        asr_provider="local",
+        llm_provider="local",
+        tts_provider="local",
     )
-    llm_config = LLMConfig(
-        model="test-model",
-        ollama_host="localhost",
-        service_provider="local",
-        openai_api_key=None,
+    history_cfg = config.History(history_dir=history_dir)
+    audio_in_cfg = config.AudioInput(input_device_index=1)
+    wyoming_asr_cfg = config.WyomingASR(wyoming_asr_ip="localhost", wyoming_asr_port=1234)
+    openai_asr_cfg = config.OpenAIASR(openai_asr_model="whisper-1")
+    ollama_cfg = config.Ollama(ollama_model="test-model", ollama_host="localhost")
+    openai_llm_cfg = config.OpenAILLM(openai_llm_model="gpt-4")
+    audio_out_cfg = config.AudioOutput(enable_tts=True, output_device_index=1)
+    wyoming_tts_cfg = config.WyomingTTS(
+        wyoming_tts_ip="localhost",
+        wyoming_tts_port=5678,
+        wyoming_voice="test-voice",
     )
-    tts_config = TTSConfig(
-        enabled=True,
-        server_ip="localhost",
-        server_port=5678,
-        voice_name="test-voice",
-        language="en",
-        speaker=None,
-        output_device_index=1,
-        output_device_name=None,
-        speed=1.0,
-    )
-    file_config = FileConfig(save_file=None, history_dir=history_dir)
+    openai_tts_cfg = config.OpenAITTS(openai_tts_model="tts-1", openai_tts_voice="alloy")
 
     with (
         patch("agent_cli.agents.chat.pyaudio_context"),
@@ -245,11 +224,17 @@ async def test_async_main_full_loop(tmp_path: Path) -> None:
         mock_signal.return_value.__enter__.return_value = mock_stop_event
 
         await _async_main(
+            provider_cfg=provider_cfg,
             general_cfg=general_cfg,
-            asr_config=asr_config,
-            llm_config=llm_config,
-            tts_config=tts_config,
-            file_config=file_config,
+            history_cfg=history_cfg,
+            audio_in_cfg=audio_in_cfg,
+            wyoming_asr_cfg=wyoming_asr_cfg,
+            openai_asr_cfg=openai_asr_cfg,
+            ollama_cfg=ollama_cfg,
+            openai_llm_cfg=openai_llm_cfg,
+            audio_out_cfg=audio_out_cfg,
+            wyoming_tts_cfg=wyoming_tts_cfg,
+            openai_tts_cfg=openai_tts_cfg,
         )
 
         # Verify that the core functions were called
@@ -258,21 +243,17 @@ async def test_async_main_full_loop(tmp_path: Path) -> None:
         mock_llm_response.assert_called_once()
         assert mock_stop_event.clear.call_count == 2  # Called after ASR and at end of turn
         mock_tts.assert_called_with(
-            "Mocked response",
-            service_provider="local",
-            openai_api_key=None,
-            tts_server_ip="localhost",
-            tts_server_port=5678,
-            voice_name="test-voice",
-            tts_language="en",
-            speaker=None,
-            output_device_index=1,
+            text="Mocked response",
+            provider_config=provider_cfg,
+            audio_output_config=audio_out_cfg,
+            wyoming_tts_config=wyoming_tts_cfg,
+            openai_tts_config=openai_tts_cfg,
+            openai_llm_config=openai_llm_cfg,
             save_file=None,
             quiet=False,
             logger=mock_tts.call_args.kwargs["logger"],
             play_audio=True,
             stop_event=mock_tts.call_args.kwargs["stop_event"],
-            speed=1.0,
             live=mock_tts.call_args.kwargs["live"],
         )
 

@@ -3,14 +3,14 @@
 from __future__ import annotations
 
 import asyncio
-import functools
 import io
-from typing import TYPE_CHECKING, Literal
+from functools import partial
+from typing import TYPE_CHECKING
 
 from wyoming.asr import Transcribe, Transcript, TranscriptChunk, TranscriptStart, TranscriptStop
 from wyoming.audio import AudioChunk, AudioStart, AudioStop
 
-from agent_cli import config
+from agent_cli import constants
 from agent_cli.audio import (
     open_pyaudio_stream,
     read_audio_stream,
@@ -28,45 +28,38 @@ if TYPE_CHECKING:
     from rich.live import Live
     from wyoming.client import AsyncClient
 
+    from agent_cli.agents import config
     from agent_cli.utils import InteractiveStopEvent
 
 
 def get_transcriber(
-    service_provider: Literal["local", "openai"],
-    openai_api_key: str | None,
+    provider_config: config.ProviderSelection,
+    audio_input_config: config.AudioInput,
+    wyoming_asr_config: config.WyomingASR,
+    openai_asr_config: config.OpenAIASR,
+    openai_llm_config: config.OpenAILLM,
 ) -> Callable[..., Awaitable[str | None]]:
-    """Return the appropriate transcriber for live audio based on the config."""
-    if service_provider == "openai":
-        if not openai_api_key:
-            msg = "OpenAI API key is not set."
-            raise ValueError(msg)
-        return functools.partial(transcribe_live_audio_openai, api_key=openai_api_key)
-    return transcribe_live_audio_wyoming
+    """Return the appropriate transcriber for live audio based on the provider."""
+    if provider_config.asr_provider == "openai":
+        return partial(
+            transcribe_live_audio_openai,
+            audio_input_config=audio_input_config,
+            openai_asr_config=openai_asr_config,
+            openai_llm_config=openai_llm_config,
+        )
+    return partial(
+        transcribe_live_audio_wyoming,
+        audio_input_config=audio_input_config,
+        wyoming_asr_config=wyoming_asr_config,
+    )
 
 
 def get_recorded_audio_transcriber(
-    service_provider: Literal["local", "openai"],
-    openai_api_key: str | None,
+    provider_config: config.ProviderSelection,
 ) -> Callable[..., Awaitable[str]]:
-    """Return the appropriate transcriber for recorded audio based on the config."""
-    if service_provider == "openai":
-        if not openai_api_key:
-            msg = "OpenAI API key is not set."
-            raise ValueError(msg)
-
-        async def transcribe_with_error_handling(
-            audio_data: bytes,
-            api_key: str,
-            logger: logging.Logger,
-        ) -> str:
-            """Wrapper to handle exceptions for OpenAI transcription."""
-            try:
-                return await transcribe_audio_openai(audio_data, api_key, logger)
-            except Exception:
-                logger.exception("Error during transcription")
-                return ""
-
-        return functools.partial(transcribe_with_error_handling, api_key=openai_api_key)
+    """Return the appropriate transcriber for recorded audio based on the provider."""
+    if provider_config.asr_provider == "openai":
+        return transcribe_audio_openai
     return transcribe_recorded_audio_wyoming
 
 
@@ -81,13 +74,11 @@ async def _send_audio(
 ) -> None:
     """Read from mic and send to Wyoming server."""
     await client.write_event(Transcribe().event())
-    await client.write_event(AudioStart(**config.WYOMING_AUDIO_CONFIG).event())
+    await client.write_event(AudioStart(**constants.WYOMING_AUDIO_CONFIG).event())
 
     async def send_chunk(chunk: bytes) -> None:
         """Send audio chunk to ASR server."""
-        await client.write_event(
-            AudioChunk(audio=chunk, **config.WYOMING_AUDIO_CONFIG).event(),
-        )
+        await client.write_event(AudioChunk(audio=chunk, **constants.WYOMING_AUDIO_CONFIG).event())
 
     try:
         await read_audio_stream(
@@ -116,11 +107,7 @@ async def record_audio_to_buffer(
         """Buffer audio chunk."""
         audio_buffer.write(chunk)
 
-    await read_from_queue(
-        queue=queue,
-        chunk_handler=buffer_chunk,
-        logger=logger,
-    )
+    await read_from_queue(queue=queue, chunk_handler=buffer_chunk, logger=logger)
 
     return audio_buffer.getvalue()
 
@@ -192,29 +179,30 @@ async def record_audio_with_manual_stop(
 
 
 async def transcribe_recorded_audio_wyoming(
+    *,
     audio_data: bytes,
-    asr_server_ip: str,
-    asr_server_port: int,
+    wyoming_asr_config: config.WyomingASR,
     logger: logging.Logger,
     quiet: bool = False,
+    **_kwargs: object,
 ) -> str:
     """Process pre-recorded audio data with Wyoming ASR server."""
     try:
         async with wyoming_client_context(
-            asr_server_ip,
-            asr_server_port,
+            wyoming_asr_config.wyoming_asr_ip,
+            wyoming_asr_config.wyoming_asr_port,
             "ASR",
             logger,
             quiet=quiet,
         ) as client:
             await client.write_event(Transcribe().event())
-            await client.write_event(AudioStart(**config.WYOMING_AUDIO_CONFIG).event())
+            await client.write_event(AudioStart(**constants.WYOMING_AUDIO_CONFIG).event())
 
-            chunk_size = config.PYAUDIO_CHUNK_SIZE * 2
+            chunk_size = constants.PYAUDIO_CHUNK_SIZE * 2
             for i in range(0, len(audio_data), chunk_size):
                 chunk = audio_data[i : i + chunk_size]
                 await client.write_event(
-                    AudioChunk(audio=chunk, **config.WYOMING_AUDIO_CONFIG).event(),
+                    AudioChunk(audio=chunk, **constants.WYOMING_AUDIO_CONFIG).event(),
                 )
                 logger.debug("Sent %d byte(s) of audio", len(chunk))
 
@@ -227,28 +215,28 @@ async def transcribe_recorded_audio_wyoming(
 
 
 async def transcribe_live_audio_wyoming(
-    asr_server_ip: str,
-    asr_server_port: int,
-    input_device_index: int | None,
+    *,
+    audio_input_config: config.AudioInput,
+    wyoming_asr_config: config.WyomingASR,
     logger: logging.Logger,
     p: pyaudio.PyAudio,
     stop_event: InteractiveStopEvent,
-    *,
     live: Live,
     quiet: bool = False,
     chunk_callback: Callable[[str], None] | None = None,
     final_callback: Callable[[str], None] | None = None,
+    **_kwargs: object,
 ) -> str | None:
     """Unified ASR transcription function."""
     try:
         async with wyoming_client_context(
-            asr_server_ip,
-            asr_server_port,
+            wyoming_asr_config.wyoming_asr_ip,
+            wyoming_asr_config.wyoming_asr_port,
             "ASR",
             logger,
             quiet=quiet,
         ) as client:
-            stream_config = setup_input_stream(input_device_index)
+            stream_config = setup_input_stream(audio_input_config.input_device_index)
             with open_pyaudio_stream(p, **stream_config) as stream:
                 _, recv_task = await manage_send_receive_tasks(
                     _send_audio(client, stream, stop_event, logger, live=live, quiet=quiet),
@@ -266,19 +254,21 @@ async def transcribe_live_audio_wyoming(
 
 
 async def transcribe_live_audio_openai(
-    api_key: str,
-    input_device_index: int | None,
+    *,
+    audio_input_config: config.AudioInput,
+    openai_asr_config: config.OpenAIASR,
+    openai_llm_config: config.OpenAILLM,
     logger: logging.Logger,
     p: pyaudio.PyAudio,
     stop_event: InteractiveStopEvent,
-    *,
     live: Live,
     quiet: bool = False,
+    **_kwargs: object,
 ) -> str | None:
     """Record and transcribe live audio using OpenAI Whisper."""
     audio_data = await record_audio_with_manual_stop(
         p,
-        input_device_index,
+        audio_input_config.input_device_index,
         stop_event,
         logger,
         quiet=quiet,
@@ -287,7 +277,12 @@ async def transcribe_live_audio_openai(
     if not audio_data:
         return None
     try:
-        return await transcribe_audio_openai(audio_data, api_key, logger)
+        return await transcribe_audio_openai(
+            audio_data,
+            openai_asr_config,
+            openai_llm_config,
+            logger,
+        )
     except Exception:
         logger.exception("Error during transcription")
         return ""

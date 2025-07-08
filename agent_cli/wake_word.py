@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 from wyoming.audio import AudioChunk, AudioStart, AudioStop
 from wyoming.wake import Detect, Detection, NotDetected
 
-from agent_cli import config
+from agent_cli import constants
 from agent_cli.audio import read_from_queue
 from agent_cli.wyoming_utils import manage_send_receive_tasks, wyoming_client_context
 
@@ -29,16 +29,16 @@ async def _send_audio_from_queue_for_wake_detection(
     progress_message: str,
 ) -> None:
     """Read from a queue and send to Wyoming wake word server."""
-    await client.write_event(AudioStart(**config.WYOMING_AUDIO_CONFIG).event())
+    await client.write_event(AudioStart(**constants.WYOMING_AUDIO_CONFIG).event())
     seconds_streamed = 0.0
 
     async def send_chunk(chunk: bytes) -> None:
         nonlocal seconds_streamed
         """Send audio chunk to wake word server."""
         await client.write_event(
-            AudioChunk(audio=chunk, **config.WYOMING_AUDIO_CONFIG).event(),
+            AudioChunk(audio=chunk, **constants.WYOMING_AUDIO_CONFIG).event(),
         )
-        seconds_streamed += len(chunk) / (config.PYAUDIO_RATE * config.PYAUDIO_CHANNELS * 2)
+        seconds_streamed += len(chunk) / (constants.PYAUDIO_RATE * constants.PYAUDIO_CHANNELS * 2)
         if live and not quiet:
             live.update(f"{progress_message}... ({seconds_streamed:.1f}s)")
 

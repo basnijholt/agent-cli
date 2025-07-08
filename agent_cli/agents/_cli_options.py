@@ -4,86 +4,115 @@ from pathlib import Path
 
 import typer
 
-from agent_cli import config
+# --- Provider Selection ---
+LLM_PROVIDER: str = typer.Option(
+    "local",
+    "--llm-provider",
+    help="The LLM provider to use ('local' for Ollama, 'openai').",
+    rich_help_panel="Provider Selection",
+)
+ASR_PROVIDER: str = typer.Option(
+    "local",
+    "--asr-provider",
+    help="The ASR provider to use ('local' for Wyoming, 'openai').",
+    rich_help_panel="Provider Selection",
+)
+TTS_PROVIDER: str = typer.Option(
+    "local",
+    "--tts-provider",
+    help="The TTS provider to use ('local' for Wyoming, 'openai').",
+    rich_help_panel="Provider Selection",
+)
 
-# --- LLM Options ---
-MODEL: str = typer.Option(
-    config.DEFAULT_MODEL,
-    "--model",
-    "-m",
-    help=f"The Ollama model to use. Default is {config.DEFAULT_MODEL}.",
-    rich_help_panel="LLM Options",
+
+# --- LLM Configuration ---
+# Ollama (local service)
+OLLAMA_MODEL: str = typer.Option(
+    "qwen3:4b",
+    "--ollama-model",
+    help="The Ollama model to use. Default is qwen3:4b.",
+    rich_help_panel="LLM Configuration: Ollama (local)",
 )
 OLLAMA_HOST: str = typer.Option(
-    config.OLLAMA_HOST,
+    "http://localhost:11434",
     "--ollama-host",
-    help=f"The Ollama server host. Default is {config.OLLAMA_HOST}.",
-    rich_help_panel="LLM Options",
+    help="The Ollama server host. Default is http://localhost:11434.",
+    rich_help_panel="LLM Configuration: Ollama (local)",
 )
-SERVICE_PROVIDER: str = typer.Option(
-    config.SERVICE_PROVIDER,
-    "--service-provider",
-    help=f"The service provider to use. Default is {config.SERVICE_PROVIDER}.",
-    rich_help_panel="LLM Options",
+# OpenAI
+OPENAI_LLM_MODEL: str = typer.Option(
+    "gpt-4o-mini",
+    "--openai-llm-model",
+    help="The OpenAI model to use for LLM tasks.",
+    rich_help_panel="LLM Configuration: OpenAI",
 )
 OPENAI_API_KEY: str | None = typer.Option(
-    config.OPENAI_API_KEY,
+    None,
     "--openai-api-key",
-    help="The OpenAI API key. Only required if using OpenAI as the service-provider.",
+    help="Your OpenAI API key. Can also be set with the OPENAI_API_KEY environment variable.",
     envvar="OPENAI_API_KEY",
-    rich_help_panel="LLM Options",
+    rich_help_panel="LLM Configuration: OpenAI",
 )
 LLM: bool = typer.Option(
     False,  # noqa: FBT003
     "--llm/--no-llm",
     help="Use an LLM to process the transcript.",
-    rich_help_panel="LLM Options",
+    rich_help_panel="LLM Configuration",
 )
 
 
-# --- ASR (Audio) Options ---
-DEVICE_INDEX: int | None = typer.Option(
+# --- ASR (Audio) Configuration ---
+# General ASR
+INPUT_DEVICE_INDEX: int | None = typer.Option(
     None,
     "--input-device-index",
     help="Index of the PyAudio input device to use.",
-    rich_help_panel="ASR (Audio) Options",
+    rich_help_panel="ASR (Audio) Configuration",
 )
-DEVICE_NAME: str | None = typer.Option(
+INPUT_DEVICE_NAME: str | None = typer.Option(
     None,
     "--input-device-name",
-    help="Device name keywords for partial matching. Supports comma-separated list where each term can partially match device names (case-insensitive). First matching device is selected.",
-    rich_help_panel="ASR (Audio) Options",
+    help="Device name keywords for partial matching.",
+    rich_help_panel="ASR (Audio) Configuration",
 )
 LIST_DEVICES: bool = typer.Option(
     False,  # noqa: FBT003
     "--list-devices",
     help="List available audio input and output devices and exit.",
     is_eager=True,
-    rich_help_panel="ASR (Audio) Options",
+    rich_help_panel="ASR (Audio) Configuration",
 )
-ASR_SERVER_IP: str = typer.Option(
-    config.ASR_SERVER_IP,
-    "--asr-server-ip",
+# Wyoming (local service)
+WYOMING_ASR_SERVER_IP: str = typer.Option(
+    "localhost",
+    "--wyoming-asr-ip",
     help="Wyoming ASR server IP address.",
-    rich_help_panel="ASR (Audio) Options",
+    rich_help_panel="ASR (Audio) Configuration: Wyoming (local)",
 )
-ASR_SERVER_PORT: int = typer.Option(
-    config.ASR_SERVER_PORT,
-    "--asr-server-port",
+WYOMING_ASR_SERVER_PORT: int = typer.Option(
+    10300,
+    "--wyoming-asr-port",
     help="Wyoming ASR server port.",
-    rich_help_panel="ASR (Audio) Options",
+    rich_help_panel="ASR (Audio) Configuration: Wyoming (local)",
+)
+# OpenAI
+OPENAI_ASR_MODEL: str = typer.Option(
+    "whisper-1",
+    "--openai-asr-model",
+    help="The OpenAI model to use for ASR (transcription).",
+    rich_help_panel="ASR (Audio) Configuration: OpenAI",
 )
 
 
 # --- Wake Word Options ---
 WAKE_WORD_SERVER_IP: str = typer.Option(
-    config.WAKE_WORD_SERVER_IP,
+    "localhost",
     "--wake-server-ip",
     help="Wyoming wake word server IP address.",
     rich_help_panel="Wake Word Options",
 )
 WAKE_WORD_SERVER_PORT: int = typer.Option(
-    config.WAKE_WORD_SERVER_PORT,
+    10400,
     "--wake-server-port",
     help="Wyoming wake word server port.",
     rich_help_panel="Wake Word Options",
@@ -96,60 +125,75 @@ WAKE_WORD_NAME: str = typer.Option(
 )
 
 
-# --- TTS (Text-to-Speech) Options ---
-TTS_SERVER_IP: str = typer.Option(
-    config.TTS_SERVER_IP,
-    "--tts-server-ip",
-    help="Wyoming TTS server IP address.",
-    rich_help_panel="TTS (Text-to-Speech) Options",
-)
-TTS_SERVER_PORT: int = typer.Option(
-    config.TTS_SERVER_PORT,
-    "--tts-server-port",
-    help="Wyoming TTS server port.",
-    rich_help_panel="TTS (Text-to-Speech) Options",
-)
-VOICE_NAME: str | None = typer.Option(
-    None,
-    "--voice",
-    help="Voice name to use for TTS (e.g., 'en_US-lessac-medium').",
-    rich_help_panel="TTS (Text-to-Speech) Options",
-)
-TTS_LANGUAGE: str | None = typer.Option(
-    None,
-    "--tts-language",
-    help="Language for TTS (e.g., 'en_US').",
-    rich_help_panel="TTS (Text-to-Speech) Options",
-)
-SPEAKER: str | None = typer.Option(
-    None,
-    "--speaker",
-    help="Speaker name for TTS voice.",
-    rich_help_panel="TTS (Text-to-Speech) Options",
-)
-OUTPUT_DEVICE_INDEX: int | None = typer.Option(
-    None,
-    "--output-device-index",
-    help="Index of the PyAudio output device to use for TTS.",
-    rich_help_panel="TTS (Text-to-Speech) Options",
-)
-OUTPUT_DEVICE_NAME: str | None = typer.Option(
-    None,
-    "--output-device-name",
-    help="Output device name keywords for partial matching. Supports comma-separated list where each term can partially match device names (case-insensitive). First matching device is selected.",
-    rich_help_panel="TTS (Text-to-Speech) Options",
-)
+# --- TTS (Text-to-Speech) Configuration ---
+# General TTS
 ENABLE_TTS: bool = typer.Option(
     False,  # noqa: FBT003
     "--tts/--no-tts",
     help="Enable text-to-speech for responses.",
-    rich_help_panel="TTS (Text-to-Speech) Options",
+    rich_help_panel="TTS (Text-to-Speech) Configuration",
 )
 TTS_SPEED: float = typer.Option(
     1.0,
     "--tts-speed",
     help="Speech speed multiplier (1.0 = normal, 2.0 = twice as fast, 0.5 = half speed).",
-    rich_help_panel="TTS (Text-to-Speech) Options",
+    rich_help_panel="TTS (Text-to-Speech) Configuration",
+)
+OUTPUT_DEVICE_INDEX: int | None = typer.Option(
+    None,
+    "--output-device-index",
+    help="Index of the PyAudio output device to use for TTS.",
+    rich_help_panel="TTS (Text-to-Speech) Configuration",
+)
+OUTPUT_DEVICE_NAME: str | None = typer.Option(
+    None,
+    "--output-device-name",
+    help="Output device name keywords for partial matching.",
+    rich_help_panel="TTS (Text-to-Speech) Configuration",
+)
+# Wyoming (local service)
+WYOMING_TTS_SERVER_IP: str = typer.Option(
+    "localhost",
+    "--wyoming-tts-ip",
+    help="Wyoming TTS server IP address.",
+    rich_help_panel="TTS (Text-to-Speech) Configuration: Wyoming (local)",
+)
+WYOMING_TTS_SERVER_PORT: int = typer.Option(
+    10200,
+    "--wyoming-tts-port",
+    help="Wyoming TTS server port.",
+    rich_help_panel="TTS (Text-to-Speech) Configuration: Wyoming (local)",
+)
+WYOMING_VOICE_NAME: str | None = typer.Option(
+    None,
+    "--wyoming-voice",
+    help="Voice name to use for Wyoming TTS (e.g., 'en_US-lessac-medium').",
+    rich_help_panel="TTS (Text-to-Speech) Configuration: Wyoming (local)",
+)
+WYOMING_TTS_LANGUAGE: str | None = typer.Option(
+    None,
+    "--wyoming-tts-language",
+    help="Language for Wyoming TTS (e.g., 'en_US').",
+    rich_help_panel="TTS (Text-to-Speech) Configuration: Wyoming (local)",
+)
+WYOMING_SPEAKER: str | None = typer.Option(
+    None,
+    "--wyoming-speaker",
+    help="Speaker name for Wyoming TTS voice.",
+    rich_help_panel="TTS (Text-to-Speech) Configuration: Wyoming (local)",
+)
+# OpenAI
+OPENAI_TTS_MODEL: str = typer.Option(
+    "tts-1",
+    "--openai-tts-model",
+    help="The OpenAI model to use for TTS.",
+    rich_help_panel="TTS (Text-to-Speech) Configuration: OpenAI",
+)
+OPENAI_TTS_VOICE: str = typer.Option(
+    "alloy",
+    "--openai-tts-voice",
+    help="The voice to use for OpenAI TTS.",
+    rich_help_panel="TTS (Text-to-Speech) Configuration: OpenAI",
 )
 
 
