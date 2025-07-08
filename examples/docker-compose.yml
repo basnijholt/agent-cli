@@ -9,7 +9,12 @@ services:
       - OLLAMA_THINK=false
     volumes:
       - ./ollama:/root/.ollama
-    # Uncomment the following lines to enable GPU acceleration
+    # On macOS, Docker does not support GPU acceleration. For better
+    # performance, it is recommended to install Ollama natively:
+    # https://ollama.com/download
+    #
+    # On Linux with an NVIDIA GPU, you can uncomment the following
+    # lines to enable GPU acceleration.
     # deploy:
     #   resources:
     #     reservations:
@@ -33,14 +38,10 @@ services:
     volumes:
       - ./whisper-data:/data
     command: --model large-v3 --language en
-    # Uncomment the following lines to enable GPU acceleration
-    # deploy:
-    #   resources:
-    #     reservations:
-    #       devices:
-    #         - driver: nvidia
-    #           count: all
-    #           capabilities: [gpu]
+    # The official rhasspy/wyoming-whisper image does not currently
+    # support GPU acceleration.
+    # see https://github.com/rhasspy/wyoming-faster-whisper/issues/35
+    # and https://github.com/rhasspy/wyoming-faster-whisper/pull/44
 
   openwakeword:
     image: rhasspy/wyoming-openwakeword

@@ -139,6 +139,10 @@ docker compose -f examples/docker-compose.yml down
 ```
 
 > ⚠️ The `ollama` service can be memory-intensive. If you experience issues with the `autocorrect`, `voice-assistant`, or `interactive` agents, you may need to increase the memory allocated to Docker.
+>
+> **Note on GPU Acceleration**:
+> - **Ollama**: On macOS, Docker does not support GPU acceleration. For significantly better performance, it is recommended to install Ollama natively by downloading it from the [official website](https://ollama.com/download) or by using Homebrew. This will allow Ollama to use the Metal GPU on Apple Silicon devices. On Linux, NVIDIA GPU acceleration is supported.
+> - **Whisper**: The official `rhasspy/wyoming-whisper` Docker image does not currently support GPU acceleration.
 
 </details>
 
