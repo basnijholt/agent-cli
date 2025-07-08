@@ -195,7 +195,7 @@ def voice_edit(
     quiet: bool = opts.QUIET,
     config_file: str | None = opts.CONFIG_FILE,  # noqa: ARG001
 ) -> None:
-    """Interact with clipboard text via a voice command using Wyoming and an Ollama LLM.
+    """Interact with clipboard text via a voice command using local or remote services.
 
     Usage:
     - Run in foreground: agent-cli voice-edit --input-device-index 1

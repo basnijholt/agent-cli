@@ -53,7 +53,7 @@ It provides a suite of powerful tools for voice and text interaction, designed f
 - **`speak`**: Convert text to speech using a local TTS engine or OpenAI's TTS API.
 - **`voice-edit`**: A voice-powered clipboard assistant that edits text based on your spoken commands.
 - **`assistant`**: A hands-free voice assistant that starts and stops recording based on a wake word.
-- **`chat`**: An chat, conversational AI agent with tool-calling capabilities.
+- **`chat`**: A conversational AI agent with tool-calling capabilities.
 
 ## Prerequisites
 
@@ -532,15 +532,8 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 
  Usage: agent-cli voice-edit [OPTIONS]
 
- Interact with clipboard text via a voice command using Wyoming and an Ollama
- LLM.
-
- Usage: - Run in foreground: agent-cli voice-edit --input-device-index 1 -
- Run in background: agent-cli voice-edit --input-device-index 1 & - Check
- status: agent-cli voice-edit --status - Stop background process:
- agent-cli voice-edit --stop - List output devices: agent-cli
- voice-edit --list-output-devices - Save TTS to file: agent-cli
- voice-edit --tts --save-file response.wav
+ Interact with clipboard text via a voice command using local or remote
+ services.
 
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
 │ --help          Show this message and exit.                                  │
@@ -673,7 +666,7 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 
 **Purpose:** A full-featured, conversational AI assistant that can interact with your system.
 
-**Workflow:** This is a persistent, chat agent that you can have a conversation with.
+**Workflow:** This is a persistent, conversational agent that you can have a conversation with.
 
 1.  Run the `chat` command. It will start listening for your voice.
 2.  Speak your command or question (e.g., "What's in my current directory?").
