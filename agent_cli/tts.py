@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import asyncio
-import functools
 import importlib.util
 import io
 import wave
@@ -40,10 +39,14 @@ has_audiostretchy = importlib.util.find_spec("audiostretchy") is not None
 def get_synthesizer() -> Callable[..., Awaitable[bytes | None]]:
     """Return the appropriate synthesizer based on the config."""
     if config.SERVICE_PROVIDER == "openai":
-        if not config.OPENAI_API_KEY:
+        if config.OPENAI_API_KEY is None:
             msg = "OpenAI API key is not set."
             raise ValueError(msg)
-        return functools.partial(synthesize_speech_openai, api_key=config.OPENAI_API_KEY)
+        return lambda text, logger, **_: synthesize_speech_openai(
+            text,
+            api_key=config.OPENAI_API_KEY,  # type: ignore[arg-type]
+            logger=logger,
+        )
     return _synthesize_speech_wyoming
 
 
