@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING
 from wyoming.audio import AudioChunk, AudioStart, AudioStop
 from wyoming.tts import Synthesize, SynthesizeVoice
 
-from agent_cli import defaults
+from agent_cli import constants
 from agent_cli.audio import open_pyaudio_stream, pyaudio_context, setup_output_stream
 from agent_cli.services import synthesize_speech_openai
 from agent_cli.utils import InteractiveStopEvent, live_timer, print_error_message, print_with_style
@@ -241,7 +241,7 @@ async def play_audio(
                     channels=channels,
                 )
                 with open_pyaudio_stream(p, **stream_config) as stream:
-                    chunk_size = defaults.PYAUDIO_CHUNK_SIZE
+                    chunk_size = constants.PYAUDIO_CHUNK_SIZE
                     for i in range(0, len(frames), chunk_size):
                         if stop_event and stop_event.is_set():
                             logger.info("Audio playback interrupted")

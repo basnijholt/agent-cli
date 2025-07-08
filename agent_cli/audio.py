@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING
 import pyaudio
 from rich.text import Text
 
-from agent_cli import defaults
+from agent_cli import constants
 from agent_cli.utils import InteractiveStopEvent, console, print_device_index, print_with_style
 
 if TYPE_CHECKING:
@@ -68,7 +68,7 @@ class _AudioTee:
             while not self.stop_event.is_set() and not self._stop_tee_event.is_set():
                 chunk = await asyncio.to_thread(
                     self.stream.read,
-                    num_frames=defaults.PYAUDIO_CHUNK_SIZE,
+                    num_frames=constants.PYAUDIO_CHUNK_SIZE,
                     exception_on_overflow=False,
                 )
                 # Lock the queue list while iterating to prevent modification during iteration
@@ -186,7 +186,7 @@ async def read_audio_stream(
         while not stop_event.is_set():
             chunk = await asyncio.to_thread(
                 stream.read,
-                num_frames=defaults.PYAUDIO_CHUNK_SIZE,
+                num_frames=constants.PYAUDIO_CHUNK_SIZE,
                 exception_on_overflow=False,
             )
 
@@ -199,7 +199,9 @@ async def read_audio_stream(
             logger.debug("Processed %d byte(s) of audio", len(chunk))
 
             # Update progress display
-            seconds_streamed += len(chunk) / (defaults.PYAUDIO_RATE * defaults.PYAUDIO_CHANNELS * 2)
+            seconds_streamed += len(chunk) / (
+                constants.PYAUDIO_RATE * constants.PYAUDIO_CHANNELS * 2
+            )
             if live and not quiet:
                 if stop_event.ctrl_c_pressed:
                     msg = f"Ctrl+C pressed. Stopping {progress_message.lower()}..."
@@ -229,11 +231,11 @@ def setup_input_stream(
 
     """
     return {
-        "format": defaults.PYAUDIO_FORMAT,
-        "channels": defaults.PYAUDIO_CHANNELS,
-        "rate": defaults.PYAUDIO_RATE,
+        "format": constants.PYAUDIO_FORMAT,
+        "channels": constants.PYAUDIO_CHANNELS,
+        "rate": constants.PYAUDIO_RATE,
         "input": True,
-        "frames_per_buffer": defaults.PYAUDIO_CHUNK_SIZE,
+        "frames_per_buffer": constants.PYAUDIO_CHUNK_SIZE,
         "input_device_index": input_device_index,
     }
 
@@ -260,10 +262,10 @@ def setup_output_stream(
     """
     return {
         "format": pyaudio.get_format_from_width(sample_width or 2),
-        "channels": channels or defaults.PYAUDIO_CHANNELS,
-        "rate": sample_rate or defaults.PYAUDIO_RATE,
+        "channels": channels or constants.PYAUDIO_CHANNELS,
+        "rate": sample_rate or constants.PYAUDIO_RATE,
         "output": True,
-        "frames_per_buffer": defaults.PYAUDIO_CHUNK_SIZE,
+        "frames_per_buffer": constants.PYAUDIO_CHUNK_SIZE,
         "output_device_index": output_device_index,
     }
 

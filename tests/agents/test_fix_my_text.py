@@ -9,7 +9,6 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from rich.console import Console
 
-from agent_cli import defaults
 from agent_cli.agents import autocorrect, config
 
 
@@ -141,17 +140,6 @@ async def test_process_text_integration(mock_build_agent: MagicMock) -> None:
     mock_agent.run.assert_called_once_with(expected_input)
 
 
-def test_configuration_constants():
-    """Test that configuration constants are properly set."""
-    # Test that OLLAMA_HOST has a reasonable value (could be localhost or custom)
-    assert defaults.OLLAMA_HOST
-    assert defaults.OLLAMA_HOST.startswith("http")  # Should be a valid URL
-
-    # Test that DEFAULT_MODEL is set
-    assert defaults.DEFAULT_MODEL
-    assert isinstance(defaults.DEFAULT_MODEL, str)
-
-
 @pytest.mark.asyncio
 @patch("agent_cli.agents.autocorrect.build_agent")
 @patch("agent_cli.agents.autocorrect.get_clipboard_text")
@@ -174,8 +162,8 @@ async def test_autocorrect_command_with_text(
         tts_provider="local",
     )
     ollama_cfg = config.Ollama(
-        ollama_model=defaults.DEFAULT_MODEL,
-        ollama_host=defaults.OLLAMA_HOST,
+        ollama_model="qwen3:4b",
+        ollama_host="http://localhost:11434",
     )
     openai_llm_cfg = config.OpenAILLM(openai_llm_model="gpt-4o-mini", openai_api_key=None)
     general_cfg = config.General(
@@ -229,8 +217,8 @@ async def test_autocorrect_command_from_clipboard(
         tts_provider="local",
     )
     ollama_cfg = config.Ollama(
-        ollama_model=defaults.DEFAULT_MODEL,
-        ollama_host=defaults.OLLAMA_HOST,
+        ollama_model="qwen3:4b",
+        ollama_host="http://localhost:11434",
     )
     openai_llm_cfg = config.OpenAILLM(openai_llm_model="gpt-4o-mini", openai_api_key=None)
     general_cfg = config.General(

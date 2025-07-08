@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 from wyoming.asr import Transcribe, Transcript, TranscriptChunk, TranscriptStart, TranscriptStop
 from wyoming.audio import AudioChunk, AudioStart, AudioStop
 
-from agent_cli import defaults
+from agent_cli import constants
 from agent_cli.audio import (
     open_pyaudio_stream,
     read_audio_stream,
@@ -74,11 +74,11 @@ async def _send_audio(
 ) -> None:
     """Read from mic and send to Wyoming server."""
     await client.write_event(Transcribe().event())
-    await client.write_event(AudioStart(**defaults.WYOMING_AUDIO_CONFIG).event())
+    await client.write_event(AudioStart(**constants.WYOMING_AUDIO_CONFIG).event())
 
     async def send_chunk(chunk: bytes) -> None:
         """Send audio chunk to ASR server."""
-        await client.write_event(AudioChunk(audio=chunk, **defaults.WYOMING_AUDIO_CONFIG).event())
+        await client.write_event(AudioChunk(audio=chunk, **constants.WYOMING_AUDIO_CONFIG).event())
 
     try:
         await read_audio_stream(
@@ -196,13 +196,13 @@ async def transcribe_recorded_audio_wyoming(
             quiet=quiet,
         ) as client:
             await client.write_event(Transcribe().event())
-            await client.write_event(AudioStart(**defaults.WYOMING_AUDIO_CONFIG).event())
+            await client.write_event(AudioStart(**constants.WYOMING_AUDIO_CONFIG).event())
 
-            chunk_size = defaults.PYAUDIO_CHUNK_SIZE * 2
+            chunk_size = constants.PYAUDIO_CHUNK_SIZE * 2
             for i in range(0, len(audio_data), chunk_size):
                 chunk = audio_data[i : i + chunk_size]
                 await client.write_event(
-                    AudioChunk(audio=chunk, **defaults.WYOMING_AUDIO_CONFIG).event(),
+                    AudioChunk(audio=chunk, **constants.WYOMING_AUDIO_CONFIG).event(),
                 )
                 logger.debug("Sent %d byte(s) of audio", len(chunk))
 
