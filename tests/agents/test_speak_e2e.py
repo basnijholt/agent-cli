@@ -2,19 +2,14 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
 from unittest.mock import MagicMock, patch
 
 import pytest
 
-from agent_cli.agents._command_setup import CommandConfig
 from agent_cli.agents._config import FileConfig, GeneralConfig, TTSConfig
 from agent_cli.agents.speak import _async_main
 from tests.mocks.audio import MockPyAudio
 from tests.mocks.wyoming import MockTTSClient
-
-if TYPE_CHECKING:
-    from rich.console import Console
 
 
 @pytest.mark.asyncio
@@ -22,7 +17,6 @@ if TYPE_CHECKING:
 async def test_speak_e2e(
     mock_wyoming_client_context: MagicMock,
     mock_pyaudio_device_info: list[dict],
-    mock_console: Console,
 ) -> None:
     """Test end-to-end speech synthesis with simplified mocks."""
     # Setup mock PyAudio
@@ -48,7 +42,6 @@ async def test_speak_e2e(
             list_devices=False,
             quiet=False,
         )
-        config = CommandConfig(general_cfg=general_cfg)
         tts_config = TTSConfig(
             enabled=True,
             server_ip="mock-host",
@@ -63,7 +56,7 @@ async def test_speak_e2e(
         file_config = FileConfig(save_file=None)
 
         await _async_main(
-            config=config,
+            general_cfg=general_cfg,
             text="Hello, world!",
             tts_config=tts_config,
             file_config=file_config,

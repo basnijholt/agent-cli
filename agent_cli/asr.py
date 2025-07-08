@@ -210,7 +210,8 @@ async def transcribe_recorded_audio(
         )
     if asr_provider == "wyoming":
         if not asr_server_ip or not asr_server_port:
-            raise ValueError("Wyoming server IP and port must be provided.")
+            msg = "Wyoming server IP and port must be provided."
+            raise ValueError(msg)
         try:
             async with wyoming_client_context(
                 asr_server_ip,
@@ -236,7 +237,8 @@ async def transcribe_recorded_audio(
                 return await _receive_transcript(client, logger)
         except (ConnectionRefusedError, Exception):
             return ""
-    raise ValueError(f"Unknown ASR provider: {asr_provider}")
+    msg = f"Unknown ASR provider: {asr_provider}"
+    raise ValueError(msg)
 
 
 async def transcribe_live_audio(

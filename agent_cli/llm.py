@@ -7,6 +7,9 @@ import time
 from typing import TYPE_CHECKING
 
 import pyperclip
+from pydantic_ai import Agent
+from pydantic_ai.models.openai import OpenAIModel, OpenAIResponsesModelSettings
+from pydantic_ai.providers.openai import OpenAIProvider
 from rich.live import Live
 
 from agent_cli.utils import (
@@ -19,7 +22,6 @@ from agent_cli.utils import (
 if TYPE_CHECKING:
     import logging
 
-    from pydantic_ai import Agent
     from pydantic_ai.tools import Tool
 
 
@@ -34,18 +36,16 @@ def build_agent(
     tools: list[Tool] | None = None,
 ) -> Agent:
     """Construct and return a PydanticAI agent."""
-    from pydantic_ai import Agent
-    from pydantic_ai.models.openai import OpenAIModel, OpenAIResponsesModelSettings
-    from pydantic_ai.providers.openai import OpenAIProvider
-
     if llm_provider == "ollama":
         if not ollama_host:
-            raise ValueError("ollama_host must be provided for ollama provider")
+            msg = "ollama_host must be provided for ollama provider"
+            raise ValueError(msg)
         provider = OpenAIProvider(base_url=f"{ollama_host}/v1")
     elif llm_provider == "openai":
         provider = OpenAIProvider(api_key=api_key)
     else:
-        raise ValueError(f"Unknown llm_provider: {llm_provider}")
+        msg = f"Unknown llm_provider: {llm_provider}"
+        raise ValueError(msg)
 
     model_instance = OpenAIModel(model_name=model, provider=provider)
     return Agent(

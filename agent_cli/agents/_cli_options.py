@@ -34,9 +34,7 @@ OUTPUT_DEVICE_NAME = typer.Option(
     help="Name of the output device to use (e.g., 'MacBook Pro Speakers').",
 )
 LIST_DEVICES = typer.Option(
-    False,
-    "--list-devices",
-    "-l",
+    default=False,
     help="List available audio devices and exit.",
 )
 
@@ -80,8 +78,7 @@ OLLAMA_HOST = typer.Option(
     help="Ollama server host.",
 )
 LLM = typer.Option(
-    False,
-    "--llm",
+    default=False,
     help="Enable LLM processing of the transcript.",
 )
 
@@ -118,8 +115,7 @@ TTS_SPEED = typer.Option(
     help="TTS speech speed.",
 )
 ENABLE_TTS = typer.Option(
-    False,
-    "--enable-tts",
+    default=False,
     help="Enable text-to-speech output.",
 )
 
@@ -142,18 +138,15 @@ WAKE_WORD_NAME = typer.Option(
 
 # --- Process Control Options ---
 STOP = typer.Option(
-    False,
-    "--stop",
+    default=False,
     help="Stop the background process.",
 )
 STATUS = typer.Option(
-    False,
-    "--status",
+    default=False,
     help="Check the status of the background process.",
 )
 TOGGLE = typer.Option(
-    False,
-    "--toggle",
+    default=False,
     help="Toggle the background process on/off.",
 )
 
@@ -164,9 +157,7 @@ SAVE_FILE = typer.Option(
     help="Save audio to WAV file instead of playing it.",
 )
 CLIPBOARD = typer.Option(
-    True,
-    "--clipboard/--no-clipboard",
-    "-c/-C",
+    default=True,
     help="Copy the result to the clipboard.",
 )
 LOG_LEVEL = typer.Option(
@@ -180,9 +171,7 @@ LOG_FILE = typer.Option(
     help="Path to a file to write logs to.",
 )
 QUIET = typer.Option(
-    False,
-    "--quiet",
-    "-q",
+    default=False,
     help="Suppress all output except for the final result.",
 )
 CONFIG_FILE = typer.Option(

@@ -9,6 +9,7 @@ from typing import (
 )
 
 from agent_cli.agents._config import GeneralConfig, LLMConfig
+from agent_cli.cli import setup_logging
 from agent_cli.utils import stop_or_status_or_toggle
 
 if TYPE_CHECKING:
@@ -51,9 +52,6 @@ def setup_command(
         CommandConfig if setup successful, None if command was handled (stop/status/toggle)
 
     """
-    # Import locally to avoid circular imports
-    from agent_cli.cli import setup_logging  # noqa: PLC0415
-
     setup_logging(log_level, log_file, quiet=quiet)
 
     general_cfg = GeneralConfig(
