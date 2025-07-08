@@ -43,13 +43,13 @@ def get_synthesizer(
 ) -> Callable[..., Awaitable[bytes | None]]:
     """Return the appropriate synthesizer based on the config."""
     if tts_config.provider == "openai":
-        openai_config = tts_config.providers["openai"]
-        if not openai_config.api_key:
-            msg = "OpenAI API key is not set."
+        openai_config = tts_config.openai
+        if not openai_config or not openai_config.api_key:
+            msg = "OpenAI TTS config or API key is not set."
             raise ValueError(msg)
         return lambda text, logger, **_: synthesize_speech_openai(
             text=text,
-            api_key=openai_config.api_key,
+            api_key=openai_config.api_key,  # type: ignore[arg-type]
             logger=logger,
             model=openai_config.model,
             voice=openai_config.voice,
@@ -145,7 +145,10 @@ async def _synthesize_speech_wyoming(
     live: Live,
 ) -> bytes | None:
     """Synthesize speech from text using Wyoming TTS server."""
-    wyoming_config = tts_config.providers["local"]
+    wyoming_config = tts_config.local
+    if not wyoming_config:
+        msg = "Wyoming TTS config is not set."
+        raise ValueError(msg)
     try:
         async with wyoming_client_context(
             wyoming_config.server_ip,

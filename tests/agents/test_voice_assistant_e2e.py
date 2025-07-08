@@ -40,17 +40,13 @@ def get_configs() -> tuple[GeneralConfig, ASRConfig, LLMConfig, TTSConfig, FileC
         provider="local",
         input_device_index=0,
         input_device_name=None,
-        providers={
-            "local": WyomingASRConfig(server_ip="mock-asr-host", server_port=10300),
-            "openai": OpenAIASRConfig(api_key=None, model="whisper-1"),
-        },
+        local=WyomingASRConfig(server_ip="mock-asr-host", server_port=10300),
+        openai=OpenAIASRConfig(api_key=None, model="whisper-1"),
     )
     llm_config = LLMConfig(
         provider="local",
-        providers={
-            "local": OllamaLLMConfig(model="test-model", host="http://localhost:11434"),
-            "openai": OpenAILLMConfig(api_key=None, model="gpt-4"),
-        },
+        local=OllamaLLMConfig(model="test-model", host="http://localhost:11434"),
+        openai=OpenAILLMConfig(api_key=None, model="gpt-4"),
     )
     tts_config = TTSConfig(
         enabled=False,
@@ -58,16 +54,14 @@ def get_configs() -> tuple[GeneralConfig, ASRConfig, LLMConfig, TTSConfig, FileC
         output_device_index=None,
         output_device_name=None,
         speed=1.0,
-        providers={
-            "local": WyomingTTSConfig(
-                server_ip="mock-tts-host",
-                server_port=10200,
-                voice_name=None,
-                language=None,
-                speaker=None,
-            ),
-            "openai": OpenAITTSConfig(api_key=None, model="tts-1", voice="alloy"),
-        },
+        local=WyomingTTSConfig(
+            server_ip="mock-tts-host",
+            server_port=10200,
+            voice_name=None,
+            language=None,
+            speaker=None,
+        ),
+        openai=OpenAITTSConfig(api_key=None, model="tts-1", voice="alloy"),
     )
     file_config = FileConfig(save_file=None, history_dir=None)
     return general_cfg, asr_config, llm_config, tts_config, file_config

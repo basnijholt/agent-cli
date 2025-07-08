@@ -20,10 +20,8 @@ def test_build_agent(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("OLLAMA_HOST", "http://mockhost:1234")
     llm_config = LLMConfig(
         provider="local",
-        providers={
-            "local": OllamaLLMConfig(model="test-model", host="http://mockhost:1234"),
-            "openai": OpenAILLMConfig(model="gpt-4o-mini", api_key=None),
-        },
+        local=OllamaLLMConfig(model="test-model", host="http://mockhost:1234"),
+        openai=OpenAILLMConfig(model="gpt-4o-mini", api_key=None),
     )
 
     agent = build_agent(llm_config)
@@ -41,10 +39,8 @@ async def test_get_llm_response(mock_build_agent: MagicMock) -> None:
 
     llm_config = LLMConfig(
         provider="local",
-        providers={
-            "local": OllamaLLMConfig(model="test", host="test"),
-            "openai": OpenAILLMConfig(model="gpt-4o-mini", api_key=None),
-        },
+        local=OllamaLLMConfig(model="test", host="test"),
+        openai=OpenAILLMConfig(model="gpt-4o-mini", api_key=None),
     )
     response = await get_llm_response(
         system_prompt="test",
@@ -70,10 +66,8 @@ async def test_get_llm_response_error(mock_build_agent: MagicMock) -> None:
 
     llm_config = LLMConfig(
         provider="local",
-        providers={
-            "local": OllamaLLMConfig(model="test", host="test"),
-            "openai": OpenAILLMConfig(model="gpt-4o-mini", api_key=None),
-        },
+        local=OllamaLLMConfig(model="test", host="test"),
+        openai=OpenAILLMConfig(model="gpt-4o-mini", api_key=None),
     )
     response = await get_llm_response(
         system_prompt="test",
@@ -99,10 +93,8 @@ def test_process_and_update_clipboard(
 
     llm_config = LLMConfig(
         provider="local",
-        providers={
-            "local": OllamaLLMConfig(model="test", host="test"),
-            "openai": OpenAILLMConfig(model="gpt-4o-mini", api_key=None),
-        },
+        local=OllamaLLMConfig(model="test", host="test"),
+        openai=OpenAILLMConfig(model="gpt-4o-mini", api_key=None),
     )
     asyncio.run(
         process_and_update_clipboard(

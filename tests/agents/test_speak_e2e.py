@@ -52,6 +52,7 @@ async def test_speak_e2e(
             log_file=None,
             list_devices=False,
             quiet=False,
+            clipboard=False,
         )
         general_cfg.__dict__["console"] = mock_console
         tts_config = TTSConfig(
@@ -60,16 +61,14 @@ async def test_speak_e2e(
             output_device_index=None,
             output_device_name=None,
             speed=1.0,
-            providers={
-                "local": WyomingTTSConfig(
-                    server_ip="mock-host",
-                    server_port=10200,
-                    voice_name=None,
-                    language=None,
-                    speaker=None,
-                ),
-                "openai": OpenAITTSConfig(api_key=None),
-            },
+            local=WyomingTTSConfig(
+                server_ip="mock-host",
+                server_port=10200,
+                voice_name=None,
+                language=None,
+                speaker=None,
+            ),
+            openai=OpenAITTSConfig(api_key=None),
         )
         file_config = FileConfig(save_file=None, history_dir=None, last_n_messages=0)
 

@@ -30,16 +30,14 @@ async def test_handle_tts_playback(mock_speak_text: AsyncMock) -> None:
         output_device_index=1,
         output_device_name=None,
         speed=1.0,
-        providers={
-            "local": WyomingTTSConfig(
-                server_ip="localhost",
-                server_port=1234,
-                voice_name="test-voice",
-                language="en",
-                speaker=None,
-            ),
-            "openai": OpenAITTSConfig(api_key=None),
-        },
+        local=WyomingTTSConfig(
+            server_ip="localhost",
+            server_port=1234,
+            voice_name="test-voice",
+            language="en",
+            speaker=None,
+        ),
+        openai=OpenAITTSConfig(api_key=None),
     )
     await handle_tts_playback(
         text="hello",
@@ -79,16 +77,14 @@ async def test_handle_tts_playback_with_save_file(
         output_device_index=1,
         output_device_name=None,
         speed=1.0,
-        providers={
-            "local": WyomingTTSConfig(
-                server_ip="localhost",
-                server_port=1234,
-                voice_name="test-voice",
-                language="en",
-                speaker=None,
-            ),
-            "openai": OpenAITTSConfig(api_key=None),
-        },
+        local=WyomingTTSConfig(
+            server_ip="localhost",
+            server_port=1234,
+            voice_name="test-voice",
+            language="en",
+            speaker=None,
+        ),
+        openai=OpenAITTSConfig(api_key=None),
     )
     await handle_tts_playback(
         text="hello",
@@ -117,16 +113,14 @@ async def test_handle_tts_playback_no_audio(mock_speak_text: AsyncMock) -> None:
         output_device_index=1,
         output_device_name=None,
         speed=1.0,
-        providers={
-            "local": WyomingTTSConfig(
-                server_ip="localhost",
-                server_port=1234,
-                voice_name="test-voice",
-                language="en",
-                speaker=None,
-            ),
-            "openai": OpenAITTSConfig(api_key=None),
-        },
+        local=WyomingTTSConfig(
+            server_ip="localhost",
+            server_port=1234,
+            voice_name="test-voice",
+            language="en",
+            speaker=None,
+        ),
+        openai=OpenAITTSConfig(api_key=None),
     )
     await handle_tts_playback(
         text="hello",

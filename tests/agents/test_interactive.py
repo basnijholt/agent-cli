@@ -98,17 +98,13 @@ async def test_async_main_list_devices(tmp_path: Path) -> None:
         provider="local",
         input_device_index=None,
         input_device_name=None,
-        providers={
-            "local": WyomingASRConfig(server_ip="localhost", server_port=1234),
-            "openai": OpenAIASRConfig(api_key=None),
-        },
+        local=WyomingASRConfig(server_ip="localhost", server_port=1234),
+        openai=OpenAIASRConfig(api_key=None),
     )
     llm_config = LLMConfig(
         provider="local",
-        providers={
-            "local": OllamaLLMConfig(model="test-model", host="localhost"),
-            "openai": OpenAILLMConfig(api_key=None, model="gpt-4"),
-        },
+        local=OllamaLLMConfig(model="test-model", host="localhost"),
+        openai=OpenAILLMConfig(api_key=None, model="gpt-4"),
     )
     tts_config = TTSConfig(
         enabled=False,
@@ -116,16 +112,14 @@ async def test_async_main_list_devices(tmp_path: Path) -> None:
         output_device_index=None,
         output_device_name=None,
         speed=1.0,
-        providers={
-            "local": WyomingTTSConfig(
-                server_ip="localhost",
-                server_port=5678,
-                voice_name=None,
-                language=None,
-                speaker=None,
-            ),
-            "openai": OpenAITTSConfig(api_key=None, model="tts-1", voice="alloy"),
-        },
+        local=WyomingTTSConfig(
+            server_ip="localhost",
+            server_port=5678,
+            voice_name=None,
+            language=None,
+            speaker=None,
+        ),
+        openai=OpenAITTSConfig(api_key=None, model="tts-1", voice="alloy"),
     )
     file_config = FileConfig(save_file=None, history_dir=tmp_path)
 
@@ -160,17 +154,13 @@ async def test_async_main_list_output_devices(tmp_path: Path) -> None:
         provider="local",
         input_device_index=None,
         input_device_name=None,
-        providers={
-            "local": WyomingASRConfig(server_ip="localhost", server_port=1234),
-            "openai": OpenAIASRConfig(api_key=None),
-        },
+        local=WyomingASRConfig(server_ip="localhost", server_port=1234),
+        openai=OpenAIASRConfig(api_key=None),
     )
     llm_config = LLMConfig(
         provider="local",
-        providers={
-            "local": OllamaLLMConfig(model="test-model", host="localhost"),
-            "openai": OpenAILLMConfig(api_key=None, model="gpt-4"),
-        },
+        local=OllamaLLMConfig(model="test-model", host="localhost"),
+        openai=OpenAILLMConfig(api_key=None, model="gpt-4"),
     )
     tts_config = TTSConfig(
         enabled=False,
@@ -178,16 +168,14 @@ async def test_async_main_list_output_devices(tmp_path: Path) -> None:
         output_device_index=None,
         output_device_name=None,
         speed=1.0,
-        providers={
-            "local": WyomingTTSConfig(
-                server_ip="localhost",
-                server_port=5678,
-                voice_name=None,
-                language=None,
-                speaker=None,
-            ),
-            "openai": OpenAITTSConfig(api_key=None, model="tts-1", voice="alloy"),
-        },
+        local=WyomingTTSConfig(
+            server_ip="localhost",
+            server_port=5678,
+            voice_name=None,
+            language=None,
+            speaker=None,
+        ),
+        openai=OpenAITTSConfig(api_key=None, model="tts-1", voice="alloy"),
     )
     file_config = FileConfig(save_file=None, history_dir=tmp_path)
 
@@ -225,17 +213,13 @@ async def test_async_main_full_loop(tmp_path: Path) -> None:
         provider="local",
         input_device_index=1,
         input_device_name=None,
-        providers={
-            "local": WyomingASRConfig(server_ip="localhost", server_port=1234),
-            "openai": OpenAIASRConfig(api_key=None),
-        },
+        local=WyomingASRConfig(server_ip="localhost", server_port=1234),
+        openai=OpenAIASRConfig(api_key=None),
     )
     llm_config = LLMConfig(
         provider="local",
-        providers={
-            "local": OllamaLLMConfig(model="test-model", host="localhost"),
-            "openai": OpenAILLMConfig(api_key=None, model="gpt-4"),
-        },
+        local=OllamaLLMConfig(model="test-model", host="localhost"),
+        openai=OpenAILLMConfig(api_key=None, model="gpt-4"),
     )
     tts_config = TTSConfig(
         enabled=True,
@@ -243,16 +227,14 @@ async def test_async_main_full_loop(tmp_path: Path) -> None:
         output_device_index=1,
         output_device_name=None,
         speed=1.0,
-        providers={
-            "local": WyomingTTSConfig(
-                server_ip="localhost",
-                server_port=5678,
-                voice_name="test-voice",
-                language="en",
-                speaker=None,
-            ),
-            "openai": OpenAITTSConfig(api_key=None, model="tts-1", voice="alloy"),
-        },
+        local=WyomingTTSConfig(
+            server_ip="localhost",
+            server_port=5678,
+            voice_name="test-voice",
+            language="en",
+            speaker=None,
+        ),
+        openai=OpenAITTSConfig(api_key=None, model="tts-1", voice="alloy"),
     )
     file_config = FileConfig(save_file=None, history_dir=history_dir)
 

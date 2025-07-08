@@ -45,9 +45,9 @@ def get_recorded_audio_transcriber(
 ) -> Callable[..., Awaitable[str]]:
     """Return the appropriate transcriber for recorded audio based on the config."""
     if asr_config.provider == "openai":
-        openai_config = asr_config.providers["openai"]
-        if not openai_config.api_key:
-            msg = "OpenAI API key is not set."
+        openai_config = asr_config.openai
+        if not openai_config or not openai_config.api_key:
+            msg = "OpenAI ASR config or API key is not set."
             raise ValueError(msg)
 
         async def transcribe_with_error_handling(
@@ -59,7 +59,7 @@ def get_recorded_audio_transcriber(
             try:
                 return await transcribe_audio_openai(
                     audio_data,
-                    openai_config.api_key,
+                    openai_config.api_key,  # type: ignore[arg-type]
                     logger,
                 )
             except Exception:
@@ -200,7 +200,10 @@ async def transcribe_recorded_audio_wyoming(
     quiet: bool = False,
 ) -> str:
     """Process pre-recorded audio data with Wyoming ASR server."""
-    wyoming_config = asr_config.providers["local"]
+    wyoming_config = asr_config.local
+    if not wyoming_config:
+        msg = "Wyoming ASR config is not set."
+        raise ValueError(msg)
     try:
         async with wyoming_client_context(
             wyoming_config.server_ip,
@@ -240,7 +243,10 @@ async def transcribe_live_audio_wyoming(
     final_callback: Callable[[str], None] | None = None,
 ) -> str | None:
     """Unified ASR transcription function."""
-    wyoming_config = asr_config.providers["local"]
+    wyoming_config = asr_config.local
+    if not wyoming_config:
+        msg = "Wyoming ASR config is not set."
+        raise ValueError(msg)
     try:
         async with wyoming_client_context(
             wyoming_config.server_ip,
@@ -287,11 +293,15 @@ async def transcribe_live_audio_openai(
     if not audio_data:
         return None
     try:
-        openai_config = asr_config.providers["openai"]
-        if not openai_config.api_key:
-            msg = "OpenAI API key is not set."
+        openai_config = asr_config.openai
+        if not openai_config or not openai_config.api_key:
+            msg = "OpenAI ASR config or API key is not set."
             raise ValueError(msg)  # noqa: TRY301
-        return await transcribe_audio_openai(audio_data, openai_config.api_key, logger)
+        return await transcribe_audio_openai(
+            audio_data,
+            openai_config.api_key,  # type: ignore[arg-type]
+            logger,
+        )
     except Exception:
         logger.exception("Error during transcription")
         return ""

@@ -148,7 +148,8 @@ def speak(
             output_device_index=output_device_index,
             output_device_name=output_device_name,
             speed=tts_speed,
-            providers={"local": wyoming_config, "openai": openai_config},
+            local=wyoming_config,
+            openai=openai_config,
         )
         file_config = FileConfig(save_file=save_file, history_dir=None, last_n_messages=0)
 

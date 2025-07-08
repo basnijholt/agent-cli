@@ -116,10 +116,8 @@ async def test_process_text_integration(mock_build_agent: MagicMock) -> None:
 
     llm_config = LLMConfig(
         provider="local",
-        providers={
-            "local": OllamaLLMConfig(model="test-model", host="test"),
-            "openai": OpenAILLMConfig(model="gpt-4o-mini", api_key=None),
-        },
+        local=OllamaLLMConfig(model="test-model", host="test"),
+        openai=OpenAILLMConfig(model="gpt-4o-mini", api_key=None),
     )
 
     # Test the function
@@ -172,16 +170,15 @@ async def test_autocorrect_command_with_text(
 
     llm_config = LLMConfig(
         provider="local",
-        providers={
-            "local": OllamaLLMConfig(model=config.DEFAULT_MODEL, host=config.OLLAMA_HOST),
-            "openai": OpenAILLMConfig(model="gpt-4o-mini", api_key=None),
-        },
+        local=OllamaLLMConfig(model=config.DEFAULT_MODEL, host=config.OLLAMA_HOST),
+        openai=OpenAILLMConfig(model="gpt-4o-mini", api_key=None),
     )
     general_cfg = GeneralConfig(
         log_level="WARNING",
         log_file=None,
         list_devices=False,
         quiet=True,
+        clipboard=True,
     )
 
     with patch("agent_cli.agents.autocorrect.pyperclip.copy"):
@@ -220,16 +217,15 @@ async def test_autocorrect_command_from_clipboard(
 
     llm_config = LLMConfig(
         provider="local",
-        providers={
-            "local": OllamaLLMConfig(model=config.DEFAULT_MODEL, host=config.OLLAMA_HOST),
-            "openai": OpenAILLMConfig(model="gpt-4o-mini", api_key=None),
-        },
+        local=OllamaLLMConfig(model=config.DEFAULT_MODEL, host=config.OLLAMA_HOST),
+        openai=OpenAILLMConfig(model="gpt-4o-mini", api_key=None),
     )
     general_cfg = GeneralConfig(
         log_level="WARNING",
         log_file=None,
         list_devices=False,
         quiet=True,
+        clipboard=True,
     )
 
     with patch("agent_cli.agents.autocorrect.pyperclip.copy"):
@@ -260,16 +256,15 @@ async def test_async_autocorrect_no_text(
     """Test the async_autocorrect function when no text is provided."""
     llm_config = LLMConfig(
         provider="local",
-        providers={
-            "local": OllamaLLMConfig(model="test", host="test"),
-            "openai": OpenAILLMConfig(model="gpt-4o-mini", api_key=None),
-        },
+        local=OllamaLLMConfig(model="test", host="test"),
+        openai=OpenAILLMConfig(model="gpt-4o-mini", api_key=None),
     )
     general_cfg = GeneralConfig(
         log_level="WARNING",
         log_file=None,
         list_devices=False,
         quiet=True,
+        clipboard=True,
     )
     await autocorrect._async_autocorrect(
         text=None,

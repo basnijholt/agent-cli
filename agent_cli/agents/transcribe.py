@@ -203,7 +203,8 @@ def transcribe(
             provider=asr_provider,  # type: ignore[arg-type]
             input_device_index=input_device_index,
             input_device_name=input_device_name,
-            providers={"local": wyoming_asr_config, "openai": openai_asr_config},
+            local=wyoming_asr_config,
+            openai=openai_asr_config,
         )
 
         # We only use setup_devices for its input device handling
@@ -218,7 +219,8 @@ def transcribe(
         openai_llm_config = OpenAILLMConfig(model=openai_llm_model, api_key=openai_api_key)
         llm_config = LLMConfig(
             provider=llm_provider,  # type: ignore[arg-type]
-            providers={"local": ollama_llm_config, "openai": openai_llm_config},
+            local=ollama_llm_config,
+            openai=openai_llm_config,
         )
 
         # Use context manager for PID file management

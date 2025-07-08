@@ -28,16 +28,14 @@ async def test_speak_text(mock_get_synthesizer: MagicMock) -> None:
         output_device_index=None,
         output_device_name=None,
         speed=1.0,
-        providers={
-            "local": WyomingTTSConfig(
-                server_ip="localhost",
-                server_port=1234,
-                voice_name=None,
-                language=None,
-                speaker=None,
-            ),
-            "openai": OpenAITTSConfig(api_key=None, model="tts-1", voice="alloy"),
-        },
+        local=WyomingTTSConfig(
+            server_ip="localhost",
+            server_port=1234,
+            voice_name=None,
+            language=None,
+            speaker=None,
+        ),
+        openai=OpenAITTSConfig(api_key=None, model="tts-1", voice="alloy"),
     )
 
     audio_data = await speak_text(

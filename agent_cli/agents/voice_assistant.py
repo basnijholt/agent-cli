@@ -206,7 +206,8 @@ def voice_assistant(
             provider=asr_provider,  # type: ignore[arg-type]
             input_device_index=input_device_index,
             input_device_name=input_device_name,
-            providers={"local": wyoming_asr_config, "openai": openai_asr_config},
+            local=wyoming_asr_config,
+            openai=openai_asr_config,
         )
 
         # --- LLM Config ---
@@ -214,7 +215,8 @@ def voice_assistant(
         openai_llm_config = OpenAILLMConfig(model=openai_llm_model, api_key=openai_api_key)
         llm_config = LLMConfig(
             provider=llm_provider,  # type: ignore[arg-type]
-            providers={"local": ollama_llm_config, "openai": openai_llm_config},
+            local=ollama_llm_config,
+            openai=openai_llm_config,
         )
 
         # --- TTS Config ---
@@ -236,7 +238,8 @@ def voice_assistant(
             output_device_index=output_device_index,
             output_device_name=output_device_name,
             speed=tts_speed,
-            providers={"local": wyoming_tts_config, "openai": openai_tts_config},
+            local=wyoming_tts_config,
+            openai=openai_tts_config,
         )
 
         file_config = FileConfig(save_file=save_file, history_dir=None, last_n_messages=0)

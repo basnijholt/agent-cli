@@ -37,17 +37,13 @@ async def test_handle_conversation_turn_no_instruction():
         provider="local",
         input_device_index=None,
         input_device_name=None,
-        providers={
-            "local": WyomingASRConfig(server_ip="localhost", server_port=10300),
-            "openai": OpenAIASRConfig(api_key=None),
-        },
+        local=WyomingASRConfig(server_ip="localhost", server_port=10300),
+        openai=OpenAIASRConfig(api_key=None),
     )
     llm_config = LLMConfig(
         provider="local",
-        providers={
-            "local": OllamaLLMConfig(model="test-model", host="localhost"),
-            "openai": OpenAILLMConfig(model="gpt-4o-mini", api_key=None),
-        },
+        local=OllamaLLMConfig(model="test-model", host="localhost"),
+        openai=OpenAILLMConfig(model="gpt-4o-mini", api_key=None),
     )
     tts_config = TTSConfig(
         enabled=False,
@@ -55,16 +51,14 @@ async def test_handle_conversation_turn_no_instruction():
         output_device_index=None,
         output_device_name=None,
         speed=1.0,
-        providers={
-            "local": WyomingTTSConfig(
-                server_ip="localhost",
-                server_port=10200,
-                voice_name=None,
-                language=None,
-                speaker=None,
-            ),
-            "openai": OpenAITTSConfig(api_key=None),
-        },
+        local=WyomingTTSConfig(
+            server_ip="localhost",
+            server_port=10200,
+            voice_name=None,
+            language=None,
+            speaker=None,
+        ),
+        openai=OpenAITTSConfig(api_key=None),
     )
     file_config = FileConfig(save_file=None, history_dir=None)
     mock_live = MagicMock()
@@ -140,17 +134,13 @@ async def test_async_main_exception_handling():
         provider="local",
         input_device_index=None,
         input_device_name=None,
-        providers={
-            "local": WyomingASRConfig(server_ip="localhost", server_port=10300),
-            "openai": OpenAIASRConfig(api_key=None),
-        },
+        local=WyomingASRConfig(server_ip="localhost", server_port=10300),
+        openai=OpenAIASRConfig(api_key=None),
     )  # To trigger an early exit
     llm_config = LLMConfig(
         provider="local",
-        providers={
-            "local": OllamaLLMConfig(model="test-model", host="localhost"),
-            "openai": OpenAILLMConfig(model="gpt-4o-mini", api_key=None),
-        },
+        local=OllamaLLMConfig(model="test-model", host="localhost"),
+        openai=OpenAILLMConfig(model="gpt-4o-mini", api_key=None),
     )
     tts_config = TTSConfig(
         enabled=False,
@@ -158,16 +148,14 @@ async def test_async_main_exception_handling():
         output_device_index=None,
         output_device_name=None,
         speed=1.0,
-        providers={
-            "local": WyomingTTSConfig(
-                server_ip="localhost",
-                server_port=10200,
-                voice_name=None,
-                language=None,
-                speaker=None,
-            ),
-            "openai": OpenAITTSConfig(api_key=None),
-        },
+        local=WyomingTTSConfig(
+            server_ip="localhost",
+            server_port=10200,
+            voice_name=None,
+            language=None,
+            speaker=None,
+        ),
+        openai=OpenAITTSConfig(api_key=None),
     )
     file_config = FileConfig(save_file=None, history_dir=None)
 

@@ -55,10 +55,8 @@ async def test_transcribe_e2e(
         provider="local",
         input_device_index=0,
         input_device_name=None,
-        providers={
-            "local": WyomingASRConfig(server_ip="mock-host", server_port=10300),
-            "openai": OpenAIASRConfig(api_key=None),
-        },
+        local=WyomingASRConfig(server_ip="mock-host", server_port=10300),
+        openai=OpenAIASRConfig(api_key=None),
     )
     general_cfg = GeneralConfig(
         log_level="INFO",
@@ -69,10 +67,8 @@ async def test_transcribe_e2e(
     )
     llm_config = LLMConfig(
         provider="local",
-        providers={
-            "local": OllamaLLMConfig(model="", host=""),
-            "openai": OpenAILLMConfig(model="", api_key=None),
-        },
+        local=OllamaLLMConfig(model="", host=""),
+        openai=OpenAILLMConfig(model="", api_key=None),
     )
 
     with patch("agent_cli.utils.console", mock_console):

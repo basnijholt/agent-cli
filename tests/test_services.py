@@ -69,10 +69,8 @@ def test_get_transcriber_wyoming() -> None:
         provider="local",
         input_device_index=None,
         input_device_name=None,
-        providers={
-            "local": WyomingASRConfig(server_ip="localhost", server_port=1234),
-            "openai": OpenAIASRConfig(api_key=None, model="whisper-1"),
-        },
+        local=WyomingASRConfig(server_ip="localhost", server_port=1234),
+        openai=OpenAIASRConfig(api_key=None, model="whisper-1"),
     )
     transcriber = asr.get_transcriber(asr_config)
     assert transcriber == asr.transcribe_live_audio_wyoming
@@ -86,16 +84,14 @@ def test_get_synthesizer_wyoming() -> None:
         output_device_index=None,
         output_device_name=None,
         speed=1.0,
-        providers={
-            "local": WyomingTTSConfig(
-                server_ip="localhost",
-                server_port=1234,
-                voice_name=None,
-                language=None,
-                speaker=None,
-            ),
-            "openai": OpenAITTSConfig(api_key=None, model="tts-1", voice="alloy"),
-        },
+        local=WyomingTTSConfig(
+            server_ip="localhost",
+            server_port=1234,
+            voice_name=None,
+            language=None,
+            speaker=None,
+        ),
+        openai=OpenAITTSConfig(api_key=None, model="tts-1", voice="alloy"),
     )
     synthesizer = tts.get_synthesizer(tts_config)
     assert synthesizer == tts._synthesize_speech_wyoming

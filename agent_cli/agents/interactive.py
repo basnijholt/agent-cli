@@ -226,7 +226,13 @@ async def _handle_conversation_turn(
     ]
     start_time = time.monotonic()
 
-    active_llm_provider_config = llm_config.providers[llm_config.provider]
+    if llm_config.provider == "local":
+        active_llm_provider_config = llm_config.local
+    else:
+        active_llm_provider_config = llm_config.openai
+    if not active_llm_provider_config:
+        msg = f"{llm_config.provider} LLM config is not set."
+        raise ValueError(msg)
     model_name = active_llm_provider_config.model
     async with live_timer(
         live,
@@ -439,7 +445,8 @@ def interactive(
             provider=asr_provider,  # type: ignore[arg-type]
             input_device_index=input_device_index,
             input_device_name=input_device_name,
-            providers={"local": wyoming_asr_config, "openai": openai_asr_config},
+            local=wyoming_asr_config,
+            openai=openai_asr_config,
         )
 
         # --- LLM Config ---
@@ -447,7 +454,8 @@ def interactive(
         openai_llm_config = OpenAILLMConfig(model=openai_llm_model, api_key=openai_api_key)
         llm_config = LLMConfig(
             provider=llm_provider,  # type: ignore[arg-type]
-            providers={"local": ollama_llm_config, "openai": openai_llm_config},
+            local=ollama_llm_config,
+            openai=openai_llm_config,
         )
 
         # --- TTS Config ---
@@ -469,7 +477,8 @@ def interactive(
             output_device_index=output_device_index,
             output_device_name=output_device_name,
             speed=tts_speed,
-            providers={"local": wyoming_tts_config, "openai": openai_tts_config},
+            local=wyoming_tts_config,
+            openai=openai_tts_config,
         )
 
         file_config = FileConfig(

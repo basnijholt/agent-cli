@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, Literal
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Literal
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -31,7 +31,8 @@ class LLMConfig:
     """LLM configuration parameters."""
 
     provider: Literal["local", "openai"]
-    providers: dict[str, Any] = field(default_factory=dict)
+    local: OllamaLLMConfig | None = None
+    openai: OpenAILLMConfig | None = None
 
 
 # --- ASR ---
@@ -58,7 +59,8 @@ class ASRConfig:
     provider: Literal["local", "openai"]
     input_device_index: int | None
     input_device_name: str | None
-    providers: dict[str, Any] = field(default_factory=dict)
+    local: WyomingASRConfig | None = None
+    openai: OpenAIASRConfig | None = None
 
 
 # --- TTS ---
@@ -91,7 +93,8 @@ class TTSConfig:
     output_device_index: int | None
     output_device_name: str | None
     speed: float = 1.0
-    providers: dict[str, Any] = field(default_factory=dict)
+    local: WyomingTTSConfig | None = None
+    openai: OpenAITTSConfig | None = None
 
 
 # --- General & File Configs (remain mostly unchanged) ---

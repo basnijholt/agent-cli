@@ -22,7 +22,7 @@ if TYPE_CHECKING:
     from pydantic_ai import Agent
     from pydantic_ai.tools import Tool
 
-    from agent_cli.agents._config import LLMConfig
+    from agent_cli.agents._config import LLMConfig, OllamaLLMConfig, OpenAILLMConfig
 
 
 def build_agent(
@@ -37,15 +37,18 @@ def build_agent(
     from pydantic_ai.models.openai import OpenAIModel  # noqa: PLC0415
     from pydantic_ai.providers.openai import OpenAIProvider  # noqa: PLC0415
 
-    provider_name = llm_config.provider
-    provider_config = llm_config.providers[provider_name]
-
-    if provider_name == "openai":
-        if not provider_config.api_key:
-            msg = "OpenAI API key is not set."
+    provider_config: OpenAILLMConfig | OllamaLLMConfig
+    if llm_config.provider == "openai":
+        provider_config = llm_config.openai
+        if not provider_config or not provider_config.api_key:
+            msg = "OpenAI LLM config or API key is not set."
             raise ValueError(msg)
         provider = OpenAIProvider(api_key=provider_config.api_key)
     else:  # local
+        provider_config = llm_config.local
+        if not provider_config:
+            msg = "Local LLM config is not set."
+            raise ValueError(msg)
         provider = OpenAIProvider(base_url=f"{provider_config.host}/v1")
 
     llm_model = OpenAIModel(model_name=provider_config.model, provider=provider)
@@ -95,9 +98,17 @@ async def get_llm_response(
     start_time = time.monotonic()
 
     try:
-        provider_name = llm_config.provider
-        active_provider_config = llm_config.providers[provider_name]
-        model_name = active_provider_config.model
+        if llm_config.provider == "openai":
+            provider_config = llm_config.openai
+            if not provider_config:
+                msg = "OpenAI LLM config is not set."
+                raise ValueError(msg)  # noqa: TRY301
+        else:
+            provider_config = llm_config.local
+            if not provider_config:
+                msg = "Local LLM config is not set."
+                raise ValueError(msg)  # noqa: TRY301
+        model_name = provider_config.model
 
         async with live_timer(
             live or Live(console=console),
@@ -130,7 +141,7 @@ async def get_llm_response(
         if llm_config.provider == "openai":
             msg = "Please check your OpenAI API key."
         else:
-            host = llm_config.providers.get("local", {}).host
+            host = llm_config.local.host if llm_config.local else "unknown"
             msg = f"Please check your Ollama server at [cyan]{host}[/cyan]"
         print_error_message(f"An unexpected LLM error occurred: {e}", msg)
         if exit_on_error:

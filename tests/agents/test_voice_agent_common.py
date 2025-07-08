@@ -35,17 +35,13 @@ async def test_get_instruction_from_audio(mock_get_transcriber: MagicMock) -> No
         provider="local",
         input_device_index=1,
         input_device_name=None,
-        providers={
-            "local": WyomingASRConfig(server_ip="localhost", server_port=1234),
-            "openai": OpenAIASRConfig(api_key=None, model="whisper-1"),
-        },
+        local=WyomingASRConfig(server_ip="localhost", server_port=1234),
+        openai=OpenAIASRConfig(api_key=None, model="whisper-1"),
     )
     llm_config = LLMConfig(
         provider="local",
-        providers={
-            "local": OllamaLLMConfig(model="test-model", host="localhost"),
-            "openai": OpenAILLMConfig(api_key=None, model="gpt-4"),
-        },
+        local=OllamaLLMConfig(model="test-model", host="localhost"),
+        openai=OpenAILLMConfig(api_key=None, model="gpt-4"),
     )
     result = await get_instruction_from_audio(
         audio_data=b"test audio",
@@ -76,10 +72,8 @@ async def test_process_instruction_and_respond(
     )
     llm_config = LLMConfig(
         provider="local",
-        providers={
-            "local": OllamaLLMConfig(model="test-model", host="localhost"),
-            "openai": OpenAILLMConfig(api_key=None, model="gpt-4"),
-        },
+        local=OllamaLLMConfig(model="test-model", host="localhost"),
+        openai=OpenAILLMConfig(api_key=None, model="gpt-4"),
     )
     tts_config = TTSConfig(
         enabled=True,
@@ -87,16 +81,14 @@ async def test_process_instruction_and_respond(
         output_device_index=1,
         output_device_name=None,
         speed=1.0,
-        providers={
-            "local": WyomingTTSConfig(
-                server_ip="localhost",
-                server_port=5678,
-                voice_name="test-voice",
-                language="en",
-                speaker=None,
-            ),
-            "openai": OpenAITTSConfig(api_key=None, model="tts-1", voice="alloy"),
-        },
+        local=WyomingTTSConfig(
+            server_ip="localhost",
+            server_port=5678,
+            voice_name="test-voice",
+            language="en",
+            speaker=None,
+        ),
+        openai=OpenAITTSConfig(api_key=None, model="tts-1", voice="alloy"),
     )
     file_config = FileConfig(save_file=None, history_dir=None)
     with patch("agent_cli.agents.autocorrect.pyperclip.copy"):
