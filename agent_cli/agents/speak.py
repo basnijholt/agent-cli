@@ -6,6 +6,7 @@ import asyncio
 import logging
 from contextlib import suppress
 from pathlib import Path  # noqa: TC003
+from typing import Literal
 
 import typer
 
@@ -31,7 +32,7 @@ async def _async_main(
     text: str | None,
     tts_config: TTSConfig,
     file_config: FileConfig,
-    service_provider: str,
+    service_provider: Literal["local", "openai"],
     openai_api_key: str | None,
 ) -> None:
     """Async entry point for the speak command."""
@@ -169,7 +170,7 @@ def speak(
                 text=text,
                 tts_config=tts_config,
                 file_config=file_config,
-                service_provider=service_provider,
+                service_provider=service_provider,  # type: ignore[arg-type]
                 openai_api_key=openai_api_key,
             ),
         )

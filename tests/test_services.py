@@ -72,8 +72,7 @@ def test_get_transcriber_wyoming(monkeypatch: pytest.MonkeyPatch) -> None:
     assert transcriber == asr.transcribe_live_audio_wyoming
 
 
-def test_get_synthesizer_wyoming(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_get_synthesizer_wyoming() -> None:
     """Test that get_synthesizer returns the Wyoming synthesizer."""
-    monkeypatch.setattr("agent_cli.config.SERVICE_PROVIDER", "local")
-    synthesizer = tts.get_synthesizer()
+    synthesizer = tts.get_synthesizer(service_provider="local", openai_api_key=None)
     assert synthesizer == tts._synthesize_speech_wyoming

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -15,7 +15,7 @@ class LLMConfig:
 
     model: str
     ollama_host: str
-    service_provider: str
+    service_provider: Literal["local", "openai"]
     openai_api_key: str | None
 
 

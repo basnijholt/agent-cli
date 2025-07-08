@@ -113,7 +113,7 @@ async def process_instruction_and_respond(
             if response_text and response_text.strip():
                 await handle_tts_playback(
                     response_text,
-                    service_provider=llm_config.service_provider,
+                    service_provider=llm_config.service_provider,  # type: ignore[arg-type]
                     openai_api_key=llm_config.openai_api_key,
                     tts_server_ip=tts_config.server_ip,
                     tts_server_port=tts_config.server_port,

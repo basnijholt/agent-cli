@@ -237,7 +237,7 @@ def voice_assistant(
         llm_config = LLMConfig(
             model=model,
             ollama_host=ollama_host,
-            service_provider=service_provider,
+            service_provider=service_provider,  # type: ignore[arg-type]
             openai_api_key=openai_api_key,
         )
         tts_config = TTSConfig(

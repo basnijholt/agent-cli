@@ -37,10 +37,7 @@ def get_transcriber() -> Callable[..., Awaitable[str | None]]:
         if not config.OPENAI_API_KEY:
             msg = "OpenAI API key is not set."
             raise ValueError(msg)
-        return functools.partial(
-            transcribe_live_audio_openai,
-            api_key=config.OPENAI_API_KEY,
-        )
+        return functools.partial(transcribe_live_audio_openai, api_key=config.OPENAI_API_KEY)
     return transcribe_live_audio_wyoming
 
 
@@ -63,10 +60,7 @@ def get_recorded_audio_transcriber() -> Callable[..., Awaitable[str]]:
                 logger.exception("Error during transcription")
                 return ""
 
-        return functools.partial(
-            transcribe_with_error_handling,
-            api_key=config.OPENAI_API_KEY,
-        )
+        return functools.partial(transcribe_with_error_handling, api_key=config.OPENAI_API_KEY)
     return transcribe_recorded_audio_wyoming
 
 

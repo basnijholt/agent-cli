@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 from agent_cli import tts
 from agent_cli.utils import InteractiveStopEvent, print_with_style
@@ -41,7 +41,7 @@ async def _save_audio_file(
 async def handle_tts_playback(
     text: str,
     *,
-    service_provider: str,
+    service_provider: Literal["local", "openai"],
     openai_api_key: str | None,
     tts_server_ip: str,
     tts_server_port: int,

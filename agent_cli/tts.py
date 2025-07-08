@@ -6,7 +6,7 @@ import asyncio
 import importlib.util
 import io
 import wave
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 from wyoming.audio import AudioChunk, AudioStart, AudioStop
 from wyoming.tts import Synthesize, SynthesizeVoice
@@ -36,15 +36,18 @@ if TYPE_CHECKING:
 has_audiostretchy = importlib.util.find_spec("audiostretchy") is not None
 
 
-def get_synthesizer() -> Callable[..., Awaitable[bytes | None]]:
+def get_synthesizer(
+    service_provider: Literal["local", "openai"],
+    openai_api_key: str | None,
+) -> Callable[..., Awaitable[bytes | None]]:
     """Return the appropriate synthesizer based on the config."""
-    if config.SERVICE_PROVIDER == "openai":
-        if config.OPENAI_API_KEY is None:
+    if service_provider == "openai":
+        if openai_api_key is None:
             msg = "OpenAI API key is not set."
             raise ValueError(msg)
         return lambda text, logger, speaker, **_: synthesize_speech_openai(
             text,
-            api_key=config.OPENAI_API_KEY,  # type: ignore[arg-type]
+            api_key=openai_api_key,  # type: ignore[arg-type]
             logger=logger,
             speaker=speaker,
         )
@@ -246,7 +249,7 @@ async def play_audio(
 
 async def speak_text(
     text: str,
-    service_provider: str,
+    service_provider: Literal["local", "openai"],
     openai_api_key: str | None,
     tts_server_ip: str,
     tts_server_port: int,
@@ -263,9 +266,7 @@ async def speak_text(
     live: Live,
 ) -> bytes | None:
     """Synthesize and optionally play speech from text."""
-    config.SERVICE_PROVIDER = service_provider
-    config.OPENAI_API_KEY = openai_api_key
-    synthesizer = get_synthesizer()
+    synthesizer = get_synthesizer(service_provider, openai_api_key)
     audio_data = None
     try:
         async with live_timer(live, "🔊 Synthesizing text", style="blue", quiet=quiet):
