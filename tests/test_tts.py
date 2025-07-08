@@ -20,6 +20,8 @@ async def test_speak_text(mock_get_synthesizer: MagicMock) -> None:
 
     audio_data = await speak_text(
         text="hello",
+        service_provider="local",
+        openai_api_key=None,
         tts_server_ip="localhost",
         tts_server_port=1234,
         logger=MagicMock(),

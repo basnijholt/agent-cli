@@ -242,6 +242,8 @@ async def play_audio(
 
 async def speak_text(
     text: str,
+    service_provider: str,
+    openai_api_key: str | None,
     tts_server_ip: str,
     tts_server_port: int,
     logger: logging.Logger,
@@ -257,6 +259,8 @@ async def speak_text(
     live: Live,
 ) -> bytes | None:
     """Synthesize and optionally play speech from text."""
+    config.SERVICE_PROVIDER = service_provider
+    config.OPENAI_API_KEY = openai_api_key
     synthesizer = get_synthesizer()
     audio_data = None
     try:

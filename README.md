@@ -414,7 +414,7 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 
  Usage: agent-cli speak [OPTIONS] [TEXT]
 
- Convert text to speech using Wyoming TTS server.
+ Convert text to speech using Wyoming or OpenAI TTS server.
 
  If no text is provided, reads from clipboard.
  Usage: - Speak text: agent-cli speak "Hello world" - Speak from clipboard:
@@ -430,6 +430,12 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 │ --help          Show this message and exit.                                  │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ TTS (Text-to-Speech) Options ───────────────────────────────────────────────╮
+│ --service-provider           TEXT     The service provider to use. Default   │
+│                                       is local.                              │
+│                                       [default: local]                       │
+│ --openai-api-key             TEXT     The OpenAI API key.                    │
+│                                       [env var: OPENAI_API_KEY]              │
+│                                       [default: None]                        │
 │ --tts-server-ip              TEXT     Wyoming TTS server IP address.         │
 │                                       [default: localhost]                   │
 │ --tts-server-port            INTEGER  Wyoming TTS server port.               │

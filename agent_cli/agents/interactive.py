@@ -287,6 +287,8 @@ async def _handle_conversation_turn(
     if tts_config.enabled:
         await handle_tts_playback(
             response_text,
+            service_provider=llm_config.service_provider,
+            openai_api_key=llm_config.openai_api_key,
             tts_server_ip=tts_config.server_ip,
             tts_server_port=tts_config.server_port,
             voice_name=tts_config.voice_name,

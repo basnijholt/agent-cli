@@ -259,6 +259,8 @@ async def test_async_main_full_loop(tmp_path: Path) -> None:
         assert mock_stop_event.clear.call_count == 2  # Called after ASR and at end of turn
         mock_tts.assert_called_with(
             "Mocked response",
+            service_provider="local",
+            openai_api_key=None,
             tts_server_ip="localhost",
             tts_server_port=5678,
             voice_name="test-voice",
