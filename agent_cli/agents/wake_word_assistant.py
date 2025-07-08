@@ -194,19 +194,13 @@ async def _async_main(
 
         stream_config = audio.setup_input_stream(input_device_index)
         with (
-            audio.open_pyaudio_stream(
-                p,
-                **stream_config,
-            ) as stream,
-            signal_handling_context(
-                LOGGER,
-                general_cfg.quiet,
-            ) as main_stop_event,
+            audio.open_pyaudio_stream(p, **stream_config) as stream,
+            signal_handling_context(LOGGER, general_cfg.quiet) as stop_event,
         ):
-            while not main_stop_event.is_set():
+            while not stop_event.is_set():
                 audio_data = await _record_audio_with_wake_word(
                     stream,
-                    main_stop_event,
+                    stop_event,
                     LOGGER,
                     wake_word_config=wake_word_config,
                     quiet=general_cfg.quiet,
@@ -218,7 +212,7 @@ async def _async_main(
                         print_with_style("No audio recorded", style="yellow")
                     continue
 
-                if main_stop_event.is_set():
+                if stop_event.is_set():
                     break
 
                 instruction = await get_instruction_from_audio(

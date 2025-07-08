@@ -39,7 +39,6 @@ import asyncio
 import logging
 from contextlib import suppress
 from pathlib import Path  # noqa: TC003
-from typing import TYPE_CHECKING
 
 import agent_cli.agents._cli_options as opts
 from agent_cli import asr, process_manager
@@ -64,9 +63,6 @@ from agent_cli.utils import (
     signal_handling_context,
     stop_or_status_or_toggle,
 )
-
-if TYPE_CHECKING:
-    from rich.live import Live
 
 LOGGER = logging.getLogger()
 
@@ -104,7 +100,6 @@ async def _async_main(
     llm_config: LLMConfig,
     tts_config: TTSConfig,
     file_config: FileConfig,
-    live: Live | None,
 ) -> None:
     """Core asynchronous logic for the voice assistant."""
     with pyaudio_context() as p:
@@ -120,20 +115,22 @@ async def _async_main(
         if not general_cfg.quiet and original_text:
             print_input_panel(original_text, title="📝 Text to Process")
 
-        with signal_handling_context(LOGGER, general_cfg.quiet) as main_stop_event:
+        with (
+            signal_handling_context(LOGGER, general_cfg.quiet) as stop_event,
+            maybe_live(not general_cfg.quiet) as live,
+        ):
             audio_data = await asr.record_audio_with_manual_stop(
                 p,
                 input_device_index,
-                main_stop_event,
+                stop_event,
                 LOGGER,
+                live=live,
+                quiet=general_cfg.quiet,
             )
 
             if not audio_data:
                 if not general_cfg.quiet:
                     print_with_style("No audio recorded", style="yellow")
-                return
-
-            if main_stop_event.is_set():
                 return
 
             instruction = await get_instruction_from_audio(
@@ -230,7 +227,6 @@ def voice_assistant(
     with (
         process_manager.pid_file_context(process_name),
         suppress(KeyboardInterrupt),
-        maybe_live(not general_cfg.quiet) as live,
     ):
         asr_config = ASRConfig(
             server_ip=asr_server_ip,
@@ -264,6 +260,5 @@ def voice_assistant(
                 llm_config=llm_config,
                 tts_config=tts_config,
                 file_config=file_config,
-                live=live,
             ),
         )

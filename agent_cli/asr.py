@@ -18,7 +18,6 @@ from agent_cli.audio import (
     setup_input_stream,
 )
 from agent_cli.services import transcribe_audio_openai
-from agent_cli.utils import print_with_style
 from agent_cli.wyoming_utils import manage_send_receive_tasks, wyoming_client_context
 
 if TYPE_CHECKING:
@@ -171,9 +170,6 @@ async def record_audio_with_manual_stop(
     live: Live | None = None,
 ) -> bytes:
     """Record audio to a buffer using a manual stop signal."""
-    if not quiet:
-        print_with_style("🎤 Recording... Press hotkey to stop", style="green")
-
     audio_buffer = io.BytesIO()
 
     def buffer_chunk(chunk: bytes) -> None:

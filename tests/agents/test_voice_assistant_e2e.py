@@ -95,7 +95,6 @@ async def test_voice_assistant_e2e(
             llm_config=llm_config,
             tts_config=tts_config,
             file_config=file_config,
-            live=None,
         )
 
     # Assertions
@@ -117,6 +116,6 @@ async def test_voice_assistant_e2e(
         system_prompt=SYSTEM_PROMPT,
         agent_instructions=AGENT_INSTRUCTIONS,
         tts_output_device_index=None,
-        live=None,
+        live=ANY,
         logger=ANY,
     )

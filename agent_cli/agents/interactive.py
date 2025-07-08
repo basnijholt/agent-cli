@@ -175,7 +175,7 @@ async def _handle_conversation_turn(
     )
 
     # 1. Transcribe user's command
-    time_start = time.monotonic()
+    start_time = time.monotonic()
     transcriber = asr.get_transcriber()
     instruction = await transcriber(
         asr_server_ip=asr_config.server_ip,
@@ -187,7 +187,7 @@ async def _handle_conversation_turn(
         quiet=general_cfg.quiet,
         live=live,
     )
-    elapsed = time.monotonic() - time_start
+    elapsed = time.monotonic() - start_time
 
     # Clear the stop event after ASR completes - it was only meant to stop recording
     stop_event.clear()
@@ -230,7 +230,7 @@ async def _handle_conversation_turn(
         ListMemoryCategoresTool,
         duckduckgo_search_tool(),
     ]
-    time_start = time.monotonic()
+    start_time = time.monotonic()
 
     async with live_timer(
         live,
@@ -251,7 +251,7 @@ async def _handle_conversation_turn(
             live=live,
         )
 
-    elapsed = time.monotonic() - time_start
+    elapsed = time.monotonic() - start_time
 
     if not response_text:
         if not general_cfg.quiet:

@@ -97,10 +97,10 @@ async def _process_text(text: str, llm_config: LLMConfig) -> tuple[str, float]:
     # Format the input using the template to clearly separate text from instructions
     formatted_input = INPUT_TEMPLATE.format(text=text)
 
-    t_start = time.monotonic()
+    start_time = time.monotonic()
     result = await agent.run(formatted_input)
-    t_end = time.monotonic()
-    return result.output, t_end - t_start
+    elapsed = time.monotonic() - start_time
+    return result.output, elapsed
 
 
 def _display_original_text(original_text: str, quiet: bool) -> None:
