@@ -70,9 +70,10 @@ class OpenAIASRConfig(BaseModel):
 class ASRConfig(BaseModel):
     """ASR configuration parameters."""
 
-    provider: Literal["local", "openai"]
     input_device_index: int | None = None
     input_device_name: str | None = None
+    # -- Providers
+    provider: Literal["local", "openai"]
     local: WyomingASRConfig | None = None
     openai: OpenAIASRConfig | None = None
 
@@ -105,10 +106,11 @@ class TTSConfig(BaseModel):
     """TTS configuration parameters."""
 
     enabled: bool
-    provider: Literal["local", "openai"]
     output_device_index: int | None = None
     output_device_name: str | None = None
     speed: float = 1.0
+    # -- Providers
+    provider: Literal["local", "openai"]
     local: WyomingTTSConfig | None = None
     openai: OpenAITTSConfig | None = None
 
@@ -118,7 +120,7 @@ class TTSConfig(BaseModel):
         return _config(self, "TTS")
 
 
-# --- General & File Configs (remain mostly unchanged) ---
+# --- General & File Configs ---
 class GeneralConfig(BaseModel):
     """General configuration parameters."""
 
