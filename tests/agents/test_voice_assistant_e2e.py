@@ -36,7 +36,12 @@ def get_configs() -> tuple[GeneralConfig, ASRConfig, LLMConfig, TTSConfig, FileC
         input_device_index=0,
         input_device_name=None,
     )
-    llm_config = LLMConfig(model="test-model", ollama_host="http://localhost:11434")
+    llm_config = LLMConfig(
+        model="test-model",
+        ollama_host="http://localhost:11434",
+        service_provider="local",
+        openai_api_key=None,
+    )
     tts_config = TTSConfig(
         enabled=False,
         server_ip="mock-tts-host",

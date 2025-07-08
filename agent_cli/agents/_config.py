@@ -15,6 +15,8 @@ class LLMConfig:
 
     model: str
     ollama_host: str
+    service_provider: str
+    openai_api_key: str | None
 
 
 @dataclass

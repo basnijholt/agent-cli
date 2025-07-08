@@ -1,8 +1,9 @@
-"""Module for Text-to-Speech using Wyoming."""
+"""Module for Text-to-Speech using Wyoming or OpenAI."""
 
 from __future__ import annotations
 
 import asyncio
+import functools
 import importlib.util
 import io
 import wave
@@ -17,6 +18,7 @@ from agent_cli.audio import (
     pyaudio_context,
     setup_output_stream,
 )
+from agent_cli.services import synthesize_speech_openai
 from agent_cli.utils import (
     InteractiveStopEvent,
     live_timer,
@@ -27,11 +29,25 @@ from agent_cli.wyoming_utils import manage_send_receive_tasks, wyoming_client_co
 
 if TYPE_CHECKING:
     import logging
+    from collections.abc import Awaitable, Callable
 
     from rich.live import Live
     from wyoming.client import AsyncClient
 
 has_audiostretchy = importlib.util.find_spec("audiostretchy") is not None
+
+
+def get_synthesizer() -> Callable[..., Awaitable[bytes | None]]:
+    """Return the appropriate synthesizer based on the config."""
+    if config.SERVICE_PROVIDER == "openai":
+        if not config.OPENAI_API_KEY:
+            msg = "OpenAI API key is not set."
+            raise ValueError(msg)
+        return functools.partial(
+            _synthesize_speech_openai,
+            api_key=config.OPENAI_API_KEY,
+        )
+    return _synthesize_speech_wyoming
 
 
 def _create_synthesis_request(
@@ -113,7 +129,7 @@ def _create_wav_data(
     return wav_data.getvalue()
 
 
-async def _synthesize_speech(
+async def _synthesize_speech_wyoming(
     text: str,
     tts_server_ip: str,
     tts_server_port: int,
@@ -125,23 +141,7 @@ async def _synthesize_speech(
     quiet: bool = False,
     live: Live,
 ) -> bytes | None:
-    """Synthesize speech from text using Wyoming TTS server.
-
-    Args:
-        text: Text to synthesize
-        tts_server_ip: Wyoming TTS server IP
-        tts_server_port: Wyoming TTS server port
-        logger: Logger instance
-        voice_name: Optional voice name
-        language: Optional language
-        speaker: Optional speaker name
-        quiet: If true, suppress console messages
-        live: Live instance for timer display
-
-    Returns:
-        WAV audio data as bytes, or None if error
-
-    """
+    """Synthesize speech from text using Wyoming TTS server."""
     try:
         async with wyoming_client_context(
             tts_server_ip,
@@ -150,32 +150,42 @@ async def _synthesize_speech(
             logger,
             quiet=quiet,
         ) as client:
-            # Use live_timer with the provided Live instance
             async with live_timer(live, "🔊 Synthesizing text", style="blue", quiet=quiet):
-                # Create and send synthesis request
                 synthesize_event = _create_synthesis_request(
                     text,
                     voice_name=voice_name,
                     language=language,
                     speaker=speaker,
                 )
-
-                # Process audio events
                 _send_task, recv_task = await manage_send_receive_tasks(
                     client.write_event(synthesize_event.event()),
                     _process_audio_events(client, logger),
                 )
                 audio_data, sample_rate, sample_width, channels = recv_task.result()
-
-            # Convert to WAV format if we have valid audio data and metadata
             if sample_rate and sample_width and channels and audio_data:
                 wav_data = _create_wav_data(audio_data, sample_rate, sample_width, channels)
                 logger.info("Speech synthesis completed: %d bytes", len(wav_data))
                 return wav_data
-
             logger.warning("No audio data received from TTS server")
             return None
     except (ConnectionRefusedError, Exception):
+        return None
+
+
+async def _synthesize_speech_openai(
+    text: str,
+    api_key: str,
+    logger: logging.Logger,
+    *,
+    quiet: bool = False,
+    live: Live,
+) -> bytes | None:
+    """Synthesize speech from text using OpenAI TTS server."""
+    try:
+        async with live_timer(live, "🔊 Synthesizing text", style="blue", quiet=quiet):
+            return await synthesize_speech_openai(text, api_key, logger)
+    except Exception:
+        logger.exception("Error during speech synthesis")
         return None
 
 
@@ -183,35 +193,19 @@ def _apply_speed_adjustment(
     audio_data: io.BytesIO,
     speed: float,
 ) -> tuple[io.BytesIO, bool]:
-    """Apply speed adjustment to audio data using AudioStretchy or sample rate fallback.
-
-    Args:
-        audio_data: WAV audio data as BytesIO
-        speed: Speed multiplier (1.0 = normal, 2.0 = 2x speed, 0.5 = half speed)
-
-    Returns:
-        Tuple of (speed-adjusted WAV audio data as BytesIO, bool indicating if speed was changed)
-
-    """
+    """Apply speed adjustment to audio data."""
     if speed == 1.0 or not has_audiostretchy:
         return audio_data, False
-
-    # Try AudioStretchy first (high-quality pitch-preserving method)
     from audiostretchy.stretch import AudioStretch  # noqa: PLC0415
 
-    # AudioStretchy closes the input BytesIO during open_wav, so make a copy
     audio_data.seek(0)
     input_copy = io.BytesIO(audio_data.read())
-
-    # Use AudioStretchy for high-quality time stretching
     audio_stretch = AudioStretch()
     audio_stretch.open(file=input_copy, format="wav")
     audio_stretch.stretch(ratio=1 / speed)
-
-    # Save to output BytesIO with close=False to keep it open
     out = io.BytesIO()
     audio_stretch.save_wav(out, close=False)
-    out.seek(0)  # Reset position for reading
+    out.seek(0)
     return out, True
 
 
@@ -225,38 +219,18 @@ async def play_audio(
     speed: float = 1.0,
     live: Live,
 ) -> None:
-    """Play WAV audio data using PyAudio with proper resource management.
-
-    Args:
-        audio_data: WAV audio data as bytes
-        logger: Logger instance
-        output_device_index: Optional output device index
-        quiet: If true, suppress console messages
-        stop_event: Optional stop event to interrupt playback
-        speed: Speed multiplier (1.0 = normal, 2.0 = 2x speed, 0.5 = half speed)
-        live: Live instance for timer display
-
-    """
+    """Play WAV audio data using PyAudio."""
     try:
-        # Apply high-quality speed adjustment if possible
         wav_io = io.BytesIO(audio_data)
         wav_io, speed_changed = _apply_speed_adjustment(wav_io, speed)
-
-        # Parse WAV file
         with wave.open(wav_io, "rb") as wav_file:
             sample_rate = wav_file.getframerate()
             channels = wav_file.getnchannels()
             sample_width = wav_file.getsampwidth()
             frames = wav_file.readframes(wav_file.getnframes())
-
-        # Calculate effective sample rate for fallback method
         if not speed_changed:
             sample_rate = int(sample_rate * speed)
-
-        # Determine message
         base_msg = f"🔊 Playing audio at {speed}x speed" if speed != 1.0 else "🔊 Playing audio"
-
-        # Use live_timer with the provided Live instance
         async with live_timer(live, base_msg, style="blue", quiet=quiet):
             with pyaudio_context() as p:
                 stream_config = setup_output_stream(
@@ -266,10 +240,8 @@ async def play_audio(
                     channels=channels,
                 )
                 with open_pyaudio_stream(p, **stream_config) as stream:
-                    # Play in chunks to avoid blocking
                     chunk_size = config.PYAUDIO_CHUNK_SIZE
                     for i in range(0, len(frames), chunk_size):
-                        # Check for interruption
                         if stop_event and stop_event.is_set():
                             logger.info("Audio playback interrupted")
                             if not quiet:
@@ -277,15 +249,11 @@ async def play_audio(
                             break
                         chunk = frames[i : i + chunk_size]
                         stream.write(chunk)
-
-                        # Yield control to the event loop so signal handlers can run
                         await asyncio.sleep(0)
-
         if not (stop_event and stop_event.is_set()):
             logger.info("Audio playback completed (speed: %.1fx)", speed)
             if not quiet:
                 print_with_style("✅ Audio playback finished")
-
     except Exception as e:
         logger.exception("Error during audio playback")
         if not quiet:
@@ -308,29 +276,9 @@ async def speak_text(
     speed: float = 1.0,
     live: Live,
 ) -> bytes | None:
-    """Synthesize and optionally play speech from text.
-
-    Args:
-        text: Text to synthesize and speak
-        tts_server_ip: Wyoming TTS server IP
-        tts_server_port: Wyoming TTS server port
-        logger: Logger instance
-        voice_name: Optional voice name
-        language: Optional language
-        speaker: Optional speaker name
-        output_device_index: Optional output device index
-        quiet: If true, suppress console messages
-        play_audio_flag: Whether to play the audio immediately
-        stop_event: Optional stop event to interrupt playback
-        speed: Speed multiplier (1.0 = normal, 2.0 = 2x speed, 0.5 = half speed)
-        live: Live instance for timer display
-
-    Returns:
-        WAV audio data as bytes, or None if error
-
-    """
-    # Synthesize speech
-    audio_data = await _synthesize_speech(
+    """Synthesize and optionally play speech from text."""
+    synthesizer = get_synthesizer()
+    audio_data = await synthesizer(
         text=text,
         tts_server_ip=tts_server_ip,
         tts_server_port=tts_server_port,
@@ -342,7 +290,6 @@ async def speak_text(
         live=live,
     )
 
-    # Play audio if requested and synthesis succeeded
     if audio_data and play_audio_flag:
         await play_audio(
             audio_data,
