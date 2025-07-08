@@ -41,7 +41,10 @@ It provides a suite of powerful tools for voice and text interaction, designed f
 
 > [!IMPORTANT]
 > **Local and Private by Design**
-> All agents in this toolkit are designed to run **100% locally**. Your data, whether it's from your clipboard, microphone, or files, is never sent to any cloud API. This ensures your privacy and allows the tools to work completely offline. You can also optionally configure the agents to use OpenAI services.
+> All agents in this toolkit are designed to run **100% locally**.
+> Your data, whether it's from your clipboard, microphone, or files, is never sent to any cloud API.
+> This ensures your privacy and allows the tools to work completely offline.
+> You can also optionally configure the agents to use OpenAI services.
 
 ## Features
 
