@@ -483,10 +483,12 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 │                                 [default: alloy]                             │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ LLM Configuration: OpenAI ──────────────────────────────────────────────────╮
-│ --openai-api-key        TEXT  Your OpenAI API key. Can also be set with the  │
-│                               OPENAI_API_KEY environment variable.           │
-│                               [env var: OPENAI_API_KEY]                      │
-│                               [default: None]                                │
+│ --openai-api-key          TEXT  Your OpenAI API key. Can also be set with    │
+│                                 the OPENAI_API_KEY environment variable.     │
+│                                 [env var: OPENAI_API_KEY]                    │
+│                                 [default: None]                              │
+│ --openai-llm-model        TEXT  The OpenAI model to use for LLM tasks.       │
+│                                 [default: gpt-4o-mini]                       │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ ASR (Audio) Configuration ──────────────────────────────────────────────────╮
 │ --list-devices          List available audio input and output devices and    │
