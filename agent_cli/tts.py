@@ -6,7 +6,8 @@ import asyncio
 import importlib.util
 import io
 import wave
-from typing import TYPE_CHECKING, Literal
+from functools import partial
+from typing import TYPE_CHECKING
 
 from wyoming.audio import AudioChunk, AudioStart, AudioStop
 from wyoming.tts import Synthesize, SynthesizeVoice
@@ -33,25 +34,34 @@ if TYPE_CHECKING:
     from rich.live import Live
     from wyoming.client import AsyncClient
 
+    from agent_cli.agents._config import (
+        AudioOutputConfig,
+        OpenAILLMConfig,
+        OpenAITTSConfig,
+        ProviderSelectionConfig,
+        WyomingTTSConfig,
+    )
+
 has_audiostretchy = importlib.util.find_spec("audiostretchy") is not None
 
 
 def get_synthesizer(
-    service_provider: Literal["local", "openai"],
-    openai_api_key: str | None,
+    provider_config: ProviderSelectionConfig,
+    audio_output_config: AudioOutputConfig,
+    wyoming_tts_config: WyomingTTSConfig,
+    openai_tts_config: OpenAITTSConfig,
+    openai_llm_config: OpenAILLMConfig,
 ) -> Callable[..., Awaitable[bytes | None]]:
     """Return the appropriate synthesizer based on the config."""
-    if service_provider == "openai":
-        if openai_api_key is None:
-            msg = "OpenAI API key is not set."
-            raise ValueError(msg)
-        return lambda text, logger, speaker, **_: synthesize_speech_openai(
-            text,
-            api_key=openai_api_key,  # type: ignore[arg-type]
-            logger=logger,
-            speaker=speaker,
+    if not audio_output_config.enable_tts:
+        return _dummy_synthesizer
+    if provider_config.tts_provider == "openai":
+        return partial(
+            _synthesize_speech_openai,
+            openai_tts_config=openai_tts_config,
+            openai_llm_config=openai_llm_config,
         )
-    return _synthesize_speech_wyoming
+    return partial(_synthesize_speech_wyoming, wyoming_tts_config=wyoming_tts_config)
 
 
 def _create_synthesis_request(
@@ -133,23 +143,42 @@ def _create_wav_data(
     return wav_data.getvalue()
 
 
-async def _synthesize_speech_wyoming(
-    text: str,
-    tts_server_ip: str,
-    tts_server_port: int,
-    logger: logging.Logger,
+async def _dummy_synthesizer(**_kwargs: object) -> bytes | None:
+    """A dummy synthesizer that does nothing."""
+    return None
+
+
+async def _synthesize_speech_openai(
     *,
-    voice_name: str | None = None,
-    language: str | None = None,
-    speaker: str | None = None,
+    text: str,
+    openai_tts_config: OpenAITTSConfig,
+    openai_llm_config: OpenAILLMConfig,
+    logger: logging.Logger,
+    **_kwargs: object,
+) -> bytes | None:
+    """Synthesize speech from text using OpenAI TTS server."""
+    return await synthesize_speech_openai(
+        text=text,
+        openai_tts_config=openai_tts_config,
+        openai_llm_config=openai_llm_config,
+        logger=logger,
+    )
+
+
+async def _synthesize_speech_wyoming(
+    *,
+    text: str,
+    wyoming_tts_config: WyomingTTSConfig,
+    logger: logging.Logger,
     quiet: bool = False,
     live: Live,
+    **_kwargs: object,
 ) -> bytes | None:
     """Synthesize speech from text using Wyoming TTS server."""
     try:
         async with wyoming_client_context(
-            tts_server_ip,
-            tts_server_port,
+            wyoming_tts_config.wyoming_tts_ip,
+            wyoming_tts_config.wyoming_tts_port,
             "TTS",
             logger,
             quiet=quiet,
@@ -157,9 +186,9 @@ async def _synthesize_speech_wyoming(
             async with live_timer(live, "🔊 Synthesizing text", style="blue", quiet=quiet):
                 synthesize_event = _create_synthesis_request(
                     text,
-                    voice_name=voice_name,
-                    language=language,
-                    speaker=speaker,
+                    voice_name=wyoming_tts_config.wyoming_voice,
+                    language=wyoming_tts_config.wyoming_tts_language,
+                    speaker=wyoming_tts_config.wyoming_speaker,
                 )
                 _send_task, recv_task = await manage_send_receive_tasks(
                     client.write_event(synthesize_event.event()),
@@ -200,15 +229,15 @@ async def play_audio(
     audio_data: bytes,
     logger: logging.Logger,
     *,
-    output_device_index: int | None = None,
+    audio_output_config: AudioOutputConfig,
     quiet: bool = False,
     stop_event: InteractiveStopEvent | None = None,
-    speed: float = 1.0,
     live: Live,
 ) -> None:
     """Play WAV audio data using PyAudio."""
     try:
         wav_io = io.BytesIO(audio_data)
+        speed = audio_output_config.tts_speed
         wav_io, speed_changed = _apply_speed_adjustment(wav_io, speed)
         with wave.open(wav_io, "rb") as wav_file:
             sample_rate = wav_file.getframerate()
@@ -221,7 +250,7 @@ async def play_audio(
         async with live_timer(live, base_msg, style="blue", quiet=quiet):
             with pyaudio_context() as p:
                 stream_config = setup_output_stream(
-                    output_device_index,
+                    audio_output_config.output_device_index,
                     sample_rate=sample_rate,
                     sample_width=sample_width,
                     channels=channels,
@@ -248,38 +277,36 @@ async def play_audio(
 
 
 async def speak_text(
-    text: str,
-    service_provider: Literal["local", "openai"],
-    openai_api_key: str | None,
-    tts_server_ip: str,
-    tts_server_port: int,
-    logger: logging.Logger,
     *,
-    voice_name: str | None = None,
-    language: str | None = None,
-    speaker: str | None = None,
-    output_device_index: int | None = None,
+    text: str,
+    provider_config: ProviderSelectionConfig,
+    audio_output_config: AudioOutputConfig,
+    wyoming_tts_config: WyomingTTSConfig,
+    openai_tts_config: OpenAITTSConfig,
+    openai_llm_config: OpenAILLMConfig,
+    logger: logging.Logger,
     quiet: bool = False,
     play_audio_flag: bool = True,
     stop_event: InteractiveStopEvent | None = None,
-    speed: float = 1.0,
     live: Live,
 ) -> bytes | None:
     """Synthesize and optionally play speech from text."""
-    synthesizer = get_synthesizer(service_provider, openai_api_key)
+    synthesizer = get_synthesizer(
+        provider_config,
+        audio_output_config,
+        wyoming_tts_config,
+        openai_tts_config,
+        openai_llm_config,
+    )
     audio_data = None
     try:
         async with live_timer(live, "🔊 Synthesizing text", style="blue", quiet=quiet):
-            # The OpenAI synthesizer doesn't use all these arguments, but they are
-            # passed in from the agent. We can ignore them here.
             audio_data = await synthesizer(
                 text=text,
-                tts_server_ip=tts_server_ip,
-                tts_server_port=tts_server_port,
+                wyoming_tts_config=wyoming_tts_config,
+                openai_tts_config=openai_tts_config,
+                openai_llm_config=openai_llm_config,
                 logger=logger,
-                voice_name=voice_name,
-                language=language,
-                speaker=speaker,
                 quiet=quiet,
                 live=live,
             )
@@ -291,10 +318,9 @@ async def speak_text(
         await play_audio(
             audio_data,
             logger,
-            output_device_index=output_device_index,
+            audio_output_config=audio_output_config,
             quiet=quiet,
             stop_event=stop_event,
-            speed=speed,
             live=live,
         )
 

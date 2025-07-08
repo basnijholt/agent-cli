@@ -2,18 +2,21 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
 from unittest.mock import MagicMock, patch
 
 import pytest
 
-from agent_cli.agents._config import FileConfig, GeneralConfig, TTSConfig
+from agent_cli.agents._config import (
+    AudioOutputConfig,
+    GeneralConfig,
+    OpenAILLMConfig,
+    OpenAITTSConfig,
+    ProviderSelectionConfig,
+    WyomingTTSConfig,
+)
 from agent_cli.agents.speak import _async_main
 from tests.mocks.audio import MockPyAudio
 from tests.mocks.wyoming import MockTTSClient
-
-if TYPE_CHECKING:
-    from rich.console import Console
 
 
 @pytest.mark.asyncio
@@ -21,7 +24,6 @@ if TYPE_CHECKING:
 async def test_speak_e2e(
     mock_wyoming_client_context: MagicMock,
     mock_pyaudio_device_info: list[dict],
-    mock_console: Console,
 ) -> None:
     """Test end-to-end speech synthesis with simplified mocks."""
     # Setup mock PyAudio
@@ -46,28 +48,33 @@ async def test_speak_e2e(
             log_file=None,
             list_devices=False,
             quiet=False,
+            clipboard=False,
+            save_file=None,
         )
-        general_cfg.__dict__["console"] = mock_console
-        tts_config = TTSConfig(
-            enabled=True,
-            server_ip="mock-host",
-            server_port=10200,
-            voice_name=None,
-            language=None,
-            speaker=None,
-            output_device_index=None,
-            output_device_name=None,
-            speed=1.0,
+        provider_cfg = ProviderSelectionConfig(
+            tts_provider="local",
+            asr_provider="local",
+            llm_provider="local",
         )
-        file_config = FileConfig(save_file=None)
+        audio_out_cfg = AudioOutputConfig(enable_tts=True)
+        wyoming_tts_cfg = WyomingTTSConfig(
+            wyoming_tts_ip="mock-host",
+            wyoming_tts_port=10200,
+        )
+        openai_tts_cfg = OpenAITTSConfig(openai_tts_model="tts-1", openai_tts_voice="alloy")
+        openai_llm_cfg = OpenAILLMConfig(
+            openai_llm_model="gpt-4o-mini",
+            openai_api_key="fake-key",
+        )
 
         await _async_main(
             general_cfg=general_cfg,
             text="Hello, world!",
-            tts_config=tts_config,
-            file_config=file_config,
-            service_provider="local",
-            openai_api_key=None,
+            provider_cfg=provider_cfg,
+            audio_out_cfg=audio_out_cfg,
+            wyoming_tts_cfg=wyoming_tts_cfg,
+            openai_tts_cfg=openai_tts_cfg,
+            openai_llm_cfg=openai_llm_cfg,
         )
 
     # Verify that the audio was "played"

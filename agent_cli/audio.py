@@ -26,9 +26,9 @@ if TYPE_CHECKING:
     from rich.live import Live
 
     from agent_cli.agents._config import (
-        ASRConfig,
+        AudioInputConfig,
+        AudioOutputConfig,
         GeneralConfig,
-        TTSConfig,
     )
 
 
@@ -405,8 +405,8 @@ def output_device(
 def setup_devices(
     p: pyaudio.PyAudio,
     general_config: GeneralConfig,
-    asr_config: ASRConfig | None,
-    tts_config: TTSConfig | None,
+    audio_in_cfg: AudioInputConfig | None,
+    audio_out_cfg: AudioOutputConfig | None,
 ) -> tuple[int | None, str | None, int | None] | None:
     """Handle device listing and setup."""
     if general_config.list_devices:
@@ -416,23 +416,23 @@ def setup_devices(
     # Setup input device
     input_device_index, input_device_name = input_device(
         p,
-        asr_config.input_device_name if asr_config else None,
-        asr_config.input_device_index if asr_config else None,
+        audio_in_cfg.input_device_name if audio_in_cfg else None,
+        audio_in_cfg.input_device_index if audio_in_cfg else None,
     )
     if not general_config.quiet:
         print_device_index(input_device_index, input_device_name)
 
     # Setup output device for TTS if enabled
-    tts_output_device_index = tts_config.output_device_index if tts_config else None
+    tts_output_device_index = audio_out_cfg.output_device_index if audio_out_cfg else None
     if (
-        tts_config
-        and tts_config.enabled
-        and (tts_config.output_device_name or tts_config.output_device_index)
+        audio_out_cfg
+        and audio_out_cfg.enable_tts
+        and (audio_out_cfg.output_device_name or audio_out_cfg.output_device_index)
     ):
         tts_output_device_index, tts_output_device_name = output_device(
             p,
-            tts_config.output_device_name,
-            tts_config.output_device_index,
+            audio_out_cfg.output_device_name,
+            audio_out_cfg.output_device_index,
         )
         if tts_output_device_index is not None and not general_config.quiet:
             msg = f"🔊 TTS output device [bold yellow]{tts_output_device_index}[/bold yellow] ([italic]{tts_output_device_name}[/italic])"

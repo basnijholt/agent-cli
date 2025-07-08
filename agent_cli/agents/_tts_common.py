@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 from pathlib import Path
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING
 
 from agent_cli import tts
 from agent_cli.utils import InteractiveStopEvent, print_with_style
@@ -13,6 +13,14 @@ if TYPE_CHECKING:
     import logging
 
     from rich.live import Live
+
+    from agent_cli.agents._config import (
+        AudioOutputConfig,
+        OpenAILLMConfig,
+        OpenAITTSConfig,
+        ProviderSelectionConfig,
+        WyomingTTSConfig,
+    )
 
 
 async def _save_audio_file(
@@ -39,16 +47,13 @@ async def _save_audio_file(
 
 
 async def handle_tts_playback(
-    text: str,
     *,
-    service_provider: Literal["local", "openai"],
-    openai_api_key: str | None,
-    tts_server_ip: str,
-    tts_server_port: int,
-    voice_name: str | None,
-    tts_language: str | None,
-    speaker: str | None,
-    output_device_index: int | None,
+    text: str,
+    provider_config: ProviderSelectionConfig,
+    audio_output_config: AudioOutputConfig,
+    wyoming_tts_config: WyomingTTSConfig,
+    openai_tts_config: OpenAITTSConfig,
+    openai_llm_config: OpenAILLMConfig,
     save_file: Path | None,
     quiet: bool,
     logger: logging.Logger,
@@ -56,7 +61,6 @@ async def handle_tts_playback(
     status_message: str = "🔊 Speaking...",
     description: str = "Audio",
     stop_event: InteractiveStopEvent | None = None,
-    speed: float = 1.0,
     live: Live,
 ) -> bytes | None:
     """Handle TTS synthesis, playback, and file saving."""
@@ -66,19 +70,15 @@ async def handle_tts_playback(
 
         audio_data = await tts.speak_text(
             text=text,
-            service_provider=service_provider,
-            openai_api_key=openai_api_key,
-            tts_server_ip=tts_server_ip,
-            tts_server_port=tts_server_port,
+            provider_config=provider_config,
+            audio_output_config=audio_output_config,
+            wyoming_tts_config=wyoming_tts_config,
+            openai_tts_config=openai_tts_config,
+            openai_llm_config=openai_llm_config,
             logger=logger,
-            voice_name=voice_name,
-            language=tts_language,
-            speaker=speaker,
-            output_device_index=output_device_index,
             quiet=quiet,
             play_audio_flag=play_audio,
             stop_event=stop_event,
-            speed=speed,
             live=live,
         )
 

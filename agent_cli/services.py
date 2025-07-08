@@ -10,6 +10,12 @@ if TYPE_CHECKING:
 
     from openai import AsyncOpenAI
 
+    from agent_cli.agents._config import (
+        OpenAIASRConfig,
+        OpenAILLMConfig,
+        OpenAITTSConfig,
+    )
+
 
 def _get_openai_client(api_key: str) -> AsyncOpenAI:
     """Get an OpenAI client instance."""
@@ -23,16 +29,20 @@ def _get_openai_client(api_key: str) -> AsyncOpenAI:
 
 async def transcribe_audio_openai(
     audio_data: bytes,
-    api_key: str,
+    openai_asr_config: OpenAIASRConfig,
+    openai_llm_config: OpenAILLMConfig,
     logger: logging.Logger,
 ) -> str:
     """Transcribe audio using OpenAI's Whisper API."""
     logger.info("Transcribing audio with OpenAI Whisper...")
-    client = _get_openai_client(api_key=api_key)
+    if not openai_llm_config.openai_api_key:
+        msg = "OpenAI API key is not set."
+        raise ValueError(msg)
+    client = _get_openai_client(api_key=openai_llm_config.openai_api_key)
     audio_file = io.BytesIO(audio_data)
     audio_file.name = "audio.wav"
     response = await client.audio.transcriptions.create(
-        model="whisper-1",
+        model=openai_asr_config.openai_asr_model,
         file=audio_file,
     )
     return response.text
@@ -40,16 +50,19 @@ async def transcribe_audio_openai(
 
 async def synthesize_speech_openai(
     text: str,
-    api_key: str,
+    openai_tts_config: OpenAITTSConfig,
+    openai_llm_config: OpenAILLMConfig,
     logger: logging.Logger,
-    speaker: str = "alloy",
 ) -> bytes:
     """Synthesize speech using OpenAI's TTS API."""
     logger.info("Synthesizing speech with OpenAI TTS...")
-    client = _get_openai_client(api_key=api_key)
+    if not openai_llm_config.openai_api_key:
+        msg = "OpenAI API key is not set."
+        raise ValueError(msg)
+    client = _get_openai_client(api_key=openai_llm_config.openai_api_key)
     response = await client.audio.speech.create(
-        model="tts-1",
-        voice=speaker,
+        model=openai_tts_config.openai_tts_model,
+        voice=openai_tts_config.openai_tts_voice,
         input=text,
         response_format="wav",
     )

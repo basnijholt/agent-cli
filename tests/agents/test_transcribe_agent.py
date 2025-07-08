@@ -28,7 +28,7 @@ def test_transcribe_agent(
             app,
             [
                 "transcribe",
-                "--service-provider",
+                "--asr-provider",
                 "local",
                 "--openai-api-key",
                 "test",

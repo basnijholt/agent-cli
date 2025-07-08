@@ -49,12 +49,7 @@ def set_config_defaults(ctx: typer.Context, config_file: str | None) -> None:
 
     command_config = config.get(subcommand, {})
     defaults = {**wildcard_config, **command_config}
-
-    if subcommand in ctx.command.commands:
-        command = ctx.command.commands[subcommand]
-        for param in command.params:
-            if param.name in defaults:
-                param.default = defaults[param.name]
+    ctx.default_map = defaults
 
 
 def setup_logging(log_level: str, log_file: str | None, *, quiet: bool) -> None:
