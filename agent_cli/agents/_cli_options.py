@@ -65,13 +65,13 @@ LLM: bool = typer.Option(
 
 # --- ASR (Audio) Configuration ---
 # General ASR
-DEVICE_INDEX: int | None = typer.Option(
+INPUT_DEVICE_INDEX: int | None = typer.Option(
     None,
     "--input-device-index",
     help="Index of the PyAudio input device to use.",
     rich_help_panel="ASR (Audio) Configuration",
 )
-DEVICE_NAME: str | None = typer.Option(
+INPUT_DEVICE_NAME: str | None = typer.Option(
     None,
     "--input-device-name",
     help="Device name keywords for partial matching.",
