@@ -1,7 +1,7 @@
 # Development Rules
 
 ## Core Rules
-- Always use `uv --all-extras` to install packages
+- Always use `uv sync --all-extras` to install packages
 - Commit frequently but always make sure tests pass first
 - Prefer functional style Python instead of classes with inheritance
 - Keep it DRY - reuse code as much as possible
