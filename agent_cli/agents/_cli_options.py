@@ -29,7 +29,7 @@ SERVICE_PROVIDER: str = typer.Option(
 OPENAI_API_KEY: str | None = typer.Option(
     config.OPENAI_API_KEY,
     "--openai-api-key",
-    help="The OpenAI API key.",
+    help="The OpenAI API key. Only required if using OpenAI as the service-provider.",
     envvar="OPENAI_API_KEY",
     rich_help_panel="LLM Options",
 )
