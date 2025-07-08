@@ -7,16 +7,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from agent_cli import asr, tts
-from agent_cli.agents._config import (
-    AudioInputConfig,
-    AudioOutputConfig,
-    OpenAIASRConfig,
-    OpenAILLMConfig,
-    OpenAITTSConfig,
-    ProviderSelectionConfig,
-    WyomingASRConfig,
-    WyomingTTSConfig,
-)
+from agent_cli.agents import config
 from agent_cli.services import synthesize_speech_openai, transcribe_audio_openai
 
 
@@ -32,8 +23,8 @@ async def test_transcribe_audio_openai(mock_openai_client: MagicMock) -> None:
     mock_client_instance.audio.transcriptions.create = AsyncMock(
         return_value=mock_transcription,
     )
-    openai_asr_config = OpenAIASRConfig(openai_asr_model="whisper-1")
-    openai_llm_config = OpenAILLMConfig(
+    openai_asr_config = config.OpenAIASR(openai_asr_model="whisper-1")
+    openai_llm_config = config.OpenAILLM(
         openai_llm_model="gpt-4o-mini",
         openai_api_key="test_api_key",
     )
@@ -63,8 +54,8 @@ async def test_synthesize_speech_openai(mock_openai_client: MagicMock) -> None:
     mock_response = MagicMock()
     mock_response.content = b"test audio"
     mock_client_instance.audio.speech.create = AsyncMock(return_value=mock_response)
-    openai_tts_config = OpenAITTSConfig(openai_tts_model="tts-1", openai_tts_voice="alloy")
-    openai_llm_config = OpenAILLMConfig(
+    openai_tts_config = config.OpenAITTS(openai_tts_model="tts-1", openai_tts_voice="alloy")
+    openai_llm_config = config.OpenAILLM(
         openai_llm_model="gpt-4o-mini",
         openai_api_key="test_api_key",
     )
@@ -88,15 +79,15 @@ async def test_synthesize_speech_openai(mock_openai_client: MagicMock) -> None:
 
 def test_get_transcriber_wyoming() -> None:
     """Test that get_transcriber returns the Wyoming transcriber."""
-    provider_config = ProviderSelectionConfig(
+    provider_config = config.ProviderSelection(
         asr_provider="local",
         llm_provider="local",
         tts_provider="local",
     )
-    audio_input_config = AudioInputConfig()
-    wyoming_asr_config = WyomingASRConfig(wyoming_asr_ip="localhost", wyoming_asr_port=1234)
-    openai_asr_config = OpenAIASRConfig(openai_asr_model="whisper-1")
-    openai_llm_config = OpenAILLMConfig(
+    audio_input_config = config.AudioInput()
+    wyoming_asr_config = config.WyomingASR(wyoming_asr_ip="localhost", wyoming_asr_port=1234)
+    openai_asr_config = config.OpenAIASR(openai_asr_model="whisper-1")
+    openai_llm_config = config.OpenAILLM(
         openai_llm_model="gpt-4o-mini",
         openai_api_key="fake-key",
     )
@@ -112,18 +103,18 @@ def test_get_transcriber_wyoming() -> None:
 
 def test_get_synthesizer_wyoming() -> None:
     """Test that get_synthesizer returns the Wyoming synthesizer."""
-    provider_config = ProviderSelectionConfig(
+    provider_config = config.ProviderSelection(
         asr_provider="local",
         llm_provider="local",
         tts_provider="local",
     )
-    audio_output_config = AudioOutputConfig(enable_tts=True)
-    wyoming_tts_config = WyomingTTSConfig(
+    audio_output_config = config.AudioOutput(enable_tts=True)
+    wyoming_tts_config = config.WyomingTTS(
         wyoming_tts_ip="localhost",
         wyoming_tts_port=1234,
     )
-    openai_tts_config = OpenAITTSConfig(openai_tts_model="tts-1", openai_tts_voice="alloy")
-    openai_llm_config = OpenAILLMConfig(
+    openai_tts_config = config.OpenAITTS(openai_tts_model="tts-1", openai_tts_voice="alloy")
+    openai_llm_config = config.OpenAILLM(
         openai_llm_model="gpt-4o-mini",
         openai_api_key="test_api_key",
     )

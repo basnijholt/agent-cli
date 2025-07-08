@@ -9,7 +9,6 @@ from typing import TYPE_CHECKING
 import pyperclip
 from rich.live import Live
 
-from agent_cli.agents._config import OllamaConfig, OpenAILLMConfig
 from agent_cli.utils import console, live_timer, print_error_message, print_output_panel
 
 if TYPE_CHECKING:
@@ -18,13 +17,13 @@ if TYPE_CHECKING:
     from pydantic_ai import Agent
     from pydantic_ai.tools import Tool
 
-    from agent_cli.agents._config import OllamaConfig, OpenAILLMConfig, ProviderSelectionConfig
+    from agent_cli.agents import config
 
 
 def build_agent(
-    provider_config: ProviderSelectionConfig,
-    ollama_config: OllamaConfig,
-    openai_config: OpenAILLMConfig,
+    provider_config: config.ProviderSelection,
+    ollama_config: config.Ollama,
+    openai_config: config.OpenAILLM,
     *,
     system_prompt: str | None = None,
     instructions: str | None = None,
@@ -72,9 +71,9 @@ async def get_llm_response(
     system_prompt: str,
     agent_instructions: str,
     user_input: str,
-    provider_config: ProviderSelectionConfig,
-    ollama_config: OllamaConfig,
-    openai_config: OpenAILLMConfig,
+    provider_config: config.ProviderSelection,
+    ollama_config: config.Ollama,
+    openai_config: config.OpenAILLM,
     logger: logging.Logger,
     live: Live | None = None,
     tools: list[Tool] | None = None,
@@ -144,9 +143,9 @@ async def process_and_update_clipboard(
     system_prompt: str,
     agent_instructions: str,
     *,
-    provider_config: ProviderSelectionConfig,
-    ollama_config: OllamaConfig,
-    openai_config: OpenAILLMConfig,
+    provider_config: config.ProviderSelection,
+    ollama_config: config.Ollama,
+    openai_config: config.OpenAILLM,
     logger: logging.Logger,
     original_text: str,
     instruction: str,

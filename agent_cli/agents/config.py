@@ -10,7 +10,7 @@ from pydantic import BaseModel, field_validator
 # --- Panel: Provider Selection ---
 
 
-class ProviderSelectionConfig(BaseModel):
+class ProviderSelection(BaseModel):
     """Configuration for selecting service providers."""
 
     llm_provider: Literal["local", "openai"]
@@ -21,14 +21,14 @@ class ProviderSelectionConfig(BaseModel):
 # --- Panel: LLM Configuration ---
 
 
-class OllamaConfig(BaseModel):
+class Ollama(BaseModel):
     """Configuration for the local Ollama LLM provider."""
 
     ollama_model: str
     ollama_host: str
 
 
-class OpenAILLMConfig(BaseModel):
+class OpenAILLM(BaseModel):
     """Configuration for the OpenAI LLM provider."""
 
     openai_llm_model: str
@@ -38,21 +38,21 @@ class OpenAILLMConfig(BaseModel):
 # --- Panel: ASR (Audio) Configuration ---
 
 
-class AudioInputConfig(BaseModel):
+class AudioInput(BaseModel):
     """Configuration for audio input devices."""
 
     input_device_index: int | None = None
     input_device_name: str | None = None
 
 
-class WyomingASRConfig(BaseModel):
+class WyomingASR(BaseModel):
     """Configuration for the Wyoming ASR provider."""
 
     wyoming_asr_ip: str
     wyoming_asr_port: int
 
 
-class OpenAIASRConfig(BaseModel):
+class OpenAIASR(BaseModel):
     """Configuration for the OpenAI ASR provider."""
 
     openai_asr_model: str
@@ -61,7 +61,7 @@ class OpenAIASRConfig(BaseModel):
 # --- Panel: TTS (Text-to-Speech) Configuration ---
 
 
-class AudioOutputConfig(BaseModel):
+class AudioOutput(BaseModel):
     """Configuration for audio output devices and TTS behavior."""
 
     output_device_index: int | None = None
@@ -70,7 +70,7 @@ class AudioOutputConfig(BaseModel):
     enable_tts: bool = False
 
 
-class WyomingTTSConfig(BaseModel):
+class WyomingTTS(BaseModel):
     """Configuration for the Wyoming TTS provider."""
 
     wyoming_tts_ip: str
@@ -80,7 +80,7 @@ class WyomingTTSConfig(BaseModel):
     wyoming_speaker: str | None = None
 
 
-class OpenAITTSConfig(BaseModel):
+class OpenAITTS(BaseModel):
     """Configuration for the OpenAI TTS provider."""
 
     openai_tts_model: str
@@ -90,7 +90,7 @@ class OpenAITTSConfig(BaseModel):
 # --- Panel: Wake Word Options ---
 
 
-class WakeWordConfig(BaseModel):
+class WakeWord(BaseModel):
     """Configuration for wake word detection."""
 
     wake_server_ip: str
@@ -101,7 +101,7 @@ class WakeWordConfig(BaseModel):
 # --- Panel: General Options ---
 
 
-class GeneralConfig(BaseModel):
+class General(BaseModel):
     """General configuration parameters for logging and I/O."""
 
     log_level: str
@@ -122,7 +122,7 @@ class GeneralConfig(BaseModel):
 # --- Panel: History Options ---
 
 
-class HistoryConfig(BaseModel):
+class History(BaseModel):
     """Configuration for conversation history."""
 
     history_dir: Path | None = None

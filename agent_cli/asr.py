@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 from wyoming.asr import Transcribe, Transcript, TranscriptChunk, TranscriptStart, TranscriptStop
 from wyoming.audio import AudioChunk, AudioStart, AudioStop
 
-from agent_cli import config
+from agent_cli import defaults
 from agent_cli.audio import (
     open_pyaudio_stream,
     read_audio_stream,
@@ -28,22 +28,16 @@ if TYPE_CHECKING:
     from rich.live import Live
     from wyoming.client import AsyncClient
 
-    from agent_cli.agents._config import (
-        AudioInputConfig,
-        OpenAIASRConfig,
-        OpenAILLMConfig,
-        ProviderSelectionConfig,
-        WyomingASRConfig,
-    )
+    from agent_cli.agents import config
     from agent_cli.utils import InteractiveStopEvent
 
 
 def get_transcriber(
-    provider_config: ProviderSelectionConfig,
-    audio_input_config: AudioInputConfig,
-    wyoming_asr_config: WyomingASRConfig,
-    openai_asr_config: OpenAIASRConfig,
-    openai_llm_config: OpenAILLMConfig,
+    provider_config: config.ProviderSelection,
+    audio_input_config: config.AudioInput,
+    wyoming_asr_config: config.WyomingASR,
+    openai_asr_config: config.OpenAIASR,
+    openai_llm_config: config.OpenAILLM,
 ) -> Callable[..., Awaitable[str | None]]:
     """Return the appropriate transcriber for live audio based on the provider."""
     if provider_config.asr_provider == "openai":
@@ -61,7 +55,7 @@ def get_transcriber(
 
 
 def get_recorded_audio_transcriber(
-    provider_config: ProviderSelectionConfig,
+    provider_config: config.ProviderSelection,
 ) -> Callable[..., Awaitable[str]]:
     """Return the appropriate transcriber for recorded audio based on the provider."""
     if provider_config.asr_provider == "openai":
@@ -80,11 +74,11 @@ async def _send_audio(
 ) -> None:
     """Read from mic and send to Wyoming server."""
     await client.write_event(Transcribe().event())
-    await client.write_event(AudioStart(**config.WYOMING_AUDIO_CONFIG).event())
+    await client.write_event(AudioStart(**defaults.WYOMING_AUDIO_CONFIG).event())
 
     async def send_chunk(chunk: bytes) -> None:
         """Send audio chunk to ASR server."""
-        await client.write_event(AudioChunk(audio=chunk, **config.WYOMING_AUDIO_CONFIG).event())
+        await client.write_event(AudioChunk(audio=chunk, **defaults.WYOMING_AUDIO_CONFIG).event())
 
     try:
         await read_audio_stream(
@@ -187,7 +181,7 @@ async def record_audio_with_manual_stop(
 async def transcribe_recorded_audio_wyoming(
     *,
     audio_data: bytes,
-    wyoming_asr_config: WyomingASRConfig,
+    wyoming_asr_config: config.WyomingASR,
     logger: logging.Logger,
     quiet: bool = False,
     **_kwargs: object,
@@ -202,13 +196,13 @@ async def transcribe_recorded_audio_wyoming(
             quiet=quiet,
         ) as client:
             await client.write_event(Transcribe().event())
-            await client.write_event(AudioStart(**config.WYOMING_AUDIO_CONFIG).event())
+            await client.write_event(AudioStart(**defaults.WYOMING_AUDIO_CONFIG).event())
 
-            chunk_size = config.PYAUDIO_CHUNK_SIZE * 2
+            chunk_size = defaults.PYAUDIO_CHUNK_SIZE * 2
             for i in range(0, len(audio_data), chunk_size):
                 chunk = audio_data[i : i + chunk_size]
                 await client.write_event(
-                    AudioChunk(audio=chunk, **config.WYOMING_AUDIO_CONFIG).event(),
+                    AudioChunk(audio=chunk, **defaults.WYOMING_AUDIO_CONFIG).event(),
                 )
                 logger.debug("Sent %d byte(s) of audio", len(chunk))
 
@@ -222,8 +216,8 @@ async def transcribe_recorded_audio_wyoming(
 
 async def transcribe_live_audio_wyoming(
     *,
-    audio_input_config: AudioInputConfig,
-    wyoming_asr_config: WyomingASRConfig,
+    audio_input_config: config.AudioInput,
+    wyoming_asr_config: config.WyomingASR,
     logger: logging.Logger,
     p: pyaudio.PyAudio,
     stop_event: InteractiveStopEvent,
@@ -261,9 +255,9 @@ async def transcribe_live_audio_wyoming(
 
 async def transcribe_live_audio_openai(
     *,
-    audio_input_config: AudioInputConfig,
-    openai_asr_config: OpenAIASRConfig,
-    openai_llm_config: OpenAILLMConfig,
+    audio_input_config: config.AudioInput,
+    openai_asr_config: config.OpenAIASR,
+    openai_llm_config: config.OpenAILLM,
     logger: logging.Logger,
     p: pyaudio.PyAudio,
     stop_event: InteractiveStopEvent,

@@ -4,7 +4,7 @@ from pathlib import Path
 
 import typer
 
-from agent_cli import config
+from agent_cli import defaults
 
 # --- Provider Selection ---
 LLM_PROVIDER: str = typer.Option(
@@ -30,15 +30,15 @@ TTS_PROVIDER: str = typer.Option(
 # --- LLM Configuration ---
 # Ollama (local service)
 OLLAMA_MODEL: str = typer.Option(
-    config.DEFAULT_MODEL,
+    defaults.DEFAULT_MODEL,
     "--ollama-model",
-    help=f"The Ollama model to use. Default is {config.DEFAULT_MODEL}.",
+    help=f"The Ollama model to use. Default is {defaults.DEFAULT_MODEL}.",
     rich_help_panel="LLM Configuration: Ollama (local)",
 )
 OLLAMA_HOST: str = typer.Option(
-    config.OLLAMA_HOST,
+    defaults.OLLAMA_HOST,
     "--ollama-host",
-    help=f"The Ollama server host. Default is {config.OLLAMA_HOST}.",
+    help=f"The Ollama server host. Default is {defaults.OLLAMA_HOST}.",
     rich_help_panel="LLM Configuration: Ollama (local)",
 )
 # OpenAI
@@ -49,7 +49,7 @@ OPENAI_LLM_MODEL: str = typer.Option(
     rich_help_panel="LLM Configuration: OpenAI",
 )
 OPENAI_API_KEY: str | None = typer.Option(
-    config.OPENAI_API_KEY,
+    defaults.OPENAI_API_KEY,
     "--openai-api-key",
     help="Your OpenAI API key. Can also be set with the OPENAI_API_KEY environment variable.",
     envvar="OPENAI_API_KEY",
@@ -86,13 +86,13 @@ LIST_DEVICES: bool = typer.Option(
 )
 # Wyoming (local service)
 WYOMING_ASR_SERVER_IP: str = typer.Option(
-    config.ASR_SERVER_IP,
+    defaults.ASR_SERVER_IP,
     "--wyoming-asr-ip",
     help="Wyoming ASR server IP address.",
     rich_help_panel="ASR (Audio) Configuration: Wyoming (local)",
 )
 WYOMING_ASR_SERVER_PORT: int = typer.Option(
-    config.ASR_SERVER_PORT,
+    defaults.ASR_SERVER_PORT,
     "--wyoming-asr-port",
     help="Wyoming ASR server port.",
     rich_help_panel="ASR (Audio) Configuration: Wyoming (local)",
@@ -108,13 +108,13 @@ OPENAI_ASR_MODEL: str = typer.Option(
 
 # --- Wake Word Options ---
 WAKE_WORD_SERVER_IP: str = typer.Option(
-    config.WAKE_WORD_SERVER_IP,
+    defaults.WAKE_WORD_SERVER_IP,
     "--wake-server-ip",
     help="Wyoming wake word server IP address.",
     rich_help_panel="Wake Word Options",
 )
 WAKE_WORD_SERVER_PORT: int = typer.Option(
-    config.WAKE_WORD_SERVER_PORT,
+    defaults.WAKE_WORD_SERVER_PORT,
     "--wake-server-port",
     help="Wyoming wake word server port.",
     rich_help_panel="Wake Word Options",
@@ -155,13 +155,13 @@ OUTPUT_DEVICE_NAME: str | None = typer.Option(
 )
 # Wyoming (local service)
 WYOMING_TTS_SERVER_IP: str = typer.Option(
-    config.TTS_SERVER_IP,
+    defaults.TTS_SERVER_IP,
     "--wyoming-tts-ip",
     help="Wyoming TTS server IP address.",
     rich_help_panel="TTS (Text-to-Speech) Configuration: Wyoming (local)",
 )
 WYOMING_TTS_SERVER_PORT: int = typer.Option(
-    config.TTS_SERVER_PORT,
+    defaults.TTS_SERVER_PORT,
     "--wyoming-tts-port",
     help="Wyoming TTS server port.",
     rich_help_panel="TTS (Text-to-Speech) Configuration: Wyoming (local)",

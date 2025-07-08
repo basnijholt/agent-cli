@@ -8,13 +8,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from agent_cli.agents._config import (
-    AudioOutputConfig,
-    OpenAILLMConfig,
-    OpenAITTSConfig,
-    ProviderSelectionConfig,
-    WyomingTTSConfig,
-)
+from agent_cli.agents import config
 from agent_cli.tts import _apply_speed_adjustment, speak_text
 
 
@@ -24,18 +18,18 @@ async def test_speak_text(mock_get_synthesizer: MagicMock) -> None:
     """Test the speak_text function."""
     mock_synthesizer = AsyncMock(return_value=b"audio data")
     mock_get_synthesizer.return_value = mock_synthesizer
-    provider_config = ProviderSelectionConfig(
+    provider_config = config.ProviderSelection(
         asr_provider="local",
         llm_provider="local",
         tts_provider="local",
     )
-    audio_output_config = AudioOutputConfig(enable_tts=True)
-    wyoming_tts_config = WyomingTTSConfig(
+    audio_output_config = config.AudioOutput(enable_tts=True)
+    wyoming_tts_config = config.WyomingTTS(
         wyoming_tts_ip="localhost",
         wyoming_tts_port=1234,
     )
-    openai_tts_config = OpenAITTSConfig(openai_tts_model="tts-1", openai_tts_voice="alloy")
-    openai_llm_config = OpenAILLMConfig(
+    openai_tts_config = config.OpenAITTS(openai_tts_model="tts-1", openai_tts_voice="alloy")
+    openai_llm_config = config.OpenAILLM(
         openai_llm_model="gpt-4o-mini",
         openai_api_key="test_api_key",
     )

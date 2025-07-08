@@ -7,13 +7,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from agent_cli.agents._config import (
-    AudioOutputConfig,
-    OpenAILLMConfig,
-    OpenAITTSConfig,
-    ProviderSelectionConfig,
-    WyomingTTSConfig,
-)
+from agent_cli.agents import config
 from agent_cli.agents._tts_common import handle_tts_playback
 
 if TYPE_CHECKING:
@@ -26,19 +20,19 @@ async def test_handle_tts_playback(mock_speak_text: AsyncMock) -> None:
     """Test the handle_tts_playback function."""
     mock_speak_text.return_value = b"audio data"
     mock_live = MagicMock()
-    provider_cfg = ProviderSelectionConfig(
+    provider_cfg = config.ProviderSelection(
         tts_provider="local",
         asr_provider="local",
         llm_provider="local",
     )
-    audio_out_cfg = AudioOutputConfig(enable_tts=True, output_device_index=1)
-    wyoming_tts_cfg = WyomingTTSConfig(
+    audio_out_cfg = config.AudioOutput(enable_tts=True, output_device_index=1)
+    wyoming_tts_cfg = config.WyomingTTS(
         wyoming_tts_ip="localhost",
         wyoming_tts_port=1234,
         wyoming_voice="test-voice",
     )
-    openai_tts_cfg = OpenAITTSConfig(openai_tts_model="tts-1", openai_tts_voice="alloy")
-    openai_llm_cfg = OpenAILLMConfig(
+    openai_tts_cfg = config.OpenAITTS(openai_tts_model="tts-1", openai_tts_voice="alloy")
+    openai_llm_cfg = config.OpenAILLM(
         openai_llm_model="gpt-4o-mini",
         openai_api_key="fake-key",
     )
@@ -83,19 +77,19 @@ async def test_handle_tts_playback_with_save_file(
     save_file = tmp_path / "test.wav"
     mock_live = MagicMock()
 
-    provider_cfg = ProviderSelectionConfig(
+    provider_cfg = config.ProviderSelection(
         tts_provider="local",
         asr_provider="local",
         llm_provider="local",
     )
-    audio_out_cfg = AudioOutputConfig(enable_tts=True, output_device_index=1)
-    wyoming_tts_cfg = WyomingTTSConfig(
+    audio_out_cfg = config.AudioOutput(enable_tts=True, output_device_index=1)
+    wyoming_tts_cfg = config.WyomingTTS(
         wyoming_tts_ip="localhost",
         wyoming_tts_port=1234,
         wyoming_voice="test-voice",
     )
-    openai_tts_cfg = OpenAITTSConfig(openai_tts_model="tts-1", openai_tts_voice="alloy")
-    openai_llm_cfg = OpenAILLMConfig(
+    openai_tts_cfg = config.OpenAITTS(openai_tts_model="tts-1", openai_tts_voice="alloy")
+    openai_llm_cfg = config.OpenAILLM(
         openai_llm_model="gpt-4o-mini",
         openai_api_key="fake-key",
     )
@@ -125,19 +119,19 @@ async def test_handle_tts_playback_no_audio(mock_speak_text: AsyncMock) -> None:
     """Test the handle_tts_playback function when no audio is returned."""
     mock_speak_text.return_value = None
     mock_live = MagicMock()
-    provider_cfg = ProviderSelectionConfig(
+    provider_cfg = config.ProviderSelection(
         tts_provider="local",
         asr_provider="local",
         llm_provider="local",
     )
-    audio_out_cfg = AudioOutputConfig(enable_tts=True, output_device_index=1)
-    wyoming_tts_cfg = WyomingTTSConfig(
+    audio_out_cfg = config.AudioOutput(enable_tts=True, output_device_index=1)
+    wyoming_tts_cfg = config.WyomingTTS(
         wyoming_tts_ip="localhost",
         wyoming_tts_port=1234,
         wyoming_voice="test-voice",
     )
-    openai_tts_cfg = OpenAITTSConfig(openai_tts_model="tts-1", openai_tts_voice="alloy")
-    openai_llm_cfg = OpenAILLMConfig(
+    openai_tts_cfg = config.OpenAITTS(openai_tts_model="tts-1", openai_tts_voice="alloy")
+    openai_llm_cfg = config.OpenAILLM(
         openai_llm_model="gpt-4o-mini",
         openai_api_key="fake-key",
     )

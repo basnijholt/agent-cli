@@ -10,7 +10,7 @@ if TYPE_CHECKING:
 
     from openai import AsyncOpenAI
 
-    from agent_cli.agents._config import OpenAIASRConfig, OpenAILLMConfig, OpenAITTSConfig
+    from agent_cli.agents import config
 
 
 def _get_openai_client(api_key: str) -> AsyncOpenAI:
@@ -25,8 +25,8 @@ def _get_openai_client(api_key: str) -> AsyncOpenAI:
 
 async def transcribe_audio_openai(
     audio_data: bytes,
-    openai_asr_config: OpenAIASRConfig,
-    openai_llm_config: OpenAILLMConfig,
+    openai_asr_config: config.OpenAIASR,
+    openai_llm_config: config.OpenAILLM,
     logger: logging.Logger,
 ) -> str:
     """Transcribe audio using OpenAI's Whisper API."""
@@ -46,8 +46,8 @@ async def transcribe_audio_openai(
 
 async def synthesize_speech_openai(
     text: str,
-    openai_tts_config: OpenAITTSConfig,
-    openai_llm_config: OpenAILLMConfig,
+    openai_tts_config: config.OpenAITTS,
+    openai_llm_config: config.OpenAILLM,
     logger: logging.Logger,
 ) -> bytes:
     """Synthesize speech using OpenAI's TTS API."""

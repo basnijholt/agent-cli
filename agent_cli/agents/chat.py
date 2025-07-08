@@ -26,19 +26,7 @@ import typer
 
 import agent_cli.agents._cli_options as opts
 from agent_cli import asr, process_manager
-from agent_cli.agents._config import (
-    AudioInputConfig,
-    AudioOutputConfig,
-    GeneralConfig,
-    HistoryConfig,
-    OllamaConfig,
-    OpenAIASRConfig,
-    OpenAILLMConfig,
-    OpenAITTSConfig,
-    ProviderSelectionConfig,
-    WyomingASRConfig,
-    WyomingTTSConfig,
-)
+from agent_cli.agents import config
 from agent_cli.agents._tts_common import handle_tts_playback
 from agent_cli.audio import pyaudio_context, setup_devices
 from agent_cli.cli import app, setup_logging
@@ -159,17 +147,17 @@ async def _handle_conversation_turn(
     p: pyaudio.PyAudio,
     stop_event: InteractiveStopEvent,
     conversation_history: list[ConversationEntry],
-    provider_cfg: ProviderSelectionConfig,
-    general_cfg: GeneralConfig,
-    history_cfg: HistoryConfig,
-    audio_in_cfg: AudioInputConfig,
-    wyoming_asr_cfg: WyomingASRConfig,
-    openai_asr_cfg: OpenAIASRConfig,
-    ollama_cfg: OllamaConfig,
-    openai_llm_cfg: OpenAILLMConfig,
-    audio_out_cfg: AudioOutputConfig,
-    wyoming_tts_cfg: WyomingTTSConfig,
-    openai_tts_cfg: OpenAITTSConfig,
+    provider_cfg: config.ProviderSelection,
+    general_cfg: config.General,
+    history_cfg: config.History,
+    audio_in_cfg: config.AudioInput,
+    wyoming_asr_cfg: config.WyomingASR,
+    openai_asr_cfg: config.OpenAIASR,
+    ollama_cfg: config.Ollama,
+    openai_llm_cfg: config.OpenAILLM,
+    audio_out_cfg: config.AudioOutput,
+    wyoming_tts_cfg: config.WyomingTTS,
+    openai_tts_cfg: config.OpenAITTS,
     live: Live,
 ) -> None:
     """Handles a single turn of the conversation."""
@@ -330,17 +318,17 @@ async def _handle_conversation_turn(
 
 async def _async_main(
     *,
-    provider_cfg: ProviderSelectionConfig,
-    general_cfg: GeneralConfig,
-    history_cfg: HistoryConfig,
-    audio_in_cfg: AudioInputConfig,
-    wyoming_asr_cfg: WyomingASRConfig,
-    openai_asr_cfg: OpenAIASRConfig,
-    ollama_cfg: OllamaConfig,
-    openai_llm_cfg: OpenAILLMConfig,
-    audio_out_cfg: AudioOutputConfig,
-    wyoming_tts_cfg: WyomingTTSConfig,
-    openai_tts_cfg: OpenAITTSConfig,
+    provider_cfg: config.ProviderSelection,
+    general_cfg: config.General,
+    history_cfg: config.History,
+    audio_in_cfg: config.AudioInput,
+    wyoming_asr_cfg: config.WyomingASR,
+    openai_asr_cfg: config.OpenAIASR,
+    ollama_cfg: config.Ollama,
+    openai_llm_cfg: config.OpenAILLM,
+    audio_out_cfg: config.AudioOutput,
+    wyoming_tts_cfg: config.WyomingTTS,
+    openai_tts_cfg: config.OpenAITTS,
 ) -> None:
     """Main async function, consumes parsed arguments."""
     try:
@@ -452,7 +440,7 @@ def chat(
 ) -> None:
     """An chat agent that you can talk to."""
     setup_logging(log_level, log_file, quiet=quiet)
-    general_cfg = GeneralConfig(
+    general_cfg = config.General(
         log_level=log_level,
         log_file=log_file,
         quiet=quiet,
@@ -472,43 +460,43 @@ def chat(
         return
 
     with process_manager.pid_file_context(process_name), suppress(KeyboardInterrupt):
-        provider_cfg = ProviderSelectionConfig(
+        provider_cfg = config.ProviderSelection(
             asr_provider=asr_provider,
             llm_provider=llm_provider,
             tts_provider=tts_provider,
         )
-        audio_in_cfg = AudioInputConfig(
+        audio_in_cfg = config.AudioInput(
             input_device_index=input_device_index,
             input_device_name=input_device_name,
         )
-        wyoming_asr_cfg = WyomingASRConfig(
+        wyoming_asr_cfg = config.WyomingASR(
             wyoming_asr_ip=wyoming_asr_ip,
             wyoming_asr_port=wyoming_asr_port,
         )
-        openai_asr_cfg = OpenAIASRConfig(openai_asr_model=openai_asr_model)
-        ollama_cfg = OllamaConfig(ollama_model=ollama_model, ollama_host=ollama_host)
-        openai_llm_cfg = OpenAILLMConfig(
+        openai_asr_cfg = config.OpenAIASR(openai_asr_model=openai_asr_model)
+        ollama_cfg = config.Ollama(ollama_model=ollama_model, ollama_host=ollama_host)
+        openai_llm_cfg = config.OpenAILLM(
             openai_llm_model=openai_llm_model,
             openai_api_key=openai_api_key,
         )
-        audio_out_cfg = AudioOutputConfig(
+        audio_out_cfg = config.AudioOutput(
             enable_tts=enable_tts,
             output_device_index=output_device_index,
             output_device_name=output_device_name,
             tts_speed=tts_speed,
         )
-        wyoming_tts_cfg = WyomingTTSConfig(
+        wyoming_tts_cfg = config.WyomingTTS(
             wyoming_tts_ip=wyoming_tts_ip,
             wyoming_tts_port=wyoming_tts_port,
             wyoming_voice=wyoming_voice,
             wyoming_tts_language=wyoming_tts_language,
             wyoming_speaker=wyoming_speaker,
         )
-        openai_tts_cfg = OpenAITTSConfig(
+        openai_tts_cfg = config.OpenAITTS(
             openai_tts_model=openai_tts_model,
             openai_tts_voice=openai_tts_voice,
         )
-        history_cfg = HistoryConfig(
+        history_cfg = config.History(
             history_dir=history_dir,
             last_n_messages=last_n_messages,
         )

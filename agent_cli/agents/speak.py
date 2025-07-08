@@ -11,14 +11,7 @@ import typer
 
 import agent_cli.agents._cli_options as opts
 from agent_cli import process_manager
-from agent_cli.agents._config import (
-    AudioOutputConfig,
-    GeneralConfig,
-    OpenAILLMConfig,
-    OpenAITTSConfig,
-    ProviderSelectionConfig,
-    WyomingTTSConfig,
-)
+from agent_cli.agents import config
 from agent_cli.agents._tts_common import handle_tts_playback
 from agent_cli.audio import pyaudio_context, setup_devices
 from agent_cli.cli import app, setup_logging
@@ -34,13 +27,13 @@ LOGGER = logging.getLogger()
 
 async def _async_main(
     *,
-    general_cfg: GeneralConfig,
+    general_cfg: config.General,
     text: str | None,
-    provider_cfg: ProviderSelectionConfig,
-    audio_out_cfg: AudioOutputConfig,
-    wyoming_tts_cfg: WyomingTTSConfig,
-    openai_tts_cfg: OpenAITTSConfig,
-    openai_llm_cfg: OpenAILLMConfig,
+    provider_cfg: config.ProviderSelection,
+    audio_out_cfg: config.AudioOutput,
+    wyoming_tts_cfg: config.WyomingTTS,
+    openai_tts_cfg: config.OpenAITTS,
+    openai_llm_cfg: config.OpenAILLM,
 ) -> None:
     """Async entry point for the speak command."""
     with pyaudio_context() as p:
@@ -119,7 +112,7 @@ def speak(
 ) -> None:
     """Convert text to speech using Wyoming or OpenAI TTS server."""
     setup_logging(log_level, log_file, quiet=quiet)
-    general_cfg = GeneralConfig(
+    general_cfg = config.General(
         log_level=log_level,
         log_file=log_file,
         quiet=quiet,
@@ -139,29 +132,29 @@ def speak(
 
     # Use context manager for PID file management
     with process_manager.pid_file_context(process_name), suppress(KeyboardInterrupt):
-        provider_cfg = ProviderSelectionConfig(
+        provider_cfg = config.ProviderSelection(
             tts_provider=tts_provider,
             asr_provider="local",  # Not used
             llm_provider="local",  # Not used
         )
-        audio_out_cfg = AudioOutputConfig(
+        audio_out_cfg = config.AudioOutput(
             output_device_index=output_device_index,
             output_device_name=output_device_name,
             tts_speed=tts_speed,
             enable_tts=True,  # Implied for speak command
         )
-        wyoming_tts_cfg = WyomingTTSConfig(
+        wyoming_tts_cfg = config.WyomingTTS(
             wyoming_tts_ip=wyoming_tts_ip,
             wyoming_tts_port=wyoming_tts_port,
             wyoming_voice=wyoming_voice,
             wyoming_tts_language=wyoming_tts_language,
             wyoming_speaker=wyoming_speaker,
         )
-        openai_tts_cfg = OpenAITTSConfig(
+        openai_tts_cfg = config.OpenAITTS(
             openai_tts_model=openai_tts_model,
             openai_tts_voice=openai_tts_voice,
         )
-        openai_llm_cfg = OpenAILLMConfig(
+        openai_llm_cfg = config.OpenAILLM(
             openai_llm_model=openai_llm_model,
             openai_api_key=openai_api_key,
         )

@@ -9,14 +9,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from rich.console import Console
 
-from agent_cli import config
-from agent_cli.agents import autocorrect
-from agent_cli.agents._config import (
-    GeneralConfig,
-    OllamaConfig,
-    OpenAILLMConfig,
-    ProviderSelectionConfig,
-)
+from agent_cli import defaults
+from agent_cli.agents import autocorrect, config
 
 
 def test_system_prompt_and_instructions():
@@ -114,13 +108,13 @@ async def test_process_text_integration(mock_build_agent: MagicMock) -> None:
     mock_agent.run = AsyncMock(return_value=mock_result)
     mock_build_agent.return_value = mock_agent
 
-    provider_cfg = ProviderSelectionConfig(
+    provider_cfg = config.ProviderSelection(
         llm_provider="local",
         asr_provider="local",
         tts_provider="local",
     )
-    ollama_cfg = OllamaConfig(ollama_model="test-model", ollama_host="test")
-    openai_llm_cfg = OpenAILLMConfig(openai_llm_model="gpt-4o-mini", openai_api_key=None)
+    ollama_cfg = config.Ollama(ollama_model="test-model", ollama_host="test")
+    openai_llm_cfg = config.OpenAILLM(openai_llm_model="gpt-4o-mini", openai_api_key=None)
 
     # Test the function
     result, elapsed = await autocorrect._process_text(
@@ -150,12 +144,12 @@ async def test_process_text_integration(mock_build_agent: MagicMock) -> None:
 def test_configuration_constants():
     """Test that configuration constants are properly set."""
     # Test that OLLAMA_HOST has a reasonable value (could be localhost or custom)
-    assert config.OLLAMA_HOST
-    assert config.OLLAMA_HOST.startswith("http")  # Should be a valid URL
+    assert defaults.OLLAMA_HOST
+    assert defaults.OLLAMA_HOST.startswith("http")  # Should be a valid URL
 
     # Test that DEFAULT_MODEL is set
-    assert config.DEFAULT_MODEL
-    assert isinstance(config.DEFAULT_MODEL, str)
+    assert defaults.DEFAULT_MODEL
+    assert isinstance(defaults.DEFAULT_MODEL, str)
 
 
 @pytest.mark.asyncio
@@ -174,14 +168,17 @@ async def test_autocorrect_command_with_text(
     mock_agent.run = AsyncMock(return_value=mock_result)
     mock_build_agent.return_value = mock_agent
 
-    provider_cfg = ProviderSelectionConfig(
+    provider_cfg = config.ProviderSelection(
         llm_provider="local",
         asr_provider="local",
         tts_provider="local",
     )
-    ollama_cfg = OllamaConfig(ollama_model=config.DEFAULT_MODEL, ollama_host=config.OLLAMA_HOST)
-    openai_llm_cfg = OpenAILLMConfig(openai_llm_model="gpt-4o-mini", openai_api_key=None)
-    general_cfg = GeneralConfig(
+    ollama_cfg = config.Ollama(
+        ollama_model=defaults.DEFAULT_MODEL,
+        ollama_host=defaults.OLLAMA_HOST,
+    )
+    openai_llm_cfg = config.OpenAILLM(openai_llm_model="gpt-4o-mini", openai_api_key=None)
+    general_cfg = config.General(
         log_level="WARNING",
         log_file=None,
         quiet=True,
@@ -226,14 +223,17 @@ async def test_autocorrect_command_from_clipboard(
     mock_agent.run = AsyncMock(return_value=mock_result)
     mock_build_agent.return_value = mock_agent
 
-    provider_cfg = ProviderSelectionConfig(
+    provider_cfg = config.ProviderSelection(
         llm_provider="local",
         asr_provider="local",
         tts_provider="local",
     )
-    ollama_cfg = OllamaConfig(ollama_model=config.DEFAULT_MODEL, ollama_host=config.OLLAMA_HOST)
-    openai_llm_cfg = OpenAILLMConfig(openai_llm_model="gpt-4o-mini", openai_api_key=None)
-    general_cfg = GeneralConfig(
+    ollama_cfg = config.Ollama(
+        ollama_model=defaults.DEFAULT_MODEL,
+        ollama_host=defaults.OLLAMA_HOST,
+    )
+    openai_llm_cfg = config.OpenAILLM(openai_llm_model="gpt-4o-mini", openai_api_key=None)
+    general_cfg = config.General(
         log_level="WARNING",
         log_file=None,
         quiet=True,
@@ -270,14 +270,14 @@ async def test_async_autocorrect_no_text(
     mock_process_text: AsyncMock,
 ) -> None:
     """Test the async_autocorrect function when no text is provided."""
-    provider_cfg = ProviderSelectionConfig(
+    provider_cfg = config.ProviderSelection(
         llm_provider="local",
         asr_provider="local",
         tts_provider="local",
     )
-    ollama_cfg = OllamaConfig(ollama_model="test", ollama_host="test")
-    openai_llm_cfg = OpenAILLMConfig(openai_llm_model="gpt-4o-mini", openai_api_key=None)
-    general_cfg = GeneralConfig(
+    ollama_cfg = config.Ollama(ollama_model="test", ollama_host="test")
+    openai_llm_cfg = config.OpenAILLM(openai_llm_model="gpt-4o-mini", openai_api_key=None)
+    general_cfg = config.General(
         log_level="WARNING",
         log_file=None,
         quiet=True,

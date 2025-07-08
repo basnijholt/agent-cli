@@ -6,18 +6,7 @@ from unittest.mock import ANY, AsyncMock, MagicMock, patch
 
 import pytest
 
-from agent_cli.agents._config import (
-    AudioInputConfig,
-    AudioOutputConfig,
-    GeneralConfig,
-    OllamaConfig,
-    OpenAIASRConfig,
-    OpenAILLMConfig,
-    OpenAITTSConfig,
-    ProviderSelectionConfig,
-    WyomingASRConfig,
-    WyomingTTSConfig,
-)
+from agent_cli.agents import config
 from agent_cli.agents.voice_edit import (
     AGENT_INSTRUCTIONS,
     SYSTEM_PROMPT,
@@ -27,24 +16,24 @@ from tests.mocks.audio import MockPyAudio
 
 
 def get_configs() -> tuple[
-    ProviderSelectionConfig,
-    GeneralConfig,
-    AudioInputConfig,
-    WyomingASRConfig,
-    OpenAIASRConfig,
-    OllamaConfig,
-    OpenAILLMConfig,
-    AudioOutputConfig,
-    WyomingTTSConfig,
-    OpenAITTSConfig,
+    config.ProviderSelection,
+    config.General,
+    config.AudioInput,
+    config.WyomingASR,
+    config.OpenAIASR,
+    config.Ollama,
+    config.OpenAILLM,
+    config.AudioOutput,
+    config.WyomingTTS,
+    config.OpenAITTS,
 ]:
     """Get all the necessary configs for the e2e test."""
-    provider_cfg = ProviderSelectionConfig(
+    provider_cfg = config.ProviderSelection(
         asr_provider="local",
         llm_provider="local",
         tts_provider="local",
     )
-    general_cfg = GeneralConfig(
+    general_cfg = config.General(
         log_level="INFO",
         log_file=None,
         quiet=False,
@@ -52,14 +41,14 @@ def get_configs() -> tuple[
         clipboard=True,
         save_file=None,
     )
-    audio_in_cfg = AudioInputConfig(input_device_index=0)
-    wyoming_asr_cfg = WyomingASRConfig(wyoming_asr_ip="mock-asr-host", wyoming_asr_port=10300)
-    openai_asr_cfg = OpenAIASRConfig(openai_asr_model="whisper-1")
-    ollama_cfg = OllamaConfig(ollama_model="test-model", ollama_host="http://localhost:11434")
-    openai_llm_cfg = OpenAILLMConfig(openai_llm_model="gpt-4")
-    audio_out_cfg = AudioOutputConfig(enable_tts=False)
-    wyoming_tts_cfg = WyomingTTSConfig(wyoming_tts_ip="mock-tts-host", wyoming_tts_port=10200)
-    openai_tts_cfg = OpenAITTSConfig(openai_tts_model="tts-1", openai_tts_voice="alloy")
+    audio_in_cfg = config.AudioInput(input_device_index=0)
+    wyoming_asr_cfg = config.WyomingASR(wyoming_asr_ip="mock-asr-host", wyoming_asr_port=10300)
+    openai_asr_cfg = config.OpenAIASR(openai_asr_model="whisper-1")
+    ollama_cfg = config.Ollama(ollama_model="test-model", ollama_host="http://localhost:11434")
+    openai_llm_cfg = config.OpenAILLM(openai_llm_model="gpt-4")
+    audio_out_cfg = config.AudioOutput(enable_tts=False)
+    wyoming_tts_cfg = config.WyomingTTS(wyoming_tts_ip="mock-tts-host", wyoming_tts_port=10200)
+    openai_tts_cfg = config.OpenAITTS(openai_tts_model="tts-1", openai_tts_voice="alloy")
     return (
         provider_cfg,
         general_cfg,

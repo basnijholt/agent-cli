@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING
 import pyaudio
 from rich.text import Text
 
-from agent_cli import config
+from agent_cli import defaults
 from agent_cli.utils import InteractiveStopEvent, console, print_device_index, print_with_style
 
 if TYPE_CHECKING:
@@ -20,7 +20,7 @@ if TYPE_CHECKING:
 
     from rich.live import Live
 
-    from agent_cli.agents._config import AudioInputConfig, AudioOutputConfig, GeneralConfig
+    from agent_cli.agents import config
 
 
 class _AudioTee:
@@ -68,7 +68,7 @@ class _AudioTee:
             while not self.stop_event.is_set() and not self._stop_tee_event.is_set():
                 chunk = await asyncio.to_thread(
                     self.stream.read,
-                    num_frames=config.PYAUDIO_CHUNK_SIZE,
+                    num_frames=defaults.PYAUDIO_CHUNK_SIZE,
                     exception_on_overflow=False,
                 )
                 # Lock the queue list while iterating to prevent modification during iteration
@@ -186,7 +186,7 @@ async def read_audio_stream(
         while not stop_event.is_set():
             chunk = await asyncio.to_thread(
                 stream.read,
-                num_frames=config.PYAUDIO_CHUNK_SIZE,
+                num_frames=defaults.PYAUDIO_CHUNK_SIZE,
                 exception_on_overflow=False,
             )
 
@@ -199,7 +199,7 @@ async def read_audio_stream(
             logger.debug("Processed %d byte(s) of audio", len(chunk))
 
             # Update progress display
-            seconds_streamed += len(chunk) / (config.PYAUDIO_RATE * config.PYAUDIO_CHANNELS * 2)
+            seconds_streamed += len(chunk) / (defaults.PYAUDIO_RATE * defaults.PYAUDIO_CHANNELS * 2)
             if live and not quiet:
                 if stop_event.ctrl_c_pressed:
                     msg = f"Ctrl+C pressed. Stopping {progress_message.lower()}..."
@@ -229,11 +229,11 @@ def setup_input_stream(
 
     """
     return {
-        "format": config.PYAUDIO_FORMAT,
-        "channels": config.PYAUDIO_CHANNELS,
-        "rate": config.PYAUDIO_RATE,
+        "format": defaults.PYAUDIO_FORMAT,
+        "channels": defaults.PYAUDIO_CHANNELS,
+        "rate": defaults.PYAUDIO_RATE,
         "input": True,
-        "frames_per_buffer": config.PYAUDIO_CHUNK_SIZE,
+        "frames_per_buffer": defaults.PYAUDIO_CHUNK_SIZE,
         "input_device_index": input_device_index,
     }
 
@@ -260,10 +260,10 @@ def setup_output_stream(
     """
     return {
         "format": pyaudio.get_format_from_width(sample_width or 2),
-        "channels": channels or config.PYAUDIO_CHANNELS,
-        "rate": sample_rate or config.PYAUDIO_RATE,
+        "channels": channels or defaults.PYAUDIO_CHANNELS,
+        "rate": sample_rate or defaults.PYAUDIO_RATE,
         "output": True,
-        "frames_per_buffer": config.PYAUDIO_CHUNK_SIZE,
+        "frames_per_buffer": defaults.PYAUDIO_CHUNK_SIZE,
         "output_device_index": output_device_index,
     }
 
@@ -395,9 +395,9 @@ def output_device(
 
 def setup_devices(
     p: pyaudio.PyAudio,
-    general_config: GeneralConfig,
-    audio_in_cfg: AudioInputConfig | None,
-    audio_out_cfg: AudioOutputConfig | None,
+    general_config: config.General,
+    audio_in_cfg: config.AudioInput | None,
+    audio_out_cfg: config.AudioOutput | None,
 ) -> tuple[int | None, str | None, int | None] | None:
     """Handle device listing and setup."""
     if general_config.list_devices:

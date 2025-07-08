@@ -16,18 +16,7 @@ from agent_cli.utils import print_input_panel, print_with_style
 if TYPE_CHECKING:
     from rich.live import Live
 
-    from agent_cli.agents._config import (
-        AudioInputConfig,
-        AudioOutputConfig,
-        GeneralConfig,
-        OllamaConfig,
-        OpenAIASRConfig,
-        OpenAILLMConfig,
-        OpenAITTSConfig,
-        ProviderSelectionConfig,
-        WyomingASRConfig,
-        WyomingTTSConfig,
-    )
+    from agent_cli.agents import config
 
 LOGGER = logging.getLogger()
 
@@ -35,12 +24,12 @@ LOGGER = logging.getLogger()
 async def get_instruction_from_audio(
     *,
     audio_data: bytes,
-    provider_config: ProviderSelectionConfig,
-    audio_input_config: AudioInputConfig,
-    wyoming_asr_config: WyomingASRConfig,
-    openai_asr_config: OpenAIASRConfig,
-    ollama_config: OllamaConfig,
-    openai_llm_config: OpenAILLMConfig,
+    provider_config: config.ProviderSelection,
+    audio_input_config: config.AudioInput,
+    wyoming_asr_config: config.WyomingASR,
+    openai_asr_config: config.OpenAIASR,
+    ollama_config: config.Ollama,
+    openai_llm_config: config.OpenAILLM,
     logger: logging.Logger,
     quiet: bool,
 ) -> str | None:
@@ -90,13 +79,13 @@ async def process_instruction_and_respond(
     *,
     instruction: str,
     original_text: str,
-    provider_config: ProviderSelectionConfig,
-    general_config: GeneralConfig,
-    ollama_config: OllamaConfig,
-    openai_llm_config: OpenAILLMConfig,
-    audio_output_config: AudioOutputConfig,
-    wyoming_tts_config: WyomingTTSConfig,
-    openai_tts_config: OpenAITTSConfig,
+    provider_config: config.ProviderSelection,
+    general_config: config.General,
+    ollama_config: config.Ollama,
+    openai_llm_config: config.OpenAILLM,
+    audio_output_config: config.AudioOutput,
+    wyoming_tts_config: config.WyomingTTS,
+    openai_tts_config: config.OpenAITTS,
     system_prompt: str,
     agent_instructions: str,
     live: Live | None,

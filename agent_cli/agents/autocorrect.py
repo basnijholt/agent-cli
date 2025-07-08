@@ -12,12 +12,7 @@ import pyperclip
 import typer
 
 import agent_cli.agents._cli_options as opts
-from agent_cli.agents._config import (
-    GeneralConfig,
-    OllamaConfig,
-    OpenAILLMConfig,
-    ProviderSelectionConfig,
-)
+from agent_cli.agents import config
 from agent_cli.cli import app, setup_logging
 from agent_cli.llm import build_agent
 from agent_cli.utils import (
@@ -78,9 +73,9 @@ Output format: corrected text only, no other words.
 
 async def _process_text(
     text: str,
-    provider_cfg: ProviderSelectionConfig,
-    ollama_cfg: OllamaConfig,
-    openai_llm_cfg: OpenAILLMConfig,
+    provider_cfg: config.ProviderSelection,
+    ollama_cfg: config.Ollama,
+    openai_llm_cfg: config.OpenAILLM,
 ) -> tuple[str, float]:
     """Process text with the LLM and return the corrected text and elapsed time."""
     agent = build_agent(
@@ -131,9 +126,9 @@ def _display_result(
 
 
 def _maybe_status(
-    provider_cfg: ProviderSelectionConfig,
-    ollama_cfg: OllamaConfig,
-    openai_llm_cfg: OpenAILLMConfig,
+    provider_cfg: config.ProviderSelection,
+    ollama_cfg: config.Ollama,
+    openai_llm_cfg: config.OpenAILLM,
     quiet: bool,
 ) -> Status | contextlib.nullcontext:
     if not quiet:
@@ -149,10 +144,10 @@ def _maybe_status(
 async def _async_autocorrect(
     *,
     text: str | None,
-    provider_cfg: ProviderSelectionConfig,
-    ollama_cfg: OllamaConfig,
-    openai_llm_cfg: OpenAILLMConfig,
-    general_cfg: GeneralConfig,
+    provider_cfg: config.ProviderSelection,
+    ollama_cfg: config.Ollama,
+    openai_llm_cfg: config.OpenAILLM,
+    general_cfg: config.General,
 ) -> None:
     """Asynchronous version of the autocorrect command."""
     setup_logging(general_cfg.log_level, general_cfg.log_file, quiet=general_cfg.quiet)
@@ -210,17 +205,17 @@ def autocorrect(
     config_file: str | None = opts.CONFIG_FILE,  # noqa: ARG001
 ) -> None:
     """Correct text from clipboard using a local or remote LLM."""
-    provider_cfg = ProviderSelectionConfig(
+    provider_cfg = config.ProviderSelection(
         llm_provider=llm_provider,
         asr_provider="local",  # Not used, but required by model
         tts_provider="local",  # Not used, but required by model
     )
-    ollama_cfg = OllamaConfig(ollama_model=ollama_model, ollama_host=ollama_host)
-    openai_llm_cfg = OpenAILLMConfig(
+    ollama_cfg = config.Ollama(ollama_model=ollama_model, ollama_host=ollama_host)
+    openai_llm_cfg = config.OpenAILLM(
         openai_llm_model=openai_llm_model,
         openai_api_key=openai_api_key,
     )
-    general_cfg = GeneralConfig(
+    general_cfg = config.General(
         log_level=log_level,
         log_file=log_file,
         quiet=quiet,

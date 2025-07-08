@@ -12,15 +12,7 @@ import pyperclip
 
 import agent_cli.agents._cli_options as opts
 from agent_cli import asr, process_manager
-from agent_cli.agents._config import (
-    AudioInputConfig,
-    GeneralConfig,
-    OllamaConfig,
-    OpenAIASRConfig,
-    OpenAILLMConfig,
-    ProviderSelectionConfig,
-    WyomingASRConfig,
-)
+from agent_cli.agents import config
 from agent_cli.audio import pyaudio_context, setup_devices
 from agent_cli.cli import app, setup_logging
 from agent_cli.llm import process_and_update_clipboard
@@ -76,13 +68,13 @@ Please clean up this transcribed text by correcting any speech recognition error
 
 async def _async_main(
     *,
-    provider_cfg: ProviderSelectionConfig,
-    general_cfg: GeneralConfig,
-    audio_in_cfg: AudioInputConfig,
-    wyoming_asr_cfg: WyomingASRConfig,
-    openai_asr_cfg: OpenAIASRConfig,
-    ollama_cfg: OllamaConfig,
-    openai_llm_cfg: OpenAILLMConfig,
+    provider_cfg: config.ProviderSelection,
+    general_cfg: config.General,
+    audio_in_cfg: config.AudioInput,
+    wyoming_asr_cfg: config.WyomingASR,
+    openai_asr_cfg: config.OpenAIASR,
+    ollama_cfg: config.Ollama,
+    openai_llm_cfg: config.OpenAILLM,
     llm_enabled: bool,
     p: pyaudio.PyAudio,
 ) -> None:
@@ -185,7 +177,7 @@ def transcribe(
 ) -> None:
     """Wyoming ASR Client for streaming microphone audio to a transcription server."""
     setup_logging(log_level, log_file, quiet=quiet)
-    general_cfg = GeneralConfig(
+    general_cfg = config.General(
         log_level=log_level,
         log_file=log_file,
         quiet=quiet,
@@ -204,24 +196,24 @@ def transcribe(
         return
 
     with pyaudio_context() as p:
-        provider_cfg = ProviderSelectionConfig(
+        provider_cfg = config.ProviderSelection(
             asr_provider=asr_provider,
             llm_provider=llm_provider,
             tts_provider="local",  # Not used
         )
-        audio_in_cfg = AudioInputConfig(
+        audio_in_cfg = config.AudioInput(
             input_device_index=input_device_index,
             input_device_name=input_device_name,
         )
-        wyoming_asr_cfg = WyomingASRConfig(
+        wyoming_asr_cfg = config.WyomingASR(
             wyoming_asr_ip=wyoming_asr_ip,
             wyoming_asr_port=wyoming_asr_port,
         )
-        openai_asr_cfg = OpenAIASRConfig(
+        openai_asr_cfg = config.OpenAIASR(
             openai_asr_model=openai_asr_model,
         )
-        ollama_cfg = OllamaConfig(ollama_model=ollama_model, ollama_host=ollama_host)
-        openai_llm_cfg = OpenAILLMConfig(
+        ollama_cfg = config.Ollama(ollama_model=ollama_model, ollama_host=ollama_host)
+        openai_llm_cfg = config.OpenAILLM(
             openai_llm_model=openai_llm_model,
             openai_api_key=openai_api_key,
         )

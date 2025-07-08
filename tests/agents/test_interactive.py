@@ -9,19 +9,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from agent_cli.agents._config import (
-    AudioInputConfig,
-    AudioOutputConfig,
-    GeneralConfig,
-    HistoryConfig,
-    OllamaConfig,
-    OpenAIASRConfig,
-    OpenAILLMConfig,
-    OpenAITTSConfig,
-    ProviderSelectionConfig,
-    WyomingASRConfig,
-    WyomingTTSConfig,
-)
+from agent_cli.agents import config
 from agent_cli.agents.chat import (
     ConversationEntry,
     _async_main,
@@ -86,27 +74,27 @@ def test_format_conversation_for_llm() -> None:
 @pytest.mark.asyncio
 async def test_async_main_list_devices(tmp_path: Path) -> None:
     """Test the async_main function with list_input_devices=True."""
-    general_cfg = GeneralConfig(
+    general_cfg = config.General(
         log_level="INFO",
         log_file=None,
         quiet=False,
         list_devices=True,
         clipboard=False,
     )
-    provider_cfg = ProviderSelectionConfig(
+    provider_cfg = config.ProviderSelection(
         asr_provider="local",
         llm_provider="local",
         tts_provider="local",
     )
-    history_cfg = HistoryConfig(history_dir=tmp_path)
-    audio_in_cfg = AudioInputConfig()
-    wyoming_asr_cfg = WyomingASRConfig(wyoming_asr_ip="localhost", wyoming_asr_port=1234)
-    openai_asr_cfg = OpenAIASRConfig(openai_asr_model="whisper-1")
-    ollama_cfg = OllamaConfig(ollama_model="test-model", ollama_host="localhost")
-    openai_llm_cfg = OpenAILLMConfig(openai_llm_model="gpt-4")
-    audio_out_cfg = AudioOutputConfig()
-    wyoming_tts_cfg = WyomingTTSConfig(wyoming_tts_ip="localhost", wyoming_tts_port=5678)
-    openai_tts_cfg = OpenAITTSConfig(openai_tts_model="tts-1", openai_tts_voice="alloy")
+    history_cfg = config.History(history_dir=tmp_path)
+    audio_in_cfg = config.AudioInput()
+    wyoming_asr_cfg = config.WyomingASR(wyoming_asr_ip="localhost", wyoming_asr_port=1234)
+    openai_asr_cfg = config.OpenAIASR(openai_asr_model="whisper-1")
+    ollama_cfg = config.Ollama(ollama_model="test-model", ollama_host="localhost")
+    openai_llm_cfg = config.OpenAILLM(openai_llm_model="gpt-4")
+    audio_out_cfg = config.AudioOutput()
+    wyoming_tts_cfg = config.WyomingTTS(wyoming_tts_ip="localhost", wyoming_tts_port=5678)
+    openai_tts_cfg = config.OpenAITTS(openai_tts_model="tts-1", openai_tts_voice="alloy")
 
     with (
         patch("agent_cli.agents.chat.pyaudio_context"),
@@ -134,27 +122,27 @@ async def test_async_main_list_devices(tmp_path: Path) -> None:
 @pytest.mark.asyncio
 async def test_async_main_list_output_devices(tmp_path: Path) -> None:
     """Test the async_main function with list_devices=True."""
-    general_cfg = GeneralConfig(
+    general_cfg = config.General(
         log_level="INFO",
         log_file=None,
         quiet=False,
         list_devices=False,
         clipboard=False,
     )
-    provider_cfg = ProviderSelectionConfig(
+    provider_cfg = config.ProviderSelection(
         asr_provider="local",
         llm_provider="local",
         tts_provider="local",
     )
-    history_cfg = HistoryConfig(history_dir=tmp_path)
-    audio_in_cfg = AudioInputConfig()
-    wyoming_asr_cfg = WyomingASRConfig(wyoming_asr_ip="localhost", wyoming_asr_port=1234)
-    openai_asr_cfg = OpenAIASRConfig(openai_asr_model="whisper-1")
-    ollama_cfg = OllamaConfig(ollama_model="test-model", ollama_host="localhost")
-    openai_llm_cfg = OpenAILLMConfig(openai_llm_model="gpt-4")
-    audio_out_cfg = AudioOutputConfig()
-    wyoming_tts_cfg = WyomingTTSConfig(wyoming_tts_ip="localhost", wyoming_tts_port=5678)
-    openai_tts_cfg = OpenAITTSConfig(openai_tts_model="tts-1", openai_tts_voice="alloy")
+    history_cfg = config.History(history_dir=tmp_path)
+    audio_in_cfg = config.AudioInput()
+    wyoming_asr_cfg = config.WyomingASR(wyoming_asr_ip="localhost", wyoming_asr_port=1234)
+    openai_asr_cfg = config.OpenAIASR(openai_asr_model="whisper-1")
+    ollama_cfg = config.Ollama(ollama_model="test-model", ollama_host="localhost")
+    openai_llm_cfg = config.OpenAILLM(openai_llm_model="gpt-4")
+    audio_out_cfg = config.AudioOutput()
+    wyoming_tts_cfg = config.WyomingTTS(wyoming_tts_ip="localhost", wyoming_tts_port=5678)
+    openai_tts_cfg = config.OpenAITTS(openai_tts_model="tts-1", openai_tts_voice="alloy")
 
     with (
         patch("agent_cli.agents.chat.pyaudio_context"),
@@ -185,31 +173,31 @@ async def test_async_main_full_loop(tmp_path: Path) -> None:
     history_dir = tmp_path / "history"
     history_dir.mkdir()
 
-    general_cfg = GeneralConfig(
+    general_cfg = config.General(
         log_level="INFO",
         log_file=None,
         list_devices=False,
         quiet=False,
         clipboard=False,
     )
-    provider_cfg = ProviderSelectionConfig(
+    provider_cfg = config.ProviderSelection(
         asr_provider="local",
         llm_provider="local",
         tts_provider="local",
     )
-    history_cfg = HistoryConfig(history_dir=history_dir)
-    audio_in_cfg = AudioInputConfig(input_device_index=1)
-    wyoming_asr_cfg = WyomingASRConfig(wyoming_asr_ip="localhost", wyoming_asr_port=1234)
-    openai_asr_cfg = OpenAIASRConfig(openai_asr_model="whisper-1")
-    ollama_cfg = OllamaConfig(ollama_model="test-model", ollama_host="localhost")
-    openai_llm_cfg = OpenAILLMConfig(openai_llm_model="gpt-4")
-    audio_out_cfg = AudioOutputConfig(enable_tts=True, output_device_index=1)
-    wyoming_tts_cfg = WyomingTTSConfig(
+    history_cfg = config.History(history_dir=history_dir)
+    audio_in_cfg = config.AudioInput(input_device_index=1)
+    wyoming_asr_cfg = config.WyomingASR(wyoming_asr_ip="localhost", wyoming_asr_port=1234)
+    openai_asr_cfg = config.OpenAIASR(openai_asr_model="whisper-1")
+    ollama_cfg = config.Ollama(ollama_model="test-model", ollama_host="localhost")
+    openai_llm_cfg = config.OpenAILLM(openai_llm_model="gpt-4")
+    audio_out_cfg = config.AudioOutput(enable_tts=True, output_device_index=1)
+    wyoming_tts_cfg = config.WyomingTTS(
         wyoming_tts_ip="localhost",
         wyoming_tts_port=5678,
         wyoming_voice="test-voice",
     )
-    openai_tts_cfg = OpenAITTSConfig(openai_tts_model="tts-1", openai_tts_voice="alloy")
+    openai_tts_cfg = config.OpenAITTS(openai_tts_model="tts-1", openai_tts_voice="alloy")
 
     with (
         patch("agent_cli.agents.chat.pyaudio_context"),

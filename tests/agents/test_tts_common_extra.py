@@ -7,13 +7,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from agent_cli.agents._config import (
-    AudioOutputConfig,
-    OpenAILLMConfig,
-    OpenAITTSConfig,
-    ProviderSelectionConfig,
-    WyomingTTSConfig,
-)
+from agent_cli.agents import config
 from agent_cli.agents._tts_common import _save_audio_file, handle_tts_playback
 
 
@@ -40,15 +34,15 @@ async def test_handle_tts_playback_os_error(mock_speak_text: AsyncMock) -> None:
     mock_speak_text.side_effect = OSError("Connection error")
     mock_live = MagicMock()
 
-    provider_cfg = ProviderSelectionConfig(
+    provider_cfg = config.ProviderSelection(
         tts_provider="local",
         asr_provider="local",
         llm_provider="local",
     )
-    audio_out_cfg = AudioOutputConfig(enable_tts=True)
-    wyoming_tts_cfg = WyomingTTSConfig(wyoming_tts_ip="localhost", wyoming_tts_port=1234)
-    openai_tts_cfg = OpenAITTSConfig(openai_tts_model="tts-1", openai_tts_voice="alloy")
-    openai_llm_cfg = OpenAILLMConfig(
+    audio_out_cfg = config.AudioOutput(enable_tts=True)
+    wyoming_tts_cfg = config.WyomingTTS(wyoming_tts_ip="localhost", wyoming_tts_port=1234)
+    openai_tts_cfg = config.OpenAITTS(openai_tts_model="tts-1", openai_tts_voice="alloy")
+    openai_llm_cfg = config.OpenAILLM(
         openai_llm_model="gpt-4o-mini",
         openai_api_key="fake-key",
     )

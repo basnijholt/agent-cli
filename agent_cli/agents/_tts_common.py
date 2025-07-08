@@ -14,13 +14,7 @@ if TYPE_CHECKING:
 
     from rich.live import Live
 
-    from agent_cli.agents._config import (
-        AudioOutputConfig,
-        OpenAILLMConfig,
-        OpenAITTSConfig,
-        ProviderSelectionConfig,
-        WyomingTTSConfig,
-    )
+    from agent_cli.agents import config
 
 
 async def _save_audio_file(
@@ -49,11 +43,11 @@ async def _save_audio_file(
 async def handle_tts_playback(
     *,
     text: str,
-    provider_config: ProviderSelectionConfig,
-    audio_output_config: AudioOutputConfig,
-    wyoming_tts_config: WyomingTTSConfig,
-    openai_tts_config: OpenAITTSConfig,
-    openai_llm_config: OpenAILLMConfig,
+    provider_config: config.ProviderSelection,
+    audio_output_config: config.AudioOutput,
+    wyoming_tts_config: config.WyomingTTS,
+    openai_tts_config: config.OpenAITTS,
+    openai_llm_config: config.OpenAILLM,
     save_file: Path | None,
     quiet: bool,
     logger: logging.Logger,

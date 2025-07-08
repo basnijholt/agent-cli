@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING
 from wyoming.audio import AudioChunk, AudioStart, AudioStop
 from wyoming.tts import Synthesize, SynthesizeVoice
 
-from agent_cli import config
+from agent_cli import defaults
 from agent_cli.audio import open_pyaudio_stream, pyaudio_context, setup_output_stream
 from agent_cli.services import synthesize_speech_openai
 from agent_cli.utils import InteractiveStopEvent, live_timer, print_error_message, print_with_style
@@ -25,23 +25,17 @@ if TYPE_CHECKING:
     from rich.live import Live
     from wyoming.client import AsyncClient
 
-    from agent_cli.agents._config import (
-        AudioOutputConfig,
-        OpenAILLMConfig,
-        OpenAITTSConfig,
-        ProviderSelectionConfig,
-        WyomingTTSConfig,
-    )
+    from agent_cli.agents import config
 
 has_audiostretchy = importlib.util.find_spec("audiostretchy") is not None
 
 
 def get_synthesizer(
-    provider_config: ProviderSelectionConfig,
-    audio_output_config: AudioOutputConfig,
-    wyoming_tts_config: WyomingTTSConfig,
-    openai_tts_config: OpenAITTSConfig,
-    openai_llm_config: OpenAILLMConfig,
+    provider_config: config.ProviderSelection,
+    audio_output_config: config.AudioOutput,
+    wyoming_tts_config: config.WyomingTTS,
+    openai_tts_config: config.OpenAITTS,
+    openai_llm_config: config.OpenAILLM,
 ) -> Callable[..., Awaitable[bytes | None]]:
     """Return the appropriate synthesizer based on the config."""
     if not audio_output_config.enable_tts:
@@ -142,8 +136,8 @@ async def _dummy_synthesizer(**_kwargs: object) -> bytes | None:
 async def _synthesize_speech_openai(
     *,
     text: str,
-    openai_tts_config: OpenAITTSConfig,
-    openai_llm_config: OpenAILLMConfig,
+    openai_tts_config: config.OpenAITTS,
+    openai_llm_config: config.OpenAILLM,
     logger: logging.Logger,
     **_kwargs: object,
 ) -> bytes | None:
@@ -159,7 +153,7 @@ async def _synthesize_speech_openai(
 async def _synthesize_speech_wyoming(
     *,
     text: str,
-    wyoming_tts_config: WyomingTTSConfig,
+    wyoming_tts_config: config.WyomingTTS,
     logger: logging.Logger,
     quiet: bool = False,
     live: Live,
@@ -220,7 +214,7 @@ async def play_audio(
     audio_data: bytes,
     logger: logging.Logger,
     *,
-    audio_output_config: AudioOutputConfig,
+    audio_output_config: config.AudioOutput,
     quiet: bool = False,
     stop_event: InteractiveStopEvent | None = None,
     live: Live,
@@ -247,7 +241,7 @@ async def play_audio(
                     channels=channels,
                 )
                 with open_pyaudio_stream(p, **stream_config) as stream:
-                    chunk_size = config.PYAUDIO_CHUNK_SIZE
+                    chunk_size = defaults.PYAUDIO_CHUNK_SIZE
                     for i in range(0, len(frames), chunk_size):
                         if stop_event and stop_event.is_set():
                             logger.info("Audio playback interrupted")
@@ -270,11 +264,11 @@ async def play_audio(
 async def speak_text(
     *,
     text: str,
-    provider_config: ProviderSelectionConfig,
-    audio_output_config: AudioOutputConfig,
-    wyoming_tts_config: WyomingTTSConfig,
-    openai_tts_config: OpenAITTSConfig,
-    openai_llm_config: OpenAILLMConfig,
+    provider_config: config.ProviderSelection,
+    audio_output_config: config.AudioOutput,
+    wyoming_tts_config: config.WyomingTTS,
+    openai_tts_config: config.OpenAITTS,
+    openai_llm_config: config.OpenAILLM,
     logger: logging.Logger,
     quiet: bool = False,
     play_audio_flag: bool = True,

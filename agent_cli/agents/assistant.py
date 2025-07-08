@@ -35,19 +35,7 @@ from typing import TYPE_CHECKING
 
 import agent_cli.agents._cli_options as opts
 from agent_cli import asr, audio, process_manager, wake_word
-from agent_cli.agents._config import (
-    AudioInputConfig,
-    AudioOutputConfig,
-    GeneralConfig,
-    OllamaConfig,
-    OpenAIASRConfig,
-    OpenAILLMConfig,
-    OpenAITTSConfig,
-    ProviderSelectionConfig,
-    WakeWordConfig,
-    WyomingASRConfig,
-    WyomingTTSConfig,
-)
+from agent_cli.agents import config
 from agent_cli.agents._voice_agent_common import (
     get_instruction_from_audio,
     process_instruction_and_respond,
@@ -104,7 +92,7 @@ async def _record_audio_with_wake_word(
     stop_event: InteractiveStopEvent,
     logger: logging.Logger,
     *,
-    wake_word_config: WakeWordConfig,
+    wake_word_config: config.WakeWord,
     quiet: bool = False,
     live: Live | None = None,
 ) -> bytes | None:
@@ -180,17 +168,17 @@ async def _record_audio_with_wake_word(
 
 async def _async_main(
     *,
-    provider_cfg: ProviderSelectionConfig,
-    general_cfg: GeneralConfig,
-    audio_in_cfg: AudioInputConfig,
-    wyoming_asr_cfg: WyomingASRConfig,
-    openai_asr_cfg: OpenAIASRConfig,
-    ollama_cfg: OllamaConfig,
-    openai_llm_cfg: OpenAILLMConfig,
-    audio_out_cfg: AudioOutputConfig,
-    wyoming_tts_cfg: WyomingTTSConfig,
-    openai_tts_cfg: OpenAITTSConfig,
-    wake_word_config: WakeWordConfig,
+    provider_cfg: config.ProviderSelection,
+    general_cfg: config.General,
+    audio_in_cfg: config.AudioInput,
+    wyoming_asr_cfg: config.WyomingASR,
+    openai_asr_cfg: config.OpenAIASR,
+    ollama_cfg: config.Ollama,
+    openai_llm_cfg: config.OpenAILLM,
+    audio_out_cfg: config.AudioOutput,
+    wyoming_tts_cfg: config.WyomingTTS,
+    openai_tts_cfg: config.OpenAITTS,
+    wake_word_config: config.WakeWord,
     system_prompt: str,
     agent_instructions: str,
     live: Live | None,
@@ -310,7 +298,7 @@ def assistant(
 ) -> None:
     """Wake word-based voice assistant using local or remote services."""
     setup_logging(log_level, log_file, quiet=quiet)
-    general_cfg = GeneralConfig(
+    general_cfg = config.General(
         log_level=log_level,
         log_file=log_file,
         quiet=quiet,
@@ -334,43 +322,43 @@ def assistant(
         suppress(KeyboardInterrupt),
         maybe_live(not general_cfg.quiet) as live,
     ):
-        provider_cfg = ProviderSelectionConfig(
+        provider_cfg = config.ProviderSelection(
             asr_provider=asr_provider,
             llm_provider=llm_provider,
             tts_provider=tts_provider,
         )
-        audio_in_cfg = AudioInputConfig(
+        audio_in_cfg = config.AudioInput(
             input_device_index=input_device_index,
             input_device_name=input_device_name,
         )
-        wyoming_asr_cfg = WyomingASRConfig(
+        wyoming_asr_cfg = config.WyomingASR(
             wyoming_asr_ip=wyoming_asr_ip,
             wyoming_asr_port=wyoming_asr_port,
         )
-        openai_asr_cfg = OpenAIASRConfig(openai_asr_model=openai_asr_model)
-        ollama_cfg = OllamaConfig(ollama_model=ollama_model, ollama_host=ollama_host)
-        openai_llm_cfg = OpenAILLMConfig(
+        openai_asr_cfg = config.OpenAIASR(openai_asr_model=openai_asr_model)
+        ollama_cfg = config.Ollama(ollama_model=ollama_model, ollama_host=ollama_host)
+        openai_llm_cfg = config.OpenAILLM(
             openai_llm_model=openai_llm_model,
             openai_api_key=openai_api_key,
         )
-        audio_out_cfg = AudioOutputConfig(
+        audio_out_cfg = config.AudioOutput(
             enable_tts=enable_tts,
             output_device_index=output_device_index,
             output_device_name=output_device_name,
             tts_speed=tts_speed,
         )
-        wyoming_tts_cfg = WyomingTTSConfig(
+        wyoming_tts_cfg = config.WyomingTTS(
             wyoming_tts_ip=wyoming_tts_ip,
             wyoming_tts_port=wyoming_tts_port,
             wyoming_voice=wyoming_voice,
             wyoming_tts_language=wyoming_tts_language,
             wyoming_speaker=wyoming_speaker,
         )
-        openai_tts_cfg = OpenAITTSConfig(
+        openai_tts_cfg = config.OpenAITTS(
             openai_tts_model=openai_tts_model,
             openai_tts_voice=openai_tts_voice,
         )
-        wake_word_config = WakeWordConfig(
+        wake_word_config = config.WakeWord(
             wake_server_ip=wake_server_ip,
             wake_server_port=wake_server_port,
             wake_word_name=wake_word_name,
