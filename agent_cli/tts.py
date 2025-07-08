@@ -42,10 +42,11 @@ def get_synthesizer() -> Callable[..., Awaitable[bytes | None]]:
         if config.OPENAI_API_KEY is None:
             msg = "OpenAI API key is not set."
             raise ValueError(msg)
-        return lambda text, logger, **_: synthesize_speech_openai(
+        return lambda text, logger, speaker, **_: synthesize_speech_openai(
             text,
             api_key=config.OPENAI_API_KEY,  # type: ignore[arg-type]
             logger=logger,
+            speaker=speaker,
         )
     return _synthesize_speech_wyoming
 
