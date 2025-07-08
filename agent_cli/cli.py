@@ -78,6 +78,6 @@ from .agents import (  # noqa: E402, F401
     interactive,
     speak,
     transcribe,
-    voice_assistant,
+    voice_edit,
     wake_word_assistant,
 )

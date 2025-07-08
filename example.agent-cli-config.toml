@@ -33,7 +33,7 @@ device_output_name = "iloud,airpods,dell,macbook"
 # llm = true
 # model = "llama3"
 
-[voice-assistant]
+[voice-edit]
 # input_device_name = "MacBook Pro Microphone"
 # model = "llama3"
 # enable_tts = true

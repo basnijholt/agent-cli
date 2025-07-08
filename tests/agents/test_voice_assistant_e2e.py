@@ -13,7 +13,7 @@ from agent_cli.agents._config import (
     LLMConfig,
     TTSConfig,
 )
-from agent_cli.agents.voice_assistant import (
+from agent_cli.agents.voice_edit import (
     AGENT_INSTRUCTIONS,
     SYSTEM_PROMPT,
     _async_main,
@@ -58,13 +58,13 @@ def get_configs() -> tuple[GeneralConfig, ASRConfig, LLMConfig, TTSConfig, FileC
 
 
 @pytest.mark.asyncio
-@patch("agent_cli.agents.voice_assistant.process_instruction_and_respond", new_callable=AsyncMock)
-@patch("agent_cli.agents.voice_assistant.get_instruction_from_audio", new_callable=AsyncMock)
-@patch("agent_cli.agents.voice_assistant.asr.record_audio_with_manual_stop", new_callable=AsyncMock)
-@patch("agent_cli.agents.voice_assistant.get_clipboard_text", return_value="test clipboard text")
-@patch("agent_cli.agents.voice_assistant.setup_devices")
-@patch("agent_cli.agents.voice_assistant.pyaudio_context")
-async def test_voice_assistant_e2e(
+@patch("agent_cli.agents.voice_edit.process_instruction_and_respond", new_callable=AsyncMock)
+@patch("agent_cli.agents.voice_edit.get_instruction_from_audio", new_callable=AsyncMock)
+@patch("agent_cli.agents.voice_edit.asr.record_audio_with_manual_stop", new_callable=AsyncMock)
+@patch("agent_cli.agents.voice_edit.get_clipboard_text", return_value="test clipboard text")
+@patch("agent_cli.agents.voice_edit.setup_devices")
+@patch("agent_cli.agents.voice_edit.pyaudio_context")
+async def test_voice_edit_e2e(
     mock_pyaudio_context: MagicMock,
     mock_setup_devices: MagicMock,
     mock_get_clipboard: MagicMock,
@@ -84,7 +84,7 @@ async def test_voice_assistant_e2e(
     general_cfg, asr_config, llm_config, tts_config, file_config = get_configs()
 
     # This test focuses on the main loop, so we stop it after one run
-    with patch("agent_cli.agents.voice_assistant.signal_handling_context") as mock_signal_context:
+    with patch("agent_cli.agents.voice_edit.signal_handling_context") as mock_signal_context:
         mock_stop_event = MagicMock()
         mock_stop_event.is_set.return_value = False
         mock_signal_context.return_value.__enter__.return_value = mock_stop_event
