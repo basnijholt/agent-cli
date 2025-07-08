@@ -12,12 +12,7 @@ import pyaudio
 from rich.text import Text
 
 from agent_cli import config
-from agent_cli.utils import (
-    InteractiveStopEvent,
-    console,
-    print_device_index,
-    print_with_style,
-)
+from agent_cli.utils import InteractiveStopEvent, console, print_device_index, print_with_style
 
 if TYPE_CHECKING:
     import logging
@@ -25,11 +20,7 @@ if TYPE_CHECKING:
 
     from rich.live import Live
 
-    from agent_cli.agents._config import (
-        AudioInputConfig,
-        AudioOutputConfig,
-        GeneralConfig,
-    )
+    from agent_cli.agents._config import AudioInputConfig, AudioOutputConfig, GeneralConfig
 
 
 class _AudioTee:

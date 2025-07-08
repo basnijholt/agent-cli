@@ -10,11 +10,7 @@ if TYPE_CHECKING:
 
     from openai import AsyncOpenAI
 
-    from agent_cli.agents._config import (
-        OpenAIASRConfig,
-        OpenAILLMConfig,
-        OpenAITTSConfig,
-    )
+    from agent_cli.agents._config import OpenAIASRConfig, OpenAILLMConfig, OpenAITTSConfig
 
 
 def _get_openai_client(api_key: str) -> AsyncOpenAI:

@@ -7,16 +7,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from agent_cli.agents._config import (
-    OllamaConfig,
-    OpenAILLMConfig,
-    ProviderSelectionConfig,
-)
-from agent_cli.llm import (
-    build_agent,
-    get_llm_response,
-    process_and_update_clipboard,
-)
+from agent_cli.agents._config import OllamaConfig, OpenAILLMConfig, ProviderSelectionConfig
+from agent_cli.llm import build_agent, get_llm_response, process_and_update_clipboard
 
 
 def test_build_agent(monkeypatch: pytest.MonkeyPatch) -> None:

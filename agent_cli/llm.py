@@ -10,12 +10,7 @@ import pyperclip
 from rich.live import Live
 
 from agent_cli.agents._config import OllamaConfig, OpenAILLMConfig
-from agent_cli.utils import (
-    console,
-    live_timer,
-    print_error_message,
-    print_output_panel,
-)
+from agent_cli.utils import console, live_timer, print_error_message, print_output_panel
 
 if TYPE_CHECKING:
     import logging
@@ -23,11 +18,7 @@ if TYPE_CHECKING:
     from pydantic_ai import Agent
     from pydantic_ai.tools import Tool
 
-    from agent_cli.agents._config import (
-        OllamaConfig,
-        OpenAILLMConfig,
-        ProviderSelectionConfig,
-    )
+    from agent_cli.agents._config import OllamaConfig, OpenAILLMConfig, ProviderSelectionConfig
 
 
 def build_agent(
