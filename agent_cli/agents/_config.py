@@ -8,6 +8,22 @@ from typing import Literal
 from pydantic import BaseModel, field_validator
 
 
+def _config(cfg: BaseModel, name: str) -> BaseModel:
+    """Return the active LLM configuration based on the provider."""
+    if cfg.provider == "local":
+        if cfg.local is None:
+            msg = f"Local {name} provider selected but no config found."
+            raise ValueError(msg)
+        return cfg.local
+    if cfg.provider == "openai":
+        if cfg.openai is None:
+            msg = f"OpenAI {name} provider selected but no config found."
+            raise ValueError(msg)
+        return cfg.openai
+    msg = f"Unsupported {name} provider: {cfg.provider}"
+    raise ValueError(msg)
+
+
 # --- LLM ---
 class OllamaLLMConfig(BaseModel):
     """Configuration for the local Ollama LLM provider."""
@@ -33,18 +49,7 @@ class LLMConfig(BaseModel):
     @property
     def config(self) -> OllamaLLMConfig | OpenAILLMConfig:
         """Return the active LLM configuration based on the provider."""
-        if self.provider == "local":
-            if self.local is None:
-                msg = "Local LLM provider selected but no config found."
-                raise ValueError(msg)
-            return self.local
-        if self.provider == "openai":
-            if self.openai is None:
-                msg = "OpenAI LLM provider selected but no config found."
-                raise ValueError(msg)
-            return self.openai
-        msg = f"Unsupported LLM provider: {self.provider}"
-        raise ValueError(msg)
+        return _config(self, "LLM")
 
 
 # --- ASR ---
@@ -74,18 +79,7 @@ class ASRConfig(BaseModel):
     @property
     def config(self) -> WyomingASRConfig | OpenAIASRConfig:
         """Return the active ASR configuration based on the provider."""
-        if self.provider == "local":
-            if self.local is None:
-                msg = "Local ASR provider selected but no config found."
-                raise ValueError(msg)
-            return self.local
-        if self.provider == "openai":
-            if self.openai is None:
-                msg = "OpenAI ASR provider selected but no config found."
-                raise ValueError(msg)
-            return self.openai
-        msg = f"Unsupported ASR provider: {self.provider}"
-        raise ValueError(msg)
+        return _config(self, "ASR")
 
 
 # --- TTS ---
@@ -121,18 +115,7 @@ class TTSConfig(BaseModel):
     @property
     def config(self) -> WyomingTTSConfig | OpenAITTSConfig:
         """Return the active TTS configuration based on the provider."""
-        if self.provider == "local":
-            if self.local is None:
-                msg = "Local TTS provider selected but no config found."
-                raise ValueError(msg)
-            return self.local
-        if self.provider == "openai":
-            if self.openai is None:
-                msg = "OpenAI TTS provider selected but no config found."
-                raise ValueError(msg)
-            return self.openai
-        msg = f"Unsupported TTS provider: {self.provider}"
-        raise ValueError(msg)
+        return _config(self, "TTS")
 
 
 # --- General & File Configs (remain mostly unchanged) ---
