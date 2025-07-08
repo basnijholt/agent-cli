@@ -34,10 +34,10 @@ console = Console()
 
 
 class InteractiveStopEvent:
-    """A stop event with reset capability for interactive agents."""
+    """A stop event with reset capability for chat agents."""
 
     def __init__(self) -> None:
-        """Initialize the interactive stop event."""
+        """Initialize the chat stop event."""
         self._event = asyncio.Event()
         self._sigint_count = 0
         self._ctrl_c_pressed = False

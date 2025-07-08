@@ -18,16 +18,16 @@ To create a hotkey toggle for this script, set up a Keyboard Maestro macro with:
 
 2. If/Then/Else Action:
    - Condition: Shell script returns success
-   - Script: voice-assistant --status >/dev/null 2>&1
+   - Script: voice-edit --status >/dev/null 2>&1
 
 3. Then Actions (if process is running):
    - Display Text Briefly: "🗣️ Processing command..."
-   - Execute Shell Script: voice-assistant --stop --quiet
+   - Execute Shell Script: voice-edit --stop --quiet
    - (The script will show its own "Done" notification)
 
 4. Else Actions (if process is not running):
    - Display Text Briefly: "📋 Listening for command..."
-   - Execute Shell Script: voice-assistant --input-device-index 1 --quiet &
+   - Execute Shell Script: voice-edit --input-device-index 1 --quiet &
    - Select "Display results in a notification"
 
 This approach uses standard Unix background processes (&) instead of Python daemons!
@@ -158,8 +158,8 @@ async def _async_main(
             )
 
 
-@app.command("voice-assistant")
-def voice_assistant(
+@app.command("voice-edit")
+def voice_edit(
     *,
     # ASR
     input_device_index: int | None = opts.DEVICE_INDEX,
@@ -195,15 +195,15 @@ def voice_assistant(
     quiet: bool = opts.QUIET,
     config_file: str | None = opts.CONFIG_FILE,  # noqa: ARG001
 ) -> None:
-    """Interact with clipboard text via a voice command using Wyoming and an Ollama LLM.
+    """Interact with clipboard text via a voice command using local or remote services.
 
     Usage:
-    - Run in foreground: agent-cli voice-assistant --input-device-index 1
-    - Run in background: agent-cli voice-assistant --input-device-index 1 &
-    - Check status: agent-cli voice-assistant --status
-    - Stop background process: agent-cli voice-assistant --stop
-    - List output devices: agent-cli voice-assistant --list-output-devices
-    - Save TTS to file: agent-cli voice-assistant --tts --save-file response.wav
+    - Run in foreground: agent-cli voice-edit --input-device-index 1
+    - Run in background: agent-cli voice-edit --input-device-index 1 &
+    - Check status: agent-cli voice-edit --status
+    - Stop background process: agent-cli voice-edit --stop
+    - List output devices: agent-cli voice-edit --list-output-devices
+    - Save TTS to file: agent-cli voice-edit --tts --save-file response.wav
     """
     setup_logging(log_level, log_file, quiet=quiet)
     general_cfg = GeneralConfig(
@@ -213,7 +213,7 @@ def voice_assistant(
         list_devices=list_devices,
         clipboard=clipboard,
     )
-    process_name = "voice-assistant"
+    process_name = "voice-edit"
     if stop_or_status_or_toggle(
         process_name,
         "voice assistant",

@@ -1,12 +1,12 @@
 """Agent implementations for the Agent CLI."""
 
-from . import autocorrect, interactive, speak, transcribe, voice_assistant, wake_word_assistant
+from . import assistant, autocorrect, chat, speak, transcribe, voice_edit
 
 __all__ = [
+    "assistant",
     "autocorrect",
-    "interactive",
+    "chat",
     "speak",
     "transcribe",
-    "voice_assistant",
-    "wake_word_assistant",
+    "voice_edit",
 ]
