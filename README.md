@@ -22,6 +22,7 @@ It provides a suite of powerful tools for voice and text interaction, designed f
 - [Installation](#installation)
 - [Usage](#usage)
   - [Configuration](#configuration)
+    - [Service Provider](#service-provider)
   - [`autocorrect`](#autocorrect)
   - [`transcribe`](#transcribe)
   - [`speak`](#speak)
