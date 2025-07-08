@@ -176,7 +176,7 @@ async def _handle_conversation_turn(
 
     # 1. Transcribe user's command
     start_time = time.monotonic()
-    transcriber = asr.get_transcriber()
+    transcriber = asr.get_transcriber(llm_config.service_provider, llm_config.openai_api_key)
     instruction = await transcriber(
         asr_server_ip=asr_config.server_ip,
         asr_server_port=asr_config.server_port,

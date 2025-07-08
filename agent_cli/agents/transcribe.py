@@ -78,7 +78,10 @@ async def _async_main(
     start_time = time.monotonic()
     with maybe_live(not general_cfg.quiet) as live:
         with signal_handling_context(LOGGER, general_cfg.quiet) as stop_event:
-            transcriber = asr.get_transcriber()
+            transcriber = asr.get_transcriber(
+                llm_config.service_provider,
+                llm_config.openai_api_key,
+            )
             transcript = await transcriber(
                 asr_server_ip=asr_config.server_ip,
                 asr_server_port=asr_config.server_port,

@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 import functools
 import io
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 from wyoming.asr import Transcribe, Transcript, TranscriptChunk, TranscriptStart, TranscriptStop
 from wyoming.audio import AudioChunk, AudioStart, AudioStop
@@ -31,20 +31,26 @@ if TYPE_CHECKING:
     from agent_cli.utils import InteractiveStopEvent
 
 
-def get_transcriber() -> Callable[..., Awaitable[str | None]]:
+def get_transcriber(
+    service_provider: Literal["local", "openai"],
+    openai_api_key: str | None,
+) -> Callable[..., Awaitable[str | None]]:
     """Return the appropriate transcriber for live audio based on the config."""
-    if config.SERVICE_PROVIDER == "openai":
-        if not config.OPENAI_API_KEY:
+    if service_provider == "openai":
+        if not openai_api_key:
             msg = "OpenAI API key is not set."
             raise ValueError(msg)
-        return functools.partial(transcribe_live_audio_openai, api_key=config.OPENAI_API_KEY)
+        return functools.partial(transcribe_live_audio_openai, api_key=openai_api_key)
     return transcribe_live_audio_wyoming
 
 
-def get_recorded_audio_transcriber() -> Callable[..., Awaitable[str]]:
+def get_recorded_audio_transcriber(
+    service_provider: Literal["local", "openai"],
+    openai_api_key: str | None,
+) -> Callable[..., Awaitable[str]]:
     """Return the appropriate transcriber for recorded audio based on the config."""
-    if config.SERVICE_PROVIDER == "openai":
-        if not config.OPENAI_API_KEY:
+    if service_provider == "openai":
+        if not openai_api_key:
             msg = "OpenAI API key is not set."
             raise ValueError(msg)
 
@@ -60,7 +66,7 @@ def get_recorded_audio_transcriber() -> Callable[..., Awaitable[str]]:
                 logger.exception("Error during transcription")
                 return ""
 
-        return functools.partial(transcribe_with_error_handling, api_key=config.OPENAI_API_KEY)
+        return functools.partial(transcribe_with_error_handling, api_key=openai_api_key)
     return transcribe_recorded_audio_wyoming
 
 

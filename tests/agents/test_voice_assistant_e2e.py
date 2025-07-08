@@ -103,6 +103,7 @@ async def test_voice_assistant_e2e(
     mock_get_instruction.assert_called_once_with(
         b"audio data",
         asr_config,
+        llm_config,
         ANY,
         False,  # noqa: FBT003
     )

@@ -30,21 +30,20 @@ if TYPE_CHECKING:
 LOGGER = logging.getLogger()
 
 
-def _raise_no_api_key_error() -> None:
-    msg = "OpenAI API key is not set."
-    raise ValueError(msg)
-
-
 async def get_instruction_from_audio(
     audio_data: bytes,
     asr_config: ASRConfig,
+    llm_config: LLMConfig,
     logger: logging.Logger,
     quiet: bool,
 ) -> str | None:
     """Transcribe audio data and return the instruction."""
     try:
         start_time = time.monotonic()
-        transcriber = asr.get_recorded_audio_transcriber()
+        transcriber = asr.get_recorded_audio_transcriber(
+            llm_config.service_provider,
+            llm_config.openai_api_key,
+        )
         instruction = await transcriber(
             audio_data=audio_data,
             asr_server_ip=asr_config.server_ip,

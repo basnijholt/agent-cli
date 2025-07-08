@@ -31,9 +31,16 @@ async def test_get_instruction_from_audio(mock_get_transcriber: MagicMock) -> No
         input_device_index=1,
         input_device_name=None,
     )
+    llm_config = LLMConfig(
+        model="test-model",
+        ollama_host="localhost",
+        service_provider="local",
+        openai_api_key=None,
+    )
     result = await get_instruction_from_audio(
         b"test audio",
         asr_config,
+        llm_config,
         MagicMock(),
         quiet=False,
     )

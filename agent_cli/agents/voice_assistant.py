@@ -136,6 +136,7 @@ async def _async_main(
             instruction = await get_instruction_from_audio(
                 audio_data,
                 asr_config,
+                llm_config,
                 LOGGER,
                 general_cfg.quiet,
             )

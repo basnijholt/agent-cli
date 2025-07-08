@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import functools
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -56,19 +55,9 @@ async def test_synthesize_speech_openai(mock_openai_client: MagicMock) -> None:
     )
 
 
-def test_get_transcriber_openai(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Test that get_transcriber returns the OpenAI transcriber."""
-    monkeypatch.setattr("agent_cli.config.SERVICE_PROVIDER", "openai")
-    monkeypatch.setattr("agent_cli.config.OPENAI_API_KEY", "test_api_key")
-    transcriber = asr.get_transcriber()
-    assert isinstance(transcriber, functools.partial)
-    assert "transcribe_live_audio_openai" in transcriber.func.__name__
-
-
-def test_get_transcriber_wyoming(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_get_transcriber_wyoming() -> None:
     """Test that get_transcriber returns the Wyoming transcriber."""
-    monkeypatch.setattr("agent_cli.config.SERVICE_PROVIDER", "local")
-    transcriber = asr.get_transcriber()
+    transcriber = asr.get_transcriber("local", None)
     assert transcriber == asr.transcribe_live_audio_wyoming
 
 
