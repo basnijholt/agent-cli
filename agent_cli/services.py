@@ -8,6 +8,18 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     import logging
 
+    from openai import AsyncOpenAI
+
+
+def _get_openai_client(api_key: str) -> AsyncOpenAI:
+    """Get an OpenAI client instance."""
+    from openai import AsyncOpenAI  # noqa: PLC0415
+
+    if not api_key:
+        msg = "OpenAI API key is not set."
+        raise ValueError(msg)
+    return AsyncOpenAI(api_key=api_key)
+
 
 async def transcribe_audio_openai(
     audio_data: bytes,
@@ -15,10 +27,8 @@ async def transcribe_audio_openai(
     logger: logging.Logger,
 ) -> str:
     """Transcribe audio using OpenAI's Whisper API."""
-    from openai import AsyncOpenAI  # noqa: PLC0415
-
     logger.info("Transcribing audio with OpenAI Whisper...")
-    client = AsyncOpenAI(api_key=api_key)
+    client = _get_openai_client(api_key=api_key)
     audio_file = io.BytesIO(audio_data)
     audio_file.name = "audio.wav"
     response = await client.audio.transcriptions.create(
@@ -34,10 +44,8 @@ async def synthesize_speech_openai(
     logger: logging.Logger,
 ) -> bytes:
     """Synthesize speech using OpenAI's TTS API."""
-    from openai import AsyncOpenAI  # noqa: PLC0415
-
     logger.info("Synthesizing speech with OpenAI TTS...")
-    client = AsyncOpenAI(api_key=api_key)
+    client = _get_openai_client(api_key=api_key)
     response = await client.audio.speech.create(
         model="tts-1",
         voice="alloy",

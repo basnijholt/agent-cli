@@ -12,7 +12,7 @@ from agent_cli.services import synthesize_speech_openai, transcribe_audio_openai
 
 
 @pytest.mark.asyncio
-@patch("agent_cli.services.AsyncOpenAI")
+@patch("agent_cli.services._get_openai_client")
 async def test_transcribe_audio_openai(mock_openai_client: MagicMock) -> None:
     """Test the transcribe_audio_openai function."""
     mock_audio = b"test audio"
@@ -33,7 +33,7 @@ async def test_transcribe_audio_openai(mock_openai_client: MagicMock) -> None:
 
 
 @pytest.mark.asyncio
-@patch("agent_cli.services.AsyncOpenAI")
+@patch("agent_cli.services._get_openai_client")
 async def test_synthesize_speech_openai(mock_openai_client: MagicMock) -> None:
     """Test the synthesize_speech_openai function."""
     mock_text = "test text"
