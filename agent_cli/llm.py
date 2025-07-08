@@ -1,4 +1,4 @@
-"""Client for interacting with Ollama."""
+"""Client for interacting with LLMs."""
 
 from __future__ import annotations
 
@@ -22,28 +22,35 @@ if TYPE_CHECKING:
     from pydantic_ai import Agent
     from pydantic_ai.tools import Tool
 
+    from agent_cli.agents._config import LLMConfig
+
 
 def build_agent(
-    model: str,
-    ollama_host: str,
+    llm_config: LLMConfig,
     *,
     system_prompt: str | None = None,
     instructions: str | None = None,
     tools: list[Tool] | None = None,
 ) -> Agent:
-    """Construct and return a PydanticAI agent configured for local Ollama."""
+    """Construct and return a PydanticAI agent."""
     from pydantic_ai import Agent  # noqa: PLC0415
-    from pydantic_ai.models.openai import OpenAIModel, OpenAIResponsesModelSettings  # noqa: PLC0415
+    from pydantic_ai.models.openai import OpenAIModel  # noqa: PLC0415
     from pydantic_ai.providers.openai import OpenAIProvider  # noqa: PLC0415
 
-    ollama_provider = OpenAIProvider(base_url=f"{ollama_host}/v1")
-    ollama_model = OpenAIModel(model_name=model, provider=ollama_provider)
+    if llm_config.service_provider == "openai":
+        if not llm_config.openai_api_key:
+            msg = "OpenAI API key is not set."
+            raise ValueError(msg)
+        provider = OpenAIProvider(api_key=llm_config.openai_api_key)
+    else:
+        provider = OpenAIProvider(base_url=f"{llm_config.ollama_host}/v1")
+
+    llm_model = OpenAIModel(model_name=llm_config.model, provider=provider)
     return Agent(
-        model=ollama_model,
+        model=llm_model,
         system_prompt=system_prompt or (),
         instructions=instructions,
         tools=tools or [],
-        model_settings=OpenAIResponsesModelSettings(extra_body={"think": False}),
     )
 
 
@@ -65,8 +72,7 @@ async def get_llm_response(
     system_prompt: str,
     agent_instructions: str,
     user_input: str,
-    model: str,
-    ollama_host: str,
+    llm_config: LLMConfig,
     logger: logging.Logger,
     live: Live | None = None,
     tools: list[Tool] | None = None,
@@ -75,29 +81,9 @@ async def get_llm_response(
     show_output: bool = False,
     exit_on_error: bool = False,
 ) -> str | None:
-    """Get a response from the LLM with optional clipboard and output handling.
-
-    Args:
-        system_prompt: System prompt for the LLM
-        agent_instructions: Agent instructions
-        user_input: Input text for the LLM
-        model: Model name
-        ollama_host: Ollama server host
-        logger: Logger instance
-        live: Existing Live instance
-        tools: Optional list of tools for the agent
-        quiet: If True, suppress timer display
-        clipboard: If True, copy result to clipboard
-        show_output: If True, display result in rich panel
-        exit_on_error: If True, exit on error instead of returning None
-
-    Returns:
-        LLM response text or None if error and exit_on_error=False
-
-    """
+    """Get a response from the LLM with optional clipboard and output handling."""
     agent = build_agent(
-        model=model,
-        ollama_host=ollama_host,
+        llm_config=llm_config,
         system_prompt=system_prompt,
         instructions=agent_instructions,
         tools=tools,
@@ -108,7 +94,7 @@ async def get_llm_response(
     try:
         async with live_timer(
             live or Live(console=console),
-            f"🤖 Applying instruction with {model}",
+            f"🤖 Applying instruction with {llm_config.model}",
             style="bold yellow",
             quiet=quiet,
         ):
@@ -117,12 +103,10 @@ async def get_llm_response(
         elapsed = time.monotonic() - start_time
         result_text = result.output
 
-        # Handle clipboard copying
         if clipboard:
             pyperclip.copy(result_text)
             logger.info("Copied result to clipboard.")
 
-        # Handle output display
         if show_output and not quiet:
             print_output_panel(
                 result_text,
@@ -130,17 +114,17 @@ async def get_llm_response(
                 subtitle=f"[dim]took {elapsed:.2f}s[/dim]",
             )
         elif quiet and clipboard:
-            # Quiet mode: print result to stdout for Keyboard Maestro to capture
             print(result_text)
 
         return result_text
 
     except Exception as e:
         logger.exception("An error occurred during LLM processing.")
-        print_error_message(
-            f"An unexpected LLM error occurred: {e}",
-            f"Please check your Ollama server at [cyan]{ollama_host}[/cyan]",
-        )
+        if llm_config.service_provider == "openai":
+            msg = "Please check your OpenAI API key."
+        else:
+            msg = f"Please check your Ollama server at [cyan]{llm_config.ollama_host}[/cyan]"
+        print_error_message(f"An unexpected LLM error occurred: {e}", msg)
         if exit_on_error:
             sys.exit(1)
         return None
@@ -150,8 +134,7 @@ async def process_and_update_clipboard(
     system_prompt: str,
     agent_instructions: str,
     *,
-    model: str,
-    ollama_host: str,
+    llm_config: LLMConfig,
     logger: logging.Logger,
     original_text: str,
     instruction: str,
@@ -159,11 +142,7 @@ async def process_and_update_clipboard(
     quiet: bool,
     live: Live,
 ) -> None:
-    """Processes the text with the LLM, updates the clipboard, and displays the result.
-
-    In quiet mode, only the result is printed to stdout.
-    """
-    # Format input using the template
+    """Processes the text with the LLM, updates the clipboard, and displays the result."""
     user_input = INPUT_TEMPLATE.format(
         original_text=original_text,
         instruction=instruction,
@@ -173,8 +152,7 @@ async def process_and_update_clipboard(
         system_prompt=system_prompt,
         agent_instructions=agent_instructions,
         user_input=user_input,
-        model=model,
-        ollama_host=ollama_host,
+        llm_config=llm_config,
         logger=logger,
         quiet=quiet,
         clipboard=clipboard,

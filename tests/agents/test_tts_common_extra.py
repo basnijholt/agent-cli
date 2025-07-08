@@ -35,6 +35,8 @@ async def test_handle_tts_playback_os_error(mock_speak_text: AsyncMock) -> None:
 
     result = await handle_tts_playback(
         text="hello",
+        service_provider="local",
+        openai_api_key=None,
         tts_server_ip="localhost",
         tts_server_port=1234,
         voice_name=None,

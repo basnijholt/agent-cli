@@ -78,7 +78,11 @@ async def _async_main(
     start_time = time.monotonic()
     with maybe_live(not general_cfg.quiet) as live:
         with signal_handling_context(LOGGER, general_cfg.quiet) as stop_event:
-            transcript = await asr.transcribe_live_audio(
+            transcriber = asr.get_transcriber(
+                llm_config.service_provider,
+                llm_config.openai_api_key,
+            )
+            transcript = await transcriber(
                 asr_server_ip=asr_config.server_ip,
                 asr_server_port=asr_config.server_port,
                 input_device_index=asr_config.input_device_index,
@@ -99,8 +103,7 @@ async def _async_main(
             await process_and_update_clipboard(
                 system_prompt=SYSTEM_PROMPT,
                 agent_instructions=AGENT_INSTRUCTIONS,
-                model=llm_config.model,
-                ollama_host=llm_config.ollama_host,
+                llm_config=llm_config,
                 logger=LOGGER,
                 original_text=transcript,
                 instruction=INSTRUCTION,
@@ -147,6 +150,8 @@ def transcribe(
     # LLM
     model: str = opts.MODEL,
     ollama_host: str = opts.OLLAMA_HOST,
+    service_provider: str = opts.SERVICE_PROVIDER,
+    openai_api_key: str | None = opts.OPENAI_API_KEY,
     llm: bool = opts.LLM,
     # Process control
     stop: bool = opts.STOP,
@@ -208,7 +213,12 @@ def transcribe(
 
         # Use context manager for PID file management
         with process_manager.pid_file_context(process_name), suppress(KeyboardInterrupt):
-            llm_config = LLMConfig(model=model, ollama_host=ollama_host)
+            llm_config = LLMConfig(
+                model=model,
+                ollama_host=ollama_host,
+                service_provider=service_provider,  # type: ignore[arg-type]
+                openai_api_key=openai_api_key,
+            )
 
             asyncio.run(
                 _async_main(

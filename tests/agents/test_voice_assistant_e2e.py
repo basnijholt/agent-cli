@@ -36,7 +36,12 @@ def get_configs() -> tuple[GeneralConfig, ASRConfig, LLMConfig, TTSConfig, FileC
         input_device_index=0,
         input_device_name=None,
     )
-    llm_config = LLMConfig(model="test-model", ollama_host="http://localhost:11434")
+    llm_config = LLMConfig(
+        model="test-model",
+        ollama_host="http://localhost:11434",
+        service_provider="local",
+        openai_api_key=None,
+    )
     tts_config = TTSConfig(
         enabled=False,
         server_ip="mock-tts-host",
@@ -98,6 +103,7 @@ async def test_voice_assistant_e2e(
     mock_get_instruction.assert_called_once_with(
         b"audio data",
         asr_config,
+        llm_config,
         ANY,
         False,  # noqa: FBT003
     )

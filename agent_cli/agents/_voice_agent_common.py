@@ -33,15 +33,19 @@ LOGGER = logging.getLogger()
 async def get_instruction_from_audio(
     audio_data: bytes,
     asr_config: ASRConfig,
+    llm_config: LLMConfig,
     logger: logging.Logger,
     quiet: bool,
 ) -> str | None:
     """Transcribe audio data and return the instruction."""
     try:
-        # Send audio data to Wyoming ASR server for transcription
         start_time = time.monotonic()
-        instruction = await asr.transcribe_recorded_audio(
-            audio_data,
+        transcriber = asr.get_recorded_audio_transcriber(
+            llm_config.service_provider,
+            llm_config.openai_api_key,
+        )
+        instruction = await transcriber(
+            audio_data=audio_data,
             asr_server_ip=asr_config.server_ip,
             asr_server_port=asr_config.server_port,
             logger=logger,
@@ -93,8 +97,7 @@ async def process_instruction_and_respond(
         await process_and_update_clipboard(
             system_prompt=system_prompt,
             agent_instructions=agent_instructions,
-            model=llm_config.model,
-            ollama_host=llm_config.ollama_host,
+            llm_config=llm_config,
             logger=logger,
             original_text=original_text,
             instruction=instruction,
@@ -109,6 +112,8 @@ async def process_instruction_and_respond(
             if response_text and response_text.strip():
                 await handle_tts_playback(
                     response_text,
+                    service_provider=llm_config.service_provider,  # type: ignore[arg-type]
+                    openai_api_key=llm_config.openai_api_key,
                     tts_server_ip=tts_config.server_ip,
                     tts_server_port=tts_config.server_port,
                     voice_name=tts_config.voice_name,

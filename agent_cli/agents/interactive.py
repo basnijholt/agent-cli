@@ -25,7 +25,7 @@ from typing import TYPE_CHECKING, TypedDict
 import typer
 
 import agent_cli.agents._cli_options as opts
-from agent_cli import asr, process_manager
+from agent_cli import asr, config, process_manager
 from agent_cli.agents._config import (
     ASRConfig,
     FileConfig,
@@ -176,7 +176,8 @@ async def _handle_conversation_turn(
 
     # 1. Transcribe user's command
     start_time = time.monotonic()
-    instruction = await asr.transcribe_live_audio(
+    transcriber = asr.get_transcriber(llm_config.service_provider, llm_config.openai_api_key)
+    instruction = await transcriber(
         asr_server_ip=asr_config.server_ip,
         asr_server_port=asr_config.server_port,
         input_device_index=asr_config.input_device_index,
@@ -243,8 +244,7 @@ async def _handle_conversation_turn(
             system_prompt=SYSTEM_PROMPT,
             agent_instructions=AGENT_INSTRUCTIONS,
             user_input=user_message_with_context,
-            model=llm_config.model,
-            ollama_host=llm_config.ollama_host,
+            llm_config=llm_config,
             logger=LOGGER,
             tools=tools,
             quiet=True,  # Suppress internal output since we're showing our own timer
@@ -287,6 +287,8 @@ async def _handle_conversation_turn(
     if tts_config.enabled:
         await handle_tts_playback(
             response_text,
+            service_provider=llm_config.service_provider,
+            openai_api_key=llm_config.openai_api_key,
             tts_server_ip=tts_config.server_ip,
             tts_server_port=tts_config.server_port,
             voice_name=tts_config.voice_name,
@@ -373,6 +375,8 @@ def interactive(
     # LLM
     model: str = opts.MODEL,
     ollama_host: str = opts.OLLAMA_HOST,
+    service_provider: str = opts.SERVICE_PROVIDER,
+    openai_api_key: str | None = opts.OPENAI_API_KEY,
     # Process control
     stop: bool = opts.STOP,
     status: bool = opts.STATUS,
@@ -432,13 +436,20 @@ def interactive(
 
     # Use context manager for PID file management
     with process_manager.pid_file_context(process_name), suppress(KeyboardInterrupt):
+        if service_provider == "openai" and model == config.DEFAULT_MODEL:
+            model = config.DEFAULT_OPENAI_MODEL
         asr_config = ASRConfig(
             server_ip=asr_server_ip,
             server_port=asr_server_port,
             input_device_index=input_device_index,
             input_device_name=input_device_name,
         )
-        llm_config = LLMConfig(model=model, ollama_host=ollama_host)
+        llm_config = LLMConfig(
+            model=model,
+            ollama_host=ollama_host,
+            service_provider=service_provider,  # type: ignore[arg-type]
+            openai_api_key=openai_api_key,
+        )
         tts_config = TTSConfig(
             enabled=enable_tts,
             server_ip=tts_server_ip,

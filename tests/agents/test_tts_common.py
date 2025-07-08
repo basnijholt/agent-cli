@@ -21,6 +21,8 @@ async def test_handle_tts_playback(mock_speak_text: AsyncMock) -> None:
     mock_live = MagicMock()
     await handle_tts_playback(
         text="hello",
+        service_provider="local",
+        openai_api_key=None,
         tts_server_ip="localhost",
         tts_server_port=1234,
         voice_name="test-voice",
@@ -37,6 +39,8 @@ async def test_handle_tts_playback(mock_speak_text: AsyncMock) -> None:
 
     mock_speak_text.assert_called_once_with(
         text="hello",
+        service_provider="local",
+        openai_api_key=None,
         tts_server_ip="localhost",
         tts_server_port=1234,
         logger=mock_speak_text.call_args.kwargs["logger"],
@@ -65,6 +69,8 @@ async def test_handle_tts_playback_with_save_file(
 
     await handle_tts_playback(
         text="hello",
+        service_provider="local",
+        openai_api_key=None,
         tts_server_ip="localhost",
         tts_server_port=1234,
         voice_name="test-voice",
@@ -92,6 +98,8 @@ async def test_handle_tts_playback_no_audio(mock_speak_text: AsyncMock) -> None:
     mock_live = MagicMock()
     await handle_tts_playback(
         text="hello",
+        service_provider="local",
+        openai_api_key=None,
         tts_server_ip="localhost",
         tts_server_port=1234,
         voice_name="test-voice",

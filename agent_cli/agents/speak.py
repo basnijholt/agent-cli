@@ -6,6 +6,7 @@ import asyncio
 import logging
 from contextlib import suppress
 from pathlib import Path  # noqa: TC003
+from typing import Literal
 
 import typer
 
@@ -31,6 +32,8 @@ async def _async_main(
     text: str | None,
     tts_config: TTSConfig,
     file_config: FileConfig,
+    service_provider: Literal["local", "openai"],
+    openai_api_key: str | None,
 ) -> None:
     """Async entry point for the speak command."""
     with pyaudio_context() as p:
@@ -59,6 +62,8 @@ async def _async_main(
         with maybe_live(not general_cfg.quiet) as live:
             await handle_tts_playback(
                 text,
+                service_provider=service_provider,
+                openai_api_key=openai_api_key,
                 tts_server_ip=tts_config.server_ip,
                 tts_server_port=tts_config.server_port,
                 voice_name=tts_config.voice_name,
@@ -84,6 +89,9 @@ def speak(
         help="Text to speak. Reads from clipboard if not provided.",
         rich_help_panel="General Options",
     ),
+    # Service provider
+    service_provider: str = opts.SERVICE_PROVIDER,
+    openai_api_key: str | None = opts.OPENAI_API_KEY,
     # TTS parameters
     tts_server_ip: str = opts.TTS_SERVER_IP,
     tts_server_port: int = opts.TTS_SERVER_PORT,
@@ -112,7 +120,7 @@ def speak(
     quiet: bool = opts.QUIET,
     config_file: str | None = opts.CONFIG_FILE,  # noqa: ARG001
 ) -> None:
-    """Convert text to speech using Wyoming TTS server.
+    """Convert text to speech using Wyoming or OpenAI TTS server.
 
     If no text is provided, reads from clipboard.
 
@@ -162,5 +170,7 @@ def speak(
                 text=text,
                 tts_config=tts_config,
                 file_config=file_config,
+                service_provider=service_provider,  # type: ignore[arg-type]
+                openai_api_key=openai_api_key,
             ),
         )

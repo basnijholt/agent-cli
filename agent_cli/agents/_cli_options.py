@@ -20,6 +20,19 @@ OLLAMA_HOST: str = typer.Option(
     help=f"The Ollama server host. Default is {config.OLLAMA_HOST}.",
     rich_help_panel="LLM Options",
 )
+SERVICE_PROVIDER: str = typer.Option(
+    config.SERVICE_PROVIDER,
+    "--service-provider",
+    help=f"The service provider to use. Default is {config.SERVICE_PROVIDER}.",
+    rich_help_panel="LLM Options",
+)
+OPENAI_API_KEY: str | None = typer.Option(
+    config.OPENAI_API_KEY,
+    "--openai-api-key",
+    help="The OpenAI API key. Only required if using OpenAI as the service-provider.",
+    envvar="OPENAI_API_KEY",
+    rich_help_panel="LLM Options",
+)
 LLM: bool = typer.Option(
     False,  # noqa: FBT003
     "--llm/--no-llm",
