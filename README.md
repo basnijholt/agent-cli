@@ -258,7 +258,9 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 │ --service-provider          TEXT  The service provider to use. Default is    │
 │                                   local.                                     │
 │                                   [default: local]                           │
-│ --openai-api-key            TEXT  The OpenAI API key. [default: None]        │
+│ --openai-api-key            TEXT  The OpenAI API key.                        │
+│                                   [env var: OPENAI_API_KEY]                  │
+│                                   [default: None]                            │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ General Options ────────────────────────────────────────────────────────────╮
 │ --log-level          TEXT  Set logging level. [default: WARNING]             │
@@ -347,6 +349,7 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 │                                           Default is local.                  │
 │                                           [default: local]                   │
 │ --openai-api-key                    TEXT  The OpenAI API key.                │
+│                                           [env var: OPENAI_API_KEY]          │
 │                                           [default: None]                    │
 │ --llm                   --no-llm          Use an LLM to process the          │
 │                                           transcript.                        │
@@ -553,7 +556,9 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 │ --service-provider          TEXT  The service provider to use. Default is    │
 │                                   local.                                     │
 │                                   [default: local]                           │
-│ --openai-api-key            TEXT  The OpenAI API key. [default: None]        │
+│ --openai-api-key            TEXT  The OpenAI API key.                        │
+│                                   [env var: OPENAI_API_KEY]                  │
+│                                   [default: None]                            │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Process Management Options ─────────────────────────────────────────────────╮
 │ --stop            Stop any running background process.                       │
@@ -723,7 +728,9 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 │ --service-provider          TEXT  The service provider to use. Default is    │
 │                                   local.                                     │
 │                                   [default: local]                           │
-│ --openai-api-key            TEXT  The OpenAI API key. [default: None]        │
+│ --openai-api-key            TEXT  The OpenAI API key.                        │
+│                                   [env var: OPENAI_API_KEY]                  │
+│                                   [default: None]                            │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Process Management Options ─────────────────────────────────────────────────╮
 │ --stop            Stop any running background process.                       │
