@@ -100,7 +100,6 @@ async def _async_main(
                 system_prompt=SYSTEM_PROMPT,
                 agent_instructions=AGENT_INSTRUCTIONS,
                 model=llm_config.model,
-                ollama_host=llm_config.ollama_host,
                 logger=LOGGER,
                 original_text=transcript,
                 instruction=INSTRUCTION,

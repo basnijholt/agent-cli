@@ -169,8 +169,8 @@ async def _synthesize_speech_openai(
     try:
         async with live_timer(live, "🔊 Synthesizing text", style="blue", quiet=quiet):
             return await synthesize_speech_openai(text, api_key, logger)
-    except Exception as e:
-        logger.exception(f"Error during speech synthesis: {e}")
+    except Exception:
+        logger.exception("Error during speech synthesis")
         return None
 
 

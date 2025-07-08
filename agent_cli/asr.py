@@ -198,8 +198,8 @@ async def transcribe_recorded_audio_openai(
     """Process pre-recorded audio data with OpenAI Whisper."""
     try:
         return await transcribe_audio_openai(audio_data, api_key, logger)
-    except Exception as e:
-        logger.exception(f"Error during transcription: {e}")
+    except Exception:
+        logger.exception("Error during transcription")
         return ""
 
 

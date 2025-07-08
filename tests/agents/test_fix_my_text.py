@@ -113,7 +113,6 @@ async def test_process_text_integration(mock_build_agent: MagicMock) -> None:
     result, elapsed = await autocorrect._process_text(
         "this is text",
         "test-model",
-        "http://localhost:11434",
     )
 
     # Verify the result
@@ -124,7 +123,6 @@ async def test_process_text_integration(mock_build_agent: MagicMock) -> None:
     # Verify the agent was called correctly
     mock_build_agent.assert_called_once_with(
         model="test-model",
-        ollama_host="http://localhost:11434",
         system_prompt=autocorrect.SYSTEM_PROMPT,
         instructions=autocorrect.AGENT_INSTRUCTIONS,
     )
@@ -178,7 +176,6 @@ async def test_autocorrect_command_with_text(
     mock_get_clipboard.assert_not_called()
     mock_build_agent.assert_called_once_with(
         model=config.DEFAULT_MODEL,
-        ollama_host=config.OLLAMA_HOST,
         system_prompt=autocorrect.SYSTEM_PROMPT,
         instructions=autocorrect.AGENT_INSTRUCTIONS,
     )
@@ -221,7 +218,6 @@ async def test_autocorrect_command_from_clipboard(
     mock_get_clipboard.assert_called_once_with(quiet=True)
     mock_build_agent.assert_called_once_with(
         model=config.DEFAULT_MODEL,
-        ollama_host=config.OLLAMA_HOST,
         system_prompt=autocorrect.SYSTEM_PROMPT,
         instructions=autocorrect.AGENT_INSTRUCTIONS,
     )

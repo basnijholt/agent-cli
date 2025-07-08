@@ -86,11 +86,10 @@ Output format: corrected text only, no other words.
 # --- Main Application Logic ---
 
 
-async def _process_text(text: str, model: str, ollama_host: str) -> tuple[str, float]:
+async def _process_text(text: str, model: str) -> tuple[str, float]:
     """Process text with the LLM and return the corrected text and elapsed time."""
     agent = build_agent(
         model=model,
-        ollama_host=ollama_host,
         system_prompt=SYSTEM_PROMPT,
         instructions=AGENT_INSTRUCTIONS,
     )
@@ -160,7 +159,6 @@ async def _async_autocorrect(
             corrected_text, elapsed = await _process_text(
                 original_text,
                 llm_config.model,
-                llm_config.ollama_host,
             )
 
         _display_result(

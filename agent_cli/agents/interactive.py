@@ -244,7 +244,6 @@ async def _handle_conversation_turn(
             agent_instructions=AGENT_INSTRUCTIONS,
             user_input=user_message_with_context,
             model=llm_config.model,
-            ollama_host=llm_config.ollama_host,
             logger=LOGGER,
             tools=tools,
             quiet=True,  # Suppress internal output since we're showing our own timer

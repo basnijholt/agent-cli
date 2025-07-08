@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 
 import pyperclip
 
-from agent_cli import asr
+from agent_cli import asr, config
 from agent_cli.agents._tts_common import handle_tts_playback
 from agent_cli.llm import process_and_update_clipboard
 from agent_cli.utils import (
@@ -29,6 +29,11 @@ if TYPE_CHECKING:
 LOGGER = logging.getLogger()
 
 
+def _raise_no_api_key_error() -> None:
+    msg = "OpenAI API key is not set."
+    raise ValueError(msg)
+
+
 async def get_instruction_from_audio(
     audio_data: bytes,
     asr_config: ASRConfig,
@@ -41,13 +46,23 @@ async def get_instruction_from_audio(
 
     try:
         # Send audio data to Wyoming ASR server for transcription
-        instruction = await asr.transcribe_recorded_audio(
-            audio_data,
-            asr_server_ip=asr_config.server_ip,
-            asr_server_port=asr_config.server_port,
-            logger=logger,
-            quiet=quiet,
-        )
+        if config.SERVICE_PROVIDER == "openai":
+            if not config.OPENAI_API_KEY:
+                _raise_no_api_key_error()
+            assert config.OPENAI_API_KEY is not None
+            instruction = await asr.transcribe_recorded_audio_openai(
+                audio_data,
+                api_key=config.OPENAI_API_KEY,
+                logger=logger,
+            )
+        else:
+            instruction = await asr.transcribe_recorded_audio_wyoming(
+                audio_data,
+                asr_server_ip=asr_config.server_ip,
+                asr_server_port=asr_config.server_port,
+                logger=logger,
+                quiet=quiet,
+            )
 
         if not instruction or not instruction.strip():
             if not quiet:
@@ -92,7 +107,6 @@ async def process_instruction_and_respond(
             system_prompt=system_prompt,
             agent_instructions=agent_instructions,
             model=llm_config.model,
-            ollama_host=llm_config.ollama_host,
             logger=logger,
             original_text=original_text,
             instruction=instruction,
