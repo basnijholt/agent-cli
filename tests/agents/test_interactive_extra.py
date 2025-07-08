@@ -31,7 +31,12 @@ async def test_handle_conversation_turn_no_instruction():
         input_device_index=None,
         input_device_name=None,
     )
-    llm_config = LLMConfig(model="test-model", ollama_host="localhost")
+    llm_config = LLMConfig(
+        model="test-model",
+        ollama_host="localhost",
+        service_provider="local",
+        openai_api_key=None,
+    )
     tts_config = TTSConfig(
         enabled=False,
         server_ip="localhost",
@@ -119,7 +124,12 @@ async def test_async_main_exception_handling():
         input_device_index=None,
         input_device_name=None,
     )  # To trigger an early exit
-    llm_config = LLMConfig(model="test-model", ollama_host="localhost")
+    llm_config = LLMConfig(
+        model="test-model",
+        ollama_host="localhost",
+        service_provider="local",
+        openai_api_key=None,
+    )
     tts_config = TTSConfig(
         enabled=False,
         server_ip="localhost",

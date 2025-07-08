@@ -95,7 +95,7 @@ async def process_instruction_and_respond(
         await process_and_update_clipboard(
             system_prompt=system_prompt,
             agent_instructions=agent_instructions,
-            model=llm_config.model,
+            llm_config=llm_config,
             logger=logger,
             original_text=original_text,
             instruction=instruction,

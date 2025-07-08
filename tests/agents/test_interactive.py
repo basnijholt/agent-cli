@@ -94,7 +94,12 @@ async def test_async_main_list_devices(tmp_path: Path) -> None:
         input_device_index=None,
         input_device_name=None,
     )
-    llm_config = LLMConfig(model="test-model", ollama_host="localhost")
+    llm_config = LLMConfig(
+        model="test-model",
+        ollama_host="localhost",
+        service_provider="local",
+        openai_api_key=None,
+    )
     tts_config = TTSConfig(
         enabled=False,
         server_ip="localhost",
@@ -141,7 +146,12 @@ async def test_async_main_list_output_devices(tmp_path: Path) -> None:
         input_device_index=None,
         input_device_name=None,
     )
-    llm_config = LLMConfig(model="test-model", ollama_host="localhost")
+    llm_config = LLMConfig(
+        model="test-model",
+        ollama_host="localhost",
+        service_provider="local",
+        openai_api_key=None,
+    )
     tts_config = TTSConfig(
         enabled=False,
         server_ip="localhost",
@@ -191,7 +201,12 @@ async def test_async_main_full_loop(tmp_path: Path) -> None:
         input_device_index=1,
         input_device_name=None,
     )
-    llm_config = LLMConfig(model="test-model", ollama_host="localhost")
+    llm_config = LLMConfig(
+        model="test-model",
+        ollama_host="localhost",
+        service_provider="local",
+        openai_api_key=None,
+    )
     tts_config = TTSConfig(
         enabled=True,
         server_ip="localhost",

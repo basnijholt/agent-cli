@@ -57,7 +57,12 @@ async def test_process_instruction_and_respond(
         quiet=False,
         clipboard=True,
     )
-    llm_config = LLMConfig(model="test-model", ollama_host="localhost")
+    llm_config = LLMConfig(
+        model="test-model",
+        ollama_host="localhost",
+        service_provider="local",
+        openai_api_key=None,
+    )
     tts_config = TTSConfig(
         enabled=True,
         server_ip="localhost",

@@ -244,7 +244,7 @@ async def _handle_conversation_turn(
             system_prompt=SYSTEM_PROMPT,
             agent_instructions=AGENT_INSTRUCTIONS,
             user_input=user_message_with_context,
-            model=llm_config.model,
+            llm_config=llm_config,
             logger=LOGGER,
             tools=tools,
             quiet=True,  # Suppress internal output since we're showing our own timer
@@ -373,6 +373,8 @@ def interactive(
     # LLM
     model: str = opts.MODEL,
     ollama_host: str = opts.OLLAMA_HOST,
+    service_provider: str = opts.SERVICE_PROVIDER,
+    openai_api_key: str | None = opts.OPENAI_API_KEY,
     # Process control
     stop: bool = opts.STOP,
     status: bool = opts.STATUS,
@@ -438,7 +440,12 @@ def interactive(
             input_device_index=input_device_index,
             input_device_name=input_device_name,
         )
-        llm_config = LLMConfig(model=model, ollama_host=ollama_host)
+        llm_config = LLMConfig(
+            model=model,
+            ollama_host=ollama_host,
+            service_provider=service_provider,
+            openai_api_key=openai_api_key,
+        )
         tts_config = TTSConfig(
             enabled=enable_tts,
             server_ip=tts_server_ip,

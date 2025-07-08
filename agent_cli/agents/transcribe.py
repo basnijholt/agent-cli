@@ -100,7 +100,7 @@ async def _async_main(
             await process_and_update_clipboard(
                 system_prompt=SYSTEM_PROMPT,
                 agent_instructions=AGENT_INSTRUCTIONS,
-                model=llm_config.model,
+                llm_config=llm_config,
                 logger=LOGGER,
                 original_text=transcript,
                 instruction=INSTRUCTION,
@@ -147,6 +147,8 @@ def transcribe(
     # LLM
     model: str = opts.MODEL,
     ollama_host: str = opts.OLLAMA_HOST,
+    service_provider: str = opts.SERVICE_PROVIDER,
+    openai_api_key: str | None = opts.OPENAI_API_KEY,
     llm: bool = opts.LLM,
     # Process control
     stop: bool = opts.STOP,
@@ -208,7 +210,12 @@ def transcribe(
 
         # Use context manager for PID file management
         with process_manager.pid_file_context(process_name), suppress(KeyboardInterrupt):
-            llm_config = LLMConfig(model=model, ollama_host=ollama_host)
+            llm_config = LLMConfig(
+                model=model,
+                ollama_host=ollama_host,
+                service_provider=service_provider,
+                openai_api_key=openai_api_key,
+            )
 
             asyncio.run(
                 _async_main(

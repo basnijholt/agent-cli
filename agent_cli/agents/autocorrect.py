@@ -86,10 +86,10 @@ Output format: corrected text only, no other words.
 # --- Main Application Logic ---
 
 
-async def _process_text(text: str, model: str) -> tuple[str, float]:
+async def _process_text(text: str, llm_config: LLMConfig) -> tuple[str, float]:
     """Process text with the LLM and return the corrected text and elapsed time."""
     agent = build_agent(
-        model=model,
+        llm_config=llm_config,
         system_prompt=SYSTEM_PROMPT,
         instructions=AGENT_INSTRUCTIONS,
     )
@@ -158,7 +158,7 @@ async def _async_autocorrect(
         with _maybe_status(llm_config, general_cfg.quiet):
             corrected_text, elapsed = await _process_text(
                 original_text,
-                llm_config.model,
+                llm_config,
             )
 
         _display_result(
@@ -189,13 +189,20 @@ def autocorrect(
     ),
     model: str = opts.MODEL,
     ollama_host: str = opts.OLLAMA_HOST,
+    service_provider: str = opts.SERVICE_PROVIDER,
+    openai_api_key: str | None = opts.OPENAI_API_KEY,
     log_level: str = opts.LOG_LEVEL,
     log_file: str | None = opts.LOG_FILE,
     quiet: bool = opts.QUIET,
     config_file: str | None = opts.CONFIG_FILE,  # noqa: ARG001
 ) -> None:
     """Correct text from clipboard using a local Ollama model."""
-    llm_config = LLMConfig(model=model, ollama_host=ollama_host)
+    llm_config = LLMConfig(
+        model=model,
+        ollama_host=ollama_host,
+        service_provider=service_provider,
+        openai_api_key=openai_api_key,
+    )
     general_cfg = GeneralConfig(
         log_level=log_level,
         log_file=log_file,

@@ -109,10 +109,17 @@ async def test_process_text_integration(mock_build_agent: MagicMock) -> None:
     mock_agent.run = AsyncMock(return_value=mock_result)
     mock_build_agent.return_value = mock_agent
 
+    llm_config = LLMConfig(
+        model="test-model",
+        ollama_host="test",
+        service_provider="local",
+        openai_api_key=None,
+    )
+
     # Test the function
     result, elapsed = await autocorrect._process_text(
         "this is text",
-        "test-model",
+        llm_config,
     )
 
     # Verify the result
@@ -122,7 +129,7 @@ async def test_process_text_integration(mock_build_agent: MagicMock) -> None:
 
     # Verify the agent was called correctly
     mock_build_agent.assert_called_once_with(
-        model="test-model",
+        llm_config=llm_config,
         system_prompt=autocorrect.SYSTEM_PROMPT,
         instructions=autocorrect.AGENT_INSTRUCTIONS,
     )
@@ -157,7 +164,12 @@ async def test_autocorrect_command_with_text(
     mock_agent.run = AsyncMock(return_value=mock_result)
     mock_build_agent.return_value = mock_agent
 
-    llm_config = LLMConfig(model=config.DEFAULT_MODEL, ollama_host=config.OLLAMA_HOST)
+    llm_config = LLMConfig(
+        model=config.DEFAULT_MODEL,
+        ollama_host=config.OLLAMA_HOST,
+        service_provider="local",
+        openai_api_key=None,
+    )
     general_cfg = GeneralConfig(
         log_level="WARNING",
         log_file=None,
@@ -175,7 +187,7 @@ async def test_autocorrect_command_with_text(
     # Assertions
     mock_get_clipboard.assert_not_called()
     mock_build_agent.assert_called_once_with(
-        model=config.DEFAULT_MODEL,
+        llm_config=llm_config,
         system_prompt=autocorrect.SYSTEM_PROMPT,
         instructions=autocorrect.AGENT_INSTRUCTIONS,
     )
@@ -199,7 +211,12 @@ async def test_autocorrect_command_from_clipboard(
     mock_agent.run = AsyncMock(return_value=mock_result)
     mock_build_agent.return_value = mock_agent
 
-    llm_config = LLMConfig(model=config.DEFAULT_MODEL, ollama_host=config.OLLAMA_HOST)
+    llm_config = LLMConfig(
+        model=config.DEFAULT_MODEL,
+        ollama_host=config.OLLAMA_HOST,
+        service_provider="local",
+        openai_api_key=None,
+    )
     general_cfg = GeneralConfig(
         log_level="WARNING",
         log_file=None,
@@ -217,7 +234,7 @@ async def test_autocorrect_command_from_clipboard(
     # Assertions
     mock_get_clipboard.assert_called_once_with(quiet=True)
     mock_build_agent.assert_called_once_with(
-        model=config.DEFAULT_MODEL,
+        llm_config=llm_config,
         system_prompt=autocorrect.SYSTEM_PROMPT,
         instructions=autocorrect.AGENT_INSTRUCTIONS,
     )
@@ -233,7 +250,12 @@ async def test_async_autocorrect_no_text(
     mock_process_text: AsyncMock,
 ) -> None:
     """Test the async_autocorrect function when no text is provided."""
-    llm_config = LLMConfig(model="test", ollama_host="test")
+    llm_config = LLMConfig(
+        model="test",
+        ollama_host="test",
+        service_provider="local",
+        openai_api_key=None,
+    )
     general_cfg = GeneralConfig(
         log_level="WARNING",
         log_file=None,

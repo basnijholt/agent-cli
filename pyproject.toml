@@ -15,6 +15,7 @@ dependencies = [
     "pydantic-ai-slim[openai,duckduckgo]",
     "typer",
     "openai",
+    "dotenv",
 ]
 requires-python = ">=3.11"
 

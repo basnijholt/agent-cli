@@ -24,8 +24,17 @@ def test_transcribe_agent(
     mock_get_transcriber.return_value = mock_transcriber
     mock_setup_devices.return_value = (0, "mock_device", None)
     with patch("agent_cli.agents.transcribe.pyperclip.copy") as mock_copy:
-        result = runner.invoke(app, ["transcribe"])
-    assert result.exit_code == 0
+        result = runner.invoke(
+            app,
+            [
+                "transcribe",
+                "--service-provider",
+                "local",
+                "--openai-api-key",
+                "test",
+            ],
+        )
+    assert result.exit_code == 0, result.output
     mock_pid_context.assert_called_once()
     mock_get_transcriber.assert_called_once()
     mock_transcriber.assert_called_once()
