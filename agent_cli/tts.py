@@ -43,7 +43,7 @@ def get_synthesizer() -> Callable[..., Awaitable[bytes | None]]:
         if not config.OPENAI_API_KEY:
             msg = "OpenAI API key is not set."
             raise ValueError(msg)
-        return functools.partial(_synthesize_speech_openai, api_key=config.OPENAI_API_KEY)
+        return functools.partial(synthesize_speech_openai, api_key=config.OPENAI_API_KEY)
     return _synthesize_speech_wyoming
 
 
@@ -169,23 +169,6 @@ async def _synthesize_speech_wyoming(
         return None
 
 
-async def _synthesize_speech_openai(
-    text: str,
-    api_key: str,
-    logger: logging.Logger,
-    *,
-    quiet: bool = False,
-    live: Live,
-) -> bytes | None:
-    """Synthesize speech from text using OpenAI TTS server."""
-    try:
-        async with live_timer(live, "🔊 Synthesizing text", style="blue", quiet=quiet):
-            return await synthesize_speech_openai(text, api_key, logger)
-    except Exception:
-        logger.exception("Error during speech synthesis")
-        return None
-
-
 def _apply_speed_adjustment(
     audio_data: io.BytesIO,
     speed: float,
@@ -275,17 +258,25 @@ async def speak_text(
 ) -> bytes | None:
     """Synthesize and optionally play speech from text."""
     synthesizer = get_synthesizer()
-    audio_data = await synthesizer(
-        text=text,
-        tts_server_ip=tts_server_ip,
-        tts_server_port=tts_server_port,
-        logger=logger,
-        voice_name=voice_name,
-        language=language,
-        speaker=speaker,
-        quiet=quiet,
-        live=live,
-    )
+    audio_data = None
+    try:
+        async with live_timer(live, "🔊 Synthesizing text", style="blue", quiet=quiet):
+            # The OpenAI synthesizer doesn't use all these arguments, but they are
+            # passed in from the agent. We can ignore them here.
+            audio_data = await synthesizer(
+                text=text,
+                tts_server_ip=tts_server_ip,
+                tts_server_port=tts_server_port,
+                logger=logger,
+                voice_name=voice_name,
+                language=language,
+                speaker=speaker,
+                quiet=quiet,
+                live=live,
+            )
+    except Exception:
+        logger.exception("Error during speech synthesis")
+        return None
 
     if audio_data and play_audio_flag:
         await play_audio(

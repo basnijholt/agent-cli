@@ -51,8 +51,21 @@ def get_recorded_audio_transcriber() -> Callable[..., Awaitable[str]]:
         if not config.OPENAI_API_KEY:
             msg = "OpenAI API key is not set."
             raise ValueError(msg)
+
+        async def transcribe_with_error_handling(
+            audio_data: bytes,
+            api_key: str,
+            logger: logging.Logger,
+        ) -> str:
+            """Wrapper to handle exceptions for OpenAI transcription."""
+            try:
+                return await transcribe_audio_openai(audio_data, api_key, logger)
+            except Exception:
+                logger.exception("Error during transcription")
+                return ""
+
         return functools.partial(
-            transcribe_recorded_audio_openai,
+            transcribe_with_error_handling,
             api_key=config.OPENAI_API_KEY,
         )
     return transcribe_recorded_audio_wyoming
@@ -214,19 +227,6 @@ async def transcribe_recorded_audio_wyoming(
 
             return await _receive_transcript(client, logger)
     except (ConnectionRefusedError, Exception):
-        return ""
-
-
-async def transcribe_recorded_audio_openai(
-    audio_data: bytes,
-    api_key: str,
-    logger: logging.Logger,
-) -> str:
-    """Process pre-recorded audio data with OpenAI Whisper."""
-    try:
-        return await transcribe_audio_openai(audio_data, api_key, logger)
-    except Exception:
-        logger.exception("Error during transcription")
         return ""
 
 

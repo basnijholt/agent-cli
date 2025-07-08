@@ -77,7 +77,7 @@ def test_get_synthesizer_openai(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr("agent_cli.config.OPENAI_API_KEY", "test_api_key")
     synthesizer = tts.get_synthesizer()
     assert isinstance(synthesizer, functools.partial)
-    assert "_synthesize_speech_openai" in synthesizer.func.__name__
+    assert "synthesize_speech_openai" in synthesizer.func.__name__
 
 
 def test_get_synthesizer_wyoming(monkeypatch: pytest.MonkeyPatch) -> None:

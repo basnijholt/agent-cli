@@ -24,6 +24,7 @@ DEFAULT_MODEL = "devstral:24b"
 
 # --- OpenAI Configuration ---
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+DEFAULT_OPENAI_MODEL = "gpt-4o"
 
 # --- Service Provider ---
 SERVICE_PROVIDER = os.getenv("SERVICE_PROVIDER", "local")  # 'local' or 'openai'
