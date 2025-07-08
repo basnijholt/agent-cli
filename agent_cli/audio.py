@@ -33,7 +33,12 @@ if TYPE_CHECKING:
 
 
 class _AudioTee:
-    """A class to tee an audio stream into multiple queues."""
+    """A thread-safe class to tee a continuous PyAudio stream into multiple asyncio queues.
+
+    This class reads from a single audio stream in a background task and forwards
+    the audio chunks to any number of dynamically added consumer queues. It is designed
+    to be started once and run for the lifetime of the stream.
+    """
 
     def __init__(
         self,
@@ -41,23 +46,33 @@ class _AudioTee:
         stop_event: InteractiveStopEvent,
         logger: logging.Logger,
     ) -> None:
-        """Initialize the AudioTee with a PyAudio stream and stop event."""
+        """Initialize the AudioTee."""
         self.stream = stream
         self.stop_event = stop_event
         self.logger = logger
         self.queues: list[asyncio.Queue[bytes | None]] = []
         self._task: asyncio.Task | None = None
         self._stop_tee_event = asyncio.Event()
+        self._lock = asyncio.Lock()  # For thread-safe modification of the queues list
 
-    def add_queue(self) -> asyncio.Queue[bytes | None]:
-        """Add a new queue to the tee."""
+    async def add_queue(self) -> asyncio.Queue[bytes | None]:
         queue: asyncio.Queue[bytes | None] = asyncio.Queue()
-        self.queues.append(queue)
+        async with self._lock:
+            self.queues.append(queue)
+        self.logger.debug("Added a queue to the tee. Total queues: %d", len(self.queues))
         return queue
 
+    async def remove_queue(self, queue: asyncio.Queue[bytes | None]) -> None:
+        async with self._lock:
+            if queue in self.queues:
+                self.queues.remove(queue)
+        # Signal the end of the stream for this specific queue consumer
+        await queue.put(None)
+        self.logger.debug("Removed a queue from the tee. Total queues: %d", len(self.queues))
+
     async def _run(self) -> None:
-        """Read from the stream and push to all queues."""
-        self.logger.debug("Starting audio tee")
+        """The main background task that reads from the stream and pushes to all queues."""
+        self.logger.debug("Starting continuous audio reading task.")
         try:
             while not self.stop_event.is_set() and not self._stop_tee_event.is_set():
                 chunk = await asyncio.to_thread(
@@ -65,26 +80,30 @@ class _AudioTee:
                     num_frames=config.PYAUDIO_CHUNK_SIZE,
                     exception_on_overflow=False,
                 )
-                for queue in self.queues:
-                    await queue.put(chunk)
+                # Lock the queue list while iterating to prevent modification during iteration
+                async with self._lock:
+                    for queue in self.queues:
+                        await queue.put(chunk)
         except OSError:
-            self.logger.exception("Error reading audio")
+            self.logger.exception("Error reading audio stream")
         finally:
-            for queue in self.queues:
-                await queue.put(None)  # Signal end of stream
-            self.logger.debug("Audio tee finished")
+            # Signal the end of the stream to all remaining consumers
+            self.logger.debug("Stopping audio reading task and signaling all consumers.")
+            async with self._lock:
+                for queue in self.queues:
+                    await queue.put(None)
 
     def start(self) -> None:
-        """Start the tee in the background."""
+        """Start the background reading task."""
         if self._task is None:
             self._task = asyncio.create_task(self._run())
 
     async def stop(self) -> None:
-        """Stop the tee."""
+        """Stop the background reading task gracefully."""
         if self._task and not self._task.done():
             self._stop_tee_event.set()
             await self._task
-        self.logger.debug("Audio tee stopped")
+        self.logger.debug("Audio tee stopped successfully.")
 
 
 @asynccontextmanager
