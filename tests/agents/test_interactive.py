@@ -94,7 +94,12 @@ async def test_async_main_list_devices(tmp_path: Path) -> None:
         input_device_index=None,
         input_device_name=None,
     )
-    llm_config = LLMConfig(model="test-model", ollama_host="localhost")
+    llm_config = LLMConfig(
+        model="test-model",
+        ollama_host="localhost",
+        service_provider="local",
+        openai_api_key=None,
+    )
     tts_config = TTSConfig(
         enabled=False,
         server_ip="localhost",
@@ -141,7 +146,12 @@ async def test_async_main_list_output_devices(tmp_path: Path) -> None:
         input_device_index=None,
         input_device_name=None,
     )
-    llm_config = LLMConfig(model="test-model", ollama_host="localhost")
+    llm_config = LLMConfig(
+        model="test-model",
+        ollama_host="localhost",
+        service_provider="local",
+        openai_api_key=None,
+    )
     tts_config = TTSConfig(
         enabled=False,
         server_ip="localhost",
@@ -191,7 +201,12 @@ async def test_async_main_full_loop(tmp_path: Path) -> None:
         input_device_index=1,
         input_device_name=None,
     )
-    llm_config = LLMConfig(model="test-model", ollama_host="localhost")
+    llm_config = LLMConfig(
+        model="test-model",
+        ollama_host="localhost",
+        service_provider="local",
+        openai_api_key=None,
+    )
     tts_config = TTSConfig(
         enabled=True,
         server_ip="localhost",
@@ -208,10 +223,7 @@ async def test_async_main_full_loop(tmp_path: Path) -> None:
     with (
         patch("agent_cli.agents.interactive.pyaudio_context"),
         patch("agent_cli.agents.interactive.setup_devices", return_value=(1, "mock_input", 1)),
-        patch(
-            "agent_cli.agents.interactive.asr.transcribe_live_audio",
-            new_callable=AsyncMock,
-        ) as mock_transcribe,
+        patch("agent_cli.agents.interactive.asr.get_transcriber") as mock_get_transcriber,
         patch(
             "agent_cli.agents.interactive.get_llm_response",
             new_callable=AsyncMock,
@@ -227,7 +239,8 @@ async def test_async_main_full_loop(tmp_path: Path) -> None:
         mock_stop_event.is_set.side_effect = [False, True]  # Run loop once, then stop
         mock_stop_event.clear = MagicMock()  # Mock the clear method
 
-        mock_transcribe.return_value = "Mocked instruction"
+        mock_transcriber = AsyncMock(return_value="Mocked instruction")
+        mock_get_transcriber.return_value = mock_transcriber
         mock_llm_response.return_value = "Mocked response"
         mock_signal.return_value.__enter__.return_value = mock_stop_event
 
@@ -240,7 +253,8 @@ async def test_async_main_full_loop(tmp_path: Path) -> None:
         )
 
         # Verify that the core functions were called
-        mock_transcribe.assert_called_once()
+        mock_get_transcriber.assert_called_once()
+        mock_transcriber.assert_called_once()
         mock_llm_response.assert_called_once()
         assert mock_stop_event.clear.call_count == 2  # Called after ASR and at end of turn
         mock_tts.assert_called_with(

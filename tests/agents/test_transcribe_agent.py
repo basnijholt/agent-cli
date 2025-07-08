@@ -11,22 +11,33 @@ from agent_cli.cli import app
 runner = CliRunner()
 
 
-@patch("agent_cli.agents.transcribe.asr.transcribe_live_audio", new_callable=AsyncMock)
+@patch("agent_cli.agents.transcribe.asr.get_transcriber")
 @patch("agent_cli.agents.transcribe.process_manager.pid_file_context")
 @patch("agent_cli.agents.transcribe.setup_devices")
 def test_transcribe_agent(
     mock_setup_devices: MagicMock,
     mock_pid_context: MagicMock,
-    mock_transcribe_audio: AsyncMock,
+    mock_get_transcriber: MagicMock,
 ) -> None:
     """Test the transcribe agent."""
-    mock_transcribe_audio.return_value = "hello"
+    mock_transcriber = AsyncMock(return_value="hello")
+    mock_get_transcriber.return_value = mock_transcriber
     mock_setup_devices.return_value = (0, "mock_device", None)
     with patch("agent_cli.agents.transcribe.pyperclip.copy") as mock_copy:
-        result = runner.invoke(app, ["transcribe"])
-    assert result.exit_code == 0
+        result = runner.invoke(
+            app,
+            [
+                "transcribe",
+                "--service-provider",
+                "local",
+                "--openai-api-key",
+                "test",
+            ],
+        )
+    assert result.exit_code == 0, result.output
     mock_pid_context.assert_called_once()
-    mock_transcribe_audio.assert_called_once()
+    mock_get_transcriber.assert_called_once()
+    mock_transcriber.assert_called_once()
     mock_copy.assert_called_once_with("hello")
 
 

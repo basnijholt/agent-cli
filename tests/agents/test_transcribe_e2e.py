@@ -56,7 +56,12 @@ async def test_transcribe_e2e(
         list_devices=False,
         clipboard=False,
     )
-    llm_config = LLMConfig(model="", ollama_host="")
+    llm_config = LLMConfig(
+        model="",
+        ollama_host="",
+        service_provider="local",
+        openai_api_key=None,
+    )
 
     with patch("agent_cli.utils.console", mock_console):
         await _async_main(

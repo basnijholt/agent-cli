@@ -171,6 +171,8 @@ def voice_assistant(
     # LLM
     model: str = opts.MODEL,
     ollama_host: str = opts.OLLAMA_HOST,
+    service_provider: str = opts.SERVICE_PROVIDER,
+    openai_api_key: str | None = opts.OPENAI_API_KEY,
     # Process control
     stop: bool = opts.STOP,
     status: bool = opts.STATUS,
@@ -236,7 +238,12 @@ def voice_assistant(
             input_device_index=input_device_index,
             input_device_name=input_device_name,
         )
-        llm_config = LLMConfig(model=model, ollama_host=ollama_host)
+        llm_config = LLMConfig(
+            model=model,
+            ollama_host=ollama_host,
+            service_provider=service_provider,
+            openai_api_key=openai_api_key,
+        )
         tts_config = TTSConfig(
             enabled=enable_tts,
             server_ip=tts_server_ip,

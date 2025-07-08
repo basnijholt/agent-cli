@@ -6,6 +6,8 @@ model = "gemma3:4b"
 ollama_host = "http://localhost:11434"
 input_device_name = "logitech,airpods"
 device_output_name = "iloud,airpods,dell,macbook"
+# service_provider = "openai"  # 'local' or 'openai'
+# openai_api_key = "sk-..."
 
 [autocorrect]
 # model = "devstral:24b"
