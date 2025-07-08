@@ -1,40 +1,88 @@
 # Example configuration for agent-cli
 # Copy this file to ~/.config/agent-cli/config.toml or ./agent-cli-config.toml and edit
 
+# --- Default Settings ---
+# These settings apply to all commands unless overridden in a command-specific section.
 [defaults]
-model = "gemma3:4b"
-ollama_host = "http://localhost:11434"
+# --- Provider Selection ---
+# Select the default provider for each service.
+# Options: "local" (for Ollama/Wyoming) or "openai"
+llm_provider = "local"
+asr_provider = "local"
+tts_provider = "local"
+
+# --- General Device and API Key Settings ---
+# These can be overridden in provider-specific sections if needed.
 input_device_name = "logitech,airpods"
-device_output_name = "iloud,airpods,dell,macbook"
-# service_provider = "openai"  # 'local' or 'openai'
-# openai_api_key = "sk-..."
+output_device_name = "iloud,airpods,dell,macbook"
+openai_api_key = "sk-..."  # Can also be set via OPENAI_API_KEY environment variable
+
+# --- LLM Provider Configurations ---
+[llm.local]
+model = "gemma3:4b"
+host = "http://localhost:11434"
+
+[llm.openai]
+model = "gpt-4o-mini"
+# api_key = "sk-..." # Inherits from [defaults] if not set here
+
+# --- ASR Provider Configurations ---
+[asr.local]
+server_ip = "localhost"
+server_port = 10300
+
+[asr.openai]
+model = "whisper-1"
+# api_key = "sk-..." # Inherits from [defaults] if not set here
+
+# --- TTS Provider Configurations ---
+[tts.local]
+server_ip = "localhost"
+server_port = 10200
+voice_name = "en_US-lessac-medium"
+# language = "en_US"
+# speaker = "speaker_name"
+
+[tts.openai]
+model = "tts-1"
+voice = "alloy"
+# api_key = "sk-..." # Inherits from [defaults] if not set here
+
+
+# --- Command-Specific Overrides ---
+# Settings in these sections will override the [defaults].
 
 [autocorrect]
-# model = "devstral:24b"
-# ollama_host = "http://localhost:11434"
-# log_level = "INFO"
-# quiet = true
+# Use a more powerful model specifically for the autocorrect command.
+llm_provider = "local"
+# You can override provider-specific settings here too, but it's cleaner
+# to define them in the sections above. For example:
+# ollama_model = "devstral:24b"
 
 [chat]
-# input_device_name = "MacBook Pro Microphone"
-# model = "llama3"
-# ollama_host = "http://localhost:11434"
-# enable_tts = true
-# voice_name = "en_US-lessac-medium"
-# tts_speed = 1.2
+# Use OpenAI for the chat agent for better tool use.
+llm_provider = "openai"
+tts_provider = "openai"
+enable_tts = true
+tts_speed = 1.2
+# You can override the default OpenAI model for this agent
+# openai_llm_model = "gpt-4-turbo"
 
 [speak]
-# output_device_name = "MacBook Pro Speakers"
-# voice_name = "en_US-lessac-medium"
-# tts_speed = 1.0
+# Use a specific voice for the speak command.
+tts_provider = "local"
+# wyoming_voice = "en_US-ryan-high"
+tts_speed = 1.0
 
 [transcribe]
-# input_device_name = "MacBook Pro Microphone"
-# llm = true
-# model = "llama3"
+# Use OpenAI for transcription for higher accuracy.
+asr_provider = "openai"
+# Enable LLM cleanup for the transcript.
+llm = true
+llm_provider = "openai"
 
 [voice-edit]
-# input_device_name = "MacBook Pro Microphone"
-# model = "llama3"
-# enable_tts = true
-# output_device_name = "MacBook Pro Speakers"
+# Use a powerful local model for the voice assistant.
+llm_provider = "local"
+# ollama_model = "llama3"
+enable_tts = true

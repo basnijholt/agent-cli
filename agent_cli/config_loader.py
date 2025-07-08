@@ -12,13 +12,20 @@ CONFIG_PATH = Path.home() / ".config" / "agent-cli" / "config.toml"
 CONFIG_PATH_2 = Path("agent-cli-config.toml")
 
 
-def _replace_dashed_keys(cfg: dict[str, Any]) -> dict[str, Any]:
-    """Replace dashed keys with underscores in the config options."""
-    return {k.replace("-", "_"): v for k, v in cfg.items()}
+def _replace_dashed_keys_recursive(d: dict[str, Any]) -> dict[str, Any]:
+    """Recursively replace dashed keys with underscores in a dictionary."""
+    new_dict = {}
+    for k, v in d.items():
+        new_key = k.replace("-", "_")
+        if isinstance(v, dict):
+            new_dict[new_key] = _replace_dashed_keys_recursive(v)
+        else:
+            new_dict[new_key] = v
+    return new_dict
 
 
 def load_config(config_path_str: str | None = None) -> dict[str, Any]:
-    """Load the TOML configuration file."""
+    """Load the TOML configuration file and process it for nested structures."""
     # Determine which config path to use
     if config_path_str:
         config_path = Path(config_path_str)
@@ -29,13 +36,19 @@ def load_config(config_path_str: str | None = None) -> dict[str, Any]:
     else:
         return {}
 
-    # Try to load the config
+    # Try to load and process the config
     if config_path.exists():
-        with config_path.open("rb") as f:
-            cfg = tomllib.load(f)
-            return {k: _replace_dashed_keys(v) for k, v in cfg.items()}
+        try:
+            with config_path.open("rb") as f:
+                cfg = tomllib.load(f)
+                return _replace_dashed_keys_recursive(cfg)
+        except tomllib.TOMLDecodeError as e:
+            console.print(
+                f"[bold red]Error parsing config file {config_path}: {e}[/bold red]",
+            )
+            return {}
 
-    # Report error only if explicit path was given
+    # Report error only if an explicit path was given
     if config_path_str:
         console.print(
             f"[bold red]Config file not found at {config_path_str}[/bold red]",

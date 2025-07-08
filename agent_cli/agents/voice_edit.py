@@ -1,6 +1,4 @@
-r"""Interact with clipboard text via a voice command using Wyoming and an Ollama LLM.
-
-This script combines functionalities from transcribe.py and autocorrect_ollama.py.
+"""Interact with clipboard text via a voice command using Wyoming and an Ollama LLM.
 
 WORKFLOW:
 1. The script starts and immediately copies the current content of the clipboard.
@@ -47,7 +45,13 @@ from agent_cli.agents._config import (
     FileConfig,
     GeneralConfig,
     LLMConfig,
+    OllamaLLMConfig,
+    OpenAIASRConfig,
+    OpenAILLMConfig,
+    OpenAITTSConfig,
     TTSConfig,
+    WyomingASRConfig,
+    WyomingTTSConfig,
 )
 from agent_cli.agents._voice_agent_common import (
     get_instruction_from_audio,
@@ -107,6 +111,8 @@ async def _async_main(
         if device_info is None:
             return
         input_device_index, _, tts_output_device_index = device_info
+        asr_config.input_device_index = input_device_index
+        tts_config.output_device_index = tts_output_device_index
 
         original_text = get_clipboard_text()
         if original_text is None:
@@ -134,11 +140,11 @@ async def _async_main(
                 return
 
             instruction = await get_instruction_from_audio(
-                audio_data,
-                asr_config,
-                llm_config,
-                LOGGER,
-                general_cfg.quiet,
+                audio_data=audio_data,
+                asr_config=asr_config,
+                llm_config=llm_config,
+                logger=LOGGER,
+                quiet=general_cfg.quiet,
             )
             if not instruction:
                 return
@@ -152,7 +158,6 @@ async def _async_main(
                 file_config=file_config,
                 system_prompt=SYSTEM_PROMPT,
                 agent_instructions=AGENT_INSTRUCTIONS,
-                tts_output_device_index=tts_output_device_index,
                 live=live,
                 logger=LOGGER,
             )
@@ -161,33 +166,39 @@ async def _async_main(
 @app.command("voice-edit")
 def voice_edit(
     *,
-    # ASR
+    # --- Provider Selection ---
+    asr_provider: str = opts.ASR_PROVIDER,
+    llm_provider: str = opts.LLM_PROVIDER,
+    tts_provider: str = opts.TTS_PROVIDER,
+    # --- ASR (Audio) Configuration ---
     input_device_index: int | None = opts.DEVICE_INDEX,
     input_device_name: str | None = opts.DEVICE_NAME,
-    asr_server_ip: str = opts.ASR_SERVER_IP,
-    asr_server_port: int = opts.ASR_SERVER_PORT,
-    # LLM
-    model: str = opts.MODEL,
+    wyoming_asr_ip: str = opts.WYOMING_ASR_SERVER_IP,
+    wyoming_asr_port: int = opts.WYOMING_ASR_SERVER_PORT,
+    openai_asr_model: str = opts.OPENAI_ASR_MODEL,
+    # --- LLM Configuration ---
+    ollama_model: str = opts.OLLAMA_MODEL,
     ollama_host: str = opts.OLLAMA_HOST,
-    service_provider: str = opts.SERVICE_PROVIDER,
+    openai_llm_model: str = opts.OPENAI_LLM_MODEL,
     openai_api_key: str | None = opts.OPENAI_API_KEY,
-    # Process control
+    # --- TTS Configuration ---
+    enable_tts: bool = opts.ENABLE_TTS,
+    output_device_index: int | None = opts.OUTPUT_DEVICE_INDEX,
+    output_device_name: str | None = opts.OUTPUT_DEVICE_NAME,
+    tts_speed: float = opts.TTS_SPEED,
+    wyoming_tts_ip: str = opts.WYOMING_TTS_SERVER_IP,
+    wyoming_tts_port: int = opts.WYOMING_TTS_SERVER_PORT,
+    wyoming_voice: str | None = opts.WYOMING_VOICE_NAME,
+    wyoming_tts_language: str | None = opts.WYOMING_TTS_LANGUAGE,
+    wyoming_speaker: str | None = opts.WYOMING_SPEAKER,
+    openai_tts_model: str = opts.OPENAI_TTS_MODEL,
+    openai_tts_voice: str = opts.OPENAI_TTS_VOICE,
+    # --- Process Management ---
     stop: bool = opts.STOP,
     status: bool = opts.STATUS,
     toggle: bool = opts.TOGGLE,
-    # TTS parameters
-    enable_tts: bool = opts.ENABLE_TTS,
-    tts_server_ip: str = opts.TTS_SERVER_IP,
-    tts_server_port: int = opts.TTS_SERVER_PORT,
-    voice_name: str | None = opts.VOICE_NAME,
-    tts_language: str | None = opts.TTS_LANGUAGE,
-    speaker: str | None = opts.SPEAKER,
-    tts_speed: float = opts.TTS_SPEED,
-    output_device_index: int | None = opts.OUTPUT_DEVICE_INDEX,
-    output_device_name: str | None = opts.OUTPUT_DEVICE_NAME,
-    # Output
+    # --- General Options ---
     save_file: Path | None = opts.SAVE_FILE,
-    # General
     clipboard: bool = opts.CLIPBOARD,
     log_level: str = opts.LOG_LEVEL,
     log_file: str | None = opts.LOG_FILE,
@@ -224,35 +235,54 @@ def voice_edit(
     ):
         return
 
-    # Use context manager for PID file management
-    with (
-        process_manager.pid_file_context(process_name),
-        suppress(KeyboardInterrupt),
-    ):
+    with process_manager.pid_file_context(process_name), suppress(KeyboardInterrupt):
+        # --- ASR Config ---
+        wyoming_asr_config = WyomingASRConfig(
+            server_ip=wyoming_asr_ip,
+            server_port=wyoming_asr_port,
+        )
+        openai_asr_config = OpenAIASRConfig(model=openai_asr_model, api_key=openai_api_key)
         asr_config = ASRConfig(
-            server_ip=asr_server_ip,
-            server_port=asr_server_port,
+            provider=asr_provider,  # type: ignore[arg-type]
             input_device_index=input_device_index,
             input_device_name=input_device_name,
+            local=wyoming_asr_config,
+            openai=openai_asr_config,
         )
+
+        # --- LLM Config ---
+        ollama_llm_config = OllamaLLMConfig(model=ollama_model, host=ollama_host)
+        openai_llm_config = OpenAILLMConfig(model=openai_llm_model, api_key=openai_api_key)
         llm_config = LLMConfig(
-            model=model,
-            ollama_host=ollama_host,
-            service_provider=service_provider,  # type: ignore[arg-type]
-            openai_api_key=openai_api_key,
+            provider=llm_provider,  # type: ignore[arg-type]
+            local=ollama_llm_config,
+            openai=openai_llm_config,
+        )
+
+        # --- TTS Config ---
+        wyoming_tts_config = WyomingTTSConfig(
+            server_ip=wyoming_tts_ip,
+            server_port=wyoming_tts_port,
+            voice_name=wyoming_voice,
+            language=wyoming_tts_language,
+            speaker=wyoming_speaker,
+        )
+        openai_tts_config = OpenAITTSConfig(
+            model=openai_tts_model,
+            voice=openai_tts_voice,
+            api_key=openai_api_key,
         )
         tts_config = TTSConfig(
             enabled=enable_tts,
-            server_ip=tts_server_ip,
-            server_port=tts_server_port,
-            voice_name=voice_name,
-            language=tts_language,
-            speaker=speaker,
+            provider=tts_provider,  # type: ignore[arg-type]
             output_device_index=output_device_index,
             output_device_name=output_device_name,
             speed=tts_speed,
+            local=wyoming_tts_config,
+            openai=openai_tts_config,
         )
-        file_config = FileConfig(save_file=save_file)
+
+        file_config = FileConfig(save_file=save_file, history_dir=None, last_n_messages=0)
 
         asyncio.run(
             _async_main(

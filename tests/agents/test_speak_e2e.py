@@ -7,7 +7,13 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from agent_cli.agents._config import FileConfig, GeneralConfig, TTSConfig
+from agent_cli.agents._config import (
+    FileConfig,
+    GeneralConfig,
+    OpenAITTSConfig,
+    TTSConfig,
+    WyomingTTSConfig,
+)
 from agent_cli.agents.speak import _async_main
 from tests.mocks.audio import MockPyAudio
 from tests.mocks.wyoming import MockTTSClient
@@ -46,28 +52,31 @@ async def test_speak_e2e(
             log_file=None,
             list_devices=False,
             quiet=False,
+            clipboard=False,
         )
         general_cfg.__dict__["console"] = mock_console
         tts_config = TTSConfig(
             enabled=True,
-            server_ip="mock-host",
-            server_port=10200,
-            voice_name=None,
-            language=None,
-            speaker=None,
+            provider="local",
             output_device_index=None,
             output_device_name=None,
             speed=1.0,
+            local=WyomingTTSConfig(
+                server_ip="mock-host",
+                server_port=10200,
+                voice_name=None,
+                language=None,
+                speaker=None,
+            ),
+            openai=OpenAITTSConfig(api_key=None),
         )
-        file_config = FileConfig(save_file=None)
+        file_config = FileConfig(save_file=None, history_dir=None, last_n_messages=0)
 
         await _async_main(
             general_cfg=general_cfg,
             text="Hello, world!",
             tts_config=tts_config,
             file_config=file_config,
-            service_provider="local",
-            openai_api_key=None,
         )
 
     # Verify that the audio was "played"

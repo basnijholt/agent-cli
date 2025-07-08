@@ -8,6 +8,11 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from agent_cli.agents._config import (
+    OpenAITTSConfig,
+    TTSConfig,
+    WyomingTTSConfig,
+)
 from agent_cli.tts import _apply_speed_adjustment, speak_text
 
 
@@ -17,13 +22,25 @@ async def test_speak_text(mock_get_synthesizer: MagicMock) -> None:
     """Test the speak_text function."""
     mock_synthesizer = AsyncMock(return_value=b"audio data")
     mock_get_synthesizer.return_value = mock_synthesizer
+    tts_config = TTSConfig(
+        enabled=True,
+        provider="local",
+        output_device_index=None,
+        output_device_name=None,
+        speed=1.0,
+        local=WyomingTTSConfig(
+            server_ip="localhost",
+            server_port=1234,
+            voice_name=None,
+            language=None,
+            speaker=None,
+        ),
+        openai=OpenAITTSConfig(api_key=None, model="tts-1", voice="alloy"),
+    )
 
     audio_data = await speak_text(
         text="hello",
-        service_provider="local",
-        openai_api_key=None,
-        tts_server_ip="localhost",
-        tts_server_port=1234,
+        tts_config=tts_config,
         logger=MagicMock(),
         play_audio_flag=False,
         live=MagicMock(),

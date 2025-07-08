@@ -8,7 +8,15 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from agent_cli.agents._config import ASRConfig, GeneralConfig, LLMConfig
+from agent_cli.agents._config import (
+    ASRConfig,
+    GeneralConfig,
+    LLMConfig,
+    OllamaLLMConfig,
+    OpenAIASRConfig,
+    OpenAILLMConfig,
+    WyomingASRConfig,
+)
 from agent_cli.agents.transcribe import _async_main
 from tests.mocks.audio import MockPyAudio
 from tests.mocks.wyoming import MockASRClient
@@ -44,10 +52,11 @@ async def test_transcribe_e2e(
     asyncio.get_event_loop().call_later(0.1, stop_event.set)
 
     asr_config = ASRConfig(
-        server_ip="mock-host",
-        server_port=10300,
+        provider="local",
         input_device_index=0,
         input_device_name=None,
+        local=WyomingASRConfig(server_ip="mock-host", server_port=10300),
+        openai=OpenAIASRConfig(api_key=None),
     )
     general_cfg = GeneralConfig(
         log_level="INFO",
@@ -57,10 +66,9 @@ async def test_transcribe_e2e(
         clipboard=False,
     )
     llm_config = LLMConfig(
-        model="",
-        ollama_host="",
-        service_provider="local",
-        openai_api_key=None,
+        provider="local",
+        local=OllamaLLMConfig(model="", host=""),
+        openai=OpenAILLMConfig(model="", api_key=None),
     )
 
     with patch("agent_cli.utils.console", mock_console):

@@ -7,6 +7,14 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from agent_cli import asr, tts
+from agent_cli.agents._config import (
+    ASRConfig,
+    OpenAIASRConfig,
+    OpenAITTSConfig,
+    TTSConfig,
+    WyomingASRConfig,
+    WyomingTTSConfig,
+)
 from agent_cli.services import synthesize_speech_openai, transcribe_audio_openai
 
 
@@ -57,11 +65,33 @@ async def test_synthesize_speech_openai(mock_openai_client: MagicMock) -> None:
 
 def test_get_transcriber_wyoming() -> None:
     """Test that get_transcriber returns the Wyoming transcriber."""
-    transcriber = asr.get_transcriber("local", None)
+    asr_config = ASRConfig(
+        provider="local",
+        input_device_index=None,
+        input_device_name=None,
+        local=WyomingASRConfig(server_ip="localhost", server_port=1234),
+        openai=OpenAIASRConfig(api_key=None, model="whisper-1"),
+    )
+    transcriber = asr.get_transcriber(asr_config)
     assert transcriber == asr.transcribe_live_audio_wyoming
 
 
 def test_get_synthesizer_wyoming() -> None:
     """Test that get_synthesizer returns the Wyoming synthesizer."""
-    synthesizer = tts.get_synthesizer(service_provider="local", openai_api_key=None)
+    tts_config = TTSConfig(
+        enabled=True,
+        provider="local",
+        output_device_index=None,
+        output_device_name=None,
+        speed=1.0,
+        local=WyomingTTSConfig(
+            server_ip="localhost",
+            server_port=1234,
+            voice_name=None,
+            language=None,
+            speaker=None,
+        ),
+        openai=OpenAITTSConfig(api_key=None, model="tts-1", voice="alloy"),
+    )
+    synthesizer = tts.get_synthesizer(tts_config)
     assert synthesizer == tts._synthesize_speech_wyoming

@@ -1,19 +1,4 @@
-"""Read text from clipboard, correct it using a local Ollama model, and write the result back to the clipboard.
-
-Usage:
-    python autocorrect_ollama.py
-
-Environment variables:
-    OLLAMA_HOST: The host of the Ollama server. Default is "http://localhost:11434".
-
-
-Example:
-    OLLAMA_HOST=http://pc.local:11434 python autocorrect_ollama.py
-
-Pro-tip:
-    Use Keyboard Maestro on macOS or AutoHotkey on Windows to run this script with a hotkey.
-
-"""
+"""Read text from clipboard, correct it using a local or remote LLM, and write the result back to the clipboard."""
 
 from __future__ import annotations
 
@@ -27,7 +12,12 @@ import pyperclip
 import typer
 
 import agent_cli.agents._cli_options as opts
-from agent_cli.agents._config import GeneralConfig, LLMConfig
+from agent_cli.agents._config import (
+    GeneralConfig,
+    LLMConfig,
+    OllamaLLMConfig,
+    OpenAILLMConfig,
+)
 from agent_cli.cli import app, setup_logging
 from agent_cli.llm import build_agent
 from agent_cli.utils import (
@@ -135,7 +125,8 @@ def _display_result(
 
 def _maybe_status(llm_config: LLMConfig, quiet: bool) -> Status | contextlib.nullcontext:
     if not quiet:
-        return create_status(f"🤖 Correcting with {llm_config.model}...", "bold yellow")
+        model_name = llm_config.config.model
+        return create_status(f"🤖 Correcting with {model_name}...", "bold yellow")
     return contextlib.nullcontext()
 
 
@@ -164,10 +155,16 @@ async def _async_autocorrect(
         if general_cfg.quiet:
             print(f"❌ {e}")
         else:
-            print_error_message(
-                str(e),
-                f"Please check that your Ollama server is running at [bold cyan]{llm_config.ollama_host}[/bold cyan]",
-            )
+            if llm_config.provider == "local":
+                host = (
+                    llm_config.config.host
+                    if isinstance(llm_config.config, OllamaLLMConfig)
+                    else "unknown"
+                )
+                error_details = f"Please check that your Ollama server is running at [bold cyan]{host}[/bold cyan]"
+            else:
+                error_details = "Please check your OpenAI API key and network connection."
+            print_error_message(str(e), error_details)
         sys.exit(1)
 
 
@@ -179,27 +176,38 @@ def autocorrect(
         help="The text to correct. If not provided, reads from clipboard.",
         rich_help_panel="General Options",
     ),
-    model: str = opts.MODEL,
+    # --- Provider Selection ---
+    llm_provider: str = opts.LLM_PROVIDER,
+    # --- LLM Configuration ---
+    # Ollama (local service)
+    ollama_model: str = opts.OLLAMA_MODEL,
     ollama_host: str = opts.OLLAMA_HOST,
-    service_provider: str = opts.SERVICE_PROVIDER,
+    # OpenAI
+    openai_llm_model: str = opts.OPENAI_LLM_MODEL,
     openai_api_key: str | None = opts.OPENAI_API_KEY,
+    # --- General Options ---
     log_level: str = opts.LOG_LEVEL,
     log_file: str | None = opts.LOG_FILE,
     quiet: bool = opts.QUIET,
     config_file: str | None = opts.CONFIG_FILE,  # noqa: ARG001
 ) -> None:
-    """Correct text from clipboard using a local Ollama model."""
+    """Correct text from clipboard using a local or remote LLM."""
+    # Create provider-specific configs
+    ollama_config = OllamaLLMConfig(model=ollama_model, host=ollama_host)
+    openai_config = OpenAILLMConfig(model=openai_llm_model, api_key=openai_api_key)
+
+    # Create main LLMConfig
     llm_config = LLMConfig(
-        model=model,
-        ollama_host=ollama_host,
-        service_provider=service_provider,  # type: ignore[arg-type]
-        openai_api_key=openai_api_key,
+        provider=llm_provider,  # type: ignore[arg-type]
+        local=ollama_config,
+        openai=openai_config,
     )
     general_cfg = GeneralConfig(
         log_level=log_level,
         log_file=log_file,
         list_devices=False,
         quiet=quiet,
+        clipboard=True,
     )
     asyncio.run(
         _async_autocorrect(
