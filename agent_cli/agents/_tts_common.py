@@ -41,6 +41,8 @@ async def _save_audio_file(
 async def handle_tts_playback(
     text: str,
     *,
+    service_provider: str,
+    openai_api_key: str | None,
     tts_server_ip: str,
     tts_server_port: int,
     voice_name: str | None,
@@ -64,6 +66,8 @@ async def handle_tts_playback(
 
         audio_data = await tts.speak_text(
             text=text,
+            service_provider=service_provider,
+            openai_api_key=openai_api_key,
             tts_server_ip=tts_server_ip,
             tts_server_port=tts_server_port,
             logger=logger,

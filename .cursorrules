@@ -1,8 +1,8 @@
 # Development Rules
 
 ## Core Rules
-- Always use `uv sync --all-extras` to install packages
-- Commit frequently but always make sure tests pass first
+- Always use `uv sync --all-extras` to install packages then activate the virtual environment with `source .venv/bin/activate`
+- Commit frequently but always make sure tests pass first, using `pytest`
 - Prefer functional style Python instead of classes with inheritance
 - Keep it DRY - reuse code as much as possible
 - Always run pre-commit hooks before committing

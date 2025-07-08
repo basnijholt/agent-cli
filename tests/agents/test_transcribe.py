@@ -54,7 +54,12 @@ async def test_transcribe_main(
             list_devices=False,
             clipboard=True,
         )
-        llm_config = LLMConfig(model="", ollama_host="")
+        llm_config = LLMConfig(
+            model="",
+            ollama_host="",
+            service_provider="local",
+            openai_api_key=None,
+        )
         await transcribe._async_main(
             asr_config=asr_config,
             general_cfg=general_cfg,

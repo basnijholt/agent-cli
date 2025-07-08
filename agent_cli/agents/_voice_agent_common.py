@@ -29,6 +29,11 @@ if TYPE_CHECKING:
 LOGGER = logging.getLogger()
 
 
+def _raise_no_api_key_error() -> None:
+    msg = "OpenAI API key is not set."
+    raise ValueError(msg)
+
+
 async def get_instruction_from_audio(
     audio_data: bytes,
     asr_config: ASRConfig,
@@ -40,15 +45,14 @@ async def get_instruction_from_audio(
         print_with_style("🔄 Processing recorded audio...", style="blue")
 
     try:
-        # Send audio data to Wyoming ASR server for transcription
-        instruction = await asr.transcribe_recorded_audio(
-            audio_data,
+        transcriber = asr.get_recorded_audio_transcriber()
+        instruction = await transcriber(
+            audio_data=audio_data,
             asr_server_ip=asr_config.server_ip,
             asr_server_port=asr_config.server_port,
             logger=logger,
             quiet=quiet,
         )
-
         if not instruction or not instruction.strip():
             if not quiet:
                 print_with_style(
@@ -91,8 +95,7 @@ async def process_instruction_and_respond(
         await process_and_update_clipboard(
             system_prompt=system_prompt,
             agent_instructions=agent_instructions,
-            model=llm_config.model,
-            ollama_host=llm_config.ollama_host,
+            llm_config=llm_config,
             logger=logger,
             original_text=original_text,
             instruction=instruction,
@@ -107,6 +110,8 @@ async def process_instruction_and_respond(
             if response_text and response_text.strip():
                 await handle_tts_playback(
                     response_text,
+                    service_provider=llm_config.service_provider,
+                    openai_api_key=llm_config.openai_api_key,
                     tts_server_ip=tts_config.server_ip,
                     tts_server_port=tts_config.server_port,
                     voice_name=tts_config.voice_name,

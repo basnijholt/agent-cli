@@ -14,7 +14,18 @@ runner = CliRunner()
 @patch("agent_cli.agents.voice_assistant.asyncio.run")
 def test_voice_assistant_agent(mock_run: MagicMock) -> None:
     """Test the voice assistant agent."""
-    result = runner.invoke(app, ["voice-assistant", "--config", "missing.toml"])
+    result = runner.invoke(
+        app,
+        [
+            "voice-assistant",
+            "--config",
+            "missing.toml",
+            "--service-provider",
+            "local",
+            "--openai-api-key",
+            "test",
+        ],
+    )
     assert result.exit_code == 0, result.output
     mock_run.assert_called_once()
 
