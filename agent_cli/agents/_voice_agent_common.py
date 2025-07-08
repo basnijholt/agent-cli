@@ -49,7 +49,7 @@ async def get_instruction_from_audio(
         )
         elapsed = time.monotonic() - start_time
 
-        if not instruction or not instruction.strip():
+        if not instruction.strip():
             if not quiet:
                 print_with_style(
                     "No speech detected in recording",
