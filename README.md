@@ -258,7 +258,8 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 │ --service-provider          TEXT  The service provider to use. Default is    │
 │                                   local.                                     │
 │                                   [default: local]                           │
-│ --openai-api-key            TEXT  The OpenAI API key.                        │
+│ --openai-api-key            TEXT  The OpenAI API key. Only required if using │
+│                                   OpenAI as the service-provider.            │
 │                                   [env var: OPENAI_API_KEY]                  │
 │                                   [default: None]                            │
 ╰──────────────────────────────────────────────────────────────────────────────╯
@@ -348,7 +349,9 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 │ --service-provider                  TEXT  The service provider to use.       │
 │                                           Default is local.                  │
 │                                           [default: local]                   │
-│ --openai-api-key                    TEXT  The OpenAI API key.                │
+│ --openai-api-key                    TEXT  The OpenAI API key. Only required  │
+│                                           if using OpenAI as the             │
+│                                           service-provider.                  │
 │                                           [env var: OPENAI_API_KEY]          │
 │                                           [default: None]                    │
 │ --llm                   --no-llm          Use an LLM to process the          │
@@ -433,7 +436,8 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 │ --service-provider        TEXT  The service provider to use. Default is      │
 │                                 local.                                       │
 │                                 [default: local]                             │
-│ --openai-api-key          TEXT  The OpenAI API key.                          │
+│ --openai-api-key          TEXT  The OpenAI API key. Only required if using   │
+│                                 OpenAI as the service-provider.              │
 │                                 [env var: OPENAI_API_KEY]                    │
 │                                 [default: None]                              │
 ╰──────────────────────────────────────────────────────────────────────────────╯
@@ -564,7 +568,8 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 │ --service-provider          TEXT  The service provider to use. Default is    │
 │                                   local.                                     │
 │                                   [default: local]                           │
-│ --openai-api-key            TEXT  The OpenAI API key.                        │
+│ --openai-api-key            TEXT  The OpenAI API key. Only required if using │
+│                                   OpenAI as the service-provider.            │
 │                                   [env var: OPENAI_API_KEY]                  │
 │                                   [default: None]                            │
 ╰──────────────────────────────────────────────────────────────────────────────╯
@@ -736,7 +741,8 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 │ --service-provider          TEXT  The service provider to use. Default is    │
 │                                   local.                                     │
 │                                   [default: local]                           │
-│ --openai-api-key            TEXT  The OpenAI API key.                        │
+│ --openai-api-key            TEXT  The OpenAI API key. Only required if using │
+│                                   OpenAI as the service-provider.            │
 │                                   [env var: OPENAI_API_KEY]                  │
 │                                   [default: None]                            │
 ╰──────────────────────────────────────────────────────────────────────────────╯
