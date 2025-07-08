@@ -75,18 +75,19 @@ async def test_process_instruction_and_respond(
         speed=1.0,
     )
     file_config = FileConfig(save_file=None, history_dir=None)
-    await process_instruction_and_respond(
-        "test instruction",
-        "original text",
-        general_cfg,
-        llm_config,
-        tts_config,
-        file_config,
-        "system prompt",
-        "agent instructions",
-        1,
-        MagicMock(),
-        MagicMock(),
-    )
+    with patch("agent_cli.agents.autocorrect.pyperclip.copy"):
+        await process_instruction_and_respond(
+            "test instruction",
+            "original text",
+            general_cfg,
+            llm_config,
+            tts_config,
+            file_config,
+            "system prompt",
+            "agent instructions",
+            1,
+            MagicMock(),
+            MagicMock(),
+        )
     mock_process_and_update_clipboard.assert_called_once()
     mock_handle_tts_playback.assert_called_once()
