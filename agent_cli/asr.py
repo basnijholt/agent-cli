@@ -40,9 +40,7 @@ def get_transcriber(
     return transcribe_live_audio_wyoming
 
 
-def get_recorded_audio_transcriber(
-    asr_config: ASRConfig,
-) -> Callable[..., Awaitable[str]]:
+def get_recorded_audio_transcriber(asr_config: ASRConfig) -> Callable[..., Awaitable[str]]:
     """Return the appropriate transcriber for recorded audio based on the config."""
     if asr_config.provider == "openai":
         openai_config = asr_config.config
@@ -203,8 +201,8 @@ async def transcribe_recorded_audio_wyoming(
     wyoming_config = asr_config.config
     try:
         async with wyoming_client_context(
-            wyoming_config.server_ip,  # type: ignore[attr-defined]
-            wyoming_config.server_port,  # type: ignore[attr-defined]
+            wyoming_config.server_ip,
+            wyoming_config.server_port,
             "ASR",
             logger,
             quiet=quiet,
