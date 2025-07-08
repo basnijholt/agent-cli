@@ -40,13 +40,13 @@ It provides a suite of powerful tools for voice and text interaction, designed f
 
 > [!IMPORTANT]
 > **Local and Private by Design**
-> All agents in this toolkit are designed to run **100% locally**. Your data, whether it's from your clipboard, microphone, or files, is never sent to any cloud API. This ensures your privacy and allows the tools to work completely offline.
+> All agents in this toolkit are designed to run **100% locally**. Your data, whether it's from your clipboard, microphone, or files, is never sent to any cloud API. This ensures your privacy and allows the tools to work completely offline. You can also optionally configure the agents to use OpenAI services.
 
 ## Features
 
-- **`autocorrect`**: Correct grammar and spelling in your text (e.g., from clipboard) using a local LLM with Ollama.
-- **`transcribe`**: Transcribe audio from your microphone to text in your clipboard.
-- **`speak`**: Convert text to speech using a local TTS engine.
+- **`autocorrect`**: Correct grammar and spelling in your text (e.g., from clipboard) using a local LLM with Ollama or OpenAI.
+- **`transcribe`**: Transcribe audio from your microphone to text in your clipboard using a local Whisper model or OpenAI's Whisper API.
+- **`speak`**: Convert text to speech using a local TTS engine or OpenAI's TTS API.
 - **`voice-assistant`**: A voice-powered clipboard assistant that edits text based on your spoken commands.
 - **`wake-word-assistant`**: A hands-free voice assistant that starts and stops recording based on a wake word.
 - **`interactive`**: An interactive, conversational AI agent with tool-calling capabilities.
@@ -54,10 +54,11 @@ It provides a suite of powerful tools for voice and text interaction, designed f
 ## Prerequisites
 
 - **Python**: Version 3.11 or higher.
-- **Ollama**: For `autocorrect`, `voice-assistant`, and `interactive`, you need [Ollama](https://ollama.ai/) running with a model pulled (e.g., `ollama pull mistral:latest`).
-- **Wyoming Piper**: For `speak`, `voice-assistant`, and `interactive`, you need a [Wyoming TTS server](https://github.com/rhasspy/wyoming-piper) running for text-to-speech.
-- **Wyoming Faster Whisper**: For `transcribe`, `voice-assistant`, and `interactive`, you need a [Wyoming ASR server](https://github.com/rhasspy/wyoming-faster-whisper) for speech-to-text.
+- **Ollama**: For `autocorrect`, `voice-assistant`, and `interactive` using local services, you need [Ollama](https://ollama.ai/) running with a model pulled (e.g., `ollama pull mistral:latest`).
+- **Wyoming Piper**: For `speak`, `voice-assistant`, and `interactive` using local services, you need a [Wyoming TTS server](https://github.com/rhasspy/wyoming-piper) running for text-to-speech.
+- **Wyoming Faster Whisper**: For `transcribe`, `voice-assistant`, and `interactive` using local services, you need a [Wyoming ASR server](https://github.com/rhasspy/wyoming-faster-whisper) for speech-to-text.
 - **Wyoming openWakeWord**: For `wake-word-assistant`, you need a [Wyoming wake word server](https://github.com/rhasspy/wyoming-openwakeword) running.
+- **OpenAI API Key**: If you want to use OpenAI services, you need an OpenAI API key.
 - **Clipboard Tools**: `xsel`, `xclip` (Linux), or `pbcopy`/`pbpaste` (macOS) are used by many agents.
 - **PortAudio**: Required for PyAudio to handle microphone and speaker I/O.
 
@@ -188,6 +189,16 @@ You can also specify a path to a configuration file using the `--config` option,
 Command-line options always take precedence over settings in the configuration file.
 
 An example configuration file is provided in `example.agent-cli-config.toml`.
+
+#### Service Provider
+
+You can choose to use local services (Wyoming/Ollama) or OpenAI services by setting the `service_provider` option in the `[defaults]` section of your configuration file.
+
+```toml
+[defaults]
+# service_provider = "openai"  # 'local' or 'openai'
+# openai_api_key = "sk-..."
+```
 
 ### `autocorrect`
 

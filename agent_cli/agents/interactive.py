@@ -176,7 +176,8 @@ async def _handle_conversation_turn(
 
     # 1. Transcribe user's command
     time_start = time.monotonic()
-    instruction = await asr.transcribe_live_audio(
+    transcriber = asr.get_transcriber()
+    instruction = await transcriber(
         asr_server_ip=asr_config.server_ip,
         asr_server_port=asr_config.server_port,
         input_device_index=asr_config.input_device_index,

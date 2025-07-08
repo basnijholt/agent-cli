@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import functools
 import importlib.util
 import io
 import wave
@@ -28,11 +29,25 @@ from agent_cli.wyoming_utils import manage_send_receive_tasks, wyoming_client_co
 
 if TYPE_CHECKING:
     import logging
+    from collections.abc import Awaitable, Callable
 
     from rich.live import Live
     from wyoming.client import AsyncClient
 
 has_audiostretchy = importlib.util.find_spec("audiostretchy") is not None
+
+
+def get_synthesizer() -> Callable[..., Awaitable[bytes | None]]:
+    """Return the appropriate synthesizer based on the config."""
+    if config.SERVICE_PROVIDER == "openai":
+        if not config.OPENAI_API_KEY:
+            msg = "OpenAI API key is not set."
+            raise ValueError(msg)
+        return functools.partial(
+            _synthesize_speech_openai,
+            api_key=config.OPENAI_API_KEY,
+        )
+    return _synthesize_speech_wyoming
 
 
 def _create_synthesis_request(
@@ -262,29 +277,18 @@ async def speak_text(
     live: Live,
 ) -> bytes | None:
     """Synthesize and optionally play speech from text."""
-    if config.SERVICE_PROVIDER == "openai":
-        if not config.OPENAI_API_KEY:
-            msg = "OpenAI API key is not set."
-            raise ValueError(msg)
-        audio_data = await _synthesize_speech_openai(
-            text=text,
-            api_key=config.OPENAI_API_KEY,
-            logger=logger,
-            quiet=quiet,
-            live=live,
-        )
-    else:
-        audio_data = await _synthesize_speech_wyoming(
-            text=text,
-            tts_server_ip=tts_server_ip,
-            tts_server_port=tts_server_port,
-            logger=logger,
-            voice_name=voice_name,
-            language=language,
-            speaker=speaker,
-            quiet=quiet,
-            live=live,
-        )
+    synthesizer = get_synthesizer()
+    audio_data = await synthesizer(
+        text=text,
+        tts_server_ip=tts_server_ip,
+        tts_server_port=tts_server_port,
+        logger=logger,
+        voice_name=voice_name,
+        language=language,
+        speaker=speaker,
+        quiet=quiet,
+        live=live,
+    )
 
     if audio_data and play_audio_flag:
         await play_audio(

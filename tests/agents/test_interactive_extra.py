@@ -1,6 +1,6 @@
 """Tests for the interactive agent."""
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from typer.testing import CliRunner
@@ -46,10 +46,9 @@ async def test_handle_conversation_turn_no_instruction():
     file_config = FileConfig(save_file=None, history_dir=None)
     mock_live = MagicMock()
 
-    with patch(
-        "agent_cli.agents.interactive.asr.transcribe_live_audio",
-        return_value="",
-    ) as mock_transcribe:
+    with patch("agent_cli.agents.interactive.asr.get_transcriber") as mock_get_transcriber:
+        mock_transcriber = AsyncMock(return_value="")
+        mock_get_transcriber.return_value = mock_transcriber
         await _handle_conversation_turn(
             p=mock_p,
             stop_event=stop_event,
@@ -61,7 +60,8 @@ async def test_handle_conversation_turn_no_instruction():
             file_config=file_config,
             live=mock_live,
         )
-        mock_transcribe.assert_awaited_once()
+        mock_get_transcriber.assert_called_once()
+        mock_transcriber.assert_awaited_once()
     assert not conversation_history
 
 

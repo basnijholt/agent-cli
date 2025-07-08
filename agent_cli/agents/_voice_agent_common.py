@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 
 import pyperclip
 
-from agent_cli import asr, config
+from agent_cli import asr
 from agent_cli.agents._tts_common import handle_tts_playback
 from agent_cli.llm import process_and_update_clipboard
 from agent_cli.utils import (
@@ -45,25 +45,14 @@ async def get_instruction_from_audio(
         print_with_style("🔄 Processing recorded audio...", style="blue")
 
     try:
-        # Send audio data to Wyoming ASR server for transcription
-        if config.SERVICE_PROVIDER == "openai":
-            if not config.OPENAI_API_KEY:
-                _raise_no_api_key_error()
-            assert config.OPENAI_API_KEY is not None
-            instruction = await asr.transcribe_recorded_audio_openai(
-                audio_data,
-                api_key=config.OPENAI_API_KEY,
-                logger=logger,
-            )
-        else:
-            instruction = await asr.transcribe_recorded_audio_wyoming(
-                audio_data,
-                asr_server_ip=asr_config.server_ip,
-                asr_server_port=asr_config.server_port,
-                logger=logger,
-                quiet=quiet,
-            )
-
+        transcriber = asr.get_recorded_audio_transcriber()
+        instruction = await transcriber(
+            audio_data=audio_data,
+            asr_server_ip=asr_config.server_ip,
+            asr_server_port=asr_config.server_port,
+            logger=logger,
+            quiet=quiet,
+        )
         if not instruction or not instruction.strip():
             if not quiet:
                 print_with_style(
