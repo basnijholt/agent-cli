@@ -36,9 +36,6 @@ async def get_instruction_from_audio(
     quiet: bool,
 ) -> str | None:
     """Transcribe audio data and return the instruction."""
-    if not quiet:
-        print_with_style("🔄 Processing recorded audio...", style="blue")
-
     try:
         # Send audio data to Wyoming ASR server for transcription
         instruction = await asr.transcribe_recorded_audio(
@@ -80,11 +77,7 @@ async def process_instruction_and_respond(
 ) -> None:
     """Process instruction with LLM and handle TTS response."""
     if not general_cfg.quiet:
-        print_input_panel(
-            instruction,
-            title="🎯 Instruction",
-            style="bold yellow",
-        )
+        print_input_panel(instruction, title="🎯 Instruction", style="bold yellow")
 
     # Process with LLM if clipboard mode is enabled
     if general_cfg.clipboard:
