@@ -156,17 +156,9 @@ async def _async_autocorrect(
 
     try:
         with _maybe_status(llm_config, general_cfg.quiet):
-            corrected_text, elapsed = await _process_text(
-                original_text,
-                llm_config,
-            )
+            corrected_text, elapsed = await _process_text(original_text, llm_config)
 
-        _display_result(
-            corrected_text,
-            original_text,
-            elapsed,
-            simple_output=general_cfg.quiet,
-        )
+        _display_result(corrected_text, original_text, elapsed, simple_output=general_cfg.quiet)
 
     except Exception as e:  # noqa: BLE001
         if general_cfg.quiet:

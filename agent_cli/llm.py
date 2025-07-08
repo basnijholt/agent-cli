@@ -34,7 +34,7 @@ def build_agent(
 ) -> Agent:
     """Construct and return a PydanticAI agent."""
     from pydantic_ai import Agent  # noqa: PLC0415
-    from pydantic_ai.models.openai import OpenAIModel, OpenAIResponsesModelSettings  # noqa: PLC0415
+    from pydantic_ai.models.openai import OpenAIModel  # noqa: PLC0415
     from pydantic_ai.providers.openai import OpenAIProvider  # noqa: PLC0415
 
     if llm_config.service_provider == "openai":
@@ -51,7 +51,6 @@ def build_agent(
         system_prompt=system_prompt or (),
         instructions=instructions,
         tools=tools or [],
-        model_settings=OpenAIResponsesModelSettings(extra_body={"think": False}),
     )
 
 
