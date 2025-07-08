@@ -31,6 +31,7 @@ LOGGER = logging.getLogger()
 
 
 async def get_instruction_from_audio(
+    *,
     audio_data: bytes,
     asr_config: ASRConfig,
     llm_config: LLMConfig,
@@ -40,20 +41,17 @@ async def get_instruction_from_audio(
     """Transcribe audio data and return the instruction."""
     try:
         start_time = time.monotonic()
-        transcriber = asr.get_recorded_audio_transcriber(
-            llm_config.service_provider,
-            llm_config.openai_api_key,
-        )
+        transcriber = asr.get_recorded_audio_transcriber(asr_config)
         instruction = await transcriber(
             audio_data=audio_data,
-            asr_server_ip=asr_config.server_ip,
-            asr_server_port=asr_config.server_port,
+            asr_config=asr_config,
+            llm_config=llm_config,
             logger=logger,
             quiet=quiet,
         )
         elapsed = time.monotonic() - start_time
 
-        if not instruction.strip():
+        if not instruction or not instruction.strip():
             if not quiet:
                 print_with_style(
                     "No speech detected in recording",
@@ -79,6 +77,7 @@ async def get_instruction_from_audio(
 
 
 async def process_instruction_and_respond(
+    *,
     instruction: str,
     original_text: str,
     general_cfg: GeneralConfig,
@@ -87,7 +86,6 @@ async def process_instruction_and_respond(
     file_config: FileConfig,
     system_prompt: str,
     agent_instructions: str,
-    tts_output_device_index: int | None,
     live: Live | None,
     logger: logging.Logger,
 ) -> None:
@@ -111,21 +109,13 @@ async def process_instruction_and_respond(
             response_text = pyperclip.paste()
             if response_text and response_text.strip():
                 await handle_tts_playback(
-                    response_text,
-                    service_provider=llm_config.service_provider,  # type: ignore[arg-type]
-                    openai_api_key=llm_config.openai_api_key,
-                    tts_server_ip=tts_config.server_ip,
-                    tts_server_port=tts_config.server_port,
-                    voice_name=tts_config.voice_name,
-                    tts_language=tts_config.language,
-                    speaker=tts_config.speaker,
-                    output_device_index=tts_output_device_index,
+                    text=response_text,
+                    tts_config=tts_config,
                     save_file=file_config.save_file,
                     quiet=general_cfg.quiet,
                     logger=logger,
                     play_audio=not file_config.save_file,
                     status_message="🔊 Speaking response...",
                     description="TTS audio",
-                    speed=tts_config.speed,
                     live=live,
                 )

@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from agent_cli.agents._config import LLMConfig
+from agent_cli.agents._config import LLMConfig, OllamaLLMConfig, OpenAILLMConfig
 from agent_cli.llm import (
     build_agent,
     get_llm_response,
@@ -19,15 +19,14 @@ def test_build_agent(monkeypatch: pytest.MonkeyPatch) -> None:
     """Test building the agent."""
     monkeypatch.setenv("OLLAMA_HOST", "http://mockhost:1234")
     llm_config = LLMConfig(
-        model="test-model",
-        ollama_host="http://mockhost:1234",
-        service_provider="local",
-        openai_api_key=None,
+        provider="local",
+        local=OllamaLLMConfig(model="test-model", host="http://mockhost:1234"),
+        openai=OpenAILLMConfig(model="gpt-4o-mini", api_key=None),
     )
 
     agent = build_agent(llm_config)
 
-    assert agent.model.model_name == llm_config.model
+    assert agent.model.model_name == "test-model"
 
 
 @pytest.mark.asyncio
@@ -39,10 +38,9 @@ async def test_get_llm_response(mock_build_agent: MagicMock) -> None:
     mock_build_agent.return_value = mock_agent
 
     llm_config = LLMConfig(
-        model="test",
-        ollama_host="test",
-        service_provider="local",
-        openai_api_key=None,
+        provider="local",
+        local=OllamaLLMConfig(model="test", host="test"),
+        openai=OpenAILLMConfig(model="gpt-4o-mini", api_key=None),
     )
     response = await get_llm_response(
         system_prompt="test",
@@ -67,10 +65,9 @@ async def test_get_llm_response_error(mock_build_agent: MagicMock) -> None:
     mock_build_agent.return_value = mock_agent
 
     llm_config = LLMConfig(
-        model="test",
-        ollama_host="test",
-        service_provider="local",
-        openai_api_key=None,
+        provider="local",
+        local=OllamaLLMConfig(model="test", host="test"),
+        openai=OpenAILLMConfig(model="gpt-4o-mini", api_key=None),
     )
     response = await get_llm_response(
         system_prompt="test",
@@ -95,10 +92,9 @@ def test_process_and_update_clipboard(
     mock_live = MagicMock()
 
     llm_config = LLMConfig(
-        model="test",
-        ollama_host="test",
-        service_provider="local",
-        openai_api_key=None,
+        provider="local",
+        local=OllamaLLMConfig(model="test", host="test"),
+        openai=OpenAILLMConfig(model="gpt-4o-mini", api_key=None),
     )
     asyncio.run(
         process_and_update_clipboard(

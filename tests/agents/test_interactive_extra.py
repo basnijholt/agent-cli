@@ -5,12 +5,20 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from typer.testing import CliRunner
 
-from agent_cli.agents.interactive import (
+from agent_cli.agents._config import (
     ASRConfig,
     FileConfig,
     GeneralConfig,
     LLMConfig,
+    OllamaLLMConfig,
+    OpenAIASRConfig,
+    OpenAILLMConfig,
+    OpenAITTSConfig,
     TTSConfig,
+    WyomingASRConfig,
+    WyomingTTSConfig,
+)
+from agent_cli.agents.interactive import (
     _async_main,
     _handle_conversation_turn,
 )
@@ -26,27 +34,31 @@ async def test_handle_conversation_turn_no_instruction():
     conversation_history = []
     general_cfg = GeneralConfig(log_level="INFO", log_file=None, quiet=True, list_devices=True)
     asr_config = ASRConfig(
-        server_ip="localhost",
-        server_port=10300,
+        provider="local",
         input_device_index=None,
         input_device_name=None,
+        local=WyomingASRConfig(server_ip="localhost", server_port=10300),
+        openai=OpenAIASRConfig(api_key=None),
     )
     llm_config = LLMConfig(
-        model="test-model",
-        ollama_host="localhost",
-        service_provider="local",
-        openai_api_key=None,
+        provider="local",
+        local=OllamaLLMConfig(model="test-model", host="localhost"),
+        openai=OpenAILLMConfig(model="gpt-4o-mini", api_key=None),
     )
     tts_config = TTSConfig(
         enabled=False,
-        server_ip="localhost",
-        server_port=10200,
-        voice_name=None,
-        language=None,
-        speaker=None,
+        provider="local",
         output_device_index=None,
         output_device_name=None,
         speed=1.0,
+        local=WyomingTTSConfig(
+            server_ip="localhost",
+            server_port=10200,
+            voice_name=None,
+            language=None,
+            speaker=None,
+        ),
+        openai=OpenAITTSConfig(api_key=None),
     )
     file_config = FileConfig(save_file=None, history_dir=None)
     mock_live = MagicMock()
@@ -119,27 +131,31 @@ async def test_async_main_exception_handling():
     """Test that exceptions in async_main are caught and logged."""
     general_cfg = GeneralConfig(log_level="INFO", log_file=None, quiet=False, list_devices=True)
     asr_config = ASRConfig(
-        server_ip="localhost",
-        server_port=10300,
+        provider="local",
         input_device_index=None,
         input_device_name=None,
+        local=WyomingASRConfig(server_ip="localhost", server_port=10300),
+        openai=OpenAIASRConfig(api_key=None),
     )  # To trigger an early exit
     llm_config = LLMConfig(
-        model="test-model",
-        ollama_host="localhost",
-        service_provider="local",
-        openai_api_key=None,
+        provider="local",
+        local=OllamaLLMConfig(model="test-model", host="localhost"),
+        openai=OpenAILLMConfig(model="gpt-4o-mini", api_key=None),
     )
     tts_config = TTSConfig(
         enabled=False,
-        server_ip="localhost",
-        server_port=10200,
-        voice_name=None,
-        language=None,
-        speaker=None,
+        provider="local",
         output_device_index=None,
         output_device_name=None,
         speed=1.0,
+        local=WyomingTTSConfig(
+            server_ip="localhost",
+            server_port=10200,
+            voice_name=None,
+            language=None,
+            speaker=None,
+        ),
+        openai=OpenAITTSConfig(api_key=None),
     )
     file_config = FileConfig(save_file=None, history_dir=None)
 

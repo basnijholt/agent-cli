@@ -42,14 +42,15 @@ async def synthesize_speech_openai(
     text: str,
     api_key: str,
     logger: logging.Logger,
-    speaker: str = "alloy",
+    voice: str = "alloy",
+    model: str = "tts-1",
 ) -> bytes:
     """Synthesize speech using OpenAI's TTS API."""
     logger.info("Synthesizing speech with OpenAI TTS...")
     client = _get_openai_client(api_key=api_key)
     response = await client.audio.speech.create(
-        model="tts-1",
-        voice=speaker,
+        model=model,
+        voice=voice,
         input=text,
         response_format="wav",
     )
