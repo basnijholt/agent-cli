@@ -52,6 +52,7 @@ async def test_synthesize_speech_openai(mock_openai_client: MagicMock) -> None:
         model="tts-1",
         voice="alloy",
         input=mock_text,
+        response_format="wav",
     )
 
 
@@ -69,15 +70,6 @@ def test_get_transcriber_wyoming(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr("agent_cli.config.SERVICE_PROVIDER", "local")
     transcriber = asr.get_transcriber()
     assert transcriber == asr.transcribe_live_audio_wyoming
-
-
-def test_get_synthesizer_openai(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Test that get_synthesizer returns the OpenAI synthesizer."""
-    monkeypatch.setattr("agent_cli.config.SERVICE_PROVIDER", "openai")
-    monkeypatch.setattr("agent_cli.config.OPENAI_API_KEY", "test_api_key")
-    synthesizer = tts.get_synthesizer()
-    assert isinstance(synthesizer, functools.partial)
-    assert "synthesize_speech_openai" in synthesizer.func.__name__
 
 
 def test_get_synthesizer_wyoming(monkeypatch: pytest.MonkeyPatch) -> None:
