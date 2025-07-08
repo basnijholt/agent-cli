@@ -535,6 +535,12 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
  Interact with clipboard text via a voice command using local or remote
  services.
 
+ Usage: - Run in foreground: agent-cli voice-edit --input-device-index 1 - Run
+ in background: agent-cli voice-edit --input-device-index 1 & - Check status:
+ agent-cli voice-edit --status - Stop background process: agent-cli voice-edit
+ --stop - List output devices: agent-cli voice-edit --list-output-devices -
+ Save TTS to file: agent-cli voice-edit --tts --save-file response.wav
+
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
 │ --help          Show this message and exit.                                  │
 ╰──────────────────────────────────────────────────────────────────────────────╯
