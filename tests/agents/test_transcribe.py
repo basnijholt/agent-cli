@@ -9,7 +9,15 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from agent_cli.agents import transcribe
-from agent_cli.agents._config import ASRConfig, GeneralConfig, LLMConfig
+from agent_cli.agents._config import (
+    ASRConfig,
+    GeneralConfig,
+    LLMConfig,
+    OllamaLLMConfig,
+    OpenAIASRConfig,
+    OpenAILLMConfig,
+    WyomingASRConfig,
+)
 from tests.mocks.wyoming import MockASRClient
 
 
@@ -42,10 +50,13 @@ async def test_transcribe_main(
     # The function we are testing
     with caplog.at_level(logging.INFO):
         asr_config = ASRConfig(
-            server_ip="localhost",
-            server_port=12345,
+            provider="local",
             input_device_index=None,
             input_device_name=None,
+            providers={
+                "local": WyomingASRConfig(server_ip="localhost", server_port=12345),
+                "openai": OpenAIASRConfig(api_key=None),
+            },
         )
         general_cfg = GeneralConfig(
             log_level="INFO",
@@ -55,10 +66,11 @@ async def test_transcribe_main(
             clipboard=True,
         )
         llm_config = LLMConfig(
-            model="",
-            ollama_host="",
-            service_provider="local",
-            openai_api_key=None,
+            provider="local",
+            providers={
+                "local": OllamaLLMConfig(model="", host=""),
+                "openai": OpenAILLMConfig(model="", api_key=None),
+            },
         )
         await transcribe._async_main(
             asr_config=asr_config,

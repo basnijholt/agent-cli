@@ -11,7 +11,13 @@ from agent_cli.agents._config import (
     FileConfig,
     GeneralConfig,
     LLMConfig,
+    OllamaLLMConfig,
+    OpenAIASRConfig,
+    OpenAILLMConfig,
+    OpenAITTSConfig,
     TTSConfig,
+    WyomingASRConfig,
+    WyomingTTSConfig,
 )
 from agent_cli.agents.voice_assistant import (
     AGENT_INSTRUCTIONS,
@@ -31,29 +37,39 @@ def get_configs() -> tuple[GeneralConfig, ASRConfig, LLMConfig, TTSConfig, FileC
         clipboard=True,
     )
     asr_config = ASRConfig(
-        server_ip="mock-asr-host",
-        server_port=10300,
+        provider="local",
         input_device_index=0,
         input_device_name=None,
+        providers={
+            "local": WyomingASRConfig(server_ip="mock-asr-host", server_port=10300),
+            "openai": OpenAIASRConfig(api_key=None, model="whisper-1"),
+        },
     )
     llm_config = LLMConfig(
-        model="test-model",
-        ollama_host="http://localhost:11434",
-        service_provider="local",
-        openai_api_key=None,
+        provider="local",
+        providers={
+            "local": OllamaLLMConfig(model="test-model", host="http://localhost:11434"),
+            "openai": OpenAILLMConfig(api_key=None, model="gpt-4"),
+        },
     )
     tts_config = TTSConfig(
         enabled=False,
-        server_ip="mock-tts-host",
-        server_port=10200,
-        voice_name=None,
-        language=None,
-        speaker=None,
+        provider="local",
         output_device_index=None,
         output_device_name=None,
         speed=1.0,
+        providers={
+            "local": WyomingTTSConfig(
+                server_ip="mock-tts-host",
+                server_port=10200,
+                voice_name=None,
+                language=None,
+                speaker=None,
+            ),
+            "openai": OpenAITTSConfig(api_key=None, model="tts-1", voice="alloy"),
+        },
     )
-    file_config = FileConfig(save_file=None)
+    file_config = FileConfig(save_file=None, history_dir=None)
     return general_cfg, asr_config, llm_config, tts_config, file_config
 
 
@@ -101,11 +117,11 @@ async def test_voice_assistant_e2e(
     mock_get_clipboard.assert_called_once()
     mock_record_audio.assert_called_once()
     mock_get_instruction.assert_called_once_with(
-        b"audio data",
-        asr_config,
-        llm_config,
-        ANY,
-        False,  # noqa: FBT003
+        audio_data=b"audio data",
+        asr_config=asr_config,
+        llm_config=llm_config,
+        logger=ANY,
+        quiet=False,
     )
     mock_process_instruction.assert_called_once_with(
         instruction="this is a test",
@@ -116,7 +132,6 @@ async def test_voice_assistant_e2e(
         file_config=file_config,
         system_prompt=SYSTEM_PROMPT,
         agent_instructions=AGENT_INSTRUCTIONS,
-        tts_output_device_index=None,
         live=ANY,
         logger=ANY,
     )

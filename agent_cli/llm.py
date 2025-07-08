@@ -37,15 +37,18 @@ def build_agent(
     from pydantic_ai.models.openai import OpenAIModel  # noqa: PLC0415
     from pydantic_ai.providers.openai import OpenAIProvider  # noqa: PLC0415
 
-    if llm_config.service_provider == "openai":
-        if not llm_config.openai_api_key:
+    provider_name = llm_config.provider
+    provider_config = llm_config.providers[provider_name]
+
+    if provider_name == "openai":
+        if not provider_config.api_key:
             msg = "OpenAI API key is not set."
             raise ValueError(msg)
-        provider = OpenAIProvider(api_key=llm_config.openai_api_key)
-    else:
-        provider = OpenAIProvider(base_url=f"{llm_config.ollama_host}/v1")
+        provider = OpenAIProvider(api_key=provider_config.api_key)
+    else:  # local
+        provider = OpenAIProvider(base_url=f"{provider_config.host}/v1")
 
-    llm_model = OpenAIModel(model_name=llm_config.model, provider=provider)
+    llm_model = OpenAIModel(model_name=provider_config.model, provider=provider)
     return Agent(
         model=llm_model,
         system_prompt=system_prompt or (),
@@ -92,9 +95,13 @@ async def get_llm_response(
     start_time = time.monotonic()
 
     try:
+        provider_name = llm_config.provider
+        active_provider_config = llm_config.providers[provider_name]
+        model_name = active_provider_config.model
+
         async with live_timer(
             live or Live(console=console),
-            f"🤖 Applying instruction with {llm_config.model}",
+            f"🤖 Applying instruction with {model_name}",
             style="bold yellow",
             quiet=quiet,
         ):
@@ -120,10 +127,11 @@ async def get_llm_response(
 
     except Exception as e:
         logger.exception("An error occurred during LLM processing.")
-        if llm_config.service_provider == "openai":
+        if llm_config.provider == "openai":
             msg = "Please check your OpenAI API key."
         else:
-            msg = f"Please check your Ollama server at [cyan]{llm_config.ollama_host}[/cyan]"
+            host = llm_config.providers.get("local", {}).host
+            msg = f"Please check your Ollama server at [cyan]{host}[/cyan]"
         print_error_message(f"An unexpected LLM error occurred: {e}", msg)
         if exit_on_error:
             sys.exit(1)

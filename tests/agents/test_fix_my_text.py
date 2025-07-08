@@ -11,7 +11,12 @@ from rich.console import Console
 
 from agent_cli import config
 from agent_cli.agents import autocorrect
-from agent_cli.agents._config import GeneralConfig, LLMConfig
+from agent_cli.agents._config import (
+    GeneralConfig,
+    LLMConfig,
+    OllamaLLMConfig,
+    OpenAILLMConfig,
+)
 
 
 def test_system_prompt_and_instructions():
@@ -110,10 +115,11 @@ async def test_process_text_integration(mock_build_agent: MagicMock) -> None:
     mock_build_agent.return_value = mock_agent
 
     llm_config = LLMConfig(
-        model="test-model",
-        ollama_host="test",
-        service_provider="local",
-        openai_api_key=None,
+        provider="local",
+        providers={
+            "local": OllamaLLMConfig(model="test-model", host="test"),
+            "openai": OpenAILLMConfig(model="gpt-4o-mini", api_key=None),
+        },
     )
 
     # Test the function
@@ -165,10 +171,11 @@ async def test_autocorrect_command_with_text(
     mock_build_agent.return_value = mock_agent
 
     llm_config = LLMConfig(
-        model=config.DEFAULT_MODEL,
-        ollama_host=config.OLLAMA_HOST,
-        service_provider="local",
-        openai_api_key=None,
+        provider="local",
+        providers={
+            "local": OllamaLLMConfig(model=config.DEFAULT_MODEL, host=config.OLLAMA_HOST),
+            "openai": OpenAILLMConfig(model="gpt-4o-mini", api_key=None),
+        },
     )
     general_cfg = GeneralConfig(
         log_level="WARNING",
@@ -212,10 +219,11 @@ async def test_autocorrect_command_from_clipboard(
     mock_build_agent.return_value = mock_agent
 
     llm_config = LLMConfig(
-        model=config.DEFAULT_MODEL,
-        ollama_host=config.OLLAMA_HOST,
-        service_provider="local",
-        openai_api_key=None,
+        provider="local",
+        providers={
+            "local": OllamaLLMConfig(model=config.DEFAULT_MODEL, host=config.OLLAMA_HOST),
+            "openai": OpenAILLMConfig(model="gpt-4o-mini", api_key=None),
+        },
     )
     general_cfg = GeneralConfig(
         log_level="WARNING",
@@ -251,10 +259,11 @@ async def test_async_autocorrect_no_text(
 ) -> None:
     """Test the async_autocorrect function when no text is provided."""
     llm_config = LLMConfig(
-        model="test",
-        ollama_host="test",
-        service_provider="local",
-        openai_api_key=None,
+        provider="local",
+        providers={
+            "local": OllamaLLMConfig(model="test", host="test"),
+            "openai": OpenAILLMConfig(model="gpt-4o-mini", api_key=None),
+        },
     )
     general_cfg = GeneralConfig(
         log_level="WARNING",

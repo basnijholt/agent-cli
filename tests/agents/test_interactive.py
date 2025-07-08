@@ -14,7 +14,13 @@ from agent_cli.agents._config import (
     FileConfig,
     GeneralConfig,
     LLMConfig,
+    OllamaLLMConfig,
+    OpenAIASRConfig,
+    OpenAILLMConfig,
+    OpenAITTSConfig,
     TTSConfig,
+    WyomingASRConfig,
+    WyomingTTSConfig,
 )
 from agent_cli.agents.interactive import (
     ConversationEntry,
@@ -89,27 +95,37 @@ async def test_async_main_list_devices(tmp_path: Path) -> None:
     )
     general_cfg.__dict__["console"] = MagicMock()
     asr_config = ASRConfig(
-        server_ip="localhost",
-        server_port=1234,
+        provider="local",
         input_device_index=None,
         input_device_name=None,
+        providers={
+            "local": WyomingASRConfig(server_ip="localhost", server_port=1234),
+            "openai": OpenAIASRConfig(api_key=None),
+        },
     )
     llm_config = LLMConfig(
-        model="test-model",
-        ollama_host="localhost",
-        service_provider="local",
-        openai_api_key=None,
+        provider="local",
+        providers={
+            "local": OllamaLLMConfig(model="test-model", host="localhost"),
+            "openai": OpenAILLMConfig(api_key=None, model="gpt-4"),
+        },
     )
     tts_config = TTSConfig(
         enabled=False,
-        server_ip="localhost",
-        server_port=5678,
-        voice_name=None,
-        language=None,
-        speaker=None,
+        provider="local",
         output_device_index=None,
         output_device_name=None,
         speed=1.0,
+        providers={
+            "local": WyomingTTSConfig(
+                server_ip="localhost",
+                server_port=5678,
+                voice_name=None,
+                language=None,
+                speaker=None,
+            ),
+            "openai": OpenAITTSConfig(api_key=None, model="tts-1", voice="alloy"),
+        },
     )
     file_config = FileConfig(save_file=None, history_dir=tmp_path)
 
@@ -141,27 +157,37 @@ async def test_async_main_list_output_devices(tmp_path: Path) -> None:
         clipboard=False,
     )
     asr_config = ASRConfig(
-        server_ip="localhost",
-        server_port=1234,
+        provider="local",
         input_device_index=None,
         input_device_name=None,
+        providers={
+            "local": WyomingASRConfig(server_ip="localhost", server_port=1234),
+            "openai": OpenAIASRConfig(api_key=None),
+        },
     )
     llm_config = LLMConfig(
-        model="test-model",
-        ollama_host="localhost",
-        service_provider="local",
-        openai_api_key=None,
+        provider="local",
+        providers={
+            "local": OllamaLLMConfig(model="test-model", host="localhost"),
+            "openai": OpenAILLMConfig(api_key=None, model="gpt-4"),
+        },
     )
     tts_config = TTSConfig(
         enabled=False,
-        server_ip="localhost",
-        server_port=5678,
-        voice_name=None,
-        language=None,
-        speaker=None,
+        provider="local",
         output_device_index=None,
         output_device_name=None,
         speed=1.0,
+        providers={
+            "local": WyomingTTSConfig(
+                server_ip="localhost",
+                server_port=5678,
+                voice_name=None,
+                language=None,
+                speaker=None,
+            ),
+            "openai": OpenAITTSConfig(api_key=None, model="tts-1", voice="alloy"),
+        },
     )
     file_config = FileConfig(save_file=None, history_dir=tmp_path)
 
@@ -196,27 +222,37 @@ async def test_async_main_full_loop(tmp_path: Path) -> None:
         clipboard=False,
     )
     asr_config = ASRConfig(
-        server_ip="localhost",
-        server_port=1234,
+        provider="local",
         input_device_index=1,
         input_device_name=None,
+        providers={
+            "local": WyomingASRConfig(server_ip="localhost", server_port=1234),
+            "openai": OpenAIASRConfig(api_key=None),
+        },
     )
     llm_config = LLMConfig(
-        model="test-model",
-        ollama_host="localhost",
-        service_provider="local",
-        openai_api_key=None,
+        provider="local",
+        providers={
+            "local": OllamaLLMConfig(model="test-model", host="localhost"),
+            "openai": OpenAILLMConfig(api_key=None, model="gpt-4"),
+        },
     )
     tts_config = TTSConfig(
         enabled=True,
-        server_ip="localhost",
-        server_port=5678,
-        voice_name="test-voice",
-        language="en",
-        speaker=None,
+        provider="local",
         output_device_index=1,
         output_device_name=None,
         speed=1.0,
+        providers={
+            "local": WyomingTTSConfig(
+                server_ip="localhost",
+                server_port=5678,
+                voice_name="test-voice",
+                language="en",
+                speaker=None,
+            ),
+            "openai": OpenAITTSConfig(api_key=None, model="tts-1", voice="alloy"),
+        },
     )
     file_config = FileConfig(save_file=None, history_dir=history_dir)
 
@@ -258,21 +294,13 @@ async def test_async_main_full_loop(tmp_path: Path) -> None:
         mock_llm_response.assert_called_once()
         assert mock_stop_event.clear.call_count == 2  # Called after ASR and at end of turn
         mock_tts.assert_called_with(
-            "Mocked response",
-            service_provider="local",
-            openai_api_key=None,
-            tts_server_ip="localhost",
-            tts_server_port=5678,
-            voice_name="test-voice",
-            tts_language="en",
-            speaker=None,
-            output_device_index=1,
+            text="Mocked response",
+            tts_config=tts_config,
             save_file=None,
             quiet=False,
             logger=mock_tts.call_args.kwargs["logger"],
             play_audio=True,
             stop_event=mock_tts.call_args.kwargs["stop_event"],
-            speed=1.0,
             live=mock_tts.call_args.kwargs["live"],
         )
 

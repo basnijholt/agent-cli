@@ -7,6 +7,11 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from agent_cli.agents._config import (
+    OpenAITTSConfig,
+    TTSConfig,
+    WyomingTTSConfig,
+)
 from agent_cli.agents._tts_common import _save_audio_file, handle_tts_playback
 
 
@@ -33,16 +38,26 @@ async def test_handle_tts_playback_os_error(mock_speak_text: AsyncMock) -> None:
     mock_speak_text.side_effect = OSError("Connection error")
     mock_live = MagicMock()
 
+    tts_config = TTSConfig(
+        enabled=True,
+        provider="local",
+        output_device_index=None,
+        output_device_name=None,
+        speed=1.0,
+        providers={
+            "local": WyomingTTSConfig(
+                server_ip="localhost",
+                server_port=1234,
+                voice_name=None,
+                language=None,
+                speaker=None,
+            ),
+            "openai": OpenAITTSConfig(api_key=None, model="tts-1", voice="alloy"),
+        },
+    )
     result = await handle_tts_playback(
         text="hello",
-        service_provider="local",
-        openai_api_key=None,
-        tts_server_ip="localhost",
-        tts_server_port=1234,
-        voice_name=None,
-        tts_language=None,
-        speaker=None,
-        output_device_index=None,
+        tts_config=tts_config,
         save_file=None,
         quiet=False,
         logger=MagicMock(),

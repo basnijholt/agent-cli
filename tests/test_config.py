@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import tomllib
 from typing import TYPE_CHECKING
 from unittest.mock import MagicMock, patch
 
@@ -24,15 +23,21 @@ runner = CliRunner()
 def config_file(tmp_path: Path) -> Path:
     config_content = """
 [defaults]
-model = "wildcard-model"
 log_level = "INFO"
 
-[autocorrect]
+[llm.local]
+model = "wildcard-model"
+
+[autocorrect.llm.local]
 model = "autocorrect-model"
+
+[autocorrect.general]
 quiet = true
 
-[transcribe]
+[transcribe.llm.local]
 model = "transcribe-model"
+
+[transcribe.general]
 clipboard = false
 """
     config_path = tmp_path / "config.toml"
@@ -44,12 +49,12 @@ def test_config_loader_basic(config_file: Path) -> None:
     """Test the config loader function directly."""
     # Test loading from explicit path
     config = load_config(str(config_file))
-    assert config["defaults"]["model"] == "wildcard-model"
+    assert config["llm"]["local"]["model"] == "wildcard-model"
     assert config["defaults"]["log_level"] == "INFO"
-    assert config["autocorrect"]["model"] == "autocorrect-model"
-    assert config["autocorrect"]["quiet"] is True
-    assert config["transcribe"]["model"] == "transcribe-model"
-    assert config["transcribe"]["clipboard"] is False
+    assert config["autocorrect"]["llm"]["local"]["model"] == "autocorrect-model"
+    assert config["autocorrect"]["general"]["quiet"] is True
+    assert config["transcribe"]["llm"]["local"]["model"] == "transcribe-model"
+    assert config["transcribe"]["general"]["clipboard"] is False
 
     # Test loading from non-existent path
     config = load_config("/non/existent/path.toml")
@@ -77,13 +82,13 @@ some-option = "value"
     config = load_config(str(config_path))
     assert config["defaults"]["log_level"] == "DEBUG"
     assert config["defaults"]["ollama_host"] == "http://example.com"
-    assert config["test-command"]["some_option"] == "value"
+    assert config["test_command"]["some_option"] == "value"
 
 
 def test_set_config_defaults(config_file: Path) -> None:
     """Test the set_config_defaults function."""
     # Mock parameters
-    mock_model_param = Option(["--model"], default="original-model")
+    mock_ollama_model_param = Option(["--ollama-model"], default="original-model")
     mock_log_level_param = Option(["--log-level"], default="original-log-level")
     mock_quiet_param = Option(["--quiet"], default=False, is_flag=True)
     mock_clipboard_param = Option(["--clipboard"], default=True, is_flag=True)
@@ -91,11 +96,11 @@ def test_set_config_defaults(config_file: Path) -> None:
     # Mock subcommands
     mock_autocorrect_cmd = Command(
         name="autocorrect",
-        params=[mock_model_param, mock_log_level_param, mock_quiet_param],
+        params=[mock_ollama_model_param, mock_log_level_param, mock_quiet_param],
     )
     mock_transcribe_cmd = Command(
         name="transcribe",
-        params=[mock_model_param, mock_log_level_param, mock_clipboard_param],
+        params=[mock_ollama_model_param, mock_log_level_param, mock_clipboard_param],
     )
 
     # Mock main command
@@ -110,27 +115,28 @@ def test_set_config_defaults(config_file: Path) -> None:
     # Test with no subcommand (should set default_map)
     ctx.invoked_subcommand = None
     set_config_defaults(ctx, str(config_file))
-    assert ctx.default_map == {"model": "wildcard-model", "log_level": "INFO"}
+    assert ctx.default_map == {"log_level": "INFO", "llm_local_model": "wildcard-model"}
 
     # Test with autocorrect subcommand
     ctx.invoked_subcommand = "autocorrect"
+    ctx.default_map = {}  # Reset default_map
     set_config_defaults(ctx, str(config_file))
 
     # Check that the defaults on the parameters themselves have been updated
-    assert mock_model_param.default == "autocorrect-model"
-    assert mock_log_level_param.default == "INFO"
-    assert mock_quiet_param.default is True
+    assert ctx.default_map.get("llm_local_model") == "autocorrect-model"
+    assert ctx.default_map.get("log_level") == "INFO"
+    assert ctx.default_map.get("quiet") is True
 
     # Test with transcribe subcommand
     # Reset param defaults before testing the next command
-    mock_model_param.default = "original-model"
+    mock_ollama_model_param.default = "original-model"
     mock_log_level_param.default = "original-log-level"
+    ctx.default_map = {}  # Reset default_map
 
     ctx.invoked_subcommand = "transcribe"
     set_config_defaults(ctx, str(config_file))
-    assert mock_model_param.default == "transcribe-model"
-    assert mock_log_level_param.default == "INFO"
-    assert mock_clipboard_param.default is False
+    assert ctx.default_map.get("llm_local_model") == "transcribe-model"
+    assert ctx.default_map.get("clipboard") is False
 
 
 @patch("agent_cli.config_loader.CONFIG_PATH")
@@ -148,23 +154,23 @@ def test_default_config_paths(mock_path2: Path, mock_path1: Path, config_file: P
     mock_path2.exists.return_value = True  # type: ignore[attr-defined]
     mock_path2.open.return_value.__enter__.return_value = config_file.open("rb")  # type: ignore[attr-defined]
     config = load_config(None)
-    assert config["defaults"]["model"] == "wildcard-model"
+    assert config["llm"]["local"]["model"] == "wildcard-model"
 
     # CONFIG_PATH exists (takes precedence)
     mock_path1.exists.return_value = True  # type: ignore[attr-defined]
     mock_path2.exists.return_value = True  # type: ignore[attr-defined]
     mock_path1.open.return_value.__enter__.return_value = config_file.open("rb")  # type: ignore[attr-defined]
     config = load_config(None)
-    assert config["defaults"]["model"] == "wildcard-model"
+    assert config["llm"]["local"]["model"] == "wildcard-model"
 
 
-def test_config_file_error_handling(tmp_path: Path) -> None:
+@patch("agent_cli.config_loader.console")
+def test_config_file_error_handling(mock_console: MagicMock, tmp_path: Path) -> None:
     """Test config loading with invalid TOML."""
     invalid_toml = tmp_path / "invalid.toml"
     invalid_toml.write_text("invalid toml content [[[")
 
-    # The config loader doesn't handle TOML errors currently
-    # It lets them propagate. Let's test that they do propagate.
+    config = load_config(str(invalid_toml))
 
-    with pytest.raises(tomllib.TOMLDecodeError):
-        load_config(str(invalid_toml))
+    assert config == {}
+    mock_console.print.assert_called_once()

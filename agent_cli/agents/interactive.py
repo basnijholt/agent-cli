@@ -1,14 +1,4 @@
-r"""An interactive agent that you can talk to.
-
-This agent will:
-- Listen for your voice command.
-- Transcribe the command.
-- Send the transcription to an LLM.
-- Speak the LLM's response.
-- Remember the conversation history.
-- Attach timestamps to the saved conversation.
-- Format timestamps as "ago" when sending to the LLM.
-"""
+r"""An interactive agent that you can talk to."""
 
 from __future__ import annotations
 
@@ -25,13 +15,19 @@ from typing import TYPE_CHECKING, TypedDict
 import typer
 
 import agent_cli.agents._cli_options as opts
-from agent_cli import asr, config, process_manager
+from agent_cli import asr, process_manager
 from agent_cli.agents._config import (
     ASRConfig,
     FileConfig,
     GeneralConfig,
     LLMConfig,
+    OllamaLLMConfig,
+    OpenAIASRConfig,
+    OpenAILLMConfig,
+    OpenAITTSConfig,
     TTSConfig,
+    WyomingASRConfig,
+    WyomingTTSConfig,
 )
 from agent_cli.agents._tts_common import handle_tts_playback
 from agent_cli.audio import pyaudio_context, setup_devices
@@ -176,11 +172,9 @@ async def _handle_conversation_turn(
 
     # 1. Transcribe user's command
     start_time = time.monotonic()
-    transcriber = asr.get_transcriber(llm_config.service_provider, llm_config.openai_api_key)
+    transcriber = asr.get_transcriber(asr_config)
     instruction = await transcriber(
-        asr_server_ip=asr_config.server_ip,
-        asr_server_port=asr_config.server_port,
-        input_device_index=asr_config.input_device_index,
+        asr_config=asr_config,
         logger=LOGGER,
         p=p,
         stop_event=stop_event,
@@ -232,14 +226,15 @@ async def _handle_conversation_turn(
     ]
     start_time = time.monotonic()
 
+    active_llm_provider_config = llm_config.providers[llm_config.provider]
+    model_name = active_llm_provider_config.model
     async with live_timer(
         live,
-        f"🤖 Processing with {llm_config.model}",
+        f"🤖 Processing with {model_name}",
         style="bold yellow",
         quiet=general_cfg.quiet,
         stop_event=stop_event,
     ):
-        # Create a dummy Live for get_llm_response since we're using our own timer display
         response_text = await get_llm_response(
             system_prompt=SYSTEM_PROMPT,
             agent_instructions=AGENT_INSTRUCTIONS,
@@ -286,21 +281,13 @@ async def _handle_conversation_turn(
     # 7. Handle TTS playback
     if tts_config.enabled:
         await handle_tts_playback(
-            response_text,
-            service_provider=llm_config.service_provider,
-            openai_api_key=llm_config.openai_api_key,
-            tts_server_ip=tts_config.server_ip,
-            tts_server_port=tts_config.server_port,
-            voice_name=tts_config.voice_name,
-            tts_language=tts_config.language,
-            speaker=tts_config.speaker,
-            output_device_index=tts_config.output_device_index,
+            text=response_text,
+            tts_config=tts_config,
             save_file=file_config.save_file,
             quiet=general_cfg.quiet,
             logger=LOGGER,
             play_audio=not file_config.save_file,
             stop_event=stop_event,
-            speed=tts_config.speed,
             live=live,
         )
 
@@ -331,6 +318,7 @@ async def _async_main(
                 tts_config.output_device_index = tts_output_device_index
 
             # Load conversation history
+            conversation_history = []
             if file_config.history_dir:
                 history_path = Path(file_config.history_dir).expanduser()
                 history_path.mkdir(parents=True, exist_ok=True)
@@ -367,33 +355,38 @@ async def _async_main(
 @app.command("interactive")
 def interactive(
     *,
-    # ASR
+    # --- Provider Selection ---
+    asr_provider: str = opts.ASR_PROVIDER,
+    llm_provider: str = opts.LLM_PROVIDER,
+    tts_provider: str = opts.TTS_PROVIDER,
+    # --- ASR (Audio) Configuration ---
     input_device_index: int | None = opts.DEVICE_INDEX,
     input_device_name: str | None = opts.DEVICE_NAME,
-    asr_server_ip: str = opts.ASR_SERVER_IP,
-    asr_server_port: int = opts.ASR_SERVER_PORT,
-    # LLM
-    model: str = opts.MODEL,
+    wyoming_asr_ip: str = opts.WYOMING_ASR_SERVER_IP,
+    wyoming_asr_port: int = opts.WYOMING_ASR_SERVER_PORT,
+    openai_asr_model: str = opts.OPENAI_ASR_MODEL,
+    # --- LLM Configuration ---
+    ollama_model: str = opts.OLLAMA_MODEL,
     ollama_host: str = opts.OLLAMA_HOST,
-    service_provider: str = opts.SERVICE_PROVIDER,
+    openai_llm_model: str = opts.OPENAI_LLM_MODEL,
     openai_api_key: str | None = opts.OPENAI_API_KEY,
-    # Process control
+    # --- TTS Configuration ---
+    enable_tts: bool = opts.ENABLE_TTS,
+    output_device_index: int | None = opts.OUTPUT_DEVICE_INDEX,
+    output_device_name: str | None = opts.OUTPUT_DEVICE_NAME,
+    tts_speed: float = opts.TTS_SPEED,
+    wyoming_tts_ip: str = opts.WYOMING_TTS_SERVER_IP,
+    wyoming_tts_port: int = opts.WYOMING_TTS_SERVER_PORT,
+    wyoming_voice: str | None = opts.WYOMING_VOICE_NAME,
+    wyoming_tts_language: str | None = opts.WYOMING_TTS_LANGUAGE,
+    wyoming_speaker: str | None = opts.WYOMING_SPEAKER,
+    openai_tts_model: str = opts.OPENAI_TTS_MODEL,
+    openai_tts_voice: str = opts.OPENAI_TTS_VOICE,
+    # --- Process Management ---
     stop: bool = opts.STOP,
     status: bool = opts.STATUS,
     toggle: bool = opts.TOGGLE,
-    # TTS parameters
-    enable_tts: bool = opts.ENABLE_TTS,
-    tts_server_ip: str = opts.TTS_SERVER_IP,
-    tts_server_port: int = opts.TTS_SERVER_PORT,
-    voice_name: str | None = opts.VOICE_NAME,
-    tts_language: str | None = opts.TTS_LANGUAGE,
-    speaker: str | None = opts.SPEAKER,
-    tts_speed: float = opts.TTS_SPEED,
-    output_device_index: int | None = opts.OUTPUT_DEVICE_INDEX,
-    output_device_name: str | None = opts.OUTPUT_DEVICE_NAME,
-    # Output
-    save_file: Path | None = opts.SAVE_FILE,
-    # History
+    # --- History Options ---
     history_dir: Path = typer.Option(  # noqa: B008
         "~/.config/agent-cli/history",
         "--history-dir",
@@ -407,7 +400,8 @@ def interactive(
         " Set to 0 to disable history.",
         rich_help_panel="History Options",
     ),
-    # General
+    # --- General Options ---
+    save_file: Path | None = opts.SAVE_FILE,
     log_level: str = opts.LOG_LEVEL,
     log_file: str | None = opts.LOG_FILE,
     list_devices: bool = opts.LIST_DEVICES,
@@ -434,33 +428,50 @@ def interactive(
     ):
         return
 
-    # Use context manager for PID file management
     with process_manager.pid_file_context(process_name), suppress(KeyboardInterrupt):
-        if service_provider == "openai" and model == config.DEFAULT_MODEL:
-            model = config.DEFAULT_OPENAI_MODEL
+        # --- ASR Config ---
+        wyoming_asr_config = WyomingASRConfig(
+            server_ip=wyoming_asr_ip,
+            server_port=wyoming_asr_port,
+        )
+        openai_asr_config = OpenAIASRConfig(model=openai_asr_model, api_key=openai_api_key)
         asr_config = ASRConfig(
-            server_ip=asr_server_ip,
-            server_port=asr_server_port,
+            provider=asr_provider,  # type: ignore[arg-type]
             input_device_index=input_device_index,
             input_device_name=input_device_name,
+            providers={"local": wyoming_asr_config, "openai": openai_asr_config},
         )
+
+        # --- LLM Config ---
+        ollama_llm_config = OllamaLLMConfig(model=ollama_model, host=ollama_host)
+        openai_llm_config = OpenAILLMConfig(model=openai_llm_model, api_key=openai_api_key)
         llm_config = LLMConfig(
-            model=model,
-            ollama_host=ollama_host,
-            service_provider=service_provider,  # type: ignore[arg-type]
-            openai_api_key=openai_api_key,
+            provider=llm_provider,  # type: ignore[arg-type]
+            providers={"local": ollama_llm_config, "openai": openai_llm_config},
+        )
+
+        # --- TTS Config ---
+        wyoming_tts_config = WyomingTTSConfig(
+            server_ip=wyoming_tts_ip,
+            server_port=wyoming_tts_port,
+            voice_name=wyoming_voice,
+            language=wyoming_tts_language,
+            speaker=wyoming_speaker,
+        )
+        openai_tts_config = OpenAITTSConfig(
+            model=openai_tts_model,
+            voice=openai_tts_voice,
+            api_key=openai_api_key,
         )
         tts_config = TTSConfig(
             enabled=enable_tts,
-            server_ip=tts_server_ip,
-            server_port=tts_server_port,
-            voice_name=voice_name,
-            language=tts_language,
-            speaker=speaker,
+            provider=tts_provider,  # type: ignore[arg-type]
             output_device_index=output_device_index,
             output_device_name=output_device_name,
             speed=tts_speed,
+            providers={"local": wyoming_tts_config, "openai": openai_tts_config},
         )
+
         file_config = FileConfig(
             save_file=save_file,
             last_n_messages=last_n_messages,

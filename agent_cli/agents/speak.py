@@ -6,13 +6,18 @@ import asyncio
 import logging
 from contextlib import suppress
 from pathlib import Path  # noqa: TC003
-from typing import Literal
 
 import typer
 
 import agent_cli.agents._cli_options as opts
 from agent_cli import process_manager
-from agent_cli.agents._config import FileConfig, GeneralConfig, TTSConfig
+from agent_cli.agents._config import (
+    FileConfig,
+    GeneralConfig,
+    OpenAITTSConfig,
+    TTSConfig,
+    WyomingTTSConfig,
+)
 from agent_cli.agents._tts_common import handle_tts_playback
 from agent_cli.audio import pyaudio_context, setup_devices
 from agent_cli.cli import app, setup_logging
@@ -32,21 +37,15 @@ async def _async_main(
     text: str | None,
     tts_config: TTSConfig,
     file_config: FileConfig,
-    service_provider: Literal["local", "openai"],
-    openai_api_key: str | None,
 ) -> None:
     """Async entry point for the speak command."""
     with pyaudio_context() as p:
         # We only use setup_devices for its output device handling
-        device_info = setup_devices(
-            p,
-            general_cfg,
-            None,
-            tts_config,
-        )
+        device_info = setup_devices(p, general_cfg, None, tts_config)
         if device_info is None:
             return
         _, _, output_device_index = device_info
+        tts_config.output_device_index = output_device_index
 
         # Get text from argument or clipboard
         if text is None:
@@ -61,22 +60,14 @@ async def _async_main(
         # Handle TTS playback and saving
         with maybe_live(not general_cfg.quiet) as live:
             await handle_tts_playback(
-                text,
-                service_provider=service_provider,
-                openai_api_key=openai_api_key,
-                tts_server_ip=tts_config.server_ip,
-                tts_server_port=tts_config.server_port,
-                voice_name=tts_config.voice_name,
-                tts_language=tts_config.language,
-                speaker=tts_config.speaker,
-                output_device_index=output_device_index,
+                text=text,
+                tts_config=tts_config,
                 save_file=file_config.save_file,
                 quiet=general_cfg.quiet,
                 logger=LOGGER,
                 play_audio=not file_config.save_file,  # Don't play if saving to file
                 status_message="🔊 Synthesizing speech...",
                 description="Audio",
-                speed=tts_config.speed,
                 live=live,
             )
 
@@ -89,48 +80,35 @@ def speak(
         help="Text to speak. Reads from clipboard if not provided.",
         rich_help_panel="General Options",
     ),
-    # Service provider
-    service_provider: str = opts.SERVICE_PROVIDER,
-    openai_api_key: str | None = opts.OPENAI_API_KEY,
-    # TTS parameters
-    tts_server_ip: str = opts.TTS_SERVER_IP,
-    tts_server_port: int = opts.TTS_SERVER_PORT,
-    voice_name: str | None = opts.VOICE_NAME,
-    tts_language: str | None = opts.TTS_LANGUAGE,
-    speaker: str | None = opts.SPEAKER,
-    tts_speed: float = opts.TTS_SPEED,
-    # Output device
+    # --- Provider Selection ---
+    tts_provider: str = opts.TTS_PROVIDER,
+    # --- TTS Configuration ---
+    # General
     output_device_index: int | None = opts.OUTPUT_DEVICE_INDEX,
     output_device_name: str | None = opts.OUTPUT_DEVICE_NAME,
+    tts_speed: float = opts.TTS_SPEED,
+    # Wyoming (local service)
+    wyoming_tts_ip: str = opts.WYOMING_TTS_SERVER_IP,
+    wyoming_tts_port: int = opts.WYOMING_TTS_SERVER_PORT,
+    wyoming_voice: str | None = opts.WYOMING_VOICE_NAME,
+    wyoming_tts_language: str | None = opts.WYOMING_TTS_LANGUAGE,
+    wyoming_speaker: str | None = opts.WYOMING_SPEAKER,
+    # OpenAI
+    openai_tts_model: str = opts.OPENAI_TTS_MODEL,
+    openai_tts_voice: str = opts.OPENAI_TTS_VOICE,
+    openai_api_key: str | None = opts.OPENAI_API_KEY,
+    # --- General Options ---
     list_devices: bool = opts.LIST_DEVICES,
-    # Output file
-    save_file: Path | None = typer.Option(  # noqa: B008
-        None,
-        "--save-file",
-        help="Save audio to WAV file instead of playing it.",
-        rich_help_panel="General Options",
-    ),
-    # Process control
+    save_file: Path | None = opts.SAVE_FILE,
     stop: bool = opts.STOP,
     status: bool = opts.STATUS,
     toggle: bool = opts.TOGGLE,
-    # General
     log_level: str = opts.LOG_LEVEL,
     log_file: str | None = opts.LOG_FILE,
     quiet: bool = opts.QUIET,
     config_file: str | None = opts.CONFIG_FILE,  # noqa: ARG001
 ) -> None:
-    """Convert text to speech using Wyoming or OpenAI TTS server.
-
-    If no text is provided, reads from clipboard.
-
-    Usage:
-    - Speak text: agent-cli speak "Hello world"
-    - Speak from clipboard: agent-cli speak
-    - Save to file: agent-cli speak "Hello" --save-file hello.wav
-    - Use specific voice: agent-cli speak "Hello" --voice en_US-lessac-medium
-    - Run in background: agent-cli speak "Hello" &
-    """
+    """Convert text to speech using Wyoming or OpenAI TTS server."""
     setup_logging(log_level, log_file, quiet=quiet)
     general_cfg = GeneralConfig(
         log_level=log_level,
@@ -151,18 +129,28 @@ def speak(
 
     # Use context manager for PID file management
     with process_manager.pid_file_context(process_name), suppress(KeyboardInterrupt):
+        # --- TTS Config ---
+        wyoming_config = WyomingTTSConfig(
+            server_ip=wyoming_tts_ip,
+            server_port=wyoming_tts_port,
+            voice_name=wyoming_voice,
+            language=wyoming_tts_language,
+            speaker=wyoming_speaker,
+        )
+        openai_config = OpenAITTSConfig(
+            model=openai_tts_model,
+            voice=openai_tts_voice,
+            api_key=openai_api_key,
+        )
         tts_config = TTSConfig(
             enabled=True,  # Implied for speak command
-            server_ip=tts_server_ip,
-            server_port=tts_server_port,
-            voice_name=voice_name,
-            language=tts_language,
-            speaker=speaker,
+            provider=tts_provider,  # type: ignore[arg-type]
             output_device_index=output_device_index,
             output_device_name=output_device_name,
             speed=tts_speed,
+            providers={"local": wyoming_config, "openai": openai_config},
         )
-        file_config = FileConfig(save_file=save_file)
+        file_config = FileConfig(save_file=save_file, history_dir=None, last_n_messages=0)
 
         asyncio.run(
             _async_main(
@@ -170,7 +158,5 @@ def speak(
                 text=text,
                 tts_config=tts_config,
                 file_config=file_config,
-                service_provider=service_provider,  # type: ignore[arg-type]
-                openai_api_key=openai_api_key,
             ),
         )

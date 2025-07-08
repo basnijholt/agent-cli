@@ -3,9 +3,8 @@
 from __future__ import annotations
 
 import asyncio
-import functools
 import io
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING
 
 from wyoming.asr import Transcribe, Transcript, TranscriptChunk, TranscriptStart, TranscriptStop
 from wyoming.audio import AudioChunk, AudioStart, AudioStop
@@ -28,45 +27,46 @@ if TYPE_CHECKING:
     from rich.live import Live
     from wyoming.client import AsyncClient
 
+    from agent_cli.agents._config import ASRConfig, LLMConfig
     from agent_cli.utils import InteractiveStopEvent
 
 
 def get_transcriber(
-    service_provider: Literal["local", "openai"],
-    openai_api_key: str | None,
+    asr_config: ASRConfig,
 ) -> Callable[..., Awaitable[str | None]]:
     """Return the appropriate transcriber for live audio based on the config."""
-    if service_provider == "openai":
-        if not openai_api_key:
-            msg = "OpenAI API key is not set."
-            raise ValueError(msg)
-        return functools.partial(transcribe_live_audio_openai, api_key=openai_api_key)
+    if asr_config.provider == "openai":
+        return transcribe_live_audio_openai
     return transcribe_live_audio_wyoming
 
 
 def get_recorded_audio_transcriber(
-    service_provider: Literal["local", "openai"],
-    openai_api_key: str | None,
+    asr_config: ASRConfig,
 ) -> Callable[..., Awaitable[str]]:
     """Return the appropriate transcriber for recorded audio based on the config."""
-    if service_provider == "openai":
-        if not openai_api_key:
+    if asr_config.provider == "openai":
+        openai_config = asr_config.providers["openai"]
+        if not openai_config.api_key:
             msg = "OpenAI API key is not set."
             raise ValueError(msg)
 
         async def transcribe_with_error_handling(
             audio_data: bytes,
-            api_key: str,
             logger: logging.Logger,
+            **_kwargs: object,
         ) -> str:
             """Wrapper to handle exceptions for OpenAI transcription."""
             try:
-                return await transcribe_audio_openai(audio_data, api_key, logger)
+                return await transcribe_audio_openai(
+                    audio_data,
+                    openai_config.api_key,
+                    logger,
+                )
             except Exception:
                 logger.exception("Error during transcription")
                 return ""
 
-        return functools.partial(transcribe_with_error_handling, api_key=openai_api_key)
+        return transcribe_with_error_handling
     return transcribe_recorded_audio_wyoming
 
 
@@ -192,17 +192,19 @@ async def record_audio_with_manual_stop(
 
 
 async def transcribe_recorded_audio_wyoming(
+    *,
     audio_data: bytes,
-    asr_server_ip: str,
-    asr_server_port: int,
+    asr_config: ASRConfig,
+    llm_config: LLMConfig,  # noqa: ARG001
     logger: logging.Logger,
     quiet: bool = False,
 ) -> str:
     """Process pre-recorded audio data with Wyoming ASR server."""
+    wyoming_config = asr_config.providers["local"]
     try:
         async with wyoming_client_context(
-            asr_server_ip,
-            asr_server_port,
+            wyoming_config.server_ip,
+            wyoming_config.server_port,
             "ASR",
             logger,
             quiet=quiet,
@@ -227,28 +229,27 @@ async def transcribe_recorded_audio_wyoming(
 
 
 async def transcribe_live_audio_wyoming(
-    asr_server_ip: str,
-    asr_server_port: int,
-    input_device_index: int | None,
+    *,
+    asr_config: ASRConfig,
     logger: logging.Logger,
     p: pyaudio.PyAudio,
     stop_event: InteractiveStopEvent,
-    *,
     live: Live,
     quiet: bool = False,
     chunk_callback: Callable[[str], None] | None = None,
     final_callback: Callable[[str], None] | None = None,
 ) -> str | None:
     """Unified ASR transcription function."""
+    wyoming_config = asr_config.providers["local"]
     try:
         async with wyoming_client_context(
-            asr_server_ip,
-            asr_server_port,
+            wyoming_config.server_ip,
+            wyoming_config.server_port,
             "ASR",
             logger,
             quiet=quiet,
         ) as client:
-            stream_config = setup_input_stream(input_device_index)
+            stream_config = setup_input_stream(asr_config.input_device_index)
             with open_pyaudio_stream(p, **stream_config) as stream:
                 _, recv_task = await manage_send_receive_tasks(
                     _send_audio(client, stream, stop_event, logger, live=live, quiet=quiet),
@@ -266,19 +267,18 @@ async def transcribe_live_audio_wyoming(
 
 
 async def transcribe_live_audio_openai(
-    api_key: str,
-    input_device_index: int | None,
+    *,
+    asr_config: ASRConfig,
     logger: logging.Logger,
     p: pyaudio.PyAudio,
     stop_event: InteractiveStopEvent,
-    *,
     live: Live,
     quiet: bool = False,
 ) -> str | None:
     """Record and transcribe live audio using OpenAI Whisper."""
     audio_data = await record_audio_with_manual_stop(
         p,
-        input_device_index,
+        asr_config.input_device_index,
         stop_event,
         logger,
         quiet=quiet,
@@ -287,7 +287,11 @@ async def transcribe_live_audio_openai(
     if not audio_data:
         return None
     try:
-        return await transcribe_audio_openai(audio_data, api_key, logger)
+        openai_config = asr_config.providers["openai"]
+        if not openai_config.api_key:
+            msg = "OpenAI API key is not set."
+            raise ValueError(msg)  # noqa: TRY301
+        return await transcribe_audio_openai(audio_data, openai_config.api_key, logger)
     except Exception:
         logger.exception("Error during transcription")
         return ""
