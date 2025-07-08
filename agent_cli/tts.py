@@ -43,16 +43,16 @@ def get_synthesizer(
 ) -> Callable[..., Awaitable[bytes | None]]:
     """Return the appropriate synthesizer based on the config."""
     if tts_config.provider == "openai":
-        openai_config = tts_config.openai
-        if not openai_config or not openai_config.api_key:
-            msg = "OpenAI TTS config or API key is not set."
+        openai_config = tts_config.config
+        if not openai_config.api_key:
+            msg = "OpenAI API key is not set."
             raise ValueError(msg)
         return lambda text, logger, **_: synthesize_speech_openai(
             text=text,
             api_key=openai_config.api_key,  # type: ignore[arg-type]
             logger=logger,
-            model=openai_config.model,
-            voice=openai_config.voice,
+            model=openai_config.model,  # type: ignore[attr-defined]
+            voice=openai_config.voice,  # type: ignore[attr-defined]
         )
     return _synthesize_speech_wyoming
 
@@ -145,14 +145,11 @@ async def _synthesize_speech_wyoming(
     live: Live,
 ) -> bytes | None:
     """Synthesize speech from text using Wyoming TTS server."""
-    wyoming_config = tts_config.local
-    if not wyoming_config:
-        msg = "Wyoming TTS config is not set."
-        raise ValueError(msg)
+    wyoming_config = tts_config.config
     try:
         async with wyoming_client_context(
-            wyoming_config.server_ip,
-            wyoming_config.server_port,
+            wyoming_config.server_ip,  # type: ignore[attr-defined]
+            wyoming_config.server_port,  # type: ignore[attr-defined]
             "TTS",
             logger,
             quiet=quiet,
@@ -160,9 +157,9 @@ async def _synthesize_speech_wyoming(
             async with live_timer(live, "🔊 Synthesizing text", style="blue", quiet=quiet):
                 synthesize_event = _create_synthesis_request(
                     text,
-                    voice_name=wyoming_config.voice_name,
-                    language=wyoming_config.language,
-                    speaker=wyoming_config.speaker,
+                    voice_name=wyoming_config.voice_name,  # type: ignore[attr-defined]
+                    language=wyoming_config.language,  # type: ignore[attr-defined]
+                    speaker=wyoming_config.speaker,  # type: ignore[attr-defined]
                 )
                 _send_task, recv_task = await manage_send_receive_tasks(
                     client.write_event(synthesize_event.event()),

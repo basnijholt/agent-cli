@@ -30,6 +30,22 @@ class LLMConfig(BaseModel):
     local: OllamaLLMConfig | None = None
     openai: OpenAILLMConfig | None = None
 
+    @property
+    def config(self) -> OllamaLLMConfig | OpenAILLMConfig:
+        """Return the active LLM configuration based on the provider."""
+        if self.provider == "local":
+            if self.local is None:
+                msg = "Local LLM provider selected but no config found."
+                raise ValueError(msg)
+            return self.local
+        if self.provider == "openai":
+            if self.openai is None:
+                msg = "OpenAI LLM provider selected but no config found."
+                raise ValueError(msg)
+            return self.openai
+        msg = f"Unsupported LLM provider: {self.provider}"
+        raise ValueError(msg)
+
 
 # --- ASR ---
 class WyomingASRConfig(BaseModel):
@@ -54,6 +70,22 @@ class ASRConfig(BaseModel):
     input_device_name: str | None = None
     local: WyomingASRConfig | None = None
     openai: OpenAIASRConfig | None = None
+
+    @property
+    def config(self) -> WyomingASRConfig | OpenAIASRConfig:
+        """Return the active ASR configuration based on the provider."""
+        if self.provider == "local":
+            if self.local is None:
+                msg = "Local ASR provider selected but no config found."
+                raise ValueError(msg)
+            return self.local
+        if self.provider == "openai":
+            if self.openai is None:
+                msg = "OpenAI ASR provider selected but no config found."
+                raise ValueError(msg)
+            return self.openai
+        msg = f"Unsupported ASR provider: {self.provider}"
+        raise ValueError(msg)
 
 
 # --- TTS ---
@@ -85,6 +117,22 @@ class TTSConfig(BaseModel):
     speed: float = 1.0
     local: WyomingTTSConfig | None = None
     openai: OpenAITTSConfig | None = None
+
+    @property
+    def config(self) -> WyomingTTSConfig | OpenAITTSConfig:
+        """Return the active TTS configuration based on the provider."""
+        if self.provider == "local":
+            if self.local is None:
+                msg = "Local TTS provider selected but no config found."
+                raise ValueError(msg)
+            return self.local
+        if self.provider == "openai":
+            if self.openai is None:
+                msg = "OpenAI TTS provider selected but no config found."
+                raise ValueError(msg)
+            return self.openai
+        msg = f"Unsupported TTS provider: {self.provider}"
+        raise ValueError(msg)
 
 
 # --- General & File Configs (remain mostly unchanged) ---

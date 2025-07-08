@@ -125,17 +125,7 @@ def _display_result(
 
 def _maybe_status(llm_config: LLMConfig, quiet: bool) -> Status | contextlib.nullcontext:
     if not quiet:
-        if llm_config.provider == "local":
-            provider_config = llm_config.local
-        elif llm_config.provider == "openai":
-            provider_config = llm_config.openai
-        else:
-            msg = f"Unsupported LLM provider: {llm_config.provider}"
-            raise ValueError(msg)
-        if not provider_config:
-            msg = f"{llm_config.provider} LLM config is not set."
-            raise ValueError(msg)
-        model_name = provider_config.model
+        model_name = llm_config.config.model
         return create_status(f"🤖 Correcting with {model_name}...", "bold yellow")
     return contextlib.nullcontext()
 
@@ -166,7 +156,11 @@ async def _async_autocorrect(
             print(f"❌ {e}")
         else:
             if llm_config.provider == "local":
-                host = llm_config.local.host if llm_config.local else "unknown"
+                host = (
+                    llm_config.config.host
+                    if isinstance(llm_config.config, OllamaLLMConfig)
+                    else "unknown"
+                )
                 error_details = f"Please check that your Ollama server is running at [bold cyan]{host}[/bold cyan]"
             else:
                 error_details = "Please check your OpenAI API key and network connection."

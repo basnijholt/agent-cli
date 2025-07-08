@@ -226,14 +226,7 @@ async def _handle_conversation_turn(
     ]
     start_time = time.monotonic()
 
-    if llm_config.provider == "local":
-        active_llm_provider_config = llm_config.local
-    else:
-        active_llm_provider_config = llm_config.openai
-    if not active_llm_provider_config:
-        msg = f"{llm_config.provider} LLM config is not set."
-        raise ValueError(msg)
-    model_name = active_llm_provider_config.model
+    model_name = llm_config.config.model
     async with live_timer(
         live,
         f"🤖 Processing with {model_name}",
