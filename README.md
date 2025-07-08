@@ -429,13 +429,15 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
 │ --help          Show this message and exit.                                  │
 ╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ LLM Options ────────────────────────────────────────────────────────────────╮
+│ --service-provider        TEXT  The service provider to use. Default is      │
+│                                 local.                                       │
+│                                 [default: local]                             │
+│ --openai-api-key          TEXT  The OpenAI API key.                          │
+│                                 [env var: OPENAI_API_KEY]                    │
+│                                 [default: None]                              │
+╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ TTS (Text-to-Speech) Options ───────────────────────────────────────────────╮
-│ --service-provider           TEXT     The service provider to use. Default   │
-│                                       is local.                              │
-│                                       [default: local]                       │
-│ --openai-api-key             TEXT     The OpenAI API key.                    │
-│                                       [env var: OPENAI_API_KEY]              │
-│                                       [default: None]                        │
 │ --tts-server-ip              TEXT     Wyoming TTS server IP address.         │
 │                                       [default: localhost]                   │
 │ --tts-server-port            INTEGER  Wyoming TTS server port.               │
