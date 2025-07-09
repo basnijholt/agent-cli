@@ -171,7 +171,6 @@ async def read_audio_stream(
     All other audio functions should use this to avoid duplication.
 
     Args:
-    ----
         stream: PyAudio stream
         stop_event: Event to stop reading
         chunk_handler: Function to handle each chunk (sync or async)
@@ -225,11 +224,9 @@ def setup_input_stream(
     """Get standard PyAudio input stream configuration.
 
     Args:
-    ----
         input_device_index: Input device index
 
     Returns:
-    -------
         Dictionary of stream parameters
 
     """
@@ -253,7 +250,6 @@ def setup_output_stream(
     """Get standard PyAudio output stream configuration.
 
     Args:
-    ----
         p: PyAudio instance
         output_device_index: Output device index
         sample_rate: Custom sample rate (defaults to config)
@@ -261,7 +257,6 @@ def setup_output_stream(
         channels: Custom channel count (defaults to config)
 
     Returns:
-    -------
         Dictionary of stream parameters
 
     """
@@ -280,11 +275,9 @@ def _get_all_devices(p: pyaudio.PyAudio) -> list[dict]:
     """Get information for all audio devices with caching.
 
     Args:
-    ----
         p: PyAudio instance
 
     Returns:
-    -------
         List of device info dictionaries with added 'index' field
 
     """
@@ -302,16 +295,13 @@ def _get_device_by_index(p: pyaudio.PyAudio, input_device_index: int) -> dict:
     """Get device info by index from cached device list.
 
     Args:
-    ----
         p: PyAudio instance
         input_device_index: Device index to look up
 
     Returns:
-    -------
         Device info dictionary
 
     Raises:
-    ------
         ValueError: If device index is not found
 
     """

@@ -27,7 +27,6 @@ async def wyoming_client_context(
     """Context manager for Wyoming client connections with unified error handling.
 
     Args:
-    ----
         server_ip: Wyoming server IP
         server_port: Wyoming server port
         server_type: Type of server (e.g., "ASR", "TTS", "wake word")
@@ -39,7 +38,6 @@ async def wyoming_client_context(
         Connected Wyoming client
 
     Raises:
-    ------
         ConnectionRefusedError: If connection fails
         Exception: For other connection errors
 
@@ -75,13 +73,11 @@ async def manage_send_receive_tasks(
     """Manage send and receive tasks with proper cancellation.
 
     Args:
-    ----
         send_task_coro: Send task coroutine
         receive_task_coro: Receive task coroutine
         return_when: When to return (e.g., asyncio.ALL_COMPLETED)
 
     Returns:
-    -------
         Tuple of (send_task, receive_task) - both completed or cancelled
 
     """

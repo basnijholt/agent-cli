@@ -159,7 +159,6 @@ def signal_handling_context(
     - SIGTERM: Immediate graceful shutdown
 
     Args:
-    ----
         logger: Logger instance for recording events
         quiet: Whether to suppress console output
 
