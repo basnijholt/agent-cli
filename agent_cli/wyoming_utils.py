@@ -34,7 +34,6 @@ async def wyoming_client_context(
         quiet: If True, suppress console error messages
 
     Yields:
-    ------
         Connected Wyoming client
 
     Raises:

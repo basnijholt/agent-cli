@@ -30,9 +30,9 @@ def build_agent(
     tools: list[Tool] | None = None,
 ) -> Agent:
     """Construct and return a PydanticAI agent."""
-    from pydantic_ai import Agent
-    from pydantic_ai.models.openai import OpenAIModel
-    from pydantic_ai.providers.openai import OpenAIProvider
+    from pydantic_ai import Agent  # noqa: PLC0415
+    from pydantic_ai.models.openai import OpenAIModel  # noqa: PLC0415
+    from pydantic_ai.providers.openai import OpenAIProvider  # noqa: PLC0415
 
     if provider_config.llm_provider == "openai":
         if not openai_config.openai_api_key:
