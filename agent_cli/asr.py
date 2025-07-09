@@ -2,22 +2,13 @@
 
 from __future__ import annotations
 
-import asyncio
 import io
-from functools import partial
 from typing import TYPE_CHECKING
 
 from wyoming.asr import Transcribe, Transcript, TranscriptChunk, TranscriptStart, TranscriptStop
 from wyoming.audio import AudioChunk, AudioStart, AudioStop
 
 from agent_cli import constants
-from agent_cli.audio import (
-    open_pyaudio_stream,
-    read_audio_stream,
-    read_from_queue,
-    setup_input_stream,
-)
-
 from agent_cli.core.audio import (
     open_pyaudio_stream,
     read_audio_stream,
@@ -27,12 +18,11 @@ from agent_cli.core.audio import (
 from agent_cli.services.factory import get_asr_service
 from agent_cli.services.local import (
     WyomingTranscriptionService,
-    manage_send_receive_tasks,
-    wyoming_client_context,
 )
 from agent_cli.services.openai import OpenAITranscriptionService
 
 if TYPE_CHECKING:
+    import asyncio
     import logging
     from collections.abc import Awaitable, Callable
 
@@ -64,7 +54,11 @@ def get_transcriber(
         quiet=quiet,
     )
 
-    async def transcribe_live_audio(p: pyaudio.PyAudio, stop_event: InteractiveStopEvent, live: Live) -> str | None:
+    async def transcribe_live_audio(
+        p: pyaudio.PyAudio,
+        stop_event: InteractiveStopEvent,
+        live: Live,
+    ) -> str | None:
         """Record and transcribe live audio."""
         audio_data = await record_audio_with_manual_stop(
             p,

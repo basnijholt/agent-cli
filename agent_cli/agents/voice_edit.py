@@ -44,9 +44,10 @@ from agent_cli.agents._voice_agent_common import (
     get_instruction_from_audio,
     process_instruction_and_respond,
 )
+from agent_cli.asr import record_audio_with_manual_stop
 from agent_cli.cli import app, setup_logging
 from agent_cli.core import process as process_manager
-from agent_cli.core.audio import pyaudio_context, record_audio_with_manual_stop, setup_devices
+from agent_cli.core.audio import pyaudio_context, setup_devices
 from agent_cli.core.utils import (
     get_clipboard_text,
     maybe_live,

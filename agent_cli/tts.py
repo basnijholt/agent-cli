@@ -6,15 +6,12 @@ import asyncio
 import importlib.util
 import io
 import wave
-from functools import partial
 from typing import TYPE_CHECKING
 
 from wyoming.audio import AudioChunk, AudioStart, AudioStop
 from wyoming.tts import Synthesize, SynthesizeVoice
 
 from agent_cli import constants
-from agent_cli.audio import open_pyaudio_stream, pyaudio_context, setup_output_stream
-
 from agent_cli.core.audio import open_pyaudio_stream, pyaudio_context, setup_output_stream
 from agent_cli.core.utils import (
     InteractiveStopEvent,
@@ -283,6 +280,7 @@ async def speak_text(
         wyoming_tts_config,
         openai_tts_config,
         openai_llm_config,
+        logger,
     )
     audio_data = None
     try:

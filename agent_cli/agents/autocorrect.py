@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import logging
 import sys
 import time
 from typing import TYPE_CHECKING
@@ -22,7 +23,7 @@ from agent_cli.core.utils import (
     print_output_panel,
     print_with_style,
 )
-from agent_cli.llm import build_agent
+from agent_cli.services.factory import get_llm_service
 
 if TYPE_CHECKING:
     from rich.status import Status
@@ -76,23 +77,27 @@ async def _process_text(
     provider_cfg: config.ProviderSelection,
     ollama_cfg: config.Ollama,
     openai_llm_cfg: config.OpenAILLM,
+    logger,
 ) -> tuple[str, float]:
     """Process text with the LLM and return the corrected text and elapsed time."""
-    agent = build_agent(
-        provider_config=provider_cfg,
-        ollama_config=ollama_cfg,
-        openai_config=openai_llm_cfg,
-        system_prompt=SYSTEM_PROMPT,
-        instructions=AGENT_INSTRUCTIONS,
+    llm_service = get_llm_service(
+        provider_cfg,
+        ollama_cfg,
+        openai_llm_cfg,
+        logger,
     )
 
     # Format the input using the template to clearly separate text from instructions
     formatted_input = INPUT_TEMPLATE.format(text=text)
 
     start_time = time.monotonic()
-    result = await agent.run(formatted_input)
+    result = await llm_service.get_response(
+        system_prompt=SYSTEM_PROMPT,
+        agent_instructions=AGENT_INSTRUCTIONS,
+        user_input=formatted_input,
+    )
     elapsed = time.monotonic() - start_time
-    return result.output, elapsed
+    return result or "", elapsed
 
 
 def _display_original_text(original_text: str, quiet: bool) -> None:
@@ -160,11 +165,13 @@ async def _async_autocorrect(
 
     try:
         with _maybe_status(provider_cfg, ollama_cfg, openai_llm_cfg, general_cfg.quiet):
+            logger = logging.getLogger(__name__)
             corrected_text, elapsed = await _process_text(
                 original_text,
                 provider_cfg,
                 ollama_cfg,
                 openai_llm_cfg,
+                logger,
             )
 
         _display_result(corrected_text, original_text, elapsed, simple_output=general_cfg.quiet)

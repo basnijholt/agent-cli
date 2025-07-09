@@ -6,7 +6,7 @@ import asyncio
 import io
 import wave
 from contextlib import asynccontextmanager
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from pydantic_ai import Agent
 from pydantic_ai.models.openai import OpenAIModel
@@ -23,7 +23,7 @@ from agent_cli.services.base import ASRService, LLMService, TTSService, WakeWord
 
 if TYPE_CHECKING:
     import logging
-    from collections.abc import AsyncGenerator, Awaitable
+    from collections.abc import AsyncGenerator, Coroutine
 
     from rich.live import Live
 
@@ -56,13 +56,13 @@ async def wyoming_client_context(
 
 
 async def manage_send_receive_tasks(
-    send_task: Awaitable,
-    recv_task: Awaitable,
+    send_task: Coroutine[Any, Any, Any],
+    recv_task: Coroutine[Any, Any, Any],
     return_when: str = asyncio.ALL_COMPLETED,
 ) -> tuple[asyncio.Task, asyncio.Task]:
     """Manage send and receive tasks for a Wyoming client."""
-    send = asyncio.create_task(send_task)
-    recv = asyncio.create_task(recv_task)
+    send: asyncio.Task = asyncio.create_task(send_task)
+    recv: asyncio.Task = asyncio.create_task(recv_task)
     done, pending = await asyncio.wait({send, recv}, return_when=return_when)
     for task in pending:
         task.cancel()

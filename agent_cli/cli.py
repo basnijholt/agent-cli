@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 import typer
 
 from .config import load_config
-from .utils import console
+from .core.utils import console
 
 if TYPE_CHECKING:
     from logging import Handler
