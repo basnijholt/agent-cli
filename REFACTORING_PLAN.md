@@ -74,7 +74,7 @@ agent_cli/
         -   **Wyoming TTS:** Logic from `tts.py`.
         -   **Wyoming Wake Word:** Logic from `wake_word.py`.
         -   **Ollama LLM:** Logic from `llm.py`.
-        -   **Wyoming Utils:** `wyoming_client_context` from `wyoming_utils.py`.
+        -   **Wyoming Utils:** `wyoming_client_context` from `_wyoming_utils.py`.
 -   **`agent_cli/services/openai.py`** (New File):
     -   **Content:** Implementations for all OpenAI services.
         -   **OpenAI ASR:** Logic from `services.py` and `asr.py`.
@@ -86,5 +86,5 @@ agent_cli/
 ### Step 4: Refactor and Cleanup
 
 -   **Action:** Update all imports across the project to reflect the new structure.
--   **Action:** Delete the old, now-empty files: `asr.py`, `llm.py`, `tts.py`, `wake_word.py`, `services.py`, `process.py`, `config_loader.py`, `wyoming_utils.py`, and `agents/config.py`.
+-   **Action:** Delete the old, now-empty files: `asr.py`, `llm.py`, `tts.py`, `wake_word.py`, `services.py`, `process.py`, `config_loader.py`, `_wyoming_utils.py`, and `agents/config.py`.
 -   **Action:** Refactor `agent_cli/utils.py` to remove the functions that were moved to `core/utils.py`.
