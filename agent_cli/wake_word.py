@@ -44,11 +44,7 @@ async def _send_audio_from_queue_for_wake_detection(
             live.update(f"{progress_message}... ({seconds_streamed:.1f}s)")
 
     try:
-        await read_from_queue(
-            queue=queue,
-            chunk_handler=send_chunk,
-            logger=logger,
-        )
+        await read_from_queue(queue=queue, chunk_handler=send_chunk, logger=logger)
     finally:
         if client._writer is not None:
             await client.write_event(AudioStop().event())
