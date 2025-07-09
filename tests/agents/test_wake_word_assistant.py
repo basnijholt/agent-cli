@@ -34,9 +34,9 @@ def test_assistant_stop(mock_stop_or_status_or_toggle: MagicMock):
     mock_stop_or_status_or_toggle.assert_called_once_with(
         "assistant",
         "wake word assistant",
-        stop=True,
-        status=False,
-        toggle=False,
+        True,
+        False,
+        False,
         quiet=False,
     )
 
@@ -49,9 +49,9 @@ def test_assistant_status(mock_stop_or_status_or_toggle: MagicMock):
     mock_stop_or_status_or_toggle.assert_called_once_with(
         "assistant",
         "wake word assistant",
-        stop=False,
-        status=True,
-        toggle=False,
+        False,
+        True,
+        False,
         quiet=False,
     )
 
@@ -64,8 +64,8 @@ def test_assistant_toggle(mock_stop_or_status_or_toggle: MagicMock):
     mock_stop_or_status_or_toggle.assert_called_once_with(
         "assistant",
         "wake word assistant",
-        stop=False,
-        status=False,
-        toggle=True,
+        False,
+        False,
+        True,
         quiet=False,
     )
