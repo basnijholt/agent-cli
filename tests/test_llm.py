@@ -11,6 +11,20 @@ from agent_cli.agents import config
 from agent_cli.llm import build_agent, get_llm_response, process_and_update_clipboard
 
 
+def test_build_agent_openai_no_key():
+    """Test that building the agent with OpenAI provider fails without an API key."""
+    provider_cfg = config.ProviderSelection(
+        llm_provider="openai",
+        asr_provider="local",
+        tts_provider="local",
+    )
+    ollama_cfg = config.Ollama(ollama_model="test-model", ollama_host="http://mockhost:1234")
+    openai_llm_cfg = config.OpenAILLM(openai_llm_model="gpt-4o-mini", openai_api_key=None)
+
+    with pytest.raises(ValueError, match="OpenAI API key is not set."):
+        build_agent(provider_cfg, ollama_cfg, openai_llm_cfg)
+
+
 def test_build_agent(monkeypatch: pytest.MonkeyPatch) -> None:
     """Test building the agent."""
     monkeypatch.setenv("OLLAMA_HOST", "http://mockhost:1234")
@@ -89,6 +103,36 @@ async def test_get_llm_response_error(mock_build_agent: MagicMock) -> None:
     assert response is None
     mock_build_agent.assert_called_once()
     mock_agent.run.assert_called_once_with("test")
+
+
+@pytest.mark.asyncio
+@patch("agent_cli.llm.build_agent")
+async def test_get_llm_response_error_exit(mock_build_agent: MagicMock):
+    """Test getting a response from the LLM when an error occurs and exit_on_error is True."""
+    mock_agent = MagicMock()
+    mock_agent.run = AsyncMock(side_effect=Exception("test error"))
+    mock_build_agent.return_value = mock_agent
+
+    provider_cfg = config.ProviderSelection(
+        llm_provider="local",
+        asr_provider="local",
+        tts_provider="local",
+    )
+    ollama_cfg = config.Ollama(ollama_model="test", ollama_host="test")
+    openai_llm_cfg = config.OpenAILLM(openai_llm_model="gpt-4o-mini", openai_api_key=None)
+
+    with pytest.raises(SystemExit):
+        await get_llm_response(
+            system_prompt="test",
+            agent_instructions="test",
+            user_input="test",
+            provider_config=provider_cfg,
+            ollama_config=ollama_cfg,
+            openai_config=openai_llm_cfg,
+            logger=MagicMock(),
+            live=MagicMock(),
+            exit_on_error=True,
+        )
 
 
 @patch("agent_cli.llm.get_llm_response", new_callable=AsyncMock)

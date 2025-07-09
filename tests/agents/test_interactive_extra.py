@@ -15,6 +15,63 @@ from agent_cli.utils import InteractiveStopEvent
 
 
 @pytest.mark.asyncio
+async def test_handle_conversation_turn_no_llm_response():
+    """Test that the conversation turn handles no response from the LLM."""
+    mock_p = MagicMock()
+    stop_event = InteractiveStopEvent()
+    conversation_history = []
+    general_cfg = config.General(log_level="INFO", log_file=None, quiet=True, list_devices=True)
+    provider_cfg = config.ProviderSelection(
+        asr_provider="local",
+        llm_provider="local",
+        tts_provider="local",
+    )
+    history_cfg = config.History()
+    audio_in_cfg = config.AudioInput()
+    wyoming_asr_cfg = config.WyomingASR(wyoming_asr_ip="localhost", wyoming_asr_port=10300)
+    openai_asr_cfg = config.OpenAIASR(openai_asr_model="whisper-1")
+    ollama_cfg = config.Ollama(ollama_model="test-model", ollama_host="localhost")
+    openai_llm_cfg = config.OpenAILLM(openai_llm_model="gpt-4o-mini")
+    audio_out_cfg = config.AudioOutput()
+    wyoming_tts_cfg = config.WyomingTTS(wyoming_tts_ip="localhost", wyoming_tts_port=10200)
+    openai_tts_cfg = config.OpenAITTS(openai_tts_model="tts-1", openai_tts_voice="alloy")
+    mock_live = MagicMock()
+
+    with (
+        patch("agent_cli.agents.chat.asr.get_transcriber") as mock_get_transcriber,
+        patch(
+            "agent_cli.agents.chat.get_llm_response",
+            new_callable=AsyncMock,
+        ) as mock_llm_response,
+    ):
+        mock_transcriber = AsyncMock(return_value="test instruction")
+        mock_get_transcriber.return_value = mock_transcriber
+        mock_llm_response.return_value = ""
+        await _handle_conversation_turn(
+            p=mock_p,
+            stop_event=stop_event,
+            conversation_history=conversation_history,
+            provider_cfg=provider_cfg,
+            general_cfg=general_cfg,
+            history_cfg=history_cfg,
+            audio_in_cfg=audio_in_cfg,
+            wyoming_asr_cfg=wyoming_asr_cfg,
+            openai_asr_cfg=openai_asr_cfg,
+            ollama_cfg=ollama_cfg,
+            openai_llm_cfg=openai_llm_cfg,
+            audio_out_cfg=audio_out_cfg,
+            wyoming_tts_cfg=wyoming_tts_cfg,
+            openai_tts_cfg=openai_tts_cfg,
+            live=mock_live,
+        )
+        mock_get_transcriber.assert_called_once()
+        mock_transcriber.assert_awaited_once()
+        mock_llm_response.assert_awaited_once()
+
+    assert len(conversation_history) == 1
+
+
+@pytest.mark.asyncio
 async def test_handle_conversation_turn_no_instruction():
     """Test that the conversation turn exits early if no instruction is given."""
     mock_p = MagicMock()
@@ -74,9 +131,9 @@ def test_chat_command_stop_and_status():
         mock_stop_or_status.assert_called_with(
             "chat",
             "chat agent",
-            True,  # noqa: FBT003, stop
-            False,  # noqa: FBT003, status
-            False,  # noqa: FBT003, toggle
+            True,  # , stop
+            False,  # , status
+            False,  # , toggle
             quiet=False,
         )
 
@@ -85,9 +142,9 @@ def test_chat_command_stop_and_status():
         mock_stop_or_status.assert_called_with(
             "chat",
             "chat agent",
-            False,  # noqa: FBT003, stop
-            True,  # noqa: FBT003, status
-            False,  # noqa: FBT003, toggle
+            False,  # , stop
+            True,  # , status
+            False,  # , toggle
             quiet=False,
         )
 

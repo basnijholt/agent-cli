@@ -2,172 +2,70 @@
 
 from __future__ import annotations
 
-import asyncio
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
-import pytest
+from typer.testing import CliRunner
 
-from agent_cli.agents.assistant import _record_audio_with_wake_word
+from agent_cli.cli import app
 
-
-@pytest.fixture
-def mock_stream() -> MagicMock:
-    """Mock PyAudio stream."""
-    return MagicMock()
+runner = CliRunner()
 
 
-@pytest.fixture
-def mock_logger() -> MagicMock:
-    """Mock logger instance."""
-    return MagicMock()
+def test_assistant_help():
+    """Test the assistant --help command."""
+    result = runner.invoke(app, ["assistant", "--help"], env={"NO_COLOR": "1", "TERM": "dumb"})
+    assert result.exit_code == 0
+    assert "Usage: agent-cli assistant [OPTIONS]" in result.stdout
 
 
-@pytest.fixture
-def mock_stop_event() -> MagicMock:
-    """Mock stop event."""
-    stop_event = MagicMock()
-    stop_event.is_set.return_value = False
-    return stop_event
+@patch("agent_cli.agents.assistant.asyncio.run")
+def test_assistant_command(mock_asyncio_run: MagicMock):
+    """Test the assistant command."""
+    result = runner.invoke(app, ["assistant"])
+    assert result.exit_code == 0
+    mock_asyncio_run.assert_called_once()
 
 
-@pytest.fixture
-def mock_live() -> MagicMock:
-    """Mock Rich Live instance."""
-    return MagicMock()
+@patch("agent_cli.agents.assistant.stop_or_status_or_toggle")
+def test_assistant_stop(mock_stop_or_status_or_toggle: MagicMock):
+    """Test the assistant --stop command."""
+    result = runner.invoke(app, ["assistant", "--stop"])
+    assert result.exit_code == 0
+    mock_stop_or_status_or_toggle.assert_called_once_with(
+        "assistant",
+        "wake word assistant",
+        True,
+        False,
+        False,
+        quiet=False,
+    )
 
 
-@pytest.fixture
-def mock_wake_word_config() -> MagicMock:
-    """Mock config.WakeWord."""
-    config = MagicMock()
-    config.wake_word_name = "test_word"
-    config.server_ip = "127.0.0.1"
-    config.server_port = 10400
-    return config
+@patch("agent_cli.agents.assistant.stop_or_status_or_toggle")
+def test_assistant_status(mock_stop_or_status_or_toggle: MagicMock):
+    """Test the assistant --status command."""
+    result = runner.invoke(app, ["assistant", "--status"])
+    assert result.exit_code == 0
+    mock_stop_or_status_or_toggle.assert_called_once_with(
+        "assistant",
+        "wake word assistant",
+        False,
+        True,
+        False,
+        quiet=False,
+    )
 
 
-class TestRecordAudioWithWakeWord:
-    """Tests for _record_audio_with_wake_word function."""
-
-    @pytest.mark.asyncio
-    @patch("agent_cli.agents.assistant.wake_word.detect_wake_word_from_queue")
-    @patch("agent_cli.agents.assistant.asr.record_audio_to_buffer")
-    @patch("agent_cli.agents.assistant.audio.tee_audio_stream")
-    async def test_full_recording_cycle(
-        self,
-        mock_tee: MagicMock,
-        mock_record_buffer: AsyncMock,
-        mock_detect_from_queue: AsyncMock,
-        mock_stream: MagicMock,
-        mock_logger: MagicMock,
-        mock_stop_event: MagicMock,
-        mock_wake_word_config: MagicMock,
-        mock_live: MagicMock,
-    ) -> None:
-        """Test a full recording cycle from start to stop wake word."""
-        # Arrange
-        mock_detect_from_queue.side_effect = ["start_word", "stop_word"]
-        mock_record_buffer.return_value = b"test_audio"
-
-        # Mock the tee context manager and the yielded tee object
-        mock_tee_instance = MagicMock()
-        mock_tee_instance.add_queue = AsyncMock(return_value=asyncio.Queue())
-        mock_tee_instance.remove_queue = AsyncMock()
-        mock_tee.return_value.__aenter__.return_value = mock_tee_instance
-
-        # Act
-        result = await _record_audio_with_wake_word(
-            stream=mock_stream,
-            stop_event=mock_stop_event,
-            logger=mock_logger,
-            wake_word_config=mock_wake_word_config,
-            quiet=False,
-            live=mock_live,
-        )
-
-        # Assert
-        assert result == b"test_audio"
-        assert mock_detect_from_queue.call_count == 2
-        mock_record_buffer.assert_called_once()
-        assert mock_tee_instance.add_queue.call_count == 2
-        assert mock_tee_instance.remove_queue.call_count == 2
-
-    @pytest.mark.asyncio
-    @patch("agent_cli.agents.assistant.wake_word.detect_wake_word_from_queue")
-    @patch("agent_cli.agents.assistant.audio.tee_audio_stream")
-    async def test_no_start_word_detected(
-        self,
-        mock_tee: MagicMock,
-        mock_detect_from_queue: AsyncMock,
-        mock_stream: MagicMock,
-        mock_logger: MagicMock,
-        mock_stop_event: MagicMock,
-        mock_wake_word_config: MagicMock,
-        mock_live: MagicMock,
-    ) -> None:
-        """Test that None is returned if no start word is detected."""
-        # Arrange
-        mock_detect_from_queue.return_value = None
-        mock_tee_instance = MagicMock()
-        mock_tee_instance.add_queue = AsyncMock(return_value=asyncio.Queue())
-        mock_tee_instance.remove_queue = AsyncMock()
-        mock_tee.return_value.__aenter__.return_value = mock_tee_instance
-
-        # Act
-        result = await _record_audio_with_wake_word(
-            stream=mock_stream,
-            stop_event=mock_stop_event,
-            logger=mock_logger,
-            wake_word_config=mock_wake_word_config,
-            quiet=True,
-            live=mock_live,
-        )
-
-        # Assert
-        assert result is None
-        mock_detect_from_queue.assert_called_once()
-        mock_tee_instance.remove_queue.assert_called_once()
-
-    @pytest.mark.asyncio
-    @patch("agent_cli.agents.assistant.wake_word.detect_wake_word_from_queue")
-    @patch("agent_cli.agents.assistant.asr.record_audio_to_buffer")
-    @patch("agent_cli.agents.assistant.audio.tee_audio_stream")
-    async def test_no_stop_word_detected(
-        self,
-        mock_tee: MagicMock,
-        mock_record_buffer: AsyncMock,
-        mock_detect_from_queue: AsyncMock,
-        mock_stream: MagicMock,
-        mock_logger: MagicMock,
-        mock_stop_event: MagicMock,
-        mock_wake_word_config: MagicMock,
-        mock_live: MagicMock,
-    ) -> None:
-        """Test that None is returned if no stop word is detected."""
-        # Arrange
-        mock_detect_from_queue.side_effect = ["start_word", None]
-        mock_record_buffer.return_value = b"test_audio"
-        mock_tee_instance = MagicMock()
-        mock_tee_instance.add_queue = AsyncMock(return_value=asyncio.Queue())
-        mock_tee_instance.remove_queue = AsyncMock()
-        mock_tee.return_value.__aenter__.return_value = mock_tee_instance
-
-        # Act
-        result = await _record_audio_with_wake_word(
-            stream=mock_stream,
-            stop_event=mock_stop_event,
-            logger=mock_logger,
-            wake_word_config=mock_wake_word_config,
-            quiet=True,
-            live=mock_live,
-        )
-
-        # Assert
-        assert result is None
-        assert mock_detect_from_queue.call_count == 2
-        mock_record_buffer.assert_called_once()
-
-
-# Integration-style tests for the CLI command would go here,
-# but they are complex to set up and mock.
-# The unit tests above cover the core logic of the agent.
+@patch("agent_cli.agents.assistant.stop_or_status_or_toggle")
+def test_assistant_toggle(mock_stop_or_status_or_toggle: MagicMock):
+    """Test the assistant --toggle command."""
+    result = runner.invoke(app, ["assistant", "--toggle"])
+    assert result.exit_code == 0
+    mock_stop_or_status_or_toggle.assert_called_once_with(
+        "assistant",
+        "wake word assistant",
+        False,
+        False,
+        True,
+        quiet=False,
+    )

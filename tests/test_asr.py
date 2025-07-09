@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from wyoming.asr import Transcribe, Transcript, TranscriptChunk
@@ -72,3 +72,54 @@ async def test_receive_text() -> None:
     assert result == "hello world"
     chunk_callback.assert_called_once_with("hello")
     final_callback.assert_called_once_with("hello world")
+
+
+def test_get_transcriber():
+    """Test that the correct transcriber is returned."""
+    provider_cfg = MagicMock()
+    provider_cfg.asr_provider = "openai"
+    transcriber = asr.get_transcriber(
+        provider_cfg,
+        MagicMock(),
+        MagicMock(),
+        MagicMock(),
+        MagicMock(),
+    )
+    assert transcriber.func is asr.transcribe_live_audio_openai
+
+    provider_cfg.asr_provider = "local"
+    transcriber = asr.get_transcriber(
+        provider_cfg,
+        MagicMock(),
+        MagicMock(),
+        MagicMock(),
+        MagicMock(),
+    )
+    assert transcriber.func is asr.transcribe_live_audio_wyoming
+
+
+def test_get_recorded_audio_transcriber():
+    """Test that the correct recorded audio transcriber is returned."""
+    provider_cfg = MagicMock()
+    provider_cfg.asr_provider = "openai"
+    transcriber = asr.get_recorded_audio_transcriber(provider_cfg)
+    assert transcriber is asr.transcribe_audio_openai
+
+    provider_cfg.asr_provider = "local"
+    transcriber = asr.get_recorded_audio_transcriber(provider_cfg)
+    assert transcriber is asr.transcribe_recorded_audio_wyoming
+
+
+@pytest.mark.asyncio
+@patch("agent_cli.asr.wyoming_client_context", side_effect=ConnectionRefusedError)
+async def test_transcribe_recorded_audio_wyoming_connection_error(
+    mock_wyoming_client_context: MagicMock,
+):
+    """Test that transcribe_recorded_audio_wyoming handles ConnectionRefusedError."""
+    result = await asr.transcribe_recorded_audio_wyoming(
+        audio_data=b"test",
+        wyoming_asr_config=MagicMock(),
+        logger=MagicMock(),
+    )
+    assert result == ""
+    mock_wyoming_client_context.assert_called_once()

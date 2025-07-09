@@ -49,6 +49,7 @@ async def wyoming_client_context(
             logger.info("%s connection established", server_type)
             yield client
     except ConnectionRefusedError:
+        logger.exception("%s connection refused.", server_type)
         if not quiet:
             print_error_message(
                 f"{server_type} connection refused.",

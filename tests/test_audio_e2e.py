@@ -11,7 +11,7 @@ from tests.mocks.audio import MockPyAudio
 
 
 @pytest.fixture
-def mock_pyaudio_with_cache_clear() -> None:
+def _mock_pyaudio_with_cache_clear() -> None:
     """Clear the audio device cache before each test."""
     audio._get_all_devices.cache_clear()
 
@@ -356,3 +356,18 @@ def test_device_filtering_by_capabilities(
             input_device_index=2,
         )  # Both
         assert mixed_output_name == "Both"
+
+
+@pytest.mark.asyncio
+async def test_audio_tee_os_error():
+    """Test that the _AudioTee._run method handles an OSError."""
+    mock_stream = Mock()
+    mock_stream.read.side_effect = OSError("Test OS Error")
+    mock_stop_event = Mock()
+    mock_stop_event.is_set.return_value = False
+    mock_logger = Mock()
+
+    tee = audio._AudioTee(mock_stream, mock_stop_event, mock_logger)
+    await tee._run()
+
+    mock_logger.exception.assert_called_once_with("Error reading audio stream")

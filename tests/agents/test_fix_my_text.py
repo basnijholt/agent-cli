@@ -280,3 +280,32 @@ async def test_async_autocorrect_no_text(
     )
     mock_process_text.assert_not_called()
     mock_get_clipboard_text.assert_called_once()
+
+
+@pytest.mark.asyncio
+@patch("agent_cli.agents.autocorrect._process_text", side_effect=Exception("Test error"))
+async def test_async_autocorrect_error(mock_process_text: AsyncMock):
+    """Test the async_autocorrect function when an error occurs."""
+    provider_cfg = config.ProviderSelection(
+        llm_provider="local",
+        asr_provider="local",
+        tts_provider="local",
+    )
+    ollama_cfg = config.Ollama(ollama_model="test", ollama_host="test")
+    openai_llm_cfg = config.OpenAILLM(openai_llm_model="gpt-4o-mini", openai_api_key=None)
+    general_cfg = config.General(
+        log_level="WARNING",
+        log_file=None,
+        quiet=False,
+        clipboard=True,
+    )
+    with pytest.raises(SystemExit) as excinfo:
+        await autocorrect._async_autocorrect(
+            text="test text",
+            provider_cfg=provider_cfg,
+            ollama_cfg=ollama_cfg,
+            openai_llm_cfg=openai_llm_cfg,
+            general_cfg=general_cfg,
+        )
+    assert excinfo.value.code == 1
+    mock_process_text.assert_called_once()

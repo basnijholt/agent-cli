@@ -1,5 +1,6 @@
 """Tests for the wake word detection module."""
 
+import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -123,3 +124,23 @@ class TestReceiveWakeDetection:
 
         assert result is None
         mock_logger.warning.assert_called_with("Connection to wake word server lost.")
+
+
+@pytest.mark.asyncio
+@patch("agent_cli.wake_word.wyoming_client_context", side_effect=ConnectionRefusedError)
+async def test_detect_wake_word_from_queue_connection_error(
+    mock_wyoming_client_context: MagicMock,
+    mock_logger: MagicMock,
+    mock_live: MagicMock,
+):
+    """Test that detect_wake_word_from_queue handles ConnectionRefusedError."""
+    result = await wake_word.detect_wake_word_from_queue(
+        "localhost",
+        1234,
+        "test_word",
+        mock_logger,
+        asyncio.Queue(),
+        live=mock_live,
+    )
+    assert result is None
+    mock_wyoming_client_context.assert_called_once()
