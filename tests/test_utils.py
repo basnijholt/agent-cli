@@ -71,3 +71,24 @@ def test_print_error_message() -> None:
     with patch("agent_cli.utils.console") as mock_console:
         utils.print_error_message("hello", "world")
         mock_console.print.assert_called_once()
+
+
+def test_interactive_stop_event() -> None:
+    """Test the InteractiveStopEvent class."""
+    stop_event = utils.InteractiveStopEvent()
+    assert not stop_event.is_set()
+    assert not stop_event.ctrl_c_pressed
+
+    stop_event.set()
+    assert stop_event.is_set()
+
+    stop_event.clear()
+    assert not stop_event.is_set()
+    assert not stop_event.ctrl_c_pressed
+
+    assert stop_event.increment_sigint_count() == 1
+    assert stop_event.ctrl_c_pressed
+    assert stop_event.increment_sigint_count() == 2
+
+    stop_event.clear()
+    assert not stop_event.ctrl_c_pressed
