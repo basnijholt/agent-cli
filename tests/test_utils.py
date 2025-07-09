@@ -7,7 +7,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from agent_cli import utils
+from agent_cli.core import utils
 
 
 @pytest.mark.parametrize(
@@ -43,7 +43,7 @@ def test_get_clipboard_text_empty_not_quiet() -> None:
     with (
         patch("pyperclip.paste", return_value=""),
         patch(
-            "agent_cli.utils.print_with_style",
+            "agent_cli.core.utils.print_with_style",
         ) as mock_print,
     ):
         text = utils.get_clipboard_text(quiet=False)
@@ -53,42 +53,42 @@ def test_get_clipboard_text_empty_not_quiet() -> None:
 
 def test_print_device_index() -> None:
     """Test the print_device_index function."""
-    with patch("agent_cli.utils.console") as mock_console:
+    with patch("agent_cli.core.utils.console") as mock_console:
         utils.print_device_index(1, "mock_device")
         mock_console.print.assert_called_once()
 
 
 def test_print_input_panel() -> None:
     """Test the print_input_panel function."""
-    with patch("agent_cli.utils.console") as mock_console:
+    with patch("agent_cli.core.utils.console") as mock_console:
         utils.print_input_panel("hello")
         mock_console.print.assert_called_once()
 
 
 def test_print_output_panel() -> None:
     """Test the print_output_panel function."""
-    with patch("agent_cli.utils.console") as mock_console:
+    with patch("agent_cli.core.utils.console") as mock_console:
         utils.print_output_panel("hello")
         mock_console.print.assert_called_once()
 
 
 def test_print_status_message() -> None:
     """Test the print_with_style function."""
-    with patch("agent_cli.utils.console") as mock_console:
+    with patch("agent_cli.core.utils.console") as mock_console:
         utils.print_with_style("hello")
         mock_console.print.assert_called_once()
 
 
 def test_print_error_message() -> None:
     """Test the print_error_message function."""
-    with patch("agent_cli.utils.console") as mock_console:
+    with patch("agent_cli.core.utils.console") as mock_console:
         utils.print_error_message("hello", "world")
         mock_console.print.assert_called_once()
 
 
 def test_print_error_message_no_suggestion() -> None:
     """Test the print_error_message function without a suggestion."""
-    with patch("agent_cli.utils.console") as mock_console:
+    with patch("agent_cli.core.utils.console") as mock_console:
         utils.print_error_message("hello")
         mock_console.print.assert_called_once()
 
@@ -114,8 +114,8 @@ def test_interactive_stop_event() -> None:
     assert not stop_event.ctrl_c_pressed
 
 
-@patch("agent_cli.process_manager.kill_process")
-@patch("agent_cli.process_manager.is_process_running")
+@patch("agent_cli.core.process.kill_process")
+@patch("agent_cli.core.process.is_process_running")
 def test_stop_or_status_or_toggle(
     mock_is_process_running: Mock,
     mock_kill_process: Mock,
@@ -129,7 +129,7 @@ def test_stop_or_status_or_toggle(
 
     # Test status
     mock_is_process_running.return_value = True
-    with patch("agent_cli.process_manager.read_pid_file", return_value=123):
+    with patch("agent_cli.core.process.read_pid_file", return_value=123):
         assert utils.stop_or_status_or_toggle(
             "test",
             "test",

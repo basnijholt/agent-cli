@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 import pyperclip
 from rich.live import Live
 
-from agent_cli.utils import console, live_timer, print_error_message, print_output_panel
+from agent_cli.core.utils import console, live_timer, print_error_message, print_output_panel
 
 if TYPE_CHECKING:
     import logging
@@ -17,7 +17,7 @@ if TYPE_CHECKING:
     from pydantic_ai import Agent
     from pydantic_ai.tools import Tool
 
-    from agent_cli.agents import config
+    from agent_cli import config
 
 
 def build_agent(
@@ -154,10 +154,7 @@ async def process_and_update_clipboard(
     live: Live,
 ) -> None:
     """Processes the text with the LLM, updates the clipboard, and displays the result."""
-    user_input = INPUT_TEMPLATE.format(
-        original_text=original_text,
-        instruction=instruction,
-    )
+    user_input = INPUT_TEMPLATE.format(original_text=original_text, instruction=instruction)
 
     await get_llm_response(
         system_prompt=system_prompt,

@@ -6,7 +6,7 @@ from unittest.mock import ANY, AsyncMock, MagicMock, patch
 
 import pytest
 
-from agent_cli.agents import config
+from agent_cli import config
 from agent_cli.agents.voice_edit import (
     AGENT_INSTRUCTIONS,
     SYSTEM_PROMPT,

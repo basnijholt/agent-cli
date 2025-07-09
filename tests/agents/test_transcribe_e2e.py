@@ -8,7 +8,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from agent_cli.agents import config
+from agent_cli import config
 from agent_cli.agents.transcribe import _async_main
 from tests.mocks.audio import MockPyAudio
 from tests.mocks.wyoming import MockASRClient
@@ -20,7 +20,7 @@ if TYPE_CHECKING:
 @pytest.mark.asyncio
 @patch("agent_cli.agents.transcribe.signal_handling_context")
 @patch("agent_cli.asr.wyoming_client_context")
-@patch("agent_cli.audio.pyaudio.PyAudio")
+@patch("agent_cli.core.audio.pyaudio.PyAudio")
 async def test_transcribe_e2e(
     mock_pyaudio_class: MagicMock,
     mock_wyoming_client_context: MagicMock,
@@ -61,7 +61,7 @@ async def test_transcribe_e2e(
     ollama_cfg = config.Ollama(ollama_model="", ollama_host="")
     openai_llm_cfg = config.OpenAILLM(openai_llm_model="")
 
-    with patch("agent_cli.utils.console", mock_console):
+    with patch("agent_cli.core.utils.console", mock_console):
         await _async_main(
             provider_cfg=provider_cfg,
             general_cfg=general_cfg,

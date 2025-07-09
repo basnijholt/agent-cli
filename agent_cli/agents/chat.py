@@ -24,14 +24,11 @@ from typing import TYPE_CHECKING, TypedDict
 
 import typer
 
-import agent_cli.agents._cli_options as opts
-from agent_cli import asr, process_manager
-from agent_cli.agents import config
-from agent_cli.agents._tts_common import handle_tts_playback
-from agent_cli.audio import pyaudio_context, setup_devices
-from agent_cli.cli import app, setup_logging
-from agent_cli.llm import get_llm_response
-from agent_cli.utils import (
+from agent_cli import asr, config, opts
+from agent_cli.cli import app
+from agent_cli.core import process
+from agent_cli.core.audio import pyaudio_context, setup_devices
+from agent_cli.core.utils import (
     InteractiveStopEvent,
     console,
     format_timedelta_to_ago,
@@ -40,9 +37,12 @@ from agent_cli.utils import (
     print_input_panel,
     print_output_panel,
     print_with_style,
+    setup_logging,
     signal_handling_context,
     stop_or_status_or_toggle,
 )
+from agent_cli.llm import get_llm_response
+from agent_cli.tts import handle_tts_playback
 
 if TYPE_CHECKING:
     import pyaudio
@@ -459,7 +459,7 @@ def chat(
     ):
         return
 
-    with process_manager.pid_file_context(process_name), suppress(KeyboardInterrupt):
+    with process.pid_file_context(process_name), suppress(KeyboardInterrupt):
         provider_cfg = config.ProviderSelection(
             asr_provider=asr_provider,
             llm_provider=llm_provider,

@@ -12,7 +12,7 @@ import pyaudio
 from rich.text import Text
 
 from agent_cli import constants
-from agent_cli.utils import InteractiveStopEvent, console, print_device_index, print_with_style
+from agent_cli.core.utils import InteractiveStopEvent, console, print_device_index, print_with_style
 
 if TYPE_CHECKING:
     import logging
@@ -20,7 +20,7 @@ if TYPE_CHECKING:
 
     from rich.live import Live
 
-    from agent_cli.agents import config
+    from agent_cli import config
 
 
 class _AudioTee:
@@ -312,7 +312,7 @@ def _get_device_by_index(p: pyaudio.PyAudio, input_device_index: int) -> dict:
     raise ValueError(msg)
 
 
-def list_input_devices(p: pyaudio.PyAudio) -> None:
+def _list_input_devices(p: pyaudio.PyAudio) -> None:
     """Print a numbered list of available input devices."""
     console.print("[bold]Available input devices:[/bold]")
     for device in _get_all_devices(p):
@@ -320,7 +320,7 @@ def list_input_devices(p: pyaudio.PyAudio) -> None:
             console.print(f"  [yellow]{device['index']}[/yellow]: {device['name']}")
 
 
-def list_output_devices(p: pyaudio.PyAudio) -> None:
+def _list_output_devices(p: pyaudio.PyAudio) -> None:
     """Print a numbered list of available output devices."""
     console.print("[bold]Available output devices:[/bold]")
     for device in _get_all_devices(p):
@@ -330,9 +330,9 @@ def list_output_devices(p: pyaudio.PyAudio) -> None:
 
 def list_all_devices(p: pyaudio.PyAudio) -> None:
     """Print a numbered list of all available audio devices with their capabilities."""
-    list_input_devices(p)
+    _list_input_devices(p)
     console.print()
-    list_output_devices(p)
+    _list_output_devices(p)
 
 
 def _in_or_out_device(
@@ -371,7 +371,7 @@ def _in_or_out_device(
     raise ValueError(msg)
 
 
-def input_device(
+def _input_device(
     p: pyaudio.PyAudio,
     input_device_name: str | None,
     input_device_index: int | None,
@@ -380,7 +380,7 @@ def input_device(
     return _in_or_out_device(p, input_device_name, input_device_index, "maxInputChannels", "input")
 
 
-def output_device(
+def _output_device(
     p: pyaudio.PyAudio,
     input_device_name: str | None,
     input_device_index: int | None,
@@ -407,7 +407,7 @@ def setup_devices(
         return None
 
     # Setup input device
-    input_device_index, input_device_name = input_device(
+    input_device_index, input_device_name = _input_device(
         p,
         audio_in_cfg.input_device_name if audio_in_cfg else None,
         audio_in_cfg.input_device_index if audio_in_cfg else None,
@@ -422,7 +422,7 @@ def setup_devices(
         and audio_out_cfg.enable_tts
         and (audio_out_cfg.output_device_name or audio_out_cfg.output_device_index)
     ):
-        tts_output_device_index, tts_output_device_name = output_device(
+        tts_output_device_index, tts_output_device_name = _output_device(
             p,
             audio_out_cfg.output_device_name,
             audio_out_cfg.output_device_index,

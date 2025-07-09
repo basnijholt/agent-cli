@@ -2,10 +2,18 @@
 
 from __future__ import annotations
 
+import tomllib
 from pathlib import Path
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, field_validator
+
+from agent_cli.core.utils import console
+
+CONFIG_PATHS = [
+    Path("agent-cli-config.toml"),
+    Path.home() / ".config" / "agent-cli" / "config.toml",
+]
 
 # --- Panel: Provider Selection ---
 
@@ -134,3 +142,30 @@ class History(BaseModel):
         if v:
             return Path(v).expanduser()
         return None
+
+
+def _config_path(config_path_str: str | None = None) -> Path | None:
+    if config_path_str:
+        return Path(config_path_str)
+    return next((p for p in CONFIG_PATHS if p.exists()), None)
+
+
+def load_config(config_path_str: str | None = None) -> dict[str, Any]:
+    """Load the TOML configuration file and process it for nested structures."""
+    # Determine which config path to use
+    config_path = _config_path(config_path_str)
+    if config_path is None:
+        return {}
+    if config_path.exists():
+        with config_path.open("rb") as f:
+            cfg = tomllib.load(f)
+            return {k: _replace_dashed_keys(v) for k, v in cfg.items()}
+    if config_path_str:
+        console.print(
+            f"[bold red]Config file not found at {config_path_str}[/bold red]",
+        )
+    return {}
+
+
+def _replace_dashed_keys(cfg: dict[str, Any]) -> dict[str, Any]:
+    return {k.replace("-", "_"): v for k, v in cfg.items()}

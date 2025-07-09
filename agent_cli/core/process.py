@@ -23,12 +23,6 @@ def _get_pid_file(process_name: str) -> Path:
     return PID_DIR / f"{process_name}.pid"
 
 
-def _get_log_file(process_name: str) -> Path:
-    """Get the path to the log file for a given process name."""
-    PID_DIR.mkdir(parents=True, exist_ok=True)
-    return PID_DIR / f"{process_name}.log"
-
-
 def _get_running_pid(process_name: str) -> int | None:
     """Get PID if process is running, None otherwise. Cleans up stale files."""
     pid_file = _get_pid_file(process_name)

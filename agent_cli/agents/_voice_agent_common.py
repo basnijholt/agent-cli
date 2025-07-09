@@ -9,14 +9,14 @@ from typing import TYPE_CHECKING
 import pyperclip
 
 from agent_cli import asr
-from agent_cli.agents._tts_common import handle_tts_playback
+from agent_cli.core.utils import print_input_panel, print_with_style
 from agent_cli.llm import process_and_update_clipboard
-from agent_cli.utils import print_input_panel, print_with_style
+from agent_cli.tts import handle_tts_playback
 
 if TYPE_CHECKING:
     from rich.live import Live
 
-    from agent_cli.agents import config
+    from agent_cli import config
 
 LOGGER = logging.getLogger()
 

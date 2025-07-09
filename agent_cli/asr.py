@@ -11,14 +11,15 @@ from wyoming.asr import Transcribe, Transcript, TranscriptChunk, TranscriptStart
 from wyoming.audio import AudioChunk, AudioStart, AudioStop
 
 from agent_cli import constants
-from agent_cli.audio import (
+from agent_cli.core.audio import (
     open_pyaudio_stream,
     read_audio_stream,
     read_from_queue,
     setup_input_stream,
 )
+from agent_cli.core.utils import manage_send_receive_tasks
 from agent_cli.services import transcribe_audio_openai
-from agent_cli.wyoming_utils import manage_send_receive_tasks, wyoming_client_context
+from agent_cli.wyoming_utils import wyoming_client_context
 
 if TYPE_CHECKING:
     import logging
@@ -28,8 +29,8 @@ if TYPE_CHECKING:
     from rich.live import Live
     from wyoming.client import AsyncClient
 
-    from agent_cli.agents import config
-    from agent_cli.utils import InteractiveStopEvent
+    from agent_cli import config
+    from agent_cli.core.utils import InteractiveStopEvent
 
 
 def get_transcriber(
@@ -47,11 +48,14 @@ def get_transcriber(
             openai_asr_config=openai_asr_config,
             openai_llm_config=openai_llm_config,
         )
-    return partial(
-        transcribe_live_audio_wyoming,
-        audio_input_config=audio_input_config,
-        wyoming_asr_config=wyoming_asr_config,
-    )
+    if provider_config.asr_provider == "local":
+        return partial(
+            transcribe_live_audio_wyoming,
+            audio_input_config=audio_input_config,
+            wyoming_asr_config=wyoming_asr_config,
+        )
+    msg = f"Unsupported ASR provider: {provider_config.asr_provider}"
+    raise ValueError(msg)
 
 
 def get_recorded_audio_transcriber(
@@ -60,7 +64,10 @@ def get_recorded_audio_transcriber(
     """Return the appropriate transcriber for recorded audio based on the provider."""
     if provider_config.asr_provider == "openai":
         return transcribe_audio_openai
-    return transcribe_recorded_audio_wyoming
+    if provider_config.asr_provider == "local":
+        return transcribe_recorded_audio_wyoming
+    msg = f"Unsupported ASR provider: {provider_config.asr_provider}"
+    raise ValueError(msg)
 
 
 async def _send_audio(
@@ -96,10 +103,7 @@ async def _send_audio(
         logger.debug("Sent AudioStop")
 
 
-async def record_audio_to_buffer(
-    queue: asyncio.Queue,
-    logger: logging.Logger,
-) -> bytes:
+async def record_audio_to_buffer(queue: asyncio.Queue, logger: logging.Logger) -> bytes:
     """Record audio from a queue to a buffer."""
     audio_buffer = io.BytesIO()
 

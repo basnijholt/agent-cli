@@ -7,16 +7,24 @@ import importlib.util
 import io
 import wave
 from functools import partial
+from pathlib import Path
 from typing import TYPE_CHECKING
 
+from rich.live import Live
 from wyoming.audio import AudioChunk, AudioStart, AudioStop
 from wyoming.tts import Synthesize, SynthesizeVoice
 
-from agent_cli import constants
-from agent_cli.audio import open_pyaudio_stream, pyaudio_context, setup_output_stream
+from agent_cli import config, constants
+from agent_cli.core.audio import open_pyaudio_stream, pyaudio_context, setup_output_stream
+from agent_cli.core.utils import (
+    InteractiveStopEvent,
+    live_timer,
+    manage_send_receive_tasks,
+    print_error_message,
+    print_with_style,
+)
 from agent_cli.services import synthesize_speech_openai
-from agent_cli.utils import InteractiveStopEvent, live_timer, print_error_message, print_with_style
-from agent_cli.wyoming_utils import manage_send_receive_tasks, wyoming_client_context
+from agent_cli.wyoming_utils import wyoming_client_context
 
 if TYPE_CHECKING:
     import logging
@@ -25,7 +33,7 @@ if TYPE_CHECKING:
     from rich.live import Live
     from wyoming.client import AsyncClient
 
-    from agent_cli.agents import config
+    from agent_cli import config
 
 has_audiostretchy = importlib.util.find_spec("audiostretchy") is not None
 
@@ -47,6 +55,63 @@ def get_synthesizer(
             openai_llm_config=openai_llm_config,
         )
     return partial(_synthesize_speech_wyoming, wyoming_tts_config=wyoming_tts_config)
+
+
+async def handle_tts_playback(
+    *,
+    text: str,
+    provider_config: config.ProviderSelection,
+    audio_output_config: config.AudioOutput,
+    wyoming_tts_config: config.WyomingTTS,
+    openai_tts_config: config.OpenAITTS,
+    openai_llm_config: config.OpenAILLM,
+    save_file: Path | None,
+    quiet: bool,
+    logger: logging.Logger,
+    play_audio: bool = True,
+    status_message: str = "🔊 Speaking...",
+    description: str = "Audio",
+    stop_event: InteractiveStopEvent | None = None,
+    live: Live,
+) -> bytes | None:
+    """Handle TTS synthesis, playback, and file saving."""
+    try:
+        if not quiet and status_message:
+            print_with_style(status_message, style="blue")
+
+        audio_data = await _speak_text(
+            text=text,
+            provider_config=provider_config,
+            audio_output_config=audio_output_config,
+            wyoming_tts_config=wyoming_tts_config,
+            openai_tts_config=openai_tts_config,
+            openai_llm_config=openai_llm_config,
+            logger=logger,
+            quiet=quiet,
+            play_audio_flag=play_audio,
+            stop_event=stop_event,
+            live=live,
+        )
+
+        if save_file and audio_data:
+            await _save_audio_file(
+                audio_data,
+                save_file,
+                quiet,
+                logger,
+                description=description,
+            )
+
+        return audio_data
+
+    except (OSError, ConnectionError, TimeoutError) as e:
+        logger.warning("Failed TTS operation: %s", e)
+        if not quiet:
+            print_with_style(f"⚠️ TTS failed: {e}", style="yellow")
+        return None
+
+
+# --- Helper Functions ---
 
 
 def _create_synthesis_request(
@@ -210,7 +275,7 @@ def _apply_speed_adjustment(
     return out, True
 
 
-async def play_audio(
+async def _play_audio(
     audio_data: bytes,
     logger: logging.Logger,
     *,
@@ -261,7 +326,7 @@ async def play_audio(
             print_error_message(f"Playback error: {e}")
 
 
-async def speak_text(
+async def _speak_text(
     *,
     text: str,
     provider_config: config.ProviderSelection,
@@ -300,7 +365,7 @@ async def speak_text(
         return None
 
     if audio_data and play_audio_flag:
-        await play_audio(
+        await _play_audio(
             audio_data,
             logger,
             audio_output_config=audio_output_config,
@@ -310,3 +375,26 @@ async def speak_text(
         )
 
     return audio_data
+
+
+async def _save_audio_file(
+    audio_data: bytes,
+    save_file: Path,
+    quiet: bool,
+    logger: logging.Logger,
+    *,
+    description: str = "Audio",
+) -> None:
+    try:
+        save_path = Path(save_file)
+        await asyncio.to_thread(save_path.write_bytes, audio_data)
+        if not quiet:
+            print_with_style(f"💾 {description} saved to {save_file}")
+        logger.info("%s saved to %s", description, save_file)
+    except (OSError, PermissionError) as e:
+        logger.exception("Failed to save %s", description.lower())
+        if not quiet:
+            print_with_style(
+                f"❌ Failed to save {description.lower()}: {e}",
+                style="red",
+            )

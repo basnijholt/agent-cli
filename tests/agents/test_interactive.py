@@ -9,7 +9,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from agent_cli.agents import config
+from agent_cli import config
 from agent_cli.agents.chat import (
     ConversationEntry,
     _async_main,
@@ -17,7 +17,7 @@ from agent_cli.agents.chat import (
     _load_conversation_history,
     _save_conversation_history,
 )
-from agent_cli.utils import InteractiveStopEvent
+from agent_cli.core.utils import InteractiveStopEvent
 
 if TYPE_CHECKING:
     from pathlib import Path

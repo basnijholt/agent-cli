@@ -11,18 +11,18 @@ from typing import TYPE_CHECKING
 import pyperclip
 import typer
 
-import agent_cli.agents._cli_options as opts
-from agent_cli.agents import config
-from agent_cli.cli import app, setup_logging
-from agent_cli.llm import build_agent
-from agent_cli.utils import (
+from agent_cli import config, opts
+from agent_cli.cli import app
+from agent_cli.core.utils import (
     create_status,
     get_clipboard_text,
     print_error_message,
     print_input_panel,
     print_output_panel,
     print_with_style,
+    setup_logging,
 )
+from agent_cli.llm import build_agent
 
 if TYPE_CHECKING:
     from rich.status import Status

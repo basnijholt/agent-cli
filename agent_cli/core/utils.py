@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 import signal
 import sys
 import time
@@ -23,12 +24,12 @@ from rich.spinner import Spinner
 from rich.status import Status
 from rich.text import Text
 
-from agent_cli import process_manager
+from agent_cli.core import process
 
 if TYPE_CHECKING:
-    import logging
-    from collections.abc import AsyncGenerator, Generator
+    from collections.abc import AsyncGenerator, Coroutine, Generator
     from datetime import timedelta
+    from logging import Handler
 
 console = Console()
 
@@ -207,7 +208,7 @@ def stop_or_status_or_toggle(
 ) -> bool:
     """Handle process control for a given process name."""
     if stop:
-        if process_manager.kill_process(process_name):
+        if process.kill_process(process_name):
             if not quiet:
                 print_with_style(f"✅ {which.capitalize()} stopped.")
         elif not quiet:
@@ -215,8 +216,8 @@ def stop_or_status_or_toggle(
         return True
 
     if status:
-        if process_manager.is_process_running(process_name):
-            pid = process_manager.read_pid_file(process_name)
+        if process.is_process_running(process_name):
+            pid = process.read_pid_file(process_name)
             if not quiet:
                 print_with_style(f"✅ {which.capitalize()} is running (PID: {pid}).")
         elif not quiet:
@@ -224,8 +225,8 @@ def stop_or_status_or_toggle(
         return True
 
     if toggle:
-        if process_manager.is_process_running(process_name):
-            if process_manager.kill_process(process_name) and not quiet:
+        if process.is_process_running(process_name):
+            if process.kill_process(process_name) and not quiet:
                 print_with_style(f"✅ {which.capitalize()} stopped.")
             return True
         if not quiet:
@@ -301,3 +302,50 @@ async def live_timer(
             await timer_task
         if not quiet:
             live.update("")
+
+
+def setup_logging(log_level: str, log_file: str | None, *, quiet: bool) -> None:
+    """Sets up logging based on parsed arguments."""
+    handlers: list[Handler] = []
+    if not quiet:
+        handlers.append(logging.StreamHandler())
+    if log_file:
+        handlers.append(logging.FileHandler(log_file, mode="w"))
+
+    logging.basicConfig(
+        level=log_level.upper(),
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+        handlers=handlers,
+    )
+
+
+async def manage_send_receive_tasks(
+    send_task_coro: Coroutine,
+    receive_task_coro: Coroutine,
+    *,
+    return_when: str = asyncio.ALL_COMPLETED,
+) -> tuple[asyncio.Task, asyncio.Task]:
+    """Manage send and receive tasks with proper cancellation.
+
+    Args:
+        send_task_coro: Send task coroutine
+        receive_task_coro: Receive task coroutine
+        return_when: When to return (e.g., asyncio.ALL_COMPLETED)
+
+    Returns:
+        Tuple of (send_task, receive_task) - both completed or cancelled
+
+    """
+    send_task = asyncio.create_task(send_task_coro)
+    recv_task = asyncio.create_task(receive_task_coro)
+
+    done, pending = await asyncio.wait(
+        [send_task, recv_task],
+        return_when=return_when,
+    )
+
+    # Cancel any pending tasks
+    for task in pending:
+        task.cancel()
+
+    return send_task, recv_task

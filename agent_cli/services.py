@@ -10,7 +10,7 @@ if TYPE_CHECKING:
 
     from openai import AsyncOpenAI
 
-    from agent_cli.agents import config
+    from agent_cli import config
 
 
 def _get_openai_client(api_key: str) -> AsyncOpenAI:

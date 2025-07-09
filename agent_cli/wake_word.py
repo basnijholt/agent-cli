@@ -9,8 +9,9 @@ from wyoming.audio import AudioChunk, AudioStart, AudioStop
 from wyoming.wake import Detect, Detection, NotDetected
 
 from agent_cli import constants
-from agent_cli.audio import read_from_queue
-from agent_cli.wyoming_utils import manage_send_receive_tasks, wyoming_client_context
+from agent_cli.core.audio import read_from_queue
+from agent_cli.core.utils import manage_send_receive_tasks
+from agent_cli.wyoming_utils import wyoming_client_context
 
 if TYPE_CHECKING:
     import logging
@@ -43,11 +44,7 @@ async def _send_audio_from_queue_for_wake_detection(
             live.update(f"{progress_message}... ({seconds_streamed:.1f}s)")
 
     try:
-        await read_from_queue(
-            queue=queue,
-            chunk_handler=send_chunk,
-            logger=logger,
-        )
+        await read_from_queue(queue=queue, chunk_handler=send_chunk, logger=logger)
     finally:
         if client._writer is not None:
             await client.write_event(AudioStop().event())

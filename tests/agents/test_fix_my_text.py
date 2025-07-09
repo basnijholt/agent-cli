@@ -9,7 +9,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from rich.console import Console
 
-from agent_cli.agents import autocorrect, config
+from agent_cli import config
+from agent_cli.agents import autocorrect
 
 
 def test_system_prompt_and_instructions():
@@ -60,7 +61,7 @@ def test_display_result_verbose_mode():
     """Test the _display_result function in verbose mode with real console output."""
     mock_console = Console(file=io.StringIO(), width=80)
     with (
-        patch("agent_cli.utils.console", mock_console),
+        patch("agent_cli.core.utils.console", mock_console),
         patch("agent_cli.agents.autocorrect.pyperclip.copy") as mock_copy,
     ):
         autocorrect._display_result(
@@ -80,7 +81,7 @@ def test_display_result_verbose_mode():
 def test_display_original_text():
     """Test the display_original_text function."""
     mock_console = Console(file=io.StringIO(), width=80)
-    with patch("agent_cli.utils.console", mock_console):
+    with patch("agent_cli.core.utils.console", mock_console):
         autocorrect._display_original_text("Test text here", quiet=False)
         output = mock_console.file.getvalue()
         assert "Test text here" in output
@@ -90,7 +91,7 @@ def test_display_original_text():
 def test_display_original_text_none_console():
     """Test display_original_text with None console (should not crash)."""
     mock_console = Console(file=io.StringIO(), width=80)
-    with patch("agent_cli.utils.console", mock_console):
+    with patch("agent_cli.core.utils.console", mock_console):
         # This should not raise an exception or print anything
         autocorrect._display_original_text("Test text", quiet=True)
         assert mock_console.file.getvalue() == ""

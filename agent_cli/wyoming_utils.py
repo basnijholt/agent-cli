@@ -2,17 +2,16 @@
 
 from __future__ import annotations
 
-import asyncio
 from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING
 
 from wyoming.client import AsyncClient
 
-from agent_cli.utils import print_error_message
+from agent_cli.core.utils import print_error_message
 
 if TYPE_CHECKING:
     import logging
-    from collections.abc import AsyncGenerator, Coroutine
+    from collections.abc import AsyncGenerator
 
 
 @asynccontextmanager
@@ -61,35 +60,3 @@ async def wyoming_client_context(
         if not quiet:
             print_error_message(f"{server_type} error: {e}")
         raise
-
-
-async def manage_send_receive_tasks(
-    send_task_coro: Coroutine,
-    receive_task_coro: Coroutine,
-    *,
-    return_when: str = asyncio.ALL_COMPLETED,
-) -> tuple[asyncio.Task, asyncio.Task]:
-    """Manage send and receive tasks with proper cancellation.
-
-    Args:
-        send_task_coro: Send task coroutine
-        receive_task_coro: Receive task coroutine
-        return_when: When to return (e.g., asyncio.ALL_COMPLETED)
-
-    Returns:
-        Tuple of (send_task, receive_task) - both completed or cancelled
-
-    """
-    send_task = asyncio.create_task(send_task_coro)
-    recv_task = asyncio.create_task(receive_task_coro)
-
-    done, pending = await asyncio.wait(
-        [send_task, recv_task],
-        return_when=return_when,
-    )
-
-    # Cancel any pending tasks
-    for task in pending:
-        task.cancel()
-
-    return send_task, recv_task

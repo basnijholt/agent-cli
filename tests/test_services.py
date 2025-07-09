@@ -6,8 +6,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from agent_cli import asr, tts
-from agent_cli.agents import config
+from agent_cli import asr, config, tts
 from agent_cli.services import synthesize_speech_openai, transcribe_audio_openai
 
 
