@@ -49,7 +49,7 @@ from agent_cli.core.utils import (
     signal_handling_context,
     stop_or_status_or_toggle,
 )
-from agent_cli.services import asr, wake_word
+from agent_cli.services import wake_word
 
 if TYPE_CHECKING:
     import pyaudio
@@ -134,7 +134,7 @@ async def _record_audio_with_wake_word(
 
         # Add a new queue for recording
         record_queue = await tee.add_queue()
-        record_task = asyncio.create_task(asr.record_audio_to_buffer(record_queue, logger))
+        record_task = asyncio.create_task(audio.record_audio_to_buffer(record_queue, logger))
 
         # Use the same wake_queue for stop-word detection
         stop_detected_word = await wake_word.detect_wake_word_from_queue(
@@ -219,13 +219,10 @@ async def _async_main(
                 instruction = await get_instruction_from_audio(
                     audio_data=audio_data,
                     provider_config=provider_cfg,
-                    audio_input_config=audio_in_cfg,
                     wyoming_asr_config=wyoming_asr_cfg,
                     openai_asr_config=openai_asr_cfg,
-                    ollama_config=ollama_cfg,
-                    openai_llm_config=openai_llm_cfg,
-                    logger=LOGGER,
                     quiet=general_cfg.quiet,
+                    logger=LOGGER,
                 )
                 if not instruction:
                     continue

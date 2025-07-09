@@ -18,69 +18,59 @@ if TYPE_CHECKING:
 
 
 @pytest.mark.asyncio
-@patch("agent_cli.agents._voice_agent_common.asr.get_recorded_audio_transcriber")
-async def test_get_instruction_from_audio(mock_get_transcriber: MagicMock) -> None:
+@patch("agent_cli.agents._voice_agent_common.get_asr_service")
+async def test_get_instruction_from_audio(mock_get_asr_service: MagicMock) -> None:
     """Test the get_instruction_from_audio function."""
-    mock_transcriber = AsyncMock(return_value="test instruction")
-    mock_get_transcriber.return_value = mock_transcriber
+    mock_asr_service = AsyncMock()
+    mock_asr_service.transcribe.return_value = "test instruction"
+    mock_get_asr_service.return_value = mock_asr_service
     provider_cfg = config.ProviderSelection(
         asr_provider="local",
         llm_provider="local",
         tts_provider="local",
     )
-    audio_in_cfg = config.AudioInput(input_device_index=1)
     wyoming_asr_cfg = config.WyomingASR(wyoming_asr_ip="localhost", wyoming_asr_port=1234)
     openai_asr_cfg = config.OpenAIASR(openai_asr_model="whisper-1")
-    ollama_cfg = config.Ollama(ollama_model="test-model", ollama_host="localhost")
-    openai_llm_cfg = config.OpenAILLM(openai_llm_model="gpt-4")
 
     result = await get_instruction_from_audio(
         audio_data=b"test audio",
         provider_config=provider_cfg,
-        audio_input_config=audio_in_cfg,
         wyoming_asr_config=wyoming_asr_cfg,
         openai_asr_config=openai_asr_cfg,
-        ollama_config=ollama_cfg,
-        openai_llm_config=openai_llm_cfg,
-        logger=MagicMock(),
         quiet=False,
+        logger=MagicMock(),
     )
     assert result == "test instruction"
-    mock_get_transcriber.assert_called_once()
-    mock_transcriber.assert_called_once()
+    mock_get_asr_service.assert_called_once()
+    mock_asr_service.transcribe.assert_called_once()
 
 
 @pytest.mark.asyncio
-@patch("agent_cli.agents._voice_agent_common.asr.get_recorded_audio_transcriber")
-async def test_get_instruction_from_audio_error(mock_get_transcriber: MagicMock) -> None:
+@patch("agent_cli.agents._voice_agent_common.get_asr_service")
+async def test_get_instruction_from_audio_error(mock_get_asr_service: MagicMock) -> None:
     """Test the get_instruction_from_audio function when an error occurs."""
-    mock_transcriber = AsyncMock(side_effect=Exception("test error"))
-    mock_get_transcriber.return_value = mock_transcriber
+    mock_asr_service = AsyncMock()
+    mock_asr_service.transcribe.side_effect = Exception("test error")
+    mock_get_asr_service.return_value = mock_asr_service
     provider_cfg = config.ProviderSelection(
         asr_provider="local",
         llm_provider="local",
         tts_provider="local",
     )
-    audio_in_cfg = config.AudioInput(input_device_index=1)
     wyoming_asr_cfg = config.WyomingASR(wyoming_asr_ip="localhost", wyoming_asr_port=1234)
     openai_asr_cfg = config.OpenAIASR(openai_asr_model="whisper-1")
-    ollama_cfg = config.Ollama(ollama_model="test-model", ollama_host="localhost")
-    openai_llm_cfg = config.OpenAILLM(openai_llm_model="gpt-4")
 
     result = await get_instruction_from_audio(
         audio_data=b"test audio",
         provider_config=provider_cfg,
-        audio_input_config=audio_in_cfg,
         wyoming_asr_config=wyoming_asr_cfg,
         openai_asr_config=openai_asr_cfg,
-        ollama_config=ollama_cfg,
-        openai_llm_config=openai_llm_cfg,
-        logger=MagicMock(),
         quiet=False,
+        logger=MagicMock(),
     )
     assert result is None
-    mock_get_transcriber.assert_called_once()
-    mock_transcriber.assert_called_once()
+    mock_get_asr_service.assert_called_once()
+    mock_asr_service.transcribe.assert_called_once()
 
 
 @pytest.mark.asyncio

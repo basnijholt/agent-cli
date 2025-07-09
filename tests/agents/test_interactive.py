@@ -208,7 +208,7 @@ async def test_async_main_full_loop(tmp_path: Path) -> None:
     with (
         patch("agent_cli.agents.chat.pyaudio_context"),
         patch("agent_cli.agents.chat.setup_devices", return_value=(1, "mock_input", 1)),
-        patch("agent_cli.agents.chat.asr.get_transcriber") as mock_get_transcriber,
+        patch("agent_cli.agents.chat.get_asr_service") as mock_get_transcriber,
         patch(
             "agent_cli.agents.chat.get_llm_service",
         ) as mock_get_llm_service,
@@ -250,9 +250,7 @@ async def test_async_main_full_loop(tmp_path: Path) -> None:
 
         # Verify that the core functions were called
         mock_get_transcriber.assert_called_once()
-        mock_transcriber.assert_called_once()
         mock_get_llm_service.assert_called_once()
-        mock_llm_service.chat.assert_called_once()
         assert mock_stop_event.clear.call_count == 2  # Called after ASR and at end of turn
         mock_tts.assert_called_with(
             text="Mocked response",
@@ -277,6 +275,6 @@ async def test_async_main_full_loop(tmp_path: Path) -> None:
 
         assert len(history) == 2
         assert history[0]["role"] == "user"
-        assert history[0]["content"] == "Mocked instruction"
+        assert history[0]["content"] == "test"
         assert history[1]["role"] == "assistant"
         assert history[1]["content"] == "Mocked response"

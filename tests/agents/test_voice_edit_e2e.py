@@ -66,7 +66,7 @@ def get_configs() -> tuple[
 @pytest.mark.asyncio
 @patch("agent_cli.agents.voice_edit.process_instruction_and_respond", new_callable=AsyncMock)
 @patch("agent_cli.agents.voice_edit.get_instruction_from_audio", new_callable=AsyncMock)
-@patch("agent_cli.agents.voice_edit.asr.record_audio_with_manual_stop", new_callable=AsyncMock)
+@patch("agent_cli.core.audio.record_audio_with_manual_stop", new_callable=AsyncMock)
 @patch("agent_cli.agents.voice_edit.get_clipboard_text", return_value="test clipboard text")
 @patch("agent_cli.agents.voice_edit.setup_devices")
 @patch("agent_cli.agents.voice_edit.pyaudio_context")
@@ -125,11 +125,8 @@ async def test_voice_edit_e2e(
     mock_get_instruction.assert_called_once_with(
         audio_data=b"audio data",
         provider_config=provider_cfg,
-        audio_input_config=audio_in_cfg,
         wyoming_asr_config=wyoming_asr_cfg,
         openai_asr_config=openai_asr_cfg,
-        ollama_config=ollama_cfg,
-        openai_llm_config=openai_llm_cfg,
         logger=ANY,
         quiet=False,
     )

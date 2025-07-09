@@ -1,6 +1,5 @@
 """Abstract base classes for services."""
 
-import asyncio
 from abc import ABC, abstractmethod
 from collections.abc import AsyncGenerator
 
@@ -49,7 +48,7 @@ class ASRService(ABC):
         self.model = model
 
     @abstractmethod
-    def transcribe(self, audio_stream: asyncio.Queue[bytes]) -> AsyncGenerator[str, None]:
+    async def transcribe(self, audio_data: bytes) -> str:
         """Transcribe audio."""
         ...
 
@@ -72,6 +71,6 @@ class TTSService(ABC):
         self.voice = voice
 
     @abstractmethod
-    def synthesise(self, text: str) -> AsyncGenerator[bytes, None]:
+    async def synthesise(self, text: str) -> bytes:
         """Synthesise text to speech."""
         ...

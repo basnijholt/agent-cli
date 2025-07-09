@@ -44,7 +44,7 @@ from agent_cli.agents._voice_agent_common import (
     process_instruction_and_respond,
 )
 from agent_cli.cli import app
-from agent_cli.core import process
+from agent_cli.core import audio, process
 from agent_cli.core.audio import pyaudio_context, setup_devices
 from agent_cli.core.utils import (
     get_clipboard_text,
@@ -55,7 +55,6 @@ from agent_cli.core.utils import (
     signal_handling_context,
     stop_or_status_or_toggle,
 )
-from agent_cli.services import asr
 
 LOGGER = logging.getLogger()
 
@@ -119,7 +118,7 @@ async def _async_main(
             signal_handling_context(LOGGER, general_cfg.quiet) as stop_event,
             maybe_live(not general_cfg.quiet) as live,
         ):
-            audio_data = await asr.record_audio_with_manual_stop(
+            audio_data = await audio.record_audio_with_manual_stop(
                 p,
                 input_device_index,
                 stop_event,
@@ -136,13 +135,10 @@ async def _async_main(
             instruction = await get_instruction_from_audio(
                 audio_data=audio_data,
                 provider_config=provider_cfg,
-                audio_input_config=audio_in_cfg,
                 wyoming_asr_config=wyoming_asr_cfg,
                 openai_asr_config=openai_asr_cfg,
-                ollama_config=ollama_cfg,
-                openai_llm_config=openai_llm_cfg,
-                logger=LOGGER,
                 quiet=general_cfg.quiet,
+                logger=LOGGER,
             )
             if not instruction:
                 return

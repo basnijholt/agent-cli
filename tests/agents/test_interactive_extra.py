@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from typer.testing import CliRunner
@@ -44,13 +44,12 @@ async def test_handle_conversation_turn_no_llm_response():
     mock_live = MagicMock()
 
     with (
-        patch("agent_cli.agents.chat.asr.get_transcriber") as mock_get_transcriber,
+        patch("agent_cli.agents.chat.get_asr_service") as mock_get_transcriber,
         patch(
             "agent_cli.agents.chat.get_llm_service",
         ) as mock_get_llm_service,
     ):
-        mock_transcriber = AsyncMock(return_value="test instruction")
-        mock_get_transcriber.return_value = mock_transcriber
+        mock_get_transcriber.return_value.transcribe.return_value = "test instruction"
         mock_llm_service = MagicMock()
 
         async def mock_chat_generator() -> AsyncGenerator[str, None]:
@@ -60,13 +59,11 @@ async def test_handle_conversation_turn_no_llm_response():
         mock_llm_service.chat.return_value = mock_chat_generator()
         mock_get_llm_service.return_value = mock_llm_service
         await _handle_conversation_turn(
-            p=mock_p,
             stop_event=stop_event,
             conversation_history=conversation_history,
             provider_cfg=provider_cfg,
             general_cfg=general_cfg,
             history_cfg=history_cfg,
-            audio_in_cfg=audio_in_cfg,
             wyoming_asr_cfg=wyoming_asr_cfg,
             openai_asr_cfg=openai_asr_cfg,
             ollama_cfg=ollama_cfg,
@@ -77,7 +74,6 @@ async def test_handle_conversation_turn_no_llm_response():
             live=mock_live,
         )
         mock_get_transcriber.assert_called_once()
-        mock_transcriber.assert_awaited_once()
         mock_get_llm_service.assert_called_once()
         mock_llm_service.chat.assert_called_once()
 
@@ -107,17 +103,16 @@ async def test_handle_conversation_turn_no_instruction():
     openai_tts_cfg = config.OpenAITTS(openai_tts_model="tts-1", openai_tts_voice="alloy")
     mock_live = MagicMock()
 
-    with patch("agent_cli.agents.chat.asr.get_transcriber") as mock_get_transcriber:
-        mock_transcriber = AsyncMock(return_value="")
-        mock_get_transcriber.return_value = mock_transcriber
+    with patch("agent_cli.agents.chat.get_asr_service") as mock_get_transcriber, patch(
+        "agent_cli.agents.chat.get_llm_service"
+    ) as mock_get_llm_service:
+        mock_get_transcriber.return_value.transcribe.return_value = ""
         await _handle_conversation_turn(
-            p=mock_p,
             stop_event=stop_event,
             conversation_history=conversation_history,
             provider_cfg=provider_cfg,
             general_cfg=general_cfg,
             history_cfg=history_cfg,
-            audio_in_cfg=audio_in_cfg,
             wyoming_asr_cfg=wyoming_asr_cfg,
             openai_asr_cfg=openai_asr_cfg,
             ollama_cfg=ollama_cfg,
@@ -128,7 +123,7 @@ async def test_handle_conversation_turn_no_instruction():
             live=mock_live,
         )
         mock_get_transcriber.assert_called_once()
-        mock_transcriber.assert_awaited_once()
+        mock_get_llm_service.assert_not_called()
     assert not conversation_history
 
 

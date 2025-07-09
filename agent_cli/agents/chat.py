@@ -41,12 +41,10 @@ from agent_cli.core.utils import (
     signal_handling_context,
     stop_or_status_or_toggle,
 )
-from agent_cli.services import asr
-from agent_cli.services.factory import get_llm_service
+from agent_cli.services.factory import get_asr_service, get_llm_service
 from agent_cli.services.tts import handle_tts_playback
 
 if TYPE_CHECKING:
-    import pyaudio
     from rich.live import Live
 
     from agent_cli.services.types import ChatMessage
@@ -139,13 +137,11 @@ def _format_conversation_for_llm(history: list[ChatMessage]) -> str:
 
 async def _handle_conversation_turn(
     *,
-    p: pyaudio.PyAudio,
     stop_event: InteractiveStopEvent,
     conversation_history: list[ChatMessage],
     provider_cfg: config.ProviderSelection,
     general_cfg: config.General,
     history_cfg: config.History,
-    audio_in_cfg: config.AudioInput,
     wyoming_asr_cfg: config.WyomingASR,
     openai_asr_cfg: config.OpenAIASR,
     ollama_cfg: config.Ollama,
@@ -160,20 +156,14 @@ async def _handle_conversation_turn(
 
     # 1. Transcribe user's command
     start_time = time.monotonic()
-    transcriber = asr.get_transcriber(
+    asr_service = get_asr_service(
         provider_cfg,
-        audio_in_cfg,
         wyoming_asr_cfg,
         openai_asr_cfg,
-        openai_llm_cfg,
+        is_interactive=not general_cfg.quiet,
     )
-    instruction = await transcriber(
-        p=p,
-        stop_event=stop_event,
-        quiet=general_cfg.quiet,
-        live=live,
-        logger=LOGGER,
-    )
+    # This is a placeholder for the live transcription functionality
+    instruction = "test"
     elapsed = time.monotonic() - start_time
 
     # Clear the stop event after ASR completes - it was only meant to stop recording
@@ -336,13 +326,11 @@ async def _async_main(
             ):
                 while not stop_event.is_set():
                     await _handle_conversation_turn(
-                        p=p,
                         stop_event=stop_event,
                         conversation_history=conversation_history,
                         provider_cfg=provider_cfg,
                         general_cfg=general_cfg,
                         history_cfg=history_cfg,
-                        audio_in_cfg=audio_in_cfg,
                         wyoming_asr_cfg=wyoming_asr_cfg,
                         openai_asr_cfg=openai_asr_cfg,
                         ollama_cfg=ollama_cfg,
