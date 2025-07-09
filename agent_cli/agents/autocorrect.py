@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING
 import pyperclip
 import typer
 
-import agent_cli.agents._cli_options as opts
+from agent_cli import opts
 from agent_cli.agents import config
 from agent_cli.cli import app
 from agent_cli.llm import build_agent

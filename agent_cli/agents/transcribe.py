@@ -10,8 +10,7 @@ from typing import TYPE_CHECKING
 
 import pyperclip
 
-import agent_cli.agents._cli_options as opts
-from agent_cli import asr, process
+from agent_cli import asr, opts, process
 from agent_cli.agents import config
 from agent_cli.audio import pyaudio_context, setup_devices
 from agent_cli.cli import app
