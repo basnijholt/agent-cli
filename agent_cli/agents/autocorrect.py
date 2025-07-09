@@ -13,8 +13,7 @@ import typer
 
 from agent_cli import config, opts
 from agent_cli.cli import app
-from agent_cli.llm import build_agent
-from agent_cli.utils import (
+from agent_cli.core.utils import (
     create_status,
     get_clipboard_text,
     print_error_message,
@@ -23,6 +22,7 @@ from agent_cli.utils import (
     print_with_style,
     setup_logging,
 )
+from agent_cli.llm import build_agent
 
 if TYPE_CHECKING:
     from rich.status import Status

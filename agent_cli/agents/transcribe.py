@@ -13,8 +13,7 @@ import pyperclip
 from agent_cli import asr, config, opts, process
 from agent_cli.cli import app
 from agent_cli.core.audio import pyaudio_context, setup_devices
-from agent_cli.llm import process_and_update_clipboard
-from agent_cli.utils import (
+from agent_cli.core.utils import (
     maybe_live,
     print_input_panel,
     print_output_panel,
@@ -23,6 +22,7 @@ from agent_cli.utils import (
     signal_handling_context,
     stop_or_status_or_toggle,
 )
+from agent_cli.llm import process_and_update_clipboard
 
 if TYPE_CHECKING:
     import pyaudio

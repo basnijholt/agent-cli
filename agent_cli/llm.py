@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 import pyperclip
 from rich.live import Live
 
-from agent_cli.utils import console, live_timer, print_error_message, print_output_panel
+from agent_cli.core.utils import console, live_timer, print_error_message, print_output_panel
 
 if TYPE_CHECKING:
     import logging

@@ -22,7 +22,7 @@ def test_main_no_args() -> None:
     assert "Usage" in result.stdout
 
 
-@patch("agent_cli.utils.setup_logging")
+@patch("agent_cli.core.utils.setup_logging")
 def test_main_with_args(mock_setup_logging: pytest.MagicMock) -> None:
     """Test the main function with arguments."""
     result = runner.invoke(app, ["--help"])

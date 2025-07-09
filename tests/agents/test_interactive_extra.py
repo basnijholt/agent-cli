@@ -11,7 +11,7 @@ from agent_cli.agents.chat import (
     _handle_conversation_turn,
 )
 from agent_cli.cli import app
-from agent_cli.utils import InteractiveStopEvent
+from agent_cli.core.utils import InteractiveStopEvent
 
 
 @pytest.mark.asyncio

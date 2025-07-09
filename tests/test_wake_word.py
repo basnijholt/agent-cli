@@ -7,7 +7,7 @@ import pytest
 from rich.live import Live
 
 from agent_cli import wake_word
-from agent_cli.utils import InteractiveStopEvent
+from agent_cli.core.utils import InteractiveStopEvent
 
 
 @pytest.fixture

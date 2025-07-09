@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 
 from wyoming.client import AsyncClient
 
-from agent_cli.utils import print_error_message
+from agent_cli.core.utils import print_error_message
 
 if TYPE_CHECKING:
     import logging

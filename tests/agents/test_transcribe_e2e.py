@@ -61,7 +61,7 @@ async def test_transcribe_e2e(
     ollama_cfg = config.Ollama(ollama_model="", ollama_host="")
     openai_llm_cfg = config.OpenAILLM(openai_llm_model="")
 
-    with patch("agent_cli.utils.console", mock_console):
+    with patch("agent_cli.core.utils.console", mock_console):
         await _async_main(
             provider_cfg=provider_cfg,
             general_cfg=general_cfg,

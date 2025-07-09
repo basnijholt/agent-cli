@@ -10,7 +10,7 @@ from wyoming.wake import Detect, Detection, NotDetected
 
 from agent_cli import constants
 from agent_cli.core.audio import read_from_queue
-from agent_cli.utils import manage_send_receive_tasks
+from agent_cli.core.utils import manage_send_receive_tasks
 from agent_cli.wyoming_utils import wyoming_client_context
 
 if TYPE_CHECKING:
