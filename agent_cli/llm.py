@@ -9,7 +9,8 @@ from typing import TYPE_CHECKING
 import pyperclip
 from rich.live import Live
 
-from agent_cli.utils import console, live_timer, print_error_message, print_output_panel
+from agent_cli.core.utils import console, live_timer, print_error_message, print_output_panel
+from agent_cli.services.factory import get_llm_service
 
 if TYPE_CHECKING:
     import logging
@@ -20,37 +21,6 @@ if TYPE_CHECKING:
     from agent_cli.agents import config
 
 
-def build_agent(
-    provider_config: config.ProviderSelection,
-    ollama_config: config.Ollama,
-    openai_config: config.OpenAILLM,
-    *,
-    system_prompt: str | None = None,
-    instructions: str | None = None,
-    tools: list[Tool] | None = None,
-) -> Agent:
-    """Construct and return a PydanticAI agent."""
-    from pydantic_ai import Agent  # noqa: PLC0415
-    from pydantic_ai.models.openai import OpenAIModel  # noqa: PLC0415
-    from pydantic_ai.providers.openai import OpenAIProvider  # noqa: PLC0415
-
-    if provider_config.llm_provider == "openai":
-        if not openai_config.openai_api_key:
-            msg = "OpenAI API key is not set."
-            raise ValueError(msg)
-        provider = OpenAIProvider(api_key=openai_config.openai_api_key)
-        model_name = openai_config.openai_llm_model
-    else:
-        provider = OpenAIProvider(base_url=f"{ollama_config.ollama_host}/v1")
-        model_name = ollama_config.ollama_model
-
-    llm_model = OpenAIModel(model_name=model_name, provider=provider)
-    return Agent(
-        model=llm_model,
-        system_prompt=system_prompt or (),
-        instructions=instructions,
-        tools=tools or [],
-    )
 
 
 # --- LLM (Editing) Logic ---
@@ -83,13 +53,8 @@ async def get_llm_response(
     exit_on_error: bool = False,
 ) -> str | None:
     """Get a response from the LLM with optional clipboard and output handling."""
-    agent = build_agent(
-        provider_config=provider_config,
-        ollama_config=ollama_config,
-        openai_config=openai_config,
-        system_prompt=system_prompt,
-        instructions=agent_instructions,
-        tools=tools,
+    llm_service = get_llm_service(
+        provider_config, ollama_config, openai_config, logger
     )
 
     start_time = time.monotonic()
@@ -107,10 +72,17 @@ async def get_llm_response(
             style="bold yellow",
             quiet=quiet,
         ):
-            result = await agent.run(user_input)
+            result_text = await llm_service.get_response(
+                system_prompt=system_prompt,
+                agent_instructions=agent_instructions,
+                user_input=user_input,
+                tools=tools,
+            )
 
         elapsed = time.monotonic() - start_time
-        result_text = result.output
+
+        if not result_text:
+            return None
 
         if clipboard:
             pyperclip.copy(result_text)
