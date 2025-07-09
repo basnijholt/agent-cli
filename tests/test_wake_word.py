@@ -1,5 +1,6 @@
 """Tests for the wake word detection module."""
 
+import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -9,19 +10,19 @@ from agent_cli import wake_word
 from agent_cli.utils import InteractiveStopEvent
 
 
-@pytest.fixture
+@pytest.fixture()
 def mock_pyaudio():
     """Mock PyAudio instance."""
     return MagicMock()
 
 
-@pytest.fixture
+@pytest.fixture()
 def mock_logger():
     """Mock logger instance."""
     return MagicMock()
 
 
-@pytest.fixture
+@pytest.fixture()
 def mock_stop_event():
     """Mock stop event."""
     stop_event = MagicMock(spec=InteractiveStopEvent)
@@ -30,7 +31,7 @@ def mock_stop_event():
     return stop_event
 
 
-@pytest.fixture
+@pytest.fixture()
 def mock_live():
     """Mock Rich Live instance."""
     return MagicMock(spec=Live)
@@ -39,7 +40,7 @@ def mock_live():
 class TestReceiveWakeDetection:
     """Tests for _receive_wake_detection function."""
 
-    @pytest.mark.asyncio
+    @pytest.mark.asyncio()
     async def test_returns_detected_wake_word(self, mock_logger: MagicMock) -> None:
         """Test detection of wake word."""
         mock_client = AsyncMock()
@@ -64,7 +65,7 @@ class TestReceiveWakeDetection:
             assert result == "test_wake_word"
             mock_logger.info.assert_called_with("Wake word detected: %s", "test_wake_word")
 
-    @pytest.mark.asyncio
+    @pytest.mark.asyncio()
     async def test_calls_detection_callback(self, mock_logger: MagicMock) -> None:
         """Test that detection callback is called."""
         mock_client = AsyncMock()
@@ -93,7 +94,7 @@ class TestReceiveWakeDetection:
             assert result == "test_wake_word"
             mock_callback.assert_called_once_with("test_wake_word")
 
-    @pytest.mark.asyncio
+    @pytest.mark.asyncio()
     async def test_handles_not_detected_event(self, mock_logger: MagicMock) -> None:
         """Test handling of not-detected event."""
         mock_client = AsyncMock()
@@ -113,7 +114,7 @@ class TestReceiveWakeDetection:
             assert result is None
             mock_logger.debug.assert_called_with("No wake word detected")
 
-    @pytest.mark.asyncio
+    @pytest.mark.asyncio()
     async def test_handles_connection_loss(self, mock_logger: MagicMock) -> None:
         """Test handling of lost connection."""
         mock_client = AsyncMock()
@@ -123,3 +124,23 @@ class TestReceiveWakeDetection:
 
         assert result is None
         mock_logger.warning.assert_called_with("Connection to wake word server lost.")
+
+
+@pytest.mark.asyncio()
+@patch("agent_cli.wake_word.wyoming_client_context", side_effect=ConnectionRefusedError)
+async def test_detect_wake_word_from_queue_connection_error(
+    mock_wyoming_client_context: MagicMock,
+    mock_logger: MagicMock,
+    mock_live: MagicMock,
+):
+    """Test that detect_wake_word_from_queue handles ConnectionRefusedError."""
+    result = await wake_word.detect_wake_word_from_queue(
+        "localhost",
+        1234,
+        "test_word",
+        mock_logger,
+        asyncio.Queue(),
+        live=mock_live,
+    )
+    assert result is None
+    mock_wyoming_client_context.assert_called_once()
