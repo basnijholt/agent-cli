@@ -9,12 +9,7 @@ from typing import TYPE_CHECKING
 import pyperclip
 from rich.live import Live
 
-from agent_cli.utils import (
-    console,
-    live_timer,
-    print_error_message,
-    print_output_panel,
-)
+from agent_cli.utils import console, live_timer, print_error_message, print_output_panel
 
 if TYPE_CHECKING:
     import logging
@@ -22,11 +17,13 @@ if TYPE_CHECKING:
     from pydantic_ai import Agent
     from pydantic_ai.tools import Tool
 
-    from agent_cli.agents._config import LLMConfig
+    from agent_cli.agents import config
 
 
 def build_agent(
-    llm_config: LLMConfig,
+    provider_config: config.ProviderSelection,
+    ollama_config: config.Ollama,
+    openai_config: config.OpenAILLM,
     *,
     system_prompt: str | None = None,
     instructions: str | None = None,
@@ -37,15 +34,17 @@ def build_agent(
     from pydantic_ai.models.openai import OpenAIModel  # noqa: PLC0415
     from pydantic_ai.providers.openai import OpenAIProvider  # noqa: PLC0415
 
-    if llm_config.service_provider == "openai":
-        if not llm_config.openai_api_key:
+    if provider_config.llm_provider == "openai":
+        if not openai_config.openai_api_key:
             msg = "OpenAI API key is not set."
             raise ValueError(msg)
-        provider = OpenAIProvider(api_key=llm_config.openai_api_key)
+        provider = OpenAIProvider(api_key=openai_config.openai_api_key)
+        model_name = openai_config.openai_llm_model
     else:
-        provider = OpenAIProvider(base_url=f"{llm_config.ollama_host}/v1")
+        provider = OpenAIProvider(base_url=f"{ollama_config.ollama_host}/v1")
+        model_name = ollama_config.ollama_model
 
-    llm_model = OpenAIModel(model_name=llm_config.model, provider=provider)
+    llm_model = OpenAIModel(model_name=model_name, provider=provider)
     return Agent(
         model=llm_model,
         system_prompt=system_prompt or (),
@@ -72,7 +71,9 @@ async def get_llm_response(
     system_prompt: str,
     agent_instructions: str,
     user_input: str,
-    llm_config: LLMConfig,
+    provider_config: config.ProviderSelection,
+    ollama_config: config.Ollama,
+    openai_config: config.OpenAILLM,
     logger: logging.Logger,
     live: Live | None = None,
     tools: list[Tool] | None = None,
@@ -83,7 +84,9 @@ async def get_llm_response(
 ) -> str | None:
     """Get a response from the LLM with optional clipboard and output handling."""
     agent = build_agent(
-        llm_config=llm_config,
+        provider_config=provider_config,
+        ollama_config=ollama_config,
+        openai_config=openai_config,
         system_prompt=system_prompt,
         instructions=agent_instructions,
         tools=tools,
@@ -92,9 +95,15 @@ async def get_llm_response(
     start_time = time.monotonic()
 
     try:
+        model_name = (
+            ollama_config.ollama_model
+            if provider_config.llm_provider == "local"
+            else openai_config.openai_llm_model
+        )
+
         async with live_timer(
             live or Live(console=console),
-            f"🤖 Applying instruction with {llm_config.model}",
+            f"🤖 Applying instruction with {model_name}",
             style="bold yellow",
             quiet=quiet,
         ):
@@ -120,10 +129,10 @@ async def get_llm_response(
 
     except Exception as e:
         logger.exception("An error occurred during LLM processing.")
-        if llm_config.service_provider == "openai":
+        if provider_config.llm_provider == "openai":
             msg = "Please check your OpenAI API key."
         else:
-            msg = f"Please check your Ollama server at [cyan]{llm_config.ollama_host}[/cyan]"
+            msg = f"Please check your Ollama server at [cyan]{ollama_config.ollama_host}[/cyan]"
         print_error_message(f"An unexpected LLM error occurred: {e}", msg)
         if exit_on_error:
             sys.exit(1)
@@ -134,7 +143,9 @@ async def process_and_update_clipboard(
     system_prompt: str,
     agent_instructions: str,
     *,
-    llm_config: LLMConfig,
+    provider_config: config.ProviderSelection,
+    ollama_config: config.Ollama,
+    openai_config: config.OpenAILLM,
     logger: logging.Logger,
     original_text: str,
     instruction: str,
@@ -152,7 +163,9 @@ async def process_and_update_clipboard(
         system_prompt=system_prompt,
         agent_instructions=agent_instructions,
         user_input=user_input,
-        llm_config=llm_config,
+        provider_config=provider_config,
+        ollama_config=ollama_config,
+        openai_config=openai_config,
         logger=logger,
         quiet=quiet,
         clipboard=clipboard,

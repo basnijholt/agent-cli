@@ -1,11 +1,14 @@
 # Development Rules
 
 ## Core Rules
+- Always start by exploring the context of this package: list the existing files and read the full `README.md`.
 - Always use `uv sync --all-extras` to install packages then activate the virtual environment with `source .venv/bin/activate`
 - Commit frequently but always make sure tests pass first, using `pytest`
+- When working on a feature, check out `git diff origin/main | cat`. Make sure to use --no-pager, or pipe the output to `cat`.
 - Prefer functional style Python instead of classes with inheritance
 - Keep it DRY - reuse code as much as possible
 - Always run pre-commit hooks before committing
 - Implement the simplest solution possible and don't generalize when not yet needed
 - Only implement the feature that is asked for, not anything extra
-- Never run `git add .` - only use `git add filename` to avoid committing unrelated files
+- NEVER run `git add .` - only use `git add filename` to avoid committing unrelated files
+- NEVER claim that you are done with a task without running pytest.
