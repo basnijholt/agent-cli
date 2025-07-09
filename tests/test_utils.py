@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import timedelta
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 import pytest
 
@@ -92,3 +92,46 @@ def test_interactive_stop_event() -> None:
 
     stop_event.clear()
     assert not stop_event.ctrl_c_pressed
+
+
+@patch("agent_cli.process_manager.kill_process")
+@patch("agent_cli.process_manager.is_process_running")
+def test_stop_or_status_or_toggle(
+    mock_is_process_running: Mock,
+    mock_kill_process: Mock,
+) -> None:
+    """Test the stop_or_status_or_toggle function."""
+    # Test stop
+    mock_is_process_running.return_value = True
+    mock_kill_process.return_value = True
+    assert utils.stop_or_status_or_toggle("test", "test", True, False, False, quiet=True)
+    mock_kill_process.assert_called_with("test")
+
+    # Test status
+    mock_is_process_running.return_value = True
+    with patch("agent_cli.process_manager.read_pid_file", return_value=123):
+        assert utils.stop_or_status_or_toggle(
+            "test",
+            "test",
+            False,
+            True,
+            False,
+            quiet=True,
+        )
+
+    # Test toggle on
+    mock_is_process_running.return_value = False
+    assert not utils.stop_or_status_or_toggle(
+        "test",
+        "test",
+        False,
+        False,
+        True,
+        quiet=True,
+    )
+
+    # Test toggle off
+    mock_is_process_running.return_value = True
+    mock_kill_process.return_value = True
+    assert utils.stop_or_status_or_toggle("test", "test", False, False, True, quiet=True)
+    mock_kill_process.assert_called_with("test")
