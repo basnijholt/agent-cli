@@ -12,7 +12,7 @@ import pyaudio
 from rich.text import Text
 
 from agent_cli import constants
-from agent_cli.utils import InteractiveStopEvent, console, print_device_index, print_with_style
+from agent_cli.core.utils import InteractiveStopEvent, console, print_device_index, print_with_style
 
 if TYPE_CHECKING:
     import logging
@@ -20,7 +20,7 @@ if TYPE_CHECKING:
 
     from rich.live import Live
 
-    from agent_cli.agents import config
+    from agent_cli import config
 
 
 class _AudioTee:

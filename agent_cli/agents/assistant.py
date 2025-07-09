@@ -34,23 +34,23 @@ from pathlib import Path  # noqa: TC003
 from typing import TYPE_CHECKING
 
 import agent_cli.agents._cli_options as opts
-from agent_cli import asr, wake_word
-from agent_cli.core import audio
-from agent_cli.core import process as process_manager
 from agent_cli import config
 from agent_cli.agents._voice_agent_common import (
     get_instruction_from_audio,
     process_instruction_and_respond,
 )
-from agent_cli.audio import pyaudio_context, setup_devices
 from agent_cli.cli import app, setup_logging
-from agent_cli.utils import (
+from agent_cli.core import audio
+from agent_cli.core import process as process_manager
+from agent_cli.core.audio import pyaudio_context, setup_devices
+from agent_cli.core.utils import (
     InteractiveStopEvent,
     maybe_live,
     print_with_style,
     signal_handling_context,
     stop_or_status_or_toggle,
 )
+from agent_cli.services.local import WyomingWakeWordService
 
 if TYPE_CHECKING:
     import pyaudio
@@ -112,15 +112,14 @@ async def _record_audio_with_wake_word(
         # Create a queue for wake word detection
         wake_queue = await tee.add_queue()
 
-        detected_word = await wake_word.detect_wake_word_from_queue(
-            wake_server_ip=wake_word_config.server_ip,
-            wake_server_port=wake_word_config.server_port,
-            wake_word_name=wake_word_config.wake_word_name,
-            logger=logger,
-            queue=wake_queue,
-            quiet=quiet,
+        wake_word_service = WyomingWakeWordService(
+            wake_word_config,
+            logger,
+            wake_queue,
             live=live,
+            quiet=quiet,
         )
+        detected_word = await wake_word_service.detect()
 
         if not detected_word or stop_event.is_set():
             # Clean up the queue if we exit early
@@ -135,19 +134,17 @@ async def _record_audio_with_wake_word(
 
         # Add a new queue for recording
         record_queue = await tee.add_queue()
-        record_task = asyncio.create_task(asr.record_audio_to_buffer(record_queue, logger))
+        record_task = asyncio.create_task(audio.record_audio_to_buffer(record_queue, logger))
 
         # Use the same wake_queue for stop-word detection
-        stop_detected_word = await wake_word.detect_wake_word_from_queue(
-            wake_server_ip=wake_word_config.server_ip,
-            wake_server_port=wake_word_config.server_port,
-            wake_word_name=wake_word_config.wake_word_name,
-            logger=logger,
-            queue=wake_queue,
-            quiet=quiet,
+        wake_word_service = WyomingWakeWordService(
+            wake_word_config,
+            logger,
+            wake_queue,
             live=live,
-            progress_message="Recording... (say wake word to stop)",
+            quiet=quiet,
         )
+        stop_detected_word = await wake_word_service.detect()
 
         # Stop the recording task by removing its queue
         await tee.remove_queue(record_queue)

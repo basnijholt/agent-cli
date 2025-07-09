@@ -15,12 +15,9 @@ from agent_cli.services.factory import get_llm_service
 if TYPE_CHECKING:
     import logging
 
-    from pydantic_ai import Agent
     from pydantic_ai.tools import Tool
 
-    from agent_cli.agents import config
-
-
+    from agent_cli import config
 
 
 # --- LLM (Editing) Logic ---
@@ -54,7 +51,10 @@ async def get_llm_response(
 ) -> str | None:
     """Get a response from the LLM with optional clipboard and output handling."""
     llm_service = get_llm_service(
-        provider_config, ollama_config, openai_config, logger
+        provider_config,
+        ollama_config,
+        openai_config,
+        logger,
     )
 
     start_time = time.monotonic()

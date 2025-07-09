@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from agent_cli.services.base import ASRService, LLMService, TTSService
 from agent_cli.services.local import (
     OllamaLLMService,
     WyomingTranscriptionService,
@@ -20,6 +19,7 @@ if TYPE_CHECKING:
     import logging
 
     from agent_cli import config
+    from agent_cli.services.base import ASRService, LLMService, TTSService
 
 
 def get_asr_service(
@@ -39,7 +39,9 @@ def get_asr_service(
             logger=logger,
         )
     return WyomingTranscriptionService(
-        wyoming_asr_config=wyoming_asr_config, logger=logger, quiet=quiet
+        wyoming_asr_config=wyoming_asr_config,
+        logger=logger,
+        quiet=quiet,
     )
 
 
@@ -72,5 +74,7 @@ def get_tts_service(
             logger=logger,
         )
     return WyomingTTSService(
-        wyoming_tts_config=wyoming_tts_config, logger=logger, quiet=quiet
+        wyoming_tts_config=wyoming_tts_config,
+        logger=logger,
+        quiet=quiet,
     )

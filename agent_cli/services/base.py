@@ -3,14 +3,6 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    import logging
-
-    from rich.live import Live
-
-    from agent_cli import config
 
 
 class ASRService(ABC):
@@ -19,7 +11,6 @@ class ASRService(ABC):
     @abstractmethod
     async def transcribe(self, audio_data: bytes) -> str:
         """Transcribe audio data to text."""
-        pass
 
 
 class LLMService(ABC):
@@ -35,7 +26,6 @@ class LLMService(ABC):
         tools: list | None = None,
     ) -> str | None:
         """Get a response from the language model."""
-        pass
 
 
 class TTSService(ABC):
@@ -44,7 +34,6 @@ class TTSService(ABC):
     @abstractmethod
     async def synthesize(self, text: str) -> bytes | None:
         """Synthesize text to speech audio data."""
-        pass
 
 
 class WakeWordService(ABC):
@@ -53,4 +42,3 @@ class WakeWordService(ABC):
     @abstractmethod
     async def detect(self) -> str | None:
         """Detect the wake word."""
-        pass

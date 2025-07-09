@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 
 import typer
 
-from .config_loader import load_config
+from .config import load_config
 from .utils import console
 
 if TYPE_CHECKING:

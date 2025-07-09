@@ -8,7 +8,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from agent_cli.agents import config, transcribe
+from agent_cli import config, transcribe
 from tests.mocks.wyoming import MockASRClient
 
 

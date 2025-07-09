@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from agent_cli import tts
-from agent_cli.utils import InteractiveStopEvent, print_with_style
+from agent_cli.core.utils import InteractiveStopEvent, print_with_style
 
 if TYPE_CHECKING:
     import logging

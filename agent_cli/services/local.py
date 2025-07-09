@@ -4,21 +4,26 @@ from __future__ import annotations
 
 import asyncio
 import io
+import wave
 from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING
 
-from wyoming.asr import Transcribe, Transcript, TranscriptChunk, TranscriptStart, TranscriptStop
+from pydantic_ai import Agent
+from pydantic_ai.models.openai import OpenAIModel
+from pydantic_ai.providers.openai import OpenAIProvider
+from wyoming.asr import Transcribe, Transcript
 from wyoming.audio import AudioChunk, AudioStart, AudioStop
 from wyoming.client import AsyncClient
 from wyoming.tts import Synthesize, SynthesizeVoice
 from wyoming.wake import Detect, Detection, NotDetected
 
 from agent_cli import constants
+from agent_cli.core.audio import read_from_queue
 from agent_cli.services.base import ASRService, LLMService, TTSService, WakeWordService
 
 if TYPE_CHECKING:
     import logging
-    from collections.abc import AsyncGenerator, Awaitable, Callable
+    from collections.abc import AsyncGenerator, Awaitable
 
     from rich.live import Live
 
@@ -41,7 +46,12 @@ async def wyoming_client_context(
         async with AsyncClient(host, port) as client:
             yield client
     except ConnectionRefusedError:
-        logger.error("Connection refused to %s server at %s:%s", service_name, host, port)
+        logger.exception(
+            "Connection refused to %s server at %s:%s",
+            service_name,
+            host,
+            port,
+        )
         raise
 
 
@@ -68,7 +78,8 @@ class WyomingTranscriptionService(ASRService):
         logger: logging.Logger,
         *,
         quiet: bool = False,
-    ):
+    ) -> None:
+        """Initialize the WyomingTranscriptionService."""
         self.wyoming_asr_config = wyoming_asr_config
         self.logger = logger
         self.quiet = quiet
@@ -89,7 +100,7 @@ class WyomingTranscriptionService(ASRService):
             for i in range(0, len(audio_data), chunk_size):
                 chunk = audio_data[i : i + chunk_size]
                 await client.write_event(
-                    AudioChunk(audio=chunk, **constants.WYOMING_AUDIO_CONFIG).event()
+                    AudioChunk(audio=chunk, **constants.WYOMING_AUDIO_CONFIG).event(),
                 )
             await client.write_event(AudioStop().event())
             return await self._receive_transcript(client)
@@ -116,15 +127,14 @@ class OllamaLLMService(LLMService):
         self,
         ollama_config: config.Ollama,
         logger: logging.Logger,
-    ):
-        from pydantic_ai.models.openai import OpenAIModel  # noqa: PLC0415
-        from pydantic_ai.providers.openai import OpenAIProvider  # noqa: PLC0415
-
+    ) -> None:
+        """Initialize the OllamaLLMService."""
         self.ollama_config = ollama_config
         self.logger = logger
         provider = OpenAIProvider(base_url=f"{self.ollama_config.ollama_host}/v1")
         self.model = OpenAIModel(
-            model_name=self.ollama_config.ollama_model, provider=provider
+            model_name=self.ollama_config.ollama_model,
+            provider=provider,
         )
 
     async def get_response(
@@ -136,8 +146,6 @@ class OllamaLLMService(LLMService):
         tools: list | None = None,
     ) -> str | None:
         """Get a response from the language model."""
-        from pydantic_ai import Agent  # noqa: PLC0415
-
         agent = Agent(
             model=self.model,
             system_prompt=system_prompt or (),
@@ -157,7 +165,8 @@ class WyomingTTSService(TTSService):
         logger: logging.Logger,
         *,
         quiet: bool = False,
-    ):
+    ) -> None:
+        """Initialize the WyomingTTSService."""
         self.wyoming_tts_config = wyoming_tts_config
         self.logger = logger
         self.quiet = quiet
@@ -197,7 +206,8 @@ class WyomingTTSService(TTSService):
         return synthesize_event
 
     async def _process_audio_events(
-        self, client: AsyncClient
+        self,
+        client: AsyncClient,
     ) -> tuple[bytes, int | None, int | None, int | None]:
         """Process audio events from TTS server and return audio data with metadata."""
         audio_data = io.BytesIO()
@@ -220,11 +230,13 @@ class WyomingTTSService(TTSService):
         return audio_data.getvalue(), sample_rate, sample_width, channels
 
     def _create_wav_data(
-        self, audio_data: bytes, sample_rate: int, sample_width: int, channels: int
+        self,
+        audio_data: bytes,
+        sample_rate: int,
+        sample_width: int,
+        channels: int,
     ) -> bytes:
         """Convert raw audio data to WAV format."""
-        import wave
-
         wav_data = io.BytesIO()
         with wave.open(wav_data, "wb") as wav_file:
             wav_file.setnchannels(channels)
@@ -245,7 +257,8 @@ class WyomingWakeWordService(WakeWordService):
         *,
         live: Live | None = None,
         quiet: bool = False,
-    ):
+    ) -> None:
+        """Initialize the WyomingWakeWordService."""
         self.wake_word_config = wake_word_config
         self.logger = logger
         self.queue = queue
@@ -273,14 +286,12 @@ class WyomingWakeWordService(WakeWordService):
 
     async def _send_audio_from_queue_for_wake_detection(self, client: AsyncClient) -> None:
         """Read from a queue and send to Wyoming wake word server."""
-        from agent_cli.core.audio import read_from_queue
-
         await client.write_event(AudioStart(**constants.WYOMING_AUDIO_CONFIG).event())
         try:
             await read_from_queue(
                 queue=self.queue,
                 chunk_handler=lambda chunk: client.write_event(
-                    AudioChunk(audio=chunk, **constants.WYOMING_AUDIO_CONFIG).event()
+                    AudioChunk(audio=chunk, **constants.WYOMING_AUDIO_CONFIG).event(),
                 ),
                 logger=self.logger,
             )

@@ -11,13 +11,11 @@ from typing import TYPE_CHECKING
 import pyperclip
 
 import agent_cli.agents._cli_options as opts
-from agent_cli import asr
-from agent_cli.core import process as process_manager
 from agent_cli import config
-from agent_cli.audio import pyaudio_context, setup_devices
 from agent_cli.cli import app, setup_logging
-from agent_cli.llm import process_and_update_clipboard
-from agent_cli.utils import (
+from agent_cli.core import process as process_manager
+from agent_cli.core.audio import pyaudio_context, setup_devices
+from agent_cli.core.utils import (
     maybe_live,
     print_input_panel,
     print_output_panel,
@@ -25,6 +23,8 @@ from agent_cli.utils import (
     signal_handling_context,
     stop_or_status_or_toggle,
 )
+from agent_cli.llm import process_and_update_clipboard
+from agent_cli.services.factory import get_asr_service
 
 if TYPE_CHECKING:
     import pyaudio
@@ -71,7 +71,6 @@ async def _async_main(
     *,
     provider_cfg: config.ProviderSelection,
     general_cfg: config.General,
-    audio_in_cfg: config.AudioInput,
     wyoming_asr_cfg: config.WyomingASR,
     openai_asr_cfg: config.OpenAIASR,
     ollama_cfg: config.Ollama,
@@ -83,14 +82,15 @@ async def _async_main(
     start_time = time.monotonic()
     with maybe_live(not general_cfg.quiet) as live:
         with signal_handling_context(LOGGER, general_cfg.quiet) as stop_event:
-            transcriber = asr.get_transcriber(
+            transcriber = get_asr_service(
                 provider_cfg,
-                audio_in_cfg,
                 wyoming_asr_cfg,
                 openai_asr_cfg,
                 openai_llm_cfg,
+                LOGGER,
+                quiet=general_cfg.quiet,
             )
-            transcript = await transcriber(
+            transcript = await transcriber.transcribe(
                 logger=LOGGER,
                 p=p,
                 stop_event=stop_event,

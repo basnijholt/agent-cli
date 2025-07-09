@@ -33,7 +33,8 @@ class OpenAITranscriptionService(ASRService):
         openai_asr_config: config.OpenAIASR,
         openai_llm_config: config.OpenAILLM,
         logger: logging.Logger,
-    ):
+    ) -> None:
+        """Initialize the OpenAITranscriptionService."""
         self.openai_asr_config = openai_asr_config
         self.openai_llm_config = openai_llm_config
         self.logger = logger
@@ -61,7 +62,8 @@ class OpenAILLMService(LLMService):
         self,
         openai_llm_config: config.OpenAILLM,
         logger: logging.Logger,
-    ):
+    ) -> None:
+        """Initialize the OpenAILLMService."""
         from pydantic_ai.models.openai import OpenAIModel  # noqa: PLC0415
         from pydantic_ai.providers.openai import OpenAIProvider  # noqa: PLC0415
 
@@ -72,7 +74,8 @@ class OpenAILLMService(LLMService):
             raise ValueError(msg)
         provider = OpenAIProvider(api_key=self.openai_llm_config.openai_api_key)
         self.model = OpenAIModel(
-            model_name=self.openai_llm_config.openai_llm_model, provider=provider
+            model_name=self.openai_llm_config.openai_llm_model,
+            provider=provider,
         )
 
     async def get_response(
@@ -104,7 +107,8 @@ class OpenAITTSService(TTSService):
         openai_tts_config: config.OpenAITTS,
         openai_llm_config: config.OpenAILLM,
         logger: logging.Logger,
-    ):
+    ) -> None:
+        """Initialize the OpenAITTSService."""
         self.openai_tts_config = openai_tts_config
         self.openai_llm_config = openai_llm_config
         self.logger = logger

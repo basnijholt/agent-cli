@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from agent_cli.agents import config
+from agent_cli import config
 from agent_cli.llm import build_agent, get_llm_response, process_and_update_clipboard
 
 

@@ -8,7 +8,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from agent_cli.agents import config
+from agent_cli import config
 from agent_cli.tts import _apply_speed_adjustment, get_synthesizer, speak_text
 
 

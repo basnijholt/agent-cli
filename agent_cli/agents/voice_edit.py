@@ -39,16 +39,15 @@ from contextlib import suppress
 from pathlib import Path  # noqa: TC003
 
 import agent_cli.agents._cli_options as opts
-from agent_cli import asr
-from agent_cli.core import process as process_manager
 from agent_cli import config
 from agent_cli.agents._voice_agent_common import (
     get_instruction_from_audio,
     process_instruction_and_respond,
 )
-from agent_cli.audio import pyaudio_context, setup_devices
 from agent_cli.cli import app, setup_logging
-from agent_cli.utils import (
+from agent_cli.core import process as process_manager
+from agent_cli.core.audio import pyaudio_context, record_audio_with_manual_stop, setup_devices
+from agent_cli.core.utils import (
     get_clipboard_text,
     maybe_live,
     print_input_panel,
@@ -119,7 +118,7 @@ async def _async_main(
             signal_handling_context(LOGGER, general_cfg.quiet) as stop_event,
             maybe_live(not general_cfg.quiet) as live,
         ):
-            audio_data = await asr.record_audio_with_manual_stop(
+            audio_data = await record_audio_with_manual_stop(
                 p,
                 input_device_index,
                 stop_event,
