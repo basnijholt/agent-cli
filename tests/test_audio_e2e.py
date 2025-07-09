@@ -50,7 +50,7 @@ def test_list_input_devices(
 
     with audio.pyaudio_context() as p:
         # Test listing input devices
-        audio.list_input_devices(p)
+        audio._list_input_devices(p)
 
     # Verify console output contains device information
     # This is more of an integration test to ensure no exceptions are raised
@@ -68,7 +68,7 @@ def test_list_output_devices(
 
     with audio.pyaudio_context() as p:
         # Test listing output devices
-        audio.list_output_devices(p)
+        audio._list_output_devices(p)
 
     # Verify no exceptions are raised
 
@@ -102,7 +102,7 @@ def test_input_device_by_index(
 
     with audio.pyaudio_context() as p:
         # Test getting device by valid index
-        input_device_index, input_device_name = audio.input_device(
+        input_device_index, input_device_name = audio._input_device(
             p,
             input_device_name=None,
             input_device_index=0,
@@ -132,7 +132,7 @@ def test_input_device_by_name(
         input_device = next(dev for dev in mock_pyaudio_device_info if dev["maxInputChannels"] > 0)
 
         # Test getting device by name
-        input_device_index, input_device_name = audio.input_device(
+        input_device_index, input_device_name = audio._input_device(
             p,
             input_device_name=input_device["name"],
             input_device_index=None,
@@ -154,7 +154,7 @@ def test_output_device_by_index(
 
     with audio.pyaudio_context() as p:
         # Test getting device by valid index
-        input_device_index, input_device_name = audio.output_device(
+        input_device_index, input_device_name = audio._output_device(
             p,
             input_device_name=None,
             input_device_index=1,
@@ -188,7 +188,7 @@ def test_output_device_by_name(
         )
 
         # Test getting device by name
-        input_device_index, input_device_name = audio.output_device(
+        input_device_index, input_device_name = audio._output_device(
             p,
             input_device_name=output_device["name"],
             input_device_index=None,
@@ -213,7 +213,7 @@ def test_input_device_invalid_index(
         audio.pyaudio_context() as p,
         pytest.raises(ValueError, match="Device index 999 not found"),
     ):
-        audio.input_device(
+        audio._input_device(
             p,
             input_device_name=None,
             input_device_index=999,
@@ -231,7 +231,7 @@ def test_input_device_invalid_name(
     mock_pyaudio_class.return_value = mock_pyaudio
 
     with audio.pyaudio_context() as p, pytest.raises(ValueError, match="No input device found"):
-        audio.input_device(
+        audio._input_device(
             p,
             input_device_name="NonExistentDevice",
             input_device_index=None,
@@ -250,7 +250,7 @@ def test_output_device_invalid_name(
 
     # Try to get device with invalid name - should raise ValueError
     with audio.pyaudio_context() as p, pytest.raises(ValueError, match="No output device found"):
-        audio.output_device(
+        audio._output_device(
             p,
             input_device_name="NonExistentOutputDevice",
             input_device_index=None,
@@ -327,7 +327,7 @@ def test_device_filtering_by_capabilities(
 
     with audio.pyaudio_context() as p:
         # Test input device filtering
-        input_device_index, input_device_name = audio.input_device(
+        input_device_index, input_device_name = audio._input_device(
             p,
             input_device_name=None,
             input_device_index=0,
@@ -335,7 +335,7 @@ def test_device_filtering_by_capabilities(
         assert input_device_name == "Input Only"
 
         # Should skip "Output Only" and find "Both" for input
-        mixed_input_index, mixed_input_name = audio.input_device(
+        mixed_input_index, mixed_input_name = audio._input_device(
             p,
             input_device_name=None,
             input_device_index=2,
@@ -343,14 +343,14 @@ def test_device_filtering_by_capabilities(
         assert mixed_input_name == "Both"
 
         # Test output device filtering
-        output_device_index, output_device_name = audio.output_device(
+        output_device_index, output_device_name = audio._output_device(
             p,
             input_device_name=None,
             input_device_index=1,
         )  # Output Only
         assert output_device_name == "Output Only"
 
-        mixed_output_index, mixed_output_name = audio.output_device(
+        mixed_output_index, mixed_output_name = audio._output_device(
             p,
             input_device_name=None,
             input_device_index=2,
