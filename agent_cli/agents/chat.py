@@ -169,7 +169,7 @@ async def _handle_conversation_turn(
         AddMemoryTool,
         ExecuteCodeTool,
         ListAllMemoriesTool,
-        ListMemoryCategoresTool,
+        ListMemoryCategoriesTool,
         ReadFileTool,
         SearchMemoryTool,
         UpdateMemoryTool,
@@ -231,7 +231,7 @@ async def _handle_conversation_turn(
         SearchMemoryTool,
         UpdateMemoryTool,
         ListAllMemoriesTool,
-        ListMemoryCategoresTool,
+        ListMemoryCategoriesTool,
         duckduckgo_search_tool(),
     ]
     start_time = time.monotonic()
