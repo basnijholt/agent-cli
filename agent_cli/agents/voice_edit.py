@@ -38,8 +38,7 @@ import logging
 from contextlib import suppress
 from pathlib import Path  # noqa: TC003
 
-from agent_cli import asr, opts, process
-from agent_cli.agents import config
+from agent_cli import asr, config, opts, process
 from agent_cli.agents._voice_agent_common import (
     get_instruction_from_audio,
     process_instruction_and_respond,

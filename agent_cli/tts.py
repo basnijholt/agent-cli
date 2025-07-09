@@ -31,7 +31,7 @@ if TYPE_CHECKING:
     from rich.live import Live
     from wyoming.client import AsyncClient
 
-    from agent_cli.agents import config
+    from agent_cli import config
 
 has_audiostretchy = importlib.util.find_spec("audiostretchy") is not None
 

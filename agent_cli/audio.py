@@ -20,7 +20,7 @@ if TYPE_CHECKING:
 
     from rich.live import Live
 
-    from agent_cli.agents import config
+    from agent_cli import config
 
 
 class _AudioTee:

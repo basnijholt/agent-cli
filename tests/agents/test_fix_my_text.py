@@ -9,7 +9,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from rich.console import Console
 
-from agent_cli.agents import autocorrect, config
+from agent_cli import config
+from agent_cli.agents import autocorrect
 
 
 def test_system_prompt_and_instructions():

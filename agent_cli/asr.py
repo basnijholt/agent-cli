@@ -29,7 +29,7 @@ if TYPE_CHECKING:
     from rich.live import Live
     from wyoming.client import AsyncClient
 
-    from agent_cli.agents import config
+    from agent_cli import config
     from agent_cli.utils import InteractiveStopEvent
 
 
