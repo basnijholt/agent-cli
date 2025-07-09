@@ -13,7 +13,7 @@ from tests.mocks.wyoming import MockTTSClient
 
 
 @pytest.mark.asyncio
-@patch("agent_cli.tts.wyoming_client_context")
+@patch("agent_cli.services.tts.wyoming_client_context")
 async def test_speak_e2e(
     mock_wyoming_client_context: MagicMock,
     mock_pyaudio_device_info: list[dict],
@@ -24,7 +24,7 @@ async def test_speak_e2e(
 
     # mock the pyaudio_context in both tts and speak modules
     with (
-        patch("agent_cli.tts.pyaudio_context") as mock_pyaudio_context_tts,
+        patch("agent_cli.services.tts.pyaudio_context") as mock_pyaudio_context_tts,
         patch(
             "agent_cli.agents.speak.pyaudio_context",
         ) as mock_pyaudio_context_speak,

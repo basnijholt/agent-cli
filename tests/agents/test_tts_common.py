@@ -8,14 +8,14 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from agent_cli import config
-from agent_cli.tts import handle_tts_playback
+from agent_cli.services.tts import handle_tts_playback
 
 if TYPE_CHECKING:
     from pathlib import Path
 
 
 @pytest.mark.asyncio
-@patch("agent_cli.tts._speak_text", new_callable=AsyncMock)
+@patch("agent_cli.services.tts._speak_text", new_callable=AsyncMock)
 async def test_handle_tts_playback(mock_speak_text: AsyncMock) -> None:
     """Test the handle_tts_playback function."""
     mock_speak_text.return_value = b"audio data"
@@ -67,7 +67,7 @@ async def test_handle_tts_playback(mock_speak_text: AsyncMock) -> None:
 
 
 @pytest.mark.asyncio
-@patch("agent_cli.tts._speak_text", new_callable=AsyncMock)
+@patch("agent_cli.services.tts._speak_text", new_callable=AsyncMock)
 async def test_handle_tts_playback_with_save_file(
     mock_speak_text: AsyncMock,
     tmp_path: Path,
@@ -114,7 +114,7 @@ async def test_handle_tts_playback_with_save_file(
 
 
 @pytest.mark.asyncio
-@patch("agent_cli.tts._speak_text", new_callable=AsyncMock)
+@patch("agent_cli.services.tts._speak_text", new_callable=AsyncMock)
 async def test_handle_tts_playback_no_audio(mock_speak_text: AsyncMock) -> None:
     """Test the handle_tts_playback function when no audio is returned."""
     mock_speak_text.return_value = None

@@ -20,7 +20,7 @@ from agent_cli.core.utils import (
     setup_logging,
     stop_or_status_or_toggle,
 )
-from agent_cli.tts import handle_tts_playback
+from agent_cli.services.tts import handle_tts_playback
 
 LOGGER = logging.getLogger()
 

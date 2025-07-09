@@ -8,11 +8,11 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from agent_cli import config
-from agent_cli.tts import _save_audio_file, handle_tts_playback
+from agent_cli.services.tts import _save_audio_file, handle_tts_playback
 
 
 @pytest.mark.asyncio
-@patch("agent_cli.tts.asyncio.to_thread")
+@patch("agent_cli.services.tts.asyncio.to_thread")
 async def test_save_audio_file_os_error(mock_to_thread: AsyncMock) -> None:
     """Test _save_audio_file with OSError."""
     mock_to_thread.side_effect = OSError("Permission denied")
@@ -28,7 +28,7 @@ async def test_save_audio_file_os_error(mock_to_thread: AsyncMock) -> None:
 
 
 @pytest.mark.asyncio
-@patch("agent_cli.tts._speak_text", new_callable=AsyncMock)
+@patch("agent_cli.services.tts._speak_text", new_callable=AsyncMock)
 async def test_handle_tts_playback_os_error(mock_speak_text: AsyncMock) -> None:
     """Test handle_tts_playback with OSError."""
     mock_speak_text.side_effect = OSError("Connection error")

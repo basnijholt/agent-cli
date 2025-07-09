@@ -9,11 +9,11 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from agent_cli import config
-from agent_cli.tts import _apply_speed_adjustment, _speak_text, get_synthesizer
+from agent_cli.services.tts import _apply_speed_adjustment, _speak_text, get_synthesizer
 
 
 @pytest.mark.asyncio
-@patch("agent_cli.tts.get_synthesizer")
+@patch("agent_cli.services.tts.get_synthesizer")
 async def test_speak_text(mock_get_synthesizer: MagicMock) -> None:
     """Test the speak_text function."""
     mock_synthesizer = AsyncMock(return_value=b"audio data")
@@ -68,7 +68,7 @@ def test_apply_speed_adjustment_no_change() -> None:
     assert speed_changed is False
 
 
-@patch("agent_cli.tts.has_audiostretchy", new=False)
+@patch("agent_cli.services.tts.has_audiostretchy", new=False)
 def test_apply_speed_adjustment_without_audiostretchy() -> None:
     """Test speed adjustment when AudioStretchy is not available."""
     # Create a simple WAV file
@@ -87,7 +87,7 @@ def test_apply_speed_adjustment_without_audiostretchy() -> None:
     assert speed_changed is False
 
 
-@patch("agent_cli.tts.has_audiostretchy", new=True)
+@patch("agent_cli.services.tts.has_audiostretchy", new=True)
 @patch("audiostretchy.stretch.AudioStretch")
 def test_apply_speed_adjustment_with_audiostretchy(mock_audio_stretch_class: MagicMock) -> None:
     """Test speed adjustment with AudioStretchy available."""
