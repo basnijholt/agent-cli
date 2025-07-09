@@ -46,6 +46,10 @@ def test_load_and_save_conversation_history(history_file: Path) -> None:
     loaded_history = _load_conversation_history(history_file, 10)
     assert loaded_history == history_to_save
 
+    # 3. Test loading with last_n_messages=0
+    loaded_history_zero = _load_conversation_history(history_file, 0)
+    assert loaded_history_zero == []
+
 
 def test_format_conversation_for_llm() -> None:
     """Test formatting conversation history for the LLM."""
