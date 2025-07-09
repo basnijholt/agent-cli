@@ -9,9 +9,6 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, TypeVar
 
-from pydantic_ai.common_tools.duckduckgo import duckduckgo_search_tool
-from pydantic_ai.tools import Tool
-
 if TYPE_CHECKING:
     from collections.abc import Callable
 
@@ -356,6 +353,9 @@ def list_memory_categories() -> str:
 
 def tools() -> list:
     """Return a list of tools."""
+    from pydantic_ai.common_tools.duckduckgo import duckduckgo_search_tool  # noqa: PLC0415
+    from pydantic_ai.tools import Tool  # noqa: PLC0415
+
     return [
         Tool(read_file),
         Tool(execute_code),

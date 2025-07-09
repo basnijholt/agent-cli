@@ -25,6 +25,7 @@ from typing import TYPE_CHECKING, TypedDict
 import typer
 
 from agent_cli import config, opts
+from agent_cli._tools import tools
 from agent_cli.cli import app
 from agent_cli.core import process
 from agent_cli.core.audio import pyaudio_context, setup_devices
@@ -162,12 +163,6 @@ async def _handle_conversation_turn(
     live: Live,
 ) -> None:
     """Handles a single turn of the conversation."""
-    # Import here to avoid slow pydantic_ai import in CLI
-
-    from agent_cli._tools import (  # noqa: PLC0415
-        tools,
-    )
-
     # 1. Transcribe user's command
     start_time = time.monotonic()
     transcriber = asr.get_transcriber(
