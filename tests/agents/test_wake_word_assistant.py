@@ -13,7 +13,7 @@ runner = CliRunner()
 
 def test_assistant_help():
     """Test the assistant --help command."""
-    result = runner.invoke(app, ["assistant", "--help"])
+    result = runner.invoke(app, ["assistant", "--help"], env={"NO_COLOR": "1", "TERM": "dumb"})
     assert result.exit_code == 0
     assert "Usage: agent-cli assistant [OPTIONS]" in result.stdout
 
