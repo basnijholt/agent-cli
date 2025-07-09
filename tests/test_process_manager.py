@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 
 import pytest
 
-from agent_cli import process
+from agent_cli.core import process
 
 
 @pytest.fixture

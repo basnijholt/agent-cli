@@ -33,13 +33,13 @@ from contextlib import suppress
 from pathlib import Path  # noqa: TC003
 from typing import TYPE_CHECKING
 
-from agent_cli import asr, config, opts, process, wake_word
+from agent_cli import asr, config, opts, wake_word
 from agent_cli.agents._voice_agent_common import (
     get_instruction_from_audio,
     process_instruction_and_respond,
 )
 from agent_cli.cli import app
-from agent_cli.core import audio
+from agent_cli.core import audio, process
 from agent_cli.core.audio import pyaudio_context, setup_devices
 from agent_cli.core.utils import (
     InteractiveStopEvent,

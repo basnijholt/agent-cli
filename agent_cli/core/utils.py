@@ -24,7 +24,7 @@ from rich.spinner import Spinner
 from rich.status import Status
 from rich.text import Text
 
-from agent_cli import process
+from agent_cli.core import process
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator, Coroutine, Generator
