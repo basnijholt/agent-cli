@@ -9,10 +9,12 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, TypeVar
 
+from pydantic_ai.common_tools.duckduckgo import duckduckgo_search_tool
 from pydantic_ai.tools import Tool
 
 if TYPE_CHECKING:
     from collections.abc import Callable
+
 
 # Memory system helpers
 
@@ -352,10 +354,15 @@ def list_memory_categories() -> str:
     return _memory_operation("listing categories", _list_categories_operation)
 
 
-ReadFileTool = Tool(read_file)
-ExecuteCodeTool = Tool(execute_code)
-AddMemoryTool = Tool(add_memory)
-SearchMemoryTool = Tool(search_memory)
-UpdateMemoryTool = Tool(update_memory)
-ListAllMemoriesTool = Tool(list_all_memories)
-ListMemoryCategoriesTool = Tool(list_memory_categories)
+def tools() -> list:
+    """Return a list of tools."""
+    return [
+        Tool(read_file),
+        Tool(execute_code),
+        Tool(add_memory),
+        Tool(search_memory),
+        Tool(update_memory),
+        Tool(list_all_memories),
+        Tool(list_memory_categories),
+        duckduckgo_search_tool(),
+    ]

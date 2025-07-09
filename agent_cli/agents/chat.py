@@ -163,16 +163,9 @@ async def _handle_conversation_turn(
 ) -> None:
     """Handles a single turn of the conversation."""
     # Import here to avoid slow pydantic_ai import in CLI
-    from pydantic_ai.common_tools.duckduckgo import duckduckgo_search_tool  # noqa: PLC0415
 
     from agent_cli._tools import (  # noqa: PLC0415
-        AddMemoryTool,
-        ExecuteCodeTool,
-        ListAllMemoriesTool,
-        ListMemoryCategoriesTool,
-        ReadFileTool,
-        SearchMemoryTool,
-        UpdateMemoryTool,
+        tools,
     )
 
     # 1. Transcribe user's command
@@ -224,16 +217,7 @@ async def _handle_conversation_turn(
     )
 
     # 4. Get LLM response with timing
-    tools = [
-        ReadFileTool,
-        ExecuteCodeTool,
-        AddMemoryTool,
-        SearchMemoryTool,
-        UpdateMemoryTool,
-        ListAllMemoriesTool,
-        ListMemoryCategoriesTool,
-        duckduckgo_search_tool(),
-    ]
+
     start_time = time.monotonic()
 
     model_name = (
@@ -256,7 +240,7 @@ async def _handle_conversation_turn(
             ollama_config=ollama_cfg,
             openai_config=openai_llm_cfg,
             logger=LOGGER,
-            tools=tools,
+            tools=tools(),
             quiet=True,  # Suppress internal output since we're showing our own timer
             live=live,
         )

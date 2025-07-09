@@ -5,13 +5,13 @@ from __future__ import annotations
 from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING
 
+from wyoming.client import AsyncClient
+
 from agent_cli.core.utils import print_error_message
 
 if TYPE_CHECKING:
     import logging
     from collections.abc import AsyncGenerator
-
-    from wyoming.client import AsyncClient
 
 
 @asynccontextmanager
@@ -40,8 +40,6 @@ async def wyoming_client_context(
         Exception: For other connection errors
 
     """
-    from wyoming.client import AsyncClient  # noqa: PLC0415
-
     uri = f"tcp://{server_ip}:{server_port}"
     logger.info("Connecting to Wyoming %s server at %s", server_type, uri)
 
