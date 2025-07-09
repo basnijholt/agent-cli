@@ -17,6 +17,7 @@ from agent_cli.audio import (
     read_from_queue,
     setup_input_stream,
 )
+
 from agent_cli.services import transcribe_audio_openai
 from agent_cli.wyoming_utils import manage_send_receive_tasks, wyoming_client_context
 
