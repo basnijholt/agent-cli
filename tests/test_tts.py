@@ -9,7 +9,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from agent_cli import config
-from agent_cli.tts import _apply_speed_adjustment, get_synthesizer, speak_text
+from agent_cli.tts import _apply_speed_adjustment, _speak_text, get_synthesizer
 
 
 @pytest.mark.asyncio
@@ -34,7 +34,7 @@ async def test_speak_text(mock_get_synthesizer: MagicMock) -> None:
         openai_api_key="test_api_key",
     )
 
-    audio_data = await speak_text(
+    audio_data = await _speak_text(
         text="hello",
         provider_config=provider_config,
         audio_output_config=audio_output_config,
