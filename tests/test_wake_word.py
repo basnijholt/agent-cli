@@ -6,8 +6,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from rich.live import Live
 
-from agent_cli import wake_word
 from agent_cli.core.utils import InteractiveStopEvent
+from agent_cli.services import wake_word
 
 
 @pytest.fixture
@@ -51,8 +51,8 @@ class TestReceiveWakeDetection:
 
         # Mock Detection.is_type and Detection.from_event
         with (
-            patch("agent_cli.wake_word.Detection.is_type", return_value=True),
-            patch("agent_cli.wake_word.Detection.from_event") as mock_from_event,
+            patch("agent_cli.services.wake_word.Detection.is_type", return_value=True),
+            patch("agent_cli.services.wake_word.Detection.from_event") as mock_from_event,
         ):
             mock_detection = MagicMock()
             mock_detection.name = "test_wake_word"
@@ -76,8 +76,8 @@ class TestReceiveWakeDetection:
         mock_event.type = "detection"
 
         with (
-            patch("agent_cli.wake_word.Detection.is_type", return_value=True),
-            patch("agent_cli.wake_word.Detection.from_event") as mock_from_event,
+            patch("agent_cli.services.wake_word.Detection.is_type", return_value=True),
+            patch("agent_cli.services.wake_word.Detection.from_event") as mock_from_event,
         ):
             mock_detection = MagicMock()
             mock_detection.name = "test_wake_word"
@@ -104,8 +104,8 @@ class TestReceiveWakeDetection:
         mock_event.type = "not-detected"
 
         with (
-            patch("agent_cli.wake_word.Detection.is_type", return_value=False),
-            patch("agent_cli.wake_word.NotDetected.is_type", return_value=True),
+            patch("agent_cli.services.wake_word.Detection.is_type", return_value=False),
+            patch("agent_cli.services.wake_word.NotDetected.is_type", return_value=True),
         ):
             mock_client.read_event.return_value = mock_event
 
@@ -127,7 +127,7 @@ class TestReceiveWakeDetection:
 
 
 @pytest.mark.asyncio
-@patch("agent_cli.wake_word.wyoming_client_context", side_effect=ConnectionRefusedError)
+@patch("agent_cli.services.wake_word.wyoming_client_context", side_effect=ConnectionRefusedError)
 async def test_detect_wake_word_from_queue_connection_error(
     mock_wyoming_client_context: MagicMock,
     mock_logger: MagicMock,
