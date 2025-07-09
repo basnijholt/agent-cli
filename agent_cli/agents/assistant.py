@@ -30,7 +30,7 @@ from __future__ import annotations
 import asyncio
 import logging
 from contextlib import suppress
-from pathlib import Path
+from pathlib import Path  # noqa: TC003
 from typing import TYPE_CHECKING
 
 import agent_cli.agents._cli_options as opts

@@ -254,14 +254,6 @@ async def live_timer(
 ) -> AsyncGenerator[None, None]:
     """Async context manager that automatically manages a timer for a Live display.
 
-    Args:
-    ----
-        live: Live instance to update (or None to do nothing)
-        base_message: Base message to display
-        style: Rich style for the text
-        quiet: If True, don't show any display
-        stop_event: Optional stop event to check for Ctrl+C
-
     Usage:
         async with live_timer(live, "🤖 Processing", style="bold yellow"):
             # Do your work here, timer updates automatically
