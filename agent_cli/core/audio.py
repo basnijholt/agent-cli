@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import functools
+import io
 import logging
 from contextlib import asynccontextmanager, contextmanager
 from typing import TYPE_CHECKING
@@ -128,6 +129,50 @@ async def read_from_queue(
         else:
             chunk_handler(chunk)
         logger.debug("Processed %d byte(s) of audio from queue", len(chunk))
+
+
+async def record_audio_to_buffer(queue: asyncio.Queue, logger: logging.Logger) -> bytes:
+    """Record audio from a queue to a buffer."""
+    audio_buffer = io.BytesIO()
+
+    def buffer_chunk(chunk: bytes) -> None:
+        """Buffer audio chunk."""
+        audio_buffer.write(chunk)
+
+    await read_from_queue(queue=queue, chunk_handler=buffer_chunk, logger=logger)
+
+    return audio_buffer.getvalue()
+
+
+async def record_audio_with_manual_stop(
+    p: pyaudio.PyAudio,
+    input_device_index: int | None,
+    stop_event: InteractiveStopEvent,
+    logger: logging.Logger,
+    *,
+    quiet: bool = False,
+    live: Live | None = None,
+) -> bytes:
+    """Record audio to a buffer using a manual stop signal."""
+    audio_buffer = io.BytesIO()
+
+    def buffer_chunk(chunk: bytes) -> None:
+        """Buffer audio chunk."""
+        audio_buffer.write(chunk)
+
+    stream_config = setup_input_stream(input_device_index)
+    with open_pyaudio_stream(p, **stream_config) as stream:
+        await read_audio_stream(
+            stream=stream,
+            stop_event=stop_event,
+            chunk_handler=buffer_chunk,
+            logger=logger,
+            live=live,
+            quiet=quiet,
+            progress_message="Recording",
+            progress_style="green",
+        )
+    return audio_buffer.getvalue()
 
 
 @contextmanager

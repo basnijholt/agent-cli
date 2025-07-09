@@ -4,18 +4,17 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
 from agent_cli import config
 from agent_cli.agents import transcribe
-from tests.mocks.wyoming import MockASRClient
 
 
 @pytest.mark.asyncio
-@patch("agent_cli.agents.transcribe.process_and_update_clipboard", new_callable=AsyncMock)
-@patch("agent_cli.services.asr.wyoming_client_context")
+@patch("agent_cli.agents.transcribe.get_llm_service")
+@patch("agent_cli.agents.transcribe.get_asr_service")
 @patch("agent_cli.agents.transcribe.pyperclip")
 @patch("agent_cli.agents.transcribe.pyaudio_context")
 @patch("agent_cli.agents.transcribe.signal_handling_context")
@@ -23,8 +22,8 @@ async def test_transcribe_main_llm_enabled(
     mock_signal_handling_context: MagicMock,
     mock_pyaudio_context: MagicMock,
     mock_pyperclip: MagicMock,
-    mock_wyoming_client_context: MagicMock,
-    mock_process_and_update_clipboard: AsyncMock,
+    mock_get_asr_service: MagicMock,
+    mock_get_llm_service: MagicMock,
     caplog: pytest.LogCaptureFixture,
 ) -> None:
     """Test the main function of the transcribe agent with LLM enabled."""
@@ -32,9 +31,7 @@ async def test_transcribe_main_llm_enabled(
     mock_pyaudio_instance = MagicMock()
     mock_pyaudio_context.return_value.__enter__.return_value = mock_pyaudio_instance
 
-    # Mock the Wyoming client
-    mock_asr_client = MockASRClient("hello world")
-    mock_wyoming_client_context.return_value.__aenter__.return_value = mock_asr_client
+    mock_get_asr_service.return_value.transcribe.return_value = "hello world"
 
     # Setup stop event
     stop_event = asyncio.Event()
@@ -55,7 +52,6 @@ async def test_transcribe_main_llm_enabled(
             list_devices=False,
             clipboard=True,
         )
-        audio_in_cfg = config.AudioInput()
         wyoming_asr_cfg = config.WyomingASR(wyoming_asr_ip="localhost", wyoming_asr_port=12345)
         openai_asr_cfg = config.OpenAIASR(openai_asr_model="whisper-1")
         ollama_cfg = config.Ollama(ollama_model="test", ollama_host="localhost")
@@ -64,22 +60,20 @@ async def test_transcribe_main_llm_enabled(
         await transcribe._async_main(
             provider_cfg=provider_cfg,
             general_cfg=general_cfg,
-            audio_in_cfg=audio_in_cfg,
             wyoming_asr_cfg=wyoming_asr_cfg,
             openai_asr_cfg=openai_asr_cfg,
             ollama_cfg=ollama_cfg,
             openai_llm_cfg=openai_llm_cfg,
             llm_enabled=True,
-            p=mock_pyaudio_instance,
         )
 
     # Assertions
-    mock_process_and_update_clipboard.assert_called_once()
-    mock_pyperclip.copy.assert_not_called()
+    mock_get_llm_service.assert_called_once()
+    mock_pyperclip.copy.assert_called_once()
 
 
 @pytest.mark.asyncio
-@patch("agent_cli.services.asr.wyoming_client_context")
+@patch("agent_cli.agents.transcribe.get_asr_service")
 @patch("agent_cli.agents.transcribe.pyperclip")
 @patch("agent_cli.agents.transcribe.pyaudio_context")
 @patch("agent_cli.agents.transcribe.signal_handling_context")
@@ -87,7 +81,7 @@ async def test_transcribe_main(
     mock_signal_handling_context: MagicMock,
     mock_pyaudio_context: MagicMock,
     mock_pyperclip: MagicMock,
-    mock_wyoming_client_context: MagicMock,
+    mock_get_asr_service: MagicMock,
     caplog: pytest.LogCaptureFixture,
 ) -> None:
     """Test the main function of the transcribe agent."""
@@ -95,9 +89,7 @@ async def test_transcribe_main(
     mock_pyaudio_instance = MagicMock()
     mock_pyaudio_context.return_value.__enter__.return_value = mock_pyaudio_instance
 
-    # Mock the Wyoming client
-    mock_asr_client = MockASRClient("hello world")
-    mock_wyoming_client_context.return_value.__aenter__.return_value = mock_asr_client
+    mock_get_asr_service.return_value.transcribe.return_value = "hello world"
 
     # Setup stop event
     stop_event = asyncio.Event()
@@ -118,7 +110,6 @@ async def test_transcribe_main(
             list_devices=False,
             clipboard=True,
         )
-        audio_in_cfg = config.AudioInput()
         wyoming_asr_cfg = config.WyomingASR(wyoming_asr_ip="localhost", wyoming_asr_port=12345)
         openai_asr_cfg = config.OpenAIASR(openai_asr_model="whisper-1")
         ollama_cfg = config.Ollama(ollama_model="", ollama_host="")
@@ -127,16 +118,14 @@ async def test_transcribe_main(
         await transcribe._async_main(
             provider_cfg=provider_cfg,
             general_cfg=general_cfg,
-            audio_in_cfg=audio_in_cfg,
             wyoming_asr_cfg=wyoming_asr_cfg,
             openai_asr_cfg=openai_asr_cfg,
             ollama_cfg=ollama_cfg,
             openai_llm_cfg=openai_llm_cfg,
             llm_enabled=False,
-            p=mock_pyaudio_instance,
         )
 
     # Assertions
     assert "Copied transcript to clipboard." in caplog.text
     mock_pyperclip.copy.assert_called_once_with("hello world")
-    mock_wyoming_client_context.assert_called_once()
+    mock_get_asr_service.assert_called_once()

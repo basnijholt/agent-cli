@@ -23,8 +23,8 @@ from agent_cli.core.utils import (
     print_error_message,
     print_with_style,
 )
-from agent_cli.services import synthesize_speech_openai
 from agent_cli.services._wyoming_utils import wyoming_client_context
+from agent_cli.services.openai.tts import OpenAITTSService
 
 if TYPE_CHECKING:
     import logging
@@ -202,17 +202,13 @@ async def _synthesize_speech_openai(
     *,
     text: str,
     openai_tts_config: config.OpenAITTS,
-    openai_llm_config: config.OpenAILLM,
-    logger: logging.Logger,
     **_kwargs: object,
 ) -> bytes | None:
     """Synthesize speech from text using OpenAI TTS server."""
-    return await synthesize_speech_openai(
-        text=text,
+    service = OpenAITTSService(
         openai_tts_config=openai_tts_config,
-        openai_llm_config=openai_llm_config,
-        logger=logger,
     )
+    return await service.synthesise(text=text)
 
 
 async def _synthesize_speech_wyoming(

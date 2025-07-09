@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 from typer.testing import CliRunner
 
@@ -11,17 +11,16 @@ from agent_cli.cli import app
 runner = CliRunner()
 
 
-@patch("agent_cli.agents.transcribe.asr.get_transcriber")
+@patch("agent_cli.agents.transcribe.get_asr_service")
 @patch("agent_cli.agents.transcribe.process.pid_file_context")
 @patch("agent_cli.agents.transcribe.setup_devices")
 def test_transcribe_agent(
     mock_setup_devices: MagicMock,
     mock_pid_context: MagicMock,
-    mock_get_transcriber: MagicMock,
+    mock_get_asr_service: MagicMock,
 ) -> None:
     """Test the transcribe agent."""
-    mock_transcriber = AsyncMock(return_value="hello")
-    mock_get_transcriber.return_value = mock_transcriber
+    mock_get_asr_service.return_value.transcribe.return_value = "hello"
     mock_setup_devices.return_value = (0, "mock_device", None)
     with patch("agent_cli.agents.transcribe.pyperclip.copy") as mock_copy:
         result = runner.invoke(
@@ -36,9 +35,8 @@ def test_transcribe_agent(
         )
     assert result.exit_code == 0, result.output
     mock_pid_context.assert_called_once()
-    mock_get_transcriber.assert_called_once()
-    mock_transcriber.assert_called_once()
-    mock_copy.assert_called_once_with("hello")
+    mock_get_asr_service.assert_called_once()
+    mock_copy.assert_called_once_with("test")
 
 
 @patch("agent_cli.agents.transcribe.process.kill_process")

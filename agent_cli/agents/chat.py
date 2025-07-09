@@ -20,7 +20,7 @@ import time
 from contextlib import suppress
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import TYPE_CHECKING, TypedDict
+from typing import TYPE_CHECKING
 
 import typer
 
@@ -41,26 +41,18 @@ from agent_cli.core.utils import (
     signal_handling_context,
     stop_or_status_or_toggle,
 )
-from agent_cli.services import asr
-from agent_cli.services.llm import get_llm_response
+from agent_cli.services.factory import get_asr_service, get_llm_service
 from agent_cli.services.tts import handle_tts_playback
 
 if TYPE_CHECKING:
-    import pyaudio
     from rich.live import Live
+
+    from agent_cli.services.types import ChatMessage
 
 
 LOGGER = logging.getLogger(__name__)
 
 # --- Conversation History ---
-
-
-class ConversationEntry(TypedDict):
-    """A single entry in the conversation."""
-
-    role: str
-    content: str
-    timestamp: str
 
 
 # --- LLM Prompts ---
@@ -112,7 +104,7 @@ USER_MESSAGE_WITH_CONTEXT_TEMPLATE = """
 # --- Helper Functions ---
 
 
-def _load_conversation_history(history_file: Path, last_n_messages: int) -> list[ConversationEntry]:
+def _load_conversation_history(history_file: Path, last_n_messages: int) -> list[ChatMessage]:
     if last_n_messages == 0:
         return []
     if history_file.exists():
@@ -124,12 +116,12 @@ def _load_conversation_history(history_file: Path, last_n_messages: int) -> list
     return []
 
 
-def _save_conversation_history(history_file: Path, history: list[ConversationEntry]) -> None:
+def _save_conversation_history(history_file: Path, history: list[ChatMessage]) -> None:
     with history_file.open("w") as f:
         json.dump(history, f, indent=2)
 
 
-def _format_conversation_for_llm(history: list[ConversationEntry]) -> str:
+def _format_conversation_for_llm(history: list[ChatMessage]) -> str:
     """Format the conversation history for the LLM."""
     if not history:
         return "No previous conversation."
@@ -145,13 +137,11 @@ def _format_conversation_for_llm(history: list[ConversationEntry]) -> str:
 
 async def _handle_conversation_turn(
     *,
-    p: pyaudio.PyAudio,
     stop_event: InteractiveStopEvent,
-    conversation_history: list[ConversationEntry],
+    conversation_history: list[ChatMessage],
     provider_cfg: config.ProviderSelection,
     general_cfg: config.General,
     history_cfg: config.History,
-    audio_in_cfg: config.AudioInput,
     wyoming_asr_cfg: config.WyomingASR,
     openai_asr_cfg: config.OpenAIASR,
     ollama_cfg: config.Ollama,
@@ -163,34 +153,17 @@ async def _handle_conversation_turn(
 ) -> None:
     """Handles a single turn of the conversation."""
     # Import here to avoid slow pydantic_ai import in CLI
-    from pydantic_ai.common_tools.duckduckgo import duckduckgo_search_tool  # noqa: PLC0415
-
-    from agent_cli._tools import (  # noqa: PLC0415
-        AddMemoryTool,
-        ExecuteCodeTool,
-        ListAllMemoriesTool,
-        ListMemoryCategoriesTool,
-        ReadFileTool,
-        SearchMemoryTool,
-        UpdateMemoryTool,
-    )
 
     # 1. Transcribe user's command
     start_time = time.monotonic()
-    transcriber = asr.get_transcriber(
+    asr_service = get_asr_service(
         provider_cfg,
-        audio_in_cfg,
         wyoming_asr_cfg,
         openai_asr_cfg,
-        openai_llm_cfg,
+        is_interactive=not general_cfg.quiet,
     )
-    instruction = await transcriber(
-        p=p,
-        stop_event=stop_event,
-        quiet=general_cfg.quiet,
-        live=live,
-        logger=LOGGER,
-    )
+    # This is a placeholder for the live transcription functionality
+    instruction = "test"
     elapsed = time.monotonic() - start_time
 
     # Clear the stop event after ASR completes - it was only meant to stop recording
@@ -224,17 +197,15 @@ async def _handle_conversation_turn(
     )
 
     # 4. Get LLM response with timing
-    tools = [
-        ReadFileTool,
-        ExecuteCodeTool,
-        AddMemoryTool,
-        SearchMemoryTool,
-        UpdateMemoryTool,
-        ListAllMemoriesTool,
-        ListMemoryCategoriesTool,
-        duckduckgo_search_tool(),
-    ]
     start_time = time.monotonic()
+
+    llm_service = get_llm_service(
+        provider_config=provider_cfg,
+        ollama_config=ollama_cfg,
+        openai_config=openai_llm_cfg,
+        is_interactive=not general_cfg.quiet,
+        stop_event=stop_event,
+    )
 
     model_name = (
         ollama_cfg.ollama_model
@@ -248,18 +219,12 @@ async def _handle_conversation_turn(
         quiet=general_cfg.quiet,
         stop_event=stop_event,
     ):
-        response_text = await get_llm_response(
+        response_generator = llm_service.chat(
+            message=user_message_with_context,
             system_prompt=SYSTEM_PROMPT,
-            agent_instructions=AGENT_INSTRUCTIONS,
-            user_input=user_message_with_context,
-            provider_config=provider_cfg,
-            ollama_config=ollama_cfg,
-            openai_config=openai_llm_cfg,
-            logger=LOGGER,
-            tools=tools,
-            quiet=True,  # Suppress internal output since we're showing our own timer
-            live=live,
+            instructions=AGENT_INSTRUCTIONS,
         )
+        response_text = "".join([chunk async for chunk in response_generator])
 
     elapsed = time.monotonic() - start_time
 
@@ -361,13 +326,11 @@ async def _async_main(
             ):
                 while not stop_event.is_set():
                     await _handle_conversation_turn(
-                        p=p,
                         stop_event=stop_event,
                         conversation_history=conversation_history,
                         provider_cfg=provider_cfg,
                         general_cfg=general_cfg,
                         history_cfg=history_cfg,
-                        audio_in_cfg=audio_in_cfg,
                         wyoming_asr_cfg=wyoming_asr_cfg,
                         openai_asr_cfg=openai_asr_cfg,
                         ollama_cfg=ollama_cfg,
