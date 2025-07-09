@@ -11,7 +11,7 @@ from agent_cli.agents import config
 from agent_cli.services import synthesize_speech_openai, transcribe_audio_openai
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio()
 @patch("agent_cli.services._get_openai_client")
 async def test_transcribe_audio_openai(mock_openai_client: MagicMock) -> None:
     """Test the transcribe_audio_openai function."""
@@ -44,7 +44,7 @@ async def test_transcribe_audio_openai(mock_openai_client: MagicMock) -> None:
     )
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio()
 @patch("agent_cli.services._get_openai_client")
 async def test_synthesize_speech_openai(mock_openai_client: MagicMock) -> None:
     """Test the synthesize_speech_openai function."""
@@ -126,3 +126,27 @@ def test_get_synthesizer_wyoming() -> None:
         openai_llm_config,
     )
     assert synthesizer.func == tts._synthesize_speech_wyoming  # type: ignore[attr-defined]
+
+
+@pytest.mark.asyncio()
+async def test_transcribe_audio_openai_no_key():
+    """Test that transcribe_audio_openai fails without an API key."""
+    with pytest.raises(ValueError, match="OpenAI API key is not set."):
+        await transcribe_audio_openai(
+            b"test audio",
+            config.OpenAIASR(openai_asr_model="whisper-1"),
+            config.OpenAILLM(openai_llm_model="gpt-4o-mini", openai_api_key=None),
+            MagicMock(),
+        )
+
+
+@pytest.mark.asyncio()
+async def test_synthesize_speech_openai_no_key():
+    """Test that synthesize_speech_openai fails without an API key."""
+    with pytest.raises(ValueError, match="OpenAI API key is not set."):
+        await synthesize_speech_openai(
+            "test text",
+            config.OpenAITTS(openai_tts_model="tts-1", openai_tts_voice="alloy"),
+            config.OpenAILLM(openai_llm_model="gpt-4o-mini", openai_api_key=None),
+            MagicMock(),
+        )
