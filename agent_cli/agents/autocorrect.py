@@ -22,7 +22,7 @@ from agent_cli.core.utils import (
     print_with_style,
     setup_logging,
 )
-from agent_cli.llm import build_agent
+from agent_cli.services.llm import build_agent
 
 if TYPE_CHECKING:
     from rich.status import Status

@@ -23,7 +23,7 @@ from agent_cli.core.utils import (
     signal_handling_context,
     stop_or_status_or_toggle,
 )
-from agent_cli.llm import process_and_update_clipboard
+from agent_cli.services.llm import process_and_update_clipboard
 
 if TYPE_CHECKING:
     import pyaudio

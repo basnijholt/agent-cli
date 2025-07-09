@@ -8,7 +8,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from agent_cli import config
-from agent_cli.llm import build_agent, get_llm_response, process_and_update_clipboard
+from agent_cli.services.llm import build_agent, get_llm_response, process_and_update_clipboard
 
 
 def test_build_agent_openai_no_key():
@@ -42,7 +42,7 @@ def test_build_agent(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 @pytest.mark.asyncio
-@patch("agent_cli.llm.build_agent")
+@patch("agent_cli.services.llm.build_agent")
 async def test_get_llm_response(mock_build_agent: MagicMock) -> None:
     """Test getting a response from the LLM."""
     mock_agent = MagicMock()
@@ -74,7 +74,7 @@ async def test_get_llm_response(mock_build_agent: MagicMock) -> None:
 
 
 @pytest.mark.asyncio
-@patch("agent_cli.llm.build_agent")
+@patch("agent_cli.services.llm.build_agent")
 async def test_get_llm_response_error(mock_build_agent: MagicMock) -> None:
     """Test getting a response from the LLM when an error occurs."""
     mock_agent = MagicMock()
@@ -106,7 +106,7 @@ async def test_get_llm_response_error(mock_build_agent: MagicMock) -> None:
 
 
 @pytest.mark.asyncio
-@patch("agent_cli.llm.build_agent")
+@patch("agent_cli.services.llm.build_agent")
 async def test_get_llm_response_error_exit(mock_build_agent: MagicMock):
     """Test getting a response from the LLM when an error occurs and exit_on_error is True."""
     mock_agent = MagicMock()
@@ -135,7 +135,7 @@ async def test_get_llm_response_error_exit(mock_build_agent: MagicMock):
         )
 
 
-@patch("agent_cli.llm.get_llm_response", new_callable=AsyncMock)
+@patch("agent_cli.services.llm.get_llm_response", new_callable=AsyncMock)
 def test_process_and_update_clipboard(
     mock_get_llm_response: AsyncMock,
 ) -> None:

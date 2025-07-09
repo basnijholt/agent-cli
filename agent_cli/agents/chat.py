@@ -41,7 +41,7 @@ from agent_cli.core.utils import (
     signal_handling_context,
     stop_or_status_or_toggle,
 )
-from agent_cli.llm import get_llm_response
+from agent_cli.services.llm import get_llm_response
 from agent_cli.tts import handle_tts_playback
 
 if TYPE_CHECKING:
