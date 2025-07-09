@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import typer
 
-from .config_loader import load_config
+from .config import load_config
 from .utils import console
 
 app = typer.Typer(
