@@ -6,8 +6,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from agent_cli import asr, config
-from agent_cli.services import synthesize_speech_openai, transcribe_audio_openai, tts
+from agent_cli import config
+from agent_cli.services import asr, synthesize_speech_openai, transcribe_audio_openai, tts
 
 
 @pytest.mark.asyncio

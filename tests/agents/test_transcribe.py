@@ -15,7 +15,7 @@ from tests.mocks.wyoming import MockASRClient
 
 @pytest.mark.asyncio
 @patch("agent_cli.agents.transcribe.process_and_update_clipboard", new_callable=AsyncMock)
-@patch("agent_cli.asr.wyoming_client_context")
+@patch("agent_cli.services.asr.wyoming_client_context")
 @patch("agent_cli.agents.transcribe.pyperclip")
 @patch("agent_cli.agents.transcribe.pyaudio_context")
 @patch("agent_cli.agents.transcribe.signal_handling_context")
@@ -79,7 +79,7 @@ async def test_transcribe_main_llm_enabled(
 
 
 @pytest.mark.asyncio
-@patch("agent_cli.asr.wyoming_client_context")
+@patch("agent_cli.services.asr.wyoming_client_context")
 @patch("agent_cli.agents.transcribe.pyperclip")
 @patch("agent_cli.agents.transcribe.pyaudio_context")
 @patch("agent_cli.agents.transcribe.signal_handling_context")

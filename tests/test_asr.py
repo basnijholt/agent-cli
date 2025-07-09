@@ -8,7 +8,7 @@ import pytest
 from wyoming.asr import Transcribe, Transcript, TranscriptChunk
 from wyoming.audio import AudioChunk, AudioStart, AudioStop
 
-from agent_cli import asr
+from agent_cli.services import asr
 
 
 @pytest.mark.asyncio
@@ -111,7 +111,7 @@ def test_get_recorded_audio_transcriber():
 
 
 @pytest.mark.asyncio
-@patch("agent_cli.asr.wyoming_client_context", side_effect=ConnectionRefusedError)
+@patch("agent_cli.services.asr.wyoming_client_context", side_effect=ConnectionRefusedError)
 async def test_transcribe_recorded_audio_wyoming_connection_error(
     mock_wyoming_client_context: MagicMock,
 ):

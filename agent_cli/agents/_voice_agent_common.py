@@ -8,8 +8,8 @@ from typing import TYPE_CHECKING
 
 import pyperclip
 
-from agent_cli import asr
 from agent_cli.core.utils import print_input_panel, print_with_style
+from agent_cli.services import asr
 from agent_cli.services.llm import process_and_update_clipboard
 from agent_cli.services.tts import handle_tts_playback
 

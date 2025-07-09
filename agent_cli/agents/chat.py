@@ -24,7 +24,7 @@ from typing import TYPE_CHECKING, TypedDict
 
 import typer
 
-from agent_cli import asr, config, opts
+from agent_cli import config, opts
 from agent_cli.cli import app
 from agent_cli.core import process
 from agent_cli.core.audio import pyaudio_context, setup_devices
@@ -41,6 +41,7 @@ from agent_cli.core.utils import (
     signal_handling_context,
     stop_or_status_or_toggle,
 )
+from agent_cli.services import asr
 from agent_cli.services.llm import get_llm_response
 from agent_cli.services.tts import handle_tts_playback
 

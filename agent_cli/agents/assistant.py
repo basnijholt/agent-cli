@@ -33,7 +33,7 @@ from contextlib import suppress
 from pathlib import Path  # noqa: TC003
 from typing import TYPE_CHECKING
 
-from agent_cli import asr, config, opts, wake_word
+from agent_cli import config, opts, wake_word
 from agent_cli.agents._voice_agent_common import (
     get_instruction_from_audio,
     process_instruction_and_respond,
@@ -49,6 +49,7 @@ from agent_cli.core.utils import (
     signal_handling_context,
     stop_or_status_or_toggle,
 )
+from agent_cli.services import asr
 
 if TYPE_CHECKING:
     import pyaudio
