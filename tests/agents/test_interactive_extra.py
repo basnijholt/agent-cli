@@ -103,9 +103,12 @@ async def test_handle_conversation_turn_no_instruction():
     openai_tts_cfg = config.OpenAITTS(openai_tts_model="tts-1", openai_tts_voice="alloy")
     mock_live = MagicMock()
 
-    with patch("agent_cli.agents.chat.get_asr_service") as mock_get_transcriber, patch(
-        "agent_cli.agents.chat.get_llm_service"
-    ) as mock_get_llm_service:
+    with (
+        patch("agent_cli.agents.chat.get_asr_service") as mock_get_transcriber,
+        patch(
+            "agent_cli.agents.chat.get_llm_service",
+        ) as mock_get_llm_service,
+    ):
         mock_get_transcriber.return_value.transcribe.return_value = ""
         await _handle_conversation_turn(
             stop_event=stop_event,
