@@ -12,7 +12,7 @@ import pyperclip
 import typer
 
 import agent_cli.agents._cli_options as opts
-from agent_cli.agents import config
+from agent_cli import config
 from agent_cli.cli import app, setup_logging
 from agent_cli.llm import build_agent
 from agent_cli.utils import (

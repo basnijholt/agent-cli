@@ -16,7 +16,7 @@ from agent_cli.utils import print_input_panel, print_with_style
 if TYPE_CHECKING:
     from rich.live import Live
 
-    from agent_cli.agents import config
+    from agent_cli import config
 
 LOGGER = logging.getLogger()
 

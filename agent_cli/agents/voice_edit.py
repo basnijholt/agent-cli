@@ -41,7 +41,7 @@ from pathlib import Path  # noqa: TC003
 import agent_cli.agents._cli_options as opts
 from agent_cli import asr
 from agent_cli.core import process as process_manager
-from agent_cli.agents import config
+from agent_cli import config
 from agent_cli.agents._voice_agent_common import (
     get_instruction_from_audio,
     process_instruction_and_respond,
