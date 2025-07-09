@@ -96,7 +96,7 @@ def test_display_original_text_none_console():
         assert mock_console.file.getvalue() == ""
 
 
-@pytest.mark.asyncio()
+@pytest.mark.asyncio
 @patch("agent_cli.agents.autocorrect.build_agent")
 async def test_process_text_integration(mock_build_agent: MagicMock) -> None:
     """Test process_text with a more realistic mock setup."""
@@ -140,7 +140,7 @@ async def test_process_text_integration(mock_build_agent: MagicMock) -> None:
     mock_agent.run.assert_called_once_with(expected_input)
 
 
-@pytest.mark.asyncio()
+@pytest.mark.asyncio
 @patch("agent_cli.agents.autocorrect.build_agent")
 @patch("agent_cli.agents.autocorrect.get_clipboard_text")
 async def test_autocorrect_command_with_text(
@@ -195,7 +195,7 @@ async def test_autocorrect_command_with_text(
     mock_agent.run.assert_called_once_with(expected_input)
 
 
-@pytest.mark.asyncio()
+@pytest.mark.asyncio
 @patch("agent_cli.agents.autocorrect.build_agent")
 @patch("agent_cli.agents.autocorrect.get_clipboard_text")
 async def test_autocorrect_command_from_clipboard(
@@ -250,7 +250,7 @@ async def test_autocorrect_command_from_clipboard(
     mock_agent.run.assert_called_once_with(expected_input)
 
 
-@pytest.mark.asyncio()
+@pytest.mark.asyncio
 @patch("agent_cli.agents.autocorrect._process_text", new_callable=AsyncMock)
 @patch("agent_cli.agents.autocorrect.get_clipboard_text", return_value=None)
 async def test_async_autocorrect_no_text(
@@ -282,7 +282,7 @@ async def test_async_autocorrect_no_text(
     mock_get_clipboard_text.assert_called_once()
 
 
-@pytest.mark.asyncio()
+@pytest.mark.asyncio
 @patch("agent_cli.agents.autocorrect._process_text", side_effect=Exception("Test error"))
 async def test_async_autocorrect_error(mock_process_text: AsyncMock):
     """Test the async_autocorrect function when an error occurs."""

@@ -17,7 +17,7 @@ import pytest
 from agent_cli import process_manager
 
 
-@pytest.fixture()
+@pytest.fixture
 def temp_pid_dir(monkeypatch: pytest.MonkeyPatch) -> Generator[Path, None, None]:
     """Create a temporary directory for PID files during testing."""
     with tempfile.TemporaryDirectory() as tmpdir:

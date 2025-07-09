@@ -12,7 +12,7 @@ from agent_cli.agents import config
 from agent_cli.tts import _apply_speed_adjustment, get_synthesizer, speak_text
 
 
-@pytest.mark.asyncio()
+@pytest.mark.asyncio
 @patch("agent_cli.tts.get_synthesizer")
 async def test_speak_text(mock_get_synthesizer: MagicMock) -> None:
     """Test the speak_text function."""

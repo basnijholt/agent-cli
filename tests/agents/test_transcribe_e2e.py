@@ -17,7 +17,7 @@ if TYPE_CHECKING:
     from rich.console import Console
 
 
-@pytest.mark.asyncio()
+@pytest.mark.asyncio
 @patch("agent_cli.agents.transcribe.signal_handling_context")
 @patch("agent_cli.asr.wyoming_client_context")
 @patch("agent_cli.audio.pyaudio.PyAudio")

@@ -13,7 +13,7 @@ from agent_cli.agents._voice_agent_common import (
 )
 
 
-@pytest.mark.asyncio()
+@pytest.mark.asyncio
 @patch("agent_cli.agents._voice_agent_common.asr.get_recorded_audio_transcriber")
 async def test_get_instruction_from_audio(mock_get_transcriber: MagicMock) -> None:
     """Test the get_instruction_from_audio function."""
@@ -46,7 +46,7 @@ async def test_get_instruction_from_audio(mock_get_transcriber: MagicMock) -> No
     mock_transcriber.assert_called_once()
 
 
-@pytest.mark.asyncio()
+@pytest.mark.asyncio
 @patch("agent_cli.agents._voice_agent_common.asr.get_recorded_audio_transcriber")
 async def test_get_instruction_from_audio_error(mock_get_transcriber: MagicMock) -> None:
     """Test the get_instruction_from_audio function when an error occurs."""
@@ -79,7 +79,7 @@ async def test_get_instruction_from_audio_error(mock_get_transcriber: MagicMock)
     mock_transcriber.assert_called_once()
 
 
-@pytest.mark.asyncio()
+@pytest.mark.asyncio
 @patch("agent_cli.agents._voice_agent_common.process_and_update_clipboard")
 @patch("agent_cli.agents._voice_agent_common.handle_tts_playback")
 async def test_process_instruction_and_respond(

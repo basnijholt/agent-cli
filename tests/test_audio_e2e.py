@@ -10,7 +10,7 @@ from agent_cli import audio
 from tests.mocks.audio import MockPyAudio
 
 
-@pytest.fixture()
+@pytest.fixture
 def _mock_pyaudio_with_cache_clear() -> None:
     """Clear the audio device cache before each test."""
     audio._get_all_devices.cache_clear()
@@ -358,7 +358,7 @@ def test_device_filtering_by_capabilities(
         assert mixed_output_name == "Both"
 
 
-@pytest.mark.asyncio()
+@pytest.mark.asyncio
 async def test_audio_tee_os_error():
     """Test that the _AudioTee._run method handles an OSError."""
     mock_stream = Mock()

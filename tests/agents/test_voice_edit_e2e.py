@@ -15,20 +15,18 @@ from agent_cli.agents.voice_edit import (
 from tests.mocks.audio import MockPyAudio
 
 
-def get_configs() -> (
-    tuple[
-        config.ProviderSelection,
-        config.General,
-        config.AudioInput,
-        config.WyomingASR,
-        config.OpenAIASR,
-        config.Ollama,
-        config.OpenAILLM,
-        config.AudioOutput,
-        config.WyomingTTS,
-        config.OpenAITTS,
-    ]
-):
+def get_configs() -> tuple[
+    config.ProviderSelection,
+    config.General,
+    config.AudioInput,
+    config.WyomingASR,
+    config.OpenAIASR,
+    config.Ollama,
+    config.OpenAILLM,
+    config.AudioOutput,
+    config.WyomingTTS,
+    config.OpenAITTS,
+]:
     """Get all the necessary configs for the e2e test."""
     provider_cfg = config.ProviderSelection(
         asr_provider="local",
@@ -65,7 +63,7 @@ def get_configs() -> (
     )
 
 
-@pytest.mark.asyncio()
+@pytest.mark.asyncio
 @patch("agent_cli.agents.voice_edit.process_instruction_and_respond", new_callable=AsyncMock)
 @patch("agent_cli.agents.voice_edit.get_instruction_from_audio", new_callable=AsyncMock)
 @patch("agent_cli.agents.voice_edit.asr.record_audio_with_manual_stop", new_callable=AsyncMock)

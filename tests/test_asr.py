@@ -11,7 +11,7 @@ from wyoming.audio import AudioChunk, AudioStart, AudioStop
 from agent_cli import asr
 
 
-@pytest.mark.asyncio()
+@pytest.mark.asyncio
 async def test_send_audio() -> None:
     """Test that _send_audio sends the correct events."""
     # Arrange
@@ -46,7 +46,7 @@ async def test_send_audio() -> None:
     client.write_event.assert_any_call(AudioStop().event())
 
 
-@pytest.mark.asyncio()
+@pytest.mark.asyncio
 async def test_receive_text() -> None:
     """Test that receive_transcript correctly processes events."""
     # Arrange
@@ -110,7 +110,7 @@ def test_get_recorded_audio_transcriber():
     assert transcriber is asr.transcribe_recorded_audio_wyoming
 
 
-@pytest.mark.asyncio()
+@pytest.mark.asyncio
 @patch("agent_cli.asr.wyoming_client_context", side_effect=ConnectionRefusedError)
 async def test_transcribe_recorded_audio_wyoming_connection_error(
     mock_wyoming_client_context: MagicMock,

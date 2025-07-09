@@ -19,7 +19,7 @@ if TYPE_CHECKING:
 runner = CliRunner()
 
 
-@pytest.fixture()
+@pytest.fixture
 def config_file(tmp_path: Path) -> Path:
     """Provides a config file with the new flat, dashed-key format."""
     config_content = """

@@ -41,7 +41,7 @@ def test_build_agent(monkeypatch: pytest.MonkeyPatch) -> None:
     assert agent.model.model_name == "test-model"
 
 
-@pytest.mark.asyncio()
+@pytest.mark.asyncio
 @patch("agent_cli.llm.build_agent")
 async def test_get_llm_response(mock_build_agent: MagicMock) -> None:
     """Test getting a response from the LLM."""
@@ -73,7 +73,7 @@ async def test_get_llm_response(mock_build_agent: MagicMock) -> None:
     mock_agent.run.assert_called_once_with("test")
 
 
-@pytest.mark.asyncio()
+@pytest.mark.asyncio
 @patch("agent_cli.llm.build_agent")
 async def test_get_llm_response_error(mock_build_agent: MagicMock) -> None:
     """Test getting a response from the LLM when an error occurs."""
@@ -105,7 +105,7 @@ async def test_get_llm_response_error(mock_build_agent: MagicMock) -> None:
     mock_agent.run.assert_called_once_with("test")
 
 
-@pytest.mark.asyncio()
+@pytest.mark.asyncio
 @patch("agent_cli.llm.build_agent")
 async def test_get_llm_response_error_exit(mock_build_agent: MagicMock):
     """Test getting a response from the LLM when an error occurs and exit_on_error is True."""

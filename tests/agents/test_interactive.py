@@ -23,7 +23,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 
-@pytest.fixture()
+@pytest.fixture
 def history_file(tmp_path: Path) -> Path:
     """Create a temporary history file."""
     return tmp_path / "conversation.json"
@@ -71,7 +71,7 @@ def test_format_conversation_for_llm() -> None:
     assert "assistant (4 minutes ago): It's sunny." in formatted
 
 
-@pytest.mark.asyncio()
+@pytest.mark.asyncio
 async def test_async_main_list_devices(tmp_path: Path) -> None:
     """Test the async_main function with list_input_devices=True."""
     general_cfg = config.General(
@@ -119,7 +119,7 @@ async def test_async_main_list_devices(tmp_path: Path) -> None:
         mock_setup_devices.assert_called_once()
 
 
-@pytest.mark.asyncio()
+@pytest.mark.asyncio
 async def test_async_main_list_output_devices(tmp_path: Path) -> None:
     """Test the async_main function with list_devices=True."""
     general_cfg = config.General(
@@ -167,7 +167,7 @@ async def test_async_main_list_output_devices(tmp_path: Path) -> None:
         mock_setup_devices.assert_called_once()
 
 
-@pytest.mark.asyncio()
+@pytest.mark.asyncio
 async def test_async_main_full_loop(tmp_path: Path) -> None:
     """Test a full loop of the chat agent's async_main function."""
     history_dir = tmp_path / "history"
