@@ -51,6 +51,44 @@ async def test_async_main_with_text():
         mock_handle_tts.assert_called_once()
 
 
+@pytest.mark.asyncio
+async def test_async_main_no_devices():
+    """Test the _async_main function when no devices are found."""
+    general_cfg = config.General(log_level="INFO", quiet=True)
+    provider_cfg = config.ProviderSelection(
+        tts_provider="local",
+        llm_provider="local",
+        asr_provider="local",
+    )
+    audio_out_cfg = config.AudioOutput(enable_tts=True)
+    wyoming_tts_cfg = config.WyomingTTS(wyoming_tts_ip="localhost", wyoming_tts_port=10200)
+    openai_tts_cfg = config.OpenAITTS(openai_tts_model="tts-1", openai_tts_voice="alloy")
+    openai_llm_cfg = config.OpenAILLM(openai_llm_model="gpt-4")
+
+    with (
+        patch("agent_cli.agents.speak.pyaudio_context"),
+        patch(
+            "agent_cli.agents.speak.setup_devices",
+            return_value=None,
+        ) as mock_setup,
+        patch(
+            "agent_cli.agents.speak.handle_tts_playback",
+            new_callable=AsyncMock,
+        ) as mock_handle_tts,
+    ):
+        await _async_main(
+            general_cfg=general_cfg,
+            text="hello",
+            provider_cfg=provider_cfg,
+            audio_out_cfg=audio_out_cfg,
+            wyoming_tts_cfg=wyoming_tts_cfg,
+            openai_tts_cfg=openai_tts_cfg,
+            openai_llm_cfg=openai_llm_cfg,
+        )
+        mock_setup.assert_called_once()
+        mock_handle_tts.assert_not_called()
+
+
 @patch("agent_cli.agents.speak._async_main", new_callable=AsyncMock)
 def test_speak_agent(mock_async_main: AsyncMock) -> None:
     """Test the speak agent."""
