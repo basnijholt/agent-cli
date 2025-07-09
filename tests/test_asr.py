@@ -11,7 +11,7 @@ from wyoming.audio import AudioChunk, AudioStart, AudioStop
 from agent_cli import asr
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio()
 async def test_send_audio() -> None:
     """Test that _send_audio sends the correct events."""
     # Arrange
@@ -46,7 +46,7 @@ async def test_send_audio() -> None:
     client.write_event.assert_any_call(AudioStop().event())
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio()
 async def test_receive_text() -> None:
     """Test that receive_transcript correctly processes events."""
     # Arrange
@@ -72,3 +72,39 @@ async def test_receive_text() -> None:
     assert result == "hello world"
     chunk_callback.assert_called_once_with("hello")
     final_callback.assert_called_once_with("hello world")
+
+
+def test_get_transcriber():
+    """Test that the correct transcriber is returned."""
+    provider_cfg = MagicMock()
+    provider_cfg.asr_provider = "openai"
+    transcriber = asr.get_transcriber(
+        provider_cfg,
+        MagicMock(),
+        MagicMock(),
+        MagicMock(),
+        MagicMock(),
+    )
+    assert transcriber.func is asr.transcribe_live_audio_openai
+
+    provider_cfg.asr_provider = "local"
+    transcriber = asr.get_transcriber(
+        provider_cfg,
+        MagicMock(),
+        MagicMock(),
+        MagicMock(),
+        MagicMock(),
+    )
+    assert transcriber.func is asr.transcribe_live_audio_wyoming
+
+
+def test_get_recorded_audio_transcriber():
+    """Test that the correct recorded audio transcriber is returned."""
+    provider_cfg = MagicMock()
+    provider_cfg.asr_provider = "openai"
+    transcriber = asr.get_recorded_audio_transcriber(provider_cfg)
+    assert transcriber is asr.transcribe_audio_openai
+
+    provider_cfg.asr_provider = "local"
+    transcriber = asr.get_recorded_audio_transcriber(provider_cfg)
+    assert transcriber is asr.transcribe_recorded_audio_wyoming
