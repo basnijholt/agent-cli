@@ -85,7 +85,7 @@ def test_get_transcriber():
         MagicMock(),
         MagicMock(),
     )
-    assert transcriber.func is asr.transcribe_live_audio_openai
+    assert transcriber.func is asr._transcribe_live_audio_openai
 
     provider_cfg.asr_provider = "local"
     transcriber = asr.get_transcriber(
@@ -95,7 +95,7 @@ def test_get_transcriber():
         MagicMock(),
         MagicMock(),
     )
-    assert transcriber.func is asr.transcribe_live_audio_wyoming
+    assert transcriber.func is asr._transcribe_live_audio_wyoming
 
 
 def test_get_recorded_audio_transcriber():
@@ -107,7 +107,7 @@ def test_get_recorded_audio_transcriber():
 
     provider_cfg.asr_provider = "local"
     transcriber = asr.get_recorded_audio_transcriber(provider_cfg)
-    assert transcriber is asr.transcribe_recorded_audio_wyoming
+    assert transcriber is asr._transcribe_recorded_audio_wyoming
 
 
 @pytest.mark.asyncio
@@ -116,7 +116,7 @@ async def test_transcribe_recorded_audio_wyoming_connection_error(
     mock_wyoming_client_context: MagicMock,
 ):
     """Test that transcribe_recorded_audio_wyoming handles ConnectionRefusedError."""
-    result = await asr.transcribe_recorded_audio_wyoming(
+    result = await asr._transcribe_recorded_audio_wyoming(
         audio_data=b"test",
         wyoming_asr_config=MagicMock(),
         logger=MagicMock(),

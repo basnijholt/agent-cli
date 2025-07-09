@@ -43,14 +43,14 @@ def get_transcriber(
     """Return the appropriate transcriber for live audio based on the provider."""
     if provider_config.asr_provider == "openai":
         return partial(
-            transcribe_live_audio_openai,
+            _transcribe_live_audio_openai,
             audio_input_config=audio_input_config,
             openai_asr_config=openai_asr_config,
             openai_llm_config=openai_llm_config,
         )
     if provider_config.asr_provider == "local":
         return partial(
-            transcribe_live_audio_wyoming,
+            _transcribe_live_audio_wyoming,
             audio_input_config=audio_input_config,
             wyoming_asr_config=wyoming_asr_config,
         )
@@ -65,7 +65,7 @@ def get_recorded_audio_transcriber(
     if provider_config.asr_provider == "openai":
         return transcribe_audio_openai
     if provider_config.asr_provider == "local":
-        return transcribe_recorded_audio_wyoming
+        return _transcribe_recorded_audio_wyoming
     msg = f"Unsupported ASR provider: {provider_config.asr_provider}"
     raise ValueError(msg)
 
@@ -182,7 +182,7 @@ async def record_audio_with_manual_stop(
     return audio_buffer.getvalue()
 
 
-async def transcribe_recorded_audio_wyoming(
+async def _transcribe_recorded_audio_wyoming(
     *,
     audio_data: bytes,
     wyoming_asr_config: config.WyomingASR,
@@ -218,7 +218,7 @@ async def transcribe_recorded_audio_wyoming(
         return ""
 
 
-async def transcribe_live_audio_wyoming(
+async def _transcribe_live_audio_wyoming(
     *,
     audio_input_config: config.AudioInput,
     wyoming_asr_config: config.WyomingASR,
@@ -257,7 +257,7 @@ async def transcribe_live_audio_wyoming(
         return None
 
 
-async def transcribe_live_audio_openai(
+async def _transcribe_live_audio_openai(
     *,
     audio_input_config: config.AudioInput,
     openai_asr_config: config.OpenAIASR,

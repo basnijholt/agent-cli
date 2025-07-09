@@ -97,7 +97,7 @@ def test_get_transcriber_wyoming() -> None:
         openai_asr_config,
         openai_llm_config,
     )
-    assert transcriber.func == asr.transcribe_live_audio_wyoming  # type: ignore[attr-defined]
+    assert transcriber.func == asr._transcribe_live_audio_wyoming  # type: ignore[attr-defined]
 
 
 def test_get_synthesizer_wyoming() -> None:
