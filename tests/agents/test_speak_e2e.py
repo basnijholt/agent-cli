@@ -12,7 +12,7 @@ from tests.mocks.audio import MockPyAudio
 from tests.mocks.wyoming import MockTTSClient
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio()
 @patch("agent_cli.tts.wyoming_client_context")
 async def test_speak_e2e(
     mock_wyoming_client_context: MagicMock,

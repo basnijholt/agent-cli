@@ -102,6 +102,7 @@ def read_file(path: str) -> str:
     """Read the content of a file.
 
     Args:
+    ----
         path: The path to the file to read.
 
     """
@@ -117,6 +118,7 @@ def execute_code(code: str) -> str:
     """Execute a shell command.
 
     Args:
+    ----
         code: The shell command to execute.
 
     """
@@ -146,11 +148,13 @@ def add_memory(content: str, category: str = "general", tags: str = "") -> str:
     Always ask for permission before storing personal or sensitive information.
 
     Args:
+    ----
         content: The specific information to remember (be descriptive and clear)
         category: Type of memory - use "personal", "preferences", "facts", "tasks", "projects", or "general"
         tags: Comma-separated keywords that would help find this memory later (e.g., "work, python, programming")
 
     Returns:
+    -------
         Confirmation message with the memory ID
 
     """
@@ -186,10 +190,12 @@ def search_memory(query: str, category: str = "") -> str:
     The search looks through memory content and tags for matches.
 
     Args:
+    ----
         query: Keywords to search for (e.g., "programming languages", "work schedule", "preferences")
         category: Optional filter by category ("personal", "preferences", "facts", "tasks", "projects")
 
     Returns:
+    -------
         Relevant memories found, or message if none found
 
     """
@@ -235,12 +241,14 @@ def update_memory(memory_id: int, content: str = "", category: str = "", tags: s
     Only provide the fields that should be updated - empty fields will keep existing values.
 
     Args:
+    ----
         memory_id: The ID of the memory to update (use search_memory or list_all_memories to find IDs)
         content: New content for the memory (leave empty to keep existing)
         category: New category (leave empty to keep existing)
         tags: New comma-separated tags (leave empty to keep existing)
 
     Returns:
+    -------
         Confirmation message or error if memory ID not found
 
     """
@@ -284,9 +292,11 @@ def list_all_memories(limit: int = 10) -> str:
     Shows memories in reverse chronological order (newest first).
 
     Args:
+    ----
         limit: Maximum number of memories to show (default 10, use higher numbers if user wants more)
 
     Returns:
+    -------
         Formatted list of all memories with IDs, content, categories, and tags
 
     """
@@ -323,7 +333,8 @@ def list_memory_categories() -> str:
 
     This provides a summary view before using list_all_memories for details.
 
-    Returns:
+    Returns
+    -------
         Summary of memory categories with counts (e.g., "personal: 5 memories")
 
     """

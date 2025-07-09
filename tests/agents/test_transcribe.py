@@ -12,7 +12,7 @@ from agent_cli.agents import config, transcribe
 from tests.mocks.wyoming import MockASRClient
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio()
 @patch("agent_cli.asr.wyoming_client_context")
 @patch("agent_cli.agents.transcribe.pyperclip")
 @patch("agent_cli.agents.transcribe.pyaudio_context")

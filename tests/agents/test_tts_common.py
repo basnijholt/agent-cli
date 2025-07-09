@@ -14,7 +14,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio()
 @patch("agent_cli.agents._tts_common.tts.speak_text", new_callable=AsyncMock)
 async def test_handle_tts_playback(mock_speak_text: AsyncMock) -> None:
     """Test the handle_tts_playback function."""
@@ -66,7 +66,7 @@ async def test_handle_tts_playback(mock_speak_text: AsyncMock) -> None:
     )
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio()
 @patch("agent_cli.agents._tts_common.tts.speak_text", new_callable=AsyncMock)
 async def test_handle_tts_playback_with_save_file(
     mock_speak_text: AsyncMock,
@@ -113,7 +113,7 @@ async def test_handle_tts_playback_with_save_file(
     assert save_file.read_bytes() == b"audio data"
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio()
 @patch("agent_cli.agents._tts_common.tts.speak_text", new_callable=AsyncMock)
 async def test_handle_tts_playback_no_audio(mock_speak_text: AsyncMock) -> None:
     """Test the handle_tts_playback function when no audio is returned."""

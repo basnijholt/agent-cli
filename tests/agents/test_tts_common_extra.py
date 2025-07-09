@@ -11,7 +11,7 @@ from agent_cli.agents import config
 from agent_cli.agents._tts_common import _save_audio_file, handle_tts_playback
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio()
 @patch("agent_cli.agents._tts_common.asyncio.to_thread")
 async def test_save_audio_file_os_error(mock_to_thread: AsyncMock) -> None:
     """Test _save_audio_file with OSError."""
@@ -27,7 +27,7 @@ async def test_save_audio_file_os_error(mock_to_thread: AsyncMock) -> None:
     mock_to_thread.assert_called_once()
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio()
 @patch("agent_cli.agents._tts_common.tts.speak_text", new_callable=AsyncMock)
 async def test_handle_tts_playback_os_error(mock_speak_text: AsyncMock) -> None:
     """Test handle_tts_playback with OSError."""

@@ -15,7 +15,7 @@ if TYPE_CHECKING:
 
 def _get_openai_client(api_key: str) -> AsyncOpenAI:
     """Get an OpenAI client instance."""
-    from openai import AsyncOpenAI  # noqa: PLC0415
+    from openai import AsyncOpenAI
 
     if not api_key:
         msg = "OpenAI API key is not set."

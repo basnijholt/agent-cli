@@ -14,7 +14,7 @@ from agent_cli.cli import app
 from agent_cli.utils import InteractiveStopEvent
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio()
 async def test_handle_conversation_turn_no_instruction():
     """Test that the conversation turn exits early if no instruction is given."""
     mock_p = MagicMock()
@@ -74,9 +74,9 @@ def test_chat_command_stop_and_status():
         mock_stop_or_status.assert_called_with(
             "chat",
             "chat agent",
-            True,  # noqa: FBT003, stop
-            False,  # noqa: FBT003, status
-            False,  # noqa: FBT003, toggle
+            True,  # , stop
+            False,  # , status
+            False,  # , toggle
             quiet=False,
         )
 
@@ -85,9 +85,9 @@ def test_chat_command_stop_and_status():
         mock_stop_or_status.assert_called_with(
             "chat",
             "chat agent",
-            False,  # noqa: FBT003, stop
-            True,  # noqa: FBT003, status
-            False,  # noqa: FBT003, toggle
+            False,  # , stop
+            True,  # , status
+            False,  # , toggle
             quiet=False,
         )
 
@@ -106,7 +106,7 @@ def test_chat_command_list_output_devices():
         mock_setup_devices.assert_called_once()
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio()
 async def test_async_main_exception_handling():
     """Test that exceptions in async_main are caught and logged."""
     general_cfg = config.General(log_level="INFO", log_file=None, quiet=False, list_devices=True)

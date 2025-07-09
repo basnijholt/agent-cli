@@ -54,7 +54,7 @@ OPENAI_API_KEY: str | None = typer.Option(
     rich_help_panel="LLM Configuration: OpenAI",
 )
 LLM: bool = typer.Option(
-    False,  # noqa: FBT003
+    False,
     "--llm/--no-llm",
     help="Use an LLM to process the transcript.",
     rich_help_panel="LLM Configuration",
@@ -76,7 +76,7 @@ INPUT_DEVICE_NAME: str | None = typer.Option(
     rich_help_panel="ASR (Audio) Configuration",
 )
 LIST_DEVICES: bool = typer.Option(
-    False,  # noqa: FBT003
+    False,
     "--list-devices",
     help="List available audio input and output devices and exit.",
     is_eager=True,
@@ -128,7 +128,7 @@ WAKE_WORD_NAME: str = typer.Option(
 # --- TTS (Text-to-Speech) Configuration ---
 # General TTS
 ENABLE_TTS: bool = typer.Option(
-    False,  # noqa: FBT003
+    False,
     "--tts/--no-tts",
     help="Enable text-to-speech for responses.",
     rich_help_panel="TTS (Text-to-Speech) Configuration",
@@ -199,19 +199,19 @@ OPENAI_TTS_VOICE: str = typer.Option(
 
 # --- Process Management Options ---
 STOP: bool = typer.Option(
-    False,  # noqa: FBT003
+    False,
     "--stop",
     help="Stop any running background process.",
     rich_help_panel="Process Management Options",
 )
 STATUS: bool = typer.Option(
-    False,  # noqa: FBT003
+    False,
     "--status",
     help="Check if a background process is running.",
     rich_help_panel="Process Management Options",
 )
 TOGGLE: bool = typer.Option(
-    False,  # noqa: FBT003
+    False,
     "--toggle",
     help="Toggle the background process on/off. "
     "If the process is running, it will be stopped. "
@@ -223,7 +223,7 @@ TOGGLE: bool = typer.Option(
 
 
 def _conf_callback(ctx: typer.Context, param: typer.CallbackParam, value: str) -> str:  # noqa: ARG001
-    from agent_cli.cli import set_config_defaults  # noqa: PLC0415
+    from agent_cli.cli import set_config_defaults
 
     set_config_defaults(ctx, value)
     return value
@@ -238,7 +238,7 @@ CONFIG_FILE: str | None = typer.Option(
     rich_help_panel="General Options",
 )
 CLIPBOARD: bool = typer.Option(
-    True,  # noqa: FBT003
+    True,
     "--clipboard/--no-clipboard",
     help="Copy result to clipboard.",
     rich_help_panel="General Options",
@@ -257,7 +257,7 @@ LOG_FILE: str | None = typer.Option(
     rich_help_panel="General Options",
 )
 QUIET: bool = typer.Option(
-    False,  # noqa: FBT003
+    False,
     "-q",
     "--quiet",
     help="Suppress console output from rich.",

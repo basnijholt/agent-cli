@@ -197,7 +197,7 @@ def _apply_speed_adjustment(
     """Apply speed adjustment to audio data."""
     if speed == 1.0 or not has_audiostretchy:
         return audio_data, False
-    from audiostretchy.stretch import AudioStretch  # noqa: PLC0415
+    from audiostretchy.stretch import AudioStretch
 
     audio_data.seek(0)
     input_copy = io.BytesIO(audio_data.read())

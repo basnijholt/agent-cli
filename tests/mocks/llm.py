@@ -23,6 +23,7 @@ class MockLLMAgent:
         """Initialize mock agent.
 
         Args:
+        ----
             responses: Mapping of input patterns to responses
 
         """

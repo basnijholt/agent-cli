@@ -18,13 +18,13 @@ def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
             item.add_marker(pytest.mark.timeout(3))
 
 
-@pytest.fixture
+@pytest.fixture()
 def mock_console() -> Console:
     """Provide a console that writes to a StringIO for testing."""
     return Console(file=io.StringIO(), width=80, force_terminal=True)
 
 
-@pytest.fixture
+@pytest.fixture()
 def mock_logger() -> logging.Logger:
     """Provide a mock logger for testing."""
     logger = logging.getLogger("test")
@@ -32,19 +32,19 @@ def mock_logger() -> logging.Logger:
     return logger
 
 
-@pytest.fixture
+@pytest.fixture()
 def stop_event() -> asyncio.Event:
     """Provide an asyncio event for stopping operations."""
     return asyncio.Event()
 
 
-@pytest.fixture
+@pytest.fixture()
 def timeout_seconds() -> float:
     """Default timeout for async operations in tests."""
     return 5.0
 
 
-@pytest.fixture
+@pytest.fixture()
 def mock_pyaudio_device_info() -> list[dict]:
     """Mock PyAudio device info for testing."""
     return [
@@ -72,7 +72,7 @@ def mock_pyaudio_device_info() -> list[dict]:
     ]
 
 
-@pytest.fixture
+@pytest.fixture()
 def llm_responses() -> dict[str, str]:
     """Predefined LLM responses for testing."""
     return {

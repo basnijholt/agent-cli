@@ -11,7 +11,7 @@ from wyoming.client import AsyncClient
 from agent_cli.wyoming_utils import wyoming_client_context
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio()
 async def test_wyoming_client_context_success():
     """Test that the Wyoming client context manager connects successfully."""
     mock_client = AsyncMock(spec=AsyncClient)
@@ -26,7 +26,7 @@ async def test_wyoming_client_context_success():
             assert client is mock_client
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio()
 async def test_wyoming_client_context_connection_refused(
     caplog: pytest.LogCaptureFixture,
 ):
@@ -44,7 +44,7 @@ async def test_wyoming_client_context_connection_refused(
     assert "Test connection refused" in caplog.text
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio()
 async def test_wyoming_client_context_generic_exception(
     caplog: pytest.LogCaptureFixture,
 ):

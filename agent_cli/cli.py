@@ -31,7 +31,7 @@ def main(
         console.print("[bold yellow]Running --help for your convenience.[/bold yellow]")
         console.print(ctx.get_help())
         raise typer.Exit
-    import dotenv  # noqa: PLC0415
+    import dotenv
 
     dotenv.load_dotenv()
     print()

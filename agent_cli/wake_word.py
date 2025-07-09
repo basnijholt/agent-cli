@@ -63,11 +63,13 @@ async def _receive_wake_detection(
     """Receive wake word detection events.
 
     Args:
+    ----
         client: Wyoming client connection
         logger: Logger instance
         detection_callback: Optional callback for when wake word is detected
 
     Returns:
+    -------
         Name of detected wake word or None if no detection
 
     """
