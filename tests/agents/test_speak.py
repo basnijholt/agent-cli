@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from typer.testing import CliRunner
 
-from agent_cli.agents import config
+from agent_cli import config
 from agent_cli.agents.speak import _async_main
 from agent_cli.cli import app
 

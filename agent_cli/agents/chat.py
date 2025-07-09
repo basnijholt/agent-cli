@@ -25,13 +25,12 @@ from typing import TYPE_CHECKING, TypedDict
 import typer
 
 import agent_cli.agents._cli_options as opts
-from agent_cli import asr, process_manager
-from agent_cli.agents import config
+from agent_cli import config
 from agent_cli.agents._tts_common import handle_tts_playback
-from agent_cli.audio import pyaudio_context, setup_devices
 from agent_cli.cli import app, setup_logging
-from agent_cli.llm import get_llm_response
-from agent_cli.utils import (
+from agent_cli.core import process as process_manager
+from agent_cli.core.audio import pyaudio_context, setup_devices
+from agent_cli.core.utils import (
     InteractiveStopEvent,
     console,
     format_timedelta_to_ago,
@@ -43,6 +42,8 @@ from agent_cli.utils import (
     signal_handling_context,
     stop_or_status_or_toggle,
 )
+from agent_cli.llm import get_llm_response
+from agent_cli.services.factory import get_asr_service
 
 if TYPE_CHECKING:
     import pyaudio
@@ -150,7 +151,6 @@ async def _handle_conversation_turn(
     provider_cfg: config.ProviderSelection,
     general_cfg: config.General,
     history_cfg: config.History,
-    audio_in_cfg: config.AudioInput,
     wyoming_asr_cfg: config.WyomingASR,
     openai_asr_cfg: config.OpenAIASR,
     ollama_cfg: config.Ollama,
@@ -176,14 +176,15 @@ async def _handle_conversation_turn(
 
     # 1. Transcribe user's command
     start_time = time.monotonic()
-    transcriber = asr.get_transcriber(
+    transcriber = get_asr_service(
         provider_cfg,
-        audio_in_cfg,
         wyoming_asr_cfg,
         openai_asr_cfg,
         openai_llm_cfg,
+        LOGGER,
+        quiet=general_cfg.quiet,
     )
-    instruction = await transcriber(
+    instruction = await transcriber.transcribe(
         p=p,
         stop_event=stop_event,
         quiet=general_cfg.quiet,

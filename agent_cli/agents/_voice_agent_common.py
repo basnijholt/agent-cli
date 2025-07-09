@@ -8,15 +8,15 @@ from typing import TYPE_CHECKING
 
 import pyperclip
 
-from agent_cli import asr
 from agent_cli.agents._tts_common import handle_tts_playback
+from agent_cli.core.utils import print_input_panel, print_with_style
 from agent_cli.llm import process_and_update_clipboard
-from agent_cli.utils import print_input_panel, print_with_style
+from agent_cli.services.factory import get_asr_service
 
 if TYPE_CHECKING:
     from rich.live import Live
 
-    from agent_cli.agents import config
+    from agent_cli import config
 
 LOGGER = logging.getLogger()
 
@@ -25,10 +25,8 @@ async def get_instruction_from_audio(
     *,
     audio_data: bytes,
     provider_config: config.ProviderSelection,
-    audio_input_config: config.AudioInput,
     wyoming_asr_config: config.WyomingASR,
     openai_asr_config: config.OpenAIASR,
-    ollama_config: config.Ollama,
     openai_llm_config: config.OpenAILLM,
     logger: logging.Logger,
     quiet: bool,
@@ -36,18 +34,15 @@ async def get_instruction_from_audio(
     """Transcribe audio data and return the instruction."""
     try:
         start_time = time.monotonic()
-        transcriber = asr.get_recorded_audio_transcriber(provider_config)
-        instruction = await transcriber(
-            audio_data=audio_data,
-            provider_config=provider_config,
-            audio_input_config=audio_input_config,
-            wyoming_asr_config=wyoming_asr_config,
-            openai_asr_config=openai_asr_config,
-            ollama_config=ollama_config,
-            openai_llm_config=openai_llm_config,
-            logger=logger,
+        transcriber = get_asr_service(
+            provider_config,
+            wyoming_asr_config,
+            openai_asr_config,
+            openai_llm_config,
+            logger,
             quiet=quiet,
         )
+        instruction = await transcriber.transcribe(audio_data)
         elapsed = time.monotonic() - start_time
 
         if not instruction or not instruction.strip():

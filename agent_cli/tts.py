@@ -6,17 +6,21 @@ import asyncio
 import importlib.util
 import io
 import wave
-from functools import partial
 from typing import TYPE_CHECKING
 
 from wyoming.audio import AudioChunk, AudioStart, AudioStop
 from wyoming.tts import Synthesize, SynthesizeVoice
 
 from agent_cli import constants
-from agent_cli.audio import open_pyaudio_stream, pyaudio_context, setup_output_stream
-from agent_cli.services import synthesize_speech_openai
-from agent_cli.utils import InteractiveStopEvent, live_timer, print_error_message, print_with_style
-from agent_cli.wyoming_utils import manage_send_receive_tasks, wyoming_client_context
+from agent_cli.core.audio import open_pyaudio_stream, pyaudio_context, setup_output_stream
+from agent_cli.core.utils import (
+    InteractiveStopEvent,
+    live_timer,
+    print_error_message,
+    print_with_style,
+)
+from agent_cli.services.factory import get_tts_service
+from agent_cli.services.local import manage_send_receive_tasks, wyoming_client_context
 
 if TYPE_CHECKING:
     import logging
@@ -25,7 +29,7 @@ if TYPE_CHECKING:
     from rich.live import Live
     from wyoming.client import AsyncClient
 
-    from agent_cli.agents import config
+    from agent_cli import config
 
 has_audiostretchy = importlib.util.find_spec("audiostretchy") is not None
 
@@ -36,17 +40,28 @@ def get_synthesizer(
     wyoming_tts_config: config.WyomingTTS,
     openai_tts_config: config.OpenAITTS,
     openai_llm_config: config.OpenAILLM,
+    logger: logging.Logger,
+    *,
+    quiet: bool = False,
 ) -> Callable[..., Awaitable[bytes | None]]:
     """Return the appropriate synthesizer based on the config."""
     if not audio_output_config.enable_tts:
         return _dummy_synthesizer
-    if provider_config.tts_provider == "openai":
-        return partial(
-            _synthesize_speech_openai,
-            openai_tts_config=openai_tts_config,
-            openai_llm_config=openai_llm_config,
-        )
-    return partial(_synthesize_speech_wyoming, wyoming_tts_config=wyoming_tts_config)
+
+    tts_service = get_tts_service(
+        provider_config,
+        wyoming_tts_config,
+        openai_tts_config,
+        openai_llm_config,
+        logger,
+        quiet=quiet,
+    )
+
+    async def synthesize(text: str) -> bytes | None:
+        """Synthesize speech from text."""
+        return await tts_service.synthesize(text)
+
+    return synthesize
 
 
 def _create_synthesis_request(
@@ -131,23 +146,6 @@ def _create_wav_data(
 async def _dummy_synthesizer(**_kwargs: object) -> bytes | None:
     """A dummy synthesizer that does nothing."""
     return None
-
-
-async def _synthesize_speech_openai(
-    *,
-    text: str,
-    openai_tts_config: config.OpenAITTS,
-    openai_llm_config: config.OpenAILLM,
-    logger: logging.Logger,
-    **_kwargs: object,
-) -> bytes | None:
-    """Synthesize speech from text using OpenAI TTS server."""
-    return await synthesize_speech_openai(
-        text=text,
-        openai_tts_config=openai_tts_config,
-        openai_llm_config=openai_llm_config,
-        logger=logger,
-    )
 
 
 async def _synthesize_speech_wyoming(
@@ -282,6 +280,7 @@ async def speak_text(
         wyoming_tts_config,
         openai_tts_config,
         openai_llm_config,
+        logger,
     )
     audio_data = None
     try:

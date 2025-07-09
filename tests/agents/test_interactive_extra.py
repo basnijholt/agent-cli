@@ -5,13 +5,13 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from typer.testing import CliRunner
 
-from agent_cli.agents import config
+from agent_cli import config
 from agent_cli.agents.chat import (
     _async_main,
     _handle_conversation_turn,
 )
 from agent_cli.cli import app
-from agent_cli.utils import InteractiveStopEvent
+from agent_cli.core.utils import InteractiveStopEvent
 
 
 @pytest.mark.asyncio

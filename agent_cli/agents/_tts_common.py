@@ -7,14 +7,14 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from agent_cli import tts
-from agent_cli.utils import InteractiveStopEvent, print_with_style
+from agent_cli.core.utils import InteractiveStopEvent, print_with_style
 
 if TYPE_CHECKING:
     import logging
 
     from rich.live import Live
 
-    from agent_cli.agents import config
+    from agent_cli import config
 
 
 async def _save_audio_file(
