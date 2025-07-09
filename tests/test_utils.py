@@ -38,6 +38,19 @@ def test_get_clipboard_text_empty() -> None:
         assert text is None
 
 
+def test_get_clipboard_text_empty_not_quiet() -> None:
+    """Test the get_clipboard_text function when clipboard is empty and not quiet."""
+    with (
+        patch("pyperclip.paste", return_value=""),
+        patch(
+            "agent_cli.utils.print_with_style",
+        ) as mock_print,
+    ):
+        text = utils.get_clipboard_text(quiet=False)
+        assert text is None
+        mock_print.assert_called_once_with("Clipboard is empty.", style="yellow")
+
+
 def test_print_device_index() -> None:
     """Test the print_device_index function."""
     with patch("agent_cli.utils.console") as mock_console:
@@ -70,6 +83,13 @@ def test_print_error_message() -> None:
     """Test the print_error_message function."""
     with patch("agent_cli.utils.console") as mock_console:
         utils.print_error_message("hello", "world")
+        mock_console.print.assert_called_once()
+
+
+def test_print_error_message_no_suggestion() -> None:
+    """Test the print_error_message function without a suggestion."""
+    with patch("agent_cli.utils.console") as mock_console:
+        utils.print_error_message("hello")
         mock_console.print.assert_called_once()
 
 
