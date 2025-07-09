@@ -14,7 +14,7 @@ This document tracks the progress of improving test coverage for the `agent-cli`
 - [x] `agent_cli/agents/autocorrect.py` (in progress)
 - [x] `agent_cli/utils.py` (89%)
 - [x] `agent_cli/agents/chat.py` (89%)
-- [ ] `agent_cli/_tools.py` (87%)
+- [x] `agent_cli/_tools.py` (94%)
 - [ ] `agent_cli/agents/speak.py` (87%)
 - [ ] `agent_cli/agents/transcribe.py` (87%)
 - [ ] `agent_cli/agents/voice_edit.py` (89%)
