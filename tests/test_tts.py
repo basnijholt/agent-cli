@@ -9,10 +9,10 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from agent_cli.agents import config
-from agent_cli.tts import _apply_speed_adjustment, speak_text
+from agent_cli.tts import _apply_speed_adjustment, get_synthesizer, speak_text
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio()
 @patch("agent_cli.tts.get_synthesizer")
 async def test_speak_text(mock_get_synthesizer: MagicMock) -> None:
     """Test the speak_text function."""
@@ -115,3 +115,32 @@ def test_apply_speed_adjustment_with_audiostretchy(mock_audio_stretch_class: Mag
     # Should return a new BytesIO object and True for speed_changed
     assert result_data is not original_data
     assert speed_changed is True
+
+
+def test_get_synthesizer_disabled():
+    """Test that the dummy synthesizer is returned when TTS is disabled."""
+    provider_cfg = config.ProviderSelection(
+        asr_provider="local",
+        llm_provider="local",
+        tts_provider="local",
+    )
+    audio_output_config = config.AudioOutput(enable_tts=False)
+    wyoming_tts_config = config.WyomingTTS(
+        wyoming_tts_ip="localhost",
+        wyoming_tts_port=1234,
+    )
+    openai_tts_config = config.OpenAITTS(openai_tts_model="tts-1", openai_tts_voice="alloy")
+    openai_llm_config = config.OpenAILLM(
+        openai_llm_model="gpt-4o-mini",
+        openai_api_key="test_api_key",
+    )
+
+    synthesizer = get_synthesizer(
+        provider_config=provider_cfg,
+        audio_output_config=audio_output_config,
+        wyoming_tts_config=wyoming_tts_config,
+        openai_tts_config=openai_tts_config,
+        openai_llm_config=openai_llm_config,
+    )
+
+    assert synthesizer.__name__ == "_dummy_synthesizer"
