@@ -15,9 +15,31 @@ if TYPE_CHECKING:
     import logging
 
     from pydantic_ai import Agent
+    from pydantic_ai.models.openai import OpenAIModel
     from pydantic_ai.tools import Tool
 
     from agent_cli import config
+
+
+def _openai_llm_model(openai_config: config.OpenAILLM) -> OpenAIModel:
+    from pydantic_ai.models.openai import OpenAIModel  # noqa: PLC0415
+    from pydantic_ai.providers.openai import OpenAIProvider  # noqa: PLC0415
+
+    if not openai_config.openai_api_key:
+        msg = "OpenAI API key is not set."
+        raise ValueError(msg)
+    provider = OpenAIProvider(api_key=openai_config.openai_api_key)
+    model_name = openai_config.openai_llm_model
+    return OpenAIModel(model_name=model_name, provider=provider)
+
+
+def _ollama_llm_model(ollama_config: config.Ollama) -> OpenAIModel:
+    from pydantic_ai.models.openai import OpenAIModel  # noqa: PLC0415
+    from pydantic_ai.providers.openai import OpenAIProvider  # noqa: PLC0415
+
+    provider = OpenAIProvider(base_url=f"{ollama_config.ollama_host}/v1")
+    model_name = ollama_config.ollama_model
+    return OpenAIModel(model_name=model_name, provider=provider)
 
 
 def build_agent(
@@ -31,20 +53,12 @@ def build_agent(
 ) -> Agent:
     """Construct and return a PydanticAI agent."""
     from pydantic_ai import Agent  # noqa: PLC0415
-    from pydantic_ai.models.openai import OpenAIModel  # noqa: PLC0415
-    from pydantic_ai.providers.openai import OpenAIProvider  # noqa: PLC0415
 
     if provider_config.llm_provider == "openai":
-        if not openai_config.openai_api_key:
-            msg = "OpenAI API key is not set."
-            raise ValueError(msg)
-        provider = OpenAIProvider(api_key=openai_config.openai_api_key)
-        model_name = openai_config.openai_llm_model
-    else:
-        provider = OpenAIProvider(base_url=f"{ollama_config.ollama_host}/v1")
-        model_name = ollama_config.ollama_model
+        llm_model = _openai_llm_model(openai_config)
+    elif provider_config.llm_provider == "local":
+        llm_model = _ollama_llm_model(ollama_config)
 
-    llm_model = OpenAIModel(model_name=model_name, provider=provider)
     return Agent(
         model=llm_model,
         system_prompt=system_prompt or (),
