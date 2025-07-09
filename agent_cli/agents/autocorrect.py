@@ -22,10 +22,12 @@ from agent_cli.core.utils import (
     print_with_style,
     setup_logging,
 )
-from agent_cli.services.llm import build_agent
+from agent_cli.services.factory import get_llm_service
 
 if TYPE_CHECKING:
     from rich.status import Status
+
+    from agent_cli.services.types import ChatMessage
 
 # --- Configuration ---
 
@@ -78,21 +80,27 @@ async def _process_text(
     openai_llm_cfg: config.OpenAILLM,
 ) -> tuple[str, float]:
     """Process text with the LLM and return the corrected text and elapsed time."""
-    agent = build_agent(
+    llm_service = get_llm_service(
         provider_config=provider_cfg,
         ollama_config=ollama_cfg,
         openai_config=openai_llm_cfg,
-        system_prompt=SYSTEM_PROMPT,
-        instructions=AGENT_INSTRUCTIONS,
+        is_interactive=False,
     )
 
     # Format the input using the template to clearly separate text from instructions
     formatted_input = INPUT_TEMPLATE.format(text=text)
 
+    messages: list[ChatMessage] = [
+        {"role": "system", "content": SYSTEM_PROMPT, "timestamp": ""},
+        {"role": "user", "content": AGENT_INSTRUCTIONS, "timestamp": ""},
+        {"role": "user", "content": formatted_input, "timestamp": ""},
+    ]
+
     start_time = time.monotonic()
-    result = await agent.run(formatted_input)
+    response_generator = llm_service.chat(messages)
+    corrected_text = "".join([chunk async for chunk in response_generator])
     elapsed = time.monotonic() - start_time
-    return result.output, elapsed
+    return corrected_text, elapsed
 
 
 def _display_original_text(original_text: str, quiet: bool) -> None:

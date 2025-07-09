@@ -17,7 +17,7 @@ from agent_cli.core.audio import (
     read_from_queue,
     setup_input_stream,
 )
-from agent_cli.core.utils import manage_send_receive_tasks
+from agent_cli.core.utils import InteractiveStopEvent, manage_send_receive_tasks
 from agent_cli.services import transcribe_audio_openai
 from agent_cli.services._wyoming_utils import wyoming_client_context
 
@@ -30,7 +30,6 @@ if TYPE_CHECKING:
     from wyoming.client import AsyncClient
 
     from agent_cli import config
-    from agent_cli.core.utils import InteractiveStopEvent
 
 
 def get_transcriber(
@@ -182,11 +181,11 @@ async def record_audio_with_manual_stop(
     return audio_buffer.getvalue()
 
 
-async def _transcribe_recorded_audio_wyoming(
+async def _transcribe_wyoming(
     *,
-    audio_data: bytes,
     wyoming_asr_config: config.WyomingASR,
     logger: logging.Logger,
+    audio_data: bytes | None = None,
     quiet: bool = False,
     **_kwargs: object,
 ) -> str:
@@ -202,13 +201,14 @@ async def _transcribe_recorded_audio_wyoming(
             await client.write_event(Transcribe().event())
             await client.write_event(AudioStart(**constants.WYOMING_AUDIO_CONFIG).event())
 
-            chunk_size = constants.PYAUDIO_CHUNK_SIZE * 2
-            for i in range(0, len(audio_data), chunk_size):
-                chunk = audio_data[i : i + chunk_size]
-                await client.write_event(
-                    AudioChunk(audio=chunk, **constants.WYOMING_AUDIO_CONFIG).event(),
-                )
-                logger.debug("Sent %d byte(s) of audio", len(chunk))
+            if audio_data:
+                chunk_size = constants.PYAUDIO_CHUNK_SIZE * 2
+                for i in range(0, len(audio_data), chunk_size):
+                    chunk = audio_data[i : i + chunk_size]
+                    await client.write_event(
+                        AudioChunk(audio=chunk, **constants.WYOMING_AUDIO_CONFIG).event(),
+                    )
+                    logger.debug("Sent %d byte(s) of audio", len(chunk))
 
             await client.write_event(AudioStop().event())
             logger.debug("Sent AudioStop")
@@ -216,6 +216,23 @@ async def _transcribe_recorded_audio_wyoming(
             return await _receive_transcript(client, logger)
     except (ConnectionRefusedError, Exception):
         return ""
+
+
+async def _transcribe_recorded_audio_wyoming(
+    *,
+    audio_data: bytes,
+    wyoming_asr_config: config.WyomingASR,
+    logger: logging.Logger,
+    quiet: bool = False,
+    **_kwargs: object,
+) -> str:
+    """Process pre-recorded audio data with Wyoming ASR server."""
+    return await _transcribe_wyoming(
+        wyoming_asr_config=wyoming_asr_config,
+        logger=logger,
+        audio_data=audio_data,
+        quiet=quiet,
+    )
 
 
 async def _transcribe_live_audio_wyoming(

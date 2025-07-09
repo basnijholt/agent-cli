@@ -1,5 +1,8 @@
 """Tests for the chat agent."""
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -12,6 +15,9 @@ from agent_cli.agents.chat import (
 )
 from agent_cli.cli import app
 from agent_cli.core.utils import InteractiveStopEvent
+
+if TYPE_CHECKING:
+    from collections.abc import AsyncGenerator
 
 
 @pytest.mark.asyncio
@@ -40,13 +46,19 @@ async def test_handle_conversation_turn_no_llm_response():
     with (
         patch("agent_cli.agents.chat.asr.get_transcriber") as mock_get_transcriber,
         patch(
-            "agent_cli.agents.chat.get_llm_response",
-            new_callable=AsyncMock,
-        ) as mock_llm_response,
+            "agent_cli.agents.chat.get_llm_service",
+        ) as mock_get_llm_service,
     ):
         mock_transcriber = AsyncMock(return_value="test instruction")
         mock_get_transcriber.return_value = mock_transcriber
-        mock_llm_response.return_value = ""
+        mock_llm_service = MagicMock()
+
+        async def mock_chat_generator() -> AsyncGenerator[str, None]:
+            if False:
+                yield
+
+        mock_llm_service.chat.return_value = mock_chat_generator()
+        mock_get_llm_service.return_value = mock_llm_service
         await _handle_conversation_turn(
             p=mock_p,
             stop_event=stop_event,
@@ -66,7 +78,8 @@ async def test_handle_conversation_turn_no_llm_response():
         )
         mock_get_transcriber.assert_called_once()
         mock_transcriber.assert_awaited_once()
-        mock_llm_response.assert_awaited_once()
+        mock_get_llm_service.assert_called_once()
+        mock_llm_service.chat.assert_called_once()
 
     assert len(conversation_history) == 1
 

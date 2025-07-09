@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -14,7 +14,7 @@ from tests.mocks.wyoming import MockASRClient
 
 
 @pytest.mark.asyncio
-@patch("agent_cli.agents.transcribe.process_and_update_clipboard", new_callable=AsyncMock)
+@patch("agent_cli.agents.transcribe.get_llm_service")
 @patch("agent_cli.services.asr.wyoming_client_context")
 @patch("agent_cli.agents.transcribe.pyperclip")
 @patch("agent_cli.agents.transcribe.pyaudio_context")
@@ -24,7 +24,7 @@ async def test_transcribe_main_llm_enabled(
     mock_pyaudio_context: MagicMock,
     mock_pyperclip: MagicMock,
     mock_wyoming_client_context: MagicMock,
-    mock_process_and_update_clipboard: AsyncMock,
+    mock_get_llm_service: MagicMock,
     caplog: pytest.LogCaptureFixture,
 ) -> None:
     """Test the main function of the transcribe agent with LLM enabled."""
@@ -74,8 +74,8 @@ async def test_transcribe_main_llm_enabled(
         )
 
     # Assertions
-    mock_process_and_update_clipboard.assert_called_once()
-    mock_pyperclip.copy.assert_not_called()
+    mock_get_llm_service.assert_called_once()
+    mock_pyperclip.copy.assert_called_once()
 
 
 @pytest.mark.asyncio

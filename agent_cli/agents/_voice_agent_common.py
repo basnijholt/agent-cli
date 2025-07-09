@@ -10,13 +10,14 @@ import pyperclip
 
 from agent_cli.core.utils import print_input_panel, print_with_style
 from agent_cli.services import asr
-from agent_cli.services.llm import process_and_update_clipboard
+from agent_cli.services.factory import get_llm_service
 from agent_cli.services.tts import handle_tts_playback
 
 if TYPE_CHECKING:
     from rich.live import Live
 
     from agent_cli import config
+    from agent_cli.services.types import ChatMessage
 
 LOGGER = logging.getLogger()
 
@@ -94,36 +95,39 @@ async def process_instruction_and_respond(
     """Process instruction with LLM and handle TTS response."""
     # Process with LLM if clipboard mode is enabled
     if general_config.clipboard:
-        await process_and_update_clipboard(
-            system_prompt=system_prompt,
-            agent_instructions=agent_instructions,
+        llm_service = get_llm_service(
             provider_config=provider_config,
             ollama_config=ollama_config,
             openai_config=openai_llm_config,
-            logger=logger,
-            original_text=original_text,
-            instruction=instruction,
-            clipboard=general_config.clipboard,
-            quiet=general_config.quiet,
-            live=live,
+            is_interactive=not general_config.quiet,
         )
+        messages: list[ChatMessage] = [
+            {"role": "system", "content": system_prompt, "timestamp": ""},
+            {"role": "user", "content": agent_instructions, "timestamp": ""},
+            {
+                "role": "user",
+                "content": f"<original-text>{original_text}</original-text><instruction>{instruction}</instruction>",
+                "timestamp": "",
+            },
+        ]
+        response_generator = llm_service.chat(messages)
+        response_text = "".join([chunk async for chunk in response_generator])
+        pyperclip.copy(response_text)
 
         # Handle TTS response if enabled
-        if audio_output_config.enable_tts:
-            response_text = pyperclip.paste()
-            if response_text and response_text.strip():
-                await handle_tts_playback(
-                    text=response_text,
-                    provider_config=provider_config,
-                    audio_output_config=audio_output_config,
-                    wyoming_tts_config=wyoming_tts_config,
-                    openai_tts_config=openai_tts_config,
-                    openai_llm_config=openai_llm_config,
-                    save_file=general_config.save_file,
-                    quiet=general_config.quiet,
-                    logger=logger,
-                    play_audio=not general_config.save_file,
-                    status_message="🔊 Speaking response...",
-                    description="TTS audio",
-                    live=live,
-                )
+        if audio_output_config.enable_tts and response_text and response_text.strip():
+            await handle_tts_playback(
+                text=response_text,
+                provider_config=provider_config,
+                audio_output_config=audio_output_config,
+                wyoming_tts_config=wyoming_tts_config,
+                openai_tts_config=openai_tts_config,
+                openai_llm_config=openai_llm_config,
+                save_file=general_config.save_file,
+                quiet=general_config.quiet,
+                logger=logger,
+                play_audio=not general_config.save_file,
+                status_message="🔊 Speaking response...",
+                description="TTS audio",
+                live=live,
+            )

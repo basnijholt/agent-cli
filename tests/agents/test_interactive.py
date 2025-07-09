@@ -11,7 +11,6 @@ import pytest
 
 from agent_cli import config
 from agent_cli.agents.chat import (
-    ConversationEntry,
     _async_main,
     _format_conversation_for_llm,
     _load_conversation_history,
@@ -20,7 +19,10 @@ from agent_cli.agents.chat import (
 from agent_cli.core.utils import InteractiveStopEvent
 
 if TYPE_CHECKING:
+    from collections.abc import AsyncGenerator
     from pathlib import Path
+
+    from agent_cli.services.types import ChatMessage as ConversationEntry
 
 
 @pytest.fixture
@@ -208,9 +210,8 @@ async def test_async_main_full_loop(tmp_path: Path) -> None:
         patch("agent_cli.agents.chat.setup_devices", return_value=(1, "mock_input", 1)),
         patch("agent_cli.agents.chat.asr.get_transcriber") as mock_get_transcriber,
         patch(
-            "agent_cli.agents.chat.get_llm_response",
-            new_callable=AsyncMock,
-        ) as mock_llm_response,
+            "agent_cli.agents.chat.get_llm_service",
+        ) as mock_get_llm_service,
         patch(
             "agent_cli.agents.chat.handle_tts_playback",
             new_callable=AsyncMock,
@@ -224,7 +225,13 @@ async def test_async_main_full_loop(tmp_path: Path) -> None:
 
         mock_transcriber = AsyncMock(return_value="Mocked instruction")
         mock_get_transcriber.return_value = mock_transcriber
-        mock_llm_response.return_value = "Mocked response"
+        mock_llm_service = MagicMock()
+
+        async def mock_chat_generator() -> AsyncGenerator[str, None]:
+            yield "Mocked response"
+
+        mock_llm_service.chat.return_value = mock_chat_generator()
+        mock_get_llm_service.return_value = mock_llm_service
         mock_signal.return_value.__enter__.return_value = mock_stop_event
 
         await _async_main(
@@ -244,7 +251,8 @@ async def test_async_main_full_loop(tmp_path: Path) -> None:
         # Verify that the core functions were called
         mock_get_transcriber.assert_called_once()
         mock_transcriber.assert_called_once()
-        mock_llm_response.assert_called_once()
+        mock_get_llm_service.assert_called_once()
+        mock_llm_service.chat.assert_called_once()
         assert mock_stop_event.clear.call_count == 2  # Called after ASR and at end of turn
         mock_tts.assert_called_with(
             text="Mocked response",

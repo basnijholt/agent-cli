@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -11,6 +12,9 @@ from agent_cli.agents._voice_agent_common import (
     get_instruction_from_audio,
     process_instruction_and_respond,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import AsyncGenerator
 
 
 @pytest.mark.asyncio
@@ -80,11 +84,11 @@ async def test_get_instruction_from_audio_error(mock_get_transcriber: MagicMock)
 
 
 @pytest.mark.asyncio
-@patch("agent_cli.agents._voice_agent_common.process_and_update_clipboard")
 @patch("agent_cli.agents._voice_agent_common.handle_tts_playback")
+@patch("agent_cli.agents._voice_agent_common.get_llm_service")
 async def test_process_instruction_and_respond(
+    mock_get_llm_service: MagicMock,
     mock_handle_tts_playback: MagicMock,
-    mock_process_and_update_clipboard: MagicMock,
 ) -> None:
     """Test the process_instruction_and_respond function."""
     general_cfg = config.General(
@@ -109,9 +113,20 @@ async def test_process_instruction_and_respond(
     )
     openai_tts_cfg = config.OpenAITTS(openai_tts_model="tts-1", openai_tts_voice="alloy")
 
+    mock_llm_service = MagicMock()
+
+    async def mock_chat_generator() -> AsyncGenerator[str, None]:
+        yield "Corrected text"
+
+    mock_llm_service.chat.return_value = mock_chat_generator()
+    mock_get_llm_service.return_value = mock_llm_service
+
     with (
-        patch("agent_cli.agents.autocorrect.pyperclip.copy"),
-        patch("agent_cli.agents._voice_agent_common.pyperclip.paste"),
+        patch(
+            "agent_cli.agents._voice_agent_common.pyperclip.paste",
+            return_value="Corrected text",
+        ),
+        patch("agent_cli.agents._voice_agent_common.pyperclip.copy"),
     ):
         await process_instruction_and_respond(
             instruction="test instruction",
@@ -128,5 +143,6 @@ async def test_process_instruction_and_respond(
             live=MagicMock(),
             logger=MagicMock(),
         )
-    mock_process_and_update_clipboard.assert_called_once()
+    mock_get_llm_service.assert_called_once()
+    mock_llm_service.chat.assert_called_once()
     mock_handle_tts_playback.assert_called_once()
