@@ -6,7 +6,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from agent_cli import audio
+from agent_cli.core import audio
 from tests.mocks.audio import MockPyAudio
 
 
@@ -16,7 +16,7 @@ def _mock_pyaudio_with_cache_clear() -> None:
     audio._get_all_devices.cache_clear()
 
 
-@patch("agent_cli.audio.pyaudio.PyAudio")
+@patch("agent_cli.core.audio.pyaudio.PyAudio")
 def test_get_all_devices_caching(
     mock_pyaudio_class: Mock,
     mock_pyaudio_device_info: list[dict],
@@ -38,7 +38,7 @@ def test_get_all_devices_caching(
         assert len(devices1) == len(mock_pyaudio_device_info)
 
 
-@patch("agent_cli.audio.pyaudio.PyAudio")
+@patch("agent_cli.core.audio.pyaudio.PyAudio")
 def test_list_input_devices(
     mock_pyaudio_class: Mock,
     mock_pyaudio_device_info: list[dict],
@@ -56,7 +56,7 @@ def test_list_input_devices(
     # This is more of an integration test to ensure no exceptions are raised
 
 
-@patch("agent_cli.audio.pyaudio.PyAudio")
+@patch("agent_cli.core.audio.pyaudio.PyAudio")
 def test_list_output_devices(
     mock_pyaudio_class: Mock,
     mock_pyaudio_device_info: list[dict],
@@ -73,7 +73,7 @@ def test_list_output_devices(
     # Verify no exceptions are raised
 
 
-@patch("agent_cli.audio.pyaudio.PyAudio")
+@patch("agent_cli.core.audio.pyaudio.PyAudio")
 def test_list_all_devices(
     mock_pyaudio_class: Mock,
     mock_pyaudio_device_info: list[dict],
@@ -90,7 +90,7 @@ def test_list_all_devices(
     # Verify no exceptions are raised
 
 
-@patch("agent_cli.audio.pyaudio.PyAudio")
+@patch("agent_cli.core.audio.pyaudio.PyAudio")
 def test_input_device_by_index(
     mock_pyaudio_class: Mock,
     mock_pyaudio_device_info: list[dict],
@@ -117,7 +117,7 @@ def test_input_device_by_index(
         assert input_device_index == expected_device["index"]
 
 
-@patch("agent_cli.audio.pyaudio.PyAudio")
+@patch("agent_cli.core.audio.pyaudio.PyAudio")
 def test_input_device_by_name(
     mock_pyaudio_class: Mock,
     mock_pyaudio_device_info: list[dict],
@@ -142,7 +142,7 @@ def test_input_device_by_name(
         assert input_device_index == input_device["index"]
 
 
-@patch("agent_cli.audio.pyaudio.PyAudio")
+@patch("agent_cli.core.audio.pyaudio.PyAudio")
 def test_output_device_by_index(
     mock_pyaudio_class: Mock,
     mock_pyaudio_device_info: list[dict],
@@ -171,7 +171,7 @@ def test_output_device_by_index(
         assert input_device_index == expected_device["index"]
 
 
-@patch("agent_cli.audio.pyaudio.PyAudio")
+@patch("agent_cli.core.audio.pyaudio.PyAudio")
 def test_output_device_by_name(
     mock_pyaudio_class: Mock,
     mock_pyaudio_device_info: list[dict],
@@ -198,7 +198,7 @@ def test_output_device_by_name(
         assert input_device_index == output_device["index"]
 
 
-@patch("agent_cli.audio.pyaudio.PyAudio")
+@patch("agent_cli.core.audio.pyaudio.PyAudio")
 def test_input_device_invalid_index(
     mock_pyaudio_class: Mock,
     mock_pyaudio_device_info: list[dict],
@@ -220,7 +220,7 @@ def test_input_device_invalid_index(
         )
 
 
-@patch("agent_cli.audio.pyaudio.PyAudio")
+@patch("agent_cli.core.audio.pyaudio.PyAudio")
 def test_input_device_invalid_name(
     mock_pyaudio_class: Mock,
     mock_pyaudio_device_info: list[dict],
@@ -238,7 +238,7 @@ def test_input_device_invalid_name(
         )
 
 
-@patch("agent_cli.audio.pyaudio.PyAudio")
+@patch("agent_cli.core.audio.pyaudio.PyAudio")
 def test_output_device_invalid_name(
     mock_pyaudio_class: Mock,
     mock_pyaudio_device_info: list[dict],
@@ -257,7 +257,7 @@ def test_output_device_invalid_name(
         )
 
 
-@patch("agent_cli.audio.pyaudio.PyAudio")
+@patch("agent_cli.core.audio.pyaudio.PyAudio")
 def test_pyaudio_context_manager(
     mock_pyaudio_class: Mock,
     mock_pyaudio_device_info: list[dict],
@@ -276,7 +276,7 @@ def test_pyaudio_context_manager(
     # (MockPyAudio doesn't track this, but real PyAudio would)
 
 
-@patch("agent_cli.audio.pyaudio.PyAudio")
+@patch("agent_cli.core.audio.pyaudio.PyAudio")
 def test_open_pyaudio_stream_context_manager(
     mock_pyaudio_class: Mock,
     mock_pyaudio_device_info: list[dict],
@@ -308,7 +308,7 @@ def test_open_pyaudio_stream_context_manager(
             assert stream.is_output
 
 
-@patch("agent_cli.audio.pyaudio.PyAudio")
+@patch("agent_cli.core.audio.pyaudio.PyAudio")
 def test_device_filtering_by_capabilities(
     mock_pyaudio_class: Mock,
 ) -> None:

@@ -43,8 +43,8 @@ from agent_cli.agents._voice_agent_common import (
     get_instruction_from_audio,
     process_instruction_and_respond,
 )
-from agent_cli.audio import pyaudio_context, setup_devices
 from agent_cli.cli import app
+from agent_cli.core.audio import pyaudio_context, setup_devices
 from agent_cli.utils import (
     get_clipboard_text,
     maybe_live,

@@ -20,7 +20,7 @@ if TYPE_CHECKING:
 @pytest.mark.asyncio
 @patch("agent_cli.agents.transcribe.signal_handling_context")
 @patch("agent_cli.asr.wyoming_client_context")
-@patch("agent_cli.audio.pyaudio.PyAudio")
+@patch("agent_cli.core.audio.pyaudio.PyAudio")
 async def test_transcribe_e2e(
     mock_pyaudio_class: MagicMock,
     mock_wyoming_client_context: MagicMock,

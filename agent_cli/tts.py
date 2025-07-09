@@ -15,7 +15,7 @@ from wyoming.audio import AudioChunk, AudioStart, AudioStop
 from wyoming.tts import Synthesize, SynthesizeVoice
 
 from agent_cli import config, constants
-from agent_cli.audio import open_pyaudio_stream, pyaudio_context, setup_output_stream
+from agent_cli.core.audio import open_pyaudio_stream, pyaudio_context, setup_output_stream
 from agent_cli.services import synthesize_speech_openai
 from agent_cli.utils import (
     InteractiveStopEvent,

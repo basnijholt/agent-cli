@@ -11,7 +11,7 @@ from wyoming.asr import Transcribe, Transcript, TranscriptChunk, TranscriptStart
 from wyoming.audio import AudioChunk, AudioStart, AudioStop
 
 from agent_cli import constants
-from agent_cli.audio import (
+from agent_cli.core.audio import (
     open_pyaudio_stream,
     read_audio_stream,
     read_from_queue,

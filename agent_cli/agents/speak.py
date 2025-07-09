@@ -10,8 +10,8 @@ from pathlib import Path  # noqa: TC003
 import typer
 
 from agent_cli import config, opts, process
-from agent_cli.audio import pyaudio_context, setup_devices
 from agent_cli.cli import app
+from agent_cli.core.audio import pyaudio_context, setup_devices
 from agent_cli.tts import handle_tts_playback
 from agent_cli.utils import (
     get_clipboard_text,
