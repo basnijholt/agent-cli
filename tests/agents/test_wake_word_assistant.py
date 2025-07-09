@@ -24,3 +24,48 @@ def test_assistant_command(mock_asyncio_run: MagicMock):
     result = runner.invoke(app, ["assistant"])
     assert result.exit_code == 0
     mock_asyncio_run.assert_called_once()
+
+
+@patch("agent_cli.agents.assistant.stop_or_status_or_toggle")
+def test_assistant_stop(mock_stop_or_status_or_toggle: MagicMock):
+    """Test the assistant --stop command."""
+    result = runner.invoke(app, ["assistant", "--stop"])
+    assert result.exit_code == 0
+    mock_stop_or_status_or_toggle.assert_called_once_with(
+        "assistant",
+        "wake word assistant",
+        stop=True,
+        status=False,
+        toggle=False,
+        quiet=False,
+    )
+
+
+@patch("agent_cli.agents.assistant.stop_or_status_or_toggle")
+def test_assistant_status(mock_stop_or_status_or_toggle: MagicMock):
+    """Test the assistant --status command."""
+    result = runner.invoke(app, ["assistant", "--status"])
+    assert result.exit_code == 0
+    mock_stop_or_status_or_toggle.assert_called_once_with(
+        "assistant",
+        "wake word assistant",
+        stop=False,
+        status=True,
+        toggle=False,
+        quiet=False,
+    )
+
+
+@patch("agent_cli.agents.assistant.stop_or_status_or_toggle")
+def test_assistant_toggle(mock_stop_or_status_or_toggle: MagicMock):
+    """Test the assistant --toggle command."""
+    result = runner.invoke(app, ["assistant", "--toggle"])
+    assert result.exit_code == 0
+    mock_stop_or_status_or_toggle.assert_called_once_with(
+        "assistant",
+        "wake word assistant",
+        stop=False,
+        status=False,
+        toggle=True,
+        quiet=False,
+    )
