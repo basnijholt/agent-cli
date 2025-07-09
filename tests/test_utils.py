@@ -114,8 +114,8 @@ def test_interactive_stop_event() -> None:
     assert not stop_event.ctrl_c_pressed
 
 
-@patch("agent_cli.process_manager.kill_process")
-@patch("agent_cli.process_manager.is_process_running")
+@patch("agent_cli.process.kill_process")
+@patch("agent_cli.process.is_process_running")
 def test_stop_or_status_or_toggle(
     mock_is_process_running: Mock,
     mock_kill_process: Mock,
@@ -129,7 +129,7 @@ def test_stop_or_status_or_toggle(
 
     # Test status
     mock_is_process_running.return_value = True
-    with patch("agent_cli.process_manager.read_pid_file", return_value=123):
+    with patch("agent_cli.process.read_pid_file", return_value=123):
         assert utils.stop_or_status_or_toggle(
             "test",
             "test",

@@ -10,7 +10,7 @@ from pathlib import Path  # noqa: TC003
 import typer
 
 import agent_cli.agents._cli_options as opts
-from agent_cli import process_manager
+from agent_cli import process
 from agent_cli.agents import config
 from agent_cli.agents._tts_common import handle_tts_playback
 from agent_cli.audio import pyaudio_context, setup_devices
@@ -132,7 +132,7 @@ def speak(
         return
 
     # Use context manager for PID file management
-    with process_manager.pid_file_context(process_name), suppress(KeyboardInterrupt):
+    with process.pid_file_context(process_name), suppress(KeyboardInterrupt):
         provider_cfg = config.ProviderSelection(
             tts_provider=tts_provider,
             asr_provider="local",  # Not used

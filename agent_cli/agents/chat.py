@@ -25,7 +25,7 @@ from typing import TYPE_CHECKING, TypedDict
 import typer
 
 import agent_cli.agents._cli_options as opts
-from agent_cli import asr, process_manager
+from agent_cli import asr, process
 from agent_cli.agents import config
 from agent_cli.agents._tts_common import handle_tts_playback
 from agent_cli.audio import pyaudio_context, setup_devices
@@ -460,7 +460,7 @@ def chat(
     ):
         return
 
-    with process_manager.pid_file_context(process_name), suppress(KeyboardInterrupt):
+    with process.pid_file_context(process_name), suppress(KeyboardInterrupt):
         provider_cfg = config.ProviderSelection(
             asr_provider=asr_provider,
             llm_provider=llm_provider,

@@ -12,7 +12,7 @@ runner = CliRunner()
 
 
 @patch("agent_cli.agents.transcribe.asr.get_transcriber")
-@patch("agent_cli.agents.transcribe.process_manager.pid_file_context")
+@patch("agent_cli.agents.transcribe.process.pid_file_context")
 @patch("agent_cli.agents.transcribe.setup_devices")
 def test_transcribe_agent(
     mock_setup_devices: MagicMock,
@@ -41,7 +41,7 @@ def test_transcribe_agent(
     mock_copy.assert_called_once_with("hello")
 
 
-@patch("agent_cli.agents.transcribe.process_manager.kill_process")
+@patch("agent_cli.agents.transcribe.process.kill_process")
 def test_transcribe_stop(mock_kill_process: MagicMock) -> None:
     """Test the --stop flag."""
     mock_kill_process.return_value = True
@@ -51,7 +51,7 @@ def test_transcribe_stop(mock_kill_process: MagicMock) -> None:
     mock_kill_process.assert_called_once_with("transcribe")
 
 
-@patch("agent_cli.agents.transcribe.process_manager.kill_process")
+@patch("agent_cli.agents.transcribe.process.kill_process")
 def test_transcribe_stop_not_running(mock_kill_process: MagicMock) -> None:
     """Test the --stop flag when the process is not running."""
     mock_kill_process.return_value = False
@@ -60,17 +60,17 @@ def test_transcribe_stop_not_running(mock_kill_process: MagicMock) -> None:
     assert "No transcribe is running" in result.stdout
 
 
-@patch("agent_cli.agents.transcribe.process_manager.is_process_running")
+@patch("agent_cli.agents.transcribe.process.is_process_running")
 def test_transcribe_status_running(mock_is_process_running: MagicMock) -> None:
     """Test the --status flag when the process is running."""
     mock_is_process_running.return_value = True
-    with patch("agent_cli.agents.transcribe.process_manager.read_pid_file", return_value=123):
+    with patch("agent_cli.agents.transcribe.process.read_pid_file", return_value=123):
         result = runner.invoke(app, ["transcribe", "--status"])
     assert result.exit_code == 0
     assert "Transcribe is running" in result.stdout
 
 
-@patch("agent_cli.agents.transcribe.process_manager.is_process_running")
+@patch("agent_cli.agents.transcribe.process.is_process_running")
 def test_transcribe_status_not_running(mock_is_process_running: MagicMock) -> None:
     """Test the --status flag when the process is not running."""
     mock_is_process_running.return_value = False

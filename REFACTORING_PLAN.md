@@ -57,7 +57,7 @@ agent_cli/
     -   **Action:** Move `agent_cli/audio.py` to `agent_cli/core/audio.py`.
     -   **Content:** All PyAudio device management and streaming logic.
 -   **`agent_cli/core/process.py`**:
-    -   **Action:** Move `agent_cli/process_manager.py` to `agent_cli/core/process.py`.
+    -   **Action:** Move `agent_cli/process.py` to `agent_cli/core/process.py`.
     -   **Content:** All PID file and process management functions.
 -   **`agent_cli/core/utils.py`**:
     -   **Action:** Create `agent_cli/core/utils.py` and move generic helpers from `agent_cli/utils.py`.
@@ -86,5 +86,5 @@ agent_cli/
 ### Step 4: Refactor and Cleanup
 
 -   **Action:** Update all imports across the project to reflect the new structure.
--   **Action:** Delete the old, now-empty files: `asr.py`, `llm.py`, `tts.py`, `wake_word.py`, `services.py`, `process_manager.py`, `config_loader.py`, `wyoming_utils.py`, and `agents/config.py`.
+-   **Action:** Delete the old, now-empty files: `asr.py`, `llm.py`, `tts.py`, `wake_word.py`, `services.py`, `process.py`, `config_loader.py`, `wyoming_utils.py`, and `agents/config.py`.
 -   **Action:** Refactor `agent_cli/utils.py` to remove the functions that were moved to `core/utils.py`.

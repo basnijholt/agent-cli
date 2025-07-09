@@ -34,7 +34,7 @@ from pathlib import Path  # noqa: TC003
 from typing import TYPE_CHECKING
 
 import agent_cli.agents._cli_options as opts
-from agent_cli import asr, audio, process_manager, wake_word
+from agent_cli import asr, audio, process, wake_word
 from agent_cli.agents import config
 from agent_cli.agents._voice_agent_common import (
     get_instruction_from_audio,
@@ -319,7 +319,7 @@ def assistant(
         return
 
     with (
-        process_manager.pid_file_context(process_name),
+        process.pid_file_context(process_name),
         suppress(KeyboardInterrupt),
         maybe_live(not general_cfg.quiet) as live,
     ):

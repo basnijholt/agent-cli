@@ -24,7 +24,7 @@ from rich.spinner import Spinner
 from rich.status import Status
 from rich.text import Text
 
-from agent_cli import process_manager
+from agent_cli import process
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator, Coroutine, Generator
@@ -208,7 +208,7 @@ def stop_or_status_or_toggle(
 ) -> bool:
     """Handle process control for a given process name."""
     if stop:
-        if process_manager.kill_process(process_name):
+        if process.kill_process(process_name):
             if not quiet:
                 print_with_style(f"✅ {which.capitalize()} stopped.")
         elif not quiet:
@@ -216,8 +216,8 @@ def stop_or_status_or_toggle(
         return True
 
     if status:
-        if process_manager.is_process_running(process_name):
-            pid = process_manager.read_pid_file(process_name)
+        if process.is_process_running(process_name):
+            pid = process.read_pid_file(process_name)
             if not quiet:
                 print_with_style(f"✅ {which.capitalize()} is running (PID: {pid}).")
         elif not quiet:
@@ -225,8 +225,8 @@ def stop_or_status_or_toggle(
         return True
 
     if toggle:
-        if process_manager.is_process_running(process_name):
-            if process_manager.kill_process(process_name) and not quiet:
+        if process.is_process_running(process_name):
+            if process.kill_process(process_name) and not quiet:
                 print_with_style(f"✅ {which.capitalize()} stopped.")
             return True
         if not quiet:
