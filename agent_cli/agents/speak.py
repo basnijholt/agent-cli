@@ -14,11 +14,12 @@ from agent_cli import process_manager
 from agent_cli.agents import config
 from agent_cli.agents._tts_common import handle_tts_playback
 from agent_cli.audio import pyaudio_context, setup_devices
-from agent_cli.cli import app, setup_logging
+from agent_cli.cli import app
 from agent_cli.utils import (
     get_clipboard_text,
     maybe_live,
     print_input_panel,
+    setup_logging,
     stop_or_status_or_toggle,
 )
 

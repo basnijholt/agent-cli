@@ -14,13 +14,14 @@ import agent_cli.agents._cli_options as opts
 from agent_cli import asr, process_manager
 from agent_cli.agents import config
 from agent_cli.audio import pyaudio_context, setup_devices
-from agent_cli.cli import app, setup_logging
+from agent_cli.cli import app
 from agent_cli.llm import process_and_update_clipboard
 from agent_cli.utils import (
     maybe_live,
     print_input_panel,
     print_output_panel,
     print_with_style,
+    setup_logging,
     signal_handling_context,
     stop_or_status_or_toggle,
 )

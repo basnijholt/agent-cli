@@ -41,11 +41,12 @@ from agent_cli.agents._voice_agent_common import (
     process_instruction_and_respond,
 )
 from agent_cli.audio import pyaudio_context, setup_devices
-from agent_cli.cli import app, setup_logging
+from agent_cli.cli import app
 from agent_cli.utils import (
     InteractiveStopEvent,
     maybe_live,
     print_with_style,
+    setup_logging,
     signal_handling_context,
     stop_or_status_or_toggle,
 )

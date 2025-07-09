@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 import signal
 import sys
 import time
@@ -26,9 +27,9 @@ from rich.text import Text
 from agent_cli import process_manager
 
 if TYPE_CHECKING:
-    import logging
     from collections.abc import AsyncGenerator, Generator
     from datetime import timedelta
+    from logging import Handler
 
 console = Console()
 
@@ -301,3 +302,18 @@ async def live_timer(
             await timer_task
         if not quiet:
             live.update("")
+
+
+def setup_logging(log_level: str, log_file: str | None, *, quiet: bool) -> None:
+    """Sets up logging based on parsed arguments."""
+    handlers: list[Handler] = []
+    if not quiet:
+        handlers.append(logging.StreamHandler())
+    if log_file:
+        handlers.append(logging.FileHandler(log_file, mode="w"))
+
+    logging.basicConfig(
+        level=log_level.upper(),
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+        handlers=handlers,
+    )

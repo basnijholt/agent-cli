@@ -13,7 +13,7 @@ import typer
 
 import agent_cli.agents._cli_options as opts
 from agent_cli.agents import config
-from agent_cli.cli import app, setup_logging
+from agent_cli.cli import app
 from agent_cli.llm import build_agent
 from agent_cli.utils import (
     create_status,
@@ -22,6 +22,7 @@ from agent_cli.utils import (
     print_input_panel,
     print_output_panel,
     print_with_style,
+    setup_logging,
 )
 
 if TYPE_CHECKING:
