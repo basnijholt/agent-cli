@@ -18,7 +18,8 @@ from agent_cli.audio import (
     setup_input_stream,
 )
 from agent_cli.services import transcribe_audio_openai
-from agent_cli.wyoming_utils import manage_send_receive_tasks, wyoming_client_context
+from agent_cli.utils import manage_send_receive_tasks
+from agent_cli.wyoming_utils import wyoming_client_context
 
 if TYPE_CHECKING:
     import logging

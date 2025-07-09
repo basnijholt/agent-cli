@@ -15,8 +15,14 @@ from wyoming.tts import Synthesize, SynthesizeVoice
 from agent_cli import constants
 from agent_cli.audio import open_pyaudio_stream, pyaudio_context, setup_output_stream
 from agent_cli.services import synthesize_speech_openai
-from agent_cli.utils import InteractiveStopEvent, live_timer, print_error_message, print_with_style
-from agent_cli.wyoming_utils import manage_send_receive_tasks, wyoming_client_context
+from agent_cli.utils import (
+    InteractiveStopEvent,
+    live_timer,
+    manage_send_receive_tasks,
+    print_error_message,
+    print_with_style,
+)
+from agent_cli.wyoming_utils import wyoming_client_context
 
 if TYPE_CHECKING:
     import logging
