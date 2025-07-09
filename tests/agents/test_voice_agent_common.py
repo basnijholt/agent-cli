@@ -13,7 +13,7 @@ from agent_cli.agents._voice_agent_common import (
 )
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio()
 @patch("agent_cli.agents._voice_agent_common.asr.get_recorded_audio_transcriber")
 async def test_get_instruction_from_audio(mock_get_transcriber: MagicMock) -> None:
     """Test the get_instruction_from_audio function."""
@@ -46,7 +46,40 @@ async def test_get_instruction_from_audio(mock_get_transcriber: MagicMock) -> No
     mock_transcriber.assert_called_once()
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio()
+@patch("agent_cli.agents._voice_agent_common.asr.get_recorded_audio_transcriber")
+async def test_get_instruction_from_audio_error(mock_get_transcriber: MagicMock) -> None:
+    """Test the get_instruction_from_audio function when an error occurs."""
+    mock_transcriber = AsyncMock(side_effect=Exception("test error"))
+    mock_get_transcriber.return_value = mock_transcriber
+    provider_cfg = config.ProviderSelection(
+        asr_provider="local",
+        llm_provider="local",
+        tts_provider="local",
+    )
+    audio_in_cfg = config.AudioInput(input_device_index=1)
+    wyoming_asr_cfg = config.WyomingASR(wyoming_asr_ip="localhost", wyoming_asr_port=1234)
+    openai_asr_cfg = config.OpenAIASR(openai_asr_model="whisper-1")
+    ollama_cfg = config.Ollama(ollama_model="test-model", ollama_host="localhost")
+    openai_llm_cfg = config.OpenAILLM(openai_llm_model="gpt-4")
+
+    result = await get_instruction_from_audio(
+        audio_data=b"test audio",
+        provider_config=provider_cfg,
+        audio_input_config=audio_in_cfg,
+        wyoming_asr_config=wyoming_asr_cfg,
+        openai_asr_config=openai_asr_cfg,
+        ollama_config=ollama_cfg,
+        openai_llm_config=openai_llm_cfg,
+        logger=MagicMock(),
+        quiet=False,
+    )
+    assert result is None
+    mock_get_transcriber.assert_called_once()
+    mock_transcriber.assert_called_once()
+
+
+@pytest.mark.asyncio()
 @patch("agent_cli.agents._voice_agent_common.process_and_update_clipboard")
 @patch("agent_cli.agents._voice_agent_common.handle_tts_playback")
 async def test_process_instruction_and_respond(
