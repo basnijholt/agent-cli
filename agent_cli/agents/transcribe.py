@@ -29,7 +29,6 @@ from agent_cli.services.factory import get_llm_service
 if TYPE_CHECKING:
     import pyaudio
 
-    from agent_cli.services.types import ChatMessage
 
 LOGGER = logging.getLogger()
 
@@ -113,16 +112,12 @@ async def _async_main(
                 openai_config=openai_llm_cfg,
                 is_interactive=not general_cfg.quiet,
             )
-            messages: list[ChatMessage] = [
-                {"role": "system", "content": SYSTEM_PROMPT, "timestamp": ""},
-                {"role": "user", "content": AGENT_INSTRUCTIONS, "timestamp": ""},
-                {
-                    "role": "user",
-                    "content": f"<original-text>{transcript}</original-text><instruction>{INSTRUCTION}</instruction>",
-                    "timestamp": "",
-                },
-            ]
-            response_generator = llm_service.chat(messages)
+            message = f"<original-text>{transcript}</original-text><instruction>{INSTRUCTION}</instruction>"
+            response_generator = llm_service.chat(
+                message=message,
+                system_prompt=SYSTEM_PROMPT,
+                instructions=AGENT_INSTRUCTIONS,
+            )
             response_text = "".join([chunk async for chunk in response_generator])
             pyperclip.copy(response_text)
             if not general_cfg.quiet:

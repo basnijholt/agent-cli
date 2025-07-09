@@ -230,19 +230,9 @@ async def _handle_conversation_turn(
         stop_event=stop_event,
     ):
         response_generator = llm_service.chat(
-            messages=[
-                {"role": "system", "content": SYSTEM_PROMPT, "timestamp": ""},
-                {
-                    "role": "user",
-                    "content": AGENT_INSTRUCTIONS,
-                    "timestamp": "",
-                },
-                {
-                    "role": "user",
-                    "content": user_message_with_context,
-                    "timestamp": "",
-                },
-            ],
+            message=user_message_with_context,
+            system_prompt=SYSTEM_PROMPT,
+            instructions=AGENT_INSTRUCTIONS,
         )
         response_text = "".join([chunk async for chunk in response_generator])
 

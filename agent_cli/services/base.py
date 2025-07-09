@@ -5,7 +5,6 @@ from abc import ABC, abstractmethod
 from collections.abc import AsyncGenerator
 
 from agent_cli.core.utils import InteractiveStopEvent
-from agent_cli.services.types import ChatMessage
 
 
 class LLMService(ABC):
@@ -24,7 +23,12 @@ class LLMService(ABC):
         self.model = model
 
     @abstractmethod
-    def chat(self, messages: list[ChatMessage]) -> AsyncGenerator[str, None]:
+    def chat(
+        self,
+        message: str,
+        system_prompt: str | None = None,
+        instructions: str | None = None,
+    ) -> AsyncGenerator[str, None]:
         """Chat with the LLM."""
         ...
 
@@ -45,10 +49,7 @@ class ASRService(ABC):
         self.model = model
 
     @abstractmethod
-    def transcribe(
-        self,
-        audio_stream: asyncio.Queue[bytes],
-    ) -> AsyncGenerator[str, None]:
+    def transcribe(self, audio_stream: asyncio.Queue[bytes]) -> AsyncGenerator[str, None]:
         """Transcribe audio."""
         ...
 
@@ -71,6 +72,6 @@ class TTSService(ABC):
         self.voice = voice
 
     @abstractmethod
-    async def synthesise(self, text: str) -> AsyncGenerator[bytes, None]:
+    def synthesise(self, text: str) -> AsyncGenerator[bytes, None]:
         """Synthesise text to speech."""
         ...

@@ -17,7 +17,6 @@ if TYPE_CHECKING:
     from rich.live import Live
 
     from agent_cli import config
-    from agent_cli.services.types import ChatMessage
 
 LOGGER = logging.getLogger()
 
@@ -101,16 +100,12 @@ async def process_instruction_and_respond(
             openai_config=openai_llm_config,
             is_interactive=not general_config.quiet,
         )
-        messages: list[ChatMessage] = [
-            {"role": "system", "content": system_prompt, "timestamp": ""},
-            {"role": "user", "content": agent_instructions, "timestamp": ""},
-            {
-                "role": "user",
-                "content": f"<original-text>{original_text}</original-text><instruction>{instruction}</instruction>",
-                "timestamp": "",
-            },
-        ]
-        response_generator = llm_service.chat(messages)
+        message = f"<original-text>{original_text}</original-text><instruction>{instruction}</instruction>"
+        response_generator = llm_service.chat(
+            message=message,
+            system_prompt=system_prompt,
+            instructions=agent_instructions,
+        )
         response_text = "".join([chunk async for chunk in response_generator])
         pyperclip.copy(response_text)
 

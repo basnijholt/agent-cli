@@ -27,7 +27,6 @@ from agent_cli.services.factory import get_llm_service
 if TYPE_CHECKING:
     from rich.status import Status
 
-    from agent_cli.services.types import ChatMessage
 
 # --- Configuration ---
 
@@ -90,14 +89,12 @@ async def _process_text(
     # Format the input using the template to clearly separate text from instructions
     formatted_input = INPUT_TEMPLATE.format(text=text)
 
-    messages: list[ChatMessage] = [
-        {"role": "system", "content": SYSTEM_PROMPT, "timestamp": ""},
-        {"role": "user", "content": AGENT_INSTRUCTIONS, "timestamp": ""},
-        {"role": "user", "content": formatted_input, "timestamp": ""},
-    ]
-
     start_time = time.monotonic()
-    response_generator = llm_service.chat(messages)
+    response_generator = llm_service.chat(
+        message=formatted_input,
+        system_prompt=SYSTEM_PROMPT,
+        instructions=AGENT_INSTRUCTIONS,
+    )
     corrected_text = "".join([chunk async for chunk in response_generator])
     elapsed = time.monotonic() - start_time
     return corrected_text, elapsed
