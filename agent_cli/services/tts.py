@@ -24,7 +24,7 @@ from agent_cli.core.utils import (
     print_with_style,
 )
 from agent_cli.services import synthesize_speech_openai
-from agent_cli.wyoming_utils import wyoming_client_context
+from agent_cli.services.wyoming_utils import wyoming_client_context
 
 if TYPE_CHECKING:
     import logging

@@ -8,7 +8,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from wyoming.client import AsyncClient
 
-from agent_cli.wyoming_utils import wyoming_client_context
+from agent_cli.services.wyoming_utils import wyoming_client_context
 
 
 @pytest.mark.asyncio
@@ -16,7 +16,7 @@ async def test_wyoming_client_context_success():
     """Test that the Wyoming client context manager connects successfully."""
     mock_client = AsyncMock(spec=AsyncClient)
     with patch(
-        "agent_cli.wyoming_utils.AsyncClient.from_uri",
+        "agent_cli.services.wyoming_utils.AsyncClient.from_uri",
         return_value=MagicMock(
             __aenter__=AsyncMock(return_value=mock_client),
             __aexit__=AsyncMock(return_value=None),
@@ -33,7 +33,7 @@ async def test_wyoming_client_context_connection_refused(
     """Test that a ConnectionRefusedError is handled correctly."""
     with (
         patch(
-            "agent_cli.wyoming_utils.AsyncClient.from_uri",
+            "agent_cli.services.wyoming_utils.AsyncClient.from_uri",
             side_effect=ConnectionRefusedError,
         ),
         pytest.raises(ConnectionRefusedError),
@@ -51,7 +51,7 @@ async def test_wyoming_client_context_generic_exception(
     """Test that a generic Exception is handled correctly."""
     with (
         patch(
-            "agent_cli.wyoming_utils.AsyncClient.from_uri",
+            "agent_cli.services.wyoming_utils.AsyncClient.from_uri",
             side_effect=RuntimeError("Something went wrong"),
         ),
         pytest.raises(RuntimeError),
