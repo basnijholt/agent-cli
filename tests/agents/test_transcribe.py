@@ -60,6 +60,10 @@ async def test_transcribe_main_llm_enabled(
         openai_asr_cfg = config.OpenAIASR(asr_openai_model="whisper-1")
         ollama_cfg = config.Ollama(llm_ollama_model="test", llm_ollama_host="localhost")
         openai_llm_cfg = config.OpenAILLM(llm_openai_model="gpt-4")
+        gemini_llm_cfg = config.GeminiLLM(
+            llm_gemini_model="gemini-1.5-flash",
+            gemini_api_key="test-key",
+        )
 
         await transcribe._async_main(
             extra_instructions=None,
@@ -70,6 +74,7 @@ async def test_transcribe_main_llm_enabled(
             openai_asr_cfg=openai_asr_cfg,
             ollama_cfg=ollama_cfg,
             openai_llm_cfg=openai_llm_cfg,
+            gemini_llm_cfg=gemini_llm_cfg,
             llm_enabled=True,
             p=mock_pyaudio_instance,
         )
@@ -124,6 +129,10 @@ async def test_transcribe_main(
         openai_asr_cfg = config.OpenAIASR(asr_openai_model="whisper-1")
         ollama_cfg = config.Ollama(llm_ollama_model="", llm_ollama_host="")
         openai_llm_cfg = config.OpenAILLM(llm_openai_model="")
+        gemini_llm_cfg = config.GeminiLLM(
+            llm_gemini_model="gemini-1.5-flash",
+            gemini_api_key="test-key",
+        )
 
         await transcribe._async_main(
             extra_instructions=None,
@@ -134,6 +143,7 @@ async def test_transcribe_main(
             openai_asr_cfg=openai_asr_cfg,
             ollama_cfg=ollama_cfg,
             openai_llm_cfg=openai_llm_cfg,
+            gemini_llm_cfg=gemini_llm_cfg,
             llm_enabled=False,
             p=mock_pyaudio_instance,
         )

@@ -15,6 +15,7 @@ if TYPE_CHECKING:
     import logging
 
     from pydantic_ai import Agent
+    from pydantic_ai.models.gemini import GeminiModel
     from pydantic_ai.models.openai import OpenAIModel
     from pydantic_ai.tools import Tool
 
@@ -42,10 +43,23 @@ def _ollama_llm_model(ollama_config: config.Ollama) -> OpenAIModel:
     return OpenAIModel(model_name=model_name, provider=provider)
 
 
+def _gemini_llm_model(gemini_config: config.GeminiLLM) -> GeminiModel:
+    from pydantic_ai.models.gemini import GeminiModel  # noqa: PLC0415
+    from pydantic_ai.providers.google_gla import GoogleGLAProvider  # noqa: PLC0415
+
+    if not gemini_config.gemini_api_key:
+        msg = "Gemini API key is not set."
+        raise ValueError(msg)
+    provider = GoogleGLAProvider(api_key=gemini_config.gemini_api_key)
+    model_name = gemini_config.llm_gemini_model
+    return GeminiModel(model_name=model_name, provider=provider)
+
+
 def build_agent(
     provider_config: config.ProviderSelection,
     ollama_config: config.Ollama,
     openai_config: config.OpenAILLM,
+    gemini_config: config.GeminiLLM,
     *,
     system_prompt: str | None = None,
     instructions: str | None = None,
@@ -58,6 +72,8 @@ def build_agent(
         llm_model = _openai_llm_model(openai_config)
     elif provider_config.llm_provider == "local":
         llm_model = _ollama_llm_model(ollama_config)
+    elif provider_config.llm_provider == "gemini":
+        llm_model = _gemini_llm_model(gemini_config)
 
     return Agent(
         model=llm_model,
@@ -88,6 +104,7 @@ async def get_llm_response(
     provider_config: config.ProviderSelection,
     ollama_config: config.Ollama,
     openai_config: config.OpenAILLM,
+    gemini_config: config.GeminiLLM,
     logger: logging.Logger,
     live: Live | None = None,
     tools: list[Tool] | None = None,
@@ -101,6 +118,7 @@ async def get_llm_response(
         provider_config=provider_config,
         ollama_config=ollama_config,
         openai_config=openai_config,
+        gemini_config=gemini_config,
         system_prompt=system_prompt,
         instructions=agent_instructions,
         tools=tools,
@@ -109,11 +127,12 @@ async def get_llm_response(
     start_time = time.monotonic()
 
     try:
-        model_name = (
-            ollama_config.llm_ollama_model
-            if provider_config.llm_provider == "local"
-            else openai_config.llm_openai_model
-        )
+        if provider_config.llm_provider == "local":
+            model_name = ollama_config.llm_ollama_model
+        elif provider_config.llm_provider == "openai":
+            model_name = openai_config.llm_openai_model
+        else:
+            model_name = gemini_config.llm_gemini_model
 
         async with live_timer(
             live or Live(console=console),
@@ -145,6 +164,8 @@ async def get_llm_response(
         logger.exception("An error occurred during LLM processing.")
         if provider_config.llm_provider == "openai":
             msg = "Please check your OpenAI API key."
+        elif provider_config.llm_provider == "gemini":
+            msg = "Please check your Gemini API key."
         else:
             msg = f"Please check your Ollama server at [cyan]{ollama_config.llm_ollama_host}[/cyan]"
         print_error_message(f"An unexpected LLM error occurred: {e}", msg)
@@ -160,6 +181,7 @@ async def process_and_update_clipboard(
     provider_config: config.ProviderSelection,
     ollama_config: config.Ollama,
     openai_config: config.OpenAILLM,
+    gemini_config: config.GeminiLLM,
     logger: logging.Logger,
     original_text: str,
     instruction: str,
@@ -177,6 +199,7 @@ async def process_and_update_clipboard(
         provider_config=provider_config,
         ollama_config=ollama_config,
         openai_config=openai_config,
+        gemini_config=gemini_config,
         logger=logger,
         quiet=quiet,
         clipboard=clipboard,

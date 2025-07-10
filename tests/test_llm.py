@@ -23,9 +23,13 @@ def test_build_agent_openai_no_key():
         llm_ollama_host="http://mockhost:1234",
     )
     openai_llm_cfg = config.OpenAILLM(llm_openai_model="gpt-4o-mini", openai_api_key=None)
+    gemini_llm_cfg = config.GeminiLLM(
+        llm_gemini_model="gemini-1.5-flash",
+        gemini_api_key="test-key",
+    )
 
     with pytest.raises(ValueError, match="OpenAI API key is not set."):
-        build_agent(provider_cfg, ollama_cfg, openai_llm_cfg)
+        build_agent(provider_cfg, ollama_cfg, openai_llm_cfg, gemini_llm_cfg)
 
 
 def test_build_agent(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -41,8 +45,12 @@ def test_build_agent(monkeypatch: pytest.MonkeyPatch) -> None:
         llm_ollama_host="http://mockhost:1234",
     )
     openai_llm_cfg = config.OpenAILLM(llm_openai_model="gpt-4o-mini", openai_api_key=None)
+    gemini_llm_cfg = config.GeminiLLM(
+        llm_gemini_model="gemini-1.5-flash",
+        gemini_api_key="test-key",
+    )
 
-    agent = build_agent(provider_cfg, ollama_cfg, openai_llm_cfg)
+    agent = build_agent(provider_cfg, ollama_cfg, openai_llm_cfg, gemini_llm_cfg)
 
     assert agent.model.model_name == "test-model"
 
@@ -62,6 +70,10 @@ async def test_get_llm_response(mock_build_agent: MagicMock) -> None:
     )
     ollama_cfg = config.Ollama(llm_ollama_model="test", llm_ollama_host="test")
     openai_llm_cfg = config.OpenAILLM(llm_openai_model="gpt-4o-mini", openai_api_key=None)
+    gemini_llm_cfg = config.GeminiLLM(
+        llm_gemini_model="gemini-1.5-flash",
+        gemini_api_key="test-key",
+    )
 
     response = await get_llm_response(
         system_prompt="test",
@@ -70,6 +82,7 @@ async def test_get_llm_response(mock_build_agent: MagicMock) -> None:
         provider_config=provider_cfg,
         ollama_config=ollama_cfg,
         openai_config=openai_llm_cfg,
+        gemini_config=gemini_llm_cfg,
         logger=MagicMock(),
         live=MagicMock(),
     )
@@ -94,6 +107,10 @@ async def test_get_llm_response_error(mock_build_agent: MagicMock) -> None:
     )
     ollama_cfg = config.Ollama(llm_ollama_model="test", llm_ollama_host="test")
     openai_llm_cfg = config.OpenAILLM(llm_openai_model="gpt-4o-mini", openai_api_key=None)
+    gemini_llm_cfg = config.GeminiLLM(
+        llm_gemini_model="gemini-1.5-flash",
+        gemini_api_key="test-key",
+    )
 
     response = await get_llm_response(
         system_prompt="test",
@@ -102,6 +119,7 @@ async def test_get_llm_response_error(mock_build_agent: MagicMock) -> None:
         provider_config=provider_cfg,
         ollama_config=ollama_cfg,
         openai_config=openai_llm_cfg,
+        gemini_config=gemini_llm_cfg,
         logger=MagicMock(),
         live=MagicMock(),
     )
@@ -126,6 +144,10 @@ async def test_get_llm_response_error_exit(mock_build_agent: MagicMock):
     )
     ollama_cfg = config.Ollama(llm_ollama_model="test", llm_ollama_host="test")
     openai_llm_cfg = config.OpenAILLM(llm_openai_model="gpt-4o-mini", openai_api_key=None)
+    gemini_llm_cfg = config.GeminiLLM(
+        llm_gemini_model="gemini-1.5-flash",
+        gemini_api_key="test-key",
+    )
 
     with pytest.raises(SystemExit):
         await get_llm_response(
@@ -135,6 +157,7 @@ async def test_get_llm_response_error_exit(mock_build_agent: MagicMock):
             provider_config=provider_cfg,
             ollama_config=ollama_cfg,
             openai_config=openai_llm_cfg,
+            gemini_config=gemini_llm_cfg,
             logger=MagicMock(),
             live=MagicMock(),
             exit_on_error=True,
@@ -156,6 +179,10 @@ def test_process_and_update_clipboard(
     )
     ollama_cfg = config.Ollama(llm_ollama_model="test", llm_ollama_host="test")
     openai_llm_cfg = config.OpenAILLM(llm_openai_model="gpt-4o-mini", openai_api_key=None)
+    gemini_llm_cfg = config.GeminiLLM(
+        llm_gemini_model="gemini-1.5-flash",
+        gemini_api_key="test-key",
+    )
 
     asyncio.run(
         process_and_update_clipboard(
@@ -164,6 +191,7 @@ def test_process_and_update_clipboard(
             provider_config=provider_cfg,
             ollama_config=ollama_cfg,
             openai_config=openai_llm_cfg,
+            gemini_config=gemini_llm_cfg,
             logger=MagicMock(),
             original_text="test",
             instruction="test",

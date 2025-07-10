@@ -97,6 +97,10 @@ async def test_process_instruction_and_respond(
     )
     ollama_cfg = config.Ollama(llm_ollama_model="test-model", llm_ollama_host="localhost")
     openai_llm_cfg = config.OpenAILLM(llm_openai_model="gpt-4")
+    gemini_llm_cfg = config.GeminiLLM(
+        llm_gemini_model="gemini-1.5-flash",
+        gemini_api_key="test-key",
+    )
     audio_out_cfg = config.AudioOutput(enable_tts=True, output_device_index=1)
     wyoming_tts_cfg = config.WyomingTTS(
         tts_wyoming_ip="localhost",
@@ -121,6 +125,7 @@ async def test_process_instruction_and_respond(
             general_config=general_cfg,
             ollama_config=ollama_cfg,
             openai_llm_config=openai_llm_cfg,
+            gemini_llm_config=gemini_llm_cfg,
             audio_output_config=audio_out_cfg,
             wyoming_tts_config=wyoming_tts_cfg,
             openai_tts_config=openai_tts_cfg,
