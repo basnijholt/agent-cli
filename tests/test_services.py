@@ -22,9 +22,9 @@ async def test_transcribe_audio_openai(mock_openai_client: MagicMock) -> None:
     mock_client_instance.audio.transcriptions.create = AsyncMock(
         return_value=mock_transcription,
     )
-    openai_asr_config = config.OpenAIASR(openai_asr_model="whisper-1")
+    openai_asr_config = config.OpenAIASR(asr_openai_model="whisper-1")
     openai_llm_config = config.OpenAILLM(
-        openai_llm_model="gpt-4o-mini",
+        llm_openai_model="gpt-4o-mini",
         openai_api_key="test_api_key",
     )
 
@@ -53,9 +53,9 @@ async def test_synthesize_speech_openai(mock_openai_client: MagicMock) -> None:
     mock_response = MagicMock()
     mock_response.content = b"test audio"
     mock_client_instance.audio.speech.create = AsyncMock(return_value=mock_response)
-    openai_tts_config = config.OpenAITTS(openai_tts_model="tts-1", openai_tts_voice="alloy")
+    openai_tts_config = config.OpenAITTS(tts_openai_model="tts-1", tts_openai_voice="alloy")
     openai_llm_config = config.OpenAILLM(
-        openai_llm_model="gpt-4o-mini",
+        llm_openai_model="gpt-4o-mini",
         openai_api_key="test_api_key",
     )
 
@@ -84,10 +84,10 @@ def test_get_transcriber_wyoming() -> None:
         tts_provider="local",
     )
     audio_input_config = config.AudioInput()
-    wyoming_asr_config = config.WyomingASR(wyoming_asr_ip="localhost", wyoming_asr_port=1234)
-    openai_asr_config = config.OpenAIASR(openai_asr_model="whisper-1")
+    wyoming_asr_config = config.WyomingASR(asr_wyoming_ip="localhost", asr_wyoming_port=1234)
+    openai_asr_config = config.OpenAIASR(asr_openai_model="whisper-1")
     openai_llm_config = config.OpenAILLM(
-        openai_llm_model="gpt-4o-mini",
+        llm_openai_model="gpt-4o-mini",
         openai_api_key="fake-key",
     )
     transcriber = asr.get_transcriber(
@@ -109,18 +109,18 @@ def test_get_synthesizer_wyoming() -> None:
     )
     audio_output_config = config.AudioOutput(enable_tts=True)
     wyoming_tts_config = config.WyomingTTS(
-        wyoming_tts_ip="localhost",
-        wyoming_tts_port=1234,
+        tts_wyoming_ip="localhost",
+        tts_wyoming_port=1234,
     )
-    openai_tts_config = config.OpenAITTS(openai_tts_model="tts-1", openai_tts_voice="alloy")
+    openai_tts_config = config.OpenAITTS(tts_openai_model="tts-1", tts_openai_voice="alloy")
     openai_llm_config = config.OpenAILLM(
-        openai_llm_model="gpt-4o-mini",
+        llm_openai_model="gpt-4o-mini",
         openai_api_key="test_api_key",
     )
     kokoro_tts_cfg = config.KokoroTTS(
-        kokoro_tts_model="tts-1",
-        kokoro_tts_voice="alloy",
-        kokoro_tts_host="http://localhost:8000/v1",
+        tts_kokoro_model="tts-1",
+        tts_kokoro_voice="alloy",
+        tts_kokoro_host="http://localhost:8000/v1",
     )
     synthesizer = tts.get_synthesizer(
         provider_config,
@@ -142,18 +142,18 @@ def test_get_synthesizer_kokoro() -> None:
     )
     audio_output_config = config.AudioOutput(enable_tts=True)
     wyoming_tts_config = config.WyomingTTS(
-        wyoming_tts_ip="localhost",
-        wyoming_tts_port=1234,
+        tts_wyoming_ip="localhost",
+        tts_wyoming_port=1234,
     )
-    openai_tts_config = config.OpenAITTS(openai_tts_model="tts-1", openai_tts_voice="alloy")
+    openai_tts_config = config.OpenAITTS(tts_openai_model="tts-1", tts_openai_voice="alloy")
     openai_llm_config = config.OpenAILLM(
-        openai_llm_model="gpt-4o-mini",
+        llm_openai_model="gpt-4o-mini",
         openai_api_key="test_api_key",
     )
     kokoro_tts_cfg = config.KokoroTTS(
-        kokoro_tts_model="tts-1",
-        kokoro_tts_voice="alloy",
-        kokoro_tts_host="http://localhost:8000/v1",
+        tts_kokoro_model="tts-1",
+        tts_kokoro_voice="alloy",
+        tts_kokoro_host="http://localhost:8000/v1",
     )
     synthesizer = tts.get_synthesizer(
         provider_config,
@@ -172,8 +172,8 @@ async def test_transcribe_audio_openai_no_key():
     with pytest.raises(ValueError, match="OpenAI API key is not set."):
         await transcribe_audio_openai(
             b"test audio",
-            config.OpenAIASR(openai_asr_model="whisper-1"),
-            config.OpenAILLM(openai_llm_model="gpt-4o-mini", openai_api_key=None),
+            config.OpenAIASR(asr_openai_model="whisper-1"),
+            config.OpenAILLM(llm_openai_model="gpt-4o-mini", openai_api_key=None),
             MagicMock(),
         )
 
@@ -184,7 +184,7 @@ async def test_synthesize_speech_openai_no_key():
     with pytest.raises(ValueError, match="OpenAI API key is not set."):
         await synthesize_speech_openai(
             "test text",
-            config.OpenAITTS(openai_tts_model="tts-1", openai_tts_voice="alloy"),
-            config.OpenAILLM(openai_llm_model="gpt-4o-mini", openai_api_key=None),
+            config.OpenAITTS(tts_openai_model="tts-1", tts_openai_voice="alloy"),
+            config.OpenAILLM(llm_openai_model="gpt-4o-mini", openai_api_key=None),
             MagicMock(),
         )

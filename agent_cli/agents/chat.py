@@ -217,9 +217,9 @@ async def _handle_conversation_turn(
     start_time = time.monotonic()
 
     model_name = (
-        ollama_cfg.ollama_model
+        ollama_cfg.llm_ollama_model
         if provider_cfg.llm_provider == "local"
-        else openai_llm_cfg.openai_llm_model
+        else openai_llm_cfg.llm_openai_model
     )
     async with live_timer(
         live,
@@ -376,29 +376,29 @@ def chat(
     # --- ASR (Audio) Configuration ---
     input_device_index: int | None = opts.INPUT_DEVICE_INDEX,
     input_device_name: str | None = opts.INPUT_DEVICE_NAME,
-    wyoming_asr_ip: str = opts.WYOMING_ASR_SERVER_IP,
-    wyoming_asr_port: int = opts.WYOMING_ASR_SERVER_PORT,
-    openai_asr_model: str = opts.OPENAI_ASR_MODEL,
+    asr_wyoming_ip: str = opts.WYOMING_ASR_SERVER_IP,
+    asr_wyoming_port: int = opts.WYOMING_ASR_SERVER_PORT,
+    asr_openai_model: str = opts.ASR_OPENAI_MODEL,
     # --- LLM Configuration ---
-    ollama_model: str = opts.OLLAMA_MODEL,
-    ollama_host: str = opts.OLLAMA_HOST,
-    openai_llm_model: str = opts.OPENAI_LLM_MODEL,
+    llm_ollama_model: str = opts.LLM_OLLAMA_MODEL,
+    llm_ollama_host: str = opts.LLM_OLLAMA_HOST,
+    llm_openai_model: str = opts.LLM_OPENAI_MODEL,
     openai_api_key: str | None = opts.OPENAI_API_KEY,
     # --- TTS Configuration ---
     enable_tts: bool = opts.ENABLE_TTS,
     output_device_index: int | None = opts.OUTPUT_DEVICE_INDEX,
     output_device_name: str | None = opts.OUTPUT_DEVICE_NAME,
     tts_speed: float = opts.TTS_SPEED,
-    wyoming_tts_ip: str = opts.WYOMING_TTS_SERVER_IP,
-    wyoming_tts_port: int = opts.WYOMING_TTS_SERVER_PORT,
-    wyoming_voice: str | None = opts.WYOMING_VOICE_NAME,
-    wyoming_tts_language: str | None = opts.WYOMING_TTS_LANGUAGE,
-    wyoming_speaker: str | None = opts.WYOMING_SPEAKER,
-    openai_tts_model: str = opts.OPENAI_TTS_MODEL,
-    openai_tts_voice: str = opts.OPENAI_TTS_VOICE,
-    kokoro_tts_model: str = opts.KOKORO_TTS_MODEL,
-    kokoro_tts_voice: str = opts.KOKORO_TTS_VOICE,
-    kokoro_tts_host: str = opts.KOKORO_TTS_HOST,
+    tts_wyoming_ip: str = opts.WYOMING_TTS_SERVER_IP,
+    tts_wyoming_port: int = opts.WYOMING_TTS_SERVER_PORT,
+    tts_wyoming_voice: str | None = opts.WYOMING_VOICE_NAME,
+    tts_wyoming_language: str | None = opts.TTS_WYOMING_LANGUAGE,
+    tts_wyoming_speaker: str | None = opts.TTS_WYOMING_SPEAKER,
+    tts_openai_model: str = opts.TTS_OPENAI_MODEL,
+    tts_openai_voice: str = opts.TTS_OPENAI_VOICE,
+    tts_kokoro_model: str = opts.TTS_KOKORO_MODEL,
+    tts_kokoro_voice: str = opts.TTS_KOKORO_VOICE,
+    tts_kokoro_host: str = opts.TTS_KOKORO_HOST,
     # --- Process Management ---
     stop: bool = opts.STOP,
     status: bool = opts.STATUS,
@@ -457,13 +457,16 @@ def chat(
             input_device_name=input_device_name,
         )
         wyoming_asr_cfg = config.WyomingASR(
-            wyoming_asr_ip=wyoming_asr_ip,
-            wyoming_asr_port=wyoming_asr_port,
+            asr_wyoming_ip=asr_wyoming_ip,
+            asr_wyoming_port=asr_wyoming_port,
         )
-        openai_asr_cfg = config.OpenAIASR(openai_asr_model=openai_asr_model)
-        ollama_cfg = config.Ollama(ollama_model=ollama_model, ollama_host=ollama_host)
+        openai_asr_cfg = config.OpenAIASR(asr_openai_model=asr_openai_model)
+        ollama_cfg = config.Ollama(
+            llm_ollama_model=llm_ollama_model,
+            llm_ollama_host=llm_ollama_host,
+        )
         openai_llm_cfg = config.OpenAILLM(
-            openai_llm_model=openai_llm_model,
+            llm_openai_model=llm_openai_model,
             openai_api_key=openai_api_key,
         )
         audio_out_cfg = config.AudioOutput(
@@ -473,20 +476,20 @@ def chat(
             tts_speed=tts_speed,
         )
         wyoming_tts_cfg = config.WyomingTTS(
-            wyoming_tts_ip=wyoming_tts_ip,
-            wyoming_tts_port=wyoming_tts_port,
-            wyoming_voice=wyoming_voice,
-            wyoming_tts_language=wyoming_tts_language,
-            wyoming_speaker=wyoming_speaker,
+            tts_wyoming_ip=tts_wyoming_ip,
+            tts_wyoming_port=tts_wyoming_port,
+            tts_wyoming_voice=tts_wyoming_voice,
+            tts_wyoming_language=tts_wyoming_language,
+            tts_wyoming_speaker=tts_wyoming_speaker,
         )
         openai_tts_cfg = config.OpenAITTS(
-            openai_tts_model=openai_tts_model,
-            openai_tts_voice=openai_tts_voice,
+            tts_openai_model=tts_openai_model,
+            tts_openai_voice=tts_openai_voice,
         )
         kokoro_tts_cfg = config.KokoroTTS(
-            kokoro_tts_model=kokoro_tts_model,
-            kokoro_tts_voice=kokoro_tts_voice,
-            kokoro_tts_host=kokoro_tts_host,
+            tts_kokoro_model=tts_kokoro_model,
+            tts_kokoro_voice=tts_kokoro_voice,
+            tts_kokoro_host=tts_kokoro_host,
         )
         history_cfg = config.History(
             history_dir=history_dir,

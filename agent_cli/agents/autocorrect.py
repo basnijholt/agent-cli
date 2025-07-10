@@ -133,9 +133,9 @@ def _maybe_status(
 ) -> Status | contextlib.nullcontext:
     if not quiet:
         model_name = (
-            ollama_cfg.ollama_model
+            ollama_cfg.llm_ollama_model
             if provider_cfg.llm_provider == "local"
-            else openai_llm_cfg.openai_llm_model
+            else openai_llm_cfg.llm_openai_model
         )
         return create_status(f"🤖 Correcting with {model_name}...", "bold yellow")
     return contextlib.nullcontext()
@@ -174,7 +174,7 @@ async def _async_autocorrect(
             print(f"❌ {e}")
         else:
             if provider_cfg.llm_provider == "local":
-                error_details = f"Please check that your Ollama server is running at [bold cyan]{ollama_cfg.ollama_host}[/bold cyan]"
+                error_details = f"Please check that your Ollama server is running at [bold cyan]{ollama_cfg.llm_ollama_host}[/bold cyan]"
             else:
                 error_details = "Please check your OpenAI API key and network connection."
             print_error_message(str(e), error_details)
@@ -193,10 +193,10 @@ def autocorrect(
     llm_provider: str = opts.LLM_PROVIDER,
     # --- LLM Configuration ---
     # Ollama (local service)
-    ollama_model: str = opts.OLLAMA_MODEL,
-    ollama_host: str = opts.OLLAMA_HOST,
+    llm_ollama_model: str = opts.LLM_OLLAMA_MODEL,
+    llm_ollama_host: str = opts.LLM_OLLAMA_HOST,
     # OpenAI
-    openai_llm_model: str = opts.OPENAI_LLM_MODEL,
+    llm_openai_model: str = opts.LLM_OPENAI_MODEL,
     openai_api_key: str | None = opts.OPENAI_API_KEY,
     # --- General Options ---
     log_level: str = opts.LOG_LEVEL,
@@ -210,9 +210,9 @@ def autocorrect(
         asr_provider="local",  # Not used, but required by model
         tts_provider="local",  # Not used, but required by model
     )
-    ollama_cfg = config.Ollama(ollama_model=ollama_model, ollama_host=ollama_host)
+    ollama_cfg = config.Ollama(llm_ollama_model=llm_ollama_model, llm_ollama_host=llm_ollama_host)
     openai_llm_cfg = config.OpenAILLM(
-        openai_llm_model=openai_llm_model,
+        llm_openai_model=llm_openai_model,
         openai_api_key=openai_api_key,
     )
     general_cfg = config.General(

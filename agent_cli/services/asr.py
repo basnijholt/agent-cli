@@ -193,8 +193,8 @@ async def _transcribe_recorded_audio_wyoming(
     """Process pre-recorded audio data with Wyoming ASR server."""
     try:
         async with wyoming_client_context(
-            wyoming_asr_config.wyoming_asr_ip,
-            wyoming_asr_config.wyoming_asr_port,
+            wyoming_asr_config.asr_wyoming_ip,
+            wyoming_asr_config.asr_wyoming_port,
             "ASR",
             logger,
             quiet=quiet,
@@ -234,8 +234,8 @@ async def _transcribe_live_audio_wyoming(
     """Unified ASR transcription function."""
     try:
         async with wyoming_client_context(
-            wyoming_asr_config.wyoming_asr_ip,
-            wyoming_asr_config.wyoming_asr_port,
+            wyoming_asr_config.asr_wyoming_ip,
+            wyoming_asr_config.asr_wyoming_port,
             "ASR",
             logger,
             quiet=quiet,
