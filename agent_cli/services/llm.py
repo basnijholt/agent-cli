@@ -131,7 +131,7 @@ async def get_llm_response(
             model_name = ollama_config.llm_ollama_model
         elif provider_config.llm_provider == "openai":
             model_name = openai_config.llm_openai_model
-        else:
+        elif provider_config.llm_provider == "gemini":
             model_name = gemini_config.llm_gemini_model
 
         async with live_timer(
@@ -166,7 +166,7 @@ async def get_llm_response(
             msg = "Please check your OpenAI API key."
         elif provider_config.llm_provider == "gemini":
             msg = "Please check your Gemini API key."
-        else:
+        elif provider_config.llm_provider == "local":
             msg = f"Please check your Ollama server at [cyan]{ollama_config.llm_ollama_host}[/cyan]"
         print_error_message(f"An unexpected LLM error occurred: {e}", msg)
         if exit_on_error:
