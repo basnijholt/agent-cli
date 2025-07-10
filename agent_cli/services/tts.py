@@ -234,13 +234,14 @@ async def _synthesize_speech_kokoro(
     """Synthesize speech from text using Kokoro TTS server."""
     try:
         client = AsyncOpenAI(
-            api_key=kokoro_tts_config.kokoro_api_key,
+            api_key="not-needed",
             base_url=kokoro_tts_config.kokoro_api_base,
         )
         response = await client.audio.speech.create(
             model=kokoro_tts_config.kokoro_tts_model,
             voice=kokoro_tts_config.kokoro_tts_voice,
             input=text,
+            response_format="wav",
         )
         return await response.aread()
     except Exception:

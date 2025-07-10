@@ -211,16 +211,9 @@ KOKORO_TTS_VOICE: str = typer.Option(
     rich_help_panel="TTS (Text-to-Speech) Configuration: Kokoro",
 )
 KOKORO_API_BASE: str = typer.Option(
-    "http://localhost:8000/v1",
+    "http://localhost:8880/v1",
     "--kokoro-api-base",
     help="The base URL for the Kokoro API.",
-    rich_help_panel="TTS (Text-to-Speech) Configuration: Kokoro",
-)
-KOKORO_API_KEY: str | None = typer.Option(
-    None,
-    "--kokoro-api-key",
-    help="Your Kokoro API key.",
-    envvar="KOKORO_API_KEY",
     rich_help_panel="TTS (Text-to-Speech) Configuration: Kokoro",
 )
 
