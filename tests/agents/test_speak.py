@@ -30,7 +30,7 @@ async def test_async_main_with_text():
     kokoro_tts_cfg = config.KokoroTTS(
         kokoro_tts_model="tts-1",
         kokoro_tts_voice="alloy",
-        kokoro_api_base="http://localhost:8000/v1",
+        kokoro_tts_host="http://localhost:8000/v1",
     )
 
     with (
@@ -73,7 +73,7 @@ async def test_async_main_no_devices():
     kokoro_tts_cfg = config.KokoroTTS(
         kokoro_tts_model="tts-1",
         kokoro_tts_voice="alloy",
-        kokoro_api_base="http://localhost:8000/v1",
+        kokoro_tts_host="http://localhost:8000/v1",
     )
 
     with (

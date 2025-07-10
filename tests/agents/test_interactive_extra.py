@@ -38,7 +38,7 @@ async def test_handle_conversation_turn_no_llm_response():
     kokoro_tts_cfg = config.KokoroTTS(
         kokoro_tts_model="tts-1",
         kokoro_tts_voice="alloy",
-        kokoro_api_base="http://localhost:8000/v1",
+        kokoro_tts_host="http://localhost:8000/v1",
     )
     mock_live = MagicMock()
 
@@ -101,7 +101,7 @@ async def test_handle_conversation_turn_no_instruction():
     kokoro_tts_cfg = config.KokoroTTS(
         kokoro_tts_model="tts-1",
         kokoro_tts_voice="alloy",
-        kokoro_api_base="http://localhost:8000/v1",
+        kokoro_tts_host="http://localhost:8000/v1",
     )
     mock_live = MagicMock()
 
@@ -196,7 +196,7 @@ async def test_async_main_exception_handling():
     kokoro_tts_cfg = config.KokoroTTS(
         kokoro_tts_model="tts-1",
         kokoro_tts_voice="alloy",
-        kokoro_api_base="http://localhost:8000/v1",
+        kokoro_tts_host="http://localhost:8000/v1",
     )
 
     with (

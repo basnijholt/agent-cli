@@ -53,7 +53,7 @@ def get_configs() -> tuple[
     kokoro_tts_cfg = config.KokoroTTS(
         kokoro_tts_model="tts-1",
         kokoro_tts_voice="alloy",
-        kokoro_api_base="http://localhost:8000/v1",
+        kokoro_tts_host="http://localhost:8000/v1",
     )
     return (
         provider_cfg,

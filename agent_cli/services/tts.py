@@ -235,7 +235,7 @@ async def _synthesize_speech_kokoro(
     try:
         client = AsyncOpenAI(
             api_key="not-needed",
-            base_url=kokoro_tts_config.kokoro_api_base,
+            base_url=kokoro_tts_config.kokoro_tts_host,
         )
         response = await client.audio.speech.create(
             model=kokoro_tts_config.kokoro_tts_model,

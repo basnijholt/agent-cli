@@ -210,9 +210,9 @@ KOKORO_TTS_VOICE: str = typer.Option(
     help="The voice to use for Kokoro TTS.",
     rich_help_panel="TTS (Text-to-Speech) Configuration: Kokoro",
 )
-KOKORO_API_BASE: str = typer.Option(
+KOKORO_TTS_HOST: str = typer.Option(
     "http://localhost:8880/v1",
-    "--kokoro-api-base",
+    "--kokoro-tts-host",
     help="The base URL for the Kokoro API.",
     rich_help_panel="TTS (Text-to-Speech) Configuration: Kokoro",
 )

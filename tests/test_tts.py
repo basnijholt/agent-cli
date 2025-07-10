@@ -36,7 +36,7 @@ async def test_speak_text(mock_get_synthesizer: MagicMock) -> None:
     kokoro_tts_cfg = config.KokoroTTS(
         kokoro_tts_model="tts-1",
         kokoro_tts_voice="alloy",
-        kokoro_api_base="http://localhost:8000/v1",
+        kokoro_tts_host="http://localhost:8000/v1",
     )
 
     audio_data = await _speak_text(
@@ -143,7 +143,7 @@ def test_get_synthesizer_disabled():
     kokoro_tts_cfg = config.KokoroTTS(
         kokoro_tts_model="tts-1",
         kokoro_tts_voice="alloy",
-        kokoro_api_base="http://localhost:8000/v1",
+        kokoro_tts_host="http://localhost:8000/v1",
     )
 
     synthesizer = get_synthesizer(

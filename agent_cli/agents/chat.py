@@ -398,7 +398,7 @@ def chat(
     openai_tts_voice: str = opts.OPENAI_TTS_VOICE,
     kokoro_tts_model: str = opts.KOKORO_TTS_MODEL,
     kokoro_tts_voice: str = opts.KOKORO_TTS_VOICE,
-    kokoro_api_base: str = opts.KOKORO_API_BASE,
+    kokoro_tts_host: str = opts.KOKORO_TTS_HOST,
     # --- Process Management ---
     stop: bool = opts.STOP,
     status: bool = opts.STATUS,
@@ -486,7 +486,7 @@ def chat(
         kokoro_tts_cfg = config.KokoroTTS(
             kokoro_tts_model=kokoro_tts_model,
             kokoro_tts_voice=kokoro_tts_voice,
-            kokoro_api_base=kokoro_api_base,
+            kokoro_tts_host=kokoro_tts_host,
         )
         history_cfg = config.History(
             history_dir=history_dir,

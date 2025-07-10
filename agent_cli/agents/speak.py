@@ -104,7 +104,7 @@ def speak(
     # Kokoro
     kokoro_tts_model: str = opts.KOKORO_TTS_MODEL,
     kokoro_tts_voice: str = opts.KOKORO_TTS_VOICE,
-    kokoro_api_base: str = opts.KOKORO_API_BASE,
+    kokoro_tts_host: str = opts.KOKORO_TTS_HOST,
     # --- General Options ---
     list_devices: bool = opts.LIST_DEVICES,
     save_file: Path | None = opts.SAVE_FILE,
@@ -167,7 +167,7 @@ def speak(
         kokoro_tts_cfg = config.KokoroTTS(
             kokoro_tts_model=kokoro_tts_model,
             kokoro_tts_voice=kokoro_tts_voice,
-            kokoro_api_base=kokoro_api_base,
+            kokoro_tts_host=kokoro_tts_host,
         )
 
         asyncio.run(

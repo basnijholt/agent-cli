@@ -60,7 +60,7 @@ It provides a suite of powerful tools for voice and text interaction, designed f
 - **Python**: Version 3.11 or higher.
 - **Ollama**: For `autocorrect`, `voice-edit`, and `chat` using local services, you need [Ollama](https://ollama.ai/) running with a model pulled (e.g., `ollama pull mistral:latest`).
 - **Wyoming Piper**: For `speak`, `voice-edit`, and `chat` using local services, you need a [Wyoming TTS server](https://github.com/rhasspy/wyoming-piper) running for text-to-speech.
-- **Kokoro TTS**: For `speak`, `voice-edit`, and `chat` using local services, you can also use [Kokoro TTS](https://github.com/basnijholt/kokoro-tts), which is a TTS server that can be run locally and sounds very natural.
+- **Kokoro TTS**: For `speak`, `voice-edit`, and `chat` using local services, you can also use [Kokoro-FastAPI](https://github.com/remsky/Kokoro-FastAPI), which is an OpenAI-compatible TTS server that can be run locally.
 - **Wyoming Faster Whisper**: For `transcribe`, `voice-edit`, and `chat` using local services, you need a [Wyoming ASR server](https://github.com/rhasspy/wyoming-faster-whisper) for speech-to-text.
 - **Wyoming openWakeWord**: For `assistant`, you need a [Wyoming wake word server](https://github.com/rhasspy/wyoming-openwakeword) running.
 - **OpenAI API Key**: If you want to use OpenAI services, you need an OpenAI API key.
@@ -109,6 +109,23 @@ Taken from [basnijholt/dotfiles](https://github.com/basnijholt/dotfiles/blob/709
     uri = "tcp://0.0.0.0:10400";
   };
 ```
+</details>
+
+<details>
+<summary>See an example using Kokoro-FastAPI with Docker</summary>
+
+You can use Docker to run the `kokoro-fastapi` service.
+
+For CPU:
+```bash
+docker run -p 8880:8880 ghcr.io/remsky/kokoro-fastapi-cpu:latest
+```
+
+For NVIDIA GPU:
+```bash
+docker run --gpus all -p 8880:8880 ghcr.io/remsky/kokoro-fastapi-gpu:latest
+```
+The API will be available at `http://localhost:8880`.
 
 </details>
 
@@ -494,7 +511,7 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 │                                 [default: kokoro]                            │
 │ --kokoro-tts-voice        TEXT  The voice to use for Kokoro TTS.             │
 │                                 [default: af_sky]                            │
-│ --kokoro-api-base         TEXT  The base URL for the Kokoro API.             │
+│ --kokoro-tts-host         TEXT  The base URL for the Kokoro API.             │
 │                                 [default: http://localhost:8880/v1]          │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ ASR (Audio) Configuration ──────────────────────────────────────────────────╮
@@ -655,7 +672,7 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 │                                 [default: kokoro]                            │
 │ --kokoro-tts-voice        TEXT  The voice to use for Kokoro TTS.             │
 │                                 [default: af_sky]                            │
-│ --kokoro-api-base         TEXT  The base URL for the Kokoro API.             │
+│ --kokoro-tts-host         TEXT  The base URL for the Kokoro API.             │
 │                                 [default: http://localhost:8880/v1]          │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Process Management Options ─────────────────────────────────────────────────╮
@@ -823,7 +840,7 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 │                                 [default: kokoro]                            │
 │ --kokoro-tts-voice        TEXT  The voice to use for Kokoro TTS.             │
 │                                 [default: af_sky]                            │
-│ --kokoro-api-base         TEXT  The base URL for the Kokoro API.             │
+│ --kokoro-tts-host         TEXT  The base URL for the Kokoro API.             │
 │                                 [default: http://localhost:8880/v1]          │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Process Management Options ─────────────────────────────────────────────────╮
@@ -989,7 +1006,7 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 │                                 [default: kokoro]                            │
 │ --kokoro-tts-voice        TEXT  The voice to use for Kokoro TTS.             │
 │                                 [default: af_sky]                            │
-│ --kokoro-api-base         TEXT  The base URL for the Kokoro API.             │
+│ --kokoro-tts-host         TEXT  The base URL for the Kokoro API.             │
 │                                 [default: http://localhost:8880/v1]          │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Process Management Options ─────────────────────────────────────────────────╮

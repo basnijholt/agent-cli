@@ -39,7 +39,7 @@ async def test_handle_tts_playback(mock_speak_text: AsyncMock) -> None:
     kokoro_tts_cfg = config.KokoroTTS(
         kokoro_tts_model="tts-1",
         kokoro_tts_voice="alloy",
-        kokoro_api_base="http://localhost:8000/v1",
+        kokoro_tts_host="http://localhost:8000/v1",
     )
 
     await handle_tts_playback(
@@ -103,7 +103,7 @@ async def test_handle_tts_playback_with_save_file(
     kokoro_tts_cfg = config.KokoroTTS(
         kokoro_tts_model="tts-1",
         kokoro_tts_voice="alloy",
-        kokoro_api_base="http://localhost:8000/v1",
+        kokoro_tts_host="http://localhost:8000/v1",
     )
 
     await handle_tts_playback(
@@ -151,7 +151,7 @@ async def test_handle_tts_playback_no_audio(mock_speak_text: AsyncMock) -> None:
     kokoro_tts_cfg = config.KokoroTTS(
         kokoro_tts_model="tts-1",
         kokoro_tts_voice="alloy",
-        kokoro_api_base="http://localhost:8000/v1",
+        kokoro_tts_host="http://localhost:8000/v1",
     )
 
     await handle_tts_playback(

@@ -100,7 +100,7 @@ class KokoroTTS(BaseModel):
 
     kokoro_tts_model: str
     kokoro_tts_voice: str
-    kokoro_api_base: str
+    kokoro_tts_host: str
 
 
 # --- Panel: Wake Word Options ---
