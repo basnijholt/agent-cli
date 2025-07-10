@@ -39,6 +39,11 @@ if TYPE_CHECKING:
 has_audiostretchy = importlib.util.find_spec("audiostretchy") is not None
 
 
+KOKORO_STREAM_RATE = 24000
+KOKORO_STREAM_WIDTH = 2  # Corresponds to pyaudio.paInt16
+KOKORO_STREAM_CHANNELS = 1
+
+
 def get_synthesizer(
     provider_config: config.ProviderSelection,
     audio_output_config: config.AudioOutput,
@@ -55,11 +60,6 @@ def get_synthesizer(
             _synthesize_speech_openai,
             openai_tts_config=openai_tts_config,
             openai_llm_config=openai_llm_config,
-        )
-    if provider_config.tts_provider == "kokoro":
-        return partial(
-            _synthesize_speech_kokoro,
-            kokoro_tts_config=kokoro_tts_config,
         )
     return partial(_synthesize_speech_wyoming, wyoming_tts_config=wyoming_tts_config)
 
@@ -224,28 +224,75 @@ async def _synthesize_speech_openai(
     )
 
 
-async def _synthesize_speech_kokoro(
+async def _stream_and_play_kokoro(
     *,
     text: str,
     kokoro_tts_config: config.KokoroTTS,
+    audio_output_config: config.AudioOutput,
     logger: logging.Logger,
-    **_kwargs: object,
+    play_audio_flag: bool,
+    quiet: bool = False,
+    stop_event: InteractiveStopEvent | None = None,
+    live: Live,
 ) -> bytes | None:
-    """Synthesize speech from text using Kokoro TTS server."""
+    """Stream and play audio from Kokoro TTS, returning the buffered WAV data."""
+    client = AsyncOpenAI(
+        api_key="not-needed",
+        base_url=kokoro_tts_config.kokoro_tts_host,
+    )
+    audio_buffer = io.BytesIO()
+
     try:
-        client = AsyncOpenAI(
-            api_key="not-needed",
-            base_url=kokoro_tts_config.kokoro_tts_host,
+        async with live_timer(live, "🔊 Synthesizing text", style="blue", quiet=quiet):
+            async with client.audio.speech.with_streaming_response.create(
+                model=kokoro_tts_config.kokoro_tts_model,
+                voice=kokoro_tts_config.kokoro_tts_voice,
+                input=text,
+                response_format="pcm",
+            ) as response:
+                if play_audio_flag:
+                    with pyaudio_context() as p:
+                        stream_config = setup_output_stream(
+                            audio_output_config.output_device_index,
+                            sample_rate=KOKORO_STREAM_RATE,
+                            sample_width=KOKORO_STREAM_WIDTH,
+                            channels=KOKORO_STREAM_CHANNELS,
+                        )
+                        with open_pyaudio_stream(p, **stream_config) as stream:
+                            logger.info("Starting Kokoro TTS stream playback.")
+                            async for chunk in response.aiter_bytes(chunk_size=1024):
+                                if stop_event and stop_event.is_set():
+                                    break
+                                stream.write(chunk)
+                                audio_buffer.write(chunk)
+                                await asyncio.sleep(0)
+                else:
+                    # Just buffer the data without playing
+                    async for chunk in response.aiter_bytes():
+                        audio_buffer.write(chunk)
+
+        if stop_event and stop_event.is_set():
+            logger.info("Audio playback interrupted")
+            if not quiet:
+                print_with_style("⏹️ Audio playback interrupted", style="yellow")
+        elif play_audio_flag and not quiet:
+            print_with_style("✅ Audio playback finished")
+
+        pcm_data = audio_buffer.getvalue()
+        if not pcm_data:
+            return None
+
+        return _create_wav_data(
+            pcm_data,
+            KOKORO_STREAM_RATE,
+            KOKORO_STREAM_WIDTH,
+            KOKORO_STREAM_CHANNELS,
         )
-        response = await client.audio.speech.create(
-            model=kokoro_tts_config.kokoro_tts_model,
-            voice=kokoro_tts_config.kokoro_tts_voice,
-            input=text,
-            response_format="wav",
-        )
-        return await response.aread()
-    except Exception:
-        logger.exception("Error during Kokoro speech synthesis")
+
+    except Exception as e:
+        logger.exception("Error during Kokoro speech synthesis or playback")
+        if not quiet:
+            print_error_message(f"Kokoro TTS error: {e}")
         return None
 
 
@@ -376,6 +423,18 @@ async def _speak_text(
     live: Live,
 ) -> bytes | None:
     """Synthesize and optionally play speech from text."""
+    if provider_config.tts_provider == "kokoro":
+        return await _stream_and_play_kokoro(
+            text=text,
+            kokoro_tts_config=kokoro_tts_config,
+            audio_output_config=audio_output_config,
+            logger=logger,
+            quiet=quiet,
+            play_audio_flag=play_audio_flag,
+            stop_event=stop_event,
+            live=live,
+        )
+
     synthesizer = get_synthesizer(
         provider_config,
         audio_output_config,
