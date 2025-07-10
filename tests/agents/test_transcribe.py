@@ -62,6 +62,7 @@ async def test_transcribe_main_llm_enabled(
         openai_llm_cfg = config.OpenAILLM(openai_llm_model="gpt-4")
 
         await transcribe._async_main(
+            extra_instructions=None,
             provider_cfg=provider_cfg,
             general_cfg=general_cfg,
             audio_in_cfg=audio_in_cfg,
@@ -125,6 +126,7 @@ async def test_transcribe_main(
         openai_llm_cfg = config.OpenAILLM(openai_llm_model="")
 
         await transcribe._async_main(
+            extra_instructions=None,
             provider_cfg=provider_cfg,
             general_cfg=general_cfg,
             audio_in_cfg=audio_in_cfg,

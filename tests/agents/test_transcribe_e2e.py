@@ -63,6 +63,7 @@ async def test_transcribe_e2e(
 
     with patch("agent_cli.core.utils.console", mock_console):
         await _async_main(
+            extra_instructions=None,
             provider_cfg=provider_cfg,
             general_cfg=general_cfg,
             audio_in_cfg=audio_in_cfg,
