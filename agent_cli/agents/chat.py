@@ -220,7 +220,7 @@ async def _handle_conversation_turn(
         model_name = ollama_cfg.llm_ollama_model
     elif provider_cfg.llm_provider == "openai":
         model_name = openai_llm_cfg.llm_openai_model
-    else:
+    elif provider_cfg.llm_provider == "gemini":
         model_name = gemini_llm_cfg.llm_gemini_model
     async with live_timer(
         live,
