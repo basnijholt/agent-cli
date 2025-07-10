@@ -33,7 +33,7 @@ output-device-name = "iloud,airpods,dell,macbook"
 
 # --- LLM Settings ---
 # Ollama (local)
-ollama-model = "gemma3:4b"
+ollama-model = "qwen3:4b"
 ollama-host = "http://localhost:11434"
 # OpenAI
 openai-llm-model = "gpt-4o-mini"
@@ -74,9 +74,9 @@ clipboard = true # Copy results to clipboard by default
 # Wake-word specific settings
 wake-server-ip = "localhost"
 wake-server-port = 10400
-wake-word-name = "ok_nabu" # e.g., "ok_nabu", "hey_jarvis"
+wake-word = "ok_nabu" # e.g., "ok_nabu", "hey_jarvis"
 # The assistant agent also uses ASR, LLM, and TTS settings from [defaults]
-enable-tts = true
+tts = true
 
 [autocorrect]
 # Use a more powerful model specifically for the autocorrect command.
@@ -89,7 +89,7 @@ ollama-model = "devstral:24b"
 # llm-provider = "openai"
 # tts-provider = "openai"
 # openai-llm-model = "gpt-4-turbo"
-enable-tts = true
+tts = true
 tts-speed = 1.2
 # Conversation history settings
 history-dir = "~/.config/agent-cli/history"
@@ -115,4 +115,4 @@ extra-instructions = "Assume the user is often discussing Python programming. Us
 # Use a powerful local model for the voice assistant.
 llm-provider = "local"
 ollama-model = "llama3"
-enable-tts = true
+tts = true
