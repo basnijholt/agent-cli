@@ -311,11 +311,12 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 │                             [default: local]                                 │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ LLM Configuration: Ollama (local) ──────────────────────────────────────────╮
-│ --llm-ollama-model        TEXT  The Ollama model to use. Default is qwen3:4b.    │
-│                             [default: qwen3:4b]                              │
-│ --llm-ollama-host         TEXT  The Ollama server host. Default is               │
-│                             http://localhost:11434.                          │
-│                             [default: http://localhost:11434]                │
+│ --llm-llm-ollama-model        TEXT  The Ollama model to use. Default is      │
+│                                     qwen3:4b.                                │
+│                                     [default: qwen3:4b]                      │
+│ --llm-llm-ollama-host         TEXT  The Ollama server host. Default is       │
+│                                     http://localhost:11434.                  │
+│                                     [default: http://localhost:11434]        │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ LLM Configuration: OpenAI ──────────────────────────────────────────────────╮
 │ --llm-openai-model        TEXT  The OpenAI model to use for LLM tasks.       │
@@ -412,11 +413,12 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 │                                 [default: whisper-1]                         │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ LLM Configuration: Ollama (local) ──────────────────────────────────────────╮
-│ --llm-ollama-model        TEXT  The Ollama model to use. Default is qwen3:4b.    │
-│                             [default: qwen3:4b]                              │
-│ --llm-ollama-host         TEXT  The Ollama server host. Default is               │
-│                             http://localhost:11434.                          │
-│                             [default: http://localhost:11434]                │
+│ --llm-llm-ollama-model        TEXT  The Ollama model to use. Default is      │
+│                                     qwen3:4b.                                │
+│                                     [default: qwen3:4b]                      │
+│ --llm-llm-ollama-host         TEXT  The Ollama server host. Default is       │
+│                                     http://localhost:11434.                  │
+│                                     [default: http://localhost:11434]        │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ LLM Configuration: OpenAI ──────────────────────────────────────────────────╮
 │ --llm-openai-model        TEXT  The OpenAI model to use for LLM tasks.       │
@@ -521,13 +523,13 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 │                                        [default: localhost]                  │
 │ --tts-wyoming-port            INTEGER  Wyoming TTS server port.              │
 │                                        [default: 10200]                      │
-│ --tts-wyoming-voice               TEXT     Voice name to use for Wyoming TTS     │
+│ --tts-wyoming-voice           TEXT     Voice name to use for Wyoming TTS     │
 │                                        (e.g., 'en_US-lessac-medium').        │
 │                                        [default: None]                       │
 │ --tts-wyoming-language        TEXT     Language for Wyoming TTS (e.g.,       │
 │                                        'en_US').                             │
 │                                        [default: None]                       │
-│ --tts-wyoming-speaker             TEXT     Speaker name for Wyoming TTS voice.   │
+│ --tts-wyoming-speaker         TEXT     Speaker name for Wyoming TTS voice.   │
 │                                        [default: None]                       │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ TTS (Text-to-Speech) Configuration: OpenAI ─────────────────────────────────╮
@@ -656,11 +658,12 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 │                                 [default: whisper-1]                         │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ LLM Configuration: Ollama (local) ──────────────────────────────────────────╮
-│ --llm-ollama-model        TEXT  The Ollama model to use. Default is qwen3:4b.    │
-│                             [default: qwen3:4b]                              │
-│ --llm-ollama-host         TEXT  The Ollama server host. Default is               │
-│                             http://localhost:11434.                          │
-│                             [default: http://localhost:11434]                │
+│ --llm-llm-ollama-model        TEXT  The Ollama model to use. Default is      │
+│                                     qwen3:4b.                                │
+│                                     [default: qwen3:4b]                      │
+│ --llm-llm-ollama-host         TEXT  The Ollama server host. Default is       │
+│                                     http://localhost:11434.                  │
+│                                     [default: http://localhost:11434]        │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ LLM Configuration: OpenAI ──────────────────────────────────────────────────╮
 │ --llm-openai-model        TEXT  The OpenAI model to use for LLM tasks.       │
@@ -690,13 +693,13 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 │                                        [default: localhost]                  │
 │ --tts-wyoming-port            INTEGER  Wyoming TTS server port.              │
 │                                        [default: 10200]                      │
-│ --tts-wyoming-voice               TEXT     Voice name to use for Wyoming TTS     │
+│ --tts-wyoming-voice           TEXT     Voice name to use for Wyoming TTS     │
 │                                        (e.g., 'en_US-lessac-medium').        │
 │                                        [default: None]                       │
 │ --tts-wyoming-language        TEXT     Language for Wyoming TTS (e.g.,       │
 │                                        'en_US').                             │
 │                                        [default: None]                       │
-│ --tts-wyoming-speaker             TEXT     Speaker name for Wyoming TTS voice.   │
+│ --tts-wyoming-speaker         TEXT     Speaker name for Wyoming TTS voice.   │
 │                                        [default: None]                       │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ TTS (Text-to-Speech) Configuration: OpenAI ─────────────────────────────────╮
@@ -824,11 +827,12 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 │                                 [default: whisper-1]                         │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ LLM Configuration: Ollama (local) ──────────────────────────────────────────╮
-│ --llm-ollama-model        TEXT  The Ollama model to use. Default is qwen3:4b.    │
-│                             [default: qwen3:4b]                              │
-│ --llm-ollama-host         TEXT  The Ollama server host. Default is               │
-│                             http://localhost:11434.                          │
-│                             [default: http://localhost:11434]                │
+│ --llm-llm-ollama-model        TEXT  The Ollama model to use. Default is      │
+│                                     qwen3:4b.                                │
+│                                     [default: qwen3:4b]                      │
+│ --llm-llm-ollama-host         TEXT  The Ollama server host. Default is       │
+│                                     http://localhost:11434.                  │
+│                                     [default: http://localhost:11434]        │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ LLM Configuration: OpenAI ──────────────────────────────────────────────────╮
 │ --llm-openai-model        TEXT  The OpenAI model to use for LLM tasks.       │
@@ -858,13 +862,13 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 │                                        [default: localhost]                  │
 │ --tts-wyoming-port            INTEGER  Wyoming TTS server port.              │
 │                                        [default: 10200]                      │
-│ --tts-wyoming-voice               TEXT     Voice name to use for Wyoming TTS     │
+│ --tts-wyoming-voice           TEXT     Voice name to use for Wyoming TTS     │
 │                                        (e.g., 'en_US-lessac-medium').        │
 │                                        [default: None]                       │
 │ --tts-wyoming-language        TEXT     Language for Wyoming TTS (e.g.,       │
 │                                        'en_US').                             │
 │                                        [default: None]                       │
-│ --tts-wyoming-speaker             TEXT     Speaker name for Wyoming TTS voice.   │
+│ --tts-wyoming-speaker         TEXT     Speaker name for Wyoming TTS voice.   │
 │                                        [default: None]                       │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ TTS (Text-to-Speech) Configuration: OpenAI ─────────────────────────────────╮
@@ -990,11 +994,12 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 │                                 [default: whisper-1]                         │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ LLM Configuration: Ollama (local) ──────────────────────────────────────────╮
-│ --llm-ollama-model        TEXT  The Ollama model to use. Default is qwen3:4b.    │
-│                             [default: qwen3:4b]                              │
-│ --llm-ollama-host         TEXT  The Ollama server host. Default is               │
-│                             http://localhost:11434.                          │
-│                             [default: http://localhost:11434]                │
+│ --llm-llm-ollama-model        TEXT  The Ollama model to use. Default is      │
+│                                     qwen3:4b.                                │
+│                                     [default: qwen3:4b]                      │
+│ --llm-llm-ollama-host         TEXT  The Ollama server host. Default is       │
+│                                     http://localhost:11434.                  │
+│                                     [default: http://localhost:11434]        │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ LLM Configuration: OpenAI ──────────────────────────────────────────────────╮
 │ --llm-openai-model        TEXT  The OpenAI model to use for LLM tasks.       │
@@ -1024,13 +1029,13 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 │                                        [default: localhost]                  │
 │ --tts-wyoming-port            INTEGER  Wyoming TTS server port.              │
 │                                        [default: 10200]                      │
-│ --tts-wyoming-voice               TEXT     Voice name to use for Wyoming TTS     │
+│ --tts-wyoming-voice           TEXT     Voice name to use for Wyoming TTS     │
 │                                        (e.g., 'en_US-lessac-medium').        │
 │                                        [default: None]                       │
 │ --tts-wyoming-language        TEXT     Language for Wyoming TTS (e.g.,       │
 │                                        'en_US').                             │
 │                                        [default: None]                       │
-│ --tts-wyoming-speaker             TEXT     Speaker name for Wyoming TTS voice.   │
+│ --tts-wyoming-speaker         TEXT     Speaker name for Wyoming TTS voice.   │
 │                                        [default: None]                       │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ TTS (Text-to-Speech) Configuration: OpenAI ─────────────────────────────────╮
