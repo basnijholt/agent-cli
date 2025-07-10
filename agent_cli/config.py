@@ -111,7 +111,7 @@ class WakeWord(BaseModel):
 
     wake_server_ip: str
     wake_server_port: int
-    wake_word_name: str
+    wake_word: str
 
 
 # --- Panel: General Options ---

@@ -117,7 +117,7 @@ WAKE_WORD_SERVER_PORT: int = typer.Option(
     help="Wyoming wake word server port.",
     rich_help_panel="Wake Word Options",
 )
-WAKE_WORD_NAME: str = typer.Option(
+WAKE_WORD: str = typer.Option(
     "ok_nabu",
     "--wake-word",
     help="Name of wake word to detect (e.g., 'ok_nabu', 'hey_jarvis').",

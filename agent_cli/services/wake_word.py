@@ -92,7 +92,7 @@ async def _receive_wake_detection(
 async def detect_wake_word_from_queue(
     wake_server_ip: str,
     wake_server_port: int,
-    wake_word_name: str,
+    wake_word: str,
     logger: logging.Logger,
     queue: asyncio.Queue,
     *,
@@ -110,7 +110,7 @@ async def detect_wake_word_from_queue(
             logger,
             quiet=quiet,
         ) as client:
-            await client.write_event(Detect(names=[wake_word_name]).event())
+            await client.write_event(Detect(names=[wake_word]).event())
 
             _send_task, recv_task = await manage_send_receive_tasks(
                 _send_audio_from_queue_for_wake_detection(

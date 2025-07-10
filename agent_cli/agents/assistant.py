@@ -100,7 +100,7 @@ async def _record_audio_with_wake_word(
     """Record audio to a buffer using wake word detection to start and stop."""
     if not quiet:
         print_with_style(
-            f"👂 Listening for wake word: [bold yellow]{wake_word_config.wake_word_name}[/bold yellow]",
+            f"👂 Listening for wake word: [bold yellow]{wake_word_config.wake_word}[/bold yellow]",
         )
         print_with_style(
             "Say the wake word to start recording, then say it again to stop and process.",
@@ -114,7 +114,7 @@ async def _record_audio_with_wake_word(
         detected_word = await wake_word.detect_wake_word_from_queue(
             wake_server_ip=wake_word_config.wake_server_ip,
             wake_server_port=wake_word_config.wake_server_port,
-            wake_word_name=wake_word_config.wake_word_name,
+            wake_word=wake_word_config.wake_word,
             logger=logger,
             queue=wake_queue,
             quiet=quiet,
@@ -140,7 +140,7 @@ async def _record_audio_with_wake_word(
         stop_detected_word = await wake_word.detect_wake_word_from_queue(
             wake_server_ip=wake_word_config.wake_server_ip,
             wake_server_port=wake_word_config.wake_server_port,
-            wake_word_name=wake_word_config.wake_word_name,
+            wake_word=wake_word_config.wake_word,
             logger=logger,
             queue=wake_queue,
             quiet=quiet,
@@ -262,7 +262,7 @@ def assistant(
     # --- Wake Word Configuration ---
     wake_server_ip: str = opts.WAKE_WORD_SERVER_IP,
     wake_server_port: int = opts.WAKE_WORD_SERVER_PORT,
-    wake_word_name: str = opts.WAKE_WORD_NAME,
+    wake_word: str = opts.WAKE_WORD,
     # --- ASR (Audio) Configuration ---
     input_device_index: int | None = opts.INPUT_DEVICE_INDEX,
     input_device_name: str | None = opts.INPUT_DEVICE_NAME,
@@ -372,16 +372,16 @@ def assistant(
         wake_word_config = config.WakeWord(
             wake_server_ip=wake_server_ip,
             wake_server_port=wake_server_port,
-            wake_word_name=wake_word_name,
+            wake_word=wake_word,
         )
 
-        variations = ", ".join(WAKE_WORD_VARIATIONS.get(wake_word_config.wake_word_name, []))
+        variations = ", ".join(WAKE_WORD_VARIATIONS.get(wake_word_config.wake_word, []))
         system_prompt = SYSTEM_PROMPT_TEMPLATE.format(
-            wake_word=wake_word_config.wake_word_name,
+            wake_word=wake_word_config.wake_word,
             variations=variations,
         )
         agent_instructions = AGENT_INSTRUCTIONS_TEMPLATE.format(
-            wake_word=wake_word_config.wake_word_name,
+            wake_word=wake_word_config.wake_word,
             variations=variations,
         )
 
