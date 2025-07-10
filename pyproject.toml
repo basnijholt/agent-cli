@@ -16,6 +16,7 @@ dependencies = [
     "typer",
     "openai",
     "dotenv",
+    "google-genai>=1.25.0",
 ]
 requires-python = ">=3.11"
 
