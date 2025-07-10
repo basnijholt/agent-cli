@@ -75,6 +75,7 @@ For specific functionalities, you can set up the following optional services:
 | -------------------------------- | -------------------------------------------------------------- |
 | [**Ollama**](https://ollama.ai/) | For `autocorrect`, `voice-edit`, and `chat` with local models. |
 | **OpenAI**                       | If you prefer to use a cloud service, an API key is required.  |
+| **Gemini**                       | If you prefer to use a cloud service, an API key is required.  |
 
 ### 🎤 ASR (Automatic Speech Recognition)
 
@@ -307,7 +308,7 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Provider Selection ─────────────────────────────────────────────────────────╮
 │ --llm-provider        TEXT  The LLM provider to use ('local' for Ollama,     │
-│                             'openai').                                       │
+│                             'openai', 'gemini').                             │
 │                             [default: local]                                 │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ LLM Configuration: Ollama (local) ──────────────────────────────────────────╮
@@ -324,6 +325,14 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 │ --openai-api-key          TEXT  Your OpenAI API key. Can also be set with    │
 │                                 the OPENAI_API_KEY environment variable.     │
 │                                 [env var: OPENAI_API_KEY]                    │
+│                                 [default: None]                              │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ LLM Configuration: Gemini ──────────────────────────────────────────────────╮
+│ --llm-gemini-model        TEXT  The Gemini model to use for LLM tasks.       │
+│                                 [default: gemini-2.5-flash]                  │
+│ --gemini-api-key          TEXT  Your Gemini API key. Can also be set with    │
+│                                 the GEMINI_API_KEY environment variable.     │
+│                                 [env var: GEMINI_API_KEY]                    │
 │                                 [default: None]                              │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ General Options ────────────────────────────────────────────────────────────╮
@@ -389,7 +398,7 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 │                             'openai').                                       │
 │                             [default: local]                                 │
 │ --llm-provider        TEXT  The LLM provider to use ('local' for Ollama,     │
-│                             'openai').                                       │
+│                             'openai', 'gemini').                             │
 │                             [default: local]                                 │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ ASR (Audio) Configuration ──────────────────────────────────────────────────╮
@@ -426,6 +435,14 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 │ --openai-api-key          TEXT  Your OpenAI API key. Can also be set with    │
 │                                 the OPENAI_API_KEY environment variable.     │
 │                                 [env var: OPENAI_API_KEY]                    │
+│                                 [default: None]                              │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ LLM Configuration: Gemini ──────────────────────────────────────────────────╮
+│ --llm-gemini-model        TEXT  The Gemini model to use for LLM tasks.       │
+│                                 [default: gemini-2.5-flash]                  │
+│ --gemini-api-key          TEXT  Your Gemini API key. Can also be set with    │
+│                                 the GEMINI_API_KEY environment variable.     │
+│                                 [env var: GEMINI_API_KEY]                    │
 │                                 [default: None]                              │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ LLM Configuration ──────────────────────────────────────────────────────────╮
@@ -623,7 +640,7 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 │                             'openai').                                       │
 │                             [default: local]                                 │
 │ --llm-provider        TEXT  The LLM provider to use ('local' for Ollama,     │
-│                             'openai').                                       │
+│                             'openai', 'gemini').                             │
 │                             [default: local]                                 │
 │ --tts-provider        TEXT  The TTS provider to use ('local' for Wyoming,    │
 │                             'openai', 'kokoro').                             │
@@ -663,6 +680,14 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 │ --openai-api-key          TEXT  Your OpenAI API key. Can also be set with    │
 │                                 the OPENAI_API_KEY environment variable.     │
 │                                 [env var: OPENAI_API_KEY]                    │
+│                                 [default: None]                              │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ LLM Configuration: Gemini ──────────────────────────────────────────────────╮
+│ --llm-gemini-model        TEXT  The Gemini model to use for LLM tasks.       │
+│                                 [default: gemini-2.5-flash]                  │
+│ --gemini-api-key          TEXT  Your Gemini API key. Can also be set with    │
+│                                 the GEMINI_API_KEY environment variable.     │
+│                                 [env var: GEMINI_API_KEY]                    │
 │                                 [default: None]                              │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ TTS (Text-to-Speech) Configuration ─────────────────────────────────────────╮
@@ -783,7 +808,7 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 │                             'openai').                                       │
 │                             [default: local]                                 │
 │ --llm-provider        TEXT  The LLM provider to use ('local' for Ollama,     │
-│                             'openai').                                       │
+│                             'openai', 'gemini').                             │
 │                             [default: local]                                 │
 │ --tts-provider        TEXT  The TTS provider to use ('local' for Wyoming,    │
 │                             'openai', 'kokoro').                             │
@@ -832,6 +857,14 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 │ --openai-api-key          TEXT  Your OpenAI API key. Can also be set with    │
 │                                 the OPENAI_API_KEY environment variable.     │
 │                                 [env var: OPENAI_API_KEY]                    │
+│                                 [default: None]                              │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ LLM Configuration: Gemini ──────────────────────────────────────────────────╮
+│ --llm-gemini-model        TEXT  The Gemini model to use for LLM tasks.       │
+│                                 [default: gemini-2.5-flash]                  │
+│ --gemini-api-key          TEXT  Your Gemini API key. Can also be set with    │
+│                                 the GEMINI_API_KEY environment variable.     │
+│                                 [env var: GEMINI_API_KEY]                    │
 │                                 [default: None]                              │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ TTS (Text-to-Speech) Configuration ─────────────────────────────────────────╮
@@ -959,7 +992,7 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 │                             'openai').                                       │
 │                             [default: local]                                 │
 │ --llm-provider        TEXT  The LLM provider to use ('local' for Ollama,     │
-│                             'openai').                                       │
+│                             'openai', 'gemini').                             │
 │                             [default: local]                                 │
 │ --tts-provider        TEXT  The TTS provider to use ('local' for Wyoming,    │
 │                             'openai', 'kokoro').                             │
@@ -999,6 +1032,14 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 │ --openai-api-key          TEXT  Your OpenAI API key. Can also be set with    │
 │                                 the OPENAI_API_KEY environment variable.     │
 │                                 [env var: OPENAI_API_KEY]                    │
+│                                 [default: None]                              │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ LLM Configuration: Gemini ──────────────────────────────────────────────────╮
+│ --llm-gemini-model        TEXT  The Gemini model to use for LLM tasks.       │
+│                                 [default: gemini-2.5-flash]                  │
+│ --gemini-api-key          TEXT  Your Gemini API key. Can also be set with    │
+│                                 the GEMINI_API_KEY environment variable.     │
+│                                 [env var: GEMINI_API_KEY]                    │
 │                                 [default: None]                              │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ TTS (Text-to-Speech) Configuration ─────────────────────────────────────────╮

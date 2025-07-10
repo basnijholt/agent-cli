@@ -60,6 +60,10 @@ async def test_transcribe_e2e(
     openai_asr_cfg = config.OpenAIASR(asr_openai_model="whisper-1")
     ollama_cfg = config.Ollama(llm_ollama_model="", llm_ollama_host="")
     openai_llm_cfg = config.OpenAILLM(llm_openai_model="")
+    gemini_llm_cfg = config.GeminiLLM(
+        llm_gemini_model="gemini-1.5-flash",
+        gemini_api_key="test-key",
+    )
 
     with patch("agent_cli.core.utils.console", mock_console):
         await _async_main(
@@ -71,6 +75,7 @@ async def test_transcribe_e2e(
             openai_asr_cfg=openai_asr_cfg,
             ollama_cfg=ollama_cfg,
             openai_llm_cfg=openai_llm_cfg,
+            gemini_llm_cfg=gemini_llm_cfg,
             llm_enabled=False,
             p=mock_pyaudio_instance,
         )

@@ -8,7 +8,7 @@ import typer
 LLM_PROVIDER: str = typer.Option(
     "local",
     "--llm-provider",
-    help="The LLM provider to use ('local' for Ollama, 'openai').",
+    help="The LLM provider to use ('local' for Ollama, 'openai', 'gemini').",
     rich_help_panel="Provider Selection",
 )
 ASR_PROVIDER: str = typer.Option(
@@ -58,6 +58,20 @@ OPENAI_API_KEY: str | None = typer.Option(
     help="Your OpenAI API key. Can also be set with the OPENAI_API_KEY environment variable.",
     envvar="OPENAI_API_KEY",
     rich_help_panel="LLM Configuration: OpenAI",
+)
+# Gemini
+LLM_GEMINI_MODEL: str = typer.Option(
+    "gemini-2.5-flash",
+    "--llm-gemini-model",
+    help="The Gemini model to use for LLM tasks.",
+    rich_help_panel="LLM Configuration: Gemini",
+)
+GEMINI_API_KEY: str | None = typer.Option(
+    None,
+    "--gemini-api-key",
+    help="Your Gemini API key. Can also be set with the GEMINI_API_KEY environment variable.",
+    envvar="GEMINI_API_KEY",
+    rich_help_panel="LLM Configuration: Gemini",
 )
 
 # --- ASR (Audio) Configuration ---

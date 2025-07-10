@@ -96,6 +96,10 @@ async def test_async_main_list_devices(tmp_path: Path) -> None:
     openai_asr_cfg = config.OpenAIASR(asr_openai_model="whisper-1")
     ollama_cfg = config.Ollama(llm_ollama_model="test-model", llm_ollama_host="localhost")
     openai_llm_cfg = config.OpenAILLM(llm_openai_model="gpt-4")
+    gemini_llm_cfg = config.GeminiLLM(
+        llm_gemini_model="gemini-1.5-flash",
+        gemini_api_key="test-key",
+    )
     audio_out_cfg = config.AudioOutput()
     wyoming_tts_cfg = config.WyomingTTS(tts_wyoming_ip="localhost", tts_wyoming_port=5678)
     openai_tts_cfg = config.OpenAITTS(tts_openai_model="tts-1", tts_openai_voice="alloy")
@@ -121,6 +125,7 @@ async def test_async_main_list_devices(tmp_path: Path) -> None:
             openai_asr_cfg=openai_asr_cfg,
             ollama_cfg=ollama_cfg,
             openai_llm_cfg=openai_llm_cfg,
+            gemini_llm_cfg=gemini_llm_cfg,
             audio_out_cfg=audio_out_cfg,
             wyoming_tts_cfg=wyoming_tts_cfg,
             openai_tts_cfg=openai_tts_cfg,
@@ -150,6 +155,10 @@ async def test_async_main_list_output_devices(tmp_path: Path) -> None:
     openai_asr_cfg = config.OpenAIASR(asr_openai_model="whisper-1")
     ollama_cfg = config.Ollama(llm_ollama_model="test-model", llm_ollama_host="localhost")
     openai_llm_cfg = config.OpenAILLM(llm_openai_model="gpt-4")
+    gemini_llm_cfg = config.GeminiLLM(
+        llm_gemini_model="gemini-1.5-flash",
+        gemini_api_key="test-key",
+    )
     audio_out_cfg = config.AudioOutput()
     wyoming_tts_cfg = config.WyomingTTS(tts_wyoming_ip="localhost", tts_wyoming_port=5678)
     openai_tts_cfg = config.OpenAITTS(tts_openai_model="tts-1", tts_openai_voice="alloy")
@@ -175,6 +184,7 @@ async def test_async_main_list_output_devices(tmp_path: Path) -> None:
             openai_asr_cfg=openai_asr_cfg,
             ollama_cfg=ollama_cfg,
             openai_llm_cfg=openai_llm_cfg,
+            gemini_llm_cfg=gemini_llm_cfg,
             audio_out_cfg=audio_out_cfg,
             wyoming_tts_cfg=wyoming_tts_cfg,
             openai_tts_cfg=openai_tts_cfg,
@@ -207,6 +217,10 @@ async def test_async_main_full_loop(tmp_path: Path) -> None:
     openai_asr_cfg = config.OpenAIASR(asr_openai_model="whisper-1")
     ollama_cfg = config.Ollama(llm_ollama_model="test-model", llm_ollama_host="localhost")
     openai_llm_cfg = config.OpenAILLM(llm_openai_model="gpt-4")
+    gemini_llm_cfg = config.GeminiLLM(
+        llm_gemini_model="gemini-1.5-flash",
+        gemini_api_key="test-key",
+    )
     audio_out_cfg = config.AudioOutput(enable_tts=True, output_device_index=1)
     wyoming_tts_cfg = config.WyomingTTS(
         tts_wyoming_ip="localhost",
@@ -253,6 +267,7 @@ async def test_async_main_full_loop(tmp_path: Path) -> None:
             openai_asr_cfg=openai_asr_cfg,
             ollama_cfg=ollama_cfg,
             openai_llm_cfg=openai_llm_cfg,
+            gemini_llm_cfg=gemini_llm_cfg,
             audio_out_cfg=audio_out_cfg,
             wyoming_tts_cfg=wyoming_tts_cfg,
             openai_tts_cfg=openai_tts_cfg,
