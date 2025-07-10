@@ -59,6 +59,11 @@ async def test_speak_e2e(
             openai_llm_model="gpt-4o-mini",
             openai_api_key="fake-key",
         )
+        kokoro_tts_cfg = config.KokoroTTS(
+            kokoro_tts_model="tts-1",
+            kokoro_tts_voice="alloy",
+            kokoro_api_base="http://localhost:8000/v1",
+        )
 
         await _async_main(
             general_cfg=general_cfg,
@@ -68,6 +73,7 @@ async def test_speak_e2e(
             wyoming_tts_cfg=wyoming_tts_cfg,
             openai_tts_cfg=openai_tts_cfg,
             openai_llm_cfg=openai_llm_cfg,
+            kokoro_tts_cfg=kokoro_tts_cfg,
         )
 
     # Verify that the audio was "played"

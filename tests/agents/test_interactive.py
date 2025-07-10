@@ -99,6 +99,11 @@ async def test_async_main_list_devices(tmp_path: Path) -> None:
     audio_out_cfg = config.AudioOutput()
     wyoming_tts_cfg = config.WyomingTTS(wyoming_tts_ip="localhost", wyoming_tts_port=5678)
     openai_tts_cfg = config.OpenAITTS(openai_tts_model="tts-1", openai_tts_voice="alloy")
+    kokoro_tts_cfg = config.KokoroTTS(
+        kokoro_tts_model="tts-1",
+        kokoro_tts_voice="alloy",
+        kokoro_api_base="http://localhost:8000/v1",
+    )
 
     with (
         patch("agent_cli.agents.chat.pyaudio_context"),
@@ -119,6 +124,7 @@ async def test_async_main_list_devices(tmp_path: Path) -> None:
             audio_out_cfg=audio_out_cfg,
             wyoming_tts_cfg=wyoming_tts_cfg,
             openai_tts_cfg=openai_tts_cfg,
+            kokoro_tts_config=kokoro_tts_cfg,
         )
         mock_setup_devices.assert_called_once()
 
@@ -147,6 +153,11 @@ async def test_async_main_list_output_devices(tmp_path: Path) -> None:
     audio_out_cfg = config.AudioOutput()
     wyoming_tts_cfg = config.WyomingTTS(wyoming_tts_ip="localhost", wyoming_tts_port=5678)
     openai_tts_cfg = config.OpenAITTS(openai_tts_model="tts-1", openai_tts_voice="alloy")
+    kokoro_tts_cfg = config.KokoroTTS(
+        kokoro_tts_model="tts-1",
+        kokoro_tts_voice="alloy",
+        kokoro_api_base="http://localhost:8000/v1",
+    )
 
     with (
         patch("agent_cli.agents.chat.pyaudio_context"),
@@ -167,6 +178,7 @@ async def test_async_main_list_output_devices(tmp_path: Path) -> None:
             audio_out_cfg=audio_out_cfg,
             wyoming_tts_cfg=wyoming_tts_cfg,
             openai_tts_cfg=openai_tts_cfg,
+            kokoro_tts_config=kokoro_tts_cfg,
         )
         mock_setup_devices.assert_called_once()
 
@@ -202,6 +214,11 @@ async def test_async_main_full_loop(tmp_path: Path) -> None:
         wyoming_voice="test-voice",
     )
     openai_tts_cfg = config.OpenAITTS(openai_tts_model="tts-1", openai_tts_voice="alloy")
+    kokoro_tts_cfg = config.KokoroTTS(
+        kokoro_tts_model="tts-1",
+        kokoro_tts_voice="alloy",
+        kokoro_api_base="http://localhost:8000/v1",
+    )
 
     with (
         patch("agent_cli.agents.chat.pyaudio_context"),
@@ -239,6 +256,7 @@ async def test_async_main_full_loop(tmp_path: Path) -> None:
             audio_out_cfg=audio_out_cfg,
             wyoming_tts_cfg=wyoming_tts_cfg,
             openai_tts_cfg=openai_tts_cfg,
+            kokoro_tts_config=kokoro_tts_cfg,
         )
 
         # Verify that the core functions were called
@@ -253,6 +271,7 @@ async def test_async_main_full_loop(tmp_path: Path) -> None:
             wyoming_tts_config=wyoming_tts_cfg,
             openai_tts_config=openai_tts_cfg,
             openai_llm_config=openai_llm_cfg,
+            kokoro_tts_config=kokoro_tts_cfg,
             save_file=None,
             quiet=False,
             logger=mock_tts.call_args.kwargs["logger"],

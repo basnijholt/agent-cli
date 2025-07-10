@@ -10,6 +10,7 @@ from functools import partial
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from openai import AsyncOpenAI
 from rich.live import Live
 from wyoming.audio import AudioChunk, AudioStart, AudioStop
 from wyoming.tts import Synthesize, SynthesizeVoice
@@ -44,6 +45,7 @@ def get_synthesizer(
     wyoming_tts_config: config.WyomingTTS,
     openai_tts_config: config.OpenAITTS,
     openai_llm_config: config.OpenAILLM,
+    kokoro_tts_config: config.KokoroTTS,
 ) -> Callable[..., Awaitable[bytes | None]]:
     """Return the appropriate synthesizer based on the config."""
     if not audio_output_config.enable_tts:
@@ -53,6 +55,11 @@ def get_synthesizer(
             _synthesize_speech_openai,
             openai_tts_config=openai_tts_config,
             openai_llm_config=openai_llm_config,
+        )
+    if provider_config.tts_provider == "kokoro":
+        return partial(
+            _synthesize_speech_kokoro,
+            kokoro_tts_config=kokoro_tts_config,
         )
     return partial(_synthesize_speech_wyoming, wyoming_tts_config=wyoming_tts_config)
 
@@ -65,6 +72,7 @@ async def handle_tts_playback(
     wyoming_tts_config: config.WyomingTTS,
     openai_tts_config: config.OpenAITTS,
     openai_llm_config: config.OpenAILLM,
+    kokoro_tts_config: config.KokoroTTS,
     save_file: Path | None,
     quiet: bool,
     logger: logging.Logger,
@@ -86,6 +94,7 @@ async def handle_tts_playback(
             wyoming_tts_config=wyoming_tts_config,
             openai_tts_config=openai_tts_config,
             openai_llm_config=openai_llm_config,
+            kokoro_tts_config=kokoro_tts_config,
             logger=logger,
             quiet=quiet,
             play_audio_flag=play_audio,
@@ -215,6 +224,30 @@ async def _synthesize_speech_openai(
     )
 
 
+async def _synthesize_speech_kokoro(
+    *,
+    text: str,
+    kokoro_tts_config: config.KokoroTTS,
+    logger: logging.Logger,
+    **_kwargs: object,
+) -> bytes | None:
+    """Synthesize speech from text using Kokoro TTS server."""
+    try:
+        client = AsyncOpenAI(
+            api_key=kokoro_tts_config.kokoro_api_key,
+            base_url=kokoro_tts_config.kokoro_api_base,
+        )
+        response = await client.audio.speech.create(
+            model=kokoro_tts_config.kokoro_tts_model,
+            voice=kokoro_tts_config.kokoro_tts_voice,
+            input=text,
+        )
+        return await response.aread()
+    except Exception:
+        logger.exception("Error during Kokoro speech synthesis")
+        return None
+
+
 async def _synthesize_speech_wyoming(
     *,
     text: str,
@@ -334,6 +367,7 @@ async def _speak_text(
     wyoming_tts_config: config.WyomingTTS,
     openai_tts_config: config.OpenAITTS,
     openai_llm_config: config.OpenAILLM,
+    kokoro_tts_config: config.KokoroTTS,
     logger: logging.Logger,
     quiet: bool = False,
     play_audio_flag: bool = True,
@@ -347,6 +381,7 @@ async def _speak_text(
         wyoming_tts_config,
         openai_tts_config,
         openai_llm_config,
+        kokoro_tts_config,
     )
     audio_data = None
     try:
@@ -356,6 +391,7 @@ async def _speak_text(
                 wyoming_tts_config=wyoming_tts_config,
                 openai_tts_config=openai_tts_config,
                 openai_llm_config=openai_llm_config,
+                kokoro_tts_config=kokoro_tts_config,
                 logger=logger,
                 quiet=quiet,
                 live=live,
@@ -398,3 +434,6 @@ async def _save_audio_file(
                 f"❌ Failed to save {description.lower()}: {e}",
                 style="red",
             )
+
+
+__all__ = ["handle_tts_playback"]

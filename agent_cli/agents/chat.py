@@ -160,6 +160,7 @@ async def _handle_conversation_turn(
     audio_out_cfg: config.AudioOutput,
     wyoming_tts_cfg: config.WyomingTTS,
     openai_tts_cfg: config.OpenAITTS,
+    kokoro_tts_config: config.KokoroTTS,
     live: Live,
 ) -> None:
     """Handles a single turn of the conversation."""
@@ -281,6 +282,7 @@ async def _handle_conversation_turn(
             wyoming_tts_config=wyoming_tts_cfg,
             openai_tts_config=openai_tts_cfg,
             openai_llm_config=openai_llm_cfg,
+            kokoro_tts_config=kokoro_tts_config,
             save_file=general_cfg.save_file,
             quiet=general_cfg.quiet,
             logger=LOGGER,
@@ -309,6 +311,7 @@ async def _async_main(
     audio_out_cfg: config.AudioOutput,
     wyoming_tts_cfg: config.WyomingTTS,
     openai_tts_cfg: config.OpenAITTS,
+    kokoro_tts_config: config.KokoroTTS,
 ) -> None:
     """Main async function, consumes parsed arguments."""
     try:
@@ -354,6 +357,7 @@ async def _async_main(
                         audio_out_cfg=audio_out_cfg,
                         wyoming_tts_cfg=wyoming_tts_cfg,
                         openai_tts_cfg=openai_tts_cfg,
+                        kokoro_tts_config=kokoro_tts_config,
                         live=live,
                     )
     except Exception:
@@ -392,6 +396,10 @@ def chat(
     wyoming_speaker: str | None = opts.WYOMING_SPEAKER,
     openai_tts_model: str = opts.OPENAI_TTS_MODEL,
     openai_tts_voice: str = opts.OPENAI_TTS_VOICE,
+    kokoro_tts_model: str = opts.KOKORO_TTS_MODEL,
+    kokoro_tts_voice: str = opts.KOKORO_TTS_VOICE,
+    kokoro_api_base: str = opts.KOKORO_API_BASE,
+    kokoro_api_key: str | None = opts.KOKORO_API_KEY,
     # --- Process Management ---
     stop: bool = opts.STOP,
     status: bool = opts.STATUS,
@@ -476,6 +484,12 @@ def chat(
             openai_tts_model=openai_tts_model,
             openai_tts_voice=openai_tts_voice,
         )
+        kokoro_tts_cfg = config.KokoroTTS(
+            kokoro_tts_model=kokoro_tts_model,
+            kokoro_tts_voice=kokoro_tts_voice,
+            kokoro_api_base=kokoro_api_base,
+            kokoro_api_key=kokoro_api_key,
+        )
         history_cfg = config.History(
             history_dir=history_dir,
             last_n_messages=last_n_messages,
@@ -494,5 +508,6 @@ def chat(
                 audio_out_cfg=audio_out_cfg,
                 wyoming_tts_cfg=wyoming_tts_cfg,
                 openai_tts_cfg=openai_tts_cfg,
+                kokoro_tts_config=kokoro_tts_cfg,
             ),
         )
