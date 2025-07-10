@@ -17,6 +17,7 @@ from agent_cli.core import process
 from agent_cli.core.audio import pyaudio_context, setup_devices
 from agent_cli.core.utils import (
     maybe_live,
+    print_command_line_args,
     print_input_panel,
     print_output_panel,
     print_with_style,
@@ -188,9 +189,12 @@ def transcribe(
     log_file: str | None = opts.LOG_FILE,
     list_devices: bool = opts.LIST_DEVICES,
     quiet: bool = opts.QUIET,
-    config_file: str | None = opts.CONFIG_FILE,  # noqa: ARG001
+    config_file: str | None = opts.CONFIG_FILE,
+    print_args: bool = opts.PRINT_ARGS,
 ) -> None:
     """Wyoming ASR Client for streaming microphone audio to a transcription server."""
+    if print_args:
+        print_command_line_args(locals())
     setup_logging(log_level, log_file, quiet=quiet)
     general_cfg = config.General(
         log_level=log_level,

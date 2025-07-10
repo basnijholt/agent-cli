@@ -22,6 +22,7 @@ from rich.live import Live
 from rich.panel import Panel
 from rich.spinner import Spinner
 from rich.status import Status
+from rich.table import Table
 from rich.text import Text
 
 from . import process
@@ -349,3 +350,58 @@ async def manage_send_receive_tasks(
         task.cancel()
 
     return send_task, recv_task
+
+
+def print_command_line_args(
+    args: dict[str, str | int | bool | None],
+) -> None:
+    """Print command line arguments in a formatted way."""
+    from agent_cli import opts  # noqa: PLC0415
+
+    table = Table(title="Command Line Arguments", show_header=True, header_style="bold magenta")
+    table.add_column("Parameter", style="cyan", no_wrap=True)
+    table.add_column("Value", style="green")
+    table.add_column("Type", style="dim")
+
+    sorted_args = sorted(args.items())
+    categories: dict[str, list[tuple[str, str | int | bool | None]]] = {}
+
+    for key, value in sorted_args:
+        if key == "ctx":
+            continue
+        try:
+            category = getattr(opts, key.upper()).rich_help_panel
+        except AttributeError:
+            category = "Other"
+
+        if category not in categories:
+            categories[category] = []
+        categories[category].append((key, value))
+
+    sorted_categories = sorted(categories.items())
+    for category, items in sorted_categories:
+        if not items:
+            continue
+        # Add a separator row for the category
+        table.add_row(f"[bold yellow]── {category} ──[/bold yellow]", "", "")
+
+        for key, value in items:
+            if value is None:
+                formatted_value = "[dim]None[/dim]"
+            elif isinstance(value, bool):
+                formatted_value = "[green]✓[/green]" if value else "[red]✗[/red]"
+            elif isinstance(value, str) and not value:
+                formatted_value = "[dim]<empty>[/dim]"
+            else:
+                formatted_value = str(value)
+
+            type_name = type(value).__name__
+            if value is None:
+                type_name = "NoneType"
+
+            table.add_row(key, formatted_value, f"[dim]{type_name}[/dim]")
+
+    # Print the table
+    console.print()
+    console.print(table)
+    console.print()
