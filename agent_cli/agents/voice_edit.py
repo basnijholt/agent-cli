@@ -141,7 +141,6 @@ async def _async_main(
                 wyoming_asr_config=wyoming_asr_cfg,
                 openai_asr_config=openai_asr_cfg,
                 ollama_config=ollama_cfg,
-                openai_llm_config=openai_llm_cfg,
                 logger=LOGGER,
                 quiet=general_cfg.quiet,
             )

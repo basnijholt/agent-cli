@@ -28,7 +28,6 @@ async def test_get_instruction_from_audio(mock_get_transcriber: MagicMock) -> No
     wyoming_asr_cfg = config.WyomingASR(asr_wyoming_ip="localhost", asr_wyoming_port=1234)
     openai_asr_cfg = config.OpenAIASR(asr_openai_model="whisper-1")
     ollama_cfg = config.Ollama(llm_ollama_model="test-model", llm_ollama_host="localhost")
-    openai_llm_cfg = config.OpenAILLM(llm_openai_model="gpt-4")
 
     result = await get_instruction_from_audio(
         audio_data=b"test audio",
@@ -37,7 +36,6 @@ async def test_get_instruction_from_audio(mock_get_transcriber: MagicMock) -> No
         wyoming_asr_config=wyoming_asr_cfg,
         openai_asr_config=openai_asr_cfg,
         ollama_config=ollama_cfg,
-        openai_llm_config=openai_llm_cfg,
         logger=MagicMock(),
         quiet=False,
     )
@@ -61,7 +59,6 @@ async def test_get_instruction_from_audio_error(mock_get_transcriber: MagicMock)
     wyoming_asr_cfg = config.WyomingASR(asr_wyoming_ip="localhost", asr_wyoming_port=1234)
     openai_asr_cfg = config.OpenAIASR(asr_openai_model="whisper-1")
     ollama_cfg = config.Ollama(llm_ollama_model="test-model", llm_ollama_host="localhost")
-    openai_llm_cfg = config.OpenAILLM(llm_openai_model="gpt-4")
 
     result = await get_instruction_from_audio(
         audio_data=b"test audio",
@@ -70,7 +67,6 @@ async def test_get_instruction_from_audio_error(mock_get_transcriber: MagicMock)
         wyoming_asr_config=wyoming_asr_cfg,
         openai_asr_config=openai_asr_cfg,
         ollama_config=ollama_cfg,
-        openai_llm_config=openai_llm_cfg,
         logger=MagicMock(),
         quiet=False,
     )
