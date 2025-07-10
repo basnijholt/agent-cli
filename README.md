@@ -538,14 +538,6 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 │ --tts-openai-voice        TEXT  The voice to use for OpenAI TTS.             │
 │                                 [default: alloy]                             │
 ╰──────────────────────────────────────────────────────────────────────────────╯
-╭─ LLM Configuration: OpenAI ──────────────────────────────────────────────────╮
-│ --openai-api-key          TEXT  Your OpenAI API key. Can also be set with    │
-│                                 the OPENAI_API_KEY environment variable.     │
-│                                 [env var: OPENAI_API_KEY]                    │
-│                                 [default: None]                              │
-│ --llm-openai-model        TEXT  The OpenAI model to use for LLM tasks.       │
-│                                 [default: gpt-4o-mini]                       │
-╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ TTS (Text-to-Speech) Configuration: Kokoro ─────────────────────────────────╮
 │ --tts-kokoro-model        TEXT  The Kokoro model to use for TTS.             │
 │                                 [default: kokoro]                            │
