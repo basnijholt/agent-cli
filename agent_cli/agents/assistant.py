@@ -179,6 +179,7 @@ async def _async_main(
     audio_out_cfg: config.AudioOutput,
     wyoming_tts_cfg: config.WyomingTTS,
     openai_tts_cfg: config.OpenAITTS,
+    kokoro_tts_config: config.KokoroTTS,
     wake_word_config: config.WakeWord,
     system_prompt: str,
     agent_instructions: str,
@@ -240,6 +241,7 @@ async def _async_main(
                     audio_output_config=audio_out_cfg,
                     wyoming_tts_config=wyoming_tts_cfg,
                     openai_tts_config=openai_tts_cfg,
+                    kokoro_tts_config=kokoro_tts_config,
                     system_prompt=system_prompt,
                     agent_instructions=agent_instructions,
                     live=live,
@@ -284,6 +286,9 @@ def assistant(
     wyoming_speaker: str | None = opts.WYOMING_SPEAKER,
     openai_tts_model: str = opts.OPENAI_TTS_MODEL,
     openai_tts_voice: str = opts.OPENAI_TTS_VOICE,
+    kokoro_tts_model: str = opts.KOKORO_TTS_MODEL,
+    kokoro_tts_voice: str = opts.KOKORO_TTS_VOICE,
+    kokoro_api_base: str = opts.KOKORO_API_BASE,
     # --- Process Management ---
     stop: bool = opts.STOP,
     status: bool = opts.STATUS,
@@ -359,6 +364,11 @@ def assistant(
             openai_tts_model=openai_tts_model,
             openai_tts_voice=openai_tts_voice,
         )
+        kokoro_tts_cfg = config.KokoroTTS(
+            kokoro_tts_model=kokoro_tts_model,
+            kokoro_tts_voice=kokoro_tts_voice,
+            kokoro_api_base=kokoro_api_base,
+        )
         wake_word_config = config.WakeWord(
             wake_server_ip=wake_server_ip,
             wake_server_port=wake_server_port,
@@ -387,6 +397,7 @@ def assistant(
                 audio_out_cfg=audio_out_cfg,
                 wyoming_tts_cfg=wyoming_tts_cfg,
                 openai_tts_cfg=openai_tts_cfg,
+                kokoro_tts_config=kokoro_tts_cfg,
                 wake_word_config=wake_word_config,
                 system_prompt=system_prompt,
                 agent_instructions=agent_instructions,

@@ -27,6 +27,11 @@ async def test_async_main_with_text():
     wyoming_tts_cfg = config.WyomingTTS(wyoming_tts_ip="localhost", wyoming_tts_port=10200)
     openai_tts_cfg = config.OpenAITTS(openai_tts_model="tts-1", openai_tts_voice="alloy")
     openai_llm_cfg = config.OpenAILLM(openai_llm_model="gpt-4")
+    kokoro_tts_cfg = config.KokoroTTS(
+        kokoro_tts_model="tts-1",
+        kokoro_tts_voice="alloy",
+        kokoro_api_base="http://localhost:8000/v1",
+    )
 
     with (
         patch("agent_cli.agents.speak.pyaudio_context"),
@@ -47,6 +52,7 @@ async def test_async_main_with_text():
             wyoming_tts_cfg=wyoming_tts_cfg,
             openai_tts_cfg=openai_tts_cfg,
             openai_llm_cfg=openai_llm_cfg,
+            kokoro_tts_cfg=kokoro_tts_cfg,
         )
         mock_handle_tts.assert_called_once()
 
@@ -64,6 +70,11 @@ async def test_async_main_no_devices():
     wyoming_tts_cfg = config.WyomingTTS(wyoming_tts_ip="localhost", wyoming_tts_port=10200)
     openai_tts_cfg = config.OpenAITTS(openai_tts_model="tts-1", openai_tts_voice="alloy")
     openai_llm_cfg = config.OpenAILLM(openai_llm_model="gpt-4")
+    kokoro_tts_cfg = config.KokoroTTS(
+        kokoro_tts_model="tts-1",
+        kokoro_tts_voice="alloy",
+        kokoro_api_base="http://localhost:8000/v1",
+    )
 
     with (
         patch("agent_cli.agents.speak.pyaudio_context"),
@@ -84,6 +95,7 @@ async def test_async_main_no_devices():
             wyoming_tts_cfg=wyoming_tts_cfg,
             openai_tts_cfg=openai_tts_cfg,
             openai_llm_cfg=openai_llm_cfg,
+            kokoro_tts_cfg=kokoro_tts_cfg,
         )
         mock_setup.assert_called_once()
         mock_handle_tts.assert_not_called()

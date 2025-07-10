@@ -20,7 +20,7 @@ ASR_PROVIDER: str = typer.Option(
 TTS_PROVIDER: str = typer.Option(
     "local",
     "--tts-provider",
-    help="The TTS provider to use ('local' for Wyoming, 'openai').",
+    help="The TTS provider to use ('local' for Wyoming, 'openai', 'kokoro').",
     rich_help_panel="Provider Selection",
 )
 
@@ -194,6 +194,27 @@ OPENAI_TTS_VOICE: str = typer.Option(
     "--openai-tts-voice",
     help="The voice to use for OpenAI TTS.",
     rich_help_panel="TTS (Text-to-Speech) Configuration: OpenAI",
+)
+
+
+# Kokoro
+KOKORO_TTS_MODEL: str = typer.Option(
+    "kokoro",
+    "--kokoro-tts-model",
+    help="The Kokoro model to use for TTS.",
+    rich_help_panel="TTS (Text-to-Speech) Configuration: Kokoro",
+)
+KOKORO_TTS_VOICE: str = typer.Option(
+    "af_sky",
+    "--kokoro-tts-voice",
+    help="The voice to use for Kokoro TTS.",
+    rich_help_panel="TTS (Text-to-Speech) Configuration: Kokoro",
+)
+KOKORO_API_BASE: str = typer.Option(
+    "http://localhost:8880/v1",
+    "--kokoro-api-base",
+    help="The base URL for the Kokoro API.",
+    rich_help_panel="TTS (Text-to-Speech) Configuration: Kokoro",
 )
 
 
