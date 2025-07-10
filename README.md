@@ -19,6 +19,10 @@ It provides a suite of powerful tools for voice and text interaction, designed f
 
 - [Features](#features)
 - [Prerequisites](#prerequisites)
+  - [🧠 LLM (Large Language Model)](#-llm-large-language-model)
+  - [🎤 ASR (Automatic Speech Recognition)](#-asr-automatic-speech-recognition)
+  - [🗣️ TTS (Text-to-Speech)](#-tts-text-to-speech)
+  - [👂 Wake Word](#-wake-word)
 - [Installation](#installation)
 - [Usage](#usage)
   - [Configuration](#configuration)
