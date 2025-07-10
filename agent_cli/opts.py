@@ -274,8 +274,7 @@ CONFIG_FILE: str | None = typer.Option(
 PRINT_ARGS: bool = typer.Option(
     False,  # noqa: FBT003
     "--print-args",
-    help="Print the command line arguments and exit,"
-    " including variables taken from the configuration file.",
+    help="Print the command line arguments, including variables taken from the configuration file.",
     is_eager=True,
     rich_help_panel="General Options",
 )
