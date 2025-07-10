@@ -341,9 +341,8 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 │ --quiet       -q            Suppress console output from rich.               │
 │ --config              TEXT  Path to a TOML configuration file.               │
 │                             [default: None]                                  │
-│ --print-args                Print the command line arguments and exit,       │
-│                             including variables taken from the configuration │
-│                             file.                                            │
+│ --print-args                Print the command line arguments, including      │
+│                             variables taken from the configuration file.     │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 
 ```
@@ -469,9 +468,9 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 │ --quiet       -q                          Suppress console output from rich. │
 │ --config                            TEXT  Path to a TOML configuration file. │
 │                                           [default: None]                    │
-│ --print-args                              Print the command line arguments   │
-│                                           and exit, including variables      │
-│                                           taken from the configuration file. │
+│ --print-args                              Print the command line arguments,  │
+│                                           including variables taken from the │
+│                                           configuration file.                │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 
 ```
@@ -581,9 +580,8 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 │ --quiet       -q            Suppress console output from rich.               │
 │ --config              TEXT  Path to a TOML configuration file.               │
 │                             [default: None]                                  │
-│ --print-args                Print the command line arguments and exit,       │
-│                             including variables taken from the configuration │
-│                             file.                                            │
+│ --print-args                Print the command line arguments, including      │
+│                             variables taken from the configuration file.     │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Process Management Options ─────────────────────────────────────────────────╮
 │ --stop            Stop any running background process.                       │
@@ -762,9 +760,9 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 │ --quiet       -q                          Suppress console output from rich. │
 │ --config                            TEXT  Path to a TOML configuration file. │
 │                                           [default: None]                    │
-│ --print-args                              Print the command line arguments   │
-│                                           and exit, including variables      │
-│                                           taken from the configuration file. │
+│ --print-args                              Print the command line arguments,  │
+│                                           including variables taken from the │
+│                                           configuration file.                │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 
 ```
@@ -942,9 +940,9 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 │ --quiet       -q                          Suppress console output from rich. │
 │ --config                            TEXT  Path to a TOML configuration file. │
 │                                           [default: None]                    │
-│ --print-args                              Print the command line arguments   │
-│                                           and exit, including variables      │
-│                                           taken from the configuration file. │
+│ --print-args                              Print the command line arguments,  │
+│                                           including variables taken from the │
+│                                           configuration file.                │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 
 ```
@@ -1123,9 +1121,8 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 │ --quiet       -q            Suppress console output from rich.               │
 │ --config              TEXT  Path to a TOML configuration file.               │
 │                             [default: None]                                  │
-│ --print-args                Print the command line arguments and exit,       │
-│                             including variables taken from the configuration │
-│                             file.                                            │
+│ --print-args                Print the command line arguments, including      │
+│                             variables taken from the configuration file.     │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 
 ```
