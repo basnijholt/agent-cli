@@ -23,6 +23,7 @@ def get_configs() -> tuple[
     config.OpenAIASR,
     config.Ollama,
     config.OpenAILLM,
+    config.GeminiLLM,
     config.AudioOutput,
     config.WyomingTTS,
     config.OpenAITTS,
@@ -50,6 +51,10 @@ def get_configs() -> tuple[
         llm_ollama_host="http://localhost:11434",
     )
     openai_llm_cfg = config.OpenAILLM(llm_openai_model="gpt-4")
+    gemini_llm_cfg = config.GeminiLLM(
+        llm_gemini_model="gemini-1.5-flash",
+        gemini_api_key="test-key",
+    )
     audio_out_cfg = config.AudioOutput(enable_tts=False)
     wyoming_tts_cfg = config.WyomingTTS(tts_wyoming_ip="mock-tts-host", tts_wyoming_port=10200)
     openai_tts_cfg = config.OpenAITTS(tts_openai_model="tts-1", tts_openai_voice="alloy")
@@ -66,6 +71,7 @@ def get_configs() -> tuple[
         openai_asr_cfg,
         ollama_cfg,
         openai_llm_cfg,
+        gemini_llm_cfg,
         audio_out_cfg,
         wyoming_tts_cfg,
         openai_tts_cfg,
@@ -105,6 +111,7 @@ async def test_voice_edit_e2e(
         openai_asr_cfg,
         ollama_cfg,
         openai_llm_cfg,
+        gemini_llm_cfg,
         audio_out_cfg,
         wyoming_tts_cfg,
         openai_tts_cfg,
@@ -125,6 +132,7 @@ async def test_voice_edit_e2e(
             openai_asr_cfg=openai_asr_cfg,
             ollama_cfg=ollama_cfg,
             openai_llm_cfg=openai_llm_cfg,
+            gemini_llm_cfg=gemini_llm_cfg,
             audio_out_cfg=audio_out_cfg,
             wyoming_tts_cfg=wyoming_tts_cfg,
             openai_tts_cfg=openai_tts_cfg,
@@ -151,6 +159,7 @@ async def test_voice_edit_e2e(
         general_config=general_cfg,
         ollama_config=ollama_cfg,
         openai_llm_config=openai_llm_cfg,
+        gemini_llm_config=gemini_llm_cfg,
         audio_output_config=audio_out_cfg,
         wyoming_tts_config=wyoming_tts_cfg,
         openai_tts_config=openai_tts_cfg,

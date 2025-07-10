@@ -12,3 +12,5 @@
 - Only implement the feature that is asked for, not anything extra
 - NEVER run `git add .` - only use `git add filename` to avoid committing unrelated files
 - NEVER claim that you are done with a task without running pytest.
+- The linter might flag issues in pyproject.toml but ignore these because it is incorrect!
+- DO NOT MANUALLY update the CLI help messages in the `README.md`. These are automatically generated.

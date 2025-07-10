@@ -12,10 +12,11 @@ dependencies = [
     "pyaudio",
     "rich",
     "pyperclip",
-    "pydantic-ai-slim[openai,duckduckgo]",
+    "pydantic-ai-slim[openai,duckduckgo,vertexai]",
     "typer",
     "openai",
     "dotenv",
+    "google-genai>=1.25.0",
 ]
 requires-python = ">=3.11"
 
@@ -33,6 +34,7 @@ test = [
     "pytest-cov>=4.0.0",
     "pydantic-ai-slim[openai]",
     "pytest-timeout",
+    "pytest-mock",
 ]
 dev = [
     "agent-cli[test]",
@@ -52,6 +54,7 @@ dev = [
     "pytest-cov>=4.0.0",
     "pydantic-ai-slim[openai]",
     "pytest-timeout",
+    "pytest-mock",
     "pre-commit>=3.0.0",
     "versioningit",
     "markdown-code-runner",
