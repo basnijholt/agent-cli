@@ -9,6 +9,7 @@ from contextlib import suppress
 from typing import TYPE_CHECKING
 
 import pyperclip
+import typer
 
 from agent_cli import config, opts
 from agent_cli.cli import app
@@ -69,6 +70,7 @@ Please clean up this transcribed text by correcting any speech recognition error
 
 async def _async_main(
     *,
+    extra_instructions: str | None,
     provider_cfg: config.ProviderSelection,
     general_cfg: config.General,
     audio_in_cfg: config.AudioInput,
@@ -105,9 +107,13 @@ async def _async_main(
                     title="📝 Raw Transcript",
                     subtitle=f"[dim]took {elapsed:.2f}s[/dim]",
                 )
+            instructions = AGENT_INSTRUCTIONS
+            if extra_instructions:
+                instructions += f"\n\n{extra_instructions}"
+
             await process_and_update_clipboard(
                 system_prompt=SYSTEM_PROMPT,
-                agent_instructions=AGENT_INSTRUCTIONS,
+                agent_instructions=instructions,
                 provider_config=provider_cfg,
                 ollama_config=ollama_cfg,
                 openai_config=openai_llm_cfg,
@@ -149,6 +155,11 @@ async def _async_main(
 @app.command("transcribe")
 def transcribe(
     *,
+    extra_instructions: str | None = typer.Option(
+        None,
+        "--extra-instructions",
+        help="Additional instructions for the LLM to process the transcription.",
+    ),
     # --- Provider Selection ---
     asr_provider: str = opts.ASR_PROVIDER,
     llm_provider: str = opts.LLM_PROVIDER,
@@ -230,6 +241,7 @@ def transcribe(
         with process.pid_file_context(process_name), suppress(KeyboardInterrupt):
             asyncio.run(
                 _async_main(
+                    extra_instructions=extra_instructions,
                     provider_cfg=provider_cfg,
                     general_cfg=general_cfg,
                     audio_in_cfg=audio_in_cfg,
