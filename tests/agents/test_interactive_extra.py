@@ -35,6 +35,11 @@ async def test_handle_conversation_turn_no_llm_response():
     audio_out_cfg = config.AudioOutput()
     wyoming_tts_cfg = config.WyomingTTS(wyoming_tts_ip="localhost", wyoming_tts_port=10200)
     openai_tts_cfg = config.OpenAITTS(openai_tts_model="tts-1", openai_tts_voice="alloy")
+    kokoro_tts_cfg = config.KokoroTTS(
+        kokoro_tts_model="tts-1",
+        kokoro_tts_voice="alloy",
+        kokoro_tts_host="http://localhost:8000/v1",
+    )
     mock_live = MagicMock()
 
     with (
@@ -62,6 +67,7 @@ async def test_handle_conversation_turn_no_llm_response():
             audio_out_cfg=audio_out_cfg,
             wyoming_tts_cfg=wyoming_tts_cfg,
             openai_tts_cfg=openai_tts_cfg,
+            kokoro_tts_config=kokoro_tts_cfg,
             live=mock_live,
         )
         mock_get_transcriber.assert_called_once()
@@ -92,6 +98,11 @@ async def test_handle_conversation_turn_no_instruction():
     audio_out_cfg = config.AudioOutput()
     wyoming_tts_cfg = config.WyomingTTS(wyoming_tts_ip="localhost", wyoming_tts_port=10200)
     openai_tts_cfg = config.OpenAITTS(openai_tts_model="tts-1", openai_tts_voice="alloy")
+    kokoro_tts_cfg = config.KokoroTTS(
+        kokoro_tts_model="tts-1",
+        kokoro_tts_voice="alloy",
+        kokoro_tts_host="http://localhost:8000/v1",
+    )
     mock_live = MagicMock()
 
     with patch("agent_cli.agents.chat.asr.get_transcriber") as mock_get_transcriber:
@@ -112,6 +123,7 @@ async def test_handle_conversation_turn_no_instruction():
             audio_out_cfg=audio_out_cfg,
             wyoming_tts_cfg=wyoming_tts_cfg,
             openai_tts_cfg=openai_tts_cfg,
+            kokoro_tts_config=kokoro_tts_cfg,
             live=mock_live,
         )
         mock_get_transcriber.assert_called_once()
@@ -181,6 +193,11 @@ async def test_async_main_exception_handling():
     audio_out_cfg = config.AudioOutput()
     wyoming_tts_cfg = config.WyomingTTS(wyoming_tts_ip="localhost", wyoming_tts_port=10200)
     openai_tts_cfg = config.OpenAITTS(openai_tts_model="tts-1", openai_tts_voice="alloy")
+    kokoro_tts_cfg = config.KokoroTTS(
+        kokoro_tts_model="tts-1",
+        kokoro_tts_voice="alloy",
+        kokoro_tts_host="http://localhost:8000/v1",
+    )
 
     with (
         patch("agent_cli.agents.chat.pyaudio_context", side_effect=Exception("Test error")),
@@ -199,5 +216,6 @@ async def test_async_main_exception_handling():
                 audio_out_cfg=audio_out_cfg,
                 wyoming_tts_cfg=wyoming_tts_cfg,
                 openai_tts_cfg=openai_tts_cfg,
+                kokoro_tts_config=kokoro_tts_cfg,
             )
         mock_console.print_exception.assert_called_once()

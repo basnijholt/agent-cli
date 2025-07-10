@@ -108,6 +108,11 @@ async def test_process_instruction_and_respond(
         wyoming_voice="test-voice",
     )
     openai_tts_cfg = config.OpenAITTS(openai_tts_model="tts-1", openai_tts_voice="alloy")
+    kokoro_tts_cfg = config.KokoroTTS(
+        kokoro_tts_model="tts-1",
+        kokoro_tts_voice="alloy",
+        kokoro_tts_host="http://localhost:8000/v1",
+    )
 
     with (
         patch("agent_cli.agents.autocorrect.pyperclip.copy"),
@@ -123,6 +128,7 @@ async def test_process_instruction_and_respond(
             audio_output_config=audio_out_cfg,
             wyoming_tts_config=wyoming_tts_cfg,
             openai_tts_config=openai_tts_cfg,
+            kokoro_tts_config=kokoro_tts_cfg,
             system_prompt="system prompt",
             agent_instructions="agent instructions",
             live=MagicMock(),

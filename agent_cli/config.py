@@ -23,7 +23,7 @@ class ProviderSelection(BaseModel):
 
     llm_provider: Literal["local", "openai"]
     asr_provider: Literal["local", "openai"]
-    tts_provider: Literal["local", "openai"]
+    tts_provider: Literal["local", "openai", "kokoro"]
 
 
 # --- Panel: LLM Configuration ---
@@ -93,6 +93,14 @@ class OpenAITTS(BaseModel):
 
     openai_tts_model: str
     openai_tts_voice: str
+
+
+class KokoroTTS(BaseModel):
+    """Configuration for the Kokoro TTS provider."""
+
+    kokoro_tts_model: str
+    kokoro_tts_voice: str
+    kokoro_tts_host: str
 
 
 # --- Panel: Wake Word Options ---

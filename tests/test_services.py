@@ -117,14 +117,53 @@ def test_get_synthesizer_wyoming() -> None:
         openai_llm_model="gpt-4o-mini",
         openai_api_key="test_api_key",
     )
+    kokoro_tts_cfg = config.KokoroTTS(
+        kokoro_tts_model="tts-1",
+        kokoro_tts_voice="alloy",
+        kokoro_tts_host="http://localhost:8000/v1",
+    )
     synthesizer = tts.get_synthesizer(
         provider_config,
         audio_output_config,
         wyoming_tts_config,
         openai_tts_config,
         openai_llm_config,
+        kokoro_tts_cfg,
     )
     assert synthesizer.func == tts._synthesize_speech_wyoming  # type: ignore[attr-defined]
+
+
+def test_get_synthesizer_kokoro() -> None:
+    """Test that get_synthesizer returns the Kokoro synthesizer."""
+    provider_config = config.ProviderSelection(
+        asr_provider="local",
+        llm_provider="local",
+        tts_provider="kokoro",
+    )
+    audio_output_config = config.AudioOutput(enable_tts=True)
+    wyoming_tts_config = config.WyomingTTS(
+        wyoming_tts_ip="localhost",
+        wyoming_tts_port=1234,
+    )
+    openai_tts_config = config.OpenAITTS(openai_tts_model="tts-1", openai_tts_voice="alloy")
+    openai_llm_config = config.OpenAILLM(
+        openai_llm_model="gpt-4o-mini",
+        openai_api_key="test_api_key",
+    )
+    kokoro_tts_cfg = config.KokoroTTS(
+        kokoro_tts_model="tts-1",
+        kokoro_tts_voice="alloy",
+        kokoro_tts_host="http://localhost:8000/v1",
+    )
+    synthesizer = tts.get_synthesizer(
+        provider_config,
+        audio_output_config,
+        wyoming_tts_config,
+        openai_tts_config,
+        openai_llm_config,
+        kokoro_tts_cfg,
+    )
+    assert synthesizer.func == tts._synthesize_speech_kokoro  # type: ignore[attr-defined]
 
 
 @pytest.mark.asyncio

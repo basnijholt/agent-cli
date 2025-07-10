@@ -26,6 +26,7 @@ def get_configs() -> tuple[
     config.AudioOutput,
     config.WyomingTTS,
     config.OpenAITTS,
+    config.KokoroTTS,
 ]:
     """Get all the necessary configs for the e2e test."""
     provider_cfg = config.ProviderSelection(
@@ -49,6 +50,11 @@ def get_configs() -> tuple[
     audio_out_cfg = config.AudioOutput(enable_tts=False)
     wyoming_tts_cfg = config.WyomingTTS(wyoming_tts_ip="mock-tts-host", wyoming_tts_port=10200)
     openai_tts_cfg = config.OpenAITTS(openai_tts_model="tts-1", openai_tts_voice="alloy")
+    kokoro_tts_cfg = config.KokoroTTS(
+        kokoro_tts_model="tts-1",
+        kokoro_tts_voice="alloy",
+        kokoro_tts_host="http://localhost:8000/v1",
+    )
     return (
         provider_cfg,
         general_cfg,
@@ -60,6 +66,7 @@ def get_configs() -> tuple[
         audio_out_cfg,
         wyoming_tts_cfg,
         openai_tts_cfg,
+        kokoro_tts_cfg,
     )
 
 
@@ -98,6 +105,7 @@ async def test_voice_edit_e2e(
         audio_out_cfg,
         wyoming_tts_cfg,
         openai_tts_cfg,
+        kokoro_tts_cfg,
     ) = get_configs()
 
     # This test focuses on the main loop, so we stop it after one run
@@ -117,6 +125,7 @@ async def test_voice_edit_e2e(
             audio_out_cfg=audio_out_cfg,
             wyoming_tts_cfg=wyoming_tts_cfg,
             openai_tts_cfg=openai_tts_cfg,
+            kokoro_tts_config=kokoro_tts_cfg,
         )
 
     # Assertions
@@ -143,6 +152,7 @@ async def test_voice_edit_e2e(
         audio_output_config=audio_out_cfg,
         wyoming_tts_config=wyoming_tts_cfg,
         openai_tts_config=openai_tts_cfg,
+        kokoro_tts_config=kokoro_tts_cfg,
         system_prompt=SYSTEM_PROMPT,
         agent_instructions=AGENT_INSTRUCTIONS,
         live=ANY,

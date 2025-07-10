@@ -98,6 +98,7 @@ async def _async_main(
     audio_out_cfg: config.AudioOutput,
     wyoming_tts_cfg: config.WyomingTTS,
     openai_tts_cfg: config.OpenAITTS,
+    kokoro_tts_config: config.KokoroTTS,
 ) -> None:
     """Core asynchronous logic for the voice assistant."""
     with pyaudio_context() as p:
@@ -157,6 +158,7 @@ async def _async_main(
                 audio_output_config=audio_out_cfg,
                 wyoming_tts_config=wyoming_tts_cfg,
                 openai_tts_config=openai_tts_cfg,
+                kokoro_tts_config=kokoro_tts_config,
                 system_prompt=SYSTEM_PROMPT,
                 agent_instructions=AGENT_INSTRUCTIONS,
                 live=live,
@@ -194,6 +196,9 @@ def voice_edit(
     wyoming_speaker: str | None = opts.WYOMING_SPEAKER,
     openai_tts_model: str = opts.OPENAI_TTS_MODEL,
     openai_tts_voice: str = opts.OPENAI_TTS_VOICE,
+    kokoro_tts_model: str = opts.KOKORO_TTS_MODEL,
+    kokoro_tts_voice: str = opts.KOKORO_TTS_VOICE,
+    kokoro_tts_host: str = opts.KOKORO_TTS_HOST,
     # --- Process Management ---
     stop: bool = opts.STOP,
     status: bool = opts.STATUS,
@@ -278,6 +283,11 @@ def voice_edit(
             openai_tts_voice=openai_tts_voice,
             openai_api_key=openai_api_key,
         )
+        kokoro_tts_cfg = config.KokoroTTS(
+            kokoro_tts_model=kokoro_tts_model,
+            kokoro_tts_voice=kokoro_tts_voice,
+            kokoro_tts_host=kokoro_tts_host,
+        )
 
         asyncio.run(
             _async_main(
@@ -291,5 +301,6 @@ def voice_edit(
                 audio_out_cfg=audio_out_cfg,
                 wyoming_tts_cfg=wyoming_tts_cfg,
                 openai_tts_cfg=openai_tts_cfg,
+                kokoro_tts_config=kokoro_tts_cfg,
             ),
         )
