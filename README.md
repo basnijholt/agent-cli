@@ -336,11 +336,13 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 │                                 [default: None]                              │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ General Options ────────────────────────────────────────────────────────────╮
-│ --log-level          TEXT  Set logging level. [default: WARNING]             │
-│ --log-file           TEXT  Path to a file to write logs to. [default: None]  │
-│ --quiet      -q            Suppress console output from rich.                │
-│ --config             TEXT  Path to a TOML configuration file.                │
-│                            [default: None]                                   │
+│ --log-level           TEXT  Set logging level. [default: WARNING]            │
+│ --log-file            TEXT  Path to a file to write logs to. [default: None] │
+│ --quiet       -q            Suppress console output from rich.               │
+│ --config              TEXT  Path to a TOML configuration file.               │
+│                             [default: None]                                  │
+│ --print-args                Print the command line arguments, including      │
+│                             variables taken from the configuration file.     │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 
 ```
@@ -457,15 +459,18 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 │                   running, it will be started.                               │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ General Options ────────────────────────────────────────────────────────────╮
-│ --clipboard      --no-clipboard          Copy result to clipboard.           │
-│                                          [default: clipboard]                │
-│ --log-level                        TEXT  Set logging level.                  │
-│                                          [default: WARNING]                  │
-│ --log-file                         TEXT  Path to a file to write logs to.    │
-│                                          [default: None]                     │
-│ --quiet      -q                          Suppress console output from rich.  │
-│ --config                           TEXT  Path to a TOML configuration file.  │
-│                                          [default: None]                     │
+│ --clipboard       --no-clipboard          Copy result to clipboard.          │
+│                                           [default: clipboard]               │
+│ --log-level                         TEXT  Set logging level.                 │
+│                                           [default: WARNING]                 │
+│ --log-file                          TEXT  Path to a file to write logs to.   │
+│                                           [default: None]                    │
+│ --quiet       -q                          Suppress console output from rich. │
+│ --config                            TEXT  Path to a TOML configuration file. │
+│                                           [default: None]                    │
+│ --print-args                              Print the command line arguments,  │
+│                                           including variables taken from the │
+│                                           configuration file.                │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 
 ```
@@ -568,13 +573,15 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 │                         exit.                                                │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ General Options ────────────────────────────────────────────────────────────╮
-│ --save-file          PATH  Save TTS response audio to WAV file.              │
-│                            [default: None]                                   │
-│ --log-level          TEXT  Set logging level. [default: WARNING]             │
-│ --log-file           TEXT  Path to a file to write logs to. [default: None]  │
-│ --quiet      -q            Suppress console output from rich.                │
-│ --config             TEXT  Path to a TOML configuration file.                │
-│                            [default: None]                                   │
+│ --save-file           PATH  Save TTS response audio to WAV file.             │
+│                             [default: None]                                  │
+│ --log-level           TEXT  Set logging level. [default: WARNING]            │
+│ --log-file            TEXT  Path to a file to write logs to. [default: None] │
+│ --quiet       -q            Suppress console output from rich.               │
+│ --config              TEXT  Path to a TOML configuration file.               │
+│                             [default: None]                                  │
+│ --print-args                Print the command line arguments, including      │
+│                             variables taken from the configuration file.     │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Process Management Options ─────────────────────────────────────────────────╮
 │ --stop            Stop any running background process.                       │
@@ -741,18 +748,21 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 │                   running, it will be started.                               │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ General Options ────────────────────────────────────────────────────────────╮
-│ --save-file                        PATH  Save TTS response audio to WAV      │
-│                                          file.                               │
-│                                          [default: None]                     │
-│ --clipboard      --no-clipboard          Copy result to clipboard.           │
-│                                          [default: clipboard]                │
-│ --log-level                        TEXT  Set logging level.                  │
-│                                          [default: WARNING]                  │
-│ --log-file                         TEXT  Path to a file to write logs to.    │
-│                                          [default: None]                     │
-│ --quiet      -q                          Suppress console output from rich.  │
-│ --config                           TEXT  Path to a TOML configuration file.  │
-│                                          [default: None]                     │
+│ --save-file                         PATH  Save TTS response audio to WAV     │
+│                                           file.                              │
+│                                           [default: None]                    │
+│ --clipboard       --no-clipboard          Copy result to clipboard.          │
+│                                           [default: clipboard]               │
+│ --log-level                         TEXT  Set logging level.                 │
+│                                           [default: WARNING]                 │
+│ --log-file                          TEXT  Path to a file to write logs to.   │
+│                                           [default: None]                    │
+│ --quiet       -q                          Suppress console output from rich. │
+│ --config                            TEXT  Path to a TOML configuration file. │
+│                                           [default: None]                    │
+│ --print-args                              Print the command line arguments,  │
+│                                           including variables taken from the │
+│                                           configuration file.                │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 
 ```
@@ -918,18 +928,21 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 │                   running, it will be started.                               │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ General Options ────────────────────────────────────────────────────────────╮
-│ --save-file                        PATH  Save TTS response audio to WAV      │
-│                                          file.                               │
-│                                          [default: None]                     │
-│ --clipboard      --no-clipboard          Copy result to clipboard.           │
-│                                          [default: clipboard]                │
-│ --log-level                        TEXT  Set logging level.                  │
-│                                          [default: WARNING]                  │
-│ --log-file                         TEXT  Path to a file to write logs to.    │
-│                                          [default: None]                     │
-│ --quiet      -q                          Suppress console output from rich.  │
-│ --config                           TEXT  Path to a TOML configuration file.  │
-│                                          [default: None]                     │
+│ --save-file                         PATH  Save TTS response audio to WAV     │
+│                                           file.                              │
+│                                           [default: None]                    │
+│ --clipboard       --no-clipboard          Copy result to clipboard.          │
+│                                           [default: clipboard]               │
+│ --log-level                         TEXT  Set logging level.                 │
+│                                           [default: WARNING]                 │
+│ --log-file                          TEXT  Path to a file to write logs to.   │
+│                                           [default: None]                    │
+│ --quiet       -q                          Suppress console output from rich. │
+│ --config                            TEXT  Path to a TOML configuration file. │
+│                                           [default: None]                    │
+│ --print-args                              Print the command line arguments,  │
+│                                           including variables taken from the │
+│                                           configuration file.                │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 
 ```
@@ -1101,13 +1114,15 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 │                                   [default: 50]                              │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ General Options ────────────────────────────────────────────────────────────╮
-│ --save-file          PATH  Save TTS response audio to WAV file.              │
-│                            [default: None]                                   │
-│ --log-level          TEXT  Set logging level. [default: WARNING]             │
-│ --log-file           TEXT  Path to a file to write logs to. [default: None]  │
-│ --quiet      -q            Suppress console output from rich.                │
-│ --config             TEXT  Path to a TOML configuration file.                │
-│                            [default: None]                                   │
+│ --save-file           PATH  Save TTS response audio to WAV file.             │
+│                             [default: None]                                  │
+│ --log-level           TEXT  Set logging level. [default: WARNING]            │
+│ --log-file            TEXT  Path to a file to write logs to. [default: None] │
+│ --quiet       -q            Suppress console output from rich.               │
+│ --config              TEXT  Path to a TOML configuration file.               │
+│                             [default: None]                                  │
+│ --print-args                Print the command line arguments, including      │
+│                             variables taken from the configuration file.     │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 
 ```

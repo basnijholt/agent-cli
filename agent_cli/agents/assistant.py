@@ -44,6 +44,7 @@ from agent_cli.core.audio import pyaudio_context, setup_devices
 from agent_cli.core.utils import (
     InteractiveStopEvent,
     maybe_live,
+    print_command_line_args,
     print_with_style,
     setup_logging,
     signal_handling_context,
@@ -303,9 +304,12 @@ def assistant(
     log_file: str | None = opts.LOG_FILE,
     list_devices: bool = opts.LIST_DEVICES,
     quiet: bool = opts.QUIET,
-    config_file: str | None = opts.CONFIG_FILE,  # noqa: ARG001
+    config_file: str | None = opts.CONFIG_FILE,
+    print_args: bool = opts.PRINT_ARGS,
 ) -> None:
     """Wake word-based voice assistant using local or remote services."""
+    if print_args:
+        print_command_line_args(locals())
     setup_logging(log_level, log_file, quiet=quiet)
     general_cfg = config.General(
         log_level=log_level,
