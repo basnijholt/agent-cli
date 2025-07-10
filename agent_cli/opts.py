@@ -29,13 +29,13 @@ TTS_PROVIDER: str = typer.Option(
 # Ollama (local service)
 LLM_OLLAMA_MODEL: str = typer.Option(
     "qwen3:4b",
-    "--llm-llm-ollama-model",
+    "--llm-ollama-model",
     help="The Ollama model to use. Default is qwen3:4b.",
     rich_help_panel="LLM Configuration: Ollama (local)",
 )
 LLM_OLLAMA_HOST: str = typer.Option(
     "http://localhost:11434",
-    "--llm-llm-ollama-host",
+    "--llm-ollama-host",
     help="The Ollama server host. Default is http://localhost:11434.",
     rich_help_panel="LLM Configuration: Ollama (local)",
 )

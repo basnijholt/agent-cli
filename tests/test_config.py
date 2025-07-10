@@ -26,8 +26,8 @@ def config_file(tmp_path: Path) -> Path:
 [defaults]
 log-level = "INFO"
 llm-provider = "local"
-llm-llm-ollama-model = "default-local-model"
-llm-llm-ollama-host = "http://localhost:11434"
+llm-ollama-model = "default-local-model"
+llm-ollama-host = "http://localhost:11434"
 llm-openai-model = "default-openai-model"
 openai-api-key = "default-key"
 
