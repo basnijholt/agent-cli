@@ -57,15 +57,41 @@ It provides a suite of powerful tools for voice and text interaction, designed f
 
 ## Prerequisites
 
-- **Python**: Version 3.11 or higher.
-- **Ollama**: For `autocorrect`, `voice-edit`, and `chat` using local services, you need [Ollama](https://ollama.ai/) running with a model pulled (e.g., `ollama pull mistral:latest`).
-- **Wyoming Piper**: For `speak`, `voice-edit`, and `chat` using local services, you need a [Wyoming TTS server](https://github.com/rhasspy/wyoming-piper) running for text-to-speech.
-- **Kokoro TTS**: For `speak`, `voice-edit`, and `chat` using local services, you can also use [Kokoro-FastAPI](https://github.com/remsky/Kokoro-FastAPI), which is an OpenAI-compatible TTS server that can be run locally.
-- **Wyoming Faster Whisper**: For `transcribe`, `voice-edit`, and `chat` using local services, you need a [Wyoming ASR server](https://github.com/rhasspy/wyoming-faster-whisper) for speech-to-text.
-- **Wyoming openWakeWord**: For `assistant`, you need a [Wyoming wake word server](https://github.com/rhasspy/wyoming-openwakeword) running.
-- **OpenAI API Key**: If you want to use OpenAI services, you need an OpenAI API key.
-- **Clipboard Tools**: `xsel`, `xclip` (Linux), or `pbcopy`/`pbpaste` (macOS) are used by many agents.
-- **PortAudio**: Required for PyAudio to handle microphone and speaker I/O.
+To run `agent-cli`, you'll need the following core components:
+
+- 🐍 **Python**: Version 3.11 or higher.
+- 🎶 **PortAudio**: For microphone and speaker I/O.
+- 📋 **Clipboard Tools**: `xsel`/`xclip` (Linux) or `pbcopy`/`pbpaste` (macOS).
+
+For specific functionalities, you can set up the following optional services:
+
+### 🧠 LLM (Large Language Model)
+
+| Service                          | Notes                                                          |
+| -------------------------------- | -------------------------------------------------------------- |
+| [**Ollama**](https://ollama.ai/) | For `autocorrect`, `voice-edit`, and `chat` with local models. |
+| **OpenAI**                       | If you prefer to use a cloud service, an API key is required.  |
+
+### 🎤 ASR (Automatic Speech Recognition)
+
+| Service                                                                         | Notes                                                                 |
+| ------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
+| [**Wyoming Faster Whisper**](https://github.com/rhasspy/wyoming-faster-whisper) | For `transcribe`, `voice-edit`, and `chat` with local speech-to-text. |
+| **OpenAI**                                                                      | If you prefer to use a cloud service, an API key is required.         |
+
+### 🗣️ TTS (Text-to-Speech)
+
+| Service                                                        | Notes                                                                                                                              |
+| -------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| [**Kokoro-FastAPI**](https://github.com/remsky/Kokoro-FastAPI) | The best open-source TTS model available 🥇, providing natural-sounding voices. Recommended for `speak`, `voice-edit`, and `chat`. |
+| [**Wyoming Piper**](https://github.com/rhasspy/wyoming-piper)  | An alternative for local text-to-speech.                                                                                           |
+| **OpenAI**                                                     | If you prefer to use a cloud service, an API key is required.                                                                      |
+
+### 👂 Wake Word
+
+| Service                                                                     | Notes                      |
+| --------------------------------------------------------------------------- | -------------------------- |
+| [**Wyoming openWakeWord**](https://github.com/rhasspy/wyoming-openwakeword) | For the `assistant` agent. |
 
 This might sound like a lot, but it's actually quite simple to set up.
 
@@ -109,6 +135,7 @@ Taken from [basnijholt/dotfiles](https://github.com/basnijholt/dotfiles/blob/709
     uri = "tcp://0.0.0.0:10400";
   };
 ```
+
 </details>
 
 <details>
@@ -117,14 +144,17 @@ Taken from [basnijholt/dotfiles](https://github.com/basnijholt/dotfiles/blob/709
 You can use Docker to run the `kokoro-fastapi` service.
 
 For CPU:
+
 ```bash
 docker run -p 8880:8880 ghcr.io/remsky/kokoro-fastapi-cpu:latest
 ```
 
 For NVIDIA GPU:
+
 ```bash
 docker run --gpus all -p 8880:8880 ghcr.io/remsky/kokoro-fastapi-gpu:latest
 ```
+
 The API will be available at `http://localhost:8880`.
 
 </details>
@@ -164,6 +194,7 @@ docker compose -f examples/docker-compose.yml down
 > ⚠️ The `ollama` service can be memory-intensive. If you experience issues with the `autocorrect`, `voice-edit`, or `chat` agents, you may need to increase the memory allocated to Docker.
 >
 > **Note on GPU Acceleration**:
+>
 > - **Ollama**: On macOS, Docker does not support GPU acceleration. For significantly better performance, it is recommended to install Ollama natively by downloading it from the [official website](https://ollama.com/download) or by using Homebrew. This will allow Ollama to use the Metal GPU on Apple Silicon devices. On Linux, NVIDIA GPU acceleration is supported.
 > - **Whisper**: The official `rhasspy/wyoming-whisper` Docker image does not currently support GPU acceleration.
 
@@ -254,6 +285,7 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 <!-- CODE:END -->
 <!-- OUTPUT:START -->
 <!-- ⚠️ This content is auto-generated by `markdown-code-runner`. -->
+
 ```yaml
 
 
@@ -334,6 +366,7 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 <!-- CODE:END -->
 <!-- OUTPUT:START -->
 <!-- ⚠️ This content is auto-generated by `markdown-code-runner`. -->
+
 ```yaml
 
 
@@ -446,6 +479,7 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 <!-- CODE:END -->
 <!-- OUTPUT:START -->
 <!-- ⚠️ This content is auto-generated by `markdown-code-runner`. -->
+
 ```yaml
 
 
@@ -569,6 +603,7 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 <!-- CODE:END -->
 <!-- OUTPUT:START -->
 <!-- ⚠️ This content is auto-generated by `markdown-code-runner`. -->
+
 ```yaml
 
 
@@ -734,6 +769,7 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 <!-- CODE:END -->
 <!-- OUTPUT:START -->
 <!-- ⚠️ This content is auto-generated by `markdown-code-runner`. -->
+
 ```yaml
 
 
@@ -909,6 +945,7 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 <!-- CODE:END -->
 <!-- OUTPUT:START -->
 <!-- ⚠️ This content is auto-generated by `markdown-code-runner`. -->
+
 ```yaml
 
 
