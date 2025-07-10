@@ -136,10 +136,6 @@ def test_get_synthesizer_disabled():
         tts_wyoming_port=1234,
     )
     openai_tts_config = config.OpenAITTS(tts_openai_model="tts-1", tts_openai_voice="alloy")
-    openai_llm_config = config.OpenAILLM(
-        llm_openai_model="gpt-4o-mini",
-        openai_api_key="test_api_key",
-    )
     kokoro_tts_cfg = config.KokoroTTS(
         tts_kokoro_model="tts-1",
         tts_kokoro_voice="alloy",
@@ -151,7 +147,6 @@ def test_get_synthesizer_disabled():
         audio_output_config=audio_output_config,
         wyoming_tts_config=wyoming_tts_config,
         openai_tts_config=openai_tts_config,
-        openai_llm_config=openai_llm_config,
         kokoro_tts_config=kokoro_tts_cfg,
     )
 

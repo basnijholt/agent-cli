@@ -44,7 +44,6 @@ def get_synthesizer(
     audio_output_config: config.AudioOutput,
     wyoming_tts_config: config.WyomingTTS,
     openai_tts_config: config.OpenAITTS,
-    openai_llm_config: config.OpenAILLM,
     kokoro_tts_config: config.KokoroTTS,
 ) -> Callable[..., Awaitable[bytes | None]]:
     """Return the appropriate synthesizer based on the config."""
@@ -54,7 +53,6 @@ def get_synthesizer(
         return partial(
             _synthesize_speech_openai,
             openai_tts_config=openai_tts_config,
-            openai_llm_config=openai_llm_config,
         )
     if provider_config.tts_provider == "kokoro":
         return partial(
@@ -379,7 +377,6 @@ async def _speak_text(
         audio_output_config,
         wyoming_tts_config,
         openai_tts_config,
-        openai_llm_config,
         kokoro_tts_config,
     )
     audio_data = None
