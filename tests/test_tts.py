@@ -25,18 +25,18 @@ async def test_speak_text(mock_get_synthesizer: MagicMock) -> None:
     )
     audio_output_config = config.AudioOutput(enable_tts=True)
     wyoming_tts_config = config.WyomingTTS(
-        wyoming_tts_ip="localhost",
-        wyoming_tts_port=1234,
+        tts_wyoming_ip="localhost",
+        tts_wyoming_port=1234,
     )
-    openai_tts_config = config.OpenAITTS(openai_tts_model="tts-1", openai_tts_voice="alloy")
+    openai_tts_config = config.OpenAITTS(tts_openai_model="tts-1", tts_openai_voice="alloy")
     openai_llm_config = config.OpenAILLM(
-        openai_llm_model="gpt-4o-mini",
+        llm_openai_model="gpt-4o-mini",
         openai_api_key="test_api_key",
     )
     kokoro_tts_cfg = config.KokoroTTS(
-        kokoro_tts_model="tts-1",
-        kokoro_tts_voice="alloy",
-        kokoro_tts_host="http://localhost:8000/v1",
+        tts_kokoro_model="tts-1",
+        tts_kokoro_voice="alloy",
+        tts_kokoro_host="http://localhost:8000/v1",
     )
 
     audio_data = await _speak_text(
@@ -132,18 +132,18 @@ def test_get_synthesizer_disabled():
     )
     audio_output_config = config.AudioOutput(enable_tts=False)
     wyoming_tts_config = config.WyomingTTS(
-        wyoming_tts_ip="localhost",
-        wyoming_tts_port=1234,
+        tts_wyoming_ip="localhost",
+        tts_wyoming_port=1234,
     )
-    openai_tts_config = config.OpenAITTS(openai_tts_model="tts-1", openai_tts_voice="alloy")
+    openai_tts_config = config.OpenAITTS(tts_openai_model="tts-1", tts_openai_voice="alloy")
     openai_llm_config = config.OpenAILLM(
-        openai_llm_model="gpt-4o-mini",
+        llm_openai_model="gpt-4o-mini",
         openai_api_key="test_api_key",
     )
     kokoro_tts_cfg = config.KokoroTTS(
-        kokoro_tts_model="tts-1",
-        kokoro_tts_voice="alloy",
-        kokoro_tts_host="http://localhost:8000/v1",
+        tts_kokoro_model="tts-1",
+        tts_kokoro_voice="alloy",
+        tts_kokoro_host="http://localhost:8000/v1",
     )
 
     synthesizer = get_synthesizer(

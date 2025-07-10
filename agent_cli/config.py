@@ -32,14 +32,14 @@ class ProviderSelection(BaseModel):
 class Ollama(BaseModel):
     """Configuration for the local Ollama LLM provider."""
 
-    ollama_model: str
-    ollama_host: str
+    llm_ollama_model: str
+    llm_ollama_host: str
 
 
 class OpenAILLM(BaseModel):
     """Configuration for the OpenAI LLM provider."""
 
-    openai_llm_model: str
+    llm_openai_model: str
     openai_api_key: str | None = None
 
 
@@ -56,14 +56,14 @@ class AudioInput(BaseModel):
 class WyomingASR(BaseModel):
     """Configuration for the Wyoming ASR provider."""
 
-    wyoming_asr_ip: str
-    wyoming_asr_port: int
+    asr_wyoming_ip: str
+    asr_wyoming_port: int
 
 
 class OpenAIASR(BaseModel):
     """Configuration for the OpenAI ASR provider."""
 
-    openai_asr_model: str
+    asr_openai_model: str
 
 
 # --- Panel: TTS (Text-to-Speech) Configuration ---
@@ -81,26 +81,26 @@ class AudioOutput(BaseModel):
 class WyomingTTS(BaseModel):
     """Configuration for the Wyoming TTS provider."""
 
-    wyoming_tts_ip: str
-    wyoming_tts_port: int
-    wyoming_voice: str | None = None
-    wyoming_tts_language: str | None = None
-    wyoming_speaker: str | None = None
+    tts_wyoming_ip: str
+    tts_wyoming_port: int
+    tts_wyoming_voice: str | None = None
+    tts_wyoming_language: str | None = None
+    tts_wyoming_speaker: str | None = None
 
 
 class OpenAITTS(BaseModel):
     """Configuration for the OpenAI TTS provider."""
 
-    openai_tts_model: str
-    openai_tts_voice: str
+    tts_openai_model: str
+    tts_openai_voice: str
 
 
 class KokoroTTS(BaseModel):
     """Configuration for the Kokoro TTS provider."""
 
-    kokoro_tts_model: str
-    kokoro_tts_voice: str
-    kokoro_tts_host: str
+    tts_kokoro_model: str
+    tts_kokoro_voice: str
+    tts_kokoro_host: str
 
 
 # --- Panel: Wake Word Options ---

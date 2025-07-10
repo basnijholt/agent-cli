@@ -29,7 +29,7 @@ def _openai_llm_model(openai_config: config.OpenAILLM) -> OpenAIModel:
         msg = "OpenAI API key is not set."
         raise ValueError(msg)
     provider = OpenAIProvider(api_key=openai_config.openai_api_key)
-    model_name = openai_config.openai_llm_model
+    model_name = openai_config.llm_openai_model
     return OpenAIModel(model_name=model_name, provider=provider)
 
 
@@ -37,8 +37,8 @@ def _ollama_llm_model(ollama_config: config.Ollama) -> OpenAIModel:
     from pydantic_ai.models.openai import OpenAIModel  # noqa: PLC0415
     from pydantic_ai.providers.openai import OpenAIProvider  # noqa: PLC0415
 
-    provider = OpenAIProvider(base_url=f"{ollama_config.ollama_host}/v1")
-    model_name = ollama_config.ollama_model
+    provider = OpenAIProvider(base_url=f"{ollama_config.llm_ollama_host}/v1")
+    model_name = ollama_config.llm_ollama_model
     return OpenAIModel(model_name=model_name, provider=provider)
 
 
@@ -110,9 +110,9 @@ async def get_llm_response(
 
     try:
         model_name = (
-            ollama_config.ollama_model
+            ollama_config.llm_ollama_model
             if provider_config.llm_provider == "local"
-            else openai_config.openai_llm_model
+            else openai_config.llm_openai_model
         )
 
         async with live_timer(
@@ -146,7 +146,7 @@ async def get_llm_response(
         if provider_config.llm_provider == "openai":
             msg = "Please check your OpenAI API key."
         else:
-            msg = f"Please check your Ollama server at [cyan]{ollama_config.ollama_host}[/cyan]"
+            msg = f"Please check your Ollama server at [cyan]{ollama_config.llm_ollama_host}[/cyan]"
         print_error_message(f"An unexpected LLM error occurred: {e}", msg)
         if exit_on_error:
             sys.exit(1)

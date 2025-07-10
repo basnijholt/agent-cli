@@ -311,14 +311,15 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 │                             [default: local]                                 │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ LLM Configuration: Ollama (local) ──────────────────────────────────────────╮
-│ --ollama-model        TEXT  The Ollama model to use. Default is qwen3:4b.    │
-│                             [default: qwen3:4b]                              │
-│ --ollama-host         TEXT  The Ollama server host. Default is               │
-│                             http://localhost:11434.                          │
-│                             [default: http://localhost:11434]                │
+│ --llm-llm-ollama-model        TEXT  The Ollama model to use. Default is      │
+│                                     qwen3:4b.                                │
+│                                     [default: qwen3:4b]                      │
+│ --llm-llm-ollama-host         TEXT  The Ollama server host. Default is       │
+│                                     http://localhost:11434.                  │
+│                                     [default: http://localhost:11434]        │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ LLM Configuration: OpenAI ──────────────────────────────────────────────────╮
-│ --openai-llm-model        TEXT  The OpenAI model to use for LLM tasks.       │
+│ --llm-openai-model        TEXT  The OpenAI model to use for LLM tasks.       │
 │                                 [default: gpt-4o-mini]                       │
 │ --openai-api-key          TEXT  Your OpenAI API key. Can also be set with    │
 │                                 the OPENAI_API_KEY environment variable.     │
@@ -402,24 +403,25 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 │                                      devices and exit.                       │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ ASR (Audio) Configuration: Wyoming (local) ─────────────────────────────────╮
-│ --wyoming-asr-ip          TEXT     Wyoming ASR server IP address.            │
+│ --asr-wyoming-ip          TEXT     Wyoming ASR server IP address.            │
 │                                    [default: localhost]                      │
-│ --wyoming-asr-port        INTEGER  Wyoming ASR server port. [default: 10300] │
+│ --asr-wyoming-port        INTEGER  Wyoming ASR server port. [default: 10300] │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ ASR (Audio) Configuration: OpenAI ──────────────────────────────────────────╮
-│ --openai-asr-model        TEXT  The OpenAI model to use for ASR              │
+│ --asr-openai-model        TEXT  The OpenAI model to use for ASR              │
 │                                 (transcription).                             │
 │                                 [default: whisper-1]                         │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ LLM Configuration: Ollama (local) ──────────────────────────────────────────╮
-│ --ollama-model        TEXT  The Ollama model to use. Default is qwen3:4b.    │
-│                             [default: qwen3:4b]                              │
-│ --ollama-host         TEXT  The Ollama server host. Default is               │
-│                             http://localhost:11434.                          │
-│                             [default: http://localhost:11434]                │
+│ --llm-llm-ollama-model        TEXT  The Ollama model to use. Default is      │
+│                                     qwen3:4b.                                │
+│                                     [default: qwen3:4b]                      │
+│ --llm-llm-ollama-host         TEXT  The Ollama server host. Default is       │
+│                                     http://localhost:11434.                  │
+│                                     [default: http://localhost:11434]        │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ LLM Configuration: OpenAI ──────────────────────────────────────────────────╮
-│ --openai-llm-model        TEXT  The OpenAI model to use for LLM tasks.       │
+│ --llm-openai-model        TEXT  The OpenAI model to use for LLM tasks.       │
 │                                 [default: gpt-4o-mini]                       │
 │ --openai-api-key          TEXT  Your OpenAI API key. Can also be set with    │
 │                                 the OPENAI_API_KEY environment variable.     │
@@ -517,23 +519,23 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 │                                       [default: 1.0]                         │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ TTS (Text-to-Speech) Configuration: Wyoming (local) ────────────────────────╮
-│ --wyoming-tts-ip              TEXT     Wyoming TTS server IP address.        │
+│ --tts-wyoming-ip              TEXT     Wyoming TTS server IP address.        │
 │                                        [default: localhost]                  │
-│ --wyoming-tts-port            INTEGER  Wyoming TTS server port.              │
+│ --tts-wyoming-port            INTEGER  Wyoming TTS server port.              │
 │                                        [default: 10200]                      │
-│ --wyoming-voice               TEXT     Voice name to use for Wyoming TTS     │
+│ --tts-wyoming-voice           TEXT     Voice name to use for Wyoming TTS     │
 │                                        (e.g., 'en_US-lessac-medium').        │
 │                                        [default: None]                       │
-│ --wyoming-tts-language        TEXT     Language for Wyoming TTS (e.g.,       │
+│ --tts-wyoming-language        TEXT     Language for Wyoming TTS (e.g.,       │
 │                                        'en_US').                             │
 │                                        [default: None]                       │
-│ --wyoming-speaker             TEXT     Speaker name for Wyoming TTS voice.   │
+│ --tts-wyoming-speaker         TEXT     Speaker name for Wyoming TTS voice.   │
 │                                        [default: None]                       │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ TTS (Text-to-Speech) Configuration: OpenAI ─────────────────────────────────╮
-│ --openai-tts-model        TEXT  The OpenAI model to use for TTS.             │
+│ --tts-openai-model        TEXT  The OpenAI model to use for TTS.             │
 │                                 [default: tts-1]                             │
-│ --openai-tts-voice        TEXT  The voice to use for OpenAI TTS.             │
+│ --tts-openai-voice        TEXT  The voice to use for OpenAI TTS.             │
 │                                 [default: alloy]                             │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ LLM Configuration: OpenAI ──────────────────────────────────────────────────╮
@@ -541,15 +543,15 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 │                                 the OPENAI_API_KEY environment variable.     │
 │                                 [env var: OPENAI_API_KEY]                    │
 │                                 [default: None]                              │
-│ --openai-llm-model        TEXT  The OpenAI model to use for LLM tasks.       │
+│ --llm-openai-model        TEXT  The OpenAI model to use for LLM tasks.       │
 │                                 [default: gpt-4o-mini]                       │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ TTS (Text-to-Speech) Configuration: Kokoro ─────────────────────────────────╮
-│ --kokoro-tts-model        TEXT  The Kokoro model to use for TTS.             │
+│ --tts-kokoro-model        TEXT  The Kokoro model to use for TTS.             │
 │                                 [default: kokoro]                            │
-│ --kokoro-tts-voice        TEXT  The voice to use for Kokoro TTS.             │
+│ --tts-kokoro-voice        TEXT  The voice to use for Kokoro TTS.             │
 │                                 [default: af_sky]                            │
-│ --kokoro-tts-host         TEXT  The base URL for the Kokoro API.             │
+│ --tts-kokoro-host         TEXT  The base URL for the Kokoro API.             │
 │                                 [default: http://localhost:8880/v1]          │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ ASR (Audio) Configuration ──────────────────────────────────────────────────╮
@@ -646,24 +648,25 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 │                                      devices and exit.                       │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ ASR (Audio) Configuration: Wyoming (local) ─────────────────────────────────╮
-│ --wyoming-asr-ip          TEXT     Wyoming ASR server IP address.            │
+│ --asr-wyoming-ip          TEXT     Wyoming ASR server IP address.            │
 │                                    [default: localhost]                      │
-│ --wyoming-asr-port        INTEGER  Wyoming ASR server port. [default: 10300] │
+│ --asr-wyoming-port        INTEGER  Wyoming ASR server port. [default: 10300] │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ ASR (Audio) Configuration: OpenAI ──────────────────────────────────────────╮
-│ --openai-asr-model        TEXT  The OpenAI model to use for ASR              │
+│ --asr-openai-model        TEXT  The OpenAI model to use for ASR              │
 │                                 (transcription).                             │
 │                                 [default: whisper-1]                         │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ LLM Configuration: Ollama (local) ──────────────────────────────────────────╮
-│ --ollama-model        TEXT  The Ollama model to use. Default is qwen3:4b.    │
-│                             [default: qwen3:4b]                              │
-│ --ollama-host         TEXT  The Ollama server host. Default is               │
-│                             http://localhost:11434.                          │
-│                             [default: http://localhost:11434]                │
+│ --llm-llm-ollama-model        TEXT  The Ollama model to use. Default is      │
+│                                     qwen3:4b.                                │
+│                                     [default: qwen3:4b]                      │
+│ --llm-llm-ollama-host         TEXT  The Ollama server host. Default is       │
+│                                     http://localhost:11434.                  │
+│                                     [default: http://localhost:11434]        │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ LLM Configuration: OpenAI ──────────────────────────────────────────────────╮
-│ --openai-llm-model        TEXT  The OpenAI model to use for LLM tasks.       │
+│ --llm-openai-model        TEXT  The OpenAI model to use for LLM tasks.       │
 │                                 [default: gpt-4o-mini]                       │
 │ --openai-api-key          TEXT  Your OpenAI API key. Can also be set with    │
 │                                 the OPENAI_API_KEY environment variable.     │
@@ -686,31 +689,31 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 │                                               [default: 1.0]                 │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ TTS (Text-to-Speech) Configuration: Wyoming (local) ────────────────────────╮
-│ --wyoming-tts-ip              TEXT     Wyoming TTS server IP address.        │
+│ --tts-wyoming-ip              TEXT     Wyoming TTS server IP address.        │
 │                                        [default: localhost]                  │
-│ --wyoming-tts-port            INTEGER  Wyoming TTS server port.              │
+│ --tts-wyoming-port            INTEGER  Wyoming TTS server port.              │
 │                                        [default: 10200]                      │
-│ --wyoming-voice               TEXT     Voice name to use for Wyoming TTS     │
+│ --tts-wyoming-voice           TEXT     Voice name to use for Wyoming TTS     │
 │                                        (e.g., 'en_US-lessac-medium').        │
 │                                        [default: None]                       │
-│ --wyoming-tts-language        TEXT     Language for Wyoming TTS (e.g.,       │
+│ --tts-wyoming-language        TEXT     Language for Wyoming TTS (e.g.,       │
 │                                        'en_US').                             │
 │                                        [default: None]                       │
-│ --wyoming-speaker             TEXT     Speaker name for Wyoming TTS voice.   │
+│ --tts-wyoming-speaker         TEXT     Speaker name for Wyoming TTS voice.   │
 │                                        [default: None]                       │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ TTS (Text-to-Speech) Configuration: OpenAI ─────────────────────────────────╮
-│ --openai-tts-model        TEXT  The OpenAI model to use for TTS.             │
+│ --tts-openai-model        TEXT  The OpenAI model to use for TTS.             │
 │                                 [default: tts-1]                             │
-│ --openai-tts-voice        TEXT  The voice to use for OpenAI TTS.             │
+│ --tts-openai-voice        TEXT  The voice to use for OpenAI TTS.             │
 │                                 [default: alloy]                             │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ TTS (Text-to-Speech) Configuration: Kokoro ─────────────────────────────────╮
-│ --kokoro-tts-model        TEXT  The Kokoro model to use for TTS.             │
+│ --tts-kokoro-model        TEXT  The Kokoro model to use for TTS.             │
 │                                 [default: kokoro]                            │
-│ --kokoro-tts-voice        TEXT  The voice to use for Kokoro TTS.             │
+│ --tts-kokoro-voice        TEXT  The voice to use for Kokoro TTS.             │
 │                                 [default: af_sky]                            │
-│ --kokoro-tts-host         TEXT  The base URL for the Kokoro API.             │
+│ --tts-kokoro-host         TEXT  The base URL for the Kokoro API.             │
 │                                 [default: http://localhost:8880/v1]          │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Process Management Options ─────────────────────────────────────────────────╮
@@ -814,24 +817,25 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 │                                      devices and exit.                       │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ ASR (Audio) Configuration: Wyoming (local) ─────────────────────────────────╮
-│ --wyoming-asr-ip          TEXT     Wyoming ASR server IP address.            │
+│ --asr-wyoming-ip          TEXT     Wyoming ASR server IP address.            │
 │                                    [default: localhost]                      │
-│ --wyoming-asr-port        INTEGER  Wyoming ASR server port. [default: 10300] │
+│ --asr-wyoming-port        INTEGER  Wyoming ASR server port. [default: 10300] │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ ASR (Audio) Configuration: OpenAI ──────────────────────────────────────────╮
-│ --openai-asr-model        TEXT  The OpenAI model to use for ASR              │
+│ --asr-openai-model        TEXT  The OpenAI model to use for ASR              │
 │                                 (transcription).                             │
 │                                 [default: whisper-1]                         │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ LLM Configuration: Ollama (local) ──────────────────────────────────────────╮
-│ --ollama-model        TEXT  The Ollama model to use. Default is qwen3:4b.    │
-│                             [default: qwen3:4b]                              │
-│ --ollama-host         TEXT  The Ollama server host. Default is               │
-│                             http://localhost:11434.                          │
-│                             [default: http://localhost:11434]                │
+│ --llm-llm-ollama-model        TEXT  The Ollama model to use. Default is      │
+│                                     qwen3:4b.                                │
+│                                     [default: qwen3:4b]                      │
+│ --llm-llm-ollama-host         TEXT  The Ollama server host. Default is       │
+│                                     http://localhost:11434.                  │
+│                                     [default: http://localhost:11434]        │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ LLM Configuration: OpenAI ──────────────────────────────────────────────────╮
-│ --openai-llm-model        TEXT  The OpenAI model to use for LLM tasks.       │
+│ --llm-openai-model        TEXT  The OpenAI model to use for LLM tasks.       │
 │                                 [default: gpt-4o-mini]                       │
 │ --openai-api-key          TEXT  Your OpenAI API key. Can also be set with    │
 │                                 the OPENAI_API_KEY environment variable.     │
@@ -854,31 +858,31 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 │                                               [default: 1.0]                 │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ TTS (Text-to-Speech) Configuration: Wyoming (local) ────────────────────────╮
-│ --wyoming-tts-ip              TEXT     Wyoming TTS server IP address.        │
+│ --tts-wyoming-ip              TEXT     Wyoming TTS server IP address.        │
 │                                        [default: localhost]                  │
-│ --wyoming-tts-port            INTEGER  Wyoming TTS server port.              │
+│ --tts-wyoming-port            INTEGER  Wyoming TTS server port.              │
 │                                        [default: 10200]                      │
-│ --wyoming-voice               TEXT     Voice name to use for Wyoming TTS     │
+│ --tts-wyoming-voice           TEXT     Voice name to use for Wyoming TTS     │
 │                                        (e.g., 'en_US-lessac-medium').        │
 │                                        [default: None]                       │
-│ --wyoming-tts-language        TEXT     Language for Wyoming TTS (e.g.,       │
+│ --tts-wyoming-language        TEXT     Language for Wyoming TTS (e.g.,       │
 │                                        'en_US').                             │
 │                                        [default: None]                       │
-│ --wyoming-speaker             TEXT     Speaker name for Wyoming TTS voice.   │
+│ --tts-wyoming-speaker         TEXT     Speaker name for Wyoming TTS voice.   │
 │                                        [default: None]                       │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ TTS (Text-to-Speech) Configuration: OpenAI ─────────────────────────────────╮
-│ --openai-tts-model        TEXT  The OpenAI model to use for TTS.             │
+│ --tts-openai-model        TEXT  The OpenAI model to use for TTS.             │
 │                                 [default: tts-1]                             │
-│ --openai-tts-voice        TEXT  The voice to use for OpenAI TTS.             │
+│ --tts-openai-voice        TEXT  The voice to use for OpenAI TTS.             │
 │                                 [default: alloy]                             │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ TTS (Text-to-Speech) Configuration: Kokoro ─────────────────────────────────╮
-│ --kokoro-tts-model        TEXT  The Kokoro model to use for TTS.             │
+│ --tts-kokoro-model        TEXT  The Kokoro model to use for TTS.             │
 │                                 [default: kokoro]                            │
-│ --kokoro-tts-voice        TEXT  The voice to use for Kokoro TTS.             │
+│ --tts-kokoro-voice        TEXT  The voice to use for Kokoro TTS.             │
 │                                 [default: af_sky]                            │
-│ --kokoro-tts-host         TEXT  The base URL for the Kokoro API.             │
+│ --tts-kokoro-host         TEXT  The base URL for the Kokoro API.             │
 │                                 [default: http://localhost:8880/v1]          │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Process Management Options ─────────────────────────────────────────────────╮
@@ -980,24 +984,25 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 │                                      devices and exit.                       │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ ASR (Audio) Configuration: Wyoming (local) ─────────────────────────────────╮
-│ --wyoming-asr-ip          TEXT     Wyoming ASR server IP address.            │
+│ --asr-wyoming-ip          TEXT     Wyoming ASR server IP address.            │
 │                                    [default: localhost]                      │
-│ --wyoming-asr-port        INTEGER  Wyoming ASR server port. [default: 10300] │
+│ --asr-wyoming-port        INTEGER  Wyoming ASR server port. [default: 10300] │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ ASR (Audio) Configuration: OpenAI ──────────────────────────────────────────╮
-│ --openai-asr-model        TEXT  The OpenAI model to use for ASR              │
+│ --asr-openai-model        TEXT  The OpenAI model to use for ASR              │
 │                                 (transcription).                             │
 │                                 [default: whisper-1]                         │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ LLM Configuration: Ollama (local) ──────────────────────────────────────────╮
-│ --ollama-model        TEXT  The Ollama model to use. Default is qwen3:4b.    │
-│                             [default: qwen3:4b]                              │
-│ --ollama-host         TEXT  The Ollama server host. Default is               │
-│                             http://localhost:11434.                          │
-│                             [default: http://localhost:11434]                │
+│ --llm-llm-ollama-model        TEXT  The Ollama model to use. Default is      │
+│                                     qwen3:4b.                                │
+│                                     [default: qwen3:4b]                      │
+│ --llm-llm-ollama-host         TEXT  The Ollama server host. Default is       │
+│                                     http://localhost:11434.                  │
+│                                     [default: http://localhost:11434]        │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ LLM Configuration: OpenAI ──────────────────────────────────────────────────╮
-│ --openai-llm-model        TEXT  The OpenAI model to use for LLM tasks.       │
+│ --llm-openai-model        TEXT  The OpenAI model to use for LLM tasks.       │
 │                                 [default: gpt-4o-mini]                       │
 │ --openai-api-key          TEXT  Your OpenAI API key. Can also be set with    │
 │                                 the OPENAI_API_KEY environment variable.     │
@@ -1020,31 +1025,31 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 │                                               [default: 1.0]                 │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ TTS (Text-to-Speech) Configuration: Wyoming (local) ────────────────────────╮
-│ --wyoming-tts-ip              TEXT     Wyoming TTS server IP address.        │
+│ --tts-wyoming-ip              TEXT     Wyoming TTS server IP address.        │
 │                                        [default: localhost]                  │
-│ --wyoming-tts-port            INTEGER  Wyoming TTS server port.              │
+│ --tts-wyoming-port            INTEGER  Wyoming TTS server port.              │
 │                                        [default: 10200]                      │
-│ --wyoming-voice               TEXT     Voice name to use for Wyoming TTS     │
+│ --tts-wyoming-voice           TEXT     Voice name to use for Wyoming TTS     │
 │                                        (e.g., 'en_US-lessac-medium').        │
 │                                        [default: None]                       │
-│ --wyoming-tts-language        TEXT     Language for Wyoming TTS (e.g.,       │
+│ --tts-wyoming-language        TEXT     Language for Wyoming TTS (e.g.,       │
 │                                        'en_US').                             │
 │                                        [default: None]                       │
-│ --wyoming-speaker             TEXT     Speaker name for Wyoming TTS voice.   │
+│ --tts-wyoming-speaker         TEXT     Speaker name for Wyoming TTS voice.   │
 │                                        [default: None]                       │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ TTS (Text-to-Speech) Configuration: OpenAI ─────────────────────────────────╮
-│ --openai-tts-model        TEXT  The OpenAI model to use for TTS.             │
+│ --tts-openai-model        TEXT  The OpenAI model to use for TTS.             │
 │                                 [default: tts-1]                             │
-│ --openai-tts-voice        TEXT  The voice to use for OpenAI TTS.             │
+│ --tts-openai-voice        TEXT  The voice to use for OpenAI TTS.             │
 │                                 [default: alloy]                             │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ TTS (Text-to-Speech) Configuration: Kokoro ─────────────────────────────────╮
-│ --kokoro-tts-model        TEXT  The Kokoro model to use for TTS.             │
+│ --tts-kokoro-model        TEXT  The Kokoro model to use for TTS.             │
 │                                 [default: kokoro]                            │
-│ --kokoro-tts-voice        TEXT  The voice to use for Kokoro TTS.             │
+│ --tts-kokoro-voice        TEXT  The voice to use for Kokoro TTS.             │
 │                                 [default: af_sky]                            │
-│ --kokoro-tts-host         TEXT  The base URL for the Kokoro API.             │
+│ --tts-kokoro-host         TEXT  The base URL for the Kokoro API.             │
 │                                 [default: http://localhost:8880/v1]          │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Process Management Options ─────────────────────────────────────────────────╮

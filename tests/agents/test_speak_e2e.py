@@ -51,18 +51,18 @@ async def test_speak_e2e(
         )
         audio_out_cfg = config.AudioOutput(enable_tts=True)
         wyoming_tts_cfg = config.WyomingTTS(
-            wyoming_tts_ip="mock-host",
-            wyoming_tts_port=10200,
+            tts_wyoming_ip="mock-host",
+            tts_wyoming_port=10200,
         )
-        openai_tts_cfg = config.OpenAITTS(openai_tts_model="tts-1", openai_tts_voice="alloy")
+        openai_tts_cfg = config.OpenAITTS(tts_openai_model="tts-1", tts_openai_voice="alloy")
         openai_llm_cfg = config.OpenAILLM(
-            openai_llm_model="gpt-4o-mini",
+            llm_openai_model="gpt-4o-mini",
             openai_api_key="fake-key",
         )
         kokoro_tts_cfg = config.KokoroTTS(
-            kokoro_tts_model="tts-1",
-            kokoro_tts_voice="alloy",
-            kokoro_tts_host="http://localhost:8000/v1",
+            tts_kokoro_model="tts-1",
+            tts_kokoro_voice="alloy",
+            tts_kokoro_host="http://localhost:8000/v1",
         )
 
         await _async_main(

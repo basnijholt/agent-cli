@@ -18,8 +18,11 @@ def test_build_agent_openai_no_key():
         asr_provider="local",
         tts_provider="local",
     )
-    ollama_cfg = config.Ollama(ollama_model="test-model", ollama_host="http://mockhost:1234")
-    openai_llm_cfg = config.OpenAILLM(openai_llm_model="gpt-4o-mini", openai_api_key=None)
+    ollama_cfg = config.Ollama(
+        llm_ollama_model="test-model",
+        llm_ollama_host="http://mockhost:1234",
+    )
+    openai_llm_cfg = config.OpenAILLM(llm_openai_model="gpt-4o-mini", openai_api_key=None)
 
     with pytest.raises(ValueError, match="OpenAI API key is not set."):
         build_agent(provider_cfg, ollama_cfg, openai_llm_cfg)
@@ -27,14 +30,17 @@ def test_build_agent_openai_no_key():
 
 def test_build_agent(monkeypatch: pytest.MonkeyPatch) -> None:
     """Test building the agent."""
-    monkeypatch.setenv("OLLAMA_HOST", "http://mockhost:1234")
+    monkeypatch.setenv("LLM_OLLAMA_HOST", "http://mockhost:1234")
     provider_cfg = config.ProviderSelection(
         llm_provider="local",
         asr_provider="local",
         tts_provider="local",
     )
-    ollama_cfg = config.Ollama(ollama_model="test-model", ollama_host="http://mockhost:1234")
-    openai_llm_cfg = config.OpenAILLM(openai_llm_model="gpt-4o-mini", openai_api_key=None)
+    ollama_cfg = config.Ollama(
+        llm_ollama_model="test-model",
+        llm_ollama_host="http://mockhost:1234",
+    )
+    openai_llm_cfg = config.OpenAILLM(llm_openai_model="gpt-4o-mini", openai_api_key=None)
 
     agent = build_agent(provider_cfg, ollama_cfg, openai_llm_cfg)
 
@@ -54,8 +60,8 @@ async def test_get_llm_response(mock_build_agent: MagicMock) -> None:
         asr_provider="local",
         tts_provider="local",
     )
-    ollama_cfg = config.Ollama(ollama_model="test", ollama_host="test")
-    openai_llm_cfg = config.OpenAILLM(openai_llm_model="gpt-4o-mini", openai_api_key=None)
+    ollama_cfg = config.Ollama(llm_ollama_model="test", llm_ollama_host="test")
+    openai_llm_cfg = config.OpenAILLM(llm_openai_model="gpt-4o-mini", openai_api_key=None)
 
     response = await get_llm_response(
         system_prompt="test",
@@ -86,8 +92,8 @@ async def test_get_llm_response_error(mock_build_agent: MagicMock) -> None:
         asr_provider="local",
         tts_provider="local",
     )
-    ollama_cfg = config.Ollama(ollama_model="test", ollama_host="test")
-    openai_llm_cfg = config.OpenAILLM(openai_llm_model="gpt-4o-mini", openai_api_key=None)
+    ollama_cfg = config.Ollama(llm_ollama_model="test", llm_ollama_host="test")
+    openai_llm_cfg = config.OpenAILLM(llm_openai_model="gpt-4o-mini", openai_api_key=None)
 
     response = await get_llm_response(
         system_prompt="test",
@@ -118,8 +124,8 @@ async def test_get_llm_response_error_exit(mock_build_agent: MagicMock):
         asr_provider="local",
         tts_provider="local",
     )
-    ollama_cfg = config.Ollama(ollama_model="test", ollama_host="test")
-    openai_llm_cfg = config.OpenAILLM(openai_llm_model="gpt-4o-mini", openai_api_key=None)
+    ollama_cfg = config.Ollama(llm_ollama_model="test", llm_ollama_host="test")
+    openai_llm_cfg = config.OpenAILLM(llm_openai_model="gpt-4o-mini", openai_api_key=None)
 
     with pytest.raises(SystemExit):
         await get_llm_response(
@@ -148,8 +154,8 @@ def test_process_and_update_clipboard(
         asr_provider="local",
         tts_provider="local",
     )
-    ollama_cfg = config.Ollama(ollama_model="test", ollama_host="test")
-    openai_llm_cfg = config.OpenAILLM(openai_llm_model="gpt-4o-mini", openai_api_key=None)
+    ollama_cfg = config.Ollama(llm_ollama_model="test", llm_ollama_host="test")
+    openai_llm_cfg = config.OpenAILLM(llm_openai_model="gpt-4o-mini", openai_api_key=None)
 
     asyncio.run(
         process_and_update_clipboard(

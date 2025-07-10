@@ -27,22 +27,22 @@ TTS_PROVIDER: str = typer.Option(
 
 # --- LLM Configuration ---
 # Ollama (local service)
-OLLAMA_MODEL: str = typer.Option(
+LLM_OLLAMA_MODEL: str = typer.Option(
     "qwen3:4b",
-    "--ollama-model",
+    "--llm-ollama-model",
     help="The Ollama model to use. Default is qwen3:4b.",
     rich_help_panel="LLM Configuration: Ollama (local)",
 )
-OLLAMA_HOST: str = typer.Option(
+LLM_OLLAMA_HOST: str = typer.Option(
     "http://localhost:11434",
-    "--ollama-host",
+    "--llm-ollama-host",
     help="The Ollama server host. Default is http://localhost:11434.",
     rich_help_panel="LLM Configuration: Ollama (local)",
 )
 # OpenAI
-OPENAI_LLM_MODEL: str = typer.Option(
+LLM_OPENAI_MODEL: str = typer.Option(
     "gpt-4o-mini",
-    "--openai-llm-model",
+    "--llm-openai-model",
     help="The OpenAI model to use for LLM tasks.",
     rich_help_panel="LLM Configuration: OpenAI",
 )
@@ -85,20 +85,20 @@ LIST_DEVICES: bool = typer.Option(
 # Wyoming (local service)
 WYOMING_ASR_SERVER_IP: str = typer.Option(
     "localhost",
-    "--wyoming-asr-ip",
+    "--asr-wyoming-ip",
     help="Wyoming ASR server IP address.",
     rich_help_panel="ASR (Audio) Configuration: Wyoming (local)",
 )
 WYOMING_ASR_SERVER_PORT: int = typer.Option(
     10300,
-    "--wyoming-asr-port",
+    "--asr-wyoming-port",
     help="Wyoming ASR server port.",
     rich_help_panel="ASR (Audio) Configuration: Wyoming (local)",
 )
 # OpenAI
-OPENAI_ASR_MODEL: str = typer.Option(
+ASR_OPENAI_MODEL: str = typer.Option(
     "whisper-1",
-    "--openai-asr-model",
+    "--asr-openai-model",
     help="The OpenAI model to use for ASR (transcription).",
     rich_help_panel="ASR (Audio) Configuration: OpenAI",
 )
@@ -154,65 +154,65 @@ OUTPUT_DEVICE_NAME: str | None = typer.Option(
 # Wyoming (local service)
 WYOMING_TTS_SERVER_IP: str = typer.Option(
     "localhost",
-    "--wyoming-tts-ip",
+    "--tts-wyoming-ip",
     help="Wyoming TTS server IP address.",
     rich_help_panel="TTS (Text-to-Speech) Configuration: Wyoming (local)",
 )
 WYOMING_TTS_SERVER_PORT: int = typer.Option(
     10200,
-    "--wyoming-tts-port",
+    "--tts-wyoming-port",
     help="Wyoming TTS server port.",
     rich_help_panel="TTS (Text-to-Speech) Configuration: Wyoming (local)",
 )
 WYOMING_VOICE_NAME: str | None = typer.Option(
     None,
-    "--wyoming-voice",
+    "--tts-wyoming-voice",
     help="Voice name to use for Wyoming TTS (e.g., 'en_US-lessac-medium').",
     rich_help_panel="TTS (Text-to-Speech) Configuration: Wyoming (local)",
 )
-WYOMING_TTS_LANGUAGE: str | None = typer.Option(
+TTS_WYOMING_LANGUAGE: str | None = typer.Option(
     None,
-    "--wyoming-tts-language",
+    "--tts-wyoming-language",
     help="Language for Wyoming TTS (e.g., 'en_US').",
     rich_help_panel="TTS (Text-to-Speech) Configuration: Wyoming (local)",
 )
-WYOMING_SPEAKER: str | None = typer.Option(
+TTS_WYOMING_SPEAKER: str | None = typer.Option(
     None,
-    "--wyoming-speaker",
+    "--tts-wyoming-speaker",
     help="Speaker name for Wyoming TTS voice.",
     rich_help_panel="TTS (Text-to-Speech) Configuration: Wyoming (local)",
 )
 # OpenAI
-OPENAI_TTS_MODEL: str = typer.Option(
+TTS_OPENAI_MODEL: str = typer.Option(
     "tts-1",
-    "--openai-tts-model",
+    "--tts-openai-model",
     help="The OpenAI model to use for TTS.",
     rich_help_panel="TTS (Text-to-Speech) Configuration: OpenAI",
 )
-OPENAI_TTS_VOICE: str = typer.Option(
+TTS_OPENAI_VOICE: str = typer.Option(
     "alloy",
-    "--openai-tts-voice",
+    "--tts-openai-voice",
     help="The voice to use for OpenAI TTS.",
     rich_help_panel="TTS (Text-to-Speech) Configuration: OpenAI",
 )
 
 
 # Kokoro
-KOKORO_TTS_MODEL: str = typer.Option(
+TTS_KOKORO_MODEL: str = typer.Option(
     "kokoro",
-    "--kokoro-tts-model",
+    "--tts-kokoro-model",
     help="The Kokoro model to use for TTS.",
     rich_help_panel="TTS (Text-to-Speech) Configuration: Kokoro",
 )
-KOKORO_TTS_VOICE: str = typer.Option(
+TTS_KOKORO_VOICE: str = typer.Option(
     "af_sky",
-    "--kokoro-tts-voice",
+    "--tts-kokoro-voice",
     help="The voice to use for Kokoro TTS.",
     rich_help_panel="TTS (Text-to-Speech) Configuration: Kokoro",
 )
-KOKORO_TTS_HOST: str = typer.Option(
+TTS_KOKORO_HOST: str = typer.Option(
     "http://localhost:8880/v1",
-    "--kokoro-tts-host",
+    "--tts-kokoro-host",
     help="The base URL for the Kokoro API.",
     rich_help_panel="TTS (Text-to-Speech) Configuration: Kokoro",
 )

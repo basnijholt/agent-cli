@@ -235,11 +235,11 @@ async def _synthesize_speech_kokoro(
     try:
         client = AsyncOpenAI(
             api_key="not-needed",
-            base_url=kokoro_tts_config.kokoro_tts_host,
+            base_url=kokoro_tts_config.tts_kokoro_host,
         )
         response = await client.audio.speech.create(
-            model=kokoro_tts_config.kokoro_tts_model,
-            voice=kokoro_tts_config.kokoro_tts_voice,
+            model=kokoro_tts_config.tts_kokoro_model,
+            voice=kokoro_tts_config.tts_kokoro_voice,
             input=text,
             response_format="wav",
         )
@@ -261,8 +261,8 @@ async def _synthesize_speech_wyoming(
     """Synthesize speech from text using Wyoming TTS server."""
     try:
         async with wyoming_client_context(
-            wyoming_tts_config.wyoming_tts_ip,
-            wyoming_tts_config.wyoming_tts_port,
+            wyoming_tts_config.tts_wyoming_ip,
+            wyoming_tts_config.tts_wyoming_port,
             "TTS",
             logger,
             quiet=quiet,
@@ -270,9 +270,9 @@ async def _synthesize_speech_wyoming(
             async with live_timer(live, "🔊 Synthesizing text", style="blue", quiet=quiet):
                 synthesize_event = _create_synthesis_request(
                     text,
-                    voice_name=wyoming_tts_config.wyoming_voice,
-                    language=wyoming_tts_config.wyoming_tts_language,
-                    speaker=wyoming_tts_config.wyoming_speaker,
+                    voice_name=wyoming_tts_config.tts_wyoming_voice,
+                    language=wyoming_tts_config.tts_wyoming_language,
+                    speaker=wyoming_tts_config.tts_wyoming_speaker,
                 )
                 _send_task, recv_task = await manage_send_receive_tasks(
                     client.write_event(synthesize_event.event()),
