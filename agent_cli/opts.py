@@ -82,13 +82,13 @@ LIST_DEVICES: bool = typer.Option(
     rich_help_panel="ASR (Audio) Configuration",
 )
 # Wyoming (local service)
-ASR_WYOMING_SERVER_IP: str = typer.Option(
+ASR_WYOMING_IP: str = typer.Option(
     "localhost",
     "--asr-wyoming-ip",
     help="Wyoming ASR server IP address.",
     rich_help_panel="ASR (Audio) Configuration: Wyoming (local)",
 )
-ASR_WYOMING_SERVER_PORT: int = typer.Option(
+ASR_WYOMING_PORT: int = typer.Option(
     10300,
     "--asr-wyoming-port",
     help="Wyoming ASR server port.",
@@ -104,13 +104,13 @@ ASR_OPENAI_MODEL: str = typer.Option(
 
 
 # --- Wake Word Options ---
-WAKE_WORD_SERVER_IP: str = typer.Option(
+WAKE_SERVER_IP: str = typer.Option(
     "localhost",
     "--wake-server-ip",
     help="Wyoming wake word server IP address.",
     rich_help_panel="Wake Word Options",
 )
-WAKE_WORD_SERVER_PORT: int = typer.Option(
+WAKE_SERVER_PORT: int = typer.Option(
     10400,
     "--wake-server-port",
     help="Wyoming wake word server port.",
@@ -151,19 +151,19 @@ OUTPUT_DEVICE_NAME: str | None = typer.Option(
     rich_help_panel="TTS (Text-to-Speech) Configuration",
 )
 # Wyoming (local service)
-WYOMING_TTS_SERVER_IP: str = typer.Option(
+TTS_WYOMING_IP: str = typer.Option(
     "localhost",
     "--tts-wyoming-ip",
     help="Wyoming TTS server IP address.",
     rich_help_panel="TTS (Text-to-Speech) Configuration: Wyoming (local)",
 )
-WYOMING_TTS_SERVER_PORT: int = typer.Option(
+TTS_WYOMING_PORT: int = typer.Option(
     10200,
     "--tts-wyoming-port",
     help="Wyoming TTS server port.",
     rich_help_panel="TTS (Text-to-Speech) Configuration: Wyoming (local)",
 )
-WYOMING_VOICE_NAME: str | None = typer.Option(
+TTS_WYOMING_VOICE: str | None = typer.Option(
     None,
     "--tts-wyoming-voice",
     help="Voice name to use for Wyoming TTS (e.g., 'en_US-lessac-medium').",

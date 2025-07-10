@@ -91,9 +91,9 @@ def speak(
     output_device_name: str | None = opts.OUTPUT_DEVICE_NAME,
     tts_speed: float = opts.TTS_SPEED,
     # Wyoming (local service)
-    tts_wyoming_ip: str = opts.WYOMING_TTS_SERVER_IP,
-    tts_wyoming_port: int = opts.WYOMING_TTS_SERVER_PORT,
-    tts_wyoming_voice: str | None = opts.WYOMING_VOICE_NAME,
+    tts_wyoming_ip: str = opts.TTS_WYOMING_IP,
+    tts_wyoming_port: int = opts.TTS_WYOMING_PORT,
+    tts_wyoming_voice: str | None = opts.TTS_WYOMING_VOICE,
     tts_wyoming_language: str | None = opts.TTS_WYOMING_LANGUAGE,
     tts_wyoming_speaker: str | None = opts.TTS_WYOMING_SPEAKER,
     # OpenAI

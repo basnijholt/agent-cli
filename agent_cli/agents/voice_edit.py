@@ -176,8 +176,8 @@ def voice_edit(
     # --- ASR (Audio) Configuration ---
     input_device_index: int | None = opts.INPUT_DEVICE_INDEX,
     input_device_name: str | None = opts.INPUT_DEVICE_NAME,
-    asr_wyoming_ip: str = opts.ASR_WYOMING_SERVER_IP,
-    asr_wyoming_port: int = opts.ASR_WYOMING_SERVER_PORT,
+    asr_wyoming_ip: str = opts.ASR_WYOMING_IP,
+    asr_wyoming_port: int = opts.ASR_WYOMING_PORT,
     asr_openai_model: str = opts.ASR_OPENAI_MODEL,
     # --- LLM Configuration ---
     llm_ollama_model: str = opts.LLM_OLLAMA_MODEL,
@@ -189,9 +189,9 @@ def voice_edit(
     output_device_index: int | None = opts.OUTPUT_DEVICE_INDEX,
     output_device_name: str | None = opts.OUTPUT_DEVICE_NAME,
     tts_speed: float = opts.TTS_SPEED,
-    tts_wyoming_ip: str = opts.WYOMING_TTS_SERVER_IP,
-    tts_wyoming_port: int = opts.WYOMING_TTS_SERVER_PORT,
-    tts_wyoming_voice: str | None = opts.WYOMING_VOICE_NAME,
+    tts_wyoming_ip: str = opts.TTS_WYOMING_IP,
+    tts_wyoming_port: int = opts.TTS_WYOMING_PORT,
+    tts_wyoming_voice: str | None = opts.TTS_WYOMING_VOICE,
     tts_wyoming_language: str | None = opts.TTS_WYOMING_LANGUAGE,
     tts_wyoming_speaker: str | None = opts.TTS_WYOMING_SPEAKER,
     tts_openai_model: str = opts.TTS_OPENAI_MODEL,
