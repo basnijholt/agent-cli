@@ -83,14 +83,12 @@ def test_get_transcriber():
         MagicMock(),
         MagicMock(),
         MagicMock(),
-        MagicMock(),
     )
     assert transcriber.func is asr._transcribe_live_audio_openai
 
     provider_cfg.asr_provider = "local"
     transcriber = asr.get_transcriber(
         provider_cfg,
-        MagicMock(),
         MagicMock(),
         MagicMock(),
         MagicMock(),

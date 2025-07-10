@@ -40,16 +40,12 @@ async def test_handle_tts_playback_os_error(mock_speak_text: AsyncMock) -> None:
         llm_provider="local",
     )
     audio_out_cfg = config.AudioOutput(enable_tts=True)
-    wyoming_tts_cfg = config.WyomingTTS(wyoming_tts_ip="localhost", wyoming_tts_port=1234)
-    openai_tts_cfg = config.OpenAITTS(openai_tts_model="tts-1", openai_tts_voice="alloy")
-    openai_llm_cfg = config.OpenAILLM(
-        openai_llm_model="gpt-4o-mini",
-        openai_api_key="fake-key",
-    )
+    wyoming_tts_cfg = config.WyomingTTS(tts_wyoming_ip="localhost", tts_wyoming_port=1234)
+    openai_tts_cfg = config.OpenAITTS(tts_openai_model="tts-1", tts_openai_voice="alloy")
     kokoro_tts_cfg = config.KokoroTTS(
-        kokoro_tts_model="tts-1",
-        kokoro_tts_voice="alloy",
-        kokoro_tts_host="http://localhost:8000/v1",
+        tts_kokoro_model="tts-1",
+        tts_kokoro_voice="alloy",
+        tts_kokoro_host="http://localhost:8000/v1",
     )
 
     result = await handle_tts_playback(
@@ -58,7 +54,6 @@ async def test_handle_tts_playback_os_error(mock_speak_text: AsyncMock) -> None:
         audio_output_config=audio_out_cfg,
         wyoming_tts_config=wyoming_tts_cfg,
         openai_tts_config=openai_tts_cfg,
-        openai_llm_config=openai_llm_cfg,
         kokoro_tts_config=kokoro_tts_cfg,
         save_file=None,
         quiet=False,

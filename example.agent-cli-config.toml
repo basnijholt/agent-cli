@@ -33,28 +33,28 @@ output-device-name = "iloud,airpods,dell,macbook"
 
 # --- LLM Settings ---
 # Ollama (local)
-ollama-model = "qwen3:4b"
-ollama-host = "http://localhost:11434"
+llm-ollama-model = "qwen3:4b"
+llm-ollama-host = "http://localhost:11434"
 # OpenAI
-openai-llm-model = "gpt-4o-mini"
+llm-openai-model = "gpt-4o-mini"
 
 # --- ASR (Speech-to-Text) Settings ---
 # Wyoming (local)
-wyoming-asr-ip = "localhost"
-wyoming-asr-port = 10300
+asr-wyoming-ip = "localhost"
+asr-wyoming-port = 10300
 # OpenAI
-openai-asr-model = "whisper-1"
+asr-openai-model = "whisper-1"
 
 # --- TTS (Text-to-Speech) Settings ---
 # Wyoming (local)
-wyoming-tts-ip = "localhost"
-wyoming-tts-port = 10200
-wyoming-voice = "en_US-lessac-medium"
-# wyoming-tts-language = "en_US"  # Optional: specify language for the voice
-# wyoming-speaker = "speaker_name" # Optional: specify speaker for the voice
+tts-wyoming-ip = "localhost"
+tts-wyoming-port = 10200
+tts-wyoming-voice = "en_US-lessac-medium"
+# tts-wyoming-language = "en_US"  # Optional: specify language for the voice
+# tts-wyoming-speaker = "speaker_name" # Optional: specify speaker for the voice
 # OpenAI
-openai-tts-model = "tts-1"
-openai-tts-voice = "alloy"
+tts-openai-model = "tts-1"
+tts-openai-voice = "alloy"
 
 # --- General Behavior ---
 log-level = "WARNING"  # Logging level (e.g., DEBUG, INFO, WARNING, ERROR)
@@ -81,14 +81,14 @@ tts = true
 [autocorrect]
 # Use a more powerful model specifically for the autocorrect command.
 llm-provider = "local"
-ollama-model = "devstral:24b"
+llm-ollama-model = "devstral:24b"
 
 [chat]
 # By default, chat uses local providers.
 # For better tool use, you might want to switch to OpenAI:
 # llm-provider = "openai"
 # tts-provider = "openai"
-# openai-llm-model = "gpt-4-turbo"
+# llm-openai-model = "gpt-4-turbo"
 tts = true
 tts-speed = 1.2
 # Conversation history settings
@@ -98,7 +98,7 @@ last-n-messages = 50 # Number of messages to load from history
 [speak]
 # Use a specific voice for the speak command.
 tts-provider = "local"
-wyoming-voice = "en_US-ryan-high"
+tts-wyoming-voice = "en_US-ryan-high"
 tts-speed = 1.0
 
 [transcribe]
@@ -114,5 +114,5 @@ extra-instructions = "Assume the user is often discussing Python programming. Us
 [voice-edit]
 # Use a powerful local model for the voice assistant.
 llm-provider = "local"
-ollama-model = "llama3"
+llm-ollama-model = "llama3"
 tts = true

@@ -44,7 +44,6 @@ def get_synthesizer(
     audio_output_config: config.AudioOutput,
     wyoming_tts_config: config.WyomingTTS,
     openai_tts_config: config.OpenAITTS,
-    openai_llm_config: config.OpenAILLM,
     kokoro_tts_config: config.KokoroTTS,
 ) -> Callable[..., Awaitable[bytes | None]]:
     """Return the appropriate synthesizer based on the config."""
@@ -54,7 +53,6 @@ def get_synthesizer(
         return partial(
             _synthesize_speech_openai,
             openai_tts_config=openai_tts_config,
-            openai_llm_config=openai_llm_config,
         )
     if provider_config.tts_provider == "kokoro":
         return partial(
@@ -71,7 +69,6 @@ async def handle_tts_playback(
     audio_output_config: config.AudioOutput,
     wyoming_tts_config: config.WyomingTTS,
     openai_tts_config: config.OpenAITTS,
-    openai_llm_config: config.OpenAILLM,
     kokoro_tts_config: config.KokoroTTS,
     save_file: Path | None,
     quiet: bool,
@@ -93,7 +90,6 @@ async def handle_tts_playback(
             audio_output_config=audio_output_config,
             wyoming_tts_config=wyoming_tts_config,
             openai_tts_config=openai_tts_config,
-            openai_llm_config=openai_llm_config,
             kokoro_tts_config=kokoro_tts_config,
             logger=logger,
             quiet=quiet,
@@ -211,7 +207,6 @@ async def _synthesize_speech_openai(
     *,
     text: str,
     openai_tts_config: config.OpenAITTS,
-    openai_llm_config: config.OpenAILLM,
     logger: logging.Logger,
     **_kwargs: object,
 ) -> bytes | None:
@@ -219,7 +214,6 @@ async def _synthesize_speech_openai(
     return await synthesize_speech_openai(
         text=text,
         openai_tts_config=openai_tts_config,
-        openai_llm_config=openai_llm_config,
         logger=logger,
     )
 
@@ -235,11 +229,11 @@ async def _synthesize_speech_kokoro(
     try:
         client = AsyncOpenAI(
             api_key="not-needed",
-            base_url=kokoro_tts_config.kokoro_tts_host,
+            base_url=kokoro_tts_config.tts_kokoro_host,
         )
         response = await client.audio.speech.create(
-            model=kokoro_tts_config.kokoro_tts_model,
-            voice=kokoro_tts_config.kokoro_tts_voice,
+            model=kokoro_tts_config.tts_kokoro_model,
+            voice=kokoro_tts_config.tts_kokoro_voice,
             input=text,
             response_format="wav",
         )
@@ -261,8 +255,8 @@ async def _synthesize_speech_wyoming(
     """Synthesize speech from text using Wyoming TTS server."""
     try:
         async with wyoming_client_context(
-            wyoming_tts_config.wyoming_tts_ip,
-            wyoming_tts_config.wyoming_tts_port,
+            wyoming_tts_config.tts_wyoming_ip,
+            wyoming_tts_config.tts_wyoming_port,
             "TTS",
             logger,
             quiet=quiet,
@@ -270,9 +264,9 @@ async def _synthesize_speech_wyoming(
             async with live_timer(live, "🔊 Synthesizing text", style="blue", quiet=quiet):
                 synthesize_event = _create_synthesis_request(
                     text,
-                    voice_name=wyoming_tts_config.wyoming_voice,
-                    language=wyoming_tts_config.wyoming_tts_language,
-                    speaker=wyoming_tts_config.wyoming_speaker,
+                    voice_name=wyoming_tts_config.tts_wyoming_voice,
+                    language=wyoming_tts_config.tts_wyoming_language,
+                    speaker=wyoming_tts_config.tts_wyoming_speaker,
                 )
                 _send_task, recv_task = await manage_send_receive_tasks(
                     client.write_event(synthesize_event.event()),
@@ -367,7 +361,6 @@ async def _speak_text(
     audio_output_config: config.AudioOutput,
     wyoming_tts_config: config.WyomingTTS,
     openai_tts_config: config.OpenAITTS,
-    openai_llm_config: config.OpenAILLM,
     kokoro_tts_config: config.KokoroTTS,
     logger: logging.Logger,
     quiet: bool = False,
@@ -381,7 +374,6 @@ async def _speak_text(
         audio_output_config,
         wyoming_tts_config,
         openai_tts_config,
-        openai_llm_config,
         kokoro_tts_config,
     )
     audio_data = None
@@ -391,7 +383,6 @@ async def _speak_text(
                 text=text,
                 wyoming_tts_config=wyoming_tts_config,
                 openai_tts_config=openai_tts_config,
-                openai_llm_config=openai_llm_config,
                 kokoro_tts_config=kokoro_tts_config,
                 logger=logger,
                 quiet=quiet,

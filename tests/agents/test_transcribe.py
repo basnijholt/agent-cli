@@ -56,10 +56,10 @@ async def test_transcribe_main_llm_enabled(
             clipboard=True,
         )
         audio_in_cfg = config.AudioInput()
-        wyoming_asr_cfg = config.WyomingASR(wyoming_asr_ip="localhost", wyoming_asr_port=12345)
-        openai_asr_cfg = config.OpenAIASR(openai_asr_model="whisper-1")
-        ollama_cfg = config.Ollama(ollama_model="test", ollama_host="localhost")
-        openai_llm_cfg = config.OpenAILLM(openai_llm_model="gpt-4")
+        wyoming_asr_cfg = config.WyomingASR(asr_wyoming_ip="localhost", asr_wyoming_port=12345)
+        openai_asr_cfg = config.OpenAIASR(asr_openai_model="whisper-1")
+        ollama_cfg = config.Ollama(llm_ollama_model="test", llm_ollama_host="localhost")
+        openai_llm_cfg = config.OpenAILLM(llm_openai_model="gpt-4")
 
         await transcribe._async_main(
             extra_instructions=None,
@@ -120,10 +120,10 @@ async def test_transcribe_main(
             clipboard=True,
         )
         audio_in_cfg = config.AudioInput()
-        wyoming_asr_cfg = config.WyomingASR(wyoming_asr_ip="localhost", wyoming_asr_port=12345)
-        openai_asr_cfg = config.OpenAIASR(openai_asr_model="whisper-1")
-        ollama_cfg = config.Ollama(ollama_model="", ollama_host="")
-        openai_llm_cfg = config.OpenAILLM(openai_llm_model="")
+        wyoming_asr_cfg = config.WyomingASR(asr_wyoming_ip="localhost", asr_wyoming_port=12345)
+        openai_asr_cfg = config.OpenAIASR(asr_openai_model="whisper-1")
+        ollama_cfg = config.Ollama(llm_ollama_model="", llm_ollama_host="")
+        openai_llm_cfg = config.OpenAILLM(llm_openai_model="")
 
         await transcribe._async_main(
             extra_instructions=None,

@@ -29,7 +29,6 @@ async def get_instruction_from_audio(
     wyoming_asr_config: config.WyomingASR,
     openai_asr_config: config.OpenAIASR,
     ollama_config: config.Ollama,
-    openai_llm_config: config.OpenAILLM,
     logger: logging.Logger,
     quiet: bool,
 ) -> str | None:
@@ -44,7 +43,6 @@ async def get_instruction_from_audio(
             wyoming_asr_config=wyoming_asr_config,
             openai_asr_config=openai_asr_config,
             ollama_config=ollama_config,
-            openai_llm_config=openai_llm_config,
             logger=logger,
             quiet=quiet,
         )
@@ -120,7 +118,6 @@ async def process_instruction_and_respond(
                     wyoming_tts_config=wyoming_tts_config,
                     openai_tts_config=openai_tts_config,
                     kokoro_tts_config=kokoro_tts_config,
-                    openai_llm_config=openai_llm_config,
                     save_file=general_config.save_file,
                     quiet=general_config.quiet,
                     logger=logger,

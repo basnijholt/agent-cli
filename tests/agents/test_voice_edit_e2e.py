@@ -43,17 +43,20 @@ def get_configs() -> tuple[
         save_file=None,
     )
     audio_in_cfg = config.AudioInput(input_device_index=0)
-    wyoming_asr_cfg = config.WyomingASR(wyoming_asr_ip="mock-asr-host", wyoming_asr_port=10300)
-    openai_asr_cfg = config.OpenAIASR(openai_asr_model="whisper-1")
-    ollama_cfg = config.Ollama(ollama_model="test-model", ollama_host="http://localhost:11434")
-    openai_llm_cfg = config.OpenAILLM(openai_llm_model="gpt-4")
+    wyoming_asr_cfg = config.WyomingASR(asr_wyoming_ip="mock-asr-host", asr_wyoming_port=10300)
+    openai_asr_cfg = config.OpenAIASR(asr_openai_model="whisper-1")
+    ollama_cfg = config.Ollama(
+        llm_ollama_model="test-model",
+        llm_ollama_host="http://localhost:11434",
+    )
+    openai_llm_cfg = config.OpenAILLM(llm_openai_model="gpt-4")
     audio_out_cfg = config.AudioOutput(enable_tts=False)
-    wyoming_tts_cfg = config.WyomingTTS(wyoming_tts_ip="mock-tts-host", wyoming_tts_port=10200)
-    openai_tts_cfg = config.OpenAITTS(openai_tts_model="tts-1", openai_tts_voice="alloy")
+    wyoming_tts_cfg = config.WyomingTTS(tts_wyoming_ip="mock-tts-host", tts_wyoming_port=10200)
+    openai_tts_cfg = config.OpenAITTS(tts_openai_model="tts-1", tts_openai_voice="alloy")
     kokoro_tts_cfg = config.KokoroTTS(
-        kokoro_tts_model="tts-1",
-        kokoro_tts_voice="alloy",
-        kokoro_tts_host="http://localhost:8000/v1",
+        tts_kokoro_model="tts-1",
+        tts_kokoro_voice="alloy",
+        tts_kokoro_host="http://localhost:8000/v1",
     )
     return (
         provider_cfg,
@@ -138,7 +141,6 @@ async def test_voice_edit_e2e(
         wyoming_asr_config=wyoming_asr_cfg,
         openai_asr_config=openai_asr_cfg,
         ollama_config=ollama_cfg,
-        openai_llm_config=openai_llm_cfg,
         logger=ANY,
         quiet=False,
     )

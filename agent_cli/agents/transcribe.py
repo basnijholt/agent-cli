@@ -90,7 +90,6 @@ async def _async_main(
                 audio_in_cfg,
                 wyoming_asr_cfg,
                 openai_asr_cfg,
-                openai_llm_cfg,
             )
             transcript = await transcriber(
                 logger=LOGGER,
@@ -166,13 +165,13 @@ def transcribe(
     # --- ASR (Audio) Configuration ---
     input_device_index: int | None = opts.INPUT_DEVICE_INDEX,
     input_device_name: str | None = opts.INPUT_DEVICE_NAME,
-    wyoming_asr_ip: str = opts.WYOMING_ASR_SERVER_IP,
-    wyoming_asr_port: int = opts.WYOMING_ASR_SERVER_PORT,
-    openai_asr_model: str = opts.OPENAI_ASR_MODEL,
+    asr_wyoming_ip: str = opts.ASR_WYOMING_IP,
+    asr_wyoming_port: int = opts.ASR_WYOMING_PORT,
+    asr_openai_model: str = opts.ASR_OPENAI_MODEL,
     # --- LLM Configuration ---
-    ollama_model: str = opts.OLLAMA_MODEL,
-    ollama_host: str = opts.OLLAMA_HOST,
-    openai_llm_model: str = opts.OPENAI_LLM_MODEL,
+    llm_ollama_model: str = opts.LLM_OLLAMA_MODEL,
+    llm_ollama_host: str = opts.LLM_OLLAMA_HOST,
+    llm_openai_model: str = opts.LLM_OPENAI_MODEL,
     openai_api_key: str | None = opts.OPENAI_API_KEY,
     llm: bool = opts.LLM,
     # --- Process Management ---
@@ -218,15 +217,19 @@ def transcribe(
             input_device_name=input_device_name,
         )
         wyoming_asr_cfg = config.WyomingASR(
-            wyoming_asr_ip=wyoming_asr_ip,
-            wyoming_asr_port=wyoming_asr_port,
+            asr_wyoming_ip=asr_wyoming_ip,
+            asr_wyoming_port=asr_wyoming_port,
         )
         openai_asr_cfg = config.OpenAIASR(
-            openai_asr_model=openai_asr_model,
+            asr_openai_model=asr_openai_model,
+            openai_api_key=openai_api_key,
         )
-        ollama_cfg = config.Ollama(ollama_model=ollama_model, ollama_host=ollama_host)
+        ollama_cfg = config.Ollama(
+            llm_ollama_model=llm_ollama_model,
+            llm_ollama_host=llm_ollama_host,
+        )
         openai_llm_cfg = config.OpenAILLM(
-            openai_llm_model=openai_llm_model,
+            llm_openai_model=llm_openai_model,
             openai_api_key=openai_api_key,
         )
 
