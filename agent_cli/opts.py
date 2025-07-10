@@ -271,6 +271,14 @@ CONFIG_FILE: str | None = typer.Option(
     callback=_conf_callback,
     rich_help_panel="General Options",
 )
+PRINT_ARGS: bool = typer.Option(
+    False,  # noqa: FBT003
+    "--print-args",
+    help="Print the command line arguments and exit,"
+    " including variables taken from the configuration file.",
+    is_eager=True,
+    rich_help_panel="General Options",
+)
 CLIPBOARD: bool = typer.Option(
     True,  # noqa: FBT003
     "--clipboard/--no-clipboard",

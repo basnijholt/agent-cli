@@ -16,6 +16,7 @@ from agent_cli.core.audio import pyaudio_context, setup_devices
 from agent_cli.core.utils import (
     get_clipboard_text,
     maybe_live,
+    print_command_line_args,
     print_input_panel,
     setup_logging,
     stop_or_status_or_toggle,
@@ -110,9 +111,12 @@ def speak(
     log_level: str = opts.LOG_LEVEL,
     log_file: str | None = opts.LOG_FILE,
     quiet: bool = opts.QUIET,
-    config_file: str | None = opts.CONFIG_FILE,  # noqa: ARG001
+    config_file: str | None = opts.CONFIG_FILE,
+    print_args: bool = opts.PRINT_ARGS,
 ) -> None:
     """Convert text to speech using Wyoming or OpenAI TTS server."""
+    if print_args:
+        print_command_line_args(locals())
     setup_logging(log_level, log_file, quiet=quiet)
     general_cfg = config.General(
         log_level=log_level,
