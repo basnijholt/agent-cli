@@ -139,7 +139,7 @@ def _maybe_status(
             model_name = ollama_cfg.llm_ollama_model
         elif provider_cfg.llm_provider == "openai":
             model_name = openai_llm_cfg.llm_openai_model
-        else:
+        elif provider_cfg.llm_provider == "gemini":
             model_name = gemini_llm_cfg.llm_gemini_model
         return create_status(f"🤖 Correcting with {model_name}...", "bold yellow")
     return contextlib.nullcontext()
@@ -189,7 +189,7 @@ async def _async_autocorrect(
                 error_details = f"Please check that your Ollama server is running at [bold cyan]{ollama_cfg.llm_ollama_host}[/bold cyan]"
             elif provider_cfg.llm_provider == "openai":
                 error_details = "Please check your OpenAI API key and network connection."
-            else:
+            elif provider_cfg.llm_provider == "gemini":
                 error_details = "Please check your Gemini API key and network connection."
             print_error_message(str(e), error_details)
         sys.exit(1)
