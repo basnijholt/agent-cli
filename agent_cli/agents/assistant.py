@@ -341,7 +341,10 @@ def assistant(
             asr_wyoming_ip=asr_wyoming_ip,
             asr_wyoming_port=asr_wyoming_port,
         )
-        openai_asr_cfg = config.OpenAIASR(asr_openai_model=asr_openai_model)
+        openai_asr_cfg = config.OpenAIASR(
+            asr_openai_model=asr_openai_model,
+            openai_api_key=openai_api_key,
+        )
         ollama_cfg = config.Ollama(
             llm_ollama_model=llm_ollama_model,
             llm_ollama_host=llm_ollama_host,
@@ -366,6 +369,7 @@ def assistant(
         openai_tts_cfg = config.OpenAITTS(
             tts_openai_model=tts_openai_model,
             tts_openai_voice=tts_openai_voice,
+            openai_api_key=openai_api_key,
         )
         kokoro_tts_cfg = config.KokoroTTS(
             tts_kokoro_model=tts_kokoro_model,

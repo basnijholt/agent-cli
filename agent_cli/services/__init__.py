@@ -26,15 +26,14 @@ def _get_openai_client(api_key: str) -> AsyncOpenAI:
 async def transcribe_audio_openai(
     audio_data: bytes,
     openai_asr_config: config.OpenAIASR,
-    openai_llm_config: config.OpenAILLM,
     logger: logging.Logger,
 ) -> str:
     """Transcribe audio using OpenAI's Whisper API."""
     logger.info("Transcribing audio with OpenAI Whisper...")
-    if not openai_llm_config.openai_api_key:
+    if not openai_asr_config.openai_api_key:
         msg = "OpenAI API key is not set."
         raise ValueError(msg)
-    client = _get_openai_client(api_key=openai_llm_config.openai_api_key)
+    client = _get_openai_client(api_key=openai_asr_config.openai_api_key)
     audio_file = io.BytesIO(audio_data)
     audio_file.name = "audio.wav"
     response = await client.audio.transcriptions.create(

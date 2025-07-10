@@ -64,6 +64,7 @@ class OpenAIASR(BaseModel):
     """Configuration for the OpenAI ASR provider."""
 
     asr_openai_model: str
+    openai_api_key: str | None = None
 
 
 # --- Panel: TTS (Text-to-Speech) Configuration ---
@@ -93,6 +94,7 @@ class OpenAITTS(BaseModel):
 
     tts_openai_model: str
     tts_openai_voice: str
+    openai_api_key: str | None = None
 
 
 class KokoroTTS(BaseModel):

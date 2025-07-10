@@ -258,7 +258,7 @@ def voice_edit(
         )
         openai_asr_cfg = config.OpenAIASR(
             asr_openai_model=asr_openai_model,
-            api_key=openai_api_key,
+            openai_api_key=openai_api_key,
         )
         ollama_cfg = config.Ollama(
             llm_ollama_model=llm_ollama_model,

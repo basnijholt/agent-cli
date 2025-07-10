@@ -90,7 +90,6 @@ async def _async_main(
                 audio_in_cfg,
                 wyoming_asr_cfg,
                 openai_asr_cfg,
-                openai_llm_cfg,
             )
             transcript = await transcriber(
                 logger=LOGGER,
@@ -223,6 +222,7 @@ def transcribe(
         )
         openai_asr_cfg = config.OpenAIASR(
             asr_openai_model=asr_openai_model,
+            openai_api_key=openai_api_key,
         )
         ollama_cfg = config.Ollama(
             llm_ollama_model=llm_ollama_model,

@@ -22,18 +22,12 @@ async def test_transcribe_audio_openai(mock_openai_client: MagicMock) -> None:
     mock_client_instance.audio.transcriptions.create = AsyncMock(
         return_value=mock_transcription,
     )
-    openai_asr_config = config.OpenAIASR(asr_openai_model="whisper-1")
-    openai_llm_config = config.OpenAILLM(
-        llm_openai_model="gpt-4o-mini",
+    openai_asr_config = config.OpenAIASR(
+        asr_openai_model="whisper-1",
         openai_api_key="test_api_key",
     )
 
-    result = await transcribe_audio_openai(
-        mock_audio,
-        openai_asr_config,
-        openai_llm_config,
-        mock_logger,
-    )
+    result = await transcribe_audio_openai(mock_audio, openai_asr_config, mock_logger)
 
     assert result == "test transcription"
     mock_openai_client.assert_called_once_with(api_key="test_api_key")
@@ -85,17 +79,13 @@ def test_get_transcriber_wyoming() -> None:
     )
     audio_input_config = config.AudioInput()
     wyoming_asr_config = config.WyomingASR(asr_wyoming_ip="localhost", asr_wyoming_port=1234)
-    openai_asr_config = config.OpenAIASR(asr_openai_model="whisper-1")
-    openai_llm_config = config.OpenAILLM(
-        llm_openai_model="gpt-4o-mini",
-        openai_api_key="fake-key",
-    )
+    openai_asr_config = config.OpenAIASR(asr_openai_model="whisper-1", openai_api_key="fake-key")
+
     transcriber = asr.get_transcriber(
         provider_config,
         audio_input_config,
         wyoming_asr_config,
         openai_asr_config,
-        openai_llm_config,
     )
     assert transcriber.func == asr._transcribe_live_audio_wyoming  # type: ignore[attr-defined]
 
@@ -172,8 +162,7 @@ async def test_transcribe_audio_openai_no_key():
     with pytest.raises(ValueError, match="OpenAI API key is not set."):
         await transcribe_audio_openai(
             b"test audio",
-            config.OpenAIASR(asr_openai_model="whisper-1"),
-            config.OpenAILLM(llm_openai_model="gpt-4o-mini", openai_api_key=None),
+            config.OpenAIASR(asr_openai_model="whisper-1", openai_api_key=None),
             MagicMock(),
         )
 
