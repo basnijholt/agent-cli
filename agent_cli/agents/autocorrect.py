@@ -76,12 +76,14 @@ async def _process_text(
     provider_cfg: config.ProviderSelection,
     ollama_cfg: config.Ollama,
     openai_llm_cfg: config.OpenAILLM,
+    gemini_llm_cfg: config.GeminiLLM,
 ) -> tuple[str, float]:
     """Process text with the LLM and return the corrected text and elapsed time."""
     agent = build_agent(
         provider_config=provider_cfg,
         ollama_config=ollama_cfg,
         openai_config=openai_llm_cfg,
+        gemini_config=gemini_llm_cfg,
         system_prompt=SYSTEM_PROMPT,
         instructions=AGENT_INSTRUCTIONS,
     )
@@ -129,14 +131,16 @@ def _maybe_status(
     provider_cfg: config.ProviderSelection,
     ollama_cfg: config.Ollama,
     openai_llm_cfg: config.OpenAILLM,
+    gemini_llm_cfg: config.GeminiLLM,
     quiet: bool,
 ) -> Status | contextlib.nullcontext:
     if not quiet:
-        model_name = (
-            ollama_cfg.llm_ollama_model
-            if provider_cfg.llm_provider == "local"
-            else openai_llm_cfg.llm_openai_model
-        )
+        if provider_cfg.llm_provider == "local":
+            model_name = ollama_cfg.llm_ollama_model
+        elif provider_cfg.llm_provider == "openai":
+            model_name = openai_llm_cfg.llm_openai_model
+        elif provider_cfg.llm_provider == "gemini":
+            model_name = gemini_llm_cfg.llm_gemini_model
         return create_status(f"🤖 Correcting with {model_name}...", "bold yellow")
     return contextlib.nullcontext()
 
@@ -147,6 +151,7 @@ async def _async_autocorrect(
     provider_cfg: config.ProviderSelection,
     ollama_cfg: config.Ollama,
     openai_llm_cfg: config.OpenAILLM,
+    gemini_llm_cfg: config.GeminiLLM,
     general_cfg: config.General,
 ) -> None:
     """Asynchronous version of the autocorrect command."""
@@ -159,12 +164,19 @@ async def _async_autocorrect(
     _display_original_text(original_text, general_cfg.quiet)
 
     try:
-        with _maybe_status(provider_cfg, ollama_cfg, openai_llm_cfg, general_cfg.quiet):
+        with _maybe_status(
+            provider_cfg,
+            ollama_cfg,
+            openai_llm_cfg,
+            gemini_llm_cfg,
+            general_cfg.quiet,
+        ):
             corrected_text, elapsed = await _process_text(
                 original_text,
                 provider_cfg,
                 ollama_cfg,
                 openai_llm_cfg,
+                gemini_llm_cfg,
             )
 
         _display_result(corrected_text, original_text, elapsed, simple_output=general_cfg.quiet)
@@ -175,8 +187,10 @@ async def _async_autocorrect(
         else:
             if provider_cfg.llm_provider == "local":
                 error_details = f"Please check that your Ollama server is running at [bold cyan]{ollama_cfg.llm_ollama_host}[/bold cyan]"
-            else:
+            elif provider_cfg.llm_provider == "openai":
                 error_details = "Please check your OpenAI API key and network connection."
+            elif provider_cfg.llm_provider == "gemini":
+                error_details = "Please check your Gemini API key and network connection."
             print_error_message(str(e), error_details)
         sys.exit(1)
 
@@ -198,6 +212,9 @@ def autocorrect(
     # OpenAI
     llm_openai_model: str = opts.LLM_OPENAI_MODEL,
     openai_api_key: str | None = opts.OPENAI_API_KEY,
+    # Gemini
+    llm_gemini_model: str = opts.LLM_GEMINI_MODEL,
+    gemini_api_key: str | None = opts.GEMINI_API_KEY,
     # --- General Options ---
     log_level: str = opts.LOG_LEVEL,
     log_file: str | None = opts.LOG_FILE,
@@ -215,6 +232,10 @@ def autocorrect(
         llm_openai_model=llm_openai_model,
         openai_api_key=openai_api_key,
     )
+    gemini_llm_cfg = config.GeminiLLM(
+        llm_gemini_model=llm_gemini_model,
+        gemini_api_key=gemini_api_key,
+    )
     general_cfg = config.General(
         log_level=log_level,
         log_file=log_file,
@@ -227,6 +248,7 @@ def autocorrect(
             provider_cfg=provider_cfg,
             ollama_cfg=ollama_cfg,
             openai_llm_cfg=openai_llm_cfg,
+            gemini_llm_cfg=gemini_llm_cfg,
             general_cfg=general_cfg,
         ),
     )

@@ -157,6 +157,7 @@ async def _handle_conversation_turn(
     openai_asr_cfg: config.OpenAIASR,
     ollama_cfg: config.Ollama,
     openai_llm_cfg: config.OpenAILLM,
+    gemini_llm_cfg: config.GeminiLLM,
     audio_out_cfg: config.AudioOutput,
     wyoming_tts_cfg: config.WyomingTTS,
     openai_tts_cfg: config.OpenAITTS,
@@ -215,11 +216,12 @@ async def _handle_conversation_turn(
 
     start_time = time.monotonic()
 
-    model_name = (
-        ollama_cfg.llm_ollama_model
-        if provider_cfg.llm_provider == "local"
-        else openai_llm_cfg.llm_openai_model
-    )
+    if provider_cfg.llm_provider == "local":
+        model_name = ollama_cfg.llm_ollama_model
+    elif provider_cfg.llm_provider == "openai":
+        model_name = openai_llm_cfg.llm_openai_model
+    elif provider_cfg.llm_provider == "gemini":
+        model_name = gemini_llm_cfg.llm_gemini_model
     async with live_timer(
         live,
         f"🤖 Processing with {model_name}",
@@ -234,6 +236,7 @@ async def _handle_conversation_turn(
             provider_config=provider_cfg,
             ollama_config=ollama_cfg,
             openai_config=openai_llm_cfg,
+            gemini_config=gemini_llm_cfg,
             logger=LOGGER,
             tools=tools(),
             quiet=True,  # Suppress internal output since we're showing our own timer
@@ -306,6 +309,7 @@ async def _async_main(
     openai_asr_cfg: config.OpenAIASR,
     ollama_cfg: config.Ollama,
     openai_llm_cfg: config.OpenAILLM,
+    gemini_llm_cfg: config.GeminiLLM,
     audio_out_cfg: config.AudioOutput,
     wyoming_tts_cfg: config.WyomingTTS,
     openai_tts_cfg: config.OpenAITTS,
@@ -352,6 +356,7 @@ async def _async_main(
                         openai_asr_cfg=openai_asr_cfg,
                         ollama_cfg=ollama_cfg,
                         openai_llm_cfg=openai_llm_cfg,
+                        gemini_llm_cfg=gemini_llm_cfg,
                         audio_out_cfg=audio_out_cfg,
                         wyoming_tts_cfg=wyoming_tts_cfg,
                         openai_tts_cfg=openai_tts_cfg,
@@ -382,6 +387,8 @@ def chat(
     llm_ollama_host: str = opts.LLM_OLLAMA_HOST,
     llm_openai_model: str = opts.LLM_OPENAI_MODEL,
     openai_api_key: str | None = opts.OPENAI_API_KEY,
+    llm_gemini_model: str = opts.LLM_GEMINI_MODEL,
+    gemini_api_key: str | None = opts.GEMINI_API_KEY,
     # --- TTS Configuration ---
     enable_tts: bool = opts.ENABLE_TTS,
     output_device_index: int | None = opts.OUTPUT_DEVICE_INDEX,
@@ -470,6 +477,10 @@ def chat(
             llm_openai_model=llm_openai_model,
             openai_api_key=openai_api_key,
         )
+        gemini_llm_cfg = config.GeminiLLM(
+            llm_gemini_model=llm_gemini_model,
+            gemini_api_key=gemini_api_key,
+        )
         audio_out_cfg = config.AudioOutput(
             enable_tts=enable_tts,
             output_device_index=output_device_index,
@@ -508,6 +519,7 @@ def chat(
                 openai_asr_cfg=openai_asr_cfg,
                 ollama_cfg=ollama_cfg,
                 openai_llm_cfg=openai_llm_cfg,
+                gemini_llm_cfg=gemini_llm_cfg,
                 audio_out_cfg=audio_out_cfg,
                 wyoming_tts_cfg=wyoming_tts_cfg,
                 openai_tts_cfg=openai_tts_cfg,

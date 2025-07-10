@@ -115,6 +115,10 @@ async def test_process_text_integration(mock_build_agent: MagicMock) -> None:
     )
     ollama_cfg = config.Ollama(llm_ollama_model="test-model", llm_ollama_host="test")
     openai_llm_cfg = config.OpenAILLM(llm_openai_model="gpt-4o-mini", openai_api_key=None)
+    gemini_llm_cfg = config.GeminiLLM(
+        llm_gemini_model="gemini-1.5-flash",
+        gemini_api_key="test-key",
+    )
 
     # Test the function
     result, elapsed = await autocorrect._process_text(
@@ -122,6 +126,7 @@ async def test_process_text_integration(mock_build_agent: MagicMock) -> None:
         provider_cfg,
         ollama_cfg,
         openai_llm_cfg,
+        gemini_llm_cfg,
     )
 
     # Verify the result
@@ -134,6 +139,7 @@ async def test_process_text_integration(mock_build_agent: MagicMock) -> None:
         provider_config=provider_cfg,
         ollama_config=ollama_cfg,
         openai_config=openai_llm_cfg,
+        gemini_config=gemini_llm_cfg,
         system_prompt=autocorrect.SYSTEM_PROMPT,
         instructions=autocorrect.AGENT_INSTRUCTIONS,
     )
@@ -167,6 +173,10 @@ async def test_autocorrect_command_with_text(
         llm_ollama_host="http://localhost:11434",
     )
     openai_llm_cfg = config.OpenAILLM(llm_openai_model="gpt-4o-mini", openai_api_key=None)
+    gemini_llm_cfg = config.GeminiLLM(
+        llm_gemini_model="gemini-1.5-flash",
+        gemini_api_key="test-key",
+    )
     general_cfg = config.General(
         log_level="WARNING",
         log_file=None,
@@ -180,6 +190,7 @@ async def test_autocorrect_command_with_text(
             provider_cfg=provider_cfg,
             ollama_cfg=ollama_cfg,
             openai_llm_cfg=openai_llm_cfg,
+            gemini_llm_cfg=gemini_llm_cfg,
             general_cfg=general_cfg,
         )
 
@@ -189,6 +200,7 @@ async def test_autocorrect_command_with_text(
         provider_config=provider_cfg,
         ollama_config=ollama_cfg,
         openai_config=openai_llm_cfg,
+        gemini_config=gemini_llm_cfg,
         system_prompt=autocorrect.SYSTEM_PROMPT,
         instructions=autocorrect.AGENT_INSTRUCTIONS,
     )
@@ -222,6 +234,10 @@ async def test_autocorrect_command_from_clipboard(
         llm_ollama_host="http://localhost:11434",
     )
     openai_llm_cfg = config.OpenAILLM(llm_openai_model="gpt-4o-mini", openai_api_key=None)
+    gemini_llm_cfg = config.GeminiLLM(
+        llm_gemini_model="gemini-1.5-flash",
+        gemini_api_key="test-key",
+    )
     general_cfg = config.General(
         log_level="WARNING",
         log_file=None,
@@ -235,6 +251,7 @@ async def test_autocorrect_command_from_clipboard(
             provider_cfg=provider_cfg,
             ollama_cfg=ollama_cfg,
             openai_llm_cfg=openai_llm_cfg,
+            gemini_llm_cfg=gemini_llm_cfg,
             general_cfg=general_cfg,
         )
 
@@ -244,6 +261,7 @@ async def test_autocorrect_command_from_clipboard(
         provider_config=provider_cfg,
         ollama_config=ollama_cfg,
         openai_config=openai_llm_cfg,
+        gemini_config=gemini_llm_cfg,
         system_prompt=autocorrect.SYSTEM_PROMPT,
         instructions=autocorrect.AGENT_INSTRUCTIONS,
     )
@@ -266,6 +284,10 @@ async def test_async_autocorrect_no_text(
     )
     ollama_cfg = config.Ollama(llm_ollama_model="test", llm_ollama_host="test")
     openai_llm_cfg = config.OpenAILLM(llm_openai_model="gpt-4o-mini", openai_api_key=None)
+    gemini_llm_cfg = config.GeminiLLM(
+        llm_gemini_model="gemini-1.5-flash",
+        gemini_api_key="test-key",
+    )
     general_cfg = config.General(
         log_level="WARNING",
         log_file=None,
@@ -277,6 +299,7 @@ async def test_async_autocorrect_no_text(
         provider_cfg=provider_cfg,
         ollama_cfg=ollama_cfg,
         openai_llm_cfg=openai_llm_cfg,
+        gemini_llm_cfg=gemini_llm_cfg,
         general_cfg=general_cfg,
     )
     mock_process_text.assert_not_called()
@@ -294,6 +317,10 @@ async def test_async_autocorrect_error(mock_process_text: AsyncMock):
     )
     ollama_cfg = config.Ollama(llm_ollama_model="test", llm_ollama_host="test")
     openai_llm_cfg = config.OpenAILLM(llm_openai_model="gpt-4o-mini", openai_api_key=None)
+    gemini_llm_cfg = config.GeminiLLM(
+        llm_gemini_model="gemini-1.5-flash",
+        gemini_api_key="test-key",
+    )
     general_cfg = config.General(
         log_level="WARNING",
         log_file=None,
@@ -306,6 +333,7 @@ async def test_async_autocorrect_error(mock_process_text: AsyncMock):
             provider_cfg=provider_cfg,
             ollama_cfg=ollama_cfg,
             openai_llm_cfg=openai_llm_cfg,
+            gemini_llm_cfg=gemini_llm_cfg,
             general_cfg=general_cfg,
         )
     assert excinfo.value.code == 1

@@ -21,7 +21,7 @@ CONFIG_PATHS = [
 class ProviderSelection(BaseModel):
     """Configuration for selecting service providers."""
 
-    llm_provider: Literal["local", "openai"]
+    llm_provider: Literal["local", "openai", "gemini"]
     asr_provider: Literal["local", "openai"]
     tts_provider: Literal["local", "openai", "kokoro"]
 
@@ -41,6 +41,13 @@ class OpenAILLM(BaseModel):
 
     llm_openai_model: str
     openai_api_key: str | None = None
+
+
+class GeminiLLM(BaseModel):
+    """Configuration for the Gemini LLM provider."""
+
+    llm_gemini_model: str
+    gemini_api_key: str | None = None
 
 
 # --- Panel: ASR (Audio) Configuration ---

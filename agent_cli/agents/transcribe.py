@@ -78,6 +78,7 @@ async def _async_main(
     openai_asr_cfg: config.OpenAIASR,
     ollama_cfg: config.Ollama,
     openai_llm_cfg: config.OpenAILLM,
+    gemini_llm_cfg: config.GeminiLLM,
     llm_enabled: bool,
     p: pyaudio.PyAudio,
 ) -> None:
@@ -116,6 +117,7 @@ async def _async_main(
                 provider_config=provider_cfg,
                 ollama_config=ollama_cfg,
                 openai_config=openai_llm_cfg,
+                gemini_config=gemini_llm_cfg,
                 logger=LOGGER,
                 original_text=transcript,
                 instruction=INSTRUCTION,
@@ -173,6 +175,8 @@ def transcribe(
     llm_ollama_host: str = opts.LLM_OLLAMA_HOST,
     llm_openai_model: str = opts.LLM_OPENAI_MODEL,
     openai_api_key: str | None = opts.OPENAI_API_KEY,
+    llm_gemini_model: str = opts.LLM_GEMINI_MODEL,
+    gemini_api_key: str | None = opts.GEMINI_API_KEY,
     llm: bool = opts.LLM,
     # --- Process Management ---
     stop: bool = opts.STOP,
@@ -232,6 +236,10 @@ def transcribe(
             llm_openai_model=llm_openai_model,
             openai_api_key=openai_api_key,
         )
+        gemini_llm_cfg = config.GeminiLLM(
+            llm_gemini_model=llm_gemini_model,
+            gemini_api_key=gemini_api_key,
+        )
 
         # We only use setup_devices for its input device handling
         device_info = setup_devices(p, general_cfg, audio_in_cfg, None)
@@ -252,6 +260,7 @@ def transcribe(
                     openai_asr_cfg=openai_asr_cfg,
                     ollama_cfg=ollama_cfg,
                     openai_llm_cfg=openai_llm_cfg,
+                    gemini_llm_cfg=gemini_llm_cfg,
                     llm_enabled=llm,
                     p=p,
                 ),
