@@ -211,7 +211,6 @@ async def _synthesize_speech_openai(
     *,
     text: str,
     openai_tts_config: config.OpenAITTS,
-    openai_llm_config: config.OpenAILLM,
     logger: logging.Logger,
     **_kwargs: object,
 ) -> bytes | None:
@@ -219,7 +218,6 @@ async def _synthesize_speech_openai(
     return await synthesize_speech_openai(
         text=text,
         openai_tts_config=openai_tts_config,
-        openai_llm_config=openai_llm_config,
         logger=logger,
     )
 

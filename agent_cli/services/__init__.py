@@ -46,15 +46,14 @@ async def transcribe_audio_openai(
 async def synthesize_speech_openai(
     text: str,
     openai_tts_config: config.OpenAITTS,
-    openai_llm_config: config.OpenAILLM,
     logger: logging.Logger,
 ) -> bytes:
     """Synthesize speech using OpenAI's TTS API."""
     logger.info("Synthesizing speech with OpenAI TTS...")
-    if not openai_llm_config.openai_api_key:
+    if not openai_tts_config.openai_api_key:
         msg = "OpenAI API key is not set."
         raise ValueError(msg)
-    client = _get_openai_client(api_key=openai_llm_config.openai_api_key)
+    client = _get_openai_client(api_key=openai_tts_config.openai_api_key)
     response = await client.audio.speech.create(
         model=openai_tts_config.tts_openai_model,
         voice=openai_tts_config.tts_openai_voice,

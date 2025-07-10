@@ -47,18 +47,13 @@ async def test_synthesize_speech_openai(mock_openai_client: MagicMock) -> None:
     mock_response = MagicMock()
     mock_response.content = b"test audio"
     mock_client_instance.audio.speech.create = AsyncMock(return_value=mock_response)
-    openai_tts_config = config.OpenAITTS(tts_openai_model="tts-1", tts_openai_voice="alloy")
-    openai_llm_config = config.OpenAILLM(
-        llm_openai_model="gpt-4o-mini",
+    openai_tts_config = config.OpenAITTS(
+        tts_openai_model="tts-1",
+        tts_openai_voice="alloy",
         openai_api_key="test_api_key",
     )
 
-    result = await synthesize_speech_openai(
-        mock_text,
-        openai_tts_config,
-        openai_llm_config,
-        mock_logger,
-    )
+    result = await synthesize_speech_openai(mock_text, openai_tts_config, mock_logger)
 
     assert result == b"test audio"
     mock_openai_client.assert_called_once_with(api_key="test_api_key")
@@ -173,7 +168,10 @@ async def test_synthesize_speech_openai_no_key():
     with pytest.raises(ValueError, match="OpenAI API key is not set."):
         await synthesize_speech_openai(
             "test text",
-            config.OpenAITTS(tts_openai_model="tts-1", tts_openai_voice="alloy"),
-            config.OpenAILLM(llm_openai_model="gpt-4o-mini", openai_api_key=None),
+            config.OpenAITTS(
+                tts_openai_model="tts-1",
+                tts_openai_voice="alloy",
+                openai_api_key=None,
+            ),
             MagicMock(),
         )
