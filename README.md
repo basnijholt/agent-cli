@@ -329,7 +329,7 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ LLM Configuration: Gemini ──────────────────────────────────────────────────╮
 │ --llm-gemini-model        TEXT  The Gemini model to use for LLM tasks.       │
-│                                 [default: gemini-1.5-flash]                  │
+│                                 [default: gemini-2.5-flash]                  │
 │ --gemini-api-key          TEXT  Your Gemini API key. Can also be set with    │
 │                                 the GEMINI_API_KEY environment variable.     │
 │                                 [env var: GEMINI_API_KEY]                    │
@@ -439,7 +439,7 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ LLM Configuration: Gemini ──────────────────────────────────────────────────╮
 │ --llm-gemini-model        TEXT  The Gemini model to use for LLM tasks.       │
-│                                 [default: gemini-1.5-flash]                  │
+│                                 [default: gemini-2.5-flash]                  │
 │ --gemini-api-key          TEXT  Your Gemini API key. Can also be set with    │
 │                                 the GEMINI_API_KEY environment variable.     │
 │                                 [env var: GEMINI_API_KEY]                    │
@@ -684,7 +684,7 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ LLM Configuration: Gemini ──────────────────────────────────────────────────╮
 │ --llm-gemini-model        TEXT  The Gemini model to use for LLM tasks.       │
-│                                 [default: gemini-1.5-flash]                  │
+│                                 [default: gemini-2.5-flash]                  │
 │ --gemini-api-key          TEXT  Your Gemini API key. Can also be set with    │
 │                                 the GEMINI_API_KEY environment variable.     │
 │                                 [env var: GEMINI_API_KEY]                    │
@@ -861,7 +861,7 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ LLM Configuration: Gemini ──────────────────────────────────────────────────╮
 │ --llm-gemini-model        TEXT  The Gemini model to use for LLM tasks.       │
-│                                 [default: gemini-1.5-flash]                  │
+│                                 [default: gemini-2.5-flash]                  │
 │ --gemini-api-key          TEXT  Your Gemini API key. Can also be set with    │
 │                                 the GEMINI_API_KEY environment variable.     │
 │                                 [env var: GEMINI_API_KEY]                    │
@@ -1036,7 +1036,7 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ LLM Configuration: Gemini ──────────────────────────────────────────────────╮
 │ --llm-gemini-model        TEXT  The Gemini model to use for LLM tasks.       │
-│                                 [default: gemini-1.5-flash]                  │
+│                                 [default: gemini-2.5-flash]                  │
 │ --gemini-api-key          TEXT  Your Gemini API key. Can also be set with    │
 │                                 the GEMINI_API_KEY environment variable.     │
 │                                 [env var: GEMINI_API_KEY]                    │
