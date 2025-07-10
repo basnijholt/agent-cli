@@ -445,7 +445,7 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Provider Selection ─────────────────────────────────────────────────────────╮
 │ --tts-provider        TEXT  The TTS provider to use ('local' for Wyoming,    │
-│                             'openai').                                       │
+│                             'openai', 'kokoro').                             │
 │                             [default: local]                                 │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ TTS (Text-to-Speech) Configuration ─────────────────────────────────────────╮
@@ -487,6 +487,14 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 │                                 [default: None]                              │
 │ --openai-llm-model        TEXT  The OpenAI model to use for LLM tasks.       │
 │                                 [default: gpt-4o-mini]                       │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ TTS (Text-to-Speech) Configuration: Kokoro ─────────────────────────────────╮
+│ --kokoro-tts-model        TEXT  The Kokoro model to use for TTS.             │
+│                                 [default: kokoro]                            │
+│ --kokoro-tts-voice        TEXT  The voice to use for Kokoro TTS.             │
+│                                 [default: af_sky]                            │
+│ --kokoro-api-base         TEXT  The base URL for the Kokoro API.             │
+│                                 [default: http://localhost:8880/v1]          │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ ASR (Audio) Configuration ──────────────────────────────────────────────────╮
 │ --list-devices          List available audio input and output devices and    │
@@ -568,7 +576,7 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 │                             'openai').                                       │
 │                             [default: local]                                 │
 │ --tts-provider        TEXT  The TTS provider to use ('local' for Wyoming,    │
-│                             'openai').                                       │
+│                             'openai', 'kokoro').                             │
 │                             [default: local]                                 │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ ASR (Audio) Configuration ──────────────────────────────────────────────────╮
@@ -640,6 +648,14 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 │                                 [default: tts-1]                             │
 │ --openai-tts-voice        TEXT  The voice to use for OpenAI TTS.             │
 │                                 [default: alloy]                             │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ TTS (Text-to-Speech) Configuration: Kokoro ─────────────────────────────────╮
+│ --kokoro-tts-model        TEXT  The Kokoro model to use for TTS.             │
+│                                 [default: kokoro]                            │
+│ --kokoro-tts-voice        TEXT  The voice to use for Kokoro TTS.             │
+│                                 [default: af_sky]                            │
+│ --kokoro-api-base         TEXT  The base URL for the Kokoro API.             │
+│                                 [default: http://localhost:8880/v1]          │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Process Management Options ─────────────────────────────────────────────────╮
 │ --stop            Stop any running background process.                       │
@@ -719,7 +735,7 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 │                             'openai').                                       │
 │                             [default: local]                                 │
 │ --tts-provider        TEXT  The TTS provider to use ('local' for Wyoming,    │
-│                             'openai').                                       │
+│                             'openai', 'kokoro').                             │
 │                             [default: local]                                 │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Wake Word Options ──────────────────────────────────────────────────────────╮
@@ -800,6 +816,14 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 │                                 [default: tts-1]                             │
 │ --openai-tts-voice        TEXT  The voice to use for OpenAI TTS.             │
 │                                 [default: alloy]                             │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ TTS (Text-to-Speech) Configuration: Kokoro ─────────────────────────────────╮
+│ --kokoro-tts-model        TEXT  The Kokoro model to use for TTS.             │
+│                                 [default: kokoro]                            │
+│ --kokoro-tts-voice        TEXT  The voice to use for Kokoro TTS.             │
+│                                 [default: af_sky]                            │
+│ --kokoro-api-base         TEXT  The base URL for the Kokoro API.             │
+│                                 [default: http://localhost:8880/v1]          │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Process Management Options ─────────────────────────────────────────────────╮
 │ --stop            Stop any running background process.                       │
@@ -886,7 +910,7 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 │                             'openai').                                       │
 │                             [default: local]                                 │
 │ --tts-provider        TEXT  The TTS provider to use ('local' for Wyoming,    │
-│                             'openai').                                       │
+│                             'openai', 'kokoro').                             │
 │                             [default: local]                                 │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ ASR (Audio) Configuration ──────────────────────────────────────────────────╮
@@ -958,6 +982,14 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 │                                 [default: tts-1]                             │
 │ --openai-tts-voice        TEXT  The voice to use for OpenAI TTS.             │
 │                                 [default: alloy]                             │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ TTS (Text-to-Speech) Configuration: Kokoro ─────────────────────────────────╮
+│ --kokoro-tts-model        TEXT  The Kokoro model to use for TTS.             │
+│                                 [default: kokoro]                            │
+│ --kokoro-tts-voice        TEXT  The voice to use for Kokoro TTS.             │
+│                                 [default: af_sky]                            │
+│ --kokoro-api-base         TEXT  The base URL for the Kokoro API.             │
+│                                 [default: http://localhost:8880/v1]          │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Process Management Options ─────────────────────────────────────────────────╮
 │ --stop            Stop any running background process.                       │
