@@ -56,10 +56,10 @@ async def test_transcribe_e2e(
         clipboard=False,
     )
     audio_in_cfg = config.AudioInput(input_device_index=0)
-    wyoming_asr_cfg = config.WyomingASR(wyoming_asr_ip="mock-host", wyoming_asr_port=10300)
-    openai_asr_cfg = config.OpenAIASR(openai_asr_model="whisper-1")
-    ollama_cfg = config.Ollama(ollama_model="", ollama_host="")
-    openai_llm_cfg = config.OpenAILLM(openai_llm_model="")
+    wyoming_asr_cfg = config.WyomingASR(asr_wyoming_ip="mock-host", asr_wyoming_port=10300)
+    openai_asr_cfg = config.OpenAIASR(asr_openai_model="whisper-1")
+    ollama_cfg = config.Ollama(llm_ollama_model="", llm_ollama_host="")
+    openai_llm_cfg = config.OpenAILLM(llm_openai_model="")
 
     with patch("agent_cli.core.utils.console", mock_console):
         await _async_main(
