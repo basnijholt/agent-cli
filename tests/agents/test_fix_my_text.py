@@ -113,8 +113,8 @@ async def test_process_text_integration(mock_build_agent: MagicMock) -> None:
         asr_provider="local",
         tts_provider="local",
     )
-    ollama_cfg = config.Ollama(ollama_model="test-model", ollama_host="test")
-    openai_llm_cfg = config.OpenAILLM(openai_llm_model="gpt-4o-mini", openai_api_key=None)
+    ollama_cfg = config.Ollama(llm_ollama_model="test-model", llm_ollama_host="test")
+    openai_llm_cfg = config.OpenAILLM(llm_openai_model="gpt-4o-mini", openai_api_key=None)
 
     # Test the function
     result, elapsed = await autocorrect._process_text(
@@ -163,10 +163,10 @@ async def test_autocorrect_command_with_text(
         tts_provider="local",
     )
     ollama_cfg = config.Ollama(
-        ollama_model="qwen3:4b",
-        ollama_host="http://localhost:11434",
+        llm_ollama_model="qwen3:4b",
+        llm_ollama_host="http://localhost:11434",
     )
-    openai_llm_cfg = config.OpenAILLM(openai_llm_model="gpt-4o-mini", openai_api_key=None)
+    openai_llm_cfg = config.OpenAILLM(llm_openai_model="gpt-4o-mini", openai_api_key=None)
     general_cfg = config.General(
         log_level="WARNING",
         log_file=None,
@@ -218,10 +218,10 @@ async def test_autocorrect_command_from_clipboard(
         tts_provider="local",
     )
     ollama_cfg = config.Ollama(
-        ollama_model="qwen3:4b",
-        ollama_host="http://localhost:11434",
+        llm_ollama_model="qwen3:4b",
+        llm_ollama_host="http://localhost:11434",
     )
-    openai_llm_cfg = config.OpenAILLM(openai_llm_model="gpt-4o-mini", openai_api_key=None)
+    openai_llm_cfg = config.OpenAILLM(llm_openai_model="gpt-4o-mini", openai_api_key=None)
     general_cfg = config.General(
         log_level="WARNING",
         log_file=None,
@@ -264,8 +264,8 @@ async def test_async_autocorrect_no_text(
         asr_provider="local",
         tts_provider="local",
     )
-    ollama_cfg = config.Ollama(ollama_model="test", ollama_host="test")
-    openai_llm_cfg = config.OpenAILLM(openai_llm_model="gpt-4o-mini", openai_api_key=None)
+    ollama_cfg = config.Ollama(llm_ollama_model="test", llm_ollama_host="test")
+    openai_llm_cfg = config.OpenAILLM(llm_openai_model="gpt-4o-mini", openai_api_key=None)
     general_cfg = config.General(
         log_level="WARNING",
         log_file=None,
@@ -292,8 +292,8 @@ async def test_async_autocorrect_error(mock_process_text: AsyncMock):
         asr_provider="local",
         tts_provider="local",
     )
-    ollama_cfg = config.Ollama(ollama_model="test", ollama_host="test")
-    openai_llm_cfg = config.OpenAILLM(openai_llm_model="gpt-4o-mini", openai_api_key=None)
+    ollama_cfg = config.Ollama(llm_ollama_model="test", llm_ollama_host="test")
+    openai_llm_cfg = config.OpenAILLM(llm_openai_model="gpt-4o-mini", openai_api_key=None)
     general_cfg = config.General(
         log_level="WARNING",
         log_file=None,

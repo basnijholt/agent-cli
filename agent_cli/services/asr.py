@@ -38,7 +38,6 @@ def get_transcriber(
     audio_input_config: config.AudioInput,
     wyoming_asr_config: config.WyomingASR,
     openai_asr_config: config.OpenAIASR,
-    openai_llm_config: config.OpenAILLM,
 ) -> Callable[..., Awaitable[str | None]]:
     """Return the appropriate transcriber for live audio based on the provider."""
     if provider_config.asr_provider == "openai":
@@ -46,7 +45,6 @@ def get_transcriber(
             _transcribe_live_audio_openai,
             audio_input_config=audio_input_config,
             openai_asr_config=openai_asr_config,
-            openai_llm_config=openai_llm_config,
         )
     if provider_config.asr_provider == "local":
         return partial(
@@ -193,8 +191,8 @@ async def _transcribe_recorded_audio_wyoming(
     """Process pre-recorded audio data with Wyoming ASR server."""
     try:
         async with wyoming_client_context(
-            wyoming_asr_config.wyoming_asr_ip,
-            wyoming_asr_config.wyoming_asr_port,
+            wyoming_asr_config.asr_wyoming_ip,
+            wyoming_asr_config.asr_wyoming_port,
             "ASR",
             logger,
             quiet=quiet,
@@ -234,8 +232,8 @@ async def _transcribe_live_audio_wyoming(
     """Unified ASR transcription function."""
     try:
         async with wyoming_client_context(
-            wyoming_asr_config.wyoming_asr_ip,
-            wyoming_asr_config.wyoming_asr_port,
+            wyoming_asr_config.asr_wyoming_ip,
+            wyoming_asr_config.asr_wyoming_port,
             "ASR",
             logger,
             quiet=quiet,
@@ -261,7 +259,6 @@ async def _transcribe_live_audio_openai(
     *,
     audio_input_config: config.AudioInput,
     openai_asr_config: config.OpenAIASR,
-    openai_llm_config: config.OpenAILLM,
     logger: logging.Logger,
     p: pyaudio.PyAudio,
     stop_event: InteractiveStopEvent,
@@ -281,12 +278,7 @@ async def _transcribe_live_audio_openai(
     if not audio_data:
         return None
     try:
-        return await transcribe_audio_openai(
-            audio_data,
-            openai_asr_config,
-            openai_llm_config,
-            logger,
-        )
+        return await transcribe_audio_openai(audio_data, openai_asr_config, logger)
     except Exception:
         logger.exception("Error during transcription")
         return ""
