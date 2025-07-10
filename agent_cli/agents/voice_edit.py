@@ -60,7 +60,8 @@ from agent_cli.services import asr
 LOGGER = logging.getLogger()
 
 # LLM Prompts
-SYSTEM_PROMPT = """\nYou are a versatile AI text assistant. Your purpose is to either **modify** a given text or **answer questions** about it, based on a specific instruction.
+SYSTEM_PROMPT = """\
+You are a versatile AI text assistant. Your purpose is to either **modify** a given text or **answer questions** about it, based on a specific instruction.
 
 - If the instruction is a **command to edit** the text (e.g., "make this more formal," "add emojis," "correct spelling"), you must return ONLY the full, modified text.
 - If the instruction is a **question about** the text (e.g., "summarize this," "what are the key points?," "translate to French"), you must return ONLY the answer.
@@ -71,7 +72,8 @@ In all cases, you must follow these strict rules:
 - Your output should be the direct result of the instruction: either the edited text or the answer to the question.
 """
 
-AGENT_INSTRUCTIONS = """\nYou will be given a block of text enclosed in <original-text> tags, and an instruction enclosed in <instruction> tags.
+AGENT_INSTRUCTIONS = """\
+You will be given a block of text enclosed in <original-text> tags, and an instruction enclosed in <instruction> tags.
 Analyze the instruction to determine if it's a command to edit the text or a question about it.
 
 - If it is an editing command, apply the changes to the original text and return the complete, modified version.
@@ -256,6 +258,7 @@ def voice_edit(
         )
         openai_asr_cfg = config.OpenAIASR(
             openai_asr_model=openai_asr_model,
+            api_key=openai_api_key,
         )
         ollama_cfg = config.Ollama(ollama_model=ollama_model, ollama_host=ollama_host)
         openai_llm_cfg = config.OpenAILLM(
@@ -278,6 +281,7 @@ def voice_edit(
         openai_tts_cfg = config.OpenAITTS(
             openai_tts_model=openai_tts_model,
             openai_tts_voice=openai_tts_voice,
+            openai_api_key=openai_api_key,
         )
         kokoro_tts_cfg = config.KokoroTTS(
             kokoro_tts_model=kokoro_tts_model,
