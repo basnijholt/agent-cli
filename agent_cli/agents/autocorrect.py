@@ -16,6 +16,7 @@ from agent_cli.cli import app
 from agent_cli.core.utils import (
     create_status,
     get_clipboard_text,
+    print_command_line_args,
     print_error_message,
     print_input_panel,
     print_output_panel,
@@ -219,9 +220,12 @@ def autocorrect(
     log_level: str = opts.LOG_LEVEL,
     log_file: str | None = opts.LOG_FILE,
     quiet: bool = opts.QUIET,
-    config_file: str | None = opts.CONFIG_FILE,  # noqa: ARG001
+    config_file: str | None = opts.CONFIG_FILE,
+    print_args: bool = opts.PRINT_ARGS,
 ) -> None:
     """Correct text from clipboard using a local or remote LLM."""
+    if print_args:
+        print_command_line_args(locals())
     provider_cfg = config.ProviderSelection(
         llm_provider=llm_provider,
         asr_provider="local",  # Not used, but required by model

@@ -49,6 +49,7 @@ from agent_cli.core.audio import pyaudio_context, setup_devices
 from agent_cli.core.utils import (
     get_clipboard_text,
     maybe_live,
+    print_command_line_args,
     print_input_panel,
     print_with_style,
     setup_logging,
@@ -213,7 +214,8 @@ def voice_edit(
     log_file: str | None = opts.LOG_FILE,
     list_devices: bool = opts.LIST_DEVICES,
     quiet: bool = opts.QUIET,
-    config_file: str | None = opts.CONFIG_FILE,  # noqa: ARG001
+    config_file: str | None = opts.CONFIG_FILE,
+    print_args: bool = opts.PRINT_ARGS,
 ) -> None:
     """Interact with clipboard text via a voice command using local or remote services.
 
@@ -225,6 +227,8 @@ def voice_edit(
     - List output devices: agent-cli voice-edit --list-output-devices
     - Save TTS to file: agent-cli voice-edit --tts --save-file response.wav
     """
+    if print_args:
+        print_command_line_args(locals())
     setup_logging(log_level, log_file, quiet=quiet)
     general_cfg = config.General(
         log_level=log_level,
