@@ -33,7 +33,6 @@ async def _async_main(
     audio_out_cfg: config.AudioOutput,
     wyoming_tts_cfg: config.WyomingTTS,
     openai_tts_cfg: config.OpenAITTS,
-    openai_llm_cfg: config.OpenAILLM,
     kokoro_tts_cfg: config.KokoroTTS,
 ) -> None:
     """Async entry point for the speak command."""
@@ -63,7 +62,6 @@ async def _async_main(
                 audio_output_config=audio_out_cfg,
                 wyoming_tts_config=wyoming_tts_cfg,
                 openai_tts_config=openai_tts_cfg,
-                openai_llm_config=openai_llm_cfg,
                 kokoro_tts_config=kokoro_tts_cfg,
                 save_file=general_cfg.save_file,
                 quiet=general_cfg.quiet,
@@ -99,8 +97,6 @@ def speak(
     # OpenAI
     tts_openai_model: str = opts.TTS_OPENAI_MODEL,
     tts_openai_voice: str = opts.TTS_OPENAI_VOICE,
-    openai_api_key: str | None = opts.OPENAI_API_KEY,
-    llm_openai_model: str = opts.LLM_OPENAI_MODEL,
     # Kokoro
     tts_kokoro_model: str = opts.TTS_KOKORO_MODEL,
     tts_kokoro_voice: str = opts.TTS_KOKORO_VOICE,
@@ -160,10 +156,6 @@ def speak(
             tts_openai_model=tts_openai_model,
             tts_openai_voice=tts_openai_voice,
         )
-        openai_llm_cfg = config.OpenAILLM(
-            llm_openai_model=llm_openai_model,
-            openai_api_key=openai_api_key,
-        )
         kokoro_tts_cfg = config.KokoroTTS(
             tts_kokoro_model=tts_kokoro_model,
             tts_kokoro_voice=tts_kokoro_voice,
@@ -178,7 +170,6 @@ def speak(
                 audio_out_cfg=audio_out_cfg,
                 wyoming_tts_cfg=wyoming_tts_cfg,
                 openai_tts_cfg=openai_tts_cfg,
-                openai_llm_cfg=openai_llm_cfg,
                 kokoro_tts_cfg=kokoro_tts_cfg,
             ),
         )

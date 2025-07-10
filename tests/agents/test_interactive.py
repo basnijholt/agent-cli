@@ -270,7 +270,6 @@ async def test_async_main_full_loop(tmp_path: Path) -> None:
             audio_output_config=audio_out_cfg,
             wyoming_tts_config=wyoming_tts_cfg,
             openai_tts_config=openai_tts_cfg,
-            openai_llm_config=openai_llm_cfg,
             kokoro_tts_config=kokoro_tts_cfg,
             save_file=None,
             quiet=False,

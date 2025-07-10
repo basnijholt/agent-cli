@@ -118,7 +118,6 @@ async def process_instruction_and_respond(
                     wyoming_tts_config=wyoming_tts_config,
                     openai_tts_config=openai_tts_config,
                     kokoro_tts_config=kokoro_tts_config,
-                    openai_llm_config=openai_llm_config,
                     save_file=general_config.save_file,
                     quiet=general_config.quiet,
                     logger=logger,
