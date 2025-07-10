@@ -141,7 +141,6 @@ async def test_voice_edit_e2e(
         wyoming_asr_config=wyoming_asr_cfg,
         openai_asr_config=openai_asr_cfg,
         ollama_config=ollama_cfg,
-        openai_llm_config=openai_llm_cfg,
         logger=ANY,
         quiet=False,
     )
