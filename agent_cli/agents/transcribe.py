@@ -166,8 +166,8 @@ def transcribe(
     # --- ASR (Audio) Configuration ---
     input_device_index: int | None = opts.INPUT_DEVICE_INDEX,
     input_device_name: str | None = opts.INPUT_DEVICE_NAME,
-    asr_wyoming_ip: str = opts.WYOMING_ASR_SERVER_IP,
-    asr_wyoming_port: int = opts.WYOMING_ASR_SERVER_PORT,
+    asr_wyoming_ip: str = opts.ASR_WYOMING_SERVER_IP,
+    asr_wyoming_port: int = opts.ASR_WYOMING_SERVER_PORT,
     asr_openai_model: str = opts.ASR_OPENAI_MODEL,
     # --- LLM Configuration ---
     llm_ollama_model: str = opts.LLM_OLLAMA_MODEL,

@@ -26,6 +26,12 @@ TTS_PROVIDER: str = typer.Option(
 
 
 # --- LLM Configuration ---
+LLM: bool = typer.Option(
+    False,  # noqa: FBT003
+    "--llm/--no-llm",
+    help="Use an LLM to process the transcript.",
+    rich_help_panel="LLM Configuration",
+)
 # Ollama (local service)
 LLM_OLLAMA_MODEL: str = typer.Option(
     "qwen3:4b",
@@ -53,13 +59,6 @@ OPENAI_API_KEY: str | None = typer.Option(
     envvar="OPENAI_API_KEY",
     rich_help_panel="LLM Configuration: OpenAI",
 )
-LLM: bool = typer.Option(
-    False,  # noqa: FBT003
-    "--llm/--no-llm",
-    help="Use an LLM to process the transcript.",
-    rich_help_panel="LLM Configuration",
-)
-
 
 # --- ASR (Audio) Configuration ---
 # General ASR
@@ -83,13 +82,13 @@ LIST_DEVICES: bool = typer.Option(
     rich_help_panel="ASR (Audio) Configuration",
 )
 # Wyoming (local service)
-WYOMING_ASR_SERVER_IP: str = typer.Option(
+ASR_WYOMING_SERVER_IP: str = typer.Option(
     "localhost",
     "--asr-wyoming-ip",
     help="Wyoming ASR server IP address.",
     rich_help_panel="ASR (Audio) Configuration: Wyoming (local)",
 )
-WYOMING_ASR_SERVER_PORT: int = typer.Option(
+ASR_WYOMING_SERVER_PORT: int = typer.Option(
     10300,
     "--asr-wyoming-port",
     help="Wyoming ASR server port.",
