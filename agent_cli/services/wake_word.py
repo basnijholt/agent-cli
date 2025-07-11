@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+from functools import partial
 from typing import TYPE_CHECKING
 
 from wyoming.audio import AudioChunk, AudioStart, AudioStop
@@ -15,10 +16,17 @@ from agent_cli.services._wyoming_utils import wyoming_client_context
 
 if TYPE_CHECKING:
     import logging
-    from collections.abc import Callable
+    from collections.abc import Awaitable, Callable
 
     from rich.live import Live
     from wyoming.client import AsyncClient
+
+
+def create_wake_word_detector(
+    wake_word_config: config.WakeWord,
+) -> Callable[..., Awaitable[str | None]]:
+    """Return a wake word detector function."""
+    return partial(_detect_wake_word_from_queue, wake_word_cfg=wake_word_config)
 
 
 async def _send_audio_from_queue_for_wake_detection(

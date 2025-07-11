@@ -50,7 +50,8 @@ from agent_cli.core.utils import (
     signal_handling_context,
     stop_or_status_or_toggle,
 )
-from agent_cli.services import asr, wake_word
+from agent_cli.services import asr
+from agent_cli.services.wake_word import create_wake_word_detector
 
 if TYPE_CHECKING:
     import pyaudio
@@ -112,8 +113,8 @@ async def _record_audio_with_wake_word(
         # Create a queue for wake word detection
         wake_queue = await tee.add_queue()
 
-        detected_word = await wake_word._detect_wake_word_from_queue(
-            wake_word_cfg=wake_word_config,
+        detector = create_wake_word_detector(wake_word_config)
+        detected_word = await detector(
             logger=logger,
             queue=wake_queue,
             quiet=quiet,
@@ -136,8 +137,7 @@ async def _record_audio_with_wake_word(
         record_task = asyncio.create_task(asr.record_audio_to_buffer(record_queue, logger))
 
         # Use the same wake_queue for stop-word detection
-        stop_detected_word = await wake_word._detect_wake_word_from_queue(
-            wake_word_cfg=wake_word_config,
+        stop_detected_word = await detector(
             logger=logger,
             queue=wake_queue,
             quiet=quiet,
