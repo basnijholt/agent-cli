@@ -11,28 +11,28 @@ from agent_cli.services.llm import create_llm_agent
 @pytest.mark.asyncio
 async def test_create_llm_agent_with_gemini() -> None:
     """Test that the create_llm_agent function can build an agent with the Gemini provider."""
-    provider_config = config.ProviderSelection(
+    provider_cfg = config.ProviderSelection(
         llm_provider="gemini",
         asr_provider="local",
         tts_provider="local",
     )
-    gemini_config = config.GeminiLLM(
+    gemini_cfg = config.GeminiLLM(
         llm_gemini_model="gemini-1.5-flash",
         gemini_api_key="test-key",
     )
-    ollama_config = config.Ollama(
+    ollama_cfg = config.Ollama(
         llm_ollama_model="qwen3:4b",
         llm_ollama_host="http://localhost:11434",
     )
-    openai_config = config.OpenAILLM(
+    openai_cfg = config.OpenAILLM(
         llm_openai_model="gpt-4o-mini",
         openai_api_key="test-key",
     )
 
     agent = create_llm_agent(
-        provider_config=provider_config,
-        ollama_config=ollama_config,
-        openai_config=openai_config,
-        gemini_config=gemini_config,
+        provider_cfg=provider_cfg,
+        ollama_cfg=ollama_cfg,
+        openai_cfg=openai_cfg,
+        gemini_cfg=gemini_cfg,
     )
     assert agent is not None

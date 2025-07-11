@@ -100,7 +100,7 @@ async def _async_main(
     audio_out_cfg: config.AudioOutput,
     wyoming_tts_cfg: config.WyomingTTS,
     openai_tts_cfg: config.OpenAITTS,
-    kokoro_tts_config: config.KokoroTTS,
+    kokoro_tts_cfg: config.KokoroTTS,
 ) -> None:
     """Core asynchronous logic for the voice assistant."""
     with pyaudio_context() as p:
@@ -138,11 +138,11 @@ async def _async_main(
 
             instruction = await get_instruction_from_audio(
                 audio_data=audio_data,
-                provider_config=provider_cfg,
-                audio_input_config=audio_in_cfg,
-                wyoming_asr_config=wyoming_asr_cfg,
-                openai_asr_config=openai_asr_cfg,
-                ollama_config=ollama_cfg,
+                provider_cfg=provider_cfg,
+                audio_input_cfg=audio_in_cfg,
+                wyoming_asr_cfg=wyoming_asr_cfg,
+                openai_asr_cfg=openai_asr_cfg,
+                ollama_cfg=ollama_cfg,
                 logger=LOGGER,
                 quiet=general_cfg.quiet,
             )
@@ -152,15 +152,15 @@ async def _async_main(
             await process_instruction_and_respond(
                 instruction=instruction,
                 original_text=original_text,
-                provider_config=provider_cfg,
-                general_config=general_cfg,
-                ollama_config=ollama_cfg,
-                openai_llm_config=openai_llm_cfg,
-                gemini_llm_config=gemini_llm_cfg,
-                audio_output_config=audio_out_cfg,
-                wyoming_tts_config=wyoming_tts_cfg,
-                openai_tts_config=openai_tts_cfg,
-                kokoro_tts_config=kokoro_tts_config,
+                provider_cfg=provider_cfg,
+                general_cfg=general_cfg,
+                ollama_cfg=ollama_cfg,
+                openai_llm_cfg=openai_llm_cfg,
+                gemini_llm_cfg=gemini_llm_cfg,
+                audio_output_cfg=audio_out_cfg,
+                wyoming_tts_cfg=wyoming_tts_cfg,
+                openai_tts_cfg=openai_tts_cfg,
+                kokoro_tts_cfg=kokoro_tts_cfg,
                 system_prompt=SYSTEM_PROMPT,
                 agent_instructions=AGENT_INSTRUCTIONS,
                 live=live,
@@ -316,6 +316,6 @@ def voice_edit(
                 audio_out_cfg=audio_out_cfg,
                 wyoming_tts_cfg=wyoming_tts_cfg,
                 openai_tts_cfg=openai_tts_cfg,
-                kokoro_tts_config=kokoro_tts_cfg,
+                kokoro_tts_cfg=kokoro_tts_cfg,
             ),
         )

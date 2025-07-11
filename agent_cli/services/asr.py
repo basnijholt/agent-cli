@@ -34,37 +34,37 @@ if TYPE_CHECKING:
 
 
 def create_transcriber(
-    provider_config: config.ProviderSelection,
-    audio_input_config: config.AudioInput,
-    wyoming_asr_config: config.WyomingASR,
-    openai_asr_config: config.OpenAIASR,
+    provider_cfg: config.ProviderSelection,
+    audio_input_cfg: config.AudioInput,
+    wyoming_asr_cfg: config.WyomingASR,
+    openai_asr_cfg: config.OpenAIASR,
 ) -> Callable[..., Awaitable[str | None]]:
     """Return the appropriate transcriber for live audio based on the provider."""
-    if provider_config.asr_provider == "openai":
+    if provider_cfg.asr_provider == "openai":
         return partial(
             _transcribe_live_audio_openai,
-            audio_input_config=audio_input_config,
-            openai_asr_config=openai_asr_config,
+            audio_input_cfg=audio_input_cfg,
+            openai_asr_cfg=openai_asr_cfg,
         )
-    if provider_config.asr_provider == "local":
+    if provider_cfg.asr_provider == "local":
         return partial(
             _transcribe_live_audio_wyoming,
-            audio_input_config=audio_input_config,
-            wyoming_asr_config=wyoming_asr_config,
+            audio_input_cfg=audio_input_cfg,
+            wyoming_asr_cfg=wyoming_asr_cfg,
         )
-    msg = f"Unsupported ASR provider: {provider_config.asr_provider}"
+    msg = f"Unsupported ASR provider: {provider_cfg.asr_provider}"
     raise ValueError(msg)
 
 
 def create_recorded_audio_transcriber(
-    provider_config: config.ProviderSelection,
+    provider_cfg: config.ProviderSelection,
 ) -> Callable[..., Awaitable[str]]:
     """Return the appropriate transcriber for recorded audio based on the provider."""
-    if provider_config.asr_provider == "openai":
+    if provider_cfg.asr_provider == "openai":
         return transcribe_audio_openai
-    if provider_config.asr_provider == "local":
+    if provider_cfg.asr_provider == "local":
         return _transcribe_recorded_audio_wyoming
-    msg = f"Unsupported ASR provider: {provider_config.asr_provider}"
+    msg = f"Unsupported ASR provider: {provider_cfg.asr_provider}"
     raise ValueError(msg)
 
 
@@ -165,8 +165,8 @@ async def record_audio_with_manual_stop(
         """Buffer audio chunk."""
         audio_buffer.write(chunk)
 
-    stream_config = setup_input_stream(input_device_index)
-    with open_pyaudio_stream(p, **stream_config) as stream:
+    stream_kwargs = setup_input_stream(input_device_index)
+    with open_pyaudio_stream(p, **stream_kwargs) as stream:
         await read_audio_stream(
             stream=stream,
             stop_event=stop_event,
@@ -183,7 +183,7 @@ async def record_audio_with_manual_stop(
 async def _transcribe_recorded_audio_wyoming(
     *,
     audio_data: bytes,
-    wyoming_asr_config: config.WyomingASR,
+    wyoming_asr_cfg: config.WyomingASR,
     logger: logging.Logger,
     quiet: bool = False,
     **_kwargs: object,
@@ -191,8 +191,8 @@ async def _transcribe_recorded_audio_wyoming(
     """Process pre-recorded audio data with Wyoming ASR server."""
     try:
         async with wyoming_client_context(
-            wyoming_asr_config.asr_wyoming_ip,
-            wyoming_asr_config.asr_wyoming_port,
+            wyoming_asr_cfg.asr_wyoming_ip,
+            wyoming_asr_cfg.asr_wyoming_port,
             "ASR",
             logger,
             quiet=quiet,
@@ -218,8 +218,8 @@ async def _transcribe_recorded_audio_wyoming(
 
 async def _transcribe_live_audio_wyoming(
     *,
-    audio_input_config: config.AudioInput,
-    wyoming_asr_config: config.WyomingASR,
+    audio_input_cfg: config.AudioInput,
+    wyoming_asr_cfg: config.WyomingASR,
     logger: logging.Logger,
     p: pyaudio.PyAudio,
     stop_event: InteractiveStopEvent,
@@ -232,14 +232,14 @@ async def _transcribe_live_audio_wyoming(
     """Unified ASR transcription function."""
     try:
         async with wyoming_client_context(
-            wyoming_asr_config.asr_wyoming_ip,
-            wyoming_asr_config.asr_wyoming_port,
+            wyoming_asr_cfg.asr_wyoming_ip,
+            wyoming_asr_cfg.asr_wyoming_port,
             "ASR",
             logger,
             quiet=quiet,
         ) as client:
-            stream_config = setup_input_stream(audio_input_config.input_device_index)
-            with open_pyaudio_stream(p, **stream_config) as stream:
+            stream_kwargs = setup_input_stream(audio_input_cfg.input_device_index)
+            with open_pyaudio_stream(p, **stream_kwargs) as stream:
                 _, recv_task = await manage_send_receive_tasks(
                     _send_audio(client, stream, stop_event, logger, live=live, quiet=quiet),
                     _receive_transcript(
@@ -257,8 +257,8 @@ async def _transcribe_live_audio_wyoming(
 
 async def _transcribe_live_audio_openai(
     *,
-    audio_input_config: config.AudioInput,
-    openai_asr_config: config.OpenAIASR,
+    audio_input_cfg: config.AudioInput,
+    openai_asr_cfg: config.OpenAIASR,
     logger: logging.Logger,
     p: pyaudio.PyAudio,
     stop_event: InteractiveStopEvent,
@@ -269,7 +269,7 @@ async def _transcribe_live_audio_openai(
     """Record and transcribe live audio using OpenAI Whisper."""
     audio_data = await record_audio_with_manual_stop(
         p,
-        audio_input_config.input_device_index,
+        audio_input_cfg.input_device_index,
         stop_event,
         logger,
         quiet=quiet,
@@ -278,7 +278,7 @@ async def _transcribe_live_audio_openai(
     if not audio_data:
         return None
     try:
-        return await transcribe_audio_openai(audio_data, openai_asr_config, logger)
+        return await transcribe_audio_openai(audio_data, openai_asr_cfg, logger)
     except Exception:
         logger.exception("Error during transcription")
         return ""

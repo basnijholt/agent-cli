@@ -22,44 +22,44 @@ if TYPE_CHECKING:
     from agent_cli import config
 
 
-def _openai_llm_model(openai_config: config.OpenAILLM) -> OpenAIModel:
+def _openai_llm_model(openai_cfg: config.OpenAILLM) -> OpenAIModel:
     from pydantic_ai.models.openai import OpenAIModel  # noqa: PLC0415
     from pydantic_ai.providers.openai import OpenAIProvider  # noqa: PLC0415
 
-    if not openai_config.openai_api_key:
+    if not openai_cfg.openai_api_key:
         msg = "OpenAI API key is not set."
         raise ValueError(msg)
-    provider = OpenAIProvider(api_key=openai_config.openai_api_key)
-    model_name = openai_config.llm_openai_model
+    provider = OpenAIProvider(api_key=openai_cfg.openai_api_key)
+    model_name = openai_cfg.llm_openai_model
     return OpenAIModel(model_name=model_name, provider=provider)
 
 
-def _ollama_llm_model(ollama_config: config.Ollama) -> OpenAIModel:
+def _ollama_llm_model(ollama_cfg: config.Ollama) -> OpenAIModel:
     from pydantic_ai.models.openai import OpenAIModel  # noqa: PLC0415
     from pydantic_ai.providers.openai import OpenAIProvider  # noqa: PLC0415
 
-    provider = OpenAIProvider(base_url=f"{ollama_config.llm_ollama_host}/v1")
-    model_name = ollama_config.llm_ollama_model
+    provider = OpenAIProvider(base_url=f"{ollama_cfg.llm_ollama_host}/v1")
+    model_name = ollama_cfg.llm_ollama_model
     return OpenAIModel(model_name=model_name, provider=provider)
 
 
-def _gemini_llm_model(gemini_config: config.GeminiLLM) -> GeminiModel:
+def _gemini_llm_model(gemini_cfg: config.GeminiLLM) -> GeminiModel:
     from pydantic_ai.models.gemini import GeminiModel  # noqa: PLC0415
     from pydantic_ai.providers.google_gla import GoogleGLAProvider  # noqa: PLC0415
 
-    if not gemini_config.gemini_api_key:
+    if not gemini_cfg.gemini_api_key:
         msg = "Gemini API key is not set."
         raise ValueError(msg)
-    provider = GoogleGLAProvider(api_key=gemini_config.gemini_api_key)
-    model_name = gemini_config.llm_gemini_model
+    provider = GoogleGLAProvider(api_key=gemini_cfg.gemini_api_key)
+    model_name = gemini_cfg.llm_gemini_model
     return GeminiModel(model_name=model_name, provider=provider)
 
 
 def create_llm_agent(
-    provider_config: config.ProviderSelection,
-    ollama_config: config.Ollama,
-    openai_config: config.OpenAILLM,
-    gemini_config: config.GeminiLLM,
+    provider_cfg: config.ProviderSelection,
+    ollama_cfg: config.Ollama,
+    openai_cfg: config.OpenAILLM,
+    gemini_cfg: config.GeminiLLM,
     *,
     system_prompt: str | None = None,
     instructions: str | None = None,
@@ -68,12 +68,12 @@ def create_llm_agent(
     """Construct and return a PydanticAI agent."""
     from pydantic_ai import Agent  # noqa: PLC0415
 
-    if provider_config.llm_provider == "openai":
-        llm_model = _openai_llm_model(openai_config)
-    elif provider_config.llm_provider == "local":
-        llm_model = _ollama_llm_model(ollama_config)
-    elif provider_config.llm_provider == "gemini":
-        llm_model = _gemini_llm_model(gemini_config)
+    if provider_cfg.llm_provider == "openai":
+        llm_model = _openai_llm_model(openai_cfg)
+    elif provider_cfg.llm_provider == "local":
+        llm_model = _ollama_llm_model(ollama_cfg)
+    elif provider_cfg.llm_provider == "gemini":
+        llm_model = _gemini_llm_model(gemini_cfg)
 
     return Agent(
         model=llm_model,
@@ -101,10 +101,10 @@ async def get_llm_response(
     system_prompt: str,
     agent_instructions: str,
     user_input: str,
-    provider_config: config.ProviderSelection,
-    ollama_config: config.Ollama,
-    openai_config: config.OpenAILLM,
-    gemini_config: config.GeminiLLM,
+    provider_cfg: config.ProviderSelection,
+    ollama_cfg: config.Ollama,
+    openai_cfg: config.OpenAILLM,
+    gemini_cfg: config.GeminiLLM,
     logger: logging.Logger,
     live: Live | None = None,
     tools: list[Tool] | None = None,
@@ -115,10 +115,10 @@ async def get_llm_response(
 ) -> str | None:
     """Get a response from the LLM with optional clipboard and output handling."""
     agent = create_llm_agent(
-        provider_config=provider_config,
-        ollama_config=ollama_config,
-        openai_config=openai_config,
-        gemini_config=gemini_config,
+        provider_cfg=provider_cfg,
+        ollama_cfg=ollama_cfg,
+        openai_cfg=openai_cfg,
+        gemini_cfg=gemini_cfg,
         system_prompt=system_prompt,
         instructions=agent_instructions,
         tools=tools,
@@ -127,12 +127,12 @@ async def get_llm_response(
     start_time = time.monotonic()
 
     try:
-        if provider_config.llm_provider == "local":
-            model_name = ollama_config.llm_ollama_model
-        elif provider_config.llm_provider == "openai":
-            model_name = openai_config.llm_openai_model
-        elif provider_config.llm_provider == "gemini":
-            model_name = gemini_config.llm_gemini_model
+        if provider_cfg.llm_provider == "local":
+            model_name = ollama_cfg.llm_ollama_model
+        elif provider_cfg.llm_provider == "openai":
+            model_name = openai_cfg.llm_openai_model
+        elif provider_cfg.llm_provider == "gemini":
+            model_name = gemini_cfg.llm_gemini_model
 
         async with live_timer(
             live or Live(console=console),
@@ -162,12 +162,12 @@ async def get_llm_response(
 
     except Exception as e:
         logger.exception("An error occurred during LLM processing.")
-        if provider_config.llm_provider == "openai":
+        if provider_cfg.llm_provider == "openai":
             msg = "Please check your OpenAI API key."
-        elif provider_config.llm_provider == "gemini":
+        elif provider_cfg.llm_provider == "gemini":
             msg = "Please check your Gemini API key."
-        elif provider_config.llm_provider == "local":
-            msg = f"Please check your Ollama server at [cyan]{ollama_config.llm_ollama_host}[/cyan]"
+        elif provider_cfg.llm_provider == "local":
+            msg = f"Please check your Ollama server at [cyan]{ollama_cfg.llm_ollama_host}[/cyan]"
         print_error_message(f"An unexpected LLM error occurred: {e}", msg)
         if exit_on_error:
             sys.exit(1)
@@ -178,10 +178,10 @@ async def process_and_update_clipboard(
     system_prompt: str,
     agent_instructions: str,
     *,
-    provider_config: config.ProviderSelection,
-    ollama_config: config.Ollama,
-    openai_config: config.OpenAILLM,
-    gemini_config: config.GeminiLLM,
+    provider_cfg: config.ProviderSelection,
+    ollama_cfg: config.Ollama,
+    openai_cfg: config.OpenAILLM,
+    gemini_cfg: config.GeminiLLM,
     logger: logging.Logger,
     original_text: str,
     instruction: str,
@@ -196,10 +196,10 @@ async def process_and_update_clipboard(
         system_prompt=system_prompt,
         agent_instructions=agent_instructions,
         user_input=user_input,
-        provider_config=provider_config,
-        ollama_config=ollama_config,
-        openai_config=openai_config,
-        gemini_config=gemini_config,
+        provider_cfg=provider_cfg,
+        ollama_cfg=ollama_cfg,
+        openai_cfg=openai_cfg,
+        gemini_cfg=gemini_cfg,
         logger=logger,
         quiet=quiet,
         clipboard=clipboard,

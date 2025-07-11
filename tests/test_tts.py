@@ -18,17 +18,17 @@ async def test_speak_text(mock_create_synthesizer: MagicMock) -> None:
     """Test the speak_text function."""
     mock_synthesizer = AsyncMock(return_value=b"audio data")
     mock_create_synthesizer.return_value = mock_synthesizer
-    provider_config = config.ProviderSelection(
+    provider_cfg = config.ProviderSelection(
         asr_provider="local",
         llm_provider="local",
         tts_provider="local",
     )
-    audio_output_config = config.AudioOutput(enable_tts=True)
-    wyoming_tts_config = config.WyomingTTS(
+    audio_output_cfg = config.AudioOutput(enable_tts=True)
+    wyoming_tts_cfg = config.WyomingTTS(
         tts_wyoming_ip="localhost",
         tts_wyoming_port=1234,
     )
-    openai_tts_config = config.OpenAITTS(tts_openai_model="tts-1", tts_openai_voice="alloy")
+    openai_tts_cfg = config.OpenAITTS(tts_openai_model="tts-1", tts_openai_voice="alloy")
     kokoro_tts_cfg = config.KokoroTTS(
         tts_kokoro_model="tts-1",
         tts_kokoro_voice="alloy",
@@ -37,11 +37,11 @@ async def test_speak_text(mock_create_synthesizer: MagicMock) -> None:
 
     audio_data = await _speak_text(
         text="hello",
-        provider_config=provider_config,
-        audio_output_config=audio_output_config,
-        wyoming_tts_config=wyoming_tts_config,
-        openai_tts_config=openai_tts_config,
-        kokoro_tts_config=kokoro_tts_cfg,
+        provider_cfg=provider_cfg,
+        audio_output_cfg=audio_output_cfg,
+        wyoming_tts_cfg=wyoming_tts_cfg,
+        openai_tts_cfg=openai_tts_cfg,
+        kokoro_tts_cfg=kokoro_tts_cfg,
         logger=MagicMock(),
         play_audio_flag=False,
         live=MagicMock(),
@@ -125,12 +125,12 @@ def test_create_synthesizer_disabled():
         llm_provider="local",
         tts_provider="local",
     )
-    audio_output_config = config.AudioOutput(enable_tts=False)
-    wyoming_tts_config = config.WyomingTTS(
+    audio_output_cfg = config.AudioOutput(enable_tts=False)
+    wyoming_tts_cfg = config.WyomingTTS(
         tts_wyoming_ip="localhost",
         tts_wyoming_port=1234,
     )
-    openai_tts_config = config.OpenAITTS(tts_openai_model="tts-1", tts_openai_voice="alloy")
+    openai_tts_cfg = config.OpenAITTS(tts_openai_model="tts-1", tts_openai_voice="alloy")
     kokoro_tts_cfg = config.KokoroTTS(
         tts_kokoro_model="tts-1",
         tts_kokoro_voice="alloy",
@@ -138,11 +138,11 @@ def test_create_synthesizer_disabled():
     )
 
     synthesizer = create_synthesizer(
-        provider_config=provider_cfg,
-        audio_output_config=audio_output_config,
-        wyoming_tts_config=wyoming_tts_config,
-        openai_tts_config=openai_tts_config,
-        kokoro_tts_config=kokoro_tts_cfg,
+        provider_cfg=provider_cfg,
+        audio_output_cfg=audio_output_cfg,
+        wyoming_tts_cfg=wyoming_tts_cfg,
+        openai_tts_cfg=openai_tts_cfg,
+        kokoro_tts_cfg=kokoro_tts_cfg,
     )
 
     assert synthesizer.__name__ == "_dummy_synthesizer"

@@ -136,10 +136,10 @@ async def test_process_text_integration(mock_create_llm_agent: MagicMock) -> Non
 
     # Verify the agent was called correctly
     mock_create_llm_agent.assert_called_once_with(
-        provider_config=provider_cfg,
-        ollama_config=ollama_cfg,
-        openai_config=openai_llm_cfg,
-        gemini_config=gemini_llm_cfg,
+        provider_cfg=provider_cfg,
+        ollama_cfg=ollama_cfg,
+        openai_cfg=openai_llm_cfg,
+        gemini_cfg=gemini_llm_cfg,
         system_prompt=autocorrect.SYSTEM_PROMPT,
         instructions=autocorrect.AGENT_INSTRUCTIONS,
     )
@@ -197,10 +197,10 @@ async def test_autocorrect_command_with_text(
     # Assertions
     mock_get_clipboard.assert_not_called()
     mock_create_llm_agent.assert_called_once_with(
-        provider_config=provider_cfg,
-        ollama_config=ollama_cfg,
-        openai_config=openai_llm_cfg,
-        gemini_config=gemini_llm_cfg,
+        provider_cfg=provider_cfg,
+        ollama_cfg=ollama_cfg,
+        openai_cfg=openai_llm_cfg,
+        gemini_cfg=gemini_llm_cfg,
         system_prompt=autocorrect.SYSTEM_PROMPT,
         instructions=autocorrect.AGENT_INSTRUCTIONS,
     )
@@ -258,10 +258,10 @@ async def test_autocorrect_command_from_clipboard(
     # Assertions
     mock_get_clipboard.assert_called_once_with(quiet=True)
     mock_create_llm_agent.assert_called_once_with(
-        provider_config=provider_cfg,
-        ollama_config=ollama_cfg,
-        openai_config=openai_llm_cfg,
-        gemini_config=gemini_llm_cfg,
+        provider_cfg=provider_cfg,
+        ollama_cfg=ollama_cfg,
+        openai_cfg=openai_llm_cfg,
+        gemini_cfg=gemini_llm_cfg,
         system_prompt=autocorrect.SYSTEM_PROMPT,
         instructions=autocorrect.AGENT_INSTRUCTIONS,
     )

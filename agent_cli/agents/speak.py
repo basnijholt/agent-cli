@@ -59,11 +59,11 @@ async def _async_main(
         with maybe_live(not general_cfg.quiet) as live:
             await handle_tts_playback(
                 text=text,
-                provider_config=provider_cfg,
-                audio_output_config=audio_out_cfg,
-                wyoming_tts_config=wyoming_tts_cfg,
-                openai_tts_config=openai_tts_cfg,
-                kokoro_tts_config=kokoro_tts_cfg,
+                provider_cfg=provider_cfg,
+                audio_output_cfg=audio_out_cfg,
+                wyoming_tts_cfg=wyoming_tts_cfg,
+                openai_tts_cfg=openai_tts_cfg,
+                kokoro_tts_cfg=kokoro_tts_cfg,
                 save_file=general_cfg.save_file,
                 quiet=general_cfg.quiet,
                 logger=LOGGER,

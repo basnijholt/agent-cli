@@ -50,11 +50,11 @@ async def test_handle_tts_playback_os_error(mock_speak_text: AsyncMock) -> None:
 
     result = await handle_tts_playback(
         text="hello",
-        provider_config=provider_cfg,
-        audio_output_config=audio_out_cfg,
-        wyoming_tts_config=wyoming_tts_cfg,
-        openai_tts_config=openai_tts_cfg,
-        kokoro_tts_config=kokoro_tts_cfg,
+        provider_cfg=provider_cfg,
+        audio_output_cfg=audio_out_cfg,
+        wyoming_tts_cfg=wyoming_tts_cfg,
+        openai_tts_cfg=openai_tts_cfg,
+        kokoro_tts_cfg=kokoro_tts_cfg,
         save_file=None,
         quiet=False,
         logger=MagicMock(),

@@ -129,7 +129,7 @@ async def test_async_main_list_devices(tmp_path: Path) -> None:
             audio_out_cfg=audio_out_cfg,
             wyoming_tts_cfg=wyoming_tts_cfg,
             openai_tts_cfg=openai_tts_cfg,
-            kokoro_tts_config=kokoro_tts_cfg,
+            kokoro_tts_cfg=kokoro_tts_cfg,
         )
         mock_setup_devices.assert_called_once()
 
@@ -188,7 +188,7 @@ async def test_async_main_list_output_devices(tmp_path: Path) -> None:
             audio_out_cfg=audio_out_cfg,
             wyoming_tts_cfg=wyoming_tts_cfg,
             openai_tts_cfg=openai_tts_cfg,
-            kokoro_tts_config=kokoro_tts_cfg,
+            kokoro_tts_cfg=kokoro_tts_cfg,
         )
         mock_setup_devices.assert_called_once()
 
@@ -271,7 +271,7 @@ async def test_async_main_full_loop(tmp_path: Path) -> None:
             audio_out_cfg=audio_out_cfg,
             wyoming_tts_cfg=wyoming_tts_cfg,
             openai_tts_cfg=openai_tts_cfg,
-            kokoro_tts_config=kokoro_tts_cfg,
+            kokoro_tts_cfg=kokoro_tts_cfg,
         )
 
         # Verify that the core functions were called
@@ -281,11 +281,11 @@ async def test_async_main_full_loop(tmp_path: Path) -> None:
         assert mock_stop_event.clear.call_count == 2  # Called after ASR and at end of turn
         mock_tts.assert_called_with(
             text="Mocked response",
-            provider_config=provider_cfg,
-            audio_output_config=audio_out_cfg,
-            wyoming_tts_config=wyoming_tts_cfg,
-            openai_tts_config=openai_tts_cfg,
-            kokoro_tts_config=kokoro_tts_cfg,
+            provider_cfg=provider_cfg,
+            audio_output_cfg=audio_out_cfg,
+            wyoming_tts_cfg=wyoming_tts_cfg,
+            openai_tts_cfg=openai_tts_cfg,
+            kokoro_tts_cfg=kokoro_tts_cfg,
             save_file=None,
             quiet=False,
             logger=mock_tts.call_args.kwargs["logger"],

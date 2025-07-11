@@ -398,12 +398,12 @@ def _output_device(
 
 def setup_devices(
     p: pyaudio.PyAudio,
-    general_config: config.General,
+    general_cfg: config.General,
     audio_in_cfg: config.AudioInput | None,
     audio_out_cfg: config.AudioOutput | None,
 ) -> tuple[int | None, str | None, int | None] | None:
     """Handle device listing and setup."""
-    if general_config.list_devices:
+    if general_cfg.list_devices:
         list_all_devices(p)
         return None
 
@@ -413,7 +413,7 @@ def setup_devices(
         audio_in_cfg.input_device_name if audio_in_cfg else None,
         audio_in_cfg.input_device_index if audio_in_cfg else None,
     )
-    if not general_config.quiet:
+    if not general_cfg.quiet:
         print_device_index(input_device_index, input_device_name)
 
     # Setup output device for TTS if enabled
@@ -428,7 +428,7 @@ def setup_devices(
             audio_out_cfg.output_device_name,
             audio_out_cfg.output_device_index,
         )
-        if tts_output_device_index is not None and not general_config.quiet:
+        if tts_output_device_index is not None and not general_cfg.quiet:
             msg = f"🔊 TTS output device [bold yellow]{tts_output_device_index}[/bold yellow] ([italic]{tts_output_device_name}[/italic])"
             print_with_style(msg)
 

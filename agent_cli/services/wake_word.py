@@ -23,10 +23,10 @@ if TYPE_CHECKING:
 
 
 def create_wake_word_detector(
-    wake_word_config: config.WakeWord,
+    wake_word_cfg: config.WakeWord,
 ) -> Callable[..., Awaitable[str | None]]:
     """Return a wake word detector function."""
-    return partial(_detect_wake_word_from_queue, wake_word_cfg=wake_word_config)
+    return partial(_detect_wake_word_from_queue, wake_word_cfg=wake_word_cfg)
 
 
 async def _send_audio_from_queue_for_wake_detection(

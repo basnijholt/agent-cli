@@ -116,7 +116,7 @@ async def test_transcribe_recorded_audio_wyoming_connection_error(
     """Test that transcribe_recorded_audio_wyoming handles ConnectionRefusedError."""
     result = await asr._transcribe_recorded_audio_wyoming(
         audio_data=b"test",
-        wyoming_asr_config=MagicMock(),
+        wyoming_asr_cfg=MagicMock(),
         logger=MagicMock(),
     )
     assert result == ""

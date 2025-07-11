@@ -162,7 +162,7 @@ async def _handle_conversation_turn(
     audio_out_cfg: config.AudioOutput,
     wyoming_tts_cfg: config.WyomingTTS,
     openai_tts_cfg: config.OpenAITTS,
-    kokoro_tts_config: config.KokoroTTS,
+    kokoro_tts_cfg: config.KokoroTTS,
     live: Live,
 ) -> None:
     """Handles a single turn of the conversation."""
@@ -234,10 +234,10 @@ async def _handle_conversation_turn(
             system_prompt=SYSTEM_PROMPT,
             agent_instructions=AGENT_INSTRUCTIONS,
             user_input=user_message_with_context,
-            provider_config=provider_cfg,
-            ollama_config=ollama_cfg,
-            openai_config=openai_llm_cfg,
-            gemini_config=gemini_llm_cfg,
+            provider_cfg=provider_cfg,
+            ollama_cfg=ollama_cfg,
+            openai_cfg=openai_llm_cfg,
+            gemini_cfg=gemini_llm_cfg,
             logger=LOGGER,
             tools=tools(),
             quiet=True,  # Suppress internal output since we're showing our own timer
@@ -280,11 +280,11 @@ async def _handle_conversation_turn(
     if audio_out_cfg.enable_tts:
         await handle_tts_playback(
             text=response_text,
-            provider_config=provider_cfg,
-            audio_output_config=audio_out_cfg,
-            wyoming_tts_config=wyoming_tts_cfg,
-            openai_tts_config=openai_tts_cfg,
-            kokoro_tts_config=kokoro_tts_config,
+            provider_cfg=provider_cfg,
+            audio_output_cfg=audio_out_cfg,
+            wyoming_tts_cfg=wyoming_tts_cfg,
+            openai_tts_cfg=openai_tts_cfg,
+            kokoro_tts_cfg=kokoro_tts_cfg,
             save_file=general_cfg.save_file,
             quiet=general_cfg.quiet,
             logger=LOGGER,
@@ -314,7 +314,7 @@ async def _async_main(
     audio_out_cfg: config.AudioOutput,
     wyoming_tts_cfg: config.WyomingTTS,
     openai_tts_cfg: config.OpenAITTS,
-    kokoro_tts_config: config.KokoroTTS,
+    kokoro_tts_cfg: config.KokoroTTS,
 ) -> None:
     """Main async function, consumes parsed arguments."""
     try:
@@ -361,7 +361,7 @@ async def _async_main(
                         audio_out_cfg=audio_out_cfg,
                         wyoming_tts_cfg=wyoming_tts_cfg,
                         openai_tts_cfg=openai_tts_cfg,
-                        kokoro_tts_config=kokoro_tts_config,
+                        kokoro_tts_cfg=kokoro_tts_cfg,
                         live=live,
                     )
     except Exception:
@@ -527,6 +527,6 @@ def chat(
                 audio_out_cfg=audio_out_cfg,
                 wyoming_tts_cfg=wyoming_tts_cfg,
                 openai_tts_cfg=openai_tts_cfg,
-                kokoro_tts_config=kokoro_tts_cfg,
+                kokoro_tts_cfg=kokoro_tts_cfg,
             ),
         )

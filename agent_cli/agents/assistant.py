@@ -95,14 +95,14 @@ async def _record_audio_with_wake_word(
     stop_event: InteractiveStopEvent,
     logger: logging.Logger,
     *,
-    wake_word_config: config.WakeWord,
+    wake_word_cfg: config.WakeWord,
     quiet: bool = False,
     live: Live | None = None,
 ) -> bytes | None:
     """Record audio to a buffer using wake word detection to start and stop."""
     if not quiet:
         print_with_style(
-            f"👂 Listening for wake word: [bold yellow]{wake_word_config.wake_word}[/bold yellow]",
+            f"👂 Listening for wake word: [bold yellow]{wake_word_cfg.wake_word}[/bold yellow]",
         )
         print_with_style(
             "Say the wake word to start recording, then say it again to stop and process.",
@@ -113,7 +113,7 @@ async def _record_audio_with_wake_word(
         # Create a queue for wake word detection
         wake_queue = await tee.add_queue()
 
-        detector = create_wake_word_detector(wake_word_config)
+        detector = create_wake_word_detector(wake_word_cfg)
         detected_word = await detector(
             logger=logger,
             queue=wake_queue,
@@ -177,8 +177,8 @@ async def _async_main(
     audio_out_cfg: config.AudioOutput,
     wyoming_tts_cfg: config.WyomingTTS,
     openai_tts_cfg: config.OpenAITTS,
-    kokoro_tts_config: config.KokoroTTS,
-    wake_word_config: config.WakeWord,
+    kokoro_tts_cfg: config.KokoroTTS,
+    wake_word_cfg: config.WakeWord,
     system_prompt: str,
     agent_instructions: str,
     live: Live | None,
@@ -192,9 +192,9 @@ async def _async_main(
         audio_in_cfg.input_device_index = input_device_index
         audio_out_cfg.output_device_index = tts_output_device_index
 
-        stream_config = audio.setup_input_stream(input_device_index)
+        stream_kwargs = audio.setup_input_stream(input_device_index)
         with (
-            audio.open_pyaudio_stream(p, **stream_config) as stream,
+            audio.open_pyaudio_stream(p, **stream_kwargs) as stream,
             signal_handling_context(LOGGER, general_cfg.quiet) as stop_event,
         ):
             while not stop_event.is_set():
@@ -202,7 +202,7 @@ async def _async_main(
                     stream,
                     stop_event,
                     LOGGER,
-                    wake_word_config=wake_word_config,
+                    wake_word_cfg=wake_word_cfg,
                     quiet=general_cfg.quiet,
                     live=live,
                 )
@@ -217,11 +217,11 @@ async def _async_main(
 
                 instruction = await get_instruction_from_audio(
                     audio_data=audio_data,
-                    provider_config=provider_cfg,
-                    audio_input_config=audio_in_cfg,
-                    wyoming_asr_config=wyoming_asr_cfg,
-                    openai_asr_config=openai_asr_cfg,
-                    ollama_config=ollama_cfg,
+                    provider_cfg=provider_cfg,
+                    audio_input_cfg=audio_in_cfg,
+                    wyoming_asr_cfg=wyoming_asr_cfg,
+                    openai_asr_cfg=openai_asr_cfg,
+                    ollama_cfg=ollama_cfg,
                     logger=LOGGER,
                     quiet=general_cfg.quiet,
                 )
@@ -231,15 +231,15 @@ async def _async_main(
                 await process_instruction_and_respond(
                     instruction=instruction,
                     original_text="",
-                    provider_config=provider_cfg,
-                    general_config=general_cfg,
-                    ollama_config=ollama_cfg,
-                    openai_llm_config=openai_llm_cfg,
-                    gemini_llm_config=gemini_llm_cfg,
-                    audio_output_config=audio_out_cfg,
-                    wyoming_tts_config=wyoming_tts_cfg,
-                    openai_tts_config=openai_tts_cfg,
-                    kokoro_tts_config=kokoro_tts_config,
+                    provider_cfg=provider_cfg,
+                    general_cfg=general_cfg,
+                    ollama_cfg=ollama_cfg,
+                    openai_llm_cfg=openai_llm_cfg,
+                    gemini_llm_cfg=gemini_llm_cfg,
+                    audio_output_cfg=audio_out_cfg,
+                    wyoming_tts_cfg=wyoming_tts_cfg,
+                    openai_tts_cfg=openai_tts_cfg,
+                    kokoro_tts_cfg=kokoro_tts_cfg,
                     system_prompt=system_prompt,
                     agent_instructions=agent_instructions,
                     live=live,
@@ -383,19 +383,19 @@ def assistant(
             tts_kokoro_voice=tts_kokoro_voice,
             tts_kokoro_host=tts_kokoro_host,
         )
-        wake_word_config = config.WakeWord(
+        wake_word_cfg = config.WakeWord(
             wake_server_ip=wake_server_ip,
             wake_server_port=wake_server_port,
             wake_word=wake_word,
         )
 
-        variations = ", ".join(WAKE_WORD_VARIATIONS.get(wake_word_config.wake_word, []))
+        variations = ", ".join(WAKE_WORD_VARIATIONS.get(wake_word_cfg.wake_word, []))
         system_prompt = SYSTEM_PROMPT_TEMPLATE.format(
-            wake_word=wake_word_config.wake_word,
+            wake_word=wake_word_cfg.wake_word,
             variations=variations,
         )
         agent_instructions = AGENT_INSTRUCTIONS_TEMPLATE.format(
-            wake_word=wake_word_config.wake_word,
+            wake_word=wake_word_cfg.wake_word,
             variations=variations,
         )
 
@@ -412,8 +412,8 @@ def assistant(
                 audio_out_cfg=audio_out_cfg,
                 wyoming_tts_cfg=wyoming_tts_cfg,
                 openai_tts_cfg=openai_tts_cfg,
-                kokoro_tts_config=kokoro_tts_cfg,
-                wake_word_config=wake_word_config,
+                kokoro_tts_cfg=kokoro_tts_cfg,
+                wake_word_cfg=wake_word_cfg,
                 system_prompt=system_prompt,
                 agent_instructions=agent_instructions,
                 live=live,

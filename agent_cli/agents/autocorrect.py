@@ -81,10 +81,10 @@ async def _process_text(
 ) -> tuple[str, float]:
     """Process text with the LLM and return the corrected text and elapsed time."""
     agent = create_llm_agent(
-        provider_config=provider_cfg,
-        ollama_config=ollama_cfg,
-        openai_config=openai_llm_cfg,
-        gemini_config=gemini_llm_cfg,
+        provider_cfg=provider_cfg,
+        ollama_cfg=ollama_cfg,
+        openai_cfg=openai_llm_cfg,
+        gemini_cfg=gemini_llm_cfg,
         system_prompt=SYSTEM_PROMPT,
         instructions=AGENT_INSTRUCTIONS,
     )

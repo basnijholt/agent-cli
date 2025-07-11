@@ -72,7 +72,7 @@ async def test_handle_conversation_turn_no_llm_response():
             audio_out_cfg=audio_out_cfg,
             wyoming_tts_cfg=wyoming_tts_cfg,
             openai_tts_cfg=openai_tts_cfg,
-            kokoro_tts_config=kokoro_tts_cfg,
+            kokoro_tts_cfg=kokoro_tts_cfg,
             live=mock_live,
         )
         mock_create_transcriber.assert_called_once()
@@ -133,7 +133,7 @@ async def test_handle_conversation_turn_no_instruction():
             audio_out_cfg=audio_out_cfg,
             wyoming_tts_cfg=wyoming_tts_cfg,
             openai_tts_cfg=openai_tts_cfg,
-            kokoro_tts_config=kokoro_tts_cfg,
+            kokoro_tts_cfg=kokoro_tts_cfg,
             live=mock_live,
         )
         mock_create_transcriber.assert_called_once()
@@ -231,6 +231,6 @@ async def test_async_main_exception_handling():
                 audio_out_cfg=audio_out_cfg,
                 wyoming_tts_cfg=wyoming_tts_cfg,
                 openai_tts_cfg=openai_tts_cfg,
-                kokoro_tts_config=kokoro_tts_cfg,
+                kokoro_tts_cfg=kokoro_tts_cfg,
             )
         mock_console.print_exception.assert_called_once()

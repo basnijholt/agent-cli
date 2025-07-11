@@ -24,25 +24,25 @@ LOGGER = logging.getLogger()
 async def get_instruction_from_audio(
     *,
     audio_data: bytes,
-    provider_config: config.ProviderSelection,
-    audio_input_config: config.AudioInput,
-    wyoming_asr_config: config.WyomingASR,
-    openai_asr_config: config.OpenAIASR,
-    ollama_config: config.Ollama,
+    provider_cfg: config.ProviderSelection,
+    audio_input_cfg: config.AudioInput,
+    wyoming_asr_cfg: config.WyomingASR,
+    openai_asr_cfg: config.OpenAIASR,
+    ollama_cfg: config.Ollama,
     logger: logging.Logger,
     quiet: bool,
 ) -> str | None:
     """Transcribe audio data and return the instruction."""
     try:
         start_time = time.monotonic()
-        transcriber = asr.create_recorded_audio_transcriber(provider_config)
+        transcriber = asr.create_recorded_audio_transcriber(provider_cfg)
         instruction = await transcriber(
             audio_data=audio_data,
-            provider_config=provider_config,
-            audio_input_config=audio_input_config,
-            wyoming_asr_config=wyoming_asr_config,
-            openai_asr_config=openai_asr_config,
-            ollama_config=ollama_config,
+            provider_cfg=provider_cfg,
+            audio_input_cfg=audio_input_cfg,
+            wyoming_asr_cfg=wyoming_asr_cfg,
+            openai_asr_cfg=openai_asr_cfg,
+            ollama_cfg=ollama_cfg,
             logger=logger,
             quiet=quiet,
         )
@@ -77,15 +77,15 @@ async def process_instruction_and_respond(
     *,
     instruction: str,
     original_text: str,
-    provider_config: config.ProviderSelection,
-    general_config: config.General,
-    ollama_config: config.Ollama,
-    openai_llm_config: config.OpenAILLM,
-    gemini_llm_config: config.GeminiLLM,
-    audio_output_config: config.AudioOutput,
-    wyoming_tts_config: config.WyomingTTS,
-    openai_tts_config: config.OpenAITTS,
-    kokoro_tts_config: config.KokoroTTS,
+    provider_cfg: config.ProviderSelection,
+    general_cfg: config.General,
+    ollama_cfg: config.Ollama,
+    openai_llm_cfg: config.OpenAILLM,
+    gemini_llm_cfg: config.GeminiLLM,
+    audio_output_cfg: config.AudioOutput,
+    wyoming_tts_cfg: config.WyomingTTS,
+    openai_tts_cfg: config.OpenAITTS,
+    kokoro_tts_cfg: config.KokoroTTS,
     system_prompt: str,
     agent_instructions: str,
     live: Live | None,
@@ -93,37 +93,37 @@ async def process_instruction_and_respond(
 ) -> None:
     """Process instruction with LLM and handle TTS response."""
     # Process with LLM if clipboard mode is enabled
-    if general_config.clipboard:
+    if general_cfg.clipboard:
         await process_and_update_clipboard(
             system_prompt=system_prompt,
             agent_instructions=agent_instructions,
-            provider_config=provider_config,
-            ollama_config=ollama_config,
-            openai_config=openai_llm_config,
-            gemini_config=gemini_llm_config,
+            provider_cfg=provider_cfg,
+            ollama_cfg=ollama_cfg,
+            openai_cfg=openai_llm_cfg,
+            gemini_cfg=gemini_llm_cfg,
             logger=logger,
             original_text=original_text,
             instruction=instruction,
-            clipboard=general_config.clipboard,
-            quiet=general_config.quiet,
+            clipboard=general_cfg.clipboard,
+            quiet=general_cfg.quiet,
             live=live,
         )
 
         # Handle TTS response if enabled
-        if audio_output_config.enable_tts:
+        if audio_output_cfg.enable_tts:
             response_text = pyperclip.paste()
             if response_text and response_text.strip():
                 await handle_tts_playback(
                     text=response_text,
-                    provider_config=provider_config,
-                    audio_output_config=audio_output_config,
-                    wyoming_tts_config=wyoming_tts_config,
-                    openai_tts_config=openai_tts_config,
-                    kokoro_tts_config=kokoro_tts_config,
-                    save_file=general_config.save_file,
-                    quiet=general_config.quiet,
+                    provider_cfg=provider_cfg,
+                    audio_output_cfg=audio_output_cfg,
+                    wyoming_tts_cfg=wyoming_tts_cfg,
+                    openai_tts_cfg=openai_tts_cfg,
+                    kokoro_tts_cfg=kokoro_tts_cfg,
+                    save_file=general_cfg.save_file,
+                    quiet=general_cfg.quiet,
                     logger=logger,
-                    play_audio=not general_config.save_file,
+                    play_audio=not general_cfg.save_file,
                     status_message="🔊 Speaking response...",
                     description="TTS audio",
                     live=live,
