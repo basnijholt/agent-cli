@@ -136,7 +136,7 @@ async def test_detect_wake_word_from_queue_connection_error(
 ):
     """Test that _detect_wake_word_from_queue handles ConnectionRefusedError."""
     result = await wake_word._detect_wake_word_from_queue(
-        config.WakeWord("localhost", 1234, "test_word"),
+        config.WakeWord(wake_server_ip="localhost", wake_server_port=1234, wake_word="test_word"),
         mock_logger,
         asyncio.Queue(),
         live=mock_live,
