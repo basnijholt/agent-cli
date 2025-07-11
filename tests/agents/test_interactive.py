@@ -237,7 +237,7 @@ async def test_async_main_full_loop(tmp_path: Path) -> None:
     with (
         patch("agent_cli.agents.chat.pyaudio_context"),
         patch("agent_cli.agents.chat.setup_devices", return_value=(1, "mock_input", 1)),
-        patch("agent_cli.agents.chat.asr.get_transcriber") as mock_get_transcriber,
+        patch("agent_cli.agents.chat.asr.create_transcriber") as mock_create_transcriber,
         patch(
             "agent_cli.agents.chat.get_llm_response",
             new_callable=AsyncMock,
@@ -254,7 +254,7 @@ async def test_async_main_full_loop(tmp_path: Path) -> None:
         mock_stop_event.clear = MagicMock()  # Mock the clear method
 
         mock_transcriber = AsyncMock(return_value="Mocked instruction")
-        mock_get_transcriber.return_value = mock_transcriber
+        mock_create_transcriber.return_value = mock_transcriber
         mock_llm_response.return_value = "Mocked response"
         mock_signal.return_value.__enter__.return_value = mock_stop_event
 
@@ -275,7 +275,7 @@ async def test_async_main_full_loop(tmp_path: Path) -> None:
         )
 
         # Verify that the core functions were called
-        mock_get_transcriber.assert_called_once()
+        mock_create_transcriber.assert_called_once()
         mock_transcriber.assert_called_once()
         mock_llm_response.assert_called_once()
         assert mock_stop_event.clear.call_count == 2  # Called after ASR and at end of turn

@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 from wyoming.audio import AudioChunk, AudioStart, AudioStop
 from wyoming.wake import Detect, Detection, NotDetected
 
-from agent_cli import constants
+from agent_cli import config, constants
 from agent_cli.core.audio import read_from_queue
 from agent_cli.core.utils import manage_send_receive_tasks
 from agent_cli.services._wyoming_utils import wyoming_client_context
@@ -89,10 +89,8 @@ async def _receive_wake_detection(
     return None
 
 
-async def detect_wake_word_from_queue(
-    wake_server_ip: str,
-    wake_server_port: int,
-    wake_word: str,
+async def _detect_wake_word_from_queue(
+    wake_word_cfg: config.WakeWord,
     logger: logging.Logger,
     queue: asyncio.Queue,
     *,
@@ -104,13 +102,13 @@ async def detect_wake_word_from_queue(
     """Detect wake word from an audio queue."""
     try:
         async with wyoming_client_context(
-            wake_server_ip,
-            wake_server_port,
+            wake_word_cfg.wake_server_ip,
+            wake_word_cfg.wake_server_port,
             "wake word",
             logger,
             quiet=quiet,
         ) as client:
-            await client.write_event(Detect(names=[wake_word]).event())
+            await client.write_event(Detect(names=[wake_word_cfg.wake_word]).event())
 
             _send_task, recv_task = await manage_send_receive_tasks(
                 _send_audio_from_queue_for_wake_detection(

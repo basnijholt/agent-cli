@@ -112,10 +112,8 @@ async def _record_audio_with_wake_word(
         # Create a queue for wake word detection
         wake_queue = await tee.add_queue()
 
-        detected_word = await wake_word.detect_wake_word_from_queue(
-            wake_server_ip=wake_word_config.wake_server_ip,
-            wake_server_port=wake_word_config.wake_server_port,
-            wake_word=wake_word_config.wake_word,
+        detected_word = await wake_word._detect_wake_word_from_queue(
+            wake_word_cfg=wake_word_config,
             logger=logger,
             queue=wake_queue,
             quiet=quiet,
@@ -138,10 +136,8 @@ async def _record_audio_with_wake_word(
         record_task = asyncio.create_task(asr.record_audio_to_buffer(record_queue, logger))
 
         # Use the same wake_queue for stop-word detection
-        stop_detected_word = await wake_word.detect_wake_word_from_queue(
-            wake_server_ip=wake_word_config.wake_server_ip,
-            wake_server_port=wake_word_config.wake_server_port,
-            wake_word=wake_word_config.wake_word,
+        stop_detected_word = await wake_word._detect_wake_word_from_queue(
+            wake_word_cfg=wake_word_config,
             logger=logger,
             queue=wake_queue,
             quiet=quiet,

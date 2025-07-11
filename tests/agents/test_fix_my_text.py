@@ -98,15 +98,15 @@ def test_display_original_text_none_console():
 
 
 @pytest.mark.asyncio
-@patch("agent_cli.agents.autocorrect.build_agent")
-async def test_process_text_integration(mock_build_agent: MagicMock) -> None:
+@patch("agent_cli.agents.autocorrect.create_llm_agent")
+async def test_process_text_integration(mock_create_llm_agent: MagicMock) -> None:
     """Test process_text with a more realistic mock setup."""
     # Create a mock agent that behaves more like the real thing
     mock_agent = MagicMock()
     mock_result = MagicMock()
     mock_result.output = "This is corrected text."
     mock_agent.run = AsyncMock(return_value=mock_result)
-    mock_build_agent.return_value = mock_agent
+    mock_create_llm_agent.return_value = mock_agent
 
     provider_cfg = config.ProviderSelection(
         llm_provider="local",
@@ -135,7 +135,7 @@ async def test_process_text_integration(mock_build_agent: MagicMock) -> None:
     assert elapsed >= 0
 
     # Verify the agent was called correctly
-    mock_build_agent.assert_called_once_with(
+    mock_create_llm_agent.assert_called_once_with(
         provider_config=provider_cfg,
         ollama_config=ollama_cfg,
         openai_config=openai_llm_cfg,
@@ -148,11 +148,11 @@ async def test_process_text_integration(mock_build_agent: MagicMock) -> None:
 
 
 @pytest.mark.asyncio
-@patch("agent_cli.agents.autocorrect.build_agent")
+@patch("agent_cli.agents.autocorrect.create_llm_agent")
 @patch("agent_cli.agents.autocorrect.get_clipboard_text")
 async def test_autocorrect_command_with_text(
     mock_get_clipboard: MagicMock,
-    mock_build_agent: MagicMock,
+    mock_create_llm_agent: MagicMock,
 ) -> None:
     """Test the autocorrect command with text provided as an argument."""
     # Setup
@@ -161,7 +161,7 @@ async def test_autocorrect_command_with_text(
     mock_result = MagicMock()
     mock_result.output = "Corrected text."
     mock_agent.run = AsyncMock(return_value=mock_result)
-    mock_build_agent.return_value = mock_agent
+    mock_create_llm_agent.return_value = mock_agent
 
     provider_cfg = config.ProviderSelection(
         llm_provider="local",
@@ -196,7 +196,7 @@ async def test_autocorrect_command_with_text(
 
     # Assertions
     mock_get_clipboard.assert_not_called()
-    mock_build_agent.assert_called_once_with(
+    mock_create_llm_agent.assert_called_once_with(
         provider_config=provider_cfg,
         ollama_config=ollama_cfg,
         openai_config=openai_llm_cfg,
@@ -209,11 +209,11 @@ async def test_autocorrect_command_with_text(
 
 
 @pytest.mark.asyncio
-@patch("agent_cli.agents.autocorrect.build_agent")
+@patch("agent_cli.agents.autocorrect.create_llm_agent")
 @patch("agent_cli.agents.autocorrect.get_clipboard_text")
 async def test_autocorrect_command_from_clipboard(
     mock_get_clipboard: MagicMock,
-    mock_build_agent: MagicMock,
+    mock_create_llm_agent: MagicMock,
 ) -> None:
     """Test the autocorrect command reading from the clipboard."""
     # Setup
@@ -222,7 +222,7 @@ async def test_autocorrect_command_from_clipboard(
     mock_result = MagicMock()
     mock_result.output = "Corrected clipboard text."
     mock_agent.run = AsyncMock(return_value=mock_result)
-    mock_build_agent.return_value = mock_agent
+    mock_create_llm_agent.return_value = mock_agent
 
     provider_cfg = config.ProviderSelection(
         llm_provider="local",
@@ -257,7 +257,7 @@ async def test_autocorrect_command_from_clipboard(
 
     # Assertions
     mock_get_clipboard.assert_called_once_with(quiet=True)
-    mock_build_agent.assert_called_once_with(
+    mock_create_llm_agent.assert_called_once_with(
         provider_config=provider_cfg,
         ollama_config=ollama_cfg,
         openai_config=openai_llm_cfg,

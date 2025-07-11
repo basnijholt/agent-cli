@@ -33,7 +33,7 @@ if TYPE_CHECKING:
     from agent_cli.core.utils import InteractiveStopEvent
 
 
-def get_transcriber(
+def create_transcriber(
     provider_config: config.ProviderSelection,
     audio_input_config: config.AudioInput,
     wyoming_asr_config: config.WyomingASR,
@@ -56,7 +56,7 @@ def get_transcriber(
     raise ValueError(msg)
 
 
-def get_recorded_audio_transcriber(
+def create_recorded_audio_transcriber(
     provider_config: config.ProviderSelection,
 ) -> Callable[..., Awaitable[str]]:
     """Return the appropriate transcriber for recorded audio based on the provider."""

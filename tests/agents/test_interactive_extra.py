@@ -47,14 +47,14 @@ async def test_handle_conversation_turn_no_llm_response():
     mock_live = MagicMock()
 
     with (
-        patch("agent_cli.agents.chat.asr.get_transcriber") as mock_get_transcriber,
+        patch("agent_cli.agents.chat.asr.create_transcriber") as mock_create_transcriber,
         patch(
             "agent_cli.agents.chat.get_llm_response",
             new_callable=AsyncMock,
         ) as mock_llm_response,
     ):
         mock_transcriber = AsyncMock(return_value="test instruction")
-        mock_get_transcriber.return_value = mock_transcriber
+        mock_create_transcriber.return_value = mock_transcriber
         mock_llm_response.return_value = ""
         await _handle_conversation_turn(
             p=mock_p,
@@ -75,7 +75,7 @@ async def test_handle_conversation_turn_no_llm_response():
             kokoro_tts_config=kokoro_tts_cfg,
             live=mock_live,
         )
-        mock_get_transcriber.assert_called_once()
+        mock_create_transcriber.assert_called_once()
         mock_transcriber.assert_awaited_once()
         mock_llm_response.assert_awaited_once()
 
@@ -114,9 +114,9 @@ async def test_handle_conversation_turn_no_instruction():
     )
     mock_live = MagicMock()
 
-    with patch("agent_cli.agents.chat.asr.get_transcriber") as mock_get_transcriber:
+    with patch("agent_cli.agents.chat.asr.create_transcriber") as mock_create_transcriber:
         mock_transcriber = AsyncMock(return_value="")
-        mock_get_transcriber.return_value = mock_transcriber
+        mock_create_transcriber.return_value = mock_transcriber
         await _handle_conversation_turn(
             p=mock_p,
             stop_event=stop_event,
@@ -136,7 +136,7 @@ async def test_handle_conversation_turn_no_instruction():
             kokoro_tts_config=kokoro_tts_cfg,
             live=mock_live,
         )
-        mock_get_transcriber.assert_called_once()
+        mock_create_transcriber.assert_called_once()
         mock_transcriber.assert_awaited_once()
     assert not conversation_history
 

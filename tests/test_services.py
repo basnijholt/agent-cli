@@ -65,8 +65,8 @@ async def test_synthesize_speech_openai(mock_openai_client: MagicMock) -> None:
     )
 
 
-def test_get_transcriber_wyoming() -> None:
-    """Test that get_transcriber returns the Wyoming transcriber."""
+def test_create_transcriber_wyoming() -> None:
+    """Test that create_transcriber returns the Wyoming transcriber."""
     provider_config = config.ProviderSelection(
         asr_provider="local",
         llm_provider="local",
@@ -76,7 +76,7 @@ def test_get_transcriber_wyoming() -> None:
     wyoming_asr_config = config.WyomingASR(asr_wyoming_ip="localhost", asr_wyoming_port=1234)
     openai_asr_config = config.OpenAIASR(asr_openai_model="whisper-1", openai_api_key="fake-key")
 
-    transcriber = asr.get_transcriber(
+    transcriber = asr.create_transcriber(
         provider_config,
         audio_input_config,
         wyoming_asr_config,
@@ -85,8 +85,8 @@ def test_get_transcriber_wyoming() -> None:
     assert transcriber.func == asr._transcribe_live_audio_wyoming  # type: ignore[attr-defined]
 
 
-def test_get_synthesizer_wyoming() -> None:
-    """Test that get_synthesizer returns the Wyoming synthesizer."""
+def test_create_synthesizer_wyoming() -> None:
+    """Test that create_synthesizer returns the Wyoming synthesizer."""
     provider_config = config.ProviderSelection(
         asr_provider="local",
         llm_provider="local",
@@ -103,7 +103,7 @@ def test_get_synthesizer_wyoming() -> None:
         tts_kokoro_voice="alloy",
         tts_kokoro_host="http://localhost:8000/v1",
     )
-    synthesizer = tts.get_synthesizer(
+    synthesizer = tts.create_synthesizer(
         provider_config,
         audio_output_config,
         wyoming_tts_config,
@@ -113,8 +113,8 @@ def test_get_synthesizer_wyoming() -> None:
     assert synthesizer.func == tts._synthesize_speech_wyoming  # type: ignore[attr-defined]
 
 
-def test_get_synthesizer_kokoro() -> None:
-    """Test that get_synthesizer returns the Kokoro synthesizer."""
+def test_create_synthesizer_kokoro() -> None:
+    """Test that create_synthesizer returns the Kokoro synthesizer."""
     provider_config = config.ProviderSelection(
         asr_provider="local",
         llm_provider="local",
@@ -131,7 +131,7 @@ def test_get_synthesizer_kokoro() -> None:
         tts_kokoro_voice="alloy",
         tts_kokoro_host="http://localhost:8000/v1",
     )
-    synthesizer = tts.get_synthesizer(
+    synthesizer = tts.create_synthesizer(
         provider_config,
         audio_output_config,
         wyoming_tts_config,

@@ -9,15 +9,15 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from agent_cli import config
-from agent_cli.services.tts import _apply_speed_adjustment, _speak_text, get_synthesizer
+from agent_cli.services.tts import _apply_speed_adjustment, _speak_text, create_synthesizer
 
 
 @pytest.mark.asyncio
-@patch("agent_cli.services.tts.get_synthesizer")
-async def test_speak_text(mock_get_synthesizer: MagicMock) -> None:
+@patch("agent_cli.services.tts.create_synthesizer")
+async def test_speak_text(mock_create_synthesizer: MagicMock) -> None:
     """Test the speak_text function."""
     mock_synthesizer = AsyncMock(return_value=b"audio data")
-    mock_get_synthesizer.return_value = mock_synthesizer
+    mock_create_synthesizer.return_value = mock_synthesizer
     provider_config = config.ProviderSelection(
         asr_provider="local",
         llm_provider="local",
@@ -118,7 +118,7 @@ def test_apply_speed_adjustment_with_audiostretchy(mock_audio_stretch_class: Mag
     assert speed_changed is True
 
 
-def test_get_synthesizer_disabled():
+def test_create_synthesizer_disabled():
     """Test that the dummy synthesizer is returned when TTS is disabled."""
     provider_cfg = config.ProviderSelection(
         asr_provider="local",
@@ -137,7 +137,7 @@ def test_get_synthesizer_disabled():
         tts_kokoro_host="http://localhost:8000/v1",
     )
 
-    synthesizer = get_synthesizer(
+    synthesizer = create_synthesizer(
         provider_config=provider_cfg,
         audio_output_config=audio_output_config,
         wyoming_tts_config=wyoming_tts_config,

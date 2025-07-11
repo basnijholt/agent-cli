@@ -168,7 +168,7 @@ async def _handle_conversation_turn(
     """Handles a single turn of the conversation."""
     # 1. Transcribe user's command
     start_time = time.monotonic()
-    transcriber = asr.get_transcriber(
+    transcriber = asr.create_transcriber(
         provider_cfg,
         audio_in_cfg,
         wyoming_asr_cfg,

@@ -14,11 +14,11 @@ from agent_cli.agents._voice_agent_common import (
 
 
 @pytest.mark.asyncio
-@patch("agent_cli.agents._voice_agent_common.asr.get_recorded_audio_transcriber")
-async def test_get_instruction_from_audio(mock_get_transcriber: MagicMock) -> None:
+@patch("agent_cli.agents._voice_agent_common.asr.create_recorded_audio_transcriber")
+async def test_get_instruction_from_audio(mock_create_transcriber: MagicMock) -> None:
     """Test the get_instruction_from_audio function."""
     mock_transcriber = AsyncMock(return_value="test instruction")
-    mock_get_transcriber.return_value = mock_transcriber
+    mock_create_transcriber.return_value = mock_transcriber
     provider_cfg = config.ProviderSelection(
         asr_provider="local",
         llm_provider="local",
@@ -40,16 +40,16 @@ async def test_get_instruction_from_audio(mock_get_transcriber: MagicMock) -> No
         quiet=False,
     )
     assert result == "test instruction"
-    mock_get_transcriber.assert_called_once()
+    mock_create_transcriber.assert_called_once()
     mock_transcriber.assert_called_once()
 
 
 @pytest.mark.asyncio
-@patch("agent_cli.agents._voice_agent_common.asr.get_recorded_audio_transcriber")
-async def test_get_instruction_from_audio_error(mock_get_transcriber: MagicMock) -> None:
+@patch("agent_cli.agents._voice_agent_common.asr.create_recorded_audio_transcriber")
+async def test_get_instruction_from_audio_error(mock_create_transcriber: MagicMock) -> None:
     """Test the get_instruction_from_audio function when an error occurs."""
     mock_transcriber = AsyncMock(side_effect=Exception("test error"))
-    mock_get_transcriber.return_value = mock_transcriber
+    mock_create_transcriber.return_value = mock_transcriber
     provider_cfg = config.ProviderSelection(
         asr_provider="local",
         llm_provider="local",
@@ -71,7 +71,7 @@ async def test_get_instruction_from_audio_error(mock_get_transcriber: MagicMock)
         quiet=False,
     )
     assert result is None
-    mock_get_transcriber.assert_called_once()
+    mock_create_transcriber.assert_called_once()
     mock_transcriber.assert_called_once()
 
 

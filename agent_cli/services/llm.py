@@ -55,7 +55,7 @@ def _gemini_llm_model(gemini_config: config.GeminiLLM) -> GeminiModel:
     return GeminiModel(model_name=model_name, provider=provider)
 
 
-def build_agent(
+def create_llm_agent(
     provider_config: config.ProviderSelection,
     ollama_config: config.Ollama,
     openai_config: config.OpenAILLM,
@@ -114,7 +114,7 @@ async def get_llm_response(
     exit_on_error: bool = False,
 ) -> str | None:
     """Get a response from the LLM with optional clipboard and output handling."""
-    agent = build_agent(
+    agent = create_llm_agent(
         provider_config=provider_config,
         ollama_config=ollama_config,
         openai_config=openai_config,

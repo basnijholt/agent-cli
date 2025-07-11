@@ -6,6 +6,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from rich.live import Live
 
+from agent_cli import config
 from agent_cli.core.utils import InteractiveStopEvent
 from agent_cli.services import wake_word
 
@@ -133,11 +134,9 @@ async def test_detect_wake_word_from_queue_connection_error(
     mock_logger: MagicMock,
     mock_live: MagicMock,
 ):
-    """Test that detect_wake_word_from_queue handles ConnectionRefusedError."""
-    result = await wake_word.detect_wake_word_from_queue(
-        "localhost",
-        1234,
-        "test_word",
+    """Test that _detect_wake_word_from_queue handles ConnectionRefusedError."""
+    result = await wake_word._detect_wake_word_from_queue(
+        config.WakeWord("localhost", 1234, "test_word"),
         mock_logger,
         asyncio.Queue(),
         live=mock_live,
