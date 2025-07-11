@@ -87,7 +87,7 @@ async def _async_main(
     start_time = time.monotonic()
     with maybe_live(not general_cfg.quiet) as live:
         with signal_handling_context(LOGGER, general_cfg.quiet) as stop_event:
-            transcriber = asr.get_transcriber(
+            transcriber = asr.create_transcriber(
                 provider_cfg,
                 audio_in_cfg,
                 wyoming_asr_cfg,

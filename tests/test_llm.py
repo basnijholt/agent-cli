@@ -8,10 +8,10 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from agent_cli import config
-from agent_cli.services.llm import build_agent, get_llm_response, process_and_update_clipboard
+from agent_cli.services.llm import create_llm_agent, get_llm_response, process_and_update_clipboard
 
 
-def test_build_agent_openai_no_key():
+def test_create_llm_agent_openai_no_key():
     """Test that building the agent with OpenAI provider fails without an API key."""
     provider_cfg = config.ProviderSelection(
         llm_provider="openai",
@@ -29,10 +29,10 @@ def test_build_agent_openai_no_key():
     )
 
     with pytest.raises(ValueError, match="OpenAI API key is not set."):
-        build_agent(provider_cfg, ollama_cfg, openai_llm_cfg, gemini_llm_cfg)
+        create_llm_agent(provider_cfg, ollama_cfg, openai_llm_cfg, gemini_llm_cfg)
 
 
-def test_build_agent(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_create_llm_agent(monkeypatch: pytest.MonkeyPatch) -> None:
     """Test building the agent."""
     monkeypatch.setenv("LLM_OLLAMA_HOST", "http://mockhost:1234")
     provider_cfg = config.ProviderSelection(
@@ -50,18 +50,18 @@ def test_build_agent(monkeypatch: pytest.MonkeyPatch) -> None:
         gemini_api_key="test-key",
     )
 
-    agent = build_agent(provider_cfg, ollama_cfg, openai_llm_cfg, gemini_llm_cfg)
+    agent = create_llm_agent(provider_cfg, ollama_cfg, openai_llm_cfg, gemini_llm_cfg)
 
     assert agent.model.model_name == "test-model"
 
 
 @pytest.mark.asyncio
-@patch("agent_cli.services.llm.build_agent")
-async def test_get_llm_response(mock_build_agent: MagicMock) -> None:
+@patch("agent_cli.services.llm.create_llm_agent")
+async def test_get_llm_response(mock_create_llm_agent: MagicMock) -> None:
     """Test getting a response from the LLM."""
     mock_agent = MagicMock()
     mock_agent.run = AsyncMock(return_value=MagicMock(output="hello"))
-    mock_build_agent.return_value = mock_agent
+    mock_create_llm_agent.return_value = mock_agent
 
     provider_cfg = config.ProviderSelection(
         llm_provider="local",
@@ -88,17 +88,17 @@ async def test_get_llm_response(mock_build_agent: MagicMock) -> None:
     )
 
     assert response == "hello"
-    mock_build_agent.assert_called_once()
+    mock_create_llm_agent.assert_called_once()
     mock_agent.run.assert_called_once_with("test")
 
 
 @pytest.mark.asyncio
-@patch("agent_cli.services.llm.build_agent")
-async def test_get_llm_response_error(mock_build_agent: MagicMock) -> None:
+@patch("agent_cli.services.llm.create_llm_agent")
+async def test_get_llm_response_error(mock_create_llm_agent: MagicMock) -> None:
     """Test getting a response from the LLM when an error occurs."""
     mock_agent = MagicMock()
     mock_agent.run = AsyncMock(side_effect=Exception("test error"))
-    mock_build_agent.return_value = mock_agent
+    mock_create_llm_agent.return_value = mock_agent
 
     provider_cfg = config.ProviderSelection(
         llm_provider="local",
@@ -125,17 +125,17 @@ async def test_get_llm_response_error(mock_build_agent: MagicMock) -> None:
     )
 
     assert response is None
-    mock_build_agent.assert_called_once()
+    mock_create_llm_agent.assert_called_once()
     mock_agent.run.assert_called_once_with("test")
 
 
 @pytest.mark.asyncio
-@patch("agent_cli.services.llm.build_agent")
-async def test_get_llm_response_error_exit(mock_build_agent: MagicMock):
+@patch("agent_cli.services.llm.create_llm_agent")
+async def test_get_llm_response_error_exit(mock_create_llm_agent: MagicMock):
     """Test getting a response from the LLM when an error occurs and exit_on_error is True."""
     mock_agent = MagicMock()
     mock_agent.run = AsyncMock(side_effect=Exception("test error"))
-    mock_build_agent.return_value = mock_agent
+    mock_create_llm_agent.return_value = mock_agent
 
     provider_cfg = config.ProviderSelection(
         llm_provider="local",

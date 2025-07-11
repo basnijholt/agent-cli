@@ -39,7 +39,7 @@ if TYPE_CHECKING:
 has_audiostretchy = importlib.util.find_spec("audiostretchy") is not None
 
 
-def get_synthesizer(
+def create_synthesizer(
     provider_config: config.ProviderSelection,
     audio_output_config: config.AudioOutput,
     wyoming_tts_config: config.WyomingTTS,
@@ -369,7 +369,7 @@ async def _speak_text(
     live: Live,
 ) -> bytes | None:
     """Synthesize and optionally play speech from text."""
-    synthesizer = get_synthesizer(
+    synthesizer = create_synthesizer(
         provider_config,
         audio_output_config,
         wyoming_tts_config,

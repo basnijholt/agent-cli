@@ -35,7 +35,7 @@ async def get_instruction_from_audio(
     """Transcribe audio data and return the instruction."""
     try:
         start_time = time.monotonic()
-        transcriber = asr.get_recorded_audio_transcriber(provider_config)
+        transcriber = asr.create_recorded_audio_transcriber(provider_config)
         instruction = await transcriber(
             audio_data=audio_data,
             provider_config=provider_config,

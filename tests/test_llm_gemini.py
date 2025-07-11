@@ -5,12 +5,12 @@ from __future__ import annotations
 import pytest
 
 from agent_cli import config
-from agent_cli.services.llm import build_agent
+from agent_cli.services.llm import create_llm_agent
 
 
 @pytest.mark.asyncio
-async def test_build_agent_with_gemini() -> None:
-    """Test that the build_agent function can build an agent with the Gemini provider."""
+async def test_create_llm_agent_with_gemini() -> None:
+    """Test that the create_llm_agent function can build an agent with the Gemini provider."""
     provider_config = config.ProviderSelection(
         llm_provider="gemini",
         asr_provider="local",
@@ -29,7 +29,7 @@ async def test_build_agent_with_gemini() -> None:
         openai_api_key="test-key",
     )
 
-    agent = build_agent(
+    agent = create_llm_agent(
         provider_config=provider_config,
         ollama_config=ollama_config,
         openai_config=openai_config,

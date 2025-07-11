@@ -23,7 +23,7 @@ from agent_cli.core.utils import (
     print_with_style,
     setup_logging,
 )
-from agent_cli.services.llm import build_agent
+from agent_cli.services.llm import create_llm_agent
 
 if TYPE_CHECKING:
     from rich.status import Status
@@ -80,7 +80,7 @@ async def _process_text(
     gemini_llm_cfg: config.GeminiLLM,
 ) -> tuple[str, float]:
     """Process text with the LLM and return the corrected text and elapsed time."""
-    agent = build_agent(
+    agent = create_llm_agent(
         provider_config=provider_cfg,
         ollama_config=ollama_cfg,
         openai_config=openai_llm_cfg,

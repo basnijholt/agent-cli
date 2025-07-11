@@ -74,11 +74,11 @@ async def test_receive_text() -> None:
     final_callback.assert_called_once_with("hello world")
 
 
-def test_get_transcriber():
+def test_create_transcriber():
     """Test that the correct transcriber is returned."""
     provider_cfg = MagicMock()
     provider_cfg.asr_provider = "openai"
-    transcriber = asr.get_transcriber(
+    transcriber = asr.create_transcriber(
         provider_cfg,
         MagicMock(),
         MagicMock(),
@@ -87,7 +87,7 @@ def test_get_transcriber():
     assert transcriber.func is asr._transcribe_live_audio_openai
 
     provider_cfg.asr_provider = "local"
-    transcriber = asr.get_transcriber(
+    transcriber = asr.create_transcriber(
         provider_cfg,
         MagicMock(),
         MagicMock(),
@@ -96,15 +96,15 @@ def test_get_transcriber():
     assert transcriber.func is asr._transcribe_live_audio_wyoming
 
 
-def test_get_recorded_audio_transcriber():
+def test_create_recorded_audio_transcriber():
     """Test that the correct recorded audio transcriber is returned."""
     provider_cfg = MagicMock()
     provider_cfg.asr_provider = "openai"
-    transcriber = asr.get_recorded_audio_transcriber(provider_cfg)
+    transcriber = asr.create_recorded_audio_transcriber(provider_cfg)
     assert transcriber is asr.transcribe_audio_openai
 
     provider_cfg.asr_provider = "local"
-    transcriber = asr.get_recorded_audio_transcriber(provider_cfg)
+    transcriber = asr.create_recorded_audio_transcriber(provider_cfg)
     assert transcriber is asr._transcribe_recorded_audio_wyoming
 
 
