@@ -72,7 +72,7 @@ def test_set_config_defaults(config_file: Path) -> None:
     assert ctx.default_map == expected_defaults
 
     # Test with autocorrect subcommand (should merge defaults)
-    ctx.invoked_subcommand = "autocorrect"
+    ctx.command.name = "autocorrect"
     ctx.default_map = {}  # Reset
     set_config_defaults(ctx, str(config_file))
 
