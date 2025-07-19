@@ -235,6 +235,22 @@ Or for development:
    source .venv/bin/activate  # On Windows use `.venv\Scripts\activate`
    ```
 
+Or for NixOS users:
+
+```bash
+nix-shell -p portaudio pkg-config gcc python3 --run "uv tool install --upgrade agent-cli"
+```
+
+or use the provided `shell.nix` and nix-direnv and create a `.envrc` file with:
+
+```nix
+use nix
+uv sync
+source .venv/bin/activate
+```
+
+Then run `direnv allow` to load the environment.
+
 ## Usage
 
 This package provides multiple command-line tools, each designed for a specific purpose.
