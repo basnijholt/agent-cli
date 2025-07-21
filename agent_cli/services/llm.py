@@ -188,11 +188,11 @@ async def process_and_update_clipboard(
     clipboard: bool,
     quiet: bool,
     live: Live,
-) -> None:
+) -> str | None:
     """Processes the text with the LLM, updates the clipboard, and displays the result."""
     user_input = INPUT_TEMPLATE.format(original_text=original_text, instruction=instruction)
 
-    await get_llm_response(
+    return await get_llm_response(
         system_prompt=system_prompt,
         agent_instructions=agent_instructions,
         user_input=user_input,

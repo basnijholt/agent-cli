@@ -310,3 +310,9 @@ SAVE_FILE: Path | None = typer.Option(
     help="Save TTS response audio to WAV file.",
     rich_help_panel="General Options",
 )
+TRANSCRIPTION_LOG: Path | None = typer.Option(
+    None,
+    "--transcription-log",
+    help="Path to log transcription results with timestamps, hostname, model, and raw output.",
+    rich_help_panel="General Options",
+)
