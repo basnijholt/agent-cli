@@ -9,10 +9,8 @@ import platform
 import time
 from contextlib import suppress
 from datetime import UTC, datetime
+from pathlib import Path  # noqa: TC003
 from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from pathlib import Path
 
 import pyperclip
 import typer
