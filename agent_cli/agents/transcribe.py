@@ -3,9 +3,13 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
+import platform
 import time
 from contextlib import suppress
+from datetime import UTC, datetime
+from pathlib import Path  # noqa: TC003
 from typing import TYPE_CHECKING
 
 import pyperclip
@@ -69,7 +73,29 @@ Please clean up this transcribed text by correcting any speech recognition error
 """
 
 
-async def _async_main(
+def log_transcription(
+    log_file: Path,
+    role: str,
+    raw_transcript: str,
+    processed_transcript: str | None = None,
+    model_info: str | None = None,
+) -> None:
+    """Log transcription results with metadata."""
+    log_entry = {
+        "timestamp": datetime.now(UTC).isoformat(),
+        "hostname": platform.node(),
+        "role": role,
+        "model": model_info,
+        "raw_output": raw_transcript,
+        "processed_output": processed_transcript,
+    }
+
+    # Append to log file
+    with log_file.open("a", encoding="utf-8") as f:
+        f.write(json.dumps(log_entry) + "\n")
+
+
+async def _async_main(  # noqa: PLR0912
     *,
     extra_instructions: str | None,
     provider_cfg: config.ProviderSelection,
@@ -81,6 +107,7 @@ async def _async_main(
     openai_llm_cfg: config.OpenAILLM,
     gemini_llm_cfg: config.GeminiLLM,
     llm_enabled: bool,
+    transcription_log: Path | None,
     p: pyaudio.PyAudio,
 ) -> None:
     """Async entry point, consuming parsed args."""
@@ -112,7 +139,15 @@ async def _async_main(
             if extra_instructions:
                 instructions += f"\n\n{extra_instructions}"
 
-            await process_and_update_clipboard(
+            # Get model info for logging
+            if provider_cfg.llm_provider == "local":
+                model_info = f"{provider_cfg.llm_provider}:{ollama_cfg.llm_ollama_model}"
+            elif provider_cfg.llm_provider == "openai":
+                model_info = f"{provider_cfg.llm_provider}:{openai_llm_cfg.llm_openai_model}"
+            elif provider_cfg.llm_provider == "gemini":
+                model_info = f"{provider_cfg.llm_provider}:{gemini_llm_cfg.llm_gemini_model}"
+
+            processed_transcript = await process_and_update_clipboard(
                 system_prompt=SYSTEM_PROMPT,
                 agent_instructions=instructions,
                 provider_cfg=provider_cfg,
@@ -126,6 +161,16 @@ async def _async_main(
                 quiet=general_cfg.quiet,
                 live=live,
             )
+
+            # Log transcription if requested
+            if transcription_log:
+                log_transcription(
+                    log_file=transcription_log,
+                    role="assistant",
+                    raw_transcript=transcript,
+                    processed_transcript=processed_transcript,
+                    model_info=model_info,
+                )
             return
 
     # When not using LLM, show transcript in output panel for consistency
@@ -138,6 +183,19 @@ async def _async_main(
                 transcript,
                 title="📝 Transcript",
                 subtitle="[dim]Copied to clipboard[/dim]" if general_cfg.clipboard else "",
+            )
+
+        # Log transcription if requested (raw only)
+        if transcription_log:
+            asr_model_info = f"{provider_cfg.asr_provider}"
+            if provider_cfg.asr_provider == "openai":
+                asr_model_info += f":{openai_asr_cfg.asr_openai_model}"
+            log_transcription(
+                log_file=transcription_log,
+                role="user",
+                raw_transcript=transcript,
+                processed_transcript=None,
+                model_info=asr_model_info,
             )
 
         if general_cfg.clipboard:
@@ -191,11 +249,17 @@ def transcribe(
     quiet: bool = opts.QUIET,
     config_file: str | None = opts.CONFIG_FILE,
     print_args: bool = opts.PRINT_ARGS,
+    transcription_log: Path | None = opts.TRANSCRIPTION_LOG,
 ) -> None:
     """Wyoming ASR Client for streaming microphone audio to a transcription server."""
     if print_args:
         print_command_line_args(locals())
     setup_logging(log_level, log_file, quiet=quiet)
+
+    # Expand user path for transcription log
+    if transcription_log:
+        transcription_log = transcription_log.expanduser()
+
     general_cfg = config.General(
         log_level=log_level,
         log_file=log_file,
@@ -266,6 +330,7 @@ def transcribe(
                     openai_llm_cfg=openai_llm_cfg,
                     gemini_llm_cfg=gemini_llm_cfg,
                     llm_enabled=llm,
+                    transcription_log=transcription_log,
                     p=p,
                 ),
             )
