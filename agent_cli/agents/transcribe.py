@@ -257,6 +257,11 @@ def transcribe(
     if print_args:
         print_command_line_args(locals())
     setup_logging(log_level, log_file, quiet=quiet)
+
+    # Expand user path for transcription log
+    if transcription_log:
+        transcription_log = transcription_log.expanduser()
+
     general_cfg = config.General(
         log_level=log_level,
         log_file=log_file,

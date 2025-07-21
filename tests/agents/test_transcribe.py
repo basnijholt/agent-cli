@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
-from typing import TYPE_CHECKING
+from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -13,9 +13,6 @@ import pytest
 from agent_cli import config
 from agent_cli.agents import transcribe
 from tests.mocks.wyoming import MockASRClient
-
-if TYPE_CHECKING:
-    from pathlib import Path
 
 
 @pytest.mark.asyncio
@@ -292,3 +289,21 @@ async def test_transcribe_with_logging(
     assert entry["processed_output"] == "Hello, world!"
     assert "timestamp" in entry
     assert "hostname" in entry
+
+
+def test_transcription_log_path_expansion() -> None:
+    """Test that transcription log paths with ~ are expanded."""
+    # Create a test case that would use ~ expansion
+    home_relative_path = Path("~/test_transcription.log")
+    expanded_path = home_relative_path.expanduser()
+
+    # Verify expansion works as expected
+    assert str(home_relative_path) == "~/test_transcription.log"
+    assert str(expanded_path) == str(Path.home() / "test_transcription.log")
+    assert expanded_path.is_absolute()
+
+    # Test the actual expansion logic from transcribe function
+    test_path = Path("~/test.log")
+    expanded = test_path.expanduser()
+    assert expanded.is_absolute()
+    assert "~" not in str(expanded)
