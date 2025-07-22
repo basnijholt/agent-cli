@@ -44,8 +44,8 @@ layout {
     pane split_direction="vertical" {
         pane {
             name "Ollama"
-            command "ollama"
-            args "serve"
+            command "sh"
+            args "-c" "ollama serve"
         }
         pane split_direction="horizontal" {
             pane {
@@ -77,7 +77,7 @@ layout {
             height "80%"
             command "sh"
             close_on_exit true
-            args "-c" "cat '$SCRIPTS_DIR/zellij_help.txt' | less"
+            args "-c" "cat $SCRIPTS_DIR/zellij_help.txt | less"
         }
     }
 }
