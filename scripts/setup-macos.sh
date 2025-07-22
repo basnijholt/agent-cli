@@ -17,6 +17,15 @@ if ! command -v uv &> /dev/null; then
     brew install uv
 fi
 
+# Check for PortAudio (required for audio processing)
+echo "Checking PortAudio..."
+if ! pkg-config --exists portaudio-2.0 2>/dev/null; then
+    echo "Installing PortAudio..."
+    brew install portaudio
+else
+    echo "PortAudio is already installed"
+fi
+
 # Install Ollama
 echo "Checking Ollama..."
 if ! command -v ollama &> /dev/null; then
