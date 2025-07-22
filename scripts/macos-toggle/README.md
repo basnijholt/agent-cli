@@ -5,7 +5,7 @@ Hotkey toggles for agent-cli voice AI features on macOS.
 ## Setup
 
 ```bash
-./setup-macos-voice-ai.sh
+./setup-macos-hotkeys.sh
 ```
 
 ## Usage

@@ -2,7 +2,7 @@
 
 set -e
 
-echo "🎙️ Setting up macOS voice AI toggles..."
+echo "⌨️ Setting up macOS hotkeys..."
 
 # Check macOS
 if [[ "$(uname)" != "Darwin" ]]; then
@@ -30,7 +30,7 @@ AUTOCORRECT_SCRIPT="$SCRIPT_DIR/macos-toggle/toggle-autocorrect.sh"
 VOICE_EDIT_SCRIPT="$SCRIPT_DIR/macos-toggle/toggle-voice-edit.sh"
 
 cat > ~/.config/skhd/skhdrc << EOF
-# Agent-CLI Voice AI Toggles
+# Agent-CLI Hotkeys
 cmd + shift - r : "$TRANSCRIBE_SCRIPT"
 cmd + shift - a : "$AUTOCORRECT_SCRIPT"
 cmd + shift - v : "$VOICE_EDIT_SCRIPT"
@@ -42,7 +42,7 @@ skhd --start-service
 
 # Test
 echo "🧪 Testing..."
-terminal-notifier -title "🎙️ Setup Complete" -message "Voice AI hotkeys ready!"
+terminal-notifier -title "⌨️ Setup Complete" -message "Agent-CLI hotkeys ready!"
 
 echo ""
 echo "✅ Done! Hotkeys:"
