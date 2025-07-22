@@ -27,6 +27,7 @@ It provides a suite of powerful tools for voice and text interaction, designed f
 - [Agent CLI Package Installation](#agent-cli-package-installation)
 - [System Integration](#system-integration)
   - [macOS Hotkeys](#macos-hotkeys)
+  - [Linux Hotkeys](#linux-hotkeys)
 - [Usage](#usage)
   - [Configuration](#configuration)
     - [Service Provider](#service-provider)
@@ -147,6 +148,21 @@ This installs and configures:
 - **`Cmd+Shift+V`** - Toggle voice editing mode for clipboard text
 
 The setup uses [skhd](https://github.com/jackielii/skhd.zig) for hotkey management and provides native macOS notifications. Perfect for quick text correction and voice input workflows.
+
+### Linux Hotkeys
+
+For Linux users, you can set up cross-desktop hotkeys that work with most desktop environments:
+
+```bash
+./scripts/setup-linux-hotkeys.sh
+```
+
+This configures the same hotkeys across different environments:
+- **`Super+Shift+R`** - Toggle voice transcription (start recording → stop and get result)
+- **`Super+Shift+A`** - Autocorrect text from clipboard
+- **`Super+Shift+V`** - Toggle voice editing mode for clipboard text
+
+Supports Hyprland, GNOME, KDE, Sway, i3, XFCE, and others with automatic configuration. Includes Wayland clipboard syncing and fallback notification systems.
 
 Or for development:
 
