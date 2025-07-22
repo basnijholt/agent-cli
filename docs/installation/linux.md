@@ -7,7 +7,7 @@ Native Linux setup with full NVIDIA GPU acceleration for optimal performance.
 
 ## Prerequisites
 
-- Linux distribution with systemd (Ubuntu 20.04+, Fedora 35+, etc.)
+- Linux distribution (Ubuntu 20.04+, Fedora 35+, Arch, Debian, etc.)
 - 8GB+ RAM (16GB+ recommended for GPU acceleration)
 - 10GB free disk space
 - Python 3.11 or higher
@@ -17,61 +17,12 @@ Native Linux setup with full NVIDIA GPU acceleration for optimal performance.
 - NVIDIA drivers 470+ installed
 - CUDA 11.7+ installed
 
-## Quick Start
+## Installation Methods
 
-### Option 1: NixOS (Recommended)
-
-If you're using NixOS, add this to your configuration:
-
-```nix
-# AI & Machine Learning services
-services.ollama = {
-  enable = true;
-  acceleration = "cuda";  # or "rocm" for AMD
-  host = "0.0.0.0";
-  openFirewall = true;
-  environmentVariables = {
-    OLLAMA_KEEP_ALIVE = "1h";
-  };
-};
-
-services.wyoming.faster-whisper = {
-  servers.english = {
-    enable = true;
-    model = "large-v3";
-    language = "en";
-    device = "cuda";  # or "cpu"
-    uri = "tcp://0.0.0.0:10300";
-  };
-};
-
-services.wyoming.piper.servers.default = {
-  enable = true;
-  voice = "en-us-ryan-high";
-  uri = "tcp://0.0.0.0:10200";
-};
-
-services.wyoming.openwakeword = {
-  enable = true;
-  preloadModels = [
-    "alexa"
-    "hey_jarvis"
-    "ok_nabu"
-  ];
-  uri = "tcp://0.0.0.0:10400";
-};
-```
-
-Then rebuild your system:
-```bash
-sudo nixos-rebuild switch
-```
-
-### Option 2: Script-Based Installation (Recommended)
+### Script-Based Installation (Recommended)
 
 1. **Run the setup script:**
    ```bash
-   chmod +x scripts/setup-linux.sh
    scripts/setup-linux.sh
    ```
 
@@ -89,6 +40,10 @@ sudo nixos-rebuild switch
    ```bash
    agent-cli autocorrect "this has an eror"
    ```
+
+### NixOS Users
+
+If you're using NixOS, see the dedicated [NixOS Installation Guide](nixos.md) for system-level service integration.
 
 ### Option 3: Manual Installation
 
