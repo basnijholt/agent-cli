@@ -54,6 +54,10 @@ if ! command -v zellij &> /dev/null; then
     fi
 fi
 
+# Install agent-cli
+echo "Installing/upgrading agent-cli..."
+uv tool install --upgrade agent-cli
+
 echo ""
 echo "Setup complete! You can now run the services:"
 echo ""
@@ -68,3 +72,4 @@ echo "  4. OpenWakeWord: scripts/run-openwakeword.sh"
 echo ""
 echo "Note: Services use uvx to run without needing virtual environments."
 echo "For GPU acceleration, make sure NVIDIA drivers and CUDA are installed."
+echo "agent-cli has been installed and is ready to use!"

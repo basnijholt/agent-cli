@@ -41,6 +41,10 @@ if ! command -v zellij &> /dev/null; then
     brew install zellij
 fi
 
+# Install agent-cli
+echo "Installing/upgrading agent-cli..."
+uv tool install --upgrade agent-cli
+
 echo ""
 echo "Setup complete! You can now run the services:"
 echo ""
@@ -54,3 +58,4 @@ echo "  3. Piper: ./run-piper.sh"
 echo "  4. OpenWakeWord: ./run-openwakeword.sh"
 echo ""
 echo "Note: Services use uvx to run without needing virtual environments."
+echo "agent-cli has been installed and is ready to use!"
