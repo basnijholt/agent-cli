@@ -38,6 +38,8 @@ SCRIPTS_DIR="$(cd "$(dirname "$0")" && pwd)"
 # Create .runtime directory and Zellij layout file
 mkdir -p "$SCRIPTS_DIR/.runtime"
 cat > "$SCRIPTS_DIR/.runtime/agent-cli-layout.kdl" << EOF
+session_name "agent-cli"
+
 layout {
     pane split_direction="vertical" {
         pane {
@@ -115,5 +117,6 @@ else
     echo "Use 'Ctrl-Q' to quit Zellij"
     echo "Use 'Ctrl-O d' to detach from the session"
     echo "Use 'zellij attach agent-cli' to reattach"
-    zellij --session agent-cli --layout "$SCRIPTS_DIR/.runtime/agent-cli-layout.kdl"
+    # Start zellij with layout file - session name is specified in the layout
+    zellij --layout "$SCRIPTS_DIR/.runtime/agent-cli-layout.kdl"
 fi
