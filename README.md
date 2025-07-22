@@ -129,6 +129,23 @@ or using `pip`:
 pip install agent-cli
 ```
 
+## System Integration
+
+### macOS Hotkeys
+
+For seamless integration with macOS, you can set up system-wide hotkeys that provide instant access to agent-cli features:
+
+```bash
+./scripts/setup-macos-hotkeys.sh
+```
+
+This installs and configures:
+- **`Cmd+Shift+R`** - Toggle voice transcription (start recording → stop and get result)
+- **`Cmd+Shift+A`** - Autocorrect text from clipboard
+- **`Cmd+Shift+V`** - Toggle voice editing mode for clipboard text
+
+The setup uses [skhd](https://github.com/jackielii/skhd.zig) for hotkey management and provides native macOS notifications. Perfect for quick text correction and voice input workflows.
+
 Or for development:
 
 1. **Clone the repository:**

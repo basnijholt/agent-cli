@@ -25,9 +25,9 @@ echo "⚙️ Setting up configuration..."
 mkdir -p ~/.config/skhd
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-TRANSCRIBE_SCRIPT="$SCRIPT_DIR/macos-toggle/toggle-transcription.sh"
-AUTOCORRECT_SCRIPT="$SCRIPT_DIR/macos-toggle/toggle-autocorrect.sh"
-VOICE_EDIT_SCRIPT="$SCRIPT_DIR/macos-toggle/toggle-voice-edit.sh"
+TRANSCRIBE_SCRIPT="$SCRIPT_DIR/macos-hotkeys/toggle-transcription.sh"
+AUTOCORRECT_SCRIPT="$SCRIPT_DIR/macos-hotkeys/toggle-autocorrect.sh"
+VOICE_EDIT_SCRIPT="$SCRIPT_DIR/macos-hotkeys/toggle-voice-edit.sh"
 
 cat > ~/.config/skhd/skhdrc << EOF
 # Agent-CLI Hotkeys
