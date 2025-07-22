@@ -2,41 +2,17 @@
 
 # Toggle script for agent-cli transcription on macOS
 
-# Function to send notification
-notify() {
-    local title="$1"
-    local message="$2"
-    /opt/homebrew/bin/terminal-notifier -title "$title" -message "$message"
-}
-
-# Check if agent-cli transcribe is already running
 if pgrep -f "agent-cli transcribe" > /dev/null; then
-    # Transcription is running - stop it
     pkill -INT -f "agent-cli transcribe"
-    notify "🛑 Transcription Stopped" "Processing results..."
+    /opt/homebrew/bin/terminal-notifier -title "🛑 Stopped" -message "Processing results..."
 else
-    # Transcription is not running - start it
-
-    # Use agent-cli from standard uv tool install location
-    AGENT_CLI="$HOME/.local/bin/agent-cli"
-
-    # Notify user that recording has started
-    notify "🎙️ Transcription Started" "Listening in background..."
-
-    # Start transcription in background
+    /opt/homebrew/bin/terminal-notifier -title "🎙️ Started" -message "Listening..."
     (
-        OUTPUT=$("$AGENT_CLI" transcribe --llm --quiet 2>/dev/null)
-        exit_code=$?
-
-        if [ $exit_code -eq 0 ] && [ -n "$OUTPUT" ]; then
-            # Success - show result (already copied to clipboard by agent-cli)
-            notify "📄 Transcription Result" "$OUTPUT"
-        elif [ $exit_code -eq 130 ]; then
-            # Interrupted with Ctrl+C (SIGINT) - this is expected
-            notify "🛑 Transcription Cancelled" "Stopped by user"
+        OUTPUT=$("$HOME/.local/bin/agent-cli" transcribe --llm --quiet 2>/dev/null)
+        if [ -n "$OUTPUT" ]; then
+            /opt/homebrew/bin/terminal-notifier -title "📄 Result" -message "$OUTPUT"
         else
-            # Error occurred
-            notify "❌ Transcription Error" "Check agent-cli setup and services"
+            /opt/homebrew/bin/terminal-notifier -title "❌ Error" -message "No output"
         fi
     ) &
 fi
