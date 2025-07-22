@@ -45,9 +45,14 @@ else
     notify "🎙️ Voice Edit Started" "Listening for voice command..."
 
     # Start voice edit in background
-    OUTPUT=$(agent-cli voice-edit --quiet 2>/dev/null) && {
-        # Sync clipboard to primary selection (Wayland)
-        sync_clipboard
-        notify "✨ Voice Edit Result" "$OUTPUT" 5000
-    } &
+    (
+        OUTPUT=$(agent-cli voice-edit --quiet 2>/dev/null)
+        if [ -n "$OUTPUT" ]; then
+            # Sync clipboard to primary selection (Wayland)
+            sync_clipboard
+            notify "✨ Voice Edit Result" "$OUTPUT" 5000
+        else
+            notify "❌ Error" "No output" 3000
+        fi
+    ) &
 fi

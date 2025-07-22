@@ -45,9 +45,14 @@ else
     notify "🎙️ Transcription Started" "Listening in background..."
 
     # Start transcription in background
-    OUTPUT=$(agent-cli transcribe --llm --quiet 2>/dev/null) && {
-        # Sync clipboard to primary selection (Wayland)
-        sync_clipboard
-        notify "📄 Transcription Result" "$OUTPUT" 5000
-    } &
+    (
+        OUTPUT=$(agent-cli transcribe --llm --quiet 2>/dev/null)
+        if [ -n "$OUTPUT" ]; then
+            # Sync clipboard to primary selection (Wayland)
+            sync_clipboard
+            notify "📄 Transcription Result" "$OUTPUT" 5000
+        else
+            notify "❌ Error" "No output" 3000
+        fi
+    ) &
 fi
