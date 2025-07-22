@@ -49,10 +49,14 @@ Run all services in a Zellij session:
 ```
 
 Zellij commands:
-- `Ctrl-O d` - Detach from session
+- `Ctrl-O d` - Detach from session (keeps services running)
 - `zellij attach agent-cli` - Reattach to session
+- `zellij list-sessions` - List all sessions
+- `zellij kill-session agent-cli` - Stop all services and kill session
 - `Alt + arrow keys` - Navigate between panes
-- `Ctrl-Q` - Quit Zellij
+- `Ctrl-P` - Enter pane mode for resizing
+- `Ctrl-T` - Create new tab
+- `Ctrl-Q` - Quit Zellij (stops all services)
 
 ### Running Services Individually
 
