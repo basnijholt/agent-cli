@@ -16,14 +16,13 @@ Native macOS setup with full Metal GPU acceleration for optimal performance.
 
 1. **Run the setup script:**
    ```bash
-   cd scripts
-   chmod +x setup-macos.sh
-   ./setup-macos.sh
+   chmod +x scripts/setup-macos.sh
+   scripts/setup-macos.sh
    ```
 
 2. **Start all services:**
    ```bash
-   ./start-all-services.sh
+   scripts/start-all-services.sh
    ```
 
 3. **Install agent-cli:**
@@ -61,7 +60,7 @@ The setup uses Zellij for managing all services in one session:
 
 ### Starting Services
 ```bash
-./start-all-services.sh
+scripts/start-all-services.sh
 ```
 
 ### Zellij Commands
@@ -81,13 +80,13 @@ If you prefer running services individually:
 ollama serve
 
 # Terminal 2: Whisper (CPU optimized)
-./run-whisper-uvx.sh
+scripts/run-whisper-uvx.sh
 
 # Terminal 3: Piper (Apple Silicon compatible)
-./run-piper-uvx.sh
+scripts/run-piper-uvx.sh
 
 # Terminal 4: OpenWakeWord (macOS compatible fork)
-./run-openwakeword-uvx.sh
+scripts/run-openwakeword-uvx.sh
 ```
 
 ## Performance Advantages
