@@ -15,7 +15,7 @@ The following services are set up:
 1. **Ollama** - LLM server
 2. **Whisper** - Speech-to-text (Wyoming Faster Whisper)
 3. **Piper** - Text-to-speech (Wyoming Piper)
-4. **OpenWakeWord** - Wake word detection (Wyoming OpenWakeWord) - Note: Requires LiteRT support on macOS
+4. **OpenWakeWord** - Wake word detection (Wyoming OpenWakeWord)
 
 ## Installation Options
 
@@ -113,7 +113,7 @@ ollama serve
 1. **Ollama**: Uses the official macOS app which provides native GPU acceleration
 2. **Whisper**: Wyoming Faster Whisper uses CPU by default, but is optimized for performance
 3. **Piper**: May require building from source on Apple Silicon; pre-built binaries are limited
-4. **OpenWakeWord**: On macOS, requires a modified version with LiteRT support (see below)
+4. **OpenWakeWord**: Works on macOS using the LiteRT fork (automatically used by the scripts)
 
 ## Troubleshooting
 
@@ -125,12 +125,13 @@ ollama serve
 
 ### OpenWakeWord on macOS
 
-OpenWakeWord currently requires `tflite-runtime` which is not available for macOS. We've created a PR to replace it with LiteRT (ai-edge-litert):
+OpenWakeWord now works on macOS! We're using a fork that replaces `tflite-runtime` with LiteRT (ai-edge-litert):
+- Fork: https://github.com/basnijholt/wyoming-openwakeword/tree/litert
 - PR: https://github.com/rhasspy/wyoming-openwakeword/pull/XXX (pending)
 - Uses `ai-edge-litert==1.3.0` which provides cross-platform support including macOS ARM64
 - LiteRT is the official replacement for TensorFlow Lite
 
-Until the PR is merged, OpenWakeWord will not work on macOS. The PR simplifies the codebase by using only LiteRT for all platforms.
+The run-openwakeword-uvx.sh script automatically uses this fork until the PR is merged.
 
 ## Alternative: Docker
 

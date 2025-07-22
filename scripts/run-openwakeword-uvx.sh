@@ -1,10 +1,11 @@
 #!/bin/bash
 echo "Starting Wyoming OpenWakeWord on port 10400..."
 
-# Note: The official package requires tflite-runtime which is not available on macOS
-# A PR is pending to switch to LiteRT: https://github.com/rhasspy/wyoming-openwakeword/pull/XXX
-# Until merged, this will only work on Linux
+# Use the LiteRT fork until the PR is merged
+# PR: https://github.com/rhasspy/wyoming-openwakeword/pull/XXX
+# This version works on macOS and other platforms without tflite-runtime
 
-uvx --from wyoming-openwakeword --prerelease=allow wyoming-openwakeword \
+uvx --from git+https://github.com/basnijholt/wyoming-openwakeword.git@litert \
+    wyoming-openwakeword \
     --uri 'tcp://0.0.0.0:10400' \
     --preload-model 'ok_nabu'
