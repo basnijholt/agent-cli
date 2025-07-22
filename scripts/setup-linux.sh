@@ -2,12 +2,12 @@
 
 set -e
 
-echo "Setting up agent-cli services on Linux..."
+echo "🚀 Setting up agent-cli services on Linux..."
 
 # Function to install uv based on the distribution
 install_uv() {
     if command -v curl &> /dev/null; then
-        echo "Installing uv using curl..."
+        echo "📦 Installing uv using curl..."
         curl -LsSf https://astral.sh/uv/install.sh | sh
         # Add to PATH for current session
         export PATH="$HOME/.local/bin:$PATH"
@@ -26,7 +26,7 @@ if ! command -v uv &> /dev/null; then
 fi
 
 # Check for PortAudio (required for audio processing)
-echo "Checking PortAudio..."
+echo "🔊 Checking PortAudio..."
 if ! pkg-config --exists portaudio-2.0 2>/dev/null; then
     echo "ERROR: PortAudio development libraries are not installed."
     echo ""
@@ -52,7 +52,7 @@ else
 fi
 
 # Install Ollama
-echo "Checking Ollama..."
+echo "🧠 Checking Ollama..."
 if ! command -v ollama &> /dev/null; then
     echo "Installing Ollama..."
     curl -fsSL https://ollama.ai/install.sh | sh
@@ -81,18 +81,18 @@ if ! command -v zellij &> /dev/null; then
 fi
 
 # Install agent-cli
-echo "Installing/upgrading agent-cli..."
+echo "🤖 Installing/upgrading agent-cli..."
 uv tool install --upgrade agent-cli
 
 # Preload default Ollama model
-echo "Preloading default Ollama model (qwen3:4b)..."
+echo "⬇️ Preloading default Ollama model (qwen3:4b)..."
 echo "This may take a few minutes depending on your internet connection..."
 # Start Ollama in background, then pull model
 (ollama serve >/dev/null 2>&1 &) && sleep 2 && ollama pull qwen3:4b &
 OLLAMA_PID=$!
 
 echo ""
-echo "Setup complete! You can now run the services:"
+echo "✅ Setup complete! You can now run the services:"
 echo "Note: Ollama model download is running in background (PID: $OLLAMA_PID)"
 echo ""
 echo "Option 1 - Run all services at once:"
