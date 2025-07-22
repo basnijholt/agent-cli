@@ -6,7 +6,7 @@ This guide provides instructions for setting up the required services on macOS w
 
 - macOS 12 Monterey or later (for Ollama)
 - Homebrew installed
-- Python 3.8 or later
+- uv installed (see [uv documentation](https://docs.astral.sh/uv/getting-started/installation/))
 
 ## Services
 
