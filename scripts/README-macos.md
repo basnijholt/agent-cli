@@ -125,11 +125,12 @@ ollama serve
 
 ### OpenWakeWord on macOS
 
-OpenWakeWord requires `tflite-runtime` which is not available for macOS. We've created a PR to add LiteRT (ai-edge-litert) support:
+OpenWakeWord currently requires `tflite-runtime` which is not available for macOS. We've created a PR to replace it with LiteRT (ai-edge-litert):
 - PR: https://github.com/rhasspy/wyoming-openwakeword/pull/XXX (pending)
-- Uses `ai-edge-litert==1.3.0` which provides macOS ARM64 support
+- Uses `ai-edge-litert==1.3.0` which provides cross-platform support including macOS ARM64
+- LiteRT is the official replacement for TensorFlow Lite
 
-Until the PR is merged, OpenWakeWord will not work with the standard uvx command on macOS.
+Until the PR is merged, OpenWakeWord will not work on macOS. The PR simplifies the codebase by using only LiteRT for all platforms.
 
 ## Alternative: Docker
 

@@ -1,14 +1,9 @@
 #!/bin/bash
 echo "Starting Wyoming OpenWakeWord on port 10400..."
 
-# Check if we're on macOS
-if [[ "$OSTYPE" == "darwin"* ]]; then
-    echo "Note: OpenWakeWord on macOS requires LiteRT support."
-    echo "This is available in the PR: https://github.com/rhasspy/wyoming-openwakeword/pull/XXX"
-    echo "Until merged, please use the forked version with:"
-    echo "  uvx --from git+https://github.com/YOUR-USERNAME/wyoming-openwakeword.git@litert-support wyoming-openwakeword"
-    echo ""
-fi
+# Note: The official package requires tflite-runtime which is not available on macOS
+# A PR is pending to switch to LiteRT: https://github.com/rhasspy/wyoming-openwakeword/pull/XXX
+# Until merged, this will only work on Linux
 
 uvx --from wyoming-openwakeword --prerelease=allow wyoming-openwakeword \
     --uri 'tcp://0.0.0.0:10400' \
