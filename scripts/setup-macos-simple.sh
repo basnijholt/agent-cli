@@ -43,7 +43,7 @@ uvx --from wyoming-faster-whisper wyoming-faster-whisper \
     --download-dir ./whisper-data
 EOF
 
-# Create run script for Wyoming Piper  
+# Create run script for Wyoming Piper
 cat > run-piper-uvx.sh << 'EOF'
 #!/bin/bash
 echo "Starting Wyoming Piper on port 10200..."
@@ -53,7 +53,7 @@ if [ ! -f "./piper/piper" ]; then
     echo "Downloading Piper binary..."
     mkdir -p piper
     cd piper
-    
+
     # Try to download pre-built binary (note: may not exist for macOS)
     ARCH=$(uname -m)
     if [ "$ARCH" = "x86_64" ]; then

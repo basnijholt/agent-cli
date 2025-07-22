@@ -104,7 +104,7 @@ ollama serve
 ## Service Ports
 
 - Ollama: 11434
-- Piper (TTS): 10200  
+- Piper (TTS): 10200
 - Whisper (STT): 10300
 - OpenWakeWord: 10400
 
