@@ -13,6 +13,7 @@ Native NixOS setup using system configuration with full GPU acceleration support
 - 10GB free disk space
 
 ### For GPU Acceleration (Optional)
+
 - NVIDIA GPU with proprietary drivers enabled in configuration
 - Or AMD GPU with ROCm support
 
@@ -90,11 +91,13 @@ If you have an NVIDIA GPU, also add:
 ## Apply Configuration
 
 1. **Rebuild your system:**
+
    ```bash
    sudo nixos-rebuild switch
    ```
 
 2. **Check service status:**
+
    ```bash
    sudo systemctl status ollama
    sudo systemctl status wyoming-faster-whisper
@@ -103,6 +106,7 @@ If you have an NVIDIA GPU, also add:
    ```
 
 3. **Install agent-cli:**
+
    ```bash
    nix-shell -p portaudio pkg-config gcc python3 --run "uv tool install --upgrade agent-cli"
    # or add to your configuration:
@@ -116,12 +120,12 @@ If you have an NVIDIA GPU, also add:
 
 ## Services Overview
 
-| Service | Port | GPU Support | Systemd Service |
-|---------|------|-------------|-----------------|
-| **Ollama** | 11434 | ✅ CUDA/ROCm | `ollama.service` |
-| **Whisper** | 10300 | ✅ CUDA | `wyoming-faster-whisper.service` |
-| **Piper** | 10200 | N/A | `wyoming-piper.service` |
-| **OpenWakeWord** | 10400 | N/A | `wyoming-openwakeword.service` |
+| Service          | Port  | GPU Support  | Systemd Service                  |
+| ---------------- | ----- | ------------ | -------------------------------- |
+| **Ollama**       | 11434 | ✅ CUDA/ROCm | `ollama.service`                 |
+| **Whisper**      | 10300 | ✅ CUDA      | `wyoming-faster-whisper.service` |
+| **Piper**        | 10200 | N/A          | `wyoming-piper.service`          |
+| **OpenWakeWord** | 10400 | N/A          | `wyoming-openwakeword.service`   |
 
 ## Service Management
 
@@ -141,6 +145,7 @@ journalctl -u wyoming-faster-whisper -f
 ## Troubleshooting
 
 ### GPU Not Working
+
 ```bash
 # Check NVIDIA setup
 nvidia-smi
@@ -151,6 +156,7 @@ sudo -u ollama ollama info
 ```
 
 ### Service Issues
+
 ```bash
 # Check service status
 sudo systemctl --failed
@@ -158,6 +164,7 @@ journalctl -u ollama --since "1 hour ago"
 ```
 
 ### Firewall Issues
+
 Make sure `openFirewall = true` is set for each service, or manually add:
 
 ```nix

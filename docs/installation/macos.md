@@ -15,16 +15,19 @@ Native macOS setup with full Metal GPU acceleration for optimal performance.
 ## Quick Start
 
 1. **Run the setup script:**
+
    ```bash
    scripts/setup-macos.sh
    ```
 
 2. **Start all services:**
+
    ```bash
    scripts/start-all-services.sh
    ```
 
 3. **Install agent-cli:**
+
    ```bash
    uv tools install agent-cli
    # or: pip install agent-cli
@@ -38,6 +41,7 @@ Native macOS setup with full Metal GPU acceleration for optimal performance.
 ## What the Setup Does
 
 The `setup-macos.sh` script:
+
 - ✅ Checks for Homebrew
 - ✅ Installs `uv` if needed
 - ✅ Installs/checks Ollama (native macOS app)
@@ -46,23 +50,25 @@ The `setup-macos.sh` script:
 
 ## Services Overview
 
-| Service | Implementation | Port | GPU Support |
-|---------|---------------|------|-------------|
-| **Ollama** | Native macOS app | 11434 | ✅ Metal GPU |
-| **Whisper** | Wyoming Faster Whisper | 10300 | 🔧 CPU optimized |
-| **Piper** | Wyoming Piper (via uv) | 10200 | N/A |
-| **OpenWakeWord** | Wyoming OpenWakeWord | 10400 | N/A |
+| Service          | Implementation         | Port  | GPU Support      |
+| ---------------- | ---------------------- | ----- | ---------------- |
+| **Ollama**       | Native macOS app       | 11434 | ✅ Metal GPU     |
+| **Whisper**      | Wyoming Faster Whisper | 10300 | 🔧 CPU optimized |
+| **Piper**        | Wyoming Piper (via uv) | 10200 | N/A              |
+| **OpenWakeWord** | Wyoming OpenWakeWord   | 10400 | N/A              |
 
 ## Session Management with Zellij
 
 The setup uses Zellij for managing all services in one session:
 
 ### Starting Services
+
 ```bash
 scripts/start-all-services.sh
 ```
 
 ### Zellij Commands
+
 - `Ctrl-O d` - Detach (services keep running)
 - `zellij attach agent-cli` - Reattach to session
 - `zellij list-sessions` - List all sessions
@@ -97,6 +103,7 @@ scripts/run-openwakeword.sh
 ## Troubleshooting
 
 ### Ollama Issues
+
 ```bash
 # Check if Ollama is running
 ollama list
@@ -109,6 +116,7 @@ tail -f ~/.ollama/logs/server.log
 ```
 
 ### Service Port Conflicts
+
 ```bash
 # Check what's using a port
 lsof -i :11434
@@ -118,6 +126,7 @@ lsof -i :10400
 ```
 
 ### uv/Python Issues
+
 ```bash
 # Reinstall uv
 brew reinstall uv
@@ -127,6 +136,7 @@ uv --version
 ```
 
 ### Zellij Issues
+
 ```bash
 # Kill stuck sessions
 zellij kill-all-sessions
@@ -139,6 +149,7 @@ zellij list-sessions
 ```
 
 ### Memory/Performance Issues
+
 - Close other apps to free RAM
 - Check Activity Monitor for high CPU/Memory usage
 - Services will automatically download required models
@@ -146,5 +157,6 @@ zellij list-sessions
 ## Alternative: Docker
 
 If you prefer Docker despite performance limitations:
+
 - [Docker Setup Guide](docker.md)
 - Note: ~10x slower due to no GPU acceleration

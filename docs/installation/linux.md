@@ -13,6 +13,7 @@ Native Linux setup with full NVIDIA GPU acceleration for optimal performance.
 - Python 3.11 or higher
 
 ### For GPU Acceleration (Optional)
+
 - NVIDIA GPU (GTX 1060+ or RTX series recommended)
 - NVIDIA drivers 470+ installed
 - CUDA 11.7+ installed
@@ -22,16 +23,19 @@ Native Linux setup with full NVIDIA GPU acceleration for optimal performance.
 ### Script-Based Installation (Recommended)
 
 1. **Run the setup script:**
+
    ```bash
    scripts/setup-linux.sh
    ```
 
 2. **Start all services:**
+
    ```bash
    scripts/start-all-services.sh
    ```
 
 3. **Install agent-cli:**
+
    ```bash
    uv tools install agent-cli
    ```
@@ -70,23 +74,25 @@ scripts/run-openwakeword.sh
 
 ## Services Overview
 
-| Service | Port | GPU Support | Auto-Detection |
-|---------|------|-------------|----------------|
-| **Ollama** | 11434 | ✅ CUDA/ROCm | Automatic |
-| **Whisper** | 10300 | ✅ CUDA | Automatic (falls back to CPU) |
-| **Piper** | 10200 | N/A | N/A |
-| **OpenWakeWord** | 10400 | N/A | N/A |
+| Service          | Port  | GPU Support  | Auto-Detection                |
+| ---------------- | ----- | ------------ | ----------------------------- |
+| **Ollama**       | 11434 | ✅ CUDA/ROCm | Automatic                     |
+| **Whisper**      | 10300 | ✅ CUDA      | Automatic (falls back to CPU) |
+| **Piper**        | 10200 | N/A          | N/A                           |
+| **OpenWakeWord** | 10400 | N/A          | N/A                           |
 
 ## Session Management with Zellij
 
 The scripts use Zellij for managing all services in one session (works on both Linux and macOS):
 
 ### Starting Services
+
 ```bash
 scripts/start-all-services.sh
 ```
 
 ### Zellij Commands
+
 - `Ctrl-O d` - Detach (services keep running)
 - `zellij attach agent-cli` - Reattach to session
 - `zellij list-sessions` - List all sessions
@@ -97,6 +103,7 @@ scripts/start-all-services.sh
 ## Automatic GPU Detection
 
 The scripts automatically detect and use GPU acceleration:
+
 - **Whisper**: Detects NVIDIA GPU and uses `large-v3` model with CUDA, falls back to `tiny-int8` with CPU
 - **Ollama**: Automatically uses available GPU (CUDA/ROCm)
 
@@ -105,6 +112,7 @@ The scripts automatically detect and use GPU acceleration:
 ### NVIDIA GPU (CUDA)
 
 1. **Install NVIDIA drivers:**
+
    ```bash
    # Ubuntu/Debian
    sudo apt install nvidia-driver-535
@@ -114,6 +122,7 @@ The scripts automatically detect and use GPU acceleration:
    ```
 
 2. **Install CUDA toolkit:**
+
    ```bash
    # Ubuntu/Debian
    sudo apt install nvidia-cuda-toolkit
@@ -131,6 +140,7 @@ The scripts automatically detect and use GPU acceleration:
 ### AMD GPU (ROCm)
 
 1. **Install ROCm:**
+
    ```bash
    # Ubuntu/Debian
    sudo apt install rocm-dev
@@ -153,23 +163,27 @@ The scripts automatically detect and use GPU acceleration:
 ## Troubleshooting
 
 ### GPU Not Working
+
 ```bash
 # Check if NVIDIA GPU is detected
 nvidia-smi
 ```
 
 ### Services Not Starting
+
 ```bash
 # Check what's running on the ports
 ss -tlnp | grep -E ':(11434|10300|10200|10400)'
 ```
 
 ### General Issues
+
 - Make sure you have enough RAM (8GB minimum)
 - Services automatically download required models
 
 ## Alternative: Docker
 
 If you prefer Docker (with some performance limitations):
+
 - [Docker Setup Guide](docker.md)
 - Note: May have reduced GPU acceleration support

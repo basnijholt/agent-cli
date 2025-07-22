@@ -4,18 +4,19 @@ Choose the best installation method for your platform and performance needs.
 
 ## Quick Platform Guide
 
-| Platform | Recommended Method | GPU Support | Performance |
-|----------|-------------------|-------------|-------------|
-| **macOS** | [Native Setup](macos.md) | ✅ Metal GPU | Best |
-| **Linux** | [Native Setup](linux.md) | ✅ NVIDIA GPU | Best |
-| **NixOS** | [System Integration](nixos.md) | ✅ NVIDIA GPU | Best |
-| **Any Platform** | [Docker Setup](docker.md) | ⚠️ Limited* | Good |
+| Platform         | Recommended Method             | GPU Support   | Performance |
+| ---------------- | ------------------------------ | ------------- | ----------- |
+| **macOS**        | [Native Setup](macos.md)       | ✅ Metal GPU  | Best        |
+| **Linux**        | [Native Setup](linux.md)       | ✅ NVIDIA GPU | Best        |
+| **NixOS**        | [System Integration](nixos.md) | ✅ NVIDIA GPU | Best        |
+| **Any Platform** | [Docker Setup](docker.md)      | ⚠️ Limited\*  | Good        |
 
 > **Note**: Docker on macOS does not support GPU acceleration. For best performance on Mac, use the native setup.
 
 ## Installation Methods
 
 ### 🍎 macOS Native (Recommended)
+
 **Best performance with Metal GPU acceleration**
 
 - Full GPU acceleration for Ollama
@@ -25,6 +26,7 @@ Choose the best installation method for your platform and performance needs.
 👉 [Follow macOS Setup Guide](macos.md)
 
 ### 🐧 Linux Native (Recommended)
+
 **Best performance with NVIDIA GPU acceleration**
 
 - NVIDIA GPU support
@@ -34,6 +36,7 @@ Choose the best installation method for your platform and performance needs.
 👉 [Follow Linux Setup Guide](linux.md)
 
 ### ❄️ NixOS System Integration
+
 **Declarative system configuration with GPU support**
 
 - System-level service integration
@@ -43,6 +46,7 @@ Choose the best installation method for your platform and performance needs.
 👉 [Follow NixOS Setup Guide](nixos.md)
 
 ### 🐳 Docker (Cross-platform)
+
 **Universal solution, some limitations**
 
 - Works on any platform
@@ -83,6 +87,7 @@ pip install agent-cli
 ```
 
 Then test with:
+
 ```bash
 agent-cli autocorrect --help
 ```
