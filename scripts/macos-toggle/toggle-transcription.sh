@@ -1,20 +1,13 @@
 #!/usr/bin/env bash
 
-# Best toggle script for agent-cli transcription on macOS
-# Uses terminal-notifier (reliable) with osascript fallback
+# Toggle script for agent-cli transcription on macOS
 
-# Function to send notification (prioritizes terminal-notifier)
+# Function to send notification
 notify() {
     local title="$1"
     local message="$2"
     local sound="${3:-default}"
-
-    if command -v terminal-notifier &> /dev/null; then
-        terminal-notifier -title "$title" -message "$message" -sound "$sound"
-    else
-        # Fallback to osascript (might need Terminal permissions)
-        osascript -e "display notification \"$message\" with title \"$title\""
-    fi
+    terminal-notifier -title "$title" -message "$message" -sound "$sound"
 }
 
 # Check if agent-cli transcribe is already running

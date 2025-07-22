@@ -2,4 +2,4 @@
 # Save to ~/.config/skhd/skhdrc
 
 # Press Cmd+Shift+R to toggle transcription
-cmd + shift - r : /path/to/toggle-transcription-best.sh
+cmd + shift - r : /path/to/toggle-transcription.sh
