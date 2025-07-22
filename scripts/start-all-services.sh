@@ -115,5 +115,5 @@ else
     echo "Use 'Ctrl-Q' to quit Zellij"
     echo "Use 'Ctrl-O d' to detach from the session"
     echo "Use 'zellij attach agent-cli' to reattach"
-    zellij -n agent-cli --layout "$SCRIPTS_DIR/.runtime/agent-cli-layout.kdl"
+    zellij --session agent-cli --layout "$SCRIPTS_DIR/.runtime/agent-cli-layout.kdl"
 fi
