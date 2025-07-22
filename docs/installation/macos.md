@@ -88,32 +88,11 @@ scripts/run-piper-uvx.sh
 scripts/run-openwakeword-uvx.sh
 ```
 
-## Performance Advantages
+## Why Native Setup?
 
-### Ollama (Native vs Docker)
-- **Native**: Full Metal GPU acceleration
-- **Docker**: CPU-only, ~10x slower
-- **Models**: Native can handle larger models efficiently
-
-### Whisper
-- **Optimized**: Wyoming Faster Whisper with CPU optimizations
-- **Models**: Supports faster-whisper-tiny-int8 for speed
-
-### Piper
-- **Apple Silicon**: Uses piper-tts from PyPI via uv
-- **Compatibility**: Works natively on M1/M2/M3 chips
-
-## Special macOS Features
-
-### OpenWakeWord Compatibility
-- Uses a [custom fork](https://github.com/basnijholt/wyoming-openwakeword/tree/litert) with LiteRT
-- Replaces problematic `tflite-runtime` with `ai-edge-litert`
-- Full ARM64 macOS support
-
-### Model Storage
-- **Ollama**: `~/.ollama/models/`
-- **Whisper**: `scripts/whisper-data/`
-- **Piper**: `scripts/piper-data/`
+- **10x faster than Docker** - Full Metal GPU acceleration
+- **Better resource usage** - Native integration with macOS
+- **Automatic model management** - Services handle downloads
 
 ## Troubleshooting
 
@@ -160,26 +139,9 @@ zellij list-sessions
 ```
 
 ### Memory/Performance Issues
-- **Close other apps** to free RAM
-- **Activity Monitor** - check CPU/Memory usage
-- **Ollama**: Larger models need more RAM
-- **Consider smaller models** like `qwen3:1.5b` for lower-spec Macs
-
-## Optimization Tips
-
-### Ollama Model Selection
-```bash
-# Smaller models for older Macs
-ollama pull qwen3:1.5b
-
-# Larger models for M2/M3 Pro/Max
-ollama pull qwen3:7b
-```
-
-### Network Configuration
-Services bind to `localhost` by default. For network access:
-- Ollama: Set `OLLAMA_HOST=0.0.0.0` in environment
-- Other services: Modify run scripts to bind to `0.0.0.0`
+- Close other apps to free RAM
+- Check Activity Monitor for high CPU/Memory usage
+- Services will automatically download required models
 
 ## Alternative: Docker
 

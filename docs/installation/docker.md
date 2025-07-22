@@ -56,37 +56,11 @@ The Docker setup uses:
 - `docs/examples/Dockerfile` - Custom Ollama container
 - Data volumes for model persistence
 
-## Memory Requirements
+## Important Limitations
 
-- **Minimum**: 8GB RAM
-- **Recommended**: 12GB+ RAM for smooth operation
-- **Ollama without GPU**: Uses significantly more RAM
-
-## GPU Acceleration
-
-### Linux with NVIDIA GPU
-
-Uncomment the GPU section in `docker-compose.yml`:
-
-```yaml
-ollama:
-  # ... other config ...
-  deploy:
-    resources:
-      reservations:
-        devices:
-          - driver: nvidia
-            count: all
-            capabilities: [gpu]
-```
-
-Requires:
-- NVIDIA Docker runtime installed
-- Compatible NVIDIA GPU
-
-### macOS / Other Platforms
-
-GPU acceleration is not available. Consider native installation for better performance.
+- **macOS**: No GPU acceleration (10x slower than native)
+- **Linux**: Limited GPU support
+- **Memory**: Requires 8GB+ RAM for smooth operation
 
 ## Managing Services
 
@@ -114,23 +88,10 @@ Services store data in local directories:
 
 ## Troubleshooting
 
-### Ollama Memory Issues
-- Increase Docker memory limit to 8GB+
-- Consider switching to native installation on macOS
-
-### Port Conflicts
-- Change port mappings in `docker-compose.yml` if needed
-- Update agent-cli config to match new ports
-
-### Model Download Failures
-- Check internet connection
-- Ensure sufficient disk space
-- Restart ollama service: `docker compose restart ollama`
-
-### Performance Issues
-- **macOS**: Use [native setup](macos.md) for 10x performance improvement
-- **Linux**: Use [native setup](linux.md) for GPU acceleration
-- Allocate more RAM to Docker
+### Common Issues
+- **Slow performance**: Use native setup for better performance
+- **Memory issues**: Increase Docker memory allocation to 8GB+
+- **Port conflicts**: Change port mappings in `docker-compose.yml`
 
 ## Alternative: Native Installation
 

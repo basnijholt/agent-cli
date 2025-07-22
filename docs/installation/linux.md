@@ -144,130 +144,29 @@ The scripts automatically detect and use GPU acceleration:
    ollama serve
    ```
 
-## Systemd Services (Optional)
+## Why Native Setup?
 
-Create systemd services for auto-startup:
-
-### Ollama Service
-```bash
-sudo tee /etc/systemd/system/ollama.service > /dev/null <<EOF
-[Unit]
-Description=Ollama Service
-After=network-online.target
-
-[Service]
-ExecStart=/usr/local/bin/ollama serve
-User=ollama
-Group=ollama
-Restart=always
-RestartSec=3
-Environment="PATH=/usr/local/bin:/usr/bin:/bin"
-Environment="OLLAMA_HOST=0.0.0.0:11434"
-
-[Install]
-WantedBy=default.target
-EOF
-
-sudo systemctl daemon-reload
-sudo systemctl enable ollama
-sudo systemctl start ollama
-```
-
-### Whisper Service
-```bash
-sudo tee /etc/systemd/system/wyoming-whisper.service > /dev/null <<EOF
-[Unit]
-Description=Wyoming Faster Whisper
-After=network-online.target
-
-[Service]
-ExecStart=/home/$(whoami)/.local/bin/wyoming-faster-whisper --model large-v3 --language en --device cuda --uri tcp://0.0.0.0:10300
-User=$(whoami)
-Group=$(whoami)
-Restart=always
-RestartSec=3
-
-[Install]
-WantedBy=default.target
-EOF
-
-sudo systemctl daemon-reload
-sudo systemctl enable wyoming-whisper
-sudo systemctl start wyoming-whisper
-```
-
-## Performance Optimization
-
-### Ollama GPU Settings
-```bash
-# Check GPU utilization
-watch -n 1 nvidia-smi
-
-# Set GPU memory fraction (if needed)
-export OLLAMA_GPU_MEM_FRAC=0.8
-```
-
-### Whisper GPU Settings
-```bash
-# For high VRAM GPUs
-wyoming-faster-whisper --model large-v3 --device cuda --compute-type float16
-
-# For lower VRAM GPUs
-wyoming-faster-whisper --model medium --device cuda --compute-type int8
-```
+- **Full GPU acceleration** - NVIDIA CUDA support
+- **Automatic configuration** - Scripts detect and configure GPU
+- **Better performance** - Direct system integration
 
 ## Troubleshooting
 
-### GPU Not Detected
+### GPU Not Working
 ```bash
-# Check NVIDIA setup
+# Check if NVIDIA GPU is detected
 nvidia-smi
-lspci | grep -i nvidia
-
-# Check CUDA
-nvcc --version
-nvidia-smi
-
-# Check Ollama GPU usage
-ollama info
 ```
 
-### Memory Issues
+### Services Not Starting
 ```bash
-# Check memory usage
-free -h
-nvidia-smi
-
-# Reduce model sizes
-ollama pull qwen3:1.5b  # Instead of qwen3:4b
-```
-
-### Service Connection Issues
-```bash
-# Check if services are running
-sudo systemctl status ollama
-sudo systemctl status wyoming-whisper
-
-# Check ports
+# Check what's running on the ports
 ss -tlnp | grep -E ':(11434|10300|10200|10400)'
-
-# Test connections
-curl http://localhost:11434/api/version
 ```
 
-### Performance Issues
-```bash
-# Monitor GPU usage
-nvidia-smi -l 1
-
-# Check CPU usage
-htop
-
-# Optimize for your hardware
-# - Use appropriate model sizes
-# - Adjust batch sizes
-# - Enable GPU acceleration where possible
-```
+### General Issues
+- Make sure you have enough RAM (8GB minimum)
+- Services automatically download required models
 
 ## Alternative: Docker
 
