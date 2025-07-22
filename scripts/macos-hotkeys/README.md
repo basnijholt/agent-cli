@@ -1,6 +1,6 @@
-# macOS Voice AI Toggles
+# macOS Hotkeys
 
-Hotkey toggles for agent-cli voice AI features on macOS.
+System-wide hotkeys for agent-cli voice AI features on macOS.
 
 ## Setup
 
@@ -37,4 +37,4 @@ terminal-notifier -title "Test" -message "Hello"
 ./start-all-services.sh
 ```
 
-That's it! Simple voice AI hotkeys for macOS.
+That's it! System-wide hotkeys for agent-cli on macOS.
