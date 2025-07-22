@@ -6,7 +6,7 @@
 notify() {
     local title="$1"
     local message="$2"
-    terminal-notifier -title "$title" -message "$message"
+    /opt/homebrew/bin/terminal-notifier -title "$title" -message "$message"
 }
 
 # Check if agent-cli transcribe is already running
