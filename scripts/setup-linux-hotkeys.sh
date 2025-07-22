@@ -10,9 +10,7 @@ if [[ "$(uname)" != "Linux" ]]; then
     exit 1
 fi
 
-# Make scripts executable
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-chmod +x "$SCRIPT_DIR/linux-hotkeys/"*.sh
 
 TRANSCRIBE_SCRIPT="$SCRIPT_DIR/linux-hotkeys/toggle-transcription.sh"
 AUTOCORRECT_SCRIPT="$SCRIPT_DIR/linux-hotkeys/toggle-autocorrect.sh"
