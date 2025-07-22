@@ -15,7 +15,7 @@ The following services are set up:
 1. **Ollama** - LLM server
 2. **Whisper** - Speech-to-text (Wyoming Faster Whisper)
 3. **Piper** - Text-to-speech (Wyoming Piper)
-4. **OpenWakeWord** - Wake word detection (Wyoming OpenWakeWord)
+4. **OpenWakeWord** - Wake word detection (Wyoming OpenWakeWord) - Note: Requires LiteRT support on macOS
 
 ## Installation Options
 
@@ -113,15 +113,23 @@ ollama serve
 1. **Ollama**: Uses the official macOS app which provides native GPU acceleration
 2. **Whisper**: Wyoming Faster Whisper uses CPU by default, but is optimized for performance
 3. **Piper**: May require building from source on Apple Silicon; pre-built binaries are limited
-4. **OpenWakeWord**: Runs on CPU, listening for wake words like "ok nabu"
+4. **OpenWakeWord**: On macOS, requires a modified version with LiteRT support (see below)
 
 ## Troubleshooting
 
 - If services fail to start, check that all dependencies are installed
 - Ensure ports are not already in use by other applications
-- For Piper on Apple Silicon, you may need to build from source
+- For Piper on Apple Silicon, the setup now uses piper-tts from PyPI via UV
 - Check logs in each tmux pane for service-specific errors
 - If using uvx, ensure `uv` is installed: `brew install uv`
+
+### OpenWakeWord on macOS
+
+OpenWakeWord requires `tflite-runtime` which is not available for macOS. We've created a PR to add LiteRT (ai-edge-litert) support:
+- PR: https://github.com/rhasspy/wyoming-openwakeword/pull/XXX (pending)
+- Uses `ai-edge-litert==1.3.0` which provides macOS ARM64 support
+
+Until the PR is merged, OpenWakeWord will not work with the standard uvx command on macOS.
 
 ## Alternative: Docker
 
