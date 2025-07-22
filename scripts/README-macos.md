@@ -31,7 +31,7 @@ This will:
 - Check for Homebrew
 - Install `uv` if needed
 - Install/check Ollama
-- Install tmux for session management
+- Install Zellij for session management
 
 Then run all services:
 ```bash
@@ -40,18 +40,19 @@ Then run all services:
 
 ## Running Services
 
-### Using tmux (Recommended)
+### Using Zellij (Recommended)
 
-Run all services in a tmux session:
+Run all services in a Zellij session:
 
 ```bash
 ./start-all-services.sh
 ```
 
-tmux commands:
-- `Ctrl-B d` - Detach from session
-- `tmux attach -t agent-cli-services` - Reattach to session
-- `Ctrl-B arrow keys` - Navigate between panes
+Zellij commands:
+- `Ctrl-O d` - Detach from session
+- `zellij attach agent-cli` - Reattach to session
+- `Alt + arrow keys` - Navigate between panes
+- `Ctrl-Q` - Quit Zellij
 
 ### Running Services Individually
 
@@ -90,7 +91,7 @@ ollama serve
 - If services fail to start, check that all dependencies are installed
 - Ensure ports are not already in use by other applications
 - For Piper on Apple Silicon, the setup now uses piper-tts from PyPI via UV
-- Check logs in each tmux pane for service-specific errors
+- Check logs in each Zellij pane for service-specific errors
 - If using uvx, ensure `uv` is installed: `brew install uv`
 
 ### OpenWakeWord on macOS

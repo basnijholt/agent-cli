@@ -35,10 +35,10 @@ else
     echo "Ollama is already installed"
 fi
 
-# Check if tmux is installed
-if ! command -v tmux &> /dev/null; then
-    echo "Installing tmux..."
-    brew install tmux
+# Check if zellij is installed
+if ! command -v zellij &> /dev/null; then
+    echo "Installing zellij..."
+    brew install zellij
 fi
 
 echo ""
