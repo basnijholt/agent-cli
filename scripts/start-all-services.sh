@@ -3,32 +3,8 @@
 # Check if zellij is installed
 if ! command -v zellij &> /dev/null; then
     echo "Zellij not found. Installing..."
-
-    # Detect OS and install accordingly
-    if [[ "$OSTYPE" == "darwin"* ]]; then
-        # macOS
-        if command -v brew &> /dev/null; then
-            brew install zellij
-        else
-            echo "Homebrew not found. Please install Homebrew or run the setup script first."
-            exit 1
-        fi
-    elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
-        # Linux - try different methods
-        if command -v cargo &> /dev/null; then
-            echo "Installing zellij via cargo..."
-            cargo install zellij
-        else
-            echo "Installing zellij binary..."
-            mkdir -p ~/.local/bin
-            curl -L https://github.com/zellij-org/zellij/releases/latest/download/zellij-x86_64-unknown-linux-musl.tar.gz | tar -xz -C ~/.local/bin/
-            chmod +x ~/.local/bin/zellij
-            export PATH="$HOME/.local/bin:$PATH"
-        fi
-    else
-        echo "Unsupported OS. Please install zellij manually."
-        exit 1
-    fi
+    uvx dotbins get zellij-org/zellij
+    export PATH="$HOME/.local/bin:$PATH"
 fi
 
 # Get the current directory
