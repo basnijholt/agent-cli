@@ -25,7 +25,7 @@ echo "⚙️ Setting up configuration..."
 mkdir -p ~/.config/skhd
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-TOGGLE_SCRIPT="$SCRIPT_DIR/macos-toggle/toggle-transcription-best.sh"
+TOGGLE_SCRIPT="$SCRIPT_DIR/macos-toggle/toggle-transcription.sh"
 
 cat > ~/.config/skhd/skhdrc << EOF
 # Agent-CLI Transcription Toggle
@@ -38,7 +38,7 @@ skhd --start-service
 
 # Test
 echo "🧪 Testing..."
-terminal-notifier -title "🎙️ Setup Complete" -message "Press Cmd+Shift+R to transcribe!" -sound Glass
+terminal-notifier -title "🎙️ Setup Complete" -message "Press Cmd+Shift+R to transcribe!"
 
 echo ""
 echo "✅ Done! Press Cmd+Shift+R to start transcription."
