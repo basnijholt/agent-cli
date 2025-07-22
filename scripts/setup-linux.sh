@@ -28,7 +28,7 @@ fi
 # Check for PortAudio (required for audio processing)
 echo "🔊 Checking PortAudio..."
 if ! pkg-config --exists portaudio-2.0 2>/dev/null; then
-    echo "ERROR: PortAudio development libraries are not installed."
+    echo "❌ ERROR: PortAudio development libraries are not installed."
     echo ""
     echo "Please install PortAudio using your distribution's package manager:"
     echo ""
