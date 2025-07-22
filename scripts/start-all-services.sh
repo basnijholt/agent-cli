@@ -84,6 +84,7 @@ layout {
 EOF
 
 # Check if agent-cli session already exists and is running
+# Case 1: Session exists but has exited - clean it up and start fresh
 if zellij list-sessions 2>/dev/null | grep "agent-cli" | grep -q "EXITED"; then
     echo "Found exited session 'agent-cli'. Cleaning up..."
     zellij delete-session agent-cli
@@ -93,11 +94,13 @@ if zellij list-sessions 2>/dev/null | grep "agent-cli" | grep -q "EXITED"; then
     echo "Use 'zellij attach agent-cli' to reattach"
     # Start zellij with layout file - session name is specified in the layout
     zellij --layout "$SCRIPTS_DIR/.runtime/agent-cli-layout.kdl"
+# Case 2: Session exists and is running - attach to it
 elif zellij list-sessions 2>/dev/null | grep -q "agent-cli"; then
     echo "Session 'agent-cli' already exists and is running. Attaching..."
     echo "Use 'Ctrl-O d' to detach from the session"
     echo "Use 'Ctrl-Q' to quit Zellij"
     zellij attach agent-cli
+# Case 3: No session exists - create a new one
 else
     echo "Starting all services in Zellij..."
     echo "Use 'Ctrl-Q' to quit Zellij"
