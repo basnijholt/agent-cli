@@ -19,13 +19,13 @@ Universal Docker setup that works on any platform with Docker support.
 1. **Start the services:**
 
    ```bash
-   docker compose -f docs/examples/docker-compose.yml up --build
+   docker compose -f docker/docker-compose.yml up --build
    ```
 
 2. **Check if services are running:**
 
    ```bash
-   docker compose -f docs/examples/docker-compose.yml logs
+   docker compose -f docker/docker-compose.yml logs
    ```
 
    You should see logs from all services, with Ollama downloading the `qwen3:4b` model.
@@ -57,8 +57,8 @@ The Docker setup provides:
 
 The Docker setup uses:
 
-- `docs/examples/docker-compose.yml` - Service orchestration
-- `docs/examples/Dockerfile` - Custom Ollama container
+- `docker/docker-compose.yml` - Service orchestration
+- `docker/Dockerfile` - Custom Ollama container
 - Data volumes for model persistence
 
 ## Important Limitations
@@ -71,16 +71,16 @@ The Docker setup uses:
 
 ```bash
 # Start services in background
-docker compose -f docs/examples/docker-compose.yml up -d
+docker compose -f docker/docker-compose.yml up -d
 
 # Stop services
-docker compose -f docs/examples/docker-compose.yml down
+docker compose -f docker/docker-compose.yml down
 
 # View logs
-docker compose -f docs/examples/docker-compose.yml logs -f
+docker compose -f docker/docker-compose.yml logs -f
 
 # Restart a specific service
-docker compose -f docs/examples/docker-compose.yml restart ollama
+docker compose -f docker/docker-compose.yml restart ollama
 ```
 
 ## Data Persistence
@@ -98,7 +98,7 @@ Services store data in local directories:
 
 - **Slow performance**: Use native setup for better performance
 - **Memory issues**: Increase Docker memory allocation to 8GB+
-- **Port conflicts**: Change port mappings in `docker-compose.yml`
+- **Port conflicts**: Change port mappings in `docker/docker-compose.yml`
 
 ## Alternative: Native Installation
 
