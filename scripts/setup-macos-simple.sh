@@ -48,26 +48,27 @@ cat > run-piper-uvx.sh << 'EOF'
 #!/bin/bash
 echo "Starting Wyoming Piper on port 10200..."
 
-# First, ensure we have the Piper binary
-if [ ! -f "./piper/piper" ]; then
-    echo "Downloading Piper binary..."
-    mkdir -p piper
-    cd piper
+# Create wrapper script for piper using uvx
+if [ ! -f "./piper-uv-wrapper.sh" ]; then
+    cat > piper-uv-wrapper.sh << 'WRAPPER'
+#!/bin/bash
+exec uvx --from piper-tts piper "$@"
+WRAPPER
+    chmod +x piper-uv-wrapper.sh
+fi
 
-    # Try to download pre-built binary (note: may not exist for macOS)
-    ARCH=$(uname -m)
-    if [ "$ARCH" = "x86_64" ]; then
-        curl -L "https://github.com/rhasspy/piper/releases/download/v1.2.0/piper_amd64.tar.gz" | tar -xzf -
-    else
-        echo "Pre-built binary not available for $ARCH. You'll need to build Piper from source."
-        echo "Visit: https://github.com/rhasspy/piper for build instructions"
-        exit 1
-    fi
+# Download voice if not present using uvx
+if [ ! -d "./piper-data/en_US-lessac-medium" ]; then
+    echo "Downloading voice model..."
+    mkdir -p piper-data
+    cd piper-data
+    uvx --from piper-tts python -m piper.download_voices en_US-lessac-medium
     cd ..
 fi
 
+# Run Wyoming Piper using uvx wrapper
 uvx --from wyoming-piper wyoming-piper \
-    --piper './piper/piper' \
+    --piper './piper-uv-wrapper.sh' \
     --voice en_US-lessac-medium \
     --uri 'tcp://0.0.0.0:10200' \
     --data-dir ./piper-data \
