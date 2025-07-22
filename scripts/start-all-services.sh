@@ -44,8 +44,8 @@ layout {
     pane split_direction="vertical" {
         pane {
             name "Ollama"
-            command "sh"
-            args "-c" "ollama serve"
+            command "ollama"
+            args "serve"
         }
         pane split_direction="horizontal" {
             pane {
