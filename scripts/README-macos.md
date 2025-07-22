@@ -1,5 +1,7 @@
 # macOS Setup for Agent CLI Services
 
+> **📍 Note**: This documentation has moved to [docs/installation/macos.md](../docs/installation/macos.md) for better organization.
+
 This guide provides instructions for setting up the required services on macOS without Docker, enabling GPU acceleration and better performance.
 
 ## Prerequisites

@@ -24,6 +24,7 @@ It provides a suite of powerful tools for voice and text interaction, designed f
   - [🗣️ TTS (Text-to-Speech)](#-tts-text-to-speech)
   - [👂 Wake Word](#-wake-word)
 - [Installation](#installation)
+- [Agent CLI Package Installation](#agent-cli-package-installation)
 - [Usage](#usage)
   - [Configuration](#configuration)
     - [Service Provider](#service-provider)
@@ -98,116 +99,23 @@ For specific functionalities, you can set up the following optional services:
 | --------------------------------------------------------------------------- | -------------------------- |
 | [**Wyoming openWakeWord**](https://github.com/rhasspy/wyoming-openwakeword) | For the `assistant` agent. |
 
-This might sound like a lot, but it's actually quite simple to set up.
-
-<details>
-<summary>See and example for NixOS</summary>
-
-Taken from [basnijholt/dotfiles](https://github.com/basnijholt/dotfiles/blob/70903ef31ac65d99d31b4d7bfad053227f79fae5/configs/nixos/configuration.nix#L182-L221).
-
-```nix
-  # --- AI & Machine Learning ---
-  services.ollama = {
-    enable = true;
-    acceleration = "cuda";
-    host = "0.0.0.0";
-    openFirewall = true;
-    environmentVariables = {
-      OLLAMA_KEEP_ALIVE = "1h";
-    };
-  };
-  services.wyoming.faster-whisper = {
-    servers.english = {
-      enable = true;
-      model = "large-v3";
-      language = "en";
-      device = "cuda";
-      uri = "tcp://0.0.0.0:10300";
-    };
-  };
-  services.wyoming.piper.servers.yoda = {
-    enable = true;
-    voice = "en-us-ryan-high";
-    uri = "tcp://0.0.0.0:10200";
-  };
-  services.wyoming.openwakeword = {
-    enable = true;
-    preloadModels = [
-      "alexa"
-      "hey_jarvis"
-      "ok_nabu"
-    ];
-    uri = "tcp://0.0.0.0:10400";
-  };
-```
-
-</details>
-
-<details>
-<summary>See an example using Kokoro-FastAPI with Docker</summary>
-
-You can use Docker to run the `kokoro-fastapi` service.
-
-For CPU:
-
-```bash
-docker run -p 8880:8880 ghcr.io/remsky/kokoro-fastapi-cpu:latest
-```
-
-For NVIDIA GPU:
-
-```bash
-docker run --gpus all -p 8880:8880 ghcr.io/remsky/kokoro-fastapi-gpu:latest
-```
-
-The API will be available at `http://localhost:8880`.
-
-</details>
-
-<details>
-<summary>See an example using Docker</summary>
-
-You can use the provided `docker-compose.yml` to set up the required services.
-This will start three services:
-
-- `ollama`: A service for running local LLMs. It will automatically pull the `qwen3:4b` model.
-- `piper`: A text-to-speech service.
-- `whisper`: A speech-to-text service.
-
-Run the following command to build and start the services:
-
-```bash
-docker compose -f examples/docker-compose.yml up --build
-```
-
-This command will build the `ollama` image from the `examples/Dockerfile` and start all the services in the background.
-
-To check if everything is running correctly, you can view the logs of the services:
-
-```bash
-docker compose -f examples/docker-compose.yml logs
-```
-
-You should see logs from all three services, and the `ollama` logs should indicate that the `qwen3:4b` model has been pulled successfully.
-
-To stop the services, run:
-
-```bash
-docker compose -f examples/docker-compose.yml down
-```
-
-> ⚠️ The `ollama` service can be memory-intensive. If you experience issues with the `autocorrect`, `voice-edit`, or `chat` agents, you may need to increase the memory allocated to Docker.
->
-> **Note on GPU Acceleration**:
->
-> - **Ollama**: On macOS, Docker does not support GPU acceleration. For significantly better performance, it is recommended to install Ollama natively by downloading it from the [official website](https://ollama.com/download) or by using Homebrew. This will allow Ollama to use the Metal GPU on Apple Silicon devices. On Linux, NVIDIA GPU acceleration is supported.
-> - **Whisper**: The official `rhasspy/wyoming-whisper` Docker image does not currently support GPU acceleration.
-
-</details>
-
 ## Installation
 
-Install `agent-cli` using `uv`:
+Choose the best setup method for your platform:
+
+| Platform | Recommended | Performance | GPU Support |
+|----------|-------------|-------------|-------------|
+| **🍎 macOS** | [Native Setup](docs/installation/macos.md) | Excellent | ✅ Metal GPU |
+| **🐧 Linux** | [Native Setup](docs/installation/linux.md) | Excellent | ✅ NVIDIA GPU |
+| **🐳 Any Platform** | [Docker Setup](docs/installation/docker.md) | Good | ⚠️ Limited* |
+
+> **💡 Quick Start**: Check out our [Installation Guide](docs/installation/) for detailed setup instructions.
+
+*Docker limitations: GPU acceleration unavailable on macOS, limited on other platforms.
+
+## Agent CLI Package Installation
+
+After setting up the services above, install `agent-cli` using `uv`:
 
 ```bash
 uv tools install agent-cli
