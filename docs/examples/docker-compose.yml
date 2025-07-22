@@ -1,0 +1,52 @@
+services:
+  ollama:
+    build:
+      context: ../..
+      dockerfile: docs/examples/Dockerfile
+    ports:
+      - "11434:11434"
+    environment:
+      - OLLAMA_THINK=false
+    volumes:
+      - ./ollama:/root/.ollama
+    # On macOS, Docker does not support GPU acceleration. For better
+    # performance, it is recommended to install Ollama natively:
+    # https://ollama.com/download
+    #
+    # On Linux with an NVIDIA GPU, you can uncomment the following
+    # lines to enable GPU acceleration.
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: all
+    #           capabilities: [gpu]
+
+  piper:
+    image: rhasspy/wyoming-piper
+    ports:
+      - "10200:10200"
+    volumes:
+      - ./piper-data:/data
+    command: --voice en-us-ryan-high
+
+  whisper:
+    image: rhasspy/wyoming-whisper
+    ports:
+      - "10300:10300"
+    volumes:
+      - ./whisper-data:/data
+    command: --model large-v3 --language en
+    # The official rhasspy/wyoming-whisper image does not currently
+    # support GPU acceleration.
+    # see https://github.com/rhasspy/wyoming-faster-whisper/issues/35
+    # and https://github.com/rhasspy/wyoming-faster-whisper/pull/44
+
+  openwakeword:
+    image: rhasspy/wyoming-openwakeword
+    ports:
+      - "10400:10400"
+    volumes:
+      - ./openwakeword-data:/data
+    command: --preload-model ok_nabu --custom-model-dir /data

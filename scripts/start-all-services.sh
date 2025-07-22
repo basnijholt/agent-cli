@@ -2,16 +2,42 @@
 
 # Check if zellij is installed
 if ! command -v zellij &> /dev/null; then
-    echo "Installing zellij..."
-    brew install zellij
+    echo "Zellij not found. Installing..."
+
+    # Detect OS and install accordingly
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        # macOS
+        if command -v brew &> /dev/null; then
+            brew install zellij
+        else
+            echo "Homebrew not found. Please install Homebrew or run the setup script first."
+            exit 1
+        fi
+    elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
+        # Linux - try different methods
+        if command -v cargo &> /dev/null; then
+            echo "Installing zellij via cargo..."
+            cargo install zellij
+        else
+            echo "Installing zellij binary..."
+            mkdir -p ~/.local/bin
+            curl -L https://github.com/zellij-org/zellij/releases/latest/download/zellij-x86_64-unknown-linux-musl.tar.gz | tar -xz -C ~/.local/bin/
+            chmod +x ~/.local/bin/zellij
+            export PATH="$HOME/.local/bin:$PATH"
+        fi
+    else
+        echo "Unsupported OS. Please install zellij manually."
+        exit 1
+    fi
 fi
 
 # Get the current directory
 SCRIPTS_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 
-# Create a Zellij layout file
-cat > agent-cli-layout.kdl << EOF
+# Create .runtime directory and Zellij layout file
+mkdir -p "$SCRIPTS_DIR/.runtime"
+cat > "$SCRIPTS_DIR/.runtime/agent-cli-layout.kdl" << EOF
 layout {
     pane split_direction="vertical" {
         pane {
@@ -23,18 +49,18 @@ layout {
             pane {
                 name "Whisper"
                 cwd "$SCRIPTS_DIR"
-                command "./run-whisper-uvx.sh"
+                command "./run-whisper.sh"
             }
             pane split_direction="horizontal" {
                 pane {
                     name "Piper"
                     cwd "$SCRIPTS_DIR"
-                    command "./run-piper-uvx.sh"
+                    command "./run-piper.sh"
                 }
                 pane {
                     name "OpenWakeWord"
                     cwd "$SCRIPTS_DIR"
-                    command "./run-openwakeword-uvx.sh"
+                    command "./run-openwakeword.sh"
                 }
             }
         }
@@ -89,5 +115,5 @@ else
     echo "Use 'Ctrl-Q' to quit Zellij"
     echo "Use 'Ctrl-O d' to detach from the session"
     echo "Use 'zellij attach agent-cli' to reattach"
-    zellij -n agent-cli --layout agent-cli-layout.kdl
+    zellij -n agent-cli --layout "$SCRIPTS_DIR/.runtime/agent-cli-layout.kdl"
 fi
