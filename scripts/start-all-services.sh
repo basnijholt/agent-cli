@@ -17,14 +17,14 @@ tmux new-session -d -s $SESSION_NAME -n services
 
 # Split window into 4 panes
 tmux split-window -h -t $SESSION_NAME:services
-tmux split-window -v -t $SESSION_NAME:services.0
-tmux split-window -v -t $SESSION_NAME:services.1
+tmux split-window -v -t $SESSION_NAME:services
+tmux split-window -v -t $SESSION_NAME:services.2
 
-# Run services in each pane
-tmux send-keys -t $SESSION_NAME:services.0 "ollama serve" C-m
-tmux send-keys -t $SESSION_NAME:services.1 "./run-whisper-uvx.sh" C-m
-tmux send-keys -t $SESSION_NAME:services.2 "./run-piper-uvx.sh" C-m
-tmux send-keys -t $SESSION_NAME:services.3 "./run-openwakeword-uvx.sh" C-m
+# Run services in each pane (tmux numbers panes from 1)
+tmux send-keys -t $SESSION_NAME:services.1 "ollama serve" C-m
+tmux send-keys -t $SESSION_NAME:services.2 "./run-whisper-uvx.sh" C-m
+tmux send-keys -t $SESSION_NAME:services.3 "./run-piper-uvx.sh" C-m
+tmux send-keys -t $SESSION_NAME:services.4 "./run-openwakeword-uvx.sh" C-m
 
 # Attach to session
 echo "Starting all services in tmux session '$SESSION_NAME'..."
