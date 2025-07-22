@@ -58,11 +58,14 @@ coverage.*
 .vscode/
 .vscode/
 
-# Examples - exclude downloaded models and data
+# Examples and scripts - exclude downloaded models and data
 examples/ollama/models/
 examples/piper-data/
 examples/whisper-data/
 examples/ollama/id_ed25519*
+scripts/piper-data/
+scripts/whisper-data/
+scripts/agent-cli-layout.kdl
 *.onnx
 *.onnx.json
 *.bin

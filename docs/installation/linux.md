@@ -67,57 +67,83 @@ Then rebuild your system:
 sudo nixos-rebuild switch
 ```
 
-### Option 2: Manual Installation
+### Option 2: Script-Based Installation (Recommended)
 
-1. **Install Ollama:**
+1. **Run the setup script:**
    ```bash
-   curl -fsSL https://ollama.ai/install.sh | sh
+   chmod +x scripts/setup-linux.sh
+   scripts/setup-linux.sh
    ```
 
-2. **Install Python dependencies:**
+2. **Start all services:**
    ```bash
-   # Install uv
-   curl -LsSf https://astral.sh/uv/install.sh | sh
-
-   # Install Wyoming services
-   uv tool install wyoming-faster-whisper
-   uv tool install wyoming-piper
-   uv tool install wyoming-openwakeword
+   scripts/start-all-services.sh
    ```
 
-3. **Start services:**
-   ```bash
-   # Terminal 1: Ollama
-   ollama serve
-
-   # Terminal 2: Whisper (with GPU)
-   wyoming-faster-whisper --model large-v3 --language en --device cuda --uri tcp://0.0.0.0:10300
-
-   # Terminal 3: Piper
-   wyoming-piper --voice en-us-ryan-high --uri tcp://0.0.0.0:10200
-
-   # Terminal 4: OpenWakeWord
-   wyoming-openwakeword --preload-model ok_nabu --uri tcp://0.0.0.0:10400
-   ```
-
-4. **Install agent-cli:**
+3. **Install agent-cli:**
    ```bash
    uv tools install agent-cli
    ```
 
-5. **Test the setup:**
+4. **Test the setup:**
    ```bash
    agent-cli autocorrect "this has an eror"
    ```
 
+### Option 3: Manual Installation
+
+If you prefer manual setup:
+
+```bash
+# 1. Install dependencies
+curl -LsSf https://astral.sh/uv/install.sh | sh
+curl -fsSL https://ollama.ai/install.sh | sh
+
+# 2. Start services individually
+# Terminal 1: Ollama
+ollama serve
+
+# Terminal 2: Whisper (with GPU)
+scripts/run-whisper-uvx.sh
+
+# Terminal 3: Piper
+scripts/run-piper-uvx.sh
+
+# Terminal 4: OpenWakeWord
+scripts/run-openwakeword-uvx.sh
+```
+
 ## Services Overview
 
-| Service | Port | GPU Support | Memory Usage |
-|---------|------|-------------|--------------|
-| **Ollama** | 11434 | ✅ CUDA/ROCm | 2-8GB VRAM |
-| **Whisper** | 10300 | ✅ CUDA | 1-4GB VRAM |
-| **Piper** | 10200 | N/A | ~500MB RAM |
-| **OpenWakeWord** | 10400 | N/A | ~200MB RAM |
+| Service | Port | GPU Support | Auto-Detection |
+|---------|------|-------------|----------------|
+| **Ollama** | 11434 | ✅ CUDA/ROCm | Automatic |
+| **Whisper** | 10300 | ✅ CUDA | Automatic (falls back to CPU) |
+| **Piper** | 10200 | N/A | N/A |
+| **OpenWakeWord** | 10400 | N/A | N/A |
+
+## Session Management with Zellij
+
+The scripts use Zellij for managing all services in one session (works on both Linux and macOS):
+
+### Starting Services
+```bash
+scripts/start-all-services.sh
+```
+
+### Zellij Commands
+- `Ctrl-O d` - Detach (services keep running)
+- `zellij attach agent-cli` - Reattach to session
+- `zellij list-sessions` - List all sessions
+- `zellij kill-session agent-cli` - Stop all services
+- `Alt + arrow keys` - Navigate between panes
+- `Ctrl-Q` - Quit (stops all services)
+
+## Automatic GPU Detection
+
+The scripts automatically detect and use GPU acceleration:
+- **Whisper**: Detects NVIDIA GPU and uses `large-v3` model with CUDA, falls back to `tiny-int8` with CPU
+- **Ollama**: Automatically uses available GPU (CUDA/ROCm)
 
 ## GPU Acceleration Setup
 
