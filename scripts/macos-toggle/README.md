@@ -1,18 +1,20 @@
-# macOS Voice Transcription Toggle
+# macOS Voice AI Toggles
 
-Press one key to start/stop voice transcription, just like the Linux version.
+Hotkey toggles for agent-cli voice AI features on macOS.
 
 ## Setup
 
 ```bash
-./setup-macos-transcription.sh
+./setup-macos-voice-ai.sh
 ```
 
 ## Usage
 
-- **Press `Cmd+Shift+R`** → Start transcription
-- **Press `Cmd+Shift+R`** → Stop and get result
-- Result appears in notification and clipboard
+- **`Cmd+Shift+R`** → Toggle voice transcription (start/stop with result)
+- **`Cmd+Shift+A`** → Autocorrect clipboard text
+- **`Cmd+Shift+V`** → Toggle voice edit mode for clipboard
+
+Results appear in notifications and clipboard.
 
 ## What it installs
 
@@ -35,4 +37,4 @@ terminal-notifier -title "Test" -message "Hello"
 ./start-all-services.sh
 ```
 
-That's it! Simple voice transcription toggle for macOS.
+That's it! Simple voice AI hotkeys for macOS.

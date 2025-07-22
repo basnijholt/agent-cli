@@ -2,7 +2,7 @@
 
 set -e
 
-echo "🎙️ Setting up macOS transcription toggle..."
+echo "🎙️ Setting up macOS voice AI toggles..."
 
 # Check macOS
 if [[ "$(uname)" != "Darwin" ]]; then
@@ -25,11 +25,15 @@ echo "⚙️ Setting up configuration..."
 mkdir -p ~/.config/skhd
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-TOGGLE_SCRIPT="$SCRIPT_DIR/macos-toggle/toggle-transcription.sh"
+TRANSCRIBE_SCRIPT="$SCRIPT_DIR/macos-toggle/toggle-transcription.sh"
+AUTOCORRECT_SCRIPT="$SCRIPT_DIR/macos-toggle/toggle-autocorrect.sh"
+VOICE_EDIT_SCRIPT="$SCRIPT_DIR/macos-toggle/toggle-voice-edit.sh"
 
 cat > ~/.config/skhd/skhdrc << EOF
-# Agent-CLI Transcription Toggle
-cmd + shift - r : "$TOGGLE_SCRIPT"
+# Agent-CLI Voice AI Toggles
+cmd + shift - r : "$TRANSCRIBE_SCRIPT"
+cmd + shift - a : "$AUTOCORRECT_SCRIPT"
+cmd + shift - v : "$VOICE_EDIT_SCRIPT"
 EOF
 
 # Start service
@@ -38,10 +42,13 @@ skhd --start-service
 
 # Test
 echo "🧪 Testing..."
-terminal-notifier -title "🎙️ Setup Complete" -message "Press Cmd+Shift+R to transcribe!"
+terminal-notifier -title "🎙️ Setup Complete" -message "Voice AI hotkeys ready!"
 
 echo ""
-echo "✅ Done! Press Cmd+Shift+R to start transcription."
+echo "✅ Done! Hotkeys:"
+echo "  Cmd+Shift+R - Transcribe voice"
+echo "  Cmd+Shift+A - Autocorrect clipboard"
+echo "  Cmd+Shift+V - Voice edit clipboard"
 echo ""
 echo "If the hotkey doesn't work:"
 echo "1. Open System Settings → Privacy & Security → Accessibility"
