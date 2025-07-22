@@ -85,5 +85,5 @@ else
     echo "🚀 Starting all services in Zellij..."
     show_usage
     # Start zellij with layout file - session name is specified in the layout
-    zellij --layout --force-run-commands "$SCRIPTS_DIR/.runtime/agent-cli-layout.kdl"
+    zellij --layout "$SCRIPTS_DIR/.runtime/agent-cli-layout.kdl"
 fi
