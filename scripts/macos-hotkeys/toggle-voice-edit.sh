@@ -3,9 +3,16 @@
 # Toggle script for agent-cli voice-edit on macOS
 
 if pgrep -f "agent-cli voice-edit" > /dev/null; then
-    "$HOME/.local/bin/agent-cli" voice-edit --stop --quiet 2>/dev/null
-    /opt/homebrew/bin/terminal-notifier -title "🛑 Voice Edit Stopped" -message "Session ended"
+    pkill -INT -f "agent-cli voice-edit"
+    /opt/homebrew/bin/terminal-notifier -title "🛑 Stopped" -message "Processing voice command..."
 else
-    /opt/homebrew/bin/terminal-notifier -title "🎙️ Voice Edit Started" -message "Listening for voice commands..."
-    "$HOME/.local/bin/agent-cli" voice-edit --quiet 2>/dev/null &
+    /opt/homebrew/bin/terminal-notifier -title "🎙️ Started" -message "Listening for voice command..."
+    (
+        OUTPUT=$("$HOME/.local/bin/agent-cli" voice-edit --quiet 2>/dev/null)
+        if [ -n "$OUTPUT" ]; then
+            /opt/homebrew/bin/terminal-notifier -title "✨ Voice Edit Result" -message "$OUTPUT"
+        else
+            /opt/homebrew/bin/terminal-notifier -title "❌ Error" -message "No output"
+        fi
+    ) &
 fi
