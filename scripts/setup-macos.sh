@@ -20,7 +20,14 @@ fi
 # Install Ollama
 echo "Checking Ollama..."
 if ! command -v ollama &> /dev/null; then
-    echo "Please download and install Ollama from https://ollama.com/download"
+    echo "Ollama is not installed. You can install it using either method:"
+    echo ""
+    echo "Option 1: Install via Homebrew (recommended):"
+    echo "  brew install ollama"
+    echo ""
+    echo "Option 2: Download from the official website:"
+    echo "  https://ollama.com/download"
+    echo ""
     echo "Ollama requires macOS 12 Monterey or later"
     echo "After installation, run 'ollama serve' to start the server"
     read -p "Press Enter when Ollama is installed..."
