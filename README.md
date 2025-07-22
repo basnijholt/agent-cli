@@ -27,6 +27,7 @@ It provides a suite of powerful tools for voice and text interaction, designed f
 - [Agent CLI Package Installation](#agent-cli-package-installation)
 - [System Integration](#system-integration)
   - [macOS Hotkeys](#macos-hotkeys)
+  - [Linux Hotkeys](#linux-hotkeys)
 - [Usage](#usage)
   - [Configuration](#configuration)
     - [Service Provider](#service-provider)
