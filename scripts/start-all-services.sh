@@ -35,8 +35,9 @@ fi
 SCRIPTS_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 
-# Create a Zellij layout file
-cat > agent-cli-layout.kdl << EOF
+# Create .runtime directory and Zellij layout file
+mkdir -p "$SCRIPTS_DIR/.runtime"
+cat > "$SCRIPTS_DIR/.runtime/agent-cli-layout.kdl" << EOF
 layout {
     pane split_direction="vertical" {
         pane {
@@ -48,18 +49,18 @@ layout {
             pane {
                 name "Whisper"
                 cwd "$SCRIPTS_DIR"
-                command "./run-whisper-uvx.sh"
+                command "./run-whisper.sh"
             }
             pane split_direction="horizontal" {
                 pane {
                     name "Piper"
                     cwd "$SCRIPTS_DIR"
-                    command "./run-piper-uvx.sh"
+                    command "./run-piper.sh"
                 }
                 pane {
                     name "OpenWakeWord"
                     cwd "$SCRIPTS_DIR"
-                    command "./run-openwakeword-uvx.sh"
+                    command "./run-openwakeword.sh"
                 }
             }
         }
@@ -114,5 +115,5 @@ else
     echo "Use 'Ctrl-Q' to quit Zellij"
     echo "Use 'Ctrl-O d' to detach from the session"
     echo "Use 'zellij attach agent-cli' to reattach"
-    zellij -n agent-cli --layout agent-cli-layout.kdl
+    zellij -n agent-cli --layout "$SCRIPTS_DIR/.runtime/agent-cli-layout.kdl"
 fi

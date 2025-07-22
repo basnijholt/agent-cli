@@ -79,13 +79,13 @@ If you prefer running services individually:
 ollama serve
 
 # Terminal 2: Whisper (CPU optimized)
-scripts/run-whisper-uvx.sh
+scripts/run-whisper.sh
 
 # Terminal 3: Piper (Apple Silicon compatible)
-scripts/run-piper-uvx.sh
+scripts/run-piper.sh
 
 # Terminal 4: OpenWakeWord (macOS compatible fork)
-scripts/run-openwakeword-uvx.sh
+scripts/run-openwakeword.sh
 ```
 
 ## Why Native Setup?

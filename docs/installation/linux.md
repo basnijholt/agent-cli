@@ -59,13 +59,13 @@ curl -fsSL https://ollama.ai/install.sh | sh
 ollama serve
 
 # Terminal 2: Whisper (with GPU)
-scripts/run-whisper-uvx.sh
+scripts/run-whisper.sh
 
 # Terminal 3: Piper
-scripts/run-piper-uvx.sh
+scripts/run-piper.sh
 
 # Terminal 4: OpenWakeWord
-scripts/run-openwakeword-uvx.sh
+scripts/run-openwakeword.sh
 ```
 
 ## Services Overview

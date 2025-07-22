@@ -63,9 +63,7 @@ examples/ollama/models/
 examples/piper-data/
 examples/whisper-data/
 examples/ollama/id_ed25519*
-scripts/piper-data/
-scripts/whisper-data/
-scripts/agent-cli-layout.kdl
+scripts/.runtime/
 *.onnx
 *.onnx.json
 *.bin
