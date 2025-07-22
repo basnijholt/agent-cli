@@ -17,26 +17,9 @@ The following services are set up:
 3. **Piper** - Text-to-speech (Wyoming Piper)
 4. **OpenWakeWord** - Wake word detection (Wyoming OpenWakeWord)
 
-## Installation Options
+## Installation
 
-### Option 1: Simple Setup with uvx (Recommended)
-
-This is the easiest method, using `uvx` to run services without managing repositories or virtual environments:
-
-```bash
-cd scripts
-chmod +x setup-macos-simple.sh
-./setup-macos-simple.sh
-```
-
-Then run all services:
-```bash
-./start-all-services.sh
-```
-
-### Option 2: Full Setup with Repository Clones
-
-For more control and customization:
+Run the setup script to install dependencies:
 
 ```bash
 cd scripts
@@ -45,23 +28,24 @@ chmod +x setup-macos.sh
 ```
 
 This will:
-- Clone the Wyoming service repositories
-- Set up Python virtual environments
-- Build Piper from source (if needed)
-- Create run scripts for each service
+- Check for Homebrew
+- Install `uv` if needed
+- Install/check Ollama
+- Install tmux for session management
+
+Then run all services:
+```bash
+./start-all-services.sh
+```
 
 ## Running Services
 
 ### Using tmux (Recommended)
 
-Both setup options create scripts to run all services in tmux:
+Run all services in a tmux session:
 
 ```bash
-# For simple setup:
 ./start-all-services.sh
-
-# For full setup:
-./start-services-macos.sh
 ```
 
 tmux commands:
@@ -71,7 +55,8 @@ tmux commands:
 
 ### Running Services Individually
 
-For simple setup:
+You can also run each service in separate terminals:
+
 ```bash
 # Terminal 1: Ollama
 ollama serve
@@ -86,21 +71,6 @@ ollama serve
 ./run-openwakeword-uvx.sh
 ```
 
-For full setup:
-```bash
-# Terminal 1: Ollama
-ollama serve
-
-# Terminal 2: Whisper
-./run-whisper.sh
-
-# Terminal 3: Piper
-./run-piper.sh
-
-# Terminal 4: OpenWakeWord
-./run-openwakeword.sh
-```
-
 ## Service Ports
 
 - Ollama: 11434
@@ -112,7 +82,7 @@ ollama serve
 
 1. **Ollama**: Uses the official macOS app which provides native GPU acceleration
 2. **Whisper**: Wyoming Faster Whisper uses CPU by default, but is optimized for performance
-3. **Piper**: May require building from source on Apple Silicon; pre-built binaries are limited
+3. **Piper**: Uses piper-tts from PyPI via UV (works on Apple Silicon)
 4. **OpenWakeWord**: Works on macOS using the LiteRT fork (automatically used by the scripts)
 
 ## Troubleshooting
