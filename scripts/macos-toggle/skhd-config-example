@@ -1,0 +1,14 @@
+# Example skhd configuration for agent-cli transcription toggle
+# Save this to ~/.config/skhd/skhdrc (or add to existing config)
+#
+# Installation:
+# brew install koekeishiya/formulae/skhd
+# brew services start skhd
+
+# Toggle transcription with Cmd+Shift+R
+cmd + shift - r : /path/to/agent-cli/scripts/macos-toggle/toggle-transcription-best.sh
+
+# Alternative key combinations (uncomment one you prefer):
+# cmd + shift - t : /path/to/agent-cli/scripts/macos-toggle/toggle-transcription-best.sh
+# alt + shift - r : /path/to/agent-cli/scripts/macos-toggle/toggle-transcription-best.sh
+# ctrl + alt - r : /path/to/agent-cli/scripts/macos-toggle/toggle-transcription-best.sh
