@@ -1,5 +1,5 @@
 #!/bin/bash
-echo "Starting Wyoming OpenWakeWord on port 10400..."
+echo "👂 Starting Wyoming OpenWakeWord on port 10400..."
 
 # Use the LiteRT fork until the PR is merged
 # PR: https://github.com/rhasspy/wyoming-openwakeword/pull/XXX

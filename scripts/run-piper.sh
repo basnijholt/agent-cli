@@ -1,5 +1,5 @@
 #!/bin/bash
-echo "Starting Wyoming Piper on port 10200..."
+echo "🔊 Starting Wyoming Piper on port 10200..."
 
 # Create .runtime directory and wrapper script for piper using uvx
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -15,7 +15,7 @@ fi
 
 # Download voice if not present using uvx
 if [ ! -d "$SCRIPT_DIR/.runtime/piper-data/en_US-lessac-medium" ]; then
-    echo "Downloading voice model..."
+    echo "⬇️ Downloading voice model..."
     mkdir -p "$SCRIPT_DIR/.runtime/piper-data"
     cd "$SCRIPT_DIR/.runtime/piper-data"
     uvx --from piper-tts python -m piper.download_voices en_US-lessac-medium

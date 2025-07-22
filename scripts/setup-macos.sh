@@ -6,7 +6,7 @@ echo "🚀 Setting up agent-cli services on macOS..."
 
 # Check if Homebrew is installed
 if ! command -v brew &> /dev/null; then
-    echo "Homebrew is not installed. Please install Homebrew first:"
+    echo "❌ Homebrew is not installed. Please install Homebrew first:"
     echo "/bin/bash -c \"\$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)\""
     exit 1
 fi
@@ -20,20 +20,20 @@ fi
 # Check for PortAudio (required for audio processing)
 echo "🔊 Checking PortAudio..."
 if ! pkg-config --exists portaudio-2.0 2>/dev/null; then
-    echo "Installing PortAudio..."
+    echo "📦 Installing PortAudio..."
     brew install portaudio
 else
-    echo "PortAudio is already installed"
+    echo "✅ PortAudio is already installed"
 fi
 
 # Install Ollama
 echo "🧠 Checking Ollama..."
 if ! command -v ollama &> /dev/null; then
-    echo "Installing Ollama via Homebrew..."
+    echo "🍺 Installing Ollama via Homebrew..."
     brew install ollama
-    echo "Ollama installed successfully"
+    echo "✅ Ollama installed successfully"
 else
-    echo "Ollama is already installed"
+    echo "✅ Ollama is already installed"
 fi
 
 # Check if zellij is installed
@@ -48,7 +48,7 @@ uv tool install --upgrade agent-cli
 
 # Preload default Ollama model
 echo "⬇️ Preloading default Ollama model (qwen3:4b)..."
-echo "This may take a few minutes depending on your internet connection..."
+echo "⏳ This may take a few minutes depending on your internet connection..."
 # Start Ollama in background, then pull model synchronously
 (ollama serve >/dev/null 2>&1 &) && sleep 2 && ollama pull qwen3:4b
 # Stop the temporary ollama server

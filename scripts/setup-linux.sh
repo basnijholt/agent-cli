@@ -21,7 +21,7 @@ install_uv() {
 
 # Check if uv is installed
 if ! command -v uv &> /dev/null; then
-    echo "Installing uv..."
+    echo "📦 Installing uv..."
     install_uv
 fi
 
@@ -47,32 +47,32 @@ if ! pkg-config --exists portaudio-2.0 2>/dev/null; then
     echo "After installing PortAudio, run this script again."
     exit 1
 else
-    echo "PortAudio is already installed"
+    echo "✅ PortAudio is already installed"
 fi
 
 # Install Ollama
 echo "🧠 Checking Ollama..."
 if ! command -v ollama &> /dev/null; then
-    echo "Installing Ollama..."
+    echo "📦 Installing Ollama..."
     curl -fsSL https://ollama.ai/install.sh | sh
-    echo "Ollama installed successfully"
+    echo "✅ Ollama installed successfully"
 else
-    echo "Ollama is already installed"
+    echo "✅ Ollama is already installed"
 fi
 
 # Check if zellij is available or offer alternatives
 if ! command -v zellij &> /dev/null; then
-    echo "Zellij not found. Installing..."
+    echo "📺 Zellij not found. Installing..."
 
     # Try different installation methods based on what's available
     if command -v cargo &> /dev/null; then
-        echo "Installing zellij via cargo..."
+        echo "🦀 Installing zellij via cargo..."
         cargo install zellij
     elif command -v flatpak &> /dev/null; then
-        echo "Installing zellij via flatpak..."
+        echo "📦 Installing zellij via flatpak..."
         flatpak install -y flathub org.zellij_developers.zellij
     else
-        echo "Installing zellij binary..."
+        echo "📥 Installing zellij binary..."
         curl -L https://github.com/zellij-org/zellij/releases/latest/download/zellij-x86_64-unknown-linux-musl.tar.gz | tar -xz -C ~/.local/bin/
         chmod +x ~/.local/bin/zellij
         export PATH="$HOME/.local/bin:$PATH"
@@ -85,7 +85,7 @@ uv tool install --upgrade agent-cli
 
 # Preload default Ollama model
 echo "⬇️ Preloading default Ollama model (qwen3:4b)..."
-echo "This may take a few minutes depending on your internet connection..."
+echo "⏳ This may take a few minutes depending on your internet connection..."
 # Start Ollama in background, then pull model synchronously
 (ollama serve >/dev/null 2>&1 &) && sleep 2 && ollama pull qwen3:4b
 # Stop the temporary ollama server

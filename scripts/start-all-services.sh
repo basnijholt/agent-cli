@@ -2,7 +2,7 @@
 
 # Check if zellij is installed
 if ! command -v zellij &> /dev/null; then
-    echo "Zellij not found. Installing..."
+    echo "📺 Zellij not found. Installing..."
     uvx dotbins get zellij-org/zellij
     export PATH="$HOME/.local/bin:$PATH"
 fi
@@ -61,9 +61,9 @@ EOF
 
 # Function to show common usage instructions
 show_usage() {
-    echo "Use 'Ctrl-Q' to quit Zellij"
-    echo "Use 'Ctrl-O d' to detach from the session"
-    echo "Use 'zellij attach agent-cli' to reattach"
+    echo "❌ Use 'Ctrl-Q' to quit Zellij"
+    echo "🔌 Use 'Ctrl-O d' to detach from the session"
+    echo "🔗 Use 'zellij attach agent-cli' to reattach"
 }
 
 # Check if agent-cli session already exists and is running
@@ -71,7 +71,7 @@ show_usage() {
 if zellij list-sessions 2>/dev/null | grep "agent-cli" | grep -q "EXITED"; then
     echo "🧹 Found exited session 'agent-cli'. Cleaning up..."
     zellij delete-session agent-cli
-    echo "Starting fresh services in Zellij..."
+    echo "🆕 Starting fresh services in Zellij..."
     show_usage
     # Start zellij with layout file - session name is specified in the layout
     zellij --layout "$SCRIPTS_DIR/.runtime/agent-cli-layout.kdl"
