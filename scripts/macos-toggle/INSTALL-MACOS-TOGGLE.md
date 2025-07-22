@@ -1,11 +1,27 @@
 # macOS Transcription Toggle - Installation Guide
 
+## 🚀 Automated Installation (Recommended)
+
+The easiest way to set up the transcription toggle system:
+
+```bash
+# Run the automated setup script
+./setup-macos-transcription.sh
+```
+
+This script will:
+- ✅ Install terminal-notifier (notifications)
+- ✅ Install skhd.zig (modern hotkey manager)
+- ✅ Configure hotkey binding (Cmd+Shift+R)
+- ✅ Set up accessibility permissions
+- ✅ Test the complete system
+
 ## ✅ Problem Solved: Why notifications didn't work
 
 **Issue**: Terminal doesn't have notification permissions for `osascript`
 **Solution**: Use `terminal-notifier` which works independently
 
-## Quick Installation (Recommended)
+## Manual Installation (Advanced Users)
 
 ### 1. Install terminal-notifier (if not already installed):
 ```bash
@@ -14,19 +30,20 @@ brew install terminal-notifier
 
 ### 2. Install a hotkey manager - Choose one:
 
-**Option A: skhd (Lightweight, recommended)**
+**Option A: skhd.zig (Modern, recommended)**
 ```bash
-# Install skhd
-brew install koekeishiya/formulae/skhd
+# Install skhd.zig
+brew tap jackielii/tap
+brew install jackielii/tap/skhd-zig
 
 # Create config directory
 mkdir -p ~/.config/skhd
 
 # Add hotkey configuration
-echo 'cmd + shift - r : /Users/bas.nijholt/Work/agent-cli/scripts/toggle-transcription-best.sh' >> ~/.config/skhd/skhdrc
+echo 'cmd + shift - r : /path/to/agent-cli/scripts/macos-toggle/toggle-transcription-best.sh' >> ~/.config/skhd/skhdrc
 
 # Start skhd service
-brew services start skhd
+skhd --start-service
 ```
 
 **Option B: Hammerspoon (More powerful)**

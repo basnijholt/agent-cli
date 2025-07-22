@@ -1,14 +1,25 @@
-# Example skhd configuration for agent-cli transcription toggle
+# Example skhd.zig configuration for agent-cli transcription toggle
 # Save this to ~/.config/skhd/skhdrc (or add to existing config)
 #
 # Installation:
-# brew install koekeishiya/formulae/skhd
-# brew services start skhd
+# brew tap jackielii/tap
+# brew install jackielii/tap/skhd-zig
+# skhd --start-service
 
-# Toggle transcription with Cmd+Shift+R
+# Agent-CLI Transcription Toggle
+# Press Cmd+Shift+R to start/stop voice transcription
 cmd + shift - r : /path/to/agent-cli/scripts/macos-toggle/toggle-transcription-best.sh
 
 # Alternative key combinations (uncomment one you prefer):
 # cmd + shift - t : /path/to/agent-cli/scripts/macos-toggle/toggle-transcription-best.sh
 # alt + shift - r : /path/to/agent-cli/scripts/macos-toggle/toggle-transcription-best.sh
 # ctrl + alt - r : /path/to/agent-cli/scripts/macos-toggle/toggle-transcription-best.sh
+
+# Optional: Process-specific bindings (skhd.zig feature)
+# Only active when Terminal is focused
+# cmd + shift - r ["Terminal"] : /path/to/agent-cli/scripts/macos-toggle/toggle-transcription-best.sh
+
+# Optional: Additional agent-cli shortcuts
+# cmd + shift - a : agent-cli autocorrect    # Auto-correct clipboard text
+# cmd + shift - s : agent-cli speak          # Speak clipboard text
+# cmd + shift - c : agent-cli chat           # Start chat agent

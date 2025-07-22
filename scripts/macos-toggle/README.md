@@ -2,27 +2,33 @@
 
 Open-source and built-in alternatives to Keyboard Maestro for agent-cli transcription toggling.
 
-## Quick Comparison
+## 🚀 Automated Setup (Recommended)
+
+Run the automated installer:
+```bash
+./setup-macos-transcription.sh
+```
+
+This handles everything automatically: installs dependencies, configures hotkeys, sets permissions, and tests the system.
+
+## Manual Setup Options
 
 | Solution | Installation | Complexity | Features | Cost |
 |----------|--------------|------------|----------|------|
-| **skhd + osascript** | `brew install skhd` | Low | Basic notifications | Free |
+| **skhd.zig + terminal-notifier** | `brew install skhd-zig terminal-notifier` | Low | Modern hotkeys, reliable notifications | Free |
 | **Hammerspoon** | `brew install hammerspoon` | Medium | Rich notifications, Lua scripting | Free |
 | **Karabiner-Elements** | `brew install karabiner-elements` | Medium | System-wide key remapping | Free |
-| **terminal-notifier** | `brew install terminal-notifier` | Low | Enhanced notifications | Free |
 | **Built-in Shortcuts** | None (macOS 12+) | High | Native integration | Free |
 
-## Recommended Setup: skhd + osascript
+## Recommended Manual Setup: skhd.zig + terminal-notifier
 
-**Why:** Simple, lightweight, reliable, and uses mostly built-in macOS tools.
+**Why:** Modern, actively maintained, fully compatible with original skhd, and uses reliable terminal-notifier for notifications.
 
 ### Installation:
 ```bash
-# Install skhd
-brew install koekeishiya/formulae/skhd
-
-# Make script executable (already done)
-chmod +x ./toggle-transcription-macos.sh
+# Install skhd.zig and terminal-notifier
+brew tap jackielii/tap
+brew install jackielii/tap/skhd-zig terminal-notifier
 
 # Create skhd config directory
 mkdir -p ~/.config/skhd
@@ -32,7 +38,7 @@ cat skhd-config-example >> ~/.config/skhd/skhdrc
 # Edit the path to match your script location
 
 # Start skhd service
-brew services start skhd
+skhd --start-service
 ```
 
 ### Usage:
