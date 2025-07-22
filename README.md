@@ -25,6 +25,8 @@ It provides a suite of powerful tools for voice and text interaction, designed f
   - [👂 Wake Word](#-wake-word)
 - [Installation](#installation)
 - [Agent CLI Package Installation](#agent-cli-package-installation)
+- [System Integration](#system-integration)
+  - [macOS Hotkeys](#macos-hotkeys)
 - [Usage](#usage)
   - [Configuration](#configuration)
     - [Service Provider](#service-provider)
