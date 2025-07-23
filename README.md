@@ -80,11 +80,11 @@ agent-cli autocorrect "this has an eror"
 ```
 
 The setup scripts automatically install:
-- Package managers (Homebrew/uv) if needed
-- All AI services (Ollama, Whisper, TTS, etc.)
-- The `agent-cli` tool
-- System dependencies
-- Hotkey managers (if using hotkey scripts)
+- ✅ Package managers (Homebrew/uv) if needed
+- ✅ All AI services (Ollama, Whisper, TTS, etc.)
+- ✅ The `agent-cli` tool
+- ✅ System dependencies
+- ✅ Hotkey managers (if using hotkey scripts)
 
 <details><summary><b><u>[ToC]</u></b> 📚</summary>
 
@@ -156,10 +156,10 @@ cd agent-cli
 
 | Platform | Setup Command | What It Does | Detailed Guide |
 |----------|---------------|--------------|----------------|
-| **macOS** | `./scripts/setup-macos.sh` | Installs Homebrew (if needed), uv, Ollama, all services, and agent-cli | [macOS Guide](docs/installation/macos.md) |
-| **Linux** | `./scripts/setup-linux.sh` | Installs uv, Ollama, all services, and agent-cli | [Linux Guide](docs/installation/linux.md) |
-| **NixOS** | See guide → | Special instructions for NixOS | [NixOS Guide](docs/installation/nixos.md) |
-| **Docker** | See guide → | Container-based setup (slower) | [Docker Guide](docs/installation/docker.md) |
+| **🍎 macOS** | `./scripts/setup-macos.sh` | Installs Homebrew (if needed), uv, Ollama, all services, and agent-cli | [macOS Guide](docs/installation/macos.md) |
+| **🐧 Linux** | `./scripts/setup-linux.sh` | Installs uv, Ollama, all services, and agent-cli | [Linux Guide](docs/installation/linux.md) |
+| **❄️ NixOS** | See guide → | Special instructions for NixOS | [NixOS Guide](docs/installation/nixos.md) |
+| **🐳 Docker** | See guide → | Container-based setup (slower) | [Docker Guide](docs/installation/docker.md) |
 
 #### Step 3: Start All Services
 
@@ -209,12 +209,12 @@ cd agent-cli
 ```
 
 This script automatically:
-- Installs Homebrew if not present
-- Installs skhd (hotkey daemon) and terminal-notifier
-- Configures these system-wide hotkeys:
-  - `Cmd+Shift+R` - Toggle voice transcription
-  - `Cmd+Shift+A` - Autocorrect clipboard text
-  - `Cmd+Shift+V` - Voice edit clipboard text
+- ✅ Installs Homebrew if not present
+- ✅ Installs skhd (hotkey daemon) and terminal-notifier
+- ✅ Configures these system-wide hotkeys:
+  - **`Cmd+Shift+R`** - Toggle voice transcription
+  - **`Cmd+Shift+A`** - Autocorrect clipboard text
+  - **`Cmd+Shift+V`** - Voice edit clipboard text
 
 > [!NOTE]
 > After setup, you may need to grant Accessibility permissions to skhd in System Settings → Privacy & Security → Accessibility
@@ -226,12 +226,12 @@ This script automatically:
 ```
 
 This script automatically:
-- Installs notification tools if needed
-- Provides configuration for your desktop environment
-- Sets up these hotkeys:
-  - `Super+Shift+R` - Toggle voice transcription
-  - `Super+Shift+A` - Autocorrect clipboard text
-  - `Super+Shift+V` - Voice edit clipboard text
+- ✅ Installs notification tools if needed
+- ✅ Provides configuration for your desktop environment
+- ✅ Sets up these hotkeys:
+  - **`Super+Shift+R`** - Toggle voice transcription
+  - **`Super+Shift+A`** - Autocorrect clipboard text
+  - **`Super+Shift+V`** - Voice edit clipboard text
 
 The script supports Hyprland, GNOME, KDE, Sway, i3, XFCE, and provides instructions for manual configuration on other environments.
 
@@ -247,20 +247,20 @@ The only thing you need to have installed is **Git** to clone this repository. E
 Our installation scripts automatically handle all dependencies:
 
 #### Core Requirements (Auto-installed)
-- **Homebrew** (macOS) - Installed if not present
-- **uv** - Python package manager - Installed automatically
-- **PortAudio** - For microphone and speaker I/O - Installed via package manager
-- **Clipboard Tools** - Pre-installed on macOS, handled on Linux
+- 🍺 **Homebrew** (macOS) - Installed if not present
+- 🐍 **uv** - Python package manager - Installed automatically
+- 🎶 **PortAudio** - For microphone and speaker I/O - Installed via package manager
+- 📋 **Clipboard Tools** - Pre-installed on macOS, handled on Linux
 
 #### AI Services (Auto-installed and configured)
 
 | Service | Purpose | Auto-installed? |
 |---------|---------|-----------------|
-| **[Ollama](https://ollama.ai/)** | Local LLM for text processing | Yes, with default model |
-| **[Wyoming Faster Whisper](https://github.com/rhasspy/wyoming-faster-whisper)** | Speech-to-text | Yes, via `uvx` |
-| **[Wyoming Piper](https://github.com/rhasspy/wyoming-piper)** | Text-to-speech | Yes, via `uvx` |
-| **[Kokoro-FastAPI](https://github.com/remsky/Kokoro-FastAPI)** | Premium TTS (optional) | Can be added later |
-| **[Wyoming openWakeWord](https://github.com/rhasspy/wyoming-openwakeword)** | Wake word detection | Yes, for `assistant` |
+| **[Ollama](https://ollama.ai/)** | Local LLM for text processing | ✅ Yes, with default model |
+| **[Wyoming Faster Whisper](https://github.com/rhasspy/wyoming-faster-whisper)** | Speech-to-text | ✅ Yes, via `uvx` |
+| **[Wyoming Piper](https://github.com/rhasspy/wyoming-piper)** | Text-to-speech | ✅ Yes, via `uvx` |
+| **[Kokoro-FastAPI](https://github.com/remsky/Kokoro-FastAPI)** | Premium TTS (optional) | ⚙️ Can be added later |
+| **[Wyoming openWakeWord](https://github.com/rhasspy/wyoming-openwakeword)** | Wake word detection | ✅ Yes, for `assistant` |
 
 #### Alternative Cloud Services (Optional)
 
