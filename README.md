@@ -56,6 +56,8 @@ It provides a suite of powerful tools for voice and text interaction, designed f
 
 [![A demo video of Agent-CLI showing local AI voice and text tools on a desktop.](http://img.youtube.com/vi/7sBTCgttH48/0.jpg)](http://www.youtube.com/watch?v=7sBTCgttH48 "Agent-CLI: Local AI Voice & Text Tools on Your Desktop (macOS Demo)")
 
+*I made a demo video of Agent-CLI showing local AI voice and text tools on a desktop. [Watch it here](https://www.youtube.com/watch?v=7sBTCgttH48).*
+
 ## Features
 
 - **`autocorrect`**: Correct grammar and spelling in your text (e.g., from clipboard) using a local LLM with Ollama or OpenAI.
