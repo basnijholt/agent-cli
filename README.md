@@ -5,29 +5,72 @@
 `agent-cli` is a collection of **_local-first_**, AI-powered command-line agents that run entirely on your machine.
 It provides a suite of powerful tools for voice and text interaction, designed for privacy, offline capability, and seamless integration with system-wide hotkeys and workflows.
 
-> [!TIP]
-> If using [`uv`](https://docs.astral.sh/uv/), you can easily run the tools from this package directly. For example, to see the help message for `autocorrect`:
->
-> ```bash
-> uvx agent-cli autocorrect --help
-> ```
+## 🚀 Quick Start
+
+### Just want the CLI tool?
+
+If you already have AI services running (or plan to use OpenAI), simply install:
+
+```bash
+# Using uv (recommended)
+uv tool install agent-cli
+
+# Using pip
+pip install agent-cli
+```
+
+Then use it:
+```bash
+agent-cli autocorrect "this has an eror"
+```
+
+### Want automatic setup with everything?
+
+Our scripts install and configure everything for you:
+
+```bash
+# 1. Clone the repository
+git clone https://github.com/basnijholt/agent-cli.git
+cd agent-cli
+
+# 2. Run setup (installs all services + agent-cli)
+./scripts/setup-macos.sh  # or setup-linux.sh
+
+# 3. Start services
+./scripts/start-all-services.sh
+
+# 4. (Optional) Set up system-wide hotkeys
+./scripts/setup-macos-hotkeys.sh  # or setup-linux-hotkeys.sh
+
+# 5. Use it!
+agent-cli autocorrect "this has an eror"
+```
+
+The setup scripts automatically install:
+- ✅ Package managers (Homebrew/uv) if needed
+- ✅ All AI services (Ollama, Whisper, TTS, etc.)
+- ✅ The `agent-cli` tool
+- ✅ System dependencies
+- ✅ Hotkey managers (if using hotkey scripts)
 
 <details><summary><b><u>[ToC]</u></b> 📚</summary>
 
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
+- [🚀 Quick Start](#-quick-start)
+  - [Just want the CLI tool?](#just-want-the-cli-tool)
+  - [Want automatic setup?](#want-automatic-setup)
 - [Features](#features)
 - [Installation](#installation)
-- [Agent CLI Package Installation](#agent-cli-package-installation)
+  - [Option 1: CLI Tool Only](#option-1-cli-tool-only)
+  - [Option 2: Automated Full Setup](#option-2-automated-full-setup)
 - [System Integration](#system-integration)
   - [macOS Hotkeys](#macos-hotkeys)
   - [Linux Hotkeys](#linux-hotkeys)
 - [Prerequisites](#prerequisites)
-  - [🧠 LLM (Large Language Model)](#-llm-large-language-model)
-  - [🎤 ASR (Automatic Speech Recognition)](#-asr-automatic-speech-recognition)
-  - [🗣️ TTS (Text-to-Speech)](#-tts-text-to-speech)
-  - [👂 Wake Word](#-wake-word)
+  - [What You Need to Install Manually](#what-you-need-to-install-manually)
+  - [What the Setup Scripts Install for You](#what-the-setup-scripts-install-for-you)
 - [Usage](#usage)
   - [Configuration](#configuration)
     - [Service Provider](#service-provider)
@@ -69,139 +112,147 @@ It provides a suite of powerful tools for voice and text interaction, designed f
 
 ## Installation
 
-Choose the best setup method for your platform:
+### Option 1: CLI Tool Only
 
-| Platform            | Recommended                                      | Performance | GPU Support   |
-| ------------------- | ------------------------------------------------ | ----------- | ------------- |
-| **🍎 macOS**        | [Native Setup](docs/installation/macos.md)       | Excellent   | ✅ Metal GPU  |
-| **🐧 Linux**        | [Native Setup](docs/installation/linux.md)       | Excellent   | ✅ NVIDIA GPU |
-| **❄️ NixOS**        | [System Integration](docs/installation/nixos.md) | Excellent   | ✅ NVIDIA GPU |
-| **🐳 Any Platform** | [Docker Setup](docs/installation/docker.md)      | Good        | ⚠️ Limited\*  |
-
-\*Docker limitations: GPU acceleration unavailable on macOS, limited on other platforms.
-
-> [!TIP]
-> **💡 Quick Start**: Check out our [Installation Guide](docs/installation/) for detailed setup instructions.
-
-## Agent CLI Package Installation
-
-After setting up the services above, install `agent-cli` using `uv`:
+If you already have AI services set up or plan to use cloud services (OpenAI/Gemini):
 
 ```bash
-uv tools install agent-cli
-```
+# Using uv (recommended)
+uv tool install agent-cli
 
-or using `pip`:
-
-```bash
+# Using pip
 pip install agent-cli
 ```
 
-<details><summary>Or for development:<summary>
+### Option 2: Automated Full Setup
 
-1. **Clone the repository:**
+For a complete local setup with all AI services:
 
-   ```bash
-   git clone git@github.com:basnijholt/agent-cli.git
-   cd agent-cli
-   ```
-
-2. **Install in development mode:**
-
-   ```bash
-   uv sync
-   source .venv/bin/activate  # On Windows use `.venv\Scripts\activate`
-   ```
-
-Or for NixOS users:
+#### Step 1: Clone the Repository
 
 ```bash
-nix-shell -p portaudio pkg-config gcc python3 --run "uv tool install --upgrade agent-cli"
+git clone https://github.com/basnijholt/agent-cli.git
+cd agent-cli
 ```
 
-or use the provided `shell.nix` and nix-direnv and create a `.envrc` file with:
+#### Step 2: Run the Setup Script
 
-```nix
-use nix
+| Platform | Setup Command | What It Does |
+|----------|---------------|--------------|
+| **🍎 macOS** | `./scripts/setup-macos.sh` | Installs Homebrew (if needed), uv, Ollama, all services, and agent-cli |
+| **🐧 Linux** | `./scripts/setup-linux.sh` | Installs uv, Ollama, all services, and agent-cli |
+| **❄️ NixOS** | See [NixOS Guide](docs/installation/nixos.md) | Special instructions for NixOS |
+| **🐳 Docker** | See [Docker Guide](docs/installation/docker.md) | Container-based setup (slower) |
+
+#### Step 3: Start All Services
+
+```bash
+./scripts/start-all-services.sh
+```
+
+This launches all AI services in a single terminal session using Zellij.
+
+#### Step 4: Test Your Installation
+
+```bash
+agent-cli autocorrect "this has an eror"
+# Output: this has an error
+```
+
+> [!TIP]
+> The setup scripts handle everything automatically - no manual installation needed!
+
+<details><summary><b>Development Installation</b></summary>
+
+For contributing or development:
+
+```bash
+git clone https://github.com/basnijholt/agent-cli.git
+cd agent-cli
 uv sync
-source .venv/bin/activate
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 ```
 
-Then run `direnv allow` to load the environment.
-
-</summary>
+</details>
 
 ## System Integration
 
-### macOS Hotkeys
+Want system-wide hotkeys? You'll need the repository for the setup scripts:
 
-For seamless integration with macOS, you can set up system-wide hotkeys that provide instant access to agent-cli features:
+```bash
+# If you haven't already cloned it
+git clone https://github.com/basnijholt/agent-cli.git
+cd agent-cli
+```
+
+### macOS Hotkeys
 
 ```bash
 ./scripts/setup-macos-hotkeys.sh
 ```
 
-This installs and configures:
-- **`Cmd+Shift+R`** - Toggle voice transcription (start recording → stop and get result)
-- **`Cmd+Shift+A`** - Autocorrect text from clipboard
-- **`Cmd+Shift+V`** - Toggle voice editing mode for clipboard text
+This script automatically:
+- ✅ Installs Homebrew if not present
+- ✅ Installs skhd (hotkey daemon) and terminal-notifier
+- ✅ Configures these system-wide hotkeys:
+  - **`Cmd+Shift+R`** - Toggle voice transcription
+  - **`Cmd+Shift+A`** - Autocorrect clipboard text
+  - **`Cmd+Shift+V`** - Voice edit clipboard text
 
-The setup uses [skhd](https://github.com/jackielii/skhd.zig) for hotkey management and provides native macOS notifications. Perfect for quick text correction and voice input workflows.
+> [!TIP]
+> After setup, you may need to grant Accessibility permissions to skhd in System Settings → Privacy & Security → Accessibility
 
 ### Linux Hotkeys
-
-For Linux users, you can set up cross-desktop hotkeys that work with most desktop environments:
 
 ```bash
 ./scripts/setup-linux-hotkeys.sh
 ```
 
-This configures the same hotkeys across different environments:
-- **`Super+Shift+R`** - Toggle voice transcription (start recording → stop and get result)
-- **`Super+Shift+A`** - Autocorrect text from clipboard
-- **`Super+Shift+V`** - Toggle voice editing mode for clipboard text
+This script automatically:
+- ✅ Installs notification tools if needed
+- ✅ Provides configuration for your desktop environment
+- ✅ Sets up these hotkeys:
+  - **`Super+Shift+R`** - Toggle voice transcription
+  - **`Super+Shift+A`** - Autocorrect clipboard text
+  - **`Super+Shift+V`** - Voice edit clipboard text
 
-Supports Hyprland, GNOME, KDE, Sway, i3, XFCE, and others with automatic configuration. Includes Wayland clipboard syncing and fallback notification systems.
+The script supports Hyprland, GNOME, KDE, Sway, i3, XFCE, and provides instructions for manual configuration on other environments.
 
 
 ## Prerequisites
 
-To run `agent-cli`, you'll need the following core components:
+### What You Need to Install Manually
 
-- 🐍 **Python**: Version 3.11 or higher.
-- 🎶 **PortAudio**: For microphone and speaker I/O.
-- 📋 **Clipboard Tools**: `xsel`/`xclip` (Linux) or `pbcopy`/`pbpaste` (macOS).
+The only thing you need to have installed is **Git** to clone this repository. Everything else is handled automatically!
 
-For specific functionalities, you can set up the following optional services:
+### What the Setup Scripts Install for You
 
-### 🧠 LLM (Large Language Model)
+Our installation scripts automatically handle all dependencies:
 
-| Service                          | Notes                                                          |
-| -------------------------------- | -------------------------------------------------------------- |
-| [**Ollama**](https://ollama.ai/) | For `autocorrect`, `voice-edit`, and `chat` with local models. |
-| **OpenAI**                       | If you prefer to use a cloud service, an API key is required.  |
-| **Gemini**                       | If you prefer to use a cloud service, an API key is required.  |
+#### Core Requirements (Auto-installed)
+- 🍺 **Homebrew** (macOS) - Installed if not present
+- 🐍 **uv** - Modern Python package manager - Installed automatically
+- 🎶 **PortAudio** - For microphone and speaker I/O - Installed via package manager
+- 📋 **Clipboard Tools** - Pre-installed on macOS, handled on Linux
 
-### 🎤 ASR (Automatic Speech Recognition)
+#### AI Services (Auto-installed and configured)
 
-| Service                                                                         | Notes                                                                 |
-| ------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
-| [**Wyoming Faster Whisper**](https://github.com/rhasspy/wyoming-faster-whisper) | For `transcribe`, `voice-edit`, and `chat` with local speech-to-text. |
-| **OpenAI**                                                                      | If you prefer to use a cloud service, an API key is required.         |
+| Service | Purpose | Auto-installed? |
+|---------|---------|-----------------|
+| **[Ollama](https://ollama.ai/)** | Local LLM for text processing | ✅ Yes, with default model |
+| **[Wyoming Faster Whisper](https://github.com/rhasspy/wyoming-faster-whisper)** | Speech-to-text | ✅ Yes, via `uvx` |
+| **[Wyoming Piper](https://github.com/rhasspy/wyoming-piper)** | Text-to-speech | ✅ Yes, via `uvx` |
+| **[Kokoro-FastAPI](https://github.com/remsky/Kokoro-FastAPI)** | Premium TTS (optional) | ⚙️ Can be added later |
+| **[Wyoming openWakeWord](https://github.com/rhasspy/wyoming-openwakeword)** | Wake word detection | ✅ Yes, for `assistant` |
 
-### 🗣️ TTS (Text-to-Speech)
+#### Alternative Cloud Services (Optional)
 
-| Service                                                        | Notes                                                                                                                              |
-| -------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| [**Kokoro-FastAPI**](https://github.com/remsky/Kokoro-FastAPI) | The best open-source TTS model available 🥇, providing natural-sounding voices. Recommended for `speak`, `voice-edit`, and `chat`. |
-| [**Wyoming Piper**](https://github.com/rhasspy/wyoming-piper)  | An alternative for local text-to-speech.                                                                                           |
-| **OpenAI**                                                     | If you prefer to use a cloud service, an API key is required.                                                                      |
+If you prefer cloud services over local ones:
 
-### 👂 Wake Word
-
-| Service                                                                     | Notes                      |
-| --------------------------------------------------------------------------- | -------------------------- |
-| [**Wyoming openWakeWord**](https://github.com/rhasspy/wyoming-openwakeword) | For the `assistant` agent. |
+| Service | Purpose | Setup Required |
+|---------|---------|----------------|
+| **OpenAI** | LLM, Speech-to-text, TTS | API key in config |
+| **Gemini** | LLM alternative | API key in config |
 
 ## Usage
 
