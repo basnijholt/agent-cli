@@ -12,21 +12,18 @@ It provides a suite of powerful tools for voice and text interaction, designed f
 > This ensures your privacy and allows the tools to work completely offline.
 > You can also optionally configure the agents to use OpenAI/Gemini services.
 
-## 🎯 Why agent-cli?
+## Why I built this
 
-**Transform how you interact with AI.**
+I got tired of typing long prompts to LLMs. Speaking is faster, so I built this tool to transcribe my voice directly to the clipboard with a hotkey.
 
-I built this tool because I found myself limited by typing speed when crafting detailed prompts for LLMs. With `agent-cli`, I can now:
+What it does:
+- Voice transcription to clipboard with system-wide hotkeys (Cmd+Shift+R on macOS)
+- Autocorrect any text from your clipboard
+- Edit clipboard content with voice commands ("make this more formal")
+- Runs locally - no internet required, your audio stays on your machine
+- Works with any app that can copy/paste
 
-- 🗣️ **Speak naturally** to create rich, detailed prompts without typing fatigue
-- ⚡ **Use system-wide hotkeys** (Cmd+Shift+R) to instantly transcribe thoughts
-- 📝 **Autocorrect text** from any app with a single keystroke
-- 🔒 **Keep everything private** - all processing happens locally on your machine
-- 🎭 **Edit clipboard content** with voice commands ("make this more formal")
-
-It's like living in the future - the natural conversational interface we've always imagined for AI, but with the privacy and control of local-first software.
-
-> *"I use this tool constantly when working with LLMs. Being able to speak my thoughts at natural speed means I can provide much more context and nuance in my prompts. It's transformed how I interact with AI."* - Me
+I use it mostly for the `transcribe` function when working with LLMs. Being able to speak naturally means I can provide more context without the typing fatigue.
 
 [![A demo video of Agent-CLI showing local AI voice and text tools on a desktop.](http://img.youtube.com/vi/7sBTCgttH48/0.jpg)](http://www.youtube.com/watch?v=7sBTCgttH48 "Agent-CLI: Local AI Voice & Text Tools on Your Desktop (macOS Demo)")
 
@@ -41,7 +38,7 @@ It's like living in the future - the natural conversational interface we've alwa
 - **`assistant`**: A hands-free voice assistant that starts and stops recording based on a wake word.
 - **`chat`**: A conversational AI agent with tool-calling capabilities.
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Just want the CLI tool?
 
@@ -83,11 +80,11 @@ agent-cli autocorrect "this has an eror"
 ```
 
 The setup scripts automatically install:
-- ✅ Package managers (Homebrew/uv) if needed
-- ✅ All AI services (Ollama, Whisper, TTS, etc.)
-- ✅ The `agent-cli` tool
-- ✅ System dependencies
-- ✅ Hotkey managers (if using hotkey scripts)
+- Package managers (Homebrew/uv) if needed
+- All AI services (Ollama, Whisper, TTS, etc.)
+- The `agent-cli` tool
+- System dependencies
+- Hotkey managers (if using hotkey scripts)
 
 <details><summary><b><u>[ToC]</u></b> 📚</summary>
 
@@ -159,10 +156,10 @@ cd agent-cli
 
 | Platform | Setup Command | What It Does | Detailed Guide |
 |----------|---------------|--------------|----------------|
-| **🍎 macOS** | `./scripts/setup-macos.sh` | Installs Homebrew (if needed), uv, Ollama, all services, and agent-cli | [macOS Guide](docs/installation/macos.md) |
-| **🐧 Linux** | `./scripts/setup-linux.sh` | Installs uv, Ollama, all services, and agent-cli | [Linux Guide](docs/installation/linux.md) |
-| **❄️ NixOS** | See guide → | Special instructions for NixOS | [NixOS Guide](docs/installation/nixos.md) |
-| **🐳 Docker** | See guide → | Container-based setup (slower) | [Docker Guide](docs/installation/docker.md) |
+| **macOS** | `./scripts/setup-macos.sh` | Installs Homebrew (if needed), uv, Ollama, all services, and agent-cli | [macOS Guide](docs/installation/macos.md) |
+| **Linux** | `./scripts/setup-linux.sh` | Installs uv, Ollama, all services, and agent-cli | [Linux Guide](docs/installation/linux.md) |
+| **NixOS** | See guide → | Special instructions for NixOS | [NixOS Guide](docs/installation/nixos.md) |
+| **Docker** | See guide → | Container-based setup (slower) | [Docker Guide](docs/installation/docker.md) |
 
 #### Step 3: Start All Services
 
@@ -179,10 +176,8 @@ agent-cli autocorrect "this has an eror"
 # Output: this has an error
 ```
 
-> [!TIP]
-> The setup scripts handle everything automatically - no manual installation needed!
->
-> For platform-specific details, troubleshooting, or manual setup options, check the [detailed installation guides](docs/installation/).
+> [!NOTE]
+> The setup scripts handle everything automatically. For platform-specific details or troubleshooting, see the [installation guides](docs/installation/).
 
 <details><summary><b>Development Installation</b></summary>
 
@@ -214,14 +209,14 @@ cd agent-cli
 ```
 
 This script automatically:
-- ✅ Installs Homebrew if not present
-- ✅ Installs skhd (hotkey daemon) and terminal-notifier
-- ✅ Configures these system-wide hotkeys:
-  - **`Cmd+Shift+R`** - Toggle voice transcription
-  - **`Cmd+Shift+A`** - Autocorrect clipboard text
-  - **`Cmd+Shift+V`** - Voice edit clipboard text
+- Installs Homebrew if not present
+- Installs skhd (hotkey daemon) and terminal-notifier
+- Configures these system-wide hotkeys:
+  - `Cmd+Shift+R` - Toggle voice transcription
+  - `Cmd+Shift+A` - Autocorrect clipboard text
+  - `Cmd+Shift+V` - Voice edit clipboard text
 
-> [!TIP]
+> [!NOTE]
 > After setup, you may need to grant Accessibility permissions to skhd in System Settings → Privacy & Security → Accessibility
 
 ### Linux Hotkeys
@@ -231,12 +226,12 @@ This script automatically:
 ```
 
 This script automatically:
-- ✅ Installs notification tools if needed
-- ✅ Provides configuration for your desktop environment
-- ✅ Sets up these hotkeys:
-  - **`Super+Shift+R`** - Toggle voice transcription
-  - **`Super+Shift+A`** - Autocorrect clipboard text
-  - **`Super+Shift+V`** - Voice edit clipboard text
+- Installs notification tools if needed
+- Provides configuration for your desktop environment
+- Sets up these hotkeys:
+  - `Super+Shift+R` - Toggle voice transcription
+  - `Super+Shift+A` - Autocorrect clipboard text
+  - `Super+Shift+V` - Voice edit clipboard text
 
 The script supports Hyprland, GNOME, KDE, Sway, i3, XFCE, and provides instructions for manual configuration on other environments.
 
@@ -252,20 +247,20 @@ The only thing you need to have installed is **Git** to clone this repository. E
 Our installation scripts automatically handle all dependencies:
 
 #### Core Requirements (Auto-installed)
-- 🍺 **Homebrew** (macOS) - Installed if not present
-- 🐍 **uv** - Modern Python package manager - Installed automatically
-- 🎶 **PortAudio** - For microphone and speaker I/O - Installed via package manager
-- 📋 **Clipboard Tools** - Pre-installed on macOS, handled on Linux
+- **Homebrew** (macOS) - Installed if not present
+- **uv** - Python package manager - Installed automatically
+- **PortAudio** - For microphone and speaker I/O - Installed via package manager
+- **Clipboard Tools** - Pre-installed on macOS, handled on Linux
 
 #### AI Services (Auto-installed and configured)
 
 | Service | Purpose | Auto-installed? |
 |---------|---------|-----------------|
-| **[Ollama](https://ollama.ai/)** | Local LLM for text processing | ✅ Yes, with default model |
-| **[Wyoming Faster Whisper](https://github.com/rhasspy/wyoming-faster-whisper)** | Speech-to-text | ✅ Yes, via `uvx` |
-| **[Wyoming Piper](https://github.com/rhasspy/wyoming-piper)** | Text-to-speech | ✅ Yes, via `uvx` |
-| **[Kokoro-FastAPI](https://github.com/remsky/Kokoro-FastAPI)** | Premium TTS (optional) | ⚙️ Can be added later |
-| **[Wyoming openWakeWord](https://github.com/rhasspy/wyoming-openwakeword)** | Wake word detection | ✅ Yes, for `assistant` |
+| **[Ollama](https://ollama.ai/)** | Local LLM for text processing | Yes, with default model |
+| **[Wyoming Faster Whisper](https://github.com/rhasspy/wyoming-faster-whisper)** | Speech-to-text | Yes, via `uvx` |
+| **[Wyoming Piper](https://github.com/rhasspy/wyoming-piper)** | Text-to-speech | Yes, via `uvx` |
+| **[Kokoro-FastAPI](https://github.com/remsky/Kokoro-FastAPI)** | Premium TTS (optional) | Can be added later |
+| **[Wyoming openWakeWord](https://github.com/rhasspy/wyoming-openwakeword)** | Wake word detection | Yes, for `assistant` |
 
 #### Alternative Cloud Services (Optional)
 
