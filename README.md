@@ -94,11 +94,6 @@ The setup scripts automatically install:
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
-- [🎯 Why agent-cli?](#-why-agent-cli)
-- [Features](#features)
-- [🚀 Quick Start](#-quick-start)
-  - [Just want the CLI tool?](#just-want-the-cli-tool)
-  - [Want automatic setup with everything?](#want-automatic-setup-with-everything)
 - [Installation](#installation)
   - [Option 1: CLI Tool Only](#option-1-cli-tool-only)
   - [Option 2: Automated Full Setup](#option-2-automated-full-setup)
