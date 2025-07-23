@@ -67,6 +67,103 @@ It provides a suite of powerful tools for voice and text interaction, designed f
 - **`assistant`**: A hands-free voice assistant that starts and stops recording based on a wake word.
 - **`chat`**: A conversational AI agent with tool-calling capabilities.
 
+## Installation
+
+Choose the best setup method for your platform:
+
+| Platform            | Recommended                                      | Performance | GPU Support   |
+| ------------------- | ------------------------------------------------ | ----------- | ------------- |
+| **🍎 macOS**        | [Native Setup](docs/installation/macos.md)       | Excellent   | ✅ Metal GPU  |
+| **🐧 Linux**        | [Native Setup](docs/installation/linux.md)       | Excellent   | ✅ NVIDIA GPU |
+| **❄️ NixOS**        | [System Integration](docs/installation/nixos.md) | Excellent   | ✅ NVIDIA GPU |
+| **🐳 Any Platform** | [Docker Setup](docs/installation/docker.md)      | Good        | ⚠️ Limited\*  |
+
+\*Docker limitations: GPU acceleration unavailable on macOS, limited on other platforms.
+
+> [!TIP]
+> **💡 Quick Start**: Check out our [Installation Guide](docs/installation/) for detailed setup instructions.
+
+## Agent CLI Package Installation
+
+After setting up the services above, install `agent-cli` using `uv`:
+
+```bash
+uv tools install agent-cli
+```
+
+or using `pip`:
+
+```bash
+pip install agent-cli
+```
+
+<details><summary>Or for development:<summary>
+
+1. **Clone the repository:**
+
+   ```bash
+   git clone git@github.com:basnijholt/agent-cli.git
+   cd agent-cli
+   ```
+
+2. **Install in development mode:**
+
+   ```bash
+   uv sync
+   source .venv/bin/activate  # On Windows use `.venv\Scripts\activate`
+   ```
+
+Or for NixOS users:
+
+```bash
+nix-shell -p portaudio pkg-config gcc python3 --run "uv tool install --upgrade agent-cli"
+```
+
+or use the provided `shell.nix` and nix-direnv and create a `.envrc` file with:
+
+```nix
+use nix
+uv sync
+source .venv/bin/activate
+```
+
+Then run `direnv allow` to load the environment.
+
+</summary>
+
+## System Integration
+
+### macOS Hotkeys
+
+For seamless integration with macOS, you can set up system-wide hotkeys that provide instant access to agent-cli features:
+
+```bash
+./scripts/setup-macos-hotkeys.sh
+```
+
+This installs and configures:
+- **`Cmd+Shift+R`** - Toggle voice transcription (start recording → stop and get result)
+- **`Cmd+Shift+A`** - Autocorrect text from clipboard
+- **`Cmd+Shift+V`** - Toggle voice editing mode for clipboard text
+
+The setup uses [skhd](https://github.com/jackielii/skhd.zig) for hotkey management and provides native macOS notifications. Perfect for quick text correction and voice input workflows.
+
+### Linux Hotkeys
+
+For Linux users, you can set up cross-desktop hotkeys that work with most desktop environments:
+
+```bash
+./scripts/setup-linux-hotkeys.sh
+```
+
+This configures the same hotkeys across different environments:
+- **`Super+Shift+R`** - Toggle voice transcription (start recording → stop and get result)
+- **`Super+Shift+A`** - Autocorrect text from clipboard
+- **`Super+Shift+V`** - Toggle voice editing mode for clipboard text
+
+Supports Hyprland, GNOME, KDE, Sway, i3, XFCE, and others with automatic configuration. Includes Wayland clipboard syncing and fallback notification systems.
+
+
 ## Prerequisites
 
 To run `agent-cli`, you'll need the following core components:
@@ -105,100 +202,6 @@ For specific functionalities, you can set up the following optional services:
 | Service                                                                     | Notes                      |
 | --------------------------------------------------------------------------- | -------------------------- |
 | [**Wyoming openWakeWord**](https://github.com/rhasspy/wyoming-openwakeword) | For the `assistant` agent. |
-
-## Installation
-
-Choose the best setup method for your platform:
-
-| Platform            | Recommended                                      | Performance | GPU Support   |
-| ------------------- | ------------------------------------------------ | ----------- | ------------- |
-| **🍎 macOS**        | [Native Setup](docs/installation/macos.md)       | Excellent   | ✅ Metal GPU  |
-| **🐧 Linux**        | [Native Setup](docs/installation/linux.md)       | Excellent   | ✅ NVIDIA GPU |
-| **❄️ NixOS**        | [System Integration](docs/installation/nixos.md) | Excellent   | ✅ NVIDIA GPU |
-| **🐳 Any Platform** | [Docker Setup](docs/installation/docker.md)      | Good        | ⚠️ Limited\*  |
-
-\*Docker limitations: GPU acceleration unavailable on macOS, limited on other platforms.
-
-> [!TIP]
-> **💡 Quick Start**: Check out our [Installation Guide](docs/installation/) for detailed setup instructions.
-
-## Agent CLI Package Installation
-
-After setting up the services above, install `agent-cli` using `uv`:
-
-```bash
-uv tools install agent-cli
-```
-
-or using `pip`:
-
-```bash
-pip install agent-cli
-```
-
-## System Integration
-
-### macOS Hotkeys
-
-For seamless integration with macOS, you can set up system-wide hotkeys that provide instant access to agent-cli features:
-
-```bash
-./scripts/setup-macos-hotkeys.sh
-```
-
-This installs and configures:
-- **`Cmd+Shift+R`** - Toggle voice transcription (start recording → stop and get result)
-- **`Cmd+Shift+A`** - Autocorrect text from clipboard
-- **`Cmd+Shift+V`** - Toggle voice editing mode for clipboard text
-
-The setup uses [skhd](https://github.com/jackielii/skhd.zig) for hotkey management and provides native macOS notifications. Perfect for quick text correction and voice input workflows.
-
-### Linux Hotkeys
-
-For Linux users, you can set up cross-desktop hotkeys that work with most desktop environments:
-
-```bash
-./scripts/setup-linux-hotkeys.sh
-```
-
-This configures the same hotkeys across different environments:
-- **`Super+Shift+R`** - Toggle voice transcription (start recording → stop and get result)
-- **`Super+Shift+A`** - Autocorrect text from clipboard
-- **`Super+Shift+V`** - Toggle voice editing mode for clipboard text
-
-Supports Hyprland, GNOME, KDE, Sway, i3, XFCE, and others with automatic configuration. Includes Wayland clipboard syncing and fallback notification systems.
-
-Or for development:
-
-1. **Clone the repository:**
-
-   ```bash
-   git clone git@github.com:basnijholt/agent-cli.git
-   cd agent-cli
-   ```
-
-2. **Install in development mode:**
-
-   ```bash
-   uv sync
-   source .venv/bin/activate  # On Windows use `.venv\Scripts\activate`
-   ```
-
-Or for NixOS users:
-
-```bash
-nix-shell -p portaudio pkg-config gcc python3 --run "uv tool install --upgrade agent-cli"
-```
-
-or use the provided `shell.nix` and nix-direnv and create a `.envrc` file with:
-
-```nix
-use nix
-uv sync
-source .venv/bin/activate
-```
-
-Then run `direnv allow` to load the environment.
 
 ## Usage
 
