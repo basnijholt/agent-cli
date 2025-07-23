@@ -141,12 +141,12 @@ cd agent-cli
 
 #### Step 2: Run the Setup Script
 
-| Platform | Setup Command | What It Does |
-|----------|---------------|--------------|
-| **🍎 macOS** | `./scripts/setup-macos.sh` | Installs Homebrew (if needed), uv, Ollama, all services, and agent-cli |
-| **🐧 Linux** | `./scripts/setup-linux.sh` | Installs uv, Ollama, all services, and agent-cli |
-| **❄️ NixOS** | See [NixOS Guide](docs/installation/nixos.md) | Special instructions for NixOS |
-| **🐳 Docker** | See [Docker Guide](docs/installation/docker.md) | Container-based setup (slower) |
+| Platform | Setup Command | What It Does | Detailed Guide |
+|----------|---------------|--------------|----------------|
+| **🍎 macOS** | `./scripts/setup-macos.sh` | Installs Homebrew (if needed), uv, Ollama, all services, and agent-cli | [macOS Guide](docs/installation/macos.md) |
+| **🐧 Linux** | `./scripts/setup-linux.sh` | Installs uv, Ollama, all services, and agent-cli | [Linux Guide](docs/installation/linux.md) |
+| **❄️ NixOS** | See guide → | Special instructions for NixOS | [NixOS Guide](docs/installation/nixos.md) |
+| **🐳 Docker** | See guide → | Container-based setup (slower) | [Docker Guide](docs/installation/docker.md) |
 
 #### Step 3: Start All Services
 
@@ -165,6 +165,8 @@ agent-cli autocorrect "this has an eror"
 
 > [!TIP]
 > The setup scripts handle everything automatically - no manual installation needed!
+>
+> For platform-specific details, troubleshooting, or manual setup options, check the [detailed installation guides](docs/installation/).
 
 <details><summary><b>Development Installation</b></summary>
 
