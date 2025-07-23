@@ -5,6 +5,42 @@
 `agent-cli` is a collection of **_local-first_**, AI-powered command-line agents that run entirely on your machine.
 It provides a suite of powerful tools for voice and text interaction, designed for privacy, offline capability, and seamless integration with system-wide hotkeys and workflows.
 
+## 🎯 Why agent-cli?
+
+**Transform how you interact with AI.**
+
+I built this tool because I found myself limited by typing speed when crafting detailed prompts for LLMs. With `agent-cli`, I can now:
+
+- 🗣️ **Speak naturally** to create rich, detailed prompts without typing fatigue
+- ⚡ **Use system-wide hotkeys** (Cmd+Shift+R) to instantly transcribe thoughts
+- 📝 **Autocorrect text** from any app with a single keystroke
+- 🔒 **Keep everything private** - all processing happens locally on your machine
+- 🎭 **Edit clipboard content** with voice commands ("make this more formal")
+
+It's like living in the future - the natural conversational interface we've always imagined for AI, but with the privacy and control of local-first software.
+
+> *"I use this tool constantly when working with LLMs. Being able to speak my thoughts at natural speed means I can provide much more context and nuance in my prompts. It's transformed how I interact with AI."* - Me
+
+> [!IMPORTANT]
+> **Local and Private by Design**
+> All agents in this toolkit are designed to run **100% locally**.
+> Your data, whether it's from your clipboard, microphone, or files, is never sent to any cloud API.
+> This ensures your privacy and allows the tools to work completely offline.
+> You can also optionally configure the agents to use OpenAI services.
+
+[![A demo video of Agent-CLI showing local AI voice and text tools on a desktop.](http://img.youtube.com/vi/7sBTCgttH48/0.jpg)](http://www.youtube.com/watch?v=7sBTCgttH48 "Agent-CLI: Local AI Voice & Text Tools on Your Desktop (macOS Demo)")
+
+*See agent-cli in action: [Watch the demo](https://www.youtube.com/watch?v=7sBTCgttH48)*
+
+## Features
+
+- **`autocorrect`**: Correct grammar and spelling in your text (e.g., from clipboard) using a local LLM with Ollama or OpenAI.
+- **`transcribe`**: Transcribe audio from your microphone to text in your clipboard using a local Whisper model or OpenAI's Whisper API.
+- **`speak`**: Convert text to speech using a local TTS engine or OpenAI's TTS API.
+- **`voice-edit`**: A voice-powered clipboard assistant that edits text based on your spoken commands.
+- **`assistant`**: A hands-free voice assistant that starts and stops recording based on a wake word.
+- **`chat`**: A conversational AI agent with tool-calling capabilities.
+
 ## 🚀 Quick Start
 
 ### Just want the CLI tool?
@@ -58,7 +94,11 @@ The setup scripts automatically install:
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
+- [🎯 Why agent-cli?](#-why-agent-cli)
 - [Features](#features)
+- [🚀 Quick Start](#-quick-start)
+  - [Just want the CLI tool?](#just-want-the-cli-tool)
+  - [Want automatic setup with everything?](#want-automatic-setup-with-everything)
 - [Installation](#installation)
   - [Option 1: CLI Tool Only](#option-1-cli-tool-only)
   - [Option 2: Automated Full Setup](#option-2-automated-full-setup)
@@ -94,25 +134,6 @@ The setup scripts automatically install:
 
 </details>
 
-> [!IMPORTANT]
-> **Local and Private by Design**
-> All agents in this toolkit are designed to run **100% locally**.
-> Your data, whether it's from your clipboard, microphone, or files, is never sent to any cloud API.
-> This ensures your privacy and allows the tools to work completely offline.
-> You can also optionally configure the agents to use OpenAI services.
-
-[![A demo video of Agent-CLI showing local AI voice and text tools on a desktop.](http://img.youtube.com/vi/7sBTCgttH48/0.jpg)](http://www.youtube.com/watch?v=7sBTCgttH48 "Agent-CLI: Local AI Voice & Text Tools on Your Desktop (macOS Demo)")
-
-*I made a demo video of Agent-CLI showing local AI voice and text tools on a desktop. [Watch it here](https://www.youtube.com/watch?v=7sBTCgttH48).*
-
-## Features
-
-- **`autocorrect`**: Correct grammar and spelling in your text (e.g., from clipboard) using a local LLM with Ollama or OpenAI.
-- **`transcribe`**: Transcribe audio from your microphone to text in your clipboard using a local Whisper model or OpenAI's Whisper API.
-- **`speak`**: Convert text to speech using a local TTS engine or OpenAI's TTS API.
-- **`voice-edit`**: A voice-powered clipboard assistant that edits text based on your spoken commands.
-- **`assistant`**: A hands-free voice assistant that starts and stops recording based on a wake word.
-- **`chat`**: A conversational AI agent with tool-calling capabilities.
 
 ## Installation
 
