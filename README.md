@@ -5,6 +5,13 @@
 `agent-cli` is a collection of **_local-first_**, AI-powered command-line agents that run entirely on your machine.
 It provides a suite of powerful tools for voice and text interaction, designed for privacy, offline capability, and seamless integration with system-wide hotkeys and workflows.
 
+> [!IMPORTANT]
+> **Local and Private by Design**
+> All agents in this tool are designed to run **100% locally**.
+> Your data, whether it's from your clipboard, microphone, or files, is never sent to any cloud API.
+> This ensures your privacy and allows the tools to work completely offline.
+> You can also optionally configure the agents to use OpenAI/Gemini services.
+
 ## 🎯 Why agent-cli?
 
 **Transform how you interact with AI.**
@@ -20,13 +27,6 @@ I built this tool because I found myself limited by typing speed when crafting d
 It's like living in the future - the natural conversational interface we've always imagined for AI, but with the privacy and control of local-first software.
 
 > *"I use this tool constantly when working with LLMs. Being able to speak my thoughts at natural speed means I can provide much more context and nuance in my prompts. It's transformed how I interact with AI."* - Me
-
-> [!IMPORTANT]
-> **Local and Private by Design**
-> All agents in this toolkit are designed to run **100% locally**.
-> Your data, whether it's from your clipboard, microphone, or files, is never sent to any cloud API.
-> This ensures your privacy and allows the tools to work completely offline.
-> You can also optionally configure the agents to use OpenAI services.
 
 [![A demo video of Agent-CLI showing local AI voice and text tools on a desktop.](http://img.youtube.com/vi/7sBTCgttH48/0.jpg)](http://www.youtube.com/watch?v=7sBTCgttH48 "Agent-CLI: Local AI Voice & Text Tools on Your Desktop (macOS Demo)")
 
