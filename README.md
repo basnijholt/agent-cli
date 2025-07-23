@@ -54,6 +54,8 @@ It provides a suite of powerful tools for voice and text interaction, designed f
 > This ensures your privacy and allows the tools to work completely offline.
 > You can also optionally configure the agents to use OpenAI services.
 
+[![A demo video of Agent-CLI showing local AI voice and text tools on a desktop.](http://img.youtube.com/vi/7sBTCgttH48/0.jpg)](http://www.youtube.com/watch?v=7sBTCgttH48 "Agent-CLI: Local AI Voice & Text Tools on Your Desktop (macOS Demo)")
+
 ## Features
 
 - **`autocorrect`**: Correct grammar and spelling in your text (e.g., from clipboard) using a local LLM with Ollama or OpenAI.
