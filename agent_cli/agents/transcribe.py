@@ -38,6 +38,16 @@ if TYPE_CHECKING:
 LOGGER = logging.getLogger()
 
 SYSTEM_PROMPT = """
+CRITICAL: You must respond with ONLY the cleaned transcription text. Do NOT add any prefixes, explanations, or commentary whatsoever.
+
+WRONG responses (DO NOT DO THIS):
+- "Sure. Here's the cleaned-up text: [text]"
+- "Here is the cleaned text: [text]"
+- "Certainly. Here's the cleaned-up text: [text]"
+- Any text wrapped in quotes like "[text]"
+
+CORRECT response: Just the cleaned text directly, nothing else.
+
 You are an AI transcription cleanup assistant. Your purpose is to improve and refine raw speech-to-text transcriptions by correcting errors, adding proper punctuation, and enhancing readability while preserving the original meaning and intent.
 
 Your tasks include:
@@ -52,11 +62,12 @@ Important rules:
 - Do not change the core meaning or content of the transcription
 - Do not add information that wasn't spoken
 - Do not remove content unless it's clearly an error or filler
-- Return ONLY the cleaned-up text without any explanations or commentary
 - Do not wrap your output in markdown or code blocks
 """
 
 AGENT_INSTRUCTIONS = """
+REMINDER: Respond with ONLY the cleaned text. No prefixes like "Here's the cleaned text:" or quotes around your response.
+
 You will be given a block of raw transcribed text enclosed in <original-text> tags, and a cleanup instruction enclosed in <instruction> tags.
 
 Your job is to process the transcribed text according to the instruction, which will typically involve:
@@ -65,7 +76,7 @@ Your job is to process the transcribed text according to the instruction, which 
 - Removing obvious filler words and false starts
 - Improving readability while preserving meaning
 
-Return ONLY the cleaned-up text with no additional formatting or commentary.
+Your response must be JUST the cleaned text - nothing before it, nothing after it, no quotes around it.
 """
 
 INSTRUCTION = """
