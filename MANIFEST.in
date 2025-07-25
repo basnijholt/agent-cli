@@ -1,0 +1,4 @@
+include README.md
+include LICENSE
+recursive-include scripts *.sh *.txt *.kdl
+recursive-include agent_cli *.py *.typed
