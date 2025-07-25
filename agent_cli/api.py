@@ -170,7 +170,7 @@ async def transcribe_audio(
         )
 
 
-def run_server(host: str = "0.0.0.0", port: int = 8000, reload: bool = False) -> None:  # noqa: S104
+def run_server(host: str = "0.0.0.0", port: int = 61337, reload: bool = False) -> None:  # noqa: S104
     """Run the FastAPI server."""
     uvicorn.run(
         "agent_cli.api:app",

@@ -37,7 +37,7 @@ def test_server_command(mock_run_server: pytest.MagicMock) -> None:
     result = runner.invoke(app, ["server"])
     assert result.exit_code == 0
     assert "Starting Agent CLI transcription server" in result.stdout
-    mock_run_server.assert_called_once_with(host="0.0.0.0", port=8000, reload=False)  # noqa: S104
+    mock_run_server.assert_called_once_with(host="0.0.0.0", port=61337, reload=False)  # noqa: S104
 
 
 @patch("agent_cli.api.run_server")

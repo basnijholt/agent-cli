@@ -17,12 +17,12 @@ This guide shows how to create an iOS Shortcut that records audio, sends it to y
 
 2. Start the server:
    ```bash
-   agent-cli server --host 0.0.0.0 --port 8000
+   agent-cli server --host 0.0.0.0 --port 61337
    ```
 
 3. Test the server is working:
    ```bash
-   curl http://your-server-ip:8000/health
+   curl http://your-server-ip:61337/health
    ```
 
 ## Create iOS Shortcut
@@ -40,30 +40,25 @@ This guide shows how to create an iOS Shortcut that records audio, sends it to y
    - **Stop Recording**: When shortcut is run again (or set a time limit)
    - **Audio Quality**: Choose based on your preference (Higher = Better quality, Larger files)
 
-**Action 2: Get Contents of File**
-1. Search for and add **"Get Contents of File"** action
-2. This will get the audio data from the recorded file
-
-**Action 3: Get Contents of URL**
+**Action 2: Get Contents of URL**
 1. Search for and add **"Get Contents of URL"** action
 2. Configure:
-   - **URL**: `http://YOUR_SERVER_IP:8000/transcribe`
+   - **URL**: `http://YOUR_SERVER_IP:61337/transcribe`
    - **Method**: POST
-   - **Request Body**: File (select the audio from previous step)
-   - **Headers**:
-     - `Content-Type`: `multipart/form-data`
+   - **Request Body**: Form
+   - **Headers**: Leave empty (multipart/form-data is handled automatically)
 
-**Action 4: Get Value from Dictionary**
-1. Search for and add **"Get Value from Dictionary"** action
+**Action 3: Get Dictionary Value**
+1. Search for and add **"Get Dictionary Value"** action
 2. Configure:
    - **Dictionary**: Output from Get Contents of URL
    - **Get Value for**: `cleaned_transcript` (or `raw_transcript` if you prefer unprocessed)
 
-**Action 5: Copy to Clipboard**
+**Action 4: Copy to Clipboard**
 1. Search for and add **"Copy to Clipboard"** action
 2. Input: Use the text from the previous step
 
-**Action 6 (Optional): Show Notification**
+**Action 5 (Optional): Show Notification**
 1. Search for and add **"Show Notification"** action
 2. Configure:
    - **Title**: "Transcription Complete"
@@ -75,15 +70,12 @@ In the **Get Contents of URL** action, tap **"Show More"** and configure:
 
 **Advanced Settings:**
 - **Method**: POST
-- **Headers**:
-  ```
-  Content-Type: multipart/form-data
-  ```
+- **Headers**: Leave empty (iOS handles multipart/form-data automatically)
 - **Request Body**:
   - Type: Form
   - Add form field:
     - **Name**: `audio`
-    - **Value**: Select "Audio" from the Record Audio action
+    - **Value**: Select "Audio" from the Record Audio action (it will appear as a variable)
     - **Type**: File
 
 **Optional Parameters:**
@@ -115,13 +107,18 @@ You can add additional form fields:
 ### Common Issues
 
 **"Could not connect to server"**
-- Verify server is running: `curl http://your-server-ip:8000/health`
+- Verify server is running: `curl http://your-server-ip:61337/health`
 - Check firewall settings on server
 - Ensure iPhone and server are on same network (or server is publicly accessible)
 
 **"No audio recorded"**
 - Grant microphone permissions to Shortcuts app
 - Check audio recording settings in the Record Audio action
+
+**"Get Contents of File not available"**
+- This action was removed in newer iOS versions
+- The recorded audio is automatically passed between actions as a variable
+- Simply use the output from "Record Audio" directly in "Get Contents of URL"
 
 **"Transcription failed"**
 - Verify OpenAI API key is configured in Agent CLI
@@ -162,6 +159,14 @@ clipboard = false  # Disabled for web service
 **Text Processing:**
 - Add text manipulation actions after transcription
 - Format text, convert case, etc.
+
+**Alternative: Save Recording First**
+If you want to save the audio file:
+1. After "Record Audio", add **"Save to Files"** action
+   - Choose location (e.g., iCloud Drive/Recordings/)
+   - Name: `Recording-{Current Date}`
+2. Add **"Get File"** action to retrieve the saved file
+3. Use this file in "Get Contents of URL"
 
 ## API Reference
 
