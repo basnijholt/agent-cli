@@ -7,7 +7,6 @@ import tempfile
 from pathlib import Path
 from typing import Annotated, Any
 
-import uvicorn
 from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 from pydantic import BaseModel
 
@@ -297,18 +296,3 @@ async def transcribe_audio(  # noqa: PLR0912, PLR0915
             success=False,
             error=str(e),
         )
-
-
-def run_server(host: str = "0.0.0.0", port: int = 61337, reload: bool = False) -> None:  # noqa: S104
-    """Run the FastAPI server."""
-    uvicorn.run(
-        "agent_cli.api:app",
-        host=host,
-        port=port,
-        reload=reload,
-        log_level="info",
-    )
-
-
-if __name__ == "__main__":
-    run_server()
