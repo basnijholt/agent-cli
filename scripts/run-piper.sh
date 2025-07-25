@@ -22,9 +22,11 @@ if [ ! -d "$SCRIPT_DIR/.runtime/piper-data/en_US-lessac-medium" ]; then
 fi
 
 # Run Wyoming Piper using uvx wrapper
-uvx --python 3.12 --from wyoming-piper wyoming-piper \
+# Note: Using wyoming-piper==1.4.0 due to FileNotFoundError bug in 1.5.x
+uvx --python 3.12 --from wyoming-piper==1.4.0 wyoming-piper \
     --piper "$SCRIPT_DIR/.runtime/piper-uv-wrapper.sh" \
     --voice en_US-lessac-medium \
     --uri 'tcp://0.0.0.0:10200' \
     --data-dir "$SCRIPT_DIR/.runtime/piper-data" \
-    --download-dir "$SCRIPT_DIR/.runtime/piper-data"
+    --download-dir "$SCRIPT_DIR/.runtime/piper-data" \
+    --debug
