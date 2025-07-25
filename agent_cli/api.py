@@ -73,10 +73,7 @@ async def parse_transcription_form(
     extra_instructions: Annotated[str | None, Form()] = None,
 ) -> TranscriptionRequest:
     """Parse form data into TranscriptionRequest model."""
-    return TranscriptionRequest(
-        cleanup=cleanup,
-        extra_instructions=extra_instructions,
-    )
+    return TranscriptionRequest(cleanup=cleanup, extra_instructions=extra_instructions)
 
 
 @app.get("/health", response_model=HealthResponse)
