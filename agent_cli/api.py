@@ -76,7 +76,7 @@ async def _transcribe_with_provider(
 @app.post("/transcribe", response_model=TranscriptionResponse)
 async def transcribe_audio(
     audio: Annotated[UploadFile, File()],
-    cleanup: Annotated[bool, Form()] = True,
+    cleanup: Annotated[bool | str, Form()] = True,
     extra_instructions: Annotated[str | None, Form()] = None,
 ) -> TranscriptionResponse:
     """Transcribe audio file and optionally clean up the text.
@@ -110,6 +110,10 @@ async def transcribe_audio(
             temp_file_path = Path(temp_file.name)
 
         try:
+            # Handle string boolean values from iOS Shortcuts
+            if isinstance(cleanup, str):
+                cleanup = cleanup.lower() == "true"
+
             # Load configuration from file and merge with transcribe-specific config
             loaded_config = config.load_config()
             wildcard_config = loaded_config.get("defaults", {})

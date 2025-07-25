@@ -192,6 +192,43 @@ def test_transcribe_with_extra_instructions(client: TestClient) -> None:
         assert "Add proper punctuation" in call_args.kwargs["agent_instructions"]
 
 
+def test_string_boolean_cleanup(client: TestClient) -> None:
+    """Test that cleanup parameter accepts string 'true'/'false' for iOS compatibility."""
+    with patch("agent_cli.api._transcribe_with_provider") as mock_transcribe:
+        mock_transcribe.return_value = "test transcription"
+
+        # Test with string "true"
+        with tempfile.NamedTemporaryFile(suffix=".wav") as tmp:
+            tmp.write(b"RIFF")
+            tmp.seek(0)
+
+            response = client.post(
+                "/transcribe",
+                files={"audio": ("test.wav", tmp, "audio/wav")},
+                data={"cleanup": "true"},  # String instead of boolean
+            )
+
+            assert response.status_code == 200
+            data = response.json()
+            assert data["success"] is True
+
+        # Test with string "false"
+        with tempfile.NamedTemporaryFile(suffix=".wav") as tmp:
+            tmp.write(b"RIFF")
+            tmp.seek(0)
+
+            response = client.post(
+                "/transcribe",
+                files={"audio": ("test.wav", tmp, "audio/wav")},
+                data={"cleanup": "false"},  # String instead of boolean
+            )
+
+            assert response.status_code == 200
+            data = response.json()
+            assert data["success"] is True
+            assert data["cleaned_transcript"] is None  # No cleanup when false
+
+
 def test_supported_audio_formats(client: TestClient) -> None:
     """Test all supported audio formats."""
     supported_formats = [
