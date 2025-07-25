@@ -13,12 +13,6 @@ from pydantic import BaseModel
 
 from agent_cli import config
 from agent_cli.agents.transcribe import AGENT_INSTRUCTIONS, INSTRUCTION, SYSTEM_PROMPT
-from agent_cli.core.config_utils import (
-    create_asr_configs,
-    create_llm_configs,
-    create_provider_config_from_defaults,
-    merge_extra_instructions,
-)
 from agent_cli.services import asr
 from agent_cli.services.llm import process_and_update_clipboard
 
@@ -53,6 +47,50 @@ class HealthResponse(BaseModel):
 async def health_check() -> HealthResponse:
     """Health check endpoint."""
     return HealthResponse(status="healthy", version="1.0.0")
+
+
+def _create_llm_configs(
+    provider_cfg: config.ProviderSelection,
+    defaults: dict,
+) -> tuple[config.Ollama, config.OpenAILLM, config.GeminiLLM]:
+    """Create LLM configurations based on provider."""
+    # Ollama config
+    if provider_cfg.llm_provider == "local":
+        ollama_cfg = config.Ollama(
+            llm_ollama_model=defaults.get("llm_ollama_model", "qwen3:4b"),
+            llm_ollama_host=defaults.get("llm_ollama_host", "http://localhost:11434"),
+        )
+    else:
+        ollama_cfg = config.Ollama(
+            llm_ollama_model="llama2",
+            llm_ollama_host="http://localhost:11434",
+        )
+
+    # OpenAI config
+    if provider_cfg.llm_provider == "openai":
+        openai_cfg = config.OpenAILLM(
+            llm_openai_model=defaults.get("llm_openai_model", "gpt-4o-mini"),
+            openai_api_key=defaults.get("openai_api_key"),
+        )
+    else:
+        openai_cfg = config.OpenAILLM(
+            llm_openai_model="gpt-4o-mini",
+            openai_api_key=None,
+        )
+
+    # Gemini config
+    if provider_cfg.llm_provider == "gemini":
+        gemini_cfg = config.GeminiLLM(
+            llm_gemini_model=defaults.get("llm_gemini_model", "gemini-2.5-flash"),
+            gemini_api_key=defaults.get("gemini_api_key"),
+        )
+    else:
+        gemini_cfg = config.GeminiLLM(
+            llm_gemini_model="gemini-pro",
+            gemini_api_key=None,
+        )
+
+    return ollama_cfg, openai_cfg, gemini_cfg
 
 
 async def _transcribe_with_provider(
@@ -116,15 +154,28 @@ async def transcribe_audio(
             temp_file_path = Path(temp_file.name)
 
         try:
-            # Load configuration from file
+            # Load configuration from file and merge with transcribe-specific config
             loaded_config = config.load_config()
-            defaults = loaded_config.get("defaults", {})
+            wildcard_config = loaded_config.get("defaults", {})
+            command_config = loaded_config.get("transcribe", {})
+            defaults = {**wildcard_config, **command_config}
 
-            # Create provider configuration from defaults
-            provider_cfg = create_provider_config_from_defaults(defaults)
+            # Create provider configuration
+            provider_cfg = config.ProviderSelection(
+                asr_provider=defaults.get("asr_provider", "local"),
+                llm_provider=defaults.get("llm_provider", "local"),
+                tts_provider=defaults.get("tts_provider", "local"),
+            )
 
             # Create ASR configurations
-            wyoming_asr_cfg, openai_asr_cfg = create_asr_configs(provider_cfg, defaults)
+            wyoming_asr_cfg = config.WyomingASR(
+                asr_wyoming_ip=defaults.get("asr_wyoming_ip", "localhost"),
+                asr_wyoming_port=defaults.get("asr_wyoming_port", 10300),
+            )
+            openai_asr_cfg = config.OpenAIASR(
+                asr_openai_model=defaults.get("asr_openai_model", "whisper-1"),
+                openai_api_key=defaults.get("openai_api_key"),
+            )
 
             # Read audio file as bytes
             audio_data = temp_file_path.read_bytes()
@@ -148,15 +199,15 @@ async def transcribe_audio(
             cleaned_transcript = None
             if cleanup:
                 # Create LLM configurations
-                ollama_cfg, openai_cfg, gemini_cfg = create_llm_configs(provider_cfg, defaults)
+                ollama_cfg, openai_cfg, gemini_cfg = _create_llm_configs(provider_cfg, defaults)
 
                 # Prepare instructions
-                config_extra = loaded_config.get("transcribe", {}).get("extra_instructions", "")
-                instructions = merge_extra_instructions(
-                    AGENT_INSTRUCTIONS,
-                    config_extra,
-                    extra_instructions,
-                )
+                instructions = AGENT_INSTRUCTIONS
+                config_extra = defaults.get("extra_instructions", "")
+                if config_extra:
+                    instructions += f"\n\n{config_extra}"
+                if extra_instructions:
+                    instructions += f"\n\n{extra_instructions}"
 
                 # Clean up transcript
                 cleaned_transcript = await process_and_update_clipboard(
