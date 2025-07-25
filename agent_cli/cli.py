@@ -48,3 +48,25 @@ def set_config_defaults(ctx: typer.Context, config_file: str | None) -> None:
 
 # Import commands from other modules to register them
 from .agents import assistant, autocorrect, chat, speak, transcribe, voice_edit  # noqa: E402, F401
+
+
+@app.command("server")
+def server(
+    host: str = typer.Option("0.0.0.0", help="Host to bind the server to"),  # noqa: S104
+    port: int = typer.Option(8000, help="Port to bind the server to"),
+    reload: bool = typer.Option(
+        default=False,
+        flag="--reload",
+        help="Enable auto-reload for development",
+    ),
+) -> None:
+    """Run the FastAPI transcription web server."""
+    from .api import run_server  # noqa: PLC0415
+
+    console.print(
+        f"[bold green]Starting Agent CLI transcription server on {host}:{port}[/bold green]",
+    )
+    if reload:
+        console.print("[yellow]Auto-reload enabled for development[/yellow]")
+
+    run_server(host=host, port=port, reload=reload)
