@@ -13,7 +13,7 @@ from pydantic import BaseModel
 
 from agent_cli import config
 from agent_cli.agents.transcribe import AGENT_INSTRUCTIONS, INSTRUCTION, SYSTEM_PROMPT
-from agent_cli.services import transcribe_audio_openai
+from agent_cli.services import asr
 from agent_cli.services.llm import process_and_update_clipboard
 
 # Configure logging
@@ -47,6 +47,36 @@ class HealthResponse(BaseModel):
 async def health_check() -> HealthResponse:
     """Health check endpoint."""
     return HealthResponse(status="healthy", version="1.0.0")
+
+
+async def _transcribe_with_provider(
+    audio_data: bytes,
+    provider_cfg: config.ProviderSelection,
+    defaults: dict,
+    logger: logging.Logger,
+) -> str:
+    """Transcribe audio using the configured provider."""
+    transcriber = asr.create_recorded_audio_transcriber(provider_cfg)
+
+    if provider_cfg.asr_provider == "local":
+        wyoming_asr_cfg = config.WyomingASR(
+            asr_wyoming_ip=defaults.get("asr-wyoming-ip", "localhost"),
+            asr_wyoming_port=defaults.get("asr-wyoming-port", 10300),
+        )
+        return await transcriber(
+            audio_data=audio_data,
+            wyoming_asr_cfg=wyoming_asr_cfg,
+            logger=logger,
+        )
+    openai_asr_cfg = config.OpenAIASR(
+        asr_openai_model=defaults.get("asr-openai-model", "whisper-1"),
+        openai_api_key=defaults.get("openai-api-key"),
+    )
+    return await transcriber(
+        audio_data=audio_data,
+        openai_asr_cfg=openai_asr_cfg,
+        logger=logger,
+    )
 
 
 @app.post("/transcribe", response_model=TranscriptionResponse)
@@ -92,7 +122,7 @@ async def transcribe_audio(
 
             # Get provider settings from config or use defaults
             provider_cfg = config.ProviderSelection(
-                asr_provider=defaults.get("asr-provider", "wyoming"),
+                asr_provider=defaults.get("asr-provider", "local"),
                 llm_provider=defaults.get("llm-provider", "ollama"),
                 tts_provider=defaults.get("tts-provider", "local"),
             )
@@ -100,17 +130,12 @@ async def transcribe_audio(
             # Read audio file as bytes
             audio_data = temp_file_path.read_bytes()
 
-            # For now, we only support OpenAI for file transcription in the API
-            # Wyoming is only implemented for live audio streaming
-            # Configure OpenAI ASR
-            openai_asr_cfg = config.OpenAIASR(
-                asr_openai_model=defaults.get("asr-openai-model", "whisper-1"),
-                openai_api_key=defaults.get("openai-api-key"),
-            )
-            raw_transcript = await transcribe_audio_openai(
-                audio_data=audio_data,
-                openai_asr_cfg=openai_asr_cfg,
-                logger=logger,
+            # Transcribe audio using the configured provider
+            raw_transcript = await _transcribe_with_provider(
+                audio_data,
+                provider_cfg,
+                defaults,
+                logger,
             )
 
             if not raw_transcript:

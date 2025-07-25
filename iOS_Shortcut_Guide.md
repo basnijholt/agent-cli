@@ -17,11 +17,7 @@ This guide shows how to create an iOS Shortcut that records audio, sends it to y
 
 2. Start the server:
    ```bash
-   # For OpenAI Whisper:
    agent-cli server --host 0.0.0.0 --port 61337
-
-   # For local Wyoming/FasterWhisper:
-   agent-cli server --host 0.0.0.0 --port 61337 --asr-provider wyoming
    ```
 
 3. Test the server is working:
@@ -135,19 +131,26 @@ You can add additional form fields:
 
 ### Server Configuration
 
-**Environment Variables:**
-```bash
-export OPENAI_API_KEY="your-api-key-here"
-```
-
-**Config File Example (`~/.agent-cli-config.toml`):**
+**Config File Example (`~/.config/agent-cli/config.toml`):**
 ```toml
 [defaults]
-openai_api_key = "your-api-key-here"
+# For transcription with Wyoming/FasterWhisper (local)
+asr-provider = "local"
+asr-wyoming-ip = "localhost"
+asr-wyoming-port = 10300
+
+# For LLM cleanup (can use Ollama, OpenAI, or Gemini)
+llm-provider = "ollama"
+llm-ollama-model = "llama3"
+llm-ollama-host = "http://localhost:11434"
+
+# If using OpenAI for transcription or LLM:
+# openai-api-key = "your-api-key-here"
 
 [transcribe]
 llm = true
 clipboard = false  # Disabled for web service
+extra-instructions = "Your custom cleanup instructions here"
 ```
 
 ### Advanced Shortcuts Features
