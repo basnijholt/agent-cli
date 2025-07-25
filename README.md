@@ -59,7 +59,9 @@ agent-cli autocorrect "this has an eror"
 
 ### Want automatic setup with everything?
 
-Our scripts install and configure everything for you:
+We offer two ways to set up agent-cli with all services:
+
+#### Option A: Using Shell Scripts (Traditional)
 
 ```bash
 # 1. Clone the repository
@@ -74,6 +76,25 @@ cd agent-cli
 
 # 4. (Optional) Set up system-wide hotkeys
 ./scripts/setup-macos-hotkeys.sh  # or setup-linux-hotkeys.sh
+
+# 5. Use it!
+agent-cli autocorrect "this has an eror"
+```
+
+#### Option B: Using CLI Commands (New!)
+
+```bash
+# 1. Install agent-cli
+uv tool install agent-cli
+
+# 2. Install all required services
+agent-cli install-services
+
+# 3. Start all services
+agent-cli start-services
+
+# 4. (Optional) Set up system-wide hotkeys
+agent-cli install-hotkeys
 
 # 5. Use it!
 agent-cli autocorrect "this has an eror"
@@ -108,6 +129,7 @@ The setup scripts automatically install:
     - [AI Services (Auto-installed and configured)](#ai-services-auto-installed-and-configured)
     - [Alternative Cloud Services (Optional)](#alternative-cloud-services-optional)
 - [Usage](#usage)
+  - [Installation Commands](#installation-commands)
   - [Configuration](#configuration)
     - [Service Provider](#service-provider)
   - [`autocorrect`](#autocorrect)
@@ -274,6 +296,16 @@ If you prefer cloud services over local ones:
 ## Usage
 
 This package provides multiple command-line tools, each designed for a specific purpose.
+
+### Installation Commands
+
+These commands help you set up `agent-cli` and its required services:
+
+- **`install-services`**: Install all required AI services (Ollama, Whisper, Piper, OpenWakeWord)
+- **`install-hotkeys`**: Set up system-wide hotkeys for quick access to agent-cli features
+- **`start-services`**: Start all services in a Zellij terminal session
+
+All necessary scripts are bundled with the package, so you can run these commands immediately after installing `agent-cli`.
 
 ### Configuration
 
