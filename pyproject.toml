@@ -71,7 +71,7 @@ agent-cli = "agent_cli.cli:app"
 include = ["agent_cli.*", "agent_cli"]
 
 [tool.setuptools.package-data]
-"agent_cli" = ["py.typed", "scripts/**/*"]
+"agent_cli" = ["py.typed"]
 
 [tool.pytest.ini_options]
 asyncio_default_fixture_loop_scope = "function"
