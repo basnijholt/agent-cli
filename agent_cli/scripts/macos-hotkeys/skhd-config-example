@@ -1,0 +1,5 @@
+# Simple skhd configuration for transcription toggle
+# Save to ~/.config/skhd/skhdrc
+
+# Press Cmd+Shift+R to toggle transcription
+cmd + shift - r : /path/to/toggle-transcription.sh

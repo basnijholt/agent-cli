@@ -84,11 +84,10 @@ agent-cli autocorrect "this has an eror"
 #### Option B: Using CLI Commands (New!)
 
 ```bash
-# 1. Clone the repository (still required for scripts)
-git clone https://github.com/basnijholt/agent-cli.git
-cd agent-cli
+# 1. Install agent-cli
+uv tool install agent-cli
 
-# 2. Install agent-cli and all services
+# 2. Install all required services
 agent-cli install-services
 
 # 3. Start all services
@@ -306,7 +305,7 @@ These commands help you set up `agent-cli` and its required services:
 - **`install-hotkeys`**: Set up system-wide hotkeys for quick access to agent-cli features
 - **`start-services`**: Start all services in a Zellij terminal session
 
-**Note**: These commands require you to be in the cloned `agent-cli` repository directory, as they use the shell scripts located in the `scripts/` folder.
+All necessary scripts are bundled with the package, so you can run these commands immediately after installing `agent-cli`.
 
 ### Configuration
 

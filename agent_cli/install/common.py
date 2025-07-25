@@ -4,35 +4,101 @@ from __future__ import annotations
 
 import platform
 import subprocess
+import tempfile
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import typer
 
 from agent_cli.core.utils import console, print_error_message, print_with_style
 
+try:
+    from importlib.resources import files
+except ImportError:
+    files = None  # type: ignore[assignment]
+
 if TYPE_CHECKING:
     from subprocess import CompletedProcess
+
+# Cache for script directories to avoid recreating temp dirs
+_SCRIPT_DIR_CACHE: Path | None = None
+
+
+def get_script_directory() -> Path:
+    """Get the directory containing all scripts."""
+    global _SCRIPT_DIR_CACHE
+
+    if _SCRIPT_DIR_CACHE and _SCRIPT_DIR_CACHE.exists():
+        return _SCRIPT_DIR_CACHE
+
+    # First check if we're running from source (development)
+    source_scripts = Path(__file__).parent.parent.parent / "scripts"
+    if source_scripts.exists():
+        _SCRIPT_DIR_CACHE = source_scripts
+        return source_scripts
+
+    # Check for scripts bundled with the package
+    package_scripts = Path(__file__).parent.parent / "scripts"
+    if package_scripts.exists():
+        _SCRIPT_DIR_CACHE = package_scripts
+        return package_scripts
+
+    # If using importlib.resources (Python 3.9+) - extract all scripts
+    if files is not None:
+        try:
+            scripts_resource = files("agent_cli") / "scripts"
+
+            # Create a temporary directory for all scripts
+            temp_dir = Path(tempfile.mkdtemp(prefix="agent_cli_scripts_"))
+
+            # Copy all scripts to the temp directory
+            def copy_resource_dir(resource_dir: Any, target_dir: Path) -> None:
+                """Recursively copy resource directory to target."""
+                target_dir.mkdir(exist_ok=True)
+
+                for item in resource_dir.iterdir():
+                    if item.is_dir():
+                        copy_resource_dir(item, target_dir / item.name)
+                    else:
+                        target_path = target_dir / item.name
+                        if hasattr(item, "read_bytes"):
+                            target_path.write_bytes(item.read_bytes())
+                        else:
+                            # Fallback for text files
+                            target_path.write_text(item.read_text())
+                        # Make scripts executable
+                        if target_path.suffix == ".sh":
+                            target_path.chmod(0o755)
+
+            copy_resource_dir(scripts_resource, temp_dir)
+            _SCRIPT_DIR_CACHE = temp_dir
+            return temp_dir
+
+        except (ImportError, AttributeError):
+            pass
+
+    msg = (
+        "Scripts directory not found.\n\n"
+        "This might be a packaging issue. Please report this at:\n"
+        "https://github.com/basnijholt/agent-cli/issues"
+    )
+    raise FileNotFoundError(msg)
 
 
 def get_script_path(script_name: str) -> Path:
     """Get the path to a script in the scripts directory."""
-    # First check if we're running from source (development)
-    source_scripts = Path(__file__).parent.parent.parent / "scripts"
-    if source_scripts.exists() and (source_scripts / script_name).exists():
-        return source_scripts / script_name
+    script_dir = get_script_directory()
+    script_path = script_dir / script_name
 
-    # When installed via uvx/pip, users should clone the repo for scripts
-    # This is the expected workflow as documented in the README
-    msg = (
-        f"Script '{script_name}' not found.\n\n"
-        "The installation scripts are not bundled with the Python package.\n"
-        "Please clone the agent-cli repository to access them:\n\n"
-        "  git clone https://github.com/basnijholt/agent-cli.git\n"
-        "  cd agent-cli\n\n"
-        "Then run the commands from within the repository directory."
-    )
-    raise FileNotFoundError(msg)
+    if not script_path.exists():
+        msg = (
+            f"Script '{script_name}' not found in {script_dir}.\n\n"
+            "This might be a packaging issue. Please report this at:\n"
+            "https://github.com/basnijholt/agent-cli/issues"
+        )
+        raise FileNotFoundError(msg)
+
+    return script_path
 
 
 def run_script(script_path: Path, check: bool = True) -> CompletedProcess[str]:
@@ -50,6 +116,7 @@ def run_script(script_path: Path, check: bool = True) -> CompletedProcess[str]:
         check=check,
         text=True,
         capture_output=True,
+        cwd=script_path.parent,  # Run from script directory for relative paths
     )
 
 
