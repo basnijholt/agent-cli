@@ -31,7 +31,7 @@ def test_main_with_args(mock_setup_logging: pytest.MagicMock) -> None:
     mock_setup_logging.assert_not_called()
 
 
-@patch("agent_cli.api.run_server")
+@patch("agent_cli.agents.server.run_server")
 def test_server_command(mock_run_server: pytest.MagicMock) -> None:
     """Test the server command."""
     result = runner.invoke(app, ["server"])
@@ -40,7 +40,7 @@ def test_server_command(mock_run_server: pytest.MagicMock) -> None:
     mock_run_server.assert_called_once_with(host="0.0.0.0", port=61337, reload=False)  # noqa: S104
 
 
-@patch("agent_cli.api.run_server")
+@patch("agent_cli.agents.server.run_server")
 def test_server_command_with_options(mock_run_server: pytest.MagicMock) -> None:
     """Test the server command with custom options."""
     result = runner.invoke(app, ["server", "--host", "127.0.0.1", "--port", "8080", "--reload"])

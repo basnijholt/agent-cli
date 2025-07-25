@@ -13,7 +13,8 @@ import pytest
 from fastapi.testclient import TestClient
 from typer.testing import CliRunner
 
-from agent_cli.api import app, run_server, transcribe_audio
+from agent_cli.agents.server import run_server
+from agent_cli.api import app, transcribe_audio
 from agent_cli.cli import app as cli_app
 
 if TYPE_CHECKING:
@@ -31,10 +32,12 @@ async def test_full_transcription_workflow() -> None:
     """Test the full transcription workflow with mocked services."""
     # Create mock configs
     with (
+        patch("agent_cli.api._convert_audio_for_local_asr") as mock_convert,
         patch("agent_cli.api._transcribe_with_provider") as mock_transcribe,
         patch("agent_cli.api.process_and_update_clipboard") as mock_process,
     ):
         # Setup mocks
+        mock_convert.return_value = b"converted_audio_data"
         mock_transcribe.return_value = "hello world this is a test"
         mock_process.return_value = "Hello world. This is a test."
 
@@ -55,8 +58,15 @@ async def test_full_transcription_workflow() -> None:
 
             upload_file = MockUploadFile()
 
+            # Create mock request
+            class MockRequest:
+                pass
+
+            request = MockRequest()
+
             # Call the transcribe endpoint function directly
             result = await transcribe_audio(
+                request=request,
                 audio=upload_file,
                 cleanup=True,
                 extra_instructions=None,
@@ -147,7 +157,13 @@ def test_temp_file_cleanup(client: TestClient) -> None:
 @pytest.mark.asyncio
 async def test_concurrent_requests() -> None:
     """Test that the API can handle concurrent requests."""
-    with patch("agent_cli.api._transcribe_with_provider") as mock_transcribe:
+    with (
+        patch("agent_cli.api._convert_audio_for_local_asr") as mock_convert,
+        patch("agent_cli.api._transcribe_with_provider") as mock_transcribe,
+    ):
+        # Setup mocks
+        mock_convert.return_value = b"converted_audio_data"
+
         # Make each request return a unique result
         call_count = 0
 
@@ -168,11 +184,17 @@ async def test_concurrent_requests() -> None:
             async def read(self) -> bytes:
                 return b"RIFF" + bytes([self.idx])
 
+        # Create mock request
+        class MockRequest:
+            pass
+
         # Create concurrent tasks
         tasks = []
         for i in range(5):
             upload_file = MockUploadFile(i)
+            request = MockRequest()
             task = transcribe_audio(
+                request=request,
                 audio=upload_file,
                 cleanup=False,
                 extra_instructions=None,

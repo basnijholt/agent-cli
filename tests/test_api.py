@@ -45,15 +45,18 @@ def test_transcribe_invalid_file_type(client: TestClient) -> None:
     assert "Unsupported audio format" in response.json()["detail"]
 
 
+@patch("agent_cli.api._convert_audio_for_local_asr")
 @patch("agent_cli.api._transcribe_with_provider")
 @patch("agent_cli.api.process_and_update_clipboard")
 def test_transcribe_success_with_cleanup(
     mock_process: AsyncMock,
     mock_transcribe: AsyncMock,
+    mock_convert: AsyncMock,
     client: TestClient,
 ) -> None:
     """Test successful transcription with cleanup."""
-    # Mock the transcription and cleanup
+    # Mock the audio conversion, transcription and cleanup
+    mock_convert.return_value = b"converted_audio_data"
     mock_transcribe.return_value = "this is a test transcription"
     mock_process.return_value = "This is a test transcription."
 
@@ -76,17 +79,21 @@ def test_transcribe_success_with_cleanup(
     assert data["error"] is None
 
     # Verify mocks were called
+    mock_convert.assert_called_once()
     mock_transcribe.assert_called_once()
     mock_process.assert_called_once()
 
 
+@patch("agent_cli.api._convert_audio_for_local_asr")
 @patch("agent_cli.api._transcribe_with_provider")
 def test_transcribe_success_without_cleanup(
     mock_transcribe: AsyncMock,
+    mock_convert: AsyncMock,
     client: TestClient,
 ) -> None:
     """Test successful transcription without cleanup."""
-    # Mock the transcription
+    # Mock the audio conversion and transcription
+    mock_convert.return_value = b"converted_audio_data"
     mock_transcribe.return_value = "this is a test transcription"
 
     # Create a dummy audio file
@@ -107,17 +114,21 @@ def test_transcribe_success_without_cleanup(
     assert data["cleaned_transcript"] is None
     assert data["error"] is None
 
-    # Verify only transcription was called
+    # Verify mocks were called
+    mock_convert.assert_called_once()
     mock_transcribe.assert_called_once()
 
 
+@patch("agent_cli.api._convert_audio_for_local_asr")
 @patch("agent_cli.api._transcribe_with_provider")
 def test_transcribe_empty_result(
     mock_transcribe: AsyncMock,
+    mock_convert: AsyncMock,
     client: TestClient,
 ) -> None:
     """Test transcription with empty result."""
-    # Mock empty transcription
+    # Mock audio conversion and empty transcription
+    mock_convert.return_value = b"converted_audio_data"
     mock_transcribe.return_value = ""
 
     with tempfile.NamedTemporaryFile(suffix=".m4a") as tmp:
@@ -136,13 +147,16 @@ def test_transcribe_empty_result(
     assert data["error"] == "No transcript generated from audio"
 
 
+@patch("agent_cli.api._convert_audio_for_local_asr")
 @patch("agent_cli.api._transcribe_with_provider")
 def test_transcribe_with_exception(
     mock_transcribe: AsyncMock,
+    mock_convert: AsyncMock,
     client: TestClient,
 ) -> None:
     """Test transcription with exception."""
-    # Mock exception during transcription
+    # Mock audio conversion and exception during transcription
+    mock_convert.return_value = b"converted_audio_data"
     mock_transcribe.side_effect = Exception("API Error: Invalid API key")
 
     with tempfile.NamedTemporaryFile(suffix=".wav") as tmp:
@@ -164,9 +178,11 @@ def test_transcribe_with_exception(
 def test_transcribe_with_extra_instructions(client: TestClient) -> None:
     """Test transcription with extra instructions."""
     with (
+        patch("agent_cli.api._convert_audio_for_local_asr") as mock_convert,
         patch("agent_cli.api._transcribe_with_provider") as mock_transcribe,
         patch("agent_cli.api.process_and_update_clipboard") as mock_process,
     ):
+        mock_convert.return_value = b"converted_audio_data"
         mock_transcribe.return_value = "hello world"
         mock_process.return_value = "Hello, World!"
 
@@ -194,7 +210,11 @@ def test_transcribe_with_extra_instructions(client: TestClient) -> None:
 
 def test_string_boolean_cleanup(client: TestClient) -> None:
     """Test that cleanup parameter accepts string 'true'/'false' for iOS compatibility."""
-    with patch("agent_cli.api._transcribe_with_provider") as mock_transcribe:
+    with (
+        patch("agent_cli.api._convert_audio_for_local_asr") as mock_convert,
+        patch("agent_cli.api._transcribe_with_provider") as mock_transcribe,
+    ):
+        mock_convert.return_value = b"converted_audio_data"
         mock_transcribe.return_value = "test transcription"
 
         # Test with string "true"
@@ -240,7 +260,11 @@ def test_supported_audio_formats(client: TestClient) -> None:
         (".aac", b"\xff\xf1", "audio/aac"),
     ]
 
-    with patch("agent_cli.api._transcribe_with_provider") as mock_transcribe:
+    with (
+        patch("agent_cli.api._convert_audio_for_local_asr") as mock_convert,
+        patch("agent_cli.api._transcribe_with_provider") as mock_transcribe,
+    ):
+        mock_convert.return_value = b"converted_audio_data"
         mock_transcribe.return_value = "test"
 
         for ext, header, mime_type in supported_formats:
