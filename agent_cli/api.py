@@ -202,29 +202,12 @@ def _load_transcription_configs() -> tuple[
 
 def _convert_audio_for_local_asr(audio_data: bytes, filename: str) -> bytes:
     """Convert audio to Wyoming format if needed for local ASR."""
-    from agent_cli.core.audio_format import (  # noqa: PLC0415
-        check_ffmpeg_available,
-        convert_audio_to_wyoming_format,
-    )
-
-    if not check_ffmpeg_available():
-        logger.error("FFmpeg not available - cannot convert audio for local ASR")
-        msg = "FFmpeg not found. Please install FFmpeg to use local ASR with audio conversion."
-        raise RuntimeError(msg)
+    from agent_cli.core.audio_format import convert_audio_to_wyoming_format  # noqa: PLC0415
 
     logger.info("Converting %s audio to Wyoming format", filename)
-    try:
-        converted_data = convert_audio_to_wyoming_format(audio_data, filename)
-        logger.info("Audio conversion successful")
-        return converted_data
-    except RuntimeError as e:
-        logger.exception("FFmpeg conversion failed")
-        msg = f"Audio conversion failed: {e}"
-        raise RuntimeError(msg) from e
-    except Exception as e:
-        logger.exception("Unexpected error during audio conversion")
-        msg = "Unexpected error during audio conversion for local ASR"
-        raise RuntimeError(msg) from e
+    converted_data = convert_audio_to_wyoming_format(audio_data, filename)
+    logger.info("Audio conversion successful")
+    return converted_data
 
 
 async def _process_transcript_cleanup(
@@ -315,14 +298,7 @@ async def transcribe_audio(
 
             # Convert audio to Wyoming format if using local ASR
             if provider_cfg.asr_provider == "local":
-                try:
-                    audio_data = _convert_audio_for_local_asr(audio_data, audio.filename)
-                except RuntimeError as e:
-                    return TranscriptionResponse(
-                        raw_transcript="",
-                        success=False,
-                        error=str(e),
-                    )
+                audio_data = _convert_audio_for_local_asr(audio_data, audio.filename)
 
             # Transcribe audio using the configured provider
             raw_transcript = await _transcribe_with_provider(
