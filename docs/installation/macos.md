@@ -29,7 +29,7 @@ Native macOS setup with full Metal GPU acceleration for optimal performance.
 3. **Install agent-cli:**
 
    ```bash
-   uv tools install agent-cli
+   uv tool install agent-cli
    # or: pip install agent-cli
    ```
 
