@@ -130,6 +130,7 @@ The setup scripts automatically install:
     - [AI Services (Auto-installed and configured)](#ai-services-auto-installed-and-configured)
     - [Alternative Cloud Services (Optional)](#alternative-cloud-services-optional)
 - [Usage](#usage)
+  - [Installation Commands](#installation-commands)
   - [Configuration](#configuration)
     - [Service Provider](#service-provider)
   - [`autocorrect`](#autocorrect)
