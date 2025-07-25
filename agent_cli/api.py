@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Annotated
 
 import uvicorn
-from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 from pydantic import BaseModel
 
 from agent_cli import config
@@ -49,6 +49,34 @@ async def health_check() -> HealthResponse:
     return HealthResponse(status="healthy", version="1.0.0")
 
 
+@app.post("/debug")
+async def debug_request(request: Request) -> dict:
+    """Debug endpoint to see raw request data."""
+    body = await request.body()
+    return {
+        "headers": dict(request.headers),
+        "content_type": request.headers.get("content-type"),
+        "body_size": len(body),
+        "body_preview": body[:500].decode("utf-8", errors="replace") if body else None,
+    }
+
+
+def _log_request_debug(
+    request: Request,
+    audio: UploadFile,
+    cleanup: bool | str,
+    extra_instructions: str | None,
+) -> None:
+    """Log debug information about the incoming request."""
+    logger.info("=== Transcribe Request Debug ===")
+    logger.info("Request headers: %s", dict(request.headers))
+    logger.info("Audio filename: %s", audio.filename)
+    logger.info("Audio content type: %s", audio.content_type)
+    logger.info("Audio size: %s", audio.size if hasattr(audio, "size") else "unknown")
+    logger.info("Cleanup parameter (raw): %r (type: %s)", cleanup, type(cleanup).__name__)
+    logger.info("Extra instructions: %r", extra_instructions)
+
+
 async def _transcribe_with_provider(
     audio_data: bytes,
     provider_cfg: config.ProviderSelection,
@@ -75,6 +103,7 @@ async def _transcribe_with_provider(
 
 @app.post("/transcribe", response_model=TranscriptionResponse)
 async def transcribe_audio(
+    request: Request,
     audio: Annotated[UploadFile, File()],
     cleanup: Annotated[bool | str, Form()] = True,
     extra_instructions: Annotated[str | None, Form()] = None,
@@ -82,6 +111,7 @@ async def transcribe_audio(
     """Transcribe audio file and optionally clean up the text.
 
     Args:
+        request: FastAPI request object for debugging
         audio: Audio file (wav, mp3, m4a, etc.)
         cleanup: Whether to clean up transcription with LLM
         extra_instructions: Additional instructions for text cleanup
@@ -90,7 +120,11 @@ async def transcribe_audio(
         TranscriptionResponse with raw and cleaned transcripts
 
     """
+    # Debug logging for iOS Shortcuts
+    _log_request_debug(request, audio, cleanup, extra_instructions)
+
     if not audio.filename:
+        logger.error("No filename provided in request")
         raise HTTPException(status_code=400, detail="No filename provided")
 
     # Validate audio file type
@@ -106,13 +140,17 @@ async def transcribe_audio(
         # Save uploaded file temporarily
         with tempfile.NamedTemporaryFile(suffix=file_ext, delete=False) as temp_file:
             content = await audio.read()
+            logger.info("Read %d bytes from uploaded audio", len(content))
             temp_file.write(content)
             temp_file_path = Path(temp_file.name)
+            logger.info("Saved audio to temporary file: %s", temp_file_path)
 
         try:
             # Handle string boolean values from iOS Shortcuts
             if isinstance(cleanup, str):
+                logger.info("Converting string cleanup value '%s' to boolean", cleanup)
                 cleanup = cleanup.lower() == "true"
+            logger.info("Final cleanup value: %s (type: %s)", cleanup, type(cleanup).__name__)
 
             # Load configuration from file and merge with transcribe-specific config
             loaded_config = config.load_config()
@@ -203,7 +241,11 @@ async def transcribe_audio(
             temp_file_path.unlink(missing_ok=True)
 
     except Exception as e:
-        logger.exception("Error during transcription")
+        logger.exception(
+            "Error during transcription - Exception type: %s, args: %s",
+            type(e).__name__,
+            e.args,
+        )
         return TranscriptionResponse(
             raw_transcript="",
             success=False,
