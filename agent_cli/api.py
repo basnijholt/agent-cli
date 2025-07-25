@@ -371,8 +371,4 @@ async def transcribe_audio(
             type(e).__name__,
             e.args,
         )
-        return TranscriptionResponse(
-            raw_transcript="",
-            success=False,
-            error=str(e),
-        )
+        return TranscriptionResponse(raw_transcript="", success=False, error=str(e))
