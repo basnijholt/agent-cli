@@ -5,13 +5,12 @@ echo "🔊 Starting Wyoming Piper on port 10200..."
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 mkdir -p "$SCRIPT_DIR/.runtime"
 
-if [ ! -f "$SCRIPT_DIR/.runtime/piper-uv-wrapper.sh" ]; then
-    cat > "$SCRIPT_DIR/.runtime/piper-uv-wrapper.sh" << 'WRAPPER'
+# Always regenerate wrapper to ensure correct Python version
+cat > "$SCRIPT_DIR/.runtime/piper-uv-wrapper.sh" << 'WRAPPER'
 #!/bin/bash
 exec uvx --python 3.12 --from piper-tts piper "$@"
 WRAPPER
-    chmod +x "$SCRIPT_DIR/.runtime/piper-uv-wrapper.sh"
-fi
+chmod +x "$SCRIPT_DIR/.runtime/piper-uv-wrapper.sh"
 
 # Download voice if not present using uvx
 if [ ! -d "$SCRIPT_DIR/.runtime/piper-data/en_US-lessac-medium" ]; then
