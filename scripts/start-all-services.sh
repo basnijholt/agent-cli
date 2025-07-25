@@ -18,10 +18,17 @@ session_name "agent-cli"
 
 layout {
     pane split_direction="vertical" {
-        pane {
-            name "Ollama"
-            command "ollama"
-            args "serve"
+        pane split_direction="horizontal" {
+            pane {
+                name "Ollama"
+                command "ollama"
+                args "serve"
+            }
+            pane {
+                name "Help"
+                command "sh"
+                args "-c" "cat $SCRIPTS_DIR/zellij_help.txt | less"
+            }
         }
         pane split_direction="horizontal" {
             pane {
