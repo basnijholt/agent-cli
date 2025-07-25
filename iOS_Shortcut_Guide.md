@@ -5,8 +5,12 @@ This guide shows how to create an iOS Shortcut that records audio, sends it to y
 ## Prerequisites
 
 1. **Agent CLI Server Running**: Your Agent CLI server must be running and accessible
-2. **OpenAI API Key**: Configure your OpenAI API key in Agent CLI
-3. **Network Access**: Your iPhone needs network access to reach the server
+2. **FFmpeg Installed**: For local ASR with audio conversion (iOS uses m4a format)
+   - macOS: `brew install ffmpeg`
+   - Linux: `sudo apt-get install ffmpeg` (Ubuntu/Debian)
+   - Windows: Download from [ffmpeg.org](https://ffmpeg.org/download.html)
+3. **OpenAI API Key**: Configure your OpenAI API key in Agent CLI (if using OpenAI)
+4. **Network Access**: Your iPhone needs network access to reach the server
 
 ## Setup Agent CLI Server
 
@@ -140,6 +144,12 @@ You can add additional fields by tapping "Add new field" again:
 - The audio field must be type "File" not "Text"
 - Field name must be exactly `audio` (lowercase)
 - To debug, use the `/debug-form` endpoint instead of `/transcribe`
+
+**"FFmpeg not found" Error**
+- Install FFmpeg on your system for local ASR with audio conversion
+- macOS: `brew install ffmpeg`
+- Linux: `sudo apt-get install ffmpeg`
+- Alternative: Use OpenAI ASR instead (set `asr-provider = "openai"` in config)
 
 ### Server Configuration
 

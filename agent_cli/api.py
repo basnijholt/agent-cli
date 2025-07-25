@@ -348,22 +348,42 @@ async def transcribe_audio(  # noqa: PLR0912, PLR0915, C901
             # Convert audio to Wyoming format if using local ASR
             if provider_cfg.asr_provider == "local":
                 from agent_cli.core.audio_format import (  # noqa: PLC0415
+                    check_ffmpeg_available,
                     convert_audio_to_wyoming_format,
-                    get_audio_format_from_filename,
                 )
 
-                logger.info("Converting audio to Wyoming format")
-                audio_format = get_audio_format_from_filename(audio.filename)
-                logger.info("Detected audio format: %s", audio_format)
-                try:
-                    audio_data = convert_audio_to_wyoming_format(audio_data, audio_format)
-                    logger.info("Audio converted successfully, size: %d bytes", len(audio_data))
-                except Exception:
-                    logger.exception("Failed to convert audio format")
+                # Check if FFmpeg is available
+                if not check_ffmpeg_available():
+                    logger.error("FFmpeg not available - cannot convert audio for local ASR")
                     return TranscriptionResponse(
                         raw_transcript="",
                         success=False,
-                        error="Failed to convert audio format for local ASR",
+                        error="FFmpeg not found. Please install FFmpeg to use local ASR with audio conversion.",
+                    )
+
+                logger.info("Converting audio to Wyoming format using FFmpeg")
+                logger.info("Source filename: %s", audio.filename)
+                try:
+                    original_size = len(audio_data)
+                    audio_data = convert_audio_to_wyoming_format(audio_data, audio.filename)
+                    logger.info(
+                        "Audio converted successfully: %d bytes → %d bytes",
+                        original_size,
+                        len(audio_data),
+                    )
+                except RuntimeError as e:
+                    logger.exception("FFmpeg conversion failed")
+                    return TranscriptionResponse(
+                        raw_transcript="",
+                        success=False,
+                        error=f"Audio conversion failed: {e}",
+                    )
+                except Exception:
+                    logger.exception("Unexpected error during audio conversion")
+                    return TranscriptionResponse(
+                        raw_transcript="",
+                        success=False,
+                        error="Unexpected error during audio conversion for local ASR",
                     )
 
             # Transcribe audio using the configured provider
