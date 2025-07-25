@@ -1,0 +1,1 @@
+../../scripts/setup-linux-hotkeys.sh

@@ -3,11 +3,10 @@
 from __future__ import annotations
 
 import platform
-import shutil
 import subprocess
 import tempfile
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import typer
 
@@ -38,54 +37,42 @@ def get_script_directory() -> Path:
         _SCRIPT_DIR_CACHE = source_scripts
         return source_scripts
 
-    # Check if scripts are installed at package root level (via MANIFEST.in)
-    try:
-        import agent_cli  # noqa: PLC0415
+    # Check for scripts bundled with the package
+    package_scripts = Path(__file__).parent.parent / "scripts"
+    if package_scripts.exists():
+        _SCRIPT_DIR_CACHE = package_scripts
+        return package_scripts
 
-        package_root = Path(agent_cli.__file__).parent.parent
-        installed_scripts = package_root / "scripts"
-        if installed_scripts.exists():
-            _SCRIPT_DIR_CACHE = installed_scripts
-            return installed_scripts
-    except ImportError:
-        pass
-
-    # If using importlib.resources (Python 3.9+) - for wheel installations
+    # If using importlib.resources (Python 3.9+) - extract all scripts
     if files is not None:
         try:
-            # For packages installed as wheels, scripts might be in package data
-            import agent_cli  # noqa: PLC0415
-
-            package_path = Path(agent_cli.__file__).parent
+            scripts_resource = files("agent_cli") / "scripts"
 
             # Create a temporary directory for all scripts
             temp_dir = Path(tempfile.mkdtemp(prefix="agent_cli_scripts_"))
 
-            # Look for scripts in the installed package location
-            scripts_source = None
+            # Copy all scripts to the temp directory
+            def copy_resource_dir(resource_dir: Any, target_dir: Path) -> None:
+                """Recursively copy resource directory to target."""
+                target_dir.mkdir(exist_ok=True)
 
-            # Try to find scripts in various possible locations
-            for possible_location in [
-                package_path.parent / "scripts",  # Adjacent to package
-                package_path / "scripts",  # Inside package
-            ]:
-                if possible_location.exists():
-                    scripts_source = possible_location
-                    break
+                for item in resource_dir.iterdir():
+                    if item.is_dir():
+                        copy_resource_dir(item, target_dir / item.name)
+                    else:
+                        target_path = target_dir / item.name
+                        if hasattr(item, "read_bytes"):
+                            target_path.write_bytes(item.read_bytes())
+                        else:
+                            # Fallback for text files
+                            target_path.write_text(item.read_text())
+                        # Make scripts executable
+                        if target_path.suffix == ".sh":
+                            target_path.chmod(0o755)
 
-            if scripts_source:
-                # Copy all scripts to temp directory
-                for item in scripts_source.rglob("*"):
-                    if item.is_file():
-                        relative = item.relative_to(scripts_source)
-                        target = temp_dir / relative
-                        target.parent.mkdir(parents=True, exist_ok=True)
-                        shutil.copy2(item, target)
-                        if target.suffix == ".sh":
-                            target.chmod(0o755)
-
-                _SCRIPT_DIR_CACHE = temp_dir
-                return temp_dir
+            copy_resource_dir(scripts_resource, temp_dir)
+            _SCRIPT_DIR_CACHE = temp_dir
+            return temp_dir
 
         except (ImportError, AttributeError):
             pass

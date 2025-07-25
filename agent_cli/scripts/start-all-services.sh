@@ -1,0 +1,1 @@
+../../scripts/start-all-services.sh

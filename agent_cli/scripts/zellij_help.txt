@@ -1,0 +1,1 @@
+../../scripts/zellij_help.txt
