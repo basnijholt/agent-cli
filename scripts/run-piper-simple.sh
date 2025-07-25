@@ -87,5 +87,4 @@ echo "🚀 Starting Wyoming Piper server..."
     --voice "$VOICE_MODEL" \
     --uri 'tcp://0.0.0.0:10200' \
     --data-dir "$PIPER_DATA_DIR" \
-    --download-dir "$PIPER_DATA_DIR" \
-    --debug
+    --download-dir "$PIPER_DATA_DIR"
