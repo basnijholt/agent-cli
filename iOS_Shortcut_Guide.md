@@ -72,25 +72,23 @@ This guide shows how to create an iOS Shortcut that records audio, sends it to y
 
 In the **Get Contents of URL** action, tap **"Show More"** and configure:
 
-**Critical: Add Form Fields**
-1. Tap on **"Request Body"**
-2. It should show "Form" - if not, tap to change it to "Form"
-3. Tap **"Add new field"** (you may need to tap the Form section first)
-4. Add the audio field:
-   - **Text** (field name): Type `audio`
-   - **File** (field value): Tap and select "Audio" from the Record Audio action
-   - Make sure the field type is set to "File" not "Text"
+**Critical: Configure Form Data**
+1. In the **Get Contents of URL** action, tap **"Show More"**
+2. Set **Request Body** to **"Form"**
+3. Tap **"Add new field"** to add the audio file:
+   - **Key**: `audio` (exactly, lowercase)
+   - **Value**: Select the "Audio" output from your Record Audio action
+   - **Type**: Make sure it's set to "File" (not "Text")
 
 **Optional Form Fields:**
-You can add additional fields by tapping "Add new field" again:
-- **Text**: `cleanup`, **Text**: `true` (enable text cleanup, default is true)
-- **Text**: `extra_instructions`, **Text**: Your custom instructions
+Add these fields if needed by tapping "Add new field":
+- **Key**: `cleanup`, **Value**: `true` (enables AI text cleanup)
+- **Key**: `extra_instructions`, **Value**: Custom instructions for processing
 
-**Important iOS Shortcuts Tips:**
-- The form fields MUST be added manually - iOS won't add them automatically
-- The audio field MUST be named exactly `audio` (lowercase)
-- The audio field MUST be set as type "File" not "Text"
-- If you see "Form" but no fields, you need to tap "Add new field"
+**Key Points:**
+- The audio field name must be exactly `audio` (case-sensitive)
+- Audio field type must be "File" (iOS will show a file icon)
+- Form fields are required - iOS doesn't add them automatically
 
 ### Step 4: Test the Shortcut
 
@@ -143,7 +141,7 @@ You can add additional fields by tapping "Add new field" again:
 - Make sure you've added the `audio` field in the Request Body Form section
 - The audio field must be type "File" not "Text"
 - Field name must be exactly `audio` (lowercase)
-- To debug, use the `/debug-form` endpoint instead of `/transcribe`
+- Check server logs for specific error details
 
 **"FFmpeg not found" Error**
 - Install FFmpeg on your system for local ASR with audio conversion

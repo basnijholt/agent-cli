@@ -29,32 +29,20 @@ app = FastAPI(
 
 @app.middleware("http")
 async def log_requests(request: Request, call_next) -> Any:  # type: ignore[no-untyped-def]  # noqa: ANN001
-    """Log all incoming requests for debugging."""
-    logger.info("=== Incoming Request ===")
-    logger.info("Method: %s", request.method)
-    logger.info("URL: %s", request.url)
-    logger.info("Headers: %s", dict(request.headers))
-
-    # Try to read body for non-file uploads
-    if request.method == "POST" and "multipart/form-data" not in request.headers.get(
-        "content-type",
-        "",
-    ):
-        body = await request.body()
-        logger.info(
-            "Body preview: %s",
-            body[:500].decode("utf-8", errors="replace") if body else "Empty",
-        )
-        # Create new request with body since we consumed it
-        from starlette.requests import Request as StarletteRequest  # noqa: PLC0415
-
-        request = StarletteRequest(
-            request.scope,
-            receive=lambda: {"type": "http.request", "body": body},
-        )
+    """Log basic request information."""
+    client_ip = request.client.host if request.client else "unknown"
+    logger.info("%s %s from %s", request.method, request.url.path, client_ip)
 
     response = await call_next(request)
-    logger.info("Response status: %s", response.status_code)
+
+    if response.status_code >= 400:  # noqa: PLR2004
+        logger.warning(
+            "Request failed: %s %s → %d",
+            request.method,
+            request.url.path,
+            response.status_code,
+        )
+
     return response
 
 
@@ -78,113 +66,6 @@ class HealthResponse(BaseModel):
 async def health_check() -> HealthResponse:
     """Health check endpoint."""
     return HealthResponse(status="healthy", version="1.0.0")
-
-
-@app.get("/")
-async def test_page() -> Any:
-    """Simple test page for debugging."""
-    from fastapi.responses import HTMLResponse  # noqa: PLC0415
-
-    html = """
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <title>Agent CLI Transcription Test</title>
-    </head>
-    <body>
-        <h1>Agent CLI Transcription Test</h1>
-        <form action="/transcribe" method="post" enctype="multipart/form-data">
-            <p>
-                <label>Audio file: <input type="file" name="audio" accept="audio/*" required></label>
-            </p>
-            <p>
-                <label>Cleanup: <input type="checkbox" name="cleanup" value="true" checked></label>
-            </p>
-            <p>
-                <label>Extra instructions: <input type="text" name="extra_instructions" style="width: 400px"></label>
-            </p>
-            <p>
-                <button type="submit">Transcribe</button>
-            </p>
-        </form>
-    </body>
-    </html>
-    """
-    return HTMLResponse(content=html)
-
-
-@app.post("/debug")
-async def debug_request(request: Request) -> dict:
-    """Debug endpoint to see raw request data."""
-    body = await request.body()
-    return {
-        "headers": dict(request.headers),
-        "content_type": request.headers.get("content-type"),
-        "body_size": len(body),
-        "body_preview": body[:500].decode("utf-8", errors="replace") if body else None,
-    }
-
-
-@app.post("/debug-form")
-async def debug_form_request(request: Request) -> dict:
-    """Debug endpoint to see form data without validation."""
-    result = {
-        "headers": dict(request.headers),
-        "content_type": request.headers.get("content-type"),
-    }
-
-    try:
-        # Try to parse as form data
-        form_data = await request.form()
-        form_info = {}
-        for key, value in form_data.items():
-            if hasattr(value, "filename"):
-                form_info[key] = {
-                    "type": "file",
-                    "filename": value.filename,
-                    "content_type": value.content_type,
-                    "size": len(await value.read()) if hasattr(value, "read") else None,
-                }
-                # Reset file position
-                if hasattr(value, "seek"):
-                    value.seek(0)
-            else:
-                form_info[key] = {
-                    "type": "field",
-                    "value": str(value),
-                }
-        result["form_data"] = form_info
-        result["form_keys"] = list(form_data.keys())
-    except Exception as e:  # noqa: BLE001
-        result["form_error"] = str(e)
-        # Try raw body
-        try:
-            body = await request.body()
-            result["body_size"] = len(body)
-            result["body_preview"] = body[:1000].decode("utf-8", errors="replace")
-        except Exception as e2:  # noqa: BLE001
-            result["body_error"] = str(e2)
-
-    return result
-
-
-def _log_request_debug(
-    request: Request,
-    audio: UploadFile | None,
-    cleanup: bool | str,
-    extra_instructions: str | None,
-) -> None:
-    """Log debug information about the incoming request."""
-    logger.info("=== Transcribe Request Debug ===")
-    logger.info("Request headers: %s", dict(request.headers))
-    if audio:
-        logger.info("Audio filename: %s", audio.filename)
-        logger.info("Audio content type: %s", audio.content_type)
-        logger.info("Audio size: %s", audio.size if hasattr(audio, "size") else "unknown")
-    else:
-        logger.info("Audio parameter is None")
-    logger.info("Cleanup parameter (raw): %r (type: %s)", cleanup, type(cleanup).__name__)
-    logger.info("Extra instructions: %r", extra_instructions)
 
 
 async def _transcribe_with_provider(
@@ -212,7 +93,7 @@ async def _transcribe_with_provider(
 
 
 @app.post("/transcribe", response_model=TranscriptionResponse)
-async def transcribe_audio(  # noqa: PLR0912, PLR0915, C901
+async def transcribe_audio(  # noqa: PLR0912, PLR0915
     request: Request,
     audio: Annotated[UploadFile | None, File()] = None,
     cleanup: Annotated[bool | str, Form()] = True,
@@ -230,49 +111,26 @@ async def transcribe_audio(  # noqa: PLR0912, PLR0915, C901
         TranscriptionResponse with raw and cleaned transcripts
 
     """
-    # Debug all form data received
-    logger.info("=== Form Data Debug ===")
-    try:
-        form_data = await request.form()
-        logger.info("Form keys: %s", list(form_data.keys()))
-        for key, value in form_data.items():
-            if hasattr(value, "filename"):
-                logger.info(
-                    "Form field '%s': File(filename=%s, content_type=%s)",
-                    key,
-                    value.filename,
-                    value.content_type,
-                )
-            else:
-                logger.info("Form field '%s': %r", key, value)
-    except Exception:
-        logger.exception("Error reading form data")
-
-    # Debug logging for iOS Shortcuts
-    _log_request_debug(request, audio, cleanup, extra_instructions)
-
     # Handle case where iOS might not send the file as "audio"
     if audio is None:
-        logger.info("No 'audio' field found, checking all form fields for audio files")
+        logger.info("No 'audio' field found, scanning form fields for audio files")
         form_data = await request.form()
         audio_file = None
         for key, value in form_data.items():
-            if hasattr(value, "filename") and hasattr(value, "content_type"):
-                logger.info(
-                    "Found file field '%s': filename=%s, content_type=%s",
-                    key,
-                    value.filename,
-                    value.content_type,
-                )
-                # Check if it's an audio file
-                if value.content_type and (
+            if (
+                hasattr(value, "filename")
+                and hasattr(value, "content_type")
+                and value.content_type
+                and (
                     value.content_type.startswith("audio/")
                     or value.filename.lower().endswith(
                         (".wav", ".mp3", ".m4a", ".flac", ".ogg", ".aac"),
                     )
-                ):
-                    audio_file = value
-                    break
+                )
+            ):
+                logger.info("Found audio file in field '%s': %s", key, value.filename)
+                audio_file = value
+                break
 
         if audio_file is None:
             logger.error("No audio file found in form data")
@@ -297,17 +155,13 @@ async def transcribe_audio(  # noqa: PLR0912, PLR0915, C901
         # Save uploaded file temporarily
         with tempfile.NamedTemporaryFile(suffix=file_ext, delete=False) as temp_file:
             content = await audio.read()
-            logger.info("Read %d bytes from uploaded audio", len(content))
             temp_file.write(content)
             temp_file_path = Path(temp_file.name)
-            logger.info("Saved audio to temporary file: %s", temp_file_path)
 
         try:
             # Handle string boolean values from iOS Shortcuts
             if isinstance(cleanup, str):
-                logger.info("Converting string cleanup value '%s' to boolean", cleanup)
                 cleanup = cleanup.lower() == "true"
-            logger.info("Final cleanup value: %s (type: %s)", cleanup, type(cleanup).__name__)
 
             # Load configuration from file and merge with transcribe-specific config
             loaded_config = config.load_config()
@@ -361,16 +215,10 @@ async def transcribe_audio(  # noqa: PLR0912, PLR0915, C901
                         error="FFmpeg not found. Please install FFmpeg to use local ASR with audio conversion.",
                     )
 
-                logger.info("Converting audio to Wyoming format using FFmpeg")
-                logger.info("Source filename: %s", audio.filename)
+                logger.info("Converting %s audio to Wyoming format", audio.filename)
                 try:
-                    original_size = len(audio_data)
                     audio_data = convert_audio_to_wyoming_format(audio_data, audio.filename)
-                    logger.info(
-                        "Audio converted successfully: %d bytes → %d bytes",
-                        original_size,
-                        len(audio_data),
-                    )
+                    logger.info("Audio conversion successful")
                 except RuntimeError as e:
                     logger.exception("FFmpeg conversion failed")
                     return TranscriptionResponse(
