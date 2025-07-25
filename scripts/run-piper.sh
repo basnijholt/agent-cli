@@ -8,7 +8,7 @@ mkdir -p "$SCRIPT_DIR/.runtime"
 if [ ! -f "$SCRIPT_DIR/.runtime/piper-uv-wrapper.sh" ]; then
     cat > "$SCRIPT_DIR/.runtime/piper-uv-wrapper.sh" << 'WRAPPER'
 #!/bin/bash
-exec uvx --from piper-tts piper "$@"
+exec uvx --python 3.12 --from piper-tts piper "$@"
 WRAPPER
     chmod +x "$SCRIPT_DIR/.runtime/piper-uv-wrapper.sh"
 fi
@@ -18,12 +18,12 @@ if [ ! -d "$SCRIPT_DIR/.runtime/piper-data/en_US-lessac-medium" ]; then
     echo "⬇️ Downloading voice model..."
     mkdir -p "$SCRIPT_DIR/.runtime/piper-data"
     cd "$SCRIPT_DIR/.runtime/piper-data"
-    uvx --from piper-tts python -m piper.download_voices en_US-lessac-medium
+    uvx --python 3.12 --from piper-tts python -m piper.download_voices en_US-lessac-medium
     cd "$SCRIPT_DIR"
 fi
 
 # Run Wyoming Piper using uvx wrapper
-uvx --from wyoming-piper wyoming-piper \
+uvx --python 3.12 --from wyoming-piper wyoming-piper \
     --piper "$SCRIPT_DIR/.runtime/piper-uv-wrapper.sh" \
     --voice en_US-lessac-medium \
     --uri 'tcp://0.0.0.0:10200' \
