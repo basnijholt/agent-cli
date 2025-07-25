@@ -20,6 +20,7 @@ dependencies = [
     "fastapi",
     "uvicorn[standard]",
     "python-multipart",
+    "pydub",
 ]
 requires-python = ">=3.11"
 

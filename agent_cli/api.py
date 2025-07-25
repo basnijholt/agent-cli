@@ -212,7 +212,7 @@ async def _transcribe_with_provider(
 
 
 @app.post("/transcribe", response_model=TranscriptionResponse)
-async def transcribe_audio(  # noqa: PLR0912, PLR0915
+async def transcribe_audio(  # noqa: PLR0912, PLR0915, C901
     request: Request,
     audio: Annotated[UploadFile | None, File()] = None,
     cleanup: Annotated[bool | str, Form()] = True,
@@ -344,6 +344,27 @@ async def transcribe_audio(  # noqa: PLR0912, PLR0915
 
             # Read audio file as bytes
             audio_data = temp_file_path.read_bytes()
+
+            # Convert audio to Wyoming format if using local ASR
+            if provider_cfg.asr_provider == "local":
+                from agent_cli.core.audio_format import (  # noqa: PLC0415
+                    convert_audio_to_wyoming_format,
+                    get_audio_format_from_filename,
+                )
+
+                logger.info("Converting audio to Wyoming format")
+                audio_format = get_audio_format_from_filename(audio.filename)
+                logger.info("Detected audio format: %s", audio_format)
+                try:
+                    audio_data = convert_audio_to_wyoming_format(audio_data, audio_format)
+                    logger.info("Audio converted successfully, size: %d bytes", len(audio_data))
+                except Exception:
+                    logger.exception("Failed to convert audio format")
+                    return TranscriptionResponse(
+                        raw_transcript="",
+                        success=False,
+                        error="Failed to convert audio format for local ASR",
+                    )
 
             # Transcribe audio using the configured provider
             raw_transcript = await _transcribe_with_provider(
