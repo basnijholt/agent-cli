@@ -69,3 +69,34 @@ def test_assistant_toggle(mock_stop_or_status_or_toggle: MagicMock):
         True,
         quiet=False,
     )
+
+
+@patch("agent_cli.agents.assistant.asyncio.run")
+def test_assistant_with_whispercpp(mock_asyncio_run: MagicMock):
+    """Test the assistant command with whispercpp ASR provider."""
+    result = runner.invoke(app, ["assistant", "--asr-provider", "whispercpp"])
+    assert result.exit_code == 0
+    mock_asyncio_run.assert_called_once()
+    # Verify the provider is set correctly in the call
+    call_args = mock_asyncio_run.call_args[0][0]
+    # The coroutine is passed as the first argument
+    # We can't directly inspect it, but we can verify the command ran successfully
+
+
+@patch("agent_cli.agents.assistant.asyncio.run")
+def test_assistant_whispercpp_custom_host_port(mock_asyncio_run: MagicMock):
+    """Test the assistant command with custom whispercpp host and port."""
+    result = runner.invoke(
+        app,
+        [
+            "assistant",
+            "--asr-provider",
+            "whispercpp",
+            "--asr-whispercpp-host",
+            "192.168.1.100",
+            "--asr-whispercpp-port",
+            "10500",
+        ],
+    )
+    assert result.exit_code == 0
+    mock_asyncio_run.assert_called_once()

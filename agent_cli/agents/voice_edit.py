@@ -94,6 +94,7 @@ async def _async_main(
     audio_in_cfg: config.AudioInput,
     wyoming_asr_cfg: config.WyomingASR,
     openai_asr_cfg: config.OpenAIASR,
+    whispercpp_asr_cfg: config.WhisperCppASR,
     ollama_cfg: config.Ollama,
     openai_llm_cfg: config.OpenAILLM,
     gemini_llm_cfg: config.GeminiLLM,
@@ -142,6 +143,7 @@ async def _async_main(
                 audio_input_cfg=audio_in_cfg,
                 wyoming_asr_cfg=wyoming_asr_cfg,
                 openai_asr_cfg=openai_asr_cfg,
+                whispercpp_asr_cfg=whispercpp_asr_cfg,
                 ollama_cfg=ollama_cfg,
                 logger=LOGGER,
                 quiet=general_cfg.quiet,
@@ -181,6 +183,8 @@ def voice_edit(
     asr_wyoming_ip: str = opts.ASR_WYOMING_IP,
     asr_wyoming_port: int = opts.ASR_WYOMING_PORT,
     asr_openai_model: str = opts.ASR_OPENAI_MODEL,
+    asr_whispercpp_host: str = opts.ASR_WHISPERCPP_HOST,
+    asr_whispercpp_port: int = opts.ASR_WHISPERCPP_PORT,
     # --- LLM Configuration ---
     llm_ollama_model: str = opts.LLM_OLLAMA_MODEL,
     llm_ollama_host: str = opts.LLM_OLLAMA_HOST,
@@ -267,6 +271,10 @@ def voice_edit(
             asr_openai_model=asr_openai_model,
             openai_api_key=openai_api_key,
         )
+        whispercpp_asr_cfg = config.WhisperCppASR(
+            asr_whispercpp_host=asr_whispercpp_host,
+            asr_whispercpp_port=asr_whispercpp_port,
+        )
         ollama_cfg = config.Ollama(
             llm_ollama_model=llm_ollama_model,
             llm_ollama_host=llm_ollama_host,
@@ -310,6 +318,7 @@ def voice_edit(
                 audio_in_cfg=audio_in_cfg,
                 wyoming_asr_cfg=wyoming_asr_cfg,
                 openai_asr_cfg=openai_asr_cfg,
+                whispercpp_asr_cfg=whispercpp_asr_cfg,
                 ollama_cfg=ollama_cfg,
                 openai_llm_cfg=openai_llm_cfg,
                 gemini_llm_cfg=gemini_llm_cfg,

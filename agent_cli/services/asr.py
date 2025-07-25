@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import io
+import wave
 from functools import partial
 from typing import TYPE_CHECKING
 
@@ -71,6 +72,8 @@ def create_recorded_audio_transcriber(
         return transcribe_audio_openai
     if provider_cfg.asr_provider == "local":
         return _transcribe_recorded_audio_wyoming
+    if provider_cfg.asr_provider == "whispercpp":
+        return _transcribe_recorded_audio_whispercpp
     msg = f"Unsupported ASR provider: {provider_cfg.asr_provider}"
     raise ValueError(msg)
 
@@ -316,9 +319,6 @@ async def _transcribe_live_audio_whispercpp(
         return None
 
     # Convert raw PCM to WAV format
-    import io
-    import wave
-
     wav_buffer = io.BytesIO()
     with wave.open(wav_buffer, "wb") as wav_file:
         wav_file.setnchannels(constants.PYAUDIO_CHANNELS)
@@ -340,15 +340,27 @@ async def _transcribe_live_audio_whispercpp(
         return None
 
 
-def create_recorded_audio_transcriber(
-    provider_cfg: config.ProviderSelection,
-) -> Callable[..., Awaitable[str]]:
-    """Return the appropriate transcriber for recorded audio based on the provider."""
-    if provider_cfg.asr_provider == "openai":
-        return transcribe_audio_openai
-    if provider_cfg.asr_provider == "local":
-        return _transcribe_recorded_audio_wyoming
-    if provider_cfg.asr_provider == "whispercpp":
-        return transcribe_audio_whispercpp
-    msg = f"Unsupported ASR provider: {provider_cfg.asr_provider}"
-    raise ValueError(msg)
+async def _transcribe_recorded_audio_whispercpp(
+    *,
+    audio_data: bytes,
+    whispercpp_asr_cfg: config.WhisperCppASR,
+    logger: logging.Logger,
+    **_kwargs: object,
+) -> str:
+    """Process pre-recorded audio data with whisper.cpp server."""
+    # Convert raw PCM to WAV format if needed
+    import io
+    import wave
+
+    # Check if audio_data is already in WAV format
+    if audio_data[:4] != b"RIFF":
+        # Convert raw PCM to WAV
+        wav_buffer = io.BytesIO()
+        with wave.open(wav_buffer, "wb") as wav_file:
+            wav_file.setnchannels(constants.PYAUDIO_CHANNELS)
+            wav_file.setsampwidth(2)  # 16-bit audio = 2 bytes
+            wav_file.setframerate(constants.PYAUDIO_RATE)
+            wav_file.writeframes(audio_data)
+        audio_data = wav_buffer.getvalue()
+
+    return await transcribe_audio_whispercpp(audio_data, whispercpp_asr_cfg, logger)

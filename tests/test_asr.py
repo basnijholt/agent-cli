@@ -121,3 +121,28 @@ async def test_transcribe_recorded_audio_wyoming_connection_error(
     )
     assert result == ""
     mock_wyoming_client_context.assert_called_once()
+
+
+def test_create_transcriber_whispercpp():
+    """Test that the correct transcriber is returned for whispercpp."""
+    provider_cfg = MagicMock()
+    provider_cfg.asr_provider = "whispercpp"
+
+    transcriber = asr.create_transcriber(
+        provider_cfg,
+        MagicMock(),  # audio_input_cfg
+        MagicMock(),  # wyoming_asr_cfg
+        MagicMock(),  # openai_asr_cfg
+        MagicMock(),  # whispercpp_asr_cfg
+    )
+
+    assert transcriber.func is asr._transcribe_live_audio_whispercpp
+
+
+def test_create_recorded_audio_transcriber_whispercpp():
+    """Test that the correct recorded audio transcriber is returned for whispercpp."""
+    provider_cfg = MagicMock()
+    provider_cfg.asr_provider = "whispercpp"
+
+    transcriber = asr.create_recorded_audio_transcriber(provider_cfg)
+    assert transcriber is asr.transcribe_audio_whispercpp

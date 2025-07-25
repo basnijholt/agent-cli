@@ -78,7 +78,7 @@ class WhisperCppASR(BaseModel):
     """Configuration for the whisper.cpp ASR provider."""
 
     asr_whispercpp_host: str = "127.0.0.1"
-    asr_whispercpp_port: int = 12123
+    asr_whispercpp_port: int = 10500
     asr_whispercpp_model: str | None = "ggml-base.en.bin"
 
 

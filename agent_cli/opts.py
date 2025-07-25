@@ -14,7 +14,7 @@ LLM_PROVIDER: str = typer.Option(
 ASR_PROVIDER: str = typer.Option(
     "local",
     "--asr-provider",
-    help="The ASR provider to use ('local' for Wyoming, 'openai').",
+    help="The ASR provider to use ('local' for Wyoming, 'openai' for openai, 'whispercpp' for Whisper.cpp).",
     rich_help_panel="Provider Selection",
 )
 TTS_PROVIDER: str = typer.Option(
@@ -124,7 +124,6 @@ ASR_PROVIDER: str = typer.Option(
     rich_help_panel="Provider Selection",
 )
 
-# Add whisper.cpp options
 ASR_WHISPERCPP_HOST: str = typer.Option(
     "127.0.0.1",
     "--asr-whispercpp-host",
@@ -133,7 +132,7 @@ ASR_WHISPERCPP_HOST: str = typer.Option(
 )
 
 ASR_WHISPERCPP_PORT: int = typer.Option(
-    12123,
+    10500,
     "--asr-whispercpp-port",
     help="whisper.cpp server port",
     rich_help_panel="ASR (Audio) Configuration",

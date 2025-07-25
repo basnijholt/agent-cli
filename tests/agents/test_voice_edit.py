@@ -73,3 +73,41 @@ def test_voice_edit_status_not_running(mock_is_process_running: MagicMock) -> No
     result = runner.invoke(app, ["voice-edit", "--status"])
     assert result.exit_code == 0
     assert "Voice assistant is not running" in result.stdout
+
+
+@patch("agent_cli.agents.voice_edit.asyncio.run")
+def test_voice_edit_with_whispercpp(mock_run: MagicMock) -> None:
+    """Test the voice edit command with whispercpp ASR provider."""
+    result = runner.invoke(
+        app,
+        [
+            "voice-edit",
+            "--asr-provider",
+            "whispercpp",
+            "--llm-provider",
+            "local",
+        ],
+    )
+    assert result.exit_code == 0
+    mock_run.assert_called_once()
+
+
+@patch("agent_cli.agents.voice_edit.asyncio.run")
+def test_voice_edit_whispercpp_custom_host_port(mock_run: MagicMock) -> None:
+    """Test the voice edit command with custom whispercpp host and port."""
+    result = runner.invoke(
+        app,
+        [
+            "voice-edit",
+            "--asr-provider",
+            "whispercpp",
+            "--asr-whispercpp-host",
+            "192.168.1.100",
+            "--asr-whispercpp-port",
+            "10500",
+            "--llm-provider",
+            "local",
+        ],
+    )
+    assert result.exit_code == 0
+    mock_run.assert_called_once()
