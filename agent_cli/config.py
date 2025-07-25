@@ -22,7 +22,7 @@ class ProviderSelection(BaseModel):
     """Configuration for selecting service providers."""
 
     llm_provider: Literal["local", "openai", "gemini"]
-    asr_provider: Literal["local", "openai"]
+    asr_provider: Literal["local", "openai", "whispercpp"]
     tts_provider: Literal["local", "openai", "kokoro"]
 
 
@@ -72,6 +72,14 @@ class OpenAIASR(BaseModel):
 
     asr_openai_model: str
     openai_api_key: str | None = None
+
+
+class WhisperCppASR(BaseModel):
+    """Configuration for the whisper.cpp ASR provider."""
+
+    asr_whispercpp_host: str = "127.0.0.1"
+    asr_whispercpp_port: int = 12123
+    asr_whispercpp_model: str | None = "ggml-base.en.bin"
 
 
 # --- Panel: TTS (Text-to-Speech) Configuration ---

@@ -117,6 +117,7 @@ async def _async_main(  # noqa: PLR0912
     ollama_cfg: config.Ollama,
     openai_llm_cfg: config.OpenAILLM,
     gemini_llm_cfg: config.GeminiLLM,
+    whispercpp_asr_cfg: config.WhisperCppASR,
     llm_enabled: bool,
     transcription_log: Path | None,
     p: pyaudio.PyAudio,
@@ -126,10 +127,11 @@ async def _async_main(  # noqa: PLR0912
     with maybe_live(not general_cfg.quiet) as live:
         with signal_handling_context(LOGGER, general_cfg.quiet) as stop_event:
             transcriber = asr.create_transcriber(
-                provider_cfg,
-                audio_in_cfg,
-                wyoming_asr_cfg,
-                openai_asr_cfg,
+                provider_cfg=provider_cfg,
+                audio_input_cfg=audio_in_cfg,
+                wyoming_asr_cfg=wyoming_asr_cfg,
+                openai_asr_cfg=openai_asr_cfg,
+                whispercpp_asr_cfg=whispercpp_asr_cfg,  # Add this
             )
             transcript = await transcriber(
                 logger=LOGGER,
@@ -240,6 +242,8 @@ def transcribe(
     asr_wyoming_ip: str = opts.ASR_WYOMING_IP,
     asr_wyoming_port: int = opts.ASR_WYOMING_PORT,
     asr_openai_model: str = opts.ASR_OPENAI_MODEL,
+    asr_whispercpp_host: str = opts.ASR_WHISPERCPP_HOST,
+    asr_whispercpp_port: int = opts.ASR_WHISPERCPP_PORT,
     # --- LLM Configuration ---
     llm_ollama_model: str = opts.LLM_OLLAMA_MODEL,
     llm_ollama_host: str = opts.LLM_OLLAMA_HOST,
@@ -319,6 +323,10 @@ def transcribe(
             llm_gemini_model=llm_gemini_model,
             gemini_api_key=gemini_api_key,
         )
+        whispercpp_asr_cfg = config.WhisperCppASR(
+            asr_whispercpp_host=asr_whispercpp_host,
+            asr_whispercpp_port=asr_whispercpp_port,
+        )
 
         # We only use setup_devices for its input device handling
         device_info = setup_devices(p, general_cfg, audio_in_cfg, None)
@@ -340,6 +348,7 @@ def transcribe(
                     ollama_cfg=ollama_cfg,
                     openai_llm_cfg=openai_llm_cfg,
                     gemini_llm_cfg=gemini_llm_cfg,
+                    whispercpp_asr_cfg=whispercpp_asr_cfg,
                     llm_enabled=llm,
                     transcription_log=transcription_log,
                     p=p,

@@ -18,7 +18,7 @@ from agent_cli.core.audio import (
     setup_input_stream,
 )
 from agent_cli.core.utils import manage_send_receive_tasks
-from agent_cli.services import transcribe_audio_openai
+from agent_cli.services import transcribe_audio_openai, transcribe_audio_whispercpp
 from agent_cli.services._wyoming_utils import wyoming_client_context
 
 if TYPE_CHECKING:
@@ -38,6 +38,7 @@ def create_transcriber(
     audio_input_cfg: config.AudioInput,
     wyoming_asr_cfg: config.WyomingASR,
     openai_asr_cfg: config.OpenAIASR,
+    whispercpp_asr_cfg: config.WhisperCppASR,  # Add parameter
 ) -> Callable[..., Awaitable[str | None]]:
     """Return the appropriate transcriber for live audio based on the provider."""
     if provider_cfg.asr_provider == "openai":
@@ -51,6 +52,12 @@ def create_transcriber(
             _transcribe_live_audio_wyoming,
             audio_input_cfg=audio_input_cfg,
             wyoming_asr_cfg=wyoming_asr_cfg,
+        )
+    if provider_cfg.asr_provider == "whispercpp":
+        return partial(
+            _transcribe_live_audio_whispercpp,
+            audio_input_cfg=audio_input_cfg,
+            whispercpp_asr_cfg=whispercpp_asr_cfg,
         )
     msg = f"Unsupported ASR provider: {provider_cfg.asr_provider}"
     raise ValueError(msg)
@@ -282,3 +289,66 @@ async def _transcribe_live_audio_openai(
     except Exception:
         logger.exception("Error during transcription")
         return ""
+
+
+async def _transcribe_live_audio_whispercpp(
+    *,
+    audio_input_cfg: config.AudioInput,
+    whispercpp_asr_cfg: config.WhisperCppASR,
+    logger: logging.Logger,
+    p: pyaudio.PyAudio,
+    stop_event: InteractiveStopEvent,
+    live: Live,
+    quiet: bool = False,
+    **_kwargs: object,
+) -> str | None:
+    """Record and transcribe live audio using whisper.cpp."""
+    # Record audio first (similar to OpenAI implementation)
+    audio_data = await record_audio_with_manual_stop(
+        p,
+        audio_input_cfg.input_device_index,
+        stop_event,
+        logger,
+        quiet=quiet,
+        live=live,
+    )
+    if not audio_data:
+        return None
+
+    # Convert raw PCM to WAV format
+    import io
+    import wave
+
+    wav_buffer = io.BytesIO()
+    with wave.open(wav_buffer, "wb") as wav_file:
+        wav_file.setnchannels(constants.PYAUDIO_CHANNELS)
+        wav_file.setsampwidth(2)  # 16-bit audio = 2 bytes
+        wav_file.setframerate(constants.PYAUDIO_RATE)
+        wav_file.writeframes(audio_data)
+    wav_data = wav_buffer.getvalue()
+
+    # Then transcribe the WAV audio
+    try:
+        result = await transcribe_audio_whispercpp(
+            wav_data,
+            whispercpp_asr_cfg,
+            logger,
+        )
+        return result if result else None
+    except Exception:
+        logger.exception("Failed to transcribe audio with whisper.cpp")
+        return None
+
+
+def create_recorded_audio_transcriber(
+    provider_cfg: config.ProviderSelection,
+) -> Callable[..., Awaitable[str]]:
+    """Return the appropriate transcriber for recorded audio based on the provider."""
+    if provider_cfg.asr_provider == "openai":
+        return transcribe_audio_openai
+    if provider_cfg.asr_provider == "local":
+        return _transcribe_recorded_audio_wyoming
+    if provider_cfg.asr_provider == "whispercpp":
+        return transcribe_audio_whispercpp
+    msg = f"Unsupported ASR provider: {provider_cfg.asr_provider}"
+    raise ValueError(msg)

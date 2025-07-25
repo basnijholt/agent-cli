@@ -116,6 +116,29 @@ ASR_OPENAI_MODEL: str = typer.Option(
     rich_help_panel="ASR (Audio) Configuration: OpenAI",
 )
 
+# Update ASR_PROVIDER option
+ASR_PROVIDER: str = typer.Option(
+    "local",
+    "--asr-provider",
+    help="ASR provider to use (local/openai/whispercpp)",
+    rich_help_panel="Provider Selection",
+)
+
+# Add whisper.cpp options
+ASR_WHISPERCPP_HOST: str = typer.Option(
+    "127.0.0.1",
+    "--asr-whispercpp-host",
+    help="whisper.cpp server host",
+    rich_help_panel="ASR (Audio) Configuration",
+)
+
+ASR_WHISPERCPP_PORT: int = typer.Option(
+    12123,
+    "--asr-whispercpp-port",
+    help="whisper.cpp server port",
+    rich_help_panel="ASR (Audio) Configuration",
+)
+
 
 # --- Wake Word Options ---
 WAKE_SERVER_IP: str = typer.Option(
@@ -256,7 +279,9 @@ TOGGLE: bool = typer.Option(
 # --- General Options ---
 
 
-def _conf_callback(ctx: typer.Context, param: typer.CallbackParam, value: str) -> str:  # noqa: ARG001
+def _conf_callback(
+    ctx: typer.Context, param: typer.CallbackParam, value: str
+) -> str:  # noqa: ARG001
     from agent_cli.cli import set_config_defaults  # noqa: PLC0415
 
     set_config_defaults(ctx, value)
