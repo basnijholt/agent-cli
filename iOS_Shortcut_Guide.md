@@ -45,8 +45,8 @@ This guide shows how to create an iOS Shortcut that records audio, sends it to y
 2. Configure:
    - **URL**: `http://YOUR_SERVER_IP:61337/transcribe`
    - **Method**: POST
+   - **Headers**: Leave empty
    - **Request Body**: Form
-   - **Headers**: Leave empty (multipart/form-data is handled automatically)
 
 **Action 3: Get Dictionary Value**
 1. Search for and add **"Get Dictionary Value"** action
@@ -68,20 +68,25 @@ This guide shows how to create an iOS Shortcut that records audio, sends it to y
 
 In the **Get Contents of URL** action, tap **"Show More"** and configure:
 
-**Advanced Settings:**
-- **Method**: POST
-- **Headers**: Leave empty (iOS handles multipart/form-data automatically)
-- **Request Body**:
-  - Type: Form
-  - Add form field:
-    - **Name**: `audio`
-    - **Value**: Select "Audio" from the Record Audio action (it will appear as a variable)
-    - **Type**: File
+**Critical: Add Form Fields**
+1. Tap on **"Request Body"**
+2. It should show "Form" - if not, tap to change it to "Form"
+3. Tap **"Add new field"** (you may need to tap the Form section first)
+4. Add the audio field:
+   - **Text** (field name): Type `audio`
+   - **File** (field value): Tap and select "Audio" from the Record Audio action
+   - Make sure the field type is set to "File" not "Text"
 
-**Optional Parameters:**
-You can add additional form fields:
-- **Name**: `cleanup`, **Value**: `true` (enable text cleanup)
-- **Name**: `extra_instructions`, **Value**: Custom instructions for text processing
+**Optional Form Fields:**
+You can add additional fields by tapping "Add new field" again:
+- **Text**: `cleanup`, **Text**: `true` (enable text cleanup, default is true)
+- **Text**: `extra_instructions`, **Text**: Your custom instructions
+
+**Important iOS Shortcuts Tips:**
+- The form fields MUST be added manually - iOS won't add them automatically
+- The audio field MUST be named exactly `audio` (lowercase)
+- The audio field MUST be set as type "File" not "Text"
+- If you see "Form" but no fields, you need to tap "Add new field"
 
 ### Step 4: Test the Shortcut
 
@@ -128,6 +133,13 @@ You can add additional form fields:
 **"Empty response"**
 - Check if the audio was too short or silent
 - Verify the Get Value from Dictionary action is looking for the right key
+
+**"422 Unprocessable Content" Error**
+- This means the form fields are not configured correctly
+- Make sure you've added the `audio` field in the Request Body Form section
+- The audio field must be type "File" not "Text"
+- Field name must be exactly `audio` (lowercase)
+- To debug, use the `/debug-form` endpoint instead of `/transcribe`
 
 ### Server Configuration
 
