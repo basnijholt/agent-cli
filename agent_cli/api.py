@@ -292,51 +292,46 @@ async def transcribe_audio(
             temp_file.write(content)
             temp_file_path = Path(temp_file.name)
 
-        try:
-            # Read audio file as bytes
-            audio_data = temp_file_path.read_bytes()
+        # Read audio file as bytes
+        audio_data = temp_file_path.read_bytes()
 
-            # Convert audio to Wyoming format if using local ASR
-            if provider_cfg.asr_provider == "local":
-                audio_data = _convert_audio_for_local_asr(audio_data, audio.filename)
+        # Convert audio to Wyoming format if using local ASR
+        if provider_cfg.asr_provider == "local":
+            audio_data = _convert_audio_for_local_asr(audio_data, audio.filename)
 
-            # Transcribe audio using the configured provider
-            raw_transcript = await _transcribe_with_provider(
-                audio_data,
-                provider_cfg,
-                wyoming_asr_cfg,
-                openai_asr_cfg,
-                logger,
-            )
+        # Transcribe audio using the configured provider
+        raw_transcript = await _transcribe_with_provider(
+            audio_data,
+            provider_cfg,
+            wyoming_asr_cfg,
+            openai_asr_cfg,
+            logger,
+        )
 
-            if not raw_transcript:
-                return TranscriptionResponse(
-                    raw_transcript="",
-                    success=False,
-                    error="No transcript generated from audio",
-                )
-
-            # Process transcript cleanup if requested
-            cleaned_transcript = await _process_transcript_cleanup(
-                raw_transcript,
-                cleanup,
-                extra_instructions,
-                defaults,
-                provider_cfg,
-                ollama_cfg,
-                openai_llm_cfg,
-                gemini_llm_cfg,
-            )
-
+        if not raw_transcript:
             return TranscriptionResponse(
-                raw_transcript=raw_transcript,
-                cleaned_transcript=cleaned_transcript,
-                success=True,
+                raw_transcript="",
+                success=False,
+                error="No transcript generated from audio",
             )
 
-        finally:
-            # Clean up temporary file
-            temp_file_path.unlink(missing_ok=True)
+        # Process transcript cleanup if requested
+        cleaned_transcript = await _process_transcript_cleanup(
+            raw_transcript,
+            cleanup,
+            extra_instructions,
+            defaults,
+            provider_cfg,
+            ollama_cfg,
+            openai_llm_cfg,
+            gemini_llm_cfg,
+        )
+
+        return TranscriptionResponse(
+            raw_transcript=raw_transcript,
+            cleaned_transcript=cleaned_transcript,
+            success=True,
+        )
 
     except HTTPException:
         # Re-raise HTTPExceptions so FastAPI handles them properly
@@ -348,3 +343,7 @@ async def transcribe_audio(
             e.args,
         )
         return TranscriptionResponse(raw_transcript="", success=False, error=str(e))
+    finally:
+        # Clean up temporary file
+        if "temp_file_path" in locals():
+            temp_file_path.unlink(missing_ok=True)
