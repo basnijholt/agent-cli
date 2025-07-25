@@ -67,6 +67,45 @@ async def health_check() -> HealthResponse:
     return HealthResponse(status="healthy", version="1.0.0")
 
 
+@app.post("/debug-request")
+async def debug_request(request: Request) -> dict:
+    """Debug endpoint to inspect iOS Shortcuts requests."""
+    form_data = await request.form()
+
+    result = {
+        "headers": dict(request.headers),
+        "form_fields": {},
+        "audio_parameter": {"present": False, "details": None},
+    }
+
+    for key, value in form_data.items():
+        field_info = {
+            "type": type(value).__name__,
+            "is_upload_file": hasattr(value, "filename"),
+        }
+
+        if hasattr(value, "filename"):
+            field_info.update(
+                {
+                    "filename": value.filename,
+                    "content_type": getattr(value, "content_type", None),
+                    "size": len(await value.read()) if hasattr(value, "read") else "unknown",
+                },
+            )
+            # Reset file pointer
+            if hasattr(value, "seek"):
+                value.seek(0)
+
+        result["form_fields"][key] = field_info
+
+        if key == "audio":
+            result["audio_parameter"]["present"] = True
+            result["audio_parameter"]["details"] = field_info
+
+    logger.info("iOS Debug - Form fields: %s", list(result["form_fields"].keys()))
+    return result
+
+
 async def _transcribe_with_provider(
     audio_data: bytes,
     provider_cfg: config.ProviderSelection,
