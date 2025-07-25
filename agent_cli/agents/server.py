@@ -17,7 +17,7 @@ def server(
     config_file: str | None = opts.CONFIG_FILE,  # noqa: ARG001
 ) -> None:
     """Run the FastAPI transcription web server."""
-    from .api import run_server  # noqa: PLC0415
+    from agent_cli.api import run_server  # noqa: PLC0415
 
     console.print(
         f"[bold green]Starting Agent CLI transcription server on {host}:{port}[/bold green]",
