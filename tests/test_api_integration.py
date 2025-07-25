@@ -58,15 +58,8 @@ async def test_full_transcription_workflow() -> None:
 
             upload_file = MockUploadFile()
 
-            # Create mock request
-            class MockRequest:
-                pass
-
-            request = MockRequest()
-
             # Call the transcribe endpoint function directly
             result = await transcribe_audio(
-                request=request,
                 audio=upload_file,
                 cleanup=True,
                 extra_instructions=None,
@@ -184,17 +177,11 @@ async def test_concurrent_requests() -> None:
             async def read(self) -> bytes:
                 return b"RIFF" + bytes([self.idx])
 
-        # Create mock request
-        class MockRequest:
-            pass
-
         # Create concurrent tasks
         tasks = []
         for i in range(5):
             upload_file = MockUploadFile(i)
-            request = MockRequest()
             task = transcribe_audio(
-                request=request,
                 audio=upload_file,
                 cleanup=False,
                 extra_instructions=None,

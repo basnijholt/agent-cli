@@ -93,34 +93,15 @@ async def _transcribe_with_provider(
     raise ValueError(msg)
 
 
-async def _extract_audio_file_from_request(
-    request: Request,
-    audio: UploadFile | None,
-) -> UploadFile:
-    """Extract audio file from request, handling iOS Shortcuts form field variations."""
-    if audio is not None:
-        return audio
+def _extract_audio_file_from_request(audio: UploadFile | None) -> UploadFile:
+    """Extract and validate audio file from request."""
+    if audio is None:
+        raise HTTPException(
+            status_code=422,
+            detail="No audio file provided. Ensure the form field is named 'audio' and type is 'File'.",
+        )
 
-    logger.info("No 'audio' field found, scanning form fields for audio files")
-    form_data = await request.form()
-
-    for key, value in form_data.items():
-        if (
-            hasattr(value, "filename")
-            and hasattr(value, "content_type")
-            and value.content_type
-            and (
-                value.content_type.startswith("audio/")
-                or value.filename.lower().endswith(
-                    (".wav", ".mp3", ".m4a", ".flac", ".ogg", ".aac"),
-                )
-            )
-        ):
-            logger.info("Found audio file in field '%s': %s", key, value.filename)
-            return value
-
-    logger.error("No audio file found in form data")
-    raise HTTPException(status_code=422, detail="No audio file found in request")
+    return audio
 
 
 def _validate_audio_file(audio: UploadFile) -> str:
@@ -259,7 +240,6 @@ async def _process_transcript_cleanup(
 
 @app.post("/transcribe", response_model=TranscriptionResponse)
 async def transcribe_audio(
-    request: Request,
     audio: Annotated[UploadFile | None, File()] = None,
     cleanup: Annotated[bool | str, Form()] = True,
     extra_instructions: Annotated[str | None, Form()] = None,
@@ -267,7 +247,6 @@ async def transcribe_audio(
     """Transcribe audio file and optionally clean up the text.
 
     Args:
-        request: FastAPI request object for debugging
         audio: Audio file (wav, mp3, m4a, etc.)
         cleanup: Whether to clean up transcription with LLM
         extra_instructions: Additional instructions for text cleanup
@@ -278,7 +257,7 @@ async def transcribe_audio(
     """
     try:
         # Extract and validate audio file
-        audio = await _extract_audio_file_from_request(request, audio)
+        audio = _extract_audio_file_from_request(audio)
         file_ext = _validate_audio_file(audio)
 
         # Handle string boolean values from iOS Shortcuts

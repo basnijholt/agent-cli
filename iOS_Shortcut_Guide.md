@@ -85,10 +85,16 @@ Add these fields if needed by tapping "Add new field":
 - **Key**: `cleanup`, **Value**: `true` (enables AI text cleanup)
 - **Key**: `extra_instructions`, **Value**: Custom instructions for processing
 
-**Key Points:**
-- The audio field name must be exactly `audio` (case-sensitive)
-- Audio field type must be "File" (iOS will show a file icon)
-- Form fields are required - iOS doesn't add them automatically
+**⚠️ CRITICAL SETUP REQUIREMENTS:**
+- The audio field name must be exactly `audio` (lowercase, case-sensitive)
+- Audio field type must be set to "File" (not "Text")
+- Form fields must be configured manually - iOS doesn't add them automatically
+
+**Common Issues:**
+- ❌ Field named "Audio" (uppercase) - won't work
+- ❌ Field type set to "Text" - won't work
+- ❌ No form fields configured - will give 422 error
+- ✅ Field named "audio" with type "File" - works correctly
 
 ### Step 4: Test the Shortcut
 
