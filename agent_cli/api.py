@@ -10,7 +10,7 @@ from typing import Annotated, Any
 from fastapi import Depends, FastAPI, File, Form, HTTPException, Request, UploadFile
 from pydantic import BaseModel
 
-from agent_cli import config
+from agent_cli import config, opts
 from agent_cli.agents.transcribe import AGENT_INSTRUCTIONS, INSTRUCTION, SYSTEM_PROMPT
 from agent_cli.services import asr
 from agent_cli.services.llm import process_and_update_clipboard
@@ -179,29 +179,29 @@ def _load_transcription_configs() -> tuple[
     defaults = {**wildcard_config, **command_config}
 
     provider_cfg = config.ProviderSelection(
-        asr_provider=defaults.get("asr_provider", "local"),
-        llm_provider=defaults.get("llm_provider", "local"),
-        tts_provider="local",  # Not used
+        asr_provider=defaults.get("asr_provider", opts.ASR_PROVIDER.default),  # type: ignore[attr-defined]
+        llm_provider=defaults.get("llm_provider", opts.LLM_PROVIDER.default),  # type: ignore[attr-defined]
+        tts_provider=opts.TTS_PROVIDER.default,  # type: ignore[attr-defined]
     )
     wyoming_asr_cfg = config.WyomingASR(
-        asr_wyoming_ip=defaults.get("asr_wyoming_ip", "localhost"),
-        asr_wyoming_port=defaults.get("asr_wyoming_port", 10300),
+        asr_wyoming_ip=defaults.get("asr_wyoming_ip", opts.ASR_WYOMING_IP.default),  # type: ignore[attr-defined]
+        asr_wyoming_port=defaults.get("asr_wyoming_port", opts.ASR_WYOMING_PORT.default),  # type: ignore[attr-defined]
     )
     openai_asr_cfg = config.OpenAIASR(
-        asr_openai_model=defaults.get("asr_openai_model", "whisper-1"),
-        openai_api_key=defaults.get("openai_api_key"),
+        asr_openai_model=defaults.get("asr_openai_model", opts.ASR_OPENAI_MODEL.default),  # type: ignore[attr-defined]
+        openai_api_key=defaults.get("openai_api_key", opts.OPENAI_API_KEY.default),  # type: ignore[attr-defined,union-attr]
     )
     ollama_cfg = config.Ollama(
-        llm_ollama_model=defaults.get("llm_ollama_model", "qwen3:4b"),
-        llm_ollama_host=defaults.get("llm_ollama_host", "http://localhost:11434"),
+        llm_ollama_model=defaults.get("llm_ollama_model", opts.LLM_OLLAMA_MODEL.default),  # type: ignore[attr-defined]
+        llm_ollama_host=defaults.get("llm_ollama_host", opts.LLM_OLLAMA_HOST.default),  # type: ignore[attr-defined]
     )
     openai_llm_cfg = config.OpenAILLM(
-        llm_openai_model=defaults.get("llm_openai_model", "gpt-4o-mini"),
-        openai_api_key=defaults.get("openai_api_key"),
+        llm_openai_model=defaults.get("llm_openai_model", opts.LLM_OPENAI_MODEL.default),  # type: ignore[attr-defined]
+        openai_api_key=defaults.get("openai_api_key", opts.OPENAI_API_KEY.default),  # type: ignore[attr-defined,union-attr]
     )
     gemini_llm_cfg = config.GeminiLLM(
-        llm_gemini_model=defaults.get("llm_gemini_model", "gemini-2.5-flash"),
-        gemini_api_key=defaults.get("gemini_api_key"),
+        llm_gemini_model=defaults.get("llm_gemini_model", opts.LLM_GEMINI_MODEL.default),  # type: ignore[attr-defined]
+        gemini_api_key=defaults.get("gemini_api_key", opts.GEMINI_API_KEY.default),  # type: ignore[attr-defined,union-attr]
     )
 
     return (
