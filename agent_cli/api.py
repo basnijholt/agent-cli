@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 import tempfile
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Any
 
 import uvicorn
 from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
@@ -25,6 +25,37 @@ app = FastAPI(
     description="Web service for audio transcription and text cleanup",
     version="1.0.0",
 )
+
+
+@app.middleware("http")
+async def log_requests(request: Request, call_next) -> Any:  # type: ignore[no-untyped-def]  # noqa: ANN001
+    """Log all incoming requests for debugging."""
+    logger.info("=== Incoming Request ===")
+    logger.info("Method: %s", request.method)
+    logger.info("URL: %s", request.url)
+    logger.info("Headers: %s", dict(request.headers))
+
+    # Try to read body for non-file uploads
+    if request.method == "POST" and "multipart/form-data" not in request.headers.get(
+        "content-type",
+        "",
+    ):
+        body = await request.body()
+        logger.info(
+            "Body preview: %s",
+            body[:500].decode("utf-8", errors="replace") if body else "Empty",
+        )
+        # Create new request with body since we consumed it
+        from starlette.requests import Request as StarletteRequest  # noqa: PLC0415
+
+        request = StarletteRequest(
+            request.scope,
+            receive=lambda: {"type": "http.request", "body": body},
+        )
+
+    response = await call_next(request)
+    logger.info("Response status: %s", response.status_code)
+    return response
 
 
 class TranscriptionResponse(BaseModel):
@@ -47,6 +78,39 @@ class HealthResponse(BaseModel):
 async def health_check() -> HealthResponse:
     """Health check endpoint."""
     return HealthResponse(status="healthy", version="1.0.0")
+
+
+@app.get("/")
+async def test_page() -> Any:
+    """Simple test page for debugging."""
+    from fastapi.responses import HTMLResponse  # noqa: PLC0415
+
+    html = """
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Agent CLI Transcription Test</title>
+    </head>
+    <body>
+        <h1>Agent CLI Transcription Test</h1>
+        <form action="/transcribe" method="post" enctype="multipart/form-data">
+            <p>
+                <label>Audio file: <input type="file" name="audio" accept="audio/*" required></label>
+            </p>
+            <p>
+                <label>Cleanup: <input type="checkbox" name="cleanup" value="true" checked></label>
+            </p>
+            <p>
+                <label>Extra instructions: <input type="text" name="extra_instructions" style="width: 400px"></label>
+            </p>
+            <p>
+                <button type="submit">Transcribe</button>
+            </p>
+        </form>
+    </body>
+    </html>
+    """
+    return HTMLResponse(content=html)
 
 
 @app.post("/debug")
