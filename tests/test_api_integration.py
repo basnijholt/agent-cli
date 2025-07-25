@@ -14,7 +14,7 @@ from fastapi.testclient import TestClient
 from typer.testing import CliRunner
 
 from agent_cli.agents.server import run_server
-from agent_cli.api import app, transcribe_audio
+from agent_cli.api import TranscriptionRequest, app, transcribe_audio
 from agent_cli.cli import app as cli_app
 
 if TYPE_CHECKING:
@@ -65,12 +65,15 @@ async def test_full_transcription_workflow() -> None:
 
             request = MockRequest()
 
+            # Create mock form data
+
+            form_data = TranscriptionRequest(cleanup=True, extra_instructions=None)
+
             # Call the transcribe endpoint function directly
             result = await transcribe_audio(
                 request=request,
                 audio=upload_file,
-                cleanup=True,
-                extra_instructions=None,
+                form_data=form_data,
             )
 
             assert result.success is True
@@ -195,11 +198,11 @@ async def test_concurrent_requests() -> None:
         for i in range(5):
             upload_file = MockUploadFile(i)
             request = MockRequest()
+            form_data = TranscriptionRequest(cleanup=False, extra_instructions=None)
             task = transcribe_audio(
                 request=request,
                 audio=upload_file,
-                cleanup=False,
-                extra_instructions=None,
+                form_data=form_data,
             )
             tasks.append(task)
 

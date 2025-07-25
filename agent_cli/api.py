@@ -7,7 +7,7 @@ import tempfile
 from pathlib import Path
 from typing import Annotated, Any
 
-from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
+from fastapi import Depends, FastAPI, File, Form, HTTPException, Request, UploadFile
 from pydantic import BaseModel
 
 from agent_cli import config
@@ -59,6 +59,24 @@ class HealthResponse(BaseModel):
 
     status: str
     version: str
+
+
+class TranscriptionRequest(BaseModel):
+    """Request model for transcription endpoint."""
+
+    cleanup: bool = True
+    extra_instructions: str | None = None
+
+
+async def parse_transcription_form(
+    cleanup: Annotated[str | bool, Form()] = True,
+    extra_instructions: Annotated[str | None, Form()] = None,
+) -> TranscriptionRequest:
+    """Parse form data into TranscriptionRequest model."""
+    return TranscriptionRequest(
+        cleanup=cleanup,
+        extra_instructions=extra_instructions,
+    )
 
 
 @app.get("/health", response_model=HealthResponse)
@@ -250,17 +268,15 @@ async def _process_transcript_cleanup(
 @app.post("/transcribe", response_model=TranscriptionResponse)
 async def transcribe_audio(
     request: Request,
+    form_data: Annotated[TranscriptionRequest, Depends(parse_transcription_form)],
     audio: Annotated[UploadFile | None, File()] = None,
-    cleanup: Annotated[bool | str, Form()] = True,
-    extra_instructions: Annotated[str | None, Form()] = None,
 ) -> TranscriptionResponse:
     """Transcribe audio file and optionally clean up the text.
 
     Args:
         request: FastAPI request object
         audio: Audio file (wav, mp3, m4a, etc.)
-        cleanup: Whether to clean up transcription with LLM
-        extra_instructions: Additional instructions for text cleanup
+        form_data: Form data with cleanup and extra_instructions
 
     Returns:
         TranscriptionResponse with raw and cleaned transcripts
@@ -271,9 +287,9 @@ async def transcribe_audio(
         audio = await _extract_audio_file_from_request(request, audio)
         file_ext = _validate_audio_file(audio)
 
-        # Handle string boolean values from iOS Shortcuts
-        if isinstance(cleanup, str):
-            cleanup = cleanup.lower() == "true"
+        # Extract form data (Pydantic handles string->bool conversion automatically)
+        cleanup = form_data.cleanup
+        extra_instructions = form_data.extra_instructions
 
         # Load all configurations
         (
