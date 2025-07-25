@@ -1,1 +1,0 @@
-../../scripts/run-whisper.sh

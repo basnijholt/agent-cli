@@ -1,1 +1,0 @@
-../../scripts/setup-linux.sh
