@@ -102,6 +102,10 @@ scripts/run-openwakeword.sh
 
 ## Troubleshooting
 
+### Terminal-notifier Popup Issues
+
+Check if Settings > Notifications > terminal-notifier > Allow notifications is switched on.
+
 ### Ollama Issues
 
 ```bash
