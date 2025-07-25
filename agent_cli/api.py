@@ -125,18 +125,64 @@ async def debug_request(request: Request) -> dict:
     }
 
 
+@app.post("/debug-form")
+async def debug_form_request(request: Request) -> dict:
+    """Debug endpoint to see form data without validation."""
+    result = {
+        "headers": dict(request.headers),
+        "content_type": request.headers.get("content-type"),
+    }
+
+    try:
+        # Try to parse as form data
+        form_data = await request.form()
+        form_info = {}
+        for key, value in form_data.items():
+            if hasattr(value, "filename"):
+                form_info[key] = {
+                    "type": "file",
+                    "filename": value.filename,
+                    "content_type": value.content_type,
+                    "size": len(await value.read()) if hasattr(value, "read") else None,
+                }
+                # Reset file position
+                if hasattr(value, "seek"):
+                    value.seek(0)
+            else:
+                form_info[key] = {
+                    "type": "field",
+                    "value": str(value),
+                }
+        result["form_data"] = form_info
+        result["form_keys"] = list(form_data.keys())
+    except Exception as e:  # noqa: BLE001
+        result["form_error"] = str(e)
+        # Try raw body
+        try:
+            body = await request.body()
+            result["body_size"] = len(body)
+            result["body_preview"] = body[:1000].decode("utf-8", errors="replace")
+        except Exception as e2:  # noqa: BLE001
+            result["body_error"] = str(e2)
+
+    return result
+
+
 def _log_request_debug(
     request: Request,
-    audio: UploadFile,
+    audio: UploadFile | None,
     cleanup: bool | str,
     extra_instructions: str | None,
 ) -> None:
     """Log debug information about the incoming request."""
     logger.info("=== Transcribe Request Debug ===")
     logger.info("Request headers: %s", dict(request.headers))
-    logger.info("Audio filename: %s", audio.filename)
-    logger.info("Audio content type: %s", audio.content_type)
-    logger.info("Audio size: %s", audio.size if hasattr(audio, "size") else "unknown")
+    if audio:
+        logger.info("Audio filename: %s", audio.filename)
+        logger.info("Audio content type: %s", audio.content_type)
+        logger.info("Audio size: %s", audio.size if hasattr(audio, "size") else "unknown")
+    else:
+        logger.info("Audio parameter is None")
     logger.info("Cleanup parameter (raw): %r (type: %s)", cleanup, type(cleanup).__name__)
     logger.info("Extra instructions: %r", extra_instructions)
 
@@ -166,9 +212,9 @@ async def _transcribe_with_provider(
 
 
 @app.post("/transcribe", response_model=TranscriptionResponse)
-async def transcribe_audio(
+async def transcribe_audio(  # noqa: PLR0912, PLR0915
     request: Request,
-    audio: Annotated[UploadFile, File()],
+    audio: Annotated[UploadFile | None, File()] = None,
     cleanup: Annotated[bool | str, Form()] = True,
     extra_instructions: Annotated[str | None, Form()] = None,
 ) -> TranscriptionResponse:
@@ -184,10 +230,57 @@ async def transcribe_audio(
         TranscriptionResponse with raw and cleaned transcripts
 
     """
+    # Debug all form data received
+    logger.info("=== Form Data Debug ===")
+    try:
+        form_data = await request.form()
+        logger.info("Form keys: %s", list(form_data.keys()))
+        for key, value in form_data.items():
+            if hasattr(value, "filename"):
+                logger.info(
+                    "Form field '%s': File(filename=%s, content_type=%s)",
+                    key,
+                    value.filename,
+                    value.content_type,
+                )
+            else:
+                logger.info("Form field '%s': %r", key, value)
+    except Exception:
+        logger.exception("Error reading form data")
+
     # Debug logging for iOS Shortcuts
     _log_request_debug(request, audio, cleanup, extra_instructions)
 
-    if not audio.filename:
+    # Handle case where iOS might not send the file as "audio"
+    if audio is None:
+        logger.info("No 'audio' field found, checking all form fields for audio files")
+        form_data = await request.form()
+        audio_file = None
+        for key, value in form_data.items():
+            if hasattr(value, "filename") and hasattr(value, "content_type"):
+                logger.info(
+                    "Found file field '%s': filename=%s, content_type=%s",
+                    key,
+                    value.filename,
+                    value.content_type,
+                )
+                # Check if it's an audio file
+                if value.content_type and (
+                    value.content_type.startswith("audio/")
+                    or value.filename.lower().endswith(
+                        (".wav", ".mp3", ".m4a", ".flac", ".ogg", ".aac"),
+                    )
+                ):
+                    audio_file = value
+                    break
+
+        if audio_file is None:
+            logger.error("No audio file found in form data")
+            raise HTTPException(status_code=422, detail="No audio file found in request")
+
+        audio = audio_file
+
+    if not audio or not audio.filename:
         logger.error("No filename provided in request")
         raise HTTPException(status_code=400, detail="No filename provided")
 
