@@ -49,50 +49,6 @@ async def health_check() -> HealthResponse:
     return HealthResponse(status="healthy", version="1.0.0")
 
 
-def _create_llm_configs(
-    provider_cfg: config.ProviderSelection,
-    defaults: dict,
-) -> tuple[config.Ollama, config.OpenAILLM, config.GeminiLLM]:
-    """Create LLM configurations based on provider."""
-    # Ollama config
-    if provider_cfg.llm_provider == "local":
-        ollama_cfg = config.Ollama(
-            llm_ollama_model=defaults.get("llm_ollama_model", "qwen3:4b"),
-            llm_ollama_host=defaults.get("llm_ollama_host", "http://localhost:11434"),
-        )
-    else:
-        ollama_cfg = config.Ollama(
-            llm_ollama_model="llama2",
-            llm_ollama_host="http://localhost:11434",
-        )
-
-    # OpenAI config
-    if provider_cfg.llm_provider == "openai":
-        openai_cfg = config.OpenAILLM(
-            llm_openai_model=defaults.get("llm_openai_model", "gpt-4o-mini"),
-            openai_api_key=defaults.get("openai_api_key"),
-        )
-    else:
-        openai_cfg = config.OpenAILLM(
-            llm_openai_model="gpt-4o-mini",
-            openai_api_key=None,
-        )
-
-    # Gemini config
-    if provider_cfg.llm_provider == "gemini":
-        gemini_cfg = config.GeminiLLM(
-            llm_gemini_model=defaults.get("llm_gemini_model", "gemini-2.5-flash"),
-            gemini_api_key=defaults.get("gemini_api_key"),
-        )
-    else:
-        gemini_cfg = config.GeminiLLM(
-            llm_gemini_model="gemini-pro",
-            gemini_api_key=None,
-        )
-
-    return ollama_cfg, openai_cfg, gemini_cfg
-
-
 async def _transcribe_with_provider(
     audio_data: bytes,
     provider_cfg: config.ProviderSelection,
@@ -160,14 +116,12 @@ async def transcribe_audio(
             command_config = loaded_config.get("transcribe", {})
             defaults = {**wildcard_config, **command_config}
 
-            # Create provider configuration
+            # Create configurations just like transcribe.py does
             provider_cfg = config.ProviderSelection(
                 asr_provider=defaults.get("asr_provider", "local"),
                 llm_provider=defaults.get("llm_provider", "local"),
-                tts_provider=defaults.get("tts_provider", "local"),
+                tts_provider="local",  # Not used
             )
-
-            # Create ASR configurations
             wyoming_asr_cfg = config.WyomingASR(
                 asr_wyoming_ip=defaults.get("asr_wyoming_ip", "localhost"),
                 asr_wyoming_port=defaults.get("asr_wyoming_port", 10300),
@@ -175,6 +129,18 @@ async def transcribe_audio(
             openai_asr_cfg = config.OpenAIASR(
                 asr_openai_model=defaults.get("asr_openai_model", "whisper-1"),
                 openai_api_key=defaults.get("openai_api_key"),
+            )
+            ollama_cfg = config.Ollama(
+                llm_ollama_model=defaults.get("llm_ollama_model", "qwen3:4b"),
+                llm_ollama_host=defaults.get("llm_ollama_host", "http://localhost:11434"),
+            )
+            openai_llm_cfg = config.OpenAILLM(
+                llm_openai_model=defaults.get("llm_openai_model", "gpt-4o-mini"),
+                openai_api_key=defaults.get("openai_api_key"),
+            )
+            gemini_llm_cfg = config.GeminiLLM(
+                llm_gemini_model=defaults.get("llm_gemini_model", "gemini-2.5-flash"),
+                gemini_api_key=defaults.get("gemini_api_key"),
             )
 
             # Read audio file as bytes
@@ -198,9 +164,6 @@ async def transcribe_audio(
 
             cleaned_transcript = None
             if cleanup:
-                # Create LLM configurations
-                ollama_cfg, openai_cfg, gemini_cfg = _create_llm_configs(provider_cfg, defaults)
-
                 # Prepare instructions
                 instructions = AGENT_INSTRUCTIONS
                 config_extra = defaults.get("extra_instructions", "")
@@ -215,8 +178,8 @@ async def transcribe_audio(
                     agent_instructions=instructions,
                     provider_cfg=provider_cfg,
                     ollama_cfg=ollama_cfg,
-                    openai_cfg=openai_cfg,
-                    gemini_cfg=gemini_cfg,
+                    openai_cfg=openai_llm_cfg,
+                    gemini_cfg=gemini_llm_cfg,
                     logger=logger,
                     original_text=raw_transcript,
                     instruction=INSTRUCTION,
