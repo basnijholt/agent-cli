@@ -21,7 +21,6 @@ from agent_cli.install.common import (
 @app.command("install-services")
 def install_services(
     ctx: typer.Context,  # noqa: ARG001
-    force: bool = typer.Option(False, "--force", "-f", help="Force reinstall all services"),  # noqa: ARG001, FBT003
 ) -> None:
     """Install all required services (Ollama, Whisper, Piper, OpenWakeWord).
 

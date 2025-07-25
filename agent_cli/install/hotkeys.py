@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import platform
 
-import typer
+import typer  # noqa: TC002
 
 from agent_cli.cli import app
 from agent_cli.core.utils import print_with_style
@@ -14,7 +14,6 @@ from agent_cli.install.common import execute_installation_script, get_platform_s
 @app.command("install-hotkeys")
 def install_hotkeys(
     ctx: typer.Context,  # noqa: ARG001
-    force: bool = typer.Option(False, "--force", "-f", help="Force reinstall hotkey manager"),  # noqa: ARG001, FBT003
 ) -> None:
     """Install system-wide hotkeys for agent-cli commands.
 
