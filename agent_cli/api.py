@@ -13,6 +13,12 @@ from pydantic import BaseModel
 
 from agent_cli import config
 from agent_cli.agents.transcribe import AGENT_INSTRUCTIONS, INSTRUCTION, SYSTEM_PROMPT
+from agent_cli.core.config_utils import (
+    create_asr_configs,
+    create_llm_configs,
+    create_provider_config_from_defaults,
+    merge_extra_instructions,
+)
 from agent_cli.services import asr
 from agent_cli.services.llm import process_and_update_clipboard
 
@@ -52,26 +58,20 @@ async def health_check() -> HealthResponse:
 async def _transcribe_with_provider(
     audio_data: bytes,
     provider_cfg: config.ProviderSelection,
-    defaults: dict,
+    wyoming_asr_cfg: config.WyomingASR,
+    openai_asr_cfg: config.OpenAIASR,
     logger: logging.Logger,
 ) -> str:
     """Transcribe audio using the configured provider."""
     transcriber = asr.create_recorded_audio_transcriber(provider_cfg)
 
     if provider_cfg.asr_provider == "local":
-        wyoming_asr_cfg = config.WyomingASR(
-            asr_wyoming_ip=defaults.get("asr-wyoming-ip", "localhost"),
-            asr_wyoming_port=defaults.get("asr-wyoming-port", 10300),
-        )
         return await transcriber(
             audio_data=audio_data,
             wyoming_asr_cfg=wyoming_asr_cfg,
             logger=logger,
         )
-    openai_asr_cfg = config.OpenAIASR(
-        asr_openai_model=defaults.get("asr-openai-model", "whisper-1"),
-        openai_api_key=defaults.get("openai-api-key"),
-    )
+    # openai
     return await transcriber(
         audio_data=audio_data,
         openai_asr_cfg=openai_asr_cfg,
@@ -120,12 +120,11 @@ async def transcribe_audio(
             loaded_config = config.load_config()
             defaults = loaded_config.get("defaults", {})
 
-            # Get provider settings from config or use defaults
-            provider_cfg = config.ProviderSelection(
-                asr_provider=defaults.get("asr-provider", "local"),
-                llm_provider=defaults.get("llm-provider", "ollama"),
-                tts_provider=defaults.get("tts-provider", "local"),
-            )
+            # Create provider configuration from defaults
+            provider_cfg = create_provider_config_from_defaults(defaults)
+
+            # Create ASR configurations
+            wyoming_asr_cfg, openai_asr_cfg = create_asr_configs(provider_cfg, defaults)
 
             # Read audio file as bytes
             audio_data = temp_file_path.read_bytes()
@@ -134,7 +133,8 @@ async def transcribe_audio(
             raw_transcript = await _transcribe_with_provider(
                 audio_data,
                 provider_cfg,
-                defaults,
+                wyoming_asr_cfg,
+                openai_asr_cfg,
                 logger,
             )
 
@@ -147,44 +147,16 @@ async def transcribe_audio(
 
             cleaned_transcript = None
             if cleanup:
-                # Configure LLM based on provider from config
-                if provider_cfg.llm_provider == "ollama":
-                    ollama_cfg = config.Ollama(
-                        llm_ollama_model=defaults.get("llm-ollama-model", "llama2"),
-                        llm_ollama_host=defaults.get("llm-ollama-host", "http://localhost:11434"),
-                    )
-                    openai_cfg = config.OpenAILLM(
-                        llm_openai_model="gpt-4o-mini",
-                        openai_api_key=None,
-                    )
-                elif provider_cfg.llm_provider == "openai":
-                    openai_cfg = config.OpenAILLM(
-                        llm_openai_model=defaults.get("llm-openai-model", "gpt-4o-mini"),
-                        openai_api_key=defaults.get("openai-api-key"),
-                    )
-                    ollama_cfg = config.Ollama(
-                        llm_ollama_model="llama2",
-                        llm_ollama_host="http://localhost:11434",
-                    )
-                else:
-                    # Gemini provider
-                    openai_cfg = config.OpenAILLM(
-                        llm_openai_model="gpt-4o-mini",
-                        openai_api_key=None,
-                    )
-                    ollama_cfg = config.Ollama(
-                        llm_ollama_model="llama2",
-                        llm_ollama_host="http://localhost:11434",
-                    )
+                # Create LLM configurations
+                ollama_cfg, openai_cfg, gemini_cfg = create_llm_configs(provider_cfg, defaults)
 
                 # Prepare instructions
-                instructions = AGENT_INSTRUCTIONS
-                # Add extra instructions from config
-                config_extra = loaded_config.get("transcribe", {}).get("extra-instructions", "")
-                if config_extra:
-                    instructions += f"\n\n{config_extra}"
-                if extra_instructions:
-                    instructions += f"\n\n{extra_instructions}"
+                config_extra = loaded_config.get("transcribe", {}).get("extra_instructions", "")
+                instructions = merge_extra_instructions(
+                    AGENT_INSTRUCTIONS,
+                    config_extra,
+                    extra_instructions,
+                )
 
                 # Clean up transcript
                 cleaned_transcript = await process_and_update_clipboard(
@@ -193,10 +165,7 @@ async def transcribe_audio(
                     provider_cfg=provider_cfg,
                     ollama_cfg=ollama_cfg,
                     openai_cfg=openai_cfg,
-                    gemini_cfg=config.GeminiLLM(
-                        llm_gemini_model="gemini-pro",
-                        gemini_api_key=None,
-                    ),  # Not used
+                    gemini_cfg=gemini_cfg,
                     logger=logger,
                     original_text=raw_transcript,
                     instruction=INSTRUCTION,

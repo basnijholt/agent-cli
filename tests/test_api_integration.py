@@ -4,14 +4,17 @@ from __future__ import annotations
 
 import asyncio
 import tempfile
+import time
 from pathlib import Path
 from typing import TYPE_CHECKING
 from unittest.mock import MagicMock, patch
 
 import pytest
 from fastapi.testclient import TestClient
+from typer.testing import CliRunner
 
-from agent_cli.api import app, run_server
+from agent_cli.api import app, run_server, transcribe_audio
+from agent_cli.cli import app as cli_app
 
 if TYPE_CHECKING:
     from _pytest.monkeypatch import MonkeyPatch
@@ -26,56 +29,52 @@ def client() -> TestClient:
 @pytest.mark.asyncio
 async def test_full_transcription_workflow() -> None:
     """Test the full transcription workflow with mocked services."""
-    from agent_cli.api import transcribe_audio
-
     # Create mock configs
-    with patch("agent_cli.api.transcribe_audio_openai") as mock_transcribe:
-        with patch("agent_cli.api.process_and_update_clipboard") as mock_process:
-            # Setup mocks
-            mock_transcribe.return_value = "hello world this is a test"
-            mock_process.return_value = "Hello world. This is a test."
+    with (
+        patch("agent_cli.api._transcribe_with_provider") as mock_transcribe,
+        patch("agent_cli.api.process_and_update_clipboard") as mock_process,
+    ):
+        # Setup mocks
+        mock_transcribe.return_value = "hello world this is a test"
+        mock_process.return_value = "Hello world. This is a test."
 
-            # Create a mock audio file
-            audio_data = b"RIFF" + b"\x00" * 100  # Dummy WAV data
+        # Create a mock audio file
+        audio_data = b"RIFF" + b"\x00" * 100  # Dummy WAV data
 
-            with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
-                tmp.write(audio_data)
-                tmp_path = Path(tmp.name)
+        with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
+            tmp.write(audio_data)
+            tmp_path = Path(tmp.name)
 
-            try:
-                # Create mock upload file
-                class MockUploadFile:
-                    filename = "test.wav"
+        try:
+            # Create mock upload file
+            class MockUploadFile:
+                filename = "test.wav"
 
-                    async def read(self) -> bytes:
-                        return audio_data
+                async def read(self) -> bytes:
+                    return audio_data
 
-                upload_file = MockUploadFile()
+            upload_file = MockUploadFile()
 
-                # Call the transcribe endpoint function directly
-                result = await transcribe_audio(
-                    audio=upload_file,
-                    cleanup=True,
-                    extra_instructions=None,
-                )
+            # Call the transcribe endpoint function directly
+            result = await transcribe_audio(
+                audio=upload_file,
+                cleanup=True,
+                extra_instructions=None,
+            )
 
-                assert result.success is True
-                assert result.raw_transcript == "hello world this is a test"
-                assert result.cleaned_transcript == "Hello world. This is a test."
-                assert result.error is None
+            assert result.success is True
+            assert result.raw_transcript == "hello world this is a test"
+            assert result.cleaned_transcript == "Hello world. This is a test."
+            assert result.error is None
 
-            finally:
-                tmp_path.unlink(missing_ok=True)
+        finally:
+            tmp_path.unlink(missing_ok=True)
 
 
 def test_server_command_in_cli() -> None:
     """Test that the server command is registered in CLI."""
-    from typer.testing import CliRunner
-
-    from agent_cli.cli import app
-
     runner = CliRunner()
-    result = runner.invoke(app, ["server", "--help"])
+    result = runner.invoke(cli_app, ["server", "--help"])
 
     assert result.exit_code == 0
     assert "Run the FastAPI transcription web server" in result.stdout
@@ -111,17 +110,15 @@ def test_api_configuration_handling(monkeypatch: MonkeyPatch) -> None:
         # Import after patching to get the mocked config
 
         # The function should be able to access the API key from config
-        assert mock_asr_config.called or True  # Config is created during request
+        assert True  # Config is created during request
 
 
 def test_temp_file_cleanup(client: TestClient) -> None:
     """Test that temporary files are cleaned up after processing."""
-    import os
-    import tempfile
+    temp_dir = Path(tempfile.gettempdir())
+    temp_files_before = set(temp_dir.iterdir())
 
-    temp_files_before = set(os.listdir(tempfile.gettempdir()))
-
-    with patch("agent_cli.api.transcribe_audio_openai") as mock_transcribe:
+    with patch("agent_cli.api._transcribe_with_provider") as mock_transcribe:
         mock_transcribe.return_value = "test"
 
         with tempfile.NamedTemporaryFile(suffix=".wav") as tmp:
@@ -137,28 +134,24 @@ def test_temp_file_cleanup(client: TestClient) -> None:
             assert response.status_code == 200
 
     # Give a moment for cleanup
-    import time
-
     time.sleep(0.1)
 
-    temp_files_after = set(os.listdir(tempfile.gettempdir()))
+    temp_files_after = set(temp_dir.iterdir())
     new_files = temp_files_after - temp_files_before
 
     # No new WAV files should remain
-    wav_files = [f for f in new_files if f.endswith(".wav")]
+    wav_files = [f for f in new_files if f.name.endswith(".wav")]
     assert len(wav_files) == 0
 
 
 @pytest.mark.asyncio
 async def test_concurrent_requests() -> None:
     """Test that the API can handle concurrent requests."""
-    from agent_cli.api import transcribe_audio
-
-    with patch("agent_cli.api.transcribe_audio_openai") as mock_transcribe:
+    with patch("agent_cli.api._transcribe_with_provider") as mock_transcribe:
         # Make each request return a unique result
         call_count = 0
 
-        async def mock_transcribe_side_effect(*args, **kwargs):
+        async def mock_transcribe_side_effect(*args, **kwargs) -> str:  # noqa: ARG001
             nonlocal call_count
             call_count += 1
             await asyncio.sleep(0.01)  # Simulate some processing time
@@ -168,7 +161,7 @@ async def test_concurrent_requests() -> None:
 
         # Create multiple mock upload files
         class MockUploadFile:
-            def __init__(self, idx: int):
+            def __init__(self, idx: int) -> None:
                 self.filename = f"test{idx}.wav"
                 self.idx = idx
 
@@ -191,7 +184,7 @@ async def test_concurrent_requests() -> None:
 
         # Verify all requests were processed
         assert len(results) == 5
-        for i, result in enumerate(results):
+        for _i, result in enumerate(results):
             assert result.success is True
             assert result.raw_transcript.startswith("transcript")
 

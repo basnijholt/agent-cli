@@ -45,7 +45,7 @@ def test_transcribe_invalid_file_type(client: TestClient) -> None:
     assert "Unsupported audio format" in response.json()["detail"]
 
 
-@patch("agent_cli.api.transcribe_audio_openai")
+@patch("agent_cli.api._transcribe_with_provider")
 @patch("agent_cli.api.process_and_update_clipboard")
 def test_transcribe_success_with_cleanup(
     mock_process: AsyncMock,
@@ -80,7 +80,7 @@ def test_transcribe_success_with_cleanup(
     mock_process.assert_called_once()
 
 
-@patch("agent_cli.api.transcribe_audio_openai")
+@patch("agent_cli.api._transcribe_with_provider")
 def test_transcribe_success_without_cleanup(
     mock_transcribe: AsyncMock,
     client: TestClient,
@@ -111,7 +111,7 @@ def test_transcribe_success_without_cleanup(
     mock_transcribe.assert_called_once()
 
 
-@patch("agent_cli.api.transcribe_audio_openai")
+@patch("agent_cli.api._transcribe_with_provider")
 def test_transcribe_empty_result(
     mock_transcribe: AsyncMock,
     client: TestClient,
@@ -136,7 +136,7 @@ def test_transcribe_empty_result(
     assert data["error"] == "No transcript generated from audio"
 
 
-@patch("agent_cli.api.transcribe_audio_openai")
+@patch("agent_cli.api._transcribe_with_provider")
 def test_transcribe_with_exception(
     mock_transcribe: AsyncMock,
     client: TestClient,
@@ -163,31 +163,33 @@ def test_transcribe_with_exception(
 
 def test_transcribe_with_extra_instructions(client: TestClient) -> None:
     """Test transcription with extra instructions."""
-    with patch("agent_cli.api.transcribe_audio_openai") as mock_transcribe:
-        with patch("agent_cli.api.process_and_update_clipboard") as mock_process:
-            mock_transcribe.return_value = "hello world"
-            mock_process.return_value = "Hello, World!"
+    with (
+        patch("agent_cli.api._transcribe_with_provider") as mock_transcribe,
+        patch("agent_cli.api.process_and_update_clipboard") as mock_process,
+    ):
+        mock_transcribe.return_value = "hello world"
+        mock_process.return_value = "Hello, World!"
 
-            with tempfile.NamedTemporaryFile(suffix=".wav") as tmp:
-                tmp.write(b"RIFF")
-                tmp.seek(0)
+        with tempfile.NamedTemporaryFile(suffix=".wav") as tmp:
+            tmp.write(b"RIFF")
+            tmp.seek(0)
 
-                response = client.post(
-                    "/transcribe",
-                    files={"audio": ("test.wav", tmp, "audio/wav")},
-                    data={
-                        "cleanup": "true",
-                        "extra_instructions": "Add proper punctuation and capitalize appropriately.",
-                    },
-                )
+            response = client.post(
+                "/transcribe",
+                files={"audio": ("test.wav", tmp, "audio/wav")},
+                data={
+                    "cleanup": "true",
+                    "extra_instructions": "Add proper punctuation and capitalize appropriately.",
+                },
+            )
 
-            assert response.status_code == 200
-            data = response.json()
-            assert data["success"] is True
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success"] is True
 
-            # Check that extra instructions were passed to the cleanup function
-            call_args = mock_process.call_args
-            assert "Add proper punctuation" in call_args.kwargs["agent_instructions"]
+        # Check that extra instructions were passed to the cleanup function
+        call_args = mock_process.call_args
+        assert "Add proper punctuation" in call_args.kwargs["agent_instructions"]
 
 
 def test_supported_audio_formats(client: TestClient) -> None:
@@ -201,7 +203,7 @@ def test_supported_audio_formats(client: TestClient) -> None:
         (".aac", b"\xff\xf1", "audio/aac"),
     ]
 
-    with patch("agent_cli.api.transcribe_audio_openai") as mock_transcribe:
+    with patch("agent_cli.api._transcribe_with_provider") as mock_transcribe:
         mock_transcribe.return_value = "test"
 
         for ext, header, mime_type in supported_formats:
