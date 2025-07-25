@@ -17,7 +17,11 @@ This guide shows how to create an iOS Shortcut that records audio, sends it to y
 
 2. Start the server:
    ```bash
+   # For OpenAI Whisper:
    agent-cli server --host 0.0.0.0 --port 61337
+
+   # For local Wyoming/FasterWhisper:
+   agent-cli server --host 0.0.0.0 --port 61337 --asr-provider wyoming
    ```
 
 3. Test the server is working:
