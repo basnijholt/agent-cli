@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Annotated
 
 import uvicorn
-from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from pydantic import BaseModel
 
 from agent_cli import config
@@ -52,8 +52,8 @@ async def health_check() -> HealthResponse:
 @app.post("/transcribe", response_model=TranscriptionResponse)
 async def transcribe_audio(
     audio: Annotated[UploadFile, File()],
-    cleanup: bool = True,
-    extra_instructions: str | None = None,
+    cleanup: Annotated[bool, Form()] = True,
+    extra_instructions: Annotated[str | None, Form()] = None,
 ) -> TranscriptionResponse:
     """Transcribe audio file and optionally clean up the text.
 
@@ -93,8 +93,11 @@ async def transcribe_audio(
                 tts_provider="local",
             )
 
-            # Configure ASR
-            openai_asr_cfg = config.OpenAIASR()
+            # Configure ASR with default model
+            openai_asr_cfg = config.OpenAIASR(
+                asr_openai_model="whisper-1",
+                openai_api_key=None,  # Will use env var
+            )
 
             # Read audio file as bytes
             audio_data = temp_file_path.read_bytes()
@@ -115,8 +118,11 @@ async def transcribe_audio(
 
             cleaned_transcript = None
             if cleanup:
-                # Configure LLM for cleanup
-                openai_llm_cfg = config.OpenAILLM()
+                # Configure LLM for cleanup with default model
+                openai_llm_cfg = config.OpenAILLM(
+                    llm_openai_model="gpt-4o-mini",
+                    openai_api_key=None,  # Will use env var
+                )
 
                 # Prepare instructions
                 instructions = AGENT_INSTRUCTIONS
@@ -128,9 +134,15 @@ async def transcribe_audio(
                     system_prompt=SYSTEM_PROMPT,
                     agent_instructions=instructions,
                     provider_cfg=provider_cfg,
-                    ollama_cfg=config.Ollama(),  # Not used
+                    ollama_cfg=config.Ollama(
+                        llm_ollama_model="llama2",
+                        llm_ollama_host="http://localhost:11434",
+                    ),  # Not used
                     openai_cfg=openai_llm_cfg,
-                    gemini_cfg=config.GeminiLLM(),  # Not used
+                    gemini_cfg=config.GeminiLLM(
+                        llm_gemini_model="gemini-pro",
+                        gemini_api_key=None,
+                    ),  # Not used
                     logger=logger,
                     original_text=raw_transcript,
                     instruction=INSTRUCTION,
