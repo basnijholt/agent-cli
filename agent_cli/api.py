@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import tempfile
+import uuid
 from pathlib import Path
 from typing import Annotated, Any
 
@@ -25,6 +26,8 @@ app = FastAPI(
     description="Web service for audio transcription and text cleanup",
     version="1.0.0",
 )
+
+VALID_EXTENSIONS = {".wav", ".mp3", ".m4a", ".flac", ".ogg", ".aac", ".webm"}
 
 
 @app.middleware("http")
@@ -117,12 +120,7 @@ def _is_valid_audio_file(value: Any) -> bool:
         and hasattr(value, "content_type")
         and (
             (value.content_type and value.content_type.startswith("audio/"))
-            or (
-                value.filename
-                and value.filename.lower().endswith(
-                    (".wav", ".mp3", ".m4a", ".flac", ".ogg", ".aac"),
-                )
-            )
+            or (value.filename and value.filename.lower().endswith(VALID_EXTENSIONS))
         )
     )
 
@@ -152,22 +150,19 @@ async def _extract_audio_file_from_request(
     )
 
 
-def _validate_audio_file(audio: UploadFile) -> str:
+def _validate_audio_file(audio: UploadFile) -> None:
     """Validate audio file and return file extension."""
     if not audio or not audio.filename:
         logger.error("No filename provided in request")
         raise HTTPException(status_code=400, detail="No filename provided")
 
-    valid_extensions = {".wav", ".mp3", ".m4a", ".flac", ".ogg", ".aac"}
     file_ext = Path(audio.filename).suffix.lower()
 
-    if file_ext not in valid_extensions:
+    if file_ext not in VALID_EXTENSIONS:
         raise HTTPException(
             status_code=400,
-            detail=f"Unsupported audio format: {file_ext}. Supported: {', '.join(valid_extensions)}",
+            detail=f"Unsupported audio format: {file_ext}. Supported: {', '.join(VALID_EXTENSIONS)}",
         )
-
-    return file_ext
 
 
 def _load_transcription_configs() -> tuple[
@@ -234,8 +229,9 @@ def _convert_audio_for_local_asr(audio_data: bytes, filename: str) -> bytes:
 
 def _get_temp_file_path(suffix: str) -> Path:
     """Get a unique temporary file path."""
-    with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as temp_file:
-        return Path(temp_file.name)
+    temp_dir = Path(tempfile.gettempdir())
+    unique_name = f"{uuid.uuid4()}{suffix}"
+    return temp_dir / unique_name
 
 
 async def _process_transcript_cleanup(
@@ -299,7 +295,7 @@ async def transcribe_audio(
     try:
         # Extract and validate audio file
         audio_file = await _extract_audio_file_from_request(request, audio)
-        file_ext = _validate_audio_file(audio_file)
+        _validate_audio_file(audio_file)
 
         # Extract form data (Pydantic handles string->bool conversion automatically)
         cleanup = form_data.cleanup
@@ -316,13 +312,8 @@ async def transcribe_audio(
             defaults,
         ) = _load_transcription_configs()
 
-        # Save uploaded file to a temporary location
-        content = await audio_file.read()
-        temp_file_path = _get_temp_file_path(suffix=file_ext)
-        temp_file_path.write_bytes(content)
-
-        # Read audio file as bytes
-        audio_data = temp_file_path.read_bytes()
+        # Save uploaded file
+        audio_data = await audio_file.read()
 
         # Convert audio to Wyoming format if using local ASR
         if provider_cfg.asr_provider == "local":
@@ -370,10 +361,6 @@ async def transcribe_audio(
         logger.exception("Error during transcription")
         return TranscriptionResponse(raw_transcript="", success=False, error=str(e))
     finally:
-        # Clean up temporary file
-        if "temp_file_path" in locals():
-            temp_file_path.unlink(missing_ok=True)
-
         # Log the transcription automatically (even if it failed)
         try:
             if success:

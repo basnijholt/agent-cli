@@ -36,11 +36,9 @@ def convert_audio_to_wyoming_format(
         raise RuntimeError(msg)
 
     # Create temporary files for input and output
+    suffix = _get_file_extension(source_filename)
     with (
-        tempfile.NamedTemporaryFile(
-            delete=False,
-            suffix=_get_file_extension(source_filename),
-        ) as input_file,
+        tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as input_file,
         tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as output_file,
     ):
         input_path = Path(input_file.name)
