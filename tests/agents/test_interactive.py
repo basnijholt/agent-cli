@@ -94,6 +94,7 @@ async def test_async_main_list_devices(tmp_path: Path) -> None:
     audio_in_cfg = config.AudioInput()
     wyoming_asr_cfg = config.WyomingASR(asr_wyoming_ip="localhost", asr_wyoming_port=1234)
     openai_asr_cfg = config.OpenAIASR(asr_openai_model="whisper-1")
+    whispercpp_asr_cfg = config.WhisperCppASR()
     ollama_cfg = config.Ollama(llm_ollama_model="test-model", llm_ollama_host="localhost")
     openai_llm_cfg = config.OpenAILLM(llm_openai_model="gpt-4")
     gemini_llm_cfg = config.GeminiLLM(
@@ -123,6 +124,7 @@ async def test_async_main_list_devices(tmp_path: Path) -> None:
             audio_in_cfg=audio_in_cfg,
             wyoming_asr_cfg=wyoming_asr_cfg,
             openai_asr_cfg=openai_asr_cfg,
+            whispercpp_asr_cfg=whispercpp_asr_cfg,
             ollama_cfg=ollama_cfg,
             openai_llm_cfg=openai_llm_cfg,
             gemini_llm_cfg=gemini_llm_cfg,
@@ -153,6 +155,7 @@ async def test_async_main_list_output_devices(tmp_path: Path) -> None:
     audio_in_cfg = config.AudioInput()
     wyoming_asr_cfg = config.WyomingASR(asr_wyoming_ip="localhost", asr_wyoming_port=1234)
     openai_asr_cfg = config.OpenAIASR(asr_openai_model="whisper-1")
+    whispercpp_asr_cfg = config.WhisperCppASR()
     ollama_cfg = config.Ollama(llm_ollama_model="test-model", llm_ollama_host="localhost")
     openai_llm_cfg = config.OpenAILLM(llm_openai_model="gpt-4")
     gemini_llm_cfg = config.GeminiLLM(
@@ -182,6 +185,7 @@ async def test_async_main_list_output_devices(tmp_path: Path) -> None:
             audio_in_cfg=audio_in_cfg,
             wyoming_asr_cfg=wyoming_asr_cfg,
             openai_asr_cfg=openai_asr_cfg,
+            whispercpp_asr_cfg=whispercpp_asr_cfg,
             ollama_cfg=ollama_cfg,
             openai_llm_cfg=openai_llm_cfg,
             gemini_llm_cfg=gemini_llm_cfg,
@@ -215,6 +219,7 @@ async def test_async_main_full_loop(tmp_path: Path) -> None:
     audio_in_cfg = config.AudioInput(input_device_index=1)
     wyoming_asr_cfg = config.WyomingASR(asr_wyoming_ip="localhost", asr_wyoming_port=1234)
     openai_asr_cfg = config.OpenAIASR(asr_openai_model="whisper-1")
+    whispercpp_asr_cfg = config.WhisperCppASR()
     ollama_cfg = config.Ollama(llm_ollama_model="test-model", llm_ollama_host="localhost")
     openai_llm_cfg = config.OpenAILLM(llm_openai_model="gpt-4")
     gemini_llm_cfg = config.GeminiLLM(
@@ -265,6 +270,7 @@ async def test_async_main_full_loop(tmp_path: Path) -> None:
             audio_in_cfg=audio_in_cfg,
             wyoming_asr_cfg=wyoming_asr_cfg,
             openai_asr_cfg=openai_asr_cfg,
+            whispercpp_asr_cfg=whispercpp_asr_cfg,
             ollama_cfg=ollama_cfg,
             openai_llm_cfg=openai_llm_cfg,
             gemini_llm_cfg=gemini_llm_cfg,
