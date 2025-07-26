@@ -110,6 +110,23 @@ async def _transcribe_with_provider(
     raise ValueError(msg)
 
 
+def _is_valid_audio_file(value: Any) -> bool:
+    """Check if the provided value is a valid audio file."""
+    return (
+        hasattr(value, "filename")
+        and hasattr(value, "content_type")
+        and (
+            (value.content_type and value.content_type.startswith("audio/"))
+            or (
+                value.filename
+                and value.filename.lower().endswith(
+                    (".wav", ".mp3", ".m4a", ".flac", ".ogg", ".aac"),
+                )
+            )
+        )
+    )
+
+
 async def _extract_audio_file_from_request(
     request: Request,
     audio: UploadFile | None,
@@ -124,19 +141,7 @@ async def _extract_audio_file_from_request(
     form_data = await request.form()
 
     for key, value in form_data.items():
-        if (
-            hasattr(value, "filename")
-            and hasattr(value, "content_type")
-            and (
-                (value.content_type and value.content_type.startswith("audio/"))
-                or (
-                    value.filename
-                    and value.filename.lower().endswith(
-                        (".wav", ".mp3", ".m4a", ".flac", ".ogg", ".aac"),
-                    )
-                )
-            )
-        ):
+        if _is_valid_audio_file(value):
             logger.info("Found audio file in field '%s': %s", key, value.filename)
             return value
 
@@ -227,6 +232,12 @@ def _convert_audio_for_local_asr(audio_data: bytes, filename: str) -> bytes:
     return converted_data
 
 
+def _get_temp_file_path(suffix: str) -> Path:
+    """Get a unique temporary file path."""
+    with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as temp_file:
+        return Path(temp_file.name)
+
+
 async def _process_transcript_cleanup(
     raw_transcript: str,
     cleanup: bool,
@@ -305,11 +316,10 @@ async def transcribe_audio(
             defaults,
         ) = _load_transcription_configs()
 
-        # Save uploaded file temporarily and process
-        with tempfile.NamedTemporaryFile(suffix=file_ext, delete=False) as temp_file:
-            content = await audio_file.read()
-            temp_file.write(content)
-            temp_file_path = Path(temp_file.name)
+        # Save uploaded file to a temporary location
+        content = await audio_file.read()
+        temp_file_path = _get_temp_file_path(suffix=file_ext)
+        temp_file_path.write_bytes(content)
 
         # Read audio file as bytes
         audio_data = temp_file_path.read_bytes()
