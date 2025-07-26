@@ -3,8 +3,6 @@
 from __future__ import annotations
 
 import logging
-import tempfile
-import uuid
 from pathlib import Path
 from typing import Annotated, Any
 
@@ -19,7 +17,7 @@ from agent_cli.services.llm import process_and_update_clipboard
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+LOGGER = logging.getLogger(__name__)
 
 app = FastAPI(
     title="Agent CLI Transcription API",
@@ -34,12 +32,12 @@ VALID_EXTENSIONS = (".wav", ".mp3", ".m4a", ".flac", ".ogg", ".aac", ".webm")
 async def log_requests(request: Request, call_next) -> Any:  # type: ignore[no-untyped-def]  # noqa: ANN001
     """Log basic request information."""
     client_ip = request.client.host if request.client else "unknown"
-    logger.info("%s %s from %s", request.method, request.url.path, client_ip)
+    LOGGER.info("%s %s from %s", request.method, request.url.path, client_ip)
 
     response = await call_next(request)
 
     if response.status_code >= 400:  # noqa: PLR2004
-        logger.warning(
+        LOGGER.warning(
             "Request failed: %s %s → %d",
             request.method,
             request.url.path,
@@ -92,7 +90,6 @@ async def _transcribe_with_provider(
     provider_cfg: config.ProviderSelection,
     wyoming_asr_cfg: config.WyomingASR,
     openai_asr_cfg: config.OpenAIASR,
-    logger: logging.Logger,
 ) -> str:
     """Transcribe audio using the configured provider."""
     transcriber = asr.create_recorded_audio_transcriber(provider_cfg)
@@ -101,13 +98,13 @@ async def _transcribe_with_provider(
         return await transcriber(
             audio_data=audio_data,
             wyoming_asr_cfg=wyoming_asr_cfg,
-            logger=logger,
+            logger=LOGGER,
         )
     if provider_cfg.asr_provider == "openai":
         return await transcriber(
             audio_data=audio_data,
             openai_asr_cfg=openai_asr_cfg,
-            logger=logger,
+            logger=LOGGER,
         )
     msg = f"Unsupported ASR provider: {provider_cfg.asr_provider}"
     raise ValueError(msg)
@@ -135,12 +132,12 @@ async def _extract_audio_file_from_request(
         return audio
 
     # iOS Shortcuts may use a different field name, scan form for audio files
-    logger.info("No 'audio' parameter found, scanning form fields for audio files")
+    LOGGER.info("No 'audio' parameter found, scanning form fields for audio files")
     form_data = await request.form()
 
     for key, value in form_data.items():
         if _is_valid_audio_file(value):
-            logger.info("Found audio file in field '%s': %s", key, value.filename)
+            LOGGER.info("Found audio file in field '%s': %s", key, value.filename)
             return value
 
     # No audio file found anywhere
@@ -153,7 +150,7 @@ async def _extract_audio_file_from_request(
 def _validate_audio_file(audio: UploadFile) -> None:
     """Validate audio file and return file extension."""
     if not audio or not audio.filename:
-        logger.error("No filename provided in request")
+        LOGGER.error("No filename provided in request")
         raise HTTPException(status_code=400, detail="No filename provided")
 
     file_ext = Path(audio.filename).suffix.lower()
@@ -221,17 +218,10 @@ def _convert_audio_for_local_asr(audio_data: bytes, filename: str) -> bytes:
     """Convert audio to Wyoming format if needed for local ASR."""
     from agent_cli.core.audio_format import convert_audio_to_wyoming_format  # noqa: PLC0415
 
-    logger.info("Converting %s audio to Wyoming format", filename)
+    LOGGER.info("Converting %s audio to Wyoming format", filename)
     converted_data = convert_audio_to_wyoming_format(audio_data, filename)
-    logger.info("Audio conversion successful")
+    LOGGER.info("Audio conversion successful")
     return converted_data
-
-
-def _get_temp_file_path(suffix: str) -> Path:
-    """Get a unique temporary file path."""
-    temp_dir = Path(tempfile.gettempdir())
-    unique_name = f"{uuid.uuid4()}{suffix}"
-    return temp_dir / unique_name
 
 
 async def _process_transcript_cleanup(
@@ -262,7 +252,7 @@ async def _process_transcript_cleanup(
         ollama_cfg=ollama_cfg,
         openai_cfg=openai_llm_cfg,
         gemini_cfg=gemini_llm_cfg,
-        logger=logger,
+        logger=LOGGER,
         original_text=raw_transcript,
         instruction=INSTRUCTION,
         clipboard=False,  # Don't copy to clipboard in web service
@@ -324,7 +314,6 @@ async def transcribe_audio(
             provider_cfg,
             wyoming_asr_cfg,
             openai_asr_cfg,
-            logger,
         )
 
         if not raw_transcript:
@@ -355,7 +344,7 @@ async def transcribe_audio(
         # Re-raise HTTPExceptions so FastAPI handles them properly
         raise
     except Exception as e:
-        logger.exception("Error during transcription")
+        LOGGER.exception("Error during transcription")
         return TranscriptionResponse(raw_transcript="", success=False, error=str(e))
     finally:
         # Log the transcription automatically (even if it failed)
