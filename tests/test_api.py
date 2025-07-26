@@ -213,7 +213,9 @@ def test_string_boolean_cleanup(client: TestClient) -> None:
     with (
         patch("agent_cli.api._convert_audio_for_local_asr") as mock_convert,
         patch("agent_cli.api._transcribe_with_provider") as mock_transcribe,
+        patch("agent_cli.api.process_and_update_clipboard") as mock_process,
     ):
+        mock_process.return_value = "This is a test transcription."
         mock_convert.return_value = b"converted_audio_data"
         mock_transcribe.return_value = "test transcription"
 

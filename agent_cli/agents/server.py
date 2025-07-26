@@ -8,7 +8,11 @@ from agent_cli.cli import app
 from agent_cli.core.utils import console
 
 
-def run_server(host: str = "0.0.0.0", port: int = 61337, reload: bool = False) -> None:  # noqa: S104
+def run_server(
+    host: str = "0.0.0.0",  # noqa: S104
+    port: int = 61337,
+    reload: bool = False,
+) -> None:
     """Run the FastAPI server."""
     import uvicorn  # noqa: PLC0415
 
@@ -33,5 +37,4 @@ def server(
     )
     if reload:
         console.print("[yellow]Auto-reload enabled for development[/yellow]")
-
     run_server(host=host, port=port, reload=reload)

@@ -60,6 +60,10 @@ async def test_full_transcription_workflow() -> None:
 
             # Create mock request
             class MockRequest:
+                def __init__(self) -> None:
+                    self.client = MagicMock()
+                    self.client.host = "127.0.0.1"
+
                 async def form(self) -> dict:
                     return {}
 
@@ -190,6 +194,10 @@ async def test_concurrent_requests() -> None:
 
         # Create mock request
         class MockRequest:
+            def __init__(self) -> None:
+                self.client = MagicMock()
+                self.client.host = "127.0.0.1"
+
             async def form(self) -> dict:
                 return {}
 

@@ -12,6 +12,7 @@ from pydantic import BaseModel
 
 from agent_cli import config, opts
 from agent_cli.agents.transcribe import AGENT_INSTRUCTIONS, INSTRUCTION, SYSTEM_PROMPT
+from agent_cli.core.transcription_logger import get_default_logger
 from agent_cli.services import asr
 from agent_cli.services.llm import process_and_update_clipboard
 
@@ -73,7 +74,8 @@ async def parse_transcription_form(
     extra_instructions: Annotated[str | None, Form()] = None,
 ) -> TranscriptionRequest:
     """Parse form data into TranscriptionRequest model."""
-    return TranscriptionRequest(cleanup=cleanup, extra_instructions=extra_instructions)
+    cleanup_bool = cleanup.lower() in ("true", "1", "yes") if isinstance(cleanup, str) else cleanup
+    return TranscriptionRequest(cleanup=cleanup_bool, extra_instructions=extra_instructions)
 
 
 @app.get("/health", response_model=HealthResponse)
@@ -279,10 +281,14 @@ async def transcribe_audio(
         TranscriptionResponse with raw and cleaned transcripts
 
     """
+    raw_transcript = ""
+    cleaned_transcript = None
+    success = False
+
     try:
         # Extract and validate audio file
-        audio = await _extract_audio_file_from_request(request, audio)
-        file_ext = _validate_audio_file(audio)
+        audio_file = await _extract_audio_file_from_request(request, audio)
+        file_ext = _validate_audio_file(audio_file)
 
         # Extract form data (Pydantic handles string->bool conversion automatically)
         cleanup = form_data.cleanup
@@ -301,7 +307,7 @@ async def transcribe_audio(
 
         # Save uploaded file temporarily and process
         with tempfile.NamedTemporaryFile(suffix=file_ext, delete=False) as temp_file:
-            content = await audio.read()
+            content = await audio_file.read()
             temp_file.write(content)
             temp_file_path = Path(temp_file.name)
 
@@ -310,7 +316,7 @@ async def transcribe_audio(
 
         # Convert audio to Wyoming format if using local ASR
         if provider_cfg.asr_provider == "local":
-            audio_data = _convert_audio_for_local_asr(audio_data, audio.filename)
+            audio_data = _convert_audio_for_local_asr(audio_data, audio_file.filename)
 
         # Transcribe audio using the configured provider
         raw_transcript = await _transcribe_with_provider(
@@ -340,6 +346,7 @@ async def transcribe_audio(
             gemini_llm_cfg,
         )
 
+        success = True
         return TranscriptionResponse(
             raw_transcript=raw_transcript,
             cleaned_transcript=cleaned_transcript,
@@ -350,13 +357,21 @@ async def transcribe_audio(
         # Re-raise HTTPExceptions so FastAPI handles them properly
         raise
     except Exception as e:
-        logger.exception(
-            "Error during transcription - Exception type: %s, args: %s",
-            type(e).__name__,
-            e.args,
-        )
+        logger.exception("Error during transcription")
         return TranscriptionResponse(raw_transcript="", success=False, error=str(e))
     finally:
         # Clean up temporary file
         if "temp_file_path" in locals():
             temp_file_path.unlink(missing_ok=True)
+
+        # Log the transcription automatically (even if it failed)
+        try:
+            if success:
+                transcription_logger = get_default_logger()
+                transcription_logger.log_transcription(
+                    raw=raw_transcript,
+                    processed=cleaned_transcript,
+                )
+        except Exception as log_error:  # noqa: BLE001
+            # Don't fail the main request if logging fails
+            logger.warning("Failed to log transcription: %s", log_error)
