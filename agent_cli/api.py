@@ -27,7 +27,7 @@ app = FastAPI(
     version="1.0.0",
 )
 
-VALID_EXTENSIONS = {".wav", ".mp3", ".m4a", ".flac", ".ogg", ".aac", ".webm"}
+VALID_EXTENSIONS = (".wav", ".mp3", ".m4a", ".flac", ".ogg", ".aac", ".webm")
 
 
 @app.middleware("http")
