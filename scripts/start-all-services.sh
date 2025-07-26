@@ -1,5 +1,11 @@
 #!/bin/bash
 
+# Check if running on Apple Silicon
+IS_APPLE_SILICON=false
+if [[ $(uname -s) == "Darwin" && $(uname -m) == "arm64" ]]; then
+    IS_APPLE_SILICON=true
+fi
+
 # Check if zellij is installed
 if ! command -v zellij &> /dev/null; then
     echo "📺 Zellij not found. Installing..."
@@ -10,6 +16,14 @@ fi
 # Get the current directory
 SCRIPTS_DIR="$(cd "$(dirname "$0")" && pwd)"
 
+# Determine which whisper script to use
+if [[ "$IS_APPLE_SILICON" == "true" ]] && [[ -f "$SCRIPTS_DIR/run-whispercpp.sh" ]]; then
+    WHISPER_SCRIPT="./run-whispercpp.sh"
+    WHISPER_NAME="Whisper.cpp"
+else
+    WHISPER_SCRIPT="./run-whisper.sh"
+    WHISPER_NAME="Wyoming Faster Whisper"
+fi
 
 # Create .runtime directory and Zellij layout file
 mkdir -p "$SCRIPTS_DIR/.runtime"
@@ -32,9 +46,9 @@ layout {
         }
         pane split_direction="horizontal" {
             pane {
-                name "Whisper"
+                name "$WHISPER_NAME"
                 cwd "$SCRIPTS_DIR"
-                command "./run-whisper.sh"
+                command "$WHISPER_SCRIPT"
             }
             pane split_direction="horizontal" {
                 pane {

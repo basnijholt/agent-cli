@@ -39,7 +39,7 @@ def create_transcriber(
     audio_input_cfg: config.AudioInput,
     wyoming_asr_cfg: config.WyomingASR,
     openai_asr_cfg: config.OpenAIASR,
-    whispercpp_asr_cfg: config.WhisperCppASR,  # Add parameter
+    whispercpp_asr_cfg: config.WhisperCppASR,
 ) -> Callable[..., Awaitable[str | None]]:
     """Return the appropriate transcriber for live audio based on the provider."""
     if provider_cfg.asr_provider == "openai":

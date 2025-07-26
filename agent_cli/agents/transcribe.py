@@ -131,7 +131,7 @@ async def _async_main(  # noqa: PLR0912
                 audio_input_cfg=audio_in_cfg,
                 wyoming_asr_cfg=wyoming_asr_cfg,
                 openai_asr_cfg=openai_asr_cfg,
-                whispercpp_asr_cfg=whispercpp_asr_cfg,  # Add this
+                whispercpp_asr_cfg=whispercpp_asr_cfg,
             )
             transcript = await transcriber(
                 logger=LOGGER,
