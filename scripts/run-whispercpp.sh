@@ -29,13 +29,6 @@ if [ ! -f "$MODEL_FILE" ]; then
     echo "✅ Model downloaded successfully"
 fi
 
-# Check if whisper-server is installed
-if ! command -v whisper-server &> /dev/null; then
-    echo "❌ whisper-server not found. Please install whisper-cpp:"
-    echo "   brew install whisper-cpp"
-    exit 1
-fi
-
 # Run whisper.cpp server
 # --host 0.0.0.0 allows connections from any interface
 # --port 10500 matches the Wyoming Whisper port for compatibility

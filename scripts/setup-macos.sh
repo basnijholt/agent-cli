@@ -8,7 +8,6 @@ echo "🚀 Setting up agent-cli services on macOS..."
 IS_APPLE_SILICON=false
 if [[ $(uname -s) == "Darwin" && $(uname -m) == "arm64" ]]; then
     IS_APPLE_SILICON=true
-    echo "🍎 Detected Apple Silicon Mac"
 fi
 
 # Check if Homebrew is installed
@@ -47,6 +46,14 @@ fi
 if ! command -v zellij &> /dev/null; then
     echo "📺 Installing zellij..."
     brew install zellij
+fi
+
+# Check if whisper-server is installed
+if [["$IS_APPLE_SILICON" == "true"]]; then
+    if ! command -v whisper-server &> /dev/null; then
+        echo "🤫 Installing whisper-cpp..."
+        brew install whisper-cpp
+    fi
 fi
 
 # Install agent-cli
