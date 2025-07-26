@@ -47,4 +47,12 @@ def set_config_defaults(ctx: typer.Context, config_file: str | None) -> None:
 
 
 # Import commands from other modules to register them
-from .agents import assistant, autocorrect, chat, speak, transcribe, voice_edit  # noqa: E402, F401
+from .agents import (  # noqa: E402, F401
+    assistant,
+    autocorrect,
+    chat,
+    server,
+    speak,
+    transcribe,
+    voice_edit,
+)

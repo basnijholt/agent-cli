@@ -17,6 +17,9 @@ dependencies = [
     "openai",
     "dotenv",
     "google-genai>=1.25.0",
+    "fastapi",
+    "uvicorn[standard]",
+    "python-multipart",
 ]
 requires-python = ">=3.11"
 
