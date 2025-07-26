@@ -68,9 +68,3 @@ def get_default_logger() -> TranscriptionLogger:
     if _default_logger is None:
         _default_logger = TranscriptionLogger()
     return _default_logger
-
-
-def set_default_log_file(log_file: Path | str) -> None:
-    """Set the default log file for transcription logging."""
-    global _default_logger
-    _default_logger = TranscriptionLogger(log_file)

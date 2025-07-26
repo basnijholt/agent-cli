@@ -290,7 +290,6 @@ async def transcribe_audio(
     """
     raw_transcript = ""
     cleaned_transcript = None
-    success = False
 
     try:
         # Extract and validate audio file
@@ -346,8 +345,6 @@ async def transcribe_audio(
             openai_llm_cfg,
             gemini_llm_cfg,
         )
-
-        success = True
         return TranscriptionResponse(
             raw_transcript=raw_transcript,
             cleaned_transcript=cleaned_transcript,
@@ -362,13 +359,5 @@ async def transcribe_audio(
         return TranscriptionResponse(raw_transcript="", success=False, error=str(e))
     finally:
         # Log the transcription automatically (even if it failed)
-        try:
-            if success:
-                transcription_logger = get_default_logger()
-                transcription_logger.log_transcription(
-                    raw=raw_transcript,
-                    processed=cleaned_transcript,
-                )
-        except Exception as log_error:  # noqa: BLE001
-            # Don't fail the main request if logging fails
-            logger.warning("Failed to log transcription: %s", log_error)
+        transcription_logger = get_default_logger()
+        transcription_logger.log_transcription(raw=raw_transcript, processed=cleaned_transcript)
