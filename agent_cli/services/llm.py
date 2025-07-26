@@ -187,7 +187,7 @@ async def process_and_update_clipboard(
     instruction: str,
     clipboard: bool,
     quiet: bool,
-    live: Live,
+    live: Live | None,
 ) -> str | None:
     """Processes the text with the LLM, updates the clipboard, and displays the result."""
     user_input = INPUT_TEMPLATE.format(original_text=original_text, instruction=instruction)
