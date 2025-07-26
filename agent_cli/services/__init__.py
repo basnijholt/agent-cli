@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import io
-import httpx
 from typing import TYPE_CHECKING
+
+import httpx
 
 if TYPE_CHECKING:
     import logging
@@ -92,11 +93,10 @@ async def transcribe_audio_whispercpp(
             # The exact format depends on whisper.cpp version, but typically:
             if "text" in result:
                 return result["text"].strip()
-            elif "transcription" in result:
+            if "transcription" in result:
                 return result["transcription"].strip()
-            else:
-                logger.error(f"Unexpected response format: {result}")
-                return ""
+            logger.error(f"Unexpected response format: {result}")
+            return ""
 
         except httpx.HTTPStatusError as e:
             logger.error(f"HTTP error from whisper.cpp: {e}")

@@ -63,17 +63,17 @@ uv tool install --upgrade agent-cli
 # Create optimized config for Apple Silicon
 if [[ "$IS_APPLE_SILICON" == "true" ]]; then
     echo "⚙️ Creating optimized agent-cli config for Apple Silicon..."
-    
+
     # Check if config already exists
     if [[ -f "agent-cli-config.toml" ]]; then
         echo "📝 Backing up existing agent-cli-config.toml to agent-cli-config.toml.backup"
         cp agent-cli-config.toml agent-cli-config.toml.backup
     fi
-    
+
     # Copy example and modify for Apple Silicon
     if [[ -f "example.agent-cli-config.toml" ]]; then
         cp example.agent-cli-config.toml agent-cli-config.toml
-        
+
         # Replace asr-provider = "local" with asr-provider = "whispercpp"
         if command -v sed &> /dev/null; then
             sed -i '' 's/asr-provider = "local"/asr-provider = "whispercpp"/' agent-cli-config.toml
