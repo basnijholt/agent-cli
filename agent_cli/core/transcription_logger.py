@@ -20,7 +20,7 @@ class TranscriptionLogger:
 
         """
         if log_file is None:
-            log_file = Path.cwd() / "transcription_log.jsonl"
+            log_file = Path.cwd() / "transcription_log.json"
         elif isinstance(log_file, str):
             log_file = Path(log_file)
 
