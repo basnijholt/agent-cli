@@ -32,7 +32,7 @@ I use it mostly for the `transcribe` function when working with LLMs. Being able
 ## Features
 
 - **`autocorrect`**: Correct grammar and spelling in your text (e.g., from clipboard) using a local LLM with Ollama or OpenAI.
-- **`transcribe`**: Transcribe audio from your microphone to text in your clipboard using a local Whisper model or OpenAI's Whisper API.
+- **`transcribe`**: Transcribe audio from your microphone to text in your clipboard using a local Whisper model (Wyoming/whisper.cpp) or OpenAI's Whisper API.
 - **`speak`**: Convert text to speech using a local TTS engine or OpenAI's TTS API.
 - **`voice-edit`**: A voice-powered clipboard assistant that edits text based on your spoken commands.
 - **`assistant`**: A hands-free voice assistant that starts and stops recording based on a wake word.
@@ -258,6 +258,7 @@ Our installation scripts automatically handle all dependencies:
 |---------|---------|-----------------|
 | **[Ollama](https://ollama.ai/)** | Local LLM for text processing | ✅ Yes, with default model |
 | **[Wyoming Faster Whisper](https://github.com/rhasspy/wyoming-faster-whisper)** | Speech-to-text | ✅ Yes, via `uvx` |
+| **[whisper.cpp](https://github.com/ggerganov/whisper.cpp)** | Speech-to-text (alternative) | ✅ Yes, on macOS |
 | **[Wyoming Piper](https://github.com/rhasspy/wyoming-piper)** | Text-to-speech | ✅ Yes, via `uvx` |
 | **[Kokoro-FastAPI](https://github.com/remsky/Kokoro-FastAPI)** | Premium TTS (optional) | ⚙️ Can be added later |
 | **[Wyoming openWakeWord](https://github.com/rhasspy/wyoming-openwakeword)** | Wake word detection | ✅ Yes, for `assistant` |
@@ -433,7 +434,7 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Provider Selection ─────────────────────────────────────────────────────────╮
 │ --asr-provider        TEXT  The ASR provider to use ('local' for Wyoming,    │
-│                             'openai').                                       │
+│                             'openai', 'whispercpp').                        │
 │                             [default: local]                                 │
 │ --llm-provider        TEXT  The LLM provider to use ('local' for Ollama,     │
 │                             'openai', 'gemini').                             │
@@ -689,7 +690,7 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Provider Selection ─────────────────────────────────────────────────────────╮
 │ --asr-provider        TEXT  The ASR provider to use ('local' for Wyoming,    │
-│                             'openai').                                       │
+│                             'openai', 'whispercpp').                        │
 │                             [default: local]                                 │
 │ --llm-provider        TEXT  The LLM provider to use ('local' for Ollama,     │
 │                             'openai', 'gemini').                             │
@@ -860,7 +861,7 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Provider Selection ─────────────────────────────────────────────────────────╮
 │ --asr-provider        TEXT  The ASR provider to use ('local' for Wyoming,    │
-│                             'openai').                                       │
+│                             'openai', 'whispercpp').                        │
 │                             [default: local]                                 │
 │ --llm-provider        TEXT  The LLM provider to use ('local' for Ollama,     │
 │                             'openai', 'gemini').                             │
@@ -1047,7 +1048,7 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Provider Selection ─────────────────────────────────────────────────────────╮
 │ --asr-provider        TEXT  The ASR provider to use ('local' for Wyoming,    │
-│                             'openai').                                       │
+│                             'openai', 'whispercpp').                        │
 │                             [default: local]                                 │
 │ --llm-provider        TEXT  The LLM provider to use ('local' for Ollama,     │
 │                             'openai', 'gemini').                             │
