@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import re
 import tempfile
 import time
 from pathlib import Path
@@ -96,9 +97,12 @@ def test_server_command_in_cli() -> None:
 
     assert result.exit_code == 0
     assert "Run the FastAPI transcription web server" in result.stdout
-    assert "--host" in result.stdout
-    assert "--port" in result.stdout
-    assert "--reload" in result.stdout
+
+    # Strip ANSI color codes for more reliable testing
+    clean_output = re.sub(r"\x1b\[[0-9;]*m", "", result.stdout)
+    assert "--host" in clean_output
+    assert "--port" in clean_output
+    assert "--reload" in clean_output
 
 
 @patch("uvicorn.run")
