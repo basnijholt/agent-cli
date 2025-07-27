@@ -29,7 +29,7 @@ Native macOS setup with full Metal GPU acceleration for optimal performance.
 3. **Install agent-cli:**
 
    ```bash
-   uv tools install agent-cli
+   uv tool install agent-cli
    # or: pip install agent-cli
    ```
 
@@ -101,6 +101,10 @@ scripts/run-openwakeword.sh
 - **Automatic model management** - Services handle downloads
 
 ## Troubleshooting
+
+### Terminal-notifier Popup Issues
+
+Check if Settings > Notifications > terminal-notifier > Allow notifications is switched on.
 
 ### Ollama Issues
 
