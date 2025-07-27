@@ -82,11 +82,15 @@ if zellij list-sessions 2>/dev/null | grep "agent-cli" | grep -q "EXITED"; then
     show_usage
     # Start zellij with layout file - session name is specified in the layout
     zellij --layout "$SCRIPTS_DIR/.runtime/agent-cli-layout.kdl"
-# Case 2: Session exists and is running - attach to it
+# Case 2: Session exists and is running - attach to it if requested
 elif zellij list-sessions 2>/dev/null | grep -q "agent-cli"; then
-    echo "🔗 Session 'agent-cli' already exists and is running. Attaching..."
-    show_usage
-    zellij attach agent-cli
+    if [ "$AGENT_CLI_NO_ATTACH" = "true" ]; then
+        echo "✅ Session 'agent-cli' is already running. Not attaching as requested."
+    else
+        echo "🔗 Session 'agent-cli' already exists and is running. Attaching..."
+        show_usage
+        zellij attach agent-cli
+    fi
 # Case 3: No session exists - create a new one
 else
     echo "🚀 Starting all services in Zellij..."

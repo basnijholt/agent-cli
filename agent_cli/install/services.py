@@ -82,9 +82,9 @@ def start_services(
     print_with_style("🚀 Starting all services in Zellij...", "green")
 
     if not attach:
-        # Start in detached mode
+        # Start in detached mode by setting a custom environment variable
         env = os.environ.copy()
-        env["ZELLIJ_AUTO_ATTACH"] = "false"
+        env["AGENT_CLI_NO_ATTACH"] = "true"
         subprocess.run([str(script_path)], check=False, env=env)
         print_with_style("✅ Services started in background.", "green")
         print_with_style("Run 'zellij attach agent-cli' to view the session.", "yellow")
