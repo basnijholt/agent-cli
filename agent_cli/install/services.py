@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import os
 import subprocess
-import sys
 
 import typer
 
@@ -79,13 +78,7 @@ def start_services(
             print_with_style("Run 'zellij attach agent-cli' to view the session.", "yellow")
 
     except KeyboardInterrupt:
-        # In attached mode, a KeyboardInterrupt is a normal detach event.
-        if attach:
-            # Use standard print as the terminal state might be unpredictable
-            print("\n👋 Detached from Zellij session.")
-            print("Services are still running. Use 'zellij attach agent-cli' to reattach.")
-            sys.stdout.flush()
-        # In detached mode, it's a regular interrupt, so we don't print a special message.
+        pass
     except subprocess.CalledProcessError as e:
         print_error_message(f"Failed to start services. Exit code: {e.returncode}")
         raise typer.Exit(e.returncode) from None
