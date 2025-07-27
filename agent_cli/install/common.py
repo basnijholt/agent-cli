@@ -49,8 +49,8 @@ def get_script_path(script_name: str) -> Path:
     return script_path
 
 
-def _run_script(script_path: Path, check: bool = True) -> CompletedProcess[str]:
-    """Run a shell script."""
+def _run_script(script_path: Path) -> CompletedProcess[bytes]:
+    """Run a shell script, streaming its output directly to the terminal."""
     if not script_path.exists():
         msg = f"Script not found: {script_path}"
         raise FileNotFoundError(msg)
@@ -58,13 +58,11 @@ def _run_script(script_path: Path, check: bool = True) -> CompletedProcess[str]:
     # Make sure the script is executable
     script_path.chmod(0o755)
 
-    # Run the script
+    # Run the script, inheriting stdout/stderr
     return subprocess.run(
         [str(script_path)],
-        check=check,
-        text=True,
-        capture_output=True,
-        cwd=script_path.parent,  # Run from script directory for relative paths
+        check=False,  # We'll check the return code manually
+        cwd=script_path.parent,
     )
 
 
@@ -97,15 +95,7 @@ def execute_installation_script(
     print_with_style(f"🚀 Running {script_name} to {operation_name.lower()}...", "green")
 
     try:
-        # Run the setup script
-        result = _run_script(script_path, check=False)
-
-        # Print the output
-        if result.stdout:
-            console.print(result.stdout)
-
-        if result.stderr:
-            console.print(result.stderr, style="red")
+        result = _run_script(script_path)
 
         if result.returncode != 0:
             print_error_message(f"{operation_name} failed with exit code {result.returncode}")
@@ -118,8 +108,6 @@ def execute_installation_script(
             for i, step in enumerate(next_steps, 1):
                 print_with_style(f"  {i}. {step}", "cyan")
 
-    except subprocess.CalledProcessError as e:
+    except (subprocess.CalledProcessError, FileNotFoundError) as e:
         print_error_message(f"{operation_name} failed: {e}")
-        if e.stderr:
-            console.print(e.stderr, style="red")
         raise typer.Exit(1) from None
