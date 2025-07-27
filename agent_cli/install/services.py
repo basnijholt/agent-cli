@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import subprocess
+import sys
 
 import typer
 
@@ -67,27 +68,24 @@ def start_services(
         console.print(str(e))
         raise typer.Exit(1) from None
 
-    print_with_style("🚀 Starting all services in Zellij...", "green")
+    env = os.environ.copy()
+    if not attach:
+        env["AGENT_CLI_NO_ATTACH"] = "true"
 
     try:
+        subprocess.run([str(script_path)], check=True, env=env)
         if not attach:
-            # Start in detached mode by setting a custom environment variable
-            env = os.environ.copy()
-            env["AGENT_CLI_NO_ATTACH"] = "true"
-            subprocess.run([str(script_path)], check=True, env=env)
             print_with_style("✅ Services started in background.", "green")
             print_with_style("Run 'zellij attach agent-cli' to view the session.", "yellow")
-        else:
-            # Run the script directly (it will attach)
-            try:
-                subprocess.run([str(script_path)], check=True)
-            except KeyboardInterrupt:
-                # This is normal when detaching from Zellij
-                print_with_style("\n👋 Detached from Zellij session.", "yellow")
-                print_with_style(
-                    "Services are still running. Use 'zellij attach agent-cli' to reattach.",
-                    "cyan",
-                )
+
+    except KeyboardInterrupt:
+        # In attached mode, a KeyboardInterrupt is a normal detach event.
+        if attach:
+            # Use standard print as the terminal state might be unpredictable
+            print("\n👋 Detached from Zellij session.")
+            print("Services are still running. Use 'zellij attach agent-cli' to reattach.")
+            sys.stdout.flush()
+        # In detached mode, it's a regular interrupt, so we don't print a special message.
     except subprocess.CalledProcessError as e:
         print_error_message(f"Failed to start services. Exit code: {e.returncode}")
         raise typer.Exit(e.returncode) from None
