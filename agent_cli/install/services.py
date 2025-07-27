@@ -76,9 +76,12 @@ def start_services(
         if not attach:
             print_with_style("✅ Services started in background.", "green")
             print_with_style("Run 'zellij attach agent-cli' to view the session.", "yellow")
-
-    except KeyboardInterrupt:
-        pass
+        else:
+            # If we get here with attach=True, user likely detached
+            print_with_style("\n👋 Detached from Zellij session.")
+            print_with_style(
+                "Services are still running. Use 'zellij attach agent-cli' to reattach.",
+            )
     except subprocess.CalledProcessError as e:
         print_error_message(f"Failed to start services. Exit code: {e.returncode}")
         raise typer.Exit(e.returncode) from None
