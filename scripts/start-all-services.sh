@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Check if zellij is installed
 if ! command -v zellij &> /dev/null; then
@@ -73,24 +73,38 @@ show_usage() {
     echo "🔗 Use 'zellij attach agent-cli' to reattach"
 }
 
+# Function to start a new Zellij session
+start_new_session() {
+    if [ "$AGENT_CLI_NO_ATTACH" = "true" ]; then
+        # Start detached
+        zellij --session agent-cli --layout "$SCRIPTS_DIR/.runtime/agent-cli-layout.kdl" &
+        sleep 1  # Give it a moment to start
+        echo "✅ Session 'agent-cli' started in background. Use 'zellij attach agent-cli' to view."
+    else
+        show_usage
+        # Start zellij with layout file - session name is specified in the layout
+        zellij --layout "$SCRIPTS_DIR/.runtime/agent-cli-layout.kdl"
+    fi
+}
+
 # Check if agent-cli session already exists and is running
 # Case 1: Session exists but has exited - clean it up and start fresh
 if zellij list-sessions 2>/dev/null | grep "agent-cli" | grep -q "EXITED"; then
     echo "🧹 Found exited session 'agent-cli'. Cleaning up..."
     zellij delete-session agent-cli
     echo "🆕 Starting fresh services in Zellij..."
-    show_usage
-    # Start zellij with layout file - session name is specified in the layout
-    zellij --layout "$SCRIPTS_DIR/.runtime/agent-cli-layout.kdl"
-# Case 2: Session exists and is running - attach to it
+    start_new_session
+# Case 2: Session exists and is running - attach to it if requested
 elif zellij list-sessions 2>/dev/null | grep -q "agent-cli"; then
-    echo "🔗 Session 'agent-cli' already exists and is running. Attaching..."
-    show_usage
-    zellij attach agent-cli
+    if [ "$AGENT_CLI_NO_ATTACH" = "true" ]; then
+        echo "✅ Session 'agent-cli' is already running. Not attaching as requested."
+    else
+        echo "🔗 Session 'agent-cli' already exists and is running. Attaching..."
+        show_usage
+        zellij attach agent-cli
+    fi
 # Case 3: No session exists - create a new one
 else
     echo "🚀 Starting all services in Zellij..."
-    show_usage
-    # Start zellij with layout file - session name is specified in the layout
-    zellij --layout "$SCRIPTS_DIR/.runtime/agent-cli-layout.kdl"
+    start_new_session
 fi

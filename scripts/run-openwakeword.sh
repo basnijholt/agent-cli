@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 echo "👂 Starting Wyoming OpenWakeWord on port 10400..."
 
 # Use the LiteRT fork until the PR is merged
