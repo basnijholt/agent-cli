@@ -4,17 +4,13 @@ from __future__ import annotations
 
 import platform
 
-import typer  # noqa: TC002
-
 from agent_cli.cli import app
 from agent_cli.core.utils import print_with_style
 from agent_cli.install.common import execute_installation_script, get_platform_script
 
 
-@app.command("install-hotkeys")
-def install_hotkeys(
-    ctx: typer.Context,  # noqa: ARG001
-) -> None:
+@app.command("install-hotkeys", rich_help_panel="Installation")
+def install_hotkeys() -> None:
     """Install system-wide hotkeys for agent-cli commands.
 
     Sets up the following hotkeys:

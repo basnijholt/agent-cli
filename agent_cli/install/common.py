@@ -58,10 +58,11 @@ def _run_script(script_path: Path) -> CompletedProcess[bytes]:
     # Make sure the script is executable
     script_path.chmod(0o755)
 
-    # Run the script, inheriting stdout/stderr
+    # Run the script, inheriting stdout/stderr.
+    # `check=True` will raise CalledProcessError on non-zero exit codes.
     return subprocess.run(
         [str(script_path)],
-        check=False,  # We'll check the return code manually
+        check=True,
         cwd=script_path.parent,
     )
 
@@ -95,11 +96,7 @@ def execute_installation_script(
     print_with_style(f"🚀 Running {script_name} to {operation_name.lower()}...", "green")
 
     try:
-        result = _run_script(script_path)
-
-        if result.returncode != 0:
-            print_error_message(f"{operation_name} failed with exit code {result.returncode}")
-            raise typer.Exit(result.returncode)
+        _run_script(script_path)
 
         print_with_style(f"✅ {success_message}", "green")
 
@@ -109,5 +106,10 @@ def execute_installation_script(
                 print_with_style(f"  {i}. {step}", "cyan")
 
     except FileNotFoundError as e:
+        # This case is for when the script file itself is not found
         print_error_message(f"{operation_name} failed: {e}")
         raise typer.Exit(1) from None
+    except subprocess.CalledProcessError as e:
+        # This case handles non-zero exit codes from the script
+        print_error_message(f"{operation_name} failed with exit code {e.returncode}")
+        raise typer.Exit(e.returncode) from None

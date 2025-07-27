@@ -18,7 +18,7 @@ from agent_cli.install.common import (
 )
 
 
-@app.command("install-services")
+@app.command("install-services", rich_help_panel="Installation")
 def install_services() -> None:
     """Install all required services (Ollama, Whisper, Piper, OpenWakeWord).
 
@@ -43,7 +43,7 @@ def install_services() -> None:
     )
 
 
-@app.command("start-services")
+@app.command("start-services", rich_help_panel="Service Management")
 def start_services(
     attach: bool = typer.Option(
         True,  # noqa: FBT003
