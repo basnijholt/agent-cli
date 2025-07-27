@@ -3,8 +3,6 @@
 from __future__ import annotations
 
 import os
-import platform
-import shutil
 import subprocess
 
 import typer
@@ -67,16 +65,6 @@ def start_services(
     except FileNotFoundError as e:
         print_error_message("Service scripts not found")
         console.print(str(e))
-        raise typer.Exit(1) from None
-
-    # Check if zellij is installed
-    if not shutil.which("zellij"):
-        print_error_message("Zellij is not installed.")
-        print_with_style("\nInstall Zellij first:", "yellow")
-        if platform.system().lower() == "darwin":
-            print_with_style("  brew install zellij", "cyan")
-        else:
-            print_with_style("  uvx dotbins get zellij-org/zellij", "cyan")
         raise typer.Exit(1) from None
 
     print_with_style("🚀 Starting all services in Zellij...", "green")
