@@ -41,13 +41,10 @@ def _run_script(script_path: Path) -> CompletedProcess[bytes]:
         msg = f"Script not found: {script_path}"
         raise FileNotFoundError(msg)
 
-    # Make sure the script is executable
-    script_path.chmod(0o755)
-
-    # Run the script, inheriting stdout/stderr.
-    # `check=True` will raise CalledProcessError on non-zero exit codes.
+    # Run the script through the shell, which handles execution permissions
+    # This avoids modifying file permissions in the package directory
     return subprocess.run(
-        [str(script_path)],
+        ["bash", str(script_path)],  # noqa: S607
         check=True,
         cwd=script_path.parent,
     )
