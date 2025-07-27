@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 echo "🎤 Starting Wyoming Whisper on port 10300..."
 
 # Detect if CUDA is available

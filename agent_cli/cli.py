@@ -56,3 +56,4 @@ from .agents import (  # noqa: E402, F401
     transcribe,
     voice_edit,
 )
+from .install import hotkeys, services  # noqa: E402, F401
