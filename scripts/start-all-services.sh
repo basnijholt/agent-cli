@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Check if zellij is installed
 if ! command -v zellij &> /dev/null; then

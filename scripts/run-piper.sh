@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 echo "🔊 Starting Wyoming Piper on port 10200..."
 
 # Create .runtime directory and wrapper script for piper using uvx
@@ -7,7 +7,7 @@ mkdir -p "$SCRIPT_DIR/.runtime"
 
 if [ ! -f "$SCRIPT_DIR/.runtime/piper-uv-wrapper.sh" ]; then
     cat > "$SCRIPT_DIR/.runtime/piper-uv-wrapper.sh" << 'WRAPPER'
-#!/bin/bash
+#!/usr/bin/env bash
 exec uvx --from piper-tts piper "$@"
 WRAPPER
     chmod +x "$SCRIPT_DIR/.runtime/piper-uv-wrapper.sh"
