@@ -108,6 +108,6 @@ def execute_installation_script(
             for i, step in enumerate(next_steps, 1):
                 print_with_style(f"  {i}. {step}", "cyan")
 
-    except (subprocess.CalledProcessError, FileNotFoundError) as e:
+    except FileNotFoundError as e:
         print_error_message(f"{operation_name} failed: {e}")
         raise typer.Exit(1) from None
