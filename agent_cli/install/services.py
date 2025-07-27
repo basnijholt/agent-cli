@@ -69,29 +69,25 @@ def start_services(
 
     print_with_style("🚀 Starting all services in Zellij...", "green")
 
-    if not attach:
-        # Start in detached mode by setting a custom environment variable
-        env = os.environ.copy()
-        env["AGENT_CLI_NO_ATTACH"] = "true"
-        result = subprocess.run([str(script_path)], check=False, env=env)
-        if result.returncode != 0:
-            print_error_message(
-                f"Failed to start services in detached mode. Exit code: {result.returncode}",
-            )
-            raise typer.Exit(result.returncode)
-        print_with_style("✅ Services started in background.", "green")
-        print_with_style("Run 'zellij attach agent-cli' to view the session.", "yellow")
-    else:
-        # Run the script directly (it will attach)
-        try:
-            subprocess.run([str(script_path)], check=True)
-        except subprocess.CalledProcessError as e:
-            print_error_message(f"Failed to start services: {e}")
-            raise typer.Exit(1) from None
-        except KeyboardInterrupt:
-            # This is normal when detaching from Zellij
-            print_with_style("\n👋 Detached from Zellij session.", "yellow")
-            print_with_style(
-                "Services are still running. Use 'zellij attach agent-cli' to reattach.",
-                "cyan",
-            )
+    try:
+        if not attach:
+            # Start in detached mode by setting a custom environment variable
+            env = os.environ.copy()
+            env["AGENT_CLI_NO_ATTACH"] = "true"
+            subprocess.run([str(script_path)], check=True, env=env)
+            print_with_style("✅ Services started in background.", "green")
+            print_with_style("Run 'zellij attach agent-cli' to view the session.", "yellow")
+        else:
+            # Run the script directly (it will attach)
+            try:
+                subprocess.run([str(script_path)], check=True)
+            except KeyboardInterrupt:
+                # This is normal when detaching from Zellij
+                print_with_style("\n👋 Detached from Zellij session.", "yellow")
+                print_with_style(
+                    "Services are still running. Use 'zellij attach agent-cli' to reattach.",
+                    "cyan",
+                )
+    except subprocess.CalledProcessError as e:
+        print_error_message(f"Failed to start services. Exit code: {e.returncode}")
+        raise typer.Exit(e.returncode) from None
