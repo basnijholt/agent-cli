@@ -85,7 +85,12 @@ def start_services(
         # Start in detached mode by setting a custom environment variable
         env = os.environ.copy()
         env["AGENT_CLI_NO_ATTACH"] = "true"
-        subprocess.run([str(script_path)], check=False, env=env)
+        result = subprocess.run([str(script_path)], check=False, env=env)
+        if result.returncode != 0:
+            print_error_message(
+                f"Failed to start services in detached mode. Exit code: {result.returncode}",
+            )
+            raise typer.Exit(result.returncode)
         print_with_style("✅ Services started in background.", "green")
         print_with_style("Run 'zellij attach agent-cli' to view the session.", "yellow")
     else:
