@@ -31,25 +31,18 @@ def install_hotkeys() -> None:
     script_name = get_platform_script("setup-macos-hotkeys.sh", "setup-linux-hotkeys.sh")
     system = platform.system().lower()
 
-    # Define post-installation steps for macOS
-    post_install_callback = None
-    if system == "darwin":
-
-        def post_install_callback() -> None:
-            print_with_style("\n⚠️  Important:", "yellow")
-            print_with_style("If hotkeys don't work, grant Accessibility permissions:", "yellow")
-            print_with_style(
-                "  1. Open System Settings → Privacy & Security → Accessibility",
-                "cyan",
-            )
-            print_with_style("  2. Add and enable 'skhd'", "cyan")
-
     execute_installation_script(
         script_name=script_name,
         operation_name="Set up hotkeys",
         success_message="Hotkeys installed successfully!",
     )
 
-    # Call post-install callback if defined
-    if post_install_callback is not None:
-        post_install_callback()
+    # Post-installation steps for macOS
+    if system == "darwin":
+        print_with_style("\n⚠️  Important:", "yellow")
+        print_with_style("If hotkeys don't work, grant Accessibility permissions:", "yellow")
+        print_with_style(
+            "  1. Open System Settings → Privacy & Security → Accessibility",
+            "cyan",
+        )
+        print_with_style("  2. Add and enable 'skhd'", "cyan")
