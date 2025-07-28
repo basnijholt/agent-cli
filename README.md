@@ -33,7 +33,7 @@ I use it mostly for the `transcribe` function when working with LLMs. Being able
 
 - **`autocorrect`**: Correct grammar and spelling in your text (e.g., from clipboard) using a local LLM with Ollama or OpenAI.
 - **`transcribe`**: Transcribe audio from your microphone to text in your clipboard using a local Whisper model or OpenAI's Whisper API.
-- **`speak`**: Convert text to speech using a local TTS engine or OpenAI's TTS API.
+- **`speak`**: Convert text to speech using Piper HTTP server, Wyoming TTS, OpenAI, or Kokoro TTS.
 - **`voice-edit`**: A voice-powered clipboard assistant that edits text based on your spoken commands.
 - **`assistant`**: A hands-free voice assistant that starts and stops recording based on a wake word.
 - **`chat`**: A conversational AI agent with tool-calling capabilities.
@@ -258,7 +258,13 @@ Our installation scripts automatically handle all dependencies:
 |---------|---------|-----------------|
 | **[Ollama](https://ollama.ai/)** | Local LLM for text processing | ✅ Yes, with default model |
 | **[Wyoming Faster Whisper](https://github.com/rhasspy/wyoming-faster-whisper)** | Speech-to-text | ✅ Yes, via `uvx` |
-| **[Wyoming Piper](https://github.com/rhasspy/wyoming-piper)** | Text-to-speech | ✅ Yes, via `uvx` |
+| **[Piper TTS](https://github.com/rhasspy/piper)** | Text-to-speech (HTTP server) | ✅ Yes, via `uvx` |
+| **[Wyoming Piper](https://github.com/rhasspy/wyoming-piper)** | Text-to-speech (Wyoming protocol) | ⚙️ Alternative to HTTP server |
+
+> [!NOTE]
+> **TTS Provider Update**: The default Piper TTS now uses HTTP server mode for better performance.
+> Scripts have been renamed: `run-piper.sh` → `run-piper-wyoming.sh`, `run-piper2.sh` → `run-piper-server.sh`.
+> Use `--tts-provider piper` for the new HTTP server, or `--tts-provider local` for Wyoming protocol.
 | **[Kokoro-FastAPI](https://github.com/remsky/Kokoro-FastAPI)** | Premium TTS (optional) | ⚙️ Can be added later |
 | **[Wyoming openWakeWord](https://github.com/rhasspy/wyoming-openwakeword)** | Wake word detection | ✅ Yes, for `assistant` |
 
@@ -531,14 +537,28 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 **Workflow:** A straightforward text-to-speech utility.
 
 1.  It takes text from a command-line argument or your clipboard.
-2.  It sends the text to a Wyoming TTS server (like Piper).
+2.  It sends the text to a TTS server (Piper HTTP server, Wyoming TTS, OpenAI, or Kokoro).
 3.  The generated audio is played through your default speakers.
+
+**TTS Provider Options:**
+
+- **Piper HTTP Server** (default local): Fast, high-quality TTS via HTTP
+  - Start server: `./scripts/run-piper-server.sh`
+  - Use: `agent-cli speak --tts-provider piper "Hello, world!"`
+- **Wyoming Piper**: Alternative Wyoming protocol interface
+  - Start server: `./scripts/run-piper-wyoming.sh`
+  - Use: `agent-cli speak --tts-provider local "Hello, world!"`
+- **OpenAI**: Cloud-based TTS (requires API key)
+  - Use: `agent-cli speak --tts-provider openai "Hello, world!"`
+- **Kokoro**: High-quality local TTS (optional setup)
+  - Use: `agent-cli speak --tts-provider kokoro "Hello, world!"`
 
 **How to Use It:**
 
 - **Speak from Argument**: `agent-cli speak "Hello, world!"`
 - **Speak from Clipboard**: `agent-cli speak`
 - **Save to File**: `agent-cli speak "Hello" --save-file hello.wav`
+- **With Piper HTTP**: `agent-cli speak --tts-provider piper "Hello"`
 
 <details>
 <summary>See the output of <code>agent-cli speak --help</code></summary>
@@ -558,7 +578,7 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 
  Usage: agent-cli speak [OPTIONS] [TEXT]
 
- Convert text to speech using Wyoming or OpenAI TTS server.
+ Convert text to speech using Piper, Wyoming, OpenAI, or Kokoro TTS server.
 
 
 ╭─ General Options ────────────────────────────────────────────────────────────╮

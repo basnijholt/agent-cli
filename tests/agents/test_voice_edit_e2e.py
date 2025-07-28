@@ -28,12 +28,13 @@ def get_configs() -> tuple[
     config.WyomingTTS,
     config.OpenAITTS,
     config.KokoroTTS,
+    config.PiperTTS,
 ]:
     """Get all the necessary configs for the e2e test."""
     provider_cfg = config.ProviderSelection(
         asr_provider="local",
         llm_provider="local",
-        tts_provider="local",
+        tts_provider="piper",
     )
     general_cfg = config.General(
         log_level="INFO",
@@ -63,6 +64,9 @@ def get_configs() -> tuple[
         tts_kokoro_voice="alloy",
         tts_kokoro_host="http://localhost:8000/v1",
     )
+    piper_tts_cfg = config.PiperTTS(
+        tts_piper_host="http://localhost:5000",
+    )
     return (
         provider_cfg,
         general_cfg,
@@ -76,6 +80,7 @@ def get_configs() -> tuple[
         wyoming_tts_cfg,
         openai_tts_cfg,
         kokoro_tts_cfg,
+        piper_tts_cfg,
     )
 
 
@@ -116,6 +121,7 @@ async def test_voice_edit_e2e(
         wyoming_tts_cfg,
         openai_tts_cfg,
         kokoro_tts_cfg,
+        piper_tts_cfg,
     ) = get_configs()
 
     # This test focuses on the main loop, so we stop it after one run
@@ -137,6 +143,7 @@ async def test_voice_edit_e2e(
             wyoming_tts_cfg=wyoming_tts_cfg,
             openai_tts_cfg=openai_tts_cfg,
             kokoro_tts_cfg=kokoro_tts_cfg,
+            piper_tts_cfg=piper_tts_cfg,
         )
 
     # Assertions
@@ -164,6 +171,7 @@ async def test_voice_edit_e2e(
         wyoming_tts_cfg=wyoming_tts_cfg,
         openai_tts_cfg=openai_tts_cfg,
         kokoro_tts_cfg=kokoro_tts_cfg,
+        piper_tts_cfg=piper_tts_cfg,
         system_prompt=SYSTEM_PROMPT,
         agent_instructions=AGENT_INSTRUCTIONS,
         live=ANY,

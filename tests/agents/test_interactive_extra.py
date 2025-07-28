@@ -24,7 +24,7 @@ async def test_handle_conversation_turn_no_llm_response():
     provider_cfg = config.ProviderSelection(
         asr_provider="local",
         llm_provider="local",
-        tts_provider="local",
+        tts_provider="piper",
     )
     history_cfg = config.History()
     audio_in_cfg = config.AudioInput()
@@ -43,6 +43,9 @@ async def test_handle_conversation_turn_no_llm_response():
         tts_kokoro_model="tts-1",
         tts_kokoro_voice="alloy",
         tts_kokoro_host="http://localhost:8000/v1",
+    )
+    piper_tts_cfg = config.PiperTTS(
+        tts_piper_host="http://localhost:5000",
     )
     mock_live = MagicMock()
 
@@ -73,6 +76,7 @@ async def test_handle_conversation_turn_no_llm_response():
             wyoming_tts_cfg=wyoming_tts_cfg,
             openai_tts_cfg=openai_tts_cfg,
             kokoro_tts_cfg=kokoro_tts_cfg,
+            piper_tts_cfg=piper_tts_cfg,
             live=mock_live,
         )
         mock_create_transcriber.assert_called_once()
@@ -92,7 +96,7 @@ async def test_handle_conversation_turn_no_instruction():
     provider_cfg = config.ProviderSelection(
         asr_provider="local",
         llm_provider="local",
-        tts_provider="local",
+        tts_provider="piper",
     )
     history_cfg = config.History()
     audio_in_cfg = config.AudioInput()
@@ -111,6 +115,9 @@ async def test_handle_conversation_turn_no_instruction():
         tts_kokoro_model="tts-1",
         tts_kokoro_voice="alloy",
         tts_kokoro_host="http://localhost:8000/v1",
+    )
+    piper_tts_cfg = config.PiperTTS(
+        tts_piper_host="http://localhost:5000",
     )
     mock_live = MagicMock()
 
@@ -134,6 +141,7 @@ async def test_handle_conversation_turn_no_instruction():
             wyoming_tts_cfg=wyoming_tts_cfg,
             openai_tts_cfg=openai_tts_cfg,
             kokoro_tts_cfg=kokoro_tts_cfg,
+            piper_tts_cfg=piper_tts_cfg,
             live=mock_live,
         )
         mock_create_transcriber.assert_called_once()
@@ -192,7 +200,7 @@ async def test_async_main_exception_handling():
     provider_cfg = config.ProviderSelection(
         asr_provider="local",
         llm_provider="local",
-        tts_provider="local",
+        tts_provider="piper",
     )
     history_cfg = config.History()
     audio_in_cfg = config.AudioInput()
@@ -211,6 +219,9 @@ async def test_async_main_exception_handling():
         tts_kokoro_model="tts-1",
         tts_kokoro_voice="alloy",
         tts_kokoro_host="http://localhost:8000/v1",
+    )
+    piper_tts_cfg = config.PiperTTS(
+        tts_piper_host="http://localhost:5000",
     )
 
     with (
@@ -232,5 +243,6 @@ async def test_async_main_exception_handling():
                 wyoming_tts_cfg=wyoming_tts_cfg,
                 openai_tts_cfg=openai_tts_cfg,
                 kokoro_tts_cfg=kokoro_tts_cfg,
+                piper_tts_cfg=piper_tts_cfg,
             )
         mock_console.print_exception.assert_called_once()

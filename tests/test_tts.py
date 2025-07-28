@@ -21,7 +21,7 @@ async def test_speak_text(mock_create_synthesizer: MagicMock) -> None:
     provider_cfg = config.ProviderSelection(
         asr_provider="local",
         llm_provider="local",
-        tts_provider="local",
+        tts_provider="piper",
     )
     audio_output_cfg = config.AudioOutput(enable_tts=True)
     wyoming_tts_cfg = config.WyomingTTS(
@@ -34,6 +34,9 @@ async def test_speak_text(mock_create_synthesizer: MagicMock) -> None:
         tts_kokoro_voice="alloy",
         tts_kokoro_host="http://localhost:8000/v1",
     )
+    piper_tts_cfg = config.PiperTTS(
+        tts_piper_host="http://localhost:5000",
+    )
 
     audio_data = await _speak_text(
         text="hello",
@@ -42,6 +45,7 @@ async def test_speak_text(mock_create_synthesizer: MagicMock) -> None:
         wyoming_tts_cfg=wyoming_tts_cfg,
         openai_tts_cfg=openai_tts_cfg,
         kokoro_tts_cfg=kokoro_tts_cfg,
+        piper_tts_cfg=piper_tts_cfg,
         logger=MagicMock(),
         play_audio_flag=False,
         live=MagicMock(),
@@ -123,7 +127,7 @@ def test_create_synthesizer_disabled():
     provider_cfg = config.ProviderSelection(
         asr_provider="local",
         llm_provider="local",
-        tts_provider="local",
+        tts_provider="piper",
     )
     audio_output_cfg = config.AudioOutput(enable_tts=False)
     wyoming_tts_cfg = config.WyomingTTS(
@@ -136,6 +140,9 @@ def test_create_synthesizer_disabled():
         tts_kokoro_voice="alloy",
         tts_kokoro_host="http://localhost:8000/v1",
     )
+    piper_tts_cfg = config.PiperTTS(
+        tts_piper_host="http://localhost:5000",
+    )
 
     synthesizer = create_synthesizer(
         provider_cfg=provider_cfg,
@@ -143,6 +150,7 @@ def test_create_synthesizer_disabled():
         wyoming_tts_cfg=wyoming_tts_cfg,
         openai_tts_cfg=openai_tts_cfg,
         kokoro_tts_cfg=kokoro_tts_cfg,
+        piper_tts_cfg=piper_tts_cfg,
     )
 
     assert synthesizer.__name__ == "_dummy_synthesizer"

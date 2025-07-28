@@ -17,6 +17,7 @@ dependencies = [
     "openai",
     "dotenv",
     "google-genai>=1.25.0",
+    "aiohttp",
 ]
 requires-python = ">=3.11"
 
