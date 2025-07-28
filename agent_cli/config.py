@@ -23,7 +23,7 @@ class ProviderSelection(BaseModel):
 
     llm_provider: Literal["local", "openai", "gemini"]
     asr_provider: Literal["local", "openai"]
-    tts_provider: Literal["local", "openai", "kokoro"]
+    tts_provider: Literal["local", "openai", "kokoro", "piper"]
 
 
 # --- Panel: LLM Configuration ---
@@ -110,6 +110,18 @@ class KokoroTTS(BaseModel):
     tts_kokoro_model: str
     tts_kokoro_voice: str
     tts_kokoro_host: str
+
+
+class PiperTTS(BaseModel):
+    """Configuration for the Piper HTTP TTS provider."""
+
+    tts_piper_host: str
+    tts_piper_voice: str | None = None
+    tts_piper_speaker: str | None = None
+    tts_piper_speaker_id: int | None = None
+    tts_piper_length_scale: float = 1.0
+    tts_piper_noise_scale: float | None = None
+    tts_piper_noise_w_scale: float | None = None
 
 
 # --- Panel: Wake Word Options ---

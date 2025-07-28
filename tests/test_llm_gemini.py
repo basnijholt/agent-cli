@@ -14,7 +14,7 @@ async def test_create_llm_agent_with_gemini() -> None:
     provider_cfg = config.ProviderSelection(
         llm_provider="gemini",
         asr_provider="local",
-        tts_provider="local",
+        tts_provider="piper",
     )
     gemini_cfg = config.GeminiLLM(
         llm_gemini_model="gemini-1.5-flash",

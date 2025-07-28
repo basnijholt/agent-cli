@@ -19,7 +19,7 @@ async def test_async_main_with_text():
     """Test the _async_main function with text provided."""
     general_cfg = config.General(log_level="INFO", quiet=True)
     provider_cfg = config.ProviderSelection(
-        tts_provider="local",
+        tts_provider="piper",
         llm_provider="local",
         asr_provider="local",
     )
@@ -30,6 +30,9 @@ async def test_async_main_with_text():
         tts_kokoro_model="tts-1",
         tts_kokoro_voice="alloy",
         tts_kokoro_host="http://localhost:8000/v1",
+    )
+    piper_tts_cfg = config.PiperTTS(
+        tts_piper_host="http://localhost:5000",
     )
 
     with (
@@ -51,6 +54,7 @@ async def test_async_main_with_text():
             wyoming_tts_cfg=wyoming_tts_cfg,
             openai_tts_cfg=openai_tts_cfg,
             kokoro_tts_cfg=kokoro_tts_cfg,
+            piper_tts_cfg=piper_tts_cfg,
         )
         mock_handle_tts.assert_called_once()
 
@@ -60,7 +64,7 @@ async def test_async_main_no_devices():
     """Test the _async_main function when no devices are found."""
     general_cfg = config.General(log_level="INFO", quiet=True)
     provider_cfg = config.ProviderSelection(
-        tts_provider="local",
+        tts_provider="piper",
         llm_provider="local",
         asr_provider="local",
     )
@@ -71,6 +75,9 @@ async def test_async_main_no_devices():
         tts_kokoro_model="tts-1",
         tts_kokoro_voice="alloy",
         tts_kokoro_host="http://localhost:8000/v1",
+    )
+    piper_tts_cfg = config.PiperTTS(
+        tts_piper_host="http://localhost:5000",
     )
 
     with (
@@ -92,6 +99,7 @@ async def test_async_main_no_devices():
             wyoming_tts_cfg=wyoming_tts_cfg,
             openai_tts_cfg=openai_tts_cfg,
             kokoro_tts_cfg=kokoro_tts_cfg,
+            piper_tts_cfg=piper_tts_cfg,
         )
         mock_setup.assert_called_once()
         mock_handle_tts.assert_not_called()

@@ -70,7 +70,7 @@ def test_create_transcriber_wyoming() -> None:
     provider_cfg = config.ProviderSelection(
         asr_provider="local",
         llm_provider="local",
-        tts_provider="local",
+        tts_provider="piper",
     )
     audio_input_cfg = config.AudioInput()
     wyoming_asr_cfg = config.WyomingASR(asr_wyoming_ip="localhost", asr_wyoming_port=1234)
@@ -103,12 +103,16 @@ def test_create_synthesizer_wyoming() -> None:
         tts_kokoro_voice="alloy",
         tts_kokoro_host="http://localhost:8000/v1",
     )
+    piper_tts_cfg = config.PiperTTS(
+        tts_piper_host="http://localhost:5000",
+    )
     synthesizer = tts.create_synthesizer(
         provider_cfg,
         audio_output_cfg,
         wyoming_tts_cfg,
         openai_tts_cfg,
         kokoro_tts_cfg,
+        piper_tts_cfg,
     )
     assert synthesizer.func == tts._synthesize_speech_wyoming  # type: ignore[attr-defined]
 
@@ -131,12 +135,16 @@ def test_create_synthesizer_kokoro() -> None:
         tts_kokoro_voice="alloy",
         tts_kokoro_host="http://localhost:8000/v1",
     )
+    piper_tts_cfg = config.PiperTTS(
+        tts_piper_host="http://localhost:5000",
+    )
     synthesizer = tts.create_synthesizer(
         provider_cfg,
         audio_output_cfg,
         wyoming_tts_cfg,
         openai_tts_cfg,
         kokoro_tts_cfg,
+        piper_tts_cfg,
     )
     assert synthesizer.func == tts._synthesize_speech_kokoro  # type: ignore[attr-defined]
 

@@ -178,6 +178,7 @@ async def _async_main(
     wyoming_tts_cfg: config.WyomingTTS,
     openai_tts_cfg: config.OpenAITTS,
     kokoro_tts_cfg: config.KokoroTTS,
+    piper_tts_cfg: config.PiperTTS,
     wake_word_cfg: config.WakeWord,
     system_prompt: str,
     agent_instructions: str,
@@ -240,6 +241,7 @@ async def _async_main(
                     wyoming_tts_cfg=wyoming_tts_cfg,
                     openai_tts_cfg=openai_tts_cfg,
                     kokoro_tts_cfg=kokoro_tts_cfg,
+                    piper_tts_cfg=piper_tts_cfg,
                     system_prompt=system_prompt,
                     agent_instructions=agent_instructions,
                     live=live,
@@ -289,6 +291,13 @@ def assistant(
     tts_kokoro_model: str = opts.TTS_KOKORO_MODEL,
     tts_kokoro_voice: str = opts.TTS_KOKORO_VOICE,
     tts_kokoro_host: str = opts.TTS_KOKORO_HOST,
+    tts_piper_host: str = opts.TTS_PIPER_HOST,
+    tts_piper_voice: str | None = opts.TTS_PIPER_VOICE,
+    tts_piper_speaker: str | None = opts.TTS_PIPER_SPEAKER,
+    tts_piper_speaker_id: int | None = opts.TTS_PIPER_SPEAKER_ID,
+    tts_piper_length_scale: float = opts.TTS_PIPER_LENGTH_SCALE,
+    tts_piper_noise_scale: float | None = opts.TTS_PIPER_NOISE_SCALE,
+    tts_piper_noise_w_scale: float | None = opts.TTS_PIPER_NOISE_W_SCALE,
     # --- Process Management ---
     stop: bool = opts.STOP,
     status: bool = opts.STATUS,
@@ -383,6 +392,15 @@ def assistant(
             tts_kokoro_voice=tts_kokoro_voice,
             tts_kokoro_host=tts_kokoro_host,
         )
+        piper_tts_cfg = config.PiperTTS(
+            tts_piper_host=tts_piper_host,
+            tts_piper_voice=tts_piper_voice,
+            tts_piper_speaker=tts_piper_speaker,
+            tts_piper_speaker_id=tts_piper_speaker_id,
+            tts_piper_length_scale=tts_piper_length_scale,
+            tts_piper_noise_scale=tts_piper_noise_scale,
+            tts_piper_noise_w_scale=tts_piper_noise_w_scale,
+        )
         wake_word_cfg = config.WakeWord(
             wake_server_ip=wake_server_ip,
             wake_server_port=wake_server_port,
@@ -413,6 +431,7 @@ def assistant(
                 wyoming_tts_cfg=wyoming_tts_cfg,
                 openai_tts_cfg=openai_tts_cfg,
                 kokoro_tts_cfg=kokoro_tts_cfg,
+                piper_tts_cfg=piper_tts_cfg,
                 wake_word_cfg=wake_word_cfg,
                 system_prompt=system_prompt,
                 agent_instructions=agent_instructions,

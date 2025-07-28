@@ -88,7 +88,7 @@ ollama serve
 scripts/run-whisper.sh
 
 # Terminal 3: Piper (Apple Silicon compatible)
-scripts/run-piper.sh
+scripts/run-piper-server.sh
 
 # Terminal 4: OpenWakeWord (macOS compatible fork)
 scripts/run-openwakeword.sh

@@ -35,7 +35,7 @@ async def test_handle_tts_playback_os_error(mock_speak_text: AsyncMock) -> None:
     mock_live = MagicMock()
 
     provider_cfg = config.ProviderSelection(
-        tts_provider="local",
+        tts_provider="piper",
         asr_provider="local",
         llm_provider="local",
     )
@@ -47,6 +47,15 @@ async def test_handle_tts_playback_os_error(mock_speak_text: AsyncMock) -> None:
         tts_kokoro_voice="alloy",
         tts_kokoro_host="http://localhost:8000/v1",
     )
+    piper_tts_cfg = config.PiperTTS(
+        tts_piper_host="http://localhost:5000",
+        tts_piper_voice=None,
+        tts_piper_speaker=None,
+        tts_piper_speaker_id=None,
+        tts_piper_length_scale=1.0,
+        tts_piper_noise_scale=None,
+        tts_piper_noise_w_scale=None,
+    )
 
     result = await handle_tts_playback(
         text="hello",
@@ -55,6 +64,7 @@ async def test_handle_tts_playback_os_error(mock_speak_text: AsyncMock) -> None:
         wyoming_tts_cfg=wyoming_tts_cfg,
         openai_tts_cfg=openai_tts_cfg,
         kokoro_tts_cfg=kokoro_tts_cfg,
+        piper_tts_cfg=piper_tts_cfg,
         save_file=None,
         quiet=False,
         logger=MagicMock(),

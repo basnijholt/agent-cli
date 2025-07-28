@@ -40,7 +40,7 @@ layout {
                 pane {
                     name "Piper"
                     cwd "$SCRIPTS_DIR"
-                    command "./run-piper.sh"
+                    command "./run-piper-server.sh"
                 }
                 pane {
                     name "OpenWakeWord"

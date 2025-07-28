@@ -293,7 +293,7 @@ def transcribe(
         provider_cfg = config.ProviderSelection(
             asr_provider=asr_provider,
             llm_provider=llm_provider,
-            tts_provider="local",  # Not used
+            tts_provider="piper",  # Not used
         )
         audio_in_cfg = config.AudioInput(
             input_device_index=input_device_index,
