@@ -12,10 +12,12 @@ from agent_cli import constants
 
 logger = logging.getLogger(__name__)
 
+VALID_EXTENSIONS = (".wav", ".mp3", ".m4a", ".flac", ".ogg", ".aac", ".webm")
+
 
 def convert_audio_to_wyoming_format(
     audio_data: bytes,
-    source_filename: str | None = None,
+    source_filename: str,
 ) -> bytes:
     """Convert audio data to Wyoming-compatible format using FFmpeg.
 
@@ -92,7 +94,7 @@ def convert_audio_to_wyoming_format(
             output_path.unlink(missing_ok=True)
 
 
-def _get_file_extension(filename: str | None) -> str:
+def _get_file_extension(filename: str) -> str:
     """Get file extension from filename, defaulting to .tmp.
 
     Args:
@@ -102,15 +104,9 @@ def _get_file_extension(filename: str | None) -> str:
         File extension including the dot
 
     """
-    if not filename:
-        return ".tmp"
-
     filename = str(filename).lower()
 
-    # Common audio extensions
-    extensions = [".m4a", ".mp4", ".mp3", ".wav", ".flac", ".ogg", ".aac", ".wma", ".webm"]
-
-    for ext in extensions:
+    for ext in VALID_EXTENSIONS:
         if filename.endswith(ext):
             return ext
 

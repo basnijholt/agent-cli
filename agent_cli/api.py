@@ -11,6 +11,7 @@ from pydantic import BaseModel
 
 from agent_cli import config, opts
 from agent_cli.agents.transcribe import AGENT_INSTRUCTIONS, INSTRUCTION, SYSTEM_PROMPT
+from agent_cli.core.audio_format import VALID_EXTENSIONS, convert_audio_to_wyoming_format
 from agent_cli.core.transcription_logger import get_default_logger
 from agent_cli.services import asr
 from agent_cli.services.llm import process_and_update_clipboard
@@ -24,8 +25,6 @@ app = FastAPI(
     description="Web service for audio transcription and text cleanup",
     version="1.0.0",
 )
-
-VALID_EXTENSIONS = (".wav", ".mp3", ".m4a", ".flac", ".ogg", ".aac", ".webm")
 
 
 @app.middleware("http")
@@ -216,8 +215,6 @@ def _load_transcription_configs() -> tuple[
 
 def _convert_audio_for_local_asr(audio_data: bytes, filename: str) -> bytes:
     """Convert audio to Wyoming format if needed for local ASR."""
-    from agent_cli.core.audio_format import convert_audio_to_wyoming_format  # noqa: PLC0415
-
     LOGGER.info("Converting %s audio to Wyoming format", filename)
     converted_data = convert_audio_to_wyoming_format(audio_data, filename)
     LOGGER.info("Audio conversion successful")
