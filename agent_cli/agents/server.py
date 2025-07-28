@@ -38,7 +38,7 @@ def server(
 ) -> None:
     """Run the FastAPI transcription web server."""
     if not has_uvicorn or not has_fastapi:
-        msg = "uvicorn or fastapi is not installed, please install it with `pip install uvicorn` or `pip install agent-cli[server]`"
+        msg = "uvicorn or fastapi is not installed, please install it with `pip install fastapi[standard]` or `pip install agent-cli[server]`"
         print_error_message(msg)
         raise typer.Exit(1)
     console.print(
