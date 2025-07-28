@@ -28,6 +28,11 @@ content-type = "text/markdown"
 Homepage = "https://github.com/basnijholt/agent-cli"
 
 [project.optional-dependencies]
+server = [
+    "fastapi",
+    "uvicorn[standard]",
+    "python-multipart",
+]
 test = [
     "pytest>=7.0.0",
     "pytest-asyncio>=0.20.0",
