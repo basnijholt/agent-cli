@@ -372,52 +372,49 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
  Correct text from clipboard using a local or remote LLM.
 
 
-╭─ General Options ────────────────────────────────────────────────────────────╮
-│   text      [TEXT]  The text to correct. If not provided, reads from         │
-│                     clipboard.                                               │
-│                     [default: None]                                          │
-╰──────────────────────────────────────────────────────────────────────────────╯
-╭─ Options ────────────────────────────────────────────────────────────────────╮
-│ --help          Show this message and exit.                                  │
-╰──────────────────────────────────────────────────────────────────────────────╯
-╭─ Provider Selection ─────────────────────────────────────────────────────────╮
-│ --llm-provider        TEXT  The LLM provider to use ('local' for Ollama,     │
-│                             'openai', 'gemini').                             │
-│                             [default: local]                                 │
-╰──────────────────────────────────────────────────────────────────────────────╯
-╭─ LLM Configuration: Ollama (local) ──────────────────────────────────────────╮
-│ --llm-ollama-model        TEXT  The Ollama model to use. Default is          │
-│                                 qwen3:4b.                                    │
-│                                 [default: qwen3:4b]                          │
-│ --llm-ollama-host         TEXT  The Ollama server host. Default is           │
-│                                 http://localhost:11434.                      │
-│                                 [default: http://localhost:11434]            │
-╰──────────────────────────────────────────────────────────────────────────────╯
-╭─ LLM Configuration: OpenAI ──────────────────────────────────────────────────╮
-│ --llm-openai-model        TEXT  The OpenAI model to use for LLM tasks.       │
-│                                 [default: gpt-4o-mini]                       │
-│ --openai-api-key          TEXT  Your OpenAI API key. Can also be set with    │
-│                                 the OPENAI_API_KEY environment variable.     │
-│                                 [env var: OPENAI_API_KEY]                    │
-│                                 [default: None]                              │
-╰──────────────────────────────────────────────────────────────────────────────╯
-╭─ LLM Configuration: Gemini ──────────────────────────────────────────────────╮
-│ --llm-gemini-model        TEXT  The Gemini model to use for LLM tasks.       │
-│                                 [default: gemini-2.5-flash]                  │
-│ --gemini-api-key          TEXT  Your Gemini API key. Can also be set with    │
-│                                 the GEMINI_API_KEY environment variable.     │
-│                                 [env var: GEMINI_API_KEY]                    │
-│                                 [default: None]                              │
-╰──────────────────────────────────────────────────────────────────────────────╯
-╭─ General Options ────────────────────────────────────────────────────────────╮
-│ --log-level           TEXT  Set logging level. [default: WARNING]            │
-│ --log-file            TEXT  Path to a file to write logs to. [default: None] │
-│ --quiet       -q            Suppress console output from rich.               │
-│ --config              TEXT  Path to a TOML configuration file.               │
-│                             [default: None]                                  │
-│ --print-args                Print the command line arguments, including      │
-│                             variables taken from the configuration file.     │
-╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ General Options ──────────────────────────────────────────────────────────────────────╮
+│   text      [TEXT]  The text to correct. If not provided, reads from clipboard.        │
+│                     [default: None]                                                    │
+╰────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ Options ──────────────────────────────────────────────────────────────────────────────╮
+│ --help          Show this message and exit.                                            │
+╰────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ Provider Selection ───────────────────────────────────────────────────────────────────╮
+│ --llm-provider        TEXT  The LLM provider to use ('local' for Ollama, 'openai',     │
+│                             'gemini').                                                 │
+│                             [default: local]                                           │
+╰────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ LLM Configuration: Ollama (local) ────────────────────────────────────────────────────╮
+│ --llm-ollama-model        TEXT  The Ollama model to use. Default is qwen3:4b.          │
+│                                 [default: qwen3:4b]                                    │
+│ --llm-ollama-host         TEXT  The Ollama server host. Default is                     │
+│                                 http://localhost:11434.                                │
+│                                 [default: http://localhost:11434]                      │
+╰────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ LLM Configuration: OpenAI ────────────────────────────────────────────────────────────╮
+│ --llm-openai-model        TEXT  The OpenAI model to use for LLM tasks.                 │
+│                                 [default: gpt-4o-mini]                                 │
+│ --openai-api-key          TEXT  Your OpenAI API key. Can also be set with the          │
+│                                 OPENAI_API_KEY environment variable.                   │
+│                                 [env var: OPENAI_API_KEY]                              │
+│                                 [default: None]                                        │
+╰────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ LLM Configuration: Gemini ────────────────────────────────────────────────────────────╮
+│ --llm-gemini-model        TEXT  The Gemini model to use for LLM tasks.                 │
+│                                 [default: gemini-2.5-flash]                            │
+│ --gemini-api-key          TEXT  Your Gemini API key. Can also be set with the          │
+│                                 GEMINI_API_KEY environment variable.                   │
+│                                 [env var: GEMINI_API_KEY]                              │
+│                                 [default: None]                                        │
+╰────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ General Options ──────────────────────────────────────────────────────────────────────╮
+│ --log-level           TEXT  Set logging level. [default: WARNING]                      │
+│ --log-file            TEXT  Path to a file to write logs to. [default: None]           │
+│ --quiet       -q            Suppress console output from rich.                         │
+│ --config              TEXT  Path to a TOML configuration file. [default: None]         │
+│ --print-args                Print the command line arguments, including variables      │
+│                             taken from the configuration file.                         │
+╰────────────────────────────────────────────────────────────────────────────────────────╯
 
 ```
 
@@ -463,98 +460,84 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
  Wyoming ASR Client for streaming microphone audio to a transcription server.
 
 
-╭─ Options ────────────────────────────────────────────────────────────────────╮
-│ --extra-instructions        TEXT  Additional instructions for the LLM to     │
-│                                   process the transcription.                 │
-│                                   [default: None]                            │
-│ --help                            Show this message and exit.                │
-╰──────────────────────────────────────────────────────────────────────────────╯
-╭─ Provider Selection ─────────────────────────────────────────────────────────╮
-│ --asr-provider        TEXT  The ASR provider to use ('local' for Wyoming,    │
-│                             'openai').                                       │
-│                             [default: local]                                 │
-│ --llm-provider        TEXT  The LLM provider to use ('local' for Ollama,     │
-│                             'openai', 'gemini').                             │
-│                             [default: local]                                 │
-╰──────────────────────────────────────────────────────────────────────────────╯
-╭─ ASR (Audio) Configuration ──────────────────────────────────────────────────╮
-│ --input-device-index        INTEGER  Index of the PyAudio input device to    │
-│                                      use.                                    │
-│                                      [default: None]                         │
-│ --input-device-name         TEXT     Device name keywords for partial        │
-│                                      matching.                               │
-│                                      [default: None]                         │
-│ --list-devices                       List available audio input and output   │
-│                                      devices and exit.                       │
-╰──────────────────────────────────────────────────────────────────────────────╯
-╭─ ASR (Audio) Configuration: Wyoming (local) ─────────────────────────────────╮
-│ --asr-wyoming-ip          TEXT     Wyoming ASR server IP address.            │
-│                                    [default: localhost]                      │
-│ --asr-wyoming-port        INTEGER  Wyoming ASR server port. [default: 10300] │
-╰──────────────────────────────────────────────────────────────────────────────╯
-╭─ ASR (Audio) Configuration: OpenAI ──────────────────────────────────────────╮
-│ --asr-openai-model        TEXT  The OpenAI model to use for ASR              │
-│                                 (transcription).                             │
-│                                 [default: whisper-1]                         │
-╰──────────────────────────────────────────────────────────────────────────────╯
-╭─ LLM Configuration: Ollama (local) ──────────────────────────────────────────╮
-│ --llm-ollama-model        TEXT  The Ollama model to use. Default is          │
-│                                 qwen3:4b.                                    │
-│                                 [default: qwen3:4b]                          │
-│ --llm-ollama-host         TEXT  The Ollama server host. Default is           │
-│                                 http://localhost:11434.                      │
-│                                 [default: http://localhost:11434]            │
-╰──────────────────────────────────────────────────────────────────────────────╯
-╭─ LLM Configuration: OpenAI ──────────────────────────────────────────────────╮
-│ --llm-openai-model        TEXT  The OpenAI model to use for LLM tasks.       │
-│                                 [default: gpt-4o-mini]                       │
-│ --openai-api-key          TEXT  Your OpenAI API key. Can also be set with    │
-│                                 the OPENAI_API_KEY environment variable.     │
-│                                 [env var: OPENAI_API_KEY]                    │
-│                                 [default: None]                              │
-╰──────────────────────────────────────────────────────────────────────────────╯
-╭─ LLM Configuration: Gemini ──────────────────────────────────────────────────╮
-│ --llm-gemini-model        TEXT  The Gemini model to use for LLM tasks.       │
-│                                 [default: gemini-2.5-flash]                  │
-│ --gemini-api-key          TEXT  Your Gemini API key. Can also be set with    │
-│                                 the GEMINI_API_KEY environment variable.     │
-│                                 [env var: GEMINI_API_KEY]                    │
-│                                 [default: None]                              │
-╰──────────────────────────────────────────────────────────────────────────────╯
-╭─ LLM Configuration ──────────────────────────────────────────────────────────╮
-│ --llm    --no-llm      Use an LLM to process the transcript.                 │
-│                        [default: no-llm]                                     │
-╰──────────────────────────────────────────────────────────────────────────────╯
-╭─ Process Management Options ─────────────────────────────────────────────────╮
-│ --stop            Stop any running background process.                       │
-│ --status          Check if a background process is running.                  │
-│ --toggle          Toggle the background process on/off. If the process is    │
-│                   running, it will be stopped. If the process is not         │
-│                   running, it will be started.                               │
-╰──────────────────────────────────────────────────────────────────────────────╯
-╭─ General Options ────────────────────────────────────────────────────────────╮
-│ --clipboard              --no-clipboard          Copy result to clipboard.   │
-│                                                  [default: clipboard]        │
-│ --log-level                                TEXT  Set logging level.          │
-│                                                  [default: WARNING]          │
-│ --log-file                                 TEXT  Path to a file to write     │
-│                                                  logs to.                    │
-│                                                  [default: None]             │
-│ --quiet              -q                          Suppress console output     │
-│                                                  from rich.                  │
-│ --config                                   TEXT  Path to a TOML              │
-│                                                  configuration file.         │
-│                                                  [default: None]             │
-│ --print-args                                     Print the command line      │
-│                                                  arguments, including        │
-│                                                  variables taken from the    │
-│                                                  configuration file.         │
-│ --transcription-log                        PATH  Path to log transcription   │
-│                                                  results with timestamps,    │
-│                                                  hostname, model, and raw    │
-│                                                  output.                     │
-│                                                  [default: None]             │
-╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Options ──────────────────────────────────────────────────────────────────────────────╮
+│ --extra-instructions        TEXT  Additional instructions for the LLM to process the   │
+│                                   transcription.                                       │
+│                                   [default: None]                                      │
+│ --help                            Show this message and exit.                          │
+╰────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ Provider Selection ───────────────────────────────────────────────────────────────────╮
+│ --asr-provider        TEXT  The ASR provider to use ('local' for Wyoming, 'openai').   │
+│                             [default: local]                                           │
+│ --llm-provider        TEXT  The LLM provider to use ('local' for Ollama, 'openai',     │
+│                             'gemini').                                                 │
+│                             [default: local]                                           │
+╰────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ ASR (Audio) Configuration ────────────────────────────────────────────────────────────╮
+│ --input-device-index        INTEGER  Index of the PyAudio input device to use.         │
+│                                      [default: None]                                   │
+│ --input-device-name         TEXT     Device name keywords for partial matching.        │
+│                                      [default: None]                                   │
+│ --list-devices                       List available audio input and output devices and │
+│                                      exit.                                             │
+╰────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ ASR (Audio) Configuration: Wyoming (local) ───────────────────────────────────────────╮
+│ --asr-wyoming-ip          TEXT     Wyoming ASR server IP address. [default: localhost] │
+│ --asr-wyoming-port        INTEGER  Wyoming ASR server port. [default: 10300]           │
+╰────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ ASR (Audio) Configuration: OpenAI ────────────────────────────────────────────────────╮
+│ --asr-openai-model        TEXT  The OpenAI model to use for ASR (transcription).       │
+│                                 [default: whisper-1]                                   │
+╰────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ LLM Configuration: Ollama (local) ────────────────────────────────────────────────────╮
+│ --llm-ollama-model        TEXT  The Ollama model to use. Default is qwen3:4b.          │
+│                                 [default: qwen3:4b]                                    │
+│ --llm-ollama-host         TEXT  The Ollama server host. Default is                     │
+│                                 http://localhost:11434.                                │
+│                                 [default: http://localhost:11434]                      │
+╰────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ LLM Configuration: OpenAI ────────────────────────────────────────────────────────────╮
+│ --llm-openai-model        TEXT  The OpenAI model to use for LLM tasks.                 │
+│                                 [default: gpt-4o-mini]                                 │
+│ --openai-api-key          TEXT  Your OpenAI API key. Can also be set with the          │
+│                                 OPENAI_API_KEY environment variable.                   │
+│                                 [env var: OPENAI_API_KEY]                              │
+│                                 [default: None]                                        │
+╰────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ LLM Configuration: Gemini ────────────────────────────────────────────────────────────╮
+│ --llm-gemini-model        TEXT  The Gemini model to use for LLM tasks.                 │
+│                                 [default: gemini-2.5-flash]                            │
+│ --gemini-api-key          TEXT  Your Gemini API key. Can also be set with the          │
+│                                 GEMINI_API_KEY environment variable.                   │
+│                                 [env var: GEMINI_API_KEY]                              │
+│                                 [default: None]                                        │
+╰────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ LLM Configuration ────────────────────────────────────────────────────────────────────╮
+│ --llm    --no-llm      Use an LLM to process the transcript. [default: no-llm]         │
+╰────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ Process Management Options ───────────────────────────────────────────────────────────╮
+│ --stop            Stop any running background process.                                 │
+│ --status          Check if a background process is running.                            │
+│ --toggle          Toggle the background process on/off. If the process is running, it  │
+│                   will be stopped. If the process is not running, it will be started.  │
+╰────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ General Options ──────────────────────────────────────────────────────────────────────╮
+│ --clipboard              --no-clipboard          Copy result to clipboard.             │
+│                                                  [default: clipboard]                  │
+│ --log-level                                TEXT  Set logging level. [default: WARNING] │
+│ --log-file                                 TEXT  Path to a file to write logs to.      │
+│                                                  [default: None]                       │
+│ --quiet              -q                          Suppress console output from rich.    │
+│ --config                                   TEXT  Path to a TOML configuration file.    │
+│                                                  [default: None]                       │
+│ --print-args                                     Print the command line arguments,     │
+│                                                  including variables taken from the    │
+│                                                  configuration file.                   │
+│ --transcription-log                        PATH  Path to log transcription results     │
+│                                                  with timestamps, hostname, model, and │
+│                                                  raw output.                           │
+│                                                  [default: None]                       │
+╰────────────────────────────────────────────────────────────────────────────────────────╯
 
 ```
 
@@ -610,83 +593,90 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 
  Usage: agent-cli speak [OPTIONS] [TEXT]
 
- Convert text to speech using Piper, Wyoming, OpenAI, or Kokoro TTS server.
+ Convert text to speech using Wyoming or OpenAI TTS server.
 
 
-╭─ General Options ────────────────────────────────────────────────────────────╮
-│   text      [TEXT]  Text to speak. Reads from clipboard if not provided.     │
-│                     [default: None]                                          │
-╰──────────────────────────────────────────────────────────────────────────────╯
-╭─ Options ────────────────────────────────────────────────────────────────────╮
-│ --help          Show this message and exit.                                  │
-╰──────────────────────────────────────────────────────────────────────────────╯
-╭─ Provider Selection ─────────────────────────────────────────────────────────╮
-│ --tts-provider        TEXT  The TTS provider to use ('local' for Wyoming,    │
-│                             'openai', 'kokoro').                             │
-│                             [default: local]                                 │
-╰──────────────────────────────────────────────────────────────────────────────╯
-╭─ TTS (Text-to-Speech) Configuration ─────────────────────────────────────────╮
-│ --output-device-index        INTEGER  Index of the PyAudio output device to  │
-│                                       use for TTS.                           │
-│                                       [default: None]                        │
-│ --output-device-name         TEXT     Output device name keywords for        │
-│                                       partial matching.                      │
-│                                       [default: None]                        │
-│ --tts-speed                  FLOAT    Speech speed multiplier (1.0 = normal, │
-│                                       2.0 = twice as fast, 0.5 = half        │
-│                                       speed).                                │
-│                                       [default: 1.0]                         │
-╰──────────────────────────────────────────────────────────────────────────────╯
-╭─ TTS (Text-to-Speech) Configuration: Wyoming (local) ────────────────────────╮
-│ --tts-wyoming-ip              TEXT     Wyoming TTS server IP address.        │
-│                                        [default: localhost]                  │
-│ --tts-wyoming-port            INTEGER  Wyoming TTS server port.              │
-│                                        [default: 10200]                      │
-│ --tts-wyoming-voice           TEXT     Voice name to use for Wyoming TTS     │
-│                                        (e.g., 'en_US-lessac-medium').        │
-│                                        [default: None]                       │
-│ --tts-wyoming-language        TEXT     Language for Wyoming TTS (e.g.,       │
-│                                        'en_US').                             │
-│                                        [default: None]                       │
-│ --tts-wyoming-speaker         TEXT     Speaker name for Wyoming TTS voice.   │
-│                                        [default: None]                       │
-╰──────────────────────────────────────────────────────────────────────────────╯
-╭─ TTS (Text-to-Speech) Configuration: OpenAI ─────────────────────────────────╮
-│ --tts-openai-model        TEXT  The OpenAI model to use for TTS.             │
-│                                 [default: tts-1]                             │
-│ --tts-openai-voice        TEXT  The voice to use for OpenAI TTS.             │
-│                                 [default: alloy]                             │
-╰──────────────────────────────────────────────────────────────────────────────╯
-╭─ TTS (Text-to-Speech) Configuration: Kokoro ─────────────────────────────────╮
-│ --tts-kokoro-model        TEXT  The Kokoro model to use for TTS.             │
-│                                 [default: kokoro]                            │
-│ --tts-kokoro-voice        TEXT  The voice to use for Kokoro TTS.             │
-│                                 [default: af_sky]                            │
-│ --tts-kokoro-host         TEXT  The base URL for the Kokoro API.             │
-│                                 [default: http://localhost:8880/v1]          │
-╰──────────────────────────────────────────────────────────────────────────────╯
-╭─ ASR (Audio) Configuration ──────────────────────────────────────────────────╮
-│ --list-devices          List available audio input and output devices and    │
-│                         exit.                                                │
-╰──────────────────────────────────────────────────────────────────────────────╯
-╭─ General Options ────────────────────────────────────────────────────────────╮
-│ --save-file           PATH  Save TTS response audio to WAV file.             │
-│                             [default: None]                                  │
-│ --log-level           TEXT  Set logging level. [default: WARNING]            │
-│ --log-file            TEXT  Path to a file to write logs to. [default: None] │
-│ --quiet       -q            Suppress console output from rich.               │
-│ --config              TEXT  Path to a TOML configuration file.               │
-│                             [default: None]                                  │
-│ --print-args                Print the command line arguments, including      │
-│                             variables taken from the configuration file.     │
-╰──────────────────────────────────────────────────────────────────────────────╯
-╭─ Process Management Options ─────────────────────────────────────────────────╮
-│ --stop            Stop any running background process.                       │
-│ --status          Check if a background process is running.                  │
-│ --toggle          Toggle the background process on/off. If the process is    │
-│                   running, it will be stopped. If the process is not         │
-│                   running, it will be started.                               │
-╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ General Options ──────────────────────────────────────────────────────────────────────╮
+│   text      [TEXT]  Text to speak. Reads from clipboard if not provided.               │
+│                     [default: None]                                                    │
+╰────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ Options ──────────────────────────────────────────────────────────────────────────────╮
+│ --help          Show this message and exit.                                            │
+╰────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ Provider Selection ───────────────────────────────────────────────────────────────────╮
+│ --tts-provider        TEXT  The TTS provider to use ('local' for Wyoming, 'openai',    │
+│                             'kokoro').                                                 │
+│                             [default: local]                                           │
+╰────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ TTS (Text-to-Speech) Configuration ───────────────────────────────────────────────────╮
+│ --output-device-index        INTEGER  Index of the PyAudio output device to use for    │
+│                                       TTS.                                             │
+│                                       [default: None]                                  │
+│ --output-device-name         TEXT     Output device name keywords for partial          │
+│                                       matching.                                        │
+│                                       [default: None]                                  │
+│ --tts-speed                  FLOAT    Speech speed multiplier (1.0 = normal, 2.0 =     │
+│                                       twice as fast, 0.5 = half speed).                │
+│                                       [default: 1.0]                                   │
+╰────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ TTS (Text-to-Speech) Configuration: Wyoming (local) ──────────────────────────────────╮
+│ --tts-wyoming-ip              TEXT     Wyoming TTS server IP address.                  │
+│                                        [default: localhost]                            │
+│ --tts-wyoming-port            INTEGER  Wyoming TTS server port. [default: 10200]       │
+│ --tts-wyoming-voice           TEXT     Voice name to use for Wyoming TTS (e.g.,        │
+│                                        'en_US-lessac-medium').                         │
+│                                        [default: None]                                 │
+│ --tts-wyoming-language        TEXT     Language for Wyoming TTS (e.g., 'en_US').       │
+│                                        [default: None]                                 │
+│ --tts-wyoming-speaker         TEXT     Speaker name for Wyoming TTS voice.             │
+│                                        [default: None]                                 │
+╰────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ TTS (Text-to-Speech) Configuration: OpenAI ───────────────────────────────────────────╮
+│ --tts-openai-model        TEXT  The OpenAI model to use for TTS. [default: tts-1]      │
+│ --tts-openai-voice        TEXT  The voice to use for OpenAI TTS. [default: alloy]      │
+╰────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ TTS (Text-to-Speech) Configuration: Kokoro ───────────────────────────────────────────╮
+│ --tts-kokoro-model        TEXT  The Kokoro model to use for TTS. [default: kokoro]     │
+│ --tts-kokoro-voice        TEXT  The voice to use for Kokoro TTS. [default: af_sky]     │
+│ --tts-kokoro-host         TEXT  The base URL for the Kokoro API.                       │
+│                                 [default: http://localhost:8880/v1]                    │
+╰────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ TTS (Text-to-Speech) Configuration: Piper ────────────────────────────────────────────╮
+│ --tts-piper-host                 TEXT     The base URL for the Piper HTTP server.      │
+│                                           [default: http://localhost:10200]            │
+│ --tts-piper-voice                TEXT     The voice to use for Piper TTS (optional).   │
+│                                           [default: None]                              │
+│ --tts-piper-speaker              TEXT     The speaker to use for multi-speaker voices  │
+│                                           (optional).                                  │
+│                                           [default: None]                              │
+│ --tts-piper-speaker-id           INTEGER  The speaker ID to use for multi-speaker      │
+│                                           voices (optional, overrides speaker).        │
+│                                           [default: None]                              │
+│ --tts-piper-length-scale         FLOAT    Speaking speed (1.0 = normal speed).         │
+│                                           [default: 1.0]                               │
+│ --tts-piper-noise-scale          FLOAT    Speaking variability (optional).             │
+│                                           [default: None]                              │
+│ --tts-piper-noise-w-scale        FLOAT    Phoneme width variability (optional).        │
+│                                           [default: None]                              │
+╰────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ ASR (Audio) Configuration ────────────────────────────────────────────────────────────╮
+│ --list-devices          List available audio input and output devices and exit.        │
+╰────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ General Options ──────────────────────────────────────────────────────────────────────╮
+│ --save-file           PATH  Save TTS response audio to WAV file. [default: None]       │
+│ --log-level           TEXT  Set logging level. [default: WARNING]                      │
+│ --log-file            TEXT  Path to a file to write logs to. [default: None]           │
+│ --quiet       -q            Suppress console output from rich.                         │
+│ --config              TEXT  Path to a TOML configuration file. [default: None]         │
+│ --print-args                Print the command line arguments, including variables      │
+│                             taken from the configuration file.                         │
+╰────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ Process Management Options ───────────────────────────────────────────────────────────╮
+│ --stop            Stop any running background process.                                 │
+│ --status          Check if a background process is running.                            │
+│ --toggle          Toggle the background process on/off. If the process is running, it  │
+│                   will be stopped. If the process is not running, it will be started.  │
+╰────────────────────────────────────────────────────────────────────────────────────────╯
 
 ```
 
@@ -727,140 +717,139 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 
  Usage: agent-cli voice-edit [OPTIONS]
 
- Interact with clipboard text via a voice command using local or remote
- services.
+ Interact with clipboard text via a voice command using local or remote services.
 
- Usage: - Run in foreground: agent-cli voice-edit --input-device-index 1 - Run
- in background: agent-cli voice-edit --input-device-index 1 & - Check status:
- agent-cli voice-edit --status - Stop background process: agent-cli voice-edit
- --stop - List output devices: agent-cli voice-edit --list-output-devices -
- Save TTS to file: agent-cli voice-edit --tts --save-file response.wav
+ Usage: - Run in foreground: agent-cli voice-edit --input-device-index 1 - Run in
+ background: agent-cli voice-edit --input-device-index 1 & - Check status: agent-cli
+ voice-edit --status - Stop background process: agent-cli voice-edit --stop - List output
+ devices: agent-cli voice-edit --list-output-devices - Save TTS to file: agent-cli
+ voice-edit --tts --save-file response.wav
 
-╭─ Options ────────────────────────────────────────────────────────────────────╮
-│ --help          Show this message and exit.                                  │
-╰──────────────────────────────────────────────────────────────────────────────╯
-╭─ Provider Selection ─────────────────────────────────────────────────────────╮
-│ --asr-provider        TEXT  The ASR provider to use ('local' for Wyoming,    │
-│                             'openai').                                       │
-│                             [default: local]                                 │
-│ --llm-provider        TEXT  The LLM provider to use ('local' for Ollama,     │
-│                             'openai', 'gemini').                             │
-│                             [default: local]                                 │
-│ --tts-provider        TEXT  The TTS provider to use ('local' for Wyoming,    │
-│                             'openai', 'kokoro').                             │
-│                             [default: local]                                 │
-╰──────────────────────────────────────────────────────────────────────────────╯
-╭─ ASR (Audio) Configuration ──────────────────────────────────────────────────╮
-│ --input-device-index        INTEGER  Index of the PyAudio input device to    │
-│                                      use.                                    │
-│                                      [default: None]                         │
-│ --input-device-name         TEXT     Device name keywords for partial        │
-│                                      matching.                               │
-│                                      [default: None]                         │
-│ --list-devices                       List available audio input and output   │
-│                                      devices and exit.                       │
-╰──────────────────────────────────────────────────────────────────────────────╯
-╭─ ASR (Audio) Configuration: Wyoming (local) ─────────────────────────────────╮
-│ --asr-wyoming-ip          TEXT     Wyoming ASR server IP address.            │
-│                                    [default: localhost]                      │
-│ --asr-wyoming-port        INTEGER  Wyoming ASR server port. [default: 10300] │
-╰──────────────────────────────────────────────────────────────────────────────╯
-╭─ ASR (Audio) Configuration: OpenAI ──────────────────────────────────────────╮
-│ --asr-openai-model        TEXT  The OpenAI model to use for ASR              │
-│                                 (transcription).                             │
-│                                 [default: whisper-1]                         │
-╰──────────────────────────────────────────────────────────────────────────────╯
-╭─ LLM Configuration: Ollama (local) ──────────────────────────────────────────╮
-│ --llm-ollama-model        TEXT  The Ollama model to use. Default is          │
-│                                 qwen3:4b.                                    │
-│                                 [default: qwen3:4b]                          │
-│ --llm-ollama-host         TEXT  The Ollama server host. Default is           │
-│                                 http://localhost:11434.                      │
-│                                 [default: http://localhost:11434]            │
-╰──────────────────────────────────────────────────────────────────────────────╯
-╭─ LLM Configuration: OpenAI ──────────────────────────────────────────────────╮
-│ --llm-openai-model        TEXT  The OpenAI model to use for LLM tasks.       │
-│                                 [default: gpt-4o-mini]                       │
-│ --openai-api-key          TEXT  Your OpenAI API key. Can also be set with    │
-│                                 the OPENAI_API_KEY environment variable.     │
-│                                 [env var: OPENAI_API_KEY]                    │
-│                                 [default: None]                              │
-╰──────────────────────────────────────────────────────────────────────────────╯
-╭─ LLM Configuration: Gemini ──────────────────────────────────────────────────╮
-│ --llm-gemini-model        TEXT  The Gemini model to use for LLM tasks.       │
-│                                 [default: gemini-2.5-flash]                  │
-│ --gemini-api-key          TEXT  Your Gemini API key. Can also be set with    │
-│                                 the GEMINI_API_KEY environment variable.     │
-│                                 [env var: GEMINI_API_KEY]                    │
-│                                 [default: None]                              │
-╰──────────────────────────────────────────────────────────────────────────────╯
-╭─ TTS (Text-to-Speech) Configuration ─────────────────────────────────────────╮
-│ --tts                    --no-tts             Enable text-to-speech for      │
-│                                               responses.                     │
-│                                               [default: no-tts]              │
-│ --output-device-index                INTEGER  Index of the PyAudio output    │
-│                                               device to use for TTS.         │
-│                                               [default: None]                │
-│ --output-device-name                 TEXT     Output device name keywords    │
-│                                               for partial matching.          │
-│                                               [default: None]                │
-│ --tts-speed                          FLOAT    Speech speed multiplier (1.0 = │
-│                                               normal, 2.0 = twice as fast,   │
-│                                               0.5 = half speed).             │
-│                                               [default: 1.0]                 │
-╰──────────────────────────────────────────────────────────────────────────────╯
-╭─ TTS (Text-to-Speech) Configuration: Wyoming (local) ────────────────────────╮
-│ --tts-wyoming-ip              TEXT     Wyoming TTS server IP address.        │
-│                                        [default: localhost]                  │
-│ --tts-wyoming-port            INTEGER  Wyoming TTS server port.              │
-│                                        [default: 10200]                      │
-│ --tts-wyoming-voice           TEXT     Voice name to use for Wyoming TTS     │
-│                                        (e.g., 'en_US-lessac-medium').        │
-│                                        [default: None]                       │
-│ --tts-wyoming-language        TEXT     Language for Wyoming TTS (e.g.,       │
-│                                        'en_US').                             │
-│                                        [default: None]                       │
-│ --tts-wyoming-speaker         TEXT     Speaker name for Wyoming TTS voice.   │
-│                                        [default: None]                       │
-╰──────────────────────────────────────────────────────────────────────────────╯
-╭─ TTS (Text-to-Speech) Configuration: OpenAI ─────────────────────────────────╮
-│ --tts-openai-model        TEXT  The OpenAI model to use for TTS.             │
-│                                 [default: tts-1]                             │
-│ --tts-openai-voice        TEXT  The voice to use for OpenAI TTS.             │
-│                                 [default: alloy]                             │
-╰──────────────────────────────────────────────────────────────────────────────╯
-╭─ TTS (Text-to-Speech) Configuration: Kokoro ─────────────────────────────────╮
-│ --tts-kokoro-model        TEXT  The Kokoro model to use for TTS.             │
-│                                 [default: kokoro]                            │
-│ --tts-kokoro-voice        TEXT  The voice to use for Kokoro TTS.             │
-│                                 [default: af_sky]                            │
-│ --tts-kokoro-host         TEXT  The base URL for the Kokoro API.             │
-│                                 [default: http://localhost:8880/v1]          │
-╰──────────────────────────────────────────────────────────────────────────────╯
-╭─ Process Management Options ─────────────────────────────────────────────────╮
-│ --stop            Stop any running background process.                       │
-│ --status          Check if a background process is running.                  │
-│ --toggle          Toggle the background process on/off. If the process is    │
-│                   running, it will be stopped. If the process is not         │
-│                   running, it will be started.                               │
-╰──────────────────────────────────────────────────────────────────────────────╯
-╭─ General Options ────────────────────────────────────────────────────────────╮
-│ --save-file                         PATH  Save TTS response audio to WAV     │
-│                                           file.                              │
-│                                           [default: None]                    │
-│ --clipboard       --no-clipboard          Copy result to clipboard.          │
-│                                           [default: clipboard]               │
-│ --log-level                         TEXT  Set logging level.                 │
-│                                           [default: WARNING]                 │
-│ --log-file                          TEXT  Path to a file to write logs to.   │
-│                                           [default: None]                    │
-│ --quiet       -q                          Suppress console output from rich. │
-│ --config                            TEXT  Path to a TOML configuration file. │
-│                                           [default: None]                    │
-│ --print-args                              Print the command line arguments,  │
-│                                           including variables taken from the │
-│                                           configuration file.                │
-╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Options ──────────────────────────────────────────────────────────────────────────────╮
+│ --help          Show this message and exit.                                            │
+╰────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ Provider Selection ───────────────────────────────────────────────────────────────────╮
+│ --asr-provider        TEXT  The ASR provider to use ('local' for Wyoming, 'openai').   │
+│                             [default: local]                                           │
+│ --llm-provider        TEXT  The LLM provider to use ('local' for Ollama, 'openai',     │
+│                             'gemini').                                                 │
+│                             [default: local]                                           │
+│ --tts-provider        TEXT  The TTS provider to use ('local' for Wyoming, 'openai',    │
+│                             'kokoro').                                                 │
+│                             [default: local]                                           │
+╰────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ ASR (Audio) Configuration ────────────────────────────────────────────────────────────╮
+│ --input-device-index        INTEGER  Index of the PyAudio input device to use.         │
+│                                      [default: None]                                   │
+│ --input-device-name         TEXT     Device name keywords for partial matching.        │
+│                                      [default: None]                                   │
+│ --list-devices                       List available audio input and output devices and │
+│                                      exit.                                             │
+╰────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ ASR (Audio) Configuration: Wyoming (local) ───────────────────────────────────────────╮
+│ --asr-wyoming-ip          TEXT     Wyoming ASR server IP address. [default: localhost] │
+│ --asr-wyoming-port        INTEGER  Wyoming ASR server port. [default: 10300]           │
+╰────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ ASR (Audio) Configuration: OpenAI ────────────────────────────────────────────────────╮
+│ --asr-openai-model        TEXT  The OpenAI model to use for ASR (transcription).       │
+│                                 [default: whisper-1]                                   │
+╰────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ LLM Configuration: Ollama (local) ────────────────────────────────────────────────────╮
+│ --llm-ollama-model        TEXT  The Ollama model to use. Default is qwen3:4b.          │
+│                                 [default: qwen3:4b]                                    │
+│ --llm-ollama-host         TEXT  The Ollama server host. Default is                     │
+│                                 http://localhost:11434.                                │
+│                                 [default: http://localhost:11434]                      │
+╰────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ LLM Configuration: OpenAI ────────────────────────────────────────────────────────────╮
+│ --llm-openai-model        TEXT  The OpenAI model to use for LLM tasks.                 │
+│                                 [default: gpt-4o-mini]                                 │
+│ --openai-api-key          TEXT  Your OpenAI API key. Can also be set with the          │
+│                                 OPENAI_API_KEY environment variable.                   │
+│                                 [env var: OPENAI_API_KEY]                              │
+│                                 [default: None]                                        │
+╰────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ LLM Configuration: Gemini ────────────────────────────────────────────────────────────╮
+│ --llm-gemini-model        TEXT  The Gemini model to use for LLM tasks.                 │
+│                                 [default: gemini-2.5-flash]                            │
+│ --gemini-api-key          TEXT  Your Gemini API key. Can also be set with the          │
+│                                 GEMINI_API_KEY environment variable.                   │
+│                                 [env var: GEMINI_API_KEY]                              │
+│                                 [default: None]                                        │
+╰────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ TTS (Text-to-Speech) Configuration ───────────────────────────────────────────────────╮
+│ --tts                    --no-tts             Enable text-to-speech for responses.     │
+│                                               [default: no-tts]                        │
+│ --output-device-index                INTEGER  Index of the PyAudio output device to    │
+│                                               use for TTS.                             │
+│                                               [default: None]                          │
+│ --output-device-name                 TEXT     Output device name keywords for partial  │
+│                                               matching.                                │
+│                                               [default: None]                          │
+│ --tts-speed                          FLOAT    Speech speed multiplier (1.0 = normal,   │
+│                                               2.0 = twice as fast, 0.5 = half speed).  │
+│                                               [default: 1.0]                           │
+╰────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ TTS (Text-to-Speech) Configuration: Wyoming (local) ──────────────────────────────────╮
+│ --tts-wyoming-ip              TEXT     Wyoming TTS server IP address.                  │
+│                                        [default: localhost]                            │
+│ --tts-wyoming-port            INTEGER  Wyoming TTS server port. [default: 10200]       │
+│ --tts-wyoming-voice           TEXT     Voice name to use for Wyoming TTS (e.g.,        │
+│                                        'en_US-lessac-medium').                         │
+│                                        [default: None]                                 │
+│ --tts-wyoming-language        TEXT     Language for Wyoming TTS (e.g., 'en_US').       │
+│                                        [default: None]                                 │
+│ --tts-wyoming-speaker         TEXT     Speaker name for Wyoming TTS voice.             │
+│                                        [default: None]                                 │
+╰────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ TTS (Text-to-Speech) Configuration: OpenAI ───────────────────────────────────────────╮
+│ --tts-openai-model        TEXT  The OpenAI model to use for TTS. [default: tts-1]      │
+│ --tts-openai-voice        TEXT  The voice to use for OpenAI TTS. [default: alloy]      │
+╰────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ TTS (Text-to-Speech) Configuration: Kokoro ───────────────────────────────────────────╮
+│ --tts-kokoro-model        TEXT  The Kokoro model to use for TTS. [default: kokoro]     │
+│ --tts-kokoro-voice        TEXT  The voice to use for Kokoro TTS. [default: af_sky]     │
+│ --tts-kokoro-host         TEXT  The base URL for the Kokoro API.                       │
+│                                 [default: http://localhost:8880/v1]                    │
+╰────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ TTS (Text-to-Speech) Configuration: Piper ────────────────────────────────────────────╮
+│ --tts-piper-host                 TEXT     The base URL for the Piper HTTP server.      │
+│                                           [default: http://localhost:10200]            │
+│ --tts-piper-voice                TEXT     The voice to use for Piper TTS (optional).   │
+│                                           [default: None]                              │
+│ --tts-piper-speaker              TEXT     The speaker to use for multi-speaker voices  │
+│                                           (optional).                                  │
+│                                           [default: None]                              │
+│ --tts-piper-speaker-id           INTEGER  The speaker ID to use for multi-speaker      │
+│                                           voices (optional, overrides speaker).        │
+│                                           [default: None]                              │
+│ --tts-piper-length-scale         FLOAT    Speaking speed (1.0 = normal speed).         │
+│                                           [default: 1.0]                               │
+│ --tts-piper-noise-scale          FLOAT    Speaking variability (optional).             │
+│                                           [default: None]                              │
+│ --tts-piper-noise-w-scale        FLOAT    Phoneme width variability (optional).        │
+│                                           [default: None]                              │
+╰────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ Process Management Options ───────────────────────────────────────────────────────────╮
+│ --stop            Stop any running background process.                                 │
+│ --status          Check if a background process is running.                            │
+│ --toggle          Toggle the background process on/off. If the process is running, it  │
+│                   will be stopped. If the process is not running, it will be started.  │
+╰────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ General Options ──────────────────────────────────────────────────────────────────────╮
+│ --save-file                         PATH  Save TTS response audio to WAV file.         │
+│                                           [default: None]                              │
+│ --clipboard       --no-clipboard          Copy result to clipboard.                    │
+│                                           [default: clipboard]                         │
+│ --log-level                         TEXT  Set logging level. [default: WARNING]        │
+│ --log-file                          TEXT  Path to a file to write logs to.             │
+│                                           [default: None]                              │
+│ --quiet       -q                          Suppress console output from rich.           │
+│ --config                            TEXT  Path to a TOML configuration file.           │
+│                                           [default: None]                              │
+│ --print-args                              Print the command line arguments, including  │
+│                                           variables taken from the configuration file. │
+╰────────────────────────────────────────────────────────────────────────────────────────╯
 
 ```
 
@@ -907,140 +896,139 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
  Wake word-based voice assistant using local or remote services.
 
 
-╭─ Options ────────────────────────────────────────────────────────────────────╮
-│ --help          Show this message and exit.                                  │
-╰──────────────────────────────────────────────────────────────────────────────╯
-╭─ Provider Selection ─────────────────────────────────────────────────────────╮
-│ --asr-provider        TEXT  The ASR provider to use ('local' for Wyoming,    │
-│                             'openai').                                       │
-│                             [default: local]                                 │
-│ --llm-provider        TEXT  The LLM provider to use ('local' for Ollama,     │
-│                             'openai', 'gemini').                             │
-│                             [default: local]                                 │
-│ --tts-provider        TEXT  The TTS provider to use ('local' for Wyoming,    │
-│                             'openai', 'kokoro').                             │
-│                             [default: local]                                 │
-╰──────────────────────────────────────────────────────────────────────────────╯
-╭─ Wake Word Options ──────────────────────────────────────────────────────────╮
-│ --wake-server-ip          TEXT     Wyoming wake word server IP address.      │
-│                                    [default: localhost]                      │
-│ --wake-server-port        INTEGER  Wyoming wake word server port.            │
-│                                    [default: 10400]                          │
-│ --wake-word               TEXT     Name of wake word to detect (e.g.,        │
-│                                    'ok_nabu', 'hey_jarvis').                 │
-│                                    [default: ok_nabu]                        │
-╰──────────────────────────────────────────────────────────────────────────────╯
-╭─ ASR (Audio) Configuration ──────────────────────────────────────────────────╮
-│ --input-device-index        INTEGER  Index of the PyAudio input device to    │
-│                                      use.                                    │
-│                                      [default: None]                         │
-│ --input-device-name         TEXT     Device name keywords for partial        │
-│                                      matching.                               │
-│                                      [default: None]                         │
-│ --list-devices                       List available audio input and output   │
-│                                      devices and exit.                       │
-╰──────────────────────────────────────────────────────────────────────────────╯
-╭─ ASR (Audio) Configuration: Wyoming (local) ─────────────────────────────────╮
-│ --asr-wyoming-ip          TEXT     Wyoming ASR server IP address.            │
-│                                    [default: localhost]                      │
-│ --asr-wyoming-port        INTEGER  Wyoming ASR server port. [default: 10300] │
-╰──────────────────────────────────────────────────────────────────────────────╯
-╭─ ASR (Audio) Configuration: OpenAI ──────────────────────────────────────────╮
-│ --asr-openai-model        TEXT  The OpenAI model to use for ASR              │
-│                                 (transcription).                             │
-│                                 [default: whisper-1]                         │
-╰──────────────────────────────────────────────────────────────────────────────╯
-╭─ LLM Configuration: Ollama (local) ──────────────────────────────────────────╮
-│ --llm-ollama-model        TEXT  The Ollama model to use. Default is          │
-│                                 qwen3:4b.                                    │
-│                                 [default: qwen3:4b]                          │
-│ --llm-ollama-host         TEXT  The Ollama server host. Default is           │
-│                                 http://localhost:11434.                      │
-│                                 [default: http://localhost:11434]            │
-╰──────────────────────────────────────────────────────────────────────────────╯
-╭─ LLM Configuration: OpenAI ──────────────────────────────────────────────────╮
-│ --llm-openai-model        TEXT  The OpenAI model to use for LLM tasks.       │
-│                                 [default: gpt-4o-mini]                       │
-│ --openai-api-key          TEXT  Your OpenAI API key. Can also be set with    │
-│                                 the OPENAI_API_KEY environment variable.     │
-│                                 [env var: OPENAI_API_KEY]                    │
-│                                 [default: None]                              │
-╰──────────────────────────────────────────────────────────────────────────────╯
-╭─ LLM Configuration: Gemini ──────────────────────────────────────────────────╮
-│ --llm-gemini-model        TEXT  The Gemini model to use for LLM tasks.       │
-│                                 [default: gemini-2.5-flash]                  │
-│ --gemini-api-key          TEXT  Your Gemini API key. Can also be set with    │
-│                                 the GEMINI_API_KEY environment variable.     │
-│                                 [env var: GEMINI_API_KEY]                    │
-│                                 [default: None]                              │
-╰──────────────────────────────────────────────────────────────────────────────╯
-╭─ TTS (Text-to-Speech) Configuration ─────────────────────────────────────────╮
-│ --tts                    --no-tts             Enable text-to-speech for      │
-│                                               responses.                     │
-│                                               [default: no-tts]              │
-│ --output-device-index                INTEGER  Index of the PyAudio output    │
-│                                               device to use for TTS.         │
-│                                               [default: None]                │
-│ --output-device-name                 TEXT     Output device name keywords    │
-│                                               for partial matching.          │
-│                                               [default: None]                │
-│ --tts-speed                          FLOAT    Speech speed multiplier (1.0 = │
-│                                               normal, 2.0 = twice as fast,   │
-│                                               0.5 = half speed).             │
-│                                               [default: 1.0]                 │
-╰──────────────────────────────────────────────────────────────────────────────╯
-╭─ TTS (Text-to-Speech) Configuration: Wyoming (local) ────────────────────────╮
-│ --tts-wyoming-ip              TEXT     Wyoming TTS server IP address.        │
-│                                        [default: localhost]                  │
-│ --tts-wyoming-port            INTEGER  Wyoming TTS server port.              │
-│                                        [default: 10200]                      │
-│ --tts-wyoming-voice           TEXT     Voice name to use for Wyoming TTS     │
-│                                        (e.g., 'en_US-lessac-medium').        │
-│                                        [default: None]                       │
-│ --tts-wyoming-language        TEXT     Language for Wyoming TTS (e.g.,       │
-│                                        'en_US').                             │
-│                                        [default: None]                       │
-│ --tts-wyoming-speaker         TEXT     Speaker name for Wyoming TTS voice.   │
-│                                        [default: None]                       │
-╰──────────────────────────────────────────────────────────────────────────────╯
-╭─ TTS (Text-to-Speech) Configuration: OpenAI ─────────────────────────────────╮
-│ --tts-openai-model        TEXT  The OpenAI model to use for TTS.             │
-│                                 [default: tts-1]                             │
-│ --tts-openai-voice        TEXT  The voice to use for OpenAI TTS.             │
-│                                 [default: alloy]                             │
-╰──────────────────────────────────────────────────────────────────────────────╯
-╭─ TTS (Text-to-Speech) Configuration: Kokoro ─────────────────────────────────╮
-│ --tts-kokoro-model        TEXT  The Kokoro model to use for TTS.             │
-│                                 [default: kokoro]                            │
-│ --tts-kokoro-voice        TEXT  The voice to use for Kokoro TTS.             │
-│                                 [default: af_sky]                            │
-│ --tts-kokoro-host         TEXT  The base URL for the Kokoro API.             │
-│                                 [default: http://localhost:8880/v1]          │
-╰──────────────────────────────────────────────────────────────────────────────╯
-╭─ Process Management Options ─────────────────────────────────────────────────╮
-│ --stop            Stop any running background process.                       │
-│ --status          Check if a background process is running.                  │
-│ --toggle          Toggle the background process on/off. If the process is    │
-│                   running, it will be stopped. If the process is not         │
-│                   running, it will be started.                               │
-╰──────────────────────────────────────────────────────────────────────────────╯
-╭─ General Options ────────────────────────────────────────────────────────────╮
-│ --save-file                         PATH  Save TTS response audio to WAV     │
-│                                           file.                              │
-│                                           [default: None]                    │
-│ --clipboard       --no-clipboard          Copy result to clipboard.          │
-│                                           [default: clipboard]               │
-│ --log-level                         TEXT  Set logging level.                 │
-│                                           [default: WARNING]                 │
-│ --log-file                          TEXT  Path to a file to write logs to.   │
-│                                           [default: None]                    │
-│ --quiet       -q                          Suppress console output from rich. │
-│ --config                            TEXT  Path to a TOML configuration file. │
-│                                           [default: None]                    │
-│ --print-args                              Print the command line arguments,  │
-│                                           including variables taken from the │
-│                                           configuration file.                │
-╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Options ──────────────────────────────────────────────────────────────────────────────╮
+│ --help          Show this message and exit.                                            │
+╰────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ Provider Selection ───────────────────────────────────────────────────────────────────╮
+│ --asr-provider        TEXT  The ASR provider to use ('local' for Wyoming, 'openai').   │
+│                             [default: local]                                           │
+│ --llm-provider        TEXT  The LLM provider to use ('local' for Ollama, 'openai',     │
+│                             'gemini').                                                 │
+│                             [default: local]                                           │
+│ --tts-provider        TEXT  The TTS provider to use ('local' for Wyoming, 'openai',    │
+│                             'kokoro').                                                 │
+│                             [default: local]                                           │
+╰────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ Wake Word Options ────────────────────────────────────────────────────────────────────╮
+│ --wake-server-ip          TEXT     Wyoming wake word server IP address.                │
+│                                    [default: localhost]                                │
+│ --wake-server-port        INTEGER  Wyoming wake word server port. [default: 10400]     │
+│ --wake-word               TEXT     Name of wake word to detect (e.g., 'ok_nabu',       │
+│                                    'hey_jarvis').                                      │
+│                                    [default: ok_nabu]                                  │
+╰────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ ASR (Audio) Configuration ────────────────────────────────────────────────────────────╮
+│ --input-device-index        INTEGER  Index of the PyAudio input device to use.         │
+│                                      [default: None]                                   │
+│ --input-device-name         TEXT     Device name keywords for partial matching.        │
+│                                      [default: None]                                   │
+│ --list-devices                       List available audio input and output devices and │
+│                                      exit.                                             │
+╰────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ ASR (Audio) Configuration: Wyoming (local) ───────────────────────────────────────────╮
+│ --asr-wyoming-ip          TEXT     Wyoming ASR server IP address. [default: localhost] │
+│ --asr-wyoming-port        INTEGER  Wyoming ASR server port. [default: 10300]           │
+╰────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ ASR (Audio) Configuration: OpenAI ────────────────────────────────────────────────────╮
+│ --asr-openai-model        TEXT  The OpenAI model to use for ASR (transcription).       │
+│                                 [default: whisper-1]                                   │
+╰────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ LLM Configuration: Ollama (local) ────────────────────────────────────────────────────╮
+│ --llm-ollama-model        TEXT  The Ollama model to use. Default is qwen3:4b.          │
+│                                 [default: qwen3:4b]                                    │
+│ --llm-ollama-host         TEXT  The Ollama server host. Default is                     │
+│                                 http://localhost:11434.                                │
+│                                 [default: http://localhost:11434]                      │
+╰────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ LLM Configuration: OpenAI ────────────────────────────────────────────────────────────╮
+│ --llm-openai-model        TEXT  The OpenAI model to use for LLM tasks.                 │
+│                                 [default: gpt-4o-mini]                                 │
+│ --openai-api-key          TEXT  Your OpenAI API key. Can also be set with the          │
+│                                 OPENAI_API_KEY environment variable.                   │
+│                                 [env var: OPENAI_API_KEY]                              │
+│                                 [default: None]                                        │
+╰────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ LLM Configuration: Gemini ────────────────────────────────────────────────────────────╮
+│ --llm-gemini-model        TEXT  The Gemini model to use for LLM tasks.                 │
+│                                 [default: gemini-2.5-flash]                            │
+│ --gemini-api-key          TEXT  Your Gemini API key. Can also be set with the          │
+│                                 GEMINI_API_KEY environment variable.                   │
+│                                 [env var: GEMINI_API_KEY]                              │
+│                                 [default: None]                                        │
+╰────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ TTS (Text-to-Speech) Configuration ───────────────────────────────────────────────────╮
+│ --tts                    --no-tts             Enable text-to-speech for responses.     │
+│                                               [default: no-tts]                        │
+│ --output-device-index                INTEGER  Index of the PyAudio output device to    │
+│                                               use for TTS.                             │
+│                                               [default: None]                          │
+│ --output-device-name                 TEXT     Output device name keywords for partial  │
+│                                               matching.                                │
+│                                               [default: None]                          │
+│ --tts-speed                          FLOAT    Speech speed multiplier (1.0 = normal,   │
+│                                               2.0 = twice as fast, 0.5 = half speed).  │
+│                                               [default: 1.0]                           │
+╰────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ TTS (Text-to-Speech) Configuration: Wyoming (local) ──────────────────────────────────╮
+│ --tts-wyoming-ip              TEXT     Wyoming TTS server IP address.                  │
+│                                        [default: localhost]                            │
+│ --tts-wyoming-port            INTEGER  Wyoming TTS server port. [default: 10200]       │
+│ --tts-wyoming-voice           TEXT     Voice name to use for Wyoming TTS (e.g.,        │
+│                                        'en_US-lessac-medium').                         │
+│                                        [default: None]                                 │
+│ --tts-wyoming-language        TEXT     Language for Wyoming TTS (e.g., 'en_US').       │
+│                                        [default: None]                                 │
+│ --tts-wyoming-speaker         TEXT     Speaker name for Wyoming TTS voice.             │
+│                                        [default: None]                                 │
+╰────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ TTS (Text-to-Speech) Configuration: OpenAI ───────────────────────────────────────────╮
+│ --tts-openai-model        TEXT  The OpenAI model to use for TTS. [default: tts-1]      │
+│ --tts-openai-voice        TEXT  The voice to use for OpenAI TTS. [default: alloy]      │
+╰────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ TTS (Text-to-Speech) Configuration: Kokoro ───────────────────────────────────────────╮
+│ --tts-kokoro-model        TEXT  The Kokoro model to use for TTS. [default: kokoro]     │
+│ --tts-kokoro-voice        TEXT  The voice to use for Kokoro TTS. [default: af_sky]     │
+│ --tts-kokoro-host         TEXT  The base URL for the Kokoro API.                       │
+│                                 [default: http://localhost:8880/v1]                    │
+╰────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ TTS (Text-to-Speech) Configuration: Piper ────────────────────────────────────────────╮
+│ --tts-piper-host                 TEXT     The base URL for the Piper HTTP server.      │
+│                                           [default: http://localhost:10200]            │
+│ --tts-piper-voice                TEXT     The voice to use for Piper TTS (optional).   │
+│                                           [default: None]                              │
+│ --tts-piper-speaker              TEXT     The speaker to use for multi-speaker voices  │
+│                                           (optional).                                  │
+│                                           [default: None]                              │
+│ --tts-piper-speaker-id           INTEGER  The speaker ID to use for multi-speaker      │
+│                                           voices (optional, overrides speaker).        │
+│                                           [default: None]                              │
+│ --tts-piper-length-scale         FLOAT    Speaking speed (1.0 = normal speed).         │
+│                                           [default: 1.0]                               │
+│ --tts-piper-noise-scale          FLOAT    Speaking variability (optional).             │
+│                                           [default: None]                              │
+│ --tts-piper-noise-w-scale        FLOAT    Phoneme width variability (optional).        │
+│                                           [default: None]                              │
+╰────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ Process Management Options ───────────────────────────────────────────────────────────╮
+│ --stop            Stop any running background process.                                 │
+│ --status          Check if a background process is running.                            │
+│ --toggle          Toggle the background process on/off. If the process is running, it  │
+│                   will be stopped. If the process is not running, it will be started.  │
+╰────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ General Options ──────────────────────────────────────────────────────────────────────╮
+│ --save-file                         PATH  Save TTS response audio to WAV file.         │
+│                                           [default: None]                              │
+│ --clipboard       --no-clipboard          Copy result to clipboard.                    │
+│                                           [default: clipboard]                         │
+│ --log-level                         TEXT  Set logging level. [default: WARNING]        │
+│ --log-file                          TEXT  Path to a file to write logs to.             │
+│                                           [default: None]                              │
+│ --quiet       -q                          Suppress console output from rich.           │
+│ --config                            TEXT  Path to a TOML configuration file.           │
+│                                           [default: None]                              │
+│ --print-args                              Print the command line arguments, including  │
+│                                           variables taken from the configuration file. │
+╰────────────────────────────────────────────────────────────────────────────────────────╯
 
 ```
 
@@ -1094,133 +1082,133 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
  An chat agent that you can talk to.
 
 
-╭─ Options ────────────────────────────────────────────────────────────────────╮
-│ --help          Show this message and exit.                                  │
-╰──────────────────────────────────────────────────────────────────────────────╯
-╭─ Provider Selection ─────────────────────────────────────────────────────────╮
-│ --asr-provider        TEXT  The ASR provider to use ('local' for Wyoming,    │
-│                             'openai').                                       │
-│                             [default: local]                                 │
-│ --llm-provider        TEXT  The LLM provider to use ('local' for Ollama,     │
-│                             'openai', 'gemini').                             │
-│                             [default: local]                                 │
-│ --tts-provider        TEXT  The TTS provider to use ('local' for Wyoming,    │
-│                             'openai', 'kokoro').                             │
-│                             [default: local]                                 │
-╰──────────────────────────────────────────────────────────────────────────────╯
-╭─ ASR (Audio) Configuration ──────────────────────────────────────────────────╮
-│ --input-device-index        INTEGER  Index of the PyAudio input device to    │
-│                                      use.                                    │
-│                                      [default: None]                         │
-│ --input-device-name         TEXT     Device name keywords for partial        │
-│                                      matching.                               │
-│                                      [default: None]                         │
-│ --list-devices                       List available audio input and output   │
-│                                      devices and exit.                       │
-╰──────────────────────────────────────────────────────────────────────────────╯
-╭─ ASR (Audio) Configuration: Wyoming (local) ─────────────────────────────────╮
-│ --asr-wyoming-ip          TEXT     Wyoming ASR server IP address.            │
-│                                    [default: localhost]                      │
-│ --asr-wyoming-port        INTEGER  Wyoming ASR server port. [default: 10300] │
-╰──────────────────────────────────────────────────────────────────────────────╯
-╭─ ASR (Audio) Configuration: OpenAI ──────────────────────────────────────────╮
-│ --asr-openai-model        TEXT  The OpenAI model to use for ASR              │
-│                                 (transcription).                             │
-│                                 [default: whisper-1]                         │
-╰──────────────────────────────────────────────────────────────────────────────╯
-╭─ LLM Configuration: Ollama (local) ──────────────────────────────────────────╮
-│ --llm-ollama-model        TEXT  The Ollama model to use. Default is          │
-│                                 qwen3:4b.                                    │
-│                                 [default: qwen3:4b]                          │
-│ --llm-ollama-host         TEXT  The Ollama server host. Default is           │
-│                                 http://localhost:11434.                      │
-│                                 [default: http://localhost:11434]            │
-╰──────────────────────────────────────────────────────────────────────────────╯
-╭─ LLM Configuration: OpenAI ──────────────────────────────────────────────────╮
-│ --llm-openai-model        TEXT  The OpenAI model to use for LLM tasks.       │
-│                                 [default: gpt-4o-mini]                       │
-│ --openai-api-key          TEXT  Your OpenAI API key. Can also be set with    │
-│                                 the OPENAI_API_KEY environment variable.     │
-│                                 [env var: OPENAI_API_KEY]                    │
-│                                 [default: None]                              │
-╰──────────────────────────────────────────────────────────────────────────────╯
-╭─ LLM Configuration: Gemini ──────────────────────────────────────────────────╮
-│ --llm-gemini-model        TEXT  The Gemini model to use for LLM tasks.       │
-│                                 [default: gemini-2.5-flash]                  │
-│ --gemini-api-key          TEXT  Your Gemini API key. Can also be set with    │
-│                                 the GEMINI_API_KEY environment variable.     │
-│                                 [env var: GEMINI_API_KEY]                    │
-│                                 [default: None]                              │
-╰──────────────────────────────────────────────────────────────────────────────╯
-╭─ TTS (Text-to-Speech) Configuration ─────────────────────────────────────────╮
-│ --tts                    --no-tts             Enable text-to-speech for      │
-│                                               responses.                     │
-│                                               [default: no-tts]              │
-│ --output-device-index                INTEGER  Index of the PyAudio output    │
-│                                               device to use for TTS.         │
-│                                               [default: None]                │
-│ --output-device-name                 TEXT     Output device name keywords    │
-│                                               for partial matching.          │
-│                                               [default: None]                │
-│ --tts-speed                          FLOAT    Speech speed multiplier (1.0 = │
-│                                               normal, 2.0 = twice as fast,   │
-│                                               0.5 = half speed).             │
-│                                               [default: 1.0]                 │
-╰──────────────────────────────────────────────────────────────────────────────╯
-╭─ TTS (Text-to-Speech) Configuration: Wyoming (local) ────────────────────────╮
-│ --tts-wyoming-ip              TEXT     Wyoming TTS server IP address.        │
-│                                        [default: localhost]                  │
-│ --tts-wyoming-port            INTEGER  Wyoming TTS server port.              │
-│                                        [default: 10200]                      │
-│ --tts-wyoming-voice           TEXT     Voice name to use for Wyoming TTS     │
-│                                        (e.g., 'en_US-lessac-medium').        │
-│                                        [default: None]                       │
-│ --tts-wyoming-language        TEXT     Language for Wyoming TTS (e.g.,       │
-│                                        'en_US').                             │
-│                                        [default: None]                       │
-│ --tts-wyoming-speaker         TEXT     Speaker name for Wyoming TTS voice.   │
-│                                        [default: None]                       │
-╰──────────────────────────────────────────────────────────────────────────────╯
-╭─ TTS (Text-to-Speech) Configuration: OpenAI ─────────────────────────────────╮
-│ --tts-openai-model        TEXT  The OpenAI model to use for TTS.             │
-│                                 [default: tts-1]                             │
-│ --tts-openai-voice        TEXT  The voice to use for OpenAI TTS.             │
-│                                 [default: alloy]                             │
-╰──────────────────────────────────────────────────────────────────────────────╯
-╭─ TTS (Text-to-Speech) Configuration: Kokoro ─────────────────────────────────╮
-│ --tts-kokoro-model        TEXT  The Kokoro model to use for TTS.             │
-│                                 [default: kokoro]                            │
-│ --tts-kokoro-voice        TEXT  The voice to use for Kokoro TTS.             │
-│                                 [default: af_sky]                            │
-│ --tts-kokoro-host         TEXT  The base URL for the Kokoro API.             │
-│                                 [default: http://localhost:8880/v1]          │
-╰──────────────────────────────────────────────────────────────────────────────╯
-╭─ Process Management Options ─────────────────────────────────────────────────╮
-│ --stop            Stop any running background process.                       │
-│ --status          Check if a background process is running.                  │
-│ --toggle          Toggle the background process on/off. If the process is    │
-│                   running, it will be stopped. If the process is not         │
-│                   running, it will be started.                               │
-╰──────────────────────────────────────────────────────────────────────────────╯
-╭─ History Options ────────────────────────────────────────────────────────────╮
-│ --history-dir            PATH     Directory to store conversation history.   │
-│                                   [default: ~/.config/agent-cli/history]     │
-│ --last-n-messages        INTEGER  Number of messages to include in the       │
-│                                   conversation history. Set to 0 to disable  │
-│                                   history.                                   │
-│                                   [default: 50]                              │
-╰──────────────────────────────────────────────────────────────────────────────╯
-╭─ General Options ────────────────────────────────────────────────────────────╮
-│ --save-file           PATH  Save TTS response audio to WAV file.             │
-│                             [default: None]                                  │
-│ --log-level           TEXT  Set logging level. [default: WARNING]            │
-│ --log-file            TEXT  Path to a file to write logs to. [default: None] │
-│ --quiet       -q            Suppress console output from rich.               │
-│ --config              TEXT  Path to a TOML configuration file.               │
-│                             [default: None]                                  │
-│ --print-args                Print the command line arguments, including      │
-│                             variables taken from the configuration file.     │
-╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Options ──────────────────────────────────────────────────────────────────────────────╮
+│ --help          Show this message and exit.                                            │
+╰────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ Provider Selection ───────────────────────────────────────────────────────────────────╮
+│ --asr-provider        TEXT  The ASR provider to use ('local' for Wyoming, 'openai').   │
+│                             [default: local]                                           │
+│ --llm-provider        TEXT  The LLM provider to use ('local' for Ollama, 'openai',     │
+│                             'gemini').                                                 │
+│                             [default: local]                                           │
+│ --tts-provider        TEXT  The TTS provider to use ('local' for Wyoming, 'openai',    │
+│                             'kokoro').                                                 │
+│                             [default: local]                                           │
+╰────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ ASR (Audio) Configuration ────────────────────────────────────────────────────────────╮
+│ --input-device-index        INTEGER  Index of the PyAudio input device to use.         │
+│                                      [default: None]                                   │
+│ --input-device-name         TEXT     Device name keywords for partial matching.        │
+│                                      [default: None]                                   │
+│ --list-devices                       List available audio input and output devices and │
+│                                      exit.                                             │
+╰────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ ASR (Audio) Configuration: Wyoming (local) ───────────────────────────────────────────╮
+│ --asr-wyoming-ip          TEXT     Wyoming ASR server IP address. [default: localhost] │
+│ --asr-wyoming-port        INTEGER  Wyoming ASR server port. [default: 10300]           │
+╰────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ ASR (Audio) Configuration: OpenAI ────────────────────────────────────────────────────╮
+│ --asr-openai-model        TEXT  The OpenAI model to use for ASR (transcription).       │
+│                                 [default: whisper-1]                                   │
+╰────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ LLM Configuration: Ollama (local) ────────────────────────────────────────────────────╮
+│ --llm-ollama-model        TEXT  The Ollama model to use. Default is qwen3:4b.          │
+│                                 [default: qwen3:4b]                                    │
+│ --llm-ollama-host         TEXT  The Ollama server host. Default is                     │
+│                                 http://localhost:11434.                                │
+│                                 [default: http://localhost:11434]                      │
+╰────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ LLM Configuration: OpenAI ────────────────────────────────────────────────────────────╮
+│ --llm-openai-model        TEXT  The OpenAI model to use for LLM tasks.                 │
+│                                 [default: gpt-4o-mini]                                 │
+│ --openai-api-key          TEXT  Your OpenAI API key. Can also be set with the          │
+│                                 OPENAI_API_KEY environment variable.                   │
+│                                 [env var: OPENAI_API_KEY]                              │
+│                                 [default: None]                                        │
+╰────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ LLM Configuration: Gemini ────────────────────────────────────────────────────────────╮
+│ --llm-gemini-model        TEXT  The Gemini model to use for LLM tasks.                 │
+│                                 [default: gemini-2.5-flash]                            │
+│ --gemini-api-key          TEXT  Your Gemini API key. Can also be set with the          │
+│                                 GEMINI_API_KEY environment variable.                   │
+│                                 [env var: GEMINI_API_KEY]                              │
+│                                 [default: None]                                        │
+╰────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ TTS (Text-to-Speech) Configuration ───────────────────────────────────────────────────╮
+│ --tts                    --no-tts             Enable text-to-speech for responses.     │
+│                                               [default: no-tts]                        │
+│ --output-device-index                INTEGER  Index of the PyAudio output device to    │
+│                                               use for TTS.                             │
+│                                               [default: None]                          │
+│ --output-device-name                 TEXT     Output device name keywords for partial  │
+│                                               matching.                                │
+│                                               [default: None]                          │
+│ --tts-speed                          FLOAT    Speech speed multiplier (1.0 = normal,   │
+│                                               2.0 = twice as fast, 0.5 = half speed).  │
+│                                               [default: 1.0]                           │
+╰────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ TTS (Text-to-Speech) Configuration: Wyoming (local) ──────────────────────────────────╮
+│ --tts-wyoming-ip              TEXT     Wyoming TTS server IP address.                  │
+│                                        [default: localhost]                            │
+│ --tts-wyoming-port            INTEGER  Wyoming TTS server port. [default: 10200]       │
+│ --tts-wyoming-voice           TEXT     Voice name to use for Wyoming TTS (e.g.,        │
+│                                        'en_US-lessac-medium').                         │
+│                                        [default: None]                                 │
+│ --tts-wyoming-language        TEXT     Language for Wyoming TTS (e.g., 'en_US').       │
+│                                        [default: None]                                 │
+│ --tts-wyoming-speaker         TEXT     Speaker name for Wyoming TTS voice.             │
+│                                        [default: None]                                 │
+╰────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ TTS (Text-to-Speech) Configuration: OpenAI ───────────────────────────────────────────╮
+│ --tts-openai-model        TEXT  The OpenAI model to use for TTS. [default: tts-1]      │
+│ --tts-openai-voice        TEXT  The voice to use for OpenAI TTS. [default: alloy]      │
+╰────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ TTS (Text-to-Speech) Configuration: Kokoro ───────────────────────────────────────────╮
+│ --tts-kokoro-model        TEXT  The Kokoro model to use for TTS. [default: kokoro]     │
+│ --tts-kokoro-voice        TEXT  The voice to use for Kokoro TTS. [default: af_sky]     │
+│ --tts-kokoro-host         TEXT  The base URL for the Kokoro API.                       │
+│                                 [default: http://localhost:8880/v1]                    │
+╰────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ TTS (Text-to-Speech) Configuration: Piper ────────────────────────────────────────────╮
+│ --tts-piper-host                 TEXT     The base URL for the Piper HTTP server.      │
+│                                           [default: http://localhost:10200]            │
+│ --tts-piper-voice                TEXT     The voice to use for Piper TTS (optional).   │
+│                                           [default: None]                              │
+│ --tts-piper-speaker              TEXT     The speaker to use for multi-speaker voices  │
+│                                           (optional).                                  │
+│                                           [default: None]                              │
+│ --tts-piper-speaker-id           INTEGER  The speaker ID to use for multi-speaker      │
+│                                           voices (optional, overrides speaker).        │
+│                                           [default: None]                              │
+│ --tts-piper-length-scale         FLOAT    Speaking speed (1.0 = normal speed).         │
+│                                           [default: 1.0]                               │
+│ --tts-piper-noise-scale          FLOAT    Speaking variability (optional).             │
+│                                           [default: None]                              │
+│ --tts-piper-noise-w-scale        FLOAT    Phoneme width variability (optional).        │
+│                                           [default: None]                              │
+╰────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ Process Management Options ───────────────────────────────────────────────────────────╮
+│ --stop            Stop any running background process.                                 │
+│ --status          Check if a background process is running.                            │
+│ --toggle          Toggle the background process on/off. If the process is running, it  │
+│                   will be stopped. If the process is not running, it will be started.  │
+╰────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ History Options ──────────────────────────────────────────────────────────────────────╮
+│ --history-dir            PATH     Directory to store conversation history.             │
+│                                   [default: ~/.config/agent-cli/history]               │
+│ --last-n-messages        INTEGER  Number of messages to include in the conversation    │
+│                                   history. Set to 0 to disable history.                │
+│                                   [default: 50]                                        │
+╰────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ General Options ──────────────────────────────────────────────────────────────────────╮
+│ --save-file           PATH  Save TTS response audio to WAV file. [default: None]       │
+│ --log-level           TEXT  Set logging level. [default: WARNING]                      │
+│ --log-file            TEXT  Path to a file to write logs to. [default: None]           │
+│ --quiet       -q            Suppress console output from rich.                         │
+│ --config              TEXT  Path to a TOML configuration file. [default: None]         │
+│ --print-args                Print the command line arguments, including variables      │
+│                             taken from the configuration file.                         │
+╰────────────────────────────────────────────────────────────────────────────────────────╯
 
 ```
 
