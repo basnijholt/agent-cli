@@ -57,6 +57,7 @@ coverage.*
 .pytest_cache/
 .vscode/
 .vscode/
+.DS_Store
 
 # Examples and scripts - exclude downloaded models and data
 examples/ollama/models/
@@ -67,3 +68,6 @@ scripts/.runtime/
 *.onnx
 *.onnx.json
 *.bin
+
+# Config file
+agent-cli-config.toml

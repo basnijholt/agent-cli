@@ -35,6 +35,7 @@ async def _async_main(
     wyoming_tts_cfg: config.WyomingTTS,
     openai_tts_cfg: config.OpenAITTS,
     kokoro_tts_cfg: config.KokoroTTS,
+    piper_tts_cfg: config.PiperTTS,
 ) -> None:
     """Async entry point for the speak command."""
     with pyaudio_context() as p:
@@ -64,6 +65,7 @@ async def _async_main(
                 wyoming_tts_cfg=wyoming_tts_cfg,
                 openai_tts_cfg=openai_tts_cfg,
                 kokoro_tts_cfg=kokoro_tts_cfg,
+                piper_tts_cfg=piper_tts_cfg,
                 save_file=general_cfg.save_file,
                 quiet=general_cfg.quiet,
                 logger=LOGGER,
@@ -102,6 +104,14 @@ def speak(
     tts_kokoro_model: str = opts.TTS_KOKORO_MODEL,
     tts_kokoro_voice: str = opts.TTS_KOKORO_VOICE,
     tts_kokoro_host: str = opts.TTS_KOKORO_HOST,
+    # Piper
+    tts_piper_host: str = opts.TTS_PIPER_HOST,
+    tts_piper_voice: str | None = opts.TTS_PIPER_VOICE,
+    tts_piper_speaker: str | None = opts.TTS_PIPER_SPEAKER,
+    tts_piper_speaker_id: int | None = opts.TTS_PIPER_SPEAKER_ID,
+    tts_piper_length_scale: float = opts.TTS_PIPER_LENGTH_SCALE,
+    tts_piper_noise_scale: float | None = opts.TTS_PIPER_NOISE_SCALE,
+    tts_piper_noise_w_scale: float | None = opts.TTS_PIPER_NOISE_W_SCALE,
     # --- General Options ---
     list_devices: bool = opts.LIST_DEVICES,
     save_file: Path | None = opts.SAVE_FILE,
@@ -165,6 +175,15 @@ def speak(
             tts_kokoro_voice=tts_kokoro_voice,
             tts_kokoro_host=tts_kokoro_host,
         )
+        piper_tts_cfg = config.PiperTTS(
+            tts_piper_host=tts_piper_host,
+            tts_piper_voice=tts_piper_voice,
+            tts_piper_speaker=tts_piper_speaker,
+            tts_piper_speaker_id=tts_piper_speaker_id,
+            tts_piper_length_scale=tts_piper_length_scale,
+            tts_piper_noise_scale=tts_piper_noise_scale,
+            tts_piper_noise_w_scale=tts_piper_noise_w_scale,
+        )
 
         asyncio.run(
             _async_main(
@@ -175,5 +194,6 @@ def speak(
                 wyoming_tts_cfg=wyoming_tts_cfg,
                 openai_tts_cfg=openai_tts_cfg,
                 kokoro_tts_cfg=kokoro_tts_cfg,
+                piper_tts_cfg=piper_tts_cfg,
             ),
         )

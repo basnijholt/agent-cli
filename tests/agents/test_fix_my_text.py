@@ -111,7 +111,7 @@ async def test_process_text_integration(mock_create_llm_agent: MagicMock) -> Non
     provider_cfg = config.ProviderSelection(
         llm_provider="local",
         asr_provider="local",
-        tts_provider="local",
+        tts_provider="piper",
     )
     ollama_cfg = config.Ollama(llm_ollama_model="test-model", llm_ollama_host="test")
     openai_llm_cfg = config.OpenAILLM(llm_openai_model="gpt-4o-mini", openai_api_key=None)
@@ -166,7 +166,7 @@ async def test_autocorrect_command_with_text(
     provider_cfg = config.ProviderSelection(
         llm_provider="local",
         asr_provider="local",
-        tts_provider="local",
+        tts_provider="piper",
     )
     ollama_cfg = config.Ollama(
         llm_ollama_model="qwen3:4b",
@@ -227,7 +227,7 @@ async def test_autocorrect_command_from_clipboard(
     provider_cfg = config.ProviderSelection(
         llm_provider="local",
         asr_provider="local",
-        tts_provider="local",
+        tts_provider="piper",
     )
     ollama_cfg = config.Ollama(
         llm_ollama_model="qwen3:4b",
@@ -280,7 +280,7 @@ async def test_async_autocorrect_no_text(
     provider_cfg = config.ProviderSelection(
         llm_provider="local",
         asr_provider="local",
-        tts_provider="local",
+        tts_provider="piper",
     )
     ollama_cfg = config.Ollama(llm_ollama_model="test", llm_ollama_host="test")
     openai_llm_cfg = config.OpenAILLM(llm_openai_model="gpt-4o-mini", openai_api_key=None)
@@ -313,7 +313,7 @@ async def test_async_autocorrect_error(mock_process_text: AsyncMock):
     provider_cfg = config.ProviderSelection(
         llm_provider="local",
         asr_provider="local",
-        tts_provider="local",
+        tts_provider="piper",
     )
     ollama_cfg = config.Ollama(llm_ollama_model="test", llm_ollama_host="test")
     openai_llm_cfg = config.OpenAILLM(llm_openai_model="gpt-4o-mini", openai_api_key=None)

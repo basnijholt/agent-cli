@@ -7,9 +7,11 @@ import importlib.util
 import io
 import wave
 from functools import partial
+from http import HTTPStatus
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+import aiohttp
 from openai import AsyncOpenAI
 from rich.live import Live
 from wyoming.audio import AudioChunk, AudioStart, AudioStop
@@ -45,6 +47,7 @@ def create_synthesizer(
     wyoming_tts_cfg: config.WyomingTTS,
     openai_tts_cfg: config.OpenAITTS,
     kokoro_tts_cfg: config.KokoroTTS,
+    piper_tts_cfg: config.PiperTTS,
 ) -> Callable[..., Awaitable[bytes | None]]:
     """Return the appropriate synthesizer based on the config."""
     if not audio_output_cfg.enable_tts:
@@ -59,6 +62,11 @@ def create_synthesizer(
             _synthesize_speech_kokoro,
             kokoro_tts_cfg=kokoro_tts_cfg,
         )
+    if provider_cfg.tts_provider == "piper":
+        return partial(
+            _synthesize_speech_piper,
+            piper_tts_cfg=piper_tts_cfg,
+        )
     return partial(_synthesize_speech_wyoming, wyoming_tts_cfg=wyoming_tts_cfg)
 
 
@@ -70,6 +78,7 @@ async def handle_tts_playback(
     wyoming_tts_cfg: config.WyomingTTS,
     openai_tts_cfg: config.OpenAITTS,
     kokoro_tts_cfg: config.KokoroTTS,
+    piper_tts_cfg: config.PiperTTS,
     save_file: Path | None,
     quiet: bool,
     logger: logging.Logger,
@@ -91,6 +100,7 @@ async def handle_tts_playback(
             wyoming_tts_cfg=wyoming_tts_cfg,
             openai_tts_cfg=openai_tts_cfg,
             kokoro_tts_cfg=kokoro_tts_cfg,
+            piper_tts_cfg=piper_tts_cfg,
             logger=logger,
             quiet=quiet,
             play_audio_flag=play_audio,
@@ -243,6 +253,49 @@ async def _synthesize_speech_kokoro(
         return None
 
 
+async def _synthesize_speech_piper(
+    *,
+    text: str,
+    piper_tts_cfg: config.PiperTTS,
+    logger: logging.Logger,
+    **_kwargs: object,
+) -> bytes | None:
+    """Synthesize speech from text using Piper HTTP server."""
+    try:
+        payload: dict[str, str | int | float] = {"text": text}
+
+        if piper_tts_cfg.tts_piper_voice:
+            payload["voice"] = piper_tts_cfg.tts_piper_voice
+        if piper_tts_cfg.tts_piper_speaker:
+            payload["speaker"] = piper_tts_cfg.tts_piper_speaker
+        if piper_tts_cfg.tts_piper_speaker_id is not None:
+            payload["speaker_id"] = piper_tts_cfg.tts_piper_speaker_id
+        if piper_tts_cfg.tts_piper_length_scale != 1.0:
+            payload["length_scale"] = piper_tts_cfg.tts_piper_length_scale
+        if piper_tts_cfg.tts_piper_noise_scale is not None:
+            payload["noise_scale"] = piper_tts_cfg.tts_piper_noise_scale
+        if piper_tts_cfg.tts_piper_noise_w_scale is not None:
+            payload["noise_w_scale"] = piper_tts_cfg.tts_piper_noise_w_scale
+
+        async with (
+            aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=30)) as session,
+            session.post(
+                piper_tts_cfg.tts_piper_host,
+                json=payload,
+                headers={"Content-Type": "application/json"},
+            ) as response,
+        ):
+            if response.status == HTTPStatus.OK:
+                audio_data = await response.read()
+                logger.info("Piper speech synthesis completed: %d bytes", len(audio_data))
+                return audio_data
+            logger.error("Piper HTTP error: %d - %s", response.status, await response.text())
+            return None
+    except Exception:
+        logger.exception("Error during Piper speech synthesis")
+        return None
+
+
 async def _synthesize_speech_wyoming(
     *,
     text: str,
@@ -362,6 +415,7 @@ async def _speak_text(
     wyoming_tts_cfg: config.WyomingTTS,
     openai_tts_cfg: config.OpenAITTS,
     kokoro_tts_cfg: config.KokoroTTS,
+    piper_tts_cfg: config.PiperTTS,
     logger: logging.Logger,
     quiet: bool = False,
     play_audio_flag: bool = True,
@@ -375,6 +429,7 @@ async def _speak_text(
         wyoming_tts_cfg,
         openai_tts_cfg,
         kokoro_tts_cfg,
+        piper_tts_cfg,
     )
     audio_data = None
     try:
@@ -384,6 +439,7 @@ async def _speak_text(
                 wyoming_tts_cfg=wyoming_tts_cfg,
                 openai_tts_cfg=openai_tts_cfg,
                 kokoro_tts_cfg=kokoro_tts_cfg,
+                piper_tts_cfg=piper_tts_cfg,
                 logger=logger,
                 quiet=quiet,
                 live=live,

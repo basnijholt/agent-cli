@@ -22,7 +22,7 @@ async def test_get_instruction_from_audio(mock_create_transcriber: MagicMock) ->
     provider_cfg = config.ProviderSelection(
         asr_provider="local",
         llm_provider="local",
-        tts_provider="local",
+        tts_provider="piper",
     )
     audio_in_cfg = config.AudioInput(input_device_index=1)
     wyoming_asr_cfg = config.WyomingASR(asr_wyoming_ip="localhost", asr_wyoming_port=1234)
@@ -53,7 +53,7 @@ async def test_get_instruction_from_audio_error(mock_create_transcriber: MagicMo
     provider_cfg = config.ProviderSelection(
         asr_provider="local",
         llm_provider="local",
-        tts_provider="local",
+        tts_provider="piper",
     )
     audio_in_cfg = config.AudioInput(input_device_index=1)
     wyoming_asr_cfg = config.WyomingASR(asr_wyoming_ip="localhost", asr_wyoming_port=1234)
@@ -92,7 +92,7 @@ async def test_process_instruction_and_respond(
     )
     provider_cfg = config.ProviderSelection(
         llm_provider="local",
-        tts_provider="local",
+        tts_provider="piper",
         asr_provider="local",
     )
     ollama_cfg = config.Ollama(llm_ollama_model="test-model", llm_ollama_host="localhost")
@@ -113,6 +113,9 @@ async def test_process_instruction_and_respond(
         tts_kokoro_voice="alloy",
         tts_kokoro_host="http://localhost:8000/v1",
     )
+    piper_tts_cfg = config.PiperTTS(
+        tts_piper_host="http://localhost:5000",
+    )
 
     with (
         patch("agent_cli.agents.autocorrect.pyperclip.copy"),
@@ -130,6 +133,7 @@ async def test_process_instruction_and_respond(
             wyoming_tts_cfg=wyoming_tts_cfg,
             openai_tts_cfg=openai_tts_cfg,
             kokoro_tts_cfg=kokoro_tts_cfg,
+            piper_tts_cfg=piper_tts_cfg,
             system_prompt="system prompt",
             agent_instructions="agent instructions",
             live=MagicMock(),

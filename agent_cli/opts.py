@@ -230,6 +230,50 @@ TTS_KOKORO_HOST: str = typer.Option(
     rich_help_panel="TTS (Text-to-Speech) Configuration: Kokoro",
 )
 
+# --- TTS Configuration: Piper ---
+TTS_PIPER_HOST: str = typer.Option(
+    "http://localhost:10200",
+    "--tts-piper-host",
+    help="The base URL for the Piper HTTP server.",
+    rich_help_panel="TTS (Text-to-Speech) Configuration: Piper",
+)
+TTS_PIPER_VOICE: str | None = typer.Option(
+    None,
+    "--tts-piper-voice",
+    help="The voice to use for Piper TTS (optional).",
+    rich_help_panel="TTS (Text-to-Speech) Configuration: Piper",
+)
+TTS_PIPER_SPEAKER: str | None = typer.Option(
+    None,
+    "--tts-piper-speaker",
+    help="The speaker to use for multi-speaker voices (optional).",
+    rich_help_panel="TTS (Text-to-Speech) Configuration: Piper",
+)
+TTS_PIPER_SPEAKER_ID: int | None = typer.Option(
+    None,
+    "--tts-piper-speaker-id",
+    help="The speaker ID to use for multi-speaker voices (optional, overrides speaker).",
+    rich_help_panel="TTS (Text-to-Speech) Configuration: Piper",
+)
+TTS_PIPER_LENGTH_SCALE: float = typer.Option(
+    1.0,
+    "--tts-piper-length-scale",
+    help="Speaking speed (1.0 = normal speed).",
+    rich_help_panel="TTS (Text-to-Speech) Configuration: Piper",
+)
+TTS_PIPER_NOISE_SCALE: float | None = typer.Option(
+    None,
+    "--tts-piper-noise-scale",
+    help="Speaking variability (optional).",
+    rich_help_panel="TTS (Text-to-Speech) Configuration: Piper",
+)
+TTS_PIPER_NOISE_W_SCALE: float | None = typer.Option(
+    None,
+    "--tts-piper-noise-w-scale",
+    help="Phoneme width variability (optional).",
+    rich_help_panel="TTS (Text-to-Speech) Configuration: Piper",
+)
+
 
 # --- Process Management Options ---
 STOP: bool = typer.Option(

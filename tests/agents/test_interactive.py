@@ -88,7 +88,7 @@ async def test_async_main_list_devices(tmp_path: Path) -> None:
     provider_cfg = config.ProviderSelection(
         asr_provider="local",
         llm_provider="local",
-        tts_provider="local",
+        tts_provider="piper",
     )
     history_cfg = config.History(history_dir=tmp_path)
     audio_in_cfg = config.AudioInput()
@@ -107,6 +107,9 @@ async def test_async_main_list_devices(tmp_path: Path) -> None:
         tts_kokoro_model="tts-1",
         tts_kokoro_voice="alloy",
         tts_kokoro_host="http://localhost:8000/v1",
+    )
+    piper_tts_cfg = config.PiperTTS(
+        tts_piper_host="http://localhost:5000",
     )
 
     with (
@@ -130,6 +133,7 @@ async def test_async_main_list_devices(tmp_path: Path) -> None:
             wyoming_tts_cfg=wyoming_tts_cfg,
             openai_tts_cfg=openai_tts_cfg,
             kokoro_tts_cfg=kokoro_tts_cfg,
+            piper_tts_cfg=piper_tts_cfg,
         )
         mock_setup_devices.assert_called_once()
 
@@ -167,6 +171,9 @@ async def test_async_main_list_output_devices(tmp_path: Path) -> None:
         tts_kokoro_voice="alloy",
         tts_kokoro_host="http://localhost:8000/v1",
     )
+    piper_tts_cfg = config.PiperTTS(
+        tts_piper_host="http://localhost:5000",
+    )
 
     with (
         patch("agent_cli.agents.chat.pyaudio_context"),
@@ -189,6 +196,7 @@ async def test_async_main_list_output_devices(tmp_path: Path) -> None:
             wyoming_tts_cfg=wyoming_tts_cfg,
             openai_tts_cfg=openai_tts_cfg,
             kokoro_tts_cfg=kokoro_tts_cfg,
+            piper_tts_cfg=piper_tts_cfg,
         )
         mock_setup_devices.assert_called_once()
 
@@ -204,7 +212,7 @@ async def test_async_main_full_loop(tmp_path: Path) -> None:
         log_file=None,
         list_devices=False,
         quiet=False,
-        clipboard=False,
+        tts_provider="piper",
     )
     provider_cfg = config.ProviderSelection(
         asr_provider="local",
@@ -232,6 +240,9 @@ async def test_async_main_full_loop(tmp_path: Path) -> None:
         tts_kokoro_model="tts-1",
         tts_kokoro_voice="alloy",
         tts_kokoro_host="http://localhost:8000/v1",
+    )
+    piper_tts_cfg = config.PiperTTS(
+        tts_piper_host="http://localhost:5000",
     )
 
     with (
@@ -272,6 +283,7 @@ async def test_async_main_full_loop(tmp_path: Path) -> None:
             wyoming_tts_cfg=wyoming_tts_cfg,
             openai_tts_cfg=openai_tts_cfg,
             kokoro_tts_cfg=kokoro_tts_cfg,
+            piper_tts_cfg=piper_tts_cfg,
         )
 
         # Verify that the core functions were called
@@ -286,6 +298,7 @@ async def test_async_main_full_loop(tmp_path: Path) -> None:
             wyoming_tts_cfg=wyoming_tts_cfg,
             openai_tts_cfg=openai_tts_cfg,
             kokoro_tts_cfg=kokoro_tts_cfg,
+            piper_tts_cfg=piper_tts_cfg,
             save_file=None,
             quiet=False,
             logger=mock_tts.call_args.kwargs["logger"],

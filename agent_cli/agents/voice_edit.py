@@ -101,6 +101,7 @@ async def _async_main(
     wyoming_tts_cfg: config.WyomingTTS,
     openai_tts_cfg: config.OpenAITTS,
     kokoro_tts_cfg: config.KokoroTTS,
+    piper_tts_cfg: config.PiperTTS,
 ) -> None:
     """Core asynchronous logic for the voice assistant."""
     with pyaudio_context() as p:
@@ -161,6 +162,7 @@ async def _async_main(
                 wyoming_tts_cfg=wyoming_tts_cfg,
                 openai_tts_cfg=openai_tts_cfg,
                 kokoro_tts_cfg=kokoro_tts_cfg,
+                piper_tts_cfg=piper_tts_cfg,
                 system_prompt=SYSTEM_PROMPT,
                 agent_instructions=AGENT_INSTRUCTIONS,
                 live=live,
@@ -203,6 +205,13 @@ def voice_edit(
     tts_kokoro_model: str = opts.TTS_KOKORO_MODEL,
     tts_kokoro_voice: str = opts.TTS_KOKORO_VOICE,
     tts_kokoro_host: str = opts.TTS_KOKORO_HOST,
+    tts_piper_host: str = opts.TTS_PIPER_HOST,
+    tts_piper_voice: str | None = opts.TTS_PIPER_VOICE,
+    tts_piper_speaker: str | None = opts.TTS_PIPER_SPEAKER,
+    tts_piper_speaker_id: int | None = opts.TTS_PIPER_SPEAKER_ID,
+    tts_piper_length_scale: float = opts.TTS_PIPER_LENGTH_SCALE,
+    tts_piper_noise_scale: float | None = opts.TTS_PIPER_NOISE_SCALE,
+    tts_piper_noise_w_scale: float | None = opts.TTS_PIPER_NOISE_W_SCALE,
     # --- Process Management ---
     stop: bool = opts.STOP,
     status: bool = opts.STATUS,
@@ -302,6 +311,15 @@ def voice_edit(
             tts_kokoro_voice=tts_kokoro_voice,
             tts_kokoro_host=tts_kokoro_host,
         )
+        piper_tts_cfg = config.PiperTTS(
+            tts_piper_host=tts_piper_host,
+            tts_piper_voice=tts_piper_voice,
+            tts_piper_speaker=tts_piper_speaker,
+            tts_piper_speaker_id=tts_piper_speaker_id,
+            tts_piper_length_scale=tts_piper_length_scale,
+            tts_piper_noise_scale=tts_piper_noise_scale,
+            tts_piper_noise_w_scale=tts_piper_noise_w_scale,
+        )
 
         asyncio.run(
             _async_main(
@@ -317,5 +335,6 @@ def voice_edit(
                 wyoming_tts_cfg=wyoming_tts_cfg,
                 openai_tts_cfg=openai_tts_cfg,
                 kokoro_tts_cfg=kokoro_tts_cfg,
+                piper_tts_cfg=piper_tts_cfg,
             ),
         )

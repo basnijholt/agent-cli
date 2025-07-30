@@ -60,6 +60,9 @@ async def test_speak_e2e(
             tts_kokoro_voice="alloy",
             tts_kokoro_host="http://localhost:8000/v1",
         )
+        piper_tts_cfg = config.PiperTTS(
+            tts_piper_host="http://localhost:5000",
+        )
 
         await _async_main(
             general_cfg=general_cfg,
@@ -69,6 +72,7 @@ async def test_speak_e2e(
             wyoming_tts_cfg=wyoming_tts_cfg,
             openai_tts_cfg=openai_tts_cfg,
             kokoro_tts_cfg=kokoro_tts_cfg,
+            piper_tts_cfg=piper_tts_cfg,
         )
 
     # Verify that the audio was "played"

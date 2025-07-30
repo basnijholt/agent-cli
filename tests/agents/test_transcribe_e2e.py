@@ -46,7 +46,7 @@ async def test_transcribe_e2e(
     provider_cfg = config.ProviderSelection(
         asr_provider="local",
         llm_provider="local",
-        tts_provider="local",
+        tts_provider="piper",
     )
     general_cfg = config.General(
         log_level="INFO",

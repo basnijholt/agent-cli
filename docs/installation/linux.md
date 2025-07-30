@@ -66,7 +66,7 @@ ollama serve
 scripts/run-whisper.sh
 
 # Terminal 3: Piper
-scripts/run-piper.sh
+scripts/run-piper-server.sh
 
 # Terminal 4: OpenWakeWord
 scripts/run-openwakeword.sh

@@ -16,7 +16,7 @@
 # Select the default provider for each service ("local" or "openai").
 llm-provider = "local"
 asr-provider = "local"
-tts-provider = "local"
+tts-provider = "piper"
 
 # --- API Keys ---
 # Your OpenAI API key. Can also be set via the OPENAI_API_KEY environment variable.
@@ -97,7 +97,7 @@ last-n-messages = 50 # Number of messages to load from history
 
 [speak]
 # Use a specific voice for the speak command.
-tts-provider = "local"
+tts-provider = "piper"
 tts-wyoming-voice = "en_US-ryan-high"
 tts-speed = 1.0
 
