@@ -213,7 +213,9 @@ wyoming_openwakeword_url = "tcp://localhost:10400"
 
 ## NixOS Module Options
 
-The NixOS module provides these configuration options:
+The NixOS module provides comprehensive configuration options:
+
+### Basic Options
 
 ```nix
 services.agent-cli = {
@@ -224,8 +226,83 @@ services.agent-cli = {
   enableOpenWakeWord = true;        # Enable Wyoming OpenWakeWord
   enableServer = false;             # Enable agent-cli API server
   serverPort = 61337;               # API server port
-  ollamaAcceleration = "cpu";      # "cuda", "rocm", or "cpu"
-  whisperDevice = "cpu";            # "cuda" or "cpu"
+};
+```
+
+### Ollama Configuration
+
+```nix
+services.agent-cli = {
+  ollamaAcceleration = "cuda";     # "cuda", "rocm", or "cpu"
+  ollamaHost = "0.0.0.0";          # Host address for Ollama
+  ollamaEnvironmentVariables = {   # Environment variables for Ollama
+    OLLAMA_KEEP_ALIVE = "1h";
+    # Add any other Ollama env vars here
+  };
+};
+```
+
+### Whisper ASR Configuration
+
+```nix
+services.agent-cli = {
+  whisperModel = "large-v3";       # Model size: tiny-int8, small, medium, large-v3
+  whisperLanguage = "en";          # Language code: en, nl, fr, de, es, etc.
+  whisperDevice = "cuda";          # "cuda" or "cpu"
+  whisperUri = "tcp://0.0.0.0:10300"; # Server URI
+};
+```
+
+### Piper TTS Configuration
+
+```nix
+services.agent-cli = {
+  piperVoice = "en_US-ryan-high";  # Voice model
+  piperUri = "tcp://0.0.0.0:10200"; # Server URI
+};
+```
+
+### OpenWakeWord Configuration
+
+```nix
+services.agent-cli = {
+  openWakeWordModels = [            # Wake word models to preload
+    "alexa"
+    "hey_jarvis"
+    "ok_nabu"
+  ];
+  openWakeWordUri = "tcp://0.0.0.0:10400"; # Server URI
+};
+```
+
+### Complete Example
+
+```nix
+services.agent-cli = {
+  enable = true;
+
+  # Enable all services
+  enableOllama = true;
+  enableWhisper = true;
+  enablePiper = true;
+  enableOpenWakeWord = true;
+  enableServer = true;
+
+  # GPU acceleration
+  ollamaAcceleration = "cuda";
+  whisperDevice = "cuda";
+
+  # Advanced Whisper configuration
+  whisperModel = "large-v3";
+  whisperLanguage = "en";
+
+  # Custom URIs (if using non-standard ports)
+  whisperUri = "tcp://0.0.0.0:10300";
+  piperUri = "tcp://0.0.0.0:10200";
+  openWakeWordUri = "tcp://0.0.0.0:10400";
+
+  # Wake words
+  openWakeWordModels = [ "alexa" "hey_jarvis" "ok_nabu" ];
 };
 ```
 
