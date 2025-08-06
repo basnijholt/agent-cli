@@ -1,16 +1,16 @@
-# Nix Flake Installation
+# Nix Flake Installation for NixOS
 
-Modern Nix setup using flakes for reproducible and declarative agent-cli installation.
+Modern Nix setup using flakes for reproducible and declarative agent-cli installation on NixOS.
 
 ## Prerequisites
 
-- Nix with flakes enabled
+- NixOS with flakes enabled
 - 8GB+ RAM (16GB+ recommended for GPU)
 - 10GB free disk space
 
 ### Enable Flakes (if not already enabled)
 
-Add to `~/.config/nix/nix.conf` or `/etc/nix/nix.conf`:
+Add to `/etc/nix/nix.conf`:
 ```
 experimental-features = nix-command flakes
 ```
@@ -26,24 +26,20 @@ experimental-features = nix-command flakes
    nix develop
    ```
 
-2. **Start all services:**
+2. **Check service status:**
    ```bash
-   start-agent-services
+   check-agent-services
    ```
 
-3. **Use agent-cli (in another terminal):**
+3. **Use agent-cli:**
    ```bash
-   nix develop
    agent-cli autocorrect "this has an eror"
    ```
 
 ### Direct Usage (without cloning)
 
 ```bash
-# Run directly from GitHub
-nix run github:basnijholt/agent-cli#start-services
-
-# Or add to your system
+# Add to your system
 nix profile install github:basnijholt/agent-cli
 ```
 
@@ -58,19 +54,19 @@ cd agent-cli
 nix develop
 
 # Inside the shell:
-start-agent-services  # Start all background services
+check-agent-services  # Check status of NixOS services
 agent-cli --help      # Use agent-cli
 ```
 
 Features:
 - Automatic Python environment setup
-- All Wyoming services included
-- Ollama LLM server
+- All Wyoming services configured via NixOS
+- Ollama LLM server via NixOS
 - Development tools and utilities
 
 ### Method 2: System-Wide Installation (NixOS)
 
-Add to your `flake.nix`:
+Add to your NixOS `configuration.nix` or flake:
 
 ```nix
 {
@@ -93,6 +89,10 @@ Add to your `flake.nix`:
             enableOpenWakeWord = true;
             enableServer = true;  # Optional API server
             serverPort = 61337;   # API server port
+
+            # GPU acceleration options
+            ollamaAcceleration = "cuda"; # or "rocm" or "cpu"
+            whisperDevice = "cuda";       # or "cpu"
           };
         }
       ];
@@ -121,7 +121,7 @@ sudo nixos-rebuild switch --flake .#yourhostname
 
 ```bash
 # Install to user profile
-nix profile install .#agent-cli
+nix profile install github:basnijholt/agent-cli#agent-cli
 
 # Or use in another flake
 {
@@ -135,7 +135,7 @@ nix profile install .#agent-cli
 
 ### NVIDIA GPU
 
-The flake automatically detects and enables CUDA support when available. For NixOS:
+The flake automatically detects and enables CUDA support when available:
 
 ```nix
 {
@@ -144,8 +144,12 @@ The flake automatically detects and enables CUDA support when available. For Nix
   hardware.opengl.enable = true;
   hardware.nvidia.modesetting.enable = true;
 
-  # Agent-CLI will use CUDA automatically
-  services.agent-cli.enable = true;
+  # Configure agent-cli to use CUDA
+  services.agent-cli = {
+    enable = true;
+    ollamaAcceleration = "cuda";
+    whisperDevice = "cuda";
+  };
 }
 ```
 
@@ -155,20 +159,27 @@ For AMD GPUs with ROCm:
 
 ```nix
 {
-  # In your system configuration
+  # Enable AMD GPU support
   hardware.opengl.extraPackages = with pkgs; [
     rocm-opencl-icd
     rocm-opencl-runtime
   ];
+
+  # Configure agent-cli to use ROCm
+  services.agent-cli = {
+    enable = true;
+    ollamaAcceleration = "rocm";
+    whisperDevice = "cpu"; # Whisper doesn't support ROCm yet
+  };
 }
 ```
 
 ## Services Overview
 
-The flake manages these services:
+All services are managed by NixOS systemd:
 
-| Service | Port | Purpose | Systemd Service (NixOS) |
-|---------|------|---------|-------------------------|
+| Service | Port | Purpose | Systemd Service |
+|---------|------|---------|-----------------|
 | Ollama | 11434 | Local LLM | `ollama.service` |
 | Whisper | 10300 | Speech-to-text | `wyoming-faster-whisper.service` |
 | Piper | 10200 | Text-to-speech | `wyoming-piper.service` |
@@ -200,12 +211,31 @@ wyoming_piper_url = "tcp://localhost:10200"
 wyoming_openwakeword_url = "tcp://localhost:10400"
 ```
 
+## NixOS Module Options
+
+The NixOS module provides these configuration options:
+
+```nix
+services.agent-cli = {
+  enable = true;                    # Enable agent-cli services
+  enableOllama = true;              # Enable Ollama LLM service
+  enableWhisper = true;             # Enable Wyoming Faster Whisper ASR
+  enablePiper = true;               # Enable Wyoming Piper TTS
+  enableOpenWakeWord = true;        # Enable Wyoming OpenWakeWord
+  enableServer = false;             # Enable agent-cli API server
+  serverPort = 61337;               # API server port
+  ollamaAcceleration = "cpu";      # "cuda", "rocm", or "cpu"
+  whisperDevice = "cpu";            # "cuda" or "cpu"
+};
+```
+
 ## Flake Outputs
 
 The flake provides:
 
 - `packages.default` - The agent-cli package
-- `packages.start-services` - Service startup script
+- `packages.agent-cli` - The agent-cli package (explicit)
+- `packages.check-services` - Service status checking script
 - `devShells.default` - Development environment
 - `nixosModules.default` - NixOS module for system integration
 
@@ -215,9 +245,9 @@ The flake provides:
 
 ```bash
 # In development shell
-start-agent-services  # Shows status of each service
+check-agent-services
 
-# On NixOS
+# On NixOS system
 systemctl status ollama
 systemctl status wyoming-faster-whisper
 systemctl status wyoming-piper
@@ -238,7 +268,7 @@ If ports are already in use:
    lsof -i :61337  # Agent-CLI server
    ```
 
-2. Stop conflicting services or modify the configuration
+2. Stop conflicting services or modify the port configuration in your NixOS configuration
 
 ### GPU Not Detected
 
@@ -246,16 +276,20 @@ If ports are already in use:
 # Check NVIDIA
 nvidia-smi
 
-# Check CUDA availability
+# Check CUDA availability in development shell
 nix develop --command python -c "import torch; print(torch.cuda.is_available())"
 ```
 
 ### Missing Python Dependencies
 
-Some packages are installed via pip in the shell:
+Some packages are installed via pip in the development shell:
 ```bash
 nix develop
-pip install wyoming pydantic-ai-slim[openai,duckduckgo,vertexai] google-genai
+# The shell automatically installs:
+# - wyoming
+# - pydantic-ai-slim[openai,duckduckgo,vertexai]
+# - google-genai
+# - audiostretchy
 ```
 
 ## Advanced Usage
@@ -267,16 +301,17 @@ pip install wyoming pydantic-ai-slim[openai,duckduckgo,vertexai] google-genai
 ollama pull llama3:8b
 ollama pull mistral:7b
 
-# Update config to use them
+# Update config.toml to use them
 ```
 
-### Running Services Separately
+### Manual Service Management
 
 ```bash
-# Start individual services
-ollama serve &
-wyoming-faster-whisper --model tiny-int8 --uri tcp://0.0.0.0:10300 &
-wyoming-piper --voice en_US-ryan-high --uri tcp://0.0.0.0:10200 &
+# Start/stop services via systemd
+sudo systemctl start ollama
+sudo systemctl stop wyoming-faster-whisper
+sudo systemctl restart wyoming-piper
+sudo systemctl status wyoming-openwakeword
 ```
 
 ### Using with Direnv
@@ -300,4 +335,11 @@ nix flake update
 
 # Rebuild with latest versions
 nix develop --recreate
+
+# For NixOS system
+sudo nixos-rebuild switch --flake .#yourhostname
 ```
+
+## Notes
+
+This flake is designed specifically for NixOS and uses native systemd services for all components. It does not support macOS or non-NixOS Linux distributions. For those platforms, please use the traditional installation methods described in other documentation.
