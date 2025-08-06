@@ -281,6 +281,32 @@
                 description = "Acceleration method for Ollama";
               };
 
+              ollamaHost = mkOption {
+                type = types.str;
+                default = "0.0.0.0";
+                description = "Host address for Ollama service";
+              };
+
+              ollamaEnvironmentVariables = mkOption {
+                type = types.attrsOf types.str;
+                default = {
+                  OLLAMA_KEEP_ALIVE = "1h";
+                };
+                description = "Environment variables for Ollama service";
+              };
+
+              whisperModel = mkOption {
+                type = types.str;
+                default = "tiny-int8";
+                description = "Model for Whisper ASR (e.g., tiny-int8, small, medium, large-v3)";
+              };
+
+              whisperLanguage = mkOption {
+                type = types.str;
+                default = "en";
+                description = "Language for Whisper ASR (e.g., en, nl, fr, de)";
+              };
+
               whisperDevice = mkOption {
                 type = types.enum [
                   "cuda"
@@ -288,6 +314,39 @@
                 ];
                 default = "cpu";
                 description = "Device for Whisper ASR";
+              };
+
+              whisperUri = mkOption {
+                type = types.str;
+                default = "tcp://0.0.0.0:10300";
+                description = "URI for Whisper ASR server";
+              };
+
+              piperVoice = mkOption {
+                type = types.str;
+                default = "en_US-ryan-high";
+                description = "Voice for Piper TTS (e.g., en_US-ryan-high, en-us-ryan-high)";
+              };
+
+              piperUri = mkOption {
+                type = types.str;
+                default = "tcp://0.0.0.0:10200";
+                description = "URI for Piper TTS server";
+              };
+
+              openWakeWordModels = mkOption {
+                type = types.listOf types.str;
+                default = [
+                  "alexa"
+                  "hey_jarvis"
+                ];
+                description = "Preload models for OpenWakeWord (e.g., alexa, hey_jarvis, ok_nabu)";
+              };
+
+              openWakeWordUri = mkOption {
+                type = types.str;
+                default = "tcp://0.0.0.0:10400";
+                description = "URI for OpenWakeWord server";
               };
             };
 
@@ -299,37 +358,32 @@
               services.ollama = mkIf cfg.enableOllama {
                 enable = true;
                 acceleration = cfg.ollamaAcceleration;
-                host = "0.0.0.0";
+                host = cfg.ollamaHost;
                 openFirewall = true;
-                environmentVariables = {
-                  OLLAMA_KEEP_ALIVE = "1h";
-                };
+                environmentVariables = cfg.ollamaEnvironmentVariables;
               };
 
               # Configure Wyoming services
               services.wyoming.faster-whisper = mkIf cfg.enableWhisper {
                 servers.default = {
                   enable = true;
-                  model = "tiny-int8";
-                  language = "en";
+                  model = cfg.whisperModel;
+                  language = cfg.whisperLanguage;
                   device = cfg.whisperDevice;
-                  uri = "tcp://0.0.0.0:10300";
+                  uri = cfg.whisperUri;
                 };
               };
 
               services.wyoming.piper.servers.default = mkIf cfg.enablePiper {
                 enable = true;
-                voice = "en_US-ryan-high";
-                uri = "tcp://0.0.0.0:10200";
+                voice = cfg.piperVoice;
+                uri = cfg.piperUri;
               };
 
               services.wyoming.openwakeword = mkIf cfg.enableOpenWakeWord {
                 enable = true;
-                preloadModels = [
-                  "alexa"
-                  "hey_jarvis"
-                ];
-                uri = "tcp://0.0.0.0:10400";
+                preloadModels = cfg.openWakeWordModels;
+                uri = cfg.openWakeWordUri;
               };
 
               # Agent-CLI server as systemd service
@@ -349,12 +403,21 @@
               };
 
               # Open firewall ports
+              # Extract port from URI like "tcp://0.0.0.0:10300"
               networking.firewall = {
                 allowedTCPPorts =
+                  let
+                    extractPort = uri:
+                      let
+                        parts = lib.splitString ":" uri;
+                        portStr = lib.last parts;
+                      in
+                      lib.toInt portStr;
+                  in
                   lib.optional cfg.enableOllama 11434
-                  ++ lib.optional cfg.enableWhisper 10300
-                  ++ lib.optional cfg.enablePiper 10200
-                  ++ lib.optional cfg.enableOpenWakeWord 10400
+                  ++ lib.optional cfg.enableWhisper (extractPort cfg.whisperUri)
+                  ++ lib.optional cfg.enablePiper (extractPort cfg.piperUri)
+                  ++ lib.optional cfg.enableOpenWakeWord (extractPort cfg.openWakeWordUri)
                   ++ lib.optional cfg.enableServer cfg.serverPort;
               };
             };
