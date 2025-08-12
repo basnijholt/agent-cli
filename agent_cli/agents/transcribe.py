@@ -30,6 +30,11 @@ from agent_cli.core.utils import (
     stop_or_status_or_toggle,
 )
 from agent_cli.services import asr
+from agent_cli.services.asr import (
+    _get_last_recording,
+    create_recorded_audio_transcriber,
+    load_audio_from_file,
+)
 from agent_cli.services.llm import process_and_update_clipboard
 
 if TYPE_CHECKING:
@@ -106,6 +111,132 @@ def log_transcription(
         f.write(json.dumps(log_entry) + "\n")
 
 
+async def _async_main_from_file(  # noqa: PLR0912
+    *,
+    audio_file_path: Path,
+    extra_instructions: str | None,
+    provider_cfg: config.ProviderSelection,
+    general_cfg: config.General,
+    wyoming_asr_cfg: config.WyomingASR,
+    openai_asr_cfg: config.OpenAIASR,
+    ollama_cfg: config.Ollama,
+    openai_llm_cfg: config.OpenAILLM,
+    gemini_llm_cfg: config.GeminiLLM,
+    llm_enabled: bool,
+    transcription_log: Path | None,
+) -> None:
+    """Async entry point for transcribing from a saved audio file."""
+    # Load audio from file
+    audio_data = load_audio_from_file(audio_file_path, LOGGER)
+    if not audio_data:
+        print_with_style(
+            f"❌ Failed to load audio from {audio_file_path}",
+            style="red",
+        )
+        return
+
+    start_time = time.monotonic()
+    with maybe_live(not general_cfg.quiet) as live:
+        # Get the appropriate transcriber
+        transcriber = create_recorded_audio_transcriber(provider_cfg)
+
+        # Transcribe the audio
+        if provider_cfg.asr_provider == "openai":
+            transcript = await transcriber(audio_data, openai_asr_cfg, LOGGER)
+        else:  # Wyoming
+            transcript = await transcriber(
+                audio_data=audio_data,
+                wyoming_asr_cfg=wyoming_asr_cfg,
+                logger=LOGGER,
+                quiet=general_cfg.quiet,
+            )
+
+        elapsed = time.monotonic() - start_time
+
+        if llm_enabled and transcript:
+            if not general_cfg.quiet:
+                print_input_panel(
+                    transcript,
+                    title="📝 Raw Transcript",
+                    subtitle=f"[dim]took {elapsed:.2f}s[/dim]",
+                )
+            instructions = AGENT_INSTRUCTIONS
+            if extra_instructions:
+                instructions += f"\n\n{extra_instructions}"
+
+            # Get model info for logging
+            if provider_cfg.llm_provider == "local":
+                model_info = f"{provider_cfg.llm_provider}:{ollama_cfg.llm_ollama_model}"
+            elif provider_cfg.llm_provider == "openai":
+                model_info = f"{provider_cfg.llm_provider}:{openai_llm_cfg.llm_openai_model}"
+            elif provider_cfg.llm_provider == "gemini":
+                model_info = f"{provider_cfg.llm_provider}:{gemini_llm_cfg.llm_gemini_model}"
+
+            processed_transcript = await process_and_update_clipboard(
+                system_prompt=SYSTEM_PROMPT,
+                agent_instructions=instructions,
+                provider_cfg=provider_cfg,
+                ollama_cfg=ollama_cfg,
+                openai_cfg=openai_llm_cfg,
+                gemini_cfg=gemini_llm_cfg,
+                logger=LOGGER,
+                original_text=transcript,
+                instruction=INSTRUCTION,
+                clipboard=general_cfg.clipboard,
+                quiet=general_cfg.quiet,
+                live=live,
+            )
+
+            # Log transcription if requested
+            if transcription_log:
+                log_transcription(
+                    log_file=transcription_log,
+                    role="assistant",
+                    raw_transcript=transcript,
+                    processed_transcript=processed_transcript,
+                    model_info=model_info,
+                )
+            return
+
+    # When not using LLM, show transcript in output panel for consistency
+    if transcript:
+        if general_cfg.quiet:
+            # Quiet mode: print result to stdout for Keyboard Maestro to capture
+            print(transcript)
+        else:
+            print_output_panel(
+                transcript,
+                title="📝 Transcript",
+                subtitle="[dim]Copied to clipboard[/dim]" if general_cfg.clipboard else "",
+            )
+
+        # Log transcription if requested (raw only)
+        if transcription_log:
+            asr_model_info = f"{provider_cfg.asr_provider}"
+            if provider_cfg.asr_provider == "openai":
+                asr_model_info += f":{openai_asr_cfg.asr_openai_model}"
+            log_transcription(
+                log_file=transcription_log,
+                role="user",
+                raw_transcript=transcript,
+                processed_transcript=None,
+                model_info=asr_model_info,
+            )
+
+        if general_cfg.clipboard:
+            pyperclip.copy(transcript)
+            LOGGER.info("Copied transcript to clipboard.")
+        else:
+            LOGGER.info("Clipboard copy disabled.")
+    else:
+        LOGGER.info("Transcript empty.")
+        if not general_cfg.quiet:
+            print_with_style(
+                "⚠️ No transcript captured.",
+                style="yellow",
+            )
+
+
 async def _async_main(  # noqa: PLR0912
     *,
     extra_instructions: str | None,
@@ -119,6 +250,7 @@ async def _async_main(  # noqa: PLR0912
     gemini_llm_cfg: config.GeminiLLM,
     llm_enabled: bool,
     transcription_log: Path | None,
+    save_recording: bool,
     p: pyaudio.PyAudio,
 ) -> None:
     """Async entry point, consuming parsed args."""
@@ -137,6 +269,7 @@ async def _async_main(  # noqa: PLR0912
                 stop_event=stop_event,
                 quiet=general_cfg.quiet,
                 live=live,
+                save_recording=save_recording,
             )
         elapsed = time.monotonic() - start_time
         if llm_enabled and transcript:
@@ -231,6 +364,21 @@ def transcribe(
         "--extra-instructions",
         help="Additional instructions for the LLM to process the transcription.",
     ),
+    from_file: Path | None = typer.Option(
+        None,
+        "--from-file",
+        help="Transcribe audio from a saved WAV file instead of recording.",
+    ),
+    last_recording: bool = typer.Option(
+        False,
+        "--last-recording",
+        help="Transcribe the most recent saved recording.",
+    ),
+    save_recording: bool = typer.Option(
+        True,
+        "--save-recording/--no-save-recording",
+        help="Save the audio recording to disk for recovery.",
+    ),
     # --- Provider Selection ---
     asr_provider: str = opts.ASR_PROVIDER,
     llm_provider: str = opts.LLM_PROVIDER,
@@ -271,6 +419,38 @@ def transcribe(
     if transcription_log:
         transcription_log = transcription_log.expanduser()
 
+    # Handle recovery options
+    if last_recording and from_file:
+        print_with_style(
+            "❌ Cannot use both --last-recording and --from-file",
+            style="red",
+        )
+        return
+
+    # Determine audio source
+    audio_file_path = None
+    if last_recording:
+        audio_file_path = _get_last_recording()
+        if not audio_file_path:
+            print_with_style(
+                "❌ No saved recordings found",
+                style="red",
+            )
+            return
+        if not quiet:
+            print_with_style(
+                f"📁 Using last recording: {audio_file_path.name}",
+                style="blue",
+            )
+    elif from_file:
+        audio_file_path = from_file.expanduser()
+        if not audio_file_path.exists():
+            print_with_style(
+                f"❌ File not found: {audio_file_path}",
+                style="red",
+            )
+            return
+
     general_cfg = config.General(
         log_level=log_level,
         log_file=log_file,
@@ -278,6 +458,47 @@ def transcribe(
         list_devices=list_devices,
         clipboard=clipboard,
     )
+
+    # Handle recovery mode (transcribing from file)
+    if audio_file_path:
+        # We're transcribing from a saved file
+        asyncio.run(
+            _async_main_from_file(
+                audio_file_path=audio_file_path,
+                extra_instructions=extra_instructions,
+                provider_cfg=config.ProviderSelection(
+                    asr_provider=asr_provider,
+                    llm_provider=llm_provider,
+                    tts_provider="local",
+                ),
+                general_cfg=general_cfg,
+                wyoming_asr_cfg=config.WyomingASR(
+                    asr_wyoming_ip=asr_wyoming_ip,
+                    asr_wyoming_port=asr_wyoming_port,
+                ),
+                openai_asr_cfg=config.OpenAIASR(
+                    asr_openai_model=asr_openai_model,
+                    openai_api_key=openai_api_key,
+                ),
+                ollama_cfg=config.Ollama(
+                    llm_ollama_model=llm_ollama_model,
+                    llm_ollama_host=llm_ollama_host,
+                ),
+                openai_llm_cfg=config.OpenAILLM(
+                    llm_openai_model=llm_openai_model,
+                    openai_api_key=openai_api_key,
+                ),
+                gemini_llm_cfg=config.GeminiLLM(
+                    llm_gemini_model=llm_gemini_model,
+                    gemini_api_key=gemini_api_key,
+                ),
+                llm_enabled=llm,
+                transcription_log=transcription_log,
+            ),
+        )
+        return
+
+    # Normal recording mode
     process_name = "transcribe"
     if stop_or_status_or_toggle(
         process_name,
@@ -342,6 +563,7 @@ def transcribe(
                     gemini_llm_cfg=gemini_llm_cfg,
                     llm_enabled=llm,
                     transcription_log=transcription_log,
+                    save_recording=save_recording,
                     p=p,
                 ),
             )
