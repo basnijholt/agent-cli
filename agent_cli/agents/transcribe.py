@@ -116,6 +116,7 @@ async def _async_main(  # noqa: PLR0912, PLR0915
     extra_instructions: str | None,
     provider_cfg: config.ProviderSelection,
     general_cfg: config.General,
+    audio_in_cfg: config.AudioInput | None = None,
     wyoming_asr_cfg: config.WyomingASR,
     openai_asr_cfg: config.OpenAIASR,
     ollama_cfg: config.Ollama,
@@ -123,12 +124,10 @@ async def _async_main(  # noqa: PLR0912, PLR0915
     gemini_llm_cfg: config.GeminiLLM,
     llm_enabled: bool,
     transcription_log: Path | None,
+    p: pyaudio.PyAudio | None = None,
     # Optional parameters for file-based transcription
     audio_file_path: Path | None = None,
-    # Optional parameters for live recording
-    audio_in_cfg: config.AudioInput | None = None,
     save_recording: bool = True,
-    p: pyaudio.PyAudio | None = None,
 ) -> None:
     """Unified async entry point for both live and file-based transcription."""
     start_time = time.monotonic()
