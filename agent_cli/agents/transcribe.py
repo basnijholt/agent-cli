@@ -241,16 +241,14 @@ async def _async_main_from_file(
         # Get the appropriate transcriber
         transcriber = create_recorded_audio_transcriber(provider_cfg)
 
-        # Transcribe the audio
-        if provider_cfg.asr_provider == "openai":
-            transcript = await transcriber(audio_data, openai_asr_cfg, LOGGER)
-        else:  # Wyoming
-            transcript = await transcriber(
-                audio_data=audio_data,
-                wyoming_asr_cfg=wyoming_asr_cfg,
-                logger=LOGGER,
-                quiet=general_cfg.quiet,
-            )
+        # Transcribe the audio - both transcribers now accept the same kwargs
+        asr_config = openai_asr_cfg if provider_cfg.asr_provider == "openai" else wyoming_asr_cfg
+        transcript = await transcriber(
+            audio_data,
+            asr_config,
+            LOGGER,
+            quiet=general_cfg.quiet,
+        )
 
         elapsed = time.monotonic() - start_time
 
