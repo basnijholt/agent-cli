@@ -72,8 +72,8 @@ async def test_async_main_from_file(tmp_path: Path):
             llm_gemini_model="gemini-2.5-flash",
         )
 
-        # Call the function
-        await transcribe._async_main_from_file(
+        # Call the unified function with file path
+        await transcribe._async_main(
             audio_file_path=test_file,
             extra_instructions=None,
             provider_cfg=provider_cfg,
@@ -142,8 +142,8 @@ async def test_async_main_from_file_with_llm(tmp_path: Path):
             llm_gemini_model="gemini-2.5-flash",
         )
 
-        # Call the function with LLM enabled
-        await transcribe._async_main_from_file(
+        # Call the unified function with LLM enabled
+        await transcribe._async_main(
             audio_file_path=test_file,
             extra_instructions=None,
             provider_cfg=provider_cfg,
@@ -211,8 +211,8 @@ async def test_async_main_from_file_with_logging(tmp_path: Path):
             llm_gemini_model="gemini-2.5-flash",
         )
 
-        # Call the function with logging enabled
-        await transcribe._async_main_from_file(
+        # Call the unified function with logging enabled
+        await transcribe._async_main(
             audio_file_path=test_file,
             extra_instructions=None,
             provider_cfg=provider_cfg,
@@ -283,8 +283,8 @@ async def test_async_main_from_file_error_handling(
             llm_gemini_model="gemini-2.5-flash",
         )
 
-        # Call the function (should handle error gracefully)
-        await transcribe._async_main_from_file(
+        # Call the unified function (should handle error gracefully)
+        await transcribe._async_main(
             audio_file_path=test_file,
             extra_instructions=None,
             provider_cfg=provider_cfg,
@@ -442,7 +442,7 @@ def test_transcribe_command_last_recording_option(
         mock_run.assert_called_once()
         call_args = mock_run.call_args[0][0]
         # The coroutine is passed to asyncio.run
-        assert call_args.__name__ == "_async_main_from_file"
+        assert call_args.__name__ == "_async_main"
 
         # Verify the message about using most recent recording
         mock_print.assert_called()
@@ -492,7 +492,7 @@ def test_transcribe_command_from_file_option(tmp_path: Path):
         # Verify _async_main_from_file was called with the right file
         mock_run.assert_called_once()
         call_args = mock_run.call_args[0][0]
-        assert call_args.__name__ == "_async_main_from_file"
+        assert call_args.__name__ == "_async_main"
 
 
 def test_transcribe_command_last_recording_with_index(

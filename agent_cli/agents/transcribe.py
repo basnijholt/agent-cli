@@ -212,68 +212,11 @@ async def _process_transcript(  # noqa: PLR0912
             )
 
 
-async def _async_main_from_file(
-    *,
-    audio_file_path: Path,
-    extra_instructions: str | None,
-    provider_cfg: config.ProviderSelection,
-    general_cfg: config.General,
-    wyoming_asr_cfg: config.WyomingASR,
-    openai_asr_cfg: config.OpenAIASR,
-    ollama_cfg: config.Ollama,
-    openai_llm_cfg: config.OpenAILLM,
-    gemini_llm_cfg: config.GeminiLLM,
-    llm_enabled: bool,
-    transcription_log: Path | None,
-) -> None:
-    """Async entry point for transcribing from a saved audio file."""
-    # Load audio from file
-    audio_data = load_audio_from_file(audio_file_path, LOGGER)
-    if not audio_data:
-        print_with_style(
-            f"❌ Failed to load audio from {audio_file_path}",
-            style="red",
-        )
-        return
-
-    start_time = time.monotonic()
-    with maybe_live(not general_cfg.quiet) as live:
-        # Get the appropriate transcriber
-        transcriber = create_recorded_audio_transcriber(provider_cfg)
-
-        # Transcribe the audio - both transcribers now accept the same kwargs
-        asr_config = openai_asr_cfg if provider_cfg.asr_provider == "openai" else wyoming_asr_cfg
-        transcript = await transcriber(
-            audio_data,
-            asr_config,
-            LOGGER,
-            quiet=general_cfg.quiet,
-        )
-
-        elapsed = time.monotonic() - start_time
-
-        await _process_transcript(
-            transcript,
-            elapsed,
-            extra_instructions=extra_instructions,
-            provider_cfg=provider_cfg,
-            general_cfg=general_cfg,
-            ollama_cfg=ollama_cfg,
-            openai_llm_cfg=openai_llm_cfg,
-            gemini_llm_cfg=gemini_llm_cfg,
-            openai_asr_cfg=openai_asr_cfg,
-            llm_enabled=llm_enabled,
-            transcription_log=transcription_log,
-            live=live,
-        )
-
-
 async def _async_main(
     *,
     extra_instructions: str | None,
     provider_cfg: config.ProviderSelection,
     general_cfg: config.General,
-    audio_in_cfg: config.AudioInput,
     wyoming_asr_cfg: config.WyomingASR,
     openai_asr_cfg: config.OpenAIASR,
     ollama_cfg: config.Ollama,
@@ -281,27 +224,63 @@ async def _async_main(
     gemini_llm_cfg: config.GeminiLLM,
     llm_enabled: bool,
     transcription_log: Path | None,
-    save_recording: bool,
-    p: pyaudio.PyAudio,
+    # Optional parameters for file-based transcription
+    audio_file_path: Path | None = None,
+    # Optional parameters for live recording
+    audio_in_cfg: config.AudioInput | None = None,
+    save_recording: bool = True,
+    p: pyaudio.PyAudio | None = None,
 ) -> None:
-    """Async entry point, consuming parsed args."""
+    """Unified async entry point for both live and file-based transcription."""
     start_time = time.monotonic()
+    transcript: str | None
+
     with maybe_live(not general_cfg.quiet) as live:
-        with signal_handling_context(LOGGER, general_cfg.quiet) as stop_event:
-            transcriber = asr.create_transcriber(
-                provider_cfg,
-                audio_in_cfg,
-                wyoming_asr_cfg,
-                openai_asr_cfg,
+        if audio_file_path:
+            # File-based transcription
+            audio_data = load_audio_from_file(audio_file_path, LOGGER)
+            if not audio_data:
+                print_with_style(
+                    f"❌ Failed to load audio from {audio_file_path}",
+                    style="red",
+                )
+                return
+
+            # Get the appropriate transcriber for recorded audio
+            recorded_transcriber = create_recorded_audio_transcriber(provider_cfg)
+
+            # Transcribe the audio
+            asr_config = (
+                openai_asr_cfg if provider_cfg.asr_provider == "openai" else wyoming_asr_cfg
             )
-            transcript = await transcriber(
-                logger=LOGGER,
-                p=p,
-                stop_event=stop_event,
+            transcript = await recorded_transcriber(
+                audio_data,
+                asr_config,
+                LOGGER,
                 quiet=general_cfg.quiet,
-                live=live,
-                save_recording=save_recording,
             )
+        else:
+            # Live recording transcription
+            if not audio_in_cfg or not p:
+                msg = "Missing audio configuration for live recording"
+                raise ValueError(msg)
+
+            with signal_handling_context(LOGGER, general_cfg.quiet) as stop_event:
+                live_transcriber = asr.create_transcriber(
+                    provider_cfg,
+                    audio_in_cfg,
+                    wyoming_asr_cfg,
+                    openai_asr_cfg,
+                )
+                transcript = await live_transcriber(
+                    logger=LOGGER,
+                    p=p,
+                    stop_event=stop_event,
+                    quiet=general_cfg.quiet,
+                    live=live,
+                    save_recording=save_recording,
+                )
+
         elapsed = time.monotonic() - start_time
 
         await _process_transcript(
@@ -450,7 +429,7 @@ def transcribe(  # noqa: PLR0912
     if audio_file_path:
         # We're transcribing from a saved file
         asyncio.run(
-            _async_main_from_file(
+            _async_main(
                 audio_file_path=audio_file_path,
                 extra_instructions=extra_instructions,
                 provider_cfg=provider_cfg,
