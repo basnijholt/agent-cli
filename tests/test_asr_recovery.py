@@ -94,7 +94,7 @@ def test_get_last_recording(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> 
         filepath.touch()
 
     # Get the last recording
-    last_recording = asr._get_last_recording()
+    last_recording = asr.get_last_recording()
 
     # Should return the one with the latest timestamp
     assert last_recording == test_files[1]  # 130000 is the latest
@@ -106,7 +106,7 @@ def test_get_last_recording_no_files(tmp_path: Path, monkeypatch: pytest.MonkeyP
     monkeypatch.setattr(asr, "_get_transcriptions_dir", lambda: tmp_path)
 
     # Get the last recording (should be None)
-    last_recording = asr._get_last_recording()
+    last_recording = asr.get_last_recording()
 
     assert last_recording is None
 

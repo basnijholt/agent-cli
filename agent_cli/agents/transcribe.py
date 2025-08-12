@@ -31,8 +31,8 @@ from agent_cli.core.utils import (
 )
 from agent_cli.services import asr
 from agent_cli.services.asr import (
-    _get_last_recording,
     create_recorded_audio_transcriber,
+    get_last_recording,
     load_audio_from_file,
 )
 from agent_cli.services.llm import process_and_update_clipboard
@@ -418,7 +418,7 @@ def transcribe(
     # Determine audio source
     audio_file_path = None
     if last_recording:
-        audio_file_path = _get_last_recording()
+        audio_file_path = get_last_recording()
         if not audio_file_path:
             print_with_style(
                 "❌ No saved recordings found",

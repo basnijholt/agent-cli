@@ -396,7 +396,7 @@ def test_transcribe_command_last_recording_option(
     create_test_wav_file(recording_file)
 
     # Monkeypatch to return our test file
-    monkeypatch.setattr("agent_cli.agents.transcribe._get_last_recording", lambda: recording_file)
+    monkeypatch.setattr("agent_cli.agents.transcribe.get_last_recording", lambda: recording_file)
 
     with (
         patch("agent_cli.agents.transcribe.asyncio.run") as mock_run,

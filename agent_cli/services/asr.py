@@ -66,7 +66,7 @@ def _save_audio_to_file(audio_data: bytes, logger: logging.Logger) -> Path | Non
         return None
 
 
-def _get_last_recording() -> Path | None:
+def get_last_recording() -> Path | None:
     """Get the path to the most recent recording file."""
     transcriptions_dir = _get_transcriptions_dir()
     recording_files = sorted(transcriptions_dir.glob("recording_*.wav"))
