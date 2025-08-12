@@ -61,7 +61,7 @@ def _save_audio_to_file(audio_data: bytes, logger: logging.Logger) -> Path | Non
 
         logger.info("Saved audio recording to %s", filepath)
         return filepath
-    except Exception:
+    except OSError:
         logger.exception("Failed to save audio recording")
         return None
 
@@ -82,7 +82,7 @@ def load_audio_from_file(filepath: Path, logger: logging.Logger) -> bytes | None
             audio_data = wav_file.readframes(wav_file.getnframes())
             logger.info("Loaded audio from %s", filepath)
             return audio_data
-    except Exception:
+    except (OSError, wave.Error):
         logger.exception("Failed to load audio from %s", filepath)
         return None
 
