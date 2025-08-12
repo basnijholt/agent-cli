@@ -468,13 +468,12 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 │                                                     saved WAV file instead   │
 │                                                     of recording.            │
 │                                                     [default: None]          │
-│ --last-recording                           INTEGER  Transcribe a recent      │
-│                                                     saved recording. Use 1   │
-│                                                     for most recent, 2 for   │
-│                                                     second-to-last, etc.     │
-│                                                     Just --last-recording    │
-│                                                     uses the most recent.    │
-│                                                     [default: 1]             │
+│ --last-recording                           INTEGER  Transcribe a saved       │
+│                                                     recording. Use 1 for     │
+│                                                     most recent, 2 for       │
+│                                                     second-to-last, etc. Use │
+│                                                     0 to disable (default).  │
+│                                                     [default: 0]             │
 │ --save-recording    --no-save-recording             Save the audio recording │
 │                                                     to disk for recovery.    │
 │                                                     [default:                │
