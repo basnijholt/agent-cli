@@ -237,40 +237,40 @@ async def _async_main(  # noqa: PLR0912, PLR0915
                 )
             return
 
-        # When not using LLM, show transcript in output panel for consistency
-        if transcript:
-            if general_cfg.quiet:
-                # Quiet mode: print result to stdout for Keyboard Maestro to capture
-                print(transcript)
-            else:
-                print_output_panel(
-                    transcript,
-                    title="📝 Transcript",
-                    subtitle="[dim]Copied to clipboard[/dim]" if general_cfg.clipboard else "",
-                )
-
-            # Log transcription if requested (raw only)
-            if transcription_log:
-                asr_model_info = f"{provider_cfg.asr_provider}"
-                if provider_cfg.asr_provider == "openai":
-                    asr_model_info += f":{openai_asr_cfg.asr_openai_model}"
-                log_transcription(
-                    log_file=transcription_log,
-                    role="user",
-                    raw_transcript=transcript,
-                    processed_transcript=None,
-                    model_info=asr_model_info,
-                )
-
-            if general_cfg.clipboard:
-                pyperclip.copy(transcript)
-                LOGGER.info("Copied transcript to clipboard.")
-            else:
-                LOGGER.info("Clipboard copy disabled.")
+    # When not using LLM, show transcript in output panel for consistency
+    if transcript:
+        if general_cfg.quiet:
+            # Quiet mode: print result to stdout for Keyboard Maestro to capture
+            print(transcript)
         else:
-            LOGGER.info("Transcript empty.")
-            if not general_cfg.quiet:
-                print_with_style("⚠️ No transcript captured.", style="yellow")
+            print_output_panel(
+                transcript,
+                title="📝 Transcript",
+                subtitle="[dim]Copied to clipboard[/dim]" if general_cfg.clipboard else "",
+            )
+
+        # Log transcription if requested (raw only)
+        if transcription_log:
+            asr_model_info = f"{provider_cfg.asr_provider}"
+            if provider_cfg.asr_provider == "openai":
+                asr_model_info += f":{openai_asr_cfg.asr_openai_model}"
+            log_transcription(
+                log_file=transcription_log,
+                role="user",
+                raw_transcript=transcript,
+                processed_transcript=None,
+                model_info=asr_model_info,
+            )
+
+        if general_cfg.clipboard:
+            pyperclip.copy(transcript)
+            LOGGER.info("Copied transcript to clipboard.")
+        else:
+            LOGGER.info("Clipboard copy disabled.")
+    else:
+        LOGGER.info("Transcript empty.")
+        if not general_cfg.quiet:
+            print_with_style("⚠️ No transcript captured.", style="yellow")
 
 
 @app.command("transcribe")
