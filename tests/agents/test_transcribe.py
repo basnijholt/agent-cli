@@ -79,6 +79,7 @@ async def test_transcribe_main_llm_enabled(
             gemini_llm_cfg=gemini_llm_cfg,
             llm_enabled=True,
             transcription_log=None,
+            save_recording=False,  # Disable for testing
             p=mock_pyaudio_instance,
         )
 
@@ -149,6 +150,7 @@ async def test_transcribe_main(
             gemini_llm_cfg=gemini_llm_cfg,
             llm_enabled=False,
             transcription_log=None,
+            save_recording=False,  # Disable for testing
             p=mock_pyaudio_instance,
         )
 
@@ -272,6 +274,7 @@ async def test_transcribe_with_logging(
         gemini_llm_cfg=gemini_llm_cfg,
         llm_enabled=True,
         transcription_log=log_file,
+        save_recording=False,  # Disable for testing
         p=mock_pyaudio_instance,
     )
 
