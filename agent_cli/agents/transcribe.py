@@ -325,10 +325,7 @@ def transcribe(  # noqa: PLR0912
 
     # Handle recovery options
     if last_recording and from_file:
-        print_with_style(
-            "❌ Cannot use both --last-recording and --from-file",
-            style="red",
-        )
+        print_with_style("❌ Cannot use both --last-recording and --from-file", style="red")
         return
 
     # Determine audio source
@@ -337,10 +334,7 @@ def transcribe(  # noqa: PLR0912
         audio_file_path = get_last_recording(last_recording)
         if not audio_file_path:
             if last_recording == 1:
-                print_with_style(
-                    "❌ No saved recordings found",
-                    style="red",
-                )
+                print_with_style("❌ No saved recordings found", style="red")
             else:
                 print_with_style(
                     f"❌ Recording #{last_recording} not found (not enough recordings)",
@@ -356,10 +350,7 @@ def transcribe(  # noqa: PLR0912
     elif from_file:
         audio_file_path = from_file.expanduser()
         if not audio_file_path.exists():
-            print_with_style(
-                f"❌ File not found: {audio_file_path}",
-                style="red",
-            )
+            print_with_style(f"❌ File not found: {audio_file_path}", style="red")
             return
 
     # Create all config objects once
