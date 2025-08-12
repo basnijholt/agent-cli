@@ -314,7 +314,7 @@ async def _transcribe_recorded_audio_wyoming(
             logger.debug("Sent AudioStop")
 
             return await _receive_transcript(client, logger)
-    except ConnectionRefusedError:
+    except (ConnectionRefusedError, Exception):
         logger.warning("Failed to connect to Wyoming ASR server")
         return ""
 
@@ -363,7 +363,7 @@ async def _transcribe_live_audio_wyoming(
                     return_when=asyncio.ALL_COMPLETED,
                 )
                 return recv_task.result()
-    except ConnectionRefusedError:
+    except (ConnectionRefusedError, Exception):
         logger.warning("Failed to connect to Wyoming ASR server")
         return None
 
