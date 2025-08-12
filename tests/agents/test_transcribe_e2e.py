@@ -79,6 +79,7 @@ async def test_transcribe_e2e(
             llm_enabled=False,
             p=mock_pyaudio_instance,
             transcription_log=None,
+            save_recording=False,  # Add the missing parameter
         )
 
     # Assert that the final transcript is in the console output

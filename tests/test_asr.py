@@ -27,7 +27,15 @@ async def test_send_audio() -> None:
     # Act
     # No need to create a task and sleep, just await the coroutine.
     # The side_effect will stop the loop.
-    await asr._send_audio(client, stream, stop_event, logger, live=MagicMock(), quiet=False)
+    await asr._send_audio(
+        client,
+        stream,
+        stop_event,
+        logger,
+        live=MagicMock(),
+        quiet=False,
+        save_recording=False,
+    )
 
     # Assert
     assert client.write_event.call_count == 4
