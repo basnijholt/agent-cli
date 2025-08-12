@@ -182,7 +182,7 @@ async def _async_autocorrect(
 
         _display_result(corrected_text, original_text, elapsed, simple_output=general_cfg.quiet)
 
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:
         if general_cfg.quiet:
             print(f"❌ {e}")
         else:

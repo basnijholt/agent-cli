@@ -27,6 +27,7 @@ async def transcribe_audio_openai(
     audio_data: bytes,
     openai_asr_cfg: config.OpenAIASR,
     logger: logging.Logger,
+    **_kwargs: object,  # Accept extra kwargs for consistency with Wyoming
 ) -> str:
     """Transcribe audio using OpenAI's Whisper API."""
     logger.info("Transcribing audio with OpenAI Whisper...")
