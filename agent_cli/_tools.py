@@ -93,7 +93,7 @@ def _memory_operation(operation_name: str, operation_func: Callable[[], str]) ->
     """Wrapper for memory operations with consistent error handling."""
     try:
         return operation_func()
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:
         return f"Error {operation_name}: {e}"
 
 
