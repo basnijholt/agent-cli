@@ -316,3 +316,23 @@ TRANSCRIPTION_LOG: Path | None = typer.Option(
     help="Path to log transcription results with timestamps, hostname, model, and raw output.",
     rich_help_panel="General Options",
 )
+
+# --- Transcribe Specific Options ---
+FROM_FILE: Path | None = typer.Option(
+    None,
+    "--from-file",
+    help="Transcribe audio from a saved WAV file instead of recording.",
+    rich_help_panel="Audio Recovery",
+)
+LAST_RECORDING: int = typer.Option(
+    0,
+    "--last-recording",
+    help="Transcribe a saved recording. Use 1 for most recent, 2 for second-to-last, etc. Use 0 to disable (default).",
+    rich_help_panel="Audio Recovery",
+)
+SAVE_RECORDING: bool = typer.Option(
+    True,  # noqa: FBT003
+    "--save-recording/--no-save-recording",
+    help="Save the audio recording to disk for recovery.",
+    rich_help_panel="Audio Recovery",
+)
