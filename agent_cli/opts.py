@@ -317,7 +317,7 @@ TRANSCRIPTION_LOG: Path | None = typer.Option(
     rich_help_panel="General Options",
 )
 
-# --- Audio Recovery Options ---
+# --- Transcribe Specific Options ---
 FROM_FILE: Path | None = typer.Option(
     None,
     "--from-file",
