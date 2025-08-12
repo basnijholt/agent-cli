@@ -39,7 +39,6 @@ from agent_cli.services.llm import process_and_update_clipboard
 
 if TYPE_CHECKING:
     import pyaudio
-    from rich.live import Live
 
 LOGGER = logging.getLogger()
 
@@ -112,107 +111,7 @@ def log_transcription(
         f.write(json.dumps(log_entry) + "\n")
 
 
-async def _process_transcript(  # noqa: PLR0912
-    transcript: str | None,
-    elapsed: float,
-    *,
-    extra_instructions: str | None,
-    provider_cfg: config.ProviderSelection,
-    general_cfg: config.General,
-    ollama_cfg: config.Ollama,
-    openai_llm_cfg: config.OpenAILLM,
-    gemini_llm_cfg: config.GeminiLLM,
-    openai_asr_cfg: config.OpenAIASR,
-    llm_enabled: bool,
-    transcription_log: Path | None,
-    live: Live,
-) -> None:
-    """Process a transcript with optional LLM enhancement and logging."""
-    if llm_enabled and transcript:
-        if not general_cfg.quiet:
-            print_input_panel(
-                transcript,
-                title="📝 Raw Transcript",
-                subtitle=f"[dim]took {elapsed:.2f}s[/dim]",
-            )
-        instructions = AGENT_INSTRUCTIONS
-        if extra_instructions:
-            instructions += f"\n\n{extra_instructions}"
-
-        # Get model info for logging
-        if provider_cfg.llm_provider == "local":
-            model_info = f"{provider_cfg.llm_provider}:{ollama_cfg.llm_ollama_model}"
-        elif provider_cfg.llm_provider == "openai":
-            model_info = f"{provider_cfg.llm_provider}:{openai_llm_cfg.llm_openai_model}"
-        elif provider_cfg.llm_provider == "gemini":
-            model_info = f"{provider_cfg.llm_provider}:{gemini_llm_cfg.llm_gemini_model}"
-
-        processed_transcript = await process_and_update_clipboard(
-            system_prompt=SYSTEM_PROMPT,
-            agent_instructions=instructions,
-            provider_cfg=provider_cfg,
-            ollama_cfg=ollama_cfg,
-            openai_cfg=openai_llm_cfg,
-            gemini_cfg=gemini_llm_cfg,
-            logger=LOGGER,
-            original_text=transcript,
-            instruction=INSTRUCTION,
-            clipboard=general_cfg.clipboard,
-            quiet=general_cfg.quiet,
-            live=live,
-        )
-
-        # Log transcription if requested
-        if transcription_log:
-            log_transcription(
-                log_file=transcription_log,
-                role="assistant",
-                raw_transcript=transcript,
-                processed_transcript=processed_transcript,
-                model_info=model_info,
-            )
-        return
-
-    # When not using LLM, show transcript in output panel for consistency
-    if transcript:
-        if general_cfg.quiet:
-            # Quiet mode: print result to stdout for Keyboard Maestro to capture
-            print(transcript)
-        else:
-            print_output_panel(
-                transcript,
-                title="📝 Transcript",
-                subtitle="[dim]Copied to clipboard[/dim]" if general_cfg.clipboard else "",
-            )
-
-        # Log transcription if requested (raw only)
-        if transcription_log:
-            asr_model_info = f"{provider_cfg.asr_provider}"
-            if provider_cfg.asr_provider == "openai":
-                asr_model_info += f":{openai_asr_cfg.asr_openai_model}"
-            log_transcription(
-                log_file=transcription_log,
-                role="user",
-                raw_transcript=transcript,
-                processed_transcript=None,
-                model_info=asr_model_info,
-            )
-
-        if general_cfg.clipboard:
-            pyperclip.copy(transcript)
-            LOGGER.info("Copied transcript to clipboard.")
-        else:
-            LOGGER.info("Clipboard copy disabled.")
-    else:
-        LOGGER.info("Transcript empty.")
-        if not general_cfg.quiet:
-            print_with_style(
-                "⚠️ No transcript captured.",
-                style="yellow",
-            )
-
-
-async def _async_main(
+async def _async_main(  # noqa: PLR0912, PLR0915
     *,
     extra_instructions: str | None,
     provider_cfg: config.ProviderSelection,
@@ -290,20 +189,88 @@ async def _async_main(
 
         elapsed = time.monotonic() - start_time
 
-        await _process_transcript(
-            transcript,
-            elapsed,
-            extra_instructions=extra_instructions,
-            provider_cfg=provider_cfg,
-            general_cfg=general_cfg,
-            ollama_cfg=ollama_cfg,
-            openai_llm_cfg=openai_llm_cfg,
-            gemini_llm_cfg=gemini_llm_cfg,
-            openai_asr_cfg=openai_asr_cfg,
-            llm_enabled=llm_enabled,
-            transcription_log=transcription_log,
-            live=live,
-        )
+        if llm_enabled and transcript:
+            if not general_cfg.quiet:
+                print_input_panel(
+                    transcript,
+                    title="📝 Raw Transcript",
+                    subtitle=f"[dim]took {elapsed:.2f}s[/dim]",
+                )
+            instructions = AGENT_INSTRUCTIONS
+            if extra_instructions:
+                instructions += f"\n\n{extra_instructions}"
+
+            # Get model info for logging
+            if provider_cfg.llm_provider == "local":
+                model_info = f"{provider_cfg.llm_provider}:{ollama_cfg.llm_ollama_model}"
+            elif provider_cfg.llm_provider == "openai":
+                model_info = f"{provider_cfg.llm_provider}:{openai_llm_cfg.llm_openai_model}"
+            elif provider_cfg.llm_provider == "gemini":
+                model_info = f"{provider_cfg.llm_provider}:{gemini_llm_cfg.llm_gemini_model}"
+            else:
+                msg = f"Unsupported LLM provider: {provider_cfg.llm_provider}"
+                raise ValueError(msg)
+
+            processed_transcript = await process_and_update_clipboard(
+                system_prompt=SYSTEM_PROMPT,
+                agent_instructions=instructions,
+                provider_cfg=provider_cfg,
+                ollama_cfg=ollama_cfg,
+                openai_cfg=openai_llm_cfg,
+                gemini_cfg=gemini_llm_cfg,
+                logger=LOGGER,
+                original_text=transcript,
+                instruction=INSTRUCTION,
+                clipboard=general_cfg.clipboard,
+                quiet=general_cfg.quiet,
+                live=live,
+            )
+
+            # Log transcription if requested
+            if transcription_log:
+                log_transcription(
+                    log_file=transcription_log,
+                    role="assistant",
+                    raw_transcript=transcript,
+                    processed_transcript=processed_transcript,
+                    model_info=model_info,
+                )
+            return
+
+        # When not using LLM, show transcript in output panel for consistency
+        if transcript:
+            if general_cfg.quiet:
+                # Quiet mode: print result to stdout for Keyboard Maestro to capture
+                print(transcript)
+            else:
+                print_output_panel(
+                    transcript,
+                    title="📝 Transcript",
+                    subtitle="[dim]Copied to clipboard[/dim]" if general_cfg.clipboard else "",
+                )
+
+            # Log transcription if requested (raw only)
+            if transcription_log:
+                asr_model_info = f"{provider_cfg.asr_provider}"
+                if provider_cfg.asr_provider == "openai":
+                    asr_model_info += f":{openai_asr_cfg.asr_openai_model}"
+                log_transcription(
+                    log_file=transcription_log,
+                    role="user",
+                    raw_transcript=transcript,
+                    processed_transcript=None,
+                    model_info=asr_model_info,
+                )
+
+            if general_cfg.clipboard:
+                pyperclip.copy(transcript)
+                LOGGER.info("Copied transcript to clipboard.")
+            else:
+                LOGGER.info("Clipboard copy disabled.")
+        else:
+            LOGGER.info("Transcript empty.")
+            if not general_cfg.quiet:
+                print_with_style("⚠️ No transcript captured.", style="yellow")
 
 
 @app.command("transcribe")
