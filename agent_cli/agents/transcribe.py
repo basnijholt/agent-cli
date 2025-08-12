@@ -246,10 +246,8 @@ async def _async_main(
                 )
                 return
 
-            # Get the appropriate transcriber for recorded audio
             recorded_transcriber = create_recorded_audio_transcriber(provider_cfg)
 
-            # Transcribe the audio
             asr_config = (
                 openai_asr_cfg if provider_cfg.asr_provider == "openai" else wyoming_asr_cfg
             )

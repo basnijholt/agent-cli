@@ -325,7 +325,7 @@ FROM_FILE: Path | None = typer.Option(
     rich_help_panel="Audio Recovery",
 )
 LAST_RECORDING: int | None = typer.Option(
-    None,
+    1,
     "--last-recording",
     help="Transcribe a recent saved recording. Use 1 for most recent, 2 for second-to-last, etc. Just --last-recording uses the most recent.",
     rich_help_panel="Audio Recovery",
