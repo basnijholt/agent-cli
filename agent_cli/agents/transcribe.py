@@ -251,12 +251,21 @@ async def _async_main(
             asr_config = (
                 openai_asr_cfg if provider_cfg.asr_provider == "openai" else wyoming_asr_cfg
             )
-            transcript = await recorded_transcriber(
-                audio_data,
-                asr_config,
-                LOGGER,
-                quiet=general_cfg.quiet,
-            )
+            # Call with appropriate arguments based on provider
+            if provider_cfg.asr_provider == "openai":
+                transcript = await recorded_transcriber(
+                    audio_data,
+                    asr_config,
+                    LOGGER,
+                    quiet=general_cfg.quiet,
+                )
+            else:  # Wyoming expects keyword arguments
+                transcript = await recorded_transcriber(
+                    audio_data=audio_data,
+                    wyoming_asr_cfg=asr_config,
+                    logger=LOGGER,
+                    quiet=general_cfg.quiet,
+                )
         else:
             # Live recording transcription
             if not audio_in_cfg or not p:
@@ -306,7 +315,7 @@ def transcribe(  # noqa: PLR0912
         help="Additional instructions for the LLM to process the transcription.",
     ),
     from_file: Path | None = opts.FROM_FILE,
-    last_recording: int | None = opts.LAST_RECORDING,
+    last_recording: int = opts.LAST_RECORDING,
     save_recording: bool = opts.SAVE_RECORDING,
     # --- Provider Selection ---
     asr_provider: str = opts.ASR_PROVIDER,
@@ -349,7 +358,7 @@ def transcribe(  # noqa: PLR0912
         transcription_log = transcription_log.expanduser()
 
     # Handle recovery options
-    if last_recording is not None and from_file:
+    if last_recording and from_file:
         print_with_style(
             "❌ Cannot use both --last-recording and --from-file",
             style="red",
@@ -358,24 +367,22 @@ def transcribe(  # noqa: PLR0912
 
     # Determine audio source
     audio_file_path = None
-    if last_recording is not None:
-        # Default to 1 (most recent) if no index provided
-        recording_index = last_recording if last_recording > 0 else 1
-        audio_file_path = get_last_recording(recording_index)
+    if last_recording > 0:  # 0 means disabled
+        audio_file_path = get_last_recording(last_recording)
         if not audio_file_path:
-            if recording_index == 1:
+            if last_recording == 1:
                 print_with_style(
                     "❌ No saved recordings found",
                     style="red",
                 )
             else:
                 print_with_style(
-                    f"❌ Recording #{recording_index} not found (not enough recordings)",
+                    f"❌ Recording #{last_recording} not found (not enough recordings)",
                     style="red",
                 )
             return
         if not quiet:
-            ordinal = "most recent" if recording_index == 1 else f"#{recording_index}"
+            ordinal = "most recent" if last_recording == 1 else f"#{last_recording}"
             print_with_style(
                 f"📁 Using {ordinal} recording: {audio_file_path.name}",
                 style="blue",

@@ -405,7 +405,7 @@ def test_transcribe_command_last_recording_option(
         patch("agent_cli.agents.transcribe.asyncio.run") as mock_run,
         patch("agent_cli.agents.transcribe.print_with_style") as mock_print,
     ):
-        # Call transcribe with --last-recording
+        # Call transcribe with --last-recording as int
         transcribe.transcribe(
             last_recording=1,
             from_file=None,
@@ -458,7 +458,7 @@ def test_transcribe_command_from_file_option(tmp_path: Path):
     with patch("agent_cli.agents.transcribe.asyncio.run") as mock_run:
         # Call transcribe with --from-file
         transcribe.transcribe(
-            last_recording=None,
+            last_recording=0,
             from_file=test_file,
             save_recording=True,
             extra_instructions=None,
@@ -558,6 +558,62 @@ def test_transcribe_command_last_recording_with_index(
         # Verify the message about using recording #2
         mock_print.assert_called()
         assert any("#2" in str(call) for call in mock_print.call_args_list)
+
+
+def test_transcribe_command_last_recording_disabled(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Test the --last-recording command when disabled (0)."""
+    # Create a test recording file
+    recording_file = tmp_path / "recording_20240101_120000_000.wav"
+    create_test_wav_file(recording_file)
+
+    # Monkeypatch to return our test file
+    monkeypatch.setattr(
+        "agent_cli.agents.transcribe.get_last_recording",
+        lambda idx: recording_file if idx == 1 else None,
+    )
+
+    with patch("agent_cli.agents.transcribe.asyncio.run") as mock_run:
+        # Call transcribe with --last-recording disabled (0)
+        transcribe.transcribe(
+            last_recording=0,  # Disabled
+            from_file=None,
+            save_recording=True,
+            extra_instructions=None,
+            asr_provider="local",
+            llm_provider="local",
+            input_device_index=None,
+            input_device_name=None,
+            asr_wyoming_ip="localhost",
+            asr_wyoming_port=10300,
+            asr_openai_model="whisper-1",
+            llm_ollama_model="qwen3:4b",
+            llm_ollama_host="http://localhost:11434",
+            llm_openai_model="gpt-4o-mini",
+            openai_api_key=None,
+            llm_gemini_model="gemini-2.5-flash",
+            gemini_api_key=None,
+            llm=False,
+            stop=False,
+            status=False,
+            toggle=False,
+            clipboard=True,
+            log_level="WARNING",
+            log_file=None,
+            list_devices=False,
+            quiet=False,
+            config_file=None,
+            print_args=False,
+            transcription_log=None,
+        )
+
+        # Verify _async_main was called for normal recording (not from file)
+        mock_run.assert_called_once()
+        call_args = mock_run.call_args[0][0]
+        # Should be normal recording mode, not file mode
+        assert call_args.__name__ == "_async_main"
 
 
 def test_transcribe_command_conflicting_options() -> None:
