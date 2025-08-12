@@ -463,6 +463,17 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 │                                   [default: None]                            │
 │ --help                            Show this message and exit.                │
 ╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Audio Recovery ─────────────────────────────────────────────────────────────╮
+│ --from-file                                PATH  Transcribe audio from a     │
+│                                                  saved WAV file instead of   │
+│                                                  recording.                  │
+│                                                  [default: None]             │
+│ --last-recording                                 Transcribe the most recent  │
+│                                                  saved recording.            │
+│ --save-recording    --no-save-recording          Save the audio recording to │
+│                                                  disk for recovery.          │
+│                                                  [default: save-recording]   │
+╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Provider Selection ─────────────────────────────────────────────────────────╮
 │ --asr-provider        TEXT  The ASR provider to use ('local' for Wyoming,    │
 │                             'openai').                                       │

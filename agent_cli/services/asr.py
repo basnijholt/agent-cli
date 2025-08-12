@@ -4,7 +4,10 @@ from __future__ import annotations
 
 import asyncio
 import io
+import wave
+from datetime import UTC, datetime
 from functools import partial
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 from wyoming.asr import Transcribe, Transcript, TranscriptChunk, TranscriptStart, TranscriptStop
@@ -31,6 +34,71 @@ if TYPE_CHECKING:
 
     from agent_cli import config
     from agent_cli.core.utils import InteractiveStopEvent
+
+
+def _get_transcriptions_dir() -> Path:
+    """Get the directory for storing transcription recordings."""
+    config_dir = Path.home() / ".config" / "agent-cli" / "transcriptions"
+    config_dir.mkdir(parents=True, exist_ok=True)
+    return config_dir
+
+
+def _save_audio_to_file(audio_data: bytes, logger: logging.Logger) -> Path | None:
+    """Save audio data to a WAV file with timestamp-based filename.
+
+    Returns the path to the saved file, or None if saving failed.
+    """
+    try:
+        timestamp = datetime.now(UTC).strftime("%Y%m%d_%H%M%S_%f")[:-3]  # Include milliseconds
+        filename = f"recording_{timestamp}.wav"
+        filepath = _get_transcriptions_dir() / filename
+
+        with wave.open(str(filepath), "wb") as wav_file:
+            wav_file.setnchannels(constants.PYAUDIO_CHANNELS)
+            wav_file.setsampwidth(2)  # 16-bit audio
+            wav_file.setframerate(constants.PYAUDIO_RATE)
+            wav_file.writeframes(audio_data)
+
+        logger.info("Saved audio recording to %s", filepath)
+        return filepath
+    except OSError:
+        logger.exception("Failed to save audio recording")
+        return None
+
+
+def get_last_recording(index: int = 1) -> Path | None:
+    """Get the path to a recent recording file.
+
+    Args:
+        index: Which recording to get (1 = most recent, 2 = second-to-last, etc.)
+               Default is 1 (most recent).
+
+    Returns:
+        Path to the recording file, or None if not found.
+
+    """
+    if index < 1:
+        return None
+
+    transcriptions_dir = _get_transcriptions_dir()
+    recording_files = sorted(transcriptions_dir.glob("recording_*.wav"))
+
+    if recording_files and len(recording_files) >= index:
+        # -1 for most recent, -2 for second-to-last, etc.
+        return recording_files[-index]
+    return None
+
+
+def load_audio_from_file(filepath: Path, logger: logging.Logger) -> bytes | None:
+    """Load audio data from a WAV file."""
+    try:
+        with wave.open(str(filepath), "rb") as wav_file:
+            audio_data = wav_file.readframes(wav_file.getnframes())
+            logger.info("Loaded audio from %s", filepath)
+            return audio_data
+    except (OSError, wave.Error):
+        logger.exception("Failed to load audio from %s", filepath)
+        return None
 
 
 def create_transcriber(
@@ -76,13 +144,19 @@ async def _send_audio(
     *,
     live: Live,
     quiet: bool = False,
+    save_recording: bool = True,
 ) -> None:
     """Read from mic and send to Wyoming server."""
     await client.write_event(Transcribe().event())
     await client.write_event(AudioStart(**constants.WYOMING_AUDIO_CONFIG).event())
 
+    # Buffer to save audio if requested
+    audio_buffer = io.BytesIO() if save_recording else None
+
     async def send_chunk(chunk: bytes) -> None:
-        """Send audio chunk to ASR server."""
+        """Send audio chunk to ASR server and optionally buffer it."""
+        if audio_buffer is not None:
+            audio_buffer.write(chunk)
         await client.write_event(AudioChunk(audio=chunk, **constants.WYOMING_AUDIO_CONFIG).event())
 
     try:
@@ -99,6 +173,12 @@ async def _send_audio(
     finally:
         await client.write_event(AudioStop().event())
         logger.debug("Sent AudioStop")
+
+        # Save the recording to disk if requested
+        if save_recording and audio_buffer:
+            audio_data = audio_buffer.getvalue()
+            if audio_data:
+                _save_audio_to_file(audio_data, logger)
 
 
 async def record_audio_to_buffer(queue: asyncio.Queue, logger: logging.Logger) -> bytes:
@@ -157,8 +237,23 @@ async def record_audio_with_manual_stop(
     *,
     quiet: bool = False,
     live: Live | None = None,
+    save_recording: bool = True,
 ) -> bytes:
-    """Record audio to a buffer using a manual stop signal."""
+    """Record audio to a buffer using a manual stop signal.
+
+    Args:
+        p: PyAudio instance
+        input_device_index: Audio input device index
+        stop_event: Event to stop recording
+        logger: Logger instance
+        quiet: If True, suppress console output
+        live: Rich Live display for progress
+        save_recording: If True, save the recording to disk
+
+    Returns:
+        The recorded audio data as bytes
+
+    """
     audio_buffer = io.BytesIO()
 
     def buffer_chunk(chunk: bytes) -> None:
@@ -177,7 +272,14 @@ async def record_audio_with_manual_stop(
             progress_message="Recording",
             progress_style="green",
         )
-    return audio_buffer.getvalue()
+
+    audio_data = audio_buffer.getvalue()
+
+    # Save the recording to disk if requested
+    if save_recording and audio_data:
+        _save_audio_to_file(audio_data, logger)
+
+    return audio_data
 
 
 async def _transcribe_recorded_audio_wyoming(
@@ -212,7 +314,8 @@ async def _transcribe_recorded_audio_wyoming(
             logger.debug("Sent AudioStop")
 
             return await _receive_transcript(client, logger)
-    except (ConnectionRefusedError, Exception):
+    except ConnectionRefusedError:
+        logger.warning("Failed to connect to Wyoming ASR server")
         return ""
 
 
@@ -225,6 +328,7 @@ async def _transcribe_live_audio_wyoming(
     stop_event: InteractiveStopEvent,
     live: Live,
     quiet: bool = False,
+    save_recording: bool = True,
     chunk_callback: Callable[[str], None] | None = None,
     final_callback: Callable[[str], None] | None = None,
     **_kwargs: object,
@@ -241,7 +345,15 @@ async def _transcribe_live_audio_wyoming(
             stream_kwargs = setup_input_stream(audio_input_cfg.input_device_index)
             with open_pyaudio_stream(p, **stream_kwargs) as stream:
                 _, recv_task = await manage_send_receive_tasks(
-                    _send_audio(client, stream, stop_event, logger, live=live, quiet=quiet),
+                    _send_audio(
+                        client,
+                        stream,
+                        stop_event,
+                        logger,
+                        live=live,
+                        quiet=quiet,
+                        save_recording=save_recording,
+                    ),
                     _receive_transcript(
                         client,
                         logger,
@@ -251,7 +363,8 @@ async def _transcribe_live_audio_wyoming(
                     return_when=asyncio.ALL_COMPLETED,
                 )
                 return recv_task.result()
-    except (ConnectionRefusedError, Exception):
+    except ConnectionRefusedError:
+        logger.warning("Failed to connect to Wyoming ASR server")
         return None
 
 
@@ -264,6 +377,7 @@ async def _transcribe_live_audio_openai(
     stop_event: InteractiveStopEvent,
     live: Live,
     quiet: bool = False,
+    save_recording: bool = True,
     **_kwargs: object,
 ) -> str | None:
     """Record and transcribe live audio using OpenAI Whisper."""
@@ -274,6 +388,7 @@ async def _transcribe_live_audio_openai(
         logger,
         quiet=quiet,
         live=live,
+        save_recording=save_recording,
     )
     if not audio_data:
         return None
