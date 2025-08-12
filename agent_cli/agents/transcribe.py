@@ -364,21 +364,9 @@ def transcribe(
         "--extra-instructions",
         help="Additional instructions for the LLM to process the transcription.",
     ),
-    from_file: Path | None = typer.Option(
-        None,
-        "--from-file",
-        help="Transcribe audio from a saved WAV file instead of recording.",
-    ),
-    last_recording: bool = typer.Option(
-        False,
-        "--last-recording",
-        help="Transcribe the most recent saved recording.",
-    ),
-    save_recording: bool = typer.Option(
-        True,
-        "--save-recording/--no-save-recording",
-        help="Save the audio recording to disk for recovery.",
-    ),
+    from_file: Path | None = opts.FROM_FILE,
+    last_recording: bool = opts.LAST_RECORDING,
+    save_recording: bool = opts.SAVE_RECORDING,
     # --- Provider Selection ---
     asr_provider: str = opts.ASR_PROVIDER,
     llm_provider: str = opts.LLM_PROVIDER,

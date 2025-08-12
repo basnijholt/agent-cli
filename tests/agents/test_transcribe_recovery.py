@@ -32,8 +32,8 @@ async def test_async_main_from_file(tmp_path: Path):
 
     # Mock the transcriber
     with (
-        patch("agent_cli.services.asr.create_recorded_audio_transcriber") as mock_create,
-        patch("agent_cli.services.asr.load_audio_from_file") as mock_load,
+        patch("agent_cli.agents.transcribe.create_recorded_audio_transcriber") as mock_create,
+        patch("agent_cli.agents.transcribe.load_audio_from_file") as mock_load,
         patch("agent_cli.agents.transcribe.pyperclip") as mock_clipboard,
     ):
         # Setup mocks
@@ -101,8 +101,8 @@ async def test_async_main_from_file_with_llm(tmp_path: Path):
     create_test_wav_file(test_file)
 
     with (
-        patch("agent_cli.services.asr.create_recorded_audio_transcriber") as mock_create,
-        patch("agent_cli.services.asr.load_audio_from_file") as mock_load,
+        patch("agent_cli.agents.transcribe.create_recorded_audio_transcriber") as mock_create,
+        patch("agent_cli.agents.transcribe.load_audio_from_file") as mock_load,
         patch("agent_cli.agents.transcribe.process_and_update_clipboard") as mock_process,
     ):
         # Setup mocks
@@ -171,8 +171,8 @@ async def test_async_main_from_file_with_logging(tmp_path: Path):
     create_test_wav_file(test_file)
 
     with (
-        patch("agent_cli.services.asr.create_recorded_audio_transcriber") as mock_create,
-        patch("agent_cli.services.asr.load_audio_from_file") as mock_load,
+        patch("agent_cli.agents.transcribe.create_recorded_audio_transcriber") as mock_create,
+        patch("agent_cli.agents.transcribe.load_audio_from_file") as mock_load,
         patch("agent_cli.agents.transcribe.pyperclip"),
     ):
         # Setup mocks
@@ -248,7 +248,7 @@ async def test_async_main_from_file_error_handling(
     """Test error handling when audio file cannot be loaded."""
     test_file = tmp_path / "nonexistent.wav"
 
-    with patch("agent_cli.services.asr.load_audio_from_file") as mock_load:
+    with patch("agent_cli.agents.transcribe.load_audio_from_file") as mock_load:
         # Make loading fail
         mock_load.return_value = None
 
@@ -396,7 +396,7 @@ def test_transcribe_command_last_recording_option(
     create_test_wav_file(recording_file)
 
     # Monkeypatch to return our test file
-    monkeypatch.setattr("agent_cli.services.asr._get_last_recording", lambda: recording_file)
+    monkeypatch.setattr("agent_cli.agents.transcribe._get_last_recording", lambda: recording_file)
 
     with (
         patch("agent_cli.agents.transcribe.asyncio.run") as mock_run,
