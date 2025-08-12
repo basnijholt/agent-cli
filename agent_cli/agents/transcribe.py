@@ -111,7 +111,7 @@ def log_transcription(
         f.write(json.dumps(log_entry) + "\n")
 
 
-async def _process_transcript(
+async def _process_transcript(  # noqa: PLR0912
     transcript: str | None,
     elapsed: float,
     *,
@@ -322,7 +322,7 @@ async def _async_main(
 
 
 @app.command("transcribe")
-def transcribe(
+def transcribe(  # noqa: PLR0912
     *,
     extra_instructions: str | None = typer.Option(
         None,
@@ -413,12 +413,38 @@ def transcribe(
             )
             return
 
+    # Create all config objects once
     general_cfg = config.General(
         log_level=log_level,
         log_file=log_file,
         quiet=quiet,
         list_devices=list_devices,
         clipboard=clipboard,
+    )
+    provider_cfg = config.ProviderSelection(
+        asr_provider=asr_provider,
+        llm_provider=llm_provider,
+        tts_provider="local",  # Not used in transcribe
+    )
+    wyoming_asr_cfg = config.WyomingASR(
+        asr_wyoming_ip=asr_wyoming_ip,
+        asr_wyoming_port=asr_wyoming_port,
+    )
+    openai_asr_cfg = config.OpenAIASR(
+        asr_openai_model=asr_openai_model,
+        openai_api_key=openai_api_key,
+    )
+    ollama_cfg = config.Ollama(
+        llm_ollama_model=llm_ollama_model,
+        llm_ollama_host=llm_ollama_host,
+    )
+    openai_llm_cfg = config.OpenAILLM(
+        llm_openai_model=llm_openai_model,
+        openai_api_key=openai_api_key,
+    )
+    gemini_llm_cfg = config.GeminiLLM(
+        llm_gemini_model=llm_gemini_model,
+        gemini_api_key=gemini_api_key,
     )
 
     # Handle recovery mode (transcribing from file)
@@ -428,32 +454,13 @@ def transcribe(
             _async_main_from_file(
                 audio_file_path=audio_file_path,
                 extra_instructions=extra_instructions,
-                provider_cfg=config.ProviderSelection(
-                    asr_provider=asr_provider,
-                    llm_provider=llm_provider,
-                    tts_provider="local",
-                ),
+                provider_cfg=provider_cfg,
                 general_cfg=general_cfg,
-                wyoming_asr_cfg=config.WyomingASR(
-                    asr_wyoming_ip=asr_wyoming_ip,
-                    asr_wyoming_port=asr_wyoming_port,
-                ),
-                openai_asr_cfg=config.OpenAIASR(
-                    asr_openai_model=asr_openai_model,
-                    openai_api_key=openai_api_key,
-                ),
-                ollama_cfg=config.Ollama(
-                    llm_ollama_model=llm_ollama_model,
-                    llm_ollama_host=llm_ollama_host,
-                ),
-                openai_llm_cfg=config.OpenAILLM(
-                    llm_openai_model=llm_openai_model,
-                    openai_api_key=openai_api_key,
-                ),
-                gemini_llm_cfg=config.GeminiLLM(
-                    llm_gemini_model=llm_gemini_model,
-                    gemini_api_key=gemini_api_key,
-                ),
+                wyoming_asr_cfg=wyoming_asr_cfg,
+                openai_asr_cfg=openai_asr_cfg,
+                ollama_cfg=ollama_cfg,
+                openai_llm_cfg=openai_llm_cfg,
+                gemini_llm_cfg=gemini_llm_cfg,
                 llm_enabled=llm,
                 transcription_log=transcription_log,
             ),
@@ -473,34 +480,9 @@ def transcribe(
         return
 
     with pyaudio_context() as p:
-        provider_cfg = config.ProviderSelection(
-            asr_provider=asr_provider,
-            llm_provider=llm_provider,
-            tts_provider="local",  # Not used
-        )
         audio_in_cfg = config.AudioInput(
             input_device_index=input_device_index,
             input_device_name=input_device_name,
-        )
-        wyoming_asr_cfg = config.WyomingASR(
-            asr_wyoming_ip=asr_wyoming_ip,
-            asr_wyoming_port=asr_wyoming_port,
-        )
-        openai_asr_cfg = config.OpenAIASR(
-            asr_openai_model=asr_openai_model,
-            openai_api_key=openai_api_key,
-        )
-        ollama_cfg = config.Ollama(
-            llm_ollama_model=llm_ollama_model,
-            llm_ollama_host=llm_ollama_host,
-        )
-        openai_llm_cfg = config.OpenAILLM(
-            llm_openai_model=llm_openai_model,
-            openai_api_key=openai_api_key,
-        )
-        gemini_llm_cfg = config.GeminiLLM(
-            llm_gemini_model=llm_gemini_model,
-            gemini_api_key=gemini_api_key,
         )
 
         # We only use setup_devices for its input device handling
