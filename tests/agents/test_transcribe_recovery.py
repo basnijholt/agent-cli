@@ -396,7 +396,10 @@ def test_transcribe_command_last_recording_option(
     create_test_wav_file(recording_file)
 
     # Monkeypatch to return our test file
-    monkeypatch.setattr("agent_cli.agents.transcribe.get_last_recording", lambda: recording_file)
+    monkeypatch.setattr(
+        "agent_cli.agents.transcribe.get_last_recording",
+        lambda _idx=1: recording_file,
+    )
 
     with (
         patch("agent_cli.agents.transcribe.asyncio.run") as mock_run,
@@ -404,7 +407,7 @@ def test_transcribe_command_last_recording_option(
     ):
         # Call transcribe with --last-recording
         transcribe.transcribe(
-            last_recording=True,
+            last_recording=1,
             from_file=None,
             save_recording=True,
             extra_instructions=None,
@@ -441,9 +444,9 @@ def test_transcribe_command_last_recording_option(
         # The coroutine is passed to asyncio.run
         assert call_args.__name__ == "_async_main_from_file"
 
-        # Verify the message about using last recording
+        # Verify the message about using most recent recording
         mock_print.assert_called()
-        assert "Using last recording" in mock_print.call_args[0][0]
+        assert "Using most recent recording" in mock_print.call_args[0][0]
 
 
 def test_transcribe_command_from_file_option(tmp_path: Path):
@@ -455,7 +458,7 @@ def test_transcribe_command_from_file_option(tmp_path: Path):
     with patch("agent_cli.agents.transcribe.asyncio.run") as mock_run:
         # Call transcribe with --from-file
         transcribe.transcribe(
-            last_recording=False,
+            last_recording=None,
             from_file=test_file,
             save_recording=True,
             extra_instructions=None,
@@ -492,12 +495,77 @@ def test_transcribe_command_from_file_option(tmp_path: Path):
         assert call_args.__name__ == "_async_main_from_file"
 
 
+def test_transcribe_command_last_recording_with_index(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Test the --last-recording command with different indices."""
+    # Create multiple test recording files
+    recording_files = [
+        tmp_path / "recording_20240101_110000_000.wav",
+        tmp_path / "recording_20240101_120000_000.wav",
+        tmp_path / "recording_20240101_130000_000.wav",
+    ]
+    for f in recording_files:
+        create_test_wav_file(f)
+
+    # Monkeypatch to return the second-to-last file
+    monkeypatch.setattr(
+        "agent_cli.agents.transcribe.get_last_recording",
+        lambda idx: recording_files[-2] if idx == 2 else None,
+    )
+
+    with (
+        patch("agent_cli.agents.transcribe.asyncio.run") as mock_run,
+        patch("agent_cli.agents.transcribe.print_with_style") as mock_print,
+    ):
+        # Call transcribe with --last-recording 2 (second-to-last)
+        transcribe.transcribe(
+            last_recording=2,
+            from_file=None,
+            save_recording=True,
+            extra_instructions=None,
+            asr_provider="local",
+            llm_provider="local",
+            input_device_index=None,
+            input_device_name=None,
+            asr_wyoming_ip="localhost",
+            asr_wyoming_port=10300,
+            asr_openai_model="whisper-1",
+            llm_ollama_model="qwen3:4b",
+            llm_ollama_host="http://localhost:11434",
+            llm_openai_model="gpt-4o-mini",
+            openai_api_key=None,
+            llm_gemini_model="gemini-2.5-flash",
+            gemini_api_key=None,
+            llm=False,
+            stop=False,
+            status=False,
+            toggle=False,
+            clipboard=True,
+            log_level="WARNING",
+            log_file=None,
+            list_devices=False,
+            quiet=False,
+            config_file=None,
+            print_args=False,
+            transcription_log=None,
+        )
+
+        # Verify _async_main_from_file was called
+        mock_run.assert_called_once()
+
+        # Verify the message about using recording #2
+        mock_print.assert_called()
+        assert any("#2" in str(call) for call in mock_print.call_args_list)
+
+
 def test_transcribe_command_conflicting_options() -> None:
     """Test error handling for conflicting --last-recording and --from-file."""
     with patch("agent_cli.agents.transcribe.print_with_style") as mock_print:
         # Call with both options (should error)
         transcribe.transcribe(
-            last_recording=True,
+            last_recording=1,
             from_file=Path("/some/file.wav"),
             save_recording=True,
             extra_instructions=None,

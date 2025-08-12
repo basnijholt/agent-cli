@@ -324,10 +324,10 @@ FROM_FILE: Path | None = typer.Option(
     help="Transcribe audio from a saved WAV file instead of recording.",
     rich_help_panel="Audio Recovery",
 )
-LAST_RECORDING: bool = typer.Option(
-    False,  # noqa: FBT003
+LAST_RECORDING: int | None = typer.Option(
+    None,
     "--last-recording",
-    help="Transcribe the most recent saved recording.",
+    help="Transcribe a recent saved recording. Use 1 for most recent, 2 for second-to-last, etc. Just --last-recording uses the most recent.",
     rich_help_panel="Audio Recovery",
 )
 SAVE_RECORDING: bool = typer.Option(

@@ -93,11 +93,32 @@ def test_get_last_recording(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> 
     for filepath in test_files:
         filepath.touch()
 
-    # Get the last recording
+    # Get the last recording (default, most recent)
     last_recording = asr.get_last_recording()
-
-    # Should return the one with the latest timestamp
     assert last_recording == test_files[1]  # 130000 is the latest
+
+    # Get the most recent explicitly
+    last_recording = asr.get_last_recording(1)
+    assert last_recording == test_files[1]  # 130000 is the latest
+
+    # Get the second-to-last recording
+    second_last = asr.get_last_recording(2)
+    assert second_last == test_files[0]  # 120000 is second
+
+    # Get the third-to-last recording
+    third_last = asr.get_last_recording(3)
+    assert third_last == test_files[2]  # 110000 is third
+
+    # Try to get a recording that doesn't exist (4th)
+    non_existent = asr.get_last_recording(4)
+    assert non_existent is None
+
+    # Try with invalid index
+    invalid = asr.get_last_recording(0)
+    assert invalid is None
+
+    invalid = asr.get_last_recording(-1)
+    assert invalid is None
 
 
 def test_get_last_recording_no_files(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

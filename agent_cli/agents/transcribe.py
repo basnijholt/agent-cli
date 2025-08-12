@@ -365,7 +365,7 @@ def transcribe(
         help="Additional instructions for the LLM to process the transcription.",
     ),
     from_file: Path | None = opts.FROM_FILE,
-    last_recording: bool = opts.LAST_RECORDING,
+    last_recording: int | None = opts.LAST_RECORDING,
     save_recording: bool = opts.SAVE_RECORDING,
     # --- Provider Selection ---
     asr_provider: str = opts.ASR_PROVIDER,
@@ -408,7 +408,7 @@ def transcribe(
         transcription_log = transcription_log.expanduser()
 
     # Handle recovery options
-    if last_recording and from_file:
+    if last_recording is not None and from_file:
         print_with_style(
             "❌ Cannot use both --last-recording and --from-file",
             style="red",
@@ -417,17 +417,26 @@ def transcribe(
 
     # Determine audio source
     audio_file_path = None
-    if last_recording:
-        audio_file_path = get_last_recording()
+    if last_recording is not None:
+        # Default to 1 (most recent) if no index provided
+        recording_index = last_recording if last_recording > 0 else 1
+        audio_file_path = get_last_recording(recording_index)
         if not audio_file_path:
-            print_with_style(
-                "❌ No saved recordings found",
-                style="red",
-            )
+            if recording_index == 1:
+                print_with_style(
+                    "❌ No saved recordings found",
+                    style="red",
+                )
+            else:
+                print_with_style(
+                    f"❌ Recording #{recording_index} not found (not enough recordings)",
+                    style="red",
+                )
             return
         if not quiet:
+            ordinal = "most recent" if recording_index == 1 else f"#{recording_index}"
             print_with_style(
-                f"📁 Using last recording: {audio_file_path.name}",
+                f"📁 Using {ordinal} recording: {audio_file_path.name}",
                 style="blue",
             )
     elif from_file:
