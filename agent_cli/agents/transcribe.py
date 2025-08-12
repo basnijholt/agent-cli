@@ -10,7 +10,7 @@ import time
 from contextlib import suppress
 from datetime import UTC, datetime
 from pathlib import Path  # noqa: TC003
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 import pyperclip
 import typer
@@ -39,6 +39,7 @@ from agent_cli.services.llm import process_and_update_clipboard
 
 if TYPE_CHECKING:
     import pyaudio
+    from rich.live import Live
 
 LOGGER = logging.getLogger()
 
@@ -124,7 +125,7 @@ async def _process_transcript(  # noqa: PLR0912
     openai_asr_cfg: config.OpenAIASR,
     llm_enabled: bool,
     transcription_log: Path | None,
-    live: Any,
+    live: Live,
 ) -> None:
     """Process a transcript with optional LLM enhancement and logging."""
     if llm_enabled and transcript:
