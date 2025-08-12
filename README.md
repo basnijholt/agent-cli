@@ -474,7 +474,7 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 │                                                     second-to-last, etc.     │
 │                                                     Just --last-recording    │
 │                                                     uses the most recent.    │
-│                                                     [default: None]          │
+│                                                     [default: 1]             │
 │ --save-recording    --no-save-recording             Save the audio recording │
 │                                                     to disk for recovery.    │
 │                                                     [default:                │
