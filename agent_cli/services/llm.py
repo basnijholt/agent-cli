@@ -26,10 +26,20 @@ def _openai_llm_model(openai_cfg: config.OpenAILLM) -> OpenAIModel:
     from pydantic_ai.models.openai import OpenAIModel  # noqa: PLC0415
     from pydantic_ai.providers.openai import OpenAIProvider  # noqa: PLC0415
 
-    if not openai_cfg.openai_api_key:
-        msg = "OpenAI API key is not set."
-        raise ValueError(msg)
-    provider = OpenAIProvider(api_key=openai_cfg.openai_api_key)
+    # For custom base URLs (like llama-server), API key might not be required
+    if openai_cfg.openai_base_url:
+        # Custom endpoint - API key is optional
+        provider = OpenAIProvider(
+            api_key=openai_cfg.openai_api_key or "dummy",
+            base_url=openai_cfg.openai_base_url,
+        )
+    else:
+        # Standard OpenAI - API key is required
+        if not openai_cfg.openai_api_key:
+            msg = "OpenAI API key is not set."
+            raise ValueError(msg)
+        provider = OpenAIProvider(api_key=openai_cfg.openai_api_key)
+
     model_name = openai_cfg.llm_openai_model
     return OpenAIModel(model_name=model_name, provider=provider)
 

@@ -394,6 +394,10 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 │                                 the OPENAI_API_KEY environment variable.     │
 │                                 [env var: OPENAI_API_KEY]                    │
 │                                 [default: None]                              │
+│ --openai-base-url         TEXT  Custom base URL for OpenAI-compatible API    │
+│                                 (e.g., for llama-server:                     │
+│                                 http://localhost:8080/v1).                   │
+│                                 [default: None]                              │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ LLM Configuration: Gemini ──────────────────────────────────────────────────╮
 │ --llm-gemini-model        TEXT  The Gemini model to use for LLM tasks.       │
@@ -521,6 +525,10 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 │ --openai-api-key          TEXT  Your OpenAI API key. Can also be set with    │
 │                                 the OPENAI_API_KEY environment variable.     │
 │                                 [env var: OPENAI_API_KEY]                    │
+│                                 [default: None]                              │
+│ --openai-base-url         TEXT  Custom base URL for OpenAI-compatible API    │
+│                                 (e.g., for llama-server:                     │
+│                                 http://localhost:8080/v1).                   │
 │                                 [default: None]                              │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ LLM Configuration: Gemini ──────────────────────────────────────────────────╮
@@ -781,6 +789,10 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 │                                 the OPENAI_API_KEY environment variable.     │
 │                                 [env var: OPENAI_API_KEY]                    │
 │                                 [default: None]                              │
+│ --openai-base-url         TEXT  Custom base URL for OpenAI-compatible API    │
+│                                 (e.g., for llama-server:                     │
+│                                 http://localhost:8080/v1).                   │
+│                                 [default: None]                              │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ LLM Configuration: Gemini ──────────────────────────────────────────────────╮
 │ --llm-gemini-model        TEXT  The Gemini model to use for LLM tasks.       │
@@ -961,6 +973,10 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 │                                 the OPENAI_API_KEY environment variable.     │
 │                                 [env var: OPENAI_API_KEY]                    │
 │                                 [default: None]                              │
+│ --openai-base-url         TEXT  Custom base URL for OpenAI-compatible API    │
+│                                 (e.g., for llama-server:                     │
+│                                 http://localhost:8080/v1).                   │
+│                                 [default: None]                              │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ LLM Configuration: Gemini ──────────────────────────────────────────────────╮
 │ --llm-gemini-model        TEXT  The Gemini model to use for LLM tasks.       │
@@ -1138,6 +1154,10 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 │ --openai-api-key          TEXT  Your OpenAI API key. Can also be set with    │
 │                                 the OPENAI_API_KEY environment variable.     │
 │                                 [env var: OPENAI_API_KEY]                    │
+│                                 [default: None]                              │
+│ --openai-base-url         TEXT  Custom base URL for OpenAI-compatible API    │
+│                                 (e.g., for llama-server:                     │
+│                                 http://localhost:8080/v1).                   │
 │                                 [default: None]                              │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ LLM Configuration: Gemini ──────────────────────────────────────────────────╮

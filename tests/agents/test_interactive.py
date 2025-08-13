@@ -95,7 +95,7 @@ async def test_async_main_list_devices(tmp_path: Path) -> None:
     wyoming_asr_cfg = config.WyomingASR(asr_wyoming_ip="localhost", asr_wyoming_port=1234)
     openai_asr_cfg = config.OpenAIASR(asr_openai_model="whisper-1")
     ollama_cfg = config.Ollama(llm_ollama_model="test-model", llm_ollama_host="localhost")
-    openai_llm_cfg = config.OpenAILLM(llm_openai_model="gpt-4")
+    openai_llm_cfg = config.OpenAILLM(llm_openai_model="gpt-4", openai_base_url=None)
     gemini_llm_cfg = config.GeminiLLM(
         llm_gemini_model="gemini-1.5-flash",
         gemini_api_key="test-key",
@@ -154,7 +154,7 @@ async def test_async_main_list_output_devices(tmp_path: Path) -> None:
     wyoming_asr_cfg = config.WyomingASR(asr_wyoming_ip="localhost", asr_wyoming_port=1234)
     openai_asr_cfg = config.OpenAIASR(asr_openai_model="whisper-1")
     ollama_cfg = config.Ollama(llm_ollama_model="test-model", llm_ollama_host="localhost")
-    openai_llm_cfg = config.OpenAILLM(llm_openai_model="gpt-4")
+    openai_llm_cfg = config.OpenAILLM(llm_openai_model="gpt-4", openai_base_url=None)
     gemini_llm_cfg = config.GeminiLLM(
         llm_gemini_model="gemini-1.5-flash",
         gemini_api_key="test-key",
@@ -216,7 +216,7 @@ async def test_async_main_full_loop(tmp_path: Path) -> None:
     wyoming_asr_cfg = config.WyomingASR(asr_wyoming_ip="localhost", asr_wyoming_port=1234)
     openai_asr_cfg = config.OpenAIASR(asr_openai_model="whisper-1")
     ollama_cfg = config.Ollama(llm_ollama_model="test-model", llm_ollama_host="localhost")
-    openai_llm_cfg = config.OpenAILLM(llm_openai_model="gpt-4")
+    openai_llm_cfg = config.OpenAILLM(llm_openai_model="gpt-4", openai_base_url=None)
     gemini_llm_cfg = config.GeminiLLM(
         llm_gemini_model="gemini-1.5-flash",
         gemini_api_key="test-key",

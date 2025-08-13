@@ -186,6 +186,7 @@ def voice_edit(
     llm_ollama_host: str = opts.LLM_OLLAMA_HOST,
     llm_openai_model: str = opts.LLM_OPENAI_MODEL,
     openai_api_key: str | None = opts.OPENAI_API_KEY,
+    openai_base_url: str | None = opts.OPENAI_BASE_URL,
     llm_gemini_model: str = opts.LLM_GEMINI_MODEL,
     gemini_api_key: str | None = opts.GEMINI_API_KEY,
     # --- TTS Configuration ---
@@ -274,6 +275,7 @@ def voice_edit(
         openai_llm_cfg = config.OpenAILLM(
             llm_openai_model=llm_openai_model,
             openai_api_key=openai_api_key,
+            openai_base_url=openai_base_url,
         )
         gemini_llm_cfg = config.GeminiLLM(
             llm_gemini_model=llm_gemini_model,

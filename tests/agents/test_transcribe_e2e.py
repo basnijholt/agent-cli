@@ -59,7 +59,7 @@ async def test_transcribe_e2e(
     wyoming_asr_cfg = config.WyomingASR(asr_wyoming_ip="mock-host", asr_wyoming_port=10300)
     openai_asr_cfg = config.OpenAIASR(asr_openai_model="whisper-1")
     ollama_cfg = config.Ollama(llm_ollama_model="", llm_ollama_host="")
-    openai_llm_cfg = config.OpenAILLM(llm_openai_model="")
+    openai_llm_cfg = config.OpenAILLM(llm_openai_model="", openai_base_url=None)
     gemini_llm_cfg = config.GeminiLLM(
         llm_gemini_model="gemini-1.5-flash",
         gemini_api_key="test-key",

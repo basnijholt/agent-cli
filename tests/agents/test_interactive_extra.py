@@ -31,7 +31,7 @@ async def test_handle_conversation_turn_no_llm_response():
     wyoming_asr_cfg = config.WyomingASR(asr_wyoming_ip="localhost", asr_wyoming_port=10300)
     openai_asr_cfg = config.OpenAIASR(asr_openai_model="whisper-1")
     ollama_cfg = config.Ollama(llm_ollama_model="test-model", llm_ollama_host="localhost")
-    openai_llm_cfg = config.OpenAILLM(llm_openai_model="gpt-4o-mini")
+    openai_llm_cfg = config.OpenAILLM(llm_openai_model="gpt-4o-mini", openai_base_url=None)
     gemini_llm_cfg = config.GeminiLLM(
         llm_gemini_model="gemini-1.5-flash",
         gemini_api_key="test-key",
@@ -99,7 +99,7 @@ async def test_handle_conversation_turn_no_instruction():
     wyoming_asr_cfg = config.WyomingASR(asr_wyoming_ip="localhost", asr_wyoming_port=10300)
     openai_asr_cfg = config.OpenAIASR(asr_openai_model="whisper-1")
     ollama_cfg = config.Ollama(llm_ollama_model="test-model", llm_ollama_host="localhost")
-    openai_llm_cfg = config.OpenAILLM(llm_openai_model="gpt-4o-mini")
+    openai_llm_cfg = config.OpenAILLM(llm_openai_model="gpt-4o-mini", openai_base_url=None)
     gemini_llm_cfg = config.GeminiLLM(
         llm_gemini_model="gemini-1.5-flash",
         gemini_api_key="test-key",
@@ -199,7 +199,7 @@ async def test_async_main_exception_handling():
     wyoming_asr_cfg = config.WyomingASR(asr_wyoming_ip="localhost", asr_wyoming_port=10300)
     openai_asr_cfg = config.OpenAIASR(asr_openai_model="whisper-1")
     ollama_cfg = config.Ollama(llm_ollama_model="test-model", llm_ollama_host="localhost")
-    openai_llm_cfg = config.OpenAILLM(llm_openai_model="gpt-4o-mini")
+    openai_llm_cfg = config.OpenAILLM(llm_openai_model="gpt-4o-mini", openai_base_url=None)
     gemini_llm_cfg = config.GeminiLLM(
         llm_gemini_model="gemini-1.5-flash",
         gemini_api_key="test-key",
