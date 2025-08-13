@@ -196,6 +196,7 @@ def _load_transcription_configs() -> tuple[
     openai_llm_cfg = config.OpenAILLM(
         llm_openai_model=defaults.get("llm_openai_model", opts.LLM_OPENAI_MODEL.default),  # type: ignore[attr-defined]
         openai_api_key=defaults.get("openai_api_key", opts.OPENAI_API_KEY.default),  # type: ignore[attr-defined,union-attr]
+        openai_base_url=defaults.get("openai_base_url", opts.OPENAI_BASE_URL.default),  # type: ignore[attr-defined,union-attr]
     )
     gemini_llm_cfg = config.GeminiLLM(
         llm_gemini_model=defaults.get("llm_gemini_model", opts.LLM_GEMINI_MODEL.default),  # type: ignore[attr-defined]
