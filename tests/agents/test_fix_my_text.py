@@ -114,7 +114,11 @@ async def test_process_text_integration(mock_create_llm_agent: MagicMock) -> Non
         tts_provider="local",
     )
     ollama_cfg = config.Ollama(llm_ollama_model="test-model", llm_ollama_host="test")
-    openai_llm_cfg = config.OpenAILLM(llm_openai_model="gpt-4o-mini", openai_api_key=None)
+    openai_llm_cfg = config.OpenAILLM(
+        llm_openai_model="gpt-4o-mini",
+        openai_api_key=None,
+        openai_base_url=None,
+    )
     gemini_llm_cfg = config.GeminiLLM(
         llm_gemini_model="gemini-1.5-flash",
         gemini_api_key="test-key",
@@ -172,7 +176,11 @@ async def test_autocorrect_command_with_text(
         llm_ollama_model="qwen3:4b",
         llm_ollama_host="http://localhost:11434",
     )
-    openai_llm_cfg = config.OpenAILLM(llm_openai_model="gpt-4o-mini", openai_api_key=None)
+    openai_llm_cfg = config.OpenAILLM(
+        llm_openai_model="gpt-4o-mini",
+        openai_api_key=None,
+        openai_base_url=None,
+    )
     gemini_llm_cfg = config.GeminiLLM(
         llm_gemini_model="gemini-1.5-flash",
         gemini_api_key="test-key",
@@ -233,7 +241,11 @@ async def test_autocorrect_command_from_clipboard(
         llm_ollama_model="qwen3:4b",
         llm_ollama_host="http://localhost:11434",
     )
-    openai_llm_cfg = config.OpenAILLM(llm_openai_model="gpt-4o-mini", openai_api_key=None)
+    openai_llm_cfg = config.OpenAILLM(
+        llm_openai_model="gpt-4o-mini",
+        openai_api_key=None,
+        openai_base_url=None,
+    )
     gemini_llm_cfg = config.GeminiLLM(
         llm_gemini_model="gemini-1.5-flash",
         gemini_api_key="test-key",
@@ -283,7 +295,11 @@ async def test_async_autocorrect_no_text(
         tts_provider="local",
     )
     ollama_cfg = config.Ollama(llm_ollama_model="test", llm_ollama_host="test")
-    openai_llm_cfg = config.OpenAILLM(llm_openai_model="gpt-4o-mini", openai_api_key=None)
+    openai_llm_cfg = config.OpenAILLM(
+        llm_openai_model="gpt-4o-mini",
+        openai_api_key=None,
+        openai_base_url=None,
+    )
     gemini_llm_cfg = config.GeminiLLM(
         llm_gemini_model="gemini-1.5-flash",
         gemini_api_key="test-key",
@@ -316,7 +332,11 @@ async def test_async_autocorrect_error(mock_process_text: AsyncMock):
         tts_provider="local",
     )
     ollama_cfg = config.Ollama(llm_ollama_model="test", llm_ollama_host="test")
-    openai_llm_cfg = config.OpenAILLM(llm_openai_model="gpt-4o-mini", openai_api_key=None)
+    openai_llm_cfg = config.OpenAILLM(
+        llm_openai_model="gpt-4o-mini",
+        openai_api_key=None,
+        openai_base_url=None,
+    )
     gemini_llm_cfg = config.GeminiLLM(
         llm_gemini_model="gemini-1.5-flash",
         gemini_api_key="test-key",

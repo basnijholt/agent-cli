@@ -50,7 +50,7 @@ def get_configs() -> tuple[
         llm_ollama_model="test-model",
         llm_ollama_host="http://localhost:11434",
     )
-    openai_llm_cfg = config.OpenAILLM(llm_openai_model="gpt-4")
+    openai_llm_cfg = config.OpenAILLM(llm_openai_model="gpt-4", openai_base_url=None)
     gemini_llm_cfg = config.GeminiLLM(
         llm_gemini_model="gemini-1.5-flash",
         gemini_api_key="test-key",
