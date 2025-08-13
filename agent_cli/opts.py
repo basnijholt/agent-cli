@@ -59,6 +59,12 @@ OPENAI_API_KEY: str | None = typer.Option(
     envvar="OPENAI_API_KEY",
     rich_help_panel="LLM Configuration: OpenAI",
 )
+OPENAI_BASE_URL: str | None = typer.Option(
+    None,
+    "--openai-base-url",
+    help="Custom base URL for OpenAI-compatible API (e.g., for llama-server: http://localhost:8080/v1).",
+    rich_help_panel="LLM Configuration: OpenAI",
+)
 # Gemini
 LLM_GEMINI_MODEL: str = typer.Option(
     "gemini-2.5-flash",

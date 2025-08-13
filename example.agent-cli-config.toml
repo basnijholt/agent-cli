@@ -37,6 +37,8 @@ llm-ollama-model = "qwen3:4b"
 llm-ollama-host = "http://localhost:11434"
 # OpenAI
 llm-openai-model = "gpt-4o-mini"
+# For llama-server (llama-cpp) or other OpenAI-compatible APIs:
+# openai-base-url = "http://localhost:8080/v1"
 
 # --- ASR (Speech-to-Text) Settings ---
 # Wyoming (local)
