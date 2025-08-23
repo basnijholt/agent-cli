@@ -128,6 +128,7 @@ The setup scripts automatically install:
     - [Core Requirements (Auto-installed)](#core-requirements-auto-installed)
     - [AI Services (Auto-installed and configured)](#ai-services-auto-installed-and-configured)
     - [Alternative Cloud Services (Optional)](#alternative-cloud-services-optional)
+    - [Alternative Local LLM Servers](#alternative-local-llm-servers)
 - [Usage](#usage)
   - [Installation Commands](#installation-commands)
   - [Configuration](#configuration)
@@ -292,6 +293,16 @@ If you prefer cloud services over local ones:
 |---------|---------|----------------|
 | **OpenAI** | LLM, Speech-to-text, TTS | API key in config |
 | **Gemini** | LLM alternative | API key in config |
+
+#### Alternative Local LLM Servers
+
+You can also use other OpenAI-compatible local servers:
+
+| Server | Purpose | Setup Required |
+|---------|---------|----------------|
+| **llama.cpp** | Local LLM inference | Use `--openai-base-url http://localhost:8080/v1` |
+| **vLLM** | High-performance LLM serving | Use `--openai-base-url` with server endpoint |
+| **Ollama** | Default local LLM | Already configured as default |
 
 ## Usage
 
