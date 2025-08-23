@@ -128,6 +128,7 @@ The setup scripts automatically install:
     - [Core Requirements (Auto-installed)](#core-requirements-auto-installed)
     - [AI Services (Auto-installed and configured)](#ai-services-auto-installed-and-configured)
     - [Alternative Cloud Services (Optional)](#alternative-cloud-services-optional)
+    - [Alternative Local LLM Servers](#alternative-local-llm-servers)
 - [Usage](#usage)
   - [Installation Commands](#installation-commands)
   - [Configuration](#configuration)
