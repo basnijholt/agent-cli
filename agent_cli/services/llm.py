@@ -215,5 +215,5 @@ async def process_and_update_clipboard(
         clipboard=clipboard,
         live=live,
         show_output=True,
-        exit_on_error=True,
+        exit_on_error=False,  # Don't exit the server on LLM errors
     )

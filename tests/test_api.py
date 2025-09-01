@@ -327,6 +327,45 @@ def test_exception_with_partial_processing(client: TestClient) -> None:
             assert data["raw_transcript"] == ""  # Reset on error
 
 
+def test_llm_connection_error_no_server_exit(client: TestClient) -> None:
+    """Test that LLM connection errors don't cause server to exit."""
+    with (
+        patch("agent_cli.api._convert_audio_for_local_asr") as mock_convert,
+        patch("agent_cli.api._transcribe_with_provider") as mock_transcribe,
+        patch("agent_cli.services.llm.create_llm_agent") as mock_create_agent,
+    ):
+        mock_convert.return_value = b"converted_audio_data"
+        mock_transcribe.return_value = "test transcription"
+
+        # Mock the agent to raise a connection error
+        mock_agent = AsyncMock()
+        mock_agent.run.side_effect = Exception("Connection error")
+        mock_create_agent.return_value = mock_agent
+
+        with tempfile.NamedTemporaryFile(suffix=".wav") as tmp:
+            tmp.write(b"RIFF")
+            tmp.seek(0)
+
+            response = client.post(
+                "/transcribe",
+                files={"audio": ("test.wav", tmp, "audio/wav")},
+                data={"cleanup": "true"},
+            )
+
+            # Should return partial success (transcription worked, cleanup failed)
+            assert response.status_code == 200
+            data = response.json()
+            assert data["success"] is True  # Transcription succeeded
+            assert data["raw_transcript"] == "test transcription"
+            assert data["cleaned_transcript"] is None  # Cleanup failed
+            assert "cleanup failed" in data["error"].lower()
+
+    # Server should still be responsive after LLM error
+    health_response = client.get("/health")
+    assert health_response.status_code == 200
+    assert health_response.json()["status"] == "healthy"
+
+
 def test_supported_audio_formats(client: TestClient) -> None:
     """Test all supported audio formats."""
     supported_formats = [

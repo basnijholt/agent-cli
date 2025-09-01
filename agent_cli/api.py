@@ -333,6 +333,16 @@ async def transcribe_audio(
             openai_llm_cfg,
             gemini_llm_cfg,
         )
+
+        # If cleanup was requested but failed, indicate partial success
+        if cleanup and cleaned_transcript is None:
+            return TranscriptionResponse(
+                raw_transcript=raw_transcript,
+                cleaned_transcript=None,
+                success=True,  # Transcription succeeded even if cleanup failed
+                error="Transcription successful but cleanup failed. Check LLM configuration.",
+            )
+
         return TranscriptionResponse(
             raw_transcript=raw_transcript,
             cleaned_transcript=cleaned_transcript,
