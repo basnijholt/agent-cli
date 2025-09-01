@@ -376,11 +376,9 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 
  Correct text from clipboard using a local or remote LLM.
 
-
 ╭─ General Options ────────────────────────────────────────────────────────────╮
 │   text      [TEXT]  The text to correct. If not provided, reads from         │
 │                     clipboard.                                               │
-│                     [default: None]                                          │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
 │ --help          Show this message and exit.                                  │
@@ -404,11 +402,9 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 │ --openai-api-key          TEXT  Your OpenAI API key. Can also be set with    │
 │                                 the OPENAI_API_KEY environment variable.     │
 │                                 [env var: OPENAI_API_KEY]                    │
-│                                 [default: None]                              │
 │ --openai-base-url         TEXT  Custom base URL for OpenAI-compatible API    │
 │                                 (e.g., for llama-server:                     │
 │                                 http://localhost:8080/v1).                   │
-│                                 [default: None]                              │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ LLM Configuration: Gemini ──────────────────────────────────────────────────╮
 │ --llm-gemini-model        TEXT  The Gemini model to use for LLM tasks.       │
@@ -416,14 +412,12 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 │ --gemini-api-key          TEXT  Your Gemini API key. Can also be set with    │
 │                                 the GEMINI_API_KEY environment variable.     │
 │                                 [env var: GEMINI_API_KEY]                    │
-│                                 [default: None]                              │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ General Options ────────────────────────────────────────────────────────────╮
 │ --log-level           TEXT  Set logging level. [default: WARNING]            │
-│ --log-file            TEXT  Path to a file to write logs to. [default: None] │
+│ --log-file            TEXT  Path to a file to write logs to.                 │
 │ --quiet       -q            Suppress console output from rich.               │
 │ --config              TEXT  Path to a TOML configuration file.               │
-│                             [default: None]                                  │
 │ --print-args                Print the command line arguments, including      │
 │                             variables taken from the configuration file.     │
 ╰──────────────────────────────────────────────────────────────────────────────╯
@@ -471,18 +465,15 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 
  Wyoming ASR Client for streaming microphone audio to a transcription server.
 
-
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
 │ --extra-instructions        TEXT  Additional instructions for the LLM to     │
 │                                   process the transcription.                 │
-│                                   [default: None]                            │
 │ --help                            Show this message and exit.                │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Audio Recovery ─────────────────────────────────────────────────────────────╮
 │ --from-file                                PATH     Transcribe audio from a  │
 │                                                     saved WAV file instead   │
 │                                                     of recording.            │
-│                                                     [default: None]          │
 │ --last-recording                           INTEGER  Transcribe a saved       │
 │                                                     recording. Use 1 for     │
 │                                                     most recent, 2 for       │
@@ -505,10 +496,8 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 ╭─ ASR (Audio) Configuration ──────────────────────────────────────────────────╮
 │ --input-device-index        INTEGER  Index of the PyAudio input device to    │
 │                                      use.                                    │
-│                                      [default: None]                         │
 │ --input-device-name         TEXT     Device name keywords for partial        │
 │                                      matching.                               │
-│                                      [default: None]                         │
 │ --list-devices                       List available audio input and output   │
 │                                      devices and exit.                       │
 ╰──────────────────────────────────────────────────────────────────────────────╯
@@ -536,11 +525,9 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 │ --openai-api-key          TEXT  Your OpenAI API key. Can also be set with    │
 │                                 the OPENAI_API_KEY environment variable.     │
 │                                 [env var: OPENAI_API_KEY]                    │
-│                                 [default: None]                              │
 │ --openai-base-url         TEXT  Custom base URL for OpenAI-compatible API    │
 │                                 (e.g., for llama-server:                     │
 │                                 http://localhost:8080/v1).                   │
-│                                 [default: None]                              │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ LLM Configuration: Gemini ──────────────────────────────────────────────────╮
 │ --llm-gemini-model        TEXT  The Gemini model to use for LLM tasks.       │
@@ -548,7 +535,6 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 │ --gemini-api-key          TEXT  Your Gemini API key. Can also be set with    │
 │                                 the GEMINI_API_KEY environment variable.     │
 │                                 [env var: GEMINI_API_KEY]                    │
-│                                 [default: None]                              │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ LLM Configuration ──────────────────────────────────────────────────────────╮
 │ --llm    --no-llm      Use an LLM to process the transcript.                 │
@@ -568,12 +554,10 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 │                                                  [default: WARNING]          │
 │ --log-file                                 TEXT  Path to a file to write     │
 │                                                  logs to.                    │
-│                                                  [default: None]             │
 │ --quiet              -q                          Suppress console output     │
 │                                                  from rich.                  │
 │ --config                                   TEXT  Path to a TOML              │
 │                                                  configuration file.         │
-│                                                  [default: None]             │
 │ --print-args                                     Print the command line      │
 │                                                  arguments, including        │
 │                                                  variables taken from the    │
@@ -582,7 +566,6 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 │                                                  results with timestamps,    │
 │                                                  hostname, model, and raw    │
 │                                                  output.                     │
-│                                                  [default: None]             │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 
 ```
@@ -627,10 +610,8 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 
  Convert text to speech using Wyoming or OpenAI TTS server.
 
-
 ╭─ General Options ────────────────────────────────────────────────────────────╮
 │   text      [TEXT]  Text to speak. Reads from clipboard if not provided.     │
-│                     [default: None]                                          │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
 │ --help          Show this message and exit.                                  │
@@ -643,10 +624,8 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 ╭─ TTS (Text-to-Speech) Configuration ─────────────────────────────────────────╮
 │ --output-device-index        INTEGER  Index of the PyAudio output device to  │
 │                                       use for TTS.                           │
-│                                       [default: None]                        │
 │ --output-device-name         TEXT     Output device name keywords for        │
 │                                       partial matching.                      │
-│                                       [default: None]                        │
 │ --tts-speed                  FLOAT    Speech speed multiplier (1.0 = normal, │
 │                                       2.0 = twice as fast, 0.5 = half        │
 │                                       speed).                                │
@@ -659,12 +638,9 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 │                                        [default: 10200]                      │
 │ --tts-wyoming-voice           TEXT     Voice name to use for Wyoming TTS     │
 │                                        (e.g., 'en_US-lessac-medium').        │
-│                                        [default: None]                       │
 │ --tts-wyoming-language        TEXT     Language for Wyoming TTS (e.g.,       │
 │                                        'en_US').                             │
-│                                        [default: None]                       │
 │ --tts-wyoming-speaker         TEXT     Speaker name for Wyoming TTS voice.   │
-│                                        [default: None]                       │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ TTS (Text-to-Speech) Configuration: OpenAI ─────────────────────────────────╮
 │ --tts-openai-model        TEXT  The OpenAI model to use for TTS.             │
@@ -686,12 +662,10 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ General Options ────────────────────────────────────────────────────────────╮
 │ --save-file           PATH  Save TTS response audio to WAV file.             │
-│                             [default: None]                                  │
 │ --log-level           TEXT  Set logging level. [default: WARNING]            │
-│ --log-file            TEXT  Path to a file to write logs to. [default: None] │
+│ --log-file            TEXT  Path to a file to write logs to.                 │
 │ --quiet       -q            Suppress console output from rich.               │
 │ --config              TEXT  Path to a TOML configuration file.               │
-│                             [default: None]                                  │
 │ --print-args                Print the command line arguments, including      │
 │                             variables taken from the configuration file.     │
 ╰──────────────────────────────────────────────────────────────────────────────╯
@@ -768,10 +742,8 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 ╭─ ASR (Audio) Configuration ──────────────────────────────────────────────────╮
 │ --input-device-index        INTEGER  Index of the PyAudio input device to    │
 │                                      use.                                    │
-│                                      [default: None]                         │
 │ --input-device-name         TEXT     Device name keywords for partial        │
 │                                      matching.                               │
-│                                      [default: None]                         │
 │ --list-devices                       List available audio input and output   │
 │                                      devices and exit.                       │
 ╰──────────────────────────────────────────────────────────────────────────────╯
@@ -799,11 +771,9 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 │ --openai-api-key          TEXT  Your OpenAI API key. Can also be set with    │
 │                                 the OPENAI_API_KEY environment variable.     │
 │                                 [env var: OPENAI_API_KEY]                    │
-│                                 [default: None]                              │
 │ --openai-base-url         TEXT  Custom base URL for OpenAI-compatible API    │
 │                                 (e.g., for llama-server:                     │
 │                                 http://localhost:8080/v1).                   │
-│                                 [default: None]                              │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ LLM Configuration: Gemini ──────────────────────────────────────────────────╮
 │ --llm-gemini-model        TEXT  The Gemini model to use for LLM tasks.       │
@@ -811,7 +781,6 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 │ --gemini-api-key          TEXT  Your Gemini API key. Can also be set with    │
 │                                 the GEMINI_API_KEY environment variable.     │
 │                                 [env var: GEMINI_API_KEY]                    │
-│                                 [default: None]                              │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ TTS (Text-to-Speech) Configuration ─────────────────────────────────────────╮
 │ --tts                    --no-tts             Enable text-to-speech for      │
@@ -819,10 +788,8 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 │                                               [default: no-tts]              │
 │ --output-device-index                INTEGER  Index of the PyAudio output    │
 │                                               device to use for TTS.         │
-│                                               [default: None]                │
 │ --output-device-name                 TEXT     Output device name keywords    │
 │                                               for partial matching.          │
-│                                               [default: None]                │
 │ --tts-speed                          FLOAT    Speech speed multiplier (1.0 = │
 │                                               normal, 2.0 = twice as fast,   │
 │                                               0.5 = half speed).             │
@@ -835,12 +802,9 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 │                                        [default: 10200]                      │
 │ --tts-wyoming-voice           TEXT     Voice name to use for Wyoming TTS     │
 │                                        (e.g., 'en_US-lessac-medium').        │
-│                                        [default: None]                       │
 │ --tts-wyoming-language        TEXT     Language for Wyoming TTS (e.g.,       │
 │                                        'en_US').                             │
-│                                        [default: None]                       │
 │ --tts-wyoming-speaker         TEXT     Speaker name for Wyoming TTS voice.   │
-│                                        [default: None]                       │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ TTS (Text-to-Speech) Configuration: OpenAI ─────────────────────────────────╮
 │ --tts-openai-model        TEXT  The OpenAI model to use for TTS.             │
@@ -866,16 +830,13 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 ╭─ General Options ────────────────────────────────────────────────────────────╮
 │ --save-file                         PATH  Save TTS response audio to WAV     │
 │                                           file.                              │
-│                                           [default: None]                    │
 │ --clipboard       --no-clipboard          Copy result to clipboard.          │
 │                                           [default: clipboard]               │
 │ --log-level                         TEXT  Set logging level.                 │
 │                                           [default: WARNING]                 │
 │ --log-file                          TEXT  Path to a file to write logs to.   │
-│                                           [default: None]                    │
 │ --quiet       -q                          Suppress console output from rich. │
 │ --config                            TEXT  Path to a TOML configuration file. │
-│                                           [default: None]                    │
 │ --print-args                              Print the command line arguments,  │
 │                                           including variables taken from the │
 │                                           configuration file.                │
@@ -925,7 +886,6 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 
  Wake word-based voice assistant using local or remote services.
 
-
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
 │ --help          Show this message and exit.                                  │
 ╰──────────────────────────────────────────────────────────────────────────────╯
@@ -952,10 +912,8 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 ╭─ ASR (Audio) Configuration ──────────────────────────────────────────────────╮
 │ --input-device-index        INTEGER  Index of the PyAudio input device to    │
 │                                      use.                                    │
-│                                      [default: None]                         │
 │ --input-device-name         TEXT     Device name keywords for partial        │
 │                                      matching.                               │
-│                                      [default: None]                         │
 │ --list-devices                       List available audio input and output   │
 │                                      devices and exit.                       │
 ╰──────────────────────────────────────────────────────────────────────────────╯
@@ -983,11 +941,9 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 │ --openai-api-key          TEXT  Your OpenAI API key. Can also be set with    │
 │                                 the OPENAI_API_KEY environment variable.     │
 │                                 [env var: OPENAI_API_KEY]                    │
-│                                 [default: None]                              │
 │ --openai-base-url         TEXT  Custom base URL for OpenAI-compatible API    │
 │                                 (e.g., for llama-server:                     │
 │                                 http://localhost:8080/v1).                   │
-│                                 [default: None]                              │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ LLM Configuration: Gemini ──────────────────────────────────────────────────╮
 │ --llm-gemini-model        TEXT  The Gemini model to use for LLM tasks.       │
@@ -995,7 +951,6 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 │ --gemini-api-key          TEXT  Your Gemini API key. Can also be set with    │
 │                                 the GEMINI_API_KEY environment variable.     │
 │                                 [env var: GEMINI_API_KEY]                    │
-│                                 [default: None]                              │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ TTS (Text-to-Speech) Configuration ─────────────────────────────────────────╮
 │ --tts                    --no-tts             Enable text-to-speech for      │
@@ -1003,10 +958,8 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 │                                               [default: no-tts]              │
 │ --output-device-index                INTEGER  Index of the PyAudio output    │
 │                                               device to use for TTS.         │
-│                                               [default: None]                │
 │ --output-device-name                 TEXT     Output device name keywords    │
 │                                               for partial matching.          │
-│                                               [default: None]                │
 │ --tts-speed                          FLOAT    Speech speed multiplier (1.0 = │
 │                                               normal, 2.0 = twice as fast,   │
 │                                               0.5 = half speed).             │
@@ -1019,12 +972,9 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 │                                        [default: 10200]                      │
 │ --tts-wyoming-voice           TEXT     Voice name to use for Wyoming TTS     │
 │                                        (e.g., 'en_US-lessac-medium').        │
-│                                        [default: None]                       │
 │ --tts-wyoming-language        TEXT     Language for Wyoming TTS (e.g.,       │
 │                                        'en_US').                             │
-│                                        [default: None]                       │
 │ --tts-wyoming-speaker         TEXT     Speaker name for Wyoming TTS voice.   │
-│                                        [default: None]                       │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ TTS (Text-to-Speech) Configuration: OpenAI ─────────────────────────────────╮
 │ --tts-openai-model        TEXT  The OpenAI model to use for TTS.             │
@@ -1050,16 +1000,13 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 ╭─ General Options ────────────────────────────────────────────────────────────╮
 │ --save-file                         PATH  Save TTS response audio to WAV     │
 │                                           file.                              │
-│                                           [default: None]                    │
 │ --clipboard       --no-clipboard          Copy result to clipboard.          │
 │                                           [default: clipboard]               │
 │ --log-level                         TEXT  Set logging level.                 │
 │                                           [default: WARNING]                 │
 │ --log-file                          TEXT  Path to a file to write logs to.   │
-│                                           [default: None]                    │
 │ --quiet       -q                          Suppress console output from rich. │
 │ --config                            TEXT  Path to a TOML configuration file. │
-│                                           [default: None]                    │
 │ --print-args                              Print the command line arguments,  │
 │                                           including variables taken from the │
 │                                           configuration file.                │
@@ -1116,7 +1063,6 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 
  An chat agent that you can talk to.
 
-
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
 │ --help          Show this message and exit.                                  │
 ╰──────────────────────────────────────────────────────────────────────────────╯
@@ -1134,10 +1080,8 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 ╭─ ASR (Audio) Configuration ──────────────────────────────────────────────────╮
 │ --input-device-index        INTEGER  Index of the PyAudio input device to    │
 │                                      use.                                    │
-│                                      [default: None]                         │
 │ --input-device-name         TEXT     Device name keywords for partial        │
 │                                      matching.                               │
-│                                      [default: None]                         │
 │ --list-devices                       List available audio input and output   │
 │                                      devices and exit.                       │
 ╰──────────────────────────────────────────────────────────────────────────────╯
@@ -1165,11 +1109,9 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 │ --openai-api-key          TEXT  Your OpenAI API key. Can also be set with    │
 │                                 the OPENAI_API_KEY environment variable.     │
 │                                 [env var: OPENAI_API_KEY]                    │
-│                                 [default: None]                              │
 │ --openai-base-url         TEXT  Custom base URL for OpenAI-compatible API    │
 │                                 (e.g., for llama-server:                     │
 │                                 http://localhost:8080/v1).                   │
-│                                 [default: None]                              │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ LLM Configuration: Gemini ──────────────────────────────────────────────────╮
 │ --llm-gemini-model        TEXT  The Gemini model to use for LLM tasks.       │
@@ -1177,7 +1119,6 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 │ --gemini-api-key          TEXT  Your Gemini API key. Can also be set with    │
 │                                 the GEMINI_API_KEY environment variable.     │
 │                                 [env var: GEMINI_API_KEY]                    │
-│                                 [default: None]                              │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ TTS (Text-to-Speech) Configuration ─────────────────────────────────────────╮
 │ --tts                    --no-tts             Enable text-to-speech for      │
@@ -1185,10 +1126,8 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 │                                               [default: no-tts]              │
 │ --output-device-index                INTEGER  Index of the PyAudio output    │
 │                                               device to use for TTS.         │
-│                                               [default: None]                │
 │ --output-device-name                 TEXT     Output device name keywords    │
 │                                               for partial matching.          │
-│                                               [default: None]                │
 │ --tts-speed                          FLOAT    Speech speed multiplier (1.0 = │
 │                                               normal, 2.0 = twice as fast,   │
 │                                               0.5 = half speed).             │
@@ -1201,12 +1140,9 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 │                                        [default: 10200]                      │
 │ --tts-wyoming-voice           TEXT     Voice name to use for Wyoming TTS     │
 │                                        (e.g., 'en_US-lessac-medium').        │
-│                                        [default: None]                       │
 │ --tts-wyoming-language        TEXT     Language for Wyoming TTS (e.g.,       │
 │                                        'en_US').                             │
-│                                        [default: None]                       │
 │ --tts-wyoming-speaker         TEXT     Speaker name for Wyoming TTS voice.   │
-│                                        [default: None]                       │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ TTS (Text-to-Speech) Configuration: OpenAI ─────────────────────────────────╮
 │ --tts-openai-model        TEXT  The OpenAI model to use for TTS.             │
@@ -1239,12 +1175,10 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ General Options ────────────────────────────────────────────────────────────╮
 │ --save-file           PATH  Save TTS response audio to WAV file.             │
-│                             [default: None]                                  │
 │ --log-level           TEXT  Set logging level. [default: WARNING]            │
-│ --log-file            TEXT  Path to a file to write logs to. [default: None] │
+│ --log-file            TEXT  Path to a file to write logs to.                 │
 │ --quiet       -q            Suppress console output from rich.               │
 │ --config              TEXT  Path to a TOML configuration file.               │
-│                             [default: None]                                  │
 │ --print-args                Print the command line arguments, including      │
 │                             variables taken from the configuration file.     │
 ╰──────────────────────────────────────────────────────────────────────────────╯

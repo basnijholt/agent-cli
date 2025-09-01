@@ -276,6 +276,7 @@ async def transcribe_audio(
         TranscriptionResponse with raw and cleaned transcripts
 
     """
+    # Initialize variables outside try block to ensure they exist in finally block
     raw_transcript = ""
     cleaned_transcript = None
 
@@ -332,6 +333,16 @@ async def transcribe_audio(
             openai_llm_cfg,
             gemini_llm_cfg,
         )
+
+        # If cleanup was requested but failed, indicate partial success
+        if cleanup and cleaned_transcript is None:
+            return TranscriptionResponse(
+                raw_transcript=raw_transcript,
+                cleaned_transcript=None,
+                success=True,  # Transcription succeeded even if cleanup failed
+                error="Transcription successful but cleanup failed. Check LLM configuration.",
+            )
+
         return TranscriptionResponse(
             raw_transcript=raw_transcript,
             cleaned_transcript=cleaned_transcript,
@@ -346,5 +357,13 @@ async def transcribe_audio(
         return TranscriptionResponse(raw_transcript="", success=False, error=str(e))
     finally:
         # Log the transcription automatically (even if it failed)
-        transcription_logger = get_default_logger()
-        transcription_logger.log_transcription(raw=raw_transcript, processed=cleaned_transcript)
+        # Only log if we have something to log
+        if raw_transcript or cleaned_transcript:
+            try:
+                transcription_logger = get_default_logger()
+                transcription_logger.log_transcription(
+                    raw=raw_transcript,
+                    processed=cleaned_transcript,
+                )
+            except Exception as log_error:
+                LOGGER.warning("Failed to log transcription: %s", log_error)

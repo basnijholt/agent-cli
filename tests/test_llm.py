@@ -232,4 +232,4 @@ def test_process_and_update_clipboard(
     assert call_args.kwargs["quiet"] is True
     assert call_args.kwargs["live"] is mock_live
     assert call_args.kwargs["show_output"] is True
-    assert call_args.kwargs["exit_on_error"] is True
+    assert call_args.kwargs["exit_on_error"] is False
