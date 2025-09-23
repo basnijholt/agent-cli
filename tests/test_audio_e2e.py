@@ -327,7 +327,7 @@ def test_device_filtering_by_capabilities(
 
     with audio.pyaudio_context() as p:
         # Test input device filtering
-        input_device_index, input_device_name = audio._input_device(
+        _input_device_index, input_device_name = audio._input_device(
             p,
             input_device_name=None,
             input_device_index=0,
@@ -335,7 +335,7 @@ def test_device_filtering_by_capabilities(
         assert input_device_name == "Input Only"
 
         # Should skip "Output Only" and find "Both" for input
-        mixed_input_index, mixed_input_name = audio._input_device(
+        _mixed_input_index, mixed_input_name = audio._input_device(
             p,
             input_device_name=None,
             input_device_index=2,
@@ -343,14 +343,14 @@ def test_device_filtering_by_capabilities(
         assert mixed_input_name == "Both"
 
         # Test output device filtering
-        output_device_index, output_device_name = audio._output_device(
+        _output_device_index, output_device_name = audio._output_device(
             p,
             input_device_name=None,
             input_device_index=1,
         )  # Output Only
         assert output_device_name == "Output Only"
 
-        mixed_output_index, mixed_output_name = audio._output_device(
+        _mixed_output_index, mixed_output_name = audio._output_device(
             p,
             input_device_name=None,
             input_device_index=2,
