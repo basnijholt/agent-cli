@@ -104,6 +104,7 @@ async def test_async_main_from_file_with_llm(tmp_path: Path):
         patch("agent_cli.agents.transcribe.create_recorded_audio_transcriber") as mock_create,
         patch("agent_cli.agents.transcribe.load_audio_from_file") as mock_load,
         patch("agent_cli.agents.transcribe.process_and_update_clipboard") as mock_process,
+        patch("agent_cli.agents.transcribe.pyperclip") as mock_clipboard,
     ):
         # Setup mocks
         mock_load.return_value = b"audio_data"
@@ -160,6 +161,7 @@ async def test_async_main_from_file_with_llm(tmp_path: Path):
         # Verify LLM processing was called
         mock_process.assert_called_once()
         assert mock_process.call_args.kwargs["original_text"] == "Raw transcript"
+        mock_clipboard.copy.assert_called_once_with("Raw transcript")
 
 
 @pytest.mark.asyncio

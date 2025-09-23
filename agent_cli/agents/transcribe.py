@@ -111,7 +111,7 @@ def log_transcription(
         f.write(json.dumps(log_entry) + "\n")
 
 
-async def _async_main(  # noqa: PLR0912, PLR0915
+async def _async_main(  # noqa: PLR0912, PLR0915, C901
     *,
     extra_instructions: str | None,
     provider_cfg: config.ProviderSelection,
@@ -195,6 +195,9 @@ async def _async_main(  # noqa: PLR0912, PLR0915
                     title="📝 Raw Transcript",
                     subtitle=f"[dim]took {elapsed:.2f}s[/dim]",
                 )
+            if general_cfg.clipboard:
+                pyperclip.copy(transcript)
+                LOGGER.info("Copied raw transcript to clipboard before LLM processing.")
             instructions = AGENT_INSTRUCTIONS
             if extra_instructions:
                 instructions += f"\n\n{extra_instructions}"
