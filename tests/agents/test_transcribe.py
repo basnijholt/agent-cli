@@ -85,7 +85,8 @@ async def test_transcribe_main_llm_enabled(
 
     # Assertions
     mock_process_and_update_clipboard.assert_called_once()
-    mock_pyperclip.copy.assert_not_called()
+    mock_pyperclip.copy.assert_called_once_with("hello world")
+    assert "Copied raw transcript to clipboard before LLM processing." in caplog.text
 
 
 @pytest.mark.asyncio

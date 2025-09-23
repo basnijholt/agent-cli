@@ -144,7 +144,7 @@ def test_create_synthesizer_kokoro() -> None:
 @pytest.mark.asyncio
 async def test_transcribe_audio_openai_no_key():
     """Test that transcribe_audio_openai fails without an API key."""
-    with pytest.raises(ValueError, match="OpenAI API key is not set."):
+    with pytest.raises(ValueError, match="OpenAI API key is not set"):
         await transcribe_audio_openai(
             b"test audio",
             config.OpenAIASR(asr_openai_model="whisper-1", openai_api_key=None),
@@ -155,7 +155,7 @@ async def test_transcribe_audio_openai_no_key():
 @pytest.mark.asyncio
 async def test_synthesize_speech_openai_no_key():
     """Test that synthesize_speech_openai fails without an API key."""
-    with pytest.raises(ValueError, match="OpenAI API key is not set."):
+    with pytest.raises(ValueError, match="OpenAI API key is not set"):
         await synthesize_speech_openai(
             "test text",
             config.OpenAITTS(

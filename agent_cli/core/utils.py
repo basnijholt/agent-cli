@@ -340,7 +340,7 @@ async def manage_send_receive_tasks(
     send_task = asyncio.create_task(send_task_coro)
     recv_task = asyncio.create_task(receive_task_coro)
 
-    done, pending = await asyncio.wait(
+    _done, pending = await asyncio.wait(
         [send_task, recv_task],
         return_when=return_when,
     )

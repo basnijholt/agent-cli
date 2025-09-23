@@ -32,7 +32,7 @@ def test_create_llm_agent_openai_no_key():
         gemini_api_key="test-key",
     )
 
-    with pytest.raises(ValueError, match="OpenAI API key is not set."):
+    with pytest.raises(ValueError, match="OpenAI API key is not set"):
         create_llm_agent(provider_cfg, ollama_cfg, openai_llm_cfg, gemini_llm_cfg)
 
 
