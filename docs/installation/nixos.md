@@ -27,8 +27,7 @@ Add this to your NixOS configuration (`/etc/nixos/configuration.nix`):
   services.ollama = {
     enable = true;
     acceleration = "cuda";  # or "rocm" for AMD, "cpu" for no GPU
-    host = "0.0.0.0";
-    openFirewall = true;
+    host = "127.0.0.1";
     environmentVariables = {
       OLLAMA_KEEP_ALIVE = "1h";
     };
@@ -40,14 +39,14 @@ Add this to your NixOS configuration (`/etc/nixos/configuration.nix`):
       model = "large-v3";
       language = "en";
       device = "cuda";  # or "cpu" if no GPU
-      uri = "tcp://0.0.0.0:10300";
+      uri = "tcp://127.0.0.1:10300";
     };
   };
 
   services.wyoming.piper.servers.default = {
     enable = true;
     voice = "en-us-ryan-high";
-    uri = "tcp://0.0.0.0:10200";
+    uri = "tcp://127.0.0.1:10200";
   };
 
   services.wyoming.openwakeword = {
@@ -57,7 +56,7 @@ Add this to your NixOS configuration (`/etc/nixos/configuration.nix`):
       "hey_jarvis"
       "ok_nabu"
     ];
-    uri = "tcp://0.0.0.0:10400";
+    uri = "tcp://127.0.0.1:10400";
   };
 }
 ```
@@ -108,10 +107,12 @@ If you have an NVIDIA GPU, also add:
 3. **Install agent-cli:**
 
    ```bash
-   nix-shell -p portaudio pkg-config gcc python3 --run "uv tool install --upgrade agent-cli"
+   nix-shell -p portaudio pkg-config gcc uv --run 'uv tool install --upgrade agent-cli'
    # or add to your configuration:
-   # environment.systemPackages = with pkgs; [ agent-cli ];
+   # environment.systemPackages = with pkgs; [ uv portaudio pkg-config gcc ];
    ```
+
+   This ensures the PortAudio development files and build toolchain are in scope while `uv` installs PyAudio.
 
 4. **Test the setup:**
    ```bash
@@ -126,6 +127,8 @@ If you have an NVIDIA GPU, also add:
 | **Whisper**      | 10300 | ✅ CUDA      | `wyoming-faster-whisper.service` |
 | **Piper**        | 10200 | N/A          | `wyoming-piper.service`          |
 | **OpenWakeWord** | 10400 | N/A          | `wyoming-openwakeword.service`   |
+
+> By default all services bind to `127.0.0.1`, keeping them accessible only from the local machine.
 
 ## Service Management
 
@@ -163,9 +166,9 @@ sudo systemctl --failed
 journalctl -u ollama --since "1 hour ago"
 ```
 
-### Firewall Issues
+### Firewall & Remote Access
 
-Make sure `openFirewall = true` is set for each service, or manually add:
+Binding to `127.0.0.1` means no firewall changes are required. If you explicitly need LAN access, switch the host/URIs back to `0.0.0.0` and either set `openFirewall = true` on each service or add:
 
 ```nix
 {
@@ -174,6 +177,19 @@ Make sure `openFirewall = true` is set for each service, or manually add:
   };
 }
 ```
+
+Only open these ports on networks you trust.
+
+### PyAudio Build Errors
+
+If an earlier install attempt mixed Python versions, `uv` may leave behind an incompatible environment (common error: `would build wheel with unsupported tag ('cp311', 'cp313', ...)`). Clean the cached tool and reinstall:
+
+```bash
+rm -rf ~/.local/share/uv/tools/agent-cli ~/.cache/uv/builds-v0
+nix-shell -p portaudio pkg-config gcc uv --run 'uv tool install --upgrade agent-cli'
+```
+
+> The `rm -rf` command permanently deletes the cached environment—use it only when the install keeps failing.
 
 ## Configuration Example
 
@@ -185,8 +201,7 @@ Complete example from [basnijholt/dotfiles](https://github.com/basnijholt/dotfil
   services.ollama = {
     enable = true;
     acceleration = "cuda";
-    host = "0.0.0.0";
-    openFirewall = true;
+    host = "127.0.0.1";
     environmentVariables = {
       OLLAMA_KEEP_ALIVE = "1h";
     };
@@ -198,23 +213,43 @@ Complete example from [basnijholt/dotfiles](https://github.com/basnijholt/dotfil
       model = "large-v3";
       language = "en";
       device = "cuda";
-      uri = "tcp://0.0.0.0:10300";
+      uri = "tcp://127.0.0.1:10300";
     };
   };
 
   services.wyoming.piper.servers.default = {
     enable = true;
     voice = "en-us-ryan-high";
-    uri = "tcp://0.0.0.0:10200";
+    uri = "tcp://127.0.0.1:10200";
   };
 
   services.wyoming.openwakeword = {
     enable = true;
     preloadModels = [ "alexa" "hey_jarvis" "ok_nabu" ];
-    uri = "tcp://0.0.0.0:10400";
+    uri = "tcp://127.0.0.1:10400";
   };
 }
 ```
+
+## Optional: Keep `agent-cli server` Running
+
+To mirror this repository's working configuration, add a user service that keeps the FastAPI server alive:
+
+```nix
+systemd.user.services."uvx-agent-cli" = {
+  description = "uvx agent-cli server";
+  wantedBy = [ "default.target" ];
+  path = [ pkgs.ffmpeg pkgs.uv ];
+  serviceConfig = {
+    ExecStart = "${pkgs.uv}/bin/uvx agent-cli server";
+    Restart = "always";
+    RestartSec = 5;
+    WorkingDirectory = "/home/your-user";
+  };
+};
+```
+
+Adjust `WorkingDirectory` for your username/home path.
 
 ## Alternative: Script-Based Setup
 
