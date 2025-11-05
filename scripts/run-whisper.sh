@@ -16,7 +16,9 @@ fi
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 mkdir -p "$SCRIPT_DIR/.runtime"
 
-uvx --from git+https://github.com/rhasspy/wyoming-faster-whisper.git@v2.5.0 wyoming-faster-whisper \
+uvx --python 3.12 \
+    --from git+https://github.com/rhasspy/wyoming-faster-whisper.git@v3.0.1 \
+    wyoming-faster-whisper \
     --model "$MODEL" \
     --language en \
     --device "$DEVICE" \
