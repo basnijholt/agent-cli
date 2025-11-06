@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from rich.live import Live
 
-from agent_cli import config
+from agent_cli import config, constants
 from agent_cli.core.utils import InteractiveStopEvent
 from agent_cli.services import wake_word
 
@@ -140,6 +140,7 @@ async def test_detect_wake_word_from_queue_connection_error(
         mock_logger,
         asyncio.Queue(),
         live=mock_live,
+        sample_rate=constants.PYAUDIO_RATE,
     )
     assert result is None
     mock_wyoming_client_context.assert_called_once()

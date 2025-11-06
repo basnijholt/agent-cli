@@ -49,7 +49,7 @@ def test_save_audio_to_file(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> 
     saved_path = asr._save_audio_to_file(
         audio_data,
         logger,
-        sample_rate=constants.PYAUDIO_RATE,
+        constants.PYAUDIO_RATE,
     )
 
     # Verify the file was saved
@@ -77,7 +77,7 @@ def test_save_audio_to_file_error_handling(tmp_path: Path, monkeypatch: pytest.M
     saved_path = asr._save_audio_to_file(
         audio_data,
         logger,
-        sample_rate=constants.PYAUDIO_RATE,
+        constants.PYAUDIO_RATE,
     )
 
     # Verify it returned None and logged the exception

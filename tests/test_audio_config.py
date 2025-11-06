@@ -1,3 +1,5 @@
+"""Unit tests for audio configuration helpers."""
+
 from agent_cli.core import audio
 
 

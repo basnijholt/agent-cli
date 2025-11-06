@@ -312,7 +312,8 @@ async def transcribe_audio(
         if provider_cfg.asr_provider == "local":
             audio_data = _convert_audio_for_local_asr(audio_data, audio_file.filename)
 
-        sample_rate = defaults.get("sample_rate", opts.SAMPLE_RATE.default)  # type: ignore[attr-defined]
+        sample_rate_value = defaults.get("sample_rate", opts.SAMPLE_RATE.default)  # type: ignore[attr-defined]
+        sample_rate = int(sample_rate_value)  # type: ignore[arg-type]
 
         # Transcribe audio using the configured provider
         raw_transcript = await _transcribe_with_provider(

@@ -26,7 +26,6 @@ if TYPE_CHECKING:
 
 def get_wyoming_audio_config(sample_rate: int) -> dict[str, int]:
     """Return a Wyoming audio config dict with the desired sample rate."""
-
     config = dict(constants.WYOMING_AUDIO_CONFIG)
     config["rate"] = sample_rate
     return config
@@ -189,6 +188,7 @@ async def read_audio_stream(
         quiet: If True, suppress console output
         progress_message: Message to display
         progress_style: Rich style for progress
+        sample_rate: Sampling rate used to interpret chunk durations
 
     """
     try:
@@ -235,6 +235,7 @@ def setup_input_stream(
 
     Args:
         input_device_index: Input device index
+        sample_rate: Sampling rate for the PyAudio stream
 
     Returns:
         Dictionary of stream parameters

@@ -47,7 +47,6 @@ def _get_transcriptions_dir() -> Path:
 def _save_audio_to_file(
     audio_data: bytes,
     logger: logging.Logger,
-    *,
     sample_rate: int,
 ) -> Path | None:
     """Save audio data to a WAV file with timestamp-based filename.
@@ -192,7 +191,7 @@ async def _send_audio(
                 _save_audio_to_file(
                     audio_data,
                     logger,
-                    sample_rate=sample_rate,
+                    sample_rate,
                 )
 
 
@@ -265,6 +264,7 @@ async def record_audio_with_manual_stop(
         quiet: If True, suppress console output
         live: Rich Live display for progress
         save_recording: If True, save the recording to disk
+        sample_rate: Sampling rate to configure the PyAudio stream
 
     Returns:
         The recorded audio data as bytes
@@ -297,7 +297,7 @@ async def record_audio_with_manual_stop(
         _save_audio_to_file(
             audio_data,
             logger,
-            sample_rate=sample_rate,
+            sample_rate,
         )
 
     return audio_data
