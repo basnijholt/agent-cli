@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from agent_cli import config
+from agent_cli import config, constants
 from agent_cli.agents._voice_agent_common import (
     get_instruction_from_audio,
     process_instruction_and_respond,
@@ -24,7 +24,10 @@ async def test_get_instruction_from_audio(mock_create_transcriber: MagicMock) ->
         llm_provider="local",
         tts_provider="local",
     )
-    audio_in_cfg = config.AudioInput(input_device_index=1)
+    audio_in_cfg = config.AudioInput(
+        input_device_index=1,
+        sample_rate=constants.PYAUDIO_RATE,
+    )
     wyoming_asr_cfg = config.WyomingASR(asr_wyoming_ip="localhost", asr_wyoming_port=1234)
     openai_asr_cfg = config.OpenAIASR(asr_openai_model="whisper-1")
     ollama_cfg = config.Ollama(llm_ollama_model="test-model", llm_ollama_host="localhost")
@@ -55,7 +58,10 @@ async def test_get_instruction_from_audio_error(mock_create_transcriber: MagicMo
         llm_provider="local",
         tts_provider="local",
     )
-    audio_in_cfg = config.AudioInput(input_device_index=1)
+    audio_in_cfg = config.AudioInput(
+        input_device_index=1,
+        sample_rate=constants.PYAUDIO_RATE,
+    )
     wyoming_asr_cfg = config.WyomingASR(asr_wyoming_ip="localhost", asr_wyoming_port=1234)
     openai_asr_cfg = config.OpenAIASR(asr_openai_model="whisper-1")
     ollama_cfg = config.Ollama(llm_ollama_model="test-model", llm_ollama_host="localhost")

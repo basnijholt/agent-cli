@@ -15,6 +15,7 @@ from wyoming.audio import AudioChunk, AudioStart, AudioStop
 
 from agent_cli import constants
 from agent_cli.core.audio import (
+    get_wyoming_audio_config,
     open_pyaudio_stream,
     read_audio_stream,
     read_from_queue,
@@ -43,7 +44,12 @@ def _get_transcriptions_dir() -> Path:
     return config_dir
 
 
-def _save_audio_to_file(audio_data: bytes, logger: logging.Logger) -> Path | None:
+def _save_audio_to_file(
+    audio_data: bytes,
+    logger: logging.Logger,
+    *,
+    sample_rate: int,
+) -> Path | None:
     """Save audio data to a WAV file with timestamp-based filename.
 
     Returns the path to the saved file, or None if saving failed.
@@ -56,7 +62,7 @@ def _save_audio_to_file(audio_data: bytes, logger: logging.Logger) -> Path | Non
         with wave.open(str(filepath), "wb") as wav_file:
             wav_file.setnchannels(constants.PYAUDIO_CHANNELS)
             wav_file.setsampwidth(2)  # 16-bit audio
-            wav_file.setframerate(constants.PYAUDIO_RATE)
+            wav_file.setframerate(sample_rate)
             wav_file.writeframes(audio_data)
 
         logger.info("Saved audio recording to %s", filepath)
@@ -126,12 +132,14 @@ def create_transcriber(
 
 def create_recorded_audio_transcriber(
     provider_cfg: config.ProviderSelection,
+    *,
+    sample_rate: int,
 ) -> Callable[..., Awaitable[str]]:
     """Return the appropriate transcriber for recorded audio based on the provider."""
     if provider_cfg.asr_provider == "openai":
         return transcribe_audio_openai
     if provider_cfg.asr_provider == "local":
-        return _transcribe_recorded_audio_wyoming
+        return partial(_transcribe_recorded_audio_wyoming, sample_rate=sample_rate)
     msg = f"Unsupported ASR provider: {provider_cfg.asr_provider}"
     raise ValueError(msg)
 
@@ -145,10 +153,12 @@ async def _send_audio(
     live: Live,
     quiet: bool = False,
     save_recording: bool = True,
+    sample_rate: int,
 ) -> None:
     """Read from mic and send to Wyoming server."""
+    wyoming_audio_cfg = get_wyoming_audio_config(sample_rate)
     await client.write_event(Transcribe().event())
-    await client.write_event(AudioStart(**constants.WYOMING_AUDIO_CONFIG).event())
+    await client.write_event(AudioStart(**wyoming_audio_cfg).event())
 
     # Buffer to save audio if requested
     audio_buffer = io.BytesIO() if save_recording else None
@@ -157,7 +167,7 @@ async def _send_audio(
         """Send audio chunk to ASR server and optionally buffer it."""
         if audio_buffer is not None:
             audio_buffer.write(chunk)
-        await client.write_event(AudioChunk(audio=chunk, **constants.WYOMING_AUDIO_CONFIG).event())
+        await client.write_event(AudioChunk(audio=chunk, **wyoming_audio_cfg).event())
 
     try:
         await read_audio_stream(
@@ -169,6 +179,7 @@ async def _send_audio(
             quiet=quiet,
             progress_message="Listening",
             progress_style="blue",
+            sample_rate=sample_rate,
         )
     finally:
         await client.write_event(AudioStop().event())
@@ -178,7 +189,11 @@ async def _send_audio(
         if save_recording and audio_buffer:
             audio_data = audio_buffer.getvalue()
             if audio_data:
-                _save_audio_to_file(audio_data, logger)
+                _save_audio_to_file(
+                    audio_data,
+                    logger,
+                    sample_rate=sample_rate,
+                )
 
 
 async def record_audio_to_buffer(queue: asyncio.Queue, logger: logging.Logger) -> bytes:
@@ -238,6 +253,7 @@ async def record_audio_with_manual_stop(
     quiet: bool = False,
     live: Live | None = None,
     save_recording: bool = True,
+    sample_rate: int,
 ) -> bytes:
     """Record audio to a buffer using a manual stop signal.
 
@@ -260,7 +276,7 @@ async def record_audio_with_manual_stop(
         """Buffer audio chunk."""
         audio_buffer.write(chunk)
 
-    stream_kwargs = setup_input_stream(input_device_index)
+    stream_kwargs = setup_input_stream(input_device_index, sample_rate=sample_rate)
     with open_pyaudio_stream(p, **stream_kwargs) as stream:
         await read_audio_stream(
             stream=stream,
@@ -271,13 +287,18 @@ async def record_audio_with_manual_stop(
             quiet=quiet,
             progress_message="Recording",
             progress_style="green",
+            sample_rate=sample_rate,
         )
 
     audio_data = audio_buffer.getvalue()
 
     # Save the recording to disk if requested
     if save_recording and audio_data:
-        _save_audio_to_file(audio_data, logger)
+        _save_audio_to_file(
+            audio_data,
+            logger,
+            sample_rate=sample_rate,
+        )
 
     return audio_data
 
@@ -288,6 +309,7 @@ async def _transcribe_recorded_audio_wyoming(
     wyoming_asr_cfg: config.WyomingASR,
     logger: logging.Logger,
     quiet: bool = False,
+    sample_rate: int,
     **_kwargs: object,
 ) -> str:
     """Process pre-recorded audio data with Wyoming ASR server."""
@@ -300,13 +322,14 @@ async def _transcribe_recorded_audio_wyoming(
             quiet=quiet,
         ) as client:
             await client.write_event(Transcribe().event())
-            await client.write_event(AudioStart(**constants.WYOMING_AUDIO_CONFIG).event())
+            wyoming_audio_cfg = get_wyoming_audio_config(sample_rate)
+            await client.write_event(AudioStart(**wyoming_audio_cfg).event())
 
             chunk_size = constants.PYAUDIO_CHUNK_SIZE * 2
             for i in range(0, len(audio_data), chunk_size):
                 chunk = audio_data[i : i + chunk_size]
                 await client.write_event(
-                    AudioChunk(audio=chunk, **constants.WYOMING_AUDIO_CONFIG).event(),
+                    AudioChunk(audio=chunk, **wyoming_audio_cfg).event(),
                 )
                 logger.debug("Sent %d byte(s) of audio", len(chunk))
 
@@ -342,7 +365,10 @@ async def _transcribe_live_audio_wyoming(
             logger,
             quiet=quiet,
         ) as client:
-            stream_kwargs = setup_input_stream(audio_input_cfg.input_device_index)
+            stream_kwargs = setup_input_stream(
+                audio_input_cfg.input_device_index,
+                sample_rate=audio_input_cfg.sample_rate,
+            )
             with open_pyaudio_stream(p, **stream_kwargs) as stream:
                 _, recv_task = await manage_send_receive_tasks(
                     _send_audio(
@@ -353,6 +379,7 @@ async def _transcribe_live_audio_wyoming(
                         live=live,
                         quiet=quiet,
                         save_recording=save_recording,
+                        sample_rate=audio_input_cfg.sample_rate,
                     ),
                     _receive_transcript(
                         client,
@@ -389,6 +416,7 @@ async def _transcribe_live_audio_openai(
         quiet=quiet,
         live=live,
         save_recording=save_recording,
+        sample_rate=audio_input_cfg.sample_rate,
     )
     if not audio_data:
         return None

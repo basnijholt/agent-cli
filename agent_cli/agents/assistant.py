@@ -96,6 +96,7 @@ async def _record_audio_with_wake_word(
     logger: logging.Logger,
     *,
     wake_word_cfg: config.WakeWord,
+    sample_rate: int,
     quiet: bool = False,
     live: Live | None = None,
 ) -> bytes | None:
@@ -113,7 +114,7 @@ async def _record_audio_with_wake_word(
         # Create a queue for wake word detection
         wake_queue = await tee.add_queue()
 
-        detector = create_wake_word_detector(wake_word_cfg)
+        detector = create_wake_word_detector(wake_word_cfg, sample_rate=sample_rate)
         detected_word = await detector(
             logger=logger,
             queue=wake_queue,
@@ -192,7 +193,10 @@ async def _async_main(
         audio_in_cfg.input_device_index = input_device_index
         audio_out_cfg.output_device_index = tts_output_device_index
 
-        stream_kwargs = audio.setup_input_stream(input_device_index)
+        stream_kwargs = audio.setup_input_stream(
+            input_device_index,
+            sample_rate=audio_in_cfg.sample_rate,
+        )
         with (
             audio.open_pyaudio_stream(p, **stream_kwargs) as stream,
             signal_handling_context(LOGGER, general_cfg.quiet) as stop_event,
@@ -203,6 +207,7 @@ async def _async_main(
                     stop_event,
                     LOGGER,
                     wake_word_cfg=wake_word_cfg,
+                    sample_rate=audio_in_cfg.sample_rate,
                     quiet=general_cfg.quiet,
                     live=live,
                 )
@@ -264,6 +269,7 @@ def assistant(
     # --- ASR (Audio) Configuration ---
     input_device_index: int | None = opts.INPUT_DEVICE_INDEX,
     input_device_name: str | None = opts.INPUT_DEVICE_NAME,
+    sample_rate: int = opts.SAMPLE_RATE,
     asr_wyoming_ip: str = opts.ASR_WYOMING_IP,
     asr_wyoming_port: int = opts.ASR_WYOMING_PORT,
     asr_openai_model: str = opts.ASR_OPENAI_MODEL,
@@ -340,6 +346,7 @@ def assistant(
         audio_in_cfg = config.AudioInput(
             input_device_index=input_device_index,
             input_device_name=input_device_name,
+            sample_rate=sample_rate,
         )
         wyoming_asr_cfg = config.WyomingASR(
             asr_wyoming_ip=asr_wyoming_ip,

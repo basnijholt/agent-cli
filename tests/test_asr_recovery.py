@@ -46,7 +46,11 @@ def test_save_audio_to_file(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> 
     audio_data = b"test_audio_data" * 100
 
     # Save the audio
-    saved_path = asr._save_audio_to_file(audio_data, logger)
+    saved_path = asr._save_audio_to_file(
+        audio_data,
+        logger,
+        sample_rate=constants.PYAUDIO_RATE,
+    )
 
     # Verify the file was saved
     assert saved_path is not None
@@ -70,7 +74,11 @@ def test_save_audio_to_file_error_handling(tmp_path: Path, monkeypatch: pytest.M
     audio_data = b"test_audio_data"
 
     # Try to save the audio (should fail gracefully)
-    saved_path = asr._save_audio_to_file(audio_data, logger)
+    saved_path = asr._save_audio_to_file(
+        audio_data,
+        logger,
+        sample_rate=constants.PYAUDIO_RATE,
+    )
 
     # Verify it returned None and logged the exception
     assert saved_path is None
@@ -204,6 +212,7 @@ async def test_record_audio_with_manual_stop_saves_recording(
             quiet=True,
             live=None,
             save_recording=True,
+            sample_rate=constants.PYAUDIO_RATE,
         )
 
         # Verify audio was recorded
@@ -247,6 +256,7 @@ async def test_record_audio_with_manual_stop_no_save(
             quiet=True,
             live=None,
             save_recording=False,
+            sample_rate=constants.PYAUDIO_RATE,
         )
 
         # Verify audio was recorded
@@ -287,6 +297,7 @@ async def test_send_audio_with_save_recording(
         live=MagicMock(),
         quiet=False,
         save_recording=True,
+        sample_rate=constants.PYAUDIO_RATE,
     )
 
     # Verify events were sent
@@ -316,7 +327,10 @@ async def test_transcribe_live_audio_wyoming_with_save():
 
         # Call the function with proper config objects
         result = await asr._transcribe_live_audio_wyoming(
-            audio_input_cfg=config.AudioInput(input_device_index=None),
+            audio_input_cfg=config.AudioInput(
+                input_device_index=None,
+                sample_rate=constants.PYAUDIO_RATE,
+            ),
             wyoming_asr_cfg=config.WyomingASR(
                 asr_wyoming_ip="localhost",
                 asr_wyoming_port=10300,
@@ -348,7 +362,10 @@ async def test_transcribe_live_audio_openai_with_save():
 
         # Call the function with proper config objects
         result = await asr._transcribe_live_audio_openai(
-            audio_input_cfg=config.AudioInput(input_device_index=None),
+            audio_input_cfg=config.AudioInput(
+                input_device_index=None,
+                sample_rate=constants.PYAUDIO_RATE,
+            ),
             openai_asr_cfg=config.OpenAIASR(
                 asr_openai_model="whisper-1",
                 openai_api_key="test-key",

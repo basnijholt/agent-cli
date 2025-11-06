@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from agent_cli import config
+from agent_cli import config, constants
 from agent_cli.services import asr, synthesize_speech_openai, transcribe_audio_openai, tts
 
 
@@ -72,7 +72,7 @@ def test_create_transcriber_wyoming() -> None:
         llm_provider="local",
         tts_provider="local",
     )
-    audio_input_cfg = config.AudioInput()
+    audio_input_cfg = config.AudioInput(sample_rate=constants.PYAUDIO_RATE)
     wyoming_asr_cfg = config.WyomingASR(asr_wyoming_ip="localhost", asr_wyoming_port=1234)
     openai_asr_cfg = config.OpenAIASR(asr_openai_model="whisper-1", openai_api_key="fake-key")
 

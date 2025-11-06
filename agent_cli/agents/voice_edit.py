@@ -129,6 +129,7 @@ async def _async_main(
                 LOGGER,
                 live=live,
                 quiet=general_cfg.quiet,
+                sample_rate=audio_in_cfg.sample_rate,
             )
 
             if not audio_data:
@@ -178,6 +179,7 @@ def voice_edit(
     # --- ASR (Audio) Configuration ---
     input_device_index: int | None = opts.INPUT_DEVICE_INDEX,
     input_device_name: str | None = opts.INPUT_DEVICE_NAME,
+    sample_rate: int = opts.SAMPLE_RATE,
     asr_wyoming_ip: str = opts.ASR_WYOMING_IP,
     asr_wyoming_port: int = opts.ASR_WYOMING_PORT,
     asr_openai_model: str = opts.ASR_OPENAI_MODEL,
@@ -259,6 +261,7 @@ def voice_edit(
         audio_in_cfg = config.AudioInput(
             input_device_index=input_device_index,
             input_device_name=input_device_name,
+            sample_rate=sample_rate,
         )
         wyoming_asr_cfg = config.WyomingASR(
             asr_wyoming_ip=asr_wyoming_ip,

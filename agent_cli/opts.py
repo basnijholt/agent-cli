@@ -4,6 +4,8 @@ from pathlib import Path
 
 import typer
 
+from agent_cli import constants
+
 # --- Provider Selection ---
 LLM_PROVIDER: str = typer.Option(
     "local",
@@ -92,6 +94,12 @@ INPUT_DEVICE_NAME: str | None = typer.Option(
     None,
     "--input-device-name",
     help="Device name keywords for partial matching.",
+    rich_help_panel="ASR (Audio) Configuration",
+)
+SAMPLE_RATE: int = typer.Option(
+    constants.PYAUDIO_RATE,
+    "--sample-rate",
+    help="Sample rate (Hz) to use when recording microphone audio.",
     rich_help_panel="ASR (Audio) Configuration",
 )
 LIST_DEVICES: bool = typer.Option(

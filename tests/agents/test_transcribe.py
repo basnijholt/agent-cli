@@ -10,7 +10,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from agent_cli import config
+from agent_cli import config, constants
 from agent_cli.agents import transcribe
 from tests.mocks.wyoming import MockASRClient
 
@@ -57,7 +57,7 @@ async def test_transcribe_main_llm_enabled(
             list_devices=False,
             clipboard=True,
         )
-        audio_in_cfg = config.AudioInput()
+        audio_in_cfg = config.AudioInput(sample_rate=constants.PYAUDIO_RATE)
         wyoming_asr_cfg = config.WyomingASR(asr_wyoming_ip="localhost", asr_wyoming_port=12345)
         openai_asr_cfg = config.OpenAIASR(asr_openai_model="whisper-1")
         ollama_cfg = config.Ollama(llm_ollama_model="test", llm_ollama_host="localhost")
@@ -81,6 +81,7 @@ async def test_transcribe_main_llm_enabled(
             transcription_log=None,
             save_recording=False,  # Disable for testing
             p=mock_pyaudio_instance,
+            sample_rate=constants.PYAUDIO_RATE,
         )
 
     # Assertions
@@ -129,7 +130,7 @@ async def test_transcribe_main(
             list_devices=False,
             clipboard=True,
         )
-        audio_in_cfg = config.AudioInput()
+        audio_in_cfg = config.AudioInput(sample_rate=constants.PYAUDIO_RATE)
         wyoming_asr_cfg = config.WyomingASR(asr_wyoming_ip="localhost", asr_wyoming_port=12345)
         openai_asr_cfg = config.OpenAIASR(asr_openai_model="whisper-1")
         ollama_cfg = config.Ollama(llm_ollama_model="", llm_ollama_host="")
@@ -153,6 +154,7 @@ async def test_transcribe_main(
             transcription_log=None,
             save_recording=False,  # Disable for testing
             p=mock_pyaudio_instance,
+            sample_rate=constants.PYAUDIO_RATE,
         )
 
     # Assertions
@@ -253,7 +255,7 @@ async def test_transcribe_with_logging(
         list_devices=False,
         clipboard=True,
     )
-    audio_in_cfg = config.AudioInput()
+    audio_in_cfg = config.AudioInput(sample_rate=constants.PYAUDIO_RATE)
     wyoming_asr_cfg = config.WyomingASR(asr_wyoming_ip="localhost", asr_wyoming_port=12345)
     openai_asr_cfg = config.OpenAIASR(asr_openai_model="whisper-1")
     ollama_cfg = config.Ollama(llm_ollama_model="qwen3:4b", llm_ollama_host="localhost")
@@ -277,6 +279,7 @@ async def test_transcribe_with_logging(
         transcription_log=log_file,
         save_recording=False,  # Disable for testing
         p=mock_pyaudio_instance,
+        sample_rate=constants.PYAUDIO_RATE,
     )
 
     # Verify log file was created and contains expected entry
