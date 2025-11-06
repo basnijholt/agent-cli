@@ -83,6 +83,9 @@ agent-cli autocorrect "this has an eror"
 
 #### Option B: Using CLI Commands (New!)
 
+> [!NOTE]
+> `agent-cli` ships with PyAudio bindings for real-time microphone/voice features. PyAudio needs the system-level PortAudio library available **before** you run `uv tool install agent-cli`. Install it with `brew install portaudio` on macOS (or `sudo apt install portaudio19-dev` / your distro's equivalent on Linux). Without PortAudio present, the CLI installation fails when building PyAudio.
+
 ```bash
 # 1. Install agent-cli
 uv tool install agent-cli
@@ -99,9 +102,6 @@ agent-cli install-hotkeys
 # 5. Use it!
 agent-cli autocorrect "this has an eror"
 ```
-
-> [!NOTE]
-> `agent-cli` ships with PyAudio bindings for real-time microphone/voice features. PyAudio needs the system-level PortAudio library available **before** you run `uv tool install agent-cli`. Install it with `brew install portaudio` on macOS (or `sudo apt install portaudio19-dev` / your distro's equivalent on Linux). Without PortAudio present, the CLI installation fails when building PyAudio.
 
 The setup scripts automatically install:
 - ✅ Package managers (Homebrew/uv) if needed
