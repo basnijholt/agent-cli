@@ -8,6 +8,7 @@ import pytest
 from wyoming.asr import Transcribe, Transcript, TranscriptChunk
 from wyoming.audio import AudioChunk, AudioStart, AudioStop
 
+from agent_cli import constants
 from agent_cli.services import asr
 
 
@@ -35,6 +36,7 @@ async def test_send_audio() -> None:
         live=MagicMock(),
         quiet=False,
         save_recording=False,
+        sample_rate=constants.PYAUDIO_RATE,
     )
 
     # Assert
@@ -108,12 +110,19 @@ def test_create_recorded_audio_transcriber():
     """Test that the correct recorded audio transcriber is returned."""
     provider_cfg = MagicMock()
     provider_cfg.asr_provider = "openai"
-    transcriber = asr.create_recorded_audio_transcriber(provider_cfg)
+    transcriber = asr.create_recorded_audio_transcriber(
+        provider_cfg,
+        sample_rate=constants.PYAUDIO_RATE,
+    )
     assert transcriber is asr.transcribe_audio_openai
 
     provider_cfg.asr_provider = "local"
-    transcriber = asr.create_recorded_audio_transcriber(provider_cfg)
-    assert transcriber is asr._transcribe_recorded_audio_wyoming
+    transcriber = asr.create_recorded_audio_transcriber(
+        provider_cfg,
+        sample_rate=constants.PYAUDIO_RATE,
+    )
+    assert transcriber.func is asr._transcribe_recorded_audio_wyoming  # type: ignore[attr-defined]
+    assert transcriber.keywords["sample_rate"] == constants.PYAUDIO_RATE  # type: ignore[attr-defined]
 
 
 @pytest.mark.asyncio
@@ -126,6 +135,7 @@ async def test_transcribe_recorded_audio_wyoming_connection_error(
         audio_data=b"test",
         wyoming_asr_cfg=MagicMock(),
         logger=MagicMock(),
+        sample_rate=constants.PYAUDIO_RATE,
     )
     assert result == ""
     mock_wyoming_client_context.assert_called_once()

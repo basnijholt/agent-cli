@@ -10,7 +10,7 @@ from wyoming.audio import AudioChunk, AudioStart, AudioStop
 from wyoming.wake import Detect, Detection, NotDetected
 
 from agent_cli import config, constants
-from agent_cli.core.audio import read_from_queue
+from agent_cli.core.audio import get_wyoming_audio_config, read_from_queue
 from agent_cli.core.utils import manage_send_receive_tasks
 from agent_cli.services._wyoming_utils import wyoming_client_context
 
@@ -24,9 +24,15 @@ if TYPE_CHECKING:
 
 def create_wake_word_detector(
     wake_word_cfg: config.WakeWord,
+    *,
+    sample_rate: int,
 ) -> Callable[..., Awaitable[str | None]]:
     """Return a wake word detector function."""
-    return partial(_detect_wake_word_from_queue, wake_word_cfg=wake_word_cfg)
+    return partial(
+        _detect_wake_word_from_queue,
+        wake_word_cfg=wake_word_cfg,
+        sample_rate=sample_rate,
+    )
 
 
 async def _send_audio_from_queue_for_wake_detection(
@@ -36,18 +42,21 @@ async def _send_audio_from_queue_for_wake_detection(
     live: Live | None,
     quiet: bool,
     progress_message: str,
+    *,
+    sample_rate: int,
 ) -> None:
     """Read from a queue and send to Wyoming wake word server."""
-    await client.write_event(AudioStart(**constants.WYOMING_AUDIO_CONFIG).event())
+    wyoming_audio_cfg = get_wyoming_audio_config(sample_rate)
+    await client.write_event(AudioStart(**wyoming_audio_cfg).event())
     seconds_streamed = 0.0
 
     async def send_chunk(chunk: bytes) -> None:
         nonlocal seconds_streamed
         """Send audio chunk to wake word server."""
         await client.write_event(
-            AudioChunk(audio=chunk, **constants.WYOMING_AUDIO_CONFIG).event(),
+            AudioChunk(audio=chunk, **wyoming_audio_cfg).event(),
         )
-        seconds_streamed += len(chunk) / (constants.PYAUDIO_RATE * constants.PYAUDIO_CHANNELS * 2)
+        seconds_streamed += len(chunk) / (sample_rate * constants.PYAUDIO_CHANNELS * 2)
         if live and not quiet:
             live.update(f"{progress_message}... ({seconds_streamed:.1f}s)")
 
@@ -102,6 +111,7 @@ async def _detect_wake_word_from_queue(
     logger: logging.Logger,
     queue: asyncio.Queue,
     *,
+    sample_rate: int,
     live: Live | None = None,
     detection_callback: Callable[[str], None] | None = None,
     quiet: bool = False,
@@ -126,6 +136,7 @@ async def _detect_wake_word_from_queue(
                     live,
                     quiet,
                     progress_message,
+                    sample_rate=sample_rate,
                 ),
                 _receive_wake_detection(client, logger, detection_callback=detection_callback),
                 return_when=asyncio.FIRST_COMPLETED,

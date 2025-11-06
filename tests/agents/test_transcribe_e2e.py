@@ -8,7 +8,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from agent_cli import config
+from agent_cli import config, constants
 from agent_cli.agents.transcribe import _async_main
 from tests.mocks.audio import MockPyAudio
 from tests.mocks.wyoming import MockASRClient
@@ -55,7 +55,10 @@ async def test_transcribe_e2e(
         list_devices=False,
         clipboard=False,
     )
-    audio_in_cfg = config.AudioInput(input_device_index=0)
+    audio_in_cfg = config.AudioInput(
+        input_device_index=0,
+        sample_rate=constants.PYAUDIO_RATE,
+    )
     wyoming_asr_cfg = config.WyomingASR(asr_wyoming_ip="mock-host", asr_wyoming_port=10300)
     openai_asr_cfg = config.OpenAIASR(asr_openai_model="whisper-1")
     ollama_cfg = config.Ollama(llm_ollama_model="", llm_ollama_host="")
@@ -80,6 +83,7 @@ async def test_transcribe_e2e(
             p=mock_pyaudio_instance,
             transcription_log=None,
             save_recording=False,  # Add the missing parameter
+            sample_rate=constants.PYAUDIO_RATE,
         )
 
     # Assert that the final transcript is in the console output

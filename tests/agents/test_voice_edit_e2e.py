@@ -6,7 +6,7 @@ from unittest.mock import ANY, AsyncMock, MagicMock, patch
 
 import pytest
 
-from agent_cli import config
+from agent_cli import config, constants
 from agent_cli.agents.voice_edit import (
     AGENT_INSTRUCTIONS,
     SYSTEM_PROMPT,
@@ -43,7 +43,10 @@ def get_configs() -> tuple[
         clipboard=True,
         save_file=None,
     )
-    audio_in_cfg = config.AudioInput(input_device_index=0)
+    audio_in_cfg = config.AudioInput(
+        input_device_index=0,
+        sample_rate=constants.PYAUDIO_RATE,
+    )
     wyoming_asr_cfg = config.WyomingASR(asr_wyoming_ip="mock-asr-host", asr_wyoming_port=10300)
     openai_asr_cfg = config.OpenAIASR(asr_openai_model="whisper-1")
     ollama_cfg = config.Ollama(

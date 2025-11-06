@@ -89,9 +89,14 @@ async def _transcribe_with_provider(
     provider_cfg: config.ProviderSelection,
     wyoming_asr_cfg: config.WyomingASR,
     openai_asr_cfg: config.OpenAIASR,
+    *,
+    sample_rate: int,
 ) -> str:
     """Transcribe audio using the configured provider."""
-    transcriber = asr.create_recorded_audio_transcriber(provider_cfg)
+    transcriber = asr.create_recorded_audio_transcriber(
+        provider_cfg,
+        sample_rate=sample_rate,
+    )
 
     if provider_cfg.asr_provider == "local":
         return await transcriber(
@@ -307,12 +312,15 @@ async def transcribe_audio(
         if provider_cfg.asr_provider == "local":
             audio_data = _convert_audio_for_local_asr(audio_data, audio_file.filename)
 
+        sample_rate = defaults.get("sample_rate", opts.SAMPLE_RATE.default)  # type: ignore[attr-defined]
+
         # Transcribe audio using the configured provider
         raw_transcript = await _transcribe_with_provider(
             audio_data,
             provider_cfg,
             wyoming_asr_cfg,
             openai_asr_cfg,
+            sample_rate=sample_rate,
         )
 
         if not raw_transcript:
