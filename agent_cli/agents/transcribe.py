@@ -8,9 +8,9 @@ import logging
 import platform
 import time
 from contextlib import suppress
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path  # noqa: TC003
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import pyperclip
 import typer
@@ -20,7 +20,10 @@ from agent_cli.cli import app
 from agent_cli.core import process
 from agent_cli.core.audio import pyaudio_context, setup_devices
 from agent_cli.core.utils import (
+    format_short_timedelta,
+    iter_lines_from_file_end,
     maybe_live,
+    parse_json_line,
     print_command_line_args,
     print_input_panel,
     print_output_panel,
@@ -87,6 +90,135 @@ Your response must be JUST the cleaned text - nothing before it, nothing after i
 INSTRUCTION = """
 Please clean up this transcribed text by correcting any speech recognition errors, adding appropriate punctuation and capitalization, removing obvious filler words or false starts, and improving overall readability while preserving the original meaning and intent of the speaker.
 """
+
+RECENT_CONTEXT_LOOKBACK_SECONDS = 60 * 60  # 1 hour
+RECENT_CONTEXT_MAX_ENTRIES = 3
+RECENT_CONTEXT_MAX_CHARS = 500
+RECENT_CONTEXT_READ_CHUNK_BYTES = 4096
+CLIPBOARD_CONTEXT_MAX_CHARS = 500
+
+
+def _build_context_line(
+    entry: dict[str, Any],
+    *,
+    now: datetime,
+    cutoff: datetime,
+    max_chars_per_entry: int,
+) -> tuple[str | None, bool]:
+    timestamp_str = entry.get("timestamp")
+    if not timestamp_str:
+        return None, False
+
+    try:
+        entry_ts = datetime.fromisoformat(timestamp_str)
+    except ValueError:
+        return None, False
+
+    if entry_ts < cutoff:
+        return None, True
+
+    # Both the CLI (`raw_output`/`processed_output`) and API (`raw`/`processed`)
+    # logging formats are supported, preferring the raw transcript when present.
+    raw = entry.get("raw_output") or entry.get("raw")
+    processed = entry.get("processed_output") or entry.get("processed")
+    text = (raw or processed or "").strip()
+    if not text:
+        return None, False
+
+    if max_chars_per_entry > 0 and len(text) > max_chars_per_entry:
+        text = text[:max_chars_per_entry].rstrip() + "..."
+
+    role = entry.get("role")
+    if not role:
+        role = "assistant" if processed else "user"
+    source = "raw transcript" if raw else "cleaned transcript"
+    delta_str = format_short_timedelta(now - entry_ts)
+    return f"- {delta_str} ago ({role}, {source}): {text}", False
+
+
+def _gather_recent_transcription_context(
+    log_file: Path,
+    *,
+    max_age_seconds: int = RECENT_CONTEXT_LOOKBACK_SECONDS,
+    max_entries: int = RECENT_CONTEXT_MAX_ENTRIES,
+    max_chars_per_entry: int = RECENT_CONTEXT_MAX_CHARS,
+    now: datetime | None = None,
+    chunk_size: int = RECENT_CONTEXT_READ_CHUNK_BYTES,
+) -> str | None:
+    """Return recent transcription snippets to give the LLM additional context."""
+    if max_entries <= 0 or max_age_seconds <= 0:
+        return None
+    if not log_file.exists():
+        return None
+    if chunk_size <= 0:
+        chunk_size = RECENT_CONTEXT_READ_CHUNK_BYTES
+
+    now = now or datetime.now(UTC)
+    cutoff = now - timedelta(seconds=max_age_seconds)
+    context_entries: list[str] = []
+
+    try:
+        for line in iter_lines_from_file_end(log_file, chunk_size):
+            entry = parse_json_line(line)
+            if not entry:
+                continue
+            context_line, should_stop = _build_context_line(
+                entry,
+                now=now,
+                cutoff=cutoff,
+                max_chars_per_entry=max_chars_per_entry,
+            )
+            if should_stop:
+                break
+            if context_line:
+                context_entries.append(context_line)
+                if len(context_entries) >= max_entries:
+                    break
+    except OSError as exc:
+        LOGGER.debug("Unable to read transcription log %s: %s", log_file, exc)
+        return None
+
+    if not context_entries:
+        return None
+
+    history_lines = "\n".join(reversed(context_entries))
+    header = "Recent transcript history (time deltas relative to now):\n"
+    return header + history_lines
+
+
+def _build_context_payload(
+    *,
+    transcription_log: Path | None,
+    clipboard_snapshot: str | None,
+) -> tuple[str | None, str | None]:
+    """Return combined context text and the note to append to instructions."""
+    context_sections: list[str] = []
+
+    if transcription_log:
+        log_context = _gather_recent_transcription_context(transcription_log)
+        if log_context:
+            context_sections.append(log_context)
+
+    if clipboard_snapshot:
+        clipboard_text = clipboard_snapshot.strip()
+        if clipboard_text:
+            if len(clipboard_text) > CLIPBOARD_CONTEXT_MAX_CHARS:
+                clipboard_text = clipboard_text[:CLIPBOARD_CONTEXT_MAX_CHARS].rstrip() + "..."
+            context_sections.append(
+                "Clipboard content captured before this recording "
+                "(truncated for safety; may be unrelated to the new request):\n"
+                f"- {clipboard_text}",
+            )
+
+    if not context_sections:
+        return None, None
+
+    combined_context = "\n\n".join(context_sections)
+    instructions_note = (
+        "\n\n<context> contains recent log transcripts and/or clipboard text. "
+        "Treat it as optional background and clean only the text inside <original-text>."
+    )
+    return combined_context, instructions_note
 
 
 def log_transcription(
@@ -195,12 +327,21 @@ async def _async_main(  # noqa: PLR0912, PLR0915, C901
                     title="📝 Raw Transcript",
                     subtitle=f"[dim]took {elapsed:.2f}s[/dim]",
                 )
+            clipboard_snapshot: str | None = None
             if general_cfg.clipboard:
+                clipboard_snapshot = pyperclip.paste()
                 pyperclip.copy(transcript)
                 LOGGER.info("Copied raw transcript to clipboard before LLM processing.")
             instructions = AGENT_INSTRUCTIONS
             if extra_instructions:
                 instructions += f"\n\n{extra_instructions}"
+
+            combined_context, context_note = _build_context_payload(
+                transcription_log=transcription_log,
+                clipboard_snapshot=clipboard_snapshot,
+            )
+            if context_note:
+                instructions += context_note
 
             # Get model info for logging
             if provider_cfg.llm_provider == "local":
@@ -212,7 +353,6 @@ async def _async_main(  # noqa: PLR0912, PLR0915, C901
             else:
                 msg = f"Unsupported LLM provider: {provider_cfg.llm_provider}"
                 raise ValueError(msg)
-
             processed_transcript = await process_and_update_clipboard(
                 system_prompt=SYSTEM_PROMPT,
                 agent_instructions=instructions,
@@ -226,6 +366,7 @@ async def _async_main(  # noqa: PLR0912, PLR0915, C901
                 clipboard=general_cfg.clipboard,
                 quiet=general_cfg.quiet,
                 live=live,
+                context=combined_context,
             )
 
             # Log transcription if requested

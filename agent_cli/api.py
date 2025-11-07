@@ -10,9 +10,14 @@ from fastapi import Depends, FastAPI, File, Form, HTTPException, Request, Upload
 from pydantic import BaseModel
 
 from agent_cli import config, opts
-from agent_cli.agents.transcribe import AGENT_INSTRUCTIONS, INSTRUCTION, SYSTEM_PROMPT
+from agent_cli.agents.transcribe import (
+    AGENT_INSTRUCTIONS,
+    INSTRUCTION,
+    SYSTEM_PROMPT,
+    _build_context_payload,
+)
 from agent_cli.core.audio_format import VALID_EXTENSIONS, convert_audio_to_wyoming_format
-from agent_cli.core.transcription_logger import get_default_logger
+from agent_cli.core.transcription_logger import TranscriptionLogger, get_default_logger
 from agent_cli.services import asr
 from agent_cli.services.llm import process_and_update_clipboard
 
@@ -231,6 +236,7 @@ async def _process_transcript_cleanup(
     ollama_cfg: config.Ollama,
     openai_llm_cfg: config.OpenAILLM,
     gemini_llm_cfg: config.GeminiLLM,
+    transcription_log: Path | None,
 ) -> str | None:
     """Process transcript cleanup with LLM if requested."""
     if not cleanup:
@@ -242,6 +248,13 @@ async def _process_transcript_cleanup(
         instructions += f"\n\n{config_extra}"
     if extra_instructions:
         instructions += f"\n\n{extra_instructions}"
+
+    combined_context, context_note = _build_context_payload(
+        transcription_log=transcription_log,
+        clipboard_snapshot=None,
+    )
+    if context_note:
+        instructions += context_note
 
     return await process_and_update_clipboard(
         system_prompt=SYSTEM_PROMPT,
@@ -256,6 +269,7 @@ async def _process_transcript_cleanup(
         clipboard=False,  # Don't copy to clipboard in web service
         quiet=True,
         live=None,
+        context=combined_context,
     )
 
 
@@ -279,6 +293,7 @@ async def transcribe_audio(
     # Initialize variables outside try block to ensure they exist in finally block
     raw_transcript = ""
     cleaned_transcript = None
+    transcription_logger: TranscriptionLogger | None = None
 
     try:
         # Extract and validate audio file
@@ -322,6 +337,12 @@ async def transcribe_audio(
                 error="No transcript generated from audio",
             )
 
+        if transcription_logger is None:
+            try:
+                transcription_logger = get_default_logger()
+            except Exception as log_init_error:
+                LOGGER.warning("Failed to initialize transcription logger: %s", log_init_error)
+
         # Process transcript cleanup if requested
         cleaned_transcript = await _process_transcript_cleanup(
             raw_transcript,
@@ -332,6 +353,7 @@ async def transcribe_audio(
             ollama_cfg,
             openai_llm_cfg,
             gemini_llm_cfg,
+            transcription_logger.log_file if transcription_logger else None,
         )
 
         # If cleanup was requested but failed, indicate partial success
@@ -360,7 +382,7 @@ async def transcribe_audio(
         # Only log if we have something to log
         if raw_transcript or cleaned_transcript:
             try:
-                transcription_logger = get_default_logger()
+                transcription_logger = transcription_logger or get_default_logger()
                 transcription_logger.log_transcription(
                     raw=raw_transcript,
                     processed=cleaned_transcript,
