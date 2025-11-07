@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import tempfile
-from unittest.mock import AsyncMock, patch
+from pathlib import Path
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from fastapi.testclient import TestClient
@@ -45,13 +46,17 @@ def test_transcribe_invalid_file_type(client: TestClient) -> None:
     assert "Unsupported audio format" in response.json()["detail"]
 
 
-@patch("agent_cli.api._convert_audio_for_local_asr")
-@patch("agent_cli.api._transcribe_with_provider")
+@patch("agent_cli.api._build_context_payload")
+@patch("agent_cli.api.get_default_logger")
 @patch("agent_cli.api.process_and_update_clipboard")
+@patch("agent_cli.api._transcribe_with_provider")
+@patch("agent_cli.api._convert_audio_for_local_asr")
 def test_transcribe_success_with_cleanup(
-    mock_process: AsyncMock,
-    mock_transcribe: AsyncMock,
     mock_convert: AsyncMock,
+    mock_transcribe: AsyncMock,
+    mock_process: AsyncMock,
+    mock_get_logger: MagicMock,
+    mock_context_builder: MagicMock,
     client: TestClient,
 ) -> None:
     """Test successful transcription with cleanup."""
@@ -59,6 +64,10 @@ def test_transcribe_success_with_cleanup(
     mock_convert.return_value = b"converted_audio_data"
     mock_transcribe.return_value = "this is a test transcription"
     mock_process.return_value = "This is a test transcription."
+    mock_context_builder.return_value = (None, None)
+    mock_logger = MagicMock()
+    mock_logger.log_file = Path("test-log.jsonl")
+    mock_get_logger.return_value = mock_logger
 
     # Create a dummy audio file
     with tempfile.NamedTemporaryFile(suffix=".wav") as tmp:
@@ -82,6 +91,7 @@ def test_transcribe_success_with_cleanup(
     mock_convert.assert_called_once()
     mock_transcribe.assert_called_once()
     mock_process.assert_called_once()
+    mock_context_builder.assert_called_once()
 
 
 @patch("agent_cli.api._convert_audio_for_local_asr")
@@ -398,3 +408,48 @@ def test_supported_audio_formats(client: TestClient) -> None:
                 assert response.status_code == 200, f"Failed for {ext}"
                 data = response.json()
                 assert data["success"] is True, f"Failed for {ext}"
+
+
+@patch("agent_cli.api._build_context_payload")
+@patch("agent_cli.api.get_default_logger")
+@patch("agent_cli.api.process_and_update_clipboard")
+@patch("agent_cli.api._transcribe_with_provider")
+@patch("agent_cli.api._convert_audio_for_local_asr")
+def test_transcribe_cleanup_includes_context(
+    mock_convert: AsyncMock,
+    mock_transcribe: AsyncMock,
+    mock_process: AsyncMock,
+    mock_get_logger: MagicMock,
+    mock_context_builder: MagicMock,
+    client: TestClient,
+    tmp_path: Path,
+) -> None:
+    """Ensure cleanup context includes recent log snippets when available."""
+    mock_convert.return_value = b"converted_audio_data"
+    mock_transcribe.return_value = "context example"
+    mock_process.return_value = "Context Example"
+    mock_context_builder.return_value = ("Recent transcript history...", "note")
+    mock_logger = MagicMock()
+    mock_logger.log_file = tmp_path / "api-log.jsonl"
+    mock_get_logger.return_value = mock_logger
+
+    with tempfile.NamedTemporaryFile(suffix=".wav") as tmp:
+        tmp.write(b"RIFF")
+        tmp.seek(0)
+        response = client.post(
+            "/transcribe",
+            files={"audio": ("test.wav", tmp, "audio/wav")},
+            data={"cleanup": "true"},
+        )
+
+    assert response.status_code == 200
+    mock_context_builder.assert_called_once_with(
+        transcription_log=mock_logger.log_file,
+        clipboard_snapshot=None,
+    )
+    kwargs = mock_process.call_args.kwargs
+    assert kwargs["context"] == "Recent transcript history..."
+    mock_logger.log_transcription.assert_called_once_with(
+        raw="context example",
+        processed="Context Example",
+    )

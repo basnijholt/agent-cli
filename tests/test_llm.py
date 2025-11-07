@@ -222,6 +222,7 @@ def test_process_and_update_clipboard(
             clipboard=True,
             quiet=True,
             live=mock_live,
+            context="Recent context",
         ),
     )
 
@@ -233,3 +234,5 @@ def test_process_and_update_clipboard(
     assert call_args.kwargs["live"] is mock_live
     assert call_args.kwargs["show_output"] is True
     assert call_args.kwargs["exit_on_error"] is False
+    assert "<context>" in call_args.kwargs["user_input"]
+    assert "Recent context" in call_args.kwargs["user_input"]

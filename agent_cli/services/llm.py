@@ -96,7 +96,7 @@ def create_llm_agent(
 # --- LLM (Editing) Logic ---
 
 INPUT_TEMPLATE = """
-<original-text>
+{context_block}<original-text>
 {original_text}
 </original-text>
 
@@ -198,9 +198,17 @@ async def process_and_update_clipboard(
     clipboard: bool,
     quiet: bool,
     live: Live | None,
+    context: str | None = None,
 ) -> str | None:
     """Processes the text with the LLM, updates the clipboard, and displays the result."""
-    user_input = INPUT_TEMPLATE.format(original_text=original_text, instruction=instruction)
+    context_block = ""
+    if context:
+        context_block = f"<context>\n{context}\n</context>\n\n"
+    user_input = INPUT_TEMPLATE.format(
+        context_block=context_block,
+        original_text=original_text,
+        instruction=instruction,
+    )
 
     return await get_llm_response(
         system_prompt=system_prompt,

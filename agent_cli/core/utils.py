@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
+import os
 import signal
 import sys
 import time
@@ -14,7 +16,7 @@ from contextlib import (
     nullcontext,
     suppress,
 )
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import pyperclip
 from rich.console import Console
@@ -27,10 +29,15 @@ from rich.text import Text
 
 from . import process
 
+SECONDS_PER_MINUTE = 60
+MINUTES_PER_HOUR = 60
+HOURS_PER_DAY = 24
+
 if TYPE_CHECKING:
-    from collections.abc import AsyncGenerator, Coroutine, Generator
+    from collections.abc import AsyncGenerator, Coroutine, Generator, Iterator
     from datetime import timedelta
     from logging import Handler
+    from pathlib import Path
 
 console = Console()
 
@@ -84,6 +91,63 @@ def format_timedelta_to_ago(td: timedelta) -> str:
     if minutes > 0:
         return f"{minutes} minute{'s' if minutes != 1 else ''} ago"
     return f"{seconds} second{'s' if seconds != 1 else ''} ago"
+
+
+def format_short_timedelta(delta: timedelta) -> str:
+    """Format a timedelta into a compact 'Xm Ys' string."""
+    total_seconds = max(0, int(delta.total_seconds()))
+    if total_seconds < SECONDS_PER_MINUTE:
+        return f"{total_seconds}s"
+    minutes, seconds = divmod(total_seconds, SECONDS_PER_MINUTE)
+    if minutes < MINUTES_PER_HOUR:
+        return f"{minutes}m {seconds}s" if seconds else f"{minutes}m"
+    hours, minutes = divmod(minutes, MINUTES_PER_HOUR)
+    if hours < HOURS_PER_DAY:
+        return f"{hours}h {minutes}m"
+    days, hours = divmod(hours, HOURS_PER_DAY)
+    return f"{days}d {hours}h"
+
+
+def iter_lines_from_file_end(path: Path, chunk_size: int) -> Iterator[str]:
+    """Yield lines from the end of a file in reverse order."""
+    if chunk_size <= 0:
+        msg = "chunk_size must be positive"
+        raise ValueError(msg)
+
+    with path.open("rb") as file:
+        file.seek(0, os.SEEK_END)
+        position = file.tell()
+        buffer = b""
+
+        while position > 0:
+            read_size = min(chunk_size, position)
+            position -= read_size
+            file.seek(position)
+            chunk = file.read(read_size)
+            buffer = chunk + buffer
+
+            while True:
+                newline_idx = buffer.rfind(b"\n")
+                if newline_idx == -1:
+                    break
+                line_bytes = buffer[newline_idx + 1 :].strip()
+                buffer = buffer[:newline_idx]
+                if line_bytes:
+                    yield line_bytes.decode("utf-8", errors="ignore")
+
+            if position == 0:
+                final_line = buffer.strip()
+                if final_line:
+                    yield final_line.decode("utf-8", errors="ignore")
+                buffer = b""
+
+
+def parse_json_line(line: str) -> dict[str, Any] | None:
+    """Parse a JSON line and return a dictionary, or None if invalid."""
+    try:
+        return json.loads(line)
+    except json.JSONDecodeError:
+        return None
 
 
 def _create_spinner(text: str, style: str) -> Spinner:

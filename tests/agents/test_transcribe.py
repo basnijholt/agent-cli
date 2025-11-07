@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -42,6 +43,8 @@ async def test_transcribe_main_llm_enabled(
     stop_event = asyncio.Event()
     mock_signal_handling_context.return_value.__enter__.return_value = stop_event
     asyncio.get_event_loop().call_later(0.1, stop_event.set)
+
+    mock_pyperclip.paste.return_value = ""
 
     # The function we are testing
     with caplog.at_level(logging.INFO):
@@ -86,6 +89,7 @@ async def test_transcribe_main_llm_enabled(
     # Assertions
     mock_process_and_update_clipboard.assert_called_once()
     mock_pyperclip.copy.assert_called_once_with("hello world")
+    mock_pyperclip.paste.assert_called_once()
     assert "Copied raw transcript to clipboard before LLM processing." in caplog.text
 
 
@@ -208,6 +212,175 @@ def test_log_transcription(tmp_path: Path) -> None:
     assert "hostname" in second_entry
 
 
+def test_gather_recent_transcription_context(tmp_path: Path) -> None:
+    """Ensure only recent log entries are used for context."""
+    log_file = tmp_path / "transcriptions.jsonl"
+    now = datetime(2024, 1, 1, 12, 0, tzinfo=UTC)
+
+    entries = [
+        {
+            "timestamp": (now - timedelta(minutes=70)).isoformat(),
+            "role": "assistant",
+            "processed_output": "Too old",
+        },
+        {
+            "timestamp": (now - timedelta(minutes=30)).isoformat(),
+            "role": "user",
+            "raw_output": "Keep this one",
+        },
+        {
+            "timestamp": (now - timedelta(minutes=5)).isoformat(),
+            "role": "assistant",
+            "processed_output": "Also keep this",
+        },
+    ]
+
+    with log_file.open("w", encoding="utf-8") as f:
+        for entry in entries:
+            f.write(json.dumps(entry) + "\n")
+
+    context = transcribe._gather_recent_transcription_context(
+        log_file,
+        now=now,
+        max_age_seconds=3600,
+        max_entries=2,
+    )
+
+    assert context is not None
+    lines = context.splitlines()
+    assert lines[0].startswith("Recent transcript history")
+    assert len(lines) == 2
+    assert "Keep this one" in lines[1]
+
+
+def test_gather_recent_transcription_context_chunked_read(tmp_path: Path) -> None:
+    """Ensure we can read recent entries without loading entire file."""
+    log_file = tmp_path / "chunked.jsonl"
+    now = datetime(2024, 1, 1, 12, 0, tzinfo=UTC)
+
+    with log_file.open("w", encoding="utf-8") as f:
+        for i in reversed(range(10)):
+            entry = {
+                "timestamp": (now - timedelta(minutes=i * 5)).isoformat(),
+                "role": "user",
+                "raw_output": f"Entry {i}",
+                "processed_output": None,
+            }
+            f.write(json.dumps(entry) + "\n")
+
+    context = transcribe._gather_recent_transcription_context(
+        log_file,
+        now=now,
+        max_age_seconds=3600,
+        max_entries=3,
+        chunk_size=32,
+    )
+
+    assert context is not None
+    lines = context.splitlines()
+    assert lines[0].startswith("Recent transcript history")
+    assert len(lines) == 4
+    assert lines[1].endswith("Entry 2")
+    assert lines[-1].endswith("Entry 0")
+
+
+def test_gather_recent_context_prefers_raw(tmp_path: Path) -> None:
+    """Ensure raw transcripts are preferred when both raw and cleaned exist."""
+    log_file = tmp_path / "prefers_raw.jsonl"
+    now = datetime(2024, 1, 1, 12, 0, tzinfo=UTC)
+
+    entry = {
+        "timestamp": now.isoformat(),
+        "role": "assistant",
+        "raw_output": "Raw version",
+        "processed_output": "Clean version",
+    }
+    with log_file.open("w", encoding="utf-8") as f:
+        f.write(json.dumps(entry) + "\n")
+
+    context = transcribe._gather_recent_transcription_context(
+        log_file,
+        now=now,
+        max_age_seconds=3600,
+        max_entries=1,
+    )
+
+    assert context is not None
+    assert "Raw version" in context
+    assert "Clean version" not in context
+
+
+@pytest.mark.asyncio
+@patch("agent_cli.agents.transcribe.signal_handling_context")
+@patch("agent_cli.agents.transcribe.pyaudio_context")
+@patch("agent_cli.agents.transcribe.pyperclip")
+@patch("agent_cli.services.asr.wyoming_client_context")
+@patch("agent_cli.agents.transcribe.process_and_update_clipboard", new_callable=AsyncMock)
+async def test_transcribe_includes_clipboard_context(
+    mock_process_and_update_clipboard: AsyncMock,
+    mock_wyoming_client_context: MagicMock,
+    mock_pyperclip: MagicMock,
+    mock_pyaudio_context: MagicMock,
+    mock_signal_handling_context: MagicMock,
+) -> None:
+    """Ensure clipboard content is forwarded to the LLM context."""
+    mock_pyperclip.paste.return_value = "Clipboard reference text"
+
+    mock_pyaudio_instance = MagicMock()
+    mock_pyaudio_context.return_value.__enter__.return_value = mock_pyaudio_instance
+
+    mock_asr_client = MockASRClient("hello world")
+    mock_wyoming_client_context.return_value.__aenter__.return_value = mock_asr_client
+
+    stop_event = asyncio.Event()
+    mock_signal_handling_context.return_value.__enter__.return_value = stop_event
+    asyncio.get_event_loop().call_later(0.1, stop_event.set)
+
+    provider_cfg = config.ProviderSelection(
+        asr_provider="local",
+        llm_provider="local",
+        tts_provider="local",
+    )
+    general_cfg = config.General(
+        log_level="INFO",
+        log_file=None,
+        quiet=True,
+        list_devices=False,
+        clipboard=True,
+    )
+    audio_in_cfg = config.AudioInput()
+    wyoming_asr_cfg = config.WyomingASR(asr_wyoming_ip="localhost", asr_wyoming_port=12345)
+    openai_asr_cfg = config.OpenAIASR(asr_openai_model="whisper-1")
+    ollama_cfg = config.Ollama(llm_ollama_model="test", llm_ollama_host="localhost")
+    openai_llm_cfg = config.OpenAILLM(llm_openai_model="gpt-4", openai_base_url=None)
+    gemini_llm_cfg = config.GeminiLLM(
+        llm_gemini_model="gemini-1.5-flash",
+        gemini_api_key="test-key",
+    )
+
+    await transcribe._async_main(
+        extra_instructions=None,
+        provider_cfg=provider_cfg,
+        general_cfg=general_cfg,
+        audio_in_cfg=audio_in_cfg,
+        wyoming_asr_cfg=wyoming_asr_cfg,
+        openai_asr_cfg=openai_asr_cfg,
+        ollama_cfg=ollama_cfg,
+        openai_llm_cfg=openai_llm_cfg,
+        gemini_llm_cfg=gemini_llm_cfg,
+        llm_enabled=True,
+        transcription_log=None,
+        save_recording=False,
+        p=mock_pyaudio_instance,
+    )
+
+    mock_process_and_update_clipboard.assert_called_once()
+    context = mock_process_and_update_clipboard.call_args.kwargs["context"]
+    assert context is not None
+    assert "Clipboard content captured before this recording" in context
+    assert "Clipboard reference text" in context
+
+
 @pytest.mark.asyncio
 @patch("agent_cli.agents.transcribe.signal_handling_context")
 @patch("agent_cli.agents.transcribe.pyaudio_context")
@@ -217,7 +390,7 @@ def test_log_transcription(tmp_path: Path) -> None:
 async def test_transcribe_with_logging(
     mock_process_and_update_clipboard: AsyncMock,
     mock_wyoming_client_context: MagicMock,
-    mock_pyperclip: MagicMock,  # noqa: ARG001
+    mock_pyperclip: MagicMock,
     mock_pyaudio_context: MagicMock,
     mock_signal_handling_context: MagicMock,
     tmp_path: Path,
@@ -238,7 +411,8 @@ async def test_transcribe_with_logging(
     mock_signal_handling_context.return_value.__enter__.return_value = stop_event
     asyncio.get_event_loop().call_later(0.1, stop_event.set)
 
-    # Mock the LLM response
+    # Mock clipboard and LLM response
+    mock_pyperclip.paste.return_value = ""
     mock_process_and_update_clipboard.return_value = "Hello, world!"
 
     provider_cfg = config.ProviderSelection(
@@ -278,6 +452,8 @@ async def test_transcribe_with_logging(
         save_recording=False,  # Disable for testing
         p=mock_pyaudio_instance,
     )
+
+    mock_pyperclip.paste.assert_called_once()
 
     # Verify log file was created and contains expected entry
     assert log_file.exists()
