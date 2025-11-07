@@ -249,9 +249,8 @@ def test_gather_recent_transcription_context(tmp_path: Path) -> None:
     assert context is not None
     lines = context.splitlines()
     assert lines[0].startswith("Recent transcript history")
-    assert len(lines) == 3
+    assert len(lines) == 2
     assert "Keep this one" in lines[1]
-    assert "Also keep this" in lines[2]
 
 
 def test_gather_recent_transcription_context_chunked_read(tmp_path: Path) -> None:

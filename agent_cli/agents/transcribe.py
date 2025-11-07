@@ -119,21 +119,15 @@ def _build_context_line(
 
     # Both the CLI (`raw_output`/`processed_output`) and API (`raw`/`processed`)
     # logging formats are supported, preferring the raw transcript when present.
-    raw = entry.get("raw_output") or entry.get("raw")
-    processed = entry.get("processed_output") or entry.get("processed")
-    text = (raw or processed or "").strip()
+    text = (entry.get("raw_output") or entry.get("raw") or "").strip()
     if not text:
         return None, False
 
     if max_chars_per_entry > 0 and len(text) > max_chars_per_entry:
         text = text[:max_chars_per_entry].rstrip() + "..."
 
-    role = entry.get("role")
-    if not role:
-        role = "assistant" if processed else "user"
-    source = "raw transcript" if raw else "cleaned transcript"
     delta_str = format_short_timedelta(now - entry_ts)
-    return f"- {delta_str} ago ({role}, {source}): {text}", False
+    return f"- {delta_str} ago (raw transcript): {text}", False
 
 
 def _gather_recent_transcription_context(
