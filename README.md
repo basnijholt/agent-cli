@@ -501,6 +501,9 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 │                                      use.                                    │
 │ --input-device-name         TEXT     Device name keywords for partial        │
 │                                      matching.                               │
+│ --sample-rate               INTEGER  Sample rate (Hz) to use when recording  │
+│                                      microphone audio.                       │
+│                                      [default: 16000]                        │
 │ --list-devices                       List available audio input and output   │
 │                                      devices and exit.                       │
 ╰──────────────────────────────────────────────────────────────────────────────╯
@@ -747,6 +750,9 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 │                                      use.                                    │
 │ --input-device-name         TEXT     Device name keywords for partial        │
 │                                      matching.                               │
+│ --sample-rate               INTEGER  Sample rate (Hz) to use when recording  │
+│                                      microphone audio.                       │
+│                                      [default: 16000]                        │
 │ --list-devices                       List available audio input and output   │
 │                                      devices and exit.                       │
 ╰──────────────────────────────────────────────────────────────────────────────╯
@@ -917,6 +923,9 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 │                                      use.                                    │
 │ --input-device-name         TEXT     Device name keywords for partial        │
 │                                      matching.                               │
+│ --sample-rate               INTEGER  Sample rate (Hz) to use when recording  │
+│                                      microphone audio.                       │
+│                                      [default: 16000]                        │
 │ --list-devices                       List available audio input and output   │
 │                                      devices and exit.                       │
 ╰──────────────────────────────────────────────────────────────────────────────╯
@@ -1085,6 +1094,9 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 │                                      use.                                    │
 │ --input-device-name         TEXT     Device name keywords for partial        │
 │                                      matching.                               │
+│ --sample-rate               INTEGER  Sample rate (Hz) to use when recording  │
+│                                      microphone audio.                       │
+│                                      [default: 16000]                        │
 │ --list-devices                       List available audio input and output   │
 │                                      devices and exit.                       │
 ╰──────────────────────────────────────────────────────────────────────────────╯

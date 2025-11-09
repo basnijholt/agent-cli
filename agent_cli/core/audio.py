@@ -24,6 +24,13 @@ if TYPE_CHECKING:
     from agent_cli import config
 
 
+def get_wyoming_audio_config(sample_rate: int) -> dict[str, int]:
+    """Return a Wyoming audio config dict with the desired sample rate."""
+    config = dict(constants.WYOMING_AUDIO_CONFIG)
+    config["rate"] = sample_rate
+    return config
+
+
 class _AudioTee:
     """A thread-safe class to tee a continuous PyAudio stream into multiple asyncio queues.
 
@@ -165,6 +172,7 @@ async def read_audio_stream(
     quiet: bool = False,
     progress_message: str = "Processing audio",
     progress_style: str = "blue",
+    sample_rate: int,
 ) -> None:
     """Core audio reading function - reads chunks and calls handler.
 
@@ -180,6 +188,7 @@ async def read_audio_stream(
         quiet: If True, suppress console output
         progress_message: Message to display
         progress_style: Rich style for progress
+        sample_rate: Sampling rate used to interpret chunk durations
 
     """
     try:
@@ -200,9 +209,7 @@ async def read_audio_stream(
             logger.debug("Processed %d byte(s) of audio", len(chunk))
 
             # Update progress display
-            seconds_streamed += len(chunk) / (
-                constants.PYAUDIO_RATE * constants.PYAUDIO_CHANNELS * 2
-            )
+            seconds_streamed += len(chunk) / (sample_rate * constants.PYAUDIO_CHANNELS * 2)
             if live and not quiet:
                 if stop_event.ctrl_c_pressed:
                     msg = f"Ctrl+C pressed. Stopping {progress_message.lower()}..."
@@ -221,11 +228,14 @@ async def read_audio_stream(
 
 def setup_input_stream(
     input_device_index: int | None,
+    *,
+    sample_rate: int,
 ) -> dict:
     """Get standard PyAudio input stream configuration.
 
     Args:
         input_device_index: Input device index
+        sample_rate: Sampling rate for the PyAudio stream
 
     Returns:
         Dictionary of stream parameters
@@ -234,7 +244,7 @@ def setup_input_stream(
     return {
         "format": constants.PYAUDIO_FORMAT,
         "channels": constants.PYAUDIO_CHANNELS,
-        "rate": constants.PYAUDIO_RATE,
+        "rate": sample_rate,
         "input": True,
         "frames_per_buffer": constants.PYAUDIO_CHUNK_SIZE,
         "input_device_index": input_device_index,
@@ -261,10 +271,11 @@ def setup_output_stream(
         Dictionary of stream parameters
 
     """
+    rate = sample_rate or constants.PYAUDIO_RATE
     return {
         "format": pyaudio.get_format_from_width(sample_width or 2),
         "channels": channels or constants.PYAUDIO_CHANNELS,
-        "rate": sample_rate or constants.PYAUDIO_RATE,
+        "rate": rate,
         "output": True,
         "frames_per_buffer": constants.PYAUDIO_CHUNK_SIZE,
         "output_device_index": output_device_index,

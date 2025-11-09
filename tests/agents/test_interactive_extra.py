@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from typer.testing import CliRunner
 
-from agent_cli import config
+from agent_cli import config, constants
 from agent_cli.agents.chat import (
     _async_main,
     _handle_conversation_turn,
@@ -27,7 +27,7 @@ async def test_handle_conversation_turn_no_llm_response():
         tts_provider="local",
     )
     history_cfg = config.History()
-    audio_in_cfg = config.AudioInput()
+    audio_in_cfg = config.AudioInput(sample_rate=constants.PYAUDIO_RATE)
     wyoming_asr_cfg = config.WyomingASR(asr_wyoming_ip="localhost", asr_wyoming_port=10300)
     openai_asr_cfg = config.OpenAIASR(asr_openai_model="whisper-1")
     ollama_cfg = config.Ollama(llm_ollama_model="test-model", llm_ollama_host="localhost")
@@ -95,7 +95,7 @@ async def test_handle_conversation_turn_no_instruction():
         tts_provider="local",
     )
     history_cfg = config.History()
-    audio_in_cfg = config.AudioInput()
+    audio_in_cfg = config.AudioInput(sample_rate=constants.PYAUDIO_RATE)
     wyoming_asr_cfg = config.WyomingASR(asr_wyoming_ip="localhost", asr_wyoming_port=10300)
     openai_asr_cfg = config.OpenAIASR(asr_openai_model="whisper-1")
     ollama_cfg = config.Ollama(llm_ollama_model="test-model", llm_ollama_host="localhost")
@@ -195,7 +195,7 @@ async def test_async_main_exception_handling():
         tts_provider="local",
     )
     history_cfg = config.History()
-    audio_in_cfg = config.AudioInput()
+    audio_in_cfg = config.AudioInput(sample_rate=constants.PYAUDIO_RATE)
     wyoming_asr_cfg = config.WyomingASR(asr_wyoming_ip="localhost", asr_wyoming_port=10300)
     openai_asr_cfg = config.OpenAIASR(asr_openai_model="whisper-1")
     ollama_cfg = config.Ollama(llm_ollama_model="test-model", llm_ollama_host="localhost")

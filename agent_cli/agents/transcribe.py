@@ -254,6 +254,7 @@ async def _async_main(  # noqa: PLR0912, PLR0915, C901
     # Optional parameters for file-based transcription
     audio_file_path: Path | None = None,
     save_recording: bool = True,
+    sample_rate: int,
 ) -> None:
     """Unified async entry point for both live and file-based transcription."""
     start_time = time.monotonic()
@@ -270,7 +271,10 @@ async def _async_main(  # noqa: PLR0912, PLR0915, C901
                 )
                 return
 
-            recorded_transcriber = create_recorded_audio_transcriber(provider_cfg)
+            recorded_transcriber = create_recorded_audio_transcriber(
+                provider_cfg,
+                sample_rate=sample_rate,
+            )
 
             asr_config = (
                 openai_asr_cfg if provider_cfg.asr_provider == "openai" else wyoming_asr_cfg
@@ -427,6 +431,7 @@ def transcribe(  # noqa: PLR0912
     # --- ASR (Audio) Configuration ---
     input_device_index: int | None = opts.INPUT_DEVICE_INDEX,
     input_device_name: str | None = opts.INPUT_DEVICE_NAME,
+    sample_rate: int = opts.SAMPLE_RATE,
     asr_wyoming_ip: str = opts.ASR_WYOMING_IP,
     asr_wyoming_port: int = opts.ASR_WYOMING_PORT,
     asr_openai_model: str = opts.ASR_OPENAI_MODEL,
@@ -543,6 +548,7 @@ def transcribe(  # noqa: PLR0912
                 gemini_llm_cfg=gemini_llm_cfg,
                 llm_enabled=llm,
                 transcription_log=transcription_log,
+                sample_rate=sample_rate,
             ),
         )
         return
@@ -563,6 +569,7 @@ def transcribe(  # noqa: PLR0912
         audio_in_cfg = config.AudioInput(
             input_device_index=input_device_index,
             input_device_name=input_device_name,
+            sample_rate=sample_rate,
         )
 
         # We only use setup_devices for its input device handling
@@ -589,5 +596,6 @@ def transcribe(  # noqa: PLR0912
                     transcription_log=transcription_log,
                     save_recording=save_recording,
                     p=p,
+                    sample_rate=sample_rate,
                 ),
             )

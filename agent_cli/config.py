@@ -59,6 +59,7 @@ class AudioInput(BaseModel):
 
     input_device_index: int | None = None
     input_device_name: str | None = None
+    sample_rate: int
 
 
 class WyomingASR(BaseModel):

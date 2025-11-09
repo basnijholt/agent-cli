@@ -85,6 +85,7 @@ async def test_async_main_from_file(tmp_path: Path):
             gemini_llm_cfg=gemini_llm_cfg,
             llm_enabled=False,
             transcription_log=None,
+            sample_rate=constants.PYAUDIO_RATE,
         )
 
         # Verify the audio was loaded and transcribed
@@ -156,6 +157,7 @@ async def test_async_main_from_file_with_llm(tmp_path: Path):
             gemini_llm_cfg=gemini_llm_cfg,
             llm_enabled=True,
             transcription_log=None,
+            sample_rate=constants.PYAUDIO_RATE,
         )
 
         # Verify LLM processing was called
@@ -226,6 +228,7 @@ async def test_async_main_from_file_with_logging(tmp_path: Path):
             gemini_llm_cfg=gemini_llm_cfg,
             llm_enabled=False,
             transcription_log=log_file,
+            sample_rate=constants.PYAUDIO_RATE,
         )
 
         # Verify log file was created
@@ -298,6 +301,7 @@ async def test_async_main_from_file_error_handling(
             gemini_llm_cfg=gemini_llm_cfg,
             llm_enabled=False,
             transcription_log=None,
+            sample_rate=constants.PYAUDIO_RATE,
         )
 
         # Check that error message was printed
@@ -347,7 +351,7 @@ async def test_async_main_save_recording_enabled(
             list_devices=False,
             clipboard=True,
         )
-        audio_in_cfg = config.AudioInput()
+        audio_in_cfg = config.AudioInput(sample_rate=constants.PYAUDIO_RATE)
         wyoming_asr_cfg = config.WyomingASR(
             asr_wyoming_ip="localhost",
             asr_wyoming_port=10300,
@@ -381,6 +385,7 @@ async def test_async_main_save_recording_enabled(
             transcription_log=None,
             save_recording=True,  # Enable saving
             p=MagicMock(),
+            sample_rate=constants.PYAUDIO_RATE,
         )
 
         # Since we mocked the Wyoming client, the actual saving happens in _send_audio
@@ -417,6 +422,7 @@ def test_transcribe_command_last_recording_option(
             llm_provider="local",
             input_device_index=None,
             input_device_name=None,
+            sample_rate=constants.PYAUDIO_RATE,
             asr_wyoming_ip="localhost",
             asr_wyoming_port=10300,
             asr_openai_model="whisper-1",
@@ -469,6 +475,7 @@ def test_transcribe_command_from_file_option(tmp_path: Path):
             llm_provider="local",
             input_device_index=None,
             input_device_name=None,
+            sample_rate=constants.PYAUDIO_RATE,
             asr_wyoming_ip="localhost",
             asr_wyoming_port=10300,
             asr_openai_model="whisper-1",
@@ -533,6 +540,7 @@ def test_transcribe_command_last_recording_with_index(
             llm_provider="local",
             input_device_index=None,
             input_device_name=None,
+            sample_rate=constants.PYAUDIO_RATE,
             asr_wyoming_ip="localhost",
             asr_wyoming_port=10300,
             asr_openai_model="whisper-1",
@@ -591,6 +599,7 @@ def test_transcribe_command_last_recording_disabled(
             llm_provider="local",
             input_device_index=None,
             input_device_name=None,
+            sample_rate=constants.PYAUDIO_RATE,
             asr_wyoming_ip="localhost",
             asr_wyoming_port=10300,
             asr_openai_model="whisper-1",
@@ -635,6 +644,7 @@ def test_transcribe_command_conflicting_options() -> None:
             llm_provider="local",
             input_device_index=None,
             input_device_name=None,
+            sample_rate=constants.PYAUDIO_RATE,
             asr_wyoming_ip="localhost",
             asr_wyoming_port=10300,
             asr_openai_model="whisper-1",

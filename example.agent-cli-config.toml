@@ -30,6 +30,8 @@ output-device-name = "iloud,airpods,dell,macbook"
 # You can also specify device by index, though name is more stable.
 # input-device-index = 1
 # output-device-index = 1
+# Set the microphone sampling rate (Hz) for recording.
+sample-rate = 16000
 
 # --- LLM Settings ---
 # Ollama (local)
