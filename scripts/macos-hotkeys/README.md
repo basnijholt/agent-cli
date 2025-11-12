@@ -16,7 +16,7 @@ System-wide hotkeys for agent-cli voice AI features on macOS.
 
 Results appear in notifications and clipboard.
 
-> **Tip:** For a persistent “Listening…” indicator, open System Settings → Notifications → *terminal-notifier* and change the style to **Alerts**. The scripts keep that alert pinned while dismissing status/result notifications automatically.
+> **Tip:** For a persistent “Listening…” indicator, open System Settings → Notifications → *terminal-notifier* and set the Alert style to **Persistent** (or choose **Alerts** on older macOS versions). The scripts keep that alert pinned while dismissing status/result notifications automatically.
 
 ## What it installs
 

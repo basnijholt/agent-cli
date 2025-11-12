@@ -246,7 +246,7 @@ This script automatically:
 > After setup, you may need to grant Accessibility permissions to skhd in System Settings → Privacy & Security → Accessibility
 
 > [!TIP]
-> To keep the “Listening…” indicator visible for the whole recording, open System Settings → Notifications → *terminal-notifier* and switch the style to **Alerts**. The hotkey scripts will keep only the recording notification persistent; status and result toasts auto-dismiss.
+> To keep the “Listening…” indicator visible for the whole recording, open System Settings → Notifications → *terminal-notifier* and set the Alert style to **Persistent** (or choose **Alerts** on macOS versions that still use Alert/Banner wording). The hotkey scripts keep only the recording notification pinned; status and result toasts auto-dismiss.
 
 ### Linux Hotkeys
 
