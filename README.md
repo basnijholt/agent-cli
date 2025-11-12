@@ -245,6 +245,9 @@ This script automatically:
 > [!NOTE]
 > After setup, you may need to grant Accessibility permissions to skhd in System Settings → Privacy & Security → Accessibility
 
+> [!TIP]
+> To keep the “Listening…” indicator visible for the whole recording, open System Settings → Notifications → *terminal-notifier* and switch the style to **Alerts**. The hotkey scripts will keep only the recording notification persistent; status and result toasts auto-dismiss.
+
 ### Linux Hotkeys
 
 ```bash

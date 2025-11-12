@@ -104,7 +104,8 @@ scripts/run-openwakeword.sh
 
 ### Terminal-notifier Popup Issues
 
-Check if Settings > Notifications > terminal-notifier > Allow notifications is switched on.
+- Ensure Settings > Notifications > terminal-notifier > Allow Notifications is enabled.
+- For a persistent “Listening…” badge, set the notification style to **Alerts**. This keeps the recording indicator visible while other notifications still auto-dismiss automatically.
 
 ### Ollama Issues
 
