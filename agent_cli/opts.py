@@ -34,9 +34,9 @@ LLM: bool = typer.Option(
 )
 # Ollama (local service)
 LLM_OLLAMA_MODEL: str = typer.Option(
-    "qwen3:4b",
+    "gemma3:4b",
     "--llm-ollama-model",
-    help="The Ollama model to use. Default is qwen3:4b.",
+    help="The Ollama model to use. Default is gemma3:4b.",
     rich_help_panel="LLM Configuration: Ollama (local)",
 )
 LLM_OLLAMA_HOST: str = typer.Option(

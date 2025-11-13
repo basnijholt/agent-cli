@@ -396,8 +396,8 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ LLM Configuration: Ollama (local) ──────────────────────────────────────────╮
 │ --llm-ollama-model        TEXT  The Ollama model to use. Default is          │
-│                                 qwen3:4b.                                    │
-│                                 [default: qwen3:4b]                          │
+│                                 gemma3:4b.                                   │
+│                                 [default: gemma3:4b]                         │
 │ --llm-ollama-host         TEXT  The Ollama server host. Default is           │
 │                                 http://localhost:11434.                      │
 │                                 [default: http://localhost:11434]            │
@@ -519,8 +519,8 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ LLM Configuration: Ollama (local) ──────────────────────────────────────────╮
 │ --llm-ollama-model        TEXT  The Ollama model to use. Default is          │
-│                                 qwen3:4b.                                    │
-│                                 [default: qwen3:4b]                          │
+│                                 gemma3:4b.                                   │
+│                                 [default: gemma3:4b]                         │
 │ --llm-ollama-host         TEXT  The Ollama server host. Default is           │
 │                                 http://localhost:11434.                      │
 │                                 [default: http://localhost:11434]            │
@@ -765,8 +765,8 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ LLM Configuration: Ollama (local) ──────────────────────────────────────────╮
 │ --llm-ollama-model        TEXT  The Ollama model to use. Default is          │
-│                                 qwen3:4b.                                    │
-│                                 [default: qwen3:4b]                          │
+│                                 gemma3:4b.                                   │
+│                                 [default: gemma3:4b]                         │
 │ --llm-ollama-host         TEXT  The Ollama server host. Default is           │
 │                                 http://localhost:11434.                      │
 │                                 [default: http://localhost:11434]            │
@@ -935,8 +935,8 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ LLM Configuration: Ollama (local) ──────────────────────────────────────────╮
 │ --llm-ollama-model        TEXT  The Ollama model to use. Default is          │
-│                                 qwen3:4b.                                    │
-│                                 [default: qwen3:4b]                          │
+│                                 gemma3:4b.                                   │
+│                                 [default: gemma3:4b]                         │
 │ --llm-ollama-host         TEXT  The Ollama server host. Default is           │
 │                                 http://localhost:11434.                      │
 │                                 [default: http://localhost:11434]            │
@@ -1103,8 +1103,8 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ LLM Configuration: Ollama (local) ──────────────────────────────────────────╮
 │ --llm-ollama-model        TEXT  The Ollama model to use. Default is          │
-│                                 qwen3:4b.                                    │
-│                                 [default: qwen3:4b]                          │
+│                                 gemma3:4b.                                   │
+│                                 [default: gemma3:4b]                         │
 │ --llm-ollama-host         TEXT  The Ollama server host. Default is           │
 │                                 http://localhost:11434.                      │
 │                                 [default: http://localhost:11434]            │

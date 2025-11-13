@@ -33,7 +33,7 @@ output-device-name = "iloud,airpods,dell,macbook"
 
 # --- LLM Settings ---
 # Ollama (local)
-llm-ollama-model = "qwen3:4b"
+llm-ollama-model = "gemma3:4b"
 llm-ollama-host = "http://localhost:11434"
 # OpenAI
 llm-openai-model = "gpt-4o-mini"

@@ -60,7 +60,7 @@ Choose the best installation method for your platform and performance needs.
 
 All installation methods set up these services:
 
-- **🧠 Ollama** - LLM server (qwen3:4b model)
+- **🧠 Ollama** - LLM server (gemma3:4b model)
 - **🎤 Wyoming Faster Whisper** - Speech-to-text
 - **🗣️ Wyoming Piper** - Text-to-speech
 - **👂 Wyoming OpenWakeWord** - Wake word detection

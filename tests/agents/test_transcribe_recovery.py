@@ -62,7 +62,7 @@ async def test_async_main_from_file(tmp_path: Path):
             asr_openai_model="whisper-1",
         )
         ollama_cfg = config.Ollama(
-            llm_ollama_model="qwen3:4b",
+            llm_ollama_model="gemma3:4b",
             llm_ollama_host="http://localhost:11434",
         )
         openai_llm_cfg = config.OpenAILLM(
@@ -133,7 +133,7 @@ async def test_async_main_from_file_with_llm(tmp_path: Path):
             asr_openai_model="whisper-1",
         )
         ollama_cfg = config.Ollama(
-            llm_ollama_model="qwen3:4b",
+            llm_ollama_model="gemma3:4b",
             llm_ollama_host="http://localhost:11434",
         )
         openai_llm_cfg = config.OpenAILLM(
@@ -203,7 +203,7 @@ async def test_async_main_from_file_with_logging(tmp_path: Path):
             asr_openai_model="whisper-1",
         )
         ollama_cfg = config.Ollama(
-            llm_ollama_model="qwen3:4b",
+            llm_ollama_model="gemma3:4b",
             llm_ollama_host="http://localhost:11434",
         )
         openai_llm_cfg = config.OpenAILLM(
@@ -275,7 +275,7 @@ async def test_async_main_from_file_error_handling(
             asr_openai_model="whisper-1",
         )
         ollama_cfg = config.Ollama(
-            llm_ollama_model="qwen3:4b",
+            llm_ollama_model="gemma3:4b",
             llm_ollama_host="http://localhost:11434",
         )
         openai_llm_cfg = config.OpenAILLM(
@@ -356,7 +356,7 @@ async def test_async_main_save_recording_enabled(
             asr_openai_model="whisper-1",
         )
         ollama_cfg = config.Ollama(
-            llm_ollama_model="qwen3:4b",
+            llm_ollama_model="gemma3:4b",
             llm_ollama_host="http://localhost:11434",
         )
         openai_llm_cfg = config.OpenAILLM(
@@ -420,7 +420,7 @@ def test_transcribe_command_last_recording_option(
             asr_wyoming_ip="localhost",
             asr_wyoming_port=10300,
             asr_openai_model="whisper-1",
-            llm_ollama_model="qwen3:4b",
+            llm_ollama_model="gemma3:4b",
             llm_ollama_host="http://localhost:11434",
             llm_openai_model="gpt-4o-mini",
             openai_api_key=None,
@@ -472,7 +472,7 @@ def test_transcribe_command_from_file_option(tmp_path: Path):
             asr_wyoming_ip="localhost",
             asr_wyoming_port=10300,
             asr_openai_model="whisper-1",
-            llm_ollama_model="qwen3:4b",
+            llm_ollama_model="gemma3:4b",
             llm_ollama_host="http://localhost:11434",
             llm_openai_model="gpt-4o-mini",
             openai_api_key=None,
@@ -536,7 +536,7 @@ def test_transcribe_command_last_recording_with_index(
             asr_wyoming_ip="localhost",
             asr_wyoming_port=10300,
             asr_openai_model="whisper-1",
-            llm_ollama_model="qwen3:4b",
+            llm_ollama_model="gemma3:4b",
             llm_ollama_host="http://localhost:11434",
             llm_openai_model="gpt-4o-mini",
             openai_api_key=None,
@@ -594,7 +594,7 @@ def test_transcribe_command_last_recording_disabled(
             asr_wyoming_ip="localhost",
             asr_wyoming_port=10300,
             asr_openai_model="whisper-1",
-            llm_ollama_model="qwen3:4b",
+            llm_ollama_model="gemma3:4b",
             llm_ollama_host="http://localhost:11434",
             llm_openai_model="gpt-4o-mini",
             openai_api_key=None,
@@ -638,7 +638,7 @@ def test_transcribe_command_conflicting_options() -> None:
             asr_wyoming_ip="localhost",
             asr_wyoming_port=10300,
             asr_openai_model="whisper-1",
-            llm_ollama_model="qwen3:4b",
+            llm_ollama_model="gemma3:4b",
             llm_ollama_host="http://localhost:11434",
             llm_openai_model="gpt-4o-mini",
             openai_api_key=None,

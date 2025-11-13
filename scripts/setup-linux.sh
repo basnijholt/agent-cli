@@ -84,10 +84,10 @@ echo "🤖 Installing/upgrading agent-cli..."
 uv tool install --upgrade agent-cli
 
 # Preload default Ollama model
-echo "⬇️ Preloading default Ollama model (qwen3:4b)..."
+echo "⬇️ Preloading default Ollama model (gemma3:4b)..."
 echo "⏳ This may take a few minutes depending on your internet connection..."
 # Start Ollama in background, then pull model synchronously
-(ollama serve >/dev/null 2>&1 &) && sleep 2 && ollama pull qwen3:4b
+(ollama serve >/dev/null 2>&1 &) && sleep 2 && ollama pull gemma3:4b
 # Stop the temporary ollama server
 pkill -f "ollama serve" || true
 
