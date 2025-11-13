@@ -173,7 +173,7 @@ async def test_autocorrect_command_with_text(
         tts_provider="local",
     )
     ollama_cfg = config.Ollama(
-        llm_ollama_model="qwen3:4b",
+        llm_ollama_model="gemma3:4b",
         llm_ollama_host="http://localhost:11434",
     )
     openai_llm_cfg = config.OpenAILLM(
@@ -238,7 +238,7 @@ async def test_autocorrect_command_from_clipboard(
         tts_provider="local",
     )
     ollama_cfg = config.Ollama(
-        llm_ollama_model="qwen3:4b",
+        llm_ollama_model="gemma3:4b",
         llm_ollama_host="http://localhost:11434",
     )
     openai_llm_cfg = config.OpenAILLM(

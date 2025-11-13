@@ -184,7 +184,7 @@ def test_log_transcription(tmp_path: Path) -> None:
         role="assistant",
         raw_transcript="hello world",
         processed_transcript="Hello, world!",
-        model_info="local:qwen3:4b",
+        model_info="local:gemma3:4b",
     )
 
     # Read and verify log entries
@@ -205,7 +205,7 @@ def test_log_transcription(tmp_path: Path) -> None:
     # Check second entry (assistant/processed)
     second_entry = log_entries[1]
     assert second_entry["role"] == "assistant"
-    assert second_entry["model"] == "local:qwen3:4b"
+    assert second_entry["model"] == "local:gemma3:4b"
     assert second_entry["raw_output"] == "hello world"
     assert second_entry["processed_output"] == "Hello, world!"
     assert "timestamp" in second_entry
@@ -430,7 +430,7 @@ async def test_transcribe_with_logging(
     audio_in_cfg = config.AudioInput()
     wyoming_asr_cfg = config.WyomingASR(asr_wyoming_ip="localhost", asr_wyoming_port=12345)
     openai_asr_cfg = config.OpenAIASR(asr_openai_model="whisper-1")
-    ollama_cfg = config.Ollama(llm_ollama_model="qwen3:4b", llm_ollama_host="localhost")
+    ollama_cfg = config.Ollama(llm_ollama_model="gemma3:4b", llm_ollama_host="localhost")
     openai_llm_cfg = config.OpenAILLM(llm_openai_model="gpt-4", openai_base_url=None)
     gemini_llm_cfg = config.GeminiLLM(
         llm_gemini_model="gemini-1.5-flash",
@@ -464,7 +464,7 @@ async def test_transcribe_with_logging(
     assert len(log_entries) == 1
     entry = log_entries[0]
     assert entry["role"] == "assistant"
-    assert entry["model"] == "local:qwen3:4b"
+    assert entry["model"] == "local:gemma3:4b"
     assert entry["raw_output"] == "hello world"
     assert entry["processed_output"] == "Hello, world!"
     assert "timestamp" in entry

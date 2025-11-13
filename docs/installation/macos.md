@@ -114,7 +114,7 @@ scripts/run-openwakeword.sh
 ollama list
 
 # Pull a model manually
-ollama pull qwen3:4b
+ollama pull gemma3:4b
 
 # Check Ollama logs
 tail -f ~/.ollama/logs/server.log

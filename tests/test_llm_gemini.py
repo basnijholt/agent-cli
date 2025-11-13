@@ -21,7 +21,7 @@ async def test_create_llm_agent_with_gemini() -> None:
         gemini_api_key="test-key",
     )
     ollama_cfg = config.Ollama(
-        llm_ollama_model="qwen3:4b",
+        llm_ollama_model="gemma3:4b",
         llm_ollama_host="http://localhost:11434",
     )
     openai_cfg = config.OpenAILLM(
