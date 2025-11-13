@@ -48,7 +48,7 @@ The Docker setup provides:
 
 | Service          | Image                        | Port  | Purpose                    |
 | ---------------- | ---------------------------- | ----- | -------------------------- |
-| **ollama**       | Custom build                 | 11434 | LLM server with gemma3:4b   |
+| **ollama**       | Custom build                 | 11434 | LLM server with gemma3:4b  |
 | **whisper**      | rhasspy/wyoming-whisper      | 10300 | Speech-to-text (large-v3)  |
 | **piper**        | rhasspy/wyoming-piper        | 10200 | Text-to-speech (ryan-high) |
 | **openwakeword** | rhasspy/wyoming-openwakeword | 10400 | Wake word detection        |
