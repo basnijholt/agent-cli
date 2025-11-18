@@ -8,13 +8,13 @@ import typer
 LLM_PROVIDER: str = typer.Option(
     "ollama",
     "--llm-provider",
-    help="The LLM provider to use ('ollama', 'openai', 'gemini'; 'local' is deprecated alias for 'ollama').",
+    help="The LLM provider to use ('ollama', 'openai', 'gemini').",
     rich_help_panel="Provider Selection",
 )
 ASR_PROVIDER: str = typer.Option(
     "wyoming",
     "--asr-provider",
-    help="The ASR provider to use ('wyoming', 'openai'; 'local' is deprecated alias for 'wyoming').",
+    help="The ASR provider to use ('wyoming', 'openai').",
     rich_help_panel="Provider Selection",
 )
 TTS_PROVIDER: str = typer.Option(
