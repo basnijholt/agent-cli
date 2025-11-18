@@ -7,7 +7,8 @@ Usage:
 
 Environment variables:
     CANARY_PORT: Server port (default: 9898)
-    CANARY_DEVICE: Device to use (default: cuda if available, else cpu)
+    CANARY_DEVICE: Device to use (default: auto-select GPU with most free memory)
+                   Options: cpu, cuda, cuda:0, cuda:1, etc.
 """
 
 import os
@@ -24,9 +25,32 @@ from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import JSONResponse
 from nemo.collections.speechlm2.models import SALM
 
+
+def select_best_gpu() -> str:
+    """Select the GPU with the most free memory, or CPU if no GPU available."""
+    if not torch.cuda.is_available():
+        return "cpu"
+
+    # If only one GPU, use it
+    if torch.cuda.device_count() == 1:
+        return "cuda:0"
+
+    # Find GPU with most free memory
+    max_free_memory = 0
+    best_gpu = 0
+
+    for i in range(torch.cuda.device_count()):
+        free_memory = torch.cuda.mem_get_info(i)[0]  # Returns (free, total)
+        if free_memory > max_free_memory:
+            max_free_memory = free_memory
+            best_gpu = i
+
+    return f"cuda:{best_gpu}"
+
+
 app = FastAPI()
 salm_model = None
-DEVICE = os.getenv("CANARY_DEVICE", "cuda" if torch.cuda.is_available() else "cpu")
+DEVICE = os.getenv("CANARY_DEVICE") or select_best_gpu()
 PORT = int(os.getenv("CANARY_PORT", "9898"))
 
 
@@ -71,7 +95,21 @@ def ensure_16k_mono(path: str) -> str:
 async def load_model() -> None:
     """Load the Canary model on startup."""
     global salm_model
-    print("Loading nvidia/canary-qwen-2.5b on", DEVICE, flush=True)
+
+    # Print device info
+    if DEVICE.startswith("cuda"):
+        gpu_id = int(DEVICE.split(":")[1]) if ":" in DEVICE else 0
+        free_mem, total_mem = torch.cuda.mem_get_info(gpu_id)
+        free_gb = free_mem / 1024**3
+        total_gb = total_mem / 1024**3
+        print(
+            f"Loading nvidia/canary-qwen-2.5b on {DEVICE} "
+            f"({free_gb:.1f}GB free / {total_gb:.1f}GB total)",
+            flush=True,
+        )
+    else:
+        print(f"Loading nvidia/canary-qwen-2.5b on {DEVICE}", flush=True)
+
     salm_model = SALM.from_pretrained("nvidia/canary-qwen-2.5b").to(DEVICE).eval()
 
 

@@ -19,7 +19,7 @@ pkgs.mkShell {
 
     # Canary server defaults
     export CANARY_PORT=9898
-    export CANARY_DEVICE=cuda
+    # CANARY_DEVICE auto-detects GPU with most free memory (override if needed)
 
     echo "CUDA environment configured (using system NVIDIA drivers)"
     echo "TRITON_LIBCUDA_PATH: $TRITON_LIBCUDA_PATH"
