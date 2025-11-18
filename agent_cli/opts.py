@@ -121,6 +121,18 @@ ASR_OPENAI_MODEL: str = typer.Option(
     help="The OpenAI model to use for ASR (transcription).",
     rich_help_panel="ASR (Audio) Configuration: OpenAI",
 )
+ASR_OPENAI_BASE_URL: str | None = typer.Option(
+    None,
+    "--asr-openai-base-url",
+    help="Custom base URL for OpenAI-compatible ASR API (e.g., for custom Whisper server: http://localhost:9898).",
+    rich_help_panel="ASR (Audio) Configuration: OpenAI",
+)
+ASR_OPENAI_PROMPT: str | None = typer.Option(
+    None,
+    "--asr-openai-prompt",
+    help="Custom prompt to guide transcription (optional).",
+    rich_help_panel="ASR (Audio) Configuration: OpenAI",
+)
 
 
 # --- Wake Word Options ---

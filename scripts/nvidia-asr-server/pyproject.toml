@@ -1,0 +1,27 @@
+[project]
+name = "nvidia-asr-server"
+version = "1.0.0"
+description = "NVIDIA ASR server with OpenAI-compatible API"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "fastapi[standard]>=0.115.0",
+    "torch>=2.5.0",
+    "soundfile>=0.12.1",
+    "sacrebleu>=2.4.0",
+    "typer>=0.9.0",
+    "nemo-toolkit[asr,tts] @ git+https://github.com/NVIDIA/NeMo.git",
+]
+
+[tool.uv.sources]
+torch = [{ index = "pytorch-cu124" }]
+
+[[tool.uv.index]]
+name = "pytorch-cu124"
+url = "https://download.pytorch.org/whl/cu124"
+explicit = true
+
+[tool.uv]
+override-dependencies = [
+    "ml-dtypes>=0.5.0",
+]

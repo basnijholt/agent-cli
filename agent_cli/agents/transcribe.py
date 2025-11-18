@@ -272,9 +272,11 @@ async def _async_main(  # noqa: PLR0912, PLR0915, C901
 
             recorded_transcriber = create_recorded_audio_transcriber(provider_cfg)
 
-            asr_config = (
-                openai_asr_cfg if provider_cfg.asr_provider == "openai" else wyoming_asr_cfg
-            )
+            if provider_cfg.asr_provider == "openai":
+                asr_config = openai_asr_cfg
+            else:
+                asr_config = wyoming_asr_cfg
+
             # Call with appropriate arguments based on provider
             if provider_cfg.asr_provider == "openai":
                 transcript = await recorded_transcriber(
@@ -430,6 +432,8 @@ def transcribe(  # noqa: PLR0912
     asr_wyoming_ip: str = opts.ASR_WYOMING_IP,
     asr_wyoming_port: int = opts.ASR_WYOMING_PORT,
     asr_openai_model: str = opts.ASR_OPENAI_MODEL,
+    asr_openai_base_url: str | None = opts.ASR_OPENAI_BASE_URL,
+    asr_openai_prompt: str | None = opts.ASR_OPENAI_PROMPT,
     # --- LLM Configuration ---
     llm_ollama_model: str = opts.LLM_OLLAMA_MODEL,
     llm_ollama_host: str = opts.LLM_OLLAMA_HOST,
@@ -512,6 +516,8 @@ def transcribe(  # noqa: PLR0912
     openai_asr_cfg = config.OpenAIASR(
         asr_openai_model=asr_openai_model,
         openai_api_key=openai_api_key,
+        openai_base_url=asr_openai_base_url,
+        asr_openai_prompt=asr_openai_prompt,
     )
     ollama_cfg = config.Ollama(
         llm_ollama_model=llm_ollama_model,

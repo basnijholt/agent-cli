@@ -515,9 +515,14 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 │ --asr-wyoming-port        INTEGER  Wyoming ASR server port. [default: 10300] │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ ASR (Audio) Configuration: OpenAI ──────────────────────────────────────────╮
-│ --asr-openai-model        TEXT  The OpenAI model to use for ASR              │
-│                                 (transcription).                             │
-│                                 [default: whisper-1]                         │
+│ --asr-openai-model           TEXT  The OpenAI model to use for ASR           │
+│                                    (transcription).                          │
+│                                    [default: whisper-1]                      │
+│ --asr-openai-base-url        TEXT  Custom base URL for OpenAI-compatible ASR │
+│                                    API (e.g., for custom Whisper server:     │
+│                                    http://localhost:9898).                   │
+│ --asr-openai-prompt          TEXT  Custom prompt to guide transcription      │
+│                                    (optional).                               │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ LLM Configuration: Ollama (local) ──────────────────────────────────────────╮
 │ --llm-ollama-model        TEXT  The Ollama model to use. Default is          │
@@ -1099,9 +1104,14 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 │ --asr-wyoming-port        INTEGER  Wyoming ASR server port. [default: 10300] │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ ASR (Audio) Configuration: OpenAI ──────────────────────────────────────────╮
-│ --asr-openai-model        TEXT  The OpenAI model to use for ASR              │
-│                                 (transcription).                             │
-│                                 [default: whisper-1]                         │
+│ --asr-openai-model           TEXT  The OpenAI model to use for ASR           │
+│                                    (transcription).                          │
+│                                    [default: whisper-1]                      │
+│ --asr-openai-base-url        TEXT  Custom base URL for OpenAI-compatible ASR │
+│                                    API (e.g., for custom Whisper server:     │
+│                                    http://localhost:9898).                   │
+│ --asr-openai-prompt          TEXT  Custom prompt to guide transcription      │
+│                                    (optional).                               │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ LLM Configuration: Ollama (local) ──────────────────────────────────────────╮
 │ --llm-ollama-model        TEXT  The Ollama model to use. Default is          │
