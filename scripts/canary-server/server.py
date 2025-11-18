@@ -12,14 +12,17 @@ Usage:
     uv run server.py --port 9090 --device cuda:1
 """
 
+from __future__ import annotations
+
 import shutil
 import subprocess
 import tempfile
 import traceback
 from contextlib import suppress
+from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Annotated, Any
+from typing import TYPE_CHECKING, Annotated, Any
 
 import nemo.collections.asr as nemo_asr
 import torch
@@ -29,6 +32,15 @@ from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import JSONResponse
 from nemo.collections.speechlm2.models import SALM
 
+if TYPE_CHECKING:
+    from typing import TypedDict
+
+    class TranscriptionResult(TypedDict, total=False):
+        """Transcription result with optional word-level timestamps."""
+
+        text: str
+        words: list[dict[str, Any]]
+
 
 class ModelType(str, Enum):
     """Supported ASR models."""
@@ -37,48 +49,42 @@ class ModelType(str, Enum):
     PARAKEET = "parakeet-tdt-0.6b-v2"
 
 
+@dataclass
+class ServerConfig:
+    """Server configuration."""
+
+    model_type: ModelType
+    device: str
+    port: int
+
+
 def select_best_gpu() -> str:
     """Select the GPU with the most free memory, or CPU if no GPU available."""
     if not torch.cuda.is_available():
         return "cpu"
 
-    # If only one GPU, use it
     if torch.cuda.device_count() == 1:
         return "cuda:0"
 
-    # Find GPU with most free memory
-    max_free_memory = 0
-    best_gpu = 0
-
-    for i in range(torch.cuda.device_count()):
-        free_memory = torch.cuda.mem_get_info(i)[0]  # Returns (free, total)
-        if free_memory > max_free_memory:
-            max_free_memory = free_memory
-            best_gpu = i
-
+    best_gpu = max(
+        range(torch.cuda.device_count()),
+        key=lambda i: torch.cuda.mem_get_info(i)[0],
+    )
     return f"cuda:{best_gpu}"
 
 
-app = FastAPI()
-asr_model: Any = None
-MODEL_TYPE: ModelType | None = None
-DEVICE: str | None = None
-PORT: int | None = None
-
-
-def ffmpeg_resample_to_16k_mono(input_path: str) -> str:
+def resample_audio(input_path: str) -> str:
     """Resample audio to 16kHz mono WAV using ffmpeg."""
-    out_path = input_path + "_16k.wav"
-    # Try with format auto-detection first, then try as raw PCM if that fails
+    out_path = f"{input_path}_16k.wav"
     cmd = [
         "ffmpeg",
         "-y",
         "-f",
         "s16le",  # Assume signed 16-bit little-endian PCM
         "-ar",
-        "16000",  # Input sample rate (agent-cli uses 16kHz)
+        "16000",
         "-ac",
-        "1",  # Input is mono
+        "1",
         "-i",
         input_path,
         "-ar",
@@ -87,76 +93,72 @@ def ffmpeg_resample_to_16k_mono(input_path: str) -> str:
         "1",
         out_path,
     ]
-    try:
-        subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, check=True)
-    except subprocess.CalledProcessError as e:
-        stderr_msg = e.stderr.decode() if e.stderr else "No error output"
-        msg = f"ffmpeg failed: {stderr_msg}"
-        raise RuntimeError(msg) from e
+    result = subprocess.run(cmd, capture_output=True, check=False)
+    if result.returncode != 0:
+        stderr = result.stderr.decode() if result.stderr else "No error output"
+        msg = f"ffmpeg failed: {stderr}"
+        raise RuntimeError(msg)
     return out_path
 
 
-def ensure_16k_mono(path: str) -> str:
-    """Convert any audio format to 16kHz mono WAV using ffmpeg."""
-    # Always use ffmpeg for format conversion and resampling
-    # This handles any input format including raw PCM data
-    return ffmpeg_resample_to_16k_mono(path)
-
-
-@app.on_event("startup")
-async def load_model() -> None:
-    """Load the ASR model on startup."""
-    global asr_model
-
-    assert MODEL_TYPE is not None
-    assert DEVICE is not None
-
-    model_name = f"nvidia/{MODEL_TYPE.value}"
+def load_asr_model(config: ServerConfig) -> Any:
+    """Load the appropriate ASR model based on configuration."""
+    model_name = f"nvidia/{config.model_type.value}"
 
     # Print device info
-    if DEVICE.startswith("cuda"):
-        gpu_id = int(DEVICE.split(":")[1]) if ":" in DEVICE else 0
+    if config.device.startswith("cuda"):
+        gpu_id = int(config.device.split(":")[1]) if ":" in config.device else 0
         free_mem, total_mem = torch.cuda.mem_get_info(gpu_id)
         free_gb = free_mem / 1024**3
         total_gb = total_mem / 1024**3
         print(
-            f"Loading {model_name} on {DEVICE} ({free_gb:.1f}GB free / {total_gb:.1f}GB total)",
+            f"Loading {model_name} on {config.device} ({free_gb:.1f}GB / {total_gb:.1f}GB)",
             flush=True,
         )
     else:
-        print(f"Loading {model_name} on {DEVICE}", flush=True)
+        print(f"Loading {model_name} on {config.device}", flush=True)
 
-    if MODEL_TYPE == ModelType.CANARY:
-        asr_model = SALM.from_pretrained(model_name).to(DEVICE).eval()
-    elif MODEL_TYPE == ModelType.PARAKEET:
-        asr_model = nemo_asr.models.ASRModel.from_pretrained(model_name).to(DEVICE).eval()
+    model_loaders = {
+        ModelType.CANARY: lambda: SALM.from_pretrained(model_name),
+        ModelType.PARAKEET: lambda: nemo_asr.models.ASRModel.from_pretrained(model_name),
+    }
+
+    model = model_loaders[config.model_type]()
+    return model.to(config.device).eval()
 
 
-def _transcribe_canary(audio_path: str, prompt: str | None) -> str:
+app = FastAPI()
+asr_model: Any = None
+config: ServerConfig | None = None
+
+
+@app.on_event("startup")
+async def startup() -> None:
+    """Load the ASR model on startup."""
+    global asr_model
+    assert config is not None
+    asr_model = load_asr_model(config)
+
+
+def transcribe_canary(audio_path: str, prompt: str | None) -> str:
     """Transcribe audio using Canary model."""
     user_prompt = prompt or "Transcribe the following:"
     full_prompt = f"{user_prompt} {asr_model.audio_locator_tag}"
 
-    prompts = [
-        [
-            {
-                "role": "user",
-                "content": full_prompt,
-                "audio": [audio_path],
-            },
-        ],
-    ]
-
+    prompts = [[{"role": "user", "content": full_prompt, "audio": [audio_path]}]]
     answer_ids = asr_model.generate(prompts=prompts, max_new_tokens=128)
     return asr_model.tokenizer.ids_to_text(answer_ids[0].cpu())
 
 
-def _transcribe_parakeet(audio_path: str, timestamp_granularities: list[str] | None) -> dict:
+def transcribe_parakeet(
+    audio_path: str,
+    timestamp_granularities: list[str] | None,
+) -> TranscriptionResult:
     """Transcribe audio using Parakeet model."""
     enable_timestamps = bool(timestamp_granularities)
     output = asr_model.transcribe([audio_path], timestamps=enable_timestamps)
 
-    result = {"text": output[0].text}
+    result: TranscriptionResult = {"text": output[0].text}
 
     if enable_timestamps and timestamp_granularities and "word" in timestamp_granularities:
         word_timestamps = output[0].timestamp.get("word", [])
@@ -166,6 +168,14 @@ def _transcribe_parakeet(audio_path: str, timestamp_granularities: list[str] | N
             ]
 
     return result
+
+
+def cleanup_files(*paths: str | None) -> None:
+    """Clean up temporary files."""
+    for p in paths:
+        if p:
+            with suppress(OSError):
+                Path(p).unlink(missing_ok=True)
 
 
 @app.post("/v1/audio/transcriptions", response_model=None)
@@ -179,52 +189,36 @@ async def transcribe(
     if asr_model is None:
         raise HTTPException(status_code=503, detail="Model not loaded yet")
 
-    # Save uploaded file to a temp file (no extension, let ffmpeg auto-detect)
     with tempfile.NamedTemporaryFile(delete=False, suffix="") as tmp:
         tmp_path = tmp.name
         shutil.copyfileobj(file.file, tmp)
 
-    out_path = None
+    resampled_path = None
     try:
-        out_path = ensure_16k_mono(tmp_path)
+        resampled_path = resample_audio(tmp_path)
 
         with torch.inference_mode():
-            if MODEL_TYPE == ModelType.CANARY:
-                text = _transcribe_canary(out_path, prompt)
+            assert config is not None
+            if config.model_type == ModelType.CANARY:
+                text = transcribe_canary(resampled_path, prompt)
                 return text if response_format == "text" else JSONResponse({"text": text})
-            # PARAKEET
-            result = _transcribe_parakeet(out_path, timestamp_granularities)
+
+            # Parakeet
+            result = transcribe_parakeet(resampled_path, timestamp_granularities)
             return result["text"] if response_format == "text" else JSONResponse(result)
 
     except Exception as e:
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e)) from e
     finally:
-        for p in (tmp_path, out_path):
-            if p:
-                path = Path(p)
-                if path.exists():
-                    with suppress(OSError):
-                        path.unlink()
+        cleanup_files(tmp_path, resampled_path)
 
 
 def main(
     model: Annotated[
-        ModelType,
-        typer.Option(
-            "--model",
-            "-m",
-            help="ASR model to use",
-        ),
+        ModelType, typer.Option("--model", "-m", help="ASR model to use")
     ] = ModelType.CANARY,
-    port: Annotated[
-        int,
-        typer.Option(
-            "--port",
-            "-p",
-            help="Server port",
-        ),
-    ] = 9898,
+    port: Annotated[int, typer.Option("--port", "-p", help="Server port")] = 9898,
     device: Annotated[
         str | None,
         typer.Option(
@@ -240,18 +234,20 @@ def main(
     - canary-qwen-2.5b: Multilingual ASR with translation (default)
     - parakeet-tdt-0.6b-v2: High-quality English ASR with timestamps
     """
-    global MODEL_TYPE, DEVICE, PORT
+    global config
 
-    MODEL_TYPE = model
-    DEVICE = device or select_best_gpu()
-    PORT = port
+    config = ServerConfig(
+        model_type=model,
+        device=device or select_best_gpu(),
+        port=port,
+    )
 
     print(f"Starting ASR server with model: {model.value}")
-    print(f"Device: {DEVICE}")
-    print(f"Port: {PORT}")
+    print(f"Device: {config.device}")
+    print(f"Port: {config.port}")
     print()
 
-    uvicorn.run(app, host="0.0.0.0", port=PORT)  # noqa: S104
+    uvicorn.run(app, host="0.0.0.0", port=config.port)  # noqa: S104
 
 
 if __name__ == "__main__":

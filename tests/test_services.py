@@ -30,7 +30,7 @@ async def test_transcribe_audio_openai(mock_openai_client: MagicMock) -> None:
     result = await transcribe_audio_openai(mock_audio, openai_asr_cfg, mock_logger)
 
     assert result == "test transcription"
-    mock_openai_client.assert_called_once_with(api_key="test_api_key")
+    mock_openai_client.assert_called_once_with(api_key="test_api_key", base_url=None)
     mock_client_instance.audio.transcriptions.create.assert_called_once_with(
         model="whisper-1",
         file=mock_client_instance.audio.transcriptions.create.call_args[1]["file"],
@@ -75,14 +75,12 @@ def test_create_transcriber_wyoming() -> None:
     audio_input_cfg = config.AudioInput()
     wyoming_asr_cfg = config.WyomingASR(asr_wyoming_ip="localhost", asr_wyoming_port=1234)
     openai_asr_cfg = config.OpenAIASR(asr_openai_model="whisper-1", openai_api_key="fake-key")
-    custom_asr_cfg = config.CustomASR(asr_custom_base_url="http://localhost:8000")
 
     transcriber = asr.create_transcriber(
         provider_cfg,
         audio_input_cfg,
         wyoming_asr_cfg,
         openai_asr_cfg,
-        custom_asr_cfg,
     )
     assert transcriber.func == asr._transcribe_live_audio_wyoming  # type: ignore[attr-defined]
 

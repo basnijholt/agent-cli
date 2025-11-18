@@ -61,8 +61,7 @@ async def test_async_main_from_file(tmp_path: Path):
         openai_asr_cfg = config.OpenAIASR(
             asr_openai_model="whisper-1",
         )
-        custom_asr_cfg = config.CustomASR(asr_custom_base_url="http://localhost:8000")
-        ollama_cfg = config.Ollama(
+            ollama_cfg = config.Ollama(
             llm_ollama_model="gemma3:4b",
             llm_ollama_host="http://localhost:11434",
         )
@@ -81,7 +80,6 @@ async def test_async_main_from_file(tmp_path: Path):
             general_cfg=general_cfg,
             wyoming_asr_cfg=wyoming_asr_cfg,
             openai_asr_cfg=openai_asr_cfg,
-            custom_asr_cfg=custom_asr_cfg,
             ollama_cfg=ollama_cfg,
             openai_llm_cfg=openai_llm_cfg,
             gemini_llm_cfg=gemini_llm_cfg,
@@ -134,8 +132,7 @@ async def test_async_main_from_file_with_llm(tmp_path: Path):
         openai_asr_cfg = config.OpenAIASR(
             asr_openai_model="whisper-1",
         )
-        custom_asr_cfg = config.CustomASR(asr_custom_base_url="http://localhost:8000")
-        ollama_cfg = config.Ollama(
+            ollama_cfg = config.Ollama(
             llm_ollama_model="gemma3:4b",
             llm_ollama_host="http://localhost:11434",
         )
@@ -154,7 +151,6 @@ async def test_async_main_from_file_with_llm(tmp_path: Path):
             general_cfg=general_cfg,
             wyoming_asr_cfg=wyoming_asr_cfg,
             openai_asr_cfg=openai_asr_cfg,
-            custom_asr_cfg=custom_asr_cfg,
             ollama_cfg=ollama_cfg,
             openai_llm_cfg=openai_llm_cfg,
             gemini_llm_cfg=gemini_llm_cfg,
@@ -206,8 +202,7 @@ async def test_async_main_from_file_with_logging(tmp_path: Path):
         openai_asr_cfg = config.OpenAIASR(
             asr_openai_model="whisper-1",
         )
-        custom_asr_cfg = config.CustomASR(asr_custom_base_url="http://localhost:8000")
-        ollama_cfg = config.Ollama(
+            ollama_cfg = config.Ollama(
             llm_ollama_model="gemma3:4b",
             llm_ollama_host="http://localhost:11434",
         )
@@ -226,7 +221,6 @@ async def test_async_main_from_file_with_logging(tmp_path: Path):
             general_cfg=general_cfg,
             wyoming_asr_cfg=wyoming_asr_cfg,
             openai_asr_cfg=openai_asr_cfg,
-            custom_asr_cfg=custom_asr_cfg,
             ollama_cfg=ollama_cfg,
             openai_llm_cfg=openai_llm_cfg,
             gemini_llm_cfg=gemini_llm_cfg,
@@ -280,8 +274,7 @@ async def test_async_main_from_file_error_handling(
         openai_asr_cfg = config.OpenAIASR(
             asr_openai_model="whisper-1",
         )
-        custom_asr_cfg = config.CustomASR(asr_custom_base_url="http://localhost:8000")
-        ollama_cfg = config.Ollama(
+            ollama_cfg = config.Ollama(
             llm_ollama_model="gemma3:4b",
             llm_ollama_host="http://localhost:11434",
         )
@@ -300,7 +293,6 @@ async def test_async_main_from_file_error_handling(
             general_cfg=general_cfg,
             wyoming_asr_cfg=wyoming_asr_cfg,
             openai_asr_cfg=openai_asr_cfg,
-            custom_asr_cfg=custom_asr_cfg,
             ollama_cfg=ollama_cfg,
             openai_llm_cfg=openai_llm_cfg,
             gemini_llm_cfg=gemini_llm_cfg,
@@ -363,8 +355,7 @@ async def test_async_main_save_recording_enabled(
         openai_asr_cfg = config.OpenAIASR(
             asr_openai_model="whisper-1",
         )
-        custom_asr_cfg = config.CustomASR(asr_custom_base_url="http://localhost:8000")
-        ollama_cfg = config.Ollama(
+            ollama_cfg = config.Ollama(
             llm_ollama_model="gemma3:4b",
             llm_ollama_host="http://localhost:11434",
         )
@@ -383,7 +374,6 @@ async def test_async_main_save_recording_enabled(
             audio_in_cfg=audio_in_cfg,
             wyoming_asr_cfg=wyoming_asr_cfg,
             openai_asr_cfg=openai_asr_cfg,
-            custom_asr_cfg=custom_asr_cfg,
             ollama_cfg=ollama_cfg,
             openai_llm_cfg=openai_llm_cfg,
             gemini_llm_cfg=gemini_llm_cfg,

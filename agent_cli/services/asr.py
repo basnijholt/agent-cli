@@ -21,7 +21,7 @@ from agent_cli.core.audio import (
     setup_input_stream,
 )
 from agent_cli.core.utils import manage_send_receive_tasks
-from agent_cli.services import transcribe_audio_custom, transcribe_audio_openai
+from agent_cli.services import transcribe_audio_openai
 from agent_cli.services._wyoming_utils import wyoming_client_context
 
 if TYPE_CHECKING:
@@ -106,7 +106,6 @@ def create_transcriber(
     audio_input_cfg: config.AudioInput,
     wyoming_asr_cfg: config.WyomingASR,
     openai_asr_cfg: config.OpenAIASR,
-    custom_asr_cfg: config.CustomASR,
 ) -> Callable[..., Awaitable[str | None]]:
     """Return the appropriate transcriber for live audio based on the provider."""
     if provider_cfg.asr_provider == "openai":
@@ -114,12 +113,6 @@ def create_transcriber(
             _transcribe_live_audio_openai,
             audio_input_cfg=audio_input_cfg,
             openai_asr_cfg=openai_asr_cfg,
-        )
-    if provider_cfg.asr_provider == "custom":
-        return partial(
-            _transcribe_live_audio_custom,
-            audio_input_cfg=audio_input_cfg,
-            custom_asr_cfg=custom_asr_cfg,
         )
     if provider_cfg.asr_provider == "local":
         return partial(
@@ -137,8 +130,6 @@ def create_recorded_audio_transcriber(
     """Return the appropriate transcriber for recorded audio based on the provider."""
     if provider_cfg.asr_provider == "openai":
         return transcribe_audio_openai
-    if provider_cfg.asr_provider == "custom":
-        return transcribe_audio_custom
     if provider_cfg.asr_provider == "local":
         return _transcribe_recorded_audio_wyoming
     msg = f"Unsupported ASR provider: {provider_cfg.asr_provider}"
@@ -403,37 +394,6 @@ async def _transcribe_live_audio_openai(
         return None
     try:
         return await transcribe_audio_openai(audio_data, openai_asr_cfg, logger)
-    except Exception:
-        logger.exception("Error during transcription")
-        return ""
-
-
-async def _transcribe_live_audio_custom(
-    *,
-    audio_input_cfg: config.AudioInput,
-    custom_asr_cfg: config.CustomASR,
-    logger: logging.Logger,
-    p: pyaudio.PyAudio,
-    stop_event: InteractiveStopEvent,
-    live: Live,
-    quiet: bool = False,
-    save_recording: bool = True,
-    **_kwargs: object,
-) -> str | None:
-    """Record and transcribe live audio using a custom ASR endpoint."""
-    audio_data = await record_audio_with_manual_stop(
-        p,
-        audio_input_cfg.input_device_index,
-        stop_event,
-        logger,
-        quiet=quiet,
-        live=live,
-        save_recording=save_recording,
-    )
-    if not audio_data:
-        return None
-    try:
-        return await transcribe_audio_custom(audio_data, custom_asr_cfg, logger)
     except Exception:
         logger.exception("Error during transcription")
         return ""

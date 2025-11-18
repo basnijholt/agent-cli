@@ -14,7 +14,7 @@ LLM_PROVIDER: str = typer.Option(
 ASR_PROVIDER: str = typer.Option(
     "local",
     "--asr-provider",
-    help="The ASR provider to use ('local' for Wyoming, 'openai', 'custom').",
+    help="The ASR provider to use ('local' for Wyoming, 'openai').",
     rich_help_panel="Provider Selection",
 )
 TTS_PROVIDER: str = typer.Option(
@@ -121,24 +121,17 @@ ASR_OPENAI_MODEL: str = typer.Option(
     help="The OpenAI model to use for ASR (transcription).",
     rich_help_panel="ASR (Audio) Configuration: OpenAI",
 )
-# Custom ASR provider (e.g., NVIDIA Canary)
-ASR_CUSTOM_BASE_URL: str = typer.Option(
-    "http://localhost:8000",
-    "--asr-custom-base-url",
-    help="Base URL for custom ASR API endpoint (expects Whisper-compatible /v1/audio/transcriptions).",
-    rich_help_panel="ASR (Audio) Configuration: Custom",
-)
-ASR_CUSTOM_MODEL: str | None = typer.Option(
+ASR_OPENAI_BASE_URL: str | None = typer.Option(
     None,
-    "--asr-custom-model",
-    help="Model name to pass to custom ASR endpoint (optional).",
-    rich_help_panel="ASR (Audio) Configuration: Custom",
+    "--asr-openai-base-url",
+    help="Custom base URL for OpenAI-compatible ASR API (e.g., for custom Whisper server: http://localhost:9898).",
+    rich_help_panel="ASR (Audio) Configuration: OpenAI",
 )
-ASR_CUSTOM_PROMPT: str | None = typer.Option(
+ASR_OPENAI_PROMPT: str | None = typer.Option(
     None,
-    "--asr-custom-prompt",
+    "--asr-openai-prompt",
     help="Custom prompt to guide transcription (optional).",
-    rich_help_panel="ASR (Audio) Configuration: Custom",
+    rich_help_panel="ASR (Audio) Configuration: OpenAI",
 )
 
 

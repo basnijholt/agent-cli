@@ -91,7 +91,6 @@ def test_create_transcriber():
         MagicMock(),
         MagicMock(),
         MagicMock(),
-        MagicMock(),
     )
     assert transcriber.func is asr._transcribe_live_audio_openai
 
@@ -101,19 +100,8 @@ def test_create_transcriber():
         MagicMock(),
         MagicMock(),
         MagicMock(),
-        MagicMock(),
     )
     assert transcriber.func is asr._transcribe_live_audio_wyoming
-
-    provider_cfg.asr_provider = "custom"
-    transcriber = asr.create_transcriber(
-        provider_cfg,
-        MagicMock(),
-        MagicMock(),
-        MagicMock(),
-        MagicMock(),
-    )
-    assert transcriber.func is asr._transcribe_live_audio_custom
 
 
 def test_create_recorded_audio_transcriber():

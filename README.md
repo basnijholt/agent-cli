@@ -520,13 +520,13 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 │                                 [default: whisper-1]                         │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ ASR (Audio) Configuration: Custom ──────────────────────────────────────────╮
-│ --asr-custom-base-url        TEXT  Base URL for custom ASR API endpoint      │
+│ --asr-openai-base-url        TEXT  Base URL for custom ASR API endpoint      │
 │                                    (expects Whisper-compatible               │
 │                                    /v1/audio/transcriptions).                │
 │                                    [default: http://localhost:8000]          │
-│ --asr-custom-model           TEXT  Model name to pass to custom ASR endpoint │
+│ --asr-openai-model           TEXT  Model name to pass to custom ASR endpoint │
 │                                    (optional).                               │
-│ --asr-custom-prompt          TEXT  Custom prompt to guide transcription      │
+│ --asr-openai-prompt          TEXT  Custom prompt to guide transcription      │
 │                                    (optional).                               │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ LLM Configuration: Ollama (local) ──────────────────────────────────────────╮
@@ -1114,13 +1114,13 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 │                                 [default: whisper-1]                         │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ ASR (Audio) Configuration: Custom ──────────────────────────────────────────╮
-│ --asr-custom-base-url        TEXT  Base URL for custom ASR API endpoint      │
+│ --asr-openai-base-url        TEXT  Base URL for custom ASR API endpoint      │
 │                                    (expects Whisper-compatible               │
 │                                    /v1/audio/transcriptions).                │
 │                                    [default: http://localhost:8000]          │
-│ --asr-custom-model           TEXT  Model name to pass to custom ASR endpoint │
+│ --asr-openai-model           TEXT  Model name to pass to custom ASR endpoint │
 │                                    (optional).                               │
-│ --asr-custom-prompt          TEXT  Custom prompt to guide transcription      │
+│ --asr-openai-prompt          TEXT  Custom prompt to guide transcription      │
 │                                    (optional).                               │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ LLM Configuration: Ollama (local) ──────────────────────────────────────────╮
