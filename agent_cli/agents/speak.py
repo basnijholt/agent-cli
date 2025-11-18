@@ -98,6 +98,7 @@ def speak(
     # OpenAI
     tts_openai_model: str = opts.TTS_OPENAI_MODEL,
     tts_openai_voice: str = opts.TTS_OPENAI_VOICE,
+    tts_openai_base_url: str | None = opts.TTS_OPENAI_BASE_URL,
     # Kokoro
     tts_kokoro_model: str = opts.TTS_KOKORO_MODEL,
     tts_kokoro_voice: str = opts.TTS_KOKORO_VOICE,
@@ -159,6 +160,7 @@ def speak(
         openai_tts_cfg = config.OpenAITTS(
             tts_openai_model=tts_openai_model,
             tts_openai_voice=tts_openai_voice,
+            tts_openai_base_url=tts_openai_base_url,
         )
         kokoro_tts_cfg = config.KokoroTTS(
             tts_kokoro_model=tts_kokoro_model,

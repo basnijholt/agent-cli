@@ -147,6 +147,7 @@ class OpenAITTS(BaseModel):
     tts_openai_model: str
     tts_openai_voice: str
     openai_api_key: str | None = None
+    tts_openai_base_url: str | None = None
 
 
 class KokoroTTS(BaseModel):
