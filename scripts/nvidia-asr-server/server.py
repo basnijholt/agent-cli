@@ -78,12 +78,6 @@ def resample_audio(input_path: str) -> str:
     cmd = [
         "ffmpeg",
         "-y",
-        "-f",
-        "s16le",  # Assume signed 16-bit little-endian PCM
-        "-ar",
-        "16000",
-        "-ac",
-        "1",
         "-i",
         input_path,
         "-ar",
