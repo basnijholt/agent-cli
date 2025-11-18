@@ -24,13 +24,11 @@ from enum import Enum
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, Any
 
-import nemo.collections.asr as nemo_asr
 import torch
 import typer
 import uvicorn
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import JSONResponse
-from nemo.collections.speechlm2.models import SALM
 
 if TYPE_CHECKING:
     from typing import TypedDict
@@ -103,6 +101,9 @@ def resample_audio(input_path: str) -> str:
 
 def load_asr_model(config: ServerConfig) -> Any:
     """Load the appropriate ASR model based on configuration."""
+    import nemo.collections.asr as nemo_asr  # noqa: PLC0415
+    from nemo.collections.speechlm2.models import SALM  # noqa: PLC0415
+
     model_name = f"nvidia/{config.model_type.value}"
 
     # Print device info
