@@ -1,5 +1,5 @@
 #!/usr/bin/env -S uv run
-# ruff: noqa: D103, ANN201, FAST002, B008, ARG001, B904, TRY003, EM102, PTH110, SIM105, PTH108, S104, F841, PLC0415
+# ruff: noqa: D103, ANN201, FAST002, B008, ARG001, B904, TRY003, EM102, PTH110, SIM105, PTH108, S104
 """NVIDIA Canary ASR server with OpenAI-compatible API.
 
 Usage:
@@ -15,6 +15,7 @@ import os
 import shutil
 import subprocess
 import tempfile
+import traceback
 
 import torch
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
@@ -48,7 +49,7 @@ def ffmpeg_resample_to_16k_mono(input_path: str) -> str:
         out_path,
     ]
     try:
-        result = subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, check=True)
+        subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, check=True)
     except subprocess.CalledProcessError as e:
         stderr = e.stderr.decode() if e.stderr else "No error output"
         raise RuntimeError(f"ffmpeg failed: {stderr}")
@@ -116,8 +117,6 @@ async def transcribe(
         return JSONResponse({"text": text})
 
     except Exception as e:
-        import traceback
-
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
     finally:
