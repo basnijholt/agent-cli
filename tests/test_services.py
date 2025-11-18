@@ -211,3 +211,41 @@ async def test_synthesize_speech_openai_custom_base_url(
         "Synthesizing speech with custom OpenAI-compatible endpoint: %s",
         "http://my-custom-tts:8000/v1",
     )
+
+
+@pytest.mark.asyncio
+@patch("agent_cli.services.tts.synthesize_speech_openai")
+async def test_synthesize_speech_kokoro_delegates_to_openai(
+    mock_synthesize_speech_openai: MagicMock,
+) -> None:
+    """Test that _synthesize_speech_kokoro delegates to synthesize_speech_openai."""
+    mock_synthesize_speech_openai.return_value = b"kokoro audio"
+    mock_logger = MagicMock()
+
+    kokoro_tts_cfg = config.KokoroTTS(
+        tts_kokoro_model="kokoro-v1",
+        tts_kokoro_voice="af_bell",
+        tts_kokoro_host="http://localhost:8880/v1",
+    )
+
+    result = await tts._synthesize_speech_kokoro(
+        text="hello kokoro",
+        kokoro_tts_cfg=kokoro_tts_cfg,
+        logger=mock_logger,
+    )
+
+    assert result == b"kokoro audio"
+
+    # Verify synthesize_speech_openai was called with mapped config
+    mock_synthesize_speech_openai.assert_called_once()
+    call_args = mock_synthesize_speech_openai.call_args
+    assert call_args.kwargs["text"] == "hello kokoro"
+    assert call_args.kwargs["logger"] == mock_logger
+
+    openai_cfg_arg = call_args.kwargs["openai_tts_cfg"]
+    assert isinstance(openai_cfg_arg, config.OpenAITTS)
+    assert openai_cfg_arg.tts_openai_model == "kokoro-v1"
+    assert openai_cfg_arg.tts_openai_voice == "af_bell"
+    assert openai_cfg_arg.tts_openai_base_url == "http://localhost:8880/v1"
+    # api_key should be optional/None since base_url is provided
+    assert openai_cfg_arg.openai_api_key is None
