@@ -91,9 +91,11 @@ for word in result.get("words", []):
 cd scripts/canary-server
 uv run server.py -m parakeet-tdt-0.6b-v2
 
-# In another terminal
-export CUSTOM_ASR_ENDPOINT=http://localhost:9898/v1/audio/transcriptions
-agent-cli
+# In another terminal, use with agent-cli
+agent-cli transcribe \
+  --asr-provider openai \
+  --asr-openai-base-url http://localhost:9898 \
+  --asr-openai-model parakeet-tdt-0.6b-v2
 ```
 
 ## Requirements
