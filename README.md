@@ -389,7 +389,7 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 │                     clipboard.                                               │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
-│ --help          Show this message and exit.                                  │
+│ --help  -h        Show this message and exit.                                │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Provider Selection ─────────────────────────────────────────────────────────╮
 │ --llm-provider        TEXT  The LLM provider to use ('ollama', 'openai',     │
@@ -474,9 +474,9 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
  Wyoming ASR Client for streaming microphone audio to a transcription server.
 
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
-│ --extra-instructions        TEXT  Additional instructions for the LLM to     │
-│                                   process the transcription.                 │
-│ --help                            Show this message and exit.                │
+│ --extra-instructions          TEXT  Additional instructions for the LLM to   │
+│                                     process the transcription.               │
+│ --help                -h            Show this message and exit.              │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Audio Recovery ─────────────────────────────────────────────────────────────╮
 │ --from-file                                PATH     Transcribe audio from a  │
@@ -626,7 +626,7 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 │   text      [TEXT]  Text to speak. Reads from clipboard if not provided.     │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
-│ --help          Show this message and exit.                                  │
+│ --help  -h        Show this message and exit.                                │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Provider Selection ─────────────────────────────────────────────────────────╮
 │ --tts-provider        TEXT  The TTS provider to use ('wyoming', 'openai',    │
@@ -741,7 +741,7 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
  Save TTS to file: agent-cli voice-edit --tts --save-file response.wav
 
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
-│ --help          Show this message and exit.                                  │
+│ --help  -h        Show this message and exit.                                │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Provider Selection ─────────────────────────────────────────────────────────╮
 │ --asr-provider        TEXT  The ASR provider to use ('wyoming', 'openai').   │
@@ -904,7 +904,7 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
  Wake word-based voice assistant using local or remote services.
 
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
-│ --help          Show this message and exit.                                  │
+│ --help  -h        Show this message and exit.                                │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Provider Selection ─────────────────────────────────────────────────────────╮
 │ --asr-provider        TEXT  The ASR provider to use ('wyoming', 'openai').   │
@@ -1083,7 +1083,7 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
  An chat agent that you can talk to.
 
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
-│ --help          Show this message and exit.                                  │
+│ --help  -h        Show this message and exit.                                │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Provider Selection ─────────────────────────────────────────────────────────╮
 │ --asr-provider        TEXT  The ASR provider to use ('wyoming', 'openai').   │
