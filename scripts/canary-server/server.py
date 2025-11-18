@@ -1,17 +1,15 @@
-#!/usr/bin/env -S uv run --script
-# ruff: noqa: D100, D103, ANN201, FAST002, B008, ARG001, PTH122, B904, TRY003, EM102, PLR2004, PTH110, SIM105, PTH108, S104
-#
-# /// script
-# requires-python = ">=3.13"
-# dependencies = [
-#     "fastapi[standard]",
-#     "torch",
-#     "soundfile",
-#     "ml-dtypes>=0.5.0",
-#     "sacrebleu",
-#     "nemo_toolkit[asr,tts] @ git+https://github.com/NVIDIA/NeMo.git",
-# ]
-# ///
+#!/usr/bin/env -S uv run
+# ruff: noqa: D103, ANN201, FAST002, B008, ARG001, PTH122, B904, TRY003, EM102, PLR2004, PTH110, SIM105, PTH108, S104
+"""NVIDIA Canary ASR server with OpenAI-compatible API.
+
+Usage:
+    cd scripts/canary-server
+    uv run server.py
+
+Environment variables:
+    CANARY_PORT: Server port (default: 9898)
+    CANARY_DEVICE: Device to use (default: cuda if available, else cpu)
+"""
 
 import os
 import shutil
