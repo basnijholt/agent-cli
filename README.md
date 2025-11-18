@@ -495,7 +495,7 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Provider Selection ─────────────────────────────────────────────────────────╮
 │ --asr-provider        TEXT  The ASR provider to use ('local' for Wyoming,    │
-│                             'openai').                                       │
+│                             'openai', 'custom').                             │
 │                             [default: local]                                 │
 │ --llm-provider        TEXT  The LLM provider to use ('local' for Ollama,     │
 │                             'openai', 'gemini').                             │
@@ -518,6 +518,16 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 │ --asr-openai-model        TEXT  The OpenAI model to use for ASR              │
 │                                 (transcription).                             │
 │                                 [default: whisper-1]                         │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ ASR (Audio) Configuration: Custom ──────────────────────────────────────────╮
+│ --asr-custom-base-url        TEXT  Base URL for custom ASR API endpoint      │
+│                                    (expects Whisper-compatible               │
+│                                    /v1/audio/transcriptions).                │
+│                                    [default: http://localhost:8000]          │
+│ --asr-custom-model           TEXT  Model name to pass to custom ASR endpoint │
+│                                    (optional).                               │
+│ --asr-custom-prompt          TEXT  Custom prompt to guide transcription      │
+│                                    (optional).                               │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ LLM Configuration: Ollama (local) ──────────────────────────────────────────╮
 │ --llm-ollama-model        TEXT  The Ollama model to use. Default is          │
@@ -738,7 +748,7 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Provider Selection ─────────────────────────────────────────────────────────╮
 │ --asr-provider        TEXT  The ASR provider to use ('local' for Wyoming,    │
-│                             'openai').                                       │
+│                             'openai', 'custom').                             │
 │                             [default: local]                                 │
 │ --llm-provider        TEXT  The LLM provider to use ('local' for Ollama,     │
 │                             'openai', 'gemini').                             │
@@ -899,7 +909,7 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Provider Selection ─────────────────────────────────────────────────────────╮
 │ --asr-provider        TEXT  The ASR provider to use ('local' for Wyoming,    │
-│                             'openai').                                       │
+│                             'openai', 'custom').                             │
 │                             [default: local]                                 │
 │ --llm-provider        TEXT  The LLM provider to use ('local' for Ollama,     │
 │                             'openai', 'gemini').                             │
@@ -1076,7 +1086,7 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Provider Selection ─────────────────────────────────────────────────────────╮
 │ --asr-provider        TEXT  The ASR provider to use ('local' for Wyoming,    │
-│                             'openai').                                       │
+│                             'openai', 'custom').                             │
 │                             [default: local]                                 │
 │ --llm-provider        TEXT  The LLM provider to use ('local' for Ollama,     │
 │                             'openai', 'gemini').                             │
@@ -1102,6 +1112,16 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 │ --asr-openai-model        TEXT  The OpenAI model to use for ASR              │
 │                                 (transcription).                             │
 │                                 [default: whisper-1]                         │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ ASR (Audio) Configuration: Custom ──────────────────────────────────────────╮
+│ --asr-custom-base-url        TEXT  Base URL for custom ASR API endpoint      │
+│                                    (expects Whisper-compatible               │
+│                                    /v1/audio/transcriptions).                │
+│                                    [default: http://localhost:8000]          │
+│ --asr-custom-model           TEXT  Model name to pass to custom ASR endpoint │
+│                                    (optional).                               │
+│ --asr-custom-prompt          TEXT  Custom prompt to guide transcription      │
+│                                    (optional).                               │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ LLM Configuration: Ollama (local) ──────────────────────────────────────────╮
 │ --llm-ollama-model        TEXT  The Ollama model to use. Default is          │
