@@ -216,7 +216,8 @@ async def transcribe(
 
 def main(
     model: Annotated[
-        ModelType, typer.Option("--model", "-m", help="ASR model to use")
+        ModelType,
+        typer.Option("--model", "-m", help="ASR model to use"),
     ] = ModelType.CANARY,
     port: Annotated[int, typer.Option("--port", "-p", help="Server port")] = 9898,
     device: Annotated[
