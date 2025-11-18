@@ -75,7 +75,7 @@ async def load_model() -> None:
     salm_model = SALM.from_pretrained("nvidia/canary-qwen-2.5b").to(DEVICE).eval()
 
 
-@app.post("/v1/audio/transcriptions")
+@app.post("/v1/audio/transcriptions", response_model=None)
 async def transcribe(
     file: Annotated[UploadFile, File()] = ...,
     model_name: Annotated[str | None, Form(alias="model")] = None,  # noqa: ARG001
