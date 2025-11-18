@@ -229,7 +229,7 @@ def autocorrect(
         print_command_line_args(locals())
     provider_cfg = config.ProviderSelection(
         llm_provider=llm_provider,
-        asr_provider="local",  # Not used, but required by model
+        asr_provider="wyoming",  # Not used, but required by model
         tts_provider="local",  # Not used, but required by model
     )
     ollama_cfg = config.Ollama(llm_ollama_model=llm_ollama_model, llm_ollama_host=llm_ollama_host)

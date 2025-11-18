@@ -13,7 +13,7 @@ async def test_create_llm_agent_with_gemini() -> None:
     """Test that the create_llm_agent function can build an agent with the Gemini provider."""
     provider_cfg = config.ProviderSelection(
         llm_provider="gemini",
-        asr_provider="local",
+        asr_provider="wyoming",
         tts_provider="local",
     )
     gemini_cfg = config.GeminiLLM(

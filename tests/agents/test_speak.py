@@ -20,8 +20,8 @@ async def test_async_main_with_text():
     general_cfg = config.General(log_level="INFO", quiet=True)
     provider_cfg = config.ProviderSelection(
         tts_provider="local",
-        llm_provider="local",
-        asr_provider="local",
+        llm_provider="ollama",
+        asr_provider="wyoming",
     )
     audio_out_cfg = config.AudioOutput(enable_tts=True)
     wyoming_tts_cfg = config.WyomingTTS(tts_wyoming_ip="localhost", tts_wyoming_port=10200)
@@ -61,8 +61,8 @@ async def test_async_main_no_devices():
     general_cfg = config.General(log_level="INFO", quiet=True)
     provider_cfg = config.ProviderSelection(
         tts_provider="local",
-        llm_provider="local",
-        asr_provider="local",
+        llm_provider="ollama",
+        asr_provider="wyoming",
     )
     audio_out_cfg = config.AudioOutput(enable_tts=True)
     wyoming_tts_cfg = config.WyomingTTS(tts_wyoming_ip="localhost", tts_wyoming_port=10200)

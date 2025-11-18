@@ -20,8 +20,8 @@ async def test_get_instruction_from_audio(mock_create_transcriber: MagicMock) ->
     mock_transcriber = AsyncMock(return_value="test instruction")
     mock_create_transcriber.return_value = mock_transcriber
     provider_cfg = config.ProviderSelection(
-        asr_provider="local",
-        llm_provider="local",
+        asr_provider="wyoming",
+        llm_provider="ollama",
         tts_provider="local",
     )
     audio_in_cfg = config.AudioInput(input_device_index=1)
@@ -51,8 +51,8 @@ async def test_get_instruction_from_audio_error(mock_create_transcriber: MagicMo
     mock_transcriber = AsyncMock(side_effect=Exception("test error"))
     mock_create_transcriber.return_value = mock_transcriber
     provider_cfg = config.ProviderSelection(
-        asr_provider="local",
-        llm_provider="local",
+        asr_provider="wyoming",
+        llm_provider="ollama",
         tts_provider="local",
     )
     audio_in_cfg = config.AudioInput(input_device_index=1)
@@ -91,9 +91,9 @@ async def test_process_instruction_and_respond(
         clipboard=True,
     )
     provider_cfg = config.ProviderSelection(
-        llm_provider="local",
+        llm_provider="ollama",
         tts_provider="local",
-        asr_provider="local",
+        asr_provider="wyoming",
     )
     ollama_cfg = config.Ollama(llm_ollama_model="test-model", llm_ollama_host="localhost")
     openai_llm_cfg = config.OpenAILLM(llm_openai_model="gpt-4", openai_base_url=None)

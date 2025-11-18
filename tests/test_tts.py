@@ -19,8 +19,8 @@ async def test_speak_text(mock_create_synthesizer: MagicMock) -> None:
     mock_synthesizer = AsyncMock(return_value=b"audio data")
     mock_create_synthesizer.return_value = mock_synthesizer
     provider_cfg = config.ProviderSelection(
-        asr_provider="local",
-        llm_provider="local",
+        asr_provider="wyoming",
+        llm_provider="ollama",
         tts_provider="local",
     )
     audio_output_cfg = config.AudioOutput(enable_tts=True)
@@ -121,8 +121,8 @@ def test_apply_speed_adjustment_with_audiostretchy(mock_audio_stretch_class: Mag
 def test_create_synthesizer_disabled():
     """Test that the dummy synthesizer is returned when TTS is disabled."""
     provider_cfg = config.ProviderSelection(
-        asr_provider="local",
-        llm_provider="local",
+        asr_provider="wyoming",
+        llm_provider="ollama",
         tts_provider="local",
     )
     audio_output_cfg = config.AudioOutput(enable_tts=False)

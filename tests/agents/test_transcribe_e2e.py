@@ -44,8 +44,8 @@ async def test_transcribe_e2e(
     asyncio.get_event_loop().call_later(0.1, stop_event.set)
 
     provider_cfg = config.ProviderSelection(
-        asr_provider="local",
-        llm_provider="local",
+        asr_provider="wyoming",
+        llm_provider="ollama",
         tts_provider="local",
     )
     general_cfg = config.General(

@@ -31,8 +31,8 @@ def get_configs() -> tuple[
 ]:
     """Get all the necessary configs for the e2e test."""
     provider_cfg = config.ProviderSelection(
-        asr_provider="local",
-        llm_provider="local",
+        asr_provider="wyoming",
+        llm_provider="ollama",
         tts_provider="local",
     )
     general_cfg = config.General(

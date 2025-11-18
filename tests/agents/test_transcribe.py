@@ -49,8 +49,8 @@ async def test_transcribe_main_llm_enabled(
     # The function we are testing
     with caplog.at_level(logging.INFO):
         provider_cfg = config.ProviderSelection(
-            asr_provider="local",
-            llm_provider="local",
+            asr_provider="wyoming",
+            llm_provider="ollama",
             tts_provider="local",
         )
         general_cfg = config.General(
@@ -122,8 +122,8 @@ async def test_transcribe_main(
     # The function we are testing
     with caplog.at_level(logging.INFO):
         provider_cfg = config.ProviderSelection(
-            asr_provider="local",
-            llm_provider="local",
+            asr_provider="wyoming",
+            llm_provider="ollama",
             tts_provider="local",
         )
         general_cfg = config.General(

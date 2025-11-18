@@ -36,8 +36,8 @@ async def test_handle_tts_playback_os_error(mock_speak_text: AsyncMock) -> None:
 
     provider_cfg = config.ProviderSelection(
         tts_provider="local",
-        asr_provider="local",
-        llm_provider="local",
+        asr_provider="wyoming",
+        llm_provider="ollama",
     )
     audio_out_cfg = config.AudioOutput(enable_tts=True)
     wyoming_tts_cfg = config.WyomingTTS(tts_wyoming_ip="localhost", tts_wyoming_port=1234)

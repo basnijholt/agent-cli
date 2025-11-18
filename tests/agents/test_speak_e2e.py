@@ -46,8 +46,8 @@ async def test_speak_e2e(
         )
         provider_cfg = config.ProviderSelection(
             tts_provider="local",
-            asr_provider="local",
-            llm_provider="local",
+            asr_provider="wyoming",
+            llm_provider="ollama",
         )
         audio_out_cfg = config.AudioOutput(enable_tts=True)
         wyoming_tts_cfg = config.WyomingTTS(
