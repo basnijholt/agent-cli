@@ -1,5 +1,4 @@
 #!/usr/bin/env -S uv run
-# ruff: noqa: D103, ANN201, FAST002, B008, ARG001, B904, TRY003, EM102, PTH110, SIM105, PTH108, S104
 """NVIDIA Canary ASR server with OpenAI-compatible API.
 
 Usage:
@@ -16,6 +15,9 @@ import shutil
 import subprocess
 import tempfile
 import traceback
+from contextlib import suppress
+from pathlib import Path
+from typing import Annotated
 
 import torch
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
@@ -29,6 +31,7 @@ PORT = int(os.getenv("CANARY_PORT", "9898"))
 
 
 def ffmpeg_resample_to_16k_mono(input_path: str) -> str:
+    """Resample audio to 16kHz mono WAV using ffmpeg."""
     out_path = input_path + "_16k.wav"
     # Try with format auto-detection first, then try as raw PCM if that fails
     cmd = [
@@ -51,8 +54,9 @@ def ffmpeg_resample_to_16k_mono(input_path: str) -> str:
     try:
         subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, check=True)
     except subprocess.CalledProcessError as e:
-        stderr = e.stderr.decode() if e.stderr else "No error output"
-        raise RuntimeError(f"ffmpeg failed: {stderr}")
+        stderr_msg = e.stderr.decode() if e.stderr else "No error output"
+        msg = f"ffmpeg failed: {stderr_msg}"
+        raise RuntimeError(msg) from e
     return out_path
 
 
@@ -64,7 +68,8 @@ def ensure_16k_mono(path: str) -> str:
 
 
 @app.on_event("startup")
-async def load_model():
+async def load_model() -> None:
+    """Load the Canary model on startup."""
     global salm_model
     print("Loading nvidia/canary-qwen-2.5b on", DEVICE, flush=True)
     salm_model = SALM.from_pretrained("nvidia/canary-qwen-2.5b").to(DEVICE).eval()
@@ -72,12 +77,13 @@ async def load_model():
 
 @app.post("/v1/audio/transcriptions")
 async def transcribe(
-    file: UploadFile = File(...),
-    model_name: str = Form(None, alias="model"),
-    language: str = Form(None),
-    response_format: str = Form("json"),
-    prompt: str = Form(None),
-):
+    file: Annotated[UploadFile, File()] = ...,
+    model_name: Annotated[str | None, Form(alias="model")] = None,  # noqa: ARG001
+    language: Annotated[str | None, Form()] = None,  # noqa: ARG001
+    response_format: Annotated[str, Form()] = "json",
+    prompt: Annotated[str | None, Form()] = None,
+) -> str | JSONResponse:
+    """Transcribe audio using Canary model with OpenAI-compatible API."""
     if salm_model is None:
         raise HTTPException(status_code=503, detail="Model not loaded yet")
 
@@ -118,17 +124,17 @@ async def transcribe(
 
     except Exception as e:
         traceback.print_exc()
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
     finally:
         for p in (tmp_path, out_path):
-            if p and os.path.exists(p):
-                try:
-                    os.unlink(p)
-                except OSError:
-                    pass
+            if p:
+                path = Path(p)
+                if path.exists():
+                    with suppress(OSError):
+                        path.unlink()
 
 
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run(app, host="0.0.0.0", port=PORT)
+    uvicorn.run(app, host="0.0.0.0", port=PORT)  # noqa: S104
