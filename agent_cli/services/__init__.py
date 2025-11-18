@@ -13,14 +13,17 @@ if TYPE_CHECKING:
     from agent_cli import config
 
 
-def _get_openai_client(api_key: str, base_url: str | None = None) -> AsyncOpenAI:
-    """Get an OpenAI client instance."""
+def _get_openai_client(api_key: str | None, base_url: str | None = None) -> AsyncOpenAI:
+    """Get an OpenAI client instance.
+
+    For custom endpoints (base_url is set), API key is optional and a dummy value
+    is used if not provided, since custom endpoints may not require authentication.
+    """
     from openai import AsyncOpenAI  # noqa: PLC0415
 
-    if not api_key:
-        msg = "OpenAI API key is not set."
-        raise ValueError(msg)
-    return AsyncOpenAI(api_key=api_key, base_url=base_url)
+    # Use dummy API key for custom endpoints if none provided
+    effective_api_key = api_key or "dummy-api-key"
+    return AsyncOpenAI(api_key=effective_api_key, base_url=base_url)
 
 
 async def transcribe_audio_openai(
@@ -41,10 +44,9 @@ async def transcribe_audio_openai(
         )
     else:
         logger.info("Transcribing audio with OpenAI Whisper...")
-
-    if not openai_asr_cfg.openai_api_key:
-        msg = "OpenAI API key is not set."
-        raise ValueError(msg)
+        if not openai_asr_cfg.openai_api_key:
+            msg = "OpenAI API key is not set."
+            raise ValueError(msg)
 
     client = _get_openai_client(
         api_key=openai_asr_cfg.openai_api_key,
