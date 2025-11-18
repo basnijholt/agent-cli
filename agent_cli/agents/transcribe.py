@@ -272,7 +272,6 @@ async def _async_main(  # noqa: PLR0912, PLR0915, C901
 
             recorded_transcriber = create_recorded_audio_transcriber(provider_cfg)
 
-            # Select appropriate config based on provider
             if provider_cfg.asr_provider == "openai":
                 asr_config = openai_asr_cfg
             else:
