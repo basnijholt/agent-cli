@@ -26,7 +26,7 @@ from nemo.collections.speechlm2.models import SALM
 
 app = FastAPI()
 salm_model = None
-DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
+DEVICE = os.getenv("CANARY_DEVICE", "cuda" if torch.cuda.is_available() else "cpu")
 PORT = int(os.getenv("CANARY_PORT", "9898"))
 
 
