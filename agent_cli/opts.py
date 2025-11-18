@@ -6,21 +6,21 @@ import typer
 
 # --- Provider Selection ---
 LLM_PROVIDER: str = typer.Option(
-    "local",
+    "ollama",
     "--llm-provider",
-    help="The LLM provider to use ('local' for Ollama, 'openai', 'gemini').",
+    help="The LLM provider to use ('ollama', 'openai', 'gemini').",
     rich_help_panel="Provider Selection",
 )
 ASR_PROVIDER: str = typer.Option(
-    "local",
+    "wyoming",
     "--asr-provider",
-    help="The ASR provider to use ('local' for Wyoming, 'openai').",
+    help="The ASR provider to use ('wyoming', 'openai').",
     rich_help_panel="Provider Selection",
 )
 TTS_PROVIDER: str = typer.Option(
-    "local",
+    "wyoming",
     "--tts-provider",
-    help="The TTS provider to use ('local' for Wyoming, 'openai', 'kokoro').",
+    help="The TTS provider to use ('wyoming', 'openai', 'kokoro').",
     rich_help_panel="Provider Selection",
 )
 

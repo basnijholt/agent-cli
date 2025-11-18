@@ -98,7 +98,7 @@ async def _transcribe_with_provider(
     """Transcribe audio using the configured provider."""
     transcriber = asr.create_recorded_audio_transcriber(provider_cfg)
 
-    if provider_cfg.asr_provider == "local":
+    if provider_cfg.asr_provider == "wyoming":
         return await transcriber(
             audio_data=audio_data,
             wyoming_asr_cfg=wyoming_asr_cfg,
@@ -319,7 +319,7 @@ async def transcribe_audio(
         audio_data = await audio_file.read()
 
         # Convert audio to Wyoming format if using local ASR
-        if provider_cfg.asr_provider == "local":
+        if provider_cfg.asr_provider == "wyoming":
             audio_data = _convert_audio_for_local_asr(audio_data, audio_file.filename)
 
         # Transcribe audio using the configured provider

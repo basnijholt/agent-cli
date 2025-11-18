@@ -15,8 +15,8 @@ def test_create_llm_agent_openai_no_key():
     """Test that building the agent with OpenAI provider fails without an API key."""
     provider_cfg = config.ProviderSelection(
         llm_provider="openai",
-        asr_provider="local",
-        tts_provider="local",
+        asr_provider="wyoming",
+        tts_provider="wyoming",
     )
     ollama_cfg = config.Ollama(
         llm_ollama_model="test-model",
@@ -40,9 +40,9 @@ def test_create_llm_agent(monkeypatch: pytest.MonkeyPatch) -> None:
     """Test building the agent."""
     monkeypatch.setenv("LLM_OLLAMA_HOST", "http://mockhost:1234")
     provider_cfg = config.ProviderSelection(
-        llm_provider="local",
-        asr_provider="local",
-        tts_provider="local",
+        llm_provider="ollama",
+        asr_provider="wyoming",
+        tts_provider="wyoming",
     )
     ollama_cfg = config.Ollama(
         llm_ollama_model="test-model",
@@ -72,9 +72,9 @@ async def test_get_llm_response(mock_create_llm_agent: MagicMock) -> None:
     mock_create_llm_agent.return_value = mock_agent
 
     provider_cfg = config.ProviderSelection(
-        llm_provider="local",
-        asr_provider="local",
-        tts_provider="local",
+        llm_provider="ollama",
+        asr_provider="wyoming",
+        tts_provider="wyoming",
     )
     ollama_cfg = config.Ollama(llm_ollama_model="test", llm_ollama_host="test")
     openai_llm_cfg = config.OpenAILLM(
@@ -113,9 +113,9 @@ async def test_get_llm_response_error(mock_create_llm_agent: MagicMock) -> None:
     mock_create_llm_agent.return_value = mock_agent
 
     provider_cfg = config.ProviderSelection(
-        llm_provider="local",
-        asr_provider="local",
-        tts_provider="local",
+        llm_provider="ollama",
+        asr_provider="wyoming",
+        tts_provider="wyoming",
     )
     ollama_cfg = config.Ollama(llm_ollama_model="test", llm_ollama_host="test")
     openai_llm_cfg = config.OpenAILLM(
@@ -154,9 +154,9 @@ async def test_get_llm_response_error_exit(mock_create_llm_agent: MagicMock):
     mock_create_llm_agent.return_value = mock_agent
 
     provider_cfg = config.ProviderSelection(
-        llm_provider="local",
-        asr_provider="local",
-        tts_provider="local",
+        llm_provider="ollama",
+        asr_provider="wyoming",
+        tts_provider="wyoming",
     )
     ollama_cfg = config.Ollama(llm_ollama_model="test", llm_ollama_host="test")
     openai_llm_cfg = config.OpenAILLM(
@@ -193,9 +193,9 @@ def test_process_and_update_clipboard(
     mock_live = MagicMock()
 
     provider_cfg = config.ProviderSelection(
-        llm_provider="local",
-        asr_provider="local",
-        tts_provider="local",
+        llm_provider="ollama",
+        asr_provider="wyoming",
+        tts_provider="wyoming",
     )
     ollama_cfg = config.Ollama(llm_ollama_model="test", llm_ollama_host="test")
     openai_llm_cfg = config.OpenAILLM(

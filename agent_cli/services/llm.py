@@ -80,7 +80,7 @@ def create_llm_agent(
 
     if provider_cfg.llm_provider == "openai":
         llm_model = _openai_llm_model(openai_cfg)
-    elif provider_cfg.llm_provider == "local":
+    elif provider_cfg.llm_provider == "ollama":
         llm_model = _ollama_llm_model(ollama_cfg)
     elif provider_cfg.llm_provider == "gemini":
         llm_model = _gemini_llm_model(gemini_cfg)
@@ -137,7 +137,7 @@ async def get_llm_response(
     start_time = time.monotonic()
 
     try:
-        if provider_cfg.llm_provider == "local":
+        if provider_cfg.llm_provider == "ollama":
             model_name = ollama_cfg.llm_ollama_model
         elif provider_cfg.llm_provider == "openai":
             model_name = openai_cfg.llm_openai_model
@@ -176,7 +176,7 @@ async def get_llm_response(
             msg = "Please check your OpenAI API key."
         elif provider_cfg.llm_provider == "gemini":
             msg = "Please check your Gemini API key."
-        elif provider_cfg.llm_provider == "local":
+        elif provider_cfg.llm_provider == "ollama":
             msg = f"Please check your Ollama server at [cyan]{ollama_cfg.llm_ollama_host}[/cyan]"
         print_error_message(f"An unexpected LLM error occurred: {e}", msg)
         if exit_on_error:

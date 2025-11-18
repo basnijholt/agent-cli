@@ -140,8 +140,8 @@ def speak(
     with process.pid_file_context(process_name), suppress(KeyboardInterrupt):
         provider_cfg = config.ProviderSelection(
             tts_provider=tts_provider,
-            asr_provider="local",  # Not used
-            llm_provider="local",  # Not used
+            asr_provider="wyoming",  # Not used
+            llm_provider="ollama",  # Not used
         )
         audio_out_cfg = config.AudioOutput(
             output_device_index=output_device_index,

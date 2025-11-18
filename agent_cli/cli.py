@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import typer
 
-from .config import load_config
+from .config import load_config, normalize_provider_defaults
 from .core.utils import console
 
 app = typer.Typer(
@@ -33,7 +33,7 @@ def main(
 def set_config_defaults(ctx: typer.Context, config_file: str | None) -> None:
     """Set the default values for the CLI based on the config file."""
     config = load_config(config_file)
-    wildcard_config = config.get("defaults", {})
+    wildcard_config = normalize_provider_defaults(config.get("defaults", {}))
     # This function is executed side the subcommand, so the command is the sub command.
     subcommand = ctx.command.name
 
@@ -41,7 +41,7 @@ def set_config_defaults(ctx: typer.Context, config_file: str | None) -> None:
         ctx.default_map = wildcard_config
         return
 
-    command_config = config.get(subcommand, {})
+    command_config = normalize_provider_defaults(config.get(subcommand, {}))
     defaults = {**wildcard_config, **command_config}
     ctx.default_map = defaults
 

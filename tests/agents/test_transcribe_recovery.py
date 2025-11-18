@@ -43,9 +43,9 @@ async def test_async_main_from_file(tmp_path: Path):
 
         # Create config objects
         provider_cfg = config.ProviderSelection(
-            asr_provider="local",
-            llm_provider="local",
-            tts_provider="local",
+            asr_provider="wyoming",
+            llm_provider="ollama",
+            tts_provider="wyoming",
         )
         general_cfg = config.General(
             log_level="INFO",
@@ -114,9 +114,9 @@ async def test_async_main_from_file_with_llm(tmp_path: Path):
 
         # Create config objects
         provider_cfg = config.ProviderSelection(
-            asr_provider="local",
-            llm_provider="local",
-            tts_provider="local",
+            asr_provider="wyoming",
+            llm_provider="ollama",
+            tts_provider="wyoming",
         )
         general_cfg = config.General(
             log_level="INFO",
@@ -184,9 +184,9 @@ async def test_async_main_from_file_with_logging(tmp_path: Path):
 
         # Create config objects
         provider_cfg = config.ProviderSelection(
-            asr_provider="local",
-            llm_provider="local",
-            tts_provider="local",
+            asr_provider="wyoming",
+            llm_provider="ollama",
+            tts_provider="wyoming",
         )
         general_cfg = config.General(
             log_level="INFO",
@@ -256,9 +256,9 @@ async def test_async_main_from_file_error_handling(
 
         # Create config objects
         provider_cfg = config.ProviderSelection(
-            asr_provider="local",
-            llm_provider="local",
-            tts_provider="local",
+            asr_provider="wyoming",
+            llm_provider="ollama",
+            tts_provider="wyoming",
         )
         general_cfg = config.General(
             log_level="INFO",
@@ -336,9 +336,9 @@ async def test_async_main_save_recording_enabled(
 
         # Create config objects
         provider_cfg = config.ProviderSelection(
-            asr_provider="local",
-            llm_provider="local",
-            tts_provider="local",
+            asr_provider="wyoming",
+            llm_provider="ollama",
+            tts_provider="wyoming",
         )
         general_cfg = config.General(
             log_level="INFO",
@@ -413,8 +413,8 @@ def test_transcribe_command_last_recording_option(
             from_file=None,
             save_recording=True,
             extra_instructions=None,
-            asr_provider="local",
-            llm_provider="local",
+            asr_provider="wyoming",
+            llm_provider="ollama",
             input_device_index=None,
             input_device_name=None,
             asr_wyoming_ip="localhost",
@@ -467,8 +467,8 @@ def test_transcribe_command_from_file_option(tmp_path: Path):
             from_file=test_file,
             save_recording=True,
             extra_instructions=None,
-            asr_provider="local",
-            llm_provider="local",
+            asr_provider="wyoming",
+            llm_provider="ollama",
             input_device_index=None,
             input_device_name=None,
             asr_wyoming_ip="localhost",
@@ -533,8 +533,8 @@ def test_transcribe_command_last_recording_with_index(
             from_file=None,
             save_recording=True,
             extra_instructions=None,
-            asr_provider="local",
-            llm_provider="local",
+            asr_provider="wyoming",
+            llm_provider="ollama",
             input_device_index=None,
             input_device_name=None,
             asr_wyoming_ip="localhost",
@@ -593,8 +593,8 @@ def test_transcribe_command_last_recording_disabled(
             from_file=None,
             save_recording=True,
             extra_instructions=None,
-            asr_provider="local",
-            llm_provider="local",
+            asr_provider="wyoming",
+            llm_provider="ollama",
             input_device_index=None,
             input_device_name=None,
             asr_wyoming_ip="localhost",
@@ -639,8 +639,8 @@ def test_transcribe_command_conflicting_options() -> None:
             from_file=Path("/some/file.wav"),
             save_recording=True,
             extra_instructions=None,
-            asr_provider="local",
-            llm_provider="local",
+            asr_provider="wyoming",
+            llm_provider="ollama",
             input_device_index=None,
             input_device_name=None,
             asr_wyoming_ip="localhost",

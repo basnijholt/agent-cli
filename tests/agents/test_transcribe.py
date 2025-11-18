@@ -49,9 +49,9 @@ async def test_transcribe_main_llm_enabled(
     # The function we are testing
     with caplog.at_level(logging.INFO):
         provider_cfg = config.ProviderSelection(
-            asr_provider="local",
-            llm_provider="local",
-            tts_provider="local",
+            asr_provider="wyoming",
+            llm_provider="ollama",
+            tts_provider="wyoming",
         )
         general_cfg = config.General(
             log_level="INFO",
@@ -122,9 +122,9 @@ async def test_transcribe_main(
     # The function we are testing
     with caplog.at_level(logging.INFO):
         provider_cfg = config.ProviderSelection(
-            asr_provider="local",
-            llm_provider="local",
-            tts_provider="local",
+            asr_provider="wyoming",
+            llm_provider="ollama",
+            tts_provider="wyoming",
         )
         general_cfg = config.General(
             log_level="INFO",
@@ -337,9 +337,9 @@ async def test_transcribe_includes_clipboard_context(
     asyncio.get_event_loop().call_later(0.1, stop_event.set)
 
     provider_cfg = config.ProviderSelection(
-        asr_provider="local",
-        llm_provider="local",
-        tts_provider="local",
+        asr_provider="wyoming",
+        llm_provider="ollama",
+        tts_provider="wyoming",
     )
     general_cfg = config.General(
         log_level="INFO",
@@ -416,9 +416,9 @@ async def test_transcribe_with_logging(
     mock_process_and_update_clipboard.return_value = "Hello, world!"
 
     provider_cfg = config.ProviderSelection(
-        asr_provider="local",
-        llm_provider="local",
-        tts_provider="local",
+        asr_provider="wyoming",
+        llm_provider="ollama",
+        tts_provider="wyoming",
     )
     general_cfg = config.General(
         log_level="INFO",
@@ -464,7 +464,7 @@ async def test_transcribe_with_logging(
     assert len(log_entries) == 1
     entry = log_entries[0]
     assert entry["role"] == "assistant"
-    assert entry["model"] == "local:gemma3:4b"
+    assert entry["model"] == "ollama:gemma3:4b"
     assert entry["raw_output"] == "hello world"
     assert entry["processed_output"] == "Hello, world!"
     assert "timestamp" in entry

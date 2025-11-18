@@ -217,7 +217,7 @@ async def _handle_conversation_turn(
 
     start_time = time.monotonic()
 
-    if provider_cfg.llm_provider == "local":
+    if provider_cfg.llm_provider == "ollama":
         model_name = ollama_cfg.llm_ollama_model
     elif provider_cfg.llm_provider == "openai":
         model_name = openai_llm_cfg.llm_openai_model
