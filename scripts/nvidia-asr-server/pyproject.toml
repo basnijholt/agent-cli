@@ -1,5 +1,5 @@
 [project]
-name = "canary-asr-server"
+name = "nvidia-asr-server"
 version = "1.0.0"
 description = "NVIDIA ASR server with OpenAI-compatible API"
 readme = "README.md"

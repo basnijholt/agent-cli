@@ -5,7 +5,7 @@ OpenAI-compatible API server for NVIDIA ASR models.
 ## Quick Start
 
 ```bash
-cd scripts/canary-server
+cd scripts/nvidia-asr-server
 uv run server.py
 ```
 
@@ -29,7 +29,7 @@ uv run server.py -m parakeet-tdt-0.6b-v2 -p 9090 -d cuda:1
 
 ```bash
 # Start server
-cd scripts/canary-server
+cd scripts/nvidia-asr-server
 uv run server.py
 
 # In another terminal
