@@ -136,7 +136,7 @@ def _maybe_status(
     quiet: bool,
 ) -> Status | contextlib.nullcontext:
     if not quiet:
-        if provider_cfg.llm_provider == "local":
+        if provider_cfg.llm_provider == "ollama":
             model_name = ollama_cfg.llm_ollama_model
         elif provider_cfg.llm_provider == "openai":
             model_name = openai_llm_cfg.llm_openai_model
@@ -186,7 +186,7 @@ async def _async_autocorrect(
         if general_cfg.quiet:
             print(f"❌ {e}")
         else:
-            if provider_cfg.llm_provider == "local":
+            if provider_cfg.llm_provider == "ollama":
                 error_details = f"Please check that your Ollama server is running at [bold cyan]{ollama_cfg.llm_ollama_host}[/bold cyan]"
             elif provider_cfg.llm_provider == "openai":
                 error_details = "Please check your OpenAI API key and network connection."
