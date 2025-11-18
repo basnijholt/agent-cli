@@ -62,6 +62,8 @@ tts-wyoming-voice = "en_US-lessac-medium"
 # OpenAI
 tts-openai-model = "tts-1"
 tts-openai-voice = "alloy"
+# Custom OpenAI-compatible TTS endpoint (e.g., your own proxy)
+# tts-openai-base-url = "http://localhost:8000/v1"
 
 # --- General Behavior ---
 log-level = "WARNING"  # Logging level (e.g., DEBUG, INFO, WARNING, ERROR)

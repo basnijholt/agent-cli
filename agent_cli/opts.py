@@ -226,6 +226,12 @@ TTS_OPENAI_VOICE: str = typer.Option(
     help="The voice to use for OpenAI TTS.",
     rich_help_panel="TTS (Text-to-Speech) Configuration: OpenAI",
 )
+TTS_OPENAI_BASE_URL: str | None = typer.Option(
+    None,
+    "--tts-openai-base-url",
+    help="Custom base URL for OpenAI-compatible TTS API (e.g., http://localhost:8000/v1 for a proxy).",
+    rich_help_panel="TTS (Text-to-Speech) Configuration: OpenAI",
+)
 
 
 # Kokoro
