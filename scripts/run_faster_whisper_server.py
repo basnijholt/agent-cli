@@ -15,7 +15,13 @@
 
 Run directly with uv:
 
-  ./scripts/faster_whisper_server.py --model large-v3 --host 0.0.0.0 --port 8811
+  ./scripts/run_faster_whisper_server.py --model large-v3 --host 0.0.0.0 --port 8811
+
+Then point agent-cli at it, e.g.:
+
+  agent-cli transcribe --asr-openai-base-url http://localhost:8811/v1 --asr-openai-model large-v3
+
+Note: agent-cli requires a `--asr-openai-model` value in the request, but this server ignores it and always uses the model you start it with (`--model`).
 """
 
 from __future__ import annotations
