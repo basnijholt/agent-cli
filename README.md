@@ -629,9 +629,9 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 │ --help          Show this message and exit.                                  │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Provider Selection ─────────────────────────────────────────────────────────╮
-│ --tts-provider        TEXT  The TTS provider to use ('local' for Wyoming,    │
-│                             'openai', 'kokoro').                             │
-│                             [default: local]                                 │
+│ --tts-provider        TEXT  The TTS provider to use ('wyoming', 'openai',    │
+│                             'kokoro').                                       │
+│                             [default: wyoming]                               │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ TTS (Text-to-Speech) Configuration ─────────────────────────────────────────╮
 │ --output-device-index        INTEGER  Index of the PyAudio output device to  │
@@ -746,9 +746,9 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 │ --llm-provider        TEXT  The LLM provider to use ('ollama', 'openai',     │
 │                             'gemini').                                       │
 │                             [default: ollama]                                │
-│ --tts-provider        TEXT  The TTS provider to use ('local' for Wyoming,    │
-│                             'openai', 'kokoro').                             │
-│                             [default: local]                                 │
+│ --tts-provider        TEXT  The TTS provider to use ('wyoming', 'openai',    │
+│                             'kokoro').                                       │
+│                             [default: wyoming]                               │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ ASR (Audio) Configuration ──────────────────────────────────────────────────╮
 │ --input-device-index        INTEGER  Index of the PyAudio input device to    │
@@ -906,9 +906,9 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 │ --llm-provider        TEXT  The LLM provider to use ('ollama', 'openai',     │
 │                             'gemini').                                       │
 │                             [default: ollama]                                │
-│ --tts-provider        TEXT  The TTS provider to use ('local' for Wyoming,    │
-│                             'openai', 'kokoro').                             │
-│                             [default: local]                                 │
+│ --tts-provider        TEXT  The TTS provider to use ('wyoming', 'openai',    │
+│                             'kokoro').                                       │
+│                             [default: wyoming]                               │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Wake Word Options ──────────────────────────────────────────────────────────╮
 │ --wake-server-ip          TEXT     Wyoming wake word server IP address.      │
@@ -1082,9 +1082,9 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 │ --llm-provider        TEXT  The LLM provider to use ('ollama', 'openai',     │
 │                             'gemini').                                       │
 │                             [default: ollama]                                │
-│ --tts-provider        TEXT  The TTS provider to use ('local' for Wyoming,    │
-│                             'openai', 'kokoro').                             │
-│                             [default: local]                                 │
+│ --tts-provider        TEXT  The TTS provider to use ('wyoming', 'openai',    │
+│                             'kokoro').                                       │
+│                             [default: wyoming]                               │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ ASR (Audio) Configuration ──────────────────────────────────────────────────╮
 │ --input-device-index        INTEGER  Index of the PyAudio input device to    │
