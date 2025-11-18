@@ -507,7 +507,7 @@ def transcribe(  # noqa: PLR0912
     provider_cfg = config.ProviderSelection(
         asr_provider=asr_provider,
         llm_provider=llm_provider,
-        tts_provider="local",  # Not used in transcribe
+        tts_provider="wyoming",  # Not used in transcribe
     )
     wyoming_asr_cfg = config.WyomingASR(
         asr_wyoming_ip=asr_wyoming_ip,

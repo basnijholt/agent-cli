@@ -102,3 +102,4 @@ def test_provider_alias_normalization(config_file: Path) -> None:
     )
     assert provider_cfg.llm_provider == "ollama"
     assert provider_cfg.asr_provider == "wyoming"
+    assert provider_cfg.tts_provider == "wyoming"

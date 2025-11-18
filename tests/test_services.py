@@ -70,7 +70,7 @@ def test_create_transcriber_wyoming() -> None:
     provider_cfg = config.ProviderSelection(
         asr_provider="wyoming",
         llm_provider="ollama",
-        tts_provider="local",
+        tts_provider="wyoming",
     )
     audio_input_cfg = config.AudioInput()
     wyoming_asr_cfg = config.WyomingASR(asr_wyoming_ip="localhost", asr_wyoming_port=1234)
@@ -90,7 +90,7 @@ def test_create_synthesizer_wyoming() -> None:
     provider_cfg = config.ProviderSelection(
         asr_provider="wyoming",
         llm_provider="ollama",
-        tts_provider="local",
+        tts_provider="wyoming",
     )
     audio_output_cfg = config.AudioOutput(enable_tts=True)
     wyoming_tts_cfg = config.WyomingTTS(

@@ -33,7 +33,7 @@ def get_configs() -> tuple[
     provider_cfg = config.ProviderSelection(
         asr_provider="wyoming",
         llm_provider="ollama",
-        tts_provider="local",
+        tts_provider="wyoming",
     )
     general_cfg = config.General(
         log_level="INFO",

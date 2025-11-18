@@ -33,6 +33,7 @@ def _normalize_provider_value(field: str, value: str) -> str:
 _DEPRECATED_PROVIDER_ALIASES: dict[str, dict[str, str]] = {
     "llm_provider": {"local": "ollama"},
     "asr_provider": {"local": "wyoming"},
+    "tts_provider": {"local": "wyoming"},
 }
 
 # --- Panel: Provider Selection ---
@@ -43,7 +44,7 @@ class ProviderSelection(BaseModel):
 
     llm_provider: Literal["ollama", "openai", "gemini"]
     asr_provider: Literal["wyoming", "openai"]
-    tts_provider: Literal["local", "openai", "kokoro"]
+    tts_provider: Literal["wyoming", "openai", "kokoro"]
 
     @field_validator("llm_provider", mode="before")
     @classmethod
@@ -57,6 +58,13 @@ class ProviderSelection(BaseModel):
     def _normalize_asr_provider(cls, v: str) -> str:
         if isinstance(v, str):
             return _normalize_provider_value("asr_provider", v)
+        return v
+
+    @field_validator("tts_provider", mode="before")
+    @classmethod
+    def _normalize_tts_provider(cls, v: str) -> str:
+        if isinstance(v, str):
+            return _normalize_provider_value("tts_provider", v)
         return v
 
 
@@ -224,7 +232,7 @@ def load_config(config_path_str: str | None = None) -> dict[str, Any]:
 def normalize_provider_defaults(cfg: dict[str, Any]) -> dict[str, Any]:
     """Normalize deprecated provider names in a config section."""
     normalized = dict(cfg)
-    for provider_key in ("llm_provider", "asr_provider"):
+    for provider_key in ("llm_provider", "asr_provider", "tts_provider"):
         if provider_key in normalized and isinstance(normalized[provider_key], str):
             normalized[provider_key] = _normalize_provider_value(
                 provider_key,

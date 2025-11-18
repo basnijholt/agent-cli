@@ -24,7 +24,7 @@ async def test_handle_conversation_turn_no_llm_response():
     provider_cfg = config.ProviderSelection(
         asr_provider="wyoming",
         llm_provider="ollama",
-        tts_provider="local",
+        tts_provider="wyoming",
     )
     history_cfg = config.History()
     audio_in_cfg = config.AudioInput()
@@ -92,7 +92,7 @@ async def test_handle_conversation_turn_no_instruction():
     provider_cfg = config.ProviderSelection(
         asr_provider="wyoming",
         llm_provider="ollama",
-        tts_provider="local",
+        tts_provider="wyoming",
     )
     history_cfg = config.History()
     audio_in_cfg = config.AudioInput()
@@ -192,7 +192,7 @@ async def test_async_main_exception_handling():
     provider_cfg = config.ProviderSelection(
         asr_provider="wyoming",
         llm_provider="ollama",
-        tts_provider="local",
+        tts_provider="wyoming",
     )
     history_cfg = config.History()
     audio_in_cfg = config.AudioInput()

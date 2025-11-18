@@ -88,7 +88,7 @@ async def test_async_main_list_devices(tmp_path: Path) -> None:
     provider_cfg = config.ProviderSelection(
         asr_provider="wyoming",
         llm_provider="ollama",
-        tts_provider="local",
+        tts_provider="wyoming",
     )
     history_cfg = config.History(history_dir=tmp_path)
     audio_in_cfg = config.AudioInput()
@@ -147,7 +147,7 @@ async def test_async_main_list_output_devices(tmp_path: Path) -> None:
     provider_cfg = config.ProviderSelection(
         asr_provider="wyoming",
         llm_provider="ollama",
-        tts_provider="local",
+        tts_provider="wyoming",
     )
     history_cfg = config.History(history_dir=tmp_path)
     audio_in_cfg = config.AudioInput()
@@ -209,7 +209,7 @@ async def test_async_main_full_loop(tmp_path: Path) -> None:
     provider_cfg = config.ProviderSelection(
         asr_provider="wyoming",
         llm_provider="ollama",
-        tts_provider="local",
+        tts_provider="wyoming",
     )
     history_cfg = config.History(history_dir=history_dir)
     audio_in_cfg = config.AudioInput(input_device_index=1)

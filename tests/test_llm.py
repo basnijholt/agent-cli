@@ -16,7 +16,7 @@ def test_create_llm_agent_openai_no_key():
     provider_cfg = config.ProviderSelection(
         llm_provider="openai",
         asr_provider="wyoming",
-        tts_provider="local",
+        tts_provider="wyoming",
     )
     ollama_cfg = config.Ollama(
         llm_ollama_model="test-model",
@@ -42,7 +42,7 @@ def test_create_llm_agent(monkeypatch: pytest.MonkeyPatch) -> None:
     provider_cfg = config.ProviderSelection(
         llm_provider="ollama",
         asr_provider="wyoming",
-        tts_provider="local",
+        tts_provider="wyoming",
     )
     ollama_cfg = config.Ollama(
         llm_ollama_model="test-model",
@@ -74,7 +74,7 @@ async def test_get_llm_response(mock_create_llm_agent: MagicMock) -> None:
     provider_cfg = config.ProviderSelection(
         llm_provider="ollama",
         asr_provider="wyoming",
-        tts_provider="local",
+        tts_provider="wyoming",
     )
     ollama_cfg = config.Ollama(llm_ollama_model="test", llm_ollama_host="test")
     openai_llm_cfg = config.OpenAILLM(
@@ -115,7 +115,7 @@ async def test_get_llm_response_error(mock_create_llm_agent: MagicMock) -> None:
     provider_cfg = config.ProviderSelection(
         llm_provider="ollama",
         asr_provider="wyoming",
-        tts_provider="local",
+        tts_provider="wyoming",
     )
     ollama_cfg = config.Ollama(llm_ollama_model="test", llm_ollama_host="test")
     openai_llm_cfg = config.OpenAILLM(
@@ -156,7 +156,7 @@ async def test_get_llm_response_error_exit(mock_create_llm_agent: MagicMock):
     provider_cfg = config.ProviderSelection(
         llm_provider="ollama",
         asr_provider="wyoming",
-        tts_provider="local",
+        tts_provider="wyoming",
     )
     ollama_cfg = config.Ollama(llm_ollama_model="test", llm_ollama_host="test")
     openai_llm_cfg = config.OpenAILLM(
@@ -195,7 +195,7 @@ def test_process_and_update_clipboard(
     provider_cfg = config.ProviderSelection(
         llm_provider="ollama",
         asr_provider="wyoming",
-        tts_provider="local",
+        tts_provider="wyoming",
     )
     ollama_cfg = config.Ollama(llm_ollama_model="test", llm_ollama_host="test")
     openai_llm_cfg = config.OpenAILLM(

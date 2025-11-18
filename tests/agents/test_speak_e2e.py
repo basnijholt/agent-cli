@@ -45,7 +45,7 @@ async def test_speak_e2e(
             save_file=None,
         )
         provider_cfg = config.ProviderSelection(
-            tts_provider="local",
+            tts_provider="wyoming",
             asr_provider="wyoming",
             llm_provider="ollama",
         )

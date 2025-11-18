@@ -18,9 +18,9 @@ ASR_PROVIDER: str = typer.Option(
     rich_help_panel="Provider Selection",
 )
 TTS_PROVIDER: str = typer.Option(
-    "local",
+    "wyoming",
     "--tts-provider",
-    help="The TTS provider to use ('local' for Wyoming, 'openai', 'kokoro').",
+    help="The TTS provider to use ('wyoming', 'openai', 'kokoro').",
     rich_help_panel="Provider Selection",
 )
 

@@ -21,7 +21,7 @@ async def test_handle_tts_playback(mock_speak_text: AsyncMock) -> None:
     mock_speak_text.return_value = b"audio data"
     mock_live = MagicMock()
     provider_cfg = config.ProviderSelection(
-        tts_provider="local",
+        tts_provider="wyoming",
         asr_provider="wyoming",
         llm_provider="ollama",
     )
@@ -79,7 +79,7 @@ async def test_handle_tts_playback_with_save_file(
     mock_live = MagicMock()
 
     provider_cfg = config.ProviderSelection(
-        tts_provider="local",
+        tts_provider="wyoming",
         asr_provider="wyoming",
         llm_provider="ollama",
     )
@@ -122,7 +122,7 @@ async def test_handle_tts_playback_no_audio(mock_speak_text: AsyncMock) -> None:
     mock_speak_text.return_value = None
     mock_live = MagicMock()
     provider_cfg = config.ProviderSelection(
-        tts_provider="local",
+        tts_provider="wyoming",
         asr_provider="wyoming",
         llm_provider="ollama",
     )

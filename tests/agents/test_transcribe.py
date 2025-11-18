@@ -51,7 +51,7 @@ async def test_transcribe_main_llm_enabled(
         provider_cfg = config.ProviderSelection(
             asr_provider="wyoming",
             llm_provider="ollama",
-            tts_provider="local",
+            tts_provider="wyoming",
         )
         general_cfg = config.General(
             log_level="INFO",
@@ -124,7 +124,7 @@ async def test_transcribe_main(
         provider_cfg = config.ProviderSelection(
             asr_provider="wyoming",
             llm_provider="ollama",
-            tts_provider="local",
+            tts_provider="wyoming",
         )
         general_cfg = config.General(
             log_level="INFO",
@@ -339,7 +339,7 @@ async def test_transcribe_includes_clipboard_context(
     provider_cfg = config.ProviderSelection(
         asr_provider="wyoming",
         llm_provider="ollama",
-        tts_provider="local",
+        tts_provider="wyoming",
     )
     general_cfg = config.General(
         log_level="INFO",
@@ -418,7 +418,7 @@ async def test_transcribe_with_logging(
     provider_cfg = config.ProviderSelection(
         asr_provider="wyoming",
         llm_provider="ollama",
-        tts_provider="local",
+        tts_provider="wyoming",
     )
     general_cfg = config.General(
         log_level="INFO",

@@ -21,7 +21,7 @@ async def test_speak_text(mock_create_synthesizer: MagicMock) -> None:
     provider_cfg = config.ProviderSelection(
         asr_provider="wyoming",
         llm_provider="ollama",
-        tts_provider="local",
+        tts_provider="wyoming",
     )
     audio_output_cfg = config.AudioOutput(enable_tts=True)
     wyoming_tts_cfg = config.WyomingTTS(
@@ -123,7 +123,7 @@ def test_create_synthesizer_disabled():
     provider_cfg = config.ProviderSelection(
         asr_provider="wyoming",
         llm_provider="ollama",
-        tts_provider="local",
+        tts_provider="wyoming",
     )
     audio_output_cfg = config.AudioOutput(enable_tts=False)
     wyoming_tts_cfg = config.WyomingTTS(

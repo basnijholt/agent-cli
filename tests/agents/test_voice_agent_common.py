@@ -22,7 +22,7 @@ async def test_get_instruction_from_audio(mock_create_transcriber: MagicMock) ->
     provider_cfg = config.ProviderSelection(
         asr_provider="wyoming",
         llm_provider="ollama",
-        tts_provider="local",
+        tts_provider="wyoming",
     )
     audio_in_cfg = config.AudioInput(input_device_index=1)
     wyoming_asr_cfg = config.WyomingASR(asr_wyoming_ip="localhost", asr_wyoming_port=1234)
@@ -53,7 +53,7 @@ async def test_get_instruction_from_audio_error(mock_create_transcriber: MagicMo
     provider_cfg = config.ProviderSelection(
         asr_provider="wyoming",
         llm_provider="ollama",
-        tts_provider="local",
+        tts_provider="wyoming",
     )
     audio_in_cfg = config.AudioInput(input_device_index=1)
     wyoming_asr_cfg = config.WyomingASR(asr_wyoming_ip="localhost", asr_wyoming_port=1234)
@@ -92,7 +92,7 @@ async def test_process_instruction_and_respond(
     )
     provider_cfg = config.ProviderSelection(
         llm_provider="ollama",
-        tts_provider="local",
+        tts_provider="wyoming",
         asr_provider="wyoming",
     )
     ollama_cfg = config.Ollama(llm_ollama_model="test-model", llm_ollama_host="localhost")

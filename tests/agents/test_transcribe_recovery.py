@@ -45,7 +45,7 @@ async def test_async_main_from_file(tmp_path: Path):
         provider_cfg = config.ProviderSelection(
             asr_provider="wyoming",
             llm_provider="ollama",
-            tts_provider="local",
+            tts_provider="wyoming",
         )
         general_cfg = config.General(
             log_level="INFO",
@@ -116,7 +116,7 @@ async def test_async_main_from_file_with_llm(tmp_path: Path):
         provider_cfg = config.ProviderSelection(
             asr_provider="wyoming",
             llm_provider="ollama",
-            tts_provider="local",
+            tts_provider="wyoming",
         )
         general_cfg = config.General(
             log_level="INFO",
@@ -186,7 +186,7 @@ async def test_async_main_from_file_with_logging(tmp_path: Path):
         provider_cfg = config.ProviderSelection(
             asr_provider="wyoming",
             llm_provider="ollama",
-            tts_provider="local",
+            tts_provider="wyoming",
         )
         general_cfg = config.General(
             log_level="INFO",
@@ -258,7 +258,7 @@ async def test_async_main_from_file_error_handling(
         provider_cfg = config.ProviderSelection(
             asr_provider="wyoming",
             llm_provider="ollama",
-            tts_provider="local",
+            tts_provider="wyoming",
         )
         general_cfg = config.General(
             log_level="INFO",
@@ -338,7 +338,7 @@ async def test_async_main_save_recording_enabled(
         provider_cfg = config.ProviderSelection(
             asr_provider="wyoming",
             llm_provider="ollama",
-            tts_provider="local",
+            tts_provider="wyoming",
         )
         general_cfg = config.General(
             log_level="INFO",

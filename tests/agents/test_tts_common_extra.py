@@ -35,7 +35,7 @@ async def test_handle_tts_playback_os_error(mock_speak_text: AsyncMock) -> None:
     mock_live = MagicMock()
 
     provider_cfg = config.ProviderSelection(
-        tts_provider="local",
+        tts_provider="wyoming",
         asr_provider="wyoming",
         llm_provider="ollama",
     )
