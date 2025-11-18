@@ -55,13 +55,7 @@ async def transcribe_audio_openai(
     audio_file = io.BytesIO(audio_data)
     audio_file.name = "audio.wav"
 
-    # Build transcription parameters
-    transcription_params = {
-        "model": openai_asr_cfg.asr_openai_model,
-        "file": audio_file,
-    }
-
-    # Add optional prompt if provided
+    transcription_params = {"model": openai_asr_cfg.asr_openai_model, "file": audio_file}
     if openai_asr_cfg.asr_openai_prompt:
         transcription_params["prompt"] = openai_asr_cfg.asr_openai_prompt
 
