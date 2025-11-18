@@ -6,7 +6,7 @@ Supports multiple NVIDIA ASR models:
 - nvidia/parakeet-tdt-0.6b-v2: High-quality English ASR with timestamps
 
 Usage:
-    cd scripts/canary-server
+    cd scripts/nvidia-asr-server
     uv run server.py
     uv run server.py --model parakeet-tdt-0.6b-v2
     uv run server.py --port 9090 --device cuda:1
@@ -18,7 +18,7 @@ import shutil
 import subprocess
 import tempfile
 import traceback
-from contextlib import suppress
+from contextlib import asynccontextmanager, suppress
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
@@ -31,6 +31,7 @@ from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import JSONResponse
 
 if TYPE_CHECKING:
+    from collections.abc import AsyncGenerator
     from typing import TypedDict
 
     class TranscriptionResult(TypedDict, total=False):
@@ -128,17 +129,20 @@ def load_asr_model(config: ServerConfig) -> Any:
     return model.to(config.device).eval()
 
 
-app = FastAPI()
 asr_model: Any = None
 config: ServerConfig | None = None
 
 
-@app.on_event("startup")
-async def startup() -> None:
+@asynccontextmanager
+async def lifespan(_app: FastAPI) -> AsyncGenerator[None]:
     """Load the ASR model on startup."""
     global asr_model
     assert config is not None
     asr_model = load_asr_model(config)
+    yield
+
+
+app = FastAPI(lifespan=lifespan)
 
 
 def transcribe_canary(audio_path: str, prompt: str | None) -> str:
