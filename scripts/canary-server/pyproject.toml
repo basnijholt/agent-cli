@@ -13,11 +13,11 @@ dependencies = [
 ]
 
 [tool.uv.sources]
-torch = [{ index = "pytorch-cu130" }]
+torch = [{ index = "pytorch-cu124" }]
 
 [[tool.uv.index]]
-name = "pytorch-cu130"
-url = "https://download.pytorch.org/whl/cu130"
+name = "pytorch-cu124"
+url = "https://download.pytorch.org/whl/cu124"
 explicit = true
 
 [tool.uv]
