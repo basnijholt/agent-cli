@@ -660,8 +660,8 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 │ --tts-openai-voice        TEXT  The voice to use for OpenAI TTS.             │
 │                                 [default: alloy]                             │
 │ --tts-openai-base-url     TEXT  Custom base URL for OpenAI-compatible TTS    │
-│                                 API (e.g., for Kokoro:                       │
-│                                 http://localhost:8880/v1).                   │
+│                                 API (e.g., a proxy at                        │
+│                                 http://localhost:8000/v1).                   │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ TTS (Text-to-Speech) Configuration: Kokoro ─────────────────────────────────╮
 │ --tts-kokoro-model        TEXT  The Kokoro model to use for TTS.             │
@@ -826,8 +826,8 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 │ --tts-openai-voice        TEXT  The voice to use for OpenAI TTS.             │
 │                                 [default: alloy]                             │
 │ --tts-openai-base-url     TEXT  Custom base URL for OpenAI-compatible TTS    │
-│                                 API (e.g., for Kokoro:                       │
-│                                 http://localhost:8880/v1).                   │
+│                                 API (e.g., a proxy at                        │
+│                                 http://localhost:8000/v1).                   │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ TTS (Text-to-Speech) Configuration: Kokoro ─────────────────────────────────╮
 │ --tts-kokoro-model        TEXT  The Kokoro model to use for TTS.             │
@@ -998,8 +998,8 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 │ --tts-openai-voice        TEXT  The voice to use for OpenAI TTS.             │
 │                                 [default: alloy]                             │
 │ --tts-openai-base-url     TEXT  Custom base URL for OpenAI-compatible TTS    │
-│                                 API (e.g., for Kokoro:                       │
-│                                 http://localhost:8880/v1).                   │
+│                                 API (e.g., a proxy at                        │
+│                                 http://localhost:8000/v1).                   │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ TTS (Text-to-Speech) Configuration: Kokoro ─────────────────────────────────╮
 │ --tts-kokoro-model        TEXT  The Kokoro model to use for TTS.             │
@@ -1173,8 +1173,8 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 │ --tts-openai-voice        TEXT  The voice to use for OpenAI TTS.             │
 │                                 [default: alloy]                             │
 │ --tts-openai-base-url     TEXT  Custom base URL for OpenAI-compatible TTS    │
-│                                 API (e.g., for Kokoro:                       │
-│                                 http://localhost:8880/v1).                   │
+│                                 API (e.g., a proxy at                        │
+│                                 http://localhost:8000/v1).                   │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ TTS (Text-to-Speech) Configuration: Kokoro ─────────────────────────────────╮
 │ --tts-kokoro-model        TEXT  The Kokoro model to use for TTS.             │
