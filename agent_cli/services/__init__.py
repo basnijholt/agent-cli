@@ -44,6 +44,57 @@ async def transcribe_audio_openai(
     return response.text
 
 
+async def transcribe_audio_custom(
+    audio_data: bytes,
+    custom_asr_cfg: config.CustomASR,
+    logger: logging.Logger,
+    **_kwargs: object,  # Accept extra kwargs for consistency with Wyoming
+) -> str:
+    """Transcribe audio using a custom Whisper-compatible API (e.g., NVIDIA Canary).
+
+    This function communicates with a custom ASR endpoint that follows
+    the OpenAI Whisper API format (/v1/audio/transcriptions).
+
+    Args:
+        audio_data: Audio bytes in WAV format (16kHz, mono recommended)
+        custom_asr_cfg: Configuration with base_url, model, and prompt
+        logger: Logger instance
+        **_kwargs: Additional kwargs (for consistency with other providers)
+
+    Returns:
+        Transcribed text as a string
+
+    """
+    logger.info(
+        "Transcribing audio with custom ASR endpoint: %s",
+        custom_asr_cfg.asr_custom_base_url,
+    )
+    import httpx  # noqa: PLC0415
+
+    # Prepare the multipart/form-data request
+    files = {"file": ("audio.wav", audio_data, "audio/wav")}
+    data = {}
+    if custom_asr_cfg.asr_custom_model:
+        data["model"] = custom_asr_cfg.asr_custom_model
+    if custom_asr_cfg.asr_custom_prompt:
+        data["prompt"] = custom_asr_cfg.asr_custom_prompt
+
+    # Construct the full URL
+    base_url = custom_asr_cfg.asr_custom_base_url.rstrip("/")
+    url = f"{base_url}/v1/audio/transcriptions"
+
+    async with httpx.AsyncClient(timeout=60.0) as client:
+        response = await client.post(url, files=files, data=data)
+        response.raise_for_status()
+
+        # Handle both JSON and plain text responses
+        content_type = response.headers.get("content-type", "")
+        if "application/json" in content_type:
+            result = response.json()
+            return result.get("text", "")
+        return response.text
+
+
 async def synthesize_speech_openai(
     text: str,
     openai_tts_cfg: config.OpenAITTS,
