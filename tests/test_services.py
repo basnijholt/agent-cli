@@ -56,7 +56,7 @@ async def test_synthesize_speech_openai(mock_openai_client: MagicMock) -> None:
     result = await synthesize_speech_openai(mock_text, openai_tts_cfg, mock_logger)
 
     assert result == b"test audio"
-    mock_openai_client.assert_called_once_with(api_key="test_api_key")
+    mock_openai_client.assert_called_once_with(api_key="test_api_key", base_url=None)
     mock_client_instance.audio.speech.create.assert_called_once_with(
         model="tts-1",
         voice="alloy",
