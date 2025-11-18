@@ -161,7 +161,7 @@ Add these fields if needed by tapping "Add new field":
 ```toml
 [defaults]
 # For transcription with Wyoming/FasterWhisper (local)
-asr-provider = "local"
+asr-provider = "wyoming"
 asr-wyoming-ip = "localhost"
 asr-wyoming-port = 10300
 

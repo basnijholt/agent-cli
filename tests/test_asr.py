@@ -94,7 +94,7 @@ def test_create_transcriber():
     )
     assert transcriber.func is asr._transcribe_live_audio_openai
 
-    provider_cfg.asr_provider = "local"
+    provider_cfg.asr_provider = "wyoming"
     transcriber = asr.create_transcriber(
         provider_cfg,
         MagicMock(),
@@ -111,7 +111,7 @@ def test_create_recorded_audio_transcriber():
     transcriber = asr.create_recorded_audio_transcriber(provider_cfg)
     assert transcriber is asr.transcribe_audio_openai
 
-    provider_cfg.asr_provider = "local"
+    provider_cfg.asr_provider = "wyoming"
     transcriber = asr.create_recorded_audio_transcriber(provider_cfg)
     assert transcriber is asr._transcribe_recorded_audio_wyoming
 

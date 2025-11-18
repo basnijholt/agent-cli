@@ -340,7 +340,7 @@ async def _async_main(  # noqa: PLR0912, PLR0915, C901
                 instructions += context_note
 
             # Get model info for logging
-            if provider_cfg.llm_provider == "local":
+            if provider_cfg.llm_provider == "ollama":
                 model_info = f"{provider_cfg.llm_provider}:{ollama_cfg.llm_ollama_model}"
             elif provider_cfg.llm_provider == "openai":
                 model_info = f"{provider_cfg.llm_provider}:{openai_llm_cfg.llm_openai_model}"
@@ -507,7 +507,7 @@ def transcribe(  # noqa: PLR0912
     provider_cfg = config.ProviderSelection(
         asr_provider=asr_provider,
         llm_provider=llm_provider,
-        tts_provider="local",  # Not used in transcribe
+        tts_provider="wyoming",  # Not used in transcribe
     )
     wyoming_asr_cfg = config.WyomingASR(
         asr_wyoming_ip=asr_wyoming_ip,

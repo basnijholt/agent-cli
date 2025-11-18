@@ -68,9 +68,9 @@ async def test_synthesize_speech_openai(mock_openai_client: MagicMock) -> None:
 def test_create_transcriber_wyoming() -> None:
     """Test that create_transcriber returns the Wyoming transcriber."""
     provider_cfg = config.ProviderSelection(
-        asr_provider="local",
-        llm_provider="local",
-        tts_provider="local",
+        asr_provider="wyoming",
+        llm_provider="ollama",
+        tts_provider="wyoming",
     )
     audio_input_cfg = config.AudioInput()
     wyoming_asr_cfg = config.WyomingASR(asr_wyoming_ip="localhost", asr_wyoming_port=1234)
@@ -88,9 +88,9 @@ def test_create_transcriber_wyoming() -> None:
 def test_create_synthesizer_wyoming() -> None:
     """Test that create_synthesizer returns the Wyoming synthesizer."""
     provider_cfg = config.ProviderSelection(
-        asr_provider="local",
-        llm_provider="local",
-        tts_provider="local",
+        asr_provider="wyoming",
+        llm_provider="ollama",
+        tts_provider="wyoming",
     )
     audio_output_cfg = config.AudioOutput(enable_tts=True)
     wyoming_tts_cfg = config.WyomingTTS(
@@ -116,8 +116,8 @@ def test_create_synthesizer_wyoming() -> None:
 def test_create_synthesizer_kokoro() -> None:
     """Test that create_synthesizer returns the Kokoro synthesizer."""
     provider_cfg = config.ProviderSelection(
-        asr_provider="local",
-        llm_provider="local",
+        asr_provider="wyoming",
+        llm_provider="ollama",
         tts_provider="kokoro",
     )
     audio_output_cfg = config.AudioOutput(enable_tts=True)

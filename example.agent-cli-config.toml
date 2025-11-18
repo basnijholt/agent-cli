@@ -13,10 +13,9 @@
 [defaults]
 
 # --- Provider Selection ---
-# Select the default provider for each service ("local" or "openai").
-llm-provider = "local"
-asr-provider = "local"
-tts-provider = "local"
+# Select the default provider for each service ("ollama"/"openai"/"gemini" for LLM, "wyoming"/"openai" for ASR).
+llm-provider = "ollama"  # "local" still works as a deprecated alias
+tts-provider = "wyoming"
 
 # --- API Keys ---
 # Your OpenAI API key. Can also be set via the OPENAI_API_KEY environment variable.
@@ -88,7 +87,7 @@ tts = true
 
 [autocorrect]
 # Use a more powerful model specifically for the autocorrect command.
-llm-provider = "local"
+llm-provider = "ollama"
 llm-ollama-model = "devstral:24b"
 
 [chat]
@@ -105,7 +104,7 @@ last-n-messages = 50 # Number of messages to load from history
 
 [speak]
 # Use a specific voice for the speak command.
-tts-provider = "local"
+tts-provider = "wyoming"
 tts-wyoming-voice = "en_US-ryan-high"
 tts-speed = 1.0
 
@@ -121,6 +120,6 @@ extra-instructions = "Assume the user is often discussing Python programming. Us
 
 [voice-edit]
 # Use a powerful local model for the voice assistant.
-llm-provider = "local"
+llm-provider = "ollama"
 llm-ollama-model = "llama3"
 tts = true

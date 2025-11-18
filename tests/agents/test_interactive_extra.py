@@ -22,9 +22,9 @@ async def test_handle_conversation_turn_no_llm_response():
     conversation_history = []
     general_cfg = config.General(log_level="INFO", log_file=None, quiet=True, list_devices=True)
     provider_cfg = config.ProviderSelection(
-        asr_provider="local",
-        llm_provider="local",
-        tts_provider="local",
+        asr_provider="wyoming",
+        llm_provider="ollama",
+        tts_provider="wyoming",
     )
     history_cfg = config.History()
     audio_in_cfg = config.AudioInput()
@@ -90,9 +90,9 @@ async def test_handle_conversation_turn_no_instruction():
     conversation_history = []
     general_cfg = config.General(log_level="INFO", log_file=None, quiet=True, list_devices=True)
     provider_cfg = config.ProviderSelection(
-        asr_provider="local",
-        llm_provider="local",
-        tts_provider="local",
+        asr_provider="wyoming",
+        llm_provider="ollama",
+        tts_provider="wyoming",
     )
     history_cfg = config.History()
     audio_in_cfg = config.AudioInput()
@@ -190,9 +190,9 @@ async def test_async_main_exception_handling():
     """Test that exceptions in async_main are caught and logged."""
     general_cfg = config.General(log_level="INFO", log_file=None, quiet=False, list_devices=True)
     provider_cfg = config.ProviderSelection(
-        asr_provider="local",
-        llm_provider="local",
-        tts_provider="local",
+        asr_provider="wyoming",
+        llm_provider="ollama",
+        tts_provider="wyoming",
     )
     history_cfg = config.History()
     audio_in_cfg = config.AudioInput()

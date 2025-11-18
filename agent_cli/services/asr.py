@@ -114,7 +114,7 @@ def create_transcriber(
             audio_input_cfg=audio_input_cfg,
             openai_asr_cfg=openai_asr_cfg,
         )
-    if provider_cfg.asr_provider == "local":
+    if provider_cfg.asr_provider == "wyoming":
         return partial(
             _transcribe_live_audio_wyoming,
             audio_input_cfg=audio_input_cfg,
@@ -130,7 +130,7 @@ def create_recorded_audio_transcriber(
     """Return the appropriate transcriber for recorded audio based on the provider."""
     if provider_cfg.asr_provider == "openai":
         return transcribe_audio_openai
-    if provider_cfg.asr_provider == "local":
+    if provider_cfg.asr_provider == "wyoming":
         return _transcribe_recorded_audio_wyoming
     msg = f"Unsupported ASR provider: {provider_cfg.asr_provider}"
     raise ValueError(msg)
