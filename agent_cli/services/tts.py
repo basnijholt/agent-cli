@@ -10,7 +10,6 @@ from functools import partial
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from openai import AsyncOpenAI
 from rich.live import Live
 from wyoming.audio import AudioChunk, AudioStart, AudioStop
 from wyoming.tts import Synthesize, SynthesizeVoice
@@ -34,7 +33,6 @@ if TYPE_CHECKING:
     from rich.live import Live
     from wyoming.client import AsyncClient
 
-    from agent_cli import config
 
 has_audiostretchy = importlib.util.find_spec("audiostretchy") is not None
 
@@ -225,19 +223,18 @@ async def _synthesize_speech_kokoro(
     logger: logging.Logger,
     **_kwargs: object,
 ) -> bytes | None:
-    """Synthesize speech from text using Kokoro TTS server."""
+    """Synthesize speech from text using Kokoro TTS server via OpenAI client."""
+    openai_tts_cfg = config.OpenAITTS(
+        tts_openai_model=kokoro_tts_cfg.tts_kokoro_model,
+        tts_openai_voice=kokoro_tts_cfg.tts_kokoro_voice,
+        tts_openai_base_url=kokoro_tts_cfg.tts_kokoro_host,
+    )
     try:
-        client = AsyncOpenAI(
-            api_key="not-needed",
-            base_url=kokoro_tts_cfg.tts_kokoro_host,
+        return await synthesize_speech_openai(
+            text=text,
+            openai_tts_cfg=openai_tts_cfg,
+            logger=logger,
         )
-        response = await client.audio.speech.create(
-            model=kokoro_tts_cfg.tts_kokoro_model,
-            voice=kokoro_tts_cfg.tts_kokoro_voice,
-            input=text,
-            response_format="wav",
-        )
-        return await response.aread()
     except Exception:
         logger.exception("Error during Kokoro speech synthesis")
         return None
