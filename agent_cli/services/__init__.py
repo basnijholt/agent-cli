@@ -68,12 +68,22 @@ async def synthesize_speech_openai(
     openai_tts_cfg: config.OpenAITTS,
     logger: logging.Logger,
 ) -> bytes:
-    """Synthesize speech using OpenAI's TTS API."""
-    logger.info("Synthesizing speech with OpenAI TTS...")
-    if not openai_tts_cfg.openai_api_key:
-        msg = "OpenAI API key is not set."
-        raise ValueError(msg)
-    client = _get_openai_client(api_key=openai_tts_cfg.openai_api_key)
+    """Synthesize speech using OpenAI's TTS API or a compatible endpoint."""
+    if openai_tts_cfg.tts_openai_base_url:
+        logger.info(
+            "Synthesizing speech with custom OpenAI-compatible endpoint: %s",
+            openai_tts_cfg.tts_openai_base_url,
+        )
+    else:
+        logger.info("Synthesizing speech with OpenAI TTS...")
+        if not openai_tts_cfg.openai_api_key:
+            msg = "OpenAI API key is not set."
+            raise ValueError(msg)
+
+    client = _get_openai_client(
+        api_key=openai_tts_cfg.openai_api_key,
+        base_url=openai_tts_cfg.tts_openai_base_url,
+    )
     response = await client.audio.speech.create(
         model=openai_tts_cfg.tts_openai_model,
         voice=openai_tts_cfg.tts_openai_voice,
