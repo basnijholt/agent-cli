@@ -393,8 +393,9 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Provider Selection ─────────────────────────────────────────────────────────╮
 │ --llm-provider        TEXT  The LLM provider to use ('ollama', 'openai',     │
-│                             'gemini'; 'local' -> 'ollama' alias).            │
-│                             [default: ollama]                                 │
+│                             'gemini'; 'local' is deprecated alias for        │
+│                             'ollama').                                       │
+│                             [default: ollama]                                │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ LLM Configuration: Ollama (local) ──────────────────────────────────────────╮
 │ --llm-ollama-model        TEXT  The Ollama model to use. Default is          │
@@ -495,11 +496,12 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Provider Selection ─────────────────────────────────────────────────────────╮
 │ --asr-provider        TEXT  The ASR provider to use ('wyoming', 'openai';    │
-│                             'local' -> 'wyoming' alias).                    │
-│                             [default: wyoming]                                 │
+│                             'local' is deprecated alias for 'wyoming').      │
+│                             [default: wyoming]                               │
 │ --llm-provider        TEXT  The LLM provider to use ('ollama', 'openai',     │
-│                             'gemini'; 'local' -> 'ollama' alias).            │
-│                             [default: ollama]                                 │
+│                             'gemini'; 'local' is deprecated alias for        │
+│                             'ollama').                                       │
+│                             [default: ollama]                                │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ ASR (Audio) Configuration ──────────────────────────────────────────────────╮
 │ --input-device-index        INTEGER  Index of the PyAudio input device to    │
@@ -743,11 +745,12 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Provider Selection ─────────────────────────────────────────────────────────╮
 │ --asr-provider        TEXT  The ASR provider to use ('wyoming', 'openai';    │
-│                             'local' -> 'wyoming' alias).                    │
-│                             [default: wyoming]                                 │
+│                             'local' is deprecated alias for 'wyoming').      │
+│                             [default: wyoming]                               │
 │ --llm-provider        TEXT  The LLM provider to use ('ollama', 'openai',     │
-│                             'gemini'; 'local' -> 'ollama' alias).            │
-│                             [default: ollama]                                 │
+│                             'gemini'; 'local' is deprecated alias for        │
+│                             'ollama').                                       │
+│                             [default: ollama]                                │
 │ --tts-provider        TEXT  The TTS provider to use ('local' for Wyoming,    │
 │                             'openai', 'kokoro').                             │
 │                             [default: local]                                 │
@@ -904,11 +907,12 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Provider Selection ─────────────────────────────────────────────────────────╮
 │ --asr-provider        TEXT  The ASR provider to use ('wyoming', 'openai';    │
-│                             'local' -> 'wyoming' alias).                    │
-│                             [default: wyoming]                                 │
+│                             'local' is deprecated alias for 'wyoming').      │
+│                             [default: wyoming]                               │
 │ --llm-provider        TEXT  The LLM provider to use ('ollama', 'openai',     │
-│                             'gemini'; 'local' -> 'ollama' alias).            │
-│                             [default: ollama]                                 │
+│                             'gemini'; 'local' is deprecated alias for        │
+│                             'ollama').                                       │
+│                             [default: ollama]                                │
 │ --tts-provider        TEXT  The TTS provider to use ('local' for Wyoming,    │
 │                             'openai', 'kokoro').                             │
 │                             [default: local]                                 │
@@ -1081,11 +1085,12 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Provider Selection ─────────────────────────────────────────────────────────╮
 │ --asr-provider        TEXT  The ASR provider to use ('wyoming', 'openai';    │
-│                             'local' -> 'wyoming' alias).                    │
-│                             [default: wyoming]                                 │
+│                             'local' is deprecated alias for 'wyoming').      │
+│                             [default: wyoming]                               │
 │ --llm-provider        TEXT  The LLM provider to use ('ollama', 'openai',     │
-│                             'gemini'; 'local' -> 'ollama' alias).            │
-│                             [default: ollama]                                 │
+│                             'gemini'; 'local' is deprecated alias for        │
+│                             'ollama').                                       │
+│                             [default: ollama]                                │
 │ --tts-provider        TEXT  The TTS provider to use ('local' for Wyoming,    │
 │                             'openai', 'kokoro').                             │
 │                             [default: local]                                 │
