@@ -120,12 +120,14 @@ def load_asr_model(config: ServerConfig) -> Any:
     else:
         print(f"Loading {model_name} on {config.device}", flush=True)
 
-    model_loaders = {
-        ModelType.CANARY: lambda: SALM.from_pretrained(model_name),
-        ModelType.PARAKEET: lambda: nemo_asr.models.ASRModel.from_pretrained(model_name),
-    }
+    if config.model_type == ModelType.CANARY:
+        model = SALM.from_pretrained(model_name)
+    elif config.model_type == ModelType.PARAKEET:
+        model = nemo_asr.models.ASRModel.from_pretrained(model_name)
+    else:
+        msg = f"Unsupported model type: {config.model_type}"
+        raise ValueError(msg)
 
-    model = model_loaders[config.model_type]()
     return model.to(config.device).eval()
 
 
