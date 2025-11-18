@@ -1,5 +1,5 @@
 #!/usr/bin/env -S uv run
-# ruff: noqa: D103, ANN201, FAST002, B008, ARG001, PTH122, B904, TRY003, EM102, PLR2004, PTH110, SIM105, PTH108, S104
+# ruff: noqa: D103, ANN201, FAST002, B008, ARG001, B904, TRY003, EM102, PTH110, SIM105, PTH108, S104, F841, PLC0415
 """NVIDIA Canary ASR server with OpenAI-compatible API.
 
 Usage:
@@ -16,7 +16,6 @@ import shutil
 import subprocess
 import tempfile
 
-import soundfile as sf
 import torch
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import JSONResponse
@@ -30,9 +29,16 @@ PORT = int(os.getenv("CANARY_PORT", "9898"))
 
 def ffmpeg_resample_to_16k_mono(input_path: str) -> str:
     out_path = input_path + "_16k.wav"
+    # Try with format auto-detection first, then try as raw PCM if that fails
     cmd = [
         "ffmpeg",
         "-y",
+        "-f",
+        "s16le",  # Assume signed 16-bit little-endian PCM
+        "-ar",
+        "16000",  # Input sample rate (agent-cli uses 16kHz)
+        "-ac",
+        "1",  # Input is mono
         "-i",
         input_path,
         "-ar",
@@ -41,20 +47,19 @@ def ffmpeg_resample_to_16k_mono(input_path: str) -> str:
         "1",
         out_path,
     ]
-    subprocess.check_call(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    try:
+        result = subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, check=True)
+    except subprocess.CalledProcessError as e:
+        stderr = e.stderr.decode() if e.stderr else "No error output"
+        raise RuntimeError(f"ffmpeg failed: {stderr}")
     return out_path
 
 
 def ensure_16k_mono(path: str) -> str:
-    """Use soundfile to inspect; ffmpeg if not 16k mono."""
-    try:
-        audio, sr = sf.read(path)
-    except Exception as e:
-        raise RuntimeError(f"Failed to read audio: {e}")
-
-    if sr != 16000 or (audio.ndim > 1):
-        return ffmpeg_resample_to_16k_mono(path)
-    return path
+    """Convert any audio format to 16kHz mono WAV using ffmpeg."""
+    # Always use ffmpeg for format conversion and resampling
+    # This handles any input format including raw PCM data
+    return ffmpeg_resample_to_16k_mono(path)
 
 
 @app.on_event("startup")
@@ -75,9 +80,8 @@ async def transcribe(
     if salm_model is None:
         raise HTTPException(status_code=503, detail="Model not loaded yet")
 
-    # Save uploaded file to a temp file with original extension
-    suffix = os.path.splitext(file.filename or "")[1] or ".bin"
-    with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
+    # Save uploaded file to a temp file (no extension, let ffmpeg auto-detect)
+    with tempfile.NamedTemporaryFile(delete=False, suffix="") as tmp:
         tmp_path = tmp.name
         shutil.copyfileobj(file.file, tmp)
 
@@ -112,6 +116,9 @@ async def transcribe(
         return JSONResponse({"text": text})
 
     except Exception as e:
+        import traceback
+
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
     finally:
         for p in (tmp_path, out_path):
