@@ -7,6 +7,7 @@
 #     "fastapi[standard]",
 #     "torch",
 #     "soundfile",
+#     "ml-dtypes>=0.5.0",
 #     "sacrebleu",
 #     "nemo_toolkit[asr,tts] @ git+https://github.com/NVIDIA/NeMo.git",
 # ]
