@@ -1,29 +1,40 @@
 #!/usr/bin/env -S uv run
-"""NVIDIA Canary ASR server with OpenAI-compatible API.
+"""NVIDIA ASR server with OpenAI-compatible API.
+
+Supports multiple NVIDIA ASR models:
+- nvidia/canary-qwen-2.5b (default): Multilingual ASR with translation capabilities
+- nvidia/parakeet-tdt-0.6b-v2: High-quality English ASR with timestamps
 
 Usage:
     cd scripts/canary-server
     uv run server.py
-
-Environment variables:
-    CANARY_PORT: Server port (default: 9898)
-    CANARY_DEVICE: Device to use (default: auto-select GPU with most free memory)
-                   Options: cpu, cuda, cuda:0, cuda:1, etc.
+    uv run server.py --model parakeet-tdt-0.6b-v2
+    uv run server.py --port 9090 --device cuda:1
 """
 
-import os
 import shutil
 import subprocess
 import tempfile
 import traceback
 from contextlib import suppress
+from enum import Enum
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Any
 
+import nemo.collections.asr as nemo_asr
 import torch
+import typer
+import uvicorn
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import JSONResponse
 from nemo.collections.speechlm2.models import SALM
+
+
+class ModelType(str, Enum):
+    """Supported ASR models."""
+
+    CANARY = "canary-qwen-2.5b"
+    PARAKEET = "parakeet-tdt-0.6b-v2"
 
 
 def select_best_gpu() -> str:
@@ -49,9 +60,10 @@ def select_best_gpu() -> str:
 
 
 app = FastAPI()
-salm_model = None
-DEVICE = os.getenv("CANARY_DEVICE") or select_best_gpu()
-PORT = int(os.getenv("CANARY_PORT", "9898"))
+asr_model: Any = None
+MODEL_TYPE: ModelType | None = None
+DEVICE: str | None = None
+PORT: int | None = None
 
 
 def ffmpeg_resample_to_16k_mono(input_path: str) -> str:
@@ -93,8 +105,13 @@ def ensure_16k_mono(path: str) -> str:
 
 @app.on_event("startup")
 async def load_model() -> None:
-    """Load the Canary model on startup."""
-    global salm_model
+    """Load the ASR model on startup."""
+    global asr_model
+
+    assert MODEL_TYPE is not None
+    assert DEVICE is not None
+
+    model_name = f"nvidia/{MODEL_TYPE.value}"
 
     # Print device info
     if DEVICE.startswith("cuda"):
@@ -103,26 +120,63 @@ async def load_model() -> None:
         free_gb = free_mem / 1024**3
         total_gb = total_mem / 1024**3
         print(
-            f"Loading nvidia/canary-qwen-2.5b on {DEVICE} "
-            f"({free_gb:.1f}GB free / {total_gb:.1f}GB total)",
+            f"Loading {model_name} on {DEVICE} ({free_gb:.1f}GB free / {total_gb:.1f}GB total)",
             flush=True,
         )
     else:
-        print(f"Loading nvidia/canary-qwen-2.5b on {DEVICE}", flush=True)
+        print(f"Loading {model_name} on {DEVICE}", flush=True)
 
-    salm_model = SALM.from_pretrained("nvidia/canary-qwen-2.5b").to(DEVICE).eval()
+    if MODEL_TYPE == ModelType.CANARY:
+        asr_model = SALM.from_pretrained(model_name).to(DEVICE).eval()
+    elif MODEL_TYPE == ModelType.PARAKEET:
+        asr_model = nemo_asr.models.ASRModel.from_pretrained(model_name).to(DEVICE).eval()
+
+
+def _transcribe_canary(audio_path: str, prompt: str | None) -> str:
+    """Transcribe audio using Canary model."""
+    user_prompt = prompt or "Transcribe the following:"
+    full_prompt = f"{user_prompt} {asr_model.audio_locator_tag}"
+
+    prompts = [
+        [
+            {
+                "role": "user",
+                "content": full_prompt,
+                "audio": [audio_path],
+            },
+        ],
+    ]
+
+    answer_ids = asr_model.generate(prompts=prompts, max_new_tokens=128)
+    return asr_model.tokenizer.ids_to_text(answer_ids[0].cpu())
+
+
+def _transcribe_parakeet(audio_path: str, timestamp_granularities: list[str] | None) -> dict:
+    """Transcribe audio using Parakeet model."""
+    enable_timestamps = bool(timestamp_granularities)
+    output = asr_model.transcribe([audio_path], timestamps=enable_timestamps)
+
+    result = {"text": output[0].text}
+
+    if enable_timestamps and timestamp_granularities and "word" in timestamp_granularities:
+        word_timestamps = output[0].timestamp.get("word", [])
+        if word_timestamps:
+            result["words"] = [
+                {"word": w["word"], "start": w["start"], "end": w["end"]} for w in word_timestamps
+            ]
+
+    return result
 
 
 @app.post("/v1/audio/transcriptions", response_model=None)
 async def transcribe(
-    file: Annotated[UploadFile, File()] = ...,
-    model_name: Annotated[str | None, Form(alias="model")] = None,  # noqa: ARG001
-    language: Annotated[str | None, Form()] = None,  # noqa: ARG001
+    file: Annotated[UploadFile, File()],
     response_format: Annotated[str, Form()] = "json",
     prompt: Annotated[str | None, Form()] = None,
+    timestamp_granularities: Annotated[list[str] | None, Form()] = None,
 ) -> str | JSONResponse:
-    """Transcribe audio using Canary model with OpenAI-compatible API."""
-    if salm_model is None:
+    """Transcribe audio using ASR model with OpenAI-compatible API."""
+    if asr_model is None:
         raise HTTPException(status_code=503, detail="Model not loaded yet")
 
     # Save uploaded file to a temp file (no extension, let ffmpeg auto-detect)
@@ -132,33 +186,15 @@ async def transcribe(
 
     out_path = None
     try:
-        # Ensure 16k mono WAV for SALM
         out_path = ensure_16k_mono(tmp_path)
 
-        user_prompt = prompt or "Transcribe the following:"
-        full_prompt = f"{user_prompt} {salm_model.audio_locator_tag}"
-
-        prompts = [
-            [
-                {
-                    "role": "user",
-                    "content": full_prompt,
-                    "audio": [out_path],
-                },
-            ],
-        ]
-
         with torch.inference_mode():
-            answer_ids = salm_model.generate(
-                prompts=prompts,
-                max_new_tokens=128,
-            )
-
-        text = salm_model.tokenizer.ids_to_text(answer_ids[0].cpu())
-
-        if response_format == "text":
-            return text
-        return JSONResponse({"text": text})
+            if MODEL_TYPE == ModelType.CANARY:
+                text = _transcribe_canary(out_path, prompt)
+                return text if response_format == "text" else JSONResponse({"text": text})
+            # PARAKEET
+            result = _transcribe_parakeet(out_path, timestamp_granularities)
+            return result["text"] if response_format == "text" else JSONResponse(result)
 
     except Exception as e:
         traceback.print_exc()
@@ -172,7 +208,51 @@ async def transcribe(
                         path.unlink()
 
 
-if __name__ == "__main__":
-    import uvicorn
+def main(
+    model: Annotated[
+        ModelType,
+        typer.Option(
+            "--model",
+            "-m",
+            help="ASR model to use",
+        ),
+    ] = ModelType.CANARY,
+    port: Annotated[
+        int,
+        typer.Option(
+            "--port",
+            "-p",
+            help="Server port",
+        ),
+    ] = 9898,
+    device: Annotated[
+        str | None,
+        typer.Option(
+            "--device",
+            "-d",
+            help="Device to use (cpu, cuda, cuda:0, etc.). Auto-selects GPU with most free memory if not specified.",
+        ),
+    ] = None,
+) -> None:
+    """Run NVIDIA ASR server with OpenAI-compatible API.
+
+    Supports multiple models:
+    - canary-qwen-2.5b: Multilingual ASR with translation (default)
+    - parakeet-tdt-0.6b-v2: High-quality English ASR with timestamps
+    """
+    global MODEL_TYPE, DEVICE, PORT
+
+    MODEL_TYPE = model
+    DEVICE = device or select_best_gpu()
+    PORT = port
+
+    print(f"Starting ASR server with model: {model.value}")
+    print(f"Device: {DEVICE}")
+    print(f"Port: {PORT}")
+    print()
 
     uvicorn.run(app, host="0.0.0.0", port=PORT)  # noqa: S104
+
+
+if __name__ == "__main__":
+    typer.run(main)
