@@ -383,6 +383,8 @@ def chat(
     asr_wyoming_ip: str = opts.ASR_WYOMING_IP,
     asr_wyoming_port: int = opts.ASR_WYOMING_PORT,
     asr_openai_model: str = opts.ASR_OPENAI_MODEL,
+    asr_openai_base_url: str | None = opts.ASR_OPENAI_BASE_URL,
+    asr_openai_prompt: str | None = opts.ASR_OPENAI_PROMPT,
     # --- LLM Configuration ---
     llm_ollama_model: str = opts.LLM_OLLAMA_MODEL,
     llm_ollama_host: str = opts.LLM_OLLAMA_HOST,
@@ -473,6 +475,8 @@ def chat(
         openai_asr_cfg = config.OpenAIASR(
             asr_openai_model=asr_openai_model,
             openai_api_key=openai_api_key,
+            openai_base_url=asr_openai_base_url,
+            asr_openai_prompt=asr_openai_prompt,
         )
         ollama_cfg = config.Ollama(
             llm_ollama_model=llm_ollama_model,

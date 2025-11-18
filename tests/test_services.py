@@ -30,7 +30,7 @@ async def test_transcribe_audio_openai(mock_openai_client: MagicMock) -> None:
     result = await transcribe_audio_openai(mock_audio, openai_asr_cfg, mock_logger)
 
     assert result == "test transcription"
-    mock_openai_client.assert_called_once_with(api_key="test_api_key")
+    mock_openai_client.assert_called_once_with(api_key="test_api_key", base_url=None)
     mock_client_instance.audio.transcriptions.create.assert_called_once_with(
         model="whisper-1",
         file=mock_client_instance.audio.transcriptions.create.call_args[1]["file"],

@@ -518,6 +518,12 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 │ --asr-openai-model        TEXT  The OpenAI model to use for ASR              │
 │                                 (transcription).                             │
 │                                 [default: whisper-1]                         │
+│ --asr-openai-base-url     TEXT  Custom base URL for OpenAI-compatible ASR    │
+│                                 endpoint (e.g., http://localhost:9898 for    │
+│                                 self-hosted Whisper server). Leave unset to  │
+│                                 use official OpenAI API.                     │
+│ --asr-openai-prompt       TEXT  Custom prompt to guide transcription         │
+│                                 (optional).                                  │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ LLM Configuration: Ollama (local) ──────────────────────────────────────────╮
 │ --llm-ollama-model        TEXT  The Ollama model to use. Default is          │
@@ -1102,6 +1108,12 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 │ --asr-openai-model        TEXT  The OpenAI model to use for ASR              │
 │                                 (transcription).                             │
 │                                 [default: whisper-1]                         │
+│ --asr-openai-base-url     TEXT  Custom base URL for OpenAI-compatible ASR    │
+│                                 endpoint (e.g., http://localhost:9898 for    │
+│                                 self-hosted Whisper server). Leave unset to  │
+│                                 use official OpenAI API.                     │
+│ --asr-openai-prompt       TEXT  Custom prompt to guide transcription         │
+│                                 (optional).                                  │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ LLM Configuration: Ollama (local) ──────────────────────────────────────────╮
 │ --llm-ollama-model        TEXT  The Ollama model to use. Default is          │
