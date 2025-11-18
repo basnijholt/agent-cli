@@ -75,12 +75,14 @@ def test_create_transcriber_wyoming() -> None:
     audio_input_cfg = config.AudioInput()
     wyoming_asr_cfg = config.WyomingASR(asr_wyoming_ip="localhost", asr_wyoming_port=1234)
     openai_asr_cfg = config.OpenAIASR(asr_openai_model="whisper-1", openai_api_key="fake-key")
+    custom_asr_cfg = config.CustomASR(asr_custom_base_url="http://localhost:8000")
 
     transcriber = asr.create_transcriber(
         provider_cfg,
         audio_input_cfg,
         wyoming_asr_cfg,
         openai_asr_cfg,
+        custom_asr_cfg,
     )
     assert transcriber.func == asr._transcribe_live_audio_wyoming  # type: ignore[attr-defined]
 

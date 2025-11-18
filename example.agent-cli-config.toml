@@ -46,6 +46,12 @@ asr-wyoming-ip = "localhost"
 asr-wyoming-port = 10300
 # OpenAI
 asr-openai-model = "whisper-1"
+# Custom ASR endpoint (e.g., NVIDIA Canary, local Whisper server)
+# Uncomment and configure to use a custom Whisper-compatible API:
+# asr-provider = "custom"
+# asr-custom-base-url = "http://localhost:8000"
+# asr-custom-model = "nvidia/canary-qwen-2.5b"  # Optional model parameter
+# asr-custom-prompt = "Transcribe the following:"  # Optional prompt
 
 # --- TTS (Text-to-Speech) Settings ---
 # Wyoming (local)

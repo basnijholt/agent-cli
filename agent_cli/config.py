@@ -22,7 +22,7 @@ class ProviderSelection(BaseModel):
     """Configuration for selecting service providers."""
 
     llm_provider: Literal["local", "openai", "gemini"]
-    asr_provider: Literal["local", "openai"]
+    asr_provider: Literal["local", "openai", "custom"]
     tts_provider: Literal["local", "openai", "kokoro"]
 
 
@@ -73,6 +73,22 @@ class OpenAIASR(BaseModel):
 
     asr_openai_model: str
     openai_api_key: str | None = None
+
+
+class CustomASR(BaseModel):
+    """Configuration for a custom ASR API provider (e.g., NVIDIA Canary).
+
+    This provider expects a Whisper-compatible API endpoint at
+    /v1/audio/transcriptions that accepts multipart/form-data with:
+    - file: audio file (will be converted to 16kHz mono WAV)
+    - model: model name (optional)
+    - language: language code (optional)
+    - prompt: transcription prompt (optional)
+    """
+
+    asr_custom_base_url: str
+    asr_custom_model: str | None = None
+    asr_custom_prompt: str | None = None
 
 
 # --- Panel: TTS (Text-to-Speech) Configuration ---

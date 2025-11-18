@@ -156,6 +156,7 @@ async def _handle_conversation_turn(
     audio_in_cfg: config.AudioInput,
     wyoming_asr_cfg: config.WyomingASR,
     openai_asr_cfg: config.OpenAIASR,
+    custom_asr_cfg: config.CustomASR,
     ollama_cfg: config.Ollama,
     openai_llm_cfg: config.OpenAILLM,
     gemini_llm_cfg: config.GeminiLLM,
@@ -173,6 +174,7 @@ async def _handle_conversation_turn(
         audio_in_cfg,
         wyoming_asr_cfg,
         openai_asr_cfg,
+        custom_asr_cfg,
     )
     instruction = await transcriber(
         p=p,
@@ -308,6 +310,7 @@ async def _async_main(
     audio_in_cfg: config.AudioInput,
     wyoming_asr_cfg: config.WyomingASR,
     openai_asr_cfg: config.OpenAIASR,
+    custom_asr_cfg: config.CustomASR,
     ollama_cfg: config.Ollama,
     openai_llm_cfg: config.OpenAILLM,
     gemini_llm_cfg: config.GeminiLLM,
@@ -355,6 +358,7 @@ async def _async_main(
                         audio_in_cfg=audio_in_cfg,
                         wyoming_asr_cfg=wyoming_asr_cfg,
                         openai_asr_cfg=openai_asr_cfg,
+                        custom_asr_cfg=custom_asr_cfg,
                         ollama_cfg=ollama_cfg,
                         openai_llm_cfg=openai_llm_cfg,
                         gemini_llm_cfg=gemini_llm_cfg,
@@ -383,6 +387,9 @@ def chat(
     asr_wyoming_ip: str = opts.ASR_WYOMING_IP,
     asr_wyoming_port: int = opts.ASR_WYOMING_PORT,
     asr_openai_model: str = opts.ASR_OPENAI_MODEL,
+    asr_custom_base_url: str = opts.ASR_CUSTOM_BASE_URL,
+    asr_custom_model: str | None = opts.ASR_CUSTOM_MODEL,
+    asr_custom_prompt: str | None = opts.ASR_CUSTOM_PROMPT,
     # --- LLM Configuration ---
     llm_ollama_model: str = opts.LLM_OLLAMA_MODEL,
     llm_ollama_host: str = opts.LLM_OLLAMA_HOST,
@@ -474,6 +481,11 @@ def chat(
             asr_openai_model=asr_openai_model,
             openai_api_key=openai_api_key,
         )
+        custom_asr_cfg = config.CustomASR(
+            asr_custom_base_url=asr_custom_base_url,
+            asr_custom_model=asr_custom_model,
+            asr_custom_prompt=asr_custom_prompt,
+        )
         ollama_cfg = config.Ollama(
             llm_ollama_model=llm_ollama_model,
             llm_ollama_host=llm_ollama_host,
@@ -523,6 +535,7 @@ def chat(
                 audio_in_cfg=audio_in_cfg,
                 wyoming_asr_cfg=wyoming_asr_cfg,
                 openai_asr_cfg=openai_asr_cfg,
+                custom_asr_cfg=custom_asr_cfg,
                 ollama_cfg=ollama_cfg,
                 openai_llm_cfg=openai_llm_cfg,
                 gemini_llm_cfg=gemini_llm_cfg,
