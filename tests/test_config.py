@@ -11,7 +11,7 @@ from typer import Context
 from typer.testing import CliRunner
 
 from agent_cli.cli import set_config_defaults
-from agent_cli.config import load_config
+from agent_cli.config import ProviderSelection, load_config, normalize_provider_defaults
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -63,7 +63,7 @@ def test_set_config_defaults(config_file: Path) -> None:
     set_config_defaults(ctx, str(config_file))
     expected_defaults = {
         "log_level": "INFO",
-        "llm_provider": "local",
+        "llm_provider": "ollama",
         "llm_ollama_model": "default-local-model",
         "llm_ollama_host": "http://localhost:11434",
         "llm_openai_model": "default-openai-model",
@@ -87,3 +87,18 @@ def test_set_config_defaults(config_file: Path) -> None:
         "quiet": True,  # Added by [autocorrect]
     }
     assert ctx.default_map == expected_merged_defaults
+
+
+def test_provider_alias_normalization(config_file: Path) -> None:
+    """Ensure deprecated provider names are normalized."""
+    config = load_config(str(config_file))
+    normalized_defaults = normalize_provider_defaults(config["defaults"])
+    assert normalized_defaults["llm_provider"] == "ollama"
+
+    provider_cfg = ProviderSelection(
+        llm_provider="local",
+        asr_provider="local",
+        tts_provider="local",
+    )
+    assert provider_cfg.llm_provider == "ollama"
+    assert provider_cfg.asr_provider == "wyoming"

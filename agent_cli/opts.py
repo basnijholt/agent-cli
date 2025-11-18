@@ -6,15 +6,15 @@ import typer
 
 # --- Provider Selection ---
 LLM_PROVIDER: str = typer.Option(
-    "local",
+    "ollama",
     "--llm-provider",
-    help="The LLM provider to use ('local' for Ollama, 'openai', 'gemini').",
+    help="The LLM provider to use ('ollama', 'openai', 'gemini'; 'local' is deprecated alias for 'ollama').",
     rich_help_panel="Provider Selection",
 )
 ASR_PROVIDER: str = typer.Option(
-    "local",
+    "wyoming",
     "--asr-provider",
-    help="The ASR provider to use ('local' for Wyoming, 'openai').",
+    help="The ASR provider to use ('wyoming', 'openai'; 'local' is deprecated alias for 'wyoming').",
     rich_help_panel="Provider Selection",
 )
 TTS_PROVIDER: str = typer.Option(
