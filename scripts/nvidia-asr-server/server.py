@@ -207,10 +207,9 @@ async def transcribe(
             if config.model_type == ModelType.CANARY:
                 text = transcribe_canary(resampled_path, prompt)
                 return text if response_format == "text" else JSONResponse({"text": text})
-
-            # Parakeet
-            result = transcribe_parakeet(resampled_path, timestamp_granularities)
-            return result["text"] if response_format == "text" else JSONResponse(result)
+            if config.model_type == ModelType.PARAKEET:
+                result = transcribe_parakeet(resampled_path, timestamp_granularities)
+                return result["text"] if response_format == "text" else JSONResponse(result)
 
     except Exception as e:
         traceback.print_exc()
