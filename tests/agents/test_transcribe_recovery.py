@@ -61,7 +61,7 @@ async def test_async_main_from_file(tmp_path: Path):
         openai_asr_cfg = config.OpenAIASR(
             asr_openai_model="whisper-1",
         )
-            ollama_cfg = config.Ollama(
+        ollama_cfg = config.Ollama(
             llm_ollama_model="gemma3:4b",
             llm_ollama_host="http://localhost:11434",
         )
@@ -132,7 +132,7 @@ async def test_async_main_from_file_with_llm(tmp_path: Path):
         openai_asr_cfg = config.OpenAIASR(
             asr_openai_model="whisper-1",
         )
-            ollama_cfg = config.Ollama(
+        ollama_cfg = config.Ollama(
             llm_ollama_model="gemma3:4b",
             llm_ollama_host="http://localhost:11434",
         )
@@ -202,7 +202,7 @@ async def test_async_main_from_file_with_logging(tmp_path: Path):
         openai_asr_cfg = config.OpenAIASR(
             asr_openai_model="whisper-1",
         )
-            ollama_cfg = config.Ollama(
+        ollama_cfg = config.Ollama(
             llm_ollama_model="gemma3:4b",
             llm_ollama_host="http://localhost:11434",
         )
@@ -274,7 +274,7 @@ async def test_async_main_from_file_error_handling(
         openai_asr_cfg = config.OpenAIASR(
             asr_openai_model="whisper-1",
         )
-            ollama_cfg = config.Ollama(
+        ollama_cfg = config.Ollama(
             llm_ollama_model="gemma3:4b",
             llm_ollama_host="http://localhost:11434",
         )
@@ -355,7 +355,7 @@ async def test_async_main_save_recording_enabled(
         openai_asr_cfg = config.OpenAIASR(
             asr_openai_model="whisper-1",
         )
-            ollama_cfg = config.Ollama(
+        ollama_cfg = config.Ollama(
             llm_ollama_model="gemma3:4b",
             llm_ollama_host="http://localhost:11434",
         )
