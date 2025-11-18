@@ -29,7 +29,7 @@ def test_transcribe_agent(
             [
                 "transcribe",
                 "--asr-provider",
-                "local",
+                "wyoming",
                 "--openai-api-key",
                 "test",
             ],
