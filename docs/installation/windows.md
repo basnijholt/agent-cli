@@ -8,8 +8,8 @@ This approach uses **WSL 2 (Windows Subsystem for Linux)** to run the heavy AI s
 
 1.  **WSL 2**: Ensure you have WSL 2 installed (typically Ubuntu).
     *   [How to install WSL](https://learn.microsoft.com/en-us/windows/wsl/install)
-2.  **Python 3.11+**: Installed on your Windows host.
-3.  **Git**: Installed in both WSL and Windows.
+2.  **Git**: Installed in both WSL and Windows.
+3.  **uv**: The Python package manager (installed on Windows).
 
 ---
 
@@ -40,33 +40,35 @@ We will run the backend services (Ollama, Whisper, Piper, etc.) inside WSL.
 
 Now we install the client on Windows so it can access your hardware (microphone) and interact with your desktop (clipboard).
 
-### 1. Install PortAudio (Crucial Step)
-The tool requires `PyAudio`, which often fails to build on Windows without pre-installed binaries.
+### 1. Install uv
+If you haven't installed `uv` yet, run this in PowerShell:
+```powershell
+powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
+```
+`uv` will automatically manage the required Python version for the tool.
 
-**Option A: Using Chocolatey (Recommended)**
-If you have [Chocolatey](https://chocolatey.org/) installed:
+### 2. Install System Dependencies
+The tool relies on **PortAudio** for microphone access and **FFmpeg** for audio processing. It is recommended to install these *before* installing the CLI tool to ensure all audio bindings link correctly.
+
+**Using Chocolatey:**
 ```powershell
 choco install ffmpeg portaudio
 ```
-
-**Option B: Manual Wheel Installation**
-If `pip install pyaudio` fails, download a pre-compiled `.whl` file for your Python version from [lfd.uci.edu](https://www.lfd.uci.edu/~gohlke/pythonlibs/#pyaudio) and install it:
+**Using Winget:**
 ```powershell
-pip install .\PyAudio-0.2.11-cp311-cp311-win_amd64.whl
+winget install Gyan.FFmpeg
 ```
+*(Note: Winget does not currently have a standard package for PortAudio, so Chocolatey is preferred, or you can rely on the pre-compiled binary included in the Python wheel if available.)*
 
-### 2. Install agent-cli
-Once PortAudio is ready, install the tool:
+### 3. Install agent-cli
+Run the following command to install the tool:
 
 ```powershell
-# Using uv (recommended)
 uv tool install agent-cli
-
-# OR using standard pip
-pip install agent-cli
 ```
+*Note: This will automatically download Python and install necessary dependencies.*
 
-### 3. Test the Connection
+### 4. Test the Connection
 Run a command in PowerShell to verify that Windows can talk to the WSL services:
 
 ```powershell
