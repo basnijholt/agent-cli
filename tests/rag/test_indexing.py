@@ -3,7 +3,6 @@
 import shutil
 from collections.abc import Generator
 from pathlib import Path
-from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -68,22 +67,11 @@ def test_initial_index_removes_stale(mock_collection: MagicMock, temp_docs_folde
     # Setup: Disk only has "existing.txt"
     (temp_docs_folder / "existing.txt").write_text("I am here.")
 
-    # Mock collection.get to return dummy IDs for the deleted file
-    def side_effect_get(
-        where: dict[str, str] | None = None,
-        **_kwargs: Any,
-    ) -> dict[str, list[str]]:
-        if where == {"file_path": "deleted.txt"}:
-            return {"ids": ["del_1", "del_2"]}
-        return {"ids": []}
-
-    mock_collection.get.side_effect = side_effect_get
-
     with patch("agent_cli.rag.indexing.chunk_text", return_value=["content"]):
         indexing.initial_index(mock_collection, temp_docs_folder, file_hashes)
 
-    # Verify delete called for "deleted.txt" IDs
-    mock_collection.delete.assert_called_with(ids=["del_1", "del_2"])
+    # Verify delete called for "deleted.txt"
+    mock_collection.delete.assert_called_with(where={"file_path": "deleted.txt"})
 
     # Verify file_hashes updated
     assert "deleted.txt" not in file_hashes

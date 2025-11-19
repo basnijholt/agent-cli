@@ -128,7 +128,7 @@ def remove_file(
     """Remove all chunks of a file from index.
 
     Returns:
-        True if documents were removed, False otherwise.
+        True if documents were removed (or at least untracked), False otherwise.
 
     """
     try:
@@ -137,16 +137,13 @@ def remove_file(
         except ValueError:
             relative_path = file_path.name
 
-        count = delete_by_file_path(collection, relative_path)
-        if count > 0:
-            logger.info("  ✓ Removed %d chunks for %s", count, file_path.name)
-            # Remove from hash tracking
+        delete_by_file_path(collection, relative_path)
+
+        # If it was tracked, we consider it "removed"
+        if relative_path in file_hashes:
+            logger.info("  ✓ Removed %s from index", file_path.name)
             file_hashes.pop(relative_path, None)
             return True
-
-        # Still remove from hash tracking if it exists there but not in DB (edge case)
-        if relative_path in file_hashes:
-            file_hashes.pop(relative_path, None)
 
         return False
     except Exception:

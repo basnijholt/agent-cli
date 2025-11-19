@@ -16,32 +16,34 @@ if TYPE_CHECKING:
 # Configure logging
 logger = logging.getLogger("agent_cli.rag.utils")
 
+SUPPORTED_EXTENSIONS = {
+    ".txt",
+    ".md",
+    ".json",
+    ".py",
+    ".js",
+    ".ts",
+    ".yaml",
+    ".yml",
+    ".rs",
+    ".go",
+    ".c",
+    ".cpp",
+    ".h",
+    ".sh",
+    ".toml",
+    ".rst",
+    ".ini",
+    ".cfg",
+}
+
 
 def load_document_text(file_path: Path) -> str | None:
     """Load text from a file path."""
     suffix = file_path.suffix.lower()
 
     try:
-        if suffix in {
-            ".txt",
-            ".md",
-            ".json",
-            ".py",
-            ".js",
-            ".ts",
-            ".yaml",
-            ".yml",
-            ".rs",
-            ".go",
-            ".c",
-            ".cpp",
-            ".h",
-            ".sh",
-            ".toml",
-            ".rst",
-            ".ini",
-            ".cfg",
-        }:
+        if suffix in SUPPORTED_EXTENSIONS:
             return file_path.read_text(errors="ignore")
 
         if suffix == ".pdf":
@@ -104,12 +106,12 @@ def chunk_text(text: str, chunk_size: int = 800, overlap: int = 200) -> list[str
             overlap_size = 0
             for s in reversed(current):
                 if overlap_size + len(s) <= overlap:
-                    overlap_buffer.insert(0, s)
+                    overlap_buffer.append(s)
                     overlap_size += len(s)
                 else:
                     break
 
-            current = overlap_buffer
+            current = list(reversed(overlap_buffer))
             current_size = overlap_size
 
         current.append(sentence)

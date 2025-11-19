@@ -23,7 +23,7 @@ def client() -> TestClient:
         app = api.create_app(
             docs_folder=MagicMock(),
             chroma_path=MagicMock(),
-            llama_url="http://mock-llama",
+            openai_base_url="http://mock-llama",
         )
         return TestClient(app)
 

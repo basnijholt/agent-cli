@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import threading
+from contextlib import asynccontextmanager, suppress
 from typing import TYPE_CHECKING, Any
 
 from fastapi import FastAPI
@@ -33,16 +34,6 @@ def create_app(
     limit: int = 3,
 ) -> FastAPI:
     """Create the FastAPI app."""
-    app = FastAPI(title="RAG Proxy")
-
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=["*"],
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
-
     # Initialize State
     logger.info("Initializing RAG components...")
 
@@ -64,12 +55,11 @@ def create_app(
 
     docs_folder.mkdir(exist_ok=True, parents=True)
 
-    # Background Tasks
-    background_tasks = set()
-
-    @app.on_event("startup")
-    async def startup_event() -> None:
+    @asynccontextmanager
+    async def lifespan(_app: FastAPI):  # noqa: ANN202
         logger.info("Starting file watcher...")
+        # Background Tasks
+        background_tasks = set()
         watcher_task = asyncio.create_task(watch_docs(collection, docs_folder, file_hashes))
         background_tasks.add(watcher_task)
         watcher_task.add_done_callback(background_tasks.discard)
@@ -80,6 +70,21 @@ def create_app(
             args=(collection, docs_folder, file_hashes),
             daemon=True,
         ).start()
+        yield
+        # Cleanup if needed
+        watcher_task.cancel()
+        with suppress(asyncio.CancelledError):
+            await watcher_task
+
+    app = FastAPI(title="RAG Proxy", lifespan=lifespan)
+
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
     @app.post("/v1/chat/completions")
     async def chat_completions(request: ChatRequest) -> Any:

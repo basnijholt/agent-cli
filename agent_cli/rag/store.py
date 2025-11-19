@@ -67,19 +67,9 @@ def delete_docs(collection: Collection, ids: list[str]) -> None:
     collection.delete(ids=ids)
 
 
-def delete_by_file_path(collection: Collection, file_path: str) -> int:
-    """Delete all chunks associated with a file path.
-
-    Returns:
-        Number of chunks deleted.
-
-    """
-    results = collection.get(where={"file_path": file_path})
-    if results and results["ids"]:
-        count = len(results["ids"])
-        collection.delete(ids=results["ids"])
-        return count
-    return 0
+def delete_by_file_path(collection: Collection, file_path: str) -> None:
+    """Delete all chunks associated with a file path."""
+    collection.delete(where={"file_path": file_path})
 
 
 def query_docs(collection: Collection, text: str, n_results: int) -> dict[str, Any]:

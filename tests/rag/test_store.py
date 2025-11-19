@@ -61,23 +61,7 @@ def test_upsert_docs() -> None:
 def test_delete_by_file_path() -> None:
     """Test deleting by file path."""
     mock_collection = MagicMock()
-    # Simulate find result
-    mock_collection.get.return_value = {"ids": ["id1", "id2"]}
 
-    count = store.delete_by_file_path(mock_collection, "folder/file.txt")
+    store.delete_by_file_path(mock_collection, "folder/file.txt")
 
-    assert count == 2
-    mock_collection.get.assert_called_once_with(where={"file_path": "folder/file.txt"})
-    mock_collection.delete.assert_called_once_with(ids=["id1", "id2"])
-
-
-@pytest.mark.skipif(chromadb is None, reason="chromadb not installed")
-def test_delete_by_file_path_no_results() -> None:
-    """Test deleting when no files found."""
-    mock_collection = MagicMock()
-    mock_collection.get.return_value = {"ids": []}
-
-    count = store.delete_by_file_path(mock_collection, "folder/file.txt")
-
-    assert count == 0
-    mock_collection.delete.assert_not_called()
+    mock_collection.delete.assert_called_once_with(where={"file_path": "folder/file.txt"})
