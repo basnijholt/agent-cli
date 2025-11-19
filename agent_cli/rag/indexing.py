@@ -19,7 +19,7 @@ if TYPE_CHECKING:
 
     from chromadb import Collection
 
-logger = logging.getLogger("agent_cli.rag.indexing")
+LOGGER = logging.getLogger("agent_cli.rag.indexing")
 
 
 def load_hashes_from_metadata(collection: Collection) -> dict[str, str]:
@@ -31,7 +31,7 @@ def load_hashes_from_metadata(collection: Collection) -> dict[str, str]:
             if meta and "file_path" in meta and "file_hash" in meta:
                 hashes[str(meta["file_path"])] = str(meta["file_hash"])
     except Exception:
-        logger.warning("Could not load existing hashes", exc_info=True)
+        LOGGER.warning("Could not load existing hashes", exc_info=True)
     return hashes
 
 
@@ -111,11 +111,11 @@ def index_file(
         # Update hash tracking
         file_hashes[relative_path] = current_hash
 
-        logger.info("  ✓ Indexed %s: %d chunks", file_path.name, len(chunks))
+        LOGGER.info("  ✓ Indexed %s: %d chunks", file_path.name, len(chunks))
         return True
 
     except Exception:
-        logger.exception("Failed to index file %s", file_path)
+        LOGGER.exception("Failed to index file %s", file_path)
         return False
 
 
@@ -141,13 +141,13 @@ def remove_file(
 
         # If it was tracked, we consider it "removed"
         if relative_path in file_hashes:
-            logger.info("  ✓ Removed %s from index", file_path.name)
+            LOGGER.info("  ✓ Removed %s from index", file_path.name)
             file_hashes.pop(relative_path, None)
             return True
 
         return False
     except Exception:
-        logger.exception("Error removing file %s", file_path)
+        LOGGER.exception("Error removing file %s", file_path)
         return False
 
 
@@ -157,7 +157,7 @@ def initial_index(
     file_hashes: dict[str, str],
 ) -> None:
     """Index all existing files on startup and remove deleted ones."""
-    logger.info("🔍 Scanning existing files...")
+    LOGGER.info("🔍 Scanning existing files...")
 
     # Snapshot of what's in the DB currently
     paths_in_db = set(file_hashes.keys())
@@ -192,29 +192,29 @@ def initial_index(
                 if indexed:
                     processed_files.append(file_path.name)
             except Exception:
-                logger.exception("Error processing %s", file_path.name)
+                LOGGER.exception("Error processing %s", file_path.name)
 
     # 2. Clean up Deleted Files
     # If it's in DB but not found on disk, it was deleted offline.
     paths_to_remove = paths_in_db - paths_found_on_disk
 
     if paths_to_remove:
-        logger.info("🧹 Cleaning up %d deleted files found in index...", len(paths_to_remove))
+        LOGGER.info("🧹 Cleaning up %d deleted files found in index...", len(paths_to_remove))
         for rel_path in paths_to_remove:
             full_path = docs_folder / rel_path
             try:
                 if remove_file(collection, docs_folder, full_path, file_hashes):
                     removed_files.append(rel_path)
             except Exception:
-                logger.exception("Error removing stale file %s", rel_path)
+                LOGGER.exception("Error removing stale file %s", rel_path)
 
     if processed_files:
-        logger.info("🆕 Added/Updated: %s", ", ".join(processed_files))
+        LOGGER.info("🆕 Added/Updated: %s", ", ".join(processed_files))
 
     if removed_files:
-        logger.info("🗑️ Removed: %s", ", ".join(removed_files))
+        LOGGER.info("🗑️ Removed: %s", ", ".join(removed_files))
 
-    logger.info(
+    LOGGER.info(
         "✅ Initial scan complete. Indexed/Checked %d files, Removed %d stale files.",
         len(paths_found_on_disk),
         len(removed_files),

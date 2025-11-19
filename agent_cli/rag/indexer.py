@@ -14,7 +14,7 @@ from agent_cli.rag.indexing import index_file, remove_file
 if TYPE_CHECKING:
     from chromadb import Collection
 
-logger = logging.getLogger("agent_cli.rag.indexer")
+LOGGER = logging.getLogger("agent_cli.rag.indexer")
 
 
 async def watch_docs(
@@ -23,7 +23,7 @@ async def watch_docs(
     file_hashes: dict[str, str],
 ) -> None:
     """Watch docs folder for changes and update index asynchronously."""
-    logger.info("📁 Watching folder: %s", docs_folder)
+    LOGGER.info("📁 Watching folder: %s", docs_folder)
 
     loop = asyncio.get_running_loop()
 
@@ -71,7 +71,7 @@ def _process_file(
     change_type: Change,
 ) -> None:
     action = "created" if change_type == Change.added else "modified"
-    logger.info("[%s] Indexing: %s", action, file_path.name)
+    LOGGER.info("[%s] Indexing: %s", action, file_path.name)
     index_file(collection, docs_folder, file_path, file_hashes)
 
 
@@ -81,5 +81,5 @@ def _remove_file(
     file_path: Path,
     file_hashes: dict[str, str],
 ) -> None:
-    logger.info("[deleted] Removing from index: %s", file_path.name)
+    LOGGER.info("[deleted] Removing from index: %s", file_path.name)
     remove_file(collection, docs_folder, file_path, file_hashes)

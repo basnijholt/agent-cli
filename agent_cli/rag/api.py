@@ -21,7 +21,7 @@ from agent_cli.rag.store import get_all_metadata, init_collection
 if TYPE_CHECKING:
     from pathlib import Path
 
-logger = logging.getLogger("agent_cli.rag.api")
+LOGGER = logging.getLogger("agent_cli.rag.api")
 
 
 def create_app(
@@ -35,9 +35,9 @@ def create_app(
 ) -> FastAPI:
     """Create the FastAPI app."""
     # Initialize State
-    logger.info("Initializing RAG components...")
+    LOGGER.info("Initializing RAG components...")
 
-    logger.info("Loading vector database (ChromaDB)...")
+    LOGGER.info("Loading vector database (ChromaDB)...")
     collection = init_collection(
         chroma_path,
         embedding_model=embedding_model,
@@ -45,25 +45,25 @@ def create_app(
         openai_api_key=embedding_api_key,
     )
 
-    logger.info("Loading reranker model (CrossEncoder)...")
+    LOGGER.info("Loading reranker model (CrossEncoder)...")
     reranker_model = get_reranker_model()
 
-    logger.info("Loading existing file index...")
+    LOGGER.info("Loading existing file index...")
     file_hashes = load_hashes_from_metadata(collection)
-    logger.info("Loaded %d files from index.", len(file_hashes))
+    LOGGER.info("Loaded %d files from index.", len(file_hashes))
 
     docs_folder.mkdir(exist_ok=True, parents=True)
 
     @asynccontextmanager
     async def lifespan(_app: FastAPI):  # noqa: ANN202
-        logger.info("Starting file watcher...")
+        LOGGER.info("Starting file watcher...")
         # Background Tasks
         background_tasks = set()
         watcher_task = asyncio.create_task(watch_docs(collection, docs_folder, file_hashes))
         background_tasks.add(watcher_task)
         watcher_task.add_done_callback(background_tasks.discard)
 
-        logger.info("Starting initial index scan...")
+        LOGGER.info("Starting initial index scan...")
         threading.Thread(
             target=initial_index,
             args=(collection, docs_folder, file_hashes),
@@ -109,7 +109,7 @@ def create_app(
     @app.post("/reindex")
     def reindex_all() -> dict[str, Any]:
         """Manually reindex all files."""
-        logger.info("Manual reindex requested.")
+        LOGGER.info("Manual reindex requested.")
         threading.Thread(
             target=initial_index,
             args=(collection, docs_folder, file_hashes),

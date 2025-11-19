@@ -21,7 +21,7 @@ if TYPE_CHECKING:
     from agent_cli.rag.models import ChatRequest, RetrievalResult
     from agent_cli.rag.retriever import OnnxCrossEncoder
 
-logger = logging.getLogger("agent_cli.rag.engine")
+LOGGER = logging.getLogger("agent_cli.rag.engine")
 
 
 def augment_chat_request(
@@ -60,10 +60,10 @@ def augment_chat_request(
     )
 
     if not retrieval.context:
-        logger.info("ℹ️  No relevant context found for query: '%s'", user_message[:50])  # noqa: RUF001
+        LOGGER.info("ℹ️  No relevant context found for query: '%s'", user_message[:50])  # noqa: RUF001
         return request, None
 
-    logger.info(
+    LOGGER.info(
         "✅ Found %d relevant sources for query: '%s'",
         len(retrieval.sources),
         user_message[:50],
@@ -145,7 +145,7 @@ async def _forward_request(
                         else:
                             yield chunk
             except Exception as e:
-                logger.exception("Streaming error")
+                LOGGER.exception("Streaming error")
                 yield f"data: {json.dumps({'error': str(e)})}\n\n"
 
         return StreamingResponse(generate(), media_type="text/event-stream")
@@ -157,7 +157,7 @@ async def _forward_request(
             headers=headers,
         )
         if response.status_code != 200:  # noqa: PLR2004
-            logger.error(
+            LOGGER.error(
                 "Upstream error %s: %s",
                 response.status_code,
                 response.text,
