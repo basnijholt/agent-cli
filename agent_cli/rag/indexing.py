@@ -134,15 +134,48 @@ def initial_index(
     docs_folder: Path,
     file_hashes: dict[str, str],
 ) -> None:
-    """Index all existing files on startup."""
+    """Index all existing files on startup and remove deleted ones."""
     logger.info("🔍 Scanning existing files...")
-    count = 0
+
+    # Snapshot of what's in the DB currently
+    paths_in_db = set(file_hashes.keys())
+    paths_found_on_disk = set()
+
+    count_upsert = 0
+    count_remove = 0
+
+    # 1. Index Existing Files
     for file_path in docs_folder.rglob("*"):
         if file_path.is_file() and not file_path.name.startswith("."):
             try:
+                # Track that we found this file
+                try:
+                    rel_path = str(file_path.relative_to(docs_folder))
+                    paths_found_on_disk.add(rel_path)
+                except ValueError:
+                    pass
+
                 index_file(collection, docs_folder, file_path, file_hashes)
-                count += 1
+                count_upsert += 1
             except Exception:
                 logger.exception("Error processing %s", file_path.name)
 
-    logger.info("✅ Initial scan complete. Processed %d files.", count)
+    # 2. Clean up Deleted Files
+    # If it's in DB but not found on disk, it was deleted offline.
+    paths_to_remove = paths_in_db - paths_found_on_disk
+
+    if paths_to_remove:
+        logger.info("🧹 Cleaning up %d deleted files found in index...", len(paths_to_remove))
+        for rel_path in paths_to_remove:
+            full_path = docs_folder / rel_path
+            try:
+                remove_file(collection, docs_folder, full_path, file_hashes)
+                count_remove += 1
+            except Exception:
+                logger.exception("Error removing stale file %s", rel_path)
+
+    logger.info(
+        "✅ Initial scan complete. Indexed/Checked %d files, Removed %d stale files.",
+        count_upsert,
+        count_remove,
+    )

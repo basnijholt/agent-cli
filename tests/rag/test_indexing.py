@@ -3,6 +3,7 @@
 import shutil
 from collections.abc import Generator
 from pathlib import Path
+from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -35,7 +36,6 @@ def test_index_file(mock_collection: MagicMock, temp_docs_folder: Path) -> None:
     file_hashes: dict[str, str] = {}
 
     # Patch utils to ensure we don't rely on real chunking logic complexity
-    # We patch where it is IMPORTED in indexing.py
     with patch("agent_cli.rag.indexing.chunk_text", return_value=["Hello world."]):
         indexing.index_file(mock_collection, temp_docs_folder, file_path, file_hashes)
 
@@ -58,3 +58,33 @@ def test_index_file_no_change(mock_collection: MagicMock, temp_docs_folder: Path
 
     # Should NOT upsert
     mock_collection.upsert.assert_not_called()
+
+
+def test_initial_index_removes_stale(mock_collection: MagicMock, temp_docs_folder: Path) -> None:
+    """Test that initial_index removes files present in DB but missing from disk."""
+    # Setup: DB thinks "deleted.txt" exists
+    file_hashes = {"deleted.txt": "oldhash"}
+
+    # Setup: Disk only has "existing.txt"
+    (temp_docs_folder / "existing.txt").write_text("I am here.")
+
+    # Mock collection.get to return dummy IDs for the deleted file
+    def side_effect_get(
+        where: dict[str, str] | None = None,
+        **_kwargs: Any,
+    ) -> dict[str, list[str]]:
+        if where == {"file_path": "deleted.txt"}:
+            return {"ids": ["del_1", "del_2"]}
+        return {"ids": []}
+
+    mock_collection.get.side_effect = side_effect_get
+
+    with patch("agent_cli.rag.indexing.chunk_text", return_value=["content"]):
+        indexing.initial_index(mock_collection, temp_docs_folder, file_hashes)
+
+    # Verify delete called for "deleted.txt" IDs
+    mock_collection.delete.assert_called_with(ids=["del_1", "del_2"])
+
+    # Verify file_hashes updated
+    assert "deleted.txt" not in file_hashes
+    assert "existing.txt" in file_hashes
