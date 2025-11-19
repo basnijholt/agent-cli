@@ -200,18 +200,28 @@ def test_open_audio_stream_context_manager(
 ) -> None:
     """Test open_audio_stream context manager."""
     # Test input stream
-    with audio.open_audio_stream(
-        input=True,
-        input_device_index=0,
-    ) as stream:
+    input_config = audio.StreamConfig(
+        rate=16000,
+        channels=1,
+        dtype="int16",
+        device=0,
+        blocksize=1024,
+        kind="input",
+    )
+    with audio.open_audio_stream(input_config) as stream:
         assert stream is not None
         mock_input_stream.assert_called()
 
     # Test output stream
-    with audio.open_audio_stream(
-        output=True,
-        output_device_index=1,
-    ) as stream:
+    output_config = audio.StreamConfig(
+        rate=24000,
+        channels=1,
+        dtype="int16",
+        device=1,
+        blocksize=1024,
+        kind="output",
+    )
+    with audio.open_audio_stream(output_config) as stream:
         assert stream is not None
         mock_output_stream.assert_called()
 

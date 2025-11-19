@@ -324,15 +324,15 @@ async def _play_audio(
             sample_rate = int(sample_rate * speed)
         base_msg = f"🔊 Playing audio at {speed}x speed" if speed != 1.0 else "🔊 Playing audio"
         async with live_timer(live, base_msg, style="blue", quiet=quiet):
-            stream_kwargs = setup_output_stream(
+            stream_config = setup_output_stream(
                 audio_output_cfg.output_device_index,
                 sample_rate=sample_rate,
                 sample_width=sample_width,
                 channels=channels,
             )
-            dtype = stream_kwargs["dtype"]
+            dtype = stream_config.dtype
 
-            with open_audio_stream(**stream_kwargs) as stream:
+            with open_audio_stream(stream_config) as stream:
                 chunk_size_frames = constants.AUDIO_CHUNK_SIZE
                 bytes_per_frame = channels * sample_width
                 chunk_bytes = chunk_size_frames * bytes_per_frame
