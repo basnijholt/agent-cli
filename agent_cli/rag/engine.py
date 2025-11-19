@@ -54,7 +54,14 @@ def augment_chat_request(
     )
 
     if not retrieval.context:
+        logger.info("ℹ️  No relevant context found for query: '%s'", user_message[:50])  # noqa: RUF001
         return request, None
+
+    logger.info(
+        "✅ Found %d relevant sources for query: '%s'",
+        len(retrieval.sources),
+        user_message[:50],
+    )
 
     # Augment prompt
     augmented_content = (
