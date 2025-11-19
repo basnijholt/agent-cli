@@ -32,14 +32,28 @@ class OnnxCrossEncoder:
 
         # Download model if needed
         logger.info("Loading ONNX model: %s", model_name)
-        try:
-            model_path = hf_hub_download(repo_id=model_name, filename=onnx_filename)
-        except Exception:
-            # Fallback for models where onnx is in a subfolder or named differently?
-            # For Xenova/ms-marco-MiniLM-L-6-v2, it's usually at root.
-            # If this fails, the user might be offline or the model ID is wrong.
-            logger.exception("Failed to download ONNX model %s", model_name)
-            raise
+        candidates = [onnx_filename]
+        if "/" not in onnx_filename:
+            candidates.insert(0, f"onnx/{onnx_filename}")  # Xenova models store ONNX under onnx/
+
+        model_path: str | None = None
+        last_error: Exception | None = None
+        for candidate in candidates:
+            try:
+                model_path = hf_hub_download(repo_id=model_name, filename=candidate)
+                break
+            except Exception as exc:
+                last_error = exc
+                logger.warning(
+                    "Failed to download %s from %s: %s. Trying next candidate if available.",
+                    candidate,
+                    model_name,
+                    exc,
+                )
+
+        if model_path is None:
+            logger.exception("Failed to download ONNX model %s", model_name, exc_info=last_error)
+            raise last_error or RuntimeError(f"Unable to download ONNX model for {model_name}")
 
         self.session = InferenceSession(model_path)
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)
