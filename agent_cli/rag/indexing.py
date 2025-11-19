@@ -99,8 +99,13 @@ def index_file(
                 },
             )
 
-        # Upsert to ChromaDB
-        upsert_docs(collection, ids, documents, metadatas)
+        # Upsert to ChromaDB in batches to avoid 502s from large payloads
+        batch_size = 50
+        for i in range(0, len(ids), batch_size):
+            batch_ids = ids[i : i + batch_size]
+            batch_docs = documents[i : i + batch_size]
+            batch_meta = metadatas[i : i + batch_size]
+            upsert_docs(collection, batch_ids, batch_docs, batch_meta)
 
         # Update hash tracking
         file_hashes[relative_path] = current_hash
