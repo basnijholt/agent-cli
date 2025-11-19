@@ -144,6 +144,7 @@ The setup scripts automatically install:
   - [`assistant`](#assistant)
   - [`chat`](#chat)
   - [`rag-server`](#rag-server)
+  - [Using Custom Embeddings (e.g., llama.cpp / Ollama)](#using-custom-embeddings-eg-llamacpp--ollama)
 - [Development](#development)
   - [Running Tests](#running-tests)
   - [Pre-commit Hooks](#pre-commit-hooks)
