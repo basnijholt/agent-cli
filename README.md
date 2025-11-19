@@ -1231,10 +1231,10 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 
 **How to Use It:**
 
-- **Start Server**: `agent-cli rag-server --docs-folder ~/Documents/Notes --openai-base-url http://localhost:11434/v1`
+- **Start Server**: `agent-cli rag-server --docs-folder ~/Documents/Notes --openai-base-url http://localhost:11434/v1 --port 8000`
 - **Use with Agent-CLI**: `agent-cli chat --openai-base-url http://localhost:8000/v1 --llm-provider openai`
 
-### Using Custom Embeddings (e.g., llama.cpp / Ollama)
+#### Using Custom Embeddings (e.g., OpenAI / llama.cpp / Ollama)
 
 To use the embeddings endpoint from your local LLM server instead of the built-in SentenceTransformers:
 
