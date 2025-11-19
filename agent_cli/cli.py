@@ -52,6 +52,7 @@ from .agents import (  # noqa: E402, F401
     assistant,
     autocorrect,
     chat,
+    rag_server,
     server,
     speak,
     transcribe,
