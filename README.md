@@ -1371,7 +1371,7 @@ agent-cli rag-server \
 │ --tts                    --no-tts             Enable text-to-speech for      │
 │                                               responses.                     │
 │                                               [default: no-tts]              │
-│ --output-device-index                INTEGER  Index of the PyAudio output    │
+│ --output-device-index                INTEGER  Index of the audio output      │
 │                                               device to use for TTS.         │
 │ --output-device-name                 TEXT     Output device name keywords    │
 │                                               for partial matching.          │
