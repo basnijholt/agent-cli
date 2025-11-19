@@ -1270,31 +1270,25 @@ agent-cli rag-server \
  injecting relevant context from the documents.
 
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
-│ --docs-folder                 PATH     Folder to watch for documents         │
-│                                        [default: ./rag_docs]                 │
-│ --chroma-path                 PATH     Path to ChromaDB persistence          │
-│                                        directory                             │
-│                                        [default: ./rag_db]                   │
-│ --openai-base-url             TEXT     URL of the OpenAI-compatible backend  │
-│                                        server (e.g. llama.cpp, Ollama)       │
-│                                        [default: http://localhost:8080/v1]   │
-│ --embedding-provider          TEXT     Embedding provider ('local' for       │
-│                                        SentenceTransformers, 'openai' for    │
-│                                        OpenAI-compatible endpoint).          │
-│                                        [default: local]                      │
-│ --embedding-model             TEXT     Embedding model name. For 'local', a  │
-│                                        SentenceTransformer model. For        │
-│                                        'openai', the model ID on the server. │
-│                                        [default: all-MiniLM-L6-v2]           │
-│ --embedding-api-key           TEXT     API Key for embedding model (if using │
-│                                        'openai' provider).                   │
-│ --limit                       INTEGER  Number of document chunks to retrieve │
-│                                        per query.                            │
-│                                        [default: 3]                          │
-│ --host                        TEXT     Host to bind to [default: 0.0.0.0]    │
-│ --port                        INTEGER  Port to bind to [default: 8000]       │
-│ --log-level                   TEXT     Logging level [default: INFO]         │
-│ --help                -h               Show this message and exit.           │
+│ --docs-folder                PATH     Folder to watch for documents          │
+│                                       [default: ./rag_docs]                  │
+│ --chroma-path                PATH     Path to ChromaDB persistence directory │
+│                                       [default: ./rag_db]                    │
+│ --openai-base-url            TEXT     URL of the OpenAI-compatible backend   │
+│                                       server (e.g. llama.cpp, Ollama)        │
+│                                       [default: http://localhost:8080/v1]    │
+│ --embedding-model            TEXT     Embedding model name (e.g.             │
+│                                       'text-embedding-3-small' for OpenAI).  │
+│                                       [default: text-embedding-3-small]      │
+│ --embedding-api-key          TEXT     API Key for embedding model (if using  │
+│                                       'openai' provider).                    │
+│ --limit                      INTEGER  Number of document chunks to retrieve  │
+│                                       per query.                             │
+│                                       [default: 3]                           │
+│ --host                       TEXT     Host to bind to [default: 0.0.0.0]     │
+│ --port                       INTEGER  Port to bind to [default: 8000]        │
+│ --log-level                  TEXT     Logging level [default: INFO]          │
+│ --help               -h               Show this message and exit.            │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 
 ```
