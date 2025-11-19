@@ -61,7 +61,6 @@ def load_document_text(file_path: Path) -> str | None:
         if suffix in MARKITDOWN_EXTENSIONS:
             from markitdown import MarkItDown  # noqa: PLC0415
 
-            # NOTE: Consider caching the MarkItDown instance if initialization is slow
             md = MarkItDown()
             result = md.convert(str(file_path))
             return result.text_content
