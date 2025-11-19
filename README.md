@@ -1263,30 +1263,36 @@ agent-cli rag-server \
  injecting relevant context from the documents.
 
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
-│ --docs-folder                PATH     Folder to watch for documents          │
-│                                       [default: ./rag_docs]                  │
-│ --chroma-path                PATH     Path to ChromaDB persistence directory │
-│                                       [default: ./rag_db]                    │
-│ --openai-base-url            TEXT     URL of the OpenAI-compatible backend   │
-│                                       server (e.g. llama.cpp, Ollama)        │
-│                                       [default: http://localhost:8080/v1]    │
-│ --embedding-model            TEXT     Embedding model name (e.g.             │
-│                                       'text-embedding-3-small' for OpenAI).  │
-│                                       [default: text-embedding-3-small]      │
-│ --embedding-api-key          TEXT     API Key for embedding model (if using  │
-│                                       'openai' provider).                    │
-│ --limit                      INTEGER  Number of document chunks to retrieve  │
-│                                       per query.                             │
-│                                       [default: 3]                           │
-│ --host                       TEXT     Host to bind to [default: 0.0.0.0]     │
-│ --port                       INTEGER  Port to bind to [default: 8000]        │
-│ --log-level                  TEXT     Logging level [default: INFO]          │
-│ --help               -h               Show this message and exit.            │
+│ --help  -h        Show this message and exit.                                │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ RAG Configuration ──────────────────────────────────────────────────────────╮
+│ --docs-folder        PATH     Folder to watch for documents                  │
+│                               [default: ./rag_docs]                          │
+│ --chroma-path        PATH     Path to ChromaDB persistence directory         │
+│                               [default: ./rag_db]                            │
+│ --limit              INTEGER  Number of document chunks to retrieve per      │
+│                               query.                                         │
+│                               [default: 3]                                   │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Backend Configuration ──────────────────────────────────────────────────────╮
+│ --openai-base-url        TEXT  URL of the OpenAI-compatible backend server   │
+│                                (e.g. llama.cpp, Ollama)                      │
+│                                [default: http://localhost:8080/v1]           │
+│ --embedding-model        TEXT  Embedding model name (e.g.                    │
+│                                'text-embedding-3-small' for OpenAI).         │
+│                                [default: text-embedding-3-small]             │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ LLM Configuration: OpenAI ──────────────────────────────────────────────────╮
 │ --openai-api-key        TEXT  Your OpenAI API key. Can also be set with the  │
 │                               OPENAI_API_KEY environment variable.           │
 │                               [env var: OPENAI_API_KEY]                      │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Server Configuration ───────────────────────────────────────────────────────╮
+│ --host        TEXT     Host to bind to [default: 0.0.0.0]                    │
+│ --port        INTEGER  Port to bind to [default: 8000]                       │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ General Options ────────────────────────────────────────────────────────────╮
+│ --log-level        TEXT  Logging level [default: INFO]                       │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 
 ```
