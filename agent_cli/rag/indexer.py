@@ -1,15 +1,13 @@
-"""File watcher and indexing logic."""
+"""File watcher and indexing logic using watchfiles."""
 
 from __future__ import annotations
 
+import asyncio
 import logging
-import threading
-import time
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
-from watchdog.events import FileSystemEventHandler
-from watchdog.observers import Observer
+from watchfiles import Change, awatch
 
 from agent_cli.rag.engine import index_file, remove_file
 
@@ -19,94 +17,69 @@ if TYPE_CHECKING:
 logger = logging.getLogger("agent_cli.rag.indexer")
 
 
-class RAGEventHandler(FileSystemEventHandler):
-    """Watch for file system events and trigger indexing."""
-
-    def __init__(
-        self,
-        collection: Collection,
-        docs_folder: Path,
-        file_hashes: dict[str, str],
-    ) -> None:
-        """Initialize the watcher."""
-        self.collection = collection
-        self.docs_folder = docs_folder
-        self.file_hashes = file_hashes
-        self.processing: set[str] = set()
-        self._lock = threading.Lock()
-
-    def on_created(self, event: Any) -> None:
-        """Handle file creation."""
-        if not event.is_directory:
-            self._process_file(event.src_path, "created")
-
-    def on_modified(self, event: Any) -> None:
-        """Handle file modification."""
-        if not event.is_directory:
-            self._process_file(event.src_path, "modified")
-
-    def on_deleted(self, event: Any) -> None:
-        """Handle file deletion."""
-        if not event.is_directory:
-            self._remove_file(event.src_path)
-
-    def on_moved(self, event: Any) -> None:
-        """Handle file move."""
-        if not event.is_directory:
-            self._remove_file(event.src_path)
-            self._process_file(event.dest_path, "moved")
-
-    def _process_file(self, file_path: str, action: str) -> None:
-        path = Path(file_path)
-
-        # Ignore hidden files or temporary files
-        if path.name.startswith(".") or path.name.endswith("~"):
-            return
-
-        with self._lock:
-            if str(path) in self.processing:
-                return
-            self.processing.add(str(path))
-
-        # Run in a separate thread to not block the observer
-        threading.Thread(
-            target=self._index_worker,
-            args=(path, action),
-            daemon=True,
-        ).start()
-
-    def _index_worker(self, path: Path, action: str) -> None:
-        try:
-            # Small delay to ensure file write is complete
-            time.sleep(0.5)
-            if path.exists():
-                logger.info("[%s] Indexing: %s", action, path.name)
-                index_file(self.collection, self.docs_folder, path, self.file_hashes)
-        except Exception:
-            logger.exception("Failed to index %s", path.name)
-        finally:
-            with self._lock:
-                self.processing.discard(str(path))
-
-    def _remove_file(self, file_path: str) -> None:
-        path = Path(file_path)
-        # Ignore hidden files
-        if path.name.startswith("."):
-            return
-
-        logger.info("[deleted] Removing from index: %s", path.name)
-        remove_file(self.collection, self.docs_folder, path, self.file_hashes)
-
-
-def start_watcher(
+async def watch_docs(
     collection: Collection,
     docs_folder: Path,
     file_hashes: dict[str, str],
-) -> Observer:
-    """Start watching the docs folder."""
-    event_handler = RAGEventHandler(collection, docs_folder, file_hashes)
-    observer = Observer()
-    observer.schedule(event_handler, str(docs_folder), recursive=True)
-    observer.start()
+) -> None:
+    """Watch docs folder for changes and update index asynchronously."""
     logger.info("📁 Watching folder: %s", docs_folder)
-    return observer
+
+    loop = asyncio.get_running_loop()
+
+    async for changes in awatch(docs_folder):
+        for change_type, file_path_str in changes:
+            file_path = Path(file_path_str)
+
+            # Skip dotfiles/dirs if watchfiles doesn't catch all
+            try:
+                rel_path = file_path.relative_to(docs_folder)
+                if any(part.startswith(".") for part in rel_path.parts):
+                    continue
+            except ValueError:
+                if file_path.name.startswith("."):
+                    continue
+
+            if change_type == Change.deleted:
+                # Offload blocking IO/DB operations to thread pool
+                await loop.run_in_executor(
+                    None,
+                    _remove_file,
+                    collection,
+                    docs_folder,
+                    file_path,
+                    file_hashes,
+                )
+            elif (change_type in {Change.added, Change.modified}) and file_path.is_file():
+                # Offload blocking hashing/chunking/DB ops to thread pool
+                await loop.run_in_executor(
+                    None,
+                    _process_file,
+                    collection,
+                    docs_folder,
+                    file_path,
+                    file_hashes,
+                    change_type,
+                )
+
+
+def _process_file(
+    collection: Collection,
+    docs_folder: Path,
+    file_path: Path,
+    file_hashes: dict[str, str],
+    change_type: Change,
+) -> None:
+    action = "created" if change_type == Change.added else "modified"
+    logger.info("[%s] Indexing: %s", action, file_path.name)
+    index_file(collection, docs_folder, file_path, file_hashes)
+
+
+def _remove_file(
+    collection: Collection,
+    docs_folder: Path,
+    file_path: Path,
+    file_hashes: dict[str, str],
+) -> None:
+    logger.info("[deleted] Removing from index: %s", file_path.name)
+    remove_file(collection, docs_folder, file_path, file_hashes)

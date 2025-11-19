@@ -7,7 +7,7 @@ from importlib.util import find_spec
 _REQUIRED_DEPS = {
     "chromadb": "chromadb",
     "sentence_transformers": "sentence-transformers",
-    "watchdog": "watchdog",
+    "watchfiles": "watchfiles",
     "pypdf": "pypdf",
     "docx": "python-docx",
     "fastapi": "fastapi",

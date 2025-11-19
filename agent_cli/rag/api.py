@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import threading
 from typing import TYPE_CHECKING, Any
@@ -11,7 +12,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from agent_cli.rag.engine import initial_index, load_hashes_from_metadata, process_chat_request
-from agent_cli.rag.indexer import start_watcher
+from agent_cli.rag.indexer import watch_docs
 from agent_cli.rag.retriever import get_reranker_model
 from agent_cli.rag.store import get_all_metadata, init_collection
 
@@ -45,20 +46,26 @@ def create_app(
     file_hashes = load_hashes_from_metadata(collection)
     docs_folder.mkdir(exist_ok=True, parents=True)
 
-    # Start Watcher
-    observer = start_watcher(collection, docs_folder, file_hashes)
+    # Background Tasks
+    # We use a list to hold tasks to prevent garbage collection
+    background_tasks = set()
 
-    # Start Initial Index (in background, maybe we should use asyncio.create_task if inside app startup,
-    # but threading is fine for now as in original)
-    threading.Thread(
-        target=initial_index,
-        args=(collection, docs_folder, file_hashes),
-    ).start()
+    @app.on_event("startup")
+    async def startup_event() -> None:
+        # Start Watcher
+        watcher_task = asyncio.create_task(watch_docs(collection, docs_folder, file_hashes))
+        background_tasks.add(watcher_task)
+        watcher_task.add_done_callback(background_tasks.discard)
 
-    @app.on_event("shutdown")
-    def shutdown_event() -> None:
-        observer.stop()
-        observer.join()
+        # Initial Index (run in thread executor to not block loop, or use thread for CPU bound work)
+        # index_file is blocking/CPU bound (hashing, chunking).
+        # We should run initial_index in a separate thread.
+        # But we also want to await it or just let it run?
+        # Let's run it in a thread so it doesn't block startup.
+        threading.Thread(
+            target=initial_index,
+            args=(collection, docs_folder, file_hashes),
+        ).start()
 
     @app.post("/v1/chat/completions")
     async def chat_completions(request: ChatRequest) -> Any:
