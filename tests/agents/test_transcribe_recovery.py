@@ -17,9 +17,9 @@ from agent_cli.agents import transcribe
 def create_test_wav_file(filepath: Path, content: bytes = b"test_audio" * 1000) -> None:
     """Create a test WAV file."""
     with wave.open(str(filepath), "wb") as wav_file:
-        wav_file.setnchannels(constants.PYAUDIO_CHANNELS)
+        wav_file.setnchannels(constants.AUDIO_CHANNELS)
         wav_file.setsampwidth(2)  # 16-bit
-        wav_file.setframerate(constants.PYAUDIO_RATE)
+        wav_file.setframerate(constants.AUDIO_RATE)
         wav_file.writeframes(content)
 
 
@@ -380,9 +380,7 @@ async def test_async_main_save_recording_enabled(
             llm_enabled=False,
             transcription_log=None,
             save_recording=True,  # Enable saving
-            p=MagicMock(),
         )
-
         # Since we mocked the Wyoming client, the actual saving happens in _send_audio
         # which is tested separately. Here we just verify the parameter is passed through.
         # The save_recording parameter should be passed to the transcriber.

@@ -40,7 +40,7 @@ from agent_cli.agents._voice_agent_common import (
 )
 from agent_cli.cli import app
 from agent_cli.core import audio, process
-from agent_cli.core.audio import pyaudio_context, setup_devices
+from agent_cli.core.audio import setup_devices
 from agent_cli.core.utils import (
     InteractiveStopEvent,
     maybe_live,
@@ -54,7 +54,7 @@ from agent_cli.services import asr
 from agent_cli.services.wake_word import create_wake_word_detector
 
 if TYPE_CHECKING:
-    import pyaudio
+    import sounddevice as sd
     from rich.live import Live
 
 LOGGER = logging.getLogger()
@@ -91,7 +91,7 @@ Respond as if you're having a natural conversation.
 
 
 async def _record_audio_with_wake_word(
-    stream: pyaudio.Stream,
+    stream: sd.InputStream,
     stop_event: InteractiveStopEvent,
     logger: logging.Logger,
     *,
@@ -184,70 +184,69 @@ async def _async_main(
     live: Live | None,
 ) -> None:
     """Core asynchronous logic for the wake word assistant."""
-    with pyaudio_context() as p:
-        device_info = setup_devices(p, general_cfg, audio_in_cfg, audio_out_cfg)
-        if device_info is None:
-            return
-        input_device_index, _, tts_output_device_index = device_info
-        audio_in_cfg.input_device_index = input_device_index
-        audio_out_cfg.output_device_index = tts_output_device_index
+    device_info = setup_devices(general_cfg, audio_in_cfg, audio_out_cfg)
+    if device_info is None:
+        return
+    input_device_index, _, tts_output_device_index = device_info
+    audio_in_cfg.input_device_index = input_device_index
+    audio_out_cfg.output_device_index = tts_output_device_index
 
-        stream_kwargs = audio.setup_input_stream(input_device_index)
-        with (
-            audio.open_pyaudio_stream(p, **stream_kwargs) as stream,
-            signal_handling_context(LOGGER, general_cfg.quiet) as stop_event,
-        ):
-            while not stop_event.is_set():
-                audio_data = await _record_audio_with_wake_word(
-                    stream,
-                    stop_event,
-                    LOGGER,
-                    wake_word_cfg=wake_word_cfg,
-                    quiet=general_cfg.quiet,
-                    live=live,
-                )
+    stream_config = audio.setup_input_stream(input_device_index)
+    with (
+        audio.open_audio_stream(stream_config) as stream,
+        signal_handling_context(LOGGER, general_cfg.quiet) as stop_event,
+    ):
+        while not stop_event.is_set():
+            audio_data = await _record_audio_with_wake_word(
+                stream,
+                stop_event,
+                LOGGER,
+                wake_word_cfg=wake_word_cfg,
+                quiet=general_cfg.quiet,
+                live=live,
+            )
 
-                if not audio_data:
-                    if not general_cfg.quiet:
-                        print_with_style("No audio recorded", style="yellow")
-                    continue
-
-                if stop_event.is_set():
-                    break
-
-                instruction = await get_instruction_from_audio(
-                    audio_data=audio_data,
-                    provider_cfg=provider_cfg,
-                    audio_input_cfg=audio_in_cfg,
-                    wyoming_asr_cfg=wyoming_asr_cfg,
-                    openai_asr_cfg=openai_asr_cfg,
-                    ollama_cfg=ollama_cfg,
-                    logger=LOGGER,
-                    quiet=general_cfg.quiet,
-                )
-                if not instruction:
-                    continue
-
-                await process_instruction_and_respond(
-                    instruction=instruction,
-                    original_text="",
-                    provider_cfg=provider_cfg,
-                    general_cfg=general_cfg,
-                    ollama_cfg=ollama_cfg,
-                    openai_llm_cfg=openai_llm_cfg,
-                    gemini_llm_cfg=gemini_llm_cfg,
-                    audio_output_cfg=audio_out_cfg,
-                    wyoming_tts_cfg=wyoming_tts_cfg,
-                    openai_tts_cfg=openai_tts_cfg,
-                    kokoro_tts_cfg=kokoro_tts_cfg,
-                    system_prompt=system_prompt,
-                    agent_instructions=agent_instructions,
-                    live=live,
-                    logger=LOGGER,
-                )
-
+            if not audio_data:
                 if not general_cfg.quiet:
-                    print_with_style("✨ Ready for next command...", style="green")
+                    print_with_style("No audio recorded", style="yellow")
+                continue
+
+            if stop_event.is_set():
+                break
+
+            instruction = await get_instruction_from_audio(
+                audio_data=audio_data,
+                provider_cfg=provider_cfg,
+                audio_input_cfg=audio_in_cfg,
+                wyoming_asr_cfg=wyoming_asr_cfg,
+                openai_asr_cfg=openai_asr_cfg,
+                ollama_cfg=ollama_cfg,
+                logger=LOGGER,
+                quiet=general_cfg.quiet,
+            )
+            if not instruction:
+                continue
+
+            await process_instruction_and_respond(
+                instruction=instruction,
+                original_text="",
+                provider_cfg=provider_cfg,
+                general_cfg=general_cfg,
+                ollama_cfg=ollama_cfg,
+                openai_llm_cfg=openai_llm_cfg,
+                gemini_llm_cfg=gemini_llm_cfg,
+                audio_output_cfg=audio_out_cfg,
+                wyoming_tts_cfg=wyoming_tts_cfg,
+                openai_tts_cfg=openai_tts_cfg,
+                kokoro_tts_cfg=kokoro_tts_cfg,
+                system_prompt=system_prompt,
+                agent_instructions=agent_instructions,
+                live=live,
+                logger=LOGGER,
+            )
+
+            if not general_cfg.quiet:
+                print_with_style("✨ Ready for next command...", style="green")
 
 
 @app.command("assistant")

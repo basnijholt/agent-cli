@@ -17,7 +17,6 @@ from agent_cli.core.utils import InteractiveStopEvent
 @pytest.mark.asyncio
 async def test_handle_conversation_turn_no_llm_response():
     """Test that the conversation turn handles no response from the LLM."""
-    mock_p = MagicMock()
     stop_event = InteractiveStopEvent()
     conversation_history = []
     general_cfg = config.General(log_level="INFO", log_file=None, quiet=True, list_devices=True)
@@ -57,7 +56,6 @@ async def test_handle_conversation_turn_no_llm_response():
         mock_create_transcriber.return_value = mock_transcriber
         mock_llm_response.return_value = ""
         await _handle_conversation_turn(
-            p=mock_p,
             stop_event=stop_event,
             conversation_history=conversation_history,
             provider_cfg=provider_cfg,
@@ -85,7 +83,6 @@ async def test_handle_conversation_turn_no_llm_response():
 @pytest.mark.asyncio
 async def test_handle_conversation_turn_no_instruction():
     """Test that the conversation turn exits early if no instruction is given."""
-    mock_p = MagicMock()
     stop_event = InteractiveStopEvent()
     conversation_history = []
     general_cfg = config.General(log_level="INFO", log_file=None, quiet=True, list_devices=True)
@@ -118,7 +115,6 @@ async def test_handle_conversation_turn_no_instruction():
         mock_transcriber = AsyncMock(return_value="")
         mock_create_transcriber.return_value = mock_transcriber
         await _handle_conversation_turn(
-            p=mock_p,
             stop_event=stop_event,
             conversation_history=conversation_history,
             provider_cfg=provider_cfg,
@@ -174,14 +170,12 @@ def test_chat_command_stop_and_status():
 def test_chat_command_list_output_devices():
     """Test the list-output-devices flag."""
     runner = CliRunner()
-    with (
-        patch("agent_cli.agents.chat.setup_devices") as mock_setup_devices,
-        patch("agent_cli.agents.chat.pyaudio_context") as mock_pyaudio_context,
-    ):
+    with patch(
+        "agent_cli.agents.chat.setup_devices",
+    ) as mock_setup_devices:
         mock_setup_devices.return_value = None
         result = runner.invoke(app, ["chat", "--list-devices"])
         assert result.exit_code == 0
-        mock_pyaudio_context.assert_called_once()
         mock_setup_devices.assert_called_once()
 
 
@@ -214,7 +208,7 @@ async def test_async_main_exception_handling():
     )
 
     with (
-        patch("agent_cli.agents.chat.pyaudio_context", side_effect=Exception("Test error")),
+        patch("agent_cli.agents.chat.setup_devices", side_effect=Exception("Test error")),
         patch("agent_cli.agents.chat.console") as mock_console,
     ):
         with pytest.raises(Exception, match="Test error"):

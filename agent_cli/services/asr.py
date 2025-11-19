@@ -15,7 +15,7 @@ from wyoming.audio import AudioChunk, AudioStart, AudioStop
 
 from agent_cli import constants
 from agent_cli.core.audio import (
-    open_pyaudio_stream,
+    open_audio_stream,
     read_audio_stream,
     read_from_queue,
     setup_input_stream,
@@ -28,7 +28,7 @@ if TYPE_CHECKING:
     import logging
     from collections.abc import Awaitable, Callable
 
-    import pyaudio
+    import sounddevice as sd
     from rich.live import Live
     from wyoming.client import AsyncClient
 
@@ -54,9 +54,9 @@ def _save_audio_to_file(audio_data: bytes, logger: logging.Logger) -> Path | Non
         filepath = _get_transcriptions_dir() / filename
 
         with wave.open(str(filepath), "wb") as wav_file:
-            wav_file.setnchannels(constants.PYAUDIO_CHANNELS)
-            wav_file.setsampwidth(2)  # 16-bit audio
-            wav_file.setframerate(constants.PYAUDIO_RATE)
+            wav_file.setnchannels(constants.AUDIO_CHANNELS)
+            wav_file.setsampwidth(constants.AUDIO_FORMAT_WIDTH)  # 16-bit audio
+            wav_file.setframerate(constants.AUDIO_RATE)
             wav_file.writeframes(audio_data)
 
         logger.info("Saved audio recording to %s", filepath)
@@ -138,7 +138,7 @@ def create_recorded_audio_transcriber(
 
 async def _send_audio(
     client: AsyncClient,
-    stream: pyaudio.Stream,
+    stream: sd.InputStream,
     stop_event: InteractiveStopEvent,
     logger: logging.Logger,
     *,
@@ -230,7 +230,6 @@ async def _receive_transcript(
 
 
 async def record_audio_with_manual_stop(
-    p: pyaudio.PyAudio,
     input_device_index: int | None,
     stop_event: InteractiveStopEvent,
     logger: logging.Logger,
@@ -242,7 +241,6 @@ async def record_audio_with_manual_stop(
     """Record audio to a buffer using a manual stop signal.
 
     Args:
-        p: PyAudio instance
         input_device_index: Audio input device index
         stop_event: Event to stop recording
         logger: Logger instance
@@ -260,8 +258,8 @@ async def record_audio_with_manual_stop(
         """Buffer audio chunk."""
         audio_buffer.write(chunk)
 
-    stream_kwargs = setup_input_stream(input_device_index)
-    with open_pyaudio_stream(p, **stream_kwargs) as stream:
+    stream_config = setup_input_stream(input_device_index)
+    with open_audio_stream(stream_config) as stream:
         await read_audio_stream(
             stream=stream,
             stop_event=stop_event,
@@ -302,7 +300,7 @@ async def _transcribe_recorded_audio_wyoming(
             await client.write_event(Transcribe().event())
             await client.write_event(AudioStart(**constants.WYOMING_AUDIO_CONFIG).event())
 
-            chunk_size = constants.PYAUDIO_CHUNK_SIZE * 2
+            chunk_size = constants.AUDIO_CHUNK_SIZE * 2
             for i in range(0, len(audio_data), chunk_size):
                 chunk = audio_data[i : i + chunk_size]
                 await client.write_event(
@@ -324,7 +322,6 @@ async def _transcribe_live_audio_wyoming(
     audio_input_cfg: config.AudioInput,
     wyoming_asr_cfg: config.WyomingASR,
     logger: logging.Logger,
-    p: pyaudio.PyAudio,
     stop_event: InteractiveStopEvent,
     live: Live,
     quiet: bool = False,
@@ -342,8 +339,8 @@ async def _transcribe_live_audio_wyoming(
             logger,
             quiet=quiet,
         ) as client:
-            stream_kwargs = setup_input_stream(audio_input_cfg.input_device_index)
-            with open_pyaudio_stream(p, **stream_kwargs) as stream:
+            stream_config = setup_input_stream(audio_input_cfg.input_device_index)
+            with open_audio_stream(stream_config) as stream:
                 _, recv_task = await manage_send_receive_tasks(
                     _send_audio(
                         client,
@@ -373,7 +370,6 @@ async def _transcribe_live_audio_openai(
     audio_input_cfg: config.AudioInput,
     openai_asr_cfg: config.OpenAIASR,
     logger: logging.Logger,
-    p: pyaudio.PyAudio,
     stop_event: InteractiveStopEvent,
     live: Live,
     quiet: bool = False,
@@ -382,7 +378,6 @@ async def _transcribe_live_audio_openai(
 ) -> str | None:
     """Record and transcribe live audio using OpenAI Whisper."""
     audio_data = await record_audio_with_manual_stop(
-        p,
         audio_input_cfg.input_device_index,
         stop_event,
         logger,

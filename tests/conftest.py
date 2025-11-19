@@ -6,6 +6,19 @@ import asyncio
 import contextlib
 import io
 import logging
+import sys
+from unittest.mock import MagicMock
+
+# Mock sounddevice to avoid OSError if PortAudio is missing during tests
+# This must happen before any module imports sounddevice
+if "sounddevice" not in sys.modules:
+    mock_sd = MagicMock()
+    # Setup basic attributes to avoid AttributeErrors during import/inspection
+    mock_sd.InputStream = MagicMock()
+    mock_sd.OutputStream = MagicMock()
+    mock_sd.query_devices = MagicMock(return_value=[])
+    mock_sd.default = MagicMock()
+    sys.modules["sounddevice"] = mock_sd
 
 import pytest
 from rich.console import Console
@@ -45,29 +58,29 @@ def timeout_seconds() -> float:
 
 
 @pytest.fixture
-def mock_pyaudio_device_info() -> list[dict]:
-    """Mock PyAudio device info for testing."""
+def mock_audio_device_info() -> list[dict]:
+    """Mock audio device info for testing."""
     return [
         {
             "index": 0,
             "name": "Mock Input Device",
-            "maxInputChannels": 2,
-            "maxOutputChannels": 0,
-            "defaultSampleRate": 44100.0,
+            "max_input_channels": 2,
+            "max_output_channels": 0,
+            "default_samplerate": 44100.0,
         },
         {
             "index": 1,
             "name": "Mock Output Device",
-            "maxInputChannels": 0,
-            "maxOutputChannels": 2,
-            "defaultSampleRate": 44100.0,
+            "max_input_channels": 0,
+            "max_output_channels": 2,
+            "default_samplerate": 44100.0,
         },
         {
             "index": 2,
             "name": "Mock Combined Device",
-            "maxInputChannels": 2,
-            "maxOutputChannels": 2,
-            "defaultSampleRate": 44100.0,
+            "max_input_channels": 2,
+            "max_output_channels": 2,
+            "default_samplerate": 44100.0,
         },
     ]
 

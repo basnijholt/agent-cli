@@ -45,7 +45,7 @@ from agent_cli.agents._voice_agent_common import (
 )
 from agent_cli.cli import app
 from agent_cli.core import process
-from agent_cli.core.audio import pyaudio_context, setup_devices
+from agent_cli.core.audio import setup_devices
 from agent_cli.core.utils import (
     get_clipboard_text,
     maybe_live,
@@ -103,69 +103,67 @@ async def _async_main(
     kokoro_tts_cfg: config.KokoroTTS,
 ) -> None:
     """Core asynchronous logic for the voice assistant."""
-    with pyaudio_context() as p:
-        device_info = setup_devices(p, general_cfg, audio_in_cfg, audio_out_cfg)
-        if device_info is None:
+    device_info = setup_devices(general_cfg, audio_in_cfg, audio_out_cfg)
+    if device_info is None:
+        return
+    input_device_index, _, tts_output_device_index = device_info
+    audio_in_cfg.input_device_index = input_device_index
+    audio_out_cfg.output_device_index = tts_output_device_index
+
+    original_text = get_clipboard_text()
+    if original_text is None:
+        return
+
+    if not general_cfg.quiet and original_text:
+        print_input_panel(original_text, title="📝 Text to Process")
+
+    with (
+        signal_handling_context(LOGGER, general_cfg.quiet) as stop_event,
+        maybe_live(not general_cfg.quiet) as live,
+    ):
+        audio_data = await asr.record_audio_with_manual_stop(
+            input_device_index,
+            stop_event,
+            LOGGER,
+            live=live,
+            quiet=general_cfg.quiet,
+        )
+
+        if not audio_data:
+            if not general_cfg.quiet:
+                print_with_style("No audio recorded", style="yellow")
             return
-        input_device_index, _, tts_output_device_index = device_info
-        audio_in_cfg.input_device_index = input_device_index
-        audio_out_cfg.output_device_index = tts_output_device_index
 
-        original_text = get_clipboard_text()
-        if original_text is None:
+        instruction = await get_instruction_from_audio(
+            audio_data=audio_data,
+            provider_cfg=provider_cfg,
+            audio_input_cfg=audio_in_cfg,
+            wyoming_asr_cfg=wyoming_asr_cfg,
+            openai_asr_cfg=openai_asr_cfg,
+            ollama_cfg=ollama_cfg,
+            logger=LOGGER,
+            quiet=general_cfg.quiet,
+        )
+        if not instruction:
             return
 
-        if not general_cfg.quiet and original_text:
-            print_input_panel(original_text, title="📝 Text to Process")
-
-        with (
-            signal_handling_context(LOGGER, general_cfg.quiet) as stop_event,
-            maybe_live(not general_cfg.quiet) as live,
-        ):
-            audio_data = await asr.record_audio_with_manual_stop(
-                p,
-                input_device_index,
-                stop_event,
-                LOGGER,
-                live=live,
-                quiet=general_cfg.quiet,
-            )
-
-            if not audio_data:
-                if not general_cfg.quiet:
-                    print_with_style("No audio recorded", style="yellow")
-                return
-
-            instruction = await get_instruction_from_audio(
-                audio_data=audio_data,
-                provider_cfg=provider_cfg,
-                audio_input_cfg=audio_in_cfg,
-                wyoming_asr_cfg=wyoming_asr_cfg,
-                openai_asr_cfg=openai_asr_cfg,
-                ollama_cfg=ollama_cfg,
-                logger=LOGGER,
-                quiet=general_cfg.quiet,
-            )
-            if not instruction:
-                return
-
-            await process_instruction_and_respond(
-                instruction=instruction,
-                original_text=original_text,
-                provider_cfg=provider_cfg,
-                general_cfg=general_cfg,
-                ollama_cfg=ollama_cfg,
-                openai_llm_cfg=openai_llm_cfg,
-                gemini_llm_cfg=gemini_llm_cfg,
-                audio_output_cfg=audio_out_cfg,
-                wyoming_tts_cfg=wyoming_tts_cfg,
-                openai_tts_cfg=openai_tts_cfg,
-                kokoro_tts_cfg=kokoro_tts_cfg,
-                system_prompt=SYSTEM_PROMPT,
-                agent_instructions=AGENT_INSTRUCTIONS,
-                live=live,
-                logger=LOGGER,
-            )
+        await process_instruction_and_respond(
+            instruction=instruction,
+            original_text=original_text,
+            provider_cfg=provider_cfg,
+            general_cfg=general_cfg,
+            ollama_cfg=ollama_cfg,
+            openai_llm_cfg=openai_llm_cfg,
+            gemini_llm_cfg=gemini_llm_cfg,
+            audio_output_cfg=audio_out_cfg,
+            wyoming_tts_cfg=wyoming_tts_cfg,
+            openai_tts_cfg=openai_tts_cfg,
+            kokoro_tts_cfg=kokoro_tts_cfg,
+            system_prompt=SYSTEM_PROMPT,
+            agent_instructions=AGENT_INSTRUCTIONS,
+            live=live,
+            logger=LOGGER,
+        )
 
 
 @app.command("voice-edit")

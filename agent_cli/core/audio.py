@@ -1,4 +1,4 @@
-"""General audio utilities for PyAudio device management and audio streaming."""
+"""General audio utilities for SoundDevice device management and audio streaming."""
 
 from __future__ import annotations
 
@@ -6,17 +6,21 @@ import asyncio
 import functools
 import logging
 from contextlib import asynccontextmanager, contextmanager
-from typing import TYPE_CHECKING
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Literal
 
-import pyaudio
+import sounddevice as sd
 from rich.text import Text
 
 from agent_cli import constants
-
-from .utils import InteractiveStopEvent, console, print_device_index, print_with_style
+from agent_cli.core.utils import (
+    InteractiveStopEvent,
+    console,
+    print_device_index,
+    print_with_style,
+)
 
 if TYPE_CHECKING:
-    import logging
     from collections.abc import AsyncGenerator, Awaitable, Callable, Generator
 
     from rich.live import Live
@@ -24,8 +28,38 @@ if TYPE_CHECKING:
     from agent_cli import config
 
 
+@dataclass
+class StreamConfig:
+    """Configuration for an audio stream."""
+
+    rate: int
+    channels: int
+    dtype: str
+    device: int | None
+    blocksize: int
+    kind: Literal["input", "output"]
+
+    def to_stream(self) -> sd.Stream:
+        """Create a SoundDevice stream from this configuration."""
+        if self.kind == "input":
+            stream_cls = sd.InputStream
+        elif self.kind == "output":
+            stream_cls = sd.OutputStream
+        else:
+            msg = f"Invalid stream kind: {self.kind}"
+            raise ValueError(msg)
+
+        return stream_cls(
+            samplerate=self.rate,
+            blocksize=self.blocksize,
+            device=self.device,
+            channels=self.channels,
+            dtype=self.dtype,
+        )
+
+
 class _AudioTee:
-    """A thread-safe class to tee a continuous PyAudio stream into multiple asyncio queues.
+    """A thread-safe class to tee a continuous audio stream into multiple asyncio queues.
 
     This class reads from a single audio stream in a background task and forwards
     the audio chunks to any number of dynamically added consumer queues. It is designed
@@ -34,7 +68,7 @@ class _AudioTee:
 
     def __init__(
         self,
-        stream: pyaudio.Stream,
+        stream: sd.InputStream,
         stop_event: InteractiveStopEvent,
         logger: logging.Logger,
     ) -> None:
@@ -67,16 +101,18 @@ class _AudioTee:
         self.logger.debug("Starting continuous audio reading task.")
         try:
             while not self.stop_event.is_set() and not self._stop_tee_event.is_set():
-                chunk = await asyncio.to_thread(
+                # sd.InputStream.read() blocks until data is available
+                # We run it in a thread to avoid blocking the event loop
+                data, _overflow = await asyncio.to_thread(
                     self.stream.read,
-                    num_frames=constants.PYAUDIO_CHUNK_SIZE,
-                    exception_on_overflow=False,
+                    constants.AUDIO_CHUNK_SIZE,
                 )
+                chunk = data.tobytes()
                 # Lock the queue list while iterating to prevent modification during iteration
                 async with self._lock:
                     for queue in self.queues:
                         await queue.put(chunk)
-        except OSError:
+        except Exception:
             self.logger.exception("Error reading audio stream")
         finally:
             # Signal the end of the stream to all remaining consumers
@@ -100,7 +136,7 @@ class _AudioTee:
 
 @asynccontextmanager
 async def tee_audio_stream(
-    stream: pyaudio.Stream,
+    stream: sd.InputStream,
     stop_event: InteractiveStopEvent,
     logger: logging.Logger,
 ) -> AsyncGenerator[_AudioTee, None]:
@@ -131,32 +167,21 @@ async def read_from_queue(
 
 
 @contextmanager
-def pyaudio_context() -> Generator[pyaudio.PyAudio, None, None]:
-    """Context manager for PyAudio lifecycle."""
-    p = pyaudio.PyAudio()
-    try:
-        yield p
-    finally:
-        p.terminate()
-
-
-@contextmanager
-def open_pyaudio_stream(
-    p: pyaudio.PyAudio,
-    *args: object,
-    **kwargs: object,
-) -> Generator[pyaudio.Stream, None, None]:
-    """Context manager for a PyAudio stream that ensures it's properly closed."""
-    stream = p.open(*args, **kwargs)
+def open_audio_stream(
+    config: StreamConfig,
+) -> Generator[sd.Stream, None, None]:
+    """Context manager for a SoundDevice stream that ensures it's properly closed."""
+    stream = config.to_stream()
+    stream.start()
     try:
         yield stream
     finally:
-        stream.stop_stream()
+        stream.stop()
         stream.close()
 
 
 async def read_audio_stream(
-    stream: pyaudio.Stream,
+    stream: sd.InputStream,
     stop_event: InteractiveStopEvent,
     chunk_handler: Callable[[bytes], None] | Callable[[bytes], Awaitable[None]],
     logger: logging.Logger,
@@ -172,7 +197,7 @@ async def read_audio_stream(
     All other audio functions should use this to avoid duplication.
 
     Args:
-        stream: PyAudio stream
+        stream: SoundDevice InputStream
         stop_event: Event to stop reading
         chunk_handler: Function to handle each chunk (sync or async)
         logger: Logger instance
@@ -185,11 +210,11 @@ async def read_audio_stream(
     try:
         seconds_streamed = 0.0
         while not stop_event.is_set():
-            chunk = await asyncio.to_thread(
+            data, _overflow = await asyncio.to_thread(
                 stream.read,
-                num_frames=constants.PYAUDIO_CHUNK_SIZE,
-                exception_on_overflow=False,
+                constants.AUDIO_CHUNK_SIZE,
             )
+            chunk = data.tobytes()
 
             # Handle chunk (sync or async)
             if asyncio.iscoroutinefunction(chunk_handler):
@@ -200,9 +225,7 @@ async def read_audio_stream(
             logger.debug("Processed %d byte(s) of audio", len(chunk))
 
             # Update progress display
-            seconds_streamed += len(chunk) / (
-                constants.PYAUDIO_RATE * constants.PYAUDIO_CHANNELS * 2
-            )
+            seconds_streamed += len(chunk) / (constants.AUDIO_RATE * constants.AUDIO_CHANNELS * 2)
             if live and not quiet:
                 if stop_event.ctrl_c_pressed:
                     msg = f"Ctrl+C pressed. Stopping {progress_message.lower()}..."
@@ -215,30 +238,30 @@ async def read_audio_stream(
                         ),
                     )
 
-    except OSError:
+    except Exception:
         logger.exception("Error reading audio")
 
 
 def setup_input_stream(
     input_device_index: int | None,
-) -> dict:
-    """Get standard PyAudio input stream configuration.
+) -> StreamConfig:
+    """Get standard audio input stream configuration.
 
     Args:
         input_device_index: Input device index
 
     Returns:
-        Dictionary of stream parameters
+        StreamConfig for open_audio_stream
 
     """
-    return {
-        "format": constants.PYAUDIO_FORMAT,
-        "channels": constants.PYAUDIO_CHANNELS,
-        "rate": constants.PYAUDIO_RATE,
-        "input": True,
-        "frames_per_buffer": constants.PYAUDIO_CHUNK_SIZE,
-        "input_device_index": input_device_index,
-    }
+    return StreamConfig(
+        dtype=constants.AUDIO_FORMAT_STR,
+        channels=constants.AUDIO_CHANNELS,
+        rate=constants.AUDIO_RATE,
+        kind="input",
+        blocksize=constants.AUDIO_CHUNK_SIZE,
+        device=input_device_index,
+    )
 
 
 def setup_output_stream(
@@ -247,56 +270,62 @@ def setup_output_stream(
     sample_rate: int | None = None,
     sample_width: int | None = None,
     channels: int | None = None,
-) -> dict:
-    """Get standard PyAudio output stream configuration.
+) -> StreamConfig:
+    """Get standard audio output stream configuration.
 
     Args:
-        p: PyAudio instance
         output_device_index: Output device index
         sample_rate: Custom sample rate (defaults to config)
         sample_width: Custom sample width in bytes (defaults to config)
         channels: Custom channel count (defaults to config)
 
     Returns:
-        Dictionary of stream parameters
+        StreamConfig for open_audio_stream
 
     """
-    return {
-        "format": pyaudio.get_format_from_width(sample_width or 2),
-        "channels": channels or constants.PYAUDIO_CHANNELS,
-        "rate": sample_rate or constants.PYAUDIO_RATE,
-        "output": True,
-        "frames_per_buffer": constants.PYAUDIO_CHUNK_SIZE,
-        "output_device_index": output_device_index,
-    }
+    # Map sample width to dtype if necessary. 2 -> int16.
+    dtype = constants.AUDIO_FORMAT_STR
+    if sample_width == 1:
+        dtype = "int8"
+    elif sample_width == 4:  # noqa: PLR2004
+        dtype = "int32"
+
+    return StreamConfig(
+        dtype=dtype,
+        channels=channels or constants.AUDIO_CHANNELS,
+        rate=sample_rate or constants.AUDIO_RATE,
+        kind="output",
+        blocksize=constants.AUDIO_CHUNK_SIZE,
+        device=output_device_index,
+    )
 
 
 @functools.cache
-def _get_all_devices(p: pyaudio.PyAudio) -> list[dict]:
+def _get_all_devices() -> list[dict]:
     """Get information for all audio devices with caching.
-
-    Args:
-        p: PyAudio instance
 
     Returns:
         List of device info dictionaries with added 'index' field
 
     """
     devices = []
-    for i in range(p.get_device_count()):
-        info = p.get_device_info_by_index(i)
-        # Add the index to the info dict for convenience
-        device_info = dict(info)
-        device_info["index"] = i
-        devices.append(device_info)
+    try:
+        query_result = sd.query_devices()
+        # sd.query_devices() returns a DeviceList (list-like) of dicts
+        for i, device in enumerate(query_result):
+            device_info = dict(device)
+            device_info["index"] = i
+            devices.append(device_info)
+    except Exception:
+        # Fallback or empty if no devices found/error
+        logging.getLogger(__name__).exception("Error querying audio devices")
     return devices
 
 
-def _get_device_by_index(p: pyaudio.PyAudio, input_device_index: int) -> dict:
+def _get_device_by_index(input_device_index: int) -> dict:
     """Get device info by index from cached device list.
 
     Args:
-        p: PyAudio instance
         input_device_index: Device index to look up
 
     Returns:
@@ -306,38 +335,37 @@ def _get_device_by_index(p: pyaudio.PyAudio, input_device_index: int) -> dict:
         ValueError: If device index is not found
 
     """
-    for device in _get_all_devices(p):
+    for device in _get_all_devices():
         if device["index"] == input_device_index:
             return device
     msg = f"Device index {input_device_index} not found"
     raise ValueError(msg)
 
 
-def _list_input_devices(p: pyaudio.PyAudio) -> None:
+def _list_input_devices() -> None:
     """Print a numbered list of available input devices."""
     console.print("[bold]Available input devices:[/bold]")
-    for device in _get_all_devices(p):
-        if device.get("maxInputChannels", 0) > 0:
+    for device in _get_all_devices():
+        if device.get("max_input_channels", 0) > 0:
             console.print(f"  [yellow]{device['index']}[/yellow]: {device['name']}")
 
 
-def _list_output_devices(p: pyaudio.PyAudio) -> None:
+def _list_output_devices() -> None:
     """Print a numbered list of available output devices."""
     console.print("[bold]Available output devices:[/bold]")
-    for device in _get_all_devices(p):
-        if device.get("maxOutputChannels", 0) > 0:
+    for device in _get_all_devices():
+        if device.get("max_output_channels", 0) > 0:
             console.print(f"  [yellow]{device['index']}[/yellow]: {device['name']}")
 
 
-def list_all_devices(p: pyaudio.PyAudio) -> None:
+def list_all_devices() -> None:
     """Print a numbered list of all available audio devices with their capabilities."""
-    _list_input_devices(p)
+    _list_input_devices()
     console.print()
-    _list_output_devices(p)
+    _list_output_devices()
 
 
 def _in_or_out_device(
-    p: pyaudio.PyAudio,
     input_device_name: str | None,
     input_device_index: int | None,
     key: str,
@@ -348,7 +376,7 @@ def _in_or_out_device(
         return None, None
 
     if input_device_index is not None:
-        info = _get_device_by_index(p, input_device_index)
+        info = _get_device_by_index(input_device_index)
         return input_device_index, info.get("name")
     assert input_device_name is not None
     search_terms = [term.strip().lower() for term in input_device_name.split(",") if term.strip()]
@@ -358,7 +386,7 @@ def _in_or_out_device(
         raise ValueError(msg)
 
     devices = []
-    for device in _get_all_devices(p):
+    for device in _get_all_devices():
         device_info_name = device.get("name")
         if device_info_name and device.get(key, 0) > 0:
             devices.append((device["index"], device_info_name))
@@ -373,43 +401,38 @@ def _in_or_out_device(
 
 
 def _input_device(
-    p: pyaudio.PyAudio,
     input_device_name: str | None,
     input_device_index: int | None,
 ) -> tuple[int | None, str | None]:
     """Find an input device by a prioritized, comma-separated list of keywords."""
-    return _in_or_out_device(p, input_device_name, input_device_index, "maxInputChannels", "input")
+    return _in_or_out_device(input_device_name, input_device_index, "max_input_channels", "input")
 
 
 def _output_device(
-    p: pyaudio.PyAudio,
     input_device_name: str | None,
     input_device_index: int | None,
 ) -> tuple[int | None, str | None]:
     """Find an output device by a prioritized, comma-separated list of keywords."""
     return _in_or_out_device(
-        p,
         input_device_name,
         input_device_index,
-        "maxOutputChannels",
+        "max_output_channels",
         "output",
     )
 
 
 def setup_devices(
-    p: pyaudio.PyAudio,
     general_cfg: config.General,
     audio_in_cfg: config.AudioInput | None,
     audio_out_cfg: config.AudioOutput | None,
 ) -> tuple[int | None, str | None, int | None] | None:
     """Handle device listing and setup."""
     if general_cfg.list_devices:
-        list_all_devices(p)
+        list_all_devices()
         return None
 
     # Setup input device
     input_device_index, input_device_name = _input_device(
-        p,
         audio_in_cfg.input_device_name if audio_in_cfg else None,
         audio_in_cfg.input_device_index if audio_in_cfg else None,
     )
@@ -424,7 +447,6 @@ def setup_devices(
         and (audio_out_cfg.output_device_name or audio_out_cfg.output_device_index)
     ):
         tts_output_device_index, tts_output_device_name = _output_device(
-            p,
             audio_out_cfg.output_device_name,
             audio_out_cfg.output_device_index,
         )

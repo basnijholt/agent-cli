@@ -62,11 +62,10 @@ def convert_audio_to_wyoming_format(
                 "-f",
                 "s16le",
                 "-ar",
-                str(constants.PYAUDIO_RATE),
+                str(constants.AUDIO_RATE),
                 "-ac",
-                str(constants.PYAUDIO_CHANNELS),
-                "-y",  # Overwrite output file
-                str(output_path),
+                str(constants.AUDIO_CHANNELS),
+                "-",
             ]
 
             logger.debug("Running FFmpeg command: %s", " ".join(cmd))

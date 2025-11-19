@@ -110,7 +110,6 @@ async def test_async_main_list_devices(tmp_path: Path) -> None:
     )
 
     with (
-        patch("agent_cli.agents.chat.pyaudio_context"),
         patch(
             "agent_cli.agents.chat.setup_devices",
         ) as mock_setup_devices,
@@ -169,7 +168,6 @@ async def test_async_main_list_output_devices(tmp_path: Path) -> None:
     )
 
     with (
-        patch("agent_cli.agents.chat.pyaudio_context"),
         patch(
             "agent_cli.agents.chat.setup_devices",
         ) as mock_setup_devices,
@@ -235,7 +233,6 @@ async def test_async_main_full_loop(tmp_path: Path) -> None:
     )
 
     with (
-        patch("agent_cli.agents.chat.pyaudio_context"),
         patch("agent_cli.agents.chat.setup_devices", return_value=(1, "mock_input", 1)),
         patch("agent_cli.agents.chat.asr.create_transcriber") as mock_create_transcriber,
         patch(
