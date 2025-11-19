@@ -47,28 +47,22 @@ powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
 ```
 `uv` will automatically manage the required Python version for the tool.
 
-### 2. Install System Dependencies
-The tool relies on **PortAudio** for microphone access and **FFmpeg** for audio processing. It is recommended to install these *before* installing the CLI tool to ensure all audio bindings link correctly.
-
-**Using Chocolatey:**
-```powershell
-choco install ffmpeg portaudio
-```
-**Using Winget:**
-```powershell
-winget install Gyan.FFmpeg
-```
-*(Note: Winget does not currently have a standard package for PortAudio, so Chocolatey is preferred, or you can rely on the pre-compiled binary included in the Python wheel if available.)*
-
-### 3. Install agent-cli
+### 2. Install agent-cli
 Run the following command to install the tool:
 
 ```powershell
 uv tool install agent-cli
 ```
-*Note: This will automatically download Python and install necessary dependencies.*
 
-### 4. Test the Connection
+> [!NOTE]
+> **PortAudio** is required for microphone access. The installation above attempts to download a pre-compiled "wheel" that bundles PortAudio automatically.
+>
+> **If installation fails:**
+> If you see errors related to `PyAudio` or missing headers, you may need to install PortAudio manually.
+> - **Chocolatey:** `choco install portaudio`
+> - **Manual:** Download the appropriate `.whl` file from [lfd.uci.edu](https://www.lfd.uci.edu/~gohlke/pythonlibs/#pyaudio) and install with `pip install <filename>`.
+
+### 3. Test the Connection
 Run a command in PowerShell to verify that Windows can talk to the WSL services:
 
 ```powershell
