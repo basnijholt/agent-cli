@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import concurrent.futures
 import datetime
 import logging
 from typing import TYPE_CHECKING
@@ -168,20 +169,31 @@ def initial_index(
     processed_files = []
     removed_files = []
 
-    # 1. Index Existing Files
-    for file_path in docs_folder.rglob("*"):
-        if file_path.is_file() and not file_path.name.startswith("."):
+    # Gather all files first
+    all_files = [p for p in docs_folder.rglob("*") if p.is_file() and not p.name.startswith(".")]
+
+    # 1. Index Existing Files in Parallel
+    # Use max_workers=4 to match typical local backend parallelism (e.g. llama-server -np 4)
+    with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
+        # Map futures to file paths
+        future_to_file = {
+            executor.submit(index_file, collection, docs_folder, f, file_hashes): f
+            for f in all_files
+        }
+
+        for future in concurrent.futures.as_completed(future_to_file):
+            file_path = future_to_file[future]
             try:
-                # Track that we found this file
+                # Track that we found this file (regardless of index result)
                 try:
                     rel_path = str(file_path.relative_to(docs_folder))
                     paths_found_on_disk.add(rel_path)
                 except ValueError:
                     pass
 
-                if index_file(collection, docs_folder, file_path, file_hashes):
+                indexed = future.result()
+                if indexed:
                     processed_files.append(file_path.name)
-
             except Exception:
                 logger.exception("Error processing %s", file_path.name)
 
