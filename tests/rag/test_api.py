@@ -54,3 +54,32 @@ def test_reindex(client: TestClient) -> None:
         resp = client.post("/reindex")
         assert resp.status_code == 200
         mock_thread.return_value.start.assert_called()
+
+
+@pytest.mark.asyncio
+async def test_chat_completion_extra_fields(client: TestClient) -> None:
+    """Test that extra fields (like response_format) are accepted."""
+    payload = {
+        "model": "test-model",
+        "messages": [{"role": "user", "content": "Hello"}],
+        "response_format": {"type": "json_object"},
+        "rag_top_k": 2,
+    }
+
+    with patch("agent_cli.rag.api.process_chat_request") as mock_process:
+        mock_process.return_value = {"choices": []}
+
+        resp = client.post("/v1/chat/completions", json=payload)
+
+        assert resp.status_code == 200
+
+        # Verify that the request object passed to process_chat_request has the extra field
+        call_args = mock_process.call_args
+        assert call_args is not None
+        chat_request = call_args[0][0]  # First arg is the ChatRequest object
+
+        # Pydantic V2 stores extra fields in __pydantic_extra__ or directly accessible if allowed
+        # We can check model_dump()
+        dumped = chat_request.model_dump()
+        assert "response_format" in dumped
+        assert dumped["response_format"] == {"type": "json_object"}

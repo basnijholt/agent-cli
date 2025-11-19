@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 class Message(BaseModel):
@@ -14,6 +14,8 @@ class Message(BaseModel):
 
 class ChatRequest(BaseModel):
     """Chat completion request model."""
+
+    model_config = ConfigDict(extra="allow")
 
     model: str
     messages: list[Message]
