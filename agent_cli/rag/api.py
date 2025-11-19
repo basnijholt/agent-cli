@@ -27,7 +27,7 @@ logger = logging.getLogger("agent_cli.rag.api")
 def create_app(
     docs_folder: Path,
     chroma_path: Path,
-    llama_url: str,
+    openai_base_url: str,
 ) -> FastAPI:
     """Create the FastAPI app."""
     app = FastAPI(title="RAG Proxy")
@@ -71,7 +71,7 @@ def create_app(
                 request,
                 collection,
                 reranker_model,
-                llama_url.rstrip("/"),
+                openai_base_url.rstrip("/"),
                 client,
             )
 
@@ -113,7 +113,7 @@ def create_app(
         return {
             "status": "ok",
             "rag_docs": str(docs_folder),
-            "llama_url": llama_url,
+            "openai_base_url": openai_base_url,
         }
 
     return app

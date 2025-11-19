@@ -77,13 +77,13 @@ async def process_chat_request(
     request: ChatRequest,
     collection: Collection,
     reranker_model: CrossEncoder,
-    llama_url: str,
+    openai_base_url: str,
     client: httpx.AsyncClient,
 ) -> Any:
     """Process a chat request with RAG."""
     aug_request, retrieval = augment_chat_request(request, collection, reranker_model)
 
-    response = await _forward_request(aug_request, llama_url, client)
+    response = await _forward_request(aug_request, openai_base_url, client)
 
     # Add sources to non-streaming response
     if retrieval and not request.stream and isinstance(response, dict):
@@ -94,10 +94,10 @@ async def process_chat_request(
 
 async def _forward_request(
     request: ChatRequest,
-    llama_url: str,
+    openai_base_url: str,
     client: httpx.AsyncClient,
 ) -> Any:
-    """Forward to llama.cpp."""
+    """Forward to backend LLM."""
     # Filter out RAG-specific fields before forwarding
     forward_payload = request.model_dump(exclude={"rag_top_k"})
 
@@ -107,7 +107,7 @@ async def _forward_request(
             try:
                 async with client.stream(
                     "POST",
-                    f"{llama_url}/v1/chat/completions",
+                    f"{openai_base_url}/v1/chat/completions",
                     json=forward_payload,
                 ) as response:
                     if response.status_code != 200:  # noqa: PLR2004
@@ -127,7 +127,7 @@ async def _forward_request(
         return StreamingResponse(generate(), media_type="text/event-stream")
 
     response = await client.post(
-        f"{llama_url}/v1/chat/completions",
+        f"{openai_base_url}/v1/chat/completions",
         json=forward_payload,
     )
     if response.status_code != 200:  # noqa: PLR2004

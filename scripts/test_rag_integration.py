@@ -56,7 +56,7 @@ async def main() -> None:  # noqa: C901, PLR0912, PLR0915
         str(DOCS_FOLDER),
         "--chroma-path",
         str(DB_FOLDER),
-        "--llama-url",
+        "--openai-base-url",
         LLAMA_URL,
         "--port",
         str(RAG_PORT),

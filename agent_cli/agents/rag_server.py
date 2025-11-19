@@ -27,9 +27,9 @@ def rag_server(
         "./rag_db",
         help="Path to ChromaDB persistence directory",
     ),
-    llama_url: str = typer.Option(
+    openai_base_url: str = typer.Option(
         "http://localhost:8080",
-        help="URL of the llama.cpp server",
+        help="URL of the OpenAI-compatible backend server (e.g. llama.cpp, Ollama)",
     ),
     host: str = typer.Option("0.0.0.0", help="Host to bind to"),  # noqa: S104
     port: int = typer.Option(8000, help="Port to bind to"),
@@ -61,8 +61,8 @@ def rag_server(
     console.print(f"[bold green]Starting RAG Server on {host}:{port}[/bold green]")
     console.print(f"  📂 Docs: [blue]{docs_folder}[/blue]")
     console.print(f"  💾 DB: [blue]{chroma_path}[/blue]")
-    console.print(f"  🦙 Llama: [blue]{llama_url}[/blue]")
+    console.print(f"  🤖 Backend: [blue]{openai_base_url}[/blue]")
 
-    fastapi_app = create_app(docs_folder, chroma_path, llama_url)
+    fastapi_app = create_app(docs_folder, chroma_path, openai_base_url)
 
     uvicorn.run(fastapi_app, host=host, port=port)
