@@ -1216,25 +1216,26 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 **Purpose:** Enables "Chat with your Data" by running a local proxy server that injects document context into LLM requests.
 
 **Workflow:**
-1.  Start the server, pointing it to your documents folder and your local LLM (e.g., Ollama or llama.cpp).
+1.  Start the server, pointing it to your documents folder and your local LLM (e.g., Ollama or llama.cpp) or OpenAI.
 2.  The server watches the folder and automatically indexes any text/markdown/PDF files into a local ChromaDB vector store.
 3.  Point any OpenAI-compatible client (including `agent-cli chat`) to this server's URL.
 4.  When you ask a question, the server retrieves relevant document chunks, adds them to the prompt, and forwards it to the LLM.
 
 **How to Use It:**
 
-- **Start Server**: `agent-cli rag-server --docs-folder ~/Documents/Notes --openai-base-url http://localhost:11434/v1 --port 8000`
+- **Start Server (Local LLM)**: `agent-cli rag-server --docs-folder ~/Documents/Notes --openai-base-url http://localhost:11434/v1 --port 8000`
+- **Start Server (OpenAI)**: `agent-cli rag-server --docs-folder ~/Documents/Notes --openai-base-url https://api.openai.com/v1 --chat-api-key sk-... --embedding-api-key sk-...`
 - **Use with Agent-CLI**: `agent-cli chat --openai-base-url http://localhost:8000/v1 --llm-provider openai`
 
 #### Using Custom Embeddings (e.g., OpenAI / llama.cpp / Ollama)
 
-To use the embeddings endpoint from your local LLM server instead of the built-in SentenceTransformers:
+To use the embeddings endpoint from your local LLM server or OpenAI instead of the built-in SentenceTransformers:
 
 ```bash
 agent-cli rag-server \
-  --openai-base-url http://localhost:8080/v1 \
-  --embedding-provider openai \
-  --embedding-model all-MiniLM-L6-v2
+  --openai-base-url https://api.openai.com/v1 \
+  --embedding-model text-embedding-3-small \
+  --embedding-api-key sk-...
 ```
 
 <details>
