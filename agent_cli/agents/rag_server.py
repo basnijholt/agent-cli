@@ -1,0 +1,113 @@
+"""RAG Server agent command."""
+
+from __future__ import annotations
+
+import logging
+from importlib.util import find_spec
+from pathlib import Path  # noqa: TC003
+
+import typer
+from rich.logging import RichHandler
+
+from agent_cli.cli import app
+from agent_cli.core.utils import console, print_error_message
+
+has_fastapi = find_spec("fastapi") is not None
+has_uvicorn = find_spec("uvicorn") is not None
+has_chromadb = find_spec("chromadb") is not None
+has_watchfiles = find_spec("watchfiles") is not None
+has_sentence_transformers = find_spec("sentence_transformers") is not None
+
+
+@app.command("rag-server")
+def rag_server(
+    docs_folder: Path = typer.Option(  # noqa: B008
+        "./rag_docs",
+        help="Folder to watch for documents",
+    ),
+    chroma_path: Path = typer.Option(  # noqa: B008
+        "./rag_db",
+        help="Path to ChromaDB persistence directory",
+    ),
+    openai_base_url: str = typer.Option(
+        "http://localhost:8080/v1",
+        help="URL of the OpenAI-compatible backend server (e.g. llama.cpp, Ollama)",
+    ),
+    embedding_provider: str = typer.Option(
+        "local",
+        help="Embedding provider ('local' for SentenceTransformers, 'openai' for OpenAI-compatible endpoint).",
+    ),
+    embedding_model: str = typer.Option(
+        "all-MiniLM-L6-v2",
+        help="Embedding model name. For 'local', a SentenceTransformer model. For 'openai', the model ID on the server.",
+    ),
+    embedding_api_key: str | None = typer.Option(
+        None,
+        help="API Key for embedding model (if using 'openai' provider).",
+    ),
+    limit: int = typer.Option(
+        3,
+        help="Number of document chunks to retrieve per query.",
+    ),
+    host: str = typer.Option("0.0.0.0", help="Host to bind to"),  # noqa: S104
+    port: int = typer.Option(8000, help="Port to bind to"),
+    log_level: str = typer.Option("INFO", help="Logging level"),
+) -> None:
+    """Start the RAG (Retrieval-Augmented Generation) Proxy Server.
+
+    This server watches a folder for documents, indexes them, and provides
+    an OpenAI-compatible API that proxies requests to a backend LLM (like llama.cpp),
+    injecting relevant context from the documents.
+    """
+    if not (
+        has_fastapi
+        and has_uvicorn
+        and has_chromadb
+        and has_watchfiles
+        and has_sentence_transformers
+    ):
+        msg = "RAG dependencies are not installed. Please install with `pip install agent-cli[rag]` or `uv sync --extra rag`."
+        print_error_message(msg)
+        raise typer.Exit(1)
+
+    # Configure logging
+    logging.basicConfig(
+        level=log_level.upper(),
+        format="%(message)s",
+        datefmt="[%X]",
+        handlers=[RichHandler(console=console, rich_tracebacks=True)],
+        force=True,
+    )
+
+    # Suppress noisy logs from libraries
+    logging.getLogger("httpx").setLevel(logging.WARNING)
+    logging.getLogger("chromadb").setLevel(logging.WARNING)
+    logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
+
+    import uvicorn  # noqa: PLC0415
+
+    from agent_cli.rag.api import create_app  # noqa: PLC0415
+
+    docs_folder = docs_folder.resolve()
+    chroma_path = chroma_path.resolve()
+
+    console.print(f"[bold green]Starting RAG Server on {host}:{port}[/bold green]")
+    console.print(f"  📂 Docs: [blue]{docs_folder}[/blue]")
+    console.print(f"  💾 DB: [blue]{chroma_path}[/blue]")
+    console.print(f"  🤖 Backend: [blue]{openai_base_url}[/blue]")
+    console.print(
+        f"  🧠 Embeddings: [blue]{embedding_provider}[/blue] using [blue]{embedding_model}[/blue]",
+    )
+    console.print(f"  🔍 Limit: [blue]{limit}[/blue] chunks per query")
+
+    fastapi_app = create_app(
+        docs_folder,
+        chroma_path,
+        openai_base_url,
+        embedding_provider,
+        embedding_model,
+        embedding_api_key,
+        limit,
+    )
+
+    uvicorn.run(fastapi_app, host=host, port=port, log_config=None)

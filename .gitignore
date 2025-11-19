@@ -67,3 +67,8 @@ scripts/.runtime/
 *.onnx
 *.onnx.json
 *.bin
+
+# RAG Logs
+rag_server_*.log
+transcription_log.json
+temp_rag_*/
