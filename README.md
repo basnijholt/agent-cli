@@ -1275,6 +1275,8 @@ agent-cli rag-server \
 │                                       [default: text-embedding-3-small]      │
 │ --embedding-api-key          TEXT     API Key for embedding model (if using  │
 │                                       'openai' provider).                    │
+│ --chat-api-key               TEXT     API Key for chat backend (if using     │
+│                                       'openai' provider).                    │
 │ --limit                      INTEGER  Number of document chunks to retrieve  │
 │                                       per query.                             │
 │                                       [default: 3]                           │
