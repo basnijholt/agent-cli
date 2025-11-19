@@ -1,0 +1,126 @@
+"""RAG Server agent command."""
+
+from __future__ import annotations
+
+import logging
+from importlib.util import find_spec
+from pathlib import Path  # noqa: TC003
+
+import typer
+from rich.logging import RichHandler
+
+from agent_cli import opts
+from agent_cli.cli import app
+from agent_cli.core.utils import console, print_error_message
+
+has_fastapi = find_spec("fastapi") is not None
+has_uvicorn = find_spec("uvicorn") is not None
+has_chromadb = find_spec("chromadb") is not None
+has_watchfiles = find_spec("watchfiles") is not None
+has_onnxruntime = find_spec("onnxruntime") is not None
+has_transformers = find_spec("transformers") is not None
+
+
+@app.command("rag-server")
+def rag_server(
+    docs_folder: Path = typer.Option(  # noqa: B008
+        "./rag_docs",
+        help="Folder to watch for documents",
+        rich_help_panel="RAG Configuration",
+    ),
+    chroma_path: Path = typer.Option(  # noqa: B008
+        "./rag_db",
+        help="Path to ChromaDB persistence directory",
+        rich_help_panel="RAG Configuration",
+    ),
+    openai_base_url: str = typer.Option(
+        "http://localhost:8080/v1",
+        help="URL of the OpenAI-compatible backend server (e.g. llama.cpp, Ollama)",
+        rich_help_panel="Backend Configuration",
+    ),
+    embedding_model: str = typer.Option(
+        "text-embedding-3-small",
+        help="Embedding model name (e.g. 'text-embedding-3-small' for OpenAI).",
+        rich_help_panel="Backend Configuration",
+    ),
+    openai_api_key: str | None = opts.OPENAI_API_KEY,
+    limit: int = typer.Option(
+        3,
+        help="Number of document chunks to retrieve per query.",
+        rich_help_panel="RAG Configuration",
+    ),
+    host: str = typer.Option(
+        "0.0.0.0",  # noqa: S104
+        help="Host to bind to",
+        rich_help_panel="Server Configuration",
+    ),
+    port: int = typer.Option(
+        8000,
+        help="Port to bind to",
+        rich_help_panel="Server Configuration",
+    ),
+    log_level: str = typer.Option(
+        "INFO",
+        help="Logging level",
+        rich_help_panel="General Options",
+    ),
+) -> None:
+    """Start the RAG (Retrieval-Augmented Generation) Proxy Server.
+
+    This server watches a folder for documents, indexes them, and provides
+    an OpenAI-compatible API that proxies requests to a backend LLM (like llama.cpp),
+    injecting relevant context from the documents.
+    """
+    if not (
+        has_fastapi
+        and has_uvicorn
+        and has_chromadb
+        and has_watchfiles
+        and has_onnxruntime
+        and has_transformers
+    ):
+        msg = "RAG dependencies are not installed. Please install with `pip install agent-cli[rag]` or `uv sync --extra rag`."
+        print_error_message(msg)
+        raise typer.Exit(1)
+
+    # Configure logging
+    logging.basicConfig(
+        level=log_level.upper(),
+        format="%(message)s",
+        datefmt="[%X]",
+        handlers=[RichHandler(console=console, rich_tracebacks=True)],
+        force=True,
+    )
+
+    # Suppress noisy logs from libraries
+    logging.getLogger("httpx").setLevel(logging.WARNING)
+    logging.getLogger("chromadb").setLevel(logging.WARNING)
+    logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
+
+    import uvicorn  # noqa: PLC0415
+
+    from agent_cli.rag.api import create_app  # noqa: PLC0415
+
+    docs_folder = docs_folder.resolve()
+    chroma_path = chroma_path.resolve()
+
+    console.print(f"[bold green]Starting RAG Server on {host}:{port}[/bold green]")
+    console.print(f"  📂 Docs: [blue]{docs_folder}[/blue]")
+    console.print(f"  💾 DB: [blue]{chroma_path}[/blue]")
+    console.print(f"  🤖 Backend: [blue]{openai_base_url}[/blue]")
+    console.print(
+        f"  🧠 Embeddings: Using [blue]{embedding_model}[/blue]",
+    )
+    console.print(f"  🔍 Limit: [blue]{limit}[/blue] chunks per query")
+
+    fastapi_app = create_app(
+        docs_folder,
+        chroma_path,
+        openai_base_url,
+        embedding_model,
+        openai_api_key,
+        openai_api_key,
+        limit,
+    )
+
+    uvicorn.run(fastapi_app, host=host, port=port, log_config=None)
