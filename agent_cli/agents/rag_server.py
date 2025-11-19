@@ -43,11 +43,6 @@ def rag_server(
         help="Embedding model name (e.g. 'text-embedding-3-small' for OpenAI).",
         rich_help_panel="Backend Configuration",
     ),
-    embedding_api_key: str | None = typer.Option(
-        None,
-        help="API Key for embedding model. Defaults to --openai-api-key if not set.",
-        rich_help_panel="Backend Configuration",
-    ),
     openai_api_key: str | None = opts.OPENAI_API_KEY,
     limit: int = typer.Option(
         3,
@@ -88,10 +83,6 @@ def rag_server(
         print_error_message(msg)
         raise typer.Exit(1)
 
-    # Fallback: Use OpenAI API Key for embeddings if not explicitly provided
-    if embedding_api_key is None:
-        embedding_api_key = openai_api_key
-
     # Configure logging
     logging.basicConfig(
         level=log_level.upper(),
@@ -127,7 +118,7 @@ def rag_server(
         chroma_path,
         openai_base_url,
         embedding_model,
-        embedding_api_key,
+        openai_api_key,
         openai_api_key,
         limit,
     )
