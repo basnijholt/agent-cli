@@ -47,11 +47,16 @@ def augment_chat_request(
         return request, None
 
     # Retrieve
+    top_k = request.rag_top_k if request.rag_top_k is not None else default_top_k
+    if top_k <= 0:
+        logger.info("RAG retrieval disabled for this request (top_k=%s)", top_k)
+        return request, None
+
     retrieval = search_context(
         collection,
         reranker_model,
         user_message,
-        top_k=request.rag_top_k or default_top_k,
+        top_k=top_k,
     )
 
     if not retrieval.context:
