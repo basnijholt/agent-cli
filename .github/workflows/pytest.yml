@@ -23,9 +23,6 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Install portaudio (macOS only)
-        if: matrix.os == 'macos-latest'
-        run: brew install portaudio
       - name: Install portaudio (Linux only)
         if: matrix.os == 'ubuntu-latest'
         run: sudo apt-get update && sudo apt-get install -y portaudio19-dev
