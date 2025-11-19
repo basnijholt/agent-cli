@@ -106,9 +106,7 @@ def rag_server(
     console.print(f"  📂 Docs: [blue]{docs_folder}[/blue]")
     console.print(f"  💾 DB: [blue]{chroma_path}[/blue]")
     console.print(f"  🤖 Backend: [blue]{openai_base_url}[/blue]")
-    console.print(
-        f"  🧠 Embeddings: Using [blue]{embedding_model}[/blue]",
-    )
+    console.print(f"  🧠 Embeddings: Using [blue]{embedding_model}[/blue]")
     console.print(f"  🔍 Limit: [blue]{limit}[/blue] chunks per query")
 
     fastapi_app = create_app(
