@@ -258,8 +258,8 @@ async def record_audio_with_manual_stop(
         """Buffer audio chunk."""
         audio_buffer.write(chunk)
 
-    stream_kwargs = setup_input_stream(input_device_index)
-    with open_audio_stream(**stream_kwargs) as stream:
+    stream_config = setup_input_stream(input_device_index)
+    with open_audio_stream(stream_config) as stream:
         await read_audio_stream(
             stream=stream,
             stop_event=stop_event,
@@ -339,8 +339,8 @@ async def _transcribe_live_audio_wyoming(
             logger,
             quiet=quiet,
         ) as client:
-            stream_kwargs = setup_input_stream(audio_input_cfg.input_device_index)
-            with open_audio_stream(**stream_kwargs) as stream:
+            stream_config = setup_input_stream(audio_input_cfg.input_device_index)
+            with open_audio_stream(stream_config) as stream:
                 _, recv_task = await manage_send_receive_tasks(
                     _send_audio(
                         client,

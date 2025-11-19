@@ -6,7 +6,8 @@ import asyncio
 import functools
 import logging
 from contextlib import asynccontextmanager, contextmanager
-from typing import TYPE_CHECKING
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Literal
 
 import sounddevice as sd
 from rich.text import Text
@@ -25,6 +26,18 @@ if TYPE_CHECKING:
     from rich.live import Live
 
     from agent_cli import config
+
+
+@dataclass
+class StreamConfig:
+    """Configuration for an audio stream."""
+
+    rate: int
+    channels: int
+    dtype: str
+    device: int | None
+    blocksize: int
+    kind: Literal["input", "output"]
 
 
 class _AudioTee:
@@ -137,25 +150,25 @@ async def read_from_queue(
 
 @contextmanager
 def open_audio_stream(
-    *args: object,
-    **kwargs: object,
+    config: StreamConfig,
 ) -> Generator[sd.Stream, None, None]:
     """Context manager for a SoundDevice stream that ensures it's properly closed."""
-    # Extract our custom markers if present
-    is_input = kwargs.pop("input", False)
-    is_output = kwargs.pop("output", False)
-
     # Determine stream type
-    if is_input:
+    if config.kind == "input":
         stream_cls = sd.InputStream
-    elif is_output:
+    elif config.kind == "output":
         stream_cls = sd.OutputStream
     else:
-        # Default to InputStream if we really can't tell, or raise error
-        msg = "Must specify input=True or output=True for open_audio_stream"
+        msg = f"Invalid stream kind: {config.kind}"
         raise ValueError(msg)
 
-    stream = stream_cls(*args, **kwargs)
+    stream = stream_cls(
+        samplerate=config.rate,
+        blocksize=config.blocksize,
+        device=config.device,
+        channels=config.channels,
+        dtype=config.dtype,
+    )
     stream.start()
     try:
         yield stream
@@ -228,24 +241,24 @@ async def read_audio_stream(
 
 def setup_input_stream(
     input_device_index: int | None,
-) -> dict:
+) -> StreamConfig:
     """Get standard audio input stream configuration.
 
     Args:
         input_device_index: Input device index
 
     Returns:
-        Dictionary of stream parameters for open_audio_stream
+        StreamConfig for open_audio_stream
 
     """
-    return {
-        "dtype": constants.AUDIO_FORMAT_STR,
-        "channels": constants.AUDIO_CHANNELS,
-        "samplerate": constants.AUDIO_RATE,
-        "input": True,
-        "blocksize": constants.AUDIO_CHUNK_SIZE,
-        "device": input_device_index,
-    }
+    return StreamConfig(
+        dtype=constants.AUDIO_FORMAT_STR,
+        channels=constants.AUDIO_CHANNELS,
+        rate=constants.AUDIO_RATE,
+        kind="input",
+        blocksize=constants.AUDIO_CHUNK_SIZE,
+        device=input_device_index,
+    )
 
 
 def setup_output_stream(
@@ -254,7 +267,7 @@ def setup_output_stream(
     sample_rate: int | None = None,
     sample_width: int | None = None,
     channels: int | None = None,
-) -> dict:
+) -> StreamConfig:
     """Get standard audio output stream configuration.
 
     Args:
@@ -264,30 +277,24 @@ def setup_output_stream(
         channels: Custom channel count (defaults to config)
 
     Returns:
-        Dictionary of stream parameters for open_audio_stream
+        StreamConfig for open_audio_stream
 
     """
     # Map sample width to dtype if necessary. 2 -> int16.
     dtype = constants.AUDIO_FORMAT_STR
     if sample_width == 1:
         dtype = "int8"
-    elif sample_width == 3:  # noqa: PLR2004
-        # 24-bit audio cannot be natively read into a numpy array (no int24 dtype).
-        # Trying to read it as int16 or int32 results in garbage (wrong stride).
-        # We explicitly fail until a conversion strategy (e.g. unpacking to int32) is implemented.
-        msg = "24-bit audio (sample_width=3) is not currently supported for playback."
-        raise ValueError(msg)
     elif sample_width == 4:  # noqa: PLR2004
         dtype = "int32"
 
-    return {
-        "dtype": dtype,
-        "channels": channels or constants.AUDIO_CHANNELS,
-        "samplerate": sample_rate or constants.AUDIO_RATE,
-        "output": True,
-        "blocksize": constants.AUDIO_CHUNK_SIZE,
-        "device": output_device_index,
-    }
+    return StreamConfig(
+        dtype=dtype,
+        channels=channels or constants.AUDIO_CHANNELS,
+        rate=sample_rate or constants.AUDIO_RATE,
+        kind="output",
+        blocksize=constants.AUDIO_CHUNK_SIZE,
+        device=output_device_index,
+    )
 
 
 @functools.cache
