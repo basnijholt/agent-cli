@@ -1224,7 +1224,7 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 **How to Use It:**
 
 - **Start Server (Local LLM)**: `agent-cli rag-server --docs-folder ~/Documents/Notes --openai-base-url http://localhost:11434/v1 --port 8000`
-- **Start Server (OpenAI)**: `agent-cli rag-server --docs-folder ~/Documents/Notes --openai-base-url https://api.openai.com/v1 --chat-api-key sk-... --embedding-api-key sk-...`
+- **Start Server (OpenAI)**: `agent-cli rag-server --docs-folder ~/Documents/Notes --openai-base-url https://api.openai.com/v1 --openai-api-key sk-... --embedding-api-key sk-...`
 - **Use with Agent-CLI**: `agent-cli chat --openai-base-url http://localhost:8000/v1 --llm-provider openai`
 
 #### Using Custom Embeddings (e.g., OpenAI / llama.cpp / Ollama)
@@ -1275,8 +1275,10 @@ agent-cli rag-server \
 │                                       [default: text-embedding-3-small]      │
 │ --embedding-api-key          TEXT     API Key for embedding model (if using  │
 │                                       'openai' provider).                    │
-│ --chat-api-key               TEXT     API Key for chat backend (if using     │
-│                                       'openai' provider).                    │
+│ --openai-api-key             TEXT     Your OpenAI API key. Can also be set   │
+│                                       with the OPENAI_API_KEY environment    │
+│                                       variable.                              │
+│                                       [env var: OPENAI_API_KEY]              │
 │ --limit                      INTEGER  Number of document chunks to retrieve  │
 │                                       per query.                             │
 │                                       [default: 3]                           │

@@ -9,6 +9,7 @@ from pathlib import Path  # noqa: TC003
 import typer
 from rich.logging import RichHandler
 
+from agent_cli import opts
 from agent_cli.cli import app
 from agent_cli.core.utils import console, print_error_message
 
@@ -42,10 +43,7 @@ def rag_server(
         None,
         help="API Key for embedding model (if using 'openai' provider).",
     ),
-    chat_api_key: str | None = typer.Option(
-        None,
-        help="API Key for chat backend (if using 'openai' provider).",
-    ),
+    openai_api_key: str | None = opts.OPENAI_API_KEY,
     limit: int = typer.Option(
         3,
         help="Number of document chunks to retrieve per query.",
@@ -108,7 +106,7 @@ def rag_server(
         openai_base_url,
         embedding_model,
         embedding_api_key,
-        chat_api_key,
+        openai_api_key,
         limit,
     )
 
