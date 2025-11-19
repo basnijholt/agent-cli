@@ -45,6 +45,10 @@ def rag_server(
         None,
         help="API Key for embedding model (if using 'openai' provider).",
     ),
+    limit: int = typer.Option(
+        3,
+        help="Number of document chunks to retrieve per query.",
+    ),
     host: str = typer.Option("0.0.0.0", help="Host to bind to"),  # noqa: S104
     port: int = typer.Option(8000, help="Port to bind to"),
     log_level: str = typer.Option("INFO", help="Logging level"),
@@ -94,6 +98,7 @@ def rag_server(
     console.print(
         f"  🧠 Embeddings: [blue]{embedding_provider}[/blue] using [blue]{embedding_model}[/blue]",
     )
+    console.print(f"  🔍 Limit: [blue]{limit}[/blue] chunks per query")
 
     fastapi_app = create_app(
         docs_folder,
@@ -102,6 +107,7 @@ def rag_server(
         embedding_provider,
         embedding_model,
         embedding_api_key,
+        limit,
     )
 
     uvicorn.run(fastapi_app, host=host, port=port, log_config=None)

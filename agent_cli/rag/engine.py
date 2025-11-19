@@ -28,6 +28,7 @@ def augment_chat_request(
     request: ChatRequest,
     collection: Collection,
     reranker_model: CrossEncoder,
+    default_top_k: int = 3,
 ) -> tuple[ChatRequest, RetrievalResult | None]:
     """Retrieve context and augment the chat request.
 
@@ -50,7 +51,7 @@ def augment_chat_request(
         collection,
         reranker_model,
         user_message,
-        top_k=request.rag_top_k or 3,
+        top_k=request.rag_top_k or default_top_k,
     )
 
     if not retrieval.context:
@@ -85,9 +86,15 @@ async def process_chat_request(
     collection: Collection,
     reranker_model: CrossEncoder,
     openai_base_url: str,
+    default_top_k: int = 3,
 ) -> Any:
     """Process a chat request with RAG."""
-    aug_request, retrieval = augment_chat_request(request, collection, reranker_model)
+    aug_request, retrieval = augment_chat_request(
+        request,
+        collection,
+        reranker_model,
+        default_top_k=default_top_k,
+    )
 
     response = await _forward_request(aug_request, openai_base_url)
 

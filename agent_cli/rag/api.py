@@ -30,6 +30,7 @@ def create_app(
     embedding_provider: str = "local",
     embedding_model: str = "all-MiniLM-L6-v2",
     embedding_api_key: str | None = None,
+    limit: int = 3,
 ) -> FastAPI:
     """Create the FastAPI app."""
     app = FastAPI(title="RAG Proxy")
@@ -87,6 +88,7 @@ def create_app(
             collection,
             reranker_model,
             openai_base_url.rstrip("/"),
+            default_top_k=limit,
         )
 
     @app.post("/reindex")
@@ -131,6 +133,7 @@ def create_app(
             "openai_base_url": openai_base_url,
             "embedding_provider": embedding_provider,
             "embedding_model": embedding_model,
+            "limit": str(limit),
         }
 
     return app
