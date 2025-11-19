@@ -10,7 +10,7 @@ import pytest
 
 from agent_cli import config
 from agent_cli.agents.transcribe import _async_main
-from tests.mocks.audio import MockPyAudio
+from tests.mocks.audio import MockSoundDeviceStream
 from tests.mocks.wyoming import MockASRClient
 
 if TYPE_CHECKING:
@@ -20,18 +20,20 @@ if TYPE_CHECKING:
 @pytest.mark.asyncio
 @patch("agent_cli.agents.transcribe.signal_handling_context")
 @patch("agent_cli.services.asr.wyoming_client_context")
-@patch("agent_cli.core.audio.pyaudio.PyAudio")
+@patch("agent_cli.services.asr.open_audio_stream")
+@patch("agent_cli.services.asr.setup_input_stream")
 async def test_transcribe_e2e(
-    mock_pyaudio_class: MagicMock,
+    mock_setup_input_stream: MagicMock,
+    mock_open_audio_stream: MagicMock,
     mock_wyoming_client_context: MagicMock,
     mock_signal_handling_context: MagicMock,
-    mock_pyaudio_device_info: list[dict],
     mock_console: Console,
 ) -> None:
     """Test end-to-end transcription with simplified mocks."""
-    # Setup mock PyAudio
-    mock_pyaudio_instance = MockPyAudio(mock_pyaudio_device_info)
-    mock_pyaudio_class.return_value = mock_pyaudio_instance
+    # Setup mock stream
+    mock_stream = MockSoundDeviceStream(input=True)
+    mock_open_audio_stream.return_value.__enter__.return_value = mock_stream
+    mock_setup_input_stream.return_value = {"dtype": "int16"}
 
     # Setup mock Wyoming client
     transcript_text = "This is a test transcription."
@@ -77,9 +79,8 @@ async def test_transcribe_e2e(
             openai_llm_cfg=openai_llm_cfg,
             gemini_llm_cfg=gemini_llm_cfg,
             llm_enabled=False,
-            p=mock_pyaudio_instance,
             transcription_log=None,
-            save_recording=False,  # Add the missing parameter
+            save_recording=False,
         )
 
     # Assert that the final transcript is in the console output

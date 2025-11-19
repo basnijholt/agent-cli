@@ -1,39 +1,61 @@
-"""Mock PyAudio for testing audio functionality without real hardware."""
+"""Mock SoundDevice for testing audio functionality without real hardware."""
 
 from __future__ import annotations
 
 from typing import Any, Self
 
+import numpy as np
 
-class MockAudioStream:
-    """Mock audio stream for testing."""
 
-    def __init__(self, *, is_input: bool = False, is_output: bool = False) -> None:
+class MockSoundDeviceStream:
+    """Mock sounddevice stream for testing."""
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         """Initialize mock audio stream."""
-        self.is_input = is_input
-        self.is_output = is_output
+        self.args = args
+        self.kwargs = kwargs
+        self.is_input = kwargs.get("input", False) or isinstance(self, MockInputStream)
+        self.is_output = kwargs.get("output", False) or isinstance(self, MockOutputStream)
         self.written_data: list[bytes] = []
-        self.is_active = True
+        self.active = False
+        self._closed = False
 
-    def read(self, num_frames: int, *, exception_on_overflow: bool = True) -> bytes:  # noqa: ARG002
-        """Simulate reading from audio input device."""
-        return b"\x00\x01" * num_frames  # 16-bit audio data
-
-    def write(self, frames: bytes) -> None:
-        """Simulate writing to audio output device."""
-        self.written_data.append(frames)
-
-    def start_stream(self) -> None:
+    def start(self) -> None:
         """Start the mock stream."""
-        self.is_active = True
+        self.active = True
 
-    def stop_stream(self) -> None:
+    def stop(self) -> None:
         """Stop the mock stream."""
-        self.is_active = False
+        self.active = False
 
     def close(self) -> None:
         """Close the mock stream."""
-        self.is_active = False
+        self._closed = True
+        self.active = False
+
+    def read(self, frames: int) -> tuple[np.ndarray, bool]:
+        """Simulate reading from audio input device.
+
+        Returns:
+            tuple: (data, overflow)
+
+        """
+        dtype = self.kwargs.get("dtype", "int16")
+        channels = self.kwargs.get("channels", 1)
+
+        shape = (frames, channels) if channels > 1 else (frames,)
+
+        if dtype == "int16":
+            data = np.full(shape, 1, dtype=np.int16)
+        else:
+            data = np.zeros(shape, dtype=np.float32)
+
+        return data, False
+
+    def write(self, data: np.ndarray) -> None:
+        """Simulate writing to audio output device."""
+        # data is numpy array
+        self.written_data.append(data.tobytes())
 
     def get_written_data(self) -> bytes:
         """Get all written data concatenated."""
@@ -41,6 +63,7 @@ class MockAudioStream:
 
     def __enter__(self) -> Self:
         """Context manager entry."""
+        self.start()
         return self
 
     def __exit__(self, *args: object) -> None:
@@ -48,49 +71,9 @@ class MockAudioStream:
         self.close()
 
 
-class MockPyAudio:
-    """Mock PyAudio class for testing."""
+class MockInputStream(MockSoundDeviceStream):
+    """Mock input stream."""
 
-    def __init__(self, device_info: list[dict[str, Any]]) -> None:
-        """Initialize mock PyAudio with device information."""
-        self.device_info = device_info
-        self.streams: list[MockAudioStream] = []
 
-    def get_device_count(self) -> int:
-        """Get number of audio devices."""
-        return len(self.device_info)
-
-    def get_device_info_by_index(self, input_device_index: int) -> dict[str, Any]:
-        """Get device info by index."""
-        if 0 <= input_device_index < len(self.device_info):
-            return self.device_info[input_device_index]
-        msg = f"Invalid device index: {input_device_index}"
-        raise ValueError(msg)
-
-    def get_format_from_width(self, width: int) -> str:
-        """Get audio format from sample width."""
-        format_map = {1: "paInt8", 2: "paInt16", 3: "paInt24", 4: "paInt32"}
-        return format_map.get(width, "paInt16")
-
-    def open(
-        self,
-        **kwargs: Any,
-    ) -> MockAudioStream:
-        """Open a mock audio stream."""
-        stream = MockAudioStream(
-            is_input=kwargs.get("input", False),
-            is_output=kwargs.get("output", False),
-        )
-        self.streams.append(stream)
-        return stream
-
-    def terminate(self) -> None:
-        """Terminate PyAudio."""
-
-    def __enter__(self) -> Self:
-        """Context manager entry."""
-        return self
-
-    def __exit__(self, *args: object) -> None:
-        """Context manager exit."""
-        self.terminate()
+class MockOutputStream(MockSoundDeviceStream):
+    """Mock output stream."""

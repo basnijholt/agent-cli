@@ -21,7 +21,9 @@ async def test_send_audio() -> None:
     stop_event.is_set.side_effect = [False, True]  # Allow one iteration then stop
     stop_event.ctrl_c_pressed = False
 
-    stream.read.return_value = b"fake_audio_chunk"
+    mock_data = MagicMock()
+    mock_data.tobytes.return_value = b"fake_audio_chunk"
+    stream.read.return_value = (mock_data, False)
     logger = MagicMock()
 
     # Act

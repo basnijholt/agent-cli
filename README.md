@@ -83,9 +83,6 @@ agent-cli autocorrect "this has an eror"
 
 #### Option B: Using CLI Commands (New!)
 
-> [!NOTE]
-> `agent-cli` ships with PyAudio bindings for real-time microphone/voice features. PyAudio needs the system-level PortAudio library available **before** you run `uv tool install agent-cli`. Install it with `brew install portaudio` on macOS (or `sudo apt install portaudio19-dev` / your distro's equivalent on Linux). Without PortAudio present, the CLI installation fails when building PyAudio.
-
 ```bash
 # 1. Install agent-cli
 uv tool install agent-cli
@@ -280,7 +277,6 @@ Our installation scripts automatically handle all dependencies:
 #### Core Requirements (Auto-installed)
 - 🍺 **Homebrew** (macOS) - Installed if not present
 - 🐍 **uv** - Python package manager - Installed automatically
-- 🎶 **PortAudio** - For microphone and speaker I/O - Installed via package manager
 - 📋 **Clipboard Tools** - Pre-installed on macOS, handled on Linux
 
 #### AI Services (Auto-installed and configured)
@@ -501,8 +497,7 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 │                             [default: ollama]                                │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ ASR (Audio) Configuration ──────────────────────────────────────────────────╮
-│ --input-device-index        INTEGER  Index of the PyAudio input device to    │
-│                                      use.                                    │
+│ --input-device-index        INTEGER  Index of the audio input device to use. │
 │ --input-device-name         TEXT     Device name keywords for partial        │
 │                                      matching.                               │
 │ --list-devices                       List available audio input and output   │
@@ -634,7 +629,7 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 │                             [default: wyoming]                               │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ TTS (Text-to-Speech) Configuration ─────────────────────────────────────────╮
-│ --output-device-index        INTEGER  Index of the PyAudio output device to  │
+│ --output-device-index        INTEGER  Index of the audio output device to    │
 │                                       use for TTS.                           │
 │ --output-device-name         TEXT     Output device name keywords for        │
 │                                       partial matching.                      │
@@ -754,8 +749,7 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 │                             [default: wyoming]                               │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ ASR (Audio) Configuration ──────────────────────────────────────────────────╮
-│ --input-device-index        INTEGER  Index of the PyAudio input device to    │
-│                                      use.                                    │
+│ --input-device-index        INTEGER  Index of the audio input device to use. │
 │ --input-device-name         TEXT     Device name keywords for partial        │
 │                                      matching.                               │
 │ --list-devices                       List available audio input and output   │
@@ -800,7 +794,7 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 │ --tts                    --no-tts             Enable text-to-speech for      │
 │                                               responses.                     │
 │                                               [default: no-tts]              │
-│ --output-device-index                INTEGER  Index of the PyAudio output    │
+│ --output-device-index                INTEGER  Index of the audio output      │
 │                                               device to use for TTS.         │
 │ --output-device-name                 TEXT     Output device name keywords    │
 │                                               for partial matching.          │
@@ -926,8 +920,7 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 │                                    [default: ok_nabu]                        │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ ASR (Audio) Configuration ──────────────────────────────────────────────────╮
-│ --input-device-index        INTEGER  Index of the PyAudio input device to    │
-│                                      use.                                    │
+│ --input-device-index        INTEGER  Index of the audio input device to use. │
 │ --input-device-name         TEXT     Device name keywords for partial        │
 │                                      matching.                               │
 │ --list-devices                       List available audio input and output   │
@@ -972,7 +965,7 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 │ --tts                    --no-tts             Enable text-to-speech for      │
 │                                               responses.                     │
 │                                               [default: no-tts]              │
-│ --output-device-index                INTEGER  Index of the PyAudio output    │
+│ --output-device-index                INTEGER  Index of the audio output      │
 │                                               device to use for TTS.         │
 │ --output-device-name                 TEXT     Output device name keywords    │
 │                                               for partial matching.          │
@@ -1096,8 +1089,7 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 │                             [default: wyoming]                               │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ ASR (Audio) Configuration ──────────────────────────────────────────────────╮
-│ --input-device-index        INTEGER  Index of the PyAudio input device to    │
-│                                      use.                                    │
+│ --input-device-index        INTEGER  Index of the audio input device to use. │
 │ --input-device-name         TEXT     Device name keywords for partial        │
 │                                      matching.                               │
 │ --list-devices                       List available audio input and output   │
@@ -1147,7 +1139,7 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 │ --tts                    --no-tts             Enable text-to-speech for      │
 │                                               responses.                     │
 │                                               [default: no-tts]              │
-│ --output-device-index                INTEGER  Index of the PyAudio output    │
+│ --output-device-index                INTEGER  Index of the audio output      │
 │                                               device to use for TTS.         │
 │ --output-device-name                 TEXT     Output device name keywords    │
 │                                               for partial matching.          │

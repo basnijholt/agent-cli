@@ -12,7 +12,6 @@ from agent_cli.agents.voice_edit import (
     SYSTEM_PROMPT,
     _async_main,
 )
-from tests.mocks.audio import MockPyAudio
 
 
 def get_configs() -> tuple[
@@ -85,9 +84,7 @@ def get_configs() -> tuple[
 @patch("agent_cli.agents.voice_edit.asr.record_audio_with_manual_stop", new_callable=AsyncMock)
 @patch("agent_cli.agents.voice_edit.get_clipboard_text", return_value="test clipboard text")
 @patch("agent_cli.agents.voice_edit.setup_devices")
-@patch("agent_cli.agents.voice_edit.pyaudio_context")
 async def test_voice_edit_e2e(
-    mock_pyaudio_context: MagicMock,
     mock_setup_devices: MagicMock,
     mock_get_clipboard: MagicMock,
     mock_record_audio: AsyncMock,
@@ -95,10 +92,6 @@ async def test_voice_edit_e2e(
     mock_process_instruction: AsyncMock,
 ) -> None:
     """Test end-to-end voice assistant functionality with simplified mocks."""
-    mock_pyaudio_instance = MockPyAudio(
-        [{"maxInputChannels": 1, "maxOutputChannels": 0, "index": 0, "defaultSampleRate": 44100.0}],
-    )
-    mock_pyaudio_context.return_value.__enter__.return_value = mock_pyaudio_instance
     mock_setup_devices.return_value = (0, "mock_device", None)
     mock_record_audio.return_value = b"audio data"
     mock_get_instruction.return_value = "this is a test"

@@ -85,7 +85,7 @@ GEMINI_API_KEY: str | None = typer.Option(
 INPUT_DEVICE_INDEX: int | None = typer.Option(
     None,
     "--input-device-index",
-    help="Index of the PyAudio input device to use.",
+    help="Index of the audio input device to use.",
     rich_help_panel="ASR (Audio) Configuration",
 )
 INPUT_DEVICE_NAME: str | None = typer.Option(
@@ -173,7 +173,7 @@ TTS_SPEED: float = typer.Option(
 OUTPUT_DEVICE_INDEX: int | None = typer.Option(
     None,
     "--output-device-index",
-    help="Index of the PyAudio output device to use for TTS.",
+    help="Index of the audio output device to use for TTS.",
     rich_help_panel="TTS (Text-to-Speech) Configuration",
 )
 OUTPUT_DEVICE_NAME: str | None = typer.Option(

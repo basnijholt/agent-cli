@@ -28,7 +28,7 @@ from agent_cli import config, opts
 from agent_cli._tools import tools
 from agent_cli.cli import app
 from agent_cli.core import process
-from agent_cli.core.audio import pyaudio_context, setup_devices
+from agent_cli.core.audio import setup_devices
 from agent_cli.core.utils import (
     InteractiveStopEvent,
     console,
@@ -48,7 +48,6 @@ from agent_cli.services.llm import get_llm_response
 from agent_cli.services.tts import handle_tts_playback
 
 if TYPE_CHECKING:
-    import pyaudio
     from rich.live import Live
 
 
@@ -147,7 +146,6 @@ def _format_conversation_for_llm(history: list[ConversationEntry]) -> str:
 
 async def _handle_conversation_turn(
     *,
-    p: pyaudio.PyAudio,
     stop_event: InteractiveStopEvent,
     conversation_history: list[ConversationEntry],
     provider_cfg: config.ProviderSelection,
@@ -175,7 +173,6 @@ async def _handle_conversation_turn(
         openai_asr_cfg,
     )
     instruction = await transcriber(
-        p=p,
         stop_event=stop_event,
         quiet=general_cfg.quiet,
         live=live,
@@ -318,52 +315,50 @@ async def _async_main(
 ) -> None:
     """Main async function, consumes parsed arguments."""
     try:
-        with pyaudio_context() as p:
-            device_info = setup_devices(p, general_cfg, audio_in_cfg, audio_out_cfg)
-            if device_info is None:
-                return
-            input_device_index, _, tts_output_device_index = device_info
-            audio_in_cfg.input_device_index = input_device_index
-            if audio_out_cfg.enable_tts:
-                audio_out_cfg.output_device_index = tts_output_device_index
+        device_info = setup_devices(general_cfg, audio_in_cfg, audio_out_cfg)
+        if device_info is None:
+            return
+        input_device_index, _, tts_output_device_index = device_info
+        audio_in_cfg.input_device_index = input_device_index
+        if audio_out_cfg.enable_tts:
+            audio_out_cfg.output_device_index = tts_output_device_index
 
-            # Load conversation history
-            conversation_history = []
-            if history_cfg.history_dir:
-                history_path = Path(history_cfg.history_dir).expanduser()
-                history_path.mkdir(parents=True, exist_ok=True)
-                # Share the history directory with the memory tools
-                os.environ["AGENT_CLI_HISTORY_DIR"] = str(history_path)
-                history_file = history_path / "conversation.json"
-                conversation_history = _load_conversation_history(
-                    history_file,
-                    history_cfg.last_n_messages,
+        # Load conversation history
+        conversation_history = []
+        if history_cfg.history_dir:
+            history_path = Path(history_cfg.history_dir).expanduser()
+            history_path.mkdir(parents=True, exist_ok=True)
+            # Share the history directory with the memory tools
+            os.environ["AGENT_CLI_HISTORY_DIR"] = str(history_path)
+            history_file = history_path / "conversation.json"
+            conversation_history = _load_conversation_history(
+                history_file,
+                history_cfg.last_n_messages,
+            )
+
+        with (
+            maybe_live(not general_cfg.quiet) as live,
+            signal_handling_context(LOGGER, general_cfg.quiet) as stop_event,
+        ):
+            while not stop_event.is_set():
+                await _handle_conversation_turn(
+                    stop_event=stop_event,
+                    conversation_history=conversation_history,
+                    provider_cfg=provider_cfg,
+                    general_cfg=general_cfg,
+                    history_cfg=history_cfg,
+                    audio_in_cfg=audio_in_cfg,
+                    wyoming_asr_cfg=wyoming_asr_cfg,
+                    openai_asr_cfg=openai_asr_cfg,
+                    ollama_cfg=ollama_cfg,
+                    openai_llm_cfg=openai_llm_cfg,
+                    gemini_llm_cfg=gemini_llm_cfg,
+                    audio_out_cfg=audio_out_cfg,
+                    wyoming_tts_cfg=wyoming_tts_cfg,
+                    openai_tts_cfg=openai_tts_cfg,
+                    kokoro_tts_cfg=kokoro_tts_cfg,
+                    live=live,
                 )
-
-            with (
-                maybe_live(not general_cfg.quiet) as live,
-                signal_handling_context(LOGGER, general_cfg.quiet) as stop_event,
-            ):
-                while not stop_event.is_set():
-                    await _handle_conversation_turn(
-                        p=p,
-                        stop_event=stop_event,
-                        conversation_history=conversation_history,
-                        provider_cfg=provider_cfg,
-                        general_cfg=general_cfg,
-                        history_cfg=history_cfg,
-                        audio_in_cfg=audio_in_cfg,
-                        wyoming_asr_cfg=wyoming_asr_cfg,
-                        openai_asr_cfg=openai_asr_cfg,
-                        ollama_cfg=ollama_cfg,
-                        openai_llm_cfg=openai_llm_cfg,
-                        gemini_llm_cfg=gemini_llm_cfg,
-                        audio_out_cfg=audio_out_cfg,
-                        wyoming_tts_cfg=wyoming_tts_cfg,
-                        openai_tts_cfg=openai_tts_cfg,
-                        kokoro_tts_cfg=kokoro_tts_cfg,
-                        live=live,
-                    )
     except Exception:
         if not general_cfg.quiet:
             console.print_exception()
