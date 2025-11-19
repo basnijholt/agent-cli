@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import logging
 from importlib.util import find_spec
 from pathlib import Path  # noqa: TC003
 
 import typer
+from rich.logging import RichHandler
 
 from agent_cli.cli import app
 from agent_cli.core.utils import console, print_error_message
@@ -33,6 +35,7 @@ def rag_server(
     ),
     host: str = typer.Option("0.0.0.0", help="Host to bind to"),  # noqa: S104
     port: int = typer.Option(8000, help="Port to bind to"),
+    log_level: str = typer.Option("INFO", help="Logging level"),
 ) -> None:
     """Start the RAG (Retrieval-Augmented Generation) Proxy Server.
 
@@ -51,6 +54,20 @@ def rag_server(
         print_error_message(msg)
         raise typer.Exit(1)
 
+    # Configure logging
+    logging.basicConfig(
+        level=log_level.upper(),
+        format="%(message)s",
+        datefmt="[%X]",
+        handlers=[RichHandler(console=console, rich_tracebacks=True)],
+        force=True,
+    )
+
+    # Suppress noisy logs from libraries
+    logging.getLogger("httpx").setLevel(logging.WARNING)
+    logging.getLogger("chromadb").setLevel(logging.WARNING)
+    logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
+
     import uvicorn  # noqa: PLC0415
 
     from agent_cli.rag.api import create_app  # noqa: PLC0415
@@ -65,4 +82,4 @@ def rag_server(
 
     fastapi_app = create_app(docs_folder, chroma_path, openai_base_url)
 
-    uvicorn.run(fastapi_app, host=host, port=port)
+    uvicorn.run(fastapi_app, host=host, port=port, log_config=None)

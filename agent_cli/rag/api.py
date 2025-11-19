@@ -41,23 +41,31 @@ def create_app(
     )
 
     # Initialize State
+    logger.info("Initializing RAG components...")
+
+    logger.info("Loading vector database (ChromaDB)...")
     collection = init_collection(chroma_path)
+
+    logger.info("Loading reranker model (CrossEncoder)...")
     reranker_model = get_reranker_model()
+
+    logger.info("Loading existing file index...")
     file_hashes = load_hashes_from_metadata(collection)
+    logger.info("Loaded %d files from index.", len(file_hashes))
+
     docs_folder.mkdir(exist_ok=True, parents=True)
 
     # Background Tasks
-    # We use a set to hold tasks to prevent garbage collection
     background_tasks = set()
 
     @app.on_event("startup")
     async def startup_event() -> None:
-        # Start Watcher
+        logger.info("Starting file watcher...")
         watcher_task = asyncio.create_task(watch_docs(collection, docs_folder, file_hashes))
         background_tasks.add(watcher_task)
         watcher_task.add_done_callback(background_tasks.discard)
 
-        # Initial Index (run in thread to not block startup)
+        logger.info("Starting initial index scan...")
         threading.Thread(
             target=initial_index,
             args=(collection, docs_folder, file_hashes),
@@ -78,6 +86,7 @@ def create_app(
     @app.post("/reindex")
     def reindex_all() -> dict[str, Any]:
         """Manually reindex all files."""
+        logger.info("Manual reindex requested.")
         threading.Thread(
             target=initial_index,
             args=(collection, docs_folder, file_hashes),
