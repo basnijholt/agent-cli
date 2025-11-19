@@ -1098,6 +1098,17 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 - **Start Server**: `agent-cli rag-server --docs-folder ~/Documents/Notes --openai-base-url http://localhost:11434/v1`
 - **Use with Agent-CLI**: `agent-cli chat --openai-base-url http://localhost:8000/v1 --llm-provider openai`
 
+### Using Custom Embeddings (e.g., llama.cpp / Ollama)
+
+To use the embeddings endpoint from your local LLM server instead of the built-in SentenceTransformers:
+
+```bash
+agent-cli rag-server \
+  --openai-base-url http://localhost:8080/v1 \
+  --embedding-provider openai \
+  --embedding-model all-MiniLM-L6-v2
+```
+
 <details>
 <summary>See the output of <code>agent-cli rag-server --help</code></summary>
 
@@ -1130,6 +1141,16 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 │ --openai-base-url      TEXT     URL of the OpenAI-compatible backend server  │
 │                                 (e.g. llama.cpp, Ollama)                     │
 │                                 [default: http://localhost:8080/v1]          │
+│ --embedding-provider   TEXT     Embedding provider ('local' for              │
+│                                 SentenceTransformers, 'openai' for           │
+│                                 OpenAI-compatible endpoint).                 │
+│                                 [default: local]                             │
+│ --embedding-model      TEXT     Embedding model name. For 'local', a         │
+│                                 SentenceTransformer model. For 'openai', the │
+│                                 model ID on the server.                      │
+│                                 [default: all-MiniLM-L6-v2]                  │
+│ --embedding-api-key    TEXT     API Key for embedding model (if using        │
+│                                 'openai' provider).                          │
 │ --host                 TEXT     Host to bind to [default: 0.0.0.0]           │
 │ --port                 INTEGER  Port to bind to [default: 8000]              │
 │ --help         -h               Show this message and exit.                  │

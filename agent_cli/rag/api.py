@@ -27,6 +27,9 @@ def create_app(
     docs_folder: Path,
     chroma_path: Path,
     openai_base_url: str,
+    embedding_provider: str = "local",
+    embedding_model: str = "all-MiniLM-L6-v2",
+    embedding_api_key: str | None = None,
 ) -> FastAPI:
     """Create the FastAPI app."""
     app = FastAPI(title="RAG Proxy")
@@ -43,7 +46,13 @@ def create_app(
     logger.info("Initializing RAG components...")
 
     logger.info("Loading vector database (ChromaDB)...")
-    collection = init_collection(chroma_path)
+    collection = init_collection(
+        chroma_path,
+        embedding_provider=embedding_provider,
+        embedding_model=embedding_model,
+        openai_base_url=openai_base_url,
+        openai_api_key=embedding_api_key,
+    )
 
     logger.info("Loading reranker model (CrossEncoder)...")
     reranker_model = get_reranker_model()
@@ -120,6 +129,8 @@ def create_app(
             "status": "ok",
             "rag_docs": str(docs_folder),
             "openai_base_url": openai_base_url,
+            "embedding_provider": embedding_provider,
+            "embedding_model": embedding_model,
         }
 
     return app
