@@ -143,6 +143,7 @@ The setup scripts automatically install:
   - [`voice-edit`](#voice-edit)
   - [`assistant`](#assistant)
   - [`chat`](#chat)
+  - [`rag-server`](#rag-server)
 - [Development](#development)
   - [Running Tests](#running-tests)
   - [Pre-commit Hooks](#pre-commit-hooks)
