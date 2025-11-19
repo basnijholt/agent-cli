@@ -55,12 +55,7 @@ uv tool install agent-cli
 ```
 
 > [!NOTE]
-> **PortAudio** is required for microphone access. The installation above attempts to download a pre-compiled "wheel" that bundles PortAudio automatically.
->
-> **If installation fails:**
-> If you see errors related to `PyAudio` or missing headers, you may need to install PortAudio manually.
-> - **Chocolatey:** `choco install portaudio`
-> - **Manual:** Download the appropriate `.whl` file from [lfd.uci.edu](https://www.lfd.uci.edu/~gohlke/pythonlibs/#pyaudio) and install with `pip install <filename>`.
+> `agent-cli` uses **sounddevice** for audio, which automatically includes the necessary PortAudio binaries for Windows. You typically do not need to install any external drivers or libraries manually.
 
 ### 3. Test the Connection
 Run a command in PowerShell to verify that Windows can talk to the WSL services:
