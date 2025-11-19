@@ -28,7 +28,7 @@ def predict_relevance(
     pairs: list[tuple[str, str]],
 ) -> list[float]:
     """Predict relevance scores for query-document pairs."""
-    return model.predict(pairs).tolist()  # type: ignore[no-any-return]
+    return model.predict(pairs, show_progress_bar=False).tolist()  # type: ignore[no-any-return]
 
 
 def search_context(
