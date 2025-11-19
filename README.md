@@ -1320,8 +1320,7 @@ agent-cli rag-server \
 │                             [default: wyoming]                               │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ ASR (Audio) Configuration ──────────────────────────────────────────────────╮
-│ --input-device-index        INTEGER  Index of the PyAudio input device to    │
-│                                      use.                                    │
+│ --input-device-index        INTEGER  Index of the audio input device to use. │
 │ --input-device-name         TEXT     Device name keywords for partial        │
 │                                      matching.                               │
 │ --list-devices                       List available audio input and output   │
