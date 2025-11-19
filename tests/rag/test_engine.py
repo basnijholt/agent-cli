@@ -1,0 +1,136 @@
+"""Tests for RAG engine."""
+
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
+
+from agent_cli.rag import engine
+from agent_cli.rag.models import ChatRequest, Message
+
+
+def test_augment_chat_request_direct() -> None:
+    """Test direct usage of augment_chat_request without async/HTTP."""
+    mock_collection = MagicMock()
+    mock_reranker = MagicMock()
+
+    with patch("agent_cli.rag.engine.search_context") as mock_search:
+        # Case 1: Context found
+        mock_search.return_value = MagicMock(
+            context="Found it.",
+            sources=[{"source": "doc1"}],
+        )
+
+        req = ChatRequest(
+            model="test",
+            messages=[Message(role="user", content="Query")],
+        )
+
+        aug_req, retrieval = engine.augment_chat_request(req, mock_collection, mock_reranker)
+
+        assert retrieval is not None
+        assert aug_req.messages[-1].role == "user"
+        assert "Found it." in aug_req.messages[-1].content
+
+        # Case 2: No context
+        mock_search.return_value = MagicMock(context="", sources=[])
+
+        aug_req, retrieval = engine.augment_chat_request(req, mock_collection, mock_reranker)
+
+        assert retrieval is None
+        assert aug_req.messages[-1].content == "Query"
+
+
+@pytest.mark.asyncio
+async def test_process_chat_request_no_rag() -> None:
+    """Test chat request without RAG (no retrieval context)."""
+    mock_collection = MagicMock()
+    mock_reranker = MagicMock()
+
+    # Mock forward request
+    mock_response = MagicMock()
+    mock_response.status_code = 200
+    mock_response.json.return_value = {"choices": [{"message": {"content": "Response"}}]}
+
+    # Mock httpx.AsyncClient used inside engine
+    mock_client = AsyncMock()
+    mock_client.post.return_value = mock_response
+
+    mock_client_ctx = AsyncMock()
+    mock_client_ctx.__aenter__.return_value = mock_client
+    mock_client_ctx.__aexit__.return_value = None
+
+    with (
+        patch("httpx.AsyncClient", return_value=mock_client_ctx),
+        patch("agent_cli.rag.engine.search_context") as mock_search,
+    ):
+        # Mock retrieval to return empty
+        mock_search.return_value = MagicMock(context="")
+
+        req = ChatRequest(
+            model="test",
+            messages=[Message(role="user", content="Hello")],
+        )
+
+        resp = await engine.process_chat_request(
+            req,
+            mock_collection,
+            mock_reranker,
+            "http://mock",
+        )
+
+        assert resp["choices"][0]["message"]["content"] == "Response"
+        # Should check if search was called
+        mock_search.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_process_chat_request_with_rag() -> None:
+    """Test chat request with RAG context."""
+    mock_collection = MagicMock()
+    mock_reranker = MagicMock()
+
+    mock_response = MagicMock()
+    mock_response.status_code = 200
+    mock_response.json.return_value = {"choices": [{"message": {"content": "RAG Response"}}]}
+
+    mock_client = AsyncMock()
+    mock_client.post.return_value = mock_response
+
+    mock_client_ctx = AsyncMock()
+    mock_client_ctx.__aenter__.return_value = mock_client
+    mock_client_ctx.__aexit__.return_value = None
+
+    with (
+        patch("httpx.AsyncClient", return_value=mock_client_ctx),
+        patch("agent_cli.rag.engine.search_context") as mock_search,
+    ):
+        # Return some context
+        mock_search.return_value = MagicMock(
+            context="Relevant info.",
+            sources=[{"source": "doc1"}],
+        )
+
+        req = ChatRequest(
+            model="test",
+            messages=[Message(role="user", content="Question")],
+        )
+
+        resp = await engine.process_chat_request(
+            req,
+            mock_collection,
+            mock_reranker,
+            "http://mock",
+        )
+
+        # Check if sources are added
+        assert resp["rag_sources"] is not None
+
+        # Check if client.post was called with augmented message
+        call_args = mock_client.post.call_args
+        assert call_args is not None
+        json_body = call_args[1]["json"]
+        last_msg = json_body["messages"][-1]["content"]
+
+        assert "Context from documentation" in last_msg
+        assert "Relevant info." in last_msg
+        assert "Question: Question" in last_msg
