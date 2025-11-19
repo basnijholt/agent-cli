@@ -11,16 +11,15 @@ import httpx
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from agent_cli.rag.engine import initial_index, load_hashes_from_metadata, process_chat_request
+from agent_cli.rag.engine import process_chat_request
 from agent_cli.rag.indexer import watch_docs
+from agent_cli.rag.indexing import initial_index, load_hashes_from_metadata
 from agent_cli.rag.models import ChatRequest  # noqa: TC001
 from agent_cli.rag.retriever import get_reranker_model
 from agent_cli.rag.store import get_all_metadata, init_collection
 
 if TYPE_CHECKING:
     from pathlib import Path
-
-    # ChatRequest removed from here
 
 logger = logging.getLogger("agent_cli.rag.api")
 
@@ -48,7 +47,7 @@ def create_app(
     docs_folder.mkdir(exist_ok=True, parents=True)
 
     # Background Tasks
-    # We use a list to hold tasks to prevent garbage collection
+    # We use a set to hold tasks to prevent garbage collection
     background_tasks = set()
 
     @app.on_event("startup")
@@ -58,14 +57,11 @@ def create_app(
         background_tasks.add(watcher_task)
         watcher_task.add_done_callback(background_tasks.discard)
 
-        # Initial Index (run in thread executor to not block loop, or use thread for CPU bound work)
-        # index_file is blocking/CPU bound (hashing, chunking).
-        # We should run initial_index in a separate thread.
-        # But we also want to await it or just let it run?
-        # Let's run it in a thread so it doesn't block startup.
+        # Initial Index (run in thread to not block startup)
         threading.Thread(
             target=initial_index,
             args=(collection, docs_folder, file_hashes),
+            daemon=True,
         ).start()
 
     @app.post("/v1/chat/completions")
@@ -85,6 +81,7 @@ def create_app(
         threading.Thread(
             target=initial_index,
             args=(collection, docs_folder, file_hashes),
+            daemon=True,
         ).start()
         return {"status": "started reindexing", "total_chunks": collection.count()}
 

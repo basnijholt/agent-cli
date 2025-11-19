@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import datetime
 import json
 import logging
 from typing import TYPE_CHECKING, Any
@@ -12,16 +11,9 @@ from fastapi.responses import StreamingResponse
 
 from agent_cli.rag.models import Message
 from agent_cli.rag.retriever import search_context
-from agent_cli.rag.store import (
-    delete_by_file_path,
-    get_all_metadata,
-    upsert_docs,
-)
-from agent_cli.rag.utils import chunk_text, get_file_hash, load_document_text
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
-    from pathlib import Path
 
     import httpx
     from chromadb import Collection
@@ -30,126 +22,6 @@ if TYPE_CHECKING:
     from agent_cli.rag.models import ChatRequest
 
 logger = logging.getLogger("agent_cli.rag.engine")
-
-
-def load_hashes_from_metadata(collection: Collection) -> dict[str, str]:
-    """Rebuild hash cache from existing DB."""
-    hashes = {}
-    try:
-        metadatas = get_all_metadata(collection)
-        for meta in metadatas:
-            if meta and "file_path" in meta and "file_hash" in meta:
-                hashes[str(meta["file_path"])] = str(meta["file_hash"])
-    except Exception:
-        logger.warning("Could not load existing hashes", exc_info=True)
-    return hashes
-
-
-def index_file(
-    collection: Collection,
-    docs_folder: Path,
-    file_path: Path,
-    file_hashes: dict[str, str],
-) -> None:
-    """Index or reindex a single file."""
-    if not file_path.exists():
-        return
-
-    try:
-        # Check if file changed
-        current_hash = get_file_hash(file_path)
-        relative_path = str(file_path.relative_to(docs_folder))
-
-        if relative_path in file_hashes and file_hashes[relative_path] == current_hash:
-            return  # No change, skip
-
-        # Remove old chunks first (atomic-ish update)
-        remove_file(collection, docs_folder, file_path, file_hashes)
-
-        # Load document
-        text = load_document_text(file_path)
-        if not text or not text.strip():
-            return  # Unsupported or empty
-
-        # Chunk
-        chunks = chunk_text(text)
-        if not chunks:
-            return
-
-        # Index chunks
-        ids = []
-        documents = []
-        metadatas = []
-
-        timestamp = datetime.datetime.now(datetime.UTC).isoformat()
-
-        for i, chunk in enumerate(chunks):
-            doc_id = f"{relative_path}:chunk:{i}"
-            ids.append(doc_id)
-            documents.append(chunk)
-            metadatas.append(
-                {
-                    "source": file_path.name,
-                    "file_path": relative_path,
-                    "file_type": file_path.suffix,
-                    "chunk_id": i,
-                    "total_chunks": len(chunks),
-                    "indexed_at": timestamp,
-                    "file_hash": current_hash,
-                },
-            )
-
-        # Upsert to ChromaDB
-        upsert_docs(collection, ids, documents, metadatas)
-
-        # Update hash tracking
-        file_hashes[relative_path] = current_hash
-
-        logger.info("  ✓ Indexed %s: %d chunks", file_path.name, len(chunks))
-
-    except Exception:
-        logger.exception("Failed to index file %s", file_path)
-
-
-def remove_file(
-    collection: Collection,
-    docs_folder: Path,
-    file_path: Path,
-    file_hashes: dict[str, str],
-) -> None:
-    """Remove all chunks of a file from index."""
-    try:
-        relative_path = str(file_path.relative_to(docs_folder))
-        count = delete_by_file_path(collection, relative_path)
-        if count > 0:
-            logger.info("  ✓ Removed %d chunks for %s", count, file_path.name)
-
-        # Remove from hash tracking
-        file_hashes.pop(relative_path, None)
-    except ValueError:
-        # Path might not be relative to docs_folder if something weird happened
-        pass
-    except Exception:
-        logger.exception("Error removing file %s", file_path)
-
-
-def initial_index(
-    collection: Collection,
-    docs_folder: Path,
-    file_hashes: dict[str, str],
-) -> None:
-    """Index all existing files on startup."""
-    logger.info("🔍 Scanning existing files...")
-    count = 0
-    for file_path in docs_folder.rglob("*"):
-        if file_path.is_file() and not file_path.name.startswith("."):
-            try:
-                index_file(collection, docs_folder, file_path, file_hashes)
-                count += 1
-            except Exception:
-                logger.exception("Error processing %s", file_path.name)
-
-    logger.info("✅ Initial scan complete. Processed %d files.", count)
 
 
 async def process_chat_request(

@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 
 from watchfiles import Change, awatch
 
-from agent_cli.rag.engine import index_file, remove_file
+from agent_cli.rag.indexing import index_file, remove_file
 
 if TYPE_CHECKING:
     from chromadb import Collection
