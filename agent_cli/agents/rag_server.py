@@ -30,7 +30,7 @@ def rag_server(
         help="Path to ChromaDB persistence directory",
     ),
     openai_base_url: str = typer.Option(
-        "http://localhost:8080",
+        "http://localhost:8080/v1",
         help="URL of the OpenAI-compatible backend server (e.g. llama.cpp, Ollama)",
     ),
     host: str = typer.Option("0.0.0.0", help="Host to bind to"),  # noqa: S104

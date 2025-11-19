@@ -1129,7 +1129,7 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 │                                 [default: ./rag_db]                          │
 │ --openai-base-url      TEXT     URL of the OpenAI-compatible backend server  │
 │                                 (e.g. llama.cpp, Ollama)                     │
-│                                 [default: http://localhost:8080]             │
+│                                 [default: http://localhost:8080/v1]          │
 │ --host                 TEXT     Host to bind to [default: 0.0.0.0]           │
 │ --port                 INTEGER  Port to bind to [default: 8000]              │
 │ --help         -h               Show this message and exit.                  │

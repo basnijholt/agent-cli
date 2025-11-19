@@ -107,7 +107,7 @@ async def _forward_request(
                     httpx.AsyncClient(timeout=120.0) as client,
                     client.stream(
                         "POST",
-                        f"{openai_base_url}/v1/chat/completions",
+                        f"{openai_base_url}/chat/completions",
                         json=forward_payload,
                     ) as response,
                 ):
@@ -129,7 +129,7 @@ async def _forward_request(
 
     async with httpx.AsyncClient(timeout=120.0) as client:
         response = await client.post(
-            f"{openai_base_url}/v1/chat/completions",
+            f"{openai_base_url}/chat/completions",
             json=forward_payload,
         )
         if response.status_code != 200:  # noqa: PLR2004
