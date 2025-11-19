@@ -191,9 +191,9 @@ async def _async_main(
     audio_in_cfg.input_device_index = input_device_index
     audio_out_cfg.output_device_index = tts_output_device_index
 
-    stream_kwargs = audio.setup_input_stream(input_device_index)
+    stream_config = audio.setup_input_stream(input_device_index)
     with (
-        audio.open_audio_stream(**stream_kwargs) as stream,
+        audio.open_audio_stream(stream_config) as stream,
         signal_handling_context(LOGGER, general_cfg.quiet) as stop_event,
     ):
         while not stop_event.is_set():
