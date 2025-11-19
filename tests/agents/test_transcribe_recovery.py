@@ -446,6 +446,7 @@ def test_transcribe_command_last_recording_option(
         call_args = mock_run.call_args[0][0]
         # The coroutine is passed to asyncio.run
         assert call_args.__name__ == "_async_main"
+        call_args.close()  # Avoid "coroutine never awaited" warning
 
         # Verify the message about using most recent recording
         mock_print.assert_called()
@@ -499,6 +500,7 @@ def test_transcribe_command_from_file_option(tmp_path: Path):
         mock_run.assert_called_once()
         call_args = mock_run.call_args[0][0]
         assert call_args.__name__ == "_async_main"
+        call_args.close()  # Avoid "coroutine never awaited" warning
 
 
 def test_transcribe_command_last_recording_with_index(
@@ -563,6 +565,8 @@ def test_transcribe_command_last_recording_with_index(
 
         # Verify _async_main_from_file was called
         mock_run.assert_called_once()
+        call_args = mock_run.call_args[0][0]
+        call_args.close()  # Avoid "coroutine never awaited" warning
 
         # Verify the message about using recording #2
         mock_print.assert_called()
@@ -626,6 +630,7 @@ def test_transcribe_command_last_recording_disabled(
         call_args = mock_run.call_args[0][0]
         # Should be normal recording mode, not file mode
         assert call_args.__name__ == "_async_main"
+        call_args.close()  # Avoid "coroutine never awaited" warning
 
 
 def test_transcribe_command_conflicting_options() -> None:
