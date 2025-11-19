@@ -47,7 +47,7 @@ async def _send_audio_from_queue_for_wake_detection(
         await client.write_event(
             AudioChunk(audio=chunk, **constants.WYOMING_AUDIO_CONFIG).event(),
         )
-        seconds_streamed += len(chunk) / (constants.PYAUDIO_RATE * constants.PYAUDIO_CHANNELS * 2)
+        seconds_streamed += len(chunk) / (constants.AUDIO_RATE * constants.AUDIO_CHANNELS * 2)
         if live and not quiet:
             live.update(f"{progress_message}... ({seconds_streamed:.1f}s)")
 

@@ -2,17 +2,16 @@
 
 from __future__ import annotations
 
-import pyaudio
-
-# --- PyAudio Configuration ---
-PYAUDIO_FORMAT = pyaudio.paInt16
-PYAUDIO_CHANNELS = 1
-PYAUDIO_RATE = 16000
-PYAUDIO_CHUNK_SIZE = 1024
+# --- Audio Configuration ---
+AUDIO_FORMAT_STR = "int16"  # sounddevice/numpy format
+AUDIO_FORMAT_WIDTH = 2  # 2 bytes (16-bit)
+AUDIO_CHANNELS = 1
+AUDIO_RATE = 16000
+AUDIO_CHUNK_SIZE = 1024
 
 # Standard Wyoming audio configuration
 WYOMING_AUDIO_CONFIG = {
-    "rate": PYAUDIO_RATE,
-    "width": 2,  # 16-bit audio
-    "channels": PYAUDIO_CHANNELS,
+    "rate": AUDIO_RATE,
+    "width": AUDIO_FORMAT_WIDTH,
+    "channels": AUDIO_CHANNELS,
 }

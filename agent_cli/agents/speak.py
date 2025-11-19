@@ -12,7 +12,7 @@ import typer
 from agent_cli import config, opts
 from agent_cli.cli import app
 from agent_cli.core import process
-from agent_cli.core.audio import pyaudio_context, setup_devices
+from agent_cli.core.audio import setup_devices
 from agent_cli.core.utils import (
     get_clipboard_text,
     maybe_live,
@@ -37,41 +37,40 @@ async def _async_main(
     kokoro_tts_cfg: config.KokoroTTS,
 ) -> None:
     """Async entry point for the speak command."""
-    with pyaudio_context() as p:
-        # We only use setup_devices for its output device handling
-        device_info = setup_devices(p, general_cfg, None, audio_out_cfg)
-        if device_info is None:
+    # We only use setup_devices for its output device handling
+    device_info = setup_devices(general_cfg, None, audio_out_cfg)
+    if device_info is None:
+        return
+    _, _, output_device_index = device_info
+    audio_out_cfg.output_device_index = output_device_index
+
+    # Get text from argument or clipboard
+    if text is None:
+        text = get_clipboard_text(quiet=general_cfg.quiet)
+        if not text:
             return
-        _, _, output_device_index = device_info
-        audio_out_cfg.output_device_index = output_device_index
+        if not general_cfg.quiet:
+            print_input_panel(text, title="📋 Text from Clipboard")
+    elif not general_cfg.quiet:
+        print_input_panel(text, title="📝 Text to Speak")
 
-        # Get text from argument or clipboard
-        if text is None:
-            text = get_clipboard_text(quiet=general_cfg.quiet)
-            if not text:
-                return
-            if not general_cfg.quiet:
-                print_input_panel(text, title="📋 Text from Clipboard")
-        elif not general_cfg.quiet:
-            print_input_panel(text, title="📝 Text to Speak")
-
-        # Handle TTS playback and saving
-        with maybe_live(not general_cfg.quiet) as live:
-            await handle_tts_playback(
-                text=text,
-                provider_cfg=provider_cfg,
-                audio_output_cfg=audio_out_cfg,
-                wyoming_tts_cfg=wyoming_tts_cfg,
-                openai_tts_cfg=openai_tts_cfg,
-                kokoro_tts_cfg=kokoro_tts_cfg,
-                save_file=general_cfg.save_file,
-                quiet=general_cfg.quiet,
-                logger=LOGGER,
-                play_audio=not general_cfg.save_file,  # Don't play if saving to file
-                status_message="🔊 Synthesizing speech...",
-                description="Audio",
-                live=live,
-            )
+    # Handle TTS playback and saving
+    with maybe_live(not general_cfg.quiet) as live:
+        await handle_tts_playback(
+            text=text,
+            provider_cfg=provider_cfg,
+            audio_output_cfg=audio_out_cfg,
+            wyoming_tts_cfg=wyoming_tts_cfg,
+            openai_tts_cfg=openai_tts_cfg,
+            kokoro_tts_cfg=kokoro_tts_cfg,
+            save_file=general_cfg.save_file,
+            quiet=general_cfg.quiet,
+            logger=LOGGER,
+            play_audio=not general_cfg.save_file,  # Don't play if saving to file
+            status_message="🔊 Synthesizing speech...",
+            description="Audio",
+            live=live,
+        )
 
 
 @app.command("speak")

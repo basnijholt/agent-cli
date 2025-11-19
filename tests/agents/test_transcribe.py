@@ -20,21 +20,15 @@ from tests.mocks.wyoming import MockASRClient
 @patch("agent_cli.agents.transcribe.process_and_update_clipboard", new_callable=AsyncMock)
 @patch("agent_cli.services.asr.wyoming_client_context")
 @patch("agent_cli.agents.transcribe.pyperclip")
-@patch("agent_cli.agents.transcribe.pyaudio_context")
 @patch("agent_cli.agents.transcribe.signal_handling_context")
 async def test_transcribe_main_llm_enabled(
     mock_signal_handling_context: MagicMock,
-    mock_pyaudio_context: MagicMock,
     mock_pyperclip: MagicMock,
     mock_wyoming_client_context: MagicMock,
     mock_process_and_update_clipboard: AsyncMock,
     caplog: pytest.LogCaptureFixture,
 ) -> None:
     """Test the main function of the transcribe agent with LLM enabled."""
-    # Mock the pyaudio context manager
-    mock_pyaudio_instance = MagicMock()
-    mock_pyaudio_context.return_value.__enter__.return_value = mock_pyaudio_instance
-
     # Mock the Wyoming client
     mock_asr_client = MockASRClient("hello world")
     mock_wyoming_client_context.return_value.__aenter__.return_value = mock_asr_client
@@ -83,7 +77,6 @@ async def test_transcribe_main_llm_enabled(
             llm_enabled=True,
             transcription_log=None,
             save_recording=False,  # Disable for testing
-            p=mock_pyaudio_instance,
         )
 
     # Assertions
@@ -96,20 +89,14 @@ async def test_transcribe_main_llm_enabled(
 @pytest.mark.asyncio
 @patch("agent_cli.services.asr.wyoming_client_context")
 @patch("agent_cli.agents.transcribe.pyperclip")
-@patch("agent_cli.agents.transcribe.pyaudio_context")
 @patch("agent_cli.agents.transcribe.signal_handling_context")
 async def test_transcribe_main(
     mock_signal_handling_context: MagicMock,
-    mock_pyaudio_context: MagicMock,
     mock_pyperclip: MagicMock,
     mock_wyoming_client_context: MagicMock,
     caplog: pytest.LogCaptureFixture,
 ) -> None:
     """Test the main function of the transcribe agent."""
-    # Mock the pyaudio context manager
-    mock_pyaudio_instance = MagicMock()
-    mock_pyaudio_context.return_value.__enter__.return_value = mock_pyaudio_instance
-
     # Mock the Wyoming client
     mock_asr_client = MockASRClient("hello world")
     mock_wyoming_client_context.return_value.__aenter__.return_value = mock_asr_client
@@ -156,7 +143,6 @@ async def test_transcribe_main(
             llm_enabled=False,
             transcription_log=None,
             save_recording=False,  # Disable for testing
-            p=mock_pyaudio_instance,
         )
 
     # Assertions
@@ -312,7 +298,6 @@ def test_gather_recent_context_prefers_raw(tmp_path: Path) -> None:
 
 @pytest.mark.asyncio
 @patch("agent_cli.agents.transcribe.signal_handling_context")
-@patch("agent_cli.agents.transcribe.pyaudio_context")
 @patch("agent_cli.agents.transcribe.pyperclip")
 @patch("agent_cli.services.asr.wyoming_client_context")
 @patch("agent_cli.agents.transcribe.process_and_update_clipboard", new_callable=AsyncMock)
@@ -320,14 +305,10 @@ async def test_transcribe_includes_clipboard_context(
     mock_process_and_update_clipboard: AsyncMock,
     mock_wyoming_client_context: MagicMock,
     mock_pyperclip: MagicMock,
-    mock_pyaudio_context: MagicMock,
     mock_signal_handling_context: MagicMock,
 ) -> None:
     """Ensure clipboard content is forwarded to the LLM context."""
     mock_pyperclip.paste.return_value = "Clipboard reference text"
-
-    mock_pyaudio_instance = MagicMock()
-    mock_pyaudio_context.return_value.__enter__.return_value = mock_pyaudio_instance
 
     mock_asr_client = MockASRClient("hello world")
     mock_wyoming_client_context.return_value.__aenter__.return_value = mock_asr_client
@@ -371,7 +352,6 @@ async def test_transcribe_includes_clipboard_context(
         llm_enabled=True,
         transcription_log=None,
         save_recording=False,
-        p=mock_pyaudio_instance,
     )
 
     mock_process_and_update_clipboard.assert_called_once()
@@ -383,7 +363,6 @@ async def test_transcribe_includes_clipboard_context(
 
 @pytest.mark.asyncio
 @patch("agent_cli.agents.transcribe.signal_handling_context")
-@patch("agent_cli.agents.transcribe.pyaudio_context")
 @patch("agent_cli.agents.transcribe.pyperclip")
 @patch("agent_cli.services.asr.wyoming_client_context")
 @patch("agent_cli.agents.transcribe.process_and_update_clipboard", new_callable=AsyncMock)
@@ -391,16 +370,11 @@ async def test_transcribe_with_logging(
     mock_process_and_update_clipboard: AsyncMock,
     mock_wyoming_client_context: MagicMock,
     mock_pyperclip: MagicMock,
-    mock_pyaudio_context: MagicMock,
     mock_signal_handling_context: MagicMock,
     tmp_path: Path,
 ) -> None:
     """Test transcription with logging enabled."""
     log_file = tmp_path / "transcription.jsonl"
-
-    # Mock the pyaudio context manager
-    mock_pyaudio_instance = MagicMock()
-    mock_pyaudio_context.return_value.__enter__.return_value = mock_pyaudio_instance
 
     # Mock the Wyoming client
     mock_asr_client = MockASRClient("hello world")
@@ -450,7 +424,6 @@ async def test_transcribe_with_logging(
         llm_enabled=True,
         transcription_log=log_file,
         save_recording=False,  # Disable for testing
-        p=mock_pyaudio_instance,
     )
 
     mock_pyperclip.paste.assert_called_once()
