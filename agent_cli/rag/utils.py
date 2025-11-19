@@ -7,9 +7,6 @@ import logging
 import re
 from typing import TYPE_CHECKING
 
-import docx
-from pypdf import PdfReader
-
 if TYPE_CHECKING:
     from pathlib import Path
 
@@ -59,6 +56,8 @@ def load_document_text(file_path: Path) -> str | None:
 
 
 def _load_pdf(file_path: Path) -> str | None:
+    from pypdf import PdfReader  # noqa: PLC0415
+
     try:
         reader = PdfReader(file_path)
         return "\n\n".join(page.extract_text() for page in reader.pages if page.extract_text())
@@ -68,6 +67,8 @@ def _load_pdf(file_path: Path) -> str | None:
 
 
 def _load_docx(file_path: Path) -> str | None:
+    import docx  # noqa: PLC0415
+
     try:
         doc = docx.Document(file_path)
         return "\n".join([paragraph.text for paragraph in doc.paragraphs])
