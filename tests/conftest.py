@@ -6,19 +6,6 @@ import asyncio
 import contextlib
 import io
 import logging
-import sys
-from unittest.mock import MagicMock
-
-# Mock sounddevice to avoid OSError if PortAudio is missing during tests
-# This must happen before any module imports sounddevice
-if "sounddevice" not in sys.modules:
-    mock_sd = MagicMock()
-    # Setup basic attributes to avoid AttributeErrors during import/inspection
-    mock_sd.InputStream = MagicMock()
-    mock_sd.OutputStream = MagicMock()
-    mock_sd.query_devices = MagicMock(return_value=[])
-    mock_sd.default = MagicMock()
-    sys.modules["sounddevice"] = mock_sd
 
 import pytest
 from rich.console import Console

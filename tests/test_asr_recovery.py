@@ -63,16 +63,16 @@ def test_save_audio_to_file(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> 
 
 def test_save_audio_to_file_error_handling(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """Test error handling when saving audio fails."""
-    # Monkeypatch to return a read-only directory
-    read_only_dir = tmp_path / "readonly"
-    read_only_dir.mkdir(mode=0o444)
-    monkeypatch.setattr(asr, "_get_transcriptions_dir", lambda: read_only_dir / "nonexistent")
+    monkeypatch.setattr(asr, "_get_transcriptions_dir", lambda: tmp_path)
 
     logger = MagicMock()
     audio_data = b"test_audio_data"
 
     # Try to save the audio (should fail gracefully)
-    saved_path = asr._save_audio_to_file(audio_data, logger)
+    # We patch wave.open to simulate an error, which avoids creating a broken
+    # Wave_write object that triggers warnings during garbage collection.
+    with patch("agent_cli.services.asr.wave.open", side_effect=OSError("Mocked failure")):
+        saved_path = asr._save_audio_to_file(audio_data, logger)
 
     # Verify it returned None and logged the exception
     assert saved_path is None

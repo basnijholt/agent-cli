@@ -23,9 +23,6 @@ wheels/
 .installed.cfg
 *.egg
 
-# Package managers
-uv.lock
-
 # Audio files
 *.wav
 *.mp3

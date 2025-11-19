@@ -22,9 +22,6 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@v6
 
-      - name: Install portaudio
-        run: brew install portaudio
-
       - name: Run markdown-code-runner
         env:
           TERM: dumb

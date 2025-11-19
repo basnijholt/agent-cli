@@ -17,6 +17,8 @@ from tests.mocks.wyoming import MockASRClient
 
 
 @pytest.mark.asyncio
+@patch("agent_cli.services.asr.open_audio_stream")
+@patch("agent_cli.services.asr.setup_input_stream")
 @patch("agent_cli.agents.transcribe.process_and_update_clipboard", new_callable=AsyncMock)
 @patch("agent_cli.services.asr.wyoming_client_context")
 @patch("agent_cli.agents.transcribe.pyperclip")
@@ -26,9 +28,17 @@ async def test_transcribe_main_llm_enabled(
     mock_pyperclip: MagicMock,
     mock_wyoming_client_context: MagicMock,
     mock_process_and_update_clipboard: AsyncMock,
+    mock_setup_input_stream: MagicMock,
+    mock_open_audio_stream: MagicMock,
     caplog: pytest.LogCaptureFixture,
 ) -> None:
     """Test the main function of the transcribe agent with LLM enabled."""
+    # Mock audio stream
+    mock_stream = MagicMock()
+    mock_stream.read.return_value = (MagicMock(tobytes=lambda: b"\0" * 1024), False)
+    mock_open_audio_stream.return_value.__enter__.return_value = mock_stream
+    assert mock_setup_input_stream  # Used to satisfy linter
+
     # Mock the Wyoming client
     mock_asr_client = MockASRClient("hello world")
     mock_wyoming_client_context.return_value.__aenter__.return_value = mock_asr_client
@@ -87,6 +97,8 @@ async def test_transcribe_main_llm_enabled(
 
 
 @pytest.mark.asyncio
+@patch("agent_cli.services.asr.open_audio_stream")
+@patch("agent_cli.services.asr.setup_input_stream")
 @patch("agent_cli.services.asr.wyoming_client_context")
 @patch("agent_cli.agents.transcribe.pyperclip")
 @patch("agent_cli.agents.transcribe.signal_handling_context")
@@ -94,9 +106,17 @@ async def test_transcribe_main(
     mock_signal_handling_context: MagicMock,
     mock_pyperclip: MagicMock,
     mock_wyoming_client_context: MagicMock,
+    mock_setup_input_stream: MagicMock,
+    mock_open_audio_stream: MagicMock,
     caplog: pytest.LogCaptureFixture,
 ) -> None:
     """Test the main function of the transcribe agent."""
+    # Mock audio stream
+    mock_stream = MagicMock()
+    mock_stream.read.return_value = (MagicMock(tobytes=lambda: b"\0" * 1024), False)
+    mock_open_audio_stream.return_value.__enter__.return_value = mock_stream
+    assert mock_setup_input_stream  # Used to satisfy linter
+
     # Mock the Wyoming client
     mock_asr_client = MockASRClient("hello world")
     mock_wyoming_client_context.return_value.__aenter__.return_value = mock_asr_client
@@ -301,13 +321,23 @@ def test_gather_recent_context_prefers_raw(tmp_path: Path) -> None:
 @patch("agent_cli.agents.transcribe.pyperclip")
 @patch("agent_cli.services.asr.wyoming_client_context")
 @patch("agent_cli.agents.transcribe.process_and_update_clipboard", new_callable=AsyncMock)
+@patch("agent_cli.services.asr.open_audio_stream")
+@patch("agent_cli.services.asr.setup_input_stream")
 async def test_transcribe_includes_clipboard_context(
+    mock_setup_input_stream: MagicMock,
+    mock_open_audio_stream: MagicMock,
     mock_process_and_update_clipboard: AsyncMock,
     mock_wyoming_client_context: MagicMock,
     mock_pyperclip: MagicMock,
     mock_signal_handling_context: MagicMock,
 ) -> None:
     """Ensure clipboard content is forwarded to the LLM context."""
+    # Mock audio stream
+    mock_stream = MagicMock()
+    mock_stream.read.return_value = (MagicMock(tobytes=lambda: b"\0" * 1024), False)
+    mock_open_audio_stream.return_value.__enter__.return_value = mock_stream
+    assert mock_setup_input_stream  # Used to satisfy linter
+
     mock_pyperclip.paste.return_value = "Clipboard reference text"
 
     mock_asr_client = MockASRClient("hello world")
@@ -366,7 +396,11 @@ async def test_transcribe_includes_clipboard_context(
 @patch("agent_cli.agents.transcribe.pyperclip")
 @patch("agent_cli.services.asr.wyoming_client_context")
 @patch("agent_cli.agents.transcribe.process_and_update_clipboard", new_callable=AsyncMock)
+@patch("agent_cli.services.asr.open_audio_stream")
+@patch("agent_cli.services.asr.setup_input_stream")
 async def test_transcribe_with_logging(
+    mock_setup_input_stream: MagicMock,
+    mock_open_audio_stream: MagicMock,
     mock_process_and_update_clipboard: AsyncMock,
     mock_wyoming_client_context: MagicMock,
     mock_pyperclip: MagicMock,
@@ -375,6 +409,12 @@ async def test_transcribe_with_logging(
 ) -> None:
     """Test transcription with logging enabled."""
     log_file = tmp_path / "transcription.jsonl"
+
+    # Mock audio stream
+    mock_stream = MagicMock()
+    mock_stream.read.return_value = (MagicMock(tobytes=lambda: b"\0" * 1024), False)
+    mock_open_audio_stream.return_value.__enter__.return_value = mock_stream
+    assert mock_setup_input_stream  # Used to satisfy linter
 
     # Mock the Wyoming client
     mock_asr_client = MockASRClient("hello world")
