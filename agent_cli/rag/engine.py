@@ -87,6 +87,7 @@ async def process_chat_request(
     reranker_model: OnnxCrossEncoder,
     openai_base_url: str,
     default_top_k: int = 3,
+    api_key: str | None = None,
 ) -> Any:
     """Process a chat request with RAG."""
     aug_request, retrieval = augment_chat_request(
@@ -96,7 +97,7 @@ async def process_chat_request(
         default_top_k=default_top_k,
     )
 
-    response = await _forward_request(aug_request, openai_base_url)
+    response = await _forward_request(aug_request, openai_base_url, api_key)
 
     # Add sources to non-streaming response
     if retrieval and not request.stream and isinstance(response, dict):
@@ -108,10 +109,12 @@ async def process_chat_request(
 async def _forward_request(
     request: ChatRequest,
     openai_base_url: str,
+    api_key: str | None = None,
 ) -> Any:
     """Forward to backend LLM."""
     # Filter out RAG-specific fields before forwarding
     forward_payload = request.model_dump(exclude={"rag_top_k"})
+    headers = {"Authorization": f"Bearer {api_key}"} if api_key else None
 
     if request.stream:
 
@@ -123,6 +126,7 @@ async def _forward_request(
                         "POST",
                         f"{openai_base_url}/chat/completions",
                         json=forward_payload,
+                        headers=headers,
                     ) as response,
                 ):
                     if response.status_code != 200:  # noqa: PLR2004
@@ -145,6 +149,7 @@ async def _forward_request(
         response = await client.post(
             f"{openai_base_url}/chat/completions",
             json=forward_payload,
+            headers=headers,
         )
         if response.status_code != 200:  # noqa: PLR2004
             logger.error(

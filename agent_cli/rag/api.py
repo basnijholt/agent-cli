@@ -8,7 +8,7 @@ import threading
 from contextlib import asynccontextmanager, suppress
 from typing import TYPE_CHECKING, Any
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
 from agent_cli.rag.engine import process_chat_request
@@ -30,6 +30,7 @@ def create_app(
     openai_base_url: str,
     embedding_model: str = "text-embedding-3-small",
     embedding_api_key: str | None = None,
+    chat_api_key: str | None = None,
     limit: int = 3,
 ) -> FastAPI:
     """Create the FastAPI app."""
@@ -85,13 +86,24 @@ def create_app(
     )
 
     @app.post("/v1/chat/completions")
-    async def chat_completions(request: ChatRequest) -> Any:
+    async def chat_completions(request: Request, chat_request: ChatRequest) -> Any:
+        # Extract API Key from Authorization header if present
+        auth_header = request.headers.get("Authorization")
+        api_key = None
+        if auth_header and auth_header.startswith("Bearer "):
+            api_key = auth_header.split(" ")[1]
+
+        # Fallback to server-configured key
+        if not api_key:
+            api_key = chat_api_key
+
         return await process_chat_request(
-            request,
+            chat_request,
             collection,
             reranker_model,
             openai_base_url.rstrip("/"),
             default_top_k=limit,
+            api_key=api_key,
         )
 
     @app.post("/reindex")

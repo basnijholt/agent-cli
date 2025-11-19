@@ -42,6 +42,10 @@ def rag_server(
         None,
         help="API Key for embedding model (if using 'openai' provider).",
     ),
+    chat_api_key: str | None = typer.Option(
+        None,
+        help="API Key for chat backend (if using 'openai' provider).",
+    ),
     limit: int = typer.Option(
         3,
         help="Number of document chunks to retrieve per query.",
@@ -104,6 +108,7 @@ def rag_server(
         openai_base_url,
         embedding_model,
         embedding_api_key,
+        chat_api_key,
         limit,
     )
 
