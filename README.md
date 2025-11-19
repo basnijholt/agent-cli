@@ -83,6 +83,11 @@ agent-cli autocorrect "this has an eror"
 
 #### Option B: Using CLI Commands (New!)
 
+> [!NOTE]
+> `agent-cli` uses `sounddevice` for real-time microphone/voice features.
+> On Linux only, you need to install the system-level PortAudio library  (`sudo apt install portaudio19-dev` / your distro's equivalent on Linux) **before** you run `uv tool install agent-cli`.
+> On Windows and macOS, this is handled automatically.
+
 ```bash
 # 1. Install agent-cli
 uv tool install agent-cli
