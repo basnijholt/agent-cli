@@ -26,31 +26,49 @@ def rag_server(
     docs_folder: Path = typer.Option(  # noqa: B008
         "./rag_docs",
         help="Folder to watch for documents",
+        rich_help_panel="RAG Configuration",
     ),
     chroma_path: Path = typer.Option(  # noqa: B008
         "./rag_db",
         help="Path to ChromaDB persistence directory",
+        rich_help_panel="RAG Configuration",
     ),
     openai_base_url: str = typer.Option(
         "http://localhost:8080/v1",
         help="URL of the OpenAI-compatible backend server (e.g. llama.cpp, Ollama)",
+        rich_help_panel="Backend Configuration",
     ),
     embedding_model: str = typer.Option(
         "text-embedding-3-small",
         help="Embedding model name (e.g. 'text-embedding-3-small' for OpenAI).",
+        rich_help_panel="Backend Configuration",
     ),
     embedding_api_key: str | None = typer.Option(
         None,
-        help="API Key for embedding model (if using 'openai' provider).",
+        help="API Key for embedding model. Defaults to --openai-api-key if not set.",
+        rich_help_panel="Backend Configuration",
     ),
     openai_api_key: str | None = opts.OPENAI_API_KEY,
     limit: int = typer.Option(
         3,
         help="Number of document chunks to retrieve per query.",
+        rich_help_panel="RAG Configuration",
     ),
-    host: str = typer.Option("0.0.0.0", help="Host to bind to"),  # noqa: S104
-    port: int = typer.Option(8000, help="Port to bind to"),
-    log_level: str = typer.Option("INFO", help="Logging level"),
+    host: str = typer.Option(
+        "0.0.0.0",  # noqa: S104
+        help="Host to bind to",
+        rich_help_panel="Server Configuration",
+    ),
+    port: int = typer.Option(
+        8000,
+        help="Port to bind to",
+        rich_help_panel="Server Configuration",
+    ),
+    log_level: str = typer.Option(
+        "INFO",
+        help="Logging level",
+        rich_help_panel="General Options",
+    ),
 ) -> None:
     """Start the RAG (Retrieval-Augmented Generation) Proxy Server.
 
@@ -69,6 +87,10 @@ def rag_server(
         msg = "RAG dependencies are not installed. Please install with `pip install agent-cli[rag]` or `uv sync --extra rag`."
         print_error_message(msg)
         raise typer.Exit(1)
+
+    # Fallback: Use OpenAI API Key for embeddings if not explicitly provided
+    if embedding_api_key is None:
+        embedding_api_key = openai_api_key
 
     # Configure logging
     logging.basicConfig(
