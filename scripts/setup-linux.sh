@@ -27,54 +27,27 @@ fi
 
 # Check for PortAudio (required for audio processing)
 echo "🔊 Checking PortAudio..."
-# We use pkg-config if available, otherwise fallback to checking common library paths or ldconfig
-PORTAUDIO_FOUND=false
-if command -v pkg-config &> /dev/null; then
-    if pkg-config --exists portaudio-2.0; then
-        PORTAUDIO_FOUND=true
-    fi
-elif /sbin/ldconfig -p 2>/dev/null | grep -q libportaudio; then
-    PORTAUDIO_FOUND=true
-elif [ -f /usr/include/portaudio.h ] || [ -f /usr/local/include/portaudio.h ]; then
-    PORTAUDIO_FOUND=true
-fi
-
-if [ "$PORTAUDIO_FOUND" = false ]; then
-    echo "❌ ERROR: PortAudio development libraries are not detected."
+if ! pkg-config --exists portaudio-2.0 2>/dev/null; then
+    echo "❌ ERROR: PortAudio development libraries are not installed."
     echo ""
-    echo "agent-cli requires PortAudio for audio recording and playback."
-    echo "Please install it using your distribution's package manager:"
+    echo "PyAudio requires PortAudio. Install using your distribution's package manager:"
     echo ""
-    echo "  Ubuntu/Debian:      sudo apt install portaudio19-dev python3-dev build-essential"
-    echo "  Fedora/RHEL:        sudo dnf install portaudio-devel python3-devel @development-tools"
-    echo "  Arch Linux:         sudo pacman -S portaudio base-devel"
-    echo "  openSUSE:           sudo zypper install portaudio-devel python3-devel"
-    echo "  Alpine:             sudo apk add portaudio-dev python3-dev build-base"
+    echo "Ubuntu/Debian:"
+    echo "  sudo apt install portaudio19-dev"
     echo ""
-    echo "After installing PortAudio, please run this script again."
+    echo "Fedora/RHEL/CentOS:"
+    echo "  sudo dnf install portaudio-devel"
+    echo ""
+    echo "Arch Linux:"
+    echo "  sudo pacman -S portaudio"
+    echo ""
+    echo "openSUSE:"
+    echo "  sudo zypper install portaudio-devel"
+    echo ""
+    echo "After installing PortAudio, run this script again."
     exit 1
 else
-    echo "✅ PortAudio is installed"
-fi
-
-# Check for FFmpeg
-echo "🎥 Checking FFmpeg..."
-if ! command -v ffmpeg &> /dev/null; then
-    echo "❌ ERROR: FFmpeg is not installed."
-    echo ""
-    echo "agent-cli requires FFmpeg for audio format conversion."
-    echo "Please install it using your distribution's package manager:"
-    echo ""
-    echo "  Ubuntu/Debian:      sudo apt install ffmpeg"
-    echo "  Fedora/RHEL:        sudo dnf install ffmpeg"
-    echo "  Arch Linux:         sudo pacman -S ffmpeg"
-    echo "  openSUSE:           sudo zypper install ffmpeg"
-    echo "  Alpine:             sudo apk add ffmpeg"
-    echo ""
-    echo "After installing FFmpeg, please run this script again."
-    exit 1
-else
-    echo "✅ FFmpeg is installed"
+    echo "✅ PortAudio is already installed"
 fi
 
 # Install Ollama

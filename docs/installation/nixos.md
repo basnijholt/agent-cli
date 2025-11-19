@@ -108,7 +108,7 @@ If you have an NVIDIA GPU, also add:
 3. **Install agent-cli:**
 
    ```bash
-   nix-shell -p portaudio python3 --run "uv tool install --upgrade agent-cli"
+   nix-shell -p portaudio pkg-config gcc python3 --run "uv tool install --upgrade agent-cli"
    # or add to your configuration:
    # environment.systemPackages = with pkgs; [ agent-cli ];
    ```
