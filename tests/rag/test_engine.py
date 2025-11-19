@@ -8,6 +8,38 @@ from agent_cli.rag import engine
 from agent_cli.rag.models import ChatRequest, Message
 
 
+def test_augment_chat_request_direct() -> None:
+    """Test direct usage of augment_chat_request without async/HTTP."""
+    mock_collection = MagicMock()
+    mock_reranker = MagicMock()
+
+    with patch("agent_cli.rag.engine.search_context") as mock_search:
+        # Case 1: Context found
+        mock_search.return_value = MagicMock(
+            context="Found it.",
+            sources=[{"source": "doc1"}],
+        )
+
+        req = ChatRequest(
+            model="test",
+            messages=[Message(role="user", content="Query")],
+        )
+
+        aug_req, retrieval = engine.augment_chat_request(req, mock_collection, mock_reranker)
+
+        assert retrieval is not None
+        assert aug_req.messages[-1].role == "user"
+        assert "Found it." in aug_req.messages[-1].content
+
+        # Case 2: No context
+        mock_search.return_value = MagicMock(context="", sources=[])
+
+        aug_req, retrieval = engine.augment_chat_request(req, mock_collection, mock_reranker)
+
+        assert retrieval is None
+        assert aug_req.messages[-1].content == "Query"
+
+
 @pytest.mark.asyncio
 async def test_process_chat_request_no_rag() -> None:
     """Test chat request without RAG (no retrieval context)."""

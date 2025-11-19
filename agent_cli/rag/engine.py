@@ -19,19 +19,23 @@ if TYPE_CHECKING:
     from chromadb import Collection
     from sentence_transformers import CrossEncoder
 
-    from agent_cli.rag.models import ChatRequest
+    from agent_cli.rag.models import ChatRequest, RetrievalResult
 
 logger = logging.getLogger("agent_cli.rag.engine")
 
 
-async def process_chat_request(
+def augment_chat_request(
     request: ChatRequest,
     collection: Collection,
     reranker_model: CrossEncoder,
-    llama_url: str,
-    client: httpx.AsyncClient,
-) -> Any:
-    """Process a chat request with RAG."""
+) -> tuple[ChatRequest, RetrievalResult | None]:
+    """Retrieve context and augment the chat request.
+
+    Returns:
+        A tuple of (augmented_request, retrieval_result).
+        If no retrieval happened or no context was found, retrieval_result is None.
+
+    """
     # Get last user message
     user_message = next(
         (m.content for m in reversed(request.messages) if m.role == "user"),
@@ -39,7 +43,7 @@ async def process_chat_request(
     )
 
     if not user_message:
-        return await _forward_request(request, llama_url, client)
+        return request, None
 
     # Retrieve
     retrieval = search_context(
@@ -50,8 +54,7 @@ async def process_chat_request(
     )
 
     if not retrieval.context:
-        # No context found, forward as-is
-        return await _forward_request(request, llama_url, client)
+        return request, None
 
     # Augment prompt
     augmented_content = (
@@ -67,10 +70,23 @@ async def process_chat_request(
     aug_request = request.model_copy()
     aug_request.messages = augmented_messages
 
+    return aug_request, retrieval
+
+
+async def process_chat_request(
+    request: ChatRequest,
+    collection: Collection,
+    reranker_model: CrossEncoder,
+    llama_url: str,
+    client: httpx.AsyncClient,
+) -> Any:
+    """Process a chat request with RAG."""
+    aug_request, retrieval = augment_chat_request(request, collection, reranker_model)
+
     response = await _forward_request(aug_request, llama_url, client)
 
     # Add sources to non-streaming response
-    if not request.stream and isinstance(response, dict):
+    if retrieval and not request.stream and isinstance(response, dict):
         response["rag_sources"] = retrieval.sources
 
     return response
