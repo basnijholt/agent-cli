@@ -12,12 +12,6 @@ from agent_cli.services import wake_word
 
 
 @pytest.fixture
-def mock_pyaudio():
-    """Mock PyAudio instance."""
-    return MagicMock()
-
-
-@pytest.fixture
 def mock_logger():
     """Mock logger instance."""
     return MagicMock()

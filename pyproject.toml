@@ -9,7 +9,8 @@ dynamic = ["version"]
 authors = [{ name = "Bas Nijholt", email = "bas@nijho.lt" }]
 dependencies = [
     "wyoming",
-    "pyaudio",
+    "sounddevice",
+    "numpy",
     "rich",
     "pyperclip",
     "pydantic-ai-slim[openai,duckduckgo,vertexai]",

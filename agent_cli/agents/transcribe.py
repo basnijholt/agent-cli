@@ -10,7 +10,7 @@ import time
 from contextlib import suppress
 from datetime import UTC, datetime, timedelta
 from pathlib import Path  # noqa: TC003
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 import pyperclip
 import typer
@@ -18,7 +18,7 @@ import typer
 from agent_cli import config, opts
 from agent_cli.cli import app
 from agent_cli.core import process
-from agent_cli.core.audio import pyaudio_context, setup_devices
+from agent_cli.core.audio import setup_devices
 from agent_cli.core.utils import (
     format_short_timedelta,
     iter_lines_from_file_end,
@@ -39,9 +39,6 @@ from agent_cli.services.asr import (
     load_audio_from_file,
 )
 from agent_cli.services.llm import process_and_update_clipboard
-
-if TYPE_CHECKING:
-    import pyaudio
 
 LOGGER = logging.getLogger()
 
@@ -250,7 +247,6 @@ async def _async_main(  # noqa: PLR0912, PLR0915, C901
     gemini_llm_cfg: config.GeminiLLM,
     llm_enabled: bool,
     transcription_log: Path | None,
-    p: pyaudio.PyAudio | None = None,
     # Optional parameters for file-based transcription
     audio_file_path: Path | None = None,
     save_recording: bool = True,
@@ -294,7 +290,7 @@ async def _async_main(  # noqa: PLR0912, PLR0915, C901
                 )
         else:
             # Live recording transcription
-            if not audio_in_cfg or not p:
+            if not audio_in_cfg:
                 msg = "Missing audio configuration for live recording"
                 raise ValueError(msg)
 
@@ -307,7 +303,6 @@ async def _async_main(  # noqa: PLR0912, PLR0915, C901
                 )
                 transcript = await live_transcriber(
                     logger=LOGGER,
-                    p=p,
                     stop_event=stop_event,
                     quiet=general_cfg.quiet,
                     live=live,
@@ -565,35 +560,33 @@ def transcribe(  # noqa: PLR0912
     ):
         return
 
-    with pyaudio_context() as p:
-        audio_in_cfg = config.AudioInput(
-            input_device_index=input_device_index,
-            input_device_name=input_device_name,
+    audio_in_cfg = config.AudioInput(
+        input_device_index=input_device_index,
+        input_device_name=input_device_name,
+    )
+
+    # We only use setup_devices for its input device handling
+    device_info = setup_devices(general_cfg, audio_in_cfg, None)
+    if device_info is None:
+        return
+    input_device_index, _, _ = device_info
+    audio_in_cfg.input_device_index = input_device_index
+
+    # Use context manager for PID file management
+    with process.pid_file_context(process_name), suppress(KeyboardInterrupt):
+        asyncio.run(
+            _async_main(
+                extra_instructions=extra_instructions,
+                provider_cfg=provider_cfg,
+                general_cfg=general_cfg,
+                audio_in_cfg=audio_in_cfg,
+                wyoming_asr_cfg=wyoming_asr_cfg,
+                openai_asr_cfg=openai_asr_cfg,
+                ollama_cfg=ollama_cfg,
+                openai_llm_cfg=openai_llm_cfg,
+                gemini_llm_cfg=gemini_llm_cfg,
+                llm_enabled=llm,
+                transcription_log=transcription_log,
+                save_recording=save_recording,
+            ),
         )
-
-        # We only use setup_devices for its input device handling
-        device_info = setup_devices(p, general_cfg, audio_in_cfg, None)
-        if device_info is None:
-            return
-        input_device_index, _, _ = device_info
-        audio_in_cfg.input_device_index = input_device_index
-
-        # Use context manager for PID file management
-        with process.pid_file_context(process_name), suppress(KeyboardInterrupt):
-            asyncio.run(
-                _async_main(
-                    extra_instructions=extra_instructions,
-                    provider_cfg=provider_cfg,
-                    general_cfg=general_cfg,
-                    audio_in_cfg=audio_in_cfg,
-                    wyoming_asr_cfg=wyoming_asr_cfg,
-                    openai_asr_cfg=openai_asr_cfg,
-                    ollama_cfg=ollama_cfg,
-                    openai_llm_cfg=openai_llm_cfg,
-                    gemini_llm_cfg=gemini_llm_cfg,
-                    llm_enabled=llm,
-                    transcription_log=transcription_log,
-                    save_recording=save_recording,
-                    p=p,
-                ),
-            )

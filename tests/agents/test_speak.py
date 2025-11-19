@@ -33,7 +33,6 @@ async def test_async_main_with_text():
     )
 
     with (
-        patch("agent_cli.agents.speak.pyaudio_context"),
         patch(
             "agent_cli.agents.speak.setup_devices",
             return_value=(None, None, 1),
@@ -74,7 +73,6 @@ async def test_async_main_no_devices():
     )
 
     with (
-        patch("agent_cli.agents.speak.pyaudio_context"),
         patch(
             "agent_cli.agents.speak.setup_devices",
             return_value=None,
