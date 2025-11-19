@@ -6,6 +6,7 @@ import json
 import logging
 from typing import TYPE_CHECKING, Any
 
+import httpx
 from fastapi import HTTPException
 from fastapi.responses import StreamingResponse
 
@@ -15,7 +16,6 @@ from agent_cli.rag.retriever import search_context
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
 
-    import httpx
     from chromadb import Collection
     from sentence_transformers import CrossEncoder
 
@@ -78,12 +78,11 @@ async def process_chat_request(
     collection: Collection,
     reranker_model: CrossEncoder,
     openai_base_url: str,
-    client: httpx.AsyncClient,
 ) -> Any:
     """Process a chat request with RAG."""
     aug_request, retrieval = augment_chat_request(request, collection, reranker_model)
 
-    response = await _forward_request(aug_request, openai_base_url, client)
+    response = await _forward_request(aug_request, openai_base_url)
 
     # Add sources to non-streaming response
     if retrieval and not request.stream and isinstance(response, dict):
@@ -95,7 +94,6 @@ async def process_chat_request(
 async def _forward_request(
     request: ChatRequest,
     openai_base_url: str,
-    client: httpx.AsyncClient,
 ) -> Any:
     """Forward to backend LLM."""
     # Filter out RAG-specific fields before forwarding
@@ -105,11 +103,14 @@ async def _forward_request(
 
         async def generate() -> AsyncGenerator[str, None]:
             try:
-                async with client.stream(
-                    "POST",
-                    f"{openai_base_url}/v1/chat/completions",
-                    json=forward_payload,
-                ) as response:
+                async with (
+                    httpx.AsyncClient(timeout=120.0) as client,
+                    client.stream(
+                        "POST",
+                        f"{openai_base_url}/v1/chat/completions",
+                        json=forward_payload,
+                    ) as response,
+                ):
                     if response.status_code != 200:  # noqa: PLR2004
                         error_text = await response.read()
                         yield f"data: {json.dumps({'error': str(error_text)})}\n\n"
@@ -126,19 +127,20 @@ async def _forward_request(
 
         return StreamingResponse(generate(), media_type="text/event-stream")
 
-    response = await client.post(
-        f"{openai_base_url}/v1/chat/completions",
-        json=forward_payload,
-    )
-    if response.status_code != 200:  # noqa: PLR2004
-        logger.error(
-            "Upstream error %s: %s",
-            response.status_code,
-            response.text,
+    async with httpx.AsyncClient(timeout=120.0) as client:
+        response = await client.post(
+            f"{openai_base_url}/v1/chat/completions",
+            json=forward_payload,
         )
-        raise HTTPException(
-            status_code=response.status_code,
-            detail=f"Upstream error: {response.text}",
-        )
+        if response.status_code != 200:  # noqa: PLR2004
+            logger.error(
+                "Upstream error %s: %s",
+                response.status_code,
+                response.text,
+            )
+            raise HTTPException(
+                status_code=response.status_code,
+                detail=f"Upstream error: {response.text}",
+            )
 
-    return response.json()
+        return response.json()

@@ -7,7 +7,6 @@ import logging
 import threading
 from typing import TYPE_CHECKING, Any
 
-import httpx
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -74,14 +73,12 @@ def create_app(
 
     @app.post("/v1/chat/completions")
     async def chat_completions(request: ChatRequest) -> Any:
-        async with httpx.AsyncClient(timeout=120.0) as client:
-            return await process_chat_request(
-                request,
-                collection,
-                reranker_model,
-                openai_base_url.rstrip("/"),
-                client,
-            )
+        return await process_chat_request(
+            request,
+            collection,
+            reranker_model,
+            openai_base_url.rstrip("/"),
+        )
 
     @app.post("/reindex")
     def reindex_all() -> dict[str, Any]:

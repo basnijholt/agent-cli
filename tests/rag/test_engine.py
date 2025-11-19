@@ -45,16 +45,25 @@ async def test_process_chat_request_no_rag() -> None:
     """Test chat request without RAG (no retrieval context)."""
     mock_collection = MagicMock()
     mock_reranker = MagicMock()
-    mock_client = AsyncMock()
 
     # Mock forward request
     mock_response = MagicMock()
     mock_response.status_code = 200
     mock_response.json.return_value = {"choices": [{"message": {"content": "Response"}}]}
+
+    # Mock httpx.AsyncClient used inside engine
+    mock_client = AsyncMock()
     mock_client.post.return_value = mock_response
 
-    # Mock retrieval to return empty
-    with patch("agent_cli.rag.engine.search_context") as mock_search:
+    mock_client_ctx = AsyncMock()
+    mock_client_ctx.__aenter__.return_value = mock_client
+    mock_client_ctx.__aexit__.return_value = None
+
+    with (
+        patch("httpx.AsyncClient", return_value=mock_client_ctx),
+        patch("agent_cli.rag.engine.search_context") as mock_search,
+    ):
+        # Mock retrieval to return empty
         mock_search.return_value = MagicMock(context="")
 
         req = ChatRequest(
@@ -67,7 +76,6 @@ async def test_process_chat_request_no_rag() -> None:
             mock_collection,
             mock_reranker,
             "http://mock",
-            mock_client,
         )
 
         assert resp["choices"][0]["message"]["content"] == "Response"
@@ -80,14 +88,22 @@ async def test_process_chat_request_with_rag() -> None:
     """Test chat request with RAG context."""
     mock_collection = MagicMock()
     mock_reranker = MagicMock()
-    mock_client = AsyncMock()
 
     mock_response = MagicMock()
     mock_response.status_code = 200
     mock_response.json.return_value = {"choices": [{"message": {"content": "RAG Response"}}]}
+
+    mock_client = AsyncMock()
     mock_client.post.return_value = mock_response
 
-    with patch("agent_cli.rag.engine.search_context") as mock_search:
+    mock_client_ctx = AsyncMock()
+    mock_client_ctx.__aenter__.return_value = mock_client
+    mock_client_ctx.__aexit__.return_value = None
+
+    with (
+        patch("httpx.AsyncClient", return_value=mock_client_ctx),
+        patch("agent_cli.rag.engine.search_context") as mock_search,
+    ):
         # Return some context
         mock_search.return_value = MagicMock(
             context="Relevant info.",
@@ -104,7 +120,6 @@ async def test_process_chat_request_with_rag() -> None:
             mock_collection,
             mock_reranker,
             "http://mock",
-            mock_client,
         )
 
         # Check if sources are added
