@@ -13,7 +13,8 @@ if TYPE_CHECKING:
 # Configure logging
 logger = logging.getLogger("agent_cli.rag.utils")
 
-SUPPORTED_EXTENSIONS = {
+# Files to read as plain text directly (fast path)
+TEXT_EXTENSIONS = {
     ".txt",
     ".md",
     ".json",
@@ -34,46 +35,40 @@ SUPPORTED_EXTENSIONS = {
     ".cfg",
 }
 
+# Files to convert using MarkItDown (rich documents)
+MARKITDOWN_EXTENSIONS = {
+    ".pdf",
+    ".docx",
+    ".pptx",
+    ".xlsx",
+    ".html",
+    ".htm",
+    ".csv",
+    ".xml",
+}
+
+SUPPORTED_EXTENSIONS = TEXT_EXTENSIONS | MARKITDOWN_EXTENSIONS
+
 
 def load_document_text(file_path: Path) -> str | None:
     """Load text from a file path."""
     suffix = file_path.suffix.lower()
 
     try:
-        if suffix in SUPPORTED_EXTENSIONS:
+        if suffix in TEXT_EXTENSIONS:
             return file_path.read_text(errors="ignore")
 
-        if suffix == ".pdf":
-            return _load_pdf(file_path)
+        if suffix in MARKITDOWN_EXTENSIONS:
+            from markitdown import MarkItDown  # noqa: PLC0415
 
-        if suffix in {".docx", ".doc"}:
-            return _load_docx(file_path)
+            # NOTE: Consider caching the MarkItDown instance if initialization is slow
+            md = MarkItDown()
+            result = md.convert(str(file_path))
+            return result.text_content
 
         return None  # Unsupported
     except Exception:
         logger.exception("Failed to load %s", file_path)
-        return None
-
-
-def _load_pdf(file_path: Path) -> str | None:
-    from pypdf import PdfReader  # noqa: PLC0415
-
-    try:
-        reader = PdfReader(file_path)
-        return "\n\n".join(page.extract_text() for page in reader.pages if page.extract_text())
-    except Exception:
-        logger.exception("Error reading PDF %s", file_path)
-        return None
-
-
-def _load_docx(file_path: Path) -> str | None:
-    import docx  # noqa: PLC0415
-
-    try:
-        doc = docx.Document(file_path)
-        return "\n".join([paragraph.text for paragraph in doc.paragraphs])
-    except Exception:
-        logger.exception("Error reading DOCX %s", file_path)
         return None
 
 

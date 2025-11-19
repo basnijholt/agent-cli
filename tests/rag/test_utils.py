@@ -1,6 +1,7 @@
 """Tests for RAG utilities."""
 
 from pathlib import Path
+from typing import Any
 
 from agent_cli.rag import utils
 
@@ -65,6 +66,25 @@ def test_load_document_text_unsupported(tmp_path: Path) -> None:
 
     content = utils.load_document_text(f)
     assert content is None
+
+
+def test_load_document_text_markitdown(tmp_path: Path, mocker: Any) -> None:
+    """Test loading document using MarkItDown (mocked)."""
+    # Mock MarkItDown class
+    mock_cls = mocker.patch("markitdown.MarkItDown")
+    mock_instance = mock_cls.return_value
+    mock_result = mock_instance.convert.return_value
+    mock_result.text_content = "mocked content"
+
+    # Create a dummy PDF file
+    f = tmp_path / "test.pdf"
+    f.touch()
+
+    content = utils.load_document_text(f)
+
+    assert content == "mocked content"
+    mock_cls.assert_called_once()
+    mock_instance.convert.assert_called_once_with(str(f))
 
 
 def test_get_file_hash(tmp_path: Path) -> None:
