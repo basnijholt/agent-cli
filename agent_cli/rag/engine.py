@@ -17,9 +17,9 @@ if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
 
     from chromadb import Collection
-    from sentence_transformers import CrossEncoder
 
     from agent_cli.rag.models import ChatRequest, RetrievalResult
+    from agent_cli.rag.retriever import OnnxCrossEncoder
 
 logger = logging.getLogger("agent_cli.rag.engine")
 
@@ -27,7 +27,7 @@ logger = logging.getLogger("agent_cli.rag.engine")
 def augment_chat_request(
     request: ChatRequest,
     collection: Collection,
-    reranker_model: CrossEncoder,
+    reranker_model: OnnxCrossEncoder,
     default_top_k: int = 3,
 ) -> tuple[ChatRequest, RetrievalResult | None]:
     """Retrieve context and augment the chat request.
@@ -84,7 +84,7 @@ def augment_chat_request(
 async def process_chat_request(
     request: ChatRequest,
     collection: Collection,
-    reranker_model: CrossEncoder,
+    reranker_model: OnnxCrossEncoder,
     openai_base_url: str,
     default_top_k: int = 3,
 ) -> Any:

@@ -2,14 +2,12 @@
 
 from unittest.mock import MagicMock, patch
 
-import numpy as np
-
 from agent_cli.rag import retriever
 
 
 def test_get_reranker_model_installed() -> None:
     """Test loading reranker when installed."""
-    with patch("agent_cli.rag.retriever.CrossEncoder") as mock_ce:
+    with patch("agent_cli.rag.retriever.OnnxCrossEncoder") as mock_ce:
         retriever.get_reranker_model()
         mock_ce.assert_called_once()
 
@@ -31,8 +29,7 @@ def test_search_context() -> None:
     }
 
     # Mock reranker scores
-    # Return a real numpy array because the code calls .tolist()
-    mock_reranker.predict.return_value = np.array([-1.0, 5.0])
+    mock_reranker.predict.return_value = [-1.0, 5.0]
 
     result = retriever.search_context(mock_collection, mock_reranker, "query", top_k=1)
 

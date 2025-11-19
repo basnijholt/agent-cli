@@ -6,12 +6,14 @@ from importlib.util import find_spec
 
 _REQUIRED_DEPS = {
     "chromadb": "chromadb",
-    "sentence_transformers": "sentence-transformers",
     "watchfiles": "watchfiles",
     "pypdf": "pypdf",
     "docx": "python-docx",
     "fastapi": "fastapi",
     "uvicorn": "uvicorn",
+    "onnxruntime": "onnxruntime",
+    "huggingface_hub": "huggingface-hub",
+    "transformers": "transformers",
 }
 
 _MISSING = [

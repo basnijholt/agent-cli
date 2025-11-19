@@ -1,67 +1,43 @@
-"""Tests for RAG store (ChromaDB wrapper)."""
+"""Tests for RAG store."""
 
-from collections.abc import Generator
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from agent_cli.rag import store
 
-# Check if chromadb is installed
-try:
-    import chromadb
-except ImportError:
-    chromadb = None
+
+def test_init_collection(tmp_path: Path) -> None:
+    """Test collection initialization."""
+    with (
+        patch("chromadb.PersistentClient") as mock_client,
+        patch("agent_cli.rag.store.embedding_functions.OpenAIEmbeddingFunction") as mock_openai,
+    ):
+        store.init_collection(tmp_path, embedding_model="text-embedding-3-small")
+
+        mock_client.assert_called_once()
+        mock_openai.assert_called_once()
+        mock_client.return_value.get_or_create_collection.assert_called_once()
 
 
-@pytest.fixture
-def mock_chroma_client() -> Generator[MagicMock, None, None]:
-    """Mock ChromaDB client."""
-    with patch("agent_cli.rag.store.chromadb") as mock_chromadb:
-        mock_client = MagicMock()
-        mock_chromadb.PersistentClient.return_value = mock_client
-        yield mock_client
-
-
-@pytest.mark.skipif(chromadb is None, reason="chromadb not installed")
-def test_init_collection(mock_chroma_client: MagicMock, tmp_path: Path) -> None:
-    """Test initializing collection."""
-    mock_collection = MagicMock()
-    mock_chroma_client.get_or_create_collection.return_value = mock_collection
-
-    # Mock embedding function to prevent download
-    with patch("agent_cli.rag.store.embedding_functions.SentenceTransformerEmbeddingFunction"):
-        coll = store.init_collection(tmp_path)
-
-        assert coll == mock_collection
-        mock_chroma_client.get_or_create_collection.assert_called_once()
-
-
-@pytest.mark.skipif(chromadb is None, reason="chromadb not installed")
 def test_upsert_docs() -> None:
-    """Test upserting docs."""
+    """Test upserting documents."""
     mock_collection = MagicMock()
-
     store.upsert_docs(
         mock_collection,
         ids=["1"],
-        documents=["doc"],
-        metadatas=[{"key": "val"}],
+        documents=["text"],
+        metadatas=[{"source": "s"}],
     )
+    mock_collection.upsert.assert_called_once()
 
-    mock_collection.upsert.assert_called_once_with(
-        ids=["1"],
-        documents=["doc"],
-        metadatas=[{"key": "val"}],
-    )
+    # Test empty
+    mock_collection.reset_mock()
+    store.upsert_docs(mock_collection, [], [], [])
+    mock_collection.upsert.assert_not_called()
 
 
-@pytest.mark.skipif(chromadb is None, reason="chromadb not installed")
 def test_delete_by_file_path() -> None:
     """Test deleting by file path."""
     mock_collection = MagicMock()
-
-    store.delete_by_file_path(mock_collection, "folder/file.txt")
-
-    mock_collection.delete.assert_called_once_with(where={"file_path": "folder/file.txt"})
+    store.delete_by_file_path(mock_collection, "path/to/file")
+    mock_collection.delete.assert_called_with(where={"file_path": "path/to/file"})

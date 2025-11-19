@@ -35,10 +35,12 @@ server = [
 rag = [
     "fastapi[standard]",
     "chromadb>=0.4.22",
-    "sentence-transformers>=2.3.1",
     "watchfiles>=0.21.0",
     "pypdf>=4.0.1",
     "python-docx>=1.1.0",
+    "onnxruntime>=1.17.0",
+    "huggingface-hub>=0.20.0",
+    "transformers>=4.30.0",
 ]
 test = [
     "pytest>=7.0.0",

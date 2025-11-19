@@ -16,7 +16,8 @@ has_fastapi = find_spec("fastapi") is not None
 has_uvicorn = find_spec("uvicorn") is not None
 has_chromadb = find_spec("chromadb") is not None
 has_watchfiles = find_spec("watchfiles") is not None
-has_sentence_transformers = find_spec("sentence_transformers") is not None
+has_onnxruntime = find_spec("onnxruntime") is not None
+has_transformers = find_spec("transformers") is not None
 
 
 @app.command("rag-server")
@@ -33,13 +34,9 @@ def rag_server(
         "http://localhost:8080/v1",
         help="URL of the OpenAI-compatible backend server (e.g. llama.cpp, Ollama)",
     ),
-    embedding_provider: str = typer.Option(
-        "local",
-        help="Embedding provider ('local' for SentenceTransformers, 'openai' for OpenAI-compatible endpoint).",
-    ),
     embedding_model: str = typer.Option(
-        "all-MiniLM-L6-v2",
-        help="Embedding model name. For 'local', a SentenceTransformer model. For 'openai', the model ID on the server.",
+        "text-embedding-3-small",
+        help="Embedding model name (e.g. 'text-embedding-3-small' for OpenAI).",
     ),
     embedding_api_key: str | None = typer.Option(
         None,
@@ -64,7 +61,8 @@ def rag_server(
         and has_uvicorn
         and has_chromadb
         and has_watchfiles
-        and has_sentence_transformers
+        and has_onnxruntime
+        and has_transformers
     ):
         msg = "RAG dependencies are not installed. Please install with `pip install agent-cli[rag]` or `uv sync --extra rag`."
         print_error_message(msg)
@@ -96,7 +94,7 @@ def rag_server(
     console.print(f"  💾 DB: [blue]{chroma_path}[/blue]")
     console.print(f"  🤖 Backend: [blue]{openai_base_url}[/blue]")
     console.print(
-        f"  🧠 Embeddings: [blue]{embedding_provider}[/blue] using [blue]{embedding_model}[/blue]",
+        f"  🧠 Embeddings: Using [blue]{embedding_model}[/blue]",
     )
     console.print(f"  🔍 Limit: [blue]{limit}[/blue] chunks per query")
 
@@ -104,7 +102,6 @@ def rag_server(
         docs_folder,
         chroma_path,
         openai_base_url,
-        embedding_provider,
         embedding_model,
         embedding_api_key,
         limit,

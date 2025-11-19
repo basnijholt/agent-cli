@@ -28,8 +28,7 @@ def create_app(
     docs_folder: Path,
     chroma_path: Path,
     openai_base_url: str,
-    embedding_provider: str = "local",
-    embedding_model: str = "all-MiniLM-L6-v2",
+    embedding_model: str = "text-embedding-3-small",
     embedding_api_key: str | None = None,
     limit: int = 3,
 ) -> FastAPI:
@@ -40,7 +39,6 @@ def create_app(
     logger.info("Loading vector database (ChromaDB)...")
     collection = init_collection(
         chroma_path,
-        embedding_provider=embedding_provider,
         embedding_model=embedding_model,
         openai_base_url=openai_base_url,
         openai_api_key=embedding_api_key,
@@ -136,7 +134,6 @@ def create_app(
             "status": "ok",
             "rag_docs": str(docs_folder),
             "openai_base_url": openai_base_url,
-            "embedding_provider": embedding_provider,
             "embedding_model": embedding_model,
             "limit": str(limit),
         }
