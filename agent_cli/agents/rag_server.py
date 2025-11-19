@@ -33,11 +33,7 @@ def rag_server(
         help="Path to ChromaDB persistence directory",
         rich_help_panel="RAG Configuration",
     ),
-    openai_base_url: str = typer.Option(
-        "http://localhost:8080/v1",
-        help="URL of the OpenAI-compatible backend server (e.g. llama.cpp, Ollama)",
-        rich_help_panel="Backend Configuration",
-    ),
+    openai_base_url: str | None = opts.OPENAI_BASE_URL,
     embedding_model: str = typer.Option(
         "text-embedding-3-small",
         help="Embedding model name (e.g. 'text-embedding-3-small' for OpenAI).",
@@ -103,6 +99,8 @@ def rag_server(
 
     docs_folder = docs_folder.resolve()
     chroma_path = chroma_path.resolve()
+    if openai_base_url is None:
+        openai_base_url = "https://api.openai.com/v1"
 
     console.print(f"[bold green]Starting RAG Server on {host}:{port}[/bold green]")
     console.print(f"  📂 Docs: [blue]{docs_folder}[/blue]")
