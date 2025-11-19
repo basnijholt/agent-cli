@@ -1275,10 +1275,6 @@ agent-cli rag-server \
 │                                       [default: text-embedding-3-small]      │
 │ --embedding-api-key          TEXT     API Key for embedding model (if using  │
 │                                       'openai' provider).                    │
-│ --openai-api-key             TEXT     Your OpenAI API key. Can also be set   │
-│                                       with the OPENAI_API_KEY environment    │
-│                                       variable.                              │
-│                                       [env var: OPENAI_API_KEY]              │
 │ --limit                      INTEGER  Number of document chunks to retrieve  │
 │                                       per query.                             │
 │                                       [default: 3]                           │
@@ -1286,6 +1282,11 @@ agent-cli rag-server \
 │ --port                       INTEGER  Port to bind to [default: 8000]        │
 │ --log-level                  TEXT     Logging level [default: INFO]          │
 │ --help               -h               Show this message and exit.            │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ LLM Configuration: OpenAI ──────────────────────────────────────────────────╮
+│ --openai-api-key        TEXT  Your OpenAI API key. Can also be set with the  │
+│                               OPENAI_API_KEY environment variable.           │
+│                               [env var: OPENAI_API_KEY]                      │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 
 ```
