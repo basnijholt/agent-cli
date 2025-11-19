@@ -11,7 +11,7 @@ from rich.console import Console
 
 console = Console()
 
-RAG_PORT = 8000
+RAG_PORT = 8001
 LLAMA_URL = "http://localhost:9292"  # User provided
 DOCS_FOLDER = Path("./temp_rag_docs")
 DB_FOLDER = Path("./temp_rag_db")
@@ -29,27 +29,28 @@ async def main() -> None:  # noqa: C901, PLR0912, PLR0915
 
     console.print("[bold blue]Starting RAG Integration Test[/bold blue]")
 
+    llm_available = False
     # Check if LLM is running
     async with httpx.AsyncClient() as client:
         try:
             resp = await client.get(f"{LLAMA_URL}/health")
-            if resp.status_code != 200:  # noqa: PLR2004
+            if resp.status_code == 200:  # noqa: PLR2004
+                llm_available = True
+                console.print(f"[green]LLM Server found at {LLAMA_URL}.[/green]")
+            else:
                 console.print(
-                    f"[bold red]LLM Server at {LLAMA_URL} returned {resp.status_code}.[/bold red]",
+                    f"[yellow]LLM Server at {LLAMA_URL} returned {resp.status_code}. Skipping query tests.[/yellow]",
                 )
-                # Proceed anyway, maybe it doesn't have health endpoint
-        except Exception as e:
+        except Exception:
             console.print(
-                f"[bold red]Could not connect to LLM Server at {LLAMA_URL}: {e}[/bold red]",
+                f"[yellow]Could not connect to LLM Server at {LLAMA_URL}. Skipping query tests.[/yellow]",
             )
-            console.print("[yellow]Please ensure llama-server is running on port 9292.[/yellow]")
-            sys.exit(1)
 
     # Start RAG Server
     cmd = [
         sys.executable,
         "-m",
-        "agent_cli.cli",
+        "agent_cli",
         "rag-server",
         "--docs-folder",
         str(DOCS_FOLDER),
@@ -62,10 +63,14 @@ async def main() -> None:  # noqa: C901, PLR0912, PLR0915
     ]
 
     console.print(f"Running: {' '.join(cmd)}")
+
+    stdout_file = Path("rag_server_stdout.log").open("w")  # noqa: SIM115, ASYNC230
+    stderr_file = Path("rag_server_stderr.log").open("w")  # noqa: SIM115, ASYNC230
+
     proc = await asyncio.create_subprocess_exec(
         *cmd,
-        stdout=asyncio.subprocess.PIPE,
-        stderr=asyncio.subprocess.PIPE,
+        stdout=stdout_file,
+        stderr=stderr_file,
     )
 
     try:
@@ -76,7 +81,7 @@ async def main() -> None:  # noqa: C901, PLR0912, PLR0915
         server_up = False
         for _ in range(20):
             try:
-                async with httpx.AsyncClient() as client:
+                async with httpx.AsyncClient(timeout=2.0) as client:
                     resp = await client.get(f"{rag_url}/health")
                     if resp.status_code == 200:  # noqa: PLR2004
                         server_up = True
@@ -86,6 +91,10 @@ async def main() -> None:  # noqa: C901, PLR0912, PLR0915
 
         if not server_up:
             console.print("[bold red]RAG Server failed to start.[/bold red]")
+            stdout_file.close()
+            stderr_file.close()
+            console.print(f"Stdout: {Path('rag_server_stdout.log').read_text()}")
+            console.print(f"Stderr: {Path('rag_server_stderr.log').read_text()}")
             sys.exit(1)
 
         console.print("[green]RAG Server is up![/green]")
@@ -100,7 +109,7 @@ async def main() -> None:  # noqa: C901, PLR0912, PLR0915
         console.print("Waiting for indexing...")
         indexed = False
         for _ in range(20):
-            async with httpx.AsyncClient() as client:
+            async with httpx.AsyncClient(timeout=2.0) as client:
                 resp = await client.get(f"{rag_url}/files")
                 data = resp.json()
                 if data["total"] > 0:
@@ -110,39 +119,62 @@ async def main() -> None:  # noqa: C901, PLR0912, PLR0915
 
         if not indexed:
             console.print("[bold red]File was not indexed.[/bold red]")
+            stdout_file.close()
+            stderr_file.close()
+            console.print(f"Stdout: {Path('rag_server_stdout.log').read_text()}")
+            console.print(f"Stderr: {Path('rag_server_stderr.log').read_text()}")
             sys.exit(1)
 
         console.print("[green]File indexed![/green]")
 
-        # Query
-        query = "What is the secret code for the vault?"
-        console.print(f"Querying: '{query}'")
+        if llm_available:
+            # Fetch available models
+            model_name = "gpt-3.5-turbo"
+            try:
+                async with httpx.AsyncClient() as client:
+                    resp = await client.get(f"{LLAMA_URL}/v1/models")
+                    if resp.status_code == 200:  # noqa: PLR2004
+                        models = resp.json()["data"]
+                        if models:
+                            model_name = models[0]["id"]
+                            console.print(f"[blue]Using model: {model_name}[/blue]")
+            except Exception:
+                console.print(
+                    "[yellow]Could not fetch models, defaulting to gpt-3.5-turbo[/yellow]",
+                )
 
-        payload = {
-            "model": "gpt-3.5-turbo",  # Generic model name, llama.cpp ignores it often or maps it
-            "messages": [{"role": "user", "content": query}],
-            "rag_top_k": 1,
-        }
+            # Query
+            query = "What is the secret code for the vault?"
+            console.print(f"Querying: '{query}'")
 
-        async with httpx.AsyncClient(timeout=60.0) as client:
-            resp = await client.post(f"{rag_url}/v1/chat/completions", json=payload)
+            payload = {
+                "model": model_name,
+                "messages": [{"role": "user", "content": query}],
+                "rag_top_k": 1,
+            }
+            async with httpx.AsyncClient(timeout=60.0) as client:
+                resp = await client.post(f"{rag_url}/v1/chat/completions", json=payload)
 
-        if resp.status_code != 200:  # noqa: PLR2004
-            console.print(f"[bold red]Query failed: {resp.text}[/bold red]")
-            sys.exit(1)
+            if resp.status_code != 200:  # noqa: PLR2004
+                console.print(f"[bold red]Query failed: {resp.text}[/bold red]")
+                sys.exit(1)
 
-        result = resp.json()
-        answer = result["choices"][0]["message"]["content"]
-        console.print(f"[bold cyan]Answer:[/bold cyan] {answer}")
+            result = resp.json()
+            answer = result["choices"][0]["message"]["content"]
+            console.print(f"[bold cyan]Answer:[/bold cyan] {answer}")
 
-        if "BlueBananas123" in answer:
-            console.print("[bold green]SUCCESS: Secret code found in answer![/bold green]")
+            if "BlueBananas123" in answer:
+                console.print("[bold green]SUCCESS: Secret code found in answer![/bold green]")
+            else:
+                console.print(
+                    "[bold yellow]WARNING: Secret code NOT found in answer. Check retrieval or LLM capability.[/bold yellow]",
+                )
+                if "rag_sources" in result:
+                    console.print(f"Sources: {result['rag_sources']}")
         else:
             console.print(
-                "[bold yellow]WARNING: Secret code NOT found in answer. Check retrieval or LLM capability.[/bold yellow]",
+                "[blue]Skipping query test (LLM not available). Indexing verification successful.[/blue]",
             )
-            if "rag_sources" in result:
-                console.print(f"Sources: {result['rag_sources']}")
 
     finally:
         console.print("Shutting down RAG server...")
@@ -153,11 +185,17 @@ async def main() -> None:  # noqa: C901, PLR0912, PLR0915
             except TimeoutError:
                 proc.kill()
 
+        stdout_file.close()
+        stderr_file.close()
+
         # Cleanup
         if DOCS_FOLDER.exists():
             shutil.rmtree(DOCS_FOLDER)
         if DB_FOLDER.exists():
             shutil.rmtree(DB_FOLDER)
+
+        Path("rag_server_stdout.log").unlink(missing_ok=True)
+        Path("rag_server_stderr.log").unlink(missing_ok=True)
 
 
 if __name__ == "__main__":

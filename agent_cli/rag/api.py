@@ -13,13 +13,14 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from agent_cli.rag.engine import initial_index, load_hashes_from_metadata, process_chat_request
 from agent_cli.rag.indexer import watch_docs
+from agent_cli.rag.models import ChatRequest  # noqa: TC001
 from agent_cli.rag.retriever import get_reranker_model
 from agent_cli.rag.store import get_all_metadata, init_collection
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from agent_cli.rag.models import ChatRequest
+    # ChatRequest removed from here
 
 logger = logging.getLogger("agent_cli.rag.api")
 

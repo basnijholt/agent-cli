@@ -55,6 +55,9 @@ def rag_server(
 
     from agent_cli.rag.api import create_app  # noqa: PLC0415
 
+    docs_folder = docs_folder.resolve()
+    chroma_path = chroma_path.resolve()
+
     console.print(f"[bold green]Starting RAG Server on {host}:{port}[/bold green]")
     console.print(f"  📂 Docs: [blue]{docs_folder}[/blue]")
     console.print(f"  💾 DB: [blue]{chroma_path}[/blue]")
