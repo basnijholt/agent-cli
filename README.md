@@ -1279,18 +1279,18 @@ agent-cli rag-server \
 │                               query.                                         │
 │                               [default: 3]                                   │
 ╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ LLM Configuration: OpenAI ──────────────────────────────────────────────────╮
+│ --openai-base-url        TEXT  Custom base URL for OpenAI-compatible API     │
+│                                (e.g., for llama-server:                      │
+│                                http://localhost:8080/v1).                    │
+│ --openai-api-key         TEXT  Your OpenAI API key. Can also be set with the │
+│                                OPENAI_API_KEY environment variable.          │
+│                                [env var: OPENAI_API_KEY]                     │
+╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Backend Configuration ──────────────────────────────────────────────────────╮
-│ --openai-base-url        TEXT  URL of the OpenAI-compatible backend server   │
-│                                (e.g. llama.cpp, Ollama)                      │
-│                                [default: http://localhost:8080/v1]           │
 │ --embedding-model        TEXT  Embedding model name (e.g.                    │
 │                                'text-embedding-3-small' for OpenAI).         │
 │                                [default: text-embedding-3-small]             │
-╰──────────────────────────────────────────────────────────────────────────────╯
-╭─ LLM Configuration: OpenAI ──────────────────────────────────────────────────╮
-│ --openai-api-key        TEXT  Your OpenAI API key. Can also be set with the  │
-│                               OPENAI_API_KEY environment variable.           │
-│                               [env var: OPENAI_API_KEY]                      │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Server Configuration ───────────────────────────────────────────────────────╮
 │ --host        TEXT     Host to bind to [default: 0.0.0.0]                    │
