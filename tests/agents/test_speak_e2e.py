@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -30,7 +31,7 @@ async def test_speak_e2e(
 
     # Setup device info (input_index, input_name, output_index)
     mock_setup_devices.return_value = (None, None, 0)
-    mock_setup_output_stream.return_value = {"dtype": "int16"}
+    mock_setup_output_stream.return_value = SimpleNamespace(dtype="int16")
 
     # Setup mock Wyoming client
     mock_tts_client = MockTTSClient(b"fake audio data")
