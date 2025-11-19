@@ -20,7 +20,7 @@ class ChatRequest(BaseModel):
     temperature: float | None = 0.7
     max_tokens: int | None = 1000
     stream: bool | None = False
-    rag_top_k: int | None = 3
+    rag_top_k: int | None = None
 
 
 class DocMetadata(BaseModel):

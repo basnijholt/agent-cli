@@ -40,7 +40,8 @@ def search_context(
     """Retrieve relevant context for a query using hybrid search."""
     try:
         # Initial retrieval - fetch more candidates for reranking
-        n_candidates = min(top_k * 3, 20)
+        # Fetch 3x requested docs to have a good pool for reranking
+        n_candidates = top_k * 3
         results = query_docs(collection, query, n_results=n_candidates)
 
         if not results["documents"] or not results["documents"][0]:
