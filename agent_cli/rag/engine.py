@@ -112,7 +112,7 @@ async def _forward_request(
                     ) as response,
                 ):
                     if response.status_code != 200:  # noqa: PLR2004
-                        error_text = await response.read()
+                        error_text = await response.aread()
                         yield f"data: {json.dumps({'error': str(error_text)})}\n\n"
                         return
 
