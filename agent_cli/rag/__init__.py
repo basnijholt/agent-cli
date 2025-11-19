@@ -7,8 +7,7 @@ from importlib.util import find_spec
 _REQUIRED_DEPS = {
     "chromadb": "chromadb",
     "watchfiles": "watchfiles",
-    "pypdf": "pypdf",
-    "docx": "python-docx",
+    "markitdown": "markitdown",
     "fastapi": "fastapi",
     "uvicorn": "uvicorn",
     "onnxruntime": "onnxruntime",
