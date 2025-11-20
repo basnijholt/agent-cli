@@ -37,6 +37,7 @@ logger = logging.getLogger("agent_cli.memory.engine")
 
 _DEFAULT_MAX_ENTRIES = 500
 _SUMMARY_DOC_ID_SUFFIX = "::summary"
+_MMR_LAMBDA = 0.7
 
 
 def _retrieve_memory(
@@ -74,6 +75,23 @@ def _retrieve_memory(
         age_days = max((datetime.now(UTC) - dt).total_seconds() / 86400.0, 0.0)
         return 1.0 / (1.0 + age_days / 7.0)
 
+    def salience_boost(meta: Any) -> float:
+        sal = getattr(meta, "salience", None)
+        if sal is None:
+            return 0.0
+        try:
+            return float(sal)
+        except Exception:
+            return 0.0
+
+    def tag_overlap_boost(meta: Any, query_text: str) -> float:
+        query_tags = _extract_tags_from_text(query_text)
+        meta_tags = set(getattr(meta, "tags", []) or [])
+        if not query_tags or not meta_tags:
+            return 0.0
+        overlap = len(query_tags & meta_tags)
+        return min(overlap, 3) * 0.1
+
     scores: list[float] = []
     if candidates:
         pairs = [(query, mem.content) for mem in candidates]
@@ -81,19 +99,26 @@ def _retrieve_memory(
         for mem, rr in zip(candidates, rr_scores, strict=False):
             base = rr
             dist_bonus = 0.0 if mem.distance is None else 1.0 / (1.0 + mem.distance)
-            total = base + 0.1 * dist_bonus + 0.2 * recency_boost(mem.metadata)
+            total = (
+                base
+                + 0.1 * dist_bonus
+                + 0.2 * recency_boost(mem.metadata)
+                + 0.1 * salience_boost(mem.metadata)
+                + tag_overlap_boost(mem.metadata, query)
+            )
             scores.append(total)
     else:
         for mem in candidates:
             base = 0.0 if mem.distance is None else 1.0 / (1.0 + mem.distance)
-            total = base + 0.2 * recency_boost(mem.metadata)
+            total = (
+                base
+                + 0.2 * recency_boost(mem.metadata)
+                + 0.1 * salience_boost(mem.metadata)
+                + tag_overlap_boost(mem.metadata, query)
+            )
             scores.append(total)
 
-    ranked = sorted(
-        zip(candidates, scores, strict=False),
-        key=lambda x: x[1],
-        reverse=True,
-    )[:top_k]
+    selected = _mmr_select(candidates, scores, max_items=top_k, lambda_mult=_MMR_LAMBDA)
 
     entries: list[MemoryEntry] = [
         MemoryEntry(
@@ -102,7 +127,7 @@ def _retrieve_memory(
             created_at=mem.metadata.created_at,
             score=score,
         )
-        for mem, score in ranked
+        for mem, score in selected
     ]
 
     summary_text: str | None = None
@@ -184,7 +209,7 @@ def _persist_entries(
     collection: Collection,
     *,
     conversation_id: str,
-    entries: list[tuple[str, str] | None],  # list of (role, content)
+    entries: list[tuple[str, str, dict[str, Any]] | None],  # list of (role, content, meta extras)
 ) -> None:
     now = datetime.now(UTC).isoformat()
     ids: list[str] = []
@@ -193,7 +218,7 @@ def _persist_entries(
     for item in entries:
         if item is None:
             continue
-        role, content = item
+        role, content, extras = item
         ids.append(str(uuid4()))
         contents.append(content)
         metadatas.append(
@@ -201,6 +226,7 @@ def _persist_entries(
                 "conversation_id": conversation_id,
                 "role": role,
                 "created_at": now,
+                **_flatten_meta(extras),
             },
         )
     if ids:
@@ -251,6 +277,92 @@ def _parse_bullets(text: str) -> list[str]:
         if line:
             lines.append(line)
     return lines
+
+
+def _extract_tags_from_text(text: str, *, max_tags: int = 5) -> set[str]:
+    """Heuristic tag extraction from text (alpha tokens length>=4)."""
+    tokens = []
+    for raw in text.split():
+        cleaned = "".join(ch for ch in raw.lower() if ch.isalpha())
+        if len(cleaned) >= 4:  # noqa: PLR2004
+            tokens.append(cleaned)
+    unique = []
+    seen = set()
+    for t in tokens:
+        if t not in seen:
+            unique.append(t)
+            seen.add(t)
+        if len(unique) >= max_tags:
+            break
+    return set(unique)
+
+
+def _token_overlap_similarity(a: str, b: str) -> float:
+    """Simple token overlap similarity for MMR."""
+    ta = set(a.lower().split())
+    tb = set(b.lower().split())
+    if not ta or not tb:
+        return 0.0
+    return len(ta & tb) / max(len(ta), len(tb))
+
+
+def _flatten_meta(extras: dict[str, Any]) -> dict[str, Any]:
+    """Flatten metadata values to types accepted by Chroma."""
+    flat: dict[str, Any] = {}
+    for k, v in extras.items():
+        if v is None:
+            flat[k] = None
+        elif isinstance(v, (str, int, float, bool)):
+            flat[k] = v
+        elif isinstance(v, (list, tuple)):
+            # Store lists (e.g., tags) as comma-separated strings
+            flat[k] = ",".join(str(item) for item in v)
+        else:
+            flat[k] = str(v)
+    return flat
+
+
+def _mmr_select(
+    candidates: list[StoredMemory],
+    scores: list[float],
+    *,
+    max_items: int,
+    lambda_mult: float,
+) -> list[tuple[StoredMemory, float]]:
+    """Apply Maximal Marginal Relevance to promote diversity."""
+    if not candidates or max_items <= 0:
+        return []
+
+    selected: list[int] = []
+    candidate_indices = list(range(len(candidates)))
+
+    # Start with top scorer
+    first_idx = max(candidate_indices, key=lambda i: scores[i])
+    selected.append(first_idx)
+    candidate_indices.remove(first_idx)
+
+    while candidate_indices and len(selected) < max_items:
+        best_idx = None
+        best_score = float("-inf")
+        for idx in candidate_indices:
+            relevance = scores[idx]
+            redundancy = max(
+                (
+                    _token_overlap_similarity(candidates[idx].content, candidates[s].content)
+                    for s in selected
+                ),
+                default=0.0,
+            )
+            mmr_score = lambda_mult * relevance - (1 - lambda_mult) * redundancy
+            if mmr_score > best_score:
+                best_score = mmr_score
+                best_idx = idx
+        if best_idx is None:
+            break
+        selected.append(best_idx)
+        candidate_indices.remove(best_idx)
+
+    return [(candidates[i], scores[i]) for i in selected]
 
 
 async def _extract_salient_facts(
@@ -396,8 +508,14 @@ async def process_chat_request(
             collection,
             conversation_id=conversation_id,
             entries=[
-                ("user", user_message) if user_message else None,
-                ("assistant", assistant_message) if assistant_message else None,
+                ("user", user_message, {"salience": None, "tags": None}) if user_message else None,
+                (
+                    "assistant",
+                    assistant_message,
+                    {"salience": None, "tags": None},
+                )
+                if assistant_message
+                else None,
             ],
         )
 
@@ -412,17 +530,24 @@ async def process_chat_request(
                 model=request.model,
             )
             if facts:
+                fact_entries: list[tuple[str, str, dict[str, Any]]] = [
+                    (
+                        "memory",
+                        fact,
+                        {
+                            "salience": 1.0,
+                            "tags": list(_extract_tags_from_text(fact)),
+                        },
+                    )
+                    for fact in facts
+                ]
                 _persist_entries(
                     collection,
                     conversation_id=conversation_id,
-                    entries=[("memory", fact) for fact in facts],
+                    entries=list(fact_entries),
                 )
                 prior_summary_entry = get_summary_entry(collection, conversation_id)
-                prior_summary = (
-                    str(prior_summary_entry["document"])
-                    if prior_summary_entry and prior_summary_entry.get("document")
-                    else None
-                )
+                prior_summary = prior_summary_entry.content if prior_summary_entry else None
                 new_summary = await _update_summary(
                     prior_summary=prior_summary,
                     new_facts=facts,

@@ -49,7 +49,6 @@ memory = [
     { name = "huggingface-hub" },
     { name = "onnxruntime" },
     { name = "transformers" },
-    { name = "uvicorn" },
 ]
 rag = [
     { name = "chromadb" },
@@ -128,7 +127,6 @@ requires-dist = [
     { name = "transformers", marker = "extra == 'memory'", specifier = ">=4.30.0" },
     { name = "transformers", marker = "extra == 'rag'", specifier = ">=4.30.0" },
     { name = "typer" },
-    { name = "uvicorn", marker = "extra == 'memory'" },
     { name = "versioningit", marker = "extra == 'dev'" },
     { name = "watchfiles", marker = "extra == 'rag'", specifier = ">=0.21.0" },
     { name = "wyoming" },

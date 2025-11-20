@@ -64,11 +64,12 @@ def query_memories(
     distances = raw.get("distances", [[]])[0] or []
     records: list[StoredMemory] = []
     for doc, meta, doc_id, dist in zip(docs, metas, ids, distances, strict=False):
+        norm_meta = _normalize_meta(meta)
         records.append(
             StoredMemory(
                 id=str(doc_id) if doc_id is not None else None,
                 content=str(doc),
-                metadata=MemoryMetadata(**meta),
+                metadata=MemoryMetadata(**norm_meta),
                 distance=float(dist) if dist is not None else None,
             ),
         )
@@ -90,10 +91,11 @@ def get_summary_entry(collection: Collection, conversation_id: str) -> StoredMem
     if not doc_list or not meta_list:
         return None
 
+    meta = _normalize_meta(meta_list[0])
     return StoredMemory(
         id=str(ids[0]) if ids else None,
         content=str(doc_list[0]),
-        metadata=MemoryMetadata(**meta_list[0]),
+        metadata=MemoryMetadata(**meta),
         distance=None,
     )
 
@@ -118,11 +120,12 @@ def list_conversation_entries(
 
     records: list[StoredMemory] = []
     for doc, meta, entry_id in zip(doc_list, meta_list, ids, strict=False):
+        norm_meta = _normalize_meta(meta)
         records.append(
             StoredMemory(
                 id=str(entry_id) if entry_id is not None else None,
                 content=str(doc),
-                metadata=MemoryMetadata(**meta),
+                metadata=MemoryMetadata(**norm_meta),
                 distance=None,
             ),
         )
@@ -133,3 +136,12 @@ def delete_entries(collection: Collection, ids: list[str]) -> None:
     """Delete entries by ID."""
     if ids:
         collection.delete(ids=ids)
+
+
+def _normalize_meta(meta: dict[str, Any]) -> dict[str, Any]:
+    """Normalize metadata fields (e.g., tags as list)."""
+    normalized = dict(meta)
+    tags = normalized.get("tags")
+    if isinstance(tags, str):
+        normalized["tags"] = [t.strip() for t in tags.split(",") if t.strip()]
+    return normalized
