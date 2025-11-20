@@ -52,10 +52,15 @@ def query_memories(
     n_results: int,
 ) -> list[StoredMemory]:
     """Query for relevant memory entries and return structured results."""
+    filters = [
+        {"conversation_id": conversation_id},
+        {"role": {"$ne": "summary_short"}},
+        {"role": {"$ne": "summary_long"}},
+    ]
     raw = collection.query(
         query_texts=[text],
         n_results=n_results,
-        where={"conversation_id": conversation_id},
+        where={"$and": filters},
     )
     docs = raw.get("documents", [[]])[0] or []
     metas = raw.get("metadatas", [[]])[0] or []

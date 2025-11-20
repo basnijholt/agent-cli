@@ -55,6 +55,51 @@ def test_query_memories_normalizes_tags_and_ids() -> None:
     assert records[0].metadata.tags == ["a", "b"]
 
 
+def test_query_memories_skips_summary_entries_and_filters_roles() -> None:
+    class _FilterAwareFakeCollection(_FakeCollection):
+        def __init__(self) -> None:
+            super().__init__()
+            self.last_where: Any | None = None
+
+        def query(self, **kwargs: Any) -> dict[str, Any]:
+            self.last_where = kwargs.get("where")
+            memory_meta = {"conversation_id": "c1", "role": "memory", "created_at": "now"}
+            summary_meta = {"conversation_id": "c1", "role": "summary_short", "created_at": "now"}
+
+            filters = kwargs.get("where") or {}
+            exclude_summary = False
+            if isinstance(filters, dict) and "$and" in filters:
+                for clause in filters["$and"]:
+                    if isinstance(clause, dict):
+                        role_clause = clause.get("role")
+                        if role_clause in ({"$ne": "summary_short"}, {"$ne": "summary_long"}):
+                            exclude_summary = True
+
+            if exclude_summary:
+                return {
+                    "documents": [["memory doc"]],
+                    "metadatas": [[memory_meta]],
+                    "ids": [["m1"]],
+                    "distances": [[0.1]],
+                }
+
+            return {
+                "documents": [["memory doc", "summary doc"]],
+                "metadatas": [[memory_meta, summary_meta]],
+                "ids": [["m1", "s1"]],
+                "distances": [[0.1, 0.2]],
+            }
+
+    fake = _FilterAwareFakeCollection()
+    records = store.query_memories(fake, conversation_id="c1", text="hello", n_results=2)
+
+    assert all(mem.metadata.role != "summary_short" for mem in records)
+    assert fake.last_where is not None
+    clauses = fake.last_where.get("$and", [])
+    assert {"role": {"$ne": "summary_short"}} in clauses
+    assert {"role": {"$ne": "summary_long"}} in clauses
+
+
 def test_get_summary_entry_handles_nested_lists() -> None:
     fake = _FakeCollection(
         get_result={
