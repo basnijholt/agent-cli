@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from time import perf_counter
@@ -20,6 +21,7 @@ from agent_cli.core.openai_proxy import forward_chat_request
 from agent_cli.memory.files import write_memory_file
 from agent_cli.memory.models import (
     ChatRequest,
+    FactTriple,
     MemoryEntry,
     MemoryExtras,
     MemoryMetadata,
@@ -70,6 +72,47 @@ def _parse_iso(date_str: str) -> datetime | None:
         return datetime.fromisoformat(date_str)
     except Exception:
         return None
+
+
+def _canonical_fact_key(text: str) -> str | None:
+    """Heuristic subject/predicate key to consolidate duplicate or conflicting facts."""
+    cleaned = re.sub(r"\s+", " ", text.strip()).strip(" .?!;")
+    if not cleaned:
+        return None
+    lowered = cleaned.lower()
+    separators = [
+        " is ",
+        " was ",
+        " are ",
+        " were ",
+        " has ",
+        " have ",
+        " likes ",
+        " loves ",
+    ]
+    for sep in separators:
+        if sep in lowered:
+            subject, rest = lowered.split(sep, 1)
+            subject = subject.strip()
+            predicate = rest.strip()
+            if subject and predicate:
+                return f"{subject}::{predicate}"
+    return lowered
+
+
+def _canonical_fact_key_from_triple(triple: FactTriple) -> str | None:
+    """Build a key from structured subject/predicate."""
+    subject = triple.subject.strip().lower()
+    predicate = triple.predicate.strip().lower()
+    if subject and predicate:
+        return f"{subject}::{predicate}"
+    return None
+
+
+def _triple_to_text(triple: FactTriple) -> str:
+    """Human-readable fact text from a triple."""
+    parts = [triple.subject, triple.predicate, triple.object or ""]
+    return " ".join(p for p in parts if p).strip()
 
 
 @dataclass
@@ -465,10 +508,10 @@ async def _extract_with_pydantic_ai(
         model=model_cfg,
         system_prompt=(
             "You are a memory extractor. From the latest exchange, extract 1-3 succinct facts "
-            "that are useful to remember for future turns. Return JSON list of objects with keys "
-            "subject, predicate, object (optional), and fact (string). "
-            "Do not include prose outside JSON."
+            "that are useful to remember for future turns. Return structured facts with fields: "
+            "subject, predicate, object (optional), and fact (string). Do not include prose outside JSON."
         ),
+        output_type=list[FactCandidate],
     )
     instructions = (
         "Keep facts atomic, enduring, and person-centered when possible. "
@@ -477,12 +520,12 @@ async def _extract_with_pydantic_ai(
     )
 
     try:
-        await agent.run(transcript, instructions=instructions)
+        result = await agent.run(transcript, instructions=instructions)
     except Exception:
         logger.exception("PydanticAI fact extraction failed")
         return []
 
-    return []
+    return result.output or []
 
 
 async def _update_summary(
