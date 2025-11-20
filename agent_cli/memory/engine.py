@@ -324,20 +324,17 @@ async def _chat_completion_request(
 ) -> str:
     """Call backend LLM for a one-shot completion and return content via PydanticAI."""
     provider = OpenAIProvider(api_key=api_key or "dummy", base_url=openai_base_url)
-    model_cfg = OpenAIModel(model_name=model, provider=provider)
-    agent = Agent(
-        model=model_cfg,
-        system_prompt="",
-        instructions=None,
+    model_cfg = OpenAIModel(
+        model_name=model,
+        provider=provider,
+        temperature=temperature,
+        max_output_tokens=max_tokens,
     )
-    # TODO: Does it need this format?
-    payload = {
-        "messages": messages,
-        "temperature": temperature,
-        "max_tokens": max_tokens,
-        "stream": False,
-    }
-    result = await agent.run(payload)
+    system_prompt = next((m["content"] for m in messages if m.get("role") == "system"), "")
+    user_parts = [m["content"] for m in messages if m.get("role") != "system"]
+    prompt_text = "\n\n".join(user_parts)
+    agent = Agent(model=model_cfg, system_prompt=system_prompt or None, instructions=None)
+    result = await agent.run(prompt_text)
     return str(result.output or "")
 
 

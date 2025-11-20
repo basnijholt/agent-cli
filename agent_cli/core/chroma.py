@@ -37,7 +37,7 @@ def init_collection(
 
 
 def flatten_metadatas(metadatas: Sequence[BaseModel]) -> list[dict[str, Any]]:
-    """Convert metadata objects to Chroma-friendly primitives."""
+    """Convert metadata objects to Chroma-friendly primitives (Chroma wants JSON-serializable values)."""
     flattened: list[dict[str, Any]] = []
     for meta in metadatas:
         raw = meta.model_dump() if isinstance(meta, BaseModel) else dict(meta)
