@@ -20,21 +20,28 @@ logger = logging.getLogger("agent_cli.rag.retriever")
 
 
 def _download_onnx_model(model_name: str, onnx_filename: str) -> str:
-    """Download the ONNX model, handling common subfolder layouts."""
-    candidates = (
-        [onnx_filename] if "/" in onnx_filename else [f"onnx/{onnx_filename}", onnx_filename]
-    )
-    last_error: Exception | None = None
+    """Download the ONNX model, favoring the common `onnx/` folder layout."""
+    if "/" in onnx_filename:
+        return hf_hub_download(repo_id=model_name, filename=onnx_filename)
 
-    for candidate in candidates:
+    try:
+        return hf_hub_download(repo_id=model_name, filename=onnx_filename, subfolder="onnx")
+    except Exception as first_error:
+        logger.debug(
+            "ONNX file not found under onnx/ for %s: %s. Falling back to repo root.",
+            model_name,
+            first_error,
+        )
         try:
-            return hf_hub_download(repo_id=model_name, filename=candidate)
-        except Exception as exc:
-            last_error = exc
-            logger.debug("Failed to download %s from %s: %s", candidate, model_name, exc)
-
-    logger.exception("Failed to download ONNX model %s", model_name, exc_info=last_error)
-    raise last_error or RuntimeError(f"Unable to download ONNX model for {model_name}")
+            return hf_hub_download(repo_id=model_name, filename=onnx_filename)
+        except Exception as second_error:
+            logger.exception(
+                "Failed to download ONNX model %s (filename=%s)",
+                model_name,
+                onnx_filename,
+                exc_info=second_error,
+            )
+            raise
 
 
 class OnnxCrossEncoder:
