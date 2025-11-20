@@ -37,11 +37,26 @@ Few-shot style:
 
 Rules:
 - Use lower_snake_case for subject and predicate; subject should be a stable anchor (e.g., user, user_spouse, project_alpha).
-- Return JSON objects with fields: subject, predicate, object (plain text), fact (short readable sentence).
+- Return JSON objects with fields:
+  - subject: stable anchor in lower_snake_case (e.g., user, user_spouse, project_alpha)
+  - predicate: relation in lower_snake_case (e.g., name, wife, location, job_title)
+  - object: plain text value
+  - fact: short readable sentence with the same information
 - Derive consistent subject/predicate so fact_key stays stable.
 - Language: detect the user language and emit facts in that language.
 - Use ONLY user messages; ignore assistant/system. Facts must be grounded in user content.
+- The `fact` field must be a concise natural sentence; never emit booleans/placeholders (true/false/none) or meta-text.
 - If no meaningful facts, return an empty list. Do not emit meta-facts like "no facts".
+
+Example JSON fact:
+[
+  {
+    "subject": "user",
+    "predicate": "wife_name",
+    "object": "Anne",
+    "fact": "The user's wife is Anne."
+  }
+]
 """.strip()
 
 FACT_INSTRUCTIONS = """
