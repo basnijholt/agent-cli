@@ -7,7 +7,7 @@ from typing import Any, Self
 
 import pytest
 
-from agent_cli.memory import engine
+from agent_cli.memory import engine, tasks
 from agent_cli.memory.models import ChatRequest, MemoryMetadata, Message, StoredMemory
 
 
@@ -278,7 +278,7 @@ async def test_process_chat_request_summarizes_and_persists(
         max_entries=10,
     )
 
-    await engine.wait_for_background_tasks()
+    await tasks.wait_for_background_tasks()
 
     files = list(tmp_path.glob("entries/**/*.md"))
     assert len(files) == 6  # user + assistant + 2 facts + 2 summaries
@@ -360,7 +360,7 @@ async def test_streaming_request_persists_user_and_assistant(
     assert b"Jane" in body
 
     # Allow background persistence task to run
-    await engine.wait_for_background_tasks()
+    await tasks.wait_for_background_tasks()
 
     files = list(tmp_path.glob("entries/**/*.md"))
     assert len(files) == 2  # user + assistant persisted for streaming, too

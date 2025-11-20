@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
 import json
 import logging
 from dataclasses import dataclass
@@ -33,10 +32,11 @@ from agent_cli.memory.store import (
     query_memories,
     upsert_memories,
 )
+from agent_cli.memory.tasks import run_in_background
 from agent_cli.rag.retriever import OnnxCrossEncoder, predict_relevance
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncGenerator, Coroutine, Mapping
+    from collections.abc import AsyncGenerator, Mapping
     from pathlib import Path
 
     from chromadb import Collection
@@ -49,7 +49,6 @@ _DEFAULT_MMR_LAMBDA = 0.7
 _DEFAULT_TAG_BOOST = 0.1
 _SUMMARY_SHORT_ROLE = "summary_short"
 _SUMMARY_LONG_ROLE = "summary_long"
-_BACKGROUND_TASKS: set[asyncio.Task[Any]] = set()
 
 
 def _safe_identifier(value: str) -> str:
@@ -61,40 +60,6 @@ def _safe_identifier(value: str) -> str:
 def _elapsed_ms(start: float) -> float:
     """Return elapsed milliseconds since start."""
     return (perf_counter() - start) * 1000
-
-
-def _track_background(task: asyncio.Task[Any], label: str) -> asyncio.Task[Any]:
-    """Track background tasks and surface failures."""
-    _BACKGROUND_TASKS.add(task)
-
-    def _done_callback(done: asyncio.Task[Any]) -> None:
-        _BACKGROUND_TASKS.discard(done)
-        if done.cancelled():
-            logger.debug("Background task %s cancelled", label)
-            return
-        exc = done.exception()
-        if exc:
-            logger.exception("Background task %s failed", label, exc_info=exc)
-
-    task.add_done_callback(_done_callback)
-    return task
-
-
-def _run_in_background(
-    coro: asyncio.Task[Any] | Coroutine[Any, Any, Any],
-    label: str,
-) -> asyncio.Task[Any]:
-    """Create and track a background asyncio task."""
-    task = coro if isinstance(coro, asyncio.Task) else asyncio.create_task(coro)
-    task.set_name(f"memory-{label}")
-    return _track_background(task, label)
-
-
-async def wait_for_background_tasks() -> None:
-    """Await any in-flight background tasks (used in tests)."""
-    while _BACKGROUND_TASKS:
-        tasks = list(_BACKGROUND_TASKS)
-        await asyncio.gather(*tasks, return_exceptions=False)
 
 
 @dataclass
@@ -826,7 +791,7 @@ async def _stream_and_persist_response(
                         )
             yield line + "\n\n"
         assistant_message = "".join(assistant_chunks).strip() or None
-        _run_in_background(
+        run_in_background(
             _persist_stream_result(assistant_message),
             label=f"stream-postprocess-{conversation_id}",
         )
@@ -940,7 +905,7 @@ async def process_chat_request(
         )
 
     if postprocess_in_background:
-        _run_in_background(
+        run_in_background(
             run_postprocess(),
             label=f"postprocess-{conversation_id}",
         )
