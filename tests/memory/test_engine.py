@@ -287,7 +287,8 @@ async def test_process_chat_request_summarizes_and_persists(
         return {"choices": [{"message": {"content": "assistant reply"}}]}
 
     monkeypatch.setattr(engine, "_forward_request", fake_forward_request)
-    async def fake_agent_run(self, prompt_text: str, *_args: Any, **_kwargs: Any) -> Any:
+
+    async def fake_agent_run(self, prompt_text: str, *_args: Any, **_kwargs: Any) -> Any:  # noqa: ANN001, ARG001
         class _Result:
             def __init__(self, output: str) -> None:
                 self.output = output

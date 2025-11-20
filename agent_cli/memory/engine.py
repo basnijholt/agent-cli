@@ -13,7 +13,7 @@ from uuid import uuid4
 import httpx
 from fastapi.responses import StreamingResponse
 from pydantic_ai import Agent
-from pydantic_ai.models.openai import OpenAIModel
+from pydantic_ai.models.openai import OpenAIChatModel
 from pydantic_ai.providers.openai import OpenAIProvider
 from pydantic_ai.settings import ModelSettings
 
@@ -421,7 +421,7 @@ async def _extract_with_pydantic_ai(
         api_key=api_key or "dummy",
         base_url=openai_base_url,
     )
-    model_cfg = OpenAIModel(model_name=model, provider=provider)
+    model_cfg = OpenAIChatModel(model_name=model, provider=provider)
     agent = Agent(
         model=model_cfg,
         system_prompt=(
@@ -474,7 +474,7 @@ async def _update_summary(
     user_parts.append("New facts:\n" + "\n".join(f"- {fact}" for fact in new_facts))
     prompt_text = "\n\n".join(user_parts)
     provider = OpenAIProvider(api_key=api_key or "dummy", base_url=openai_base_url)
-    model_cfg = OpenAIModel(
+    model_cfg = OpenAIChatModel(
         model_name=model,
         provider=provider,
         settings=ModelSettings(temperature=0.2, max_tokens=max_tokens),
