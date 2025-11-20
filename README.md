@@ -1228,6 +1228,7 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 
 **How to Use It:**
 
+- **Install RAG deps first**: `pip install "agent-cli[rag]"` (or, from the repo, `uv sync --extra rag`)
 - **Start Server (Local LLM)**: `agent-cli rag-server --docs-folder ~/Documents/Notes --openai-base-url http://localhost:11434/v1 --port 8000`
 - **Start Server (OpenAI)**: `agent-cli rag-server --docs-folder ~/Documents/Notes --openai-api-key sk-...`
 - **Use with Agent-CLI**: `agent-cli chat --openai-base-url http://localhost:8000/v1 --llm-provider openai`
