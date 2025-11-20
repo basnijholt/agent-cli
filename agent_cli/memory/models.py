@@ -45,6 +45,13 @@ class MemoryMetadata(BaseModel):
     tags: list[str] | None = None
 
 
+class MemoryExtras(BaseModel):
+    """Extras supplied when writing new memory entries."""
+
+    salience: float | None = None
+    tags: list[str] | None = None
+
+
 class StoredMemory(BaseModel):
     """Memory document as stored in the vector DB."""
 

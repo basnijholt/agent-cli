@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 from uuid import uuid4
@@ -15,6 +16,7 @@ from fastapi.responses import StreamingResponse
 from agent_cli.memory.models import (
     ChatRequest,
     MemoryEntry,
+    MemoryExtras,
     MemoryRetrieval,
     Message,
     StoredMemory,
@@ -38,6 +40,15 @@ logger = logging.getLogger("agent_cli.memory.engine")
 _DEFAULT_MAX_ENTRIES = 500
 _SUMMARY_DOC_ID_SUFFIX = "::summary"
 _MMR_LAMBDA = 0.7
+
+
+@dataclass
+class WriteEntry:
+    """Structured memory entry to persist."""
+
+    role: str
+    content: str
+    extras: MemoryExtras
 
 
 def _retrieve_memory(
@@ -65,9 +76,7 @@ def _retrieve_memory(
         candidates.extend(records)
 
     def recency_boost(meta: Any) -> float:
-        ts = getattr(meta, "created_at", None)
-        if not ts:
-            return 0.0
+        ts = meta.created_at
         try:
             dt = datetime.fromisoformat(str(ts))
         except Exception:
@@ -76,7 +85,7 @@ def _retrieve_memory(
         return 1.0 / (1.0 + age_days / 7.0)
 
     def salience_boost(meta: Any) -> float:
-        sal = getattr(meta, "salience", None)
+        sal = meta.salience
         if sal is None:
             return 0.0
         try:
@@ -86,7 +95,7 @@ def _retrieve_memory(
 
     def tag_overlap_boost(meta: Any, query_text: str) -> float:
         query_tags = _extract_tags_from_text(query_text)
-        meta_tags = set(getattr(meta, "tags", []) or [])
+        meta_tags = set(meta.tags or [])
         if not query_tags or not meta_tags:
             return 0.0
         overlap = len(query_tags & meta_tags)
@@ -209,7 +218,7 @@ def _persist_entries(
     collection: Collection,
     *,
     conversation_id: str,
-    entries: list[tuple[str, str, dict[str, Any]] | None],  # list of (role, content, meta extras)
+    entries: list[WriteEntry | None],
 ) -> None:
     now = datetime.now(UTC).isoformat()
     ids: list[str] = []
@@ -218,7 +227,7 @@ def _persist_entries(
     for item in entries:
         if item is None:
             continue
-        role, content, extras = item
+        role, content, extras = item.role, item.content, item.extras
         ids.append(str(uuid4()))
         contents.append(content)
         metadatas.append(
@@ -308,6 +317,8 @@ def _token_overlap_similarity(a: str, b: str) -> float:
 
 def _flatten_meta(extras: dict[str, Any]) -> dict[str, Any]:
     """Flatten metadata values to types accepted by Chroma."""
+    if isinstance(extras, MemoryExtras):
+        extras = extras.model_dump()
     flat: dict[str, Any] = {}
     for k, v in extras.items():
         if v is None:
@@ -508,11 +519,17 @@ async def process_chat_request(
             collection,
             conversation_id=conversation_id,
             entries=[
-                ("user", user_message, {"salience": None, "tags": None}) if user_message else None,
-                (
-                    "assistant",
-                    assistant_message,
-                    {"salience": None, "tags": None},
+                WriteEntry(
+                    role="user",
+                    content=user_message,
+                    extras=MemoryExtras(),
+                )
+                if user_message
+                else None,
+                WriteEntry(
+                    role="assistant",
+                    content=assistant_message,
+                    extras=MemoryExtras(),
                 )
                 if assistant_message
                 else None,
@@ -530,14 +547,14 @@ async def process_chat_request(
                 model=request.model,
             )
             if facts:
-                fact_entries: list[tuple[str, str, dict[str, Any]]] = [
-                    (
-                        "memory",
-                        fact,
-                        {
-                            "salience": 1.0,
-                            "tags": list(_extract_tags_from_text(fact)),
-                        },
+                fact_entries: list[WriteEntry] = [
+                    WriteEntry(
+                        role="memory",
+                        content=fact,
+                        extras=MemoryExtras(
+                            salience=1.0,
+                            tags=list(_extract_tags_from_text(fact)),
+                        ),
                     )
                     for fact in facts
                 ]
