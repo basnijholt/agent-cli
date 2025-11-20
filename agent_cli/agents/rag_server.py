@@ -19,6 +19,7 @@ has_chromadb = find_spec("chromadb") is not None
 has_watchfiles = find_spec("watchfiles") is not None
 has_onnxruntime = find_spec("onnxruntime") is not None
 has_transformers = find_spec("transformers") is not None
+has_markitdown = find_spec("markitdown") is not None
 
 
 @app.command("rag-server")
@@ -74,6 +75,7 @@ def rag_server(
         and has_watchfiles
         and has_onnxruntime
         and has_transformers
+        and has_markitdown
     ):
         msg = "RAG dependencies are not installed. Please install with `pip install agent-cli[rag]` or `uv sync --extra rag`."
         print_error_message(msg)
