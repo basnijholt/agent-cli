@@ -70,25 +70,17 @@ def _canonical_fact_key(*parts: str) -> str:
 
 
 class FactOutput(BaseModel):
-    """Structured fact returned by the LLM."""
+    """Simple fact string returned by the LLM."""
 
-    subject: str
-    predicate: str
-    object: str
     fact: str
 
-    @field_validator("subject", "predicate", "object", "fact")
+    @field_validator("fact")
     @classmethod
     def _not_empty(cls, v: str) -> str:
         if not v or not str(v).strip():
             msg = "field must be non-empty"
             raise ValueError(msg)
         return str(v).strip()
-
-    @property
-    def fact_key(self) -> str:
-        """Deterministic key for consolidation (subject + predicate)."""
-        return _canonical_fact_key(self.subject, self.predicate)
 
 
 class SummaryOutput(BaseModel):

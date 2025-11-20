@@ -21,7 +21,6 @@ from agent_cli.memory.files import write_memory_file
 from agent_cli.memory.models import (
     ChatRequest,
     ConsolidationDecision,
-    FactOutput,
     MemoryEntry,
     MemoryExtras,
     MemoryMetadata,
@@ -168,45 +167,21 @@ async def _consolidate_retrieval_entries(
     return kept or entries
 
 
-def _render_fact_sentence(fact: FactOutput) -> str:
-    """Create a readable fact sentence; fallback to structured fields if needed."""
-    content = (fact.fact or "").strip()
-    if len(content) >= _MIN_FACT_LEN and any(ch.isalpha() for ch in content):
-        return content
-
-    subj = fact.subject.replace("_", " ").strip()
-    pred = fact.predicate.replace("_", " ").strip()
-    obj = fact.object.strip()
-    pieces = [subj, pred, obj]
-    sentence = " ".join(p for p in pieces if p).strip()
-    if not sentence or not any(ch.isalpha() for ch in sentence):
-        return ""
-    if not sentence.endswith("."):
-        sentence = f"{sentence}."
-    return sentence[0].upper() + sentence[1:] if sentence else ""
-
-
-_MIN_FACT_LEN = 8
-
-
-def _prepare_fact_entries(facts: list[FactOutput]) -> list[WriteEntry]:
-    """Convert extracted facts into write entries with basic quality filtering."""
+def _prepare_fact_entries(facts: list[str]) -> list[WriteEntry]:
+    """Convert extracted fact strings into write entries."""
     entries: list[WriteEntry] = []
-    for fact in facts:
-        raw = (fact.fact or "").strip().lower()
-        if raw in {"true", "false", "none", "null", "atomic"}:
-            continue
-        text = _render_fact_sentence(fact)
-        if len(text) < _MIN_FACT_LEN or not any(ch.isalpha() for ch in text):
+    for text in facts:
+        cleaned = (text or "").strip()
+        if not cleaned:
             continue
         entries.append(
             WriteEntry(
                 role="memory",
-                content=text,
+                content=cleaned,
                 extras=MemoryExtras(
                     salience=1.0,
                     tags=None,
-                    fact_key=fact.fact_key,
+                    fact_key=None,
                 ),
             ),
         )
@@ -530,7 +505,7 @@ async def _extract_salient_facts(
     openai_base_url: str,
     api_key: str | None,
     model: str,
-) -> list[FactOutput]:
+) -> list[str]:
     if not user_message and not assistant_message:
         return []
     exchange = []
@@ -554,8 +529,8 @@ async def _extract_with_pydantic_ai(
     openai_base_url: str,
     api_key: str | None,
     model: str,
-) -> list[FactOutput]:
-    """Use PydanticAI to extract structured facts."""
+) -> list[str]:
+    """Use PydanticAI to extract fact strings."""
     provider = OpenAIProvider(
         api_key=api_key or "dummy",
         base_url=openai_base_url,
@@ -564,7 +539,7 @@ async def _extract_with_pydantic_ai(
     agent = Agent(
         model=model_cfg,
         system_prompt=FACT_SYSTEM_PROMPT,
-        output_type=list[FactOutput],
+        output_type=list[str],
         retries=2,
     )
     instructions = FACT_INSTRUCTIONS
@@ -815,7 +790,7 @@ async def _extract_and_store_facts_and_summaries(
     new_short, new_long = await _update_summaries(
         prior_short=prior_summary,
         prior_long=prior_long,
-        new_facts=[fact.fact for fact in facts],
+        new_facts=facts,
         openai_base_url=openai_base_url,
         api_key=api_key,
         model=model,

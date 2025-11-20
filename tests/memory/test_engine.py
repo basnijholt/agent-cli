@@ -341,21 +341,16 @@ async def test_retrieve_memory_dedupes_by_fact_key(monkeypatch: pytest.MonkeyPat
 
 @pytest.mark.asyncio
 async def test_prepare_fact_entries_filters_junk() -> None:
-    """Ensure junk facts are dropped and fallbacks are rendered."""
+    """Ensure facts are converted without gating."""
     facts = [
-        engine.FactOutput(
-            subject="user",
-            predicate="wife_name",
-            object="Anne",
-            fact="x",
-        ),  # good via fallback
-        engine.FactOutput(subject="user", predicate="likes", object="coding", fact="True"),  # junk
+        "User's wife is Anne.",
+        "True",
     ]
 
     entries = engine._prepare_fact_entries(facts)
-    assert len(entries) == 1
-    assert "Anne" in entries[0].content
-    assert entries[0].extras.fact_key == facts[0].fact_key
+    assert len(entries) == 2
+    assert entries[0].content == "User's wife is Anne."
+    assert entries[1].content == "True"
 
 
 @pytest.mark.asyncio
@@ -387,23 +382,10 @@ async def test_process_chat_request_summarizes_and_persists(
 
         if "New facts:" in prompt_text:
             return _Result(engine.SummaryOutput(summary="summary up to 256"))
-        return _Result(engine.SummaryOutput(summary=""))
+        return _Result(engine.SummaryOutput(summary="noop"))
 
     async def fake_extract_with_pydantic_ai(**_kwargs: Any) -> list[Any]:
-        return [
-            engine.FactOutput(
-                subject="user",
-                predicate="likes",
-                object="cats",
-                fact="User likes cats.",
-            ),
-            engine.FactOutput(
-                subject="user",
-                predicate="hobby",
-                object="biking",
-                fact="User loves biking.",
-            ),
-        ]
+        return ["User likes cats.", "User loves biking."]
 
     monkeypatch.setattr(engine, "_extract_with_pydantic_ai", fake_extract_with_pydantic_ai)
     monkeypatch.setattr(engine.Agent, "run", fake_agent_run)
@@ -550,14 +532,7 @@ async def test_streaming_with_summarization_persists_facts_and_summaries(
             yield line
 
     async def fake_extract_with_pydantic_ai(**_kwargs: Any) -> list[Any]:
-        return [
-            engine.FactOutput(
-                subject="user",
-                predicate="pet",
-                object="Luna",
-                fact="User has a cat named Luna.",
-            ),
-        ]
+        return ["User has a cat named Luna."]
 
     async def fake_agent_run(_agent: Any, prompt_text: str, *_args: Any, **_kwargs: Any) -> Any:
         class _Result:
@@ -566,7 +541,7 @@ async def test_streaming_with_summarization_persists_facts_and_summaries(
 
         if "New facts:" in prompt_text:
             return _Result(engine.SummaryOutput(summary="summary text"))
-        return _Result(engine.SummaryOutput(summary=""))
+        return _Result(engine.SummaryOutput(summary="noop"))
 
     monkeypatch.setattr(engine.streaming, "stream_chat_sse", fake_stream_chat_sse)
     monkeypatch.setattr(engine.Agent, "run", fake_agent_run)
