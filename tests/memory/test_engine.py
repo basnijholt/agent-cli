@@ -124,7 +124,9 @@ class _DummyAsyncClient:
 
 
 @pytest.mark.asyncio
-async def test_augment_chat_request_disables_with_zero_top_k() -> None:
+async def test_augment_chat_request_disables_with_zero_top_k(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """Explicit memory_top_k=0 should skip retrieval and leave request untouched."""
     # Avoid calling external LLM during consolidation.
     engine._consolidate_retrieval_entries = lambda entries, **_: entries  # type: ignore[assignment]
@@ -133,6 +135,11 @@ async def test_augment_chat_request_disables_with_zero_top_k() -> None:
         messages=[Message(role="user", content="hello")],
         memory_top_k=0,
     )
+
+    async def fake_rewrite(*_args: Any, **_kwargs: Any) -> list[str]:
+        return ["hello"]
+
+    monkeypatch.setattr(engine, "_rewrite_queries", fake_rewrite)
     aug_request, retrieval, conversation_id, summaries = await engine.augment_chat_request(
         request,
         collection=_RecordingCollection(),
@@ -189,6 +196,8 @@ async def test_retrieve_memory_prefers_diversity_and_adds_summaries(
         distance=0.3,
     )
 
+    call_count = 0
+
     def fake_query_memories(
         _collection: Any,
         *,
@@ -196,6 +205,8 @@ async def test_retrieve_memory_prefers_diversity_and_adds_summaries(
         text: str,  # noqa: ARG001
         n_results: int,  # noqa: ARG001
     ) -> list[StoredMemory]:
+        nonlocal call_count
+        call_count += 1
         return [mem_primary, mem_similar] if conversation_id == "conv1" else [mem_diverse]
 
     monkeypatch.setattr(engine, "query_memories", fake_query_memories)
@@ -221,7 +232,7 @@ async def test_retrieve_memory_prefers_diversity_and_adds_summaries(
     retrieval, summaries = engine._retrieve_memory(
         collection=_RecordingCollection(),
         conversation_id="conv1",
-        query="I enjoy biking and also travel planning",
+        queries=["I enjoy biking and also travel planning"],
         top_k=2,
         reranker_model=_DummyReranker(),  # type: ignore[arg-type]
     )
@@ -232,6 +243,55 @@ async def test_retrieve_memory_prefers_diversity_and_adds_summaries(
     assert mem_diverse.content in contents  # diverse item beats near-duplicate
     assert any("Short summary" in text for text in summaries)
     assert any("Long summary" in text for text in summaries)
+    assert call_count == 2
+
+
+@pytest.mark.asyncio
+async def test_query_rewrite_merges_candidates(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Multiple rewrites should expand candidate set."""
+    call_count = 0
+
+    def fake_query_memories(
+        _collection: Any,
+        *,
+        conversation_id: str,
+        text: str,
+        n_results: int,  # noqa: ARG001
+    ) -> list[StoredMemory]:
+        nonlocal call_count
+        call_count += 1
+        return [
+            StoredMemory(
+                id=f"{conversation_id}-{text}",
+                content=f"{text} content",
+                metadata=MemoryMetadata(
+                    conversation_id=conversation_id,
+                    role="memory",
+                    created_at=datetime.now(UTC).isoformat(),
+                ),
+            ),
+        ]
+
+    monkeypatch.setattr(engine, "query_memories", fake_query_memories)
+
+    async def fake_rewrite_queries(*_args: Any, **_kwargs: Any) -> list[str]:
+        return ["q1", "q2"]
+
+    monkeypatch.setattr(engine, "_rewrite_queries", fake_rewrite_queries)
+    monkeypatch.setattr(engine, "_consolidate_retrieval_entries", lambda entries, **_: entries)
+
+    retrieval, _ = engine._retrieve_memory(
+        collection=_RecordingCollection(),
+        conversation_id="conv1",
+        queries=["q1", "q2"],
+        top_k=5,
+        reranker_model=_DummyReranker(),  # type: ignore[arg-type]
+    )
+
+    contents = {entry.content for entry in retrieval.entries}
+    assert "q1 content" in contents
+    assert "q2 content" in contents
+    assert call_count == 4  # two queries across conversation and global
 
 
 @pytest.mark.asyncio
@@ -269,7 +329,7 @@ async def test_retrieve_memory_dedupes_by_fact_key(monkeypatch: pytest.MonkeyPat
     retrieval, _ = engine._retrieve_memory(
         collection=_RecordingCollection(),
         conversation_id="conv1",
-        query="Who is Jane?",
+        queries=["Who is Jane?"],
         top_k=5,
         reranker_model=_DummyReranker(),  # type: ignore[arg-type]
         include_global=False,
@@ -286,6 +346,11 @@ async def test_process_chat_request_summarizes_and_persists(
 ) -> None:
     collection = _RecordingCollection()
     monkeypatch.setattr(engine, "_consolidate_retrieval_entries", lambda entries, **_: entries)
+
+    async def fake_rewrite_queries(*_args: Any, **_kwargs: Any) -> list[str]:
+        return ["Hello rewrite"]
+
+    monkeypatch.setattr(engine, "_rewrite_queries", fake_rewrite_queries)
 
     async def fake_forward_request(
         _request: Any,

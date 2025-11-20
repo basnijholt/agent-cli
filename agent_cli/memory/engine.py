@@ -53,6 +53,7 @@ _SUMMARY_DOC_ID_SUFFIX = "::summary"
 _DEFAULT_MMR_LAMBDA = 0.7
 _SUMMARY_SHORT_ROLE = "summary_short"
 _SUMMARY_LONG_ROLE = "summary_long"
+_DEFAULT_MAX_REWRITES = 2
 
 
 def _safe_identifier(value: str) -> str:
@@ -168,11 +169,55 @@ async def _consolidate_retrieval_entries(
     return kept or entries
 
 
+async def _rewrite_queries(
+    user_message: str,
+    *,
+    openai_base_url: str,
+    api_key: str | None,
+    model: str,
+    max_rewrites: int = _DEFAULT_MAX_REWRITES,
+) -> list[str]:
+    """Generate a small set of disambiguated rewrites to improve recall."""
+    provider = OpenAIProvider(
+        api_key=api_key or "dummy",
+        base_url=openai_base_url,
+    )
+    model_cfg = OpenAIChatModel(
+        model_name=model,
+        provider=provider,
+        settings=ModelSettings(temperature=0.2, max_tokens=128),
+    )
+    agent = Agent(
+        model=model_cfg,
+        system_prompt=(
+            "Rewrite the user request into up to a few search queries that maximize recall. "
+            "Include explicit entities (names, aliases), paraphrases, and disambiguated forms. "
+            "Return a JSON list of plain strings. Do not include explanations."
+        ),
+        output_type=list[str],
+        retries=1,
+    )
+    try:
+        result = await agent.run(user_message)
+        rewrites = result.output or []
+    except Exception:
+        logger.exception("Query rewrite agent failed; using original message only")
+        rewrites = []
+
+    unique: list[str] = []
+    for candidate in [user_message, *rewrites]:
+        if candidate and candidate not in unique:
+            unique.append(candidate)
+        if len(unique) >= max_rewrites + 1:  # include original + max_rewrites
+            break
+    return unique or [user_message]
+
+
 def _retrieve_memory(
     collection: Collection,
     *,
     conversation_id: str,
-    query: str,
+    queries: list[str],
     top_k: int,
     reranker_model: OnnxCrossEncoder,
     include_global: bool = True,
@@ -184,14 +229,21 @@ def _retrieve_memory(
         candidate_conversations.append("global")
 
     candidates: list[StoredMemory] = []
-    for cid in candidate_conversations:
-        records = query_memories(
-            collection,
-            conversation_id=cid,
-            text=query,
-            n_results=top_k * 3,
-        )
-        candidates.extend(records)
+    seen_ids: set[str] = set()
+    for q in queries:
+        for cid in candidate_conversations:
+            records = query_memories(
+                collection,
+                conversation_id=cid,
+                text=q,
+                n_results=top_k * 3,
+            )
+            for rec in records:
+                rec_id = rec.id or f"{rec.metadata.fact_key}:{rec.content}"
+                if rec_id in seen_ids:
+                    continue
+                seen_ids.add(rec_id)
+                candidates.append(rec)
 
     def recency_boost(meta: Any) -> float:
         ts = meta.created_at
@@ -215,7 +267,8 @@ def _retrieve_memory(
 
     scores: list[float] = []
     if candidates:
-        pairs = [(query, mem.content) for mem in candidates]
+        primary_query = queries[0] if queries else ""
+        pairs = [(primary_query, mem.content) for mem in candidates]
         rr_scores = predict_relevance(reranker_model, pairs)
         for mem, rr in zip(candidates, rr_scores, strict=False):
             base = rr
@@ -299,10 +352,17 @@ async def augment_chat_request(
         logger.info("Memory retrieval disabled for this request (top_k=%s)", top_k)
         return request, None, conversation_id, []
 
+    rewrites = await _rewrite_queries(
+        user_message,
+        openai_base_url=openai_base_url,
+        api_key=api_key,
+        model=request.model,
+    )
+
     retrieval, summaries = _retrieve_memory(
         collection,
         conversation_id=conversation_id,
-        query=user_message,
+        queries=rewrites,
         top_k=top_k,
         reranker_model=reranker_model,
         include_global=include_global,
