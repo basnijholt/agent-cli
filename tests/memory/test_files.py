@@ -48,3 +48,14 @@ def test_snapshot_round_trip(tmp_path: Path) -> None:
     assert "1" in loaded
     assert loaded["1"].metadata.tags == ["x"]
     assert loaded["1"].content == "hi"
+
+
+def test_load_memory_files_skips_invalid(tmp_path: Path) -> None:
+    """Invalid files without front matter should be ignored."""
+    entries_dir = tmp_path / "entries" / "default"
+    entries_dir.mkdir(parents=True, exist_ok=True)
+    bad_file = entries_dir / "bad.md"
+    bad_file.write_text("no front matter here", encoding="utf-8")
+
+    records = mem_files.load_memory_files(tmp_path)
+    assert records == []
