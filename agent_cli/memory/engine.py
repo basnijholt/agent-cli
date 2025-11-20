@@ -5,9 +5,9 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
-from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from time import perf_counter
 from typing import TYPE_CHECKING, Any
 from uuid import uuid4
 
@@ -36,7 +36,7 @@ from agent_cli.memory.store import (
 from agent_cli.rag.retriever import OnnxCrossEncoder, predict_relevance
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncGenerator, Mapping
+    from collections.abc import AsyncGenerator, Coroutine, Mapping
     from pathlib import Path
 
     from chromadb import Collection
@@ -49,12 +49,52 @@ _DEFAULT_MMR_LAMBDA = 0.7
 _DEFAULT_TAG_BOOST = 0.1
 _SUMMARY_SHORT_ROLE = "summary_short"
 _SUMMARY_LONG_ROLE = "summary_long"
+_BACKGROUND_TASKS: set[asyncio.Task[Any]] = set()
 
 
 def _safe_identifier(value: str) -> str:
     """File/ID safe token preserving readability."""
     safe = "".join(ch if ch.isalnum() or ch in "-._" else "_" for ch in value)
     return safe or "entry"
+
+
+def _elapsed_ms(start: float) -> float:
+    """Return elapsed milliseconds since start."""
+    return (perf_counter() - start) * 1000
+
+
+def _track_background(task: asyncio.Task[Any], label: str) -> asyncio.Task[Any]:
+    """Track background tasks and surface failures."""
+    _BACKGROUND_TASKS.add(task)
+
+    def _done_callback(done: asyncio.Task[Any]) -> None:
+        _BACKGROUND_TASKS.discard(done)
+        if done.cancelled():
+            logger.debug("Background task %s cancelled", label)
+            return
+        exc = done.exception()
+        if exc:
+            logger.exception("Background task %s failed", label, exc_info=exc)
+
+    task.add_done_callback(_done_callback)
+    return task
+
+
+def _run_in_background(
+    coro: asyncio.Task[Any] | Coroutine[Any, Any, Any],
+    label: str,
+) -> asyncio.Task[Any]:
+    """Create and track a background asyncio task."""
+    task = coro if isinstance(coro, asyncio.Task) else asyncio.create_task(coro)
+    task.set_name(f"memory-{label}")
+    return _track_background(task, label)
+
+
+async def wait_for_background_tasks() -> None:
+    """Await any in-flight background tasks (used in tests)."""
+    while _BACKGROUND_TASKS:
+        tasks = list(_BACKGROUND_TASKS)
+        await asyncio.gather(*tasks, return_exceptions=False)
 
 
 @dataclass
@@ -562,6 +602,53 @@ def _persist_turns(
     )
 
 
+async def _postprocess_after_turn(
+    *,
+    collection: Collection,
+    memory_root: Path,
+    conversation_id: str,
+    user_message: str | None,
+    assistant_message: str | None,
+    openai_base_url: str,
+    api_key: str | None,
+    enable_summarization: bool,
+    model: str,
+    max_entries: int,
+) -> None:
+    """Run summarization/fact extraction and eviction."""
+    post_start = perf_counter()
+    if enable_summarization:
+        summary_start = perf_counter()
+        await _extract_and_store_facts_and_summaries(
+            collection=collection,
+            memory_root=memory_root,
+            conversation_id=conversation_id,
+            user_message=user_message,
+            assistant_message=assistant_message,
+            openai_base_url=openai_base_url,
+            api_key=api_key,
+            model=model,
+        )
+        logger.info(
+            "Updated facts and summaries in %.1f ms (conversation=%s)",
+            _elapsed_ms(summary_start),
+            conversation_id,
+        )
+    eviction_start = perf_counter()
+    _evict_if_needed(collection, conversation_id, max_entries)
+    logger.info(
+        "Eviction check completed in %.1f ms (conversation=%s)",
+        _elapsed_ms(eviction_start),
+        conversation_id,
+    )
+    logger.info(
+        "Post-processing finished in %.1f ms (conversation=%s, summarization=%s)",
+        _elapsed_ms(post_start),
+        conversation_id,
+        "enabled" if enable_summarization else "disabled",
+    )
+
+
 async def _extract_and_store_facts_and_summaries(
     *,
     collection: Collection,
@@ -574,12 +661,19 @@ async def _extract_and_store_facts_and_summaries(
     model: str,
 ) -> None:
     """Run fact extraction and summary updates, persisting results."""
+    fact_start = perf_counter()
     facts = await _extract_salient_facts(
         user_message=user_message,
         assistant_message=assistant_message,
         openai_base_url=openai_base_url,
         api_key=api_key,
         model=model,
+    )
+    logger.info(
+        "Fact extraction produced %d facts in %.1f ms (conversation=%s)",
+        len(facts),
+        _elapsed_ms(fact_start),
+        conversation_id,
     )
     if not facts:
         return
@@ -613,6 +707,7 @@ async def _extract_and_store_facts_and_summaries(
     )
     prior_summary = prior_summary_entry.content if prior_summary_entry else None
     prior_long = prior_long_entry.content if prior_long_entry else None
+    summary_start = perf_counter()
     new_short, new_long = await _update_summaries(
         prior_short=prior_summary,
         prior_long=prior_long,
@@ -620,6 +715,11 @@ async def _extract_and_store_facts_and_summaries(
         openai_base_url=openai_base_url,
         api_key=api_key,
         model=model,
+    )
+    logger.info(
+        "Summary updates completed in %.1f ms (conversation=%s)",
+        _elapsed_ms(summary_start),
+        conversation_id,
     )
     if new_short:
         _persist_summary(
@@ -654,8 +754,10 @@ async def _stream_and_persist_response(
 ) -> StreamingResponse:
     """Forward streaming request, tee assistant text, and persist after completion."""
     headers = {"Authorization": f"Bearer {api_key}"} if api_key else None
+    stream_start = perf_counter()
 
     async def _persist_stream_result(assistant_message: str | None) -> None:
+        post_start = perf_counter()
         _persist_turns(
             collection,
             memory_root=memory_root,
@@ -663,20 +765,30 @@ async def _stream_and_persist_response(
             user_message=None,
             assistant_message=assistant_message,
         )
-        if enable_summarization:
-            await _extract_and_store_facts_and_summaries(
-                collection=collection,
-                memory_root=memory_root,
-                conversation_id=conversation_id,
-                user_message=user_message,
-                assistant_message=assistant_message,
-                openai_base_url=openai_base_url,
-                api_key=api_key,
-                model=model,
-            )
-        _evict_if_needed(collection, conversation_id, max_entries)
+        await _postprocess_after_turn(
+            collection=collection,
+            memory_root=memory_root,
+            conversation_id=conversation_id,
+            user_message=user_message,
+            assistant_message=assistant_message,
+            openai_base_url=openai_base_url,
+            api_key=api_key,
+            enable_summarization=enable_summarization,
+            model=model,
+            max_entries=max_entries,
+        )
+        logger.info(
+            "Stream post-processing completed in %.1f ms (conversation=%s)",
+            _elapsed_ms(post_start),
+            conversation_id,
+        )
 
     async def stream_lines() -> AsyncGenerator[str, None]:
+        logger.info(
+            "Forwarding streaming chat completion (conversation=%s, model=%s)",
+            conversation_id,
+            model,
+        )
         async with (
             httpx.AsyncClient(timeout=120.0) as client,
             client.stream(
@@ -714,8 +826,15 @@ async def _stream_and_persist_response(
                         )
             yield line + "\n\n"
         assistant_message = "".join(assistant_chunks).strip() or None
-        persist_task = asyncio.create_task(_persist_stream_result(assistant_message))
-        persist_task.add_done_callback(lambda task: task.exception())
+        _run_in_background(
+            _persist_stream_result(assistant_message),
+            label=f"stream-postprocess-{conversation_id}",
+        )
+        logger.info(
+            "Streaming response finished in %.1f ms (conversation=%s)",
+            _elapsed_ms(stream_start),
+            conversation_id,
+        )
 
     return StreamingResponse(tee_and_accumulate(), media_type="text/event-stream")
 
@@ -732,8 +851,11 @@ async def process_chat_request(
     max_entries: int = _DEFAULT_MAX_ENTRIES,
     mmr_lambda: float = _DEFAULT_MMR_LAMBDA,
     tag_boost: float = _DEFAULT_TAG_BOOST,
+    postprocess_in_background: bool = True,
 ) -> Any:
     """Process a chat request with long-term memory support."""
+    overall_start = perf_counter()
+    retrieval_start = perf_counter()
     aug_request, retrieval, conversation_id = augment_chat_request(
         request,
         collection,
@@ -742,8 +864,22 @@ async def process_chat_request(
         mmr_lambda=mmr_lambda,
         tag_boost=tag_boost,
     )
+    retrieval_ms = _elapsed_ms(retrieval_start)
+    hit_count = len(retrieval.entries) if retrieval else 0
+    logger.info(
+        "Memory retrieval completed in %.1f ms (conversation=%s, hits=%d, top_k=%d)",
+        retrieval_ms,
+        conversation_id,
+        hit_count,
+        request.memory_top_k if request.memory_top_k is not None else default_top_k,
+    )
 
     if request.stream:
+        logger.info(
+            "Forwarding streaming request (conversation=%s, model=%s)",
+            conversation_id,
+            request.model,
+        )
         user_message = _latest_user_message(request)
         _persist_turns(
             collection,
@@ -766,7 +902,14 @@ async def process_chat_request(
             max_entries=max_entries,
         )
 
+    llm_start = perf_counter()
     response = await _forward_request(aug_request, openai_base_url, api_key)
+    logger.info(
+        "LLM completion finished in %.1f ms (conversation=%s, model=%s)",
+        _elapsed_ms(llm_start),
+        conversation_id,
+        request.model,
+    )
 
     if not isinstance(response, dict):
         return response
@@ -782,8 +925,8 @@ async def process_chat_request(
         assistant_message=assistant_message,
     )
 
-    if enable_summarization:
-        await _extract_and_store_facts_and_summaries(
+    async def run_postprocess() -> None:
+        await _postprocess_after_turn(
             collection=collection,
             memory_root=memory_root,
             conversation_id=conversation_id,
@@ -791,12 +934,27 @@ async def process_chat_request(
             assistant_message=assistant_message,
             openai_base_url=openai_base_url,
             api_key=api_key,
+            enable_summarization=enable_summarization,
             model=request.model,
+            max_entries=max_entries,
         )
 
-    _evict_if_needed(collection, conversation_id, max_entries)
+    if postprocess_in_background:
+        _run_in_background(
+            run_postprocess(),
+            label=f"postprocess-{conversation_id}",
+        )
+    else:
+        await run_postprocess()
+
     response["memory_hits"] = (
         [entry.model_dump() for entry in retrieval.entries] if retrieval else []
+    )
+    logger.info(
+        "Request finished in %.1f ms (conversation=%s, hits=%d)",
+        _elapsed_ms(overall_start),
+        conversation_id,
+        hit_count,
     )
 
     return response
