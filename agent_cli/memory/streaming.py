@@ -19,14 +19,10 @@ async def stream_chat_sse(
     request_timeout: float = 120.0,
 ) -> AsyncGenerator[str, None]:
     """Stream Server-Sent Events from an OpenAI-compatible chat completion endpoint."""
+    url = f"{openai_base_url.rstrip('/')}/chat/completions"
     async with (
         httpx.AsyncClient(timeout=request_timeout) as client,
-        client.stream(
-            "POST",
-            f"{openai_base_url.rstrip('/')}/chat/completions",
-            json=payload,
-            headers=headers,
-        ) as response,
+        client.stream("POST", url, json=payload, headers=headers) as response,
     ):
         if response.status_code != 200:  # noqa: PLR2004
             error_text = await response.aread()
