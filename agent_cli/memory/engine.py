@@ -386,7 +386,7 @@ async def _chat_completion_request(
         "max_tokens": max_tokens,
         "stream": False,
     }
-    result = await agent.run(payload, input_is_json=True)
+    result = await agent.run(payload)
     return str(result.output or "")
 
 
