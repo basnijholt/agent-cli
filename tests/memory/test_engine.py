@@ -295,8 +295,8 @@ async def test_query_rewrite_merges_candidates(monkeypatch: pytest.MonkeyPatch) 
 
 
 @pytest.mark.asyncio
-async def test_retrieve_memory_dedupes_by_fact_key(monkeypatch: pytest.MonkeyPatch) -> None:
-    """If multiple facts share a fact_key, only the newest should be considered."""
+async def test_retrieve_memory_returns_all_facts(monkeypatch: pytest.MonkeyPatch) -> None:
+    """With fact_key unused, all facts are returned."""
     now = datetime.now(UTC)
     older = StoredMemory(
         id="old",
@@ -335,8 +335,7 @@ async def test_retrieve_memory_dedupes_by_fact_key(monkeypatch: pytest.MonkeyPat
         include_global=False,
     )
 
-    assert len(retrieval.entries) == 1
-    assert retrieval.entries[0].content == "Jane Smith is my wife"
+    assert len(retrieval.entries) == 2
 
 
 @pytest.mark.asyncio

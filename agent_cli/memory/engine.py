@@ -92,27 +92,8 @@ class WriteEntry:
 
 
 def _dedupe_by_fact_key(candidates: list[StoredMemory]) -> list[StoredMemory]:
-    """Keep latest entry per fact_key while leaving unkeyed entries untouched."""
-    latest: dict[str, StoredMemory] = {}
-    unkeyed: list[StoredMemory] = []
-
-    def _is_newer(a: StoredMemory, b: StoredMemory) -> bool:
-        adt = _parse_iso(a.metadata.created_at)
-        bdt = _parse_iso(b.metadata.created_at)
-        if adt and bdt:
-            return adt >= bdt
-        return (a.metadata.created_at or "") >= (b.metadata.created_at or "")
-
-    for mem in candidates:
-        key = mem.metadata.fact_key
-        if not key:
-            unkeyed.append(mem)
-            continue
-        current = latest.get(key)
-        if current is None or _is_newer(mem, current):
-            latest[key] = mem
-
-    return unkeyed + list(latest.values())
+    """Pass-through (fact_key no longer used)."""
+    return candidates
 
 
 async def _consolidate_retrieval_entries(
@@ -278,8 +259,6 @@ def _retrieve_memory(
             return float(sal)
         except Exception:
             return 0.0
-
-    candidates = _dedupe_by_fact_key(candidates)
 
     scores: list[float] = []
     if candidates:
