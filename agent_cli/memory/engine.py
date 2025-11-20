@@ -13,10 +13,12 @@ import httpx
 from fastapi import HTTPException
 from fastapi.responses import StreamingResponse
 
+from agent_cli.memory.files import write_memory_file
 from agent_cli.memory.models import (
     ChatRequest,
     MemoryEntry,
     MemoryExtras,
+    MemoryMetadata,
     MemoryRetrieval,
     Message,
     StoredMemory,
@@ -32,6 +34,7 @@ from agent_cli.rag.retriever import OnnxCrossEncoder, predict_relevance
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
+    from pathlib import Path
 
     from chromadb import Collection
 
@@ -43,6 +46,12 @@ _DEFAULT_MMR_LAMBDA = 0.7
 _DEFAULT_TAG_BOOST = 0.1
 _SUMMARY_SHORT_ROLE = "summary_short"
 _SUMMARY_LONG_ROLE = "summary_long"
+
+
+def _safe_identifier(value: str) -> str:
+    """File/ID safe token preserving readability."""
+    safe = "".join(ch if ch.isalnum() or ch in "-._" else "_" for ch in value)
+    return safe or "entry"
 
 
 @dataclass
@@ -229,27 +238,31 @@ def augment_chat_request(
 def _persist_entries(
     collection: Collection,
     *,
+    memory_root: Path,
     conversation_id: str,
     entries: list[WriteEntry | None],
 ) -> None:
     now = datetime.now(UTC).isoformat()
     ids: list[str] = []
     contents: list[str] = []
-    metadatas: list[dict[str, str]] = []
+    metadatas: list[MemoryMetadata] = []
     for item in entries:
         if item is None:
             continue
         role, content, extras = item.role, item.content, item.extras
-        ids.append(str(uuid4()))
-        contents.append(content)
-        metadatas.append(
-            {
-                "conversation_id": conversation_id,
-                "role": role,
-                "created_at": now,
-                **_flatten_meta(extras),
-            },
+        record = write_memory_file(
+            memory_root,
+            conversation_id=conversation_id,
+            role=role,
+            created_at=now,
+            content=content,
+            salience=extras.salience,
+            tags=extras.tags,
+            doc_id=str(uuid4()),
         )
+        ids.append(record.id)
+        contents.append(record.content)
+        metadatas.append(record.metadata)
     if ids:
         upsert_memories(collection, ids=ids, contents=contents, metadatas=metadatas)
 
@@ -325,24 +338,6 @@ def _token_overlap_similarity(a: str, b: str) -> float:
     if not ta or not tb:
         return 0.0
     return len(ta & tb) / max(len(ta), len(tb))
-
-
-def _flatten_meta(extras: dict[str, Any]) -> dict[str, Any]:
-    """Flatten metadata values to types accepted by Chroma."""
-    if isinstance(extras, MemoryExtras):
-        extras = extras.model_dump()
-    flat: dict[str, Any] = {}
-    for k, v in extras.items():
-        if v is None:
-            flat[k] = None
-        elif isinstance(v, (str, int, float, bool)):
-            flat[k] = v
-        elif isinstance(v, (list, tuple)):
-            # Store lists (e.g., tags) as comma-separated strings
-            flat[k] = ",".join(str(item) for item in v)
-        else:
-            flat[k] = str(v)
-    return flat
 
 
 def _mmr_select(
@@ -487,23 +482,27 @@ async def _update_summaries(
 def _persist_summary(
     collection: Collection,
     *,
+    memory_root: Path,
     conversation_id: str,
     summary: str,
     role: str,
 ) -> None:
     now = datetime.now(UTC).isoformat()
+    doc_id = _safe_identifier(f"{conversation_id}{_SUMMARY_DOC_ID_SUFFIX}-{role}")
+    record = write_memory_file(
+        memory_root,
+        conversation_id=conversation_id,
+        role=role,
+        created_at=now,
+        content=summary,
+        summary_kind=role,
+        doc_id=doc_id,
+    )
     upsert_memories(
         collection,
-        ids=[f"{conversation_id}{_SUMMARY_DOC_ID_SUFFIX}:{role}"],
-        contents=[summary],
-        metadatas=[
-            {
-                "conversation_id": conversation_id,
-                "role": role,
-                "created_at": now,
-                "summary_kind": role,
-            },
-        ],
+        ids=[record.id],
+        contents=[record.content],
+        metadatas=[record.metadata],
     )
 
 
@@ -529,6 +528,7 @@ def _evict_if_needed(collection: Collection, conversation_id: str, max_entries: 
 async def process_chat_request(
     request: ChatRequest,
     collection: Collection,
+    memory_root: Path,
     openai_base_url: str,
     reranker_model: OnnxCrossEncoder,
     default_top_k: int = 5,
@@ -564,6 +564,7 @@ async def process_chat_request(
         # Persist raw turns
         _persist_entries(
             collection,
+            memory_root=memory_root,
             conversation_id=conversation_id,
             entries=[
                 WriteEntry(
@@ -607,6 +608,7 @@ async def process_chat_request(
                 ]
                 _persist_entries(
                     collection,
+                    memory_root=memory_root,
                     conversation_id=conversation_id,
                     entries=list(fact_entries),
                 )
@@ -633,6 +635,7 @@ async def process_chat_request(
                 if new_short:
                     _persist_summary(
                         collection,
+                        memory_root=memory_root,
                         conversation_id=conversation_id,
                         summary=new_short,
                         role=_SUMMARY_SHORT_ROLE,
@@ -640,6 +643,7 @@ async def process_chat_request(
                 if new_long:
                     _persist_summary(
                         collection,
+                        memory_root=memory_root,
                         conversation_id=conversation_id,
                         summary=new_long,
                         role=_SUMMARY_LONG_ROLE,

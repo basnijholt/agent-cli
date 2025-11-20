@@ -11,13 +11,14 @@ from rich.logging import RichHandler
 from agent_cli import opts
 from agent_cli.cli import app
 from agent_cli.core.utils import console, print_error_message
+from agent_cli.memory.files import ensure_store_dirs
 
 
 @app.command("memory-server")
 def memory_server(
     memory_path: Path = typer.Option(  # noqa: B008
         "./memory_db",
-        help="Path to ChromaDB persistence directory for long-term memory.",
+        help="Path to the memory store (files + derived vector index).",
         rich_help_panel="Memory Configuration",
     ),
     openai_base_url: str | None = opts.OPENAI_BASE_URL,
@@ -93,11 +94,13 @@ def memory_server(
         raise typer.Exit(1) from exc
 
     memory_path = memory_path.resolve()
+    entries_dir, _ = ensure_store_dirs(memory_path)
     if openai_base_url is None:
         openai_base_url = "https://api.openai.com/v1"
 
     console.print(f"[bold green]Starting Memory Server on {host}:{port}[/bold green]")
-    console.print(f"  💾 Memory DB: [blue]{memory_path}[/blue]")
+    console.print(f"  💾 Memory store: [blue]{memory_path}[/blue]")
+    console.print(f"  📁 Entries: [blue]{entries_dir}[/blue]")
     console.print(f"  🤖 Backend: [blue]{openai_base_url}[/blue]")
     console.print(f"  🧠 Embeddings: Using [blue]{embedding_model}[/blue]")
     console.print(f"  🔍 Memory top_k: [blue]{default_top_k}[/blue] entries per query")

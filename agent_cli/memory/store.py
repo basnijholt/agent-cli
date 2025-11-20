@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from typing import TYPE_CHECKING, Any
 
 import chromadb
@@ -24,7 +25,9 @@ def init_memory_collection(
     openai_api_key: str | None = None,
 ) -> Collection:
     """Initialize or create the memory collection."""
-    client = chromadb.PersistentClient(path=str(persistence_path))
+    chroma_path = persistence_path / "chroma"
+    chroma_path.mkdir(parents=True, exist_ok=True)
+    client = chromadb.PersistentClient(path=str(chroma_path))
     embed_fn = embedding_functions.OpenAIEmbeddingFunction(
         api_base=openai_base_url,
         api_key=openai_api_key or "dummy",
@@ -37,12 +40,13 @@ def upsert_memories(
     collection: Collection,
     ids: list[str],
     contents: list[str],
-    metadatas: list[dict[str, Any]],
+    metadatas: Sequence[MemoryMetadata | Mapping[str, Any]],
 ) -> None:
     """Persist memory entries."""
     if not ids:
         return
-    collection.upsert(ids=ids, documents=contents, metadatas=metadatas)
+    serialized = [_serialize_meta(meta) for meta in metadatas]
+    collection.upsert(ids=ids, documents=contents, metadatas=serialized)
 
 
 def query_memories(
@@ -151,3 +155,19 @@ def _normalize_meta(meta: dict[str, Any]) -> dict[str, Any]:
     if isinstance(tags, str):
         normalized["tags"] = [t.strip() for t in tags.split(",") if t.strip()]
     return normalized
+
+
+def _serialize_meta(meta: MemoryMetadata | Mapping[str, Any]) -> dict[str, Any]:
+    """Convert metadata to Chroma-friendly primitives."""
+    raw = meta.model_dump() if isinstance(meta, MemoryMetadata) else dict(meta)
+    flat: dict[str, Any] = {}
+    for key, value in raw.items():
+        if value is None:
+            flat[key] = None
+        elif isinstance(value, (str, int, float, bool)):
+            flat[key] = value
+        elif isinstance(value, Sequence) and not isinstance(value, (str, bytes, bytearray)):
+            flat[key] = ",".join(str(item) for item in value)
+        else:
+            flat[key] = str(value)
+    return flat
