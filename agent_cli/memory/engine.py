@@ -463,6 +463,7 @@ async def _extract_with_pydantic_ai(
             "that are useful to remember for future turns. Return structured facts with fields "
             "fact (string) and fact_key (stable identifier). "
             "Do not include prose outside JSON."
+            "If there are no new facts, return an empty list."
         ),
         output_type=list[FactOutput],
         retries=2,
