@@ -30,6 +30,13 @@ from agent_cli.memory.models import (
     StoredMemory,
     SummaryOutput,
 )
+from agent_cli.memory.prompt import (
+    CONSOLIDATION_PROMPT,
+    FACT_INSTRUCTIONS,
+    FACT_SYSTEM_PROMPT,
+    QUERY_REWRITE_PROMPT,
+    SUMMARY_PROMPT,
+)
 from agent_cli.memory.store import (
     delete_entries,
     get_summary_entry,
@@ -130,14 +137,7 @@ async def _consolidate_retrieval_entries(
     )
     agent = Agent(
         model=model_cfg,
-        system_prompt=(
-            "You are reconciling overlapping facts for a personal memory store. "
-            "Given a small list of fact snippets with timestamps, mark each as KEEP or DELETE "
-            "so that only the most accurate, non-contradictory set remains. "
-            "Prefer newer timestamps when content conflicts. If two are equivalent, keep one. "
-            "UPDATE may be used when a newer statement supersedes an older one; DELETE the stale one. "
-            "Output a list of decisions; do not invent new facts."
-        ),
+        system_prompt=CONSOLIDATION_PROMPT,
         output_type=list[ConsolidationDecision],
         retries=1,
     )
@@ -189,11 +189,7 @@ async def _rewrite_queries(
     )
     agent = Agent(
         model=model_cfg,
-        system_prompt=(
-            "Rewrite the user request into up to a few search queries that maximize recall. "
-            "Include explicit entities (names, aliases), paraphrases, and disambiguated forms. "
-            "Return a JSON list of plain strings. Do not include explanations."
-        ),
+        system_prompt=QUERY_REWRITE_PROMPT,
         output_type=list[str],
         retries=1,
     )
@@ -522,26 +518,11 @@ async def _extract_with_pydantic_ai(
     model_cfg = OpenAIChatModel(model_name=model, provider=provider)
     agent = Agent(
         model=model_cfg,
-        system_prompt=(
-            "You are a memory extractor. From the latest exchange, extract 1-3 succinct facts "
-            "that are useful to remember for future turns. Return JSON objects with fields: "
-            "- subject (lower_snake_case, stable anchor, e.g., 'user', 'user_spouse', 'project_alpha') "
-            "- predicate (lower_snake_case relation, e.g., 'name', 'wife', 'location', 'job_title') "
-            "- object (plain text value) "
-            "- fact (a short readable sentence). "
-            "The system will derive a fact_key from subject + predicate, so keep those consistent. "
-            "Do not include prose outside JSON. If there are no facts, return an empty list. "
-            "Never return meta-facts like 'no information to extract'."
-        ),
+        system_prompt=FACT_SYSTEM_PROMPT,
         output_type=list[FactOutput],
         retries=2,
     )
-    instructions = (
-        "Keep facts atomic, enduring, and person-centered when possible. "
-        "Prefer explicit subjects (names) over pronouns. Use lower_snake_case for subject and predicate. "
-        "Examples: 'user|wife', 'bas_nijholt|employer', 'bike|type'. "
-        "Avoid formatting; return only JSON."
-    )
+    instructions = FACT_INSTRUCTIONS
 
     try:
         facts = await agent.run(transcript, instructions=instructions)
@@ -562,10 +543,7 @@ async def _update_summary(
 ) -> str | None:
     if not new_facts:
         return prior_summary
-    system_prompt = (
-        "You are a concise conversation summarizer. Update the running summary with the new facts. "
-        "Keep it brief and focused on enduring information."
-    )
+    system_prompt = SUMMARY_PROMPT
     user_parts = []
     if prior_summary:
         user_parts.append(f"Previous summary:\n{prior_summary}")
