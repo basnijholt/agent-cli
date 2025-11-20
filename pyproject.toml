@@ -60,7 +60,6 @@ test = [
     "pydantic-ai-slim[openai]",
     "pytest-timeout",
     "pytest-mock",
-    "types-PyYAML",
 ]
 dev = [
     "agent-cli[test]",
@@ -69,7 +68,6 @@ dev = [
     "markdown-code-runner",
     "ruff",
     "notebook",
-    "types-PyYAML",
 ]
 speed = ["audiostretchy>=1.3.0"]
 
@@ -89,7 +87,6 @@ dev = [
     "notebook",
     "audiostretchy>=1.3.0",
     "pre-commit-uv>=4.1.4",
-    "types-PyYAML",
 ]
 
 [project.scripts]
