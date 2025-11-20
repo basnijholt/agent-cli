@@ -147,6 +147,7 @@ The setup scripts automatically install:
   - [`assistant`](#assistant)
   - [`chat`](#chat)
   - [`rag-server`](#rag-server)
+  - [`memory-server`](#memory-server)
     - [Using Custom Embeddings (e.g., OpenAI / llama.cpp / Ollama)](#using-custom-embeddings-eg-openai--llamacpp--ollama)
 - [Development](#development)
   - [Running Tests](#running-tests)
