@@ -1,69 +1,46 @@
-# Memory Server Plan (Self-Hosted, Minimal Deps)
+# Memory Server Plan (Self-Hosted, High-Level)
 
 ## Goals
-- Long-term conversational memory with automatic extraction and retrieval.
-- No hosted dependencies; reuse existing OpenAI-compatible LLM endpoints.
-- Minimal new deps (reuse Chroma, httpx, pydantic, numpy already present).
-- Preserve simple, OpenAI-compatible `/v1/chat/completions` surface.
+- Provide long-term conversational memory that persists salient facts across sessions.
+- Rely on self-hostable components: OpenAI-compatible LLM endpoint + local vector store.
+- Deliver a familiar `/v1/chat/completions` interface with automatic memory injection.
+- Minimize external dependencies while using proven retrieval and summarization patterns.
 
-## High-Level Architecture
-- **Memory store**: Chroma collection keyed by `conversation_id`.
-  - Documents: atomic memory entries (salient snippets or turn summaries).
-  - Metadata: `conversation_id`, `role`, `created_at`, `summary_version`, `salience`, `tokens`.
-  - Embeddings: reuse existing `--embedding-model` and base URL.
-- **Short-term buffer**: recent raw turns kept in process memory; flushed to store after summarization.
-- **Summaries**: rolling summaries per conversation stored as separate documents with a `summary` flag.
-- **API**: `/v1/chat/completions` proxy; optional `memory_id` and `memory_top_k`.
+## Conceptual Architecture
+- **Memory store (vector DB)**: Chroma collection keyed by `conversation_id` (plus a “global” scope for cross-conversation facts). Stores atomic memory entries (facts) and summaries with metadata (timestamps, roles, optional tags/salience).
+- **Embedding & rerank**: Dense retrieval per conversation (and global) with a cross-encoder reranker for quality; blends relevance with recency/salience for better recall.
+- **Summaries**: Rolling summaries per conversation to compress history; always included alongside the most relevant memories.
+- **API**: OpenAI-compatible `/v1/chat/completions`; the server augments prompts with memory and forwards to the configured LLM endpoint.
 
-## Retrieval & Augmentation Pipeline
-1) Identify user message (latest user turn).
-2) Retrieve:
-   - semantic top-k from Chroma for `conversation_id`.
-   - mix in most recent N raw turns (buffer) for recency.
-3) Craft augmented prompt:
-   - include recent turns (truncated).
-   - include retrieved memory snippets (most salient first).
-   - include latest summary block (if available).
-4) Forward to backend LLM, stream as usual.
+## Retrieval & Prompt Augmentation (High-Level)
+1) Identify the latest user message.
+2) Retrieve candidate memories for that conversation (and optional global scope) via dense search; rerank with a cross-encoder; mix in recency/salience signals; include the current summary.
+3) Construct an augmented user message that embeds the summary and top-k memory snippets before the current question.
+4) Forward the augmented request to the backend LLM; stream or return the completion unchanged otherwise.
 
-## Post-Completion Memory Update
-- Append new user/assistant turns to short-term buffer.
-- **Salience extraction**: ask the backend LLM to extract 1–3 salient facts from the new exchange (few-shot prompt, deterministic temperature).
-- **Summarization**: when buffer tokens exceed threshold or every N turns:
-  - Generate an updated rolling summary conditioned on prior summary + new salient facts.
-  - Store/replace summary document (same `summary_version` metadata).
-- **Upsert**: write salient facts as standalone memory entries with embeddings; evict or decay old low-salience entries by score/age.
+## Post-Completion Memory Update (High-Level)
+1) Persist the raw user/assistant turns to the memory store (scoped by `conversation_id`).
+2) Extract a few salient facts from the observed exchange using the LLM (deterministic, short).
+3) Upsert those facts as discrete memory entries (embedded for retrieval).
+4) Refresh the rolling summary conditioned on the prior summary plus the new facts.
+5) Enforce a per-conversation budget (evict oldest/lowest-value entries beyond the cap).
 
-## Memory Management / Replacement
-- Keep per-conversation budget: `max_entries` (e.g., 500) and `max_age_days`.
-- Eviction policy: drop lowest `salience` first; second key = oldest `created_at`.
-- Decay salience over time (simple multiplicative decay on read/write).
-- Optional `truncate` endpoint to wipe a conversation’s memory.
+## Ranking & Quality Signals (High-Level)
+- **Two-stage retrieval**: dense top-N per scope → cross-encoder rerank → top-k.
+- **Hybrid scoring**: combine rerank score with light recency/salience boosts; optional diversity (MMR-style) to avoid near-duplicates.
+- **Global scope**: allow a “global” conversation bucket for persona/long-lived facts; merge with per-conversation hits.
 
-## Data Model (Chroma metadata)
-- `conversation_id: str`
-- `role: str` (user/assistant/system/summary)
-- `created_at: iso8601`
-- `salience: float`
-- `summary_version: int` (for summary docs)
-- `tokens: int` (estimated token count)
+## Why This Works (Established Patterns)
+- Dense retrieval + cross-encoder rerank is a standard, empirically superior IR pipeline for passage relevance (MS MARCO-era best practice).
+- Summaries reduce context bloat while preserving key information; widely used in long-context chat systems.
+- Salience extraction keeps stored memories atomic and focused, improving retrieval precision.
+- Recency/salience blending improves freshness; diversity reduces redundancy—both are common IR heuristics.
 
-## Configuration / Flags
-- `--memory-path` (Chroma persistence)
-- `--embedding-model`, `--openai-base-url`, `--openai-api-key`
-- `--memory-top-k` default (retrieval depth)
-- `--max-memory-entries`, `--max-age-days`, `--salience-threshold`
-- `--summary-trigger-tokens`, `--summary-max-length`
+## Configuration (High-Level)
+- Memory store path; embedding model/base URL/API key (shared with RAG).
+- Retrieval depth (k, pre-rerank N), max entries per conversation, enable/disable summaries.
+- Backend LLM endpoint/model used for both chat and internal memory prompts.
 
-## Testing Strategy
-- Unit: salience/summarization prompts produce expected shapes; eviction logic; metadata shaping.
-- Integration: start app with temp Chroma, send chat turns, assert memory entries grow, retrieval includes summaries, eviction runs.
-- Regression: ensure `rag-server` behavior unchanged; shared embedding config works.
-
-## Implementation Milestones
-1) **Scaffold**: new memory module with store, models, API; keep current OpenAI proxy flow.
-2) **Retrieval**: semantic + recency merge; prompt augmentation.
-3) **Update path**: buffer + salience extraction prompt + summary update; upsert into Chroma.
-4) **Eviction/aging**: background or per-request sweep with salience decay and budget enforcement.
-5) **Config & docs**: CLI flags, README usage, install extras.
-6) **Tests**: unit + small integration harness with temporary Chroma and mock backend LLM.
+## Testing Approach (High-Level)
+- Unit checks for scoring, eviction, and parsing utilities.
+- Integration: spin up the app with a temp vector store and a mock LLM; verify that facts are persisted, retrieved, and summaries are updated.
