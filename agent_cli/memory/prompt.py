@@ -17,40 +17,23 @@ Avoid meta-statements; keep queries concise keywords/phrases, not instructions.
 """.strip()
 
 FACT_SYSTEM_PROMPT = """
-You are a memory extractor. From the latest user/assistant exchange, extract 1-3 succinct, enduring facts.
+You are a memory extractor. From the latest exchange, return 1-3 concise fact sentences based ONLY on user messages.
 
-What to remember (examples and scope):
-- Personal preferences (likes/dislikes): "favourite movies are Inception and Interstellar", "prefers vegetarian food".
-- Personal details: names, relationships, important dates: "Name is John", "Jane is his wife", "birthday is May 5".
-- Plans and intentions: "planning a trip to Japan next spring", "looking for a restaurant in SF".
-- Activities/services: hobbies and usage: "likes biking on weekends", "uses VS Code".
-- Health/wellness: "gluten free", "runs 5km daily".
-- Professional: job title, employer, goals: "software engineer at Acme", "learning Rust".
-- Misc: books, brands, favorites.
+Guidelines:
+- If there is no meaningful fact, return [].
+- Ignore assistant/system content completely.
+- Facts must be short, readable sentences (e.g., "The user's wife is Anne.", "Planning a trip to Japan next spring.").
+- Do not return acknowledgements, questions, or meta statements; only factual statements from the user.
+- Return a JSON list of strings.
 
-Few-shot style:
-- Input: Hi. / Output: {"facts": []}
-- Input: There are branches in trees. / Output: {"facts": []}
-- Input: Hi, my name is John. I am a software engineer. / Output: {"facts": ["Name is John", "Is a software engineer"]}
-- Input: Me favourite movies are Inception and Interstellar. / Output: {"facts": ["Favourite movies are Inception and Interstellar"]}
-- Input (Assistant): I like sci-fi books. / Output: {"facts": []}  # ignore assistant content
-
-Rules:
-- Return a JSON list of fact strings; each string is a concise, readable sentence capturing a single fact.
-- Language: detect the user language and emit facts in that language.
-- Use ONLY user messages; ignore assistant/system. Facts must be grounded in user content.
-- If no meaningful facts, return an empty list. Do not emit meta-facts like "no facts".
-
-Example: ["The user's wife is Anne.", "Planning a trip to Japan next spring."]
-
-Now extract fact strings from the latest exchange, obeying the rules above. Use JSON only.
+Few-shots:
+- Input: User: "Hi." / Assistant: "Hello" -> []
+- Input: User: "My wife is Anne." / Assistant: "Got it." -> ["The user's wife is Anne."]
+- Input: User: "I like biking on weekends." / Assistant: "Cool!" -> ["User likes biking on weekends."]
 """.strip()
 
 FACT_INSTRUCTIONS = """
-Keep facts atomic, enduring, and person-centered when possible.
-Prefer explicit subjects over pronouns. Use lower_snake_case for subject/predicate
-(e.g., 'user|wife', 'bas_nijholt|employer', 'bike|type').
-Avoid formatting; return only JSON.
+Return only factual sentences grounded in the user text. No assistant acknowledgements or meta-text.
 """.strip()
 
 SUMMARY_PROMPT = """
