@@ -14,6 +14,9 @@ from uuid import uuid4
 import httpx
 from fastapi import HTTPException
 from fastapi.responses import StreamingResponse
+from pydantic_ai import Agent
+from pydantic_ai.models.openai import OpenAIModel
+from pydantic_ai.providers.openai import OpenAIProvider
 
 from agent_cli.core.openai_proxy import forward_chat_request
 from agent_cli.memory.files import write_memory_file
@@ -397,16 +400,6 @@ async def _chat_completion_request(
     return choices[0].get("message", {}).get("content", "") or ""
 
 
-def _parse_bullets(text: str) -> list[str]:
-    """Parse bullet lines from LLM output."""
-    lines = []
-    for raw in text.splitlines():
-        line = raw.strip(" -*•\t")
-        if line:
-            lines.append(line)
-    return lines
-
-
 def _extract_tags_from_text(text: str, *, max_tags: int = 5) -> set[str]:
     """Heuristic tag extraction from text (alpha tokens length>=4)."""
     tokens = []
@@ -494,70 +487,12 @@ async def _extract_salient_facts(
         exchange.append(f"Assistant: {assistant_message}")
     transcript = "\n".join(exchange)
 
-    structured = await _extract_with_pydantic_ai(
+    return await _extract_with_pydantic_ai(
         transcript=transcript,
         openai_base_url=openai_base_url,
         api_key=api_key,
         model=model,
     )
-    if structured:
-        return structured
-
-    prompt = (
-        "You are a memory extractor. From the latest exchange, extract 1-3 succinct facts "
-        "that would be useful to remember for future turns. Return JSON list of objects with keys "
-        "subject, predicate, object (optional), and fact (string). Example: "
-        '[{"subject":"Alice","predicate":"likes","object":"biking","fact":"Alice likes biking"}]. '
-        "If unsure, still include the best fact text in 'fact'. Do not include any prose outside JSON."
-    )
-    messages = [
-        {"role": "system", "content": prompt},
-        {"role": "user", "content": transcript},
-    ]
-    content = await _chat_completion_request(
-        messages=messages,
-        openai_base_url=openai_base_url,
-        api_key=api_key,
-        model=model,
-        temperature=0.0,
-        max_tokens=200,
-    )
-    structured = _parse_structured_facts(content)
-    if structured:
-        return structured
-    # Fallback to bullets if the model did not return JSON
-    return [
-        FactCandidate(content=fact_text, fact_key=_canonical_fact_key(fact_text))
-        for fact_text in _parse_bullets(content)
-    ]
-
-
-def _parse_structured_facts(text: str) -> list[FactCandidate]:
-    """Parse JSON list of structured facts; ignore on failure."""
-    try:
-        data = json.loads(text)
-    except Exception:
-        return []
-    if not isinstance(data, list):
-        return []
-    results: list[FactCandidate] = []
-    for item in data:
-        if not isinstance(item, dict):
-            continue
-        fact_text = item.get("fact") or ""
-        subj = str(item.get("subject") or "").strip()
-        pred = str(item.get("predicate") or "").strip()
-        obj_raw = item.get("object")
-        obj = str(obj_raw).strip() if obj_raw is not None else ""
-        if not fact_text and subj and pred:
-            fact_text = f"{subj} {pred} {obj}".strip()
-        fact_text = fact_text.strip()
-        if not fact_text:
-            continue
-        triple = FactTriple(subject=subj or "", predicate=pred or "", object=obj or None)
-        key = _canonical_fact_key_from_triple(triple) or _canonical_fact_key(fact_text)
-        results.append(FactCandidate(content=fact_text, fact_key=key))
-    return results
 
 
 async def _extract_with_pydantic_ai(
@@ -568,13 +503,6 @@ async def _extract_with_pydantic_ai(
     model: str,
 ) -> list[FactCandidate]:
     """Use PydanticAI to extract structured facts."""
-    try:
-        from pydantic_ai import Agent  # noqa: PLC0415
-        from pydantic_ai.models.openai import OpenAIModel  # noqa: PLC0415
-        from pydantic_ai.providers.openai import OpenAIProvider  # noqa: PLC0415
-    except Exception:
-        return []
-
     provider = OpenAIProvider(
         api_key=api_key or "dummy",
         base_url=openai_base_url,
