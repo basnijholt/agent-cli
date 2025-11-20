@@ -1316,7 +1316,10 @@ agent-cli rag-server \
 │ --port        INTEGER  Port to bind to [default: 8000]                       │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ General Options ────────────────────────────────────────────────────────────╮
-│ --log-level        TEXT  Logging level [default: INFO]                       │
+│ --log-level         TEXT  Logging level [default: INFO]                      │
+│ --config            TEXT  Path to a TOML configuration file.                 │
+│ --print-args              Print the command line arguments, including        │
+│                           variables taken from the configuration file.       │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 
 ```
