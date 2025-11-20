@@ -1,11 +1,10 @@
-"""Memory module powered by Letta."""
+"""Memory module for long-term chat history."""
 
 from __future__ import annotations
 
 from agent_cli.core.deps import ensure_optional_dependencies
 
 _REQUIRED_DEPS = {
-    "letta": "letta",
     "chromadb": "chromadb",
     "fastapi": "fastapi",
     "uvicorn": "uvicorn",

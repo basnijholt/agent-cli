@@ -25,6 +25,8 @@ def create_app(
     embedding_api_key: str | None = None,
     chat_api_key: str | None = None,
     default_top_k: int = 5,
+    enable_summarization: bool = True,
+    max_entries: int = 500,
 ) -> FastAPI:
     """Create the FastAPI app for memory-backed chat."""
     LOGGER.info("Initializing memory components...")
@@ -63,6 +65,8 @@ def create_app(
             openai_base_url.rstrip("/"),
             default_top_k=default_top_k,
             api_key=api_key,
+            enable_summarization=enable_summarization,
+            max_entries=max_entries,
         )
 
     @app.get("/health")

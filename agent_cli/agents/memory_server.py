@@ -1,4 +1,4 @@
-"""Memory Server agent command (long-term memory via Letta + Chroma)."""
+"""Memory Server agent command (long-term memory with Chroma)."""
 
 from __future__ import annotations
 
@@ -42,6 +42,16 @@ def memory_server(
         help="Port to bind to",
         rich_help_panel="Server Configuration",
     ),
+    max_entries: int = typer.Option(
+        500,
+        help="Maximum stored memory entries per conversation (excluding summary).",
+        rich_help_panel="Memory Configuration",
+    ),
+    disable_summarization: bool = typer.Option(
+        False,  # noqa: FBT003
+        help="Disable automatic fact extraction and summaries.",
+        rich_help_panel="Memory Configuration",
+    ),
     log_level: str = typer.Option(
         "INFO",
         help="Logging level",
@@ -81,6 +91,9 @@ def memory_server(
     console.print(f"  🤖 Backend: [blue]{openai_base_url}[/blue]")
     console.print(f"  🧠 Embeddings: Using [blue]{embedding_model}[/blue]")
     console.print(f"  🔍 Memory top_k: [blue]{default_top_k}[/blue] entries per query")
+    console.print(f"  🧹 Max entries per conversation: [blue]{max_entries}[/blue]")
+    if disable_summarization:
+        console.print("  ⚙️  Summaries: [red]disabled[/red]")
 
     fastapi_app = create_app(
         memory_path,
@@ -89,6 +102,8 @@ def memory_server(
         embedding_api_key=openai_api_key,
         chat_api_key=openai_api_key,
         default_top_k=default_top_k,
+        enable_summarization=not disable_summarization,
+        max_entries=max_entries,
     )
 
     uvicorn.run(fastapi_app, host=host, port=port, log_config=None)

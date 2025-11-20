@@ -56,3 +56,52 @@ def query_memories(
         n_results=n_results,
         where={"conversation_id": conversation_id},
     )
+
+
+def get_summary_entry(collection: Collection, conversation_id: str) -> dict[str, Any] | None:
+    """Return the latest summary entry for a conversation, if present."""
+    result = collection.get(
+        where={"conversation_id": conversation_id, "role": "summary"},
+        include=["documents", "metadatas", "ids"],
+    )
+    docs = result.get("documents") or []
+    metas = result.get("metadatas") or []
+    ids = result.get("ids") or []
+
+    doc_list = docs[0] if docs and isinstance(docs[0], list) else docs
+    meta_list = metas[0] if metas and isinstance(metas[0], list) else metas
+
+    if not doc_list or not meta_list:
+        return None
+
+    return {"id": ids[0] if ids else None, "document": doc_list[0], "metadata": meta_list[0]}
+
+
+def list_conversation_entries(
+    collection: Collection,
+    conversation_id: str,
+    *,
+    include_summary: bool = False,
+) -> list[dict[str, Any]]:
+    """List all entries for a conversation (optionally excluding summary)."""
+    where: dict[str, Any] = {"conversation_id": conversation_id}
+    if not include_summary:
+        where["role"] = {"$ne": "summary"}
+    result = collection.get(where=where, include=["documents", "metadatas", "ids"])
+    docs = result.get("documents") or []
+    metas = result.get("metadatas") or []
+    ids = result.get("ids") or []
+
+    doc_list = docs[0] if docs and isinstance(docs[0], list) else docs
+    meta_list = metas[0] if metas and isinstance(metas[0], list) else metas
+
+    entries: list[dict[str, Any]] = []
+    for doc, meta, entry_id in zip(doc_list, meta_list, ids, strict=False):
+        entries.append({"id": entry_id, "document": doc, "metadata": meta})
+    return entries
+
+
+def delete_entries(collection: Collection, ids: list[str]) -> None:
+    """Delete entries by ID."""
+    if ids:
+        collection.delete(ids=ids)

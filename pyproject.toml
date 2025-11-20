@@ -43,7 +43,6 @@ rag = [
     "transformers>=4.30.0",
 ]
 memory = [
-    "letta>=0.14.0",
     "chromadb>=0.4.22",
     "fastapi[standard]",
     "uvicorn",
