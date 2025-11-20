@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
-from typing import Any
+from typing import Any, Self
 
 import pytest
 
@@ -83,6 +83,45 @@ class _RecordingCollection:
         if ids:
             for doc_id in ids:
                 self._store.pop(doc_id, None)
+
+
+class _DummyStreamResponse:
+    def __init__(self, lines: list[str], status_code: int = 200) -> None:
+        self._lines = lines
+        self.status_code = status_code
+
+    async def __aenter__(self) -> Self:
+        return self
+
+    async def __aexit__(self, *_args: object) -> None:
+        return None
+
+    async def aiter_lines(self) -> Any:
+        for line in self._lines:
+            yield line
+
+    async def aread(self) -> bytes:
+        return b"error"
+
+
+class _DummyAsyncClient:
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        pass
+
+    def stream(self, *_args: Any, **_kwargs: Any) -> _DummyStreamResponse:
+        return _DummyStreamResponse(
+            [
+                'data: {"choices":[{"delta":{"content":"Hello"}}]}',
+                'data: {"choices":[{"delta":{"content":" Jane"}}]}',
+                "data: [DONE]",
+            ],
+        )
+
+    async def __aenter__(self) -> Self:  # type: ignore[misc]
+        return self
+
+    async def __aexit__(self, *_args: object) -> None:
+        return None
 
 
 def test_augment_chat_request_disables_with_zero_top_k() -> None:
@@ -284,3 +323,39 @@ def test_evict_if_needed_drops_oldest(monkeypatch: pytest.MonkeyPatch) -> None:
     engine._evict_if_needed(_RecordingCollection(), "conv", max_entries=1)
 
     assert removed == ["old"]
+
+
+@pytest.mark.asyncio
+async def test_streaming_request_persists_user_and_assistant(
+    tmp_path: Any,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    collection = _RecordingCollection()
+    request = ChatRequest(
+        model="demo-model",
+        messages=[Message(role="user", content="Jane is my wife.")],
+        stream=True,
+    )
+
+    monkeypatch.setattr(engine, "predict_relevance", lambda _model, pairs: [0.0 for _ in pairs])
+    monkeypatch.setattr(engine.httpx, "AsyncClient", _DummyAsyncClient)
+
+    response = await engine.process_chat_request(
+        request,
+        collection=collection,
+        memory_root=tmp_path,
+        openai_base_url="http://mock-llm",
+        reranker_model=_DummyReranker(),  # type: ignore[arg-type]
+        enable_summarization=False,
+    )
+
+    chunks = [
+        chunk if isinstance(chunk, bytes) else chunk.encode()
+        async for chunk in response.body_iterator  # type: ignore[attr-defined]
+    ]
+    body = b"".join(chunks)
+    assert b"Hello" in body
+    assert b"Jane" in body
+
+    files = list(tmp_path.glob("entries/**/*.md"))
+    assert len(files) == 2  # user + assistant persisted for streaming, too

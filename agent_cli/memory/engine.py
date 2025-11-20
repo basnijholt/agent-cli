@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import json
 import logging
+from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
@@ -10,6 +12,7 @@ from uuid import uuid4
 
 import httpx
 from fastapi import HTTPException
+from fastapi.responses import StreamingResponse
 
 from agent_cli.core.openai_proxy import forward_chat_request
 from agent_cli.memory.files import write_memory_file
@@ -32,7 +35,7 @@ from agent_cli.memory.store import (
 from agent_cli.rag.retriever import OnnxCrossEncoder, predict_relevance
 
 if TYPE_CHECKING:
-    from collections.abc import Mapping
+    from collections.abc import AsyncGenerator, Mapping
     from pathlib import Path
 
     from chromadb import Collection
@@ -635,6 +638,84 @@ async def _extract_and_store_facts_and_summaries(
         )
 
 
+async def _stream_and_persist_response(
+    *,
+    forward_payload: dict[str, Any],
+    collection: Collection,
+    memory_root: Path,
+    conversation_id: str,
+    user_message: str | None,
+    openai_base_url: str,
+    api_key: str | None,
+    enable_summarization: bool,
+    model: str,
+    max_entries: int,
+) -> StreamingResponse:
+    """Forward streaming request, tee assistant text, and persist after completion."""
+    headers = {"Authorization": f"Bearer {api_key}"} if api_key else None
+    assistant_chunks: list[str] = []
+
+    async def generate() -> AsyncGenerator[str, None]:
+        try:
+            async with (
+                httpx.AsyncClient(timeout=120.0) as client,
+                client.stream(
+                    "POST",
+                    f"{openai_base_url.rstrip('/')}/chat/completions",
+                    json=forward_payload,
+                    headers=headers,
+                ) as response,
+            ):
+                if response.status_code != 200:  # noqa: PLR2004
+                    error_text = await response.aread()
+                    yield f"data: {json.dumps({'error': str(error_text)})}\n\n"
+                    return
+
+                async for line in response.aiter_lines():
+                    if not line:
+                        continue
+                    if line.startswith("data:"):
+                        payload = line[5:].strip()
+                        if payload == "[DONE]":
+                            continue
+                        try:
+                            data = json.loads(payload)
+                            delta = (data.get("choices") or [{}])[0].get("delta") or {}
+                            piece = delta.get("content") or delta.get("text") or ""
+                            if piece:
+                                assistant_chunks.append(piece)
+                        except Exception:
+                            logger.debug(
+                                "Failed to parse streaming chunk: %s",
+                                payload,
+                                exc_info=True,
+                            )
+                    yield line + "\n"
+        finally:
+            assistant_message = "".join(assistant_chunks).strip() or None
+            _persist_turns(
+                collection,
+                memory_root=memory_root,
+                conversation_id=conversation_id,
+                user_message=None,
+                assistant_message=assistant_message,
+            )
+            if enable_summarization:
+                await _extract_and_store_facts_and_summaries(
+                    collection=collection,
+                    memory_root=memory_root,
+                    conversation_id=conversation_id,
+                    user_message=user_message,
+                    assistant_message=assistant_message,
+                    openai_base_url=openai_base_url,
+                    api_key=api_key,
+                    model=model,
+                )
+            _evict_if_needed(collection, conversation_id, max_entries)
+
+    return StreamingResponse(generate(), media_type="text/event-stream")
+
+
 async def process_chat_request(
     request: ChatRequest,
     collection: Collection,
@@ -658,9 +739,32 @@ async def process_chat_request(
         tag_boost=tag_boost,
     )
 
+    if request.stream:
+        user_message = _latest_user_message(request)
+        _persist_turns(
+            collection,
+            memory_root=memory_root,
+            conversation_id=conversation_id,
+            user_message=user_message,
+            assistant_message=None,
+        )
+        forward_payload = aug_request.model_dump(exclude={"memory_id", "memory_top_k"})
+        return await _stream_and_persist_response(
+            forward_payload=forward_payload,
+            collection=collection,
+            memory_root=memory_root,
+            conversation_id=conversation_id,
+            user_message=user_message,
+            openai_base_url=openai_base_url,
+            api_key=api_key,
+            enable_summarization=enable_summarization,
+            model=request.model,
+            max_entries=max_entries,
+        )
+
     response = await _forward_request(aug_request, openai_base_url, api_key)
 
-    if request.stream or not isinstance(response, dict):
+    if not isinstance(response, dict):
         return response
 
     user_message = _latest_user_message(request)
