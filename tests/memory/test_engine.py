@@ -397,7 +397,9 @@ async def test_streaming_request_persists_user_and_assistant(
 
     monkeypatch.setattr(engine, "predict_relevance", lambda _model, pairs: [0.0 for _ in pairs])
     monkeypatch.setattr(
-        engine.streaming, "httpx", type("H", (), {"AsyncClient": _DummyAsyncClient})
+        engine.streaming,
+        "httpx",
+        type("H", (), {"AsyncClient": _DummyAsyncClient}),
     )  # type: ignore[attr-defined]
 
     async def fake_stream_chat_sse(*_args: Any, **_kwargs: Any) -> Any:

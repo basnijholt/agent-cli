@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import json
-from collections.abc import AsyncGenerator
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import httpx
+
+if TYPE_CHECKING:
+    from collections.abc import AsyncGenerator
 
 
 async def stream_chat_sse(
@@ -14,11 +16,11 @@ async def stream_chat_sse(
     openai_base_url: str,
     payload: dict[str, Any],
     headers: dict[str, str] | None = None,
-    timeout: float = 120.0,
+    request_timeout: float = 120.0,
 ) -> AsyncGenerator[str, None]:
     """Stream Server-Sent Events from an OpenAI-compatible chat completion endpoint."""
     async with (
-        httpx.AsyncClient(timeout=timeout) as client,
+        httpx.AsyncClient(timeout=request_timeout) as client,
         client.stream(
             "POST",
             f"{openai_base_url.rstrip('/')}/chat/completions",
