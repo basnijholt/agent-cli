@@ -109,25 +109,6 @@ def _canonical_fact_key_from_output(item: FactOutput) -> str | None:
     return None
 
 
-def _output_to_text(item: FactOutput) -> str:
-    """Human-readable fact text from a structured fact."""
-    parts = [item.subject, item.predicate, item.object or ""]
-    return " ".join(p for p in parts if p).strip()
-
-
-def _ensure_fact_key(
-    fact_key: str | None,
-    fact_text: str,
-    item: FactOutput | None = None,
-) -> str | None:
-    """Derive a stable fact_key or return None if impossible."""
-    return (
-        fact_key
-        or (_canonical_fact_key_from_output(item) if item else None)
-        or _canonical_fact_key(fact_text)
-    )
-
-
 @dataclass
 class WriteEntry:
     """Structured memory entry to persist."""
@@ -535,14 +516,7 @@ async def _extract_with_pydantic_ai(
         return []
 
     outputs = result.output or []
-    fact_candidates: list[FactCandidate] = []
-    for item in outputs:
-        content = item.fact or _output_to_text(item)
-        key = _ensure_fact_key(item.fact_key, content, item)
-        if not content or not key:
-            continue
-        fact_candidates.append(FactCandidate(content=content, fact_key=key))
-    return fact_candidates
+    return [FactCandidate(content=item.fact, fact_key=item.fact_key) for item in outputs]
 
 
 async def _update_summary(
