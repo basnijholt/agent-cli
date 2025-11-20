@@ -392,7 +392,7 @@ async def test_streaming_request_persists_user_and_assistant(
     )
 
     monkeypatch.setattr(engine, "predict_relevance", lambda _model, pairs: [0.0 for _ in pairs])
-    monkeypatch.setattr(engine.httpx, "AsyncClient", _DummyAsyncClient)
+    monkeypatch.setattr(engine, "httpx", type("H", (), {"AsyncClient": _DummyAsyncClient}))  # type: ignore[attr-defined]
 
     response = await engine.process_chat_request(
         request,

@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import json
 import logging
-import re
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from time import perf_counter
@@ -12,7 +11,6 @@ from typing import TYPE_CHECKING, Any
 from uuid import uuid4
 
 import httpx
-from fastapi import HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic_ai import Agent
 from pydantic_ai.models.openai import OpenAIModel
@@ -22,7 +20,6 @@ from agent_cli.core.openai_proxy import forward_chat_request
 from agent_cli.memory.files import write_memory_file
 from agent_cli.memory.models import (
     ChatRequest,
-    FactTriple,
     MemoryEntry,
     MemoryExtras,
     MemoryMetadata,
@@ -73,47 +70,6 @@ def _parse_iso(date_str: str) -> datetime | None:
         return datetime.fromisoformat(date_str)
     except Exception:
         return None
-
-
-def _canonical_fact_key(text: str) -> str | None:
-    """Heuristic subject/predicate key to consolidate duplicate or conflicting facts."""
-    cleaned = re.sub(r"\s+", " ", text.strip()).strip(" .?!;")
-    if not cleaned:
-        return None
-    lowered = cleaned.lower()
-    separators = [
-        " is ",
-        " was ",
-        " are ",
-        " were ",
-        " has ",
-        " have ",
-        " likes ",
-        " loves ",
-    ]
-    for sep in separators:
-        if sep in lowered:
-            subject, rest = lowered.split(sep, 1)
-            subject = subject.strip()
-            predicate = rest.strip()
-            if subject and predicate:
-                return f"{subject}::{predicate}"
-    return lowered
-
-
-def _canonical_fact_key_from_triple(triple: FactTriple) -> str | None:
-    """Build a key from structured subject/predicate."""
-    subject = triple.subject.strip().lower()
-    predicate = triple.predicate.strip().lower()
-    if subject and predicate:
-        return f"{subject}::{predicate}"
-    return None
-
-
-def _triple_to_text(triple: FactTriple) -> str:
-    """Human-readable fact text from a triple."""
-    parts = [triple.subject, triple.predicate, triple.object or ""]
-    return " ".join(p for p in parts if p).strip()
 
 
 @dataclass
@@ -373,31 +329,28 @@ async def _chat_completion_request(
     temperature: float = 0.2,
     max_tokens: int = 256,
 ) -> str:
-    """Call backend LLM for a one-shot completion and return content."""
+    """Call backend LLM for a one-shot completion and return content via PydanticAI."""
+    provider = OpenAIProvider(
+        api_key=api_key or "dummy",
+        base_url=openai_base_url,
+    )
+    model_cfg = OpenAIModel(
+        model_name=model,
+        provider=provider,
+    )
+    agent = Agent(
+        model=model_cfg,
+        system_prompt=None,
+        instructions=None,
+    )
     payload = {
-        "model": model,
         "messages": messages,
         "temperature": temperature,
         "max_tokens": max_tokens,
         "stream": False,
     }
-    headers = {"Authorization": f"Bearer {api_key}"} if api_key else None
-    async with httpx.AsyncClient(timeout=60.0) as client:
-        response = await client.post(
-            f"{openai_base_url.rstrip('/')}/chat/completions",
-            json=payload,
-            headers=headers,
-        )
-    if response.status_code != 200:  # noqa: PLR2004
-        raise HTTPException(
-            status_code=response.status_code,
-            detail=f"Upstream error during memory summarization: {response.text}",
-        )
-    data = response.json()
-    choices = data.get("choices") or []
-    if not choices:
-        return ""
-    return choices[0].get("message", {}).get("content", "") or ""
+    result = await agent.run(payload, input_is_json=True)
+    return str(result.output or "")
 
 
 def _extract_tags_from_text(text: str, *, max_tags: int = 5) -> set[str]:
