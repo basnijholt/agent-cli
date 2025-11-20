@@ -48,7 +48,7 @@ Rules:
 - The `fact` field must be a concise natural sentence; never emit booleans/placeholders (true/false/none) or meta-text.
 - If no meaningful facts, return an empty list. Do not emit meta-facts like "no facts".
 
-Example JSON fact:
+Example JSON fact (multiple allowed in a list):
 [
   {
     "subject": "user",
@@ -57,6 +57,8 @@ Example JSON fact:
     "fact": "The user's wife is Anne."
   }
 ]
+
+Now extract facts from the latest exchange, obeying the rules above. Use JSON only.
 """.strip()
 
 FACT_INSTRUCTIONS = """
