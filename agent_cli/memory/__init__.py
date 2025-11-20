@@ -8,6 +8,9 @@ _REQUIRED_DEPS = {
     "chromadb": "chromadb",
     "fastapi": "fastapi",
     "uvicorn": "uvicorn",
+    "onnxruntime": "onnxruntime",
+    "huggingface_hub": "huggingface-hub",
+    "transformers": "transformers",
 }
 
 ensure_optional_dependencies(

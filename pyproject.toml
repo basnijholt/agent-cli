@@ -46,6 +46,9 @@ memory = [
     "chromadb>=0.4.22",
     "fastapi[standard]",
     "uvicorn",
+    "onnxruntime>=1.17.0",
+    "huggingface-hub>=0.20.0",
+    "transformers>=4.30.0",
 ]
 test = [
     "pytest>=7.0.0",

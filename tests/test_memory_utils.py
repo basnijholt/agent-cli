@@ -66,5 +66,5 @@ def test_evict_if_needed_removes_oldest() -> None:
     _evict_if_needed(collection, "c1", max_entries=2)
 
     remaining = list_conversation_entries(collection, "c1")
-    remaining_ids = {e["id"] for e in remaining}
+    remaining_ids = {e.id for e in remaining}
     assert remaining_ids == {"mid", "new"}

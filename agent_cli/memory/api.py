@@ -39,6 +39,10 @@ def create_app(
         openai_api_key=embedding_api_key,
     )
 
+    from agent_cli.rag.retriever import get_reranker_model  # noqa: PLC0415
+
+    reranker_model = get_reranker_model()
+
     app = FastAPI(title="Memory Proxy")
 
     app.add_middleware(
@@ -63,6 +67,7 @@ def create_app(
             chat_request,
             collection,
             openai_base_url.rstrip("/"),
+            reranker_model,
             default_top_k=default_top_k,
             api_key=api_key,
             enable_summarization=enable_summarization,

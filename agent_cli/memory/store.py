@@ -7,6 +7,8 @@ from typing import TYPE_CHECKING, Any
 import chromadb
 from chromadb.utils import embedding_functions
 
+from agent_cli.memory.models import MemoryMetadata, StoredMemory
+
 if TYPE_CHECKING:
     from pathlib import Path
 
@@ -49,16 +51,31 @@ def query_memories(
     conversation_id: str,
     text: str,
     n_results: int,
-) -> dict[str, Any]:
-    """Query for relevant memory entries."""
-    return collection.query(
+) -> list[StoredMemory]:
+    """Query for relevant memory entries and return structured results."""
+    raw = collection.query(
         query_texts=[text],
         n_results=n_results,
         where={"conversation_id": conversation_id},
     )
+    docs = raw.get("documents", [[]])[0] or []
+    metas = raw.get("metadatas", [[]])[0] or []
+    ids = raw.get("ids", [[]])[0] or []
+    distances = raw.get("distances", [[]])[0] or []
+    records: list[StoredMemory] = []
+    for doc, meta, doc_id, dist in zip(docs, metas, ids, distances, strict=False):
+        records.append(
+            StoredMemory(
+                id=str(doc_id) if doc_id is not None else None,
+                content=str(doc),
+                metadata=MemoryMetadata(**meta),
+                distance=float(dist) if dist is not None else None,
+            ),
+        )
+    return records
 
 
-def get_summary_entry(collection: Collection, conversation_id: str) -> dict[str, Any] | None:
+def get_summary_entry(collection: Collection, conversation_id: str) -> StoredMemory | None:
     """Return the latest summary entry for a conversation, if present."""
     result = collection.get(
         where={"conversation_id": conversation_id, "role": "summary"},
@@ -74,7 +91,12 @@ def get_summary_entry(collection: Collection, conversation_id: str) -> dict[str,
     if not doc_list or not meta_list:
         return None
 
-    return {"id": ids[0] if ids else None, "document": doc_list[0], "metadata": meta_list[0]}
+    return StoredMemory(
+        id=str(ids[0]) if ids else None,
+        content=str(doc_list[0]),
+        metadata=MemoryMetadata(**meta_list[0]),
+        distance=None,
+    )
 
 
 def list_conversation_entries(
@@ -82,7 +104,7 @@ def list_conversation_entries(
     conversation_id: str,
     *,
     include_summary: bool = False,
-) -> list[dict[str, Any]]:
+) -> list[StoredMemory]:
     """List all entries for a conversation (optionally excluding summary)."""
     where: dict[str, Any] = {"conversation_id": conversation_id}
     if not include_summary:
@@ -95,10 +117,17 @@ def list_conversation_entries(
     doc_list = docs[0] if docs and isinstance(docs[0], list) else docs
     meta_list = metas[0] if metas and isinstance(metas[0], list) else metas
 
-    entries: list[dict[str, Any]] = []
+    records: list[StoredMemory] = []
     for doc, meta, entry_id in zip(doc_list, meta_list, ids, strict=False):
-        entries.append({"id": entry_id, "document": doc, "metadata": meta})
-    return entries
+        records.append(
+            StoredMemory(
+                id=str(entry_id) if entry_id is not None else None,
+                content=str(doc),
+                metadata=MemoryMetadata(**meta),
+                distance=None,
+            ),
+        )
+    return records
 
 
 def delete_entries(collection: Collection, ids: list[str]) -> None:

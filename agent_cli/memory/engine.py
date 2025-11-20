@@ -12,7 +12,13 @@ import httpx
 from fastapi import HTTPException
 from fastapi.responses import StreamingResponse
 
-from agent_cli.memory.models import ChatRequest, MemoryEntry, MemoryRetrieval, Message
+from agent_cli.memory.models import (
+    ChatRequest,
+    MemoryEntry,
+    MemoryRetrieval,
+    Message,
+    StoredMemory,
+)
 from agent_cli.memory.store import (
     delete_entries,
     get_summary_entry,
@@ -20,6 +26,7 @@ from agent_cli.memory.store import (
     query_memories,
     upsert_memories,
 )
+from agent_cli.rag.retriever import OnnxCrossEncoder, predict_relevance
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
@@ -38,36 +45,71 @@ def _retrieve_memory(
     conversation_id: str,
     query: str,
     top_k: int,
+    reranker_model: OnnxCrossEncoder,
+    include_global: bool = True,
     include_summary: bool = True,
 ) -> tuple[MemoryRetrieval, str | None]:
-    results = query_memories(
-        collection,
-        conversation_id=conversation_id,
-        text=query,
-        n_results=top_k,
-    )
+    candidate_conversations = [conversation_id]
+    if include_global and conversation_id != "global":
+        candidate_conversations.append("global")
 
-    documents = results.get("documents", [[]])[0] or []
-    metadatas = results.get("metadatas", [[]])[0] or []
-    distances = results.get("distances", [[]])[0] or []
-
-    entries: list[MemoryEntry] = []
-    for idx, doc in enumerate(documents):
-        meta = metadatas[idx] if idx < len(metadatas) else {}
-        entries.append(
-            MemoryEntry(
-                role=str(meta.get("role", "memory")),
-                content=str(doc),
-                created_at=str(meta.get("created_at", "")),
-                score=float(distances[idx]) if idx < len(distances) else None,
-            ),
+    candidates: list[StoredMemory] = []
+    for cid in candidate_conversations:
+        records = query_memories(
+            collection,
+            conversation_id=cid,
+            text=query,
+            n_results=top_k * 3,
         )
+        candidates.extend(records)
+
+    def recency_boost(meta: Any) -> float:
+        ts = getattr(meta, "created_at", None)
+        if not ts:
+            return 0.0
+        try:
+            dt = datetime.fromisoformat(str(ts))
+        except Exception:
+            return 0.0
+        age_days = max((datetime.now(UTC) - dt).total_seconds() / 86400.0, 0.0)
+        return 1.0 / (1.0 + age_days / 7.0)
+
+    scores: list[float] = []
+    if candidates:
+        pairs = [(query, mem.content) for mem in candidates]
+        rr_scores = predict_relevance(reranker_model, pairs)
+        for mem, rr in zip(candidates, rr_scores, strict=False):
+            base = rr
+            dist_bonus = 0.0 if mem.distance is None else 1.0 / (1.0 + mem.distance)
+            total = base + 0.1 * dist_bonus + 0.2 * recency_boost(mem.metadata)
+            scores.append(total)
+    else:
+        for mem in candidates:
+            base = 0.0 if mem.distance is None else 1.0 / (1.0 + mem.distance)
+            total = base + 0.2 * recency_boost(mem.metadata)
+            scores.append(total)
+
+    ranked = sorted(
+        zip(candidates, scores, strict=False),
+        key=lambda x: x[1],
+        reverse=True,
+    )[:top_k]
+
+    entries: list[MemoryEntry] = [
+        MemoryEntry(
+            role=mem.metadata.role or "memory",
+            content=mem.content,
+            created_at=mem.metadata.created_at,
+            score=score,
+        )
+        for mem, score in ranked
+    ]
 
     summary_text: str | None = None
     if include_summary:
         summary = get_summary_entry(collection, conversation_id)
         if summary:
-            summary_text = str(summary["document"])
+            summary_text = summary.content
 
     return MemoryRetrieval(entries=entries), summary_text
 
@@ -91,8 +133,10 @@ def _format_augmented_content(
 def augment_chat_request(
     request: ChatRequest,
     collection: Collection,
+    reranker_model: OnnxCrossEncoder,
     default_top_k: int = 5,
     default_memory_id: str = "default",
+    include_global: bool = True,
 ) -> tuple[ChatRequest, MemoryRetrieval | None, str]:
     """Retrieve memory context and augment the chat request."""
     user_message = next(
@@ -114,6 +158,8 @@ def augment_chat_request(
         conversation_id=conversation_id,
         query=user_message,
         top_k=top_k,
+        reranker_model=reranker_model,
+        include_global=include_global,
     )
 
     if not retrieval.entries and not summary_text:
@@ -306,18 +352,19 @@ def _evict_if_needed(collection: Collection, conversation_id: str, max_entries: 
     try:
         sorted_entries = sorted(
             entries,
-            key=lambda e: e["metadata"].get("created_at", ""),
+            key=lambda e: e.metadata.created_at,
         )
     except Exception:
         sorted_entries = entries
     overflow = sorted_entries[:-max_entries]
-    delete_entries(collection, [e["id"] for e in overflow])
+    delete_entries(collection, [e.id for e in overflow if e.id])
 
 
 async def process_chat_request(
     request: ChatRequest,
     collection: Collection,
     openai_base_url: str,
+    reranker_model: OnnxCrossEncoder,
     default_top_k: int = 5,
     api_key: str | None = None,
     enable_summarization: bool = True,
@@ -328,6 +375,7 @@ async def process_chat_request(
         request,
         collection,
         default_top_k=default_top_k,
+        reranker_model=reranker_model,
     )
 
     response = await _forward_request(aug_request, openai_base_url, api_key)
