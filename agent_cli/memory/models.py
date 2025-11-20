@@ -55,16 +55,6 @@ class MemoryExtras(BaseModel):
     fact_key: str | None = None
 
 
-class FactTriple(BaseModel):
-    """Structured fact extracted from an exchange."""
-
-    subject: str
-    predicate: str
-    object: str | None = None
-    fact: str | None = None
-    fact_key: str | None = None
-
-
 class FactOutput(BaseModel):
     """Output schema used by PydanticAI for fact extraction with validation."""
 

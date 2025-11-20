@@ -22,7 +22,6 @@ from agent_cli.memory.files import write_memory_file
 from agent_cli.memory.models import (
     ChatRequest,
     FactOutput,
-    FactTriple,
     MemoryEntry,
     MemoryExtras,
     MemoryMetadata,
@@ -101,26 +100,30 @@ def _canonical_fact_key(text: str) -> str | None:
     return lowered
 
 
-def _canonical_fact_key_from_triple(triple: FactTriple) -> str | None:
+def _canonical_fact_key_from_output(item: FactOutput) -> str | None:
     """Build a key from structured subject/predicate."""
-    subject = triple.subject.strip().lower()
-    predicate = triple.predicate.strip().lower()
+    subject = item.subject.strip().lower()
+    predicate = item.predicate.strip().lower()
     if subject and predicate:
         return f"{subject}::{predicate}"
     return None
 
 
-def _triple_to_text(triple: FactTriple) -> str:
-    """Human-readable fact text from a triple."""
-    parts = [triple.subject, triple.predicate, triple.object or ""]
+def _output_to_text(item: FactOutput) -> str:
+    """Human-readable fact text from a structured fact."""
+    parts = [item.subject, item.predicate, item.object or ""]
     return " ".join(p for p in parts if p).strip()
 
 
-def _ensure_fact_key(fact_key: str | None, triple: FactTriple | None, fact_text: str) -> str | None:
+def _ensure_fact_key(
+    fact_key: str | None,
+    fact_text: str,
+    item: FactOutput | None = None,
+) -> str | None:
     """Derive a stable fact_key or return None if impossible."""
     return (
         fact_key
-        or (_canonical_fact_key_from_triple(triple) if triple else None)
+        or (_canonical_fact_key_from_output(item) if item else None)
         or _canonical_fact_key(fact_text)
     )
 
@@ -517,6 +520,7 @@ async def _extract_with_pydantic_ai(
             "Do not include prose outside JSON."
         ),
         output_type=list[FactOutput],
+        retries=2,
     )
     instructions = (
         "Keep facts atomic, enduring, and person-centered when possible. "
@@ -533,17 +537,8 @@ async def _extract_with_pydantic_ai(
     outputs = result.output or []
     fact_candidates: list[FactCandidate] = []
     for item in outputs:
-        if not isinstance(item, FactOutput):
-            continue
-        triple = FactTriple(
-            subject=item.subject,
-            predicate=item.predicate,
-            object=item.object,
-            fact=item.fact,
-            fact_key=item.fact_key,
-        )
-        content = item.fact or _triple_to_text(triple)
-        key = _ensure_fact_key(item.fact_key, triple, content)
+        content = item.fact or _output_to_text(item)
+        key = _ensure_fact_key(item.fact_key, content, item)
         if not content or not key:
             continue
         fact_candidates.append(FactCandidate(content=content, fact_key=key))
