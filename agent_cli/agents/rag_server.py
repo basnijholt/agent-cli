@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-from importlib.util import find_spec
 from pathlib import Path  # noqa: TC003
 
 import typer
@@ -12,14 +11,6 @@ from rich.logging import RichHandler
 from agent_cli import opts
 from agent_cli.cli import app
 from agent_cli.core.utils import console, print_error_message
-
-has_fastapi = find_spec("fastapi") is not None
-has_uvicorn = find_spec("uvicorn") is not None
-has_chromadb = find_spec("chromadb") is not None
-has_watchfiles = find_spec("watchfiles") is not None
-has_onnxruntime = find_spec("onnxruntime") is not None
-has_transformers = find_spec("transformers") is not None
-has_markitdown = find_spec("markitdown") is not None
 
 
 @app.command("rag-server")
@@ -68,19 +59,6 @@ def rag_server(
     an OpenAI-compatible API that proxies requests to a backend LLM (like llama.cpp),
     injecting relevant context from the documents.
     """
-    if not (
-        has_fastapi
-        and has_uvicorn
-        and has_chromadb
-        and has_watchfiles
-        and has_onnxruntime
-        and has_transformers
-        and has_markitdown
-    ):
-        msg = "RAG dependencies are not installed. Please install with `pip install agent-cli[rag]` or `uv sync --extra rag`."
-        print_error_message(msg)
-        raise typer.Exit(1)
-
     # Configure logging
     logging.basicConfig(
         level=log_level.upper(),
@@ -95,9 +73,16 @@ def rag_server(
     logging.getLogger("chromadb").setLevel(logging.WARNING)
     logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
 
-    import uvicorn  # noqa: PLC0415
+    try:
+        import uvicorn  # noqa: PLC0415
 
-    from agent_cli.rag.api import create_app  # noqa: PLC0415
+        from agent_cli.rag.api import create_app  # noqa: PLC0415
+    except ImportError as exc:
+        print_error_message(
+            "RAG dependencies are not installed. Please install with "
+            "`pip install agent-cli[rag]` or `uv sync --extra rag`.",
+        )
+        raise typer.Exit(1) from exc
 
     docs_folder = docs_folder.resolve()
     chroma_path = chroma_path.resolve()
