@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
 
 import httpx
 from fastapi import HTTPException
@@ -16,8 +16,18 @@ if TYPE_CHECKING:
 logger = logging.getLogger("agent_cli.core.openai_proxy")
 
 
+@runtime_checkable
+class ChatRequestLike(Protocol):
+    """Minimal interface required to forward a chat request."""
+
+    stream: bool | None
+
+    def model_dump(self, *, exclude: set[str] | None = None) -> dict[str, Any]:
+        """Serialize request to a dict for forwarding."""
+
+
 async def forward_chat_request(
-    request: Any,
+    request: ChatRequestLike,
     openai_base_url: str,
     api_key: str | None = None,
     *,
