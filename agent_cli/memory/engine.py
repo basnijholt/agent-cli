@@ -19,6 +19,7 @@ from agent_cli.core.openai_proxy import forward_chat_request
 from agent_cli.memory.files import write_memory_file
 from agent_cli.memory.models import (
     ChatRequest,
+    FactTriple,
     MemoryEntry,
     MemoryExtras,
     MemoryMetadata,
@@ -97,6 +98,15 @@ def _canonical_fact_key(text: str) -> str | None:
     return lowered
 
 
+def _canonical_fact_key_from_triple(triple: FactTriple) -> str | None:
+    """Build a key from structured subject/predicate."""
+    subject = triple.subject.strip().lower()
+    predicate = triple.predicate.strip().lower()
+    if subject and predicate:
+        return f"{subject}::{predicate}"
+    return None
+
+
 @dataclass
 class WriteEntry:
     """Structured memory entry to persist."""
@@ -104,6 +114,14 @@ class WriteEntry:
     role: str
     content: str
     extras: MemoryExtras
+
+
+@dataclass
+class FactCandidate:
+    """Structured fact output from extraction."""
+
+    content: str
+    fact_key: str | None
 
 
 def _dedupe_by_fact_key(candidates: list[StoredMemory]) -> list[StoredMemory]:
@@ -460,12 +478,15 @@ async def _extract_salient_facts(
     openai_base_url: str,
     api_key: str | None,
     model: str,
-) -> list[str]:
+) -> list[FactCandidate]:
     if not user_message and not assistant_message:
         return []
     prompt = (
         "You are a memory extractor. From the latest exchange, extract 1-3 succinct facts "
-        "that would be useful to remember for future turns. Keep each fact standalone."
+        "that would be useful to remember for future turns. Return JSON list of objects with keys "
+        "subject, predicate, object (optional), and fact (string). Example: "
+        '[{"subject":"Alice","predicate":"likes","object":"biking","fact":"Alice likes biking"}]. '
+        "If unsure, still include the best fact text in 'fact'. Do not include any prose outside JSON."
     )
     exchange = []
     if user_message:
@@ -484,7 +505,42 @@ async def _extract_salient_facts(
         temperature=0.0,
         max_tokens=200,
     )
-    return _parse_bullets(content)
+    structured = _parse_structured_facts(content)
+    if structured:
+        return structured
+    # Fallback to bullets if the model did not return JSON
+    return [
+        FactCandidate(content=fact_text, fact_key=_canonical_fact_key(fact_text))
+        for fact_text in _parse_bullets(content)
+    ]
+
+
+def _parse_structured_facts(text: str) -> list[FactCandidate]:
+    """Parse JSON list of structured facts; ignore on failure."""
+    try:
+        data = json.loads(text)
+    except Exception:
+        return []
+    if not isinstance(data, list):
+        return []
+    results: list[FactCandidate] = []
+    for item in data:
+        if not isinstance(item, dict):
+            continue
+        fact_text = item.get("fact") or ""
+        subj = str(item.get("subject") or "").strip()
+        pred = str(item.get("predicate") or "").strip()
+        obj_raw = item.get("object")
+        obj = str(obj_raw).strip() if obj_raw is not None else ""
+        if not fact_text and subj and pred:
+            fact_text = f"{subj} {pred} {obj}".strip()
+        fact_text = fact_text.strip()
+        if not fact_text:
+            continue
+        triple = FactTriple(subject=subj or "", predicate=pred or "", object=obj or None)
+        key = _canonical_fact_key_from_triple(triple) or _canonical_fact_key(fact_text)
+        results.append(FactCandidate(content=fact_text, fact_key=key))
+    return results
 
 
 async def _update_summary(
@@ -708,11 +764,11 @@ async def _extract_and_store_facts_and_summaries(
     fact_entries: list[WriteEntry] = [
         WriteEntry(
             role="memory",
-            content=fact,
+            content=fact.content,
             extras=MemoryExtras(
                 salience=1.0,
-                tags=list(_extract_tags_from_text(fact)),
-                fact_key=_canonical_fact_key(fact),
+                tags=list(_extract_tags_from_text(fact.content)),
+                fact_key=fact.fact_key,
             ),
         )
         for fact in facts
@@ -739,7 +795,7 @@ async def _extract_and_store_facts_and_summaries(
     new_short, new_long = await _update_summaries(
         prior_short=prior_summary,
         prior_long=prior_long,
-        new_facts=facts,
+        new_facts=[fact.content for fact in facts],
         openai_base_url=openai_base_url,
         api_key=api_key,
         model=model,

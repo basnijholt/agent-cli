@@ -55,6 +55,14 @@ class MemoryExtras(BaseModel):
     fact_key: str | None = None
 
 
+class FactTriple(BaseModel):
+    """Structured fact extracted from an exchange."""
+
+    subject: str
+    predicate: str
+    object: str | None = None
+
+
 class StoredMemory(BaseModel):
     """Memory document as stored in the vector DB."""
 
