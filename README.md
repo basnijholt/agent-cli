@@ -38,6 +38,7 @@ I use it mostly for the `transcribe` function when working with LLMs. Being able
 - **`assistant`**: A hands-free voice assistant that starts and stops recording based on a wake word.
 - **`chat`**: A conversational AI agent with tool-calling capabilities.
 - **`rag-server`**: A RAG (Retrieval-Augmented Generation) proxy server that lets you chat with your documents.
+- **`memory-server`**: A long-term memory chat proxy (Letta + Chroma) with OpenAI-compatible endpoints.
 
 ## Quick Start
 
@@ -1232,6 +1233,16 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 - **Start Server (Local LLM)**: `agent-cli rag-server --docs-folder ~/Documents/Notes --openai-base-url http://localhost:11434/v1 --port 8000`
 - **Start Server (OpenAI)**: `agent-cli rag-server --docs-folder ~/Documents/Notes --openai-api-key sk-...`
 - **Use with Agent-CLI**: `agent-cli chat --openai-base-url http://localhost:8000/v1 --llm-provider openai`
+
+### `memory-server`
+
+**Purpose:** Adds long-term conversational memory via Letta + Chroma with an OpenAI-compatible `/chat/completions` endpoint.
+
+**How to Use It:**
+
+- **Install memory deps first**: `pip install "agent-cli[memory]"` (or, from the repo, `uv sync --extra memory`)
+- **Start Server (Local LLM/OpenAI-compatible)**: `agent-cli memory-server --memory-path ./memory_db --openai-base-url http://localhost:11434/v1 --embedding-model text-embedding-3-small`
+- **Use with Agent-CLI**: `agent-cli chat --openai-base-url http://localhost:8100/v1 --llm-provider openai`
 
 #### Using Custom Embeddings (e.g., OpenAI / llama.cpp / Ollama)
 

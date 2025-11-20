@@ -1,0 +1,94 @@
+"""Memory Server agent command (long-term memory via Letta + Chroma)."""
+
+from __future__ import annotations
+
+import logging
+from pathlib import Path  # noqa: TC003
+
+import typer
+from rich.logging import RichHandler
+
+from agent_cli import opts
+from agent_cli.cli import app
+from agent_cli.core.utils import console, print_error_message
+
+
+@app.command("memory-server")
+def memory_server(
+    memory_path: Path = typer.Option(  # noqa: B008
+        "./memory_db",
+        help="Path to ChromaDB persistence directory for long-term memory.",
+        rich_help_panel="Memory Configuration",
+    ),
+    openai_base_url: str | None = opts.OPENAI_BASE_URL,
+    embedding_model: str = typer.Option(
+        "text-embedding-3-small",
+        help="Embedding model name (e.g. 'text-embedding-3-small').",
+        rich_help_panel="Backend Configuration",
+    ),
+    openai_api_key: str | None = opts.OPENAI_API_KEY,
+    default_top_k: int = typer.Option(
+        5,
+        help="Number of memory entries to retrieve per query.",
+        rich_help_panel="Memory Configuration",
+    ),
+    host: str = typer.Option(
+        "0.0.0.0",  # noqa: S104
+        help="Host to bind to",
+        rich_help_panel="Server Configuration",
+    ),
+    port: int = typer.Option(
+        8100,
+        help="Port to bind to",
+        rich_help_panel="Server Configuration",
+    ),
+    log_level: str = typer.Option(
+        "INFO",
+        help="Logging level",
+        rich_help_panel="General Options",
+    ),
+) -> None:
+    """Start the memory-backed chat proxy server."""
+    logging.basicConfig(
+        level=log_level.upper(),
+        format="%(message)s",
+        datefmt="[%X]",
+        handlers=[RichHandler(console=console, rich_tracebacks=True)],
+        force=True,
+    )
+
+    logging.getLogger("httpx").setLevel(logging.WARNING)
+    logging.getLogger("chromadb").setLevel(logging.WARNING)
+    logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
+
+    try:
+        import uvicorn  # noqa: PLC0415
+
+        from agent_cli.memory.api import create_app  # noqa: PLC0415
+    except ImportError as exc:
+        print_error_message(
+            "Memory dependencies are not installed. Please install with "
+            "`pip install agent-cli[memory]` or `uv sync --extra memory`.",
+        )
+        raise typer.Exit(1) from exc
+
+    memory_path = memory_path.resolve()
+    if openai_base_url is None:
+        openai_base_url = "https://api.openai.com/v1"
+
+    console.print(f"[bold green]Starting Memory Server on {host}:{port}[/bold green]")
+    console.print(f"  💾 Memory DB: [blue]{memory_path}[/blue]")
+    console.print(f"  🤖 Backend: [blue]{openai_base_url}[/blue]")
+    console.print(f"  🧠 Embeddings: Using [blue]{embedding_model}[/blue]")
+    console.print(f"  🔍 Memory top_k: [blue]{default_top_k}[/blue] entries per query")
+
+    fastapi_app = create_app(
+        memory_path,
+        openai_base_url,
+        embedding_model=embedding_model,
+        embedding_api_key=openai_api_key,
+        chat_api_key=openai_api_key,
+        default_top_k=default_top_k,
+    )
+
+    uvicorn.run(fastapi_app, host=host, port=port, log_config=None)
