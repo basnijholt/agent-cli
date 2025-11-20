@@ -28,6 +28,7 @@ def test_write_and_read_memory_file_round_trip(tmp_path: Path) -> None:
     assert loaded.content == "fact about bikes"
     assert loaded.metadata.conversation_id == "conv-1"
     assert loaded.metadata.tags == ["bike", "name"]
+    assert "facts" in loaded.path.parts
 
 
 def test_snapshot_round_trip(tmp_path: Path) -> None:

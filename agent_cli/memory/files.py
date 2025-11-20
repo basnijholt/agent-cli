@@ -41,6 +41,11 @@ def ensure_store_dirs(root: Path) -> tuple[Path, Path]:
     return entries_dir, snapshot_path
 
 
+def _safe_timestamp(value: str) -> str:
+    """Return a filesystem-safe timestamp-ish token."""
+    return "".join(ch if ch.isalnum() or ch in "-._" else "-" for ch in value) or "ts"
+
+
 def write_memory_file(
     root: Path,
     *,
@@ -57,6 +62,24 @@ def write_memory_file(
     entries_dir, _ = ensure_store_dirs(root)
     safe_conversation = _slugify(conversation_id)
     doc_id = doc_id or str(uuid4())
+    safe_ts = _safe_timestamp(created_at)
+
+    # Route by role/category for readability
+    if summary_kind:
+        subdir = Path("summaries")
+        filename = "short.md" if summary_kind == "summary_short" else "long.md"
+    elif role == "user":
+        subdir = Path("turns") / "user"
+        filename = f"{safe_ts}__{doc_id}.md"
+    elif role == "assistant":
+        subdir = Path("turns") / "assistant"
+        filename = f"{safe_ts}__{doc_id}.md"
+    elif role == "memory":
+        subdir = Path("facts")
+        filename = f"{safe_ts}__{doc_id}.md"
+    else:
+        subdir = Path()
+        filename = f"{doc_id}.md"
 
     metadata = MemoryMetadata(
         conversation_id=conversation_id,
@@ -70,7 +93,7 @@ def write_memory_file(
     front_matter = _render_front_matter(doc_id, metadata)
     body = front_matter + "\n" + content.strip() + "\n"
 
-    file_path = entries_dir / safe_conversation / f"{doc_id}.md"
+    file_path = entries_dir / safe_conversation / subdir / filename
     file_path.parent.mkdir(parents=True, exist_ok=True)
     file_path.write_text(body, encoding="utf-8")
 
