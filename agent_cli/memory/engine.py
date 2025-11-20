@@ -15,6 +15,7 @@ from fastapi.responses import StreamingResponse
 from pydantic_ai import Agent
 from pydantic_ai.models.openai import OpenAIModel
 from pydantic_ai.providers.openai import OpenAIProvider
+from pydantic_ai.settings import ModelSettings
 
 from agent_cli.core.openai_proxy import forward_chat_request
 from agent_cli.memory.files import write_memory_file
@@ -327,8 +328,7 @@ async def _chat_completion_request(
     model_cfg = OpenAIModel(
         model_name=model,
         provider=provider,
-        temperature=temperature,
-        max_output_tokens=max_tokens,
+        settings=ModelSettings(temperature=temperature, max_tokens=max_tokens),
     )
     system_prompt = next((m["content"] for m in messages if m.get("role") == "system"), "")
     user_parts = [m["content"] for m in messages if m.get("role") != "system"]
