@@ -9,7 +9,7 @@ from agent_cli.core.chroma import init_collection, upsert
 from agent_cli.memory.models import MemoryMetadata, StoredMemory
 
 if TYPE_CHECKING:
-    from collections.abc import Mapping, Sequence
+    from collections.abc import Sequence
     from pathlib import Path
 
     from chromadb import Collection
@@ -38,7 +38,7 @@ def upsert_memories(
     collection: Collection,
     ids: list[str],
     contents: list[str],
-    metadatas: Sequence[MemoryMetadata | Mapping[str, Any]],
+    metadatas: Sequence[MemoryMetadata],
 ) -> None:
     """Persist memory entries."""
     upsert(collection, ids=ids, documents=contents, metadatas=metadatas)

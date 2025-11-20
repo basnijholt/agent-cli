@@ -36,7 +36,7 @@ def init_collection(
     return client.get_or_create_collection(name=name, embedding_function=embed_fn)
 
 
-def flatten_metadatas(metadatas: Sequence[BaseModel | Mapping[str, Any]]) -> list[dict[str, Any]]:
+def flatten_metadatas(metadatas: Sequence[BaseModel]) -> list[dict[str, Any]]:
     """Convert metadata objects to Chroma-friendly primitives."""
     flattened: list[dict[str, Any]] = []
     for meta in metadatas:
@@ -60,7 +60,7 @@ def upsert(
     *,
     ids: list[str],
     documents: list[str],
-    metadatas: Sequence[BaseModel | Mapping[str, Any]],
+    metadatas: Sequence[BaseModel],
 ) -> None:
     """Upsert documents with flattened metadata."""
     if not ids:

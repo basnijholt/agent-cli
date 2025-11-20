@@ -8,7 +8,11 @@ from typing import TYPE_CHECKING, Any
 from agent_cli.core.chroma import delete_where, upsert
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from chromadb import Collection
+
+    from agent_cli.rag.models import DocMetadata
 
 logger = logging.getLogger("agent_cli.rag.store")
 
@@ -17,7 +21,7 @@ def upsert_docs(
     collection: Collection,
     ids: list[str],
     documents: list[str],
-    metadatas: list[dict[str, Any]],
+    metadatas: Sequence[DocMetadata],
 ) -> None:
     """Upsert documents into the collection."""
     upsert(collection, ids=ids, documents=documents, metadatas=metadatas)
