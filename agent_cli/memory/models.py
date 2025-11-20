@@ -90,6 +90,32 @@ class FactOutput(BaseModel):
         return _canonical_fact_key(self.subject, self.predicate)
 
 
+class SummaryOutput(BaseModel):
+    """Structured summary returned by the LLM."""
+
+    summary: str
+
+    @field_validator("summary")
+    @classmethod
+    def _not_empty(cls, v: str) -> str:
+        if not v or not str(v).strip():
+            msg = "field must be non-empty"
+            raise ValueError(msg)
+        return str(v).strip()
+
+
+class TagList(BaseModel):
+    """Structured tag list."""
+
+    tags: list[str]
+
+    @field_validator("tags")
+    @classmethod
+    def _non_empty(cls, v: list[str]) -> list[str]:
+        cleaned = [t.strip() for t in v if t and str(t).strip()]
+        return list(dict.fromkeys(cleaned))  # dedupe while preserving order
+
+
 class StoredMemory(BaseModel):
     """Memory document as stored in the vector DB."""
 

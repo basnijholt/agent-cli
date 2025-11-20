@@ -27,6 +27,8 @@ from agent_cli.memory.models import (
     MemoryRetrieval,
     Message,
     StoredMemory,
+    SummaryOutput,
+    TagList,
 )
 from agent_cli.memory.store import (
     delete_entries,
@@ -151,7 +153,8 @@ def _retrieve_memory(
             return 0.0
 
     def tag_overlap_boost(meta: Any, query_text: str) -> float:
-        query_tags = _extract_tags_from_text(query_text)
+        del query_text
+        query_tags: set[str] = set()  # tag boosting disabled for now
         meta_tags = set(meta.tags or [])
         if not query_tags or not meta_tags:
             return 0.0
@@ -313,24 +316,6 @@ def _persist_entries(
         upsert_memories(collection, ids=ids, contents=contents, metadatas=metadatas)
 
 
-def _extract_tags_from_text(text: str, *, max_tags: int = 5) -> set[str]:
-    """Heuristic tag extraction from text (alpha tokens length>=4)."""
-    tokens = []
-    for raw in text.split():
-        cleaned = "".join(ch for ch in raw.lower() if ch.isalpha())
-        if len(cleaned) >= 4:  # noqa: PLR2004
-            tokens.append(cleaned)
-    unique = []
-    seen = set()
-    for t in tokens:
-        if t not in seen:
-            unique.append(t)
-            seen.add(t)
-        if len(unique) >= max_tags:
-            break
-    return set(unique)
-
-
 def _token_overlap_similarity(a: str, b: str) -> float:
     """Simple token overlap similarity for MMR."""
     ta = set(a.lower().split())
@@ -452,6 +437,41 @@ async def _extract_with_pydantic_ai(
         return []
 
 
+async def _extract_tags_with_pydantic_ai(
+    *,
+    fact_text: str,
+    existing_tags: list[str],
+    openai_base_url: str,
+    api_key: str | None,
+    model: str,
+    max_tags: int = 5,
+) -> list[str]:
+    """Use PydanticAI to derive normalized tags."""
+    provider = OpenAIProvider(api_key=api_key or "dummy", base_url=openai_base_url)
+    model_cfg = OpenAIChatModel(model_name=model, provider=provider)
+    agent = Agent(
+        model=model_cfg,
+        system_prompt=(
+            f"You generate concise, reusable tags for memory entries. "
+            f"Return 1-{max_tags} lower_snake_case tags that capture the topic. "
+            "You may reuse existing tags if they fit; otherwise add new ones. "
+            "Only return the tags list; no prose."
+        ),
+        output_type=TagList,
+        retries=1,
+    )
+    existing = ", ".join(existing_tags) if existing_tags else "none"
+    prompt = (
+        f"Fact: {fact_text}\nExisting tags (reuse if relevant): {existing}\nMax tags: {max_tags}"
+    )
+    try:
+        result = await agent.run(prompt, max_output_tokens=128)
+        return result.output.tags[:max_tags]
+    except Exception:
+        logger.debug("Tag extraction failed", exc_info=True)
+        return []
+
+
 async def _update_summary(
     *,
     prior_summary: str | None,
@@ -478,9 +498,10 @@ async def _update_summary(
         provider=provider,
         settings=ModelSettings(temperature=0.2, max_tokens=max_tokens),
     )
-    agent = Agent(model=model_cfg, system_prompt=system_prompt, instructions=None)
+    agent = Agent(model=model_cfg, system_prompt=system_prompt, output_type=SummaryOutput)
     result = await agent.run(prompt_text)
-    return str(result.output or "")
+    summary = result.output.summary if result.output else None
+    return summary or prior_summary
 
 
 async def _update_summaries(
@@ -668,18 +689,26 @@ async def _extract_and_store_facts_and_summaries(
     if not facts:
         return
 
-    fact_entries: list[WriteEntry] = [
-        WriteEntry(
-            role="memory",
-            content=fact.fact,
-            extras=MemoryExtras(
-                salience=1.0,
-                tags=list(_extract_tags_from_text(fact.fact)),
-                fact_key=fact.fact_key,
+    fact_entries: list[WriteEntry] = []
+    for fact in facts:
+        tags = await _extract_tags_with_pydantic_ai(
+            fact_text=fact.fact,
+            existing_tags=[],
+            openai_base_url=openai_base_url,
+            api_key=api_key,
+            model=model,
+        )
+        fact_entries.append(
+            WriteEntry(
+                role="memory",
+                content=fact.fact,
+                extras=MemoryExtras(
+                    salience=1.0,
+                    tags=tags or None,
+                    fact_key=fact.fact_key,
+                ),
             ),
         )
-        for fact in facts
-    ]
     _persist_entries(
         collection,
         memory_root=memory_root,
@@ -784,10 +813,11 @@ async def _stream_and_persist_response(
             streaming.accumulate_assistant_text(line, assistant_chunks)
             yield line + "\n\n"
         assistant_message = "".join(assistant_chunks).strip() or None
-        run_in_background(
-            _persist_stream_result(assistant_message),
-            label=f"stream-postprocess-{conversation_id}",
-        )
+        if assistant_message:
+            run_in_background(
+                _persist_stream_result(assistant_message),
+                label=f"stream-postprocess-{conversation_id}",
+            )
         logger.info(
             "Streaming response finished in %.1f ms (conversation=%s)",
             _elapsed_ms(stream_start),

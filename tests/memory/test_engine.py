@@ -290,12 +290,12 @@ async def test_process_chat_request_summarizes_and_persists(
 
     async def fake_agent_run(self, prompt_text: str, *_args: Any, **_kwargs: Any) -> Any:  # noqa: ANN001, ARG001
         class _Result:
-            def __init__(self, output: str) -> None:
+            def __init__(self, output: Any) -> None:
                 self.output = output
 
         if "New facts:" in prompt_text:
-            return _Result("summary up to 256")
-        return _Result("")
+            return _Result(engine.SummaryOutput(summary="summary up to 256"))
+        return _Result(engine.SummaryOutput(summary=""))
 
     async def fake_extract_with_pydantic_ai(**_kwargs: Any) -> list[Any]:
         return [
@@ -314,6 +314,15 @@ async def test_process_chat_request_summarizes_and_persists(
         ]
 
     monkeypatch.setattr(engine, "_extract_with_pydantic_ai", fake_extract_with_pydantic_ai)
+
+    async def fake_extract_tags_with_pydantic_ai(**_kwargs: Any) -> list[str]:
+        return []
+
+    monkeypatch.setattr(
+        engine,
+        "_extract_tags_with_pydantic_ai",
+        fake_extract_tags_with_pydantic_ai,
+    )
     monkeypatch.setattr(engine.Agent, "run", fake_agent_run)
     monkeypatch.setattr(engine, "predict_relevance", lambda _model, pairs: [0.1 for _ in pairs])
 
@@ -469,16 +478,25 @@ async def test_streaming_with_summarization_persists_facts_and_summaries(
 
     async def fake_agent_run(_agent: Any, prompt_text: str, *_args: Any, **_kwargs: Any) -> Any:
         class _Result:
-            def __init__(self, output: str) -> None:
+            def __init__(self, output: Any) -> None:
                 self.output = output
 
         if "New facts:" in prompt_text:
-            return _Result("summary text")
-        return _Result("")
+            return _Result(engine.SummaryOutput(summary="summary text"))
+        return _Result(engine.SummaryOutput(summary=""))
 
     monkeypatch.setattr(engine.streaming, "stream_chat_sse", fake_stream_chat_sse)
     monkeypatch.setattr(engine.Agent, "run", fake_agent_run)
+
+    async def fake_extract_tags_with_pydantic_ai(**_kwargs: Any) -> list[str]:
+        return ["pet"]
+
     monkeypatch.setattr(engine, "_extract_with_pydantic_ai", fake_extract_with_pydantic_ai)
+    monkeypatch.setattr(
+        engine,
+        "_extract_tags_with_pydantic_ai",
+        fake_extract_tags_with_pydantic_ai,
+    )
 
     response = await engine.process_chat_request(
         request,
