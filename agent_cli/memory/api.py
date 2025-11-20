@@ -32,7 +32,6 @@ def create_app(
     enable_summarization: bool = True,
     max_entries: int = 500,
     mmr_lambda: float = 0.7,
-    tag_boost: float = 0.1,
 ) -> FastAPI:
     """Create the FastAPI app for memory-backed chat."""
     LOGGER.info("Initializing memory components...")
@@ -86,7 +85,6 @@ def create_app(
             enable_summarization=enable_summarization,
             max_entries=max_entries,
             mmr_lambda=mmr_lambda,
-            tag_boost=tag_boost,
         )
 
     watch_task: asyncio.Task | None = None

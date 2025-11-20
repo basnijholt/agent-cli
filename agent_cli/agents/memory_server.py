@@ -52,11 +52,6 @@ def memory_server(
         help="MMR lambda (0-1): higher favors relevance, lower favors diversity.",
         rich_help_panel="Memory Configuration",
     ),
-    tag_boost: float = typer.Option(
-        0.1,
-        help="Weight for tag overlap in scoring.",
-        rich_help_panel="Memory Configuration",
-    ),
     disable_summarization: bool = typer.Option(
         False,  # noqa: FBT003
         help="Disable automatic fact extraction and summaries.",
@@ -122,7 +117,6 @@ def memory_server(
         enable_summarization=not disable_summarization,
         max_entries=max_entries,
         mmr_lambda=mmr_lambda,
-        tag_boost=tag_boost,
     )
 
     uvicorn.run(fastapi_app, host=host, port=port, log_config=None)

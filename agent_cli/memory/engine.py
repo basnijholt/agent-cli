@@ -28,7 +28,6 @@ from agent_cli.memory.models import (
     Message,
     StoredMemory,
     SummaryOutput,
-    TagList,
 )
 from agent_cli.memory.store import (
     delete_entries,
@@ -51,7 +50,6 @@ logger = logging.getLogger("agent_cli.memory.engine")
 _DEFAULT_MAX_ENTRIES = 500
 _SUMMARY_DOC_ID_SUFFIX = "::summary"
 _DEFAULT_MMR_LAMBDA = 0.7
-_DEFAULT_TAG_BOOST = 0.1
 _SUMMARY_SHORT_ROLE = "summary_short"
 _SUMMARY_LONG_ROLE = "summary_long"
 
@@ -118,7 +116,6 @@ def _retrieve_memory(
     include_global: bool = True,
     include_summary: bool = True,
     mmr_lambda: float = _DEFAULT_MMR_LAMBDA,
-    tag_boost: float = _DEFAULT_TAG_BOOST,
 ) -> tuple[MemoryRetrieval, list[str]]:
     candidate_conversations = [conversation_id]
     if include_global and conversation_id != "global":
@@ -152,14 +149,6 @@ def _retrieve_memory(
         except Exception:
             return 0.0
 
-    def tag_overlap_boost(meta: Any) -> float:
-        query_tags: set[str] = set()  # tag boosting disabled for now
-        meta_tags = set(meta.tags or [])
-        if not query_tags or not meta_tags:
-            return 0.0
-        overlap = len(query_tags & meta_tags)
-        return min(overlap, 3) * 0.1
-
     candidates = _dedupe_by_fact_key(candidates)
 
     scores: list[float] = []
@@ -174,18 +163,12 @@ def _retrieve_memory(
                 + 0.1 * dist_bonus
                 + 0.2 * recency_boost(mem.metadata)
                 + 0.1 * salience_boost(mem.metadata)
-                + tag_boost * tag_overlap_boost(mem.metadata)
             )
             scores.append(total)
     else:
         for mem in candidates:
             base = 0.0 if mem.distance is None else 1.0 / (1.0 + mem.distance)
-            total = (
-                base
-                + 0.2 * recency_boost(mem.metadata)
-                + 0.1 * salience_boost(mem.metadata)
-                + tag_boost * tag_overlap_boost(mem.metadata)
-            )
+            total = base + 0.2 * recency_boost(mem.metadata) + 0.1 * salience_boost(mem.metadata)
             scores.append(total)
 
     selected = _mmr_select(candidates, scores, max_items=top_k, lambda_mult=mmr_lambda)
@@ -236,7 +219,6 @@ def augment_chat_request(
     default_memory_id: str = "default",
     include_global: bool = True,
     mmr_lambda: float = _DEFAULT_MMR_LAMBDA,
-    tag_boost: float = _DEFAULT_TAG_BOOST,
 ) -> tuple[ChatRequest, MemoryRetrieval | None, str]:
     """Retrieve memory context and augment the chat request."""
     user_message = next(
@@ -261,7 +243,6 @@ def augment_chat_request(
         reranker_model=reranker_model,
         include_global=include_global,
         mmr_lambda=mmr_lambda,
-        tag_boost=tag_boost,
     )
 
     if not retrieval.entries and not summaries:
@@ -433,41 +414,6 @@ async def _extract_with_pydantic_ai(
         return facts.output
     except Exception:
         logger.exception("PydanticAI fact extraction failed")
-        return []
-
-
-async def _extract_tags_with_pydantic_ai(
-    *,
-    fact_text: str,
-    existing_tags: list[str],
-    openai_base_url: str,
-    api_key: str | None,
-    model: str,
-    max_tags: int = 5,
-) -> list[str]:
-    """Use PydanticAI to derive normalized tags."""
-    provider = OpenAIProvider(api_key=api_key or "dummy", base_url=openai_base_url)
-    model_cfg = OpenAIChatModel(model_name=model, provider=provider)
-    agent = Agent(
-        model=model_cfg,
-        system_prompt=(
-            f"You generate concise, reusable tags for memory entries. "
-            f"Return 1-{max_tags} lower_snake_case tags that capture the topic. "
-            "You may reuse existing tags if they fit; otherwise add new ones. "
-            "Only return the tags list; no prose."
-        ),
-        output_type=TagList,
-        retries=1,
-    )
-    existing = ", ".join(existing_tags) if existing_tags else "none"
-    prompt = (
-        f"Fact: {fact_text}\nExisting tags (reuse if relevant): {existing}\nMax tags: {max_tags}"
-    )
-    try:
-        result = await agent.run(prompt, max_output_tokens=128)
-        return result.output.tags[:max_tags]
-    except Exception:
-        logger.debug("Tag extraction failed", exc_info=True)
         return []
 
 
@@ -671,7 +617,6 @@ async def _extract_and_store_facts_and_summaries(
     model: str,
 ) -> None:
     """Run fact extraction and summary updates, persisting results."""
-    prior_tags: list[str] = []
     fact_start = perf_counter()
     facts = await _extract_salient_facts(
         user_message=user_message,
@@ -689,28 +634,18 @@ async def _extract_and_store_facts_and_summaries(
     if not facts:
         return
 
-    fact_entries: list[WriteEntry] = []
-    for fact in facts:
-        tags = await _extract_tags_with_pydantic_ai(
-            fact_text=fact.fact,
-            existing_tags=prior_tags,
-            openai_base_url=openai_base_url,
-            api_key=api_key,
-            model=model,
-        )
-        if tags:
-            prior_tags.extend(t for t in tags if t not in prior_tags)
-        fact_entries.append(
-            WriteEntry(
-                role="memory",
-                content=fact.fact,
-                extras=MemoryExtras(
-                    salience=1.0,
-                    tags=tags or None,
-                    fact_key=fact.fact_key,
-                ),
+    fact_entries: list[WriteEntry] = [
+        WriteEntry(
+            role="memory",
+            content=fact.fact,
+            extras=MemoryExtras(
+                salience=1.0,
+                tags=None,
+                fact_key=fact.fact_key,
             ),
         )
+        for fact in facts
+    ]
     _persist_entries(
         collection,
         memory_root=memory_root,
@@ -840,7 +775,6 @@ async def process_chat_request(
     enable_summarization: bool = True,
     max_entries: int = _DEFAULT_MAX_ENTRIES,
     mmr_lambda: float = _DEFAULT_MMR_LAMBDA,
-    tag_boost: float = _DEFAULT_TAG_BOOST,
     postprocess_in_background: bool = True,
 ) -> Any:
     """Process a chat request with long-term memory support."""
@@ -852,7 +786,6 @@ async def process_chat_request(
         reranker_model=reranker_model,
         default_top_k=default_top_k,
         mmr_lambda=mmr_lambda,
-        tag_boost=tag_boost,
     )
     retrieval_ms = _elapsed_ms(retrieval_start)
     hit_count = len(retrieval.entries) if retrieval else 0

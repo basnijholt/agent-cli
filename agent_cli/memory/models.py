@@ -104,18 +104,6 @@ class SummaryOutput(BaseModel):
         return str(v).strip()
 
 
-class TagList(BaseModel):
-    """Structured tag list."""
-
-    tags: list[str]
-
-    @field_validator("tags")
-    @classmethod
-    def _non_empty(cls, v: list[str]) -> list[str]:
-        cleaned = [t.strip() for t in v if t and str(t).strip()]
-        return list(dict.fromkeys(cleaned))  # dedupe while preserving order
-
-
 class StoredMemory(BaseModel):
     """Memory document as stored in the vector DB."""
 
