@@ -185,6 +185,7 @@ def _prepare_fact_entries(facts: list[str]) -> list[WriteEntry]:
                 ),
             ),
         )
+    logger.info("Prepared %d fact entries: %s", len(entries), [e.content for e in entries])
     return entries
 
 
@@ -515,12 +516,14 @@ async def _extract_salient_facts(
         exchange.append(f"Assistant: {assistant_message}")
     transcript = "\n".join(exchange)
 
-    return await _extract_with_pydantic_ai(
+    facts = await _extract_with_pydantic_ai(
         transcript=transcript,
         openai_base_url=openai_base_url,
         api_key=api_key,
         model=model,
     )
+    logger.info("Raw fact extraction output: %s", facts)
+    return facts
 
 
 async def _extract_with_pydantic_ai(
