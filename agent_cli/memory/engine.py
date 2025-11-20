@@ -653,67 +653,66 @@ async def _stream_and_persist_response(
 ) -> StreamingResponse:
     """Forward streaming request, tee assistant text, and persist after completion."""
     headers = {"Authorization": f"Bearer {api_key}"} if api_key else None
-    assistant_chunks: list[str] = []
 
-    async def generate() -> AsyncGenerator[str, None]:
-        try:
-            async with (
-                httpx.AsyncClient(timeout=120.0) as client,
-                client.stream(
-                    "POST",
-                    f"{openai_base_url.rstrip('/')}/chat/completions",
-                    json=forward_payload,
-                    headers=headers,
-                ) as response,
-            ):
-                if response.status_code != 200:  # noqa: PLR2004
-                    error_text = await response.aread()
-                    yield f"data: {json.dumps({'error': str(error_text)})}\n\n"
-                    return
+    async def stream_lines() -> AsyncGenerator[str, None]:
+        async with (
+            httpx.AsyncClient(timeout=120.0) as client,
+            client.stream(
+                "POST",
+                f"{openai_base_url.rstrip('/')}/chat/completions",
+                json=forward_payload,
+                headers=headers,
+            ) as response,
+        ):
+            if response.status_code != 200:  # noqa: PLR2004
+                error_text = await response.aread()
+                yield f"data: {json.dumps({'error': str(error_text)})}\n\n"
+                return
+            async for line in response.aiter_lines():
+                if line:
+                    yield line
 
-                async for line in response.aiter_lines():
-                    if not line:
-                        continue
-                    if line.startswith("data:"):
-                        payload = line[5:].strip()
-                        if payload == "[DONE]":
-                            continue
-                        try:
-                            data = json.loads(payload)
-                            delta = (data.get("choices") or [{}])[0].get("delta") or {}
-                            piece = delta.get("content") or delta.get("text") or ""
-                            if piece:
-                                assistant_chunks.append(piece)
-                        except Exception:
-                            logger.debug(
-                                "Failed to parse streaming chunk: %s",
-                                payload,
-                                exc_info=True,
-                            )
-                    yield line + "\n"
-        finally:
-            assistant_message = "".join(assistant_chunks).strip() or None
-            _persist_turns(
-                collection,
+    async def tee_and_accumulate() -> AsyncGenerator[str, None]:
+        assistant_chunks: list[str] = []
+        async for line in stream_lines():
+            if line.startswith("data:"):
+                payload = line[5:].strip()
+                if payload != "[DONE]":
+                    try:
+                        data = json.loads(payload)
+                        delta = (data.get("choices") or [{}])[0].get("delta") or {}
+                        piece = delta.get("content") or delta.get("text") or ""
+                        if piece:
+                            assistant_chunks.append(piece)
+                    except Exception:
+                        logger.debug(
+                            "Failed to parse streaming chunk: %s",
+                            payload,
+                            exc_info=True,
+                        )
+            yield line + "\n"
+        assistant_message = "".join(assistant_chunks).strip() or None
+        _persist_turns(
+            collection,
+            memory_root=memory_root,
+            conversation_id=conversation_id,
+            user_message=None,
+            assistant_message=assistant_message,
+        )
+        if enable_summarization:
+            await _extract_and_store_facts_and_summaries(
+                collection=collection,
                 memory_root=memory_root,
                 conversation_id=conversation_id,
-                user_message=None,
+                user_message=user_message,
                 assistant_message=assistant_message,
+                openai_base_url=openai_base_url,
+                api_key=api_key,
+                model=model,
             )
-            if enable_summarization:
-                await _extract_and_store_facts_and_summaries(
-                    collection=collection,
-                    memory_root=memory_root,
-                    conversation_id=conversation_id,
-                    user_message=user_message,
-                    assistant_message=assistant_message,
-                    openai_base_url=openai_base_url,
-                    api_key=api_key,
-                    model=model,
-                )
-            _evict_if_needed(collection, conversation_id, max_entries)
+        _evict_if_needed(collection, conversation_id, max_entries)
 
-    return StreamingResponse(generate(), media_type="text/event-stream")
+    return StreamingResponse(tee_and_accumulate(), media_type="text/event-stream")
 
 
 async def process_chat_request(
