@@ -19,6 +19,24 @@ if TYPE_CHECKING:
 logger = logging.getLogger("agent_cli.rag.retriever")
 
 
+def _download_onnx_model(model_name: str, onnx_filename: str) -> str:
+    """Download the ONNX model, handling common subfolder layouts."""
+    candidates = (
+        [onnx_filename] if "/" in onnx_filename else [f"onnx/{onnx_filename}", onnx_filename]
+    )
+    last_error: Exception | None = None
+
+    for candidate in candidates:
+        try:
+            return hf_hub_download(repo_id=model_name, filename=candidate)
+        except Exception as exc:
+            last_error = exc
+            logger.debug("Failed to download %s from %s: %s", candidate, model_name, exc)
+
+    logger.exception("Failed to download ONNX model %s", model_name, exc_info=last_error)
+    raise last_error or RuntimeError(f"Unable to download ONNX model for {model_name}")
+
+
 class OnnxCrossEncoder:
     """A lightweight CrossEncoder using ONNX Runtime."""
 
@@ -32,28 +50,7 @@ class OnnxCrossEncoder:
 
         # Download model if needed
         logger.info("Loading ONNX model: %s", model_name)
-        candidates = [onnx_filename]
-        if "/" not in onnx_filename:
-            candidates.insert(0, f"onnx/{onnx_filename}")  # Xenova models store ONNX under onnx/
-
-        model_path: str | None = None
-        last_error: Exception | None = None
-        for candidate in candidates:
-            try:
-                model_path = hf_hub_download(repo_id=model_name, filename=candidate)
-                break
-            except Exception as exc:
-                last_error = exc
-                logger.warning(
-                    "Failed to download %s from %s: %s. Trying next candidate if available.",
-                    candidate,
-                    model_name,
-                    exc,
-                )
-
-        if model_path is None:
-            logger.exception("Failed to download ONNX model %s", model_name, exc_info=last_error)
-            raise last_error or RuntimeError(f"Unable to download ONNX model for {model_name}")
+        model_path = _download_onnx_model(model_name, onnx_filename)
 
         self.session = InferenceSession(model_path)
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)
