@@ -39,7 +39,10 @@ logger = logging.getLogger("agent_cli.memory.engine")
 
 _DEFAULT_MAX_ENTRIES = 500
 _SUMMARY_DOC_ID_SUFFIX = "::summary"
-_MMR_LAMBDA = 0.7
+_DEFAULT_MMR_LAMBDA = 0.7
+_DEFAULT_TAG_BOOST = 0.1
+_SUMMARY_SHORT_ROLE = "summary_short"
+_SUMMARY_LONG_ROLE = "summary_long"
 
 
 @dataclass
@@ -60,7 +63,9 @@ def _retrieve_memory(
     reranker_model: OnnxCrossEncoder,
     include_global: bool = True,
     include_summary: bool = True,
-) -> tuple[MemoryRetrieval, str | None]:
+    mmr_lambda: float = _DEFAULT_MMR_LAMBDA,
+    tag_boost: float = _DEFAULT_TAG_BOOST,
+) -> tuple[MemoryRetrieval, list[str]]:
     candidate_conversations = [conversation_id]
     if include_global and conversation_id != "global":
         candidate_conversations.append("global")
@@ -113,7 +118,7 @@ def _retrieve_memory(
                 + 0.1 * dist_bonus
                 + 0.2 * recency_boost(mem.metadata)
                 + 0.1 * salience_boost(mem.metadata)
-                + tag_overlap_boost(mem.metadata, query)
+                + tag_boost * tag_overlap_boost(mem.metadata, query)
             )
             scores.append(total)
     else:
@@ -123,11 +128,11 @@ def _retrieve_memory(
                 base
                 + 0.2 * recency_boost(mem.metadata)
                 + 0.1 * salience_boost(mem.metadata)
-                + tag_overlap_boost(mem.metadata, query)
+                + tag_boost * tag_overlap_boost(mem.metadata, query)
             )
             scores.append(total)
 
-    selected = _mmr_select(candidates, scores, max_items=top_k, lambda_mult=_MMR_LAMBDA)
+    selected = _mmr_select(candidates, scores, max_items=top_k, lambda_mult=mmr_lambda)
 
     entries: list[MemoryEntry] = [
         MemoryEntry(
@@ -139,24 +144,27 @@ def _retrieve_memory(
         for mem, score in selected
     ]
 
-    summary_text: str | None = None
+    summaries: list[str] = []
     if include_summary:
-        summary = get_summary_entry(collection, conversation_id)
-        if summary:
-            summary_text = summary.content
+        summary_short = get_summary_entry(collection, conversation_id, role=_SUMMARY_SHORT_ROLE)
+        summary_long = get_summary_entry(collection, conversation_id, role=_SUMMARY_LONG_ROLE)
+        if summary_short:
+            summaries.append(f"Short summary:\n{summary_short.content}")
+        if summary_long:
+            summaries.append(f"Long summary:\n{summary_long.content}")
 
-    return MemoryRetrieval(entries=entries), summary_text
+    return MemoryRetrieval(entries=entries), summaries
 
 
 def _format_augmented_content(
     *,
     user_message: str,
-    summary_text: str | None,
+    summaries: list[str],
     memories: list[MemoryEntry],
 ) -> str:
     parts: list[str] = []
-    if summary_text:
-        parts.append(f"Conversation summary:\n{summary_text}")
+    if summaries:
+        parts.append("Conversation summaries:\n" + "\n\n".join(summaries))
     if memories:
         memory_block = "\n\n---\n\n".join(f"[{m.role}] {m.content}" for m in memories)
         parts.append(f"Long-term memory (most relevant first):\n{memory_block}")
@@ -171,6 +179,8 @@ def augment_chat_request(
     default_top_k: int = 5,
     default_memory_id: str = "default",
     include_global: bool = True,
+    mmr_lambda: float = _DEFAULT_MMR_LAMBDA,
+    tag_boost: float = _DEFAULT_TAG_BOOST,
 ) -> tuple[ChatRequest, MemoryRetrieval | None, str]:
     """Retrieve memory context and augment the chat request."""
     user_message = next(
@@ -187,21 +197,23 @@ def augment_chat_request(
         logger.info("Memory retrieval disabled for this request (top_k=%s)", top_k)
         return request, None, conversation_id
 
-    retrieval, summary_text = _retrieve_memory(
+    retrieval, summaries = _retrieve_memory(
         collection,
         conversation_id=conversation_id,
         query=user_message,
         top_k=top_k,
         reranker_model=reranker_model,
         include_global=include_global,
+        mmr_lambda=mmr_lambda,
+        tag_boost=tag_boost,
     )
 
-    if not retrieval.entries and not summary_text:
+    if not retrieval.entries and not summaries:
         return request, None, conversation_id
 
     augmented_content = _format_augmented_content(
         user_message=user_message,
-        summary_text=summary_text,
+        summaries=summaries,
         memories=retrieval.entries,
     )
 
@@ -443,22 +455,53 @@ async def _update_summary(
     )
 
 
+async def _update_summaries(
+    *,
+    prior_short: str | None,
+    prior_long: str | None,
+    new_facts: list[str],
+    openai_base_url: str,
+    api_key: str | None,
+    model: str,
+) -> tuple[str | None, str | None]:
+    """Update both short and long summaries."""
+    short = await _update_summary(
+        prior_summary=prior_short,
+        new_facts=new_facts,
+        openai_base_url=openai_base_url,
+        api_key=api_key,
+        model=model,
+        max_tokens=256,
+    )
+    long = await _update_summary(
+        prior_summary=prior_long,
+        new_facts=new_facts,
+        openai_base_url=openai_base_url,
+        api_key=api_key,
+        model=model,
+        max_tokens=512,
+    )
+    return short, long
+
+
 def _persist_summary(
     collection: Collection,
     *,
     conversation_id: str,
     summary: str,
+    role: str,
 ) -> None:
     now = datetime.now(UTC).isoformat()
     upsert_memories(
         collection,
-        ids=[f"{conversation_id}{_SUMMARY_DOC_ID_SUFFIX}"],
+        ids=[f"{conversation_id}{_SUMMARY_DOC_ID_SUFFIX}:{role}"],
         contents=[summary],
         metadatas=[
             {
                 "conversation_id": conversation_id,
-                "role": "summary",
+                "role": role,
                 "created_at": now,
+                "summary_kind": role,
             },
         ],
     )
@@ -492,6 +535,8 @@ async def process_chat_request(
     api_key: str | None = None,
     enable_summarization: bool = True,
     max_entries: int = _DEFAULT_MAX_ENTRIES,
+    mmr_lambda: float = _DEFAULT_MMR_LAMBDA,
+    tag_boost: float = _DEFAULT_TAG_BOOST,
 ) -> Any:
     """Process a chat request with long-term memory support."""
     aug_request, retrieval, conversation_id = augment_chat_request(
@@ -499,6 +544,8 @@ async def process_chat_request(
         collection,
         reranker_model=reranker_model,
         default_top_k=default_top_k,
+        mmr_lambda=mmr_lambda,
+        tag_boost=tag_boost,
     )
 
     response = await _forward_request(aug_request, openai_base_url, api_key)
@@ -563,20 +610,39 @@ async def process_chat_request(
                     conversation_id=conversation_id,
                     entries=list(fact_entries),
                 )
-                prior_summary_entry = get_summary_entry(collection, conversation_id)
+                prior_summary_entry = get_summary_entry(
+                    collection,
+                    conversation_id,
+                    role=_SUMMARY_SHORT_ROLE,
+                )
+                prior_long_entry = get_summary_entry(
+                    collection,
+                    conversation_id,
+                    role=_SUMMARY_LONG_ROLE,
+                )
                 prior_summary = prior_summary_entry.content if prior_summary_entry else None
-                new_summary = await _update_summary(
-                    prior_summary=prior_summary,
+                prior_long = prior_long_entry.content if prior_long_entry else None
+                new_short, new_long = await _update_summaries(
+                    prior_short=prior_summary,
+                    prior_long=prior_long,
                     new_facts=facts,
                     openai_base_url=openai_base_url,
                     api_key=api_key,
                     model=request.model,
                 )
-                if new_summary:
+                if new_short:
                     _persist_summary(
                         collection,
                         conversation_id=conversation_id,
-                        summary=new_summary,
+                        summary=new_short,
+                        role=_SUMMARY_SHORT_ROLE,
+                    )
+                if new_long:
+                    _persist_summary(
+                        collection,
+                        conversation_id=conversation_id,
+                        summary=new_long,
+                        role=_SUMMARY_LONG_ROLE,
                     )
 
         _evict_if_needed(collection, conversation_id, max_entries)

@@ -43,6 +43,7 @@ class MemoryMetadata(BaseModel):
     created_at: str
     salience: float | None = None
     tags: list[str] | None = None
+    summary_kind: str | None = None
 
 
 class MemoryExtras(BaseModel):

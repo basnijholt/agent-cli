@@ -76,10 +76,15 @@ def query_memories(
     return records
 
 
-def get_summary_entry(collection: Collection, conversation_id: str) -> StoredMemory | None:
+def get_summary_entry(
+    collection: Collection,
+    conversation_id: str,
+    *,
+    role: str = "summary_short",
+) -> StoredMemory | None:
     """Return the latest summary entry for a conversation, if present."""
     result = collection.get(
-        where={"$and": [{"conversation_id": conversation_id}, {"role": "summary"}]},
+        where={"$and": [{"conversation_id": conversation_id}, {"role": role}]},
     )
     docs = result.get("documents") or []
     metas = result.get("metadatas") or []
@@ -109,7 +114,8 @@ def list_conversation_entries(
     """List all entries for a conversation (optionally excluding summary)."""
     filters: list[dict[str, Any]] = [{"conversation_id": conversation_id}]
     if not include_summary:
-        filters.append({"role": {"$ne": "summary"}})
+        filters.append({"role": {"$ne": "summary_short"}})
+        filters.append({"role": {"$ne": "summary_long"}})
     result = collection.get(where={"$and": filters} if len(filters) > 1 else filters[0])
     docs = result.get("documents") or []
     metas = result.get("metadatas") or []
