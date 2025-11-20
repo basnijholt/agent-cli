@@ -36,3 +36,10 @@ SUMMARY_PROMPT = """
 You are a concise conversation summarizer. Update the running summary with the new facts.
 Keep it brief, factual, and focused on durable information; do not restate transient chit-chat.
 """.strip()
+
+CONTRADICTION_PROMPT = """
+You resolve conflicts among personal facts. Given fact snippets with timestamps, identify conflicts
+and choose which to keep. Prefer newer, more specific statements; mark obsolete/contradictory ones
+to DELETE. If a newer fact supersedes an older one, mark the older as DELETE. If they agree, KEEP.
+Output only KEEP/DELETE decisions; do not invent new facts.
+""".strip()

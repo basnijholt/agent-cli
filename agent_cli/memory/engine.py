@@ -32,6 +32,7 @@ from agent_cli.memory.models import (
 )
 from agent_cli.memory.prompt import (
     CONSOLIDATION_PROMPT,
+    CONTRADICTION_PROMPT,
     FACT_INSTRUCTIONS,
     FACT_SYSTEM_PROMPT,
     QUERY_REWRITE_PROMPT,
@@ -121,6 +122,7 @@ async def _consolidate_retrieval_entries(
     openai_base_url: str,
     api_key: str | None,
     model: str,
+    prompt: str = CONSOLIDATION_PROMPT,
 ) -> list[MemoryEntry]:
     """Use a small LLM pass to mark overlapping facts to KEEP/DELETE/UPDATE."""
     if len(entries) <= 1:
@@ -137,7 +139,7 @@ async def _consolidate_retrieval_entries(
     )
     agent = Agent(
         model=model_cfg,
-        system_prompt=CONSOLIDATION_PROMPT,
+        system_prompt=prompt,
         output_type=list[ConsolidationDecision],
         retries=1,
     )
@@ -375,6 +377,7 @@ async def augment_chat_request(
             openai_base_url=openai_base_url,
             api_key=api_key,
             model=request.model,
+            prompt=CONTRADICTION_PROMPT,
         )
         retrieval = MemoryRetrieval(entries=consolidated)
 
