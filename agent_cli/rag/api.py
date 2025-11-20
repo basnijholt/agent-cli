@@ -19,6 +19,9 @@ from agent_cli.rag.models import ChatRequest  # noqa: TC001
 from agent_cli.rag.retriever import get_reranker_model
 from agent_cli.rag.store import get_all_metadata
 
+# Backwards-compatibility for tests/patches expecting `init_collection` in this module
+init_collection = init_chroma_collection
+
 if TYPE_CHECKING:
     from pathlib import Path
 
