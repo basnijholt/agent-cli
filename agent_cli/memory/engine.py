@@ -634,11 +634,6 @@ async def _reconcile_facts(
                 to_delete.append(orig)
         # NONE ignored
 
-    if not to_add and new_facts:
-        # Avoid ending up with zero facts after deletes; prefer keeping the latest facts.
-        logger.info("Reconcile produced no additions; falling back to add all new facts")
-        to_add = list(new_facts)
-
     logger.info(
         "Reconcile decisions: add=%d, delete=%d, events=%s",
         len(to_add),
