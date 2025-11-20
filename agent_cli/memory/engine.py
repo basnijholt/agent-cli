@@ -454,8 +454,9 @@ async def _extract_with_pydantic_ai(
             "You are a memory extractor. From the latest exchange, extract 1-3 succinct facts "
             "that are useful to remember for future turns. Return structured facts with fields "
             "fact (string) and fact_key (stable identifier). "
-            "Do not include prose outside JSON."
-            "If there are no new facts, return an empty list."
+            "Do not include prose outside JSON. "
+            "If there are no facts, return an empty list. "
+            "Don't return facts like 'no information to extract'."
         ),
         output_type=list[FactOutput],
         retries=2,
