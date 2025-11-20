@@ -82,14 +82,6 @@ class WriteEntry:
     extras: MemoryExtras
 
 
-@dataclass
-class Fact:
-    """Structured fact output from extraction."""
-
-    fact: str
-    fact_key: str
-
-
 def _dedupe_by_fact_key(candidates: list[StoredMemory]) -> list[StoredMemory]:
     """Keep latest entry per fact_key while leaving unkeyed entries untouched."""
     latest: dict[str, StoredMemory] = {}
@@ -425,7 +417,7 @@ async def _extract_salient_facts(
     openai_base_url: str,
     api_key: str | None,
     model: str,
-) -> list[Fact]:
+) -> list[FactOutput]:
     if not user_message and not assistant_message:
         return []
     exchange = []
@@ -449,7 +441,7 @@ async def _extract_with_pydantic_ai(
     openai_base_url: str,
     api_key: str | None,
     model: str,
-) -> list[Fact]:
+) -> list[FactOutput]:
     """Use PydanticAI to extract structured facts."""
     provider = OpenAIProvider(
         api_key=api_key or "dummy",
