@@ -389,7 +389,8 @@ async def test_process_chat_request_summarizes_and_persists(
     monkeypatch.setattr(engine, "_extract_with_pydantic_ai", fake_extract_with_pydantic_ai)
 
     async def fake_reconcile(
-        _existing: Any,
+        _collection: Any,
+        _conversation_id: str,
         new_facts: list[str],
         **_kwargs: Any,
     ) -> tuple[list[str], list[str]]:
@@ -554,7 +555,8 @@ async def test_streaming_with_summarization_persists_facts_and_summaries(
     monkeypatch.setattr(engine.streaming, "stream_chat_sse", fake_stream_chat_sse)
 
     async def fake_reconcile(
-        _existing: Any,
+        _collection: Any,
+        _conversation_id: str,
         new_facts: list[str],
         **_kwargs: Any,
     ) -> tuple[list[str], list[str]]:

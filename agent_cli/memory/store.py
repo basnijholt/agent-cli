@@ -69,9 +69,12 @@ def query_memories(
     records: list[StoredMemory] = []
     for doc, meta, doc_id, dist in zip(docs, metas, ids, distances, strict=False):
         norm_meta = _normalize_meta(meta)
+        if doc_id is None:
+            msg = "Chroma returned a memory row without an id"
+            raise ValueError(msg)
         records.append(
             StoredMemory(
-                id=str(doc_id) if doc_id is not None else None,
+                id=str(doc_id),
                 content=str(doc),
                 metadata=MemoryMetadata(**norm_meta),
                 distance=float(dist) if dist is not None else None,
@@ -97,12 +100,12 @@ def get_summary_entry(
     doc_list = docs[0] if docs and isinstance(docs[0], list) else docs
     meta_list = metas[0] if metas and isinstance(metas[0], list) else metas
 
-    if not doc_list or not meta_list:
+    if not doc_list or not meta_list or not ids:
         return None
 
     meta = _normalize_meta(meta_list[0])
     return StoredMemory(
-        id=str(ids[0]) if ids else None,
+        id=str(ids[0]),
         content=str(doc_list[0]),
         metadata=MemoryMetadata(**meta),
         distance=None,
@@ -133,7 +136,7 @@ def list_conversation_entries(
         norm_meta = _normalize_meta(meta)
         records.append(
             StoredMemory(
-                id=str(entry_id) if entry_id is not None else None,
+                id=str(entry_id),
                 content=str(doc),
                 metadata=MemoryMetadata(**norm_meta),
                 distance=None,

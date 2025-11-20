@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import logging
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -165,10 +166,53 @@ def _prepare_fact_entries(facts: list[str]) -> list[WriteEntry]:
     return entries
 
 
-def _existing_fact_entries(collection: Collection, conversation_id: str) -> list[StoredMemory]:
-    """Fetch existing memory entries (facts) for a conversation."""
-    entries = list_conversation_entries(collection, conversation_id, include_summary=False)
-    return [e for e in entries if e.metadata.role == "memory"]
+def _gather_relevant_existing_memories(
+    collection: Collection,
+    conversation_id: str,
+    new_facts: list[str],
+    *,
+    neighborhood: int = 5,
+) -> list[StoredMemory]:
+    """Retrieve a small neighborhood of existing memories per new fact, deduped by id.
+
+    Note: Only true memory facts (role == "memory") are considered here. Turns
+    are excluded to avoid blocking fact insertion when the only stored content
+    is raw conversation turns.
+    """
+    if not new_facts:
+        return []
+    filters = [
+        {"conversation_id": conversation_id},
+        {"role": "memory"},
+        {"role": {"$ne": "summary_short"}},
+        {"role": {"$ne": "summary_long"}},
+    ]
+    seen: set[str] = set()
+    results: list[StoredMemory] = []
+    for fact in new_facts:
+        raw = collection.query(
+            query_texts=[fact],
+            n_results=neighborhood,
+            where={"$and": filters},
+        )
+        docs = raw.get("documents", [[]])[0] or []
+        metas = raw.get("metadatas", [[]])[0] or []
+        ids = raw.get("ids", [[]])[0] or []
+        distances = raw.get("distances", [[]])[0] or []
+        for doc, meta, doc_id, dist in zip(docs, metas, ids, distances, strict=False):
+            if doc_id is None or doc_id in seen:
+                continue
+            seen.add(doc_id)
+            norm_meta = MemoryMetadata(**dict(meta))
+            results.append(
+                StoredMemory(
+                    id=str(doc_id),
+                    content=str(doc),
+                    metadata=norm_meta,
+                    distance=float(dist) if dist is not None else None,
+                ),
+            )
+    return results
 
 
 def _delete_fact_files(memory_root: Path, conversation_id: str, ids: list[str]) -> None:
@@ -525,16 +569,27 @@ async def _extract_salient_facts(
 
 
 async def _reconcile_facts(
-    existing: list[StoredMemory],
+    collection: Collection,
+    conversation_id: str,
     new_facts: list[str],
     *,
     openai_base_url: str,
     api_key: str | None,
     model: str,
 ) -> tuple[list[str], list[str]]:
-    """Use an LLM to decide add/update/delete/none for facts."""
+    """Use an LLM to decide add/update/delete/none for facts, with id remapping."""
     if not new_facts:
         return [], []
+
+    existing = _gather_relevant_existing_memories(collection, conversation_id, new_facts)
+    if not existing:
+        logger.info("Reconcile: no existing memory facts; defaulting to add all new facts")
+        return new_facts, []
+    id_map: dict[str, str] = {str(idx): mem.id for idx, mem in enumerate(existing)}
+    existing_json = [
+        {"id": short_id, "text": mem.content}
+        for short_id, mem in zip(id_map.keys(), existing, strict=False)
+    ]
 
     provider = OpenAIProvider(api_key=api_key or "dummy", base_url=openai_base_url)
     model_cfg = OpenAIChatModel(
@@ -549,8 +604,13 @@ async def _reconcile_facts(
         retries=1,
     )
 
-    existing_lines = [f"id: {mem.id or ''} text: {mem.content}" for mem in existing]
-    payload = "existing:\n" + "\n".join(existing_lines) + "\nnew_facts:\n" + "\n".join(new_facts)
+    payload = (
+        "Existing memories (use provided ids for update/delete/none):\n"
+        f"{json.dumps(existing_json, ensure_ascii=False, indent=2)}\n\n"
+        "New facts:\n"
+        f"{json.dumps(new_facts, ensure_ascii=False, indent=2)}"
+    )
+    logger.info("Reconcile payload: %s", payload)
     try:
         result = await agent.run(payload)
         decisions = result.output or []
@@ -564,11 +624,20 @@ async def _reconcile_facts(
         if dec.event == "ADD" and dec.text:
             to_add.append(dec.text.strip())
         elif dec.event == "UPDATE" and dec.id and dec.text:
-            to_delete.append(dec.id)
-            to_add.append(dec.text.strip())
+            orig = id_map.get(dec.id)
+            if orig:
+                to_delete.append(orig)
+                to_add.append(dec.text.strip())
         elif dec.event == "DELETE" and dec.id:
-            to_delete.append(dec.id)
+            orig = id_map.get(dec.id)
+            if orig:
+                to_delete.append(orig)
         # NONE ignored
+
+    if not to_add and new_facts:
+        # Avoid ending up with zero facts after deletes; prefer keeping the latest facts.
+        logger.info("Reconcile produced no additions; falling back to add all new facts")
+        to_add = list(new_facts)
 
     logger.info(
         "Reconcile decisions: add=%d, delete=%d, events=%s",
@@ -819,9 +888,9 @@ async def _extract_and_store_facts_and_summaries(
         _elapsed_ms(fact_start),
         conversation_id,
     )
-    existing_facts = _existing_fact_entries(collection, conversation_id)
     to_add, to_delete = await _reconcile_facts(
-        existing_facts,
+        collection,
+        conversation_id,
         facts,
         openai_base_url=openai_base_url,
         api_key=api_key,

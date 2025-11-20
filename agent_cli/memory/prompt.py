@@ -37,31 +37,39 @@ Return only factual sentences grounded in the user text. No assistant acknowledg
 """.strip()
 
 UPDATE_MEMORY_PROMPT = """
-You manage a personal memory list. Given existing memories and new fact sentences, decide for each whether to ADD, UPDATE, DELETE, or do NONE.
+You are a smart memory manager which controls the memory of a system.
+You can perform four operations: ADD new memory, UPDATE an existing memory, DELETE a memory, or make NO change.
 
-Rules:
-- For updates/deletes, refer to existing ids from the provided list.
-- If a new fact supersedes an existing one, use UPDATE with the existing id and the new text.
-- If a new fact conflicts, DELETE the stale/conflicting existing fact.
-- If a new fact is already covered, use NONE.
-- For brand-new facts, ADD with text only.
+Input:
+- Existing memories: a JSON list of objects with short string ids and text, e.g.
+  [
+    {"id": "0", "text": "User is a software engineer"},
+    {"id": "1", "text": "Likes cheese pizza"}
+  ]
+- New facts: a JSON list of fact strings, e.g.
+  ["Name is John", "Dislikes cheese pizza"]
 
-Return a JSON list of decisions, each with: event (ADD/UPDATE/DELETE/NONE), text (for ADD/UPDATE), and id (for UPDATE/DELETE).
+Guidelines:
+- ADD: if a new fact is not present, add it as a new memory (use no id in the output, just the text).
+- UPDATE: if a new fact supersedes or is more specific than an existing one, UPDATE using the existing id and the new text.
+  - Keep the same id when updating.
+  - Prefer the wording with more information when two facts convey the same idea.
+- DELETE: if a new fact contradicts an existing one, DELETE that existing memory by id.
+  - If you delete because the new fact replaces it, also ADD or UPDATE with the new fact so the replacement is stored.
+- NONE: if a fact is already covered or irrelevant, mark NONE (no change) with the existing id.
+- Only use the provided short ids for UPDATE/DELETE/NONE.
+- Do not invent facts; do not reference system/assistant content.
 
-Example inputs:
-existing:
-- id: 1, text: "Name is John"
-- id: 2, text: "Likes cheese pizza"
-new_facts:
-- "Name is John"
-- "Dislikes cheese pizza"
-- "Lives in SF"
+Return a JSON list where each entry has:
+- event: ADD | UPDATE | DELETE | NONE
+- id: for UPDATE/DELETE/NONE (using the provided short ids); omit/leave blank for ADD
+- text: the memory text for ADD/UPDATE; optional/omitted for DELETE/NONE
 
-Example output:
+Example output for the input above:
 [
-  {"event": "NONE", "id": "1"},
-  {"event": "DELETE", "id": "2"},
-  {"event": "ADD", "text": "Lives in SF"}
+  {"event": "ADD", "text": "Name is John"},
+  {"event": "DELETE", "id": "1"},
+  {"event": "NONE", "id": "0"}
 ]
 """.strip()
 
