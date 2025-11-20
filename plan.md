@@ -43,9 +43,9 @@
 
 ## File-Backed Persistence ✅
 - Source of truth is Markdown files with YAML front matter (id, conversation_id, role, created_at, tags, salience, summary_kind).
-- Layout: `<memory_store>/entries/<conversation_slug>/<doc_id>.md`, plus an inspectable JSON snapshot of all records.
-- Derived index: Chroma lives under `<memory_store>/chroma`; a watcher re-indexes on file changes so manual edits/additions are reflected automatically.
+- Layout: `<memory_store>/entries/<conversation_slug>/<doc_id>.md`, plus an inspectable JSON snapshot of all records. Summaries and facts are stored via the same path.
+- Derived index: Chroma lives under `<memory_store>/chroma`; a watcher re-indexes on file changes so manual edits/additions are reflected automatically. Single entry point (`memory-server`) handles both persistence and retrieval.
 
 ## Testing Approach (High-Level)
 - Unit checks for scoring, eviction, and parsing utilities. ✅ (basic)
-- Integration: spin up the app with a temp vector store and a mock LLM; verify that facts are persisted, retrieved, and summaries are updated. ⏳ (manual live check done; mock harness still to add)
+- Integration: spin up the app with a temp vector store and a mock LLM; verify that facts are persisted, retrieved, and summaries are updated. ✅ (mock harness added; live check also done)
