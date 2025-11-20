@@ -10,7 +10,11 @@ from rich.logging import RichHandler
 
 from agent_cli import opts
 from agent_cli.cli import app
-from agent_cli.core.utils import console, print_error_message
+from agent_cli.core.utils import (
+    console,
+    print_command_line_args,
+    print_error_message,
+)
 
 
 @app.command("rag-server")
@@ -52,6 +56,8 @@ def rag_server(
         help="Logging level",
         rich_help_panel="General Options",
     ),
+    config_file: str | None = opts.CONFIG_FILE,
+    print_args: bool = opts.PRINT_ARGS,
 ) -> None:
     """Start the RAG (Retrieval-Augmented Generation) Proxy Server.
 
@@ -59,6 +65,8 @@ def rag_server(
     an OpenAI-compatible API that proxies requests to a backend LLM (like llama.cpp),
     injecting relevant context from the documents.
     """
+    if print_args:
+        print_command_line_args(locals())
     # Configure logging
     logging.basicConfig(
         level=log_level.upper(),
