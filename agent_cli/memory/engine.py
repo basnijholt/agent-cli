@@ -123,6 +123,7 @@ async def _consolidate_retrieval_entries(
     api_key: str | None,
     model: str,
     prompt: str = CONSOLIDATION_PROMPT,
+    agent_cls: type[Agent] = Agent,
 ) -> list[MemoryEntry]:
     """Use a small LLM pass to mark overlapping facts to KEEP/DELETE/UPDATE."""
     if len(entries) <= 1:
@@ -137,21 +138,18 @@ async def _consolidate_retrieval_entries(
         provider=provider,
         settings=ModelSettings(temperature=0.0, max_tokens=256),
     )
-    agent = Agent(
+    agent = agent_cls(
         model=model_cfg,
         system_prompt=prompt,
         output_type=list[ConsolidationDecision],
         retries=1,
     )
 
-    payload = [
-        {
-            "id": str(idx),
-            "content": entry.content,
-            "created_at": entry.created_at,
-        }
+    payload_lines = [
+        f"{idx}. [created_at={entry.created_at}] {entry.content}"
         for idx, entry in enumerate(entries)
     ]
+    payload = "\n".join(payload_lines)
     try:
         result = await agent.run(payload)
         decisions = {d.id: d.action for d in result.output}
