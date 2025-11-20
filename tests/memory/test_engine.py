@@ -433,3 +433,67 @@ async def test_streaming_request_persists_user_and_assistant(
 
     files = list(tmp_path.glob("entries/**/*.md"))
     assert len(files) == 2  # user + assistant persisted for streaming, too
+
+
+@pytest.mark.asyncio
+async def test_streaming_with_summarization_persists_facts_and_summaries(
+    tmp_path: Any,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    collection = _RecordingCollection()
+    request = ChatRequest(
+        model="demo-model",
+        messages=[Message(role="user", content="My cat is Luna.")],
+        stream=True,
+    )
+
+    monkeypatch.setattr(engine, "predict_relevance", lambda _model, pairs: [0.0 for _ in pairs])
+
+    async def fake_stream_chat_sse(*_args: Any, **_kwargs: Any) -> Any:
+        body = [
+            'data: {"choices":[{"delta":{"content":"Sure, noted."}}]}',
+            "data: [DONE]",
+        ]
+        for line in body:
+            yield line
+
+    async def fake_extract_with_pydantic_ai(**_kwargs: Any) -> list[Any]:
+        return [
+            engine.FactOutput(
+                subject="user",
+                predicate="pet",
+                object="Luna",
+                fact="User has a cat named Luna.",
+            ),
+        ]
+
+    async def fake_agent_run(_agent: Any, prompt_text: str, *_args: Any, **_kwargs: Any) -> Any:
+        class _Result:
+            def __init__(self, output: str) -> None:
+                self.output = output
+
+        if "New facts:" in prompt_text:
+            return _Result("summary text")
+        return _Result("")
+
+    monkeypatch.setattr(engine.streaming, "stream_chat_sse", fake_stream_chat_sse)
+    monkeypatch.setattr(engine.Agent, "run", fake_agent_run)
+    monkeypatch.setattr(engine, "_extract_with_pydantic_ai", fake_extract_with_pydantic_ai)
+
+    response = await engine.process_chat_request(
+        request,
+        collection=collection,
+        memory_root=tmp_path,
+        openai_base_url="http://mock-llm",
+        reranker_model=_DummyReranker(),  # type: ignore[arg-type]
+        enable_summarization=True,
+    )
+
+    _ = [chunk async for chunk in response.body_iterator]  # type: ignore[attr-defined]
+    await tasks.wait_for_background_tasks()
+
+    files = list(tmp_path.glob("entries/**/*.md"))
+    assert len(files) == 5  # user + assistant + fact + 2 summaries
+    assert any("facts" in str(f) for f in files)
+    assert any("summaries/short" in str(f) for f in files)
+    assert any("summaries/long" in str(f) for f in files)

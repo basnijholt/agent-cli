@@ -898,10 +898,7 @@ async def process_chat_request(
         )
 
     if postprocess_in_background:
-        run_in_background(
-            run_postprocess(),
-            label=f"postprocess-{conversation_id}",
-        )
+        run_in_background(run_postprocess(), label=f"postprocess-{conversation_id}")
     else:
         await run_postprocess()
 
