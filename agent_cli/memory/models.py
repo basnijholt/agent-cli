@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import re
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, field_validator
@@ -56,31 +55,6 @@ class MemoryExtras(BaseModel):
     salience: float | None = None
     tags: list[str] | None = None
     fact_key: str | None = None
-
-
-def _canonical_fact_key(*parts: str) -> str:
-    """Canonical, stable key used for conflict resolution."""
-    cleaned: list[str] = []
-    for part in parts:
-        slug = re.sub(r"[^a-z0-9_]+", "", part.strip().lower().replace(" ", "_"))
-        slug = re.sub(r"_+", "_", slug).strip("_")
-        if slug:
-            cleaned.append(slug)
-    return "__".join(cleaned)
-
-
-class FactOutput(BaseModel):
-    """Simple fact string returned by the LLM."""
-
-    fact: str
-
-    @field_validator("fact")
-    @classmethod
-    def _not_empty(cls, v: str) -> str:
-        if not v or not str(v).strip():
-            msg = "field must be non-empty"
-            raise ValueError(msg)
-        return str(v).strip()
 
 
 class SummaryOutput(BaseModel):
