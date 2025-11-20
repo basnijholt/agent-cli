@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 import logging
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -10,7 +9,6 @@ from time import perf_counter
 from typing import TYPE_CHECKING, Any
 from uuid import uuid4
 
-import httpx
 from fastapi.responses import StreamingResponse
 from pydantic_ai import Agent
 from pydantic_ai.models.openai import OpenAIChatModel
