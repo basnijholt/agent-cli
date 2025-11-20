@@ -107,26 +107,23 @@ async def watch_memory_store(collection: Collection, root: Path, *, index: Memor
 
 
 def _handle_change(change: Change, path: Path, collection: Collection, index: MemoryIndex) -> None:
-    try:
-        if change == Change.deleted:
-            doc_id = index.find_id_by_path(path) or path.stem
-            LOGGER.info("[deleted] %s", path.name)
-            delete_entries(collection, [doc_id])
-            index.remove(doc_id)
-            return
+    if change == Change.deleted:
+        doc_id = index.find_id_by_path(path) or path.stem
+        LOGGER.info("[deleted] %s", path.name)
+        delete_entries(collection, [doc_id])
+        index.remove(doc_id)
+        return
 
-        if change in {Change.added, Change.modified}:
-            action = "added" if change == Change.added else "modified"
-            LOGGER.info("[%s] %s", action, path.name)
-            record = read_memory_file(path)
-            if not record:
-                return
-            upsert_memories(
-                collection,
-                ids=[record.id],
-                contents=[record.content],
-                metadatas=[record.metadata],
-            )
-            index.upsert(record)
-    except Exception:
-        LOGGER.exception("Watcher handler failed for %s", path)
+    if change in {Change.added, Change.modified}:
+        action = "added" if change == Change.added else "modified"
+        LOGGER.info("[%s] %s", action, path.name)
+        record = read_memory_file(path)
+        if not record:
+            return
+        upsert_memories(
+            collection,
+            ids=[record.id],
+            contents=[record.content],
+            metadatas=[record.metadata],
+        )
+        index.upsert(record)

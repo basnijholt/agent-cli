@@ -513,13 +513,10 @@ def _evict_if_needed(collection: Collection, conversation_id: str, max_entries: 
     if len(entries) <= max_entries:
         return
     # Sort by created_at asc
-    try:
-        sorted_entries = sorted(
-            entries,
-            key=lambda e: e.metadata.created_at,
-        )
-    except Exception:
-        sorted_entries = entries
+    sorted_entries = sorted(
+        entries,
+        key=lambda e: e.metadata.created_at,
+    )
     overflow = sorted_entries[:-max_entries]
     delete_entries(collection, [e.id for e in overflow if e.id])
 
