@@ -49,3 +49,12 @@
 ## Testing Approach (High-Level)
 - Unit checks for scoring, eviction, and parsing utilities. ✅ (basic)
 - Integration: spin up the app with a temp vector store and a mock LLM; verify that facts are persisted, retrieved, and summaries are updated. ✅ (mock harness added; live check also done)
+
+## Future Improvements (Ordered by Impact)
+1) Conflict-aware fact consolidation: normalize subject/predicate keys, detect overlaps/contradictions, and keep a canonical “active” fact per key (deprecate older ones).
+2) Topical clustering + diverse retrieval: cluster facts/events by topic and pick diverse reps per cluster (with recency bias) for better coverage.
+3) Hierarchical summaries: add mid-/episodic summaries above the current short/long rolling summaries to stay concise over long chats.
+4) Enhanced scoring: blend reranker with adaptive salience, recency decay, tag overlap, and (optionally) a tiny learned combiner; add time-aware boosts.
+5) Lifecycle/decay: decay or archive low-value memories; promote high-salience ones into a small “core” set to keep the index clean.
+6) Profile/persona separation: keep a structured user profile (immutable traits/preferences) apart from transient conversation facts; allow updates to overwrite profile slots.
+7) Perf polish: warm-up calls, batch embeddings, and caches for recent turns/facts; keep postprocessing async.
