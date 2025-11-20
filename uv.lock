@@ -41,7 +41,17 @@ dev = [
     { name = "pytest-mock" },
     { name = "pytest-timeout" },
     { name = "ruff" },
+    { name = "types-pyyaml" },
     { name = "versioningit" },
+]
+memory = [
+    { name = "chromadb" },
+    { name = "fastapi", extra = ["standard"] },
+    { name = "huggingface-hub" },
+    { name = "onnxruntime" },
+    { name = "pyyaml" },
+    { name = "transformers" },
+    { name = "watchfiles" },
 ]
 rag = [
     { name = "chromadb" },
@@ -65,6 +75,7 @@ test = [
     { name = "pytest-cov" },
     { name = "pytest-mock" },
     { name = "pytest-timeout" },
+    { name = "types-pyyaml" },
 ]
 
 [package.dev-dependencies]
@@ -81,6 +92,7 @@ dev = [
     { name = "pytest-mock" },
     { name = "pytest-timeout" },
     { name = "ruff" },
+    { name = "types-pyyaml" },
     { name = "versioningit" },
 ]
 
@@ -88,17 +100,21 @@ dev = [
 requires-dist = [
     { name = "agent-cli", extras = ["test"], marker = "extra == 'dev'" },
     { name = "audiostretchy", marker = "extra == 'speed'", specifier = ">=1.3.0" },
+    { name = "chromadb", marker = "extra == 'memory'", specifier = ">=0.4.22" },
     { name = "chromadb", marker = "extra == 'rag'", specifier = ">=0.4.22" },
     { name = "dotenv" },
+    { name = "fastapi", extras = ["standard"], marker = "extra == 'memory'" },
     { name = "fastapi", extras = ["standard"], marker = "extra == 'rag'" },
     { name = "fastapi", extras = ["standard"], marker = "extra == 'server'" },
     { name = "google-genai", specifier = ">=1.25.0" },
     { name = "httpx" },
+    { name = "huggingface-hub", marker = "extra == 'memory'", specifier = ">=0.20.0" },
     { name = "huggingface-hub", marker = "extra == 'rag'", specifier = ">=0.20.0" },
     { name = "markdown-code-runner", marker = "extra == 'dev'" },
     { name = "markitdown", extras = ["docx", "pdf", "pptx"], marker = "extra == 'rag'", specifier = ">=0.1.3" },
     { name = "notebook", marker = "extra == 'dev'" },
     { name = "numpy" },
+    { name = "onnxruntime", marker = "extra == 'memory'", specifier = ">=1.17.0" },
     { name = "onnxruntime", marker = "extra == 'rag'", specifier = ">=1.17.0" },
     { name = "openai" },
     { name = "pre-commit", marker = "extra == 'dev'", specifier = ">=3.0.0" },
@@ -110,16 +126,21 @@ requires-dist = [
     { name = "pytest-cov", marker = "extra == 'test'", specifier = ">=4.0.0" },
     { name = "pytest-mock", marker = "extra == 'test'" },
     { name = "pytest-timeout", marker = "extra == 'test'" },
+    { name = "pyyaml", marker = "extra == 'memory'", specifier = ">=6.0.0" },
     { name = "rich" },
     { name = "ruff", marker = "extra == 'dev'" },
     { name = "sounddevice" },
+    { name = "transformers", marker = "extra == 'memory'", specifier = ">=4.30.0" },
     { name = "transformers", marker = "extra == 'rag'", specifier = ">=4.30.0" },
     { name = "typer" },
+    { name = "types-pyyaml", marker = "extra == 'dev'" },
+    { name = "types-pyyaml", marker = "extra == 'test'" },
     { name = "versioningit", marker = "extra == 'dev'" },
+    { name = "watchfiles", marker = "extra == 'memory'", specifier = ">=0.21.0" },
     { name = "watchfiles", marker = "extra == 'rag'", specifier = ">=0.21.0" },
     { name = "wyoming" },
 ]
-provides-extras = ["server", "rag", "test", "dev", "speed"]
+provides-extras = ["server", "rag", "memory", "test", "dev", "speed"]
 
 [package.metadata.requires-dev]
 dev = [
@@ -135,6 +156,7 @@ dev = [
     { name = "pytest-mock" },
     { name = "pytest-timeout" },
     { name = "ruff" },
+    { name = "types-pyyaml" },
     { name = "versioningit" },
 ]
 
@@ -4522,6 +4544,15 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/8f/28/7c85c8032b91dbe79725b6f17d2fffc595dff06a35c7a30a37bef73a1ab4/typer-0.20.0.tar.gz", hash = "sha256:1aaf6494031793e4876fb0bacfa6a912b551cf43c1e63c800df8b1a866720c37", size = 106492, upload-time = "2025-10-20T17:03:49.445Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/78/64/7713ffe4b5983314e9d436a90d5bd4f63b6054e2aca783a3cfc44cb95bbf/typer-0.20.0-py3-none-any.whl", hash = "sha256:5b463df6793ec1dca6213a3cf4c0f03bc6e322ac5e16e13ddd622a889489784a", size = 47028, upload-time = "2025-10-20T17:03:47.617Z" },
+]
+
+[[package]]
+name = "types-pyyaml"
+version = "6.0.12.20250915"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/7e/69/3c51b36d04da19b92f9e815be12753125bd8bc247ba0470a982e6979e71c/types_pyyaml-6.0.12.20250915.tar.gz", hash = "sha256:0f8b54a528c303f0e6f7165687dd33fafa81c807fcac23f632b63aa624ced1d3", size = 17522, upload-time = "2025-09-15T03:01:00.728Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/bd/e0/1eed384f02555dde685fff1a1ac805c1c7dcb6dd019c916fe659b1c1f9ec/types_pyyaml-6.0.12.20250915-py3-none-any.whl", hash = "sha256:e7d4d9e064e89a3b3cae120b4990cd370874d2bf12fa5f46c97018dd5d3c9ab6", size = 20338, upload-time = "2025-09-15T03:00:59.218Z" },
 ]
 
 [[package]]
