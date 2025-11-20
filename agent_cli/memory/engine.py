@@ -671,6 +671,7 @@ async def _extract_and_store_facts_and_summaries(
     model: str,
 ) -> None:
     """Run fact extraction and summary updates, persisting results."""
+    prior_tags: list[str] = []
     fact_start = perf_counter()
     facts = await _extract_salient_facts(
         user_message=user_message,
@@ -692,11 +693,13 @@ async def _extract_and_store_facts_and_summaries(
     for fact in facts:
         tags = await _extract_tags_with_pydantic_ai(
             fact_text=fact.fact,
-            existing_tags=[],
+            existing_tags=prior_tags,
             openai_base_url=openai_base_url,
             api_key=api_key,
             model=model,
         )
+        if tags:
+            prior_tags.extend(t for t in tags if t not in prior_tags)
         fact_entries.append(
             WriteEntry(
                 role="memory",
