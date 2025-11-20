@@ -107,6 +107,12 @@ def _canonical_fact_key_from_triple(triple: FactTriple) -> str | None:
     return None
 
 
+def _triple_to_text(triple: FactTriple) -> str:
+    """Human-readable fact text from a triple."""
+    parts = [triple.subject, triple.predicate, triple.object or ""]
+    return " ".join(p for p in parts if p).strip()
+
+
 @dataclass
 class WriteEntry:
     """Structured memory entry to persist."""
@@ -481,6 +487,22 @@ async def _extract_salient_facts(
 ) -> list[FactCandidate]:
     if not user_message and not assistant_message:
         return []
+    exchange = []
+    if user_message:
+        exchange.append(f"User: {user_message}")
+    if assistant_message:
+        exchange.append(f"Assistant: {assistant_message}")
+    transcript = "\n".join(exchange)
+
+    structured = await _extract_with_pydantic_ai(
+        transcript=transcript,
+        openai_base_url=openai_base_url,
+        api_key=api_key,
+        model=model,
+    )
+    if structured:
+        return structured
+
     prompt = (
         "You are a memory extractor. From the latest exchange, extract 1-3 succinct facts "
         "that would be useful to remember for future turns. Return JSON list of objects with keys "
@@ -488,14 +510,9 @@ async def _extract_salient_facts(
         '[{"subject":"Alice","predicate":"likes","object":"biking","fact":"Alice likes biking"}]. '
         "If unsure, still include the best fact text in 'fact'. Do not include any prose outside JSON."
     )
-    exchange = []
-    if user_message:
-        exchange.append(f"User: {user_message}")
-    if assistant_message:
-        exchange.append(f"Assistant: {assistant_message}")
     messages = [
         {"role": "system", "content": prompt},
-        {"role": "user", "content": "\n".join(exchange)},
+        {"role": "user", "content": transcript},
     ]
     content = await _chat_completion_request(
         messages=messages,
@@ -541,6 +558,57 @@ def _parse_structured_facts(text: str) -> list[FactCandidate]:
         key = _canonical_fact_key_from_triple(triple) or _canonical_fact_key(fact_text)
         results.append(FactCandidate(content=fact_text, fact_key=key))
     return results
+
+
+async def _extract_with_pydantic_ai(
+    *,
+    transcript: str,
+    openai_base_url: str,
+    api_key: str | None,
+    model: str,
+) -> list[FactCandidate]:
+    """Use PydanticAI to extract structured facts."""
+    try:
+        from pydantic_ai import Agent  # noqa: PLC0415
+        from pydantic_ai.models.openai import OpenAIModel  # noqa: PLC0415
+        from pydantic_ai.providers.openai import OpenAIProvider  # noqa: PLC0415
+    except Exception:
+        return []
+
+    provider = OpenAIProvider(
+        api_key=api_key or "dummy",
+        base_url=openai_base_url,
+    )
+    model_cfg = OpenAIModel(model_name=model, provider=provider)
+    agent = Agent(
+        model=model_cfg,
+        result_type=list[FactTriple],
+        system_prompt=(
+            "You are a memory extractor. From the latest exchange, extract 1-3 succinct facts "
+            "that are useful to remember for future turns. Return structured facts with subject, predicate, object."
+        ),
+    )
+    instructions = (
+        "Keep facts atomic, enduring, and person-centered when possible. "
+        "Prefer explicit subjects (names) over pronouns. "
+        "Avoid formatting; just structured facts."
+    )
+
+    try:
+        result = await agent.run(transcript, instructions=instructions)
+    except Exception:
+        logger.debug("PydanticAI fact extraction failed; falling back", exc_info=True)
+        return []
+
+    triples = result.output or []
+    return [
+        FactCandidate(
+            content=_triple_to_text(triple),
+            fact_key=_canonical_fact_key_from_triple(triple),
+        )
+        for triple in triples
+        if _triple_to_text(triple)
+    ]
 
 
 async def _update_summary(

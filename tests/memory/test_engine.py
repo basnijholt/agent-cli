@@ -303,6 +303,11 @@ async def test_process_chat_request_summarizes_and_persists(
 
     monkeypatch.setattr(engine, "_forward_request", fake_forward_request)
     monkeypatch.setattr(engine, "_chat_completion_request", fake_chat_completion_request)
+
+    async def fake_extract_with_pydantic_ai(**_kwargs: Any) -> list[Any]:
+        return []
+
+    monkeypatch.setattr(engine, "_extract_with_pydantic_ai", fake_extract_with_pydantic_ai)
     monkeypatch.setattr(engine, "predict_relevance", lambda _model, pairs: [0.1 for _ in pairs])
 
     request = ChatRequest(

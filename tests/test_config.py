@@ -110,3 +110,17 @@ def test_memory_server_help_includes_config_option() -> None:
     result = runner.invoke(app, ["memory-server", "--help"])
     assert result.exit_code == 0
     assert "--config" in result.stdout
+
+
+def test_rag_server_help_includes_config_option() -> None:
+    """Ensure rag-server command wires config option (for defaults loading)."""
+    result = runner.invoke(app, ["rag-server", "--help"])
+    assert result.exit_code == 0
+    assert "--config" in result.stdout
+
+
+def test_server_help_includes_config_option() -> None:
+    """Ensure server command wires config option (for defaults loading)."""
+    result = runner.invoke(app, ["server", "--help"])
+    assert result.exit_code == 0
+    assert "--config" in result.stdout
