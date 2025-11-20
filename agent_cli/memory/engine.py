@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from time import perf_counter
@@ -62,6 +63,40 @@ def _elapsed_ms(start: float) -> float:
     return (perf_counter() - start) * 1000
 
 
+def _parse_iso(date_str: str) -> datetime | None:
+    """Best-effort ISO8601 parser."""
+    try:
+        return datetime.fromisoformat(date_str)
+    except Exception:
+        return None
+
+
+def _canonical_fact_key(text: str) -> str | None:
+    """Heuristic subject/predicate key to consolidate duplicate or conflicting facts."""
+    cleaned = re.sub(r"\s+", " ", text.strip()).strip(" .?!;")
+    if not cleaned:
+        return None
+    lowered = cleaned.lower()
+    separators = [
+        " is ",
+        " was ",
+        " are ",
+        " were ",
+        " has ",
+        " have ",
+        " likes ",
+        " loves ",
+    ]
+    for sep in separators:
+        if sep in lowered:
+            subject, rest = lowered.split(sep, 1)
+            subject = subject.strip()
+            predicate = rest.strip()
+            if subject and predicate:
+                return f"{subject}::{predicate}"
+    return lowered
+
+
 @dataclass
 class WriteEntry:
     """Structured memory entry to persist."""
@@ -69,6 +104,30 @@ class WriteEntry:
     role: str
     content: str
     extras: MemoryExtras
+
+
+def _dedupe_by_fact_key(candidates: list[StoredMemory]) -> list[StoredMemory]:
+    """Keep latest entry per fact_key while leaving unkeyed entries untouched."""
+    latest: dict[str, StoredMemory] = {}
+    unkeyed: list[StoredMemory] = []
+
+    def _is_newer(a: StoredMemory, b: StoredMemory) -> bool:
+        adt = _parse_iso(a.metadata.created_at)
+        bdt = _parse_iso(b.metadata.created_at)
+        if adt and bdt:
+            return adt >= bdt
+        return (a.metadata.created_at or "") >= (b.metadata.created_at or "")
+
+    for mem in candidates:
+        key = mem.metadata.fact_key
+        if not key:
+            unkeyed.append(mem)
+            continue
+        current = latest.get(key)
+        if current is None or _is_newer(mem, current):
+            latest[key] = mem
+
+    return unkeyed + list(latest.values())
 
 
 def _retrieve_memory(
@@ -122,6 +181,8 @@ def _retrieve_memory(
             return 0.0
         overlap = len(query_tags & meta_tags)
         return min(overlap, 3) * 0.1
+
+    candidates = _dedupe_by_fact_key(candidates)
 
     scores: list[float] = []
     if candidates:
@@ -267,6 +328,7 @@ def _persist_entries(
             salience=extras.salience,
             tags=extras.tags,
             doc_id=str(uuid4()),
+            fact_key=extras.fact_key,
         )
         ids.append(record.id)
         contents.append(record.content)
@@ -650,6 +712,7 @@ async def _extract_and_store_facts_and_summaries(
             extras=MemoryExtras(
                 salience=1.0,
                 tags=list(_extract_tags_from_text(fact)),
+                fact_key=_canonical_fact_key(fact),
             ),
         )
         for fact in facts

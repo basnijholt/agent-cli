@@ -44,6 +44,7 @@ class MemoryMetadata(BaseModel):
     salience: float | None = None
     tags: list[str] | None = None
     summary_kind: str | None = None
+    fact_key: str | None = None
 
 
 class MemoryExtras(BaseModel):
@@ -51,6 +52,7 @@ class MemoryExtras(BaseModel):
 
     salience: float | None = None
     tags: list[str] | None = None
+    fact_key: str | None = None
 
 
 class StoredMemory(BaseModel):

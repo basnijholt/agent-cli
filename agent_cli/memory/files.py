@@ -57,6 +57,7 @@ def write_memory_file(
     tags: list[str] | None = None,
     summary_kind: str | None = None,
     doc_id: str | None = None,
+    fact_key: str | None = None,
 ) -> MemoryFileRecord:
     """Render and persist a memory document to disk."""
     entries_dir, _ = ensure_store_dirs(root)
@@ -88,6 +89,7 @@ def write_memory_file(
         salience=salience,
         tags=tags,
         summary_kind=summary_kind,
+        fact_key=fact_key,
     )
 
     front_matter = _render_front_matter(doc_id, metadata)

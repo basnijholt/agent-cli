@@ -228,6 +228,50 @@ def test_retrieve_memory_prefers_diversity_and_adds_summaries(
     assert any("Long summary" in text for text in summaries)
 
 
+def test_retrieve_memory_dedupes_by_fact_key(monkeypatch: pytest.MonkeyPatch) -> None:
+    """If multiple facts share a fact_key, only the newest should be considered."""
+    now = datetime.now(UTC)
+    older = StoredMemory(
+        id="old",
+        content="Jane is my wife",
+        metadata=MemoryMetadata(
+            conversation_id="conv1",
+            role="memory",
+            created_at=(now - timedelta(minutes=10)).isoformat(),
+            salience=0.5,
+            fact_key="jane::is my wife",
+        ),
+        distance=0.1,
+    )
+    newer = StoredMemory(
+        id="new",
+        content="Jane Smith is my wife",
+        metadata=MemoryMetadata(
+            conversation_id="conv1",
+            role="memory",
+            created_at=now.isoformat(),
+            salience=0.9,
+            fact_key="jane::is my wife",
+        ),
+        distance=0.2,
+    )
+
+    monkeypatch.setattr(engine, "query_memories", lambda *_args, **_kwargs: [older, newer])
+    monkeypatch.setattr(engine, "predict_relevance", lambda _model, pairs: [0.5 for _ in pairs])
+
+    retrieval, _ = engine._retrieve_memory(
+        collection=_RecordingCollection(),
+        conversation_id="conv1",
+        query="Who is Jane?",
+        top_k=5,
+        reranker_model=_DummyReranker(),  # type: ignore[arg-type]
+        include_global=False,
+    )
+
+    assert len(retrieval.entries) == 1
+    assert retrieval.entries[0].content == "Jane Smith is my wife"
+
+
 @pytest.mark.asyncio
 async def test_process_chat_request_summarizes_and_persists(
     tmp_path: Any,
