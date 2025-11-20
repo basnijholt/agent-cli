@@ -634,6 +634,12 @@ async def _reconcile_facts(
                 to_delete.append(orig)
         # NONE ignored
 
+    # Safeguard: if the model produced no additions and the new facts would otherwise be lost,
+    # retain the new facts. This prevents ending up with an empty fact set after deletes.
+    if not to_add and new_facts:
+        logger.info("Reconcile produced no additions; retaining new facts to avoid empty store")
+        to_add = list(new_facts)
+
     logger.info(
         "Reconcile decisions: add=%d, delete=%d, events=%s",
         len(to_add),
