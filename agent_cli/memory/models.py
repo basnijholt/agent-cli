@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, field_validator
 
 
 class Message(BaseModel):
@@ -61,6 +61,26 @@ class FactTriple(BaseModel):
     subject: str
     predicate: str
     object: str | None = None
+    fact: str | None = None
+    fact_key: str | None = None
+
+
+class FactOutput(BaseModel):
+    """Output schema used by PydanticAI for fact extraction with validation."""
+
+    subject: str
+    predicate: str
+    fact: str
+    object: str | None = None
+    fact_key: str
+
+    @field_validator("subject", "predicate", "fact", "fact_key")
+    @classmethod
+    def _not_empty(cls, v: str) -> str:
+        if not v or not str(v).strip():
+            msg = "field must be non-empty"
+            raise ValueError(msg)
+        return str(v).strip()
 
 
 class StoredMemory(BaseModel):

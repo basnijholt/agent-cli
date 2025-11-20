@@ -21,6 +21,7 @@ from agent_cli.core.openai_proxy import forward_chat_request
 from agent_cli.memory.files import write_memory_file
 from agent_cli.memory.models import (
     ChatRequest,
+    FactOutput,
     FactTriple,
     MemoryEntry,
     MemoryExtras,
@@ -115,6 +116,15 @@ def _triple_to_text(triple: FactTriple) -> str:
     return " ".join(p for p in parts if p).strip()
 
 
+def _ensure_fact_key(fact_key: str | None, triple: FactTriple | None, fact_text: str) -> str | None:
+    """Derive a stable fact_key or return None if impossible."""
+    return (
+        fact_key
+        or (_canonical_fact_key_from_triple(triple) if triple else None)
+        or _canonical_fact_key(fact_text)
+    )
+
+
 @dataclass
 class WriteEntry:
     """Structured memory entry to persist."""
@@ -129,7 +139,7 @@ class FactCandidate:
     """Structured fact output from extraction."""
 
     content: str
-    fact_key: str | None
+    fact_key: str
 
 
 def _dedupe_by_fact_key(candidates: list[StoredMemory]) -> list[StoredMemory]:
@@ -503,9 +513,10 @@ async def _extract_with_pydantic_ai(
         system_prompt=(
             "You are a memory extractor. From the latest exchange, extract 1-3 succinct facts "
             "that are useful to remember for future turns. Return structured facts with fields: "
-            "subject, predicate, object (optional), and fact (string). Do not include prose outside JSON."
+            "subject, predicate, object (optional), fact (string), and fact_key (stable identifier). "
+            "Do not include prose outside JSON."
         ),
-        output_type=list[FactCandidate],
+        output_type=list[FactOutput],
     )
     instructions = (
         "Keep facts atomic, enduring, and person-centered when possible. "
@@ -519,7 +530,24 @@ async def _extract_with_pydantic_ai(
         logger.exception("PydanticAI fact extraction failed")
         return []
 
-    return result.output or []
+    outputs = result.output or []
+    fact_candidates: list[FactCandidate] = []
+    for item in outputs:
+        if not isinstance(item, FactOutput):
+            continue
+        triple = FactTriple(
+            subject=item.subject,
+            predicate=item.predicate,
+            object=item.object,
+            fact=item.fact,
+            fact_key=item.fact_key,
+        )
+        content = item.fact or _triple_to_text(triple)
+        key = _ensure_fact_key(item.fact_key, triple, content)
+        if not content or not key:
+            continue
+        fact_candidates.append(FactCandidate(content=content, fact_key=key))
+    return fact_candidates
 
 
 async def _update_summary(
