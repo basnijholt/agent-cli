@@ -152,8 +152,7 @@ def _retrieve_memory(
         except Exception:
             return 0.0
 
-    def tag_overlap_boost(meta: Any, query_text: str) -> float:
-        del query_text
+    def tag_overlap_boost(meta: Any) -> float:
         query_tags: set[str] = set()  # tag boosting disabled for now
         meta_tags = set(meta.tags or [])
         if not query_tags or not meta_tags:
@@ -175,7 +174,7 @@ def _retrieve_memory(
                 + 0.1 * dist_bonus
                 + 0.2 * recency_boost(mem.metadata)
                 + 0.1 * salience_boost(mem.metadata)
-                + tag_boost * tag_overlap_boost(mem.metadata, query)
+                + tag_boost * tag_overlap_boost(mem.metadata)
             )
             scores.append(total)
     else:
@@ -185,7 +184,7 @@ def _retrieve_memory(
                 base
                 + 0.2 * recency_boost(mem.metadata)
                 + 0.1 * salience_boost(mem.metadata)
-                + tag_boost * tag_overlap_boost(mem.metadata, query)
+                + tag_boost * tag_overlap_boost(mem.metadata)
             )
             scores.append(total)
 
