@@ -32,6 +32,7 @@ from agent_cli.memory.store import (
 from agent_cli.rag.retriever import OnnxCrossEncoder, predict_relevance
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping
     from pathlib import Path
 
     from chromadb import Collection
@@ -523,6 +524,120 @@ def _evict_if_needed(collection: Collection, conversation_id: str, max_entries: 
     delete_entries(collection, [e.id for e in overflow if e.id])
 
 
+def _latest_user_message(request: ChatRequest) -> str | None:
+    """Return the most recent user message, if any."""
+    return next((m.content for m in reversed(request.messages) if m.role == "user"), None)
+
+
+def _assistant_reply_content(response: Mapping[str, Any]) -> str | None:
+    """Extract assistant content from a chat completion response."""
+    choices = response.get("choices", [])
+    if not choices:
+        return None
+    return choices[0].get("message", {}).get("content")
+
+
+def _persist_turns(
+    collection: Collection,
+    *,
+    memory_root: Path,
+    conversation_id: str,
+    user_message: str | None,
+    assistant_message: str | None,
+) -> None:
+    """Persist the latest user/assistant exchanges."""
+    _persist_entries(
+        collection,
+        memory_root=memory_root,
+        conversation_id=conversation_id,
+        entries=[
+            WriteEntry(role="user", content=user_message, extras=MemoryExtras())
+            if user_message
+            else None,
+            WriteEntry(role="assistant", content=assistant_message, extras=MemoryExtras())
+            if assistant_message
+            else None,
+        ],
+    )
+
+
+async def _extract_and_store_facts_and_summaries(
+    *,
+    collection: Collection,
+    memory_root: Path,
+    conversation_id: str,
+    user_message: str | None,
+    assistant_message: str | None,
+    openai_base_url: str,
+    api_key: str | None,
+    model: str,
+) -> None:
+    """Run fact extraction and summary updates, persisting results."""
+    facts = await _extract_salient_facts(
+        user_message=user_message,
+        assistant_message=assistant_message,
+        openai_base_url=openai_base_url,
+        api_key=api_key,
+        model=model,
+    )
+    if not facts:
+        return
+
+    fact_entries: list[WriteEntry] = [
+        WriteEntry(
+            role="memory",
+            content=fact,
+            extras=MemoryExtras(
+                salience=1.0,
+                tags=list(_extract_tags_from_text(fact)),
+            ),
+        )
+        for fact in facts
+    ]
+    _persist_entries(
+        collection,
+        memory_root=memory_root,
+        conversation_id=conversation_id,
+        entries=list(fact_entries),
+    )
+    prior_summary_entry = get_summary_entry(
+        collection,
+        conversation_id,
+        role=_SUMMARY_SHORT_ROLE,
+    )
+    prior_long_entry = get_summary_entry(
+        collection,
+        conversation_id,
+        role=_SUMMARY_LONG_ROLE,
+    )
+    prior_summary = prior_summary_entry.content if prior_summary_entry else None
+    prior_long = prior_long_entry.content if prior_long_entry else None
+    new_short, new_long = await _update_summaries(
+        prior_short=prior_summary,
+        prior_long=prior_long,
+        new_facts=facts,
+        openai_base_url=openai_base_url,
+        api_key=api_key,
+        model=model,
+    )
+    if new_short:
+        _persist_summary(
+            collection,
+            memory_root=memory_root,
+            conversation_id=conversation_id,
+            summary=new_short,
+            role=_SUMMARY_SHORT_ROLE,
+        )
+    if new_long:
+        _persist_summary(
+            collection,
+            memory_root=memory_root,
+            conversation_id=conversation_id,
+            summary=new_long,
+            role=_SUMMARY_LONG_ROLE,
+        )
+
+
 async def process_chat_request(
     request: ChatRequest,
     collection: Collection,
@@ -548,107 +663,36 @@ async def process_chat_request(
 
     response = await _forward_request(aug_request, openai_base_url, api_key)
 
-    if not request.stream and isinstance(response, dict):
-        user_message = next(
-            (m.content for m in reversed(request.messages) if m.role == "user"),
-            None,
-        )
-        assistant_message = None
-        choices = response.get("choices", [])
-        if choices:
-            msg = choices[0].get("message", {})
-            assistant_message = msg.get("content")
+    if request.stream or not isinstance(response, dict):
+        return response
 
-        # Persist raw turns
-        _persist_entries(
-            collection,
+    user_message = _latest_user_message(request)
+    assistant_message = _assistant_reply_content(response)
+
+    _persist_turns(
+        collection,
+        memory_root=memory_root,
+        conversation_id=conversation_id,
+        user_message=user_message,
+        assistant_message=assistant_message,
+    )
+
+    if enable_summarization:
+        await _extract_and_store_facts_and_summaries(
+            collection=collection,
             memory_root=memory_root,
             conversation_id=conversation_id,
-            entries=[
-                WriteEntry(
-                    role="user",
-                    content=user_message,
-                    extras=MemoryExtras(),
-                )
-                if user_message
-                else None,
-                WriteEntry(
-                    role="assistant",
-                    content=assistant_message,
-                    extras=MemoryExtras(),
-                )
-                if assistant_message
-                else None,
-            ],
+            user_message=user_message,
+            assistant_message=assistant_message,
+            openai_base_url=openai_base_url,
+            api_key=api_key,
+            model=request.model,
         )
 
-        memory_hits = [entry.model_dump() for entry in retrieval.entries] if retrieval else []
-
-        if enable_summarization:
-            facts = await _extract_salient_facts(
-                user_message=user_message,
-                assistant_message=assistant_message,
-                openai_base_url=openai_base_url,
-                api_key=api_key,
-                model=request.model,
-            )
-            if facts:
-                fact_entries: list[WriteEntry] = [
-                    WriteEntry(
-                        role="memory",
-                        content=fact,
-                        extras=MemoryExtras(
-                            salience=1.0,
-                            tags=list(_extract_tags_from_text(fact)),
-                        ),
-                    )
-                    for fact in facts
-                ]
-                _persist_entries(
-                    collection,
-                    memory_root=memory_root,
-                    conversation_id=conversation_id,
-                    entries=list(fact_entries),
-                )
-                prior_summary_entry = get_summary_entry(
-                    collection,
-                    conversation_id,
-                    role=_SUMMARY_SHORT_ROLE,
-                )
-                prior_long_entry = get_summary_entry(
-                    collection,
-                    conversation_id,
-                    role=_SUMMARY_LONG_ROLE,
-                )
-                prior_summary = prior_summary_entry.content if prior_summary_entry else None
-                prior_long = prior_long_entry.content if prior_long_entry else None
-                new_short, new_long = await _update_summaries(
-                    prior_short=prior_summary,
-                    prior_long=prior_long,
-                    new_facts=facts,
-                    openai_base_url=openai_base_url,
-                    api_key=api_key,
-                    model=request.model,
-                )
-                if new_short:
-                    _persist_summary(
-                        collection,
-                        memory_root=memory_root,
-                        conversation_id=conversation_id,
-                        summary=new_short,
-                        role=_SUMMARY_SHORT_ROLE,
-                    )
-                if new_long:
-                    _persist_summary(
-                        collection,
-                        memory_root=memory_root,
-                        conversation_id=conversation_id,
-                        summary=new_long,
-                        role=_SUMMARY_LONG_ROLE,
-                    )
-
-        _evict_if_needed(collection, conversation_id, max_entries)
-        response["memory_hits"] = memory_hits
+    _evict_if_needed(collection, conversation_id, max_entries)
+    response["memory_hits"] = (
+        [entry.model_dump() for entry in retrieval.entries] if retrieval else []
+    )
 
     return response
 
