@@ -18,6 +18,7 @@ from pydantic_ai.providers.openai import OpenAIProvider
 from pydantic_ai.settings import ModelSettings
 
 from agent_cli.core.openai_proxy import forward_chat_request
+from agent_cli.memory import streaming
 from agent_cli.memory.files import write_memory_file
 from agent_cli.memory.models import (
     ChatRequest,
@@ -775,47 +776,14 @@ async def _stream_and_persist_response(
             conversation_id,
         )
 
-    async def stream_lines() -> AsyncGenerator[str, None]:
-        logger.info(
-            "Forwarding streaming chat completion (conversation=%s, model=%s)",
-            conversation_id,
-            model,
-        )
-        async with (
-            httpx.AsyncClient(timeout=120.0) as client,
-            client.stream(
-                "POST",
-                f"{openai_base_url.rstrip('/')}/chat/completions",
-                json=forward_payload,
-                headers=headers,
-            ) as response,
-        ):
-            if response.status_code != 200:  # noqa: PLR2004
-                error_text = await response.aread()
-                yield f"data: {json.dumps({'error': str(error_text)})}\n\n"
-                return
-            async for line in response.aiter_lines():
-                if line:
-                    yield line
-
     async def tee_and_accumulate() -> AsyncGenerator[str, None]:
         assistant_chunks: list[str] = []
-        async for line in stream_lines():
-            if line.startswith("data:"):
-                payload = line[5:].strip()
-                if payload != "[DONE]":
-                    try:
-                        data = json.loads(payload)
-                        delta = (data.get("choices") or [{}])[0].get("delta") or {}
-                        piece = delta.get("content") or delta.get("text") or ""
-                        if piece:
-                            assistant_chunks.append(piece)
-                    except Exception:
-                        logger.debug(
-                            "Failed to parse streaming chunk: %s",
-                            payload,
-                            exc_info=True,
-                        )
+        async for line in streaming.stream_chat_sse(
+            openai_base_url=openai_base_url,
+            payload=forward_payload,
+            headers=headers,
+        ):
+            streaming.accumulate_assistant_text(line, assistant_chunks)
             yield line + "\n\n"
         assistant_message = "".join(assistant_chunks).strip() or None
         run_in_background(

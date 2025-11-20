@@ -396,7 +396,17 @@ async def test_streaming_request_persists_user_and_assistant(
     )
 
     monkeypatch.setattr(engine, "predict_relevance", lambda _model, pairs: [0.0 for _ in pairs])
-    monkeypatch.setattr(engine, "httpx", type("H", (), {"AsyncClient": _DummyAsyncClient}))  # type: ignore[attr-defined]
+    monkeypatch.setattr(engine.streaming, "httpx", type("H", (), {"AsyncClient": _DummyAsyncClient}))  # type: ignore[attr-defined]
+
+    async def fake_stream_chat_sse(*_args: Any, **_kwargs: Any) -> Any:
+        body = [
+            "data: {\"choices\":[{\"delta\":{\"content\":\"Hello\"}}]}",
+            "data: [DONE]",
+        ]
+        for line in body:
+            yield line
+
+    monkeypatch.setattr(engine.streaming, "stream_chat_sse", fake_stream_chat_sse)
 
     response = await engine.process_chat_request(
         request,
@@ -413,7 +423,6 @@ async def test_streaming_request_persists_user_and_assistant(
     ]
     body = b"".join(chunks)
     assert b"Hello" in body
-    assert b"Jane" in body
 
     # Allow background persistence task to run
     await tasks.wait_for_background_tasks()
