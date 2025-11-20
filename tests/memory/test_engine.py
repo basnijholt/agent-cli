@@ -296,7 +296,7 @@ async def test_query_rewrite_merges_candidates(monkeypatch: pytest.MonkeyPatch) 
 
 @pytest.mark.asyncio
 async def test_retrieve_memory_returns_all_facts(monkeypatch: pytest.MonkeyPatch) -> None:
-    """With fact_key unused, all facts are returned."""
+    """All facts are returned (no dedupe)."""
     now = datetime.now(UTC)
     older = StoredMemory(
         id="old",
@@ -387,6 +387,15 @@ async def test_process_chat_request_summarizes_and_persists(
         return ["User likes cats.", "User loves biking."]
 
     monkeypatch.setattr(engine, "_extract_with_pydantic_ai", fake_extract_with_pydantic_ai)
+
+    async def fake_reconcile(
+        _existing: Any,
+        new_facts: list[str],
+        **_kwargs: Any,
+    ) -> tuple[list[str], list[str]]:
+        return new_facts, []
+
+    monkeypatch.setattr(engine, "_reconcile_facts", fake_reconcile)
     monkeypatch.setattr(engine.Agent, "run", fake_agent_run)
     monkeypatch.setattr(engine, "predict_relevance", lambda _model, pairs: [0.1 for _ in pairs])
 
@@ -543,6 +552,15 @@ async def test_streaming_with_summarization_persists_facts_and_summaries(
         return _Result(engine.SummaryOutput(summary="noop"))
 
     monkeypatch.setattr(engine.streaming, "stream_chat_sse", fake_stream_chat_sse)
+
+    async def fake_reconcile(
+        _existing: Any,
+        new_facts: list[str],
+        **_kwargs: Any,
+    ) -> tuple[list[str], list[str]]:
+        return new_facts, []
+
+    monkeypatch.setattr(engine, "_reconcile_facts", fake_reconcile)
     monkeypatch.setattr(engine.Agent, "run", fake_agent_run)
     monkeypatch.setattr(engine, "_extract_with_pydantic_ai", fake_extract_with_pydantic_ai)
 

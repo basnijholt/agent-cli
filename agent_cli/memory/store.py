@@ -148,9 +148,5 @@ def delete_entries(collection: Collection, ids: list[str]) -> None:
 
 
 def _normalize_meta(meta: dict[str, Any]) -> dict[str, Any]:
-    """Normalize metadata fields (e.g., tags as list)."""
-    normalized = dict(meta)
-    tags = normalized.get("tags")
-    if isinstance(tags, str):
-        normalized["tags"] = [t.strip() for t in tags.split(",") if t.strip()]
-    return normalized
+    """Normalize metadata dict."""
+    return dict(meta)

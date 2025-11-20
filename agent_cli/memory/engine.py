@@ -17,7 +17,7 @@ from pydantic_ai.settings import ModelSettings
 
 from agent_cli.core.openai_proxy import forward_chat_request
 from agent_cli.memory import streaming
-from agent_cli.memory.files import write_memory_file
+from agent_cli.memory.files import ensure_store_dirs, read_memory_file, write_memory_file
 from agent_cli.memory.models import (
     ChatRequest,
     ConsolidationDecision,
@@ -25,6 +25,7 @@ from agent_cli.memory.models import (
     MemoryExtras,
     MemoryMetadata,
     MemoryRetrieval,
+    MemoryUpdateDecision,
     Message,
     StoredMemory,
     SummaryOutput,
@@ -36,6 +37,7 @@ from agent_cli.memory.prompt import (
     FACT_SYSTEM_PROMPT,
     QUERY_REWRITE_PROMPT,
     SUMMARY_PROMPT,
+    UPDATE_MEMORY_PROMPT,
 )
 from agent_cli.memory.store import (
     delete_entries,
@@ -89,11 +91,6 @@ class WriteEntry:
     role: str
     content: str
     extras: MemoryExtras
-
-
-def _dedupe_by_fact_key(candidates: list[StoredMemory]) -> list[StoredMemory]:
-    """Pass-through (fact_key no longer used)."""
-    return candidates
 
 
 async def _consolidate_retrieval_entries(
@@ -161,13 +158,37 @@ def _prepare_fact_entries(facts: list[str]) -> list[WriteEntry]:
                 content=cleaned,
                 extras=MemoryExtras(
                     salience=1.0,
-                    tags=None,
-                    fact_key=None,
                 ),
             ),
         )
     logger.info("Prepared %d fact entries: %s", len(entries), [e.content for e in entries])
     return entries
+
+
+def _existing_fact_entries(collection: Collection, conversation_id: str) -> list[StoredMemory]:
+    """Fetch existing memory entries (facts) for a conversation."""
+    entries = list_conversation_entries(collection, conversation_id, include_summary=False)
+    return [e for e in entries if e.metadata.role == "memory"]
+
+
+def _delete_fact_files(memory_root: Path, conversation_id: str, ids: list[str]) -> None:
+    """Tombstone fact markdown files matching the given ids."""
+    if not ids:
+        return
+    entries_dir, _ = ensure_store_dirs(memory_root)
+    conv_dir = entries_dir / _safe_identifier(conversation_id)
+    facts_dir = conv_dir / "facts"
+    deleted_dir = conv_dir / "deleted" / "facts"
+    deleted_dir.mkdir(parents=True, exist_ok=True)
+    if not facts_dir.exists():
+        return
+    for path in facts_dir.glob("*.md"):
+        rec = read_memory_file(path)
+        if rec and rec.id in ids:
+            try:
+                path.rename(deleted_dir / path.name)
+            except Exception:
+                logger.exception("Failed to tombstone fact file %s", path)
 
 
 async def _rewrite_queries(
@@ -236,7 +257,7 @@ def _retrieve_memory(
                 n_results=top_k * 3,
             )
             for rec in records:
-                rec_id = rec.id or f"{rec.metadata.fact_key}:{rec.content}"
+                rec_id = rec.id
                 if rec_id in seen_ids:
                     continue
                 seen_ids.add(rec_id)
@@ -415,9 +436,7 @@ def _persist_entries(
             created_at=now,
             content=content,
             salience=extras.salience,
-            tags=extras.tags,
             doc_id=str(uuid4()),
-            fact_key=extras.fact_key,
         )
         ids.append(record.id)
         contents.append(record.content)
@@ -503,6 +522,61 @@ async def _extract_salient_facts(
     )
     logger.info("Raw fact extraction output: %s", facts)
     return facts
+
+
+async def _reconcile_facts(
+    existing: list[StoredMemory],
+    new_facts: list[str],
+    *,
+    openai_base_url: str,
+    api_key: str | None,
+    model: str,
+) -> tuple[list[str], list[str]]:
+    """Use an LLM to decide add/update/delete/none for facts."""
+    if not new_facts:
+        return [], []
+
+    provider = OpenAIProvider(api_key=api_key or "dummy", base_url=openai_base_url)
+    model_cfg = OpenAIChatModel(
+        model_name=model,
+        provider=provider,
+        settings=ModelSettings(temperature=0.0, max_tokens=512),
+    )
+    agent = Agent(
+        model=model_cfg,
+        system_prompt=UPDATE_MEMORY_PROMPT,
+        output_type=list[MemoryUpdateDecision],
+        retries=1,
+    )
+
+    existing_lines = [f"id: {mem.id or ''} text: {mem.content}" for mem in existing]
+    payload = "existing:\n" + "\n".join(existing_lines) + "\nnew_facts:\n" + "\n".join(new_facts)
+    try:
+        result = await agent.run(payload)
+        decisions = result.output or []
+    except Exception:
+        logger.exception("Update memory agent failed; defaulting to add all new facts")
+        return new_facts, []
+
+    to_add: list[str] = []
+    to_delete: list[str] = []
+    for dec in decisions:
+        if dec.event == "ADD" and dec.text:
+            to_add.append(dec.text.strip())
+        elif dec.event == "UPDATE" and dec.id and dec.text:
+            to_delete.append(dec.id)
+            to_add.append(dec.text.strip())
+        elif dec.event == "DELETE" and dec.id:
+            to_delete.append(dec.id)
+        # NONE ignored
+
+    logger.info(
+        "Reconcile decisions: add=%d, delete=%d, events=%s",
+        len(to_add),
+        len(to_delete),
+        [dec.event for dec in decisions],
+    )
+    return to_add, to_delete
 
 
 async def _extract_with_pydantic_ai(
@@ -745,7 +819,20 @@ async def _extract_and_store_facts_and_summaries(
         _elapsed_ms(fact_start),
         conversation_id,
     )
-    fact_entries = _prepare_fact_entries(facts)
+    existing_facts = _existing_fact_entries(collection, conversation_id)
+    to_add, to_delete = await _reconcile_facts(
+        existing_facts,
+        facts,
+        openai_base_url=openai_base_url,
+        api_key=api_key,
+        model=model,
+    )
+
+    if to_delete:
+        delete_entries(collection, ids=list(to_delete))
+        _delete_fact_files(memory_root, conversation_id, list(to_delete))
+
+    fact_entries = _prepare_fact_entries(to_add)
 
     if not fact_entries:
         return

@@ -44,17 +44,13 @@ class MemoryMetadata(BaseModel):
     role: str
     created_at: str
     salience: float | None = None
-    tags: list[str] | None = None
     summary_kind: str | None = None
-    fact_key: str | None = None
 
 
 class MemoryExtras(BaseModel):
     """Extras supplied when writing new memory entries."""
 
     salience: float | None = None
-    tags: list[str] | None = None
-    fact_key: str | None = None
 
 
 class SummaryOutput(BaseModel):
@@ -74,7 +70,7 @@ class SummaryOutput(BaseModel):
 class StoredMemory(BaseModel):
     """Memory document as stored in the vector DB."""
 
-    id: str | None
+    id: str
     content: str
     metadata: MemoryMetadata
     distance: float | None = None
@@ -92,3 +88,11 @@ class ConsolidationDecision(BaseModel):
     id: str
     action: Literal["KEEP", "DELETE", "UPDATE"]
     content: str
+
+
+class MemoryUpdateDecision(BaseModel):
+    """LLM decision for memory reconciliation."""
+
+    event: Literal["ADD", "UPDATE", "DELETE", "NONE"]
+    text: str | None = None
+    id: str | None = None

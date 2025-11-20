@@ -36,6 +36,35 @@ FACT_INSTRUCTIONS = """
 Return only factual sentences grounded in the user text. No assistant acknowledgements or meta-text.
 """.strip()
 
+UPDATE_MEMORY_PROMPT = """
+You manage a personal memory list. Given existing memories and new fact sentences, decide for each whether to ADD, UPDATE, DELETE, or do NONE.
+
+Rules:
+- For updates/deletes, refer to existing ids from the provided list.
+- If a new fact supersedes an existing one, use UPDATE with the existing id and the new text.
+- If a new fact conflicts, DELETE the stale/conflicting existing fact.
+- If a new fact is already covered, use NONE.
+- For brand-new facts, ADD with text only.
+
+Return a JSON list of decisions, each with: event (ADD/UPDATE/DELETE/NONE), text (for ADD/UPDATE), and id (for UPDATE/DELETE).
+
+Example inputs:
+existing:
+- id: 1, text: "Name is John"
+- id: 2, text: "Likes cheese pizza"
+new_facts:
+- "Name is John"
+- "Dislikes cheese pizza"
+- "Lives in SF"
+
+Example output:
+[
+  {"event": "NONE", "id": "1"},
+  {"event": "DELETE", "id": "2"},
+  {"event": "ADD", "text": "Lives in SF"}
+]
+""".strip()
+
 SUMMARY_PROMPT = """
 You are a concise conversation summarizer. Update the running summary with the new facts.
 Keep it brief, factual, and focused on durable information; do not restate transient chit-chat.

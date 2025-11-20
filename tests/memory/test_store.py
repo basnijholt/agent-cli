@@ -52,7 +52,6 @@ def test_query_memories_normalizes_tags_and_ids() -> None:
     records = store.query_memories(fake, conversation_id="c1", text="hello", n_results=2)
     assert len(records) == 1
     assert records[0].id == "id1"
-    assert records[0].metadata.tags == ["a", "b"]
 
 
 def test_query_memories_skips_summary_entries_and_filters_roles() -> None:

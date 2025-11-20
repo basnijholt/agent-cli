@@ -54,10 +54,8 @@ def write_memory_file(
     created_at: str,
     content: str,
     salience: float | None = None,
-    tags: list[str] | None = None,
     summary_kind: str | None = None,
     doc_id: str | None = None,
-    fact_key: str | None = None,
 ) -> MemoryFileRecord:
     """Render and persist a memory document to disk."""
     entries_dir, _ = ensure_store_dirs(root)
@@ -87,9 +85,7 @@ def write_memory_file(
         role=role,
         created_at=created_at,
         salience=salience,
-        tags=tags,
         summary_kind=summary_kind,
-        fact_key=fact_key,
     )
 
     front_matter = _render_front_matter(doc_id, metadata)
@@ -107,6 +103,9 @@ def load_memory_files(root: Path) -> list[MemoryFileRecord]:
     entries_dir, _ = ensure_store_dirs(root)
     records: list[MemoryFileRecord] = []
     for path in entries_dir.rglob("*.md"):
+        # Skip anything under a deleted tombstone folder.
+        if "deleted" in path.parts:
+            continue
         rec = read_memory_file(path)
         if rec:
             records.append(rec)

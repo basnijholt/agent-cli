@@ -20,14 +20,12 @@ def test_write_and_read_memory_file_round_trip(tmp_path: Path) -> None:
         created_at="2025-01-01T00:00:00Z",
         content="fact about bikes",
         salience=0.8,
-        tags=["bike", "name"],
     )
 
     loaded = mem_files.read_memory_file(record.path)
     assert loaded is not None
     assert loaded.content == "fact about bikes"
     assert loaded.metadata.conversation_id == "conv-1"
-    assert loaded.metadata.tags == ["bike", "name"]
     assert "facts" in loaded.path.parts
 
 
@@ -38,7 +36,6 @@ def test_snapshot_round_trip(tmp_path: Path) -> None:
         role="memory",
         created_at="now",
         salience=None,
-        tags=["x"],
     )
     rec = mem_files.MemoryFileRecord(id="1", path=tmp_path / "p.md", metadata=meta, content="hi")
     snapshot = tmp_path / "snap.json"
@@ -47,7 +44,6 @@ def test_snapshot_round_trip(tmp_path: Path) -> None:
     loaded = mem_files.load_snapshot(snapshot)
 
     assert "1" in loaded
-    assert loaded["1"].metadata.tags == ["x"]
     assert loaded["1"].content == "hi"
 
 
