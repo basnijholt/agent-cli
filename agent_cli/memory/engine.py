@@ -374,8 +374,8 @@ async def process_chat_request(
     aug_request, retrieval, conversation_id = augment_chat_request(
         request,
         collection,
-        default_top_k=default_top_k,
         reranker_model=reranker_model,
+        default_top_k=default_top_k,
     )
 
     response = await _forward_request(aug_request, openai_base_url, api_key)

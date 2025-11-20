@@ -26,13 +26,20 @@ class FakeCollection:
 
         def matches(entry: dict[str, Any]) -> bool:
             meta = entry["metadata"]
-            for key, value in where.items():
-                if isinstance(value, dict) and "$ne" in value:
-                    if meta.get(key) == value["$ne"]:
+
+            def match_clause(clause: dict[str, Any]) -> bool:
+                for key, value in clause.items():
+                    if isinstance(value, dict) and "$ne" in value:
+                        if meta.get(key) == value["$ne"]:
+                            return False
+                    elif meta.get(key) != value:
                         return False
-                elif meta.get(key) != value:
-                    return False
-            return True
+                return True
+
+            # Support simple dict or {"$and": [ ... ]}
+            if "$and" in where:
+                return all(match_clause(cl) for cl in where["$and"])
+            return match_clause(where)
 
         filtered = [entry for entry in self.docs if matches(entry)]
         return {
