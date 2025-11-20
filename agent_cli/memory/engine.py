@@ -712,7 +712,7 @@ async def _stream_and_persist_response(
                             payload,
                             exc_info=True,
                         )
-            yield line + "\n"
+            yield line + "\n\n"
         assistant_message = "".join(assistant_chunks).strip() or None
         persist_task = asyncio.create_task(_persist_stream_result(assistant_message))
         persist_task.add_done_callback(lambda task: task.exception())
