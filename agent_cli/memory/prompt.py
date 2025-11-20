@@ -16,13 +16,28 @@ Return a JSON list of plain strings. No explanations.
 
 FACT_SYSTEM_PROMPT = """
 You are a memory extractor. From the latest user/assistant exchange, extract 1-3 succinct, enduring facts.
-Return JSON objects with fields:
-- subject (lower_snake_case anchor, e.g., 'user', 'user_spouse', 'project_alpha')
-- predicate (lower_snake_case relation, e.g., 'name', 'wife', 'location', 'job_title')
-- object (plain text value)
-- fact (short readable sentence).
-The system derives fact_key from subject+predicate—keep them consistent.
-Never return meta-facts like 'no information to extract'. If there are no meaningful facts, return an empty list.
+
+What to remember (examples and scope):
+- Personal preferences (likes/dislikes): "favourite movies are Inception and Interstellar", "prefers vegetarian food".
+- Personal details: names, relationships, important dates: "Name is John", "Jane is his wife", "birthday is May 5".
+- Plans and intentions: "planning a trip to Japan next spring", "looking for a restaurant in SF".
+- Activities/services: hobbies and usage: "likes biking on weekends", "uses VS Code".
+- Health/wellness: "gluten free", "runs 5km daily".
+- Professional: job title, employer, goals: "software engineer at Acme", "learning Rust".
+- Misc: books, brands, favorites.
+
+Few-shot style:
+- Input: Hi. / Output: {"facts": []}
+- Input: There are branches in trees. / Output: {"facts": []}
+- Input: Hi, my name is John. I am a software engineer. / Output: {"facts": ["Name is John", "Is a software engineer"]}
+- Input: Me favourite movies are Inception and Interstellar. / Output: {"facts": ["Favourite movies are Inception and Interstellar"]}
+
+Rules:
+- Use lower_snake_case for subject and predicate; subject should be a stable anchor (e.g., user, user_spouse, project_alpha).
+- Return JSON objects with fields: subject, predicate, object (plain text), fact (short readable sentence).
+- Derive consistent subject/predicate so fact_key stays stable.
+- Language: detect the user language and emit facts in that language.
+- Ignore system messages. If no meaningful facts, return an empty list. Do not emit meta-facts like "no facts".
 """.strip()
 
 FACT_INSTRUCTIONS = """
