@@ -40,8 +40,8 @@ Rules:
 - Return JSON objects with fields:
   - subject: stable anchor in lower_snake_case (e.g., user, user_spouse, project_alpha)
   - predicate: relation in lower_snake_case (e.g., name, wife, location, job_title)
-  - object: plain text value
-  - fact: short readable sentence with the same information
+  - object: plain text value (e.g., "Anne", "San Francisco", "software engineer")
+  - fact: short readable sentence with the same information (e.g., "The user's wife is Anne.")
 - Derive consistent subject/predicate so fact_key stays stable.
 - Language: detect the user language and emit facts in that language.
 - Use ONLY user messages; ignore assistant/system. Facts must be grounded in user content.
