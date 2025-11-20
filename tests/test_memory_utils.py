@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from agent_cli.memory.engine import _evict_if_needed, _parse_bullets
+from agent_cli.memory.engine import _evict_if_needed
 from agent_cli.memory.store import list_conversation_entries
 
 
@@ -51,11 +51,6 @@ class FakeCollection:
     def delete(self, ids: list[str]) -> None:
         """Mimic delete by IDs."""
         self.docs = [entry for entry in self.docs if entry["id"] not in ids]
-
-
-def test_parse_bullets_trims_prefixes() -> None:
-    text = "- item one\n* item two\n• item three"
-    assert _parse_bullets(text) == ["item one", "item two", "item three"]
 
 
 def test_evict_if_needed_removes_oldest() -> None:

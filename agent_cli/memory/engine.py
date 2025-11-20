@@ -383,7 +383,7 @@ async def _chat_completion_request(
     )
     agent = Agent(
         model=model_cfg,
-        system_prompt=None,
+        system_prompt="",
         instructions=None,
     )
     payload = {
