@@ -2,14 +2,13 @@
 
 from __future__ import annotations
 
-import asyncio
 import logging
 from dataclasses import dataclass, field
-from pathlib import Path
 from typing import TYPE_CHECKING
 
-from watchfiles import Change, awatch
+from watchfiles import Change
 
+from agent_cli.core.watch import watch_directory
 from agent_cli.memory.files import (
     MemoryFileRecord,
     ensure_store_dirs,
@@ -21,6 +20,8 @@ from agent_cli.memory.files import (
 from agent_cli.memory.store import delete_entries, upsert_memories
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
     from chromadb import Collection
 
 LOGGER = logging.getLogger("agent_cli.memory.indexer")
@@ -99,51 +100,33 @@ async def watch_memory_store(collection: Collection, root: Path, *, index: Memor
         index.snapshot_path = snapshot_path
 
     LOGGER.info("📁 Watching memory store: %s", entries_dir)
-    loop = asyncio.get_running_loop()
-
-    async for changes in awatch(entries_dir):
-        for change_type, file_path_str in changes:
-            path = Path(file_path_str)
-            if path.is_dir():
-                continue
-
-            # Skip hidden files/folders
-            try:
-                rel_parts = path.relative_to(entries_dir).parts
-                if any(part.startswith(".") for part in rel_parts):
-                    continue
-            except ValueError:
-                if path.name.startswith("."):
-                    continue
-
-            if change_type == Change.deleted:
-                await loop.run_in_executor(None, _remove_doc, collection, path, index)
-            elif change_type in {Change.added, Change.modified}:
-                await loop.run_in_executor(None, _process_doc, collection, path, index, change_type)
-
-
-def _process_doc(
-    collection: Collection,
-    path: Path,
-    index: MemoryIndex,
-    change_type: Change,
-) -> None:
-    action = "added" if change_type == Change.added else "modified"
-    LOGGER.info("[%s] %s", action, path.name)
-    record = read_memory_file(path)
-    if not record:
-        return
-    upsert_memories(
-        collection,
-        ids=[record.id],
-        contents=[record.content],
-        metadatas=[record.metadata],
+    await watch_directory(
+        entries_dir,
+        lambda change, path: _handle_change(change, path, collection, index),
     )
-    index.upsert(record)
 
 
-def _remove_doc(collection: Collection, path: Path, index: MemoryIndex) -> None:
-    doc_id = index.find_id_by_path(path) or path.stem
-    LOGGER.info("[deleted] %s", path.name)
-    delete_entries(collection, [doc_id])
-    index.remove(doc_id)
+def _handle_change(change: Change, path: Path, collection: Collection, index: MemoryIndex) -> None:
+    try:
+        if change == Change.deleted:
+            doc_id = index.find_id_by_path(path) or path.stem
+            LOGGER.info("[deleted] %s", path.name)
+            delete_entries(collection, [doc_id])
+            index.remove(doc_id)
+            return
+
+        if change in {Change.added, Change.modified}:
+            action = "added" if change == Change.added else "modified"
+            LOGGER.info("[%s] %s", action, path.name)
+            record = read_memory_file(path)
+            if not record:
+                return
+            upsert_memories(
+                collection,
+                ids=[record.id],
+                contents=[record.content],
+                metadatas=[record.metadata],
+            )
+            index.upsert(record)
+    except Exception:
+        LOGGER.exception("Watcher handler failed for %s", path)

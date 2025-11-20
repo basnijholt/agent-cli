@@ -2,15 +2,14 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
 from typing import TYPE_CHECKING, Any
 
-import chromadb
-from chromadb.utils import embedding_functions
-
+from agent_cli.core.chroma import delete as delete_docs
+from agent_cli.core.chroma import init_collection, upsert
 from agent_cli.memory.models import MemoryMetadata, StoredMemory
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping, Sequence
     from pathlib import Path
 
     from chromadb import Collection
@@ -25,15 +24,14 @@ def init_memory_collection(
     openai_api_key: str | None = None,
 ) -> Collection:
     """Initialize or create the memory collection."""
-    chroma_path = persistence_path / "chroma"
-    chroma_path.mkdir(parents=True, exist_ok=True)
-    client = chromadb.PersistentClient(path=str(chroma_path))
-    embed_fn = embedding_functions.OpenAIEmbeddingFunction(
-        api_base=openai_base_url,
-        api_key=openai_api_key or "dummy",
-        model_name=embedding_model,
+    return init_collection(
+        persistence_path,
+        name=collection_name,
+        embedding_model=embedding_model,
+        openai_base_url=openai_base_url,
+        openai_api_key=openai_api_key,
+        subdir="chroma",
     )
-    return client.get_or_create_collection(name=collection_name, embedding_function=embed_fn)
 
 
 def upsert_memories(
@@ -43,10 +41,7 @@ def upsert_memories(
     metadatas: Sequence[MemoryMetadata | Mapping[str, Any]],
 ) -> None:
     """Persist memory entries."""
-    if not ids:
-        return
-    serialized = [_serialize_meta(meta) for meta in metadatas]
-    collection.upsert(ids=ids, documents=contents, metadatas=serialized)
+    upsert(collection, ids=ids, documents=contents, metadatas=metadatas)
 
 
 def query_memories(
@@ -144,8 +139,7 @@ def list_conversation_entries(
 
 def delete_entries(collection: Collection, ids: list[str]) -> None:
     """Delete entries by ID."""
-    if ids:
-        collection.delete(ids=ids)
+    delete_docs(collection, ids)
 
 
 def _normalize_meta(meta: dict[str, Any]) -> dict[str, Any]:
@@ -155,19 +149,3 @@ def _normalize_meta(meta: dict[str, Any]) -> dict[str, Any]:
     if isinstance(tags, str):
         normalized["tags"] = [t.strip() for t in tags.split(",") if t.strip()]
     return normalized
-
-
-def _serialize_meta(meta: MemoryMetadata | Mapping[str, Any]) -> dict[str, Any]:
-    """Convert metadata to Chroma-friendly primitives."""
-    raw = meta.model_dump() if isinstance(meta, MemoryMetadata) else dict(meta)
-    flat: dict[str, Any] = {}
-    for key, value in raw.items():
-        if value is None:
-            flat[key] = None
-        elif isinstance(value, (str, int, float, bool)):
-            flat[key] = value
-        elif isinstance(value, Sequence) and not isinstance(value, (str, bytes, bytearray)):
-            flat[key] = ",".join(str(item) for item in value)
-        else:
-            flat[key] = str(value)
-    return flat

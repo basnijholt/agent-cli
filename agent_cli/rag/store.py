@@ -5,39 +5,12 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING, Any
 
-import chromadb
-from chromadb.utils import embedding_functions
+from agent_cli.core.chroma import delete_where, upsert
 
 if TYPE_CHECKING:
-    from pathlib import Path
-
     from chromadb import Collection
 
 logger = logging.getLogger("agent_cli.rag.store")
-
-
-def init_collection(
-    persistence_path: Path,
-    embedding_model: str = "text-embedding-3-small",
-    openai_base_url: str | None = None,
-    openai_api_key: str | None = None,
-) -> Collection:
-    """Initialize the Vector Database collection."""
-    client = chromadb.PersistentClient(path=str(persistence_path))
-
-    # Use OpenAI-compatible embedding (works for Ollama/llama.cpp too)
-    logger.info(
-        "Using OpenAI embedding: model=%s, base_url=%s",
-        embedding_model,
-        openai_base_url,
-    )
-    embed_fn = embedding_functions.OpenAIEmbeddingFunction(
-        api_base=openai_base_url,
-        api_key=openai_api_key or "dummy",  # Local servers usually ignore key but need one
-        model_name=embedding_model,
-    )
-
-    return client.get_or_create_collection(name="docs", embedding_function=embed_fn)
 
 
 def upsert_docs(
@@ -47,21 +20,12 @@ def upsert_docs(
     metadatas: list[dict[str, Any]],
 ) -> None:
     """Upsert documents into the collection."""
-    if not ids:
-        return
-    collection.upsert(ids=ids, documents=documents, metadatas=metadatas)
-
-
-def delete_docs(collection: Collection, ids: list[str]) -> None:
-    """Delete documents by ID."""
-    if not ids:
-        return
-    collection.delete(ids=ids)
+    upsert(collection, ids=ids, documents=documents, metadatas=metadatas)
 
 
 def delete_by_file_path(collection: Collection, file_path: str) -> None:
     """Delete all chunks associated with a file path."""
-    collection.delete(where={"file_path": file_path})
+    delete_where(collection, {"file_path": file_path})
 
 
 def query_docs(collection: Collection, text: str, n_results: int) -> dict[str, Any]:
