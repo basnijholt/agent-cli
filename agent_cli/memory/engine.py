@@ -510,33 +510,26 @@ async def _extract_with_pydantic_ai(
     model_cfg = OpenAIModel(model_name=model, provider=provider)
     agent = Agent(
         model=model_cfg,
-        result_type=list[FactTriple],
         system_prompt=(
             "You are a memory extractor. From the latest exchange, extract 1-3 succinct facts "
-            "that are useful to remember for future turns. Return structured facts with subject, predicate, object."
+            "that are useful to remember for future turns. Return JSON list of objects with keys "
+            "subject, predicate, object (optional), and fact (string). "
+            "Do not include prose outside JSON."
         ),
     )
     instructions = (
         "Keep facts atomic, enduring, and person-centered when possible. "
         "Prefer explicit subjects (names) over pronouns. "
-        "Avoid formatting; just structured facts."
+        "Avoid formatting; return only JSON."
     )
 
     try:
-        result = await agent.run(transcript, instructions=instructions)
+        await agent.run(transcript, instructions=instructions)
     except Exception:
-        logger.debug("PydanticAI fact extraction failed; falling back", exc_info=True)
+        logger.exception("PydanticAI fact extraction failed")
         return []
 
-    triples = result.output or []
-    return [
-        FactCandidate(
-            content=_triple_to_text(triple),
-            fact_key=_canonical_fact_key_from_triple(triple),
-        )
-        for triple in triples
-        if _triple_to_text(triple)
-    ]
+    return []
 
 
 async def _update_summary(
