@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from datetime import UTC, datetime, timedelta
 from typing import Any, Self
 
@@ -356,6 +357,9 @@ async def test_streaming_request_persists_user_and_assistant(
     body = b"".join(chunks)
     assert b"Hello" in body
     assert b"Jane" in body
+
+    # Allow background persistence task to run
+    await asyncio.sleep(0)
 
     files = list(tmp_path.glob("entries/**/*.md"))
     assert len(files) == 2  # user + assistant persisted for streaming, too

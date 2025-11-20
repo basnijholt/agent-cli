@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 from collections.abc import Mapping
@@ -654,6 +655,27 @@ async def _stream_and_persist_response(
     """Forward streaming request, tee assistant text, and persist after completion."""
     headers = {"Authorization": f"Bearer {api_key}"} if api_key else None
 
+    async def _persist_stream_result(assistant_message: str | None) -> None:
+        _persist_turns(
+            collection,
+            memory_root=memory_root,
+            conversation_id=conversation_id,
+            user_message=None,
+            assistant_message=assistant_message,
+        )
+        if enable_summarization:
+            await _extract_and_store_facts_and_summaries(
+                collection=collection,
+                memory_root=memory_root,
+                conversation_id=conversation_id,
+                user_message=user_message,
+                assistant_message=assistant_message,
+                openai_base_url=openai_base_url,
+                api_key=api_key,
+                model=model,
+            )
+        _evict_if_needed(collection, conversation_id, max_entries)
+
     async def stream_lines() -> AsyncGenerator[str, None]:
         async with (
             httpx.AsyncClient(timeout=120.0) as client,
@@ -692,25 +714,8 @@ async def _stream_and_persist_response(
                         )
             yield line + "\n"
         assistant_message = "".join(assistant_chunks).strip() or None
-        _persist_turns(
-            collection,
-            memory_root=memory_root,
-            conversation_id=conversation_id,
-            user_message=None,
-            assistant_message=assistant_message,
-        )
-        if enable_summarization:
-            await _extract_and_store_facts_and_summaries(
-                collection=collection,
-                memory_root=memory_root,
-                conversation_id=conversation_id,
-                user_message=user_message,
-                assistant_message=assistant_message,
-                openai_base_url=openai_base_url,
-                api_key=api_key,
-                model=model,
-            )
-        _evict_if_needed(collection, conversation_id, max_entries)
+        persist_task = asyncio.create_task(_persist_stream_result(assistant_message))
+        persist_task.add_done_callback(lambda task: task.exception())
 
     return StreamingResponse(tee_and_accumulate(), media_type="text/event-stream")
 
