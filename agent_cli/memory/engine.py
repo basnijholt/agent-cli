@@ -373,14 +373,8 @@ async def _chat_completion_request(
     max_tokens: int = 256,
 ) -> str:
     """Call backend LLM for a one-shot completion and return content via PydanticAI."""
-    provider = OpenAIProvider(
-        api_key=api_key or "dummy",
-        base_url=openai_base_url,
-    )
-    model_cfg = OpenAIModel(
-        model_name=model,
-        provider=provider,
-    )
+    provider = OpenAIProvider(api_key=api_key or "dummy", base_url=openai_base_url)
+    model_cfg = OpenAIModel(model_name=model, provider=provider)
     agent = Agent(
         model=model_cfg,
         system_prompt="",
