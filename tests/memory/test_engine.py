@@ -61,10 +61,9 @@ class _RecordingCollection:
 
         def _matches(meta: dict[str, Any], clause: dict[str, Any]) -> bool:
             for key, value in clause.items():
-                if isinstance(value, dict) and "$ne" in value:
-                    if meta.get(key) == value["$ne"]:
-                        return False
-                elif meta.get(key) != value:
+                if isinstance(value, dict) and "$ne" in value and meta.get(key) == value["$ne"]:
+                    return False
+                if meta.get(key) != value:
                     return False
             return True
 
@@ -124,25 +123,32 @@ class _DummyAsyncClient:
         return None
 
 
-def test_augment_chat_request_disables_with_zero_top_k() -> None:
+@pytest.mark.asyncio
+async def test_augment_chat_request_disables_with_zero_top_k() -> None:
     """Explicit memory_top_k=0 should skip retrieval and leave request untouched."""
+    # Avoid calling external LLM during consolidation.
+    engine._consolidate_retrieval_entries = lambda entries, **_: entries  # type: ignore[assignment]
     request = ChatRequest(
         model="x",
         messages=[Message(role="user", content="hello")],
         memory_top_k=0,
     )
-    aug_request, retrieval, conversation_id = engine.augment_chat_request(
+    aug_request, retrieval, conversation_id, summaries = await engine.augment_chat_request(
         request,
         collection=_RecordingCollection(),
         reranker_model=_DummyReranker(),  # type: ignore[arg-type]
+        openai_base_url="http://llm",
+        api_key=None,
     )
 
     assert retrieval is None
     assert aug_request.messages[-1].content == "hello"
     assert conversation_id == "default"
+    assert summaries == []
 
 
-def test_retrieve_memory_prefers_diversity_and_adds_summaries(
+@pytest.mark.asyncio
+async def test_retrieve_memory_prefers_diversity_and_adds_summaries(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     now = datetime.now(UTC)
@@ -228,7 +234,8 @@ def test_retrieve_memory_prefers_diversity_and_adds_summaries(
     assert any("Long summary" in text for text in summaries)
 
 
-def test_retrieve_memory_dedupes_by_fact_key(monkeypatch: pytest.MonkeyPatch) -> None:
+@pytest.mark.asyncio
+async def test_retrieve_memory_dedupes_by_fact_key(monkeypatch: pytest.MonkeyPatch) -> None:
     """If multiple facts share a fact_key, only the newest should be considered."""
     now = datetime.now(UTC)
     older = StoredMemory(
@@ -278,6 +285,7 @@ async def test_process_chat_request_summarizes_and_persists(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     collection = _RecordingCollection()
+    monkeypatch.setattr(engine, "_consolidate_retrieval_entries", lambda entries, **_: entries)
 
     async def fake_forward_request(
         _request: Any,

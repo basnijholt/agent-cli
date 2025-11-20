@@ -20,6 +20,7 @@ from agent_cli.memory import streaming
 from agent_cli.memory.files import write_memory_file
 from agent_cli.memory.models import (
     ChatRequest,
+    ConsolidationDecision,
     FactOutput,
     MemoryEntry,
     MemoryExtras,
@@ -104,6 +105,67 @@ def _dedupe_by_fact_key(candidates: list[StoredMemory]) -> list[StoredMemory]:
             latest[key] = mem
 
     return unkeyed + list(latest.values())
+
+
+async def _consolidate_retrieval_entries(
+    entries: list[MemoryEntry],
+    *,
+    openai_base_url: str,
+    api_key: str | None,
+    model: str,
+) -> list[MemoryEntry]:
+    """Use a small LLM pass to mark overlapping facts to KEEP/DELETE/UPDATE."""
+    if len(entries) <= 1:
+        return entries
+
+    provider = OpenAIProvider(
+        api_key=api_key or "dummy",
+        base_url=openai_base_url,
+    )
+    model_cfg = OpenAIChatModel(
+        model_name=model,
+        provider=provider,
+        settings=ModelSettings(temperature=0.0, max_tokens=256),
+    )
+    agent = Agent(
+        model=model_cfg,
+        system_prompt=(
+            "You are reconciling overlapping facts for a personal memory store. "
+            "Given a small list of fact snippets with timestamps, mark each as KEEP or DELETE "
+            "so that only the most accurate, non-contradictory set remains. "
+            "Prefer newer timestamps when content conflicts. If two are equivalent, keep one. "
+            "UPDATE may be used when a newer statement supersedes an older one; DELETE the stale one. "
+            "Output a list of decisions; do not invent new facts."
+        ),
+        output_type=list[ConsolidationDecision],
+        retries=1,
+    )
+
+    payload = [
+        {
+            "id": str(idx),
+            "content": entry.content,
+            "created_at": entry.created_at,
+        }
+        for idx, entry in enumerate(entries)
+    ]
+    try:
+        result = await agent.run(payload)
+        decisions = {d.id: d.action for d in result.output}
+    except Exception:
+        logger.exception("Consolidation agent failed; keeping all retrieved entries")
+        return entries
+
+    if not decisions:
+        return entries
+
+    kept: list[MemoryEntry] = []
+    for idx, entry in enumerate(entries):
+        action = decisions.get(str(idx))
+        if action in ("KEEP", "UPDATE"):
+            kept.append(entry)
+
+    return kept or entries
 
 
 def _retrieve_memory(
@@ -211,29 +273,31 @@ def _format_augmented_content(
     return "\n\n---\n\n".join(parts)
 
 
-def augment_chat_request(
+async def augment_chat_request(
     request: ChatRequest,
     collection: Collection,
     reranker_model: OnnxCrossEncoder,
+    openai_base_url: str,
+    api_key: str | None,
     default_top_k: int = 5,
     default_memory_id: str = "default",
     include_global: bool = True,
     mmr_lambda: float = _DEFAULT_MMR_LAMBDA,
-) -> tuple[ChatRequest, MemoryRetrieval | None, str]:
+) -> tuple[ChatRequest, MemoryRetrieval | None, str, list[str]]:
     """Retrieve memory context and augment the chat request."""
     user_message = next(
         (m.content for m in reversed(request.messages) if m.role == "user"),
         None,
     )
     if not user_message:
-        return request, None, default_memory_id
+        return request, None, default_memory_id, []
 
     conversation_id = request.memory_id or default_memory_id
     top_k = request.memory_top_k if request.memory_top_k is not None else default_top_k
 
     if top_k <= 0:
         logger.info("Memory retrieval disabled for this request (top_k=%s)", top_k)
-        return request, None, conversation_id
+        return request, None, conversation_id, []
 
     retrieval, summaries = _retrieve_memory(
         collection,
@@ -246,7 +310,17 @@ def augment_chat_request(
     )
 
     if not retrieval.entries and not summaries:
-        return request, None, conversation_id
+        return request, None, conversation_id, summaries
+
+    if len(retrieval.entries) > 1:
+        # Consolidate overlapping/contradictory facts before building the prompt.
+        consolidated = await _consolidate_retrieval_entries(
+            retrieval.entries,
+            openai_base_url=openai_base_url,
+            api_key=api_key,
+            model=request.model,
+        )
+        retrieval = MemoryRetrieval(entries=consolidated)
 
     augmented_content = _format_augmented_content(
         user_message=user_message,
@@ -260,7 +334,7 @@ def augment_chat_request(
     aug_request = request.model_copy()
     aug_request.messages = augmented_messages
 
-    return aug_request, retrieval, conversation_id
+    return aug_request, retrieval, conversation_id, summaries
 
 
 def _persist_entries(
@@ -780,11 +854,14 @@ async def process_chat_request(
     """Process a chat request with long-term memory support."""
     overall_start = perf_counter()
     retrieval_start = perf_counter()
-    aug_request, retrieval, conversation_id = augment_chat_request(
+    aug_request, retrieval, conversation_id, _summaries = await augment_chat_request(
         request,
         collection,
         reranker_model=reranker_model,
+        openai_base_url=openai_base_url,
+        api_key=api_key,
         default_top_k=default_top_k,
+        include_global=True,
         mmr_lambda=mmr_lambda,
     )
     retrieval_ms = _elapsed_ms(retrieval_start)

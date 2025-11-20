@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, field_validator
 
@@ -117,3 +118,11 @@ class MemoryRetrieval(BaseModel):
     """Result of a memory retrieval operation."""
 
     entries: list[MemoryEntry]
+
+
+class ConsolidationDecision(BaseModel):
+    """LLM-driven resolution for overlapping facts."""
+
+    id: str
+    action: Literal["KEEP", "DELETE", "UPDATE"]
+    content: str
