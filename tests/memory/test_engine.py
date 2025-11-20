@@ -286,23 +286,15 @@ async def test_process_chat_request_summarizes_and_persists(
     ) -> dict[str, Any]:
         return {"choices": [{"message": {"content": "assistant reply"}}]}
 
-    async def fake_chat_completion_request(
-        messages: list[dict[str, str]],
-        openai_base_url: str,  # noqa: ARG001
-        api_key: str | None,  # noqa: ARG001
-        model: str,  # noqa: ARG001
-        temperature: float = 0.0,  # noqa: ARG001
-        max_tokens: int = 256,
-    ) -> str:
-        system_prompt = messages[0]["content"]
-        if "memory extractor" in system_prompt:
-            return "- likes cats\n- loves biking"
-        if "concise conversation summarizer" in system_prompt:
-            return f"summary up to {max_tokens}"
-        return ""
-
     monkeypatch.setattr(engine, "_forward_request", fake_forward_request)
-    monkeypatch.setattr(engine, "_chat_completion_request", fake_chat_completion_request)
+    async def fake_agent_run(self, prompt_text: str, *_args: Any, **_kwargs: Any) -> Any:
+        class _Result:
+            def __init__(self, output: str) -> None:
+                self.output = output
+
+        if "New facts:" in prompt_text:
+            return _Result("summary up to 256")
+        return _Result("")
 
     async def fake_extract_with_pydantic_ai(**_kwargs: Any) -> list[Any]:
         return [
@@ -321,6 +313,7 @@ async def test_process_chat_request_summarizes_and_persists(
         ]
 
     monkeypatch.setattr(engine, "_extract_with_pydantic_ai", fake_extract_with_pydantic_ai)
+    monkeypatch.setattr(engine.Agent, "run", fake_agent_run)
     monkeypatch.setattr(engine, "predict_relevance", lambda _model, pairs: [0.1 for _ in pairs])
 
     request = ChatRequest(

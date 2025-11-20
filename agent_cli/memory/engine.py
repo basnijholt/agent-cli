@@ -314,30 +314,6 @@ def _persist_entries(
         upsert_memories(collection, ids=ids, contents=contents, metadatas=metadatas)
 
 
-async def _chat_completion_request(
-    *,
-    messages: list[dict[str, str]],
-    openai_base_url: str,
-    api_key: str | None,
-    model: str,
-    temperature: float = 0.2,
-    max_tokens: int = 256,
-) -> str:
-    """Call backend LLM for a one-shot completion and return content via PydanticAI."""
-    provider = OpenAIProvider(api_key=api_key or "dummy", base_url=openai_base_url)
-    model_cfg = OpenAIModel(
-        model_name=model,
-        provider=provider,
-        settings=ModelSettings(temperature=temperature, max_tokens=max_tokens),
-    )
-    system_prompt = next((m["content"] for m in messages if m.get("role") == "system"), "")
-    user_parts = [m["content"] for m in messages if m.get("role") != "system"]
-    prompt_text = "\n\n".join(user_parts)
-    agent = Agent(model=model_cfg, system_prompt=system_prompt or (), instructions=None)
-    result = await agent.run(prompt_text)
-    return str(result.output or "")
-
-
 def _extract_tags_from_text(text: str, *, max_tags: int = 5) -> set[str]:
     """Heuristic tag extraction from text (alpha tokens length>=4)."""
     tokens = []
@@ -496,18 +472,16 @@ async def _update_summary(
     if prior_summary:
         user_parts.append(f"Previous summary:\n{prior_summary}")
     user_parts.append("New facts:\n" + "\n".join(f"- {fact}" for fact in new_facts))
-    messages = [
-        {"role": "system", "content": system_prompt},
-        {"role": "user", "content": "\n\n".join(user_parts)},
-    ]
-    return await _chat_completion_request(
-        messages=messages,
-        openai_base_url=openai_base_url,
-        api_key=api_key,
-        model=model,
-        temperature=0.2,
-        max_tokens=max_tokens,
+    prompt_text = "\n\n".join(user_parts)
+    provider = OpenAIProvider(api_key=api_key or "dummy", base_url=openai_base_url)
+    model_cfg = OpenAIModel(
+        model_name=model,
+        provider=provider,
+        settings=ModelSettings(temperature=0.2, max_tokens=max_tokens),
     )
+    agent = Agent(model=model_cfg, system_prompt=system_prompt, instructions=None)
+    result = await agent.run(prompt_text)
+    return str(result.output or "")
 
 
 async def _update_summaries(
