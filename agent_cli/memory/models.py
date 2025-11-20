@@ -58,13 +58,10 @@ class MemoryExtras(BaseModel):
 class FactOutput(BaseModel):
     """Output schema used by PydanticAI for fact extraction with validation."""
 
-    subject: str
-    predicate: str
     fact: str
-    object: str | None = None
     fact_key: str
 
-    @field_validator("subject", "predicate", "fact", "fact_key")
+    @field_validator("fact", "fact_key")
     @classmethod
     def _not_empty(cls, v: str) -> str:
         if not v or not str(v).strip():

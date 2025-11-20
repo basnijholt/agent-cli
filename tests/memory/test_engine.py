@@ -306,8 +306,8 @@ async def test_process_chat_request_summarizes_and_persists(
 
     async def fake_extract_with_pydantic_ai(**_kwargs: Any) -> list[Any]:
         return [
-            engine.FactCandidate(content="likes cats", fact_key="user::likes cats"),
-            engine.FactCandidate(content="loves biking", fact_key="user::loves biking"),
+            engine.Fact(fact="likes cats", fact_key="user::likes cats"),
+            engine.Fact(fact="loves biking", fact_key="user::loves biking"),
         ]
 
     monkeypatch.setattr(engine, "_extract_with_pydantic_ai", fake_extract_with_pydantic_ai)

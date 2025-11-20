@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import json
 import logging
-import re
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from time import perf_counter
@@ -74,41 +73,6 @@ def _parse_iso(date_str: str) -> datetime | None:
         return None
 
 
-def _canonical_fact_key(text: str) -> str | None:
-    """Heuristic subject/predicate key to consolidate duplicate or conflicting facts."""
-    cleaned = re.sub(r"\s+", " ", text.strip()).strip(" .?!;")
-    if not cleaned:
-        return None
-    lowered = cleaned.lower()
-    separators = [
-        " is ",
-        " was ",
-        " are ",
-        " were ",
-        " has ",
-        " have ",
-        " likes ",
-        " loves ",
-    ]
-    for sep in separators:
-        if sep in lowered:
-            subject, rest = lowered.split(sep, 1)
-            subject = subject.strip()
-            predicate = rest.strip()
-            if subject and predicate:
-                return f"{subject}::{predicate}"
-    return lowered
-
-
-def _canonical_fact_key_from_output(item: FactOutput) -> str | None:
-    """Build a key from structured subject/predicate."""
-    subject = item.subject.strip().lower()
-    predicate = item.predicate.strip().lower()
-    if subject and predicate:
-        return f"{subject}::{predicate}"
-    return None
-
-
 @dataclass
 class WriteEntry:
     """Structured memory entry to persist."""
@@ -119,10 +83,10 @@ class WriteEntry:
 
 
 @dataclass
-class FactCandidate:
+class Fact:
     """Structured fact output from extraction."""
 
-    content: str
+    fact: str
     fact_key: str
 
 
@@ -461,7 +425,7 @@ async def _extract_salient_facts(
     openai_base_url: str,
     api_key: str | None,
     model: str,
-) -> list[FactCandidate]:
+) -> list[Fact]:
     if not user_message and not assistant_message:
         return []
     exchange = []
@@ -485,7 +449,7 @@ async def _extract_with_pydantic_ai(
     openai_base_url: str,
     api_key: str | None,
     model: str,
-) -> list[FactCandidate]:
+) -> list[Fact]:
     """Use PydanticAI to extract structured facts."""
     provider = OpenAIProvider(
         api_key=api_key or "dummy",
@@ -496,8 +460,8 @@ async def _extract_with_pydantic_ai(
         model=model_cfg,
         system_prompt=(
             "You are a memory extractor. From the latest exchange, extract 1-3 succinct facts "
-            "that are useful to remember for future turns. Return structured facts with fields: "
-            "subject, predicate, object (optional), fact (string), and fact_key (stable identifier). "
+            "that are useful to remember for future turns. Return structured facts with fields "
+            "fact (string) and fact_key (stable identifier). "
             "Do not include prose outside JSON."
         ),
         output_type=list[FactOutput],
@@ -510,13 +474,11 @@ async def _extract_with_pydantic_ai(
     )
 
     try:
-        result = await agent.run(transcript, instructions=instructions)
+        facts = await agent.run(transcript, instructions=instructions)
+        return facts.output
     except Exception:
         logger.exception("PydanticAI fact extraction failed")
         return []
-
-    outputs = result.output or []
-    return [FactCandidate(content=item.fact, fact_key=item.fact_key) for item in outputs]
 
 
 async def _update_summary(
@@ -740,10 +702,10 @@ async def _extract_and_store_facts_and_summaries(
     fact_entries: list[WriteEntry] = [
         WriteEntry(
             role="memory",
-            content=fact.content,
+            content=fact.fact,
             extras=MemoryExtras(
                 salience=1.0,
-                tags=list(_extract_tags_from_text(fact.content)),
+                tags=list(_extract_tags_from_text(fact.fact)),
                 fact_key=fact.fact_key,
             ),
         )
@@ -771,7 +733,7 @@ async def _extract_and_store_facts_and_summaries(
     new_short, new_long = await _update_summaries(
         prior_short=prior_summary,
         prior_long=prior_long,
-        new_facts=[fact.content for fact in facts],
+        new_facts=[fact.fact for fact in facts],
         openai_base_url=openai_base_url,
         api_key=api_key,
         model=model,
