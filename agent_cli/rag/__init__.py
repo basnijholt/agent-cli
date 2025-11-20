@@ -25,23 +25,3 @@ if _MISSING:
         "Please install with `pip install agent-cli[rag]`."
     )
     raise ImportError(msg)
-
-from . import (  # noqa: E402
-    api,
-    engine,
-    indexer,
-    models,
-    retriever,
-    store,
-    utils,
-)
-
-__all__ = [
-    "api",
-    "engine",
-    "indexer",
-    "models",
-    "retriever",
-    "store",
-    "utils",
-]
