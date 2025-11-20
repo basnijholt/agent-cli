@@ -340,6 +340,25 @@ async def test_retrieve_memory_dedupes_by_fact_key(monkeypatch: pytest.MonkeyPat
 
 
 @pytest.mark.asyncio
+async def test_prepare_fact_entries_filters_junk() -> None:
+    """Ensure junk facts are dropped and fallbacks are rendered."""
+    facts = [
+        engine.FactOutput(
+            subject="user",
+            predicate="wife_name",
+            object="Anne",
+            fact="User's wife is Anne.",
+        ),  # good
+        engine.FactOutput(subject="user", predicate="likes", object="coding", fact="True"),  # junk
+    ]
+
+    entries = engine._prepare_fact_entries(facts)
+    assert len(entries) == 1
+    assert "Anne" in entries[0].content
+    assert entries[0].extras.fact_key == facts[0].fact_key
+
+
+@pytest.mark.asyncio
 async def test_process_chat_request_summarizes_and_persists(
     tmp_path: Any,
     monkeypatch: pytest.MonkeyPatch,

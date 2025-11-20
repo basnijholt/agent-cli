@@ -123,7 +123,6 @@ async def _consolidate_retrieval_entries(
     api_key: str | None,
     model: str,
     prompt: str = CONSOLIDATION_PROMPT,
-    agent_cls: type[Agent] = Agent,
 ) -> list[MemoryEntry]:
     """Use a small LLM pass to mark overlapping facts to KEEP/DELETE/UPDATE."""
     if len(entries) <= 1:
@@ -138,7 +137,7 @@ async def _consolidate_retrieval_entries(
         provider=provider,
         settings=ModelSettings(temperature=0.0, max_tokens=256),
     )
-    agent = agent_cls(
+    agent = Agent(
         model=model_cfg,
         system_prompt=prompt,
         output_type=list[ConsolidationDecision],
@@ -167,6 +166,41 @@ async def _consolidate_retrieval_entries(
             kept.append(entry)
 
     return kept or entries
+
+
+def _render_fact_sentence(fact: FactOutput) -> str:
+    """Create a readable fact sentence; drop if unusable."""
+    content = (fact.fact or "").strip()
+    if len(content) >= _MIN_FACT_LEN and any(ch.isalpha() for ch in content):
+        return content
+    return ""
+
+
+_MIN_FACT_LEN = 8
+
+
+def _prepare_fact_entries(facts: list[FactOutput]) -> list[WriteEntry]:
+    """Convert extracted facts into write entries with basic quality filtering."""
+    entries: list[WriteEntry] = []
+    for fact in facts:
+        raw = (fact.fact or "").strip().lower()
+        if raw in {"true", "false", "none", "null", "atomic"}:
+            continue
+        text = _render_fact_sentence(fact)
+        if len(text) < _MIN_FACT_LEN or not any(ch.isalpha() for ch in text):
+            continue
+        entries.append(
+            WriteEntry(
+                role="memory",
+                content=text,
+                extras=MemoryExtras(
+                    salience=1.0,
+                    tags=None,
+                    fact_key=fact.fact_key,
+                ),
+            ),
+        )
+    return entries
 
 
 async def _rewrite_queries(
@@ -744,21 +778,11 @@ async def _extract_and_store_facts_and_summaries(
         _elapsed_ms(fact_start),
         conversation_id,
     )
-    if not facts:
+    fact_entries = _prepare_fact_entries(facts)
+
+    if not fact_entries:
         return
 
-    fact_entries: list[WriteEntry] = [
-        WriteEntry(
-            role="memory",
-            content=fact.fact,
-            extras=MemoryExtras(
-                salience=1.0,
-                tags=None,
-                fact_key=fact.fact_key,
-            ),
-        )
-        for fact in facts
-    ]
     _persist_entries(
         collection,
         memory_root=memory_root,
