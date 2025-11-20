@@ -1,4 +1,4 @@
-"""RAG module."""
+"""Memory module for long-term chat history."""
 
 from __future__ import annotations
 
@@ -6,8 +6,6 @@ from agent_cli.core.deps import ensure_optional_dependencies
 
 _REQUIRED_DEPS = {
     "chromadb": "chromadb",
-    "watchfiles": "watchfiles",
-    "markitdown": "markitdown",
     "fastapi": "fastapi",
     "uvicorn": "uvicorn",
     "onnxruntime": "onnxruntime",
@@ -17,6 +15,6 @@ _REQUIRED_DEPS = {
 
 ensure_optional_dependencies(
     _REQUIRED_DEPS,
-    extra_name="rag",
-    install_hint="`pip install agent-cli[rag]` or `uv sync --extra rag`",
+    extra_name="memory",
+    install_hint="`pip install agent-cli[memory]` or `uv sync --extra memory`",
 )
