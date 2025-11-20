@@ -347,8 +347,8 @@ async def test_prepare_fact_entries_filters_junk() -> None:
             subject="user",
             predicate="wife_name",
             object="Anne",
-            fact="User's wife is Anne.",
-        ),  # good
+            fact="x",
+        ),  # good via fallback
         engine.FactOutput(subject="user", predicate="likes", object="coding", fact="True"),  # junk
     ]
 

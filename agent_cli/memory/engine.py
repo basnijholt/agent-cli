@@ -169,11 +169,21 @@ async def _consolidate_retrieval_entries(
 
 
 def _render_fact_sentence(fact: FactOutput) -> str:
-    """Create a readable fact sentence; drop if unusable."""
+    """Create a readable fact sentence; fallback to structured fields if needed."""
     content = (fact.fact or "").strip()
     if len(content) >= _MIN_FACT_LEN and any(ch.isalpha() for ch in content):
         return content
-    return ""
+
+    subj = fact.subject.replace("_", " ").strip()
+    pred = fact.predicate.replace("_", " ").strip()
+    obj = fact.object.strip()
+    pieces = [subj, pred, obj]
+    sentence = " ".join(p for p in pieces if p).strip()
+    if not sentence or not any(ch.isalpha() for ch in sentence):
+        return ""
+    if not sentence.endswith("."):
+        sentence = f"{sentence}."
+    return sentence[0].upper() + sentence[1:] if sentence else ""
 
 
 _MIN_FACT_LEN = 8
