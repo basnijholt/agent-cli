@@ -11,7 +11,6 @@ from rich.logging import RichHandler
 from agent_cli import opts
 from agent_cli.cli import app
 from agent_cli.core.utils import console, print_error_message
-from agent_cli.memory.files import ensure_store_dirs
 
 
 @app.command("memory-server")
@@ -86,6 +85,7 @@ def memory_server(
         import uvicorn  # noqa: PLC0415
 
         from agent_cli.memory.api import create_app  # noqa: PLC0415
+        from agent_cli.memory.files import ensure_store_dirs  # noqa: PLC0415
     except ImportError as exc:
         print_error_message(
             "Memory dependencies are not installed. Please install with "
