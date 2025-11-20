@@ -37,7 +37,7 @@ rag = [
     "fastapi[standard]",
     "chromadb>=0.4.22",
     "watchfiles>=0.21.0",
-    "markitdown>=0.1.3",
+    "markitdown[docx,pdf,pptx]>=0.1.3",
     "onnxruntime>=1.17.0",
     "huggingface-hub>=0.20.0",
     "transformers>=4.30.0",
