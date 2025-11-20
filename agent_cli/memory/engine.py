@@ -330,6 +330,7 @@ async def _chat_completion_request(
         system_prompt="",
         instructions=None,
     )
+    # TODO: Does it need this format?
     payload = {
         "messages": messages,
         "temperature": temperature,
@@ -452,18 +453,22 @@ async def _extract_with_pydantic_ai(
         model=model_cfg,
         system_prompt=(
             "You are a memory extractor. From the latest exchange, extract 1-3 succinct facts "
-            "that are useful to remember for future turns. Return structured facts with fields "
-            "fact (string) and fact_key (stable identifier). "
-            "Do not include prose outside JSON. "
-            "If there are no facts, return an empty list. "
-            "Don't return facts like 'no information to extract'."
+            "that are useful to remember for future turns. Return JSON objects with fields: "
+            "- subject (lower_snake_case, stable anchor, e.g., 'user', 'user_spouse', 'project_alpha') "
+            "- predicate (lower_snake_case relation, e.g., 'name', 'wife', 'location', 'job_title') "
+            "- object (plain text value) "
+            "- fact (a short readable sentence). "
+            "The system will derive a fact_key from subject + predicate, so keep those consistent. "
+            "Do not include prose outside JSON. If there are no facts, return an empty list. "
+            "Never return meta-facts like 'no information to extract'."
         ),
         output_type=list[FactOutput],
         retries=2,
     )
     instructions = (
         "Keep facts atomic, enduring, and person-centered when possible. "
-        "Prefer explicit subjects (names) over pronouns. "
+        "Prefer explicit subjects (names) over pronouns. Use lower_snake_case for subject and predicate. "
+        "Examples: 'user|wife', 'bas_nijholt|employer', 'bike|type'. "
         "Avoid formatting; return only JSON."
     )
 

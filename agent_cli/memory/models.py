@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import re
+
 from pydantic import BaseModel, ConfigDict, field_validator
 
 
@@ -55,19 +57,37 @@ class MemoryExtras(BaseModel):
     fact_key: str | None = None
 
 
+def _canonical_fact_key(*parts: str) -> str:
+    """Canonical, stable key used for conflict resolution."""
+    cleaned: list[str] = []
+    for part in parts:
+        slug = re.sub(r"[^a-z0-9_]+", "", part.strip().lower().replace(" ", "_"))
+        slug = re.sub(r"_+", "_", slug).strip("_")
+        if slug:
+            cleaned.append(slug)
+    return "__".join(cleaned)
+
+
 class FactOutput(BaseModel):
-    """Output schema used by PydanticAI for fact extraction with validation."""
+    """Structured fact returned by the LLM."""
 
+    subject: str
+    predicate: str
+    object: str
     fact: str
-    fact_key: str
 
-    @field_validator("fact", "fact_key")
+    @field_validator("subject", "predicate", "object", "fact")
     @classmethod
     def _not_empty(cls, v: str) -> str:
         if not v or not str(v).strip():
             msg = "field must be non-empty"
             raise ValueError(msg)
         return str(v).strip()
+
+    @property
+    def fact_key(self) -> str:
+        """Deterministic key for consolidation (subject + predicate)."""
+        return _canonical_fact_key(self.subject, self.predicate)
 
 
 class StoredMemory(BaseModel):
