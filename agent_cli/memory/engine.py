@@ -333,7 +333,7 @@ async def _chat_completion_request(
     system_prompt = next((m["content"] for m in messages if m.get("role") == "system"), "")
     user_parts = [m["content"] for m in messages if m.get("role") != "system"]
     prompt_text = "\n\n".join(user_parts)
-    agent = Agent(model=model_cfg, system_prompt=system_prompt or None, instructions=None)
+    agent = Agent(model=model_cfg, system_prompt=system_prompt or (), instructions=None)
     result = await agent.run(prompt_text)
     return str(result.output or "")
 
