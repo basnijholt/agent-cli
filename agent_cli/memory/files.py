@@ -22,6 +22,7 @@ LOGGER = logging.getLogger("agent_cli.memory.files")
 
 _ENTRIES_DIRNAME = "entries"
 _SNAPSHOT_FILENAME = "memory_index.json"
+_DELETED_DIRNAME = "deleted"
 
 
 @dataclass
@@ -106,7 +107,7 @@ def load_memory_files(root: Path) -> list[MemoryFileRecord]:
     records: list[MemoryFileRecord] = []
     for path in entries_dir.rglob("*.md"):
         # Skip anything under a deleted tombstone folder.
-        if "deleted" in path.parts:
+        if _DELETED_DIRNAME in path.parts:
             continue
         rec = read_memory_file(path)
         if rec:

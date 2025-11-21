@@ -18,7 +18,14 @@ from pydantic_ai.settings import ModelSettings
 
 from agent_cli.core.openai_proxy import forward_chat_request
 from agent_cli.memory import streaming
-from agent_cli.memory.files import ensure_store_dirs, read_memory_file, write_memory_file
+from agent_cli.memory.files import (
+    _DELETED_DIRNAME,
+    ensure_store_dirs,
+    load_snapshot,
+    read_memory_file,
+    write_memory_file,
+    write_snapshot,
+)
 from agent_cli.memory.models import (
     ChatRequest,
     ConsolidationDecision,
@@ -212,24 +219,49 @@ def _gather_relevant_existing_memories(
     return results
 
 
-def _delete_fact_files(memory_root: Path, conversation_id: str, ids: list[str]) -> None:
-    """Tombstone fact markdown files matching the given ids."""
+def _delete_memory_files(memory_root: Path, conversation_id: str, ids: list[str]) -> None:
+    """Delete markdown files and snapshot entries matching the given ids."""
     if not ids:
         return
-    entries_dir, _ = ensure_store_dirs(memory_root)
+
+    entries_dir, snapshot_path = ensure_store_dirs(memory_root)
     conv_dir = entries_dir / _safe_identifier(conversation_id)
-    facts_dir = conv_dir / "facts"
-    deleted_dir = conv_dir / "deleted" / "facts"
-    deleted_dir.mkdir(parents=True, exist_ok=True)
-    if not facts_dir.exists():
-        return
-    for path in facts_dir.glob("*.md"):
-        rec = read_memory_file(path)
-        if rec and rec.id in ids:
-            try:
-                path.rename(deleted_dir / path.name)
-            except Exception:
-                logger.exception("Failed to tombstone fact file %s", path)
+    snapshot = load_snapshot(snapshot_path)
+
+    def _remove_path(path: Path) -> None:
+        try:
+            path.unlink(missing_ok=True)
+        except Exception:
+            logger.exception("Failed to delete memory file %s", path)
+
+    removed_ids: set[str] = set()
+
+    # Prefer precise paths from the snapshot.
+    for doc_id in ids:
+        rec = snapshot.get(doc_id)
+        if rec:
+            _remove_path(rec.path)
+            snapshot.pop(doc_id, None)
+            removed_ids.add(doc_id)
+
+    remaining = {doc_id for doc_id in ids if doc_id not in removed_ids}
+
+    # Fallback: scan the conversation folder for anything not in the snapshot.
+    if remaining and conv_dir.exists():
+        for path in conv_dir.rglob("*.md"):
+            if _DELETED_DIRNAME in path.parts:
+                continue
+            rec = read_memory_file(path)
+            if rec and rec.id in remaining:
+                _remove_path(path)
+                snapshot.pop(rec.id, None)
+                removed_ids.add(rec.id)
+                remaining.remove(rec.id)
+                if not remaining:
+                    break
+
+    if removed_ids:
+        write_snapshot(snapshot_path, snapshot.values())
 
 
 async def _rewrite_queries(
@@ -773,7 +805,7 @@ def _evict_if_needed(
     overflow = sorted_entries[:-max_entries]
     ids_to_remove = [e.id for e in overflow if e.id]
     delete_entries(collection, ids_to_remove)
-    _delete_fact_files(memory_root.parent, conversation_id, ids_to_remove)
+    _delete_memory_files(memory_root, conversation_id, ids_to_remove)
 
 
 def _latest_user_message(request: ChatRequest) -> str | None:
@@ -895,7 +927,7 @@ async def extract_and_store_facts_and_summaries(
 
     if to_delete:
         delete_entries(collection, ids=list(to_delete))
-        _delete_fact_files(memory_root, conversation_id, list(to_delete))
+        _delete_memory_files(memory_root, conversation_id, list(to_delete))
 
     fact_entries = _prepare_fact_entries(to_add)
 

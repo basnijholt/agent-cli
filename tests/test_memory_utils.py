@@ -70,7 +70,7 @@ def test_evict_if_needed_removes_oldest(tmp_path: Path) -> None:
         ],
     )
 
-    with patch("agent_cli.memory.engine._delete_fact_files"):
+    with patch("agent_cli.memory.engine._delete_memory_files"):
         _evict_if_needed(collection, tmp_path, "c1", max_entries=2)
 
     remaining = list_conversation_entries(collection, "c1")

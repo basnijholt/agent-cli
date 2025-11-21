@@ -8,6 +8,12 @@ from typing import Any, Self
 import pytest
 
 from agent_cli.memory import engine, tasks
+from agent_cli.memory.files import (
+    ensure_store_dirs,
+    load_snapshot,
+    write_memory_file,
+    write_snapshot,
+)
 from agent_cli.memory.models import ChatRequest, MemoryMetadata, Message, StoredMemory
 
 
@@ -431,9 +437,10 @@ async def test_process_chat_request_summarizes_and_persists(
     assert "memory_hits" in response
 
 
-def test_evict_if_needed_drops_oldest(tmp_path: Any, monkeypatch: pytest.MonkeyPatch) -> None:
-    removed: list[str] = []
-
+def test_evict_if_needed_drops_oldest_and_cleans_disk(
+    tmp_path: Any,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     entries = [
         StoredMemory(
             id="old",
@@ -455,17 +462,42 @@ def test_evict_if_needed_drops_oldest(tmp_path: Any, monkeypatch: pytest.MonkeyP
         ),
     ]
 
+    old_record = write_memory_file(
+        tmp_path,
+        conversation_id="conv",
+        role="memory",
+        created_at="2023-01-01T00:00:00",
+        content="old",
+        doc_id="old",
+    )
+    new_record = write_memory_file(
+        tmp_path,
+        conversation_id="conv",
+        role="memory",
+        created_at="2024-01-01T00:00:00",
+        content="new",
+        doc_id="new",
+    )
+    _, snapshot_path = ensure_store_dirs(tmp_path)
+    write_snapshot(snapshot_path, [old_record, new_record])
+
+    removed: list[str] = []
     monkeypatch.setattr(
         engine,
         "list_conversation_entries",
         lambda _collection, _cid, include_summary=False: entries,  # noqa: ARG005
     )
     monkeypatch.setattr(engine, "delete_entries", lambda _collection, ids: removed.extend(ids))
-    monkeypatch.setattr(engine, "_delete_fact_files", lambda _root, _cid, _ids: None)
 
     engine._evict_if_needed(_RecordingCollection(), tmp_path, "conv", 1)
 
+    snapshot = load_snapshot(snapshot_path)
+
     assert removed == ["old"]
+    assert not old_record.path.exists()
+    assert new_record.path.exists()
+    assert "old" not in snapshot
+    assert "new" in snapshot
 
 
 @pytest.mark.asyncio
