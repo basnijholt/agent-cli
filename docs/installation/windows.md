@@ -77,11 +77,25 @@ To invoke these commands globally (like the macOS/Linux hotkeys), use [AutoHotke
 ```autohotkey
     ; Win+Ctrl+Alt+R to toggle transcription (custom, to avoid OS defaults)
     #^!r::
-        Run, agent-cli transcribe --toggle, , Hide
+        statusFile := A_Temp "\agent-cli-status.txt"
+        ; Check if transcription is already running
+        RunWait, %ComSpec% /C agent-cli transcribe --status > "%statusFile%" 2>&1, , Hide
+        FileRead, status, %statusFile%
+        if InStr(status, "not running")
+        {
+            TrayTip, agent-cli, 🎤 Starting transcription..., 3, 1
+            Run, agent-cli transcribe --toggle --input-device-index 1, , Hide  ; adjust device index if needed
+        }
+        else
+        {
+            TrayTip, agent-cli, 🛑 Stopping transcription..., 3, 1
+            Run, agent-cli transcribe --toggle, , Hide
+        }
     return
 
     ; Win+Shift+A to autocorrect clipboard
     #+a::
+        TrayTip, agent-cli, ✍️ Autocorrecting clipboard..., 3, 1
         Run, agent-cli autocorrect, , Hide
     return
 
@@ -90,7 +104,8 @@ To invoke these commands globally (like the macOS/Linux hotkeys), use [AutoHotke
         ; First copy current selection to clipboard
         Send, ^c
         ClipWait, 1
-        Run, agent-cli voice-edit, , Hide
+        TrayTip, agent-cli, 🗣️ Voice editing selection..., 3, 1
+        Run, agent-cli voice-edit --input-device-index 1, , Hide  ; adjust device index if needed
     return
 ```
 3.  Double-click the script to run it.
@@ -103,11 +118,21 @@ If you use **AutoHotkey v2**, the script syntax is slightly different:
 ```autohotkey
 ; Win+Ctrl+Alt+R to toggle transcription (custom, to avoid OS defaults)
 #^!r::{
-    Run "agent-cli transcribe --toggle", , "Hide"
+    statusFile := A_Temp "\agent-cli-status.txt"
+    RunWait A_ComSpec ' /C agent-cli transcribe --status > "' statusFile '" 2>&1', , "Hide"
+    status := FileRead(statusFile)
+    if InStr(status, "not running") {
+        TrayTip "agent-cli", "🎤 Starting transcription...", 3, 1
+        Run "agent-cli transcribe --toggle --input-device-index 1", , "Hide"  ; adjust device index if needed
+    } else {
+        TrayTip "agent-cli", "🛑 Stopping transcription...", 3, 1
+        Run "agent-cli transcribe --toggle", , "Hide"
+    }
 }
 
 ; Win+Shift+A to autocorrect clipboard
 #+a::{
+    TrayTip "agent-cli", "✍️ Autocorrecting clipboard...", 3, 1
     Run "agent-cli autocorrect", , "Hide"
 }
 
@@ -115,7 +140,8 @@ If you use **AutoHotkey v2**, the script syntax is slightly different:
 #+v::{
     Send "^c"
     ClipWait(1)
-    Run "agent-cli voice-edit", , "Hide"
+    TrayTip "agent-cli", "🗣️ Voice editing selection...", 3, 1
+    Run "agent-cli voice-edit --input-device-index 1", , "Hide"  ; adjust device index if needed
 }
 ```
 
