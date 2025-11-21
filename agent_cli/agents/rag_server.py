@@ -8,7 +8,7 @@ from pathlib import Path  # noqa: TC003
 import typer
 from rich.logging import RichHandler
 
-from agent_cli import opts
+from agent_cli import constants, opts
 from agent_cli.cli import app
 from agent_cli.core.utils import (
     console,
@@ -83,7 +83,7 @@ def rag_server(
     docs_folder = docs_folder.resolve()
     chroma_path = chroma_path.resolve()
     if openai_base_url is None:
-        openai_base_url = "https://api.openai.com/v1"
+        openai_base_url = constants.DEFAULT_OPENAI_BASE_URL
 
     console.print(f"[bold green]Starting RAG Server on {host}:{port}[/bold green]")
     console.print(f"  📂 Docs: [blue]{docs_folder}[/blue]")

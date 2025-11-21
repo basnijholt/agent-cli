@@ -8,7 +8,7 @@ from pathlib import Path  # noqa: TC003
 import typer
 from rich.logging import RichHandler
 
-from agent_cli import opts
+from agent_cli import constants, opts
 from agent_cli.cli import app
 from agent_cli.core.utils import console, print_command_line_args, print_error_message
 
@@ -84,7 +84,7 @@ def memory_server(
     memory_path = memory_path.resolve()
     entries_dir, _ = ensure_store_dirs(memory_path)
     if openai_base_url is None:
-        openai_base_url = "https://api.openai.com/v1"
+        openai_base_url = constants.DEFAULT_OPENAI_BASE_URL
 
     console.print(f"[bold green]Starting Memory Server on {host}:{port}[/bold green]")
     console.print(f"  💾 Memory store: [blue]{memory_path}[/blue]")
