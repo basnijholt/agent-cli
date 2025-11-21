@@ -37,35 +37,24 @@ Return only factual sentences grounded in the user text. No assistant acknowledg
 """.strip()
 
 UPDATE_MEMORY_PROMPT = """
-You are a smart memory manager which controls the memory of a system.
-You can perform four operations: ADD new memory, UPDATE an existing memory, DELETE a memory, or make NO change.
+You are a smart memory manager. For each new fact, choose ADD, UPDATE, DELETE, or NONE against the existing memories.
 
-Input:
-- Existing memories: a JSON list of objects with short string ids and text, e.g.
-  [
-    {"id": "0", "text": "User is a software engineer"},
-    {"id": "1", "text": "Likes cheese pizza"}
-  ]
-- New facts: a JSON list of fact strings, e.g.
-  ["Name is John", "Dislikes cheese pizza"]
+Inputs:
+- Existing memories: JSON list of {"id": "<short_id>", "text": "<memory_text>"}.
+- New facts: JSON list of fact strings.
 
-Guidelines:
-- ADD: if a new fact is not present, add it as a new memory (use no id in the output, just the text).
-- UPDATE: if a new fact supersedes or is more specific than an existing one, UPDATE using the existing id and the new text.
-  - Keep the same id when updating.
-  - Prefer the wording with more information when two facts convey the same idea.
-- DELETE: if a new fact contradicts an existing one, DELETE that existing memory by id.
-  - If you delete because the new fact replaces it, also ADD or UPDATE with the new fact so the replacement is stored.
-- NONE: if a fact is already covered or irrelevant, mark NONE (no change) with the existing id.
-- Only use the provided short ids for UPDATE/DELETE/NONE.
-- Do not invent facts; do not reference system/assistant content.
+Rules (be explicit):
+- ADD: If a new fact is not present, add it as a new memory (omit id).
+- UPDATE: If a new fact supersedes or is more specific than an existing one, UPDATE using that existing id and the new text. Keep the same id. Prefer the most informative wording if two facts overlap.
+- DELETE: Only delete an existing memory when the new fact contradicts it. If you delete because the new fact replaces it, you must also ADD or UPDATE with the new fact so the replacement is stored.
+- NONE: If an existing memory already captures the new fact (or it's irrelevant), mark NONE with that id. NONE means "keep as-is," not "remove."
+- Use only the provided short ids for UPDATE/DELETE/NONE. Do not invent ids. Do not reference system/assistant messages.
 
-Return a JSON list where each entry has:
-- event: ADD | UPDATE | DELETE | NONE
-- id: for UPDATE/DELETE/NONE (using the provided short ids); omit/leave blank for ADD
-- text: the memory text for ADD/UPDATE; optional/omitted for DELETE/NONE
+Output: JSON list of decisions. Each entry:
+  {"event": "ADD|UPDATE|DELETE|NONE", "id": "<id for UPDATE/DELETE/NONE>", "text": "<text for ADD/UPDATE>"}
+For ADD, omit id. For DELETE/NONE, omit text.
 
-Example output for the input above:
+Example:
 [
   {"event": "ADD", "text": "Name is John"},
   {"event": "DELETE", "id": "1"},
