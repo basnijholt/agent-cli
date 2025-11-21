@@ -1306,17 +1306,16 @@ agent-cli rag-server \
 │                                OPENAI_API_KEY environment variable.          │
 │                                [env var: OPENAI_API_KEY]                     │
 ╰──────────────────────────────────────────────────────────────────────────────╯
-╭─ Backend Configuration ──────────────────────────────────────────────────────╮
-│ --embedding-model        TEXT  Embedding model name (e.g.                    │
-│                                'text-embedding-3-small' for OpenAI).         │
+╭─ LLM Configuration ──────────────────────────────────────────────────────────╮
+│ --embedding-model        TEXT  Embedding model to use for vectorization.     │
 │                                [default: text-embedding-3-small]             │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Server Configuration ───────────────────────────────────────────────────────╮
-│ --host        TEXT     Host to bind to [default: 0.0.0.0]                    │
+│ --host        TEXT     Host/IP to bind API servers to. [default: 0.0.0.0]    │
 │ --port        INTEGER  Port to bind to [default: 8000]                       │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ General Options ────────────────────────────────────────────────────────────╮
-│ --log-level         TEXT  Logging level [default: INFO]                      │
+│ --log-level         TEXT  Set logging level. [default: WARNING]              │
 │ --config            TEXT  Path to a TOML configuration file.                 │
 │ --print-args              Print the command line arguments, including        │
 │                           variables taken from the configuration file.       │
