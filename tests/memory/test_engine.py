@@ -369,7 +369,7 @@ async def test_process_chat_request_summarizes_and_persists(
         _request: Any,
         _base_url: str,
         _api_key: str | None = None,
-        _exclude_fields: set[str] | None = None,
+        exclude_fields: set[str] | None = None,  # noqa: ARG001
     ) -> dict[str, Any]:
         return {"choices": [{"message": {"content": "assistant reply"}}]}
 

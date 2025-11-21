@@ -2,10 +2,14 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
+from unittest.mock import patch
 
 from agent_cli.memory.engine import _evict_if_needed
 from agent_cli.memory.store import list_conversation_entries
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 class FakeCollection:
@@ -53,7 +57,7 @@ class FakeCollection:
         self.docs = [entry for entry in self.docs if entry["id"] not in ids]
 
 
-def test_evict_if_needed_removes_oldest() -> None:
+def test_evict_if_needed_removes_oldest(tmp_path: Path) -> None:
     collection = FakeCollection()
     base_meta = {"conversation_id": "c1", "role": "memory"}
     collection.upsert(
@@ -65,7 +69,9 @@ def test_evict_if_needed_removes_oldest() -> None:
             {**base_meta, "created_at": "2024-12-01T00:00:00Z"},
         ],
     )
-    _evict_if_needed(collection, "c1", max_entries=2)
+
+    with patch("agent_cli.memory.engine._delete_fact_files"):
+        _evict_if_needed(collection, tmp_path, "c1", max_entries=2)
 
     remaining = list_conversation_entries(collection, "c1")
     remaining_ids = {e.id for e in remaining}
