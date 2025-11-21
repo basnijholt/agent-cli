@@ -47,12 +47,6 @@ class MemoryMetadata(BaseModel):
     summary_kind: str | None = None
 
 
-class MemoryExtras(BaseModel):
-    """Extras supplied when writing new memory entries."""
-
-    salience: float | None = None
-
-
 class SummaryOutput(BaseModel):
     """Structured summary returned by the LLM."""
 
