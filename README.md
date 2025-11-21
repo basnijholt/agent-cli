@@ -38,6 +38,7 @@ I use it mostly for the `transcribe` function when working with LLMs. Being able
 - **`assistant`**: A hands-free voice assistant that starts and stops recording based on a wake word.
 - **`chat`**: A conversational AI agent with tool-calling capabilities.
 - **`rag-server`**: A RAG (Retrieval-Augmented Generation) proxy server that lets you chat with your documents.
+- **`memory-server`**: A long-term memory chat proxy (Letta + Chroma) with OpenAI-compatible endpoints.
 
 ## Quick Start
 
@@ -146,6 +147,7 @@ The setup scripts automatically install:
   - [`assistant`](#assistant)
   - [`chat`](#chat)
   - [`rag-server`](#rag-server)
+  - [`memory-server`](#memory-server)
     - [Using Custom Embeddings (e.g., OpenAI / llama.cpp / Ollama)](#using-custom-embeddings-eg-openai--llamacpp--ollama)
 - [Development](#development)
   - [Running Tests](#running-tests)
@@ -1233,6 +1235,22 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 - **Start Server (OpenAI)**: `agent-cli rag-server --docs-folder ~/Documents/Notes --openai-api-key sk-...`
 - **Use with Agent-CLI**: `agent-cli chat --openai-base-url http://localhost:8000/v1 --llm-provider openai`
 
+### `memory-server`
+
+**Purpose:** Adds long-term conversational memory (self-hosted) with an OpenAI-compatible `/chat/completions` endpoint backed by Chroma (+ optional reranker).
+
+**How to Use It:**
+
+- **Install memory deps first**: `pip install "agent-cli[memory]"` (or, from the repo, `uv sync --extra memory`)
+- **Start Server (Local LLM/OpenAI-compatible)**: `agent-cli memory-server --memory-path ./memory_db --openai-base-url http://localhost:11434/v1 --embedding-model text-embedding-3-small`
+- **Use with Agent-CLI**: `agent-cli chat --openai-base-url http://localhost:8100/v1 --llm-provider openai`
+
+**How it works (self-hosted):**
+- Stores a per-conversation memory collection in Chroma with the same embedding settings as `rag-server`, optionally reranked with a cross-encoder.
+- For each turn, retrieves the top-k relevant memories (conversation + global) plus a rolling summary and augments the prompt.
+- After each reply, extracts salient facts and refreshes the running summary (disable with `--disable-summarization`).
+- Enforces a per-conversation cap (`--max-entries`, default 500) and evicts oldest memories first.
+
 #### Using Custom Embeddings (e.g., OpenAI / llama.cpp / Ollama)
 
 To use the embeddings endpoint from your local LLM server or OpenAI instead of the built-in SentenceTransformers:
@@ -1298,7 +1316,10 @@ agent-cli rag-server \
 │ --port        INTEGER  Port to bind to [default: 8000]                       │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ General Options ────────────────────────────────────────────────────────────╮
-│ --log-level        TEXT  Logging level [default: INFO]                       │
+│ --log-level         TEXT  Logging level [default: INFO]                      │
+│ --config            TEXT  Path to a TOML configuration file.                 │
+│ --print-args              Print the command line arguments, including        │
+│                           variables taken from the configuration file.       │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 
 ```

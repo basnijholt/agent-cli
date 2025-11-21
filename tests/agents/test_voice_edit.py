@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 from typer.testing import CliRunner
@@ -11,27 +12,38 @@ from agent_cli.cli import app
 runner = CliRunner()
 
 
+@patch("agent_cli.agents.voice_edit._async_main", return_value=None)
 @patch("agent_cli.agents.voice_edit.asyncio.run")
-def test_voice_edit_agent(mock_run: MagicMock) -> None:
+@patch("agent_cli.agents.voice_edit.process.pid_file_context")
+def test_voice_edit_agent(
+    mock_pid_ctx: MagicMock,
+    mock_run: MagicMock,
+    mock_async_main: MagicMock,
+) -> None:
     """Test the voice assistant agent."""
-    result = runner.invoke(
-        app,
-        [
-            "voice-edit",
-            "--config",
-            "missing.toml",
-            "--llm-provider",
-            "ollama",
-            "--asr-provider",
-            "wyoming",
-            "--tts-provider",
-            "wyoming",
-            "--openai-api-key",
-            "test",
-        ],
-    )
+    mock_pid_ctx.return_value.__enter__.return_value = None
+    with runner.isolated_filesystem():
+        # Provide a real config file to satisfy CLI preflight.
+        Path("config.toml").write_text("", encoding="utf-8")
+        result = runner.invoke(
+            app,
+            [
+                "voice-edit",
+                "--config",
+                "config.toml",
+                "--llm-provider",
+                "ollama",
+                "--asr-provider",
+                "wyoming",
+                "--tts-provider",
+                "wyoming",
+                "--openai-api-key",
+                "test",
+            ],
+        )
     assert result.exit_code == 0, result.output
     mock_run.assert_called_once()
+    mock_async_main.assert_called_once()
 
 
 @patch("agent_cli.agents.voice_edit.process.kill_process")
