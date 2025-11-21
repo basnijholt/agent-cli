@@ -548,12 +548,9 @@ async def _extract_salient_facts(
 ) -> list[str]:
     if not user_message and not assistant_message:
         return []
-    exchange = []
-    if user_message:
-        exchange.append(f"User: {user_message}")
-    if assistant_message:
-        exchange.append(f"Assistant: {assistant_message}")
-    transcript = "\n".join(exchange)
+
+    # Extract facts from the latest user turn only (ignore assistant/system).
+    transcript = user_message or ""
 
     facts = await _extract_with_pydantic_ai(
         transcript=transcript,
