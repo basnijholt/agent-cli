@@ -519,6 +519,12 @@ async def test_streaming_request_persists_user_and_assistant(
         type("H", (), {"AsyncClient": _DummyAsyncClient}),
     )  # type: ignore[attr-defined]
 
+    async def fake_rewrite_queries(*_args: Any, **_kwargs: Any) -> list[str]:
+        return ["Hello rewrite"]
+
+    monkeypatch.setattr(engine, "_rewrite_queries", fake_rewrite_queries)
+    monkeypatch.setattr(engine, "_consolidate_retrieval_entries", lambda entries, **_: entries)
+
     async def fake_stream_chat_sse(*_args: Any, **_kwargs: Any) -> Any:
         body = [
             'data: {"choices":[{"delta":{"content":"Hello"}}]}',

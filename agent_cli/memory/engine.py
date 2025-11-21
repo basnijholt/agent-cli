@@ -10,6 +10,8 @@ from time import perf_counter
 from typing import TYPE_CHECKING, Any
 from uuid import uuid4
 
+import httpx
+import pydantic_ai.exceptions
 from fastapi.responses import StreamingResponse
 from pydantic_ai import Agent
 from pydantic_ai.models.openai import OpenAIChatModel
@@ -136,9 +138,15 @@ async def _consolidate_retrieval_entries(
     try:
         result = await agent.run(payload)
         decisions = {d.id: d.action for d in result.output}
-    except Exception:
-        logger.exception("Consolidation agent failed; keeping all retrieved entries")
+    except (httpx.HTTPError, pydantic_ai.exceptions.UnexpectedModelBehavior):
+        logger.warning(
+            "Consolidation agent transient failure; keeping all retrieved entries",
+            exc_info=True,
+        )
         return entries
+    except Exception:
+        logger.exception("Consolidation agent internal error")
+        raise
 
     if not decisions:
         return entries
@@ -291,9 +299,15 @@ async def _rewrite_queries(
     try:
         result = await agent.run(user_message)
         rewrites = result.output or []
-    except Exception:
-        logger.exception("Query rewrite agent failed; using original message only")
+    except (httpx.HTTPError, pydantic_ai.exceptions.UnexpectedModelBehavior):
+        logger.warning(
+            "Query rewrite agent transient failure; using original message only",
+            exc_info=True,
+        )
         rewrites = []
+    except Exception:
+        logger.exception("Query rewrite agent internal error")
+        raise
 
     unique: list[str] = []
     for candidate in [user_message, *rewrites]:
@@ -636,9 +650,15 @@ async def _reconcile_facts(
     try:
         result = await agent.run(payload)
         decisions = result.output or []
-    except Exception:
-        logger.exception("Update memory agent failed; defaulting to add all new facts")
+    except (httpx.HTTPError, pydantic_ai.exceptions.UnexpectedModelBehavior):
+        logger.warning(
+            "Update memory agent transient failure; defaulting to add all new facts",
+            exc_info=True,
+        )
         return new_facts, []
+    except Exception:
+        logger.exception("Update memory agent internal error")
+        raise
 
     to_add: list[str] = []
     to_delete: list[str] = []
@@ -695,9 +715,12 @@ async def _extract_with_pydantic_ai(
     try:
         facts = await agent.run(transcript, instructions=instructions)
         return facts.output
-    except Exception:
-        logger.exception("PydanticAI fact extraction failed")
+    except (httpx.HTTPError, pydantic_ai.exceptions.UnexpectedModelBehavior):
+        logger.warning("PydanticAI fact extraction transient failure", exc_info=True)
         return []
+    except Exception:
+        logger.exception("PydanticAI fact extraction internal error")
+        raise
 
 
 async def _update_summary(
