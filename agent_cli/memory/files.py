@@ -12,6 +12,7 @@ from uuid import uuid4
 import yaml
 from pydantic import ValidationError
 
+from agent_cli.core.utils import atomic_write_text
 from agent_cli.memory.models import MemoryMetadata
 
 if TYPE_CHECKING:
@@ -94,8 +95,6 @@ def write_memory_file(
     file_path = entries_dir / safe_conversation / subdir / filename
     file_path.parent.mkdir(parents=True, exist_ok=True)
 
-    from agent_cli.core.utils import atomic_write_text  # noqa: PLC0415
-
     atomic_write_text(file_path, body)
 
     return MemoryFileRecord(id=doc_id, path=file_path, metadata=metadata, content=content)
@@ -153,7 +152,6 @@ def write_snapshot(snapshot_path: Path, records: Iterable[MemoryFileRecord]) -> 
         }
         for rec in records
     ]
-    from agent_cli.core.utils import atomic_write_text  # noqa: PLC0415
 
     atomic_write_text(snapshot_path, json.dumps(payload, ensure_ascii=False, indent=2))
 
