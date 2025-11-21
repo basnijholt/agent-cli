@@ -9,10 +9,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
+import httpx
 import pytest
-from fastapi.testclient import TestClient
 
 import agent_cli.memory.api as memory_api
+import agent_cli.memory.tasks as memory_tasks
 import agent_cli.rag.retriever as rag_retriever
 from agent_cli.memory import engine
 
@@ -178,12 +179,21 @@ async def test_memory_api_updates_latest_fact(
         enable_summarization=True,
     )
 
-    with TestClient(app) as client:
-        resp1 = client.post("/v1/chat/completions", json=_make_request_json("my wife is Jane"))
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        resp1 = await client.post(
+            "/v1/chat/completions",
+            json=_make_request_json("my wife is Jane"),
+        )
         assert resp1.status_code == 200
 
-        resp2 = client.post("/v1/chat/completions", json=_make_request_json("my wife is Anne"))
+        resp2 = await client.post(
+            "/v1/chat/completions",
+            json=_make_request_json("my wife is Anne"),
+        )
         assert resp2.status_code == 200
+
+    await memory_tasks.wait_for_background_tasks()
 
     mems = [
         (doc_id, doc, meta)
