@@ -56,17 +56,6 @@ def memory_server(
     """Start the memory-backed chat proxy server."""
     if print_args:
         print_command_line_args(locals())
-    logging.basicConfig(
-        level=log_level.upper(),
-        format="%(message)s",
-        datefmt="[%X]",
-        handlers=[RichHandler(console=console, rich_tracebacks=True)],
-        force=True,
-    )
-
-    logging.getLogger("httpx").setLevel(logging.WARNING)
-    logging.getLogger("chromadb").setLevel(logging.WARNING)
-    logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
 
     try:
         import uvicorn  # noqa: PLC0415
@@ -79,6 +68,18 @@ def memory_server(
             "`pip install agent-cli[memory]` or `uv sync --extra memory`.",
         )
         raise typer.Exit(1) from exc
+
+    logging.basicConfig(
+        level=log_level.upper(),
+        format="%(message)s",
+        datefmt="[%X]",
+        handlers=[RichHandler(console=console, rich_tracebacks=True)],
+        force=True,
+    )
+
+    logging.getLogger("httpx").setLevel(logging.WARNING)
+    logging.getLogger("chromadb").setLevel(logging.WARNING)
+    logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
 
     memory_path = memory_path.resolve()
     entries_dir, _ = ensure_store_dirs(memory_path)
