@@ -94,16 +94,16 @@ def client(tmp_path: Path) -> TestClient:
 
     with ExitStack() as stack:
         stack.enter_context(
-            patch("agent_cli.memory.api.watch_memory_store", side_effect=_noop_watch),
+            patch("agent_cli.memory.client.watch_memory_store", side_effect=_noop_watch),
         )
         stack.enter_context(
-            patch("agent_cli.rag.retriever.get_reranker_model", return_value=_DummyReranker()),
+            patch("agent_cli.memory.client.get_reranker_model", return_value=_DummyReranker()),
         )
         stack.enter_context(
             patch("agent_cli.memory.engine._forward_request", side_effect=_fake_forward_request),
         )
         stack.enter_context(
-            patch("agent_cli.memory.api.init_memory_collection", return_value=_FakeCollection()),
+            patch("agent_cli.memory.client.init_memory_collection", return_value=_FakeCollection()),
         )
         app = memory_api.create_app(
             memory_path=tmp_path,
