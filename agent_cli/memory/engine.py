@@ -821,7 +821,7 @@ async def _postprocess_after_turn(
     post_start = perf_counter()
     if enable_summarization:
         summary_start = perf_counter()
-        await _extract_and_store_facts_and_summaries(
+        await extract_and_store_facts_and_summaries(
             collection=collection,
             memory_root=memory_root,
             conversation_id=conversation_id,
@@ -851,7 +851,7 @@ async def _postprocess_after_turn(
     )
 
 
-async def _extract_and_store_facts_and_summaries(
+async def extract_and_store_facts_and_summaries(
     *,
     collection: Collection,
     memory_root: Path,

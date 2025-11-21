@@ -8,8 +8,8 @@ from contextlib import suppress
 from typing import TYPE_CHECKING, Any, Self
 
 from agent_cli.memory.engine import (
-    _extract_and_store_facts_and_summaries,
     augment_chat_request,
+    extract_and_store_facts_and_summaries,
     process_chat_request,
 )
 from agent_cli.memory.files import ensure_store_dirs
@@ -113,7 +113,7 @@ class MemoryClient:
         This mimics the 'mem0.add' behavior but uses our advanced reconciliation
         pipeline (Add/Update/Delete) and updates the conversation summary.
         """
-        await _extract_and_store_facts_and_summaries(
+        await extract_and_store_facts_and_summaries(
             collection=self.collection,
             memory_root=self.memory_path,
             conversation_id=conversation_id,

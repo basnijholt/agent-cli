@@ -18,3 +18,7 @@ ensure_optional_dependencies(
     extra_name="memory",
     install_hint="`pip install agent-cli[memory]` or `uv sync --extra memory`",
 )
+
+from agent_cli.memory.client import MemoryClient  # noqa: E402
+
+__all__ = ["MemoryClient"]

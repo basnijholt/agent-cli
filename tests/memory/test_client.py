@@ -60,7 +60,7 @@ def client(tmp_path: Path) -> MemoryClient:
 @pytest.mark.asyncio
 async def test_client_add_calls_engine(client: MemoryClient) -> None:
     """Test that add() delegates to the engine correctly."""
-    with patch("agent_cli.memory.client._extract_and_store_facts_and_summaries") as mock_extract:
+    with patch("agent_cli.memory.client.extract_and_store_facts_and_summaries") as mock_extract:
         await client.add("My name is Alice", conversation_id="test-conv")
 
         mock_extract.assert_called_once()
