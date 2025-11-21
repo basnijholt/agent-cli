@@ -1078,7 +1078,12 @@ async def process_chat_request(
         )
 
     llm_start = perf_counter()
-    response = await _forward_request(aug_request, openai_base_url, api_key)
+    response = await forward_chat_request(
+        aug_request,
+        openai_base_url,
+        api_key,
+        exclude_fields={"memory_id", "memory_top_k"},
+    )
     logger.info(
         "LLM completion finished in %.1f ms (conversation=%s, model=%s)",
         _elapsed_ms(llm_start),
@@ -1130,17 +1135,3 @@ async def process_chat_request(
     )
 
     return response
-
-
-async def _forward_request(
-    request: ChatRequest,
-    openai_base_url: str,
-    api_key: str | None = None,
-) -> Any:
-    """Forward to backend LLM."""
-    return await forward_chat_request(
-        request,
-        openai_base_url,
-        api_key,
-        exclude_fields={"memory_id", "memory_top_k"},
-    )
