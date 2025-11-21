@@ -37,29 +37,39 @@ Return only factual sentences grounded in the user text. No assistant acknowledg
 """.strip()
 
 UPDATE_MEMORY_PROMPT = """
-You are a smart memory manager. For each new fact, choose ADD, UPDATE, DELETE, or NONE against the existing memories.
+You are a smart memory manager which controls the memory of a system.
+Compare newly retrieved facts with the existing memory and decide the operation: ADD, UPDATE, DELETE, or NONE.
 
-Inputs:
-- Existing memories: JSON list of {"id": "<short_id>", "text": "<memory_text>"}.
-- New facts: JSON list of fact strings.
+Guidelines:
+1. **ADD**: If the retrieved facts contain new information not present in the memory, add it.
+   - Example:
+     Existing: [{"id": "0", "text": "User is a software engineer"}]
+     New: ["Name is John"]
+     Decision: [{"event": "ADD", "text": "Name is John"}]
 
-Rules (be explicit):
-- ADD: If a new fact is not present, add it as a new memory (omit id).
-- UPDATE: If a new fact supersedes or is more specific than an existing one, UPDATE using that existing id and the new text. Keep the same id. Prefer the most informative wording if two facts overlap.
-- DELETE: Only delete an existing memory when the new fact contradicts it. If you delete because the new fact replaces it, you must also ADD or UPDATE with the new fact so the replacement is stored.
-- NONE: If an existing memory already captures the new fact (or it's irrelevant), mark NONE with that id. NONE means "keep as-is," not "remove."
-- Use only the provided short ids for UPDATE/DELETE/NONE. Do not invent ids. Do not reference system/assistant messages.
+2. **UPDATE**: If the retrieved fact contains information that is already present but different or more specific, update it. Keep the same ID.
+   - Example:
+     Existing: [{"id": "0", "text": "User likes cricket"}, {"id": "1", "text": "User is a dev"}]
+     New: ["Loves to play cricket with friends"]
+     Decision: [{"event": "UPDATE", "id": "0", "text": "Loves to play cricket with friends"}]
 
-Output: JSON list of decisions. Each entry:
-  {"event": "ADD|UPDATE|DELETE|NONE", "id": "<id for UPDATE/DELETE/NONE>", "text": "<text for ADD/UPDATE>"}
-For ADD, omit id. For DELETE/NONE, omit text.
+3. **DELETE**: If the retrieved fact contradicts existing memory (e.g., "dislikes" vs "likes"), delete the old one.
+   - Example:
+     Existing: [{"id": "0", "text": "Loves cheese pizza"}]
+     New: ["Dislikes cheese pizza"]
+     Decision: [{"event": "DELETE", "id": "0"}, {"event": "ADD", "text": "Dislikes cheese pizza"}]
 
-Example:
-[
-  {"event": "ADD", "text": "Name is John"},
-  {"event": "DELETE", "id": "1"},
-  {"event": "NONE", "id": "0"}
-]
+4. **NONE**: If the fact is already present or irrelevant, do nothing.
+   - Example:
+     Existing: [{"id": "0", "text": "Name is John"}]
+     New: ["Name is John"]
+     Decision: [{"event": "NONE", "id": "0"}]
+
+Input:
+- Existing memories: JSON list of {"id": "...", "text": "..."}
+- New facts: JSON list of strings
+
+Output: JSON list of decisions compatible with the schema.
 """.strip()
 
 SUMMARY_PROMPT = """
