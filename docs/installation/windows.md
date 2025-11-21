@@ -77,7 +77,7 @@ To invoke these commands globally (like the macOS/Linux hotkeys), use [AutoHotke
 ```autohotkey
     ; Win+Ctrl+Alt+R to toggle transcription (custom, to avoid OS defaults)
     #^!r::
-        Run, agent-cli transcribe --toggle --input-device-index 1, , Hide
+        Run, agent-cli transcribe --toggle, , Hide
     return
 
     ; Win+Shift+A to autocorrect clipboard
@@ -90,7 +90,7 @@ To invoke these commands globally (like the macOS/Linux hotkeys), use [AutoHotke
         ; First copy current selection to clipboard
         Send, ^c
         ClipWait, 1
-        Run, agent-cli voice-edit --input-device-index 1, , Hide
+        Run, agent-cli voice-edit, , Hide
     return
     ```
 3.  Double-click the script to run it.
