@@ -7,6 +7,7 @@ calls are stubbed so the test is deterministic and offline.
 
 from __future__ import annotations
 
+import os
 from typing import TYPE_CHECKING, Any
 
 import httpx
@@ -112,6 +113,10 @@ def _make_request_json(text: str) -> dict[str, Any]:
 
 
 @pytest.mark.asyncio
+@pytest.mark.skipif(
+    "MEMORY_API_LIVE" not in os.environ,
+    reason="Set MEMORY_API_LIVE to run HTTP memory API test",
+)
 async def test_memory_api_updates_latest_fact(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
