@@ -21,22 +21,14 @@ def memory_server(
         rich_help_panel="Memory Configuration",
     ),
     openai_base_url: str | None = opts.OPENAI_BASE_URL,
-    embedding_model: str = typer.Option(
-        "text-embedding-3-small",
-        help="Embedding model name (e.g. 'text-embedding-3-small').",
-        rich_help_panel="Backend Configuration",
-    ),
+    embedding_model: str = opts.EMBEDDING_MODEL,
     openai_api_key: str | None = opts.OPENAI_API_KEY,
     default_top_k: int = typer.Option(
         5,
         help="Number of memory entries to retrieve per query.",
         rich_help_panel="Memory Configuration",
     ),
-    host: str = typer.Option(
-        "0.0.0.0",  # noqa: S104
-        help="Host to bind to",
-        rich_help_panel="Server Configuration",
-    ),
+    host: str = opts.SERVER_HOST,
     port: int = typer.Option(
         8100,
         help="Port to bind to",
@@ -57,11 +49,7 @@ def memory_server(
         help="Disable automatic fact extraction and summaries.",
         rich_help_panel="Memory Configuration",
     ),
-    log_level: str = typer.Option(
-        "INFO",
-        help="Logging level",
-        rich_help_panel="General Options",
-    ),
+    log_level: str = opts.LOG_LEVEL,
     config_file: str | None = opts.CONFIG_FILE,
     print_args: bool = opts.PRINT_ARGS,
 ) -> None:

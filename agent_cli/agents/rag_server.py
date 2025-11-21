@@ -30,32 +30,20 @@ def rag_server(
         rich_help_panel="RAG Configuration",
     ),
     openai_base_url: str | None = opts.OPENAI_BASE_URL,
-    embedding_model: str = typer.Option(
-        "text-embedding-3-small",
-        help="Embedding model name (e.g. 'text-embedding-3-small' for OpenAI).",
-        rich_help_panel="Backend Configuration",
-    ),
+    embedding_model: str = opts.EMBEDDING_MODEL,
     openai_api_key: str | None = opts.OPENAI_API_KEY,
     limit: int = typer.Option(
         3,
         help="Number of document chunks to retrieve per query.",
         rich_help_panel="RAG Configuration",
     ),
-    host: str = typer.Option(
-        "0.0.0.0",  # noqa: S104
-        help="Host to bind to",
-        rich_help_panel="Server Configuration",
-    ),
+    host: str = opts.SERVER_HOST,
     port: int = typer.Option(
         8000,
         help="Port to bind to",
         rich_help_panel="Server Configuration",
     ),
-    log_level: str = typer.Option(
-        "INFO",
-        help="Logging level",
-        rich_help_panel="General Options",
-    ),
+    log_level: str = opts.LOG_LEVEL,
     config_file: str | None = opts.CONFIG_FILE,
     print_args: bool = opts.PRINT_ARGS,
 ) -> None:
