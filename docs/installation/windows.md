@@ -92,7 +92,7 @@ To invoke these commands globally (like the macOS/Linux hotkeys), use [AutoHotke
         ClipWait, 1
         Run, agent-cli voice-edit, , Hide
     return
-    ```
+```
 3.  Double-click the script to run it.
 
 > [!TIP]
