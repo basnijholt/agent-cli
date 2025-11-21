@@ -252,14 +252,44 @@ def signal_handling_context(
         stop_event.set()
 
     loop = asyncio.get_running_loop()
-    loop.add_signal_handler(signal.SIGINT, sigint_handler)
-    loop.add_signal_handler(signal.SIGTERM, sigterm_handler)
+
+    # Fall back to standard signal handlers on platforms (e.g., Windows) where
+    # asyncio's signal handling isn't implemented.
+    restore_handlers: dict[signal.Signals, Any] = {}
+    try:
+        loop.add_signal_handler(signal.SIGINT, sigint_handler)
+        loop.add_signal_handler(signal.SIGTERM, sigterm_handler)
+    except (NotImplementedError, RuntimeError):
+        logger.debug("Async signal handlers unavailable; using sync signal handlers.")
+
+        def _register_sync_handler(signum: signal.Signals, handler: Any) -> None:
+            try:
+                restore_handlers[signum] = signal.getsignal(signum)
+                signal.signal(signum, handler)
+            except (
+                OSError,
+                RuntimeError,
+                ValueError,
+            ) as exc:  # pragma: no cover - platform specific
+                logger.debug("Unable to register handler for %s: %s", signum, exc)
+
+        _register_sync_handler(signal.SIGINT, lambda *_: sigint_handler())
+        # Some platforms may not support SIGTERM; guard registration.
+        if hasattr(signal, "SIGTERM"):
+            _register_sync_handler(signal.SIGTERM, lambda *_: sigterm_handler())
 
     try:
         yield stop_event
     finally:
-        # Signal handlers are automatically cleaned up when the event loop exits
-        pass
+        for signum, previous in restore_handlers.items():
+            try:
+                signal.signal(signum, previous)
+            except (
+                OSError,
+                RuntimeError,
+                ValueError,
+            ) as exc:  # pragma: no cover - platform specific
+                logger.debug("Unable to restore handler for %s: %s", signum, exc)
 
 
 def stop_or_status_or_toggle(
