@@ -46,7 +46,7 @@ class MemoryClient:
         default_top_k: int = 5,
         max_entries: int = 500,
         mmr_lambda: float = 0.7,
-        start_watcher: bool = True,
+        start_watcher: bool = False,
     ) -> None:
         """Initialize the memory client."""
         self.memory_path = memory_path.resolve()
@@ -57,7 +57,6 @@ class MemoryClient:
         self.max_entries = max_entries
         self.mmr_lambda = mmr_lambda
 
-        ensure_store_dirs(self.memory_path)
         _, snapshot_path = ensure_store_dirs(self.memory_path)
 
         logger.info("Initializing memory collection...")
@@ -160,6 +159,7 @@ class MemoryClient:
         conversation_id: str = "default",
         model: str = "gpt-4o-mini",
         stream: bool = False,
+        api_key: str | None = None,
     ) -> Any:
         """Process a chat request (Augment -> LLM -> Update Memory)."""
         # Ensure messages are in the format expected by ChatRequest
@@ -178,7 +178,7 @@ class MemoryClient:
             openai_base_url=self.openai_base_url,
             reranker_model=self.reranker_model,
             default_top_k=self.default_top_k,
-            api_key=self.chat_api_key,
+            api_key=api_key or self.chat_api_key,
             enable_summarization=self.enable_summarization,
             max_entries=self.max_entries,
             mmr_lambda=self.mmr_lambda,

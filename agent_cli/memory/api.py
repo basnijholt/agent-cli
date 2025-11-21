@@ -55,12 +55,18 @@ def create_app(
     )
 
     @app.post("/v1/chat/completions")
-    async def chat_completions(_request: Request, chat_request: ChatRequest) -> Any:
+    async def chat_completions(request: Request, chat_request: ChatRequest) -> Any:
+        auth_header = request.headers.get("Authorization")
+        api_key = None
+        if auth_header and auth_header.startswith("Bearer "):
+            api_key = auth_header.split(" ")[1]
+
         return await client.chat(
             messages=chat_request.messages,
             conversation_id=chat_request.memory_id or "default",
             model=chat_request.model,
             stream=chat_request.stream or False,
+            api_key=api_key,
         )
 
     @app.on_event("startup")
