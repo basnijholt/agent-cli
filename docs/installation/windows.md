@@ -74,10 +74,10 @@ To invoke these commands globally (like the macOS/Linux hotkeys), use [AutoHotke
 1.  Create a file named `agent-cli.ahk`.
 2.  Paste the following script:
 
-    ```autohotkey
-    ; Win+Shift+R to toggle transcription
-    #+r::
-        Run, agent-cli transcribe --input-device-index 1, , Hide
+```autohotkey
+    ; Win+Ctrl+Alt+R to toggle transcription (custom, to avoid OS defaults)
+    #^!r::
+        Run, agent-cli transcribe --toggle --input-device-index 1, , Hide
     return
 
     ; Win+Shift+A to autocorrect clipboard
@@ -94,6 +94,30 @@ To invoke these commands globally (like the macOS/Linux hotkeys), use [AutoHotke
     return
     ```
 3.  Double-click the script to run it.
+
+> [!TIP]
+> Using `--toggle` stops an existing background recorder if it's already running, so you can press the same hotkey to start/stop the session without leaving a stray process behind.
+
+If you use **AutoHotkey v2**, the script syntax is slightly different:
+
+```autohotkey
+; Win+Ctrl+Alt+R to toggle transcription (custom, to avoid OS defaults)
+#^!r::{
+    Run "agent-cli transcribe --toggle", , "Hide"
+}
+
+; Win+Shift+A to autocorrect clipboard
+#+a::{
+    Run "agent-cli autocorrect", , "Hide"
+}
+
+; Win+Shift+V to voice edit selection
+#+v::{
+    Send "^c"
+    ClipWait(1)
+    Run "agent-cli voice-edit", , "Hide"
+}
+```
 
 **Note on Audio Devices:**
 If `agent-cli` doesn't pick up your microphone, run `agent-cli transcribe --list-devices` to find the correct `--input-device-index`.
