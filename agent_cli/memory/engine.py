@@ -11,9 +11,9 @@ from typing import TYPE_CHECKING, Any
 from uuid import uuid4
 
 import httpx
-import pydantic_ai.exceptions
 from fastapi.responses import StreamingResponse
 from pydantic_ai import Agent
+from pydantic_ai.exceptions import AgentRunError, UnexpectedModelBehavior
 from pydantic_ai.models.openai import OpenAIChatModel
 from pydantic_ai.providers.openai import OpenAIProvider
 from pydantic_ai.settings import ModelSettings
@@ -138,7 +138,7 @@ async def _consolidate_retrieval_entries(
     try:
         result = await agent.run(payload)
         decisions = {d.id: d.action for d in result.output}
-    except (httpx.HTTPError, pydantic_ai.exceptions.UnexpectedModelBehavior):
+    except (httpx.HTTPError, AgentRunError, UnexpectedModelBehavior):
         logger.warning(
             "Consolidation agent transient failure; keeping all retrieved entries",
             exc_info=True,
@@ -299,7 +299,7 @@ async def _rewrite_queries(
     try:
         result = await agent.run(user_message)
         rewrites = result.output or []
-    except (httpx.HTTPError, pydantic_ai.exceptions.UnexpectedModelBehavior):
+    except (httpx.HTTPError, AgentRunError, UnexpectedModelBehavior):
         logger.warning(
             "Query rewrite agent transient failure; using original message only",
             exc_info=True,
@@ -650,7 +650,7 @@ async def _reconcile_facts(
     try:
         result = await agent.run(payload)
         decisions = result.output or []
-    except (httpx.HTTPError, pydantic_ai.exceptions.UnexpectedModelBehavior):
+    except (httpx.HTTPError, AgentRunError, UnexpectedModelBehavior):
         logger.warning(
             "Update memory agent transient failure; defaulting to add all new facts",
             exc_info=True,
@@ -715,7 +715,7 @@ async def _extract_with_pydantic_ai(
     try:
         facts = await agent.run(transcript, instructions=instructions)
         return facts.output
-    except (httpx.HTTPError, pydantic_ai.exceptions.UnexpectedModelBehavior):
+    except (httpx.HTTPError, AgentRunError, UnexpectedModelBehavior):
         logger.warning("PydanticAI fact extraction transient failure", exc_info=True)
         return []
     except Exception:

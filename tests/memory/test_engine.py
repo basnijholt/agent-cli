@@ -5,6 +5,7 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 from typing import Any, Self
 
+import httpx
 import pytest
 
 from agent_cli.memory import engine, tasks
@@ -84,10 +85,24 @@ class _RecordingCollection:
         ids = [doc_id for doc_id, _ in results]
         return {"documents": [docs], "metadatas": [metas], "ids": ids}
 
-    def delete(self, ids: list[str] | None = None, where: dict[str, Any] | None = None) -> None:  # noqa: ARG002
-        if ids:
-            for doc_id in ids:
-                self._store.pop(doc_id, None)
+
+@pytest.fixture
+def stub_openai_provider(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Shim out OpenAI provider/model classes for agent construction."""
+
+    class _DummyProvider:
+        pass
+
+    class _DummyModel:
+        pass
+
+    class _DummySettings:
+        def __init__(self, **_kwargs: Any) -> None:
+            return
+
+    monkeypatch.setattr(engine, "OpenAIProvider", lambda *_args, **_kwargs: _DummyProvider())
+    monkeypatch.setattr(engine, "OpenAIChatModel", lambda *_args, **_kwargs: _DummyModel())
+    monkeypatch.setattr(engine, "ModelSettings", lambda **_kwargs: _DummySettings())
 
 
 class _DummyStreamResponse:
@@ -498,6 +513,59 @@ def test_evict_if_needed_drops_oldest_and_cleans_disk(
     assert new_record.path.exists()
     assert "old" not in snapshot
     assert "new" in snapshot
+
+
+@pytest.mark.asyncio
+@pytest.mark.usefixtures("stub_openai_provider")
+async def test_rewrite_queries_transient_error_falls_back(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Transient httpx errors should keep the original message."""
+
+    class _Agent:
+        def __init__(self, *_args: Any, **_kwargs: Any) -> None:
+            return
+
+        async def run(self, *_args: Any, **_kwargs: Any) -> Any:
+            err = httpx.ConnectError("boom")
+            raise err
+
+    monkeypatch.setattr(engine, "Agent", _Agent)
+
+    result = await engine._rewrite_queries(
+        "hello",
+        openai_base_url="http://mock",
+        api_key=None,
+        model="demo",
+    )
+
+    assert result == ["hello"]
+
+
+@pytest.mark.asyncio
+@pytest.mark.usefixtures("stub_openai_provider")
+async def test_rewrite_queries_internal_error_bubbles(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Unexpected errors should propagate."""
+
+    class _Agent:
+        def __init__(self, *_args: Any, **_kwargs: Any) -> None:
+            return
+
+        async def run(self, *_args: Any, **_kwargs: Any) -> Any:
+            err = RuntimeError()
+            raise err
+
+    monkeypatch.setattr(engine, "Agent", _Agent)
+
+    with pytest.raises(RuntimeError):
+        await engine._rewrite_queries(
+            "hello",
+            openai_base_url="http://mock",
+            api_key=None,
+            model="demo",
+        )
 
 
 @pytest.mark.asyncio
