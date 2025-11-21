@@ -94,16 +94,9 @@ def write_memory_file(
     file_path = entries_dir / safe_conversation / subdir / filename
     file_path.parent.mkdir(parents=True, exist_ok=True)
 
-    # Atomic write: write to a temporary file in the same directory, then rename
-    temp_file = file_path.with_suffix(".tmp")
-    try:
-        temp_file.write_text(body, encoding="utf-8")
-        temp_file.replace(file_path)
-    except Exception:
-        # Clean up temp file if something goes wrong
-        if temp_file.exists():
-            temp_file.unlink()
-        raise
+    from agent_cli.core.utils import atomic_write_text  # noqa: PLC0415
+
+    atomic_write_text(file_path, body)
 
     return MemoryFileRecord(id=doc_id, path=file_path, metadata=metadata, content=content)
 
@@ -160,7 +153,9 @@ def write_snapshot(snapshot_path: Path, records: Iterable[MemoryFileRecord]) -> 
         }
         for rec in records
     ]
-    snapshot_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+    from agent_cli.core.utils import atomic_write_text  # noqa: PLC0415
+
+    atomic_write_text(snapshot_path, json.dumps(payload, ensure_ascii=False, indent=2))
 
 
 def load_snapshot(snapshot_path: Path) -> dict[str, MemoryFileRecord]:
