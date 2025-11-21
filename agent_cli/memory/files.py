@@ -93,7 +93,17 @@ def write_memory_file(
 
     file_path = entries_dir / safe_conversation / subdir / filename
     file_path.parent.mkdir(parents=True, exist_ok=True)
-    file_path.write_text(body, encoding="utf-8")
+
+    # Atomic write: write to a temporary file in the same directory, then rename
+    temp_file = file_path.with_suffix(".tmp")
+    try:
+        temp_file.write_text(body, encoding="utf-8")
+        temp_file.replace(file_path)
+    except Exception:
+        # Clean up temp file if something goes wrong
+        if temp_file.exists():
+            temp_file.unlink()
+        raise
 
     return MemoryFileRecord(id=doc_id, path=file_path, metadata=metadata, content=content)
 
