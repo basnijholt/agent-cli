@@ -148,6 +148,7 @@ max-complexity = 18
 python_version = "3.11"
 
 [tool.versioningit]
+default-version = "0.0.0"
 
 [tool.versioningit.vcs]
 method = "git"
