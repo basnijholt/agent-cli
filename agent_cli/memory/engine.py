@@ -604,13 +604,9 @@ async def _reconcile_facts(
         retries=1,
     )
 
-    payload = (
-        "Existing memories (use provided ids for update/delete/none):\n"
-        f"{json.dumps(existing_json, ensure_ascii=False, indent=2)}\n\n"
-        "New facts:\n"
-        f"{json.dumps(new_facts, ensure_ascii=False, indent=2)}"
-    )
-    logger.info("Reconcile payload: %s", payload)
+    payload_obj = {"existing": existing_json, "new_facts": new_facts}
+    payload = json.dumps(payload_obj, ensure_ascii=False, indent=2)
+    logger.info("Reconcile payload JSON: %s", payload)
     try:
         result = await agent.run(payload)
         decisions = result.output or []
