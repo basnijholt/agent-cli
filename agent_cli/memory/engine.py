@@ -23,7 +23,6 @@ from agent_cli.memory.models import (
     ChatRequest,
     ConsolidationDecision,
     MemoryEntry,
-    MemoryExtras,
     MemoryMetadata,
     MemoryRetrieval,
     MemoryUpdateDecision,
@@ -86,12 +85,12 @@ def _parse_iso(date_str: str) -> datetime | None:
 
 
 @dataclass
-class WriteEntry:
+class PersistEntry:
     """Structured memory entry to persist."""
 
     role: str
     content: str
-    extras: MemoryExtras
+    salience: float | None = None
 
 
 async def _consolidate_retrieval_entries(
@@ -146,20 +145,18 @@ async def _consolidate_retrieval_entries(
     return kept or entries
 
 
-def _prepare_fact_entries(facts: list[str]) -> list[WriteEntry]:
-    """Convert extracted fact strings into write entries."""
-    entries: list[WriteEntry] = []
+def _prepare_fact_entries(facts: list[str]) -> list[PersistEntry]:
+    """Convert extracted fact strings into persistable entries."""
+    entries: list[PersistEntry] = []
     for text in facts:
         cleaned = (text or "").strip()
         if not cleaned:
             continue
         entries.append(
-            WriteEntry(
+            PersistEntry(
                 role="memory",
                 content=cleaned,
-                extras=MemoryExtras(
-                    salience=1.0,
-                ),
+                salience=1.0,
             ),
         )
     logger.info("Prepared %d fact entries: %s", len(entries), [e.content for e in entries])
@@ -463,7 +460,7 @@ def _persist_entries(
     *,
     memory_root: Path,
     conversation_id: str,
-    entries: list[WriteEntry | None],
+    entries: list[PersistEntry | None],
 ) -> None:
     now = datetime.now(UTC).isoformat()
     ids: list[str] = []
@@ -472,14 +469,14 @@ def _persist_entries(
     for item in entries:
         if item is None:
             continue
-        role, content, extras = item.role, item.content, item.extras
+        role, content, salience = item.role, item.content, item.salience
         record = write_memory_file(
             memory_root,
             conversation_id=conversation_id,
             role=role,
             created_at=now,
             content=content,
-            salience=extras.salience,
+            salience=salience,
             doc_id=str(uuid4()),
         )
         ids.append(record.id)
@@ -802,10 +799,8 @@ def _persist_turns(
         memory_root=memory_root,
         conversation_id=conversation_id,
         entries=[
-            WriteEntry(role="user", content=user_message, extras=MemoryExtras())
-            if user_message
-            else None,
-            WriteEntry(role="assistant", content=assistant_message, extras=MemoryExtras())
+            PersistEntry(role="user", content=user_message) if user_message else None,
+            PersistEntry(role="assistant", content=assistant_message)
             if assistant_message
             else None,
         ],
