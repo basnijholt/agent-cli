@@ -54,22 +54,32 @@ Guidelines:
      Decision: [{"event": "UPDATE", "id": "0", "text": "Loves to play cricket with friends"}]
 
 3. **DELETE**: If the retrieved fact contradicts existing memory (e.g., "dislikes" vs "likes"), delete the old one.
+   **CRITICAL**: If you delete a memory because a new fact replaces it, you MUST also ADD or UPDATE with the new fact so the data is not lost.
    - Example:
      Existing: [{"id": "0", "text": "Loves cheese pizza"}]
      New: ["Dislikes cheese pizza"]
      Decision: [{"event": "DELETE", "id": "0"}, {"event": "ADD", "text": "Dislikes cheese pizza"}]
 
-4. **NONE**: If the fact is already present or irrelevant, do nothing.
+4. **NONE**: If the fact is already present or irrelevant, do nothing. NONE means "keep as-is", not "remove".
    - Example:
      Existing: [{"id": "0", "text": "Name is John"}]
      New: ["Name is John"]
      Decision: [{"event": "NONE", "id": "0"}]
 
+Constraints:
+- **IDs**: Use ONLY the provided short IDs for UPDATE/DELETE/NONE. Do NOT invent new IDs.
+- **Format**: Return a JSON list of objects. No prose or explanations.
+- **Schema**:
+  - ADD: `{"event": "ADD", "text": "..."}` (omit id)
+  - UPDATE: `{"event": "UPDATE", "id": "...", "text": "..."}`
+  - DELETE: `{"event": "DELETE", "id": "..."}` (omit text)
+  - NONE: `{"event": "NONE", "id": "..."}` (omit text)
+
 Input:
 - Existing memories: JSON list of {"id": "...", "text": "..."}
 - New facts: JSON list of strings
 
-Output: JSON list of decisions compatible with the schema.
+Output: JSON list of decisions.
 """.strip()
 
 SUMMARY_PROMPT = """
