@@ -67,6 +67,7 @@ def create_app(
             model=chat_request.model,
             stream=chat_request.stream or False,
             api_key=api_key,
+            memory_top_k=chat_request.memory_top_k,
         )
 
     @app.on_event("startup")

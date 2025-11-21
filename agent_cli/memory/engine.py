@@ -753,7 +753,12 @@ def _persist_summary(
     )
 
 
-def _evict_if_needed(collection: Collection, conversation_id: str, max_entries: int) -> None:
+def _evict_if_needed(
+    collection: Collection,
+    memory_root: Path,
+    conversation_id: str,
+    max_entries: int,
+) -> None:
     """Evict oldest non-summary entries beyond the max budget."""
     if max_entries <= 0:
         return
@@ -766,7 +771,9 @@ def _evict_if_needed(collection: Collection, conversation_id: str, max_entries: 
         key=lambda e: e.metadata.created_at,
     )
     overflow = sorted_entries[:-max_entries]
-    delete_entries(collection, [e.id for e in overflow if e.id])
+    ids_to_remove = [e.id for e in overflow if e.id]
+    delete_entries(collection, ids_to_remove)
+    _delete_fact_files(memory_root.parent, conversation_id, ids_to_remove)
 
 
 def _latest_user_message(request: ChatRequest) -> str | None:
@@ -837,7 +844,7 @@ async def _postprocess_after_turn(
             conversation_id,
         )
     eviction_start = perf_counter()
-    _evict_if_needed(collection, conversation_id, max_entries)
+    _evict_if_needed(collection, memory_root, conversation_id, max_entries)
     logger.info(
         "Eviction check completed in %.1f ms (conversation=%s)",
         _elapsed_ms(eviction_start),

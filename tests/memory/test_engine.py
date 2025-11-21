@@ -369,10 +369,11 @@ async def test_process_chat_request_summarizes_and_persists(
         _request: Any,
         _base_url: str,
         _api_key: str | None = None,
+        _exclude_fields: set[str] | None = None,
     ) -> dict[str, Any]:
         return {"choices": [{"message": {"content": "assistant reply"}}]}
 
-    monkeypatch.setattr(engine, "_forward_request", fake_forward_request)
+    monkeypatch.setattr(engine, "forward_chat_request", fake_forward_request)
 
     async def fake_agent_run(self, prompt_text: str, *_args: Any, **_kwargs: Any) -> Any:  # noqa: ANN001, ARG001
         class _Result:
@@ -430,7 +431,7 @@ async def test_process_chat_request_summarizes_and_persists(
     assert "memory_hits" in response
 
 
-def test_evict_if_needed_drops_oldest(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_evict_if_needed_drops_oldest(tmp_path: Any, monkeypatch: pytest.MonkeyPatch) -> None:
     removed: list[str] = []
 
     entries = [
@@ -460,8 +461,9 @@ def test_evict_if_needed_drops_oldest(monkeypatch: pytest.MonkeyPatch) -> None:
         lambda _collection, _cid, include_summary=False: entries,  # noqa: ARG005
     )
     monkeypatch.setattr(engine, "delete_entries", lambda _collection, ids: removed.extend(ids))
+    monkeypatch.setattr(engine, "_delete_fact_files", lambda _root, _cid, _ids: None)
 
-    engine._evict_if_needed(_RecordingCollection(), "conv", max_entries=1)
+    engine._evict_if_needed(_RecordingCollection(), tmp_path, "conv", 1)
 
     assert removed == ["old"]
 

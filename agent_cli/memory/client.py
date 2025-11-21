@@ -160,6 +160,7 @@ class MemoryClient:
         model: str = "gpt-4o-mini",
         stream: bool = False,
         api_key: str | None = None,
+        memory_top_k: int | None = None,
     ) -> Any:
         """Process a chat request (Augment -> LLM -> Update Memory)."""
         # Ensure messages are in the format expected by ChatRequest
@@ -168,7 +169,7 @@ class MemoryClient:
             model=model,
             memory_id=conversation_id,
             stream=stream,
-            memory_top_k=self.default_top_k,
+            memory_top_k=memory_top_k if memory_top_k is not None else self.default_top_k,
         )
 
         return await process_chat_request(
