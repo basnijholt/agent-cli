@@ -59,6 +59,11 @@ def memory_server(
         help="Disable automatic fact extraction and summaries.",
         rich_help_panel="Memory Configuration",
     ),
+    enable_git_versioning: bool = typer.Option(
+        False,  # noqa: FBT003
+        help="Enable automatic git commit of memory changes.",
+        rich_help_panel="Memory Configuration",
+    ),
     log_level: str = opts.LOG_LEVEL,
     config_file: str | None = opts.CONFIG_FILE,
     print_args: bool = opts.PRINT_ARGS,
@@ -126,6 +131,8 @@ def memory_server(
     )
     if disable_summarization:
         console.print("  ⚙️  Summaries: [red]disabled[/red]")
+    if enable_git_versioning:
+        console.print("  📝 Git Versioning: [green]enabled[/green]")
 
     fastapi_app = create_app(
         memory_path,
@@ -139,6 +146,7 @@ def memory_server(
         mmr_lambda=mmr_lambda,
         recency_weight=recency_weight,
         score_threshold=score_threshold,
+        enable_git_versioning=enable_git_versioning,
     )
 
     uvicorn.run(fastapi_app, host=host, port=port, log_config=None)

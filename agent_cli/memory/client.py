@@ -13,6 +13,7 @@ from agent_cli.memory.engine import (
     process_chat_request,
 )
 from agent_cli.memory.files import ensure_store_dirs
+from agent_cli.memory.git import init_repo
 from agent_cli.memory.indexer import MemoryIndex, initial_index, watch_memory_store
 from agent_cli.memory.models import ChatRequest, MemoryRetrieval
 from agent_cli.memory.store import init_memory_collection
@@ -49,6 +50,7 @@ class MemoryClient:
         recency_weight: float = 0.2,
         score_threshold: float = 0.35,
         start_watcher: bool = False,
+        enable_git_versioning: bool = False,
     ) -> None:
         """Initialize the memory client."""
         self.memory_path = memory_path.resolve()
@@ -60,8 +62,12 @@ class MemoryClient:
         self.mmr_lambda = mmr_lambda
         self.recency_weight = recency_weight
         self.score_threshold = score_threshold
+        self.enable_git_versioning = enable_git_versioning
 
         _, snapshot_path = ensure_store_dirs(self.memory_path)
+
+        if self.enable_git_versioning:
+            init_repo(self.memory_path)
 
         logger.info("Initializing memory collection...")
         self.collection: Collection = init_memory_collection(
@@ -125,6 +131,7 @@ class MemoryClient:
             openai_base_url=self.openai_base_url,
             api_key=self.chat_api_key,
             model=model,
+            enable_git_versioning=self.enable_git_versioning,
         )
 
     async def search(
@@ -200,4 +207,5 @@ class MemoryClient:
             if score_threshold is not None
             else self.score_threshold,
             postprocess_in_background=True,
+            enable_git_versioning=self.enable_git_versioning,
         )

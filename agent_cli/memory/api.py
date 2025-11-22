@@ -29,6 +29,7 @@ def create_app(
     mmr_lambda: float = 0.7,
     recency_weight: float = 0.2,
     score_threshold: float = 0.35,
+    enable_git_versioning: bool = False,
 ) -> FastAPI:
     """Create the FastAPI app for memory-backed chat."""
     LOGGER.info("Initializing memory client...")
@@ -46,6 +47,7 @@ def create_app(
         recency_weight=recency_weight,
         score_threshold=score_threshold,
         start_watcher=False,  # We control start/stop via app events
+        enable_git_versioning=enable_git_versioning,
     )
 
     app = FastAPI(title="Memory Proxy")

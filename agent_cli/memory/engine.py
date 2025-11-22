@@ -29,6 +29,7 @@ from agent_cli.memory.files import (
     write_memory_file,
     write_snapshot,
 )
+from agent_cli.memory.git import commit_changes
 from agent_cli.memory.models import (
     ChatRequest,
     MemoryEntry,
@@ -688,6 +689,7 @@ async def _postprocess_after_turn(
     enable_summarization: bool,
     model: str,
     max_entries: int,
+    enable_git_versioning: bool,
 ) -> None:
     """Run summarization/fact extraction and eviction."""
     post_start = perf_counter()
@@ -702,6 +704,7 @@ async def _postprocess_after_turn(
             openai_base_url=openai_base_url,
             api_key=api_key,
             model=model,
+            enable_git_versioning=enable_git_versioning,
         )
         logger.info(
             "Updated facts and summaries in %.1f ms (conversation=%s)",
@@ -722,6 +725,9 @@ async def _postprocess_after_turn(
         "enabled" if enable_summarization else "disabled",
     )
 
+    if enable_git_versioning:
+        commit_changes(memory_root, f"Update memory for conversation {conversation_id}")
+
 
 async def extract_and_store_facts_and_summaries(
     *,
@@ -733,6 +739,7 @@ async def extract_and_store_facts_and_summaries(
     openai_base_url: str,
     api_key: str | None,
     model: str,
+    enable_git_versioning: bool = False,
 ) -> None:
     """Run fact extraction and summary updates, persisting results."""
     fact_start = perf_counter()
@@ -802,6 +809,9 @@ async def extract_and_store_facts_and_summaries(
             role=_SUMMARY_ROLE,
         )
 
+    if enable_git_versioning:
+        commit_changes(memory_root, f"Add facts to conversation {conversation_id}")
+
 
 async def _stream_and_persist_response(
     *,
@@ -815,6 +825,7 @@ async def _stream_and_persist_response(
     enable_summarization: bool,
     model: str,
     max_entries: int,
+    enable_git_versioning: bool,
 ) -> StreamingResponse:
     """Forward streaming request, tee assistant text, and persist after completion."""
     headers = {"Authorization": f"Bearer {api_key}"} if api_key else None
@@ -840,6 +851,7 @@ async def _stream_and_persist_response(
             enable_summarization=enable_summarization,
             model=model,
             max_entries=max_entries,
+            enable_git_versioning=enable_git_versioning,
         )
         logger.info(
             "Stream post-processing completed in %.1f ms (conversation=%s)",
@@ -885,6 +897,7 @@ async def process_chat_request(
     recency_weight: float = 0.2,
     score_threshold: float = 0.35,
     postprocess_in_background: bool = True,
+    enable_git_versioning: bool = False,
 ) -> Any:
     """Process a chat request with long-term memory support."""
     overall_start = perf_counter()
@@ -935,6 +948,7 @@ async def process_chat_request(
             enable_summarization=enable_summarization,
             model=request.model,
             max_entries=max_entries,
+            enable_git_versioning=enable_git_versioning,
         )
 
     llm_start = perf_counter()
@@ -977,6 +991,7 @@ async def process_chat_request(
             enable_summarization=enable_summarization,
             model=request.model,
             max_entries=max_entries,
+            enable_git_versioning=enable_git_versioning,
         )
 
     if postprocess_in_background:
