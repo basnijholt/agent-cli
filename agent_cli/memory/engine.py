@@ -456,10 +456,7 @@ async def _extract_salient_facts(
     transcript = user_message or ""
     logger.info("Extracting facts from transcript: %r", transcript)
 
-    provider = OpenAIProvider(
-        api_key=api_key or "dummy",
-        base_url=openai_base_url,
-    )
+    provider = OpenAIProvider(api_key=api_key or "dummy", base_url=openai_base_url)
     model_cfg = OpenAIChatModel(model_name=model, provider=provider)
     agent = Agent(
         model=model_cfg,

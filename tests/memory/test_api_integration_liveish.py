@@ -2,10 +2,9 @@
 
 Two modes:
 - Stubbed LLM/reranker (set MEMORY_API_LIVE_BASE): deterministic/offline.
-- Live LLM (set MEMORY_API_LIVE_BASE and MEMORY_API_LIVE_REAL): starts uvicorn and
+- Live LLM (set MEMORY_API_LIVE_BASE): starts uvicorn and
   hits the real model. Example:
     MEMORY_API_LIVE_BASE=http://192.168.1.143:9292/v1 \
-    MEMORY_API_LIVE_REAL=1 \
     MEMORY_API_LIVE_MODEL=gpt-oss-low:20b \
       pytest tests/memory/test_api_integration_liveish.py -q
 
@@ -214,6 +213,12 @@ async def test_memory_api_updates_latest_fact(  # noqa: PLR0915
         assert final_fact_files == fact_files_after_anne
 
 
+@pytest.mark.asyncio
+@pytest.mark.timeout(120)
+@pytest.mark.skipif(
+    "MEMORY_API_LIVE_BASE" not in os.environ,
+    reason="Set MEMORY_API_LIVE_BASE to run live HTTP memory API test",
+)
 async def test_memory_api_live_real_llm(  # noqa: PLR0915
     tmp_path: Path,
     memory_server: Callable[[FastAPI], AbstractAsyncContextManager[str]],
@@ -265,19 +270,13 @@ async def test_memory_api_live_real_llm(  # noqa: PLR0915
         facts_after_jane = sorted(facts_dir.glob("*.md"))
         assert facts_after_jane, "Expected Jane fact"
 
-        resp_q = await client.post(
-            "/v1/chat/completions",
-            json=_make_body("who is my wife"),
-        )
+        resp_q = await client.post("/v1/chat/completions", json=_make_body("who is my wife"))
         assert resp_q.status_code == 200
         await memory_tasks.wait_for_background_tasks()
         facts_after_q = sorted(facts_dir.glob("*.md"))
         assert len(facts_after_q) == len(facts_after_jane)
 
-        resp2 = await client.post(
-            "/v1/chat/completions",
-            json=_make_body("my wife is Anne"),
-        )
+        resp2 = await client.post("/v1/chat/completions", json=_make_body("my wife is Anne"))
         assert resp2.status_code == 200
         await memory_tasks.wait_for_background_tasks()
 
