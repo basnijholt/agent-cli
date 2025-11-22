@@ -47,6 +47,7 @@ class MemoryClient:
         max_entries: int = 500,
         mmr_lambda: float = 0.7,
         recency_weight: float = 0.2,
+        score_threshold: float = 0.35,
         start_watcher: bool = False,
     ) -> None:
         """Initialize the memory client."""
@@ -58,6 +59,7 @@ class MemoryClient:
         self.max_entries = max_entries
         self.mmr_lambda = mmr_lambda
         self.recency_weight = recency_weight
+        self.score_threshold = score_threshold
 
         _, snapshot_path = ensure_store_dirs(self.memory_path)
 
@@ -132,6 +134,7 @@ class MemoryClient:
         top_k: int | None = None,
         model: str = "gpt-4o-mini",
         recency_weight: float | None = None,
+        score_threshold: float | None = None,
     ) -> MemoryRetrieval:
         """Search for memories relevant to a query."""
         # We reuse augment_chat_request because it handles query rewriting,
@@ -154,6 +157,9 @@ class MemoryClient:
             include_global=True,
             mmr_lambda=self.mmr_lambda,
             recency_weight=recency_weight if recency_weight is not None else self.recency_weight,
+            score_threshold=score_threshold
+            if score_threshold is not None
+            else self.score_threshold,
         )
         return retrieval or MemoryRetrieval(entries=[])
 
@@ -166,6 +172,7 @@ class MemoryClient:
         api_key: str | None = None,
         memory_top_k: int | None = None,
         recency_weight: float | None = None,
+        score_threshold: float | None = None,
     ) -> Any:
         """Process a chat request (Augment -> LLM -> Update Memory)."""
         # Ensure messages are in the format expected by ChatRequest
@@ -176,6 +183,7 @@ class MemoryClient:
             stream=stream,
             memory_top_k=memory_top_k if memory_top_k is not None else self.default_top_k,
             memory_recency_weight=recency_weight,
+            memory_score_threshold=score_threshold,
         )
 
         return await process_chat_request(
@@ -190,5 +198,8 @@ class MemoryClient:
             max_entries=self.max_entries,
             mmr_lambda=self.mmr_lambda,
             recency_weight=recency_weight if recency_weight is not None else self.recency_weight,
+            score_threshold=score_threshold
+            if score_threshold is not None
+            else self.score_threshold,
             postprocess_in_background=True,
         )

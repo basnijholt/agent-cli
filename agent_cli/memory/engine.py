@@ -319,12 +319,13 @@ def _retrieve_memory(
     include_summary: bool = True,
     mmr_lambda: float = _DEFAULT_MMR_LAMBDA,
     recency_weight: float = 0.2,
+    score_threshold: float = 0.35,
 ) -> tuple[MemoryRetrieval, list[str]]:
     candidate_conversations = [conversation_id]
     if include_global and conversation_id != "global":
         candidate_conversations.append("global")
 
-    candidates: list[StoredMemory] = []
+    raw_candidates: list[StoredMemory] = []
     seen_ids: set[str] = set()
     for q in queries:
         for cid in candidate_conversations:
@@ -334,7 +335,7 @@ def _retrieve_memory(
                 if rec_id in seen_ids:
                     continue
                 seen_ids.add(rec_id)
-                candidates.append(rec)
+                raw_candidates.append(rec)
 
     def _sigmoid(x: float) -> float:
         return 1.0 / (1.0 + math.exp(-x))
@@ -349,19 +350,23 @@ def _retrieve_memory(
         # Exponential decay: ~0.36 score at 30 days
         return math.exp(-age_days / 30.0)
 
+    final_candidates: list[StoredMemory] = []
     scores: list[float] = []
-    if candidates:
+    if raw_candidates:
         primary_query = queries[0] if queries else ""
-        pairs = [(primary_query, mem.content) for mem in candidates]
+        pairs = [(primary_query, mem.content) for mem in raw_candidates]
         rr_scores = predict_relevance(reranker_model, pairs)
-        for mem, rr in zip(candidates, rr_scores, strict=False):
+        for mem, rr in zip(raw_candidates, rr_scores, strict=False):
             relevance = _sigmoid(rr)
+            if relevance < score_threshold:
+                continue
             recency = recency_score(mem.metadata)
             # Weighted blend
             total = (1.0 - recency_weight) * relevance + recency_weight * recency
             scores.append(total)
+            final_candidates.append(mem)
 
-    selected = _mmr_select(candidates, scores, max_items=top_k, lambda_mult=mmr_lambda)
+    selected = _mmr_select(final_candidates, scores, max_items=top_k, lambda_mult=mmr_lambda)
 
     entries: list[MemoryEntry] = [
         MemoryEntry(
@@ -412,6 +417,7 @@ async def augment_chat_request(
     include_global: bool = True,
     mmr_lambda: float = _DEFAULT_MMR_LAMBDA,
     recency_weight: float = 0.2,
+    score_threshold: float = 0.35,
 ) -> tuple[ChatRequest, MemoryRetrieval | None, str, list[str]]:
     """Retrieve memory context and augment the chat request."""
     user_message = next(
@@ -444,6 +450,7 @@ async def augment_chat_request(
         include_global=include_global,
         mmr_lambda=mmr_lambda,
         recency_weight=recency_weight,
+        score_threshold=score_threshold,
     )
 
     if not retrieval.entries and not summaries:
@@ -1065,6 +1072,7 @@ async def process_chat_request(
     max_entries: int = _DEFAULT_MAX_ENTRIES,
     mmr_lambda: float = _DEFAULT_MMR_LAMBDA,
     recency_weight: float = 0.2,
+    score_threshold: float = 0.35,
     postprocess_in_background: bool = True,
 ) -> Any:
     """Process a chat request with long-term memory support."""
@@ -1080,6 +1088,7 @@ async def process_chat_request(
         include_global=True,
         mmr_lambda=mmr_lambda,
         recency_weight=recency_weight,
+        score_threshold=score_threshold,
     )
     retrieval_ms = _elapsed_ms(retrieval_start)
     hit_count = len(retrieval.entries) if retrieval else 0

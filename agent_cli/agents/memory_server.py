@@ -49,6 +49,11 @@ def memory_server(
         help="Recency score weight (0.0-1.0). Controls freshness vs. relevance. Default 0.2 (20% recency, 80% semantic relevance).",
         rich_help_panel="Memory Configuration",
     ),
+    score_threshold: float = typer.Option(
+        0.35,
+        help="Minimum semantic relevance threshold (0.0-1.0). Memories below this score are discarded to reduce noise.",
+        rich_help_panel="Memory Configuration",
+    ),
     disable_summarization: bool = typer.Option(
         False,  # noqa: FBT003
         help="Disable automatic fact extraction and summaries.",
@@ -99,7 +104,7 @@ def memory_server(
     console.print(f"  🔍 Memory top_k: [blue]{default_top_k}[/blue] entries per query")
     console.print(f"  🧹 Max entries per conversation: [blue]{max_entries}[/blue]")
     console.print(
-        f"  ⚖️  Scoring: MMR λ=[blue]{mmr_lambda}[/blue], Recency w=[blue]{recency_weight}[/blue]",
+        f"  ⚖️  Scoring: MMR λ=[blue]{mmr_lambda}[/blue], Recency w=[blue]{recency_weight}[/blue], Threshold=[blue]{score_threshold}[/blue]",
     )
     if disable_summarization:
         console.print("  ⚙️  Summaries: [red]disabled[/red]")
@@ -115,6 +120,7 @@ def memory_server(
         max_entries=max_entries,
         mmr_lambda=mmr_lambda,
         recency_weight=recency_weight,
+        score_threshold=score_threshold,
     )
 
     uvicorn.run(fastapi_app, host=host, port=port, log_config=None)

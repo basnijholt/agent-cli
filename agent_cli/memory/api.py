@@ -28,6 +28,7 @@ def create_app(
     max_entries: int = 500,
     mmr_lambda: float = 0.7,
     recency_weight: float = 0.2,
+    score_threshold: float = 0.35,
 ) -> FastAPI:
     """Create the FastAPI app for memory-backed chat."""
     LOGGER.info("Initializing memory client...")
@@ -43,6 +44,7 @@ def create_app(
         max_entries=max_entries,
         mmr_lambda=mmr_lambda,
         recency_weight=recency_weight,
+        score_threshold=score_threshold,
         start_watcher=False,  # We control start/stop via app events
     )
 
@@ -71,6 +73,7 @@ def create_app(
             api_key=api_key,
             memory_top_k=chat_request.memory_top_k,
             recency_weight=chat_request.memory_recency_weight,
+            score_threshold=chat_request.memory_score_threshold,
         )
 
     @app.on_event("startup")
