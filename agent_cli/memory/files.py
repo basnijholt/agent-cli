@@ -55,7 +55,6 @@ def write_memory_file(
     role: str,
     created_at: str,
     content: str,
-    salience: float | None = None,
     summary_kind: str | None = None,
     doc_id: str | None = None,
 ) -> MemoryFileRecord:
@@ -86,7 +85,6 @@ def write_memory_file(
         conversation_id=conversation_id,
         role=role,
         created_at=created_at,
-        salience=salience,
         summary_kind=summary_kind,
     )
 

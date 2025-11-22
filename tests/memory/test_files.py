@@ -19,7 +19,6 @@ def test_write_and_read_memory_file_round_trip(tmp_path: Path) -> None:
         role="memory",
         created_at="2025-01-01T00:00:00Z",
         content="fact about bikes",
-        salience=0.8,
     )
 
     loaded = mem_files.read_memory_file(record.path)
@@ -35,7 +34,6 @@ def test_snapshot_round_trip(tmp_path: Path) -> None:
         conversation_id="c1",
         role="memory",
         created_at="now",
-        salience=None,
     )
     rec = mem_files.MemoryFileRecord(id="1", path=tmp_path / "p.md", metadata=meta, content="hi")
     snapshot = tmp_path / "snap.json"

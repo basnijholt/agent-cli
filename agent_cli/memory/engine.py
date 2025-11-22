@@ -99,7 +99,6 @@ class PersistEntry:
 
     role: str
     content: str
-    salience: float | None = None
 
 
 async def _consolidate_retrieval_entries(
@@ -167,13 +166,7 @@ def _prepare_fact_entries(facts: list[str]) -> list[PersistEntry]:
         cleaned = (text or "").strip()
         if not cleaned:
             continue
-        entries.append(
-            PersistEntry(
-                role="memory",
-                content=cleaned,
-                salience=1.0,
-            ),
-        )
+        entries.append(PersistEntry(role="memory", content=cleaned))
     logger.info("Prepared %d fact entries: %s", len(entries), [e.content for e in entries])
     return entries
 
@@ -202,11 +195,7 @@ def _gather_relevant_existing_memories(
     seen: set[str] = set()
     results: list[StoredMemory] = []
     for fact in new_facts:
-        raw = collection.query(
-            query_texts=[fact],
-            n_results=neighborhood,
-            where={"$and": filters},
-        )
+        raw = collection.query(query_texts=[fact], n_results=neighborhood, where={"$and": filters})
         docs = raw.get("documents", [[]])[0] or []
         metas = raw.get("metadatas", [[]])[0] or []
         ids = raw.get("ids", [[]])[0] or []
@@ -337,12 +326,7 @@ def _retrieve_memory(
     seen_ids: set[str] = set()
     for q in queries:
         for cid in candidate_conversations:
-            records = query_memories(
-                collection,
-                conversation_id=cid,
-                text=q,
-                n_results=top_k * 3,
-            )
+            records = query_memories(collection, conversation_id=cid, text=q, n_results=top_k * 3)
             for rec in records:
                 rec_id = rec.id
                 if rec_id in seen_ids:
@@ -359,15 +343,6 @@ def _retrieve_memory(
         age_days = max((datetime.now(UTC) - dt).total_seconds() / 86400.0, 0.0)
         return 1.0 / (1.0 + age_days / 7.0)
 
-    def salience_boost(meta: Any) -> float:
-        sal = meta.salience
-        if sal is None:
-            return 0.0
-        try:
-            return float(sal)
-        except Exception:
-            return 0.0
-
     scores: list[float] = []
     if candidates:
         primary_query = queries[0] if queries else ""
@@ -376,17 +351,12 @@ def _retrieve_memory(
         for mem, rr in zip(candidates, rr_scores, strict=False):
             base = rr
             dist_bonus = 0.0 if mem.distance is None else 1.0 / (1.0 + mem.distance)
-            total = (
-                base
-                + 0.1 * dist_bonus
-                + 0.2 * recency_boost(mem.metadata)
-                + 0.1 * salience_boost(mem.metadata)
-            )
+            total = base + 0.1 * dist_bonus + 0.2 * recency_boost(mem.metadata)
             scores.append(total)
     else:
         for mem in candidates:
             base = 0.0 if mem.distance is None else 1.0 / (1.0 + mem.distance)
-            total = base + 0.2 * recency_boost(mem.metadata) + 0.1 * salience_boost(mem.metadata)
+            total = base + 0.2 * recency_boost(mem.metadata)
             scores.append(total)
 
     selected = _mmr_select(candidates, scores, max_items=top_k, lambda_mult=mmr_lambda)
@@ -515,14 +485,13 @@ def _persist_entries(
     for item in entries:
         if item is None:
             continue
-        role, content, salience = item.role, item.content, item.salience
+        role, content = item.role, item.content
         record = write_memory_file(
             memory_root,
             conversation_id=conversation_id,
             role=role,
             created_at=now,
             content=content,
-            salience=salience,
             doc_id=str(uuid4()),
         )
         ids.append(record.id)

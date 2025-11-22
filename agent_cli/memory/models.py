@@ -43,7 +43,6 @@ class MemoryMetadata(BaseModel):
     conversation_id: str
     role: str
     created_at: str
-    salience: float | None = None
     summary_kind: str | None = None
 
 
