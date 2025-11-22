@@ -15,11 +15,8 @@ Two modes:
 from __future__ import annotations
 
 import asyncio
-import json
 import os
 import socket
-import uuid
-from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 import httpx
@@ -32,6 +29,8 @@ import agent_cli.rag.retriever as rag_retriever
 from agent_cli.memory import engine
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
     from agent_cli.memory.models import ChatRequest
 
 
@@ -319,47 +318,6 @@ async def test_memory_api_live_real_llm(tmp_path: Path) -> None:  # noqa: PLR091
     def _make_body(text: str) -> dict[str, Any]:
         return {"model": model, "messages": [{"role": "user", "content": text}]}
 
-    def _cache_dir() -> Path:
-        # Persistent across runs to avoid re-hitting the live LLM.
-        return Path(__file__).resolve().parent / "live_http_cache"
-
-    def _cache_key(url: str, payload: dict[str, Any]) -> str:
-        return f"{base_url}::{url}__{json.dumps(payload, sort_keys=True)}"
-
-    async def _cached_post(
-        client: httpx.AsyncClient,
-        url: str,
-        payload: dict[str, Any],
-    ) -> httpx.Response:
-        """Very simple file-based cache to avoid re-hitting the live LLM on reruns."""
-        cache_path = _cache_dir()
-        cache_path.mkdir(parents=True, exist_ok=True)
-        key = _cache_key(url, payload)
-        key_hash = str(uuid.uuid5(uuid.NAMESPACE_OID, key))
-        entry = cache_path / f"{key_hash}.json"
-        if entry.exists():
-            data = json.loads(entry.read_text())
-            return httpx.Response(
-                status_code=data["status_code"],
-                headers=data.get("headers", {}),
-                json=data["json"],
-                request=httpx.Request("POST", url),
-            )
-
-        resp = await client.post(url, json=payload)
-        entry.write_text(
-            json.dumps(
-                {
-                    "status_code": resp.status_code,
-                    "headers": dict(resp.headers),
-                    "json": resp.json(),
-                },
-                indent=2,
-                sort_keys=True,
-            ),
-        )
-        return resp
-
     facts_dir = tmp_path / "memory_db" / "entries" / "default" / "facts"
     deleted_dir = tmp_path / "memory_db" / "entries" / "default" / "deleted" / "facts"
 
@@ -383,10 +341,9 @@ async def test_memory_api_live_real_llm(tmp_path: Path) -> None:  # noqa: PLR091
             headers=headers,
             timeout=120.0,
         ) as client:
-            resp1 = await _cached_post(
-                client,
+            resp1 = await client.post(
                 "/v1/chat/completions",
-                _make_body("my wife is Jane"),
+                json=_make_body("my wife is Jane"),
             )
             assert resp1.status_code == 200
             await memory_tasks.wait_for_background_tasks()
@@ -394,23 +351,22 @@ async def test_memory_api_live_real_llm(tmp_path: Path) -> None:  # noqa: PLR091
             facts_after_jane = sorted(facts_dir.glob("*.md"))
             assert facts_after_jane, "Expected Jane fact"
 
-            resp_q = await _cached_post(
-                client,
+            resp_q = await client.post(
                 "/v1/chat/completions",
-                _make_body("who is my wife"),
+                json=_make_body("who is my wife"),
             )
             assert resp_q.status_code == 200
             await memory_tasks.wait_for_background_tasks()
             facts_after_q = sorted(facts_dir.glob("*.md"))
             assert len(facts_after_q) == len(facts_after_jane)
 
-            resp2 = await _cached_post(
-                client,
+            resp2 = await client.post(
                 "/v1/chat/completions",
-                _make_body("my wife is Anne"),
+                json=_make_body("my wife is Anne"),
             )
             assert resp2.status_code == 200
             await memory_tasks.wait_for_background_tasks()
+
             try:
                 await _wait_for_fact_contains("anne")
             except AssertionError as exc:  # pragma: no cover - depends on live model behavior
