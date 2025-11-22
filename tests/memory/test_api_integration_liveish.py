@@ -23,10 +23,10 @@ from typing import TYPE_CHECKING, Any
 import httpx
 import pytest
 import uvicorn
+from chromadb.utils import embedding_functions
 
 import agent_cli.memory.api as memory_api
 import agent_cli.memory.tasks as memory_tasks
-import agent_cli.rag.retriever as rag_retriever
 from agent_cli.memory import engine
 
 if TYPE_CHECKING:
@@ -77,87 +77,6 @@ def memory_server() -> Callable[[FastAPI], AbstractAsyncContextManager[str]]:
     return _server
 
 
-class _RecordingCollection:
-    """Minimal in-memory Chroma-like collection for tests."""
-
-    def __init__(self) -> None:
-        self._store: dict[str, tuple[str, dict[str, Any], list[float]]] = {}
-
-    def upsert(self, ids: list[str], documents: list[str], metadatas: list[dict[str, Any]]) -> None:
-        for doc_id, doc, meta in zip(ids, documents, metadatas, strict=False):
-            self._store[doc_id] = (doc, dict(meta), [0.0])
-
-    def query(
-        self,
-        *,
-        query_texts: list[str],  # noqa: ARG002
-        n_results: int,
-        where: dict[str, Any],
-        include: list[str] | None = None,  # noqa: ARG002
-    ) -> dict[str, Any]:
-        conv = None
-        if "$and" in where:
-            for clause in where["$and"]:
-                if "conversation_id" in clause:
-                    conv = clause["conversation_id"]
-        else:
-            conv = where.get("conversation_id")
-        items = [
-            (doc_id, doc, meta, emb)
-            for doc_id, (doc, meta, emb) in self._store.items()
-            if meta.get("conversation_id") == conv and meta.get("role") == "memory"
-        ]
-        ids = [doc_id for doc_id, _, _, _ in items][:n_results]
-        docs = [doc for _, doc, _, _ in items][:n_results]
-        metas = [meta for _, _, meta, _ in items][:n_results]
-        embeddings = [emb for _, _, _, emb in items][:n_results]
-        return {
-            "documents": [docs],
-            "metadatas": [metas],
-            "ids": [ids],
-            "distances": [[0.0 for _ in ids]],
-            "embeddings": [embeddings],
-        }
-
-    def get(
-        self,
-        *,
-        where: dict[str, Any] | None = None,
-        _include: list[str] | None = None,
-    ) -> dict[str, Any]:
-        if where is None:
-            return {"documents": [], "metadatas": [], "ids": []}
-        clauses = where.get("$and", [where])  # type: ignore[arg-type]
-
-        def _matches(meta: dict[str, Any], clause: dict[str, Any]) -> bool:
-            for key, value in clause.items():
-                if isinstance(value, dict) and "$ne" in value and meta.get(key) == value["$ne"]:
-                    return False
-                if meta.get(key) != value:
-                    return False
-            return True
-
-        results = [
-            (doc_id, (doc, meta))
-            for doc_id, (doc, meta, _emb) in self._store.items()
-            if all(_matches(meta, clause) for clause in clauses)
-        ]
-        docs = [doc for _, (doc, _) in results]
-        metas = [meta for _, (_, meta) in results]
-        ids = [doc_id for doc_id, _ in results]
-        return {"documents": [docs], "metadatas": [metas], "ids": ids}
-
-    def delete(self, ids: list[str] | None = None, where: dict[str, Any] | None = None) -> None:  # noqa: ARG002
-        if ids:
-            for doc_id in ids:
-                self._store.pop(doc_id, None)
-
-
-class _DummyReranker:
-    def predict(self, pairs: list[tuple[str, str]]) -> list[float]:
-        return [1.0 for _ in pairs]
-
-
 def _make_request_json(text: str) -> dict[str, Any]:
     return {
         "model": "demo-model",
@@ -168,6 +87,7 @@ def _make_request_json(text: str) -> dict[str, Any]:
 
 
 @pytest.mark.asyncio
+@pytest.mark.timeout(60)
 @pytest.mark.skipif(
     "MEMORY_API_LIVE_BASE" not in os.environ,
     reason="Set MEMORY_API_LIVE_BASE to run HTTP memory API test against that base URL",
@@ -179,14 +99,17 @@ async def test_memory_api_updates_latest_fact(  # noqa: PLR0915
 ) -> None:
     """End-to-end through the HTTP API with stubbed LLMs; latest fact should replace previous."""
     base_url = os.environ["MEMORY_API_LIVE_BASE"]
-    collection = _RecordingCollection()
 
-    # Patch out external dependencies and watchers.
+    # Use real ChromaDB but with local embeddings (DefaultEmbeddingFunction)
+    # so we don't need a running embedding server or OpenAI key.
+    real_ef = embedding_functions.DefaultEmbeddingFunction()
     monkeypatch.setattr(
-        "agent_cli.memory.client.init_memory_collection",
-        lambda *_args, **_kwargs: collection,
+        "agent_cli.core.chroma.embedding_functions.OpenAIEmbeddingFunction",
+        lambda **_kwargs: real_ef,
     )
-    monkeypatch.setattr(rag_retriever, "get_reranker_model", lambda: _DummyReranker())
+
+    # We remove the patch for init_memory_collection so it uses the real one.
+    # We remove the patch for get_reranker_model so it uses the real one.
 
     async def _noop_watch(*_args: Any, **_kwargs: Any) -> None:
         return None
@@ -208,7 +131,9 @@ async def test_memory_api_updates_latest_fact(  # noqa: PLR0915
         **_kwargs: Any,
     ) -> tuple[list[str], list[str]]:
         """Latest wins: delete all existing, add new facts."""
-        existing_ids = list(getattr(_collection, "_store", {}).keys())
+        # Use real Chroma collection API
+        results = _collection.get(where={"conversation_id": _conversation_id})
+        existing_ids = results["ids"] if results else []
         if new_facts:
             return new_facts, existing_ids
         return [], []
@@ -224,7 +149,7 @@ async def test_memory_api_updates_latest_fact(  # noqa: PLR0915
     app = memory_api.create_app(
         memory_path=tmp_path / "memory_db",
         openai_base_url=base_url,
-        embedding_model="text-embedding-3-small",
+        embedding_model="text-embedding-3-small",  # Will be intercepted by patch
         embedding_api_key=None,
         chat_api_key=None,
         enable_summarization=True,
@@ -333,10 +258,7 @@ async def test_memory_api_live_real_llm(  # noqa: PLR0915
             timeout=120.0,
         ) as client,
     ):
-        resp1 = await client.post(
-            "/v1/chat/completions",
-            json=_make_body("my wife is Jane"),
-        )
+        resp1 = await client.post("/v1/chat/completions", json=_make_body("my wife is Jane"))
         assert resp1.status_code == 200
         await memory_tasks.wait_for_background_tasks()
         await _wait_for_fact_contains("jane")
