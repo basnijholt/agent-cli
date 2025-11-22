@@ -66,8 +66,6 @@
 - Telemetry on memory mutations: emit structured events for add/update/delete to aid debugging and performance tuning.
 
 ## Next Up (Immediate Wins, mem0-inspired)
-- [x] LLM-driven consolidation pass after retrieval: run a small function-call model over overlapping facts to label ADD/UPDATE/DELETE/KEEP and retire stale/conflicting facts (beyond latest-wins). Implemented via the reconcile prompt/output (mem0-style add/update/delete) and tombstones for deletes.
-- [ ] Query rewriting/expansion before retrieval: generate 2–3 disambiguated rewrites/aliases of the user turn, retrieve per rewrite, merge, then rerank. Similar to mem0’s expansion patterns in its memory pipelines (see `mem0/mem0/memory/main.py` retrieval handling).
-- [ ] Contradiction/diff check on retrieved facts: focused LLM pass to detect conflicts (e.g., name/location changes) and mark older facts as deprecated. Modeled after mem0’s UPDATE/DELETE logic (`get_update_memory_messages` in `mem0/mem0/configs/prompts.py`).
-- [ ] Fact quality gate: lightweight classifier/LLM to drop trivial/banal facts before indexing to keep the store high-signal. Borrow the spirit of mem0’s “facts only” extraction prompts (`USER_MEMORY_EXTRACTION_PROMPT` in `mem0/mem0/configs/prompts.py`), but add a gate step.
-- [ ] Summary prompt refinement: tighten rolling short/long summaries using retrieved facts + prior summary; keep outputs concise and reliable. Ensure prompts stay compact; mem0 lacks rolling summaries, so we keep our advantage while hardening prompts.
+- [x] Ingestion Reconciliation: run a small function-call model over overlapping facts to label ADD/UPDATE/DELETE/KEEP and retire stale/conflicting facts (beyond latest-wins). Implemented via the reconcile prompt/output (mem0-style add/update/delete) and tombstones for deletes.
+- [x] Fact quality gate: lightweight classifier/LLM to drop trivial/banal facts before indexing to keep the store high-signal. Borrow the spirit of mem0’s “facts only” extraction prompts (`USER_MEMORY_EXTRACTION_PROMPT` in `mem0/mem0/configs/prompts.py`), but add a gate step.
+- [x] Summary prompt refinement: tighten rolling summary using retrieved facts + prior summary; keep outputs concise and reliable. Ensure prompts stay compact.
