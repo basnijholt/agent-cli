@@ -63,7 +63,24 @@ def memory_server(
     config_file: str | None = opts.CONFIG_FILE,
     print_args: bool = opts.PRINT_ARGS,
 ) -> None:
-    """Start the memory-backed chat proxy server."""
+    """Start the memory-backed chat proxy server.
+
+    This server acts as a middleware between your chat client (e.g., a web UI,
+    CLI, or IDE plugin) and an OpenAI-compatible LLM provider (e.g., OpenAI,
+    Ollama, vLLM).
+
+    How it works:
+    1.  Intercepts `POST /v1/chat/completions` requests.
+    2.  **Retrieves** relevant memories (facts, previous conversations) from a
+        local vector database (ChromaDB) based on the user's query.
+    3.  **Injects** these memories into the system prompt.
+    4.  **Forwards** the augmented request to the real LLM (`--openai-base-url`).
+    5.  **Extracts** new facts from the conversation in the background and
+        updates the long-term memory store (including handling contradictions).
+
+    Use this to give "long-term memory" to any OpenAI-compatible application.
+    Point your client's base URL to `http://localhost:8100/v1`.
+    """
     if print_args:
         print_command_line_args(locals())
 
