@@ -2,17 +2,17 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
 from typing import TYPE_CHECKING, Any
 
 import chromadb
 from chromadb.utils import embedding_functions
-from pydantic import BaseModel
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping, Sequence
     from pathlib import Path
 
     from chromadb import Collection
+    from pydantic import BaseModel
 
 
 def init_collection(
@@ -36,18 +36,9 @@ def init_collection(
     return client.get_or_create_collection(name=name, embedding_function=embed_fn)
 
 
-def flatten_metadatas(metadatas: Sequence[BaseModel | Mapping[str, Any]]) -> list[dict[str, Any]]:
+def flatten_metadatas(metadatas: Sequence[BaseModel]) -> list[dict[str, Any]]:
     """Serialize metadata models to JSON-safe dicts while preserving lists."""
-    serialized: list[dict[str, Any]] = []
-    for meta in metadatas:
-        if isinstance(meta, BaseModel):
-            serialized.append(meta.model_dump(mode="json", exclude_none=True))
-        elif isinstance(meta, Mapping):
-            serialized.append({k: v for k, v in meta.items() if v is not None})
-        else:
-            msg = f"Unsupported metadata type: {type(meta)!r}"
-            raise TypeError(msg)
-    return serialized
+    return [meta.model_dump(mode="json", exclude_none=True) for meta in metadatas]
 
 
 def upsert(
@@ -55,7 +46,7 @@ def upsert(
     *,
     ids: list[str],
     documents: list[str],
-    metadatas: Sequence[BaseModel | Mapping[str, Any]],
+    metadatas: Sequence[BaseModel],
 ) -> None:
     """Upsert documents with JSON-serialized metadata."""
     if not ids:
