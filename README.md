@@ -428,7 +428,8 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 │                                 [env var: GEMINI_API_KEY]                    │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ General Options ────────────────────────────────────────────────────────────╮
-│ --log-level           TEXT  Set logging level. [default: WARNING]            │
+│ --log-level           TEXT  Set logging level.                               │
+│                             [default: WARNING]                               │
 │ --log-file            TEXT  Path to a file to write logs to.                 │
 │ --quiet       -q            Suppress console output from rich.               │
 │ --config              TEXT  Path to a TOML configuration file.               │
@@ -516,7 +517,8 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 ╭─ ASR (Audio) Configuration: Wyoming (local) ─────────────────────────────────╮
 │ --asr-wyoming-ip          TEXT     Wyoming ASR server IP address.            │
 │                                    [default: localhost]                      │
-│ --asr-wyoming-port        INTEGER  Wyoming ASR server port. [default: 10300] │
+│ --asr-wyoming-port        INTEGER  Wyoming ASR server port.                  │
+│                                    [default: 10300]                          │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ ASR (Audio) Configuration: OpenAI ──────────────────────────────────────────╮
 │ --asr-openai-model           TEXT  The OpenAI model to use for ASR           │
@@ -682,7 +684,8 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ General Options ────────────────────────────────────────────────────────────╮
 │ --save-file           PATH  Save TTS response audio to WAV file.             │
-│ --log-level           TEXT  Set logging level. [default: WARNING]            │
+│ --log-level           TEXT  Set logging level.                               │
+│                             [default: WARNING]                               │
 │ --log-file            TEXT  Path to a file to write logs to.                 │
 │ --quiet       -q            Suppress console output from rich.               │
 │ --config              TEXT  Path to a TOML configuration file.               │
@@ -739,11 +742,14 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
  Interact with clipboard text via a voice command using local or remote
  services.
 
- Usage: - Run in foreground: agent-cli voice-edit --input-device-index 1 - Run
- in background: agent-cli voice-edit --input-device-index 1 & - Check status:
- agent-cli voice-edit --status - Stop background process: agent-cli voice-edit
- --stop - List output devices: agent-cli voice-edit --list-output-devices -
- Save TTS to file: agent-cli voice-edit --tts --save-file response.wav
+ Usage:
+
+  • Run in foreground: agent-cli voice-edit --input-device-index 1
+  • Run in background: agent-cli voice-edit --input-device-index 1 &
+  • Check status: agent-cli voice-edit --status
+  • Stop background process: agent-cli voice-edit --stop
+  • List output devices: agent-cli voice-edit --list-output-devices
+  • Save TTS to file: agent-cli voice-edit --tts --save-file response.wav
 
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
 │ --help  -h        Show this message and exit.                                │
@@ -768,7 +774,8 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 ╭─ ASR (Audio) Configuration: Wyoming (local) ─────────────────────────────────╮
 │ --asr-wyoming-ip          TEXT     Wyoming ASR server IP address.            │
 │                                    [default: localhost]                      │
-│ --asr-wyoming-port        INTEGER  Wyoming ASR server port. [default: 10300] │
+│ --asr-wyoming-port        INTEGER  Wyoming ASR server port.                  │
+│                                    [default: 10300]                          │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ ASR (Audio) Configuration: OpenAI ──────────────────────────────────────────╮
 │ --asr-openai-model        TEXT  The OpenAI model to use for ASR              │
@@ -939,7 +946,8 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 ╭─ ASR (Audio) Configuration: Wyoming (local) ─────────────────────────────────╮
 │ --asr-wyoming-ip          TEXT     Wyoming ASR server IP address.            │
 │                                    [default: localhost]                      │
-│ --asr-wyoming-port        INTEGER  Wyoming ASR server port. [default: 10300] │
+│ --asr-wyoming-port        INTEGER  Wyoming ASR server port.                  │
+│                                    [default: 10300]                          │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ ASR (Audio) Configuration: OpenAI ──────────────────────────────────────────╮
 │ --asr-openai-model        TEXT  The OpenAI model to use for ASR              │
@@ -1108,7 +1116,8 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 ╭─ ASR (Audio) Configuration: Wyoming (local) ─────────────────────────────────╮
 │ --asr-wyoming-ip          TEXT     Wyoming ASR server IP address.            │
 │                                    [default: localhost]                      │
-│ --asr-wyoming-port        INTEGER  Wyoming ASR server port. [default: 10300] │
+│ --asr-wyoming-port        INTEGER  Wyoming ASR server port.                  │
+│                                    [default: 10300]                          │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ ASR (Audio) Configuration: OpenAI ──────────────────────────────────────────╮
 │ --asr-openai-model           TEXT  The OpenAI model to use for ASR           │
@@ -1203,7 +1212,8 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ General Options ────────────────────────────────────────────────────────────╮
 │ --save-file           PATH  Save TTS response audio to WAV file.             │
-│ --log-level           TEXT  Set logging level. [default: WARNING]            │
+│ --log-level           TEXT  Set logging level.                               │
+│                             [default: WARNING]                               │
 │ --log-file            TEXT  Path to a file to write logs to.                 │
 │ --quiet       -q            Suppress console output from rich.               │
 │ --config              TEXT  Path to a TOML configuration file.               │
@@ -1311,11 +1321,14 @@ agent-cli rag-server \
 │                                [default: text-embedding-3-small]             │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Server Configuration ───────────────────────────────────────────────────────╮
-│ --host        TEXT     Host/IP to bind API servers to. [default: 0.0.0.0]    │
-│ --port        INTEGER  Port to bind to [default: 8000]                       │
+│ --host        TEXT     Host/IP to bind API servers to.                       │
+│                        [default: 0.0.0.0]                                    │
+│ --port        INTEGER  Port to bind to                                       │
+│                        [default: 8000]                                       │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ General Options ────────────────────────────────────────────────────────────╮
-│ --log-level         TEXT  Set logging level. [default: WARNING]              │
+│ --log-level         TEXT  Set logging level.                                 │
+│                           [default: WARNING]                                 │
 │ --config            TEXT  Path to a TOML configuration file.                 │
 │ --print-args              Print the command line arguments, including        │
 │                           variables taken from the configuration file.       │
