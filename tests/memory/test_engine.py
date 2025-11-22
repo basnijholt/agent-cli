@@ -246,10 +246,6 @@ async def test_retrieve_memory_prefers_diversity_and_adds_summaries(
         top_k=2,
         reranker_model=_DummyReranker(),  # type: ignore[arg-type]
         # Use defaults for recency/threshold to ensure they don't filter out our test data
-        # Our relevance mock returns high scores [0.9, 0.1, 0.8] but recall Sigmoid
-        # [0.9] -> sig(0.9) ~ 0.71 > 0.35
-        # [0.1] -> sig(0.1) ~ 0.52 > 0.35
-        # [0.8] -> sig(0.8) ~ 0.69 > 0.35
     )
 
     contents = [entry.content for entry in retrieval.entries]
@@ -339,14 +335,12 @@ async def test_process_chat_request_summarizes_and_persists(
             def __init__(self, output: Any) -> None:
                 self.output = output
 
-        if "New facts:" in prompt_text:
+        prompt_str = str(prompt_text)
+        if "New facts:" in prompt_str:
             return _Result(engine.SummaryOutput(summary="summary up to 256"))
+        if "Hello, I enjoy biking" in prompt_str:
+            return _Result(["User likes cats.", "User loves biking."])
         return _Result(engine.SummaryOutput(summary="noop"))
-
-    async def fake_extract_with_pydantic_ai(**_kwargs: Any) -> list[Any]:
-        return ["User likes cats.", "User loves biking."]
-
-    monkeypatch.setattr(engine, "_extract_with_pydantic_ai", fake_extract_with_pydantic_ai)
 
     async def fake_reconcile(
         _collection: Any,
@@ -529,16 +523,16 @@ async def test_streaming_with_summarization_persists_facts_and_summaries(
         for line in body:
             yield line
 
-    async def fake_extract_with_pydantic_ai(**_kwargs: Any) -> list[Any]:
-        return ["User has a cat named Luna."]
-
     async def fake_agent_run(_agent: Any, prompt_text: str, *_args: Any, **_kwargs: Any) -> Any:
         class _Result:
             def __init__(self, output: Any) -> None:
                 self.output = output
 
-        if "New facts:" in prompt_text:
+        prompt_str = str(prompt_text)
+        if "New facts:" in prompt_str:
             return _Result(engine.SummaryOutput(summary="summary text"))
+        if "My cat is Luna" in prompt_str:
+            return _Result(["User has a cat named Luna."])
         return _Result(engine.SummaryOutput(summary="noop"))
 
     monkeypatch.setattr(engine.streaming, "stream_chat_sse", fake_stream_chat_sse)
@@ -553,7 +547,6 @@ async def test_streaming_with_summarization_persists_facts_and_summaries(
 
     monkeypatch.setattr(engine, "_reconcile_facts", fake_reconcile)
     monkeypatch.setattr(engine.Agent, "run", fake_agent_run)
-    monkeypatch.setattr(engine, "_extract_with_pydantic_ai", fake_extract_with_pydantic_ai)
 
     response = await engine.process_chat_request(
         request,

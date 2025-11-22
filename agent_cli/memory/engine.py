@@ -119,8 +119,7 @@ def _gather_relevant_existing_memories(
     filters = [
         {"conversation_id": conversation_id},
         {"role": "memory"},
-        {"role": {"$ne": "summary_short"}},
-        {"role": {"$ne": "summary_long"}},
+        {"role": {"$ne": "summary"}},
     ]
     seen: set[str] = set()
     results: list[StoredMemory] = []
@@ -445,14 +444,29 @@ async def _extract_salient_facts(
     # Extract facts from the latest user turn only (ignore assistant/system).
     transcript = user_message or ""
 
-    facts = await _extract_with_pydantic_ai(
-        transcript=transcript,
-        openai_base_url=openai_base_url,
-        api_key=api_key,
-        model=model,
+    provider = OpenAIProvider(
+        api_key=api_key or "dummy",
+        base_url=openai_base_url,
     )
-    logger.info("Raw fact extraction output: %s", facts)
-    return facts
+    model_cfg = OpenAIChatModel(model_name=model, provider=provider)
+    agent = Agent(
+        model=model_cfg,
+        system_prompt=FACT_SYSTEM_PROMPT,
+        output_type=list[str],
+        retries=2,
+    )
+    instructions = FACT_INSTRUCTIONS
+
+    try:
+        facts = await agent.run(transcript, instructions=instructions)
+        logger.info("Raw fact extraction output: %s", facts.output)
+        return facts.output
+    except (httpx.HTTPError, AgentRunError, UnexpectedModelBehavior):
+        logger.warning("PydanticAI fact extraction transient failure", exc_info=True)
+        return []
+    except Exception:
+        logger.exception("PydanticAI fact extraction internal error")
+        raise
 
 
 async def _reconcile_facts(
@@ -536,38 +550,6 @@ async def _reconcile_facts(
         [dec.event for dec in decisions],
     )
     return to_add, to_delete
-
-
-async def _extract_with_pydantic_ai(
-    *,
-    transcript: str,
-    openai_base_url: str,
-    api_key: str | None,
-    model: str,
-) -> list[str]:
-    """Use PydanticAI to extract fact strings."""
-    provider = OpenAIProvider(
-        api_key=api_key or "dummy",
-        base_url=openai_base_url,
-    )
-    model_cfg = OpenAIChatModel(model_name=model, provider=provider)
-    agent = Agent(
-        model=model_cfg,
-        system_prompt=FACT_SYSTEM_PROMPT,
-        output_type=list[str],
-        retries=2,
-    )
-    instructions = FACT_INSTRUCTIONS
-
-    try:
-        facts = await agent.run(transcript, instructions=instructions)
-        return facts.output
-    except (httpx.HTTPError, AgentRunError, UnexpectedModelBehavior):
-        logger.warning("PydanticAI fact extraction transient failure", exc_info=True)
-        return []
-    except Exception:
-        logger.exception("PydanticAI fact extraction internal error")
-        raise
 
 
 async def _update_summary(
