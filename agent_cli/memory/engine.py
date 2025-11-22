@@ -146,7 +146,7 @@ def _gather_relevant_existing_memories(
 
 
 def _delete_memory_files(memory_root: Path, conversation_id: str, ids: list[str]) -> None:
-    """Delete markdown files and snapshot entries matching the given ids."""
+    """Delete markdown files (move to tombstone) and snapshot entries matching the given ids."""
     if not ids:
         return
 
@@ -156,9 +156,19 @@ def _delete_memory_files(memory_root: Path, conversation_id: str, ids: list[str]
 
     def _remove_path(path: Path) -> None:
         try:
-            path.unlink(missing_ok=True)
+            # Soft delete: move to deleted/ folder
+            try:
+                rel_path = path.relative_to(conv_dir)
+            except ValueError:
+                # If path is not relative to conv_dir (shouldn't happen for this conversation), just unlink
+                path.unlink(missing_ok=True)
+                return
+
+            dest_path = conv_dir / _DELETED_DIRNAME / rel_path
+            dest_path.parent.mkdir(parents=True, exist_ok=True)
+            path.rename(dest_path)
         except Exception:
-            logger.exception("Failed to delete memory file %s", path)
+            logger.exception("Failed to soft-delete memory file %s", path)
 
     removed_ids: set[str] = set()
 
@@ -366,6 +376,7 @@ def _persist_entries(
             content=content,
             doc_id=str(uuid4()),
         )
+        logger.info("Persisted memory file: %s", record.path)
         ids.append(record.id)
         contents.append(record.content)
         metadatas.append(record.metadata)
@@ -443,6 +454,7 @@ async def _extract_salient_facts(
 
     # Extract facts from the latest user turn only (ignore assistant/system).
     transcript = user_message or ""
+    logger.info("Extracting facts from transcript: %r", transcript)
 
     provider = OpenAIProvider(
         api_key=api_key or "dummy",
@@ -483,6 +495,7 @@ async def _reconcile_facts(
         return [], []
 
     existing = _gather_relevant_existing_memories(collection, conversation_id, new_facts)
+    logger.info("Reconcile: Found %d existing memories for new facts %s", len(existing), new_facts)
     if not existing:
         logger.info("Reconcile: no existing memory facts; defaulting to add all new facts")
         return new_facts, []

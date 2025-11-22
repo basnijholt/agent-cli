@@ -139,20 +139,23 @@ async def test_memory_api_updates_latest_fact(  # noqa: PLR0915
     collection = _RecordingCollection()
 
     # Patch out external dependencies and watchers.
-    monkeypatch.setattr(memory_api, "init_memory_collection", lambda *_args, **_kwargs: collection)
+    monkeypatch.setattr(
+        "agent_cli.memory.client.init_memory_collection",
+        lambda *_args, **_kwargs: collection,
+    )
     monkeypatch.setattr(rag_retriever, "get_reranker_model", lambda: _DummyReranker())
 
     async def _noop_watch(*_args: Any, **_kwargs: Any) -> None:
         return None
 
-    monkeypatch.setattr(memory_api, "watch_memory_store", _noop_watch)
+    monkeypatch.setattr("agent_cli.memory.client.watch_memory_store", _noop_watch)
 
     async def fake_forward_request(_request: ChatRequest, *_args: Any, **_kwargs: Any) -> Any:
         return {"choices": [{"message": {"content": "ok"}}]}
 
-    async def fake_extract_with_pydantic_ai(**kwargs: Any) -> list[str]:
+    async def fake_extract_salient_facts(user_message: str | None, **_kwargs: Any) -> list[str]:
         """Return a fact only when the user states a fact (contains 'my wife is')."""
-        transcript = kwargs.get("transcript") or ""
+        transcript = user_message or ""
         return [transcript] if "my wife is" in transcript else []
 
     async def fake_reconcile(
@@ -170,8 +173,8 @@ async def test_memory_api_updates_latest_fact(  # noqa: PLR0915
     async def fake_update_summary(**_kwargs: Any) -> str | None:
         return "summary"
 
-    monkeypatch.setattr(engine, "_forward_request", fake_forward_request)
-    monkeypatch.setattr(engine, "_extract_with_pydantic_ai", fake_extract_with_pydantic_ai)
+    monkeypatch.setattr(engine, "forward_chat_request", fake_forward_request)
+    monkeypatch.setattr(engine, "_extract_salient_facts", fake_extract_salient_facts)
     monkeypatch.setattr(engine, "_reconcile_facts", fake_reconcile)
     monkeypatch.setattr(engine, "_update_summary", fake_update_summary)
 
@@ -360,7 +363,7 @@ async def test_memory_api_live_real_llm(tmp_path: Path) -> None:  # noqa: PLR091
     facts_dir = tmp_path / "memory_db" / "entries" / "default" / "facts"
     deleted_dir = tmp_path / "memory_db" / "entries" / "default" / "deleted" / "facts"
 
-    async def _wait_for_fact_contains(substr: str, timeout_s: float = 30.0) -> None:
+    async def _wait_for_fact_contains(substr: str, timeout_s: float = 60.0) -> None:
         end = asyncio.get_event_loop().time() + timeout_s
         while asyncio.get_event_loop().time() < end:
             files = list(facts_dir.glob("*.md"))

@@ -64,7 +64,7 @@ def test_query_memories_skips_summary_entries_and_filters_roles() -> None:
         def query(self, **kwargs: Any) -> dict[str, Any]:
             self.last_where = kwargs.get("where")
             memory_meta = {"conversation_id": "c1", "role": "memory", "created_at": "now"}
-            summary_meta = {"conversation_id": "c1", "role": "summary_short", "created_at": "now"}
+            summary_meta = {"conversation_id": "c1", "role": "summary", "created_at": "now"}
 
             filters = kwargs.get("where") or {}
             exclude_summary = False
@@ -72,7 +72,7 @@ def test_query_memories_skips_summary_entries_and_filters_roles() -> None:
                 for clause in filters["$and"]:
                     if isinstance(clause, dict):
                         role_clause = clause.get("role")
-                        if role_clause in ({"$ne": "summary_short"}, {"$ne": "summary_long"}):
+                        if role_clause == {"$ne": "summary"}:
                             exclude_summary = True
 
             if exclude_summary:
@@ -95,11 +95,10 @@ def test_query_memories_skips_summary_entries_and_filters_roles() -> None:
     fake = _FilterAwareFakeCollection()
     records = store.query_memories(fake, conversation_id="c1", text="hello", n_results=2)
 
-    assert all(mem.metadata.role != "summary_short" for mem in records)
+    assert all(mem.metadata.role != "summary" for mem in records)
     assert fake.last_where is not None
     clauses = fake.last_where.get("$and", [])
-    assert {"role": {"$ne": "summary_short"}} in clauses
-    assert {"role": {"$ne": "summary_long"}} in clauses
+    assert {"role": {"$ne": "summary"}} in clauses
 
 
 def test_get_summary_entry_handles_nested_lists() -> None:
@@ -107,15 +106,15 @@ def test_get_summary_entry_handles_nested_lists() -> None:
         get_result={
             "documents": [["summary text"]],
             "metadatas": [
-                [{"conversation_id": "c1", "role": "summary_short", "created_at": "now"}],
+                [{"conversation_id": "c1", "role": "summary", "created_at": "now"}],
             ],
             "ids": ["sum1"],
         },
     )
-    entry = store.get_summary_entry(fake, "c1", role="summary_short")
+    entry = store.get_summary_entry(fake, "c1", role="summary")
     assert entry is not None
     assert entry.id == "sum1"
-    assert entry.metadata.role == "summary_short"
+    assert entry.metadata.role == "summary"
 
 
 def test_list_conversation_entries_filters_summaries() -> None:
@@ -125,7 +124,7 @@ def test_list_conversation_entries_filters_summaries() -> None:
             "metadatas": [
                 [
                     {"conversation_id": "c1", "role": "memory", "created_at": "now"},
-                    {"conversation_id": "c1", "role": "summary_short", "created_at": "now"},
+                    {"conversation_id": "c1", "role": "summary", "created_at": "now"},
                 ],
             ],
             "ids": ["id1", "id2"],
@@ -135,7 +134,7 @@ def test_list_conversation_entries_filters_summaries() -> None:
     assert len(entries) == 2  # both returned; caller filters by role
     roles = {e.metadata.role for e in entries}
     assert "memory" in roles
-    assert "summary_short" in roles
+    assert "summary" in roles
 
 
 def test_upsert_and_delete_entries_delegate() -> None:

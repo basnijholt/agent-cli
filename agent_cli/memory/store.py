@@ -54,30 +54,33 @@ def query_memories(
     """Query for relevant memory entries and return structured results."""
     filters = [
         {"conversation_id": conversation_id},
-        {"role": {"$ne": "summary_short"}},
-        {"role": {"$ne": "summary_long"}},
+        {"role": {"$ne": "summary"}},
     ]
     raw = collection.query(
         query_texts=[text],
         n_results=n_results,
         where={"$and": filters},
-        include=["embeddings"],
+        include=["documents", "metadatas", "distances", "embeddings"],
     )
-    docs = raw.get("documents", [[]])[0] or []
-    metas = raw.get("metadatas", [[]])[0] or []
-    ids = raw.get("ids", [[]])[0] or []
-    distances = raw.get("distances", [[]])[0] or []
+    docs_list = raw.get("documents")
+    docs = docs_list[0] if docs_list else []
+
+    metas_list = raw.get("metadatas")
+    metas = metas_list[0] if metas_list else []
+
+    ids_list = raw.get("ids")
+    ids = ids_list[0] if ids_list else []
+
+    dists_list = raw.get("distances")
+    distances = dists_list[0] if dists_list else []
+
     raw_embeddings = raw.get("embeddings")
-    if raw_embeddings is None:
-        msg = "Chroma query did not return embeddings"
-        raise ValueError(msg)
-    embeddings = (
-        raw_embeddings[0]
-        if raw_embeddings and isinstance(raw_embeddings[0], list)
-        else raw_embeddings
-    )
+    embeddings: list[Any] = []
+    if raw_embeddings and len(raw_embeddings) > 0 and raw_embeddings[0] is not None:
+        embeddings = raw_embeddings[0]
+
     if len(embeddings) != len(docs):
-        msg = "Chroma returned embeddings of unexpected length"
+        msg = f"Chroma returned embeddings of unexpected length: {len(embeddings)} vs {len(docs)}"
         raise ValueError(msg)
     records: list[StoredMemory] = []
     for doc, meta, doc_id, dist, emb in zip(

@@ -9,13 +9,6 @@ DELETE stale/contradictory duplicates. If content matches fully, KEEP the most i
 Output only the decision list—do not invent new facts.
 """.strip()
 
-QUERY_REWRITE_PROMPT = """
-Rewrite the user request into up to three high-recall search queries.
-Include explicit entities, aliases, paraphrases, and disambiguated forms.
-Return a JSON list of plain strings. No explanations.
-Avoid meta-statements; keep queries concise keywords/phrases, not instructions.
-""".strip()
-
 FACT_SYSTEM_PROMPT = """
 You are a memory extractor. From the latest exchange, return 1-3 concise fact sentences based ONLY on user messages.
 
