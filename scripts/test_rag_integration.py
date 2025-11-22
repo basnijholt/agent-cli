@@ -5,6 +5,7 @@ import asyncio
 import shutil
 import sys
 from pathlib import Path
+from typing import Any
 
 import httpx
 from rich.console import Console
@@ -147,13 +148,14 @@ async def main() -> None:  # noqa: C901, PLR0912, PLR0915
             query = "What is the secret code for the vault?"
             console.print(f"Querying: '{query}'")
 
-            payload = {
+            payload: dict[str, Any] = {
                 "model": model_name,
                 "messages": [{"role": "user", "content": query}],
                 "rag_top_k": 1,
             }
+            url = f"{rag_url}/v1/chat/completions"
             async with httpx.AsyncClient(timeout=60.0) as client:
-                resp = await client.post(f"{rag_url}/v1/chat/completions", json=payload)
+                resp = await client.post(url, json=payload)
 
             if resp.status_code != 200:  # noqa: PLR2004
                 console.print(f"[bold red]Query failed: {resp.text}[/bold red]")
