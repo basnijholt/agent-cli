@@ -1,208 +1,197 @@
-# Memory System Overview (Current Implementation)
+# Agent CLI: Memory System Technical Specification
 
-This document captures what the agent_cli memory system does today. It summarizes the architecture, retrieval/ranking math, prompts, and design choices.
+This document serves as the authoritative technical reference for the `agent-cli` memory subsystem. It details the component architecture, data structures, internal algorithms, and control flows implemented in the codebase.
 
-## One-paragraph overview
-We run a self-hostable memory service that ingests chat turns, extracts facts, and stores everything in a Chroma vector DB. At query time we take the latest user message, retrieve dense candidates from Chroma, rerank them with a cross-encoder, filter by relevance threshold, and blend with recency decay. Finally, we apply MMR on embedding cosine to keep the final top-k diverse. We then inject those memories (plus a conversation summary) into the chat request and forward it to an OpenAI-compatible LLM. Summaries and fact reconciliation are LLM-driven; retrieval is fast and deterministic.
+## 1. Architectural Components
 
-## Architecture & Data Flow (Current Implementation)
+The memory system is composed of layered Python modules, separating the API surface from the core logic and storage engines.
 
-### 1. Main Components
+### 1.1 Runtime Layer
+*   **`agent_cli.memory.api` (FastAPI):**
+    *   Exposes `POST /v1/chat/completions` as an OpenAI-compatible endpoint.
+    *   Handles request validation (`ChatRequest` pydantic model).
+    *   Manages lifecycle: starts/stops the `MemoryClient` file watcher on app startup/shutdown.
+*   **`agent_cli.memory.client.MemoryClient`:**
+    *   The primary entry point. Orchestrates the interaction between the Logic Engine, File Store, and Vector Index.
+    *   **State:** Holds references to the `chromadb.Collection`, `MemoryIndex` (in-memory file map), and `reranker_model` (ONNX session).
+    *   **Methods:** `chat()` (end-to-end), `search()` (retrieval only), `add()` (injection only).
 
-**Runtime service**
+### 1.2 Logic Engine (`agent_cli.memory.engine`)
+*   Contains the core business logic for the "Smart Ingest / Fast Read" pattern.
+*   **`process_chat_request`:** Main coordinator. Handles synchronous vs. asynchronous (streaming) execution paths.
+*   **`augment_chat_request`:** The "Read" path. Executes retrieval, ranking, and prompt injection.
+*   **`extract_and_store_facts_and_summaries`:** The "Write" path. Background task for fact extraction, reconciliation, and summarization.
 
-* **FastAPI app (`agent_cli.memory.api`)**
-  * `POST /v1/chat/completions`
-    * Accepts an OpenAI-style chat request plus `memory_id` / `memory_top_k` / `memory_recency_weight` / `memory_score_threshold`.
-    * Extracts bearer token from `Authorization` and passes it through as the chat API key.
-    * Delegates to `MemoryClient.chat(...)`.
-  * `GET /health` returns basic config.
-  * Startup/shutdown events start/stop a background file watcher.
+### 1.3 Storage Layer
+*   **`agent_cli.memory.files` (File Store):**
+    *   Source of Truth. Manages reading/writing Markdown files with YAML front matter.
+    *   Handles path resolution: `<memory_path>/entries/<conversation_id>/{facts,turns,summaries}/`.
+*   **`agent_cli.memory.store` (Vector Store):**
+    *   Wraps `chromadb`.
+    *   Handles embedding generation (via `text-embedding-3-small` or local models).
+    *   Implements `query_memories` with dense retrieval parameters (`n_results`, filtering).
+*   **`agent_cli.memory.indexer` (Index Sync):**
+    *   Maintains `memory_index.json` (file hash snapshot) to keep ChromaDB in sync with the filesystem.
+    *   **Watcher:** Uses `watchfiles` to detect OS-level file events (Create/Modify/Delete) and trigger incremental vector updates.
 
-* **MemoryClient (`agent_cli.memory.client.MemoryClient`)**
-  * Owns:
-    * `memory_path`: root dir for Markdown + Chroma.
-    * `collection`: Chroma collection initialized via `init_memory_collection`.
-    * `index`: in-memory index of Markdown files (`MemoryIndex`).
-    * `reranker_model`: ONNX cross-encoder (via `get_reranker_model()`).
-    * Config: `embedding_model` (default `text-embedding-3-small`), `default_top_k`, `max_entries`, `mmr_lambda`, `recency_weight`, `score_threshold`, `enable_summarization`.
-  * Public methods:
-    * `chat(...)`: full memory-augmented chat.
-    * `search(...)`: retrieve relevant memories for a query.
-    * `add(...)`: add memories from arbitrary text (fact extraction + reconciliation).
+---
 
-**Storage**
+## 2. Data Structures & Schema
 
-* **File store (`agent_cli.memory.files`)**
-  * Source of truth is **Markdown files with YAML front matter** under:
-    * `<memory_path>/entries/<conversation_id>/...`
-  * Layout (by role):
-    * `turns/user/<timestamp>__<id>.md`
-    * `turns/assistant/<timestamp>__<id>.md`
-    * `facts/<timestamp>__<id>.md`
-    * `summaries/summary.md` (role `summary`)
-  * Each file has:
-    * Front matter: `id`, `conversation_id`, `role`, `created_at`, optional `summary_kind`.
-    * Body: plain text content.
+### 2.1 File System Layout
+Memories are stored as Markdown files with YAML front matter in `<memory_path>/entries/<conversation_id>/`.
 
-* **Vector store (`agent_cli.memory.store`)**
-  * One Chroma collection per memory root (default name `"memory"`, stored under `<memory_path>/chroma`).
-  * All conversations share this collection and are keyed by `metadata.conversation_id`.
-  * Helpers:
-    * `upsert_memories(...)`: wraps Chroma upsert.
-    * `query_memories(...)`: dense retrieval with embeddings (`include=["embeddings"]`).
-    * `get_summary_entry(...)`: fetches the (single) summary doc for a conversation.
-    * `list_conversation_entries(...)`: list all entries for a conversation (optionally filtering summaries).
-    * `delete_entries(...)`: delete by IDs.
+**Active Directory Structure:**
+```text
+entries/
+  <conversation_id>/
+    facts/
+      <timestamp>__<uuid>.md       # Extracted atomic facts
+    turns/
+      user/<timestamp>__<uuid>.md   # Raw user messages
+      assistant/
+        <timestamp>__<uuid>.md     # Raw assistant responses
+    summaries/
+      summary.md                   # The single rolling summary of the conversation
+```
 
-**Indexer / watcher**
+**Deleted Directory Structure (Soft Deletes):**
+Deleted files are **moved** (not destroyed) to preserve audit trails.
+```text
+entries/
+  <conversation_id>/
+    deleted/
+      facts/
+        <timestamp>__<uuid>.md
+      summaries/
+        summary.md.tmp             # Tombstoned temporary summaries
+```
 
-* **MemoryIndex + watch (`agent_cli.memory.indexer`)**
-  * `MemoryIndex` keeps a map `{id -> MemoryFileRecord}` plus a JSON snapshot (`memory_index.json`) on disk.
-  * `initial_index(...)`:
-    * Loads all Markdown files (`load_memory_files`).
-    * Compares with snapshot:
-      * Deletes stale docs from Chroma.
-      * (Re)upserts all current docs to Chroma.
-    * Rewrites snapshot with the current set.
-  * `watch_memory_store(...)`:
-    * Uses `watch_directory` (from `agent_cli.core.watch`) to monitor `<memory_path>/entries`.
-    * On file changes:
-      * `Change.deleted`: deletes from Chroma and from index.
-      * `Change.added` / `Change.modified`: re-reads file, upserts to Chroma, updates index.
+### 2.2 File Format
+**Front Matter (YAML):**
+*   `id`: UUIDv4.
+*   `role`: `system` (fact), `user`, `assistant`, or `summary`.
+*   `conversation_id`: Scope key.
+*   `created_at`: ISO 8601 timestamp (used for Recency Decay).
 
-**LLM and reranker**
+**Body:** The semantic content (e.g., "User lives in San Francisco").
 
-* **LLM / OpenAI-compatible endpoint**
-  * All model calls (chat, fact extraction, summarization, reconciliation) go through an OpenAI-compatible base URL:
-    * Chat and fact/summarization prompts use `pydantic_ai` with `OpenAIProvider`.
-    * Chat completions are proxied via `forward_chat_request` or `stream_chat_sse`.
+### 2.3 Vector Schema (ChromaDB)
+All entries share a single collection but are partitioned by metadata.
+*   **ID:** Matches file UUID.
+*   **Embedding:** 1536d (OpenAI) or 384d (MiniLM).
+*   **Metadata:** Mirrors front matter (`role`, `conversation_id`, `created_at`) for pre-filtering.
 
-* **Cross-encoder reranker (`agent_cli.rag.retriever`)**
-  * Loaded once per `MemoryClient` (`get_reranker_model()`).
-  * Used in `_retrieve_memory` to score `(query, doc)` pairs.
+---
 
-### 2. Request Flow: Chat With Memory
+## 3. The Read Path (Retrieval Pipeline)
 
-**Entry point (API → client)**
-1. Client calls `POST /v1/chat/completions` with:
-   * `messages` (OpenAI format)
-   * `model`
-   * Optional: `memory_id`, `memory_top_k`, `memory_recency_weight`, `memory_score_threshold`.
-2. `MemoryClient.chat` wraps this into a `ChatRequest` (Pydantic model) and calls:
-   ```python
-   process_chat_request(...)
-   ```
+Executed synchronously during `augment_chat_request`.
 
-**Step 1: Augment request with memory (`augment_chat_request`)**
-1. Identify **latest user message**.
-2. Determine:
-   * `conversation_id = request.memory_id or "default"`.
-   * `top_k = request.memory_top_k or default_top_k`.
-3. If `top_k <= 0`: skip retrieval and send request as-is.
-4. **Retrieval** (`_retrieve_memory`):
-   * Candidate scopes: `[conversation_id]` plus `"global"` if `conversation_id != "global"`.
-   * For each scope:
-     * Calls `query_memories(...)` with `n_results = top_k * 3`.
-     * Collects unique candidates.
-   * For each candidate:
-     * **Reranker score**: cross-encoder on `(query, content)`.
-     * **Relevance**: `sigmoid(reranker_score)` (0–1).
-     * **Filter**: If `Relevance < score_threshold` (default 0.35), discard candidate.
-     * **Recency boost**:
-       * `recency = exp(-age_days / 30.0)` (exponential decay).
-     * **Final score**:
-       * `total = (1 - w) * relevance + w * recency` (w = `recency_weight`, default 0.2).
-   * **MMR selection** (`_mmr_select`):
-     * Uses **embedding cosine similarity** (`embedding` from Chroma) as redundancy.
-     * For each follow-on pick:
-       * `mmr = λ * total - (1 - λ) * redundancy` with `λ = mmr_lambda` (default 0.7).
-     * Continues until `top_k` or candidates exhausted.
-   * Wraps the final set into `MemoryRetrieval(entries=[MemoryEntry(...)] )`.
-   * Optionally fetches single `summary` via `get_summary_entry`.
-5. **Prompt augmentation** (`_format_augmented_content`):
-   * Builds a single user-content string:
-     * Conversation summary (if present).
-     * “Long-term memory (most relevant first)” block with `[role] content`.
-     * “Current message: <original latest user message>”.
-   * Replaces the last user message in `request.messages` with this augmented content.
-   * Returns the augmented `ChatRequest` + `MemoryRetrieval` + `conversation_id`.
+### Step 1: Scope & Retrieval
+*   **Scopes:** Queries `conversation_id` bucket + `global` bucket.
+*   **Density:** Calls `collection.query()` retrieving `top_k * 3` candidates per scope using Cosine Similarity.
+*   **Filtering:** Excludes `role="summary"` (summaries are handled separately).
 
-**Step 2: Send to LLM**
-* **Streaming (`request.stream=True`)**
-  * Persist **user turn only** immediately (`_persist_turns`).
-  * Forward augmented request via SSE (`_stream_and_persist_response` → `stream_chat_sse`).
-  * As chunks arrive:
-    * `accumulate_assistant_text` accumulates the assistant text in a buffer.
-  * When stream ends:
-    * Full assistant text is persisted as an **assistant turn**.
-    * Post-processing runs in the background (`run_in_background`).
-* **Non-streaming**
-  * Call `forward_chat_request` with augmented request (excluding memory fields).
-  * Extract assistant message (`_assistant_reply_content`).
-  * Persist both user and assistant turns (`_persist_turns`).
-  * Attach `memory_hits` to the LLM response:
-    ```json
-    "memory_hits": [ { "role": ..., "content": ..., "created_at": ..., "score": ... }, ... ]
-    ```
-  * Run post-processing in the background.
+### Step 2: Cross-Encoder Reranking
+*   **Model:** `Xenova/ms-marco-MiniLM-L-6-v2` (ONNX, quantized).
+*   **Input:** Pairs of `(user_query, memory_content)`.
+*   **Output:** Raw logit score.
+*   **Normalization:** `relevance = sigmoid(raw_score)`.
+*   **Thresholding:** Candidates with `relevance < score_threshold` (default 0.35) are hard-pruned.
 
-**Step 3: Post-processing per turn**
-`_postprocess_after_turn` orchestrates:
-1. **Fact extraction + summaries** (`extract_and_store_facts_and_summaries`)
-   * Extract **facts** from the latest user message via `_extract_salient_facts` (assistant text is ignored).
-   * **Reconcile facts** (`_reconcile_facts`):
-     * Neighborhood retrieval of existing facts (`_gather_relevant_existing_memories`) using Chroma.
-     * LLM call with `UPDATE_MEMORY_PROMPT` produces a list of `MemoryUpdateDecision`:
-       * `ADD`, `UPDATE`, `DELETE`, `NONE`.
-     * Converts short IDs back to real IDs; yields `to_add`, `to_delete`.
-     * Safeguard: if reconciliation yields **no additions** but we had new facts, fallback to adding original new facts.
-   * Apply deletes:
-     * `delete_entries` removes from Chroma.
-     * `_delete_memory_files` removes corresponding Markdown files and snapshot entries.
-   * Persist new facts:
-     * `_prepare_fact_entries` → `_persist_entries` (Markdown + Chroma).
-   * Update per-conversation summary:
-     * Fetch prior `summary`.
-     * `_update_summary` calls LLM with `SUMMARY_PROMPT`.
-     * `_persist_summary` writes `summaries/summary.md` and upserts to Chroma.
-2. **Eviction / capacity control** (`_evict_if_needed`)
-   * `list_conversation_entries` to get all non-summary entries.
-   * If count exceeds `max_entries`:
-     * Drop the **oldest** overflow entries.
-     * Delete from Chroma and filesystem.
+### Step 3: Recency Scoring
+Combines semantic relevance with temporal proximity.
+*   **Formula:** `recency_score = exp(-age_in_days / 30.0)`
+*   **Final Score:** `(1 - w) * relevance + w * recency_score`
+    *   `w` (`recency_weight`) defaults to `0.2`.
 
-### 3. Other Flows
+### Step 4: Diversity (MMR)
+Applies Maximal Marginal Relevance to select the final `top_k` from the ranked pool.
+*   **Goal:** Prevent redundant memories (e.g., 5 variations of "User likes apples").
+*   **Formula:** `mmr_score = λ * relevance - (1 - λ) * max_sim(candidate, selected)`
+    *   `λ` (`mmr_lambda`) defaults to `0.7`.
+    *   `max_sim` uses the cosine similarity of embeddings provided by Chroma.
 
-**Search only (`MemoryClient.search`)**
-* Wraps a text query in a dummy `ChatRequest` (single user message).
-* Calls `augment_chat_request` (same retrieval pipeline).
-* Returns `MemoryRetrieval` (entries only, no LLM call, no persistence).
+### Step 5: Injection
+*   **Structure:**
+    1.  **Summary:** Injected if `enable_summarization=True` and `summary.md` exists.
+    2.  **Memories:** The top-k retrieved facts/turns, formatted as `[<role>] <content> (score: <val>)`.
+    3.  **Current Turn:** The user's actual message.
 
-**Add only (`MemoryClient.add`)**
-* Calls `extract_and_store_facts_and_summaries` directly:
-  * Treats provided `text` as a user message.
-  * Runs fact extraction, reconciliation, fact persistence, and summary updates.
-  * Does **not** call the chat LLM.
+---
 
-## Retrieval Pipeline (Lite Architecture)
-- **Search**: Chroma dense retrieval (`n_results = top_k * 3`) returns docs, metadatas, distances, embeddings.
-- **Reranking**: cross-encoder scores each candidate with the query.
-- **Filtering**: `relevance = sigmoid(reranker_score)`. Discard if `relevance < score_threshold` (default 0.35).
-- **Scoring Blend**:
-  - `recency = exp(-age_days / 30.0)` (exponential decay).
-  - `total = (1 - w) * relevance + w * recency`. (default `w=0.2`).
-- **Diversity (MMR)**: embedding cosine redundancy, `mmr = λ * total - (1-λ) * redundancy`, λ default 0.7.
-- **Selection**: top scorer -> iterative MMR until `top_k` or pool exhausted; summary optionally appended.
+## 4. The Write Path (Ingestion Pipeline)
 
-## Prompts (current)
-- **Fact extraction:** `FACT_SYSTEM_PROMPT` + `FACT_INSTRUCTIONS`.
-- **Summary:** `SUMMARY_PROMPT`.
-- **Reconcile facts:** `UPDATE_MEMORY_PROMPT`.
+Executed via `_postprocess_after_turn` (background task).
 
-## Summary of Current Defaults
-- `λ (MMR) = 0.7`; pool per scope = `top_k * 3`.
-- `recency_weight = 0.2`; `score_threshold = 0.35`.
-- Score: `total = 0.8 * sigmoid(rr) + 0.2 * exp(-age/30)`.
-- Embeddings: `text-embedding-3-small` (1,536-d) by default.
-- Reranker: ONNX cross-encoder (`Xenova/ms-marco-MiniLM-L-6-v2`).
+### 4.1 Streaming vs. Non-Streaming
+*   **Streaming:**
+    *   User turn persisted immediately.
+    *   Assistant tokens accumulated in memory buffer.
+    *   Full assistant text persisted on stream completion.
+*   **Non-Streaming:**
+    *   User and Assistant turns persisted sequentially after full response is received.
+
+### 4.2 Fact Extraction
+*   **Input:** User message.
+*   **Prompt:** `FACT_SYSTEM_PROMPT`. Extracts atomic, standalone statements.
+*   **Output:** JSON list of strings.
+
+### 4.3 Reconciliation (Memory Management)
+Resolves contradictions using a "Search-Decide-Update" loop.
+1.  **Local Search:** Retrieves existing facts relevant to the *newly extracted facts*.
+2.  **LLM Decision:** Uses `UPDATE_MEMORY_PROMPT` to compare `new_facts` vs `existing_memories`.
+    *   **Decisions:** `ADD`, `UPDATE`, `DELETE`, `NONE`.
+3.  **Execution:**
+    *   **Deletes:** Moves files to `deleted/` (Soft Delete) and removes from Chroma.
+    *   **Adds:** Creates new files in `facts/` and upserts to Chroma.
+    *   **Updates:** Implemented as atomic Delete + Add.
+
+### 4.4 Summarization
+*   **Input:** Current `summary.md` content + recent chat history.
+*   **Prompt:** `SUMMARY_PROMPT` (Updates the running summary).
+*   **Persistence:** Overwrites `summaries/summary.md`.
+
+### 4.5 Eviction
+*   **Trigger:** If total entries in conversation > `max_entries` (default 500).
+*   **Strategy:** Sorts by `created_at` (ascending) and deletes the oldest `facts` or `turns` until count is within limit. Summaries are exempt.
+
+---
+
+## 5. Prompt Logic Specifications
+
+To replicate the system behavior, the following prompt strategies are required.
+
+### 5.1 Fact Extraction (`FACT_SYSTEM_PROMPT`)
+*   **Goal:** Extract 1-3 concise, atomic facts from the user message.
+*   **Constraints:** Ignore assistant text. No acknowledgements. Output JSON list of strings.
+*   **Example:** "My wife is Anne" -> `["The user's wife is named Anne"]`.
+
+### 5.2 Reconciliation (`UPDATE_MEMORY_PROMPT`)
+*   **Goal:** Compare `new_facts` against `existing_memories` (id + text) and output structured decisions.
+*   **Operations:**
+    *   **ADD:** New information.
+    *   **UPDATE:** Refines existing information (must preserve ID).
+    *   **DELETE:** Contradicts existing information (e.g., "I hate pizza" vs "I love pizza"). **Critical:** Must be paired with an ADD if replacing.
+    *   **NONE:** Fact already exists or is irrelevant.
+
+### 5.3 Summarization (`SUMMARY_PROMPT`)
+*   **Goal:** Maintain a concise running summary.
+*   **Constraints:** Aggregate related facts. Drop transient chit-chat. Focus on durable info.
+
+---
+
+## 6. Configuration Reference
+
+| Parameter | Default | Description |
+| :--- | :--- | :--- |
+| `memory_path` | `./memory_db` | Root directory for file storage. |
+| `embedding_model` | `text-embedding-3-small` | ID for embedding generation (OpenAI or local path). |
+| `default_top_k` | `5` | Target number of memories to retrieve. |
+| `max_entries` | `500` | Hard cap on memories per conversation. |
+| `mmr_lambda` | `0.7` | Diversity weighting (1.0 = pure relevance). |
+| `recency_weight` | `0.2` | Score weight for temporal proximity. |
+| `score_threshold` | `0.35` | Minimum semantic relevance to consider. |
+| `enable_summarization` | `True` | Toggle for summary generation loop. |
+| `openai_base_url` | `None` | Base URL for LLM calls (allows local LLM usage). |
