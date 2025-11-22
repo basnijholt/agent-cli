@@ -95,11 +95,18 @@ async def test_memory_client_git_versioning(
 
     # 1. Check if git repo was initialized
     assert (memory_path / ".git").exists()
+    assert (memory_path / ".gitignore").exists()
+    assert (memory_path / "README.md").exists()
 
     # Check initial commit
     log = _git_log(memory_path)
     assert len(log) >= 1
     assert "Initial commit" in log[-1]
+
+    # Verify gitignore content
+    gitignore_content = (memory_path / ".gitignore").read_text()
+    assert "chroma/" in gitignore_content
+    assert "memory_index.json" in gitignore_content
 
     # 2. Add a memory and check for commit
     await client.add("I like testing")
