@@ -35,6 +35,8 @@ def init_repo(path: Path) -> None:
             check=True,
             capture_output=True,
             text=True,
+            encoding="utf-8",
+            errors="replace",
         )
         # Configure local user if not set (to avoid commit errors)
         try:
@@ -43,6 +45,7 @@ def init_repo(path: Path) -> None:
                 cwd=path,
                 check=True,
                 capture_output=True,
+                encoding="utf-8",
             )
         except subprocess.CalledProcessError:
             # No email configured, set local config
@@ -57,6 +60,24 @@ def init_repo(path: Path) -> None:
                 check=True,
             )
 
+        # Create .gitignore to exclude derived data (vector db, cache)
+        gitignore_path = path / ".gitignore"
+        if not gitignore_path.exists():
+            gitignore_content = "chroma/\nmemory_index.json\n__pycache__/\n*.tmp\n.DS_Store\n"
+            gitignore_path.write_text(gitignore_content, encoding="utf-8")
+
+        # Create README.md
+        readme_path = path / "README.md"
+        if not readme_path.exists():
+            readme_content = (
+                "# Agent Memory Store\n\n"
+                "This repository contains the long-term memory for the Agent CLI.\n"
+                "Files are automatically managed and versioned by the memory server.\n\n"
+                "- `entries/`: Markdown files containing facts and conversation logs.\n"
+                "- `deleted/`: Soft-deleted memories (tombstones).\n"
+            )
+            readme_path.write_text(readme_content, encoding="utf-8")
+
         # Initial commit
         subprocess.run(["git", "add", "."], cwd=path, check=True)  # noqa: S607
         subprocess.run(
@@ -64,6 +85,7 @@ def init_repo(path: Path) -> None:
             cwd=path,
             check=False,
             capture_output=True,
+            encoding="utf-8",
         )
 
     except subprocess.CalledProcessError:
@@ -87,6 +109,8 @@ def commit_changes(path: Path, message: str) -> None:
             capture_output=True,
             text=True,
             check=True,
+            encoding="utf-8",
+            errors="replace",
         )
         if not status.stdout.strip():
             return  # Nothing to commit
@@ -97,12 +121,14 @@ def commit_changes(path: Path, message: str) -> None:
             cwd=path,
             check=True,
             capture_output=True,
+            encoding="utf-8",
         )
         subprocess.run(
             ["git", "commit", "-m", message],  # noqa: S607
             cwd=path,
             check=True,
             capture_output=True,
+            encoding="utf-8",
         )
     except subprocess.CalledProcessError:
         logger.exception("Failed to commit changes")
