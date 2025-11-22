@@ -27,6 +27,7 @@ def create_app(
     enable_summarization: bool = True,
     max_entries: int = 500,
     mmr_lambda: float = 0.7,
+    recency_weight: float = 0.2,
 ) -> FastAPI:
     """Create the FastAPI app for memory-backed chat."""
     LOGGER.info("Initializing memory client...")
@@ -41,6 +42,7 @@ def create_app(
         enable_summarization=enable_summarization,
         max_entries=max_entries,
         mmr_lambda=mmr_lambda,
+        recency_weight=recency_weight,
         start_watcher=False,  # We control start/stop via app events
     )
 
@@ -68,6 +70,7 @@ def create_app(
             stream=chat_request.stream or False,
             api_key=api_key,
             memory_top_k=chat_request.memory_top_k,
+            recency_weight=chat_request.memory_recency_weight,
         )
 
     @app.on_event("startup")

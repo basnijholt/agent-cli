@@ -318,6 +318,7 @@ def _retrieve_memory(
     include_global: bool = True,
     include_summary: bool = True,
     mmr_lambda: float = _DEFAULT_MMR_LAMBDA,
+    recency_weight: float = 0.2,
 ) -> tuple[MemoryRetrieval, list[str]]:
     candidate_conversations = [conversation_id]
     if include_global and conversation_id != "global":
@@ -356,8 +357,8 @@ def _retrieve_memory(
         for mem, rr in zip(candidates, rr_scores, strict=False):
             relevance = _sigmoid(rr)
             recency = recency_score(mem.metadata)
-            # Weighted blend: 80% relevance, 20% recency
-            total = 0.8 * relevance + 0.2 * recency
+            # Weighted blend
+            total = (1.0 - recency_weight) * relevance + recency_weight * recency
             scores.append(total)
 
     selected = _mmr_select(candidates, scores, max_items=top_k, lambda_mult=mmr_lambda)
@@ -410,6 +411,7 @@ async def augment_chat_request(
     default_memory_id: str = "default",
     include_global: bool = True,
     mmr_lambda: float = _DEFAULT_MMR_LAMBDA,
+    recency_weight: float = 0.2,
 ) -> tuple[ChatRequest, MemoryRetrieval | None, str, list[str]]:
     """Retrieve memory context and augment the chat request."""
     user_message = next(
@@ -441,6 +443,7 @@ async def augment_chat_request(
         reranker_model=reranker_model,
         include_global=include_global,
         mmr_lambda=mmr_lambda,
+        recency_weight=recency_weight,
     )
 
     if not retrieval.entries and not summaries:
@@ -1061,6 +1064,7 @@ async def process_chat_request(
     enable_summarization: bool = True,
     max_entries: int = _DEFAULT_MAX_ENTRIES,
     mmr_lambda: float = _DEFAULT_MMR_LAMBDA,
+    recency_weight: float = 0.2,
     postprocess_in_background: bool = True,
 ) -> Any:
     """Process a chat request with long-term memory support."""
@@ -1075,6 +1079,7 @@ async def process_chat_request(
         default_top_k=default_top_k,
         include_global=True,
         mmr_lambda=mmr_lambda,
+        recency_weight=recency_weight,
     )
     retrieval_ms = _elapsed_ms(retrieval_start)
     hit_count = len(retrieval.entries) if retrieval else 0

@@ -44,6 +44,11 @@ def memory_server(
         help="MMR lambda (0-1): higher favors relevance, lower favors diversity.",
         rich_help_panel="Memory Configuration",
     ),
+    recency_weight: float = typer.Option(
+        0.2,
+        help="Recency score weight (0.0-1.0). Controls freshness vs. relevance. Default 0.2 (20% recency, 80% semantic relevance).",
+        rich_help_panel="Memory Configuration",
+    ),
     disable_summarization: bool = typer.Option(
         False,  # noqa: FBT003
         help="Disable automatic fact extraction and summaries.",
@@ -93,6 +98,9 @@ def memory_server(
     console.print(f"  🧠 Embeddings: Using [blue]{embedding_model}[/blue]")
     console.print(f"  🔍 Memory top_k: [blue]{default_top_k}[/blue] entries per query")
     console.print(f"  🧹 Max entries per conversation: [blue]{max_entries}[/blue]")
+    console.print(
+        f"  ⚖️  Scoring: MMR λ=[blue]{mmr_lambda}[/blue], Recency w=[blue]{recency_weight}[/blue]",
+    )
     if disable_summarization:
         console.print("  ⚙️  Summaries: [red]disabled[/red]")
 
@@ -106,6 +114,7 @@ def memory_server(
         enable_summarization=not disable_summarization,
         max_entries=max_entries,
         mmr_lambda=mmr_lambda,
+        recency_weight=recency_weight,
     )
 
     uvicorn.run(fastapi_app, host=host, port=port, log_config=None)

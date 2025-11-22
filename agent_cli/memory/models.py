@@ -26,6 +26,7 @@ class ChatRequest(BaseModel):
     stream: bool | None = False
     memory_id: str | None = None
     memory_top_k: int | None = None
+    memory_recency_weight: float | None = None
 
 
 class MemoryEntry(BaseModel):
