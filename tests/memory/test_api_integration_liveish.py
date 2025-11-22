@@ -4,8 +4,12 @@ Two modes:
 - Stubbed LLM/reranker (set MEMORY_API_LIVE_BASE): deterministic/offline.
 - Live LLM (set MEMORY_API_LIVE_BASE and MEMORY_API_LIVE_REAL): starts uvicorn and
   hits the real model. Example:
-    MEMORY_API_LIVE_BASE=http://192.168.1.143:9292/v1 MEMORY_API_LIVE_REAL=1 \
+    MEMORY_API_LIVE_BASE=http://192.168.1.143:9292/v1 \
+    MEMORY_API_LIVE_REAL=1 \
+    MEMORY_API_LIVE_MODEL=gpt-oss-low:20b \
       pytest tests/memory/test_api_integration_liveish.py -q
+
+  Note: Tests assume 'embeddinggemma:300m' is available on the server.
 """
 
 from __future__ import annotations
@@ -151,9 +155,6 @@ async def test_memory_api_updates_latest_fact(  # noqa: PLR0915
         transcript = kwargs.get("transcript") or ""
         return [transcript] if "my wife is" in transcript else []
 
-    async def fake_rewrite_queries(user_message: str, **_kwargs: Any) -> list[str]:
-        return [user_message]
-
     async def fake_reconcile(
         _collection: Any,
         _conversation_id: str,
@@ -166,14 +167,13 @@ async def test_memory_api_updates_latest_fact(  # noqa: PLR0915
             return new_facts, existing_ids
         return [], []
 
-    async def fake_update_summaries(**_kwargs: Any) -> tuple[str | None, str | None]:
-        return "short", "long"
+    async def fake_update_summary(**_kwargs: Any) -> str | None:
+        return "summary"
 
     monkeypatch.setattr(engine, "_forward_request", fake_forward_request)
     monkeypatch.setattr(engine, "_extract_with_pydantic_ai", fake_extract_with_pydantic_ai)
-    monkeypatch.setattr(engine, "_rewrite_queries", fake_rewrite_queries)
     monkeypatch.setattr(engine, "_reconcile_facts", fake_reconcile)
-    monkeypatch.setattr(engine, "_update_summaries", fake_update_summaries)
+    monkeypatch.setattr(engine, "_update_summary", fake_update_summary)
 
     app = memory_api.create_app(
         memory_path=tmp_path / "memory_db",
