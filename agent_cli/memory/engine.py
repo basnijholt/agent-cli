@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+import math
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from time import perf_counter
@@ -334,14 +335,18 @@ def _retrieve_memory(
                 seen_ids.add(rec_id)
                 candidates.append(rec)
 
-    def recency_boost(meta: Any) -> float:
+    def _sigmoid(x: float) -> float:
+        return 1.0 / (1.0 + math.exp(-x))
+
+    def recency_score(meta: Any) -> float:
         ts = meta.created_at
         try:
             dt = datetime.fromisoformat(str(ts))
         except Exception:
             return 0.0
         age_days = max((datetime.now(UTC) - dt).total_seconds() / 86400.0, 0.0)
-        return 1.0 / (1.0 + age_days / 7.0)
+        # Exponential decay: ~0.36 score at 30 days
+        return math.exp(-age_days / 30.0)
 
     scores: list[float] = []
     if candidates:
@@ -349,14 +354,10 @@ def _retrieve_memory(
         pairs = [(primary_query, mem.content) for mem in candidates]
         rr_scores = predict_relevance(reranker_model, pairs)
         for mem, rr in zip(candidates, rr_scores, strict=False):
-            base = rr
-            dist_bonus = 0.0 if mem.distance is None else 1.0 / (1.0 + mem.distance)
-            total = base + 0.1 * dist_bonus + 0.2 * recency_boost(mem.metadata)
-            scores.append(total)
-    else:
-        for mem in candidates:
-            base = 0.0 if mem.distance is None else 1.0 / (1.0 + mem.distance)
-            total = base + 0.2 * recency_boost(mem.metadata)
+            relevance = _sigmoid(rr)
+            recency = recency_score(mem.metadata)
+            # Weighted blend: 80% relevance, 20% recency
+            total = 0.8 * relevance + 0.2 * recency
             scores.append(total)
 
     selected = _mmr_select(candidates, scores, max_items=top_k, lambda_mult=mmr_lambda)

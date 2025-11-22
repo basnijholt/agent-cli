@@ -116,13 +116,11 @@ We run a self-hostable memory service that ingests chat turns (and optionally ex
      * Collects unique candidates across all rewrites and scopes.
    * For each candidate:
      * **Reranker score**: cross-encoder on `(primary_query, content)` where `primary_query` is the first query.
-     * **Distance bonus**:
-       `dist_bonus = 0 if dist is None else 1/(1 + dist)` (≈ 0–1).
+     * **Relevance**: `sigmoid(reranker_score)` (0–1).
      * **Recency boost**:
-       * `age_days = (now_utc - created_at).days`
-       * `recency = 1 / (1 + age_days / 7)`
+       * `recency = exp(-age_days / 30.0)` (exponential decay).
      * **Final score**:
-       `total = reranker_score + 0.1 * dist_bonus + 0.2 * recency`
+       * `total = 0.8 * relevance + 0.2 * recency`
    * **MMR selection** (`_mmr_select`):
      * Uses **embedding cosine similarity** (`embedding` from Chroma) as redundancy.
      * For each follow-on pick:
@@ -218,9 +216,9 @@ We run a self-hostable memory service that ingests chat turns (and optionally ex
 - For each rewrite/scope: Chroma dense retrieval (`n_results = top_k * 3`) returns docs, metadatas, distances, embeddings.
 - Reranking: cross-encoder scores each candidate with the primary query only (first rewrite).
 - Scoring blend (per candidate):
-  - `dist_bonus = 0 if dist is None else 1/(1+dist)` (bounded ~0–1).
-  - `recency = 1/(1 + age_days/7)` (bounded ~0–1, recent ~1).
-  - `total = reranker_score + 0.1 * dist_bonus + 0.2 * recency`.
+  - `relevance = sigmoid(reranker_score)` (normalized 0-1).
+  - `recency = exp(-age_days / 30.0)` (exponential decay, ~0.36 at 30 days).
+  - `total = 0.8 * relevance + 0.2 * recency`.
 - Diversity (MMR): embedding cosine redundancy, `mmr = λ * total - (1-λ) * redundancy`, λ default 0.7. Redundancy capped ~1, so max penalty ~0.3; applies only to follow-on picks.
 - Selection: top scorer -> iterative MMR until `top_k` or pool exhausted; summaries optionally appended.
 
@@ -262,7 +260,7 @@ We run a self-hostable memory service that ingests chat turns (and optionally ex
 
 ## Summary of Current Defaults
 - `λ (MMR) = 0.7`; pool per rewrite/scope = `top_k * 3`.
-- Score: `total = rr + 0.1 * dist_bonus + 0.2 * recency`.
+- Score: `total = 0.8 * sigmoid(rr) + 0.2 * exp(-age/30)`.
 - Embeddings: `text-embedding-3-small` (1,536-d) by default; other runs can override (e.g., `embeddinggemma:300m` in the blog ingest).
 - Reranker: ONNX cross-encoder (`Xenova/ms-marco-MiniLM-L-6-v2`).
 - Salience: removed.
