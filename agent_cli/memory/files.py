@@ -67,7 +67,7 @@ def write_memory_file(
     # Route by role/category for readability
     if summary_kind:
         subdir = Path("summaries")
-        filename = "short.md" if summary_kind == "summary_short" else "long.md"
+        filename = "summary.md"
     elif role == "user":
         subdir = Path("turns") / "user"
         filename = f"{safe_ts}__{doc_id}.md"

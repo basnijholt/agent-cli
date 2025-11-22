@@ -5,7 +5,6 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 from typing import Any, Self
 
-import httpx
 import pytest
 
 from agent_cli.memory import engine, tasks
@@ -148,28 +147,18 @@ class _DummyAsyncClient:
 
 
 @pytest.mark.asyncio
-async def test_augment_chat_request_disables_with_zero_top_k(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
+async def test_augment_chat_request_disables_with_zero_top_k() -> None:
     """Explicit memory_top_k=0 should skip retrieval and leave request untouched."""
-    # Avoid calling external LLM during consolidation.
-    engine._consolidate_retrieval_entries = lambda entries, **_: entries  # type: ignore[assignment]
     request = ChatRequest(
         model="x",
         messages=[Message(role="user", content="hello")],
         memory_top_k=0,
     )
 
-    async def fake_rewrite(*_args: Any, **_kwargs: Any) -> list[str]:
-        return ["hello"]
-
-    monkeypatch.setattr(engine, "_rewrite_queries", fake_rewrite)
     aug_request, retrieval, conversation_id, summaries = await engine.augment_chat_request(
         request,
         collection=_RecordingCollection(),
         reranker_model=_DummyReranker(),  # type: ignore[arg-type]
-        openai_base_url="http://llm",
-        api_key=None,
     )
 
     assert retrieval is None
@@ -253,66 +242,22 @@ async def test_retrieve_memory_prefers_diversity_and_adds_summaries(
     retrieval, summaries = engine._retrieve_memory(
         collection=_RecordingCollection(),
         conversation_id="conv1",
-        queries=["I enjoy biking and also travel planning"],
+        query="I enjoy biking and also travel planning",
         top_k=2,
         reranker_model=_DummyReranker(),  # type: ignore[arg-type]
+        # Use defaults for recency/threshold to ensure they don't filter out our test data
+        # Our relevance mock returns high scores [0.9, 0.1, 0.8] but recall Sigmoid
+        # [0.9] -> sig(0.9) ~ 0.71 > 0.35
+        # [0.1] -> sig(0.1) ~ 0.52 > 0.35
+        # [0.8] -> sig(0.8) ~ 0.69 > 0.35
     )
 
     contents = [entry.content for entry in retrieval.entries]
     assert len(contents) == 2
     assert mem_primary.content in contents
     assert mem_diverse.content in contents  # diverse item beats near-duplicate
-    assert any("Short summary" in text for text in summaries)
-    assert any("Long summary" in text for text in summaries)
-    assert call_count == 2
-
-
-@pytest.mark.asyncio
-async def test_query_rewrite_merges_candidates(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Multiple rewrites should expand candidate set."""
-    call_count = 0
-
-    def fake_query_memories(
-        _collection: Any,
-        *,
-        conversation_id: str,
-        text: str,
-        n_results: int,  # noqa: ARG001
-    ) -> list[StoredMemory]:
-        nonlocal call_count
-        call_count += 1
-        return [
-            StoredMemory(
-                id=f"{conversation_id}-{text}",
-                content=f"{text} content",
-                metadata=MemoryMetadata(
-                    conversation_id=conversation_id,
-                    role="memory",
-                    created_at=datetime.now(UTC).isoformat(),
-                ),
-            ),
-        ]
-
-    monkeypatch.setattr(engine, "query_memories", fake_query_memories)
-
-    async def fake_rewrite_queries(*_args: Any, **_kwargs: Any) -> list[str]:
-        return ["q1", "q2"]
-
-    monkeypatch.setattr(engine, "_rewrite_queries", fake_rewrite_queries)
-    monkeypatch.setattr(engine, "_consolidate_retrieval_entries", lambda entries, **_: entries)
-
-    retrieval, _ = engine._retrieve_memory(
-        collection=_RecordingCollection(),
-        conversation_id="conv1",
-        queries=["q1", "q2"],
-        top_k=5,
-        reranker_model=_DummyReranker(),  # type: ignore[arg-type]
-    )
-
-    contents = {entry.content for entry in retrieval.entries}
-    assert "q1 content" in contents
-    assert "q2 content" in contents
-    assert call_count == 4  # two queries across conversation and global
+    assert any("Conversation summary" in text for text in summaries)
+    assert call_count == 2  # conversation + global
 
 
 @pytest.mark.asyncio
@@ -343,12 +288,13 @@ async def test_retrieve_memory_returns_all_facts(monkeypatch: pytest.MonkeyPatch
     )
 
     monkeypatch.setattr(engine, "query_memories", lambda *_args, **_kwargs: [older, newer])
-    monkeypatch.setattr(engine, "predict_relevance", lambda _model, pairs: [0.5 for _ in pairs])
+    # Relevance > 0.35 default
+    monkeypatch.setattr(engine, "predict_relevance", lambda _model, pairs: [2.0 for _ in pairs])
 
     retrieval, _ = engine._retrieve_memory(
         collection=_RecordingCollection(),
         conversation_id="conv1",
-        queries=["Who is Jane?"],
+        query="Who is Jane?",
         top_k=5,
         reranker_model=_DummyReranker(),  # type: ignore[arg-type]
         include_global=False,
@@ -377,12 +323,6 @@ async def test_process_chat_request_summarizes_and_persists(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     collection = _RecordingCollection()
-    monkeypatch.setattr(engine, "_consolidate_retrieval_entries", lambda entries, **_: entries)
-
-    async def fake_rewrite_queries(*_args: Any, **_kwargs: Any) -> list[str]:
-        return ["Hello rewrite"]
-
-    monkeypatch.setattr(engine, "_rewrite_queries", fake_rewrite_queries)
 
     async def fake_forward_request(
         _request: Any,
@@ -418,7 +358,8 @@ async def test_process_chat_request_summarizes_and_persists(
 
     monkeypatch.setattr(engine, "_reconcile_facts", fake_reconcile)
     monkeypatch.setattr(engine.Agent, "run", fake_agent_run)
-    monkeypatch.setattr(engine, "predict_relevance", lambda _model, pairs: [0.1 for _ in pairs])
+    # High relevance so they aren't filtered
+    monkeypatch.setattr(engine, "predict_relevance", lambda _model, pairs: [5.0 for _ in pairs])
 
     request = ChatRequest(
         model="demo-model",
@@ -440,11 +381,11 @@ async def test_process_chat_request_summarizes_and_persists(
     await tasks.wait_for_background_tasks()
 
     files = list(tmp_path.glob("entries/**/*.md"))
-    assert len(files) == 6  # user + assistant + 2 facts + 2 summaries
+    assert len(files) == 5  # user + assistant + 2 facts + 1 summary (single)
 
     # All persisted entries were upserted into the collection as well
     roles = {meta.get("role") for _, meta, _ in collection._store.values()}
-    assert {"user", "assistant", "memory", "summary_short", "summary_long"} <= roles
+    assert {"user", "assistant", "memory", "summary"} <= roles
 
     assert response["choices"][0]["message"]["content"] == "assistant reply"
     assert "memory_hits" in response
@@ -514,59 +455,6 @@ def test_evict_if_needed_drops_oldest_and_cleans_disk(
 
 
 @pytest.mark.asyncio
-@pytest.mark.usefixtures("stub_openai_provider")
-async def test_rewrite_queries_transient_error_falls_back(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """Transient httpx errors should keep the original message."""
-
-    class _Agent:
-        def __init__(self, *_args: Any, **_kwargs: Any) -> None:
-            return
-
-        async def run(self, *_args: Any, **_kwargs: Any) -> Any:
-            err = httpx.ConnectError("boom")
-            raise err
-
-    monkeypatch.setattr(engine, "Agent", _Agent)
-
-    result = await engine._rewrite_queries(
-        "hello",
-        openai_base_url="http://mock",
-        api_key=None,
-        model="demo",
-    )
-
-    assert result == ["hello"]
-
-
-@pytest.mark.asyncio
-@pytest.mark.usefixtures("stub_openai_provider")
-async def test_rewrite_queries_internal_error_bubbles(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """Unexpected errors should propagate."""
-
-    class _Agent:
-        def __init__(self, *_args: Any, **_kwargs: Any) -> None:
-            return
-
-        async def run(self, *_args: Any, **_kwargs: Any) -> Any:
-            err = RuntimeError()
-            raise err
-
-    monkeypatch.setattr(engine, "Agent", _Agent)
-
-    with pytest.raises(RuntimeError):
-        await engine._rewrite_queries(
-            "hello",
-            openai_base_url="http://mock",
-            api_key=None,
-            model="demo",
-        )
-
-
-@pytest.mark.asyncio
 async def test_streaming_request_persists_user_and_assistant(
     tmp_path: Any,
     monkeypatch: pytest.MonkeyPatch,
@@ -578,18 +466,13 @@ async def test_streaming_request_persists_user_and_assistant(
         stream=True,
     )
 
-    monkeypatch.setattr(engine, "predict_relevance", lambda _model, pairs: [0.0 for _ in pairs])
+    # High score
+    monkeypatch.setattr(engine, "predict_relevance", lambda _model, pairs: [5.0 for _ in pairs])
     monkeypatch.setattr(
         engine.streaming,
         "httpx",
         type("H", (), {"AsyncClient": _DummyAsyncClient}),
     )  # type: ignore[attr-defined]
-
-    async def fake_rewrite_queries(*_args: Any, **_kwargs: Any) -> list[str]:
-        return ["Hello rewrite"]
-
-    monkeypatch.setattr(engine, "_rewrite_queries", fake_rewrite_queries)
-    monkeypatch.setattr(engine, "_consolidate_retrieval_entries", lambda entries, **_: entries)
 
     async def fake_stream_chat_sse(*_args: Any, **_kwargs: Any) -> Any:
         body = [
@@ -636,7 +519,7 @@ async def test_streaming_with_summarization_persists_facts_and_summaries(
         stream=True,
     )
 
-    monkeypatch.setattr(engine, "predict_relevance", lambda _model, pairs: [0.0 for _ in pairs])
+    monkeypatch.setattr(engine, "predict_relevance", lambda _model, pairs: [5.0 for _ in pairs])
 
     async def fake_stream_chat_sse(*_args: Any, **_kwargs: Any) -> Any:
         body = [
@@ -685,7 +568,6 @@ async def test_streaming_with_summarization_persists_facts_and_summaries(
     await tasks.wait_for_background_tasks()
 
     files = list(tmp_path.glob("entries/**/*.md"))
-    assert len(files) == 5  # user + assistant + fact + 2 summaries
+    assert len(files) == 4  # user + assistant + fact + 1 summary
     assert any("facts" in str(f) for f in files)
-    assert any("summaries/short" in str(f) for f in files)
-    assert any("summaries/long" in str(f) for f in files)
+    assert any("summaries/summary.md" in str(f) for f in files)

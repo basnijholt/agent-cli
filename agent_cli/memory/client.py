@@ -151,8 +151,6 @@ class MemoryClient:
             dummy_request,
             self.collection,
             reranker_model=self.reranker_model,
-            openai_base_url=self.openai_base_url,
-            api_key=self.chat_api_key,
             default_top_k=top_k or self.default_top_k,
             include_global=True,
             mmr_lambda=self.mmr_lambda,

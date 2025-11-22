@@ -107,7 +107,7 @@ def get_summary_entry(
     collection: Collection,
     conversation_id: str,
     *,
-    role: str = "summary_short",
+    role: str = "summary",
 ) -> StoredMemory | None:
     """Return the latest summary entry for a conversation, if present."""
     result = collection.get(
@@ -140,8 +140,7 @@ def list_conversation_entries(
     """List all entries for a conversation (optionally excluding summary)."""
     filters: list[dict[str, Any]] = [{"conversation_id": conversation_id}]
     if not include_summary:
-        filters.append({"role": {"$ne": "summary_short"}})
-        filters.append({"role": {"$ne": "summary_long"}})
+        filters.append({"role": {"$ne": "summary"}})
     result = collection.get(where={"$and": filters} if len(filters) > 1 else filters[0])
     docs = result.get("documents") or []
     metas = result.get("metadatas") or []

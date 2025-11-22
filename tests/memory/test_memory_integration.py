@@ -103,12 +103,6 @@ def client(tmp_path: Path) -> TestClient:
         )
         stack.enter_context(
             patch(
-                "agent_cli.memory.engine._rewrite_queries",
-                side_effect=lambda user_message, **_: [user_message],
-            ),
-        )
-        stack.enter_context(
-            patch(
                 "agent_cli.memory.engine.forward_chat_request",
                 side_effect=_fake_forward_request,
             ),

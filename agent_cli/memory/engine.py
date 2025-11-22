@@ -31,7 +31,6 @@ from agent_cli.memory.files import (
 )
 from agent_cli.memory.models import (
     ChatRequest,
-    ConsolidationDecision,
     MemoryEntry,
     MemoryMetadata,
     MemoryRetrieval,
@@ -41,11 +40,8 @@ from agent_cli.memory.models import (
     SummaryOutput,
 )
 from agent_cli.memory.prompt import (
-    CONSOLIDATION_PROMPT,
-    CONTRADICTION_PROMPT,
     FACT_INSTRUCTIONS,
     FACT_SYSTEM_PROMPT,
-    QUERY_REWRITE_PROMPT,
     SUMMARY_PROMPT,
     UPDATE_MEMORY_PROMPT,
 )
@@ -70,8 +66,7 @@ logger = logging.getLogger("agent_cli.memory.engine")
 _DEFAULT_MAX_ENTRIES = 500
 _SUMMARY_DOC_ID_SUFFIX = "::summary"
 _DEFAULT_MMR_LAMBDA = 0.7
-_SUMMARY_SHORT_ROLE = "summary_short"
-_SUMMARY_LONG_ROLE = "summary_long"
+_SUMMARY_ROLE = "summary"
 _DEFAULT_MAX_REWRITES = 2
 
 
@@ -86,78 +81,12 @@ def _elapsed_ms(start: float) -> float:
     return (perf_counter() - start) * 1000
 
 
-def _parse_iso(date_str: str) -> datetime | None:
-    """Best-effort ISO8601 parser."""
-    try:
-        return datetime.fromisoformat(date_str)
-    except Exception:
-        return None
-
-
 @dataclass
 class PersistEntry:
     """Structured memory entry to persist."""
 
     role: str
     content: str
-
-
-async def _consolidate_retrieval_entries(
-    entries: list[MemoryEntry],
-    *,
-    openai_base_url: str,
-    api_key: str | None,
-    model: str,
-    prompt: str = CONSOLIDATION_PROMPT,
-) -> list[MemoryEntry]:
-    """Use a small LLM pass to mark overlapping facts to KEEP/DELETE/UPDATE."""
-    if len(entries) <= 1:
-        return entries
-
-    provider = OpenAIProvider(
-        api_key=api_key or "dummy",
-        base_url=openai_base_url,
-    )
-    model_cfg = OpenAIChatModel(
-        model_name=model,
-        provider=provider,
-        settings=ModelSettings(temperature=0.0, max_tokens=256),
-    )
-    agent = Agent(
-        model=model_cfg,
-        system_prompt=prompt,
-        output_type=list[ConsolidationDecision],
-        retries=1,
-    )
-
-    payload_lines = [
-        f"{idx}. [created_at={entry.created_at}] {entry.content}"
-        for idx, entry in enumerate(entries)
-    ]
-    payload = "\n".join(payload_lines)
-    try:
-        result = await agent.run(payload)
-        decisions = {d.id: d.action for d in result.output}
-    except (httpx.HTTPError, AgentRunError, UnexpectedModelBehavior):
-        logger.warning(
-            "Consolidation agent transient failure; keeping all retrieved entries",
-            exc_info=True,
-        )
-        return entries
-    except Exception:
-        logger.exception("Consolidation agent internal error")
-        raise
-
-    if not decisions:
-        return entries
-
-    kept: list[MemoryEntry] = []
-    for idx, entry in enumerate(entries):
-        action = decisions.get(str(idx))
-        if action in ("KEEP", "UPDATE"):
-            kept.append(entry)
-
-    return kept or entries
 
 
 def _prepare_fact_entries(facts: list[str]) -> list[PersistEntry]:
@@ -262,57 +191,11 @@ def _delete_memory_files(memory_root: Path, conversation_id: str, ids: list[str]
         write_snapshot(snapshot_path, snapshot.values())
 
 
-async def _rewrite_queries(
-    user_message: str,
-    *,
-    openai_base_url: str,
-    api_key: str | None,
-    model: str,
-    max_rewrites: int = _DEFAULT_MAX_REWRITES,
-) -> list[str]:
-    """Generate a small set of disambiguated rewrites to improve recall."""
-    provider = OpenAIProvider(
-        api_key=api_key or "dummy",
-        base_url=openai_base_url,
-    )
-    model_cfg = OpenAIChatModel(
-        model_name=model,
-        provider=provider,
-        settings=ModelSettings(temperature=0.2, max_tokens=128),
-    )
-    agent = Agent(
-        model=model_cfg,
-        system_prompt=QUERY_REWRITE_PROMPT,
-        output_type=list[str],
-        retries=1,
-    )
-    try:
-        result = await agent.run(user_message)
-        rewrites = result.output or []
-    except (httpx.HTTPError, AgentRunError, UnexpectedModelBehavior):
-        logger.warning(
-            "Query rewrite agent transient failure; using original message only",
-            exc_info=True,
-        )
-        rewrites = []
-    except Exception:
-        logger.exception("Query rewrite agent internal error")
-        raise
-
-    unique: list[str] = []
-    for candidate in [user_message, *rewrites]:
-        if candidate and candidate not in unique:
-            unique.append(candidate)
-        if len(unique) >= max_rewrites + 1:  # include original + max_rewrites
-            break
-    return unique or [user_message]
-
-
 def _retrieve_memory(
     collection: Collection,
     *,
     conversation_id: str,
-    queries: list[str],
+    query: str,
     top_k: int,
     reranker_model: OnnxCrossEncoder,
     include_global: bool = True,
@@ -327,15 +210,15 @@ def _retrieve_memory(
 
     raw_candidates: list[StoredMemory] = []
     seen_ids: set[str] = set()
-    for q in queries:
-        for cid in candidate_conversations:
-            records = query_memories(collection, conversation_id=cid, text=q, n_results=top_k * 3)
-            for rec in records:
-                rec_id = rec.id
-                if rec_id in seen_ids:
-                    continue
-                seen_ids.add(rec_id)
-                raw_candidates.append(rec)
+
+    for cid in candidate_conversations:
+        records = query_memories(collection, conversation_id=cid, text=query, n_results=top_k * 3)
+        for rec in records:
+            rec_id = rec.id
+            if rec_id in seen_ids:
+                continue
+            seen_ids.add(rec_id)
+            raw_candidates.append(rec)
 
     def _sigmoid(x: float) -> float:
         return 1.0 / (1.0 + math.exp(-x))
@@ -352,14 +235,16 @@ def _retrieve_memory(
 
     final_candidates: list[StoredMemory] = []
     scores: list[float] = []
+
     if raw_candidates:
-        primary_query = queries[0] if queries else ""
-        pairs = [(primary_query, mem.content) for mem in raw_candidates]
+        pairs = [(query, mem.content) for mem in raw_candidates]
         rr_scores = predict_relevance(reranker_model, pairs)
         for mem, rr in zip(raw_candidates, rr_scores, strict=False):
             relevance = _sigmoid(rr)
+            # Filter out low-relevance memories to reduce noise
             if relevance < score_threshold:
                 continue
+
             recency = recency_score(mem.metadata)
             # Weighted blend
             total = (1.0 - recency_weight) * relevance + recency_weight * recency
@@ -380,12 +265,9 @@ def _retrieve_memory(
 
     summaries: list[str] = []
     if include_summary:
-        summary_short = get_summary_entry(collection, conversation_id, role=_SUMMARY_SHORT_ROLE)
-        summary_long = get_summary_entry(collection, conversation_id, role=_SUMMARY_LONG_ROLE)
-        if summary_short:
-            summaries.append(f"Short summary:\n{summary_short.content}")
-        if summary_long:
-            summaries.append(f"Long summary:\n{summary_long.content}")
+        summary_entry = get_summary_entry(collection, conversation_id, role=_SUMMARY_ROLE)
+        if summary_entry:
+            summaries.append(f"Conversation summary:\n{summary_entry.content}")
 
     return MemoryRetrieval(entries=entries), summaries
 
@@ -410,8 +292,6 @@ async def augment_chat_request(
     request: ChatRequest,
     collection: Collection,
     reranker_model: OnnxCrossEncoder,
-    openai_base_url: str,
-    api_key: str | None,
     default_top_k: int = 5,
     default_memory_id: str = "default",
     include_global: bool = True,
@@ -434,17 +314,10 @@ async def augment_chat_request(
         logger.info("Memory retrieval disabled for this request (top_k=%s)", top_k)
         return request, None, conversation_id, []
 
-    rewrites = await _rewrite_queries(
-        user_message,
-        openai_base_url=openai_base_url,
-        api_key=api_key,
-        model=request.model,
-    )
-
     retrieval, summaries = _retrieve_memory(
         collection,
         conversation_id=conversation_id,
-        queries=rewrites,
+        query=user_message,
         top_k=top_k,
         reranker_model=reranker_model,
         include_global=include_global,
@@ -455,17 +328,6 @@ async def augment_chat_request(
 
     if not retrieval.entries and not summaries:
         return request, None, conversation_id, summaries
-
-    if len(retrieval.entries) > 1:
-        # Consolidate overlapping/contradictory facts before building the prompt.
-        consolidated = await _consolidate_retrieval_entries(
-            retrieval.entries,
-            openai_base_url=openai_base_url,
-            api_key=api_key,
-            model=request.model,
-            prompt=CONTRADICTION_PROMPT,
-        )
-        retrieval = MemoryRetrieval(entries=consolidated)
 
     augmented_content = _format_augmented_content(
         user_message=user_message,
@@ -737,35 +599,6 @@ async def _update_summary(
     return summary or prior_summary
 
 
-async def _update_summaries(
-    *,
-    prior_short: str | None,
-    prior_long: str | None,
-    new_facts: list[str],
-    openai_base_url: str,
-    api_key: str | None,
-    model: str,
-) -> tuple[str | None, str | None]:
-    """Update both short and long summaries."""
-    short = await _update_summary(
-        prior_summary=prior_short,
-        new_facts=new_facts,
-        openai_base_url=openai_base_url,
-        api_key=api_key,
-        model=model,
-        max_tokens=256,
-    )
-    long = await _update_summary(
-        prior_summary=prior_long,
-        new_facts=new_facts,
-        openai_base_url=openai_base_url,
-        api_key=api_key,
-        model=model,
-        max_tokens=512,
-    )
-    return short, long
-
-
 def _persist_summary(
     collection: Collection,
     *,
@@ -951,44 +784,30 @@ async def extract_and_store_facts_and_summaries(
     prior_summary_entry = get_summary_entry(
         collection,
         conversation_id,
-        role=_SUMMARY_SHORT_ROLE,
-    )
-    prior_long_entry = get_summary_entry(
-        collection,
-        conversation_id,
-        role=_SUMMARY_LONG_ROLE,
+        role=_SUMMARY_ROLE,
     )
     prior_summary = prior_summary_entry.content if prior_summary_entry else None
-    prior_long = prior_long_entry.content if prior_long_entry else None
+
     summary_start = perf_counter()
-    new_short, new_long = await _update_summaries(
-        prior_short=prior_summary,
-        prior_long=prior_long,
+    new_summary = await _update_summary(
+        prior_summary=prior_summary,
         new_facts=facts,
         openai_base_url=openai_base_url,
         api_key=api_key,
         model=model,
     )
     logger.info(
-        "Summary updates completed in %.1f ms (conversation=%s)",
+        "Summary update completed in %.1f ms (conversation=%s)",
         _elapsed_ms(summary_start),
         conversation_id,
     )
-    if new_short:
+    if new_summary:
         _persist_summary(
             collection,
             memory_root=memory_root,
             conversation_id=conversation_id,
-            summary=new_short,
-            role=_SUMMARY_SHORT_ROLE,
-        )
-    if new_long:
-        _persist_summary(
-            collection,
-            memory_root=memory_root,
-            conversation_id=conversation_id,
-            summary=new_long,
-            role=_SUMMARY_LONG_ROLE,
+            summary=new_summary,
+            role=_SUMMARY_ROLE,
         )
 
 
@@ -1082,8 +901,6 @@ async def process_chat_request(
         request,
         collection,
         reranker_model=reranker_model,
-        openai_base_url=openai_base_url,
-        api_key=api_key,
         default_top_k=default_top_k,
         include_global=True,
         mmr_lambda=mmr_lambda,
