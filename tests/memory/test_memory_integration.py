@@ -36,6 +36,7 @@ class _FakeCollection:
         query_texts: list[str],  # noqa: ARG002
         n_results: int,
         where: dict[str, Any],
+        include: list[str] | None = None,  # noqa: ARG002
     ) -> dict[str, Any]:
         # Simple filter by conversation_id
         conv = where.get("conversation_id")
@@ -52,6 +53,7 @@ class _FakeCollection:
             "metadatas": [metas],
             "ids": [ids],
             "distances": [[0.0] * len(docs)],
+            "embeddings": [[[0.0] for _ in docs]],
         }
 
     def get(

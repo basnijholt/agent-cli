@@ -61,13 +61,33 @@ def query_memories(
         query_texts=[text],
         n_results=n_results,
         where={"$and": filters},
+        include=["embeddings"],
     )
     docs = raw.get("documents", [[]])[0] or []
     metas = raw.get("metadatas", [[]])[0] or []
     ids = raw.get("ids", [[]])[0] or []
     distances = raw.get("distances", [[]])[0] or []
+    raw_embeddings = raw.get("embeddings")
+    if raw_embeddings is None:
+        msg = "Chroma query did not return embeddings"
+        raise ValueError(msg)
+    embeddings = (
+        raw_embeddings[0]
+        if raw_embeddings and isinstance(raw_embeddings[0], list)
+        else raw_embeddings
+    )
+    if len(embeddings) != len(docs):
+        msg = "Chroma returned embeddings of unexpected length"
+        raise ValueError(msg)
     records: list[StoredMemory] = []
-    for doc, meta, doc_id, dist in zip(docs, metas, ids, distances, strict=False):
+    for doc, meta, doc_id, dist, emb in zip(
+        docs,
+        metas,
+        ids,
+        distances,
+        embeddings,
+        strict=False,
+    ):
         if doc_id is None:
             msg = "Chroma returned a memory row without an id"
             raise ValueError(msg)
@@ -77,6 +97,7 @@ def query_memories(
                 content=str(doc),
                 metadata=MemoryMetadata(**dict(meta)),
                 distance=float(dist) if dist is not None else None,
+                embedding=[float(x) for x in emb] if emb is not None else None,
             ),
         )
     return records

@@ -501,15 +501,6 @@ def _persist_entries(
         upsert_memories(collection, ids=ids, contents=contents, metadatas=metadatas)
 
 
-def _token_overlap_similarity(a: str, b: str) -> float:
-    """Simple token overlap similarity for MMR."""
-    ta = set(a.lower().split())
-    tb = set(b.lower().split())
-    if not ta or not tb:
-        return 0.0
-    return len(ta & tb) / max(len(ta), len(tb))
-
-
 def _mmr_select(
     candidates: list[StoredMemory],
     scores: list[float],
@@ -520,6 +511,23 @@ def _mmr_select(
     """Apply Maximal Marginal Relevance to promote diversity."""
     if not candidates or max_items <= 0:
         return []
+
+    def _normalize(vec: list[float] | None) -> list[float] | None:
+        if not vec:
+            return None
+        norm = sum(x * x for x in vec) ** 0.5
+        if norm == 0:
+            return None
+        return [x / norm for x in vec]
+
+    def _cosine(a: list[float] | None, b: list[float] | None) -> float:
+        if not a or not b or len(a) != len(b):
+            return 0.0
+        return sum(x * y for x, y in zip(a, b, strict=False))
+
+    normalized_embeddings: list[list[float] | None] = [
+        _normalize(mem.embedding) for mem in candidates
+    ]
 
     selected: list[int] = []
     candidate_indices = list(range(len(candidates)))
@@ -535,10 +543,7 @@ def _mmr_select(
         for idx in candidate_indices:
             relevance = scores[idx]
             redundancy = max(
-                (
-                    _token_overlap_similarity(candidates[idx].content, candidates[s].content)
-                    for s in selected
-                ),
+                (_cosine(normalized_embeddings[idx], normalized_embeddings[s]) for s in selected),
                 default=0.0,
             )
             mmr_score = lambda_mult * relevance - (1 - lambda_mult) * redundancy

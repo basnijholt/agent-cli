@@ -67,6 +67,7 @@ class StoredMemory(BaseModel):
     content: str
     metadata: MemoryMetadata
     distance: float | None = None
+    embedding: list[float] | None = None
 
 
 class MemoryRetrieval(BaseModel):

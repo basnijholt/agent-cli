@@ -27,6 +27,7 @@ class _FakeCollection:
             "metadatas": [[]],
             "ids": [[]],
             "distances": [[]],
+            "embeddings": [[]],
         }
 
 

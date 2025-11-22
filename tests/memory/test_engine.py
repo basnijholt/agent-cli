@@ -28,11 +28,11 @@ class _RecordingCollection:
     """Minimal Chroma-like collection that keeps everything in memory."""
 
     def __init__(self) -> None:
-        self._store: dict[str, tuple[str, dict[str, Any]]] = {}
+        self._store: dict[str, tuple[str, dict[str, Any], list[float]]] = {}
 
     def upsert(self, ids: list[str], documents: list[str], metadatas: list[dict[str, Any]]) -> None:
         for doc_id, doc, meta in zip(ids, documents, metadatas, strict=False):
-            self._store[doc_id] = (doc, dict(meta))
+            self._store[doc_id] = (doc, dict(meta), [0.0])
 
     def query(
         self,
@@ -40,21 +40,24 @@ class _RecordingCollection:
         query_texts: list[str],  # noqa: ARG002
         n_results: int,
         where: dict[str, Any],
+        include: list[str] | None = None,  # noqa: ARG002
     ) -> dict[str, Any]:
         conv = where.get("conversation_id")
         items = [
-            (doc_id, doc, meta)
-            for doc_id, (doc, meta) in self._store.items()
+            (doc_id, doc, meta, emb)
+            for doc_id, (doc, meta, emb) in self._store.items()
             if meta.get("conversation_id") == conv
         ]
-        ids = [doc_id for doc_id, _, _ in items][:n_results]
-        docs = [doc for _, doc, _ in items][:n_results]
-        metas = [meta for _, _, meta in items][:n_results]
+        ids = [doc_id for doc_id, _, _, _ in items][:n_results]
+        docs = [doc for _, doc, _, _ in items][:n_results]
+        metas = [meta for _, _, meta, _ in items][:n_results]
+        embeddings = [emb for _, _, _, emb in items][:n_results]
         return {
             "documents": [docs],
             "metadatas": [metas],
             "ids": [ids],
             "distances": [[0.0 for _ in ids]],
+            "embeddings": [embeddings],
         }
 
     def get(
@@ -77,7 +80,7 @@ class _RecordingCollection:
         clauses = where.get("$and", [where])  # type: ignore[arg-type]
         results = [
             (doc_id, (doc, meta))
-            for doc_id, (doc, meta) in self._store.items()
+            for doc_id, (doc, meta, _emb) in self._store.items()
             if all(_matches(meta, clause) for clause in clauses)
         ]
         docs = [doc for _, (doc, _) in results]
@@ -440,7 +443,7 @@ async def test_process_chat_request_summarizes_and_persists(
     assert len(files) == 6  # user + assistant + 2 facts + 2 summaries
 
     # All persisted entries were upserted into the collection as well
-    roles = {meta.get("role") for _, meta in collection._store.values()}
+    roles = {meta.get("role") for _, meta, _ in collection._store.values()}
     assert {"user", "assistant", "memory", "summary_short", "summary_long"} <= roles
 
     assert response["choices"][0]["message"]["content"] == "assistant reply"

@@ -41,12 +41,13 @@ class _FakeCollection:
 def test_query_memories_normalizes_tags_and_ids() -> None:
     fake = _FakeCollection(
         query_result={
-            "documents": [["doc1", "doc2"]],
+            "documents": [["doc1"]],
             "metadatas": [
                 [{"conversation_id": "c1", "role": "memory", "created_at": "now", "tags": "a,b"}],
             ],
             "ids": [["id1"]],
             "distances": [[0.1]],
+            "embeddings": [[[0.0, 0.0]]],
         },
     )
     records = store.query_memories(fake, conversation_id="c1", text="hello", n_results=2)
@@ -80,6 +81,7 @@ def test_query_memories_skips_summary_entries_and_filters_roles() -> None:
                     "metadatas": [[memory_meta]],
                     "ids": [["m1"]],
                     "distances": [[0.1]],
+                    "embeddings": [[[0.0]]],
                 }
 
             return {
@@ -87,6 +89,7 @@ def test_query_memories_skips_summary_entries_and_filters_roles() -> None:
                 "metadatas": [[memory_meta, summary_meta]],
                 "ids": [["m1", "s1"]],
                 "distances": [[0.1, 0.2]],
+                "embeddings": [[[0.0], [0.0]]],
             }
 
     fake = _FilterAwareFakeCollection()
