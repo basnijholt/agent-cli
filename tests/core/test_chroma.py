@@ -24,8 +24,8 @@ class _FakeCollection:
 
 
 def test_flatten_and_upsert_uses_base_models() -> None:
-    """Ensure metadata flattening accepts BaseModel and serializes lists."""
-    m = _Meta(source="doc", tags=["a", "b"], score=0.9)
+    """Ensure metadata serialization accepts BaseModel and preserves lists."""
+    m = _Meta(source="doc", tags=["a", "b"])
     collection = _FakeCollection()
 
     chroma.upsert(collection, ids=["1"], documents=["text"], metadatas=[m])
@@ -34,4 +34,4 @@ def test_flatten_and_upsert_uses_base_models() -> None:
     ids, docs, metas = collection.calls[0]
     assert ids == ["1"]
     assert docs == ["text"]
-    assert metas == [{"source": "doc", "tags": "a,b", "score": 0.9}]
+    assert metas == [{"source": "doc", "tags": ["a", "b"]}]

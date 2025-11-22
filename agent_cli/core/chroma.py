@@ -36,23 +36,18 @@ def init_collection(
     return client.get_or_create_collection(name=name, embedding_function=embed_fn)
 
 
-def flatten_metadatas(metadatas: Sequence[BaseModel]) -> list[dict[str, Any]]:
-    """Convert metadata objects to Chroma-friendly primitives (Chroma wants JSON-serializable values)."""
-    flattened: list[dict[str, Any]] = []
+def flatten_metadatas(metadatas: Sequence[BaseModel | Mapping[str, Any]]) -> list[dict[str, Any]]:
+    """Serialize metadata models to JSON-safe dicts while preserving lists."""
+    serialized: list[dict[str, Any]] = []
     for meta in metadatas:
-        raw = meta.model_dump() if isinstance(meta, BaseModel) else dict(meta)
-        flat: dict[str, Any] = {}
-        for key, value in raw.items():
-            if value is None:
-                flat[key] = None
-            elif isinstance(value, (str, int, float, bool)):
-                flat[key] = value
-            elif isinstance(value, Sequence) and not isinstance(value, (str, bytes, bytearray)):
-                flat[key] = ",".join(str(item) for item in value)
-            else:
-                flat[key] = str(value)
-        flattened.append(flat)
-    return flattened
+        if isinstance(meta, BaseModel):
+            serialized.append(meta.model_dump(mode="json", exclude_none=True))
+        elif isinstance(meta, Mapping):
+            serialized.append({k: v for k, v in meta.items() if v is not None})
+        else:
+            msg = f"Unsupported metadata type: {type(meta)!r}"
+            raise TypeError(msg)
+    return serialized
 
 
 def upsert(
@@ -60,9 +55,9 @@ def upsert(
     *,
     ids: list[str],
     documents: list[str],
-    metadatas: Sequence[BaseModel],
+    metadatas: Sequence[BaseModel | Mapping[str, Any]],
 ) -> None:
-    """Upsert documents with flattened metadata."""
+    """Upsert documents with JSON-serialized metadata."""
     if not ids:
         return
     serialized = flatten_metadatas(metadatas)
