@@ -71,7 +71,6 @@ def memory_server(
 
     How it works:
 
-    \b
     1.  Intercepts `POST /v1/chat/completions` requests.
     2.  **Retrieves** relevant memories (facts, previous conversations) from a
         local vector database (ChromaDB) based on the user's query.
