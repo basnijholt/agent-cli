@@ -105,15 +105,17 @@ def test_provider_alias_normalization(config_file: Path) -> None:
     assert provider_cfg.tts_provider == "wyoming"
 
 
-def test_rag_server_help_includes_config_option() -> None:
+def test_rag_server_help_includes_config_option(monkeypatch: pytest.MonkeyPatch) -> None:
     """Ensure rag-server command wires config option (for defaults loading)."""
+    monkeypatch.setenv("NO_COLOR", "1")
     result = runner.invoke(app, ["rag-server", "--help"])
     assert result.exit_code == 0
     assert "--config" in result.stdout
 
 
-def test_server_help_includes_config_option() -> None:
+def test_server_help_includes_config_option(monkeypatch: pytest.MonkeyPatch) -> None:
     """Ensure server command wires config option (for defaults loading)."""
+    monkeypatch.setenv("NO_COLOR", "1")
     result = runner.invoke(app, ["server", "--help"])
     assert result.exit_code == 0
     assert "--config" in result.stdout
