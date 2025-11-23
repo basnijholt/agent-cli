@@ -85,3 +85,9 @@ class MemoryUpdateDecision(BaseModel):
     event: Literal["ADD", "UPDATE", "DELETE", "NONE"]
     text: str | None = None
     id: str | None = None
+
+
+class Fact(BaseModel):
+    """A single extracted fact."""
+
+    content: str
