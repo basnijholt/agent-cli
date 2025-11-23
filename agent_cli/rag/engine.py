@@ -82,27 +82,23 @@ def retrieve_context(
     return retrieval
 
 
+# Define the Agent globally.
+# We use a dummy model here because we override it dynamically per-request.
+# We must set a dummy API key to satisfy Pydantic AI's validation at import time.
+# We instantiate the model explicitly to bypass the environment check.
+_dummy_provider = OpenAIProvider(api_key="dummy")
+rag_agent = Agent(
+    OpenAIModel("gpt-4o", provider=_dummy_provider),
+    deps_type=RAGDeps,
+    tools=[read_full_document],
+)
+
+
+@rag_agent.system_prompt
 def _inject_context(ctx: RunContext[RAGDeps]) -> str:
     if ctx.deps.rag_context:
         return f"Context from documentation:\n{ctx.deps.rag_context}"
     return ""
-
-
-def _create_agent(
-    model_name: str,
-    openai_base_url: str,
-    api_key: str | None,
-) -> Agent[RAGDeps, Any]:
-    """Create the Pydantic AI Agent."""
-    provider = OpenAIProvider(base_url=openai_base_url, api_key=api_key or "dummy")
-    model = OpenAIModel(model_name=model_name, provider=provider)
-
-    return Agent(
-        model=model,
-        deps_type=RAGDeps,
-        tools=[read_full_document],
-        system_prompt=_inject_context,
-    )
 
 
 def _convert_messages(
@@ -192,8 +188,9 @@ async def process_chat_request(
         default_top_k=default_top_k,
     )
 
-    # 2. Setup Agent
-    agent = _create_agent(request.model, openai_base_url, api_key)
+    # 2. Setup Dynamic Model
+    provider = OpenAIProvider(base_url=openai_base_url, api_key=api_key or "dummy")
+    model = OpenAIModel(model_name=request.model, provider=provider)
 
     # 3. Prepare Dependencies
     deps = RAGDeps(
@@ -210,15 +207,24 @@ async def process_chat_request(
     # 6. Run Agent
     if request.stream:
         return StreamingResponse(
-            _stream_generator(agent, user_prompt, history, deps, model_settings, request.model),
+            _stream_generator(
+                rag_agent,
+                user_prompt,
+                history,
+                deps,
+                model_settings,
+                request.model,
+                model,
+            ),
             media_type="text/event-stream",
         )
 
-    result = await agent.run(
+    result = await rag_agent.run(
         user_prompt,
         message_history=history,
         deps=deps,
         model_settings=model_settings,
+        model=model,
     )
 
     return _build_openai_response(result, request.model, retrieval)
@@ -231,6 +237,7 @@ async def _stream_generator(
     deps: RAGDeps,
     settings: dict[str, Any],
     model_name: str,
+    model: OpenAIModel,
 ) -> AsyncGenerator[str, None]:
     """Stream Pydantic AI result as OpenAI SSE."""
     async with agent.run_stream(
@@ -238,6 +245,7 @@ async def _stream_generator(
         message_history=history,
         deps=deps,
         model_settings=settings,
+        model=model,
     ) as result:
         async for chunk in result.stream_text(delta=True):
             data = {

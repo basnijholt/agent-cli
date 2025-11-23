@@ -45,17 +45,17 @@ async def test_process_chat_request_no_rag(tmp_path: Path) -> None:
     mock_collection = MagicMock()
     mock_reranker = MagicMock()
 
-    # Mock Pydantic Agent
-    mock_agent_instance = MagicMock()
-    mock_agent_instance.run = AsyncMock()
-    mock_agent_instance.run.return_value.output = "Response"
-    mock_agent_instance.run.return_value.run_id = "test-id"
-    mock_agent_instance.run.return_value.usage = None
+    # Mock Pydantic Agent Run Result
+    mock_run_result = MagicMock()
+    mock_run_result.output = "Response"
+    mock_run_result.run_id = "test-id"
+    mock_run_result.usage = None
 
     with (
-        patch("agent_cli.rag.engine.Agent", return_value=mock_agent_instance),
+        patch("agent_cli.rag.engine.rag_agent.run", new_callable=AsyncMock) as mock_run,
         patch("agent_cli.rag.engine.search_context") as mock_search,
     ):
+        mock_run.return_value = mock_run_result
         # Mock retrieval to return empty
         mock_search.return_value = MagicMock(context="")
 
@@ -76,7 +76,7 @@ async def test_process_chat_request_no_rag(tmp_path: Path) -> None:
         # Should check if search was called
         mock_search.assert_called_once()
         # Verify Agent was called
-        mock_agent_instance.run.assert_called_once()
+        mock_run.assert_called_once()
 
 
 @pytest.mark.asyncio
@@ -85,16 +85,16 @@ async def test_process_chat_request_with_rag(tmp_path: Path) -> None:
     mock_collection = MagicMock()
     mock_reranker = MagicMock()
 
-    mock_agent_instance = MagicMock()
-    mock_agent_instance.run = AsyncMock()
-    mock_agent_instance.run.return_value.output = "RAG Response"
-    mock_agent_instance.run.return_value.run_id = "test-id"
-    mock_agent_instance.run.return_value.usage = None
+    mock_run_result = MagicMock()
+    mock_run_result.output = "RAG Response"
+    mock_run_result.run_id = "test-id"
+    mock_run_result.usage = None
 
     with (
-        patch("agent_cli.rag.engine.Agent", return_value=mock_agent_instance),
+        patch("agent_cli.rag.engine.rag_agent.run", new_callable=AsyncMock) as mock_run,
         patch("agent_cli.rag.engine.search_context") as mock_search,
     ):
+        mock_run.return_value = mock_run_result
         # Return some context
         mock_search.return_value = MagicMock(
             context="Relevant info.",
@@ -119,7 +119,7 @@ async def test_process_chat_request_with_rag(tmp_path: Path) -> None:
         assert resp["choices"][0]["message"]["content"] == "RAG Response"
 
         # Check deps passed to agent run
-        call_args = mock_agent_instance.run.call_args
+        call_args = mock_run.call_args
         assert call_args is not None
         deps = call_args[1]["deps"]
 

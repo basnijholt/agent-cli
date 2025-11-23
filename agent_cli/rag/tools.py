@@ -2,14 +2,10 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from pydantic_ai import RunContext  # noqa: TC002
 
+from agent_cli.rag.models import RAGDeps  # noqa: TC001
 from agent_cli.rag.utils import load_document_text
-
-if TYPE_CHECKING:
-    from pydantic_ai import RunContext
-
-    from agent_cli.rag.models import RAGDeps
 
 
 def read_full_document(ctx: RunContext[RAGDeps], file_path: str) -> str:
