@@ -228,7 +228,7 @@ def _render_front_matter(doc_id: str, metadata: MemoryMetadata) -> str:
     return f"---\n{yaml_block}---"
 
 
-def _split_front_matter(text: str) -> tuple[dict, str] | tuple[None, str]:
+def _split_front_matter(text: str) -> tuple[dict | None, str]:
     """Split YAML front matter from body."""
     if not text.startswith("---"):
         return None, text

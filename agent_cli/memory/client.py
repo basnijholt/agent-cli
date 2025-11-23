@@ -23,7 +23,8 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from chromadb import Collection
-    from onnxruntime import InferenceSession
+
+    from agent_cli.rag.retriever import OnnxCrossEncoder
 
 
 logger = logging.getLogger("agent_cli.memory.client")
@@ -81,7 +82,7 @@ class MemoryClient:
         initial_index(self.collection, self.memory_path, index=self.index)
 
         logger.info("Loading reranker model...")
-        self.reranker_model: InferenceSession = get_reranker_model()
+        self.reranker_model: OnnxCrossEncoder = get_reranker_model()
 
         self._watch_task: asyncio.Task | None = None
         if start_watcher:
