@@ -31,7 +31,13 @@ from agent_cli.memory._prompt import (
 from agent_cli.memory._retrieval import gather_relevant_existing_memories
 from agent_cli.memory._store import delete_entries, get_summary_entry
 from agent_cli.memory.entities import Fact, Summary
-from agent_cli.memory.models import MemoryDecision, SummaryOutput
+from agent_cli.memory.models import (
+    MemoryAdd,
+    MemoryDecision,
+    MemoryDelete,
+    MemoryUpdate,
+    SummaryOutput,
+)
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -104,7 +110,7 @@ def process_reconciliation_decisions(
     )
 
     for dec in decisions:
-        if dec.event == "ADD":
+        if isinstance(dec, MemoryAdd):
             text = dec.text.strip()
             if text:
                 to_add.append(
@@ -116,7 +122,7 @@ def process_reconciliation_decisions(
                         created_at=created_at,
                     ),
                 )
-        elif dec.event == "UPDATE":
+        elif isinstance(dec, MemoryUpdate):
             orig = id_map.get(dec.id)
             if orig:
                 text = dec.text.strip()
@@ -133,7 +139,7 @@ def process_reconciliation_decisions(
                         ),
                     )
                     replacement_map[orig] = new_id
-        elif dec.event == "DELETE":
+        elif isinstance(dec, MemoryDelete):
             orig = id_map.get(dec.id)
             if orig:
                 to_delete.append(orig)
