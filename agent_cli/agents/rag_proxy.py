@@ -1,4 +1,4 @@
-"""RAG Server agent command."""
+"""RAG Proxy agent command."""
 
 from __future__ import annotations
 
@@ -17,8 +17,8 @@ from agent_cli.core.utils import (
 )
 
 
-@app.command("rag-server")
-def rag_server(
+@app.command("rag-proxy")
+def rag_proxy(
     docs_folder: Path = typer.Option(  # noqa: B008
         "./rag_docs",
         help="Folder to watch for documents",
@@ -85,7 +85,7 @@ def rag_server(
     if openai_base_url is None:
         openai_base_url = constants.DEFAULT_OPENAI_BASE_URL
 
-    console.print(f"[bold green]Starting RAG Server on {host}:{port}[/bold green]")
+    console.print(f"[bold green]Starting RAG Proxy on {host}:{port}[/bold green]")
     console.print(f"  📂 Docs: [blue]{docs_folder}[/blue]")
     console.print(f"  💾 DB: [blue]{chroma_path}[/blue]")
     console.print(f"  🤖 Backend: [blue]{openai_base_url}[/blue]")

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Integration test for RAG server with a real LLM."""
+"""Integration test for RAG proxy with a real LLM."""
 
 import asyncio
 import shutil
@@ -46,12 +46,12 @@ async def main() -> None:  # noqa: C901, PLR0912, PLR0915
                 f"[yellow]Could not connect to LLM Server at {LLAMA_URL}. Skipping query tests.[/yellow]",
             )
 
-    # Start RAG Server
+    # Start RAG Proxy
     cmd = [
         sys.executable,
         "-m",
         "agent_cli",
-        "rag-server",
+        "rag-proxy",
         "--docs-folder",
         str(DOCS_FOLDER),
         "--chroma-path",
@@ -64,8 +64,8 @@ async def main() -> None:  # noqa: C901, PLR0912, PLR0915
 
     console.print(f"Running: {' '.join(cmd)}")
 
-    stdout_file = Path("rag_server_stdout.log").open("w")  # noqa: SIM115, ASYNC230
-    stderr_file = Path("rag_server_stderr.log").open("w")  # noqa: SIM115, ASYNC230
+    stdout_file = Path("rag_proxy_stdout.log").open("w")  # noqa: SIM115, ASYNC230
+    stderr_file = Path("rag_proxy_stderr.log").open("w")  # noqa: SIM115, ASYNC230
 
     proc = await asyncio.create_subprocess_exec(
         *cmd,
@@ -75,7 +75,7 @@ async def main() -> None:  # noqa: C901, PLR0912, PLR0915
 
     try:
         # Wait for server to start
-        console.print("Waiting for RAG server to start...")
+        console.print("Waiting for RAG proxy to start...")
         rag_url = f"http://localhost:{RAG_PORT}"
 
         server_up = False
@@ -90,14 +90,14 @@ async def main() -> None:  # noqa: C901, PLR0912, PLR0915
                 await asyncio.sleep(0.5)
 
         if not server_up:
-            console.print("[bold red]RAG Server failed to start.[/bold red]")
+            console.print("[bold red]RAG Proxy failed to start.[/bold red]")
             stdout_file.close()
             stderr_file.close()
-            console.print(f"Stdout: {Path('rag_server_stdout.log').read_text()}")
-            console.print(f"Stderr: {Path('rag_server_stderr.log').read_text()}")
+            console.print(f"Stdout: {Path('rag_proxy_stdout.log').read_text()}")
+            console.print(f"Stderr: {Path('rag_proxy_stderr.log').read_text()}")
             sys.exit(1)
 
-        console.print("[green]RAG Server is up![/green]")
+        console.print("[green]RAG Proxy is up![/green]")
 
         # Create a document
         secret_info = "The secret code for the vault is 'BlueBananas123'."  # noqa: S105
@@ -121,8 +121,8 @@ async def main() -> None:  # noqa: C901, PLR0912, PLR0915
             console.print("[bold red]File was not indexed.[/bold red]")
             stdout_file.close()
             stderr_file.close()
-            console.print(f"Stdout: {Path('rag_server_stdout.log').read_text()}")
-            console.print(f"Stderr: {Path('rag_server_stderr.log').read_text()}")
+            console.print(f"Stdout: {Path('rag_proxy_stdout.log').read_text()}")
+            console.print(f"Stderr: {Path('rag_proxy_stderr.log').read_text()}")
             sys.exit(1)
 
         console.print("[green]File indexed![/green]")
@@ -177,7 +177,7 @@ async def main() -> None:  # noqa: C901, PLR0912, PLR0915
             )
 
     finally:
-        console.print("Shutting down RAG server...")
+        console.print("Shutting down RAG proxy...")
         if proc.returncode is None:
             proc.terminate()
             try:
@@ -194,8 +194,8 @@ async def main() -> None:  # noqa: C901, PLR0912, PLR0915
         if DB_FOLDER.exists():
             shutil.rmtree(DB_FOLDER)
 
-        Path("rag_server_stdout.log").unlink(missing_ok=True)
-        Path("rag_server_stderr.log").unlink(missing_ok=True)
+        Path("rag_proxy_stdout.log").unlink(missing_ok=True)
+        Path("rag_proxy_stderr.log").unlink(missing_ok=True)
 
 
 if __name__ == "__main__":
