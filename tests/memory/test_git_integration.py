@@ -6,6 +6,7 @@ import shutil
 import subprocess
 from typing import TYPE_CHECKING, Any
 from unittest.mock import MagicMock
+from uuid import uuid4
 
 import pytest
 
@@ -44,9 +45,15 @@ async def test_memory_client_git_versioning(
     async def fake_extract(*_args: Any, **_kwargs: Any) -> list[str]:
         return ["User likes testing"]
 
-    async def fake_reconcile(*_args: Any, **_kwargs: Any) -> tuple[list[str], list[str]]:
+    async def fake_reconcile(
+        *_args: Any,
+        **_kwargs: Any,
+    ) -> tuple[list[engine.PersistEntry], list[str], dict[str, str]]:
         # Always add the new fact
-        return ["User likes testing"], []
+        entries = [
+            engine.PersistEntry(role="memory", content="User likes testing", id=str(uuid4())),
+        ]
+        return entries, [], {}
 
     async def fake_update_summary(*_args: Any, **_kwargs: Any) -> str:
         return "User likes testing."
@@ -124,8 +131,12 @@ async def test_memory_client_git_versioning(
     async def fake_extract_2(*_args: Any, **_kwargs: Any) -> list[str]:
         return ["User loves git"]
 
-    async def fake_reconcile_2(*_args: Any, **_kwargs: Any) -> tuple[list[str], list[str]]:
-        return ["User loves git"], []
+    async def fake_reconcile_2(
+        *_args: Any,
+        **_kwargs: Any,
+    ) -> tuple[list[engine.PersistEntry], list[str], dict[str, str]]:
+        entries = [engine.PersistEntry(role="memory", content="User loves git", id=str(uuid4()))]
+        return entries, [], {}
 
     monkeypatch.setattr(engine, "_extract_salient_facts", fake_extract_2)
     monkeypatch.setattr(engine, "_reconcile_facts", fake_reconcile_2)

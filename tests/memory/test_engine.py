@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 from typing import Any, Self
+from uuid import uuid4
 
 import pytest
 
@@ -300,20 +301,6 @@ async def test_retrieve_memory_returns_all_facts(monkeypatch: pytest.MonkeyPatch
 
 
 @pytest.mark.asyncio
-async def test_prepare_fact_entries_filters_junk() -> None:
-    """Ensure facts are converted without gating."""
-    facts = [
-        "User's wife is Anne.",
-        "True",
-    ]
-
-    entries = engine._prepare_fact_entries(facts)
-    assert len(entries) == 2
-    assert entries[0].content == "User's wife is Anne."
-    assert entries[1].content == "True"
-
-
-@pytest.mark.asyncio
 async def test_process_chat_request_summarizes_and_persists(
     tmp_path: Any,
     monkeypatch: pytest.MonkeyPatch,
@@ -347,8 +334,11 @@ async def test_process_chat_request_summarizes_and_persists(
         _conversation_id: str,
         new_facts: list[str],
         **_kwargs: Any,
-    ) -> tuple[list[str], list[str]]:
-        return new_facts, []
+    ) -> tuple[list[engine.PersistEntry], list[str], dict[str, str]]:
+        entries = [
+            engine.PersistEntry(role="memory", content=f, id=str(uuid4())) for f in new_facts
+        ]
+        return entries, [], {}
 
     monkeypatch.setattr(engine, "_reconcile_facts", fake_reconcile)
     monkeypatch.setattr(engine.Agent, "run", fake_agent_run)
@@ -542,8 +532,11 @@ async def test_streaming_with_summarization_persists_facts_and_summaries(
         _conversation_id: str,
         new_facts: list[str],
         **_kwargs: Any,
-    ) -> tuple[list[str], list[str]]:
-        return new_facts, []
+    ) -> tuple[list[engine.PersistEntry], list[str], dict[str, str]]:
+        entries = [
+            engine.PersistEntry(role="memory", content=f, id=str(uuid4())) for f in new_facts
+        ]
+        return entries, [], {}
 
     monkeypatch.setattr(engine, "_reconcile_facts", fake_reconcile)
     monkeypatch.setattr(engine.Agent, "run", fake_agent_run)

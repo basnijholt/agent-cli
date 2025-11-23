@@ -46,6 +46,7 @@ class MemoryMetadata(BaseModel):
     role: str
     created_at: str
     summary_kind: str | None = None
+    replaced_by: str | None = None
 
 
 class SummaryOutput(BaseModel):
@@ -76,14 +77,6 @@ class MemoryRetrieval(BaseModel):
     """Result of a memory retrieval operation."""
 
     entries: list[MemoryEntry]
-
-
-class ConsolidationDecision(BaseModel):
-    """LLM-driven resolution for overlapping facts."""
-
-    id: str
-    action: Literal["KEEP", "DELETE", "UPDATE"]
-    content: str
 
 
 class MemoryUpdateDecision(BaseModel):

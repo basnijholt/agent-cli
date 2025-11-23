@@ -18,6 +18,7 @@ import os
 import socket
 from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING, Any
+from uuid import uuid4
 
 import httpx
 import pytest
@@ -129,14 +130,21 @@ async def test_memory_api_updates_latest_fact(  # noqa: PLR0915
         _conversation_id: str,
         new_facts: list[str],
         **_kwargs: Any,
-    ) -> tuple[list[str], list[str]]:
+    ) -> tuple[list[engine.PersistEntry], list[str], dict[str, str]]:
         """Latest wins: delete all existing, add new facts."""
         # Use real Chroma collection API
         results = _collection.get(where={"conversation_id": _conversation_id})
         existing_ids = results["ids"] if results else []
         if new_facts:
-            return new_facts, existing_ids
-        return [], []
+            entries = []
+            replacement_map = {}
+            for i, fact in enumerate(new_facts):
+                new_id = str(uuid4())
+                entries.append(engine.PersistEntry(role="memory", content=fact, id=new_id))
+                if i < len(existing_ids):
+                    replacement_map[existing_ids[i]] = new_id
+            return entries, existing_ids, replacement_map
+        return [], [], {}
 
     async def fake_update_summary(**_kwargs: Any) -> str | None:
         return "summary"

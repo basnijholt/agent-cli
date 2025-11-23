@@ -26,6 +26,7 @@ from agent_cli.memory.files import (
     ensure_store_dirs,
     load_snapshot,
     read_memory_file,
+    soft_delete_memory_file,
     write_memory_file,
     write_snapshot,
 )
@@ -88,18 +89,7 @@ class PersistEntry:
 
     role: str
     content: str
-
-
-def _prepare_fact_entries(facts: list[str]) -> list[PersistEntry]:
-    """Convert extracted fact strings into persistable entries."""
-    entries: list[PersistEntry] = []
-    for text in facts:
-        cleaned = (text or "").strip()
-        if not cleaned:
-            continue
-        entries.append(PersistEntry(role="memory", content=cleaned))
-    logger.info("Prepared %d fact entries: %s", len(entries), [e.content for e in entries])
-    return entries
+    id: str | None = None
 
 
 def _gather_relevant_existing_memories(
@@ -146,30 +136,22 @@ def _gather_relevant_existing_memories(
     return results
 
 
-def _delete_memory_files(memory_root: Path, conversation_id: str, ids: list[str]) -> None:
+def _delete_memory_files(
+    memory_root: Path,
+    conversation_id: str,
+    ids: list[str],
+    replacement_map: dict[str, str] | None = None,
+) -> None:
     """Delete markdown files (move to tombstone) and snapshot entries matching the given ids."""
     if not ids:
         return
 
     entries_dir, snapshot_path = ensure_store_dirs(memory_root)
+    # Ensure we use the correct base for relative paths in soft_delete
+    base_entries_dir = entries_dir
     conv_dir = entries_dir / _safe_identifier(conversation_id)
     snapshot = load_snapshot(snapshot_path)
-
-    def _remove_path(path: Path) -> None:
-        try:
-            # Soft delete: move to deleted/ folder
-            try:
-                rel_path = path.relative_to(conv_dir)
-            except ValueError:
-                # If path is not relative to conv_dir (shouldn't happen for this conversation), just unlink
-                path.unlink(missing_ok=True)
-                return
-
-            dest_path = conv_dir / _DELETED_DIRNAME / rel_path
-            dest_path.parent.mkdir(parents=True, exist_ok=True)
-            path.rename(dest_path)
-        except Exception:
-            logger.exception("Failed to soft-delete memory file %s", path)
+    replacements = replacement_map or {}
 
     removed_ids: set[str] = set()
 
@@ -177,7 +159,11 @@ def _delete_memory_files(memory_root: Path, conversation_id: str, ids: list[str]
     for doc_id in ids:
         rec = snapshot.get(doc_id)
         if rec:
-            _remove_path(rec.path)
+            soft_delete_memory_file(
+                rec.path,
+                base_entries_dir,
+                replaced_by=replacements.get(doc_id),
+            )
             snapshot.pop(doc_id, None)
             removed_ids.add(doc_id)
 
@@ -190,7 +176,11 @@ def _delete_memory_files(memory_root: Path, conversation_id: str, ids: list[str]
                 continue
             rec = read_memory_file(path)
             if rec and rec.id in remaining:
-                _remove_path(path)
+                soft_delete_memory_file(
+                    path,
+                    base_entries_dir,
+                    replaced_by=replacements.get(rec.id),
+                )
                 snapshot.pop(rec.id, None)
                 removed_ids.add(rec.id)
                 remaining.remove(rec.id)
@@ -375,7 +365,7 @@ def _persist_entries(
             role=role,
             created_at=now,
             content=content,
-            doc_id=str(uuid4()),
+            doc_id=item.id,
         )
         logger.info("Persisted memory file: %s", record.path)
         ids.append(record.id)
@@ -479,6 +469,37 @@ async def _extract_salient_facts(
         raise
 
 
+def _process_reconciliation_decisions(
+    decisions: list[MemoryUpdateDecision],
+    id_map: dict[str, str],
+) -> tuple[list[PersistEntry], list[str], dict[str, str]]:
+    """Process LLM decisions into actionable changes."""
+    to_add: list[PersistEntry] = []
+    to_delete: list[str] = []
+    replacement_map: dict[str, str] = {}
+
+    for dec in decisions:
+        if dec.event == "ADD" and dec.text:
+            text = dec.text.strip()
+            if text:
+                to_add.append(PersistEntry(role="memory", content=text, id=str(uuid4())))
+        elif dec.event == "UPDATE" and dec.id and dec.text:
+            orig = id_map.get(dec.id)
+            if orig:
+                text = dec.text.strip()
+                if text:
+                    new_id = str(uuid4())
+                    to_delete.append(orig)
+                    to_add.append(PersistEntry(role="memory", content=text, id=new_id))
+                    replacement_map[orig] = new_id
+        elif dec.event == "DELETE" and dec.id:
+            orig = id_map.get(dec.id)
+            if orig:
+                to_delete.append(orig)
+        # NONE ignored
+    return to_add, to_delete, replacement_map
+
+
 async def _reconcile_facts(
     collection: Collection,
     conversation_id: str,
@@ -487,16 +508,19 @@ async def _reconcile_facts(
     openai_base_url: str,
     api_key: str | None,
     model: str,
-) -> tuple[list[str], list[str]]:
+) -> tuple[list[PersistEntry], list[str], dict[str, str]]:
     """Use an LLM to decide add/update/delete/none for facts, with id remapping."""
     if not new_facts:
-        return [], []
+        return [], [], {}
 
     existing = _gather_relevant_existing_memories(collection, conversation_id, new_facts)
     logger.info("Reconcile: Found %d existing memories for new facts %s", len(existing), new_facts)
     if not existing:
         logger.info("Reconcile: no existing memory facts; defaulting to add all new facts")
-        return new_facts, []
+        entries = [
+            PersistEntry(role="memory", content=f, id=str(uuid4())) for f in new_facts if f.strip()
+        ]
+        return entries, [], {}
     id_map: dict[str, str] = {str(idx): mem.id for idx, mem in enumerate(existing)}
     existing_json = [
         {"id": short_id, "text": mem.content}
@@ -527,32 +551,23 @@ async def _reconcile_facts(
             "Update memory agent transient failure; defaulting to add all new facts",
             exc_info=True,
         )
-        return new_facts, []
+        entries = [
+            PersistEntry(role="memory", content=f, id=str(uuid4())) for f in new_facts if f.strip()
+        ]
+        return entries, [], {}
     except Exception:
         logger.exception("Update memory agent internal error")
         raise
 
-    to_add: list[str] = []
-    to_delete: list[str] = []
-    for dec in decisions:
-        if dec.event == "ADD" and dec.text:
-            to_add.append(dec.text.strip())
-        elif dec.event == "UPDATE" and dec.id and dec.text:
-            orig = id_map.get(dec.id)
-            if orig:
-                to_delete.append(orig)
-                to_add.append(dec.text.strip())
-        elif dec.event == "DELETE" and dec.id:
-            orig = id_map.get(dec.id)
-            if orig:
-                to_delete.append(orig)
-        # NONE ignored
+    to_add, to_delete, replacement_map = _process_reconciliation_decisions(decisions, id_map)
 
     # Safeguard: if the model produced no additions and the new facts would otherwise be lost,
     # retain the new facts. This prevents ending up with an empty fact set after deletes.
     if not to_add and new_facts:
         logger.info("Reconcile produced no additions; retaining new facts to avoid empty store")
-        to_add = list(new_facts)
+        to_add = [
+            PersistEntry(role="memory", content=f, id=str(uuid4())) for f in new_facts if f.strip()
+        ]
 
     logger.info(
         "Reconcile decisions: add=%d, delete=%d, events=%s",
@@ -560,7 +575,7 @@ async def _reconcile_facts(
         len(to_delete),
         [dec.event for dec in decisions],
     )
-    return to_add, to_delete
+    return to_add, to_delete, replacement_map
 
 
 async def _update_summary(
@@ -756,7 +771,7 @@ async def extract_and_store_facts_and_summaries(
         _elapsed_ms(fact_start),
         conversation_id,
     )
-    to_add, to_delete = await _reconcile_facts(
+    to_add, to_delete, replacement_map = await _reconcile_facts(
         collection,
         conversation_id,
         facts,
@@ -767,18 +782,21 @@ async def extract_and_store_facts_and_summaries(
 
     if to_delete:
         delete_entries(collection, ids=list(to_delete))
-        _delete_memory_files(memory_root, conversation_id, list(to_delete))
+        _delete_memory_files(
+            memory_root,
+            conversation_id,
+            list(to_delete),
+            replacement_map=replacement_map,
+        )
 
-    fact_entries = _prepare_fact_entries(to_add)
-
-    if not fact_entries:
+    if not to_add:
         return
 
     _persist_entries(
         collection,
         memory_root=memory_root,
         conversation_id=conversation_id,
-        entries=list(fact_entries),
+        entries=list(to_add),
     )
     prior_summary_entry = get_summary_entry(
         collection,
