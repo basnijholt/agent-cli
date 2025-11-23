@@ -41,7 +41,7 @@ def run_in_background(
     return _track_background(task, label)
 
 
-async def _wait_for_background_tasks() -> None:
+async def wait_for_background_tasks() -> None:
     """Await any in-flight background tasks (useful in tests)."""
     while _BACKGROUND_TASKS:
         tasks = list(_BACKGROUND_TASKS)
