@@ -104,7 +104,7 @@ def process_reconciliation_decisions(
     )
 
     for dec in decisions:
-        if dec.event == "ADD" and dec.text:
+        if dec.event == "ADD":
             text = dec.text.strip()
             if text:
                 to_add.append(
@@ -116,7 +116,7 @@ def process_reconciliation_decisions(
                         created_at=created_at,
                     ),
                 )
-        elif dec.event == "UPDATE" and dec.id is not None and dec.text:
+        elif dec.event == "UPDATE":
             orig = id_map.get(dec.id)
             if orig:
                 text = dec.text.strip()
@@ -133,7 +133,7 @@ def process_reconciliation_decisions(
                         ),
                     )
                     replacement_map[orig] = new_id
-        elif dec.event == "DELETE" and dec.id is not None:
+        elif dec.event == "DELETE":
             orig = id_map.get(dec.id)
             if orig:
                 to_delete.append(orig)
