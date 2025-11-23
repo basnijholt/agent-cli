@@ -8,7 +8,7 @@ Guidelines:
 - Ignore assistant/system content completely.
 - Facts must be short, readable sentences (e.g., "The user's wife is Anne.", "Planning a trip to Japan next spring.").
 - Do not return acknowledgements, questions, or meta statements; only factual statements from the user.
-- NEVER output refusals like "I cannot..." or "I don't know...". If you can't extract a fact, return [].
+- NEVER output refusals like "I cannot..." or "I don't know..." or "I don't have that information". If you can't extract a fact, return [].
 - Return a JSON list of strings.
 
 Few-shots:
