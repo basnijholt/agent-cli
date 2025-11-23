@@ -680,19 +680,14 @@ def _persist_turns(
     user_message: str | None,
     assistant_message: str | None,
     user_turn_id: str | None = None,
-) -> str | None:
-    """Persist the latest user/assistant exchanges. Returns the user_turn_id used."""
-    # Ensure we have an ID for the user turn if it exists
-    actual_user_id = user_turn_id
-    if user_message and not actual_user_id:
-        actual_user_id = str(uuid4())
-
+) -> None:
+    """Persist the latest user/assistant exchanges."""
     _persist_entries(
         collection,
         memory_root=memory_root,
         conversation_id=conversation_id,
         entries=[
-            PersistEntry(role="user", content=user_message, id=actual_user_id)
+            PersistEntry(role="user", content=user_message, id=user_turn_id)
             if user_message
             else None,
             PersistEntry(role="assistant", content=assistant_message)
@@ -700,7 +695,6 @@ def _persist_turns(
             else None,
         ],
     )
-    return actual_user_id
 
 
 async def _postprocess_after_turn(
