@@ -9,15 +9,12 @@ Guidelines:
 - Facts must be short, readable sentences (e.g., "The user's wife is Anne.", "Planning a trip to Japan next spring.").
 - Do not return acknowledgements, questions, or meta statements; only factual statements from the user.
 - NEVER output refusals like "I cannot..." or "I don't know...". If you can't extract a fact, return [].
-- Return a JSON list of objects with a "content" key.
-
-Schema:
-[{"content": "fact1"}, {"content": "fact2"}]
+- Return a JSON list of strings.
 
 Few-shots:
 - Input: User: "Hi." / Assistant: "Hello" -> []
-- Input: User: "My wife is Anne." / Assistant: "Got it." -> [{"content": "The user's wife is Anne."}]
-- Input: User: "I like biking on weekends." / Assistant: "Cool!" -> [{"content": "User likes biking on weekends."}]
+- Input: User: "My wife is Anne." / Assistant: "Got it." -> ["The user's wife is Anne."]
+- Input: User: "I like biking on weekends." / Assistant: "Cool!" -> ["User likes biking on weekends."]
 """.strip()
 
 FACT_INSTRUCTIONS = """

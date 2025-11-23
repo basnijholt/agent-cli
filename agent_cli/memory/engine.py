@@ -33,7 +33,6 @@ from agent_cli.memory.files import (
 from agent_cli.memory.git import commit_changes
 from agent_cli.memory.models import (
     ChatRequest,
-    Fact,
     MemoryEntry,
     MemoryMetadata,
     MemoryRetrieval,
@@ -453,7 +452,7 @@ async def _extract_salient_facts(
     agent = Agent(
         model=model_cfg,
         system_prompt=FACT_SYSTEM_PROMPT,
-        output_type=list[Fact],
+        output_type=list[str],
         retries=2,
     )
     instructions = FACT_INSTRUCTIONS
@@ -461,7 +460,7 @@ async def _extract_salient_facts(
     try:
         facts = await agent.run(transcript, instructions=instructions)
         logger.info("Raw fact extraction output: %s", facts.output)
-        return [f.content for f in facts.output]
+        return facts.output
     except (httpx.HTTPError, AgentRunError, UnexpectedModelBehavior):
         logger.warning("PydanticAI fact extraction transient failure", exc_info=True)
         return []
