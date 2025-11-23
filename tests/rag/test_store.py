@@ -3,6 +3,7 @@
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+from agent_cli.constants import DEFAULT_OPENAI_EMBEDDING_MODEL
 from agent_cli.core import chroma
 from agent_cli.rag import store
 
@@ -16,7 +17,7 @@ def test_init_collection(tmp_path: Path) -> None:
         chroma.init_collection(
             tmp_path,
             name="docs",
-            embedding_model="text-embedding-3-small",
+            embedding_model=DEFAULT_OPENAI_EMBEDDING_MODEL,
         )
 
         mock_client.assert_called_once()

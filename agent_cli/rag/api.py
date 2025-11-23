@@ -23,7 +23,7 @@ from agent_cli.rag.store import get_all_metadata
 if TYPE_CHECKING:
     from pathlib import Path
 
-LOGGER = logging.getLogger("agent_cli.rag.api")
+LOGGER = logging.getLogger(__name__)
 
 
 def create_app(

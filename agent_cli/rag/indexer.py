@@ -15,7 +15,7 @@ if TYPE_CHECKING:
 
     from chromadb import Collection
 
-LOGGER = logging.getLogger("agent_cli.rag.indexer")
+LOGGER = logging.getLogger(__name__)
 
 
 async def watch_docs(

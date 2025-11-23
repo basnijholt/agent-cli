@@ -11,7 +11,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 # Configure logging
-LOGGER = logging.getLogger("agent_cli.rag.utils")
+LOGGER = logging.getLogger(__name__)
 
 # Files to read as plain text directly (fast path)
 TEXT_EXTENSIONS = {

@@ -15,7 +15,7 @@ if TYPE_CHECKING:
     from agent_cli.rag.models import ChatRequest, RetrievalResult
     from agent_cli.rag.retriever import OnnxCrossEncoder
 
-LOGGER = logging.getLogger("agent_cli.rag.engine")
+LOGGER = logging.getLogger(__name__)
 
 
 def augment_chat_request(
