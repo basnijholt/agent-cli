@@ -1358,6 +1358,17 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
  CLI, or IDE plugin) and an OpenAI-compatible LLM provider (e.g., OpenAI,
  Ollama, vLLM).
 
+ Key Features:
+
+  • Simple Markdown Files: Memories are stored as human-readable Markdown
+    files, serving as the ultimate source of truth.
+  • Automatic Version Control: Built-in Git integration automatically commits
+    changes, providing a full history of memory evolution.
+  • Lightweight & Local: Minimal dependencies and runs entirely on your
+    machine.
+  • Proxy Middleware: Works transparently with any OpenAI-compatible
+    /chat/completions endpoint.
+
  How it works:
 
   1 Intercepts POST /v1/chat/completions requests.
