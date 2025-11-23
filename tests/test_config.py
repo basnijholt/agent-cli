@@ -115,9 +115,9 @@ def test_memory_server_help_includes_config_option() -> None:
     assert "--config" in clean_output
 
 
-def test_rag_server_help_includes_config_option() -> None:
-    """Ensure rag-server command wires config option (for defaults loading)."""
-    result = runner.invoke(app, ["rag-server", "--help"])
+def test_rag_proxy_help_includes_config_option() -> None:
+    """Ensure rag-proxy command wires config option (for defaults loading)."""
+    result = runner.invoke(app, ["rag-proxy", "--help"])
     assert result.exit_code == 0
     # Strip ANSI color codes for more reliable testing
     clean_output = re.sub(r"\x1b\[[0-9;]*m", "", result.stdout)

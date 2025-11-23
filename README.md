@@ -37,8 +37,8 @@ I use it mostly for the `transcribe` function when working with LLMs. Being able
 - **`voice-edit`**: A voice-powered clipboard assistant that edits text based on your spoken commands.
 - **`assistant`**: A hands-free voice assistant that starts and stops recording based on a wake word.
 - **`chat`**: A conversational AI agent with tool-calling capabilities.
-- **`rag-server`**: A RAG (Retrieval-Augmented Generation) proxy server that lets you chat with your documents.
 - **`memory-server`**: A long-term memory chat proxy with OpenAI-compatible endpoints that is file-based and uses Git.
+- **`rag-proxy`**: A RAG (Retrieval-Augmented Generation) proxy server that lets you chat with your documents.
 
 ## Quick Start
 
@@ -146,7 +146,7 @@ The setup scripts automatically install:
   - [`voice-edit`](#voice-edit)
   - [`assistant`](#assistant)
   - [`chat`](#chat)
-  - [`rag-server`](#rag-server)
+  - [`rag-proxy`](#rag-proxy)
   - [`memory-server`](#memory-server)
     - [Using Custom Embeddings (e.g., OpenAI / llama.cpp / Ollama)](#using-custom-embeddings-eg-openai--llamacpp--ollama)
 - [Development](#development)
@@ -1228,7 +1228,7 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 </details>
 
 
-### `rag-server`
+### `rag-proxy`
 
 **Purpose:** Enables "Chat with your Data" by running a local proxy server that injects document context into LLM requests.
 
@@ -1241,8 +1241,8 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 **How to Use It:**
 
 - **Install RAG deps first**: `pip install "agent-cli[rag]"` (or, from the repo, `uv sync --extra rag`)
-- **Start Server (Local LLM)**: `agent-cli rag-server --docs-folder ~/Documents/Notes --openai-base-url http://localhost:11434/v1 --port 8000`
-- **Start Server (OpenAI)**: `agent-cli rag-server --docs-folder ~/Documents/Notes --openai-api-key sk-...`
+- **Start Server (Local LLM)**: `agent-cli rag-proxy --docs-folder ~/Documents/Notes --openai-base-url http://localhost:11434/v1 --port 8000`
+- **Start Server (OpenAI)**: `agent-cli rag-proxy --docs-folder ~/Documents/Notes --openai-api-key sk-...`
 - **Use with Agent-CLI**: `agent-cli chat --openai-base-url http://localhost:8000/v1 --llm-provider openai`
 
 ### `memory-server`
@@ -1266,21 +1266,21 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 To use the embeddings endpoint from your local LLM server or OpenAI instead of the built-in SentenceTransformers:
 
 ```bash
-agent-cli rag-server \
+agent-cli rag-proxy \
   --openai-base-url https://api.openai.com/v1 \
   --embedding-model text-embedding-3-small \
   --openai-api-key sk-...
 ```
 
 <details>
-<summary>See the output of <code>agent-cli rag-server --help</code></summary>
+<summary>See the output of <code>agent-cli rag-proxy --help</code></summary>
 
 <!-- CODE:BASH:START -->
 <!-- echo '```yaml' -->
 <!-- export NO_COLOR=1 -->
 <!-- export TERM=dumb -->
 <!-- export TERMINAL_WIDTH=90 -->
-<!-- agent-cli rag-server --help -->
+<!-- agent-cli rag-proxy --help -->
 <!-- echo '```' -->
 <!-- CODE:END -->
 <!-- OUTPUT:START -->
@@ -1288,7 +1288,7 @@ agent-cli rag-server \
 ```yaml
 
 
- Usage: agent-cli rag-server [OPTIONS]
+ Usage: agent-cli rag-proxy [OPTIONS]
 
  Start the RAG (Retrieval-Augmented Generation) Proxy Server.
 

@@ -66,7 +66,7 @@ scripts/.runtime/
 *.bin
 
 # RAG/memory
-rag_server_*.log
+rag_proxy_*.log
 transcription_log.json
 temp_rag_*/
 memory_db
