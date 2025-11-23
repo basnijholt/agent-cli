@@ -29,9 +29,8 @@ def mock_memory_client(mocker: MockerFixture) -> Mock:
 
 
 @pytest.fixture
-def app(tmp_path: Path, mock_memory_client: Mock) -> TestClient:
+def app(tmp_path: Path, mock_memory_client: Mock) -> TestClient:  # noqa: ARG001
     """Create the FastAPI app with mocked client."""
-    _ = mock_memory_client  # Ensure fixture is used
     fastapi_app = create_app(
         memory_path=tmp_path,
         openai_base_url="http://upstream.test/v1",

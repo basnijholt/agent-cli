@@ -29,9 +29,8 @@ def mock_rag_dependencies(mocker: MockerFixture) -> None:
 
 
 @pytest.fixture
-def app(tmp_path: Path, mock_rag_dependencies: None) -> TestClient:
+def app(tmp_path: Path, mock_rag_dependencies: None) -> TestClient:  # noqa: ARG001
     """Create the FastAPI app with mocked dependencies."""
-    _ = mock_rag_dependencies  # Ensure fixture is used
     fastapi_app = create_app(
         docs_folder=tmp_path / "docs",
         chroma_path=tmp_path / "chroma",
