@@ -2,33 +2,50 @@
 
 from __future__ import annotations
 
+import json
 import logging
+import time
+from collections.abc import AsyncGenerator  # noqa: TC003
 from typing import TYPE_CHECKING, Any
 
-from agent_cli.core.openai_proxy import forward_chat_request
-from agent_cli.rag.models import Message
+from fastapi.responses import StreamingResponse
+from pydantic_ai import Agent, RunContext
+from pydantic_ai.messages import (
+    ModelRequest,
+    ModelResponse,
+    SystemPromptPart,
+    TextPart,
+    UserPromptPart,
+)
+from pydantic_ai.models.openai import OpenAIModel
+from pydantic_ai.providers.openai import OpenAIProvider
+
+from agent_cli.rag.models import RAGDeps
 from agent_cli.rag.retriever import search_context
+from agent_cli.rag.tools import read_full_document
 
 if TYPE_CHECKING:
-    from chromadb import Collection
+    from pathlib import Path
 
-    from agent_cli.rag.models import ChatRequest, RetrievalResult
+    from chromadb import Collection
+    from pydantic_ai.result import RunResult
+
+    from agent_cli.rag.models import ChatRequest, Message, RetrievalResult
     from agent_cli.rag.retriever import OnnxCrossEncoder
 
 LOGGER = logging.getLogger(__name__)
 
 
-def augment_chat_request(
+def retrieve_context(
     request: ChatRequest,
     collection: Collection,
     reranker_model: OnnxCrossEncoder,
     default_top_k: int = 3,
-) -> tuple[ChatRequest, RetrievalResult | None]:
-    """Retrieve context and augment the chat request.
+) -> RetrievalResult | None:
+    """Retrieve context for the request.
 
     Returns:
-        A tuple of (augmented_request, retrieval_result).
-        If no retrieval happened or no context was found, retrieval_result is None.
+        The retrieval result, or None if no retrieval was performed.
 
     """
     # Get last user message
@@ -38,13 +55,13 @@ def augment_chat_request(
     )
 
     if not user_message:
-        return request, None
+        return None
 
     # Retrieve
     top_k = request.rag_top_k if request.rag_top_k is not None else default_top_k
     if top_k <= 0:
         LOGGER.info("RAG retrieval disabled for this request (top_k=%s)", top_k)
-        return request, None
+        return None
 
     retrieval = search_context(
         collection,
@@ -55,29 +72,106 @@ def augment_chat_request(
 
     if not retrieval.context:
         LOGGER.info("ℹ️  No relevant context found for query: '%s'", user_message[:50])  # noqa: RUF001
-        return request, None
+        return None
 
     LOGGER.info(
         "✅ Found %d relevant sources for query: '%s'",
         len(retrieval.sources),
         user_message[:50],
     )
+    return retrieval
 
-    # Augment prompt
-    augmented_content = (
-        f"Context from documentation:\n{retrieval.context}\n\n---\n\nQuestion: {user_message}"
+
+def _inject_context(ctx: RunContext[RAGDeps]) -> str:
+    if ctx.deps.rag_context:
+        return f"Context from documentation:\n{ctx.deps.rag_context}"
+    return ""
+
+
+def _create_agent(
+    model_name: str,
+    openai_base_url: str,
+    api_key: str | None,
+) -> Agent[RAGDeps, Any]:
+    """Create the Pydantic AI Agent."""
+    provider = OpenAIProvider(base_url=openai_base_url, api_key=api_key or "dummy")
+    model = OpenAIModel(model_name=model_name, provider=provider)
+
+    return Agent(
+        model=model,
+        deps_type=RAGDeps,
+        tools=[read_full_document],
+        system_prompt=_inject_context,
     )
 
-    # Create new messages list
-    augmented_messages = list(request.messages[:-1])
-    # Add augmented user message
-    augmented_messages.append(Message(role="user", content=augmented_content))
 
-    # Create augmented request
-    aug_request = request.model_copy()
-    aug_request.messages = augmented_messages
+def _convert_messages(
+    messages: list[Message],
+) -> tuple[list[ModelRequest | ModelResponse], str]:
+    """Convert OpenAI messages to Pydantic AI messages and extract user prompt."""
+    pyd_messages: list[ModelRequest | ModelResponse] = []
 
-    return aug_request, retrieval
+    # Validation: Ensure there is at least one message
+    if not messages:
+        return [], ""
+
+    # Split history and last user prompt
+    history_msgs = messages[:-1]
+    last_msg = messages[-1]
+
+    for m in history_msgs:
+        if m.role == "system":
+            pyd_messages.append(ModelRequest(parts=[SystemPromptPart(content=m.content)]))
+        elif m.role == "user":
+            pyd_messages.append(ModelRequest(parts=[UserPromptPart(content=m.content)]))
+        elif m.role == "assistant":
+            pyd_messages.append(ModelResponse(parts=[TextPart(content=m.content)]))
+
+    return pyd_messages, last_msg.content
+
+
+def _extract_model_settings(request: ChatRequest) -> dict[str, Any]:
+    """Extract model settings from request."""
+    settings = {}
+    if request.temperature is not None:
+        settings["temperature"] = request.temperature
+    if request.max_tokens is not None:
+        settings["max_tokens"] = request.max_tokens
+    return settings
+
+
+def _build_openai_response(
+    result: RunResult,
+    model_name: str,
+    retrieval: RetrievalResult | None,
+) -> dict[str, Any]:
+    """Format the Pydantic AI result as an OpenAI-compatible dict."""
+    response = {
+        "id": f"chatcmpl-{result.run_id}",
+        "object": "chat.completion",
+        "created": int(time.time()),
+        "model": model_name,
+        "choices": [
+            {
+                "index": 0,
+                "message": {
+                    "role": "assistant",
+                    "content": result.output,
+                },
+                "finish_reason": "stop",
+            },
+        ],
+        "usage": {
+            "prompt_tokens": result.usage.request_tokens if result.usage else 0,
+            "completion_tokens": result.usage.response_tokens if result.usage else 0,
+            "total_tokens": result.usage.total_tokens if result.usage else 0,
+        },
+    }
+
+    if retrieval:
+        response["rag_sources"] = retrieval.sources
+
+    return response
 
 
 async def process_chat_request(
@@ -85,35 +179,95 @@ async def process_chat_request(
     collection: Collection,
     reranker_model: OnnxCrossEncoder,
     openai_base_url: str,
+    docs_folder: Path,
     default_top_k: int = 3,
     api_key: str | None = None,
 ) -> Any:
     """Process a chat request with RAG."""
-    aug_request, retrieval = augment_chat_request(
+    # 1. Retrieve Context
+    retrieval = retrieve_context(
         request,
         collection,
         reranker_model,
         default_top_k=default_top_k,
     )
 
-    response = await _forward_request(aug_request, openai_base_url, api_key)
+    # 2. Setup Agent
+    agent = _create_agent(request.model, openai_base_url, api_key)
 
-    # Add sources to non-streaming response
-    if retrieval and not request.stream and isinstance(response, dict):
-        response["rag_sources"] = retrieval.sources
-
-    return response
-
-
-async def _forward_request(
-    request: ChatRequest,
-    openai_base_url: str,
-    api_key: str | None = None,
-) -> Any:
-    """Forward to backend LLM."""
-    return await forward_chat_request(
-        request,
-        openai_base_url,
-        api_key,
-        exclude_fields={"rag_top_k"},
+    # 3. Prepare Dependencies
+    deps = RAGDeps(
+        docs_folder=docs_folder,
+        rag_context=retrieval.context if retrieval else None,
     )
+
+    # 4. Prepare Message History & Prompt
+    history, user_prompt = _convert_messages(request.messages)
+
+    # 5. Model Settings
+    model_settings = _extract_model_settings(request)
+
+    # 6. Run Agent
+    if request.stream:
+        return StreamingResponse(
+            _stream_generator(agent, user_prompt, history, deps, model_settings, request.model),
+            media_type="text/event-stream",
+        )
+
+    result = await agent.run(
+        user_prompt,
+        message_history=history,
+        deps=deps,
+        model_settings=model_settings,
+    )
+
+    return _build_openai_response(result, request.model, retrieval)
+
+
+async def _stream_generator(
+    agent: Agent,
+    prompt: str,
+    history: list[ModelRequest | ModelResponse],
+    deps: RAGDeps,
+    settings: dict[str, Any],
+    model_name: str,
+) -> AsyncGenerator[str, None]:
+    """Stream Pydantic AI result as OpenAI SSE."""
+    async with agent.run_stream(
+        prompt,
+        message_history=history,
+        deps=deps,
+        model_settings=settings,
+    ) as result:
+        async for chunk in result.stream_text(delta=True):
+            data = {
+                "id": f"chatcmpl-{result.run_id}",
+                "object": "chat.completion.chunk",
+                "created": int(time.time()),
+                "model": model_name,
+                "choices": [
+                    {
+                        "index": 0,
+                        "delta": {"content": chunk},
+                        "finish_reason": None,
+                    },
+                ],
+            }
+            yield f"data: {json.dumps(data)}\n\n"
+
+        # Finish chunk
+        finish_data = {
+            "id": f"chatcmpl-{result.run_id}",
+            "object": "chat.completion.chunk",
+            "created": int(time.time()),
+            "model": model_name,
+            "choices": [
+                {
+                    "index": 0,
+                    "delta": {},
+                    "finish_reason": "stop",
+                },
+            ],
+        }
+        yield f"data: {json.dumps(finish_data)}\n\n"
+        yield "data: [DONE]\n\n"

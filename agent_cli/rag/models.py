@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from pathlib import Path  # noqa: TC003
+
 from pydantic import BaseModel, ConfigDict
 
 
@@ -51,3 +53,10 @@ class RetrievalResult(BaseModel):
 
     context: str
     sources: list[RagSource]
+
+
+class RAGDeps(BaseModel):
+    """Dependencies for RAG agent."""
+
+    docs_folder: Path
+    rag_context: str | None = None

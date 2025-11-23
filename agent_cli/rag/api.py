@@ -106,6 +106,7 @@ def create_app(
             collection,
             reranker_model,
             openai_base_url.rstrip("/"),
+            docs_folder,
             default_top_k=limit,
             api_key=api_key,
         )

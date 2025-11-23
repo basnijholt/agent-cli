@@ -155,7 +155,12 @@ def search_context(
         reverse=True,
     )[:top_k]
 
-    context = "\n\n---\n\n".join(doc for doc, _, _ in ranked)
+    context_parts = []
+    for doc, meta, _ in ranked:
+        path = meta.get("file_path", "unknown")
+        context_parts.append(f"[Source: {path}]\n{doc}")
+
+    context = "\n\n---\n\n".join(context_parts)
     sources = [
         RagSource(
             source=str(meta.get("source", "unknown")),
