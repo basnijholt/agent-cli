@@ -372,7 +372,7 @@ async def test_process_chat_request_summarizes_and_persists(
         max_entries=10,
     )
 
-    await tasks.wait_for_background_tasks()
+    await tasks._wait_for_background_tasks()
 
     files = list(tmp_path.glob("entries/**/*.md"))
     assert len(files) == 5  # user + assistant + 2 facts + 1 summary (single)
@@ -495,7 +495,7 @@ async def test_streaming_request_persists_user_and_assistant(
     assert b"Hello" in body
 
     # Allow background persistence task to run
-    await tasks.wait_for_background_tasks()
+    await tasks._wait_for_background_tasks()
 
     files = list(tmp_path.glob("entries/**/*.md"))
     assert len(files) == 2  # user + assistant persisted for streaming, too
@@ -558,7 +558,7 @@ async def test_streaming_with_summarization_persists_facts_and_summaries(
     )
 
     _ = [chunk async for chunk in response.body_iterator]  # type: ignore[attr-defined]
-    await tasks.wait_for_background_tasks()
+    await tasks._wait_for_background_tasks()
 
     files = list(tmp_path.glob("entries/**/*.md"))
     assert len(files) == 4  # user + assistant + fact + 1 summary

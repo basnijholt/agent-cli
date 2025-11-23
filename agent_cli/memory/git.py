@@ -13,14 +13,14 @@ if TYPE_CHECKING:
 logger = logging.getLogger("agent_cli.memory.git")
 
 
-def is_git_installed() -> bool:
+def _is_git_installed() -> bool:
     """Check if git is available in the path."""
     return shutil.which("git") is not None
 
 
 def init_repo(path: Path) -> None:
     """Initialize a git repository if one does not exist."""
-    if not is_git_installed():
+    if not _is_git_installed():
         logger.warning("Git is not installed; skipping repository initialization.")
         return
 
@@ -94,7 +94,7 @@ def init_repo(path: Path) -> None:
 
 def commit_changes(path: Path, message: str) -> None:
     """Stage and commit all changes in the given path."""
-    if not is_git_installed():
+    if not _is_git_installed():
         return
 
     if not (path / ".git").exists():

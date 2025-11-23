@@ -164,7 +164,7 @@ async def test_memory_api_updates_latest_fact(  # noqa: PLR0915
             json=_make_request_json("my wife is Jane"),
         )
         assert resp1.status_code == 200
-        await memory_tasks.wait_for_background_tasks()
+        await memory_tasks._wait_for_background_tasks()
 
         # First fact should be persisted.
         facts_dir = tmp_path / "memory_db" / "entries" / "default" / "facts"
@@ -179,7 +179,7 @@ async def test_memory_api_updates_latest_fact(  # noqa: PLR0915
             json=_make_request_json("who is my wife"),
         )
         assert resp_question.status_code == 200
-        await memory_tasks.wait_for_background_tasks()
+        await memory_tasks._wait_for_background_tasks()
         fact_files_after_question = sorted(facts_dir.glob("*.md"))
         assert fact_files_after_question == fact_files_after_jane
 
@@ -188,7 +188,7 @@ async def test_memory_api_updates_latest_fact(  # noqa: PLR0915
             json=_make_request_json("my wife is Anne"),
         )
         assert resp2.status_code == 200
-        await memory_tasks.wait_for_background_tasks()
+        await memory_tasks._wait_for_background_tasks()
 
         # Latest fact should replace the old one and tombstone the previous.
         fact_files_after_anne = sorted(facts_dir.glob("*.md"))
@@ -209,7 +209,7 @@ async def test_memory_api_updates_latest_fact(  # noqa: PLR0915
             json=_make_request_json("who is my wife"),
         )
         assert resp_question2.status_code == 200
-        await memory_tasks.wait_for_background_tasks()
+        await memory_tasks._wait_for_background_tasks()
         final_fact_files = sorted(facts_dir.glob("*.md"))
         assert final_fact_files == fact_files_after_anne
 
@@ -266,20 +266,20 @@ async def test_memory_api_live_real_llm(  # noqa: PLR0915
     ):
         resp1 = await client.post("/v1/chat/completions", json=_make_body("my wife is Jane"))
         assert resp1.status_code == 200
-        await memory_tasks.wait_for_background_tasks()
+        await memory_tasks._wait_for_background_tasks()
         await _wait_for_fact_contains("jane")
         facts_after_jane = sorted(facts_dir.glob("*.md"))
         assert facts_after_jane, "Expected Jane fact"
 
         resp_q = await client.post("/v1/chat/completions", json=_make_body("who is my wife"))
         assert resp_q.status_code == 200
-        await memory_tasks.wait_for_background_tasks()
+        await memory_tasks._wait_for_background_tasks()
         facts_after_q = sorted(facts_dir.glob("*.md"))
         assert len(facts_after_q) == len(facts_after_jane)
 
         resp2 = await client.post("/v1/chat/completions", json=_make_body("my wife is Anne"))
         assert resp2.status_code == 200
-        await memory_tasks.wait_for_background_tasks()
+        await memory_tasks._wait_for_background_tasks()
 
         try:
             await _wait_for_fact_contains("anne")
@@ -302,7 +302,7 @@ async def test_memory_api_live_real_llm(  # noqa: PLR0915
 
         resp_q2 = await client.post("/v1/chat/completions", json=_make_body("who is my wife"))
         assert resp_q2.status_code == 200
-        await memory_tasks.wait_for_background_tasks()
+        await memory_tasks._wait_for_background_tasks()
         final_facts = sorted(facts_dir.glob("*.md"))
         jane_still = any(p.exists() and "jane" in p.read_text().lower() for p in final_facts)
         assert not jane_still
