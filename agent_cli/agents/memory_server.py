@@ -93,8 +93,8 @@ def memory_server(
     try:
         import uvicorn  # noqa: PLC0415
 
+        from agent_cli.memory._files import ensure_store_dirs  # noqa: PLC0415
         from agent_cli.memory.api import create_app  # noqa: PLC0415
-        from agent_cli.memory.files import ensure_store_dirs  # noqa: PLC0415
     except ImportError as exc:
         print_error_message(
             "Memory dependencies are not installed. Please install with "

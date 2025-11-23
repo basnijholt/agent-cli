@@ -6,7 +6,7 @@ from typing import Any
 
 from watchfiles import Change
 
-from agent_cli.memory import files as mem_files
+from agent_cli.memory import _files as mem_files
 from agent_cli.memory import indexer
 
 

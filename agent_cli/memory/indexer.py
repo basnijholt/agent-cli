@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 from watchfiles import Change
 
 from agent_cli.core.watch import watch_directory
-from agent_cli.memory.files import (
+from agent_cli.memory._files import (
     MemoryFileRecord,
     ensure_store_dirs,
     load_memory_files,

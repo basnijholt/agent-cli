@@ -9,13 +9,13 @@ from uuid import uuid4
 import pytest
 
 from agent_cli.memory import _ingest, _persistence, _retrieval, engine, tasks
-from agent_cli.memory.entities import Fact
-from agent_cli.memory.files import (
+from agent_cli.memory._files import (
     ensure_store_dirs,
     load_snapshot,
     write_memory_file,
     write_snapshot,
 )
+from agent_cli.memory.entities import Fact
 from agent_cli.memory.models import (
     ChatRequest,
     MemoryMetadata,

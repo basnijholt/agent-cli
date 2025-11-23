@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from agent_cli.memory import files as mem_files
+from agent_cli.memory import _files as mem_files
 from agent_cli.memory.models import MemoryMetadata
 
 if TYPE_CHECKING:

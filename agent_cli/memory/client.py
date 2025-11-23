@@ -8,10 +8,10 @@ from contextlib import suppress
 from typing import TYPE_CHECKING, Any, Self
 
 from agent_cli.constants import DEFAULT_OPENAI_EMBEDDING_MODEL, DEFAULT_OPENAI_MODEL
+from agent_cli.memory._files import ensure_store_dirs
 from agent_cli.memory._ingest import extract_and_store_facts_and_summaries
 from agent_cli.memory._retrieval import augment_chat_request
 from agent_cli.memory.engine import process_chat_request
-from agent_cli.memory.files import ensure_store_dirs
 from agent_cli.memory.git import init_repo
 from agent_cli.memory.indexer import MemoryIndex, initial_index, watch_memory_store
 from agent_cli.memory.models import ChatRequest, MemoryRetrieval
