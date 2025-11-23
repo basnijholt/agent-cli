@@ -17,23 +17,27 @@ The memory system is composed of layered Python modules, separating the API surf
     *   **Methods:** `chat()` (end-to-end), `search()` (retrieval only), `add()` (injection only).
 
 ### 1.2 Logic Engine (`agent_cli.memory.engine`)
-*   Contains the core business logic for the "Smart Ingest / Fast Read" pattern.
-*   **`process_chat_request`:** Main coordinator. Handles synchronous vs. asynchronous (streaming) execution paths.
-*   **`augment_chat_request`:** The "Read" path. Executes retrieval, reranking, recency weighting, MMR selection, and prompt injection.
-*   **`extract_and_store_facts_and_summaries`:** The "Write" path. Runs fact extraction, reconciliation, summarization, eviction, and optional git commits.
+*   **`agent_cli.memory.engine`:** The high-level orchestrator.
+    *   **`process_chat_request`:** Main entry point. Handles synchronous vs. asynchronous (streaming) execution paths and coordinates the pipeline.
+*   **`agent_cli.memory._retrieval`:** The "Read" path logic.
+    *   **`augment_chat_request`:** Executes retrieval, reranking, recency weighting, MMR selection, and prompt injection.
+*   **`agent_cli.memory._ingest`:** The "Write" path logic.
+    *   **`extract_and_store_facts_and_summaries`:** Runs fact extraction, reconciliation, summarization, and triggers persistence.
 
 ### 1.3 Storage Layer
-*   **`agent_cli.memory.files` (File Store):**
+*   **`agent_cli.memory._persistence`:**
+    *   Handles the coordination of writing to disk and updating the vector DB (`persist_entries`, `evict_if_needed`).
+*   **`agent_cli.memory._files` (File Store):**
     *   Source of Truth. Manages reading/writing Markdown files with YAML front matter.
     *   Handles path resolution: `<memory_path>/entries/<conversation_id>/{facts,turns,summaries}/`.
-*   **`agent_cli.memory.store` (Vector Store):**
+*   **`agent_cli.memory._store` (Vector Store):**
     *   Wraps `chromadb`.
     *   Handles embedding generation (via `text-embedding-3-small` or local models).
     *   Implements `query_memories` with dense retrieval parameters (`n_results`, filtering).
-*   **`agent_cli.memory.indexer` (Index Sync):**
+*   **`agent_cli.memory._indexer` (Index Sync):**
     *   Maintains `memory_index.json` (file hash snapshot) to keep ChromaDB in sync with the filesystem.
     *   **Watcher:** Uses `watchfiles` to detect OS-level file events (Create/Modify/Delete) and trigger incremental vector updates.
-*   **`agent_cli.memory.git` (Versioning):**
+*   **`agent_cli.memory._git` (Versioning):**
     *   Provides asynchronous Git integration for the memory store.
     *   Initialize repo on startup and commits changes after memory updates.
 
