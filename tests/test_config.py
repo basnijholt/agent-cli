@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from typing import TYPE_CHECKING
 from unittest.mock import MagicMock
 
@@ -110,7 +111,9 @@ def test_rag_server_help_includes_config_option(monkeypatch: pytest.MonkeyPatch)
     monkeypatch.setenv("NO_COLOR", "1")
     result = runner.invoke(app, ["rag-server", "--help"])
     assert result.exit_code == 0
-    assert "--config" in result.stdout
+    # Strip ANSI color codes for more reliable testing
+    clean_output = re.sub(r"\x1b\[[0-9;]*m", "", result.stdout)
+    assert "--config" in clean_output
 
 
 def test_server_help_includes_config_option(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -118,4 +121,6 @@ def test_server_help_includes_config_option(monkeypatch: pytest.MonkeyPatch) -> 
     monkeypatch.setenv("NO_COLOR", "1")
     result = runner.invoke(app, ["server", "--help"])
     assert result.exit_code == 0
-    assert "--config" in result.stdout
+    # Strip ANSI color codes for more reliable testing
+    clean_output = re.sub(r"\x1b\[[0-9;]*m", "", result.stdout)
+    assert "--config" in clean_output
