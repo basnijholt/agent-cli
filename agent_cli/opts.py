@@ -79,6 +79,12 @@ GEMINI_API_KEY: str | None = typer.Option(
     envvar="GEMINI_API_KEY",
     rich_help_panel="LLM Configuration: Gemini",
 )
+EMBEDDING_MODEL: str = typer.Option(
+    "text-embedding-3-small",
+    "--embedding-model",
+    help="Embedding model to use for vectorization.",
+    rich_help_panel="LLM Configuration",
+)
 
 # --- ASR (Audio) Configuration ---
 # General ASR
@@ -339,6 +345,14 @@ TRANSCRIPTION_LOG: Path | None = typer.Option(
     "--transcription-log",
     help="Path to log transcription results with timestamps, hostname, model, and raw output.",
     rich_help_panel="General Options",
+)
+
+# --- Server Options ---
+SERVER_HOST: str = typer.Option(
+    "0.0.0.0",  # noqa: S104
+    "--host",
+    help="Host/IP to bind API servers to.",
+    rich_help_panel="Server Configuration",
 )
 
 # --- Transcribe Specific Options ---

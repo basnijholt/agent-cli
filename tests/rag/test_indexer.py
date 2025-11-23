@@ -37,8 +37,12 @@ async def test_watch_docs(tmp_path: Path) -> None:
     ) -> AsyncGenerator[set[tuple[Change, str]], None]:
         yield changes
 
+    async def fake_watch_directory(_root: Path, handler: Any, **_kwargs) -> None:  # type: ignore[no-untyped-def]
+        for change, path in changes:
+            handler(change, Path(path))
+
     with (
-        patch("agent_cli.rag.indexer.awatch", side_effect=mock_awatch_gen),
+        patch("agent_cli.rag.indexer.watch_directory", side_effect=fake_watch_directory),
         patch("agent_cli.rag.indexer.index_file") as mock_index,
         patch("agent_cli.rag.indexer.remove_file") as mock_remove,
     ):
@@ -68,8 +72,12 @@ async def test_watch_docs_ignore_dotfiles(tmp_path: Path) -> None:
     ) -> AsyncGenerator[set[tuple[Change, str]], None]:
         yield changes
 
+    async def fake_watch_directory(_root: Path, handler: Any, **_kwargs) -> None:  # type: ignore[no-untyped-def]
+        for change, path in changes:
+            handler(change, Path(path))
+
     with (
-        patch("agent_cli.rag.indexer.awatch", side_effect=mock_awatch_gen),
+        patch("agent_cli.rag.indexer.watch_directory", side_effect=fake_watch_directory),
         patch("agent_cli.rag.indexer.index_file") as mock_index,
     ):
         await indexer.watch_docs(mock_collection, docs_folder, file_hashes)

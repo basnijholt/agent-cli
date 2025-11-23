@@ -43,6 +43,15 @@ dev = [
     { name = "ruff" },
     { name = "versioningit" },
 ]
+memory = [
+    { name = "chromadb" },
+    { name = "fastapi", extra = ["standard"] },
+    { name = "huggingface-hub" },
+    { name = "onnxruntime" },
+    { name = "pyyaml" },
+    { name = "transformers" },
+    { name = "watchfiles" },
+]
 rag = [
     { name = "chromadb" },
     { name = "fastapi", extra = ["standard"] },
@@ -88,17 +97,21 @@ dev = [
 requires-dist = [
     { name = "agent-cli", extras = ["test"], marker = "extra == 'dev'" },
     { name = "audiostretchy", marker = "extra == 'speed'", specifier = ">=1.3.0" },
+    { name = "chromadb", marker = "extra == 'memory'", specifier = ">=0.4.22" },
     { name = "chromadb", marker = "extra == 'rag'", specifier = ">=0.4.22" },
     { name = "dotenv" },
+    { name = "fastapi", extras = ["standard"], marker = "extra == 'memory'" },
     { name = "fastapi", extras = ["standard"], marker = "extra == 'rag'" },
     { name = "fastapi", extras = ["standard"], marker = "extra == 'server'" },
     { name = "google-genai", specifier = ">=1.25.0" },
     { name = "httpx" },
+    { name = "huggingface-hub", marker = "extra == 'memory'", specifier = ">=0.20.0" },
     { name = "huggingface-hub", marker = "extra == 'rag'", specifier = ">=0.20.0" },
     { name = "markdown-code-runner", marker = "extra == 'dev'" },
     { name = "markitdown", extras = ["docx", "pdf", "pptx"], marker = "extra == 'rag'", specifier = ">=0.1.3" },
     { name = "notebook", marker = "extra == 'dev'" },
     { name = "numpy" },
+    { name = "onnxruntime", marker = "extra == 'memory'", specifier = ">=1.17.0" },
     { name = "onnxruntime", marker = "extra == 'rag'", specifier = ">=1.17.0" },
     { name = "openai" },
     { name = "pre-commit", marker = "extra == 'dev'", specifier = ">=3.0.0" },
@@ -110,16 +123,19 @@ requires-dist = [
     { name = "pytest-cov", marker = "extra == 'test'", specifier = ">=4.0.0" },
     { name = "pytest-mock", marker = "extra == 'test'" },
     { name = "pytest-timeout", marker = "extra == 'test'" },
+    { name = "pyyaml", marker = "extra == 'memory'", specifier = ">=6.0.0" },
     { name = "rich" },
     { name = "ruff", marker = "extra == 'dev'" },
     { name = "sounddevice" },
+    { name = "transformers", marker = "extra == 'memory'", specifier = ">=4.30.0" },
     { name = "transformers", marker = "extra == 'rag'", specifier = ">=4.30.0" },
     { name = "typer" },
     { name = "versioningit", marker = "extra == 'dev'" },
+    { name = "watchfiles", marker = "extra == 'memory'", specifier = ">=0.21.0" },
     { name = "watchfiles", marker = "extra == 'rag'", specifier = ">=0.21.0" },
     { name = "wyoming" },
 ]
-provides-extras = ["server", "rag", "test", "dev", "speed"]
+provides-extras = ["server", "rag", "memory", "test", "dev", "speed"]
 
 [package.metadata.requires-dev]
 dev = [

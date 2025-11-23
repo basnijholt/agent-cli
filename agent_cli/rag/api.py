@@ -11,12 +11,13 @@ from typing import TYPE_CHECKING, Any
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
+from agent_cli.core.chroma import init_collection
 from agent_cli.rag.engine import process_chat_request
 from agent_cli.rag.indexer import watch_docs
 from agent_cli.rag.indexing import initial_index, load_hashes_from_metadata
 from agent_cli.rag.models import ChatRequest  # noqa: TC001
 from agent_cli.rag.retriever import get_reranker_model
-from agent_cli.rag.store import get_all_metadata, init_collection
+from agent_cli.rag.store import get_all_metadata
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -40,6 +41,7 @@ def create_app(
     LOGGER.info("Loading vector database (ChromaDB)...")
     collection = init_collection(
         chroma_path,
+        name="docs",
         embedding_model=embedding_model,
         openai_base_url=openai_base_url,
         openai_api_key=embedding_api_key,

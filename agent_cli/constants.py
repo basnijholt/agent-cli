@@ -15,3 +15,6 @@ WYOMING_AUDIO_CONFIG = {
     "width": AUDIO_FORMAT_WIDTH,
     "channels": AUDIO_CHANNELS,
 }
+
+# --- HTTP Defaults ---
+DEFAULT_OPENAI_BASE_URL = "https://api.openai.com/v1"

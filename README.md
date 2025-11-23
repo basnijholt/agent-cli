@@ -38,6 +38,7 @@ I use it mostly for the `transcribe` function when working with LLMs. Being able
 - **`assistant`**: A hands-free voice assistant that starts and stops recording based on a wake word.
 - **`chat`**: A conversational AI agent with tool-calling capabilities.
 - **`rag-server`**: A RAG (Retrieval-Augmented Generation) proxy server that lets you chat with your documents.
+- **`memory-server`**: A long-term memory chat proxy with OpenAI-compatible endpoints that is file-based and uses Git.
 
 ## Quick Start
 
@@ -146,6 +147,7 @@ The setup scripts automatically install:
   - [`assistant`](#assistant)
   - [`chat`](#chat)
   - [`rag-server`](#rag-server)
+  - [`memory-server`](#memory-server)
     - [Using Custom Embeddings (e.g., OpenAI / llama.cpp / Ollama)](#using-custom-embeddings-eg-openai--llamacpp--ollama)
 - [Development](#development)
   - [Running Tests](#running-tests)
@@ -426,7 +428,8 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 │                                 [env var: GEMINI_API_KEY]                    │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ General Options ────────────────────────────────────────────────────────────╮
-│ --log-level           TEXT  Set logging level. [default: WARNING]            │
+│ --log-level           TEXT  Set logging level.                               │
+│                             [default: WARNING]                               │
 │ --log-file            TEXT  Path to a file to write logs to.                 │
 │ --quiet       -q            Suppress console output from rich.               │
 │ --config              TEXT  Path to a TOML configuration file.               │
@@ -514,7 +517,8 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 ╭─ ASR (Audio) Configuration: Wyoming (local) ─────────────────────────────────╮
 │ --asr-wyoming-ip          TEXT     Wyoming ASR server IP address.            │
 │                                    [default: localhost]                      │
-│ --asr-wyoming-port        INTEGER  Wyoming ASR server port. [default: 10300] │
+│ --asr-wyoming-port        INTEGER  Wyoming ASR server port.                  │
+│                                    [default: 10300]                          │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ ASR (Audio) Configuration: OpenAI ──────────────────────────────────────────╮
 │ --asr-openai-model           TEXT  The OpenAI model to use for ASR           │
@@ -680,7 +684,8 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ General Options ────────────────────────────────────────────────────────────╮
 │ --save-file           PATH  Save TTS response audio to WAV file.             │
-│ --log-level           TEXT  Set logging level. [default: WARNING]            │
+│ --log-level           TEXT  Set logging level.                               │
+│                             [default: WARNING]                               │
 │ --log-file            TEXT  Path to a file to write logs to.                 │
 │ --quiet       -q            Suppress console output from rich.               │
 │ --config              TEXT  Path to a TOML configuration file.               │
@@ -737,11 +742,14 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
  Interact with clipboard text via a voice command using local or remote
  services.
 
- Usage: - Run in foreground: agent-cli voice-edit --input-device-index 1 - Run
- in background: agent-cli voice-edit --input-device-index 1 & - Check status:
- agent-cli voice-edit --status - Stop background process: agent-cli voice-edit
- --stop - List output devices: agent-cli voice-edit --list-output-devices -
- Save TTS to file: agent-cli voice-edit --tts --save-file response.wav
+ Usage:
+
+  • Run in foreground: agent-cli voice-edit --input-device-index 1
+  • Run in background: agent-cli voice-edit --input-device-index 1 &
+  • Check status: agent-cli voice-edit --status
+  • Stop background process: agent-cli voice-edit --stop
+  • List output devices: agent-cli voice-edit --list-output-devices
+  • Save TTS to file: agent-cli voice-edit --tts --save-file response.wav
 
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
 │ --help  -h        Show this message and exit.                                │
@@ -766,7 +774,8 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 ╭─ ASR (Audio) Configuration: Wyoming (local) ─────────────────────────────────╮
 │ --asr-wyoming-ip          TEXT     Wyoming ASR server IP address.            │
 │                                    [default: localhost]                      │
-│ --asr-wyoming-port        INTEGER  Wyoming ASR server port. [default: 10300] │
+│ --asr-wyoming-port        INTEGER  Wyoming ASR server port.                  │
+│                                    [default: 10300]                          │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ ASR (Audio) Configuration: OpenAI ──────────────────────────────────────────╮
 │ --asr-openai-model        TEXT  The OpenAI model to use for ASR              │
@@ -937,7 +946,8 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 ╭─ ASR (Audio) Configuration: Wyoming (local) ─────────────────────────────────╮
 │ --asr-wyoming-ip          TEXT     Wyoming ASR server IP address.            │
 │                                    [default: localhost]                      │
-│ --asr-wyoming-port        INTEGER  Wyoming ASR server port. [default: 10300] │
+│ --asr-wyoming-port        INTEGER  Wyoming ASR server port.                  │
+│                                    [default: 10300]                          │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ ASR (Audio) Configuration: OpenAI ──────────────────────────────────────────╮
 │ --asr-openai-model        TEXT  The OpenAI model to use for ASR              │
@@ -1106,7 +1116,8 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 ╭─ ASR (Audio) Configuration: Wyoming (local) ─────────────────────────────────╮
 │ --asr-wyoming-ip          TEXT     Wyoming ASR server IP address.            │
 │                                    [default: localhost]                      │
-│ --asr-wyoming-port        INTEGER  Wyoming ASR server port. [default: 10300] │
+│ --asr-wyoming-port        INTEGER  Wyoming ASR server port.                  │
+│                                    [default: 10300]                          │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ ASR (Audio) Configuration: OpenAI ──────────────────────────────────────────╮
 │ --asr-openai-model           TEXT  The OpenAI model to use for ASR           │
@@ -1201,7 +1212,8 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ General Options ────────────────────────────────────────────────────────────╮
 │ --save-file           PATH  Save TTS response audio to WAV file.             │
-│ --log-level           TEXT  Set logging level. [default: WARNING]            │
+│ --log-level           TEXT  Set logging level.                               │
+│                             [default: WARNING]                               │
 │ --log-file            TEXT  Path to a file to write logs to.                 │
 │ --quiet       -q            Suppress console output from rich.               │
 │ --config              TEXT  Path to a TOML configuration file.               │
@@ -1232,6 +1244,22 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 - **Start Server (Local LLM)**: `agent-cli rag-server --docs-folder ~/Documents/Notes --openai-base-url http://localhost:11434/v1 --port 8000`
 - **Start Server (OpenAI)**: `agent-cli rag-server --docs-folder ~/Documents/Notes --openai-api-key sk-...`
 - **Use with Agent-CLI**: `agent-cli chat --openai-base-url http://localhost:8000/v1 --llm-provider openai`
+
+### `memory-server`
+
+**Purpose:** Adds long-term conversational memory (self-hosted) with an OpenAI-compatible `/chat/completions` endpoint backed by Chroma (+ optional reranker).
+
+**How to Use It:**
+
+- **Install memory deps first**: `pip install "agent-cli[memory]"` (or, from the repo, `uv sync --extra memory`)
+- **Start Server (Local LLM/OpenAI-compatible)**: `agent-cli memory-server --memory-path ./memory_db --openai-base-url http://localhost:11434/v1 --embedding-model text-embedding-3-small`
+- **Use with Agent-CLI**: `agent-cli chat --openai-base-url http://localhost:8100/v1 --llm-provider openai`
+
+**How it works (self-hosted):**
+- Stores a per-conversation memory collection in Chroma with the same embedding settings as `rag-server`, optionally reranked with a cross-encoder.
+- For each turn, retrieves the top-k relevant memories (conversation + global) plus a rolling summary and augments the prompt.
+- After each reply, extracts salient facts and refreshes the running summary (disable with `--disable-summarization`).
+- Enforces a per-conversation cap (`--max-entries`, default 500) and evicts oldest memories first.
 
 #### Using Custom Embeddings (e.g., OpenAI / llama.cpp / Ollama)
 
@@ -1288,17 +1316,22 @@ agent-cli rag-server \
 │                                OPENAI_API_KEY environment variable.          │
 │                                [env var: OPENAI_API_KEY]                     │
 ╰──────────────────────────────────────────────────────────────────────────────╯
-╭─ Backend Configuration ──────────────────────────────────────────────────────╮
-│ --embedding-model        TEXT  Embedding model name (e.g.                    │
-│                                'text-embedding-3-small' for OpenAI).         │
+╭─ LLM Configuration ──────────────────────────────────────────────────────────╮
+│ --embedding-model        TEXT  Embedding model to use for vectorization.     │
 │                                [default: text-embedding-3-small]             │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Server Configuration ───────────────────────────────────────────────────────╮
-│ --host        TEXT     Host to bind to [default: 0.0.0.0]                    │
-│ --port        INTEGER  Port to bind to [default: 8000]                       │
+│ --host        TEXT     Host/IP to bind API servers to.                       │
+│                        [default: 0.0.0.0]                                    │
+│ --port        INTEGER  Port to bind to                                       │
+│                        [default: 8000]                                       │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ General Options ────────────────────────────────────────────────────────────╮
-│ --log-level        TEXT  Logging level [default: INFO]                       │
+│ --log-level         TEXT  Set logging level.                                 │
+│                           [default: WARNING]                                 │
+│ --config            TEXT  Path to a TOML configuration file.                 │
+│ --print-args              Print the command line arguments, including        │
+│                           variables taken from the configuration file.       │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 
 ```

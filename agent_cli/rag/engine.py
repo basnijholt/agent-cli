@@ -2,20 +2,14 @@
 
 from __future__ import annotations
 
-import json
 import logging
 from typing import TYPE_CHECKING, Any
 
-import httpx
-from fastapi import HTTPException
-from fastapi.responses import StreamingResponse
-
+from agent_cli.core.openai_proxy import forward_chat_request
 from agent_cli.rag.models import Message
 from agent_cli.rag.retriever import search_context
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncGenerator
-
     from chromadb import Collection
 
     from agent_cli.rag.models import ChatRequest, RetrievalResult
@@ -117,54 +111,9 @@ async def _forward_request(
     api_key: str | None = None,
 ) -> Any:
     """Forward to backend LLM."""
-    # Filter out RAG-specific fields before forwarding
-    forward_payload = request.model_dump(exclude={"rag_top_k"})
-    headers = {"Authorization": f"Bearer {api_key}"} if api_key else None
-
-    if request.stream:
-
-        async def generate() -> AsyncGenerator[str, None]:
-            try:
-                async with (
-                    httpx.AsyncClient(timeout=120.0) as client,
-                    client.stream(
-                        "POST",
-                        f"{openai_base_url}/chat/completions",
-                        json=forward_payload,
-                        headers=headers,
-                    ) as response,
-                ):
-                    if response.status_code != 200:  # noqa: PLR2004
-                        error_text = await response.aread()
-                        yield f"data: {json.dumps({'error': str(error_text)})}\n\n"
-                        return
-
-                    async for chunk in response.aiter_raw():
-                        if isinstance(chunk, bytes):
-                            yield chunk.decode("utf-8")
-                        else:
-                            yield chunk
-            except Exception as e:
-                LOGGER.exception("Streaming error")
-                yield f"data: {json.dumps({'error': str(e)})}\n\n"
-
-        return StreamingResponse(generate(), media_type="text/event-stream")
-
-    async with httpx.AsyncClient(timeout=120.0) as client:
-        response = await client.post(
-            f"{openai_base_url}/chat/completions",
-            json=forward_payload,
-            headers=headers,
-        )
-        if response.status_code != 200:  # noqa: PLR2004
-            LOGGER.error(
-                "Upstream error %s: %s",
-                response.status_code,
-                response.text,
-            )
-            raise HTTPException(
-                status_code=response.status_code,
-                detail=f"Upstream error: {response.text}",
-            )
-
-        return response.json()
+    return await forward_chat_request(
+        request,
+        openai_base_url,
+        api_key,
+        exclude_fields={"rag_top_k"},
+    )

@@ -7,6 +7,7 @@ import datetime
 import logging
 from typing import TYPE_CHECKING
 
+from agent_cli.rag.models import DocMetadata
 from agent_cli.rag.store import (
     delete_by_file_path,
     get_all_metadata,
@@ -89,15 +90,15 @@ def index_file(
             ids.append(doc_id)
             documents.append(chunk)
             metadatas.append(
-                {
-                    "source": file_path.name,
-                    "file_path": relative_path,
-                    "file_type": file_path.suffix,
-                    "chunk_id": i,
-                    "total_chunks": len(chunks),
-                    "indexed_at": timestamp,
-                    "file_hash": current_hash,
-                },
+                DocMetadata(
+                    source=file_path.name,
+                    file_path=relative_path,
+                    file_type=file_path.suffix,
+                    chunk_id=i,
+                    total_chunks=len(chunks),
+                    indexed_at=timestamp,
+                    file_hash=current_hash,
+                ),
             )
 
         # Upsert to ChromaDB in batches to avoid 502s from large payloads
