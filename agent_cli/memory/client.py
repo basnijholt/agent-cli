@@ -16,7 +16,7 @@ from agent_cli.memory._persistence import evict_if_needed
 from agent_cli.memory._retrieval import augment_chat_request
 from agent_cli.memory._store import init_memory_collection
 from agent_cli.memory.engine import process_chat_request
-from agent_cli.memory.models import ChatRequest, MemoryRetrieval
+from agent_cli.memory.models import ChatRequest, MemoryRetrieval, Message
 from agent_cli.rag.retriever import get_reranker_model
 
 if TYPE_CHECKING:
@@ -151,7 +151,7 @@ class MemoryClient:
         # consolidation, and retrieval logic (Rerank + MMR).
         # We create a dummy ChatRequest just to pass the query.
         dummy_request = ChatRequest(
-            messages=[{"role": "user", "content": query}],
+            messages=[Message(role="user", content=query)],
             model=model,
             memory_id=conversation_id,
             memory_top_k=top_k or self.default_top_k,
