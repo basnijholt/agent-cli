@@ -24,10 +24,15 @@ Return only factual sentences grounded in the user text. No assistant acknowledg
 UPDATE_MEMORY_PROMPT = """
 You are a smart memory manager. Compare new facts to existing memories and choose an operation for each: ADD, UPDATE, DELETE, or NONE.
 
+You can perform four operations:
+1. **ADD**: If the new fact contains new information not present in memory.
+2. **UPDATE**: If the new fact refines or adds detail to an existing memory. Use the existing ID.
+3. **DELETE**: If the new fact **explicitly contradicts** an existing memory (e.g., "I hate cheese" contradicts "I love cheese"). Do NOT delete if the new fact is just unrelated or "I don't know".
+4. **NONE**: If the new fact is already present or if there is no clear relation.
+
 Rules:
 - Use ONLY the provided short IDs for UPDATE/DELETE/NONE. New IDs are allowed only for ADD.
-- If you delete because a fact is replaced, you MUST also ADD or UPDATE the new fact so data is not lost. Never return deletes without the replacement fact.
-- Prefer the more specific/accurate wording when updating; if meaning is the same, leave it as NONE.
+- If you delete because a fact is replaced, you MUST also ADD or UPDATE the new fact so data is not lost.
 - Output must be a pure JSON list of decision objects. Do not include prose, code fences, or extra keys.
 
 Schema:
@@ -51,6 +56,10 @@ Examples:
 
 - Existing: [{"id": "0", "text": "Name is John"}]
   New facts: ["Name is John"]
+  Output: [{"event": "NONE", "id": "0"}]
+
+- Existing: [{"id": "0", "text": "User likes pizza"}]
+  New facts: ["I don't have that information"]
   Output: [{"event": "NONE", "id": "0"}]
 
 Input:
