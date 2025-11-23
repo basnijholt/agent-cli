@@ -8,7 +8,7 @@ from uuid import uuid4
 
 import pytest
 
-from agent_cli.memory import engine, tasks
+from agent_cli.memory import _ingest, _persistence, _retrieval, engine, tasks
 from agent_cli.memory.entities import Fact
 from agent_cli.memory.files import (
     ensure_store_dirs,
@@ -16,7 +16,14 @@ from agent_cli.memory.files import (
     write_memory_file,
     write_snapshot,
 )
-from agent_cli.memory.models import ChatRequest, MemoryMetadata, Message, StoredMemory
+from agent_cli.memory.models import (
+    ChatRequest,
+    MemoryMetadata,
+    MemoryUpdateDecision,
+    Message,
+    StoredMemory,
+    SummaryOutput,
+)
 
 
 class _DummyReranker:
@@ -104,9 +111,12 @@ def stub_openai_provider(monkeypatch: pytest.MonkeyPatch) -> None:
         def __init__(self, **_kwargs: Any) -> None:
             return
 
-    monkeypatch.setattr(engine, "OpenAIProvider", lambda *_args, **_kwargs: _DummyProvider())
-    monkeypatch.setattr(engine, "OpenAIChatModel", lambda *_args, **_kwargs: _DummyModel())
-    monkeypatch.setattr(engine, "ModelSettings", lambda **_kwargs: _DummySettings())
+    monkeypatch.setattr(_ingest, "OpenAIProvider", lambda *_args, **_kwargs: _DummyProvider())
+    monkeypatch.setattr(_ingest, "OpenAIChatModel", lambda *_args, **_kwargs: _DummyModel())
+    monkeypatch.setattr(_ingest, "ModelSettings", lambda **_kwargs: _DummySettings())
+    monkeypatch.setattr(_ingest, "OpenAIProvider", lambda *_args, **_kwargs: _DummyProvider())
+    monkeypatch.setattr(_ingest, "OpenAIChatModel", lambda *_args, **_kwargs: _DummyModel())
+    monkeypatch.setattr(_ingest, "ModelSettings", lambda **_kwargs: _DummySettings())
 
 
 class _DummyStreamResponse:
@@ -157,13 +167,13 @@ async def test_augment_chat_request_disables_with_zero_top_k() -> None:
         memory_top_k=0,
     )
 
-    aug_request, retrieval, conversation_id, summaries = await engine.augment_chat_request(
+    aug_request, retrieval_res, conversation_id, summaries = await _retrieval.augment_chat_request(
         request,
         collection=_RecordingCollection(),
         reranker_model=_DummyReranker(),  # type: ignore[arg-type]
     )
 
-    assert retrieval is None
+    assert retrieval_res is None
     assert aug_request.messages[-1].content == "hello"
     assert conversation_id == "default"
     assert summaries == []
@@ -221,14 +231,14 @@ async def test_retrieve_memory_prefers_diversity_and_adds_summaries(
         call_count += 1
         return [mem_primary, mem_similar] if conversation_id == "conv1" else [mem_diverse]
 
-    monkeypatch.setattr(engine, "query_memories", fake_query_memories)
+    monkeypatch.setattr(_retrieval, "query_memories", fake_query_memories)
     monkeypatch.setattr(
-        engine,
+        _retrieval,
         "predict_relevance",
         lambda _model, pairs: [0.9, 0.1, 0.8][: len(pairs)],
     )
     monkeypatch.setattr(
-        engine,
+        _retrieval,
         "get_summary_entry",
         lambda _collection, _cid, role: StoredMemory(  # type: ignore[return-value]
             id=f"{role}-id",
@@ -241,7 +251,7 @@ async def test_retrieve_memory_prefers_diversity_and_adds_summaries(
         ),
     )
 
-    retrieval, summaries = engine._retrieve_memory(
+    retrieval_res, summaries = _retrieval.retrieve_memory(
         collection=_RecordingCollection(),
         conversation_id="conv1",
         query="I enjoy biking and also travel planning",
@@ -250,7 +260,7 @@ async def test_retrieve_memory_prefers_diversity_and_adds_summaries(
         # Use defaults for recency/threshold to ensure they don't filter out our test data
     )
 
-    contents = [entry.content for entry in retrieval.entries]
+    contents = [entry.content for entry in retrieval_res.entries]
     assert len(contents) == 2
     assert mem_primary.content in contents
     assert mem_diverse.content in contents  # diverse item beats near-duplicate
@@ -285,11 +295,11 @@ async def test_retrieve_memory_returns_all_facts(monkeypatch: pytest.MonkeyPatch
         distance=0.2,
     )
 
-    monkeypatch.setattr(engine, "query_memories", lambda *_args, **_kwargs: [older, newer])
+    monkeypatch.setattr(_retrieval, "query_memories", lambda *_args, **_kwargs: [older, newer])
     # Relevance > 0.35 default
-    monkeypatch.setattr(engine, "predict_relevance", lambda _model, pairs: [2.0 for _ in pairs])
+    monkeypatch.setattr(_retrieval, "predict_relevance", lambda _model, pairs: [2.0 for _ in pairs])
 
-    retrieval, _ = engine._retrieve_memory(
+    retrieval_res, _ = _retrieval.retrieve_memory(
         collection=_RecordingCollection(),
         conversation_id="conv1",
         query="Who is Jane?",
@@ -298,7 +308,7 @@ async def test_retrieve_memory_returns_all_facts(monkeypatch: pytest.MonkeyPatch
         include_global=False,
     )
 
-    assert len(retrieval.entries) == 2
+    assert len(retrieval_res.entries) == 2
 
 
 @pytest.mark.asyncio
@@ -315,8 +325,8 @@ async def test_reconcile_facts_preserves_new_fact_on_delete_only(
     )
 
     monkeypatch.setattr(
-        engine,
-        "_gather_relevant_existing_memories",
+        _ingest,
+        "gather_relevant_existing_memories",
         lambda *_args, **_kwargs: [existing],
     )
 
@@ -329,12 +339,12 @@ async def test_reconcile_facts_preserves_new_fact_on_delete_only(
             return
 
         async def run(self, _payload: str, **_kwargs: Any) -> _Result:
-            return _Result([engine.MemoryUpdateDecision(event="DELETE", id="0")])
+            return _Result([MemoryUpdateDecision(event="DELETE", id="0")])
 
-    monkeypatch.setattr(engine, "Agent", _DummyAgent)
+    monkeypatch.setattr(_ingest, "Agent", _DummyAgent)
 
     new_fact = "User now dislikes cheese pizza"
-    to_add, to_delete, replacement_map = await engine._reconcile_facts(
+    to_add, to_delete, replacement_map = await _ingest.reconcile_facts(
         _RecordingCollection(),
         "conv1",
         [new_fact],
@@ -375,10 +385,10 @@ async def test_process_chat_request_summarizes_and_persists(
 
         prompt_str = str(prompt_text)
         if "New facts:" in prompt_str:
-            return _Result(engine.SummaryOutput(summary="summary up to 256"))
+            return _Result(SummaryOutput(summary="summary up to 256"))
         if "Hello, I enjoy biking" in prompt_str:
             return _Result(["User likes cats.", "User loves biking."])
-        return _Result(engine.SummaryOutput(summary="noop"))
+        return _Result(SummaryOutput(summary="noop"))
 
     async def fake_reconcile(
         _collection: Any,
@@ -398,10 +408,10 @@ async def test_process_chat_request_summarizes_and_persists(
         ]
         return entries, [], {}
 
-    monkeypatch.setattr(engine, "_reconcile_facts", fake_reconcile)
-    monkeypatch.setattr(engine.Agent, "run", fake_agent_run)
+    monkeypatch.setattr(_ingest, "reconcile_facts", fake_reconcile)
+    monkeypatch.setattr(_ingest.Agent, "run", fake_agent_run)
     # High relevance so they aren't filtered
-    monkeypatch.setattr(engine, "predict_relevance", lambda _model, pairs: [5.0 for _ in pairs])
+    monkeypatch.setattr(_retrieval, "predict_relevance", lambda _model, pairs: [5.0 for _ in pairs])
 
     request = ChatRequest(
         model="demo-model",
@@ -479,13 +489,17 @@ def test_evict_if_needed_drops_oldest_and_cleans_disk(
 
     removed: list[str] = []
     monkeypatch.setattr(
-        engine,
+        _persistence,
         "list_conversation_entries",
         lambda _collection, _cid, include_summary=False: entries,  # noqa: ARG005
     )
-    monkeypatch.setattr(engine, "delete_entries", lambda _collection, ids: removed.extend(ids))
+    monkeypatch.setattr(
+        _persistence,
+        "delete_entries",
+        lambda _collection, ids: removed.extend(ids),
+    )
 
-    engine._evict_if_needed(_RecordingCollection(), tmp_path, "conv", 1)
+    _persistence.evict_if_needed(_RecordingCollection(), tmp_path, "conv", 1)
 
     snapshot = load_snapshot(snapshot_path)
 
@@ -509,7 +523,7 @@ async def test_streaming_request_persists_user_and_assistant(
     )
 
     # High score
-    monkeypatch.setattr(engine, "predict_relevance", lambda _model, pairs: [5.0 for _ in pairs])
+    monkeypatch.setattr(_retrieval, "predict_relevance", lambda _model, pairs: [5.0 for _ in pairs])
     monkeypatch.setattr(
         engine.streaming,
         "httpx",
@@ -561,7 +575,7 @@ async def test_streaming_with_summarization_persists_facts_and_summaries(
         stream=True,
     )
 
-    monkeypatch.setattr(engine, "predict_relevance", lambda _model, pairs: [5.0 for _ in pairs])
+    monkeypatch.setattr(_retrieval, "predict_relevance", lambda _model, pairs: [5.0 for _ in pairs])
 
     async def fake_stream_chat_sse(*_args: Any, **_kwargs: Any) -> Any:
         body = [
@@ -578,10 +592,10 @@ async def test_streaming_with_summarization_persists_facts_and_summaries(
 
         prompt_str = str(prompt_text)
         if "New facts:" in prompt_str:
-            return _Result(engine.SummaryOutput(summary="summary text"))
+            return _Result(SummaryOutput(summary="summary text"))
         if "My cat is Luna" in prompt_str:
             return _Result(["User has a cat named Luna."])
-        return _Result(engine.SummaryOutput(summary="noop"))
+        return _Result(SummaryOutput(summary="noop"))
 
     monkeypatch.setattr(engine.streaming, "stream_chat_sse", fake_stream_chat_sse)
 
@@ -603,8 +617,8 @@ async def test_streaming_with_summarization_persists_facts_and_summaries(
         ]
         return entries, [], {}
 
-    monkeypatch.setattr(engine, "_reconcile_facts", fake_reconcile)
-    monkeypatch.setattr(engine.Agent, "run", fake_agent_run)
+    monkeypatch.setattr(_ingest, "reconcile_facts", fake_reconcile)
+    monkeypatch.setattr(_ingest.Agent, "run", fake_agent_run)
 
     response = await engine.process_chat_request(
         request,

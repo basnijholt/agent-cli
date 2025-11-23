@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 from unittest.mock import patch
 
-from agent_cli.memory.engine import _evict_if_needed
+from agent_cli.memory._persistence import evict_if_needed
 from agent_cli.memory.store import list_conversation_entries
 
 if TYPE_CHECKING:
@@ -70,8 +70,8 @@ def test_evict_if_needed_removes_oldest(tmp_path: Path) -> None:
         ],
     )
 
-    with patch("agent_cli.memory.engine._delete_memory_files"):
-        _evict_if_needed(collection, tmp_path, "c1", max_entries=2)
+    with patch("agent_cli.memory._ingest.delete_memory_files"):
+        evict_if_needed(collection, tmp_path, "c1", max_entries=2)
 
     remaining = list_conversation_entries(collection, "c1")
     remaining_ids = {e.id for e in remaining}

@@ -29,7 +29,7 @@ from chromadb.utils import embedding_functions
 import agent_cli.memory.api as memory_api
 import agent_cli.memory.tasks as memory_tasks
 from agent_cli.constants import DEFAULT_OPENAI_EMBEDDING_MODEL
-from agent_cli.memory import engine
+from agent_cli.memory import _ingest, engine
 from agent_cli.memory.entities import Fact
 
 if TYPE_CHECKING:
@@ -160,9 +160,9 @@ async def test_memory_api_updates_latest_fact(  # noqa: PLR0915
         return "summary"
 
     monkeypatch.setattr(engine, "forward_chat_request", fake_forward_request)
-    monkeypatch.setattr(engine, "_extract_salient_facts", fake_extract_salient_facts)
-    monkeypatch.setattr(engine, "_reconcile_facts", fake_reconcile)
-    monkeypatch.setattr(engine, "_update_summary", fake_update_summary)
+    monkeypatch.setattr(_ingest, "extract_salient_facts", fake_extract_salient_facts)
+    monkeypatch.setattr(_ingest, "reconcile_facts", fake_reconcile)
+    monkeypatch.setattr(_ingest, "update_summary", fake_update_summary)
 
     app = memory_api.create_app(
         memory_path=tmp_path / "memory_db",

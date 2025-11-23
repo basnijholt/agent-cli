@@ -11,7 +11,7 @@ from uuid import uuid4
 
 import pytest
 
-from agent_cli.memory import engine
+from agent_cli.memory import _ingest
 from agent_cli.memory.client import MemoryClient
 from agent_cli.memory.entities import Fact
 
@@ -66,9 +66,9 @@ async def test_memory_client_git_versioning(
     async def fake_update_summary(*_args: Any, **_kwargs: Any) -> str:
         return "User likes testing."
 
-    monkeypatch.setattr(engine, "_extract_salient_facts", fake_extract)
-    monkeypatch.setattr(engine, "_reconcile_facts", fake_reconcile)
-    monkeypatch.setattr(engine, "_update_summary", fake_update_summary)
+    monkeypatch.setattr(_ingest, "extract_salient_facts", fake_extract)
+    monkeypatch.setattr(_ingest, "reconcile_facts", fake_reconcile)
+    monkeypatch.setattr(_ingest, "update_summary", fake_update_summary)
 
     # Patch Reranker to avoid loading ONNX model
     monkeypatch.setattr("agent_cli.memory.client.get_reranker_model", MagicMock())
@@ -154,8 +154,8 @@ async def test_memory_client_git_versioning(
         ]
         return entries, [], {}
 
-    monkeypatch.setattr(engine, "_extract_salient_facts", fake_extract_2)
-    monkeypatch.setattr(engine, "_reconcile_facts", fake_reconcile_2)
+    monkeypatch.setattr(_ingest, "extract_salient_facts", fake_extract_2)
+    monkeypatch.setattr(_ingest, "reconcile_facts", fake_reconcile_2)
 
     await client.add("I love git")
 
