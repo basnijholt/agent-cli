@@ -12,6 +12,7 @@ from wyoming.asr import Transcript
 
 from agent_cli import config, constants
 from agent_cli.agents import transcribe
+from agent_cli.constants import DEFAULT_OPENAI_MODEL
 
 
 def create_test_wav_file(filepath: Path, content: bytes = b"test_audio" * 1000) -> None:
@@ -66,7 +67,7 @@ async def test_async_main_from_file(tmp_path: Path):
             llm_ollama_host="http://localhost:11434",
         )
         openai_llm_cfg = config.OpenAILLM(
-            llm_openai_model="gpt-4o-mini",
+            llm_openai_model=DEFAULT_OPENAI_MODEL,
         )
         gemini_llm_cfg = config.GeminiLLM(
             llm_gemini_model="gemini-2.5-flash",
@@ -137,7 +138,7 @@ async def test_async_main_from_file_with_llm(tmp_path: Path):
             llm_ollama_host="http://localhost:11434",
         )
         openai_llm_cfg = config.OpenAILLM(
-            llm_openai_model="gpt-4o-mini",
+            llm_openai_model=DEFAULT_OPENAI_MODEL,
         )
         gemini_llm_cfg = config.GeminiLLM(
             llm_gemini_model="gemini-2.5-flash",
@@ -207,7 +208,7 @@ async def test_async_main_from_file_with_logging(tmp_path: Path):
             llm_ollama_host="http://localhost:11434",
         )
         openai_llm_cfg = config.OpenAILLM(
-            llm_openai_model="gpt-4o-mini",
+            llm_openai_model=DEFAULT_OPENAI_MODEL,
         )
         gemini_llm_cfg = config.GeminiLLM(
             llm_gemini_model="gemini-2.5-flash",
@@ -279,7 +280,7 @@ async def test_async_main_from_file_error_handling(
             llm_ollama_host="http://localhost:11434",
         )
         openai_llm_cfg = config.OpenAILLM(
-            llm_openai_model="gpt-4o-mini",
+            llm_openai_model=DEFAULT_OPENAI_MODEL,
         )
         gemini_llm_cfg = config.GeminiLLM(
             llm_gemini_model="gemini-2.5-flash",
@@ -360,7 +361,7 @@ async def test_async_main_save_recording_enabled(
             llm_ollama_host="http://localhost:11434",
         )
         openai_llm_cfg = config.OpenAILLM(
-            llm_openai_model="gpt-4o-mini",
+            llm_openai_model=DEFAULT_OPENAI_MODEL,
         )
         gemini_llm_cfg = config.GeminiLLM(
             llm_gemini_model="gemini-2.5-flash",
@@ -422,7 +423,7 @@ def test_transcribe_command_last_recording_option(
             asr_openai_prompt=None,
             llm_ollama_model="gemma3:4b",
             llm_ollama_host="http://localhost:11434",
-            llm_openai_model="gpt-4o-mini",
+            llm_openai_model=DEFAULT_OPENAI_MODEL,
             openai_api_key=None,
             openai_base_url=None,
             llm_gemini_model="gemini-2.5-flash",
@@ -477,7 +478,7 @@ def test_transcribe_command_from_file_option(tmp_path: Path):
             asr_openai_prompt=None,
             llm_ollama_model="gemma3:4b",
             llm_ollama_host="http://localhost:11434",
-            llm_openai_model="gpt-4o-mini",
+            llm_openai_model=DEFAULT_OPENAI_MODEL,
             openai_api_key=None,
             openai_base_url=None,
             llm_gemini_model="gemini-2.5-flash",
@@ -544,7 +545,7 @@ def test_transcribe_command_last_recording_with_index(
             asr_openai_prompt=None,
             llm_ollama_model="gemma3:4b",
             llm_ollama_host="http://localhost:11434",
-            llm_openai_model="gpt-4o-mini",
+            llm_openai_model=DEFAULT_OPENAI_MODEL,
             openai_api_key=None,
             openai_base_url=None,
             llm_gemini_model="gemini-2.5-flash",
@@ -606,7 +607,7 @@ def test_transcribe_command_last_recording_disabled(
             asr_openai_prompt=None,
             llm_ollama_model="gemma3:4b",
             llm_ollama_host="http://localhost:11434",
-            llm_openai_model="gpt-4o-mini",
+            llm_openai_model=DEFAULT_OPENAI_MODEL,
             openai_api_key=None,
             openai_base_url=None,
             llm_gemini_model="gemini-2.5-flash",
@@ -651,7 +652,7 @@ def test_transcribe_command_conflicting_options() -> None:
             asr_openai_model="whisper-1",
             llm_ollama_model="gemma3:4b",
             llm_ollama_host="http://localhost:11434",
-            llm_openai_model="gpt-4o-mini",
+            llm_openai_model=DEFAULT_OPENAI_MODEL,
             openai_api_key=None,
             openai_base_url=None,
             llm_gemini_model="gemini-2.5-flash",

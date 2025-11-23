@@ -4,6 +4,8 @@ from pathlib import Path
 
 import typer
 
+from agent_cli.constants import DEFAULT_OPENAI_MODEL
+
 # --- Provider Selection ---
 LLM_PROVIDER: str = typer.Option(
     "ollama",
@@ -47,7 +49,7 @@ LLM_OLLAMA_HOST: str = typer.Option(
 )
 # OpenAI
 LLM_OPENAI_MODEL: str = typer.Option(
-    "gpt-4o-mini",
+    DEFAULT_OPENAI_MODEL,
     "--llm-openai-model",
     help="The OpenAI model to use for LLM tasks.",
     rich_help_panel="LLM Configuration: OpenAI",

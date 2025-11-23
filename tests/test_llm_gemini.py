@@ -5,6 +5,7 @@ from __future__ import annotations
 import pytest
 
 from agent_cli import config
+from agent_cli.constants import DEFAULT_OPENAI_MODEL
 from agent_cli.services.llm import create_llm_agent
 
 
@@ -25,7 +26,7 @@ async def test_create_llm_agent_with_gemini() -> None:
         llm_ollama_host="http://localhost:11434",
     )
     openai_cfg = config.OpenAILLM(
-        llm_openai_model="gpt-4o-mini",
+        llm_openai_model=DEFAULT_OPENAI_MODEL,
         openai_api_key="test-key",
     )
 
