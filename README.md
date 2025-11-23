@@ -1331,7 +1331,7 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 **How to Use It:**
 
 - **Install memory deps first**: `pip install "agent-cli[memory]"` (or, from the repo, `uv sync --extra memory`)
-- **Start Server (Local LLM/OpenAI-compatible)**: `agent-cli memory-proxy --memory-path ./memory_db --openai-base-url http://localhost:11434/v1 --embedding-model text-embedding-3-small`
+- **Start Server (Local LLM/OpenAI-compatible)**: `agent-cli memory-proxy --memory-path ./memory_db --openai-base-url http://localhost:11434/v1 --embedding-model embeddinggemma:300m`
 - **Use with Agent-CLI**: `agent-cli chat --openai-base-url http://localhost:8100/v1 --llm-provider openai`
 
 <details>
