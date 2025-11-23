@@ -38,7 +38,7 @@ I use it mostly for the `transcribe` function when working with LLMs. Being able
 - **`assistant`**: A hands-free voice assistant that starts and stops recording based on a wake word.
 - **`chat`**: A conversational AI agent with tool-calling capabilities.
 - **`rag-server`**: A RAG (Retrieval-Augmented Generation) proxy server that lets you chat with your documents.
-- **`memory-server`**: A long-term memory chat proxy (Letta + Chroma) with OpenAI-compatible endpoints.
+- **`memory-server`**: A long-term memory chat proxy with OpenAI-compatible endpoints that is file-based and uses Git.
 
 ## Quick Start
 
