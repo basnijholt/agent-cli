@@ -95,6 +95,9 @@ def client(tmp_path: Path) -> TestClient:
     async def _fake_forward_request(*_args: Any, **_kwargs: Any) -> dict[str, Any]:
         return {"choices": [{"message": {"content": "pong"}}]}
 
+    async def _noop_commit(*_args: Any, **_kwargs: Any) -> None:
+        return None
+
     with ExitStack() as stack:
         stack.enter_context(
             patch("agent_cli.memory.client.watch_memory_store", side_effect=_noop_watch),
@@ -110,6 +113,10 @@ def client(tmp_path: Path) -> TestClient:
         )
         stack.enter_context(
             patch("agent_cli.memory.client.init_memory_collection", return_value=_FakeCollection()),
+        )
+        stack.enter_context(patch("agent_cli.memory.client.init_repo"))
+        stack.enter_context(
+            patch("agent_cli.memory.engine.commit_changes", side_effect=_noop_commit),
         )
         app = memory_api.create_app(
             memory_path=tmp_path,
