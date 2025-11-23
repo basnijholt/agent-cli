@@ -1317,16 +1317,16 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 **Purpose:** Adds long-term conversational memory (self-hosted) with an OpenAI-compatible `/chat/completions` endpoint backed by Chroma and Onnx reranker.
 
 **Workflow:**
+- Stores a per-conversation memory collection in Chroma with the same embedding settings as `rag-proxy`, reranked with a cross-encoder.
+- For each turn, retrieves the top-k relevant memories (conversation + global) plus a rolling summary and augments the prompt.
+- After each reply, extracts salient facts and refreshes the running summary (disable with `--no-summarization`).
+- Enforces a per-conversation cap (`--max-entries`, default 500) and evicts oldest memories first.
+
+**How to Use It:**
 
 - **Install memory deps first**: `pip install "agent-cli[memory]"` (or, from the repo, `uv sync --extra memory`)
 - **Start Server (Local LLM/OpenAI-compatible)**: `agent-cli memory-proxy --memory-path ./memory_db --openai-base-url http://localhost:11434/v1 --embedding-model text-embedding-3-small`
 - **Use with Agent-CLI**: `agent-cli chat --openai-base-url http://localhost:8100/v1 --llm-provider openai`
-
-**How it works (self-hosted):**
-- Stores a per-conversation memory collection in Chroma with the same embedding settings as `rag-proxy`, reranked with a cross-encoder.
-- For each turn, retrieves the top-k relevant memories (conversation + global) plus a rolling summary and augments the prompt.
-- After each reply, extracts salient facts and refreshes the running summary (disable with `--disable-summarization`).
-- Enforces a per-conversation cap (`--max-entries`, default 500) and evicts oldest memories first.
 
 <details>
 <summary>See the output of <code>agent-cli memory-proxy --help</code></summary>
