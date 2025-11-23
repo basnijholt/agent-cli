@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from typing import TYPE_CHECKING
 from unittest.mock import MagicMock
 
@@ -10,7 +11,7 @@ from click import Command
 from typer import Context
 from typer.testing import CliRunner
 
-from agent_cli.cli import set_config_defaults
+from agent_cli.cli import app, set_config_defaults
 from agent_cli.config import ProviderSelection, load_config, normalize_provider_defaults
 
 if TYPE_CHECKING:
@@ -103,3 +104,21 @@ def test_provider_alias_normalization(config_file: Path) -> None:
     assert provider_cfg.llm_provider == "ollama"
     assert provider_cfg.asr_provider == "wyoming"
     assert provider_cfg.tts_provider == "wyoming"
+
+
+def test_rag_server_help_includes_config_option() -> None:
+    """Ensure rag-server command wires config option (for defaults loading)."""
+    result = runner.invoke(app, ["rag-server", "--help"])
+    assert result.exit_code == 0
+    # Strip ANSI color codes for more reliable testing
+    clean_output = re.sub(r"\x1b\[[0-9;]*m", "", result.stdout)
+    assert "--config" in clean_output
+
+
+def test_server_help_includes_config_option() -> None:
+    """Ensure server command wires config option (for defaults loading)."""
+    result = runner.invoke(app, ["server", "--help"])
+    assert result.exit_code == 0
+    # Strip ANSI color codes for more reliable testing
+    clean_output = re.sub(r"\x1b\[[0-9;]*m", "", result.stdout)
+    assert "--config" in clean_output
