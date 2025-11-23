@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING, Any
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
+from agent_cli.constants import DEFAULT_OPENAI_EMBEDDING_MODEL
 from agent_cli.core.chroma import init_collection
 from agent_cli.rag.engine import process_chat_request
 from agent_cli.rag.indexer import watch_docs
@@ -29,7 +30,7 @@ def create_app(
     docs_folder: Path,
     chroma_path: Path,
     openai_base_url: str,
-    embedding_model: str = "text-embedding-3-small",
+    embedding_model: str = DEFAULT_OPENAI_EMBEDDING_MODEL,
     embedding_api_key: str | None = None,
     chat_api_key: str | None = None,
     limit: int = 3,

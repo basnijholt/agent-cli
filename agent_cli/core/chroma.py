@@ -7,6 +7,8 @@ from typing import TYPE_CHECKING, Any
 import chromadb
 from chromadb.utils import embedding_functions
 
+from agent_cli.constants import DEFAULT_OPENAI_EMBEDDING_MODEL
+
 if TYPE_CHECKING:
     from collections.abc import Mapping, Sequence
     from pathlib import Path
@@ -19,7 +21,7 @@ def init_collection(
     persistence_path: Path,
     *,
     name: str,
-    embedding_model: str = "text-embedding-3-small",
+    embedding_model: str = DEFAULT_OPENAI_EMBEDDING_MODEL,
     openai_base_url: str | None = None,
     openai_api_key: str | None = None,
     subdir: str | None = None,
