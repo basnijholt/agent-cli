@@ -98,6 +98,11 @@ def process_reconciliation_decisions(
     to_delete: list[str] = []
     replacement_map: dict[str, str] = {}
 
+    logger.info(
+        "Reconcile decisions raw: %s",
+        [d.model_dump() for d in decisions],
+    )
+
     for dec in decisions:
         if dec.event == "ADD" and dec.text:
             text = dec.text.strip()
