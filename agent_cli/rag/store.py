@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 
     from agent_cli.rag.models import DocMetadata
 
-LOGGER = logging.getLogger("agent_cli.rag.store")
+LOGGER = logging.getLogger(__name__)
 
 
 def upsert_docs(

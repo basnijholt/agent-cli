@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:
     from collections.abc import Coroutine
 
-LOGGER = logging.getLogger("agent_cli.memory.tasks")
+LOGGER = logging.getLogger(__name__)
 
 _BACKGROUND_TASKS: set[asyncio.Task[Any]] = set()
 

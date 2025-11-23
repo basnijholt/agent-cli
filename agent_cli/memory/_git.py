@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING, NamedTuple
 if TYPE_CHECKING:
     from pathlib import Path
 
-LOGGER = logging.getLogger("agent_cli.memory.git")
+LOGGER = logging.getLogger(__name__)
 
 
 class GitCommandResult(NamedTuple):

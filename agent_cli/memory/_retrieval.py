@@ -21,7 +21,7 @@ from agent_cli.rag.retriever import OnnxCrossEncoder, predict_relevance
 if TYPE_CHECKING:
     from chromadb import Collection
 
-LOGGER = logging.getLogger("agent_cli.memory.retrieval")
+LOGGER = logging.getLogger(__name__)
 
 _DEFAULT_MMR_LAMBDA = 0.7
 _SUMMARY_ROLE = "summary"

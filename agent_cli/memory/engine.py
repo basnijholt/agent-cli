@@ -28,7 +28,7 @@ if TYPE_CHECKING:
     from agent_cli.memory.models import ChatRequest
     from agent_cli.rag.retriever import OnnxCrossEncoder
 
-LOGGER = logging.getLogger("agent_cli.memory.engine")
+LOGGER = logging.getLogger(__name__)
 
 _DEFAULT_MAX_ENTRIES = 500
 _DEFAULT_MMR_LAMBDA = 0.7

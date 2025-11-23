@@ -28,7 +28,7 @@ if TYPE_CHECKING:
 
     from agent_cli.memory.models import MemoryMetadata
 
-LOGGER = logging.getLogger("agent_cli.memory.persistence")
+LOGGER = logging.getLogger(__name__)
 
 _SUMMARY_DOC_ID_SUFFIX = "::summary"
 

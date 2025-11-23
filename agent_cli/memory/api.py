@@ -15,7 +15,7 @@ from agent_cli.memory.models import ChatRequest  # noqa: TC001
 if TYPE_CHECKING:
     from pathlib import Path
 
-LOGGER = logging.getLogger("agent_cli.memory.api")
+LOGGER = logging.getLogger(__name__)
 
 
 def create_app(

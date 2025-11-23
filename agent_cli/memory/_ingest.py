@@ -38,7 +38,7 @@ if TYPE_CHECKING:
 
     from chromadb import Collection
 
-LOGGER = logging.getLogger("agent_cli.memory.ingest")
+LOGGER = logging.getLogger(__name__)
 
 _SUMMARY_ROLE = "summary"
 

@@ -16,7 +16,7 @@ from agent_cli.rag.store import query_docs
 if TYPE_CHECKING:
     from chromadb import Collection
 
-LOGGER = logging.getLogger("agent_cli.rag.retriever")
+LOGGER = logging.getLogger(__name__)
 
 
 def _download_onnx_model(model_name: str, onnx_filename: str) -> str:

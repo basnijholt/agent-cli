@@ -18,7 +18,7 @@ from agent_cli.memory.models import MemoryMetadata
 if TYPE_CHECKING:
     from collections.abc import Iterable
 
-LOGGER = logging.getLogger("agent_cli.memory.files")
+LOGGER = logging.getLogger(__name__)
 
 _ENTRIES_DIRNAME = "entries"
 _SNAPSHOT_FILENAME = "memory_index.json"

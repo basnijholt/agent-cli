@@ -25,7 +25,7 @@ if TYPE_CHECKING:
 
     from chromadb import Collection
 
-LOGGER = logging.getLogger("agent_cli.memory.indexer")
+LOGGER = logging.getLogger(__name__)
 
 
 @dataclass
