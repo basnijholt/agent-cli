@@ -1314,7 +1314,13 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 
 ### `memory-proxy`
 
-**Purpose:** Adds long-term conversational memory (self-hosted) with an OpenAI-compatible `/chat/completions` endpoint backed by Chroma and Onnx reranker.
+**Purpose:** Adds long-term conversational memory (self-hosted) to any OpenAI-compatible client.
+
+**Key Features:**
+- **Simple Markdown Files:** Your memories are stored as human-readable Markdown files, serving as the ultimate source of truth.
+- **Automatic Version Control:** Built-in Git integration automatically commits changes, giving you a full history of your memory's evolution.
+- **Lightweight & Local:** Minimal dependencies and runs entirely on your machine.
+- **Proxy Middleware:** Works transparently with any OpenAI-compatible `/chat/completions` endpoint (OpenAI, Ollama, vLLM).
 
 **Workflow:**
 - Stores a per-conversation memory collection in Chroma with the same embedding settings as `rag-proxy`, reranked with a cross-encoder.
