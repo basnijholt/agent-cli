@@ -33,6 +33,9 @@ The memory system is composed of layered Python modules, separating the API surf
 *   **`agent_cli.memory.indexer` (Index Sync):**
     *   Maintains `memory_index.json` (file hash snapshot) to keep ChromaDB in sync with the filesystem.
     *   **Watcher:** Uses `watchfiles` to detect OS-level file events (Create/Modify/Delete) and trigger incremental vector updates.
+*   **`agent_cli.memory.git` (Versioning):**
+    *   Provides asynchronous Git integration for the memory store.
+    *   Initialize repo on startup and commits changes after memory updates.
 
 ---
 
@@ -81,6 +84,12 @@ All entries share a single collection but are partitioned by metadata.
 *   **ID:** Matches file UUID.
 *   **Embedding:** 1536d (OpenAI) or 384d (MiniLM).
 *   **Metadata:** Mirrors front matter (`role`, `conversation_id`, `created_at`) for pre-filtering.
+
+### 2.4 Versioning (Git)
+When `enable_git_versioning` is true, the memory system maintains a local Git repository at `memory_path`.
+*   **Initialization:** Creates a repo and `.gitignore` (ignoring `chroma/`, `memory_index.json`, etc.) if missing.
+*   **Commits:** Automatically stages and commits all changes (adds, modifications, soft deletes) after every turn or fact update.
+*   **Execution:** Uses asynchronous subprocess calls (`asyncio.create_subprocess_exec`) to prevent blocking the main event loop during git operations.
 
 ---
 
@@ -157,6 +166,9 @@ Resolves contradictions using a "Search-Decide-Update" loop.
 *   **Trigger:** If total entries in conversation > `max_entries` (default 500).
 *   **Strategy:** Sorts by `created_at` (ascending) and deletes the oldest `facts` or `turns` until count is within limit. Summaries are exempt.
 
+### 4.6 Versioning
+If `enable_git_versioning` is enabled, an asynchronous git commit is triggered at the end of the post-processing pipeline to snapshot the latest state of the memory store.
+
 ---
 
 ## 5. Prompt Logic Specifications
@@ -195,3 +207,4 @@ To replicate the system behavior, the following prompt strategies are required.
 | `score_threshold` | `0.35` | Minimum semantic relevance to consider. |
 | `enable_summarization` | `True` | Toggle for summary generation loop. |
 | `openai_base_url` | `None` | Base URL for LLM calls (allows local LLM usage). |
+| `enable_git_versioning` | `False` | Toggle to enable/disable Git versioning of the memory store. |
