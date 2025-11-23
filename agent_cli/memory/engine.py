@@ -90,6 +90,7 @@ class PersistEntry:
     role: str
     content: str
     id: str | None = None
+    source_id: str | None = None
 
 
 def _gather_relevant_existing_memories(
@@ -366,6 +367,7 @@ def _persist_entries(
             created_at=now,
             content=content,
             doc_id=item.id,
+            source_id=item.source_id,
         )
         logger.info("Persisted memory file: %s", record.path)
         ids.append(record.id)
@@ -677,19 +679,28 @@ def _persist_turns(
     conversation_id: str,
     user_message: str | None,
     assistant_message: str | None,
-) -> None:
-    """Persist the latest user/assistant exchanges."""
+    user_turn_id: str | None = None,
+) -> str | None:
+    """Persist the latest user/assistant exchanges. Returns the user_turn_id used."""
+    # Ensure we have an ID for the user turn if it exists
+    actual_user_id = user_turn_id
+    if user_message and not actual_user_id:
+        actual_user_id = str(uuid4())
+
     _persist_entries(
         collection,
         memory_root=memory_root,
         conversation_id=conversation_id,
         entries=[
-            PersistEntry(role="user", content=user_message) if user_message else None,
+            PersistEntry(role="user", content=user_message, id=actual_user_id)
+            if user_message
+            else None,
             PersistEntry(role="assistant", content=assistant_message)
             if assistant_message
             else None,
         ],
     )
+    return actual_user_id
 
 
 async def _postprocess_after_turn(
@@ -705,6 +716,7 @@ async def _postprocess_after_turn(
     model: str,
     max_entries: int,
     enable_git_versioning: bool,
+    user_turn_id: str | None = None,
 ) -> None:
     """Run summarization/fact extraction and eviction."""
     post_start = perf_counter()
@@ -720,6 +732,7 @@ async def _postprocess_after_turn(
             api_key=api_key,
             model=model,
             enable_git_versioning=enable_git_versioning,
+            source_id=user_turn_id,
         )
         logger.info(
             "Updated facts and summaries in %.1f ms (conversation=%s)",
@@ -755,6 +768,7 @@ async def extract_and_store_facts_and_summaries(
     api_key: str | None,
     model: str,
     enable_git_versioning: bool = False,
+    source_id: str | None = None,
 ) -> None:
     """Run fact extraction and summary updates, persisting results."""
     fact_start = perf_counter()
@@ -791,6 +805,10 @@ async def extract_and_store_facts_and_summaries(
 
     if not to_add:
         return
+
+    # Attach source_id to new facts
+    for entry in to_add:
+        entry.source_id = source_id
 
     _persist_entries(
         collection,
@@ -844,6 +862,7 @@ async def _stream_and_persist_response(
     model: str,
     max_entries: int,
     enable_git_versioning: bool,
+    user_turn_id: str | None = None,
 ) -> StreamingResponse:
     """Forward streaming request, tee assistant text, and persist after completion."""
     headers = {"Authorization": f"Bearer {api_key}"} if api_key else None
@@ -857,6 +876,7 @@ async def _stream_and_persist_response(
             conversation_id=conversation_id,
             user_message=None,
             assistant_message=assistant_message,
+            user_turn_id=None,  # Assistant turn doesn't reuse user ID
         )
         await _postprocess_after_turn(
             collection=collection,
@@ -870,6 +890,7 @@ async def _stream_and_persist_response(
             model=model,
             max_entries=max_entries,
             enable_git_versioning=enable_git_versioning,
+            user_turn_id=user_turn_id,
         )
         logger.info(
             "Stream post-processing completed in %.1f ms (conversation=%s)",
@@ -940,6 +961,8 @@ async def process_chat_request(
         request.memory_top_k if request.memory_top_k is not None else default_top_k,
     )
 
+    user_turn_id = str(uuid4())
+
     if request.stream:
         logger.info(
             "Forwarding streaming request (conversation=%s, model=%s)",
@@ -953,6 +976,7 @@ async def process_chat_request(
             conversation_id=conversation_id,
             user_message=user_message,
             assistant_message=None,
+            user_turn_id=user_turn_id,
         )
         forward_payload = aug_request.model_dump(exclude={"memory_id", "memory_top_k"})
         return await _stream_and_persist_response(
@@ -967,6 +991,7 @@ async def process_chat_request(
             model=request.model,
             max_entries=max_entries,
             enable_git_versioning=enable_git_versioning,
+            user_turn_id=user_turn_id,
         )
 
     llm_start = perf_counter()
@@ -995,6 +1020,7 @@ async def process_chat_request(
         conversation_id=conversation_id,
         user_message=user_message,
         assistant_message=assistant_message,
+        user_turn_id=user_turn_id,
     )
 
     async def run_postprocess() -> None:
@@ -1010,6 +1036,7 @@ async def process_chat_request(
             model=request.model,
             max_entries=max_entries,
             enable_git_versioning=enable_git_versioning,
+            user_turn_id=user_turn_id,
         )
 
     if postprocess_in_background:

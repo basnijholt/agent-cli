@@ -47,6 +47,7 @@ class MemoryMetadata(BaseModel):
     created_at: str
     summary_kind: str | None = None
     replaced_by: str | None = None
+    source_id: str | None = None
 
 
 class SummaryOutput(BaseModel):

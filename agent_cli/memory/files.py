@@ -93,6 +93,7 @@ def write_memory_file(
     content: str,
     summary_kind: str | None = None,
     doc_id: str | None = None,
+    source_id: str | None = None,
 ) -> MemoryFileRecord:
     """Render and persist a memory document to disk."""
     entries_dir, _ = ensure_store_dirs(root)
@@ -122,6 +123,7 @@ def write_memory_file(
         role=role,
         created_at=created_at,
         summary_kind=summary_kind,
+        source_id=source_id,
     )
 
     front_matter = _render_front_matter(doc_id, metadata)
