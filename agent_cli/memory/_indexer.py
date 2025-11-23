@@ -10,6 +10,7 @@ from watchfiles import Change
 
 from agent_cli.core.watch import watch_directory
 from agent_cli.memory._files import (
+    _DELETED_DIRNAME,
     MemoryFileRecord,
     ensure_store_dirs,
     load_memory_files,
@@ -108,6 +109,9 @@ async def watch_memory_store(collection: Collection, root: Path, *, index: Memor
 
 def _handle_change(change: Change, path: Path, collection: Collection, index: MemoryIndex) -> None:
     if path.suffix == ".tmp":
+        return
+
+    if _DELETED_DIRNAME in path.parts:
         return
 
     if change == Change.deleted:
