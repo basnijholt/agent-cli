@@ -31,9 +31,10 @@ Operations:
 4. **NONE**: Fact is already present (exact match) or unrelated.
 
 Rules:
-- IDs are integer indexes from the provided list.
+- IDs are integer indexes from the provided list. Use ONLY those integers for UPDATE/DELETE/NONE; never invent new IDs.
 - **Critical**: For UPDATE, the `text` must be the NEW fact. Do NOT output the OLD text. If the text hasn't changed, use NONE.
-- If a new fact contradicts an old one, prefer DELETE (for the old) + ADD (for the new) if the IDs don't align, or UPDATE if it's a direct replacement.
+- If a new fact contradicts an old one, prefer DELETE (for the old) + ADD (for the new) if the IDs don't align, or UPDATE if it's a direct replacement. When you DELETE because of a replacement, you MUST also ADD or UPDATE the new fact so information is not lost.
+- Output must be a pure JSON list of decision objects—no prose, code fences, or extra keys.
 
 Schema:
 - ADD:    {"event": "ADD", "text": "..."}
