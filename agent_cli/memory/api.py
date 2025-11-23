@@ -1,4 +1,4 @@
-"""FastAPI application factory for memory server."""
+"""FastAPI application factory for memory proxy."""
 
 from __future__ import annotations
 

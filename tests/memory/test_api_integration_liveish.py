@@ -43,8 +43,8 @@ if TYPE_CHECKING:
 
 
 @pytest.fixture
-def memory_server() -> Callable[[FastAPI], AbstractAsyncContextManager[str]]:
-    """Fixture that returns an async context manager to start/stop the memory server."""
+def memory_proxy() -> Callable[[FastAPI], AbstractAsyncContextManager[str]]:
+    """Fixture that returns an async context manager to start/stop the memory proxy."""
 
     @asynccontextmanager
     async def _server(app: FastAPI) -> AsyncGenerator[str, None]:
@@ -98,7 +98,7 @@ def _make_request_json(text: str) -> dict[str, Any]:
 async def test_memory_api_updates_latest_fact(  # noqa: PLR0915
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
-    memory_server: Callable[[FastAPI], AbstractAsyncContextManager[str]],
+    memory_proxy: Callable[[FastAPI], AbstractAsyncContextManager[str]],
 ) -> None:
     """End-to-end through the HTTP API with stubbed LLMs; latest fact should replace previous."""
     base_url = os.environ["MEMORY_API_LIVE_BASE"]
@@ -174,7 +174,7 @@ async def test_memory_api_updates_latest_fact(  # noqa: PLR0915
     )
 
     async with (
-        memory_server(app) as server_url,
+        memory_proxy(app) as server_url,
         httpx.AsyncClient(base_url=server_url) as client,
     ):
         resp1 = await client.post(
@@ -242,7 +242,7 @@ async def test_memory_api_updates_latest_fact(  # noqa: PLR0915
 )
 async def test_memory_api_live_real_llm(  # noqa: PLR0915
     tmp_path: Path,
-    memory_server: Callable[[FastAPI], AbstractAsyncContextManager[str]],
+    memory_proxy: Callable[[FastAPI], AbstractAsyncContextManager[str]],
 ) -> None:
     """Live end-to-end: start uvicorn, hit real LLM, ensure Anne overwrites Jane."""
     base_url = os.environ["MEMORY_API_LIVE_BASE"]
@@ -277,7 +277,7 @@ async def test_memory_api_live_real_llm(  # noqa: PLR0915
         raise AssertionError(msg)
 
     async with (
-        memory_server(app) as server_url,
+        memory_proxy(app) as server_url,
         httpx.AsyncClient(
             base_url=server_url,
             headers={"Authorization": f"Bearer {chat_api_key}"} if chat_api_key else {},

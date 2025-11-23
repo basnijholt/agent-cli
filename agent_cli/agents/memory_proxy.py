@@ -1,4 +1,4 @@
-"""Memory Server agent command (long-term memory with Chroma)."""
+"""Memory Proxy agent command (long-term memory with Chroma)."""
 
 from __future__ import annotations
 
@@ -13,8 +13,8 @@ from agent_cli.cli import app
 from agent_cli.core.utils import console, print_command_line_args, print_error_message
 
 
-@app.command("memory-server")
-def memory_server(
+@app.command("memory-proxy")
+def memory_proxy(
     memory_path: Path = typer.Option(  # noqa: B008
         "./memory_db",
         help="Path to the memory store (files + derived vector index).",
@@ -119,7 +119,7 @@ def memory_server(
     if openai_base_url is None:
         openai_base_url = constants.DEFAULT_OPENAI_BASE_URL
 
-    console.print(f"[bold green]Starting Memory Server on {host}:{port}[/bold green]")
+    console.print(f"[bold green]Starting Memory Proxy on {host}:{port}[/bold green]")
     console.print(f"  💾 Memory store: [blue]{memory_path}[/blue]")
     console.print(f"  📁 Entries: [blue]{entries_dir}[/blue]")
     console.print(f"  🤖 Backend: [blue]{openai_base_url}[/blue]")

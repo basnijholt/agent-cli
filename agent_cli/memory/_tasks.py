@@ -1,4 +1,4 @@
-"""Utilities for tracking background tasks in the memory server."""
+"""Utilities for tracking background tasks in the memory proxy."""
 
 from __future__ import annotations
 

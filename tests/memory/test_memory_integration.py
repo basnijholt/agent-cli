@@ -1,4 +1,4 @@
-"""Integration-ish test for memory server without hitting real LLMs."""
+"""Integration-ish test for memory proxy without hitting real LLMs."""
 
 from __future__ import annotations
 
@@ -87,7 +87,7 @@ class _FakeCollection:
 
 @pytest.fixture
 def client(tmp_path: Path) -> TestClient:
-    """Create a memory server client with all network calls stubbed."""
+    """Create a memory proxy client with all network calls stubbed."""
 
     async def _noop_watch(*_args: Any, **_kwargs: Any) -> None:
         return None

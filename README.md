@@ -37,7 +37,7 @@ I use it mostly for the `transcribe` function when working with LLMs. Being able
 - **`voice-edit`**: A voice-powered clipboard assistant that edits text based on your spoken commands.
 - **`assistant`**: A hands-free voice assistant that starts and stops recording based on a wake word.
 - **`chat`**: A conversational AI agent with tool-calling capabilities.
-- **`memory-server`**: A long-term memory chat proxy with OpenAI-compatible endpoints that is file-based and uses Git.
+- **`memory-proxy`**: A long-term memory chat proxy with OpenAI-compatible endpoints that is file-based and uses Git.
 - **`rag-proxy`**: A RAG (Retrieval-Augmented Generation) proxy server that lets you chat with your documents.
 
 ## Quick Start
@@ -147,7 +147,7 @@ The setup scripts automatically install:
   - [`assistant`](#assistant)
   - [`chat`](#chat)
   - [`rag-proxy`](#rag-proxy)
-  - [`memory-server`](#memory-server)
+  - [`memory-proxy`](#memory-proxy)
     - [Using Custom Embeddings (e.g., OpenAI / llama.cpp / Ollama)](#using-custom-embeddings-eg-openai--llamacpp--ollama)
 - [Development](#development)
   - [Running Tests](#running-tests)
@@ -1245,14 +1245,14 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 - **Start Server (OpenAI)**: `agent-cli rag-proxy --docs-folder ~/Documents/Notes --openai-api-key sk-...`
 - **Use with Agent-CLI**: `agent-cli chat --openai-base-url http://localhost:8000/v1 --llm-provider openai`
 
-### `memory-server`
+### `memory-proxy`
 
 **Purpose:** Adds long-term conversational memory (self-hosted) with an OpenAI-compatible `/chat/completions` endpoint backed by Chroma (+ optional reranker).
 
 **How to Use It:**
 
 - **Install memory deps first**: `pip install "agent-cli[memory]"` (or, from the repo, `uv sync --extra memory`)
-- **Start Server (Local LLM/OpenAI-compatible)**: `agent-cli memory-server --memory-path ./memory_db --openai-base-url http://localhost:11434/v1 --embedding-model text-embedding-3-small`
+- **Start Server (Local LLM/OpenAI-compatible)**: `agent-cli memory-proxy --memory-path ./memory_db --openai-base-url http://localhost:11434/v1 --embedding-model text-embedding-3-small`
 - **Use with Agent-CLI**: `agent-cli chat --openai-base-url http://localhost:8100/v1 --llm-provider openai`
 
 **How it works (self-hosted):**

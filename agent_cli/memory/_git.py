@@ -107,7 +107,7 @@ def init_repo(path: Path) -> None:
             readme_content = (
                 "# Agent Memory Store\n\n"
                 "This repository contains the long-term memory for the Agent CLI.\n"
-                "Files are automatically managed and versioned by the memory server.\n\n"
+                "Files are automatically managed and versioned by the memory proxy.\n\n"
                 "- `entries/`: Markdown files containing facts and conversation logs.\n"
                 "- `deleted/`: Soft-deleted memories (tombstones).\n"
             )
