@@ -31,7 +31,7 @@ from agent_cli.memory._prompt import (
 from agent_cli.memory._retrieval import gather_relevant_existing_memories
 from agent_cli.memory._store import delete_entries, get_summary_entry
 from agent_cli.memory.entities import Fact, Summary
-from agent_cli.memory.models import MemoryUpdateDecision, SummaryOutput
+from agent_cli.memory.models import MemoryDecision, SummaryOutput
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -87,7 +87,7 @@ async def extract_salient_facts(
 
 
 def process_reconciliation_decisions(
-    decisions: list[MemoryUpdateDecision],
+    decisions: list[MemoryDecision],
     id_map: dict[int, str],
     conversation_id: str,
     source_id: str,
@@ -184,7 +184,7 @@ async def reconcile_facts(
     agent = Agent(
         model=model_cfg,
         system_prompt=UPDATE_MEMORY_PROMPT,
-        output_type=list[MemoryUpdateDecision],
+        output_type=list[MemoryDecision],
         retries=3,
     )
 

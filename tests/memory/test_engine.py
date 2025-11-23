@@ -18,8 +18,8 @@ from agent_cli.memory._files import (
 from agent_cli.memory.entities import Fact
 from agent_cli.memory.models import (
     ChatRequest,
+    MemoryDelete,
     MemoryMetadata,
-    MemoryUpdateDecision,
     Message,
     StoredMemory,
     SummaryOutput,
@@ -339,7 +339,7 @@ async def test_reconcile_facts_preserves_new_fact_on_delete_only(
             return
 
         async def run(self, _payload: str, **_kwargs: Any) -> _Result:
-            return _Result([MemoryUpdateDecision(event="DELETE", id="0")])
+            return _Result([MemoryDelete(event="DELETE", id="0")])
 
     monkeypatch.setattr(_ingest, "Agent", _DummyAgent)
 

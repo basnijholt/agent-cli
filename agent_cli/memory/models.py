@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from typing import Literal, Self
+from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, field_validator
 
 
 class Message(BaseModel):
@@ -80,20 +80,33 @@ class MemoryRetrieval(BaseModel):
     entries: list[MemoryEntry]
 
 
-class MemoryUpdateDecision(BaseModel):
-    """LLM decision for memory reconciliation."""
+class MemoryAdd(BaseModel):
+    """Add a new memory fact."""
 
-    event: Literal["ADD", "UPDATE", "DELETE", "NONE"]
-    text: str | None = None
-    id: int | None = None
+    event: Literal["ADD"] = "ADD"
+    text: str
 
-    @model_validator(mode="after")
-    def check_required_fields(self) -> Self:
-        """Ensure required fields are present based on event type."""
-        if self.event in ("ADD", "UPDATE") and not self.text:
-            msg = f"text field is required for {self.event} event"
-            raise ValueError(msg)
-        if self.event in ("UPDATE", "DELETE") and self.id is None:
-            msg = f"id field is required for {self.event} event"
-            raise ValueError(msg)
-        return self
+
+class MemoryUpdate(BaseModel):
+    """Update an existing memory fact."""
+
+    event: Literal["UPDATE"] = "UPDATE"
+    id: int
+    text: str
+
+
+class MemoryDelete(BaseModel):
+    """Delete an existing memory fact."""
+
+    event: Literal["DELETE"] = "DELETE"
+    id: int
+
+
+class MemoryIgnore(BaseModel):
+    """Keep an existing memory as is."""
+
+    event: Literal["NONE"] = "NONE"
+    id: int
+
+
+MemoryDecision = MemoryAdd | MemoryUpdate | MemoryDelete | MemoryIgnore
