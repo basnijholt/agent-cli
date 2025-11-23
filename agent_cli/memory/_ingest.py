@@ -17,11 +17,7 @@ from pydantic_ai.providers.openai import OpenAIProvider
 from pydantic_ai.settings import ModelSettings
 
 from agent_cli.memory._git import commit_changes
-from agent_cli.memory._persistence import (
-    delete_memory_files,
-    persist_entries,
-    persist_summary,
-)
+from agent_cli.memory._persistence import delete_memory_files, persist_entries, persist_summary
 from agent_cli.memory._prompt import (
     FACT_INSTRUCTIONS,
     FACT_SYSTEM_PROMPT,
