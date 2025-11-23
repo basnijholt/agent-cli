@@ -107,6 +107,9 @@ async def watch_memory_store(collection: Collection, root: Path, *, index: Memor
 
 
 def _handle_change(change: Change, path: Path, collection: Collection, index: MemoryIndex) -> None:
+    if path.suffix == ".tmp":
+        return
+
     if change == Change.deleted:
         doc_id = index.find_id_by_path(path) or path.stem
         LOGGER.info("[deleted] %s", path.name)
