@@ -7,7 +7,7 @@ import logging
 from contextlib import suppress
 from typing import TYPE_CHECKING, Any, Self
 
-from agent_cli.constants import DEFAULT_OPENAI_MODEL
+from agent_cli.constants import DEFAULT_OPENAI_EMBEDDING_MODEL, DEFAULT_OPENAI_MODEL
 from agent_cli.memory.engine import (
     augment_chat_request,
     extract_and_store_facts_and_summaries,
@@ -41,7 +41,7 @@ class MemoryClient:
         self,
         memory_path: Path,
         openai_base_url: str,
-        embedding_model: str = "text-embedding-3-small",
+        embedding_model: str = DEFAULT_OPENAI_EMBEDDING_MODEL,
         embedding_api_key: str | None = None,
         chat_api_key: str | None = None,
         enable_summarization: bool = True,

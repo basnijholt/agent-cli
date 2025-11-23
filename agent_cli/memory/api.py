@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, Any
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
+from agent_cli.constants import DEFAULT_OPENAI_EMBEDDING_MODEL
 from agent_cli.memory.client import MemoryClient
 from agent_cli.memory.models import ChatRequest  # noqa: TC001
 
@@ -20,7 +21,7 @@ LOGGER = logging.getLogger("agent_cli.memory.api")
 def create_app(
     memory_path: Path,
     openai_base_url: str,
-    embedding_model: str = "text-embedding-3-small",
+    embedding_model: str = DEFAULT_OPENAI_EMBEDDING_MODEL,
     embedding_api_key: str | None = None,
     chat_api_key: str | None = None,
     default_top_k: int = 5,

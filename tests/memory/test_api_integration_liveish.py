@@ -26,6 +26,7 @@ from chromadb.utils import embedding_functions
 
 import agent_cli.memory.api as memory_api
 import agent_cli.memory.tasks as memory_tasks
+from agent_cli.constants import DEFAULT_OPENAI_EMBEDDING_MODEL
 from agent_cli.memory import engine
 
 if TYPE_CHECKING:
@@ -148,7 +149,7 @@ async def test_memory_api_updates_latest_fact(  # noqa: PLR0915
     app = memory_api.create_app(
         memory_path=tmp_path / "memory_db",
         openai_base_url=base_url,
-        embedding_model="text-embedding-3-small",  # Will be intercepted by patch
+        embedding_model=DEFAULT_OPENAI_EMBEDDING_MODEL,  # Will be intercepted by patch
         embedding_api_key=None,
         chat_api_key=None,
         enable_summarization=True,

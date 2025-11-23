@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
+from agent_cli.constants import DEFAULT_OPENAI_EMBEDDING_MODEL
 from agent_cli.core.chroma import delete as delete_docs
 from agent_cli.core.chroma import init_collection, upsert
 from agent_cli.memory.models import MemoryMetadata, StoredMemory
@@ -19,7 +20,7 @@ def init_memory_collection(
     persistence_path: Path,
     *,
     collection_name: str = "memory",
-    embedding_model: str = "text-embedding-3-small",
+    embedding_model: str = DEFAULT_OPENAI_EMBEDDING_MODEL,
     openai_base_url: str | None = None,
     openai_api_key: str | None = None,
 ) -> Collection:

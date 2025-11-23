@@ -12,6 +12,7 @@ if TYPE_CHECKING:
 import pytest
 from fastapi.testclient import TestClient
 
+from agent_cli.constants import DEFAULT_OPENAI_EMBEDDING_MODEL
 from agent_cli.memory import api as memory_api
 
 
@@ -113,7 +114,7 @@ def client(tmp_path: Path) -> TestClient:
         app = memory_api.create_app(
             memory_path=tmp_path,
             openai_base_url="http://mock-llm",
-            embedding_model="text-embedding-3-small",
+            embedding_model=DEFAULT_OPENAI_EMBEDDING_MODEL,
             enable_summarization=False,
             default_top_k=2,
         )
