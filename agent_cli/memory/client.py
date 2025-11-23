@@ -135,12 +135,7 @@ class MemoryClient:
             enable_git_versioning=self.enable_git_versioning,
             enable_summarization=self.enable_summarization,
         )
-        evict_if_needed(
-            self.collection,
-            self.memory_path,
-            conversation_id,
-            self.max_entries,
-        )
+        evict_if_needed(self.collection, self.memory_path, conversation_id, self.max_entries)
 
     async def search(
         self,

@@ -275,7 +275,7 @@ async def update_summary(
     if not new_facts:
         return prior_summary
     system_prompt = SUMMARY_PROMPT
-    user_parts = []
+    user_parts: list[str] = []
     if prior_summary:
         user_parts.append(f"Previous summary:\n{prior_summary}")
     user_parts.append("New facts:\n" + "\n".join(f"- {fact}" for fact in new_facts))
