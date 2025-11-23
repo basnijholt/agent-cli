@@ -51,7 +51,7 @@ class MemoryClient:
         recency_weight: float = 0.2,
         score_threshold: float = 0.35,
         start_watcher: bool = False,
-        enable_git_versioning: bool = False,
+        enable_git_versioning: bool = True,
     ) -> None:
         """Initialize the memory client."""
         self.memory_path = memory_path.resolve()

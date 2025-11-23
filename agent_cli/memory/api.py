@@ -30,7 +30,7 @@ def create_app(
     mmr_lambda: float = 0.7,
     recency_weight: float = 0.2,
     score_threshold: float = 0.35,
-    enable_git_versioning: bool = False,
+    enable_git_versioning: bool = True,
 ) -> FastAPI:
     """Create the FastAPI app for memory-backed chat."""
     LOGGER.info("Initializing memory client...")
