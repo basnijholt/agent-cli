@@ -9,6 +9,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
 from agent_cli.constants import DEFAULT_OPENAI_EMBEDDING_MODEL
+from agent_cli.core.openai_proxy import proxy_request_to_upstream
 from agent_cli.memory.client import MemoryClient
 from agent_cli.memory.models import ChatRequest  # noqa: TC001
 
@@ -95,5 +96,18 @@ def create_app(
             "openai_base_url": client.openai_base_url,
             "default_top_k": str(client.default_top_k),
         }
+
+    @app.api_route(
+        "/{path:path}",
+        methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD", "PATCH"],
+    )
+    async def proxy_catch_all(request: Request, path: str) -> Any:
+        """Forward any other request to the upstream provider."""
+        return await proxy_request_to_upstream(
+            request,
+            path,
+            client.openai_base_url,
+            client.chat_api_key,
+        )
 
     return app
