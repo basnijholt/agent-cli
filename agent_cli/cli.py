@@ -12,6 +12,7 @@ app = typer.Typer(
     help="A suite of AI-powered command-line tools for text correction, audio transcription, and voice assistance.",
     add_completion=True,
     context_settings={"help_option_names": ["-h", "--help"]},
+    rich_markup_mode="markdown",
 )
 
 

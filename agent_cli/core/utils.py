@@ -77,6 +77,19 @@ class InteractiveStopEvent:
         return self._ctrl_c_pressed
 
 
+def atomic_write_text(path: Path, content: str, encoding: str = "utf-8") -> None:
+    """Write text to a file atomically using a temporary file and rename."""
+    # Create a temp file in the same directory to ensure atomic rename works
+    temp_file = path.with_suffix(f"{path.suffix}.tmp")
+    try:
+        temp_file.write_text(content, encoding=encoding)
+        temp_file.replace(path)
+    except Exception:
+        if temp_file.exists():
+            temp_file.unlink()
+        raise
+
+
 def format_timedelta_to_ago(td: timedelta) -> str:
     """Format a timedelta into a human-readable 'ago' string."""
     seconds = int(td.total_seconds())
