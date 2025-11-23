@@ -4,7 +4,7 @@ from pathlib import Path
 
 import typer
 
-from agent_cli.constants import DEFAULT_OPENAI_MODEL
+from agent_cli.constants import DEFAULT_OPENAI_EMBEDDING_MODEL, DEFAULT_OPENAI_MODEL
 
 # --- Provider Selection ---
 LLM_PROVIDER: str = typer.Option(
@@ -82,7 +82,7 @@ GEMINI_API_KEY: str | None = typer.Option(
     rich_help_panel="LLM Configuration: Gemini",
 )
 EMBEDDING_MODEL: str = typer.Option(
-    "text-embedding-3-small",
+    DEFAULT_OPENAI_EMBEDDING_MODEL,
     "--embedding-model",
     help="Embedding model to use for vectorization.",
     rich_help_panel="LLM Configuration",

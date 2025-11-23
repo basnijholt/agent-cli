@@ -11,7 +11,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 # Configure logging
-logger = logging.getLogger("agent_cli.rag.utils")
+LOGGER = logging.getLogger("agent_cli.rag.utils")
 
 # Files to read as plain text directly (fast path)
 TEXT_EXTENSIONS = {
@@ -67,7 +67,7 @@ def load_document_text(file_path: Path) -> str | None:
 
         return None  # Unsupported
     except Exception:
-        logger.exception("Failed to load %s", file_path)
+        LOGGER.exception("Failed to load %s", file_path)
         return None
 
 
