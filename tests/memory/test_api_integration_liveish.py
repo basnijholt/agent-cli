@@ -17,6 +17,7 @@ import asyncio
 import os
 import socket
 from contextlib import asynccontextmanager
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 from uuid import uuid4
 
@@ -29,6 +30,7 @@ import agent_cli.memory.api as memory_api
 import agent_cli.memory.tasks as memory_tasks
 from agent_cli.constants import DEFAULT_OPENAI_EMBEDDING_MODEL
 from agent_cli.memory import engine
+from agent_cli.memory.entities import Fact
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator, Callable
@@ -130,7 +132,7 @@ async def test_memory_api_updates_latest_fact(  # noqa: PLR0915
         _conversation_id: str,
         new_facts: list[str],
         **_kwargs: Any,
-    ) -> tuple[list[engine.PersistEntry], list[str], dict[str, str]]:
+    ) -> tuple[list[Fact], list[str], dict[str, str]]:
         """Latest wins: delete all existing, add new facts."""
         # Use real Chroma collection API
         results = _collection.get(where={"conversation_id": _conversation_id})
@@ -140,7 +142,15 @@ async def test_memory_api_updates_latest_fact(  # noqa: PLR0915
             replacement_map = {}
             for i, fact in enumerate(new_facts):
                 new_id = str(uuid4())
-                entries.append(engine.PersistEntry(role="memory", content=fact, id=new_id))
+                entries.append(
+                    Fact(
+                        id=new_id,
+                        conversation_id=_conversation_id,
+                        content=fact,
+                        source_id="source-id",
+                        created_at=datetime.now(UTC),
+                    ),
+                )
                 if i < len(existing_ids):
                     replacement_map[existing_ids[i]] = new_id
             return entries, existing_ids, replacement_map
@@ -205,9 +215,11 @@ async def test_memory_api_updates_latest_fact(  # noqa: PLR0915
         assert "Anne" in fact_anne
         assert "Jane" not in fact_anne
 
-        deleted_dir = tmp_path / "memory_db" / "entries" / "default" / "deleted" / "facts"
+        # Tombstone should be in entries/deleted/default/facts
+        deleted_dir = tmp_path / "memory_db" / "entries" / "deleted" / "default" / "facts"
         deleted_files = sorted(deleted_dir.glob("*.md"))
         assert deleted_files, "Expected tombstoned fact for Jane"
+
         deleted_content = "\n".join(f.read_text() for f in deleted_files)
         assert "Jane" in deleted_content
 

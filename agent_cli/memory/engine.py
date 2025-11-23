@@ -5,10 +5,9 @@ from __future__ import annotations
 import json
 import logging
 import math
-from dataclasses import dataclass
 from datetime import UTC, datetime
 from time import perf_counter
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal
 from uuid import uuid4
 
 import httpx
@@ -21,6 +20,7 @@ from pydantic_ai.settings import ModelSettings
 
 from agent_cli.core.openai_proxy import forward_chat_request
 from agent_cli.memory import streaming
+from agent_cli.memory.entities import Fact, Summary, Turn
 from agent_cli.memory.files import (
     _DELETED_DIRNAME,
     ensure_store_dirs,
@@ -81,16 +81,6 @@ def _safe_identifier(value: str) -> str:
 def _elapsed_ms(start: float) -> float:
     """Return elapsed milliseconds since start."""
     return (perf_counter() - start) * 1000
-
-
-@dataclass
-class PersistEntry:
-    """Structured memory entry to persist."""
-
-    role: str
-    content: str
-    id: str | None = None
-    source_id: str | None = None
 
 
 def _gather_relevant_existing_memories(
@@ -350,29 +340,40 @@ def _persist_entries(
     *,
     memory_root: Path,
     conversation_id: str,
-    entries: list[PersistEntry | None],
+    entries: list[Turn | Fact | None],
 ) -> None:
-    now = datetime.now(UTC).isoformat()
     ids: list[str] = []
     contents: list[str] = []
     metadatas: list[MemoryMetadata] = []
+
     for item in entries:
         if item is None:
             continue
-        role, content = item.role, item.content
+        role: Literal["user", "assistant", "memory"]
+        if isinstance(item, Turn):
+            role = item.role
+            source_id = None
+        elif isinstance(item, Fact):
+            role = "memory"
+            source_id = item.source_id
+        else:
+            logger.warning("Unknown entity type in persist_entries: %s", type(item))
+            continue
+
         record = write_memory_file(
             memory_root,
             conversation_id=conversation_id,
             role=role,
-            created_at=now,
-            content=content,
+            created_at=item.created_at.isoformat(),
+            content=item.content,
             doc_id=item.id,
-            source_id=item.source_id,
+            source_id=source_id,
         )
         logger.info("Persisted memory file: %s", record.path)
         ids.append(record.id)
         contents.append(record.content)
         metadatas.append(record.metadata)
+
     if ids:
         upsert_memories(collection, ids=ids, contents=contents, metadatas=metadatas)
 
@@ -474,9 +475,12 @@ async def _extract_salient_facts(
 def _process_reconciliation_decisions(
     decisions: list[MemoryUpdateDecision],
     id_map: dict[str, str],
-) -> tuple[list[PersistEntry], list[str], dict[str, str]]:
+    conversation_id: str,
+    source_id: str,
+    created_at: datetime,
+) -> tuple[list[Fact], list[str], dict[str, str]]:
     """Process LLM decisions into actionable changes."""
-    to_add: list[PersistEntry] = []
+    to_add: list[Fact] = []
     to_delete: list[str] = []
     replacement_map: dict[str, str] = {}
 
@@ -484,7 +488,15 @@ def _process_reconciliation_decisions(
         if dec.event == "ADD" and dec.text:
             text = dec.text.strip()
             if text:
-                to_add.append(PersistEntry(role="memory", content=text, id=str(uuid4())))
+                to_add.append(
+                    Fact(
+                        id=str(uuid4()),
+                        conversation_id=conversation_id,
+                        content=text,
+                        source_id=source_id,
+                        created_at=created_at,
+                    ),
+                )
         elif dec.event == "UPDATE" and dec.id and dec.text:
             orig = id_map.get(dec.id)
             if orig:
@@ -492,7 +504,15 @@ def _process_reconciliation_decisions(
                 if text:
                     new_id = str(uuid4())
                     to_delete.append(orig)
-                    to_add.append(PersistEntry(role="memory", content=text, id=new_id))
+                    to_add.append(
+                        Fact(
+                            id=new_id,
+                            conversation_id=conversation_id,
+                            content=text,
+                            source_id=source_id,
+                            created_at=created_at,
+                        ),
+                    )
                     replacement_map[orig] = new_id
         elif dec.event == "DELETE" and dec.id:
             orig = id_map.get(dec.id)
@@ -506,11 +526,13 @@ async def _reconcile_facts(
     collection: Collection,
     conversation_id: str,
     new_facts: list[str],
+    source_id: str,
+    created_at: datetime,
     *,
     openai_base_url: str,
     api_key: str | None,
     model: str,
-) -> tuple[list[PersistEntry], list[str], dict[str, str]]:
+) -> tuple[list[Fact], list[str], dict[str, str]]:
     """Use an LLM to decide add/update/delete/none for facts, with id remapping."""
     if not new_facts:
         return [], [], {}
@@ -520,7 +542,15 @@ async def _reconcile_facts(
     if not existing:
         logger.info("Reconcile: no existing memory facts; defaulting to add all new facts")
         entries = [
-            PersistEntry(role="memory", content=f, id=str(uuid4())) for f in new_facts if f.strip()
+            Fact(
+                id=str(uuid4()),
+                conversation_id=conversation_id,
+                content=f,
+                source_id=source_id,
+                created_at=created_at,
+            )
+            for f in new_facts
+            if f.strip()
         ]
         return entries, [], {}
     id_map: dict[str, str] = {str(idx): mem.id for idx, mem in enumerate(existing)}
@@ -554,21 +584,43 @@ async def _reconcile_facts(
             exc_info=True,
         )
         entries = [
-            PersistEntry(role="memory", content=f, id=str(uuid4())) for f in new_facts if f.strip()
+            Fact(
+                id=str(uuid4()),
+                conversation_id=conversation_id,
+                content=f,
+                source_id=source_id,
+                created_at=created_at,
+            )
+            for f in new_facts
+            if f.strip()
         ]
         return entries, [], {}
     except Exception:
         logger.exception("Update memory agent internal error")
         raise
 
-    to_add, to_delete, replacement_map = _process_reconciliation_decisions(decisions, id_map)
+    to_add, to_delete, replacement_map = _process_reconciliation_decisions(
+        decisions,
+        id_map,
+        conversation_id=conversation_id,
+        source_id=source_id,
+        created_at=created_at,
+    )
 
     # Safeguard: if the model produced no additions and the new facts would otherwise be lost,
     # retain the new facts. This prevents ending up with an empty fact set after deletes.
     if not to_add and new_facts:
         logger.info("Reconcile produced no additions; retaining new facts to avoid empty store")
         to_add = [
-            PersistEntry(role="memory", content=f, id=str(uuid4())) for f in new_facts if f.strip()
+            Fact(
+                id=str(uuid4()),
+                conversation_id=conversation_id,
+                content=f,
+                source_id=source_id,
+                created_at=created_at,
+            )
+            for f in new_facts
+            if f.strip()
         ]
 
     logger.info(
@@ -613,19 +665,16 @@ def _persist_summary(
     collection: Collection,
     *,
     memory_root: Path,
-    conversation_id: str,
-    summary: str,
-    role: str,
+    summary: Summary,
 ) -> None:
-    now = datetime.now(UTC).isoformat()
-    doc_id = _safe_identifier(f"{conversation_id}{_SUMMARY_DOC_ID_SUFFIX}-{role}")
+    doc_id = _safe_identifier(f"{summary.conversation_id}{_SUMMARY_DOC_ID_SUFFIX}-summary")
     record = write_memory_file(
         memory_root,
-        conversation_id=conversation_id,
-        role=role,
-        created_at=now,
-        content=summary,
-        summary_kind=role,
+        conversation_id=summary.conversation_id,
+        role="summary",
+        created_at=summary.created_at.isoformat(),
+        content=summary.content,
+        summary_kind="summary",
         doc_id=doc_id,
     )
     upsert_memories(
@@ -682,18 +731,36 @@ def _persist_turns(
     user_turn_id: str | None = None,
 ) -> None:
     """Persist the latest user/assistant exchanges."""
+    now = datetime.now(UTC)
+    entries: list[Turn | Fact | None] = []
+
+    if user_message:
+        entries.append(
+            Turn(
+                id=user_turn_id or str(uuid4()),
+                conversation_id=conversation_id,
+                role="user",
+                content=user_message,
+                created_at=now,
+            ),
+        )
+
+    if assistant_message:
+        entries.append(
+            Turn(
+                id=str(uuid4()),
+                conversation_id=conversation_id,
+                role="assistant",
+                content=assistant_message,
+                created_at=now,
+            ),
+        )
+
     _persist_entries(
         collection,
         memory_root=memory_root,
         conversation_id=conversation_id,
-        entries=[
-            PersistEntry(role="user", content=user_message, id=user_turn_id)
-            if user_message
-            else None,
-            PersistEntry(role="assistant", content=assistant_message)
-            if assistant_message
-            else None,
-        ],
+        entries=entries,
     )
 
 
@@ -766,6 +833,9 @@ async def extract_and_store_facts_and_summaries(
 ) -> None:
     """Run fact extraction and summary updates, persisting results."""
     fact_start = perf_counter()
+    effective_source_id = source_id or str(uuid4())
+    fact_created_at = datetime.now(UTC)
+
     facts = await _extract_salient_facts(
         user_message=user_message,
         assistant_message=assistant_message,
@@ -783,6 +853,8 @@ async def extract_and_store_facts_and_summaries(
         collection,
         conversation_id,
         facts,
+        source_id=effective_source_id,
+        created_at=fact_created_at,
         openai_base_url=openai_base_url,
         api_key=api_key,
         model=model,
@@ -797,19 +869,14 @@ async def extract_and_store_facts_and_summaries(
             replacement_map=replacement_map,
         )
 
-    if not to_add:
-        return
+    if to_add:
+        _persist_entries(
+            collection,
+            memory_root=memory_root,
+            conversation_id=conversation_id,
+            entries=list(to_add),
+        )
 
-    # Attach source_id to new facts
-    for entry in to_add:
-        entry.source_id = source_id
-
-    _persist_entries(
-        collection,
-        memory_root=memory_root,
-        conversation_id=conversation_id,
-        entries=list(to_add),
-    )
     prior_summary_entry = get_summary_entry(
         collection,
         conversation_id,
@@ -831,12 +898,15 @@ async def extract_and_store_facts_and_summaries(
         conversation_id,
     )
     if new_summary:
+        summary_obj = Summary(
+            conversation_id=conversation_id,
+            content=new_summary,
+            created_at=datetime.now(UTC),
+        )
         _persist_summary(
             collection,
             memory_root=memory_root,
-            conversation_id=conversation_id,
-            summary=new_summary,
-            role=_SUMMARY_ROLE,
+            summary=summary_obj,
         )
 
     if enable_git_versioning:

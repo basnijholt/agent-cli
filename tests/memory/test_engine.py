@@ -9,6 +9,7 @@ from uuid import uuid4
 import pytest
 
 from agent_cli.memory import engine, tasks
+from agent_cli.memory.entities import Fact
 from agent_cli.memory.files import (
     ensure_store_dirs,
     load_snapshot,
@@ -337,6 +338,8 @@ async def test_reconcile_facts_preserves_new_fact_on_delete_only(
         _RecordingCollection(),
         "conv1",
         [new_fact],
+        source_id="source-1",
+        created_at=datetime.now(UTC),
         openai_base_url="http://mock-llm",
         api_key=None,
         model="demo-model",
@@ -382,9 +385,16 @@ async def test_process_chat_request_summarizes_and_persists(
         _conversation_id: str,
         new_facts: list[str],
         **_kwargs: Any,
-    ) -> tuple[list[engine.PersistEntry], list[str], dict[str, str]]:
+    ) -> tuple[list[Fact], list[str], dict[str, str]]:
         entries = [
-            engine.PersistEntry(role="memory", content=f, id=str(uuid4())) for f in new_facts
+            Fact(
+                id=str(uuid4()),
+                conversation_id=_conversation_id,
+                content=f,
+                source_id="source-id",
+                created_at=datetime.now(UTC),
+            )
+            for f in new_facts
         ]
         return entries, [], {}
 
@@ -580,9 +590,16 @@ async def test_streaming_with_summarization_persists_facts_and_summaries(
         _conversation_id: str,
         new_facts: list[str],
         **_kwargs: Any,
-    ) -> tuple[list[engine.PersistEntry], list[str], dict[str, str]]:
+    ) -> tuple[list[Fact], list[str], dict[str, str]]:
         entries = [
-            engine.PersistEntry(role="memory", content=f, id=str(uuid4())) for f in new_facts
+            Fact(
+                id=str(uuid4()),
+                conversation_id=_conversation_id,
+                content=f,
+                source_id="source-id",
+                created_at=datetime.now(UTC),
+            )
+            for f in new_facts
         ]
         return entries, [], {}
 

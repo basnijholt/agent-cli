@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import shutil
 import subprocess
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 from unittest.mock import MagicMock
 from uuid import uuid4
@@ -12,6 +13,7 @@ import pytest
 
 from agent_cli.memory import engine
 from agent_cli.memory.client import MemoryClient
+from agent_cli.memory.entities import Fact
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -48,10 +50,16 @@ async def test_memory_client_git_versioning(
     async def fake_reconcile(
         *_args: Any,
         **_kwargs: Any,
-    ) -> tuple[list[engine.PersistEntry], list[str], dict[str, str]]:
+    ) -> tuple[list[Fact], list[str], dict[str, str]]:
         # Always add the new fact
         entries = [
-            engine.PersistEntry(role="memory", content="User likes testing", id=str(uuid4())),
+            Fact(
+                id=str(uuid4()),
+                conversation_id="default",
+                content="User likes testing",
+                source_id="source-id",
+                created_at=datetime.now(UTC),
+            ),
         ]
         return entries, [], {}
 
@@ -134,8 +142,16 @@ async def test_memory_client_git_versioning(
     async def fake_reconcile_2(
         *_args: Any,
         **_kwargs: Any,
-    ) -> tuple[list[engine.PersistEntry], list[str], dict[str, str]]:
-        entries = [engine.PersistEntry(role="memory", content="User loves git", id=str(uuid4()))]
+    ) -> tuple[list[Fact], list[str], dict[str, str]]:
+        entries = [
+            Fact(
+                id=str(uuid4()),
+                conversation_id="default",
+                content="User loves git",
+                source_id="source-id",
+                created_at=datetime.now(UTC),
+            ),
+        ]
         return entries, [], {}
 
     monkeypatch.setattr(engine, "_extract_salient_facts", fake_extract_2)
