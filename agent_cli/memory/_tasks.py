@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:
     from collections.abc import Coroutine
 
-logger = logging.getLogger("agent_cli.memory.tasks")
+LOGGER = logging.getLogger("agent_cli.memory.tasks")
 
 _BACKGROUND_TASKS: set[asyncio.Task[Any]] = set()
 
@@ -21,11 +21,11 @@ def _track_background(task: asyncio.Task[Any], label: str) -> asyncio.Task[Any]:
     def _done_callback(done: asyncio.Task[Any]) -> None:
         _BACKGROUND_TASKS.discard(done)
         if done.cancelled():
-            logger.debug("Background task %s cancelled", label)
+            LOGGER.debug("Background task %s cancelled", label)
             return
         exc = done.exception()
         if exc:
-            logger.exception("Background task %s failed", label, exc_info=exc)
+            LOGGER.exception("Background task %s failed", label, exc_info=exc)
 
     task.add_done_callback(_done_callback)
     return task

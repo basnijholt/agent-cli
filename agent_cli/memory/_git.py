@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING, NamedTuple
 if TYPE_CHECKING:
     from pathlib import Path
 
-logger = logging.getLogger("agent_cli.memory.git")
+LOGGER = logging.getLogger("agent_cli.memory.git")
 
 
 class GitCommandResult(NamedTuple):
@@ -77,14 +77,14 @@ async def _run_git_async(
 def init_repo(path: Path) -> None:
     """Initialize a git repository if one does not exist."""
     if not _is_git_installed():
-        logger.warning("Git is not installed; skipping repository initialization.")
+        LOGGER.warning("Git is not installed; skipping repository initialization.")
         return
 
     if (path / ".git").exists():
         return
 
     try:
-        logger.info("Initializing git repository in %s", path)
+        LOGGER.info("Initializing git repository in %s", path)
         _run_git_sync(["init"], cwd=path)
 
         # Configure local user if not set (to avoid commit errors)
@@ -122,7 +122,7 @@ def init_repo(path: Path) -> None:
         )
 
     except subprocess.CalledProcessError:
-        logger.exception("Failed to initialize git repo")
+        LOGGER.exception("Failed to initialize git repo")
 
 
 async def commit_changes(path: Path, message: str) -> None:
@@ -131,7 +131,7 @@ async def commit_changes(path: Path, message: str) -> None:
         return
 
     if not (path / ".git").exists():
-        logger.warning("Not a git repository: %s", path)
+        LOGGER.warning("Not a git repository: %s", path)
         return
 
     try:
@@ -142,16 +142,16 @@ async def commit_changes(path: Path, message: str) -> None:
             check=False,
         )
         if status.returncode != 0:
-            logger.error("Failed to check git status")
+            LOGGER.error("Failed to check git status")
             return
 
         if not status.stdout.strip():
             return  # Nothing to commit
 
-        logger.info("Committing changes to memory store: %s", message)
+        LOGGER.info("Committing changes to memory store: %s", message)
 
         await _run_git_async(["add", "."], cwd=path)
         await _run_git_async(["commit", "-m", message], cwd=path)
 
     except Exception:
-        logger.exception("Failed to commit changes")
+        LOGGER.exception("Failed to commit changes")

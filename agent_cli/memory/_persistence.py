@@ -28,7 +28,7 @@ if TYPE_CHECKING:
 
     from agent_cli.memory.models import MemoryMetadata
 
-logger = logging.getLogger("agent_cli.memory.persistence")
+LOGGER = logging.getLogger("agent_cli.memory.persistence")
 
 _SUMMARY_DOC_ID_SUFFIX = "::summary"
 
@@ -62,7 +62,7 @@ def persist_entries(
             role = "memory"
             source_id = item.source_id
         else:
-            logger.warning("Unknown entity type in persist_entries: %s", type(item))
+            LOGGER.warning("Unknown entity type in persist_entries: %s", type(item))
             continue
 
         record = write_memory_file(
@@ -74,7 +74,7 @@ def persist_entries(
             doc_id=item.id,
             source_id=source_id,
         )
-        logger.info("Persisted memory file: %s", record.path)
+        LOGGER.info("Persisted memory file: %s", record.path)
         ids.append(record.id)
         contents.append(record.content)
         metadatas.append(record.metadata)

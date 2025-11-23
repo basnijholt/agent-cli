@@ -28,7 +28,7 @@ if TYPE_CHECKING:
     from agent_cli.memory.models import ChatRequest
     from agent_cli.rag.retriever import OnnxCrossEncoder
 
-logger = logging.getLogger("agent_cli.memory.engine")
+LOGGER = logging.getLogger("agent_cli.memory.engine")
 
 _DEFAULT_MAX_ENTRIES = 500
 _DEFAULT_MMR_LAMBDA = 0.7
@@ -126,19 +126,19 @@ async def _postprocess_after_turn(
         source_id=user_turn_id,
         enable_summarization=enable_summarization,
     )
-    logger.info(
+    LOGGER.info(
         "Updated facts and summaries in %.1f ms (conversation=%s)",
         _elapsed_ms(summary_start),
         conversation_id,
     )
     eviction_start = perf_counter()
     evict_if_needed(collection, memory_root, conversation_id, max_entries)
-    logger.info(
+    LOGGER.info(
         "Eviction check completed in %.1f ms (conversation=%s)",
         _elapsed_ms(eviction_start),
         conversation_id,
     )
-    logger.info(
+    LOGGER.info(
         "Post-processing finished in %.1f ms (conversation=%s, summarization=%s)",
         _elapsed_ms(post_start),
         conversation_id,
@@ -192,7 +192,7 @@ async def _stream_and_persist_response(
             enable_git_versioning=enable_git_versioning,
             user_turn_id=user_turn_id,
         )
-        logger.info(
+        LOGGER.info(
             "Stream post-processing completed in %.1f ms (conversation=%s)",
             _elapsed_ms(post_start),
             conversation_id,
@@ -213,7 +213,7 @@ async def _stream_and_persist_response(
                 _persist_stream_result(assistant_message),
                 label=f"stream-postprocess-{conversation_id}",
             )
-        logger.info(
+        LOGGER.info(
             "Streaming response finished in %.1f ms (conversation=%s)",
             _elapsed_ms(stream_start),
             conversation_id,
@@ -253,7 +253,7 @@ async def process_chat_request(
     )
     retrieval_ms = _elapsed_ms(retrieval_start)
     hit_count = len(retrieval.entries) if retrieval else 0
-    logger.info(
+    LOGGER.info(
         "Memory retrieval completed in %.1f ms (conversation=%s, hits=%d, top_k=%d)",
         retrieval_ms,
         conversation_id,
@@ -264,7 +264,7 @@ async def process_chat_request(
     user_turn_id = str(uuid4())
 
     if request.stream:
-        logger.info(
+        LOGGER.info(
             "Forwarding streaming request (conversation=%s, model=%s)",
             conversation_id,
             request.model,
@@ -301,7 +301,7 @@ async def process_chat_request(
         api_key,
         exclude_fields={"memory_id", "memory_top_k"},
     )
-    logger.info(
+    LOGGER.info(
         "LLM completion finished in %.1f ms (conversation=%s, model=%s)",
         _elapsed_ms(llm_start),
         conversation_id,
@@ -347,7 +347,7 @@ async def process_chat_request(
     response["memory_hits"] = (
         [entry.model_dump() for entry in retrieval.entries] if retrieval else []
     )
-    logger.info(
+    LOGGER.info(
         "Request finished in %.1f ms (conversation=%s, hits=%d)",
         _elapsed_ms(overall_start),
         conversation_id,

@@ -21,7 +21,7 @@ from agent_cli.rag.retriever import OnnxCrossEncoder, predict_relevance
 if TYPE_CHECKING:
     from chromadb import Collection
 
-logger = logging.getLogger("agent_cli.memory.retrieval")
+LOGGER = logging.getLogger("agent_cli.memory.retrieval")
 
 _DEFAULT_MMR_LAMBDA = 0.7
 _SUMMARY_ROLE = "summary"
@@ -245,7 +245,7 @@ async def augment_chat_request(
     top_k = request.memory_top_k if request.memory_top_k is not None else default_top_k
 
     if top_k <= 0:
-        logger.info("Memory retrieval disabled for this request (top_k=%s)", top_k)
+        LOGGER.info("Memory retrieval disabled for this request (top_k=%s)", top_k)
         return request, None, conversation_id, []
 
     retrieval, summaries = retrieve_memory(

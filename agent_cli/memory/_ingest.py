@@ -38,7 +38,7 @@ if TYPE_CHECKING:
 
     from chromadb import Collection
 
-logger = logging.getLogger("agent_cli.memory.ingest")
+LOGGER = logging.getLogger("agent_cli.memory.ingest")
 
 _SUMMARY_ROLE = "summary"
 
@@ -62,7 +62,7 @@ async def extract_salient_facts(
 
     # Extract facts from the latest user turn only (ignore assistant/system).
     transcript = user_message or ""
-    logger.info("Extracting facts from transcript: %r", transcript)
+    LOGGER.info("Extracting facts from transcript: %r", transcript)
 
     provider = OpenAIProvider(api_key=api_key or "dummy", base_url=openai_base_url)
     model_cfg = OpenAIChatModel(model_name=model, provider=provider)
@@ -76,13 +76,13 @@ async def extract_salient_facts(
 
     try:
         facts = await agent.run(transcript, instructions=instructions)
-        logger.info("Raw fact extraction output: %s", facts.output)
+        LOGGER.info("Raw fact extraction output: %s", facts.output)
         return facts.output
     except (httpx.HTTPError, AgentRunError, UnexpectedModelBehavior):
-        logger.warning("PydanticAI fact extraction transient failure", exc_info=True)
+        LOGGER.warning("PydanticAI fact extraction transient failure", exc_info=True)
         return []
     except Exception:
-        logger.exception("PydanticAI fact extraction internal error")
+        LOGGER.exception("PydanticAI fact extraction internal error")
         raise
 
 
@@ -98,7 +98,7 @@ def process_reconciliation_decisions(
     to_delete: list[str] = []
     replacement_map: dict[str, str] = {}
 
-    logger.info(
+    LOGGER.info(
         "Reconcile decisions raw: %s",
         [d.model_dump() for d in decisions],
     )
@@ -157,9 +157,9 @@ async def reconcile_facts(
         return [], [], {}
 
     existing = gather_relevant_existing_memories(collection, conversation_id, new_facts)
-    logger.info("Reconcile: Found %d existing memories for new facts %s", len(existing), new_facts)
+    LOGGER.info("Reconcile: Found %d existing memories for new facts %s", len(existing), new_facts)
     if not existing:
-        logger.info("Reconcile: no existing memory facts; defaulting to add all new facts")
+        LOGGER.info("Reconcile: no existing memory facts; defaulting to add all new facts")
         entries = [
             Fact(
                 id=str(uuid4()),
@@ -190,12 +190,12 @@ async def reconcile_facts(
 
     payload_obj = {"existing": existing_json, "new_facts": new_facts}
     payload = json.dumps(payload_obj, ensure_ascii=False, indent=2)
-    logger.info("Reconcile payload JSON: %s", payload)
+    LOGGER.info("Reconcile payload JSON: %s", payload)
     try:
         result = await agent.run(payload)
         decisions = result.output or []
     except (httpx.HTTPError, AgentRunError, UnexpectedModelBehavior):
-        logger.warning(
+        LOGGER.warning(
             "Update memory agent transient failure; defaulting to add all new facts",
             exc_info=True,
         )
@@ -212,7 +212,7 @@ async def reconcile_facts(
         ]
         return entries, [], {}
     except Exception:
-        logger.exception("Update memory agent internal error")
+        LOGGER.exception("Update memory agent internal error")
         raise
 
     to_add, to_delete, replacement_map = process_reconciliation_decisions(
@@ -230,7 +230,7 @@ async def reconcile_facts(
     has_keep_action = any(d.event in ("ADD", "UPDATE", "NONE") for d in decisions)
 
     if not has_keep_action and new_facts:
-        logger.info(
+        LOGGER.info(
             "Reconcile produced no additions/keeps; retaining new facts to avoid empty store",
         )
         to_add = [
@@ -245,7 +245,7 @@ async def reconcile_facts(
             if f.strip()
         ]
 
-    logger.info(
+    LOGGER.info(
         "Reconcile decisions: add=%d, delete=%d, events=%s",
         len(to_add),
         len(to_delete),
@@ -310,7 +310,7 @@ async def extract_and_store_facts_and_summaries(
         api_key=api_key,
         model=model,
     )
-    logger.info(
+    LOGGER.info(
         "Fact extraction produced %d facts in %.1f ms (conversation=%s)",
         len(facts),
         _elapsed_ms(fact_start),
@@ -360,7 +360,7 @@ async def extract_and_store_facts_and_summaries(
             api_key=api_key,
             model=model,
         )
-        logger.info(
+        LOGGER.info(
             "Summary update completed in %.1f ms (conversation=%s)",
             _elapsed_ms(summary_start),
             conversation_id,
