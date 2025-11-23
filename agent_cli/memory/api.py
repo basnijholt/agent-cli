@@ -5,11 +5,11 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING, Any
 
-import httpx
-from fastapi import FastAPI, Request, Response
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
 from agent_cli.constants import DEFAULT_OPENAI_EMBEDDING_MODEL
+from agent_cli.core.openai_proxy import proxy_request_to_upstream
 from agent_cli.memory.client import MemoryClient
 from agent_cli.memory.models import ChatRequest  # noqa: TC001
 
@@ -103,44 +103,11 @@ def create_app(
     )
     async def proxy_catch_all(request: Request, path: str) -> Any:
         """Forward any other request to the upstream provider."""
-        auth_header = request.headers.get("Authorization")
-        headers = {}
-        if auth_header:
-            headers["Authorization"] = auth_header
-        elif client.chat_api_key:
-            headers["Authorization"] = f"Bearer {client.chat_api_key}"
-
-        if request.headers.get("Content-Type"):
-            headers["Content-Type"] = request.headers.get("Content-Type")
-
-        base = client.openai_base_url
-        target_path = path
-
-        # Smart path joining to avoid /v1/v1/ if base already has it
-        if base.endswith("/v1") and (path == "v1" or path.startswith("v1/")):
-            target_path = path[2:].lstrip("/")
-
-        url = f"{base}/{target_path}"
-
-        try:
-            body = await request.body()
-            async with httpx.AsyncClient(timeout=60.0) as http:
-                req = http.build_request(
-                    request.method,
-                    url,
-                    headers=headers,
-                    content=body,
-                    params=request.query_params,
-                )
-                resp = await http.send(req)
-
-                return Response(
-                    content=resp.content,
-                    status_code=resp.status_code,
-                    media_type=resp.headers.get("Content-Type"),
-                )
-        except Exception:
-            LOGGER.warning("Proxy request failed to %s", url, exc_info=True)
-            return Response(status_code=502, content="Upstream Proxy Error")
+        return await proxy_request_to_upstream(
+            request,
+            path,
+            client.openai_base_url,
+            client.chat_api_key,
+        )
 
     return app

@@ -7,7 +7,7 @@ import logging
 from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
 
 import httpx
-from fastapi import HTTPException
+from fastapi import HTTPException, Request, Response
 from fastapi.responses import StreamingResponse
 
 if TYPE_CHECKING:
@@ -24,6 +24,54 @@ class ChatRequestLike(Protocol):
 
     def model_dump(self, *, exclude: set[str] | None = None) -> dict[str, Any]:
         """Serialize request to a dict for forwarding."""
+
+
+async def proxy_request_to_upstream(
+    request: Request,
+    path: str,
+    upstream_base_url: str,
+    api_key: str | None = None,
+) -> Response:
+    """Forward a raw HTTP request to an upstream OpenAI-compatible provider."""
+    auth_header = request.headers.get("Authorization")
+    headers = {}
+    if auth_header:
+        headers["Authorization"] = auth_header
+    elif api_key:
+        headers["Authorization"] = f"Bearer {api_key}"
+
+    if request.headers.get("Content-Type"):
+        headers["Content-Type"] = request.headers.get("Content-Type")
+
+    base = upstream_base_url.rstrip("/")
+    target_path = path
+
+    # Smart path joining to avoid /v1/v1/ if base already has it
+    if base.endswith("/v1") and (path == "v1" or path.startswith("v1/")):
+        target_path = path[2:].lstrip("/")
+
+    url = f"{base}/{target_path}"
+
+    try:
+        body = await request.body()
+        async with httpx.AsyncClient(timeout=60.0) as http:
+            req = http.build_request(
+                request.method,
+                url,
+                headers=headers,
+                content=body,
+                params=request.query_params,
+            )
+            resp = await http.send(req)
+
+            return Response(
+                content=resp.content,
+                status_code=resp.status_code,
+                media_type=resp.headers.get("Content-Type"),
+            )
+    except Exception:
+        LOGGER.warning("Proxy request failed to %s", url, exc_info=True)
+        return Response(status_code=502, content="Upstream Proxy Error")
 
 
 async def forward_chat_request(

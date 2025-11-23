@@ -13,6 +13,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from agent_cli.constants import DEFAULT_OPENAI_EMBEDDING_MODEL
 from agent_cli.core.chroma import init_collection
+from agent_cli.core.openai_proxy import proxy_request_to_upstream
 from agent_cli.rag.engine import process_chat_request
 from agent_cli.rag.indexer import watch_docs
 from agent_cli.rag.indexing import initial_index, load_hashes_from_metadata
@@ -152,5 +153,18 @@ def create_app(
             "embedding_model": embedding_model,
             "limit": str(limit),
         }
+
+    @app.api_route(
+        "/{path:path}",
+        methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD", "PATCH"],
+    )
+    async def proxy_catch_all(request: Request, path: str) -> Any:
+        """Forward any other request to the upstream provider."""
+        return await proxy_request_to_upstream(
+            request,
+            path,
+            openai_base_url,
+            chat_api_key,
+        )
 
     return app
