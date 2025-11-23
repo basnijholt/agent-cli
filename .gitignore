@@ -65,7 +65,8 @@ scripts/.runtime/
 *.onnx.json
 *.bin
 
-# RAG Logs
+# RAG/memory
 rag_proxy_*.log
 transcription_log.json
 temp_rag_*/
+memory_db
