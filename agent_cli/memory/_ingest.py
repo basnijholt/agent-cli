@@ -35,6 +35,7 @@ from agent_cli.memory.models import (
     MemoryAdd,
     MemoryDecision,
     MemoryDelete,
+    MemoryIgnore,
     MemoryUpdate,
     SummaryOutput,
 )
@@ -143,7 +144,8 @@ def process_reconciliation_decisions(
             orig = id_map.get(dec.id)
             if orig:
                 to_delete.append(orig)
-        # NONE ignored
+        elif isinstance(dec, MemoryIgnore):
+            pass  # NONE ignored
     return to_add, to_delete, replacement_map
 
 
