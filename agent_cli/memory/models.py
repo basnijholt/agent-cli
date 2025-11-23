@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from typing import Literal
+from typing import Literal, Self
 
-from pydantic import BaseModel, ConfigDict, field_validator
+from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 
 
 class Message(BaseModel):
@@ -85,4 +85,15 @@ class MemoryUpdateDecision(BaseModel):
 
     event: Literal["ADD", "UPDATE", "DELETE", "NONE"]
     text: str | None = None
-    id: str | None = None
+    id: int | None = None
+
+    @model_validator(mode="after")
+    def check_required_fields(self) -> Self:
+        """Ensure required fields are present based on event type."""
+        if self.event in ("ADD", "UPDATE") and not self.text:
+            msg = f"text field is required for {self.event} event"
+            raise ValueError(msg)
+        if self.event in ("UPDATE", "DELETE") and self.id is None:
+            msg = f"id field is required for {self.event} event"
+            raise ValueError(msg)
+        return self

@@ -88,7 +88,7 @@ async def extract_salient_facts(
 
 def process_reconciliation_decisions(
     decisions: list[MemoryUpdateDecision],
-    id_map: dict[str, str],
+    id_map: dict[int, str],
     conversation_id: str,
     source_id: str,
     created_at: datetime,
@@ -116,7 +116,7 @@ def process_reconciliation_decisions(
                         created_at=created_at,
                     ),
                 )
-        elif dec.event == "UPDATE" and dec.id and dec.text:
+        elif dec.event == "UPDATE" and dec.id is not None and dec.text:
             orig = id_map.get(dec.id)
             if orig:
                 text = dec.text.strip()
@@ -133,7 +133,7 @@ def process_reconciliation_decisions(
                         ),
                     )
                     replacement_map[orig] = new_id
-        elif dec.event == "DELETE" and dec.id:
+        elif dec.event == "DELETE" and dec.id is not None:
             orig = id_map.get(dec.id)
             if orig:
                 to_delete.append(orig)
@@ -172,11 +172,8 @@ async def reconcile_facts(
             if f.strip()
         ]
         return entries, [], {}
-    id_map: dict[str, str] = {str(idx): mem.id for idx, mem in enumerate(existing)}
-    existing_json = [
-        {"id": short_id, "text": mem.content}
-        for short_id, mem in zip(id_map.keys(), existing, strict=False)
-    ]
+    id_map: dict[int, str] = {idx: mem.id for idx, mem in enumerate(existing)}
+    existing_json = [{"id": str(idx), "text": mem.content} for idx, mem in enumerate(existing)]
 
     provider = OpenAIProvider(api_key=api_key or "dummy", base_url=openai_base_url)
     model_cfg = OpenAIChatModel(
@@ -188,7 +185,7 @@ async def reconcile_facts(
         model=model_cfg,
         system_prompt=UPDATE_MEMORY_PROMPT,
         output_type=list[MemoryUpdateDecision],
-        retries=1,
+        retries=3,
     )
 
     payload_obj = {"existing": existing_json, "new_facts": new_facts}
