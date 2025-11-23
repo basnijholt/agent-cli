@@ -17,7 +17,7 @@ from agent_cli.memory._files import (
     read_memory_file,
     write_snapshot,
 )
-from agent_cli.memory.store import delete_entries, upsert_memories
+from agent_cli.memory._store import delete_entries, upsert_memories
 
 if TYPE_CHECKING:
     from pathlib import Path

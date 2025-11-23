@@ -16,22 +16,22 @@ from pydantic_ai.models.openai import OpenAIChatModel
 from pydantic_ai.providers.openai import OpenAIProvider
 from pydantic_ai.settings import ModelSettings
 
+from agent_cli.memory._git import commit_changes
 from agent_cli.memory._persistence import (
     delete_memory_files,
     persist_entries,
     persist_summary,
 )
-from agent_cli.memory._retrieval import gather_relevant_existing_memories
-from agent_cli.memory.entities import Fact, Summary
-from agent_cli.memory.git import commit_changes
-from agent_cli.memory.models import MemoryUpdateDecision, SummaryOutput
-from agent_cli.memory.prompt import (
+from agent_cli.memory._prompt import (
     FACT_INSTRUCTIONS,
     FACT_SYSTEM_PROMPT,
     SUMMARY_PROMPT,
     UPDATE_MEMORY_PROMPT,
 )
-from agent_cli.memory.store import delete_entries, get_summary_entry
+from agent_cli.memory._retrieval import gather_relevant_existing_memories
+from agent_cli.memory._store import delete_entries, get_summary_entry
+from agent_cli.memory.entities import Fact, Summary
+from agent_cli.memory.models import MemoryUpdateDecision, SummaryOutput
 
 if TYPE_CHECKING:
     from pathlib import Path

@@ -26,8 +26,8 @@ import pytest
 import uvicorn
 from chromadb.utils import embedding_functions
 
+import agent_cli.memory._tasks as memory_tasks
 import agent_cli.memory.api as memory_api
-import agent_cli.memory.tasks as memory_tasks
 from agent_cli.constants import DEFAULT_OPENAI_EMBEDDING_MODEL
 from agent_cli.memory import _ingest, engine
 from agent_cli.memory.entities import Fact

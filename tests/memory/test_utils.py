@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Any
 from unittest.mock import patch
 
 from agent_cli.memory._persistence import evict_if_needed
-from agent_cli.memory.store import list_conversation_entries
+from agent_cli.memory._store import list_conversation_entries
 
 if TYPE_CHECKING:
     from pathlib import Path

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from agent_cli.memory import store
+from agent_cli.memory import _store
 from agent_cli.memory.models import MemoryMetadata
 
 
@@ -50,7 +50,7 @@ def test_query_memories_normalizes_tags_and_ids() -> None:
             "embeddings": [[[0.0, 0.0]]],
         },
     )
-    records = store.query_memories(fake, conversation_id="c1", text="hello", n_results=2)
+    records = _store.query_memories(fake, conversation_id="c1", text="hello", n_results=2)
     assert len(records) == 1
     assert records[0].id == "id1"
 
@@ -93,7 +93,7 @@ def test_query_memories_skips_summary_entries_and_filters_roles() -> None:
             }
 
     fake = _FilterAwareFakeCollection()
-    records = store.query_memories(fake, conversation_id="c1", text="hello", n_results=2)
+    records = _store.query_memories(fake, conversation_id="c1", text="hello", n_results=2)
 
     assert all(mem.metadata.role != "summary" for mem in records)
     assert fake.last_where is not None
@@ -111,7 +111,7 @@ def test_get_summary_entry_handles_nested_lists() -> None:
             "ids": ["sum1"],
         },
     )
-    entry = store.get_summary_entry(fake, "c1", role="summary")
+    entry = _store.get_summary_entry(fake, "c1", role="summary")
     assert entry is not None
     assert entry.id == "sum1"
     assert entry.metadata.role == "summary"
@@ -130,7 +130,7 @@ def test_list_conversation_entries_filters_summaries() -> None:
             "ids": ["id1", "id2"],
         },
     )
-    entries = store.list_conversation_entries(fake, "c1", include_summary=False)
+    entries = _store.list_conversation_entries(fake, "c1", include_summary=False)
     assert len(entries) == 2  # both returned; caller filters by role
     roles = {e.metadata.role for e in entries}
     assert "memory" in roles
@@ -141,10 +141,10 @@ def test_upsert_and_delete_entries_delegate() -> None:
     fake = _FakeCollection()
     meta = MemoryMetadata(conversation_id="c1", role="memory", created_at="now")
 
-    store.upsert_memories(fake, ids=["x"], contents=["doc"], metadatas=[meta])
+    _store.upsert_memories(fake, ids=["x"], contents=["doc"], metadatas=[meta])
     assert fake.upserts[0][0] == ["x"]
     assert fake.upserts[0][1] == ["doc"]
     assert fake.upserts[0][2][0]["conversation_id"] == "c1"
 
-    store.delete_entries(fake, ["x"])
+    _store.delete_entries(fake, ["x"])
     assert fake.deleted == [["x"]]

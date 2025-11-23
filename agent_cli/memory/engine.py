@@ -11,13 +11,13 @@ from uuid import uuid4
 from fastapi.responses import StreamingResponse
 
 from agent_cli.core.openai_proxy import forward_chat_request
-from agent_cli.memory import streaming
+from agent_cli.memory import _streaming
+from agent_cli.memory._git import commit_changes
 from agent_cli.memory._ingest import extract_and_store_facts_and_summaries
 from agent_cli.memory._persistence import evict_if_needed, persist_entries
 from agent_cli.memory._retrieval import augment_chat_request
+from agent_cli.memory._tasks import run_in_background
 from agent_cli.memory.entities import Turn
-from agent_cli.memory.git import commit_changes
-from agent_cli.memory.tasks import run_in_background
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator, Mapping
@@ -200,12 +200,12 @@ async def _stream_and_persist_response(
 
     async def tee_and_accumulate() -> AsyncGenerator[str, None]:
         assistant_chunks: list[str] = []
-        async for line in streaming.stream_chat_sse(
+        async for line in _streaming.stream_chat_sse(
             openai_base_url=openai_base_url,
             payload=forward_payload,
             headers=headers,
         ):
-            streaming.accumulate_assistant_text(line, assistant_chunks)
+            _streaming.accumulate_assistant_text(line, assistant_chunks)
             yield line + "\n\n"
         assistant_message = "".join(assistant_chunks).strip() or None
         if assistant_message:

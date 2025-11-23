@@ -8,7 +8,7 @@ from uuid import uuid4
 
 import pytest
 
-from agent_cli.memory import _ingest, _persistence, _retrieval, engine, tasks
+from agent_cli.memory import _ingest, _persistence, _retrieval, _tasks, engine
 from agent_cli.memory._files import (
     ensure_store_dirs,
     load_snapshot,
@@ -430,7 +430,7 @@ async def test_process_chat_request_summarizes_and_persists(
         max_entries=10,
     )
 
-    await tasks._wait_for_background_tasks()
+    await _tasks._wait_for_background_tasks()
 
     files = list(tmp_path.glob("entries/**/*.md"))
     assert len(files) == 5  # user + assistant + 2 facts + 1 summary (single)
@@ -525,7 +525,7 @@ async def test_streaming_request_persists_user_and_assistant(
     # High score
     monkeypatch.setattr(_retrieval, "predict_relevance", lambda _model, pairs: [5.0 for _ in pairs])
     monkeypatch.setattr(
-        engine.streaming,
+        engine._streaming,
         "httpx",
         type("H", (), {"AsyncClient": _DummyAsyncClient}),
     )  # type: ignore[attr-defined]
@@ -538,7 +538,7 @@ async def test_streaming_request_persists_user_and_assistant(
         for line in body:
             yield line
 
-    monkeypatch.setattr(engine.streaming, "stream_chat_sse", fake_stream_chat_sse)
+    monkeypatch.setattr(engine._streaming, "stream_chat_sse", fake_stream_chat_sse)
 
     response = await engine.process_chat_request(
         request,
@@ -557,7 +557,7 @@ async def test_streaming_request_persists_user_and_assistant(
     assert b"Hello" in body
 
     # Allow background persistence task to run
-    await tasks._wait_for_background_tasks()
+    await _tasks._wait_for_background_tasks()
 
     files = list(tmp_path.glob("entries/**/*.md"))
     assert len(files) == 2  # user + assistant persisted for streaming, too
@@ -597,7 +597,7 @@ async def test_streaming_with_summarization_persists_facts_and_summaries(
             return _Result(["User has a cat named Luna."])
         return _Result(SummaryOutput(summary="noop"))
 
-    monkeypatch.setattr(engine.streaming, "stream_chat_sse", fake_stream_chat_sse)
+    monkeypatch.setattr(engine._streaming, "stream_chat_sse", fake_stream_chat_sse)
 
     async def fake_reconcile(
         _collection: Any,
@@ -630,7 +630,7 @@ async def test_streaming_with_summarization_persists_facts_and_summaries(
     )
 
     _ = [chunk async for chunk in response.body_iterator]  # type: ignore[attr-defined]
-    await tasks._wait_for_background_tasks()
+    await _tasks._wait_for_background_tasks()
 
     files = list(tmp_path.glob("entries/**/*.md"))
     assert len(files) == 4  # user + assistant + fact + 1 summary

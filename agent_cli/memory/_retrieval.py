@@ -7,6 +7,7 @@ import math
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
+from agent_cli.memory._store import get_summary_entry, query_memories
 from agent_cli.memory.models import (
     ChatRequest,
     MemoryEntry,
@@ -15,7 +16,6 @@ from agent_cli.memory.models import (
     Message,
     StoredMemory,
 )
-from agent_cli.memory.store import get_summary_entry, query_memories
 from agent_cli.rag.retriever import OnnxCrossEncoder, predict_relevance
 
 if TYPE_CHECKING:

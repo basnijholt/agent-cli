@@ -7,7 +7,7 @@ from typing import Any
 from watchfiles import Change
 
 from agent_cli.memory import _files as mem_files
-from agent_cli.memory import indexer
+from agent_cli.memory import _indexer
 
 
 class _FakeCollection:
@@ -24,7 +24,7 @@ class _FakeCollection:
 
 def test_initial_index_deletes_stale_and_indexes_current(tmp_path: Any) -> None:
     fake = _FakeCollection()
-    idx = indexer.MemoryIndex.from_snapshot(tmp_path / "memory_index.json")
+    idx = _indexer.MemoryIndex.from_snapshot(tmp_path / "memory_index.json")
     idx.entries["stale"] = mem_files.MemoryFileRecord(
         id="stale",
         path=tmp_path / "entries" / "default" / "stale.md",
@@ -40,7 +40,7 @@ def test_initial_index_deletes_stale_and_indexes_current(tmp_path: Any) -> None:
         content="fresh",
     )
 
-    indexer.initial_index(fake, tmp_path, index=idx)
+    _indexer.initial_index(fake, tmp_path, index=idx)
 
     assert fake.deleted == [["stale"]]
     assert fake.upserts  # fresh file indexed
@@ -49,7 +49,7 @@ def test_initial_index_deletes_stale_and_indexes_current(tmp_path: Any) -> None:
 
 def test_handle_change_add_modify_delete(tmp_path: Any) -> None:
     fake = _FakeCollection()
-    idx = indexer.MemoryIndex(snapshot_path=None)
+    idx = _indexer.MemoryIndex(snapshot_path=None)
 
     rec = mem_files.write_memory_file(
         tmp_path,
@@ -59,13 +59,13 @@ def test_handle_change_add_modify_delete(tmp_path: Any) -> None:
         content="hello",
     )
 
-    indexer._handle_change(Change.added, rec.path, fake, idx)
+    _indexer._handle_change(Change.added, rec.path, fake, idx)
     assert fake.upserts
     assert rec.id in idx.entries
 
-    indexer._handle_change(Change.modified, rec.path, fake, idx)
+    _indexer._handle_change(Change.modified, rec.path, fake, idx)
     assert len(fake.upserts) >= 2
 
-    indexer._handle_change(Change.deleted, rec.path, fake, idx)
+    _indexer._handle_change(Change.deleted, rec.path, fake, idx)
     assert fake.deleted
     assert rec.id not in idx.entries

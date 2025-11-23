@@ -14,12 +14,12 @@ from agent_cli.memory._files import (
     write_memory_file,
     write_snapshot,
 )
-from agent_cli.memory.entities import Fact, Summary, Turn
-from agent_cli.memory.store import (
+from agent_cli.memory._store import (
     delete_entries,
     list_conversation_entries,
     upsert_memories,
 )
+from agent_cli.memory.entities import Fact, Summary, Turn
 
 if TYPE_CHECKING:
     from pathlib import Path
