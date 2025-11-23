@@ -7,6 +7,7 @@ import logging
 from contextlib import suppress
 from typing import TYPE_CHECKING, Any, Self
 
+from agent_cli.constants import DEFAULT_OPENAI_MODEL
 from agent_cli.memory.engine import (
     augment_chat_request,
     extract_and_store_facts_and_summaries,
@@ -115,7 +116,7 @@ class MemoryClient:
         self,
         text: str,
         conversation_id: str = "default",
-        model: str = "gpt-4o-mini",
+        model: str = DEFAULT_OPENAI_MODEL,
     ) -> None:
         """Add a memory by extracting facts from text and reconciling them.
 
@@ -139,7 +140,7 @@ class MemoryClient:
         query: str,
         conversation_id: str = "default",
         top_k: int | None = None,
-        model: str = "gpt-4o-mini",
+        model: str = DEFAULT_OPENAI_MODEL,
         recency_weight: float | None = None,
         score_threshold: float | None = None,
     ) -> MemoryRetrieval:
@@ -172,7 +173,7 @@ class MemoryClient:
         self,
         messages: list[dict[str, str]] | list[Any],
         conversation_id: str = "default",
-        model: str = "gpt-4o-mini",
+        model: str = DEFAULT_OPENAI_MODEL,
         stream: bool = False,
         api_key: str | None = None,
         memory_top_k: int | None = None,
