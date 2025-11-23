@@ -173,7 +173,7 @@ async def reconcile_facts(
         ]
         return entries, [], {}
     id_map: dict[int, str] = {idx: mem.id for idx, mem in enumerate(existing)}
-    existing_json = [{"id": str(idx), "text": mem.content} for idx, mem in enumerate(existing)]
+    existing_json = [{"id": idx, "text": mem.content} for idx, mem in enumerate(existing)]
 
     provider = OpenAIProvider(api_key=api_key or "dummy", base_url=openai_base_url)
     model_cfg = OpenAIChatModel(
