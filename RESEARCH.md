@@ -19,8 +19,8 @@ The memory system is composed of layered Python modules, separating the API surf
 ### 1.2 Logic Engine (`agent_cli.memory.engine`)
 *   Contains the core business logic for the "Smart Ingest / Fast Read" pattern.
 *   **`process_chat_request`:** Main coordinator. Handles synchronous vs. asynchronous (streaming) execution paths.
-*   **`augment_chat_request`:** The "Read" path. Executes retrieval, ranking, and prompt injection.
-*   **`extract_and_store_facts_and_summaries`:** The "Write" path. Background task for fact extraction, reconciliation, and summarization.
+*   **`augment_chat_request`:** The "Read" path. Executes retrieval, reranking, recency weighting, MMR selection, and prompt injection.
+*   **`extract_and_store_facts_and_summaries`:** The "Write" path. Runs fact extraction, reconciliation, summarization, eviction, and optional git commits.
 
 ### 1.3 Storage Layer
 *   **`agent_cli.memory.files` (File Store):**
@@ -67,15 +67,17 @@ entries/
       facts/
         <timestamp>__<uuid>.md
       summaries/
-        summary.md.tmp             # Tombstoned temporary summaries
+        summary.md                 # Tombstoned summary
 ```
 
 ### 2.2 File Format
 **Front Matter (YAML):**
-*   `id`: UUIDv4.
-*   `role`: `system` (fact), `user`, `assistant`, or `summary`.
+*   `id`: UUIDv4 (summaries use a deterministic ID suffix).
+*   `role`: `memory` (fact), `user`, `assistant`, or `summary`.
 *   `conversation_id`: Scope key.
-*   `created_at`: ISO 8601 timestamp (used for Recency Decay).
+*   `created_at`: ISO 8601 timestamp (used for recency scoring).
+*   `summary_kind`: Present only on summaries.
+*   `replaced_by`: Present only on tombstones when an update replaces a fact.
 
 **Body:** The semantic content (e.g., "User lives in San Francisco").
 
@@ -83,7 +85,7 @@ entries/
 All entries share a single collection but are partitioned by metadata.
 *   **ID:** Matches file UUID.
 *   **Embedding:** 1536d (OpenAI) or 384d (MiniLM).
-*   **Metadata:** Mirrors front matter (`role`, `conversation_id`, `created_at`) for pre-filtering.
+*   **Metadata:** Mirrors front matter (`role`, `conversation_id`, `created_at`, `summary_kind`, `replaced_by`) for pre-filtering and maintenance.
 
 ### 2.4 Versioning (Git)
 When `enable_git_versioning` is true, the memory system maintains a local Git repository at `memory_path`.
@@ -124,8 +126,8 @@ Applies Maximal Marginal Relevance to select the final `top_k` from the ranked p
 
 ### Step 5: Injection
 *   **Structure:**
-    1.  **Summary:** Injected if `enable_summarization=True` and `summary.md` exists.
-    2.  **Memories:** The top-k retrieved facts/turns, formatted as `[<role>] <content> (score: <val>)`.
+    1.  **Summary:** Injected if available for the conversation (`role="summary"`).
+    2.  **Memories:** The top-k retrieved facts/turns, formatted as `[<role>] <content>` (scores are not shown).
     3.  **Current Turn:** The user's actual message.
 
 ---
@@ -136,31 +138,34 @@ Executed via `_postprocess_after_turn` (background task).
 
 ### 4.1 Streaming vs. Non-Streaming
 *   **Streaming:**
-    *   User turn persisted immediately.
+    *   User turn persisted immediately (stored under `turns/user`).
     *   Assistant tokens accumulated in memory buffer.
-    *   Full assistant text persisted on stream completion.
+    *   Full assistant text persisted on stream completion (stored under `turns/assistant`), then background post-processing runs.
 *   **Non-Streaming:**
-    *   User and Assistant turns persisted sequentially after full response is received.
+    *   User and Assistant turns persisted sequentially after full response is received, followed by post-processing.
 
 ### 4.2 Fact Extraction
-*   **Input:** User message.
-*   **Prompt:** `FACT_SYSTEM_PROMPT`. Extracts atomic, standalone statements.
-*   **Output:** JSON list of strings.
+*   **Input:** Latest user message only (assistant/system text is ignored).
+*   **Prompt:** `FACT_SYSTEM_PROMPT`. Extracts 0–3 atomic, standalone statements via PydanticAI.
+*   **Output:** JSON list of strings. Failures fall back to `[]`.
 
 ### 4.3 Reconciliation (Memory Management)
 Resolves contradictions using a "Search-Decide-Update" loop.
-1.  **Local Search:** Retrieves existing facts relevant to the *newly extracted facts*.
-2.  **LLM Decision:** Uses `UPDATE_MEMORY_PROMPT` to compare `new_facts` vs `existing_memories`.
+1.  **Local Search:** For each new fact, retrieve a small neighborhood of existing `role="memory"` entries for the conversation.
+2.  **LLM Decision:** Uses `UPDATE_MEMORY_PROMPT` (examples + strict JSON schema) to compare `new_facts` vs `existing_memories`.
     *   **Decisions:** `ADD`, `UPDATE`, `DELETE`, `NONE`.
+    *   If no existing memories are found, all new facts are added directly.
+    *   On LLM/network failure, defaults to adding all new facts.
+    *   Safeguard: if the model returns only deletes/empties, the new facts are still added to avoid data loss.
 3.  **Execution:**
-    *   **Deletes:** Moves files to `deleted/` (Soft Delete) and removes from Chroma.
-    *   **Adds:** Creates new files in `facts/` and upserts to Chroma.
-    *   **Updates:** Implemented as atomic Delete + Add.
+    *   **Adds:** Creates new fact files and upserts to Chroma.
+    *   **Updates:** Implemented as delete + add with a fresh ID; tombstones record `replaced_by`.
+    *   **Deletes:** Soft-deletes files (moved under `deleted/`) and removes from Chroma.
 
 ### 4.4 Summarization
-*   **Input:** Current `summary.md` content + recent chat history.
-*   **Prompt:** `SUMMARY_PROMPT` (Updates the running summary).
-*   **Persistence:** Overwrites `summaries/summary.md`.
+*   **Input:** Previous summary (if any) + newly extracted facts.
+*   **Prompt:** `SUMMARY_PROMPT` (updates the running summary).
+*   **Persistence:** Writes a single `summaries/summary.md` per conversation (deterministic doc ID).
 
 ### 4.5 Eviction
 *   **Trigger:** If total entries in conversation > `max_entries` (default 500).
@@ -183,10 +188,11 @@ To replicate the system behavior, the following prompt strategies are required.
 ### 5.2 Reconciliation (`UPDATE_MEMORY_PROMPT`)
 *   **Goal:** Compare `new_facts` against `existing_memories` (id + text) and output structured decisions.
 *   **Operations:**
-    *   **ADD:** New information.
-    *   **UPDATE:** Refines existing information (must preserve ID).
-    *   **DELETE:** Contradicts existing information (e.g., "I hate pizza" vs "I love pizza"). **Critical:** Must be paired with an ADD if replacing.
+    *   **ADD:** New information (generates a new ID).
+    *   **UPDATE:** Refines existing information (uses the provided short ID).
+    *   **DELETE:** Contradicts existing information (e.g., "I hate pizza" vs "I love pizza"). **If deleting because of a replacement, the new fact must also be returned (ADD or UPDATE).**
     *   **NONE:** Fact already exists or is irrelevant.
+*   **Output constraints:** JSON list only; no prose/code fences; IDs for UPDATE/DELETE/NONE must come from the provided list.
 
 ### 5.3 Summarization (`SUMMARY_PROMPT`)
 *   **Goal:** Maintain a concise running summary.
@@ -206,5 +212,6 @@ To replicate the system behavior, the following prompt strategies are required.
 | `recency_weight` | `0.2` | Score weight for temporal proximity. |
 | `score_threshold` | `0.35` | Minimum semantic relevance to consider. |
 | `enable_summarization` | `True` | Toggle for summary generation loop. |
-| `openai_base_url` | `None` | Base URL for LLM calls (allows local LLM usage). |
+| `openai_base_url` | *required* | Base URL for LLM calls (can point to OpenAI-compatible proxies). |
 | `enable_git_versioning` | `False` | Toggle to enable/disable Git versioning of the memory store. |
+| `start_watcher` | `False` | Start a file watcher to keep Chroma in sync with on-disk edits. |
