@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import shutil
 import subprocess
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, NamedTuple
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -13,9 +14,64 @@ if TYPE_CHECKING:
 logger = logging.getLogger("agent_cli.memory.git")
 
 
+class GitCommandResult(NamedTuple):
+    """Result of a git command execution."""
+
+    returncode: int
+    stdout: str
+    stderr: str
+
+
 def _is_git_installed() -> bool:
     """Check if git is available in the path."""
     return shutil.which("git") is not None
+
+
+def _run_git_sync(
+    args: list[str],
+    cwd: Path,
+    check: bool = True,
+) -> GitCommandResult:
+    """Run a git command synchronously."""
+    proc = subprocess.run(
+        ["git", *args],  # noqa: S607
+        cwd=cwd,
+        check=check,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+    )
+    return GitCommandResult(proc.returncode, proc.stdout, proc.stderr)
+
+
+async def _run_git_async(
+    args: list[str],
+    cwd: Path,
+    check: bool = True,
+) -> GitCommandResult:
+    """Run a git command asynchronously."""
+    proc = await asyncio.create_subprocess_exec(
+        "git",
+        *args,
+        cwd=cwd,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE,
+    )
+    stdout, stderr = await proc.communicate()
+    returncode = proc.returncode or 0
+    stdout_text = stdout.decode("utf-8", errors="replace")
+    stderr_text = stderr.decode("utf-8", errors="replace")
+
+    if check and returncode != 0:
+        raise subprocess.CalledProcessError(
+            returncode,
+            ["git", *args],
+            output=stdout_text,
+            stderr=stderr_text,
+        )
+
+    return GitCommandResult(returncode, stdout_text, stderr_text)
 
 
 def init_repo(path: Path) -> None:
@@ -29,36 +85,15 @@ def init_repo(path: Path) -> None:
 
     try:
         logger.info("Initializing git repository in %s", path)
-        subprocess.run(
-            ["git", "init"],  # noqa: S607
-            cwd=path,
-            check=True,
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-            errors="replace",
-        )
+        _run_git_sync(["init"], cwd=path)
+
         # Configure local user if not set (to avoid commit errors)
         try:
-            subprocess.run(
-                ["git", "config", "user.email"],  # noqa: S607
-                cwd=path,
-                check=True,
-                capture_output=True,
-                encoding="utf-8",
-            )
+            _run_git_sync(["config", "user.email"], cwd=path)
         except subprocess.CalledProcessError:
             # No email configured, set local config
-            subprocess.run(
-                ["git", "config", "user.email", "agent-cli@local"],  # noqa: S607
-                cwd=path,
-                check=True,
-            )
-            subprocess.run(
-                ["git", "config", "user.name", "Agent CLI"],  # noqa: S607
-                cwd=path,
-                check=True,
-            )
+            _run_git_sync(["config", "user.email", "agent-cli@local"], cwd=path)
+            _run_git_sync(["config", "user.name", "Agent CLI"], cwd=path)
 
         # Create .gitignore to exclude derived data (vector db, cache)
         gitignore_path = path / ".gitignore"
@@ -79,20 +114,18 @@ def init_repo(path: Path) -> None:
             readme_path.write_text(readme_content, encoding="utf-8")
 
         # Initial commit
-        subprocess.run(["git", "add", "."], cwd=path, check=True)  # noqa: S607
-        subprocess.run(
-            ["git", "commit", "--allow-empty", "-m", "Initial commit"],  # noqa: S607
+        _run_git_sync(["add", "."], cwd=path)
+        _run_git_sync(
+            ["commit", "--allow-empty", "-m", "Initial commit"],
             cwd=path,
             check=False,
-            capture_output=True,
-            encoding="utf-8",
         )
 
     except subprocess.CalledProcessError:
         logger.exception("Failed to initialize git repo")
 
 
-def commit_changes(path: Path, message: str) -> None:
+async def commit_changes(path: Path, message: str) -> None:
     """Stage and commit all changes in the given path."""
     if not _is_git_installed():
         return
@@ -103,32 +136,22 @@ def commit_changes(path: Path, message: str) -> None:
 
     try:
         # Check if there are changes
-        status = subprocess.run(
-            ["git", "status", "--porcelain"],  # noqa: S607
+        status = await _run_git_async(
+            ["status", "--porcelain"],
             cwd=path,
-            capture_output=True,
-            text=True,
-            check=True,
-            encoding="utf-8",
-            errors="replace",
+            check=False,
         )
+        if status.returncode != 0:
+            logger.error("Failed to check git status")
+            return
+
         if not status.stdout.strip():
             return  # Nothing to commit
 
         logger.info("Committing changes to memory store: %s", message)
-        subprocess.run(
-            ["git", "add", "."],  # noqa: S607
-            cwd=path,
-            check=True,
-            capture_output=True,
-            encoding="utf-8",
-        )
-        subprocess.run(
-            ["git", "commit", "-m", message],  # noqa: S607
-            cwd=path,
-            check=True,
-            capture_output=True,
-            encoding="utf-8",
-        )
-    except subprocess.CalledProcessError:
+
+        await _run_git_async(["add", "."], cwd=path)
+        await _run_git_async(["commit", "-m", message], cwd=path)
+
+    except Exception:
         logger.exception("Failed to commit changes")

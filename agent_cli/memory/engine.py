@@ -741,7 +741,7 @@ async def _postprocess_after_turn(
     )
 
     if enable_git_versioning:
-        commit_changes(memory_root, f"Update memory for conversation {conversation_id}")
+        await commit_changes(memory_root, f"Update memory for conversation {conversation_id}")
 
 
 async def extract_and_store_facts_and_summaries(
@@ -828,7 +828,7 @@ async def extract_and_store_facts_and_summaries(
         )
 
     if enable_git_versioning:
-        commit_changes(memory_root, f"Add facts to conversation {conversation_id}")
+        await commit_changes(memory_root, f"Add facts to conversation {conversation_id}")
 
 
 async def _stream_and_persist_response(

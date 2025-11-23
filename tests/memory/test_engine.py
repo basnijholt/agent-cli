@@ -301,6 +301,54 @@ async def test_retrieve_memory_returns_all_facts(monkeypatch: pytest.MonkeyPatch
 
 
 @pytest.mark.asyncio
+@pytest.mark.usefixtures("stub_openai_provider")
+async def test_reconcile_facts_preserves_new_fact_on_delete_only(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """LLM delete-only outputs still keep the new fact via safeguard."""
+    now = datetime.now(UTC).isoformat()
+    existing = StoredMemory(
+        id="orig-id",
+        content="User likes cheese pizza",
+        metadata=MemoryMetadata(conversation_id="conv1", role="memory", created_at=now),
+    )
+
+    monkeypatch.setattr(
+        engine,
+        "_gather_relevant_existing_memories",
+        lambda *_args, **_kwargs: [existing],
+    )
+
+    class _Result:
+        def __init__(self, output: Any) -> None:
+            self.output = output
+
+    class _DummyAgent:
+        def __init__(self, *_args: Any, **_kwargs: Any) -> None:
+            return
+
+        async def run(self, _payload: str, **_kwargs: Any) -> _Result:
+            return _Result([engine.MemoryUpdateDecision(event="DELETE", id="0")])
+
+    monkeypatch.setattr(engine, "Agent", _DummyAgent)
+
+    new_fact = "User now dislikes cheese pizza"
+    to_add, to_delete, replacement_map = await engine._reconcile_facts(
+        _RecordingCollection(),
+        "conv1",
+        [new_fact],
+        openai_base_url="http://mock-llm",
+        api_key=None,
+        model="demo-model",
+    )
+
+    assert to_delete == ["orig-id"]
+    assert len(to_add) == 1
+    assert to_add[0].content == new_fact
+    assert replacement_map == {}
+
+
+@pytest.mark.asyncio
 async def test_process_chat_request_summarizes_and_persists(
     tmp_path: Any,
     monkeypatch: pytest.MonkeyPatch,

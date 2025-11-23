@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from contextlib import ExitStack
 from typing import TYPE_CHECKING, Any
 from unittest.mock import patch
@@ -123,8 +124,23 @@ async def test_client_chat_calls_engine(client: MemoryClient) -> None:
 @pytest.mark.asyncio
 async def test_client_startup_manual(tmp_path: Path) -> None:
     """Test that watcher is not started by default, but can be started manually."""
+    # Create a simple async mock for the watcher
+
+    async def _fake_watch(*_args: Any, **_kwargs: Any) -> None:
+        try:
+            # Use Event wait instead of sleep loop for better efficiency
+
+            stop_event = asyncio.Event()
+
+            await stop_event.wait()
+
+        except asyncio.CancelledError:
+            pass
+
     with ExitStack() as stack:
         mock_watch = stack.enter_context(patch("agent_cli.memory.client.watch_memory_store"))
+        mock_watch.side_effect = _fake_watch
+
         stack.enter_context(
             patch("agent_cli.memory.client.get_reranker_model", return_value=_DummyReranker()),
         )
@@ -140,19 +156,55 @@ async def test_client_startup_manual(tmp_path: Path) -> None:
         )
 
         mock_watch.assert_not_called()
+        assert client._watch_task is None
 
         client.start()
-        # Now it should be scheduled. However, watch_memory_store is async.
-        # client.start() creates a task.
-        # We just need to verify that the coroutine was created/scheduled?
-        # But we mocked watch_memory_store.
-        # Wait, MemoryClient calls `asyncio.create_task(watch_memory_store(...))`
-        # If we mock watch_memory_store, create_task gets a mock object which is not a coroutine?
-        # No, if side_effect is not set, it returns a Mock. A Mock is not awaitable.
-        # We need the mock to return an awaitable if it's called by create_task?
-        # Actually, if `watch_memory_store` is an async function in the real code, patching it
-        # with a standard Mock might fail if `create_task` expects a coroutine object.
-        # `asyncio.create_task(coro)`: coro must be a coroutine.
 
-    # Let's just verify the flag logic or use AsyncMock if available or standard mocking carefully.
-    # But verifying default behavior is False is enough for the "no runtime error" check.
+        # Verify a task was created
+        assert client._watch_task is not None
+        assert not client._watch_task.done()
+
+        # Stop
+        await client.stop()
+        assert client._watch_task is None
+
+
+@pytest.mark.asyncio
+async def test_client_context_manager(tmp_path: Path) -> None:
+    """Test that context manager starts/stops watcher."""
+
+    async def _fake_watch(*_args: Any, **_kwargs: Any) -> None:
+        try:
+            stop_event = asyncio.Event()
+
+            await stop_event.wait()
+
+        except asyncio.CancelledError:
+            pass
+
+    with ExitStack() as stack:
+        mock_watch = stack.enter_context(patch("agent_cli.memory.client.watch_memory_store"))
+        mock_watch.side_effect = _fake_watch
+
+        stack.enter_context(
+            patch("agent_cli.memory.client.get_reranker_model", return_value=_DummyReranker()),
+        )
+        stack.enter_context(
+            patch("agent_cli.memory.client.init_memory_collection", return_value=_FakeCollection()),
+        )
+        stack.enter_context(patch("agent_cli.memory.client.initial_index"))
+
+        client_obj = MemoryClient(
+            memory_path=tmp_path,
+            openai_base_url="http://mock",
+            start_watcher=False,
+        )
+
+        assert client_obj._watch_task is None
+
+        async with client_obj as c:
+            assert c is client_obj
+            assert c._watch_task is not None
+            mock_watch.assert_called_once()
+
+        assert client_obj._watch_task is None
