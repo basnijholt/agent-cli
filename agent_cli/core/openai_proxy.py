@@ -13,7 +13,7 @@ from fastapi.responses import StreamingResponse
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator, Iterable
 
-logger = logging.getLogger("agent_cli.core.openai_proxy")
+LOGGER = logging.getLogger("agent_cli.core.openai_proxy")
 
 
 @runtime_checkable
@@ -61,7 +61,7 @@ async def forward_chat_request(
                         else:
                             yield chunk
             except Exception as exc:
-                logger.exception("Streaming error")
+                LOGGER.exception("Streaming error")
                 yield f"data: {json.dumps({'error': str(exc)})}\n\n"
 
         return StreamingResponse(generate(), media_type="text/event-stream")
@@ -73,7 +73,7 @@ async def forward_chat_request(
             headers=headers,
         )
         if response.status_code != 200:  # noqa: PLR2004
-            logger.error(
+            LOGGER.error(
                 "Upstream error %s: %s",
                 response.status_code,
                 response.text,

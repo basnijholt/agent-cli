@@ -16,7 +16,7 @@ from agent_cli.rag.store import query_docs
 if TYPE_CHECKING:
     from chromadb import Collection
 
-logger = logging.getLogger("agent_cli.rag.retriever")
+LOGGER = logging.getLogger("agent_cli.rag.retriever")
 
 
 def _download_onnx_model(model_name: str, onnx_filename: str) -> str:
@@ -27,7 +27,7 @@ def _download_onnx_model(model_name: str, onnx_filename: str) -> str:
     try:
         return hf_hub_download(repo_id=model_name, filename=onnx_filename, subfolder="onnx")
     except Exception as first_error:
-        logger.debug(
+        LOGGER.debug(
             "ONNX file not found under onnx/ for %s: %s. Falling back to repo root.",
             model_name,
             first_error,
@@ -35,7 +35,7 @@ def _download_onnx_model(model_name: str, onnx_filename: str) -> str:
         try:
             return hf_hub_download(repo_id=model_name, filename=onnx_filename)
         except Exception as second_error:
-            logger.exception(
+            LOGGER.exception(
                 "Failed to download ONNX model %s (filename=%s)",
                 model_name,
                 onnx_filename,
@@ -56,7 +56,7 @@ class OnnxCrossEncoder:
         self.model_name = model_name
 
         # Download model if needed
-        logger.info("Loading ONNX model: %s", model_name)
+        LOGGER.info("Loading ONNX model: %s", model_name)
         model_path = _download_onnx_model(model_name, onnx_filename)
 
         self.session = InferenceSession(model_path)
