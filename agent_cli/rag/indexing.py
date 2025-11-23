@@ -20,7 +20,7 @@ if TYPE_CHECKING:
 
     from chromadb import Collection
 
-LOGGER = logging.getLogger("agent_cli.rag.indexing")
+LOGGER = logging.getLogger(__name__)
 
 
 def load_hashes_from_metadata(collection: Collection) -> dict[str, str]:

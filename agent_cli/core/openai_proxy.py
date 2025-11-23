@@ -13,7 +13,7 @@ from fastapi.responses import StreamingResponse
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator, Iterable
 
-LOGGER = logging.getLogger("agent_cli.core.openai_proxy")
+LOGGER = logging.getLogger(__name__)
 
 
 @runtime_checkable
