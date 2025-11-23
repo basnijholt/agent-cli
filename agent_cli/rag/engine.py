@@ -9,7 +9,7 @@ from collections.abc import AsyncGenerator  # noqa: TC003
 from typing import TYPE_CHECKING, Any
 
 from fastapi.responses import StreamingResponse
-from pydantic_ai import Agent, RunContext
+from pydantic_ai import Agent
 from pydantic_ai.messages import (
     ModelRequest,
     ModelResponse,
@@ -20,9 +20,8 @@ from pydantic_ai.messages import (
 from pydantic_ai.models.openai import OpenAIModel
 from pydantic_ai.providers.openai import OpenAIProvider
 
-from agent_cli.rag.models import RAGDeps
 from agent_cli.rag.retriever import search_context
-from agent_cli.rag.tools import read_full_document
+from agent_cli.rag.utils import load_document_text
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -80,25 +79,6 @@ def retrieve_context(
         user_message[:50],
     )
     return retrieval
-
-
-# Define the Agent globally.
-# We use a dummy model here because we override it dynamically per-request.
-# We must set a dummy API key to satisfy Pydantic AI's validation at import time.
-# We instantiate the model explicitly to bypass the environment check.
-_dummy_provider = OpenAIProvider(api_key="dummy")
-rag_agent = Agent(
-    OpenAIModel("gpt-4o", provider=_dummy_provider),
-    deps_type=RAGDeps,
-    tools=[read_full_document],
-)
-
-
-@rag_agent.system_prompt
-def _inject_context(ctx: RunContext[RAGDeps]) -> str:
-    if ctx.deps.rag_context:
-        return f"Context from documentation:\n{ctx.deps.rag_context}"
-    return ""
 
 
 def _convert_messages(
@@ -188,43 +168,70 @@ async def process_chat_request(
         default_top_k=default_top_k,
     )
 
-    # 2. Setup Dynamic Model
+    # 2. Define Tool (Closure)
+    def read_full_document(file_path: str) -> str:
+        """Read the full content of a document.
+
+        Use this tool when the context provided in the prompt is not enough
+        and you need to read the entire file to answer the user's question.
+        The `file_path` should be exactly as it appears in the `[Source: ...]` tag.
+
+        Args:
+            file_path: The relative path to the file.
+
+        """
+        try:
+            # Security check: resolve path and ensure it's inside docs_folder
+            full_path = (docs_folder / file_path).resolve()
+
+            # Verify it is still inside docs_folder
+            if not str(full_path).startswith(str(docs_folder.resolve())):
+                return "Error: Access denied. Path is outside the document folder."
+
+            if not full_path.exists():
+                return f"Error: File not found: {file_path}"
+
+            text = load_document_text(full_path)
+            if text is None:
+                return "Error: Could not read file (unsupported format or encoding)."
+
+            return text
+
+        except Exception as e:
+            return f"Error reading file: {e}"
+
+    # 3. Define System Prompt (Closure)
+    system_prompt = ""
+    if retrieval and retrieval.context:
+        system_prompt = f"Context from documentation:\n{retrieval.context}"
+
+    # 4. Setup Agent
     provider = OpenAIProvider(base_url=openai_base_url, api_key=api_key or "dummy")
     model = OpenAIModel(model_name=request.model, provider=provider)
 
-    # 3. Prepare Dependencies
-    deps = RAGDeps(
-        docs_folder=docs_folder,
-        rag_context=retrieval.context if retrieval else None,
+    agent = Agent(
+        model=model,
+        tools=[read_full_document],
+        system_prompt=system_prompt,
     )
 
-    # 4. Prepare Message History & Prompt
+    # 5. Prepare Message History & Prompt
     history, user_prompt = _convert_messages(request.messages)
 
-    # 5. Model Settings
+    # 6. Model Settings
     model_settings = _extract_model_settings(request)
 
-    # 6. Run Agent
+    # 7. Run Agent
     if request.stream:
         return StreamingResponse(
-            _stream_generator(
-                rag_agent,
-                user_prompt,
-                history,
-                deps,
-                model_settings,
-                request.model,
-                model,
-            ),
+            _stream_generator(agent, user_prompt, history, model_settings, request.model),
             media_type="text/event-stream",
         )
 
-    result = await rag_agent.run(
+    result = await agent.run(
         user_prompt,
         message_history=history,
-        deps=deps,
         model_settings=model_settings,
-        model=model,
     )
 
     return _build_openai_response(result, request.model, retrieval)
@@ -234,18 +241,14 @@ async def _stream_generator(
     agent: Agent,
     prompt: str,
     history: list[ModelRequest | ModelResponse],
-    deps: RAGDeps,
     settings: dict[str, Any],
     model_name: str,
-    model: OpenAIModel,
 ) -> AsyncGenerator[str, None]:
     """Stream Pydantic AI result as OpenAI SSE."""
     async with agent.run_stream(
         prompt,
         message_history=history,
-        deps=deps,
         model_settings=settings,
-        model=model,
     ) as result:
         async for chunk in result.stream_text(delta=True):
             data = {
