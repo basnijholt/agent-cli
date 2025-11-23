@@ -1314,9 +1314,9 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 
 ### `memory-proxy`
 
-**Purpose:** Adds long-term conversational memory (self-hosted) with an OpenAI-compatible `/chat/completions` endpoint backed by Chroma (+ optional reranker).
+**Purpose:** Adds long-term conversational memory (self-hosted) with an OpenAI-compatible `/chat/completions` endpoint backed by Chroma and Onnx reranker.
 
-**How to Use It:**
+**Workflow:**
 
 - **Install memory deps first**: `pip install "agent-cli[memory]"` (or, from the repo, `uv sync --extra memory`)
 - **Start Server (Local LLM/OpenAI-compatible)**: `agent-cli memory-proxy --memory-path ./memory_db --openai-base-url http://localhost:11434/v1 --embedding-model text-embedding-3-small`
