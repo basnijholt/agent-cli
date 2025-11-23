@@ -150,31 +150,15 @@ def _build_openai_response(
     return response
 
 
-async def process_chat_request(
-    request: ChatRequest,
-    collection: Collection,
-    reranker_model: OnnxCrossEncoder,
-    openai_base_url: str,
-    docs_folder: Path,
-    default_top_k: int = 3,
-    api_key: str | None = None,
-) -> Any:
-    """Process a chat request with RAG."""
-    # 1. Retrieve Context
-    retrieval = retrieve_context(
-        request,
-        collection,
-        reranker_model,
-        default_top_k=default_top_k,
-    )
+def _create_read_tool(docs_folder: Path) -> Any:
+    """Create the read_full_document tool with the docs_folder context."""
 
-    # 2. Define Tool (Closure)
     def read_full_document(file_path: str) -> str:
         """Read the full content of a document.
 
         Use this tool when the context provided in the prompt is not enough
         and you need to read the entire file to answer the user's question.
-        The `file_path` should be exactly as it appears in the `[Source: ...]` tag.
+        The `file_path` should be exactly as it appears in the `[Source: ...]" tag.
 
         Args:
             file_path: The relative path to the file.
@@ -199,6 +183,30 @@ async def process_chat_request(
 
         except Exception as e:
             return f"Error reading file: {e}"
+
+    return read_full_document
+
+
+async def process_chat_request(
+    request: ChatRequest,
+    collection: Collection,
+    reranker_model: OnnxCrossEncoder,
+    openai_base_url: str,
+    docs_folder: Path,
+    default_top_k: int = 3,
+    api_key: str | None = None,
+) -> Any:
+    """Process a chat request with RAG."""
+    # 1. Retrieve Context
+    retrieval = retrieve_context(
+        request,
+        collection,
+        reranker_model,
+        default_top_k=default_top_k,
+    )
+
+    # 2. Define Tool
+    read_full_document = _create_read_tool(docs_folder)
 
     # 3. Define System Prompt (Closure)
     system_prompt = ""
