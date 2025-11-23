@@ -296,6 +296,7 @@ async def extract_and_store_facts_and_summaries(
     model: str,
     enable_git_versioning: bool = False,
     source_id: str | None = None,
+    enable_summarization: bool = True,
 ) -> None:
     """Run fact extraction and summary updates, persisting results."""
     fact_start = perf_counter()
@@ -343,37 +344,38 @@ async def extract_and_store_facts_and_summaries(
             entries=list(to_add),
         )
 
-    prior_summary_entry = get_summary_entry(
-        collection,
-        conversation_id,
-        role=_SUMMARY_ROLE,
-    )
-    prior_summary = prior_summary_entry.content if prior_summary_entry else None
-
-    summary_start = perf_counter()
-    new_summary = await update_summary(
-        prior_summary=prior_summary,
-        new_facts=facts,
-        openai_base_url=openai_base_url,
-        api_key=api_key,
-        model=model,
-    )
-    logger.info(
-        "Summary update completed in %.1f ms (conversation=%s)",
-        _elapsed_ms(summary_start),
-        conversation_id,
-    )
-    if new_summary:
-        summary_obj = Summary(
-            conversation_id=conversation_id,
-            content=new_summary,
-            created_at=datetime.now(UTC),
-        )
-        persist_summary(
+    if enable_summarization:
+        prior_summary_entry = get_summary_entry(
             collection,
-            memory_root=memory_root,
-            summary=summary_obj,
+            conversation_id,
+            role=_SUMMARY_ROLE,
         )
+        prior_summary = prior_summary_entry.content if prior_summary_entry else None
+
+        summary_start = perf_counter()
+        new_summary = await update_summary(
+            prior_summary=prior_summary,
+            new_facts=facts,
+            openai_base_url=openai_base_url,
+            api_key=api_key,
+            model=model,
+        )
+        logger.info(
+            "Summary update completed in %.1f ms (conversation=%s)",
+            _elapsed_ms(summary_start),
+            conversation_id,
+        )
+        if new_summary:
+            summary_obj = Summary(
+                conversation_id=conversation_id,
+                content=new_summary,
+                created_at=datetime.now(UTC),
+            )
+            persist_summary(
+                collection,
+                memory_root=memory_root,
+                summary=summary_obj,
+            )
 
     if enable_git_versioning:
         await commit_changes(memory_root, f"Add facts to conversation {conversation_id}")

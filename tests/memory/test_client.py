@@ -31,6 +31,18 @@ class _FakeCollection:
             "embeddings": [[]],
         }
 
+    def get(self, *args: Any, **kwargs: Any) -> dict[str, Any]:
+        """Mock get."""
+        del args, kwargs
+        return {
+            "ids": [],
+            "embeddings": None,
+            "metadatas": [],
+            "documents": [],
+            "uris": None,
+            "data": None,
+        }
+
 
 class _DummyReranker:
     def predict(self, pairs: list[tuple[str, str]]) -> list[float]:

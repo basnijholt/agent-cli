@@ -115,7 +115,12 @@ def _handle_change(change: Change, path: Path, collection: Collection, index: Me
         return
 
     if change == Change.deleted:
-        doc_id = index.find_id_by_path(path) or path.stem
+        doc_id = index.find_id_by_path(path)
+        if not doc_id:
+            # Fallback: try to parse ID from filename (timestamp__uuid.md)
+            parts = path.stem.split("__")
+            doc_id = parts[-1] if len(parts) > 1 else path.stem
+
         LOGGER.info("[deleted] %s", path.name)
         delete_entries(collection, [doc_id])
         index.remove(doc_id)

@@ -12,6 +12,7 @@ from agent_cli.memory._files import ensure_store_dirs
 from agent_cli.memory._git import init_repo
 from agent_cli.memory._indexer import MemoryIndex, initial_index, watch_memory_store
 from agent_cli.memory._ingest import extract_and_store_facts_and_summaries
+from agent_cli.memory._persistence import evict_if_needed
 from agent_cli.memory._retrieval import augment_chat_request
 from agent_cli.memory._store import init_memory_collection
 from agent_cli.memory.engine import process_chat_request
@@ -131,6 +132,13 @@ class MemoryClient:
             api_key=self.chat_api_key,
             model=model,
             enable_git_versioning=self.enable_git_versioning,
+            enable_summarization=self.enable_summarization,
+        )
+        evict_if_needed(
+            self.collection,
+            self.memory_path,
+            conversation_id,
+            self.max_entries,
         )
 
     async def search(

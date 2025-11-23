@@ -112,25 +112,25 @@ async def _postprocess_after_turn(
 ) -> None:
     """Run summarization/fact extraction and eviction."""
     post_start = perf_counter()
-    if enable_summarization:
-        summary_start = perf_counter()
-        await extract_and_store_facts_and_summaries(
-            collection=collection,
-            memory_root=memory_root,
-            conversation_id=conversation_id,
-            user_message=user_message,
-            assistant_message=assistant_message,
-            openai_base_url=openai_base_url,
-            api_key=api_key,
-            model=model,
-            enable_git_versioning=enable_git_versioning,
-            source_id=user_turn_id,
-        )
-        logger.info(
-            "Updated facts and summaries in %.1f ms (conversation=%s)",
-            _elapsed_ms(summary_start),
-            conversation_id,
-        )
+    summary_start = perf_counter()
+    await extract_and_store_facts_and_summaries(
+        collection=collection,
+        memory_root=memory_root,
+        conversation_id=conversation_id,
+        user_message=user_message,
+        assistant_message=assistant_message,
+        openai_base_url=openai_base_url,
+        api_key=api_key,
+        model=model,
+        enable_git_versioning=enable_git_versioning,
+        source_id=user_turn_id,
+        enable_summarization=enable_summarization,
+    )
+    logger.info(
+        "Updated facts and summaries in %.1f ms (conversation=%s)",
+        _elapsed_ms(summary_start),
+        conversation_id,
+    )
     eviction_start = perf_counter()
     evict_if_needed(collection, memory_root, conversation_id, max_entries)
     logger.info(

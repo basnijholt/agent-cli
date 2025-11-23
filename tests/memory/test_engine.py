@@ -538,7 +538,16 @@ async def test_streaming_request_persists_user_and_assistant(
         for line in body:
             yield line
 
+    async def fake_agent_run(*_args: Any, **_kwargs: Any) -> Any:
+        class _Result:
+            def __init__(self, output: Any) -> None:
+                self.output = output
+
+        # Return empty facts
+        return _Result([])
+
     monkeypatch.setattr(engine._streaming, "stream_chat_sse", fake_stream_chat_sse)
+    monkeypatch.setattr(_ingest.Agent, "run", fake_agent_run)
 
     response = await engine.process_chat_request(
         request,
