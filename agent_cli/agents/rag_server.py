@@ -10,6 +10,7 @@ from rich.logging import RichHandler
 
 from agent_cli import opts
 from agent_cli.cli import app
+from agent_cli.constants import DEFAULT_OPENAI_BASE_URL
 from agent_cli.core.utils import console, print_error_message
 
 
@@ -87,7 +88,7 @@ def rag_server(
     docs_folder = docs_folder.resolve()
     chroma_path = chroma_path.resolve()
     if openai_base_url is None:
-        openai_base_url = "https://api.openai.com/v1"
+        openai_base_url = DEFAULT_OPENAI_BASE_URL
 
     console.print(f"[bold green]Starting RAG Server on {host}:{port}[/bold green]")
     console.print(f"  📂 Docs: [blue]{docs_folder}[/blue]")
