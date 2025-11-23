@@ -54,14 +54,16 @@ def memory_proxy(
         help="Minimum semantic relevance threshold (0.0-1.0). Memories below this score are discarded to reduce noise.",
         rich_help_panel="Memory Configuration",
     ),
-    disable_summarization: bool = typer.Option(
-        False,  # noqa: FBT003
-        help="Disable automatic fact extraction and summaries.",
+    summarization: bool = typer.Option(
+        True,  # noqa: FBT003
+        "--summarization/--no-summarization",
+        help="Enable automatic fact extraction and summaries.",
         rich_help_panel="Memory Configuration",
     ),
-    enable_git_versioning: bool = typer.Option(
+    git_versioning: bool = typer.Option(
         True,  # noqa: FBT003
-        help="Enable automatic git commit of memory changes. Defaults to True.",
+        "--git-versioning/--no-git-versioning",
+        help="Enable automatic git commit of memory changes.",
         rich_help_panel="Memory Configuration",
     ),
     log_level: str = opts.LOG_LEVEL,
@@ -129,9 +131,9 @@ def memory_proxy(
     console.print(
         f"  ⚖️  Scoring: MMR λ=[blue]{mmr_lambda}[/blue], Recency w=[blue]{recency_weight}[/blue], Threshold=[blue]{score_threshold}[/blue]",
     )
-    if disable_summarization:
+    if not summarization:
         console.print("  ⚙️  Summaries: [red]disabled[/red]")
-    if enable_git_versioning:
+    if git_versioning:
         console.print("  📝 Git Versioning: [green]enabled[/green]")
 
     fastapi_app = create_app(
@@ -141,12 +143,12 @@ def memory_proxy(
         embedding_api_key=openai_api_key,
         chat_api_key=openai_api_key,
         default_top_k=default_top_k,
-        enable_summarization=not disable_summarization,
+        enable_summarization=summarization,
         max_entries=max_entries,
         mmr_lambda=mmr_lambda,
         recency_weight=recency_weight,
         score_threshold=score_threshold,
-        enable_git_versioning=enable_git_versioning,
+        enable_git_versioning=git_versioning,
     )
 
     uvicorn.run(fastapi_app, host=host, port=port, log_config=None)
