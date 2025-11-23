@@ -25,41 +25,33 @@ UPDATE_MEMORY_PROMPT = """
 You are a smart memory manager. Compare new facts to existing memories and choose an operation for each: ADD, UPDATE, DELETE, or NONE.
 
 Operations:
-1. ADD: New information not present in memory.
-2. UPDATE: Refines or adds detail to an existing memory. Use the provided ID.
-3. DELETE: Explicit contradiction with an existing memory (e.g., "I hate cheese" vs. "I love cheese"). Do NOT delete for unrelated or unknown statements.
-4. NONE: Fact already covered or not clearly related.
+1. **ADD**: New information not present in memory.
+2. **UPDATE**: Refines, corrects, or updates an existing memory. The `text` field MUST be the **new, updated content**.
+3. **DELETE**: Explicit contradiction (e.g., "I hate cheese" vs "I love cheese").
+4. **NONE**: Fact is already present (exact match) or unrelated.
 
 Rules:
-- IDs are integer indexes from the provided list. Use ONLY those integers for UPDATE/DELETE/NONE; never invent new IDs.
-- If you delete because a fact is replaced, you must also ADD or UPDATE the replacement fact so information is not lost.
-- Output must be a pure JSON list of decision objects—no prose, code fences, or extra keys.
+- IDs are integer indexes from the provided list.
+- **Critical**: For UPDATE, the `text` must be the NEW fact. Do NOT output the OLD text. If the text hasn't changed, use NONE.
+- If a new fact contradicts an old one, prefer DELETE (for the old) + ADD (for the new) if the IDs don't align, or UPDATE if it's a direct replacement.
 
 Schema:
 - ADD:    {"event": "ADD", "text": "..."}
-- UPDATE: {"event": "UPDATE", "id": 0, "text": "..."}
+- UPDATE: {"event": "UPDATE", "id": 0, "text": "New Content Here"}
 - DELETE: {"event": "DELETE", "id": 0}
 - NONE:   {"event": "NONE", "id": 0}
 
 Examples:
-- Existing: [{"id": 0, "text": "User is a software engineer"}]
-  New facts: ["Name is John"]
-  Output: [{"event": "ADD", "text": "Name is John"}]
-
-- Existing: [{"id": 0, "text": "User likes cricket"}, {"id": 1, "text": "User is a dev"}]
-  New facts: ["Loves to play cricket with friends"]
-  Output: [{"event": "UPDATE", "id": 0, "text": "Loves to play cricket with friends"}]
-
-- Existing: [{"id": 0, "text": "Loves cheese pizza"}]
-  New facts: ["Dislikes cheese pizza"]
-  Output: [{"event": "DELETE", "id": 0}, {"event": "ADD", "text": "Dislikes cheese pizza"}]
-
-- Existing: [{"id": 0, "text": "Name is John"}]
-  New facts: ["Name is John"]
-  Output: [{"event": "NONE", "id": 0}]
+- Existing: [{"id": 0, "text": "User likes pizza"}]
+  New: ["User loves pepperoni pizza"]
+  Output: [{"event": "UPDATE", "id": 0, "text": "User loves pepperoni pizza"}]
 
 - Existing: [{"id": 0, "text": "User likes pizza"}]
-  New facts: ["I don't have that information"]
+  New: ["User hates pizza"]
+  Output: [{"event": "DELETE", "id": 0}, {"event": "ADD", "text": "User hates pizza"}]
+
+- Existing: [{"id": 0, "text": "Name is John"}]
+  New: ["Name is John"]
   Output: [{"event": "NONE", "id": 0}]
 
 Input:
