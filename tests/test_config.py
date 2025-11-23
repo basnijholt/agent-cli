@@ -106,6 +106,15 @@ def test_provider_alias_normalization(config_file: Path) -> None:
     assert provider_cfg.tts_provider == "wyoming"
 
 
+def test_memory_server_help_includes_config_option() -> None:
+    """Ensure memory-server command wires config option (for defaults loading)."""
+    result = runner.invoke(app, ["memory-server", "--help"])
+    assert result.exit_code == 0
+    # Strip ANSI color codes for more reliable testing
+    clean_output = re.sub(r"\x1b\[[0-9;]*m", "", result.stdout)
+    assert "--config" in clean_output
+
+
 def test_rag_server_help_includes_config_option() -> None:
     """Ensure rag-server command wires config option (for defaults loading)."""
     result = runner.invoke(app, ["rag-server", "--help"])
