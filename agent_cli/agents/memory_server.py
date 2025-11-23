@@ -60,8 +60,8 @@ def memory_server(
         rich_help_panel="Memory Configuration",
     ),
     enable_git_versioning: bool = typer.Option(
-        False,  # noqa: FBT003
-        help="Enable automatic git commit of memory changes.",
+        True,  # noqa: FBT003
+        help="Enable automatic git commit of memory changes. Defaults to True.",
         rich_help_panel="Memory Configuration",
     ),
     log_level: str = opts.LOG_LEVEL,
