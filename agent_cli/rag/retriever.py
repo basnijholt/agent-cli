@@ -158,7 +158,8 @@ def search_context(
     context_parts = []
     for doc, meta, _ in ranked:
         path = meta.get("file_path", "unknown")
-        context_parts.append(f"[Source: {path}]\n{doc}")
+        chunk_id = meta.get("chunk_id", 0)
+        context_parts.append(f"### {path} (chunk {chunk_id})\n{doc}")
 
     context = "\n\n---\n\n".join(context_parts)
     sources = [

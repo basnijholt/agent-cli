@@ -39,14 +39,16 @@ _MAX_CONTEXT_CHARS = 12000
 
 _RAG_SYSTEM_TEMPLATE = """You are a helpful assistant with access to documentation.
 
-## Retrieved Context
-{context}
-
 ## Instructions
-- Answer based on the provided context when possible
-- Use `read_full_document(file_path)` if the snippets are insufficient
-- Cite sources using [Source: filename] format
-- If the information is not in the documents, say so clearly"""
+- Use the retrieved context ONLY if it's relevant to the question
+- If the context is irrelevant, ignore it and answer based on your knowledge (or say you don't know)
+- When using context, cite sources: [Source: filename]
+- If snippets are insufficient, call read_full_document(file_path) to get full content
+
+## Retrieved Context
+The following was automatically retrieved based on the user's query. It may or may not be relevant:
+
+{context}"""
 
 
 def truncate_context(context: str, max_chars: int = _MAX_CONTEXT_CHARS) -> str:
