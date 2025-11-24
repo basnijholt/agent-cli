@@ -62,12 +62,7 @@ def retrieve_context(
         LOGGER.info("RAG retrieval disabled for this request (top_k=%s)", top_k)
         return None
 
-    retrieval = search_context(
-        collection,
-        reranker_model,
-        user_message,
-        top_k=top_k,
-    )
+    retrieval = search_context(collection, reranker_model, user_message, top_k=top_k)
 
     if not retrieval.context:
         LOGGER.info("ℹ️  No relevant context found for query: '%s'", user_message[:50])  # noqa: RUF001
