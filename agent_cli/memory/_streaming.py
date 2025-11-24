@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
-import json
 from typing import TYPE_CHECKING, Any
 
 import httpx
+
+from agent_cli.core.sse import extract_content_from_chunk, parse_chunk
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
@@ -35,16 +36,9 @@ async def stream_chat_sse(
 
 def accumulate_assistant_text(line: str, buffer: list[str]) -> None:
     """Parse SSE line and append any assistant text delta into buffer."""
-    if not line.startswith("data:"):
+    chunk = parse_chunk(line)
+    if chunk is None:
         return
-    payload = line[5:].strip()
-    if payload == "[DONE]":
-        return
-    try:
-        parsed = json.loads(payload)
-    except Exception:
-        return
-    delta = (parsed.get("choices") or [{}])[0].get("delta") or {}
-    piece = delta.get("content") or delta.get("text") or ""
+    piece = extract_content_from_chunk(chunk)
     if piece:
         buffer.append(piece)

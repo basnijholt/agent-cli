@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-import json
 import logging
 import time
 from collections.abc import AsyncGenerator  # noqa: TC003
+from pathlib import Path  # noqa: TC003
 from typing import TYPE_CHECKING, Any
 
 from fastapi.responses import StreamingResponse
@@ -20,19 +20,80 @@ from pydantic_ai.messages import (
 from pydantic_ai.models.openai import OpenAIModel
 from pydantic_ai.providers.openai import OpenAIProvider
 
+from agent_cli.core.sse import format_chunk, format_done
+from agent_cli.rag.models import Message, RetrievalResult  # noqa: TC001
 from agent_cli.rag.retriever import search_context
 from agent_cli.rag.utils import load_document_text
 
 if TYPE_CHECKING:
-    from pathlib import Path
-
     from chromadb import Collection
     from pydantic_ai.result import RunResult
 
-    from agent_cli.rag.models import ChatRequest, Message, RetrievalResult
+    from agent_cli.rag.models import ChatRequest
     from agent_cli.rag.retriever import OnnxCrossEncoder
 
 LOGGER = logging.getLogger(__name__)
+
+# Maximum context size in characters (~3000 tokens at 4 chars/token)
+_MAX_CONTEXT_CHARS = 12000
+
+_RAG_SYSTEM_TEMPLATE = """You are a helpful assistant with access to documentation.
+
+## Retrieved Context
+{context}
+
+## Instructions
+- Answer based on the provided context when possible
+- Use `read_full_document(file_path)` if the snippets are insufficient
+- Cite sources using [Source: filename] format
+- If the information is not in the documents, say so clearly"""
+
+
+def truncate_context(context: str, max_chars: int = _MAX_CONTEXT_CHARS) -> str:
+    """Truncate context to fit within token budget while keeping complete chunks.
+
+    Args:
+        context: Raw context string with chunks separated by "---".
+        max_chars: Maximum characters to keep (default ~3000 tokens).
+
+    Returns:
+        Truncated context with complete chunks only.
+
+    """
+    if len(context) <= max_chars:
+        return context
+
+    separator = "\n\n---\n\n"
+    chunks = context.split(separator)
+    result = []
+    total = 0
+
+    for chunk in chunks:
+        chunk_len = len(chunk) + len(separator)
+        if total + chunk_len > max_chars:
+            break
+        result.append(chunk)
+        total += chunk_len
+
+    return separator.join(result)
+
+
+def is_path_safe(base: Path, requested: Path) -> bool:
+    """Check if requested path is safely within base directory.
+
+    Args:
+        base: The allowed base directory.
+        requested: The path to validate.
+
+    Returns:
+        True if requested path is within base, False otherwise.
+
+    """
+    try:
+        requested.resolve().relative_to(base.resolve())
+        return True
+    except ValueError:
+        return False
 
 
 def retrieve_context(
@@ -118,7 +179,7 @@ def _build_openai_response(
 ) -> dict[str, Any]:
     """Format the Pydantic AI result as an OpenAI-compatible dict."""
     usage = result.usage()
-    response = {
+    response: dict[str, Any] = {
         "id": f"chatcmpl-{result.run_id}",
         "object": "chat.completion",
         "created": int(time.time()),
@@ -130,12 +191,14 @@ def _build_openai_response(
                 "finish_reason": "stop",
             },
         ],
-        "usage": {
-            "prompt_tokens": usage.input_tokens,
-            "completion_tokens": usage.output_tokens,
-            "total_tokens": usage.total_tokens,
-        },
     }
+
+    if usage:
+        response["usage"] = {
+            "prompt_tokens": usage.input_tokens or 0,
+            "completion_tokens": usage.output_tokens or 0,
+            "total_tokens": usage.total_tokens or 0,
+        }
 
     if retrieval:
         response["rag_sources"] = retrieval.sources
@@ -158,10 +221,15 @@ async def process_chat_request(
 
     # 2. Define Tool
     def read_full_document(file_path: str) -> str:
-        """Read the full content of a document."""
+        """Read the full content of a document by its path.
+
+        Use this tool when the context snippet is insufficient and you need
+        the complete document to answer the user's question accurately.
+        The file_path should match one of the [Source: ...] paths from the context.
+        """
         try:
             full_path = (docs_folder / file_path).resolve()
-            if not str(full_path).startswith(str(docs_folder.resolve())):
+            if not is_path_safe(docs_folder, full_path):
                 return "Error: Access denied. Path is outside the document folder."
             if not full_path.exists():
                 return f"Error: File not found: {file_path}"
@@ -176,7 +244,8 @@ async def process_chat_request(
     # 3. Define System Prompt
     system_prompt = ""
     if retrieval and retrieval.context:
-        system_prompt = f"Context from documentation:\n{retrieval.context}"
+        truncated = truncate_context(retrieval.context)
+        system_prompt = _RAG_SYSTEM_TEMPLATE.format(context=truncated)
 
     # 4. Setup Agent
     provider = OpenAIProvider(base_url=openai_base_url, api_key=api_key or "dummy")
@@ -193,7 +262,14 @@ async def process_chat_request(
     # 7. Run Agent
     if request.stream:
         return StreamingResponse(
-            _stream_generator(agent, user_prompt, history, model_settings, request.model),
+            _stream_generator(
+                agent,
+                user_prompt,
+                history,
+                model_settings,
+                request.model,
+                retrieval,
+            ),
             media_type="text/event-stream",
         )
 
@@ -212,28 +288,21 @@ async def _stream_generator(
     history: list[ModelRequest | ModelResponse],
     settings: dict[str, Any],
     model_name: str,
+    retrieval: RetrievalResult | None,
 ) -> AsyncGenerator[str, None]:
     """Stream Pydantic AI result as OpenAI SSE."""
     async with agent.run_stream(prompt, message_history=history, model_settings=settings) as result:
         async for chunk in result.stream_text(delta=True):
-            data = {
-                "id": f"chatcmpl-{result.run_id}",
-                "object": "chat.completion.chunk",
-                "created": int(time.time()),
-                "model": model_name,
-                "choices": [
-                    {"index": 0, "delta": {"content": chunk}, "finish_reason": None},
+            yield format_chunk(result.run_id, model_name, content=chunk)
+
+        # Finish chunk with optional RAG sources
+        extra = None
+        if retrieval and retrieval.sources:
+            extra = {
+                "rag_sources": [
+                    {"source": s.source, "path": s.path, "chunk_id": s.chunk_id, "score": s.score}
+                    for s in retrieval.sources
                 ],
             }
-            yield f"data: {json.dumps(data)}\n\n"
-
-        # Finish chunk
-        finish_data = {
-            "id": f"chatcmpl-{result.run_id}",
-            "object": "chat.completion.chunk",
-            "created": int(time.time()),
-            "model": model_name,
-            "choices": [{"index": 0, "delta": {}, "finish_reason": "stop"}],
-        }
-        yield f"data: {json.dumps(finish_data)}\n\n"
-        yield "data: [DONE]\n\n"
+        yield format_chunk(result.run_id, model_name, finish_reason="stop", extra=extra)
+        yield format_done()
