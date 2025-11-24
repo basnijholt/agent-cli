@@ -37,13 +37,25 @@ LOGGER = logging.getLogger(__name__)
 # Maximum context size in characters (~3000 tokens at 4 chars/token)
 _MAX_CONTEXT_CHARS = 12000
 
-_RAG_SYSTEM_TEMPLATE = """You are a helpful assistant with access to documentation.
+_RAG_PROMPT_WITH_TOOLS = """You are a helpful assistant with access to documentation.
 
 ## Instructions
 - Use the retrieved context ONLY if it's relevant to the question
 - If the context is irrelevant, ignore it and answer based on your knowledge (or say you don't know)
 - When using context, cite sources: [Source: filename]
 - If snippets are insufficient, call read_full_document(file_path) to get full content
+
+## Retrieved Context
+The following was automatically retrieved based on the user's query. It may or may not be relevant:
+
+{context}"""
+
+_RAG_PROMPT_NO_TOOLS = """You are a helpful assistant with access to documentation.
+
+## Instructions
+- Use the retrieved context ONLY if it's relevant to the question
+- If the context is irrelevant, ignore it and answer based on your knowledge (or say you don't know)
+- When using context, cite sources: [Source: filename]
 
 ## Retrieved Context
 The following was automatically retrieved based on the user's query. It may or may not be relevant:
@@ -244,16 +256,19 @@ async def process_chat_request(
             return f"Error reading file: {e}"
 
     # 3. Define System Prompt
+    enable_tools = request.rag_enable_tools is not False  # Default True
     system_prompt = ""
     if retrieval and retrieval.context:
         truncated = truncate_context(retrieval.context)
-        system_prompt = _RAG_SYSTEM_TEMPLATE.format(context=truncated)
+        template = _RAG_PROMPT_WITH_TOOLS if enable_tools else _RAG_PROMPT_NO_TOOLS
+        system_prompt = template.format(context=truncated)
 
     # 4. Setup Agent
     provider = OpenAIProvider(base_url=openai_base_url, api_key=api_key or "dummy")
     model = OpenAIModel(model_name=request.model, provider=provider)
 
-    agent = Agent(model=model, tools=[read_full_document], system_prompt=system_prompt)
+    tools = [read_full_document] if enable_tools else []
+    agent = Agent(model=model, tools=tools, system_prompt=system_prompt)
 
     # 5. Prepare Message History & Prompt
     history, user_prompt = _convert_messages(request.messages)

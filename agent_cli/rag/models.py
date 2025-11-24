@@ -23,6 +23,7 @@ class ChatRequest(BaseModel):
     max_tokens: int | None = 1000
     stream: bool | None = False
     rag_top_k: int | None = None
+    rag_enable_tools: bool | None = True
 
 
 class DocMetadata(BaseModel):
