@@ -21,6 +21,7 @@ from pydantic_ai.models.openai import OpenAIModel
 from pydantic_ai.providers.openai import OpenAIProvider
 
 from agent_cli.core.sse import format_chunk, format_done
+from agent_cli.rag._prompt import RAG_PROMPT_NO_TOOLS, RAG_PROMPT_WITH_TOOLS
 from agent_cli.rag.models import Message, RetrievalResult  # noqa: TC001
 from agent_cli.rag.retriever import search_context
 from agent_cli.rag.utils import load_document_text
@@ -36,31 +37,6 @@ LOGGER = logging.getLogger(__name__)
 
 # Maximum context size in characters (~3000 tokens at 4 chars/token)
 _MAX_CONTEXT_CHARS = 12000
-
-_RAG_PROMPT_WITH_TOOLS = """You are a helpful assistant with access to documentation.
-
-## Instructions
-- Use the retrieved context ONLY if it's relevant to the question
-- If the context is irrelevant, ignore it and answer based on your knowledge (or say you don't know)
-- When using context, cite sources: [Source: filename]
-- If snippets are insufficient, call read_full_document(file_path) to get full content
-
-## Retrieved Context
-The following was automatically retrieved based on the user's query. It may or may not be relevant:
-
-{context}"""
-
-_RAG_PROMPT_NO_TOOLS = """You are a helpful assistant with access to documentation.
-
-## Instructions
-- Use the retrieved context ONLY if it's relevant to the question
-- If the context is irrelevant, ignore it and answer based on your knowledge (or say you don't know)
-- When using context, cite sources: [Source: filename]
-
-## Retrieved Context
-The following was automatically retrieved based on the user's query. It may or may not be relevant:
-
-{context}"""
 
 
 def truncate_context(context: str, max_chars: int = _MAX_CONTEXT_CHARS) -> str:
@@ -260,7 +236,7 @@ async def process_chat_request(
     system_prompt = ""
     if retrieval and retrieval.context:
         truncated = truncate_context(retrieval.context)
-        template = _RAG_PROMPT_WITH_TOOLS if enable_tools else _RAG_PROMPT_NO_TOOLS
+        template = RAG_PROMPT_WITH_TOOLS if enable_tools else RAG_PROMPT_NO_TOOLS
         system_prompt = template.format(context=truncated)
 
     # 4. Setup Agent
