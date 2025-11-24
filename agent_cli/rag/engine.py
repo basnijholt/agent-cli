@@ -68,17 +68,8 @@ def truncate_context(context: str, max_chars: int = _MAX_CONTEXT_CHARS) -> str:
     return separator.join(result)
 
 
-def is_path_safe(base: Path, requested: Path) -> bool:
-    """Check if requested path is safely within base directory.
-
-    Args:
-        base: The allowed base directory.
-        requested: The path to validate.
-
-    Returns:
-        True if requested path is within base, False otherwise.
-
-    """
+def _is_path_safe(base: Path, requested: Path) -> bool:
+    """Check if requested path is safely within base directory."""
     try:
         requested.resolve().relative_to(base.resolve())
         return True
@@ -86,7 +77,7 @@ def is_path_safe(base: Path, requested: Path) -> bool:
         return False
 
 
-def retrieve_context(
+def _retrieve_context(
     request: ChatRequest,
     collection: Collection,
     reranker_model: OnnxCrossEncoder,
@@ -207,7 +198,7 @@ async def process_chat_request(
 ) -> Any:
     """Process a chat request with RAG."""
     # 1. Retrieve Context
-    retrieval = retrieve_context(request, collection, reranker_model, default_top_k=default_top_k)
+    retrieval = _retrieve_context(request, collection, reranker_model, default_top_k=default_top_k)
 
     # 2. Define Tool
     def read_full_document(file_path: str) -> str:
@@ -219,7 +210,7 @@ async def process_chat_request(
         """
         try:
             full_path = (docs_folder / file_path).resolve()
-            if not is_path_safe(docs_folder, full_path):
+            if not _is_path_safe(docs_folder, full_path):
                 return "Error: Access denied. Path is outside the document folder."
             if not full_path.exists():
                 return f"Error: File not found: {file_path}"

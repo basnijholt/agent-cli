@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from agent_cli.rag import engine
-from agent_cli.rag.engine import is_path_safe, truncate_context
+from agent_cli.rag.engine import _is_path_safe, truncate_context
 from agent_cli.rag.models import ChatRequest, Message
 
 
@@ -48,8 +48,8 @@ def test_is_path_safe_within_base(tmp_path: Path) -> None:
     safe_file = base / "test.txt"
     safe_file.touch()
 
-    assert is_path_safe(base, safe_file) is True
-    assert is_path_safe(base, base / "subdir" / "file.txt") is True
+    assert _is_path_safe(base, safe_file) is True
+    assert _is_path_safe(base, base / "subdir" / "file.txt") is True
 
 
 def test_is_path_safe_outside_base(tmp_path: Path) -> None:
@@ -58,10 +58,10 @@ def test_is_path_safe_outside_base(tmp_path: Path) -> None:
     base.mkdir()
 
     # Parent directory
-    assert is_path_safe(base, tmp_path / "other.txt") is False
+    assert _is_path_safe(base, tmp_path / "other.txt") is False
 
     # Path traversal attempt
-    assert is_path_safe(base, base / ".." / "secret.txt") is False
+    assert _is_path_safe(base, base / ".." / "secret.txt") is False
 
 
 def test_is_path_safe_symlink_escape(tmp_path: Path) -> None:
@@ -76,14 +76,14 @@ def test_is_path_safe_symlink_escape(tmp_path: Path) -> None:
     try:
         symlink.symlink_to(outside)
         # The resolved path should be detected as outside
-        assert is_path_safe(base, symlink) is False
+        assert _is_path_safe(base, symlink) is False
     except OSError:
         # Symlinks may not be supported on all systems
         pass
 
 
 def test_retrieve_context_direct() -> None:
-    """Test direct usage of retrieve_context without async/HTTP."""
+    """Test direct usage of _retrieve_context without async/HTTP."""
     mock_collection = MagicMock()
     mock_reranker = MagicMock()
 
@@ -99,7 +99,7 @@ def test_retrieve_context_direct() -> None:
             messages=[Message(role="user", content="Query")],
         )
 
-        retrieval = engine.retrieve_context(req, mock_collection, mock_reranker)
+        retrieval = engine._retrieve_context(req, mock_collection, mock_reranker)
 
         assert retrieval is not None
         assert "Found it." in retrieval.context
@@ -107,7 +107,7 @@ def test_retrieve_context_direct() -> None:
         # Case 2: No context
         mock_search.return_value = MagicMock(context="", sources=[])
 
-        retrieval = engine.retrieve_context(req, mock_collection, mock_reranker)
+        retrieval = engine._retrieve_context(req, mock_collection, mock_reranker)
 
         assert retrieval is None
 

@@ -91,10 +91,10 @@ async def test_rag_tool_execution_flow(
         sources=[RagSource(source="secret.txt", path="secret.txt", chunk_id=0, score=0.9)],
     )
 
-    # Mock the retrieve_context function in engine
+    # Mock the _retrieve_context function in engine
     monkeypatch.setattr(
         engine,
-        "retrieve_context",
+        "_retrieve_context",
         lambda *_, **__: mock_retrieval,
     )
 
