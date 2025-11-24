@@ -122,6 +122,7 @@ def _build_openai_response(
     retrieval: RetrievalResult | None,
 ) -> dict[str, Any]:
     """Format the Pydantic AI result as an OpenAI-compatible dict."""
+    usage = result.usage()
     response = {
         "id": f"chatcmpl-{result.run_id}",
         "object": "chat.completion",
@@ -138,9 +139,9 @@ def _build_openai_response(
             },
         ],
         "usage": {
-            "prompt_tokens": result.usage.request_tokens if result.usage else 0,
-            "completion_tokens": result.usage.response_tokens if result.usage else 0,
-            "total_tokens": result.usage.total_tokens if result.usage else 0,
+            "prompt_tokens": usage.input_tokens,
+            "completion_tokens": usage.output_tokens,
+            "total_tokens": usage.total_tokens,
         },
     }
 
