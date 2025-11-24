@@ -185,7 +185,6 @@ async def test_rag_tool_execution_flow(
 async def test_rag_api_live_real_llm(
     tmp_path: Any,
     rag_server: Callable[[Any], AbstractAsyncContextManager[str]],
-    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Live end-to-end: start uvicorn, hit real LLM, verify RAG + Tool works."""
     base_url = os.environ["RAG_API_LIVE_BASE"]
@@ -199,29 +198,20 @@ async def test_rag_api_live_real_llm(
     secret_file.write_text("The secret ingredient is Saffron.")
 
     # 2. Setup App
-    # We use real ChromaDB but with mocked embedding function to avoid needing embedding server
-    from chromadb.utils import embedding_functions  # noqa: PLC0415
+    # We use the real stack. If RAG_API_LIVE_BASE supports embeddings, it will work.
+    # If connecting to real OpenAI, it will use real embeddings.
 
-    real_ef = embedding_functions.DefaultEmbeddingFunction()
-    monkeypatch.setattr(
-        "agent_cli.core.chroma.embedding_functions.OpenAIEmbeddingFunction",
-        lambda **_kwargs: real_ef,
-    )
-
-    # We also need to mock the reranker model download if possible, or let it run real if slow is ok.
-    # For live test, let's assume it's ok to run real or we mock it to be pass-through.
-    # Let's mock reranker to always return high score for our file to keep it simple/fast
-    mock_reranker = MagicMock()
-    mock_reranker.predict.return_value = [0.99]  # High score for everything
-    monkeypatch.setattr(api, "get_reranker_model", lambda *_: mock_reranker)
+    # Note: We do NOT monkeypatch embeddings or reranker here.
+    # We let the app download the reranker model (might be slow on first run)
+    # and use the configured embedding provider.
 
     app = api.create_app(
         docs_folder=docs_folder,
         chroma_path=tmp_path / "db",
         openai_base_url=base_url.rstrip("/"),
         chat_api_key=chat_api_key,
-        # Use a dummy embedding model name to trigger our patch
-        embedding_model="text-embedding-3-small",
+        # We assume the backend supports the default embedding model or the user
+        # would need to configure it. For this test, we use the default.
         limit=3,
     )
 
