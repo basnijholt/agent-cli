@@ -168,7 +168,7 @@ async def process_chat_request(
         default_top_k=default_top_k,
     )
 
-    # 2. Define Tool (Closure) - KISS: No factory needed, directly accesses docs_folder
+    # 2. Define Tool
     def read_full_document(file_path: str) -> str:
         """Read the full content of a document."""
         try:
