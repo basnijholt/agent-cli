@@ -131,10 +131,7 @@ def _build_openai_response(
         "choices": [
             {
                 "index": 0,
-                "message": {
-                    "role": "assistant",
-                    "content": result.output,
-                },
+                "message": {"role": "assistant", "content": result.output},
                 "finish_reason": "stop",
             },
         ],
@@ -162,12 +159,7 @@ async def process_chat_request(
 ) -> Any:
     """Process a chat request with RAG."""
     # 1. Retrieve Context
-    retrieval = retrieve_context(
-        request,
-        collection,
-        reranker_model,
-        default_top_k=default_top_k,
-    )
+    retrieval = retrieve_context(request, collection, reranker_model, default_top_k=default_top_k)
 
     # 2. Define Tool
     def read_full_document(file_path: str) -> str:
@@ -195,11 +187,7 @@ async def process_chat_request(
     provider = OpenAIProvider(base_url=openai_base_url, api_key=api_key or "dummy")
     model = OpenAIModel(model_name=request.model, provider=provider)
 
-    agent = Agent(
-        model=model,
-        tools=[read_full_document],
-        system_prompt=system_prompt,
-    )
+    agent = Agent(model=model, tools=[read_full_document], system_prompt=system_prompt)
 
     # 5. Prepare Message History & Prompt
     history, user_prompt = _convert_messages(request.messages)
@@ -231,11 +219,7 @@ async def _stream_generator(
     model_name: str,
 ) -> AsyncGenerator[str, None]:
     """Stream Pydantic AI result as OpenAI SSE."""
-    async with agent.run_stream(
-        prompt,
-        message_history=history,
-        model_settings=settings,
-    ) as result:
+    async with agent.run_stream(prompt, message_history=history, model_settings=settings) as result:
         async for chunk in result.stream_text(delta=True):
             data = {
                 "id": f"chatcmpl-{result.run_id}",
@@ -243,11 +227,7 @@ async def _stream_generator(
                 "created": int(time.time()),
                 "model": model_name,
                 "choices": [
-                    {
-                        "index": 0,
-                        "delta": {"content": chunk},
-                        "finish_reason": None,
-                    },
+                    {"index": 0, "delta": {"content": chunk}, "finish_reason": None},
                 ],
             }
             yield f"data: {json.dumps(data)}\n\n"
@@ -258,13 +238,7 @@ async def _stream_generator(
             "object": "chat.completion.chunk",
             "created": int(time.time()),
             "model": model_name,
-            "choices": [
-                {
-                    "index": 0,
-                    "delta": {},
-                    "finish_reason": "stop",
-                },
-            ],
+            "choices": [{"index": 0, "delta": {}, "finish_reason": "stop"}],
         }
         yield f"data: {json.dumps(finish_data)}\n\n"
         yield "data: [DONE]\n\n"
