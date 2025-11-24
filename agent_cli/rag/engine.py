@@ -150,43 +150,6 @@ def _build_openai_response(
     return response
 
 
-def _create_read_tool(docs_folder: Path) -> Any:
-    """Create the read_full_document tool with the docs_folder context."""
-
-    def read_full_document(file_path: str) -> str:
-        """Read the full content of a document.
-
-        Use this tool when the context provided in the prompt is not enough
-        and you need to read the entire file to answer the user's question.
-        The `file_path` should be exactly as it appears in the `[Source: ...]" tag.
-
-        Args:
-            file_path: The relative path to the file.
-
-        """
-        try:
-            # Security check: resolve path and ensure it's inside docs_folder
-            full_path = (docs_folder / file_path).resolve()
-
-            # Verify it is still inside docs_folder
-            if not str(full_path).startswith(str(docs_folder.resolve())):
-                return "Error: Access denied. Path is outside the document folder."
-
-            if not full_path.exists():
-                return f"Error: File not found: {file_path}"
-
-            text = load_document_text(full_path)
-            if text is None:
-                return "Error: Could not read file (unsupported format or encoding)."
-
-            return text
-
-        except Exception as e:
-            return f"Error reading file: {e}"
-
-    return read_full_document
-
-
 async def process_chat_request(
     request: ChatRequest,
     collection: Collection,
@@ -205,10 +168,24 @@ async def process_chat_request(
         default_top_k=default_top_k,
     )
 
-    # 2. Define Tool
-    read_full_document = _create_read_tool(docs_folder)
+    # 2. Define Tool (Closure) - KISS: No factory needed, directly accesses docs_folder
+    def read_full_document(file_path: str) -> str:
+        """Read the full content of a document."""
+        try:
+            full_path = (docs_folder / file_path).resolve()
+            if not str(full_path).startswith(str(docs_folder.resolve())):
+                return "Error: Access denied. Path is outside the document folder."
+            if not full_path.exists():
+                return f"Error: File not found: {file_path}"
 
-    # 3. Define System Prompt (Closure)
+            text = load_document_text(full_path)
+            if text is None:
+                return "Error: Could not read file (unsupported format or encoding)."
+            return text
+        except Exception as e:
+            return f"Error reading file: {e}"
+
+    # 3. Define System Prompt
     system_prompt = ""
     if retrieval and retrieval.context:
         system_prompt = f"Context from documentation:\n{retrieval.context}"
