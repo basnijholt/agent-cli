@@ -210,8 +210,8 @@ async def test_rag_api_live_real_llm(
         chroma_path=tmp_path / "db",
         openai_base_url=base_url.rstrip("/"),
         chat_api_key=chat_api_key,
-        # We assume the backend supports the default embedding model or the user
-        # would need to configure it. For this test, we use the default.
+        # Use a dummy embedding model name to trigger our patch
+        embedding_model="embeddinggemma:300m",
         limit=3,
     )
 
