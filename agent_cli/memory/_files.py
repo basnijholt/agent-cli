@@ -171,26 +171,8 @@ def load_conversation_history(root: Path, conversation_id: str) -> list[MemoryFi
     return records
 
 
-_RESPONSE_METADATA_FIELDS = {
-    "model",
-    "system_fingerprint",
-    "prompt_tokens",
-    "completion_tokens",
-    "total_tokens",
-    "duration_ms",
-    "prompt_ms",
-    "predicted_ms",
-    "prompt_per_second",
-    "predicted_per_second",
-    "cache_tokens",
-}
-
-
 def read_memory_file(path: Path) -> MemoryFileRecord | None:
-    """Parse a single memory file; return None if invalid.
-
-    Handles both flat format (existing files) and nested response_metadata format.
-    """
+    """Parse a single memory file; return None if invalid."""
     try:
         text = path.read_text(encoding="utf-8")
     except Exception:
@@ -206,12 +188,6 @@ def read_memory_file(path: Path) -> MemoryFileRecord | None:
     if not doc_id:
         LOGGER.warning("Memory file %s missing id; skipping", path)
         return None
-
-    # Convert flat response metadata fields to nested format for backward compatibility
-    if "response_metadata" not in fm:
-        response_fields = {k: fm.pop(k) for k in list(fm.keys()) if k in _RESPONSE_METADATA_FIELDS}
-        if response_fields:
-            fm["response_metadata"] = response_fields
 
     try:
         metadata = MemoryMetadata(**fm)
@@ -265,17 +241,8 @@ def load_snapshot(snapshot_path: Path) -> dict[str, MemoryFileRecord]:
 
 
 def _render_front_matter(doc_id: str, metadata: MemoryMetadata) -> str:
-    """Return YAML front matter string.
-
-    Flattens response_metadata fields into the top-level dict for readability
-    and backward compatibility with existing files.
-    """
-    meta_dict = metadata.model_dump(exclude_none=True)
-    # Flatten response_metadata into top-level
-    response_meta = meta_dict.pop("response_metadata", None)
-    if response_meta:
-        meta_dict.update(response_meta)
-    meta_dict = {"id": doc_id, **meta_dict}
+    """Return YAML front matter string."""
+    meta_dict = {"id": doc_id, **metadata.model_dump(exclude_none=True)}
     yaml_block = yaml.safe_dump(meta_dict, sort_keys=False)
     return f"---\n{yaml_block}---"
 
