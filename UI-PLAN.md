@@ -1,8 +1,8 @@
 # UI Development Plan: Agent CLI Desktop
 
 > **Status**: Active / Phase 3 Completed
-> **Last Updated**: 2025-11-24
-> **Next Step**: Test the UI and proceed to Phase 4 (Voice Integration)
+> **Last Updated**: 2025-11-25
+> **Next Step**: Phase 3.5 - Conversation Persistence
 
 ## 1. The Vision
 
@@ -145,29 +145,59 @@ const runtime = useAgentCLIRuntime({
 **Completed**:
 
 - [x] Created `SettingsModal.tsx` component with:
-  - Model selector dropdown (OpenAI: gpt-4o, gpt-4o-mini, gpt-4-turbo; Ollama: llama3.2, llama3.1, mistral)
+  - Model selector dropdown fetched dynamically from `/v1/models` API
   - RAG `memory_top_k` parameter input (1-20 range)
   - Current configuration display
   - Cancel/Save buttons with proper state management
 
 - [x] Updated `App.tsx` to:
   - Lift configuration state to App level
+  - Fetch models on startup and auto-select first available model
   - Pass dynamic config to `useAgentCLIRuntime`
   - Manage settings modal open/close state
 
 - [x] Updated `ThreadList.tsx` to add Settings button in sidebar footer
 
-- [x] Updated `useAgentCLIRuntime.ts` to:
-  - Use `useRef` pattern to avoid stale closure issues when config changes
-  - Ensure config changes are immediately reflected in API requests
+- [x] **Major refactor**: Replaced `useLangGraphRuntime` with `useExternalStoreRuntime`
+  - **Root cause**: `useLangGraphRuntime` requires AssistantCloud. Without it, falls back to `InMemoryThreadListAdapter` which always returns `externalId: undefined`, causing "Thread not found" errors.
+  - **Solution**: Use `useExternalStoreRuntime` for full control over message/thread state
+  - Implemented `onNew`, `onSwitchToThread`, `onSwitchToNewThread` callbacks
+  - Custom SSE streaming parser for chat responses
+  - Support for `reasoning_content` (thinking models like qwen3-thinking)
+
+- [x] **Added Playwright E2E tests** (`UI/e2e/chat.spec.ts`):
+  - UI element loading test
+  - Settings modal with model fetching test
+  - Chat message sending and streaming response test
+  - Thinking model `reasoning_content` handling test
+  - No-model-selected error state test
+  - All 5 tests passing
 
 **Key files created/modified**:
-- `UI/src/components/SettingsModal.tsx` - NEW: Settings modal component
-- `UI/src/App.tsx` - MODIFIED: Lifted config state, added modal
+- `UI/src/components/SettingsModal.tsx` - NEW: Settings modal component (fetches models from API)
+- `UI/src/App.tsx` - MODIFIED: Lifted config state, added modal, fetches models on startup
 - `UI/src/components/ThreadList.tsx` - MODIFIED: Added Settings button
-- `UI/src/runtime/useAgentCLIRuntime.ts` - MODIFIED: Added useRef for config
+- `UI/src/runtime/useAgentCLIRuntime.ts` - REWRITTEN: Uses `useExternalStoreRuntime` instead of `useLangGraphRuntime`
+- `UI/e2e/chat.spec.ts` - NEW: Playwright E2E tests
+- `UI/playwright.config.ts` - NEW: Playwright configuration
 
 **Note**: Settings persist in React state (session-only). LocalStorage persistence can be added later if needed.
+
+### Phase 3.5: Conversation Persistence (📅 Next)
+
+**Goal**: Persist conversations across page refresh and populate thread list from backend.
+
+**Problem**: Currently, each page refresh creates a new thread ID and messages are lost.
+
+**Planned**:
+
+- [ ] Load conversation list from `/v1/conversations` on startup
+- [ ] Populate ThreadList sidebar with existing conversations
+- [ ] Auto-select most recent conversation (or persist selection in localStorage)
+- [ ] Ensure thread switching loads messages from backend
+- [ ] Add E2E tests for persistence behavior
+
+**Backend endpoints needed**: Already exist (`GET /v1/conversations`, `GET /v1/conversations/{id}`)
 
 ### Phase 4: Voice Integration (📅 Planned)
 
@@ -617,6 +647,10 @@ type LanguageModelConfig = {
 | 2025-11-24 | Delete SettingsModal for now | Defer to Phase 3; focus on core thread list functionality first |
 | 2025-11-24 | Recreate SettingsModal with model/RAG config | Phase 3 implementation with dynamic runtime config |
 | 2025-11-24 | Use useRef for config in runtime | Avoid stale closure issues when config changes |
+| 2025-11-25 | Fetch models from `/v1/models` API | Dynamic model list instead of hardcoding |
+| 2025-11-25 | Replace `useLangGraphRuntime` with `useExternalStoreRuntime` | `useLangGraphRuntime` requires AssistantCloud; `useExternalStoreRuntime` gives full control without cloud dependency |
+| 2025-11-25 | Add Playwright E2E tests | Enable automated testing instead of manual verification |
+| 2025-11-25 | Support `reasoning_content` in SSE parser | Thinking models (qwen3-thinking) use this field instead of `content` |
 
 ---
 
