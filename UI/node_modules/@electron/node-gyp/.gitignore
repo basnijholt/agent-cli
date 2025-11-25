@@ -1,8 +1,0 @@
-.ncu
-.nyc_output
-*.swp
-gyp/test
-node_modules
-node-gyp-*.tgz
-package-lock.json
-test/.node-gyp
