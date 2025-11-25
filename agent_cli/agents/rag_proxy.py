@@ -47,9 +47,9 @@ def rag_proxy(
     config_file: str | None = opts.CONFIG_FILE,
     print_args: bool = opts.PRINT_ARGS,
     enable_rag_tools: bool = typer.Option(
-        default=True,
-        param_decls=["--enable-rag-tools/--no-enable-rag-tools"],
-        help="Enable/disable RAG tools (e.g., reading full documents) for the agent.",
+        True,  # noqa: FBT003
+        "--rag-tools/--no-rag-tools",
+        help="Allow agent to fetch full documents when snippets are insufficient.",
         rich_help_panel="RAG Configuration",
     ),
 ) -> None:

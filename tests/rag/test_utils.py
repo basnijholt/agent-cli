@@ -3,13 +3,13 @@
 from pathlib import Path
 from typing import Any
 
-from agent_cli.rag import utils
+from agent_cli.rag import _utils
 
 
 def test_chunk_text_simple() -> None:
     """Test simple text chunking."""
     text = "Hello world. This is a test."
-    chunks = utils.chunk_text(text, chunk_size=100, overlap=0)
+    chunks = _utils.chunk_text(text, chunk_size=100, overlap=0)
     assert len(chunks) == 1
     assert chunks[0] == text
 
@@ -22,7 +22,7 @@ def test_chunk_text_split() -> None:
 
     # Small chunk size to force split
     # "Sentence 1." is 11 chars.
-    chunks = utils.chunk_text(text, chunk_size=25, overlap=0)
+    chunks = _utils.chunk_text(text, chunk_size=25, overlap=0)
 
     # Expecting roughly: ["Sentence 1. Sentence 2.", "Sentence 3. Sentence 4."]
     # But strict length might vary.
@@ -36,7 +36,7 @@ def test_chunk_text_overlap() -> None:
     text = "A. B. C. D. E. F."
     # Chunk size small enough to fit maybe 2-3 sentences
     # Overlap enough to repeat 1
-    chunks = utils.chunk_text(text, chunk_size=6, overlap=3)
+    chunks = _utils.chunk_text(text, chunk_size=6, overlap=3)
 
     # "A. B. " -> 6 chars
     # "C. D. " -> 6 chars
@@ -55,7 +55,7 @@ def test_load_document_text_txt(tmp_path: Path) -> None:
     f = tmp_path / "test.txt"
     f.write_text("hello world", encoding="utf-8")
 
-    content = utils.load_document_text(f)
+    content = _utils.load_document_text(f)
     assert content == "hello world"
 
 
@@ -64,7 +64,7 @@ def test_load_document_text_unsupported(tmp_path: Path) -> None:
     f = tmp_path / "test.xyz"
     f.write_text("content", encoding="utf-8")
 
-    content = utils.load_document_text(f)
+    content = _utils.load_document_text(f)
     assert content is None
 
 
@@ -80,7 +80,7 @@ def test_load_document_text_markitdown(tmp_path: Path, mocker: Any) -> None:
     f = tmp_path / "test.pdf"
     f.touch()
 
-    content = utils.load_document_text(f)
+    content = _utils.load_document_text(f)
 
     assert content == "mocked content"
     mock_cls.assert_called_once()
@@ -92,14 +92,14 @@ def test_get_file_hash(tmp_path: Path) -> None:
     f = tmp_path / "test.txt"
     f.write_text("content", encoding="utf-8")
 
-    h1 = utils.get_file_hash(f)
+    h1 = _utils.get_file_hash(f)
 
     f.write_text("content", encoding="utf-8")  # Same content
-    h2 = utils.get_file_hash(f)
+    h2 = _utils.get_file_hash(f)
 
     assert h1 == h2
 
     f.write_text("modified", encoding="utf-8")
-    h3 = utils.get_file_hash(f)
+    h3 = _utils.get_file_hash(f)
 
     assert h1 != h3

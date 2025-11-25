@@ -10,8 +10,8 @@ from huggingface_hub import hf_hub_download
 from onnxruntime import InferenceSession
 from transformers import AutoTokenizer
 
+from agent_cli.rag._store import query_docs
 from agent_cli.rag.models import RagSource, RetrievalResult
-from agent_cli.rag.store import query_docs
 
 if TYPE_CHECKING:
     from chromadb import Collection

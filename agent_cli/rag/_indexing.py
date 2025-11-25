@@ -7,9 +7,9 @@ import datetime
 import logging
 from typing import TYPE_CHECKING
 
+from agent_cli.rag._store import delete_by_file_path, get_all_metadata, upsert_docs
+from agent_cli.rag._utils import chunk_text, get_file_hash, load_document_text
 from agent_cli.rag.models import DocMetadata
-from agent_cli.rag.store import delete_by_file_path, get_all_metadata, upsert_docs
-from agent_cli.rag.utils import chunk_text, get_file_hash, load_document_text
 
 if TYPE_CHECKING:
     from pathlib import Path

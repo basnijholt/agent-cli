@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, patch
 
 from agent_cli.constants import DEFAULT_OPENAI_EMBEDDING_MODEL
 from agent_cli.core import chroma
-from agent_cli.rag import store
+from agent_cli.rag import _store
 
 
 def test_init_collection(tmp_path: Path) -> None:
@@ -28,5 +28,5 @@ def test_init_collection(tmp_path: Path) -> None:
 def test_delete_by_file_path() -> None:
     """Test deleting by file path."""
     mock_collection = MagicMock()
-    store.delete_by_file_path(mock_collection, "path/to/file")
+    _store.delete_by_file_path(mock_collection, "path/to/file")
     mock_collection.delete.assert_called_with(where={"file_path": "path/to/file"})

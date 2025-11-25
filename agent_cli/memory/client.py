@@ -17,14 +17,14 @@ from agent_cli.memory._retrieval import augment_chat_request
 from agent_cli.memory._store import init_memory_collection
 from agent_cli.memory.engine import process_chat_request
 from agent_cli.memory.models import ChatRequest, MemoryRetrieval, Message
-from agent_cli.rag.retriever import get_reranker_model
+from agent_cli.rag._retriever import get_reranker_model
 
 if TYPE_CHECKING:
     from pathlib import Path
 
     from chromadb import Collection
 
-    from agent_cli.rag.retriever import OnnxCrossEncoder
+    from agent_cli.rag._retriever import OnnxCrossEncoder
 
 
 logger = logging.getLogger("agent_cli.memory.client")

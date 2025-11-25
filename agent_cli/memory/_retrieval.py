@@ -16,7 +16,7 @@ from agent_cli.memory.models import (
     Message,
     StoredMemory,
 )
-from agent_cli.rag.retriever import OnnxCrossEncoder, predict_relevance
+from agent_cli.rag._retriever import OnnxCrossEncoder, predict_relevance
 
 if TYPE_CHECKING:
     from chromadb import Collection

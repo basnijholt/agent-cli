@@ -22,16 +22,16 @@ from pydantic_ai.providers.openai import OpenAIProvider
 
 from agent_cli.core.sse import format_chunk, format_done
 from agent_cli.rag._prompt import RAG_PROMPT_NO_TOOLS, RAG_PROMPT_WITH_TOOLS
+from agent_cli.rag._retriever import search_context
+from agent_cli.rag._utils import load_document_text
 from agent_cli.rag.models import Message, RetrievalResult  # noqa: TC001
-from agent_cli.rag.retriever import search_context
-from agent_cli.rag.utils import load_document_text
 
 if TYPE_CHECKING:
     from chromadb import Collection
     from pydantic_ai.result import RunResult
 
+    from agent_cli.rag._retriever import OnnxCrossEncoder
     from agent_cli.rag.models import ChatRequest
-    from agent_cli.rag.retriever import OnnxCrossEncoder
 
 LOGGER = logging.getLogger(__name__)
 

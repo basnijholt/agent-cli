@@ -7,8 +7,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from agent_cli.rag import indexing
-from agent_cli.rag.utils import get_file_hash
+from agent_cli.rag import _indexing
+from agent_cli.rag._utils import get_file_hash
 
 
 @pytest.fixture
@@ -35,8 +35,8 @@ def test_index_file(mock_collection: MagicMock, temp_docs_folder: Path) -> None:
     file_hashes: dict[str, str] = {}
 
     # Patch utils to ensure we don't rely on real chunking logic complexity
-    with patch("agent_cli.rag.indexing.chunk_text", return_value=["Hello world."]):
-        indexing.index_file(mock_collection, temp_docs_folder, file_path, file_hashes)
+    with patch("agent_cli.rag._indexing.chunk_text", return_value=["Hello world."]):
+        _indexing.index_file(mock_collection, temp_docs_folder, file_path, file_hashes)
 
     # Should have upserted
     mock_collection.upsert.assert_called_once()
@@ -53,7 +53,7 @@ def test_index_file_no_change(mock_collection: MagicMock, temp_docs_folder: Path
     current_hash = get_file_hash(file_path)
     file_hashes = {"test.txt": current_hash}
 
-    indexing.index_file(mock_collection, temp_docs_folder, file_path, file_hashes)
+    _indexing.index_file(mock_collection, temp_docs_folder, file_path, file_hashes)
 
     # Should NOT upsert
     mock_collection.upsert.assert_not_called()
@@ -67,8 +67,8 @@ def test_initial_index_removes_stale(mock_collection: MagicMock, temp_docs_folde
     # Setup: Disk only has "existing.txt"
     (temp_docs_folder / "existing.txt").write_text("I am here.")
 
-    with patch("agent_cli.rag.indexing.chunk_text", return_value=["content"]):
-        indexing.initial_index(mock_collection, temp_docs_folder, file_hashes)
+    with patch("agent_cli.rag._indexing.chunk_text", return_value=["content"]):
+        _indexing.initial_index(mock_collection, temp_docs_folder, file_hashes)
 
     # Verify delete called for "deleted.txt"
     mock_collection.delete.assert_called_with(where={"file_path": "deleted.txt"})
