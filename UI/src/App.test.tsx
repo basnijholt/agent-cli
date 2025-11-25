@@ -1,14 +1,32 @@
-import { render, screen, fireEvent } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import App from './App';
 
 // Mock fetch for API calls
-global.fetch = vi.fn(() =>
-  Promise.resolve({
-    ok: true,
-    json: () => Promise.resolve({ conversations: [], messages: [] }),
-  })
-) as unknown as typeof fetch;
+const mockFetch = vi.fn();
+global.fetch = mockFetch;
+
+beforeEach(() => {
+  mockFetch.mockReset();
+  // Default mock for conversations and other endpoints
+  mockFetch.mockImplementation((url: string) => {
+    if (url.includes('/v1/models')) {
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({
+          data: [
+            { id: 'model-1', owned_by: 'test' },
+            { id: 'model-2', owned_by: 'test' },
+          ],
+        }),
+      });
+    }
+    return Promise.resolve({
+      ok: true,
+      json: () => Promise.resolve({ conversations: [], messages: [] }),
+    });
+  });
+});
 
 describe('App', () => {
   it('renders the main layout with thread list and chat', () => {
@@ -30,7 +48,7 @@ describe('App', () => {
     expect(screen.getByText('Settings')).toBeDefined();
   });
 
-  it('opens settings modal when Settings button is clicked', () => {
+  it('opens settings modal and fetches models when Settings button is clicked', async () => {
     render(<App />);
 
     // Click Settings button
@@ -40,10 +58,18 @@ describe('App', () => {
     // Check that modal opens (look for Settings heading)
     expect(screen.getByRole('heading', { name: 'Settings' })).toBeDefined();
 
-    // Check for model selector
+    // Check for model selector label
     expect(screen.getByText('Model')).toBeDefined();
 
     // Check for Memory Top-K label
     expect(screen.getByText(/Memory Top-K/)).toBeDefined();
+
+    // Wait for models to be fetched and displayed
+    await waitFor(() => {
+      expect(screen.getByText('2 models available')).toBeDefined();
+    });
+
+    // Verify the fetch was called for models
+    expect(mockFetch).toHaveBeenCalledWith('http://localhost:8100/v1/models');
   });
 });

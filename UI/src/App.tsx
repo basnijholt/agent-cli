@@ -7,7 +7,7 @@ import { useAgentCLIRuntime, type AgentCLIRuntimeConfig } from "./runtime/useAge
 
 const App = () => {
   const [config, setConfig] = useState<AgentCLIRuntimeConfig>({
-    model: "gpt-4o",
+    model: "", // Will be selected from available models in settings
     memoryTopK: 5,
   });
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);

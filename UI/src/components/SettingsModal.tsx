@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import type { AgentCLIRuntimeConfig } from "../runtime/useAgentCLIRuntime";
 
+const API_BASE = "http://localhost:8100";
+
 interface SettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -8,22 +10,52 @@ interface SettingsModalProps {
   onConfigChange: (config: AgentCLIRuntimeConfig) => void;
 }
 
-const AVAILABLE_MODELS = [
-  { id: "gpt-4o", name: "GPT-4o", provider: "OpenAI" },
-  { id: "gpt-4o-mini", name: "GPT-4o Mini", provider: "OpenAI" },
-  { id: "gpt-4-turbo", name: "GPT-4 Turbo", provider: "OpenAI" },
-  { id: "llama3.2", name: "Llama 3.2", provider: "Ollama" },
-  { id: "llama3.1", name: "Llama 3.1", provider: "Ollama" },
-  { id: "mistral", name: "Mistral", provider: "Ollama" },
-];
+interface ModelInfo {
+  id: string;
+  owned_by?: string;
+}
 
 export const SettingsModal = ({ isOpen, onClose, config, onConfigChange }: SettingsModalProps) => {
-  const [localModel, setLocalModel] = useState(config.model || "gpt-4o");
+  const [localModel, setLocalModel] = useState(config.model || "");
   const [localTopK, setLocalTopK] = useState(config.memoryTopK || 5);
+  const [models, setModels] = useState<ModelInfo[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Fetch models when modal opens
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const fetchModels = async () => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const res = await fetch(`${API_BASE}/v1/models`);
+        if (!res.ok) {
+          throw new Error(`Failed to fetch models: ${res.status}`);
+        }
+        const data = await res.json();
+        const modelList: ModelInfo[] = data.data || [];
+        setModels(modelList);
+
+        // If current model is not in the list and list is not empty, select the first one
+        if (modelList.length > 0 && !modelList.some(m => m.id === localModel)) {
+          setLocalModel(modelList[0].id);
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to fetch models");
+        // Keep any existing models
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchModels();
+  }, [isOpen]);
 
   // Sync local state when config changes externally
   useEffect(() => {
-    setLocalModel(config.model || "gpt-4o");
+    setLocalModel(config.model || "");
     setLocalTopK(config.memoryTopK || 5);
   }, [config]);
 
@@ -39,7 +71,7 @@ export const SettingsModal = ({ isOpen, onClose, config, onConfigChange }: Setti
 
   const handleCancel = () => {
     // Reset to original values
-    setLocalModel(config.model || "gpt-4o");
+    setLocalModel(config.model || "");
     setLocalTopK(config.memoryTopK || 5);
     onClose();
   };
@@ -61,17 +93,47 @@ export const SettingsModal = ({ isOpen, onClose, config, onConfigChange }: Setti
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Model
           </label>
-          <select
-            value={localModel}
-            onChange={(e) => setLocalModel(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-          >
-            {AVAILABLE_MODELS.map((model) => (
-              <option key={model.id} value={model.id}>
-                {model.name} ({model.provider})
-              </option>
-            ))}
-          </select>
+          {isLoading ? (
+            <div className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-500">
+              Loading models...
+            </div>
+          ) : error ? (
+            <div className="space-y-2">
+              <div className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">
+                {error}
+              </div>
+              <input
+                type="text"
+                value={localModel}
+                onChange={(e) => setLocalModel(e.target.value)}
+                placeholder="Enter model name manually"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+          ) : models.length === 0 ? (
+            <input
+              type="text"
+              value={localModel}
+              onChange={(e) => setLocalModel(e.target.value)}
+              placeholder="Enter model name"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          ) : (
+            <select
+              value={localModel}
+              onChange={(e) => setLocalModel(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+            >
+              {models.map((model) => (
+                <option key={model.id} value={model.id}>
+                  {model.id}{model.owned_by ? ` (${model.owned_by})` : ""}
+                </option>
+              ))}
+            </select>
+          )}
+          <p className="mt-1 text-xs text-gray-500">
+            {models.length} model{models.length !== 1 ? "s" : ""} available
+          </p>
         </div>
 
         {/* RAG Configuration */}
@@ -99,7 +161,7 @@ export const SettingsModal = ({ isOpen, onClose, config, onConfigChange }: Setti
         <div className="mb-6 p-3 bg-gray-50 rounded-lg">
           <p className="text-xs text-gray-500 mb-1">Current configuration:</p>
           <code className="text-xs text-gray-700">
-            model: {config.model || "gpt-4o"}, memory_top_k: {config.memoryTopK || 5}
+            model: {config.model || "(not set)"}, memory_top_k: {config.memoryTopK || 5}
           </code>
         </div>
 
@@ -113,7 +175,8 @@ export const SettingsModal = ({ isOpen, onClose, config, onConfigChange }: Setti
           </button>
           <button
             onClick={handleSave}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            disabled={!localModel}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
           >
             Save
           </button>
