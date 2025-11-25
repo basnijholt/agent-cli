@@ -2,23 +2,16 @@
 
 from __future__ import annotations
 
-import asyncio
 import logging
-import threading
-from contextlib import asynccontextmanager, suppress
+from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING, Any
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
 from agent_cli.constants import DEFAULT_OPENAI_EMBEDDING_MODEL
-from agent_cli.core.chroma import init_collection
 from agent_cli.core.openai_proxy import proxy_request_to_upstream
-from agent_cli.rag._indexer import watch_docs
-from agent_cli.rag._indexing import initial_index, load_hashes_from_metadata
-from agent_cli.rag._retriever import get_reranker_model
-from agent_cli.rag._store import get_all_metadata
-from agent_cli.rag.engine import process_chat_request
+from agent_cli.rag.client import RagClient
 from agent_cli.rag.models import ChatRequest  # noqa: TC001
 
 if TYPE_CHECKING:
@@ -38,47 +31,27 @@ def create_app(
     enable_rag_tools: bool = True,
 ) -> FastAPI:
     """Create the FastAPI app."""
-    # Initialize State
-    LOGGER.info("Initializing RAG components...")
+    LOGGER.info("Initializing RAG client...")
 
-    LOGGER.info("Loading vector database (ChromaDB)...")
-    collection = init_collection(
-        chroma_path,
-        name="docs",
-        embedding_model=embedding_model,
+    client = RagClient(
+        docs_folder=docs_folder,
+        chroma_path=chroma_path,
         openai_base_url=openai_base_url,
-        openai_api_key=embedding_api_key,
+        embedding_model=embedding_model,
+        embedding_api_key=embedding_api_key,
+        chat_api_key=chat_api_key,
+        default_top_k=limit,
+        enable_rag_tools=enable_rag_tools,
+        start_watcher=False,  # Control via lifespan
     )
-
-    LOGGER.info("Loading reranker model (CrossEncoder)...")
-    reranker_model = get_reranker_model()
-
-    LOGGER.info("Loading existing file index...")
-    file_hashes = load_hashes_from_metadata(collection)
-    LOGGER.info("Loaded %d files from index.", len(file_hashes))
-
-    docs_folder.mkdir(exist_ok=True, parents=True)
 
     @asynccontextmanager
     async def lifespan(_app: FastAPI):  # noqa: ANN202
-        LOGGER.info("Starting file watcher...")
-        # Background Tasks
-        background_tasks = set()
-        watcher_task = asyncio.create_task(watch_docs(collection, docs_folder, file_hashes))
-        background_tasks.add(watcher_task)
-        watcher_task.add_done_callback(background_tasks.discard)
-
-        LOGGER.info("Starting initial index scan...")
-        threading.Thread(
-            target=initial_index,
-            args=(collection, docs_folder, file_hashes),
-            daemon=True,
-        ).start()
+        LOGGER.info("Starting RAG client...")
+        client.start()
         yield
-        # Cleanup if needed
-        watcher_task.cancel()
-        with suppress(asyncio.CancelledError):
-            await watcher_task
+        LOGGER.info("Stopping RAG client...")
+        await client.stop()
 
     app = FastAPI(title="RAG Proxy", lifespan=lifespan)
 
@@ -98,62 +71,28 @@ def create_app(
         if auth_header and auth_header.startswith("Bearer "):
             api_key = auth_header.split(" ")[1]
 
-        # Fallback to server-configured key
-        if not api_key:
-            api_key = chat_api_key
-
-        return await process_chat_request(
-            chat_request,
-            collection,
-            reranker_model,
-            openai_base_url.rstrip("/"),
-            docs_folder,
-            default_top_k=limit,
-            api_key=api_key,
-            enable_rag_tools=enable_rag_tools,
-        )
+        # Use process_request to preserve extra fields in the ChatRequest
+        return await client.process_request(chat_request, api_key=api_key)
 
     @app.post("/reindex")
     def reindex_all() -> dict[str, Any]:
         """Manually reindex all files."""
-        LOGGER.info("Manual reindex requested.")
-        threading.Thread(
-            target=initial_index,
-            args=(collection, docs_folder, file_hashes),
-            daemon=True,
-        ).start()
-        return {"status": "started reindexing", "total_chunks": collection.count()}
+        client.reindex(blocking=False)
+        return {"status": "started reindexing", "total_chunks": client.collection.count()}
 
     @app.get("/files")
     def list_files() -> dict[str, Any]:
         """List all indexed files."""
-        metadatas = get_all_metadata(collection)
-
-        files = {}
-        for meta in metadatas:
-            if not meta:
-                continue
-            fp = meta["file_path"]
-            if fp not in files:
-                files[fp] = {
-                    "name": meta["source"],
-                    "path": fp,
-                    "type": meta["file_type"],
-                    "chunks": 0,
-                    "indexed_at": meta["indexed_at"],
-                }
-            files[fp]["chunks"] += 1
-
-        return {"files": list(files.values()), "total": len(files)}
+        files = client.list_files()
+        return {"files": files, "total": len(files)}
 
     @app.get("/health")
     def health() -> dict[str, str]:
         return {
             "status": "ok",
-            "rag_docs": str(docs_folder),
-            "openai_base_url": openai_base_url,
-            "embedding_model": embedding_model,
-            "limit": str(limit),
+            "rag_docs": str(client.docs_folder),
+            "openai_base_url": client.openai_base_url,
+            "total_files": str(len(client.file_hashes)),
         }
 
     @app.api_route(
@@ -165,8 +104,8 @@ def create_app(
         return await proxy_request_to_upstream(
             request,
             path,
-            openai_base_url,
-            chat_api_key,
+            client.openai_base_url,
+            client.chat_api_key,
         )
 
     return app

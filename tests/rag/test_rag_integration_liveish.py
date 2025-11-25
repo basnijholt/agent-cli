@@ -28,6 +28,7 @@ from pydantic_ai.models.function import FunctionModel
 from pydantic_ai.usage import RequestUsage
 
 from agent_cli.rag import api, engine
+from agent_cli.rag import client as rag_client_module
 from agent_cli.rag.models import RagSource, RetrievalResult
 
 if TYPE_CHECKING:
@@ -142,12 +143,12 @@ async def test_rag_tool_execution_flow(
     )
 
     # 4. Start App
-    # We need to mock everything that `api.create_app` does so it doesn't fail
-    monkeypatch.setattr(api, "init_collection", MagicMock())
-    monkeypatch.setattr(api, "get_reranker_model", MagicMock())
-    monkeypatch.setattr(api, "load_hashes_from_metadata", MagicMock(return_value={}))
-    monkeypatch.setattr(api, "watch_docs", AsyncMock())
-    monkeypatch.setattr(api, "initial_index", MagicMock())
+    # We need to mock everything that RagClient uses so it doesn't fail
+    monkeypatch.setattr(rag_client_module, "init_collection", MagicMock())
+    monkeypatch.setattr(rag_client_module, "get_reranker_model", MagicMock())
+    monkeypatch.setattr(rag_client_module, "load_hashes_from_metadata", MagicMock(return_value={}))
+    monkeypatch.setattr(rag_client_module, "watch_docs", AsyncMock())
+    monkeypatch.setattr(rag_client_module, "initial_index", MagicMock())
 
     app = api.create_app(
         docs_folder=docs_folder,

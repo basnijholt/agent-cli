@@ -6,17 +6,18 @@ import pytest
 from fastapi.testclient import TestClient
 
 from agent_cli.rag import api
+from agent_cli.rag import client as rag_client_module
 
 
 @pytest.fixture
 def client() -> TestClient:
     """Create test client."""
     with (
-        patch("agent_cli.rag.api.init_collection"),
-        patch("agent_cli.rag.api.get_reranker_model"),
-        patch("agent_cli.rag.api.load_hashes_from_metadata", return_value={}),
+        patch.object(rag_client_module, "init_collection"),
+        patch.object(rag_client_module, "get_reranker_model"),
+        patch.object(rag_client_module, "load_hashes_from_metadata", return_value={}),
         patch("pathlib.Path.mkdir"),
-        patch("agent_cli.rag.api.watch_docs"),
+        patch.object(rag_client_module, "watch_docs"),
         patch("asyncio.create_task"),
         patch("threading.Thread"),
     ):
@@ -37,7 +38,7 @@ def test_health(client: TestClient) -> None:
 
 def test_list_files(client: TestClient) -> None:
     """Test listing files."""
-    with patch("agent_cli.rag.api.get_all_metadata") as mock_get:
+    with patch.object(rag_client_module, "get_all_metadata") as mock_get:
         mock_get.return_value = [
             {"file_path": "f1.txt", "source": "f1", "file_type": ".txt", "indexed_at": "now"},
         ]
@@ -66,7 +67,7 @@ async def test_chat_completion_extra_fields(client: TestClient) -> None:
         "rag_top_k": 2,
     }
 
-    with patch("agent_cli.rag.api.process_chat_request") as mock_process:
+    with patch.object(rag_client_module, "process_chat_request") as mock_process:
         mock_process.return_value = {"choices": []}
 
         resp = client.post("/v1/chat/completions", json=payload)
@@ -93,7 +94,7 @@ async def test_chat_completion_auth_forwarding(client: TestClient) -> None:
         "messages": [{"role": "user", "content": "Hello"}],
     }
 
-    with patch("agent_cli.rag.api.process_chat_request") as mock_process:
+    with patch.object(rag_client_module, "process_chat_request") as mock_process:
         mock_process.return_value = {"choices": []}
 
         # 1. Test with Authorization header
@@ -118,14 +119,14 @@ async def test_chat_completion_auth_forwarding(client: TestClient) -> None:
 def test_chat_completion_server_api_key() -> None:
     """Test server-side fallback API key."""
     with (
-        patch("agent_cli.rag.api.init_collection"),
-        patch("agent_cli.rag.api.get_reranker_model"),
-        patch("agent_cli.rag.api.load_hashes_from_metadata", return_value={}),
+        patch.object(rag_client_module, "init_collection"),
+        patch.object(rag_client_module, "get_reranker_model"),
+        patch.object(rag_client_module, "load_hashes_from_metadata", return_value={}),
         patch("pathlib.Path.mkdir"),
-        patch("agent_cli.rag.api.watch_docs"),
+        patch.object(rag_client_module, "watch_docs"),
         patch("asyncio.create_task"),
         patch("threading.Thread"),
-        patch("agent_cli.rag.api.process_chat_request") as mock_process,
+        patch.object(rag_client_module, "process_chat_request") as mock_process,
     ):
         mock_process.return_value = {"choices": []}
 

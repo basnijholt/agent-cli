@@ -8,6 +8,7 @@ from unittest.mock import AsyncMock, Mock
 import pytest
 from fastapi.testclient import TestClient
 
+from agent_cli.rag import client as rag_client_module
 from agent_cli.rag.api import create_app
 
 if TYPE_CHECKING:
@@ -19,11 +20,11 @@ if TYPE_CHECKING:
 @pytest.fixture
 def mock_rag_dependencies(mocker: MockerFixture) -> None:
     """Mock the RAG dependencies to avoid side effects."""
-    mocker.patch("agent_cli.rag.api.init_collection")
-    mocker.patch("agent_cli.rag.api.get_reranker_model")
-    mocker.patch("agent_cli.rag.api.load_hashes_from_metadata", return_value={})
-    mocker.patch("agent_cli.rag.api.watch_docs")
-    mocker.patch("agent_cli.rag.api.initial_index")
+    mocker.patch.object(rag_client_module, "init_collection")
+    mocker.patch.object(rag_client_module, "get_reranker_model")
+    mocker.patch.object(rag_client_module, "load_hashes_from_metadata", return_value={})
+    mocker.patch.object(rag_client_module, "watch_docs")
+    mocker.patch.object(rag_client_module, "initial_index")
     # Also mock threading to prevent background threads
     mocker.patch("threading.Thread")
 
