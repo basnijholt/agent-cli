@@ -195,6 +195,7 @@ async def process_chat_request(
     docs_folder: Path,
     default_top_k: int = 3,
     api_key: str | None = None,
+    enable_rag_tools: bool = True,
 ) -> Any:
     """Process a chat request with RAG."""
     # 1. Retrieve Context
@@ -223,18 +224,21 @@ async def process_chat_request(
             return f"Error reading file: {e}"
 
     # 3. Define System Prompt
-    enable_tools = request.rag_enable_tools is not False  # Default True
+    # Determine tool availability:
+    # - If CLI flag `enable_rag_tools` is False, tools are disabled globally.
+    # - If CLI flag is True, check request.rag_enable_tools (default True).
+    tools_allowed = enable_rag_tools and (request.rag_enable_tools is not False)
     system_prompt = ""
     if retrieval and retrieval.context:
         truncated = truncate_context(retrieval.context)
-        template = RAG_PROMPT_WITH_TOOLS if enable_tools else RAG_PROMPT_NO_TOOLS
+        template = RAG_PROMPT_WITH_TOOLS if tools_allowed else RAG_PROMPT_NO_TOOLS
         system_prompt = template.format(context=truncated)
 
     # 4. Setup Agent
     provider = OpenAIProvider(base_url=openai_base_url, api_key=api_key or "dummy")
     model = OpenAIModel(model_name=request.model, provider=provider)
 
-    tools = [read_full_document] if enable_tools else []
+    tools = [read_full_document] if tools_allowed else []
     agent = Agent(model=model, tools=tools, system_prompt=system_prompt)
 
     # 5. Prepare Message History & Prompt

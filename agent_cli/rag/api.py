@@ -35,6 +35,7 @@ def create_app(
     embedding_api_key: str | None = None,
     chat_api_key: str | None = None,
     limit: int = 3,
+    enable_rag_tools: bool = True,
 ) -> FastAPI:
     """Create the FastAPI app."""
     # Initialize State
@@ -109,6 +110,7 @@ def create_app(
             docs_folder,
             default_top_k=limit,
             api_key=api_key,
+            enable_rag_tools=enable_rag_tools,
         )
 
     @app.post("/reindex")
