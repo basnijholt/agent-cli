@@ -21,15 +21,8 @@ LOGGER = logging.getLogger(__name__)
 
 def load_hashes_from_metadata(collection: Collection) -> dict[str, str]:
     """Rebuild hash cache from existing DB."""
-    hashes = {}
-    try:
-        metadatas = get_all_metadata(collection)
-        for meta in metadatas:
-            if meta and "file_path" in meta and "file_hash" in meta:
-                hashes[str(meta["file_path"])] = str(meta["file_hash"])
-    except Exception:
-        LOGGER.warning("Could not load existing hashes", exc_info=True)
-    return hashes
+    metadatas = get_all_metadata(collection)
+    return {meta["file_path"]: meta["file_hash"] for meta in metadatas if meta}
 
 
 def index_file(
@@ -51,13 +44,7 @@ def index_file(
     try:
         # Check if file changed
         current_hash = get_file_hash(file_path)
-
-        # Handle relative path safely
-        try:
-            relative_path = str(file_path.relative_to(docs_folder))
-        except ValueError:
-            # Fallback if not relative (e.g. symlink or misconfiguration)
-            relative_path = file_path.name
+        relative_path = str(file_path.relative_to(docs_folder))
 
         if relative_path in file_hashes and file_hashes[relative_path] == current_hash:
             return False  # No change, skip
@@ -131,11 +118,7 @@ def remove_file(
 
     """
     try:
-        try:
-            relative_path = str(file_path.relative_to(docs_folder))
-        except ValueError:
-            relative_path = file_path.name
-
+        relative_path = str(file_path.relative_to(docs_folder))
         delete_by_file_path(collection, relative_path)
 
         # If it was tracked, we consider it "removed"
@@ -181,11 +164,8 @@ def initial_index(
             file_path = future_to_file[future]
             try:
                 # Track that we found this file (regardless of index result)
-                try:
-                    rel_path = str(file_path.relative_to(docs_folder))
-                    paths_found_on_disk.add(rel_path)
-                except ValueError:
-                    pass
+                rel_path = str(file_path.relative_to(docs_folder))
+                paths_found_on_disk.add(rel_path)
 
                 indexed = future.result()
                 if indexed:
