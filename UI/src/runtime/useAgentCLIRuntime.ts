@@ -5,8 +5,8 @@ import {
   ThreadMessageLike,
 } from "@assistant-ui/react";
 import type { AppendMessage } from "@assistant-ui/react";
-
-const API_BASE = "http://localhost:8100";
+import { ENDPOINTS } from "../config";
+import { parseSSEStream, type StreamingState } from "../utils/sse";
 
 // Thread metadata
 interface ThreadData {
@@ -17,12 +17,31 @@ interface ThreadData {
 // Storage key for persisting selected thread
 const SELECTED_THREAD_KEY = "agent-cli-selected-thread";
 
+// Message metadata for display
+interface MessageMetadata {
+  createdAt?: number;
+  model?: string;
+  systemFingerprint?: string;
+  promptTokens?: number;
+  completionTokens?: number;
+  totalTokens?: number;
+  durationMs?: number;
+  // Timings from API
+  promptMs?: number;
+  predictedMs?: number;
+  promptPerSecond?: number;
+  predictedPerSecond?: number;
+  cacheTokens?: number;
+  [key: string]: unknown;
+}
+
 // Message with stable ID and optional reasoning
 interface MessageWithId {
   id: string;
   role: string;
   content: string;
   reasoning?: string;
+  metadata?: MessageMetadata;
 }
 
 // Generate unique message ID
@@ -59,73 +78,8 @@ function toThreadMessage(msg: MessageWithId): ThreadMessageLike {
     id: msg.id,
     role: msg.role === "user" ? "user" : "assistant",
     content,
+    metadata: msg.metadata ? { custom: msg.metadata } : undefined,
   };
-}
-
-// Streaming state for SSE parsing
-interface StreamingState {
-  content: string;
-  reasoning: string;
-}
-
-// Parse SSE stream from memory-proxy
-async function* parseSSEStream(response: Response): AsyncGenerator<StreamingState> {
-  const reader = response.body?.getReader();
-  if (!reader) return;
-
-  const decoder = new TextDecoder();
-  let buffer = "";
-  let accumulatedContent = "";
-  let accumulatedReasoning = "";
-
-  try {
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split("\n");
-      buffer = lines.pop() || "";
-
-      for (const line of lines) {
-        if (line.startsWith("data: ")) {
-          const data = line.slice(6).trim();
-          if (data === "[DONE]") {
-            return;
-          }
-
-          try {
-            const parsed = JSON.parse(data);
-            const choice = parsed.choices?.[0];
-            const delta = choice?.delta;
-
-            if (delta?.content) {
-              accumulatedContent += delta.content;
-            }
-            if (delta?.reasoning_content) {
-              accumulatedReasoning += delta.reasoning_content;
-            }
-
-            // Only yield if we have any content
-            if (accumulatedContent || accumulatedReasoning) {
-              yield {
-                content: accumulatedContent,
-                reasoning: accumulatedReasoning,
-              };
-            }
-
-            if (choice?.finish_reason) {
-              return;
-            }
-          } catch {
-            // Skip invalid JSON
-          }
-        }
-      }
-    }
-  } finally {
-    reader.releaseLock();
-  }
 }
 
 export interface AgentCLIRuntimeConfig {
@@ -169,7 +123,7 @@ export function useAgentCLIRuntime(config: AgentCLIRuntimeConfig = {}) {
   useEffect(() => {
     const fetchConversations = async () => {
       try {
-        const res = await fetch(`${API_BASE}/v1/conversations`);
+        const res = await fetch(ENDPOINTS.conversations);
         if (res.ok) {
           const data = await res.json();
           const conversations: string[] = data.conversations || [];
@@ -207,15 +161,57 @@ export function useAgentCLIRuntime(config: AgentCLIRuntimeConfig = {}) {
   // Load messages for a specific thread
   const loadThreadMessages = async (externalId: string) => {
     try {
-      const res = await fetch(`${API_BASE}/v1/conversations/${externalId}`);
+      const res = await fetch(`${ENDPOINTS.conversations}/${externalId}`);
       if (res.ok) {
         const data = await res.json();
+        interface LoadedMessage {
+          role: string;
+          content: string;
+          created_at?: string;
+          metadata?: {
+            model?: string;
+            system_fingerprint?: string;
+            prompt_tokens?: number;
+            completion_tokens?: number;
+            total_tokens?: number;
+            duration_ms?: number;
+            prompt_ms?: number;
+            predicted_ms?: number;
+            prompt_per_second?: number;
+            predicted_per_second?: number;
+            cache_tokens?: number;
+          };
+        }
         const msgs: MessageWithId[] = (data.messages || []).map(
-          (m: { role: string; content: string }, idx: number) => ({
-            id: `loaded-${idx}-${Date.now()}`,
-            role: m.role,
-            content: m.content,
-          })
+          (m: LoadedMessage, idx: number) => {
+            const msg: MessageWithId = {
+              id: `loaded-${idx}-${Date.now()}`,
+              role: m.role,
+              content: m.content,
+            };
+            // Parse metadata from API response
+            if (m.metadata) {
+              msg.metadata = {
+                createdAt: m.created_at ? new Date(m.created_at).getTime() : undefined,
+                model: m.metadata.model,
+                systemFingerprint: m.metadata.system_fingerprint,
+                promptTokens: m.metadata.prompt_tokens,
+                completionTokens: m.metadata.completion_tokens,
+                totalTokens: m.metadata.total_tokens,
+                durationMs: m.metadata.duration_ms,
+                promptMs: m.metadata.prompt_ms,
+                predictedMs: m.metadata.predicted_ms,
+                promptPerSecond: m.metadata.prompt_per_second,
+                predictedPerSecond: m.metadata.predicted_per_second,
+                cacheTokens: m.metadata.cache_tokens,
+              };
+            } else if (m.created_at) {
+              msg.metadata = {
+                createdAt: new Date(m.created_at).getTime(),
+              };
+            }
+            return msg;
+          }
         );
         setMessages(msgs);
       } else {
@@ -240,16 +236,18 @@ export function useAgentCLIRuntime(config: AgentCLIRuntimeConfig = {}) {
     const userText = textParts.map((p) => p.text).join("\n");
     if (!userText.trim()) return;
 
-    // Create user message with unique ID
+    // Create user message with unique ID and timestamp
     const userMessage: MessageWithId = {
       id: generateMessageId(),
       role: "user",
       content: userText,
+      metadata: { createdAt: Date.now() },
     };
 
     // Create assistant message placeholder with unique ID
     const assistantMessageId = generateMessageId();
     streamingMessageIdRef.current = assistantMessageId;
+    const startTime = Date.now();
 
     setMessages((prev) => [...prev, userMessage]);
     setIsRunning(true);
@@ -261,7 +259,7 @@ export function useAgentCLIRuntime(config: AgentCLIRuntimeConfig = {}) {
         content: m.content,
       }));
 
-      const response = await fetch(`${API_BASE}/v1/chat/completions`, {
+      const response = await fetch(ENDPOINTS.chat, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -309,7 +307,10 @@ export function useAgentCLIRuntime(config: AgentCLIRuntimeConfig = {}) {
         });
       }
 
-      // Ensure final message is set
+      // Calculate final metadata
+      const durationMs = Date.now() - startTime;
+
+      // Ensure final message is set with metadata
       if (finalState.content || finalState.reasoning) {
         setMessages((prev) => {
           const lastMsg = prev[prev.length - 1];
@@ -320,6 +321,20 @@ export function useAgentCLIRuntime(config: AgentCLIRuntimeConfig = {}) {
                 ...lastMsg,
                 content: finalState.content,
                 reasoning: finalState.reasoning || undefined,
+                metadata: {
+                  createdAt: startTime,
+                  model: finalState.model || configRef.current.model,
+                  systemFingerprint: finalState.systemFingerprint,
+                  promptTokens: finalState.promptTokens,
+                  completionTokens: finalState.completionTokens,
+                  totalTokens: finalState.totalTokens,
+                  durationMs,
+                  promptMs: finalState.promptMs,
+                  predictedMs: finalState.predictedMs,
+                  promptPerSecond: finalState.promptPerSecond,
+                  predictedPerSecond: finalState.predictedPerSecond,
+                  cacheTokens: finalState.cacheTokens,
+                },
               },
             ];
           }
@@ -334,6 +349,7 @@ export function useAgentCLIRuntime(config: AgentCLIRuntimeConfig = {}) {
           id: assistantMessageId,
           role: "assistant",
           content: `Error: ${error instanceof Error ? error.message : "Unknown error"}`,
+          metadata: { createdAt: startTime },
         },
       ]);
     } finally {

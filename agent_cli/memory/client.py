@@ -227,12 +227,43 @@ class MemoryClient:
     def get_history(self, conversation_id: str) -> list[dict[str, Any]]:
         """Get the full chat history for a conversation."""
         records = load_conversation_history(self.memory_path, conversation_id)
-        return [
-            {
+        result = []
+        for rec in records:
+            msg: dict[str, Any] = {
                 "role": rec.metadata.role,
                 "content": rec.content,
                 "created_at": rec.metadata.created_at,
                 "id": rec.id,
             }
-            for rec in records
-        ]
+            # Include response metadata for assistant messages
+            meta = rec.metadata
+            if meta.role == "assistant" and any(
+                [
+                    meta.model,
+                    meta.system_fingerprint,
+                    meta.prompt_tokens,
+                    meta.completion_tokens,
+                    meta.total_tokens,
+                    meta.duration_ms,
+                    meta.prompt_ms,
+                    meta.predicted_ms,
+                    meta.prompt_per_second,
+                    meta.predicted_per_second,
+                    meta.cache_tokens,
+                ],
+            ):
+                msg["metadata"] = {
+                    "model": meta.model,
+                    "system_fingerprint": meta.system_fingerprint,
+                    "prompt_tokens": meta.prompt_tokens,
+                    "completion_tokens": meta.completion_tokens,
+                    "total_tokens": meta.total_tokens,
+                    "duration_ms": meta.duration_ms,
+                    "prompt_ms": meta.prompt_ms,
+                    "predicted_ms": meta.predicted_ms,
+                    "prompt_per_second": meta.prompt_per_second,
+                    "predicted_per_second": meta.predicted_per_second,
+                    "cache_tokens": meta.cache_tokens,
+                }
+            result.append(msg)
+        return result

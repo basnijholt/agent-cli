@@ -48,6 +48,19 @@ class MemoryMetadata(BaseModel):
     summary_kind: str | None = None
     replaced_by: str | None = None
     source_id: str | None = None
+    # Response metadata (for assistant messages)
+    model: str | None = None
+    system_fingerprint: str | None = None
+    prompt_tokens: int | None = None
+    completion_tokens: int | None = None
+    total_tokens: int | None = None
+    # Timing metadata
+    duration_ms: float | None = None
+    prompt_ms: float | None = None
+    predicted_ms: float | None = None
+    prompt_per_second: float | None = None
+    predicted_per_second: float | None = None
+    cache_tokens: int | None = None
 
 
 class SummaryOutput(BaseModel):

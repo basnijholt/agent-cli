@@ -17,7 +17,7 @@ from agent_cli.memory._ingest import extract_and_store_facts_and_summaries
 from agent_cli.memory._persistence import evict_if_needed, persist_entries
 from agent_cli.memory._retrieval import augment_chat_request
 from agent_cli.memory._tasks import run_in_background
-from agent_cli.memory.entities import Turn
+from agent_cli.memory.entities import ResponseMetadata, Turn
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator, Mapping
@@ -62,6 +62,7 @@ def _persist_turns(
     user_message: str | None,
     assistant_message: str | None,
     user_turn_id: str | None = None,
+    response_metadata: ResponseMetadata | None = None,
 ) -> None:
     """Persist the latest user/assistant exchanges."""
     now = datetime.now(UTC)
@@ -86,6 +87,7 @@ def _persist_turns(
                 role="assistant",
                 content=assistant_message,
                 created_at=now,
+                response_metadata=response_metadata,
             ),
         )
 
@@ -170,7 +172,10 @@ async def _stream_and_persist_response(
     headers = {"Authorization": f"Bearer {api_key}"} if api_key else None
     stream_start = perf_counter()
 
-    async def _persist_stream_result(assistant_message: str | None) -> None:
+    async def _persist_stream_result(
+        assistant_message: str | None,
+        response_metadata: ResponseMetadata | None,
+    ) -> None:
         post_start = perf_counter()
         _persist_turns(
             collection,
@@ -179,6 +184,7 @@ async def _stream_and_persist_response(
             user_message=None,
             assistant_message=assistant_message,
             user_turn_id=None,  # Assistant turn doesn't reuse user ID
+            response_metadata=response_metadata,
         )
         await _postprocess_after_turn(
             collection=collection,
@@ -201,23 +207,41 @@ async def _stream_and_persist_response(
         )
 
     async def tee_and_accumulate() -> AsyncGenerator[str, None]:
-        assistant_chunks: list[str] = []
+        accumulator = _streaming.StreamingAccumulator()
         async for line in _streaming.stream_chat_sse(
             openai_base_url=openai_base_url,
             payload=forward_payload,
             headers=headers,
         ):
-            _streaming.accumulate_assistant_text(line, assistant_chunks)
+            _streaming.accumulate_streaming_data(line, accumulator)
             yield line + "\n\n"
-        assistant_message = "".join(assistant_chunks).strip() or None
+
+        assistant_message = accumulator.get_text()
+        duration_ms = _elapsed_ms(stream_start)
+
+        # Build response metadata from accumulated data
+        response_metadata: ResponseMetadata | None = None
         if assistant_message:
+            response_metadata = ResponseMetadata(
+                model=accumulator.model or model,
+                system_fingerprint=accumulator.system_fingerprint,
+                prompt_tokens=accumulator.prompt_tokens,
+                completion_tokens=accumulator.completion_tokens,
+                total_tokens=accumulator.total_tokens,
+                duration_ms=duration_ms,
+                prompt_ms=accumulator.prompt_ms,
+                predicted_ms=accumulator.predicted_ms,
+                prompt_per_second=accumulator.prompt_per_second,
+                predicted_per_second=accumulator.predicted_per_second,
+                cache_tokens=accumulator.cache_tokens,
+            )
             run_in_background(
-                _persist_stream_result(assistant_message),
+                _persist_stream_result(assistant_message, response_metadata),
                 label=f"stream-postprocess-{conversation_id}",
             )
         LOGGER.info(
             "Streaming response finished in %.1f ms (conversation=%s)",
-            _elapsed_ms(stream_start),
+            duration_ms,
             conversation_id,
         )
 
@@ -315,6 +339,26 @@ async def process_chat_request(
 
     user_message = _latest_user_message(request)
     assistant_message = _assistant_reply_content(response)
+    duration_ms = _elapsed_ms(llm_start)
+
+    # Extract response metadata from non-streaming response
+    response_metadata: ResponseMetadata | None = None
+    if assistant_message:
+        usage = response.get("usage") or {}
+        timings = response.get("timings") or {}
+        response_metadata = ResponseMetadata(
+            model=response.get("model") or request.model,
+            system_fingerprint=response.get("system_fingerprint"),
+            prompt_tokens=usage.get("prompt_tokens"),
+            completion_tokens=usage.get("completion_tokens"),
+            total_tokens=usage.get("total_tokens"),
+            duration_ms=duration_ms,
+            prompt_ms=timings.get("prompt_ms"),
+            predicted_ms=timings.get("predicted_ms"),
+            prompt_per_second=timings.get("prompt_per_second"),
+            predicted_per_second=timings.get("predicted_per_second"),
+            cache_tokens=timings.get("cache_n"),
+        )
 
     _persist_turns(
         collection,
@@ -323,6 +367,7 @@ async def process_chat_request(
         user_message=user_message,
         assistant_message=assistant_message,
         user_turn_id=user_turn_id,
+        response_metadata=response_metadata,
     )
 
     async def run_postprocess() -> None:

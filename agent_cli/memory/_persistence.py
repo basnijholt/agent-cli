@@ -54,9 +54,11 @@ def persist_entries(
         if isinstance(item, Turn):
             role: str = item.role
             source_id = None
+            response_meta = item.response_metadata
         elif isinstance(item, Fact):
             role = "memory"
             source_id = item.source_id
+            response_meta = None
         else:
             LOGGER.warning("Unknown entity type in persist_entries: %s", type(item))
             continue
@@ -69,6 +71,18 @@ def persist_entries(
             content=item.content,
             doc_id=item.id,
             source_id=source_id,
+            # Response metadata (only for assistant turns)
+            model=response_meta.model if response_meta else None,
+            system_fingerprint=response_meta.system_fingerprint if response_meta else None,
+            prompt_tokens=response_meta.prompt_tokens if response_meta else None,
+            completion_tokens=response_meta.completion_tokens if response_meta else None,
+            total_tokens=response_meta.total_tokens if response_meta else None,
+            duration_ms=response_meta.duration_ms if response_meta else None,
+            prompt_ms=response_meta.prompt_ms if response_meta else None,
+            predicted_ms=response_meta.predicted_ms if response_meta else None,
+            prompt_per_second=response_meta.prompt_per_second if response_meta else None,
+            predicted_per_second=response_meta.predicted_per_second if response_meta else None,
+            cache_tokens=response_meta.cache_tokens if response_meta else None,
         )
         LOGGER.info("Persisted memory file: %s", record.path)
         ids.append(record.id)

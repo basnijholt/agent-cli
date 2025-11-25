@@ -90,6 +90,18 @@ def write_memory_file(
     summary_kind: str | None = None,
     doc_id: str | None = None,
     source_id: str | None = None,
+    # Response metadata (for assistant messages)
+    model: str | None = None,
+    system_fingerprint: str | None = None,
+    prompt_tokens: int | None = None,
+    completion_tokens: int | None = None,
+    total_tokens: int | None = None,
+    duration_ms: float | None = None,
+    prompt_ms: float | None = None,
+    predicted_ms: float | None = None,
+    prompt_per_second: float | None = None,
+    predicted_per_second: float | None = None,
+    cache_tokens: int | None = None,
 ) -> MemoryFileRecord:
     """Render and persist a memory document to disk."""
     entries_dir, _ = ensure_store_dirs(root)
@@ -120,6 +132,18 @@ def write_memory_file(
         created_at=created_at,
         summary_kind=summary_kind,
         source_id=source_id,
+        # Response metadata
+        model=model,
+        system_fingerprint=system_fingerprint,
+        prompt_tokens=prompt_tokens,
+        completion_tokens=completion_tokens,
+        total_tokens=total_tokens,
+        duration_ms=duration_ms,
+        prompt_ms=prompt_ms,
+        predicted_ms=predicted_ms,
+        prompt_per_second=prompt_per_second,
+        predicted_per_second=predicted_per_second,
+        cache_tokens=cache_tokens,
     )
 
     front_matter = _render_front_matter(doc_id, metadata)
