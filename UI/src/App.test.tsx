@@ -38,7 +38,7 @@ describe('App', () => {
     });
 
     // Check for empty state message in Thread
-    expect(screen.getByText('No messages yet')).toBeDefined();
+    expect(screen.getByText('Start a conversation')).toBeDefined();
 
     // Check for input placeholder
     expect(screen.getByPlaceholderText('Type a message...')).toBeDefined();
@@ -47,7 +47,7 @@ describe('App', () => {
     expect(screen.getByText('Send')).toBeDefined();
 
     // Check for Settings button in ThreadList
-    expect(screen.getByText('Settings')).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Settings' })).toBeDefined();
   });
 
   it('opens settings modal and fetches models when Settings button is clicked', async () => {
@@ -55,11 +55,11 @@ describe('App', () => {
 
     // Wait for initial load
     await waitFor(() => {
-      expect(screen.getByText('Settings')).toBeDefined();
+      expect(screen.getByRole('button', { name: 'Settings' })).toBeDefined();
     });
 
     // Click Settings button
-    const settingsButton = screen.getByText('Settings');
+    const settingsButton = screen.getByRole('button', { name: 'Settings' });
     fireEvent.click(settingsButton);
 
     // Check that modal opens (look for Settings heading)

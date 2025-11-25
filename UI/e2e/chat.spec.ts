@@ -76,10 +76,10 @@ test.describe('Chat UI', () => {
     await page.goto('/');
 
     // Wait for app to load
-    await expect(page.getByText('Settings')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Settings' })).toBeVisible();
 
     // Open settings
-    await page.getByText('Settings').click();
+    await page.getByRole('button', { name: 'Settings' }).click();
 
     // Check modal is open
     await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible();
