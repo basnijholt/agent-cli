@@ -131,17 +131,16 @@ def create_app(
 
         files = {}
         for meta in metadatas:
-            fp = meta.get("file_path")
-            if not fp:
+            if not meta:
                 continue
-
+            fp = meta["file_path"]
             if fp not in files:
                 files[fp] = {
-                    "name": meta.get("source"),
+                    "name": meta["source"],
                     "path": fp,
-                    "type": meta.get("file_type"),
+                    "type": meta["file_type"],
                     "chunks": 0,
-                    "indexed_at": meta.get("indexed_at"),
+                    "indexed_at": meta["indexed_at"],
                 }
             files[fp]["chunks"] += 1
 

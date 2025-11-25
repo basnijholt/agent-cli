@@ -21,15 +21,8 @@ LOGGER = logging.getLogger(__name__)
 
 def load_hashes_from_metadata(collection: Collection) -> dict[str, str]:
     """Rebuild hash cache from existing DB."""
-    hashes = {}
-    try:
-        metadatas = get_all_metadata(collection)
-        for meta in metadatas:
-            if meta and "file_path" in meta and "file_hash" in meta:
-                hashes[str(meta["file_path"])] = str(meta["file_hash"])
-    except Exception:
-        LOGGER.warning("Could not load existing hashes", exc_info=True)
-    return hashes
+    metadatas = get_all_metadata(collection)
+    return {meta["file_path"]: meta["file_hash"] for meta in metadatas if meta}
 
 
 def index_file(
