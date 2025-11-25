@@ -76,9 +76,7 @@ def _hard_split(text: str, chunk_size: int, overlap: int) -> list[str]:
 
     Used as fallback when text has no natural sentence boundaries (e.g., code).
     """
-    if chunk_size <= 0:
-        return [text] if text else []
-    overlap = min(overlap, chunk_size - 1)  # Prevent infinite loop
+    assert overlap < chunk_size, f"overlap ({overlap}) must be < chunk_size ({chunk_size})"
 
     chunks = []
     start = 0

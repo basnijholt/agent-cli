@@ -3,6 +3,8 @@
 from pathlib import Path
 from typing import Any
 
+import pytest
+
 from agent_cli.rag import _utils
 
 
@@ -116,6 +118,15 @@ def test_hard_split_direct() -> None:
     assert len(chunks) >= 5
     for chunk in chunks:
         assert len(chunk) <= 100
+
+
+def test_hard_split_invalid_overlap() -> None:
+    """Test _hard_split asserts when overlap >= chunk_size."""
+    with pytest.raises(AssertionError):
+        _utils._hard_split("hello", chunk_size=100, overlap=100)
+
+    with pytest.raises(AssertionError):
+        _utils._hard_split("hello", chunk_size=100, overlap=200)
 
 
 def test_get_file_hash(tmp_path: Path) -> None:
