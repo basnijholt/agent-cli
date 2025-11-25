@@ -13,6 +13,86 @@ if TYPE_CHECKING:
 # Configure logging
 LOGGER = logging.getLogger(__name__)
 
+# Directories to always ignore (common development artifacts)
+DEFAULT_IGNORE_DIRS: frozenset[str] = frozenset(
+    {
+        # Python
+        "__pycache__",
+        ".venv",
+        "venv",
+        ".env",
+        "env",
+        ".tox",
+        ".nox",
+        ".mypy_cache",
+        ".pytest_cache",
+        ".ruff_cache",
+        ".coverage",
+        "htmlcov",
+        # JavaScript/Node
+        "node_modules",
+        # Build outputs
+        "build",
+        "dist",
+        # IDEs
+        ".idea",
+        ".vscode",
+        # Version control
+        ".git",
+        ".hg",
+        ".svn",
+    },
+)
+
+# File patterns to ignore
+DEFAULT_IGNORE_FILES: frozenset[str] = frozenset(
+    {
+        ".DS_Store",
+        "Thumbs.db",
+        ".gitignore",
+        ".gitattributes",
+    },
+)
+
+
+def should_ignore_path(path: Path, base_folder: Path) -> bool:
+    """Check if a path should be ignored during indexing.
+
+    Ignores:
+    - Any path component starting with '.' (hidden files/dirs)
+    - Common development directories (__pycache__, node_modules, venv, etc.)
+    - Common metadata files (.DS_Store, Thumbs.db, etc.)
+    - .egg-info directories
+
+    Args:
+        path: The file path to check.
+        base_folder: The base folder for computing relative paths.
+
+    Returns:
+        True if the path should be ignored, False otherwise.
+
+    """
+    try:
+        rel_parts = path.relative_to(base_folder).parts
+    except ValueError:
+        # Path is not relative to base_folder, check just the name
+        rel_parts = (path.name,)
+
+    for part in rel_parts:
+        # Hidden files/directories (starting with .)
+        if part.startswith("."):
+            return True
+        # Common ignore directories
+        if part in DEFAULT_IGNORE_DIRS:
+            return True
+        # .egg-info directories
+        if part.endswith(".egg-info"):
+            return True
+
+    # Check specific file patterns
+    return path.name in DEFAULT_IGNORE_FILES
+
+
 # Files to read as plain text directly (fast path)
 TEXT_EXTENSIONS = {
     ".txt",

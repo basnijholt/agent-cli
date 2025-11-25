@@ -76,3 +76,66 @@ def test_initial_index_removes_stale(mock_collection: MagicMock, temp_docs_folde
     # Verify file_hashes updated
     assert "deleted.txt" not in file_hashes
     assert "existing.txt" in file_hashes
+
+
+def test_initial_index_ignores_hidden_directories(
+    mock_collection: MagicMock,
+    temp_docs_folder: Path,
+) -> None:
+    """Test that initial_index ignores files in hidden directories like .git."""
+    # Setup: Create files in hidden directories that should be ignored
+    git_dir = temp_docs_folder / ".git"
+    git_dir.mkdir()
+    (git_dir / "config").write_text("git config")
+    (git_dir / "HEAD").write_text("ref: refs/heads/main")
+
+    venv_dir = temp_docs_folder / ".venv" / "lib"
+    venv_dir.mkdir(parents=True)
+    (venv_dir / "site.py").write_text("# site packages")
+
+    # Setup: Create a valid file that should be indexed
+    (temp_docs_folder / "readme.md").write_text("# Readme")
+
+    file_hashes: dict[str, str] = {}
+
+    with patch("agent_cli.rag._indexing.chunk_text", return_value=["content"]):
+        _indexing.initial_index(mock_collection, temp_docs_folder, file_hashes)
+
+    # Only readme.md should be indexed
+    assert "readme.md" in file_hashes
+    assert ".git/config" not in file_hashes
+    assert ".git/HEAD" not in file_hashes
+    assert ".venv/lib/site.py" not in file_hashes
+
+
+def test_initial_index_ignores_common_dev_directories(
+    mock_collection: MagicMock,
+    temp_docs_folder: Path,
+) -> None:
+    """Test that initial_index ignores common development directories."""
+    # Setup: Create files in directories that should be ignored
+    pycache = temp_docs_folder / "__pycache__"
+    pycache.mkdir()
+    (pycache / "module.cpython-313.pyc").write_text("bytecode")
+
+    node_modules = temp_docs_folder / "node_modules" / "lodash"
+    node_modules.mkdir(parents=True)
+    (node_modules / "index.js").write_text("module.exports = {}")
+
+    venv = temp_docs_folder / "venv" / "bin"
+    venv.mkdir(parents=True)
+    (venv / "activate").write_text("# activate script")
+
+    # Setup: Create a valid file that should be indexed
+    (temp_docs_folder / "app.py").write_text("# Application code")
+
+    file_hashes: dict[str, str] = {}
+
+    with patch("agent_cli.rag._indexing.chunk_text", return_value=["content"]):
+        _indexing.initial_index(mock_collection, temp_docs_folder, file_hashes)
+
+    # Only app.py should be indexed
+    assert "app.py" in file_hashes
+    assert "__pycache__/module.cpython-313.pyc" not in file_hashes
+    assert "node_modules/lodash/index.js" not in file_hashes
+    assert "venv/bin/activate" not in file_hashes
