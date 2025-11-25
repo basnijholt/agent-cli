@@ -5,8 +5,8 @@ import { Thread } from "./components/Thread";
 import { SettingsModal } from "./components/SettingsModal";
 import { useAgentCLIRuntime, type AgentCLIRuntimeConfig } from "./runtime/useAgentCLIRuntime";
 import { useTheme } from "./hooks/useTheme";
+import { useModels } from "./hooks/useModels";
 
-const API_BASE = "http://localhost:8100";
 const MODEL_STORAGE_KEY = "agent-cli-selected-model";
 
 // Keyboard shortcuts helper - detect platform
@@ -103,49 +103,29 @@ const AppContent = ({
 
 const App = () => {
   const [config, setConfig] = useState<AgentCLIRuntimeConfig>(() => {
-    // Load saved model from localStorage on init
     const savedModel =
       typeof window !== "undefined" ? localStorage.getItem(MODEL_STORAGE_KEY) || "" : "";
-    return {
-      model: savedModel,
-      memoryTopK: 5,
-    };
+    return { model: savedModel, memoryTopK: 5 };
   });
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [isLoadingModels, setIsLoadingModels] = useState(true);
   const { theme, toggleTheme } = useTheme();
+  const { models, isLoading: isLoadingModels } = useModels();
 
-  // Save model to localStorage when it changes
+  // Auto-select first model if none saved
+  useEffect(() => {
+    if (models.length > 0 && !config.model) {
+      const defaultModel = models[0].id;
+      setConfig((prev) => ({ ...prev, model: defaultModel }));
+      localStorage.setItem(MODEL_STORAGE_KEY, defaultModel);
+    }
+  }, [models, config.model]);
+
   const handleConfigChange = (newConfig: AgentCLIRuntimeConfig) => {
     setConfig(newConfig);
     if (newConfig.model) {
       localStorage.setItem(MODEL_STORAGE_KEY, newConfig.model);
     }
   };
-
-  // Fetch models on app startup and auto-select the first one if none saved
-  useEffect(() => {
-    const fetchModels = async () => {
-      try {
-        const res = await fetch(`${API_BASE}/v1/models`);
-        if (res.ok) {
-          const data = await res.json();
-          const models = data.data || [];
-          // Only auto-select if no model is saved
-          if (models.length > 0 && !config.model) {
-            const defaultModel = models[0].id;
-            setConfig((prev) => ({ ...prev, model: defaultModel }));
-            localStorage.setItem(MODEL_STORAGE_KEY, defaultModel);
-          }
-        }
-      } catch (err) {
-        console.error("Failed to fetch models:", err);
-      } finally {
-        setIsLoadingModels(false);
-      }
-    };
-    fetchModels();
-  }, []);
 
   const runtime = useAgentCLIRuntime(config);
 

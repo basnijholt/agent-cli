@@ -1,27 +1,15 @@
 import { useEffect, useState, useRef } from "react";
 import { ChevronDown, Search, Cpu } from "lucide-react";
-import { ENDPOINTS } from "../config";
+import { useModels } from "../hooks/useModels";
 
-// Simple fuzzy match function
 function fuzzyMatch(text: string, query: string): boolean {
   const textLower = text.toLowerCase();
   const queryLower = query.toLowerCase();
-
-  // Check if all query characters appear in order
   let queryIdx = 0;
   for (let i = 0; i < textLower.length && queryIdx < queryLower.length; i++) {
-    if (textLower[i] === queryLower[queryIdx]) {
-      queryIdx++;
-    }
+    if (textLower[i] === queryLower[queryIdx]) queryIdx++;
   }
   return queryIdx === queryLower.length;
-}
-
-interface Model {
-  id: string;
-  object: string;
-  created: number;
-  owned_by: string;
 }
 
 interface ModelSelectorProps {
@@ -30,7 +18,7 @@ interface ModelSelectorProps {
 }
 
 export const ModelSelector = ({ currentModel, onModelChange }: ModelSelectorProps) => {
-  const [models, setModels] = useState<Model[]>([]);
+  const { models } = useModels();
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [highlightedIndex, setHighlightedIndex] = useState(0);
@@ -39,82 +27,47 @@ export const ModelSelector = ({ currentModel, onModelChange }: ModelSelectorProp
   const dropdownRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
 
+  // Focus search and reset on open/close
   useEffect(() => {
-    const fetchModels = async () => {
-      try {
-        const response = await fetch(ENDPOINTS.models);
-        if (response.ok) {
-          const data = await response.json();
-          const chatModels = data.data.filter(
-            (m: Model) => !m.id.toLowerCase().includes("embedding")
-          );
-          setModels(chatModels);
-        }
-      } catch (error) {
-        console.error("Failed to fetch models:", error);
-      }
-    };
-    fetchModels();
-  }, []);
-
-  // Focus search input when menu opens
-  useEffect(() => {
-    if (isOpen && searchInputRef.current) {
-      searchInputRef.current.focus();
-    }
-    if (!isOpen) {
+    if (isOpen) {
+      searchInputRef.current?.focus();
+    } else {
       setSearchQuery("");
       setHighlightedIndex(0);
     }
   }, [isOpen]);
 
-  // Close dropdown when clicking outside
+  // Close on outside click
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
-      }
+    if (!isOpen) return;
+    const handleClick = (e: MouseEvent) => {
+      if (!dropdownRef.current?.contains(e.target as Node)) setIsOpen(false);
     };
-    if (isOpen) {
-      document.addEventListener("mousedown", handleClickOutside);
-    }
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
   }, [isOpen]);
 
-  const displayModelName = currentModel
-    ? currentModel.split("/").pop() || currentModel
-    : "Select model";
-
-  // Filter models using fuzzy match
   const filteredModels = searchQuery ? models.filter((m) => fuzzyMatch(m.id, searchQuery)) : models;
 
-  // Reset highlighted index when search query changes
-  useEffect(() => {
-    setHighlightedIndex(0);
-  }, [searchQuery]);
+  // Reset highlight on search change
+  useEffect(() => setHighlightedIndex(0), [searchQuery]);
 
-  // Scroll highlighted item into view
+  // Scroll highlighted into view
   useEffect(() => {
-    if (listRef.current && filteredModels.length > 0) {
-      const item = listRef.current.children[highlightedIndex] as HTMLElement;
-      if (item) {
-        item.scrollIntoView({ block: "nearest" });
-      }
-    }
+    const item = listRef.current?.children[highlightedIndex] as HTMLElement;
+    item?.scrollIntoView({ block: "nearest" });
   }, [highlightedIndex, filteredModels.length]);
 
-  // Keyboard navigation handler
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (!isOpen || filteredModels.length === 0) return;
-
+    if (!isOpen || !filteredModels.length) return;
     switch (e.key) {
       case "ArrowDown":
         e.preventDefault();
-        setHighlightedIndex((prev) => (prev + 1) % filteredModels.length);
+        setHighlightedIndex((i) => (i + 1) % filteredModels.length);
         break;
       case "ArrowUp":
         e.preventDefault();
-        setHighlightedIndex((prev) => (prev - 1 + filteredModels.length) % filteredModels.length);
+        setHighlightedIndex((i) => (i - 1 + filteredModels.length) % filteredModels.length);
         break;
       case "Enter":
         e.preventDefault();
@@ -130,6 +83,8 @@ export const ModelSelector = ({ currentModel, onModelChange }: ModelSelectorProp
     }
   };
 
+  const displayName = currentModel?.split("/").pop() || "Select model";
+
   return (
     <div className="relative" ref={dropdownRef}>
       <button
@@ -137,12 +92,12 @@ export const ModelSelector = ({ currentModel, onModelChange }: ModelSelectorProp
         className="w-full flex items-center gap-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 px-3 py-2 rounded-lg transition-colors"
       >
         <Cpu size={16} />
-        <span className="text-sm flex-grow text-left truncate">{displayModelName}</span>
+        <span className="text-sm flex-grow text-left truncate">{displayName}</span>
         <ChevronDown size={14} className={`transition-transform ${isOpen ? "rotate-180" : ""}`} />
       </button>
+
       {isOpen && models.length > 0 && (
         <div className="absolute bottom-full left-0 right-0 mb-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50 flex flex-col max-h-80">
-          {/* Search input */}
           <div className="p-2 border-b border-gray-200 dark:border-gray-700">
             <div className="relative">
               <Search
@@ -160,23 +115,23 @@ export const ModelSelector = ({ currentModel, onModelChange }: ModelSelectorProp
               />
             </div>
           </div>
-          {/* Model list */}
+
           <div ref={listRef} className="overflow-y-auto flex-1">
             {filteredModels.length === 0 ? (
               <div className="px-3 py-2 text-sm text-gray-500 dark:text-gray-400">
                 No models found
               </div>
             ) : (
-              filteredModels.map((m, index) => (
+              filteredModels.map((m, i) => (
                 <button
                   key={m.id}
                   onClick={() => {
                     onModelChange?.(m.id);
                     setIsOpen(false);
                   }}
-                  onMouseEnter={() => setHighlightedIndex(index)}
+                  onMouseEnter={() => setHighlightedIndex(i)}
                   className={`w-full text-left px-3 py-2 text-sm transition-colors ${
-                    index === highlightedIndex ? "bg-gray-100 dark:bg-gray-700" : ""
+                    i === highlightedIndex ? "bg-gray-100 dark:bg-gray-700" : ""
                   } ${
                     currentModel === m.id
                       ? "text-blue-600 dark:text-blue-400 font-medium"

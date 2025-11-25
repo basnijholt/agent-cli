@@ -7,6 +7,7 @@ import {
 import type { AppendMessage } from "@assistant-ui/react";
 import { ENDPOINTS } from "../config";
 import { parseSSEStream, type StreamingState } from "../utils/sse";
+import type { MessageMetadata } from "../types";
 
 // Thread metadata
 interface ThreadData {
@@ -16,24 +17,6 @@ interface ThreadData {
 
 // Storage key for persisting selected thread
 const SELECTED_THREAD_KEY = "agent-cli-selected-thread";
-
-// Message metadata for display
-interface MessageMetadata {
-  createdAt?: number;
-  model?: string;
-  systemFingerprint?: string;
-  promptTokens?: number;
-  completionTokens?: number;
-  totalTokens?: number;
-  durationMs?: number;
-  // Timings from API
-  promptMs?: number;
-  predictedMs?: number;
-  promptPerSecond?: number;
-  predictedPerSecond?: number;
-  cacheTokens?: number;
-  [key: string]: unknown;
-}
 
 // Message with stable ID and optional reasoning
 interface MessageWithId {
@@ -76,7 +59,7 @@ function toThreadMessage(msg: MessageWithId): ThreadMessageLike {
     id: msg.id,
     role: msg.role === "user" ? "user" : "assistant",
     content,
-    metadata: msg.metadata ? { custom: msg.metadata } : undefined,
+    metadata: msg.metadata ? { custom: msg.metadata as Record<string, unknown> } : undefined,
   };
 }
 
@@ -154,7 +137,7 @@ export function useAgentCLIRuntime(config: AgentCLIRuntimeConfig = {}) {
       }
     };
     fetchConversations();
-  }, []);
+  }, [persistThreadId]);
 
   // Load messages for a specific thread
   const loadThreadMessages = async (externalId: string) => {

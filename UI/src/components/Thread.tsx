@@ -12,24 +12,7 @@ import remarkGfm from "remark-gfm";
 import { Square, Copy, Check, Info } from "lucide-react";
 
 import { Reasoning, ReasoningGroup } from "@/components/assistant-ui/reasoning";
-
-// Type for message metadata
-interface MessageMetadata {
-  createdAt?: number;
-  model?: string;
-  systemFingerprint?: string;
-  promptTokens?: number;
-  completionTokens?: number;
-  totalTokens?: number;
-  durationMs?: number;
-  // Timings from API
-  promptMs?: number;
-  predictedMs?: number;
-  promptPerSecond?: number;
-  predictedPerSecond?: number;
-  cacheTokens?: number;
-  [key: string]: unknown;
-}
+import type { MessageMetadata } from "../types";
 
 // Custom markdown text component for assistant messages
 const MarkdownText = () => {

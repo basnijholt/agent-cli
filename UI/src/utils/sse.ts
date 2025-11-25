@@ -1,41 +1,17 @@
-// Streaming state for SSE parsing
-export interface StreamingState {
+import type { MessageMetadata } from "../types";
+
+export interface StreamingState extends Omit<MessageMetadata, "createdAt" | "durationMs"> {
   content: string;
   reasoning: string;
-  model?: string;
-  systemFingerprint?: string;
-  promptTokens?: number;
-  completionTokens?: number;
-  totalTokens?: number;
-  // Timings from API
-  promptMs?: number;
-  predictedMs?: number;
-  promptPerSecond?: number;
-  predictedPerSecond?: number;
-  cacheTokens?: number;
 }
 
-// Parse SSE stream from memory-proxy
 export async function* parseSSEStream(response: Response): AsyncGenerator<StreamingState> {
   const reader = response.body?.getReader();
   if (!reader) return;
 
   const decoder = new TextDecoder();
   let buffer = "";
-  let accumulatedContent = "";
-  let accumulatedReasoning = "";
-
-  // Metadata state
-  let model: string | undefined;
-  let systemFingerprint: string | undefined;
-  let promptTokens: number | undefined;
-  let completionTokens: number | undefined;
-  let totalTokens: number | undefined;
-  let promptMs: number | undefined;
-  let predictedMs: number | undefined;
-  let promptPerSecond: number | undefined;
-  let predictedPerSecond: number | undefined;
-  let cacheTokens: number | undefined;
+  const state: StreamingState = { content: "", reasoning: "" };
 
   try {
     while (true) {
@@ -47,73 +23,46 @@ export async function* parseSSEStream(response: Response): AsyncGenerator<Stream
       buffer = lines.pop() || "";
 
       for (const line of lines) {
-        if (line.startsWith("data: ")) {
-          const data = line.slice(6).trim();
-          if (data === "[DONE]") {
-            return;
+        if (!line.startsWith("data: ")) continue;
+
+        const data = line.slice(6).trim();
+        if (data === "[DONE]") return;
+
+        try {
+          const parsed = JSON.parse(data);
+          const delta = parsed.choices?.[0]?.delta;
+
+          // Accumulate content
+          if (delta?.content) state.content += delta.content;
+          if (delta?.reasoning_content) state.reasoning += delta.reasoning_content;
+
+          // Capture metadata (first occurrence wins for model/fingerprint)
+          if (parsed.model && !state.model) state.model = parsed.model;
+          if (parsed.system_fingerprint && !state.systemFingerprint) {
+            state.systemFingerprint = parsed.system_fingerprint;
           }
 
-          try {
-            const parsed = JSON.parse(data);
-            const choice = parsed.choices?.[0];
-            const delta = choice?.delta;
-
-            // Capture model from first chunk or whenever available
-            if (parsed.model && !model) {
-              model = parsed.model;
-            }
-
-            // Capture system fingerprint
-            if (parsed.system_fingerprint && !systemFingerprint) {
-              systemFingerprint = parsed.system_fingerprint;
-            }
-
-            // Capture usage data (usually in final chunk)
-            if (parsed.usage) {
-              promptTokens = parsed.usage.prompt_tokens;
-              completionTokens = parsed.usage.completion_tokens;
-              totalTokens = parsed.usage.total_tokens;
-            }
-
-            // Capture timings (usually in final chunk)
-            if (parsed.timings) {
-              promptMs = parsed.timings.prompt_ms;
-              predictedMs = parsed.timings.predicted_ms;
-              promptPerSecond = parsed.timings.prompt_per_second;
-              predictedPerSecond = parsed.timings.predicted_per_second;
-              cacheTokens = parsed.timings.cache_n;
-            }
-
-            if (delta?.content) {
-              accumulatedContent += delta.content;
-            }
-            if (delta?.reasoning_content) {
-              accumulatedReasoning += delta.reasoning_content;
-            }
-
-            // Yield updated state
-            // Note: We always yield the accumulated content/reasoning + latest metadata
-            yield {
-              content: accumulatedContent,
-              reasoning: accumulatedReasoning,
-              model,
-              systemFingerprint,
-              promptTokens,
-              completionTokens,
-              totalTokens,
-              promptMs,
-              predictedMs,
-              promptPerSecond,
-              predictedPerSecond,
-              cacheTokens,
-            };
-
-            if (choice?.finish_reason) {
-              return;
-            }
-          } catch {
-            // Skip invalid JSON
+          // Usage data (usually in final chunk, overwrites)
+          if (parsed.usage) {
+            state.promptTokens = parsed.usage.prompt_tokens;
+            state.completionTokens = parsed.usage.completion_tokens;
+            state.totalTokens = parsed.usage.total_tokens;
           }
+
+          // Timings (usually in final chunk, overwrites)
+          if (parsed.timings) {
+            state.promptMs = parsed.timings.prompt_ms;
+            state.predictedMs = parsed.timings.predicted_ms;
+            state.promptPerSecond = parsed.timings.prompt_per_second;
+            state.predictedPerSecond = parsed.timings.predicted_per_second;
+            state.cacheTokens = parsed.timings.cache_n;
+          }
+
+          yield { ...state };
+
+          if (parsed.choices?.[0]?.finish_reason) return;
+        } catch {
+          // Skip invalid JSON
         }
       }
     }

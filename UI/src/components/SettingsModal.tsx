@@ -1,8 +1,7 @@
 import { useState, useEffect } from "react";
 import { X } from "lucide-react";
+import { useModels } from "../hooks/useModels";
 import type { AgentCLIRuntimeConfig } from "../runtime/useAgentCLIRuntime";
-
-const API_BASE = "http://localhost:8100";
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -11,47 +10,10 @@ interface SettingsModalProps {
   onConfigChange: (config: AgentCLIRuntimeConfig) => void;
 }
 
-interface ModelInfo {
-  id: string;
-  owned_by?: string;
-}
-
 export const SettingsModal = ({ isOpen, onClose, config, onConfigChange }: SettingsModalProps) => {
+  const { models, isLoading, error } = useModels();
   const [localModel, setLocalModel] = useState(config.model || "");
   const [localTopK, setLocalTopK] = useState(config.memoryTopK || 5);
-  const [models, setModels] = useState<ModelInfo[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  // Fetch models when modal opens
-  useEffect(() => {
-    if (!isOpen) return;
-
-    const fetchModels = async () => {
-      setIsLoading(true);
-      setError(null);
-      try {
-        const res = await fetch(`${API_BASE}/v1/models`);
-        if (!res.ok) {
-          throw new Error(`Failed to fetch models: ${res.status}`);
-        }
-        const data = await res.json();
-        const modelList: ModelInfo[] = data.data || [];
-        setModels(modelList);
-
-        // If current model is not in the list and list is not empty, select the first one
-        if (modelList.length > 0 && !modelList.some((m) => m.id === localModel)) {
-          setLocalModel(modelList[0].id);
-        }
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to fetch models");
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchModels();
-  }, [isOpen]);
 
   // Sync local state when config changes externally
   useEffect(() => {
@@ -59,13 +21,17 @@ export const SettingsModal = ({ isOpen, onClose, config, onConfigChange }: Setti
     setLocalTopK(config.memoryTopK || 5);
   }, [config]);
 
+  // Auto-select first model if current is invalid
+  useEffect(() => {
+    if (models.length > 0 && !models.some((m) => m.id === localModel)) {
+      setLocalModel(models[0].id);
+    }
+  }, [models, localModel]);
+
   if (!isOpen) return null;
 
   const handleSave = () => {
-    onConfigChange({
-      model: localModel,
-      memoryTopK: localTopK,
-    });
+    onConfigChange({ model: localModel, memoryTopK: localTopK });
     onClose();
   };
 
@@ -77,12 +43,9 @@ export const SettingsModal = ({ isOpen, onClose, config, onConfigChange }: Setti
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
-      {/* Backdrop */}
       <div className="absolute inset-0 bg-black/50" onClick={handleCancel} />
 
-      {/* Modal */}
       <div className="relative bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-md mx-4 transition-colors">
-        {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Settings</h2>
           <button
@@ -94,13 +57,12 @@ export const SettingsModal = ({ isOpen, onClose, config, onConfigChange }: Setti
         </div>
 
         <div className="p-4 space-y-5">
-          {/* Model Selection */}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Model
             </label>
             {isLoading ? (
-              <div className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-500 dark:text-gray-400 text-sm">
+              <div className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-500 text-sm">
                 Loading models...
               </div>
             ) : error ? (
@@ -130,10 +92,10 @@ export const SettingsModal = ({ isOpen, onClose, config, onConfigChange }: Setti
                 onChange={(e) => setLocalModel(e.target.value)}
                 className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm"
               >
-                {models.map((model) => (
-                  <option key={model.id} value={model.id}>
-                    {model.id}
-                    {model.owned_by ? ` (${model.owned_by})` : ""}
+                {models.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.id}
+                    {m.owned_by ? ` (${m.owned_by})` : ""}
                   </option>
                 ))}
               </select>
@@ -143,7 +105,6 @@ export const SettingsModal = ({ isOpen, onClose, config, onConfigChange }: Setti
             </p>
           </div>
 
-          {/* RAG Configuration */}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Memory Top-K
@@ -164,7 +125,6 @@ export const SettingsModal = ({ isOpen, onClose, config, onConfigChange }: Setti
             </p>
           </div>
 
-          {/* Current Config Display */}
           <div className="p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
             <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Current:</p>
             <code className="text-xs text-gray-700 dark:text-gray-300 font-mono">
@@ -173,7 +133,6 @@ export const SettingsModal = ({ isOpen, onClose, config, onConfigChange }: Setti
           </div>
         </div>
 
-        {/* Actions */}
         <div className="flex justify-end gap-2 p-4 border-t border-gray-200 dark:border-gray-700">
           <button
             onClick={handleCancel}
