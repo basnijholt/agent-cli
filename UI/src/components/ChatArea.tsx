@@ -6,13 +6,19 @@ import { Thread } from "./Thread";
 
 interface ChatAreaProps {
   conversationId: string;
+  config: {
+    model: string;
+    ragTopK: number;
+  };
 }
 
-export const ChatArea = ({ conversationId }: ChatAreaProps) => {
+export const ChatArea = ({ conversationId, config }: ChatAreaProps) => {
   const chat = useChat({
     api: "http://localhost:8100/v1/chat/completions",
     body: {
       memory_id: conversationId,
+      model: config.model,
+      memory_top_k: config.ragTopK,
     },
     id: conversationId,
   });

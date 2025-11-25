@@ -1,13 +1,14 @@
-import { MessageSquarePlus, MessageSquare } from "lucide-react";
+import { MessageSquarePlus, MessageSquare, Settings } from "lucide-react";
 
 interface SidebarProps {
   conversations: string[];
   currentId: string;
   onSelect: (id: string) => void;
   onCreate: () => void;
+  onOpenSettings: () => void;
 }
 
-export const Sidebar = ({ conversations, currentId, onSelect, onCreate }: SidebarProps) => {
+export const Sidebar = ({ conversations, currentId, onSelect, onCreate, onOpenSettings }: SidebarProps) => {
   return (
     <div className="w-64 bg-gray-50 border-r border-gray-200 h-full flex flex-col">
       <div className="p-4 border-b border-gray-200">
@@ -35,6 +36,16 @@ export const Sidebar = ({ conversations, currentId, onSelect, onCreate }: Sideba
             <span className="truncate">{id}</span>
           </button>
         ))}
+      </div>
+
+      <div className="p-4 border-t border-gray-200">
+        <button
+          onClick={onOpenSettings}
+          className="w-full flex items-center gap-2 text-gray-700 px-3 py-2 rounded-lg hover:bg-gray-200 transition-colors"
+        >
+          <Settings size={20} />
+          Settings
+        </button>
       </div>
     </div>
   );
