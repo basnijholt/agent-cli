@@ -67,7 +67,10 @@ const AppContent = ({
         toggleTheme={toggleTheme}
       />
       <div className="flex-grow h-full relative">
-        <Thread />
+        <Thread
+          model={config.model}
+          onModelChange={(model) => onConfigChange({ ...config, model })}
+        />
         {!config.model && (
           <div className="absolute inset-0 flex items-center justify-center bg-white/80 dark:bg-gray-900/80">
             <div className="text-center p-6">
