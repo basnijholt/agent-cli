@@ -157,16 +157,14 @@ def search_context(
 
     context_parts = []
     for doc, meta, _ in ranked:
-        path = meta.get("file_path", "unknown")
-        chunk_id = meta.get("chunk_id", 0)
-        context_parts.append(f"### {path} (chunk {chunk_id})\n{doc}")
+        context_parts.append(f"### {meta['file_path']} (chunk {meta['chunk_id']})\n{doc}")
 
     context = "\n\n---\n\n".join(context_parts)
     sources = [
         RagSource(
-            source=str(meta.get("source", "unknown")),
-            path=str(meta.get("file_path", "unknown")),
-            chunk_id=int(meta.get("chunk_id", 0)),
+            source=meta["source"],
+            path=meta["file_path"],
+            chunk_id=meta["chunk_id"],
             score=float(score),
         )
         for _, meta, score in ranked
