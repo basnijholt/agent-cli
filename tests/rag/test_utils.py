@@ -255,9 +255,9 @@ class TestShouldIgnorePath:
         f.touch()
         assert _utils.should_ignore_path(f, tmp_path)
 
-    def test_gitignore_ignored(self, tmp_path: Path) -> None:
-        """Test that .gitignore files are ignored."""
-        f = tmp_path / ".gitignore"
+    def test_hidden_file_with_extension_ignored(self, tmp_path: Path) -> None:
+        """Test that hidden files with extensions are ignored."""
+        f = tmp_path / ".hidden_config"
         f.touch()
         assert _utils.should_ignore_path(f, tmp_path)
 
@@ -279,13 +279,8 @@ class TestShouldIgnorePath:
         f.touch()
         assert _utils.should_ignore_path(f, tmp_path)
 
-    def test_path_outside_base_folder(self, tmp_path: Path) -> None:
-        """Test handling of paths outside base folder."""
-        # When path is outside base_folder, falls back to checking just the filename
-        other_path = Path("/some/other/.hidden/path.txt")
-        # Filename is "path.txt" which doesn't start with "." - not ignored
-        assert not _utils.should_ignore_path(other_path, tmp_path)
-
-        # But a hidden filename should still be ignored
-        hidden_path = Path("/some/other/dir/.hidden")
-        assert _utils.should_ignore_path(hidden_path, tmp_path)
+    def test_path_outside_base_folder_raises(self, tmp_path: Path) -> None:
+        """Test that paths outside base folder raise ValueError (fail loudly)."""
+        other_path = Path("/some/other/path.txt")
+        with pytest.raises(ValueError, match="is not in the subpath"):
+            _utils.should_ignore_path(other_path, tmp_path)

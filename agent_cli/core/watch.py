@@ -14,11 +14,8 @@ PathFilter = Callable[[Path, Path], bool]
 
 def _default_skip_hidden(path: Path, root: Path) -> bool:
     """Default filter that skips hidden files and directories."""
-    try:
-        rel_parts = path.relative_to(root).parts
-        return any(part.startswith(".") for part in rel_parts)
-    except ValueError:
-        return path.name.startswith(".")
+    rel_parts = path.relative_to(root).parts
+    return any(part.startswith(".") for part in rel_parts)
 
 
 async def watch_directory(

@@ -13,44 +13,23 @@ if TYPE_CHECKING:
 # Configure logging
 LOGGER = logging.getLogger(__name__)
 
-# Directories to always ignore (common development artifacts)
+# Non-hidden directories to ignore (hidden dirs already caught by startswith(".") check)
 DEFAULT_IGNORE_DIRS: frozenset[str] = frozenset(
     {
-        # Python
         "__pycache__",
-        ".venv",
         "venv",
-        ".env",
         "env",
-        ".tox",
-        ".nox",
-        ".mypy_cache",
-        ".pytest_cache",
-        ".ruff_cache",
-        ".coverage",
         "htmlcov",
-        # JavaScript/Node
         "node_modules",
-        # Build outputs
         "build",
         "dist",
-        # IDEs
-        ".idea",
-        ".vscode",
-        # Version control
-        ".git",
-        ".hg",
-        ".svn",
     },
 )
 
-# File patterns to ignore
+# Non-hidden files to ignore (hidden files already caught by startswith(".") check)
 DEFAULT_IGNORE_FILES: frozenset[str] = frozenset(
     {
-        ".DS_Store",
         "Thumbs.db",
-        ".gitignore",
-        ".gitattributes",
     },
 )
 
@@ -61,8 +40,8 @@ def should_ignore_path(path: Path, base_folder: Path) -> bool:
     Ignores:
     - Any path component starting with '.' (hidden files/dirs)
     - Common development directories (__pycache__, node_modules, venv, etc.)
-    - Common metadata files (.DS_Store, Thumbs.db, etc.)
     - .egg-info directories
+    - OS metadata files (Thumbs.db)
 
     Args:
         path: The file path to check.
@@ -72,11 +51,7 @@ def should_ignore_path(path: Path, base_folder: Path) -> bool:
         True if the path should be ignored, False otherwise.
 
     """
-    try:
-        rel_parts = path.relative_to(base_folder).parts
-    except ValueError:
-        # Path is not relative to base_folder, check just the name
-        rel_parts = (path.name,)
+    rel_parts = path.relative_to(base_folder).parts
 
     for part in rel_parts:
         # Hidden files/directories (starting with .)
