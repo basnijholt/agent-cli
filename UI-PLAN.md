@@ -1,7 +1,8 @@
 # UI Development Plan: Agent CLI Desktop
 
-> **Status**: Active / Phase 2 In Progress (Pivot)
+> **Status**: Active / Phase 2 Ready to Implement
 > **Last Updated**: 2025-11-24
+> **Next Step**: Create `useAgentCLIRuntime` hook (see Section 6)
 
 ## 1. The Vision
 
@@ -193,35 +194,126 @@ bun run test
 
 ## 6. Context for Next Agent
 
-### Current State
+### Current State Summary
 
-- App has basic chat working
-- Backend has conversation list/history endpoints
-- **PIVOT NEEDED**: Current frontend uses custom components (Sidebar, ChatArea) instead of native assistant-ui primitives
+| Layer | Status | Notes |
+|-------|--------|-------|
+| Backend (`agent_cli/`) | 🟢 Solid | CORS enabled, conversation endpoints working |
+| Infrastructure (`UI/`) | 🟢 Solid | Vite + React + TypeScript + Bun configured |
+| Frontend (`UI/src/`) | 🟡 Misaligned | Custom components need replacement with primitives |
 
-### Immediate Task
+### Backend State (KEEP - No Changes Needed)
 
-**Implement Phase 2**: Create `useAgentCLIRuntime` hook that implements assistant-ui's thread list interface, then refactor App to use `ThreadListPrimitive`.
+The backend is ready. These files were added/modified and work correctly:
 
-### Key Files
+```
+agent_cli/memory/api.py      # Added GET /v1/conversations, GET /v1/conversations/{id}
+agent_cli/memory/client.py   # Added list_conversations(), get_history()
+agent_cli/memory/_files.py   # Added load_conversation_history()
+```
 
-- `UI/src/App.tsx` - Main entry, needs refactor
-- `UI/src/components/` - Custom components, mostly to be replaced
-- `agent_cli/memory/api.py` - Backend API (good, keep)
-- `assistant-ui/` - Reference submodule for understanding runtime interfaces
+**Test the backend**:
+```bash
+curl http://localhost:8100/v1/conversations
+curl http://localhost:8100/v1/conversations/default
+```
 
-### Assistant-UI Reference
+### Frontend State (NEEDS REFACTOR)
 
-The `assistant-ui/` directory is a **reference submodule** for understanding:
-- `packages/react/src/primitives/threadList/` - ThreadList primitives
-- `packages/react/src/legacy-runtime/runtime-cores/` - Runtime core implementations
-- `examples/with-langgraph/` - Thread list example
-- `examples/with-external-store/` - Custom backend example
+**Current files in `UI/src/`**:
 
-Key interfaces to implement:
-- `ThreadListRuntimeCore` (or use external store pattern)
-- `ThreadHistoryAdapter` for message persistence
-- `ModelContext` for configuration
+| File | Current State | Action |
+|------|---------------|--------|
+| `App.tsx` | Manual state management (`useState` for conversations, currentId) | **REFACTOR**: Use runtime + primitives |
+| `components/Sidebar.tsx` | Custom sidebar with manual button list | **DELETE**: Replace with `ThreadListPrimitive` |
+| `components/ChatArea.tsx` | Wrapper with `useChat` + manual history fetch | **DELETE**: Logic moves to runtime |
+| `components/SettingsModal.tsx` | Custom modal for model/RAG settings | **KEEP** for Phase 3 (RAG settings aren't in assistant-ui) |
+| `components/Thread.tsx` | Wraps `ThreadPrimitive` nicely | **KEEP** |
+| `main.tsx` | Entry point | **KEEP** |
+| `index.css` | Tailwind imports | **KEEP** |
+
+### Immediate Task: Phase 2 Implementation
+
+**Goal**: Replace manual state management with assistant-ui runtime adapter.
+
+**Concrete steps**:
+
+1. **Create runtime directory and hook**:
+   ```
+   UI/src/runtime/
+   └── useAgentCLIRuntime.ts   # NEW: Implements thread list interface
+   ```
+
+2. **Study the LangGraph example** in `assistant-ui/examples/with-langgraph/`:
+   - `app/MyRuntimeProvider.tsx` - Shows `useLangGraphRuntime` pattern
+   - `components/assistant-ui/thread-list.tsx` - Shows primitive usage
+
+3. **Implement `useAgentCLIRuntime`** with these callbacks:
+   - `load(threadId)` → calls `GET /v1/conversations/{threadId}`
+   - `create()` → generates new thread ID (or `POST /v1/conversations`)
+   - `stream(messages, context)` → calls `POST /v1/chat/completions`
+
+4. **Create `ThreadList.tsx`** using primitives (not custom buttons):
+   ```typescript
+   import { ThreadListPrimitive, ThreadListItemPrimitive } from "@assistant-ui/react";
+   ```
+
+5. **Refactor `App.tsx`**:
+   - Remove `useState` for conversations/currentId
+   - Use single `AssistantRuntimeProvider` with our runtime
+   - Compose `<ThreadList />` and `<Thread />`
+
+6. **Delete** `Sidebar.tsx` and `ChatArea.tsx`
+
+### Key Reference Files (in `assistant-ui/` submodule)
+
+**Must read before implementing**:
+
+1. **LangGraph runtime hook** (best pattern to follow):
+   ```
+   assistant-ui/packages/react-langgraph/src/useLangGraphRuntime.tsx
+   ```
+
+2. **Thread list primitives**:
+   ```
+   assistant-ui/packages/react/src/primitives/threadList/index.ts
+   assistant-ui/packages/react/src/primitives/threadListItem/index.ts
+   ```
+
+3. **Working example with thread list**:
+   ```
+   assistant-ui/examples/with-langgraph/app/MyRuntimeProvider.tsx
+   assistant-ui/examples/with-langgraph/components/assistant-ui/thread-list.tsx
+   ```
+
+4. **Thread list types**:
+   ```
+   assistant-ui/packages/react/src/client/types/ThreadList.ts
+   ```
+
+### Gotchas and Tips
+
+1. **SSE Streaming**: The memory-proxy returns SSE. The runtime's `stream` callback needs to parse this. Look at how LangGraph example handles streaming.
+
+2. **Thread ID persistence**: Assistant-ui manages which thread is active. The runtime just needs to load/save to our backend.
+
+3. **No need to list threads manually**: Once runtime is set up, `ThreadListPrimitive` automatically shows threads from the runtime's state.
+
+4. **Install `@assistant-ui/react-langgraph`**: If using that pattern, add the dependency:
+   ```bash
+   cd UI && bun add @assistant-ui/react-langgraph
+   ```
+
+### Verification Checklist
+
+After Phase 2 is complete, verify:
+
+- [ ] Can create new chat threads via UI button
+- [ ] Thread list shows all conversations from backend
+- [ ] Clicking a thread loads its history
+- [ ] Sending a message works with streaming response
+- [ ] Switching threads preserves history
+- [ ] No manual `useState` for conversation management in React
 
 ## 7. Backend API Contract
 
@@ -494,10 +586,11 @@ type LanguageModelConfig = {
 
 | Date | Decision | Rationale |
 |------|----------|-----------|
-| 2024-11-24 | Web-first, defer Electron | Simpler development, same code works everywhere |
-| 2024-11-24 | Use assistant-ui primitives over custom components | Native features (thread list, model context) reduce custom code |
-| 2024-11-24 | Add assistant-ui as submodule | AI reference for understanding interfaces |
-| 2024-11-24 | Pivot from custom Sidebar to ThreadListPrimitive | Wrong path identified, correcting |
+| 2025-11-24 | Web-first, defer Electron | Simpler development, same code works everywhere |
+| 2025-11-24 | Use assistant-ui primitives over custom components | Native features (thread list, model context) reduce custom code |
+| 2025-11-24 | Add assistant-ui as submodule | AI reference for understanding interfaces |
+| 2025-11-24 | Pivot from custom Sidebar to ThreadListPrimitive | Wrong path identified, correcting |
+| 2025-11-24 | Keep backend, refactor frontend only | Backend API is solid; only UI layer needs correction |
 
 ---
 
