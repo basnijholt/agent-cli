@@ -467,11 +467,11 @@ Get message history for a conversation.
 
 ### Endpoints Needed (Future)
 
-| Endpoint | Purpose | Priority |
-|----------|---------|----------|
-| `POST /v1/conversations` | Create new conversation | Phase 2 |
-| `DELETE /v1/conversations/{id}` | Delete/archive conversation | Phase 2 |
-| `PATCH /v1/conversations/{id}` | Rename conversation | Phase 3 |
+| Endpoint | Purpose | Status |
+|----------|---------|--------|
+| `POST /v1/conversations` | Create new conversation | Not needed (lazy creation works) |
+| `DELETE /v1/conversations/{id}` | Delete/archive conversation | ✅ Implemented |
+| `PATCH /v1/conversations/{id}` | Rename conversation | Planned |
 | `POST /transcribe` | Voice transcription | Phase 4 |
 
 ---
@@ -698,7 +698,7 @@ type LanguageModelConfig = {
 | 2025-11-24 | Recreate SettingsModal with model/RAG config | Phase 3 implementation with dynamic runtime config |
 | 2025-11-24 | Use useRef for config in runtime | Avoid stale closure issues when config changes |
 | 2025-11-25 | Fetch models from `/v1/models` API | Dynamic model list instead of hardcoding |
-| 2025-11-25 | Replace `useLangGraphRuntime` with `useExternalStoreRuntime` | `useLangGraphRuntime` requires AssistantCloud; `useExternalStoreRuntime` gives full control without cloud dependency |
+| 2025-11-25 | Replace `useLangGraphRuntime` with `useExternalStoreRuntime` | `useLangGraphRuntime` without AssistantCloud falls back to `InMemoryThreadListAdapter` which returns empty thread list, undefined externalIds, and "Thread not found" errors. It's designed for LangGraph Cloud or ephemeral use, NOT custom backends. `useExternalStoreRuntime` is the correct "bring your own backend" pattern. |
 | 2025-11-25 | Add Playwright E2E tests | Enable automated testing instead of manual verification |
 | 2025-11-25 | Support `reasoning_content` in SSE parser | Thinking models (qwen3-thinking) use this field instead of `content` |
 | 2025-11-25 | Use `adapters.threadList` for thread list data | Proper API for exposing thread list to `ThreadListPrimitive` primitives |
@@ -707,15 +707,17 @@ type LanguageModelConfig = {
 | 2025-11-25 | Add dark mode with Tailwind `class` strategy | Most flexible approach, persists to localStorage, respects system preference |
 | 2025-11-25 | Use react-markdown for assistant messages | Native assistant-ui markdown had compatibility issues; direct react-markdown works better |
 | 2025-11-25 | Platform-aware keyboard shortcuts | Mac users expect ⌘, Windows/Linux expect Ctrl |
+| 2025-11-25 | Custom SSE parser for non-standard fields | Backend returns `reasoning_content` (thinking models) and `timings` (Ollama/llama.cpp metrics) which aren't in OpenAI spec. ~70 lines of custom parsing is genuinely required. |
+| 2025-11-25 | Align TypeScript types with Python models (snake_case) | `ResponseMetadata` mirrors `agent_cli.memory.entities.ResponseMetadata`. Consistent naming reduces friction and bugs. |
 
 ---
 
 ## 12. Open Questions
 
-- [x] Which runtime pattern works best with our backend? → **`useLangGraphRuntime`** (implemented)
+- [x] Which runtime pattern works best with our backend? → **`useExternalStoreRuntime`** (the "bring your own backend" pattern; `useLangGraphRuntime` requires AssistantCloud)
 - [x] Do we need `POST /v1/conversations` to create threads? → **No, lazy creation works** (implemented)
-- [x] How to handle SSE streaming from memory-proxy? → **Custom SSE parser in `parseSSEStream`** (implemented)
+- [x] How to handle SSE streaming from memory-proxy? → **Custom SSE parser in `parseSSEStream`** (~70 lines for non-standard fields)
 - [x] Should settings (model, RAG params) persist in localStorage or backend? → **React state for now** (session-only; localStorage can be added later)
+- [x] Add thread deletion/archiving support? → **Yes, `DELETE /v1/conversations/{id}` + `onArchive` in UI** (implemented)
 - [ ] How to handle thread titles? (Currently shows "New Chat" fallback)
-- [ ] Add thread deletion/archiving support?
 - [ ] Add more RAG parameters to settings? (score_threshold, recency_weight)
