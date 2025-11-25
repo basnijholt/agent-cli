@@ -17,11 +17,12 @@ interface ThreadData {
 // Storage key for persisting selected thread
 const SELECTED_THREAD_KEY = "agent-cli-selected-thread";
 
-// Message with stable ID
+// Message with stable ID and optional reasoning
 interface MessageWithId {
   id: string;
   role: string;
   content: string;
+  reasoning?: string;
 }
 
 // Generate unique message ID
@@ -30,17 +31,45 @@ function generateMessageId(): string {
   return `msg-${globalMessageId++}-${Date.now()}`;
 }
 
+// Content part types for assistant-ui
+type ContentPart =
+  | { type: "text"; text: string }
+  | { type: "reasoning"; text: string };
+
 // Convert to assistant-ui format
 function toThreadMessage(msg: MessageWithId): ThreadMessageLike {
+  const content: ContentPart[] = [];
+
+  // Add reasoning parts first (assistant-ui expects reasoning before text)
+  if (msg.reasoning) {
+    content.push({ type: "reasoning", text: msg.reasoning });
+  }
+
+  // Add text content
+  if (msg.content) {
+    content.push({ type: "text", text: msg.content });
+  }
+
+  // Ensure we always have at least one content part
+  if (content.length === 0) {
+    content.push({ type: "text", text: "" });
+  }
+
   return {
     id: msg.id,
     role: msg.role === "user" ? "user" : "assistant",
-    content: [{ type: "text", text: msg.content }],
+    content,
   };
 }
 
+// Streaming state for SSE parsing
+interface StreamingState {
+  content: string;
+  reasoning: string;
+}
+
 // Parse SSE stream from memory-proxy
-async function* parseSSEStream(response: Response): AsyncGenerator<string> {
+async function* parseSSEStream(response: Response): AsyncGenerator<StreamingState> {
   const reader = response.body?.getReader();
   if (!reader) return;
 
@@ -77,9 +106,12 @@ async function* parseSSEStream(response: Response): AsyncGenerator<string> {
               accumulatedReasoning += delta.reasoning_content;
             }
 
-            const displayContent = accumulatedContent || accumulatedReasoning;
-            if (displayContent) {
-              yield displayContent;
+            // Only yield if we have any content
+            if (accumulatedContent || accumulatedReasoning) {
+              yield {
+                content: accumulatedContent,
+                reasoning: accumulatedReasoning,
+              };
             }
 
             if (choice?.finish_reason) {
@@ -246,36 +278,49 @@ export function useAgentCLIRuntime(config: AgentCLIRuntimeConfig = {}) {
       }
 
       // Stream the response
-      let assistantContent = "";
-      for await (const chunk of parseSSEStream(response)) {
-        assistantContent = chunk;
-        // Update or add the assistant message
+      let finalState: StreamingState = { content: "", reasoning: "" };
+      for await (const state of parseSSEStream(response)) {
+        finalState = state;
+        // Update or add the assistant message with both content and reasoning
         setMessages((prev) => {
           const lastMsg = prev[prev.length - 1];
           if (lastMsg?.id === assistantMessageId) {
             // Update existing streaming message
             return [
               ...prev.slice(0, -1),
-              { ...lastMsg, content: assistantContent },
+              {
+                ...lastMsg,
+                content: state.content,
+                reasoning: state.reasoning || undefined,
+              },
             ];
           } else {
             // Add new assistant message
             return [
               ...prev,
-              { id: assistantMessageId, role: "assistant", content: assistantContent },
+              {
+                id: assistantMessageId,
+                role: "assistant",
+                content: state.content,
+                reasoning: state.reasoning || undefined,
+              },
             ];
           }
         });
       }
 
       // Ensure final message is set
-      if (assistantContent) {
+      if (finalState.content || finalState.reasoning) {
         setMessages((prev) => {
           const lastMsg = prev[prev.length - 1];
           if (lastMsg?.id === assistantMessageId) {
             return [
               ...prev.slice(0, -1),
-              { ...lastMsg, content: assistantContent },
+              {
+                ...lastMsg,
+                content: finalState.content,
+                reasoning: finalState.reasoning || undefined,
+              },
             ];
           }
           return prev;
