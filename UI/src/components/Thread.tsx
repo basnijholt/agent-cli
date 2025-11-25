@@ -1,5 +1,4 @@
 import { ThreadPrimitive, ComposerPrimitive, MessagePrimitive } from "@assistant-ui/react";
-import { MarkdownText } from "@assistant-ui/react-markdown";
 
 export const Thread = () => {
   return (
@@ -38,7 +37,7 @@ const UserMessage = () => (
 const AssistantMessage = () => (
   <MessagePrimitive.Root className="flex justify-start mb-4">
     <div className="bg-white border border-gray-200 text-gray-900 px-4 py-2 rounded-2xl rounded-tl-none max-w-[80%] shadow-sm">
-      <MessagePrimitive.Content components={{ Text: MarkdownText }} />
+      <MessagePrimitive.Content />
     </div>
   </MessagePrimitive.Root>
 );

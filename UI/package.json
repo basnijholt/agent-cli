@@ -18,6 +18,7 @@
     "@ai-sdk/react": "^2.0.101",
     "@assistant-ui/react": "latest",
     "@assistant-ui/react-ai-sdk": "^1.1.12",
+    "@assistant-ui/react-langgraph": "^0.7.8",
     "@assistant-ui/react-markdown": "latest",
     "ai": "^5.0.101",
     "lucide-react": "^0.300.0",

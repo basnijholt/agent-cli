@@ -1,58 +1,23 @@
-import { useState, useEffect } from "react";
-import { Sidebar } from "./components/Sidebar";
-import { ChatArea } from "./components/ChatArea";
-import { SettingsModal } from "./components/SettingsModal";
+import { AssistantRuntimeProvider } from "@assistant-ui/react";
+import { ThreadList } from "./components/ThreadList";
+import { Thread } from "./components/Thread";
+import { useAgentCLIRuntime } from "./runtime/useAgentCLIRuntime";
 
 const App = () => {
-  const [conversations, setConversations] = useState<string[]>([]);
-  const [currentId, setCurrentId] = useState<string>("default");
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [config, setConfig] = useState({
+  const runtime = useAgentCLIRuntime({
     model: "gpt-4o",
-    ragTopK: 5,
+    memoryTopK: 5,
   });
 
-  useEffect(() => {
-    fetch("http://localhost:8100/v1/conversations")
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.conversations) {
-          setConversations(data.conversations);
-        }
-      })
-      .catch(console.error);
-  }, []);
-
-  const handleCreate = () => {
-    const newId = `chat-${Date.now()}`;
-    setConversations((prev) => [...prev, newId]);
-    setCurrentId(newId);
-  };
-
   return (
-    <div className="flex h-screen w-full bg-white overflow-hidden">
-      <Sidebar
-        conversations={conversations}
-        currentId={currentId}
-        onSelect={setCurrentId}
-        onCreate={handleCreate}
-        onOpenSettings={() => setIsSettingsOpen(true)}
-      />
-      <div className="flex-grow h-full relative">
-        <ChatArea
-          key={currentId}
-          conversationId={currentId}
-          config={config}
-        />
+    <AssistantRuntimeProvider runtime={runtime}>
+      <div className="flex h-screen w-full bg-white overflow-hidden">
+        <ThreadList />
+        <div className="flex-grow h-full relative">
+          <Thread />
+        </div>
       </div>
-
-      <SettingsModal
-        isOpen={isSettingsOpen}
-        onClose={() => setIsSettingsOpen(false)}
-        config={config}
-        onSave={setConfig}
-      />
-    </div>
+    </AssistantRuntimeProvider>
   );
 };
 

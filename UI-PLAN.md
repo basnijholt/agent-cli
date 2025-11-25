@@ -1,8 +1,8 @@
 # UI Development Plan: Agent CLI Desktop
 
-> **Status**: Active / Phase 2 Ready to Implement
+> **Status**: Active / Phase 2 Completed
 > **Last Updated**: 2025-11-24
-> **Next Step**: Create `useAgentCLIRuntime` hook (see Section 6)
+> **Next Step**: Test the UI and proceed to Phase 3 (Model & Settings)
 
 ## 1. The Vision
 
@@ -107,28 +107,36 @@ const runtime = useAgentCLIRuntime({
 - [x] `GET /v1/conversations/{id}` - Get conversation history
 - [x] CORS enabled
 
-### Phase 2: Native Thread List Integration (🚧 IN PROGRESS - PIVOT)
+### Phase 2: Native Thread List Integration (✅ Completed)
 
 **Goal**: Multi-session chat using assistant-ui's native `ThreadListPrimitive`.
 
-**What to do**:
+**Completed**:
 
-1. **Create `useAgentCLIRuntime` hook** that implements:
-   - `ThreadListRuntimeCore` interface for thread listing/switching
-   - `ThreadHistoryAdapter` interface for message persistence
-   - Connection to existing backend endpoints
+- [x] Created `useAgentCLIRuntime` hook (`UI/src/runtime/useAgentCLIRuntime.ts`) that implements:
+  - `load` callback to fetch conversation history from backend
+  - `create` callback to generate new thread IDs
+  - `stream` callback to send messages via SSE streaming
+  - OpenAI ↔ LangChain message format conversion
 
-2. **Refactor `App.tsx`** to use:
-   - `ThreadListPrimitive` for sidebar (native, not custom)
-   - `ThreadPrimitive` for chat view
-   - Single `AssistantRuntimeProvider` with our runtime
+- [x] Refactored `App.tsx` to use:
+  - `ThreadListPrimitive` for sidebar via `ThreadList` component
+  - `ThreadPrimitive` for chat view via `Thread` component
+  - Single `AssistantRuntimeProvider` with our runtime
 
-3. **Delete custom components** (replace with primitives):
-   - `Sidebar.tsx` → `ThreadListPrimitive`
-   - `ChatArea.tsx` → Inline in App with runtime
-   - Keep `Thread.tsx` if it just wraps primitives nicely
+- [x] Replaced custom components with primitives:
+  - Deleted `Sidebar.tsx` → Replaced with `ThreadList.tsx` using `ThreadListPrimitive`
+  - Deleted `ChatArea.tsx` → Logic moved to runtime
+  - Deleted `SettingsModal.tsx` → Deferred to Phase 3
+  - Kept `Thread.tsx` wrapping primitives
 
-**Reference**: See `assistant-ui/examples/with-langgraph/` for thread list pattern.
+**Key files created/modified**:
+- `UI/src/runtime/useAgentCLIRuntime.ts` - NEW: Runtime adapter hook
+- `UI/src/components/ThreadList.tsx` - NEW: Native thread list using primitives
+- `UI/src/components/Thread.tsx` - SIMPLIFIED: Removed markdown dep
+- `UI/src/App.tsx` - REFACTORED: Uses runtime provider
+
+**Reference**: Based on `assistant-ui/examples/with-langgraph/` pattern.
 
 ### Phase 3: Model & Settings (📅 Planned)
 
@@ -200,7 +208,7 @@ bun run test
 |-------|--------|-------|
 | Backend (`agent_cli/`) | 🟢 Solid | CORS enabled, conversation endpoints working |
 | Infrastructure (`UI/`) | 🟢 Solid | Vite + React + TypeScript + Bun configured |
-| Frontend (`UI/src/`) | 🟡 Misaligned | Custom components need replacement with primitives |
+| Frontend (`UI/src/`) | 🟢 Completed | Using native assistant-ui primitives with runtime adapter |
 
 ### Backend State (KEEP - No Changes Needed)
 
@@ -218,52 +226,42 @@ curl http://localhost:8100/v1/conversations
 curl http://localhost:8100/v1/conversations/default
 ```
 
-### Frontend State (NEEDS REFACTOR)
+### Frontend State (✅ COMPLETED)
 
 **Current files in `UI/src/`**:
 
-| File | Current State | Action |
-|------|---------------|--------|
-| `App.tsx` | Manual state management (`useState` for conversations, currentId) | **REFACTOR**: Use runtime + primitives |
-| `components/Sidebar.tsx` | Custom sidebar with manual button list | **DELETE**: Replace with `ThreadListPrimitive` |
-| `components/ChatArea.tsx` | Wrapper with `useChat` + manual history fetch | **DELETE**: Logic moves to runtime |
-| `components/SettingsModal.tsx` | Custom modal for model/RAG settings | **KEEP** for Phase 3 (RAG settings aren't in assistant-ui) |
-| `components/Thread.tsx` | Wraps `ThreadPrimitive` nicely | **KEEP** |
-| `main.tsx` | Entry point | **KEEP** |
-| `index.css` | Tailwind imports | **KEEP** |
+| File | Status | Description |
+|------|--------|-------------|
+| `App.tsx` | ✅ REFACTORED | Uses `AssistantRuntimeProvider` with `useAgentCLIRuntime` |
+| `runtime/useAgentCLIRuntime.ts` | ✅ NEW | Runtime adapter connecting to backend API |
+| `components/ThreadList.tsx` | ✅ NEW | Native thread list using `ThreadListPrimitive` |
+| `components/Thread.tsx` | ✅ SIMPLIFIED | Wraps thread primitives for chat display |
+| `main.tsx` | ✅ UNCHANGED | Entry point |
+| `index.css` | ✅ UNCHANGED | Tailwind imports |
 
-### Immediate Task: Phase 2 Implementation
+**Deleted files**:
+- `components/Sidebar.tsx` - Replaced by `ThreadList.tsx`
+- `components/ChatArea.tsx` - Logic moved to runtime
+- `components/SettingsModal.tsx` - Deferred to Phase 3
 
-**Goal**: Replace manual state management with assistant-ui runtime adapter.
+### Immediate Task: Phase 3 - Model & Settings
 
-**Concrete steps**:
+**Goal**: Add model switching and RAG parameter configuration.
 
-1. **Create runtime directory and hook**:
-   ```
-   UI/src/runtime/
-   └── useAgentCLIRuntime.ts   # NEW: Implements thread list interface
-   ```
+**Planned steps**:
 
-2. **Study the LangGraph example** in `assistant-ui/examples/with-langgraph/`:
-   - `app/MyRuntimeProvider.tsx` - Shows `useLangGraphRuntime` pattern
-   - `components/assistant-ui/thread-list.tsx` - Shows primitive usage
+1. **Add settings button** to the UI (either in ThreadList header or floating)
 
-3. **Implement `useAgentCLIRuntime`** with these callbacks:
-   - `load(threadId)` → calls `GET /v1/conversations/{threadId}`
-   - `create()` → generates new thread ID (or `POST /v1/conversations`)
-   - `stream(messages, context)` → calls `POST /v1/chat/completions`
+2. **Create SettingsModal component** with:
+   - Model selector (dropdown: gpt-4o, gpt-4o-mini, llama3, etc.)
+   - RAG parameters: `memory_top_k`, `memory_score_threshold`
+   - Optional: API key input for different providers
 
-4. **Create `ThreadList.tsx`** using primitives (not custom buttons):
-   ```typescript
-   import { ThreadListPrimitive, ThreadListItemPrimitive } from "@assistant-ui/react";
-   ```
+3. **Update `useAgentCLIRuntime`** to accept dynamic config:
+   - Pass model/RAG params from settings state
+   - Consider using React Context for global settings
 
-5. **Refactor `App.tsx`**:
-   - Remove `useState` for conversations/currentId
-   - Use single `AssistantRuntimeProvider` with our runtime
-   - Compose `<ThreadList />` and `<Thread />`
-
-6. **Delete** `Sidebar.tsx` and `ChatArea.tsx`
+4. **Optional backend endpoint**: `GET /v1/models` to list available models
 
 ### Key Reference Files (in `assistant-ui/` submodule)
 
@@ -304,16 +302,19 @@ curl http://localhost:8100/v1/conversations/default
    cd UI && bun add @assistant-ui/react-langgraph
    ```
 
-### Verification Checklist
+### Verification Checklist (Phase 2)
 
-After Phase 2 is complete, verify:
+Test the following to verify Phase 2 implementation:
 
-- [ ] Can create new chat threads via UI button
+- [ ] Start backend: `agent-cli memory-proxy`
+- [ ] Start UI: `cd UI && bun run dev`
+- [ ] Open http://localhost:5173
+- [ ] Can create new chat threads via "New Chat" button
 - [ ] Thread list shows all conversations from backend
 - [ ] Clicking a thread loads its history
 - [ ] Sending a message works with streaming response
 - [ ] Switching threads preserves history
-- [ ] No manual `useState` for conversation management in React
+- [ ] No manual `useState` for conversation management in React (verified in code)
 
 ## 7. Backend API Contract
 
@@ -591,12 +592,17 @@ type LanguageModelConfig = {
 | 2025-11-24 | Add assistant-ui as submodule | AI reference for understanding interfaces |
 | 2025-11-24 | Pivot from custom Sidebar to ThreadListPrimitive | Wrong path identified, correcting |
 | 2025-11-24 | Keep backend, refactor frontend only | Backend API is solid; only UI layer needs correction |
+| 2025-11-24 | Use `useLangGraphRuntime` pattern | Best documented approach with thread list support |
+| 2025-11-24 | Remove markdown dependency temporarily | Type compatibility issues; plain text works for MVP |
+| 2025-11-24 | Delete SettingsModal for now | Defer to Phase 3; focus on core thread list functionality first |
 
 ---
 
 ## 12. Open Questions
 
-- [ ] Which runtime pattern works best with our backend? (LangGraph vs External Store)
-- [ ] Do we need `POST /v1/conversations` to create threads, or can we create lazily?
-- [ ] How to handle SSE streaming from memory-proxy in the runtime?
-- [ ] Should settings (model, RAG params) persist in localStorage or backend?
+- [x] Which runtime pattern works best with our backend? → **`useLangGraphRuntime`** (implemented)
+- [x] Do we need `POST /v1/conversations` to create threads? → **No, lazy creation works** (implemented)
+- [x] How to handle SSE streaming from memory-proxy? → **Custom SSE parser in `parseSSEStream`** (implemented)
+- [ ] Should settings (model, RAG params) persist in localStorage or backend? (Phase 3)
+- [ ] How to handle thread titles? (Currently shows "New Chat" fallback)
+- [ ] Add thread deletion/archiving support?
