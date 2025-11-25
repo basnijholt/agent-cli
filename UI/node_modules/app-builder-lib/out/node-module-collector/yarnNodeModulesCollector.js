@@ -1,0 +1,16 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.YarnNodeModulesCollector = void 0;
+const npmNodeModulesCollector_1 = require("./npmNodeModulesCollector");
+class YarnNodeModulesCollector extends npmNodeModulesCollector_1.NpmNodeModulesCollector {
+    constructor(rootDir) {
+        super(rootDir);
+        this.installOptions = Promise.resolve({
+            cmd: process.platform === "win32" ? "yarn.cmd" : "yarn",
+            args: ["install", "--frozen-lockfile"],
+            lockfile: "yarn.lock",
+        });
+    }
+}
+exports.YarnNodeModulesCollector = YarnNodeModulesCollector;
+//# sourceMappingURL=yarnNodeModulesCollector.js.map

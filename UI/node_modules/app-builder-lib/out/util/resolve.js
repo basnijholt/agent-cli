@@ -1,0 +1,55 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.resolveModule = resolveModule;
+exports.resolveFunction = resolveFunction;
+const log_1 = require("builder-util/out/log");
+const debug_1 = require("debug");
+const path = require("path");
+const url_1 = require("url");
+async function resolveModule(type, name) {
+    var _a, _b, _c;
+    const extension = path.extname(name).toLowerCase();
+    const isModuleType = type === "module";
+    try {
+        if (extension === ".mjs" || (extension === ".js" && isModuleType)) {
+            const fileUrl = (0, url_1.pathToFileURL)(name).href;
+            return await eval("import ('" + fileUrl + "')");
+        }
+    }
+    catch (error) {
+        log_1.log.debug({ moduleName: name, message: (_a = error.message) !== null && _a !== void 0 ? _a : error.stack }, "Unable to dynamically import , falling back to `require`");
+    }
+    try {
+        return require(name);
+    }
+    catch (error) {
+        log_1.log.error({ moduleName: name, message: (_b = error.message) !== null && _b !== void 0 ? _b : error.stack }, "Unable to `require`");
+        throw new Error((_c = error.message) !== null && _c !== void 0 ? _c : error.stack);
+    }
+}
+async function resolveFunction(type, executor, name) {
+    if (executor == null || typeof executor !== "string") {
+        // is already function or explicitly ignored by user
+        return executor;
+    }
+    let p = executor;
+    if (p.startsWith(".")) {
+        p = path.resolve(p);
+    }
+    try {
+        p = require.resolve(p);
+    }
+    catch (e) {
+        (0, debug_1.default)(e);
+        p = path.resolve(p);
+    }
+    const m = await resolveModule(type, p);
+    const namedExport = m[name];
+    if (namedExport == null) {
+        return m.default || m;
+    }
+    else {
+        return namedExport;
+    }
+}
+//# sourceMappingURL=resolve.js.map

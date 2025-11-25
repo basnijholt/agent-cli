@@ -132,6 +132,7 @@ line-length = 100
 [tool.ruff]
 line-length = 100
 target-version = "py311"
+extend-exclude = ["UI"]
 
 [tool.ruff.lint]
 select = ["ALL"]
@@ -167,6 +168,7 @@ max-complexity = 18
 
 [tool.mypy]
 python_version = "3.11"
+exclude = ["^UI/"]
 
 [tool.versioningit]
 

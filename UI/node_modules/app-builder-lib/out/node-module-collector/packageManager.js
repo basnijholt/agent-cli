@@ -1,0 +1,90 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.detect = void 0;
+exports.getPackageManagerVersion = getPackageManagerVersion;
+exports.clearCache = clearCache;
+// copy from https://github.com/egoist/detect-package-manager/blob/main/src/index.ts
+// and merge https://github.com/egoist/detect-package-manager/pull/9 to support Monorepo
+const path_1 = require("path");
+const builder_util_1 = require("builder-util");
+const cache = new Map();
+const globalInstallationCache = new Map();
+const lockfileCache = new Map();
+/**
+ * Check if a global pm is available
+ */
+function hasGlobalInstallation(pm) {
+    const key = `has_global_${pm}`;
+    if (globalInstallationCache.has(key)) {
+        return Promise.resolve(globalInstallationCache.get(key));
+    }
+    return (0, builder_util_1.exec)(pm, ["--version"], { shell: true })
+        .then(res => {
+        return /^\d+.\d+.\d+$/.test(res);
+    })
+        .then(value => {
+        globalInstallationCache.set(key, value);
+        return value;
+    })
+        .catch(() => false);
+}
+function getTypeofLockFile(cwd = process.cwd()) {
+    const key = `lockfile_${cwd}`;
+    if (lockfileCache.has(key)) {
+        return Promise.resolve(lockfileCache.get(key));
+    }
+    return Promise.all([
+        (0, builder_util_1.exists)((0, path_1.resolve)(cwd, "yarn.lock")),
+        (0, builder_util_1.exists)((0, path_1.resolve)(cwd, "package-lock.json")),
+        (0, builder_util_1.exists)((0, path_1.resolve)(cwd, "pnpm-lock.yaml")),
+        (0, builder_util_1.exists)((0, path_1.resolve)(cwd, "bun.lockb")),
+    ]).then(([isYarn, _, isPnpm, isBun]) => {
+        let value;
+        if (isYarn) {
+            value = "yarn";
+        }
+        else if (isPnpm) {
+            value = "pnpm";
+        }
+        else if (isBun) {
+            value = "bun";
+        }
+        else {
+            value = "npm";
+        }
+        cache.set(key, value);
+        return value;
+    });
+}
+const detect = async ({ cwd, includeGlobalBun } = {}) => {
+    let type = await getTypeofLockFile(cwd);
+    if (type) {
+        return type;
+    }
+    let tmpCwd = cwd || ".";
+    for (let i = 1; i <= 5; i++) {
+        tmpCwd = (0, path_1.dirname)(tmpCwd);
+        type = await getTypeofLockFile(tmpCwd);
+        if (type) {
+            return type;
+        }
+    }
+    if (await hasGlobalInstallation("yarn")) {
+        return "yarn";
+    }
+    if (await hasGlobalInstallation("pnpm")) {
+        return "yarn";
+    }
+    if (includeGlobalBun && (await hasGlobalInstallation("bun"))) {
+        return "bun";
+    }
+    return "npm";
+};
+exports.detect = detect;
+function getPackageManagerVersion(pm) {
+    return (0, builder_util_1.exec)(pm, ["--version"], { shell: true }).then(res => res.trim());
+}
+function clearCache() {
+    return cache.clear();
+}
+//# sourceMappingURL=packageManager.js.map

@@ -1,0 +1,58 @@
+{
+    "name": "dir-compare",
+    "version": "4.2.0",
+    "description": "Node JS directory compare",
+    "type": "commonjs",
+    "main": "build/src/index.js",
+    "types": "build/src/index.d.ts",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/gliviu/dir-compare"
+    },
+    "keywords": [
+        "compare",
+        "directory",
+        "folder"
+    ],
+    "files": [
+        "build/src"
+    ],
+    "scripts": {
+        "prepublishOnly": "npm run clean && npm run build && npm run lint",
+        "clean": "rm -rf build && rm -rf .nyc_output && rm -rf coverage",
+        "copydeps": "copyfiles \"test/expected/**\" test/testdir.tar \"test/extended/res/**\" \"test/permissionDeniedTests/expected/**\" build",
+        "build": "tsc && npm run copydeps",
+        "lint": "eslint ./src ./test --ext .ts,.js",
+        "watch": "tsc-watch --onSuccess 'npm run copydeps --silent'",
+        "test": "bash test/run.sh",
+        "testminimal": "npm install && npm run build && node build/test/runTests.js",
+        "extest": "./test/extended/init.sh && test/extended/runall.sh",
+        "coverage": "npx nyc --exclude \"build/test/**\" --reporter=lcov npm test && npx nyc report",
+        "toc": "npx markdown-toc README.md; echo \n",
+        "docs": "typedoc --includeVersion --excludeExternals --excludeInternal --readme none --gitRevision master -cleanOutputDir --sort source-order --out docs ./src/index.ts"
+    },
+    "dependencies": {
+        "minimatch": "^3.0.5",
+        "p-limit": "^3.1.0 "
+    },
+    "devDependencies": {
+        "@types/node": "18.11.9",
+        "@typescript-eslint/eslint-plugin": "6.3.0",
+        "@typescript-eslint/parser": "6.3.0",
+        "colors": "1.4.0",
+        "copyfiles": "2.4.1",
+        "eslint": "8.47.0",
+        "memory-streams": "0.1.0",
+        "semver": "7.5.4",
+        "tar-fs": "2.1.1",
+        "ts-node": "10.9.1",
+        "tsc-watch": "4.5.0",
+        "typedoc": "0.24.8",
+        "typescript": "4.9.5"
+    },
+    "author": "Liviu Grigorescu",
+    "license": "MIT",
+    "bugs": {
+        "url": "https://github.com/gliviu/dir-compare/issues"
+    }
+}

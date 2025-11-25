@@ -1,0 +1,65 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.NpmNodeModulesCollector = void 0;
+const lazy_val_1 = require("lazy-val");
+const nodeModulesCollector_1 = require("./nodeModulesCollector");
+const builder_util_1 = require("builder-util");
+class NpmNodeModulesCollector extends nodeModulesCollector_1.NodeModulesCollector {
+    constructor(rootDir) {
+        super(rootDir);
+        this.pmCommand = new lazy_val_1.Lazy(() => Promise.resolve(process.platform === "win32" ? "npm.cmd" : "npm"));
+        this.installOptions = this.pmCommand.value.then(cmd => ({ cmd, args: ["ci"], lockfile: "package-lock.json" }));
+    }
+    getArgs() {
+        return ["list", "-a", "--include", "prod", "--include", "optional", "--omit", "dev", "--json", "--long", "--silent"];
+    }
+    extractRelevantData(npmTree) {
+        const tree = super.extractRelevantData(npmTree);
+        const { optionalDependencies, _dependencies } = npmTree;
+        return { ...tree, optionalDependencies, _dependencies };
+    }
+    extractProductionDependencyTree(tree) {
+        var _a, _b, _c, _d;
+        const _deps = (_a = tree._dependencies) !== null && _a !== void 0 ? _a : {};
+        let deps = (_b = tree.dependencies) !== null && _b !== void 0 ? _b : {};
+        let implicitDependenciesInjected = false;
+        if (Object.keys(_deps).length > 0 && Object.keys(deps).length === 0) {
+            builder_util_1.log.debug({ name: tree.name, version: tree.version }, "injecting implicit _dependencies");
+            deps = (_d = (_c = this.allDependencies.get(`${tree.name}@${tree.version}`)) === null || _c === void 0 ? void 0 : _c.dependencies) !== null && _d !== void 0 ? _d : {};
+            implicitDependenciesInjected = true;
+        }
+        const dependencies = Object.entries(deps).reduce((acc, curr) => {
+            const [packageName, dependency] = curr;
+            if (!_deps[packageName] || Object.keys(dependency).length === 0) {
+                return acc;
+            }
+            if (implicitDependenciesInjected) {
+                const { name, version, path, workspaces } = dependency;
+                const simplifiedTree = { name, version, path, workspaces };
+                return {
+                    ...acc,
+                    [packageName]: { ...simplifiedTree, implicitDependenciesInjected },
+                };
+            }
+            return {
+                ...acc,
+                [packageName]: this.extractProductionDependencyTree(dependency),
+            };
+        }, {});
+        const { name, version, path: packagePath, workspaces } = tree;
+        const depTree = {
+            name,
+            version,
+            path: packagePath,
+            workspaces,
+            dependencies,
+            implicitDependenciesInjected,
+        };
+        return depTree;
+    }
+    parseDependenciesTree(jsonBlob) {
+        return JSON.parse(jsonBlob);
+    }
+}
+exports.NpmNodeModulesCollector = NpmNodeModulesCollector;
+//# sourceMappingURL=npmNodeModulesCollector.js.map

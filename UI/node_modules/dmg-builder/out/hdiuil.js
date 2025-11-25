@@ -1,0 +1,11 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.hdiUtil = hdiUtil;
+const builder_util_1 = require("builder-util");
+async function hdiUtil(args) {
+    return (0, builder_util_1.retry)(() => (0, builder_util_1.exec)("hdiutil", args), 5, 5000, 2000, 0, (error) => {
+        builder_util_1.log.error({ args, code: error.code, error: (error.message || error).toString() }, "unable to execute hdiutil");
+        return true;
+    });
+}
+//# sourceMappingURL=hdiuil.js.map

@@ -1,0 +1,192 @@
+{
+	"$id": "https://github.com/argv-minus-one/dmg-license/raw/master/schema.json",
+	"$schema": "http://json-schema.org/draft-07/schema",
+
+	"description": "Configuration for a disk image license agreement.\n\nDisk image license agreements can be multilingual. A disk image can contain several license agreements, and macOS will show the one appropriate for the user's preferred language. Accordingly, there can be more than one `body`, one for each language.",
+
+	"definitions": {
+		"Charset": {
+			"$id": "#Charset",
+			"title": "Charset",
+			"description": "An IANA character set name, as understood by the Core Foundation framework. Case insensitive.",
+
+			"type": "string",
+			"pattern": "^[A-Za-z][A-Za-z0-9.:_-]*$",
+			"examples": ["UTF-8", "US-ASCII"],
+			"default": "UTF-8"
+		},
+
+		"Languages": {
+			"$id": "#Languages",
+			"title": "Languages",
+			"description": "Which language(s) this object is in. Can be an IETF language tag [1] like \"en-US\", a classic Mac OS language code [2] like 0, or an array of language tags and/or language codes.\n\n[1] https://en.wikipedia.org/wiki/IETF_language_tag\n[2] As it appears in `Script.h` of `CarbonCore.framework`. See: https://github.com/phracker/MacOSX-SDKs/blob/aea47c83334af9c27dc57c49ca268723ef5e6349/MacOSX10.6.sdk/System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/CarbonCore.framework/Versions/A/Headers/Script.h#L285",
+
+			"type": ["string", "integer", "array"],
+			"minLength": 1,
+			"minimum": 0,
+			"minItems": 1,
+			"items": {
+				"type": ["string", "integer"],
+				"minLength": 1,
+				"minimum": 0
+			}
+		}
+	},
+
+	"type": "object",
+	"properties": {
+		"body": {
+			"type": "array",
+			"minItems": 1,
+			"items": {
+				"$id": "#BodySpec",
+				"title": "BodySpec",
+				"description": "Text of the license agreement. Text can be given in two ways: inline, in the \"text\" property, or in a separate file, named by the \"file\" property.",
+
+				"type": "object",
+
+				"properties": {
+					"type": {
+						"description": "Which format the text is in: either plain text or RTF.\n\nDefault is \"plain\", except when the file path ends in “.rtf”, in which case the default is \"rtf\".",
+
+						"type": "string",
+						"enum": ["rtf", "plain"]
+					},
+
+					"text": {
+						"description": "Text of the license agreement, specified directly in JSON.",
+
+						"type": "string"
+					},
+
+					"file": {
+						"description": "Path to the file containing the license text.",
+
+						"type": "string"
+					},
+
+					"charset": {
+						"description": "Character set that the \"file\" is encoded in.",
+
+						"$ref": "#Charset"
+					},
+
+					"lang": {
+						"$ref": "#Languages"
+					}
+				},
+
+				"dependencies": {
+					"charset": ["file"],
+					"file": {"not": {"required": ["text"]}},
+					"text": {"not": {"required": ["file"]}}
+				},
+
+				"anyOf": [
+					{"required": ["file", "lang"]},
+					{"required": ["lang", "text"]}
+				]
+			}
+		},
+
+		"labels": {
+			"type": "array",
+			"items": {
+				"$id": "#LabelsSpec",
+				"title": "LabelsSpec",
+				"description": "Localized labels for the buttons on the license agreement window. There are six: \"languageName\" (optional), \"agree\", \"disagree\", \"print\", \"save\", and \"message\".\n\nSome languages have a default set of labels that will be used if none are provided here, but for all other languages, a set of labels must be provided. Default label sets are available for en-US, fr-FR, en-GB, de-DE, it-IT, nl-NL, sv-SE, es-ES, da-DK, fr-CA, nb-NO, ja-JP, fi-FI, ko-KR, zh-CN, zh-TW, zh-Hans, zh-Hant, and pt-BR.",
+
+				"type": "object",
+
+				"properties": {
+					"languageName": {
+						"description": "Human-readable name of the language that this version of the license agreement is in, such as “English” or “Français”.",
+
+						"type": "string"
+					},
+
+					"agree": {
+						"description": "Label text for the “Agree” button.",
+
+						"type": "string"
+					},
+
+					"disagree": {
+						"description": "Label text for the “Disagree” button.",
+
+						"type": "string"
+					},
+
+					"print": {
+						"description": "Label text for the “Print” button.",
+
+						"type": "string"
+					},
+
+					"save": {
+						"description": "Label text for the “Save” button.",
+
+						"type": "string"
+					},
+
+					"message": {
+						"description": "Brief instructions for the user.\n\nFor example, the English default message is: “If you agree with the terms of this license, press \"Agree\" to install the software.  If you do not agree, press \"Disagree\".”",
+
+						"type": "string"
+					},
+
+					"lang": {
+						"$ref": "#Languages"
+					},
+
+					"file": false
+				},
+
+				"required": ["agree", "disagree", "print", "save", "message", "lang"]
+			}
+		},
+
+		"rawLabels": {
+			"type": "array",
+			"items": {
+				"$id": "#RawLabelsSpec",
+				"title": "RawLabelsSpec",
+				"description": "Localized labels for the buttons on the license agreement window, as with the \"labels\" property, but in raw format.\n\nInstead of plain JSON strings, label sets provided this way are stored in binary files, whose contents (data fork) are copied into the disk image as a STR# resource with no parsing or character set conversion. They must be in the format that DiskImageMounter expects.\n\nThe format is described at: https://github.com/argv-minus-one/dmg-license/blob/master/docs/Raw%20labels%20format.md",
+
+				"type": "object",
+
+				"properties": {
+					"file": {
+						"description": "Path to the file containing the label strings.",
+
+						"type": "string",
+						"minLength": 1
+					},
+
+					"lang": {
+						"$ref": "#Languages"
+					},
+
+					"charset": {
+						"$ref": "#Charset"
+					}
+				},
+
+				"required": ["file", "lang"]
+			}
+		},
+
+		"defaultLang": {
+			"description": "Selects which language should be the default, if there is no license localization for the user's preferred language.\n\nIf this property is omitted, the first `lang` of the first `body` is used as the default.\n\nCan be an IETF language tag [1] like \"en-US\", or a classic Mac OS language code [2] like 0.\n\n[1] https://en.wikipedia.org/wiki/IETF_language_tag\n[2] As it appears in `Script.h` of `CarbonCore.framework`. See: https://github.com/phracker/MacOSX-SDKs/blob/aea47c83334af9c27dc57c49ca268723ef5e6349/MacOSX10.6.sdk/System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/CarbonCore.framework/Versions/A/Headers/Script.h#L285",
+
+			"type": ["string", "integer"],
+			"minLength": 1,
+			"minimum": 0
+		},
+
+		"$schema": {
+			"type": "string"
+		}
+	},
+	"required": ["body"]
+}

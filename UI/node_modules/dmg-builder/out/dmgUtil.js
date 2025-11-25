@@ -1,0 +1,61 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.DmgTarget = void 0;
+exports.getDmgTemplatePath = getDmgTemplatePath;
+exports.getDmgVendorPath = getDmgVendorPath;
+exports.attachAndExecute = attachAndExecute;
+exports.detach = detach;
+exports.computeBackground = computeBackground;
+exports.serializeString = serializeString;
+const builder_util_1 = require("builder-util");
+const path = require("path");
+const hdiuil_1 = require("./hdiuil");
+var dmg_1 = require("./dmg");
+Object.defineProperty(exports, "DmgTarget", { enumerable: true, get: function () { return dmg_1.DmgTarget; } });
+const root = path.join(__dirname, "..");
+function getDmgTemplatePath() {
+    return path.join(root, "templates");
+}
+function getDmgVendorPath() {
+    return path.join(root, "vendor");
+}
+async function attachAndExecute(dmgPath, readWrite, task) {
+    //noinspection SpellCheckingInspection
+    const args = ["attach", "-noverify", "-noautoopen"];
+    if (readWrite) {
+        args.push("-readwrite");
+    }
+    args.push(dmgPath);
+    const attachResult = await (0, hdiuil_1.hdiUtil)(args);
+    const deviceResult = attachResult == null ? null : /^(\/dev\/\w+)/.exec(attachResult);
+    const device = deviceResult == null || deviceResult.length !== 2 ? null : deviceResult[1];
+    if (device == null) {
+        throw new Error(`Cannot mount: ${attachResult}`);
+    }
+    return await (0, builder_util_1.executeFinally)(task(), () => detach(device));
+}
+async function detach(name) {
+    return (0, hdiuil_1.hdiUtil)(["detach", "-quiet", name]);
+}
+async function computeBackground(packager) {
+    const resourceList = await packager.resourceList;
+    if (resourceList.includes("background.tiff")) {
+        return path.join(packager.buildResourcesDir, "background.tiff");
+    }
+    else if (resourceList.includes("background.png")) {
+        return path.join(packager.buildResourcesDir, "background.png");
+    }
+    else {
+        return path.join(getDmgTemplatePath(), "background.tiff");
+    }
+}
+/** @internal */
+function serializeString(data) {
+    return ('  $"' +
+        data
+            .match(/.{1,32}/g)
+            .map(it => it.match(/.{1,4}/g).join(" "))
+            .join('"\n  $"') +
+        '"');
+}
+//# sourceMappingURL=dmgUtil.js.map

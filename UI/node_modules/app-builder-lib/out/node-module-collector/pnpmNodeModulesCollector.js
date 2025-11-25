@@ -1,0 +1,86 @@
+"use strict";
+var _a;
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.PnpmNodeModulesCollector = void 0;
+const lazy_val_1 = require("lazy-val");
+const nodeModulesCollector_1 = require("./nodeModulesCollector");
+const path = require("path");
+const builder_util_1 = require("builder-util");
+class PnpmNodeModulesCollector extends nodeModulesCollector_1.NodeModulesCollector {
+    constructor(rootDir) {
+        super(rootDir);
+        this.pmCommand = _a.pmCommand;
+        this.installOptions = this.pmCommand.value.then(cmd => ({ cmd, args: ["install", "--frozen-lockfile"], lockfile: "pnpm-lock.yaml" }));
+    }
+    getArgs() {
+        return ["list", "--prod", "--json", "--depth", "Infinity"];
+    }
+    extractRelevantData(npmTree) {
+        const tree = super.extractRelevantData(npmTree);
+        return {
+            ...tree,
+            optionalDependencies: this.extractInternal(npmTree.optionalDependencies),
+        };
+    }
+    extractProductionDependencyTree(tree) {
+        const p = path.normalize(this.resolvePath(tree.path));
+        const packageJson = require(path.join(p, "package.json"));
+        const deps = { ...(tree.dependencies || {}), ...(tree.optionalDependencies || {}) };
+        const dependencies = Object.entries(deps).reduce((acc, curr) => {
+            var _b, _c;
+            const [packageName, dependency] = curr;
+            let isOptional;
+            if ((_b = packageJson.dependencies) === null || _b === void 0 ? void 0 : _b[packageName]) {
+                isOptional = false;
+            }
+            else if ((_c = packageJson.optionalDependencies) === null || _c === void 0 ? void 0 : _c[packageName]) {
+                isOptional = true;
+            }
+            else {
+                return acc;
+            }
+            try {
+                return {
+                    ...acc,
+                    [packageName]: this.extractProductionDependencyTree(dependency),
+                };
+            }
+            catch (error) {
+                if (isOptional) {
+                    return acc;
+                }
+                throw error;
+            }
+        }, {});
+        const { name, version, path: packagePath, workspaces } = tree;
+        const depTree = {
+            name,
+            version,
+            path: packagePath,
+            workspaces,
+            dependencies,
+            implicitDependenciesInjected: false,
+        };
+        return depTree;
+    }
+    parseDependenciesTree(jsonBlob) {
+        const dependencyTree = JSON.parse(jsonBlob);
+        // pnpm returns an array of dependency trees
+        return dependencyTree[0];
+    }
+}
+exports.PnpmNodeModulesCollector = PnpmNodeModulesCollector;
+_a = PnpmNodeModulesCollector;
+PnpmNodeModulesCollector.pmCommand = new lazy_val_1.Lazy(async () => {
+    if (process.platform === "win32") {
+        try {
+            await (0, builder_util_1.exec)("pnpm", ["--version"]);
+        }
+        catch (_error) {
+            builder_util_1.log.debug(null, "pnpm not detected, falling back to pnpm.cmd");
+            return "pnpm.cmd";
+        }
+    }
+    return "pnpm";
+});
+//# sourceMappingURL=pnpmNodeModulesCollector.js.map

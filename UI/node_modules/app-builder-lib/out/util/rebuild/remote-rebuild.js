@@ -1,0 +1,30 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const rebuild_1 = require("@electron/rebuild");
+if (!process.send) {
+    console.error("The remote rebuilder expects to be spawned with an IPC channel");
+    process.exit(1);
+}
+const options = JSON.parse(process.argv[2]);
+const rebuilder = (0, rebuild_1.rebuild)(options);
+rebuilder.lifecycle.on("module-found", (moduleName) => { var _a; return (_a = process.send) === null || _a === void 0 ? void 0 : _a.call(process, { msg: "module-found", moduleName }); });
+rebuilder.lifecycle.on("module-done", (moduleName) => { var _a; return (_a = process.send) === null || _a === void 0 ? void 0 : _a.call(process, { msg: "module-done", moduleName }); });
+rebuilder.lifecycle.on("module-skip", (moduleName) => { var _a; return (_a = process.send) === null || _a === void 0 ? void 0 : _a.call(process, { msg: "module-skip", moduleName }); });
+rebuilder
+    .then(() => {
+    var _a;
+    (_a = process.send) === null || _a === void 0 ? void 0 : _a.call(process, { msg: "rebuild-done" });
+    return process.exit(0);
+})
+    .catch(err => {
+    var _a;
+    (_a = process.send) === null || _a === void 0 ? void 0 : _a.call(process, {
+        msg: "rebuild-error",
+        err: {
+            message: err.message,
+            stack: err.stack,
+        },
+    });
+    process.exit(0);
+});
+//# sourceMappingURL=remote-rebuild.js.map

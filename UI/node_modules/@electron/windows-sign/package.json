@@ -1,0 +1,70 @@
+{
+  "name": "@electron/windows-sign",
+  "version": "1.2.2",
+  "description": "Codesign Electron Windows apps",
+  "main": "dist/cjs/index.js",
+  "module": "dist/esm/index.js",
+  "files": [
+    "dist",
+    "entitlements",
+    "README.md",
+    "LICENSE",
+    "bin",
+    "vendor"
+  ],
+  "bin": {
+    "electron-windows-sign": "bin/electron-windows-sign.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/electron/windows-sign.git"
+  },
+  "author": {
+    "name": "Felix Rieseberg",
+    "email": "felix@felixrieseberg.com"
+  },
+  "license": "BSD-2-Clause",
+  "bugs": {
+    "url": "https://github.com/electron/windows-sign/issues"
+  },
+  "homepage": "https://github.com/electron/windows-sign",
+  "publishConfig": {
+    "provenance": true
+  },
+  "dependencies": {
+    "cross-dirname": "^0.1.0",
+    "debug": "^4.3.4",
+    "fs-extra": "^11.1.1",
+    "minimist": "^1.2.8",
+    "postject": "^1.0.0-alpha.6"
+  },
+  "devDependencies": {
+    "@types/debug": "^4.1.10",
+    "@types/fs-extra": "^11.0.3",
+    "@types/node": "^18.18.7",
+    "@typescript-eslint/eslint-plugin": "^5.62.0",
+    "@typescript-eslint/parser": "^5.62.0",
+    "eslint": "^8.52.0",
+    "eslint-config-eslint": "^9.0.0",
+    "eslint-config-standard": "^17.1.0",
+    "eslint-plugin-import": "^2.29.0",
+    "eslint-plugin-node": "^11.1.0",
+    "eslint-plugin-promise": "^6.1.1",
+    "globstar": "^1.0.0",
+    "standard": "^17.1.0",
+    "tsx": "^3.14.0",
+    "typedoc": "~0.25.13",
+    "typescript": "^5.2.2"
+  },
+  "scripts": {
+    "build": "tsc && tsc -p tsconfig.esm.json",
+    "docs": "npx typedoc",
+    "lint": "eslint --ext .ts,.js src bin test",
+    "test:loader": "globstar -- node --loader tsx --test \"test/**/*.spec.ts\"",
+    "test": "globstar -- node --import tsx --test \"test/**/*.spec.ts\"",
+    "prepublishOnly": "yarn build"
+  },
+  "engines": {
+    "node": ">=14.14"
+  }
+}

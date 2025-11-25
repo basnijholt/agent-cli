@@ -1,0 +1,39 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.getPackageManagerVersion = exports.detect = void 0;
+exports.getCollectorByPackageManager = getCollectorByPackageManager;
+exports.getNodeModules = getNodeModules;
+const npmNodeModulesCollector_1 = require("./npmNodeModulesCollector");
+const pnpmNodeModulesCollector_1 = require("./pnpmNodeModulesCollector");
+const yarnNodeModulesCollector_1 = require("./yarnNodeModulesCollector");
+const packageManager_1 = require("./packageManager");
+Object.defineProperty(exports, "detect", { enumerable: true, get: function () { return packageManager_1.detect; } });
+Object.defineProperty(exports, "getPackageManagerVersion", { enumerable: true, get: function () { return packageManager_1.getPackageManagerVersion; } });
+const builder_util_1 = require("builder-util");
+async function isPnpmProjectHoisted(rootDir) {
+    const command = await pnpmNodeModulesCollector_1.PnpmNodeModulesCollector.pmCommand.value;
+    const config = await (0, builder_util_1.exec)(command, ["config", "list"], { cwd: rootDir, shell: true });
+    const lines = Object.fromEntries(config.split("\n").map(line => line.split("=").map(s => s.trim())));
+    return lines["node-linker"] === "hoisted";
+}
+async function getCollectorByPackageManager(rootDir) {
+    const manager = await (0, packageManager_1.detect)({ cwd: rootDir });
+    switch (manager) {
+        case "pnpm":
+            if (await isPnpmProjectHoisted(rootDir)) {
+                return new npmNodeModulesCollector_1.NpmNodeModulesCollector(rootDir);
+            }
+            return new pnpmNodeModulesCollector_1.PnpmNodeModulesCollector(rootDir);
+        case "npm":
+            return new npmNodeModulesCollector_1.NpmNodeModulesCollector(rootDir);
+        case "yarn":
+            return new yarnNodeModulesCollector_1.YarnNodeModulesCollector(rootDir);
+        default:
+            return new npmNodeModulesCollector_1.NpmNodeModulesCollector(rootDir);
+    }
+}
+async function getNodeModules(rootDir) {
+    const collector = await getCollectorByPackageManager(rootDir);
+    return collector.getNodeModules();
+}
+//# sourceMappingURL=index.js.map

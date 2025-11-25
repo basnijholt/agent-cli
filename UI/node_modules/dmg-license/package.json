@@ -1,0 +1,77 @@
+{
+	"name": "dmg-license",
+	"version": "1.0.11",
+	"description": "Generate license agreements for macOS .dmg files",
+	"author": "argvminusone",
+	"license": "MIT",
+	"repository": "argv-minus-one/dmg-license",
+	"keywords": [
+		"dmg",
+		"licence",
+		"license",
+		"mac",
+		"macos",
+		"osx",
+		"udif"
+	],
+	"bin": {
+		"dmg-license": "bin/dmg-license.js"
+	},
+	"main": "lib/index.js",
+	"types": "lib/index.d.ts",
+	"scripts": {
+		"clean": "rimraf lib",
+		"prepare": "tsc",
+		"test": "mocha -r ts-node/register test/*.spec.ts test/**/*.spec.ts",
+		"regenerate-language-info": "node ./language-info-generator >language-info.json",
+		"docs": "ts-node ./generate-supported-language-list.ts && api-extractor run && api-documenter markdown --input-folder temp --output-folder docs/api && ln -s dmg-license.md docs/api/index.md",
+		"prepublishOnly": "npm test"
+	},
+	"files": [
+		"bin/**/*.js",
+		"language-info.json",
+		"lib/**/*.js",
+		"lib/**/*.d.ts",
+		"schema.json"
+	],
+	"dependencies": {
+		"@types/plist": "^3.0.1",
+		"@types/verror": "^1.10.3",
+		"ajv": "^6.10.0",
+		"crc": "^3.8.0",
+		"iconv-corefoundation": "^1.1.7",
+		"plist": "^3.0.4",
+		"smart-buffer": "^4.0.2",
+		"verror": "^1.10.0"
+	},
+	"devDependencies": {
+		"@microsoft/api-documenter": "^7.3.4",
+		"@microsoft/api-extractor": "^7.2.2",
+		"@types/chai": "^4.1.7",
+		"@types/chai-as-promised": "^7.1.0",
+		"@types/cli-truncate": "^1.1.0",
+		"@types/crc": "^3.4.0",
+		"@types/execa": "^0.9.0",
+		"@types/minimist": "^1.2.0",
+		"@types/mocha": "^9.0.0",
+		"@types/node": "^11.12.0",
+		"await-lock": "^1.1.3",
+		"chai": "^4.2.0",
+		"chai-as-promised": "^7.1.1",
+		"chai-bytes": "^0.1.2",
+		"execa": "^1.0.0",
+		"minimist": "^1.2.0",
+		"mocha": "^9.1.3",
+		"read-xml": "^3.0.0",
+		"resourceforkjs": "^0.1.0",
+		"rimraf": "^2.6.3",
+		"ts-node": "^8.3.0",
+		"typescript": "^3.5.3"
+	},
+	"engines": {
+		"node": ">=8"
+	},
+	"os": [
+		"darwin"
+	]
+}

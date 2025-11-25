@@ -1,0 +1,41 @@
+{
+  "name": "read-binary-file-arch",
+  "version": "1.0.6",
+  "description": "Reads a binary file to determine its CPU architecture.",
+  "main": "index.js",
+  "types": "./index.d.ts",
+  "bin": {
+    "read-binary-file-arch": "cli.js"
+  },
+  "scripts": {
+    "test": "node test.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/samuelmaddock/read-binary-file-arch.git"
+  },
+  "keywords": [
+    "binary",
+    "file",
+    "arch",
+    "process"
+  ],
+  "author": "Samuel Maddock",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/samuelmaddock/read-binary-file-arch/issues"
+  },
+  "homepage": "https://github.com/samuelmaddock/read-binary-file-arch#readme",
+  "dependencies": {
+    "debug": "^4.3.4"
+  },
+  "devDependencies": {
+    "degit": "^2.8.4"
+  },
+  "prettier": {
+    "trailingComma": "es5",
+    "tabWidth": 2,
+    "semi": true,
+    "singleQuote": true
+  }
+}

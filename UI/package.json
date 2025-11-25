@@ -1,0 +1,49 @@
+{
+  "name": "agent-ui",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "main": "dist-main/main.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+    "preview": "vite preview",
+    "test": "vitest",
+    "electron:build": "bun build electron/main.ts --outfile=dist-main/main.js --target=node && bun build electron/preload.ts --outfile=dist-main/preload.js --target=node",
+    "electron:start": "electron .",
+    "dev:electron": "concurrently \"bun run dev\" \"wait-on tcp:5173 && bun run electron:build && VITE_DEV_SERVER_URL=http://localhost:5173 bun run electron:start\""
+  },
+  "dependencies": {
+    "@ai-sdk/react": "^2.0.101",
+    "@assistant-ui/react": "latest",
+    "@assistant-ui/react-ai-sdk": "^1.1.12",
+    "@assistant-ui/react-markdown": "latest",
+    "ai": "^5.0.101",
+    "lucide-react": "^0.300.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-markdown": "^9.0.0",
+    "remark-gfm": "^4.0.0"
+  },
+  "devDependencies": {
+    "@testing-library/dom": "^10.4.1",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.0",
+    "@types/node": "^20.0.0",
+    "@types/react": "^18.2.43",
+    "@types/react-dom": "^18.2.17",
+    "@vitejs/plugin-react": "^4.2.1",
+    "autoprefixer": "^10.4.16",
+    "concurrently": "^9.2.1",
+    "electron": "^39.2.3",
+    "electron-builder": "^26.0.12",
+    "jsdom": "^27.2.0",
+    "postcss": "^8.4.32",
+    "tailwindcss": "^3.4.0",
+    "typescript": "^5.3.0",
+    "vite": "^5.0.0",
+    "vitest": "^1.0.0",
+    "wait-on": "^9.0.3"
+  }
+}

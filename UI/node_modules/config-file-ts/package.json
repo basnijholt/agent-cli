@@ -1,0 +1,44 @@
+{
+  "name": "config-file-ts",
+  "version": "0.2.8-rc1",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "author": "lee mighdoll",
+  "description": "Use Typescript for configuration files. Types for safety. Compiled for speed.",
+  "keywords": [
+    "typescript",
+    "config",
+    "configuration",
+    "conf",
+    "cli",
+    "cached",
+    "command",
+    "cmd",
+    "command-line"
+  ],
+  "dependencies": {
+    "glob": "^10.3.12",
+    "typescript": "^5.4.3"
+  },
+  "devDependencies": {
+    "@types/glob": "^8.1.0",
+    "@types/node": "^20.11.30",
+    "rimraf": "^5.0.5",
+    "rollup": "^4.13.2",
+    "rollup-plugin-typescript2": "^0.36.0",
+    "vitest": "^1.4.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mighdoll/config-file-ts"
+  },
+  "files": [
+    "dist",
+    "src"
+  ],
+  "sideEffects": false,
+  "license": "MIT",
+  "scripts": {
+    "test": "vitest"
+  }
+}

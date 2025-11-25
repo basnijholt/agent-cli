@@ -1,0 +1,842 @@
+{
+  "labels": {
+    "en-US": {
+      "languageName": "English",
+      "agree": "Agree",
+      "disagree": "Disagree",
+      "print": "Print",
+      "save": "Save...",
+      "message": "If you agree with the terms of this license, press \"Agree\" to install the software.  If you do not agree, press \"Disagree\"."
+    },
+    "fr": {
+      "languageName": "Français",
+      "agree": "Accepter",
+      "disagree": "Refuser",
+      "print": "Imprimer",
+      "save": "Enregistrer...",
+      "message": "Si vous acceptez les termes de la présente licence, cliquez sur \"Accepter\" afin d'installer le logiciel. Si vous n'êtes pas d'accord avec les termes de la licence, cliquez sur \"Refuser\"."
+    },
+    "de": {
+      "languageName": "Deutsch",
+      "agree": "Akzeptieren",
+      "disagree": "Ablehnen",
+      "print": "Drucken",
+      "save": "Sichern...",
+      "message": "Klicken Sie in “Akzeptieren”, wenn Sie mit den Bestimmungen des Software-Lizenzvertrags einverstanden sind. Falls nicht, bitte “Ablehnen” anklicken. Sie können die Software nur installieren, wenn Sie “Akzeptieren” angeklickt haben."
+    },
+    "it": {
+      "languageName": "Italiano",
+      "agree": "Accetto",
+      "disagree": "Rifiuto",
+      "print": "Stampa",
+      "save": "Registra...",
+      "message": "Se accetti le condizioni di questa licenza, fai clic su \"Accetto\" per installare il software. Altrimenti fai clic su \"Rifiuto\"."
+    },
+    "nl": {
+      "languageName": "Nederlands",
+      "agree": "Ja",
+      "disagree": "Nee",
+      "print": "Print",
+      "save": "Bewaar...",
+      "message": "Indien u akkoord gaat met de voorwaarden van deze licentie, kunt u op 'Ja' klikken om de programmatuur te installeren. Indien u niet akkoord gaat, klikt u op 'Nee'."
+    },
+    "sv": {
+      "languageName": "Svensk",
+      "agree": "Godkänns",
+      "disagree": "Avböjs",
+      "print": "Skriv ut",
+      "save": "Spara...",
+      "message": "Om Du godkänner licensvillkoren klicka på \"Godkänns\" för att installera programprodukten. Om Du inte godkänner licensvillkoren, klicka på \"Avböjs\"."
+    },
+    "es": {
+      "languageName": "Español",
+      "agree": "Aceptar",
+      "disagree": "No aceptar",
+      "print": "Imprimir",
+      "save": "Guardar...",
+      "message": "Si está de acuerdo con los términos de esta licencia, pulse \"Aceptar\" para instalar el software. En el supuesto de que no esté de acuerdo con los términos de esta licencia, pulse \"No aceptar.\""
+    },
+    "da": {
+      "languageName": "Dansk",
+      "agree": "Enig",
+      "disagree": "Uenig",
+      "print": "Udskriv",
+      "save": "Arkiver...",
+      "message": "Hvis du accepterer betingelserne i licensaftalen, skal du klikke på “Enig” for at installere softwaren. Klik på “Uenig” for at annullere installeringen."
+    },
+    "fr-CA": {
+      "languageName": "Français canadien",
+      "agree": "Accepter",
+      "disagree": "Refuser",
+      "print": "Imprimer",
+      "save": "Enregistrer...",
+      "message": "Si vous acceptez les termes de la présente licence, cliquez sur \"Accepter\" afin d'installer le logiciel. Si vous n'êtes pas d'accord avec les termes de la licence, cliquez sur \"Refuser\"."
+    },
+    "nb": {
+      "languageName": "Norsk",
+      "agree": "Enig",
+      "disagree": "Ikke enig",
+      "print": "Skriv ut",
+      "save": "Arkiver...",
+      "message": "Hvis De er enig i bestemmelsene i denne lisensavtalen, klikker De på \"Enig\"-knappen for å installere programvaren. Hvis De ikke er enig, klikker De på \"Ikke enig\"."
+    },
+    "ja": {
+      "languageName": "Japanese",
+      "agree": "同意します",
+      "disagree": "同意しません",
+      "print": "印刷する",
+      "save": "保存...",
+      "message": "本ソフトウエア使用許諾契約の条件に同意される場合には、ソフトウエアをインストールするために「同意します」を押してください。　同意されない場合には、「同意しません」を押してください。"
+    },
+    "fi": {
+      "languageName": "Suomi",
+      "agree": "Hyväksyn",
+      "disagree": "En hyväksy",
+      "print": "Tulosta",
+      "save": "Tallenna…",
+      "message": "Hyväksy lisenssisopimuksen ehdot osoittamalla ’Hyväksy’. Jos et hyväksy sopimuksen ehtoja, osoita ’En hyväksy’."
+    },
+    "ko": {
+      "languageName": "Korean",
+      "agree": "동의",
+      "disagree": "동의 안함",
+      "print": "프린트",
+      "save": "저장...",
+      "message": "사용 계약서의 내용에 동의하면, \"동의\" 단추를 눌러 소프트웨어를 설치하십시오. 동의하지 않는다면, \"동의 안함\" 단추를 누르십시오."
+    },
+    "zh-Hans": {
+      "languageName": "Simplified Chinese",
+      "agree": "同意",
+      "disagree": "不同意",
+      "print": "打印",
+      "save": "存储⋯",
+      "message": "如果您同意本许可协议的条款，请按“同意”来安装此软件。如果您不同意，请按“不同意”。"
+    },
+    "zh-Hant": {
+      "languageName": "Traditional Chinese",
+      "agree": "同意",
+      "disagree": "不同意",
+      "print": "列印",
+      "save": "儲存⋯",
+      "message": "如果您同意本許可證裡的條款，請按“同意”以安裝軟體。如果不同意，請按“不同意”。"
+    },
+    "pt-BR": {
+      "languageName": "Português, Brasil",
+      "agree": "Concordar",
+      "disagree": "Discordar",
+      "print": "Imprimir",
+      "save": "Salvar...",
+      "message": "Se está de acordo com os termos desta licença, pressione \"Concordar\" para instalar o software. Se não está de acordo, pressione \"Discordar\"."
+    }
+  },
+  "languages": {
+    "0": {
+      "charset": "macintosh",
+      "englishName": "English (United States)",
+      "labels": "en-US",
+      "langTags": [
+        "en-US"
+      ],
+      "localizedName": "English (United States)"
+    },
+    "1": {
+      "charset": "macintosh",
+      "englishName": "French",
+      "labels": "fr",
+      "langTags": [
+        "fr-FR"
+      ],
+      "localizedName": "français"
+    },
+    "2": {
+      "charset": "macintosh",
+      "englishName": "English (United Kingdom)",
+      "langTags": [
+        "en-GB"
+      ],
+      "localizedName": "English (United Kingdom)"
+    },
+    "3": {
+      "charset": "macintosh",
+      "englishName": "German",
+      "labels": "de",
+      "langTags": [
+        "de-DE"
+      ],
+      "localizedName": "Deutsch"
+    },
+    "4": {
+      "charset": "macintosh",
+      "englishName": "Italian",
+      "labels": "it",
+      "langTags": [
+        "it-IT"
+      ],
+      "localizedName": "italiano"
+    },
+    "5": {
+      "charset": "macintosh",
+      "englishName": "Dutch",
+      "labels": "nl",
+      "langTags": [
+        "nl-NL"
+      ],
+      "localizedName": "Nederlands"
+    },
+    "6": {
+      "charset": "macintosh",
+      "englishName": "Dutch (Belgium)",
+      "langTags": [
+        "nl-BE"
+      ],
+      "localizedName": "Nederlands (België)"
+    },
+    "7": {
+      "charset": "macintosh",
+      "englishName": "Swedish",
+      "labels": "sv",
+      "langTags": [
+        "sv-SE"
+      ],
+      "localizedName": "svenska"
+    },
+    "8": {
+      "charset": "macintosh",
+      "englishName": "Spanish",
+      "labels": "es",
+      "langTags": [
+        "es-ES"
+      ],
+      "localizedName": "español"
+    },
+    "9": {
+      "charset": "macintosh",
+      "englishName": "Danish",
+      "labels": "da",
+      "langTags": [
+        "da-DK"
+      ],
+      "localizedName": "dansk"
+    },
+    "10": {
+      "charset": "macintosh",
+      "englishName": "Portuguese",
+      "langTags": [
+        "pt-PT"
+      ],
+      "localizedName": "português"
+    },
+    "11": {
+      "charset": "macintosh",
+      "englishName": "French (Canada)",
+      "labels": "fr-CA",
+      "langTags": [
+        "fr-CA"
+      ],
+      "localizedName": "français (Canada)"
+    },
+    "12": {
+      "charset": "macintosh",
+      "englishName": "Norwegian Bokmål",
+      "labels": "nb",
+      "langTags": [
+        "nb-NO"
+      ],
+      "localizedName": "norsk bokmål"
+    },
+    "13": {
+      "charset": "x-mac-hebrew",
+      "englishName": "Hebrew",
+      "langTags": [
+        "he-IL"
+      ],
+      "localizedName": "עברית"
+    },
+    "14": {
+      "charset": "x-mac-japanese",
+      "doubleByteCharset": true,
+      "englishName": "Japanese",
+      "labels": "ja",
+      "langTags": [
+        "ja-JP"
+      ],
+      "localizedName": "日本語"
+    },
+    "15": {
+      "charset": "macintosh",
+      "englishName": "English (Australia)",
+      "langTags": [
+        "en-AU"
+      ],
+      "localizedName": "English (Australia)"
+    },
+    "16": {
+      "charset": "x-mac-arabic",
+      "englishName": "Arabic",
+      "langTags": [
+        "ar"
+      ],
+      "localizedName": "العربية"
+    },
+    "17": {
+      "charset": "macintosh",
+      "englishName": "Finnish",
+      "labels": "fi",
+      "langTags": [
+        "fi-FI"
+      ],
+      "localizedName": "suomi"
+    },
+    "18": {
+      "charset": "macintosh",
+      "englishName": "French (Switzerland)",
+      "langTags": [
+        "fr-CH"
+      ],
+      "localizedName": "français (Suisse)"
+    },
+    "19": {
+      "charset": "macintosh",
+      "englishName": "German (Switzerland)",
+      "langTags": [
+        "de-CH"
+      ],
+      "localizedName": "Deutsch (Schweiz)"
+    },
+    "20": {
+      "charset": "x-mac-greek",
+      "englishName": "Greek",
+      "langTags": [
+        "el-GR"
+      ],
+      "localizedName": "Ελληνικά"
+    },
+    "21": {
+      "charset": "x-mac-icelandic",
+      "englishName": "Icelandic",
+      "langTags": [
+        "is-IS"
+      ],
+      "localizedName": "íslenska"
+    },
+    "22": {
+      "charset": "macintosh",
+      "englishName": "Maltese",
+      "langTags": [
+        "mt-MT"
+      ],
+      "localizedName": "Malti"
+    },
+    "23": {
+      "charset": "x-mac-greek",
+      "englishName": "Greek (Cyprus)",
+      "langTags": [
+        "el-CY"
+      ],
+      "localizedName": "Ελληνικά (Κύπρος)"
+    },
+    "24": {
+      "charset": "x-mac-turkish",
+      "englishName": "Turkish",
+      "langTags": [
+        "tr-TR"
+      ],
+      "localizedName": "Türkçe"
+    },
+    "33": {
+      "charset": "x-mac-devanagari",
+      "englishName": "Hindi",
+      "langTags": [
+        "hi-IN"
+      ],
+      "localizedName": "हिन्दी"
+    },
+    "34": {
+      "charset": "x-mac-arabic",
+      "englishName": "Urdu (Pakistan)",
+      "langTags": [
+        "ur-PK"
+      ],
+      "localizedName": "اردو (پاکستان)"
+    },
+    "35": {
+      "charset": "x-mac-turkish",
+      "englishName": "Modified Turkish",
+      "langTags": [],
+      "localizedName": "Türkçe"
+    },
+    "36": {
+      "charset": "macintosh",
+      "englishName": "Italian (Switzerland)",
+      "langTags": [
+        "it-CH"
+      ],
+      "localizedName": "italiano (Svizzera)"
+    },
+    "37": {
+      "charset": "us-ascii",
+      "englishName": "English (World)",
+      "langTags": [
+        "en-001"
+      ],
+      "localizedName": "English (World)"
+    },
+    "39": {
+      "charset": "x-mac-romanian",
+      "englishName": "Romanian",
+      "langTags": [
+        "ro-RO"
+      ],
+      "localizedName": "română"
+    },
+    "41": {
+      "charset": "x-mac-centraleurroman",
+      "englishName": "Lithuanian",
+      "langTags": [
+        "lt-LT"
+      ],
+      "localizedName": "lietuvių"
+    },
+    "42": {
+      "charset": "x-mac-centraleurroman",
+      "englishName": "Polish",
+      "langTags": [
+        "pl-PL"
+      ],
+      "localizedName": "polski"
+    },
+    "43": {
+      "charset": "x-mac-centraleurroman",
+      "englishName": "Hungarian",
+      "langTags": [
+        "hu-HU"
+      ],
+      "localizedName": "magyar"
+    },
+    "44": {
+      "charset": "x-mac-centraleurroman",
+      "englishName": "Estonian",
+      "langTags": [
+        "et-EE"
+      ],
+      "localizedName": "eesti"
+    },
+    "45": {
+      "charset": "x-mac-centraleurroman",
+      "englishName": "Latvian",
+      "langTags": [
+        "lv-LV"
+      ],
+      "localizedName": "latviešu"
+    },
+    "46": {
+      "charset": "macintosh",
+      "englishName": "Northern Sami",
+      "langTags": [
+        "se"
+      ],
+      "localizedName": "davvisámegiella"
+    },
+    "47": {
+      "charset": "x-mac-icelandic",
+      "englishName": "Faroese",
+      "langTags": [
+        "fo-FO"
+      ],
+      "localizedName": "føroyskt"
+    },
+    "48": {
+      "charset": "x-mac-farsi",
+      "englishName": "Persian",
+      "langTags": [
+        "fa-IR"
+      ],
+      "localizedName": "فارسی"
+    },
+    "49": {
+      "charset": "x-mac-cyrillic",
+      "englishName": "Russian",
+      "langTags": [
+        "ru-RU"
+      ],
+      "localizedName": "русский"
+    },
+    "50": {
+      "charset": "x-mac-celtic",
+      "englishName": "Irish (Ireland)",
+      "langTags": [
+        "ga-IE"
+      ],
+      "localizedName": "Gaeilge (Éire)"
+    },
+    "51": {
+      "charset": "x-mac-korean",
+      "doubleByteCharset": true,
+      "englishName": "Korean",
+      "labels": "ko",
+      "langTags": [
+        "ko-KR"
+      ],
+      "localizedName": "한국어"
+    },
+    "52": {
+      "charset": "x-mac-simp-chinese",
+      "doubleByteCharset": true,
+      "englishName": "Chinese (Simplified)",
+      "labels": "zh-Hans",
+      "langTags": [
+        "zh-CN",
+        "zh-Hans"
+      ],
+      "localizedName": "中文 (简体)"
+    },
+    "53": {
+      "charset": "x-mac-trad-chinese",
+      "doubleByteCharset": true,
+      "englishName": "Chinese (Traditional)",
+      "labels": "zh-Hant",
+      "langTags": [
+        "zh-TW",
+        "zh-Hant"
+      ],
+      "localizedName": "中文 (繁體)"
+    },
+    "54": {
+      "charset": "x-mac-thai",
+      "englishName": "Thai",
+      "langTags": [
+        "th-TH"
+      ],
+      "localizedName": "ไทย"
+    },
+    "56": {
+      "charset": "x-mac-centraleurroman",
+      "englishName": "Czech",
+      "langTags": [
+        "cs-CZ"
+      ],
+      "localizedName": "čeština"
+    },
+    "57": {
+      "charset": "x-mac-centraleurroman",
+      "englishName": "Slovak",
+      "langTags": [
+        "sk-SK"
+      ],
+      "localizedName": "slovenčina"
+    },
+    "60": {
+      "charset": "x-mac-bengali",
+      "englishName": "Bangla",
+      "langTags": [
+        "bn"
+      ],
+      "localizedName": "বাংলা"
+    },
+    "61": {
+      "charset": "x-mac-cyrillic",
+      "englishName": "Belarusian",
+      "langTags": [
+        "be-BY"
+      ],
+      "localizedName": "беларуская"
+    },
+    "62": {
+      "charset": "x-mac-ukrainian",
+      "englishName": "Ukrainian",
+      "langTags": [
+        "uk-UA"
+      ],
+      "localizedName": "українська"
+    },
+    "65": {
+      "charset": "x-mac-cyrillic",
+      "englishName": "Serbian",
+      "langTags": [
+        "sr-CS"
+      ],
+      "localizedName": "српски"
+    },
+    "66": {
+      "charset": "x-mac-croatian",
+      "englishName": "Slovenian",
+      "langTags": [
+        "sl-SI"
+      ],
+      "localizedName": "slovenščina"
+    },
+    "67": {
+      "charset": "x-mac-cyrillic",
+      "englishName": "Macedonian",
+      "langTags": [
+        "mk-MK"
+      ],
+      "localizedName": "македонски"
+    },
+    "68": {
+      "charset": "x-mac-croatian",
+      "englishName": "Croatian",
+      "langTags": [
+        "hr-HR"
+      ],
+      "localizedName": "hrvatski"
+    },
+    "71": {
+      "charset": "macintosh",
+      "englishName": "Portuguese (Brazil)",
+      "labels": "pt-BR",
+      "langTags": [
+        "pt-BR"
+      ],
+      "localizedName": "português (Brasil)"
+    },
+    "72": {
+      "charset": "x-mac-cyrillic",
+      "englishName": "Bulgarian",
+      "langTags": [
+        "bg-BG"
+      ],
+      "localizedName": "български"
+    },
+    "73": {
+      "charset": "macintosh",
+      "englishName": "Catalan (Spain)",
+      "langTags": [
+        "ca-ES"
+      ],
+      "localizedName": "català (Espanya)"
+    },
+    "75": {
+      "charset": "x-mac-celtic",
+      "englishName": "Scottish Gaelic",
+      "langTags": [
+        "gd"
+      ],
+      "localizedName": "Gàidhlig"
+    },
+    "76": {
+      "charset": "x-mac-celtic",
+      "englishName": "Manx",
+      "langTags": [
+        "gv"
+      ],
+      "localizedName": "Gaelg"
+    },
+    "77": {
+      "charset": "x-mac-celtic",
+      "englishName": "Breton",
+      "langTags": [
+        "br"
+      ],
+      "localizedName": "brezhoneg"
+    },
+    "78": {
+      "charset": "x-mac-inuit",
+      "englishName": "Inuktitut",
+      "langTags": [
+        "iu-CA"
+      ],
+      "localizedName": "Inuktitut"
+    },
+    "79": {
+      "charset": "x-mac-celtic",
+      "englishName": "Welsh",
+      "langTags": [
+        "cy"
+      ],
+      "localizedName": "Cymraeg"
+    },
+    "81": {
+      "charset": "x-mac-gaelic",
+      "englishName": "Irish (Gaelic Latin, Ireland)",
+      "langTags": [
+        "ga-Latg-IE"
+      ],
+      "localizedName": "Gaeilge (Cló Gaelach, Éire)"
+    },
+    "82": {
+      "charset": "macintosh",
+      "englishName": "English (Canada)",
+      "langTags": [
+        "en-CA"
+      ],
+      "localizedName": "English (Canada)"
+    },
+    "83": {
+      "charset": "x-mac-tibetan",
+      "englishName": "Dzongkha",
+      "langTags": [
+        "dz-BT"
+      ],
+      "localizedName": "རྫོང་ཁ"
+    },
+    "84": {
+      "charset": "x-mac-armenian",
+      "englishName": "Armenian",
+      "langTags": [
+        "hy-AM"
+      ],
+      "localizedName": "հայերեն"
+    },
+    "85": {
+      "charset": "x-mac-georgian",
+      "englishName": "Georgian",
+      "langTags": [
+        "ka-GE"
+      ],
+      "localizedName": "ქართული"
+    },
+    "86": {
+      "charset": "macintosh",
+      "englishName": "Spanish (Latin America)",
+      "langTags": [
+        "es-419"
+      ],
+      "localizedName": "español (Latinoamérica)"
+    },
+    "88": {
+      "charset": "macintosh",
+      "englishName": "Tongan",
+      "langTags": [
+        "to-TO"
+      ],
+      "localizedName": "lea fakatonga"
+    },
+    "91": {
+      "charset": "macintosh",
+      "englishName": "French (World)",
+      "langTags": [
+        "fr-001"
+      ],
+      "localizedName": "français (Monde)"
+    },
+    "92": {
+      "charset": "macintosh",
+      "englishName": "German (Austria)",
+      "langTags": [
+        "de-AT"
+      ],
+      "localizedName": "Deutsch (Österreich)"
+    },
+    "94": {
+      "charset": "x-mac-gujarati",
+      "englishName": "Gujarati (India)",
+      "langTags": [
+        "gu-IN"
+      ],
+      "localizedName": "ગુજરાતી (ભારત)"
+    },
+    "95": {
+      "charset": "x-mac-gurmukhi",
+      "englishName": "Punjabi",
+      "langTags": [
+        "pa"
+      ],
+      "localizedName": "ਪੰਜਾਬੀ"
+    },
+    "96": {
+      "charset": "x-mac-arabic",
+      "englishName": "Urdu (India)",
+      "langTags": [
+        "ur-IN"
+      ],
+      "localizedName": "اردو (بھارت)"
+    },
+    "97": {
+      "charset": "x-mac-vietnamese",
+      "englishName": "Vietnamese",
+      "langTags": [
+        "vi-VN"
+      ],
+      "localizedName": "Tiếng Việt"
+    },
+    "98": {
+      "charset": "macintosh",
+      "englishName": "French (Belgium)",
+      "langTags": [
+        "fr-BE"
+      ],
+      "localizedName": "français (Belgique)"
+    },
+    "99": {
+      "charset": "x-mac-cyrillic",
+      "englishName": "Uzbek",
+      "langTags": [
+        "uz-UZ"
+      ],
+      "localizedName": "o‘zbek"
+    },
+    "100": {
+      "charset": "macintosh",
+      "englishName": "English (Singapore)",
+      "langTags": [
+        "en-SG"
+      ],
+      "localizedName": "English (Singapore)"
+    },
+    "101": {
+      "charset": "macintosh",
+      "englishName": "Norwegian Nynorsk",
+      "langTags": [
+        "nn-NO"
+      ],
+      "localizedName": "nynorsk"
+    },
+    "102": {
+      "charset": "macintosh",
+      "englishName": "Afrikaans (South Africa)",
+      "langTags": [
+        "af-ZA"
+      ],
+      "localizedName": "Afrikaans (Suid-Afrika)"
+    },
+    "103": {
+      "charset": "macintosh",
+      "englishName": "Esperanto",
+      "langTags": [
+        "eo"
+      ],
+      "localizedName": "esperanto"
+    },
+    "104": {
+      "charset": "x-mac-devanagari",
+      "englishName": "Marathi (India)",
+      "langTags": [
+        "mr-IN"
+      ],
+      "localizedName": "मराठी (भारत)"
+    },
+    "105": {
+      "charset": "x-mac-tibetan",
+      "englishName": "Tibetan",
+      "langTags": [
+        "bo"
+      ],
+      "localizedName": "བོད་སྐད་"
+    },
+    "106": {
+      "charset": "x-mac-devanagari",
+      "englishName": "Nepali",
+      "langTags": [
+        "ne-NP"
+      ],
+      "localizedName": "नेपाली"
+    },
+    "107": {
+      "charset": "macintosh",
+      "englishName": "Kalaallisut",
+      "langTags": [
+        "kl"
+      ],
+      "localizedName": "kalaallisut"
+    },
+    "108": {
+      "charset": "macintosh",
+      "englishName": "English (Ireland)",
+      "langTags": [
+        "en-IE"
+      ],
+      "localizedName": "English (Ireland)"
+    }
+  }
+}

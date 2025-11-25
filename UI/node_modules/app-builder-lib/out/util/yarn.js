@@ -1,0 +1,173 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.installOrRebuild = installOrRebuild;
+exports.getGypEnv = getGypEnv;
+exports.nodeGypRebuild = nodeGypRebuild;
+exports.rebuild = rebuild;
+const search_module_1 = require("@electron/rebuild/lib/search-module");
+const builder_util_1 = require("builder-util");
+const fs_extra_1 = require("fs-extra");
+const os_1 = require("os");
+const path = require("path");
+const appBuilder_1 = require("./appBuilder");
+const node_module_collector_1 = require("../node-module-collector");
+const rebuild_1 = require("./rebuild/rebuild");
+async function installOrRebuild(config, appDir, options, forceInstall = false) {
+    const effectiveOptions = {
+        buildFromSource: config.buildDependenciesFromSource === true,
+        additionalArgs: (0, builder_util_1.asArray)(config.npmArgs),
+        ...options,
+    };
+    let isDependenciesInstalled = false;
+    for (const fileOrDir of ["node_modules", ".pnp.js"]) {
+        if (await (0, fs_extra_1.pathExists)(path.join(appDir, fileOrDir))) {
+            isDependenciesInstalled = true;
+            break;
+        }
+    }
+    if (forceInstall || !isDependenciesInstalled) {
+        await installDependencies(config, appDir, effectiveOptions);
+    }
+    else {
+        await rebuild(config, appDir, effectiveOptions);
+    }
+}
+function getElectronGypCacheDir() {
+    return path.join((0, os_1.homedir)(), ".electron-gyp");
+}
+function getGypEnv(frameworkInfo, platform, arch, buildFromSource) {
+    const npmConfigArch = arch === "armv7l" ? "arm" : arch;
+    const common = {
+        ...process.env,
+        npm_config_arch: npmConfigArch,
+        npm_config_target_arch: npmConfigArch,
+        npm_config_platform: platform,
+        npm_config_build_from_source: buildFromSource,
+        // required for node-pre-gyp
+        npm_config_target_platform: platform,
+        npm_config_update_binary: true,
+        npm_config_fallback_to_build: true,
+    };
+    if (platform !== process.platform) {
+        common.npm_config_force = "true";
+    }
+    if (platform === "win32" || platform === "darwin") {
+        common.npm_config_target_libc = "unknown";
+    }
+    if (!frameworkInfo.useCustomDist) {
+        return common;
+    }
+    // https://github.com/nodejs/node-gyp/issues/21
+    return {
+        ...common,
+        npm_config_disturl: common.npm_config_electron_mirror || "https://electronjs.org/headers",
+        npm_config_target: frameworkInfo.version,
+        npm_config_runtime: "electron",
+        npm_config_devdir: getElectronGypCacheDir(),
+    };
+}
+async function checkYarnBerry(pm) {
+    if (pm !== "yarn") {
+        return false;
+    }
+    const version = await (0, node_module_collector_1.getPackageManagerVersion)(pm);
+    if (version == null || version.split(".").length < 1) {
+        return false;
+    }
+    return version.split(".")[0] >= "2";
+}
+async function installDependencies(config, appDir, options) {
+    const platform = options.platform || process.platform;
+    const arch = options.arch || process.arch;
+    const additionalArgs = options.additionalArgs;
+    const projectDir = await (0, search_module_1.getProjectRootPath)(appDir);
+    const pm = await (0, node_module_collector_1.detect)({ cwd: projectDir });
+    builder_util_1.log.info({ pm, platform, arch, projectDir, appDir }, `installing production dependencies`);
+    const execArgs = ["install"];
+    const isYarnBerry = await checkYarnBerry(pm);
+    if (!isYarnBerry) {
+        if (process.env.NPM_NO_BIN_LINKS === "true") {
+            execArgs.push("--no-bin-links");
+        }
+    }
+    if (!isRunningYarn(pm)) {
+        execArgs.push("--prefer-offline");
+    }
+    const execPath = getPackageToolPath(pm);
+    if (additionalArgs != null) {
+        execArgs.push(...additionalArgs);
+    }
+    await (0, builder_util_1.spawn)(execPath, execArgs, {
+        cwd: appDir,
+        env: getGypEnv(options.frameworkInfo, platform, arch, options.buildFromSource === true),
+    });
+    // Some native dependencies no longer use `install` hook for building their native module, (yarn 3+ removed implicit link of `install` and `rebuild` steps)
+    // https://github.com/electron-userland/electron-builder/issues/8024
+    return rebuild(config, appDir, options);
+}
+async function nodeGypRebuild(platform, arch, frameworkInfo) {
+    builder_util_1.log.info({ platform, arch }, "executing node-gyp rebuild");
+    // this script must be used only for electron
+    const nodeGyp = `node-gyp${process.platform === "win32" ? ".cmd" : ""}`;
+    const args = ["rebuild"];
+    // headers of old Electron versions do not have a valid config.gypi file
+    // and --force-process-config must be passed to node-gyp >= 8.4.0 to
+    // correctly build modules for them.
+    // see also https://github.com/nodejs/node-gyp/pull/2497
+    const [major, minor] = frameworkInfo.version
+        .split(".")
+        .slice(0, 2)
+        .map(n => parseInt(n, 10));
+    if (major <= 13 || (major == 14 && minor <= 1) || (major == 15 && minor <= 2)) {
+        args.push("--force-process-config");
+    }
+    await (0, builder_util_1.spawn)(nodeGyp, args, { env: getGypEnv(frameworkInfo, platform, arch, true) });
+}
+function getPackageToolPath(pm) {
+    let cmd = pm;
+    if (process.env.FORCE_YARN === "true") {
+        cmd = "yarn";
+    }
+    return `${cmd}${process.platform === "win32" ? ".cmd" : ""}`;
+}
+function isRunningYarn(pm) {
+    const userAgent = process.env.npm_config_user_agent;
+    return process.env.FORCE_YARN === "true" || pm === "yarn" || (userAgent != null && /\byarn\b/.test(userAgent));
+}
+/** @internal */
+async function rebuild(config, appDir, options) {
+    const configuration = {
+        dependencies: await options.productionDeps.value,
+        nodeExecPath: process.execPath,
+        platform: options.platform || process.platform,
+        arch: options.arch || process.arch,
+        additionalArgs: options.additionalArgs,
+        execPath: process.env.npm_execpath || process.env.NPM_CLI_JS,
+        buildFromSource: options.buildFromSource === true,
+    };
+    const { arch, buildFromSource, platform } = configuration;
+    if (config.nativeRebuilder === "legacy") {
+        const env = getGypEnv(options.frameworkInfo, platform, arch, buildFromSource);
+        return (0, appBuilder_1.executeAppBuilderAndWriteJson)(["rebuild-node-modules"], configuration, { env, cwd: appDir });
+    }
+    const { frameworkInfo: { version: electronVersion }, } = options;
+    const logInfo = {
+        electronVersion,
+        arch,
+        buildFromSource,
+        appDir: builder_util_1.log.filePath(appDir) || "./",
+    };
+    builder_util_1.log.info(logInfo, "executing @electron/rebuild");
+    const rebuildOptions = {
+        buildPath: appDir,
+        electronVersion,
+        arch,
+        platform,
+        buildFromSource,
+        projectRootPath: await (0, search_module_1.getProjectRootPath)(appDir),
+        mode: config.nativeRebuilder || "sequential",
+        disablePreGypCopy: true,
+    };
+    return (0, rebuild_1.rebuild)(rebuildOptions);
+}
+//# sourceMappingURL=yarn.js.map

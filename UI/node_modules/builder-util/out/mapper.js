@@ -1,0 +1,27 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.mapToObject = mapToObject;
+exports.isValidKey = isValidKey;
+function mapToObject(map) {
+    const obj = {};
+    for (const [key, value] of map) {
+        if (!isValidKey(key)) {
+            continue;
+        }
+        if (value instanceof Map) {
+            obj[key] = mapToObject(value);
+        }
+        else {
+            obj[key] = value;
+        }
+    }
+    return obj;
+}
+function isValidKey(key) {
+    const protectedProperties = ["__proto__", "prototype", "constructor"];
+    if (protectedProperties.includes(key)) {
+        return false;
+    }
+    return ["string", "number", "symbol", "boolean"].includes(typeof key) || key === null;
+}
+//# sourceMappingURL=mapper.js.map

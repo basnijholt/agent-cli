@@ -1,0 +1,23 @@
+{
+  "name": "node-api-version",
+  "version": "0.2.1",
+  "author": "Tim Fish <tim@timfish.uk>",
+  "main": "index.js",
+  "types": "types.d.ts",
+  "description": "Gets the supported Node-API version for a specific node or electron version",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/timfish/node-api-version"
+  },
+  "scripts": {
+    "electron-versions": "node ./electron-versions.js",
+    "test": "node ./test.js"
+  },
+  "dependencies": {
+    "semver": "^7.3.5"
+  },
+  "devDependencies": {
+    "got": "^11.8.2"
+  }
+}

@@ -1,0 +1,177 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.NodeModulesCollector = void 0;
+const hoist_1 = require("./hoist");
+const path = require("path");
+const fs = require("fs");
+const builder_util_1 = require("builder-util");
+class NodeModulesCollector {
+    constructor(rootDir) {
+        this.rootDir = rootDir;
+        this.nodeModules = [];
+        this.dependencyPathMap = new Map();
+        this.allDependencies = new Map();
+    }
+    async getNodeModules() {
+        const tree = await this.getDependenciesTree();
+        const realTree = this.getTreeFromWorkspaces(tree);
+        const parsedTree = this.extractRelevantData(realTree);
+        this.collectAllDependencies(parsedTree);
+        const productionTree = this.extractProductionDependencyTree(parsedTree);
+        const dependencyGraph = this.convertToDependencyGraph(productionTree);
+        const hoisterResult = (0, hoist_1.hoist)(this.transToHoisterTree(dependencyGraph), { check: true });
+        this._getNodeModules(hoisterResult.dependencies, this.nodeModules);
+        return this.nodeModules;
+    }
+    async getDependenciesTree() {
+        const command = await this.pmCommand.value;
+        const args = this.getArgs();
+        const dependencies = await (0, builder_util_1.exec)(command, args, {
+            cwd: this.rootDir,
+            shell: true,
+        });
+        return this.parseDependenciesTree(dependencies);
+    }
+    extractRelevantData(npmTree) {
+        // Do not use `...npmTree` as we are explicitly extracting the data we need
+        const { name, version, path, workspaces, dependencies } = npmTree;
+        const tree = {
+            name,
+            version,
+            path,
+            workspaces,
+            // DFS extract subtree
+            dependencies: this.extractInternal(dependencies),
+        };
+        return tree;
+    }
+    extractInternal(deps) {
+        return deps && Object.keys(deps).length > 0
+            ? Object.entries(deps).reduce((accum, [packageName, depObjectOrVersionString]) => {
+                return {
+                    ...accum,
+                    [packageName]: typeof depObjectOrVersionString === "object" && Object.keys(depObjectOrVersionString).length > 0
+                        ? this.extractRelevantData(depObjectOrVersionString)
+                        : depObjectOrVersionString,
+                };
+            }, {})
+            : undefined;
+    }
+    resolvePath(filePath) {
+        try {
+            const stats = fs.lstatSync(filePath);
+            if (stats.isSymbolicLink()) {
+                return fs.realpathSync(filePath);
+            }
+            else {
+                return filePath;
+            }
+        }
+        catch (error) {
+            builder_util_1.log.debug({ message: error.message || error.stack }, "error resolving path");
+            return filePath;
+        }
+    }
+    convertToDependencyGraph(tree, parentKey = ".") {
+        return Object.entries(tree.dependencies || {}).reduce((acc, curr) => {
+            const [packageName, dependencies] = curr;
+            // Skip empty dependencies (like some optionalDependencies)
+            if (Object.keys(dependencies).length === 0) {
+                return acc;
+            }
+            const version = dependencies.version || "";
+            const newKey = `${packageName}@${version}`;
+            if (!dependencies.path) {
+                builder_util_1.log.error({
+                    packageName,
+                    data: dependencies,
+                    parentModule: tree.name,
+                    parentVersion: tree.version,
+                }, "dependency path is undefined");
+                throw new Error("unable to parse `path` during `tree.dependencies` reduce");
+            }
+            // Map dependency details: name, version and path to the dependency tree
+            this.dependencyPathMap.set(newKey, path.normalize(this.resolvePath(dependencies.path)));
+            if (!acc[parentKey]) {
+                acc[parentKey] = { dependencies: [] };
+            }
+            acc[parentKey].dependencies.push(newKey);
+            if (tree.implicitDependenciesInjected) {
+                builder_util_1.log.debug({
+                    dependency: packageName,
+                    version,
+                    path: dependencies.path,
+                    parentModule: tree.name,
+                    parentVersion: tree.version,
+                }, "converted implicit dependency");
+                return acc;
+            }
+            return { ...acc, ...this.convertToDependencyGraph(dependencies, newKey) };
+        }, {});
+    }
+    collectAllDependencies(tree) {
+        var _a;
+        for (const [key, value] of Object.entries(tree.dependencies || {})) {
+            if (Object.keys((_a = value.dependencies) !== null && _a !== void 0 ? _a : {}).length > 0) {
+                this.allDependencies.set(`${key}@${value.version}`, value);
+                this.collectAllDependencies(value);
+            }
+        }
+    }
+    getTreeFromWorkspaces(tree) {
+        if (tree.workspaces && tree.dependencies) {
+            const packageJson = require(path.join(this.rootDir, "package.json"));
+            const dependencyName = packageJson.name;
+            for (const [key, value] of Object.entries(tree.dependencies)) {
+                if (key === dependencyName) {
+                    return value;
+                }
+            }
+        }
+        return tree;
+    }
+    transToHoisterTree(obj, key = `.`, nodes = new Map()) {
+        let node = nodes.get(key);
+        const name = key.match(/@?[^@]+/)[0];
+        if (!node) {
+            node = {
+                name,
+                identName: name,
+                reference: key.match(/@?[^@]+@?(.+)?/)[1] || ``,
+                dependencies: new Set(),
+                peerNames: new Set([]),
+            };
+            nodes.set(key, node);
+            for (const dep of (obj[key] || {}).dependencies || []) {
+                node.dependencies.add(this.transToHoisterTree(obj, dep, nodes));
+            }
+        }
+        return node;
+    }
+    _getNodeModules(dependencies, result) {
+        if (dependencies.size === 0) {
+            return;
+        }
+        for (const d of dependencies.values()) {
+            const reference = [...d.references][0];
+            const p = this.dependencyPathMap.get(`${d.name}@${reference}`);
+            if (p === undefined) {
+                builder_util_1.log.debug({ name: d.name, reference }, "cannot find path for dependency");
+                continue;
+            }
+            const node = {
+                name: d.name,
+                version: reference,
+                dir: p,
+            };
+            result.push(node);
+            if (d.dependencies.size > 0) {
+                node.dependencies = [];
+                this._getNodeModules(d.dependencies, node.dependencies);
+            }
+        }
+        result.sort((a, b) => a.name.localeCompare(b.name));
+    }
+}
+exports.NodeModulesCollector = NodeModulesCollector;
+//# sourceMappingURL=nodeModulesCollector.js.map
