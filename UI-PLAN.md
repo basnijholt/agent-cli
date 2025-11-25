@@ -1,6 +1,6 @@
 # UI Development Plan: Agent CLI Desktop
 
-> **Status**: Active / Phase 3.5 Completed
+> **Status**: Active / Phase 3.6 Completed
 > **Last Updated**: 2025-11-25
 > **Next Step**: Phase 4 - Voice Integration
 
@@ -205,6 +205,49 @@ const runtime = useAgentCLIRuntime({
 - Selected thread ID persisted to localStorage (`agent-cli-selected-thread` key)
 - On mount: fetch conversations → populate thread list → auto-select saved or first thread
 - All 8 E2E tests passing (5 original + 3 new persistence tests)
+
+### Phase 3.6: QoL Features - Dark Mode & Keyboard Shortcuts (✅ Completed)
+
+**Goal**: Add quality-of-life features for better UX.
+
+**Completed**:
+
+- [x] **Dark mode support**:
+  - Added `darkMode: 'class'` to Tailwind config
+  - Created `useTheme` hook with localStorage persistence
+  - Updated all components with dark mode classes (`dark:bg-*`, `dark:text-*`, etc.)
+  - Respects system preference on first load
+  - Toggle button with Sun/Moon icons in sidebar
+
+- [x] **Keyboard shortcuts**:
+  - `Cmd/Ctrl + ,` - Open settings modal
+  - `Cmd/Ctrl + D` - Toggle dark mode
+  - `Escape` - Close settings modal
+  - Platform-aware (Mac: ⌘, Windows/Linux: Ctrl)
+  - Keyboard shortcuts hint displayed in bottom-right corner
+
+- [x] **Markdown rendering**:
+  - Added `react-markdown` with `remark-gfm` for GitHub Flavored Markdown
+  - Assistant messages now render markdown properly
+  - Using `TextMessagePartProps` for custom text component
+
+- [x] **Test infrastructure improvements**:
+  - Added localStorage mock to test setup
+  - Added matchMedia mock for theme detection
+  - Added scrollTo mock for assistant-ui viewport
+  - Updated selectors to use role-based queries
+  - Excluded e2e tests from vitest to prevent framework conflicts
+  - All 3 unit tests + 8 E2E tests passing
+
+**Key files created/modified**:
+- `UI/src/hooks/useTheme.ts` - NEW: Theme management hook
+- `UI/tailwind.config.js` - MODIFIED: Added `darkMode: 'class'`
+- `UI/src/App.tsx` - MODIFIED: Added keyboard shortcuts, dark mode integration
+- `UI/src/components/ThreadList.tsx` - MODIFIED: Dark mode classes, theme toggle button
+- `UI/src/components/Thread.tsx` - MODIFIED: Dark mode classes, markdown rendering
+- `UI/src/components/SettingsModal.tsx` - MODIFIED: Dark mode classes
+- `UI/src/test/setup.ts` - MODIFIED: Added localStorage, matchMedia, scrollTo mocks
+- `UI/vite.config.ts` - MODIFIED: Excluded e2e tests from vitest
 
 ### Phase 4: Voice Integration (📅 Planned)
 
@@ -661,6 +704,9 @@ type LanguageModelConfig = {
 | 2025-11-25 | Use `adapters.threadList` for thread list data | Proper API for exposing thread list to `ThreadListPrimitive` primitives |
 | 2025-11-25 | Persist selected thread in localStorage | Enable conversation continuity across page refreshes |
 | 2025-11-25 | Auto-select first conversation on startup | Better UX when returning to app with existing conversations |
+| 2025-11-25 | Add dark mode with Tailwind `class` strategy | Most flexible approach, persists to localStorage, respects system preference |
+| 2025-11-25 | Use react-markdown for assistant messages | Native assistant-ui markdown had compatibility issues; direct react-markdown works better |
+| 2025-11-25 | Platform-aware keyboard shortcuts | Mac users expect ⌘, Windows/Linux expect Ctrl |
 
 ---
 
