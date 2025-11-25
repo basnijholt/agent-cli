@@ -223,7 +223,255 @@ Key interfaces to implement:
 - `ThreadHistoryAdapter` for message persistence
 - `ModelContext` for configuration
 
-## 7. Anti-Patterns to Avoid
+## 7. Backend API Contract
+
+### Existing Endpoints (Memory Proxy - Port 8100)
+
+#### `POST /v1/chat/completions`
+Chat with memory-augmented LLM.
+
+```typescript
+// Request
+{
+  messages: Array<{ role: "user" | "assistant", content: string }>,
+  model?: string,           // e.g., "gpt-4o", "llama3"
+  stream?: boolean,         // SSE streaming
+  memory_id?: string,       // Conversation ID (default: "default")
+  memory_top_k?: number,    // RAG context limit
+  memory_recency_weight?: number,
+  memory_score_threshold?: number
+}
+
+// Response (non-streaming)
+{
+  choices: [{ message: { role: "assistant", content: string } }]
+}
+```
+
+#### `GET /v1/conversations`
+List all conversation IDs.
+
+```typescript
+// Response
+{
+  conversations: string[]  // e.g., ["default", "chat-1234", "work-project"]
+}
+```
+
+#### `GET /v1/conversations/{conversation_id}`
+Get message history for a conversation.
+
+```typescript
+// Response
+{
+  messages: Array<{
+    role: "user" | "assistant",
+    content: string,
+    // Note: Backend stores timestamps but format may vary
+  }>
+}
+```
+
+### Endpoints Needed (Future)
+
+| Endpoint | Purpose | Priority |
+|----------|---------|----------|
+| `POST /v1/conversations` | Create new conversation | Phase 2 |
+| `DELETE /v1/conversations/{id}` | Delete/archive conversation | Phase 2 |
+| `PATCH /v1/conversations/{id}` | Rename conversation | Phase 3 |
+| `POST /transcribe` | Voice transcription | Phase 4 |
+
+---
+
+## 8. Phase 2 Implementation Guide
+
+### Step 1: Understand Assistant-UI Runtime Architecture
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                 AssistantRuntimeProvider                     │
+│  ┌─────────────────────────────────────────────────────────┐│
+│  │                    Runtime                               ││
+│  │  ┌─────────────────┐  ┌─────────────────────────────┐  ││
+│  │  │ ThreadListCore  │  │ ThreadCore                   │  ││
+│  │  │                 │  │ ┌─────────────────────────┐  │  ││
+│  │  │ • threadIds     │  │ │ MessageRepository       │  │  ││
+│  │  │ • switchThread  │  │ │ • messages              │  │  ││
+│  │  │ • createThread  │  │ │ • append                │  │  ││
+│  │  └─────────────────┘  │ └─────────────────────────┘  │  ││
+│  │                       │ ┌─────────────────────────┐  │  ││
+│  │                       │ │ ComposerCore            │  │  ││
+│  │                       │ │ • send                  │  │  ││
+│  │                       │ └─────────────────────────┘  │  ││
+│  │                       └─────────────────────────────┘  ││
+│  └─────────────────────────────────────────────────────────┘│
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Step 2: Choose Integration Pattern
+
+**Option A: `useLangGraphRuntime` pattern** (Recommended)
+- Best documented example with thread list
+- Has `create`, `load`, `stream` callbacks
+- See: `assistant-ui/examples/with-langgraph/app/MyRuntimeProvider.tsx`
+
+**Option B: `useExternalStoreRuntime` pattern**
+- Lower level, more control
+- Manages messages directly
+- See: `assistant-ui/examples/with-external-store/`
+
+**Option C: Custom Runtime Core**
+- Most flexible but most complex
+- Implement `ThreadListRuntimeCore` directly
+- See: `assistant-ui/packages/react/src/legacy-runtime/runtime-cores/`
+
+### Step 3: Create Runtime Hook
+
+Create `UI/src/runtime/useAgentCLIRuntime.ts`:
+
+```typescript
+// Pseudocode - actual implementation depends on chosen pattern
+import { useLangGraphRuntime } from "@assistant-ui/react-langgraph";
+// OR
+import { useExternalStoreRuntime } from "@assistant-ui/react";
+
+const API_BASE = "http://localhost:8100";
+
+export function useAgentCLIRuntime() {
+  return useLangGraphRuntime({
+    // Called when switching to a thread
+    load: async (threadId: string) => {
+      const res = await fetch(`${API_BASE}/v1/conversations/${threadId}`);
+      const data = await res.json();
+      return { messages: data.messages };
+    },
+
+    // Called when creating new thread
+    create: async () => {
+      const newId = `chat-${Date.now()}`;
+      // Optionally POST to create on backend
+      return { externalId: newId };
+    },
+
+    // Called when sending a message
+    stream: async function* (messages, { threadId }) {
+      const res = await fetch(`${API_BASE}/v1/chat/completions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          messages,
+          memory_id: threadId,
+          stream: true,
+        }),
+      });
+      // Handle SSE streaming...
+      yield* parseSSEStream(res);
+    },
+  });
+}
+```
+
+### Step 4: Refactor App.tsx
+
+```typescript
+// UI/src/App.tsx
+import { AssistantRuntimeProvider } from "@assistant-ui/react";
+import { ThreadList } from "./components/ThreadList";  // Uses primitives
+import { Thread } from "./components/Thread";          // Uses primitives
+import { useAgentCLIRuntime } from "./runtime/useAgentCLIRuntime";
+
+export default function App() {
+  const runtime = useAgentCLIRuntime();
+
+  return (
+    <AssistantRuntimeProvider runtime={runtime}>
+      <div className="flex h-screen">
+        <ThreadList />   {/* Native ThreadListPrimitive */}
+        <Thread />       {/* Native ThreadPrimitive */}
+      </div>
+    </AssistantRuntimeProvider>
+  );
+}
+```
+
+### Step 5: Create ThreadList Component Using Primitives
+
+```typescript
+// UI/src/components/ThreadList.tsx
+import { ThreadListPrimitive, ThreadListItemPrimitive } from "@assistant-ui/react";
+
+export const ThreadList = () => (
+  <ThreadListPrimitive.Root className="w-64 border-r">
+    <ThreadListPrimitive.New>
+      <button>+ New Chat</button>
+    </ThreadListPrimitive.New>
+    <ThreadListPrimitive.Items components={{ ThreadListItem }} />
+  </ThreadListPrimitive.Root>
+);
+
+const ThreadListItem = () => (
+  <ThreadListItemPrimitive.Root>
+    <ThreadListItemPrimitive.Trigger>
+      <ThreadListItemPrimitive.Title fallback="New Chat" />
+    </ThreadListItemPrimitive.Trigger>
+  </ThreadListItemPrimitive.Root>
+);
+```
+
+### Step 6: Delete Custom Components
+
+After refactoring, remove:
+- [ ] `UI/src/components/Sidebar.tsx`
+- [ ] `UI/src/components/ChatArea.tsx`
+- [ ] `UI/src/components/SettingsModal.tsx` (keep for Phase 3 if RAG settings needed)
+
+---
+
+## 9. Assistant-UI Reference Paths
+
+### Key Source Files (in `assistant-ui/` submodule)
+
+| What | Path |
+|------|------|
+| ThreadList primitives | `packages/react/src/primitives/threadList/` |
+| ThreadListItem primitives | `packages/react/src/primitives/threadListItem/` |
+| Runtime core interfaces | `packages/react/src/legacy-runtime/runtime-cores/core/` |
+| LangGraph runtime | `packages/react-langgraph/src/useLangGraphRuntime.tsx` |
+| External store runtime | `packages/react/src/legacy-runtime/runtime-cores/external-store/` |
+| Thread history adapter | `packages/react/src/legacy-runtime/runtime-cores/adapters/thread-history/` |
+| Model context types | `packages/react/src/model-context/ModelContextTypes.ts` |
+
+### Key Examples
+
+| Example | Demonstrates |
+|---------|--------------|
+| `examples/with-langgraph/` | Thread list + custom backend |
+| `examples/with-external-store/` | Full message control |
+| `examples/with-cloud/` | Thread list UI styling |
+| `examples/with-ai-sdk-v5/` | AI SDK integration |
+
+### Key Interfaces to Study
+
+```typescript
+// From packages/react/src/client/types/ThreadList.ts
+type ThreadListClientApi = {
+  getState(): ThreadListClientState;
+  switchToThread(threadId: string): void;
+  switchToNewThread(): void;
+  // ...
+};
+
+// From packages/react/src/model-context/ModelContextTypes.ts
+type LanguageModelConfig = {
+  apiKey?: string;
+  baseUrl?: string;
+  modelName?: string;
+};
+```
+
+---
+
+## 10. Anti-Patterns to Avoid
 
 ❌ **Don't** manually manage thread list state in React
 ✅ **Do** implement runtime adapter that assistant-ui controls
@@ -236,3 +484,26 @@ Key interfaces to implement:
 
 ❌ **Don't** treat assistant-ui as just a "message renderer"
 ✅ **Do** leverage its full runtime system for state management
+
+❌ **Don't** fetch conversation list in `useEffect` with manual state
+✅ **Do** implement `load` callback that runtime calls when needed
+
+---
+
+## 11. Decision Log
+
+| Date | Decision | Rationale |
+|------|----------|-----------|
+| 2024-11-24 | Web-first, defer Electron | Simpler development, same code works everywhere |
+| 2024-11-24 | Use assistant-ui primitives over custom components | Native features (thread list, model context) reduce custom code |
+| 2024-11-24 | Add assistant-ui as submodule | AI reference for understanding interfaces |
+| 2024-11-24 | Pivot from custom Sidebar to ThreadListPrimitive | Wrong path identified, correcting |
+
+---
+
+## 12. Open Questions
+
+- [ ] Which runtime pattern works best with our backend? (LangGraph vs External Store)
+- [ ] Do we need `POST /v1/conversations` to create threads, or can we create lazily?
+- [ ] How to handle SSE streaming from memory-proxy in the runtime?
+- [ ] Should settings (model, RAG params) persist in localStorage or backend?
