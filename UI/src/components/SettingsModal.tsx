@@ -40,7 +40,7 @@ export const SettingsModal = ({ isOpen, onClose, config, onConfigChange }: Setti
         setModels(modelList);
 
         // If current model is not in the list and list is not empty, select the first one
-        if (modelList.length > 0 && !modelList.some(m => m.id === localModel)) {
+        if (modelList.length > 0 && !modelList.some((m) => m.id === localModel)) {
           setLocalModel(modelList[0].id);
         }
       } catch (err) {
@@ -78,10 +78,7 @@ export const SettingsModal = ({ isOpen, onClose, config, onConfigChange }: Setti
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       {/* Backdrop */}
-      <div
-        className="absolute inset-0 bg-black/50"
-        onClick={handleCancel}
-      />
+      <div className="absolute inset-0 bg-black/50" onClick={handleCancel} />
 
       {/* Modal */}
       <div className="relative bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-md mx-4 transition-colors">
@@ -135,7 +132,8 @@ export const SettingsModal = ({ isOpen, onClose, config, onConfigChange }: Setti
               >
                 {models.map((model) => (
                   <option key={model.id} value={model.id}>
-                    {model.id}{model.owned_by ? ` (${model.owned_by})` : ""}
+                    {model.id}
+                    {model.owned_by ? ` (${model.owned_by})` : ""}
                   </option>
                 ))}
               </select>

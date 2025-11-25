@@ -81,12 +81,12 @@ export const ModelSelector = ({ currentModel, onModelChange }: ModelSelectorProp
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [isOpen]);
 
-  const displayModelName = currentModel ? currentModel.split("/").pop() || currentModel : "Select model";
+  const displayModelName = currentModel
+    ? currentModel.split("/").pop() || currentModel
+    : "Select model";
 
   // Filter models using fuzzy match
-  const filteredModels = searchQuery
-    ? models.filter((m) => fuzzyMatch(m.id, searchQuery))
-    : models;
+  const filteredModels = searchQuery ? models.filter((m) => fuzzyMatch(m.id, searchQuery)) : models;
 
   // Reset highlighted index when search query changes
   useEffect(() => {
@@ -145,7 +145,10 @@ export const ModelSelector = ({ currentModel, onModelChange }: ModelSelectorProp
           {/* Search input */}
           <div className="p-2 border-b border-gray-200 dark:border-gray-700">
             <div className="relative">
-              <Search size={14} className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400" />
+              <Search
+                size={14}
+                className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400"
+              />
               <input
                 ref={searchInputRef}
                 type="text"
@@ -173,9 +176,7 @@ export const ModelSelector = ({ currentModel, onModelChange }: ModelSelectorProp
                   }}
                   onMouseEnter={() => setHighlightedIndex(index)}
                   className={`w-full text-left px-3 py-2 text-sm transition-colors ${
-                    index === highlightedIndex
-                      ? "bg-gray-100 dark:bg-gray-700"
-                      : ""
+                    index === highlightedIndex ? "bg-gray-100 dark:bg-gray-700" : ""
                   } ${
                     currentModel === m.id
                       ? "text-blue-600 dark:text-blue-400 font-medium"

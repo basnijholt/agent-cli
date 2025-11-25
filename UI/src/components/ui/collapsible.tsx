@@ -13,11 +13,7 @@ const CollapsibleTrigger = forwardRef<
   React.ComponentRef<typeof CollapsiblePrimitive.CollapsibleTrigger>,
   React.ComponentPropsWithoutRef<typeof CollapsiblePrimitive.CollapsibleTrigger>
 >(({ ...props }, ref) => (
-  <CollapsiblePrimitive.CollapsibleTrigger
-    ref={ref}
-    data-slot="collapsible-trigger"
-    {...props}
-  />
+  <CollapsiblePrimitive.CollapsibleTrigger ref={ref} data-slot="collapsible-trigger" {...props} />
 ));
 CollapsibleTrigger.displayName = "CollapsibleTrigger";
 
@@ -25,11 +21,7 @@ const CollapsibleContent = forwardRef<
   React.ComponentRef<typeof CollapsiblePrimitive.CollapsibleContent>,
   React.ComponentPropsWithoutRef<typeof CollapsiblePrimitive.CollapsibleContent>
 >(({ ...props }, ref) => (
-  <CollapsiblePrimitive.CollapsibleContent
-    ref={ref}
-    data-slot="collapsible-content"
-    {...props}
-  />
+  <CollapsiblePrimitive.CollapsibleContent ref={ref} data-slot="collapsible-content" {...props} />
 ));
 CollapsibleContent.displayName = "CollapsibleContent";
 

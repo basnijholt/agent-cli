@@ -51,9 +51,7 @@ function generateMessageId(): string {
 }
 
 // Content part types for assistant-ui
-type ContentPart =
-  | { type: "text"; text: string }
-  | { type: "reasoning"; text: string };
+type ContentPart = { type: "text"; text: string } | { type: "reasoning"; text: string };
 
 // Convert to assistant-ui format
 function toThreadMessage(msg: MessageWithId): ThreadMessageLike {
@@ -182,37 +180,35 @@ export function useAgentCLIRuntime(config: AgentCLIRuntimeConfig = {}) {
             cache_tokens?: number;
           };
         }
-        const msgs: MessageWithId[] = (data.messages || []).map(
-          (m: LoadedMessage, idx: number) => {
-            const msg: MessageWithId = {
-              id: `loaded-${idx}-${Date.now()}`,
-              role: m.role,
-              content: m.content,
+        const msgs: MessageWithId[] = (data.messages || []).map((m: LoadedMessage, idx: number) => {
+          const msg: MessageWithId = {
+            id: `loaded-${idx}-${Date.now()}`,
+            role: m.role,
+            content: m.content,
+          };
+          // Parse metadata from API response
+          if (m.metadata) {
+            msg.metadata = {
+              createdAt: m.created_at ? new Date(m.created_at).getTime() : undefined,
+              model: m.metadata.model,
+              systemFingerprint: m.metadata.system_fingerprint,
+              promptTokens: m.metadata.prompt_tokens,
+              completionTokens: m.metadata.completion_tokens,
+              totalTokens: m.metadata.total_tokens,
+              durationMs: m.metadata.duration_ms,
+              promptMs: m.metadata.prompt_ms,
+              predictedMs: m.metadata.predicted_ms,
+              promptPerSecond: m.metadata.prompt_per_second,
+              predictedPerSecond: m.metadata.predicted_per_second,
+              cacheTokens: m.metadata.cache_tokens,
             };
-            // Parse metadata from API response
-            if (m.metadata) {
-              msg.metadata = {
-                createdAt: m.created_at ? new Date(m.created_at).getTime() : undefined,
-                model: m.metadata.model,
-                systemFingerprint: m.metadata.system_fingerprint,
-                promptTokens: m.metadata.prompt_tokens,
-                completionTokens: m.metadata.completion_tokens,
-                totalTokens: m.metadata.total_tokens,
-                durationMs: m.metadata.duration_ms,
-                promptMs: m.metadata.prompt_ms,
-                predictedMs: m.metadata.predicted_ms,
-                promptPerSecond: m.metadata.prompt_per_second,
-                predictedPerSecond: m.metadata.predicted_per_second,
-                cacheTokens: m.metadata.cache_tokens,
-              };
-            } else if (m.created_at) {
-              msg.metadata = {
-                createdAt: new Date(m.created_at).getTime(),
-              };
-            }
-            return msg;
+          } else if (m.created_at) {
+            msg.metadata = {
+              createdAt: new Date(m.created_at).getTime(),
+            };
           }
-        );
+          return msg;
+        });
         setMessages(msgs);
       } else {
         setMessages([]);
@@ -231,132 +227,135 @@ export function useAgentCLIRuntime(config: AgentCLIRuntimeConfig = {}) {
   });
 
   // Handle new message from user
-  const onNew = useCallback(async (message: AppendMessage) => {
-    const textParts = message.content.filter((p) => p.type === "text");
-    const userText = textParts.map((p) => p.text).join("\n");
-    if (!userText.trim()) return;
+  const onNew = useCallback(
+    async (message: AppendMessage) => {
+      const textParts = message.content.filter((p) => p.type === "text");
+      const userText = textParts.map((p) => p.text).join("\n");
+      if (!userText.trim()) return;
 
-    // Create user message with unique ID and timestamp
-    const userMessage: MessageWithId = {
-      id: generateMessageId(),
-      role: "user",
-      content: userText,
-      metadata: { createdAt: Date.now() },
-    };
+      // Create user message with unique ID and timestamp
+      const userMessage: MessageWithId = {
+        id: generateMessageId(),
+        role: "user",
+        content: userText,
+        metadata: { createdAt: Date.now() },
+      };
 
-    // Create assistant message placeholder with unique ID
-    const assistantMessageId = generateMessageId();
-    streamingMessageIdRef.current = assistantMessageId;
-    const startTime = Date.now();
+      // Create assistant message placeholder with unique ID
+      const assistantMessageId = generateMessageId();
+      streamingMessageIdRef.current = assistantMessageId;
+      const startTime = Date.now();
 
-    setMessages((prev) => [...prev, userMessage]);
-    setIsRunning(true);
+      setMessages((prev) => [...prev, userMessage]);
+      setIsRunning(true);
 
-    try {
-      // Get current messages for API call (need to include the new user message)
-      const apiMessages = [...messages, userMessage].map((m) => ({
-        role: m.role,
-        content: m.content,
-      }));
+      try {
+        // Get current messages for API call (need to include the new user message)
+        const apiMessages = [...messages, userMessage].map((m) => ({
+          role: m.role,
+          content: m.content,
+        }));
 
-      const response = await fetch(ENDPOINTS.chat, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          messages: apiMessages,
-          memory_id: threadId,
-          model: configRef.current.model,
-          stream: true,
-          memory_top_k: configRef.current.memoryTopK || 5,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error(`API error: ${response.status}`);
-      }
-
-      // Stream the response
-      let finalState: StreamingState = { content: "", reasoning: "" };
-      for await (const state of parseSSEStream(response)) {
-        finalState = state;
-        // Update or add the assistant message with both content and reasoning
-        setMessages((prev) => {
-          const lastMsg = prev[prev.length - 1];
-          if (lastMsg?.id === assistantMessageId) {
-            // Update existing streaming message
-            return [
-              ...prev.slice(0, -1),
-              {
-                ...lastMsg,
-                content: state.content,
-                reasoning: state.reasoning || undefined,
-              },
-            ];
-          } else {
-            // Add new assistant message
-            return [
-              ...prev,
-              {
-                id: assistantMessageId,
-                role: "assistant",
-                content: state.content,
-                reasoning: state.reasoning || undefined,
-              },
-            ];
-          }
+        const response = await fetch(ENDPOINTS.chat, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            messages: apiMessages,
+            memory_id: threadId,
+            model: configRef.current.model,
+            stream: true,
+            memory_top_k: configRef.current.memoryTopK || 5,
+          }),
         });
-      }
 
-      // Calculate final metadata
-      const durationMs = Date.now() - startTime;
+        if (!response.ok) {
+          throw new Error(`API error: ${response.status}`);
+        }
 
-      // Ensure final message is set with metadata
-      if (finalState.content || finalState.reasoning) {
-        setMessages((prev) => {
-          const lastMsg = prev[prev.length - 1];
-          if (lastMsg?.id === assistantMessageId) {
-            return [
-              ...prev.slice(0, -1),
-              {
-                ...lastMsg,
-                content: finalState.content,
-                reasoning: finalState.reasoning || undefined,
-                metadata: {
-                  createdAt: startTime,
-                  model: finalState.model || configRef.current.model,
-                  systemFingerprint: finalState.systemFingerprint,
-                  promptTokens: finalState.promptTokens,
-                  completionTokens: finalState.completionTokens,
-                  totalTokens: finalState.totalTokens,
-                  durationMs,
-                  promptMs: finalState.promptMs,
-                  predictedMs: finalState.predictedMs,
-                  promptPerSecond: finalState.promptPerSecond,
-                  predictedPerSecond: finalState.predictedPerSecond,
-                  cacheTokens: finalState.cacheTokens,
+        // Stream the response
+        let finalState: StreamingState = { content: "", reasoning: "" };
+        for await (const state of parseSSEStream(response)) {
+          finalState = state;
+          // Update or add the assistant message with both content and reasoning
+          setMessages((prev) => {
+            const lastMsg = prev[prev.length - 1];
+            if (lastMsg?.id === assistantMessageId) {
+              // Update existing streaming message
+              return [
+                ...prev.slice(0, -1),
+                {
+                  ...lastMsg,
+                  content: state.content,
+                  reasoning: state.reasoning || undefined,
                 },
-              },
-            ];
-          }
-          return prev;
-        });
+              ];
+            } else {
+              // Add new assistant message
+              return [
+                ...prev,
+                {
+                  id: assistantMessageId,
+                  role: "assistant",
+                  content: state.content,
+                  reasoning: state.reasoning || undefined,
+                },
+              ];
+            }
+          });
+        }
+
+        // Calculate final metadata
+        const durationMs = Date.now() - startTime;
+
+        // Ensure final message is set with metadata
+        if (finalState.content || finalState.reasoning) {
+          setMessages((prev) => {
+            const lastMsg = prev[prev.length - 1];
+            if (lastMsg?.id === assistantMessageId) {
+              return [
+                ...prev.slice(0, -1),
+                {
+                  ...lastMsg,
+                  content: finalState.content,
+                  reasoning: finalState.reasoning || undefined,
+                  metadata: {
+                    createdAt: startTime,
+                    model: finalState.model || configRef.current.model,
+                    systemFingerprint: finalState.systemFingerprint,
+                    promptTokens: finalState.promptTokens,
+                    completionTokens: finalState.completionTokens,
+                    totalTokens: finalState.totalTokens,
+                    durationMs,
+                    promptMs: finalState.promptMs,
+                    predictedMs: finalState.predictedMs,
+                    promptPerSecond: finalState.promptPerSecond,
+                    predictedPerSecond: finalState.predictedPerSecond,
+                    cacheTokens: finalState.cacheTokens,
+                  },
+                },
+              ];
+            }
+            return prev;
+          });
+        }
+      } catch (error) {
+        console.error("Error streaming message:", error);
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: assistantMessageId,
+            role: "assistant",
+            content: `Error: ${error instanceof Error ? error.message : "Unknown error"}`,
+            metadata: { createdAt: startTime },
+          },
+        ]);
+      } finally {
+        setIsRunning(false);
+        streamingMessageIdRef.current = null;
       }
-    } catch (error) {
-      console.error("Error streaming message:", error);
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: assistantMessageId,
-          role: "assistant",
-          content: `Error: ${error instanceof Error ? error.message : "Unknown error"}`,
-          metadata: { createdAt: startTime },
-        },
-      ]);
-    } finally {
-      setIsRunning(false);
-      streamingMessageIdRef.current = null;
-    }
-  }, [messages, threadId]);
+    },
+    [messages, threadId]
+  );
 
   // Create a new thread
   const switchToNewThread = useCallback(() => {
@@ -373,11 +372,14 @@ export function useAgentCLIRuntime(config: AgentCLIRuntimeConfig = {}) {
   }, [persistThreadId]);
 
   // Switch to existing thread
-  const switchToThread = useCallback(async (externalId: string) => {
-    persistThreadId(externalId);
-    await loadThreadMessages(externalId);
-    setIsRunning(false);
-  }, [persistThreadId]);
+  const switchToThread = useCallback(
+    async (externalId: string) => {
+      persistThreadId(externalId);
+      await loadThreadMessages(externalId);
+      setIsRunning(false);
+    },
+    [persistThreadId]
+  );
 
   // Add current thread to list when first message is sent
   const addCurrentThreadToList = useCallback(() => {

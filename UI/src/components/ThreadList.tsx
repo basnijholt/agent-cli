@@ -1,7 +1,4 @@
-import {
-  ThreadListPrimitive,
-  ThreadListItemPrimitive,
-} from "@assistant-ui/react";
+import { ThreadListPrimitive, ThreadListItemPrimitive } from "@assistant-ui/react";
 import { MessageSquarePlus, MessageSquare, Trash2, Settings, Moon, Sun } from "lucide-react";
 import { ModelSelector } from "./ModelSelector";
 
@@ -13,7 +10,13 @@ interface ThreadListProps {
   onModelChange?: (model: string) => void;
 }
 
-export const ThreadList = ({ onOpenSettings, theme, toggleTheme, model, onModelChange }: ThreadListProps) => {
+export const ThreadList = ({
+  onOpenSettings,
+  theme,
+  toggleTheme,
+  model,
+  onModelChange,
+}: ThreadListProps) => {
   return (
     <ThreadListPrimitive.Root className="w-64 bg-gray-50 dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 h-full flex flex-col transition-colors">
       <div className="p-3 border-b border-gray-200 dark:border-gray-700">

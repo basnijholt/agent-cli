@@ -10,7 +10,8 @@ const API_BASE = "http://localhost:8100";
 const MODEL_STORAGE_KEY = "agent-cli-selected-model";
 
 // Keyboard shortcuts helper - detect platform
-const isMac = typeof navigator !== "undefined" && navigator.platform.toUpperCase().indexOf("MAC") >= 0;
+const isMac =
+  typeof navigator !== "undefined" && navigator.platform.toUpperCase().indexOf("MAC") >= 0;
 const modKey = isMac ? "⌘" : "Ctrl";
 
 const AppContent = ({
@@ -103,9 +104,8 @@ const AppContent = ({
 const App = () => {
   const [config, setConfig] = useState<AgentCLIRuntimeConfig>(() => {
     // Load saved model from localStorage on init
-    const savedModel = typeof window !== "undefined"
-      ? localStorage.getItem(MODEL_STORAGE_KEY) || ""
-      : "";
+    const savedModel =
+      typeof window !== "undefined" ? localStorage.getItem(MODEL_STORAGE_KEY) || "" : "";
     return {
       model: savedModel,
       memoryTopK: 5,
@@ -134,7 +134,7 @@ const App = () => {
           // Only auto-select if no model is saved
           if (models.length > 0 && !config.model) {
             const defaultModel = models[0].id;
-            setConfig(prev => ({ ...prev, model: defaultModel }));
+            setConfig((prev) => ({ ...prev, model: defaultModel }));
             localStorage.setItem(MODEL_STORAGE_KEY, defaultModel);
           }
         }

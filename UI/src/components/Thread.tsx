@@ -1,6 +1,12 @@
 import { useState, useRef, useEffect, type FC } from "react";
 import { createPortal } from "react-dom";
-import { ThreadPrimitive, ComposerPrimitive, MessagePrimitive, ActionBarPrimitive, useMessage } from "@assistant-ui/react";
+import {
+  ThreadPrimitive,
+  ComposerPrimitive,
+  MessagePrimitive,
+  ActionBarPrimitive,
+  useMessage,
+} from "@assistant-ui/react";
 import { MarkdownTextPrimitive } from "@assistant-ui/react-markdown";
 import remarkGfm from "remark-gfm";
 import { Square, Copy, Check, Info } from "lucide-react";
@@ -38,9 +44,18 @@ const MarkdownText = () => {
 // Animated typing indicator
 const TypingIndicator = () => (
   <div className="flex items-center gap-1 py-1">
-    <span className="w-2 h-2 bg-gray-400 dark:bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
-    <span className="w-2 h-2 bg-gray-400 dark:bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
-    <span className="w-2 h-2 bg-gray-400 dark:bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+    <span
+      className="w-2 h-2 bg-gray-400 dark:bg-gray-500 rounded-full animate-bounce"
+      style={{ animationDelay: "0ms" }}
+    />
+    <span
+      className="w-2 h-2 bg-gray-400 dark:bg-gray-500 rounded-full animate-bounce"
+      style={{ animationDelay: "150ms" }}
+    />
+    <span
+      className="w-2 h-2 bg-gray-400 dark:bg-gray-500 rounded-full animate-bounce"
+      style={{ animationDelay: "300ms" }}
+    />
   </div>
 );
 
@@ -163,72 +178,83 @@ const InfoButton = () => {
       >
         <Info size={14} />
       </button>
-      {showTooltip && createPortal(
-        <div
-          className="fixed px-3 py-2 bg-gray-900 dark:bg-gray-700 text-white text-xs rounded-lg shadow-lg whitespace-nowrap z-[9999] -translate-x-1/2 -translate-y-full"
-          style={{ top: tooltipPos.top, left: tooltipPos.left }}
-        >
-          <div className="space-y-1">
-            {metadata.createdAt && (
-              <div className="flex justify-between gap-4">
-                <span className="text-gray-400">Time:</span>
-                <span>{formatTime(metadata.createdAt)} · {formatDate(metadata.createdAt)}</span>
-              </div>
-            )}
-            {metadata.model && (
-              <div className="flex justify-between gap-4">
-                <span className="text-gray-400">Model:</span>
-                <span>{metadata.model.split("/").pop()}</span>
-              </div>
-            )}
-            {metadata.systemFingerprint && (
-              <div className="flex justify-between gap-4">
-                <span className="text-gray-400">Fingerprint:</span>
-                <span>{metadata.systemFingerprint}</span>
-              </div>
-            )}
-            {metadata.totalTokens !== undefined && (
-              <div className="flex justify-between gap-4">
-                <span className="text-gray-400">Tokens:</span>
-                <span>
-                  {metadata.promptTokens ?? 0} + {metadata.completionTokens ?? 0} = {metadata.totalTokens}
-                  {metadata.cacheTokens ? ` (${metadata.cacheTokens} cached)` : ""}
-                </span>
-              </div>
-            )}
-            {metadata.durationMs !== undefined && (
-              <div className="flex justify-between gap-4">
-                <span className="text-gray-400">Total time:</span>
-                <span>{formatDuration(metadata.durationMs)}</span>
-              </div>
-            )}
-            {(metadata.promptMs !== undefined || metadata.predictedMs !== undefined) && (
-              <div className="flex justify-between gap-4">
-                <span className="text-gray-400">Timing:</span>
-                <span>
-                  {metadata.promptMs !== undefined && `${formatDuration(metadata.promptMs)} prompt`}
-                  {metadata.promptMs !== undefined && metadata.predictedMs !== undefined && " + "}
-                  {metadata.predictedMs !== undefined && `${formatDuration(metadata.predictedMs)} gen`}
-                </span>
-              </div>
-            )}
-            {(metadata.promptPerSecond !== undefined || metadata.predictedPerSecond !== undefined) && (
-              <div className="flex justify-between gap-4">
-                <span className="text-gray-400">Speed:</span>
-                <span>
-                  {metadata.promptPerSecond !== undefined && `${Math.round(metadata.promptPerSecond)} prompt`}
-                  {metadata.promptPerSecond !== undefined && metadata.predictedPerSecond !== undefined && " / "}
-                  {metadata.predictedPerSecond !== undefined && `${Math.round(metadata.predictedPerSecond)} gen`}
-                  {" tok/s"}
-                </span>
-              </div>
-            )}
-          </div>
-          {/* Arrow pointing down */}
-          <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-900 dark:border-t-gray-700" />
-        </div>,
-        document.body
-      )}
+      {showTooltip &&
+        createPortal(
+          <div
+            className="fixed px-3 py-2 bg-gray-900 dark:bg-gray-700 text-white text-xs rounded-lg shadow-lg whitespace-nowrap z-[9999] -translate-x-1/2 -translate-y-full"
+            style={{ top: tooltipPos.top, left: tooltipPos.left }}
+          >
+            <div className="space-y-1">
+              {metadata.createdAt && (
+                <div className="flex justify-between gap-4">
+                  <span className="text-gray-400">Time:</span>
+                  <span>
+                    {formatTime(metadata.createdAt)} · {formatDate(metadata.createdAt)}
+                  </span>
+                </div>
+              )}
+              {metadata.model && (
+                <div className="flex justify-between gap-4">
+                  <span className="text-gray-400">Model:</span>
+                  <span>{metadata.model.split("/").pop()}</span>
+                </div>
+              )}
+              {metadata.systemFingerprint && (
+                <div className="flex justify-between gap-4">
+                  <span className="text-gray-400">Fingerprint:</span>
+                  <span>{metadata.systemFingerprint}</span>
+                </div>
+              )}
+              {metadata.totalTokens !== undefined && (
+                <div className="flex justify-between gap-4">
+                  <span className="text-gray-400">Tokens:</span>
+                  <span>
+                    {metadata.promptTokens ?? 0} + {metadata.completionTokens ?? 0} ={" "}
+                    {metadata.totalTokens}
+                    {metadata.cacheTokens ? ` (${metadata.cacheTokens} cached)` : ""}
+                  </span>
+                </div>
+              )}
+              {metadata.durationMs !== undefined && (
+                <div className="flex justify-between gap-4">
+                  <span className="text-gray-400">Total time:</span>
+                  <span>{formatDuration(metadata.durationMs)}</span>
+                </div>
+              )}
+              {(metadata.promptMs !== undefined || metadata.predictedMs !== undefined) && (
+                <div className="flex justify-between gap-4">
+                  <span className="text-gray-400">Timing:</span>
+                  <span>
+                    {metadata.promptMs !== undefined &&
+                      `${formatDuration(metadata.promptMs)} prompt`}
+                    {metadata.promptMs !== undefined && metadata.predictedMs !== undefined && " + "}
+                    {metadata.predictedMs !== undefined &&
+                      `${formatDuration(metadata.predictedMs)} gen`}
+                  </span>
+                </div>
+              )}
+              {(metadata.promptPerSecond !== undefined ||
+                metadata.predictedPerSecond !== undefined) && (
+                <div className="flex justify-between gap-4">
+                  <span className="text-gray-400">Speed:</span>
+                  <span>
+                    {metadata.promptPerSecond !== undefined &&
+                      `${Math.round(metadata.promptPerSecond)} prompt`}
+                    {metadata.promptPerSecond !== undefined &&
+                      metadata.predictedPerSecond !== undefined &&
+                      " / "}
+                    {metadata.predictedPerSecond !== undefined &&
+                      `${Math.round(metadata.predictedPerSecond)} gen`}
+                    {" tok/s"}
+                  </span>
+                </div>
+              )}
+            </div>
+            {/* Arrow pointing down */}
+            <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-900 dark:border-t-gray-700" />
+          </div>,
+          document.body
+        )}
     </>
   );
 };
