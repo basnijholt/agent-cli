@@ -51,14 +51,15 @@ def gather_relevant_existing_memories(
         ids = raw.get("ids", [[]])[0] or []
         distances = raw.get("distances", [[]])[0] or []
         for doc, meta, doc_id, dist in zip(docs, metas, ids, distances, strict=False):
-            if doc_id is None or doc_id in seen:
+            assert doc_id is not None
+            if doc_id in seen:
                 continue
             seen.add(doc_id)
             norm_meta = MemoryMetadata(**dict(meta))
             results.append(
                 StoredMemory(
-                    id=str(doc_id),
-                    content=str(doc),
+                    id=doc_id,
+                    content=doc,
                     metadata=norm_meta,
                     distance=float(dist) if dist is not None else None,
                 ),
