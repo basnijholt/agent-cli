@@ -7,6 +7,7 @@ import { useAgentCLIRuntime, type AgentCLIRuntimeConfig } from "./runtime/useAge
 import { useTheme } from "./hooks/useTheme";
 
 const API_BASE = "http://localhost:8100";
+const MODEL_STORAGE_KEY = "agent-cli-selected-model";
 
 // Keyboard shortcuts helper - detect platform
 const isMac = typeof navigator !== "undefined" && navigator.platform.toUpperCase().indexOf("MAC") >= 0;
@@ -65,12 +66,11 @@ const AppContent = ({
         onOpenSettings={() => setIsSettingsOpen(true)}
         theme={theme}
         toggleTheme={toggleTheme}
+        model={config.model}
+        onModelChange={(model) => onConfigChange({ ...config, model })}
       />
       <div className="flex-grow h-full relative">
-        <Thread
-          model={config.model}
-          onModelChange={(model) => onConfigChange({ ...config, model })}
-        />
+        <Thread />
         {!config.model && (
           <div className="absolute inset-0 flex items-center justify-center bg-white/80 dark:bg-gray-900/80">
             <div className="text-center p-6">
@@ -101,15 +101,29 @@ const AppContent = ({
 };
 
 const App = () => {
-  const [config, setConfig] = useState<AgentCLIRuntimeConfig>({
-    model: "",
-    memoryTopK: 5,
+  const [config, setConfig] = useState<AgentCLIRuntimeConfig>(() => {
+    // Load saved model from localStorage on init
+    const savedModel = typeof window !== "undefined"
+      ? localStorage.getItem(MODEL_STORAGE_KEY) || ""
+      : "";
+    return {
+      model: savedModel,
+      memoryTopK: 5,
+    };
   });
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isLoadingModels, setIsLoadingModels] = useState(true);
   const { theme, toggleTheme } = useTheme();
 
-  // Fetch models on app startup and auto-select the first one
+  // Save model to localStorage when it changes
+  const handleConfigChange = (newConfig: AgentCLIRuntimeConfig) => {
+    setConfig(newConfig);
+    if (newConfig.model) {
+      localStorage.setItem(MODEL_STORAGE_KEY, newConfig.model);
+    }
+  };
+
+  // Fetch models on app startup and auto-select the first one if none saved
   useEffect(() => {
     const fetchModels = async () => {
       try {
@@ -117,8 +131,11 @@ const App = () => {
         if (res.ok) {
           const data = await res.json();
           const models = data.data || [];
+          // Only auto-select if no model is saved
           if (models.length > 0 && !config.model) {
-            setConfig(prev => ({ ...prev, model: models[0].id }));
+            const defaultModel = models[0].id;
+            setConfig(prev => ({ ...prev, model: defaultModel }));
+            localStorage.setItem(MODEL_STORAGE_KEY, defaultModel);
           }
         }
       } catch (err) {
@@ -147,7 +164,7 @@ const App = () => {
         config={config}
         isSettingsOpen={isSettingsOpen}
         setIsSettingsOpen={setIsSettingsOpen}
-        onConfigChange={setConfig}
+        onConfigChange={handleConfigChange}
         theme={theme}
         toggleTheme={toggleTheme}
       />
