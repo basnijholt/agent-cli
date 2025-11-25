@@ -12,6 +12,15 @@ const MarkdownText = ({ text }: TextMessagePartProps) => {
   );
 };
 
+// Animated typing indicator
+const TypingIndicator = () => (
+  <div className="flex items-center gap-1 py-1">
+    <span className="w-2 h-2 bg-gray-400 dark:bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
+    <span className="w-2 h-2 bg-gray-400 dark:bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
+    <span className="w-2 h-2 bg-gray-400 dark:bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+  </div>
+);
+
 export const Thread = () => {
   return (
     <ThreadPrimitive.Root className="h-full flex flex-col bg-white dark:bg-gray-900 transition-colors">
@@ -23,6 +32,14 @@ export const Thread = () => {
         </ThreadPrimitive.Empty>
 
         <ThreadPrimitive.Messages components={{ UserMessage, AssistantMessage }} />
+
+        <ThreadPrimitive.If running>
+          <div className="flex justify-start mb-4">
+            <div className="bg-gray-100 dark:bg-gray-800 px-4 py-3 rounded-2xl rounded-tl-sm shadow-sm border border-gray-200 dark:border-gray-700 transition-colors">
+              <TypingIndicator />
+            </div>
+          </div>
+        </ThreadPrimitive.If>
       </ThreadPrimitive.Viewport>
 
       <div className="p-4 border-t border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50 transition-colors">

@@ -32,4 +32,4 @@ Object.defineProperty(window, 'matchMedia', {
 });
 
 // Mock scrollTo for @assistant-ui/react viewport
-Element.prototype.scrollTo = vi.fn();
+Element.prototype.scrollTo = vi.fn() as unknown as typeof Element.prototype.scrollTo;
