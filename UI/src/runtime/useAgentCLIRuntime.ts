@@ -372,6 +372,28 @@ export function useAgentCLIRuntime(config: AgentCLIRuntimeConfig = {}) {
     });
   }, [threadId]);
 
+  // Archive (delete) a thread
+  const archiveThread = useCallback(
+    async (externalId: string) => {
+      try {
+        const res = await fetch(`${ENDPOINTS.conversations}/${externalId}`, {
+          method: "DELETE",
+        });
+        if (res.ok) {
+          // Remove from local state
+          setThreads((prev) => prev.filter((t) => t.id !== externalId));
+          // If we deleted the current thread, switch to a new one
+          if (externalId === threadId) {
+            switchToNewThread();
+          }
+        }
+      } catch (err) {
+        console.error("Failed to delete conversation:", err);
+      }
+    },
+    [threadId, switchToNewThread]
+  );
+
   // Wrap onNew to add thread to list
   const onNewWithThreadTracking = useCallback(
     async (message: AppendMessage) => {
@@ -396,6 +418,7 @@ export function useAgentCLIRuntime(config: AgentCLIRuntimeConfig = {}) {
         })),
         onSwitchToNewThread: switchToNewThread,
         onSwitchToThread: switchToThread,
+        onArchive: archiveThread,
       },
     },
   });

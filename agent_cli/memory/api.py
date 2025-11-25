@@ -107,6 +107,12 @@ def create_app(
         """Get the history of a specific conversation."""
         return {"messages": client.get_history(conversation_id)}
 
+    @app.delete("/v1/conversations/{conversation_id}")
+    def delete_conversation(conversation_id: str) -> dict[str, bool]:
+        """Delete a conversation (move to deleted folder)."""
+        success = client.delete_conversation(conversation_id)
+        return {"success": success}
+
     @app.api_route(
         "/{path:path}",
         methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD", "PATCH"],

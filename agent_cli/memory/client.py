@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import shutil
 from contextlib import suppress
 from typing import TYPE_CHECKING, Any, Self
 
@@ -224,6 +225,18 @@ class MemoryClient:
         ]
         return sorted(conversations)
 
+    def delete_conversation(self, conversation_id: str) -> bool:
+        """Delete a conversation by moving it to the deleted folder."""
+        entries_dir = self.memory_path / "entries"
+        conv_dir = entries_dir / conversation_id
+        if not conv_dir.exists():
+            return False
+
+        deleted_dir = entries_dir / "deleted" / conversation_id
+        deleted_dir.parent.mkdir(parents=True, exist_ok=True)
+        shutil.move(str(conv_dir), str(deleted_dir))
+        return True
+
     def get_history(self, conversation_id: str) -> list[dict[str, Any]]:
         """Get the full chat history for a conversation."""
         records = load_conversation_history(self.memory_path, conversation_id)
@@ -236,34 +249,7 @@ class MemoryClient:
                 "id": rec.id,
             }
             # Include response metadata for assistant messages
-            meta = rec.metadata
-            if meta.role == "assistant" and any(
-                [
-                    meta.model,
-                    meta.system_fingerprint,
-                    meta.prompt_tokens,
-                    meta.completion_tokens,
-                    meta.total_tokens,
-                    meta.duration_ms,
-                    meta.prompt_ms,
-                    meta.predicted_ms,
-                    meta.prompt_per_second,
-                    meta.predicted_per_second,
-                    meta.cache_tokens,
-                ],
-            ):
-                msg["metadata"] = {
-                    "model": meta.model,
-                    "system_fingerprint": meta.system_fingerprint,
-                    "prompt_tokens": meta.prompt_tokens,
-                    "completion_tokens": meta.completion_tokens,
-                    "total_tokens": meta.total_tokens,
-                    "duration_ms": meta.duration_ms,
-                    "prompt_ms": meta.prompt_ms,
-                    "predicted_ms": meta.predicted_ms,
-                    "prompt_per_second": meta.prompt_per_second,
-                    "predicted_per_second": meta.predicted_per_second,
-                    "cache_tokens": meta.cache_tokens,
-                }
+            if rec.metadata.role == "assistant" and rec.metadata.response_metadata:
+                msg["metadata"] = rec.metadata.response_metadata.model_dump(exclude_none=True)
             result.append(msg)
         return result
