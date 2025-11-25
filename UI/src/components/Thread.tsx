@@ -1,5 +1,6 @@
 import { ThreadPrimitive, ComposerPrimitive, MessagePrimitive } from "@assistant-ui/react";
-import type { TextMessagePartProps } from "@assistant-ui/react";
+import type { TextMessagePartProps, ReasoningMessagePartProps, ReasoningGroupProps } from "@assistant-ui/react";
+import { type PropsWithChildren } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
@@ -9,6 +10,32 @@ const MarkdownText = ({ text }: TextMessagePartProps) => {
     <ReactMarkdown remarkPlugins={[remarkGfm]}>
       {text}
     </ReactMarkdown>
+  );
+};
+
+// Reasoning text component (renders inside the collapsible group)
+const ReasoningText = ({ text }: ReasoningMessagePartProps) => {
+  return (
+    <div className="text-sm text-gray-600 dark:text-gray-400 whitespace-pre-wrap">
+      {text}
+    </div>
+  );
+};
+
+// Collapsible reasoning group wrapper
+const ReasoningGroup = ({ children }: PropsWithChildren<ReasoningGroupProps>) => {
+  return (
+    <details className="mb-2 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+      <summary className="px-3 py-2 bg-gray-50 dark:bg-gray-800/50 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700/50 transition-colors text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2">
+        <svg className="w-4 h-4 transition-transform details-open:rotate-90" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+        </svg>
+        Reasoning
+      </summary>
+      <div className="px-3 py-2 bg-gray-50/50 dark:bg-gray-800/30 max-h-64 overflow-y-auto">
+        {children}
+      </div>
+    </details>
   );
 };
 
@@ -32,14 +59,6 @@ export const Thread = () => {
         </ThreadPrimitive.Empty>
 
         <ThreadPrimitive.Messages components={{ UserMessage, AssistantMessage }} />
-
-        <ThreadPrimitive.If running>
-          <div className="flex justify-start mb-4">
-            <div className="bg-gray-100 dark:bg-gray-800 px-4 py-3 rounded-2xl rounded-tl-sm shadow-sm border border-gray-200 dark:border-gray-700 transition-colors">
-              <TypingIndicator />
-            </div>
-          </div>
-        </ThreadPrimitive.If>
       </ThreadPrimitive.Viewport>
 
       <div className="p-4 border-t border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50 transition-colors">
@@ -67,8 +86,23 @@ const UserMessage = () => (
 
 const AssistantMessage = () => (
   <MessagePrimitive.Root className="flex justify-start mb-4">
-    <div className="bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-4 py-2 rounded-2xl rounded-tl-sm max-w-[80%] shadow-sm border border-gray-200 dark:border-gray-700 transition-colors prose prose-sm dark:prose-invert max-w-none">
-      <MessagePrimitive.Content components={{ Text: MarkdownText }} />
+    <div className="bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-4 py-2 rounded-2xl rounded-tl-sm max-w-[80%] shadow-sm border border-gray-200 dark:border-gray-700 transition-colors">
+      {/* Show typing indicator when no content yet */}
+      <MessagePrimitive.If hasContent={false}>
+        <TypingIndicator />
+      </MessagePrimitive.If>
+      {/* Show actual content when available */}
+      <MessagePrimitive.If hasContent>
+        <div className="prose prose-sm dark:prose-invert max-w-none">
+          <MessagePrimitive.Content
+            components={{
+              Text: MarkdownText,
+              Reasoning: ReasoningText,
+              ReasoningGroup: ReasoningGroup,
+            }}
+          />
+        </div>
+      </MessagePrimitive.If>
     </div>
   </MessagePrimitive.Root>
 );
