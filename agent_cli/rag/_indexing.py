@@ -46,8 +46,7 @@ def index_file(
     """
     if not file_path.exists():
         return False
-
-    LOGGER.debug("  📄 Processing: %s", file_path.name)
+    LOGGER.info("  📄 Processing: %s", file_path.name)
 
     try:
         # Check if file changed
