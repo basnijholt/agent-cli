@@ -147,6 +147,26 @@ def load_memory_files(root: Path) -> list[MemoryFileRecord]:
     return records
 
 
+def load_conversation_history(root: Path, conversation_id: str) -> list[MemoryFileRecord]:
+    """Load all turn files for a specific conversation."""
+    entries_dir, _ = ensure_store_dirs(root)
+    conv_dir = entries_dir / _slugify(conversation_id)
+    if not conv_dir.exists():
+        return []
+
+    records = []
+    for path in conv_dir.rglob("*.md"):
+        if _DELETED_DIRNAME in path.parts:
+            continue
+        rec = read_memory_file(path)
+        if rec and rec.metadata.role in ("user", "assistant"):
+            records.append(rec)
+
+    # Sort by created_at
+    records.sort(key=lambda x: x.metadata.created_at)
+    return records
+
+
 def read_memory_file(path: Path) -> MemoryFileRecord | None:
     """Parse a single memory file; return None if invalid."""
     try:

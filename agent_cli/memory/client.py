@@ -8,7 +8,7 @@ from contextlib import suppress
 from typing import TYPE_CHECKING, Any, Self
 
 from agent_cli.constants import DEFAULT_OPENAI_EMBEDDING_MODEL, DEFAULT_OPENAI_MODEL
-from agent_cli.memory._files import ensure_store_dirs
+from agent_cli.memory._files import ensure_store_dirs, load_conversation_history
 from agent_cli.memory._git import init_repo
 from agent_cli.memory._indexer import MemoryIndex, initial_index, watch_memory_store
 from agent_cli.memory._ingest import extract_and_store_facts_and_summaries
@@ -212,3 +212,27 @@ class MemoryClient:
             postprocess_in_background=True,
             enable_git_versioning=self.enable_git_versioning,
         )
+
+    def list_conversations(self) -> list[str]:
+        """List available conversation IDs."""
+        entries_dir = self.memory_path / "entries"
+        if not entries_dir.exists():
+            return []
+
+        conversations = [
+            item.name for item in entries_dir.iterdir() if item.is_dir() and item.name != "deleted"
+        ]
+        return sorted(conversations)
+
+    def get_history(self, conversation_id: str) -> list[dict[str, Any]]:
+        """Get the full chat history for a conversation."""
+        records = load_conversation_history(self.memory_path, conversation_id)
+        return [
+            {
+                "role": rec.metadata.role,
+                "content": rec.content,
+                "created_at": rec.metadata.created_at,
+                "id": rec.id,
+            }
+            for rec in records
+        ]
