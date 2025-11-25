@@ -1,4 +1,4 @@
-import { useRef, useState, useCallback } from "react";
+import { useRef, useState, useCallback, useEffect } from "react";
 import {
   useExternalStoreRuntime,
   useExternalMessageConverter,
@@ -7,6 +7,15 @@ import {
 import type { AppendMessage } from "@assistant-ui/react";
 
 const API_BASE = "http://localhost:8100";
+
+// Thread metadata
+interface ThreadData {
+  id: string;
+  title: string;
+}
+
+// Storage key for persisting selected thread
+const SELECTED_THREAD_KEY = "agent-cli-selected-thread";
 
 // Message with stable ID
 interface MessageWithId {
@@ -96,12 +105,95 @@ export function useAgentCLIRuntime(config: AgentCLIRuntimeConfig = {}) {
   const configRef = useRef(config);
   configRef.current = config;
 
-  const [threadId, setThreadId] = useState<string>(() => `chat-${Date.now()}`);
+  // Thread list state
+  const [threads, setThreads] = useState<ThreadData[]>([]);
+  const [isLoadingThreads, setIsLoadingThreads] = useState(true);
+
+  // Get initial thread from localStorage or generate new
+  const getInitialThreadId = () => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem(SELECTED_THREAD_KEY);
+      if (saved) return saved;
+    }
+    return `chat-${Date.now()}`;
+  };
+
+  const [threadId, setThreadId] = useState<string>(getInitialThreadId);
   const [messages, setMessages] = useState<MessageWithId[]>([]);
   const [isRunning, setIsRunning] = useState(false);
 
   // Track the streaming assistant message ID
   const streamingMessageIdRef = useRef<string | null>(null);
+
+  // Persist selected thread to localStorage
+  const persistThreadId = useCallback((id: string) => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem(SELECTED_THREAD_KEY, id);
+    }
+    setThreadId(id);
+  }, []);
+
+  // Fetch conversations from backend on mount
+  useEffect(() => {
+    const fetchConversations = async () => {
+      try {
+        const res = await fetch(`${API_BASE}/v1/conversations`);
+        if (res.ok) {
+          const data = await res.json();
+          const conversations: string[] = data.conversations || [];
+
+          // Convert to ThreadData format
+          const threadList: ThreadData[] = conversations.map((id) => ({
+            id,
+            title: id, // Use ID as title for now
+          }));
+          setThreads(threadList);
+
+          // If current threadId doesn't exist in the list and there are conversations,
+          // switch to the first one or keep current if it was saved
+          const savedThread = localStorage.getItem(SELECTED_THREAD_KEY);
+          if (savedThread && conversations.includes(savedThread)) {
+            // Load the saved thread's messages
+            await loadThreadMessages(savedThread);
+          } else if (conversations.length > 0) {
+            // Auto-select the first conversation
+            const firstThread = conversations[0];
+            persistThreadId(firstThread);
+            await loadThreadMessages(firstThread);
+          }
+          // If no conversations exist, keep the generated threadId for new chat
+        }
+      } catch (err) {
+        console.error("Failed to fetch conversations:", err);
+      } finally {
+        setIsLoadingThreads(false);
+      }
+    };
+    fetchConversations();
+  }, []);
+
+  // Load messages for a specific thread
+  const loadThreadMessages = async (externalId: string) => {
+    try {
+      const res = await fetch(`${API_BASE}/v1/conversations/${externalId}`);
+      if (res.ok) {
+        const data = await res.json();
+        const msgs: MessageWithId[] = (data.messages || []).map(
+          (m: { role: string; content: string }, idx: number) => ({
+            id: `loaded-${idx}-${Date.now()}`,
+            role: m.role,
+            content: m.content,
+          })
+        );
+        setMessages(msgs);
+      } else {
+        setMessages([]);
+      }
+    } catch (error) {
+      console.error("Error loading thread messages:", error);
+      setMessages([]);
+    }
+  };
 
   // Convert messages to assistant-ui format
   const threadMessages = useExternalMessageConverter({
@@ -207,43 +299,58 @@ export function useAgentCLIRuntime(config: AgentCLIRuntimeConfig = {}) {
 
   // Create a new thread
   const switchToNewThread = useCallback(() => {
-    setThreadId(`chat-${Date.now()}`);
+    const newId = `chat-${Date.now()}`;
+    persistThreadId(newId);
     setMessages([]);
     setIsRunning(false);
-  }, []);
+    // Add new thread to list
+    setThreads((prev) => {
+      // Check if this thread already exists
+      if (prev.some((t) => t.id === newId)) return prev;
+      return [{ id: newId, title: "New Chat" }, ...prev];
+    });
+  }, [persistThreadId]);
 
   // Switch to existing thread
   const switchToThread = useCallback(async (externalId: string) => {
-    try {
-      const res = await fetch(`${API_BASE}/v1/conversations/${externalId}`);
-      if (res.ok) {
-        const data = await res.json();
-        const msgs: MessageWithId[] = (data.messages || []).map(
-          (m: { role: string; content: string }, idx: number) => ({
-            id: `loaded-${idx}-${Date.now()}`,
-            role: m.role,
-            content: m.content,
-          })
-        );
-        setThreadId(externalId);
-        setMessages(msgs);
-      } else {
-        setThreadId(externalId);
-        setMessages([]);
-      }
-    } catch (error) {
-      console.error("Error loading thread:", error);
-      setThreadId(externalId);
-      setMessages([]);
-    }
+    persistThreadId(externalId);
+    await loadThreadMessages(externalId);
     setIsRunning(false);
-  }, []);
+  }, [persistThreadId]);
+
+  // Add current thread to list when first message is sent
+  const addCurrentThreadToList = useCallback(() => {
+    setThreads((prev) => {
+      if (prev.some((t) => t.id === threadId)) return prev;
+      return [{ id: threadId, title: "New Chat" }, ...prev];
+    });
+  }, [threadId]);
+
+  // Wrap onNew to add thread to list
+  const onNewWithThreadTracking = useCallback(
+    async (message: AppendMessage) => {
+      addCurrentThreadToList();
+      await onNew(message);
+    },
+    [addCurrentThreadToList, onNew]
+  );
 
   return useExternalStoreRuntime({
     isRunning,
+    isLoading: isLoadingThreads,
     messages: threadMessages,
-    onNew,
-    onSwitchToNewThread: switchToNewThread,
-    onSwitchToThread: switchToThread,
+    onNew: onNewWithThreadTracking,
+    adapters: {
+      threadList: {
+        threadId,
+        threads: threads.map((t) => ({
+          id: t.id,
+          title: t.title,
+          status: "regular" as const,
+        })),
+        onSwitchToNewThread: switchToNewThread,
+        onSwitchToThread: switchToThread,
+      },
+    },
   });
 }

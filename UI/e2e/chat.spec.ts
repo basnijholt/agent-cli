@@ -195,4 +195,122 @@ test.describe('Chat UI', () => {
     await expect(page.getByText('No model selected')).toBeVisible();
     await expect(page.getByText('Open Settings')).toBeVisible();
   });
+
+  test('loads existing conversations from backend', async ({ page }) => {
+    // Mock conversations endpoint to return existing conversations
+    const existingConversations = {
+      conversations: ['project-alpha', 'work-notes', 'personal-chat'],
+    };
+
+    await page.route('**/v1/conversations', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(existingConversations),
+      });
+    });
+
+    // Mock individual conversation endpoint to return messages
+    await page.route('**/v1/conversations/project-alpha', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          messages: [
+            { role: 'user', content: 'Previous message from user' },
+            { role: 'assistant', content: 'Previous response from assistant' },
+          ],
+        }),
+      });
+    });
+
+    await page.goto('/');
+
+    // Wait for app to load
+    await expect(page.getByRole('button', { name: 'New Chat' }).first()).toBeVisible();
+
+    // The thread list should show existing conversations
+    await expect(page.getByText('project-alpha')).toBeVisible();
+    await expect(page.getByText('work-notes')).toBeVisible();
+    await expect(page.getByText('personal-chat')).toBeVisible();
+  });
+
+  test('auto-selects first conversation and loads its messages', async ({ page }) => {
+    // Mock conversations endpoint
+    const existingConversations = {
+      conversations: ['my-conversation'],
+    };
+
+    await page.route('**/v1/conversations', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(existingConversations),
+      });
+    });
+
+    // Mock conversation history with messages
+    await page.route('**/v1/conversations/my-conversation', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          messages: [
+            { role: 'user', content: 'Hello from previous session' },
+            { role: 'assistant', content: 'Hi! I remember our conversation.' },
+          ],
+        }),
+      });
+    });
+
+    await page.goto('/');
+
+    // Wait for app to load
+    await expect(page.getByRole('button', { name: 'New Chat' }).first()).toBeVisible();
+
+    // The conversation should be auto-selected and messages loaded
+    await expect(page.getByText('Hello from previous session')).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText('Hi! I remember our conversation.')).toBeVisible({ timeout: 5000 });
+  });
+
+  test('persists selected thread in localStorage', async ({ page, context }) => {
+    // Mock conversations endpoint
+    await page.route('**/v1/conversations', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ conversations: ['chat-1', 'chat-2'] }),
+      });
+    });
+
+    // Mock conversation endpoints
+    await page.route('**/v1/conversations/chat-1', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ messages: [{ role: 'user', content: 'Chat 1 message' }] }),
+      });
+    });
+
+    await page.route('**/v1/conversations/chat-2', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ messages: [{ role: 'user', content: 'Chat 2 message' }] }),
+      });
+    });
+
+    await page.goto('/');
+    await expect(page.getByRole('button', { name: 'New Chat' }).first()).toBeVisible();
+
+    // Click on chat-2 to switch
+    await page.getByText('chat-2').click();
+
+    // Wait for chat-2 messages to load
+    await expect(page.getByText('Chat 2 message')).toBeVisible({ timeout: 5000 });
+
+    // Verify localStorage was set (we can check via evaluate)
+    const savedThread = await page.evaluate(() => localStorage.getItem('agent-cli-selected-thread'));
+    expect(savedThread).toBe('chat-2');
+  });
 });

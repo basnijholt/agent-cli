@@ -1,8 +1,8 @@
 # UI Development Plan: Agent CLI Desktop
 
-> **Status**: Active / Phase 3 Completed
+> **Status**: Active / Phase 3.5 Completed
 > **Last Updated**: 2025-11-25
-> **Next Step**: Phase 3.5 - Conversation Persistence
+> **Next Step**: Phase 4 - Voice Integration
 
 ## 1. The Vision
 
@@ -183,21 +183,28 @@ const runtime = useAgentCLIRuntime({
 
 **Note**: Settings persist in React state (session-only). LocalStorage persistence can be added later if needed.
 
-### Phase 3.5: Conversation Persistence (📅 Next)
+### Phase 3.5: Conversation Persistence (✅ Completed)
 
 **Goal**: Persist conversations across page refresh and populate thread list from backend.
 
-**Problem**: Currently, each page refresh creates a new thread ID and messages are lost.
+**Completed**:
 
-**Planned**:
+- [x] Load conversation list from `/v1/conversations` on startup
+- [x] Populate ThreadList sidebar with existing conversations
+- [x] Auto-select most recent conversation (or persist selection in localStorage)
+- [x] Ensure thread switching loads messages from backend
+- [x] Added 3 new E2E tests for persistence behavior:
+  - `loads existing conversations from backend` - Tests thread list population
+  - `auto-selects first conversation and loads its messages` - Tests auto-selection
+  - `persists selected thread in localStorage` - Tests localStorage persistence
 
-- [ ] Load conversation list from `/v1/conversations` on startup
-- [ ] Populate ThreadList sidebar with existing conversations
-- [ ] Auto-select most recent conversation (or persist selection in localStorage)
-- [ ] Ensure thread switching loads messages from backend
-- [ ] Add E2E tests for persistence behavior
+**Key implementation details**:
 
-**Backend endpoints needed**: Already exist (`GET /v1/conversations`, `GET /v1/conversations/{id}`)
+- Used `adapters.threadList` property of `useExternalStoreRuntime` to expose thread list to `ThreadListPrimitive`
+- Thread list format: `{ id: string, title: string, status: "regular" }`
+- Selected thread ID persisted to localStorage (`agent-cli-selected-thread` key)
+- On mount: fetch conversations → populate thread list → auto-select saved or first thread
+- All 8 E2E tests passing (5 original + 3 new persistence tests)
 
 ### Phase 4: Voice Integration (📅 Planned)
 
@@ -651,6 +658,9 @@ type LanguageModelConfig = {
 | 2025-11-25 | Replace `useLangGraphRuntime` with `useExternalStoreRuntime` | `useLangGraphRuntime` requires AssistantCloud; `useExternalStoreRuntime` gives full control without cloud dependency |
 | 2025-11-25 | Add Playwright E2E tests | Enable automated testing instead of manual verification |
 | 2025-11-25 | Support `reasoning_content` in SSE parser | Thinking models (qwen3-thinking) use this field instead of `content` |
+| 2025-11-25 | Use `adapters.threadList` for thread list data | Proper API for exposing thread list to `ThreadListPrimitive` primitives |
+| 2025-11-25 | Persist selected thread in localStorage | Enable conversation continuity across page refreshes |
+| 2025-11-25 | Auto-select first conversation on startup | Better UX when returning to app with existing conversations |
 
 ---
 
