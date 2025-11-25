@@ -22,12 +22,15 @@
     "@assistant-ui/react-ai-sdk": "^1.1.12",
     "@assistant-ui/react-langgraph": "^0.7.8",
     "@assistant-ui/react-markdown": "latest",
+    "@radix-ui/react-collapsible": "^1.1.12",
     "ai": "^5.0.101",
+    "clsx": "^2.1.1",
     "lucide-react": "^0.300.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-markdown": "^9.0.0",
-    "remark-gfm": "^4.0.0"
+    "remark-gfm": "^4.0.0",
+    "tailwind-merge": "^3.4.0"
   },
   "devDependencies": {
     "@playwright/test": "^1.56.1",
