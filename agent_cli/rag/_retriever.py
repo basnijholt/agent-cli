@@ -10,8 +10,8 @@ from huggingface_hub import hf_hub_download
 from onnxruntime import InferenceSession
 from transformers import AutoTokenizer
 
+from agent_cli.rag._store import query_docs
 from agent_cli.rag.models import RagSource, RetrievalResult
-from agent_cli.rag.store import query_docs
 
 if TYPE_CHECKING:
     from chromadb import Collection
@@ -155,7 +155,13 @@ def search_context(
         reverse=True,
     )[:top_k]
 
-    context = "\n\n---\n\n".join(doc for doc, _, _ in ranked)
+    context_parts = []
+    for doc, meta, _ in ranked:
+        path = meta.get("file_path", "unknown")
+        chunk_id = meta.get("chunk_id", 0)
+        context_parts.append(f"### {path} (chunk {chunk_id})\n{doc}")
+
+    context = "\n\n---\n\n".join(context_parts)
     sources = [
         RagSource(
             source=str(meta.get("source", "unknown")),

@@ -14,12 +14,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from agent_cli.constants import DEFAULT_OPENAI_EMBEDDING_MODEL
 from agent_cli.core.chroma import init_collection
 from agent_cli.core.openai_proxy import proxy_request_to_upstream
+from agent_cli.rag._indexer import watch_docs
+from agent_cli.rag._indexing import initial_index, load_hashes_from_metadata
+from agent_cli.rag._retriever import get_reranker_model
+from agent_cli.rag._store import get_all_metadata
 from agent_cli.rag.engine import process_chat_request
-from agent_cli.rag.indexer import watch_docs
-from agent_cli.rag.indexing import initial_index, load_hashes_from_metadata
 from agent_cli.rag.models import ChatRequest  # noqa: TC001
-from agent_cli.rag.retriever import get_reranker_model
-from agent_cli.rag.store import get_all_metadata
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -35,6 +35,7 @@ def create_app(
     embedding_api_key: str | None = None,
     chat_api_key: str | None = None,
     limit: int = 3,
+    enable_rag_tools: bool = True,
 ) -> FastAPI:
     """Create the FastAPI app."""
     # Initialize State
@@ -106,8 +107,10 @@ def create_app(
             collection,
             reranker_model,
             openai_base_url.rstrip("/"),
+            docs_folder,
             default_top_k=limit,
             api_key=api_key,
+            enable_rag_tools=enable_rag_tools,
         )
 
     @app.post("/reindex")

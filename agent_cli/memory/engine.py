@@ -26,7 +26,7 @@ if TYPE_CHECKING:
     from chromadb import Collection
 
     from agent_cli.memory.models import ChatRequest
-    from agent_cli.rag.retriever import OnnxCrossEncoder
+    from agent_cli.rag._retriever import OnnxCrossEncoder
 
 LOGGER = logging.getLogger(__name__)
 

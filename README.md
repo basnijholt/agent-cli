@@ -1272,13 +1272,18 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 │ --help  -h        Show this message and exit.                                │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ RAG Configuration ──────────────────────────────────────────────────────────╮
-│ --docs-folder        PATH     Folder to watch for documents                  │
-│                               [default: ./rag_docs]                          │
-│ --chroma-path        PATH     Path to ChromaDB persistence directory         │
-│                               [default: ./rag_db]                            │
-│ --limit              INTEGER  Number of document chunks to retrieve per      │
-│                               query.                                         │
-│                               [default: 3]                                   │
+│ --docs-folder                      PATH     Folder to watch for documents    │
+│                                             [default: ./rag_docs]            │
+│ --chroma-path                      PATH     Path to ChromaDB persistence     │
+│                                             directory                        │
+│                                             [default: ./rag_db]              │
+│ --limit                            INTEGER  Number of document chunks to     │
+│                                             retrieve per query.              │
+│                                             [default: 3]                     │
+│ --rag-tools      --no-rag-tools             Allow agent to fetch full        │
+│                                             documents when snippets are      │
+│                                             insufficient.                    │
+│                                             [default: rag-tools]             │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ LLM Configuration: OpenAI ──────────────────────────────────────────────────╮
 │ --openai-base-url        TEXT  Custom base URL for OpenAI-compatible API     │

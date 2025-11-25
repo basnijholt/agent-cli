@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 from watchfiles import Change
 
 from agent_cli.core.watch import watch_directory
-from agent_cli.rag.indexing import index_file, remove_file
+from agent_cli.rag._indexing import index_file, remove_file
 
 if TYPE_CHECKING:
     from pathlib import Path

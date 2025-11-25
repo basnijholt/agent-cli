@@ -105,6 +105,7 @@ filterwarnings = [
     "ignore::PendingDeprecationWarning",
 ]
 timeout = 10
+norecursedirs = ["rag_db", "memory_db", "build", "dist"]
 addopts = [
     "--cov=agent_cli",
     "--cov-report=term",

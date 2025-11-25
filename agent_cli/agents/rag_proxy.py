@@ -46,6 +46,12 @@ def rag_proxy(
     log_level: str = opts.LOG_LEVEL,
     config_file: str | None = opts.CONFIG_FILE,
     print_args: bool = opts.PRINT_ARGS,
+    enable_rag_tools: bool = typer.Option(
+        True,  # noqa: FBT003
+        "--rag-tools/--no-rag-tools",
+        help="Allow agent to fetch full documents when snippets are insufficient.",
+        rich_help_panel="RAG Configuration",
+    ),
 ) -> None:
     """Start the RAG (Retrieval-Augmented Generation) Proxy Server.
 
@@ -100,6 +106,7 @@ def rag_proxy(
         openai_api_key,
         openai_api_key,
         limit,
+        enable_rag_tools=enable_rag_tools,
     )
 
     uvicorn.run(fastapi_app, host=host, port=port, log_config=None)
