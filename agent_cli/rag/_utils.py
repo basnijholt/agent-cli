@@ -71,50 +71,71 @@ def load_document_text(file_path: Path) -> str | None:
         return None
 
 
-def chunk_text(text: str, chunk_size: int = 800, overlap: int = 200) -> list[str]:
-    """Split text into chunks with overlap."""
-    # Split by sentence boundaries mostly, avoiding split mid-sentence if possible
-    sentences = re.split(r"(?<=[.!?])\s+", text)
+def _hard_split(text: str, chunk_size: int, overlap: int) -> list[str]:
+    """Split text into fixed-size chunks with overlap.
+
+    Used as fallback when text has no natural sentence boundaries (e.g., code).
+    """
+    assert overlap < chunk_size, f"overlap ({overlap}) must be < chunk_size ({chunk_size})"
 
     chunks = []
+    start = 0
+    while start < len(text):
+        chunks.append(text[start : start + chunk_size])
+        start += chunk_size - overlap
+    return chunks
+
+
+def _flush_buffer(buffer: list[str], chunks: list[str]) -> None:
+    """Flush accumulated sentences to chunks list."""
+    if buffer:
+        chunks.append(" ".join(buffer))
+
+
+def _compute_overlap_buffer(sentences: list[str], max_overlap: int) -> tuple[list[str], int]:
+    """Keep trailing sentences that fit within overlap limit."""
+    buffer: list[str] = []
+    size = 0
+    for s in reversed(sentences):
+        if size + len(s) > max_overlap:
+            break
+        buffer.append(s)
+        size += len(s)
+    return list(reversed(buffer)), size
+
+
+def chunk_text(text: str, chunk_size: int = 800, overlap: int = 200) -> list[str]:
+    """Split text into chunks, preferring sentence boundaries.
+
+    Strategy:
+    1. Split on sentence boundaries (.!?) when possible
+    2. Fall back to character-based splitting for oversized content (e.g., code)
+    3. Maintain overlap between chunks for context continuity
+    """
+    sentences = re.split(r"(?<=[.!?])\s+", text)
+    chunks: list[str] = []
     current: list[str] = []
     current_size = 0
 
     for sentence in sentences:
         sentence_len = len(sentence)
 
-        # If a single sentence is too big, we might have to split it hard (fallback)
+        # Oversized sentence: flush buffer and hard-split
         if sentence_len > chunk_size:
-            # If we have accumulated content, flush it first
-            if current:
-                chunks.append(" ".join(current))
-                current = []
-                current_size = 0
-            chunks.append(sentence)  # Add the long sentence as is (or could split further)
+            _flush_buffer(current, chunks)
+            current, current_size = [], 0
+            chunks.extend(_hard_split(sentence, chunk_size, overlap))
             continue
 
+        # Would exceed chunk_size: flush and start new chunk with overlap
         if current_size + sentence_len > chunk_size and current:
-            chunks.append(" ".join(current))
-
-            # Calculate overlap: keep last few sentences that fit within overlap limit
-            overlap_buffer: list[str] = []
-            overlap_size = 0
-            for s in reversed(current):
-                if overlap_size + len(s) <= overlap:
-                    overlap_buffer.append(s)
-                    overlap_size += len(s)
-                else:
-                    break
-
-            current = list(reversed(overlap_buffer))
-            current_size = overlap_size
+            _flush_buffer(current, chunks)
+            current, current_size = _compute_overlap_buffer(current, overlap)
 
         current.append(sentence)
         current_size += sentence_len
 
-    if current:
-        chunks.append(" ".join(current))
-
+    _flush_buffer(current, chunks)
     return chunks
 
 

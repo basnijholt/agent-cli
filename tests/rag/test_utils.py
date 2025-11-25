@@ -3,6 +3,8 @@
 from pathlib import Path
 from typing import Any
 
+import pytest
+
 from agent_cli.rag import _utils
 
 
@@ -85,6 +87,46 @@ def test_load_document_text_markitdown(tmp_path: Path, mocker: Any) -> None:
     assert content == "mocked content"
     mock_cls.assert_called_once()
     mock_instance.convert.assert_called_once_with(str(f))
+
+
+def test_chunk_text_hard_split_oversized() -> None:
+    """Test chunking with oversized content (no sentence boundaries)."""
+    # Simulate a code file with no sentence-ending punctuation
+    code_like_text = "x = 1\ny = 2\nz = 3\n" * 100  # ~1200 chars, no periods
+
+    chunks = _utils.chunk_text(code_like_text, chunk_size=200, overlap=50)
+
+    # Should produce multiple chunks, none exceeding chunk_size
+    assert len(chunks) > 1
+    for chunk in chunks:
+        assert len(chunk) <= 200, f"Chunk too large: {len(chunk)} chars"
+
+    # Verify all content is covered (with some overlap duplication)
+    total_unique = set("".join(chunks))
+    assert total_unique >= set(code_like_text)
+
+
+def test_hard_split_direct() -> None:
+    """Test _hard_split function directly."""
+    text = "A" * 500
+    chunks = _utils._hard_split(text, chunk_size=100, overlap=20)
+
+    # With 500 chars, chunk_size=100, overlap=20:
+    # Chunk 1: 0-100 (100 chars), next start: 100-20=80
+    # Chunk 2: 80-180 (100 chars), next start: 180-20=160
+    # etc.
+    assert len(chunks) >= 5
+    for chunk in chunks:
+        assert len(chunk) <= 100
+
+
+def test_hard_split_invalid_overlap() -> None:
+    """Test _hard_split asserts when overlap >= chunk_size."""
+    with pytest.raises(AssertionError):
+        _utils._hard_split("hello", chunk_size=100, overlap=100)
+
+    with pytest.raises(AssertionError):
+        _utils._hard_split("hello", chunk_size=100, overlap=200)
 
 
 def test_get_file_hash(tmp_path: Path) -> None:
