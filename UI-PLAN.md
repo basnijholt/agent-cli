@@ -1,8 +1,8 @@
 # UI Development Plan: Agent CLI Desktop
 
-> **Status**: Active / Phase 2 Completed
+> **Status**: Active / Phase 3 Completed
 > **Last Updated**: 2025-11-24
-> **Next Step**: Test the UI and proceed to Phase 3 (Model & Settings)
+> **Next Step**: Test the UI and proceed to Phase 4 (Voice Integration)
 
 ## 1. The Vision
 
@@ -138,17 +138,36 @@ const runtime = useAgentCLIRuntime({
 
 **Reference**: Based on `assistant-ui/examples/with-langgraph/` pattern.
 
-### Phase 3: Model & Settings (📅 Planned)
+### Phase 3: Model & Settings (✅ Completed)
 
 **Goal**: Switch models and configure RAG parameters.
 
-**Strategy**:
+**Completed**:
 
-1. Use `ModelContext` to pass model configuration to API
-2. Create minimal Settings UI that updates `ModelContext`
-3. Backend can proxy `/v1/models` or we hardcode available models
+- [x] Created `SettingsModal.tsx` component with:
+  - Model selector dropdown (OpenAI: gpt-4o, gpt-4o-mini, gpt-4-turbo; Ollama: llama3.2, llama3.1, mistral)
+  - RAG `memory_top_k` parameter input (1-20 range)
+  - Current configuration display
+  - Cancel/Save buttons with proper state management
 
-**Note**: Settings modal may remain custom since RAG-specific options (top_k, memory parameters) aren't standard in assistant-ui.
+- [x] Updated `App.tsx` to:
+  - Lift configuration state to App level
+  - Pass dynamic config to `useAgentCLIRuntime`
+  - Manage settings modal open/close state
+
+- [x] Updated `ThreadList.tsx` to add Settings button in sidebar footer
+
+- [x] Updated `useAgentCLIRuntime.ts` to:
+  - Use `useRef` pattern to avoid stale closure issues when config changes
+  - Ensure config changes are immediately reflected in API requests
+
+**Key files created/modified**:
+- `UI/src/components/SettingsModal.tsx` - NEW: Settings modal component
+- `UI/src/App.tsx` - MODIFIED: Lifted config state, added modal
+- `UI/src/components/ThreadList.tsx` - MODIFIED: Added Settings button
+- `UI/src/runtime/useAgentCLIRuntime.ts` - MODIFIED: Added useRef for config
+
+**Note**: Settings persist in React state (session-only). LocalStorage persistence can be added later if needed.
 
 ### Phase 4: Voice Integration (📅 Planned)
 
@@ -232,36 +251,37 @@ curl http://localhost:8100/v1/conversations/default
 
 | File | Status | Description |
 |------|--------|-------------|
-| `App.tsx` | ✅ REFACTORED | Uses `AssistantRuntimeProvider` with `useAgentCLIRuntime` |
-| `runtime/useAgentCLIRuntime.ts` | ✅ NEW | Runtime adapter connecting to backend API |
-| `components/ThreadList.tsx` | ✅ NEW | Native thread list using `ThreadListPrimitive` |
+| `App.tsx` | ✅ UPDATED | Uses `AssistantRuntimeProvider` with config state and SettingsModal |
+| `runtime/useAgentCLIRuntime.ts` | ✅ UPDATED | Runtime adapter with useRef for dynamic config |
+| `components/ThreadList.tsx` | ✅ UPDATED | Native thread list with Settings button |
 | `components/Thread.tsx` | ✅ SIMPLIFIED | Wraps thread primitives for chat display |
+| `components/SettingsModal.tsx` | ✅ NEW | Model and RAG parameter configuration |
 | `main.tsx` | ✅ UNCHANGED | Entry point |
 | `index.css` | ✅ UNCHANGED | Tailwind imports |
 
-**Deleted files**:
+**Deleted files** (from previous phase):
 - `components/Sidebar.tsx` - Replaced by `ThreadList.tsx`
 - `components/ChatArea.tsx` - Logic moved to runtime
-- `components/SettingsModal.tsx` - Deferred to Phase 3
 
-### Immediate Task: Phase 3 - Model & Settings
+### Immediate Task: Phase 4 - Voice Integration
 
-**Goal**: Add model switching and RAG parameter configuration.
+**Goal**: Voice input using browser MediaRecorder → backend transcription.
 
 **Planned steps**:
 
-1. **Add settings button** to the UI (either in ThreadList header or floating)
+1. **Add voice button** to the Composer area (next to Send button)
 
-2. **Create SettingsModal component** with:
-   - Model selector (dropdown: gpt-4o, gpt-4o-mini, llama3, etc.)
-   - RAG parameters: `memory_top_k`, `memory_score_threshold`
-   - Optional: API key input for different providers
+2. **Implement recording** using browser `MediaRecorder` API:
+   - Start/stop recording on button press
+   - Capture audio as WAV/WebM blob
 
-3. **Update `useAgentCLIRuntime`** to accept dynamic config:
-   - Pass model/RAG params from settings state
-   - Consider using React Context for global settings
+3. **Create transcription endpoint** integration:
+   - POST audio blob to `/transcribe` endpoint
+   - Receive transcribed text
 
-4. **Optional backend endpoint**: `GET /v1/models` to list available models
+4. **Inject transcribed text** into Composer input field
+
+**Backend requirement**: The `/transcribe` endpoint may need to be created if not already available.
 
 ### Key Reference Files (in `assistant-ui/` submodule)
 
@@ -595,6 +615,8 @@ type LanguageModelConfig = {
 | 2025-11-24 | Use `useLangGraphRuntime` pattern | Best documented approach with thread list support |
 | 2025-11-24 | Remove markdown dependency temporarily | Type compatibility issues; plain text works for MVP |
 | 2025-11-24 | Delete SettingsModal for now | Defer to Phase 3; focus on core thread list functionality first |
+| 2025-11-24 | Recreate SettingsModal with model/RAG config | Phase 3 implementation with dynamic runtime config |
+| 2025-11-24 | Use useRef for config in runtime | Avoid stale closure issues when config changes |
 
 ---
 
@@ -603,6 +625,7 @@ type LanguageModelConfig = {
 - [x] Which runtime pattern works best with our backend? → **`useLangGraphRuntime`** (implemented)
 - [x] Do we need `POST /v1/conversations` to create threads? → **No, lazy creation works** (implemented)
 - [x] How to handle SSE streaming from memory-proxy? → **Custom SSE parser in `parseSSEStream`** (implemented)
-- [ ] Should settings (model, RAG params) persist in localStorage or backend? (Phase 3)
+- [x] Should settings (model, RAG params) persist in localStorage or backend? → **React state for now** (session-only; localStorage can be added later)
 - [ ] How to handle thread titles? (Currently shows "New Chat" fallback)
 - [ ] Add thread deletion/archiving support?
+- [ ] Add more RAG parameters to settings? (score_threshold, recency_weight)

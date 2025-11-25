@@ -1,3 +1,4 @@
+import { useRef } from "react";
 import { useLangGraphRuntime, LangGraphMessagesEvent } from "@assistant-ui/react-langgraph";
 import type { LangChainMessage } from "@assistant-ui/react-langgraph";
 
@@ -89,6 +90,11 @@ export interface AgentCLIRuntimeConfig {
 }
 
 export function useAgentCLIRuntime(config: AgentCLIRuntimeConfig = {}) {
+  // Use a ref to always have the latest config in callbacks
+  // This avoids stale closure issues when config changes
+  const configRef = useRef(config);
+  configRef.current = config;
+
   return useLangGraphRuntime({
     // Load messages for an existing thread
     load: async (threadId: string) => {
@@ -124,9 +130,9 @@ export function useAgentCLIRuntime(config: AgentCLIRuntimeConfig = {}) {
         body: JSON.stringify({
           messages: openAIMessages,
           memory_id: externalId,
-          model: config.model || "gpt-4o",
+          model: configRef.current.model || "gpt-4o",
           stream: true,
-          memory_top_k: config.memoryTopK || 5,
+          memory_top_k: configRef.current.memoryTopK || 5,
         }),
       });
 

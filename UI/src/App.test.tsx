@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import App from './App';
 
@@ -25,5 +25,25 @@ describe('App', () => {
 
     // Check for Send button
     expect(screen.getByText('Send')).toBeDefined();
+
+    // Check for Settings button in ThreadList
+    expect(screen.getByText('Settings')).toBeDefined();
+  });
+
+  it('opens settings modal when Settings button is clicked', () => {
+    render(<App />);
+
+    // Click Settings button
+    const settingsButton = screen.getByText('Settings');
+    fireEvent.click(settingsButton);
+
+    // Check that modal opens (look for Settings heading)
+    expect(screen.getByRole('heading', { name: 'Settings' })).toBeDefined();
+
+    // Check for model selector
+    expect(screen.getByText('Model')).toBeDefined();
+
+    // Check for Memory Top-K label
+    expect(screen.getByText(/Memory Top-K/)).toBeDefined();
   });
 });

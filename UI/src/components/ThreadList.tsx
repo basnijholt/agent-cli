@@ -2,9 +2,13 @@ import {
   ThreadListPrimitive,
   ThreadListItemPrimitive,
 } from "@assistant-ui/react";
-import { MessageSquarePlus, MessageSquare, Trash2 } from "lucide-react";
+import { MessageSquarePlus, MessageSquare, Trash2, Settings } from "lucide-react";
 
-export const ThreadList = () => {
+interface ThreadListProps {
+  onOpenSettings: () => void;
+}
+
+export const ThreadList = ({ onOpenSettings }: ThreadListProps) => {
   return (
     <ThreadListPrimitive.Root className="w-64 bg-gray-50 border-r border-gray-200 h-full flex flex-col">
       <div className="p-4 border-b border-gray-200">
@@ -18,6 +22,16 @@ export const ThreadList = () => {
 
       <div className="flex-grow overflow-y-auto p-2 space-y-1">
         <ThreadListPrimitive.Items components={{ ThreadListItem }} />
+      </div>
+
+      <div className="p-3 border-t border-gray-200">
+        <button
+          onClick={onOpenSettings}
+          className="w-full flex items-center justify-center gap-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 px-3 py-2 rounded-lg transition-colors"
+        >
+          <Settings size={18} />
+          <span className="text-sm">Settings</span>
+        </button>
       </div>
     </ThreadListPrimitive.Root>
   );
