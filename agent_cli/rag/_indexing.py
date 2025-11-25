@@ -8,7 +8,7 @@ import logging
 from typing import TYPE_CHECKING
 
 from agent_cli.rag._store import delete_by_file_path, get_all_metadata, upsert_docs
-from agent_cli.rag._utils import chunk_text, get_file_hash, load_document_text
+from agent_cli.rag._utils import chunk_text, get_file_hash, load_document_text, should_ignore_path
 from agent_cli.rag.models import DocMetadata
 
 if TYPE_CHECKING:
@@ -148,8 +148,10 @@ def initial_index(
     processed_files = []
     removed_files = []
 
-    # Gather all files first
-    all_files = [p for p in docs_folder.rglob("*") if p.is_file() and not p.name.startswith(".")]
+    # Gather all files first, excluding hidden and common development directories
+    all_files = [
+        p for p in docs_folder.rglob("*") if p.is_file() and not should_ignore_path(p, docs_folder)
+    ]
 
     # 1. Index Existing Files in Parallel
     # Use max_workers=4 to match typical local backend parallelism (e.g. llama-server -np 4)

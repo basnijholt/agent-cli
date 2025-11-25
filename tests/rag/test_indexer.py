@@ -9,6 +9,7 @@ import pytest
 from watchfiles import Change
 
 from agent_cli.rag import _indexer
+from agent_cli.rag._utils import should_ignore_path
 
 
 @pytest.mark.asyncio
@@ -54,32 +55,44 @@ async def test_watch_docs(tmp_path: Path) -> None:
 
 
 @pytest.mark.asyncio
-async def test_watch_docs_ignore_dotfiles(tmp_path: Path) -> None:
-    """Test ignoring dotfiles."""
+async def test_watch_docs_passes_ignore_filter(tmp_path: Path) -> None:
+    """Test that watch_docs passes the should_ignore_path filter to watch_directory."""
     mock_collection = MagicMock()
     docs_folder = tmp_path / "docs"
     docs_folder.mkdir()
     file_hashes: dict[str, str] = {}
 
-    changes = {
-        (Change.added, str(docs_folder / ".hidden.txt")),
-        (Change.added, str(docs_folder / "sub/.hidden")),
-    }
-
-    async def mock_awatch_gen(
-        *_args: Any,
+    async def fake_watch_directory(
+        _root: Path,
+        _handler: Any,
+        *,
+        ignore_filter: Any = None,
         **_kwargs: Any,
-    ) -> AsyncGenerator[set[tuple[Change, str]], None]:
-        yield changes
+    ) -> None:
+        # Verify ignore_filter is provided and is the should_ignore_path function
+        assert ignore_filter is not None
+        assert ignore_filter.__name__ == "should_ignore_path"
 
-    async def fake_watch_directory(_root: Path, handler: Any, **_kwargs) -> None:  # type: ignore[no-untyped-def]
-        for change, path in changes:
-            handler(change, Path(path))
-
-    with (
-        patch("agent_cli.rag._indexer.watch_directory", side_effect=fake_watch_directory),
-        patch("agent_cli.rag._indexer.index_file") as mock_index,
+    with patch(
+        "agent_cli.rag._indexer.watch_directory",
+        side_effect=fake_watch_directory,
     ):
         await _indexer.watch_docs(mock_collection, docs_folder, file_hashes)
 
-        mock_index.assert_not_called()
+
+@pytest.mark.asyncio
+async def test_watch_docs_ignore_filter_works(tmp_path: Path) -> None:
+    """Test that the ignore filter correctly filters out ignored paths."""
+    docs_folder = tmp_path / "docs"
+    docs_folder.mkdir()
+
+    # Test that the filter correctly identifies paths to ignore
+    git_file = docs_folder / ".git" / "config"
+    venv_file = docs_folder / "venv" / "bin" / "python"
+    pycache_file = docs_folder / "__pycache__" / "module.pyc"
+    normal_file = docs_folder / "readme.md"
+
+    assert should_ignore_path(git_file, docs_folder)
+    assert should_ignore_path(venv_file, docs_folder)
+    assert should_ignore_path(pycache_file, docs_folder)
+    assert not should_ignore_path(normal_file, docs_folder)

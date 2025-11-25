@@ -63,7 +63,11 @@ The RAG proxy is an **OpenAI-compatible middleware** that intercepts chat reques
 
 - Watch folder specified by `--docs-folder` (default: `./rag_docs`).
 - Supports nested directories.
-- Hidden files (starting with `.`) are ignored.
+- Automatically ignores:
+  - Hidden files and directories (starting with `.`)
+  - Common development directories (`__pycache__`, `node_modules`, `venv`, `build`, `dist`, etc.)
+  - Package metadata (`.egg-info` directories)
+  - OS metadata files (`.DS_Store`, `Thumbs.db`)
 
 ### 2.3 OS-Level File Watching
 
