@@ -130,8 +130,7 @@ export function useAgentCLIRuntime(config: AgentCLIRuntimeConfig = {}) {
         body: JSON.stringify({
           messages: openAIMessages,
           memory_id: externalId,
-          // Only include model if explicitly set; backend will use its default otherwise
-          ...(configRef.current.model && { model: configRef.current.model }),
+          model: configRef.current.model, // Required by backend
           stream: true,
           memory_top_k: configRef.current.memoryTopK || 5,
         }),

@@ -29,11 +29,13 @@ beforeEach(() => {
 });
 
 describe('App', () => {
-  it('renders the main layout with thread list and chat', () => {
+  it('renders the main layout with thread list and chat after loading', async () => {
     render(<App />);
 
-    // Check for New Chat button in ThreadList
-    expect(screen.getByText('New Chat')).toBeDefined();
+    // Wait for loading to complete (models are fetched on startup)
+    await waitFor(() => {
+      expect(screen.getByText('New Chat')).toBeDefined();
+    });
 
     // Check for empty state message in Thread
     expect(screen.getByText('No messages yet')).toBeDefined();
@@ -51,6 +53,11 @@ describe('App', () => {
   it('opens settings modal and fetches models when Settings button is clicked', async () => {
     render(<App />);
 
+    // Wait for initial load
+    await waitFor(() => {
+      expect(screen.getByText('Settings')).toBeDefined();
+    });
+
     // Click Settings button
     const settingsButton = screen.getByText('Settings');
     fireEvent.click(settingsButton);
@@ -64,12 +71,21 @@ describe('App', () => {
     // Check for Memory Top-K label
     expect(screen.getByText(/Memory Top-K/)).toBeDefined();
 
-    // Wait for models to be fetched and displayed
+    // Wait for models to be fetched and displayed in modal
     await waitFor(() => {
       expect(screen.getByText('2 models available')).toBeDefined();
     });
+  });
 
-    // Verify the fetch was called for models
+  it('auto-selects the first model on startup', async () => {
+    render(<App />);
+
+    // Wait for loading to complete
+    await waitFor(() => {
+      expect(screen.getByText('New Chat')).toBeDefined();
+    });
+
+    // Verify models were fetched on startup
     expect(mockFetch).toHaveBeenCalledWith('http://localhost:8100/v1/models');
   });
 });
