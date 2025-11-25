@@ -7,7 +7,7 @@ import {
 import type { AppendMessage } from "@assistant-ui/react";
 import { ENDPOINTS } from "../config";
 import { parseSSEStream, type StreamingState } from "../utils/sse";
-import type { MessageMetadata } from "../types";
+import type { ResponseMetadata } from "../types";
 
 // Thread metadata
 interface ThreadData {
@@ -18,13 +18,17 @@ interface ThreadData {
 // Storage key for persisting selected thread
 const SELECTED_THREAD_KEY = "agent-cli-selected-thread";
 
-// Message with stable ID and optional reasoning
+/**
+ * Message with stable ID and optional reasoning.
+ * Mirrors Python: agent_cli.memory.entities.Turn (partially)
+ */
 interface MessageWithId {
   id: string;
   role: string;
   content: string;
   reasoning?: string;
-  metadata?: MessageMetadata;
+  created_at?: string; // ISO timestamp from API (mirrors Turn.created_at)
+  response_metadata?: ResponseMetadata; // Mirrors Turn.response_metadata
 }
 
 // Generate unique message ID
@@ -55,11 +59,20 @@ function toThreadMessage(msg: MessageWithId): ThreadMessageLike {
     content.push({ type: "text", text: "" });
   }
 
+  // Combine created_at and response_metadata into custom metadata for assistant-ui
+  const customMetadata: Record<string, unknown> = {};
+  if (msg.created_at) {
+    customMetadata.created_at = msg.created_at;
+  }
+  if (msg.response_metadata) {
+    Object.assign(customMetadata, msg.response_metadata);
+  }
+
   return {
     id: msg.id,
     role: msg.role === "user" ? "user" : "assistant",
     content,
-    metadata: msg.metadata ? { custom: msg.metadata as Record<string, unknown> } : undefined,
+    metadata: Object.keys(customMetadata).length > 0 ? { custom: customMetadata } : undefined,
   };
 }
 
@@ -145,53 +158,22 @@ export function useAgentCLIRuntime(config: AgentCLIRuntimeConfig = {}) {
       const res = await fetch(`${ENDPOINTS.conversations}/${externalId}`);
       if (res.ok) {
         const data = await res.json();
+        // LoadedMessage mirrors Python's API response structure
         interface LoadedMessage {
           role: string;
           content: string;
           created_at?: string;
-          metadata?: {
-            model?: string;
-            system_fingerprint?: string;
-            prompt_tokens?: number;
-            completion_tokens?: number;
-            total_tokens?: number;
-            duration_ms?: number;
-            prompt_ms?: number;
-            predicted_ms?: number;
-            prompt_per_second?: number;
-            predicted_per_second?: number;
-            cache_tokens?: number;
-          };
+          metadata?: ResponseMetadata;
         }
-        const msgs: MessageWithId[] = (data.messages || []).map((m: LoadedMessage, idx: number) => {
-          const msg: MessageWithId = {
+        const msgs: MessageWithId[] = (data.messages || []).map(
+          (m: LoadedMessage, idx: number) => ({
             id: `loaded-${idx}-${Date.now()}`,
             role: m.role,
             content: m.content,
-          };
-          // Parse metadata from API response
-          if (m.metadata) {
-            msg.metadata = {
-              createdAt: m.created_at ? new Date(m.created_at).getTime() : undefined,
-              model: m.metadata.model,
-              systemFingerprint: m.metadata.system_fingerprint,
-              promptTokens: m.metadata.prompt_tokens,
-              completionTokens: m.metadata.completion_tokens,
-              totalTokens: m.metadata.total_tokens,
-              durationMs: m.metadata.duration_ms,
-              promptMs: m.metadata.prompt_ms,
-              predictedMs: m.metadata.predicted_ms,
-              promptPerSecond: m.metadata.prompt_per_second,
-              predictedPerSecond: m.metadata.predicted_per_second,
-              cacheTokens: m.metadata.cache_tokens,
-            };
-          } else if (m.created_at) {
-            msg.metadata = {
-              createdAt: new Date(m.created_at).getTime(),
-            };
-          }
-          return msg;
-        });
+            created_at: m.created_at,
+            response_metadata: m.metadata,
+          })
+        );
         setMessages(msgs);
       } else {
         setMessages([]);
@@ -221,7 +203,7 @@ export function useAgentCLIRuntime(config: AgentCLIRuntimeConfig = {}) {
         id: generateMessageId(),
         role: "user",
         content: userText,
-        metadata: { createdAt: Date.now() },
+        created_at: new Date().toISOString(),
       };
 
       // Create assistant message placeholder with unique ID
@@ -301,19 +283,19 @@ export function useAgentCLIRuntime(config: AgentCLIRuntimeConfig = {}) {
                   ...lastMsg,
                   content: finalState.content,
                   reasoning: finalState.reasoning || undefined,
-                  metadata: {
-                    createdAt: startTime,
+                  created_at: new Date(startTime).toISOString(),
+                  response_metadata: {
                     model: finalState.model || configRef.current.model,
-                    systemFingerprint: finalState.systemFingerprint,
-                    promptTokens: finalState.promptTokens,
-                    completionTokens: finalState.completionTokens,
-                    totalTokens: finalState.totalTokens,
-                    durationMs,
-                    promptMs: finalState.promptMs,
-                    predictedMs: finalState.predictedMs,
-                    promptPerSecond: finalState.promptPerSecond,
-                    predictedPerSecond: finalState.predictedPerSecond,
-                    cacheTokens: finalState.cacheTokens,
+                    system_fingerprint: finalState.system_fingerprint,
+                    prompt_tokens: finalState.prompt_tokens,
+                    completion_tokens: finalState.completion_tokens,
+                    total_tokens: finalState.total_tokens,
+                    duration_ms: durationMs,
+                    prompt_ms: finalState.prompt_ms,
+                    predicted_ms: finalState.predicted_ms,
+                    prompt_per_second: finalState.prompt_per_second,
+                    predicted_per_second: finalState.predicted_per_second,
+                    cache_tokens: finalState.cache_tokens,
                   },
                 },
               ];
@@ -329,7 +311,7 @@ export function useAgentCLIRuntime(config: AgentCLIRuntimeConfig = {}) {
             id: assistantMessageId,
             role: "assistant",
             content: `Error: ${error instanceof Error ? error.message : "Unknown error"}`,
-            metadata: { createdAt: startTime },
+            created_at: new Date(startTime).toISOString(),
           },
         ]);
       } finally {

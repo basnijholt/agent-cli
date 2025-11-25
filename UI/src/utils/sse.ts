@@ -1,6 +1,10 @@
-import type { MessageMetadata } from "../types";
+import type { ResponseMetadata } from "../types";
 
-export interface StreamingState extends Omit<MessageMetadata, "createdAt" | "durationMs"> {
+/**
+ * State accumulated during SSE streaming.
+ * Uses snake_case to match Python ResponseMetadata.
+ */
+export interface StreamingState extends ResponseMetadata {
   content: string;
   reasoning: string;
 }
@@ -38,24 +42,24 @@ export async function* parseSSEStream(response: Response): AsyncGenerator<Stream
 
           // Capture metadata (first occurrence wins for model/fingerprint)
           if (parsed.model && !state.model) state.model = parsed.model;
-          if (parsed.system_fingerprint && !state.systemFingerprint) {
-            state.systemFingerprint = parsed.system_fingerprint;
+          if (parsed.system_fingerprint && !state.system_fingerprint) {
+            state.system_fingerprint = parsed.system_fingerprint;
           }
 
           // Usage data (usually in final chunk, overwrites)
           if (parsed.usage) {
-            state.promptTokens = parsed.usage.prompt_tokens;
-            state.completionTokens = parsed.usage.completion_tokens;
-            state.totalTokens = parsed.usage.total_tokens;
+            state.prompt_tokens = parsed.usage.prompt_tokens;
+            state.completion_tokens = parsed.usage.completion_tokens;
+            state.total_tokens = parsed.usage.total_tokens;
           }
 
           // Timings (usually in final chunk, overwrites)
           if (parsed.timings) {
-            state.promptMs = parsed.timings.prompt_ms;
-            state.predictedMs = parsed.timings.predicted_ms;
-            state.promptPerSecond = parsed.timings.prompt_per_second;
-            state.predictedPerSecond = parsed.timings.predicted_per_second;
-            state.cacheTokens = parsed.timings.cache_n;
+            state.prompt_ms = parsed.timings.prompt_ms;
+            state.predicted_ms = parsed.timings.predicted_ms;
+            state.prompt_per_second = parsed.timings.prompt_per_second;
+            state.predicted_per_second = parsed.timings.predicted_per_second;
+            state.cache_tokens = parsed.timings.cache_n;
           }
 
           yield { ...state };

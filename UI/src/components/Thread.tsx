@@ -12,7 +12,7 @@ import remarkGfm from "remark-gfm";
 import { Square, Copy, Check, Info } from "lucide-react";
 
 import { Reasoning, ReasoningGroup } from "@/components/assistant-ui/reasoning";
-import type { MessageMetadata } from "../types";
+import type { DisplayMetadata } from "../types";
 
 // Custom markdown text component for assistant messages
 const MarkdownText = () => {
@@ -113,7 +113,7 @@ const InfoButton = () => {
   const [tooltipPos, setTooltipPos] = useState({ top: 0, left: 0 });
   const buttonRef = useRef<HTMLButtonElement>(null);
   const message = useMessage();
-  const metadata = message.metadata?.custom as MessageMetadata | undefined;
+  const metadata = message.metadata?.custom as DisplayMetadata | undefined;
 
   // Update tooltip position when shown
   useEffect(() => {
@@ -128,8 +128,8 @@ const InfoButton = () => {
 
   if (!metadata) return null;
 
-  const formatDate = (timestamp: number) => {
-    const date = new Date(timestamp);
+  const formatDate = (isoString: string) => {
+    const date = new Date(isoString);
     return date.toLocaleDateString(undefined, {
       month: "short",
       day: "numeric",
@@ -137,8 +137,8 @@ const InfoButton = () => {
     });
   };
 
-  const formatTime = (timestamp: number) => {
-    const date = new Date(timestamp);
+  const formatTime = (isoString: string) => {
+    const date = new Date(isoString);
     return date.toLocaleTimeString(undefined, {
       hour: "2-digit",
       minute: "2-digit",
@@ -168,11 +168,11 @@ const InfoButton = () => {
             style={{ top: tooltipPos.top, left: tooltipPos.left }}
           >
             <div className="space-y-1">
-              {metadata.createdAt && (
+              {metadata.created_at && (
                 <div className="flex justify-between gap-4">
                   <span className="text-gray-400">Time:</span>
                   <span>
-                    {formatTime(metadata.createdAt)} · {formatDate(metadata.createdAt)}
+                    {formatTime(metadata.created_at)} · {formatDate(metadata.created_at)}
                   </span>
                 </div>
               )}
@@ -182,52 +182,54 @@ const InfoButton = () => {
                   <span>{metadata.model.split("/").pop()}</span>
                 </div>
               )}
-              {metadata.systemFingerprint && (
+              {metadata.system_fingerprint && (
                 <div className="flex justify-between gap-4">
                   <span className="text-gray-400">Fingerprint:</span>
-                  <span>{metadata.systemFingerprint}</span>
+                  <span>{metadata.system_fingerprint}</span>
                 </div>
               )}
-              {metadata.totalTokens !== undefined && (
+              {metadata.total_tokens !== undefined && (
                 <div className="flex justify-between gap-4">
                   <span className="text-gray-400">Tokens:</span>
                   <span>
-                    {metadata.promptTokens ?? 0} + {metadata.completionTokens ?? 0} ={" "}
-                    {metadata.totalTokens}
-                    {metadata.cacheTokens ? ` (${metadata.cacheTokens} cached)` : ""}
+                    {metadata.prompt_tokens ?? 0} + {metadata.completion_tokens ?? 0} ={" "}
+                    {metadata.total_tokens}
+                    {metadata.cache_tokens ? ` (${metadata.cache_tokens} cached)` : ""}
                   </span>
                 </div>
               )}
-              {metadata.durationMs !== undefined && (
+              {metadata.duration_ms !== undefined && (
                 <div className="flex justify-between gap-4">
                   <span className="text-gray-400">Total time:</span>
-                  <span>{formatDuration(metadata.durationMs)}</span>
+                  <span>{formatDuration(metadata.duration_ms)}</span>
                 </div>
               )}
-              {(metadata.promptMs !== undefined || metadata.predictedMs !== undefined) && (
+              {(metadata.prompt_ms !== undefined || metadata.predicted_ms !== undefined) && (
                 <div className="flex justify-between gap-4">
                   <span className="text-gray-400">Timing:</span>
                   <span>
-                    {metadata.promptMs !== undefined &&
-                      `${formatDuration(metadata.promptMs)} prompt`}
-                    {metadata.promptMs !== undefined && metadata.predictedMs !== undefined && " + "}
-                    {metadata.predictedMs !== undefined &&
-                      `${formatDuration(metadata.predictedMs)} gen`}
+                    {metadata.prompt_ms !== undefined &&
+                      `${formatDuration(metadata.prompt_ms)} prompt`}
+                    {metadata.prompt_ms !== undefined &&
+                      metadata.predicted_ms !== undefined &&
+                      " + "}
+                    {metadata.predicted_ms !== undefined &&
+                      `${formatDuration(metadata.predicted_ms)} gen`}
                   </span>
                 </div>
               )}
-              {(metadata.promptPerSecond !== undefined ||
-                metadata.predictedPerSecond !== undefined) && (
+              {(metadata.prompt_per_second !== undefined ||
+                metadata.predicted_per_second !== undefined) && (
                 <div className="flex justify-between gap-4">
                   <span className="text-gray-400">Speed:</span>
                   <span>
-                    {metadata.promptPerSecond !== undefined &&
-                      `${Math.round(metadata.promptPerSecond)} prompt`}
-                    {metadata.promptPerSecond !== undefined &&
-                      metadata.predictedPerSecond !== undefined &&
+                    {metadata.prompt_per_second !== undefined &&
+                      `${Math.round(metadata.prompt_per_second)} prompt`}
+                    {metadata.prompt_per_second !== undefined &&
+                      metadata.predicted_per_second !== undefined &&
                       " / "}
-                    {metadata.predictedPerSecond !== undefined &&
-                      `${Math.round(metadata.predictedPerSecond)} gen`}
+                    {metadata.predicted_per_second !== undefined &&
+                      `${Math.round(metadata.predicted_per_second)} gen`}
                     {" tok/s"}
                   </span>
                 </div>
