@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 import math
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from agent_cli.memory._store import get_summary_entry, query_memories
 from agent_cli.memory.models import (
@@ -156,12 +156,8 @@ def retrieve_memory(
     def _sigmoid(x: float) -> float:
         return 1.0 / (1.0 + math.exp(-x))
 
-    def recency_score(meta: Any) -> float:
-        ts = meta.created_at
-        try:
-            dt = datetime.fromisoformat(str(ts))
-        except Exception:
-            return 0.0
+    def recency_score(meta: MemoryMetadata) -> float:
+        dt = datetime.fromisoformat(meta.created_at)
         age_days = max((datetime.now(UTC) - dt).total_seconds() / 86400.0, 0.0)
         # Exponential decay: ~0.36 score at 30 days
         return math.exp(-age_days / 30.0)
@@ -188,7 +184,7 @@ def retrieve_memory(
 
     entries: list[MemoryEntry] = [
         MemoryEntry(
-            role=mem.metadata.role or "memory",
+            role=mem.metadata.role,
             content=mem.content,
             created_at=mem.metadata.created_at,
             score=score,
