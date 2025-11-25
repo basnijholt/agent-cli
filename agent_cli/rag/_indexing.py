@@ -47,6 +47,8 @@ def index_file(
     if not file_path.exists():
         return False
 
+    LOGGER.debug("  📄 Processing: %s", file_path.name)
+
     try:
         # Check if file changed
         current_hash = get_file_hash(file_path)
@@ -98,7 +100,8 @@ def index_file(
             )
 
         # Upsert to ChromaDB in batches to avoid 502s from large payloads
-        batch_size = 50
+        # Use small batch size (10) to avoid overwhelming embedding servers
+        batch_size = 10
         for i in range(0, len(ids), batch_size):
             batch_ids = ids[i : i + batch_size]
             batch_docs = documents[i : i + batch_size]
