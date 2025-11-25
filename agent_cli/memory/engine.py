@@ -49,7 +49,9 @@ def _assistant_reply_content(response: Mapping[str, Any]) -> str | None:
     choices = response.get("choices", [])
     if not choices:
         return None
-    return choices[0].get("message", {}).get("content")
+    message = choices[0].get("message")
+    assert message is not None
+    return message.get("content")
 
 
 def _persist_turns(

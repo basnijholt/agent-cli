@@ -59,19 +59,19 @@ async def _run_git_async(
         stderr=asyncio.subprocess.PIPE,
     )
     stdout, stderr = await proc.communicate()
-    returncode = proc.returncode or 0
+    assert proc.returncode is not None
     stdout_text = stdout.decode("utf-8", errors="replace")
     stderr_text = stderr.decode("utf-8", errors="replace")
 
-    if check and returncode != 0:
+    if check and proc.returncode != 0:
         raise subprocess.CalledProcessError(
-            returncode,
+            proc.returncode,
             ["git", *args],
             output=stdout_text,
             stderr=stderr_text,
         )
 
-    return GitCommandResult(returncode, stdout_text, stderr_text)
+    return GitCommandResult(proc.returncode, stdout_text, stderr_text)
 
 
 def init_repo(path: Path) -> None:

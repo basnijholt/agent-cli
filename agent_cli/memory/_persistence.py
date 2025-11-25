@@ -177,6 +177,6 @@ def evict_if_needed(
         key=lambda e: e.metadata.created_at,
     )
     overflow = sorted_entries[:-max_entries]
-    ids_to_remove = [e.id for e in overflow if e.id]
+    ids_to_remove = [e.id for e in overflow]
     delete_entries(collection, ids_to_remove)
     delete_memory_files(memory_root, conversation_id, ids_to_remove)

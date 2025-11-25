@@ -92,13 +92,11 @@ def query_memories(
         embeddings,
         strict=False,
     ):
-        if doc_id is None:
-            msg = "Chroma returned a memory row without an id"
-            raise ValueError(msg)
+        assert doc_id is not None
         records.append(
             StoredMemory(
-                id=str(doc_id),
-                content=str(doc),
+                id=doc_id,
+                content=doc,
                 metadata=MemoryMetadata(**dict(meta)),
                 distance=float(dist) if dist is not None else None,
                 embedding=[float(x) for x in emb] if emb is not None else None,
@@ -121,16 +119,13 @@ def get_summary_entry(
     metas = result.get("metadatas") or []
     ids = result.get("ids") or []
 
-    doc_list = docs[0] if docs and isinstance(docs[0], list) else docs
-    meta_list = metas[0] if metas and isinstance(metas[0], list) else metas
-
-    if not doc_list or not meta_list or not ids:
+    if not docs or not metas or not ids:
         return None
 
     return StoredMemory(
-        id=str(ids[0]),
-        content=str(doc_list[0]),
-        metadata=MemoryMetadata(**dict(meta_list[0])),
+        id=ids[0],
+        content=docs[0],
+        metadata=MemoryMetadata(**dict(metas[0])),
         distance=None,
     )
 
@@ -150,15 +145,12 @@ def list_conversation_entries(
     metas = result.get("metadatas") or []
     ids = result.get("ids") or []
 
-    doc_list = docs[0] if docs and isinstance(docs[0], list) else docs
-    meta_list = metas[0] if metas and isinstance(metas[0], list) else metas
-
     records: list[StoredMemory] = []
-    for doc, meta, entry_id in zip(doc_list, meta_list, ids, strict=False):
+    for doc, meta, entry_id in zip(docs, metas, ids, strict=False):
         records.append(
             StoredMemory(
-                id=str(entry_id),
-                content=str(doc),
+                id=entry_id,
+                content=doc,
                 metadata=MemoryMetadata(**dict(meta)),
                 distance=None,
             ),

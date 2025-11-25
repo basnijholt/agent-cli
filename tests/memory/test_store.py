@@ -101,12 +101,13 @@ def test_query_memories_skips_summary_entries_and_filters_roles() -> None:
     assert {"role": {"$ne": "summary"}} in clauses
 
 
-def test_get_summary_entry_handles_nested_lists() -> None:
+def test_get_summary_entry_returns_entry() -> None:
+    # ChromaDB's .get() returns flat lists (not nested like .query())
     fake = _FakeCollection(
         get_result={
-            "documents": [["summary text"]],
+            "documents": ["summary text"],
             "metadatas": [
-                [{"conversation_id": "c1", "role": "summary", "created_at": "now"}],
+                {"conversation_id": "c1", "role": "summary", "created_at": "now"},
             ],
             "ids": ["sum1"],
         },
@@ -118,14 +119,13 @@ def test_get_summary_entry_handles_nested_lists() -> None:
 
 
 def test_list_conversation_entries_filters_summaries() -> None:
+    # ChromaDB's .get() returns flat lists (not nested like .query())
     fake = _FakeCollection(
         get_result={
-            "documents": [["m1", "m2"]],
+            "documents": ["m1", "m2"],
             "metadatas": [
-                [
-                    {"conversation_id": "c1", "role": "memory", "created_at": "now"},
-                    {"conversation_id": "c1", "role": "summary", "created_at": "now"},
-                ],
+                {"conversation_id": "c1", "role": "memory", "created_at": "now"},
+                {"conversation_id": "c1", "role": "summary", "created_at": "now"},
             ],
             "ids": ["id1", "id2"],
         },

@@ -197,7 +197,7 @@ async def reconcile_facts(
     LOGGER.info("Reconcile payload JSON: %s", payload)
     try:
         result = await agent.run(payload)
-        decisions = result.output or []
+        decisions = result.output
     except (httpx.HTTPError, AgentRunError, UnexpectedModelBehavior):
         LOGGER.warning(
             "Update memory agent transient failure; defaulting to add all new facts",
@@ -284,8 +284,7 @@ async def update_summary(
     )
     agent = Agent(model=model_cfg, system_prompt=system_prompt, output_type=SummaryOutput)
     result = await agent.run(prompt_text)
-    summary = result.output.summary if result.output else None
-    return summary or prior_summary
+    return result.output.summary or prior_summary
 
 
 async def extract_and_store_facts_and_summaries(

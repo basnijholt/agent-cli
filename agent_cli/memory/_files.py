@@ -55,33 +55,29 @@ def soft_delete_memory_file(
 ) -> None:
     """Move a memory file to the deleted directory, updating metadata if replaced."""
     try:
-        try:
-            rel_path = path.relative_to(entries_dir)
-        except ValueError:
-            # Not in entries_dir? Just unlink.
+        rel_path = path.relative_to(entries_dir)
+    except ValueError:
+        # Not in entries_dir? Just unlink.
+        path.unlink(missing_ok=True)
+        return
+
+    # Prepare destination
+    dest_path = entries_dir / _DELETED_DIRNAME / rel_path
+    dest_path.parent.mkdir(parents=True, exist_ok=True)
+
+    # If we need to update metadata, read-modify-write
+    if replaced_by:
+        record = read_memory_file(path)
+        if record:
+            record.metadata.replaced_by = replaced_by
+            front_matter = _render_front_matter(record.id, record.metadata)
+            body = front_matter + "\n" + record.content + "\n"
+            atomic_write_text(dest_path, body)
             path.unlink(missing_ok=True)
             return
 
-        # Prepare destination
-        dest_path = entries_dir / _DELETED_DIRNAME / rel_path
-        dest_path.parent.mkdir(parents=True, exist_ok=True)
-
-        # If we need to update metadata, read-modify-write
-        if replaced_by:
-            record = read_memory_file(path)
-            if record:
-                record.metadata.replaced_by = replaced_by
-                front_matter = _render_front_matter(record.id, record.metadata)
-                body = front_matter + "\n" + record.content + "\n"
-                atomic_write_text(dest_path, body)
-                path.unlink(missing_ok=True)
-                return
-
-        # Simple move if no metadata change
-        path.rename(dest_path)
-
-    except Exception:
-        LOGGER.exception("Failed to soft-delete memory file %s", path)
+    # Simple move if no metadata change
+    path.rename(dest_path)
 
 
 def write_memory_file(
