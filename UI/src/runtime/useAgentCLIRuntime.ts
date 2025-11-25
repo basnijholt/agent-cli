@@ -1,37 +1,37 @@
-import { useRef } from "react";
-import { useLangGraphRuntime, LangGraphMessagesEvent } from "@assistant-ui/react-langgraph";
-import type { LangChainMessage } from "@assistant-ui/react-langgraph";
+import { useRef, useState, useCallback } from "react";
+import {
+  useExternalStoreRuntime,
+  useExternalMessageConverter,
+  ThreadMessageLike,
+} from "@assistant-ui/react";
+import type { AppendMessage } from "@assistant-ui/react";
 
 const API_BASE = "http://localhost:8100";
 
-// Convert OpenAI-style message to LangChain format
-function toLangChainMessage(msg: { role: string; content: string }): LangChainMessage {
-  if (msg.role === "user") {
-    return { type: "human", content: msg.content };
-  } else if (msg.role === "assistant") {
-    return { type: "ai", content: msg.content };
-  } else if (msg.role === "system") {
-    return { type: "system", content: msg.content };
-  }
-  // Default to human for unknown roles
-  return { type: "human", content: msg.content };
+// Message with stable ID
+interface MessageWithId {
+  id: string;
+  role: string;
+  content: string;
 }
 
-// Convert LangChain message to OpenAI-style for API calls
-function toOpenAIMessage(msg: LangChainMessage): { role: string; content: string } {
-  if (msg.type === "human") {
-    return { role: "user", content: typeof msg.content === "string" ? msg.content : JSON.stringify(msg.content) };
-  } else if (msg.type === "ai") {
-    return { role: "assistant", content: typeof msg.content === "string" ? msg.content : JSON.stringify(msg.content) };
-  } else if (msg.type === "system") {
-    return { role: "system", content: msg.content };
-  }
-  // Default for tool messages
-  return { role: "assistant", content: typeof msg.content === "string" ? msg.content : JSON.stringify(msg.content) };
+// Generate unique message ID
+let globalMessageId = 0;
+function generateMessageId(): string {
+  return `msg-${globalMessageId++}-${Date.now()}`;
 }
 
-// Parse SSE stream from memory-proxy and yield LangGraph events
-async function* parseSSEStream(response: Response): AsyncGenerator<LangGraphMessagesEvent<LangChainMessage>> {
+// Convert to assistant-ui format
+function toThreadMessage(msg: MessageWithId): ThreadMessageLike {
+  return {
+    id: msg.id,
+    role: msg.role === "user" ? "user" : "assistant",
+    content: [{ type: "text", text: msg.content }],
+  };
+}
+
+// Parse SSE stream from memory-proxy
+async function* parseSSEStream(response: Response): AsyncGenerator<string> {
   const reader = response.body?.getReader();
   if (!reader) return;
 
@@ -53,14 +53,6 @@ async function* parseSSEStream(response: Response): AsyncGenerator<LangGraphMess
         if (line.startsWith("data: ")) {
           const data = line.slice(6).trim();
           if (data === "[DONE]") {
-            // Final message - combine reasoning and content
-            const finalContent = accumulatedContent || accumulatedReasoning;
-            if (finalContent) {
-              yield {
-                event: "messages/complete",
-                data: [{ type: "ai", content: finalContent }],
-              };
-            }
             return;
           }
 
@@ -69,35 +61,19 @@ async function* parseSSEStream(response: Response): AsyncGenerator<LangGraphMess
             const choice = parsed.choices?.[0];
             const delta = choice?.delta;
 
-            // Handle regular content
             if (delta?.content) {
               accumulatedContent += delta.content;
             }
-
-            // Handle reasoning_content (for thinking models like qwen3-thinking)
             if (delta?.reasoning_content) {
               accumulatedReasoning += delta.reasoning_content;
             }
 
-            // Yield partial message for streaming display
-            // Prefer content, fall back to reasoning if no content yet
             const displayContent = accumulatedContent || accumulatedReasoning;
             if (displayContent) {
-              yield {
-                event: "messages/partial",
-                data: [{ type: "ai", content: displayContent }],
-              };
+              yield displayContent;
             }
 
-            // Check if stream is complete
             if (choice?.finish_reason) {
-              const finalContent = accumulatedContent || accumulatedReasoning;
-              if (finalContent) {
-                yield {
-                  event: "messages/complete",
-                  data: [{ type: "ai", content: finalContent }],
-                };
-              }
               return;
             }
           } catch {
@@ -105,15 +81,6 @@ async function* parseSSEStream(response: Response): AsyncGenerator<LangGraphMess
           }
         }
       }
-    }
-
-    // Handle case where stream ends without [DONE] or finish_reason
-    const finalContent = accumulatedContent || accumulatedReasoning;
-    if (finalContent) {
-      yield {
-        event: "messages/complete",
-        data: [{ type: "ai", content: finalContent }],
-      };
     }
   } finally {
     reader.releaseLock();
@@ -126,57 +93,157 @@ export interface AgentCLIRuntimeConfig {
 }
 
 export function useAgentCLIRuntime(config: AgentCLIRuntimeConfig = {}) {
-  // Use a ref to always have the latest config in callbacks
-  // This avoids stale closure issues when config changes
   const configRef = useRef(config);
   configRef.current = config;
 
-  return useLangGraphRuntime({
-    // Load messages for an existing thread
-    load: async (threadId: string) => {
-      const res = await fetch(`${API_BASE}/v1/conversations/${threadId}`);
-      if (!res.ok) {
-        // Thread doesn't exist yet, return empty
-        return { messages: [] };
-      }
-      const data = await res.json();
-      const messages: LangChainMessage[] = (data.messages || []).map(toLangChainMessage);
-      return { messages };
-    },
+  const [threadId, setThreadId] = useState<string>(() => `chat-${Date.now()}`);
+  const [messages, setMessages] = useState<MessageWithId[]>([]);
+  const [isRunning, setIsRunning] = useState(false);
 
-    // Create a new thread
-    create: async () => {
-      const newId = `chat-${Date.now()}`;
-      // The backend creates conversations lazily on first message,
-      // so we just return the new ID
-      return { externalId: newId };
-    },
+  // Track the streaming assistant message ID
+  const streamingMessageIdRef = useRef<string | null>(null);
 
-    // Stream a message to the backend
-    stream: async function* (messages: LangChainMessage[], { initialize }) {
-      const { externalId } = await initialize();
-      if (!externalId) throw new Error("Thread not found");
+  // Convert messages to assistant-ui format
+  const threadMessages = useExternalMessageConverter({
+    callback: useCallback((msg: MessageWithId) => toThreadMessage(msg), []),
+    messages,
+    isRunning,
+  });
 
-      // Convert messages to OpenAI format for the API
-      const openAIMessages = messages.map(toOpenAIMessage);
+  // Handle new message from user
+  const onNew = useCallback(async (message: AppendMessage) => {
+    const textParts = message.content.filter((p) => p.type === "text");
+    const userText = textParts.map((p) => p.text).join("\n");
+    if (!userText.trim()) return;
+
+    // Create user message with unique ID
+    const userMessage: MessageWithId = {
+      id: generateMessageId(),
+      role: "user",
+      content: userText,
+    };
+
+    // Create assistant message placeholder with unique ID
+    const assistantMessageId = generateMessageId();
+    streamingMessageIdRef.current = assistantMessageId;
+
+    setMessages((prev) => [...prev, userMessage]);
+    setIsRunning(true);
+
+    try {
+      // Get current messages for API call (need to include the new user message)
+      const apiMessages = [...messages, userMessage].map((m) => ({
+        role: m.role,
+        content: m.content,
+      }));
 
       const response = await fetch(`${API_BASE}/v1/chat/completions`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          messages: openAIMessages,
-          memory_id: externalId,
-          model: configRef.current.model, // Required by backend
+          messages: apiMessages,
+          memory_id: threadId,
+          model: configRef.current.model,
           stream: true,
           memory_top_k: configRef.current.memoryTopK || 5,
         }),
       });
 
       if (!response.ok) {
-        throw new Error(`Chat API error: ${response.status}`);
+        throw new Error(`API error: ${response.status}`);
       }
 
-      yield* parseSSEStream(response);
-    },
+      // Stream the response
+      let assistantContent = "";
+      for await (const chunk of parseSSEStream(response)) {
+        assistantContent = chunk;
+        // Update or add the assistant message
+        setMessages((prev) => {
+          const lastMsg = prev[prev.length - 1];
+          if (lastMsg?.id === assistantMessageId) {
+            // Update existing streaming message
+            return [
+              ...prev.slice(0, -1),
+              { ...lastMsg, content: assistantContent },
+            ];
+          } else {
+            // Add new assistant message
+            return [
+              ...prev,
+              { id: assistantMessageId, role: "assistant", content: assistantContent },
+            ];
+          }
+        });
+      }
+
+      // Ensure final message is set
+      if (assistantContent) {
+        setMessages((prev) => {
+          const lastMsg = prev[prev.length - 1];
+          if (lastMsg?.id === assistantMessageId) {
+            return [
+              ...prev.slice(0, -1),
+              { ...lastMsg, content: assistantContent },
+            ];
+          }
+          return prev;
+        });
+      }
+    } catch (error) {
+      console.error("Error streaming message:", error);
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: assistantMessageId,
+          role: "assistant",
+          content: `Error: ${error instanceof Error ? error.message : "Unknown error"}`,
+        },
+      ]);
+    } finally {
+      setIsRunning(false);
+      streamingMessageIdRef.current = null;
+    }
+  }, [messages, threadId]);
+
+  // Create a new thread
+  const switchToNewThread = useCallback(() => {
+    setThreadId(`chat-${Date.now()}`);
+    setMessages([]);
+    setIsRunning(false);
+  }, []);
+
+  // Switch to existing thread
+  const switchToThread = useCallback(async (externalId: string) => {
+    try {
+      const res = await fetch(`${API_BASE}/v1/conversations/${externalId}`);
+      if (res.ok) {
+        const data = await res.json();
+        const msgs: MessageWithId[] = (data.messages || []).map(
+          (m: { role: string; content: string }, idx: number) => ({
+            id: `loaded-${idx}-${Date.now()}`,
+            role: m.role,
+            content: m.content,
+          })
+        );
+        setThreadId(externalId);
+        setMessages(msgs);
+      } else {
+        setThreadId(externalId);
+        setMessages([]);
+      }
+    } catch (error) {
+      console.error("Error loading thread:", error);
+      setThreadId(externalId);
+      setMessages([]);
+    }
+    setIsRunning(false);
+  }, []);
+
+  return useExternalStoreRuntime({
+    isRunning,
+    messages: threadMessages,
+    onNew,
+    onSwitchToNewThread: switchToNewThread,
+    onSwitchToThread: switchToThread,
   });
 }

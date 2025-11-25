@@ -10,6 +10,8 @@
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview",
     "test": "vitest",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
     "electron:build": "bun build electron/main.ts --outfile=dist-main/main.js --target=node && bun build electron/preload.ts --outfile=dist-main/preload.js --target=node",
     "electron:start": "electron .",
     "dev:electron": "concurrently \"bun run dev\" \"wait-on tcp:5173 && bun run electron:build && VITE_DEV_SERVER_URL=http://localhost:5173 bun run electron:start\""
@@ -28,6 +30,7 @@
     "remark-gfm": "^4.0.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.56.1",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.0",
