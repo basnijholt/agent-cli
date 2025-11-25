@@ -38,6 +38,7 @@ async function* parseSSEStream(response: Response): AsyncGenerator<LangGraphMess
   const decoder = new TextDecoder();
   let buffer = "";
   let accumulatedContent = "";
+  let accumulatedReasoning = "";
 
   try {
     while (true) {
@@ -52,11 +53,12 @@ async function* parseSSEStream(response: Response): AsyncGenerator<LangGraphMess
         if (line.startsWith("data: ")) {
           const data = line.slice(6).trim();
           if (data === "[DONE]") {
-            // Final message
-            if (accumulatedContent) {
+            // Final message - combine reasoning and content
+            const finalContent = accumulatedContent || accumulatedReasoning;
+            if (finalContent) {
               yield {
                 event: "messages/complete",
-                data: [{ type: "ai", content: accumulatedContent }],
+                data: [{ type: "ai", content: finalContent }],
               };
             }
             return;
@@ -64,20 +66,54 @@ async function* parseSSEStream(response: Response): AsyncGenerator<LangGraphMess
 
           try {
             const parsed = JSON.parse(data);
-            const delta = parsed.choices?.[0]?.delta?.content;
-            if (delta) {
-              accumulatedContent += delta;
-              // Yield partial message for streaming display
+            const choice = parsed.choices?.[0];
+            const delta = choice?.delta;
+
+            // Handle regular content
+            if (delta?.content) {
+              accumulatedContent += delta.content;
+            }
+
+            // Handle reasoning_content (for thinking models like qwen3-thinking)
+            if (delta?.reasoning_content) {
+              accumulatedReasoning += delta.reasoning_content;
+            }
+
+            // Yield partial message for streaming display
+            // Prefer content, fall back to reasoning if no content yet
+            const displayContent = accumulatedContent || accumulatedReasoning;
+            if (displayContent) {
               yield {
                 event: "messages/partial",
-                data: [{ type: "ai", content: accumulatedContent }],
+                data: [{ type: "ai", content: displayContent }],
               };
+            }
+
+            // Check if stream is complete
+            if (choice?.finish_reason) {
+              const finalContent = accumulatedContent || accumulatedReasoning;
+              if (finalContent) {
+                yield {
+                  event: "messages/complete",
+                  data: [{ type: "ai", content: finalContent }],
+                };
+              }
+              return;
             }
           } catch {
             // Skip invalid JSON
           }
         }
       }
+    }
+
+    // Handle case where stream ends without [DONE] or finish_reason
+    const finalContent = accumulatedContent || accumulatedReasoning;
+    if (finalContent) {
+      yield {
+        event: "messages/complete",
+        data: [{ type: "ai", content: finalContent }],
+      };
     }
   } finally {
     reader.releaseLock();
