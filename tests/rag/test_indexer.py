@@ -8,7 +8,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from watchfiles import Change
 
-from agent_cli.rag import indexer
+from agent_cli.rag import _indexer
 
 
 @pytest.mark.asyncio
@@ -42,11 +42,11 @@ async def test_watch_docs(tmp_path: Path) -> None:
             handler(change, Path(path))
 
     with (
-        patch("agent_cli.rag.indexer.watch_directory", side_effect=fake_watch_directory),
-        patch("agent_cli.rag.indexer.index_file") as mock_index,
-        patch("agent_cli.rag.indexer.remove_file") as mock_remove,
+        patch("agent_cli.rag._indexer.watch_directory", side_effect=fake_watch_directory),
+        patch("agent_cli.rag._indexer.index_file") as mock_index,
+        patch("agent_cli.rag._indexer.remove_file") as mock_remove,
     ):
-        await indexer.watch_docs(mock_collection, docs_folder, file_hashes)
+        await _indexer.watch_docs(mock_collection, docs_folder, file_hashes)
 
         # Check calls
         assert mock_index.call_count == 2  # added and modified
@@ -77,9 +77,9 @@ async def test_watch_docs_ignore_dotfiles(tmp_path: Path) -> None:
             handler(change, Path(path))
 
     with (
-        patch("agent_cli.rag.indexer.watch_directory", side_effect=fake_watch_directory),
-        patch("agent_cli.rag.indexer.index_file") as mock_index,
+        patch("agent_cli.rag._indexer.watch_directory", side_effect=fake_watch_directory),
+        patch("agent_cli.rag._indexer.index_file") as mock_index,
     ):
-        await indexer.watch_docs(mock_collection, docs_folder, file_hashes)
+        await _indexer.watch_docs(mock_collection, docs_folder, file_hashes)
 
         mock_index.assert_not_called()

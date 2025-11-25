@@ -2,13 +2,13 @@
 
 from unittest.mock import MagicMock, patch
 
-from agent_cli.rag import retriever
+from agent_cli.rag import _retriever
 
 
 def test_get_reranker_model_installed() -> None:
     """Test loading reranker when installed."""
-    with patch("agent_cli.rag.retriever.OnnxCrossEncoder") as mock_ce:
-        retriever.get_reranker_model()
+    with patch("agent_cli.rag._retriever.OnnxCrossEncoder") as mock_ce:
+        _retriever.get_reranker_model()
         mock_ce.assert_called_once()
 
 
@@ -31,7 +31,7 @@ def test_search_context() -> None:
     # Mock reranker scores
     mock_reranker.predict.return_value = [-1.0, 5.0]
 
-    result = retriever.search_context(mock_collection, mock_reranker, "query", top_k=1)
+    result = _retriever.search_context(mock_collection, mock_reranker, "query", top_k=1)
 
     # Should return doc2 because it has higher score
     assert "doc2" in result.context
@@ -47,7 +47,7 @@ def test_search_context_empty() -> None:
 
     mock_collection.query.return_value = {"documents": []}
 
-    result = retriever.search_context(mock_collection, mock_reranker, "query")
+    result = _retriever.search_context(mock_collection, mock_reranker, "query")
 
     assert result.context == ""
     assert result.sources == []

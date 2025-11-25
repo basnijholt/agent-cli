@@ -589,7 +589,10 @@ def test_transcribe_command_last_recording_disabled(
         lambda idx: recording_file if idx == 1 else None,
     )
 
-    with patch("agent_cli.agents.transcribe.asyncio.run") as mock_run:
+    with (
+        patch("agent_cli.agents.transcribe.asyncio.run") as mock_run,
+        patch("agent_cli.core.process.pid_file_context") as mock_pid_context,
+    ):
         # Call transcribe with --last-recording disabled (0)
         transcribe.transcribe(
             last_recording=0,  # Disabled
@@ -628,6 +631,7 @@ def test_transcribe_command_last_recording_disabled(
 
         # Verify _async_main was called for normal recording (not from file)
         mock_run.assert_called_once()
+        mock_pid_context.assert_called_once_with("transcribe")
         call_args = mock_run.call_args[0][0]
         # Should be normal recording mode, not file mode
         assert call_args.__name__ == "_async_main"
