@@ -1,4 +1,4 @@
-"""RagIndex - Composable RAG abstraction for indexing and search."""
+"""RagClient - Composable RAG abstraction for indexing and search."""
 
 from __future__ import annotations
 
@@ -23,10 +23,10 @@ if TYPE_CHECKING:
 
     from agent_cli.rag._retriever import OnnxCrossEncoder
 
-logger = logging.getLogger("agent_cli.rag.index")
+logger = logging.getLogger("agent_cli.rag.client")
 
 
-class RagIndex:
+class RagClient:
     """A composable RAG index for adding documents and searching.
 
     Designed for building personal knowledge systems. Supports:
@@ -36,7 +36,7 @@ class RagIndex:
     - Delete by ID or metadata filter
 
     Example:
-        index = RagIndex(chroma_path=Path("./my_index"))
+        index = RagClient(chroma_path=Path("./my_index"))
         index.add("User asked about Python", metadata={"source": "chatgpt"})
         results = index.search("Python", filters={"source": "chatgpt"})
 
