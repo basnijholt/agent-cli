@@ -145,11 +145,24 @@ class MemoryClient:
         model: str = DEFAULT_OPENAI_MODEL,
         recency_weight: float | None = None,
         score_threshold: float | None = None,
+        filters: dict[str, Any] | None = None,
     ) -> MemoryRetrieval:
-        """Search for memories relevant to a query."""
-        # We reuse augment_chat_request because it handles query rewriting,
-        # consolidation, and retrieval logic (Rerank + MMR).
-        # We create a dummy ChatRequest just to pass the query.
+        """Search for memories relevant to a query.
+
+        Args:
+            query: The search query text.
+            conversation_id: Conversation scope for the search.
+            top_k: Number of results to return.
+            model: Model for any LLM operations.
+            recency_weight: Weight for recency scoring (0-1).
+            score_threshold: Minimum relevance score threshold.
+            filters: Optional metadata filters. Examples:
+                - {"role": "user"} - exact match
+                - {"created_at": {"gte": "2024-01-01"}} - comparison
+                - {"$or": [{"role": "user"}, {"role": "assistant"}]} - logical OR
+                Operators: eq, ne, gt, gte, lt, lte, in, nin
+
+        """
         dummy_request = ChatRequest(
             messages=[Message(role="user", content=query)],
             model=model,
@@ -168,6 +181,7 @@ class MemoryClient:
             score_threshold=score_threshold
             if score_threshold is not None
             else self.score_threshold,
+            filters=filters,
         )
         return retrieval or MemoryRetrieval(entries=[])
 
@@ -181,9 +195,22 @@ class MemoryClient:
         memory_top_k: int | None = None,
         recency_weight: float | None = None,
         score_threshold: float | None = None,
+        filters: dict[str, Any] | None = None,
     ) -> Any:
-        """Process a chat request (Augment -> LLM -> Update Memory)."""
-        # Ensure messages are in the format expected by ChatRequest
+        """Process a chat request (Augment -> LLM -> Update Memory).
+
+        Args:
+            messages: Chat messages.
+            conversation_id: Conversation scope.
+            model: LLM model to use.
+            stream: Whether to stream the response.
+            api_key: Optional API key override.
+            memory_top_k: Number of memories to retrieve.
+            recency_weight: Weight for recency scoring (0-1).
+            score_threshold: Minimum relevance score threshold.
+            filters: Optional metadata filters for memory retrieval.
+
+        """
         req = ChatRequest(
             messages=messages,  # type: ignore[arg-type]
             model=model,
@@ -211,4 +238,5 @@ class MemoryClient:
             else self.score_threshold,
             postprocess_in_background=True,
             enable_git_versioning=self.enable_git_versioning,
+            filters=filters,
         )

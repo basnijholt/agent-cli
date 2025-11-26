@@ -226,6 +226,7 @@ async def test_retrieve_memory_prefers_diversity_and_adds_summaries(
         conversation_id: str,
         text: str,  # noqa: ARG001
         n_results: int,  # noqa: ARG001
+        filters: dict[str, Any] | None = None,  # noqa: ARG001
     ) -> list[StoredMemory]:
         nonlocal call_count
         call_count += 1

@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 import math
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from agent_cli.memory._store import get_summary_entry, query_memories
 from agent_cli.memory.models import (
@@ -136,6 +136,7 @@ def retrieve_memory(
     mmr_lambda: float = _DEFAULT_MMR_LAMBDA,
     recency_weight: float = 0.2,
     score_threshold: float = 0.35,
+    filters: dict[str, Any] | None = None,
 ) -> tuple[MemoryRetrieval, list[str]]:
     """Execute search + rerank + recency + MMR."""
     candidate_conversations = [conversation_id]
@@ -146,7 +147,13 @@ def retrieve_memory(
     seen_ids: set[str] = set()
 
     for cid in candidate_conversations:
-        records = query_memories(collection, conversation_id=cid, text=query, n_results=top_k * 3)
+        records = query_memories(
+            collection,
+            conversation_id=cid,
+            text=query,
+            n_results=top_k * 3,
+            filters=filters,
+        )
         for rec in records:
             rec_id = rec.id
             if rec_id in seen_ids:
@@ -229,6 +236,7 @@ async def augment_chat_request(
     mmr_lambda: float = _DEFAULT_MMR_LAMBDA,
     recency_weight: float = 0.2,
     score_threshold: float = 0.35,
+    filters: dict[str, Any] | None = None,
 ) -> tuple[ChatRequest, MemoryRetrieval | None, str, list[str]]:
     """Retrieve memory context and augment the chat request."""
     user_message = next(
@@ -255,6 +263,7 @@ async def augment_chat_request(
         mmr_lambda=mmr_lambda,
         recency_weight=recency_weight,
         score_threshold=score_threshold,
+        filters=filters,
     )
 
     if not retrieval.entries and not summaries:
