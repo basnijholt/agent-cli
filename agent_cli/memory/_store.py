@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Any
 from agent_cli.constants import DEFAULT_OPENAI_EMBEDDING_MODEL
 from agent_cli.core.chroma import delete as delete_docs
 from agent_cli.core.chroma import init_collection, upsert
+from agent_cli.memory._filters import to_chroma_where
 from agent_cli.memory.models import MemoryMetadata, StoredMemory
 
 if TYPE_CHECKING:
@@ -51,16 +52,21 @@ def query_memories(
     conversation_id: str,
     text: str,
     n_results: int,
+    filters: dict[str, Any] | None = None,
 ) -> list[StoredMemory]:
     """Query for relevant memory entries and return structured results."""
-    filters = [
+    base_filters: list[dict[str, Any]] = [
         {"conversation_id": conversation_id},
         {"role": {"$ne": "summary"}},
     ]
+    if filters:
+        chroma_filters = to_chroma_where(filters)
+        if chroma_filters:
+            base_filters.append(chroma_filters)
     raw = collection.query(
         query_texts=[text],
         n_results=n_results,
-        where={"$and": filters},
+        where={"$and": base_filters},
         include=["documents", "metadatas", "distances", "embeddings"],
     )
     docs_list = raw.get("documents")

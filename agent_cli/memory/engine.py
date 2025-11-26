@@ -239,6 +239,7 @@ async def process_chat_request(
     score_threshold: float = 0.35,
     postprocess_in_background: bool = True,
     enable_git_versioning: bool = False,
+    filters: dict[str, Any] | None = None,
 ) -> Any:
     """Process a chat request with long-term memory support."""
     overall_start = perf_counter()
@@ -252,6 +253,7 @@ async def process_chat_request(
         mmr_lambda=mmr_lambda,
         recency_weight=recency_weight,
         score_threshold=score_threshold,
+        filters=filters,
     )
     retrieval_ms = _elapsed_ms(retrieval_start)
     hit_count = len(retrieval.entries) if retrieval else 0
