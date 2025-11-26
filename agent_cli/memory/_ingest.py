@@ -195,6 +195,7 @@ async def reconcile_facts(
     payload_obj = {"existing": existing_json, "new_facts": new_facts}
     payload = json.dumps(payload_obj, ensure_ascii=False, indent=2)
     LOGGER.info("Reconcile payload JSON: %s", payload)
+    LOGGER.debug("Reconcile system prompt:\n%s", UPDATE_MEMORY_PROMPT)
     try:
         result = await agent.run(payload)
         decisions = result.output
@@ -300,6 +301,7 @@ async def extract_and_store_facts_and_summaries(
     enable_git_versioning: bool = False,
     source_id: str | None = None,
     enable_summarization: bool = True,
+    enable_reconciliation: bool = True,
 ) -> None:
     """Run fact extraction and summary updates, persisting results."""
     fact_start = perf_counter()
@@ -319,16 +321,33 @@ async def extract_and_store_facts_and_summaries(
         _elapsed_ms(fact_start),
         conversation_id,
     )
-    to_add, to_delete, replacement_map = await reconcile_facts(
-        collection,
-        conversation_id,
-        facts,
-        source_id=effective_source_id,
-        created_at=fact_created_at,
-        openai_base_url=openai_base_url,
-        api_key=api_key,
-        model=model,
-    )
+    if enable_reconciliation:
+        to_add, to_delete, replacement_map = await reconcile_facts(
+            collection,
+            conversation_id,
+            facts,
+            source_id=effective_source_id,
+            created_at=fact_created_at,
+            openai_base_url=openai_base_url,
+            api_key=api_key,
+            model=model,
+        )
+    else:
+        # Skip reconciliation - just add all extracted facts
+        LOGGER.info("Reconciliation disabled; adding all %d facts directly", len(facts))
+        to_add = [
+            Fact(
+                id=str(uuid4()),
+                conversation_id=conversation_id,
+                content=f,
+                source_id=effective_source_id,
+                created_at=fact_created_at,
+            )
+            for f in facts
+            if f.strip()
+        ]
+        to_delete = []
+        replacement_map = {}
 
     if to_delete:
         delete_entries(collection, ids=list(to_delete))

@@ -52,8 +52,10 @@ class MemoryClient:
         score_threshold: float = 0.35,
         start_watcher: bool = False,
         enable_git_versioning: bool = True,
+        enable_reconciliation: bool = True,
     ) -> None:
         """Initialize the memory client."""
+        self.enable_reconciliation = enable_reconciliation
         self.memory_path = memory_path.resolve()
         self.openai_base_url = openai_base_url.rstrip("/")
         self.chat_api_key = chat_api_key
@@ -134,6 +136,7 @@ class MemoryClient:
             model=model,
             enable_git_versioning=self.enable_git_versioning,
             enable_summarization=self.enable_summarization,
+            enable_reconciliation=self.enable_reconciliation,
         )
         evict_if_needed(self.collection, self.memory_path, conversation_id, self.max_entries)
 
