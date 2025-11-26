@@ -13,6 +13,61 @@ if TYPE_CHECKING:
 # Configure logging
 LOGGER = logging.getLogger(__name__)
 
+# Non-hidden directories to ignore (hidden dirs already caught by startswith(".") check)
+DEFAULT_IGNORE_DIRS: frozenset[str] = frozenset(
+    {
+        "__pycache__",
+        "venv",
+        "env",
+        "htmlcov",
+        "node_modules",
+        "build",
+        "dist",
+    },
+)
+
+# Non-hidden files to ignore (hidden files already caught by startswith(".") check)
+DEFAULT_IGNORE_FILES: frozenset[str] = frozenset(
+    {
+        "Thumbs.db",
+    },
+)
+
+
+def should_ignore_path(path: Path, base_folder: Path) -> bool:
+    """Check if a path should be ignored during indexing.
+
+    Ignores:
+    - Any path component starting with '.' (hidden files/dirs)
+    - Common development directories (__pycache__, node_modules, venv, etc.)
+    - .egg-info directories
+    - OS metadata files (Thumbs.db)
+
+    Args:
+        path: The file path to check.
+        base_folder: The base folder for computing relative paths.
+
+    Returns:
+        True if the path should be ignored, False otherwise.
+
+    """
+    rel_parts = path.relative_to(base_folder).parts
+
+    for part in rel_parts:
+        # Hidden files/directories (starting with .)
+        if part.startswith("."):
+            return True
+        # Common ignore directories
+        if part in DEFAULT_IGNORE_DIRS:
+            return True
+        # .egg-info directories
+        if part.endswith(".egg-info"):
+            return True
+
+    # Check specific file patterns
+    return path.name in DEFAULT_IGNORE_FILES
+
+
 # Files to read as plain text directly (fast path)
 TEXT_EXTENSIONS = {
     ".txt",

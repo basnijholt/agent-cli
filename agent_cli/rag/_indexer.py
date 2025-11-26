@@ -9,6 +9,7 @@ from watchfiles import Change
 
 from agent_cli.core.watch import watch_directory
 from agent_cli.rag._indexing import index_file, remove_file
+from agent_cli.rag._utils import should_ignore_path
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -29,6 +30,7 @@ async def watch_docs(
     await watch_directory(
         docs_folder,
         lambda change, path: _handle_change(change, path, collection, docs_folder, file_hashes),
+        ignore_filter=should_ignore_path,
     )
 
 
