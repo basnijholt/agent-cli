@@ -14,7 +14,7 @@ from agent_cli.memory._store import (
     get_summary_at_level,
     upsert_hierarchical_summary,
 )
-from agent_cli.summarizer import AdaptiveSummarizer, SummaryLevel, SummaryResult
+from agent_cli.summarizer import SummaryLevel, SummaryResult, determine_level
 from agent_cli.summarizer.models import ChunkSummary, HierarchicalSummary
 
 if TYPE_CHECKING:
@@ -401,40 +401,32 @@ class TestFilePersistence:
         assert deleted_dir.exists()
 
 
-class TestAdaptiveSummarizerLevelDetermination:
-    """Test that AdaptiveSummarizer correctly determines summary levels."""
+class TestDetermineLevelFunction:
+    """Test that determine_level correctly determines summary levels."""
 
-    @pytest.fixture
-    def summarizer(self) -> AdaptiveSummarizer:
-        """Create an AdaptiveSummarizer instance."""
-        return AdaptiveSummarizer(
-            openai_base_url="http://localhost:8000/v1",
-            model="test-model",
-        )
-
-    def test_very_short_content_is_none(self, summarizer: AdaptiveSummarizer) -> None:
+    def test_very_short_content_is_none(self) -> None:
         """Test that content under 100 tokens gets NONE level."""
-        level = summarizer.determine_level(50)
+        level = determine_level(50)
         assert level == SummaryLevel.NONE
 
-    def test_short_content_is_brief(self, summarizer: AdaptiveSummarizer) -> None:
+    def test_short_content_is_brief(self) -> None:
         """Test that 100-500 token content gets BRIEF level."""
-        level = summarizer.determine_level(300)
+        level = determine_level(300)
         assert level == SummaryLevel.BRIEF
 
-    def test_medium_content_is_standard(self, summarizer: AdaptiveSummarizer) -> None:
+    def test_medium_content_is_standard(self) -> None:
         """Test that 500-3000 token content gets STANDARD level."""
-        level = summarizer.determine_level(1500)
+        level = determine_level(1500)
         assert level == SummaryLevel.STANDARD
 
-    def test_long_content_is_detailed(self, summarizer: AdaptiveSummarizer) -> None:
+    def test_long_content_is_detailed(self) -> None:
         """Test that 3000-15000 token content gets DETAILED level."""
-        level = summarizer.determine_level(8000)
+        level = determine_level(8000)
         assert level == SummaryLevel.DETAILED
 
-    def test_very_long_content_is_hierarchical(self, summarizer: AdaptiveSummarizer) -> None:
+    def test_very_long_content_is_hierarchical(self) -> None:
         """Test that content over 15000 tokens gets HIERARCHICAL level."""
-        level = summarizer.determine_level(25000)
+        level = determine_level(25000)
         assert level == SummaryLevel.HIERARCHICAL
 
 
@@ -444,7 +436,8 @@ class TestSummarizeContentFunction:
     @pytest.mark.asyncio
     async def test_summarize_content_creates_result(self) -> None:
         """Test that summarize_content returns a valid SummaryResult."""
-        with patch.object(AdaptiveSummarizer, "summarize") as mock_summarize:
+        # Patch at source since _ingest imports inside the function
+        with patch("agent_cli.summarizer.summarize") as mock_summarize:
             mock_result = SummaryResult(
                 level=SummaryLevel.STANDARD,
                 summary="Mocked summary.",

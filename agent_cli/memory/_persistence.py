@@ -210,7 +210,7 @@ def persist_hierarchical_summary(
         collection: ChromaDB collection.
         memory_root: Root path for memory files.
         conversation_id: The conversation this summary belongs to.
-        summary_result: The result from AdaptiveSummarizer.summarize().
+        summary_result: The result from summarize().
 
     Returns:
         List of IDs that were stored.
