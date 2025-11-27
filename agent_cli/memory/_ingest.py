@@ -335,9 +335,8 @@ async def summarize_content(
 ) -> SummaryResult:
     """Adaptively summarize content based on its length.
 
-    Uses the AdaptiveSummarizer to automatically select the appropriate
-    summarization strategy (NONE, BRIEF, STANDARD, DETAILED, HIERARCHICAL)
-    based on input token count.
+    Automatically selects the appropriate summarization strategy
+    (NONE, BRIEF, STANDARD, DETAILED, HIERARCHICAL) based on input token count.
 
     Args:
         content: The content to summarize.
@@ -352,15 +351,16 @@ async def summarize_content(
 
     """
     # Import here to avoid circular imports and allow optional dependency
-    from agent_cli.summarizer import AdaptiveSummarizer  # noqa: PLC0415
+    from agent_cli.summarizer import SummarizerConfig, summarize  # noqa: PLC0415
 
-    summarizer = AdaptiveSummarizer(
+    config = SummarizerConfig(
         openai_base_url=openai_base_url,
         model=model,
         api_key=api_key,
     )
-    return await summarizer.summarize(
+    return await summarize(
         content=content,
+        config=config,
         prior_summary=prior_summary,
         content_type=content_type,
     )
