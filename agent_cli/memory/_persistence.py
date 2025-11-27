@@ -24,7 +24,7 @@ from agent_cli.memory._store import (
     upsert_hierarchical_summary,
     upsert_memories,
 )
-from agent_cli.memory.entities import Fact, Summary, Turn
+from agent_cli.memory.entities import Fact, Turn
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -87,31 +87,6 @@ def persist_entries(
 
     if ids:
         upsert_memories(collection, ids=ids, contents=contents, metadatas=metadatas)
-
-
-def persist_summary(
-    collection: Collection,
-    *,
-    memory_root: Path,
-    summary: Summary,
-) -> None:
-    """Persist a summary to disk and Chroma."""
-    doc_id = _safe_identifier(f"{summary.conversation_id}{_SUMMARY_DOC_ID_SUFFIX}-summary")
-    record = write_memory_file(
-        memory_root,
-        conversation_id=summary.conversation_id,
-        role="summary",
-        created_at=summary.created_at.isoformat(),
-        content=summary.content,
-        summary_kind="summary",
-        doc_id=doc_id,
-    )
-    upsert_memories(
-        collection,
-        ids=[record.id],
-        contents=[record.content],
-        metadatas=[record.metadata],
-    )
 
 
 def delete_memory_files(

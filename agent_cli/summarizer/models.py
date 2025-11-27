@@ -190,6 +190,7 @@ class SummaryResult(BaseModel):
                         "role": "summary",
                         "level": HIERARCHICAL_LEVEL_L3,
                         "is_final": True,
+                        "summary_level": self.level.name,
                         "input_tokens": self.input_tokens,
                         "output_tokens": self.output_tokens,
                         "compression_ratio": self.compression_ratio,

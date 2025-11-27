@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, field_validator
+from pydantic import BaseModel, ConfigDict
 
 
 class Message(BaseModel):
@@ -68,20 +68,6 @@ class MemoryMetadata(BaseModel):
     """Ratio of output to input tokens (L3 only)."""
     summary_level_name: str | None = None
     """Name of the SummaryLevel enum used (e.g., 'STANDARD', 'HIERARCHICAL')."""
-
-
-class SummaryOutput(BaseModel):
-    """Structured summary returned by the LLM."""
-
-    summary: str
-
-    @field_validator("summary")
-    @classmethod
-    def _not_empty(cls, v: str) -> str:
-        if not v or not str(v).strip():
-            msg = "field must be non-empty"
-            raise ValueError(msg)
-        return str(v).strip()
 
 
 class StoredMemory(BaseModel):

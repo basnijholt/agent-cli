@@ -111,31 +111,6 @@ def query_memories(
     return records
 
 
-def get_summary_entry(
-    collection: Collection,
-    conversation_id: str,
-    *,
-    role: str = "summary",
-) -> StoredMemory | None:
-    """Return the latest summary entry for a conversation, if present."""
-    result = collection.get(
-        where={"$and": [{"conversation_id": conversation_id}, {"role": role}]},
-    )
-    docs = result.get("documents") or []
-    metas = result.get("metadatas") or []
-    ids = result.get("ids") or []
-
-    if not docs or not metas or not ids:
-        return None
-
-    return StoredMemory(
-        id=ids[0],
-        content=docs[0],
-        metadata=MemoryMetadata(**dict(metas[0])),
-        distance=None,
-    )
-
-
 def list_conversation_entries(
     collection: Collection,
     conversation_id: str,

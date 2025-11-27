@@ -21,24 +21,21 @@ from agent_cli.memory._persistence import (
     delete_memory_files,
     persist_entries,
     persist_hierarchical_summary,
-    persist_summary,
 )
 from agent_cli.memory._prompt import (
     FACT_INSTRUCTIONS,
     FACT_SYSTEM_PROMPT,
-    SUMMARY_PROMPT,
     UPDATE_MEMORY_PROMPT,
 )
 from agent_cli.memory._retrieval import gather_relevant_existing_memories
-from agent_cli.memory._store import delete_entries, get_summary_entry
-from agent_cli.memory.entities import Fact, Summary
+from agent_cli.memory._store import delete_entries, get_final_summary
+from agent_cli.memory.entities import Fact
 from agent_cli.memory.models import (
     MemoryAdd,
     MemoryDecision,
     MemoryDelete,
     MemoryIgnore,
     MemoryUpdate,
-    SummaryOutput,
 )
 
 if TYPE_CHECKING:
@@ -49,8 +46,6 @@ if TYPE_CHECKING:
     from agent_cli.summarizer import SummaryResult
 
 LOGGER = logging.getLogger(__name__)
-
-_SUMMARY_ROLE = "summary"
 
 
 def _elapsed_ms(start: float) -> float:
@@ -290,40 +285,6 @@ New facts to process:
     return to_add, to_delete, replacement_map
 
 
-async def update_summary(
-    *,
-    prior_summary: str | None,
-    new_facts: list[str],
-    openai_base_url: str,
-    api_key: str | None,
-    model: str,
-    max_tokens: int = 256,
-) -> str | None:
-    """Update the conversation summary based on new facts.
-
-    This is the simple Mem0-style rolling summary that incrementally
-    updates based on new facts. For full content adaptive summarization,
-    use `summarize_content` instead.
-    """
-    if not new_facts:
-        return prior_summary
-    system_prompt = SUMMARY_PROMPT
-    user_parts: list[str] = []
-    if prior_summary:
-        user_parts.append(f"Previous summary:\n{prior_summary}")
-    user_parts.append("New facts:\n" + "\n".join(f"- {fact}" for fact in new_facts))
-    prompt_text = "\n\n".join(user_parts)
-    provider = OpenAIProvider(api_key=api_key or "dummy", base_url=openai_base_url)
-    model_cfg = OpenAIChatModel(
-        model_name=model,
-        provider=provider,
-        settings=ModelSettings(temperature=0.2, max_tokens=max_tokens),
-    )
-    agent = Agent(model=model_cfg, system_prompt=system_prompt, output_type=SummaryOutput)
-    result = await agent.run(prompt_text)
-    return result.output.summary or prior_summary
-
-
 async def summarize_content(
     *,
     content: str,
@@ -460,37 +421,34 @@ async def extract_and_store_facts_and_summaries(
             entries=list(to_add),
         )
 
-    if enable_summarization:
-        prior_summary_entry = get_summary_entry(
-            collection,
-            conversation_id,
-            role=_SUMMARY_ROLE,
-        )
+    if enable_summarization and facts:
+        # Get prior summary for context continuity
+        prior_summary_entry = get_final_summary(collection, conversation_id)
         prior_summary = prior_summary_entry.content if prior_summary_entry else None
 
+        # Summarize the new facts
+        content_to_summarize = "\n".join(facts)
         summary_start = perf_counter()
-        new_summary = await update_summary(
+        summary_result = await summarize_content(
+            content=content_to_summarize,
             prior_summary=prior_summary,
-            new_facts=facts,
+            content_type="conversation",
             openai_base_url=openai_base_url,
             api_key=api_key,
             model=model,
         )
         LOGGER.info(
-            "Summary update completed in %.1f ms (conversation=%s)",
+            "Summary update completed in %.1f ms (conversation=%s, level=%s)",
             _elapsed_ms(summary_start),
             conversation_id,
+            summary_result.level.name,
         )
-        if new_summary:
-            summary_obj = Summary(
-                conversation_id=conversation_id,
-                content=new_summary,
-                created_at=datetime.now(UTC),
-            )
-            persist_summary(
+        if summary_result.summary:
+            await store_adaptive_summary(
                 collection,
                 memory_root=memory_root,
-                summary=summary_obj,
+                conversation_id=conversation_id,
+                summary_result=summary_result,
             )
 
     if enable_git_versioning:
