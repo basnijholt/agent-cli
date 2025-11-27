@@ -135,8 +135,10 @@ async def test_rag_tool_execution_flow(
         )
 
     # Patch OpenAIModel to return our FunctionModel
+    import pydantic_ai.models.openai  # noqa: PLC0415
+
     monkeypatch.setattr(
-        engine,
+        pydantic_ai.models.openai,
         "OpenAIModel",
         lambda *_, **__: FunctionModel(agent_handler),
     )

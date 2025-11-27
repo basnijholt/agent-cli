@@ -9,7 +9,6 @@ from contextlib import asynccontextmanager, contextmanager
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Literal
 
-import sounddevice as sd
 from rich.text import Text
 
 from agent_cli import constants
@@ -23,6 +22,7 @@ from agent_cli.core.utils import (
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator, Awaitable, Callable, Generator
 
+    import sounddevice as sd
     from rich.live import Live
 
     from agent_cli import config
@@ -41,6 +41,8 @@ class StreamConfig:
 
     def to_stream(self) -> sd.Stream:
         """Create a SoundDevice stream from this configuration."""
+        import sounddevice as sd  # noqa: PLC0415
+
         if self.kind == "input":
             stream_cls = sd.InputStream
         elif self.kind == "output":
@@ -308,6 +310,8 @@ def _get_all_devices() -> list[dict]:
         List of device info dictionaries with added 'index' field
 
     """
+    import sounddevice as sd  # noqa: PLC0415
+
     devices = []
     try:
         query_result = sd.query_devices()

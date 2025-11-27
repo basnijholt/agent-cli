@@ -15,7 +15,7 @@ def _mock_sd_query_devices_with_cache_clear() -> None:
     audio._get_all_devices.cache_clear()
 
 
-@patch("agent_cli.core.audio.sd.query_devices")
+@patch("sounddevice.query_devices")
 def test_get_all_devices_caching(
     mock_query_devices: Mock,
     mock_audio_device_info: list[dict],
@@ -37,7 +37,7 @@ def test_get_all_devices_caching(
     mock_query_devices.assert_called_once()
 
 
-@patch("agent_cli.core.audio.sd.query_devices")
+@patch("sounddevice.query_devices")
 def test_list_input_devices(
     mock_query_devices: Mock,
     mock_audio_device_info: list[dict],
@@ -47,7 +47,7 @@ def test_list_input_devices(
     audio._list_input_devices()
 
 
-@patch("agent_cli.core.audio.sd.query_devices")
+@patch("sounddevice.query_devices")
 def test_list_output_devices(
     mock_query_devices: Mock,
     mock_audio_device_info: list[dict],
@@ -57,7 +57,7 @@ def test_list_output_devices(
     audio._list_output_devices()
 
 
-@patch("agent_cli.core.audio.sd.query_devices")
+@patch("sounddevice.query_devices")
 def test_list_all_devices(
     mock_query_devices: Mock,
     mock_audio_device_info: list[dict],
@@ -67,7 +67,7 @@ def test_list_all_devices(
     audio.list_all_devices()
 
 
-@patch("agent_cli.core.audio.sd.query_devices")
+@patch("sounddevice.query_devices")
 def test_input_device_by_index(
     mock_query_devices: Mock,
     mock_audio_device_info: list[dict],
@@ -86,7 +86,7 @@ def test_input_device_by_index(
     assert input_device_index == expected_device["index"]
 
 
-@patch("agent_cli.core.audio.sd.query_devices")
+@patch("sounddevice.query_devices")
 def test_input_device_by_name(
     mock_query_devices: Mock,
     mock_audio_device_info: list[dict],
@@ -105,7 +105,7 @@ def test_input_device_by_name(
     assert input_device_index == input_device["index"]
 
 
-@patch("agent_cli.core.audio.sd.query_devices")
+@patch("sounddevice.query_devices")
 def test_output_device_by_index(
     mock_query_devices: Mock,
     mock_audio_device_info: list[dict],
@@ -128,7 +128,7 @@ def test_output_device_by_index(
     assert input_device_index == expected_device["index"]
 
 
-@patch("agent_cli.core.audio.sd.query_devices")
+@patch("sounddevice.query_devices")
 def test_output_device_by_name(
     mock_query_devices: Mock,
     mock_audio_device_info: list[dict],
@@ -147,7 +147,7 @@ def test_output_device_by_name(
     assert input_device_index == output_device["index"]
 
 
-@patch("agent_cli.core.audio.sd.query_devices")
+@patch("sounddevice.query_devices")
 def test_input_device_invalid_index(
     mock_query_devices: Mock,
     mock_audio_device_info: list[dict],
@@ -162,7 +162,7 @@ def test_input_device_invalid_index(
         )
 
 
-@patch("agent_cli.core.audio.sd.query_devices")
+@patch("sounddevice.query_devices")
 def test_input_device_invalid_name(
     mock_query_devices: Mock,
     mock_audio_device_info: list[dict],
@@ -177,7 +177,7 @@ def test_input_device_invalid_name(
         )
 
 
-@patch("agent_cli.core.audio.sd.query_devices")
+@patch("sounddevice.query_devices")
 def test_output_device_invalid_name(
     mock_query_devices: Mock,
     mock_audio_device_info: list[dict],
@@ -192,8 +192,8 @@ def test_output_device_invalid_name(
         )
 
 
-@patch("agent_cli.core.audio.sd.InputStream")
-@patch("agent_cli.core.audio.sd.OutputStream")
+@patch("sounddevice.InputStream")
+@patch("sounddevice.OutputStream")
 def test_open_audio_stream_context_manager(
     mock_output_stream: Mock,
     mock_input_stream: Mock,
@@ -226,7 +226,7 @@ def test_open_audio_stream_context_manager(
         mock_output_stream.assert_called()
 
 
-@patch("agent_cli.core.audio.sd.query_devices")
+@patch("sounddevice.query_devices")
 def test_device_filtering_by_capabilities(
     mock_query_devices: Mock,
 ) -> None:

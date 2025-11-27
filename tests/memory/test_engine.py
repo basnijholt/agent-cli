@@ -367,7 +367,9 @@ async def test_process_chat_request_summarizes_and_persists(
         return entries, [], {}
 
     monkeypatch.setattr(_ingest, "reconcile_facts", fake_reconcile)
-    monkeypatch.setattr(_ingest.Agent, "run", fake_agent_run)
+    import pydantic_ai  # noqa: PLC0415
+
+    monkeypatch.setattr(pydantic_ai.Agent, "run", fake_agent_run)
     monkeypatch.setattr(_ingest, "summarize_content", fake_summarize_content)
     # High relevance so they aren't filtered
     monkeypatch.setattr(_retrieval, "predict_relevance", lambda _model, pairs: [5.0 for _ in pairs])
@@ -506,7 +508,9 @@ async def test_streaming_request_persists_user_and_assistant(
         return _Result([])
 
     monkeypatch.setattr(engine._streaming, "stream_chat_sse", fake_stream_chat_sse)
-    monkeypatch.setattr(_ingest.Agent, "run", fake_agent_run)
+    import pydantic_ai  # noqa: PLC0415
+
+    monkeypatch.setattr(pydantic_ai.Agent, "run", fake_agent_run)
 
     response = await engine.process_chat_request(
         request,
@@ -594,7 +598,9 @@ async def test_streaming_with_summarization_persists_facts_and_summaries(
         return entries, [], {}
 
     monkeypatch.setattr(_ingest, "reconcile_facts", fake_reconcile)
-    monkeypatch.setattr(_ingest.Agent, "run", fake_agent_run)
+    import pydantic_ai  # noqa: PLC0415
+
+    monkeypatch.setattr(pydantic_ai.Agent, "run", fake_agent_run)
     monkeypatch.setattr(_ingest, "summarize_content", fake_summarize_content)
 
     response = await engine.process_chat_request(
