@@ -20,7 +20,6 @@ Input Content ──▶ Token Count ──▶ Level Selection ──▶ Strategy
 **Design Goals:**
 
 - **Adaptive compression:** Match summarization depth to content complexity.
-- **Research-informed:** Draws techniques from Letta's memory management.
 - **Hierarchical structure:** Preserve detail at multiple granularities for large content.
 - **Content-type awareness:** Domain-specific prompts for conversations, journals, documents.
 
@@ -28,19 +27,45 @@ Input Content ──▶ Token Count ──▶ Level Selection ──▶ Strategy
 
 ## 2. Research Foundations
 
-### 2.1 Letta (MemGPT) Contributions
+This section documents what techniques are borrowed from research vs. what is original design.
 
-**Reference:** arXiv:2310.08560
-
-Letta's approach to memory management introduced the **partial eviction** technique adopted here: rather than discarding old content entirely, compress a portion to summaries while keeping recent content detailed. This maps to our hierarchical L1/L2/L3 structure where L1 preserves chunk-level detail and L3 provides high-level synthesis.
-
-### 2.2 Mem0 Contributions
+### 2.1 Borrowed: Two-Phase Architecture (Mem0)
 
 **Reference:** arXiv:2504.19413
 
-Mem0's memory layer research informed our storage architecture:
+Mem0's memory layer research informed our storage architecture with a **two-phase approach**: separate extraction (identifying what's important) from storage (how to persist it). We apply this by first generating summaries via LLM, then persisting results to both files and vector DB.
 
-- **Two-phase architecture:** Separate extraction (identifying what's important) from storage (how to persist it). We apply this by first generating summaries via LLM, then persisting results to both files and vector DB.
+### 2.2 Borrowed: Hierarchical Merging Concept (BOOOOKSCORE)
+
+**Reference:** arXiv:2310.00785 (ICLR 2024)
+
+BOOOOKSCORE's research on book-length summarization demonstrated two approaches:
+- **Hierarchical merging:** Summarize chunks, then merge chunk summaries
+- **Incremental updating:** Maintain a running summary updated with each chunk
+
+Key finding: For smaller context models (like local LLMs), hierarchical merging produces more coherent summaries. This informed our L1/L2/L3 structure.
+
+BOOOOKSCORE's defaults: chunk size of **2048 tokens**, max summary length of **900 tokens**.
+
+### 2.3 Not Directly Borrowed: Letta's Approach
+
+**Reference:** arXiv:2310.08560
+
+Letta (MemGPT) uses a different paradigm focused on **context window management**:
+- Message count thresholds (e.g., 10 messages), not token thresholds
+- 30% partial eviction when buffer overflows
+- Purpose: fit conversation in LLM context window
+
+Our system has a different purpose (memory compression for storage/retrieval), so while we were inspired by Letta's "partial eviction" concept, our implementation differs significantly.
+
+### 2.4 Original Design (Not Research-Backed)
+
+The following aspects are **original design choices without direct research justification**:
+
+- **Token thresholds (100/500/3000/15000):** These numbers were chosen heuristically, not derived from research. They may benefit from tuning.
+- **L1/L2/L3 hierarchy structure:** The three-level design is original. The naming was loosely inspired by aijournal's L1-L4 "context pack" levels, but those serve a different purpose (what to include in LLM context, not summarization levels).
+- **Chunk size (3000 tokens):** This is larger than BOOOOKSCORE's research-backed 2048 tokens. Consider reducing.
+- **L2 group size (5 chunks):** Chosen heuristically.
 
 ---
 
@@ -65,7 +90,7 @@ Mem0's memory layer research informed our storage architecture:
 | DETAILED | 3000-15000 | Chunked + meta-synthesis |
 | HIERARCHICAL | > 15000 | L1/L2/L3 tree |
 
-**Trade-off:** Fixed thresholds may not be optimal for all content types, but provide consistent, predictable behavior. Content-type prompts provide domain adaptation within each level.
+**Caveat:** These thresholds are heuristic, not research-backed. They should be validated empirically.
 
 ### 3.2 Hierarchical Summary Structure (L1/L2/L3)
 
@@ -73,7 +98,7 @@ Mem0's memory layer research informed our storage architecture:
 
 **Rationale:**
 
-- **Partial eviction:** Inspired by Letta—keep detailed summaries for granular retrieval, compressed summaries for context injection.
+- **Hierarchical merging:** Research (BOOOOKSCORE) shows this approach works well for smaller context models.
 - **Flexible retrieval:** Different use cases need different detail levels. RAG queries might want L1 chunks; prompt injection wants L3.
 - **Progressive compression:** Each level compresses the previous, achieving high overall compression while preserving structure.
 
@@ -177,7 +202,7 @@ The parallelism at L1 and L2 levels provides significant speedup for long conten
 
 The memory system triggers summarization during post-processing:
 
-1. Collect content to summarize (extracted facts, conversation turns)
+1. Collect raw conversation turns (user message + assistant message)
 2. Retrieve existing L3 summary as prior context
 3. Call summarizer with content + prior summary + content type
 4. Persist results: delete old summaries, write new files, upsert to ChromaDB
@@ -201,13 +226,13 @@ Summaries are persisted in two places:
 
 ## 6. Configuration
 
-| Parameter | Default | Description |
+| Parameter | Default | Research Comparison |
 | :--- | :--- | :--- |
-| `chunk_size` | 3000 | Target tokens per chunk |
-| `chunk_overlap` | 200 | Overlap between consecutive chunks |
-| `max_concurrent_chunks` | 5 | Parallel LLM calls for chunk summarization |
+| `chunk_size` | 3000 | BOOOOKSCORE uses 2048 |
+| `chunk_overlap` | 200 | No direct comparison |
+| `max_concurrent_chunks` | 5 | Implementation choice |
 
-Level thresholds are constants (100, 500, 3000, 15000 tokens) chosen based on empirical testing.
+Level thresholds (100, 500, 3000, 15000 tokens) are heuristic and not derived from published research.
 
 ---
 
@@ -220,3 +245,14 @@ Summarization follows a fail-fast philosophy:
 - **Encoding errors:** Falls back to character-based token estimation.
 
 The caller (memory system) decides how to handle failures—typically by proceeding without a summary rather than blocking the entire write path.
+
+---
+
+## 8. Future Improvements
+
+Based on research findings, consider:
+
+1. **Reduce chunk size to 2048** to align with BOOOOKSCORE's tested defaults
+2. **Validate token thresholds empirically** with real-world content
+3. **Add incremental updating mode** as alternative to hierarchical merging for larger context models
+4. **Benchmark against BOOOOKSCORE metrics** for coherence evaluation
