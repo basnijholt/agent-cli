@@ -13,7 +13,6 @@ import asyncio
 import logging
 from dataclasses import dataclass
 
-import httpx
 from pydantic import BaseModel
 from pydantic_ai import Agent
 from pydantic_ai.models.openai import OpenAIChatModel
@@ -24,7 +23,6 @@ from agent_cli.summarizer._prompts import (
     BRIEF_SUMMARY_PROMPT,
     CHUNK_SUMMARY_PROMPT,
     META_SUMMARY_PROMPT,
-    ROLLING_SUMMARY_PROMPT,
     format_prior_context,
     format_summaries_for_meta,
     get_prompt_for_content_type,
@@ -33,7 +31,6 @@ from agent_cli.summarizer._utils import (
     chunk_text,
     count_tokens,
     estimate_summary_tokens,
-    middle_truncate,
     tokens_to_words,
 )
 from agent_cli.summarizer.models import (
@@ -58,14 +55,6 @@ LEVEL_THRESHOLDS = {
 L2_GROUP_SIZE = 5
 # Minimum number of L1 chunks before L2 grouping is applied
 L2_MIN_CHUNKS = 5
-
-# Retry settings for summarization failures
-MAX_SUMMARIZE_RETRIES = 3
-
-# Maximum characters per chunk before applying middle truncation
-# This prevents context overflow errors for very large chunks
-# (roughly 12K tokens with cl100k_base encoding)
-MAX_CHUNK_CHARS = 48000
 
 
 class SummaryOutput(BaseModel):
@@ -199,93 +188,32 @@ async def summarize(
     )
 
 
-async def update_rolling_summary(
-    prior_summary: str | None,
-    new_facts: list[str],
-    config: SummarizerConfig,
-) -> str:
-    """Update a rolling summary with new facts (Mem0-style).
-
-    This is optimized for incremental updates where you have discrete
-    new facts to integrate into an existing summary.
-
-    Args:
-        prior_summary: The existing summary to update.
-        new_facts: List of new facts to integrate.
-        config: Summarizer configuration.
-
-    Returns:
-        Updated summary string.
-
-    """
-    if not new_facts:
-        return prior_summary or ""
-
-    new_content = "\n".join(f"- {fact}" for fact in new_facts)
-    combined_tokens = count_tokens(
-        (prior_summary or "") + new_content,
-        config.model,
-    )
-
-    target_tokens = estimate_summary_tokens(combined_tokens, SummaryLevel.STANDARD)
-    max_words = tokens_to_words(target_tokens)
-
-    prompt = ROLLING_SUMMARY_PROMPT.format(
-        prior_summary=prior_summary or "(No prior summary)",
-        new_content=new_content,
-        max_words=max_words,
-    )
-
-    return await _generate_summary(prompt, config, max_tokens=target_tokens + 50)
-
-
 async def _summarize_single_chunk(
     chunk: str,
     chunk_index: int,
     total_chunks: int,
     config: SummarizerConfig,
-    *,
-    parent_group: int | None = None,
 ) -> ChunkSummary:
     """Summarize a single chunk of content.
-
-    Uses middle truncation as a fallback for oversized content (Letta-style).
 
     Args:
         chunk: The text chunk to summarize.
         chunk_index: Index of this chunk (0-based).
         total_chunks: Total number of chunks being processed.
         config: Summarizer configuration.
-        parent_group: Optional L2 group index for hierarchical summaries.
 
     Returns:
         ChunkSummary with the summarized content.
 
     """
-    # Apply middle truncation if chunk is too large (Letta-style fallback)
     source_tokens = count_tokens(chunk, config.model)
-    content_to_summarize = chunk
-    if len(chunk) > MAX_CHUNK_CHARS:
-        content_to_summarize, dropped = middle_truncate(
-            chunk,
-            MAX_CHUNK_CHARS,
-            head_frac=0.3,
-            tail_frac=0.3,
-        )
-        logger.warning(
-            "Chunk %d truncated: dropped %d chars to fit context window",
-            chunk_index,
-            dropped,
-        )
-
-    chunk_tokens = count_tokens(content_to_summarize, config.model)
-    target_tokens = estimate_summary_tokens(chunk_tokens, SummaryLevel.STANDARD)
+    target_tokens = estimate_summary_tokens(source_tokens, SummaryLevel.STANDARD)
     max_words = tokens_to_words(target_tokens)
 
     prompt = CHUNK_SUMMARY_PROMPT.format(
         chunk_index=chunk_index + 1,
         total_chunks=total_chunks,
-        content=content_to_summarize,
+        content=chunk,
         max_words=max_words,
     )
 
@@ -296,8 +224,7 @@ async def _summarize_single_chunk(
         chunk_index=chunk_index,
         content=summary,
         token_count=summary_tokens,
-        source_tokens=source_tokens,  # Report original token count
-        parent_group=parent_group,
+        source_tokens=source_tokens,
     )
 
 
@@ -355,7 +282,6 @@ async def _detailed_summary(
                 idx,
                 len(chunks),
                 config,
-                parent_group=None,
             )
 
     chunk_summaries = await asyncio.gather(
@@ -423,14 +349,11 @@ async def _hierarchical_summary(
 
     async def summarize_with_limit(idx: int, chunk: str) -> ChunkSummary:
         async with semaphore:
-            # Assign to L2 group (L2_GROUP_SIZE chunks per group)
-            group_idx = idx // L2_GROUP_SIZE
             return await _summarize_single_chunk(
                 chunk,
                 idx,
                 len(chunks),
                 config,
-                parent_group=group_idx,
             )
 
     l1_summaries = await asyncio.gather(
@@ -497,25 +420,19 @@ async def _generate_summary(
     prompt: str,
     config: SummarizerConfig,
     max_tokens: int = 256,
-    *,
-    attempt: int = 0,
 ) -> str:
     """Generate a summary using the LLM.
-
-    Uses PydanticAI for structured output with fallback to raw generation.
-    Implements exponential backoff retry on failures.
 
     Args:
         prompt: The prompt to send to the LLM.
         config: Summarizer configuration.
         max_tokens: Maximum tokens for the response.
-        attempt: Current retry attempt (for internal recursion).
 
     Returns:
         The generated summary text.
 
     Raises:
-        SummarizationError: If all retries are exhausted.
+        SummarizationError: If summarization fails.
 
     """
     provider = OpenAIProvider(api_key=config.api_key, base_url=config.openai_base_url)
@@ -539,51 +456,5 @@ async def _generate_summary(
         result = await agent.run(prompt)
         return result.output.summary.strip()
     except Exception as e:
-        logger.warning("Structured summary failed, trying raw generation: %s", e)
-        # Fallback to raw HTTP call
-        try:
-            return await _raw_generate(prompt, config, max_tokens)
-        except Exception as raw_err:
-            if attempt < MAX_SUMMARIZE_RETRIES:
-                wait_time = 2**attempt  # Exponential backoff: 1, 2, 4 seconds
-                logger.warning(
-                    "Raw generation failed (attempt %d/%d), retrying in %ds: %s",
-                    attempt + 1,
-                    MAX_SUMMARIZE_RETRIES,
-                    wait_time,
-                    raw_err,
-                )
-                await asyncio.sleep(wait_time)
-                return await _generate_summary(
-                    prompt,
-                    config,
-                    max_tokens,
-                    attempt=attempt + 1,
-                )
-            msg = f"Summarization failed after {MAX_SUMMARIZE_RETRIES} retries"
-            raise SummarizationError(msg) from raw_err
-
-
-async def _raw_generate(prompt: str, config: SummarizerConfig, max_tokens: int) -> str:
-    """Fallback raw HTTP generation without structured output."""
-    async with httpx.AsyncClient(timeout=config.timeout) as client:
-        response = await client.post(
-            f"{config.openai_base_url}/chat/completions",
-            headers={"Authorization": f"Bearer {config.api_key}"},
-            json={
-                "model": config.model,
-                "messages": [
-                    {"role": "system", "content": "You are a concise summarizer."},
-                    {"role": "user", "content": prompt},
-                ],
-                "temperature": 0.3,
-                "max_tokens": max_tokens,
-            },
-        )
-        response.raise_for_status()
-        data = response.json()
-
-    choices = data.get("choices", [])
-    if choices:
-        return choices[0].get("message", {}).get("content", "").strip()
-    return ""
+        msg = f"Summarization failed: {e}"
+        raise SummarizationError(msg) from e

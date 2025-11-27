@@ -8,13 +8,12 @@ import pytest
 
 from agent_cli.summarizer.adaptive import (
     LEVEL_THRESHOLDS,
+    SummarizationError,
     SummarizerConfig,
     SummaryOutput,
     _generate_summary,
-    _raw_generate,
     determine_level,
     summarize,
-    update_rolling_summary,
 )
 from agent_cli.summarizer.models import SummaryLevel, SummaryResult
 
@@ -257,82 +256,6 @@ class TestSummarize:
         assert result.level == SummaryLevel.HIERARCHICAL
 
 
-class TestUpdateRollingSummary:
-    """Tests for rolling summary updates."""
-
-    @pytest.fixture
-    def config(self) -> SummarizerConfig:
-        """Create a config instance."""
-        return SummarizerConfig(
-            openai_base_url="http://localhost:8000/v1",
-            model="gpt-4",
-        )
-
-    @pytest.mark.asyncio
-    async def test_empty_facts_returns_prior(self, config: SummarizerConfig) -> None:
-        """Test that empty facts list returns prior summary."""
-        result = await update_rolling_summary(
-            prior_summary="Existing summary",
-            new_facts=[],
-            config=config,
-        )
-        assert result == "Existing summary"
-
-    @pytest.mark.asyncio
-    async def test_empty_facts_no_prior_returns_empty(
-        self,
-        config: SummarizerConfig,
-    ) -> None:
-        """Test that empty facts with no prior returns empty string."""
-        result = await update_rolling_summary(
-            prior_summary=None,
-            new_facts=[],
-            config=config,
-        )
-        assert result == ""
-
-    @pytest.mark.asyncio
-    @patch("agent_cli.summarizer.adaptive._generate_summary")
-    async def test_new_facts_calls_generate(
-        self,
-        mock_generate: AsyncMock,
-        config: SummarizerConfig,
-    ) -> None:
-        """Test that new facts trigger summary generation."""
-        mock_generate.return_value = "Updated summary with new facts."
-
-        result = await update_rolling_summary(
-            prior_summary="Old summary",
-            new_facts=["User likes coffee", "User lives in Amsterdam"],
-            config=config,
-        )
-
-        mock_generate.assert_called_once()
-        assert result == "Updated summary with new facts."
-
-    @pytest.mark.asyncio
-    @patch("agent_cli.summarizer.adaptive._generate_summary")
-    async def test_facts_formatted_as_list(
-        self,
-        mock_generate: AsyncMock,
-        config: SummarizerConfig,
-    ) -> None:
-        """Test that facts are formatted as bullet list in prompt."""
-        mock_generate.return_value = "Summary"
-
-        await update_rolling_summary(
-            prior_summary="Prior",
-            new_facts=["Fact one", "Fact two"],
-            config=config,
-        )
-
-        # Check the prompt contains formatted facts
-        call_args = mock_generate.call_args
-        prompt = call_args[0][0]
-        assert "- Fact one" in prompt
-        assert "- Fact two" in prompt
-
-
 class TestGenerateSummary:
     """Tests for _generate_summary function."""
 
@@ -365,72 +288,18 @@ class TestGenerateSummary:
             mock_agent.run.assert_called_once_with("Test prompt")
 
     @pytest.mark.asyncio
-    @patch("agent_cli.summarizer.adaptive._raw_generate")
-    async def test_fallback_to_raw_generate_on_error(
+    async def test_raises_summarization_error_on_failure(
         self,
-        mock_raw: AsyncMock,
         config: SummarizerConfig,
     ) -> None:
-        """Test fallback to raw HTTP on PydanticAI error."""
-        mock_raw.return_value = "Fallback summary"
-
+        """Test that SummarizationError is raised on failure."""
         with patch("agent_cli.summarizer.adaptive.Agent") as mock_agent_class:
             mock_agent = MagicMock()
             mock_agent.run = AsyncMock(side_effect=Exception("API error"))
             mock_agent_class.return_value = mock_agent
 
-            result = await _generate_summary("Test prompt", config, max_tokens=100)
-
-            mock_raw.assert_called_once_with("Test prompt", config, 100)
-            assert result == "Fallback summary"
-
-
-class TestRawGenerate:
-    """Tests for _raw_generate fallback function."""
-
-    @pytest.fixture
-    def config(self) -> SummarizerConfig:
-        """Create a config instance."""
-        return SummarizerConfig(
-            openai_base_url="http://localhost:8000/v1",
-            model="gpt-4",
-        )
-
-    @pytest.mark.asyncio
-    async def test_raw_generate_success(self, config: SummarizerConfig) -> None:
-        """Test successful raw HTTP generation."""
-        mock_response = MagicMock()
-        mock_response.json.return_value = {
-            "choices": [{"message": {"content": "Raw generated summary"}}],
-        }
-
-        with patch("httpx.AsyncClient") as mock_client_class:
-            mock_client = MagicMock()
-            mock_client.post = AsyncMock(return_value=mock_response)
-            mock_client.__aenter__ = AsyncMock(return_value=mock_client)
-            mock_client.__aexit__ = AsyncMock(return_value=None)
-            mock_client_class.return_value = mock_client
-
-            result = await _raw_generate("Test prompt", config, max_tokens=100)
-
-            assert result == "Raw generated summary"
-
-    @pytest.mark.asyncio
-    async def test_raw_generate_empty_choices(self, config: SummarizerConfig) -> None:
-        """Test raw generate with empty choices returns empty string."""
-        mock_response = MagicMock()
-        mock_response.json.return_value = {"choices": []}
-
-        with patch("httpx.AsyncClient") as mock_client_class:
-            mock_client = MagicMock()
-            mock_client.post = AsyncMock(return_value=mock_response)
-            mock_client.__aenter__ = AsyncMock(return_value=mock_client)
-            mock_client.__aexit__ = AsyncMock(return_value=None)
-            mock_client_class.return_value = mock_client
-
-            result = await _raw_generate("Test prompt", config, max_tokens=100)
-
-            assert result == ""
+            with pytest.raises(SummarizationError, match="Summarization failed"):
+                await _generate_summary("Test prompt", config, max_tokens=100)
 
 
 class TestSummaryOutput:

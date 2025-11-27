@@ -47,20 +47,6 @@ Summaries to combine:
 
 Combined summary (maximum {max_words} words):""".strip()
 
-# Rolling summary update (Mem0-style)
-ROLLING_SUMMARY_PROMPT = """Update the running summary with new information.
-Integrate new facts seamlessly while keeping the summary concise.
-Drop redundant or superseded information.
-Preserve durable facts about identity, preferences, and important events.
-
-Current summary:
-{prior_summary}
-
-New information to integrate:
-{new_content}
-
-Updated summary (maximum {max_words} words):""".strip()
-
 # For conversation-specific summarization
 CONVERSATION_SUMMARY_PROMPT = """Summarize this conversation from the AI assistant's perspective.
 Focus on:
@@ -68,6 +54,8 @@ Focus on:
 - Key information the user shared about themselves
 - Decisions made or conclusions reached
 - Any commitments or follow-ups mentioned
+
+{prior_context}
 
 Conversation:
 {content}
@@ -82,6 +70,8 @@ Preserve:
 - Goals, plans, or intentions stated
 - People, places, or things that are important
 
+{prior_context}
+
 Entry:
 {content}
 
@@ -94,6 +84,8 @@ Focus on:
 - Key procedures or processes described
 - Important specifications or requirements
 - Conclusions or recommendations
+
+{prior_context}
 
 Document:
 {content}

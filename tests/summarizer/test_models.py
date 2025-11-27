@@ -43,24 +43,11 @@ class TestChunkSummary:
             content="This is a summary of chunk 1.",
             token_count=10,
             source_tokens=100,
-            parent_group=None,
         )
         assert chunk.chunk_index == 0
         assert chunk.content == "This is a summary of chunk 1."
         assert chunk.token_count == 10
         assert chunk.source_tokens == 100
-        assert chunk.parent_group is None
-
-    def test_with_parent_group(self) -> None:
-        """Test creating a chunk summary with parent group."""
-        chunk = ChunkSummary(
-            chunk_index=5,
-            content="Summary text",
-            token_count=8,
-            source_tokens=200,
-            parent_group=1,
-        )
-        assert chunk.parent_group == 1
 
     def test_validation_negative_tokens(self) -> None:
         """Test that negative token counts fail validation."""
