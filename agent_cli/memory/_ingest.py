@@ -427,13 +427,20 @@ async def extract_and_store_facts_and_summaries(
             entries=list(to_add),
         )
 
-    if enable_summarization and facts:
-        # Get prior summary for context continuity
+    # Summarize raw conversation turns (not extracted facts)
+    has_content = user_message or assistant_message
+    if enable_summarization and has_content:
         prior_summary_entry = get_final_summary(collection, conversation_id)
         prior_summary = prior_summary_entry.content if prior_summary_entry else None
 
-        # Summarize the new facts
-        content_to_summarize = "\n".join(facts)
+        # Build conversation transcript
+        parts = []
+        if user_message:
+            parts.append(f"User: {user_message}")
+        if assistant_message:
+            parts.append(f"Assistant: {assistant_message}")
+        content_to_summarize = "\n".join(parts)
+
         summary_start = perf_counter()
         summary_result = await summarize_content(
             content=content_to_summarize,
