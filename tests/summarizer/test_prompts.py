@@ -9,7 +9,6 @@ from agent_cli.summarizer._prompts import (
     DOCUMENT_SUMMARY_PROMPT,
     JOURNAL_SUMMARY_PROMPT,
     META_SUMMARY_PROMPT,
-    ROLLING_SUMMARY_PROMPT,
     STANDARD_SUMMARY_PROMPT,
     format_prior_context,
     format_summaries_for_meta,
@@ -71,26 +70,23 @@ class TestPromptTemplates:
         assert "Summary 1" in result
         assert "200" in result
 
-    def test_rolling_prompt_has_placeholders(self) -> None:
-        """Test ROLLING prompt contains required placeholders."""
-        assert "{prior_summary}" in ROLLING_SUMMARY_PROMPT
-        assert "{new_content}" in ROLLING_SUMMARY_PROMPT
-        assert "{max_words}" in ROLLING_SUMMARY_PROMPT
-
-    def test_conversation_prompt_has_content(self) -> None:
-        """Test CONVERSATION prompt contains content placeholder."""
+    def test_conversation_prompt_has_placeholders(self) -> None:
+        """Test CONVERSATION prompt contains required placeholders."""
         assert "{content}" in CONVERSATION_SUMMARY_PROMPT
         assert "{max_words}" in CONVERSATION_SUMMARY_PROMPT
+        assert "{prior_context}" in CONVERSATION_SUMMARY_PROMPT
 
-    def test_journal_prompt_has_content(self) -> None:
-        """Test JOURNAL prompt contains content placeholder."""
+    def test_journal_prompt_has_placeholders(self) -> None:
+        """Test JOURNAL prompt contains required placeholders."""
         assert "{content}" in JOURNAL_SUMMARY_PROMPT
         assert "{max_words}" in JOURNAL_SUMMARY_PROMPT
+        assert "{prior_context}" in JOURNAL_SUMMARY_PROMPT
 
-    def test_document_prompt_has_content(self) -> None:
-        """Test DOCUMENT prompt contains content placeholder."""
+    def test_document_prompt_has_placeholders(self) -> None:
+        """Test DOCUMENT prompt contains required placeholders."""
         assert "{content}" in DOCUMENT_SUMMARY_PROMPT
         assert "{max_words}" in DOCUMENT_SUMMARY_PROMPT
+        assert "{prior_context}" in DOCUMENT_SUMMARY_PROMPT
 
 
 class TestGetPromptForContentType:

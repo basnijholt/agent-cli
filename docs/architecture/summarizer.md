@@ -8,19 +8,19 @@ The adaptive summarizer provides **content-aware compression** that scales summa
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│                    Adaptive Summarization Pipeline                   │
+│                    Adaptive Summarization Pipeline                  │
 ├─────────────────────────────────────────────────────────────────────┤
 │                                                                     │
-│  Input Content ──▶ Token Count ──▶ Level Selection ──▶ Strategy    │
+│  Input Content ──▶ Token Count ──▶ Level Selection ──▶ Strategy     │
 │                                                                     │
-│  ┌─────────────────────────────────────────────────────────────┐   │
-│  │ Level Thresholds:                                           │   │
-│  │   < 100 tokens  ──▶ NONE        (no summary needed)         │   │
-│  │   100-500       ──▶ BRIEF       (single sentence)           │   │
-│  │   500-3000      ──▶ STANDARD    (paragraph)                 │   │
-│  │   3000-15000    ──▶ DETAILED    (chunked + meta)            │   │
-│  │   > 15000       ──▶ HIERARCHICAL (L1/L2/L3 tree)            │   │
-│  └─────────────────────────────────────────────────────────────┘   │
+│  ┌─────────────────────────────────────────────────────────────┐    │
+│  │ Level Thresholds:                                           │    │
+│  │   < 100 tokens  ──▶ NONE        (no summary needed)         │    │
+│  │   100-500       ──▶ BRIEF       (single sentence)           │    │
+│  │   500-3000      ──▶ STANDARD    (paragraph)                 │    │
+│  │   3000-15000    ──▶ DETAILED    (chunked + meta)            │    │
+│  │   > 15000       ──▶ HIERARCHICAL (L1/L2/L3 tree)            │    │
+│  └─────────────────────────────────────────────────────────────┘    │
 │                                                                     │
 │  Output: SummaryResult with compression metrics                     │
 └─────────────────────────────────────────────────────────────────────┘
@@ -310,19 +310,19 @@ def chunk_text(
 
 ### 4.5 Middle Truncation (Utility)
 
-For contexts where the summary exceeds available space:
+For handling very large inputs that could exceed context windows:
 
 ```python
 def middle_truncate(
     text: str,
-    token_budget: int,
-    head_fraction: float = 0.3,
-    tail_fraction: float = 0.7,
-) -> str:
+    budget_chars: int,
+    head_frac: float = 0.3,
+    tail_frac: float = 0.3,
+) -> tuple[str, int]:
     """Keep head and tail, remove middle (least likely to contain key info)."""
 ```
 
-**Rationale:** Research shows that important information clusters at beginnings (introductions, key points) and endings (conclusions, action items).
+**Rationale:** Research shows that important information clusters at beginnings (introductions, key points) and endings (conclusions, action items). Useful when summarizing very long conversations that may contain pasted codebases.
 
 ---
 
@@ -376,22 +376,9 @@ Section Summaries:
 Synthesized Summary:
 ```
 
-### 5.5 Rolling Summary (`ROLLING_PROMPT`)
+### 5.5 Content-Type Prompts
 
-```
-Update the existing summary to incorporate new information.
-Preserve important historical context while integrating new facts.
-
-Existing Summary:
-{prior_summary}
-
-New Information:
-{new_facts}
-
-Updated Summary:
-```
-
-### 5.6 Content-Type Prompts
+All content-type prompts include `{prior_context}` for rolling summary continuity.
 
 **Conversation:**
 ```
@@ -493,14 +480,15 @@ def get_final_summary(
 
 ## 8. Error Handling
 
-### 8.1 Graceful Degradation
+### 8.1 Fail-Fast Philosophy
 
-| Error | Fallback |
+Errors are propagated rather than hidden behind fallbacks:
+
+| Error | Behavior |
 | :--- | :--- |
-| LLM timeout | Return input unchanged with NONE level |
-| LLM error | Retry up to 3 times, then return NONE |
-| Token counting failure | Estimate based on character count (÷4) |
-| Chunking failure | Fall back to character-based splitting |
+| LLM timeout | Raises `SummarizationError` |
+| LLM error | Raises `SummarizationError` |
+| Token counting failure | Falls back to `cl100k_base` encoding |
 
 ### 8.2 Validation
 

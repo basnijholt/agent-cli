@@ -44,10 +44,6 @@ class ChunkSummary(BaseModel):
     content: str = Field(..., description="The summarized content of this chunk")
     token_count: int = Field(..., ge=0, description="Token count of this summary")
     source_tokens: int = Field(..., ge=0, description="Token count of the source chunk")
-    parent_group: int | None = Field(
-        default=None,
-        description="Index of the L2 group this chunk belongs to",
-    )
 
 
 class HierarchicalSummary(BaseModel):
@@ -156,7 +152,6 @@ class SummaryResult(BaseModel):
                         "role": "summary",
                         "level": HIERARCHICAL_LEVEL_L1,
                         "chunk_index": cs.chunk_index,
-                        "parent_group": cs.parent_group,
                         "token_count": cs.token_count,
                         "created_at": timestamp,
                     },
