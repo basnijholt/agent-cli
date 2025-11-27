@@ -228,15 +228,8 @@ def estimate_summary_tokens(input_tokens: int, level: int) -> int:
         return 0
     if level == SummaryLevel.BRIEF:
         return min(50, max(20, input_tokens // 5))
-    if level == SummaryLevel.STANDARD:
-        return min(200, max(50, input_tokens // 8))
-    if level == SummaryLevel.DETAILED:
-        return min(500, max(100, input_tokens // 15))
-    # HIERARCHICAL
-    # Base of 1000 tokens plus diminishing returns for additional content
-    base = 1000
-    additional = max(0, (input_tokens - 15000) // 100)
-    return min(2000, base + additional)
+    # MAP_REDUCE: ~10% compression with floor/ceiling
+    return min(500, max(50, input_tokens // 10))
 
 
 def tokens_to_words(tokens: int) -> int:

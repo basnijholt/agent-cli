@@ -1,22 +1,23 @@
-"""Adaptive summarization that scales with input complexity.
+"""Adaptive summarization using map-reduce with dynamic collapse.
 
-Implements hierarchical summarization with multiple compression levels (L1/L2/L3).
+Implements a simple algorithm inspired by LangChain's map-reduce chains:
+1. If content is short enough, summarize directly
+2. Otherwise, split into chunks and summarize each (map phase)
+3. Recursively collapse summaries until they fit token_max (reduce phase)
 
 Research foundations:
-- Two-phase architecture (extraction then storage) from Mem0 (arXiv:2504.19413)
-- Hierarchical merging concept from BOOOOKSCORE (arXiv:2310.00785)
+- LangChain ReduceDocumentsChain: token_max=3000, recursive collapse
+- BOOOOKSCORE (arXiv:2310.00785): chunk_size=2048 optimal
+- Two-phase architecture concept from Mem0 (arXiv:2504.19413)
 
-Original design (not research-backed):
-- Token thresholds (100/500/3000/15000) are heuristic
-- L1/L2/L3 hierarchy structure
-- Chunk size (3000) - BOOOOKSCORE uses 2048
+Key insight: No need for predetermined L1/L2/L3 levels.
+Dynamic collapse depth based on actual content length.
 
 See docs/architecture/summarizer.md for detailed design rationale.
 """
 
 from __future__ import annotations
 
-import asyncio
 import logging
 from dataclasses import dataclass
 
@@ -24,21 +25,20 @@ from pydantic import BaseModel
 
 from agent_cli.summarizer._prompts import (
     BRIEF_SUMMARY_PROMPT,
-    CHUNK_SUMMARY_PROMPT,
-    META_SUMMARY_PROMPT,
     format_prior_context,
-    format_summaries_for_meta,
     get_prompt_for_content_type,
 )
 from agent_cli.summarizer._utils import (
-    chunk_text,
     count_tokens,
     estimate_summary_tokens,
     tokens_to_words,
 )
+from agent_cli.summarizer.map_reduce import (
+    MapReduceConfig,
+    MapReduceSummarizationError,
+    map_reduce_summarize,
+)
 from agent_cli.summarizer.models import (
-    ChunkSummary,
-    HierarchicalSummary,
     SummaryLevel,
     SummaryResult,
 )
@@ -46,18 +46,8 @@ from agent_cli.summarizer.models import (
 logger = logging.getLogger(__name__)
 
 # Thresholds for summary levels (in tokens)
-LEVEL_THRESHOLDS = {
-    SummaryLevel.NONE: 100,
-    SummaryLevel.BRIEF: 500,
-    SummaryLevel.STANDARD: 3000,
-    SummaryLevel.DETAILED: 15000,
-    # HIERARCHICAL is everything above DETAILED
-}
-
-# Number of L1 chunks to group together for L2 summaries
-L2_GROUP_SIZE = 5
-# Minimum number of L1 chunks before L2 grouping is applied
-L2_MIN_CHUNKS = 5
+THRESHOLD_NONE = 100  # Below this, no summary needed
+THRESHOLD_BRIEF = 500  # Below this, just a single sentence
 
 
 class SummaryOutput(BaseModel):
@@ -88,7 +78,8 @@ class SummarizerConfig:
     openai_base_url: str
     model: str
     api_key: str | None = None
-    chunk_size: int = 3000
+    chunk_size: int = 2048  # BOOOOKSCORE's tested default
+    token_max: int = 3000  # LangChain's default - when to collapse
     chunk_overlap: int = 200
     max_concurrent_chunks: int = 5
     timeout: float = 60.0
@@ -102,15 +93,11 @@ class SummarizerConfig:
 
 def determine_level(token_count: int) -> SummaryLevel:
     """Map token count to appropriate SummaryLevel."""
-    if token_count < LEVEL_THRESHOLDS[SummaryLevel.NONE]:
+    if token_count < THRESHOLD_NONE:
         return SummaryLevel.NONE
-    if token_count < LEVEL_THRESHOLDS[SummaryLevel.BRIEF]:
+    if token_count < THRESHOLD_BRIEF:
         return SummaryLevel.BRIEF
-    if token_count < LEVEL_THRESHOLDS[SummaryLevel.STANDARD]:
-        return SummaryLevel.STANDARD
-    if token_count < LEVEL_THRESHOLDS[SummaryLevel.DETAILED]:
-        return SummaryLevel.DETAILED
-    return SummaryLevel.HIERARCHICAL
+    return SummaryLevel.MAP_REDUCE
 
 
 async def summarize(
@@ -120,6 +107,11 @@ async def summarize(
     content_type: str = "general",
 ) -> SummaryResult:
     """Summarize content with adaptive strategy based on length.
+
+    Uses a simple algorithm:
+    - Very short content (<100 tokens): No summary
+    - Short content (<500 tokens): Single sentence brief summary
+    - Everything else: Map-reduce with dynamic collapse
 
     Args:
         content: The content to summarize.
@@ -135,7 +127,6 @@ async def summarize(
         return SummaryResult(
             level=SummaryLevel.NONE,
             summary=None,
-            hierarchical=None,
             input_tokens=0,
             output_tokens=0,
             compression_ratio=0.0,
@@ -155,7 +146,6 @@ async def summarize(
         return SummaryResult(
             level=level,
             summary=None,
-            hierarchical=None,
             input_tokens=input_tokens,
             output_tokens=0,
             compression_ratio=0.0,
@@ -163,68 +153,22 @@ async def summarize(
 
     if level == SummaryLevel.BRIEF:
         summary = await _brief_summary(content, config)
-    elif level == SummaryLevel.STANDARD:
-        summary = await _standard_summary(content, config, prior_summary, content_type)
-    elif level == SummaryLevel.DETAILED:
-        return await _detailed_summary(content, input_tokens, config)
-    else:  # HIERARCHICAL
-        return await _hierarchical_summary(content, input_tokens, config)
+        output_tokens = count_tokens(summary, config.model) if summary else 0
+        return SummaryResult(
+            level=level,
+            summary=summary,
+            input_tokens=input_tokens,
+            output_tokens=output_tokens,
+            compression_ratio=output_tokens / input_tokens if input_tokens > 0 else 0.0,
+        )
 
-    output_tokens = count_tokens(summary, config.model) if summary else 0
-    compression_ratio = output_tokens / input_tokens if input_tokens > 0 else 0.0
-
-    return SummaryResult(
-        level=level,
-        summary=summary,
-        hierarchical=None,
-        input_tokens=input_tokens,
-        output_tokens=output_tokens,
-        compression_ratio=compression_ratio,
-    )
-
-
-async def _summarize_chunks(
-    chunks: list[str],
-    config: SummarizerConfig,
-) -> list[ChunkSummary]:
-    """Summarize chunks concurrently with semaphore-controlled parallelism."""
-    semaphore = asyncio.Semaphore(config.max_concurrent_chunks)
-    total = len(chunks)
-
-    async def summarize_with_limit(idx: int, chunk: str) -> ChunkSummary:
-        async with semaphore:
-            return await _summarize_single_chunk(chunk, idx, total, config)
-
-    gen = (summarize_with_limit(i, chunk) for i, chunk in enumerate(chunks))
-    return list(await asyncio.gather(*gen))
-
-
-async def _summarize_single_chunk(
-    chunk: str,
-    chunk_index: int,
-    total_chunks: int,
-    config: SummarizerConfig,
-) -> ChunkSummary:
-    """Summarize a single chunk and return its metadata."""
-    source_tokens = count_tokens(chunk, config.model)
-    target_tokens = estimate_summary_tokens(source_tokens, SummaryLevel.STANDARD)
-    max_words = tokens_to_words(target_tokens)
-
-    prompt = CHUNK_SUMMARY_PROMPT.format(
-        chunk_index=chunk_index + 1,
-        total_chunks=total_chunks,
-        content=chunk,
-        max_words=max_words,
-    )
-
-    summary = await _generate_summary(prompt, config, max_tokens=target_tokens + 50)
-    summary_tokens = count_tokens(summary, config.model)
-
-    return ChunkSummary(
-        chunk_index=chunk_index,
-        content=summary,
-        token_count=summary_tokens,
-        source_tokens=source_tokens,
+    # MAP_REDUCE level
+    return await _map_reduce_summary(
+        content,
+        input_tokens,
+        config,
+        prior_summary,
+        content_type,
     )
 
 
@@ -234,15 +178,65 @@ async def _brief_summary(content: str, config: SummarizerConfig) -> str:
     return await _generate_summary(prompt, config, max_tokens=50)
 
 
-async def _standard_summary(
+async def _map_reduce_summary(
+    content: str,
+    input_tokens: int,
+    config: SummarizerConfig,
+    prior_summary: str | None,
+    content_type: str,
+) -> SummaryResult:
+    """Use map-reduce with dynamic collapse for longer content."""
+    # For content that fits in a single chunk, use content-type aware summary
+    if input_tokens <= config.token_max:
+        summary = await _content_aware_summary(content, config, prior_summary, content_type)
+        output_tokens = count_tokens(summary, config.model) if summary else 0
+        return SummaryResult(
+            level=SummaryLevel.MAP_REDUCE,
+            summary=summary,
+            input_tokens=input_tokens,
+            output_tokens=output_tokens,
+            compression_ratio=output_tokens / input_tokens if input_tokens > 0 else 0.0,
+            collapse_depth=0,
+        )
+
+    # Use map-reduce for multi-chunk content
+    mr_config = MapReduceConfig(
+        openai_base_url=config.openai_base_url,
+        model=config.model,
+        api_key=config.api_key,
+        chunk_size=config.chunk_size,
+        token_max=config.token_max,
+        chunk_overlap=config.chunk_overlap,
+        max_concurrent=config.max_concurrent_chunks,
+        timeout=config.timeout,
+    )
+
+    try:
+        result = await map_reduce_summarize(content, mr_config)
+    except MapReduceSummarizationError as e:
+        raise SummarizationError(str(e)) from e
+
+    return SummaryResult(
+        level=SummaryLevel.MAP_REDUCE,
+        summary=result.summary,
+        input_tokens=result.input_tokens,
+        output_tokens=result.output_tokens,
+        compression_ratio=result.compression_ratio,
+        collapse_depth=result.collapse_depth,
+    )
+
+
+async def _content_aware_summary(
     content: str,
     config: SummarizerConfig,
     prior_summary: str | None,
     content_type: str,
 ) -> str:
-    """Generate a paragraph summary for standard-length content."""
-    input_tokens = count_tokens(content, config.model)
-    target_tokens = estimate_summary_tokens(input_tokens, SummaryLevel.STANDARD)
+    """Generate a content-type aware summary for single-chunk content."""
+    target_tokens = estimate_summary_tokens(
+        count_tokens(content, config.model),
+        SummaryLevel.MAP_REDUCE,
+    )
     max_words = tokens_to_words(target_tokens)
 
     prompt_template = get_prompt_for_content_type(content_type)
@@ -255,138 +249,6 @@ async def _standard_summary(
     )
 
     return await _generate_summary(prompt, config, max_tokens=target_tokens + 50)
-
-
-async def _detailed_summary(
-    content: str,
-    input_tokens: int,
-    config: SummarizerConfig,
-) -> SummaryResult:
-    """Generate chunked summaries with meta-summary for detailed content."""
-    chunks = chunk_text(
-        content,
-        chunk_size=config.chunk_size,
-        overlap=config.chunk_overlap,
-        model=config.model,
-    )
-
-    logger.info("Detailed summary: processing %d chunks", len(chunks))
-
-    chunk_summaries = await _summarize_chunks(chunks, config)
-
-    # Generate meta-summary
-    all_summaries = [cs.content for cs in chunk_summaries]
-    meta_target = estimate_summary_tokens(input_tokens, SummaryLevel.DETAILED)
-    max_words = tokens_to_words(meta_target)
-
-    meta_prompt = META_SUMMARY_PROMPT.format(
-        summaries=format_summaries_for_meta(all_summaries),
-        max_words=max_words,
-    )
-
-    final_summary = await _generate_summary(
-        meta_prompt,
-        config,
-        max_tokens=meta_target + 100,
-    )
-    output_tokens = count_tokens(final_summary, config.model)
-
-    hierarchical = HierarchicalSummary(
-        l1_summaries=list(chunk_summaries),
-        l2_summaries=[],  # Not used for DETAILED level
-        l3_summary=final_summary,
-        chunk_size=config.chunk_size,
-        chunk_overlap=config.chunk_overlap,
-    )
-
-    return SummaryResult(
-        level=SummaryLevel.DETAILED,
-        summary=final_summary,
-        hierarchical=hierarchical,
-        input_tokens=input_tokens,
-        output_tokens=output_tokens,
-        compression_ratio=output_tokens / input_tokens if input_tokens > 0 else 0.0,
-    )
-
-
-async def _hierarchical_summary(
-    content: str,
-    input_tokens: int,
-    config: SummarizerConfig,
-) -> SummaryResult:
-    """Build a tree of summaries for very long content.
-
-    Structure:
-    - L1: Individual chunk summaries
-    - L2: Group summaries (groups of ~5 L1 summaries)
-    - L3: Final synthesis
-    """
-    chunks = chunk_text(
-        content,
-        chunk_size=config.chunk_size,
-        overlap=config.chunk_overlap,
-        model=config.model,
-    )
-
-    logger.info("Hierarchical summary: processing %d chunks in tree", len(chunks))
-
-    # L1: Summarize each chunk
-    l1_summaries = await _summarize_chunks(chunks, config)
-
-    # L2: Group summaries (if more than L2_MIN_CHUNKS chunks)
-    l2_summaries: list[str] = []
-    if len(l1_summaries) > L2_MIN_CHUNKS:
-        groups: list[list[str]] = []
-        for i in range(0, len(l1_summaries), L2_GROUP_SIZE):
-            group = [cs.content for cs in l1_summaries[i : i + L2_GROUP_SIZE]]
-            groups.append(group)
-
-        async def summarize_group(group: list[str]) -> str:
-            combined_tokens = sum(count_tokens(s, config.model) for s in group)
-            target_tokens = estimate_summary_tokens(combined_tokens, SummaryLevel.STANDARD)
-            max_words = tokens_to_words(target_tokens)
-
-            prompt = META_SUMMARY_PROMPT.format(
-                summaries=format_summaries_for_meta(group),
-                max_words=max_words,
-            )
-            return await _generate_summary(prompt, config, max_tokens=target_tokens + 50)
-
-        l2_summaries = await asyncio.gather(*[summarize_group(g) for g in groups])
-
-    # L3: Final synthesis
-    summaries_to_synthesize = l2_summaries if l2_summaries else [cs.content for cs in l1_summaries]
-    final_target = estimate_summary_tokens(input_tokens, SummaryLevel.HIERARCHICAL)
-    max_words = tokens_to_words(final_target)
-
-    final_prompt = META_SUMMARY_PROMPT.format(
-        summaries=format_summaries_for_meta(summaries_to_synthesize),
-        max_words=max_words,
-    )
-
-    final_summary = await _generate_summary(
-        final_prompt,
-        config,
-        max_tokens=final_target + 100,
-    )
-    output_tokens = count_tokens(final_summary, config.model)
-
-    hierarchical = HierarchicalSummary(
-        l1_summaries=list(l1_summaries),
-        l2_summaries=list(l2_summaries),
-        l3_summary=final_summary,
-        chunk_size=config.chunk_size,
-        chunk_overlap=config.chunk_overlap,
-    )
-
-    return SummaryResult(
-        level=SummaryLevel.HIERARCHICAL,
-        summary=final_summary,
-        hierarchical=hierarchical,
-        input_tokens=input_tokens,
-        output_tokens=output_tokens,
-        compression_ratio=output_tokens / input_tokens if input_tokens > 0 else 0.0,
-    )
 
 
 async def _generate_summary(

@@ -140,37 +140,27 @@ class TestEstimateSummaryTokens:
 
     def test_brief_level(self) -> None:
         """Test level 1 (BRIEF) compression."""
-        # BRIEF: ~20% compression, capped at 50
+        # BRIEF: ~20% compression, capped at 50, minimum 20
         result = estimate_summary_tokens(100, level=1)
         assert result >= 20  # minimum of 20
         assert result <= 50  # capped at 50
 
-    def test_standard_level(self) -> None:
-        """Test level 2 (STANDARD) compression."""
-        # STANDARD: ~12% compression, capped at 200
+    def test_map_reduce_level(self) -> None:
+        """Test level 2 (MAP_REDUCE) compression."""
+        # MAP_REDUCE: ~10% compression, capped at 500, minimum 50
         result = estimate_summary_tokens(1000, level=2)
         assert result >= 50  # minimum of 50
-        assert result <= 200  # capped at 200
-
-    def test_detailed_level(self) -> None:
-        """Test level 3 (DETAILED) compression."""
-        # DETAILED: ~7% compression, capped at 500
-        result = estimate_summary_tokens(10000, level=3)
-        assert result >= 100  # minimum of 100
         assert result <= 500  # capped at 500
 
-    def test_hierarchical_level(self) -> None:
-        """Test level 4 (HIERARCHICAL) compression."""
-        # HIERARCHICAL: base of 1000 + diminishing returns
-        result = estimate_summary_tokens(50000, level=4)
-        assert result >= 1000  # base minimum
-        assert result <= 2000  # capped at 2000
+    def test_map_reduce_large_input(self) -> None:
+        """Test MAP_REDUCE with large input hits cap."""
+        result = estimate_summary_tokens(50000, level=2)
+        assert result == 500  # capped at 500
 
-    def test_hierarchical_small_input(self) -> None:
-        """Test HIERARCHICAL with smaller input."""
-        # Even with small input, should return base
-        result = estimate_summary_tokens(5000, level=4)
-        assert result == 1000  # just the base, no additional
+    def test_map_reduce_small_input(self) -> None:
+        """Test MAP_REDUCE with small input uses floor."""
+        result = estimate_summary_tokens(100, level=2)
+        assert result == 50  # floor of 50
 
 
 class TestTokensToWords:
