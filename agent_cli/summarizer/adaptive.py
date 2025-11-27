@@ -1,9 +1,17 @@
 """Adaptive summarization that scales with input complexity.
 
-Implements hierarchical summarization inspired by Letta's partial eviction approach
-and Mem0's two-phase architecture (extraction then storage).
+Implements hierarchical summarization with multiple compression levels (L1/L2/L3).
 
-Reference: arXiv:2504.19413 (Mem0), arXiv:2310.08560 (MemGPT/Letta)
+Research foundations:
+- Two-phase architecture (extraction then storage) from Mem0 (arXiv:2504.19413)
+- Hierarchical merging concept from BOOOOKSCORE (arXiv:2310.00785)
+
+Original design (not research-backed):
+- Token thresholds (100/500/3000/15000) are heuristic
+- L1/L2/L3 hierarchy structure
+- Chunk size (3000) - BOOOOKSCORE uses 2048
+
+See docs/architecture/summarizer.md for detailed design rationale.
 """
 
 from __future__ import annotations
