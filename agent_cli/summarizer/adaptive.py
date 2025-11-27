@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import re
 from dataclasses import dataclass
 
 from pydantic import BaseModel
@@ -412,7 +413,10 @@ async def _generate_summary(
 
     try:
         result = await agent.run(prompt)
-        return result.output.summary.strip()
+        text = result.output.summary.strip()
+        # Strip special tokens that some models leak (e.g., <|constrain|>, <|end|>)
+        text = re.sub(r"<\|[^|]+\|>", "", text)
+        return text.strip()
     except Exception as e:
         msg = f"Summarization failed: {e}"
         raise SummarizationError(msg) from e

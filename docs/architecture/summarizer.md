@@ -1,43 +1,64 @@
 # Agent CLI: Adaptive Summarizer Technical Specification
 
-This document describes the architectural decisions, design rationale, and technical approach for the `agent-cli` adaptive summarization subsystem. The design is grounded in research from Letta (partial eviction, middle truncation) and Mem0 (rolling summaries, compression ratios).
+This document describes the architectural decisions, design rationale, and technical approach for the `agent-cli` adaptive summarization subsystem.
 
 ## 1. System Overview
 
 The adaptive summarizer provides **content-aware compression** that scales summarization depth with input complexity. Rather than applying a one-size-fits-all approach, it automatically selects the optimal strategy based on token count.
 
 ```
-┌─────────────────────────────────────────────────────────────────────┐
-│                    Adaptive Summarization Pipeline                  │
-├─────────────────────────────────────────────────────────────────────┤
-│                                                                     │
-│  Input Content ──▶ Token Count ──▶ Level Selection ──▶ Strategy     │
-│                                                                     │
-│  ┌─────────────────────────────────────────────────────────────┐    │
-│  │ Level Thresholds:                                           │    │
-│  │   < 100 tokens  ──▶ NONE        (no summary needed)         │    │
-│  │   100-500       ──▶ BRIEF       (single sentence)           │    │
-│  │   500-3000      ──▶ STANDARD    (paragraph)                 │    │
-│  │   3000-15000    ──▶ DETAILED    (chunked + meta)            │    │
-│  │   > 15000       ──▶ HIERARCHICAL (L1/L2/L3 tree)            │    │
-│  └─────────────────────────────────────────────────────────────┘    │
-│                                                                     │
-│  Output: SummaryResult with compression metrics                     │
-└─────────────────────────────────────────────────────────────────────┘
+Input Content ──▶ Token Count ──▶ Level Selection ──▶ Strategy
+                                        │
+        ┌───────────────────────────────┼───────────────────────────────┐
+        │                               │                               │
+   < 100 tokens                   500-15000 tokens                > 15000 tokens
+        │                               │                               │
+   No summary needed            Chunked processing              Hierarchical tree
+                                  + meta-synthesis                  (L1/L2/L3)
 ```
 
 **Design Goals:**
 
 - **Adaptive compression:** Match summarization depth to content complexity.
 - **Research-grounded:** Based on proven approaches from Letta and Mem0.
-- **Hierarchical structure:** Preserve detail at multiple granularities.
+- **Hierarchical structure:** Preserve detail at multiple granularities for large content.
 - **Content-type awareness:** Domain-specific prompts for conversations, journals, documents.
 
 ---
 
-## 2. Architectural Decisions
+## 2. Research Foundations
 
-### 2.1 Token-Based Level Selection
+The summarization approach draws from two research-backed memory systems:
+
+### 2.1 Letta (MemGPT) Contributions
+
+**Reference:** arXiv:2310.08560
+
+Letta's approach to memory management introduced several techniques adopted here:
+
+- **Partial eviction:** Rather than discarding old content entirely, compress it to summaries while keeping recent content detailed. This maps to our hierarchical L1/L2/L3 structure where L1 preserves chunk-level detail and L3 provides high-level synthesis.
+
+- **Middle truncation:** When content must be reduced, preserve the head (introductions, context-setting) and tail (conclusions, recent events) while removing the middle. Research shows important information clusters at boundaries.
+
+- **Fire-and-forget background processing:** Summarization runs asynchronously after turn completion, avoiding latency on the critical path.
+
+### 2.2 Mem0 Contributions
+
+**Reference:** arXiv:2504.19413
+
+Mem0's memory layer research established compression ratio targets:
+
+- **90%+ compression:** Long-running conversations can achieve 10:1 or better compression while retaining semantic meaning. Our hierarchical approach targets similar ratios for very long content.
+
+- **Rolling summaries:** New information integrates with existing summaries rather than replacing them. The `prior_summary` parameter throughout our pipeline implements this pattern.
+
+- **Two-phase architecture:** Separate extraction (what's important) from storage (how to persist it). We apply this by first generating summaries, then persisting to both files and vector DB.
+
+---
+
+## 3. Architectural Decisions
+
+### 3.1 Token-Based Level Selection
 
 **Decision:** Select summarization strategy based on input token count with fixed thresholds.
 
@@ -47,493 +68,182 @@ The adaptive summarizer provides **content-aware compression** that scales summa
 - **Optimal compression:** Each level targets a specific compression ratio validated by research.
 - **Efficiency:** Avoid over-processing short content or under-processing long content.
 
-**Implementation:**
+**Thresholds:**
 
-```python
-THRESHOLD_NONE = 100       # Below this: no summary needed
-THRESHOLD_BRIEF = 500      # 100-500: single sentence (~20% compression)
-THRESHOLD_STANDARD = 3000  # 500-3000: paragraph (~12% compression)
-THRESHOLD_DETAILED = 15000 # 3000-15000: chunked (~7% compression)
-# Above 15000: hierarchical tree structure
-```
+| Level | Token Range | Target Compression | Strategy |
+| :--- | :--- | :--- | :--- |
+| NONE | < 100 | N/A | No summarization needed |
+| BRIEF | 100-500 | ~20% | Single sentence |
+| STANDARD | 500-3000 | ~12% | Paragraph |
+| DETAILED | 3000-15000 | ~7% | Chunked + meta-synthesis |
+| HIERARCHICAL | > 15000 | ~3-5% | L1/L2/L3 tree |
 
-**Trade-off:** Fixed thresholds may not be optimal for all content types, but provide consistent, predictable behavior.
+**Trade-off:** Fixed thresholds may not be optimal for all content types, but provide consistent, predictable behavior. Content-type prompts provide domain adaptation within each level.
 
-### 2.2 Hierarchical Summary Structure (L1/L2/L3)
+### 3.2 Hierarchical Summary Structure (L1/L2/L3)
 
 **Decision:** For long content, build a tree of summaries at three levels of granularity.
 
 **Rationale:**
 
-- **Partial eviction:** Inspired by Letta's memory architecture—keep detailed summaries for recent content, compressed summaries for older content.
-- **Flexible retrieval:** Different use cases need different detail levels.
-- **Progressive compression:** Each level provides ~5x compression over the previous.
+- **Partial eviction:** Inspired by Letta—keep detailed summaries for granular retrieval, compressed summaries for context injection.
+- **Flexible retrieval:** Different use cases need different detail levels. RAG queries might want L1 chunks; prompt injection wants L3.
+- **Progressive compression:** Each level provides ~5x compression over the previous, achieving high overall compression while preserving structure.
 
-**Implementation:**
+**Structure:**
 
-- **L1 (Chunk Summaries):** Individual summaries of ~3000 token chunks with 200 token overlap.
-- **L2 (Group Summaries):** Summaries of groups of ~5 L1 summaries.
-- **L3 (Final Summary):** Single synthesized summary of all L2 summaries.
+- **L1 (Chunk Summaries):** Individual summaries of ~3000 token chunks. Preserves local context and specific details. Chunks overlap by ~200 tokens to maintain continuity across boundaries.
+- **L2 (Group Summaries):** Summaries of groups of ~5 L1 summaries. Only generated when content exceeds ~5 chunks. Provides mid-level abstraction.
+- **L3 (Final Summary):** Single synthesized summary. Used for prompt injection and as prior context for rolling updates.
 
-**Storage:**
-```text
-summaries/
-  L1/
-    chunk_0.md    # Summary of tokens 0-3000
-    chunk_1.md    # Summary of tokens 2800-5800 (overlap)
-  L2/
-    group_0.md    # Synthesis of chunk_0 through chunk_4
-  L3/
-    final.md      # Final narrative summary
-```
+**Trade-off:** The three-level hierarchy adds complexity but enables efficient retrieval at multiple granularities. For content under 15000 tokens, we skip L2 entirely (DETAILED level uses only L1 + L3).
 
-### 2.3 Content-Type Aware Prompts
+### 3.3 Semantic Boundary Chunking
+
+**Decision:** Split content on semantic boundaries (paragraphs, then sentences) rather than fixed character counts.
+
+**Rationale:**
+
+- **Coherence preservation:** Splitting mid-sentence or mid-thought loses context and produces poor summaries.
+- **Natural units:** Paragraphs and sentences are natural semantic units that humans use to organize thoughts.
+- **Overlap for continuity:** The 200-token overlap ensures concepts spanning chunk boundaries aren't lost.
+
+**Fallback chain:**
+
+1. Prefer paragraph boundaries (double newlines)
+2. Fall back to sentence boundaries (`.!?` followed by space + capital)
+3. Final fallback to character splitting for edge cases (e.g., code blocks without punctuation)
+
+### 3.4 Content-Type Aware Prompts
 
 **Decision:** Use different prompt templates for different content domains.
 
 **Rationale:**
 
-- **Conversations:** Focus on user preferences, decisions, action items.
-- **Journals:** Emphasize personal insights, emotional context, growth patterns.
-- **Documents:** Prioritize key findings, methodology, conclusions.
+- **Conversations:** Focus on user preferences, decisions, action items—what the user wants and what was agreed.
+- **Journals:** Emphasize personal insights, emotional context, growth patterns—the subjective experience.
+- **Documents:** Prioritize key findings, methodology, conclusions—the objective content.
 
-**Implementation:**
+A generic summarization prompt loses domain-specific signal. By tailoring prompts, we extract what matters for each use case.
 
-```python
-def get_prompt_for_content_type(content_type: str) -> str:
-    match content_type:
-        case "conversation": return CONVERSATION_PROMPT
-        case "journal": return JOURNAL_PROMPT
-        case "document": return DOCUMENT_PROMPT
-        case _: return STANDARD_PROMPT
-```
+### 3.5 Prior Summary Integration (Rolling Updates)
 
-### 2.4 Prior Summary Integration
-
-**Decision:** Always provide the previous summary as context when updating.
+**Decision:** Always provide the previous summary as context when generating updates.
 
 **Rationale:**
 
-- **Continuity:** New summaries should build on existing context, not replace it.
-- **Incremental updates:** Avoid re-summarizing all content on every update.
-- **Context preservation:** Important information from earlier content persists.
+- **Continuity:** New summaries should build on existing context, not start fresh each time.
+- **Incremental updates:** Avoid re-summarizing all historical content on every update.
+- **Information preservation:** Important information from earlier content persists through the chain of summaries.
 
-**Implementation:**
+This implements Mem0's "rolling summary" pattern. The L3 summary from the previous run becomes prior context for the next summarization, allowing information to flow forward through time.
 
-- The `prior_summary` parameter is passed through the entire pipeline.
-- `ROLLING_PROMPT` specifically handles integrating new facts with existing summaries.
-- For hierarchical summaries, only the L3 summary is used as prior context.
-
-### 2.5 Compression Ratio Tracking
+### 3.6 Compression Ratio Tracking
 
 **Decision:** Track and report compression metrics for every summary.
 
 **Rationale:**
 
 - **Transparency:** Users can understand how much information was compressed.
-- **Quality monitoring:** Unusual ratios may indicate summarization issues.
-- **Optimization:** Metrics inform future threshold tuning.
+- **Quality monitoring:** Unusual ratios (e.g., output longer than input) may indicate summarization issues.
+- **Optimization:** Metrics inform future threshold tuning and quality assessment.
 
-**Implementation:**
-
-```python
-@dataclass
-class SummaryResult:
-    level: SummaryLevel
-    summary: str | None
-    hierarchical: HierarchicalSummary | None
-    input_tokens: int
-    output_tokens: int
-    compression_ratio: float  # output/input (lower = more compression)
-```
-
----
-
-## 3. Data Model
-
-### 3.1 Summary Levels
-
-| Level | Token Range | Target Compression | Strategy |
-| :--- | :--- | :--- | :--- |
-| `NONE` | < 100 | N/A | No summarization |
-| `BRIEF` | 100-500 | ~20% | Single sentence |
-| `STANDARD` | 500-3000 | ~12% | Paragraph |
-| `DETAILED` | 3000-15000 | ~7% | Chunked + meta |
-| `HIERARCHICAL` | > 15000 | ~3-5% | L1/L2/L3 tree |
-
-### 3.2 Hierarchical Summary Structure
-
-```python
-class ChunkSummary(BaseModel):
-    chunk_index: int          # Position in original content
-    content: str              # The summarized text
-    token_count: int          # Tokens in this summary
-    source_tokens: int        # Tokens in source chunk
-
-class HierarchicalSummary(BaseModel):
-    l1_summaries: list[ChunkSummary]  # Individual chunk summaries
-    l2_summaries: list[str]           # Group summaries
-    l3_summary: str                   # Final synthesis
-    chunk_size: int = 3000            # Tokens per chunk
-    chunk_overlap: int = 200          # Overlap between chunks
-```
-
-### 3.3 Storage Metadata (ChromaDB)
-
-Summaries are stored with rich metadata for retrieval and management:
-
-| Field | L1 | L2 | L3 | Description |
-| :--- | :---: | :---: | :---: | :--- |
-| `id` | ✓ | ✓ | ✓ | `{conversation_id}:summary:L{n}:{index}` |
-| `conversation_id` | ✓ | ✓ | ✓ | Scope key |
-| `role` | ✓ | ✓ | ✓ | Always `"summary"` |
-| `level` | ✓ | ✓ | ✓ | 1, 2, or 3 |
-| `chunk_index` | ✓ | | | Position in L1 sequence |
-| `group_index` | | ✓ | | Position in L2 sequence |
-| `is_final` | | | ✓ | Marks the top-level summary |
-| `summary_level` | | | ✓ | Name of SummaryLevel enum |
-| `input_tokens` | | | ✓ | Original content token count |
-| `output_tokens` | | | ✓ | Total summary token count |
-| `compression_ratio` | | | ✓ | Output/input ratio |
-| `created_at` | ✓ | ✓ | ✓ | ISO 8601 timestamp |
-
-### 3.4 File Format
-
-Summary files use Markdown with YAML front matter:
-
-```markdown
----
-id: "journal:summary:L3:final"
-conversation_id: "journal"
-role: "summary"
-level: 3
-is_final: true
-summary_level: "STANDARD"
-input_tokens: 1500
-output_tokens: 180
-compression_ratio: 0.12
-created_at: "2025-01-15T10:30:00Z"
----
-
-The user has been exploring adaptive summarization techniques...
-```
+Every `SummaryResult` includes `input_tokens`, `output_tokens`, and `compression_ratio` for observability.
 
 ---
 
 ## 4. Processing Pipeline
 
-### 4.1 Main Entry Point
+### 4.1 Level Selection
 
-```python
-async def summarize(
-    content: str,
-    config: SummarizerConfig,
-    prior_summary: str | None = None,
-    content_type: str = "general",
-) -> SummaryResult
-```
+The entry point counts tokens and selects strategy:
 
-### 4.2 Level Selection Flow
+1. **Token counting:** Uses tiktoken with model-appropriate encoding. Falls back to character-based estimation (~4 chars/token) if tiktoken unavailable.
+2. **Threshold comparison:** Maps token count to `SummaryLevel` enum.
+3. **Strategy dispatch:** Calls level-specific handler.
 
-```
-Input Content
-     │
-     ▼
-┌─────────────┐
-│ Count Tokens│ (tiktoken, cl100k_base)
-└──────┬──────┘
-       │
-       ▼
-┌─────────────────────────────────────────┐
-│ determine_level(token_count) -> Level   │
-│                                         │
-│   < 100  ──▶ NONE                       │
-│   < 500  ──▶ BRIEF                      │
-│   < 3000 ──▶ STANDARD                   │
-│   < 15000 ──▶ DETAILED                  │
-│   else   ──▶ HIERARCHICAL               │
-└──────┬──────────────────────────────────┘
-       │
-       ▼
-   Execute level-specific strategy
-```
+### 4.2 Brief and Standard Levels
 
-### 4.3 Strategy Execution by Level
+For short content (< 3000 tokens):
 
-#### NONE Level
-- **Action:** Return immediately with no summary.
-- **Output:** `SummaryResult(level=NONE, summary=None, compression_ratio=1.0)`
+- Single LLM call with level-appropriate prompt
+- Prior summary injected as context if available
+- Content-type selection determines prompt variant
+- Returns simple `SummaryResult` with no hierarchical structure
 
-#### BRIEF Level
-- **Prompt:** `BRIEF_PROMPT` - distill to single sentence.
-- **LLM Call:** Single generation with low max_tokens.
-- **Output:** One-sentence summary.
+### 4.3 Detailed and Hierarchical Levels
 
-#### STANDARD Level
-- **Prompt:** `STANDARD_PROMPT` with optional prior summary context.
-- **LLM Call:** Single generation.
-- **Output:** Paragraph-length summary.
+For longer content:
 
-#### DETAILED Level
-1. **Chunk:** Split content into ~3000 token chunks with 200 token overlap.
-2. **Parallel L1:** Generate summary for each chunk using `CHUNK_PROMPT`.
-3. **Meta-synthesis:** Combine L1 summaries using `META_PROMPT`.
-4. **Output:** `HierarchicalSummary` with L1s and L3 (no L2 needed for this size).
+1. **Chunking:** Split content into overlapping chunks on semantic boundaries.
+2. **Parallel L1 generation:** Summarize each chunk independently. Uses semaphore-controlled concurrency to avoid overwhelming the LLM.
+3. **L2 grouping (hierarchical only):** Organize L1s into groups of ~5, summarize each group.
+4. **L3 synthesis:** Meta-summarize all L2s (or all L1s for DETAILED level) into final summary.
 
-#### HIERARCHICAL Level
-1. **Chunk:** Split into ~3000 token chunks with overlap.
-2. **Parallel L1:** Generate chunk summaries.
-3. **Group:** Organize L1s into groups of ~5.
-4. **Parallel L2:** Summarize each group.
-5. **L3 Synthesis:** Final meta-summary of all L2s.
-6. **Output:** Full `HierarchicalSummary` tree.
-
-### 4.4 Chunking Algorithm
-
-```python
-def chunk_text(
-    text: str,
-    chunk_size: int = 3000,
-    overlap: int = 200,
-) -> list[str]:
-    """Split text into overlapping chunks on paragraph boundaries."""
-```
-
-**Strategy:**
-
-1. **Paragraph-first:** Try to split on double newlines.
-2. **Sentence fallback:** If paragraph exceeds chunk_size, split on sentence boundaries.
-3. **Character fallback:** For very long sentences (e.g., code), use character splitting.
-4. **Overlap handling:** Each chunk starts with the last `overlap` tokens of the previous.
-
-### 4.5 Middle Truncation (Utility)
-
-For handling very large inputs that could exceed context windows:
-
-```python
-def middle_truncate(
-    text: str,
-    budget_chars: int,
-    head_frac: float = 0.3,
-    tail_frac: float = 0.3,
-) -> tuple[str, int]:
-    """Keep head and tail, remove middle (least likely to contain key info)."""
-```
-
-**Rationale:** Research shows that important information clusters at beginnings (introductions, key points) and endings (conclusions, action items). Useful when summarizing very long conversations that may contain pasted codebases.
+The parallelism at L1 and L2 levels provides significant speedup for long content while maintaining semantic coherence through the hierarchical structure.
 
 ---
 
-## 5. Prompt Specifications
+## 5. Integration with Memory System
 
-### 5.1 Brief Summary (`BRIEF_PROMPT`)
+### 5.1 Write Path
 
-```
-Distill the following content into a single, comprehensive sentence
-that captures the essential meaning:
+The memory system triggers summarization during post-processing:
 
-{content}
+1. Collect content to summarize (extracted facts, conversation turns)
+2. Retrieve existing L3 summary as prior context
+3. Call summarizer with content + prior summary + content type
+4. Persist results: delete old summaries, write new files, upsert to ChromaDB
 
-Summary (one sentence):
-```
+### 5.2 Read Path
 
-### 5.2 Standard Summary (`STANDARD_PROMPT`)
+The memory retrieval system uses summaries for context injection:
 
-```
-Summarize the following content in a concise paragraph.
-{prior_context}
-Focus on key information, decisions, and actionable insights.
+- Fetches L3 (final) summary for the conversation
+- Injects as prefix to retrieved memories in the prompt
+- Provides high-level context that individual memory snippets lack
 
-Content:
-{content}
+### 5.3 Storage
 
-Summary:
-```
+Summaries are persisted in two places:
 
-### 5.3 Chunk Summary (`CHUNK_PROMPT`)
-
-```
-Summarize this section of a larger document.
-Preserve specific details, names, and numbers that may be important.
-
-Section {chunk_index} of {total_chunks}:
-{content}
-
-Section summary:
-```
-
-### 5.4 Meta Summary (`META_PROMPT`)
-
-```
-Synthesize these section summaries into a coherent narrative.
-Maintain logical flow and preserve the most important information.
-
-Section Summaries:
-{summaries}
-
-Synthesized Summary:
-```
-
-### 5.5 Content-Type Prompts
-
-All content-type prompts include `{prior_context}` for rolling summary continuity.
-
-**Conversation:**
-```
-Summarize this conversation focusing on:
-- User preferences and decisions
-- Action items and commitments
-- Key topics discussed
-```
-
-**Journal:**
-```
-Summarize this journal entry focusing on:
-- Personal insights and reflections
-- Emotional context and growth
-- Goals and intentions
-```
-
-**Document:**
-```
-Summarize this document focusing on:
-- Key findings and conclusions
-- Methodology and approach
-- Recommendations and implications
-```
+- **Files:** Markdown with YAML front matter under `summaries/L1/`, `L2/`, `L3/` directories. Human-readable, git-trackable.
+- **ChromaDB:** Vector embeddings for semantic search. Metadata includes level, compression metrics, timestamps.
 
 ---
 
-## 6. Integration with Memory System
-
-### 6.1 Entry Point
-
-The memory system calls the summarizer via `_ingest.summarize_content()`:
-
-```python
-async def summarize_content(
-    content: str,
-    prior_summary: str | None = None,
-    content_type: str = "general",
-    openai_base_url: str,
-    api_key: str | None,
-    model: str,
-) -> SummaryResult
-```
-
-### 6.2 Storage Flow
-
-```
-summarize_content()
-       │
-       ▼
-SummaryResult
-       │
-       ▼
-store_adaptive_summary()
-       │
-       ├──▶ persist_hierarchical_summary()
-       │         │
-       │         ├──▶ Delete old summaries (L1, L2, L3)
-       │         ├──▶ Write new summary files
-       │         └──▶ Upsert to ChromaDB
-       │
-       └──▶ Return stored IDs
-```
-
-### 6.3 Retrieval Integration
-
-The memory retrieval system uses `get_final_summary()` to fetch the L3 summary:
-
-```python
-def get_final_summary(
-    collection: Collection,
-    conversation_id: str,
-) -> StoredMemory | None:
-    """Retrieve the L3 final summary for injection into prompts."""
-```
-
----
-
-## 7. Configuration Reference
+## 6. Configuration
 
 | Parameter | Default | Description |
 | :--- | :--- | :--- |
-| `openai_base_url` | *required* | Base URL for LLM API |
-| `model` | *required* | Model ID for summarization |
-| `api_key` | `None` | API key (optional for local models) |
-| `chunk_size` | `3000` | Tokens per chunk for hierarchical |
-| `chunk_overlap` | `200` | Token overlap between chunks |
+| `chunk_size` | 3000 | Target tokens per chunk |
+| `chunk_overlap` | 200 | Overlap between consecutive chunks |
+| `max_concurrent_chunks` | 5 | Parallel LLM calls for chunk summarization |
 
-### 7.1 Level Thresholds (Constants)
-
-| Constant | Value | Description |
-| :--- | :--- | :--- |
-| `THRESHOLD_NONE` | 100 | Below: no summary |
-| `THRESHOLD_BRIEF` | 500 | Below: single sentence |
-| `THRESHOLD_STANDARD` | 3000 | Below: paragraph |
-| `THRESHOLD_DETAILED` | 15000 | Below: chunked |
+Level thresholds are constants (100, 500, 3000, 15000 tokens) chosen based on empirical testing and Mem0 research on optimal compression ratios.
 
 ---
 
-## 8. Error Handling
+## 7. Error Handling
 
-### 8.1 Fail-Fast Philosophy
+Summarization follows a fail-fast philosophy:
 
-Errors are propagated rather than hidden behind fallbacks:
+- **LLM errors:** Propagated as `SummarizationError` rather than silently returning empty results.
+- **Empty input:** Returns NONE level immediately (not an error).
+- **Encoding errors:** Falls back to character-based token estimation.
 
-| Error | Behavior |
-| :--- | :--- |
-| LLM timeout | Raises `SummarizationError` |
-| LLM error | Raises `SummarizationError` |
-| Token counting failure | Falls back to `cl100k_base` encoding |
-
-### 8.2 Validation
-
-- **Empty content:** Returns NONE level immediately.
-- **Whitespace-only:** Returns NONE level.
-- **Invalid compression ratio:** Clamped to [0.0, 1.0].
+The caller (memory system) decides how to handle failures—typically by proceeding without a summary rather than blocking the entire write path.
 
 ---
 
-## 9. Performance Considerations
+## 8. Comparison with Alternatives
 
-### 9.1 Token Counting
-
-- Uses `tiktoken` with `cl100k_base` encoding (GPT-4 tokenizer).
-- Caches tokenizer instance for efficiency.
-- Falls back to character-based estimation if tiktoken unavailable.
-
-### 9.2 Parallel Processing
-
-For DETAILED and HIERARCHICAL levels:
-- L1 chunk summaries can be generated in parallel.
-- L2 group summaries can be generated in parallel.
-- Only L3 synthesis requires sequential processing.
-
-### 9.3 Caching
-
-- Token counts are computed once per content string.
-- Prompt templates are loaded once at module import.
-- ChromaDB connection is reused across operations.
-
----
-
-## 10. Comparison with Alternative Approaches
-
-| Aspect | Adaptive Summarizer | Rolling Summary | Fixed Chunking |
+| Aspect | Adaptive Summarizer | Fixed Rolling Summary | No Summarization |
 | :--- | :--- | :--- | :--- |
-| **Compression** | 3-20% (varies by level) | ~15% fixed | ~10% fixed |
-| **Detail preservation** | Hierarchical (L1/L2/L3) | Single level | Single level |
-| **Context awareness** | Content-type prompts | Generic | Generic |
-| **Efficiency** | Skip short content | Always summarize | Always chunk |
-| **Research basis** | Letta + Mem0 | Mem0 only | None |
+| **Compression** | 3-20% (scales with input) | ~15% fixed | 0% |
+| **Detail preservation** | Hierarchical (L1/L2/L3) | Single level | Full |
+| **Short content** | Skipped (efficient) | Still processed | N/A |
+| **Long content** | Tree structure | Single pass | Context overflow |
+| **Research basis** | Letta + Mem0 | Mem0 | None |
 
----
-
-## 11. Future Enhancements
-
-- **Semantic chunking:** Split on topic boundaries rather than token counts.
-- **Incremental L1 updates:** Only re-summarize changed chunks.
-- **Quality scoring:** Evaluate summary quality and trigger re-summarization.
-- **User feedback loop:** Learn preferred compression ratios per user.
+The adaptive approach's key advantage is matching effort to content: short content stays untouched, medium content gets lightweight summarization, and long content gets full hierarchical treatment.
