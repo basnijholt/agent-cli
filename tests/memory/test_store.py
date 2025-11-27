@@ -133,21 +133,10 @@ def test_upsert_and_delete_entries_delegate() -> None:
     assert fake.deleted == [["x"]]
 
 
-# --- Hierarchical Summary Tests ---
+# --- Summary Entry Tests ---
 
 
-class _MockSummaryResult:
-    """Mock SummaryResult for testing without importing the full summarizer module."""
-
-    def __init__(self, entries: list[dict[str, Any]]) -> None:
-        self._entries = entries
-
-    def to_storage_metadata(self, _conversation_id: str) -> list[dict[str, Any]]:
-        # Just return the pre-configured entries (ignores conversation_id)
-        return self._entries
-
-
-def test_upsert_hierarchical_summary_simple() -> None:
+def test_upsert_summary_entries_simple() -> None:
     """Test upserting a simple (non-hierarchical) summary."""
     fake = _FakeCollection()
     entries = [
@@ -167,9 +156,8 @@ def test_upsert_hierarchical_summary_simple() -> None:
             },
         },
     ]
-    mock_result = _MockSummaryResult(entries)
 
-    ids = _store.upsert_hierarchical_summary(fake, "conv-123", mock_result)
+    ids = _store.upsert_summary_entries(fake, entries)
 
     assert ids == ["conv-123:summary:L3:final"]
     assert len(fake.upserts) == 1
@@ -180,7 +168,7 @@ def test_upsert_hierarchical_summary_simple() -> None:
     assert upserted_metas[0]["is_final"] is True
 
 
-def test_upsert_hierarchical_summary_with_chunks() -> None:
+def test_upsert_summary_entries_with_chunks() -> None:
     """Test upserting a hierarchical summary with L1 and L3 entries."""
     fake = _FakeCollection()
     entries = [
@@ -221,9 +209,8 @@ def test_upsert_hierarchical_summary_with_chunks() -> None:
             },
         },
     ]
-    mock_result = _MockSummaryResult(entries)
 
-    ids = _store.upsert_hierarchical_summary(fake, "conv-456", mock_result)
+    ids = _store.upsert_summary_entries(fake, entries)
 
     assert len(ids) == 3
     assert "conv-456:summary:L1:0" in ids
@@ -231,12 +218,11 @@ def test_upsert_hierarchical_summary_with_chunks() -> None:
     assert "conv-456:summary:L3:final" in ids
 
 
-def test_upsert_hierarchical_summary_empty() -> None:
+def test_upsert_summary_entries_empty() -> None:
     """Test upserting when there are no entries (e.g., NONE level)."""
     fake = _FakeCollection()
-    mock_result = _MockSummaryResult([])
 
-    ids = _store.upsert_hierarchical_summary(fake, "conv-789", mock_result)
+    ids = _store.upsert_summary_entries(fake, [])
 
     assert ids == []
     assert len(fake.upserts) == 0

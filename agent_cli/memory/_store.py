@@ -148,20 +148,7 @@ def upsert_summary_entries(
     collection: Collection,
     entries: list[dict[str, Any]],
 ) -> list[str]:
-    """Store pre-built summary entries to ChromaDB.
-
-    This is the low-level helper that accepts entries already built by
-    SummaryResult.to_storage_metadata(). Use this when you already have
-    the entries (e.g., after writing files) to avoid duplicate serialization.
-
-    Args:
-        collection: ChromaDB collection.
-        entries: List of entry dicts with 'id', 'content', and 'metadata' keys.
-
-    Returns:
-        List of IDs that were upserted.
-
-    """
+    """Store pre-built summary entries (from to_storage_metadata) to ChromaDB."""
     if not entries:
         return []
 
@@ -178,30 +165,6 @@ def upsert_summary_entries(
 
     upsert_memories(collection, ids=ids, contents=contents, metadatas=metadatas)
     return ids
-
-
-def upsert_hierarchical_summary(
-    collection: Collection,
-    conversation_id: str,
-    summary_result: Any,
-) -> list[str]:
-    """Store all levels of a hierarchical summary.
-
-    Convenience wrapper that calls to_storage_metadata() and then
-    upsert_summary_entries(). If you already have the entries built,
-    call upsert_summary_entries() directly to avoid duplicate work.
-
-    Args:
-        collection: ChromaDB collection.
-        conversation_id: The conversation this summary belongs to.
-        summary_result: A SummaryResult from the adaptive summarizer.
-
-    Returns:
-        List of IDs that were upserted.
-
-    """
-    entries = summary_result.to_storage_metadata(conversation_id)
-    return upsert_summary_entries(collection, entries)
 
 
 def get_summary_at_level(

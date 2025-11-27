@@ -94,15 +94,7 @@ class SummarizerConfig:
 
 
 def determine_level(token_count: int) -> SummaryLevel:
-    """Determine the appropriate summary level based on token count.
-
-    Args:
-        token_count: Number of tokens in the input.
-
-    Returns:
-        The recommended SummaryLevel.
-
-    """
+    """Map token count to appropriate SummaryLevel."""
     if token_count < LEVEL_THRESHOLDS[SummaryLevel.NONE]:
         return SummaryLevel.NONE
     if token_count < LEVEL_THRESHOLDS[SummaryLevel.BRIEF]:
@@ -188,19 +180,7 @@ async def _summarize_chunks(
     chunks: list[str],
     config: SummarizerConfig,
 ) -> list[ChunkSummary]:
-    """Summarize multiple chunks with concurrency control.
-
-    This helper centralizes the semaphore/gather pattern used by both
-    _detailed_summary and _hierarchical_summary.
-
-    Args:
-        chunks: List of text chunks to summarize.
-        config: Summarizer configuration (includes max_concurrent_chunks).
-
-    Returns:
-        List of ChunkSummary objects in the same order as input chunks.
-
-    """
+    """Summarize chunks concurrently with semaphore-controlled parallelism."""
     semaphore = asyncio.Semaphore(config.max_concurrent_chunks)
     total = len(chunks)
 
@@ -218,18 +198,7 @@ async def _summarize_single_chunk(
     total_chunks: int,
     config: SummarizerConfig,
 ) -> ChunkSummary:
-    """Summarize a single chunk of content.
-
-    Args:
-        chunk: The text chunk to summarize.
-        chunk_index: Index of this chunk (0-based).
-        total_chunks: Total number of chunks being processed.
-        config: Summarizer configuration.
-
-    Returns:
-        ChunkSummary with the summarized content.
-
-    """
+    """Summarize a single chunk and return its metadata."""
     source_tokens = count_tokens(chunk, config.model)
     target_tokens = estimate_summary_tokens(source_tokens, SummaryLevel.STANDARD)
     max_words = tokens_to_words(target_tokens)
@@ -418,20 +387,7 @@ async def _generate_summary(
     config: SummarizerConfig,
     max_tokens: int = 256,
 ) -> str:
-    """Generate a summary using the LLM.
-
-    Args:
-        prompt: The prompt to send to the LLM.
-        config: Summarizer configuration.
-        max_tokens: Maximum tokens for the response.
-
-    Returns:
-        The generated summary text.
-
-    Raises:
-        SummarizationError: If summarization fails.
-
-    """
+    """Call the LLM to generate a summary. Raises SummarizationError on failure."""
     from pydantic_ai import Agent  # noqa: PLC0415
     from pydantic_ai.models.openai import OpenAIChatModel  # noqa: PLC0415
     from pydantic_ai.providers.openai import OpenAIProvider  # noqa: PLC0415

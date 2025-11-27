@@ -12,7 +12,7 @@ from agent_cli.memory._persistence import persist_hierarchical_summary
 from agent_cli.memory._store import (
     get_final_summary,
     get_summary_at_level,
-    upsert_hierarchical_summary,
+    upsert_summary_entries,
 )
 from agent_cli.summarizer import SummaryLevel, SummaryResult
 from agent_cli.summarizer.adaptive import determine_level
@@ -185,7 +185,8 @@ class TestHierarchicalSummaryStorage:
             compression_ratio=0.05,
         )
 
-        ids = upsert_hierarchical_summary(fake_collection, "conv-123", result)
+        entries = result.to_storage_metadata("conv-123")
+        ids = upsert_summary_entries(fake_collection, entries)
 
         assert len(ids) == 1
         assert "conv-123:summary:L3:final" in ids
@@ -225,7 +226,8 @@ class TestHierarchicalSummaryStorage:
             compression_ratio=0.02,
         )
 
-        ids = upsert_hierarchical_summary(fake_collection, "conv-789", result)
+        entries = result.to_storage_metadata("conv-789")
+        ids = upsert_summary_entries(fake_collection, entries)
 
         assert len(ids) == 3  # 2 L1 + 1 L3
 
