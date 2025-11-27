@@ -14,7 +14,7 @@ from agent_cli.memory._indexer import MemoryIndex, initial_index, watch_memory_s
 from agent_cli.memory._ingest import extract_and_store_facts_and_summaries
 from agent_cli.memory._persistence import evict_if_needed
 from agent_cli.memory._retrieval import augment_chat_request
-from agent_cli.memory._store import init_memory_collection
+from agent_cli.memory._store import init_memory_collection, list_conversation_entries
 from agent_cli.memory.engine import process_chat_request
 from agent_cli.memory.models import ChatRequest, MemoryRetrieval, Message
 from agent_cli.rag._retriever import get_reranker_model
@@ -184,6 +184,36 @@ class MemoryClient:
             filters=filters,
         )
         return retrieval or MemoryRetrieval(entries=[])
+
+    def list_all(
+        self,
+        conversation_id: str = "default",
+        include_summary: bool = False,
+    ) -> list[dict[str, Any]]:
+        """List all stored memories for a conversation.
+
+        Args:
+            conversation_id: Conversation scope.
+            include_summary: Whether to include summary entries.
+
+        Returns:
+            List of memory entries with id, content, and metadata.
+
+        """
+        entries = list_conversation_entries(
+            self.collection,
+            conversation_id,
+            include_summary=include_summary,
+        )
+        return [
+            {
+                "id": e.id,
+                "content": e.content,
+                "role": e.metadata.role,
+                "created_at": e.metadata.created_at,
+            }
+            for e in entries
+        ]
 
     async def chat(
         self,

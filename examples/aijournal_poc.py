@@ -23,6 +23,8 @@ import logging
 import os
 from pathlib import Path
 
+import httpx
+
 from agent_cli.memory.client import MemoryClient
 
 # Enable debug logging for memory module
@@ -94,29 +96,135 @@ async def cmd_search(query: str, top_k: int = 5) -> None:
         print()
 
 
-async def cmd_chat(question: str) -> None:
+def cmd_show() -> None:
+    """Show all stored memories (what the system knows about you)."""
+    client, _ = get_client()
+    print("=== What I know about you ===\n")
+
+    entries = client.list_all(conversation_id="journal")
+
+    if not entries:
+        print("No memories stored yet. Add some journal entries first!")
+        return
+
+    # Sort by created_at
+    entries.sort(key=lambda x: x["created_at"], reverse=True)
+
+    for i, entry in enumerate(entries, 1):
+        date = entry["created_at"][:10] if entry["created_at"] else "unknown"
+        print(f"{i}. [{date}] {entry['content']}")
+
+    print(f"\n--- Total: {len(entries)} memories ---")
+
+
+PROFILE_PROMPT = """Based on the following facts about a person, create a brief profile summary.
+Organize the information into categories like:
+- **Identity**: Name, relationships, occupation
+- **Interests & Activities**: Hobbies, regular activities
+- **Goals & Values**: What they care about, what they're working towards
+- **Recent Events**: Notable recent happenings
+
+Only include categories that have relevant information. Be concise.
+
+Facts:
+{facts}
+
+Profile Summary:"""
+
+
+async def cmd_profile() -> None:
+    """Generate a profile summary from stored memories."""
+    client, model = get_client()
+
+    entries = client.list_all(conversation_id="journal")
+
+    if not entries:
+        print("No memories stored yet. Add some journal entries first!")
+        return
+
+    # Format facts for the prompt
+    facts = "\n".join(f"- {e['content']}" for e in entries)
+    prompt = PROFILE_PROMPT.format(facts=facts)
+
+    print("=== Your Profile ===\n")
+    print("(Generating profile from stored memories...)\n")
+
+    # Direct LLM call (bypasses memory storage)
+    base_url = os.environ.get("OPENAI_BASE_URL", DEFAULT_BASE_URL)
+    api_key = os.environ.get("OPENAI_API_KEY", "not-needed-for-local")
+
+    async with httpx.AsyncClient(timeout=120.0) as http:
+        response = await http.post(
+            f"{base_url}/chat/completions",
+            headers={"Authorization": f"Bearer {api_key}"},
+            json={
+                "model": model,
+                "messages": [{"role": "user", "content": prompt}],
+                "temperature": 0.7,
+            },
+        )
+        data = response.json()
+
+    choices = data.get("choices", [])
+    if choices:
+        profile = choices[0].get("message", {}).get("content", "")
+        print(profile)
+
+    print(f"\n--- Based on {len(entries)} memories ---")
+
+
+CHAT_SYSTEM_PROMPT = """You are a helpful AI assistant with memory of the user.
+
+Here's what you know about the user:
+{profile}
+
+Use this knowledge naturally in your responses. Be helpful and personable."""
+
+
+async def cmd_chat(question: str, with_profile: bool = True) -> None:
     """Chat with memory-augmented LLM."""
     client, model = get_client()
+
+    # Build profile context
+    profile_text = ""
+    if with_profile:
+        entries = client.list_all(conversation_id="journal")
+        if entries:
+            profile_text = "\n".join(f"- {e['content']}" for e in entries)
+
     print(f"Question: {question}\n")
 
-    response = await client.chat(
-        messages=[{"role": "user", "content": question}],
-        conversation_id="journal",
-        model=model,
-    )
+    # Build messages with profile context
+    messages: list[dict[str, str]] = []
+    if profile_text:
+        system_prompt = CHAT_SYSTEM_PROMPT.format(profile=profile_text)
+        messages.append({"role": "system", "content": system_prompt})
+    messages.append({"role": "user", "content": question})
 
-    # Extract assistant reply
-    choices = response.get("choices", [])
+    # Direct LLM call with profile context
+    base_url = os.environ.get("OPENAI_BASE_URL", DEFAULT_BASE_URL)
+    api_key = os.environ.get("OPENAI_API_KEY", "not-needed-for-local")
+
+    async with httpx.AsyncClient(timeout=120.0) as http:
+        response = await http.post(
+            f"{base_url}/chat/completions",
+            headers={"Authorization": f"Bearer {api_key}"},
+            json={
+                "model": model,
+                "messages": messages,
+                "temperature": 0.7,
+            },
+        )
+        data = response.json()
+
+    choices = data.get("choices", [])
     if choices:
         reply = choices[0].get("message", {}).get("content", "")
         print(f"Answer: {reply}")
 
-    # Show which memories were used
-    hits = response.get("memory_hits", [])
-    if hits:
-        print(f"\n--- Used {len(hits)} memories ---")
-        for hit in hits[:3]:
-            print(f"  • {hit['content'][:80]}...")
+    if profile_text:
+        entry_count = len(client.list_all(conversation_id="journal"))
+        print(f"\n--- Using profile with {entry_count} memories ---")
 
 
 def main() -> None:
@@ -137,6 +245,12 @@ def main() -> None:
     chat_parser = subparsers.add_parser("chat", help="Chat with memory")
     chat_parser.add_argument("question", help="Question to ask")
 
+    # Show command - display what the system knows about you
+    subparsers.add_parser("show", help="Show all stored memories")
+
+    # Profile command - generate a profile summary
+    subparsers.add_parser("profile", help="Generate profile from memories")
+
     args = parser.parse_args()
 
     if args.command == "add":
@@ -145,6 +259,10 @@ def main() -> None:
         asyncio.run(cmd_search(args.query, args.top_k))
     elif args.command == "chat":
         asyncio.run(cmd_chat(args.question))
+    elif args.command == "show":
+        cmd_show()
+    elif args.command == "profile":
+        asyncio.run(cmd_profile())
 
 
 if __name__ == "__main__":
