@@ -14,7 +14,8 @@ from agent_cli.memory._store import (
     get_summary_at_level,
     upsert_hierarchical_summary,
 )
-from agent_cli.summarizer import SummaryLevel, SummaryResult, determine_level
+from agent_cli.summarizer import SummaryLevel, SummaryResult
+from agent_cli.summarizer.adaptive import determine_level
 from agent_cli.summarizer.models import ChunkSummary, HierarchicalSummary
 
 if TYPE_CHECKING:

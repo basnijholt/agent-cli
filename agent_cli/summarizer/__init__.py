@@ -5,29 +5,19 @@ inspired by Letta (partial eviction, middle truncation) and Mem0 (rolling summar
 compression ratios) architectures.
 
 Example:
-    from agent_cli.summarizer import summarize, SummarizerConfig, determine_level
+    from agent_cli.summarizer import summarize, SummarizerConfig
 
     config = SummarizerConfig(
         openai_base_url="http://localhost:8000/v1",
         model="gpt-4",
     )
     result = await summarize(long_document, config)
-    print(f"Level: {result.level}, Compression: {result.compression_ratio:.1%}")
+    print(f"Level: {result.level.name}, Compression: {result.compression_ratio:.1%}")
 
 """
 
-from agent_cli.summarizer.adaptive import (
-    SummarizationError,
-    SummarizerConfig,
-    determine_level,
-    summarize,
-    update_rolling_summary,
-)
-from agent_cli.summarizer.models import (
-    HierarchicalSummary,
-    SummaryLevel,
-    SummaryResult,
-)
+from agent_cli.summarizer.adaptive import SummarizationError, SummarizerConfig, summarize
+from agent_cli.summarizer.models import HierarchicalSummary, SummaryLevel, SummaryResult
 
 __all__ = [
     "HierarchicalSummary",
@@ -35,7 +25,5 @@ __all__ = [
     "SummarizerConfig",
     "SummaryLevel",
     "SummaryResult",
-    "determine_level",
     "summarize",
-    "update_rolling_summary",
 ]

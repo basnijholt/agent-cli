@@ -20,13 +20,7 @@ from pydantic_ai.models.openai import OpenAIChatModel
 from pydantic_ai.providers.openai import OpenAIProvider
 from pydantic_ai.settings import ModelSettings
 
-from agent_cli.summarizer.models import (
-    ChunkSummary,
-    HierarchicalSummary,
-    SummaryLevel,
-    SummaryResult,
-)
-from agent_cli.summarizer.prompts import (
+from agent_cli.summarizer._prompts import (
     BRIEF_SUMMARY_PROMPT,
     CHUNK_SUMMARY_PROMPT,
     META_SUMMARY_PROMPT,
@@ -35,12 +29,18 @@ from agent_cli.summarizer.prompts import (
     format_summaries_for_meta,
     get_prompt_for_content_type,
 )
-from agent_cli.summarizer.utils import (
+from agent_cli.summarizer._utils import (
     chunk_text,
     count_tokens,
     estimate_summary_tokens,
     middle_truncate,
     tokens_to_words,
+)
+from agent_cli.summarizer.models import (
+    ChunkSummary,
+    HierarchicalSummary,
+    SummaryLevel,
+    SummaryResult,
 )
 
 logger = logging.getLogger(__name__)
