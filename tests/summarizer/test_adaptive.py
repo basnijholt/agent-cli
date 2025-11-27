@@ -6,13 +6,15 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from agent_cli.summarizer.adaptive import (
-    THRESHOLD_BRIEF,
-    THRESHOLD_NONE,
+from agent_cli.summarizer._utils import (
     SummarizationError,
     SummarizerConfig,
     SummaryOutput,
-    _generate_summary,
+    generate_summary,
+)
+from agent_cli.summarizer.adaptive import (
+    THRESHOLD_BRIEF,
+    THRESHOLD_NONE,
     determine_level,
     summarize,
 )
@@ -256,7 +258,7 @@ class TestSummarize:
 
 
 class TestGenerateSummary:
-    """Tests for _generate_summary function."""
+    """Tests for generate_summary function."""
 
     @pytest.fixture
     def config(self) -> SummarizerConfig:
@@ -281,7 +283,7 @@ class TestGenerateSummary:
             mock_agent.run = AsyncMock(return_value=mock_result)
             mock_agent_class.return_value = mock_agent
 
-            result = await _generate_summary("Test prompt", config, max_tokens=100)
+            result = await generate_summary("Test prompt", config, max_tokens=100)
 
             assert result == "Generated summary."
             mock_agent.run.assert_called_once_with("Test prompt")
@@ -298,7 +300,7 @@ class TestGenerateSummary:
             mock_agent_class.return_value = mock_agent
 
             with pytest.raises(SummarizationError, match="Summarization failed"):
-                await _generate_summary("Test prompt", config, max_tokens=100)
+                await generate_summary("Test prompt", config, max_tokens=100)
 
 
 class TestSummaryOutput:
