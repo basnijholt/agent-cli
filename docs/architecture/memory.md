@@ -59,13 +59,7 @@ entries/
       assistant/
         <timestamp>__<uuid>.md     # Raw assistant responses
     summaries/
-      L1/
-        chunk_0.md                 # Level 1: Individual chunk summaries
-        chunk_1.md
-      L2/
-        group_0.md                 # Level 2: Group summaries (groups of ~5 L1s)
-      L3/
-        final.md                   # Level 3: Final synthesized summary
+      <conversation_id>__summary.md  # Single final summary (map-reduce collapses to one)
 ```
 
 **Deleted Directory Structure (Soft Deletes):**
@@ -77,7 +71,7 @@ entries/
       facts/
         <timestamp>__<uuid>.md
       summaries/
-        L1/, L2/, L3/              # Tombstoned summary levels
+        <conversation_id>__summary.md  # Tombstoned summary
 ```
 
 ### 2.2 File Format
@@ -171,17 +165,16 @@ Resolves contradictions using a "Search-Decide-Update" loop with complete enumer
     *   **Updates:** Implemented as delete + add with a fresh ID; tombstones record `replaced_by`.
     *   **Deletes:** Soft-deletes files (moved under `deleted/`) and removes from Chroma.
 
-### 4.4 Summarization (Adaptive Hierarchical)
+### 4.4 Summarization (Adaptive Map-Reduce)
 Uses the `agent_cli.summarizer` module for research-backed adaptive summarization.
 
-*   **Level Selection:** Automatically determines summarization depth based on token count:
+*   **Level Selection:** Automatically determines summarization strategy based on token count:
     *   `NONE` (< 100 tokens): No summary needed, facts only.
-    *   `BRIEF` (100-500 tokens): Single-sentence summary (~20% compression).
-    *   `STANDARD` (500-3000 tokens): Paragraph summary (~12% compression).
-    *   `DETAILED` (3000-15000 tokens): Chunked summaries + meta-summary (~7% compression).
-    *   `HIERARCHICAL` (> 15000 tokens): Full L1/L2/L3 tree structure.
-*   **Input:** Previous L3 summary (if any) + newly extracted facts.
-*   **Persistence:** Stores summaries in `summaries/L1/`, `L2/`, `L3/` subdirectories with YAML front matter containing compression metrics.
+    *   `BRIEF` (100-500 tokens): Single-sentence summary.
+    *   `MAP_REDUCE` (>= 500 tokens): Dynamic collapse using map-reduce with content-type aware prompts.
+*   **Algorithm:** LangChain-inspired map-reduce that recursively collapses until content fits token_max (3000).
+*   **Input:** Previous summary (if any) + newly extracted facts.
+*   **Persistence:** Stores single final summary in `summaries/` directory with YAML front matter containing compression metrics.
 *   **See:** `docs/architecture/summarizer.md` for detailed algorithm specification.
 
 ### 4.5 Eviction
@@ -213,13 +206,12 @@ To replicate the system behavior, the following prompt strategies are required.
 *   **Output constraints:** JSON list containing all memories; each existing memory must have an event; new unrelated facts must be ADDed; no prose or code fences.
 
 ### 5.3 Summarization (Adaptive Prompts)
-The summarizer uses level-specific prompts from `agent_cli.summarizer._prompts`:
-*   **`BRIEF_PROMPT`:** Single-sentence distillation for short content.
-*   **`STANDARD_PROMPT`:** Paragraph summary with prior context integration.
-*   **`CHUNK_PROMPT`:** Individual chunk summarization for hierarchical processing.
-*   **`META_PROMPT`:** Synthesizes multiple chunk summaries into cohesive narrative.
-*   **`ROLLING_PROMPT`:** Integrates new facts with existing summary.
-*   **Content-type variants:** `CONVERSATION_PROMPT`, `JOURNAL_PROMPT`, `DOCUMENT_PROMPT` for domain-specific summarization.
+The summarizer uses prompts from `agent_cli.summarizer._prompts`:
+*   **`BRIEF_SUMMARY_PROMPT`:** Single-sentence distillation for short content (100-500 tokens).
+*   **`STANDARD_SUMMARY_PROMPT`:** Paragraph summary with prior context integration (general content).
+*   **`CHUNK_SUMMARY_PROMPT`:** Individual chunk summarization for map phase.
+*   **`META_SUMMARY_PROMPT`:** Synthesizes multiple chunk summaries in reduce phase.
+*   **Content-type variants:** `CONVERSATION_SUMMARY_PROMPT`, `JOURNAL_SUMMARY_PROMPT`, `DOCUMENT_SUMMARY_PROMPT` for domain-specific summarization.
 
 ---
 
