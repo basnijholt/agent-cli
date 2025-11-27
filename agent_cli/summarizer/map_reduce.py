@@ -19,17 +19,18 @@ import asyncio
 import logging
 from dataclasses import dataclass
 
-from pydantic import BaseModel
-
 from agent_cli.summarizer._prompts import (
     CHUNK_SUMMARY_PROMPT,
     META_SUMMARY_PROMPT,
     format_summaries_for_meta,
 )
 from agent_cli.summarizer._utils import (
+    SummarizationError,
+    SummarizerConfig,
     chunk_text,
     count_tokens,
     estimate_summary_tokens,
+    generate_summary,
     tokens_to_words,
 )
 from agent_cli.summarizer.models import SummaryLevel
@@ -37,50 +38,8 @@ from agent_cli.summarizer.models import SummaryLevel
 logger = logging.getLogger(__name__)
 
 
-class SummaryOutput(BaseModel):
-    """Structured output for summary generation."""
-
-    summary: str
-
-
-class MapReduceSummarizationError(Exception):
+class MapReduceSummarizationError(SummarizationError):
     """Raised when map-reduce summarization fails."""
-
-
-@dataclass
-class MapReduceConfig:
-    """Configuration for map-reduce summarization.
-
-    Attributes:
-        openai_base_url: Base URL for OpenAI-compatible API.
-        model: Model name for summarization.
-        api_key: Optional API key.
-        chunk_size: Target size for splitting content (tokens).
-                   LangChain uses 3000, BOOOOKSCORE suggests 2048.
-        token_max: Maximum tokens for combined summaries before collapsing.
-                  When combined summaries exceed this, we recursively reduce.
-        chunk_overlap: Overlap between chunks for context continuity.
-        max_concurrent: Maximum parallel summarization calls.
-        timeout: Timeout for API calls in seconds.
-        max_collapse_depth: Safety limit on recursive collapse depth.
-
-    """
-
-    openai_base_url: str
-    model: str
-    api_key: str | None = None
-    chunk_size: int = 2048  # BOOOOKSCORE's tested default
-    token_max: int = 3000  # LangChain's default
-    chunk_overlap: int = 200
-    max_concurrent: int = 5
-    timeout: float = 60.0
-    max_collapse_depth: int = 10  # Safety limit
-
-    def __post_init__(self) -> None:
-        """Normalize the base URL."""
-        self.openai_base_url = self.openai_base_url.rstrip("/")
-        if self.api_key is None:
-            self.api_key = "not-needed"
 
 
 @dataclass
@@ -107,19 +66,24 @@ class MapReduceResult:
 
 async def map_reduce_summarize(
     content: str,
-    config: MapReduceConfig,
+    config: SummarizerConfig,
+    max_collapse_depth: int = 10,
 ) -> MapReduceResult:
     """Summarize content using map-reduce with dynamic collapse.
 
     Algorithm:
-    1. If content fits in token_max, summarize directly
-    2. Otherwise, split into chunks and summarize each (map phase)
-    3. If combined summaries exceed token_max, recursively collapse (reduce phase)
-    4. Continue until everything fits in token_max
+    1. Split into chunks and summarize each (map phase)
+    2. If combined summaries exceed token_max, recursively collapse (reduce phase)
+    3. Continue until everything fits in token_max
+
+    Note: This function assumes content exceeds token_max. The caller (adaptive.py)
+    handles the case where content fits in a single chunk. The check below is a
+    safety guard for direct calls to this function.
 
     Args:
         content: The content to summarize.
-        config: Map-reduce configuration.
+        config: Summarizer configuration.
+        max_collapse_depth: Safety limit on recursive collapse depth.
 
     Returns:
         MapReduceResult with summary and metadata.
@@ -137,7 +101,8 @@ async def map_reduce_summarize(
 
     input_tokens = count_tokens(content, config.model)
 
-    # If content already fits, just summarize directly
+    # Safety guard: if content fits in token_max, summarize directly.
+    # Normally handled by adaptive.py, but kept for direct calls to this function.
     if input_tokens <= config.token_max:
         summary = await _summarize_text(content, config)
         output_tokens = count_tokens(summary, config.model)
@@ -166,10 +131,10 @@ async def map_reduce_summarize(
     depth = 0
     while _total_tokens(summaries, config.model) > config.token_max:
         depth += 1
-        if depth > config.max_collapse_depth:
+        if depth > max_collapse_depth:
             logger.warning(
                 "Hit max collapse depth %d, forcing final summary",
-                config.max_collapse_depth,
+                max_collapse_depth,
             )
             break
 
@@ -205,9 +170,9 @@ def _total_tokens(texts: list[str], model: str) -> int:
     return sum(count_tokens(t, model) for t in texts)
 
 
-async def _map_summarize(chunks: list[str], config: MapReduceConfig) -> list[str]:
+async def _map_summarize(chunks: list[str], config: SummarizerConfig) -> list[str]:
     """Summarize each chunk in parallel (map phase)."""
-    semaphore = asyncio.Semaphore(config.max_concurrent)
+    semaphore = asyncio.Semaphore(config.max_concurrent_chunks)
     total = len(chunks)
 
     async def summarize_chunk(idx: int, chunk: str) -> str:
@@ -222,7 +187,7 @@ async def _summarize_chunk(
     chunk: str,
     chunk_index: int,
     total_chunks: int,
-    config: MapReduceConfig,
+    config: SummarizerConfig,
 ) -> str:
     """Summarize a single chunk."""
     source_tokens = count_tokens(chunk, config.model)
@@ -236,12 +201,12 @@ async def _summarize_chunk(
         max_words=max_words,
     )
 
-    return await _generate_summary(prompt, config, max_tokens=target_tokens + 50)
+    return await generate_summary(prompt, config, max_tokens=target_tokens + 50)
 
 
 async def _collapse_summaries(
     summaries: list[str],
-    config: MapReduceConfig,
+    config: SummarizerConfig,
 ) -> list[str]:
     """Collapse summaries by grouping and re-summarizing (reduce phase).
 
@@ -272,7 +237,7 @@ async def _collapse_summaries(
         groups.append(current_group)
 
     # Summarize each group in parallel
-    semaphore = asyncio.Semaphore(config.max_concurrent)
+    semaphore = asyncio.Semaphore(config.max_concurrent_chunks)
 
     async def summarize_group(group: list[str]) -> str:
         async with semaphore:
@@ -282,7 +247,7 @@ async def _collapse_summaries(
     return list(await asyncio.gather(*tasks))
 
 
-async def _synthesize(summaries: list[str], config: MapReduceConfig) -> str:
+async def _synthesize(summaries: list[str], config: SummarizerConfig) -> str:
     """Synthesize multiple summaries into one."""
     combined_tokens = sum(count_tokens(s, config.model) for s in summaries)
     target_tokens = estimate_summary_tokens(combined_tokens, SummaryLevel.MAP_REDUCE)
@@ -293,10 +258,10 @@ async def _synthesize(summaries: list[str], config: MapReduceConfig) -> str:
         max_words=max_words,
     )
 
-    return await _generate_summary(prompt, config, max_tokens=target_tokens + 100)
+    return await generate_summary(prompt, config, max_tokens=target_tokens + 100)
 
 
-async def _summarize_text(text: str, config: MapReduceConfig) -> str:
+async def _summarize_text(text: str, config: SummarizerConfig) -> str:
     """Summarize text that fits within token_max."""
     input_tokens = count_tokens(text, config.model)
     target_tokens = estimate_summary_tokens(input_tokens, SummaryLevel.MAP_REDUCE)
@@ -310,40 +275,4 @@ Content:
 
 Summary:"""
 
-    return await _generate_summary(prompt, config, max_tokens=target_tokens + 50)
-
-
-async def _generate_summary(
-    prompt: str,
-    config: MapReduceConfig,
-    max_tokens: int = 256,
-) -> str:
-    """Call the LLM to generate a summary."""
-    from pydantic_ai import Agent  # noqa: PLC0415
-    from pydantic_ai.models.openai import OpenAIChatModel  # noqa: PLC0415
-    from pydantic_ai.providers.openai import OpenAIProvider  # noqa: PLC0415
-    from pydantic_ai.settings import ModelSettings  # noqa: PLC0415
-
-    provider = OpenAIProvider(api_key=config.api_key, base_url=config.openai_base_url)
-    model = OpenAIChatModel(
-        model_name=config.model,
-        provider=provider,
-        settings=ModelSettings(
-            temperature=0.3,
-            max_tokens=max_tokens,
-        ),
-    )
-
-    agent = Agent(
-        model=model,
-        system_prompt="You are a concise summarizer. Output only the summary, no preamble.",
-        output_type=SummaryOutput,
-        retries=2,
-    )
-
-    try:
-        result = await agent.run(prompt)
-        return result.output.summary.strip()
-    except Exception as e:
-        msg = f"Map-reduce summarization failed: {e}"
-        raise MapReduceSummarizationError(msg) from e
+    return await generate_summary(prompt, config, max_tokens=target_tokens + 50)

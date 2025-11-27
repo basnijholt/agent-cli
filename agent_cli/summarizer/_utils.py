@@ -3,13 +3,106 @@
 from __future__ import annotations
 
 import re
+from dataclasses import dataclass
 from functools import lru_cache
 from typing import TYPE_CHECKING
+
+from pydantic import BaseModel
 
 from agent_cli.summarizer.models import SummaryLevel
 
 if TYPE_CHECKING:
     import tiktoken
+
+
+class SummaryOutput(BaseModel):
+    """Structured output for summary generation."""
+
+    summary: str
+
+
+class SummarizationError(Exception):
+    """Raised when summarization fails after all retries."""
+
+
+@dataclass
+class SummarizerConfig:
+    """Configuration for summarization operations.
+
+    Example:
+        config = SummarizerConfig(
+            openai_base_url="http://localhost:8000/v1",
+            model="llama3.1:8b",
+        )
+        result = await summarize(long_document, config)
+        print(f"Level: {result.level.name}")
+        print(f"Compression: {result.compression_ratio:.1%}")
+
+    """
+
+    openai_base_url: str
+    model: str
+    api_key: str | None = None
+    chunk_size: int = 2048  # BOOOOKSCORE's tested default
+    token_max: int = 3000  # LangChain's default - when to collapse
+    chunk_overlap: int = 200
+    max_concurrent_chunks: int = 5
+    timeout: float = 60.0
+
+    def __post_init__(self) -> None:
+        """Normalize the base URL."""
+        self.openai_base_url = self.openai_base_url.rstrip("/")
+        if self.api_key is None:
+            self.api_key = "not-needed"
+
+
+async def generate_summary(
+    prompt: str,
+    config: SummarizerConfig,
+    max_tokens: int = 256,
+) -> str:
+    """Call the LLM to generate a summary.
+
+    Args:
+        prompt: The prompt to send to the LLM.
+        config: Summarizer configuration.
+        max_tokens: Maximum tokens for the response.
+
+    Returns:
+        The generated summary text.
+
+    Raises:
+        SummarizationError: If the LLM call fails.
+
+    """
+    from pydantic_ai import Agent  # noqa: PLC0415
+    from pydantic_ai.models.openai import OpenAIChatModel  # noqa: PLC0415
+    from pydantic_ai.providers.openai import OpenAIProvider  # noqa: PLC0415
+    from pydantic_ai.settings import ModelSettings  # noqa: PLC0415
+
+    provider = OpenAIProvider(api_key=config.api_key, base_url=config.openai_base_url)
+    model = OpenAIChatModel(
+        model_name=config.model,
+        provider=provider,
+        settings=ModelSettings(
+            temperature=0.3,
+            max_tokens=max_tokens,
+        ),
+    )
+
+    agent = Agent(
+        model=model,
+        system_prompt="You are a concise summarizer. Output only the summary, no preamble.",
+        output_type=SummaryOutput,
+        retries=2,
+    )
+
+    try:
+        result = await agent.run(prompt)
+        return result.output.summary.strip()
+    except Exception as e:
+        msg = f"Summarization failed: {e}"
+        raise SummarizationError(msg) from e
 
 
 @lru_cache(maxsize=4)
