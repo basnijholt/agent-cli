@@ -101,23 +101,6 @@ def test_query_memories_skips_summary_entries_and_filters_roles() -> None:
     assert {"role": {"$ne": "summary"}} in clauses
 
 
-def test_get_summary_entry_returns_entry() -> None:
-    # ChromaDB's .get() returns flat lists (not nested like .query())
-    fake = _FakeCollection(
-        get_result={
-            "documents": ["summary text"],
-            "metadatas": [
-                {"conversation_id": "c1", "role": "summary", "created_at": "now"},
-            ],
-            "ids": ["sum1"],
-        },
-    )
-    entry = _store.get_summary_entry(fake, "c1", role="summary")
-    assert entry is not None
-    assert entry.id == "sum1"
-    assert entry.metadata.role == "summary"
-
-
 def test_list_conversation_entries_filters_summaries() -> None:
     # ChromaDB's .get() returns flat lists (not nested like .query())
     fake = _FakeCollection(

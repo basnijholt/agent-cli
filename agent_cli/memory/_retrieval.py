@@ -8,7 +8,7 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
 from agent_cli.core.reranker import OnnxCrossEncoder, predict_relevance
-from agent_cli.memory._store import get_summary_entry, query_memories
+from agent_cli.memory._store import get_final_summary, query_memories
 from agent_cli.memory.models import (
     ChatRequest,
     MemoryEntry,
@@ -24,7 +24,6 @@ if TYPE_CHECKING:
 LOGGER = logging.getLogger(__name__)
 
 _DEFAULT_MMR_LAMBDA = 0.7
-_SUMMARY_ROLE = "summary"
 _MIN_MAX_EPSILON = 1e-8  # Avoid division by zero in min-max normalization
 
 
@@ -212,7 +211,7 @@ def retrieve_memory(
 
     summaries: list[str] = []
     if include_summary:
-        summary_entry = get_summary_entry(collection, conversation_id, role=_SUMMARY_ROLE)
+        summary_entry = get_final_summary(collection, conversation_id)
         if summary_entry:
             summaries.append(f"Conversation summary:\n{summary_entry.content}")
 
