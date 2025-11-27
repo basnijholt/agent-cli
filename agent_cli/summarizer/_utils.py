@@ -31,16 +31,7 @@ def _get_encoding(model: str = "gpt-4") -> tiktoken.Encoding | None:
 
 
 def count_tokens(text: str, model: str = "gpt-4") -> int:
-    """Count tokens in text using tiktoken, with a lightweight fallback.
-
-    Args:
-        text: The text to count tokens for.
-        model: Model name for tokenizer selection.
-
-    Returns:
-        Number of tokens in the text.
-
-    """
+    """Count tokens using tiktoken, falling back to char-based estimate."""
     if not text:
         return 0
     enc = _get_encoding(model)
