@@ -121,6 +121,7 @@ from .agents import (  # noqa: E402, F401
     memory,
     rag_proxy,
     speak,
+    summarize,
     transcribe,
     transcribe_live,
     voice_edit,
