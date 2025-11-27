@@ -13,8 +13,8 @@ Content:
 
 One-sentence summary:""".strip()
 
-# MAP_REDUCE level - Paragraph summary for content-type aware summarization
-STANDARD_SUMMARY_PROMPT = """Summarize the following content concisely in a short paragraph.
+# MAP_REDUCE level - Paragraph summary for general content type
+GENERAL_SUMMARY_PROMPT = """Summarize the following content concisely in a short paragraph.
 
 Focus on:
 - Key facts, decisions, and outcomes
@@ -104,12 +104,12 @@ def get_prompt_for_content_type(content_type: str) -> str:
 
     """
     prompts = {
-        "general": STANDARD_SUMMARY_PROMPT,
+        "general": GENERAL_SUMMARY_PROMPT,
         "conversation": CONVERSATION_SUMMARY_PROMPT,
         "journal": JOURNAL_SUMMARY_PROMPT,
         "document": DOCUMENT_SUMMARY_PROMPT,
     }
-    return prompts.get(content_type, STANDARD_SUMMARY_PROMPT)
+    return prompts.get(content_type, GENERAL_SUMMARY_PROMPT)
 
 
 def format_prior_context(prior_summary: str | None) -> str:
