@@ -223,22 +223,7 @@ def middle_truncate(
 
 
 def estimate_summary_tokens(input_tokens: int, level: int) -> int:
-    """Estimate target summary tokens based on input size and level.
-
-    Compression ratios based on Mem0 research:
-    - BRIEF: ~20% compression (80% reduction)
-    - STANDARD: ~12% compression (88% reduction)
-    - DETAILED: ~7% compression (93% reduction)
-    - HIERARCHICAL: Capped with diminishing returns
-
-    Args:
-        input_tokens: Number of tokens in the input.
-        level: Summary level (1-4).
-
-    Returns:
-        Target number of tokens for the summary.
-
-    """
+    """Estimate target summary tokens based on input size and level."""
     if level == SummaryLevel.NONE:
         return 0
     if level == SummaryLevel.BRIEF:

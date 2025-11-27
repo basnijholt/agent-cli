@@ -15,11 +15,7 @@ HIERARCHICAL_LEVEL_L3 = 3
 
 
 class SummaryLevel(IntEnum):
-    """Summary granularity levels based on input complexity.
-
-    Thresholds are based on Mem0 research showing optimal compression ratios
-    at different content lengths. Token counts are approximate guidelines.
-    """
+    """Summary granularity levels based on input complexity."""
 
     NONE = 0
     """< 100 tokens: No summary needed, facts only."""
