@@ -21,8 +21,8 @@ from agent_cli.memory._store import (
     delete_entries,
     delete_summaries,
     list_conversation_entries,
-    upsert_hierarchical_summary,
     upsert_memories,
+    upsert_summary_entries,
 )
 from agent_cli.memory.entities import Fact, Turn
 from agent_cli.memory.models import MemoryMetadata
@@ -237,8 +237,8 @@ def persist_hierarchical_summary(
         LOGGER.info("Persisted summary file: %s (level=%s)", record.path, meta_dict.get("level"))
         stored_ids.append(record.id)
 
-    # Store in ChromaDB
-    upsert_hierarchical_summary(collection, conversation_id, summary_result)
+    # Store in ChromaDB (reuse the entries we already built)
+    upsert_summary_entries(collection, entries)
 
     return stored_ids
 

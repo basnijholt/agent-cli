@@ -184,6 +184,34 @@ async def summarize(
     )
 
 
+async def _summarize_chunks(
+    chunks: list[str],
+    config: SummarizerConfig,
+) -> list[ChunkSummary]:
+    """Summarize multiple chunks with concurrency control.
+
+    This helper centralizes the semaphore/gather pattern used by both
+    _detailed_summary and _hierarchical_summary.
+
+    Args:
+        chunks: List of text chunks to summarize.
+        config: Summarizer configuration (includes max_concurrent_chunks).
+
+    Returns:
+        List of ChunkSummary objects in the same order as input chunks.
+
+    """
+    semaphore = asyncio.Semaphore(config.max_concurrent_chunks)
+    total = len(chunks)
+
+    async def summarize_with_limit(idx: int, chunk: str) -> ChunkSummary:
+        async with semaphore:
+            return await _summarize_single_chunk(chunk, idx, total, config)
+
+    gen = (summarize_with_limit(i, chunk) for i, chunk in enumerate(chunks))
+    return list(await asyncio.gather(*gen))
+
+
 async def _summarize_single_chunk(
     chunk: str,
     chunk_index: int,
@@ -268,21 +296,7 @@ async def _detailed_summary(
 
     logger.info("Detailed summary: processing %d chunks", len(chunks))
 
-    # Summarize chunks (with concurrency limit)
-    semaphore = asyncio.Semaphore(config.max_concurrent_chunks)
-
-    async def summarize_with_limit(idx: int, chunk: str) -> ChunkSummary:
-        async with semaphore:
-            return await _summarize_single_chunk(
-                chunk,
-                idx,
-                len(chunks),
-                config,
-            )
-
-    chunk_summaries = await asyncio.gather(
-        *[summarize_with_limit(i, chunk) for i, chunk in enumerate(chunks)],
-    )
+    chunk_summaries = await _summarize_chunks(chunks, config)
 
     # Generate meta-summary
     all_summaries = [cs.content for cs in chunk_summaries]
@@ -341,20 +355,7 @@ async def _hierarchical_summary(
     logger.info("Hierarchical summary: processing %d chunks in tree", len(chunks))
 
     # L1: Summarize each chunk
-    semaphore = asyncio.Semaphore(config.max_concurrent_chunks)
-
-    async def summarize_with_limit(idx: int, chunk: str) -> ChunkSummary:
-        async with semaphore:
-            return await _summarize_single_chunk(
-                chunk,
-                idx,
-                len(chunks),
-                config,
-            )
-
-    l1_summaries = await asyncio.gather(
-        *[summarize_with_limit(i, chunk) for i, chunk in enumerate(chunks)],
-    )
+    l1_summaries = await _summarize_chunks(chunks, config)
 
     # L2: Group summaries (if more than L2_MIN_CHUNKS chunks)
     l2_summaries: list[str] = []
