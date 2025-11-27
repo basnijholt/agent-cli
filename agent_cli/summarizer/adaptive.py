@@ -33,10 +33,7 @@ from agent_cli.summarizer._utils import (
     generate_summary,
     tokens_to_words,
 )
-from agent_cli.summarizer.map_reduce import (
-    MapReduceSummarizationError,
-    map_reduce_summarize,
-)
+from agent_cli.summarizer.map_reduce import map_reduce_summarize
 from agent_cli.summarizer.models import (
     SummaryLevel,
     SummaryResult,
@@ -168,10 +165,7 @@ async def _map_reduce_summary(
         )
 
     # Use map-reduce for multi-chunk content
-    try:
-        result = await map_reduce_summarize(content, config)
-    except MapReduceSummarizationError as e:
-        raise SummarizationError(str(e)) from e
+    result = await map_reduce_summarize(content, config)
 
     return SummaryResult(
         level=SummaryLevel.MAP_REDUCE,
