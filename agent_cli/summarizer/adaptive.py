@@ -14,10 +14,6 @@ import logging
 from dataclasses import dataclass
 
 from pydantic import BaseModel
-from pydantic_ai import Agent
-from pydantic_ai.models.openai import OpenAIChatModel
-from pydantic_ai.providers.openai import OpenAIProvider
-from pydantic_ai.settings import ModelSettings
 
 from agent_cli.summarizer._prompts import (
     BRIEF_SUMMARY_PROMPT,
@@ -435,6 +431,11 @@ async def _generate_summary(
         SummarizationError: If summarization fails.
 
     """
+    from pydantic_ai import Agent  # noqa: PLC0415
+    from pydantic_ai.models.openai import OpenAIChatModel  # noqa: PLC0415
+    from pydantic_ai.providers.openai import OpenAIProvider  # noqa: PLC0415
+    from pydantic_ai.settings import ModelSettings  # noqa: PLC0415
+
     provider = OpenAIProvider(api_key=config.api_key, base_url=config.openai_base_url)
     model = OpenAIChatModel(
         model_name=config.model,

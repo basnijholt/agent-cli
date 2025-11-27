@@ -277,7 +277,7 @@ class TestGenerateSummary:
         mock_result = MagicMock()
         mock_result.output = SummaryOutput(summary="Generated summary.")
 
-        with patch("agent_cli.summarizer.adaptive.Agent") as mock_agent_class:
+        with patch("pydantic_ai.Agent") as mock_agent_class:
             mock_agent = MagicMock()
             mock_agent.run = AsyncMock(return_value=mock_result)
             mock_agent_class.return_value = mock_agent
@@ -293,7 +293,7 @@ class TestGenerateSummary:
         config: SummarizerConfig,
     ) -> None:
         """Test that SummarizationError is raised on failure."""
-        with patch("agent_cli.summarizer.adaptive.Agent") as mock_agent_class:
+        with patch("pydantic_ai.Agent") as mock_agent_class:
             mock_agent = MagicMock()
             mock_agent.run = AsyncMock(side_effect=Exception("API error"))
             mock_agent_class.return_value = mock_agent
