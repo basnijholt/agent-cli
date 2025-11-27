@@ -169,7 +169,6 @@ class ChunkSummary(BaseModel):
     content: str              # The summarized text
     token_count: int          # Tokens in this summary
     source_tokens: int        # Tokens in source chunk
-    parent_group: int | None  # L2 group this belongs to
 
 class HierarchicalSummary(BaseModel):
     l1_summaries: list[ChunkSummary]  # Individual chunk summaries
@@ -191,7 +190,6 @@ Summaries are stored with rich metadata for retrieval and management:
 | `level` | ✓ | ✓ | ✓ | 1, 2, or 3 |
 | `chunk_index` | ✓ | | | Position in L1 sequence |
 | `group_index` | | ✓ | | Position in L2 sequence |
-| `parent_group` | ✓ | | | Which L2 group owns this L1 |
 | `is_final` | | | ✓ | Marks the top-level summary |
 | `summary_level` | | | ✓ | Name of SummaryLevel enum |
 | `input_tokens` | | | ✓ | Original content token count |

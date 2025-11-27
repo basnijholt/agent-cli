@@ -115,7 +115,7 @@ class TestSummaryResultStorageMetadata:
         assert entry["content"] == "A paragraph summary of the content."
         assert entry["metadata"]["level"] == 3
         assert entry["metadata"]["is_final"] is True
-        assert entry["metadata"]["summary_level"] == "STANDARD"
+        assert entry["metadata"]["summary_level_name"] == "STANDARD"
 
     def test_hierarchical_summary_produces_multiple_entries(self) -> None:
         """Test that HIERARCHICAL level produces L1, L2, L3 entries."""
@@ -125,21 +125,18 @@ class TestSummaryResultStorageMetadata:
                 content="Chunk 0",
                 token_count=10,
                 source_tokens=100,
-                parent_group=0,
             ),
             ChunkSummary(
                 chunk_index=1,
                 content="Chunk 1",
                 token_count=10,
                 source_tokens=100,
-                parent_group=0,
             ),
             ChunkSummary(
                 chunk_index=2,
                 content="Chunk 2",
                 token_count=10,
                 source_tokens=100,
-                parent_group=0,
             ),
         ]
         hierarchical = HierarchicalSummary(
@@ -257,14 +254,12 @@ class TestFilePersistence:
                 content="Chunk 0 content",
                 token_count=10,
                 source_tokens=100,
-                parent_group=0,
             ),
             ChunkSummary(
                 chunk_index=1,
                 content="Chunk 1 content",
                 token_count=10,
                 source_tokens=100,
-                parent_group=0,
             ),
         ]
         hierarchical = HierarchicalSummary(

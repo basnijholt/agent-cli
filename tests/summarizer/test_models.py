@@ -223,7 +223,7 @@ class TestSummaryResult:
         assert entry["metadata"]["role"] == "summary"
         assert entry["metadata"]["level"] == 3
         assert entry["metadata"]["is_final"] is True
-        assert entry["metadata"]["summary_level"] == "STANDARD"
+        assert entry["metadata"]["summary_level_name"] == "STANDARD"
 
     def test_to_storage_metadata_hierarchical(self) -> None:
         """Test storage metadata for hierarchical summary."""
@@ -233,14 +233,12 @@ class TestSummaryResult:
                 content="Chunk 0 text",
                 token_count=10,
                 source_tokens=100,
-                parent_group=0,
             ),
             ChunkSummary(
                 chunk_index=1,
                 content="Chunk 1 text",
                 token_count=12,
                 source_tokens=120,
-                parent_group=0,
             ),
         ]
         hierarchical = HierarchicalSummary(

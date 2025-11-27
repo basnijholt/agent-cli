@@ -13,12 +13,16 @@ if TYPE_CHECKING:
 
 
 @lru_cache(maxsize=4)
-def _get_encoding(model: str = "gpt-4") -> tiktoken.Encoding:
+def _get_encoding(model: str = "gpt-4") -> tiktoken.Encoding | None:
     """Get tiktoken encoding for a model, with caching.
 
     Falls back to cl100k_base for unknown models (covers most modern LLMs).
+    Returns None when tiktoken is not installed so callers can use a heuristic.
     """
-    import tiktoken  # noqa: PLC0415
+    try:
+        import tiktoken  # noqa: PLC0415
+    except ModuleNotFoundError:
+        return None
 
     try:
         return tiktoken.encoding_for_model(model)
@@ -27,7 +31,7 @@ def _get_encoding(model: str = "gpt-4") -> tiktoken.Encoding:
 
 
 def count_tokens(text: str, model: str = "gpt-4") -> int:
-    """Count tokens in text using tiktoken.
+    """Count tokens in text using tiktoken, with a lightweight fallback.
 
     Args:
         text: The text to count tokens for.
@@ -40,9 +44,16 @@ def count_tokens(text: str, model: str = "gpt-4") -> int:
     if not text:
         return 0
     enc = _get_encoding(model)
+    if enc is None:
+        return _estimate_token_count(text)
     # Disable special token checking - LLM outputs may contain special tokens
     # like <|constrain|>, <|endoftext|>, etc. that we want to count normally
     return len(enc.encode(text, disallowed_special=()))
+
+
+def _estimate_token_count(text: str) -> int:
+    """Very rough token estimate based on character length (~4 chars/token)."""
+    return max(1, (len(text) + 3) // 4)
 
 
 def chunk_text(

@@ -25,13 +25,13 @@ from agent_cli.memory._store import (
     upsert_memories,
 )
 from agent_cli.memory.entities import Fact, Turn
+from agent_cli.memory.models import MemoryMetadata
 
 if TYPE_CHECKING:
     from pathlib import Path
 
     from chromadb import Collection
 
-    from agent_cli.memory.models import MemoryMetadata
     from agent_cli.summarizer import SummaryResult
 
 LOGGER = logging.getLogger(__name__)
@@ -212,26 +212,29 @@ def persist_hierarchical_summary(
     created_at = datetime.now(UTC).isoformat()
 
     for entry in entries:
-        meta = entry["metadata"]
+        meta_dict = entry["metadata"]
+        # Build MemoryMetadata from the summary result's metadata dict
+        metadata = MemoryMetadata(
+            conversation_id=meta_dict["conversation_id"],
+            role=meta_dict["role"],
+            created_at=meta_dict.get("created_at", created_at),
+            summary_kind="summary",
+            level=meta_dict.get("level"),
+            is_final=meta_dict.get("is_final"),
+            chunk_index=meta_dict.get("chunk_index"),
+            group_index=meta_dict.get("group_index"),
+            input_tokens=meta_dict.get("input_tokens"),
+            output_tokens=meta_dict.get("output_tokens"),
+            compression_ratio=meta_dict.get("compression_ratio"),
+            summary_level_name=meta_dict.get("summary_level_name"),
+        )
         record = write_memory_file(
             memory_root,
-            conversation_id=meta["conversation_id"],
-            role=meta["role"],
-            created_at=meta.get("created_at", created_at),
             content=entry["content"],
-            summary_kind="summary",
             doc_id=entry["id"],
-            level=meta.get("level"),
-            is_final=meta.get("is_final"),
-            chunk_index=meta.get("chunk_index"),
-            parent_group=meta.get("parent_group"),
-            group_index=meta.get("group_index"),
-            input_tokens=meta.get("input_tokens"),
-            output_tokens=meta.get("output_tokens"),
-            compression_ratio=meta.get("compression_ratio"),
-            summary_level_name=meta.get("summary_level"),
+            metadata=metadata,
         )
-        LOGGER.info("Persisted summary file: %s (level=%s)", record.path, meta.get("level"))
+        LOGGER.info("Persisted summary file: %s (level=%s)", record.path, meta_dict.get("level"))
         stored_ids.append(record.id)
 
     # Store in ChromaDB

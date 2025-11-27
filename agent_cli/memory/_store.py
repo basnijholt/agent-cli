@@ -176,22 +176,7 @@ def upsert_hierarchical_summary(
         contents.append(entry["content"])
         # Convert the raw metadata dict to MemoryMetadata
         meta_dict = entry["metadata"]
-        metadatas.append(
-            MemoryMetadata(
-                conversation_id=meta_dict["conversation_id"],
-                role=meta_dict["role"],
-                created_at=meta_dict["created_at"],
-                level=meta_dict.get("level"),
-                is_final=meta_dict.get("is_final"),
-                chunk_index=meta_dict.get("chunk_index"),
-                parent_group=meta_dict.get("parent_group"),
-                group_index=meta_dict.get("group_index"),
-                input_tokens=meta_dict.get("input_tokens"),
-                output_tokens=meta_dict.get("output_tokens"),
-                compression_ratio=meta_dict.get("compression_ratio"),
-                summary_level_name=meta_dict.get("summary_level"),
-            ),
-        )
+        metadatas.append(MemoryMetadata(**meta_dict))
 
     upsert_memories(collection, ids=ids, contents=contents, metadatas=metadatas)
     return ids
