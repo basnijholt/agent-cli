@@ -40,7 +40,9 @@ def count_tokens(text: str, model: str = "gpt-4") -> int:
     if not text:
         return 0
     enc = _get_encoding(model)
-    return len(enc.encode(text))
+    # Disable special token checking - LLM outputs may contain special tokens
+    # like <|constrain|>, <|endoftext|>, etc. that we want to count normally
+    return len(enc.encode(text, disallowed_special=()))
 
 
 def chunk_text(
