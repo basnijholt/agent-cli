@@ -4,7 +4,7 @@ These prompts are designed to work with various LLM sizes (8B-20B parameters)
 and are optimized for structured, factual output.
 """
 
-# BRIEF level - Single sentence summary for short content (100-500 tokens)
+# Single sentence summary for short content (used at BRIEF level, 100-500 tokens)
 BRIEF_SUMMARY_PROMPT = """Summarize the following in ONE sentence (maximum 20 words).
 Focus on the single most important point or takeaway.
 
@@ -13,7 +13,7 @@ Content:
 
 One-sentence summary:""".strip()
 
-# MAP_REDUCE level - Paragraph summary for general content type
+# Paragraph summary for "general" content type (default when no specific type provided)
 GENERAL_SUMMARY_PROMPT = """Summarize the following content concisely in a short paragraph.
 
 Focus on:
