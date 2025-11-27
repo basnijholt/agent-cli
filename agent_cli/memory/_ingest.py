@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 from uuid import uuid4
 
 import httpx
-from pydantic_ai import Agent, ModelRetry
+from pydantic_ai import Agent, ModelRetry, PromptedOutput
 from pydantic_ai.exceptions import AgentRunError, UnexpectedModelBehavior
 from pydantic_ai.models.openai import OpenAIChatModel
 from pydantic_ai.providers.openai import OpenAIProvider
@@ -201,7 +201,7 @@ async def reconcile_facts(
     agent = Agent(
         model=model_cfg,
         system_prompt=UPDATE_MEMORY_PROMPT,
-        output_type=list[MemoryDecision],
+        output_type=PromptedOutput(list[MemoryDecision]),  # JSON mode instead of tool calls
         retries=3,
     )
 
