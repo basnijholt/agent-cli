@@ -76,9 +76,9 @@ async def map_reduce_summarize(
     2. If combined summaries exceed token_max, recursively collapse (reduce phase)
     3. Continue until everything fits in token_max
 
-    Note: This function assumes content exceeds token_max. The caller (adaptive.py)
-    handles the case where content fits in a single chunk. The check below is a
-    safety guard for direct calls to this function.
+    Note: This function is designed for content that exceeds token_max. For shorter
+    content, use the main `summarize()` function in adaptive.py which selects the
+    appropriate strategy (NONE, BRIEF, or MAP_REDUCE with content-aware prompts).
 
     Args:
         content: The content to summarize.
@@ -100,20 +100,6 @@ async def map_reduce_summarize(
         )
 
     input_tokens = count_tokens(content, config.model)
-
-    # Safety guard: if content fits in token_max, summarize directly.
-    # Normally handled by adaptive.py, but kept for direct calls to this function.
-    if input_tokens <= config.token_max:
-        summary = await _summarize_text(content, config)
-        output_tokens = count_tokens(summary, config.model)
-        return MapReduceResult(
-            summary=summary,
-            input_tokens=input_tokens,
-            output_tokens=output_tokens,
-            compression_ratio=output_tokens / input_tokens if input_tokens > 0 else 0.0,
-            collapse_depth=0,
-            intermediate_summaries=[],
-        )
 
     # Map phase: Split and summarize chunks in parallel
     chunks = chunk_text(
@@ -259,20 +245,3 @@ async def _synthesize(summaries: list[str], config: SummarizerConfig) -> str:
     )
 
     return await generate_summary(prompt, config, max_tokens=target_tokens + 100)
-
-
-async def _summarize_text(text: str, config: SummarizerConfig) -> str:
-    """Summarize text that fits within token_max."""
-    input_tokens = count_tokens(text, config.model)
-    target_tokens = estimate_summary_tokens(input_tokens, SummaryLevel.MAP_REDUCE)
-    max_words = tokens_to_words(target_tokens)
-
-    prompt = f"""Summarize the following content in {max_words} words or less.
-Focus on the key points and main ideas.
-
-Content:
-{text}
-
-Summary:"""
-
-    return await generate_summary(prompt, config, max_tokens=target_tokens + 50)
