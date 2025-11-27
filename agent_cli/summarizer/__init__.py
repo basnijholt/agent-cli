@@ -16,7 +16,7 @@ Example:
 
 """
 
-from agent_cli.summarizer.adaptive import AdaptiveSummarizer
+from agent_cli.summarizer.adaptive import AdaptiveSummarizer, SummarizationError
 from agent_cli.summarizer.models import (
     HierarchicalSummary,
     SummaryLevel,
@@ -26,6 +26,7 @@ from agent_cli.summarizer.models import (
 __all__ = [
     "AdaptiveSummarizer",
     "HierarchicalSummary",
+    "SummarizationError",
     "SummaryLevel",
     "SummaryResult",
 ]

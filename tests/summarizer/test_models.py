@@ -328,5 +328,5 @@ class TestSummaryResult:
             compression_ratio=0.1,
         )
         after = datetime.now(UTC)
-        # Compare without timezone since result.created_at may be naive
-        assert before.replace(tzinfo=None) <= result.created_at <= after.replace(tzinfo=None)
+        # All datetimes should be UTC-aware
+        assert before <= result.created_at <= after
