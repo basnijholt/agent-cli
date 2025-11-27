@@ -118,13 +118,13 @@ async def summarize(
 
     if level == SummaryLevel.BRIEF:
         summary = await _brief_summary(content, config)
-        output_tokens = count_tokens(summary, config.model) if summary else 0
+        output_tokens = count_tokens(summary, config.model)
         return SummaryResult(
             level=level,
             summary=summary,
             input_tokens=input_tokens,
             output_tokens=output_tokens,
-            compression_ratio=output_tokens / input_tokens if input_tokens > 0 else 0.0,
+            compression_ratio=output_tokens / input_tokens,
         )
 
     # MAP_REDUCE level
@@ -154,13 +154,13 @@ async def _map_reduce_summary(
     # For content that fits in a single chunk, use content-type aware summary
     if input_tokens <= config.token_max:
         summary = await _content_aware_summary(content, config, prior_summary, content_type)
-        output_tokens = count_tokens(summary, config.model) if summary else 0
+        output_tokens = count_tokens(summary, config.model)
         return SummaryResult(
             level=SummaryLevel.MAP_REDUCE,
             summary=summary,
             input_tokens=input_tokens,
             output_tokens=output_tokens,
-            compression_ratio=output_tokens / input_tokens if input_tokens > 0 else 0.0,
+            compression_ratio=output_tokens / input_tokens,
             collapse_depth=0,
         )
 

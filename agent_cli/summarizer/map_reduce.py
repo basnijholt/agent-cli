@@ -89,16 +89,6 @@ async def map_reduce_summarize(
         MapReduceResult with summary and metadata.
 
     """
-    if not content or not content.strip():
-        return MapReduceResult(
-            summary="",
-            input_tokens=0,
-            output_tokens=0,
-            compression_ratio=0.0,
-            collapse_depth=0,
-            intermediate_summaries=[],
-        )
-
     input_tokens = count_tokens(content, config.model)
 
     # Map phase: Split and summarize chunks in parallel
@@ -137,7 +127,7 @@ async def map_reduce_summarize(
     if len(summaries) > 1:
         final_summary = await _synthesize(summaries, config)
     else:
-        final_summary = summaries[0] if summaries else ""
+        final_summary = summaries[0]
 
     output_tokens = count_tokens(final_summary, config.model)
 
@@ -145,7 +135,7 @@ async def map_reduce_summarize(
         summary=final_summary,
         input_tokens=input_tokens,
         output_tokens=output_tokens,
-        compression_ratio=output_tokens / input_tokens if input_tokens > 0 else 0.0,
+        compression_ratio=output_tokens / input_tokens,
         collapse_depth=depth,
         intermediate_summaries=intermediate_summaries,
     )
