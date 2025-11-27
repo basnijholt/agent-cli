@@ -5,8 +5,10 @@ from . import (
     autocorrect,
     chat,
     memory_proxy,
+    rag_proxy,
     server,
     speak,
+    summarize,
     transcribe,
     voice_edit,
 )
@@ -19,6 +21,7 @@ __all__ = [
     "rag_proxy",
     "server",
     "speak",
+    "summarize",
     "transcribe",
     "voice_edit",
 ]
