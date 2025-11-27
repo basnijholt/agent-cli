@@ -167,19 +167,19 @@ def evict_if_needed(
     delete_memory_files(memory_root, conversation_id, ids_to_remove)
 
 
-def persist_hierarchical_summary(
+def persist_summary(
     collection: Collection,
     *,
     memory_root: Path,
     conversation_id: str,
     summary_result: SummaryResult,
 ) -> list[str]:
-    """Persist a hierarchical summary to disk and ChromaDB.
+    """Persist a summary to disk and ChromaDB.
 
     This function:
     1. Deletes existing summaries (files and ChromaDB entries)
-    2. Writes new summary files to disk in hierarchical structure
-    3. Stores entries in ChromaDB
+    2. Writes new summary file to disk
+    3. Stores entry in ChromaDB
 
     Args:
         collection: ChromaDB collection.
@@ -219,14 +219,12 @@ def persist_hierarchical_summary(
             role=meta_dict["role"],
             created_at=meta_dict.get("created_at", created_at),
             summary_kind="summary",
-            level=meta_dict.get("level"),
             is_final=meta_dict.get("is_final"),
-            chunk_index=meta_dict.get("chunk_index"),
-            group_index=meta_dict.get("group_index"),
             input_tokens=meta_dict.get("input_tokens"),
             output_tokens=meta_dict.get("output_tokens"),
             compression_ratio=meta_dict.get("compression_ratio"),
-            summary_level_name=meta_dict.get("summary_level_name"),
+            summary_level=meta_dict.get("summary_level"),
+            collapse_depth=meta_dict.get("collapse_depth"),
         )
         record = write_memory_file(
             memory_root,
@@ -234,7 +232,11 @@ def persist_hierarchical_summary(
             doc_id=entry["id"],
             metadata=metadata,
         )
-        LOGGER.info("Persisted summary file: %s (level=%s)", record.path, meta_dict.get("level"))
+        LOGGER.info(
+            "Persisted summary file: %s (level=%s)",
+            record.path,
+            meta_dict.get("summary_level"),
+        )
         stored_ids.append(record.id)
 
     # Store in ChromaDB (reuse the entries we already built)

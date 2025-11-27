@@ -49,23 +49,25 @@ class MemoryMetadata(BaseModel):
     replaced_by: str | None = None
     source_id: str | None = None
 
-    # Hierarchical summary fields (only used when role="summary")
+    # Summary fields (only used when role="summary")
     level: int | None = None
-    """Summary level: 1=chunk, 2=group, 3=final."""
+    """Summary level (deprecated, kept for file structure compatibility)."""
     is_final: bool | None = None
-    """Whether this is the final L3 summary."""
+    """Whether this is the final summary."""
     chunk_index: int | None = None
-    """For L1 summaries: index of the source chunk."""
+    """Deprecated: index of the source chunk."""
     group_index: int | None = None
-    """For L2 summaries: index of this group."""
+    """Deprecated: index of this group."""
     input_tokens: int | None = None
-    """Number of tokens in the original input (L3 only)."""
+    """Number of tokens in the original input."""
     output_tokens: int | None = None
-    """Number of tokens in the summary output (L3 only)."""
+    """Number of tokens in the summary output."""
     compression_ratio: float | None = None
-    """Ratio of output to input tokens (L3 only)."""
-    summary_level_name: str | None = None
-    """Name of the SummaryLevel enum used (e.g., 'STANDARD', 'HIERARCHICAL')."""
+    """Ratio of output to input tokens."""
+    summary_level: str | None = None
+    """Name of the SummaryLevel enum used (NONE, BRIEF, or MAP_REDUCE)."""
+    collapse_depth: int | None = None
+    """Number of collapse iterations in map-reduce (0 = no collapse needed)."""
 
 
 class StoredMemory(BaseModel):

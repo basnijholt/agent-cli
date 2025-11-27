@@ -1,17 +1,15 @@
 """Demonstrate the summarizer on texts of varying lengths from the internet.
 
 This script fetches content of different sizes and shows how the adaptive
-summarizer automatically selects the appropriate strategy (BRIEF, STANDARD,
-DETAILED, or HIERARCHICAL) based on content length.
+summarizer automatically selects the appropriate strategy (BRIEF or MAP_REDUCE)
+based on content length.
 
 Usage:
     python examples/summarizer_demo.py
 
     # Test specific levels only
     python examples/summarizer_demo.py --level brief
-    python examples/summarizer_demo.py --level standard
-    python examples/summarizer_demo.py --level detailed
-    python examples/summarizer_demo.py --level hierarchical
+    python examples/summarizer_demo.py --level map_reduce
 
     # Use a different model
     python examples/summarizer_demo.py --model "gpt-4o-mini"
@@ -58,9 +56,7 @@ class TextSample:
 # Thresholds from adaptive.py:
 # NONE: < 100 tokens
 # BRIEF: 100-500 tokens
-# STANDARD: 500-3000 tokens
-# DETAILED: 3000-15000 tokens
-# HIERARCHICAL: > 15000 tokens
+# MAP_REDUCE: >= 500 tokens
 
 # Sample texts of varying lengths to demonstrate different summarization levels
 SAMPLES: list[TextSample] = [
@@ -98,10 +94,10 @@ SAMPLES: list[TextSample] = [
         """,
     ),
     TextSample(
-        name="Standard - Technology Article",
-        description="~800-2000 tokens - triggers STANDARD level (500-3000 token range)",
+        name="Map-Reduce - Technology Article",
+        description="~800-2000 tokens - triggers MAP_REDUCE level (>=500 tokens)",
         url="https://en.wikipedia.org/api/rest_v1/page/summary/Artificial_intelligence",
-        expected_level=SummaryLevel.STANDARD,
+        expected_level=SummaryLevel.MAP_REDUCE,
         content_type="document",
         fallback_content="""
         Artificial intelligence (AI) is the intelligence of machines or software,
@@ -178,18 +174,18 @@ SAMPLES: list[TextSample] = [
         """,
     ),
     TextSample(
-        name="Detailed - Full Article",
-        description="~4000-10000 tokens - triggers DETAILED level (3000-15000 token range)",
+        name="Map-Reduce - Full Article",
+        description="~4000-10000 tokens - triggers MAP_REDUCE with chunking",
         url="https://en.wikipedia.org/api/rest_v1/page/mobile-html/Machine_learning",
-        expected_level=SummaryLevel.DETAILED,
+        expected_level=SummaryLevel.MAP_REDUCE,
         content_type="document",
         fallback_content=None,  # We'll generate synthetic content
     ),
     TextSample(
-        name="Hierarchical - Long Document",
-        description="~16000+ tokens - triggers HIERARCHICAL level (>15000 tokens)",
+        name="Map-Reduce - Long Document",
+        description="~16000+ tokens - triggers MAP_REDUCE with multiple collapse iterations",
         url="https://www.gutenberg.org/cache/epub/84/pg84.txt",  # Frankenstein (truncated)
-        expected_level=SummaryLevel.HIERARCHICAL,
+        expected_level=SummaryLevel.MAP_REDUCE,
         content_type="document",
         fallback_content=None,  # We'll generate synthetic content (~16K tokens)
     ),
@@ -229,7 +225,7 @@ def generate_synthetic_content(target_tokens: int, topic: str = "technology") ->
     return "\n\n".join(result)
 
 
-async def fetch_content(sample: TextSample, client: httpx.AsyncClient) -> str:  # noqa: PLR0912
+async def fetch_content(sample: TextSample, client: httpx.AsyncClient) -> str:
     """Fetch content from URL or use fallback."""
     try:
         # Add User-Agent header to avoid 403 errors from some sites
@@ -269,9 +265,7 @@ async def fetch_content(sample: TextSample, client: httpx.AsyncClient) -> str:  
         # Check if content is too short for expected level
         min_words_for_level = {
             SummaryLevel.BRIEF: 80,  # Need ~100 tokens
-            SummaryLevel.STANDARD: 400,  # Need ~500 tokens
-            SummaryLevel.DETAILED: 2500,  # Need ~3000 tokens
-            SummaryLevel.HIERARCHICAL: 12000,  # Need ~15000 tokens
+            SummaryLevel.MAP_REDUCE: 400,  # Need ~500 tokens
         }
         min_words = min_words_for_level.get(sample.expected_level, 50)
 
@@ -282,22 +276,17 @@ async def fetch_content(sample: TextSample, client: httpx.AsyncClient) -> str:  
             else:
                 target_tokens = {
                     SummaryLevel.BRIEF: 300,
-                    SummaryLevel.STANDARD: 1500,
-                    SummaryLevel.DETAILED: 8000,
-                    SummaryLevel.HIERARCHICAL: 16000,  # Keep manageable for demo
+                    SummaryLevel.MAP_REDUCE: 1500,
                 }
                 content = generate_synthetic_content(
                     target_tokens.get(sample.expected_level, 1000),
                 )
 
-        # For HIERARCHICAL, truncate very long content to keep demo fast
-        # but ensure we stay above 15000 tokens (~13000 words)
-        if sample.expected_level == SummaryLevel.HIERARCHICAL:
-            words = content.split()
-            # ~16000 tokens ≈ 13500 words (need >15000 tokens for HIERARCHICAL)
-            if len(words) > 13500:  # noqa: PLR2004
-                content = " ".join(words[:13500])
-                print("  📎 Truncated to ~13500 words for faster demo")
+        # For very long content, truncate to keep demo fast
+        words = content.split()
+        if len(words) > 13500:  # noqa: PLR2004
+            content = " ".join(words[:13500])
+            print("  📎 Truncated to ~13500 words for faster demo")
 
         return content.strip()
 
@@ -310,9 +299,7 @@ async def fetch_content(sample: TextSample, client: httpx.AsyncClient) -> str:  
         # Generate synthetic content for the expected level
         target_tokens = {
             SummaryLevel.BRIEF: 300,
-            SummaryLevel.STANDARD: 1500,
-            SummaryLevel.DETAILED: 8000,
-            SummaryLevel.HIERARCHICAL: 16000,  # Keep manageable for demo
+            SummaryLevel.MAP_REDUCE: 1500,
         }
         return generate_synthetic_content(target_tokens.get(sample.expected_level, 1000))
 
@@ -335,9 +322,7 @@ def print_result(sample: TextSample, result: SummaryResult, content: str) -> Non
     level_emoji = {
         SummaryLevel.NONE: "⏭️",
         SummaryLevel.BRIEF: "📝",
-        SummaryLevel.STANDARD: "📄",
-        SummaryLevel.DETAILED: "📚",
-        SummaryLevel.HIERARCHICAL: "🏗️",
+        SummaryLevel.MAP_REDUCE: "🔄",
     }
     print("\n🎯 Summarization Result:")
     print(f"   Level: {level_emoji.get(result.level, '❓')} {result.level.name}")
@@ -345,29 +330,14 @@ def print_result(sample: TextSample, result: SummaryResult, content: str) -> Non
     print(f"   Match: {'✅' if result.level == sample.expected_level else '⚠️'}")
     print(f"   Output tokens: {result.output_tokens:,}")
     print(f"   Compression: {result.compression_ratio:.1%}")
+    if result.collapse_depth > 0:
+        print(f"   Collapse depth: {result.collapse_depth}")
 
     # Summary content
     if result.summary:
         print("\n📝 Summary:")
         wrapped = textwrap.fill(
             result.summary,
-            width=68,
-            initial_indent="   ",
-            subsequent_indent="   ",
-        )
-        print(wrapped)
-
-    # Hierarchical details if present
-    if result.hierarchical:
-        h = result.hierarchical
-        print("\n🏗️  Hierarchical Structure:")
-        print(f"   L1 chunks: {len(h.l1_summaries)}")
-        print(f"   L2 groups: {len(h.l2_summaries)}")
-        if h.l2_summaries:
-            print(f"   L2 preview: {h.l2_summaries[0][:100]}...")
-        print("\n   L3 Final Summary:")
-        wrapped = textwrap.fill(
-            h.l3_summary,
             width=68,
             initial_indent="   ",
             subsequent_indent="   ",
@@ -394,7 +364,7 @@ async def run_demo(
         openai_base_url=actual_base_url,
         model=actual_model,
         api_key=api_key,
-        chunk_size=3000,
+        chunk_size=2048,  # BOOOOKSCORE default
         max_concurrent_chunks=3,
         timeout=120.0,  # Longer timeout for local models
     )
@@ -404,9 +374,7 @@ async def run_demo(
     if level_filter:
         level_map = {
             "brief": SummaryLevel.BRIEF,
-            "standard": SummaryLevel.STANDARD,
-            "detailed": SummaryLevel.DETAILED,
-            "hierarchical": SummaryLevel.HIERARCHICAL,
+            "map_reduce": SummaryLevel.MAP_REDUCE,
         }
         target_level = level_map.get(level_filter.lower())
         if target_level:
@@ -449,14 +417,15 @@ def main() -> None:
         epilog=textwrap.dedent("""
         Examples:
           python examples/summarizer_demo.py
-          python examples/summarizer_demo.py --level standard
+          python examples/summarizer_demo.py --level brief
+          python examples/summarizer_demo.py --level map_reduce
           python examples/summarizer_demo.py --model "llama3.1:8b" --base-url "http://localhost:11434/v1"
         """),
     )
 
     parser.add_argument(
         "--level",
-        choices=["brief", "standard", "detailed", "hierarchical"],
+        choices=["brief", "map_reduce"],
         help="Only test a specific summarization level",
     )
     parser.add_argument(

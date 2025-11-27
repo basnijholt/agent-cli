@@ -340,9 +340,8 @@ async def test_process_chat_request_summarizes_and_persists(
 
     async def fake_summarize_content(**_kwargs: Any) -> SummaryResult:
         return SummaryResult(
-            level=SummaryLevel.STANDARD,
+            level=SummaryLevel.MAP_REDUCE,
             summary="summary up to 256",
-            hierarchical=None,
             input_tokens=100,
             output_tokens=20,
             compression_ratio=0.2,
@@ -569,9 +568,8 @@ async def test_streaming_with_summarization_persists_facts_and_summaries(
 
     async def fake_summarize_content(**_kwargs: Any) -> SummaryResult:
         return SummaryResult(
-            level=SummaryLevel.STANDARD,
+            level=SummaryLevel.MAP_REDUCE,
             summary="summary text",
-            hierarchical=None,
             input_tokens=100,
             output_tokens=20,
             compression_ratio=0.2,
@@ -618,4 +616,4 @@ async def test_streaming_with_summarization_persists_facts_and_summaries(
     files = list(tmp_path.glob("entries/**/*.md"))
     assert len(files) == 4  # user + assistant + fact + 1 summary
     assert any("facts" in str(f) for f in files)
-    assert any("summaries/L3/final.md" in str(f) for f in files)
+    assert any("summaries" in str(f) for f in files)

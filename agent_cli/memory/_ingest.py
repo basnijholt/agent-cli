@@ -15,7 +15,7 @@ from agent_cli.memory._git import commit_changes
 from agent_cli.memory._persistence import (
     delete_memory_files,
     persist_entries,
-    persist_hierarchical_summary,
+    persist_summary,
 )
 from agent_cli.memory._prompt import (
     FACT_INSTRUCTIONS,
@@ -303,7 +303,7 @@ async def summarize_content(
     """Adaptively summarize content based on its length.
 
     Automatically selects the appropriate summarization strategy
-    (NONE, BRIEF, STANDARD, DETAILED, HIERARCHICAL) based on input token count.
+    (NONE, BRIEF, MAP_REDUCE) based on input token count.
 
     Args:
         content: The content to summarize.
@@ -339,27 +339,21 @@ async def store_adaptive_summary(
     conversation_id: str,
     summary_result: SummaryResult,
 ) -> list[str]:
-    """Store an adaptive summary result to files and ChromaDB.
+    """Store a summary result to files and ChromaDB.
 
-    This stores all levels of a hierarchical summary (L1, L2, L3) or
-    just the final summary for simpler levels. Old summaries are deleted first.
-
-    Files are stored as Markdown with YAML front matter in a hierarchical structure:
-    - summaries/L1/chunk_{n}.md - L1 chunk summaries
-    - summaries/L2/group_{n}.md - L2 group summaries
-    - summaries/L3/final.md - L3 final summary
+    Old summaries are deleted first, then the new summary is stored.
 
     Args:
         collection: ChromaDB collection.
         memory_root: Root path for memory files.
         conversation_id: The conversation this summary belongs to.
-        summary_result: The result from AdaptiveSummarizer.summarize().
+        summary_result: The result from summarize().
 
     Returns:
         List of IDs that were stored.
 
     """
-    return persist_hierarchical_summary(
+    return persist_summary(
         collection,
         memory_root=memory_root,
         conversation_id=conversation_id,

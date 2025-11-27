@@ -24,7 +24,7 @@ _ENTRIES_DIRNAME = "entries"
 _SNAPSHOT_FILENAME = "memory_index.json"
 _DELETED_DIRNAME = "deleted"
 
-# Summary level constants for hierarchical file structure
+# Summary level constants for file structure (kept for backward compatibility)
 _SUMMARY_LEVEL_L1 = 1
 _SUMMARY_LEVEL_L2 = 2
 _SUMMARY_LEVEL_L3 = 3

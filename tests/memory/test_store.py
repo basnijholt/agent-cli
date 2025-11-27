@@ -137,21 +137,21 @@ def test_upsert_and_delete_entries_delegate() -> None:
 
 
 def test_upsert_summary_entries_simple() -> None:
-    """Test upserting a simple (non-hierarchical) summary."""
+    """Test upserting a summary."""
     fake = _FakeCollection()
     entries = [
         {
-            "id": "conv-123:summary:L3:final",
-            "content": "A standard paragraph summary.",
+            "id": "conv-123:summary",
+            "content": "A paragraph summary.",
             "metadata": {
                 "conversation_id": "conv-123",
                 "role": "summary",
-                "level": 3,
                 "is_final": True,
-                "summary_level_name": "STANDARD",
+                "summary_level": "MAP_REDUCE",
                 "input_tokens": 1000,
                 "output_tokens": 50,
                 "compression_ratio": 0.05,
+                "collapse_depth": 0,
                 "created_at": "2024-01-01T00:00:00",
             },
         },
@@ -159,52 +159,30 @@ def test_upsert_summary_entries_simple() -> None:
 
     ids = _store.upsert_summary_entries(fake, entries)
 
-    assert ids == ["conv-123:summary:L3:final"]
+    assert ids == ["conv-123:summary"]
     assert len(fake.upserts) == 1
     upserted_ids, upserted_docs, upserted_metas = fake.upserts[0]
-    assert upserted_ids == ["conv-123:summary:L3:final"]
-    assert upserted_docs == ["A standard paragraph summary."]
-    assert upserted_metas[0]["level"] == 3
+    assert upserted_ids == ["conv-123:summary"]
+    assert upserted_docs == ["A paragraph summary."]
     assert upserted_metas[0]["is_final"] is True
 
 
-def test_upsert_summary_entries_with_chunks() -> None:
-    """Test upserting a hierarchical summary with L1 and L3 entries."""
+def test_upsert_summary_entries_with_collapse_depth() -> None:
+    """Test upserting a summary with collapse depth metadata."""
     fake = _FakeCollection()
     entries = [
         {
-            "id": "conv-456:summary:L1:0",
-            "content": "Chunk 0 summary",
-            "metadata": {
-                "conversation_id": "conv-456",
-                "role": "summary",
-                "level": 1,
-                "chunk_index": 0,
-                "created_at": "2024-01-01T00:00:00",
-            },
-        },
-        {
-            "id": "conv-456:summary:L1:1",
-            "content": "Chunk 1 summary",
-            "metadata": {
-                "conversation_id": "conv-456",
-                "role": "summary",
-                "level": 1,
-                "chunk_index": 1,
-                "created_at": "2024-01-01T00:00:00",
-            },
-        },
-        {
-            "id": "conv-456:summary:L3:final",
+            "id": "conv-456:summary",
             "content": "Final synthesis",
             "metadata": {
                 "conversation_id": "conv-456",
                 "role": "summary",
-                "level": 3,
                 "is_final": True,
+                "summary_level": "MAP_REDUCE",
                 "input_tokens": 5000,
                 "output_tokens": 100,
                 "compression_ratio": 0.02,
+                "collapse_depth": 2,
                 "created_at": "2024-01-01T00:00:00",
             },
         },
@@ -212,10 +190,9 @@ def test_upsert_summary_entries_with_chunks() -> None:
 
     ids = _store.upsert_summary_entries(fake, entries)
 
-    assert len(ids) == 3
-    assert "conv-456:summary:L1:0" in ids
-    assert "conv-456:summary:L1:1" in ids
-    assert "conv-456:summary:L3:final" in ids
+    assert len(ids) == 1
+    assert ids[0] == "conv-456:summary"
+    assert fake.upserts[0][2][0]["collapse_depth"] == 2
 
 
 def test_upsert_summary_entries_empty() -> None:
@@ -228,41 +205,8 @@ def test_upsert_summary_entries_empty() -> None:
     assert len(fake.upserts) == 0
 
 
-def test_get_summary_at_level() -> None:
-    """Test retrieving summaries at a specific level."""
-    fake = _FakeCollection(
-        get_result={
-            "documents": ["Chunk 0", "Chunk 1"],
-            "metadatas": [
-                {
-                    "conversation_id": "c1",
-                    "role": "summary",
-                    "level": 1,
-                    "chunk_index": 0,
-                    "created_at": "now",
-                },
-                {
-                    "conversation_id": "c1",
-                    "role": "summary",
-                    "level": 1,
-                    "chunk_index": 1,
-                    "created_at": "now",
-                },
-            ],
-            "ids": ["c1:summary:L1:0", "c1:summary:L1:1"],
-        },
-    )
-
-    records = _store.get_summary_at_level(fake, "c1", level=1)
-
-    assert len(records) == 2
-    assert records[0].metadata.level == 1
-    assert records[0].metadata.chunk_index == 0
-    assert records[1].metadata.chunk_index == 1
-
-
-def test_get_final_summary_returns_final() -> None:
-    """Test getting the L3 final summary."""
+def test_get_final_summary_returns_summary() -> None:
+    """Test getting the final summary for a conversation."""
     fake = _FakeCollection(
         get_result={
             "documents": ["The final summary"],
@@ -270,12 +214,13 @@ def test_get_final_summary_returns_final() -> None:
                 {
                     "conversation_id": "c1",
                     "role": "summary",
-                    "level": 3,
                     "is_final": True,
+                    "summary_level": "MAP_REDUCE",
+                    "collapse_depth": 1,
                     "created_at": "now",
                 },
             ],
-            "ids": ["c1:summary:L3:final"],
+            "ids": ["c1:summary"],
         },
     )
 
@@ -295,42 +240,28 @@ def test_get_final_summary_returns_none_when_missing() -> None:
     assert result is None
 
 
-def test_delete_summaries_all_levels() -> None:
-    """Test deleting all summary levels for a conversation."""
+def test_delete_summaries() -> None:
+    """Test deleting summaries for a conversation."""
     fake = _FakeCollection(
         get_result={
-            "documents": ["L1", "L3"],
+            "documents": ["The summary"],
             "metadatas": [
-                {"conversation_id": "c1", "role": "summary", "level": 1, "created_at": "now"},
-                {"conversation_id": "c1", "role": "summary", "level": 3, "created_at": "now"},
+                {
+                    "conversation_id": "c1",
+                    "role": "summary",
+                    "summary_level": "MAP_REDUCE",
+                    "created_at": "now",
+                },
             ],
-            "ids": ["c1:summary:L1:0", "c1:summary:L3:final"],
+            "ids": ["c1:summary"],
         },
     )
 
     deleted_count = _store.delete_summaries(fake, "c1")
 
-    assert deleted_count == 2
-    assert len(fake.deleted) == 1
-    assert set(fake.deleted[0]) == {"c1:summary:L1:0", "c1:summary:L3:final"}
-
-
-def test_delete_summaries_specific_levels() -> None:
-    """Test deleting only specific summary levels."""
-    fake = _FakeCollection(
-        get_result={
-            "documents": ["L1 chunk"],
-            "metadatas": [
-                {"conversation_id": "c1", "role": "summary", "level": 1, "created_at": "now"},
-            ],
-            "ids": ["c1:summary:L1:0"],
-        },
-    )
-
-    deleted_count = _store.delete_summaries(fake, "c1", levels=[1])
-
     assert deleted_count == 1
-    assert fake.deleted[0] == ["c1:summary:L1:0"]
+    assert len(fake.deleted) == 1
+    assert fake.deleted[0] == ["c1:summary"]
 
 
 def test_delete_summaries_no_entries() -> None:

@@ -7,7 +7,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from agent_cli.summarizer.adaptive import (
-    LEVEL_THRESHOLDS,
+    THRESHOLD_BRIEF,
+    THRESHOLD_NONE,
     SummarizationError,
     SummarizerConfig,
     SummaryOutput,
@@ -63,9 +64,31 @@ class TestSummarizerConfig:
         )
         assert config.openai_base_url == "http://localhost:8000/v1"
 
+    def test_default_chunk_size_is_booookscore(self) -> None:
+        """Test that default chunk_size follows BOOOOKSCORE recommendation."""
+        config = SummarizerConfig(
+            openai_base_url="http://localhost:8000/v1",
+            model="gpt-4",
+        )
+        assert config.chunk_size == 2048  # BOOOOKSCORE's tested default
+
+    def test_default_token_max_is_langchain(self) -> None:
+        """Test that default token_max follows LangChain's default."""
+        config = SummarizerConfig(
+            openai_base_url="http://localhost:8000/v1",
+            model="gpt-4",
+        )
+        assert config.token_max == 3000  # LangChain's default
+
 
 class TestDetermineLevel:
-    """Tests for level determination based on token count."""
+    """Tests for level determination based on token count.
+
+    The simplified approach has 3 levels:
+    - NONE: Very short content (< 100 tokens)
+    - BRIEF: Short content (100-500 tokens)
+    - MAP_REDUCE: Everything else (uses map-reduce)
+    """
 
     def test_none_level_threshold(self) -> None:
         """Test NONE level for very short content."""
@@ -78,30 +101,17 @@ class TestDetermineLevel:
         assert determine_level(300) == SummaryLevel.BRIEF
         assert determine_level(499) == SummaryLevel.BRIEF
 
-    def test_standard_level_threshold(self) -> None:
-        """Test STANDARD level for medium content."""
-        assert determine_level(500) == SummaryLevel.STANDARD
-        assert determine_level(1500) == SummaryLevel.STANDARD
-        assert determine_level(2999) == SummaryLevel.STANDARD
-
-    def test_detailed_level_threshold(self) -> None:
-        """Test DETAILED level for longer content."""
-        assert determine_level(3000) == SummaryLevel.DETAILED
-        assert determine_level(8000) == SummaryLevel.DETAILED
-        assert determine_level(14999) == SummaryLevel.DETAILED
-
-    def test_hierarchical_level_threshold(self) -> None:
-        """Test HIERARCHICAL level for very long content."""
-        assert determine_level(15000) == SummaryLevel.HIERARCHICAL
-        assert determine_level(50000) == SummaryLevel.HIERARCHICAL
-        assert determine_level(100000) == SummaryLevel.HIERARCHICAL
+    def test_map_reduce_level_for_longer_content(self) -> None:
+        """Test that content >= 500 tokens uses MAP_REDUCE."""
+        assert determine_level(500) == SummaryLevel.MAP_REDUCE
+        assert determine_level(1500) == SummaryLevel.MAP_REDUCE
+        assert determine_level(5000) == SummaryLevel.MAP_REDUCE
+        assert determine_level(20000) == SummaryLevel.MAP_REDUCE
 
     def test_thresholds_match_constants(self) -> None:
         """Verify thresholds match the module constants."""
-        assert LEVEL_THRESHOLDS[SummaryLevel.NONE] == 100
-        assert LEVEL_THRESHOLDS[SummaryLevel.BRIEF] == 500
-        assert LEVEL_THRESHOLDS[SummaryLevel.STANDARD] == 3000
-        assert LEVEL_THRESHOLDS[SummaryLevel.DETAILED] == 15000
+        assert THRESHOLD_NONE == 100
+        assert THRESHOLD_BRIEF == 500
 
 
 class TestSummarize:
@@ -168,92 +178,81 @@ class TestSummarize:
         assert result.summary == "Brief summary."
 
     @pytest.mark.asyncio
-    @patch("agent_cli.summarizer.adaptive._standard_summary")
-    async def test_standard_level_calls_standard_summary(
+    @patch("agent_cli.summarizer.adaptive._map_reduce_summary")
+    async def test_longer_content_uses_map_reduce(
         self,
-        mock_standard: AsyncMock,
+        mock_map_reduce: AsyncMock,
         config: SummarizerConfig,
     ) -> None:
-        """Test that STANDARD level content calls _standard_summary."""
-        mock_standard.return_value = "Standard summary paragraph."
+        """Test that content >= 500 tokens uses map-reduce."""
+        mock_result = SummaryResult(
+            level=SummaryLevel.MAP_REDUCE,
+            summary="Map-reduce summary.",
+            input_tokens=800,
+            output_tokens=100,
+            compression_ratio=0.125,
+        )
+        mock_map_reduce.return_value = mock_result
 
-        # Create content that's ~500-3000 tokens
+        # Create content that's ~500+ tokens
         content = "This is a test sentence with more words. " * 100  # ~800 tokens
 
         result = await summarize(content, config, content_type="general")
 
-        mock_standard.assert_called_once_with(content, config, None, "general")
-        assert result.level == SummaryLevel.STANDARD
-        assert result.summary == "Standard summary paragraph."
+        mock_map_reduce.assert_called_once()
+        assert result.summary == "Map-reduce summary."
 
     @pytest.mark.asyncio
-    @patch("agent_cli.summarizer.adaptive._standard_summary")
-    async def test_prior_summary_passed_to_standard(
+    @patch("agent_cli.summarizer.adaptive._map_reduce_summary")
+    async def test_prior_summary_passed_to_map_reduce(
         self,
-        mock_standard: AsyncMock,
+        mock_map_reduce: AsyncMock,
         config: SummarizerConfig,
     ) -> None:
-        """Test that prior_summary is passed to _standard_summary."""
-        mock_standard.return_value = "Updated summary."
+        """Test that prior_summary is passed to _map_reduce_summary."""
+        mock_result = SummaryResult(
+            level=SummaryLevel.MAP_REDUCE,
+            summary="Updated summary.",
+            input_tokens=800,
+            output_tokens=100,
+            compression_ratio=0.125,
+        )
+        mock_map_reduce.return_value = mock_result
 
         content = "This is a test sentence with more words. " * 100
         prior = "Previous context summary."
 
         await summarize(content, config, prior_summary=prior)
 
-        mock_standard.assert_called_once_with(content, config, prior, "general")
+        # Verify prior_summary was passed
+        call_args = mock_map_reduce.call_args
+        assert call_args[0][3] == prior  # prior_summary is 4th positional arg
 
     @pytest.mark.asyncio
-    @patch("agent_cli.summarizer.adaptive._detailed_summary")
-    async def test_detailed_level_calls_detailed_summary(
+    @patch("agent_cli.summarizer.adaptive._map_reduce_summary")
+    async def test_very_long_content_uses_map_reduce(
         self,
-        mock_detailed: AsyncMock,
+        mock_map_reduce: AsyncMock,
         config: SummarizerConfig,
     ) -> None:
-        """Test that DETAILED level content calls _detailed_summary."""
+        """Test that very long content uses map-reduce."""
         mock_result = SummaryResult(
-            level=SummaryLevel.DETAILED,
-            summary="Detailed summary.",
-            hierarchical=None,
-            input_tokens=5000,
-            output_tokens=100,
-            compression_ratio=0.02,
-        )
-        mock_detailed.return_value = mock_result
-
-        # Create content that's ~3000-15000 tokens
-        content = "Word " * 5000  # ~5000 tokens
-
-        result = await summarize(content, config)
-
-        assert mock_detailed.called
-        assert result.level == SummaryLevel.DETAILED
-
-    @pytest.mark.asyncio
-    @patch("agent_cli.summarizer.adaptive._hierarchical_summary")
-    async def test_hierarchical_level_calls_hierarchical_summary(
-        self,
-        mock_hierarchical: AsyncMock,
-        config: SummarizerConfig,
-    ) -> None:
-        """Test that HIERARCHICAL level content calls _hierarchical_summary."""
-        mock_result = SummaryResult(
-            level=SummaryLevel.HIERARCHICAL,
-            summary="Hierarchical summary.",
-            hierarchical=None,
+            level=SummaryLevel.MAP_REDUCE,
+            summary="Long content summary.",
             input_tokens=20000,
             output_tokens=500,
             compression_ratio=0.025,
+            collapse_depth=2,
         )
-        mock_hierarchical.return_value = mock_result
+        mock_map_reduce.return_value = mock_result
 
         # Create content that's > 15000 tokens
         content = "Word " * 20000
 
         result = await summarize(content, config)
 
-        assert mock_hierarchical.called
-        assert result.level == SummaryLevel.HIERARCHICAL
+        assert mock_map_reduce.called
+        assert result.level == SummaryLevel.MAP_REDUCE
 
 
 class TestGenerateSummary:

@@ -66,9 +66,8 @@ async def test_memory_client_git_versioning(
 
     async def fake_summarize_content(**_kwargs: Any) -> SummaryResult:
         return SummaryResult(
-            level=SummaryLevel.STANDARD,
+            level=SummaryLevel.MAP_REDUCE,
             summary="User likes testing.",
-            hierarchical=None,
             input_tokens=100,
             output_tokens=20,
             compression_ratio=0.2,

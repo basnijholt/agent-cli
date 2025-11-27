@@ -1,4 +1,4 @@
-"""Summarize text files or stdin using adaptive hierarchical summarization."""
+"""Summarize text files or stdin using adaptive map-reduce summarization."""
 
 from __future__ import annotations
 
@@ -131,7 +131,7 @@ def _display_full_result(
     *,
     quiet: bool,
 ) -> None:
-    """Display full hierarchical result with all levels."""
+    """Display full result with all metadata."""
     if quiet:
         if result.summary:
             print(result.summary)
@@ -143,34 +143,12 @@ def _display_full_result(
     console.print(f"  Input tokens: [bold]{result.input_tokens:,}[/bold]")
     console.print(f"  Output tokens: [bold]{result.output_tokens:,}[/bold]")
     console.print(f"  Compression: [bold]{result.compression_ratio:.1%}[/bold]")
+    if result.collapse_depth > 0:
+        console.print(f"  Collapse depth: [bold]{result.collapse_depth}[/bold]")
     console.print(f"  Time: [bold]{elapsed:.2f}s[/bold]")
     console.print()
 
-    if result.hierarchical:
-        if result.hierarchical.l1_summaries:
-            console.print(
-                f"[bold yellow]L1 Chunk Summaries "
-                f"({len(result.hierarchical.l1_summaries)} chunks)[/bold yellow]",
-            )
-            for cs in result.hierarchical.l1_summaries:
-                console.print(
-                    f"\n[dim]--- Chunk {cs.chunk_index + 1} "
-                    f"({cs.source_tokens:,} → {cs.token_count:,} tokens) ---[/dim]",
-                )
-                console.print(cs.content)
-
-        if result.hierarchical.l2_summaries:
-            console.print(
-                f"\n[bold yellow]L2 Group Summaries "
-                f"({len(result.hierarchical.l2_summaries)} groups)[/bold yellow]",
-            )
-            for idx, l2_summary in enumerate(result.hierarchical.l2_summaries):
-                console.print(f"\n[dim]--- Group {idx + 1} ---[/dim]")
-                console.print(l2_summary)
-
-        console.print("\n[bold green]L3 Final Summary[/bold green]")
-        print_output_panel(result.hierarchical.l3_summary, title="Final Summary")
-    elif result.summary:
+    if result.summary:
         print_output_panel(
             result.summary,
             title=f"Summary ({result.level.name})",
@@ -296,9 +274,9 @@ def summarize_command(
     ),
     # --- Chunking Options ---
     chunk_size: int = typer.Option(
-        3000,
+        2048,
         "--chunk-size",
-        help="Target token count per chunk for hierarchical summarization.",
+        help="Target token count per chunk for map-reduce summarization.",
         rich_help_panel="Chunking Options",
     ),
     chunk_overlap: int = typer.Option(
@@ -341,15 +319,13 @@ def summarize_command(
     config_file: str | None = opts.CONFIG_FILE,
     print_args: bool = opts.PRINT_ARGS,
 ) -> None:
-    """Summarize text using adaptive hierarchical summarization.
+    """Summarize text using adaptive map-reduce summarization.
 
     Reads from a file or stdin and produces a summary scaled to the input complexity:
 
     - NONE (<100 tokens): No summary needed
     - BRIEF (100-500): Single sentence
-    - STANDARD (500-3000): Paragraph
-    - DETAILED (3000-15000): Chunked with meta-summary
-    - HIERARCHICAL (>15000): Full L1/L2/L3 tree
+    - MAP_REDUCE (>500): Dynamic collapse until fits token budget
 
     Examples:
         # Summarize a file
@@ -361,7 +337,7 @@ def summarize_command(
         # Pipe content from stdin
         cat book.txt | agent-cli summarize
 
-        # Get full hierarchical output
+        # Get full output with all metadata
         agent-cli summarize large_document.txt --output full
 
         # Use OpenAI instead of Ollama

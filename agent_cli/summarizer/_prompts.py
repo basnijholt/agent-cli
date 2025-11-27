@@ -4,7 +4,7 @@ These prompts are designed to work with various LLM sizes (8B-20B parameters)
 and are optimized for structured, factual output.
 """
 
-# Level 1: BRIEF - Single sentence summary
+# BRIEF level - Single sentence summary for short content (100-500 tokens)
 BRIEF_SUMMARY_PROMPT = """Summarize the following in ONE sentence (maximum 20 words).
 Focus on the single most important point or takeaway.
 
@@ -13,7 +13,7 @@ Content:
 
 One-sentence summary:""".strip()
 
-# Level 2: STANDARD - Paragraph summary
+# MAP_REDUCE level - Paragraph summary for content-type aware summarization
 STANDARD_SUMMARY_PROMPT = """Summarize the following content concisely in a short paragraph.
 
 Focus on:
@@ -28,7 +28,7 @@ Content to summarize:
 
 Summary (maximum {max_words} words):""".strip()
 
-# Level 3: DETAILED - Used for individual chunks in hierarchical summarization
+# CHUNK - Used in map phase of map-reduce summarization
 CHUNK_SUMMARY_PROMPT = """Summarize this section of a longer document.
 Capture the main points while preserving important details.
 
@@ -37,7 +37,7 @@ Section {chunk_index} of {total_chunks}:
 
 Summary of this section (maximum {max_words} words):""".strip()
 
-# Level 4: META - Combine multiple summaries into one
+# META - Combine multiple summaries in reduce phase
 META_SUMMARY_PROMPT = """Synthesize these summaries into a single coherent overview.
 Identify common themes and key points across all sections.
 Eliminate redundancy while preserving unique insights.
