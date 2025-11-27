@@ -65,7 +65,7 @@ def get_client(model: str | None = None) -> tuple[MemoryClient, str]:
         embedding_model=embedding_model,
         enable_summarization=True,
         enable_git_versioning=False,  # Keep it simple for POC
-        enable_reconciliation=False,  # Disabled - local models struggle with semantic similarity
+        enable_reconciliation=True,  # Re-enabled with mem0-style prompt
         score_threshold=0.1,  # Lower threshold for local models
     ), model_name
 

@@ -33,6 +33,7 @@ from agent_cli.memory.models import (
     MemoryDelete,
     MemoryIgnore,
     MemoryUpdate,
+    MemoryUpdateResponse,
     SummaryOutput,
 )
 
@@ -188,7 +189,7 @@ async def reconcile_facts(
     agent = Agent(
         model=model_cfg,
         system_prompt=UPDATE_MEMORY_PROMPT,
-        output_type=list[MemoryDecision],
+        output_type=MemoryUpdateResponse,
         retries=3,
     )
 
@@ -198,7 +199,7 @@ async def reconcile_facts(
     LOGGER.debug("Reconcile system prompt:\n%s", UPDATE_MEMORY_PROMPT)
     try:
         result = await agent.run(payload)
-        decisions = result.output
+        decisions = result.output.memory
     except (httpx.HTTPError, AgentRunError, UnexpectedModelBehavior):
         LOGGER.warning(
             "Update memory agent transient failure; defaulting to add all new facts",

@@ -22,50 +22,69 @@ Return only factual sentences grounded in the user text. No assistant acknowledg
 """.strip()
 
 UPDATE_MEMORY_PROMPT = """
-You are a smart memory manager. For each new fact, decide: ADD, UPDATE an existing memory, or skip if duplicate.
+You are a smart memory manager which controls the memory of a system.
+You can perform four operations: (1) ADD into memory, (2) UPDATE memory, (3) DELETE from memory, (4) NONE (no change).
 
-Operations:
-1. **ADD**: The new fact is unrelated to all existing memories → add it as new.
-2. **UPDATE**: The new fact refines/corrects an existing memory → replace the old with the new.
-3. **DELETE**: The new fact explicitly contradicts an existing memory → delete the old, then ADD the new.
-4. **NONE**: The new fact is an exact duplicate of an existing memory → skip it.
+For each new fact, compare it with existing memories and decide what to do.
 
-**Critical Rule**: Every new fact MUST result in either ADD or UPDATE (unless it's an exact duplicate).
-If a new fact is unrelated to existing memories, use ADD. Do NOT use NONE for unrelated facts.
+Guidelines:
 
-Schema:
-- ADD:    {"event": "ADD", "text": "the new fact text"}
-- UPDATE: {"event": "UPDATE", "id": <int>, "text": "the new fact text"}
-- DELETE: {"event": "DELETE", "id": <int>}
-- NONE:   {"event": "NONE"} (only for exact duplicates)
+1. **ADD**: New fact contains information NOT present in any existing memory.
+   - Generate a new ID for added memories.
+   - Existing unrelated memories remain unchanged (NONE).
+
+2. **UPDATE**: New fact refines/expands an existing memory about THE SAME TOPIC.
+   - Keep the same ID, update the text.
+   - Only update if facts are about the same subject (e.g., both about pizza preferences).
+
+3. **DELETE**: New fact explicitly contradicts an existing memory.
+   - Mark the old memory for deletion.
+
+4. **NONE**: Existing memory is unrelated to new facts, OR new fact is exact duplicate.
+   - No change needed.
+
+**CRITICAL**: You must return ALL memories (existing + new) in your response.
+Each existing memory must have an event (NONE, UPDATE, or DELETE).
+Each new unrelated fact must be ADDed with a new ID.
 
 Examples:
 
-1. UNRELATED facts (different topics) → ADD the new fact
-   Existing: [{"id": 0, "text": "User met Sarah about a project"}]
-   New: ["User went for a run"]
-   Output: [{"event": "ADD", "text": "User went for a run"}]
-   Reason: "meeting Sarah" and "running" are different topics → ADD
+1. UNRELATED new fact → ADD it, existing stays NONE
+   Existing: [{"id": 0, "text": "User is a software engineer"}]
+   New facts: ["Name is John"]
+   Output:
+   {"memory": [
+     {"id": 0, "text": "User is a software engineer", "event": "NONE"},
+     {"id": 1, "text": "Name is John", "event": "ADD"}
+   ]}
 
-2. RELATED facts (same topic, more detail) → UPDATE
+2. RELATED facts (same topic) → UPDATE existing
    Existing: [{"id": 0, "text": "User likes pizza"}]
-   New: ["User loves pepperoni pizza"]
-   Output: [{"event": "UPDATE", "id": 0, "text": "User loves pepperoni pizza"}]
-   Reason: Both about pizza preference → UPDATE
+   New facts: ["User loves pepperoni pizza"]
+   Output:
+   {"memory": [
+     {"id": 0, "text": "User loves pepperoni pizza", "event": "UPDATE", "old_memory": "User likes pizza"}
+   ]}
 
-3. CONTRADICTING facts → DELETE + ADD
-   Existing: [{"id": 0, "text": "User likes pizza"}]
-   New: ["User hates pizza"]
-   Output: [{"event": "DELETE", "id": 0}, {"event": "ADD", "text": "User hates pizza"}]
+3. CONTRADICTING facts → DELETE old
+   Existing: [{"id": 0, "text": "Loves pizza"}, {"id": 1, "text": "Name is John"}]
+   New facts: ["Hates pizza"]
+   Output:
+   {"memory": [
+     {"id": 0, "text": "Loves pizza", "event": "DELETE"},
+     {"id": 1, "text": "Name is John", "event": "NONE"},
+     {"id": 2, "text": "Hates pizza", "event": "ADD"}
+   ]}
 
-4. DUPLICATE facts → NONE
-   Existing: [{"id": 0, "text": "User's name is John"}]
-   New: ["User's name is John"]
-   Output: [{"event": "NONE"}]
+4. DUPLICATE → NONE for all
+   Existing: [{"id": 0, "text": "Name is John"}]
+   New facts: ["Name is John"]
+   Output:
+   {"memory": [
+     {"id": 0, "text": "Name is John", "event": "NONE"}
+   ]}
 
-Key: Only use UPDATE if the facts are about THE SAME TOPIC. Different topics = ADD.
-
-Output a JSON list of decisions only. No prose or code fences.
+Return ONLY valid JSON with the "memory" key. No prose or code fences.
 """.strip()
 
 SUMMARY_PROMPT = """
