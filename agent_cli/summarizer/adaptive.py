@@ -1,8 +1,7 @@
 """Adaptive summarization that scales with input complexity.
 
-This module implements research-grounded summarization inspired by:
-- Letta: Partial eviction (30%), middle truncation, fire-and-forget background processing
-- Mem0: Rolling summaries, 90%+ compression, two-phase architecture
+Implements hierarchical summarization inspired by Letta's partial eviction approach
+and Mem0's two-phase architecture (extraction then storage).
 
 Reference: arXiv:2504.19413 (Mem0), arXiv:2310.08560 (MemGPT/Letta)
 """
@@ -11,7 +10,6 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import re
 from dataclasses import dataclass
 
 from pydantic import BaseModel
@@ -413,10 +411,7 @@ async def _generate_summary(
 
     try:
         result = await agent.run(prompt)
-        text = result.output.summary.strip()
-        # Strip special tokens that some models leak (e.g., <|constrain|>, <|end|>)
-        text = re.sub(r"<\|[^|]+\|>", "", text)
-        return text.strip()
+        return result.output.summary.strip()
     except Exception as e:
         msg = f"Summarization failed: {e}"
         raise SummarizationError(msg) from e

@@ -20,7 +20,7 @@ Input Content ──▶ Token Count ──▶ Level Selection ──▶ Strategy
 **Design Goals:**
 
 - **Adaptive compression:** Match summarization depth to content complexity.
-- **Research-grounded:** Based on proven approaches from Letta and Mem0.
+- **Research-informed:** Draws techniques from Letta's memory management.
 - **Hierarchical structure:** Preserve detail at multiple granularities for large content.
 - **Content-type awareness:** Domain-specific prompts for conversations, journals, documents.
 
@@ -28,31 +28,19 @@ Input Content ──▶ Token Count ──▶ Level Selection ──▶ Strategy
 
 ## 2. Research Foundations
 
-The summarization approach draws from two research-backed memory systems:
-
 ### 2.1 Letta (MemGPT) Contributions
 
 **Reference:** arXiv:2310.08560
 
-Letta's approach to memory management introduced several techniques adopted here:
-
-- **Partial eviction:** Rather than discarding old content entirely, compress it to summaries while keeping recent content detailed. This maps to our hierarchical L1/L2/L3 structure where L1 preserves chunk-level detail and L3 provides high-level synthesis.
-
-- **Middle truncation:** When content must be reduced, preserve the head (introductions, context-setting) and tail (conclusions, recent events) while removing the middle. Research shows important information clusters at boundaries.
-
-- **Fire-and-forget background processing:** Summarization runs asynchronously after turn completion, avoiding latency on the critical path.
+Letta's approach to memory management introduced the **partial eviction** technique adopted here: rather than discarding old content entirely, compress a portion to summaries while keeping recent content detailed. This maps to our hierarchical L1/L2/L3 structure where L1 preserves chunk-level detail and L3 provides high-level synthesis.
 
 ### 2.2 Mem0 Contributions
 
 **Reference:** arXiv:2504.19413
 
-Mem0's memory layer research established compression ratio targets:
+Mem0's memory layer research informed our storage architecture:
 
-- **90%+ compression:** Long-running conversations can achieve 10:1 or better compression while retaining semantic meaning. Our hierarchical approach targets similar ratios for very long content.
-
-- **Rolling summaries:** New information integrates with existing summaries rather than replacing them. The `prior_summary` parameter throughout our pipeline implements this pattern.
-
-- **Two-phase architecture:** Separate extraction (what's important) from storage (how to persist it). We apply this by first generating summaries, then persisting to both files and vector DB.
+- **Two-phase architecture:** Separate extraction (identifying what's important) from storage (how to persist it). We apply this by first generating summaries via LLM, then persisting results to both files and vector DB.
 
 ---
 
@@ -65,18 +53,17 @@ Mem0's memory layer research established compression ratio targets:
 **Rationale:**
 
 - **Predictable behavior:** Users can anticipate output length based on input size.
-- **Optimal compression:** Each level targets a specific compression ratio validated by research.
 - **Efficiency:** Avoid over-processing short content or under-processing long content.
 
 **Thresholds:**
 
-| Level | Token Range | Target Compression | Strategy |
-| :--- | :--- | :--- | :--- |
-| NONE | < 100 | N/A | No summarization needed |
-| BRIEF | 100-500 | ~20% | Single sentence |
-| STANDARD | 500-3000 | ~12% | Paragraph |
-| DETAILED | 3000-15000 | ~7% | Chunked + meta-synthesis |
-| HIERARCHICAL | > 15000 | ~3-5% | L1/L2/L3 tree |
+| Level | Token Range | Strategy |
+| :--- | :--- | :--- |
+| NONE | < 100 | No summarization needed |
+| BRIEF | 100-500 | Single sentence |
+| STANDARD | 500-3000 | Paragraph |
+| DETAILED | 3000-15000 | Chunked + meta-synthesis |
+| HIERARCHICAL | > 15000 | L1/L2/L3 tree |
 
 **Trade-off:** Fixed thresholds may not be optimal for all content types, but provide consistent, predictable behavior. Content-type prompts provide domain adaptation within each level.
 
@@ -88,13 +75,13 @@ Mem0's memory layer research established compression ratio targets:
 
 - **Partial eviction:** Inspired by Letta—keep detailed summaries for granular retrieval, compressed summaries for context injection.
 - **Flexible retrieval:** Different use cases need different detail levels. RAG queries might want L1 chunks; prompt injection wants L3.
-- **Progressive compression:** Each level provides ~5x compression over the previous, achieving high overall compression while preserving structure.
+- **Progressive compression:** Each level compresses the previous, achieving high overall compression while preserving structure.
 
 **Structure:**
 
 - **L1 (Chunk Summaries):** Individual summaries of ~3000 token chunks. Preserves local context and specific details. Chunks overlap by ~200 tokens to maintain continuity across boundaries.
 - **L2 (Group Summaries):** Summaries of groups of ~5 L1 summaries. Only generated when content exceeds ~5 chunks. Provides mid-level abstraction.
-- **L3 (Final Summary):** Single synthesized summary. Used for prompt injection and as prior context for rolling updates.
+- **L3 (Final Summary):** Single synthesized summary. Used for prompt injection and as prior context for incremental updates.
 
 **Trade-off:** The three-level hierarchy adds complexity but enables efficient retrieval at multiple granularities. For content under 15000 tokens, we skip L2 entirely (DETAILED level uses only L1 + L3).
 
@@ -126,7 +113,7 @@ Mem0's memory layer research established compression ratio targets:
 
 A generic summarization prompt loses domain-specific signal. By tailoring prompts, we extract what matters for each use case.
 
-### 3.5 Prior Summary Integration (Rolling Updates)
+### 3.5 Prior Summary Integration
 
 **Decision:** Always provide the previous summary as context when generating updates.
 
@@ -136,7 +123,7 @@ A generic summarization prompt loses domain-specific signal. By tailoring prompt
 - **Incremental updates:** Avoid re-summarizing all historical content on every update.
 - **Information preservation:** Important information from earlier content persists through the chain of summaries.
 
-This implements Mem0's "rolling summary" pattern. The L3 summary from the previous run becomes prior context for the next summarization, allowing information to flow forward through time.
+The L3 summary from the previous run becomes prior context for the next summarization, allowing information to flow forward through time.
 
 ### 3.6 Compression Ratio Tracking
 
@@ -220,7 +207,7 @@ Summaries are persisted in two places:
 | `chunk_overlap` | 200 | Overlap between consecutive chunks |
 | `max_concurrent_chunks` | 5 | Parallel LLM calls for chunk summarization |
 
-Level thresholds are constants (100, 500, 3000, 15000 tokens) chosen based on empirical testing and Mem0 research on optimal compression ratios.
+Level thresholds are constants (100, 500, 3000, 15000 tokens) chosen based on empirical testing.
 
 ---
 
@@ -233,17 +220,3 @@ Summarization follows a fail-fast philosophy:
 - **Encoding errors:** Falls back to character-based token estimation.
 
 The caller (memory system) decides how to handle failures—typically by proceeding without a summary rather than blocking the entire write path.
-
----
-
-## 8. Comparison with Alternatives
-
-| Aspect | Adaptive Summarizer | Fixed Rolling Summary | No Summarization |
-| :--- | :--- | :--- | :--- |
-| **Compression** | 3-20% (scales with input) | ~15% fixed | 0% |
-| **Detail preservation** | Hierarchical (L1/L2/L3) | Single level | Full |
-| **Short content** | Skipped (efficient) | Still processed | N/A |
-| **Long content** | Tree structure | Single pass | Context overflow |
-| **Research basis** | Letta + Mem0 | Mem0 | None |
-
-The adaptive approach's key advantage is matching effort to content: short content stays untouched, medium content gets lightweight summarization, and long content gets full hierarchical treatment.
