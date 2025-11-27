@@ -1,0 +1,502 @@
+"""Adaptive summarization that scales with input complexity.
+
+This module implements research-grounded summarization inspired by:
+- Letta: Partial eviction (30%), middle truncation, fire-and-forget background processing
+- Mem0: Rolling summaries, 90%+ compression, two-phase architecture
+
+Reference: arXiv:2504.19413 (Mem0), arXiv:2310.08560 (MemGPT/Letta)
+"""
+
+from __future__ import annotations
+
+import asyncio
+import logging
+
+import httpx
+from pydantic import BaseModel
+from pydantic_ai import Agent
+from pydantic_ai.models.openai import OpenAIChatModel
+from pydantic_ai.providers.openai import OpenAIProvider
+from pydantic_ai.settings import ModelSettings
+
+from agent_cli.summarizer.models import (
+    ChunkSummary,
+    HierarchicalSummary,
+    SummaryLevel,
+    SummaryResult,
+)
+from agent_cli.summarizer.prompts import (
+    BRIEF_SUMMARY_PROMPT,
+    CHUNK_SUMMARY_PROMPT,
+    META_SUMMARY_PROMPT,
+    ROLLING_SUMMARY_PROMPT,
+    format_prior_context,
+    format_summaries_for_meta,
+    get_prompt_for_content_type,
+)
+from agent_cli.summarizer.utils import (
+    chunk_text,
+    count_tokens,
+    estimate_summary_tokens,
+    tokens_to_words,
+)
+
+logger = logging.getLogger(__name__)
+
+# Thresholds for summary levels (in tokens)
+LEVEL_THRESHOLDS = {
+    SummaryLevel.NONE: 100,
+    SummaryLevel.BRIEF: 500,
+    SummaryLevel.STANDARD: 3000,
+    SummaryLevel.DETAILED: 15000,
+    # HIERARCHICAL is everything above DETAILED
+}
+
+# Number of L1 chunks to group together for L2 summaries
+L2_GROUP_SIZE = 5
+# Minimum number of L1 chunks before L2 grouping is applied
+L2_MIN_CHUNKS = 5
+
+
+class SummaryOutput(BaseModel):
+    """Structured output for summary generation."""
+
+    summary: str
+
+
+class AdaptiveSummarizer:
+    """Adaptive summarization that scales with input complexity.
+
+    Automatically selects the appropriate summarization strategy based on
+    input length:
+    - NONE (< 100 tokens): No summary needed
+    - BRIEF (100-500 tokens): Single sentence
+    - STANDARD (500-3000 tokens): Paragraph summary
+    - DETAILED (3000-15000 tokens): Chunked + meta-summary
+    - HIERARCHICAL (> 15000 tokens): Multi-level tree of summaries
+
+    Example:
+        summarizer = AdaptiveSummarizer(
+            openai_base_url="http://localhost:8000/v1",
+            model="llama3.1:8b",
+        )
+        result = await summarizer.summarize(long_document)
+        print(f"Level: {result.level.name}")
+        print(f"Summary: {result.summary}")
+        print(f"Compression: {result.compression_ratio:.1%}")
+
+    """
+
+    def __init__(
+        self,
+        openai_base_url: str,
+        model: str,
+        api_key: str | None = None,
+        chunk_size: int = 3000,
+        chunk_overlap: int = 200,
+        max_concurrent_chunks: int = 5,
+        timeout: float = 60.0,
+    ) -> None:
+        """Initialize the adaptive summarizer.
+
+        Args:
+            openai_base_url: Base URL for OpenAI-compatible API.
+            model: Model name to use for summarization.
+            api_key: API key (optional for local models).
+            chunk_size: Target token count per chunk for hierarchical summarization.
+            chunk_overlap: Token overlap between chunks.
+            max_concurrent_chunks: Maximum parallel chunk summarizations.
+            timeout: Request timeout in seconds.
+
+        """
+        self.openai_base_url = openai_base_url.rstrip("/")
+        self.model = model
+        self.api_key = api_key or "not-needed"
+        self.chunk_size = chunk_size
+        self.chunk_overlap = chunk_overlap
+        self.max_concurrent_chunks = max_concurrent_chunks
+        self.timeout = timeout
+
+        self._provider = OpenAIProvider(api_key=self.api_key, base_url=self.openai_base_url)
+
+    def determine_level(self, token_count: int) -> SummaryLevel:
+        """Determine the appropriate summary level based on token count.
+
+        Args:
+            token_count: Number of tokens in the input.
+
+        Returns:
+            The recommended SummaryLevel.
+
+        """
+        if token_count < LEVEL_THRESHOLDS[SummaryLevel.NONE]:
+            return SummaryLevel.NONE
+        if token_count < LEVEL_THRESHOLDS[SummaryLevel.BRIEF]:
+            return SummaryLevel.BRIEF
+        if token_count < LEVEL_THRESHOLDS[SummaryLevel.STANDARD]:
+            return SummaryLevel.STANDARD
+        if token_count < LEVEL_THRESHOLDS[SummaryLevel.DETAILED]:
+            return SummaryLevel.DETAILED
+        return SummaryLevel.HIERARCHICAL
+
+    async def summarize(
+        self,
+        content: str,
+        prior_summary: str | None = None,
+        content_type: str = "general",
+    ) -> SummaryResult:
+        """Summarize content with adaptive strategy based on length.
+
+        Args:
+            content: The content to summarize.
+            prior_summary: Optional prior summary for context continuity.
+            content_type: Type of content ("general", "conversation", "journal", "document").
+
+        Returns:
+            SummaryResult with summary and metadata.
+
+        """
+        if not content or not content.strip():
+            return SummaryResult(
+                level=SummaryLevel.NONE,
+                summary=None,
+                hierarchical=None,
+                input_tokens=0,
+                output_tokens=0,
+                compression_ratio=0.0,
+            )
+
+        input_tokens = count_tokens(content, self.model)
+        level = self.determine_level(input_tokens)
+
+        logger.info(
+            "Summarizing %d tokens at level %s (type=%s)",
+            input_tokens,
+            level.name,
+            content_type,
+        )
+
+        if level == SummaryLevel.NONE:
+            return SummaryResult(
+                level=level,
+                summary=None,
+                hierarchical=None,
+                input_tokens=input_tokens,
+                output_tokens=0,
+                compression_ratio=0.0,
+            )
+
+        if level == SummaryLevel.BRIEF:
+            summary = await self._brief_summary(content)
+        elif level == SummaryLevel.STANDARD:
+            summary = await self._standard_summary(content, prior_summary, content_type)
+        elif level == SummaryLevel.DETAILED:
+            return await self._detailed_summary(content, input_tokens)
+        else:  # HIERARCHICAL
+            return await self._hierarchical_summary(content, input_tokens)
+
+        output_tokens = count_tokens(summary, self.model) if summary else 0
+        compression_ratio = output_tokens / input_tokens if input_tokens > 0 else 0.0
+
+        return SummaryResult(
+            level=level,
+            summary=summary,
+            hierarchical=None,
+            input_tokens=input_tokens,
+            output_tokens=output_tokens,
+            compression_ratio=compression_ratio,
+        )
+
+    async def update_rolling_summary(
+        self,
+        prior_summary: str | None,
+        new_facts: list[str],
+    ) -> str:
+        """Update a rolling summary with new facts (Mem0-style).
+
+        This is optimized for incremental updates where you have discrete
+        new facts to integrate into an existing summary.
+
+        Args:
+            prior_summary: The existing summary to update.
+            new_facts: List of new facts to integrate.
+
+        Returns:
+            Updated summary string.
+
+        """
+        if not new_facts:
+            return prior_summary or ""
+
+        new_content = "\n".join(f"- {fact}" for fact in new_facts)
+        combined_tokens = count_tokens(
+            (prior_summary or "") + new_content,
+            self.model,
+        )
+
+        target_tokens = estimate_summary_tokens(combined_tokens, SummaryLevel.STANDARD)
+        max_words = tokens_to_words(target_tokens)
+
+        prompt = ROLLING_SUMMARY_PROMPT.format(
+            prior_summary=prior_summary or "(No prior summary)",
+            new_content=new_content,
+            max_words=max_words,
+        )
+
+        return await self._generate_summary(prompt, max_tokens=target_tokens + 50)
+
+    async def _brief_summary(self, content: str) -> str:
+        """Generate a single-sentence summary for brief content."""
+        prompt = BRIEF_SUMMARY_PROMPT.format(content=content)
+        return await self._generate_summary(prompt, max_tokens=50)
+
+    async def _standard_summary(
+        self,
+        content: str,
+        prior_summary: str | None,
+        content_type: str,
+    ) -> str:
+        """Generate a paragraph summary for standard-length content."""
+        input_tokens = count_tokens(content, self.model)
+        target_tokens = estimate_summary_tokens(input_tokens, SummaryLevel.STANDARD)
+        max_words = tokens_to_words(target_tokens)
+
+        prompt_template = get_prompt_for_content_type(content_type)
+        prior_context = format_prior_context(prior_summary)
+
+        prompt = prompt_template.format(
+            content=content,
+            prior_context=prior_context,
+            max_words=max_words,
+        )
+
+        return await self._generate_summary(prompt, max_tokens=target_tokens + 50)
+
+    async def _detailed_summary(self, content: str, input_tokens: int) -> SummaryResult:
+        """Generate chunked summaries with meta-summary for detailed content."""
+        chunks = chunk_text(
+            content,
+            chunk_size=self.chunk_size,
+            overlap=self.chunk_overlap,
+            model=self.model,
+        )
+
+        logger.info("Detailed summary: processing %d chunks", len(chunks))
+
+        # Summarize chunks (with concurrency limit)
+        semaphore = asyncio.Semaphore(self.max_concurrent_chunks)
+
+        async def summarize_chunk(idx: int, chunk: str) -> ChunkSummary:
+            async with semaphore:
+                chunk_tokens = count_tokens(chunk, self.model)
+                target_tokens = estimate_summary_tokens(chunk_tokens, SummaryLevel.STANDARD)
+                max_words = tokens_to_words(target_tokens)
+
+                prompt = CHUNK_SUMMARY_PROMPT.format(
+                    chunk_index=idx + 1,
+                    total_chunks=len(chunks),
+                    content=chunk,
+                    max_words=max_words,
+                )
+
+                summary = await self._generate_summary(prompt, max_tokens=target_tokens + 50)
+                summary_tokens = count_tokens(summary, self.model)
+
+                return ChunkSummary(
+                    chunk_index=idx,
+                    content=summary,
+                    token_count=summary_tokens,
+                    source_tokens=chunk_tokens,
+                    parent_group=None,
+                )
+
+        chunk_summaries = await asyncio.gather(
+            *[summarize_chunk(i, chunk) for i, chunk in enumerate(chunks)],
+        )
+
+        # Generate meta-summary
+        all_summaries = [cs.content for cs in chunk_summaries]
+        meta_target = estimate_summary_tokens(input_tokens, SummaryLevel.DETAILED)
+        max_words = tokens_to_words(meta_target)
+
+        meta_prompt = META_SUMMARY_PROMPT.format(
+            summaries=format_summaries_for_meta(all_summaries),
+            max_words=max_words,
+        )
+
+        final_summary = await self._generate_summary(meta_prompt, max_tokens=meta_target + 100)
+        output_tokens = count_tokens(final_summary, self.model)
+
+        hierarchical = HierarchicalSummary(
+            l1_summaries=list(chunk_summaries),
+            l2_summaries=[],  # Not used for DETAILED level
+            l3_summary=final_summary,
+            chunk_size=self.chunk_size,
+            chunk_overlap=self.chunk_overlap,
+        )
+
+        return SummaryResult(
+            level=SummaryLevel.DETAILED,
+            summary=final_summary,
+            hierarchical=hierarchical,
+            input_tokens=input_tokens,
+            output_tokens=output_tokens,
+            compression_ratio=output_tokens / input_tokens if input_tokens > 0 else 0.0,
+        )
+
+    async def _hierarchical_summary(self, content: str, input_tokens: int) -> SummaryResult:
+        """Build a tree of summaries for very long content.
+
+        Structure:
+        - L1: Individual chunk summaries
+        - L2: Group summaries (groups of ~5 L1 summaries)
+        - L3: Final synthesis
+        """
+        chunks = chunk_text(
+            content,
+            chunk_size=self.chunk_size,
+            overlap=self.chunk_overlap,
+            model=self.model,
+        )
+
+        logger.info("Hierarchical summary: processing %d chunks in tree", len(chunks))
+
+        # L1: Summarize each chunk
+        semaphore = asyncio.Semaphore(self.max_concurrent_chunks)
+
+        async def summarize_chunk(idx: int, chunk: str) -> ChunkSummary:
+            async with semaphore:
+                chunk_tokens = count_tokens(chunk, self.model)
+                target_tokens = estimate_summary_tokens(chunk_tokens, SummaryLevel.STANDARD)
+                max_words = tokens_to_words(target_tokens)
+
+                prompt = CHUNK_SUMMARY_PROMPT.format(
+                    chunk_index=idx + 1,
+                    total_chunks=len(chunks),
+                    content=chunk,
+                    max_words=max_words,
+                )
+
+                summary = await self._generate_summary(prompt, max_tokens=target_tokens + 50)
+                summary_tokens = count_tokens(summary, self.model)
+
+                # Assign to group (5 chunks per group)
+                group_idx = idx // 5
+
+                return ChunkSummary(
+                    chunk_index=idx,
+                    content=summary,
+                    token_count=summary_tokens,
+                    source_tokens=chunk_tokens,
+                    parent_group=group_idx,
+                )
+
+        l1_summaries = await asyncio.gather(
+            *[summarize_chunk(i, chunk) for i, chunk in enumerate(chunks)],
+        )
+
+        # L2: Group summaries (if more than L2_MIN_CHUNKS chunks)
+        l2_summaries: list[str] = []
+        if len(l1_summaries) > L2_MIN_CHUNKS:
+            groups: list[list[str]] = []
+            for i in range(0, len(l1_summaries), L2_GROUP_SIZE):
+                group = [cs.content for cs in l1_summaries[i : i + L2_GROUP_SIZE]]
+                groups.append(group)
+
+            async def summarize_group(group: list[str]) -> str:
+                combined_tokens = sum(count_tokens(s, self.model) for s in group)
+                target_tokens = estimate_summary_tokens(combined_tokens, SummaryLevel.STANDARD)
+                max_words = tokens_to_words(target_tokens)
+
+                prompt = META_SUMMARY_PROMPT.format(
+                    summaries=format_summaries_for_meta(group),
+                    max_words=max_words,
+                )
+                return await self._generate_summary(prompt, max_tokens=target_tokens + 50)
+
+            l2_summaries = await asyncio.gather(*[summarize_group(g) for g in groups])
+
+        # L3: Final synthesis
+        summaries_to_synthesize = (
+            l2_summaries if l2_summaries else [cs.content for cs in l1_summaries]
+        )
+        final_target = estimate_summary_tokens(input_tokens, SummaryLevel.HIERARCHICAL)
+        max_words = tokens_to_words(final_target)
+
+        final_prompt = META_SUMMARY_PROMPT.format(
+            summaries=format_summaries_for_meta(summaries_to_synthesize),
+            max_words=max_words,
+        )
+
+        final_summary = await self._generate_summary(final_prompt, max_tokens=final_target + 100)
+        output_tokens = count_tokens(final_summary, self.model)
+
+        hierarchical = HierarchicalSummary(
+            l1_summaries=list(l1_summaries),
+            l2_summaries=list(l2_summaries),
+            l3_summary=final_summary,
+            chunk_size=self.chunk_size,
+            chunk_overlap=self.chunk_overlap,
+        )
+
+        return SummaryResult(
+            level=SummaryLevel.HIERARCHICAL,
+            summary=final_summary,
+            hierarchical=hierarchical,
+            input_tokens=input_tokens,
+            output_tokens=output_tokens,
+            compression_ratio=output_tokens / input_tokens if input_tokens > 0 else 0.0,
+        )
+
+    async def _generate_summary(self, prompt: str, max_tokens: int = 256) -> str:
+        """Generate a summary using the LLM.
+
+        Uses PydanticAI for structured output with fallback to raw generation.
+        """
+        model = OpenAIChatModel(
+            model_name=self.model,
+            provider=self._provider,
+            settings=ModelSettings(
+                temperature=0.3,
+                max_tokens=max_tokens,
+            ),
+        )
+
+        agent = Agent(
+            model=model,
+            system_prompt="You are a concise summarizer. Output only the summary, no preamble.",
+            output_type=SummaryOutput,
+            retries=2,
+        )
+
+        try:
+            result = await agent.run(prompt)
+            return result.output.summary.strip()
+        except Exception as e:
+            logger.warning("Structured summary failed, trying raw generation: %s", e)
+            # Fallback to raw HTTP call
+            return await self._raw_generate(prompt, max_tokens)
+
+    async def _raw_generate(self, prompt: str, max_tokens: int) -> str:
+        """Fallback raw HTTP generation without structured output."""
+        async with httpx.AsyncClient(timeout=self.timeout) as client:
+            response = await client.post(
+                f"{self.openai_base_url}/chat/completions",
+                headers={"Authorization": f"Bearer {self.api_key}"},
+                json={
+                    "model": self.model,
+                    "messages": [
+                        {"role": "system", "content": "You are a concise summarizer."},
+                        {"role": "user", "content": prompt},
+                    ],
+                    "temperature": 0.3,
+                    "max_tokens": max_tokens,
+                },
+            )
+            response.raise_for_status()
+            data = response.json()
+
+        choices = data.get("choices", [])
+        if choices:
+            return choices[0].get("message", {}).get("content", "").strip()
+        return ""

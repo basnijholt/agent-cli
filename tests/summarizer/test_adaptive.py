@@ -1,0 +1,434 @@
+"""Unit tests for AdaptiveSummarizer."""
+
+from __future__ import annotations
+
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
+
+from agent_cli.summarizer.adaptive import (
+    LEVEL_THRESHOLDS,
+    AdaptiveSummarizer,
+    SummaryOutput,
+)
+from agent_cli.summarizer.models import SummaryLevel, SummaryResult
+
+
+class TestAdaptiveSummarizerInit:
+    """Tests for AdaptiveSummarizer initialization."""
+
+    def test_basic_init(self) -> None:
+        """Test basic initialization with required parameters."""
+        summarizer = AdaptiveSummarizer(
+            openai_base_url="http://localhost:8000/v1",
+            model="llama3.1:8b",
+        )
+        assert summarizer.openai_base_url == "http://localhost:8000/v1"
+        assert summarizer.model == "llama3.1:8b"
+        assert summarizer.api_key == "not-needed"
+
+    def test_init_with_api_key(self) -> None:
+        """Test initialization with custom API key."""
+        summarizer = AdaptiveSummarizer(
+            openai_base_url="http://localhost:8000/v1",
+            model="gpt-4",
+            api_key="sk-test-key",
+        )
+        assert summarizer.api_key == "sk-test-key"
+
+    def test_init_with_custom_settings(self) -> None:
+        """Test initialization with custom chunk settings."""
+        summarizer = AdaptiveSummarizer(
+            openai_base_url="http://localhost:8000/v1",
+            model="gpt-4",
+            chunk_size=5000,
+            chunk_overlap=300,
+            max_concurrent_chunks=10,
+            timeout=120.0,
+        )
+        assert summarizer.chunk_size == 5000
+        assert summarizer.chunk_overlap == 300
+        assert summarizer.max_concurrent_chunks == 10
+        assert summarizer.timeout == 120.0
+
+    def test_trailing_slash_stripped(self) -> None:
+        """Test that trailing slash is stripped from base URL."""
+        summarizer = AdaptiveSummarizer(
+            openai_base_url="http://localhost:8000/v1/",
+            model="gpt-4",
+        )
+        assert summarizer.openai_base_url == "http://localhost:8000/v1"
+
+
+class TestDetermineLevel:
+    """Tests for level determination based on token count."""
+
+    @pytest.fixture
+    def summarizer(self) -> AdaptiveSummarizer:
+        """Create a summarizer instance."""
+        return AdaptiveSummarizer(
+            openai_base_url="http://localhost:8000/v1",
+            model="gpt-4",
+        )
+
+    def test_none_level_threshold(self, summarizer: AdaptiveSummarizer) -> None:
+        """Test NONE level for very short content."""
+        assert summarizer.determine_level(50) == SummaryLevel.NONE
+        assert summarizer.determine_level(99) == SummaryLevel.NONE
+
+    def test_brief_level_threshold(self, summarizer: AdaptiveSummarizer) -> None:
+        """Test BRIEF level for short content."""
+        assert summarizer.determine_level(100) == SummaryLevel.BRIEF
+        assert summarizer.determine_level(300) == SummaryLevel.BRIEF
+        assert summarizer.determine_level(499) == SummaryLevel.BRIEF
+
+    def test_standard_level_threshold(self, summarizer: AdaptiveSummarizer) -> None:
+        """Test STANDARD level for medium content."""
+        assert summarizer.determine_level(500) == SummaryLevel.STANDARD
+        assert summarizer.determine_level(1500) == SummaryLevel.STANDARD
+        assert summarizer.determine_level(2999) == SummaryLevel.STANDARD
+
+    def test_detailed_level_threshold(self, summarizer: AdaptiveSummarizer) -> None:
+        """Test DETAILED level for longer content."""
+        assert summarizer.determine_level(3000) == SummaryLevel.DETAILED
+        assert summarizer.determine_level(8000) == SummaryLevel.DETAILED
+        assert summarizer.determine_level(14999) == SummaryLevel.DETAILED
+
+    def test_hierarchical_level_threshold(self, summarizer: AdaptiveSummarizer) -> None:
+        """Test HIERARCHICAL level for very long content."""
+        assert summarizer.determine_level(15000) == SummaryLevel.HIERARCHICAL
+        assert summarizer.determine_level(50000) == SummaryLevel.HIERARCHICAL
+        assert summarizer.determine_level(100000) == SummaryLevel.HIERARCHICAL
+
+    def test_thresholds_match_constants(self) -> None:
+        """Verify thresholds match the module constants."""
+        assert LEVEL_THRESHOLDS[SummaryLevel.NONE] == 100
+        assert LEVEL_THRESHOLDS[SummaryLevel.BRIEF] == 500
+        assert LEVEL_THRESHOLDS[SummaryLevel.STANDARD] == 3000
+        assert LEVEL_THRESHOLDS[SummaryLevel.DETAILED] == 15000
+
+
+class TestSummarize:
+    """Tests for main summarize method."""
+
+    @pytest.fixture
+    def summarizer(self) -> AdaptiveSummarizer:
+        """Create a summarizer instance."""
+        return AdaptiveSummarizer(
+            openai_base_url="http://localhost:8000/v1",
+            model="gpt-4",
+        )
+
+    @pytest.mark.asyncio
+    async def test_empty_content_returns_none_level(self, summarizer: AdaptiveSummarizer) -> None:
+        """Test that empty content returns NONE level result."""
+        result = await summarizer.summarize("")
+        assert result.level == SummaryLevel.NONE
+        assert result.summary is None
+        assert result.input_tokens == 0
+        assert result.output_tokens == 0
+
+    @pytest.mark.asyncio
+    async def test_whitespace_only_returns_none_level(self, summarizer: AdaptiveSummarizer) -> None:
+        """Test that whitespace-only content returns NONE level result."""
+        result = await summarizer.summarize("   \n\n   ")
+        assert result.level == SummaryLevel.NONE
+        assert result.summary is None
+
+    @pytest.mark.asyncio
+    async def test_very_short_content_no_summary(self, summarizer: AdaptiveSummarizer) -> None:
+        """Test that very short content gets NONE level (no summary)."""
+        # Less than 100 tokens
+        result = await summarizer.summarize("Hello world")
+        assert result.level == SummaryLevel.NONE
+        assert result.summary is None
+
+    @pytest.mark.asyncio
+    @patch.object(AdaptiveSummarizer, "_brief_summary")
+    async def test_brief_level_calls_brief_summary(
+        self,
+        mock_brief: AsyncMock,
+        summarizer: AdaptiveSummarizer,
+    ) -> None:
+        """Test that BRIEF level content calls _brief_summary."""
+        mock_brief.return_value = "Brief summary."
+
+        # Create content that's ~100-500 tokens
+        content = "This is a test sentence. " * 30  # ~150 tokens
+
+        result = await summarizer.summarize(content)
+
+        mock_brief.assert_called_once_with(content)
+        assert result.level == SummaryLevel.BRIEF
+        assert result.summary == "Brief summary."
+
+    @pytest.mark.asyncio
+    @patch.object(AdaptiveSummarizer, "_standard_summary")
+    async def test_standard_level_calls_standard_summary(
+        self,
+        mock_standard: AsyncMock,
+        summarizer: AdaptiveSummarizer,
+    ) -> None:
+        """Test that STANDARD level content calls _standard_summary."""
+        mock_standard.return_value = "Standard summary paragraph."
+
+        # Create content that's ~500-3000 tokens
+        content = "This is a test sentence with more words. " * 100  # ~800 tokens
+
+        result = await summarizer.summarize(content, content_type="general")
+
+        mock_standard.assert_called_once_with(content, None, "general")
+        assert result.level == SummaryLevel.STANDARD
+        assert result.summary == "Standard summary paragraph."
+
+    @pytest.mark.asyncio
+    @patch.object(AdaptiveSummarizer, "_standard_summary")
+    async def test_prior_summary_passed_to_standard(
+        self,
+        mock_standard: AsyncMock,
+        summarizer: AdaptiveSummarizer,
+    ) -> None:
+        """Test that prior_summary is passed to _standard_summary."""
+        mock_standard.return_value = "Updated summary."
+
+        content = "This is a test sentence with more words. " * 100
+        prior = "Previous context summary."
+
+        await summarizer.summarize(content, prior_summary=prior)
+
+        mock_standard.assert_called_once_with(content, prior, "general")
+
+    @pytest.mark.asyncio
+    @patch.object(AdaptiveSummarizer, "_detailed_summary")
+    async def test_detailed_level_calls_detailed_summary(
+        self,
+        mock_detailed: AsyncMock,
+        summarizer: AdaptiveSummarizer,
+    ) -> None:
+        """Test that DETAILED level content calls _detailed_summary."""
+        mock_result = SummaryResult(
+            level=SummaryLevel.DETAILED,
+            summary="Detailed summary.",
+            hierarchical=None,
+            input_tokens=5000,
+            output_tokens=100,
+            compression_ratio=0.02,
+        )
+        mock_detailed.return_value = mock_result
+
+        # Create content that's ~3000-15000 tokens
+        content = "Word " * 5000  # ~5000 tokens
+
+        result = await summarizer.summarize(content)
+
+        assert mock_detailed.called
+        assert result.level == SummaryLevel.DETAILED
+
+    @pytest.mark.asyncio
+    @patch.object(AdaptiveSummarizer, "_hierarchical_summary")
+    async def test_hierarchical_level_calls_hierarchical_summary(
+        self,
+        mock_hierarchical: AsyncMock,
+        summarizer: AdaptiveSummarizer,
+    ) -> None:
+        """Test that HIERARCHICAL level content calls _hierarchical_summary."""
+        mock_result = SummaryResult(
+            level=SummaryLevel.HIERARCHICAL,
+            summary="Hierarchical summary.",
+            hierarchical=None,
+            input_tokens=20000,
+            output_tokens=500,
+            compression_ratio=0.025,
+        )
+        mock_hierarchical.return_value = mock_result
+
+        # Create content that's > 15000 tokens
+        content = "Word " * 20000
+
+        result = await summarizer.summarize(content)
+
+        assert mock_hierarchical.called
+        assert result.level == SummaryLevel.HIERARCHICAL
+
+
+class TestUpdateRollingSummary:
+    """Tests for rolling summary updates."""
+
+    @pytest.fixture
+    def summarizer(self) -> AdaptiveSummarizer:
+        """Create a summarizer instance."""
+        return AdaptiveSummarizer(
+            openai_base_url="http://localhost:8000/v1",
+            model="gpt-4",
+        )
+
+    @pytest.mark.asyncio
+    async def test_empty_facts_returns_prior(self, summarizer: AdaptiveSummarizer) -> None:
+        """Test that empty facts list returns prior summary."""
+        result = await summarizer.update_rolling_summary(
+            prior_summary="Existing summary",
+            new_facts=[],
+        )
+        assert result == "Existing summary"
+
+    @pytest.mark.asyncio
+    async def test_empty_facts_no_prior_returns_empty(self, summarizer: AdaptiveSummarizer) -> None:
+        """Test that empty facts with no prior returns empty string."""
+        result = await summarizer.update_rolling_summary(
+            prior_summary=None,
+            new_facts=[],
+        )
+        assert result == ""
+
+    @pytest.mark.asyncio
+    @patch.object(AdaptiveSummarizer, "_generate_summary")
+    async def test_new_facts_calls_generate(
+        self,
+        mock_generate: AsyncMock,
+        summarizer: AdaptiveSummarizer,
+    ) -> None:
+        """Test that new facts trigger summary generation."""
+        mock_generate.return_value = "Updated summary with new facts."
+
+        result = await summarizer.update_rolling_summary(
+            prior_summary="Old summary",
+            new_facts=["User likes coffee", "User lives in Amsterdam"],
+        )
+
+        mock_generate.assert_called_once()
+        assert result == "Updated summary with new facts."
+
+    @pytest.mark.asyncio
+    @patch.object(AdaptiveSummarizer, "_generate_summary")
+    async def test_facts_formatted_as_list(
+        self,
+        mock_generate: AsyncMock,
+        summarizer: AdaptiveSummarizer,
+    ) -> None:
+        """Test that facts are formatted as bullet list in prompt."""
+        mock_generate.return_value = "Summary"
+
+        await summarizer.update_rolling_summary(
+            prior_summary="Prior",
+            new_facts=["Fact one", "Fact two"],
+        )
+
+        # Check the prompt contains formatted facts
+        call_args = mock_generate.call_args
+        prompt = call_args[0][0]
+        assert "- Fact one" in prompt
+        assert "- Fact two" in prompt
+
+
+class TestGenerateSummary:
+    """Tests for _generate_summary method."""
+
+    @pytest.fixture
+    def summarizer(self) -> AdaptiveSummarizer:
+        """Create a summarizer instance."""
+        return AdaptiveSummarizer(
+            openai_base_url="http://localhost:8000/v1",
+            model="gpt-4",
+        )
+
+    @pytest.mark.asyncio
+    async def test_generate_summary_with_pydantic_ai(
+        self,
+        summarizer: AdaptiveSummarizer,
+    ) -> None:
+        """Test summary generation using PydanticAI agent."""
+        # Mock the entire agent creation and run
+        mock_result = MagicMock()
+        mock_result.output = SummaryOutput(summary="Generated summary.")
+
+        with patch("agent_cli.summarizer.adaptive.Agent") as mock_agent_class:
+            mock_agent = MagicMock()
+            mock_agent.run = AsyncMock(return_value=mock_result)
+            mock_agent_class.return_value = mock_agent
+
+            result = await summarizer._generate_summary("Test prompt", max_tokens=100)
+
+            assert result == "Generated summary."
+            mock_agent.run.assert_called_once_with("Test prompt")
+
+    @pytest.mark.asyncio
+    @patch.object(AdaptiveSummarizer, "_raw_generate")
+    async def test_fallback_to_raw_generate_on_error(
+        self,
+        mock_raw: AsyncMock,
+        summarizer: AdaptiveSummarizer,
+    ) -> None:
+        """Test fallback to raw HTTP on PydanticAI error."""
+        mock_raw.return_value = "Fallback summary"
+
+        with patch("agent_cli.summarizer.adaptive.Agent") as mock_agent_class:
+            mock_agent = MagicMock()
+            mock_agent.run = AsyncMock(side_effect=Exception("API error"))
+            mock_agent_class.return_value = mock_agent
+
+            result = await summarizer._generate_summary("Test prompt", max_tokens=100)
+
+            mock_raw.assert_called_once_with("Test prompt", 100)
+            assert result == "Fallback summary"
+
+
+class TestRawGenerate:
+    """Tests for _raw_generate fallback method."""
+
+    @pytest.fixture
+    def summarizer(self) -> AdaptiveSummarizer:
+        """Create a summarizer instance."""
+        return AdaptiveSummarizer(
+            openai_base_url="http://localhost:8000/v1",
+            model="gpt-4",
+        )
+
+    @pytest.mark.asyncio
+    async def test_raw_generate_success(self, summarizer: AdaptiveSummarizer) -> None:
+        """Test successful raw HTTP generation."""
+        mock_response = MagicMock()
+        mock_response.json.return_value = {
+            "choices": [{"message": {"content": "Raw generated summary"}}],
+        }
+
+        with patch("httpx.AsyncClient") as mock_client_class:
+            mock_client = MagicMock()
+            mock_client.post = AsyncMock(return_value=mock_response)
+            mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+            mock_client.__aexit__ = AsyncMock(return_value=None)
+            mock_client_class.return_value = mock_client
+
+            result = await summarizer._raw_generate("Test prompt", max_tokens=100)
+
+            assert result == "Raw generated summary"
+
+    @pytest.mark.asyncio
+    async def test_raw_generate_empty_choices(self, summarizer: AdaptiveSummarizer) -> None:
+        """Test raw generate with empty choices returns empty string."""
+        mock_response = MagicMock()
+        mock_response.json.return_value = {"choices": []}
+
+        with patch("httpx.AsyncClient") as mock_client_class:
+            mock_client = MagicMock()
+            mock_client.post = AsyncMock(return_value=mock_response)
+            mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+            mock_client.__aexit__ = AsyncMock(return_value=None)
+            mock_client_class.return_value = mock_client
+
+            result = await summarizer._raw_generate("Test prompt", max_tokens=100)
+
+            assert result == ""
+
+
+class TestSummaryOutput:
+    """Tests for SummaryOutput pydantic model."""
+
+    def test_basic_creation(self) -> None:
+        """Test creating a SummaryOutput."""
+        output = SummaryOutput(summary="Test summary text")
+        assert output.summary == "Test summary text"
+
+    def test_whitespace_preserved(self) -> None:
+        """Test that whitespace in summary is preserved."""
+        output = SummaryOutput(summary="  Summary with spaces  ")
+        assert output.summary == "  Summary with spaces  "

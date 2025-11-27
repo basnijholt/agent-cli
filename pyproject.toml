@@ -50,7 +50,11 @@ vectordb = [
     "watchfiles>=0.21.0",
 ]
 rag = ["agent-cli[vectordb]", "markitdown[docx,pdf,pptx]>=0.1.3"]
-memory = ["agent-cli[vectordb]", "pyyaml>=6.0.0"]
+memory = [
+    "agent-cli[vectordb]",
+    "pyyaml>=6.0.0",
+    "tiktoken>=0.5.0",  # For token counting in adaptive summarization
+]
 
 # Feature extras
 vad = ["onnxruntime>=1.16.0"]
@@ -82,6 +86,7 @@ test = [
     "pytest-cov>=4.0.0",
     "pytest-timeout",
     "pytest-mock",
+    "tiktoken>=0.5.0",  # For summarizer tests
 ]
 dev = [
     "agent-cli[test]",
@@ -113,6 +118,7 @@ dev = [
     "pre-commit-uv>=4.1.4",
     "zensical",
     "markdown-gfm-admonition",
+    "tiktoken>=0.5.0",  # For summarizer tests
 ]
 
 [project.scripts]
