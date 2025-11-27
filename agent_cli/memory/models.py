@@ -56,8 +56,6 @@ class MemoryMetadata(BaseModel):
     """Whether this is the final L3 summary."""
     chunk_index: int | None = None
     """For L1 summaries: index of the source chunk."""
-    parent_group: int | None = None
-    """For L1 summaries: which L2 group this chunk belongs to."""
     group_index: int | None = None
     """For L2 summaries: index of this group."""
     input_tokens: int | None = None

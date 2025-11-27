@@ -88,76 +88,74 @@ def soft_delete_memory_file(
 def write_memory_file(
     root: Path,
     *,
-    conversation_id: str,
-    role: str,
-    created_at: str,
     content: str,
-    summary_kind: str | None = None,
     doc_id: str | None = None,
+    # Either pass pre-built metadata OR individual fields
+    metadata: MemoryMetadata | None = None,
+    # Individual fields (used when metadata is None)
+    conversation_id: str | None = None,
+    role: str | None = None,
+    created_at: str | None = None,
+    summary_kind: str | None = None,
     source_id: str | None = None,
-    # Hierarchical summary fields
-    level: int | None = None,
-    is_final: bool | None = None,
-    chunk_index: int | None = None,
-    parent_group: int | None = None,
-    group_index: int | None = None,
-    input_tokens: int | None = None,
-    output_tokens: int | None = None,
-    compression_ratio: float | None = None,
-    summary_level_name: str | None = None,
 ) -> MemoryFileRecord:
-    """Render and persist a memory document to disk."""
+    """Render and persist a memory document to disk.
+
+    Can be called in two ways:
+    1. With pre-built metadata: write_memory_file(root, content=..., metadata=..., doc_id=...)
+    2. With individual fields: write_memory_file(root, content=..., conversation_id=..., role=..., ...)
+
+    """
     entries_dir, _ = ensure_store_dirs(root)
-    safe_conversation = _slugify(conversation_id)
     doc_id = doc_id or str(uuid4())
-    safe_ts = _safe_timestamp(created_at)
+
+    # Build or use provided metadata
+    if metadata is not None:
+        meta = metadata
+    else:
+        if conversation_id is None or role is None or created_at is None:
+            msg = "Must provide metadata or (conversation_id, role, created_at)"
+            raise ValueError(msg)
+        meta = MemoryMetadata(
+            conversation_id=conversation_id,
+            role=role,
+            created_at=created_at,
+            summary_kind=summary_kind,
+            source_id=source_id,
+        )
+
+    safe_conversation = _slugify(meta.conversation_id)
+    safe_ts = _safe_timestamp(meta.created_at)
 
     # Route by role/category for readability
-    if summary_kind and level is not None:
+    if meta.summary_kind and meta.level is not None:
         # Hierarchical summary file structure
-        if level == _SUMMARY_LEVEL_L1:
+        if meta.level == _SUMMARY_LEVEL_L1:
             subdir = Path("summaries") / "L1"
-            filename = f"chunk_{chunk_index or 0}.md"
-        elif level == _SUMMARY_LEVEL_L2:
+            filename = f"chunk_{meta.chunk_index or 0}.md"
+        elif meta.level == _SUMMARY_LEVEL_L2:
             subdir = Path("summaries") / "L2"
-            filename = f"group_{group_index or 0}.md"
+            filename = f"group_{meta.group_index or 0}.md"
         else:  # level == _SUMMARY_LEVEL_L3
             subdir = Path("summaries") / "L3"
             filename = "final.md"
-    elif summary_kind:
+    elif meta.summary_kind:
         subdir = Path("summaries")
         filename = "summary.md"
-    elif role == "user":
+    elif meta.role == "user":
         subdir = Path("turns") / "user"
         filename = f"{safe_ts}__{doc_id}.md"
-    elif role == "assistant":
+    elif meta.role == "assistant":
         subdir = Path("turns") / "assistant"
         filename = f"{safe_ts}__{doc_id}.md"
-    elif role == "memory":
+    elif meta.role == "memory":
         subdir = Path("facts")
         filename = f"{safe_ts}__{doc_id}.md"
     else:
         subdir = Path()
         filename = f"{doc_id}.md"
 
-    metadata = MemoryMetadata(
-        conversation_id=conversation_id,
-        role=role,
-        created_at=created_at,
-        summary_kind=summary_kind,
-        source_id=source_id,
-        level=level,
-        is_final=is_final,
-        chunk_index=chunk_index,
-        parent_group=parent_group,
-        group_index=group_index,
-        input_tokens=input_tokens,
-        output_tokens=output_tokens,
-        compression_ratio=compression_ratio,
-        summary_level_name=summary_level_name,
-    )
-
-    front_matter = _render_front_matter(doc_id, metadata)
+    front_matter = _render_front_matter(doc_id, meta)
     body = front_matter + "\n" + content.strip() + "\n"
 
     file_path = entries_dir / safe_conversation / subdir / filename
@@ -165,7 +163,7 @@ def write_memory_file(
 
     atomic_write_text(file_path, body)
 
-    return MemoryFileRecord(id=doc_id, path=file_path, metadata=metadata, content=content)
+    return MemoryFileRecord(id=doc_id, path=file_path, metadata=meta, content=content)
 
 
 def load_memory_files(root: Path) -> list[MemoryFileRecord]:
