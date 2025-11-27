@@ -7,9 +7,9 @@ from agent_cli.summarizer._prompts import (
     CHUNK_SUMMARY_PROMPT,
     CONVERSATION_SUMMARY_PROMPT,
     DOCUMENT_SUMMARY_PROMPT,
+    GENERAL_SUMMARY_PROMPT,
     JOURNAL_SUMMARY_PROMPT,
     META_SUMMARY_PROMPT,
-    STANDARD_SUMMARY_PROMPT,
     format_prior_context,
     format_summaries_for_meta,
     get_prompt_for_content_type,
@@ -26,13 +26,13 @@ class TestPromptTemplates:
         result = BRIEF_SUMMARY_PROMPT.format(content="Test content")
         assert "Test content" in result
 
-    def test_standard_prompt_has_placeholders(self) -> None:
-        """Test STANDARD prompt contains required placeholders."""
-        assert "{content}" in STANDARD_SUMMARY_PROMPT
-        assert "{prior_context}" in STANDARD_SUMMARY_PROMPT
-        assert "{max_words}" in STANDARD_SUMMARY_PROMPT
+    def test_general_prompt_has_placeholders(self) -> None:
+        """Test GENERAL prompt contains required placeholders."""
+        assert "{content}" in GENERAL_SUMMARY_PROMPT
+        assert "{prior_context}" in GENERAL_SUMMARY_PROMPT
+        assert "{max_words}" in GENERAL_SUMMARY_PROMPT
 
-        result = STANDARD_SUMMARY_PROMPT.format(
+        result = GENERAL_SUMMARY_PROMPT.format(
             content="Main content",
             prior_context="Previous context",
             max_words=100,
@@ -92,10 +92,10 @@ class TestPromptTemplates:
 class TestGetPromptForContentType:
     """Tests for get_prompt_for_content_type function."""
 
-    def test_general_returns_standard(self) -> None:
-        """Test general content type returns standard prompt."""
+    def test_general_returns_general(self) -> None:
+        """Test general content type returns general prompt."""
         prompt = get_prompt_for_content_type("general")
-        assert prompt == STANDARD_SUMMARY_PROMPT
+        assert prompt == GENERAL_SUMMARY_PROMPT
 
     def test_conversation_returns_conversation(self) -> None:
         """Test conversation content type returns conversation prompt."""
@@ -112,15 +112,15 @@ class TestGetPromptForContentType:
         prompt = get_prompt_for_content_type("document")
         assert prompt == DOCUMENT_SUMMARY_PROMPT
 
-    def test_unknown_returns_standard(self) -> None:
-        """Test unknown content type falls back to standard."""
+    def test_unknown_returns_general(self) -> None:
+        """Test unknown content type falls back to general."""
         prompt = get_prompt_for_content_type("unknown_type")
-        assert prompt == STANDARD_SUMMARY_PROMPT
+        assert prompt == GENERAL_SUMMARY_PROMPT
 
-    def test_empty_returns_standard(self) -> None:
-        """Test empty string falls back to standard."""
+    def test_empty_returns_general(self) -> None:
+        """Test empty string falls back to general."""
         prompt = get_prompt_for_content_type("")
-        assert prompt == STANDARD_SUMMARY_PROMPT
+        assert prompt == GENERAL_SUMMARY_PROMPT
 
 
 class TestFormatPriorContext:

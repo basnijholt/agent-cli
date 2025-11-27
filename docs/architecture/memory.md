@@ -208,7 +208,7 @@ To replicate the system behavior, the following prompt strategies are required.
 ### 5.3 Summarization (Adaptive Prompts)
 The summarizer uses prompts from `agent_cli.summarizer._prompts`:
 *   **`BRIEF_SUMMARY_PROMPT`:** Single-sentence distillation for short content (100-500 tokens).
-*   **`STANDARD_SUMMARY_PROMPT`:** Paragraph summary with prior context integration (general content).
+*   **`GENERAL_SUMMARY_PROMPT`:** Paragraph summary with prior context integration (general content).
 *   **`CHUNK_SUMMARY_PROMPT`:** Individual chunk summarization for map phase.
 *   **`META_SUMMARY_PROMPT`:** Synthesizes multiple chunk summaries in reduce phase.
 *   **Content-type variants:** `CONVERSATION_SUMMARY_PROMPT`, `JOURNAL_SUMMARY_PROMPT`, `DOCUMENT_SUMMARY_PROMPT` for domain-specific summarization.
