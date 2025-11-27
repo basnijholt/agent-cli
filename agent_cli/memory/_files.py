@@ -24,6 +24,11 @@ _ENTRIES_DIRNAME = "entries"
 _SNAPSHOT_FILENAME = "memory_index.json"
 _DELETED_DIRNAME = "deleted"
 
+# Summary level constants for hierarchical file structure
+_SUMMARY_LEVEL_L1 = 1
+_SUMMARY_LEVEL_L2 = 2
+_SUMMARY_LEVEL_L3 = 3
+
 
 @dataclass
 class MemoryFileRecord:
@@ -90,6 +95,16 @@ def write_memory_file(
     summary_kind: str | None = None,
     doc_id: str | None = None,
     source_id: str | None = None,
+    # Hierarchical summary fields
+    level: int | None = None,
+    is_final: bool | None = None,
+    chunk_index: int | None = None,
+    parent_group: int | None = None,
+    group_index: int | None = None,
+    input_tokens: int | None = None,
+    output_tokens: int | None = None,
+    compression_ratio: float | None = None,
+    summary_level_name: str | None = None,
 ) -> MemoryFileRecord:
     """Render and persist a memory document to disk."""
     entries_dir, _ = ensure_store_dirs(root)
@@ -98,7 +113,18 @@ def write_memory_file(
     safe_ts = _safe_timestamp(created_at)
 
     # Route by role/category for readability
-    if summary_kind:
+    if summary_kind and level is not None:
+        # Hierarchical summary file structure
+        if level == _SUMMARY_LEVEL_L1:
+            subdir = Path("summaries") / "L1"
+            filename = f"chunk_{chunk_index or 0}.md"
+        elif level == _SUMMARY_LEVEL_L2:
+            subdir = Path("summaries") / "L2"
+            filename = f"group_{group_index or 0}.md"
+        else:  # level == _SUMMARY_LEVEL_L3
+            subdir = Path("summaries") / "L3"
+            filename = "final.md"
+    elif summary_kind:
         subdir = Path("summaries")
         filename = "summary.md"
     elif role == "user":
@@ -120,6 +146,15 @@ def write_memory_file(
         created_at=created_at,
         summary_kind=summary_kind,
         source_id=source_id,
+        level=level,
+        is_final=is_final,
+        chunk_index=chunk_index,
+        parent_group=parent_group,
+        group_index=group_index,
+        input_tokens=input_tokens,
+        output_tokens=output_tokens,
+        compression_ratio=compression_ratio,
+        summary_level_name=summary_level_name,
     )
 
     front_matter = _render_front_matter(doc_id, metadata)

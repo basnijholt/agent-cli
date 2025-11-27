@@ -49,6 +49,26 @@ class MemoryMetadata(BaseModel):
     replaced_by: str | None = None
     source_id: str | None = None
 
+    # Hierarchical summary fields (only used when role="summary")
+    level: int | None = None
+    """Summary level: 1=chunk, 2=group, 3=final."""
+    is_final: bool | None = None
+    """Whether this is the final L3 summary."""
+    chunk_index: int | None = None
+    """For L1 summaries: index of the source chunk."""
+    parent_group: int | None = None
+    """For L1 summaries: which L2 group this chunk belongs to."""
+    group_index: int | None = None
+    """For L2 summaries: index of this group."""
+    input_tokens: int | None = None
+    """Number of tokens in the original input (L3 only)."""
+    output_tokens: int | None = None
+    """Number of tokens in the summary output (L3 only)."""
+    compression_ratio: float | None = None
+    """Ratio of output to input tokens (L3 only)."""
+    summary_level_name: str | None = None
+    """Name of the SummaryLevel enum used (e.g., 'STANDARD', 'HIERARCHICAL')."""
+
 
 class SummaryOutput(BaseModel):
     """Structured summary returned by the LLM."""

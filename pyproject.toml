@@ -52,6 +52,7 @@ memory = [
     "watchfiles>=0.21.0",
     # Until here same as 'rag' extras
     "pyyaml>=6.0.0",
+    "tiktoken>=0.5.0",  # For token counting in adaptive summarization
 ]
 test = [
     "pytest>=7.0.0",
@@ -60,6 +61,7 @@ test = [
     "pydantic-ai-slim[openai]",
     "pytest-timeout",
     "pytest-mock",
+    "tiktoken>=0.5.0",  # For summarizer tests
 ]
 dev = [
     "agent-cli[test]",
@@ -87,6 +89,7 @@ dev = [
     "notebook",
     "audiostretchy>=1.3.0",
     "pre-commit-uv>=4.1.4",
+    "tiktoken>=0.5.0",  # For summarizer tests
 ]
 
 [project.scripts]

@@ -17,7 +17,12 @@ from pydantic_ai.providers.openai import OpenAIProvider
 from pydantic_ai.settings import ModelSettings
 
 from agent_cli.memory._git import commit_changes
-from agent_cli.memory._persistence import delete_memory_files, persist_entries, persist_summary
+from agent_cli.memory._persistence import (
+    delete_memory_files,
+    persist_entries,
+    persist_hierarchical_summary,
+    persist_summary,
+)
 from agent_cli.memory._prompt import (
     FACT_INSTRUCTIONS,
     FACT_SYSTEM_PROMPT,
@@ -40,6 +45,8 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from chromadb import Collection
+
+    from agent_cli.summarizer import SummaryResult
 
 LOGGER = logging.getLogger(__name__)
 
@@ -292,7 +299,12 @@ async def update_summary(
     model: str,
     max_tokens: int = 256,
 ) -> str | None:
-    """Update the conversation summary based on new facts."""
+    """Update the conversation summary based on new facts.
+
+    This is the simple Mem0-style rolling summary that incrementally
+    updates based on new facts. For full content adaptive summarization,
+    use `summarize_content` instead.
+    """
     if not new_facts:
         return prior_summary
     system_prompt = SUMMARY_PROMPT
@@ -310,6 +322,82 @@ async def update_summary(
     agent = Agent(model=model_cfg, system_prompt=system_prompt, output_type=SummaryOutput)
     result = await agent.run(prompt_text)
     return result.output.summary or prior_summary
+
+
+async def summarize_content(
+    *,
+    content: str,
+    prior_summary: str | None = None,
+    content_type: str = "general",
+    openai_base_url: str,
+    api_key: str | None,
+    model: str,
+) -> SummaryResult:
+    """Adaptively summarize content based on its length.
+
+    Uses the AdaptiveSummarizer to automatically select the appropriate
+    summarization strategy (NONE, BRIEF, STANDARD, DETAILED, HIERARCHICAL)
+    based on input token count.
+
+    Args:
+        content: The content to summarize.
+        prior_summary: Optional prior summary for context continuity.
+        content_type: Type of content ("general", "conversation", "journal", "document").
+        openai_base_url: Base URL for OpenAI-compatible API.
+        api_key: API key for the LLM.
+        model: Model name to use for summarization.
+
+    Returns:
+        SummaryResult with the summary and metadata.
+
+    """
+    # Import here to avoid circular imports and allow optional dependency
+    from agent_cli.summarizer import AdaptiveSummarizer  # noqa: PLC0415
+
+    summarizer = AdaptiveSummarizer(
+        openai_base_url=openai_base_url,
+        model=model,
+        api_key=api_key,
+    )
+    return await summarizer.summarize(
+        content=content,
+        prior_summary=prior_summary,
+        content_type=content_type,
+    )
+
+
+async def store_adaptive_summary(
+    collection: Collection,
+    memory_root: Path,
+    conversation_id: str,
+    summary_result: SummaryResult,
+) -> list[str]:
+    """Store an adaptive summary result to files and ChromaDB.
+
+    This stores all levels of a hierarchical summary (L1, L2, L3) or
+    just the final summary for simpler levels. Old summaries are deleted first.
+
+    Files are stored as Markdown with YAML front matter in a hierarchical structure:
+    - summaries/L1/chunk_{n}.md - L1 chunk summaries
+    - summaries/L2/group_{n}.md - L2 group summaries
+    - summaries/L3/final.md - L3 final summary
+
+    Args:
+        collection: ChromaDB collection.
+        memory_root: Root path for memory files.
+        conversation_id: The conversation this summary belongs to.
+        summary_result: The result from AdaptiveSummarizer.summarize().
+
+    Returns:
+        List of IDs that were stored.
+
+    """
+    return persist_hierarchical_summary(
+        collection,
+        memory_root=memory_root,
+        conversation_id=conversation_id,
+        summary_result=summary_result,
+    )
 
 
 async def extract_and_store_facts_and_summaries(
