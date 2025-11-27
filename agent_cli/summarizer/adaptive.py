@@ -38,6 +38,7 @@ from agent_cli.summarizer.utils import (
     chunk_text,
     count_tokens,
     estimate_summary_tokens,
+    middle_truncate,
     tokens_to_words,
 )
 
@@ -57,11 +58,23 @@ L2_GROUP_SIZE = 5
 # Minimum number of L1 chunks before L2 grouping is applied
 L2_MIN_CHUNKS = 5
 
+# Retry settings for summarization failures
+MAX_SUMMARIZE_RETRIES = 3
+
+# Maximum characters per chunk before applying middle truncation
+# This prevents context overflow errors for very large chunks
+# (roughly 12K tokens with cl100k_base encoding)
+MAX_CHUNK_CHARS = 48000
+
 
 class SummaryOutput(BaseModel):
     """Structured output for summary generation."""
 
     summary: str
+
+
+class SummarizationError(Exception):
+    """Raised when summarization fails after all retries."""
 
 
 class AdaptiveSummarizer:
@@ -245,6 +258,68 @@ class AdaptiveSummarizer:
 
         return await self._generate_summary(prompt, max_tokens=target_tokens + 50)
 
+    async def _summarize_single_chunk(
+        self,
+        chunk: str,
+        chunk_index: int,
+        total_chunks: int,
+        *,
+        parent_group: int | None = None,
+    ) -> ChunkSummary:
+        """Summarize a single chunk of content.
+
+        Extracted to avoid duplication between _detailed_summary and
+        _hierarchical_summary methods. Uses middle truncation as a fallback
+        for oversized content (Letta-style).
+
+        Args:
+            chunk: The text chunk to summarize.
+            chunk_index: Index of this chunk (0-based).
+            total_chunks: Total number of chunks being processed.
+            parent_group: Optional L2 group index for hierarchical summaries.
+
+        Returns:
+            ChunkSummary with the summarized content.
+
+        """
+        # Apply middle truncation if chunk is too large (Letta-style fallback)
+        source_tokens = count_tokens(chunk, self.model)
+        content_to_summarize = chunk
+        if len(chunk) > MAX_CHUNK_CHARS:
+            content_to_summarize, dropped = middle_truncate(
+                chunk,
+                MAX_CHUNK_CHARS,
+                head_frac=0.3,
+                tail_frac=0.3,
+            )
+            logger.warning(
+                "Chunk %d truncated: dropped %d chars to fit context window",
+                chunk_index,
+                dropped,
+            )
+
+        chunk_tokens = count_tokens(content_to_summarize, self.model)
+        target_tokens = estimate_summary_tokens(chunk_tokens, SummaryLevel.STANDARD)
+        max_words = tokens_to_words(target_tokens)
+
+        prompt = CHUNK_SUMMARY_PROMPT.format(
+            chunk_index=chunk_index + 1,
+            total_chunks=total_chunks,
+            content=content_to_summarize,
+            max_words=max_words,
+        )
+
+        summary = await self._generate_summary(prompt, max_tokens=target_tokens + 50)
+        summary_tokens = count_tokens(summary, self.model)
+
+        return ChunkSummary(
+            chunk_index=chunk_index,
+            content=summary,
+            token_count=summary_tokens,
+            source_tokens=source_tokens,  # Report original token count
+            parent_group=parent_group,
+        )
+
     async def _brief_summary(self, content: str) -> str:
         """Generate a single-sentence summary for brief content."""
         prompt = BRIEF_SUMMARY_PROMPT.format(content=content)
@@ -286,32 +361,17 @@ class AdaptiveSummarizer:
         # Summarize chunks (with concurrency limit)
         semaphore = asyncio.Semaphore(self.max_concurrent_chunks)
 
-        async def summarize_chunk(idx: int, chunk: str) -> ChunkSummary:
+        async def summarize_with_limit(idx: int, chunk: str) -> ChunkSummary:
             async with semaphore:
-                chunk_tokens = count_tokens(chunk, self.model)
-                target_tokens = estimate_summary_tokens(chunk_tokens, SummaryLevel.STANDARD)
-                max_words = tokens_to_words(target_tokens)
-
-                prompt = CHUNK_SUMMARY_PROMPT.format(
-                    chunk_index=idx + 1,
-                    total_chunks=len(chunks),
-                    content=chunk,
-                    max_words=max_words,
-                )
-
-                summary = await self._generate_summary(prompt, max_tokens=target_tokens + 50)
-                summary_tokens = count_tokens(summary, self.model)
-
-                return ChunkSummary(
-                    chunk_index=idx,
-                    content=summary,
-                    token_count=summary_tokens,
-                    source_tokens=chunk_tokens,
+                return await self._summarize_single_chunk(
+                    chunk,
+                    idx,
+                    len(chunks),
                     parent_group=None,
                 )
 
         chunk_summaries = await asyncio.gather(
-            *[summarize_chunk(i, chunk) for i, chunk in enumerate(chunks)],
+            *[summarize_with_limit(i, chunk) for i, chunk in enumerate(chunks)],
         )
 
         # Generate meta-summary
@@ -364,35 +424,19 @@ class AdaptiveSummarizer:
         # L1: Summarize each chunk
         semaphore = asyncio.Semaphore(self.max_concurrent_chunks)
 
-        async def summarize_chunk(idx: int, chunk: str) -> ChunkSummary:
+        async def summarize_with_limit(idx: int, chunk: str) -> ChunkSummary:
             async with semaphore:
-                chunk_tokens = count_tokens(chunk, self.model)
-                target_tokens = estimate_summary_tokens(chunk_tokens, SummaryLevel.STANDARD)
-                max_words = tokens_to_words(target_tokens)
-
-                prompt = CHUNK_SUMMARY_PROMPT.format(
-                    chunk_index=idx + 1,
-                    total_chunks=len(chunks),
-                    content=chunk,
-                    max_words=max_words,
-                )
-
-                summary = await self._generate_summary(prompt, max_tokens=target_tokens + 50)
-                summary_tokens = count_tokens(summary, self.model)
-
-                # Assign to group (5 chunks per group)
-                group_idx = idx // 5
-
-                return ChunkSummary(
-                    chunk_index=idx,
-                    content=summary,
-                    token_count=summary_tokens,
-                    source_tokens=chunk_tokens,
+                # Assign to L2 group (L2_GROUP_SIZE chunks per group)
+                group_idx = idx // L2_GROUP_SIZE
+                return await self._summarize_single_chunk(
+                    chunk,
+                    idx,
+                    len(chunks),
                     parent_group=group_idx,
                 )
 
         l1_summaries = await asyncio.gather(
-            *[summarize_chunk(i, chunk) for i, chunk in enumerate(chunks)],
+            *[summarize_with_limit(i, chunk) for i, chunk in enumerate(chunks)],
         )
 
         # L2: Group summaries (if more than L2_MIN_CHUNKS chunks)
@@ -448,10 +492,29 @@ class AdaptiveSummarizer:
             compression_ratio=output_tokens / input_tokens if input_tokens > 0 else 0.0,
         )
 
-    async def _generate_summary(self, prompt: str, max_tokens: int = 256) -> str:
+    async def _generate_summary(
+        self,
+        prompt: str,
+        max_tokens: int = 256,
+        *,
+        attempt: int = 0,
+    ) -> str:
         """Generate a summary using the LLM.
 
         Uses PydanticAI for structured output with fallback to raw generation.
+        Implements exponential backoff retry on failures.
+
+        Args:
+            prompt: The prompt to send to the LLM.
+            max_tokens: Maximum tokens for the response.
+            attempt: Current retry attempt (for internal recursion).
+
+        Returns:
+            The generated summary text.
+
+        Raises:
+            SummarizationError: If all retries are exhausted.
+
         """
         model = OpenAIChatModel(
             model_name=self.model,
@@ -475,7 +538,26 @@ class AdaptiveSummarizer:
         except Exception as e:
             logger.warning("Structured summary failed, trying raw generation: %s", e)
             # Fallback to raw HTTP call
-            return await self._raw_generate(prompt, max_tokens)
+            try:
+                return await self._raw_generate(prompt, max_tokens)
+            except Exception as raw_err:
+                if attempt < MAX_SUMMARIZE_RETRIES:
+                    wait_time = 2**attempt  # Exponential backoff: 1, 2, 4 seconds
+                    logger.warning(
+                        "Raw generation failed (attempt %d/%d), retrying in %ds: %s",
+                        attempt + 1,
+                        MAX_SUMMARIZE_RETRIES,
+                        wait_time,
+                        raw_err,
+                    )
+                    await asyncio.sleep(wait_time)
+                    return await self._generate_summary(
+                        prompt,
+                        max_tokens,
+                        attempt=attempt + 1,
+                    )
+                msg = f"Summarization failed after {MAX_SUMMARIZE_RETRIES} retries"
+                raise SummarizationError(msg) from raw_err
 
     async def _raw_generate(self, prompt: str, max_tokens: int) -> str:
         """Fallback raw HTTP generation without structured output."""

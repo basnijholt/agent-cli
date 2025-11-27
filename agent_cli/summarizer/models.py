@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import IntEnum
 from typing import Any
 
@@ -122,7 +122,7 @@ class SummaryResult(BaseModel):
         description="Ratio of output to input tokens (lower = more compression)",
     )
     created_at: datetime = Field(
-        default_factory=datetime.utcnow,
+        default_factory=lambda: datetime.now(UTC),
         description="Timestamp when summary was created",
     )
 
