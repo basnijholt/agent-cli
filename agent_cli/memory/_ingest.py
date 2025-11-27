@@ -227,28 +227,6 @@ async def reconcile_facts(
         created_at=created_at,
     )
 
-    # Safeguard: if the model produced no additions and the new facts would otherwise be lost,
-    # retain the new facts. This prevents ending up with an empty fact set after deletes.
-    # We trust the LLM if it explicitly decided to KEEP (NONE) or ADD/UPDATE content.
-    # We only override if it returned nothing or only DELETEs (which implies replacement failure).
-    has_keep_action = any(d.event in ("ADD", "UPDATE", "NONE") for d in decisions)
-
-    if not has_keep_action and new_facts:
-        LOGGER.info(
-            "Reconcile produced no additions/keeps; retaining new facts to avoid empty store",
-        )
-        to_add = [
-            Fact(
-                id=str(uuid4()),
-                conversation_id=conversation_id,
-                content=f,
-                source_id=source_id,
-                created_at=created_at,
-            )
-            for f in new_facts
-            if f.strip()
-        ]
-
     LOGGER.info(
         "Reconcile decisions: add=%d, delete=%d, events=%s",
         len(to_add),

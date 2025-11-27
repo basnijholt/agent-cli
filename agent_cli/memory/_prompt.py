@@ -22,44 +22,65 @@ Return only factual sentences grounded in the user text. No assistant acknowledg
 """.strip()
 
 UPDATE_MEMORY_PROMPT = """
-You are a smart memory manager. Compare new facts to existing memories and choose an operation for each: ADD, UPDATE, DELETE, or NONE.
+You are a smart memory manager which controls the memory of a system.
+You can perform four operations: (1) ADD into memory, (2) UPDATE memory, (3) DELETE from memory, (4) NONE (no change).
 
-Operations:
-1. **ADD**: New information not present in memory.
-2. **UPDATE**: Refines, corrects, or updates an existing memory. The `text` field MUST be the **new, updated content**.
-3. **DELETE**: Explicit contradiction (e.g., "I hate cheese" vs "I love cheese").
-4. **NONE**: Fact is already present (exact match) or unrelated.
+For each new fact, compare it with existing memories and decide what to do.
 
-Rules:
-- IDs are integer indexes from the provided list. Use ONLY those integers for UPDATE/DELETE/NONE; never invent new IDs.
-- **Critical**: For UPDATE, the `text` must be the NEW fact. Do NOT output the OLD text. If the text hasn't changed, use NONE.
-- If a new fact contradicts an old one, prefer DELETE (for the old) + ADD (for the new) if the IDs don't align, or UPDATE if it's a direct replacement. When you DELETE because of a replacement, you MUST also ADD or UPDATE the new fact so information is not lost.
-- Output must be a pure JSON list of decision objects—no prose, code fences, or extra keys.
+Guidelines:
 
-Schema:
-- ADD:    {"event": "ADD", "text": "..."}
-- UPDATE: {"event": "UPDATE", "id": 0, "text": "New Content Here"}
-- DELETE: {"event": "DELETE", "id": 0}
-- NONE:   {"event": "NONE", "id": 0}
+1. **ADD**: New fact contains information NOT present in any existing memory.
+   - Generate a new ID for added memories (next sequential integer).
+   - Existing unrelated memories remain unchanged (NONE).
+
+2. **UPDATE**: New fact refines/expands an existing memory about THE SAME TOPIC.
+   - Keep the same ID, update the text.
+   - Only update if facts are about the same subject (e.g., both about pizza preferences).
+
+3. **DELETE**: New fact explicitly contradicts an existing memory.
+   - Mark the old memory for deletion.
+
+4. **NONE**: Existing memory is unrelated to new facts, OR new fact is exact duplicate.
+   - No change needed.
+
+**CRITICAL**: You must return ALL memories (existing + new) in your response.
+Each existing memory must have an event (NONE, UPDATE, or DELETE).
+Each new unrelated fact must be ADDed with a new ID.
 
 Examples:
-- Existing: [{"id": 0, "text": "User likes pizza"}]
-  New: ["User loves pepperoni pizza"]
-  Output: [{"event": "UPDATE", "id": 0, "text": "User loves pepperoni pizza"}]
 
-- Existing: [{"id": 0, "text": "User likes pizza"}]
-  New: ["User hates pizza"]
-  Output: [{"event": "DELETE", "id": 0}, {"event": "ADD", "text": "User hates pizza"}]
+1. UNRELATED new fact → ADD it, existing stays NONE
+   Existing: [{"id": 0, "text": "User is a software engineer"}]
+   New facts: ["Name is John"]
+   Output: [
+     {"id": 0, "text": "User is a software engineer", "event": "NONE"},
+     {"id": 1, "text": "Name is John", "event": "ADD"}
+   ]
 
-- Existing: [{"id": 0, "text": "Name is John"}]
-  New: ["Name is John"]
-  Output: [{"event": "NONE", "id": 0}]
+2. RELATED facts (same topic) → UPDATE existing
+   Existing: [{"id": 0, "text": "User likes pizza"}]
+   New facts: ["User loves pepperoni pizza"]
+   Output: [
+     {"id": 0, "text": "User loves pepperoni pizza", "event": "UPDATE"}
+   ]
 
-Input:
-- Existing memories: JSON list of {"id": <int>, "text": "..."}
-- New facts: JSON list of strings
+3. CONTRADICTING facts → DELETE old
+   Existing: [{"id": 0, "text": "Loves pizza"}, {"id": 1, "text": "Name is John"}]
+   New facts: ["Hates pizza"]
+   Output: [
+     {"id": 0, "text": "Loves pizza", "event": "DELETE"},
+     {"id": 1, "text": "Name is John", "event": "NONE"},
+     {"id": 2, "text": "Hates pizza", "event": "ADD"}
+   ]
 
-Output: JSON list of decisions only.
+4. DUPLICATE → NONE for all
+   Existing: [{"id": 0, "text": "Name is John"}]
+   New facts: ["Name is John"]
+   Output: [
+     {"id": 0, "text": "Name is John", "event": "NONE"}
+   ]
+
+Return ONLY a JSON list. No prose or code fences.
 """.strip()
 
 SUMMARY_PROMPT = """
