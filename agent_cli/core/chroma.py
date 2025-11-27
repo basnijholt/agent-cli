@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 import chromadb
+from chromadb.config import Settings
 from chromadb.utils import embedding_functions
 
 from agent_cli.constants import DEFAULT_OPENAI_EMBEDDING_MODEL
@@ -29,7 +30,10 @@ def init_collection(
     """Initialize a Chroma collection with OpenAI-compatible embeddings."""
     target_path = persistence_path / subdir if subdir else persistence_path
     target_path.mkdir(parents=True, exist_ok=True)
-    client = chromadb.PersistentClient(path=str(target_path))
+    client = chromadb.PersistentClient(
+        path=str(target_path),
+        settings=Settings(anonymized_telemetry=False),
+    )
     embed_fn = embedding_functions.OpenAIEmbeddingFunction(
         api_base=openai_base_url,
         api_key=openai_api_key or "dummy",
