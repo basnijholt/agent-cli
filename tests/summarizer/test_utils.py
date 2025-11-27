@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from agent_cli.summarizer.utils import (
+from agent_cli.summarizer._utils import (
     chunk_text,
     count_tokens,
     estimate_summary_tokens,

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from agent_cli.summarizer.prompts import (
+from agent_cli.summarizer._prompts import (
     BRIEF_SUMMARY_PROMPT,
     CHUNK_SUMMARY_PROMPT,
     CONVERSATION_SUMMARY_PROMPT,
