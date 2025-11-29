@@ -6,7 +6,6 @@ from agent_cli.summarizer._utils import (
     chunk_text,
     count_tokens,
     estimate_summary_tokens,
-    middle_truncate,
     tokens_to_words,
 )
 
@@ -84,51 +83,6 @@ class TestChunkText:
 
         chunks = chunk_text(text, chunk_size=100, overlap=20)
         assert len(chunks) > 1
-
-
-class TestMiddleTruncate:
-    """Tests for middle_truncate function."""
-
-    def test_no_truncation_needed(self) -> None:
-        """Test that short text is not truncated."""
-        text = "Short text"
-        result, dropped = middle_truncate(text, budget_chars=100)
-        assert result == text
-        assert dropped == 0
-
-    def test_basic_truncation(self) -> None:
-        """Test basic middle truncation."""
-        text = "A" * 100  # 100 character string
-        result, dropped = middle_truncate(text, budget_chars=50)
-
-        # Should have head + marker + tail
-        assert len(result) <= 50 + 50  # Allow for marker
-        assert dropped > 0
-        assert "[..." in result
-        assert "truncated...]" in result
-
-    def test_head_tail_fractions(self) -> None:
-        """Test custom head/tail fractions."""
-        text = "AAAAA" + "BBBBB" * 20 + "CCCCC"
-        result, dropped = middle_truncate(text, budget_chars=30, head_frac=0.5, tail_frac=0.5)
-
-        # Should preserve beginning (A's) and end (C's)
-        assert result.startswith("A")
-        assert dropped > 0
-
-    def test_zero_budget(self) -> None:
-        """Test with zero budget returns original."""
-        text = "Some text"
-        result, dropped = middle_truncate(text, budget_chars=0)
-        assert result == text
-        assert dropped == 0
-
-    def test_negative_budget(self) -> None:
-        """Test with negative budget returns original."""
-        text = "Some text"
-        result, dropped = middle_truncate(text, budget_chars=-10)
-        assert result == text
-        assert dropped == 0
 
 
 class TestEstimateSummaryTokens:

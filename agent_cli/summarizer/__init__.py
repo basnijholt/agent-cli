@@ -21,8 +21,13 @@ Example:
 
 """
 
-from agent_cli.summarizer.adaptive import SummarizationError, SummarizerConfig, summarize
-from agent_cli.summarizer.models import SummaryLevel, SummaryResult
+from agent_cli.summarizer.adaptive import summarize
+from agent_cli.summarizer.models import (
+    SummarizationError,
+    SummarizerConfig,
+    SummaryLevel,
+    SummaryResult,
+)
 
 __all__ = [
     "SummarizationError",

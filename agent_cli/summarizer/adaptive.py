@@ -26,8 +26,6 @@ from agent_cli.summarizer._prompts import (
     get_prompt_for_content_type,
 )
 from agent_cli.summarizer._utils import (
-    SummarizationError,
-    SummarizerConfig,
     count_tokens,
     estimate_summary_tokens,
     generate_summary,
@@ -35,6 +33,8 @@ from agent_cli.summarizer._utils import (
 )
 from agent_cli.summarizer.map_reduce import map_reduce_summarize
 from agent_cli.summarizer.models import (
+    SummarizationError,
+    SummarizerConfig,
     SummaryLevel,
     SummaryResult,
 )

@@ -3,13 +3,12 @@
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
 from functools import lru_cache
 from typing import TYPE_CHECKING
 
 from pydantic import BaseModel
 
-from agent_cli.summarizer.models import SummaryLevel
+from agent_cli.summarizer.models import SummarizationError, SummarizerConfig, SummaryLevel
 
 if TYPE_CHECKING:
     import tiktoken
@@ -19,41 +18,6 @@ class SummaryOutput(BaseModel):
     """Structured output for summary generation."""
 
     summary: str
-
-
-class SummarizationError(Exception):
-    """Raised when summarization fails after all retries."""
-
-
-@dataclass
-class SummarizerConfig:
-    """Configuration for summarization operations.
-
-    Example:
-        config = SummarizerConfig(
-            openai_base_url="http://localhost:8000/v1",
-            model="llama3.1:8b",
-        )
-        result = await summarize(long_document, config)
-        print(f"Level: {result.level.name}")
-        print(f"Compression: {result.compression_ratio:.1%}")
-
-    """
-
-    openai_base_url: str
-    model: str
-    api_key: str | None = None
-    chunk_size: int = 2048  # BOOOOKSCORE's tested default
-    token_max: int = 3000  # LangChain's default - when to collapse
-    chunk_overlap: int = 200
-    max_concurrent_chunks: int = 5
-    timeout: float = 60.0
-
-    def __post_init__(self) -> None:
-        """Normalize the base URL."""
-        self.openai_base_url = self.openai_base_url.rstrip("/")
-        if self.api_key is None:
-            self.api_key = "not-needed"
 
 
 async def generate_summary(
@@ -264,55 +228,6 @@ def _get_overlap_text(chunks: list[str], target_tokens: int, model: str) -> str:
             break
 
     return " ".join(overlap_parts)
-
-
-def middle_truncate(
-    text: str,
-    budget_chars: int,
-    head_frac: float = 0.3,
-    tail_frac: float = 0.3,
-) -> tuple[str, int]:
-    """Middle-truncate text to fit within a character budget.
-
-    Keeps the first head_frac and last tail_frac portions, dropping the middle.
-    This preserves context from both the beginning (often contains setup) and
-    end (often contains conclusions/recent events).
-
-    Inspired by Letta's `middle_truncate_text` function.
-
-    Args:
-        text: Text to truncate.
-        budget_chars: Maximum character count for output.
-        head_frac: Fraction of budget for the head portion.
-        tail_frac: Fraction of budget for the tail portion.
-
-    Returns:
-        Tuple of (truncated_text, dropped_char_count).
-
-    """
-    if budget_chars <= 0 or len(text) <= budget_chars:
-        return text, 0
-
-    head_len = max(0, int(budget_chars * head_frac))
-    tail_len = max(0, int(budget_chars * tail_frac))
-
-    # Ensure head + tail doesn't exceed budget
-    if head_len + tail_len > budget_chars:
-        tail_len = max(0, budget_chars - head_len)
-
-    head = text[:head_len]
-    tail = text[-tail_len:] if tail_len > 0 else ""
-    dropped = max(0, len(text) - (len(head) + len(tail)))
-
-    marker = f"\n[...{dropped} characters truncated...]\n"
-
-    # If marker would overflow budget, shrink tail
-    available_for_marker = budget_chars - (len(head) + len(tail))
-    if available_for_marker < len(marker):
-        over = len(marker) - available_for_marker
-        tail = tail[:-over] if over < len(tail) else ""
-
-    return head + marker + tail, dropped
 
 
 def estimate_summary_tokens(input_tokens: int, level: int) -> int:
