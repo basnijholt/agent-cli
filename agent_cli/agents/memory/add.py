@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 import sys
 from datetime import UTC, datetime
 from pathlib import Path  # noqa: TC003
@@ -11,11 +12,19 @@ from typing import TYPE_CHECKING
 import typer
 
 from agent_cli import opts
-from agent_cli.cli import app
+from agent_cli.agents.memory import memory_app
 from agent_cli.core.utils import console, print_command_line_args
 
 if TYPE_CHECKING:
     from agent_cli.memory._files import MemoryFileRecord
+
+# Matches markdown list prefixes: "- ", "* ", "+ ", "1. ", "2. ", etc.
+_LIST_PREFIX_RE = re.compile(r"^(?:[-*+]|\d+\.)\s+")
+
+
+def _strip_list_prefix(line: str) -> str:
+    """Strip markdown/text list prefixes from a line."""
+    return _LIST_PREFIX_RE.sub("", line)
 
 
 def _parse_json_items(
@@ -60,7 +69,10 @@ def _parse_memories(
             for line in text.splitlines():
                 stripped = line.strip()
                 if stripped:
-                    results.append((stripped, default_conversation_id))
+                    # Strip markdown list prefixes (-, *, +, 1., etc.)
+                    content = _strip_list_prefix(stripped)
+                    if content:
+                        results.append((content, default_conversation_id))
 
     # From positional arguments
     results.extend((m, default_conversation_id) for m in memories)
@@ -99,8 +111,8 @@ def _write_memories(
     return records
 
 
-@app.command("memory-add")
-def memory_add(
+@memory_app.command("add")
+def add(
     memories: list[str] = typer.Argument(  # noqa: B008
         None,
         help="Memories to add. Each argument becomes one fact.",
@@ -136,24 +148,25 @@ def memory_add(
     This writes facts directly to the memory store, bypassing the LLM-based
     fact extraction. Useful for bulk imports or seeding memories.
 
-    The memory-proxy file watcher (if running) will auto-index new files.
-    Otherwise, they'll be indexed on next memory-proxy startup.
+    The memory proxy file watcher (if running) will auto-index new files.
+    Otherwise, they'll be indexed on next memory proxy startup.
 
     Examples::
+
         # Add single memories as arguments
-        agent-cli memory-add "User likes coffee" "User lives in Amsterdam"
+        agent-cli memory add "User likes coffee" "User lives in Amsterdam"
 
         # Read from JSON file
-        agent-cli memory-add -f memories.json
+        agent-cli memory add -f memories.json
 
         # Read from stdin (plain text, one per line)
-        echo "User prefers dark mode" | agent-cli memory-add -f -
+        echo "User prefers dark mode" | agent-cli memory add -f -
 
         # Read JSON from stdin
-        echo '["Fact one", "Fact two"]' | agent-cli memory-add -f -
+        echo '["Fact one", "Fact two"]' | agent-cli memory add -f -
 
         # Specify conversation ID
-        agent-cli memory-add -c work "Project deadline is Friday"
+        agent-cli memory add -c work "Project deadline is Friday"
 
     """
     if print_args:
@@ -174,4 +187,4 @@ def memory_add(
         for record in records:
             preview = record.content[:max_preview]
             ellipsis = "..." if len(record.content) > max_preview else ""
-            console.print(f"  • [dim]{preview}{ellipsis}[/dim]")
+            console.print(f"  - [dim]{preview}{ellipsis}[/dim]")
