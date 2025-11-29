@@ -53,12 +53,28 @@ def upsert(
     ids: list[str],
     documents: list[str],
     metadatas: Sequence[BaseModel],
+    batch_size: int = 10,
 ) -> None:
-    """Upsert documents with JSON-serialized metadata."""
+    """Upsert documents with JSON-serialized metadata.
+
+    Args:
+        collection: ChromaDB collection.
+        ids: Document IDs.
+        documents: Document contents.
+        metadatas: Pydantic metadata models.
+        batch_size: Max documents per embedding API call (default: 10).
+
+    """
     if not ids:
         return
     serialized = flatten_metadatas(metadatas)
-    collection.upsert(ids=ids, documents=documents, metadatas=serialized)
+
+    # Process in batches to avoid overwhelming the embedding service
+    for i in range(0, len(ids), batch_size):
+        batch_ids = ids[i : i + batch_size]
+        batch_docs = documents[i : i + batch_size]
+        batch_metas = serialized[i : i + batch_size]
+        collection.upsert(ids=batch_ids, documents=batch_docs, metadatas=batch_metas)
 
 
 def delete(collection: Collection, ids: list[str]) -> None:
