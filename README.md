@@ -150,6 +150,8 @@ The setup scripts automatically install:
   - [`chat`](#chat)
   - [`rag-proxy`](#rag-proxy)
   - [`memory`](#memory)
+    - [`memory proxy`](#memory-proxy)
+    - [`memory add`](#memory-add)
 - [Development](#development)
   - [Running Tests](#running-tests)
   - [Pre-commit Hooks](#pre-commit-hooks)
