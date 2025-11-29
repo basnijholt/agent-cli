@@ -99,6 +99,9 @@ class _RecordingCollection:
 @pytest.fixture
 def stub_openai_provider(monkeypatch: pytest.MonkeyPatch) -> None:
     """Shim out OpenAI provider/model classes for agent construction."""
+    import pydantic_ai.models.openai  # noqa: PLC0415
+    import pydantic_ai.providers.openai  # noqa: PLC0415
+    import pydantic_ai.settings  # noqa: PLC0415
 
     class _DummyProvider:
         pass
@@ -110,12 +113,17 @@ def stub_openai_provider(monkeypatch: pytest.MonkeyPatch) -> None:
         def __init__(self, **_kwargs: Any) -> None:
             return
 
-    monkeypatch.setattr(_ingest, "OpenAIProvider", lambda *_args, **_kwargs: _DummyProvider())
-    monkeypatch.setattr(_ingest, "OpenAIChatModel", lambda *_args, **_kwargs: _DummyModel())
-    monkeypatch.setattr(_ingest, "ModelSettings", lambda **_kwargs: _DummySettings())
-    monkeypatch.setattr(_ingest, "OpenAIProvider", lambda *_args, **_kwargs: _DummyProvider())
-    monkeypatch.setattr(_ingest, "OpenAIChatModel", lambda *_args, **_kwargs: _DummyModel())
-    monkeypatch.setattr(_ingest, "ModelSettings", lambda **_kwargs: _DummySettings())
+    monkeypatch.setattr(
+        pydantic_ai.providers.openai,
+        "OpenAIProvider",
+        lambda *_args, **_kwargs: _DummyProvider(),
+    )
+    monkeypatch.setattr(
+        pydantic_ai.models.openai,
+        "OpenAIChatModel",
+        lambda *_args, **_kwargs: _DummyModel(),
+    )
+    monkeypatch.setattr(pydantic_ai.settings, "ModelSettings", lambda **_kwargs: _DummySettings())
 
 
 class _DummyStreamResponse:
@@ -359,7 +367,9 @@ async def test_process_chat_request_summarizes_and_persists(
         return entries, [], {}
 
     monkeypatch.setattr(_ingest, "reconcile_facts", fake_reconcile)
-    monkeypatch.setattr(_ingest.Agent, "run", fake_agent_run)
+    import pydantic_ai  # noqa: PLC0415
+
+    monkeypatch.setattr(pydantic_ai.Agent, "run", fake_agent_run)
     # High relevance so they aren't filtered
     monkeypatch.setattr(_retrieval, "predict_relevance", lambda _model, pairs: [5.0 for _ in pairs])
 
@@ -497,7 +507,9 @@ async def test_streaming_request_persists_user_and_assistant(
         return _Result([])
 
     monkeypatch.setattr(engine._streaming, "stream_chat_sse", fake_stream_chat_sse)
-    monkeypatch.setattr(_ingest.Agent, "run", fake_agent_run)
+    import pydantic_ai  # noqa: PLC0415
+
+    monkeypatch.setattr(pydantic_ai.Agent, "run", fake_agent_run)
 
     response = await engine.process_chat_request(
         request,
@@ -577,7 +589,9 @@ async def test_streaming_with_summarization_persists_facts_and_summaries(
         return entries, [], {}
 
     monkeypatch.setattr(_ingest, "reconcile_facts", fake_reconcile)
-    monkeypatch.setattr(_ingest.Agent, "run", fake_agent_run)
+    import pydantic_ai  # noqa: PLC0415
+
+    monkeypatch.setattr(pydantic_ai.Agent, "run", fake_agent_run)
 
     response = await engine.process_chat_request(
         request,

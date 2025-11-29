@@ -9,16 +9,6 @@ from pathlib import Path  # noqa: TC003
 from typing import TYPE_CHECKING, Any
 
 from fastapi.responses import StreamingResponse
-from pydantic_ai import Agent
-from pydantic_ai.messages import (
-    ModelRequest,
-    ModelResponse,
-    SystemPromptPart,
-    TextPart,
-    UserPromptPart,
-)
-from pydantic_ai.models.openai import OpenAIModel
-from pydantic_ai.providers.openai import OpenAIProvider
 
 from agent_cli.core.sse import format_chunk, format_done
 from agent_cli.rag._prompt import RAG_PROMPT_NO_TOOLS, RAG_PROMPT_WITH_TOOLS
@@ -28,6 +18,8 @@ from agent_cli.rag.models import Message, RetrievalResult  # noqa: TC001
 
 if TYPE_CHECKING:
     from chromadb import Collection
+    from pydantic_ai import Agent
+    from pydantic_ai.messages import ModelRequest, ModelResponse
     from pydantic_ai.result import RunResult
 
     from agent_cli.rag._retriever import OnnxCrossEncoder
@@ -122,6 +114,14 @@ def _convert_messages(
     messages: list[Message],
 ) -> tuple[list[ModelRequest | ModelResponse], str]:
     """Convert OpenAI messages to Pydantic AI messages and extract user prompt."""
+    from pydantic_ai.messages import (  # noqa: PLC0415
+        ModelRequest,
+        ModelResponse,
+        SystemPromptPart,
+        TextPart,
+        UserPromptPart,
+    )
+
     pyd_messages: list[ModelRequest | ModelResponse] = []
 
     # Validation: Ensure there is at least one message
@@ -235,6 +235,10 @@ async def process_chat_request(
         system_prompt = template.format(context=truncated)
 
     # 4. Setup Agent
+    from pydantic_ai import Agent  # noqa: PLC0415
+    from pydantic_ai.models.openai import OpenAIModel  # noqa: PLC0415
+    from pydantic_ai.providers.openai import OpenAIProvider  # noqa: PLC0415
+
     provider = OpenAIProvider(base_url=openai_base_url, api_key=api_key or "dummy")
     model = OpenAIModel(model_name=request.model, provider=provider)
 
