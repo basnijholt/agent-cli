@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 from uuid import uuid4
 
 import httpx
-from pydantic_ai import Agent
+from pydantic_ai import Agent, ModelRetry
 from pydantic_ai.exceptions import AgentRunError, UnexpectedModelBehavior
 from pydantic_ai.models.openai import OpenAIChatModel
 from pydantic_ai.providers.openai import OpenAIProvider
@@ -121,9 +121,10 @@ def process_reconciliation_decisions(
                 )
         elif isinstance(dec, MemoryUpdate):
             orig = id_map.get(dec.id)
-            if orig:
-                text = dec.text.strip()
-                if text:
+            text = dec.text.strip()
+            if text:
+                if orig:
+                    # Update existing memory: delete old, add new
                     new_id = str(uuid4())
                     to_delete.append(orig)
                     to_add.append(
@@ -136,6 +137,17 @@ def process_reconciliation_decisions(
                         ),
                     )
                     replacement_map[orig] = new_id
+                else:
+                    # UPDATE with unknown ID = treat as ADD (model used wrong event)
+                    to_add.append(
+                        Fact(
+                            id=str(uuid4()),
+                            conversation_id=conversation_id,
+                            content=text,
+                            source_id=source_id,
+                            created_at=created_at,
+                        ),
+                    )
         elif isinstance(dec, MemoryDelete):
             orig = id_map.get(dec.id)
             if orig:
@@ -178,6 +190,7 @@ async def reconcile_facts(
         return entries, [], {}
     id_map: dict[int, str] = {idx: mem.id for idx, mem in enumerate(existing)}
     existing_json = [{"id": idx, "text": mem.content} for idx, mem in enumerate(existing)]
+    existing_ids = set(id_map.keys())
 
     provider = OpenAIProvider(api_key=api_key or "dummy", base_url=openai_base_url)
     model_cfg = OpenAIChatModel(
@@ -192,9 +205,43 @@ async def reconcile_facts(
         retries=3,
     )
 
-    payload_obj = {"existing": existing_json, "new_facts": new_facts}
-    payload = json.dumps(payload_obj, ensure_ascii=False, indent=2)
-    LOGGER.info("Reconcile payload JSON: %s", payload)
+    @agent.output_validator
+    def validate_decisions(decisions: list[MemoryDecision]) -> list[MemoryDecision]:
+        """Validate LLM decisions and provide feedback for retry."""
+        errors = []
+        for dec in decisions:
+            if (
+                isinstance(dec, (MemoryUpdate, MemoryDelete, MemoryIgnore))
+                and dec.id not in existing_ids
+            ):
+                if isinstance(dec, MemoryUpdate):
+                    errors.append(
+                        f"UPDATE with id={dec.id} is invalid: that ID doesn't exist. "
+                        f"Valid existing IDs are: {sorted(existing_ids)}. "
+                        f"For NEW facts, use ADD with a new ID.",
+                    )
+                elif isinstance(dec, MemoryDelete):
+                    errors.append(f"DELETE with id={dec.id} is invalid: that ID doesn't exist.")
+                else:  # MemoryIgnore (NONE)
+                    errors.append(f"NONE with id={dec.id} is invalid: that ID doesn't exist.")
+        if errors:
+            msg = "Invalid memory decisions:\n" + "\n".join(f"- {e}" for e in errors)
+            raise ModelRetry(msg)
+        return decisions
+
+    # Format with separate sections for existing and new facts
+    existing_str = json.dumps(existing_json, ensure_ascii=False, indent=2)
+    new_facts_str = json.dumps(new_facts, ensure_ascii=False, indent=2)
+    payload = f"""Current memory:
+```
+{existing_str}
+```
+
+New facts to process:
+```
+{new_facts_str}
+```"""
+    LOGGER.info("Reconcile payload: %s", payload)
     try:
         result = await agent.run(payload)
         decisions = result.output
