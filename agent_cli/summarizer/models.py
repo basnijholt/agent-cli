@@ -2,11 +2,47 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from enum import IntEnum
 from typing import Any
 
 from pydantic import BaseModel, Field
+
+
+class SummarizationError(Exception):
+    """Raised when summarization fails after all retries."""
+
+
+@dataclass
+class SummarizerConfig:
+    """Configuration for summarization operations.
+
+    Example:
+        config = SummarizerConfig(
+            openai_base_url="http://localhost:8000/v1",
+            model="llama3.1:8b",
+        )
+        result = await summarize(long_document, config)
+        print(f"Level: {result.level.name}")
+        print(f"Compression: {result.compression_ratio:.1%}")
+
+    """
+
+    openai_base_url: str
+    model: str
+    api_key: str | None = None
+    chunk_size: int = 2048  # BOOOOKSCORE's tested default
+    token_max: int = 3000  # LangChain's default - when to collapse
+    chunk_overlap: int = 200
+    max_concurrent_chunks: int = 5
+    timeout: float = 60.0
+
+    def __post_init__(self) -> None:
+        """Normalize the base URL."""
+        self.openai_base_url = self.openai_base_url.rstrip("/")
+        if self.api_key is None:
+            self.api_key = "not-needed"
 
 
 class SummaryLevel(IntEnum):

@@ -25,21 +25,15 @@ from agent_cli.summarizer._prompts import (
     format_summaries_for_meta,
 )
 from agent_cli.summarizer._utils import (
-    SummarizationError,
-    SummarizerConfig,
     chunk_text,
     count_tokens,
     estimate_summary_tokens,
     generate_summary,
     tokens_to_words,
 )
-from agent_cli.summarizer.models import SummaryLevel
+from agent_cli.summarizer.models import SummarizerConfig, SummaryLevel
 
 logger = logging.getLogger(__name__)
-
-
-class MapReduceSummarizationError(SummarizationError):
-    """Raised when map-reduce summarization fails."""
 
 
 @dataclass
