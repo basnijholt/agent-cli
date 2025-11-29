@@ -53,7 +53,7 @@ from .agents import (  # noqa: E402, F401
     assistant,
     autocorrect,
     chat,
-    memory_proxy,
+    memory,
     rag_proxy,
     server,
     speak,
