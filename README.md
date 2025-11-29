@@ -1323,7 +1323,7 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 
 ### `memory`
 
-The memory system provides long-term conversational memory through subcommands.
+The `memory proxy` command is the core feature—a middleware server that gives any OpenAI-compatible app long-term memory. Additional subcommands (`memory add`, etc.) help manage the memory store directly.
 
 #### `memory proxy`
 
