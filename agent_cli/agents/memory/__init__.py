@@ -14,5 +14,7 @@ memory_app = typer.Typer(
 
 app.add_typer(memory_app, name="memory")
 
-# Import subcommands to register them
-from agent_cli.agents.memory import add, proxy  # noqa: E402, F401
+# Import subcommands to register them with memory_app
+from agent_cli.agents.memory import add, proxy  # noqa: E402
+
+__all__ = ["add", "memory_app", "proxy"]
