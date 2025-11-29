@@ -57,6 +57,7 @@ def convert_audio_to_wyoming_format(
             # -ac 1: mono (1 channel)
             cmd = [
                 "ffmpeg",
+                "-y",
                 "-i",
                 str(input_path),
                 "-f",
@@ -65,7 +66,7 @@ def convert_audio_to_wyoming_format(
                 str(constants.AUDIO_RATE),
                 "-ac",
                 str(constants.AUDIO_CHANNELS),
-                "-",
+                str(output_path),
             ]
 
             logger.debug("Running FFmpeg command: %s", " ".join(cmd))
@@ -74,14 +75,15 @@ def convert_audio_to_wyoming_format(
             result = subprocess.run(
                 cmd,
                 capture_output=True,
-                text=True,
+                text=False,
                 check=False,
             )
 
             if result.returncode != 0:
+                stderr_text = result.stderr.decode("utf-8", errors="replace")
                 logger.error("FFmpeg failed with return code %d", result.returncode)
-                logger.error("FFmpeg stderr: %s", result.stderr)
-                msg = f"FFmpeg conversion failed: {result.stderr}"
+                logger.error("FFmpeg stderr: %s", stderr_text)
+                msg = f"FFmpeg conversion failed: {stderr_text}"
                 raise RuntimeError(msg)
 
             # Read converted audio data
