@@ -5,7 +5,6 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING
 
-import numpy as np
 from huggingface_hub import hf_hub_download
 from onnxruntime import InferenceSession
 from transformers import AutoTokenizer
@@ -68,6 +67,8 @@ class OnnxCrossEncoder:
         batch_size: int = 32,
     ) -> list[float]:
         """Predict relevance scores for query-document pairs."""
+        import numpy as np  # noqa: PLC0415
+
         if not pairs:
             return []
 

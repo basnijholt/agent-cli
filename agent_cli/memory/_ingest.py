@@ -10,11 +10,6 @@ from typing import TYPE_CHECKING
 from uuid import uuid4
 
 import httpx
-from pydantic_ai import Agent
-from pydantic_ai.exceptions import AgentRunError, UnexpectedModelBehavior
-from pydantic_ai.models.openai import OpenAIChatModel
-from pydantic_ai.providers.openai import OpenAIProvider
-from pydantic_ai.settings import ModelSettings
 
 from agent_cli.memory._git import commit_changes
 from agent_cli.memory._persistence import delete_memory_files, persist_entries, persist_summary
@@ -62,6 +57,11 @@ async def extract_salient_facts(
     """Run an LLM agent to extract facts from the transcript."""
     if not user_message and not assistant_message:
         return []
+
+    from pydantic_ai import Agent  # noqa: PLC0415
+    from pydantic_ai.exceptions import AgentRunError, UnexpectedModelBehavior  # noqa: PLC0415
+    from pydantic_ai.models.openai import OpenAIChatModel  # noqa: PLC0415
+    from pydantic_ai.providers.openai import OpenAIProvider  # noqa: PLC0415
 
     # Extract facts from the latest user turn only (ignore assistant/system).
     transcript = user_message or ""
@@ -179,6 +179,12 @@ async def reconcile_facts(
     id_map: dict[int, str] = {idx: mem.id for idx, mem in enumerate(existing)}
     existing_json = [{"id": idx, "text": mem.content} for idx, mem in enumerate(existing)]
 
+    from pydantic_ai import Agent  # noqa: PLC0415
+    from pydantic_ai.exceptions import AgentRunError, UnexpectedModelBehavior  # noqa: PLC0415
+    from pydantic_ai.models.openai import OpenAIChatModel  # noqa: PLC0415
+    from pydantic_ai.providers.openai import OpenAIProvider  # noqa: PLC0415
+    from pydantic_ai.settings import ModelSettings  # noqa: PLC0415
+
     provider = OpenAIProvider(api_key=api_key or "dummy", base_url=openai_base_url)
     model_cfg = OpenAIChatModel(
         model_name=model,
@@ -248,6 +254,12 @@ async def update_summary(
     """Update the conversation summary based on new facts."""
     if not new_facts:
         return prior_summary
+
+    from pydantic_ai import Agent  # noqa: PLC0415
+    from pydantic_ai.models.openai import OpenAIChatModel  # noqa: PLC0415
+    from pydantic_ai.providers.openai import OpenAIProvider  # noqa: PLC0415
+    from pydantic_ai.settings import ModelSettings  # noqa: PLC0415
+
     system_prompt = SUMMARY_PROMPT
     user_parts: list[str] = []
     if prior_summary:

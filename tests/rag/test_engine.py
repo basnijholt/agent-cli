@@ -130,7 +130,7 @@ async def test_process_chat_request_no_rag(tmp_path: Path) -> None:
 
     # We mock Agent.run on the class itself because each call creates a NEW instance
     with (
-        patch("agent_cli.rag.engine.Agent.run", new_callable=AsyncMock) as mock_run,
+        patch("pydantic_ai.Agent.run", new_callable=AsyncMock) as mock_run,
         patch("agent_cli.rag.engine.search_context") as mock_search,
     ):
         mock_run.return_value = mock_run_result
@@ -173,7 +173,7 @@ async def test_process_chat_request_with_rag(tmp_path: Path) -> None:
     )
 
     with (
-        patch("agent_cli.rag.engine.Agent.run", new_callable=AsyncMock) as mock_run,
+        patch("pydantic_ai.Agent.run", new_callable=AsyncMock) as mock_run,
         patch("agent_cli.rag.engine.search_context") as mock_search,
     ):
         mock_run.return_value = mock_run_result

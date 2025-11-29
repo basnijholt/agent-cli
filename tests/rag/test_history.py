@@ -23,7 +23,7 @@ async def test_process_chat_request_preserves_history(tmp_path: Path) -> None:
     mock_run_result.usage.return_value = None
 
     with (
-        patch("agent_cli.rag.engine.Agent.run", new_callable=AsyncMock) as mock_run,
+        patch("pydantic_ai.Agent.run", new_callable=AsyncMock) as mock_run,
         patch("agent_cli.rag.engine.search_context") as mock_search,
     ):
         mock_run.return_value = mock_run_result
