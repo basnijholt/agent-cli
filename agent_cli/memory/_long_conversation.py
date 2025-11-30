@@ -24,6 +24,49 @@ _SEGMENTS_DIR = "segments"
 _METADATA_FILE = "metadata.json"
 _FRONTMATTER_PARTS = 3  # Number of parts when splitting "---\nyaml\n---\ncontent"
 
+# Asymmetric compression configuration
+COMPRESSION_CONFIG = {
+    "user": {
+        "recent_turns": 20,  # Keep last N user turns raw
+        "summary_target_ratio": 0.7,  # Compress to 70% (gentle)
+        "preserve_quotes": True,  # Keep exact user phrasing
+        "preserve_code": True,  # Never summarize code blocks
+    },
+    "assistant": {
+        "recent_turns": 10,  # Keep last N assistant turns raw
+        "summary_target_ratio": 0.2,  # Compress to 20% (aggressive)
+        "keep_decisions": True,  # Preserve: "I decided to...", "I'll use..."
+        "keep_conclusions": True,  # Preserve final answers
+    },
+}
+
+# Summarization prompts for asymmetric compression
+_USER_SUMMARIZE_PROMPT = """Summarize the following user message concisely while:
+- Preserving ALL code blocks exactly as-is (do not modify or summarize code)
+- Preserving direct quotes and specific requests
+- Keeping technical details and requirements
+- Maintaining the user's intent
+
+Target length: approximately {target_ratio:.0%} of original.
+
+User message:
+{content}
+
+Summary:"""
+
+_ASSISTANT_SUMMARIZE_PROMPT = """Summarize the following assistant response aggressively to bullet points:
+- Keep only key decisions ("I decided to...", "I'll use...")
+- Keep only final conclusions and answers
+- Remove explanations, elaborations, and filler
+- Preserve any code that was provided
+
+Target length: approximately {target_ratio:.0%} of original.
+
+Assistant response:
+{content}
+
+Summary:"""
+
 
 def estimate_tokens(text: str) -> int:
     """Estimate token count using ~4 chars per token heuristic."""
@@ -319,6 +362,264 @@ def should_compress(conversation: LongConversation) -> bool:
     return usage_ratio >= conversation.compress_threshold
 
 
+def _count_recent_by_role(segments: list[Segment], role: str) -> int:
+    """Count how many of the most recent segments match a role."""
+    count = 0
+    for seg in reversed(segments):
+        if seg.role == role:
+            count += 1
+        # Only count contiguous recent segments
+        if count >= COMPRESSION_CONFIG.get(role, {}).get("recent_turns", 10):
+            break
+    return count
+
+
+def _is_recent_segment(
+    segment: Segment,
+    conversation: LongConversation,
+    segment_index: int,
+) -> bool:
+    """Check if a segment is within the protected recent window."""
+    # Check token-based recent window
+    token_count = 0
+    for i in range(len(conversation.segments) - 1, segment_index - 1, -1):
+        token_count += conversation.segments[i].current_tokens
+        if token_count > conversation.raw_recent_tokens:
+            return segment_index > i
+
+    # If we're within token budget, also check turn-based recent window
+    role_config = COMPRESSION_CONFIG.get(segment.role, {})
+    recent_turns = role_config.get("recent_turns", 10)
+
+    # Count how many segments of this role are after this one
+    turns_after = sum(
+        1 for seg in conversation.segments[segment_index + 1 :] if seg.role == segment.role
+    )
+    return turns_after < recent_turns
+
+
+def select_segments_to_compress(
+    conversation: LongConversation,
+    target_reduction: int | None = None,
+) -> list[Segment]:
+    """Select segments for compression, prioritizing assistant messages.
+
+    Args:
+        conversation: The conversation to analyze
+        target_reduction: Target number of tokens to free up (optional)
+
+    Returns:
+        List of segments to compress, ordered by compression priority
+        (assistant messages first, then by age - oldest first).
+
+    """
+    candidates: list[tuple[int, Segment]] = []
+
+    for i, seg in enumerate(conversation.segments):
+        # Skip already compressed segments
+        if seg.state != "raw":
+            continue
+        # Skip system messages
+        if seg.role == "system":
+            continue
+        # Skip recent segments
+        if _is_recent_segment(seg, conversation, i):
+            continue
+        candidates.append((i, seg))
+
+    # Sort: assistant messages first (they get compressed more aggressively),
+    # then by timestamp (oldest first)
+    candidates.sort(key=lambda x: (x[1].role == "user", x[1].timestamp))
+
+    # If target_reduction specified, limit to segments needed
+    if target_reduction is not None:
+        selected = []
+        potential_savings = 0
+        for _i, seg in candidates:
+            role_config = COMPRESSION_CONFIG.get(seg.role, {})
+            target_ratio = role_config.get("summary_target_ratio", 0.5)
+            savings = int(seg.current_tokens * (1 - target_ratio))
+            selected.append(seg)
+            potential_savings += savings
+            if potential_savings >= target_reduction:
+                break
+        return selected
+
+    return [seg for _i, seg in candidates]
+
+
+# --- Compression ---
+
+
+async def summarize_segment(
+    segment: Segment,
+    openai_base_url: str,
+    model: str,
+    api_key: str | None = None,
+) -> str:
+    """Summarize a segment using LLM with role-appropriate prompts.
+
+    Uses asymmetric compression:
+    - User messages: gentle summarization, preserve code and quotes
+    - Assistant messages: aggressive summarization to bullet points
+    """
+    from agent_cli.core.openai_proxy import forward_chat_request  # noqa: PLC0415
+    from agent_cli.memory.models import ChatRequest, Message  # noqa: PLC0415
+
+    role_config = COMPRESSION_CONFIG.get(segment.role, COMPRESSION_CONFIG["assistant"])
+    target_ratio = role_config.get("summary_target_ratio", 0.5)
+
+    # Select the appropriate prompt template
+    if segment.role == "user":
+        prompt = _USER_SUMMARIZE_PROMPT.format(
+            target_ratio=target_ratio,
+            content=segment.content,
+        )
+    else:
+        prompt = _ASSISTANT_SUMMARIZE_PROMPT.format(
+            target_ratio=target_ratio,
+            content=segment.content,
+        )
+
+    # Create summarization request
+    request = ChatRequest(
+        messages=[Message(role="user", content=prompt)],
+        model=model,
+        stream=False,
+    )
+
+    response = await forward_chat_request(
+        request,
+        openai_base_url,
+        api_key,
+        exclude_fields=set(),
+    )
+
+    if not isinstance(response, dict):
+        LOGGER.warning("Unexpected response type during summarization: %s", type(response))
+        return segment.content  # Return original on failure
+
+    summary = _extract_assistant_content(response)
+    if not summary:
+        LOGGER.warning("Failed to extract summary from response")
+        return segment.content  # Return original on failure
+
+    return summary
+
+
+async def compress_segment(
+    memory_root: Path,
+    conversation: LongConversation,
+    segment: Segment,
+    openai_base_url: str,
+    model: str,
+    api_key: str | None = None,
+) -> Segment:
+    """Compress a single segment and update it on disk.
+
+    Returns the updated segment with summary and new token count.
+    """
+    LOGGER.info(
+        "Compressing segment %s (role=%s, tokens=%d)",
+        segment.id,
+        segment.role,
+        segment.current_tokens,
+    )
+
+    # Get summary from LLM
+    summary = await summarize_segment(segment, openai_base_url, model, api_key)
+    new_tokens = estimate_tokens(summary)
+
+    # Update segment
+    segment.summary = summary
+    segment.current_tokens = new_tokens
+    segment.state = "summarized"
+
+    # Find segment index and save to disk
+    for i, seg in enumerate(conversation.segments):
+        if seg.id == segment.id:
+            save_segment(memory_root, conversation.id, segment, i + 1)
+            break
+
+    LOGGER.info(
+        "Compressed segment %s: %d → %d tokens (%.0f%% reduction)",
+        segment.id,
+        segment.original_tokens,
+        new_tokens,
+        (1 - new_tokens / segment.original_tokens) * 100 if segment.original_tokens > 0 else 0,
+    )
+
+    return segment
+
+
+async def compress_conversation(
+    memory_root: Path,
+    conversation: LongConversation,
+    openai_base_url: str,
+    model: str,
+    api_key: str | None = None,
+) -> LongConversation:
+    """Compress segments until under the threshold.
+
+    Selects segments to compress prioritizing:
+    1. Assistant messages (more aggressive compression)
+    2. Older messages first
+    """
+    if not should_compress(conversation):
+        return conversation
+
+    # Calculate how many tokens we need to free
+    target_tokens = int(conversation.target_context_tokens * conversation.compress_threshold * 0.9)
+    tokens_to_free = conversation.current_total_tokens - target_tokens
+
+    LOGGER.info(
+        "Conversation %s needs compression: %d tokens, target %d, need to free %d",
+        conversation.id,
+        conversation.current_total_tokens,
+        target_tokens,
+        tokens_to_free,
+    )
+
+    # Select segments to compress
+    segments_to_compress = select_segments_to_compress(conversation, tokens_to_free)
+
+    if not segments_to_compress:
+        LOGGER.warning("No segments available for compression")
+        return conversation
+
+    # Compress selected segments
+    total_saved = 0
+    for segment in segments_to_compress:
+        old_tokens = segment.current_tokens
+        await compress_segment(
+            memory_root,
+            conversation,
+            segment,
+            openai_base_url,
+            model,
+            api_key,
+        )
+        saved = old_tokens - segment.current_tokens
+        total_saved += saved
+        conversation.current_total_tokens -= saved
+
+        # Stop if we've freed enough tokens
+        if total_saved >= tokens_to_free:
+            break
+
+    # Update metadata
+    save_conversation_metadata(memory_root, conversation)
+
+    LOGGER.info(
+        "Compression complete: freed %d tokens, now at %d (%.1f%% of target)",
+        total_saved,
+        conversation.current_total_tokens,
+        (conversation.current_total_tokens / conversation.target_context_tokens) * 100,
+    )
+
+    return conversation
+
+
 # --- Chat Processing ---
 
 
@@ -348,7 +649,9 @@ async def process_long_conversation_chat(
 ) -> Any:
     """Process a chat request in long conversation mode.
 
-    Phase 1: No compression, just chronological context with budget enforcement.
+    Maintains chronological context with asymmetric compression:
+    - User messages compressed gently (preserve code, quotes)
+    - Assistant messages compressed aggressively (bullet points)
     """
     from agent_cli.core.openai_proxy import forward_chat_request  # noqa: PLC0415
     from agent_cli.memory.models import ChatRequest, Message  # noqa: PLC0415
@@ -420,13 +723,20 @@ async def process_long_conversation_chat(
         assistant_segment = create_segment("assistant", assistant_content)
         append_segment(memory_root, conversation, assistant_segment)
 
-    # Check if compression is needed (Phase 1: just log, don't compress)
+    # Compress if needed (runs in background after returning response)
     if should_compress(conversation):
         LOGGER.info(
-            "Conversation %s exceeds compression threshold (%.1f%% of %d tokens)",
+            "Conversation %s exceeds compression threshold (%.1f%% of %d tokens), compressing...",
             conversation_id,
             (conversation.current_total_tokens / conversation.target_context_tokens) * 100,
             conversation.target_context_tokens,
+        )
+        await compress_conversation(
+            memory_root,
+            conversation,
+            openai_base_url,
+            model,
+            api_key,
         )
 
     return response
