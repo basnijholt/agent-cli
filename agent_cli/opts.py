@@ -65,6 +65,7 @@ OPENAI_BASE_URL: str | None = typer.Option(
     None,
     "--openai-base-url",
     help="Custom base URL for OpenAI-compatible API (e.g., for llama-server: http://localhost:8080/v1).",
+    envvar="OPENAI_BASE_URL",
     rich_help_panel="LLM Configuration: OpenAI",
 )
 # Gemini
