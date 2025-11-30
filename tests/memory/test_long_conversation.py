@@ -14,6 +14,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from agent_cli.memory import api as memory_api
+from agent_cli.memory._long_conversation import compute_similarity, extract_chunks
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -356,3 +357,269 @@ def test_separate_conversations_isolated(
     assert "Hello from A" in contents
     assert "Hello from B" not in contents
     assert "Second from A" in contents
+
+
+# --- Phase 3: Repetition Detection Tests ---
+
+
+def test_chunk_extraction() -> None:
+    """Test that text chunks are correctly extracted from content."""
+    # Create content with substantial chunks separated by double newlines
+    chunk1 = "x" * 250  # Over 200 char minimum
+    chunk2 = "y" * 300
+    content = f"{chunk1}\n\n{chunk2}"
+
+    chunks = extract_chunks(content)
+    assert len(chunks) == 2
+    assert chunks[0].content == chunk1
+    assert chunks[1].content == chunk2
+
+
+def test_chunk_extraction_filters_small() -> None:
+    """Test that small chunks are filtered out."""
+    small = "small text"  # Under 200 chars
+    large = "z" * 250
+
+    content = f"{small}\n\n{large}"
+    chunks = extract_chunks(content)
+
+    # Only the large chunk should be extracted
+    assert len(chunks) == 1
+    assert chunks[0].content == large
+
+
+def test_similarity_detection() -> None:
+    """Test that similar text chunks are detected."""
+    text1 = """def process(self):
+    return self.data"""
+
+    text2 = """def process(self):
+    validated = self.validate()
+    return self.data"""
+
+    similarity = compute_similarity(text1, text2)
+    # These are similar but not identical
+    assert 0.6 < similarity < 1.0
+
+    # Identical text
+    identical = compute_similarity(text1, text1)
+    assert identical == 1.0
+
+
+def test_duplicate_text_creates_reference(
+    tmp_path: Path,
+    captured_requests: list[dict[str, Any]],
+) -> None:
+    """When user pastes same text twice, second should be stored as reference."""
+    # Large text block (over 200 chars, single paragraph - no blank lines)
+    large_text = """def calculate_total(items):
+    total = 0
+    for item in items:
+        total += item.price * item.quantity
+        # Add tax calculation
+        tax = total * 0.1
+        total += tax
+    return total
+# This function processes the items and calculates the total price"""
+
+    async def _capture_request(
+        request: Any,
+        base_url: str,  # noqa: ARG001
+        api_key: str | None,  # noqa: ARG001
+        exclude_fields: set[str],  # noqa: ARG001
+    ) -> dict[str, Any]:
+        captured_requests.append(
+            {
+                "messages": [{"role": m.role, "content": m.content} for m in request.messages],
+            },
+        )
+        return {"choices": [{"message": {"content": "Got it!"}}]}
+
+    with patch(
+        "agent_cli.core.openai_proxy.forward_chat_request",
+        side_effect=_capture_request,
+    ):
+        app = memory_api.create_app(
+            memory_path=tmp_path,
+            openai_base_url="http://mock-llm",
+            long_conversation=True,
+        )
+        client = TestClient(app)
+
+        # First message with text
+        client.post(
+            "/v1/chat/completions",
+            json={
+                "model": "test-model",
+                "messages": [{"role": "user", "content": f"Here's my code:\n\n{large_text}"}],
+            },
+        )
+
+        # Second message with identical text
+        client.post(
+            "/v1/chat/completions",
+            json={
+                "model": "test-model",
+                "messages": [{"role": "user", "content": f"Same code again:\n\n{large_text}"}],
+            },
+        )
+
+    # Check segments on disk
+    segments_dir = tmp_path / "long_conversations" / "default" / "segments"
+    files = sorted(segments_dir.glob("*.md"))
+
+    # Should have 4 segments: user1, assistant1, user2, assistant2
+    assert len(files) == 4
+
+    # Read the second user segment (user2)
+    second_user_content = files[2].read_text()
+
+    # Should contain a reference marker instead of full text
+    assert "Similar to segment" in second_user_content
+
+
+def test_different_text_not_deduplicated(
+    tmp_path: Path,
+    captured_requests: list[dict[str, Any]],
+) -> None:
+    """Completely different text should not be deduplicated."""
+    # Two different large text blocks
+    text1 = """This is a completely different piece of text
+that talks about something entirely unrelated to the second one.
+It has enough characters to be considered a chunk for deduplication.
+We need to make sure it's over 200 characters long to be extracted."""
+
+    text2 = """Another block of text that has no similarity to the first.
+It discusses different topics and uses different words entirely.
+The deduplication system should not find any match between these two.
+This should remain as full content without any reference markers."""
+
+    async def _capture_request(
+        request: Any,
+        base_url: str,  # noqa: ARG001
+        api_key: str | None,  # noqa: ARG001
+        exclude_fields: set[str],  # noqa: ARG001
+    ) -> dict[str, Any]:
+        captured_requests.append(
+            {
+                "messages": [{"role": m.role, "content": m.content} for m in request.messages],
+            },
+        )
+        return {"choices": [{"message": {"content": "Got it!"}}]}
+
+    with patch(
+        "agent_cli.core.openai_proxy.forward_chat_request",
+        side_effect=_capture_request,
+    ):
+        app = memory_api.create_app(
+            memory_path=tmp_path,
+            openai_base_url="http://mock-llm",
+            long_conversation=True,
+        )
+        client = TestClient(app)
+
+        # First message
+        client.post(
+            "/v1/chat/completions",
+            json={
+                "model": "test-model",
+                "messages": [{"role": "user", "content": text1}],
+            },
+        )
+
+        # Second message with completely different text
+        client.post(
+            "/v1/chat/completions",
+            json={
+                "model": "test-model",
+                "messages": [{"role": "user", "content": text2}],
+            },
+        )
+
+    # Check segments on disk
+    segments_dir = tmp_path / "long_conversations" / "default" / "segments"
+    files = sorted(segments_dir.glob("*.md"))
+
+    # Read the second user segment
+    second_user_content = files[2].read_text()
+
+    # Should NOT contain a reference marker - text is different
+    assert "Similar to segment" not in second_user_content
+    # Should contain the full text
+    assert "no similarity" in second_user_content
+
+
+def test_reference_segment_used_in_context(
+    tmp_path: Path,
+    captured_requests: list[dict[str, Any]],
+) -> None:
+    """Reference segments should be included in context with compact format."""
+    # Large text block that will be deduplicated (over 200 chars, single paragraph)
+    large_text = """def very_long_function():
+    # This is a long function with lots of lines that would take many tokens
+    # We want to deduplicate this content to save context space in conversations
+    result = process_something_important()
+    validated = validate_the_result(result)
+    transformed = transform_and_return(validated)
+    return transformed"""
+
+    async def _capture_request(
+        request: Any,
+        base_url: str,  # noqa: ARG001
+        api_key: str | None,  # noqa: ARG001
+        exclude_fields: set[str],  # noqa: ARG001
+    ) -> dict[str, Any]:
+        captured_requests.append(
+            {
+                "messages": [{"role": m.role, "content": m.content} for m in request.messages],
+            },
+        )
+        return {"choices": [{"message": {"content": "Processed!"}}]}
+
+    with patch(
+        "agent_cli.core.openai_proxy.forward_chat_request",
+        side_effect=_capture_request,
+    ):
+        app = memory_api.create_app(
+            memory_path=tmp_path,
+            openai_base_url="http://mock-llm",
+            long_conversation=True,
+        )
+        client = TestClient(app)
+
+        # First message with text
+        client.post(
+            "/v1/chat/completions",
+            json={
+                "model": "test-model",
+                "messages": [{"role": "user", "content": f"First:\n\n{large_text}"}],
+            },
+        )
+
+        # Second message with same text
+        client.post(
+            "/v1/chat/completions",
+            json={
+                "model": "test-model",
+                "messages": [{"role": "user", "content": f"Again:\n\n{large_text}"}],
+            },
+        )
+
+        # Third message - should see history with reference
+        client.post(
+            "/v1/chat/completions",
+            json={
+                "model": "test-model",
+                "messages": [{"role": "user", "content": "What about my code?"}],
+            },
+        )
+
+    # Check the third request's context
+    assert len(captured_requests) >= 3
+    third_request = captured_requests[2]
+
+    # The context should include the reference segment
+    all_content = " ".join(m["content"] for m in third_request["messages"])
+
+    # First mention should have full text
+    assert "very_long_function" in all_content

@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+import difflib
 import hashlib
 import json
 import logging
+import re
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 from uuid import uuid4
@@ -344,10 +347,17 @@ def build_context(
     # 4. Get recent segments that fit in budget
     recent_segments = get_recent_segments(conversation, max_tokens=available)
 
-    # 5. Add history (Phase 1: no compression, just recent raw segments)
+    # 5. Add history with appropriate content based on state
     for seg in recent_segments:
-        # Use summary if available (for summarized segments), otherwise content
-        content = seg.summary if seg.state == "summarized" and seg.summary else seg.content
+        if seg.state == "summarized" and seg.summary:
+            # Use summary for summarized segments
+            content = seg.summary
+        elif seg.state == "reference":
+            # Reference segments already have compact format with diff
+            content = seg.content
+        else:
+            # Raw segments use full content
+            content = seg.content
         messages.append({"role": seg.role, "content": content})
 
     # 6. Add new user message
@@ -620,6 +630,224 @@ async def compress_conversation(
     return conversation
 
 
+# --- Repetition Detection ---
+
+# Minimum characters for a chunk to be considered for deduplication
+_MIN_CHUNK_CHARS = 200
+
+# Minimum similarity ratio to consider chunks as near-duplicates
+_SIMILARITY_THRESHOLD = 0.85
+
+# Only store diff if it's smaller than this fraction of original
+_DIFF_SIZE_THRESHOLD = 0.3
+
+
+@dataclass
+class TextChunk:
+    """A chunk of text extracted from content."""
+
+    content: str
+    start: int  # Start position in original content
+    end: int  # End position in original content
+
+
+@dataclass
+class RepetitionResult:
+    """Result of repetition detection."""
+
+    original_segment_id: str
+    original_chunk: str
+    new_chunk: TextChunk
+    diff: str
+    saved_tokens: int
+
+
+def extract_chunks(content: str, min_chars: int = _MIN_CHUNK_CHARS) -> list[TextChunk]:
+    """Extract substantial text chunks from content.
+
+    Splits by double newlines (paragraphs) and filters by minimum size.
+    This catches code blocks, error messages, logs, or any repeated text.
+    """
+    chunks = []
+    pos = 0
+
+    for match in re.finditer(r"(.*?)(?:\n\n+|$)", content, re.DOTALL):
+        chunk_text = match.group(1).strip()
+        if len(chunk_text) >= min_chars:
+            # Find actual position in original content
+            start = content.find(chunk_text, pos)
+            if start != -1:
+                chunks.append(
+                    TextChunk(
+                        content=chunk_text,
+                        start=start,
+                        end=start + len(chunk_text),
+                    ),
+                )
+                pos = start + len(chunk_text)
+
+    return chunks
+
+
+def compute_similarity(text1: str, text2: str) -> float:
+    """Compute similarity ratio between two text chunks using difflib."""
+    return difflib.SequenceMatcher(None, text1, text2).ratio()
+
+
+def compute_unified_diff(original: str, modified: str) -> str:
+    """Compute unified diff between two text chunks."""
+    original_lines = original.splitlines(keepends=True)
+    modified_lines = modified.splitlines(keepends=True)
+
+    diff = difflib.unified_diff(
+        original_lines,
+        modified_lines,
+        fromfile="original",
+        tofile="modified",
+        lineterm="",
+    )
+    return "".join(diff)
+
+
+def detect_repetition(
+    new_content: str,
+    history: list[Segment],
+) -> RepetitionResult | None:
+    """Find near-duplicate text chunks in new content compared to history.
+
+    Works on any substantial text: code, error messages, logs, etc.
+    Returns the first significant repetition found, or None if no duplicates.
+    """
+    new_chunks = extract_chunks(new_content)
+    if not new_chunks:
+        return None
+
+    for chunk in new_chunks:
+        for seg in history:
+            # Only check user messages (they contain user-pasted content)
+            if seg.role != "user":
+                continue
+
+            for hist_chunk in extract_chunks(seg.content):
+                similarity = compute_similarity(chunk.content, hist_chunk.content)
+
+                if similarity >= _SIMILARITY_THRESHOLD:
+                    diff = compute_unified_diff(hist_chunk.content, chunk.content)
+                    diff_size = len(diff)
+                    original_size = len(chunk.content)
+
+                    # Only use diff if it's significantly smaller
+                    if diff_size < original_size * _DIFF_SIZE_THRESHOLD:
+                        saved_tokens = estimate_tokens(chunk.content) - estimate_tokens(
+                            diff,
+                        )
+                        return RepetitionResult(
+                            original_segment_id=seg.id,
+                            original_chunk=hist_chunk.content,
+                            new_chunk=chunk,
+                            diff=diff,
+                            saved_tokens=saved_tokens,
+                        )
+
+    return None
+
+
+def create_reference_content(
+    original_content: str,
+    repetition: RepetitionResult,
+) -> str:
+    """Replace repeated chunk with a reference + diff.
+
+    Finds the matching chunk and replaces it with a compact reference.
+    """
+    chunk = repetition.new_chunk
+
+    # Build replacement text
+    diff_marker = ""
+    if repetition.diff.strip():
+        diff_marker = f"\n\n[Changes:\n{repetition.diff}]"
+
+    replacement = f"[Similar to segment {repetition.original_segment_id}]{diff_marker}"
+
+    # Replace the chunk with the reference
+    return original_content[: chunk.start] + replacement + original_content[chunk.end :]
+
+
+def create_segment_with_dedup(
+    role: str,
+    content: str,
+    history: list[Segment],
+    *,
+    state: str = "raw",
+) -> Segment:
+    """Create a new segment, detecting and deduplicating repeated text.
+
+    If significant repetition is found, stores a reference instead of
+    the full content.
+    """
+    # Only check user messages for repetition
+    repetition = None
+    deduped_content = content
+    refers_to = None
+    diff = None
+
+    if role == "user" and history:
+        repetition = detect_repetition(content, history)
+        if repetition:
+            deduped_content = create_reference_content(content, repetition)
+            refers_to = repetition.original_segment_id
+            diff = repetition.diff
+            LOGGER.info(
+                "Detected repetition (segment %s), saved %d tokens",
+                refers_to,
+                repetition.saved_tokens,
+            )
+            state = "reference"
+
+    tokens = estimate_tokens(deduped_content)
+    return Segment(
+        id=str(uuid4()),
+        role=role,  # type: ignore[arg-type]
+        content=deduped_content,
+        timestamp=datetime.now(UTC),
+        original_tokens=estimate_tokens(content),  # Original size
+        current_tokens=tokens,  # After dedup
+        state=state,  # type: ignore[arg-type]
+        refers_to=refers_to,
+        diff=diff,
+        content_hash=content_hash(content),
+    )
+
+
+def reconstruct_from_reference(
+    segment: Segment,
+    all_segments: list[Segment],
+) -> str:
+    """Reconstruct full content from a reference segment.
+
+    For now, returns the stored content with reference marker.
+    The LLM can understand the reference + diff format.
+    """
+    if segment.state != "reference" or not segment.refers_to:
+        return segment.content
+
+    # Find the original segment (for potential future reconstruction)
+    original_seg = None
+    for seg in all_segments:
+        if seg.id == segment.refers_to:
+            original_seg = seg
+            break
+
+    if not original_seg:
+        LOGGER.warning(
+            "Could not find original segment %s for reference",
+            segment.refers_to,
+        )
+
+    # Return stored content - LLM understands reference format
+    return segment.content
+
+
 # --- Chat Processing ---
 
 
@@ -712,12 +940,16 @@ async def process_long_conversation_chat(
     if not isinstance(response, dict):
         return response
 
-    # Append user message as segment
+    # Append user message as segment (with deduplication)
     if user_message:
-        user_segment = create_segment("user", user_message)
+        user_segment = create_segment_with_dedup(
+            "user",
+            user_message,
+            conversation.segments,
+        )
         append_segment(memory_root, conversation, user_segment)
 
-    # Append assistant response as segment
+    # Append assistant response as segment (no dedup for assistant)
     assistant_content = _extract_assistant_content(response)
     if assistant_content:
         assistant_segment = create_segment("assistant", assistant_content)
