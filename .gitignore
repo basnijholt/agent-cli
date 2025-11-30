@@ -70,3 +70,5 @@ rag_proxy_*.log
 transcription_log.json
 temp_rag_*/
 memory_db
+rag_db/
+*.log
