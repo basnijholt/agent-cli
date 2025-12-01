@@ -14,7 +14,15 @@ import pytest
 from fastapi.testclient import TestClient
 
 from agent_cli.memory import api as memory_api
-from agent_cli.memory._long_conversation import compute_similarity, extract_chunks
+from agent_cli.memory._long_conversation import (
+    append_segment,
+    build_context,
+    compute_similarity,
+    create_segment,
+    extract_chunks,
+    load_conversation,
+)
+from agent_cli.memory.entities import Segment
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -623,3 +631,159 @@ def test_reference_segment_used_in_context(
 
     # First mention should have full text
     assert "very_long_function" in all_content
+
+
+# --- Integration: Combined Features ---
+
+
+def test_compression_and_deduplication_together(
+    tmp_path: Path,
+) -> None:
+    """Test that compression and deduplication work together correctly.
+
+    This tests the integration of:
+    - Phase 2: Compression (summarization of old segments)
+    - Phase 3: Deduplication (reference segments for repeated content)
+    """
+    summarize_calls: list[str] = []
+
+    # Large text that will be repeated (over 200 chars, single paragraph)
+    repeated_code = """def process_data(items):
+    results = []
+    for item in items:
+        validated = validate_item(item)
+        transformed = transform_item(validated)
+        results.append(transformed)
+    return results  # Returns the processed list of items after validation and transformation"""
+
+    async def _handle_request(
+        request: Any,
+        base_url: str,  # noqa: ARG001
+        api_key: str | None,  # noqa: ARG001
+        exclude_fields: set[str],  # noqa: ARG001
+    ) -> dict[str, Any]:
+        content = request.messages[0].content
+
+        # Track summarization requests
+        if "Summarize the following" in content:
+            summarize_calls.append(content)
+            return {"choices": [{"message": {"content": "• Processed data items"}}]}
+
+        # Return long responses to trigger compression
+        return {"choices": [{"message": {"content": "Response: " + "z" * 200}}]}
+
+    with patch(
+        "agent_cli.core.openai_proxy.forward_chat_request",
+        side_effect=_handle_request,
+    ):
+        app = memory_api.create_app(
+            memory_path=tmp_path,
+            openai_base_url="http://mock-llm",
+            long_conversation=True,
+            context_budget=500,  # Small budget to trigger compression
+            compress_threshold=0.4,  # Compress at 40%
+            raw_recent_tokens=100,  # Keep very few tokens raw
+        )
+        client = TestClient(app)
+
+        # 1. First message with code
+        client.post(
+            "/v1/chat/completions",
+            json={
+                "model": "test-model",
+                "messages": [{"role": "user", "content": f"First code:\n\n{repeated_code}"}],
+            },
+        )
+
+        # 2. Send several messages to trigger compression
+        for i in range(4):
+            client.post(
+                "/v1/chat/completions",
+                json={
+                    "model": "test-model",
+                    "messages": [{"role": "user", "content": f"Question {i}"}],
+                },
+            )
+
+        # 3. Send same code again - should be deduplicated
+        client.post(
+            "/v1/chat/completions",
+            json={
+                "model": "test-model",
+                "messages": [{"role": "user", "content": f"Same code:\n\n{repeated_code}"}],
+            },
+        )
+
+    # Verify both features worked
+    segments_dir = tmp_path / "long_conversations" / "default" / "segments"
+    files = sorted(segments_dir.glob("*.md"))
+
+    # Should have multiple segments (12 = 6 user + 6 assistant)
+    assert len(files) >= 10
+
+    # Check for deduplication in the last user segment
+    last_user_segments = [f for f in files if "_user_" in f.name]
+    last_user_content = last_user_segments[-1].read_text()
+    assert "Similar to segment" in last_user_content, "Deduplication should have occurred"
+
+    # Check for compression (summarization should have been triggered)
+    assert len(summarize_calls) > 0, "Compression should have been triggered"
+
+
+def test_build_context_with_all_segment_states(
+    tmp_path: Path,
+) -> None:
+    """Test build_context handles raw, summarized, and reference segments correctly."""
+    # Create a conversation with all three segment states
+    convo = load_conversation(tmp_path, "test-context")
+
+    # 1. Raw segment
+    raw_seg = create_segment("user", "This is raw content that has not been compressed.")
+    convo = append_segment(tmp_path, convo, raw_seg)
+
+    # 2. Summarized segment (manually set state)
+    summarized_seg = Segment(
+        id="summarized-1",
+        role="assistant",
+        content="Original long response with lots of detail...",
+        timestamp=raw_seg.timestamp,
+        original_tokens=100,
+        current_tokens=20,
+        state="summarized",
+        summary="• Key point from response",
+        content_hash="abc123",
+    )
+    convo = append_segment(tmp_path, convo, summarized_seg)
+
+    # 3. Reference segment (manually set state)
+    reference_seg = Segment(
+        id="reference-1",
+        role="user",
+        content="[Similar to segment raw-1]\n\n[Changes:\n+small diff]",
+        timestamp=raw_seg.timestamp,
+        original_tokens=200,
+        current_tokens=30,
+        state="reference",
+        refers_to=raw_seg.id,
+        diff="+small diff",
+        content_hash="def456",
+    )
+    convo = append_segment(tmp_path, convo, reference_seg)
+
+    # Build context
+    context = build_context(convo, "New question", token_budget=10000)
+
+    # Verify all segments are included correctly
+    assert len(context) == 4  # 3 history + 1 new message
+
+    # Raw segment should use full content
+    assert context[0]["content"] == "This is raw content that has not been compressed."
+
+    # Summarized segment should use summary
+    assert context[1]["content"] == "• Key point from response"
+
+    # Reference segment should use stored content (with reference marker)
+    assert "Similar to segment" in context[2]["content"]
+
+    # New message at the end
+    assert context[3]["content"] == "New question"
