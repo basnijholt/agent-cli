@@ -66,6 +66,31 @@ def memory_proxy(
         help="Enable automatic git commit of memory changes.",
         rich_help_panel="Memory Configuration",
     ),
+    # Long conversation mode options
+    long_conversation: bool = typer.Option(
+        False,  # noqa: FBT003
+        "--long-conversation/--no-long-conversation",
+        help="Enable long conversation mode with asymmetric compression.",
+        rich_help_panel="Long Conversation Mode",
+    ),
+    context_budget: int = typer.Option(
+        150_000,
+        "--context-budget",
+        help="Target context window size in tokens (long-conversation mode).",
+        rich_help_panel="Long Conversation Mode",
+    ),
+    compress_threshold: float = typer.Option(
+        0.8,
+        "--compress-threshold",
+        help="Start compression when context reaches this fraction of budget.",
+        rich_help_panel="Long Conversation Mode",
+    ),
+    raw_recent_tokens: int = typer.Option(
+        40_000,
+        "--raw-recent-tokens",
+        help="Always keep this many recent tokens uncompressed.",
+        rich_help_panel="Long Conversation Mode",
+    ),
     log_level: str = opts.LOG_LEVEL,
     config_file: str | None = opts.CONFIG_FILE,
     print_args: bool = opts.PRINT_ARGS,
@@ -145,6 +170,13 @@ def memory_proxy(
         console.print("  ⚙️  Summaries: [red]disabled[/red]")
     if git_versioning:
         console.print("  📝 Git Versioning: [green]enabled[/green]")
+    if long_conversation:
+        console.print("  📜 Long Conversation Mode: [green]enabled[/green]")
+        console.print(
+            f"      Context budget: [blue]{context_budget:,}[/blue] tokens, "
+            f"compress at [blue]{compress_threshold:.0%}[/blue], "
+            f"keep [blue]{raw_recent_tokens:,}[/blue] raw",
+        )
 
     fastapi_app = create_app(
         memory_path,
@@ -159,6 +191,11 @@ def memory_proxy(
         recency_weight=recency_weight,
         score_threshold=score_threshold,
         enable_git_versioning=git_versioning,
+        # Long conversation mode settings
+        long_conversation=long_conversation,
+        context_budget=context_budget,
+        compress_threshold=compress_threshold,
+        raw_recent_tokens=raw_recent_tokens,
     )
 
     uvicorn.run(fastapi_app, host=host, port=port, log_config=None)
