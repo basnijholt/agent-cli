@@ -1459,6 +1459,29 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 │ --port        INTEGER  Port to bind to                                       │
 │                        [default: 8100]                                       │
 ╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Long Conversation Mode ─────────────────────────────────────────────────────╮
+│ --long-conversation     --no-long-conversa…             Enable long          │
+│                                                         conversation mode    │
+│                                                         with asymmetric      │
+│                                                         compression.         │
+│                                                         [default:            │
+│                                                         no-long-conversatio… │
+│ --context-budget                               INTEGER  Target context       │
+│                                                         window size in       │
+│                                                         tokens               │
+│                                                         (long-conversation   │
+│                                                         mode).               │
+│                                                         [default: 150000]    │
+│ --compress-threshold                           FLOAT    Start compression    │
+│                                                         when context reaches │
+│                                                         this fraction of     │
+│                                                         budget.              │
+│                                                         [default: 0.8]       │
+│ --raw-recent-tokens                            INTEGER  Always keep this     │
+│                                                         many recent tokens   │
+│                                                         uncompressed.        │
+│                                                         [default: 40000]     │
+╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ General Options ────────────────────────────────────────────────────────────╮
 │ --log-level         TEXT  Set logging level.                                 │
 │                           [default: WARNING]                                 │
