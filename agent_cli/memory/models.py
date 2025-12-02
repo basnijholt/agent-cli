@@ -6,6 +6,8 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, field_validator
 
+from agent_cli.memory.entities import ResponseMetadata  # noqa: TC001
+
 
 class Message(BaseModel):
     """Chat message model."""
@@ -48,6 +50,8 @@ class MemoryMetadata(BaseModel):
     summary_kind: str | None = None
     replaced_by: str | None = None
     source_id: str | None = None
+    # Response metadata (for assistant messages)
+    response_metadata: ResponseMetadata | None = None
 
 
 class SummaryOutput(BaseModel):

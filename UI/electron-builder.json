@@ -1,0 +1,20 @@
+{
+  "appId": "com.agent-cli.ui",
+  "productName": "Agent UI",
+  "directories": {
+    "output": "dist-electron"
+  },
+  "files": [
+    "dist/**/*",
+    "dist-main/**/*"
+  ],
+  "mac": {
+    "category": "public.app-category.productivity"
+  },
+  "win": {
+    "target": "nsis"
+  },
+  "linux": {
+    "target": "AppImage"
+  }
+}

@@ -43,8 +43,22 @@ def init_collection(
 
 
 def flatten_metadatas(metadatas: Sequence[BaseModel]) -> list[dict[str, Any]]:
-    """Serialize metadata models to JSON-safe dicts while preserving lists."""
-    return [meta.model_dump(mode="json", exclude_none=True) for meta in metadatas]
+    """Serialize metadata models to JSON-safe dicts, flattening nested models.
+
+    ChromaDB only supports flat key-value pairs (no nested dicts), so we need
+    to flatten any nested Pydantic models into the top-level dict.
+    """
+    result = []
+    for meta in metadatas:
+        flat: dict[str, Any] = {}
+        for key, value in meta.model_dump(mode="json", exclude_none=True).items():
+            if isinstance(value, dict):
+                # Flatten nested dict into top-level
+                flat.update(value)
+            else:
+                flat[key] = value
+        result.append(flat)
+    return result
 
 
 def upsert(

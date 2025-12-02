@@ -3,10 +3,11 @@ repos:
     rev: v6.0.0
     hooks:
       - id: check-added-large-files
-        exclude: uv\.lock
+        exclude: uv\.lock|bun\.lock
       - id: trailing-whitespace
       - id: end-of-file-fixer
       - id: mixed-line-ending
+  # Python linting and formatting
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: "v0.14.7"
     hooks:
@@ -18,3 +19,24 @@ repos:
     hooks:
       - id: mypy
         additional_dependencies: ["types-PyYAML"]
+  # TypeScript/JavaScript linting and formatting
+  - repo: local
+    hooks:
+      - id: eslint
+        name: eslint
+        entry: bash -c 'cd UI && bun run lint:fix'
+        language: system
+        files: ^UI/.*\.(ts|tsx|js|jsx)$
+        pass_filenames: false
+      - id: prettier
+        name: prettier
+        entry: bash -c 'cd UI && bun run format'
+        language: system
+        files: ^UI/.*\.(ts|tsx|js|jsx|json|css|scss|md)$
+        pass_filenames: false
+      - id: typecheck
+        name: typecheck
+        entry: bash -c 'cd UI && bun run typecheck'
+        language: system
+        files: ^UI/.*\.(ts|tsx)$
+        pass_filenames: false

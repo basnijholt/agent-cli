@@ -18,6 +18,8 @@ from agent_cli.memory.models import MemoryMetadata
 if TYPE_CHECKING:
     from collections.abc import Iterable
 
+    from agent_cli.memory.entities import ResponseMetadata
+
 LOGGER = logging.getLogger(__name__)
 
 _ENTRIES_DIRNAME = "entries"
@@ -90,6 +92,7 @@ def write_memory_file(
     summary_kind: str | None = None,
     doc_id: str | None = None,
     source_id: str | None = None,
+    response_metadata: ResponseMetadata | None = None,
 ) -> MemoryFileRecord:
     """Render and persist a memory document to disk."""
     entries_dir, _ = ensure_store_dirs(root)
@@ -120,6 +123,7 @@ def write_memory_file(
         created_at=created_at,
         summary_kind=summary_kind,
         source_id=source_id,
+        response_metadata=response_metadata,
     )
 
     front_matter = _render_front_matter(doc_id, metadata)
@@ -144,6 +148,26 @@ def load_memory_files(root: Path) -> list[MemoryFileRecord]:
         rec = read_memory_file(path)
         if rec:
             records.append(rec)
+    return records
+
+
+def load_conversation_history(root: Path, conversation_id: str) -> list[MemoryFileRecord]:
+    """Load all turn files for a specific conversation."""
+    entries_dir, _ = ensure_store_dirs(root)
+    conv_dir = entries_dir / _slugify(conversation_id)
+    if not conv_dir.exists():
+        return []
+
+    records = []
+    for path in conv_dir.rglob("*.md"):
+        if _DELETED_DIRNAME in path.parts:
+            continue
+        rec = read_memory_file(path)
+        if rec and rec.metadata.role in ("user", "assistant"):
+            records.append(rec)
+
+    # Sort by created_at
+    records.sort(key=lambda x: x.metadata.created_at)
     return records
 
 
@@ -218,8 +242,7 @@ def load_snapshot(snapshot_path: Path) -> dict[str, MemoryFileRecord]:
 
 def _render_front_matter(doc_id: str, metadata: MemoryMetadata) -> str:
     """Return YAML front matter string."""
-    meta_dict = metadata.model_dump(exclude_none=True)
-    meta_dict = {"id": doc_id, **meta_dict}
+    meta_dict = {"id": doc_id, **metadata.model_dump(exclude_none=True)}
     yaml_block = yaml.safe_dump(meta_dict, sort_keys=False)
     return f"---\n{yaml_block}---"
 
