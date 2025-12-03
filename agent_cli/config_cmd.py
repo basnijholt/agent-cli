@@ -50,11 +50,22 @@ FORCE_OPTION: bool = typer.Option(
     "-f",
     help="Overwrite existing config without confirmation.",
 )
-VALUES_OPTION: bool = typer.Option(
+PATH_ONLY_OPTION: bool = typer.Option(
     False,  # noqa: FBT003
-    "--values",
-    "-v",
-    help="Show config file contents with syntax highlighting.",
+    "--path-only",
+    help="Only show the config file path (for scripting).",
+)
+NO_LINE_NUMBERS_OPTION: bool = typer.Option(
+    False,  # noqa: FBT003
+    "--no-line-numbers",
+    "-n",
+    help="Hide line numbers in output.",
+)
+RAW_OPTION: bool = typer.Option(
+    False,  # noqa: FBT003
+    "--raw",
+    "-r",
+    help="Output raw file contents (like cat, for copy-paste).",
 )
 
 
@@ -135,15 +146,13 @@ def config_init(
     """
     target_path = path if path else DEFAULT_CONFIG_PATH
 
-    if (
-        target_path.exists()
-        and not force
-        and not typer.confirm(
-            f"Config file already exists at {target_path}. Overwrite?",
+    if target_path.exists() and not force:
+        console.print(
+            f"[bold yellow]Config file already exists at:[/bold yellow] [cyan]{target_path}[/cyan]",
         )
-    ):
-        console.print("[yellow]Aborted.[/yellow]")
-        raise typer.Exit(0)
+        if not typer.confirm("Overwrite?"):
+            console.print("[dim]Aborted.[/dim]")
+            raise typer.Exit(0)
 
     # Create parent directories
     target_path.parent.mkdir(parents=True, exist_ok=True)
@@ -194,9 +203,11 @@ def config_edit(
 @config_app.command("show")
 def config_show(
     path: Path | None = CONFIG_PATH_OPTION,
-    values: bool = VALUES_OPTION,
+    path_only: bool = PATH_ONLY_OPTION,
+    no_line_numbers: bool = NO_LINE_NUMBERS_OPTION,
+    raw: bool = RAW_OPTION,
 ) -> None:
-    """Display the current config file location and optionally its contents."""
+    """Display the config file location and contents."""
     config_file = _config_path(str(path) if path else None)
 
     if config_file is None:
@@ -210,12 +221,24 @@ def config_show(
         )
         raise typer.Exit(0)
 
-    console.print(f"[bold green]Config file:[/bold green] {config_file}")
+    if path_only:
+        console.print(str(config_file))
+        return
 
-    if values:
-        from rich.syntax import Syntax  # noqa: PLC0415
+    content = config_file.read_text()
 
-        console.print()
-        content = config_file.read_text()
-        syntax = Syntax(content, "toml", theme="monokai", line_numbers=True)
-        console.print(syntax)
+    if raw:
+        print(content, end="")
+        return
+
+    from rich.syntax import Syntax  # noqa: PLC0415
+
+    console.print(f"[bold green]Config file:[/bold green] [cyan]{config_file}[/cyan]")
+    console.print()
+    syntax = Syntax(
+        content,
+        "toml",
+        theme="monokai",
+        line_numbers=not no_line_numbers,
+    )
+    console.print(syntax)

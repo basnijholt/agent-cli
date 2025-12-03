@@ -194,31 +194,42 @@ class TestConfigShow:
             assert result.exit_code == 0
             assert "No config file found" in result.stdout
 
-    def test_show_displays_path(self, tmp_path: Path) -> None:
-        """Test that show displays config path."""
-        config_path = tmp_path / "config.toml"
-        config_path.write_text("[defaults]")
-
-        result = runner.invoke(app, ["config", "show", "--path", str(config_path)])
-        assert result.exit_code == 0
-        # Check for key elements (path may be line-wrapped in output)
-        assert "Config file" in result.stdout
-        # Normalize output by removing newlines for path check
-        normalized_output = result.stdout.replace("\n", "")
-        assert "config.toml" in normalized_output
-
-    def test_show_values_displays_content(self, tmp_path: Path) -> None:
-        """Test that --values displays config content."""
+    def test_show_displays_path_and_content(self, tmp_path: Path) -> None:
+        """Test that show displays config path and contents by default."""
         config_path = tmp_path / "config.toml"
         config_path.write_text("[defaults]\nllm-provider = 'ollama'")
 
+        result = runner.invoke(app, ["config", "show", "--path", str(config_path)])
+        assert result.exit_code == 0
+        assert "Config file" in result.stdout
+        # Content should be displayed by default
+        assert "llm-provider" in result.stdout or "defaults" in result.stdout
+
+    def test_show_path_only(self, tmp_path: Path) -> None:
+        """Test that --path-only shows just the path."""
+        config_path = tmp_path / "config.toml"
+        config_path.write_text("[defaults]")
+
         result = runner.invoke(
             app,
-            ["config", "show", "--path", str(config_path), "--values"],
+            ["config", "show", "--path", str(config_path), "--path-only"],
         )
         assert result.exit_code == 0
-        # Content should be displayed (with or without syntax highlighting)
-        assert "llm-provider" in result.stdout or "defaults" in result.stdout
+        assert str(config_path) in result.stdout
+        # Should NOT contain content
+        assert "defaults" not in result.stdout
+
+    def test_show_no_line_numbers(self, tmp_path: Path) -> None:
+        """Test that --no-line-numbers hides line numbers."""
+        config_path = tmp_path / "config.toml"
+        config_path.write_text("[defaults]")
+
+        result = runner.invoke(
+            app,
+            ["config", "show", "--path", str(config_path), "--no-line-numbers"],
+        )
+        assert result.exit_code == 0
+        assert "defaults" in result.stdout
 
 
 class TestConfigHelp:
@@ -250,4 +261,5 @@ class TestConfigHelp:
         result = runner.invoke(app, ["config", "show", "--help"])
         assert result.exit_code == 0
         assert "--path" in result.stdout
-        assert "--values" in result.stdout
+        assert "--path-only" in result.stdout
+        assert "--no-line-numbers" in result.stdout
