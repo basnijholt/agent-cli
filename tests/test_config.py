@@ -17,7 +17,7 @@ from agent_cli.config import ProviderSelection, load_config, normalize_provider_
 if TYPE_CHECKING:
     from pathlib import Path
 
-runner = CliRunner()
+runner = CliRunner(env={"NO_COLOR": "1", "TERM": "dumb"})
 
 
 @pytest.fixture
