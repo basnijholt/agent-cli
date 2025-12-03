@@ -24,8 +24,8 @@ openai-api-key = "sk-..."
 # --- Audio Device Settings ---
 # You can specify partial names for devices, and the first match will be used.
 # Use `agent-cli speak --list-devices` to see available devices.
-input-device-name = "logitech,airpods"
-output-device-name = "iloud,airpods,dell,macbook"
+input-device-name = "logitech,airpods,macbook"
+output-device-name = "airpods,macbook"
 # You can also specify device by index, though name is more stable.
 # input-device-index = 1
 # output-device-index = 1
@@ -35,7 +35,7 @@ output-device-name = "iloud,airpods,dell,macbook"
 llm-ollama-model = "gemma3:4b"
 llm-ollama-host = "http://localhost:11434"
 # OpenAI
-llm-openai-model = "gpt-4o-mini"
+llm-openai-model = "gpt-5-mini"
 # For llama-server (llama-cpp) or other OpenAI-compatible APIs:
 # openai-base-url = "http://localhost:8080/v1"
 
@@ -123,7 +123,6 @@ extra-instructions = """
 Assume the user is often discussing Python programming.
 Use backticks for variable names, function names, and other code elements.
 Follow PEP8: use `snake_case` for variables, functions, and package names; `CamelCase` for classes.
-Frequently used terms: `agent-cli`, `FastAPI`, `async/await`.
 """
 # Log all transcriptions with timestamps for later reference.
 # transcription-log = "~/.config/agent-cli/transcription.log"

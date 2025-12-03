@@ -210,9 +210,15 @@ class History(BaseModel):
 
 
 def _config_path(config_path_str: str | None = None) -> Path | None:
+    """Return a usable config path, expanding user directories."""
     if config_path_str:
-        return Path(config_path_str)
-    return next((p for p in CONFIG_PATHS if p.exists()), None)
+        return Path(config_path_str).expanduser().resolve()
+
+    for path in CONFIG_PATHS:
+        candidate = path.expanduser()
+        if candidate.exists():
+            return candidate.resolve()
+    return None
 
 
 def load_config(config_path_str: str | None = None) -> dict[str, Any]:
