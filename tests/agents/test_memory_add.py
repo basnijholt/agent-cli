@@ -271,3 +271,24 @@ def test_memory_add_quiet_mode(tmp_path: Path) -> None:
     )
     assert result.exit_code == 0
     assert result.stdout.strip() == ""
+
+
+def test_parse_memories_fallback_invalid_json(tmp_path: Path) -> None:
+    """Test that text starting with brackets but invalid JSON falls back to plain text."""
+    file = tmp_path / "memories.txt"
+    # Starts with [ but is not a JSON list
+    file.write_text("[Important] User likes Rust\n[Todo] Buy milk")
+    result = _parse_memories([], file, "default")
+    assert result == [
+        ("[Important] User likes Rust", "default"),
+        ("[Todo] Buy milk", "default"),
+    ]
+
+
+def test_parse_memories_fallback_invalid_json_object(tmp_path: Path) -> None:
+    """Test that text starting with curly brace but invalid JSON falls back."""
+    file = tmp_path / "memories.txt"
+    # Starts with { but is not JSON
+    file.write_text("{Tag} User likes Go")
+    result = _parse_memories([], file, "default")
+    assert result == [("{Tag} User likes Go", "default")]

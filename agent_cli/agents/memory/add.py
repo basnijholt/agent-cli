@@ -2,18 +2,21 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import re
 import sys
 from datetime import UTC, datetime
 from pathlib import Path  # noqa: TC003
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 import typer
 
 from agent_cli import opts
 from agent_cli.agents.memory import memory_app
 from agent_cli.core.utils import console, print_command_line_args
+from agent_cli.memory._files import write_memory_file
+from agent_cli.memory._git import commit_changes, init_repo
 
 if TYPE_CHECKING:
     from agent_cli.memory._files import MemoryFileRecord
@@ -28,7 +31,7 @@ def _strip_list_prefix(line: str) -> str:
 
 
 def _parse_json_items(
-    items: list[str | dict[str, Any]],
+    items: list,
     default_conversation_id: str,
 ) -> list[tuple[str, str]]:
     """Parse a JSON list of items into (content, conversation_id) tuples."""
@@ -38,6 +41,46 @@ def _parse_json_items(
             results.append((item, default_conversation_id))
         else:
             results.append((item["content"], item.get("conversation_id", default_conversation_id)))
+    return results
+
+
+def _read_input_text(file: Path) -> str:
+    """Read text from file or stdin."""
+    if str(file) == "-":
+        return sys.stdin.read().strip()
+    return file.read_text().strip()
+
+
+def _try_parse_json(text: str, default_conversation_id: str) -> list[tuple[str, str]] | None:
+    """Try to parse text as JSON memories. Returns None if invalid or not JSON."""
+    if not text.startswith(("[", "{")):
+        return None
+
+    try:
+        data = json.loads(text)
+    except json.JSONDecodeError:
+        return None
+
+    if isinstance(data, list):
+        return _parse_json_items(data, default_conversation_id)
+
+    if isinstance(data, dict) and "memories" in data:
+        return _parse_json_items(data["memories"], default_conversation_id)
+
+    return None
+
+
+def _parse_plain_text(text: str, default_conversation_id: str) -> list[tuple[str, str]]:
+    """Parse text as one memory per line, stripping markdown prefixes."""
+    results = []
+    for line in text.splitlines():
+        stripped = line.strip()
+        if not stripped:
+            continue
+
+        content = _strip_list_prefix(stripped)
+        if content:
+            results.append((content, default_conversation_id))
     return results
 
 
@@ -52,33 +95,18 @@ def _parse_memories(
     """
     results: list[tuple[str, str]] = []
 
-    # From file or stdin
+    # 1. Parse from file/stdin if provided
     if file:
-        text = sys.stdin.read() if str(file) == "-" else file.read_text()
-        text = text.strip()
+        text = _read_input_text(file)
 
-        # Try JSON first
-        if text.startswith(("[", "{")):
-            try:
-                data = json.loads(text)
-            except json.JSONDecodeError as e:
-                console.print(f"[red]Invalid JSON: {e}[/red]")
-                raise typer.Exit(1) from None
-            if isinstance(data, list):
-                results.extend(_parse_json_items(data, default_conversation_id))
-            elif isinstance(data, dict) and "memories" in data:
-                results.extend(_parse_json_items(data["memories"], default_conversation_id))
-        else:
-            # Plain text: one memory per line
-            for line in text.splitlines():
-                stripped = line.strip()
-                if stripped:
-                    # Strip markdown list prefixes (-, *, +, 1., etc.)
-                    content = _strip_list_prefix(stripped)
-                    if content:
-                        results.append((content, default_conversation_id))
+        # Try JSON first; fallback to plain text
+        file_memories = _try_parse_json(text, default_conversation_id)
+        if file_memories is None:
+            file_memories = _parse_plain_text(text, default_conversation_id)
 
-    # From positional arguments
+        results.extend(file_memories)
+
+    # 2. Parse from positional arguments
     results.extend((m, default_conversation_id) for m in memories)
 
     return results
@@ -90,11 +118,6 @@ def _write_memories(
     git_versioning: bool,
 ) -> list[MemoryFileRecord]:
     """Write memories to disk and optionally commit to git."""
-    import asyncio  # noqa: PLC0415
-
-    from agent_cli.memory._files import write_memory_file  # noqa: PLC0415
-    from agent_cli.memory._git import commit_changes, init_repo  # noqa: PLC0415
-
     if git_versioning:
         init_repo(memory_path)
 
