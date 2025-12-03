@@ -20,16 +20,9 @@ config_app = typer.Typer(
     name="config",
     help="Manage agent-cli configuration files.",
     rich_markup_mode="markdown",
-    invoke_without_command=True,
+    no_args_is_help=True,
 )
 app.add_typer(config_app, name="config", rich_help_panel="Configuration")
-
-
-@config_app.callback()
-def config_callback(ctx: typer.Context) -> None:
-    """Manage agent-cli configuration files."""
-    if ctx.invoked_subcommand is None:
-        console.print(ctx.get_help())
 
 
 # --- Config command options ---

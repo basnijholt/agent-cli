@@ -9,12 +9,12 @@ import typer
 from rich.logging import RichHandler
 
 from agent_cli import constants, opts
-from agent_cli.cli import app
+from agent_cli.agents.memory import memory_app
 from agent_cli.core.utils import console, print_command_line_args, print_error_message
 
 
-@app.command("memory-proxy")
-def memory_proxy(
+@memory_app.command("proxy")
+def proxy(
     memory_path: Path = typer.Option(  # noqa: B008
         "./memory_db",
         help="Path to the memory store (files + derived vector index).",
@@ -77,6 +77,7 @@ def memory_proxy(
     Ollama, vLLM).
 
     Key Features:
+
     - **Simple Markdown Files:** Memories are stored as human-readable Markdown
       files, serving as the ultimate source of truth.
     - **Automatic Version Control:** Built-in Git integration automatically
