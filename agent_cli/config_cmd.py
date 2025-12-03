@@ -50,22 +50,11 @@ FORCE_OPTION: bool = typer.Option(
     "-f",
     help="Overwrite existing config without confirmation.",
 )
-PATH_ONLY_OPTION: bool = typer.Option(
-    False,  # noqa: FBT003
-    "--path-only",
-    help="Only show the config file path (for scripting).",
-)
-NO_LINE_NUMBERS_OPTION: bool = typer.Option(
-    False,  # noqa: FBT003
-    "--no-line-numbers",
-    "-n",
-    help="Hide line numbers in output.",
-)
 RAW_OPTION: bool = typer.Option(
     False,  # noqa: FBT003
     "--raw",
     "-r",
-    help="Output raw file contents (like cat, for copy-paste).",
+    help="Output raw file contents (for copy-paste).",
 )
 
 
@@ -203,8 +192,6 @@ def config_edit(
 @config_app.command("show")
 def config_show(
     path: Path | None = CONFIG_PATH_OPTION,
-    path_only: bool = PATH_ONLY_OPTION,
-    no_line_numbers: bool = NO_LINE_NUMBERS_OPTION,
     raw: bool = RAW_OPTION,
 ) -> None:
     """Display the config file location and contents."""
@@ -221,10 +208,6 @@ def config_show(
         )
         raise typer.Exit(0)
 
-    if path_only:
-        console.print(str(config_file))
-        return
-
     content = config_file.read_text()
 
     if raw:
@@ -235,10 +218,7 @@ def config_show(
 
     console.print(f"[bold green]Config file:[/bold green] [cyan]{config_file}[/cyan]")
     console.print()
-    syntax = Syntax(
-        content,
-        "toml",
-        theme="monokai",
-        line_numbers=not no_line_numbers,
-    )
+    syntax = Syntax(content, "toml", theme="monokai", line_numbers=True, word_wrap=True)
     console.print(syntax)
+    console.print()
+    console.print("[dim]Tip: Use -r for copy-paste friendly output[/dim]")

@@ -195,41 +195,28 @@ class TestConfigShow:
             assert "No config file found" in result.stdout
 
     def test_show_displays_path_and_content(self, tmp_path: Path) -> None:
-        """Test that show displays config path and contents by default."""
+        """Test that show displays config path and contents."""
         config_path = tmp_path / "config.toml"
         config_path.write_text("[defaults]\nllm-provider = 'ollama'")
 
         result = runner.invoke(app, ["config", "show", "--path", str(config_path)])
         assert result.exit_code == 0
         assert "Config file" in result.stdout
-        # Content should be displayed by default
         assert "llm-provider" in result.stdout or "defaults" in result.stdout
 
-    def test_show_path_only(self, tmp_path: Path) -> None:
-        """Test that --path-only shows just the path."""
+    def test_show_raw(self, tmp_path: Path) -> None:
+        """Test that --raw outputs plain text."""
         config_path = tmp_path / "config.toml"
-        config_path.write_text("[defaults]")
+        config_path.write_text("[defaults]\nllm-provider = 'ollama'")
 
         result = runner.invoke(
             app,
-            ["config", "show", "--path", str(config_path), "--path-only"],
+            ["config", "show", "--path", str(config_path), "--raw"],
         )
         assert result.exit_code == 0
-        assert str(config_path) in result.stdout
-        # Should NOT contain content
-        assert "defaults" not in result.stdout
-
-    def test_show_no_line_numbers(self, tmp_path: Path) -> None:
-        """Test that --no-line-numbers hides line numbers."""
-        config_path = tmp_path / "config.toml"
-        config_path.write_text("[defaults]")
-
-        result = runner.invoke(
-            app,
-            ["config", "show", "--path", str(config_path), "--no-line-numbers"],
-        )
-        assert result.exit_code == 0
-        assert "defaults" in result.stdout
+        assert "[defaults]" in result.stdout
+        # Should NOT contain rich formatting
+        assert "Config file" not in result.stdout
 
 
 class TestConfigHelp:
@@ -261,5 +248,4 @@ class TestConfigHelp:
         result = runner.invoke(app, ["config", "show", "--help"])
         assert result.exit_code == 0
         assert "--path" in result.stdout
-        assert "--path-only" in result.stdout
-        assert "--no-line-numbers" in result.stdout
+        assert "--raw" in result.stdout
