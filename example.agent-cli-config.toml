@@ -118,7 +118,15 @@ tts-speed = 1.0
 # Enable LLM cleanup for the transcript.
 llm = true
 # Allow the user to provide additional instructions for the LLM.
-extra-instructions = "Assume the user is often discussing Python programming. Use backticks for variable names, function names, and other code elements. Follow PEP8: use `snake_case` for variables, functions, and package names; `CamelCase` for classes. Other frequent words are `agent-cli`, `pipefunc`. My name is Bas Nijholt."
+# Use this to improve transcription accuracy for domain-specific terms.
+extra-instructions = """
+Assume the user is often discussing Python programming.
+Use backticks for variable names, function names, and other code elements.
+Follow PEP8: use `snake_case` for variables, functions, and package names; `CamelCase` for classes.
+Frequently used terms: `agent-cli`, `FastAPI`, `async/await`.
+"""
+# Log all transcriptions with timestamps for later reference.
+# transcription-log = "~/.config/agent-cli/transcription.log"
 
 [voice-edit]
 # Use a powerful local model for the voice assistant.
