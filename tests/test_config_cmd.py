@@ -14,7 +14,7 @@ from agent_cli.config_cmd import _generate_template, _get_editor
 if TYPE_CHECKING:
     from pathlib import Path
 
-runner = CliRunner(env={"NO_COLOR": "1"})
+runner = CliRunner(env={"NO_COLOR": "1", "TERM": "dumb"})
 
 
 class TestGetEditor:
