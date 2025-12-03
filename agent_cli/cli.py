@@ -49,6 +49,7 @@ def set_config_defaults(ctx: typer.Context, config_file: str | None) -> None:
 
 
 # Import commands from other modules to register them
+from . import config_cmd  # noqa: E402, F401
 from .agents import (  # noqa: E402, F401
     assistant,
     autocorrect,

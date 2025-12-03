@@ -120,38 +120,24 @@ def process_reconciliation_decisions(
                     ),
                 )
         elif isinstance(dec, MemoryUpdate):
-            orig = id_map.get(dec.id)
             text = dec.text.strip()
             if text:
-                if orig:
-                    # Update existing memory: delete old, add new
-                    new_id = str(uuid4())
-                    to_delete.append(orig)
-                    to_add.append(
-                        Fact(
-                            id=new_id,
-                            conversation_id=conversation_id,
-                            content=text,
-                            source_id=source_id,
-                            created_at=created_at,
-                        ),
-                    )
-                    replacement_map[orig] = new_id
-                else:
-                    # UPDATE with unknown ID = treat as ADD (model used wrong event)
-                    to_add.append(
-                        Fact(
-                            id=str(uuid4()),
-                            conversation_id=conversation_id,
-                            content=text,
-                            source_id=source_id,
-                            created_at=created_at,
-                        ),
-                    )
-        elif isinstance(dec, MemoryDelete):
-            orig = id_map.get(dec.id)
-            if orig:
+                # Update existing memory: delete old, add new
+                orig = id_map[dec.id]  # Guaranteed valid by output_validator
+                new_id = str(uuid4())
                 to_delete.append(orig)
+                to_add.append(
+                    Fact(
+                        id=new_id,
+                        conversation_id=conversation_id,
+                        content=text,
+                        source_id=source_id,
+                        created_at=created_at,
+                    ),
+                )
+                replacement_map[orig] = new_id
+        elif isinstance(dec, MemoryDelete):
+            to_delete.append(id_map[dec.id])  # Guaranteed valid by output_validator
         elif isinstance(dec, MemoryIgnore):
             pass  # NONE ignored
     return to_add, to_delete, replacement_map
