@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import platform
+import shlex
 import shutil
 import subprocess
 from importlib import resources
@@ -31,7 +32,7 @@ def config_callback(ctx: typer.Context) -> None:
         console.print(ctx.get_help())
 
 
-# --- Config command options (module-level to avoid B008) ---
+# --- Config command options ---
 CONFIG_PATH_OPTION: Path | None = typer.Option(
     None,
     "--path",
@@ -128,6 +129,11 @@ def _generate_template() -> str:
     return "\n".join(lines) + "\n"
 
 
+def _expand_user_path(path: Path) -> Path:
+    """Expand '~' and return an absolute path."""
+    return path.expanduser().resolve()
+
+
 @config_app.command("init")
 def config_init(
     path: Path | None = CONFIG_PATH_INIT_OPTION,
@@ -138,7 +144,7 @@ def config_init(
     The generated config file serves as a template showing all available
     options. Uncomment and modify the options you want to customize.
     """
-    target_path = path.expanduser() if path else USER_CONFIG_PATH
+    target_path = _expand_user_path(path) if path else USER_CONFIG_PATH
 
     if target_path.exists() and not force:
         console.print(
@@ -168,7 +174,7 @@ def config_edit(
 
     The editor is determined by: $EDITOR > $VISUAL > platform default.
     """
-    config_file = path.expanduser() if path else _config_path(None)
+    config_file = _expand_user_path(path) if path else _config_path(None)
 
     if config_file is None or not config_file.exists():
         console.print("[yellow]No config file found.[/yellow]")
@@ -184,9 +190,19 @@ def config_edit(
     console.print(f"[dim]Opening {config_file} with {editor}...[/dim]")
 
     try:
-        subprocess.run([editor, str(config_file)], check=True)
+        editor_cmd = shlex.split(editor, posix=os.name != "nt")
+    except ValueError as e:
+        console.print("[red]Invalid editor command. Check $EDITOR/$VISUAL.[/red]")
+        raise typer.Exit(1) from e
+
+    if not editor_cmd:
+        console.print("[red]Editor command is empty.[/red]")
+        raise typer.Exit(1)
+
+    try:
+        subprocess.run([*editor_cmd, str(config_file)], check=True)
     except FileNotFoundError:
-        console.print(f"[red]Editor '{editor}' not found.[/red]")
+        console.print(f"[red]Editor '{editor_cmd[0]}' not found.[/red]")
         console.print("Set $EDITOR environment variable to your preferred editor.")
         raise typer.Exit(1) from None
     except subprocess.CalledProcessError as e:
@@ -200,7 +216,7 @@ def config_show(
     raw: bool = RAW_OPTION,
 ) -> None:
     """Display the config file location and contents."""
-    config_file = _config_path(str(path.expanduser()) if path else None)
+    config_file = _config_path(str(_expand_user_path(path)) if path else None)
 
     if config_file is None:
         console.print("[yellow]No config file found.[/yellow]")

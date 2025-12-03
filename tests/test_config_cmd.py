@@ -119,6 +119,20 @@ class TestConfigInit:
         result = runner.invoke(app, ["config", "init", "--path", str(config_path)])
         assert "Config file created at:" in result.stdout
 
+    def test_init_expands_user_path(self, tmp_path: Path) -> None:
+        """Test that init expands '~' in provided path."""
+        home = tmp_path / "home"
+        config_path = home / ".config" / "agent-cli" / "config.toml"
+
+        with patch.dict(os.environ, {"HOME": str(home)}):
+            result = runner.invoke(
+                app,
+                ["config", "init", "--path", "~/.config/agent-cli/config.toml"],
+            )
+
+        assert result.exit_code == 0
+        assert config_path.exists()
+
 
 class TestConfigEdit:
     """Tests for config edit command."""
@@ -176,6 +190,54 @@ class TestConfigEdit:
         assert result.exit_code == 1
         assert "not found" in result.stdout
 
+    @patch("subprocess.run")
+    def test_edit_expands_user_path(
+        self,
+        mock_run: MagicMock,
+        tmp_path: Path,
+    ) -> None:
+        """Test that edit expands '~' in provided path."""
+        home = tmp_path / "home"
+        config_path = home / ".config" / "agent-cli" / "config.toml"
+        config_path.parent.mkdir(parents=True, exist_ok=True)
+        config_path.write_text("[defaults]")
+
+        mock_run.return_value.returncode = 0
+
+        with patch.dict(os.environ, {"EDITOR": "nano", "HOME": str(home)}):
+            result = runner.invoke(
+                app,
+                ["config", "edit", "--path", "~/.config/agent-cli/config.toml"],
+            )
+
+        assert result.exit_code == 0
+        called_args = mock_run.call_args[0][0]
+        assert called_args[-1] == str(config_path)
+
+    @patch("subprocess.run")
+    def test_edit_supports_editor_with_arguments(
+        self,
+        mock_run: MagicMock,
+        tmp_path: Path,
+    ) -> None:
+        """Test that edit splits editor command with arguments."""
+        config_path = tmp_path / "config.toml"
+        config_path.write_text("[defaults]")
+
+        mock_run.return_value.returncode = 0
+
+        with patch.dict(os.environ, {"EDITOR": "code --wait"}):
+            result = runner.invoke(
+                app,
+                ["config", "edit", "--path", str(config_path)],
+            )
+
+        assert result.exit_code == 0
+        mock_run.assert_called_once()
+        called_args = mock_run.call_args[0][0]
+        assert called_args[:2] == ["code", "--wait"]
+        assert called_args[-1] == str(config_path)
+
 
 class TestConfigShow:
     """Tests for config show command."""
@@ -217,6 +279,22 @@ class TestConfigShow:
         assert "[defaults]" in result.stdout
         # Should NOT contain rich formatting
         assert "Config file" not in result.stdout
+
+    def test_show_expands_user_path(self, tmp_path: Path) -> None:
+        """Test that show expands '~' in provided path."""
+        home = tmp_path / "home"
+        config_path = home / ".config" / "agent-cli" / "config.toml"
+        config_path.parent.mkdir(parents=True, exist_ok=True)
+        config_path.write_text("[defaults]\nllm-provider = 'ollama'")
+
+        with patch.dict(os.environ, {"HOME": str(home)}):
+            result = runner.invoke(
+                app,
+                ["config", "show", "--path", "~/.config/agent-cli/config.toml", "--raw"],
+            )
+
+        assert result.exit_code == 0
+        assert "[defaults]" in result.stdout
 
 
 class TestConfigHelp:
