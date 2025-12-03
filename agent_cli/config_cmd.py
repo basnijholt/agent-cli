@@ -59,42 +59,6 @@ RAW_OPTION: bool = typer.Option(
 )
 
 
-# --- Helper functions ---
-def _resolve_config_path(path: Path | None, *, check_exists: bool = True) -> Path | None:
-    """Resolve config path with consistent existence checking.
-
-    Args:
-        path: Explicit path provided by user, or None for auto-detection.
-        check_exists: If True, return None when path doesn't exist.
-
-    Returns:
-        Resolved path, or None if not found (when check_exists=True).
-
-    """
-    if path is not None:
-        resolved = path.expanduser().resolve()
-        if check_exists and not resolved.exists():
-            return None
-        return resolved
-    return _config_path(None)
-
-
-def _print_not_found(explicit_path: Path | None = None, *, show_status: bool = False) -> None:
-    """Print config not found message with searched locations."""
-    console.print("[yellow]No config file found.[/yellow]")
-    if explicit_path is not None:
-        console.print(f"\nProvided path does not exist: [cyan]{explicit_path}[/cyan]")
-    else:
-        console.print("\nSearched locations:")
-        for p in CONFIG_PATHS:
-            if show_status:
-                status = "[green]exists[/green]" if p.exists() else "[dim]not found[/dim]"
-                console.print(f"  - {p} ({status})")
-            else:
-                console.print(f"  - {p}")
-    console.print("\nRun [bold cyan]agent-cli config init[/bold cyan] to create one.")
-
-
 def _get_editor() -> str:
     """Get the user's preferred editor.
 
@@ -165,6 +129,11 @@ def _generate_template() -> str:
     return "\n".join(lines) + "\n"
 
 
+def _expand_user_path(path: Path) -> Path:
+    """Expand '~' and return an absolute path."""
+    return path.expanduser().resolve()
+
+
 @config_app.command("init")
 def config_init(
     path: Path | None = CONFIG_PATH_INIT_OPTION,
@@ -175,7 +144,7 @@ def config_init(
     The generated config file serves as a template showing all available
     options. Uncomment and modify the options you want to customize.
     """
-    target_path = _resolve_config_path(path, check_exists=False) or USER_CONFIG_PATH
+    target_path = _expand_user_path(path) if path else USER_CONFIG_PATH
 
     if target_path.exists() and not force:
         console.print(
@@ -205,10 +174,28 @@ def config_edit(
 
     The editor is determined by: $EDITOR > $VISUAL > platform default.
     """
-    config_file = _resolve_config_path(path)
+    if path is not None:
+        expanded_path = _expand_user_path(path)
+        config_file = _config_path(str(expanded_path))
+    else:
+        config_file = _config_path(None)
 
     if config_file is None:
-        _print_not_found(path.expanduser().resolve() if path else None)
+        console.print("[yellow]No config file found.[/yellow]")
+        console.print(
+            "\nRun [bold cyan]agent-cli config init[/bold cyan] to create one.",
+        )
+        console.print("\nSearched locations:")
+        for p in CONFIG_PATHS:
+            console.print(f"  - {p}")
+        raise typer.Exit(1)
+
+    if not config_file.exists():
+        console.print("[yellow]Config file not found.[/yellow]")
+        console.print(f"\nProvided path does not exist: [cyan]{config_file}[/cyan]")
+        console.print(
+            "\nRun [bold cyan]agent-cli config init[/bold cyan] to create one.",
+        )
         raise typer.Exit(1)
 
     editor = _get_editor()
@@ -241,14 +228,26 @@ def config_show(
     raw: bool = RAW_OPTION,
 ) -> None:
     """Display the config file location and contents."""
-    config_file = _resolve_config_path(path)
+    config_file = _config_path(str(_expand_user_path(path)) if path else None)
 
     if config_file is None:
-        _print_not_found(
-            path.expanduser().resolve() if path else None,
-            show_status=path is None,
+        console.print("[yellow]No config file found.[/yellow]")
+        console.print("\nSearched locations:")
+        for p in CONFIG_PATHS:
+            status = "[green]exists[/green]" if p.exists() else "[dim]not found[/dim]"
+            console.print(f"  - {p} ({status})")
+        console.print(
+            "\nRun [bold cyan]agent-cli config init[/bold cyan] to create one.",
         )
-        raise typer.Exit(1 if path else 0)
+        raise typer.Exit(0)
+
+    if not config_file.exists():
+        console.print("[yellow]Config file not found.[/yellow]")
+        console.print(f"\nProvided path does not exist: [cyan]{config_file}[/cyan]")
+        console.print(
+            "\nRun [bold cyan]agent-cli config init[/bold cyan] to create one.",
+        )
+        raise typer.Exit(1)
 
     content = config_file.read_text()
 
