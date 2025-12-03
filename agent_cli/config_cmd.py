@@ -6,7 +6,8 @@ import os
 import platform
 import shutil
 import subprocess
-from pathlib import Path
+from importlib import resources
+from pathlib import Path  # noqa: TC003
 
 import typer
 
@@ -90,8 +91,13 @@ def _generate_template() -> str:
 """
 
     # Example config is bundled with the package
-    example_path = Path(__file__).parent / "example-config.toml"
-    example_content = example_path.read_text()
+    try:
+        template_file = resources.files(__package__) / "example-config.toml"
+        example_content = template_file.read_text()
+    except FileNotFoundError as e:
+        console.print("[red]Example config template is missing from the package.[/red]")
+        console.print("Reinstall agent-cli or report this issue.")
+        raise typer.Exit(1) from e
 
     lines = [header.rstrip()]
     skip_header = True  # Skip the original file's header comments
@@ -204,6 +210,14 @@ def config_show(
             "\nRun [bold cyan]agent-cli config init[/bold cyan] to create one.",
         )
         raise typer.Exit(0)
+
+    if not config_file.exists():
+        console.print("[yellow]Config file not found.[/yellow]")
+        console.print(f"\nProvided path does not exist: [cyan]{config_file}[/cyan]")
+        console.print(
+            "\nRun [bold cyan]agent-cli config init[/bold cyan] to create one.",
+        )
+        raise typer.Exit(1)
 
     content = config_file.read_text()
 
