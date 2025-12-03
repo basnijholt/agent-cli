@@ -36,20 +36,18 @@ def set_config_defaults(ctx: typer.Context, config_file: str | None) -> None:
     """Set the default values for the CLI based on the config file."""
     config = load_config(config_file)
     wildcard_config = normalize_provider_defaults(config.get("defaults", {}))
-    # This function is executed inside the subcommand, so the command is the sub command.
-    subcommand = ctx.command.name
 
-    if not subcommand:
+    command_key = ctx.command.name or ""
+    if not command_key:
         ctx.default_map = wildcard_config
         return
 
-    # For nested subcommands (e.g., "memory proxy"), construct full path like "memory-proxy"
+    # For nested subcommands (e.g., "memory proxy"), build "memory.proxy"
     if ctx.parent and ctx.parent.command.name and ctx.parent.command.name != "agent-cli":
-        subcommand = f"{ctx.parent.command.name}-{subcommand}"
+        command_key = f"{ctx.parent.command.name}.{command_key}"
 
-    command_config = normalize_provider_defaults(config.get(subcommand, {}))
-    defaults = {**wildcard_config, **command_config}
-    ctx.default_map = defaults
+    command_config = normalize_provider_defaults(config.get(command_key, {}))
+    ctx.default_map = {**wildcard_config, **command_config}
 
 
 # Import commands from other modules to register them

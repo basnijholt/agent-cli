@@ -222,7 +222,11 @@ def _config_path(config_path_str: str | None = None) -> Path | None:
 
 
 def load_config(config_path_str: str | None = None) -> dict[str, Any]:
-    """Load the TOML configuration file and process it for nested structures."""
+    """Load the TOML configuration file and process it for nested structures.
+
+    Supports both flat sections like [autocorrect] and nested sections like
+    [memory.proxy]. Nested sections are flattened to dot-notation keys.
+    """
     # Determine which config path to use
     config_path = _config_path(config_path_str)
     if config_path is None:
@@ -230,7 +234,9 @@ def load_config(config_path_str: str | None = None) -> dict[str, Any]:
     if config_path.exists():
         with config_path.open("rb") as f:
             cfg = tomllib.load(f)
-            return {k: _replace_dashed_keys(v) for k, v in cfg.items()}
+            # Flatten nested sections (e.g., [memory.proxy] -> "memory.proxy")
+            flattened = _flatten_nested_sections(cfg)
+            return {k: _replace_dashed_keys(v) for k, v in flattened.items()}
     if config_path_str:
         console.print(
             f"[bold red]Config file not found at {config_path_str}[/bold red]",
@@ -252,3 +258,15 @@ def normalize_provider_defaults(cfg: dict[str, Any]) -> dict[str, Any]:
 
 def _replace_dashed_keys(cfg: dict[str, Any]) -> dict[str, Any]:
     return {k.replace("-", "_"): v for k, v in cfg.items()}
+
+
+def _flatten_nested_sections(cfg: dict[str, Any], prefix: str = "") -> dict[str, Any]:
+    """Flatten nested TOML sections: {"a": {"b": {"x": 1}}} -> {"a.b": {"x": 1}}."""
+    result = {}
+    for key, value in cfg.items():
+        full_key = f"{prefix}.{key}" if prefix else key
+        if isinstance(value, dict) and any(isinstance(v, dict) for v in value.values()):
+            result.update(_flatten_nested_sections(value, full_key))
+        else:
+            result[full_key] = value
+    return result

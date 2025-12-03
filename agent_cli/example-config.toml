@@ -151,7 +151,7 @@ tts = true
 # host = "0.0.0.0"
 # port = 8000
 
-[memory-proxy]
+[memory.proxy]
 # Long-term memory proxy server settings.
 # memory-path = "./memory_db"  # Path to the memory store
 # default-top-k = 5  # Number of memory entries to retrieve per query
