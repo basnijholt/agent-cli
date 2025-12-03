@@ -10,11 +10,8 @@ from pathlib import Path
 
 import typer
 
-from agent_cli.config import CONFIG_PATHS, _config_path
+from agent_cli.config import CONFIG_PATHS, USER_CONFIG_PATH, _config_path
 from agent_cli.core.utils import console
-
-# Default location for user config
-DEFAULT_CONFIG_PATH = Path.home() / ".config" / "agent-cli" / "config.toml"
 
 config_app = typer.Typer(
     name="config",
@@ -133,7 +130,7 @@ def config_init(
     The generated config file serves as a template showing all available
     options. Uncomment and modify the options you want to customize.
     """
-    target_path = path if path else DEFAULT_CONFIG_PATH
+    target_path = path if path else USER_CONFIG_PATH
 
     if target_path.exists() and not force:
         console.print(

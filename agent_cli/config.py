@@ -10,9 +10,11 @@ from pydantic import BaseModel, field_validator
 
 from agent_cli.core.utils import console
 
+USER_CONFIG_PATH = Path.home() / ".config" / "agent-cli" / "config.toml"
+
 CONFIG_PATHS = [
     Path("agent-cli-config.toml"),
-    Path.home() / ".config" / "agent-cli" / "config.toml",
+    USER_CONFIG_PATH,
 ]
 
 
