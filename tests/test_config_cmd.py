@@ -142,7 +142,8 @@ class TestConfigEdit:
         nonexistent = tmp_path / "nonexistent.toml"
         result = runner.invoke(app, ["config", "edit", "--path", str(nonexistent)])
         assert result.exit_code == 1
-        assert "No config file found" in result.stdout
+        assert "Config file not found" in result.stdout
+        assert str(nonexistent) in result.stdout.replace("\n", "")
 
     @patch("subprocess.run")
     def test_edit_opens_editor(
@@ -279,6 +280,19 @@ class TestConfigShow:
         assert "[defaults]" in result.stdout
         # Should NOT contain rich formatting
         assert "Config file" not in result.stdout
+
+    def test_show_invalid_path(self, tmp_path: Path) -> None:
+        """Test that show reports when the provided path does not exist."""
+        config_path = tmp_path / "missing.toml"
+
+        result = runner.invoke(
+            app,
+            ["config", "show", "--path", str(config_path)],
+        )
+
+        assert result.exit_code == 1
+        assert "Config file not found" in result.stdout
+        assert str(config_path) in result.stdout.replace("\n", "")
 
     def test_show_expands_user_path(self, tmp_path: Path) -> None:
         """Test that show expands '~' in provided path."""

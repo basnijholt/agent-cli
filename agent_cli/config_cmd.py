@@ -150,7 +150,7 @@ def config_init(
         console.print(
             f"[bold yellow]Config file already exists at:[/bold yellow] [cyan]{target_path}[/cyan]",
         )
-        if not typer.confirm("Overwrite?"):
+        if not typer.confirm("Overwrite existing config file?"):
             console.print("[dim]Aborted.[/dim]")
             raise typer.Exit(0)
 
@@ -174,9 +174,13 @@ def config_edit(
 
     The editor is determined by: $EDITOR > $VISUAL > platform default.
     """
-    config_file = _expand_user_path(path) if path else _config_path(None)
+    if path is not None:
+        expanded_path = _expand_user_path(path)
+        config_file = _config_path(str(expanded_path))
+    else:
+        config_file = _config_path(None)
 
-    if config_file is None or not config_file.exists():
+    if config_file is None:
         console.print("[yellow]No config file found.[/yellow]")
         console.print(
             "\nRun [bold cyan]agent-cli config init[/bold cyan] to create one.",
@@ -184,6 +188,14 @@ def config_edit(
         console.print("\nSearched locations:")
         for p in CONFIG_PATHS:
             console.print(f"  - {p}")
+        raise typer.Exit(1)
+
+    if not config_file.exists():
+        console.print("[yellow]Config file not found.[/yellow]")
+        console.print(f"\nProvided path does not exist: [cyan]{config_file}[/cyan]")
+        console.print(
+            "\nRun [bold cyan]agent-cli config init[/bold cyan] to create one.",
+        )
         raise typer.Exit(1)
 
     editor = _get_editor()
