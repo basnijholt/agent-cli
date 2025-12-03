@@ -133,19 +133,19 @@ def proxy(
         openai_base_url = constants.DEFAULT_OPENAI_BASE_URL
 
     console.print(f"[bold green]Starting Memory Proxy on {host}:{port}[/bold green]")
-    console.print(f"  Memory store: [blue]{memory_path}[/blue]")
-    console.print(f"  Entries: [blue]{entries_dir}[/blue]")
-    console.print(f"  Backend: [blue]{openai_base_url}[/blue]")
-    console.print(f"  Embeddings: Using [blue]{embedding_model}[/blue]")
-    console.print(f"  Memory top_k: [blue]{default_top_k}[/blue] entries per query")
-    console.print(f"  Max entries per conversation: [blue]{max_entries}[/blue]")
+    console.print(f"  💾 Memory store: [blue]{memory_path}[/blue]")
+    console.print(f"  📁 Entries: [blue]{entries_dir}[/blue]")
+    console.print(f"  🤖 Backend: [blue]{openai_base_url}[/blue]")
+    console.print(f"  🧠 Embeddings: Using [blue]{embedding_model}[/blue]")
+    console.print(f"  🔍 Memory top_k: [blue]{default_top_k}[/blue] entries per query")
+    console.print(f"  🧹 Max entries per conversation: [blue]{max_entries}[/blue]")
     console.print(
-        f"  Scoring: MMR lambda=[blue]{mmr_lambda}[/blue], Recency w=[blue]{recency_weight}[/blue], Threshold=[blue]{score_threshold}[/blue]",
+        f"  ⚖️  Scoring: MMR λ=[blue]{mmr_lambda}[/blue], Recency w=[blue]{recency_weight}[/blue], Threshold=[blue]{score_threshold}[/blue]",
     )
     if not summarization:
-        console.print("  Summaries: [red]disabled[/red]")
+        console.print("  ⚙️  Summaries: [red]disabled[/red]")
     if git_versioning:
-        console.print("  Git Versioning: [green]enabled[/green]")
+        console.print("  📝 Git Versioning: [green]enabled[/green]")
 
     fastapi_app = create_app(
         memory_path,
