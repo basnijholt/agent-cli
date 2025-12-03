@@ -43,9 +43,9 @@ class TestGetEditor:
         with (
             patch.dict(os.environ, {}, clear=True),
             patch("platform.system", return_value="Linux"),
-            patch("shutil.which", side_effect=lambda x: "/usr/bin/vim" if x == "vim" else None),
+            patch("shutil.which", side_effect=lambda x: "/usr/bin/nano" if x == "nano" else None),
         ):
-            assert _get_editor() == "vim"
+            assert _get_editor() == "nano"
 
 
 class TestGenerateTemplate:

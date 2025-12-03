@@ -72,7 +72,7 @@ def _get_editor() -> str:
         return "notepad"
 
     # Try common editors on Unix-like systems
-    for editor in ("vim", "vi", "nano"):
+    for editor in ("nano", "vim", "vi"):
         if shutil.which(editor):
             return editor
 
@@ -92,12 +92,8 @@ def _generate_template() -> str:
 # For full documentation, see: https://github.com/basnijholt/agent-cli
 """
 
-    # Find the example config file relative to this module
-    example_path = Path(__file__).parent.parent / "example.agent-cli-config.toml"
-    if not example_path.exists():
-        # Fallback: generate minimal template
-        return header + _generate_minimal_template()
-
+    # Example config is bundled with the package
+    example_path = Path(__file__).parent / "example-config.toml"
     example_content = example_path.read_text()
 
     lines = [header.rstrip()]
@@ -125,52 +121,6 @@ def _generate_template() -> str:
             lines.append(f"# {line}")
 
     return "\n".join(lines) + "\n"
-
-
-def _generate_minimal_template() -> str:
-    """Generate a minimal config template as fallback."""
-    return """\
-
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# Default Settings
-# These settings apply to all commands unless overridden in a command-specific
-# section below.
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-[defaults]
-
-# --- Provider Selection ---
-# llm-provider = "ollama"
-# asr-provider = "wyoming"
-# tts-provider = "wyoming"
-
-# --- API Keys ---
-# openai-api-key = "sk-..."
-
-# --- Audio Device Settings ---
-# input-device-name = "default"
-# output-device-name = "default"
-
-# --- LLM Settings ---
-# llm-ollama-model = "gemma3:4b"
-# llm-ollama-host = "http://localhost:11434"
-
-# --- General Behavior ---
-# log-level = "WARNING"
-# clipboard = true
-
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# Command-Specific Overrides
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-# [autocorrect]
-# llm-provider = "openai"
-
-# [chat]
-# tts = true
-
-# [transcribe]
-# llm = true
-"""
 
 
 @config_app.command("init")
