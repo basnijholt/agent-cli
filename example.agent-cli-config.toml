@@ -13,64 +13,83 @@
 [defaults]
 
 # --- Provider Selection ---
-# Select the default provider for each service ("ollama"/"openai"/"gemini" for LLM, "wyoming"/"openai" for ASR).
-llm-provider = "ollama"  # "local" still works as a deprecated alias
+# Select the default provider for each service.
+# LLM: "ollama", "openai", or "gemini"
+# ASR: "wyoming" or "openai"
+# TTS: "wyoming", "openai", or "kokoro"
+llm-provider = "ollama"
 tts-provider = "wyoming"
 
 # --- API Keys ---
 # Your OpenAI API key. Can also be set via the OPENAI_API_KEY environment variable.
 openai-api-key = "sk-..."
+# gemini-api-key = "..."
 
 # --- Audio Device Settings ---
-# You can specify partial names for devices, and the first match will be used.
+# Specify partial device names (comma-separated). First match wins.
 # Use `agent-cli speak --list-devices` to see available devices.
-input-device-name = "logitech,airpods"
-output-device-name = "iloud,airpods,dell,macbook"
-# You can also specify device by index, though name is more stable.
+input-device-name = "webcam,logitech,airpods,macbook"
+output-device-name = "speakers,airpods,macbook"
+# Or specify by index (less stable across reboots):
 # input-device-index = 1
 # output-device-index = 1
 
 # --- LLM Settings ---
-# Ollama (local)
+# Ollama (local or remote server)
 llm-ollama-model = "gemma3:4b"
 llm-ollama-host = "http://localhost:11434"
-# OpenAI
+# For remote Ollama server on your network:
+# llm-ollama-host = "http://192.168.1.100:11434"
+
+# OpenAI (or OpenAI-compatible APIs like llama.cpp, vLLM, etc.)
 llm-openai-model = "gpt-4o-mini"
-# For llama-server (llama-cpp) or other OpenAI-compatible APIs:
+# For llama-server or other OpenAI-compatible local servers:
 # openai-base-url = "http://localhost:8080/v1"
+# llm-openai-model = "my-local-model"
 
 # --- ASR (Speech-to-Text) Settings ---
-# Wyoming (local)
+# Wyoming Faster Whisper (local or remote)
 asr-wyoming-ip = "localhost"
 asr-wyoming-port = 10300
-# OpenAI
+# For remote Wyoming server:
+# asr-wyoming-ip = "192.168.1.100"
+
+# OpenAI Whisper
 asr-openai-model = "whisper-1"
-# Custom ASR endpoint (e.g., NVIDIA Canary, local Whisper server)
-# Uncomment and configure to use a custom OpenAI-compatible Whisper API:
+# Custom OpenAI-compatible Whisper endpoint:
 # asr-provider = "openai"
 # asr-openai-base-url = "http://localhost:9898"
-# asr-openai-model = "nvidia/canary-qwen-2.5b"  # Optional: override model
-# asr-openai-prompt = "Transcribe the following:"  # Optional: add prompt
+# asr-openai-model = "nvidia/canary-qwen-2.5b"
+# asr-openai-prompt = "Transcribe the following:"
 
 # --- TTS (Text-to-Speech) Settings ---
-# Wyoming (local)
+# Wyoming Piper (local or remote)
 tts-wyoming-ip = "localhost"
 tts-wyoming-port = 10200
 tts-wyoming-voice = "en_US-lessac-medium"
-# tts-wyoming-language = "en_US"  # Optional: specify language for the voice
-# tts-wyoming-speaker = "speaker_name" # Optional: specify speaker for the voice
-# OpenAI
+# tts-wyoming-language = "en_US"
+# tts-wyoming-speaker = "speaker_name"
+
+# OpenAI TTS
 tts-openai-model = "tts-1"
 tts-openai-voice = "alloy"
-# Custom OpenAI-compatible TTS endpoint (e.g., your own proxy)
 # tts-openai-base-url = "http://localhost:8000/v1"
 
+# Kokoro TTS (high-quality local TTS)
+# tts-provider = "kokoro"
+# tts-kokoro-host = "http://localhost:8880/v1"
+# tts-kokoro-voice = "af_bella"
+
+# --- RAG & Memory Settings ---
+# Embedding model for RAG and memory features
+# embedding-model = "text-embedding-3-small"  # OpenAI
+# embedding-model = "nomic-embed-text"  # Ollama
+
 # --- General Behavior ---
-log-level = "WARNING"  # Logging level (e.g., DEBUG, INFO, WARNING, ERROR)
-# log-file = "/path/to/agent-cli.log" # Path to a file to write logs to
-quiet = false # Suppress most console output
-clipboard = true # Copy results to clipboard by default
-# save-file = "/path/to/output.wav" # Save TTS audio to a file instead of playing
+log-level = "WARNING"
+# log-file = "~/.config/agent-cli/agent-cli.log"
+quiet = false
+clipboard = true
 
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -80,11 +99,12 @@ clipboard = true # Copy results to clipboard by default
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 [assistant]
-# Wake-word specific settings
+# Wake-word detection settings
 wake-server-ip = "localhost"
 wake-server-port = 10400
-wake-word = "ok_nabu" # e.g., "ok_nabu", "hey_jarvis"
-# The assistant agent also uses ASR, LLM, and TTS settings from [defaults]
+wake-word = "ok_nabu"  # Options: "ok_nabu", "hey_jarvis", "alexa", "hey_mycroft"
+# For remote wake-word server:
+# wake-server-ip = "192.168.1.100"
 tts = true
 
 [autocorrect]
@@ -111,22 +131,24 @@ tts-wyoming-voice = "en_US-ryan-high"
 tts-speed = 1.0
 
 [transcribe]
-# By default, transcription uses local providers.
-# For higher accuracy, you can switch to OpenAI:
+# For higher accuracy, switch to OpenAI:
 # asr-provider = "openai"
 # llm-provider = "openai"
-# Enable LLM cleanup for the transcript.
+
+# Enable LLM to clean up the transcript (fix punctuation, formatting, etc.)
 llm = true
-# Allow the user to provide additional instructions for the LLM.
-# Use this to improve transcription accuracy for domain-specific terms.
+
+# Custom instructions for the LLM to improve transcription quality.
+# Add domain-specific terms, formatting preferences, or context.
 extra-instructions = """
 Assume the user is often discussing Python programming.
 Use backticks for variable names, function names, and other code elements.
 Follow PEP8: use `snake_case` for variables, functions, and package names; `CamelCase` for classes.
-Frequently used terms: `agent-cli`, `FastAPI`, `async/await`.
+Frequently used terms: `FastAPI`, `async/await`, `pytest`, `pre-commit`.
 """
-# Log all transcriptions with timestamps for later reference.
-# transcription-log = "~/.config/agent-cli/transcription.log"
+
+# Log all transcriptions with timestamps for later reference
+transcription-log = "~/.config/agent-cli/transcription.log"
 
 [voice-edit]
 # Use a powerful local model for the voice assistant.
