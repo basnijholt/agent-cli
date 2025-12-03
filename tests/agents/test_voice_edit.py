@@ -9,7 +9,7 @@ from typer.testing import CliRunner
 
 from agent_cli.cli import app
 
-runner = CliRunner()
+runner = CliRunner(env={"NO_COLOR": "1", "TERM": "dumb"})
 
 
 @patch("agent_cli.agents.voice_edit._async_main", return_value=None)
