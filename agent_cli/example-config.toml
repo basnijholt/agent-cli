@@ -70,7 +70,7 @@ tts-openai-voice = "alloy"
 # tts-kokoro-host = "http://localhost:8880/v1"
 
 # --- Embedding Model (for RAG and Memory) ---
-# Used by rag-proxy and memory-proxy for vectorization.
+# Used by rag-proxy and memory proxy for vectorization.
 # embedding-model = "text-embedding-3-small"  # OpenAI default
 # embedding-model = "embeddinggemma:300m"  # Ollama local model
 
@@ -151,7 +151,7 @@ tts = true
 # host = "0.0.0.0"
 # port = 8000
 
-[memory-proxy]
+["memory proxy"]
 # Long-term memory proxy server settings.
 # memory-path = "./memory_db"  # Path to the memory store
 # default-top-k = 5  # Number of memory entries to retrieve per query
