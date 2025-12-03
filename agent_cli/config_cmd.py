@@ -11,6 +11,7 @@ from pathlib import Path  # noqa: TC003
 
 import typer
 
+from agent_cli.cli import app
 from agent_cli.config import CONFIG_PATHS, USER_CONFIG_PATH, _config_path
 from agent_cli.core.utils import console
 
@@ -20,6 +21,7 @@ config_app = typer.Typer(
     rich_markup_mode="markdown",
     invoke_without_command=True,
 )
+app.add_typer(config_app, name="config", rich_help_panel="Configuration")
 
 
 @config_app.callback()
