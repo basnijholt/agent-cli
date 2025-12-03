@@ -8,7 +8,8 @@ from agent_cli.cli import app
 
 memory_app = typer.Typer(
     name="memory",
-    help="Memory system operations (add, list, proxy, etc.).",
+    help="Memory system operations (add, proxy, etc.).",
+    rich_markup_mode="markdown",
     no_args_is_help=True,
 )
 
