@@ -64,6 +64,15 @@ tts-openai-model = "tts-1"
 tts-openai-voice = "alloy"
 # Custom OpenAI-compatible TTS endpoint (e.g., your own proxy)
 # tts-openai-base-url = "http://localhost:8000/v1"
+# Kokoro (high-quality local TTS)
+# tts-kokoro-model = "kokoro"
+# tts-kokoro-voice = "af_sky"
+# tts-kokoro-host = "http://localhost:8880/v1"
+
+# --- Embedding Model (for RAG and Memory) ---
+# Used by rag-proxy and memory-proxy for vectorization.
+# embedding-model = "text-embedding-3-small"  # OpenAI default
+# embedding-model = "embeddinggemma:300m"  # Ollama local model
 
 # --- General Behavior ---
 log-level = "WARNING"  # Logging level (e.g., DEBUG, INFO, WARNING, ERROR)
@@ -132,3 +141,25 @@ Follow PEP8: use `snake_case` for variables, functions, and package names; `Came
 llm-provider = "ollama"
 llm-ollama-model = "llama3"
 tts = true
+
+[rag-proxy]
+# RAG (Retrieval-Augmented Generation) proxy server settings.
+# docs-folder = "./rag_docs"  # Folder to watch for documents
+# chroma-path = "./rag_db"  # Path to ChromaDB persistence directory
+# limit = 3  # Number of document chunks to retrieve per query
+# rag-tools = true  # Allow agent to fetch full documents when snippets are insufficient
+# host = "0.0.0.0"
+# port = 8000
+
+[memory-proxy]
+# Long-term memory proxy server settings.
+# memory-path = "./memory_db"  # Path to the memory store
+# default-top-k = 5  # Number of memory entries to retrieve per query
+# max-entries = 500  # Maximum stored memory entries per conversation
+# mmr-lambda = 0.7  # MMR lambda (0-1): higher favors relevance, lower favors diversity
+# recency-weight = 0.2  # Recency score weight (0.0-1.0)
+# score-threshold = 0.35  # Minimum semantic relevance threshold
+# summarization = true  # Enable automatic fact extraction and summaries
+# git-versioning = true  # Enable automatic git commit of memory changes
+# host = "0.0.0.0"
+# port = 8100
