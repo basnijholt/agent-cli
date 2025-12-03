@@ -7,7 +7,7 @@ import re
 import sys
 from datetime import UTC, datetime
 from pathlib import Path  # noqa: TC003
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import typer
 
@@ -28,7 +28,7 @@ def _strip_list_prefix(line: str) -> str:
 
 
 def _parse_json_items(
-    items: list,
+    items: list[str | dict[str, Any]],
     default_conversation_id: str,
 ) -> list[tuple[str, str]]:
     """Parse a JSON list of items into (content, conversation_id) tuples."""
@@ -59,7 +59,11 @@ def _parse_memories(
 
         # Try JSON first
         if text.startswith(("[", "{")):
-            data = json.loads(text)
+            try:
+                data = json.loads(text)
+            except json.JSONDecodeError as e:
+                console.print(f"[red]Invalid JSON: {e}[/red]")
+                raise typer.Exit(1) from None
             if isinstance(data, list):
                 results.extend(_parse_json_items(data, default_conversation_id))
             elif isinstance(data, dict) and "memories" in data:
