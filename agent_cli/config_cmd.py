@@ -129,9 +129,11 @@ def _generate_template() -> str:
     return "\n".join(lines) + "\n"
 
 
-def _expand_user_path(path: Path) -> Path:
-    """Expand '~' and return an absolute path."""
-    return path.expanduser().resolve()
+def _get_config_file(path: Path | None) -> Path | None:
+    """Resolve config path, or auto-detect from standard locations."""
+    if path:
+        return path.expanduser().resolve()
+    return _config_path(None)
 
 
 @config_app.command("init")
@@ -144,7 +146,7 @@ def config_init(
     The generated config file serves as a template showing all available
     options. Uncomment and modify the options you want to customize.
     """
-    target_path = _expand_user_path(path) if path else USER_CONFIG_PATH
+    target_path = _get_config_file(path) or USER_CONFIG_PATH
 
     if target_path.exists() and not force:
         console.print(
@@ -174,11 +176,7 @@ def config_edit(
 
     The editor is determined by: $EDITOR > $VISUAL > platform default.
     """
-    if path is not None:
-        expanded_path = _expand_user_path(path)
-        config_file = _config_path(str(expanded_path))
-    else:
-        config_file = _config_path(None)
+    config_file = _get_config_file(path)
 
     if config_file is None:
         console.print("[yellow]No config file found.[/yellow]")
@@ -228,7 +226,7 @@ def config_show(
     raw: bool = RAW_OPTION,
 ) -> None:
     """Display the config file location and contents."""
-    config_file = _config_path(str(_expand_user_path(path)) if path else None)
+    config_file = _get_config_file(path)
 
     if config_file is None:
         console.print("[yellow]No config file found.[/yellow]")
