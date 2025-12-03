@@ -60,4 +60,7 @@ from .agents import (  # noqa: E402, F401
     transcribe,
     voice_edit,
 )
+from .config_cmd import config_app  # noqa: E402
 from .install import hotkeys, services  # noqa: E402, F401
+
+app.add_typer(config_app, name="config", rich_help_panel="Configuration")
