@@ -138,7 +138,7 @@ def config_init(
     The generated config file serves as a template showing all available
     options. Uncomment and modify the options you want to customize.
     """
-    target_path = path if path else USER_CONFIG_PATH
+    target_path = path.expanduser() if path else USER_CONFIG_PATH
 
     if target_path.exists() and not force:
         console.print(
@@ -168,7 +168,7 @@ def config_edit(
 
     The editor is determined by: $EDITOR > $VISUAL > platform default.
     """
-    config_file = path or _config_path(None)
+    config_file = path.expanduser() if path else _config_path(None)
 
     if config_file is None or not config_file.exists():
         console.print("[yellow]No config file found.[/yellow]")
@@ -200,7 +200,7 @@ def config_show(
     raw: bool = RAW_OPTION,
 ) -> None:
     """Display the config file location and contents."""
-    config_file = _config_path(str(path) if path else None)
+    config_file = _config_path(str(path.expanduser()) if path else None)
 
     if config_file is None:
         console.print("[yellow]No config file found.[/yellow]")
