@@ -1,15 +1,16 @@
-"""Demonstrate the summarizer on texts of varying lengths from the internet.
+"""Demonstrate the simplified summarizer on texts of varying lengths.
 
 This script fetches content of different sizes and shows how the adaptive
-summarizer automatically selects the appropriate strategy (BRIEF or MAP_REDUCE)
-based on content length.
+summarizer compresses content to fit different target token counts or ratios.
 
 Usage:
     python examples/summarizer_demo.py
 
-    # Test specific levels only
-    python examples/summarizer_demo.py --level brief
-    python examples/summarizer_demo.py --level map_reduce
+    # Test with specific target ratio
+    python examples/summarizer_demo.py --target-ratio 0.2
+
+    # Test with specific target token count
+    python examples/summarizer_demo.py --target-tokens 500
 
     # Use a different model
     python examples/summarizer_demo.py --model "gpt-4o-mini"
@@ -30,12 +31,11 @@ import httpx
 
 from agent_cli.summarizer import (
     SummarizerConfig,
-    SummaryLevel,
     SummaryResult,
     summarize,
 )
 
-# Defaults for local AI setup (same as aijournal_poc.py)
+# Defaults for local AI setup
 DEFAULT_BASE_URL = "http://192.168.1.143:9292/v1"
 DEFAULT_MODEL = "gpt-oss-high:20b"
 
@@ -47,24 +47,17 @@ class TextSample:
     name: str
     description: str
     url: str
-    expected_level: SummaryLevel
     content_type: str = "general"
     # If URL fetch fails, use this fallback
     fallback_content: str | None = None
 
 
-# Thresholds from adaptive.py:
-# NONE: < 100 tokens
-# BRIEF: 100-500 tokens
-# MAP_REDUCE: >= 500 tokens
-
-# Sample texts of varying lengths to demonstrate different summarization levels
+# Sample texts of varying lengths to demonstrate summarization
 SAMPLES: list[TextSample] = [
     TextSample(
-        name="Brief - Short News Article",
-        description="~150-400 tokens - triggers BRIEF level (100-500 token range)",
+        name="Short News Article",
+        description="~150-400 tokens - demonstrates small content handling",
         url="https://httpbin.org/json",  # Returns small JSON we'll convert to text
-        expected_level=SummaryLevel.BRIEF,
         fallback_content="""
         Breaking News: Scientists at the Marine Biology Institute have made a
         groundbreaking discovery in the Mariana Trench. A new species of deep-sea
@@ -94,10 +87,9 @@ SAMPLES: list[TextSample] = [
         """,
     ),
     TextSample(
-        name="Map-Reduce - Technology Article",
-        description="~800-2000 tokens - triggers MAP_REDUCE level (>=500 tokens)",
+        name="Technology Article",
+        description="~800-2000 tokens - demonstrates medium content",
         url="https://en.wikipedia.org/api/rest_v1/page/summary/Artificial_intelligence",
-        expected_level=SummaryLevel.MAP_REDUCE,
         content_type="document",
         fallback_content="""
         Artificial intelligence (AI) is the intelligence of machines or software,
@@ -174,20 +166,11 @@ SAMPLES: list[TextSample] = [
         """,
     ),
     TextSample(
-        name="Map-Reduce - Full Article",
-        description="~4000-10000 tokens - triggers MAP_REDUCE with chunking",
+        name="Full Article",
+        description="~4000-10000 tokens - demonstrates large content with chunking",
         url="https://en.wikipedia.org/api/rest_v1/page/mobile-html/Machine_learning",
-        expected_level=SummaryLevel.MAP_REDUCE,
         content_type="document",
         fallback_content=None,  # We'll generate synthetic content
-    ),
-    TextSample(
-        name="Map-Reduce - Long Document",
-        description="~16000+ tokens - triggers MAP_REDUCE with multiple collapse iterations",
-        url="https://www.gutenberg.org/cache/epub/84/pg84.txt",  # Frankenstein (truncated)
-        expected_level=SummaryLevel.MAP_REDUCE,
-        content_type="document",
-        fallback_content=None,  # We'll generate synthetic content (~16K tokens)
     ),
 ]
 
@@ -262,25 +245,11 @@ async def fetch_content(sample: TextSample, client: httpx.AsyncClient) -> str:
             content = re.sub(r"<[^>]+>", " ", content)
             content = re.sub(r"\s+", " ", content).strip()
 
-        # Check if content is too short for expected level
-        min_words_for_level = {
-            SummaryLevel.BRIEF: 80,  # Need ~100 tokens
-            SummaryLevel.MAP_REDUCE: 400,  # Need ~500 tokens
-        }
-        min_words = min_words_for_level.get(sample.expected_level, 50)
-
+        # Check if content is too short
+        min_words = 80
         if len(content.split()) < min_words:
             print(f"  📎 Fetched content too short ({len(content.split())} words), using fallback")
-            if sample.fallback_content:
-                content = sample.fallback_content
-            else:
-                target_tokens = {
-                    SummaryLevel.BRIEF: 300,
-                    SummaryLevel.MAP_REDUCE: 1500,
-                }
-                content = generate_synthetic_content(
-                    target_tokens.get(sample.expected_level, 1000),
-                )
+            content = sample.fallback_content or generate_synthetic_content(1500)
 
         # For very long content, truncate to keep demo fast
         words = content.split()
@@ -296,15 +265,17 @@ async def fetch_content(sample: TextSample, client: httpx.AsyncClient) -> str:
         if sample.fallback_content:
             return sample.fallback_content.strip()
 
-        # Generate synthetic content for the expected level
-        target_tokens = {
-            SummaryLevel.BRIEF: 300,
-            SummaryLevel.MAP_REDUCE: 1500,
-        }
-        return generate_synthetic_content(target_tokens.get(sample.expected_level, 1000))
+        # Generate synthetic content
+        return generate_synthetic_content(1500)
 
 
-def print_result(sample: TextSample, result: SummaryResult, content: str) -> None:
+def print_result(
+    sample: TextSample,
+    result: SummaryResult,
+    content: str,
+    target_tokens: int | None,
+    target_ratio: float | None,
+) -> None:
     """Print a formatted summary result."""
     print("\n" + "=" * 70)
     print(f"📄 {sample.name}")
@@ -318,23 +289,30 @@ def print_result(sample: TextSample, result: SummaryResult, content: str) -> Non
     print(f"   Tokens: {result.input_tokens:,}")
     print(f"   Content type: {sample.content_type}")
 
-    # Summarization result
-    level_emoji = {
-        SummaryLevel.NONE: "⏭️",
-        SummaryLevel.BRIEF: "📝",
-        SummaryLevel.MAP_REDUCE: "🔄",
-    }
-    print("\n🎯 Summarization Result:")
-    print(f"   Level: {level_emoji.get(result.level, '❓')} {result.level.name}")
-    print(f"   Expected: {sample.expected_level.name}")
-    print(f"   Match: {'✅' if result.level == sample.expected_level else '⚠️'}")
+    # Target info
+    print("\n🎯 Target:")
+    if target_ratio is not None:
+        print(f"   Ratio: {target_ratio:.0%} of input")
+        print(f"   Calculated target: ~{int(result.input_tokens * target_ratio):,} tokens")
+    elif target_tokens is not None:
+        print(f"   Tokens: {target_tokens:,}")
+    else:
+        print("   Default: 3000 tokens (LangChain default)")
+
+    # Result info
+    print("\n📝 Result:")
+    if result.summary == content:
+        print("   Status: ⏭️  Content already fits target (returned as-is)")
+    elif result.collapse_depth > 0:
+        print(f"   Status: 🔄 Map-reduce summarization (collapse depth: {result.collapse_depth})")
+    else:
+        print("   Status: 📝 Single-pass summarization")
+
     print(f"   Output tokens: {result.output_tokens:,}")
     print(f"   Compression: {result.compression_ratio:.1%}")
-    if result.collapse_depth > 0:
-        print(f"   Collapse depth: {result.collapse_depth}")
 
     # Summary content
-    if result.summary:
+    if result.summary and result.summary != content:
         print("\n📝 Summary:")
         wrapped = textwrap.fill(
             result.summary,
@@ -342,11 +320,15 @@ def print_result(sample: TextSample, result: SummaryResult, content: str) -> Non
             initial_indent="   ",
             subsequent_indent="   ",
         )
+        # Only show first ~500 chars of summary
+        if len(wrapped) > 600:  # noqa: PLR2004
+            wrapped = wrapped[:600] + "..."
         print(wrapped)
 
 
 async def run_demo(
-    level_filter: str | None = None,
+    target_tokens: int | None = None,
+    target_ratio: float | None = None,
     model: str | None = None,
     base_url: str | None = None,
 ) -> None:
@@ -369,39 +351,28 @@ async def run_demo(
         timeout=120.0,  # Longer timeout for local models
     )
 
-    # Filter samples if requested
-    samples = SAMPLES
-    if level_filter:
-        level_map = {
-            "brief": SummaryLevel.BRIEF,
-            "map_reduce": SummaryLevel.MAP_REDUCE,
-        }
-        target_level = level_map.get(level_filter.lower())
-        if target_level:
-            samples = [s for s in SAMPLES if s.expected_level == target_level]
-            print(f"\n🔍 Filtering to {level_filter.upper()} level only")
-
     async with httpx.AsyncClient() as client:
-        for sample in samples:
+        for sample in SAMPLES:
             print(f"\n⏳ Processing: {sample.name}...")
 
             # Fetch content
             content = await fetch_content(sample, client)
 
             try:
-                # Summarize
+                # Summarize with specified target
                 result = await summarize(
                     content=content,
                     config=config,
+                    target_tokens=target_tokens,
+                    target_ratio=target_ratio,
                     content_type=sample.content_type,
                 )
 
                 # Display results
-                print_result(sample, result, content)
+                print_result(sample, result, content, target_tokens, target_ratio)
 
             except Exception as e:
                 print(f"\n❌ Error summarizing {sample.name}: {e}")
-
                 traceback.print_exc()
 
     print("\n" + "=" * 70)
@@ -417,16 +388,21 @@ def main() -> None:
         epilog=textwrap.dedent("""
         Examples:
           python examples/summarizer_demo.py
-          python examples/summarizer_demo.py --level brief
-          python examples/summarizer_demo.py --level map_reduce
+          python examples/summarizer_demo.py --target-ratio 0.2
+          python examples/summarizer_demo.py --target-tokens 500
           python examples/summarizer_demo.py --model "llama3.1:8b" --base-url "http://localhost:11434/v1"
         """),
     )
 
     parser.add_argument(
-        "--level",
-        choices=["brief", "map_reduce"],
-        help="Only test a specific summarization level",
+        "--target-ratio",
+        type=float,
+        help="Target ratio for compression (e.g., 0.2 = compress to 20%%)",
+    )
+    parser.add_argument(
+        "--target-tokens",
+        type=int,
+        help="Target token count for summary",
     )
     parser.add_argument(
         "--model",
@@ -439,9 +415,13 @@ def main() -> None:
 
     args = parser.parse_args()
 
+    if args.target_ratio is not None and args.target_tokens is not None:
+        parser.error("Cannot specify both --target-ratio and --target-tokens")
+
     asyncio.run(
         run_demo(
-            level_filter=args.level,
+            target_tokens=args.target_tokens,
+            target_ratio=args.target_ratio,
             model=args.model,
             base_url=args.base_url,
         ),

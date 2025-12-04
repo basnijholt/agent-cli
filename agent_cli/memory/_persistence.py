@@ -191,10 +191,8 @@ def persist_summary(
         List of IDs that were stored.
 
     """
-    from agent_cli.summarizer import SummaryLevel  # noqa: PLC0415
-
-    # Skip if no summary needed
-    if summary_result.level == SummaryLevel.NONE:
+    # Skip if no summary was generated
+    if not summary_result.summary:
         return []
 
     # Delete existing summary files

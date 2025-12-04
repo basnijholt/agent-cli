@@ -65,7 +65,7 @@ class MemoryMetadata(BaseModel):
     compression_ratio: float | None = None
     """Ratio of output to input tokens."""
     summary_level: str | None = None
-    """Name of the SummaryLevel enum used (NONE, BRIEF, or MAP_REDUCE)."""
+    """Deprecated: previously stored SummaryLevel enum name."""
     collapse_depth: int | None = None
     """Number of collapse iterations in map-reduce (0 = no collapse needed)."""
 
