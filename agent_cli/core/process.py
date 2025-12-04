@@ -93,8 +93,7 @@ def kill_process(process_name: str) -> bool:
     if pid is None:
         return True  # Cleanup of stale file is success
 
-    # Kill the running process with SIGINT for graceful shutdown
-    # (SIGTERM would forcefully terminate without cleanup)
+    # Kill the running process
     try:
         os.kill(pid, signal.SIGINT)
         # Wait for process to terminate
