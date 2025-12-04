@@ -265,31 +265,29 @@ def signal_handling_context(
         stop_event.set()
 
     loop = asyncio.get_running_loop()
-
-    # Fall back to standard signal handlers on platforms (e.g., Windows) where
-    # asyncio's signal handling isn't implemented.
     restore_handlers: dict[signal.Signals, Any] = {}
-    try:
+
+    def _register_async_handlers() -> None:
+        """Register signal handlers using asyncio loop (Unix)."""
         loop.add_signal_handler(signal.SIGINT, sigint_handler)
         loop.add_signal_handler(signal.SIGTERM, sigterm_handler)
-    except (NotImplementedError, RuntimeError):
-        logger.debug("Async signal handlers unavailable; using sync signal handlers.")
 
-        def _register_sync_handler(signum: signal.Signals, handler: Any) -> None:
-            try:
-                restore_handlers[signum] = signal.getsignal(signum)
-                signal.signal(signum, handler)
-            except (
-                OSError,
-                RuntimeError,
-                ValueError,
-            ) as exc:  # pragma: no cover - platform specific
-                logger.debug("Unable to register handler for %s: %s", signum, exc)
+    def _register_sync_handlers() -> None:
+        """Register signal handlers using standard signal module (Windows)."""
+        logger.debug("Using sync signal handlers (Windows platform).")
 
-        _register_sync_handler(signal.SIGINT, lambda *_: sigint_handler())
-        # Some platforms may not support SIGTERM; guard registration.
+        def register(signum: signal.Signals, handler: Any) -> None:
+            restore_handlers[signum] = signal.getsignal(signum)
+            signal.signal(signum, handler)
+
+        register(signal.SIGINT, lambda *_: sigint_handler())
         if hasattr(signal, "SIGTERM"):
-            _register_sync_handler(signal.SIGTERM, lambda *_: sigterm_handler())
+            register(signal.SIGTERM, lambda *_: sigterm_handler())
+
+    if sys.platform == "win32":
+        _register_sync_handlers()
+    else:
+        _register_async_handlers()
 
     try:
         yield stop_event

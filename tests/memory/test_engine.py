@@ -607,5 +607,5 @@ async def test_streaming_with_summarization_persists_facts_and_summaries(
 
     files = list(tmp_path.glob("entries/**/*.md"))
     assert len(files) == 4  # user + assistant + fact + 1 summary
-    assert any("facts" in str(f) for f in files)
-    assert any("summaries/summary.md" in str(f) for f in files)
+    assert any("facts" in f.parts for f in files)
+    assert any(f.parent.name == "summaries" and f.name == "summary.md" for f in files)

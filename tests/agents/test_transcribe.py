@@ -491,8 +491,9 @@ def test_transcription_log_path_expansion() -> None:
     expanded_path = home_relative_path.expanduser()
 
     # Verify expansion works as expected
-    assert str(home_relative_path) == "~/test_transcription.log"
-    assert str(expanded_path) == str(Path.home() / "test_transcription.log")
+    assert home_relative_path.parts[0] == "~"
+    assert home_relative_path.parts[-1] == "test_transcription.log"
+    assert expanded_path == Path.home() / "test_transcription.log"
     assert expanded_path.is_absolute()
 
     # Test the actual expansion logic from transcribe function
