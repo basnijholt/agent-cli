@@ -75,23 +75,25 @@ To invoke these commands globally (like the macOS/Linux hotkeys), use [AutoHotke
 2.  Paste the following script:
 
 ```autohotkey
+Persistent  ; Keep script running with tray icon
+
 ; Win+Ctrl+Alt+R to toggle transcription (custom, to avoid OS defaults)
 #^!r::{
     statusFile := A_Temp . "\agent-cli-status.txt"
     RunWait A_ComSpec ' /C agent-cli transcribe --status > "' statusFile '" 2>&1', , "Hide"
     status := FileRead(statusFile)
     if InStr(status, "not running") {
-        TrayTip "🎤 Starting transcription...", "agent-cli", "Iconi"
+        TrayTip "🎤 Starting transcription...", "agent-cli", 1
         Run "agent-cli transcribe --toggle --input-device-index 1", , "Hide"  ; adjust device index if needed
     } else {
-        TrayTip "🛑 Stopping transcription...", "agent-cli", "Iconi"
+        TrayTip "🛑 Stopping transcription...", "agent-cli", 1
         Run "agent-cli transcribe --toggle", , "Hide"
     }
 }
 
 ; Win+Shift+A to autocorrect clipboard
 #+a::{
-    TrayTip "✍️ Autocorrecting clipboard...", "agent-cli", "Iconi"
+    TrayTip "✍️ Autocorrecting clipboard...", "agent-cli", 1
     Run "agent-cli autocorrect", , "Hide"
 }
 
@@ -99,7 +101,7 @@ To invoke these commands globally (like the macOS/Linux hotkeys), use [AutoHotke
 #+v::{
     Send "^c"
     ClipWait(1)
-    TrayTip "🗣️ Voice editing selection...", "agent-cli", "Iconi"
+    TrayTip "🗣️ Voice editing selection...", "agent-cli", 1
     Run "agent-cli voice-edit --input-device-index 1", , "Hide"  ; adjust device index if needed
 }
 ```
