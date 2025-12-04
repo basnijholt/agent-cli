@@ -57,6 +57,29 @@ The `setup-macos.sh` script:
 | **Piper**        | Wyoming Piper (via uv) | 10200 | N/A              |
 | **OpenWakeWord** | Wyoming OpenWakeWord   | 10400 | N/A              |
 
+### Whisper Configuration
+
+You can override the default Whisper settings using environment variables:
+
+| Variable         | Default      | Description                     |
+| ---------------- | ------------ | ------------------------------- |
+| `WHISPER_MODEL`  | `tiny-int8`  | Whisper model to use            |
+| `WHISPER_DEVICE` | `cpu`        | Device for inference            |
+
+**Available models**: `tiny`, `base`, `small`, `medium`, `large-v1`, `large-v2`, `large-v3`, `large-v3-turbo`, `turbo`
+
+**Examples:**
+
+```bash
+# Use a larger model for better accuracy (slower)
+WHISPER_MODEL=small scripts/start-all-services.sh
+
+# Use the base model for balanced performance
+WHISPER_MODEL=base scripts/start-all-services.sh
+```
+
+> **Note:** On macOS without NVIDIA GPU, Whisper runs on CPU. Larger models provide better accuracy but are slower. The default `tiny-int8` offers the best speed/accuracy tradeoff for CPU.
+
 ## Session Management with Zellij
 
 The setup uses Zellij for managing all services in one session:

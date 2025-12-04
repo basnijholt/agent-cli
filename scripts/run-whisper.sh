@@ -4,13 +4,17 @@ echo "🎤 Starting Wyoming Whisper on port 10300..."
 # Detect if CUDA is available
 if command -v nvidia-smi &> /dev/null && nvidia-smi &> /dev/null; then
     echo "⚡ NVIDIA GPU detected, using CUDA acceleration..."
-    DEVICE="cuda"
-    MODEL="large-v3"
+    DEVICE="${WHISPER_DEVICE:-cuda}"
+    DEFAULT_MODEL="large-v3"
 else
     echo "💻 No GPU detected or CUDA unavailable, using CPU..."
-    DEVICE="cpu"
-    MODEL="tiny-int8"
+    DEVICE="${WHISPER_DEVICE:-cpu}"
+    DEFAULT_MODEL="tiny-int8"
 fi
+
+# Allow model override via environment variable
+MODEL="${WHISPER_MODEL:-$DEFAULT_MODEL}"
+echo "📦 Using model: $MODEL on device: $DEVICE"
 
 # Create .runtime directory for whisper data
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"

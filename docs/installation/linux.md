@@ -107,6 +107,30 @@ The scripts automatically detect and use GPU acceleration:
 - **Whisper**: Detects NVIDIA GPU and uses `large-v3` model with CUDA, falls back to `tiny-int8` with CPU
 - **Ollama**: Automatically uses available GPU (CUDA/ROCm)
 
+### Whisper Configuration
+
+You can override the auto-detected Whisper settings using environment variables:
+
+| Variable         | Default (GPU)  | Default (CPU) | Description                     |
+| ---------------- | -------------- | ------------- | ------------------------------- |
+| `WHISPER_MODEL`  | `large-v3`     | `tiny-int8`   | Whisper model to use            |
+| `WHISPER_DEVICE` | `cuda`         | `cpu`         | Device for inference            |
+
+**Available models**: `tiny`, `base`, `small`, `medium`, `large-v1`, `large-v2`, `large-v3`, `large-v3-turbo`, `turbo`
+
+**Examples:**
+
+```bash
+# Use a smaller model on GPU for faster inference
+WHISPER_MODEL=small scripts/start-all-services.sh
+
+# Force CPU mode with a specific model
+WHISPER_MODEL=base WHISPER_DEVICE=cpu scripts/start-all-services.sh
+
+# Use the turbo variant for speed
+WHISPER_MODEL=large-v3-turbo scripts/start-all-services.sh
+```
+
 ## GPU Acceleration Setup
 
 ### NVIDIA GPU (CUDA)
