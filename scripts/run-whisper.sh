@@ -18,7 +18,7 @@ if [ "$OS" = "Darwin" ]; then
 
     uvx --python 3.12 \
         --from git+https://github.com/vincent861223/wyoming-mlx-whisper.git \
-        wyoming-mlx-whisper \
+        wyoming-whisper-mlx-whisper \
         --model "$MODEL" \
         --uri 'tcp://0.0.0.0:10300'
 else
