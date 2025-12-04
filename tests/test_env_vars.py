@@ -8,7 +8,7 @@ from typer.testing import CliRunner
 
 from agent_cli.cli import app
 
-runner = CliRunner()
+runner = CliRunner(env={"NO_COLOR": "1", "TERM": "dumb"})
 
 
 def test_openai_base_url_env_var() -> None:

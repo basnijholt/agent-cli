@@ -88,6 +88,27 @@ def rag_proxy(
 
     docs_folder = docs_folder.resolve()
     chroma_path = chroma_path.resolve()
+
+    # Validate paths don't overlap - mixing docs and DB causes corruption
+    if docs_folder == chroma_path:
+        print_error_message(
+            "docs-folder and chroma-path cannot be the same directory.\n"
+            "ChromaDB creates internal files that would be indexed as documents.",
+        )
+        raise typer.Exit(1)
+    if chroma_path in docs_folder.parents:
+        print_error_message(
+            f"docs-folder ({docs_folder}) is inside chroma-path ({chroma_path}).\n"
+            "ChromaDB creates internal files that would be indexed as documents.",
+        )
+        raise typer.Exit(1)
+    if docs_folder in chroma_path.parents:
+        print_error_message(
+            f"chroma-path ({chroma_path}) is inside docs-folder ({docs_folder}).\n"
+            "ChromaDB files may be accidentally deleted when managing documents.",
+        )
+        raise typer.Exit(1)
+
     if openai_base_url is None:
         openai_base_url = constants.DEFAULT_OPENAI_BASE_URL
 
