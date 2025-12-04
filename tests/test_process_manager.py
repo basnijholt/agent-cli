@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import signal
+import sys
 import tempfile
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -93,6 +94,7 @@ def test_read_pid_file_current_process() -> None:
     assert process.read_pid_file(process_name) == current_pid
 
 
+@pytest.mark.skipif(sys.platform == "win32", reason="os.kill(pid, 0) not used on Windows")
 @patch("os.kill")
 def test_kill_process_success(mock_os_kill: MagicMock) -> None:
     """Test successfully killing a process."""

@@ -78,7 +78,7 @@ class TestConfigInit:
         result = runner.invoke(app, ["config", "init", "--path", str(config_path)])
         assert result.exit_code == 0
         assert config_path.exists()
-        assert "[defaults]" in config_path.read_text()
+        assert "[defaults]" in config_path.read_text(encoding="utf-8")
 
     def test_init_creates_parent_dirs(self, tmp_path: Path) -> None:
         """Test that init creates parent directories."""
@@ -111,7 +111,7 @@ class TestConfigInit:
             ["config", "init", "--path", str(config_path), "--force"],
         )
         assert result.exit_code == 0
-        assert "[defaults]" in config_path.read_text()
+        assert "[defaults]" in config_path.read_text(encoding="utf-8")
 
     def test_init_shows_success_message(self, tmp_path: Path) -> None:
         """Test that init shows success message."""
@@ -124,7 +124,9 @@ class TestConfigInit:
         home = tmp_path / "home"
         config_path = home / ".config" / "agent-cli" / "config.toml"
 
-        with patch.dict(os.environ, {"HOME": str(home)}):
+        # Windows uses USERPROFILE, Unix uses HOME
+        env_patch = {"HOME": str(home), "USERPROFILE": str(home)}
+        with patch.dict(os.environ, env_patch):
             result = runner.invoke(
                 app,
                 ["config", "init", "--path", "~/.config/agent-cli/config.toml"],
@@ -205,7 +207,9 @@ class TestConfigEdit:
 
         mock_run.return_value.returncode = 0
 
-        with patch.dict(os.environ, {"EDITOR": "nano", "HOME": str(home)}):
+        # Windows uses USERPROFILE, Unix uses HOME
+        env_patch = {"EDITOR": "nano", "HOME": str(home), "USERPROFILE": str(home)}
+        with patch.dict(os.environ, env_patch):
             result = runner.invoke(
                 app,
                 ["config", "edit", "--path", "~/.config/agent-cli/config.toml"],
@@ -301,7 +305,9 @@ class TestConfigShow:
         config_path.parent.mkdir(parents=True, exist_ok=True)
         config_path.write_text("[defaults]\nllm-provider = 'ollama'")
 
-        with patch.dict(os.environ, {"HOME": str(home)}):
+        # Windows uses USERPROFILE, Unix uses HOME
+        env_patch = {"HOME": str(home), "USERPROFILE": str(home)}
+        with patch.dict(os.environ, env_patch):
             result = runner.invoke(
                 app,
                 ["config", "show", "--path", "~/.config/agent-cli/config.toml", "--raw"],
