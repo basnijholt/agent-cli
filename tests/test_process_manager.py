@@ -109,8 +109,8 @@ def test_kill_process_success(mock_os_kill: MagicMock) -> None:
     assert result is True
     # The first call is to check if the process is running
     mock_os_kill.assert_any_call(current_pid, 0)
-    # The second call is to kill the process
-    mock_os_kill.assert_any_call(current_pid, signal.SIGTERM)
+    # The second call is to kill the process (SIGINT for graceful shutdown)
+    mock_os_kill.assert_any_call(current_pid, signal.SIGINT)
     assert not pid_file.exists()
 
 
