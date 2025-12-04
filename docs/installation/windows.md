@@ -78,19 +78,10 @@ To invoke these commands globally (like the macOS/Linux hotkeys), use [AutoHotke
 #Requires AutoHotkey v2.0
 Persistent  ; Keep script running with tray icon
 
-; Win+Shift+W to toggle transcription (W for Whisper)
+; Win+Shift+W to start transcription (opens terminal window, press Ctrl+C to stop)
 #+w::{
-    statusFile := A_Temp . "\agent-cli-status.txt"
-    cmd := Format('{1} /C agent-cli transcribe --status > "{2}" 2>&1', A_ComSpec, statusFile)
-    RunWait(cmd, , "Hide")
-    status := FileRead(statusFile)
-    if InStr(status, "not running") {
-        TrayTip("🎤 Starting transcription...", "agent-cli", 1)
-        Run("agent-cli transcribe --toggle --input-device-index 1", , "Hide")  ; adjust device index if needed
-    } else {
-        TrayTip("🛑 Stopping transcription...", "agent-cli", 1)
-        Run("agent-cli transcribe --toggle", , "Hide")
-    }
+    TrayTip("🎤 Starting transcription...", "agent-cli", 1)
+    Run("cmd /K agent-cli transcribe --input-device-index 1")  ; adjust device index if needed
 }
 
 ; Win+Shift+A to autocorrect clipboard
@@ -111,7 +102,7 @@ Persistent  ; Keep script running with tray icon
 3.  Double-click the script to run it.
 
 > [!TIP]
-> Using `--toggle` stops an existing background recorder if it's already running, so you can press the same hotkey to start/stop the session without leaving a stray process behind.
+> The transcription command opens a terminal window. Press **Ctrl+C** in that window to stop recording and trigger the transcription.
 
 **Note on Audio Devices:**
 If `agent-cli` doesn't pick up your microphone, run `agent-cli transcribe --list-devices` to find the correct `--input-device-index`.
