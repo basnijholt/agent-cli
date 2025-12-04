@@ -75,34 +75,36 @@ To invoke these commands globally (like the macOS/Linux hotkeys), use [AutoHotke
 2.  Paste the following script:
 
 ```autohotkey
+#Requires AutoHotkey v2.0
 Persistent  ; Keep script running with tray icon
 
 ; Win+Shift+W to toggle transcription (W for Whisper)
 #+w::{
     statusFile := A_Temp . "\agent-cli-status.txt"
-    RunWait A_ComSpec ' /C agent-cli transcribe --status > "' statusFile '" 2>&1', , "Hide"
+    cmd := Format('{1} /C agent-cli transcribe --status > "{2}" 2>&1', A_ComSpec, statusFile)
+    RunWait(cmd, , "Hide")
     status := FileRead(statusFile)
     if InStr(status, "not running") {
-        TrayTip "🎤 Starting transcription...", "agent-cli", 1
-        Run "agent-cli transcribe --toggle --input-device-index 1", , "Hide"  ; adjust device index if needed
+        TrayTip("🎤 Starting transcription...", "agent-cli", 1)
+        Run("agent-cli transcribe --toggle --input-device-index 1", , "Hide")  ; adjust device index if needed
     } else {
-        TrayTip "🛑 Stopping transcription...", "agent-cli", 1
-        Run "agent-cli transcribe --toggle", , "Hide"
+        TrayTip("🛑 Stopping transcription...", "agent-cli", 1)
+        Run("agent-cli transcribe --toggle", , "Hide")
     }
 }
 
 ; Win+Shift+A to autocorrect clipboard
 #+a::{
-    TrayTip "✍️ Autocorrecting clipboard...", "agent-cli", 1
-    Run "agent-cli autocorrect", , "Hide"
+    TrayTip("✍️ Autocorrecting clipboard...", "agent-cli", 1)
+    Run("agent-cli autocorrect", , "Hide")
 }
 
 ; Win+Shift+E to voice edit selection
 #+e::{
-    Send "^c"
+    Send("^c")
     ClipWait(1)
-    TrayTip "🗣️ Voice editing selection...", "agent-cli", 1
-    Run "agent-cli voice-edit --input-device-index 1", , "Hide"  ; adjust device index if needed
+    TrayTip("🗣️ Voice editing selection...", "agent-cli", 1)
+    Run("agent-cli voice-edit --input-device-index 1", , "Hide")  ; adjust device index if needed
 }
 ```
 
