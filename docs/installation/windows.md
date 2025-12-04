@@ -69,70 +69,29 @@ agent-cli transcribe
 
 ## Part 3: Automation (AutoHotkey)
 
-To invoke these commands globally (like the macOS/Linux hotkeys), use [AutoHotkey v1.1](https://www.autohotkey.com/).
+To invoke these commands globally (like the macOS/Linux hotkeys), use [AutoHotkey v2](https://www.autohotkey.com/).
 
 1.  Create a file named `agent-cli.ahk`.
 2.  Paste the following script:
 
 ```autohotkey
-    ; Win+Ctrl+Alt+R to toggle transcription (custom, to avoid OS defaults)
-    #^!r::
-        statusFile := A_Temp "\agent-cli-status.txt"
-        ; Check if transcription is already running
-        RunWait, %ComSpec% /C agent-cli transcribe --status > "%statusFile%" 2>&1, , Hide
-        FileRead, status, %statusFile%
-        if InStr(status, "not running")
-        {
-            TrayTip, agent-cli, 🎤 Starting transcription..., 3, 1
-            Run, agent-cli transcribe --toggle --input-device-index 1, , Hide  ; adjust device index if needed
-        }
-        else
-        {
-            TrayTip, agent-cli, 🛑 Stopping transcription..., 3, 1
-            Run, agent-cli transcribe --toggle, , Hide
-        }
-    return
-
-    ; Win+Shift+A to autocorrect clipboard
-    #+a::
-        TrayTip, agent-cli, ✍️ Autocorrecting clipboard..., 3, 1
-        Run, agent-cli autocorrect, , Hide
-    return
-
-    ; Win+Shift+V to voice edit selection
-    #+v::
-        ; First copy current selection to clipboard
-        Send, ^c
-        ClipWait, 1
-        TrayTip, agent-cli, 🗣️ Voice editing selection..., 3, 1
-        Run, agent-cli voice-edit --input-device-index 1, , Hide  ; adjust device index if needed
-    return
-```
-3.  Double-click the script to run it.
-
-> [!TIP]
-> Using `--toggle` stops an existing background recorder if it's already running, so you can press the same hotkey to start/stop the session without leaving a stray process behind.
-
-If you use **AutoHotkey v2**, the script syntax is slightly different:
-
-```autohotkey
 ; Win+Ctrl+Alt+R to toggle transcription (custom, to avoid OS defaults)
 #^!r::{
-    statusFile := A_Temp "\agent-cli-status.txt"
+    statusFile := A_Temp . "\agent-cli-status.txt"
     RunWait A_ComSpec ' /C agent-cli transcribe --status > "' statusFile '" 2>&1', , "Hide"
     status := FileRead(statusFile)
     if InStr(status, "not running") {
-        TrayTip "agent-cli", "🎤 Starting transcription...", 3, 1
+        TrayTip "🎤 Starting transcription...", "agent-cli", "Iconi"
         Run "agent-cli transcribe --toggle --input-device-index 1", , "Hide"  ; adjust device index if needed
     } else {
-        TrayTip "agent-cli", "🛑 Stopping transcription...", 3, 1
+        TrayTip "🛑 Stopping transcription...", "agent-cli", "Iconi"
         Run "agent-cli transcribe --toggle", , "Hide"
     }
 }
 
 ; Win+Shift+A to autocorrect clipboard
 #+a::{
-    TrayTip "agent-cli", "✍️ Autocorrecting clipboard...", 3, 1
+    TrayTip "✍️ Autocorrecting clipboard...", "agent-cli", "Iconi"
     Run "agent-cli autocorrect", , "Hide"
 }
 
@@ -140,10 +99,15 @@ If you use **AutoHotkey v2**, the script syntax is slightly different:
 #+v::{
     Send "^c"
     ClipWait(1)
-    TrayTip "agent-cli", "🗣️ Voice editing selection...", 3, 1
+    TrayTip "🗣️ Voice editing selection...", "agent-cli", "Iconi"
     Run "agent-cli voice-edit --input-device-index 1", , "Hide"  ; adjust device index if needed
 }
 ```
+
+3.  Double-click the script to run it.
+
+> [!TIP]
+> Using `--toggle` stops an existing background recorder if it's already running, so you can press the same hotkey to start/stop the session without leaving a stray process behind.
 
 **Note on Audio Devices:**
 If `agent-cli` doesn't pick up your microphone, run `agent-cli transcribe --list-devices` to find the correct `--input-device-index`.
