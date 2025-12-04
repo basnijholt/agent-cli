@@ -89,7 +89,7 @@ def _generate_template() -> str:
     # Example config is bundled with the package
     try:
         template_file = resources.files(__package__) / "example-config.toml"
-        example_content = template_file.read_text()
+        example_content = template_file.read_text(encoding="utf-8")
     except FileNotFoundError as e:
         console.print("[red]Example config template is missing from the package.[/red]")
         console.print("Reinstall agent-cli or report this issue.")
@@ -154,7 +154,7 @@ def config_init(
 
     # Generate and write template
     template_content = _generate_template()
-    target_path.write_text(template_content)
+    target_path.write_text(template_content, encoding="utf-8")
 
     console.print(f"[green]Config file created at:[/green] {target_path}")
     console.print("\n[dim]Edit the file to customize your settings:[/dim]")
@@ -240,7 +240,7 @@ def config_show(
         )
         raise typer.Exit(1)
 
-    content = config_file.read_text()
+    content = config_file.read_text(encoding="utf-8")
 
     if raw:
         print(content, end="")

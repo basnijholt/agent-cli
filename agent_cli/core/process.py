@@ -23,6 +23,27 @@ def _get_pid_file(process_name: str) -> Path:
     return PID_DIR / f"{process_name}.pid"
 
 
+def _is_pid_running(pid: int) -> bool:
+    """Check if a process with the given PID is running."""
+    if sys.platform == "win32":
+        # On Windows, use ctypes to check process existence
+        import ctypes  # noqa: PLC0415
+
+        kernel32 = ctypes.windll.kernel32
+        synchronize = 0x00100000
+        process = kernel32.OpenProcess(synchronize, 0, pid)
+        if process:
+            kernel32.CloseHandle(process)
+            return True
+        return False
+    # On Unix, use signal 0 to check if process exists
+    try:
+        os.kill(pid, 0)
+        return True
+    except (ProcessLookupError, PermissionError):
+        return False
+
+
 def _get_running_pid(process_name: str) -> int | None:
     """Get PID if process is running, None otherwise. Cleans up stale files."""
     pid_file = _get_pid_file(process_name)
@@ -35,14 +56,16 @@ def _get_running_pid(process_name: str) -> int | None:
             pid = int(f.read().strip())
 
         # Check if process is actually running
-        os.kill(pid, 0)
-        return pid
+        if _is_pid_running(pid):
+            return pid
 
-    except (FileNotFoundError, ValueError, ProcessLookupError, PermissionError):
-        # Clean up stale/invalid PID file
-        if pid_file.exists():
-            pid_file.unlink()
-        return None
+    except (FileNotFoundError, ValueError):
+        pass
+
+    # Clean up stale/invalid PID file
+    if pid_file.exists():
+        pid_file.unlink()
+    return None
 
 
 def is_process_running(process_name: str) -> bool:

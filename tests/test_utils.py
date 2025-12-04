@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import signal
 from datetime import timedelta
 from unittest.mock import Mock, patch
 
@@ -155,3 +156,25 @@ def test_stop_or_status_or_toggle(
     mock_kill_process.return_value = True
     assert utils.stop_or_status_or_toggle("test", "test", False, False, True, quiet=True)
     mock_kill_process.assert_called_with("test")
+
+
+@pytest.mark.asyncio
+async def test_signal_handling_context_uses_sync_handlers_on_windows(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Ensure signal_handling_context uses sync handlers on Windows."""
+    monkeypatch.setattr("agent_cli.core.utils.sys.platform", "win32")
+
+    logger = Mock()
+    prev_sigint = signal.getsignal(signal.SIGINT)
+    prev_sigterm = signal.getsignal(signal.SIGTERM)
+
+    with utils.signal_handling_context(logger, quiet=True) as stop_event:
+        handler = signal.getsignal(signal.SIGINT)
+        assert callable(handler)
+        handler(signal.SIGINT, None)
+        assert stop_event.is_set()
+
+    assert signal.getsignal(signal.SIGINT) is prev_sigint
+    assert signal.getsignal(signal.SIGTERM) is prev_sigterm
+    logger.debug.assert_called()

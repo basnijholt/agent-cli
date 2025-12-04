@@ -56,6 +56,7 @@ def test_convert_audio_arguments() -> None:
         patch("shutil.which", return_value="/usr/bin/ffmpeg"),
         patch("subprocess.run") as mock_run,
         patch("pathlib.Path.read_bytes", return_value=b"converted_data"),
+        patch("pathlib.Path.unlink"),  # Prevent file deletion issues on Windows
     ):
         # Setup mock to simulate success
         mock_run.return_value = MagicMock(returncode=0, stdout=b"", stderr=b"")
