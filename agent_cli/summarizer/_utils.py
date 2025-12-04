@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 
 from pydantic import BaseModel
 
-from agent_cli.summarizer.models import SummarizationError, SummarizerConfig, SummaryLevel
+from agent_cli.summarizer.models import SummarizationError, SummarizerConfig
 
 if TYPE_CHECKING:
     import tiktoken
@@ -230,13 +230,11 @@ def _get_overlap_text(chunks: list[str], target_tokens: int, model: str) -> str:
     return " ".join(overlap_parts)
 
 
-def estimate_summary_tokens(input_tokens: int, level: int) -> int:
-    """Estimate target summary tokens based on input size and level."""
-    if level == SummaryLevel.NONE:
-        return 0
-    if level == SummaryLevel.BRIEF:
-        return min(50, max(20, input_tokens // 5))
-    # MAP_REDUCE: ~10% compression with floor/ceiling
+def estimate_summary_tokens(input_tokens: int) -> int:
+    """Estimate target summary tokens based on input size.
+
+    Uses ~10% compression ratio with floor/ceiling bounds.
+    """
     return min(500, max(50, input_tokens // 10))
 
 

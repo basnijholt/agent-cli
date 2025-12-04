@@ -14,7 +14,7 @@ import pytest
 from agent_cli.memory import _ingest
 from agent_cli.memory.client import MemoryClient
 from agent_cli.memory.entities import Fact
-from agent_cli.summarizer import SummaryLevel, SummaryResult
+from agent_cli.summarizer import SummaryResult
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -66,7 +66,6 @@ async def test_memory_client_git_versioning(
 
     async def fake_summarize_content(**_kwargs: Any) -> SummaryResult:
         return SummaryResult(
-            level=SummaryLevel.MAP_REDUCE,
             summary="User likes testing.",
             input_tokens=100,
             output_tokens=20,

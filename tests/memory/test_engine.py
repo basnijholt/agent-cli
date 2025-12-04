@@ -22,7 +22,7 @@ from agent_cli.memory.models import (
     Message,
     StoredMemory,
 )
-from agent_cli.summarizer import SummaryLevel, SummaryResult
+from agent_cli.summarizer import SummaryResult
 
 
 class _DummyReranker:
@@ -348,7 +348,6 @@ async def test_process_chat_request_summarizes_and_persists(
 
     async def fake_summarize_content(**_kwargs: Any) -> SummaryResult:
         return SummaryResult(
-            level=SummaryLevel.MAP_REDUCE,
             summary="summary up to 256",
             input_tokens=100,
             output_tokens=20,
@@ -576,7 +575,6 @@ async def test_streaming_with_summarization_persists_facts_and_summaries(
 
     async def fake_summarize_content(**_kwargs: Any) -> SummaryResult:
         return SummaryResult(
-            level=SummaryLevel.MAP_REDUCE,
             summary="summary text",
             input_tokens=100,
             output_tokens=20,

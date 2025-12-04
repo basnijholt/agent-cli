@@ -88,32 +88,32 @@ class TestChunkText:
 class TestEstimateSummaryTokens:
     """Tests for estimate_summary_tokens function."""
 
-    def test_none_level(self) -> None:
-        """Test level 0 (NONE) returns 0."""
-        assert estimate_summary_tokens(1000, level=0) == 0
+    def test_typical_input(self) -> None:
+        """Test typical input uses ~10% compression."""
+        # ~10% compression, capped at 500, minimum 50
+        result = estimate_summary_tokens(1000)
+        assert result == 100  # 1000 // 10 = 100
 
-    def test_brief_level(self) -> None:
-        """Test level 1 (BRIEF) compression."""
-        # BRIEF: ~20% compression, capped at 50, minimum 20
-        result = estimate_summary_tokens(100, level=1)
-        assert result >= 20  # minimum of 20
-        assert result <= 50  # capped at 50
+    def test_medium_input(self) -> None:
+        """Test medium input stays within bounds."""
+        result = estimate_summary_tokens(2000)
+        assert result == 200  # 2000 // 10 = 200
+        assert result >= 50  # above floor
+        assert result <= 500  # below ceiling
 
-    def test_map_reduce_level(self) -> None:
-        """Test level 2 (MAP_REDUCE) compression."""
-        # MAP_REDUCE: ~10% compression, capped at 500, minimum 50
-        result = estimate_summary_tokens(1000, level=2)
-        assert result >= 50  # minimum of 50
-        assert result <= 500  # capped at 500
-
-    def test_map_reduce_large_input(self) -> None:
-        """Test MAP_REDUCE with large input hits cap."""
-        result = estimate_summary_tokens(50000, level=2)
+    def test_large_input_hits_cap(self) -> None:
+        """Test large input hits 500 token cap."""
+        result = estimate_summary_tokens(50000)
         assert result == 500  # capped at 500
 
-    def test_map_reduce_small_input(self) -> None:
-        """Test MAP_REDUCE with small input uses floor."""
-        result = estimate_summary_tokens(100, level=2)
+    def test_small_input_uses_floor(self) -> None:
+        """Test small input uses 50 token floor."""
+        result = estimate_summary_tokens(100)
+        assert result == 50  # floor of 50 (100 // 10 = 10, but min is 50)
+
+    def test_very_small_input(self) -> None:
+        """Test very small input still uses floor."""
+        result = estimate_summary_tokens(10)
         assert result == 50  # floor of 50
 
 

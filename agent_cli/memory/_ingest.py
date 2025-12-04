@@ -431,10 +431,10 @@ async def extract_and_store_facts_and_summaries(
             model=model,
         )
         LOGGER.info(
-            "Summary update completed in %.1f ms (conversation=%s, level=%s)",
+            "Summary update completed in %.1f ms (conversation=%s, compression=%.1f%%)",
             _elapsed_ms(summary_start),
             conversation_id,
-            summary_result.level.name,
+            summary_result.compression_ratio * 100,
         )
         if summary_result.summary:
             await store_adaptive_summary(

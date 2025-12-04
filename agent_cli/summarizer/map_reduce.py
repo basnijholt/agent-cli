@@ -2,7 +2,7 @@
 
 Simple algorithm:
 1. Map: Split content into chunks, summarize each in parallel
-2. Reduce: If combined summaries exceed token_max, recursively collapse
+2. Reduce: If combined summaries exceed target, recursively collapse
 
 Key insight from LangChain: No need for predetermined levels (L1/L2/L3).
 Just keep collapsing until content fits. Dynamic depth based on actual content.
@@ -18,6 +18,7 @@ from __future__ import annotations
 import asyncio
 import logging
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 from agent_cli.summarizer._prompts import (
     CHUNK_SUMMARY_PROMPT,
@@ -31,7 +32,9 @@ from agent_cli.summarizer._utils import (
     generate_summary,
     tokens_to_words,
 )
-from agent_cli.summarizer.models import SummarizerConfig, SummaryLevel
+
+if TYPE_CHECKING:
+    from agent_cli.summarizer.models import SummarizerConfig
 
 logger = logging.getLogger(__name__)
 
@@ -61,28 +64,29 @@ class MapReduceResult:
 async def map_reduce_summarize(
     content: str,
     config: SummarizerConfig,
+    target: int | None = None,
     max_collapse_depth: int = 10,
 ) -> MapReduceResult:
     """Summarize content using map-reduce with dynamic collapse.
 
     Algorithm:
     1. Split into chunks and summarize each (map phase)
-    2. If combined summaries exceed token_max, recursively collapse (reduce phase)
-    3. Continue until everything fits in token_max
-
-    Note: This function is designed for content that exceeds token_max. For shorter
-    content, use the main `summarize()` function in adaptive.py which selects the
-    appropriate strategy (NONE, BRIEF, or MAP_REDUCE with content-aware prompts).
+    2. If combined summaries exceed target, recursively collapse (reduce phase)
+    3. Continue until everything fits in target
 
     Args:
         content: The content to summarize.
         config: Summarizer configuration.
+        target: Target token count. Defaults to config.token_max.
         max_collapse_depth: Safety limit on recursive collapse depth.
 
     Returns:
         MapReduceResult with summary and metadata.
 
     """
+    if target is None:
+        target = config.token_max
+
     input_tokens = count_tokens(content, config.model)
 
     # Map phase: Split and summarize chunks in parallel
@@ -97,9 +101,9 @@ async def map_reduce_summarize(
     summaries = await _map_summarize(chunks, config)
     intermediate_summaries = [summaries.copy()]
 
-    # Reduce phase: Recursively collapse until fits token_max
+    # Reduce phase: Recursively collapse until fits target
     depth = 0
-    while _total_tokens(summaries, config.model) > config.token_max:
+    while _total_tokens(summaries, config.model) > target:
         depth += 1
         if depth > max_collapse_depth:
             logger.warning(
@@ -109,17 +113,18 @@ async def map_reduce_summarize(
             break
 
         logger.info(
-            "Reduce phase (depth %d): collapsing %d summaries (%d tokens)",
+            "Reduce phase (depth %d): collapsing %d summaries (%d tokens) to target %d",
             depth,
             len(summaries),
             _total_tokens(summaries, config.model),
+            target,
         )
-        summaries = await _collapse_summaries(summaries, config)
+        summaries = await _collapse_summaries(summaries, config, target)
         intermediate_summaries.append(summaries.copy())
 
     # Final synthesis if we have multiple summaries left
     if len(summaries) > 1:
-        final_summary = await _synthesize(summaries, config)
+        final_summary = await _synthesize(summaries, config, target)
     else:
         final_summary = summaries[0]
 
@@ -161,7 +166,7 @@ async def _summarize_chunk(
 ) -> str:
     """Summarize a single chunk."""
     source_tokens = count_tokens(chunk, config.model)
-    target_tokens = estimate_summary_tokens(source_tokens, SummaryLevel.MAP_REDUCE)
+    target_tokens = estimate_summary_tokens(source_tokens)
     max_words = tokens_to_words(target_tokens)
 
     prompt = CHUNK_SUMMARY_PROMPT.format(
@@ -177,16 +182,17 @@ async def _summarize_chunk(
 async def _collapse_summaries(
     summaries: list[str],
     config: SummarizerConfig,
+    target: int,
 ) -> list[str]:
     """Collapse summaries by grouping and re-summarizing (reduce phase).
 
-    Groups summaries that together fit within token_max, then summarizes each group.
+    Groups summaries that together fit within target, then summarizes each group.
     This is similar to LangChain's split_list_of_docs approach.
     """
     if len(summaries) <= 1:
         return summaries
 
-    # Group summaries that together fit within token_max
+    # Group summaries that together fit within target
     groups: list[list[str]] = []
     current_group: list[str] = []
     current_tokens = 0
@@ -194,8 +200,8 @@ async def _collapse_summaries(
     for summary in summaries:
         summary_tokens = count_tokens(summary, config.model)
 
-        # If adding this summary would exceed token_max, start new group
-        if current_tokens + summary_tokens > config.token_max and current_group:
+        # If adding this summary would exceed target, start new group
+        if current_tokens + summary_tokens > target and current_group:
             groups.append(current_group)
             current_group = [summary]
             current_tokens = summary_tokens
@@ -211,16 +217,21 @@ async def _collapse_summaries(
 
     async def summarize_group(group: list[str]) -> str:
         async with semaphore:
-            return await _synthesize(group, config)
+            return await _synthesize(group, config, target)
 
     tasks = [summarize_group(g) for g in groups]
     return list(await asyncio.gather(*tasks))
 
 
-async def _synthesize(summaries: list[str], config: SummarizerConfig) -> str:
+async def _synthesize(
+    summaries: list[str],
+    config: SummarizerConfig,
+    target: int,
+) -> str:
     """Synthesize multiple summaries into one."""
     combined_tokens = sum(count_tokens(s, config.model) for s in summaries)
-    target_tokens = estimate_summary_tokens(combined_tokens, SummaryLevel.MAP_REDUCE)
+    # Aim for target tokens but use estimate if combined is smaller
+    target_tokens = min(target, estimate_summary_tokens(combined_tokens))
     max_words = tokens_to_words(target_tokens)
 
     prompt = META_SUMMARY_PROMPT.format(

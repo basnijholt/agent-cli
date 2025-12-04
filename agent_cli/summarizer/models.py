@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from enum import IntEnum
 from typing import Any
 
 from pydantic import BaseModel, Field
@@ -24,7 +23,6 @@ class SummarizerConfig:
             model="llama3.1:8b",
         )
         result = await summarize(long_document, config)
-        print(f"Level: {result.level.name}")
         print(f"Compression: {result.compression_ratio:.1%}")
 
     """
@@ -33,7 +31,7 @@ class SummarizerConfig:
     model: str
     api_key: str | None = None
     chunk_size: int = 2048  # BOOOOKSCORE's tested default
-    token_max: int = 3000  # LangChain's default - when to collapse
+    token_max: int = 3000  # LangChain's default - target size after compression
     chunk_overlap: int = 200
     max_concurrent_chunks: int = 5
     timeout: float = 60.0
@@ -45,32 +43,18 @@ class SummarizerConfig:
             self.api_key = "not-needed"
 
 
-class SummaryLevel(IntEnum):
-    """Summary strategy based on input length."""
-
-    NONE = 0
-    """< 100 tokens: No summary needed."""
-
-    BRIEF = 1
-    """100-500 tokens: Single-sentence summary."""
-
-    MAP_REDUCE = 2
-    """> 500 tokens: Map-reduce with dynamic collapse."""
-
-
 class SummaryResult(BaseModel):
     """Result of summarization.
 
     Contains the summary and metadata about the compression achieved.
     """
 
-    level: SummaryLevel = Field(..., description="The summarization strategy used")
     summary: str | None = Field(
         default=None,
-        description="The final summary text (None for NONE level)",
+        description="The summary text (None if content already fit target)",
     )
     input_tokens: int = Field(..., ge=0, description="Token count of the input content")
-    output_tokens: int = Field(..., ge=0, description="Token count of the summary")
+    output_tokens: int = Field(..., ge=0, description="Token count of the output")
     compression_ratio: float = Field(
         ...,
         ge=0.0,
@@ -91,8 +75,9 @@ class SummaryResult(BaseModel):
         """Convert to metadata entry for ChromaDB storage.
 
         Returns a list with a single metadata dict for the summary.
+        Returns empty list if no summary was generated.
         """
-        if self.level == SummaryLevel.NONE or not self.summary:
+        if not self.summary:
             return []
 
         timestamp = self.created_at.isoformat()
@@ -105,7 +90,6 @@ class SummaryResult(BaseModel):
                     "conversation_id": conversation_id,
                     "role": "summary",
                     "is_final": True,
-                    "summary_level": self.level.name,
                     "input_tokens": self.input_tokens,
                     "output_tokens": self.output_tokens,
                     "compression_ratio": self.compression_ratio,

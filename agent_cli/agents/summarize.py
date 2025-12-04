@@ -115,7 +115,7 @@ def _display_result(
     elif result.summary:
         print_output_panel(
             result.summary,
-            title=f"Summary (Level: {result.level.name})",
+            title="Summary",
             subtitle=f"[dim]{result.output_tokens:,} tokens | {result.compression_ratio:.1%} of original | {elapsed:.2f}s[/dim]",
         )
     else:
@@ -139,7 +139,6 @@ def _display_full_result(
 
     console.print()
     console.print("[bold cyan]Summarization Result[/bold cyan]")
-    console.print(f"  Level: [bold]{result.level.name}[/bold]")
     console.print(f"  Input tokens: [bold]{result.input_tokens:,}[/bold]")
     console.print(f"  Output tokens: [bold]{result.output_tokens:,}[/bold]")
     console.print(f"  Compression: [bold]{result.compression_ratio:.1%}[/bold]")
@@ -151,7 +150,7 @@ def _display_full_result(
     if result.summary:
         print_output_panel(
             result.summary,
-            title=f"Summary ({result.level.name})",
+            title="Summary",
         )
 
 

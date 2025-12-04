@@ -12,13 +12,8 @@ from agent_cli.summarizer._utils import (
     SummaryOutput,
     generate_summary,
 )
-from agent_cli.summarizer.adaptive import (
-    THRESHOLD_BRIEF,
-    THRESHOLD_NONE,
-    determine_level,
-    summarize,
-)
-from agent_cli.summarizer.models import SummaryLevel, SummaryResult
+from agent_cli.summarizer.adaptive import summarize
+from agent_cli.summarizer.map_reduce import MapReduceResult
 
 
 class TestSummarizerConfig:
@@ -83,39 +78,6 @@ class TestSummarizerConfig:
         assert config.token_max == 3000  # LangChain's default
 
 
-class TestDetermineLevel:
-    """Tests for level determination based on token count.
-
-    The simplified approach has 3 levels:
-    - NONE: Very short content (< 100 tokens)
-    - BRIEF: Short content (100-500 tokens)
-    - MAP_REDUCE: Everything else (uses map-reduce)
-    """
-
-    def test_none_level_threshold(self) -> None:
-        """Test NONE level for very short content."""
-        assert determine_level(50) == SummaryLevel.NONE
-        assert determine_level(99) == SummaryLevel.NONE
-
-    def test_brief_level_threshold(self) -> None:
-        """Test BRIEF level for short content."""
-        assert determine_level(100) == SummaryLevel.BRIEF
-        assert determine_level(300) == SummaryLevel.BRIEF
-        assert determine_level(499) == SummaryLevel.BRIEF
-
-    def test_map_reduce_level_for_longer_content(self) -> None:
-        """Test that content >= 500 tokens uses MAP_REDUCE."""
-        assert determine_level(500) == SummaryLevel.MAP_REDUCE
-        assert determine_level(1500) == SummaryLevel.MAP_REDUCE
-        assert determine_level(5000) == SummaryLevel.MAP_REDUCE
-        assert determine_level(20000) == SummaryLevel.MAP_REDUCE
-
-    def test_thresholds_match_constants(self) -> None:
-        """Verify thresholds match the module constants."""
-        assert THRESHOLD_NONE == 100
-        assert THRESHOLD_BRIEF == 500
-
-
 class TestSummarize:
     """Tests for main summarize function."""
 
@@ -128,133 +90,101 @@ class TestSummarize:
         )
 
     @pytest.mark.asyncio
-    async def test_empty_content_returns_none_level(
+    async def test_empty_content_returns_no_summary(
         self,
         config: SummarizerConfig,
     ) -> None:
-        """Test that empty content returns NONE level result."""
+        """Test that empty content returns result with no summary."""
         result = await summarize("", config)
-        assert result.level == SummaryLevel.NONE
         assert result.summary is None
         assert result.input_tokens == 0
         assert result.output_tokens == 0
 
     @pytest.mark.asyncio
-    async def test_whitespace_only_returns_none_level(
+    async def test_whitespace_only_returns_no_summary(
         self,
         config: SummarizerConfig,
     ) -> None:
-        """Test that whitespace-only content returns NONE level result."""
+        """Test that whitespace-only content returns result with no summary."""
         result = await summarize("   \n\n   ", config)
-        assert result.level == SummaryLevel.NONE
         assert result.summary is None
 
     @pytest.mark.asyncio
-    async def test_very_short_content_no_summary(
+    async def test_short_content_returns_as_is(
         self,
         config: SummarizerConfig,
     ) -> None:
-        """Test that very short content gets NONE level (no summary)."""
-        # Less than 100 tokens
+        """Test that short content is returned as-is (no LLM call)."""
+        # Less than default token_max (3000)
         result = await summarize("Hello world", config)
-        assert result.level == SummaryLevel.NONE
-        assert result.summary is None
+        assert result.summary == "Hello world"
+        assert result.compression_ratio == 1.0  # No compression
 
     @pytest.mark.asyncio
-    @patch("agent_cli.summarizer.adaptive._brief_summary")
-    async def test_brief_level_calls_brief_summary(
+    async def test_target_tokens_respected(
         self,
-        mock_brief: AsyncMock,
         config: SummarizerConfig,
     ) -> None:
-        """Test that BRIEF level content calls _brief_summary."""
-        mock_brief.return_value = "Brief summary."
-
-        # Create content that's ~100-500 tokens
-        content = "This is a test sentence. " * 30  # ~150 tokens
-
-        result = await summarize(content, config)
-
-        mock_brief.assert_called_once_with(content, config)
-        assert result.level == SummaryLevel.BRIEF
-        assert result.summary == "Brief summary."
+        """Test that content fitting target_tokens is returned as-is."""
+        content = "Short content"
+        result = await summarize(content, config, target_tokens=1000)
+        assert result.summary == content
+        assert result.compression_ratio == 1.0
 
     @pytest.mark.asyncio
-    @patch("agent_cli.summarizer.adaptive._map_reduce_summary")
-    async def test_longer_content_uses_map_reduce(
+    async def test_target_ratio_calculates_target(
+        self,
+        config: SummarizerConfig,
+    ) -> None:
+        """Test that target_ratio calculates correct target."""
+        # Short content that fits even with 10% target
+        content = "Hello"
+        result = await summarize(content, config, target_ratio=0.1)
+        # Content is so short it fits in 10% target
+        assert result.summary == content
+
+    @pytest.mark.asyncio
+    @patch("agent_cli.summarizer.adaptive._content_aware_summary")
+    async def test_content_exceeding_target_gets_summarized(
+        self,
+        mock_summary: AsyncMock,
+        config: SummarizerConfig,
+    ) -> None:
+        """Test that content exceeding target gets summarized."""
+        mock_summary.return_value = "Summarized content."
+
+        # Create content that's ~500 tokens (exceeds target of 100)
+        content = "This is a test sentence. " * 100
+
+        result = await summarize(content, config, target_tokens=100)
+
+        mock_summary.assert_called_once()
+        assert result.summary == "Summarized content."
+
+    @pytest.mark.asyncio
+    @patch("agent_cli.summarizer.adaptive.map_reduce_summarize")
+    async def test_large_content_uses_map_reduce(
         self,
         mock_map_reduce: AsyncMock,
         config: SummarizerConfig,
     ) -> None:
-        """Test that content >= 500 tokens uses map-reduce."""
-        mock_result = SummaryResult(
-            level=SummaryLevel.MAP_REDUCE,
+        """Test that content exceeding chunk_size uses map-reduce."""
+        mock_map_reduce.return_value = MapReduceResult(
             summary="Map-reduce summary.",
-            input_tokens=800,
+            input_tokens=5000,
             output_tokens=100,
-            compression_ratio=0.125,
+            compression_ratio=0.02,
+            collapse_depth=1,
+            intermediate_summaries=[["chunk1", "chunk2"]],
         )
-        mock_map_reduce.return_value = mock_result
 
-        # Create content that's ~500+ tokens
-        content = "This is a test sentence with more words. " * 100  # ~800 tokens
+        # Create content larger than chunk_size (2048)
+        content = "Word " * 3000  # ~3000 tokens
 
-        result = await summarize(content, config, content_type="general")
+        result = await summarize(content, config, target_tokens=500)
 
         mock_map_reduce.assert_called_once()
         assert result.summary == "Map-reduce summary."
-
-    @pytest.mark.asyncio
-    @patch("agent_cli.summarizer.adaptive._map_reduce_summary")
-    async def test_prior_summary_passed_to_map_reduce(
-        self,
-        mock_map_reduce: AsyncMock,
-        config: SummarizerConfig,
-    ) -> None:
-        """Test that prior_summary is passed to _map_reduce_summary."""
-        mock_result = SummaryResult(
-            level=SummaryLevel.MAP_REDUCE,
-            summary="Updated summary.",
-            input_tokens=800,
-            output_tokens=100,
-            compression_ratio=0.125,
-        )
-        mock_map_reduce.return_value = mock_result
-
-        content = "This is a test sentence with more words. " * 100
-        prior = "Previous context summary."
-
-        await summarize(content, config, prior_summary=prior)
-
-        # Verify prior_summary was passed
-        call_args = mock_map_reduce.call_args
-        assert call_args[0][3] == prior  # prior_summary is 4th positional arg
-
-    @pytest.mark.asyncio
-    @patch("agent_cli.summarizer.adaptive._map_reduce_summary")
-    async def test_very_long_content_uses_map_reduce(
-        self,
-        mock_map_reduce: AsyncMock,
-        config: SummarizerConfig,
-    ) -> None:
-        """Test that very long content uses map-reduce."""
-        mock_result = SummaryResult(
-            level=SummaryLevel.MAP_REDUCE,
-            summary="Long content summary.",
-            input_tokens=20000,
-            output_tokens=500,
-            compression_ratio=0.025,
-            collapse_depth=2,
-        )
-        mock_map_reduce.return_value = mock_result
-
-        # Create content that's > 15000 tokens
-        content = "Word " * 20000
-
-        result = await summarize(content, config)
-
-        assert mock_map_reduce.called
-        assert result.level == SummaryLevel.MAP_REDUCE
 
 
 class TestGenerateSummary:
