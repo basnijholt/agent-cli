@@ -348,7 +348,6 @@ async def run_demo(
         api_key=api_key,
         chunk_size=2048,  # BOOOOKSCORE default
         max_concurrent_chunks=3,
-        timeout=120.0,  # Longer timeout for local models
     )
 
     async with httpx.AsyncClient() as client:

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from agent_cli.summarizer._prompts import (
-    BRIEF_SUMMARY_PROMPT,
     CHUNK_SUMMARY_PROMPT,
     CONVERSATION_SUMMARY_PROMPT,
     DOCUMENT_SUMMARY_PROMPT,
@@ -18,13 +17,6 @@ from agent_cli.summarizer._prompts import (
 
 class TestPromptTemplates:
     """Tests for prompt template structure."""
-
-    def test_brief_prompt_has_content_placeholder(self) -> None:
-        """Test BRIEF prompt contains content placeholder."""
-        assert "{content}" in BRIEF_SUMMARY_PROMPT
-        # Test it can be formatted
-        result = BRIEF_SUMMARY_PROMPT.format(content="Test content")
-        assert "Test content" in result
 
     def test_general_prompt_has_placeholders(self) -> None:
         """Test GENERAL prompt contains required placeholders."""

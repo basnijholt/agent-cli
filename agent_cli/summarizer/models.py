@@ -34,7 +34,6 @@ class SummarizerConfig:
     token_max: int = 3000  # LangChain's default - target size after compression
     chunk_overlap: int = 200
     max_concurrent_chunks: int = 5
-    timeout: float = 60.0
 
     def __post_init__(self) -> None:
         """Normalize the base URL."""

@@ -46,12 +46,10 @@ class TestSummarizerConfig:
             chunk_size=5000,
             chunk_overlap=300,
             max_concurrent_chunks=10,
-            timeout=120.0,
         )
         assert config.chunk_size == 5000
         assert config.chunk_overlap == 300
         assert config.max_concurrent_chunks == 10
-        assert config.timeout == 120.0
 
     def test_trailing_slash_stripped(self) -> None:
         """Test that trailing slash is stripped from base URL."""
