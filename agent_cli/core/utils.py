@@ -281,8 +281,7 @@ def signal_handling_context(
             signal.signal(signum, handler)
 
         register(signal.SIGINT, lambda *_: sigint_handler())
-        if hasattr(signal, "SIGTERM"):
-            register(signal.SIGTERM, lambda *_: sigterm_handler())
+        register(signal.SIGTERM, lambda *_: sigterm_handler())
 
     if sys.platform == "win32":
         _register_sync_handlers()
