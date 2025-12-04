@@ -247,7 +247,7 @@ def signal_handling_context(
     """
     stop_event = InteractiveStopEvent()
 
-    def sigint_handler() -> None:
+    def _sigint_handler() -> None:
         sigint_count = stop_event.increment_sigint_count()
 
         if sigint_count == 1:
@@ -260,7 +260,7 @@ def signal_handling_context(
                 console.print("\n[red]Force exit![/red]")
             sys.exit(130)  # Standard exit code for Ctrl+C
 
-    def sigterm_handler() -> None:
+    def _sigterm_handler() -> None:
         logger.info("SIGTERM received. Stopping process.")
         stop_event.set()
 
@@ -269,8 +269,8 @@ def signal_handling_context(
 
     def _register_async_handlers() -> None:
         """Register signal handlers using asyncio loop (Unix)."""
-        loop.add_signal_handler(signal.SIGINT, sigint_handler)
-        loop.add_signal_handler(signal.SIGTERM, sigterm_handler)
+        loop.add_signal_handler(signal.SIGINT, _sigint_handler)
+        loop.add_signal_handler(signal.SIGTERM, _sigterm_handler)
 
     def _register_sync_handlers() -> None:
         """Register signal handlers using standard signal module (Windows)."""
@@ -280,8 +280,8 @@ def signal_handling_context(
             restore_handlers[signum] = signal.getsignal(signum)
             signal.signal(signum, handler)
 
-        register(signal.SIGINT, lambda *_: sigint_handler())
-        register(signal.SIGTERM, lambda *_: sigterm_handler())
+        register(signal.SIGINT, lambda *_: _sigint_handler())
+        register(signal.SIGTERM, lambda *_: _sigterm_handler())
 
     if sys.platform == "win32":
         _register_sync_handlers()
@@ -292,14 +292,7 @@ def signal_handling_context(
         yield stop_event
     finally:
         for signum, previous in restore_handlers.items():
-            try:
-                signal.signal(signum, previous)
-            except (
-                OSError,
-                RuntimeError,
-                ValueError,
-            ) as exc:  # pragma: no cover - platform specific
-                logger.debug("Unable to restore handler for %s: %s", signum, exc)
+            signal.signal(signum, previous)
 
 
 def stop_or_status_or_toggle(
