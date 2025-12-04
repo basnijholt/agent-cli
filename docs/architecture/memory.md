@@ -59,7 +59,7 @@ entries/
       assistant/
         <timestamp>__<uuid>.md     # Raw assistant responses
     summaries/
-      summary.md                   # The single rolling summary of the conversation
+      <conversation_id>__summary.md  # Single final summary (map-reduce collapses to one)
 ```
 
 **Deleted Directory Structure (Soft Deletes):**
@@ -71,7 +71,7 @@ entries/
       facts/
         <timestamp>__<uuid>.md
       summaries/
-        summary.md                 # Tombstoned summary
+        <conversation_id>__summary.md  # Tombstoned summary
 ```
 
 ### 2.2 File Format
@@ -154,22 +154,28 @@ Executed via `_postprocess_after_turn` (background task).
 *   **Output:** JSON list of strings. Failures fall back to `[]`.
 
 ### 4.3 Reconciliation (Memory Management)
-Resolves contradictions using a "Search-Decide-Update" loop.
+Resolves contradictions using a "Search-Decide-Update" loop with complete enumeration.
 1.  **Local Search:** For each new fact, retrieve a small neighborhood of existing `role="memory"` entries for the conversation.
-2.  **LLM Decision:** Uses `UPDATE_MEMORY_PROMPT` (examples + strict JSON schema) to compare `new_facts` vs `existing_memories`.
+2.  **LLM Decision:** Uses `UPDATE_MEMORY_PROMPT` to compare `new_facts` vs `existing_memories`. The model must return **all memories** (existing + new) with explicit events for each.
     *   **Decisions:** `ADD`, `UPDATE`, `DELETE`, `NONE`.
     *   If no existing memories are found, all new facts are added directly.
     *   On LLM/network failure, defaults to adding all new facts.
-    *   Safeguard: if the model returns only deletes/empties, the new facts are still added to avoid data loss.
 3.  **Execution:**
     *   **Adds:** Creates new fact files and upserts to Chroma.
     *   **Updates:** Implemented as delete + add with a fresh ID; tombstones record `replaced_by`.
     *   **Deletes:** Soft-deletes files (moved under `deleted/`) and removes from Chroma.
 
-### 4.4 Summarization
+### 4.4 Summarization (Adaptive Map-Reduce)
+Uses the `agent_cli.summarizer` module for research-backed adaptive summarization.
+
+*   **Level Selection:** Automatically determines summarization strategy based on token count:
+    *   `NONE` (< 100 tokens): No summary needed, facts only.
+    *   `BRIEF` (100-500 tokens): Single-sentence summary.
+    *   `MAP_REDUCE` (>= 500 tokens): Dynamic collapse using map-reduce with content-type aware prompts.
+*   **Algorithm:** LangChain-inspired map-reduce that recursively collapses until content fits token_max (3000).
 *   **Input:** Previous summary (if any) + newly extracted facts.
-*   **Prompt:** `SUMMARY_PROMPT` (updates the running summary).
-*   **Persistence:** Writes a single `summaries/summary.md` per conversation (deterministic doc ID).
+*   **Persistence:** Stores single final summary in `summaries/` directory with YAML front matter containing compression metrics.
+*   **See:** `docs/architecture/summarizer.md` for detailed algorithm specification.
 
 ### 4.5 Eviction
 *   **Trigger:** If total entries in conversation > `max_entries` (default 500).
@@ -190,17 +196,22 @@ To replicate the system behavior, the following prompt strategies are required.
 *   **Example:** "My wife is Anne" -> `["The user's wife is named Anne"]`.
 
 ### 5.2 Reconciliation (`UPDATE_MEMORY_PROMPT`)
-*   **Goal:** Compare `new_facts` against `existing_memories` (id + text) and output structured decisions.
+*   **Goal:** Compare `new_facts` against `existing_memories` and return **all memories** (existing + new) with explicit events.
+*   **Approach:** The model must enumerate every memory in its response, forcing deliberate decisions rather than implicit omissions.
 *   **Operations:**
-    *   **ADD:** New information (generates a new ID).
-    *   **UPDATE:** Refines existing information (uses the provided short ID).
-    *   **DELETE:** Contradicts existing information (e.g., "I hate pizza" vs "I love pizza"). **If deleting because of a replacement, the new fact must also be returned (ADD or UPDATE).**
-    *   **NONE:** Fact already exists or is irrelevant.
-*   **Output constraints:** JSON list only; no prose/code fences; IDs for UPDATE/DELETE/NONE must come from the provided list.
+    *   **ADD:** New information not present in existing memories (generates a new sequential ID).
+    *   **UPDATE:** Refines existing information about the **same topic** (keeps the existing ID).
+    *   **DELETE:** Explicitly contradicts existing information (e.g., "I hate pizza" vs "I love pizza").
+    *   **NONE:** Existing memory is unrelated to new facts, or new fact is an exact duplicate.
+*   **Output constraints:** JSON list containing all memories; each existing memory must have an event; new unrelated facts must be ADDed; no prose or code fences.
 
-### 5.3 Summarization (`SUMMARY_PROMPT`)
-*   **Goal:** Maintain a concise running summary.
-*   **Constraints:** Aggregate related facts. Drop transient chit-chat. Focus on durable info.
+### 5.3 Summarization (Adaptive Prompts)
+The summarizer uses prompts from `agent_cli.summarizer._prompts`:
+*   **`BRIEF_SUMMARY_PROMPT`:** Single-sentence distillation for short content (100-500 tokens).
+*   **`GENERAL_SUMMARY_PROMPT`:** Paragraph summary with prior context integration (general content).
+*   **`CHUNK_SUMMARY_PROMPT`:** Individual chunk summarization for map phase.
+*   **`META_SUMMARY_PROMPT`:** Synthesizes multiple chunk summaries in reduce phase.
+*   **Content-type variants:** `CONVERSATION_SUMMARY_PROMPT`, `JOURNAL_SUMMARY_PROMPT`, `DOCUMENT_SUMMARY_PROMPT` for domain-specific summarization.
 
 ---
 

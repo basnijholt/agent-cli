@@ -7,7 +7,7 @@ import math
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
-from agent_cli.memory._store import get_summary_entry, query_memories
+from agent_cli.memory._store import get_final_summary, query_memories
 from agent_cli.memory.models import (
     ChatRequest,
     MemoryEntry,
@@ -24,7 +24,6 @@ if TYPE_CHECKING:
 LOGGER = logging.getLogger(__name__)
 
 _DEFAULT_MMR_LAMBDA = 0.7
-_SUMMARY_ROLE = "summary"
 
 
 def gather_relevant_existing_memories(
@@ -202,7 +201,7 @@ def retrieve_memory(
 
     summaries: list[str] = []
     if include_summary:
-        summary_entry = get_summary_entry(collection, conversation_id, role=_SUMMARY_ROLE)
+        summary_entry = get_final_summary(collection, conversation_id)
         if summary_entry:
             summaries.append(f"Conversation summary:\n{summary_entry.content}")
 

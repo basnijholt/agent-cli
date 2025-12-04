@@ -60,6 +60,7 @@ from .agents import (  # noqa: E402, F401
     rag_proxy,
     server,
     speak,
+    summarize,
     transcribe,
     voice_edit,
 )

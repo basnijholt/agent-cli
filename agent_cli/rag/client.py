@@ -124,8 +124,17 @@ class RagClient:
             for i in range(len(chunks))
         ]
 
-        # Upsert to collection
-        self.collection.upsert(ids=ids, documents=chunks, metadatas=metadatas)
+        # Upsert to collection in batches to avoid overwhelming the embedding service
+        batch_size = 10
+        for i in range(0, len(ids), batch_size):
+            batch_ids = ids[i : i + batch_size]
+            batch_docs = chunks[i : i + batch_size]
+            batch_metas = metadatas[i : i + batch_size]
+            self.collection.upsert(
+                ids=batch_ids,
+                documents=batch_docs,
+                metadatas=batch_metas,
+            )
         logger.info("Added doc_id=%s with %d chunks", doc_id, len(chunks))
 
         return doc_id

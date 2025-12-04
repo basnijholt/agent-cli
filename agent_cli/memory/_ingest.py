@@ -12,23 +12,25 @@ from uuid import uuid4
 import httpx
 
 from agent_cli.memory._git import commit_changes
-from agent_cli.memory._persistence import delete_memory_files, persist_entries, persist_summary
+from agent_cli.memory._persistence import (
+    delete_memory_files,
+    persist_entries,
+    persist_summary,
+)
 from agent_cli.memory._prompt import (
     FACT_INSTRUCTIONS,
     FACT_SYSTEM_PROMPT,
-    SUMMARY_PROMPT,
     UPDATE_MEMORY_PROMPT,
 )
 from agent_cli.memory._retrieval import gather_relevant_existing_memories
-from agent_cli.memory._store import delete_entries, get_summary_entry
-from agent_cli.memory.entities import Fact, Summary
+from agent_cli.memory._store import delete_entries, get_final_summary
+from agent_cli.memory.entities import Fact
 from agent_cli.memory.models import (
     MemoryAdd,
     MemoryDecision,
     MemoryDelete,
     MemoryIgnore,
     MemoryUpdate,
-    SummaryOutput,
 )
 
 if TYPE_CHECKING:
@@ -36,9 +38,9 @@ if TYPE_CHECKING:
 
     from chromadb import Collection
 
-LOGGER = logging.getLogger(__name__)
+    from agent_cli.summarizer import SummaryResult
 
-_SUMMARY_ROLE = "summary"
+LOGGER = logging.getLogger(__name__)
 
 
 def _elapsed_ms(start: float) -> float:
@@ -178,7 +180,7 @@ async def reconcile_facts(
     existing_json = [{"id": idx, "text": mem.content} for idx, mem in enumerate(existing)]
     existing_ids = set(id_map.keys())
 
-    from pydantic_ai import Agent, ModelRetry  # noqa: PLC0415
+    from pydantic_ai import Agent, ModelRetry, PromptedOutput  # noqa: PLC0415
     from pydantic_ai.exceptions import AgentRunError, UnexpectedModelBehavior  # noqa: PLC0415
     from pydantic_ai.models.openai import OpenAIChatModel  # noqa: PLC0415
     from pydantic_ai.providers.openai import OpenAIProvider  # noqa: PLC0415
@@ -193,7 +195,7 @@ async def reconcile_facts(
     agent = Agent(
         model=model_cfg,
         system_prompt=UPDATE_MEMORY_PROMPT,
-        output_type=list[MemoryDecision],
+        output_type=PromptedOutput(list[MemoryDecision]),  # JSON mode instead of tool calls
         retries=3,
     )
 
@@ -275,39 +277,74 @@ New facts to process:
     return to_add, to_delete, replacement_map
 
 
-async def update_summary(
+async def summarize_content(
     *,
-    prior_summary: str | None,
-    new_facts: list[str],
+    content: str,
+    prior_summary: str | None = None,
+    content_type: str = "general",
     openai_base_url: str,
     api_key: str | None,
     model: str,
-    max_tokens: int = 256,
-) -> str | None:
-    """Update the conversation summary based on new facts."""
-    if not new_facts:
-        return prior_summary
+) -> SummaryResult:
+    """Adaptively summarize content based on its length.
 
-    from pydantic_ai import Agent  # noqa: PLC0415
-    from pydantic_ai.models.openai import OpenAIChatModel  # noqa: PLC0415
-    from pydantic_ai.providers.openai import OpenAIProvider  # noqa: PLC0415
-    from pydantic_ai.settings import ModelSettings  # noqa: PLC0415
+    Automatically selects the appropriate summarization strategy
+    (NONE, BRIEF, MAP_REDUCE) based on input token count.
 
-    system_prompt = SUMMARY_PROMPT
-    user_parts: list[str] = []
-    if prior_summary:
-        user_parts.append(f"Previous summary:\n{prior_summary}")
-    user_parts.append("New facts:\n" + "\n".join(f"- {fact}" for fact in new_facts))
-    prompt_text = "\n\n".join(user_parts)
-    provider = OpenAIProvider(api_key=api_key or "dummy", base_url=openai_base_url)
-    model_cfg = OpenAIChatModel(
-        model_name=model,
-        provider=provider,
-        settings=ModelSettings(temperature=0.2, max_tokens=max_tokens),
+    Args:
+        content: The content to summarize.
+        prior_summary: Optional prior summary for context continuity.
+        content_type: Type of content ("general", "conversation", "journal", "document").
+        openai_base_url: Base URL for OpenAI-compatible API.
+        api_key: API key for the LLM.
+        model: Model name to use for summarization.
+
+    Returns:
+        SummaryResult with the summary and metadata.
+
+    """
+    # Import here to avoid circular imports and allow optional dependency
+    from agent_cli.summarizer import SummarizerConfig, summarize  # noqa: PLC0415
+
+    config = SummarizerConfig(
+        openai_base_url=openai_base_url,
+        model=model,
+        api_key=api_key,
     )
-    agent = Agent(model=model_cfg, system_prompt=system_prompt, output_type=SummaryOutput)
-    result = await agent.run(prompt_text)
-    return result.output.summary or prior_summary
+    return await summarize(
+        content=content,
+        config=config,
+        prior_summary=prior_summary,
+        content_type=content_type,
+    )
+
+
+async def store_adaptive_summary(
+    collection: Collection,
+    memory_root: Path,
+    conversation_id: str,
+    summary_result: SummaryResult,
+) -> list[str]:
+    """Store a summary result to files and ChromaDB.
+
+    Old summaries are deleted first, then the new summary is stored.
+
+    Args:
+        collection: ChromaDB collection.
+        memory_root: Root path for memory files.
+        conversation_id: The conversation this summary belongs to.
+        summary_result: The result from summarize().
+
+    Returns:
+        List of IDs that were stored.
+
+    """
+    return persist_summary(
+        collection,
+        memory_root=memory_root,
+        conversation_id=conversation_id,
+        summary_result=summary_result,
+    )
 
 
 async def extract_and_store_facts_and_summaries(
@@ -370,37 +407,41 @@ async def extract_and_store_facts_and_summaries(
             entries=list(to_add),
         )
 
-    if enable_summarization:
-        prior_summary_entry = get_summary_entry(
-            collection,
-            conversation_id,
-            role=_SUMMARY_ROLE,
-        )
+    # Summarize raw conversation turns (not extracted facts)
+    has_content = user_message or assistant_message
+    if enable_summarization and has_content:
+        prior_summary_entry = get_final_summary(collection, conversation_id)
         prior_summary = prior_summary_entry.content if prior_summary_entry else None
 
+        # Build conversation transcript
+        parts = []
+        if user_message:
+            parts.append(f"User: {user_message}")
+        if assistant_message:
+            parts.append(f"Assistant: {assistant_message}")
+        content_to_summarize = "\n".join(parts)
+
         summary_start = perf_counter()
-        new_summary = await update_summary(
+        summary_result = await summarize_content(
+            content=content_to_summarize,
             prior_summary=prior_summary,
-            new_facts=facts,
+            content_type="conversation",
             openai_base_url=openai_base_url,
             api_key=api_key,
             model=model,
         )
         LOGGER.info(
-            "Summary update completed in %.1f ms (conversation=%s)",
+            "Summary update completed in %.1f ms (conversation=%s, compression=%.1f%%)",
             _elapsed_ms(summary_start),
             conversation_id,
+            summary_result.compression_ratio * 100,
         )
-        if new_summary:
-            summary_obj = Summary(
-                conversation_id=conversation_id,
-                content=new_summary,
-                created_at=datetime.now(UTC),
-            )
-            persist_summary(
+        if summary_result.summary:
+            await store_adaptive_summary(
                 collection,
                 memory_root=memory_root,
-                summary=summary_obj,
+                conversation_id=conversation_id,
+                summary_result=summary_result,
             )
 
     if enable_git_versioning:

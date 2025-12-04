@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, field_validator
+from pydantic import BaseModel, ConfigDict
 
 
 class Message(BaseModel):
@@ -49,19 +49,25 @@ class MemoryMetadata(BaseModel):
     replaced_by: str | None = None
     source_id: str | None = None
 
-
-class SummaryOutput(BaseModel):
-    """Structured summary returned by the LLM."""
-
-    summary: str
-
-    @field_validator("summary")
-    @classmethod
-    def _not_empty(cls, v: str) -> str:
-        if not v or not str(v).strip():
-            msg = "field must be non-empty"
-            raise ValueError(msg)
-        return str(v).strip()
+    # Summary fields (only used when role="summary")
+    level: int | None = None
+    """Summary level (deprecated, kept for file structure compatibility)."""
+    is_final: bool | None = None
+    """Whether this is the final summary."""
+    chunk_index: int | None = None
+    """Deprecated: index of the source chunk."""
+    group_index: int | None = None
+    """Deprecated: index of this group."""
+    input_tokens: int | None = None
+    """Number of tokens in the original input."""
+    output_tokens: int | None = None
+    """Number of tokens in the summary output."""
+    compression_ratio: float | None = None
+    """Ratio of output to input tokens."""
+    summary_level: str | None = None
+    """Deprecated: previously stored SummaryLevel enum name."""
+    collapse_depth: int | None = None
+    """Number of collapse iterations in map-reduce (0 = no collapse needed)."""
 
 
 class StoredMemory(BaseModel):

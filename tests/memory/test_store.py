@@ -101,23 +101,6 @@ def test_query_memories_skips_summary_entries_and_filters_roles() -> None:
     assert {"role": {"$ne": "summary"}} in clauses
 
 
-def test_get_summary_entry_returns_entry() -> None:
-    # ChromaDB's .get() returns flat lists (not nested like .query())
-    fake = _FakeCollection(
-        get_result={
-            "documents": ["summary text"],
-            "metadatas": [
-                {"conversation_id": "c1", "role": "summary", "created_at": "now"},
-            ],
-            "ids": ["sum1"],
-        },
-    )
-    entry = _store.get_summary_entry(fake, "c1", role="summary")
-    assert entry is not None
-    assert entry.id == "sum1"
-    assert entry.metadata.role == "summary"
-
-
 def test_list_conversation_entries_filters_summaries() -> None:
     # ChromaDB's .get() returns flat lists (not nested like .query())
     fake = _FakeCollection(
@@ -148,3 +131,144 @@ def test_upsert_and_delete_entries_delegate() -> None:
 
     _store.delete_entries(fake, ["x"])
     assert fake.deleted == [["x"]]
+
+
+# --- Summary Entry Tests ---
+
+
+def test_upsert_summary_entries_simple() -> None:
+    """Test upserting a summary."""
+    fake = _FakeCollection()
+    entries = [
+        {
+            "id": "conv-123:summary",
+            "content": "A paragraph summary.",
+            "metadata": {
+                "conversation_id": "conv-123",
+                "role": "summary",
+                "is_final": True,
+                "summary_level": "MAP_REDUCE",
+                "input_tokens": 1000,
+                "output_tokens": 50,
+                "compression_ratio": 0.05,
+                "collapse_depth": 0,
+                "created_at": "2024-01-01T00:00:00",
+            },
+        },
+    ]
+
+    ids = _store.upsert_summary_entries(fake, entries)
+
+    assert ids == ["conv-123:summary"]
+    assert len(fake.upserts) == 1
+    upserted_ids, upserted_docs, upserted_metas = fake.upserts[0]
+    assert upserted_ids == ["conv-123:summary"]
+    assert upserted_docs == ["A paragraph summary."]
+    assert upserted_metas[0]["is_final"] is True
+
+
+def test_upsert_summary_entries_with_collapse_depth() -> None:
+    """Test upserting a summary with collapse depth metadata."""
+    fake = _FakeCollection()
+    entries = [
+        {
+            "id": "conv-456:summary",
+            "content": "Final synthesis",
+            "metadata": {
+                "conversation_id": "conv-456",
+                "role": "summary",
+                "is_final": True,
+                "summary_level": "MAP_REDUCE",
+                "input_tokens": 5000,
+                "output_tokens": 100,
+                "compression_ratio": 0.02,
+                "collapse_depth": 2,
+                "created_at": "2024-01-01T00:00:00",
+            },
+        },
+    ]
+
+    ids = _store.upsert_summary_entries(fake, entries)
+
+    assert len(ids) == 1
+    assert ids[0] == "conv-456:summary"
+    assert fake.upserts[0][2][0]["collapse_depth"] == 2
+
+
+def test_upsert_summary_entries_empty() -> None:
+    """Test upserting when there are no entries (e.g., NONE level)."""
+    fake = _FakeCollection()
+
+    ids = _store.upsert_summary_entries(fake, [])
+
+    assert ids == []
+    assert len(fake.upserts) == 0
+
+
+def test_get_final_summary_returns_summary() -> None:
+    """Test getting the final summary for a conversation."""
+    fake = _FakeCollection(
+        get_result={
+            "documents": ["The final summary"],
+            "metadatas": [
+                {
+                    "conversation_id": "c1",
+                    "role": "summary",
+                    "is_final": True,
+                    "summary_level": "MAP_REDUCE",
+                    "collapse_depth": 1,
+                    "created_at": "now",
+                },
+            ],
+            "ids": ["c1:summary"],
+        },
+    )
+
+    result = _store.get_final_summary(fake, "c1")
+
+    assert result is not None
+    assert result.content == "The final summary"
+    assert result.metadata.is_final is True
+
+
+def test_get_final_summary_returns_none_when_missing() -> None:
+    """Test that get_final_summary returns None when no summary exists."""
+    fake = _FakeCollection(get_result={"documents": [], "metadatas": [], "ids": []})
+
+    result = _store.get_final_summary(fake, "c1")
+
+    assert result is None
+
+
+def test_delete_summaries() -> None:
+    """Test deleting summaries for a conversation."""
+    fake = _FakeCollection(
+        get_result={
+            "documents": ["The summary"],
+            "metadatas": [
+                {
+                    "conversation_id": "c1",
+                    "role": "summary",
+                    "summary_level": "MAP_REDUCE",
+                    "created_at": "now",
+                },
+            ],
+            "ids": ["c1:summary"],
+        },
+    )
+
+    deleted_count = _store.delete_summaries(fake, "c1")
+
+    assert deleted_count == 1
+    assert len(fake.deleted) == 1
+    assert fake.deleted[0] == ["c1:summary"]
+
+
+def test_delete_summaries_no_entries() -> None:
+    """Test deleting when no summaries exist."""
+    fake = _FakeCollection(get_result={"documents": [], "metadatas": [], "ids": []})
+
+    deleted_count = _store.delete_summaries(fake, "c1")
+
+    assert deleted_count == 0
+    assert len(fake.deleted) == 0

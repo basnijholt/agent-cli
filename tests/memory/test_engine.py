@@ -21,8 +21,8 @@ from agent_cli.memory.models import (
     MemoryMetadata,
     Message,
     StoredMemory,
-    SummaryOutput,
 )
+from agent_cli.summarizer import SummaryResult
 
 
 class _DummyReranker:
@@ -247,13 +247,13 @@ async def test_retrieve_memory_prefers_diversity_and_adds_summaries(
     )
     monkeypatch.setattr(
         _retrieval,
-        "get_summary_entry",
-        lambda _collection, _cid, role: StoredMemory(  # type: ignore[return-value]
-            id=f"{role}-id",
-            content=f"{role} content",
+        "get_final_summary",
+        lambda _collection, _cid: StoredMemory(
+            id="summary-id",
+            content="summary content",
             metadata=MemoryMetadata(
                 conversation_id="conv1",
-                role=role,
+                role="summary",
                 created_at=now.isoformat(),
             ),
         ),
@@ -342,11 +342,17 @@ async def test_process_chat_request_summarizes_and_persists(
                 self.output = output
 
         prompt_str = str(prompt_text)
-        if "New facts:" in prompt_str:
-            return _Result(SummaryOutput(summary="summary up to 256"))
         if "Hello, I enjoy biking" in prompt_str:
             return _Result(["User likes cats.", "User loves biking."])
-        return _Result(SummaryOutput(summary="noop"))
+        return _Result([])
+
+    async def fake_summarize_content(**_kwargs: Any) -> SummaryResult:
+        return SummaryResult(
+            summary="summary up to 256",
+            input_tokens=100,
+            output_tokens=20,
+            compression_ratio=0.2,
+        )
 
     async def fake_reconcile(
         _collection: Any,
@@ -370,6 +376,7 @@ async def test_process_chat_request_summarizes_and_persists(
     import pydantic_ai  # noqa: PLC0415
 
     monkeypatch.setattr(pydantic_ai.Agent, "run", fake_agent_run)
+    monkeypatch.setattr(_ingest, "summarize_content", fake_summarize_content)
     # High relevance so they aren't filtered
     monkeypatch.setattr(_retrieval, "predict_relevance", lambda _model, pairs: [5.0 for _ in pairs])
 
@@ -562,11 +569,17 @@ async def test_streaming_with_summarization_persists_facts_and_summaries(
                 self.output = output
 
         prompt_str = str(prompt_text)
-        if "New facts:" in prompt_str:
-            return _Result(SummaryOutput(summary="summary text"))
         if "My cat is Luna" in prompt_str:
             return _Result(["User has a cat named Luna."])
-        return _Result(SummaryOutput(summary="noop"))
+        return _Result([])
+
+    async def fake_summarize_content(**_kwargs: Any) -> SummaryResult:
+        return SummaryResult(
+            summary="summary text",
+            input_tokens=100,
+            output_tokens=20,
+            compression_ratio=0.2,
+        )
 
     monkeypatch.setattr(engine._streaming, "stream_chat_sse", fake_stream_chat_sse)
 
@@ -592,6 +605,7 @@ async def test_streaming_with_summarization_persists_facts_and_summaries(
     import pydantic_ai  # noqa: PLC0415
 
     monkeypatch.setattr(pydantic_ai.Agent, "run", fake_agent_run)
+    monkeypatch.setattr(_ingest, "summarize_content", fake_summarize_content)
 
     response = await engine.process_chat_request(
         request,
@@ -608,4 +622,4 @@ async def test_streaming_with_summarization_persists_facts_and_summaries(
     files = list(tmp_path.glob("entries/**/*.md"))
     assert len(files) == 4  # user + assistant + fact + 1 summary
     assert any("facts" in str(f) for f in files)
-    assert any("summaries/summary.md" in str(f) for f in files)
+    assert any("summaries" in str(f) for f in files)
