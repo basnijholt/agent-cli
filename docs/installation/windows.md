@@ -77,8 +77,8 @@ To invoke these commands globally (like the macOS/Linux hotkeys), use [AutoHotke
 ```autohotkey
 Persistent  ; Keep script running with tray icon
 
-; Win+Ctrl+Alt+R to toggle transcription (custom, to avoid OS defaults)
-#^!r::{
+; Win+Shift+T to toggle transcription
+#+t::{
     statusFile := A_Temp . "\agent-cli-status.txt"
     RunWait A_ComSpec ' /C agent-cli transcribe --status > "' statusFile '" 2>&1', , "Hide"
     status := FileRead(statusFile)
