@@ -11,7 +11,7 @@ from agent_cli import config
 from agent_cli.agents.speak import _async_main
 from agent_cli.cli import app
 
-runner = CliRunner()
+runner = CliRunner(env={"NO_COLOR": "1", "TERM": "dumb"})
 
 
 @pytest.mark.asyncio

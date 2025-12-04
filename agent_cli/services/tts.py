@@ -10,7 +10,6 @@ from functools import partial
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-import numpy as np
 from rich.live import Live
 from wyoming.audio import AudioChunk, AudioStart, AudioStop
 from wyoming.tts import Synthesize, SynthesizeVoice
@@ -311,6 +310,8 @@ async def _play_audio(
     live: Live,
 ) -> None:
     """Play WAV audio data using SoundDevice."""
+    import numpy as np  # noqa: PLC0415
+
     try:
         wav_io = io.BytesIO(audio_data)
         speed = audio_output_cfg.tts_speed

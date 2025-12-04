@@ -25,6 +25,31 @@ if ! command -v uv &> /dev/null; then
     install_uv
 fi
 
+# Check for PortAudio (required for audio processing)
+echo "🔊 Checking PortAudio..."
+if ! pkg-config --exists portaudio-2.0 2>/dev/null; then
+    echo "❌ ERROR: PortAudio development libraries are not installed."
+    echo ""
+    echo "PyAudio requires PortAudio. Install using your distribution's package manager:"
+    echo ""
+    echo "Ubuntu/Debian:"
+    echo "  sudo apt install portaudio19-dev"
+    echo ""
+    echo "Fedora/RHEL/CentOS:"
+    echo "  sudo dnf install portaudio-devel"
+    echo ""
+    echo "Arch Linux:"
+    echo "  sudo pacman -S portaudio"
+    echo ""
+    echo "openSUSE:"
+    echo "  sudo zypper install portaudio-devel"
+    echo ""
+    echo "After installing PortAudio, run this script again."
+    exit 1
+else
+    echo "✅ PortAudio is already installed"
+fi
+
 # Install Ollama
 echo "🧠 Checking Ollama..."
 if ! command -v ollama &> /dev/null; then

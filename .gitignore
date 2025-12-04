@@ -23,9 +23,6 @@ wheels/
 .installed.cfg
 *.egg
 
-# Package managers
-uv.lock
-
 # Audio files
 *.wav
 *.mp3
@@ -67,3 +64,11 @@ scripts/.runtime/
 *.onnx
 *.onnx.json
 *.bin
+
+# RAG/memory
+rag_proxy_*.log
+transcription_log.json
+temp_rag_*/
+memory_db
+rag_db/
+*.log

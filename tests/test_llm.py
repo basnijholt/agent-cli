@@ -8,6 +8,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from agent_cli import config
+from agent_cli.constants import DEFAULT_OPENAI_MODEL
 from agent_cli.services.llm import create_llm_agent, get_llm_response, process_and_update_clipboard
 
 
@@ -23,7 +24,7 @@ def test_create_llm_agent_openai_no_key():
         llm_ollama_host="http://mockhost:1234",
     )
     openai_llm_cfg = config.OpenAILLM(
-        llm_openai_model="gpt-4o-mini",
+        llm_openai_model=DEFAULT_OPENAI_MODEL,
         openai_api_key=None,
         openai_base_url=None,
     )
@@ -49,7 +50,7 @@ def test_create_llm_agent(monkeypatch: pytest.MonkeyPatch) -> None:
         llm_ollama_host="http://mockhost:1234",
     )
     openai_llm_cfg = config.OpenAILLM(
-        llm_openai_model="gpt-4o-mini",
+        llm_openai_model=DEFAULT_OPENAI_MODEL,
         openai_api_key=None,
         openai_base_url=None,
     )
@@ -78,7 +79,7 @@ async def test_get_llm_response(mock_create_llm_agent: MagicMock) -> None:
     )
     ollama_cfg = config.Ollama(llm_ollama_model="test", llm_ollama_host="test")
     openai_llm_cfg = config.OpenAILLM(
-        llm_openai_model="gpt-4o-mini",
+        llm_openai_model=DEFAULT_OPENAI_MODEL,
         openai_api_key=None,
         openai_base_url=None,
     )
@@ -119,7 +120,7 @@ async def test_get_llm_response_error(mock_create_llm_agent: MagicMock) -> None:
     )
     ollama_cfg = config.Ollama(llm_ollama_model="test", llm_ollama_host="test")
     openai_llm_cfg = config.OpenAILLM(
-        llm_openai_model="gpt-4o-mini",
+        llm_openai_model=DEFAULT_OPENAI_MODEL,
         openai_api_key=None,
         openai_base_url=None,
     )
@@ -160,7 +161,7 @@ async def test_get_llm_response_error_exit(mock_create_llm_agent: MagicMock):
     )
     ollama_cfg = config.Ollama(llm_ollama_model="test", llm_ollama_host="test")
     openai_llm_cfg = config.OpenAILLM(
-        llm_openai_model="gpt-4o-mini",
+        llm_openai_model=DEFAULT_OPENAI_MODEL,
         openai_api_key=None,
         openai_base_url=None,
     )
@@ -199,7 +200,7 @@ def test_process_and_update_clipboard(
     )
     ollama_cfg = config.Ollama(llm_ollama_model="test", llm_ollama_host="test")
     openai_llm_cfg = config.OpenAILLM(
-        llm_openai_model="gpt-4o-mini",
+        llm_openai_model=DEFAULT_OPENAI_MODEL,
         openai_api_key=None,
         openai_base_url=None,
     )

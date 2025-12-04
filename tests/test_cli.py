@@ -12,7 +12,7 @@ from agent_cli.cli import app
 if TYPE_CHECKING:
     import pytest
 
-runner = CliRunner()
+runner = CliRunner(env={"NO_COLOR": "1", "TERM": "dumb"})
 
 
 def test_main_no_args() -> None:

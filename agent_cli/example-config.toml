@@ -1,0 +1,165 @@
+# Example configuration for agent-cli
+# Copy this file to ~/.config/agent-cli/config.toml or ./agent-cli-config.toml and edit
+#
+# This file demonstrates how to configure all available options.
+# Keys use dashes to match the command-line arguments.
+# Any option here can be overridden by a command-line argument.
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# --- Default Settings ---
+# These settings apply to all commands unless overridden in a command-specific
+# section below.
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[defaults]
+
+# --- Provider Selection ---
+# Select the default provider for each service ("ollama"/"openai"/"gemini" for LLM, "wyoming"/"openai" for ASR).
+llm-provider = "ollama"  # "local" still works as a deprecated alias
+tts-provider = "wyoming"
+
+# --- API Keys ---
+# Your OpenAI API key. Can also be set via the OPENAI_API_KEY environment variable.
+openai-api-key = "sk-..."
+
+# --- Audio Device Settings ---
+# You can specify partial names for devices, and the first match will be used.
+# Use `agent-cli speak --list-devices` to see available devices.
+# input-device-name = "logitech,airpods,macbook"
+# output-device-name = "airpods,macbook"
+# You can also specify device by index, though name is more stable.
+# input-device-index = 1
+# output-device-index = 1
+
+# --- LLM Settings ---
+# Ollama (local)
+llm-ollama-model = "gemma3:4b"
+llm-ollama-host = "http://localhost:11434"
+# OpenAI
+llm-openai-model = "gpt-5-mini"
+# For llama-server (llama-cpp) or other OpenAI-compatible APIs:
+# openai-base-url = "http://localhost:8080/v1"
+
+# --- ASR (Speech-to-Text) Settings ---
+# Wyoming (local)
+asr-wyoming-ip = "localhost"
+asr-wyoming-port = 10300
+# OpenAI
+asr-openai-model = "whisper-1"
+# Custom ASR endpoint (e.g., NVIDIA Canary, local Whisper server)
+# Uncomment and configure to use a custom OpenAI-compatible Whisper API:
+# asr-provider = "openai"
+# asr-openai-base-url = "http://localhost:9898"
+# asr-openai-model = "nvidia/canary-qwen-2.5b"  # Optional: override model
+# asr-openai-prompt = "Transcribe the following:"  # Optional: add prompt
+
+# --- TTS (Text-to-Speech) Settings ---
+# Wyoming (local)
+tts-wyoming-ip = "localhost"
+tts-wyoming-port = 10200
+tts-wyoming-voice = "en_US-lessac-medium"
+# tts-wyoming-language = "en_US"  # Optional: specify language for the voice
+# tts-wyoming-speaker = "speaker_name" # Optional: specify speaker for the voice
+# OpenAI
+tts-openai-model = "tts-1"
+tts-openai-voice = "alloy"
+# Custom OpenAI-compatible TTS endpoint (e.g., your own proxy)
+# tts-openai-base-url = "http://localhost:8000/v1"
+# Kokoro (high-quality local TTS)
+# tts-kokoro-model = "kokoro"
+# tts-kokoro-voice = "af_sky"
+# tts-kokoro-host = "http://localhost:8880/v1"
+
+# --- Embedding Model (for RAG and Memory) ---
+# Used by rag-proxy and memory-proxy for vectorization.
+# embedding-model = "text-embedding-3-small"  # OpenAI default
+# embedding-model = "embeddinggemma:300m"  # Ollama local model
+
+# --- General Behavior ---
+log-level = "WARNING"  # Logging level (e.g., DEBUG, INFO, WARNING, ERROR)
+# log-file = "/path/to/agent-cli.log" # Path to a file to write logs to
+quiet = false # Suppress most console output
+clipboard = true # Copy results to clipboard by default
+# save-file = "/path/to/output.wav" # Save TTS audio to a file instead of playing
+
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# --- Command-Specific Overrides ---
+# Settings in these sections will override the [defaults] for that specific
+# command.
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+[assistant]
+# Wake-word specific settings
+wake-server-ip = "localhost"
+wake-server-port = 10400
+wake-word = "ok_nabu" # e.g., "ok_nabu", "hey_jarvis"
+# The assistant agent also uses ASR, LLM, and TTS settings from [defaults]
+tts = true
+
+[autocorrect]
+# Use a more powerful model specifically for the autocorrect command.
+llm-provider = "ollama"
+llm-ollama-model = "devstral:24b"
+
+[chat]
+# By default, chat uses local providers.
+# For better tool use, you might want to switch to OpenAI:
+# llm-provider = "openai"
+# tts-provider = "openai"
+# llm-openai-model = "gpt-4-turbo"
+tts = true
+tts-speed = 1.2
+# Conversation history settings
+history-dir = "~/.config/agent-cli/history"
+last-n-messages = 50 # Number of messages to load from history
+
+[speak]
+# Use a specific voice for the speak command.
+tts-provider = "wyoming"
+tts-wyoming-voice = "en_US-ryan-high"
+tts-speed = 1.0
+
+[transcribe]
+# By default, transcription uses local providers.
+# For higher accuracy, you can switch to OpenAI:
+# asr-provider = "openai"
+# llm-provider = "openai"
+# Enable LLM cleanup for the transcript.
+llm = true
+# Allow the user to provide additional instructions for the LLM.
+# Use this to improve transcription accuracy for domain-specific terms.
+extra-instructions = """
+Assume the user is often discussing Python programming.
+Use backticks for variable names, function names, and other code elements.
+Follow PEP8: use `snake_case` for variables, functions, and package names; `CamelCase` for classes.
+"""
+# Log all transcriptions with timestamps for later reference.
+# transcription-log = "~/.config/agent-cli/transcription.log"
+
+[voice-edit]
+# Use a powerful local model for the voice assistant.
+llm-provider = "ollama"
+llm-ollama-model = "llama3"
+tts = true
+
+[rag-proxy]
+# RAG (Retrieval-Augmented Generation) proxy server settings.
+# docs-folder = "./rag_docs"  # Folder to watch for documents
+# chroma-path = "./rag_db"  # Path to ChromaDB persistence directory
+# limit = 3  # Number of document chunks to retrieve per query
+# rag-tools = true  # Allow agent to fetch full documents when snippets are insufficient
+# host = "0.0.0.0"
+# port = 8000
+
+[memory.proxy]
+# Long-term memory proxy server settings.
+# memory-path = "./memory_db"  # Path to the memory store
+# default-top-k = 5  # Number of memory entries to retrieve per query
+# max-entries = 500  # Maximum stored memory entries per conversation
+# mmr-lambda = 0.7  # MMR lambda (0-1): higher favors relevance, lower favors diversity
+# recency-weight = 0.2  # Recency score weight (0.0-1.0)
+# score-threshold = 0.35  # Minimum semantic relevance threshold
+# summarization = true  # Enable automatic fact extraction and summaries
+# git-versioning = true  # Enable automatic git commit of memory changes
+# host = "0.0.0.0"
+# port = 8100

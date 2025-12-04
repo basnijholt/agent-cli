@@ -12,6 +12,7 @@ from wyoming.asr import Transcript
 
 from agent_cli import config, constants
 from agent_cli.agents import transcribe
+from agent_cli.constants import DEFAULT_OPENAI_MODEL
 
 
 def create_test_wav_file(filepath: Path, content: bytes = b"test_audio" * 1000) -> None:
@@ -66,7 +67,7 @@ async def test_async_main_from_file(tmp_path: Path):
             llm_ollama_host="http://localhost:11434",
         )
         openai_llm_cfg = config.OpenAILLM(
-            llm_openai_model="gpt-4o-mini",
+            llm_openai_model=DEFAULT_OPENAI_MODEL,
         )
         gemini_llm_cfg = config.GeminiLLM(
             llm_gemini_model="gemini-2.5-flash",
@@ -137,7 +138,7 @@ async def test_async_main_from_file_with_llm(tmp_path: Path):
             llm_ollama_host="http://localhost:11434",
         )
         openai_llm_cfg = config.OpenAILLM(
-            llm_openai_model="gpt-4o-mini",
+            llm_openai_model=DEFAULT_OPENAI_MODEL,
         )
         gemini_llm_cfg = config.GeminiLLM(
             llm_gemini_model="gemini-2.5-flash",
@@ -207,7 +208,7 @@ async def test_async_main_from_file_with_logging(tmp_path: Path):
             llm_ollama_host="http://localhost:11434",
         )
         openai_llm_cfg = config.OpenAILLM(
-            llm_openai_model="gpt-4o-mini",
+            llm_openai_model=DEFAULT_OPENAI_MODEL,
         )
         gemini_llm_cfg = config.GeminiLLM(
             llm_gemini_model="gemini-2.5-flash",
@@ -279,7 +280,7 @@ async def test_async_main_from_file_error_handling(
             llm_ollama_host="http://localhost:11434",
         )
         openai_llm_cfg = config.OpenAILLM(
-            llm_openai_model="gpt-4o-mini",
+            llm_openai_model=DEFAULT_OPENAI_MODEL,
         )
         gemini_llm_cfg = config.GeminiLLM(
             llm_gemini_model="gemini-2.5-flash",
@@ -360,7 +361,7 @@ async def test_async_main_save_recording_enabled(
             llm_ollama_host="http://localhost:11434",
         )
         openai_llm_cfg = config.OpenAILLM(
-            llm_openai_model="gpt-4o-mini",
+            llm_openai_model=DEFAULT_OPENAI_MODEL,
         )
         gemini_llm_cfg = config.GeminiLLM(
             llm_gemini_model="gemini-2.5-flash",
@@ -422,7 +423,7 @@ def test_transcribe_command_last_recording_option(
             asr_openai_prompt=None,
             llm_ollama_model="gemma3:4b",
             llm_ollama_host="http://localhost:11434",
-            llm_openai_model="gpt-4o-mini",
+            llm_openai_model=DEFAULT_OPENAI_MODEL,
             openai_api_key=None,
             openai_base_url=None,
             llm_gemini_model="gemini-2.5-flash",
@@ -446,6 +447,7 @@ def test_transcribe_command_last_recording_option(
         call_args = mock_run.call_args[0][0]
         # The coroutine is passed to asyncio.run
         assert call_args.__name__ == "_async_main"
+        call_args.close()  # Avoid "coroutine never awaited" warning
 
         # Verify the message about using most recent recording
         mock_print.assert_called()
@@ -476,7 +478,7 @@ def test_transcribe_command_from_file_option(tmp_path: Path):
             asr_openai_prompt=None,
             llm_ollama_model="gemma3:4b",
             llm_ollama_host="http://localhost:11434",
-            llm_openai_model="gpt-4o-mini",
+            llm_openai_model=DEFAULT_OPENAI_MODEL,
             openai_api_key=None,
             openai_base_url=None,
             llm_gemini_model="gemini-2.5-flash",
@@ -499,6 +501,7 @@ def test_transcribe_command_from_file_option(tmp_path: Path):
         mock_run.assert_called_once()
         call_args = mock_run.call_args[0][0]
         assert call_args.__name__ == "_async_main"
+        call_args.close()  # Avoid "coroutine never awaited" warning
 
 
 def test_transcribe_command_last_recording_with_index(
@@ -542,7 +545,7 @@ def test_transcribe_command_last_recording_with_index(
             asr_openai_prompt=None,
             llm_ollama_model="gemma3:4b",
             llm_ollama_host="http://localhost:11434",
-            llm_openai_model="gpt-4o-mini",
+            llm_openai_model=DEFAULT_OPENAI_MODEL,
             openai_api_key=None,
             openai_base_url=None,
             llm_gemini_model="gemini-2.5-flash",
@@ -563,6 +566,8 @@ def test_transcribe_command_last_recording_with_index(
 
         # Verify _async_main_from_file was called
         mock_run.assert_called_once()
+        call_args = mock_run.call_args[0][0]
+        call_args.close()  # Avoid "coroutine never awaited" warning
 
         # Verify the message about using recording #2
         mock_print.assert_called()
@@ -584,7 +589,10 @@ def test_transcribe_command_last_recording_disabled(
         lambda idx: recording_file if idx == 1 else None,
     )
 
-    with patch("agent_cli.agents.transcribe.asyncio.run") as mock_run:
+    with (
+        patch("agent_cli.agents.transcribe.asyncio.run") as mock_run,
+        patch("agent_cli.core.process.pid_file_context") as mock_pid_context,
+    ):
         # Call transcribe with --last-recording disabled (0)
         transcribe.transcribe(
             last_recording=0,  # Disabled
@@ -602,7 +610,7 @@ def test_transcribe_command_last_recording_disabled(
             asr_openai_prompt=None,
             llm_ollama_model="gemma3:4b",
             llm_ollama_host="http://localhost:11434",
-            llm_openai_model="gpt-4o-mini",
+            llm_openai_model=DEFAULT_OPENAI_MODEL,
             openai_api_key=None,
             openai_base_url=None,
             llm_gemini_model="gemini-2.5-flash",
@@ -623,9 +631,11 @@ def test_transcribe_command_last_recording_disabled(
 
         # Verify _async_main was called for normal recording (not from file)
         mock_run.assert_called_once()
+        mock_pid_context.assert_called_once_with("transcribe")
         call_args = mock_run.call_args[0][0]
         # Should be normal recording mode, not file mode
         assert call_args.__name__ == "_async_main"
+        call_args.close()  # Avoid "coroutine never awaited" warning
 
 
 def test_transcribe_command_conflicting_options() -> None:
@@ -646,7 +656,7 @@ def test_transcribe_command_conflicting_options() -> None:
             asr_openai_model="whisper-1",
             llm_ollama_model="gemma3:4b",
             llm_ollama_host="http://localhost:11434",
-            llm_openai_model="gpt-4o-mini",
+            llm_openai_model=DEFAULT_OPENAI_MODEL,
             openai_api_key=None,
             openai_base_url=None,
             llm_gemini_model="gemini-2.5-flash",
