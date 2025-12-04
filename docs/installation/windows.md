@@ -97,8 +97,8 @@ Persistent  ; Keep script running with tray icon
     Run "agent-cli autocorrect", , "Hide"
 }
 
-; Win+Shift+V to voice edit selection
-#+v::{
+; Win+Shift+E to voice edit selection
+#+e::{
     Send "^c"
     ClipWait(1)
     TrayTip "🗣️ Voice editing selection...", "agent-cli", 1
