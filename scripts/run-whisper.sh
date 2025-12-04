@@ -3,13 +3,21 @@ echo "🎤 Starting Wyoming Whisper on port 10300..."
 
 # Detect if CUDA is available
 if command -v nvidia-smi &> /dev/null && nvidia-smi &> /dev/null; then
-    echo "⚡ NVIDIA GPU detected, using CUDA acceleration..."
-    DEVICE="${WHISPER_DEVICE:-cuda}"
+    echo "⚡ NVIDIA GPU detected"
+    DETECTED_DEVICE="cuda"
+else
+    echo "💻 No GPU detected or CUDA unavailable"
+    DETECTED_DEVICE="cpu"
+fi
+
+# Allow device override via environment variable
+DEVICE="${WHISPER_DEVICE:-$DETECTED_DEVICE}"
+
+# Set default model based on final device choice (not hardware detection)
+if [ "$DEVICE" = "cuda" ]; then
     DEFAULT_MODEL="large-v3"
 else
-    echo "💻 No GPU detected or CUDA unavailable, using CPU..."
-    DEVICE="${WHISPER_DEVICE:-cpu}"
-    DEFAULT_MODEL="tiny-int8"
+    DEFAULT_MODEL="tiny"
 fi
 
 # Allow model override via environment variable
