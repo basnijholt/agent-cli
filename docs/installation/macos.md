@@ -50,12 +50,14 @@ The `setup-macos.sh` script:
 
 ## Services Overview
 
-| Service          | Implementation         | Port  | GPU Support      |
-| ---------------- | ---------------------- | ----- | ---------------- |
-| **Ollama**       | Native macOS app       | 11434 | ✅ Metal GPU     |
-| **Whisper**      | Wyoming Faster Whisper | 10300 | 🔧 CPU optimized |
-| **Piper**        | Wyoming Piper (via uv) | 10200 | N/A              |
-| **OpenWakeWord** | Wyoming OpenWakeWord   | 10400 | N/A              |
+| Service          | Implementation         | Port  | GPU Support          |
+| ---------------- | ---------------------- | ----- | -------------------- |
+| **Ollama**       | Native macOS app       | 11434 | ✅ Metal GPU         |
+| **Whisper**      | Wyoming MLX Whisper    | 10300 | ✅ Apple Silicon MLX |
+| **Piper**        | Wyoming Piper (via uv) | 10200 | N/A                  |
+| **OpenWakeWord** | Wyoming OpenWakeWord   | 10400 | N/A                  |
+
+> **Note:** Whisper uses [wyoming-mlx-whisper](https://github.com/basnijholt/wyoming-mlx-whisper) with `whisper-large-v3-turbo` for near real-time transcription on Apple Silicon.
 
 ## Session Management with Zellij
 

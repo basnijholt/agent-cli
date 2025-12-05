@@ -23,6 +23,24 @@ def _get_pid_file(process_name: str) -> Path:
     return PID_DIR / f"{process_name}.pid"
 
 
+def _get_stop_file(process_name: str) -> Path:
+    """Get the path to the stop file for a given process name."""
+    PID_DIR.mkdir(parents=True, exist_ok=True)
+    return PID_DIR / f"{process_name}.stop"
+
+
+def check_stop_file(process_name: str) -> bool:
+    """Check if a stop file exists (used for cross-process signaling on Windows)."""
+    return _get_stop_file(process_name).exists()
+
+
+def clear_stop_file(process_name: str) -> None:
+    """Remove the stop file for the given process."""
+    stop_file = _get_stop_file(process_name)
+    if stop_file.exists():
+        stop_file.unlink()
+
+
 def _is_pid_running(pid: int) -> bool:
     """Check if a process with the given PID is running."""
     if sys.platform == "win32":
@@ -79,7 +97,11 @@ def read_pid_file(process_name: str) -> int | None:
 
 
 def kill_process(process_name: str) -> bool:
-    """Kill a process by name. Returns True if killed or cleaned up, False if not found."""
+    """Kill a process by name.
+
+    Returns True if killed or cleaned up, False if not found.
+    On Windows, creates a stop file first to allow graceful shutdown.
+    """
     pid_file = _get_pid_file(process_name)
 
     # If no PID file exists at all, nothing to do
@@ -91,9 +113,13 @@ def kill_process(process_name: str) -> bool:
 
     # If _get_running_pid returned None but file existed, it cleaned up a stale file
     if pid is None:
-        return True  # Cleanup of stale file is success
+        return True
 
-    # Kill the running process
+    # On Windows, create stop file to signal graceful shutdown
+    if sys.platform == "win32":
+        _get_stop_file(process_name).touch()
+
+    # Send SIGINT for graceful shutdown
     try:
         os.kill(pid, signal.SIGINT)
         # Wait for process to terminate
@@ -104,7 +130,9 @@ def kill_process(process_name: str) -> bool:
     except (ProcessLookupError, PermissionError):
         pass  # Process dead or no permission - we'll clean up regardless
 
-    # Clean up PID file
+    # Clean up
+    if sys.platform == "win32":
+        clear_stop_file(process_name)
     if pid_file.exists():
         pid_file.unlink()
 
@@ -123,6 +151,10 @@ def pid_file_context(process_name: str) -> Generator[Path, None, None]:
         print(f"Process {process_name} is already running (PID: {existing_pid})")
         sys.exit(1)
 
+    # Clear any stale stop file from previous run (Windows only)
+    if sys.platform == "win32":
+        clear_stop_file(process_name)
+
     pid_file = _get_pid_file(process_name)
     with pid_file.open("w") as f:
         f.write(str(os.getpid()))
@@ -132,3 +164,5 @@ def pid_file_context(process_name: str) -> Generator[Path, None, None]:
     finally:
         if pid_file.exists():
             pid_file.unlink()
+        if sys.platform == "win32":
+            clear_stop_file(process_name)

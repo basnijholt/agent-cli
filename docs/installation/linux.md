@@ -104,7 +104,7 @@ scripts/start-all-services.sh
 
 The scripts automatically detect and use GPU acceleration:
 
-- **Whisper**: Detects NVIDIA GPU and uses `large-v3` model with CUDA, falls back to `tiny-int8` with CPU
+- **Whisper**: Detects NVIDIA GPU and uses `large-v3` model with CUDA, falls back to `tiny` on CPU
 - **Ollama**: Automatically uses available GPU (CUDA/ROCm)
 
 ## GPU Acceleration Setup

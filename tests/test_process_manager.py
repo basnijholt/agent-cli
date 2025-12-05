@@ -95,8 +95,12 @@ def test_read_pid_file_current_process() -> None:
 
 
 @pytest.mark.skipif(sys.platform == "win32", reason="os.kill(pid, 0) not used on Windows")
+@patch("agent_cli.core.process.is_process_running")
 @patch("os.kill")
-def test_kill_process_success(mock_os_kill: MagicMock) -> None:
+def test_kill_process_success(
+    mock_os_kill: MagicMock,
+    mock_is_running: MagicMock,
+) -> None:
     """Test successfully killing a process."""
     process_name = "test-process"
     pid_file = process._get_pid_file(process_name)
@@ -105,11 +109,12 @@ def test_kill_process_success(mock_os_kill: MagicMock) -> None:
     current_pid = os.getpid()
     pid_file.write_text(str(current_pid))
 
+    # First call checks if running (for _get_running_pid), rest are for wait loop
+    mock_is_running.side_effect = [False]  # Process exits immediately after SIGINT
+
     result = process.kill_process(process_name)
     assert result is True
-    # The first call is to check if the process is running
     mock_os_kill.assert_any_call(current_pid, 0)
-    # The second call is to kill the process (SIGINT for graceful shutdown)
     mock_os_kill.assert_any_call(current_pid, signal.SIGINT)
     assert not pid_file.exists()
 
@@ -142,6 +147,8 @@ def test_pid_file_context_success() -> None:
     pid_file = process._get_pid_file(process_name)
 
     # Ensure no PID file exists initially
+    if pid_file.exists():
+        pid_file.unlink()
     assert not pid_file.exists()
 
     with process.pid_file_context(process_name) as returned_pid_file:
@@ -201,3 +208,61 @@ def test_pid_file_context_exception_cleanup() -> None:
 
     # PID file should still be cleaned up after exception
     assert not pid_file.exists()
+
+
+def test_kill_process_creates_stop_file_on_windows(
+    temp_pid_dir: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Test that kill_process creates a stop file on Windows for graceful shutdown."""
+    process_name = "test-process"
+    pid_file = temp_pid_dir / f"{process_name}.pid"
+    stop_file = temp_pid_dir / f"{process_name}.stop"
+
+    # Write a fake PID (not current process to avoid sending real signals)
+    pid_file.write_text("12345")
+
+    # Track if stop file was created during execution
+    stop_file_created = False
+
+    original_touch = Path.touch
+
+    def tracking_touch(self: Path) -> None:
+        nonlocal stop_file_created
+        if self == stop_file:
+            stop_file_created = True
+        original_touch(self)
+
+    # Mock sys.platform, _is_pid_running (to avoid ctypes.windll), is_process_running, and os.kill
+    monkeypatch.setattr(process.sys, "platform", "win32")
+    with (
+        patch.object(process, "_is_pid_running", return_value=True),
+        patch.object(process, "is_process_running", return_value=False),
+        patch.object(Path, "touch", tracking_touch),
+        patch("os.kill"),
+    ):
+        process.kill_process(process_name)
+
+    # Verify stop file was created during the call
+    assert stop_file_created
+    # Stop file should be cleaned up after kill
+    assert not stop_file.exists()
+    assert not pid_file.exists()
+
+
+def test_stop_file_functions(temp_pid_dir: Path) -> None:
+    """Test stop file helper functions."""
+    process_name = "test-process"
+    stop_file = temp_pid_dir / f"{process_name}.stop"
+
+    # Initially no stop file
+    assert not process.check_stop_file(process_name)
+
+    # Create stop file
+    stop_file.touch()
+    assert process.check_stop_file(process_name)
+
+    # Clear stop file
+    process.clear_stop_file(process_name)
+    assert not process.check_stop_file(process_name)
+    assert not stop_file.exists()
