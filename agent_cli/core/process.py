@@ -123,7 +123,7 @@ def kill_process(process_name: str) -> bool:
     try:
         os.kill(pid, signal.SIGINT)
         # Wait for process to terminate
-        for _ in range(30):  # 3 seconds max
+        for _ in range(10):  # 1 second max
             if not is_process_running(process_name):
                 break
             time.sleep(0.1)
