@@ -126,6 +126,40 @@ def predict_relevance(
     return model.predict(pairs)
 
 
+def format_context(
+    ranked: list[tuple[str, dict, float]],
+    source_key: str = "source",
+    path_key: str = "file_path",
+    chunk_key: str = "chunk_id",
+) -> str:
+    """Format ranked documents as XML for context injection.
+
+    Args:
+        ranked: List of (doc, meta, score) tuples from rerank_and_filter().
+        source_key: Metadata key for source name.
+        path_key: Metadata key for file path.
+        chunk_key: Metadata key for chunk ID.
+
+    Returns:
+        XML-formatted context string.
+
+    """
+    if not ranked:
+        return ""
+
+    context_parts = []
+    for i, (doc, meta, score) in enumerate(ranked):
+        source = meta.get(source_key, "unknown")
+        path = meta.get(path_key, meta.get("doc_id", "unknown"))
+        chunk = meta.get(chunk_key, 0)
+        context_parts.append(
+            f'<document index="{i + 1}" source="{source}" '
+            f'path="{path}" chunk="{chunk}" score="{score:.3f}">\n{doc}\n</document>',
+        )
+
+    return "\n".join(context_parts)
+
+
 def rerank_and_filter(
     reranker: OnnxCrossEncoder,
     query: str,
@@ -219,11 +253,7 @@ def search_context(
         return RetrievalResult(context="", sources=[])
 
     # Build context and sources
-    context_parts = []
-    for doc, meta, _ in ranked:
-        context_parts.append(f"### {meta['file_path']} (chunk {meta['chunk_id']})\n{doc}")
-
-    context = "\n\n---\n\n".join(context_parts)
+    context = format_context(ranked)
     sources = [
         RagSource(
             source=meta["source"],

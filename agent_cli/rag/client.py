@@ -12,7 +12,7 @@ from agent_cli.constants import (
     DEFAULT_OPENAI_EMBEDDING_MODEL,
 )
 from agent_cli.core.chroma import init_collection
-from agent_cli.rag._retriever import get_reranker_model, rerank_and_filter
+from agent_cli.rag._retriever import format_context, get_reranker_model, rerank_and_filter
 from agent_cli.rag._utils import chunk_text, load_document_text
 from agent_cli.rag.models import RagSource, RetrievalResult
 
@@ -118,7 +118,7 @@ class RagClient:
         metadatas = [
             {
                 **metadata,
-                "chunk_index": i,
+                "chunk_id": i,
                 "total_chunks": len(chunks),
             }
             for i in range(len(chunks))
@@ -208,21 +208,13 @@ class RagClient:
         if not ranked:
             return RetrievalResult(context="", sources=[])
 
-        # Build context string
-        context_parts = []
-        for doc, meta, _score in ranked:
-            source = meta.get("source", "unknown")
-            chunk_idx = meta.get("chunk_index", 0)
-            context_parts.append(f"### {source} (chunk {chunk_idx})\n{doc}")
-
-        context = "\n\n---\n\n".join(context_parts)
-
-        # Build sources
+        # Build context and sources
+        context = format_context(ranked)
         sources = [
             RagSource(
                 source=meta.get("source", "unknown"),
                 path=meta.get("file_path", meta.get("doc_id", "unknown")),
-                chunk_id=meta.get("chunk_index", 0),
+                chunk_id=meta.get("chunk_id", 0),
                 score=float(score),
             )
             for _doc, meta, score in ranked
