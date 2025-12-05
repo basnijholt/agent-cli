@@ -223,16 +223,18 @@ async def process_chat_request(
         except Exception as e:
             return f"Error reading file: {e}"
 
-    # 3. Define System Prompt
+    # 3. Define RAG System Prompt (additive - user's system prompt is preserved in history)
     # Determine tool availability:
     # - If CLI flag `enable_rag_tools` is False, tools are disabled globally.
     # - If CLI flag is True, check request.rag_enable_tools (default True).
     tools_allowed = enable_rag_tools and (request.rag_enable_tools is not False)
-    system_prompt = ""
+
     if retrieval and retrieval.context:
         truncated = truncate_context(retrieval.context)
         template = RAG_PROMPT_WITH_TOOLS if tools_allowed else RAG_PROMPT_NO_TOOLS
         system_prompt = template.format(context=truncated)
+    else:
+        system_prompt = ""
 
     # 4. Setup Agent
     from pydantic_ai import Agent  # noqa: PLC0415

@@ -12,7 +12,7 @@ from agent_cli.constants import (
     DEFAULT_OPENAI_EMBEDDING_MODEL,
 )
 from agent_cli.core.chroma import init_collection
-from agent_cli.rag._retriever import get_reranker_model, predict_relevance
+from agent_cli.rag._retriever import get_reranker_model, rerank_and_filter
 from agent_cli.rag._utils import chunk_text, load_document_text
 from agent_cli.rag.models import RagSource, RetrievalResult
 
@@ -169,6 +169,7 @@ class RagClient:
         query: str,
         top_k: int = 5,
         filters: dict[str, Any] | None = None,
+        min_score: float = 0.2,
     ) -> RetrievalResult:
         """Search the index with optional metadata filtering.
 
@@ -178,6 +179,7 @@ class RagClient:
             query: The search query.
             top_k: Number of results to return.
             filters: ChromaDB where clause (e.g., {"source": "chatgpt"}).
+            min_score: Minimum relevance score threshold. Results below this are filtered out.
 
         Returns:
             RetrievalResult with context string and sources.
@@ -200,16 +202,11 @@ class RagClient:
         if not docs:
             return RetrievalResult(context="", sources=[])
 
-        # Rerank
-        pairs = [(query, doc) for doc in docs]
-        scores = predict_relevance(self.reranker, pairs)
+        # Rerank and filter
+        ranked = rerank_and_filter(self.reranker, query, docs, metas, top_k, min_score)
 
-        # Sort by score, take top_k
-        ranked = sorted(
-            zip(docs, metas, scores, strict=False),
-            key=lambda x: x[2],
-            reverse=True,
-        )[:top_k]
+        if not ranked:
+            return RetrievalResult(context="", sources=[])
 
         # Build context string
         context_parts = []
