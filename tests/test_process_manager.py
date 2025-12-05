@@ -94,7 +94,7 @@ def test_read_pid_file_current_process() -> None:
     assert process.read_pid_file(process_name) == current_pid
 
 
-@pytest.mark.skipif(sys.platform == "win32", reason="os.kill mock not used on Windows")
+@pytest.mark.skipif(sys.platform == "win32", reason="os.kill(pid, 0) not used on Windows")
 @patch("agent_cli.core.process.is_process_running")
 @patch("os.kill")
 def test_kill_process_success(
