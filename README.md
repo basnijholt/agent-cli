@@ -298,6 +298,7 @@ Our installation scripts automatically handle all dependencies:
 | Service | Purpose | Auto-installed? |
 |---------|---------|-----------------|
 | **[Ollama](https://ollama.ai/)** | Local LLM for text processing | ✅ Yes, with default model |
+| **[MLX-LM](https://github.com/ml-explore/mlx-lm)** | Fast LLM on Apple Silicon | ⚙️ Optional, via `uvx` |
 | **[Wyoming Faster Whisper](https://github.com/rhasspy/wyoming-faster-whisper)** | Speech-to-text | ✅ Yes, via `uvx` |
 | **[Wyoming Piper](https://github.com/rhasspy/wyoming-piper)** | Text-to-speech | ✅ Yes, via `uvx` |
 | **[Kokoro-FastAPI](https://github.com/remsky/Kokoro-FastAPI)** | Premium TTS (optional) | ⚙️ Can be added later |
@@ -318,9 +319,12 @@ You can also use other OpenAI-compatible local servers:
 
 | Server | Purpose | Setup Required |
 |---------|---------|----------------|
+| **[MLX-LM](https://github.com/ml-explore/mlx-lm)** | Fast LLM inference on Apple Silicon | `./scripts/run-mlx-lm.sh` or use `--openai-base-url http://localhost:10500/v1` |
 | **llama.cpp** | Local LLM inference | Use `--openai-base-url http://localhost:8080/v1` |
 | **vLLM** | High-performance LLM serving | Use `--openai-base-url` with server endpoint |
 | **Ollama** | Default local LLM | Already configured as default |
+
+> **Apple Silicon Users**: MLX-LM provides significantly faster inference than Ollama on M1/M2/M3/M4 Macs. Start it with `./scripts/run-mlx-lm.sh` and use `--llm-provider openai --openai-base-url http://localhost:10500/v1` to connect.
 
 ## Usage
 
