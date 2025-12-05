@@ -57,34 +57,7 @@ The `setup-macos.sh` script:
 | **Piper**        | Wyoming Piper (via uv) | 10200 | N/A                  |
 | **OpenWakeWord** | Wyoming OpenWakeWord   | 10400 | N/A                  |
 
-### Whisper Configuration
-
-On macOS, Whisper uses [MLX](https://github.com/ml-explore/mlx) for optimal Apple Silicon performance. You can override the model using an environment variable:
-
-| Variable        | Default                              | Description          |
-| --------------- | ------------------------------------ | -------------------- |
-| `WHISPER_MODEL` | `mlx-community/whisper-large-v3-turbo` | MLX Whisper model |
-
-**Available models** (from [mlx-community](https://huggingface.co/collections/mlx-community/whisper-663256f9964fbb1177db93dc)):
-
-- `mlx-community/whisper-tiny`
-- `mlx-community/whisper-small-mlx`
-- `mlx-community/whisper-medium-mlx`
-- `mlx-community/whisper-large-v3-mlx`
-- `mlx-community/whisper-large-v3-turbo` (default, best speed/accuracy)
-- `mlx-community/whisper-turbo`
-
-**Examples:**
-
-```bash
-# Use a smaller model for faster inference
-WHISPER_MODEL=mlx-community/whisper-small-mlx scripts/start-all-services.sh
-
-# Use the full large-v3 for maximum accuracy
-WHISPER_MODEL=mlx-community/whisper-large-v3-mlx scripts/start-all-services.sh
-```
-
-> **Note:** MLX Whisper runs near real-time on Apple Silicon. The default `whisper-large-v3-turbo` provides excellent accuracy with fast inference on M1/M2/M3 chips.
+> **Note:** Whisper uses [MLX](https://github.com/ml-explore/mlx) with `whisper-large-v3-turbo` for near real-time transcription on Apple Silicon.
 
 ## Session Management with Zellij
 
