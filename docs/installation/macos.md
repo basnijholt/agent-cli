@@ -57,7 +57,7 @@ The `setup-macos.sh` script:
 | **Piper**        | Wyoming Piper (via uv) | 10200 | N/A                  |
 | **OpenWakeWord** | Wyoming OpenWakeWord   | 10400 | N/A                  |
 
-> **Note:** Whisper uses [MLX](https://github.com/ml-explore/mlx) with `whisper-large-v3-turbo` for near real-time transcription on Apple Silicon.
+> **Note:** Whisper uses [wyoming-mlx-whisper](https://github.com/basnijholt/wyoming-mlx-whisper) with `whisper-large-v3-turbo` for near real-time transcription on Apple Silicon.
 
 ## Session Management with Zellij
 
