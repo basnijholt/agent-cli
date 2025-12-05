@@ -131,7 +131,8 @@ def kill_process(process_name: str) -> bool:
         pass  # Process dead or no permission - we'll clean up regardless
 
     # Clean up
-    clear_stop_file(process_name)
+    if sys.platform == "win32":
+        clear_stop_file(process_name)
     if pid_file.exists():
         pid_file.unlink()
 
@@ -150,8 +151,9 @@ def pid_file_context(process_name: str) -> Generator[Path, None, None]:
         print(f"Process {process_name} is already running (PID: {existing_pid})")
         sys.exit(1)
 
-    # Clear any stale stop file from previous run
-    clear_stop_file(process_name)
+    # Clear any stale stop file from previous run (Windows only)
+    if sys.platform == "win32":
+        clear_stop_file(process_name)
 
     pid_file = _get_pid_file(process_name)
     with pid_file.open("w") as f:
@@ -162,4 +164,5 @@ def pid_file_context(process_name: str) -> Generator[Path, None, None]:
     finally:
         if pid_file.exists():
             pid_file.unlink()
-        clear_stop_file(process_name)
+        if sys.platform == "win32":
+            clear_stop_file(process_name)
