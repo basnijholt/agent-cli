@@ -45,18 +45,9 @@ def _is_pid_running(pid: int) -> bool:
     """Check if a process with the given PID is running."""
     if sys.platform == "win32":
         # On Windows, os.kill(pid, 0) would terminate the process!
-        # Use ctypes to check process existence instead.
-        import ctypes  # noqa: PLC0415
+        import psutil  # noqa: PLC0415
 
-        kernel32 = ctypes.windll.kernel32
-        process_query_limited_information = 0x1000
-        error_access_denied = 5
-        process = kernel32.OpenProcess(process_query_limited_information, 0, pid)
-        if process:
-            kernel32.CloseHandle(process)
-            return True
-        # Process exists but access denied = still running
-        return kernel32.GetLastError() == error_access_denied
+        return psutil.pid_exists(pid)
     try:
         os.kill(pid, 0)
         return True
