@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import hashlib
 import logging
-import re
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -126,12 +125,25 @@ def load_document_text(file_path: Path) -> str | None:
         return None
 
 
+# Separators for recursive splitting, ordered by preference (most semantic first)
+SEPARATORS = (
+    "\n\n",  # Paragraphs / code blocks
+    "\n",  # Lines
+    ". ",  # Sentences
+    ", ",  # Clauses
+    " ",  # Words
+    "",  # Characters (last resort)
+)
+
+
 def _hard_split(text: str, chunk_size: int, overlap: int) -> list[str]:
     """Split text into fixed-size chunks with overlap.
 
-    Used as fallback when text has no natural sentence boundaries (e.g., code).
+    Used as last-resort fallback when no separators work.
     """
-    assert overlap < chunk_size, f"overlap ({overlap}) must be < chunk_size ({chunk_size})"
+    if overlap >= chunk_size:
+        msg = f"overlap ({overlap}) must be < chunk_size ({chunk_size})"
+        raise ValueError(msg)
 
     chunks = []
     start = 0
@@ -141,57 +153,117 @@ def _hard_split(text: str, chunk_size: int, overlap: int) -> list[str]:
     return chunks
 
 
-def _flush_buffer(buffer: list[str], chunks: list[str]) -> None:
-    """Flush accumulated sentences to chunks list."""
-    if buffer:
-        chunks.append(" ".join(buffer))
+def _recursive_split(
+    text: str,
+    separators: tuple[str, ...],
+    chunk_size: int,
+    overlap: int,
+) -> list[str]:
+    """Recursively split text using semantic separators.
 
-
-def _compute_overlap_buffer(sentences: list[str], max_overlap: int) -> tuple[list[str], int]:
-    """Keep trailing sentences that fit within overlap limit."""
-    buffer: list[str] = []
-    size = 0
-    for s in reversed(sentences):
-        if size + len(s) > max_overlap:
-            break
-        buffer.append(s)
-        size += len(s)
-    return list(reversed(buffer)), size
-
-
-def chunk_text(text: str, chunk_size: int = 800, overlap: int = 200) -> list[str]:
-    """Split text into chunks, preferring sentence boundaries.
-
-    Strategy:
-    1. Split on sentence boundaries (.!?) when possible
-    2. Fall back to character-based splitting for oversized content (e.g., code)
-    3. Maintain overlap between chunks for context continuity
+    Tries each separator in order, splitting on the most semantically
+    meaningful boundary that produces chunks within the size limit.
     """
-    sentences = re.split(r"(?<=[.!?])\s+", text)
-    chunks: list[str] = []
-    current: list[str] = []
-    current_size = 0
+    # Base case: text fits in a single chunk
+    if len(text) <= chunk_size:
+        return [text] if text.strip() else []
 
-    for sentence in sentences:
-        sentence_len = len(sentence)
+    # Try each separator in order
+    for i, sep in enumerate(separators):
+        # Last resort: character-level split
+        if sep == "":
+            return _hard_split(text, chunk_size, overlap)
 
-        # Oversized sentence: flush buffer and hard-split
-        if sentence_len > chunk_size:
-            _flush_buffer(current, chunks)
-            current, current_size = [], 0
-            chunks.extend(_hard_split(sentence, chunk_size, overlap))
+        parts = text.split(sep)
+        if len(parts) == 1:
+            # Separator not found, try next
             continue
 
-        # Would exceed chunk_size: flush and start new chunk with overlap
-        if current_size + sentence_len > chunk_size and current:
-            _flush_buffer(current, chunks)
-            current, current_size = _compute_overlap_buffer(current, overlap)
+        # Accumulate parts into chunks
+        chunks: list[str] = []
+        current_parts: list[str] = []
+        current_size = 0
 
-        current.append(sentence)
-        current_size += sentence_len
+        for part in parts:
+            part_size = len(part) + len(sep)  # Include separator in size calculation
 
-    _flush_buffer(current, chunks)
-    return chunks
+            # Part alone exceeds chunk_size: recurse with finer separator
+            if len(part) > chunk_size:
+                # Flush current buffer first
+                if current_parts:
+                    chunks.append(sep.join(current_parts))
+                    current_parts = []
+                    current_size = 0
+                # Recurse on oversized part
+                chunks.extend(_recursive_split(part, separators[i + 1 :], chunk_size, overlap))
+                continue
+
+            # Adding part would exceed chunk_size: flush and handle overlap
+            if current_size + part_size > chunk_size and current_parts:
+                chunks.append(sep.join(current_parts))
+                # Compute overlap: keep trailing parts that fit
+                overlap_parts, overlap_size = _compute_overlap(current_parts, sep, overlap)
+                current_parts = overlap_parts
+                current_size = overlap_size
+
+            current_parts.append(part)
+            current_size += part_size
+
+        # Flush remaining
+        if current_parts:
+            chunks.append(sep.join(current_parts))
+
+        return chunks
+
+    # Shouldn't reach here, but fallback to hard split
+    return _hard_split(text, chunk_size, overlap)
+
+
+def _compute_overlap(
+    parts: list[str],
+    sep: str,
+    max_overlap: int,
+) -> tuple[list[str], int]:
+    """Keep trailing parts that fit within overlap limit."""
+    result: list[str] = []
+    size = 0
+    sep_len = len(sep)
+
+    for part in reversed(parts):
+        part_size = len(part) + sep_len
+        if size + part_size > max_overlap:
+            break
+        result.append(part)
+        size += part_size
+
+    return list(reversed(result)), size
+
+
+def chunk_text(text: str, chunk_size: int = 1200, overlap: int = 200) -> list[str]:
+    r"""Split text into chunks using recursive semantic splitting.
+
+    Strategy:
+    1. Try to split on paragraph boundaries (\n\n) first
+    2. Fall back to lines (\n), then sentences (. ), clauses (, ), words ( )
+    3. Last resort: character-level splitting for content with no natural boundaries
+    4. Maintain overlap between chunks for context continuity
+
+    This approach works well for both prose and code, preserving semantic
+    boundaries like function definitions, paragraphs, and code blocks.
+
+    Args:
+        text: The text to chunk.
+        chunk_size: Maximum chunk size in characters (default 1200, ~300 words).
+        overlap: Overlap between chunks in characters for context continuity.
+
+    Returns:
+        List of text chunks.
+
+    """
+    if not text or not text.strip():
+        return []
+
+    return _recursive_split(text.strip(), SEPARATORS, chunk_size, overlap)
 
 
 def get_file_hash(file_path: Path) -> str:

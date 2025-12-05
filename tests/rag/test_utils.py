@@ -121,11 +121,11 @@ def test_hard_split_direct() -> None:
 
 
 def test_hard_split_invalid_overlap() -> None:
-    """Test _hard_split asserts when overlap >= chunk_size."""
-    with pytest.raises(AssertionError):
+    """Test _hard_split raises when overlap >= chunk_size."""
+    with pytest.raises(ValueError, match=r"overlap .* must be < chunk_size"):
         _utils._hard_split("hello", chunk_size=100, overlap=100)
 
-    with pytest.raises(AssertionError):
+    with pytest.raises(ValueError, match=r"overlap .* must be < chunk_size"):
         _utils._hard_split("hello", chunk_size=100, overlap=200)
 
 
