@@ -295,7 +295,7 @@ def signal_handling_context(
             signal.signal(signum, previous)
 
 
-def stop_or_status_or_toggle(
+def stop_or_status_or_toggle(  # noqa: PLR0912
     process_name: str,
     which: str,
     stop: bool,
@@ -310,7 +310,13 @@ def stop_or_status_or_toggle(
             if not quiet:
                 print_with_style(f"✅ {which.capitalize()} stopped.")
         elif not quiet:
-            print_with_style(f"⚠️  No {which} is running.", style="yellow")
+            if process.is_process_running(process_name):
+                print_with_style(
+                    f"❌ Failed to stop running {which}.",
+                    style="red",
+                )
+            else:
+                print_with_style(f"⚠️  No {which} is running.", style="yellow")
         return True
 
     if status:
