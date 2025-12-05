@@ -8,7 +8,7 @@ import sys
 import tempfile
 from pathlib import Path
 from typing import TYPE_CHECKING
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, call, patch
 
 if TYPE_CHECKING:
     from collections.abc import Generator
@@ -95,8 +95,12 @@ def test_read_pid_file_current_process() -> None:
 
 
 @pytest.mark.skipif(sys.platform == "win32", reason="os.kill(pid, 0) not used on Windows")
+@patch("agent_cli.core.process._wait_for_exit", return_value=True)
 @patch("os.kill")
-def test_kill_process_success(mock_os_kill: MagicMock) -> None:
+def test_kill_process_success(
+    mock_os_kill: MagicMock,
+    mock_wait_for_exit: MagicMock,  # noqa: ARG001
+) -> None:
     """Test successfully killing a process."""
     process_name = "test-process"
     pid_file = process._get_pid_file(process_name)
@@ -107,10 +111,8 @@ def test_kill_process_success(mock_os_kill: MagicMock) -> None:
 
     result = process.kill_process(process_name)
     assert result is True
-    # The first call is to check if the process is running
     mock_os_kill.assert_any_call(current_pid, 0)
-    # The second call is to kill the process
-    mock_os_kill.assert_any_call(current_pid, signal.SIGTERM)
+    mock_os_kill.assert_any_call(current_pid, signal.SIGINT)
     assert not pid_file.exists()
 
 
@@ -136,12 +138,58 @@ def test_kill_process_already_dead(
     assert not pid_file.exists()
 
 
+@patch("agent_cli.core.process._wait_for_exit")
+@patch("agent_cli.core.process._send_signal")
+@patch("agent_cli.core.process._termination_sequence")
+def test_kill_process_falls_back_to_stronger_signal(
+    mock_sequence: MagicMock,
+    mock_send_signal: MagicMock,
+    mock_wait: MagicMock,
+) -> None:
+    """Ensure kill_process escalates signals until the process stops."""
+    process_name = "test-process"
+    pid_file = process._get_pid_file(process_name)
+    current_pid = os.getpid()
+    pid_file.write_text(str(current_pid))
+
+    mock_sequence.return_value = [(signal.SIGINT, 0.1), (signal.SIGTERM, 0.1)]
+    mock_send_signal.side_effect = [False, True]
+    mock_wait.return_value = True
+
+    assert process.kill_process(process_name)
+    assert not pid_file.exists()
+    assert mock_send_signal.call_args_list == [
+        call(current_pid, signal.SIGINT),
+        call(current_pid, signal.SIGTERM),
+    ]
+    mock_wait.assert_called_once_with(process_name, 0.1)
+
+
+@patch("agent_cli.core.process._wait_for_exit", return_value=False)
+@patch("agent_cli.core.process._send_signal", return_value=True)
+@patch("agent_cli.core.process._termination_sequence", return_value=[(signal.SIGTERM, 0.1)])
+def test_kill_process_failure_keeps_pid_file(
+    mock_sequence: MagicMock,  # noqa: ARG001
+    mock_send_signal: MagicMock,  # noqa: ARG001
+    mock_wait: MagicMock,  # noqa: ARG001
+) -> None:
+    """If a process cannot be terminated, keep the PID file for future attempts."""
+    process_name = "test-process"
+    pid_file = process._get_pid_file(process_name)
+    pid_file.write_text(str(os.getpid()))
+
+    assert not process.kill_process(process_name)
+    assert pid_file.exists()
+
+
 def test_pid_file_context_success() -> None:
     """Test successful PID file context management."""
     process_name = "test-process"
     pid_file = process._get_pid_file(process_name)
 
     # Ensure no PID file exists initially
+    if pid_file.exists():
+        pid_file.unlink()
     assert not pid_file.exists()
 
     with process.pid_file_context(process_name) as returned_pid_file:

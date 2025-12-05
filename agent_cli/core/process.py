@@ -15,6 +15,7 @@ if TYPE_CHECKING:
 
 # Default location for PID files
 PID_DIR = Path.home() / ".cache" / "agent-cli"
+_WAIT_INTERVAL_SECONDS = 0.1
 
 
 def _get_pid_file(process_name: str) -> Path:
@@ -42,6 +43,68 @@ def _is_pid_running(pid: int) -> bool:
         return True
     except (ProcessLookupError, PermissionError):
         return False
+
+
+def _wait_for_exit(process_name: str, timeout: float) -> bool:
+    """Wait for a process to exit within the given timeout."""
+    if timeout <= 0:
+        return not is_process_running(process_name)
+
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        if not is_process_running(process_name):
+            return True
+        time.sleep(_WAIT_INTERVAL_SECONDS)
+    return not is_process_running(process_name)
+
+
+def _send_signal(pid: int, signum: signal.Signals) -> bool:
+    """Attempt to deliver a signal to the process."""
+    if sys.platform == "win32":
+        # On Windows, os.kill only supports SIGTERM (calls TerminateProcess)
+        # SIGINT/SIGBREAK don't work via os.kill for arbitrary processes
+        import ctypes  # noqa: PLC0415
+
+        kernel32 = ctypes.windll.kernel32
+        process_terminate = 0x0001
+        handle = kernel32.OpenProcess(process_terminate, 0, pid)
+        if not handle:
+            return False
+        result = kernel32.TerminateProcess(handle, 1)
+        kernel32.CloseHandle(handle)
+        return bool(result)
+
+    try:
+        os.kill(pid, signum)
+        return True
+    except ProcessLookupError:
+        # Process already exited. Treat as delivered.
+        return True
+    except (PermissionError, OSError):
+        return False
+
+
+def _termination_sequence() -> list[tuple[signal.Signals, float]]:
+    """Return an ordered list of signals and grace periods to attempt."""
+    if sys.platform == "win32":
+        # On Windows we use TerminateProcess directly, signal choice is ignored
+        return [(signal.SIGTERM, 0.5)]
+
+    return [
+        (signal.SIGINT, 0.5),
+        (signal.SIGTERM, 0.5),
+        (signal.SIGKILL, 0.5),
+    ]
+
+
+def _terminate_process(pid: int, process_name: str) -> bool:
+    """Attempt to terminate the process using escalating signals."""
+    for signum, wait_time in _termination_sequence():
+        if not _send_signal(pid, signum):
+            continue
+        if _wait_for_exit(process_name, wait_time):
+            return True
+    return not is_process_running(process_name)
 
 
 def _get_running_pid(process_name: str) -> int | None:
@@ -79,7 +142,11 @@ def read_pid_file(process_name: str) -> int | None:
 
 
 def kill_process(process_name: str) -> bool:
-    """Kill a process by name. Returns True if killed or cleaned up, False if not found."""
+    """Kill a process by name.
+
+    Returns True if the process was stopped (or a stale PID file was cleaned up).
+    Returns False if no PID exists or the process could not be terminated.
+    """
     pid_file = _get_pid_file(process_name)
 
     # If no PID file exists at all, nothing to do
@@ -93,18 +160,9 @@ def kill_process(process_name: str) -> bool:
     if pid is None:
         return True  # Cleanup of stale file is success
 
-    # Kill the running process
-    try:
-        os.kill(pid, signal.SIGTERM)
-        # Wait for process to terminate
-        for _ in range(10):  # 1 second max
-            if not is_process_running(process_name):
-                break
-            time.sleep(0.1)
-    except (ProcessLookupError, PermissionError):
-        pass  # Process dead or no permission - we'll clean up regardless
+    if not _terminate_process(pid, process_name):
+        return False
 
-    # Clean up PID file
     if pid_file.exists():
         pid_file.unlink()
 
