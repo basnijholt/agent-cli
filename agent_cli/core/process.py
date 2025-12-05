@@ -44,17 +44,10 @@ def clear_stop_file(process_name: str) -> None:
 def _is_pid_running(pid: int) -> bool:
     """Check if a process with the given PID is running."""
     if sys.platform == "win32":
-        # On Windows, use ctypes to check process existence
-        import ctypes  # noqa: PLC0415
+        # On Windows, os.kill(pid, 0) would terminate the process!
+        import psutil  # noqa: PLC0415
 
-        kernel32 = ctypes.windll.kernel32
-        synchronize = 0x00100000
-        process = kernel32.OpenProcess(synchronize, 0, pid)
-        if process:
-            kernel32.CloseHandle(process)
-            return True
-        return False
-    # On Unix, use signal 0 to check if process exists
+        return psutil.pid_exists(pid)
     try:
         os.kill(pid, 0)
         return True
