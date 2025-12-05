@@ -24,6 +24,24 @@ def _get_pid_file(process_name: str) -> Path:
     return PID_DIR / f"{process_name}.pid"
 
 
+def _get_stop_file(process_name: str) -> Path:
+    """Get the path to the stop file for a given process name."""
+    PID_DIR.mkdir(parents=True, exist_ok=True)
+    return PID_DIR / f"{process_name}.stop"
+
+
+def check_stop_file(process_name: str) -> bool:
+    """Check if a stop file exists (used for cross-process signaling on Windows)."""
+    return _get_stop_file(process_name).exists()
+
+
+def clear_stop_file(process_name: str) -> None:
+    """Remove the stop file for the given process."""
+    stop_file = _get_stop_file(process_name)
+    if stop_file.exists():
+        stop_file.unlink()
+
+
 def _is_pid_running(pid: int) -> bool:
     """Check if a process with the given PID is running."""
     if sys.platform == "win32":
@@ -146,6 +164,9 @@ def kill_process(process_name: str) -> bool:
 
     Returns True if the process was stopped (or a stale PID file was cleaned up).
     Returns False if no PID exists or the process could not be terminated.
+
+    On Windows, creates a stop file first to allow graceful shutdown before
+    falling back to forceful termination.
     """
     pid_file = _get_pid_file(process_name)
 
@@ -160,9 +181,23 @@ def kill_process(process_name: str) -> bool:
     if pid is None:
         return True  # Cleanup of stale file is success
 
+    # On Windows, create stop file first to allow graceful shutdown
+    # The running process checks this file and exits cleanly
+    if sys.platform == "win32":
+        _get_stop_file(process_name).touch()
+        # Give process time to notice the stop file and shut down gracefully
+        if _wait_for_exit(process_name, timeout=3.0):
+            clear_stop_file(process_name)
+            if pid_file.exists():
+                pid_file.unlink()
+            return True
+        # Process didn't stop gracefully, fall through to forceful termination
+
     if not _terminate_process(pid, process_name):
+        clear_stop_file(process_name)
         return False
 
+    clear_stop_file(process_name)
     if pid_file.exists():
         pid_file.unlink()
 
@@ -181,6 +216,9 @@ def pid_file_context(process_name: str) -> Generator[Path, None, None]:
         print(f"Process {process_name} is already running (PID: {existing_pid})")
         sys.exit(1)
 
+    # Clear any stale stop file from previous run
+    clear_stop_file(process_name)
+
     pid_file = _get_pid_file(process_name)
     with pid_file.open("w") as f:
         f.write(str(os.getpid()))
@@ -190,3 +228,4 @@ def pid_file_context(process_name: str) -> Generator[Path, None, None]:
     finally:
         if pid_file.exists():
             pid_file.unlink()
+        clear_stop_file(process_name)
