@@ -45,15 +45,22 @@ console = Console()
 class InteractiveStopEvent:
     """A stop event with reset capability for chat agents."""
 
-    def __init__(self) -> None:
+    def __init__(self, process_name: str | None = None) -> None:
         """Initialize the chat stop event."""
         self._event = asyncio.Event()
         self._sigint_count = 0
         self._ctrl_c_pressed = False
+        self._process_name = process_name
 
     def is_set(self) -> bool:
-        """Check if the stop event is set."""
-        return self._event.is_set()
+        """Check if the stop event is set or stop file exists (Windows)."""
+        if self._event.is_set():
+            return True
+        # On Windows, also check for stop file (cross-process signaling)
+        if self._process_name is not None and process.check_stop_file(self._process_name):
+            self._event.set()  # Set the event so subsequent checks are fast
+            return True
+        return False
 
     def set(self) -> None:
         """Set the stop event."""
@@ -229,6 +236,7 @@ def get_clipboard_text(*, quiet: bool = False) -> str | None:
 def signal_handling_context(
     logger: logging.Logger,
     quiet: bool = False,
+    process_name: str | None = None,
 ) -> Generator[InteractiveStopEvent, None, None]:
     """Context manager for graceful signal handling with double Ctrl+C support.
 
@@ -237,15 +245,18 @@ def signal_handling_context(
     - Second Ctrl+C: Force exit with code 130
     - SIGTERM: Immediate graceful shutdown
 
+    On Windows, also monitors for a stop file (cross-process signaling).
+
     Args:
         logger: Logger instance for recording events
         quiet: Whether to suppress console output
+        process_name: Optional process name for stop file monitoring (Windows)
 
     Yields:
         stop_event: InteractiveStopEvent that gets set when shutdown is requested
 
     """
-    stop_event = InteractiveStopEvent()
+    stop_event = InteractiveStopEvent(process_name=process_name)
 
     def _sigint_handler() -> None:
         sigint_count = stop_event.increment_sigint_count()

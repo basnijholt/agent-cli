@@ -250,6 +250,7 @@ async def _async_main(  # noqa: PLR0912, PLR0915, C901
     # Optional parameters for file-based transcription
     audio_file_path: Path | None = None,
     save_recording: bool = True,
+    process_name: str | None = None,
 ) -> None:
     """Unified async entry point for both live and file-based transcription."""
     start_time = time.monotonic()
@@ -294,7 +295,7 @@ async def _async_main(  # noqa: PLR0912, PLR0915, C901
                 msg = "Missing audio configuration for live recording"
                 raise ValueError(msg)
 
-            with signal_handling_context(LOGGER, general_cfg.quiet) as stop_event:
+            with signal_handling_context(LOGGER, general_cfg.quiet, process_name) as stop_event:
                 live_transcriber = asr.create_transcriber(
                     provider_cfg,
                     audio_in_cfg,
@@ -588,5 +589,6 @@ def transcribe(  # noqa: PLR0912
                 llm_enabled=llm,
                 transcription_log=transcription_log,
                 save_recording=save_recording,
+                process_name=process_name,
             ),
         )

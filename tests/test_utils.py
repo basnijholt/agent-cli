@@ -115,6 +115,27 @@ def test_interactive_stop_event() -> None:
     assert not stop_event.ctrl_c_pressed
 
 
+@patch("agent_cli.core.process.check_stop_file")
+def test_interactive_stop_event_checks_stop_file(mock_check_stop_file: Mock) -> None:
+    """Test InteractiveStopEvent checks stop file when process_name is provided."""
+    # Without process_name, stop file is not checked
+    stop_event_no_name = utils.InteractiveStopEvent()
+    mock_check_stop_file.return_value = True
+    assert not stop_event_no_name.is_set()
+    mock_check_stop_file.assert_not_called()
+
+    # With process_name, stop file is checked
+    stop_event_with_name = utils.InteractiveStopEvent(process_name="test-process")
+    mock_check_stop_file.return_value = True
+    assert stop_event_with_name.is_set()
+    mock_check_stop_file.assert_called_with("test-process")
+
+    # Once set via stop file, it stays set (event is set internally)
+    mock_check_stop_file.reset_mock()
+    assert stop_event_with_name.is_set()
+    mock_check_stop_file.assert_not_called()  # Event already set, no need to check file
+
+
 @patch("agent_cli.core.process.kill_process")
 @patch("agent_cli.core.process.is_process_running")
 def test_stop_or_status_or_toggle(
