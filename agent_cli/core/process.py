@@ -44,17 +44,19 @@ def clear_stop_file(process_name: str) -> None:
 def _is_pid_running(pid: int) -> bool:
     """Check if a process with the given PID is running."""
     if sys.platform == "win32":
-        # On Windows, use ctypes to check process existence
+        # On Windows, os.kill(pid, 0) would terminate the process!
+        # Use ctypes to check process existence instead.
         import ctypes  # noqa: PLC0415
 
         kernel32 = ctypes.windll.kernel32
-        synchronize = 0x00100000
-        process = kernel32.OpenProcess(synchronize, 0, pid)
+        process_query_limited_information = 0x1000
+        error_access_denied = 5
+        process = kernel32.OpenProcess(process_query_limited_information, 0, pid)
         if process:
             kernel32.CloseHandle(process)
             return True
-        return False
-    # On Unix, use signal 0 to check if process exists
+        # Process exists but access denied = still running
+        return kernel32.GetLastError() == error_access_denied
     try:
         os.kill(pid, 0)
         return True
