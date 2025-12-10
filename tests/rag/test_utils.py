@@ -106,30 +106,7 @@ def test_chunk_text_hard_split_oversized() -> None:
     assert total_unique >= set(code_like_text)
 
 
-def test_hard_split_direct() -> None:
-    """Test _hard_split function directly."""
-    text = "A" * 500
-    chunks = _utils._hard_split(text, chunk_size=100, overlap=20)
-
-    # With 500 chars, chunk_size=100, overlap=20:
-    # Chunk 1: 0-100 (100 chars), next start: 100-20=80
-    # Chunk 2: 80-180 (100 chars), next start: 180-20=160
-    # etc.
-    assert len(chunks) >= 5
-    for chunk in chunks:
-        assert len(chunk) <= 100
-
-
-def test_hard_split_invalid_overlap() -> None:
-    """Test _hard_split raises when overlap >= chunk_size."""
-    with pytest.raises(ValueError, match=r"overlap .* must be < chunk_size"):
-        _utils._hard_split("hello", chunk_size=100, overlap=100)
-
-    with pytest.raises(ValueError, match=r"overlap .* must be < chunk_size"):
-        _utils._hard_split("hello", chunk_size=100, overlap=200)
-
-
-# === Tests for recursive chunking ===
+# === Tests for semantic chunking ===
 
 
 class TestRecursiveChunking:

@@ -125,139 +125,33 @@ def load_document_text(file_path: Path) -> str | None:
         return None
 
 
-# Separators for recursive splitting, ordered by preference (most semantic first)
-SEPARATORS = (
-    "\n\n",  # Paragraphs / code blocks
-    "\n",  # Lines
-    ". ",  # Sentences
-    ", ",  # Clauses
-    " ",  # Words
-    "",  # Characters (last resort)
-)
+# Separators ordered by preference (most semantic first)
+SEPARATORS = ("\n\n", "\n", ". ", ", ", " ")
 
 
-def _hard_split(text: str, chunk_size: int, overlap: int) -> list[str]:
-    """Split text into fixed-size chunks with overlap.
+def _find_break_point(text: str, start: int, end: int) -> int:
+    """Find a good break point near end, preferring semantic boundaries.
 
-    Used as last-resort fallback when no separators work.
+    Searches backwards from end to find the last occurrence of a separator.
+    Returns the position after the separator (so the separator stays with
+    the preceding chunk).
     """
-    if overlap >= chunk_size:
-        msg = f"overlap ({overlap}) must be < chunk_size ({chunk_size})"
-        raise ValueError(msg)
-
-    chunks = []
-    start = 0
-    while start < len(text):
-        chunks.append(text[start : start + chunk_size])
-        start += chunk_size - overlap
-    return chunks
-
-
-def _recursive_split(
-    text: str,
-    separators: tuple[str, ...],
-    chunk_size: int,
-    overlap: int,
-) -> list[str]:
-    """Recursively split text using semantic separators.
-
-    Tries each separator in order, splitting on the most semantically
-    meaningful boundary that produces chunks within the size limit.
-    """
-    # Base case: text fits in a single chunk
-    if len(text) <= chunk_size:
-        return [text] if text.strip() else []
-
-    # Try each separator in order
-    for i, sep in enumerate(separators):
-        # Last resort: character-level split
-        if sep == "":
-            return _hard_split(text, chunk_size, overlap)
-
-        parts = text.split(sep)
-        if len(parts) == 1:
-            # Separator not found, try next
-            continue
-
-        # Check if original text ended with separator (split produces empty string)
-        if parts and parts[-1] == "":
-            parts = parts[:-1]
-            trailing_sep = sep
-        else:
-            trailing_sep = ""
-
-        # Accumulate parts into chunks
-        chunks: list[str] = []
-        current_parts: list[str] = []
-        current_size = 0
-
-        for part in parts:
-            part_size = len(part) + len(sep)  # Include separator in size calculation
-
-            # Part alone exceeds chunk_size: recurse with finer separator
-            if len(part) > chunk_size:
-                # Flush current buffer first (with trailing sep - more content coming)
-                if current_parts:
-                    chunks.append(sep.join(current_parts) + sep)
-                    current_parts = []
-                    current_size = 0
-                # Recurse on oversized part
-                chunks.extend(_recursive_split(part, separators[i + 1 :], chunk_size, overlap))
-                continue
-
-            # Adding part would exceed chunk_size: flush and handle overlap
-            if current_size + part_size > chunk_size and current_parts:
-                # Add trailing sep - more content coming (at least current part)
-                chunks.append(sep.join(current_parts) + sep)
-                # Compute overlap: keep trailing parts that fit
-                overlap_parts, overlap_size = _compute_overlap(current_parts, sep, overlap)
-                current_parts = overlap_parts
-                current_size = overlap_size
-
-            current_parts.append(part)
-            current_size += part_size
-
-        # Flush remaining (preserve original trailing separator if any)
-        if current_parts:
-            chunks.append(sep.join(current_parts) + trailing_sep)
-
-        return chunks
-
-    # Shouldn't reach here, but fallback to hard split
-    return _hard_split(text, chunk_size, overlap)
-
-
-def _compute_overlap(
-    parts: list[str],
-    sep: str,
-    max_overlap: int,
-) -> tuple[list[str], int]:
-    """Keep trailing parts that fit within overlap limit."""
-    result: list[str] = []
-    size = 0
-    sep_len = len(sep)
-
-    for part in reversed(parts):
-        part_size = len(part) + sep_len
-        if size + part_size > max_overlap:
-            break
-        result.append(part)
-        size += part_size
-
-    return list(reversed(result)), size
+    for sep in SEPARATORS:
+        pos = text.rfind(sep, start, end)
+        if pos > start:
+            return pos + len(sep)
+    # No separator found, break at end (character-level split)
+    return end
 
 
 def chunk_text(text: str, chunk_size: int = 1200, overlap: int = 200) -> list[str]:
-    r"""Split text into chunks using recursive semantic splitting.
+    r"""Split text into chunks, preferring semantic boundaries.
 
     Strategy:
-    1. Try to split on paragraph boundaries (\n\n) first
-    2. Fall back to lines (\n), then sentences (. ), clauses (, ), words ( )
-    3. Last resort: character-level splitting for content with no natural boundaries
-    4. Maintain overlap between chunks for context continuity
-
-    This approach works well for both prose and code, preserving semantic
-    boundaries like function definitions, paragraphs, and code blocks.
+    1. Slice the original text directly (no split/join, so no char loss)
+    2. Find break points at separators: \n\n, \n, ". ", ", ", " "
+    3. Fall back to character-level breaks when no separator found
+    4. Overlap by starting next chunk earlier in the text
 
     Args:
         text: The text to chunk.
@@ -271,7 +165,29 @@ def chunk_text(text: str, chunk_size: int = 1200, overlap: int = 200) -> list[st
     if not text or not text.strip():
         return []
 
-    return _recursive_split(text.strip(), SEPARATORS, chunk_size, overlap)
+    text = text.strip()
+    if len(text) <= chunk_size:
+        return [text]
+
+    chunks = []
+    start = 0
+
+    while start < len(text):
+        end = start + chunk_size
+
+        if end >= len(text):
+            # Last chunk - take everything remaining
+            chunks.append(text[start:])
+            break
+
+        # Find a good break point
+        break_point = _find_break_point(text, start, end)
+        chunks.append(text[start:break_point])
+
+        # Next chunk starts with overlap (but must make progress)
+        start = max(start + 1, break_point - overlap)
+
+    return chunks
 
 
 def get_file_hash(file_path: Path) -> str:
