@@ -178,7 +178,7 @@ async def reconcile_facts(
     existing_json = [{"id": idx, "text": mem.content} for idx, mem in enumerate(existing)]
     existing_ids = set(id_map.keys())
 
-    from pydantic_ai import Agent, ModelRetry  # noqa: PLC0415
+    from pydantic_ai import Agent, ModelRetry, PromptedOutput  # noqa: PLC0415
     from pydantic_ai.exceptions import AgentRunError, UnexpectedModelBehavior  # noqa: PLC0415
     from pydantic_ai.models.openai import OpenAIChatModel  # noqa: PLC0415
     from pydantic_ai.providers.openai import OpenAIProvider  # noqa: PLC0415
@@ -193,7 +193,7 @@ async def reconcile_facts(
     agent = Agent(
         model=model_cfg,
         system_prompt=UPDATE_MEMORY_PROMPT,
-        output_type=list[MemoryDecision],
+        output_type=PromptedOutput(list[MemoryDecision]),  # JSON mode instead of tool calls
         retries=3,
     )
 
