@@ -7,6 +7,7 @@ import math
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
+from agent_cli.core.reranker import OnnxCrossEncoder, predict_relevance
 from agent_cli.memory._store import get_summary_entry, query_memories
 from agent_cli.memory.models import (
     ChatRequest,
@@ -16,7 +17,6 @@ from agent_cli.memory.models import (
     Message,
     StoredMemory,
 )
-from agent_cli.rag._retriever import OnnxCrossEncoder, predict_relevance
 
 if TYPE_CHECKING:
     from chromadb import Collection
