@@ -4,7 +4,7 @@ This document describes the architectural decisions, design rationale, and techn
 
 ## High-Level Overview
 
-*For sharing with colleagues who want the gist without the technical deep-dive.*
+*For sharing with friends who want the gist without the technical deep-dive.*
 
 ### The Problem
 

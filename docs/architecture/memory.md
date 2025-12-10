@@ -4,7 +4,7 @@ This document serves as the authoritative technical reference for the `agent-cli
 
 ## High-Level Overview
 
-*For sharing with colleagues who want the gist without the technical deep-dive.*
+*For sharing with friends who want the gist without the technical deep-dive.*
 
 ### The Problem
 
