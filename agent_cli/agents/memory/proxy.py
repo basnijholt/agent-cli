@@ -126,6 +126,7 @@ def proxy(
     logging.getLogger("httpx").setLevel(logging.WARNING)
     logging.getLogger("chromadb").setLevel(logging.WARNING)
     logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
+    logging.getLogger("filelock").setLevel(logging.INFO)
 
     memory_path = memory_path.resolve()
     entries_dir, _ = ensure_store_dirs(memory_path)

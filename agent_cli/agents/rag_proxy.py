@@ -74,6 +74,7 @@ def rag_proxy(
     logging.getLogger("httpx").setLevel(logging.WARNING)
     logging.getLogger("chromadb").setLevel(logging.WARNING)
     logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
+    logging.getLogger("filelock").setLevel(logging.INFO)
 
     try:
         import uvicorn  # noqa: PLC0415
