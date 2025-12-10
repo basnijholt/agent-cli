@@ -2,6 +2,33 @@
 
 This document describes the architectural decisions, design rationale, and technical approach for the `agent-cli` RAG (Retrieval-Augmented Generation) proxy subsystem.
 
+## High-Level Overview
+
+*For sharing with colleagues who want the gist without the technical deep-dive.*
+
+### The Problem
+
+LLMs only know what they were trained on. They don't know your company docs, your notes, your codebase. The traditional solution is to paste relevant text into your prompt, but that's tedious and doesn't scale.
+
+### How It Works
+
+1. You drop files into a folder (PDFs, markdown, code, Word docs, whatever)
+2. The system automatically chops them into pieces and creates searchable embeddings
+3. When you ask a question, it finds the most relevant pieces and injects them into your prompt
+4. The LLM answers using your documents as context
+
+### What Makes It Different
+
+- **Two-stage retrieval**: Most systems use a single "find similar text" step. This one does a fast first pass, then uses a smarter model to rerank results. Like doing a Google search, then having an expert review the top results before showing you.
+- **File-based, not database-hidden**: Your documents stay as files. Change a file, it updates immediately. No mysterious database state. You can version control it with git.
+- **Just works locally**: No cloud dependency for the indexing part.
+
+### In One Sentence
+
+A local proxy that gives LLMs access to your documents using smarter multi-stage retrieval instead of the naive "find similar text" approach most tools use, while keeping everything as readable files on disk.
+
+---
+
 ## 1. System Overview
 
 The RAG proxy is an **OpenAI-compatible middleware** that intercepts chat requests, retrieves relevant document context, and injects it into the conversation before forwarding to an upstream LLM provider.

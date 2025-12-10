@@ -2,6 +2,39 @@
 
 This document serves as the authoritative technical reference for the `agent-cli` memory subsystem. It details the component architecture, data structures, internal algorithms, and control flows implemented in the codebase.
 
+## High-Level Overview
+
+*For sharing with colleagues who want the gist without the technical deep-dive.*
+
+### The Problem
+
+LLMs are stateless. Every conversation starts fresh. They don't remember you told them your wife's name is Anne, or that you hate mushrooms, or that you're working on a Python project.
+
+### How It Works
+
+1. After each message, an LLM extracts atomic facts ("User's wife is named Anne")
+2. These facts get stored and made searchable
+3. Before your next message, relevant memories get pulled in automatically
+4. The LLM now "remembers" things about you
+
+### What Makes It Different
+
+- **Reconciliation, not just accumulation**: If you say "I love pizza" today and "I hate pizza" next month, most systems would just store both. This one uses an LLM to detect the contradiction and update the old fact. It actively manages memory, not just appends to it.
+
+- **Recency-aware**: Recent memories score higher than old ones. What you said yesterday matters more than what you said six months ago for most queries.
+
+- **Diversity selection**: If you've mentioned five different times that you like coffee, it won't waste your context window by injecting all five variations. It picks the most relevant one and moves on.
+
+- **Human-readable persistence**: Every memory is a markdown file on disk. You can read them, edit them, delete them. Optional git integration means you have full version history of everything the system remembers.
+
+- **Summarization**: For long conversations, it maintains a rolling summary so you don't hit token limits.
+
+### In One Sentence
+
+A local-first system that gives LLMs persistent memory across conversations, with the twist that everything stays human-readable files on disk and it uses smarter scoring (recency + diversity + relevance) instead of just embedding similarity.
+
+---
+
 ## 1. Architectural Components
 
 The memory system is composed of layered Python modules, separating the API surface from the core logic and storage engines.
