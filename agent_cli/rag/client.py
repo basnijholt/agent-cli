@@ -12,7 +12,8 @@ from agent_cli.constants import (
     DEFAULT_OPENAI_EMBEDDING_MODEL,
 )
 from agent_cli.core.chroma import init_collection
-from agent_cli.rag._retriever import format_context, get_reranker_model, rerank_and_filter
+from agent_cli.core.reranker import get_reranker_model
+from agent_cli.rag._retriever import format_context, rerank_and_filter
 from agent_cli.rag._utils import chunk_text, load_document_text
 from agent_cli.rag.models import RagSource, RetrievalResult
 
@@ -21,7 +22,7 @@ if TYPE_CHECKING:
 
     from chromadb import Collection
 
-    from agent_cli.rag._retriever import OnnxCrossEncoder
+    from agent_cli.core.reranker import OnnxCrossEncoder
 
 logger = logging.getLogger("agent_cli.rag.client")
 

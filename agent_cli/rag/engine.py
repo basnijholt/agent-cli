@@ -22,7 +22,7 @@ if TYPE_CHECKING:
     from pydantic_ai.messages import ModelRequest, ModelResponse
     from pydantic_ai.result import RunResult
 
-    from agent_cli.rag._retriever import OnnxCrossEncoder
+    from agent_cli.core.reranker import OnnxCrossEncoder
     from agent_cli.rag.models import ChatRequest
 
 LOGGER = logging.getLogger(__name__)

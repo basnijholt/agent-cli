@@ -14,9 +14,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from agent_cli.constants import DEFAULT_OPENAI_EMBEDDING_MODEL
 from agent_cli.core.chroma import init_collection
 from agent_cli.core.openai_proxy import proxy_request_to_upstream
+from agent_cli.core.reranker import get_reranker_model
 from agent_cli.rag._indexer import watch_docs
 from agent_cli.rag._indexing import initial_index, load_hashes_from_metadata
-from agent_cli.rag._retriever import get_reranker_model
 from agent_cli.rag._store import get_all_metadata
 from agent_cli.rag.engine import process_chat_request
 from agent_cli.rag.models import ChatRequest  # noqa: TC001

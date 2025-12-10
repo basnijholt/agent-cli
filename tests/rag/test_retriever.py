@@ -2,13 +2,14 @@
 
 from unittest.mock import MagicMock, patch
 
+from agent_cli.core import reranker
 from agent_cli.rag import _retriever
 
 
 def test_get_reranker_model_installed() -> None:
     """Test loading reranker when installed."""
-    with patch("agent_cli.rag._retriever.OnnxCrossEncoder") as mock_ce:
-        _retriever.get_reranker_model()
+    with patch("agent_cli.core.reranker.OnnxCrossEncoder") as mock_ce:
+        reranker.get_reranker_model()
         mock_ce.assert_called_once()
 
 
