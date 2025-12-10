@@ -47,6 +47,8 @@ uvx -p 3.13 --from "agent-cli[rag]" agent-cli rag-proxy \
 # 3. Start Open WebUI pointing to the proxy
 #    On Linux, add: --add-host=host.docker.internal:host-gateway
 docker run -d -p 3000:8080 \
+  -v open-webui:/app/backend/data \
+  -e WEBUI_AUTH=false \
   -e OPENAI_API_BASE_URL=http://host.docker.internal:8000/v1 \
   -e OPENAI_API_KEY=dummy \
   ghcr.io/open-webui/open-webui:main
