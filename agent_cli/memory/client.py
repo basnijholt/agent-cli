@@ -8,6 +8,7 @@ from contextlib import suppress
 from typing import TYPE_CHECKING, Any, Self
 
 from agent_cli.constants import DEFAULT_OPENAI_EMBEDDING_MODEL, DEFAULT_OPENAI_MODEL
+from agent_cli.core.reranker import get_reranker_model
 from agent_cli.memory._files import ensure_store_dirs
 from agent_cli.memory._git import init_repo
 from agent_cli.memory._indexer import MemoryIndex, initial_index, watch_memory_store
@@ -17,14 +18,13 @@ from agent_cli.memory._retrieval import augment_chat_request
 from agent_cli.memory._store import init_memory_collection
 from agent_cli.memory.engine import process_chat_request
 from agent_cli.memory.models import ChatRequest, MemoryRetrieval, Message
-from agent_cli.rag._retriever import get_reranker_model
 
 if TYPE_CHECKING:
     from pathlib import Path
 
     from chromadb import Collection
 
-    from agent_cli.rag._retriever import OnnxCrossEncoder
+    from agent_cli.core.reranker import OnnxCrossEncoder
 
 
 logger = logging.getLogger("agent_cli.memory.client")

@@ -2,6 +2,90 @@
 
 This document serves as the authoritative technical reference for the `agent-cli` memory subsystem. It details the component architecture, data structures, internal algorithms, and control flows implemented in the codebase.
 
+## High-Level Overview
+
+*For sharing with friends who want the gist without the technical deep-dive.*
+
+### The Problem
+
+LLMs are stateless. Every conversation starts fresh. They don't remember you told them your wife's name is Anne, or that you hate mushrooms, or that you're working on a Python project.
+
+### How It Works
+
+1. After each message, an LLM extracts atomic facts ("User's wife is named Anne")
+2. These facts get stored and made searchable
+3. Before your next message, relevant memories get pulled in automatically
+4. The LLM now "remembers" things about you
+
+### What Makes It Different
+
+- **Reconciliation, not just accumulation**: If you say "I love pizza" today and "I hate pizza" next month, most systems would just store both. This one uses an LLM to detect the contradiction and update the old fact. It actively manages memory, not just appends to it.
+
+- **Recency-aware**: Recent memories score higher than old ones. What you said yesterday matters more than what you said six months ago for most queries.
+
+- **Diversity selection**: If you've mentioned five different times that you like coffee, it won't waste your context window by injecting all five variations. It picks the most relevant one and moves on.
+
+- **Human-readable persistence**: Every memory is a markdown file on disk. You can read them, edit them, delete them. Optional git integration means you have full version history of everything the system remembers.
+
+- **Summarization**: For long conversations, it maintains a rolling summary so you don't hit token limits.
+
+### In One Sentence
+
+A local-first system that gives LLMs persistent memory across conversations, with the twist that everything stays human-readable files on disk and it uses smarter scoring (recency + diversity + relevance) instead of just embedding similarity.
+
+### Try It Now
+
+Get an LLM that remembers you using [Ollama](https://ollama.com). Two options:
+
+**Option A: With [Open WebUI](https://github.com/open-webui/open-webui) (web interface)**
+
+```bash
+# 1. Pull the required models (one-time setup)
+ollama pull embeddinggemma:300m  # for memory embeddings
+ollama pull qwen3:4b             # for chat
+
+# 2. Start Open WebUI (runs in background)
+#    On Linux, add: --add-host=host.docker.internal:host-gateway
+docker run -d -p 3000:8080 \
+  -v open-webui:/app/backend/data \
+  -e WEBUI_AUTH=false \
+  -e OPENAI_API_BASE_URL=http://host.docker.internal:8100/v1 \
+  -e OPENAI_API_KEY=dummy \
+  ghcr.io/open-webui/open-webui:main
+
+# 3. Start the memory proxy (runs in foreground so you can watch the logs)
+uvx -p 3.13 --from "agent-cli[memory]" agent-cli memory proxy \
+  --memory-path ./my-memories \
+  --openai-base-url http://localhost:11434/v1 \
+  --embedding-model embeddinggemma:300m
+
+# 4. Open http://localhost:3000, select "qwen3:4b" as model, and start chatting — it remembers you
+```
+
+**Option B: With the [openai CLI](https://github.com/openai/openai-python) (terminal, no config needed)**
+
+```bash
+# Terminal 1: Pull models and start proxy
+ollama pull embeddinggemma:300m && ollama pull qwen3:4b
+uvx -p 3.13 --from "agent-cli[memory]" agent-cli memory proxy \
+  --memory-path ./my-memories \
+  --openai-base-url http://localhost:11434/v1 \
+  --embedding-model embeddinggemma:300m
+```
+
+```bash
+# Terminal 2: Chat from the terminal (env vars point to proxy)
+export OPENAI_BASE_URL=http://localhost:8100/v1 OPENAI_API_KEY=dummy
+
+# Tell it something about yourself
+uvx openai api chat.completions.create -m qwen3:4b -g user "My name is Alice and I love hiking"
+
+# Later, ask if it remembers
+uvx openai api chat.completions.create -m qwen3:4b -g user "What's my name?"
+```
+
+---
+
 ## 1. Architectural Components
 
 The memory system is composed of layered Python modules, separating the API surface from the core logic and storage engines.
