@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+from typing import Annotated
+
 import typer
 
+from . import __version__
 from .config import load_config, normalize_provider_defaults
 from .core.utils import console
 
@@ -16,9 +19,25 @@ app = typer.Typer(
 )
 
 
+def _version_callback(value: bool) -> None:
+    if value:
+        console.print(f"agent-cli {__version__}")
+        raise typer.Exit
+
+
 @app.callback(invoke_without_command=True)
 def main(
     ctx: typer.Context,
+    version: Annotated[  # noqa: ARG001
+        bool,
+        typer.Option(
+            "-v",
+            "--version",
+            callback=_version_callback,
+            is_eager=True,
+            help="Show version and exit.",
+        ),
+    ] = False,
 ) -> None:
     """A suite of AI-powered tools."""
     if ctx.invoked_subcommand is None:
