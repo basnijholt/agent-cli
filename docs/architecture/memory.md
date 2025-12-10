@@ -60,7 +60,7 @@ docker run -d -p 3000:8080 \
 # 4. Open http://localhost:3000, select "qwen3:4b" as model, and start chatting — it remembers you
 ```
 
-**Option B: With [llm CLI](https://llm.datasette.io/) (terminal)**
+**Option B: With the [openai CLI](https://github.com/openai/openai-python) (terminal, no config needed)**
 
 ```bash
 # 1. Pull models and start proxy (same as above)
@@ -70,17 +70,14 @@ uvx --from "agent-cli[memory]" agent-cli memory proxy \
   --openai-base-url http://localhost:11434/v1 \
   --embedding-model embeddinggemma:300m &
 
-# 2. Configure llm to use the proxy (one-time setup)
-mkdir -p ~/.config/io.datasette.llm
-cat > ~/.config/io.datasette.llm/extra-openai-models.yaml << 'EOF'
-- model_id: memory-qwen3
-  model_name: qwen3:4b
-  api_base: "http://localhost:8100/v1"
-EOF
+# 2. Chat from the terminal (env vars point to proxy)
+export OPENAI_BASE_URL=http://localhost:8100/v1 OPENAI_API_KEY=dummy
 
-# 3. Chat from the terminal — it will remember facts about you
-uvx llm -m memory-qwen3 "My name is Alice and I love hiking"
-uvx llm -m memory-qwen3 "What's my name and what do I enjoy?"
+# Tell it something about yourself
+uvx openai api chat.completions.create -m qwen3:4b -g user "My name is Alice and I love hiking"
+
+# Later, ask if it remembers
+uvx openai api chat.completions.create -m qwen3:4b -g user "What's my name?"
 ```
 
 ---

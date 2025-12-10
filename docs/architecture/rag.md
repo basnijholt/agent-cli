@@ -54,7 +54,7 @@ docker run -d -p 3000:8080 \
 # 4. Open http://localhost:3000, select "qwen3:4b" as model, and chat with your docs
 ```
 
-**Option B: With [llm CLI](https://llm.datasette.io/) (terminal)**
+**Option B: With the [openai CLI](https://github.com/openai/openai-python) (terminal, no config needed)**
 
 ```bash
 # 1. Pull models and start proxy (same as above)
@@ -64,16 +64,11 @@ uvx --from "agent-cli[rag]" agent-cli rag-proxy \
   --openai-base-url http://localhost:11434/v1 \
   --embedding-model embeddinggemma:300m &
 
-# 2. Configure llm to use the proxy (one-time setup)
-mkdir -p ~/.config/io.datasette.llm
-cat > ~/.config/io.datasette.llm/extra-openai-models.yaml << 'EOF'
-- model_id: rag-qwen3
-  model_name: qwen3:4b
-  api_base: "http://localhost:8000/v1"
-EOF
-
-# 3. Chat with your docs from the terminal
-uvx llm -m rag-qwen3 "What does my documentation say about X?"
+# 2. Chat with your docs (env vars point to proxy)
+OPENAI_BASE_URL=http://localhost:8000/v1 OPENAI_API_KEY=dummy \
+  uvx openai api chat.completions.create \
+  -m qwen3:4b \
+  -g user "What does my documentation say about X?"
 ```
 
 ---
