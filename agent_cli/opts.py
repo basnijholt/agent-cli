@@ -1,10 +1,20 @@
 """Shared Typer options for the Agent CLI agents."""
 
+import copy
 from pathlib import Path
 
 import typer
+from typer.models import OptionInfo
 
 from agent_cli.constants import DEFAULT_OPENAI_EMBEDDING_MODEL, DEFAULT_OPENAI_MODEL
+
+
+def with_default(option: OptionInfo, default: str) -> OptionInfo:
+    """Create a copy of a typer Option with a different default value."""
+    opt = copy.copy(option)
+    opt.default = default
+    return opt
+
 
 # --- Provider Selection ---
 LLM_PROVIDER: str = typer.Option(
