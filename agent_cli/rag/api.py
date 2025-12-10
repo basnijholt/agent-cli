@@ -54,7 +54,7 @@ def create_app(
     reranker_model = get_reranker_model()
 
     LOGGER.info("Loading existing file index...")
-    file_hashes = load_hashes_from_metadata(collection)
+    file_hashes, file_mtimes = load_hashes_from_metadata(collection)
     LOGGER.info("Loaded %d files from index.", len(file_hashes))
 
     docs_folder.mkdir(exist_ok=True, parents=True)
@@ -64,14 +64,16 @@ def create_app(
         LOGGER.info("Starting file watcher...")
         # Background Tasks
         background_tasks = set()
-        watcher_task = asyncio.create_task(watch_docs(collection, docs_folder, file_hashes))
+        watcher_task = asyncio.create_task(
+            watch_docs(collection, docs_folder, file_hashes, file_mtimes),
+        )
         background_tasks.add(watcher_task)
         watcher_task.add_done_callback(background_tasks.discard)
 
         LOGGER.info("Starting initial index scan...")
         threading.Thread(
             target=initial_index,
-            args=(collection, docs_folder, file_hashes),
+            args=(collection, docs_folder, file_hashes, file_mtimes),
             daemon=True,
         ).start()
         yield
@@ -119,7 +121,7 @@ def create_app(
         LOGGER.info("Manual reindex requested.")
         threading.Thread(
             target=initial_index,
-            args=(collection, docs_folder, file_hashes),
+            args=(collection, docs_folder, file_hashes, file_mtimes),
             daemon=True,
         ).start()
         return {"status": "started reindexing", "total_chunks": collection.count()}

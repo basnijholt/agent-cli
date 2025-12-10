@@ -14,7 +14,7 @@ def client() -> TestClient:
     with (
         patch("agent_cli.rag.api.init_collection"),
         patch("agent_cli.rag.api.get_reranker_model"),
-        patch("agent_cli.rag.api.load_hashes_from_metadata", return_value={}),
+        patch("agent_cli.rag.api.load_hashes_from_metadata", return_value=({}, {})),
         patch("pathlib.Path.mkdir"),
         patch("agent_cli.rag.api.watch_docs"),
         patch("asyncio.create_task"),
@@ -120,7 +120,7 @@ def test_chat_completion_server_api_key() -> None:
     with (
         patch("agent_cli.rag.api.init_collection"),
         patch("agent_cli.rag.api.get_reranker_model"),
-        patch("agent_cli.rag.api.load_hashes_from_metadata", return_value={}),
+        patch("agent_cli.rag.api.load_hashes_from_metadata", return_value=({}, {})),
         patch("pathlib.Path.mkdir"),
         patch("agent_cli.rag.api.watch_docs"),
         patch("asyncio.create_task"),
