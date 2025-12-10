@@ -1369,7 +1369,7 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ General Options ────────────────────────────────────────────────────────────╮
 │ --log-level         TEXT  Set logging level.                                 │
-│                           [default: WARNING]                                 │
+│                           [default: INFO]                                    │
 │ --config            TEXT  Path to a TOML configuration file.                 │
 │ --print-args              Print the command line arguments, including        │
 │                           variables taken from the configuration file.       │
@@ -1523,7 +1523,7 @@ The `memory proxy` command is the core feature—a middleware server that gives 
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ General Options ────────────────────────────────────────────────────────────╮
 │ --log-level         TEXT  Set logging level.                                 │
-│                           [default: WARNING]                                 │
+│                           [default: INFO]                                    │
 │ --config            TEXT  Path to a TOML configuration file.                 │
 │ --print-args              Print the command line arguments, including        │
 │                           variables taken from the configuration file.       │
