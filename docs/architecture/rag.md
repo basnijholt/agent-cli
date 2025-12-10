@@ -39,7 +39,7 @@ ollama pull embeddinggemma:300m  # for document embeddings
 ollama pull qwen3:4b             # for chat
 
 # 2. Start the RAG proxy (uvx handles installation automatically)
-uvx --from "agent-cli[rag]" agent-cli rag-proxy \
+uvx -p 3.13 --from "agent-cli[rag]" agent-cli rag-proxy \
   --docs-folder ./my-docs \
   --openai-base-url http://localhost:11434/v1 \
   --embedding-model embeddinggemma:300m &
@@ -59,7 +59,7 @@ docker run -d -p 3000:8080 \
 ```bash
 # 1. Pull models and start proxy (same as above)
 ollama pull embeddinggemma:300m && ollama pull qwen3:4b
-uvx --from "agent-cli[rag]" agent-cli rag-proxy \
+uvx -p 3.13 --from "agent-cli[rag]" agent-cli rag-proxy \
   --docs-folder ./my-docs \
   --openai-base-url http://localhost:11434/v1 \
   --embedding-model embeddinggemma:300m &
