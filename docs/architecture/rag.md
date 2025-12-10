@@ -29,7 +29,9 @@ A local proxy that gives LLMs access to your documents using smarter multi-stage
 
 ### Try It Now
 
-Chat with your documents using [Open WebUI](https://github.com/open-webui/open-webui) and [Ollama](https://ollama.com):
+Chat with your documents using [Ollama](https://ollama.com). Two options:
+
+**Option A: With [Open WebUI](https://github.com/open-webui/open-webui) (web interface)**
 
 ```bash
 # 1. Pull the required models (one-time setup)
@@ -43,12 +45,35 @@ uvx --from "agent-cli[rag]" agent-cli rag-proxy \
   --embedding-model embeddinggemma:300m &
 
 # 3. Start Open WebUI pointing to the proxy
+#    On Linux, add: --add-host=host.docker.internal:host-gateway
 docker run -d -p 3000:8080 \
   -e OPENAI_API_BASE_URL=http://host.docker.internal:8000/v1 \
   -e OPENAI_API_KEY=dummy \
   ghcr.io/open-webui/open-webui:main
 
 # 4. Open http://localhost:3000, select "qwen3:4b" as model, and chat with your docs
+```
+
+**Option B: With [llm CLI](https://llm.datasette.io/) (terminal)**
+
+```bash
+# 1. Pull models and start proxy (same as above)
+ollama pull embeddinggemma:300m && ollama pull qwen3:4b
+uvx --from "agent-cli[rag]" agent-cli rag-proxy \
+  --docs-folder ./my-docs \
+  --openai-base-url http://localhost:11434/v1 \
+  --embedding-model embeddinggemma:300m &
+
+# 2. Configure llm to use the proxy (one-time setup)
+mkdir -p ~/.config/io.datasette.llm
+cat > ~/.config/io.datasette.llm/extra-openai-models.yaml << 'EOF'
+- model_id: rag-qwen3
+  model_name: qwen3:4b
+  api_base: "http://localhost:8000/v1"
+EOF
+
+# 3. Chat with your docs from the terminal
+uvx llm -m rag-qwen3 "What does my documentation say about X?"
 ```
 
 ---
