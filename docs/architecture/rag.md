@@ -27,6 +27,50 @@ LLMs only know what they were trained on. They don't know your company docs, you
 
 A local proxy that gives LLMs access to your documents using smarter multi-stage retrieval instead of the naive "find similar text" approach most tools use, while keeping everything as readable files on disk.
 
+### Try It Now
+
+Chat with your documents using [Ollama](https://ollama.com). Two options:
+
+**Option A: With [Open WebUI](https://github.com/open-webui/open-webui) (web interface)**
+
+```bash
+# 1. Pull the required models (one-time setup)
+ollama pull embeddinggemma:300m  # for document embeddings
+ollama pull qwen3:4b             # for chat
+
+# 2. Start the RAG proxy (uvx handles installation automatically)
+uvx -p 3.13 --from "agent-cli[rag]" agent-cli rag-proxy \
+  --docs-folder ./my-docs \
+  --openai-base-url http://localhost:11434/v1 \
+  --embedding-model embeddinggemma:300m &
+
+# 3. Start Open WebUI pointing to the proxy
+#    On Linux, add: --add-host=host.docker.internal:host-gateway
+docker run -d -p 3000:8080 \
+  -e OPENAI_API_BASE_URL=http://host.docker.internal:8000/v1 \
+  -e OPENAI_API_KEY=dummy \
+  ghcr.io/open-webui/open-webui:main
+
+# 4. Open http://localhost:3000, select "qwen3:4b" as model, and chat with your docs
+```
+
+**Option B: With the [openai CLI](https://github.com/openai/openai-python) (terminal, no config needed)**
+
+```bash
+# 1. Pull models and start proxy (same as above)
+ollama pull embeddinggemma:300m && ollama pull qwen3:4b
+uvx -p 3.13 --from "agent-cli[rag]" agent-cli rag-proxy \
+  --docs-folder ./my-docs \
+  --openai-base-url http://localhost:11434/v1 \
+  --embedding-model embeddinggemma:300m &
+
+# 2. Chat with your docs (env vars point to proxy)
+OPENAI_BASE_URL=http://localhost:8000/v1 OPENAI_API_KEY=dummy \
+  uvx openai api chat.completions.create \
+  -m qwen3:4b \
+  -g user "What does my documentation say about X?"
+```
+
 ---
 
 ## 1. System Overview
