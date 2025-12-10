@@ -50,7 +50,7 @@ class RagClient:
         openai_base_url: str = DEFAULT_OPENAI_BASE_URL,
         openai_api_key: str | None = None,
         collection_name: str = "rag_index",
-        chunk_size: int = 800,
+        chunk_size: int = 1200,
         chunk_overlap: int = 200,
     ) -> None:
         """Initialize the RAG index.

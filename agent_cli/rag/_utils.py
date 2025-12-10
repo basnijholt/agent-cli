@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import hashlib
 import logging
-import re
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -126,71 +125,91 @@ def load_document_text(file_path: Path) -> str | None:
         return None
 
 
-def _hard_split(text: str, chunk_size: int, overlap: int) -> list[str]:
-    """Split text into fixed-size chunks with overlap.
+# Separators ordered by preference (most semantic first)
+SEPARATORS = ("\n\n", "\n", ". ", ", ", " ")
 
-    Used as fallback when text has no natural sentence boundaries (e.g., code).
+
+def _find_break_point(text: str, start: int, end: int, min_chunk: int) -> int:
+    """Find a good break point near end, preferring semantic boundaries.
+
+    Searches backwards from end to find the last occurrence of a separator.
+    Only accepts separators that would create a chunk of at least min_chunk size.
+    If none qualify, falls back to the best available earlier separator before
+    finally splitting at the exact end. Returns the position after the separator
+    (so the separator stays with the preceding chunk).
     """
-    assert overlap < chunk_size, f"overlap ({overlap}) must be < chunk_size ({chunk_size})"
+    min_pos = start + min_chunk
+    fallback_point = -1
+    for sep in SEPARATORS:
+        pos = text.rfind(sep, start, end)
+        if pos <= start:
+            continue
+        candidate = pos + len(sep)
+        if pos >= min_pos:
+            return candidate
+        fallback_point = max(fallback_point, candidate)
+    if fallback_point != -1:
+        return fallback_point
+    # No separator found at acceptable position, break at end (character-level split)
+    return end
+
+
+def chunk_text(text: str, chunk_size: int = 1200, overlap: int = 200) -> list[str]:
+    r"""Split text into chunks, preferring semantic boundaries.
+
+    Strategy:
+    1. Slice the original text directly (no split/join, so no char loss)
+    2. Find break points at separators: \n\n, \n, ". ", ", ", " "
+    3. Fall back to character-level breaks when no separator found
+    4. Overlap by starting next chunk earlier in the text
+
+    Args:
+        text: The text to chunk.
+        chunk_size: Maximum chunk size in characters (default 1200, ~300 words).
+        overlap: Overlap between chunks in characters for context continuity.
+
+    Returns:
+        List of text chunks.
+
+    Raises:
+        ValueError: If chunk_size <= 0 or overlap >= chunk_size.
+
+    """
+    if chunk_size <= 0:
+        msg = f"chunk_size must be positive, got {chunk_size}"
+        raise ValueError(msg)
+    if overlap >= chunk_size:
+        msg = f"overlap ({overlap}) must be less than chunk_size ({chunk_size})"
+        raise ValueError(msg)
+
+    if not text or not text.strip():
+        return []
+
+    text = text.strip()
+    if len(text) <= chunk_size:
+        return [text]
+
+    # Only accept separators that use at least half the chunk budget
+    min_chunk = chunk_size // 2
 
     chunks = []
     start = 0
+
     while start < len(text):
-        chunks.append(text[start : start + chunk_size])
-        start += chunk_size - overlap
-    return chunks
+        end = start + chunk_size
 
-
-def _flush_buffer(buffer: list[str], chunks: list[str]) -> None:
-    """Flush accumulated sentences to chunks list."""
-    if buffer:
-        chunks.append(" ".join(buffer))
-
-
-def _compute_overlap_buffer(sentences: list[str], max_overlap: int) -> tuple[list[str], int]:
-    """Keep trailing sentences that fit within overlap limit."""
-    buffer: list[str] = []
-    size = 0
-    for s in reversed(sentences):
-        if size + len(s) > max_overlap:
+        if end >= len(text):
+            # Last chunk - take everything remaining
+            chunks.append(text[start:])
             break
-        buffer.append(s)
-        size += len(s)
-    return list(reversed(buffer)), size
 
+        # Find a good break point
+        break_point = _find_break_point(text, start, end, min_chunk)
+        chunks.append(text[start:break_point])
 
-def chunk_text(text: str, chunk_size: int = 800, overlap: int = 200) -> list[str]:
-    """Split text into chunks, preferring sentence boundaries.
+        # Next chunk starts with overlap (but must make progress)
+        start = max(start + 1, break_point - overlap)
 
-    Strategy:
-    1. Split on sentence boundaries (.!?) when possible
-    2. Fall back to character-based splitting for oversized content (e.g., code)
-    3. Maintain overlap between chunks for context continuity
-    """
-    sentences = re.split(r"(?<=[.!?])\s+", text)
-    chunks: list[str] = []
-    current: list[str] = []
-    current_size = 0
-
-    for sentence in sentences:
-        sentence_len = len(sentence)
-
-        # Oversized sentence: flush buffer and hard-split
-        if sentence_len > chunk_size:
-            _flush_buffer(current, chunks)
-            current, current_size = [], 0
-            chunks.extend(_hard_split(sentence, chunk_size, overlap))
-            continue
-
-        # Would exceed chunk_size: flush and start new chunk with overlap
-        if current_size + sentence_len > chunk_size and current:
-            _flush_buffer(current, chunks)
-            current, current_size = _compute_overlap_buffer(current, overlap)
-
-        current.append(sentence)
-        current_size += sentence_len
-
-    _flush_buffer(current, chunks)
     return chunks
 
 
