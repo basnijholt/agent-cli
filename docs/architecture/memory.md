@@ -35,16 +35,26 @@ A local-first system that gives LLMs persistent memory across conversations, wit
 
 ### Try It Now
 
-Three lines to get an LLM that remembers you using [Open WebUI](https://github.com/open-webui/open-webui) (assumes [Ollama](https://ollama.com) is running):
+Get an LLM that remembers you using [Open WebUI](https://github.com/open-webui/open-webui) and [Ollama](https://ollama.com):
 
 ```bash
-# Start the memory proxy (uvx handles installation automatically)
-uvx --from "agent-cli[memory]" agent-cli memory proxy --memory-path ./my-memories &
+# 1. Pull the required models (one-time setup)
+ollama pull embeddinggemma:300m  # for memory embeddings
+ollama pull qwen3:4b             # for chat
 
-# Start Open WebUI pointing to the proxy
-docker run -d -p 3000:8080 -e OPENAI_API_BASE_URL=http://host.docker.internal:8100/v1 ghcr.io/open-webui/open-webui:main
+# 2. Start the memory proxy (uvx handles installation automatically)
+uvx --from "agent-cli[memory]" agent-cli memory proxy \
+  --memory-path ./my-memories \
+  --openai-base-url http://localhost:11434/v1 \
+  --embedding-model embeddinggemma:300m &
 
-# Open http://localhost:3000 and start chatting — it will remember you
+# 3. Start Open WebUI pointing to the proxy
+docker run -d -p 3000:8080 \
+  -e OPENAI_API_BASE_URL=http://host.docker.internal:8100/v1 \
+  -e OPENAI_API_KEY=dummy \
+  ghcr.io/open-webui/open-webui:main
+
+# 4. Open http://localhost:3000, select "qwen3:4b" as model, and start chatting — it remembers you
 ```
 
 ---

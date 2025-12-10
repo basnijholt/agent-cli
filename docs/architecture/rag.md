@@ -29,16 +29,26 @@ A local proxy that gives LLMs access to your documents using smarter multi-stage
 
 ### Try It Now
 
-Three lines to chat with your documents using [Open WebUI](https://github.com/open-webui/open-webui) (assumes [Ollama](https://ollama.com) is running):
+Chat with your documents using [Open WebUI](https://github.com/open-webui/open-webui) and [Ollama](https://ollama.com):
 
 ```bash
-# Start the RAG proxy (uvx handles installation automatically)
-uvx --from "agent-cli[rag]" agent-cli rag-proxy --docs-folder ./my-docs &
+# 1. Pull the required models (one-time setup)
+ollama pull embeddinggemma:300m  # for document embeddings
+ollama pull qwen3:4b             # for chat
 
-# Start Open WebUI pointing to the proxy
-docker run -d -p 3000:8080 -e OPENAI_API_BASE_URL=http://host.docker.internal:8000/v1 ghcr.io/open-webui/open-webui:main
+# 2. Start the RAG proxy (uvx handles installation automatically)
+uvx --from "agent-cli[rag]" agent-cli rag-proxy \
+  --docs-folder ./my-docs \
+  --openai-base-url http://localhost:11434/v1 \
+  --embedding-model embeddinggemma:300m &
 
-# Open http://localhost:3000 and start chatting with your documents
+# 3. Start Open WebUI pointing to the proxy
+docker run -d -p 3000:8080 \
+  -e OPENAI_API_BASE_URL=http://host.docker.internal:8000/v1 \
+  -e OPENAI_API_KEY=dummy \
+  ghcr.io/open-webui/open-webui:main
+
+# 4. Open http://localhost:3000, select "qwen3:4b" as model, and chat with your docs
 ```
 
 ---
