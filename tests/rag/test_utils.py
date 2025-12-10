@@ -129,6 +129,182 @@ def test_hard_split_invalid_overlap() -> None:
         _utils._hard_split("hello", chunk_size=100, overlap=200)
 
 
+# === Tests for recursive chunking ===
+
+
+class TestRecursiveChunking:
+    """Tests for the recursive semantic chunking behavior."""
+
+    def test_splits_on_double_newline_first(self) -> None:
+        r"""Verify paragraphs (\n\n) are the preferred split point."""
+        text = "Paragraph one.\n\nParagraph two.\n\nParagraph three."
+        chunks = _utils.chunk_text(text, chunk_size=20, overlap=0)
+
+        # Should split on paragraph boundaries
+        assert len(chunks) == 3
+        assert chunks[0] == "Paragraph one."
+        assert chunks[1] == "Paragraph two."
+        assert chunks[2] == "Paragraph three."
+
+    def test_falls_back_to_single_newline(self) -> None:
+        r"""When no \n\n, should split on \n."""
+        text = "Line one\nLine two\nLine three\nLine four"
+        chunks = _utils.chunk_text(text, chunk_size=20, overlap=0)
+
+        # Should split on line boundaries
+        assert len(chunks) >= 2
+        # First chunk should contain complete lines
+        assert "\n" not in chunks[0] or chunks[0].endswith("\n") is False
+
+    def test_falls_back_to_sentence(self) -> None:
+        """When no newlines, should split on sentences."""
+        text = "First sentence. Second sentence. Third sentence. Fourth sentence."
+        chunks = _utils.chunk_text(text, chunk_size=40, overlap=0)
+
+        assert len(chunks) >= 2
+        # Sentences should be kept together where possible
+        assert "First sentence" in chunks[0]
+
+    def test_falls_back_to_words(self) -> None:
+        """When no sentence boundaries, should split on words."""
+        # No periods, no newlines - just words
+        text = "word " * 50  # 250 chars
+        chunks = _utils.chunk_text(text, chunk_size=50, overlap=0)
+
+        assert len(chunks) >= 4
+        for chunk in chunks:
+            assert len(chunk) <= 50
+            # Should not split mid-word
+            assert chunk.strip().endswith("word") or chunk.strip() == ""
+
+    def test_python_code_splits_on_lines(self) -> None:
+        """Python code should split at line boundaries, not mid-statement."""
+        code = """def hello():
+    print("Hello")
+    return True
+
+def world():
+    print("World")
+    return False
+
+def foo():
+    x = 1
+    y = 2
+    return x + y"""
+
+        chunks = _utils.chunk_text(code, chunk_size=60, overlap=0)
+
+        assert len(chunks) >= 2
+        # Each chunk should contain complete lines (no mid-line splits)
+        for chunk in chunks:
+            # If chunk has content, it shouldn't start/end mid-token
+            stripped = chunk.strip()
+            if stripped:
+                # Should not start with a partial identifier
+                assert not stripped[0].islower() or stripped.startswith(
+                    ("def", "print", "return", "x", "y"),
+                )
+
+    def test_markdown_splits_on_headings(self) -> None:
+        """Markdown should prefer splitting at paragraph/heading boundaries."""
+        markdown = """# Heading 1
+
+This is paragraph one with some content.
+
+## Heading 2
+
+This is paragraph two with more content.
+
+## Heading 3
+
+Final paragraph here."""
+
+        chunks = _utils.chunk_text(markdown, chunk_size=60, overlap=0)
+
+        assert len(chunks) >= 2
+        # Should split on double newlines (between sections)
+        # First chunk should start with heading
+        assert chunks[0].startswith("# Heading 1")
+
+    def test_oversized_word_falls_to_char_split(self) -> None:
+        """A single 'word' larger than chunk_size should be character-split."""
+        # No spaces, no newlines - just one giant string
+        giant_word = "a" * 500
+        chunks = _utils.chunk_text(giant_word, chunk_size=100, overlap=20)
+
+        assert len(chunks) >= 5
+        for chunk in chunks:
+            assert len(chunk) <= 100
+
+    def test_mixed_content(self) -> None:
+        """Mixed prose and code should chunk appropriately."""
+        text = """# Introduction
+
+This is some prose explaining the code below.
+
+```python
+def example():
+    return 42
+```
+
+More prose after the code block."""
+
+        chunks = _utils.chunk_text(text, chunk_size=80, overlap=0)
+
+        assert len(chunks) >= 2
+        # Content should be preserved
+        full_text = "".join(chunks)
+        assert "Introduction" in full_text
+        assert "def example" in full_text
+        assert "More prose" in full_text
+
+    def test_empty_string(self) -> None:
+        """Empty string should return empty list."""
+        assert _utils.chunk_text("") == []
+        assert _utils.chunk_text("   ") == []
+        assert _utils.chunk_text("\n\n") == []
+
+    def test_overlap_preserves_context(self) -> None:
+        """Verify overlap includes trailing content from previous chunk."""
+        text = "AAA BBB CCC DDD EEE FFF GGG HHH"
+        chunks = _utils.chunk_text(text, chunk_size=15, overlap=8)
+
+        assert len(chunks) >= 2
+        # With overlap, some content should appear in multiple chunks
+        all_content = " ".join(chunks)
+        # Due to overlap, total chars should exceed original
+        assert len(all_content) > len(text)
+
+    def test_no_content_loss(self) -> None:
+        """Verify all original content appears in at least one chunk."""
+        text = "The quick brown fox jumps over the lazy dog. " * 10
+        chunks = _utils.chunk_text(text, chunk_size=100, overlap=20)
+
+        # Reconstruct (accounting for overlap duplicates)
+        words_in_chunks = set()
+        for chunk in chunks:
+            words_in_chunks.update(chunk.split())
+
+        original_words = set(text.split())
+        assert original_words <= words_in_chunks
+
+    def test_respects_chunk_size_limit(self) -> None:
+        """No chunk should exceed chunk_size (except edge cases)."""
+        # Various content types
+        texts = [
+            "word " * 200,  # Words only
+            "Line\n" * 200,  # Lines only
+            "Sentence. " * 100,  # Sentences
+            "a" * 1000,  # No separators
+            "Para one.\n\nPara two.\n\n" * 50,  # Paragraphs
+        ]
+
+        for text in texts:
+            chunks = _utils.chunk_text(text, chunk_size=150, overlap=30)
+            for chunk in chunks:
+                assert len(chunk) <= 150, f"Chunk too large: {len(chunk)} chars"
+
+
 def test_get_file_hash(tmp_path: Path) -> None:
     """Test file hashing."""
     f = tmp_path / "test.txt"
