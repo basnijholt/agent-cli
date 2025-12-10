@@ -33,6 +33,20 @@ LLMs are stateless. Every conversation starts fresh. They don't remember you tol
 
 A local-first system that gives LLMs persistent memory across conversations, with the twist that everything stays human-readable files on disk and it uses smarter scoring (recency + diversity + relevance) instead of just embedding similarity.
 
+### Try It Now
+
+Three lines to get an LLM that remembers you using [Open WebUI](https://github.com/open-webui/open-webui) (assumes [Ollama](https://ollama.com) is running):
+
+```bash
+# Start the memory proxy (uvx handles installation automatically)
+uvx --from "agent-cli[memory]" agent-cli memory proxy --memory-path ./my-memories &
+
+# Start Open WebUI pointing to the proxy
+docker run -d -p 3000:8080 -e OPENAI_API_BASE_URL=http://host.docker.internal:8100/v1 ghcr.io/open-webui/open-webui:main
+
+# Open http://localhost:3000 and start chatting — it will remember you
+```
+
 ---
 
 ## 1. Architectural Components

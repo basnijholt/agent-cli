@@ -27,6 +27,20 @@ LLMs only know what they were trained on. They don't know your company docs, you
 
 A local proxy that gives LLMs access to your documents using smarter multi-stage retrieval instead of the naive "find similar text" approach most tools use, while keeping everything as readable files on disk.
 
+### Try It Now
+
+Three lines to chat with your documents using [Open WebUI](https://github.com/open-webui/open-webui) (assumes [Ollama](https://ollama.com) is running):
+
+```bash
+# Start the RAG proxy (uvx handles installation automatically)
+uvx --from "agent-cli[rag]" agent-cli rag-proxy --docs-folder ./my-docs &
+
+# Start Open WebUI pointing to the proxy
+docker run -d -p 3000:8080 -e OPENAI_API_BASE_URL=http://host.docker.internal:8000/v1 ghcr.io/open-webui/open-webui:main
+
+# Open http://localhost:3000 and start chatting with your documents
+```
+
 ---
 
 ## 1. System Overview
