@@ -304,6 +304,39 @@ More prose after the code block."""
             for chunk in chunks:
                 assert len(chunk) <= 150, f"Chunk too large: {len(chunk)} chars"
 
+    def test_invalid_chunk_size_zero(self) -> None:
+        """Zero chunk_size should raise ValueError."""
+        with pytest.raises(ValueError, match="chunk_size must be positive"):
+            _utils.chunk_text("test", chunk_size=0, overlap=0)
+
+    def test_invalid_chunk_size_negative(self) -> None:
+        """Negative chunk_size should raise ValueError."""
+        with pytest.raises(ValueError, match="chunk_size must be positive"):
+            _utils.chunk_text("test", chunk_size=-10, overlap=0)
+
+    def test_invalid_overlap_equals_chunk_size(self) -> None:
+        """Overlap equal to chunk_size should raise ValueError."""
+        with pytest.raises(ValueError, match=r"overlap .* must be less than chunk_size"):
+            _utils.chunk_text("test", chunk_size=100, overlap=100)
+
+    def test_invalid_overlap_exceeds_chunk_size(self) -> None:
+        """Overlap exceeding chunk_size should raise ValueError."""
+        with pytest.raises(ValueError, match=r"overlap .* must be less than chunk_size"):
+            _utils.chunk_text("test", chunk_size=100, overlap=200)
+
+    def test_early_separator_does_not_create_tiny_chunks(self) -> None:
+        """Separators early in the window should not create undersized chunks."""
+        # Separator at position 22, chunk_size=400
+        # Old behavior: chunk at 22 chars. New: fills to ~400
+        text = "P1" * 10 + "\n\n" + "P2" * 800  # separator at pos 22
+        chunks = _utils.chunk_text(text, chunk_size=400, overlap=0)
+
+        # First chunk should be close to 400, not 22
+        assert len(chunks[0]) >= 200, f"First chunk too small: {len(chunks[0])}"
+        # All non-final chunks should be at least half of chunk_size
+        for chunk in chunks[:-1]:
+            assert len(chunk) >= 200, f"Chunk too small: {len(chunk)}"
+
 
 def test_get_file_hash(tmp_path: Path) -> None:
     """Test file hashing."""

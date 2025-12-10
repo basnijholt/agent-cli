@@ -129,18 +129,20 @@ def load_document_text(file_path: Path) -> str | None:
 SEPARATORS = ("\n\n", "\n", ". ", ", ", " ")
 
 
-def _find_break_point(text: str, start: int, end: int) -> int:
+def _find_break_point(text: str, start: int, end: int, min_chunk: int) -> int:
     """Find a good break point near end, preferring semantic boundaries.
 
     Searches backwards from end to find the last occurrence of a separator.
+    Only accepts separators that would create a chunk of at least min_chunk size.
     Returns the position after the separator (so the separator stays with
     the preceding chunk).
     """
+    min_pos = start + min_chunk
     for sep in SEPARATORS:
         pos = text.rfind(sep, start, end)
-        if pos > start:
+        if pos >= min_pos:
             return pos + len(sep)
-    # No separator found, break at end (character-level split)
+    # No separator found at acceptable position, break at end (character-level split)
     return end
 
 
@@ -161,13 +163,26 @@ def chunk_text(text: str, chunk_size: int = 1200, overlap: int = 200) -> list[st
     Returns:
         List of text chunks.
 
+    Raises:
+        ValueError: If chunk_size <= 0 or overlap >= chunk_size.
+
     """
+    if chunk_size <= 0:
+        msg = f"chunk_size must be positive, got {chunk_size}"
+        raise ValueError(msg)
+    if overlap >= chunk_size:
+        msg = f"overlap ({overlap}) must be less than chunk_size ({chunk_size})"
+        raise ValueError(msg)
+
     if not text or not text.strip():
         return []
 
     text = text.strip()
     if len(text) <= chunk_size:
         return [text]
+
+    # Only accept separators that use at least half the chunk budget
+    min_chunk = chunk_size // 2
 
     chunks = []
     start = 0
@@ -181,7 +196,7 @@ def chunk_text(text: str, chunk_size: int = 1200, overlap: int = 200) -> list[st
             break
 
         # Find a good break point
-        break_point = _find_break_point(text, start, end)
+        break_point = _find_break_point(text, start, end, min_chunk)
         chunks.append(text[start:break_point])
 
         # Next chunk starts with overlap (but must make progress)
