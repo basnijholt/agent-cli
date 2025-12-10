@@ -19,6 +19,7 @@ async def test_watch_docs(tmp_path: Path) -> None:
     docs_folder = tmp_path / "docs"
     docs_folder.mkdir()
     file_hashes: dict[str, str] = {}
+    file_mtimes: dict[str, float] = {}
 
     # Create dummy files so is_file() returns True
     (docs_folder / "new.txt").touch()
@@ -47,7 +48,7 @@ async def test_watch_docs(tmp_path: Path) -> None:
         patch("agent_cli.rag._indexer.index_file") as mock_index,
         patch("agent_cli.rag._indexer.remove_file") as mock_remove,
     ):
-        await _indexer.watch_docs(mock_collection, docs_folder, file_hashes)
+        await _indexer.watch_docs(mock_collection, docs_folder, file_hashes, file_mtimes)
 
         # Check calls
         assert mock_index.call_count == 2  # added and modified
@@ -61,6 +62,7 @@ async def test_watch_docs_passes_ignore_filter(tmp_path: Path) -> None:
     docs_folder = tmp_path / "docs"
     docs_folder.mkdir()
     file_hashes: dict[str, str] = {}
+    file_mtimes: dict[str, float] = {}
 
     async def fake_watch_directory(
         _root: Path,
@@ -77,7 +79,7 @@ async def test_watch_docs_passes_ignore_filter(tmp_path: Path) -> None:
         "agent_cli.rag._indexer.watch_directory",
         side_effect=fake_watch_directory,
     ):
-        await _indexer.watch_docs(mock_collection, docs_folder, file_hashes)
+        await _indexer.watch_docs(mock_collection, docs_folder, file_hashes, file_mtimes)
 
 
 @pytest.mark.asyncio

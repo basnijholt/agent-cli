@@ -33,15 +33,17 @@ def test_index_file(mock_collection: MagicMock, temp_docs_folder: Path) -> None:
     file_path.write_text("Hello world.", encoding="utf-8")
 
     file_hashes: dict[str, str] = {}
+    file_mtimes: dict[str, float] = {}
 
     # Patch utils to ensure we don't rely on real chunking logic complexity
     with patch("agent_cli.rag._indexing.chunk_text", return_value=["Hello world."]):
-        _indexing.index_file(mock_collection, temp_docs_folder, file_path, file_hashes)
+        _indexing.index_file(mock_collection, temp_docs_folder, file_path, file_hashes, file_mtimes)
 
     # Should have upserted
     mock_collection.upsert.assert_called_once()
-    # Should have updated hashes
+    # Should have updated hashes and mtimes
     assert "test.txt" in file_hashes
+    assert "test.txt" in file_mtimes
 
 
 def test_index_file_no_change(mock_collection: MagicMock, temp_docs_folder: Path) -> None:
@@ -49,13 +51,15 @@ def test_index_file_no_change(mock_collection: MagicMock, temp_docs_folder: Path
     file_path = temp_docs_folder / "test.txt"
     file_path.write_text("Hello world.", encoding="utf-8")
 
-    # Pre-fill hash
+    # Pre-fill hash and mtime
     current_hash = get_file_hash(file_path)
+    current_mtime = file_path.stat().st_mtime
     file_hashes = {"test.txt": current_hash}
+    file_mtimes = {"test.txt": current_mtime}
 
-    _indexing.index_file(mock_collection, temp_docs_folder, file_path, file_hashes)
+    _indexing.index_file(mock_collection, temp_docs_folder, file_path, file_hashes, file_mtimes)
 
-    # Should NOT upsert
+    # Should NOT upsert (mtime unchanged = fast path skip)
     mock_collection.upsert.assert_not_called()
 
 
@@ -63,12 +67,13 @@ def test_initial_index_removes_stale(mock_collection: MagicMock, temp_docs_folde
     """Test that initial_index removes files present in DB but missing from disk."""
     # Setup: DB thinks "deleted.txt" exists
     file_hashes = {"deleted.txt": "oldhash"}
+    file_mtimes: dict[str, float] = {"deleted.txt": 12345.0}
 
     # Setup: Disk only has "existing.txt"
     (temp_docs_folder / "existing.txt").write_text("I am here.")
 
     with patch("agent_cli.rag._indexing.chunk_text", return_value=["content"]):
-        _indexing.initial_index(mock_collection, temp_docs_folder, file_hashes)
+        _indexing.initial_index(mock_collection, temp_docs_folder, file_hashes, file_mtimes)
 
     # Verify delete called for "deleted.txt"
     mock_collection.delete.assert_called_with(where={"file_path": "deleted.txt"})
@@ -97,9 +102,10 @@ def test_initial_index_ignores_hidden_directories(
     (temp_docs_folder / "readme.md").write_text("# Readme")
 
     file_hashes: dict[str, str] = {}
+    file_mtimes: dict[str, float] = {}
 
     with patch("agent_cli.rag._indexing.chunk_text", return_value=["content"]):
-        _indexing.initial_index(mock_collection, temp_docs_folder, file_hashes)
+        _indexing.initial_index(mock_collection, temp_docs_folder, file_hashes, file_mtimes)
 
     # Only readme.md should be indexed
     assert "readme.md" in file_hashes
@@ -130,9 +136,10 @@ def test_initial_index_ignores_common_dev_directories(
     (temp_docs_folder / "app.py").write_text("# Application code")
 
     file_hashes: dict[str, str] = {}
+    file_mtimes: dict[str, float] = {}
 
     with patch("agent_cli.rag._indexing.chunk_text", return_value=["content"]):
-        _indexing.initial_index(mock_collection, temp_docs_folder, file_hashes)
+        _indexing.initial_index(mock_collection, temp_docs_folder, file_hashes, file_mtimes)
 
     # Only app.py should be indexed
     assert "app.py" in file_hashes

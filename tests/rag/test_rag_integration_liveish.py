@@ -147,7 +147,7 @@ async def test_rag_tool_execution_flow(
     # We need to mock everything that `api.create_app` does so it doesn't fail
     monkeypatch.setattr(api, "init_collection", MagicMock())
     monkeypatch.setattr(api, "get_reranker_model", MagicMock())
-    monkeypatch.setattr(api, "load_hashes_from_metadata", MagicMock(return_value={}))
+    monkeypatch.setattr(api, "load_hashes_from_metadata", MagicMock(return_value=({}, {})))
     monkeypatch.setattr(api, "watch_docs", AsyncMock())
     monkeypatch.setattr(api, "initial_index", MagicMock())
 

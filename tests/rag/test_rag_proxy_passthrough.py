@@ -21,7 +21,7 @@ def mock_rag_dependencies(mocker: MockerFixture) -> None:
     """Mock the RAG dependencies to avoid side effects."""
     mocker.patch("agent_cli.rag.api.init_collection")
     mocker.patch("agent_cli.rag.api.get_reranker_model")
-    mocker.patch("agent_cli.rag.api.load_hashes_from_metadata", return_value={})
+    mocker.patch("agent_cli.rag.api.load_hashes_from_metadata", return_value=({}, {}))
     mocker.patch("agent_cli.rag.api.watch_docs")
     mocker.patch("agent_cli.rag.api.initial_index")
     # Also mock threading to prevent background threads

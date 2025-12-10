@@ -36,6 +36,7 @@ class DocMetadata(BaseModel):
     total_chunks: int
     indexed_at: str
     file_hash: str
+    file_mtime: float
 
 
 class RagSource(BaseModel):
