@@ -134,14 +134,22 @@ def _find_break_point(text: str, start: int, end: int, min_chunk: int) -> int:
 
     Searches backwards from end to find the last occurrence of a separator.
     Only accepts separators that would create a chunk of at least min_chunk size.
-    Returns the position after the separator (so the separator stays with
-    the preceding chunk).
+    If none qualify, falls back to the best available earlier separator before
+    finally splitting at the exact end. Returns the position after the separator
+    (so the separator stays with the preceding chunk).
     """
     min_pos = start + min_chunk
+    fallback_point = -1
     for sep in SEPARATORS:
         pos = text.rfind(sep, start, end)
+        if pos <= start:
+            continue
+        candidate = pos + len(sep)
         if pos >= min_pos:
-            return pos + len(sep)
+            return candidate
+        fallback_point = max(fallback_point, candidate)
+    if fallback_point != -1:
+        return fallback_point
     # No separator found at acceptable position, break at end (character-level split)
     return end
 

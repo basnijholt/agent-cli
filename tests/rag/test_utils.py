@@ -324,18 +324,27 @@ More prose after the code block."""
         with pytest.raises(ValueError, match=r"overlap .* must be less than chunk_size"):
             _utils.chunk_text("test", chunk_size=100, overlap=200)
 
-    def test_early_separator_does_not_create_tiny_chunks(self) -> None:
-        """Separators early in the window should not create undersized chunks."""
-        # Separator at position 22, chunk_size=400
-        # Old behavior: chunk at 22 chars. New: fills to ~400
-        text = "P1" * 10 + "\n\n" + "P2" * 800  # separator at pos 22
+    def test_only_separator_before_window_is_used(self) -> None:
+        """When no later separator exists, fall back to the earlier boundary."""
+        text = "P1" * 10 + "\n\n" + "P2" * 800  # only separator is the double newline
         chunks = _utils.chunk_text(text, chunk_size=400, overlap=0)
 
-        # First chunk should be close to 400, not 22
-        assert len(chunks[0]) >= 200, f"First chunk too small: {len(chunks[0])}"
-        # All non-final chunks should be at least half of chunk_size
-        for chunk in chunks[:-1]:
-            assert len(chunk) >= 200, f"Chunk too small: {len(chunk)}"
+        first_paragraph = "P1" * 10 + "\n\n"
+        assert chunks[0] == first_paragraph
+        assert chunks[1].startswith("P2"), "Second chunk should begin after the separator"
+
+    def test_prefers_late_separator_when_available(self) -> None:
+        """If a later boundary exists, do not stop at an early separator."""
+        intro = "Intro paragraph.\n\n"
+        body = " ".join([f"Sentence {i}." for i in range(40)])
+        text = intro + body
+
+        chunks = _utils.chunk_text(text, chunk_size=200, overlap=0)
+
+        # First chunk should not end right after the intro paragraph because
+        # there are plenty of later spaces/punctuation to break on.
+        assert len(chunks[0]) >= 150
+        assert not chunks[0].endswith("\n\n")
 
 
 def test_get_file_hash(tmp_path: Path) -> None:
