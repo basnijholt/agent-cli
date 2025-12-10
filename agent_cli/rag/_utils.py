@@ -179,6 +179,13 @@ def _recursive_split(
             # Separator not found, try next
             continue
 
+        # Check if original text ended with separator (split produces empty string)
+        if parts and parts[-1] == "":
+            parts = parts[:-1]
+            trailing_sep = sep
+        else:
+            trailing_sep = ""
+
         # Accumulate parts into chunks
         chunks: list[str] = []
         current_parts: list[str] = []
@@ -189,9 +196,9 @@ def _recursive_split(
 
             # Part alone exceeds chunk_size: recurse with finer separator
             if len(part) > chunk_size:
-                # Flush current buffer first
+                # Flush current buffer first (with trailing sep - more content coming)
                 if current_parts:
-                    chunks.append(sep.join(current_parts))
+                    chunks.append(sep.join(current_parts) + sep)
                     current_parts = []
                     current_size = 0
                 # Recurse on oversized part
@@ -200,7 +207,8 @@ def _recursive_split(
 
             # Adding part would exceed chunk_size: flush and handle overlap
             if current_size + part_size > chunk_size and current_parts:
-                chunks.append(sep.join(current_parts))
+                # Add trailing sep - more content coming (at least current part)
+                chunks.append(sep.join(current_parts) + sep)
                 # Compute overlap: keep trailing parts that fit
                 overlap_parts, overlap_size = _compute_overlap(current_parts, sep, overlap)
                 current_parts = overlap_parts
@@ -209,9 +217,9 @@ def _recursive_split(
             current_parts.append(part)
             current_size += part_size
 
-        # Flush remaining
+        # Flush remaining (preserve original trailing separator if any)
         if current_parts:
-            chunks.append(sep.join(current_parts))
+            chunks.append(sep.join(current_parts) + trailing_sep)
 
         return chunks
 

@@ -140,21 +140,23 @@ class TestRecursiveChunking:
         text = "Paragraph one.\n\nParagraph two.\n\nParagraph three."
         chunks = _utils.chunk_text(text, chunk_size=20, overlap=0)
 
-        # Should split on paragraph boundaries
+        # Should split on paragraph boundaries, preserving separators
         assert len(chunks) == 3
-        assert chunks[0] == "Paragraph one."
-        assert chunks[1] == "Paragraph two."
+        assert chunks[0] == "Paragraph one.\n\n"
+        assert chunks[1] == "Paragraph two.\n\n"
         assert chunks[2] == "Paragraph three."
+        # Verify no content loss
+        assert "".join(chunks) == text
 
     def test_falls_back_to_single_newline(self) -> None:
         r"""When no \n\n, should split on \n."""
         text = "Line one\nLine two\nLine three\nLine four"
         chunks = _utils.chunk_text(text, chunk_size=20, overlap=0)
 
-        # Should split on line boundaries
+        # Should split on line boundaries, preserving newlines
         assert len(chunks) >= 2
-        # First chunk should contain complete lines
-        assert "\n" not in chunks[0] or chunks[0].endswith("\n") is False
+        # Verify no content loss - all separators preserved
+        assert "".join(chunks) == text
 
     def test_falls_back_to_sentence(self) -> None:
         """When no newlines, should split on sentences."""
@@ -287,6 +289,27 @@ More prose after the code block."""
 
         original_words = set(text.split())
         assert original_words <= words_in_chunks
+
+    def test_delimiter_preservation(self) -> None:
+        """Verify separators are preserved at chunk boundaries (no char loss)."""
+        # Various separator types
+        test_cases = [
+            "A. B. C. D. E.",  # Sentence separators
+            "Line1\nLine2\nLine3\nLine4",  # Single newlines
+            "P1\n\nP2\n\nP3\n\nP4",  # Double newlines
+            "one two three four five six",  # Spaces
+            "a, b, c, d, e, f",  # Comma separators
+        ]
+
+        for text in test_cases:
+            chunks = _utils.chunk_text(text, chunk_size=12, overlap=0)
+            reconstructed = "".join(chunks)
+            assert reconstructed == text, (
+                f"Content mismatch:\n"
+                f"  Original:      {text!r}\n"
+                f"  Reconstructed: {reconstructed!r}\n"
+                f"  Chunks:        {chunks}"
+            )
 
     def test_respects_chunk_size_limit(self) -> None:
         """No chunk should exceed chunk_size (except edge cases)."""
