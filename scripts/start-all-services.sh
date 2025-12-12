@@ -10,6 +10,21 @@ fi
 # Get the current directory
 SCRIPTS_DIR="$(cd "$(dirname "$0")" && pwd)"
 
+# Determine LLM pane based on platform
+# Use MLX-LLM on macOS ARM (Apple Silicon), Ollama otherwise
+if [[ "$(uname)" == "Darwin" && "$(uname -m)" == "arm64" ]]; then
+    LLM_PANE='            pane {
+                name "MLX-LLM"
+                cwd "'"$SCRIPTS_DIR"'"
+                command "./run-mlx-lm.sh"
+            }'
+else
+    LLM_PANE='            pane {
+                name "Ollama"
+                command "ollama"
+                args "serve"
+            }'
+fi
 
 # Create .runtime directory and Zellij layout file
 mkdir -p "$SCRIPTS_DIR/.runtime"
@@ -19,11 +34,7 @@ session_name "agent-cli"
 layout {
     pane split_direction="vertical" {
         pane split_direction="horizontal" {
-            pane {
-                name "Ollama"
-                command "ollama"
-                args "serve"
-            }
+$LLM_PANE
             pane {
                 name "Help"
                 command "sh"
