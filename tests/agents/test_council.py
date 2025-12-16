@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import io
 import json
 from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
+from rich.console import Console
 from typer.testing import CliRunner
 
 from agent_cli import config
@@ -24,6 +26,11 @@ from agent_cli.agents.council import (
 from agent_cli.cli import app
 
 runner = CliRunner()
+
+
+def _make_mock_console() -> Console:
+    """Create a mock console for testing without terminal features."""
+    return Console(file=io.StringIO(), width=80, force_terminal=False, no_color=True)
 
 
 # =============================================================================
@@ -257,6 +264,7 @@ class TestCouncilCLI:
         assert "--chairman" in result.output
         assert "--no-ranking" in result.output
 
+    @patch("agent_cli.agents.council.console", _make_mock_console())
     @patch("agent_cli.agents.council._run_council")
     @patch("agent_cli.agents.council.pyperclip.copy")
     def test_council_basic_invocation(
@@ -302,7 +310,10 @@ class TestCouncilCLI:
 
     def test_council_json_output_format(self) -> None:
         """Test that --json flag produces valid JSON structure."""
-        with patch("agent_cli.agents.council._run_council") as mock_run:
+        with (
+            patch("agent_cli.agents.council.console", _make_mock_console()),
+            patch("agent_cli.agents.council._run_council") as mock_run,
+        ):
             mock_result = CouncilResult(
                 query="Test",
                 stage1=[CouncilResponse(model="m1", response="r1", elapsed=1.0)],
