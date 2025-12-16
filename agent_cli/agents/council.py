@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING
 import pyperclip
 import typer
 from pydantic import BaseModel, Field
+from rich.markdown import Markdown
 from rich.panel import Panel
 from rich.table import Table
 
@@ -470,7 +471,7 @@ def _render_stage1(result: CouncilResult) -> None:
 
     for response in result.stage1:
         panel = Panel(
-            response.response,
+            Markdown(response.response),
             title=f"[bold]🤖 {response.model}[/bold]",
             subtitle=f"[dim]{response.elapsed:.1f}s[/dim]",
             border_style="blue",
@@ -513,7 +514,7 @@ def _render_stage3(result: CouncilResult) -> None:
     console.print("\n[bold green]━━━ Final Answer ━━━[/bold green]\n")
 
     panel = Panel(
-        result.stage3.response,
+        Markdown(result.stage3.response),
         title=f"[bold]👑 Chairman: {result.stage3.model}[/bold]",
         subtitle=f"[dim]{result.stage3.elapsed:.1f}s[/dim]",
         border_style="green",
