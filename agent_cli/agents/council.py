@@ -401,7 +401,7 @@ async def stage3_synthesize(
     return result
 
 
-async def run_council(
+async def _run_council(
     query: str,
     models: list[str],
     chairman_model: str,
@@ -520,7 +520,7 @@ def _render_stage3(result: CouncilResult) -> None:
     console.print(panel)
 
 
-def render_council_result(
+def _render_council_result(
     result: CouncilResult,
     *,
     final_only: bool = False,
@@ -601,7 +601,7 @@ async def _async_council(
     quiet: bool,
 ) -> None:
     """Async implementation of the council command."""
-    result = await run_council(
+    result = await _run_council(
         query=query,
         models=models,
         chairman_model=chairman,
@@ -611,7 +611,7 @@ async def _async_council(
     )
 
     # Render output
-    render_council_result(result, final_only=final_only, json_output=json_output)
+    _render_council_result(result, final_only=final_only, json_output=json_output)
 
     # Copy final answer to clipboard
     if clipboard and result.stage3:
