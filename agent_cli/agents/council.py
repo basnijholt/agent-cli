@@ -491,15 +491,13 @@ def _render_stage2(result: CouncilResult) -> None:
     table = Table(title="Aggregate Rankings", show_header=True, header_style="bold magenta")
     table.add_column("Rank", style="cyan", justify="center")
     table.add_column("Model", style="white")
-    table.add_column("Avg Score", style="yellow", justify="center")
-    table.add_column("Votes", style="dim", justify="center")
+    table.add_column("Avg Position", style="yellow", justify="center")
 
     for i, ranking in enumerate(result.aggregate_rankings, start=1):
         table.add_row(
             f"#{i}",
             ranking.model,
-            f"{ranking.average_rank:.2f}",
-            str(ranking.rankings_count),
+            f"{ranking.average_rank:.1f}",  # 1.0 = always ranked 1st
         )
 
     console.print(table)
