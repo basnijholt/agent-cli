@@ -25,7 +25,7 @@ from agent_cli.agents.council import (
 )
 from agent_cli.cli import app
 
-runner = CliRunner()
+runner = CliRunner(env={"NO_COLOR": "1", "TERM": "dumb"})
 
 
 def _make_mock_console() -> Console:
