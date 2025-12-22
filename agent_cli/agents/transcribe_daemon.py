@@ -167,24 +167,20 @@ async def _process_segment(  # noqa: PLR0912
     # Transcribe the segment
     transcriber = create_recorded_audio_transcriber(provider_cfg)
 
-    try:
-        if provider_cfg.asr_provider == "openai":
-            transcript = await transcriber(
-                segment,
-                openai_asr_cfg,
-                LOGGER,
-                quiet=quiet,
-            )
-        else:  # Wyoming expects keyword arguments
-            transcript = await transcriber(
-                audio_data=segment,
-                wyoming_asr_cfg=wyoming_asr_cfg,
-                logger=LOGGER,
-                quiet=quiet,
-            )
-    except Exception:
-        LOGGER.exception("Transcription failed")
-        return
+    if provider_cfg.asr_provider == "openai":
+        transcript = await transcriber(
+            segment,
+            openai_asr_cfg,
+            LOGGER,
+            quiet=quiet,
+        )
+    else:  # Wyoming expects keyword arguments
+        transcript = await transcriber(
+            audio_data=segment,
+            wyoming_asr_cfg=wyoming_asr_cfg,
+            logger=LOGGER,
+            quiet=quiet,
+        )
 
     if not transcript or not transcript.strip():
         LOGGER.debug("Empty transcript, skipping")
@@ -205,36 +201,32 @@ async def _process_segment(  # noqa: PLR0912
     model_info: str | None = None
 
     if llm_enabled:
-        try:
-            # Determine model info for logging
-            if provider_cfg.llm_provider == "ollama":
-                model_info = f"{provider_cfg.llm_provider}:{ollama_cfg.llm_ollama_model}"
-            elif provider_cfg.llm_provider == "openai":
-                model_info = f"{provider_cfg.llm_provider}:{openai_llm_cfg.llm_openai_model}"
-            elif provider_cfg.llm_provider == "gemini":
-                model_info = f"{provider_cfg.llm_provider}:{gemini_llm_cfg.llm_gemini_model}"
+        # Determine model info for logging
+        if provider_cfg.llm_provider == "ollama":
+            model_info = f"{provider_cfg.llm_provider}:{ollama_cfg.llm_ollama_model}"
+        elif provider_cfg.llm_provider == "openai":
+            model_info = f"{provider_cfg.llm_provider}:{openai_llm_cfg.llm_openai_model}"
+        elif provider_cfg.llm_provider == "gemini":
+            model_info = f"{provider_cfg.llm_provider}:{gemini_llm_cfg.llm_gemini_model}"
 
-            processed_transcript = await process_and_update_clipboard(
-                system_prompt=SYSTEM_PROMPT,
-                agent_instructions=AGENT_INSTRUCTIONS,
-                provider_cfg=provider_cfg,
-                ollama_cfg=ollama_cfg,
-                openai_cfg=openai_llm_cfg,
-                gemini_cfg=gemini_llm_cfg,
-                logger=LOGGER,
-                original_text=transcript,
-                instruction=INSTRUCTION,
-                clipboard=False,  # Don't copy to clipboard in daemon mode
-                quiet=True,  # Suppress LLM output, we handle display ourselves
-                live=None,
-                context=None,
-            )
+        processed_transcript = await process_and_update_clipboard(
+            system_prompt=SYSTEM_PROMPT,
+            agent_instructions=AGENT_INSTRUCTIONS,
+            provider_cfg=provider_cfg,
+            ollama_cfg=ollama_cfg,
+            openai_cfg=openai_llm_cfg,
+            gemini_cfg=gemini_llm_cfg,
+            logger=LOGGER,
+            original_text=transcript,
+            instruction=INSTRUCTION,
+            clipboard=False,  # Don't copy to clipboard in daemon mode
+            quiet=True,  # Suppress LLM output, we handle display ourselves
+            live=None,
+            context=None,
+        )
 
-            if not quiet and processed_transcript and processed_transcript != transcript:
-                console.print(f"  [dim]→[/dim] [green]{processed_transcript}[/green]")
-
-        except Exception:
-            LOGGER.exception("LLM processing failed")
+        if not quiet and processed_transcript and processed_transcript != transcript:
+            console.print(f"  [dim]→[/dim] [green]{processed_transcript}[/green]")
 
     # Log the segment
     asr_model_info = f"{provider_cfg.asr_provider}"
