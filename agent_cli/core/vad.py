@@ -65,7 +65,7 @@ class VoiceActivityDetector:
 
     sample_rate: int = constants.AUDIO_RATE
     silence_threshold_ms: int = 1000
-    min_speech_duration_ms: int = 500
+    min_speech_duration_ms: int = 250  # Lower to catch single words
     threshold: float = 0.3  # Lower threshold for sensitivity; non-speech is typically < 0.01
     pre_speech_buffer_ms: int = 300  # Include 300ms of audio before speech detected
 

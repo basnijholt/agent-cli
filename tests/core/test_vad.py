@@ -72,7 +72,7 @@ def test_vad_initialization(vad: Any) -> None:
     assert vad.threshold == 0.3
     assert vad.sample_rate == 16000
     assert vad.silence_threshold_ms == 1000
-    assert vad.min_speech_duration_ms == 500
+    assert vad.min_speech_duration_ms == 250
 
 
 def test_vad_window_size(vad: Any) -> None:
@@ -137,8 +137,8 @@ def test_vad_properties(vad: Any) -> None:
     # Silence threshold samples = 1000ms * 16000Hz / 1000 = 16000 samples
     assert vad._silence_threshold_samples == 16000
 
-    # Min speech samples = 500ms * 16000Hz / 1000 = 8000 samples
-    assert vad._min_speech_samples == 8000
+    # Min speech samples = 250ms * 16000Hz / 1000 = 4000 samples
+    assert vad._min_speech_samples == 4000
 
 
 def test_vad_8khz_window_size() -> None:

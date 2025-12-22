@@ -195,6 +195,7 @@ async def _process_segment(  # noqa: PLR0912
         console.print(
             f"[dim]{timestamp.strftime('%H:%M:%S')}[/dim] [cyan]{role}[/cyan]: {transcript}",
         )
+        console.file.flush()  # Force output immediately
 
     # Process with LLM if enabled
     processed_transcript: str | None = None
@@ -409,7 +410,7 @@ def transcribe_daemon(  # noqa: PLR0912
         help="Seconds of silence to end a speech segment.",
     ),
     min_segment: float = typer.Option(
-        0.5,
+        0.25,
         "--min-segment",
         "-m",
         help="Minimum speech duration in seconds to trigger a segment.",
