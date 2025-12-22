@@ -10,7 +10,7 @@ try:
 except ImportError as e:
     msg = (
         "webrtcvad is required for the transcribe-daemon command. "
-        "Install it with: pip install 'agent-cli[daemon]'"
+        "Install it with: pip install 'agent-cli[vad]'"
     )
     raise ImportError(msg) from e
 

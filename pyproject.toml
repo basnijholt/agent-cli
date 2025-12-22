@@ -54,7 +54,7 @@ memory = [
     # Until here same as 'rag' extras
     "pyyaml>=6.0.0",
 ]
-daemon = [
+vad = [
     "webrtcvad>=2.0.10",
 ]
 test = [

@@ -41,7 +41,7 @@ I use it mostly for the `transcribe` function when working with LLMs. Being able
   - `memory proxy`: A long-term memory chat proxy with OpenAI-compatible endpoints that is file-based and uses Git.
   - `memory add`: Directly add memories without LLM extraction (useful for bulk imports).
 - **`rag-proxy`**: A RAG (Retrieval-Augmented Generation) proxy server that lets you chat with your documents.
-- **`transcribe-daemon`**: A continuous transcription daemon that runs in the background, automatically detecting speech and transcribing it. Supports voice activity detection, optional LLM cleanup, MP3 audio storage, and systemd integration. Install with `pip install 'agent-cli[daemon]'`.
+- **`transcribe-daemon`**: A continuous transcription daemon that runs in the background, automatically detecting speech and transcribing it. Supports voice activity detection, optional LLM cleanup, MP3 audio storage, and systemd integration. Install with `pip install 'agent-cli[vad]'`.
 
 ## Quick Start
 
@@ -483,9 +483,9 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 4. Optionally, audio is saved as MP3 files for later reference.
 5. Press `Ctrl+C` to stop the daemon.
 
-**Installation:** Requires the `daemon` extra:
+**Installation:** Requires the `vad` extra:
 ```bash
-pip install 'agent-cli[daemon]'
+pip install 'agent-cli[vad]'
 ```
 
 **How to Use It:**

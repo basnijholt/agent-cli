@@ -31,9 +31,6 @@ dependencies = [
 ]
 
 [package.optional-dependencies]
-daemon = [
-    { name = "webrtcvad" },
-]
 dev = [
     { name = "markdown-code-runner" },
     { name = "notebook" },
@@ -78,6 +75,9 @@ test = [
     { name = "pytest-cov" },
     { name = "pytest-mock" },
     { name = "pytest-timeout" },
+]
+vad = [
+    { name = "webrtcvad" },
 ]
 
 [package.dev-dependencies]
@@ -138,10 +138,10 @@ requires-dist = [
     { name = "versioningit", marker = "extra == 'dev'" },
     { name = "watchfiles", marker = "extra == 'memory'", specifier = ">=0.21.0" },
     { name = "watchfiles", marker = "extra == 'rag'", specifier = ">=0.21.0" },
-    { name = "webrtcvad", marker = "extra == 'daemon'", specifier = ">=2.0.10" },
+    { name = "webrtcvad", marker = "extra == 'vad'", specifier = ">=2.0.10" },
     { name = "wyoming" },
 ]
-provides-extras = ["server", "rag", "memory", "daemon", "test", "dev", "speed"]
+provides-extras = ["server", "rag", "memory", "vad", "test", "dev", "speed"]
 
 [package.metadata.requires-dev]
 dev = [
