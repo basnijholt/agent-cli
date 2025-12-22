@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 import io
+import logging
 import urllib.request
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
+
+from agent_cli import constants
 
 try:
     import numpy as np
@@ -19,7 +22,7 @@ except ImportError as e:
     )
     raise ImportError(msg) from e
 
-from agent_cli import constants
+LOGGER = logging.getLogger(__name__)
 
 # URL for the Silero VAD ONNX model
 _SILERO_VAD_ONNX_URL = (
@@ -56,13 +59,15 @@ class VoiceActivityDetector:
         silence_threshold_ms: Duration of silence (in ms) required to end a segment.
         min_speech_duration_ms: Minimum speech duration (in ms) to trigger a segment.
         threshold: Speech detection threshold (0.0-1.0). Higher = more aggressive.
+        pre_speech_buffer_ms: Audio to include before speech detection (in ms).
 
     """
 
     sample_rate: int = constants.AUDIO_RATE
     silence_threshold_ms: int = 1000
     min_speech_duration_ms: int = 500
-    threshold: float = 0.5
+    threshold: float = 0.3  # Lower threshold for sensitivity; non-speech is typically < 0.01
+    pre_speech_buffer_ms: int = 300  # Include 300ms of audio before speech detected
 
     # Internal state
     _model: Any = field(init=False, repr=False)
@@ -71,6 +76,10 @@ class VoiceActivityDetector:
     _silence_samples: int = field(init=False, default=0)
     _speech_samples: int = field(init=False, default=0)
     _pending_chunks: list[bytes] = field(init=False, repr=False)
+    _pre_speech_buffer: list[bytes] = field(
+        init=False,
+        repr=False,
+    )  # Rolling buffer for pre-speech audio
 
     def __post_init__(self) -> None:
         """Initialize the VAD model and internal buffers."""
@@ -83,9 +92,17 @@ class VoiceActivityDetector:
         self._model = OnnxWrapper(str(model_path))
         self._audio_buffer = io.BytesIO()
         self._pending_chunks = []
+        self._pre_speech_buffer = []
         self._is_speaking = False
         self._silence_samples = 0
         self._speech_samples = 0
+
+    @property
+    def _pre_speech_buffer_windows(self) -> int:
+        """Number of windows to keep in the pre-speech buffer."""
+        # Calculate how many windows fit in pre_speech_buffer_ms
+        samples_needed = self.pre_speech_buffer_ms * self.sample_rate // 1000
+        return max(1, samples_needed // self.window_size_samples)
 
     @property
     def window_size_samples(self) -> int:
@@ -114,6 +131,7 @@ class VoiceActivityDetector:
         self._model.reset_states()
         self._audio_buffer = io.BytesIO()
         self._pending_chunks = []
+        self._pre_speech_buffer = []
         self._is_speaking = False
         self._silence_samples = 0
         self._speech_samples = 0
@@ -129,10 +147,19 @@ class VoiceActivityDetector:
         """Check if audio contains speech using Silero model directly.
 
         Simple API like webrtcvad: returns True if speech, False otherwise.
+        Uses __call__ instead of audio_forward to maintain state between chunks.
         """
-        # Get speech probability from model
-        speech_prob = self._model.audio_forward(audio_tensor, self.sample_rate)
-        return float(speech_prob) >= self.threshold
+        # Get speech probability from model (use __call__ for streaming, not audio_forward)
+        speech_prob = self._model(audio_tensor, self.sample_rate)
+        prob_value = float(speech_prob.item())
+        is_speech = prob_value >= self.threshold
+        LOGGER.debug(
+            "Speech prob: %.3f, threshold: %.2f, is_speech: %s",
+            prob_value,
+            self.threshold,
+            is_speech,
+        )
+        return is_speech
 
     def process_chunk(self, audio_chunk: bytes) -> tuple[bool, bytes | None]:
         """Process an audio chunk and detect speech segments.
@@ -170,9 +197,13 @@ class VoiceActivityDetector:
             if is_speech:
                 # Speech detected
                 if not self._is_speaking:
-                    # Speech just started
+                    # Speech just started - include pre-speech buffer
                     self._is_speaking = True
                     self._audio_buffer = io.BytesIO()
+                    # Write pre-speech buffer first to capture beginning of speech
+                    for pre_window in self._pre_speech_buffer:
+                        self._audio_buffer.write(pre_window)
+                    self._pre_speech_buffer = []
                     self._silence_samples = 0
                     self._speech_samples = 0
 
@@ -204,6 +235,13 @@ class VoiceActivityDetector:
                     self._speech_samples = 0
                     self._audio_buffer = io.BytesIO()
                     self._model.reset_states()
+
+            else:
+                # Not speaking - maintain rolling pre-speech buffer
+                self._pre_speech_buffer.append(window)
+                # Keep only the last N windows
+                if len(self._pre_speech_buffer) > self._pre_speech_buffer_windows:
+                    self._pre_speech_buffer.pop(0)
 
         # Keep remaining incomplete data for next call
         remaining = pending_data[offset:]

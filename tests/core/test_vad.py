@@ -69,7 +69,7 @@ def speech_audio_frame(vad: Any) -> bytes:
 
 def test_vad_initialization(vad: Any) -> None:
     """Test VAD initializes with correct defaults."""
-    assert vad.threshold == 0.5
+    assert vad.threshold == 0.3
     assert vad.sample_rate == 16000
     assert vad.silence_threshold_ms == 1000
     assert vad.min_speech_duration_ms == 500

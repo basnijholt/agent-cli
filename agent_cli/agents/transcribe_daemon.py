@@ -244,6 +244,10 @@ async def _process_segment(  # noqa: PLR0912
         model_info=model_info or asr_model_info,
     )
 
+    # Show listening status after processing
+    if not quiet:
+        console.print("[green]👂 Listening...[/green]" + " " * 20, end="\r")
+
 
 async def _daemon_loop(  # noqa: C901, PLR0912, PLR0915
     *,
@@ -411,7 +415,7 @@ def transcribe_daemon(  # noqa: PLR0912
         help="Minimum speech duration in seconds to trigger a segment.",
     ),
     vad_threshold: float = typer.Option(
-        0.5,
+        0.3,
         "--vad-threshold",
         help="VAD speech detection threshold (0.0-1.0). Higher = more aggressive filtering.",
     ),
