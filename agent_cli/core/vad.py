@@ -82,6 +82,8 @@ class VoiceActivityDetector:
             self._model,
             sampling_rate=self.sample_rate,
             threshold=self.threshold,
+            # Match Silero's silence detection to our threshold to prevent flickering
+            min_silence_duration_ms=self.silence_threshold_ms,
         )
         self._audio_buffer = io.BytesIO()
         self._pending_chunks = []
