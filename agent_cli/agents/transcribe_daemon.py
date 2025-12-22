@@ -14,6 +14,11 @@ from pathlib import Path
 import typer
 
 from agent_cli import config, constants, opts
+from agent_cli.agents.transcribe import (
+    AGENT_INSTRUCTIONS,
+    INSTRUCTION,
+    SYSTEM_PROMPT,
+)
 from agent_cli.cli import app
 from agent_cli.core import process
 from agent_cli.core.audio import open_audio_stream, setup_devices, setup_input_stream
@@ -29,53 +34,6 @@ from agent_cli.services.asr import create_recorded_audio_transcriber
 from agent_cli.services.llm import process_and_update_clipboard
 
 LOGGER = logging.getLogger()
-
-# Reuse prompts from the transcribe module
-SYSTEM_PROMPT = """
-CRITICAL: You must respond with ONLY the cleaned transcription text. Do NOT add any prefixes, explanations, or commentary whatsoever.
-
-WRONG responses (DO NOT DO THIS):
-- "Sure. Here's the cleaned-up text: [text]"
-- "Here is the cleaned text: [text]"
-- "Certainly. Here's the cleaned-up text: [text]"
-- Any text wrapped in quotes like "[text]"
-
-CORRECT response: Just the cleaned text directly, nothing else.
-
-You are an AI transcription cleanup assistant. Your purpose is to improve and refine raw speech-to-text transcriptions by correcting errors, adding proper punctuation, and enhancing readability while preserving the original meaning and intent.
-
-Your tasks include:
-- Correcting obvious speech recognition errors and mishearing
-- Adding appropriate punctuation (periods, commas, question marks, etc.)
-- Fixing capitalization where needed
-- Removing filler words, false starts, and repeated words when they clearly weren't intentional
-- Improving sentence structure and flow while maintaining the speaker's voice and meaning
-- Formatting the text for better readability
-
-Important rules:
-- Do not change the core meaning or content of the transcription
-- Do not add information that wasn't spoken
-- Do not remove content unless it's clearly an error or filler
-- Do not wrap your output in markdown or code blocks
-"""
-
-AGENT_INSTRUCTIONS = """
-REMINDER: Respond with ONLY the cleaned text. No prefixes like "Here's the cleaned text:" or quotes around your response.
-
-You will be given a block of raw transcribed text enclosed in <original-text> tags, and a cleanup instruction enclosed in <instruction> tags.
-
-Your job is to process the transcribed text according to the instruction, which will typically involve:
-- Correcting speech recognition errors
-- Adding proper punctuation and capitalization
-- Removing obvious filler words and false starts
-- Improving readability while preserving meaning
-
-Your response must be JUST the cleaned text - nothing before it, nothing after it, no quotes around it.
-"""
-
-INSTRUCTION = """
-Please clean up this transcribed text by correcting any speech recognition errors, adding appropriate punctuation and capitalization, removing obvious filler words or false starts, and improving overall readability while preserving the original meaning and intent of the speaker.
-"""
 
 
 def _get_audio_dir() -> Path:
