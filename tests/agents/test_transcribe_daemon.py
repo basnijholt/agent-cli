@@ -28,7 +28,7 @@ def test_log_segment(temp_log_file: Path, tmp_path: Path) -> None:
     try:
         from agent_cli.agents.transcribe_daemon import _log_segment  # noqa: PLC0415
     except ImportError:
-        pytest.skip("webrtcvad not installed")
+        pytest.skip("silero-vad not installed")
 
     audio_file = tmp_path / "test.mp3"
     timestamp = datetime.now(UTC)
@@ -62,7 +62,7 @@ def test_log_segment_creates_parent_dirs(tmp_path: Path) -> None:
     try:
         from agent_cli.agents.transcribe_daemon import _log_segment  # noqa: PLC0415
     except ImportError:
-        pytest.skip("webrtcvad not installed")
+        pytest.skip("silero-vad not installed")
 
     log_file = tmp_path / "nested" / "dir" / "log.jsonl"
 
@@ -86,7 +86,7 @@ def test_generate_audio_path(temp_audio_dir: Path) -> None:
             _generate_audio_path,
         )
     except ImportError:
-        pytest.skip("webrtcvad not installed")
+        pytest.skip("silero-vad not installed")
 
     timestamp = datetime(2025, 1, 15, 10, 30, 45, 123000, tzinfo=UTC)
     path = _generate_audio_path(temp_audio_dir, timestamp)
@@ -101,7 +101,7 @@ def test_get_audio_dir() -> None:
     try:
         from agent_cli.agents.transcribe_daemon import _get_audio_dir  # noqa: PLC0415
     except ImportError:
-        pytest.skip("webrtcvad not installed")
+        pytest.skip("silero-vad not installed")
 
     audio_dir = _get_audio_dir()
     assert audio_dir.name == "audio"
@@ -114,7 +114,7 @@ def test_get_log_file() -> None:
     try:
         from agent_cli.agents.transcribe_daemon import _get_log_file  # noqa: PLC0415
     except ImportError:
-        pytest.skip("webrtcvad not installed")
+        pytest.skip("silero-vad not installed")
 
     log_file = _get_log_file()
     assert log_file.name == "transcriptions.jsonl"
@@ -129,7 +129,7 @@ def test_transcribe_daemon_command_exists() -> None:
             transcribe_daemon,
         )
     except ImportError:
-        pytest.skip("webrtcvad not installed")
+        pytest.skip("silero-vad not installed")
 
     assert callable(transcribe_daemon)
 
@@ -144,4 +144,4 @@ def test_process_name_constant() -> None:
         # the module loads correctly
         assert hasattr(td_module, "transcribe_daemon")
     except ImportError:
-        pytest.skip("webrtcvad not installed")
+        pytest.skip("silero-vad not installed")

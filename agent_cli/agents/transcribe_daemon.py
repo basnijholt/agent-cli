@@ -410,10 +410,10 @@ def transcribe_daemon(  # noqa: PLR0912
         "-m",
         help="Minimum speech duration in seconds to trigger a segment.",
     ),
-    vad_aggressiveness: int = typer.Option(
-        2,
-        "--vad-aggressiveness",
-        help="VAD aggressiveness mode (0-3). Higher = more aggressive filtering.",
+    vad_threshold: float = typer.Option(
+        0.5,
+        "--vad-threshold",
+        help="VAD speech detection threshold (0.0-1.0). Higher = more aggressive filtering.",
     ),
     save_audio: bool = typer.Option(
         True,  # noqa: FBT003
@@ -465,7 +465,7 @@ def transcribe_daemon(  # noqa: PLR0912
     """Run a continuous transcription daemon with voice activity detection.
 
     This command runs indefinitely, capturing audio from your microphone,
-    detecting speech segments using webrtcvad, transcribing them, and
+    detecting speech segments using Silero VAD, transcribing them, and
     logging results with timestamps.
 
     Examples:
@@ -505,9 +505,9 @@ def transcribe_daemon(  # noqa: PLR0912
             print_with_style(f"⚠️ {process_name} is not running", style="yellow")
         return
 
-    # Validate VAD aggressiveness
-    if vad_aggressiveness < 0 or vad_aggressiveness > 3:  # noqa: PLR2004
-        print_with_style("❌ VAD aggressiveness must be 0-3", style="red")
+    # Validate VAD threshold
+    if vad_threshold < 0.0 or vad_threshold > 1.0:
+        print_with_style("❌ VAD threshold must be 0.0-1.0", style="red")
         raise typer.Exit(1)
 
     # Check FFmpeg availability if saving audio
@@ -571,7 +571,7 @@ def transcribe_daemon(  # noqa: PLR0912
 
     # Create VAD instance
     vad = VoiceActivityDetector(
-        aggressiveness=vad_aggressiveness,
+        threshold=vad_threshold,
         silence_threshold_ms=int(silence_threshold * 1000),
         min_speech_duration_ms=int(min_segment * 1000),
     )

@@ -1,4 +1,4 @@
-"""Tests for Voice Activity Detection module."""
+"""Tests for Voice Activity Detection module using Silero VAD."""
 
 from __future__ import annotations
 
@@ -14,24 +14,24 @@ if TYPE_CHECKING:
 
 
 @pytest.fixture
-def mock_webrtcvad() -> MagicMock:
-    """Mock webrtcvad module."""
-    mock_vad = MagicMock()
-    mock_vad.Vad.return_value = mock_vad
-    mock_vad.is_speech.return_value = False
-    return mock_vad
+def mock_silero_vad() -> tuple[MagicMock, MagicMock]:
+    """Mock silero_vad module."""
+    mock_model = MagicMock()
+    mock_iterator = MagicMock()
+    mock_iterator.return_value = None  # No speech event by default
+    return mock_model, mock_iterator
 
 
-def test_import_error_without_webrtcvad() -> None:
-    """Test that ImportError is raised with helpful message when webrtcvad is missing."""
+def test_import_error_without_silero_vad() -> None:
+    """Test that ImportError is raised with helpful message when silero-vad is missing."""
     import importlib  # noqa: PLC0415
 
-    with patch.dict("sys.modules", {"webrtcvad": None}):
+    with patch.dict("sys.modules", {"torch": None, "silero_vad": None}):
         # Remove cached module
         if "agent_cli.core.vad" in sys.modules:
             del sys.modules["agent_cli.core.vad"]
 
-        with pytest.raises(ImportError, match="agent-cli\\[daemon\\]"):
+        with pytest.raises(ImportError, match="agent-cli\\[vad\\]"):
             importlib.import_module("agent_cli.core.vad")
 
 
@@ -41,27 +41,27 @@ def vad() -> VoiceActivityDetector:
     try:
         from agent_cli.core.vad import VoiceActivityDetector  # noqa: PLC0415
     except ImportError:
-        pytest.skip("webrtcvad not installed")
+        pytest.skip("silero-vad not installed")
     return VoiceActivityDetector()
 
 
 @pytest.fixture
 def sample_audio_frame(vad: Any) -> bytes:
     """Create a sample audio frame of the correct size for VAD processing."""
-    # Frame size depends on sample rate and frame duration
-    # 16kHz, 30ms = 480 samples = 960 bytes (16-bit)
-    frame_size = vad.frame_size_bytes
+    # Window size depends on sample rate: 512 samples at 16kHz, 256 at 8kHz
+    # 2 bytes per sample (16-bit audio)
+    window_size = vad.window_size_bytes
     # Generate silence (zeros)
-    return b"\x00" * frame_size
+    return b"\x00" * window_size
 
 
 @pytest.fixture
 def speech_audio_frame(vad: Any) -> bytes:
     """Create a sample audio frame that simulates speech (non-zero audio)."""
-    frame_size = vad.frame_size_bytes
+    window_size = vad.window_size_bytes
     # Generate a simple tone pattern that should trigger speech detection
     samples = []
-    for i in range(frame_size // 2):
+    for i in range(window_size // 2):
         # Simple sine-ish wave pattern
         value = int(10000 * ((i % 100) / 50 - 1))
         samples.append(struct.pack("<h", value))
@@ -70,29 +70,20 @@ def speech_audio_frame(vad: Any) -> bytes:
 
 def test_vad_initialization(vad: Any) -> None:
     """Test VAD initializes with correct defaults."""
-    assert vad.aggressiveness == 2
+    assert vad.threshold == 0.5
     assert vad.sample_rate == 16000
-    assert vad.frame_duration_ms == 30
     assert vad.silence_threshold_ms == 1000
     assert vad.min_speech_duration_ms == 500
 
 
-def test_vad_frame_size(vad: Any) -> None:
-    """Test frame size calculation."""
-    # 16kHz * 30ms = 480 samples * 2 bytes = 960 bytes
-    expected_frame_size = 16000 * 30 // 1000 * 2
-    assert vad.frame_size_bytes == expected_frame_size
-
-
-def test_vad_invalid_aggressiveness() -> None:
-    """Test that invalid aggressiveness raises ValueError."""
-    try:
-        from agent_cli.core.vad import VoiceActivityDetector  # noqa: PLC0415
-    except ImportError:
-        pytest.skip("webrtcvad not installed")
-
-    with pytest.raises(ValueError, match="Aggressiveness must be 0-3"):
-        VoiceActivityDetector(aggressiveness=5)
+def test_vad_window_size(vad: Any) -> None:
+    """Test window size calculation."""
+    # Silero VAD uses 512 samples for 16kHz, 256 for 8kHz
+    # 16-bit audio = 2 bytes per sample
+    expected_window_size_samples = 512  # 16kHz
+    expected_window_size_bytes = 512 * 2  # 1024 bytes
+    assert vad.window_size_samples == expected_window_size_samples
+    assert vad.window_size_bytes == expected_window_size_bytes
 
 
 def test_vad_invalid_sample_rate() -> None:
@@ -100,21 +91,10 @@ def test_vad_invalid_sample_rate() -> None:
     try:
         from agent_cli.core.vad import VoiceActivityDetector  # noqa: PLC0415
     except ImportError:
-        pytest.skip("webrtcvad not installed")
+        pytest.skip("silero-vad not installed")
 
     with pytest.raises(ValueError, match="Sample rate must be"):
         VoiceActivityDetector(sample_rate=22050)
-
-
-def test_vad_invalid_frame_duration() -> None:
-    """Test that invalid frame duration raises ValueError."""
-    try:
-        from agent_cli.core.vad import VoiceActivityDetector  # noqa: PLC0415
-    except ImportError:
-        pytest.skip("webrtcvad not installed")
-
-    with pytest.raises(ValueError, match="Frame duration must be"):
-        VoiceActivityDetector(frame_duration_ms=25)
 
 
 def test_vad_process_silence(vad: Any, sample_audio_frame: bytes) -> None:
@@ -134,8 +114,8 @@ def test_vad_reset(vad: Any, sample_audio_frame: bytes) -> None:
 
     # Check internal state is cleared
     assert vad._is_speaking is False
-    assert vad._silence_frames == 0
-    assert vad._speech_frames == 0
+    assert vad._silence_samples == 0
+    assert vad._speech_samples == 0
 
 
 def test_vad_get_segment_duration(vad: Any) -> None:
@@ -155,8 +135,32 @@ def test_vad_flush_with_no_speech(vad: Any, sample_audio_frame: bytes) -> None:
 
 def test_vad_properties(vad: Any) -> None:
     """Test VAD property calculations."""
-    # Silence threshold frames = 1000ms / 30ms = 33 frames
-    assert vad._silence_threshold_frames == 33
+    # Silence threshold samples = 1000ms * 16000Hz / 1000 = 16000 samples
+    assert vad._silence_threshold_samples == 16000
 
-    # Min speech frames = 500ms / 30ms = 16 frames
-    assert vad._min_speech_frames == 16
+    # Min speech samples = 500ms * 16000Hz / 1000 = 8000 samples
+    assert vad._min_speech_samples == 8000
+
+
+def test_vad_8khz_window_size() -> None:
+    """Test VAD window size at 8kHz sample rate."""
+    try:
+        from agent_cli.core.vad import VoiceActivityDetector  # noqa: PLC0415
+    except ImportError:
+        pytest.skip("silero-vad not installed")
+
+    vad_8k = VoiceActivityDetector(sample_rate=8000)
+    # Silero VAD uses 256 samples for 8kHz
+    assert vad_8k.window_size_samples == 256
+    assert vad_8k.window_size_bytes == 512  # 256 samples * 2 bytes
+
+
+def test_vad_custom_threshold() -> None:
+    """Test VAD with custom threshold."""
+    try:
+        from agent_cli.core.vad import VoiceActivityDetector  # noqa: PLC0415
+    except ImportError:
+        pytest.skip("silero-vad not installed")
+
+    vad = VoiceActivityDetector(threshold=0.8)
+    assert vad.threshold == 0.8

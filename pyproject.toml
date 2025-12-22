@@ -55,7 +55,7 @@ memory = [
     "pyyaml>=6.0.0",
 ]
 vad = [
-    "webrtcvad>=2.0.10",
+    "silero-vad>=5.1",
 ]
 test = [
     "pytest>=7.0.0",
