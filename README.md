@@ -41,6 +41,7 @@ I use it mostly for the `transcribe` function when working with LLMs. Being able
   - `memory proxy`: A long-term memory chat proxy with OpenAI-compatible endpoints that is file-based and uses Git.
   - `memory add`: Directly add memories without LLM extraction (useful for bulk imports).
 - **`rag-proxy`**: A RAG (Retrieval-Augmented Generation) proxy server that lets you chat with your documents.
+- **`transcribe-daemon`**: A continuous transcription daemon that runs in the background, automatically detecting speech and transcribing it. Supports voice activity detection, optional LLM cleanup, MP3 audio storage, and systemd integration. Install with `pip install 'agent-cli[daemon]'`.
 
 ## Quick Start
 
@@ -145,6 +146,7 @@ The setup scripts automatically install:
     - [Service Provider](#service-provider)
   - [`autocorrect`](#autocorrect)
   - [`transcribe`](#transcribe)
+  - [`transcribe-daemon`](#transcribe-daemon)
   - [`speak`](#speak)
   - [`voice-edit`](#voice-edit)
   - [`assistant`](#assistant)
@@ -466,6 +468,44 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 ```
 
 <!-- OUTPUT:END -->
+
+</details>
+
+### `transcribe-daemon`
+
+**Purpose:** A continuous background transcription service that automatically detects and transcribes speech.
+
+**Workflow:** Runs as a daemon, listening to your microphone and automatically segmenting speech using voice activity detection (VAD).
+
+1. Run the command. It starts listening immediately.
+2. Speak naturally - the daemon detects when you start and stop speaking.
+3. Each speech segment is automatically transcribed and logged.
+4. Optionally, audio is saved as MP3 files for later reference.
+5. Press `Ctrl+C` to stop the daemon.
+
+**Installation:** Requires the `daemon` extra:
+```bash
+pip install 'agent-cli[daemon]'
+```
+
+**How to Use It:**
+
+- **Basic Daemon**: `agent-cli transcribe-daemon`
+- **With Custom Role**: `agent-cli transcribe-daemon --role meeting`
+- **With LLM Cleanup**: `agent-cli transcribe-daemon --llm`
+- **Custom Silence Threshold**: `agent-cli transcribe-daemon --silence-threshold 1.5`
+- **Install as Systemd Service** (Linux): `agent-cli install-transcribe-daemon --role meeting`
+
+**Output Files:**
+- **Transcription Log**: `~/.config/agent-cli/transcriptions.jsonl` (JSON Lines format)
+- **Audio Files**: `~/.config/agent-cli/audio/YYYY/MM/DD/*.mp3`
+
+<details>
+<summary>See the output of <code>agent-cli transcribe-daemon --help</code></summary>
+
+```yaml
+# Run: agent-cli transcribe-daemon --help
+```
 
 </details>
 

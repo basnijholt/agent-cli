@@ -5,7 +5,14 @@ from __future__ import annotations
 import io
 from dataclasses import dataclass, field
 
-import webrtcvad
+try:
+    import webrtcvad
+except ImportError as e:
+    msg = (
+        "webrtcvad is required for the transcribe-daemon command. "
+        "Install it with: pip install 'agent-cli[daemon]'"
+    )
+    raise ImportError(msg) from e
 
 from agent_cli import constants
 

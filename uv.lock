@@ -27,11 +27,13 @@ dependencies = [
     { name = "rich" },
     { name = "sounddevice" },
     { name = "typer" },
-    { name = "webrtcvad" },
     { name = "wyoming" },
 ]
 
 [package.optional-dependencies]
+daemon = [
+    { name = "webrtcvad" },
+]
 dev = [
     { name = "markdown-code-runner" },
     { name = "notebook" },
@@ -136,10 +138,10 @@ requires-dist = [
     { name = "versioningit", marker = "extra == 'dev'" },
     { name = "watchfiles", marker = "extra == 'memory'", specifier = ">=0.21.0" },
     { name = "watchfiles", marker = "extra == 'rag'", specifier = ">=0.21.0" },
-    { name = "webrtcvad", specifier = ">=2.0.10" },
+    { name = "webrtcvad", marker = "extra == 'daemon'", specifier = ">=2.0.10" },
     { name = "wyoming" },
 ]
-provides-extras = ["server", "rag", "memory", "test", "dev", "speed"]
+provides-extras = ["server", "rag", "memory", "daemon", "test", "dev", "speed"]
 
 [package.metadata.requires-dev]
 dev = [
