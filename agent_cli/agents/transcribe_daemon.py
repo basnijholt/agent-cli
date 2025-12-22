@@ -341,7 +341,7 @@ async def _daemon_loop(  # noqa: C901, PLR0912, PLR0915
                 was_speaking = is_speaking
 
                 if segment:
-                    timestamp = datetime.now(UTC)
+                    timestamp = datetime.now(UTC).astimezone()
                     duration = vad.get_segment_duration_seconds(segment)
 
                     if not quiet:
