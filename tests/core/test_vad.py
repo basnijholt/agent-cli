@@ -14,12 +14,11 @@ if TYPE_CHECKING:
 
 
 @pytest.fixture
-def mock_silero_vad() -> tuple[MagicMock, MagicMock]:
+def mock_silero_vad() -> MagicMock:
     """Mock silero_vad module."""
     mock_model = MagicMock()
-    mock_iterator = MagicMock()
-    mock_iterator.return_value = None  # No speech event by default
-    return mock_model, mock_iterator
+    mock_model.audio_forward.return_value = 0.0  # No speech by default
+    return mock_model
 
 
 def test_import_error_without_silero_vad() -> None:

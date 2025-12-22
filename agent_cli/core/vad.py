@@ -10,7 +10,8 @@ from typing import Any
 
 try:
     import numpy as np
-    from silero_vad.utils_vad import OnnxWrapper, VADIterator
+    import torch
+    from silero_vad.utils_vad import OnnxWrapper
 except ImportError as e:
     msg = (
         "silero-vad is required for the transcribe-daemon command. "
@@ -47,6 +48,9 @@ class VoiceActivityDetector:
     voice activity and silence periods. When a silence threshold is exceeded
     after speech, it emits the complete speech segment.
 
+    Uses the Silero model directly for simple True/False speech detection,
+    similar to webrtcvad's API.
+
     Args:
         sample_rate: Audio sample rate in Hz. Must be 8000 or 16000.
         silence_threshold_ms: Duration of silence (in ms) required to end a segment.
@@ -62,7 +66,6 @@ class VoiceActivityDetector:
 
     # Internal state
     _model: Any = field(init=False, repr=False)
-    _vad_iterator: VADIterator = field(init=False, repr=False)
     _audio_buffer: io.BytesIO = field(init=False, repr=False)
     _is_speaking: bool = field(init=False, default=False)
     _silence_samples: int = field(init=False, default=0)
@@ -75,16 +78,9 @@ class VoiceActivityDetector:
             msg = f"Sample rate must be 8000 or 16000, got {self.sample_rate}"
             raise ValueError(msg)
 
-        # Load Silero VAD ONNX model
+        # Load Silero VAD ONNX model directly (no VADIterator wrapper)
         model_path = _get_silero_model_path()
         self._model = OnnxWrapper(str(model_path))
-        self._vad_iterator = VADIterator(
-            self._model,
-            sampling_rate=self.sample_rate,
-            threshold=self.threshold,
-            # Match Silero's silence detection to our threshold to prevent flickering
-            min_silence_duration_ms=self.silence_threshold_ms,
-        )
         self._audio_buffer = io.BytesIO()
         self._pending_chunks = []
         self._is_speaking = False
@@ -115,19 +111,28 @@ class VoiceActivityDetector:
 
     def reset(self) -> None:
         """Reset the VAD state for a new recording session."""
-        self._vad_iterator.reset_states()
+        self._model.reset_states()
         self._audio_buffer = io.BytesIO()
         self._pending_chunks = []
         self._is_speaking = False
         self._silence_samples = 0
         self._speech_samples = 0
 
-    def _bytes_to_array(self, audio_bytes: bytes) -> np.ndarray:
-        """Convert raw PCM bytes to a numpy array."""
-        # Convert bytes to int16 numpy array
+    def _bytes_to_tensor(self, audio_bytes: bytes) -> torch.Tensor:
+        """Convert raw PCM bytes to a torch tensor."""
+        # Convert bytes to int16 numpy array, then to float32 tensor normalized to [-1, 1]
         audio_np = np.frombuffer(audio_bytes, dtype=np.int16)
-        # Convert to float32 and normalize to [-1, 1]
-        return audio_np.astype(np.float32) / 32768.0
+        audio_float = audio_np.astype(np.float32) / 32768.0
+        return torch.from_numpy(audio_float)
+
+    def _is_speech(self, audio_tensor: torch.Tensor) -> bool:
+        """Check if audio contains speech using Silero model directly.
+
+        Simple API like webrtcvad: returns True if speech, False otherwise.
+        """
+        # Get speech probability from model
+        speech_prob = self._model.audio_forward(audio_tensor, self.sample_rate)
+        return float(speech_prob) >= self.threshold
 
     def process_chunk(self, audio_chunk: bytes) -> tuple[bool, bytes | None]:
         """Process an audio chunk and detect speech segments.
@@ -158,29 +163,27 @@ class VoiceActivityDetector:
             window = pending_data[offset : offset + window_size]
             offset += window_size
 
-            # Convert to numpy array and run VAD
-            audio_array = self._bytes_to_array(window)
-            speech_dict = self._vad_iterator(audio_array, return_seconds=False)
+            # Convert to tensor and check for speech (simple True/False)
+            audio_tensor = self._bytes_to_tensor(window)
+            is_speech = self._is_speech(audio_tensor)
 
-            # Use the VADIterator's triggered state to determine if speech is active
-            # This is more reliable than just checking start/end events
-            is_speech = self._vad_iterator.triggered
-
-            # Check for speech start event to initialize our buffers
-            if speech_dict and "start" in speech_dict and not self._is_speaking:
-                self._is_speaking = True
-                self._audio_buffer = io.BytesIO()
-                self._silence_samples = 0
-                self._speech_samples = 0
-
-            if self._is_speaking:
-                self._audio_buffer.write(window)
-
-                if is_speech:
+            if is_speech:
+                # Speech detected
+                if not self._is_speaking:
+                    # Speech just started
+                    self._is_speaking = True
+                    self._audio_buffer = io.BytesIO()
                     self._silence_samples = 0
-                    self._speech_samples += self.window_size_samples
-                else:
-                    self._silence_samples += self.window_size_samples
+                    self._speech_samples = 0
+
+                self._audio_buffer.write(window)
+                self._silence_samples = 0
+                self._speech_samples += self.window_size_samples
+
+            elif self._is_speaking:
+                # Silence while we were speaking - buffer it and count
+                self._audio_buffer.write(window)
+                self._silence_samples += self.window_size_samples
 
                 # Check if silence threshold exceeded
                 if self._silence_samples >= self._silence_threshold_samples:
@@ -200,7 +203,7 @@ class VoiceActivityDetector:
                     self._silence_samples = 0
                     self._speech_samples = 0
                     self._audio_buffer = io.BytesIO()
-                    self._vad_iterator.reset_states()
+                    self._model.reset_states()
 
         # Keep remaining incomplete data for next call
         remaining = pending_data[offset:]
