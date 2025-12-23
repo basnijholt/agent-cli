@@ -92,34 +92,36 @@ def test_generate_audio_path(temp_audio_dir: Path) -> None:
     path = _generate_audio_path(temp_audio_dir, timestamp)
 
     assert path.suffix == ".mp3"
-    assert "2025/01/15" in str(path)
+    assert path.parts[-4:-1] == ("2025", "01", "15")  # Date directories
     assert "103045" in path.name  # HHMMSS
 
 
-def test_get_audio_dir() -> None:
+def test_default_audio_dir() -> None:
     """Test default audio directory path."""
     try:
-        from agent_cli.agents.transcribe_daemon import _get_audio_dir  # noqa: PLC0415
+        from agent_cli.agents.transcribe_daemon import (  # noqa: PLC0415
+            _DEFAULT_AUDIO_DIR,
+        )
     except ImportError:
         pytest.skip("silero-vad not installed")
 
-    audio_dir = _get_audio_dir()
-    assert audio_dir.name == "audio"
-    assert ".config" in str(audio_dir)
-    assert "agent-cli" in str(audio_dir)
+    assert _DEFAULT_AUDIO_DIR.name == "audio"
+    assert ".config" in str(_DEFAULT_AUDIO_DIR)
+    assert "agent-cli" in str(_DEFAULT_AUDIO_DIR)
 
 
-def test_get_log_file() -> None:
+def test_default_log_file() -> None:
     """Test default log file path."""
     try:
-        from agent_cli.agents.transcribe_daemon import _get_log_file  # noqa: PLC0415
+        from agent_cli.agents.transcribe_daemon import (  # noqa: PLC0415
+            _DEFAULT_LOG_FILE,
+        )
     except ImportError:
         pytest.skip("silero-vad not installed")
 
-    log_file = _get_log_file()
-    assert log_file.name == "transcriptions.jsonl"
-    assert ".config" in str(log_file)
-    assert "agent-cli" in str(log_file)
+    assert _DEFAULT_LOG_FILE.name == "transcriptions.jsonl"
+    assert ".config" in str(_DEFAULT_LOG_FILE)
+    assert "agent-cli" in str(_DEFAULT_LOG_FILE)
 
 
 def test_transcribe_daemon_command_exists() -> None:
