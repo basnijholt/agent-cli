@@ -41,6 +41,7 @@ uv tool install --upgrade agent-cli
 echo "⬇️ Preloading default Ollama model (gemma3:4b)..."
 echo "⏳ This may take a few minutes depending on your internet connection..."
 # Start Ollama in background, then pull model synchronously
+brew services start ollama || true
 (ollama serve >/dev/null 2>&1 &) && sleep 2 && ollama pull gemma3:4b
 # Stop the temporary ollama server
 pkill -f "ollama serve" || true

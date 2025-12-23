@@ -104,10 +104,76 @@ scripts/run-openwakeword.sh
 
 ## Troubleshooting
 
+### Permission Checker
+
+If hotkeys aren't working, run the permission diagnostic tool:
+
+```bash
+agent-cli install-hotkeys --check
+```
+
+This will check all required permissions and provide specific guidance on what needs to be fixed.
+
+### Required Permissions for Hotkeys
+
+The hotkey system requires several macOS permissions to function properly:
+
+#### 1. Accessibility (Required for skhd)
+
+**Location**: System Settings → Privacy & Security → Accessibility
+
+- **skhd** must be listed and enabled
+- This allows skhd to capture global keyboard shortcuts
+
+**How to enable**:
+1. Open System Settings → Privacy & Security → Accessibility
+2. Click the `+` button
+3. Navigate to `/opt/homebrew/bin/skhd` (or use `which skhd` to find the path)
+4. Ensure the checkbox is enabled
+5. If skhd was running, restart it: `skhd --restart-service`
+
+#### 2. Microphone (Required for Transcription)
+
+**Location**: System Settings → Privacy & Security → Microphone
+
+- **Terminal** (or your terminal app) needs microphone access
+- **skhd** may also need microphone access
+
+**How to enable**:
+1. Open System Settings → Privacy & Security → Microphone
+2. Enable access for Terminal.app (and iTerm2 if you use it)
+3. If prompted when running transcription, click "Allow"
+
+#### 3. Notifications (Required for Visual Feedback)
+
+**Location**: System Settings → Notifications → terminal-notifier
+
+- **terminal-notifier** must have notifications enabled
+- Set alert style to **Alerts** (or **Persistent** on newer macOS) for the "Listening..." indicator to stay visible
+
+**How to enable**:
+1. Open System Settings → Notifications
+2. Find `terminal-notifier` in the list
+3. Enable "Allow Notifications"
+4. Set "Alert style" to **Alerts** (this keeps the recording indicator visible)
+5. Optionally enable "Allow notifications when mirroring or sharing the display"
+
+#### 4. Local Network (Required for AI Services)
+
+**Location**: System Settings → Privacy & Security → Local Network
+
+- **Terminal** needs local network access to communicate with Ollama, Whisper, etc.
+- **skhd** may also need local network access
+
+**How to enable**:
+1. Open System Settings → Privacy & Security → Local Network
+2. Enable access for Terminal.app
+3. If skhd is listed, enable it as well
+
 ### Terminal-notifier Popup Issues
 
 - Ensure Settings > Notifications > terminal-notifier > Allow Notifications is enabled.
-- For a persistent “Listening…” badge, set the Alert style to **Persistent** (or choose **Alerts** on macOS versions that still offer Alert/Banner). This keeps the recording indicator visible while other notifications still auto-dismiss automatically.
+- For a persistent "Listening…" badge, set the Alert style to **Persistent** (or choose **Alerts** on macOS versions that still offer Alert/Banner). This keeps the recording indicator visible while other notifications still auto-dismiss automatically.
 
 ### Ollama Issues
 
