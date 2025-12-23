@@ -19,8 +19,8 @@ notify_temp() {
     ) &
 }
 
-if pgrep -f "agent-cli transcribe" > /dev/null; then
-    pkill -INT -f "agent-cli transcribe"
+if pgrep -f "agent-cli transcribe( |$)" > /dev/null; then
+    pkill -INT -f "agent-cli transcribe( |$)"
     "$NOTIFIER" -remove "$RECORDING_GROUP" >/dev/null 2>&1 || true
     notify_temp "🛑 Stopped" "Processing results..."
 else

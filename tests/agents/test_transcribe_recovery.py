@@ -315,11 +315,19 @@ async def test_async_main_save_recording_enabled(
     # Monkeypatch the transcriptions directory
     monkeypatch.setattr("agent_cli.services.asr._get_transcriptions_dir", lambda: tmp_path)
 
+    # Mock the audio stream to avoid requiring real audio hardware
+    mock_stream = MagicMock()
+    mock_stream.read.return_value = (b"\x00" * 1024, False)  # Silence audio data
+
     with (
         patch("agent_cli.services.asr.wyoming_client_context") as mock_context,
         patch("agent_cli.agents.transcribe.pyperclip"),
         patch("agent_cli.agents.transcribe.signal_handling_context") as mock_signal,
+        patch("agent_cli.services.asr.open_audio_stream") as mock_audio,
     ):
+        # Setup audio stream mock
+        mock_audio.return_value.__enter__.return_value = mock_stream
+
         # Setup mocks
         mock_client = AsyncMock()
         mock_context.return_value.__aenter__.return_value = mock_client
