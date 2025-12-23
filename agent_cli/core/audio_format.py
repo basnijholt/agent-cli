@@ -129,7 +129,7 @@ def save_audio_as_mp3(
     output_path: Path,
     sample_rate: int = constants.AUDIO_RATE,
     channels: int = constants.AUDIO_CHANNELS,
-    bitrate: str = "128k",
+    bitrate: str = "64k",
 ) -> Path:
     """Convert raw PCM audio data to MP3 format using FFmpeg.
 
