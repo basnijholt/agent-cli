@@ -110,12 +110,12 @@ async def _process_segment(  # noqa: PLR0912
         LOGGER.debug("Skipping very short segment: %.2fs", duration)
         return
 
-    # Save audio as MP3 if requested
+    # Save audio as MP3 if requested (run in thread to avoid blocking event loop)
     audio_path: Path | None = None
     if cfg.save_audio:
         try:
             audio_path = _generate_audio_path(cfg.audio_dir, timestamp)
-            save_audio_as_mp3(segment, audio_path)
+            await asyncio.to_thread(save_audio_as_mp3, segment, audio_path)
             LOGGER.debug("Saved audio to %s", audio_path)
         except RuntimeError:
             LOGGER.exception("Failed to save audio as MP3")
