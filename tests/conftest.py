@@ -6,9 +6,26 @@ import asyncio
 import contextlib
 import io
 import logging
+import sys
+from unittest.mock import MagicMock
 
 import pytest
 from rich.console import Console
+
+
+def pytest_configure() -> None:
+    """Pre-configure mocks before test collection.
+
+    This is needed because @patch("sounddevice.query_devices") decorators
+    import sounddevice during test collection, which triggers Pa_Initialize()
+    and hangs on Windows CI without audio hardware.
+    """
+    if "sounddevice" not in sys.modules:
+        mock_sd = MagicMock()
+        mock_sd.query_devices.return_value = []
+        mock_sd.InputStream = MagicMock()
+        mock_sd.OutputStream = MagicMock()
+        sys.modules["sounddevice"] = mock_sd
 
 
 def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
