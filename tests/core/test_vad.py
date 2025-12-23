@@ -149,3 +149,141 @@ def test_vad_custom_threshold() -> None:
     """Test VAD with custom threshold."""
     vad = VoiceActivityDetector(threshold=0.8)
     assert vad.threshold == 0.8
+
+
+def test_vad_speech_detection_triggers_speaking_state(vad: VoiceActivityDetector) -> None:
+    """Test that speech detection sets is_speaking to True."""
+    # Mock the _is_speech method to return True
+    with patch.object(vad, "_is_speech", return_value=True):
+        is_speaking, segment = vad.process_chunk(b"\x00" * vad.window_size_bytes)
+
+    assert is_speaking is True
+    assert segment is None  # No segment yet, still speaking
+    assert vad._is_speaking is True
+    assert vad._speech_samples == vad.window_size_samples
+
+
+def test_vad_speech_then_silence_produces_segment(vad: VoiceActivityDetector) -> None:
+    """Test that speech followed by sufficient silence produces a completed segment."""
+    # Use short thresholds for faster test
+    vad.silence_threshold_ms = 100  # 100ms silence threshold
+    vad.min_speech_duration_ms = 50  # 50ms min speech
+
+    window = b"\x00" * vad.window_size_bytes
+
+    # Simulate speech for enough windows to exceed min_speech_duration
+    speech_windows_needed = (vad._min_speech_samples // vad.window_size_samples) + 1
+    with patch.object(vad, "_is_speech", return_value=True):
+        for _ in range(speech_windows_needed):
+            is_speaking, segment = vad.process_chunk(window)
+            assert is_speaking is True
+            assert segment is None
+
+    # Now simulate silence for enough windows to trigger segment completion
+    silence_windows_needed = (vad._silence_threshold_samples // vad.window_size_samples) + 1
+    with patch.object(vad, "_is_speech", return_value=False):
+        for i in range(silence_windows_needed):
+            is_speaking, segment = vad.process_chunk(window)
+            if i < silence_windows_needed - 1:
+                # Still waiting for silence threshold
+                assert segment is None
+            else:
+                # Segment should be complete
+                assert segment is not None
+                assert is_speaking is False
+
+
+def test_vad_short_speech_discarded(vad: VoiceActivityDetector) -> None:
+    """Test that speech shorter than min_speech_duration is discarded."""
+    # Use short thresholds for faster test
+    vad.silence_threshold_ms = 100
+    vad.min_speech_duration_ms = 500  # 500ms min - hard to reach
+
+    window = b"\x00" * vad.window_size_bytes
+
+    # Simulate just 1 window of speech (not enough)
+    with patch.object(vad, "_is_speech", return_value=True):
+        vad.process_chunk(window)
+
+    # Simulate enough silence to trigger segment check
+    silence_windows = (vad._silence_threshold_samples // vad.window_size_samples) + 1
+    with patch.object(vad, "_is_speech", return_value=False):
+        for _ in range(silence_windows):
+            _is_speaking, segment = vad.process_chunk(window)
+
+    # Segment should be None because speech was too short
+    assert segment is None
+
+
+def test_vad_flush_returns_speech_when_speaking(vad: VoiceActivityDetector) -> None:
+    """Test that flush returns buffered speech when in speaking state."""
+    vad.min_speech_duration_ms = 50  # Low threshold for test
+
+    window = b"\x00" * vad.window_size_bytes
+
+    # Simulate enough speech to exceed min_speech_duration
+    speech_windows = (vad._min_speech_samples // vad.window_size_samples) + 1
+    with patch.object(vad, "_is_speech", return_value=True):
+        for _ in range(speech_windows):
+            vad.process_chunk(window)
+
+    assert vad._is_speaking is True
+
+    # Flush should return the buffered speech
+    result = vad.flush()
+    assert result is not None
+    assert len(result) > 0
+
+    # After flush, state should be reset
+    assert vad._is_speaking is False
+
+
+def test_vad_pre_speech_buffer_included(vad: VoiceActivityDetector) -> None:
+    """Test that pre-speech buffer is included when speech starts."""
+    window = b"\x00" * vad.window_size_bytes
+
+    # First, send some silence to fill pre-speech buffer
+    with patch.object(vad, "_is_speech", return_value=False):
+        for _ in range(3):
+            vad.process_chunk(window)
+
+    pre_speech_count = len(vad._pre_speech_buffer)
+    assert pre_speech_count > 0  # Should have some pre-speech buffered
+
+    # Now trigger speech - pre-speech buffer should be prepended
+    with patch.object(vad, "_is_speech", return_value=True):
+        vad.process_chunk(window)
+
+    # Pre-speech buffer should be cleared (moved to audio buffer)
+    assert len(vad._pre_speech_buffer) == 0
+    # Audio buffer should contain pre-speech + current window
+    expected_size = (pre_speech_count + 1) * vad.window_size_bytes
+    assert len(vad._audio_buffer) == expected_size
+
+
+def test_vad_silence_during_speech_accumulates(vad: VoiceActivityDetector) -> None:
+    """Test that silence during speech accumulates in silence counter."""
+    vad.silence_threshold_ms = 500  # 500ms silence threshold
+
+    window = b"\x00" * vad.window_size_bytes
+
+    # Start speaking
+    with patch.object(vad, "_is_speech", return_value=True):
+        vad.process_chunk(window)
+
+    assert vad._is_speaking is True
+    assert vad._silence_samples == 0
+
+    # Now silence (but not enough to end segment)
+    with patch.object(vad, "_is_speech", return_value=False):
+        vad.process_chunk(window)
+
+    # Should still be speaking, but silence counter increased
+    assert vad._is_speaking is True
+    assert vad._silence_samples == vad.window_size_samples
+
+    # Speech again should reset silence counter
+    with patch.object(vad, "_is_speech", return_value=True):
+        vad.process_chunk(window)
+
+    assert vad._silence_samples == 0

@@ -41,6 +41,7 @@ LOGGER = logging.getLogger()
 
 _DEFAULT_AUDIO_DIR = Path.home() / ".config" / "agent-cli" / "audio"
 _DEFAULT_LOG_FILE = Path.home() / ".config" / "agent-cli" / "transcriptions.jsonl"
+_MIN_SEGMENT_DURATION_SECONDS = 0.3
 
 
 @dataclass
@@ -106,7 +107,7 @@ async def _process_segment(  # noqa: PLR0912
 ) -> None:
     """Process a speech segment: transcribe, optionally LLM-clean, and log."""
     duration = cfg.vad.get_segment_duration_seconds(segment)
-    if duration < 0.3:  # noqa: PLR2004
+    if duration < _MIN_SEGMENT_DURATION_SECONDS:
         LOGGER.debug("Skipping very short segment: %.2fs", duration)
         return
 
