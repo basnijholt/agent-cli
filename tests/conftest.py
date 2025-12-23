@@ -13,7 +13,7 @@ import pytest
 from rich.console import Console
 
 
-def pytest_configure(_config: pytest.Config) -> None:
+def pytest_configure() -> None:
     """Pre-configure mocks before test collection.
 
     This is needed because @patch("sounddevice.query_devices") decorators
