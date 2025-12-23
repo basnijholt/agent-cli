@@ -16,7 +16,7 @@ try:
 except ImportError as e:
     msg = (
         "silero-vad is required for the transcribe-daemon command. "
-        "Install it with: pip install 'agent-cli[vad]'"
+        "Install it with: `pip install agent-cli[vad]` or `uv sync --extra vad`."
     )
     raise ImportError(msg) from e
 
