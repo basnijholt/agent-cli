@@ -746,6 +746,9 @@ uv tool install "agent-cli[vad]"
 │ --transcription-log  -t                     PATH   JSON Lines log file path. │
 │                                                    Default:                  │
 │                                                    ~/.config/agent-cli/tran… │
+│ --clipboard              --no-clipboard            Copy each transcription   │
+│                                                    to clipboard.             │
+│                                                    [default: no-clipboard]   │
 │ --help               -h                            Show this message and     │
 │                                                    exit.                     │
 ╰──────────────────────────────────────────────────────────────────────────────╯
