@@ -11,6 +11,7 @@ from contextlib import suppress
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import typer
 
@@ -30,9 +31,11 @@ from agent_cli.core.utils import (
     print_with_style,
     setup_logging,
 )
-from agent_cli.core.vad import VoiceActivityDetector
 from agent_cli.services.asr import create_recorded_audio_transcriber
 from agent_cli.services.llm import process_and_update_clipboard
+
+if TYPE_CHECKING:
+    from agent_cli.core.vad import VoiceActivityDetector
 
 LOGGER = logging.getLogger()
 
@@ -410,6 +413,9 @@ def transcribe_daemon(  # noqa: PLR0912
     if device_info is None:
         return
     resolved_input_device_index, _, _ = device_info
+
+    # Import VAD here to avoid loading torch/numpy at module import time
+    from agent_cli.core.vad import VoiceActivityDetector  # noqa: PLC0415
 
     # Create daemon config
     cfg = DaemonConfig(
