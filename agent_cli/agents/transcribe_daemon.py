@@ -61,6 +61,7 @@ class DaemonConfig:
     audio_dir: Path
     log_file: Path
     quiet: bool
+    clipboard: bool
 
 
 def _generate_audio_path(audio_dir: Path, timestamp: datetime) -> Path:
@@ -98,7 +99,11 @@ def _log_segment(
         f.write(json.dumps(entry, ensure_ascii=False) + "\n")
 
 
-async def _process_segment(cfg: DaemonConfig, segment: bytes, timestamp: datetime) -> None:
+async def _process_segment(  # noqa: PLR0912
+    cfg: DaemonConfig,
+    segment: bytes,
+    timestamp: datetime,
+) -> None:
     """Process a speech segment: transcribe, optionally LLM-clean, and log."""
     duration = cfg.vad.get_segment_duration_seconds(segment)
     if duration < 0.3:  # noqa: PLR2004
@@ -170,6 +175,13 @@ async def _process_segment(cfg: DaemonConfig, segment: bytes, timestamp: datetim
 
         if not cfg.quiet and processed and processed != transcript:
             console.print(f"  [dim]→[/dim] [green]{processed}[/green]")
+
+    # Copy to clipboard if enabled
+    if cfg.clipboard:
+        import pyperclip  # noqa: PLC0415
+
+        text_to_copy = processed if processed else transcript
+        pyperclip.copy(text_to_copy)
 
     # Log
     asr_model: str = cfg.provider.asr_provider
@@ -309,6 +321,11 @@ def transcribe_daemon(  # noqa: PLR0912
         "--transcription-log",
         "-t",
         help="JSON Lines log file path. Default: ~/.config/agent-cli/transcriptions.jsonl",
+    ),
+    clipboard: bool = typer.Option(
+        False,  # noqa: FBT003
+        "--clipboard/--no-clipboard",
+        help="Copy each transcription to clipboard.",
     ),
     # --- Provider Selection ---
     asr_provider: str = opts.ASR_PROVIDER,
@@ -456,6 +473,7 @@ def transcribe_daemon(  # noqa: PLR0912
         audio_dir=audio_dir.expanduser() if audio_dir else _DEFAULT_AUDIO_DIR,
         log_file=transcription_log.expanduser() if transcription_log else _DEFAULT_LOG_FILE,
         quiet=quiet,
+        clipboard=clipboard,
     )
 
     # Run the daemon
