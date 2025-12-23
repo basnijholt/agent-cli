@@ -4,9 +4,20 @@ from __future__ import annotations
 
 import json
 from datetime import UTC, datetime
-from pathlib import Path  # noqa: TC003
+from typing import TYPE_CHECKING
 
 import pytest
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+from agent_cli.agents.transcribe_daemon import (
+    _DEFAULT_AUDIO_DIR,
+    _DEFAULT_LOG_FILE,
+    _generate_audio_path,
+    _log_segment,
+    transcribe_daemon,
+)
 
 
 @pytest.fixture
@@ -25,11 +36,6 @@ def temp_audio_dir(tmp_path: Path) -> Path:
 
 def test_log_segment(temp_log_file: Path, tmp_path: Path) -> None:
     """Test logging a transcription segment."""
-    try:
-        from agent_cli.agents.transcribe_daemon import _log_segment  # noqa: PLC0415
-    except ImportError:
-        pytest.skip("silero-vad not installed")
-
     audio_file = tmp_path / "test.mp3"
     timestamp = datetime.now(UTC)
     _log_segment(
@@ -59,11 +65,6 @@ def test_log_segment(temp_log_file: Path, tmp_path: Path) -> None:
 
 def test_log_segment_creates_parent_dirs(tmp_path: Path) -> None:
     """Test that log_segment creates parent directories."""
-    try:
-        from agent_cli.agents.transcribe_daemon import _log_segment  # noqa: PLC0415
-    except ImportError:
-        pytest.skip("silero-vad not installed")
-
     log_file = tmp_path / "nested" / "dir" / "log.jsonl"
 
     _log_segment(
@@ -81,13 +82,6 @@ def test_log_segment_creates_parent_dirs(tmp_path: Path) -> None:
 
 def test_generate_audio_path(temp_audio_dir: Path) -> None:
     """Test audio path generation with date-based structure."""
-    try:
-        from agent_cli.agents.transcribe_daemon import (  # noqa: PLC0415
-            _generate_audio_path,
-        )
-    except ImportError:
-        pytest.skip("silero-vad not installed")
-
     timestamp = datetime(2025, 1, 15, 10, 30, 45, 123000, tzinfo=UTC)
     path = _generate_audio_path(temp_audio_dir, timestamp)
 
@@ -98,13 +92,6 @@ def test_generate_audio_path(temp_audio_dir: Path) -> None:
 
 def test_default_audio_dir() -> None:
     """Test default audio directory path."""
-    try:
-        from agent_cli.agents.transcribe_daemon import (  # noqa: PLC0415
-            _DEFAULT_AUDIO_DIR,
-        )
-    except ImportError:
-        pytest.skip("silero-vad not installed")
-
     assert _DEFAULT_AUDIO_DIR.name == "audio"
     assert ".config" in str(_DEFAULT_AUDIO_DIR)
     assert "agent-cli" in str(_DEFAULT_AUDIO_DIR)
@@ -112,13 +99,6 @@ def test_default_audio_dir() -> None:
 
 def test_default_log_file() -> None:
     """Test default log file path."""
-    try:
-        from agent_cli.agents.transcribe_daemon import (  # noqa: PLC0415
-            _DEFAULT_LOG_FILE,
-        )
-    except ImportError:
-        pytest.skip("silero-vad not installed")
-
     assert _DEFAULT_LOG_FILE.name == "transcriptions.jsonl"
     assert ".config" in str(_DEFAULT_LOG_FILE)
     assert "agent-cli" in str(_DEFAULT_LOG_FILE)
@@ -126,24 +106,4 @@ def test_default_log_file() -> None:
 
 def test_transcribe_daemon_command_exists() -> None:
     """Test that the transcribe-daemon command is registered."""
-    try:
-        from agent_cli.agents.transcribe_daemon import (  # noqa: PLC0415
-            transcribe_daemon,
-        )
-    except ImportError:
-        pytest.skip("silero-vad not installed")
-
     assert callable(transcribe_daemon)
-
-
-def test_process_name_constant() -> None:
-    """Test the process name used for the daemon."""
-    try:
-        # Check that the command function exists and would use correct process name
-        from agent_cli.agents import transcribe_daemon as td_module  # noqa: PLC0415
-
-        # The process name is defined inside the function, so we just verify
-        # the module loads correctly
-        assert hasattr(td_module, "transcribe_daemon")
-    except ImportError:
-        pytest.skip("silero-vad not installed")
