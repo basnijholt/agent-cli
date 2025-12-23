@@ -8,6 +8,7 @@ import logging
 import platform
 import signal
 from contextlib import suppress
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -35,22 +36,32 @@ from agent_cli.services.llm import process_and_update_clipboard
 
 LOGGER = logging.getLogger()
 
-
-def _get_audio_dir() -> Path:
-    """Get the default directory for storing audio files."""
-    return Path.home() / ".config" / "agent-cli" / "audio"
+_DEFAULT_AUDIO_DIR = Path.home() / ".config" / "agent-cli" / "audio"
+_DEFAULT_LOG_FILE = Path.home() / ".config" / "agent-cli" / "transcriptions.jsonl"
 
 
-def _get_log_file() -> Path:
-    """Get the default transcription log file path."""
-    return Path.home() / ".config" / "agent-cli" / "transcriptions.jsonl"
+@dataclass
+class DaemonConfig:
+    """Bundle of all daemon configuration."""
+
+    role: str
+    vad: VoiceActivityDetector
+    input_device_index: int | None
+    provider: config.ProviderSelection
+    wyoming_asr: config.WyomingASR
+    openai_asr: config.OpenAIASR
+    ollama: config.Ollama
+    openai_llm: config.OpenAILLM
+    gemini_llm: config.GeminiLLM
+    llm_enabled: bool
+    save_audio: bool
+    audio_dir: Path
+    log_file: Path
+    quiet: bool
 
 
 def _generate_audio_path(audio_dir: Path, timestamp: datetime) -> Path:
-    """Generate a path for an audio file based on timestamp.
-
-    Creates a directory structure: audio_dir/YYYY/MM/DD/HHMMSS_mmm.mp3
-    """
+    """Generate a path for an audio file based on timestamp."""
     date_dir = audio_dir / timestamp.strftime("%Y/%m/%d")
     date_dir.mkdir(parents=True, exist_ok=True)
     filename = timestamp.strftime("%H%M%S") + f"_{timestamp.microsecond // 1000:03d}.mp3"
@@ -68,8 +79,8 @@ def _log_segment(
     duration_seconds: float,
     model_info: str | None = None,
 ) -> None:
-    """Append a transcription segment to the JSON Lines log file."""
-    log_entry = {
+    """Append a transcription segment to the log file."""
+    entry = {
         "timestamp": timestamp.isoformat(),
         "hostname": platform.node(),
         "role": role,
@@ -79,228 +90,153 @@ def _log_segment(
         "audio_file": str(audio_file) if audio_file else None,
         "duration_seconds": round(duration_seconds, 2),
     }
-
     log_file.parent.mkdir(parents=True, exist_ok=True)
     with log_file.open("a", encoding="utf-8") as f:
-        f.write(json.dumps(log_entry, ensure_ascii=False) + "\n")
+        f.write(json.dumps(entry, ensure_ascii=False) + "\n")
 
 
-async def _process_segment(  # noqa: PLR0912
-    segment: bytes,
-    *,
-    timestamp: datetime,
-    role: str,
-    vad: VoiceActivityDetector,
-    provider_cfg: config.ProviderSelection,
-    wyoming_asr_cfg: config.WyomingASR,
-    openai_asr_cfg: config.OpenAIASR,
-    ollama_cfg: config.Ollama,
-    openai_llm_cfg: config.OpenAILLM,
-    gemini_llm_cfg: config.GeminiLLM,
-    llm_enabled: bool,
-    save_audio: bool,
-    audio_dir: Path,
-    log_file: Path,
-    quiet: bool,
-) -> None:
-    """Process a single speech segment: transcribe, optionally process with LLM, and log."""
-    duration_seconds = vad.get_segment_duration_seconds(segment)
-
-    # Skip very short segments
-    if duration_seconds < 0.3:  # noqa: PLR2004
-        LOGGER.debug("Skipping very short segment: %.2fs", duration_seconds)
+async def _process_segment(cfg: DaemonConfig, segment: bytes, timestamp: datetime) -> None:
+    """Process a speech segment: transcribe, optionally LLM-clean, and log."""
+    duration = cfg.vad.get_segment_duration_seconds(segment)
+    if duration < 0.3:  # noqa: PLR2004
+        LOGGER.debug("Skipping very short segment: %.2fs", duration)
         return
 
     # Save audio as MP3 if requested
     audio_path: Path | None = None
-    if save_audio:
+    if cfg.save_audio:
         try:
-            audio_path = _generate_audio_path(audio_dir, timestamp)
+            audio_path = _generate_audio_path(cfg.audio_dir, timestamp)
             save_audio_as_mp3(segment, audio_path)
             LOGGER.debug("Saved audio to %s", audio_path)
         except RuntimeError:
             LOGGER.exception("Failed to save audio as MP3")
-            audio_path = None
 
-    # Transcribe the segment
-    transcriber = create_recorded_audio_transcriber(provider_cfg)
-
-    if provider_cfg.asr_provider == "openai":
-        transcript = await transcriber(
-            segment,
-            openai_asr_cfg,
-            LOGGER,
-            quiet=quiet,
-        )
-    else:  # Wyoming expects keyword arguments
+    # Transcribe
+    transcriber = create_recorded_audio_transcriber(cfg.provider)
+    if cfg.provider.asr_provider == "openai":
+        transcript = await transcriber(segment, cfg.openai_asr, LOGGER, quiet=cfg.quiet)
+    else:
         transcript = await transcriber(
             audio_data=segment,
-            wyoming_asr_cfg=wyoming_asr_cfg,
+            wyoming_asr_cfg=cfg.wyoming_asr,
             logger=LOGGER,
-            quiet=quiet,
+            quiet=cfg.quiet,
         )
 
     if not transcript or not transcript.strip():
         LOGGER.debug("Empty transcript, skipping")
-        if not quiet:
-            # Clear status line and show listening
+        if not cfg.quiet:
             console.print("[green]👂 Listening...[/green]" + " " * 20, end="\r")
         return
 
-    if not quiet:
-        # Clear status line and print transcript
-        console.print(" " * 50, end="\r")  # Clear line
+    if not cfg.quiet:
+        console.print(" " * 50, end="\r")
         console.print(
-            f"[dim]{timestamp.strftime('%H:%M:%S')}[/dim] [cyan]{role}[/cyan]: {transcript}",
+            f"[dim]{timestamp.strftime('%H:%M:%S')}[/dim] [cyan]{cfg.role}[/cyan]: {transcript}",
         )
-        console.file.flush()  # Force output immediately
+        console.file.flush()
 
-    # Process with LLM if enabled
-    processed_transcript: str | None = None
+    # LLM cleanup if enabled
+    processed: str | None = None
     model_info: str | None = None
 
-    if llm_enabled:
-        # Determine model info for logging
-        if provider_cfg.llm_provider == "ollama":
-            model_info = f"{provider_cfg.llm_provider}:{ollama_cfg.llm_ollama_model}"
-        elif provider_cfg.llm_provider == "openai":
-            model_info = f"{provider_cfg.llm_provider}:{openai_llm_cfg.llm_openai_model}"
-        elif provider_cfg.llm_provider == "gemini":
-            model_info = f"{provider_cfg.llm_provider}:{gemini_llm_cfg.llm_gemini_model}"
+    if cfg.llm_enabled:
+        models = {
+            "ollama": cfg.ollama.llm_ollama_model,
+            "openai": cfg.openai_llm.llm_openai_model,
+            "gemini": cfg.gemini_llm.llm_gemini_model,
+        }
+        model_info = f"{cfg.provider.llm_provider}:{models.get(cfg.provider.llm_provider, '')}"
 
-        processed_transcript = await process_and_update_clipboard(
+        processed = await process_and_update_clipboard(
             system_prompt=SYSTEM_PROMPT,
             agent_instructions=AGENT_INSTRUCTIONS,
-            provider_cfg=provider_cfg,
-            ollama_cfg=ollama_cfg,
-            openai_cfg=openai_llm_cfg,
-            gemini_cfg=gemini_llm_cfg,
+            provider_cfg=cfg.provider,
+            ollama_cfg=cfg.ollama,
+            openai_cfg=cfg.openai_llm,
+            gemini_cfg=cfg.gemini_llm,
             logger=LOGGER,
             original_text=transcript,
             instruction=INSTRUCTION,
-            clipboard=False,  # Don't copy to clipboard in daemon mode
-            quiet=True,  # Suppress LLM output, we handle display ourselves
+            clipboard=False,
+            quiet=True,
             live=None,
             context=None,
         )
 
-        if not quiet and processed_transcript and processed_transcript != transcript:
-            console.print(f"  [dim]→[/dim] [green]{processed_transcript}[/green]")
+        if not cfg.quiet and processed and processed != transcript:
+            console.print(f"  [dim]→[/dim] [green]{processed}[/green]")
 
-    # Log the segment
-    asr_model_info = f"{provider_cfg.asr_provider}"
-    if provider_cfg.asr_provider == "openai":
-        asr_model_info += f":{openai_asr_cfg.asr_openai_model}"
+    # Log
+    asr_model: str = cfg.provider.asr_provider
+    if cfg.provider.asr_provider == "openai":
+        asr_model += f":{cfg.openai_asr.asr_openai_model}"
 
     _log_segment(
-        log_file,
+        cfg.log_file,
         timestamp=timestamp,
-        role=role,
+        role=cfg.role,
         raw_output=transcript,
-        processed_output=processed_transcript,
+        processed_output=processed,
         audio_file=audio_path,
-        duration_seconds=duration_seconds,
-        model_info=model_info or asr_model_info,
+        duration_seconds=duration,
+        model_info=model_info or asr_model,
     )
 
-    # Show listening status after processing
-    if not quiet:
+    if not cfg.quiet:
         console.print("[green]👂 Listening...[/green]" + " " * 20, end="\r")
 
 
-async def _daemon_loop(  # noqa: C901, PLR0912, PLR0915
-    *,
-    role: str,
-    vad: VoiceActivityDetector,
-    input_device_index: int | None,
-    provider_cfg: config.ProviderSelection,
-    wyoming_asr_cfg: config.WyomingASR,
-    openai_asr_cfg: config.OpenAIASR,
-    ollama_cfg: config.Ollama,
-    openai_llm_cfg: config.OpenAILLM,
-    gemini_llm_cfg: config.GeminiLLM,
-    llm_enabled: bool,
-    save_audio: bool,
-    audio_dir: Path,
-    log_file: Path,
-    quiet: bool,
-) -> None:
+async def _daemon_loop(cfg: DaemonConfig) -> None:  # noqa: PLR0912, PLR0915
     """Main daemon loop: continuously capture audio and process speech segments."""
-    stream_config = setup_input_stream(input_device_index)
-
-    # Track background tasks to prevent garbage collection
+    stream_config = setup_input_stream(cfg.input_device_index)
     background_tasks: set[asyncio.Task[None]] = set()
 
-    def _task_done_callback(task: asyncio.Task[None]) -> None:
-        """Remove completed task from tracking set."""
-        background_tasks.discard(task)
-
-    if not quiet:
+    if not cfg.quiet:
         print_with_style("🎙️ Transcribe daemon started. Listening...", style="green")
-        print_with_style(f"   Role: {role}", style="dim")
-        print_with_style(f"   Log file: {log_file}", style="dim")
-        if save_audio:
-            print_with_style(f"   Audio dir: {audio_dir}", style="dim")
+        print_with_style(f"   Role: {cfg.role}", style="dim")
+        print_with_style(f"   Log file: {cfg.log_file}", style="dim")
+        if cfg.save_audio:
+            print_with_style(f"   Audio dir: {cfg.audio_dir}", style="dim")
         print_with_style("   Press Ctrl+C to stop.", style="dim")
         console.print()
 
-    # Track state for status display
     was_speaking = False
     shutdown_event = asyncio.Event()
 
-    def _cancel_all_tasks() -> None:
-        """Cancel all pending background tasks."""
-        for task in background_tasks:
-            if not task.done():
-                task.cancel()
-
-    def _signal_handler() -> None:
-        """Handle shutdown signals."""
-        shutdown_event.set()
-
-    # Register signal handlers for clean shutdown
     loop = asyncio.get_running_loop()
     for sig in (signal.SIGINT, signal.SIGTERM):
-        loop.add_signal_handler(sig, _signal_handler)
+        loop.add_signal_handler(sig, shutdown_event.set)
 
     with open_audio_stream(stream_config) as stream:
         try:
             while not shutdown_event.is_set():
-                # Read audio chunk with timeout to allow checking shutdown flag
                 try:
-                    data, _overflow = await asyncio.to_thread(
-                        stream.read,
-                        constants.AUDIO_CHUNK_SIZE,
-                    )
+                    data, _ = await asyncio.to_thread(stream.read, constants.AUDIO_CHUNK_SIZE)
                     chunk = data.tobytes()
                 except asyncio.CancelledError:
-                    LOGGER.debug("Audio read cancelled")
                     break
                 except Exception:
                     LOGGER.exception("Error reading audio stream")
                     await asyncio.sleep(0.1)
                     continue
 
-                # Process through VAD
-                is_speaking, segment = vad.process_chunk(chunk)
+                is_speaking, segment = cfg.vad.process_chunk(chunk)
 
-                # Show status changes
-                if not quiet:
+                if not cfg.quiet:
                     if is_speaking and not was_speaking:
-                        # Speech just started
                         console.print("[red]🔴 Recording...[/red]", end="\r")
                     elif not is_speaking and was_speaking and segment is None:
-                        # Still in silence buffer, waiting to see if speech resumes
                         console.print("[yellow]⏸️  Pause detected...[/yellow]", end="\r")
 
                 was_speaking = is_speaking
 
                 if segment:
                     timestamp = datetime.now(UTC).astimezone()
-                    duration = vad.get_segment_duration_seconds(segment)
+                    duration = cfg.vad.get_segment_duration_seconds(segment)
 
-                    if not quiet:
-                        # Clear the status line and show processing message
+                    if not cfg.quiet:
                         console.print(
                             f"[blue]⏳ Processing {duration:.1f}s segment...[/blue]",
                             end="\r",
@@ -308,44 +244,21 @@ async def _daemon_loop(  # noqa: C901, PLR0912, PLR0915
 
                     LOGGER.debug("Speech segment detected, %.2f seconds", duration)
 
-                    # Process segment in background to not block audio capture
-                    task = asyncio.create_task(
-                        _process_segment(
-                            segment,
-                            timestamp=timestamp,
-                            role=role,
-                            vad=vad,
-                            provider_cfg=provider_cfg,
-                            wyoming_asr_cfg=wyoming_asr_cfg,
-                            openai_asr_cfg=openai_asr_cfg,
-                            ollama_cfg=ollama_cfg,
-                            openai_llm_cfg=openai_llm_cfg,
-                            gemini_llm_cfg=gemini_llm_cfg,
-                            llm_enabled=llm_enabled,
-                            save_audio=save_audio,
-                            audio_dir=audio_dir,
-                            log_file=log_file,
-                            quiet=quiet,
-                        ),
-                    )
+                    task = asyncio.create_task(_process_segment(cfg, segment, timestamp))
                     background_tasks.add(task)
-                    task.add_done_callback(_task_done_callback)
+                    task.add_done_callback(background_tasks.discard)
 
         except (KeyboardInterrupt, asyncio.CancelledError):
             LOGGER.debug("Shutdown signal received")
         finally:
-            # Remove signal handlers
             for sig in (signal.SIGINT, signal.SIGTERM):
                 with suppress(ValueError):
                     loop.remove_signal_handler(sig)
-
-            # Abort the stream to unblock any pending reads
             with suppress(Exception):
                 stream.abort()
-
-            # Cancel all pending background tasks
-            _cancel_all_tasks()
-            # Wait briefly for tasks to finish
+            for task in background_tasks:
+                if not task.done():
+                    task.cancel()
             if background_tasks:
                 with suppress(asyncio.TimeoutError):
                     await asyncio.wait(background_tasks, timeout=2.0)
@@ -481,11 +394,7 @@ def transcribe_daemon(  # noqa: PLR0912
         )
         save_audio = False
 
-    # Set default paths
-    audio_dir_path = audio_dir.expanduser() if audio_dir else _get_audio_dir()
-    log_file_path = transcription_log.expanduser() if transcription_log else _get_log_file()
-
-    # Create config objects
+    # Setup audio device
     general_cfg = config.General(
         log_level=log_level,
         log_file=log_file_logging,
@@ -493,72 +402,59 @@ def transcribe_daemon(  # noqa: PLR0912
         list_devices=list_devices,
         clipboard=False,
     )
-    provider_cfg = config.ProviderSelection(
-        asr_provider=asr_provider,
-        llm_provider=llm_provider,
-        tts_provider="wyoming",  # Not used
-    )
     audio_in_cfg = config.AudioInput(
         input_device_index=input_device_index,
         input_device_name=input_device_name,
     )
-    wyoming_asr_cfg = config.WyomingASR(
-        asr_wyoming_ip=asr_wyoming_ip,
-        asr_wyoming_port=asr_wyoming_port,
-    )
-    openai_asr_cfg = config.OpenAIASR(
-        asr_openai_model=asr_openai_model,
-        openai_api_key=openai_api_key,
-        openai_base_url=asr_openai_base_url,
-        asr_openai_prompt=asr_openai_prompt,
-    )
-    ollama_cfg = config.Ollama(
-        llm_ollama_model=llm_ollama_model,
-        llm_ollama_host=llm_ollama_host,
-    )
-    openai_llm_cfg = config.OpenAILLM(
-        llm_openai_model=llm_openai_model,
-        openai_api_key=openai_api_key,
-        openai_base_url=openai_base_url,
-    )
-    gemini_llm_cfg = config.GeminiLLM(
-        llm_gemini_model=llm_gemini_model,
-        gemini_api_key=gemini_api_key,
-    )
-
-    # Setup audio device
     device_info = setup_devices(general_cfg, audio_in_cfg, None)
     if device_info is None:
         return
     resolved_input_device_index, _, _ = device_info
 
-    # Create VAD instance
-    vad = VoiceActivityDetector(
-        threshold=vad_threshold,
-        silence_threshold_ms=int(silence_threshold * 1000),
-        min_speech_duration_ms=int(min_segment * 1000),
+    # Create daemon config
+    cfg = DaemonConfig(
+        role=role,
+        vad=VoiceActivityDetector(
+            threshold=vad_threshold,
+            silence_threshold_ms=int(silence_threshold * 1000),
+            min_speech_duration_ms=int(min_segment * 1000),
+        ),
+        input_device_index=resolved_input_device_index,
+        provider=config.ProviderSelection(
+            asr_provider=asr_provider,
+            llm_provider=llm_provider,
+            tts_provider="wyoming",
+        ),
+        wyoming_asr=config.WyomingASR(
+            asr_wyoming_ip=asr_wyoming_ip,
+            asr_wyoming_port=asr_wyoming_port,
+        ),
+        openai_asr=config.OpenAIASR(
+            asr_openai_model=asr_openai_model,
+            openai_api_key=openai_api_key,
+            openai_base_url=asr_openai_base_url,
+            asr_openai_prompt=asr_openai_prompt,
+        ),
+        ollama=config.Ollama(llm_ollama_model=llm_ollama_model, llm_ollama_host=llm_ollama_host),
+        openai_llm=config.OpenAILLM(
+            llm_openai_model=llm_openai_model,
+            openai_api_key=openai_api_key,
+            openai_base_url=openai_base_url,
+        ),
+        gemini_llm=config.GeminiLLM(
+            llm_gemini_model=llm_gemini_model,
+            gemini_api_key=gemini_api_key,
+        ),
+        llm_enabled=llm,
+        save_audio=save_audio,
+        audio_dir=audio_dir.expanduser() if audio_dir else _DEFAULT_AUDIO_DIR,
+        log_file=transcription_log.expanduser() if transcription_log else _DEFAULT_LOG_FILE,
+        quiet=quiet,
     )
 
     # Run the daemon
     with process.pid_file_context(process_name), suppress(KeyboardInterrupt):
-        asyncio.run(
-            _daemon_loop(
-                role=role,
-                vad=vad,
-                input_device_index=resolved_input_device_index,
-                provider_cfg=provider_cfg,
-                wyoming_asr_cfg=wyoming_asr_cfg,
-                openai_asr_cfg=openai_asr_cfg,
-                ollama_cfg=ollama_cfg,
-                openai_llm_cfg=openai_llm_cfg,
-                gemini_llm_cfg=gemini_llm_cfg,
-                llm_enabled=llm,
-                save_audio=save_audio,
-                audio_dir=audio_dir_path,
-                log_file=log_file_path,
-                quiet=quiet,
-            ),
-        )
+        asyncio.run(_daemon_loop(cfg))
 
     if not quiet:
         console.print()
