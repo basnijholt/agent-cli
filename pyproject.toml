@@ -54,6 +54,9 @@ memory = [
     # Until here same as 'rag' extras
     "pyyaml>=6.0.0",
 ]
+vad = [
+    "silero-vad>=5.1",
+]
 test = [
     "pytest>=7.0.0",
     "pytest-asyncio>=0.20.0",

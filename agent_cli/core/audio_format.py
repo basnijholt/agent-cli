@@ -122,3 +122,86 @@ def check_ffmpeg_available() -> bool:
 
     """
     return shutil.which("ffmpeg") is not None
+
+
+def save_audio_as_mp3(
+    audio_data: bytes,
+    output_path: Path,
+    sample_rate: int = constants.AUDIO_RATE,
+    channels: int = constants.AUDIO_CHANNELS,
+    bitrate: str = "64k",
+) -> Path:
+    """Convert raw PCM audio data to MP3 format using FFmpeg.
+
+    Args:
+        audio_data: Raw PCM audio data (16-bit signed little-endian).
+        output_path: Path where the MP3 file will be saved.
+        sample_rate: Audio sample rate in Hz.
+        channels: Number of audio channels.
+        bitrate: MP3 bitrate (e.g., "128k", "192k", "256k").
+
+    Returns:
+        Path to the saved MP3 file.
+
+    Raises:
+        RuntimeError: If FFmpeg is not available or conversion fails.
+
+    """
+    if not shutil.which("ffmpeg"):
+        msg = "FFmpeg not found in PATH. Please install FFmpeg for MP3 conversion."
+        raise RuntimeError(msg)
+
+    # Ensure output directory exists
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    # Use a temporary file for the raw PCM input
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".raw") as input_file:
+        input_path = Path(input_file.name)
+
+        try:
+            # Write raw PCM data
+            input_file.write(audio_data)
+            input_file.flush()
+
+            # Build FFmpeg command
+            # Input: raw PCM (s16le = 16-bit signed little-endian)
+            # Output: MP3 with specified bitrate
+            cmd = [
+                "ffmpeg",
+                "-y",  # Overwrite output file
+                "-f",
+                "s16le",  # Input format: raw PCM
+                "-ar",
+                str(sample_rate),  # Input sample rate
+                "-ac",
+                str(channels),  # Input channels
+                "-i",
+                str(input_path),  # Input file
+                "-b:a",
+                bitrate,  # Audio bitrate
+                "-q:a",
+                "2",  # Quality setting (0-9, lower is better)
+                str(output_path),  # Output file
+            ]
+
+            logger.debug("Running FFmpeg MP3 conversion: %s", " ".join(cmd))
+
+            result = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=False,
+                check=False,
+            )
+
+            if result.returncode != 0:
+                stderr_text = result.stderr.decode("utf-8", errors="replace")
+                logger.error("FFmpeg MP3 conversion failed: %s", stderr_text)
+                msg = f"FFmpeg MP3 conversion failed: {stderr_text}"
+                raise RuntimeError(msg)
+
+            logger.debug("Saved MP3 to %s", output_path)
+            return output_path
+
+        finally:
+            # Clean up temporary input file
+            input_path.unlink(missing_ok=True)
