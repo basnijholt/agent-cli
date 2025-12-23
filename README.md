@@ -668,7 +668,7 @@ You can choose to use local services (Wyoming/Ollama) or OpenAI services by sett
 
 **Installation:** Requires the `vad` extra:
 ```bash
-pip install 'agent-cli[vad]'
+uv tool install "agent-cli[vad]"
 ```
 
 **How to Use It:**
