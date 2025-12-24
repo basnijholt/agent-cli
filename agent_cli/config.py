@@ -171,6 +171,30 @@ class WakeWord(BaseModel):
     wake_word: str
 
 
+# --- Panel: Claude Server Options ---
+
+
+class ClaudeServer(BaseModel):
+    """Configuration for the Claude Code remote server."""
+
+    host: str = "0.0.0.0"  # noqa: S104
+    port: int = 8765
+    permission_mode: Literal["default", "acceptEdits", "bypassPermissions"] = "bypassPermissions"
+    allowed_tools: list[str] = [
+        "Read",
+        "Write",
+        "Edit",
+        "Bash",
+        "Glob",
+        "Grep",
+        "WebSearch",
+        "WebFetch",
+    ]
+    # Named projects: {"project-name": "/path/to/project"}
+    projects: dict[str, str] = {}
+    default_project: str | None = None
+
+
 # --- Panel: General Options ---
 
 

@@ -74,6 +74,10 @@ dev = [
     "notebook",
 ]
 speed = ["audiostretchy>=1.3.0"]
+claude = [
+    "fastapi[standard]",
+    "claude-agent-sdk>=0.1.0",
+]
 
 # Duplicate of test+dev optional-dependencies groups
 [dependency-groups]
@@ -165,6 +169,7 @@ ignore = [
 ".github/*" = ["INP001"]
 "example/*" = ["INP001", "D100"]
 "docs/*" = ["INP001", "E501"]
+"agent_cli/claude_api.py" = ["S608"]  # HTML templates, not SQL
 
 [tool.ruff.lint.mccabe]
 max-complexity = 18

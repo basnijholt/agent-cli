@@ -75,6 +75,7 @@ from .agents import (  # noqa: E402, F401
     assistant,
     autocorrect,
     chat,
+    claude_serve,
     memory,
     rag_proxy,
     server,
