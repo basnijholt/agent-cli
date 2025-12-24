@@ -216,3 +216,194 @@ class TestDefaultAllowedTools:
         essential_tools = ["Read", "Write", "Edit", "Bash"]
         for tool in essential_tools:
             assert tool in DEFAULT_ALLOWED_TOOLS
+
+
+class TestProjectManager:
+    """Tests for the ProjectManager class."""
+
+    def test_configure_projects(self, mock_claude_sdk: Any) -> None:  # noqa: ARG002
+        """Test configuring projects."""
+        from agent_cli.claude_api import ProjectManager  # noqa: PLC0415
+
+        manager = ProjectManager()
+        manager.configure(
+            {"proj1": "/path/to/proj1", "proj2": "/path/to/proj2"},
+            default="proj1",
+        )
+
+        assert manager.projects == {"proj1": "/path/to/proj1", "proj2": "/path/to/proj2"}
+        assert manager.default_project == "proj1"
+        assert manager.current_project == "proj1"
+
+    def test_get_project_path(self, mock_claude_sdk: Any) -> None:  # noqa: ARG002
+        """Test getting project path."""
+        from agent_cli.claude_api import ProjectManager  # noqa: PLC0415
+
+        manager = ProjectManager()
+        manager.configure({"myproject": "/path/to/myproject"})
+
+        assert manager.get_project_path("myproject") == "/path/to/myproject"
+        assert manager.get_project_path("unknown") is None
+
+    def test_resolve_project_explicit(self, mock_claude_sdk: Any) -> None:  # noqa: ARG002
+        """Test resolving project with explicit parameter."""
+        from agent_cli.claude_api import ProjectManager  # noqa: PLC0415
+
+        manager = ProjectManager()
+        manager.configure({"proj1": "/path/1", "proj2": "/path/2"}, default="proj1")
+
+        name, path, prompt = manager.resolve_project("do something", explicit_project="proj2")
+        assert name == "proj2"
+        assert path == "/path/2"
+        assert prompt == "do something"
+
+    def test_resolve_project_from_prompt_prefix(self, mock_claude_sdk: Any) -> None:  # noqa: ARG002
+        """Test resolving project from 'in {project},' prefix in prompt."""
+        from agent_cli.claude_api import ProjectManager  # noqa: PLC0415
+
+        manager = ProjectManager()
+        manager.configure({"myproject": "/path/to/myproject"})
+
+        name, path, prompt = manager.resolve_project("in myproject, fix the bug")
+        assert name == "myproject"
+        assert path == "/path/to/myproject"
+        assert prompt == "fix the bug"
+
+    def test_resolve_project_sticky(self, mock_claude_sdk: Any) -> None:  # noqa: ARG002
+        """Test sticky project session."""
+        from agent_cli.claude_api import ProjectManager  # noqa: PLC0415
+
+        manager = ProjectManager()
+        manager.configure({"proj1": "/path/1", "proj2": "/path/2"})
+
+        # First call sets current project
+        manager.resolve_project("task", explicit_project="proj1")
+        assert manager.current_project == "proj1"
+
+        # Second call uses sticky project
+        name, _path, _prompt = manager.resolve_project("another task")
+        assert name == "proj1"
+
+    def test_switch_project(self, mock_claude_sdk: Any) -> None:  # noqa: ARG002
+        """Test switching projects."""
+        from agent_cli.claude_api import ProjectManager  # noqa: PLC0415
+
+        manager = ProjectManager()
+        manager.configure({"proj1": "/path/1", "proj2": "/path/2"}, default="proj1")
+
+        path = manager.switch_project("proj2")
+        assert path == "/path/2"
+        assert manager.current_project == "proj2"
+
+
+class TestLogStore:
+    """Tests for the LogStore class."""
+
+    def test_add_and_get_log(self, mock_claude_sdk: Any) -> None:  # noqa: ARG002
+        """Test adding and retrieving a log entry."""
+        from datetime import UTC, datetime  # noqa: PLC0415
+
+        from agent_cli.claude_api import LogEntry, LogStore  # noqa: PLC0415
+
+        store = LogStore()
+        entry = LogEntry(
+            log_id="test123",
+            project="myproject",
+            prompt="fix bug",
+            summary="Fixed the bug",
+            files_changed=["file.py"],
+            tool_calls=[],
+            full_response="I fixed it",
+            timestamp=datetime.now(UTC),
+            success=True,
+        )
+        store.add(entry)
+
+        retrieved = store.get("test123")
+        assert retrieved is not None
+        assert retrieved.log_id == "test123"
+        assert retrieved.project == "myproject"
+
+    def test_get_nonexistent_log(self, mock_claude_sdk: Any) -> None:  # noqa: ARG002
+        """Test getting a log that doesn't exist."""
+        from agent_cli.claude_api import LogStore  # noqa: PLC0415
+
+        store = LogStore()
+        assert store.get("nonexistent") is None
+
+    def test_list_recent(self, mock_claude_sdk: Any) -> None:  # noqa: ARG002
+        """Test listing recent log entries."""
+        from datetime import UTC, datetime, timedelta  # noqa: PLC0415
+
+        from agent_cli.claude_api import LogEntry, LogStore  # noqa: PLC0415
+
+        store = LogStore()
+        now = datetime.now(UTC)
+
+        for i in range(5):
+            entry = LogEntry(
+                log_id=f"log{i}",
+                project="proj",
+                prompt=f"prompt {i}",
+                summary=f"summary {i}",
+                files_changed=[],
+                tool_calls=[],
+                full_response="",
+                timestamp=now + timedelta(minutes=i),
+                success=True,
+            )
+            store.add(entry)
+
+        recent = store.list_recent(3)
+        assert len(recent) == 3
+        # Most recent first
+        assert recent[0].log_id == "log4"
+
+
+class TestHelperFunctions:
+    """Tests for helper functions."""
+
+    def test_extract_file_changes(self, mock_claude_sdk: Any) -> None:  # noqa: ARG002
+        """Test extracting file changes from tool calls."""
+        from agent_cli.claude_api import _extract_file_changes  # noqa: PLC0415
+
+        tool_calls = [
+            {"name": "Edit", "input": {"file_path": "/path/to/file1.py"}},
+            {"name": "Write", "input": {"file_path": "/path/to/file2.py"}},
+            {"name": "Read", "input": {"file_path": "/path/to/file3.py"}},  # Not a change
+            {"name": "Edit", "input": {"file_path": "/path/to/file1.py"}},  # Duplicate
+        ]
+
+        files = _extract_file_changes(tool_calls)
+        assert files == ["/path/to/file1.py", "/path/to/file2.py"]
+
+    def test_truncate_prompt(self, mock_claude_sdk: Any) -> None:  # noqa: ARG002
+        """Test prompt truncation."""
+        from agent_cli.claude_api import PROMPT_TRUNCATE_LENGTH, _truncate_prompt  # noqa: PLC0415
+
+        short = "short prompt"
+        assert _truncate_prompt(short) == short
+
+        long = "x" * (PROMPT_TRUNCATE_LENGTH + 10)
+        truncated = _truncate_prompt(long)
+        assert truncated.endswith("...")
+        assert len(truncated) == PROMPT_TRUNCATE_LENGTH + 3
+
+
+class TestNewEndpoints:
+    """Tests for new endpoints."""
+
+    def test_projects_endpoint(self, client: TestClient, mock_claude_sdk: Any) -> None:  # noqa: ARG002
+        """Test the /projects endpoint."""
+        response = client.get("/projects")
+        assert response.status_code == 200
+        data = response.json()
+        assert "projects" in data
+        assert "default" in data
+        assert "current" in data
+
+    def test_logs_endpoint_empty(self, client: TestClient, mock_claude_sdk: Any) -> None:  # noqa: ARG002
+        """Test the /logs endpoint when empty."""
+        response = client.get("/logs")
+        assert response.status_code == 200
+        assert "No logs yet" in response.text

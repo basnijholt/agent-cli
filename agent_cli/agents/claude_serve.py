@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from importlib.util import find_spec
 from pathlib import Path
 
@@ -25,6 +26,8 @@ def run_claude_server(
     port: int = 8765,
     reload: bool = False,
     cwd: Path | None = None,
+    projects: dict[str, str] | None = None,
+    default_project: str | None = None,
 ) -> None:
     """Run the Claude Code FastAPI server."""
     import os  # noqa: PLC0415
@@ -34,6 +37,12 @@ def run_claude_server(
     # Set working directory for the API to use
     if cwd:
         os.environ["CLAUDE_API_CWD"] = str(cwd.resolve())
+
+    # Pass projects config via environment variable
+    if projects:
+        os.environ["CLAUDE_API_PROJECTS"] = json.dumps(projects)
+    if default_project:
+        os.environ["CLAUDE_API_DEFAULT_PROJECT"] = default_project
 
     uvicorn.run(
         "agent_cli.claude_api:app",
@@ -73,14 +82,22 @@ def claude_serve(
     - Install dependencies: pip install agent-cli[claude]
 
     Example usage:
-        agent-cli claude-serve --port 8765 --cwd /path/to/project
+        agent-cli claude-serve --port 8765
+
+    Configure projects in config.toml:
+        [claude_server]
+        default_project = "my-project"
+
+        [claude_server.projects]
+        my-project = "/path/to/project"
+        dotfiles = "~/.dotfiles"
 
     Endpoints:
-    - POST /session/new - Create a new Claude Code session
-    - POST /session/{id}/prompt - Send a prompt and get result
-    - POST /session/{id}/cancel - Cancel current operation
-    - WS /session/{id}/stream - WebSocket for streaming responses
-    - GET /health - Health check
+    - POST /prompt - Simple prompt with auto project management
+    - GET /logs - View recent logs
+    - GET /log/{id} - View log details
+    - GET /projects - List configured projects
+    - POST /switch-project - Switch current project
     """
     if print_args:
         print_command_line_args(locals())
@@ -100,22 +117,46 @@ def claude_serve(
         print_error_message(msg)
         raise typer.Exit(1)
 
+    # Load config for projects
+    from agent_cli.config import load_config  # noqa: PLC0415
+
+    config = load_config(config_file)
+    claude_server_config = config.get("claude_server", {})
+    projects = claude_server_config.get("projects", {})
+    default_project = claude_server_config.get("default_project")
+
     # Default to current directory if not specified
     if cwd is None:
         cwd = Path.cwd()
+
+    # If no projects configured, add cwd as default project
+    if not projects:
+        projects = {"default": str(cwd.resolve())}
+        default_project = "default"
 
     console.print(
         f"[bold green]Starting Claude Code remote server on {host}:{port}[/bold green]",
     )
     console.print(f"[dim]Working directory: {cwd.resolve()}[/dim]")
+    if projects:
+        console.print(f"[dim]Projects: {', '.join(projects.keys())}[/dim]")
+        if default_project:
+            console.print(f"[dim]Default project: {default_project}[/dim]")
     console.print()
     console.print("[bold]Endpoints:[/bold]")
-    console.print(f"  POST http://{host}:{port}/session/new")
-    console.print(f"  POST http://{host}:{port}/session/{{id}}/prompt")
-    console.print(f"  WS   ws://{host}:{port}/session/{{id}}/stream")
+    console.print(f"  POST http://{host}:{port}/prompt")
+    console.print(f"  GET  http://{host}:{port}/logs")
+    console.print(f"  GET  http://{host}:{port}/projects")
     console.print()
 
     if reload:
         console.print("[yellow]Auto-reload enabled for development[/yellow]")
 
-    run_claude_server(host=host, port=port, reload=reload, cwd=cwd)
+    run_claude_server(
+        host=host,
+        port=port,
+        reload=reload,
+        cwd=cwd,
+        projects=projects,
+        default_project=default_project,
+    )

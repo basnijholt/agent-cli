@@ -190,6 +190,9 @@ class ClaudeServer(BaseModel):
         "WebSearch",
         "WebFetch",
     ]
+    # Named projects: {"project-name": "/path/to/project"}
+    projects: dict[str, str] = {}
+    default_project: str | None = None
 
 
 # --- Panel: General Options ---
