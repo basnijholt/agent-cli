@@ -515,55 +515,67 @@ async def view_log(log_id: str) -> HTMLResponse:
 
     html = f"""
     <!DOCTYPE html>
-    <html>
+    <html data-theme="dark">
     <head>
         <title>Claude Code Log - {log_id}</title>
         <meta name="viewport" content="width=device-width, initial-scale=1">
-        <style>
-            body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-                   max-width: 800px; margin: 0 auto; padding: 20px; background: #1a1a2e; color: #eee; }}
-            h1 {{ color: #00d4ff; }}
-            h2 {{ color: #888; font-size: 1em; margin-top: 2em; }}
-            .meta {{ color: #666; font-size: 0.9em; }}
-            .summary {{ background: #16213e; padding: 15px; border-radius: 8px; margin: 20px 0;
-                       border-left: 4px solid #00d4ff; }}
-            .prompt {{ background: #0f3460; padding: 15px; border-radius: 8px; }}
-            .files {{ background: #1a1a2e; }}
-            .files li {{ padding: 5px 0; font-family: monospace; color: #00d4ff; }}
-            .response {{ background: #16213e; padding: 15px; border-radius: 8px;
-                        white-space: pre-wrap; font-family: monospace; font-size: 0.9em;
-                        max-height: 400px; overflow-y: auto; }}
-            .status {{ display: inline-block; padding: 4px 12px; border-radius: 4px;
-                      background: #00d4ff; color: #000; font-weight: bold; }}
-            .status.error {{ background: #ff4757; color: #fff; }}
-        </style>
+        <link href="https://cdn.jsdelivr.net/npm/daisyui@4/dist/full.min.css" rel="stylesheet">
+        <script src="https://cdn.tailwindcss.com"></script>
     </head>
-    <body>
-        <h1>🤖 Claude Code Log</h1>
-        <p class="meta">
-            <span class="status {"error" if not entry.success else ""}">
-                {"✅ Success" if entry.success else "❌ Error"}
-            </span>
-            &nbsp; Project: <strong>{entry.project}</strong>
-            &nbsp; Time: {entry.timestamp.strftime("%Y-%m-%d %H:%M:%S UTC")}
-        </p>
+    <body class="min-h-screen bg-base-200 p-4 md:p-8">
+        <div class="max-w-3xl mx-auto space-y-6">
+            <div class="flex items-center gap-4">
+                <h1 class="text-2xl font-bold">🤖 Claude Code Log</h1>
+                <a href="/logs" class="btn btn-ghost btn-sm">← All Logs</a>
+            </div>
 
-        <h2>📝 Prompt</h2>
-        <div class="prompt">{entry.prompt}</div>
+            <div class="flex flex-wrap gap-2 items-center">
+                <span class="badge {"badge-error" if not entry.success else "badge-success"} gap-1">
+                    {"❌ Error" if not entry.success else "✅ Success"}
+                </span>
+                <span class="badge badge-outline">{entry.project}</span>
+                <span class="text-sm opacity-60">{entry.timestamp.strftime("%Y-%m-%d %H:%M:%S UTC")}</span>
+            </div>
 
-        <h2>💬 Summary</h2>
-        <div class="summary">{entry.summary}</div>
+            <div class="card bg-base-100 shadow">
+                <div class="card-body">
+                    <h2 class="card-title text-sm opacity-60">📝 Prompt</h2>
+                    <p>{entry.prompt}</p>
+                </div>
+            </div>
 
-        <h2>📁 Files Changed ({len(entry.files_changed)})</h2>
-        <ul class="files">{files_html}</ul>
+            <div class="card bg-base-100 shadow border-l-4 border-primary">
+                <div class="card-body">
+                    <h2 class="card-title text-sm opacity-60">💬 Summary</h2>
+                    <p>{entry.summary}</p>
+                </div>
+            </div>
 
-        <h2>🔧 Tool Calls ({len(entry.tool_calls)})</h2>
-        <ul class="files">{tools_html}</ul>
+            <div class="grid md:grid-cols-2 gap-4">
+                <div class="card bg-base-100 shadow">
+                    <div class="card-body">
+                        <h2 class="card-title text-sm opacity-60">📁 Files Changed ({len(entry.files_changed)})</h2>
+                        <ul class="menu bg-base-200 rounded-box">{files_html}</ul>
+                    </div>
+                </div>
+                <div class="card bg-base-100 shadow">
+                    <div class="card-body">
+                        <h2 class="card-title text-sm opacity-60">🔧 Tool Calls ({len(entry.tool_calls)})</h2>
+                        <ul class="menu bg-base-200 rounded-box">{tools_html}</ul>
+                    </div>
+                </div>
+            </div>
 
-        <h2>📄 Full Response</h2>
-        <div class="response">{entry.full_response or "(No text response)"}</div>
+            <div class="collapse collapse-arrow bg-base-100 shadow">
+                <input type="checkbox" />
+                <div class="collapse-title font-medium">📄 Full Response</div>
+                <div class="collapse-content">
+                    <pre class="bg-base-200 p-4 rounded-box overflow-auto max-h-96 text-sm">{entry.full_response or "(No text response)"}</pre>
+                </div>
+            </div>
 
-        {f'<h2>❌ Error</h2><div class="response" style="border-left: 4px solid #ff4757;">{entry.error}</div>' if entry.error else ""}
+            {f'<div class="alert alert-error"><span>❌ {entry.error}</span></div>' if entry.error else ""}
+        </div>
     </body>
     </html>
     """
@@ -584,44 +596,48 @@ async def list_logs() -> HTMLResponse:
 
     rows = (
         "".join(
-            f"""<tr>
-            <td><a href="/log/{e.log_id}">{e.log_id}</a></td>
-            <td>{e.project}</td>
-            <td>{_truncate_prompt(e.prompt)}</td>
-            <td>{len(e.files_changed)}</td>
-            <td>{"✅" if e.success else "❌"}</td>
-            <td>{e.timestamp.strftime("%H:%M:%S")}</td>
+            f"""<tr class="hover">
+            <td><a href="/log/{e.log_id}" class="link link-primary">{e.log_id}</a></td>
+            <td><span class="badge badge-ghost">{e.project}</span></td>
+            <td class="max-w-xs truncate">{_truncate_prompt(e.prompt)}</td>
+            <td><span class="badge badge-sm">{len(e.files_changed)}</span></td>
+            <td>{"<span class='badge badge-success badge-sm'>✓</span>" if e.success else "<span class='badge badge-error badge-sm'>✗</span>"}</td>
+            <td class="text-sm opacity-60">{e.timestamp.strftime("%H:%M:%S")}</td>
         </tr>"""
             for e in entries
         )
-        or "<tr><td colspan='6'>No logs yet</td></tr>"
+        or "<tr><td colspan='6' class='text-center opacity-60'>No logs yet</td></tr>"
     )
 
     html = f"""
     <!DOCTYPE html>
-    <html>
+    <html data-theme="dark">
     <head>
         <title>Claude Code Logs</title>
         <meta name="viewport" content="width=device-width, initial-scale=1">
-        <style>
-            body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-                   max-width: 1000px; margin: 0 auto; padding: 20px; background: #1a1a2e; color: #eee; }}
-            h1 {{ color: #00d4ff; }}
-            table {{ width: 100%; border-collapse: collapse; }}
-            th, td {{ padding: 12px; text-align: left; border-bottom: 1px solid #333; }}
-            th {{ background: #16213e; color: #00d4ff; }}
-            tr:hover {{ background: #16213e; }}
-            a {{ color: #00d4ff; }}
-        </style>
+        <link href="https://cdn.jsdelivr.net/npm/daisyui@4/dist/full.min.css" rel="stylesheet">
+        <script src="https://cdn.tailwindcss.com"></script>
     </head>
-    <body>
-        <h1>🤖 Claude Code Logs</h1>
-        <table>
-            <thead>
-                <tr><th>ID</th><th>Project</th><th>Prompt</th><th>Files</th><th>Status</th><th>Time</th></tr>
-            </thead>
-            <tbody>{rows}</tbody>
-        </table>
+    <body class="min-h-screen bg-base-200 p-4 md:p-8">
+        <div class="max-w-4xl mx-auto space-y-6">
+            <h1 class="text-2xl font-bold">🤖 Claude Code Logs</h1>
+
+            <div class="overflow-x-auto">
+                <table class="table table-zebra bg-base-100 shadow rounded-box">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Project</th>
+                            <th>Prompt</th>
+                            <th>Files</th>
+                            <th>Status</th>
+                            <th>Time</th>
+                        </tr>
+                    </thead>
+                    <tbody>{rows}</tbody>
+                </table>
+            </div>
+        </div>
     </body>
     </html>
     """
