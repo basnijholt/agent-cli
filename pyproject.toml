@@ -169,6 +169,7 @@ ignore = [
 ".github/*" = ["INP001"]
 "example/*" = ["INP001", "D100"]
 "docs/*" = ["INP001", "E501"]
+"agent_cli/claude_api.py" = ["S608"]  # HTML templates, not SQL
 
 [tool.ruff.lint.mccabe]
 max-complexity = 18

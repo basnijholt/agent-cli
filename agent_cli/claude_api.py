@@ -689,6 +689,9 @@ async def chat_page() -> HTMLResponse:
                     <button id="micBtn" class="btn btn-circle btn-outline" title="Hold to record">
                         🎤
                     </button>
+                    <button id="permBtn" class="btn btn-sm btn-ghost hidden" onclick="requestMicPermission()">
+                        🔓 Allow mic
+                    </button>
                     <input type="text" id="prompt" placeholder="Type or hold mic to speak..."
                            class="input input-bordered flex-1"
                            onkeydown="if(event.key==='Enter') sendMessage()">
@@ -721,7 +724,29 @@ async def chat_page() -> HTMLResponse:
             el.classList.toggle('hidden', !show);
         }}
 
-        function addMessage(role, content, meta=null) {{
+        // Load conversation history from server on page load
+        async function loadHistory() {{
+            try {{
+                const resp = await fetch('/logs/json?limit=20');
+                const logs = await resp.json();
+                if (logs.length > 0) {{
+                    document.getElementById('messages').innerHTML = '';
+                    // Show oldest first
+                    logs.reverse().forEach(log => {{
+                        addMessage('user', log.prompt, null, false);
+                        addMessage('assistant', log.summary, {{
+                            files_changed: log.files_changed,
+                            log_id: log.log_id
+                        }}, false);
+                    }});
+                }}
+            }} catch (e) {{
+                console.log('Could not load history:', e);
+            }}
+        }}
+        loadHistory();
+
+        function addMessage(role, content, meta=null, scroll=true) {{
             const msgs = document.getElementById('messages');
             // Remove placeholder
             if (msgs.children.length === 1 && msgs.children[0].classList.contains('text-center')) {{
@@ -748,7 +773,7 @@ async def chat_page() -> HTMLResponse:
                 </div>
             `;
             msgs.appendChild(div);
-            msgs.scrollTop = msgs.scrollHeight;
+            if (scroll) msgs.scrollTop = msgs.scrollHeight;
         }}
 
         async function sendMessage() {{
@@ -785,6 +810,8 @@ async def chat_page() -> HTMLResponse:
 
         // Voice recording
         const micBtn = document.getElementById('micBtn');
+        const permBtn = document.getElementById('permBtn');
+        let micPermissionGranted = false;
 
         // Check if mediaDevices is available (requires HTTPS on Safari/iOS)
         const hasMediaDevices = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
@@ -794,10 +821,50 @@ async def chat_page() -> HTMLResponse:
             micBtn.classList.add('btn-disabled');
         }}
 
+        // Check/request microphone permission
+        async function requestMicPermission() {{
+            try {{
+                const stream = await navigator.mediaDevices.getUserMedia({{audio: true}});
+                stream.getTracks().forEach(t => t.stop()); // Stop immediately, just checking permission
+                micPermissionGranted = true;
+                permBtn.classList.add('hidden');
+                micBtn.classList.remove('btn-disabled');
+                setStatus('✅ Microphone access granted. Hold 🎤 to record.');
+            }} catch (e) {{
+                setStatus('❌ Microphone denied. Check browser settings.');
+            }}
+        }}
+
+        // Check permission state on load
+        if (hasMediaDevices && navigator.permissions && navigator.permissions.query) {{
+            navigator.permissions.query({{name: 'microphone'}}).then(result => {{
+                if (result.state === 'granted') {{
+                    micPermissionGranted = true;
+                }} else if (result.state === 'prompt') {{
+                    permBtn.classList.remove('hidden');
+                    setStatus('👆 Tap "Allow mic" first to enable voice input');
+                }} else {{
+                    setStatus('❌ Microphone blocked. Check browser settings.');
+                }}
+            }}).catch(() => {{
+                // Safari doesn't support permissions.query for microphone
+                permBtn.classList.remove('hidden');
+                setStatus('👆 Tap "Allow mic" first to enable voice input');
+            }});
+        }} else if (hasMediaDevices) {{
+            // Fallback for browsers without permissions API
+            permBtn.classList.remove('hidden');
+        }}
+
         micBtn.onmousedown = micBtn.ontouchstart = async (e) => {{
             e.preventDefault();
             if (!hasMediaDevices) {{
                 setStatus('⚠️ Voice needs HTTPS. Use Chrome on localhost, or access via HTTPS.');
+                return;
+            }}
+            if (!micPermissionGranted) {{
+                setStatus('👆 Tap "Allow mic" button first');
+                permBtn.classList.remove('hidden');
                 return;
             }}
             try {{
@@ -811,6 +878,8 @@ async def chat_page() -> HTMLResponse:
                 setStatus('🎤 Recording...');
             }} catch (e) {{
                 setStatus('Mic error: ' + e.message);
+                micPermissionGranted = false;
+                permBtn.classList.remove('hidden');
             }}
         }};
 
@@ -855,6 +924,49 @@ async def chat_page() -> HTMLResponse:
     </html>
     """
     return HTMLResponse(content=html)
+
+
+@app.get("/logs/json")
+async def list_logs_json(limit: int = 20) -> list[dict[str, Any]]:
+    """List recent log entries as JSON for chat history."""
+    entries = log_store.list_recent(limit)
+    return [
+        {
+            "log_id": e.log_id,
+            "project": e.project,
+            "prompt": e.prompt,
+            "summary": e.summary,
+            "files_changed": e.files_changed,
+            "success": e.success,
+            "timestamp": e.timestamp.isoformat(),
+        }
+        for e in entries
+    ]
+
+
+@app.post("/transcribe-proxy")
+async def transcribe_proxy(request: Request) -> dict[str, Any]:
+    """Proxy transcription requests to avoid CORS issues."""
+    import httpx  # noqa: PLC0415
+
+    # Get voice server URL from query param or use default
+    voice_server = request.query_params.get("voice_server", "http://localhost:61337")
+
+    # Forward the multipart form data
+    body = await request.body()
+    content_type = request.headers.get("content-type", "")
+
+    try:
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            resp = await client.post(
+                f"{voice_server}/transcribe",
+                content=body,
+                headers={"content-type": content_type},
+            )
+            return resp.json()
+    except Exception as e:
+        LOGGER.exception("Transcription proxy error")
+        return {"error": str(e), "raw_transcript": "", "cleaned_transcript": ""}
 
 
 @app.post("/switch-project")
