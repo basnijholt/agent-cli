@@ -12,7 +12,10 @@ import uuid
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from collections.abc import AsyncGenerator
 
 import httpx
 from claude_agent_sdk import ClaudeAgentOptions, query
@@ -26,7 +29,7 @@ from claude_agent_sdk.types import (
     ToolUseBlock,
 )
 from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, StreamingResponse
 from pydantic import BaseModel
 
 # Configure logging
@@ -632,14 +635,8 @@ async def list_logs() -> HTMLResponse:
 
 @app.get("/chat", response_class=HTMLResponse)
 async def chat_page() -> HTMLResponse:
-    """Interactive chat page with HTMX and voice input support."""
-    # Build project options HTML
-    projects = project_manager.projects
+    """Interactive chat page with streaming support."""
     current = project_manager.current_project or project_manager.default_project or ""
-    project_options = "".join(
-        f'<option value="{name}"{" selected" if name == current else ""}>{name}</option>'
-        for name in projects
-    )
 
     html = f"""
     <!DOCTYPE html>
@@ -654,21 +651,18 @@ async def chat_page() -> HTMLResponse:
     <body class="min-h-screen bg-base-200">
         <div class="flex flex-col h-screen max-w-3xl mx-auto">
             <!-- Header -->
-            <div class="navbar bg-base-100 shadow">
-                <div class="flex-1">
-                    <a href="/logs" class="btn btn-ghost">🤖 Claude Code</a>
-                </div>
-                <div class="flex-none gap-2">
-                    <select id="project" name="project" class="select select-bordered select-sm">
-                        {project_options}
-                    </select>
-                    <input type="text" id="voiceServer" placeholder="Voice server URL"
-                           class="input input-bordered input-sm w-48"
-                           value="http://localhost:8000">
+            <div class="navbar bg-base-100 shadow px-4 min-h-12">
+                <div class="flex-1"></div>
+                <div class="flex-none">
+                    <a href="/logs" class="btn btn-ghost btn-sm btn-square" title="View history">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                    </a>
                 </div>
             </div>
 
-            <!-- Messages (loaded via HTMX on page load) -->
+            <!-- Messages -->
             <div id="messages" class="flex-1 overflow-y-auto p-4 space-y-4"
                  hx-get="/chat/messages"
                  hx-trigger="load"
@@ -676,136 +670,133 @@ async def chat_page() -> HTMLResponse:
                 <div class="text-center opacity-60 py-8">Loading...</div>
             </div>
 
-            <!-- Input Form with HTMX -->
-            <form id="chatForm" class="p-4 bg-base-100 border-t border-base-300"
-                  hx-post="/chat/send"
-                  hx-target="#messages"
-                  hx-swap="beforeend scroll:#messages:bottom"
-                  hx-indicator="#loading"
-                  hx-on::after-request="this.reset()">
+            <!-- Input Form -->
+            <form id="chatForm" class="p-3 bg-base-100 border-t border-base-300">
+                <input type="hidden" name="project" id="projectInput" value="{current}">
                 <div class="flex gap-2">
-                    <button type="button" id="micBtn" class="btn btn-circle btn-outline" title="Hold to record">
-                        🎤
-                    </button>
-                    <button type="button" id="permBtn" class="btn btn-sm btn-ghost hidden" onclick="requestMicPermission()">
-                        🔓 Allow mic
-                    </button>
-                    <input type="hidden" name="project" id="projectInput" value="{current}">
-                    <input type="text" name="prompt" id="prompt" placeholder="Type or hold mic to speak..."
-                           class="input input-bordered flex-1" autocomplete="off">
-                    <button type="submit" class="btn btn-primary">
-                        <span id="loading" class="loading loading-spinner htmx-indicator"></span>
-                        Send
+                    <input type="text" name="prompt" id="prompt" placeholder="Message Claude..."
+                           class="input input-bordered flex-1 min-w-0" autocomplete="off">
+                    <button type="submit" id="sendBtn" class="btn btn-primary shrink-0">
+                        <span id="loading" class="loading loading-spinner hidden"></span>
+                        <span id="sendText">Send</span>
                     </button>
                 </div>
-                <div id="status" class="text-sm opacity-60 mt-2 hidden"></div>
             </form>
         </div>
 
         <script>
-        // Sync project selector with hidden form input
-        document.getElementById('project').onchange = function() {{
-            document.getElementById('projectInput').value = this.value;
-        }};
+        const messages = document.getElementById('messages');
+        const form = document.getElementById('chatForm');
+        const promptInput = document.getElementById('prompt');
+        const sendBtn = document.getElementById('sendBtn');
+        const loading = document.getElementById('loading');
+        const sendText = document.getElementById('sendText');
 
-        // Scroll to bottom after HTMX swaps
-        document.body.addEventListener('htmx:afterSwap', function(e) {{
-            if (e.detail.target.id === 'messages') {{
-                e.detail.target.scrollTop = e.detail.target.scrollHeight;
-            }}
-        }});
-
-        // Voice recording (minimal JS - only for MediaRecorder API)
-        const micBtn = document.getElementById('micBtn');
-        const permBtn = document.getElementById('permBtn');
-        let mediaRecorder = null;
-        let audioChunks = [];
-        let micPermissionGranted = false;
-
-        function setStatus(msg, show=true) {{
-            const el = document.getElementById('status');
-            el.textContent = msg;
-            el.classList.toggle('hidden', !show);
+        function scrollToBottom() {{
+            messages.scrollTop = messages.scrollHeight;
         }}
 
-        const hasMediaDevices = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
-        if (!hasMediaDevices) {{
-            micBtn.disabled = true;
-            micBtn.title = 'Voice requires HTTPS';
-            micBtn.classList.add('btn-disabled');
+        function setLoading(isLoading) {{
+            loading.classList.toggle('hidden', !isLoading);
+            sendText.classList.toggle('hidden', isLoading);
+            sendBtn.disabled = isLoading;
+            promptInput.disabled = isLoading;
         }}
 
-        async function requestMicPermission() {{
-            try {{
-                const stream = await navigator.mediaDevices.getUserMedia({{audio: true}});
-                stream.getTracks().forEach(t => t.stop());
-                micPermissionGranted = true;
-                permBtn.classList.add('hidden');
-                micBtn.classList.remove('btn-disabled');
-                setStatus('✅ Mic access granted. Hold 🎤 to record.');
-            }} catch (e) {{
-                setStatus('❌ Mic denied. Check browser settings.');
-            }}
-        }}
-
-        if (hasMediaDevices && navigator.permissions?.query) {{
-            navigator.permissions.query({{name: 'microphone'}}).then(r => {{
-                if (r.state === 'granted') micPermissionGranted = true;
-                else if (r.state === 'prompt') {{
-                    permBtn.classList.remove('hidden');
-                    setStatus('👆 Tap "Allow mic" first');
-                }}
-            }}).catch(() => permBtn.classList.remove('hidden'));
-        }} else if (hasMediaDevices) {{
-            permBtn.classList.remove('hidden');
-        }}
-
-        micBtn.onmousedown = micBtn.ontouchstart = async (e) => {{
+        form.onsubmit = async (e) => {{
             e.preventDefault();
-            if (!hasMediaDevices || !micPermissionGranted) {{
-                setStatus('👆 Tap "Allow mic" first');
-                permBtn.classList.remove('hidden');
-                return;
-            }}
+            const prompt = promptInput.value.trim();
+            if (!prompt) return;
+
+            promptInput.value = '';
+            setLoading(true);
+
+            // Remove placeholder if present
+            const placeholder = messages.querySelector('.text-center');
+            if (placeholder) placeholder.remove();
+
+            let streamingDiv = null;
+
             try {{
-                const stream = await navigator.mediaDevices.getUserMedia({{audio: true}});
-                mediaRecorder = new MediaRecorder(stream);
-                audioChunks = [];
-                mediaRecorder.ondataavailable = (e) => audioChunks.push(e.data);
-                mediaRecorder.start();
-                micBtn.classList.add('btn-error');
-                setStatus('🎤 Recording...');
-            }} catch (e) {{
-                setStatus('Mic error: ' + e.message);
-                micPermissionGranted = false;
-                permBtn.classList.remove('hidden');
-            }}
-        }};
-
-        micBtn.onmouseup = micBtn.ontouchend = micBtn.onmouseleave = async () => {{
-            if (!mediaRecorder || mediaRecorder.state !== 'recording') return;
-            mediaRecorder.stop();
-            micBtn.classList.remove('btn-error');
-            setStatus('Transcribing...');
-
-            mediaRecorder.onstop = async () => {{
-                const blob = new Blob(audioChunks, {{type: 'audio/webm'}});
                 const formData = new FormData();
-                formData.append('audio', blob, 'recording.webm');
-                try {{
-                    const voiceUrl = document.getElementById('voiceServer').value;
-                    const resp = await fetch(voiceUrl + '/transcribe', {{method: 'POST', body: formData}});
-                    const data = await resp.json();
-                    setStatus('', false);
-                    const text = data.cleaned_transcript || data.raw_transcript || data.transcript || '';
-                    if (text) document.getElementById('prompt').value = text;
-                    else setStatus('No speech detected');
-                }} catch (e) {{
-                    setStatus('Transcription error: ' + e.message);
+                formData.append('prompt', prompt);
+                formData.append('project', document.getElementById('projectInput').value);
+
+                const response = await fetch('/chat/stream', {{
+                    method: 'POST',
+                    body: formData
+                }});
+
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                let buffer = '';
+
+                while (true) {{
+                    const {{done, value}} = await reader.read();
+                    if (done) break;
+
+                    buffer += decoder.decode(value, {{stream: true}});
+                    const lines = buffer.split('\\n');
+                    buffer = lines.pop() || '';
+
+                    let eventType = '';
+                    for (const line of lines) {{
+                        if (line.startsWith('event: ')) {{
+                            eventType = line.slice(7);
+                        }} else if (line.startsWith('data: ')) {{
+                            const data = line.slice(6);
+                            handleSSE(eventType, data);
+                        }}
+                    }}
                 }}
-                mediaRecorder.stream.getTracks().forEach(t => t.stop());
-            }};
+            }} catch (err) {{
+                messages.insertAdjacentHTML('beforeend',
+                    '<div class="chat chat-start"><div class="chat-bubble">❌ Error: ' + err.message + '</div></div>');
+            }}
+
+            setLoading(false);
+            scrollToBottom();
         }};
+
+        function handleSSE(event, data) {{
+            if (event === 'user') {{
+                messages.insertAdjacentHTML('beforeend', data);
+                scrollToBottom();
+            }} else if (event === 'start') {{
+                messages.insertAdjacentHTML('beforeend', data);
+                scrollToBottom();
+            }} else if (event === 'chunk') {{
+                const streaming = document.getElementById('streaming');
+                if (streaming) {{
+                    streaming.textContent += data;
+                    scrollToBottom();
+                }}
+            }} else if (event === 'tool') {{
+                const streaming = document.getElementById('streaming');
+                if (streaming) {{
+                    streaming.innerHTML += '<div class="text-xs opacity-60">' + data + '</div>';
+                }}
+            }} else if (event === 'complete') {{
+                // Replace streaming div with final message
+                const streaming = document.getElementById('streaming');
+                if (streaming) {{
+                    streaming.parentElement.outerHTML = data;
+                }} else {{
+                    messages.insertAdjacentHTML('beforeend', data);
+                }}
+                scrollToBottom();
+            }} else if (event === 'error') {{
+                const streaming = document.getElementById('streaming');
+                if (streaming) streaming.parentElement.remove();
+                messages.insertAdjacentHTML('beforeend', data);
+                scrollToBottom();
+            }}
+        }}
+
+        // Scroll to bottom after HTMX loads history
+        document.body.addEventListener('htmx:afterSwap', function(e) {{
+            if (e.detail.target.id === 'messages') scrollToBottom();
+        }});
         </script>
     </body>
     </html>
@@ -959,6 +950,114 @@ async def chat_send(request: Request) -> HTMLResponse:
         LOGGER.exception("Error during chat send")
         error_html = _render_message("assistant", f"❌ Error: {e}")
         return HTMLResponse(content=user_html + error_html)
+
+
+def _sse_event(event: str, data: str) -> str:
+    """Format an SSE event."""
+    return f"event: {event}\ndata: {data}\n\n"
+
+
+@app.post("/chat/stream")
+async def chat_stream(request: Request) -> StreamingResponse:
+    """Stream chat response via Server-Sent Events."""
+    # Parse form data
+    form = await request.form()
+    prompt = str(form.get("prompt", "")).strip()
+    project = str(form.get("project", "")) or None
+
+    async def generate() -> AsyncGenerator[str, None]:
+        if not prompt:
+            return
+
+        # Send user message first
+        user_html = _render_message("user", prompt)
+        yield _sse_event("user", user_html)
+
+        try:
+            project_name, project_path, cleaned_prompt = project_manager.resolve_project(
+                prompt,
+                project,
+            )
+        except ValueError as e:
+            yield _sse_event("error", _render_message("assistant", f"❌ Error: {e}"))
+            yield _sse_event("done", "")
+            return
+
+        session = session_manager.get_or_create_project_session(
+            project_name,
+            project_path,
+        )
+
+        try:
+            full_response = ""
+            summary = ""
+            tool_calls: list[dict[str, Any]] = []
+            session.cancelled = False
+            options = _build_options(session)
+            streaming_text = ""
+
+            # Send initial empty assistant bubble that we'll update
+            yield _sse_event(
+                "start",
+                '<div class="chat chat-start"><div class="chat-bubble" id="streaming"></div></div>',
+            )
+
+            async for message in query(prompt=cleaned_prompt, options=options):
+                if session.cancelled:
+                    break
+
+                if isinstance(message, SystemMessage) and message.subtype == "init":
+                    session.claude_session_id = message.data.get("session_id")
+                elif isinstance(message, ResultMessage) and message.result:
+                    summary = message.result
+                elif isinstance(message, AssistantMessage):
+                    for block in message.content:
+                        if isinstance(block, TextBlock):
+                            streaming_text += block.text
+                            full_response += block.text
+                            # Stream the text chunk
+                            yield _sse_event("chunk", block.text)
+                        elif isinstance(block, ToolUseBlock):
+                            tool_calls.append({"name": block.name, "input": block.input})
+                            # Show tool usage
+                            yield _sse_event("tool", f"🔧 {block.name}")
+
+            # Save log entry
+            files_changed = _extract_file_changes(tool_calls)
+            log_id = str(uuid.uuid4())[:8]
+            log_entry = LogEntry(
+                log_id=log_id,
+                project=project_name,
+                prompt=prompt,
+                summary=summary or full_response[:200],
+                files_changed=files_changed,
+                tool_calls=tool_calls,
+                full_response=full_response,
+                timestamp=datetime.now(UTC),
+                success=True,
+            )
+            log_store.add(log_entry)
+
+            # Send final complete message with metadata
+            final_html = _render_message(
+                "assistant",
+                summary or full_response[:500] or "(No response)",
+                files_changed,
+                log_id,
+            )
+            yield _sse_event("complete", final_html)
+            yield _sse_event("done", "")
+
+        except Exception as e:
+            LOGGER.exception("Error during streaming")
+            yield _sse_event("error", _render_message("assistant", f"❌ Error: {e}"))
+            yield _sse_event("done", "")
+
+    return StreamingResponse(
+        generate(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
 
 
 @app.post("/transcribe-proxy")
