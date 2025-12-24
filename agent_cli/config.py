@@ -171,6 +171,27 @@ class WakeWord(BaseModel):
     wake_word: str
 
 
+# --- Panel: Claude Server Options ---
+
+
+class ClaudeServer(BaseModel):
+    """Configuration for the Claude Code remote server."""
+
+    host: str = "0.0.0.0"  # noqa: S104
+    port: int = 8765
+    permission_mode: Literal["default", "acceptEdits", "bypassPermissions"] = "bypassPermissions"
+    allowed_tools: list[str] = [
+        "Read",
+        "Write",
+        "Edit",
+        "Bash",
+        "Glob",
+        "Grep",
+        "WebSearch",
+        "WebFetch",
+    ]
+
+
 # --- Panel: General Options ---
 
 

@@ -241,6 +241,191 @@ extra_instructions: <string> (optional)
 - **Access Control**: Consider adding authentication to your API
 - **Firewall**: Only expose necessary ports
 
+---
+
+# iOS Shortcut Setup for Claude Code Remote Access
+
+This section shows how to create an iOS Shortcut that sends prompts to Claude Code running on your server.
+
+## Prerequisites
+
+1. **Claude Code Installed and Authenticated**: Run `claude /login` on your server
+2. **Agent CLI with Claude extras**: `pip install agent-cli[claude]`
+3. **Network Access**: Your iPhone needs network access to reach the server
+
+## Setup Claude Code Server
+
+1. Start the server:
+   ```bash
+   agent-cli claude-serve --host 0.0.0.0 --port 8765 --cwd /path/to/your/project
+   ```
+
+2. Test the server is working:
+   ```bash
+   curl http://your-server-ip:8765/health
+   ```
+
+## Create iOS Shortcut for Claude Code
+
+### Step 1: Create New Shortcut
+- Open the **Shortcuts** app on your iPhone
+- Tap the **+** button to create a new shortcut
+
+### Step 2: Add Actions
+
+**Action 1: Ask for Input (Optional)**
+1. Search for and add **"Ask for Input"** action
+2. Configure:
+   - **Question**: "What would you like Claude to do?"
+   - **Input Type**: Text
+
+**Action 2: Create Session**
+1. Search for and add **"Get Contents of URL"** action
+2. Configure:
+   - **URL**: `http://YOUR_SERVER_IP:8765/session/new`
+   - **Method**: POST
+   - **Request Body**: JSON
+   - Add field: `cwd` with value `/path/to/project`
+
+**Action 3: Get Session ID**
+1. Add **"Get Dictionary Value"** action
+2. Configure:
+   - **Dictionary**: Output from previous step
+   - **Get Value for**: `session_id`
+3. Add **"Set Variable"** action, name it `SessionID`
+
+**Action 4: Send Prompt**
+1. Add another **"Get Contents of URL"** action
+2. Configure:
+   - **URL**: `http://YOUR_SERVER_IP:8765/session/` then insert SessionID variable then `/prompt`
+   - **Method**: POST
+   - **Request Body**: JSON
+   - Add field: `prompt` with the input from Action 1
+
+**Action 5: Get Result**
+1. Add **"Get Dictionary Value"** action
+2. Configure:
+   - **Dictionary**: Output from previous step
+   - **Get Value for**: `result`
+
+**Action 6: Copy and Notify**
+1. Add **"Copy to Clipboard"** action
+2. Add **"Show Result"** action to display Claude's response
+
+### Simple One-Shot Shortcut (Alternative)
+
+For a simpler shortcut that doesn't maintain sessions:
+
+1. **Ask for Input**: Get the prompt from user
+2. **Get Contents of URL**: POST to `/session/new` with `{"cwd": "."}`
+3. **Get Dictionary Value**: Extract `session_id`
+4. **Set Variable**: Store as `SessionID`
+5. **Get Contents of URL**: POST to `/session/{SessionID}/prompt` with `{"prompt": "..."}`
+6. **Get Dictionary Value**: Extract `result`
+7. **Show Result**: Display Claude's response
+
+## Claude Code API Reference
+
+### POST /session/new
+
+Create a new Claude Code session.
+
+**Request:**
+```json
+{
+  "cwd": "/path/to/project"
+}
+```
+
+**Response:**
+```json
+{
+  "session_id": "uuid-here",
+  "status": "created"
+}
+```
+
+### POST /session/{session_id}/prompt
+
+Send a prompt and get the result.
+
+**Request:**
+```json
+{
+  "prompt": "Find and fix bugs in auth.py"
+}
+```
+
+**Response:**
+```json
+{
+  "result": "I analyzed auth.py and found 2 bugs...",
+  "success": true,
+  "error": null
+}
+```
+
+### POST /session/{session_id}/cancel
+
+Cancel the current operation.
+
+**Response:**
+```json
+{
+  "status": "cancelled"
+}
+```
+
+### WebSocket /session/{session_id}/stream
+
+Real-time streaming endpoint for watching Claude work.
+
+**Client sends:**
+```json
+{"prompt": "Your prompt here"}
+```
+
+**Server streams:**
+```json
+{"type": "text", "content": "Looking at the code..."}
+{"type": "tool_call", "name": "Read", "input": {...}}
+{"type": "result", "result": "Done!"}
+{"type": "done"}
+```
+
+### GET /health
+
+Health check endpoint.
+
+**Response:**
+```json
+{
+  "status": "healthy",
+  "version": "1.0.0"
+}
+```
+
+## Configuration
+
+Add to your `~/.config/agent-cli/config.toml`:
+
+```toml
+[claude-serve]
+host = "0.0.0.0"
+port = 8765
+permission-mode = "bypassPermissions"
+allowed-tools = ["Read", "Write", "Edit", "Bash", "Glob", "Grep", "WebSearch", "WebFetch"]
+```
+
+## Security Considerations
+
+- **Authentication**: The server has no authentication by default - only expose on trusted networks
+- **Permission Mode**: `bypassPermissions` allows Claude to run any command - use with caution
+- **Network**: Use VPN or SSH tunneling for secure remote access
+- **HTTPS**: Set up a reverse proxy with SSL for production use
+
+---
+
 ## Next Steps
 
 - Set up HTTPS with SSL certificates for production use
