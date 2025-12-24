@@ -786,8 +786,20 @@ async def chat_page() -> HTMLResponse:
         // Voice recording
         const micBtn = document.getElementById('micBtn');
 
+        // Check if mediaDevices is available (requires HTTPS on Safari/iOS)
+        const hasMediaDevices = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+        if (!hasMediaDevices) {{
+            micBtn.disabled = true;
+            micBtn.title = 'Voice requires HTTPS (use Chrome on localhost, or enable HTTPS)';
+            micBtn.classList.add('btn-disabled');
+        }}
+
         micBtn.onmousedown = micBtn.ontouchstart = async (e) => {{
             e.preventDefault();
+            if (!hasMediaDevices) {{
+                setStatus('⚠️ Voice needs HTTPS. Use Chrome on localhost, or access via HTTPS.');
+                return;
+            }}
             try {{
                 const stream = await navigator.mediaDevices.getUserMedia({{audio: true}});
                 mediaRecorder = new MediaRecorder(stream);

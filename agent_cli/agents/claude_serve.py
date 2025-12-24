@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import ipaddress
 import json
+from datetime import UTC
 from importlib.util import find_spec
 from pathlib import Path
 
@@ -20,6 +22,64 @@ has_uvicorn = find_spec("uvicorn") is not None
 has_fastapi = find_spec("fastapi") is not None
 has_claude_sdk = find_spec("claude_agent_sdk") is not None
 
+# Default paths for SSL certificates
+SSL_CERT_DIR = Path.home() / ".config" / "agent-cli" / "ssl"
+SSL_CERT_FILE = SSL_CERT_DIR / "cert.pem"
+SSL_KEY_FILE = SSL_CERT_DIR / "key.pem"
+
+
+def _generate_self_signed_cert() -> tuple[Path, Path]:
+    """Generate a self-signed SSL certificate for HTTPS."""
+    from datetime import datetime, timedelta  # noqa: PLC0415
+
+    from cryptography import x509  # noqa: PLC0415
+    from cryptography.hazmat.primitives import hashes, serialization  # noqa: PLC0415
+    from cryptography.hazmat.primitives.asymmetric import rsa  # noqa: PLC0415
+    from cryptography.x509.oid import NameOID  # noqa: PLC0415
+
+    SSL_CERT_DIR.mkdir(parents=True, exist_ok=True)
+
+    # Generate private key
+    key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+
+    # Generate certificate
+    subject = issuer = x509.Name(
+        [
+            x509.NameAttribute(NameOID.COMMON_NAME, "Claude Code Server"),
+        ],
+    )
+    cert = (
+        x509.CertificateBuilder()
+        .subject_name(subject)
+        .issuer_name(issuer)
+        .public_key(key.public_key())
+        .serial_number(x509.random_serial_number())
+        .not_valid_before(datetime.now(UTC))
+        .not_valid_after(datetime.now(UTC) + timedelta(days=365))
+        .add_extension(
+            x509.SubjectAlternativeName(
+                [
+                    x509.DNSName("localhost"),
+                    x509.IPAddress(ipaddress.IPv4Address("127.0.0.1")),
+                ],
+            ),
+            critical=False,
+        )
+        .sign(key, hashes.SHA256())
+    )
+
+    # Write certificate and key
+    SSL_KEY_FILE.write_bytes(
+        key.private_bytes(
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PrivateFormat.TraditionalOpenSSL,
+            encryption_algorithm=serialization.NoEncryption(),
+        ),
+    )
+    SSL_CERT_FILE.write_bytes(cert.public_bytes(serialization.Encoding.PEM))
+
+    return SSL_CERT_FILE, SSL_KEY_FILE
+
 
 def run_claude_server(
     host: str = "0.0.0.0",  # noqa: S104
@@ -28,6 +88,7 @@ def run_claude_server(
     cwd: Path | None = None,
     projects: dict[str, str] | None = None,
     default_project: str | None = None,
+    ssl: bool = False,
 ) -> None:
     """Run the Claude Code FastAPI server."""
     import os  # noqa: PLC0415
@@ -44,12 +105,23 @@ def run_claude_server(
     if default_project:
         os.environ["CLAUDE_API_DEFAULT_PROJECT"] = default_project
 
+    ssl_keyfile = None
+    ssl_certfile = None
+    if ssl:
+        if not SSL_CERT_FILE.exists() or not SSL_KEY_FILE.exists():
+            console.print("[yellow]Generating self-signed SSL certificate...[/yellow]")
+            _generate_self_signed_cert()
+        ssl_certfile = str(SSL_CERT_FILE)
+        ssl_keyfile = str(SSL_KEY_FILE)
+
     uvicorn.run(
         "agent_cli.claude_api:app",
         host=host,
         port=port,
         reload=reload,
         log_level="info",
+        ssl_keyfile=ssl_keyfile,
+        ssl_certfile=ssl_certfile,
     )
 
 
@@ -59,7 +131,7 @@ def claude_serve(
         "0.0.0.0",  # noqa: S104
         help="Host to bind the server to",
     ),
-    port: int = typer.Option(8765, help="Port to bind the server to"),
+    port: int = typer.Option(8880, help="Port to bind the server to"),
     cwd: Path = typer.Option(  # noqa: B008
         None,
         help="Working directory for Claude Code (defaults to current directory)",
@@ -68,6 +140,11 @@ def claude_serve(
         False,  # noqa: FBT003
         "--reload",
         help="Enable auto-reload for development",
+    ),
+    ssl: bool = typer.Option(
+        False,  # noqa: FBT003
+        "--ssl",
+        help="Enable HTTPS with self-signed certificate (required for voice on Safari/iOS)",
     ),
     config_file: str | None = opts.CONFIG_FILE,
     print_args: bool = opts.PRINT_ARGS,
@@ -134,8 +211,9 @@ def claude_serve(
         projects = {"default": str(cwd.resolve())}
         default_project = "default"
 
+    protocol = "https" if ssl else "http"
     console.print(
-        f"[bold green]Starting Claude Code remote server on {host}:{port}[/bold green]",
+        f"[bold green]Starting Claude Code remote server on {protocol}://{host}:{port}[/bold green]",
     )
     console.print(f"[dim]Working directory: {cwd.resolve()}[/dim]")
     if projects:
@@ -144,11 +222,15 @@ def claude_serve(
             console.print(f"[dim]Default project: {default_project}[/dim]")
     console.print()
     console.print("[bold]Endpoints:[/bold]")
-    console.print(f"  POST http://{host}:{port}/prompt")
-    console.print(f"  GET  http://{host}:{port}/logs")
-    console.print(f"  GET  http://{host}:{port}/projects")
+    console.print(f"  Chat {protocol}://{host}:{port}/chat")
+    console.print(f"  POST {protocol}://{host}:{port}/prompt")
+    console.print(f"  GET  {protocol}://{host}:{port}/logs")
     console.print()
 
+    if ssl:
+        console.print(
+            "[yellow]HTTPS enabled (self-signed cert) - accept certificate warning in browser[/yellow]",
+        )
     if reload:
         console.print("[yellow]Auto-reload enabled for development[/yellow]")
 
@@ -159,4 +241,5 @@ def claude_serve(
         cwd=cwd,
         projects=projects,
         default_project=default_project,
+        ssl=ssl,
     )
