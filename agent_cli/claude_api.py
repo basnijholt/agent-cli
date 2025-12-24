@@ -6,7 +6,7 @@ import asyncio
 import contextlib
 import logging
 import uuid
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -16,6 +16,18 @@ from pydantic import BaseModel
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 LOGGER = logging.getLogger(__name__)
+
+# Default tools allowed for Claude Code operations
+DEFAULT_ALLOWED_TOOLS = [
+    "Read",
+    "Write",
+    "Edit",
+    "Bash",
+    "Glob",
+    "Grep",
+    "WebSearch",
+    "WebFetch",
+]
 
 
 # Pydantic models for request/response
@@ -60,7 +72,6 @@ class Session:
     session_id: str
     cwd: Path
     cancelled: bool = False
-    messages: list[dict[str, Any]] = field(default_factory=list)
     claude_session_id: str | None = None  # The actual Claude SDK session ID
 
 
@@ -123,31 +134,18 @@ def _check_claude_sdk() -> None:
         raise ImportError(msg) from e
 
 
-def _get_sdk_types() -> tuple[type, ...]:
-    """Import and return SDK message types."""
-    from claude_agent_sdk.types import (  # noqa: PLC0415
-        AssistantMessage,
-        ResultMessage,
-        StreamEvent,
-        SystemMessage,
-        TextBlock,
-        ThinkingBlock,
-        ToolResultBlock,
-        ToolUseBlock,
-        UserMessage,
-    )
+def _build_options(session: Session) -> Any:
+    """Build ClaudeAgentOptions for a session."""
+    from claude_agent_sdk import ClaudeAgentOptions  # noqa: PLC0415
 
-    return (
-        UserMessage,
-        AssistantMessage,
-        SystemMessage,
-        ResultMessage,
-        StreamEvent,
-        TextBlock,
-        ThinkingBlock,
-        ToolUseBlock,
-        ToolResultBlock,
+    options = ClaudeAgentOptions(
+        cwd=str(session.cwd),
+        permission_mode="bypassPermissions",
+        allowed_tools=DEFAULT_ALLOWED_TOOLS,
     )
+    if session.claude_session_id:
+        options.resume = session.claude_session_id
+    return options
 
 
 @app.get("/health", response_model=HealthResponse)
@@ -165,7 +163,7 @@ async def create_session(request: NewSessionRequest) -> NewSessionResponse:
 
 
 @app.post("/session/{session_id}/prompt", response_model=PromptResponse)
-async def send_prompt(session_id: str, request: PromptRequest) -> PromptResponse:  # noqa: PLR0912
+async def send_prompt(session_id: str, request: PromptRequest) -> PromptResponse:
     """Send a prompt to Claude Code and get the result."""
     _check_claude_sdk()
 
@@ -174,7 +172,7 @@ async def send_prompt(session_id: str, request: PromptRequest) -> PromptResponse
         raise HTTPException(status_code=404, detail="Session not found")
 
     try:
-        from claude_agent_sdk import ClaudeAgentOptions, query  # noqa: PLC0415
+        from claude_agent_sdk import query  # noqa: PLC0415
         from claude_agent_sdk.types import (  # noqa: PLC0415
             AssistantMessage,
             ResultMessage,
@@ -184,26 +182,7 @@ async def send_prompt(session_id: str, request: PromptRequest) -> PromptResponse
 
         result_text = ""
         session.cancelled = False
-
-        # Build options - only use resume if we have a valid Claude session ID
-        options = ClaudeAgentOptions(
-            cwd=str(session.cwd),
-            permission_mode="bypassPermissions",
-            allowed_tools=[
-                "Read",
-                "Write",
-                "Edit",
-                "Bash",
-                "Glob",
-                "Grep",
-                "WebSearch",
-                "WebFetch",
-            ],
-        )
-
-        # Resume existing Claude session if available
-        if session.claude_session_id:
-            options.resume = session.claude_session_id
+        options = _build_options(session)
 
         async for message in query(prompt=request.prompt, options=options):
             if session.cancelled:
@@ -259,7 +238,7 @@ async def stream_session(websocket: WebSocket, session_id: str) -> None:
         return
 
     try:
-        from claude_agent_sdk import ClaudeAgentOptions, query  # noqa: PLC0415
+        from claude_agent_sdk import query  # noqa: PLC0415
         from claude_agent_sdk.types import (  # noqa: PLC0415
             AssistantMessage,
             ResultMessage,
@@ -280,25 +259,7 @@ async def stream_session(websocket: WebSocket, session_id: str) -> None:
                 continue
 
             session.cancelled = False
-
-            # Build options
-            options = ClaudeAgentOptions(
-                cwd=str(session.cwd),
-                permission_mode="bypassPermissions",
-                allowed_tools=[
-                    "Read",
-                    "Write",
-                    "Edit",
-                    "Bash",
-                    "Glob",
-                    "Grep",
-                    "WebSearch",
-                    "WebFetch",
-                ],
-            )
-
-            if session.claude_session_id:
-                options.resume = session.claude_session_id
+            options = _build_options(session)
 
             try:
                 async for message in query(prompt=prompt, options=options):
