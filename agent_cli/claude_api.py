@@ -14,6 +14,17 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+import httpx
+from claude_agent_sdk import ClaudeAgentOptions, query
+from claude_agent_sdk.types import (
+    AssistantMessage,
+    ResultMessage,
+    SystemMessage,
+    TextBlock,
+    ThinkingBlock,
+    ToolResultBlock,
+    ToolUseBlock,
+)
 from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
@@ -325,22 +336,8 @@ async def startup_event() -> None:
             LOGGER.warning("Failed to parse CLAUDE_API_PROJECTS environment variable")
 
 
-def _check_claude_sdk() -> None:
-    """Check if claude-agent-sdk is available."""
-    try:
-        import claude_agent_sdk  # noqa: F401, PLC0415
-    except ImportError as e:
-        msg = (
-            "claude-agent-sdk is not installed. "
-            "Please install it with: pip install agent-cli[claude]"
-        )
-        raise ImportError(msg) from e
-
-
-def _build_options(session: Session) -> Any:
+def _build_options(session: Session) -> ClaudeAgentOptions:
     """Build ClaudeAgentOptions for a session."""
-    from claude_agent_sdk import ClaudeAgentOptions  # noqa: PLC0415
-
     options = ClaudeAgentOptions(
         cwd=str(session.cwd),
         permission_mode="bypassPermissions",
@@ -389,8 +386,6 @@ async def simple_prompt(  # noqa: PLR0912
     - Sticky sessions: remembers last used project
     - Default project from config
     """
-    _check_claude_sdk()
-
     try:
         # Resolve project
         project_name, project_path, cleaned_prompt = project_manager.resolve_project(
@@ -411,15 +406,6 @@ async def simple_prompt(  # noqa: PLR0912
     session = session_manager.get_or_create_project_session(project_name, project_path)
 
     try:
-        from claude_agent_sdk import query  # noqa: PLC0415
-        from claude_agent_sdk.types import (  # noqa: PLC0415
-            AssistantMessage,
-            ResultMessage,
-            SystemMessage,
-            TextBlock,
-            ToolUseBlock,
-        )
-
         summary = ""
         full_response = ""
         tool_calls: list[dict[str, Any]] = []
@@ -646,9 +632,14 @@ async def list_logs() -> HTMLResponse:
 
 @app.get("/chat", response_class=HTMLResponse)
 async def chat_page() -> HTMLResponse:
-    """Interactive chat page with voice input support."""
-    projects_json = json.dumps(project_manager.projects)
+    """Interactive chat page with HTMX and voice input support."""
+    # Build project options HTML
+    projects = project_manager.projects
     current = project_manager.current_project or project_manager.default_project or ""
+    project_options = "".join(
+        f'<option value="{name}"{" selected" if name == current else ""}>{name}</option>'
+        for name in projects
+    )
 
     html = f"""
     <!DOCTYPE html>
@@ -658,6 +649,7 @@ async def chat_page() -> HTMLResponse:
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <link href="https://cdn.jsdelivr.net/npm/daisyui@4/dist/full.min.css" rel="stylesheet">
         <script src="https://cdn.tailwindcss.com"></script>
+        <script src="https://unpkg.com/htmx.org@2.0.4"></script>
     </head>
     <body class="min-h-screen bg-base-200">
         <div class="flex flex-col h-screen max-w-3xl mx-auto">
@@ -667,8 +659,8 @@ async def chat_page() -> HTMLResponse:
                     <a href="/logs" class="btn btn-ghost">🤖 Claude Code</a>
                 </div>
                 <div class="flex-none gap-2">
-                    <select id="project" class="select select-bordered select-sm">
-                        <!-- populated by JS -->
+                    <select id="project" name="project" class="select select-bordered select-sm">
+                        {project_options}
                     </select>
                     <input type="text" id="voiceServer" placeholder="Voice server URL"
                            class="input input-bordered input-sm w-48"
@@ -676,47 +668,59 @@ async def chat_page() -> HTMLResponse:
                 </div>
             </div>
 
-            <!-- Messages -->
-            <div id="messages" class="flex-1 overflow-y-auto p-4 space-y-4">
-                <div class="text-center opacity-60 py-8">
-                    Start a conversation with Claude Code
-                </div>
+            <!-- Messages (loaded via HTMX on page load) -->
+            <div id="messages" class="flex-1 overflow-y-auto p-4 space-y-4"
+                 hx-get="/chat/messages"
+                 hx-trigger="load"
+                 hx-swap="innerHTML">
+                <div class="text-center opacity-60 py-8">Loading...</div>
             </div>
 
-            <!-- Input -->
-            <div class="p-4 bg-base-100 border-t border-base-300">
+            <!-- Input Form with HTMX -->
+            <form id="chatForm" class="p-4 bg-base-100 border-t border-base-300"
+                  hx-post="/chat/send"
+                  hx-target="#messages"
+                  hx-swap="beforeend scroll:#messages:bottom"
+                  hx-indicator="#loading"
+                  hx-on::after-request="this.reset()">
                 <div class="flex gap-2">
-                    <button id="micBtn" class="btn btn-circle btn-outline" title="Hold to record">
+                    <button type="button" id="micBtn" class="btn btn-circle btn-outline" title="Hold to record">
                         🎤
                     </button>
-                    <button id="permBtn" class="btn btn-sm btn-ghost hidden" onclick="requestMicPermission()">
+                    <button type="button" id="permBtn" class="btn btn-sm btn-ghost hidden" onclick="requestMicPermission()">
                         🔓 Allow mic
                     </button>
-                    <input type="text" id="prompt" placeholder="Type or hold mic to speak..."
-                           class="input input-bordered flex-1"
-                           onkeydown="if(event.key==='Enter') sendMessage()">
-                    <button onclick="sendMessage()" class="btn btn-primary">Send</button>
+                    <input type="hidden" name="project" id="projectInput" value="{current}">
+                    <input type="text" name="prompt" id="prompt" placeholder="Type or hold mic to speak..."
+                           class="input input-bordered flex-1" autocomplete="off">
+                    <button type="submit" class="btn btn-primary">
+                        <span id="loading" class="loading loading-spinner htmx-indicator"></span>
+                        Send
+                    </button>
                 </div>
                 <div id="status" class="text-sm opacity-60 mt-2 hidden"></div>
-            </div>
+            </form>
         </div>
 
         <script>
-        const projects = {projects_json};
-        let currentProject = "{current}";
+        // Sync project selector with hidden form input
+        document.getElementById('project').onchange = function() {{
+            document.getElementById('projectInput').value = this.value;
+        }};
+
+        // Scroll to bottom after HTMX swaps
+        document.body.addEventListener('htmx:afterSwap', function(e) {{
+            if (e.detail.target.id === 'messages') {{
+                e.detail.target.scrollTop = e.detail.target.scrollHeight;
+            }}
+        }});
+
+        // Voice recording (minimal JS - only for MediaRecorder API)
+        const micBtn = document.getElementById('micBtn');
+        const permBtn = document.getElementById('permBtn');
         let mediaRecorder = null;
         let audioChunks = [];
-
-        // Populate project selector
-        const projectSelect = document.getElementById('project');
-        Object.keys(projects).forEach(name => {{
-            const opt = document.createElement('option');
-            opt.value = name;
-            opt.textContent = name;
-            if (name === currentProject) opt.selected = true;
-            projectSelect.appendChild(opt);
-        }});
-        projectSelect.onchange = () => {{ currentProject = projectSelect.value; }};
+        let micPermissionGranted = false;
 
         function setStatus(msg, show=true) {{
             const el = document.getElementById('status');
@@ -724,146 +728,42 @@ async def chat_page() -> HTMLResponse:
             el.classList.toggle('hidden', !show);
         }}
 
-        // Load conversation history from server on page load
-        async function loadHistory() {{
-            try {{
-                const resp = await fetch('/logs/json?limit=20');
-                const logs = await resp.json();
-                if (logs.length > 0) {{
-                    document.getElementById('messages').innerHTML = '';
-                    // Show oldest first
-                    logs.reverse().forEach(log => {{
-                        addMessage('user', log.prompt, null, false);
-                        addMessage('assistant', log.summary, {{
-                            files_changed: log.files_changed,
-                            log_id: log.log_id
-                        }}, false);
-                    }});
-                }}
-            }} catch (e) {{
-                console.log('Could not load history:', e);
-            }}
-        }}
-        loadHistory();
-
-        function addMessage(role, content, meta=null, scroll=true) {{
-            const msgs = document.getElementById('messages');
-            // Remove placeholder
-            if (msgs.children.length === 1 && msgs.children[0].classList.contains('text-center')) {{
-                msgs.innerHTML = '';
-            }}
-
-            const div = document.createElement('div');
-            div.className = role === 'user'
-                ? 'chat chat-end'
-                : 'chat chat-start';
-
-            let metaHtml = '';
-            if (meta && meta.files_changed && meta.files_changed.length > 0) {{
-                metaHtml = '<div class="text-xs opacity-60 mt-1">📁 ' + meta.files_changed.join(', ') + '</div>';
-            }}
-            if (meta && meta.log_id) {{
-                metaHtml += '<a href="/log/' + meta.log_id + '" class="link link-primary text-xs">View details →</a>';
-            }}
-
-            div.innerHTML = `
-                <div class="chat-bubble ${{role === 'user' ? 'chat-bubble-primary' : ''}}">
-                    ${{content}}
-                    ${{metaHtml}}
-                </div>
-            `;
-            msgs.appendChild(div);
-            if (scroll) msgs.scrollTop = msgs.scrollHeight;
-        }}
-
-        async function sendMessage() {{
-            const input = document.getElementById('prompt');
-            const text = input.value.trim();
-            if (!text) return;
-
-            input.value = '';
-            addMessage('user', text);
-            setStatus('Claude is thinking...');
-
-            try {{
-                const resp = await fetch('/prompt', {{
-                    method: 'POST',
-                    headers: {{'Content-Type': 'application/json'}},
-                    body: JSON.stringify({{prompt: text, project: currentProject}})
-                }});
-                const data = await resp.json();
-                setStatus('', false);
-
-                if (data.success) {{
-                    addMessage('assistant', data.summary, {{
-                        files_changed: data.files_changed,
-                        log_id: data.log_id
-                    }});
-                }} else {{
-                    addMessage('assistant', '❌ Error: ' + (data.error || 'Unknown error'));
-                }}
-            }} catch (e) {{
-                setStatus('', false);
-                addMessage('assistant', '❌ Error: ' + e.message);
-            }}
-        }}
-
-        // Voice recording
-        const micBtn = document.getElementById('micBtn');
-        const permBtn = document.getElementById('permBtn');
-        let micPermissionGranted = false;
-
-        // Check if mediaDevices is available (requires HTTPS on Safari/iOS)
         const hasMediaDevices = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
         if (!hasMediaDevices) {{
             micBtn.disabled = true;
-            micBtn.title = 'Voice requires HTTPS (use Chrome on localhost, or enable HTTPS)';
+            micBtn.title = 'Voice requires HTTPS';
             micBtn.classList.add('btn-disabled');
         }}
 
-        // Check/request microphone permission
         async function requestMicPermission() {{
             try {{
                 const stream = await navigator.mediaDevices.getUserMedia({{audio: true}});
-                stream.getTracks().forEach(t => t.stop()); // Stop immediately, just checking permission
+                stream.getTracks().forEach(t => t.stop());
                 micPermissionGranted = true;
                 permBtn.classList.add('hidden');
                 micBtn.classList.remove('btn-disabled');
-                setStatus('✅ Microphone access granted. Hold 🎤 to record.');
+                setStatus('✅ Mic access granted. Hold 🎤 to record.');
             }} catch (e) {{
-                setStatus('❌ Microphone denied. Check browser settings.');
+                setStatus('❌ Mic denied. Check browser settings.');
             }}
         }}
 
-        // Check permission state on load
-        if (hasMediaDevices && navigator.permissions && navigator.permissions.query) {{
-            navigator.permissions.query({{name: 'microphone'}}).then(result => {{
-                if (result.state === 'granted') {{
-                    micPermissionGranted = true;
-                }} else if (result.state === 'prompt') {{
+        if (hasMediaDevices && navigator.permissions?.query) {{
+            navigator.permissions.query({{name: 'microphone'}}).then(r => {{
+                if (r.state === 'granted') micPermissionGranted = true;
+                else if (r.state === 'prompt') {{
                     permBtn.classList.remove('hidden');
-                    setStatus('👆 Tap "Allow mic" first to enable voice input');
-                }} else {{
-                    setStatus('❌ Microphone blocked. Check browser settings.');
+                    setStatus('👆 Tap "Allow mic" first');
                 }}
-            }}).catch(() => {{
-                // Safari doesn't support permissions.query for microphone
-                permBtn.classList.remove('hidden');
-                setStatus('👆 Tap "Allow mic" first to enable voice input');
-            }});
+            }}).catch(() => permBtn.classList.remove('hidden'));
         }} else if (hasMediaDevices) {{
-            // Fallback for browsers without permissions API
             permBtn.classList.remove('hidden');
         }}
 
         micBtn.onmousedown = micBtn.ontouchstart = async (e) => {{
             e.preventDefault();
-            if (!hasMediaDevices) {{
-                setStatus('⚠️ Voice needs HTTPS. Use Chrome on localhost, or access via HTTPS.');
-                return;
-            }}
-            if (!micPermissionGranted) {{
-                setStatus('👆 Tap "Allow mic" button first');
+            if (!hasMediaDevices || !micPermissionGranted) {{
+                setStatus('👆 Tap "Allow mic" first');
                 permBtn.classList.remove('hidden');
                 return;
             }}
@@ -871,8 +771,7 @@ async def chat_page() -> HTMLResponse:
                 const stream = await navigator.mediaDevices.getUserMedia({{audio: true}});
                 mediaRecorder = new MediaRecorder(stream);
                 audioChunks = [];
-
-                mediaRecorder.ondataavailable = (e) => {{ audioChunks.push(e.data); }};
+                mediaRecorder.ondataavailable = (e) => audioChunks.push(e.data);
                 mediaRecorder.start();
                 micBtn.classList.add('btn-error');
                 setStatus('🎤 Recording...');
@@ -885,7 +784,6 @@ async def chat_page() -> HTMLResponse:
 
         micBtn.onmouseup = micBtn.ontouchend = micBtn.onmouseleave = async () => {{
             if (!mediaRecorder || mediaRecorder.state !== 'recording') return;
-
             mediaRecorder.stop();
             micBtn.classList.remove('btn-error');
             setStatus('Transcribing...');
@@ -894,28 +792,17 @@ async def chat_page() -> HTMLResponse:
                 const blob = new Blob(audioChunks, {{type: 'audio/webm'}});
                 const formData = new FormData();
                 formData.append('audio', blob, 'recording.webm');
-
                 try {{
                     const voiceUrl = document.getElementById('voiceServer').value;
-                    const resp = await fetch(voiceUrl + '/transcribe', {{
-                        method: 'POST',
-                        body: formData
-                    }});
+                    const resp = await fetch(voiceUrl + '/transcribe', {{method: 'POST', body: formData}});
                     const data = await resp.json();
                     setStatus('', false);
-
-                    // Use cleaned transcript if available, otherwise raw
                     const text = data.cleaned_transcript || data.raw_transcript || data.transcript || '';
-                    if (text) {{
-                        document.getElementById('prompt').value = text;
-                    }} else {{
-                        setStatus('No speech detected');
-                    }}
+                    if (text) document.getElementById('prompt').value = text;
+                    else setStatus('No speech detected');
                 }} catch (e) {{
                     setStatus('Transcription error: ' + e.message);
                 }}
-
-                // Stop all tracks
                 mediaRecorder.stream.getTracks().forEach(t => t.stop());
             }};
         }};
@@ -944,11 +831,139 @@ async def list_logs_json(limit: int = 20) -> list[dict[str, Any]]:
     ]
 
 
+def _render_message(
+    role: str,
+    content: str,
+    files_changed: list[str] | None = None,
+    log_id: str | None = None,
+) -> str:
+    """Render a single chat message as HTML."""
+    chat_class = "chat chat-end" if role == "user" else "chat chat-start"
+    bubble_class = "chat-bubble-primary" if role == "user" else ""
+
+    meta_html = ""
+    if files_changed:
+        meta_html += f'<div class="text-xs opacity-60 mt-1">📁 {", ".join(files_changed)}</div>'
+    if log_id:
+        meta_html += f'<a href="/log/{log_id}" class="link link-primary text-xs">View details →</a>'
+
+    return f"""<div class="{chat_class}">
+        <div class="chat-bubble {bubble_class}">{content}{meta_html}</div>
+    </div>"""
+
+
+@app.get("/chat/messages", response_class=HTMLResponse)
+async def chat_messages() -> HTMLResponse:
+    """Return chat history as HTML fragments for HTMX."""
+    entries = log_store.list_recent(20)
+    if not entries:
+        return HTMLResponse(content="")
+
+    # Reverse to show oldest first
+    html_parts = []
+    for entry in reversed(entries):
+        html_parts.append(_render_message("user", entry.prompt))
+        html_parts.append(
+            _render_message(
+                "assistant",
+                entry.summary,
+                entry.files_changed,
+                entry.log_id,
+            ),
+        )
+    return HTMLResponse(content="\n".join(html_parts))
+
+
+class ChatSendRequest(BaseModel):
+    """Form data for chat send endpoint."""
+
+    prompt: str
+    project: str | None = None
+
+
+@app.post("/chat/send", response_class=HTMLResponse)
+async def chat_send(request: Request) -> HTMLResponse:
+    """Send a message and return HTML fragments for HTMX."""
+    # Parse form data
+    form = await request.form()
+    prompt = str(form.get("prompt", "")).strip()
+    project = str(form.get("project", "")) or None
+
+    if not prompt:
+        return HTMLResponse(content="")
+
+    # Render user message immediately
+    user_html = _render_message("user", prompt)
+
+    try:
+        # Resolve project
+        project_name, project_path, cleaned_prompt = project_manager.resolve_project(
+            prompt,
+            project,
+        )
+    except ValueError as e:
+        error_html = _render_message("assistant", f"❌ Error: {e}")
+        return HTMLResponse(content=user_html + error_html)
+
+    # Get or create session
+    session = session_manager.get_or_create_project_session(project_name, project_path)
+
+    try:
+        summary = ""
+        full_response = ""
+        tool_calls: list[dict[str, Any]] = []
+        session.cancelled = False
+        options = _build_options(session)
+
+        async for message in query(prompt=cleaned_prompt, options=options):
+            if session.cancelled:
+                break
+
+            if isinstance(message, SystemMessage) and message.subtype == "init":
+                session.claude_session_id = message.data.get("session_id")
+            elif isinstance(message, ResultMessage) and message.result:
+                summary = message.result
+            elif isinstance(message, AssistantMessage):
+                for block in message.content:
+                    if isinstance(block, TextBlock):
+                        full_response += block.text
+                    elif isinstance(block, ToolUseBlock):
+                        tool_calls.append({"name": block.name, "input": block.input})
+
+        # Extract file changes and store log
+        files_changed = _extract_file_changes(tool_calls)
+        log_id = str(uuid.uuid4())[:8]
+
+        log_entry = LogEntry(
+            log_id=log_id,
+            project=project_name,
+            prompt=prompt,
+            summary=summary or full_response[:200],
+            files_changed=files_changed,
+            tool_calls=tool_calls,
+            full_response=full_response,
+            timestamp=datetime.now(UTC),
+            success=True,
+        )
+        log_store.add(log_entry)
+
+        assistant_html = _render_message(
+            "assistant",
+            summary or full_response[:200],
+            files_changed,
+            log_id,
+        )
+        return HTMLResponse(content=user_html + assistant_html)
+
+    except Exception as e:
+        LOGGER.exception("Error during chat send")
+        error_html = _render_message("assistant", f"❌ Error: {e}")
+        return HTMLResponse(content=user_html + error_html)
+
+
 @app.post("/transcribe-proxy")
 async def transcribe_proxy(request: Request) -> dict[str, Any]:
     """Proxy transcription requests to avoid CORS issues."""
-    import httpx  # noqa: PLC0415
-
     # Get voice server URL from query param or use default
     voice_server = request.query_params.get("voice_server", "http://localhost:61337")
 
@@ -992,7 +1007,6 @@ async def list_projects() -> dict[str, Any]:
 @app.post("/session/new", response_model=NewSessionResponse)
 async def create_session(request: NewSessionRequest) -> NewSessionResponse:
     """Create a new Claude Code session."""
-    _check_claude_sdk()
     session = session_manager.create_session(cwd=request.cwd)
     return NewSessionResponse(session_id=session.session_id, status="created")
 
@@ -1000,21 +1014,11 @@ async def create_session(request: NewSessionRequest) -> NewSessionResponse:
 @app.post("/session/{session_id}/prompt", response_model=PromptResponse)
 async def send_prompt(session_id: str, request: PromptRequest) -> PromptResponse:
     """Send a prompt to Claude Code and get the result."""
-    _check_claude_sdk()
-
     session = session_manager.get_session(session_id)
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
 
     try:
-        from claude_agent_sdk import query  # noqa: PLC0415
-        from claude_agent_sdk.types import (  # noqa: PLC0415
-            AssistantMessage,
-            ResultMessage,
-            SystemMessage,
-            TextBlock,
-        )
-
         result_text = ""
         session.cancelled = False
         options = _build_options(session)
@@ -1062,8 +1066,6 @@ async def cancel_session(session_id: str) -> dict[str, str]:
 @app.websocket("/session/{session_id}/stream")
 async def stream_session(websocket: WebSocket, session_id: str) -> None:
     """WebSocket endpoint for streaming Claude Code responses."""
-    _check_claude_sdk()
-
     await websocket.accept()
 
     session = session_manager.get_session(session_id)
@@ -1073,17 +1075,6 @@ async def stream_session(websocket: WebSocket, session_id: str) -> None:
         return
 
     try:
-        from claude_agent_sdk import query  # noqa: PLC0415
-        from claude_agent_sdk.types import (  # noqa: PLC0415
-            AssistantMessage,
-            ResultMessage,
-            SystemMessage,
-            TextBlock,
-            ThinkingBlock,
-            ToolResultBlock,
-            ToolUseBlock,
-        )
-
         while True:
             # Wait for prompt from client
             data = await websocket.receive_json()
