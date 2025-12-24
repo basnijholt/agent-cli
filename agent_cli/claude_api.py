@@ -644,6 +644,207 @@ async def list_logs() -> HTMLResponse:
     return HTMLResponse(content=html)
 
 
+@app.get("/chat", response_class=HTMLResponse)
+async def chat_page() -> HTMLResponse:
+    """Interactive chat page with voice input support."""
+    projects_json = json.dumps(project_manager.projects)
+    current = project_manager.current_project or project_manager.default_project or ""
+
+    html = f"""
+    <!DOCTYPE html>
+    <html data-theme="dark">
+    <head>
+        <title>Claude Code Chat</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link href="https://cdn.jsdelivr.net/npm/daisyui@4/dist/full.min.css" rel="stylesheet">
+        <script src="https://cdn.tailwindcss.com"></script>
+    </head>
+    <body class="min-h-screen bg-base-200">
+        <div class="flex flex-col h-screen max-w-3xl mx-auto">
+            <!-- Header -->
+            <div class="navbar bg-base-100 shadow">
+                <div class="flex-1">
+                    <a href="/logs" class="btn btn-ghost">🤖 Claude Code</a>
+                </div>
+                <div class="flex-none gap-2">
+                    <select id="project" class="select select-bordered select-sm">
+                        <!-- populated by JS -->
+                    </select>
+                    <input type="text" id="voiceServer" placeholder="Voice server URL"
+                           class="input input-bordered input-sm w-48"
+                           value="http://localhost:8000">
+                </div>
+            </div>
+
+            <!-- Messages -->
+            <div id="messages" class="flex-1 overflow-y-auto p-4 space-y-4">
+                <div class="text-center opacity-60 py-8">
+                    Start a conversation with Claude Code
+                </div>
+            </div>
+
+            <!-- Input -->
+            <div class="p-4 bg-base-100 border-t border-base-300">
+                <div class="flex gap-2">
+                    <button id="micBtn" class="btn btn-circle btn-outline" title="Hold to record">
+                        🎤
+                    </button>
+                    <input type="text" id="prompt" placeholder="Type or hold mic to speak..."
+                           class="input input-bordered flex-1"
+                           onkeydown="if(event.key==='Enter') sendMessage()">
+                    <button onclick="sendMessage()" class="btn btn-primary">Send</button>
+                </div>
+                <div id="status" class="text-sm opacity-60 mt-2 hidden"></div>
+            </div>
+        </div>
+
+        <script>
+        const projects = {projects_json};
+        let currentProject = "{current}";
+        let mediaRecorder = null;
+        let audioChunks = [];
+
+        // Populate project selector
+        const projectSelect = document.getElementById('project');
+        Object.keys(projects).forEach(name => {{
+            const opt = document.createElement('option');
+            opt.value = name;
+            opt.textContent = name;
+            if (name === currentProject) opt.selected = true;
+            projectSelect.appendChild(opt);
+        }});
+        projectSelect.onchange = () => {{ currentProject = projectSelect.value; }};
+
+        function setStatus(msg, show=true) {{
+            const el = document.getElementById('status');
+            el.textContent = msg;
+            el.classList.toggle('hidden', !show);
+        }}
+
+        function addMessage(role, content, meta=null) {{
+            const msgs = document.getElementById('messages');
+            // Remove placeholder
+            if (msgs.children.length === 1 && msgs.children[0].classList.contains('text-center')) {{
+                msgs.innerHTML = '';
+            }}
+
+            const div = document.createElement('div');
+            div.className = role === 'user'
+                ? 'chat chat-end'
+                : 'chat chat-start';
+
+            let metaHtml = '';
+            if (meta && meta.files_changed && meta.files_changed.length > 0) {{
+                metaHtml = '<div class="text-xs opacity-60 mt-1">📁 ' + meta.files_changed.join(', ') + '</div>';
+            }}
+            if (meta && meta.log_id) {{
+                metaHtml += '<a href="/log/' + meta.log_id + '" class="link link-primary text-xs">View details →</a>';
+            }}
+
+            div.innerHTML = `
+                <div class="chat-bubble ${{role === 'user' ? 'chat-bubble-primary' : ''}}">
+                    ${{content}}
+                    ${{metaHtml}}
+                </div>
+            `;
+            msgs.appendChild(div);
+            msgs.scrollTop = msgs.scrollHeight;
+        }}
+
+        async function sendMessage() {{
+            const input = document.getElementById('prompt');
+            const text = input.value.trim();
+            if (!text) return;
+
+            input.value = '';
+            addMessage('user', text);
+            setStatus('Claude is thinking...');
+
+            try {{
+                const resp = await fetch('/prompt', {{
+                    method: 'POST',
+                    headers: {{'Content-Type': 'application/json'}},
+                    body: JSON.stringify({{prompt: text, project: currentProject}})
+                }});
+                const data = await resp.json();
+                setStatus('', false);
+
+                if (data.success) {{
+                    addMessage('assistant', data.summary, {{
+                        files_changed: data.files_changed,
+                        log_id: data.log_id
+                    }});
+                }} else {{
+                    addMessage('assistant', '❌ Error: ' + (data.error || 'Unknown error'));
+                }}
+            }} catch (e) {{
+                setStatus('', false);
+                addMessage('assistant', '❌ Error: ' + e.message);
+            }}
+        }}
+
+        // Voice recording
+        const micBtn = document.getElementById('micBtn');
+
+        micBtn.onmousedown = micBtn.ontouchstart = async (e) => {{
+            e.preventDefault();
+            try {{
+                const stream = await navigator.mediaDevices.getUserMedia({{audio: true}});
+                mediaRecorder = new MediaRecorder(stream);
+                audioChunks = [];
+
+                mediaRecorder.ondataavailable = (e) => {{ audioChunks.push(e.data); }};
+                mediaRecorder.start();
+                micBtn.classList.add('btn-error');
+                setStatus('🎤 Recording...');
+            }} catch (e) {{
+                setStatus('Mic error: ' + e.message);
+            }}
+        }};
+
+        micBtn.onmouseup = micBtn.ontouchend = micBtn.onmouseleave = async () => {{
+            if (!mediaRecorder || mediaRecorder.state !== 'recording') return;
+
+            mediaRecorder.stop();
+            micBtn.classList.remove('btn-error');
+            setStatus('Transcribing...');
+
+            mediaRecorder.onstop = async () => {{
+                const blob = new Blob(audioChunks, {{type: 'audio/webm'}});
+                const formData = new FormData();
+                formData.append('audio', blob, 'recording.webm');
+
+                try {{
+                    const voiceUrl = document.getElementById('voiceServer').value;
+                    const resp = await fetch(voiceUrl + '/transcribe', {{
+                        method: 'POST',
+                        body: formData
+                    }});
+                    const data = await resp.json();
+                    setStatus('', false);
+
+                    // Use cleaned transcript if available, otherwise raw
+                    const text = data.cleaned_transcript || data.raw_transcript || data.transcript || '';
+                    if (text) {{
+                        document.getElementById('prompt').value = text;
+                    }} else {{
+                        setStatus('No speech detected');
+                    }}
+                }} catch (e) {{
+                    setStatus('Transcription error: ' + e.message);
+                }}
+
+                // Stop all tracks
+                mediaRecorder.stream.getTracks().forEach(t => t.stop());
+            }};
+        }};
+        </script>
+    </body>
+    </html>
+    """
+    return HTMLResponse(content=html)
+
+
 @app.post("/switch-project")
 async def switch_project(project: str) -> dict[str, str]:
     """Switch the current/sticky project."""
