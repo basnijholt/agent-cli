@@ -130,16 +130,19 @@ See [RAG System Architecture](rag.md) for details on the document retrieval syst
 ### Core Dependencies
 
 - **typer** - CLI framework
-- **pydantic** - Configuration and validation
+- **pydantic-ai-slim** - AI agent framework with tool support
 - **sounddevice** - Audio I/O
 - **pyperclip** - Clipboard access
 - **rich** - Terminal formatting
+- **wyoming** - Protocol for local AI services
+- **openai** - OpenAI API client
+- **google-genai** - Google Gemini API client
 
 ### Optional Dependencies
 
 - **silero-vad** - Voice activity detection (for `transcribe-daemon`)
 - **chromadb** - Vector database (for RAG and memory)
-- **lancedb** - Alternative vector database
+- **markitdown** - Document parsing (for RAG)
 
 ## Platform Support
 
