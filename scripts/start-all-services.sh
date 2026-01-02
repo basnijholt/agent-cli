@@ -21,15 +21,40 @@ fi
 # Create .runtime directory
 mkdir -p "$SCRIPTS_DIR/.runtime"
 
-# Whisper pane (skipped on macOS ARM - uses launchd service instead)
+# Generate the bottom pane section based on whether Whisper is skipped
 if [ "$SKIP_WHISPER" = true ]; then
-    WHISPER_PANE=""
+    BOTTOM_PANES="        pane split_direction=\"horizontal\" {
+            pane {
+                name \"Piper\"
+                cwd \"$SCRIPTS_DIR\"
+                command \"./run-piper.sh\"
+            }
+            pane {
+                name \"OpenWakeWord\"
+                cwd \"$SCRIPTS_DIR\"
+                command \"./run-openwakeword.sh\"
+            }
+        }"
 else
-    WHISPER_PANE="            pane {
+    BOTTOM_PANES="        pane split_direction=\"horizontal\" {
+            pane {
                 name \"Whisper\"
                 cwd \"$SCRIPTS_DIR\"
                 command \"./run-whisper.sh\"
-            }"
+            }
+            pane split_direction=\"horizontal\" {
+                pane {
+                    name \"Piper\"
+                    cwd \"$SCRIPTS_DIR\"
+                    command \"./run-piper.sh\"
+                }
+                pane {
+                    name \"OpenWakeWord\"
+                    cwd \"$SCRIPTS_DIR\"
+                    command \"./run-openwakeword.sh\"
+                }
+            }
+        }"
 fi
 
 cat > "$SCRIPTS_DIR/.runtime/agent-cli-layout.kdl" << EOF
@@ -49,21 +74,7 @@ layout {
                 args "-c" "cat $SCRIPTS_DIR/zellij_help.txt | less"
             }
         }
-        pane split_direction="horizontal" {
-$WHISPER_PANE
-            pane split_direction="horizontal" {
-                pane {
-                    name "Piper"
-                    cwd "$SCRIPTS_DIR"
-                    command "./run-piper.sh"
-                }
-                pane {
-                    name "OpenWakeWord"
-                    cwd "$SCRIPTS_DIR"
-                    command "./run-openwakeword.sh"
-                }
-            }
-        }
+$BOTTOM_PANES
     }
 
     floating_panes {
