@@ -31,25 +31,52 @@ git diff --name-only HEAD~20 | grep "\.py$"
 
 Look for new features, changed defaults, renamed options, or removed functionality.
 
-### 2. Verify Command Documentation
+### 2. Verify Command Documentation (HIGH PRIORITY)
 
-Each command in `docs/commands/` has manually maintained options tables. These can drift.
+**Options tables in `docs/commands/` are manually maintained and frequently drift from the actual CLI.** This is the most common source of documentation errors.
 
-For each command's options table, compare against `agent-cli <command> --help`:
-- Are all options listed?
-- Are short flags correct?
-- Are defaults accurate?
-- Are descriptions accurate?
+For EACH command doc file, systematically compare against the actual CLI:
 
 ```bash
-# List all commands
+# Get list of all commands
 agent-cli --help
 
-# Check specific command options
+# For each command, dump actual options and compare to docs
 agent-cli transcribe --help
 agent-cli chat --help
-# etc.
+agent-cli autocorrect --help
+agent-cli speak --help
+agent-cli voice-edit --help
+agent-cli assistant --help
+agent-cli transcribe-daemon --help
+agent-cli rag-proxy --help
+agent-cli memory --help
 ```
+
+**Check each option in the help output against the docs:**
+
+| Check | Common Issues |
+|-------|---------------|
+| Option exists in docs? | New options added to CLI but not documented |
+| Option still exists in CLI? | Removed options still in docs |
+| Default value correct? | Defaults change, docs not updated |
+| Short flag correct? | `-m` vs `-M`, missing short flags |
+| Description accurate? | Behavior changed, description stale |
+| Type correct? | `PATH` vs `TEXT`, `INTEGER` vs `FLOAT` |
+
+**Also check `agent_cli/opts.py`** - this defines shared options used across commands. Changes here affect multiple commands.
+
+**Check for missing command docs:**
+
+```bash
+# Commands in CLI
+agent-cli --help | grep -E "^  [a-z]"
+
+# Command docs that exist
+ls docs/commands/*.md
+```
+
+Every command should have a corresponding `docs/commands/<command>.md` file.
 
 ### 3. Verify docs/configuration.md
 
