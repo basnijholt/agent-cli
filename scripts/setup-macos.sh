@@ -45,6 +45,16 @@ echo "⏳ This may take a few minutes depending on your internet connection..."
 # Stop the temporary ollama server
 pkill -f "ollama serve" || true
 
+# Install wyoming-mlx-whisper as a launchd service (Apple Silicon only)
+if [ "$(uname -m)" = "arm64" ]; then
+    echo "🎤 Installing wyoming-mlx-whisper as a background service..."
+    echo "   This will run speech-to-text on Apple Silicon using MLX"
+    curl -fsSL https://raw.githubusercontent.com/basnijholt/wyoming-mlx-whisper/main/scripts/install_service.sh | bash
+    echo "✅ wyoming-mlx-whisper installed as launchd service"
+else
+    echo "ℹ️ Skipping wyoming-mlx-whisper service (Intel Mac - use Linux-style setup)"
+fi
+
 echo ""
 echo "✅ Setup complete! You can now run the services:"
 echo ""
