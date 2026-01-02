@@ -111,14 +111,44 @@ Check:
 - Dependencies match `pyproject.toml`
 - File paths and locations are accurate
 
-### 5. Check Examples
+### 5. High-Risk Areas (AI-Generated Content)
+
+These are particularly prone to errors when docs are AI-generated or AI-maintained:
+
+| Area | How to Verify | Past Issues |
+|------|---------------|-------------|
+| **Model names** | Check `agent_cli/opts.py` defaults | `gpt-4o-mini` → `gpt-5-mini` |
+| **Tool/function names** | Check `agent_cli/_tools.py` | `web_search` didn't exist, was `duckduckgo_search` |
+| **File paths** | Grep for `PID_DIR`, `CONFIG_DIR`, etc. | PID files documented in wrong directory |
+| **Dependencies** | Compare against `pyproject.toml` | Listed packages that don't exist |
+| **Environment variables** | Check `envvar=` in opts.py | Undocumented or renamed env vars |
+| **Provider names** | Check `agent_cli/services/` | Providers listed that aren't implemented |
+
+```bash
+# Verify model defaults
+grep -E "model.*=.*\"" agent_cli/opts.py
+
+# Verify tool names
+grep -E "def.*_tool|Tool\(" agent_cli/_tools.py
+
+# Verify file paths
+grep -rE "(PID_DIR|CONFIG_DIR|CACHE_DIR)" agent_cli/
+
+# Verify dependencies
+cat pyproject.toml | grep -A 50 "dependencies"
+
+# Verify env vars
+grep "envvar=" agent_cli/opts.py
+```
+
+### 6. Check Examples
 
 For examples in any doc:
 - Would the commands actually work?
 - Are model names current (not deprecated)?
 - Do examples use current syntax and options?
 
-### 6. Cross-Reference Consistency
+### 7. Cross-Reference Consistency
 
 The same info appears in multiple places. Check for conflicts:
 - README.md vs docs/index.md
@@ -126,7 +156,7 @@ The same info appears in multiple places. Check for conflicts:
 - docs/configuration.md vs agent_cli/example-config.toml
 - Provider/port info across architecture docs
 
-### 7. Self-Check This Prompt
+### 8. Self-Check This Prompt
 
 This prompt can become outdated too. If you notice:
 - New automated checks that should be listed above
