@@ -10,10 +10,12 @@ fi
 # Get the current directory
 SCRIPTS_DIR="$(cd "$(dirname "$0")" && pwd)"
 
-# On macOS ARM, wyoming-mlx-whisper runs as a launchd service (installed separately)
+# On macOS ARM, skip Whisper pane if launchd service is running
 SKIP_WHISPER=false
 if [ "$(uname -s)" = "Darwin" ] && [ "$(uname -m)" = "arm64" ]; then
-    SKIP_WHISPER=true
+    if launchctl list 2>/dev/null | grep -q "com.basnijholt.wyoming-mlx-whisper"; then
+        SKIP_WHISPER=true
+    fi
 fi
 
 # Create .runtime directory
