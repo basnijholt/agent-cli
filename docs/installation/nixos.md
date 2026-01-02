@@ -1,3 +1,7 @@
+---
+icon: lucide/snowflake
+---
+
 # NixOS Installation
 
 Native NixOS setup using system configuration with full GPU acceleration support.

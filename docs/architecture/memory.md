@@ -1,3 +1,7 @@
+---
+icon: lucide/brain
+---
+
 # Agent CLI: Memory System Technical Specification
 
 This document serves as the authoritative technical reference for the `agent-cli` memory subsystem. It details the component architecture, data structures, internal algorithms, and control flows implemented in the codebase.

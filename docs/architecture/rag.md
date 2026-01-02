@@ -1,3 +1,7 @@
+---
+icon: lucide/database
+---
+
 # Agent CLI: RAG Proxy Technical Specification
 
 This document describes the architectural decisions, design rationale, and technical approach for the `agent-cli` RAG (Retrieval-Augmented Generation) proxy subsystem.

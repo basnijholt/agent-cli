@@ -1,3 +1,7 @@
+---
+icon: lucide/terminal
+---
+
 # Linux Native Installation
 
 Native Linux setup with full NVIDIA GPU acceleration for optimal performance.

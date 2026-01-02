@@ -1,0 +1,106 @@
+---
+icon: lucide/terminal
+---
+
+# Commands Reference
+
+Agent CLI provides multiple commands, each designed for a specific purpose.
+
+## Voice & Audio Commands
+
+| Command | Purpose | Use Case |
+|---------|---------|----------|
+| [`transcribe`](transcribe.md) | Speech-to-text | Record voice → get text in clipboard |
+| [`transcribe-daemon`](transcribe-daemon.md) | Continuous transcription | Background service with VAD |
+| [`speak`](speak.md) | Text-to-speech | Read text aloud |
+| [`voice-edit`](voice-edit.md) | Voice-powered editor | Edit clipboard text with voice commands |
+| [`assistant`](assistant.md) | Wake word assistant | Hands-free voice interaction |
+| [`chat`](chat.md) | Conversational AI | Full-featured voice chat with tools |
+
+## Text Processing Commands
+
+| Command | Purpose | Use Case |
+|---------|---------|----------|
+| [`autocorrect`](autocorrect.md) | Grammar & spelling | Fix text from clipboard |
+
+## AI Services Commands
+
+| Command | Purpose | Use Case |
+|---------|---------|----------|
+| [`rag-proxy`](rag-proxy.md) | RAG server | Chat with your documents |
+| [`memory`](memory.md) | Long-term memory | Persistent conversation memory |
+
+## Installation Commands
+
+These commands help set up Agent CLI and its services:
+
+| Command | Purpose |
+|---------|---------|
+| `install-services` | Install all AI services (Ollama, Whisper, Piper, OpenWakeWord) |
+| `install-hotkeys` | Set up system-wide hotkeys |
+| `start-services` | Start all services in a Zellij terminal session |
+
+## Configuration Commands
+
+| Command | Purpose |
+|---------|---------|
+| `config init` | Create a new config file template |
+| `config show` | Display current configuration |
+| `config edit` | Open config in your editor |
+
+## Common Options
+
+All commands support these options:
+
+| Option | Description |
+|--------|-------------|
+| `--help`, `-h` | Show help for the command |
+| `--config PATH` | Use a specific config file |
+| `--log-level LEVEL` | Set logging level (DEBUG, INFO, WARNING, ERROR) |
+| `--log-file PATH` | Write logs to a file |
+| `--quiet`, `-q` | Suppress console output |
+| `--print-args` | Show resolved arguments including config values |
+
+## Provider Options
+
+Most commands support multiple providers:
+
+### LLM Providers (`--llm-provider`)
+
+- `ollama` - Local LLM via Ollama (default)
+- `openai` - OpenAI API
+- `gemini` - Google Gemini API
+
+### ASR Providers (`--asr-provider`)
+
+- `wyoming` - Local Whisper via Wyoming (default)
+- `openai` - OpenAI Whisper API
+
+### TTS Providers (`--tts-provider`)
+
+- `wyoming` - Local Piper via Wyoming (default)
+- `openai` - OpenAI TTS API
+- `kokoro` - Local Kokoro TTS
+
+## Process Management
+
+Commands with background capabilities support:
+
+| Option | Description |
+|--------|-------------|
+| `--stop` | Stop a running background process |
+| `--status` | Check if a background process is running |
+| `--toggle` | Toggle the background process on/off |
+
+Example:
+
+```bash
+# Start transcription in background
+agent-cli transcribe &
+
+# Check status
+agent-cli transcribe --status
+
+# Stop it
+agent-cli transcribe --stop
+```

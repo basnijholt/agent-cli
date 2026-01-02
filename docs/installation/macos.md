@@ -1,3 +1,7 @@
+---
+icon: lucide/apple
+---
+
 # macOS Native Installation
 
 Native macOS setup with full Metal GPU acceleration for optimal performance.
