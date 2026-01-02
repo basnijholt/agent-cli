@@ -163,3 +163,20 @@ tts = true
 # git-versioning = true  # Enable automatic git commit of memory changes
 # host = "0.0.0.0"
 # port = 8100
+
+[transcribe-daemon]
+# Continuous transcription settings
+# role = "user"
+# silence-threshold = 1.0
+# min-segment = 0.25
+# vad-threshold = 0.3
+# save-audio = true
+# audio-dir = "~/.config/agent-cli/audio"
+# transcription-log = "~/.config/agent-cli/transcriptions.jsonl"
+# clipboard = false
+
+[server]
+# Transcription server settings
+# host = "0.0.0.0"
+# port = 61337
+# reload = false

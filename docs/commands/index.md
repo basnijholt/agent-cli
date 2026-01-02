@@ -37,17 +37,15 @@ These commands help set up Agent CLI and its services:
 
 | Command | Purpose |
 |---------|---------|
-| `install-services` | Install all AI services (Ollama, Whisper, Piper, OpenWakeWord) |
-| `install-hotkeys` | Set up system-wide hotkeys |
-| `start-services` | Start all services in a Zellij terminal session |
+| [`install-services`](install-services.md) | Install all AI services (Ollama, Whisper, Piper, OpenWakeWord) |
+| [`install-hotkeys`](install-hotkeys.md) | Set up system-wide hotkeys |
+| [`start-services`](start-services.md) | Start all services in a Zellij terminal session |
 
 ## Configuration Commands
 
 | Command | Purpose |
 |---------|---------|
-| `config init` | Create a new config file template |
-| `config show` | Display current configuration |
-| `config edit` | Open config in your editor |
+| [`config`](config.md) | Manage configuration (init, show, edit) |
 
 ## Common Options
 

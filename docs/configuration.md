@@ -68,7 +68,7 @@ Here's an example configuration file showing common options:
 # Speech speed multiplier
 # tts_speed = 1.0
 
-[voice_edit]
+[voice-edit]
 # Enable TTS for responses
 # tts = false
 
@@ -96,7 +96,7 @@ service_provider = "ollama"  # 'ollama' or 'openai'
 ### Ollama (Local LLM)
 
 ```toml
-[ollama]
+[defaults]
 # Model to use for LLM tasks
 llm_ollama_model = "gemma3:4b"
 
@@ -107,7 +107,7 @@ llm_ollama_host = "http://localhost:11434"
 ### OpenAI
 
 ```toml
-[openai]
+[defaults]
 # LLM model
 llm_openai_model = "gpt-5-mini"
 
@@ -128,7 +128,7 @@ tts_openai_voice = "alloy"
 ### Gemini
 
 ```toml
-[gemini]
+[defaults]
 # Gemini model
 llm_gemini_model = "gemini-2.5-flash"
 
@@ -139,7 +139,7 @@ llm_gemini_model = "gemini-2.5-flash"
 ### Wyoming (Local Services)
 
 ```toml
-[wyoming]
+[defaults]
 # ASR (Whisper) server
 asr_wyoming_ip = "localhost"
 asr_wyoming_port = 10300
@@ -157,7 +157,7 @@ wake_server_port = 10400
 ### Kokoro (Local TTS)
 
 ```toml
-[kokoro]
+[defaults]
 tts_kokoro_host = "http://localhost:8880/v1"
 tts_kokoro_model = "kokoro"
 tts_kokoro_voice = "af_sky"
@@ -166,7 +166,7 @@ tts_kokoro_voice = "af_sky"
 ## Audio Device Configuration
 
 ```toml
-[audio]
+[defaults]
 # Input device index (microphone)
 # Use 'agent-cli transcribe --list-devices' to find available devices
 input_device_index = 1
@@ -194,7 +194,7 @@ Many settings can also be configured via environment variables:
 ## Logging Configuration
 
 ```toml
-[logging]
+[defaults]
 # Log level: DEBUG, INFO, WARNING, ERROR
 log_level = "WARNING"
 
@@ -207,10 +207,10 @@ log_level = "WARNING"
 
 ## Command-Specific Settings
 
-Each command has its own section in the config file. The section name matches the command name with underscores instead of hyphens:
+Each command has its own section in the config file. The section name matches the command name:
 
 - `[transcribe]` - for `agent-cli transcribe`
-- `[voice_edit]` - for `agent-cli voice-edit`
-- `[transcribe_daemon]` - for `agent-cli transcribe-daemon`
+- `[voice-edit]` - for `agent-cli voice-edit`
+- `[transcribe-daemon]` - for `agent-cli transcribe-daemon`
 
 Use `agent-cli <command> --help` to see all available options for each command.

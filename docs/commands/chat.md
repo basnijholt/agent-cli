@@ -88,6 +88,10 @@ agent-cli chat --last-n-messages 100 --history-dir ~/.my-chat-history
 
 The chat agent has access to tools that let it interact with your system:
 
+> [!NOTE]
+> The memory tools below use a simple, built-in JSON storage system.
+> For the advanced, vector-backed memory system, see the [`memory`](memory.md) command.
+
 - **read_file**: Read file contents
 - **execute_code**: Run shell commands
 - **duckduckgo_search**: Search the web via DuckDuckGo

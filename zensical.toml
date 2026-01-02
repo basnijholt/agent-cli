@@ -36,6 +36,10 @@ nav = [
     { "rag-proxy" = "commands/rag-proxy.md" },
     { "memory" = "commands/memory.md" },
     { "server" = "commands/server.md" },
+    { "config" = "commands/config.md" },
+    { "install-services" = "commands/install-services.md" },
+    { "install-hotkeys" = "commands/install-hotkeys.md" },
+    { "start-services" = "commands/start-services.md" },
   ] },
   { "System Integration" = "system-integration.md" },
   { "Architecture" = [
