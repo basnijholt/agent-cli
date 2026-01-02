@@ -13,7 +13,7 @@ SCRIPTS_DIR="$(cd "$(dirname "$0")" && pwd)"
 # On macOS ARM, skip Whisper pane if launchd service is running
 SKIP_WHISPER=false
 if [ "$(uname -s)" = "Darwin" ] && [ "$(uname -m)" = "arm64" ]; then
-    if launchctl list 2>/dev/null | grep -q "com.wyoming_mlx_whisper"; then
+    if launchctl list com.wyoming_mlx_whisper &>/dev/null; then
         SKIP_WHISPER=true
     fi
 fi
