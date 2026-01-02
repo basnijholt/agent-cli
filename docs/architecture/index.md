@@ -107,14 +107,18 @@ Configuration is loaded from multiple sources with the following precedence:
 Commands that run as background processes use a PID file system:
 
 ```
+~/.cache/agent-cli/
+├── transcribe.pid
+├── voice-edit.pid
+├── chat.pid
+└── assistant.pid
+
 ~/.config/agent-cli/
-├── pids/
-│   ├── transcribe.pid
-│   ├── voice-edit.pid
-│   └── assistant.pid
-├── audio/           # Saved recordings
-├── history/         # Chat history
-└── config.toml      # Configuration
+├── config.toml              # Configuration
+├── audio/                   # Saved recordings (transcribe-daemon)
+├── history/                 # Chat history
+├── transcriptions/          # Saved WAV files
+└── transcriptions.jsonl     # Transcription log
 ```
 
 ## Memory System
