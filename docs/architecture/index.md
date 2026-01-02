@@ -28,10 +28,10 @@ Agent CLI is built around a modular service architecture where different AI capa
              │                 │                 │
        ┌─────┴─────┐     ┌─────┴─────┐     ┌─────┴─────┐
        ▼           ▼     ▼           ▼     ▼           ▼
-  ┌────────┐ ┌────────┐ ┌──────┐ ┌──────┐ ┌──────┐ ┌──────┐
+  ┌────────┐ ┌────────┐ ┌──────┐ ┌──────┐ ┌───────┐ ┌──────┐
   │Wyoming │ │ OpenAI │ │Ollama│ │OpenAI│ │Wyoming│ │OpenAI│
   │Whisper │ │Whisper │ │      │ │Gemini│ │ Piper │ │ TTS  │
-  └────────┘ └────────┘ └──────┘ └──────┘ └──────┘ └──────┘
+  └────────┘ └────────┘ └──────┘ └──────┘ └───────┘ └──────┘
 ```
 
 ## Provider System
