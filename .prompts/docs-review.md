@@ -69,10 +69,8 @@ agent-cli memory --help
 **Check for missing command docs:**
 
 ```bash
-# Commands in CLI
-agent-cli --help | grep -E "^  [a-z]"
-
-# Command docs that exist
+# Compare commands in CLI vs docs that exist
+agent-cli --help
 ls docs/commands/*.md
 ```
 
