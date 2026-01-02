@@ -10,38 +10,34 @@ fi
 # Get the current directory
 SCRIPTS_DIR="$(cd "$(dirname "$0")" && pwd)"
 
-# On macOS ARM, skip Whisper pane if launchd service is running
-SKIP_WHISPER=false
+# On macOS ARM, check if Whisper is running as a launchd service
+WHISPER_LAUNCHD=false
 if [ "$(uname -s)" = "Darwin" ] && [ "$(uname -m)" = "arm64" ]; then
     if launchctl list com.wyoming_mlx_whisper &>/dev/null; then
-        SKIP_WHISPER=true
+        WHISPER_LAUNCHD=true
     fi
 fi
 
 # Create .runtime directory
 mkdir -p "$SCRIPTS_DIR/.runtime"
 
-# Generate the bottom pane section based on whether Whisper is skipped
-if [ "$SKIP_WHISPER" = true ]; then
-    BOTTOM_PANES="        pane split_direction=\"horizontal\" {
-            pane {
-                name \"Piper\"
-                cwd \"$SCRIPTS_DIR\"
-                command \"./run-piper.sh\"
-            }
-            pane {
-                name \"OpenWakeWord\"
-                cwd \"$SCRIPTS_DIR\"
-                command \"./run-openwakeword.sh\"
-            }
-        }"
+# Generate Whisper pane command based on whether launchd service is running
+if [ "$WHISPER_LAUNCHD" = true ]; then
+    WHISPER_PANE="            pane {
+                name \"Whisper (launchd)\"
+                command \"sh\"
+                args \"-c\" \"echo '🎤 Whisper is running as a background launchd service'; echo ''; echo 'Service: com.wyoming_mlx_whisper'; echo 'Logs: ~/Library/Logs/wyoming-mlx-whisper/'; echo ''; echo 'To view logs:'; echo '  tail -f ~/Library/Logs/wyoming-mlx-whisper/wyoming-mlx-whisper.out'; echo ''; echo 'To uninstall:'; echo '  curl -fsSL https://raw.githubusercontent.com/basnijholt/wyoming-mlx-whisper/main/scripts/uninstall_service.sh | bash'; echo ''; read -r\"
+            }"
 else
-    BOTTOM_PANES="        pane split_direction=\"horizontal\" {
-            pane {
+    WHISPER_PANE="            pane {
                 name \"Whisper\"
                 cwd \"$SCRIPTS_DIR\"
                 command \"./run-whisper.sh\"
-            }
+            }"
+fi
+
+BOTTOM_PANES="        pane split_direction=\"horizontal\" {
+$WHISPER_PANE
             pane split_direction=\"horizontal\" {
                 pane {
                     name \"Piper\"
@@ -55,7 +51,6 @@ else
                 }
             }
         }"
-fi
 
 cat > "$SCRIPTS_DIR/.runtime/agent-cli-layout.kdl" << EOF
 session_name "agent-cli"
