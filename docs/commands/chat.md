@@ -89,8 +89,13 @@ agent-cli chat --last-n-messages 100 --history-dir ~/.my-chat-history
 The chat agent has access to tools that let it interact with your system:
 
 - **read_file**: Read file contents
-- **execute_code**: Run code snippets
-- **web_search**: Search the web (if configured)
+- **execute_code**: Run shell commands
+- **duckduckgo_search**: Search the web via DuckDuckGo
+- **add_memory**: Store information for future conversations
+- **search_memory**: Search stored memories
+- **update_memory**: Update existing memories
+- **list_all_memories**: List all stored memories
+- **list_memory_categories**: Show memory category summary
 
 ## Example Conversation
 
