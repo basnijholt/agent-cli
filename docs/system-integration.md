@@ -12,25 +12,17 @@ Agent CLI is designed to work with system-wide hotkeys, allowing you to trigger 
 
 ## macOS Setup
 
-### Prerequisites
-
-Install a hotkey manager:
-
-```bash
-# skhd (recommended)
-brew install koekeishiya/formulae/skhd
-brew services start skhd
-
-# Or use Hammerspoon, Karabiner-Elements, or BetterTouchTool
-```
-
-### Automated Setup
+### Automated Setup (Recommended)
 
 ```bash
 agent-cli install-hotkeys
 ```
 
-This creates a default skhd configuration with common hotkeys.
+This automatically installs all dependencies (skhd, terminal-notifier) and creates a default configuration with common hotkeys.
+
+!!! note "Accessibility Permission Required"
+    After installation, grant Accessibility permissions to skhd:
+    System Settings → Privacy & Security → Accessibility → enable "skhd"
 
 ### Manual skhd Configuration
 
@@ -58,13 +50,9 @@ skhd --reload
 
 ### Notifications
 
-For visual feedback, install terminal-notifier:
+The `install-hotkeys` command automatically installs terminal-notifier for visual feedback.
 
-```bash
-brew install terminal-notifier
-```
-
-Configure in System Settings:
+Configure notifications in System Settings:
 1. Settings → Notifications → terminal-notifier
 2. Enable "Allow Notifications"
 3. Set Alert style to **Persistent** for recording indicators
