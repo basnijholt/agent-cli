@@ -305,5 +305,5 @@ To replicate the system behavior, the following prompt strategies are required.
 | `score_threshold` | `0.35` | Minimum semantic relevance to consider. |
 | `enable_summarization` | `True` | Toggle for summary generation loop. |
 | `openai_base_url` | *required* | Base URL for LLM calls (can point to OpenAI-compatible proxies). |
-| `enable_git_versioning` | `False` | Toggle to enable/disable Git versioning of the memory store. |
+| `enable_git_versioning` | `True` | Toggle to enable/disable Git versioning of the memory store. |
 | `start_watcher` | `False` | Start a file watcher to keep Chroma in sync with on-disk edits. |

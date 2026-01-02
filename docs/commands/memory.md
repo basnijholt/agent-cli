@@ -78,10 +78,10 @@ agent-cli chat --openai-base-url http://localhost:8100/v1 --llm-provider openai
 
 #### LLM Configuration
 
-| Option | Description |
-|--------|-------------|
-| `--openai-base-url` | OpenAI-compatible API URL |
-| `--openai-api-key` | OpenAI API key |
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--openai-base-url` | OpenAI-compatible API URL | - |
+| `--openai-api-key` | OpenAI API key | - |
 | `--embedding-model` | Model for embeddings | `text-embedding-3-small` |
 
 #### Server Configuration
