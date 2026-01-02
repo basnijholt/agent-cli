@@ -75,7 +75,9 @@ agent-cli --help
 ls docs/commands/*.md
 ```
 
-Every command should have a corresponding `docs/commands/<command>.md` file.
+Every command should have a corresponding `docs/commands/<command>.md` file. When adding a new command doc, also update:
+- `docs/commands/index.md` - add to the commands table
+- `zensical.toml` - add to the `nav` sidebar under Commands
 
 ### 3. Verify docs/configuration.md
 
