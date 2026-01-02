@@ -29,6 +29,7 @@ Agent CLI provides multiple commands, each designed for a specific purpose.
 |---------|---------|----------|
 | [`rag-proxy`](rag-proxy.md) | RAG server | Chat with your documents |
 | [`memory`](memory.md) | Long-term memory | Persistent conversation memory |
+| [`server`](server.md) | Transcription server | HTTP API for transcription |
 
 ## Installation Commands
 

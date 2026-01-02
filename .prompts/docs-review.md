@@ -51,6 +51,7 @@ agent-cli assistant --help
 agent-cli transcribe-daemon --help
 agent-cli rag-proxy --help
 agent-cli memory --help
+agent-cli server --help
 ```
 
 **Check each option in the help output against the docs:**

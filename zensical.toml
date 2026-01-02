@@ -35,6 +35,7 @@ nav = [
     { "chat" = "commands/chat.md" },
     { "rag-proxy" = "commands/rag-proxy.md" },
     { "memory" = "commands/memory.md" },
+    { "server" = "commands/server.md" },
   ] },
   { "System Integration" = "system-integration.md" },
   { "Architecture" = [
