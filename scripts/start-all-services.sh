@@ -10,16 +10,39 @@ fi
 # Get the current directory
 SCRIPTS_DIR="$(cd "$(dirname "$0")" && pwd)"
 
-# On macOS ARM, check if Whisper is running as a launchd service
+# On macOS, check if services are running via brew/launchd
+OLLAMA_BREW_SERVICE=false
 WHISPER_LAUNCHD=false
-if [ "$(uname -s)" = "Darwin" ] && [ "$(uname -m)" = "arm64" ]; then
-    if launchctl list com.wyoming_mlx_whisper &>/dev/null; then
-        WHISPER_LAUNCHD=true
+if [ "$(uname -s)" = "Darwin" ]; then
+    # Check if Ollama is running as a brew service
+    if launchctl list homebrew.mxcl.ollama &>/dev/null; then
+        OLLAMA_BREW_SERVICE=true
+    fi
+    # Check if Whisper is running as a launchd service (ARM only)
+    if [ "$(uname -m)" = "arm64" ]; then
+        if launchctl list com.wyoming_mlx_whisper &>/dev/null; then
+            WHISPER_LAUNCHD=true
+        fi
     fi
 fi
 
 # Create .runtime directory
 mkdir -p "$SCRIPTS_DIR/.runtime"
+
+# Generate Ollama pane based on whether brew service is running
+if [ "$OLLAMA_BREW_SERVICE" = true ]; then
+    OLLAMA_PANE="            pane {
+                name \"Ollama (brew service)\"
+                command \"sh\"
+                args \"-c\" \"echo '🧠 Ollama is running as a brew background service'; echo ''; echo 'To view status:'; echo '  brew services info ollama'; echo ''; echo 'To stop:'; echo '  brew services stop ollama'; echo ''; echo 'To restart:'; echo '  brew services restart ollama'; echo ''; read -r\"
+            }"
+else
+    OLLAMA_PANE="            pane {
+                name \"Ollama\"
+                command \"ollama\"
+                args \"serve\"
+            }"
+fi
 
 # Generate Whisper pane command based on whether launchd service is running
 if [ "$WHISPER_LAUNCHD" = true ]; then
@@ -52,23 +75,21 @@ $WHISPER_PANE
             }
         }"
 
+TOP_PANES="        pane split_direction=\"horizontal\" {
+$OLLAMA_PANE
+            pane {
+                name \"Help\"
+                command \"sh\"
+                args \"-c\" \"cat $SCRIPTS_DIR/zellij_help.txt | less\"
+            }
+        }"
+
 cat > "$SCRIPTS_DIR/.runtime/agent-cli-layout.kdl" << EOF
 session_name "agent-cli"
 
 layout {
     pane split_direction="vertical" {
-        pane split_direction="horizontal" {
-            pane {
-                name "Ollama"
-                command "ollama"
-                args "serve"
-            }
-            pane {
-                name "Help"
-                command "sh"
-                args "-c" "cat $SCRIPTS_DIR/zellij_help.txt | less"
-            }
-        }
+$TOP_PANES
 $BOTTOM_PANES
     }
 
