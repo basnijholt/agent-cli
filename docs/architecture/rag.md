@@ -192,9 +192,9 @@ The RAG proxy is an **OpenAI-compatible middleware** that intercepts chat reques
 
 **Implementation:**
 
-- Default: 800 characters per chunk, 200 character overlap.
-- Splits on sentence-ending punctuation (`.!?`).
-- Fallback to character-based splitting for oversized sentences (e.g., code blocks).
+- Default: 1200 characters per chunk, 200 character overlap.
+- Prefers separators in order: blank lines, newlines, ". ", ", ", and spaces.
+- Fallback to character-based splitting when no separator fits.
 
 ### 2.6 Tool-Augmented Retrieval
 

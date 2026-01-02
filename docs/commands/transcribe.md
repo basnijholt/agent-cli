@@ -57,7 +57,7 @@ agent-cli transcribe --last-recording 1
 |--------|-------------|---------|
 | `--from-file PATH` | Transcribe from a saved WAV file | - |
 | `--last-recording N` | Transcribe Nth most recent recording (1=latest) | `0` |
-| `--save-recording` | Save audio for recovery | `true` |
+| `--save-recording` / `--no-save-recording` | Save audio for recovery | `true` |
 
 ### Provider Selection
 
@@ -81,6 +81,28 @@ agent-cli transcribe --last-recording 1
 | `--asr-openai-base-url` | Custom Whisper server URL | - |
 | `--asr-openai-prompt` | Custom prompt to guide transcription | - |
 
+### LLM (Ollama, local)
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--llm-ollama-model` | Ollama model to use | `gemma3:4b` |
+| `--llm-ollama-host` | Ollama server URL | `http://localhost:11434` |
+
+### LLM (OpenAI)
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--llm-openai-model` | OpenAI model to use | `gpt-5-mini` |
+| `--openai-api-key` | OpenAI API key (or set `OPENAI_API_KEY`) | - |
+| `--openai-base-url` | Custom OpenAI-compatible API URL (or set `OPENAI_BASE_URL`) | - |
+
+### LLM (Gemini)
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--llm-gemini-model` | Gemini model to use | `gemini-2.5-flash` |
+| `--gemini-api-key` | Gemini API key (or set `GEMINI_API_KEY`) | - |
+
 ### LLM Cleanup
 
 | Option | Description | Default |
@@ -102,6 +124,11 @@ agent-cli transcribe --last-recording 1
 |--------|-------------|---------|
 | `--clipboard` / `--no-clipboard` | Copy result to clipboard | `true` |
 | `--transcription-log PATH` | Log transcriptions with timestamps | - |
+| `--log-level` | Set logging level | `WARNING` |
+| `--log-file PATH` | Path to a file to write logs to | - |
+| `--quiet`, `-q` | Suppress console output | `false` |
+| `--config PATH` | Path to a TOML configuration file | - |
+| `--print-args` | Print resolved arguments including config values | `false` |
 
 ## Workflow Integration
 

@@ -57,23 +57,83 @@ agent-cli assistant --wake-server-ip 192.168.1.100 --wake-server-port 10400
 | `--llm-provider` | LLM provider: `ollama`, `openai`, `gemini` | `ollama` |
 | `--tts-provider` | TTS provider: `wyoming`, `openai`, `kokoro` | `wyoming` |
 
-### Audio Configuration
+### Audio Input
 
 | Option | Description |
 |--------|-------------|
 | `--input-device-index` | Index of audio input device |
 | `--input-device-name` | Input device name keywords |
-| `--output-device-index` | Index of audio output device |
-| `--output-device-name` | Output device name keywords |
 | `--list-devices` | List available devices |
 
-### TTS Options
+### ASR (Wyoming, local)
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--asr-wyoming-ip` | Wyoming ASR server IP | `localhost` |
+| `--asr-wyoming-port` | Wyoming ASR server port | `10300` |
+
+### ASR (OpenAI)
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--asr-openai-model` | OpenAI ASR model | `whisper-1` |
+
+### LLM (Ollama, local)
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--llm-ollama-model` | Ollama model to use | `gemma3:4b` |
+| `--llm-ollama-host` | Ollama server URL | `http://localhost:11434` |
+
+### LLM (OpenAI)
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--llm-openai-model` | OpenAI model to use | `gpt-5-mini` |
+| `--openai-api-key` | OpenAI API key (or set `OPENAI_API_KEY`) | - |
+| `--openai-base-url` | Custom OpenAI-compatible API URL (or set `OPENAI_BASE_URL`) | - |
+
+### LLM (Gemini)
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--llm-gemini-model` | Gemini model to use | `gemini-2.5-flash` |
+| `--gemini-api-key` | Gemini API key (or set `GEMINI_API_KEY`) | - |
+
+### TTS Options (General)
 
 | Option | Description | Default |
 |--------|-------------|---------|
 | `--tts` / `--no-tts` | Enable text-to-speech responses | `false` |
 | `--tts-speed` | Speech speed multiplier | `1.0` |
-| `--save-file PATH` | Save TTS audio to file | - |
+| `--output-device-index` | Index of audio output device | - |
+| `--output-device-name` | Output device name keywords | - |
+
+### TTS (Wyoming, local)
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--tts-wyoming-ip` | Wyoming TTS server IP | `localhost` |
+| `--tts-wyoming-port` | Wyoming TTS server port | `10200` |
+| `--tts-wyoming-voice` | Voice name for Wyoming TTS | - |
+| `--tts-wyoming-language` | Language for Wyoming TTS | - |
+| `--tts-wyoming-speaker` | Speaker name for Wyoming TTS voice | - |
+
+### TTS (OpenAI)
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--tts-openai-model` | OpenAI TTS model | `tts-1` |
+| `--tts-openai-voice` | OpenAI voice | `alloy` |
+| `--tts-openai-base-url` | Custom OpenAI-compatible URL | - |
+
+### TTS (Kokoro)
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--tts-kokoro-model` | Kokoro model | `kokoro` |
+| `--tts-kokoro-voice` | Kokoro voice | `af_sky` |
+| `--tts-kokoro-host` | Kokoro API URL | `http://localhost:8880/v1` |
 
 ### Output Options
 
@@ -88,6 +148,17 @@ agent-cli assistant --wake-server-ip 192.168.1.100 --wake-server-port 10400
 | `--stop` | Stop running assistant |
 | `--status` | Check if assistant is running |
 | `--toggle` | Toggle assistant on/off |
+
+### General Options
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--save-file PATH` | Save TTS response audio to WAV file | - |
+| `--log-level` | Set logging level | `WARNING` |
+| `--log-file PATH` | Path to a file to write logs to | - |
+| `--quiet`, `-q` | Suppress console output | `false` |
+| `--config PATH` | Path to a TOML configuration file | - |
+| `--print-args` | Print resolved arguments including config values | `false` |
 
 ## Available Wake Words
 
@@ -113,7 +184,7 @@ Custom wake words can be trained and added to the OpenWakeWord server.
 │            Recording speech             │
 │         (speak your question)           │
 └───────────────────┬─────────────────────┘
-                    │ Wake word again OR silence
+                    │ Wake word again
                     ▼
 ┌─────────────────────────────────────────┐
 │     Transcribe → LLM → TTS (if enabled) │

@@ -52,7 +52,7 @@ agent-cli autocorrect "this text has an eror"
 | Option | Description | Default |
 |--------|-------------|---------|
 | `--llm-openai-model` | OpenAI model to use | `gpt-5-mini` |
-| `--openai-api-key` | OpenAI API key | `$OPENAI_API_KEY` |
+| `--openai-api-key` | OpenAI API key (or set `OPENAI_API_KEY`) | - |
 | `--openai-base-url` | Custom OpenAI-compatible API URL | - |
 
 ### Gemini Configuration
@@ -60,7 +60,17 @@ agent-cli autocorrect "this text has an eror"
 | Option | Description | Default |
 |--------|-------------|---------|
 | `--llm-gemini-model` | Gemini model to use | `gemini-2.5-flash` |
-| `--gemini-api-key` | Gemini API key | `$GEMINI_API_KEY` |
+| `--gemini-api-key` | Gemini API key (or set `GEMINI_API_KEY`) | - |
+
+### General Options
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--log-level` | Set logging level | `WARNING` |
+| `--log-file PATH` | Path to a file to write logs to | - |
+| `--quiet`, `-q` | Suppress console output | `false` |
+| `--config PATH` | Path to a TOML configuration file | - |
+| `--print-args` | Print resolved arguments including config values | `false` |
 
 ## Workflow Integration
 

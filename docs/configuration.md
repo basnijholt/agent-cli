@@ -17,6 +17,9 @@ agent-cli transcribe --config /path/to/your/config.toml
 
 Command-line options always take precedence over settings in the configuration file.
 
+Option keys can be written with dashes (matching CLI flags) or underscores; both
+are accepted.
+
 ## Managing Configuration
 
 Use the `config` command to manage your configuration files:
@@ -41,8 +44,10 @@ Here's an example configuration file showing common options:
 
 ```toml
 [defaults]
-# Service provider: 'ollama' for local or 'openai' for cloud
-# service_provider = "ollama"
+# Provider defaults (can be overridden per command)
+# llm_provider = "ollama"
+# asr_provider = "wyoming"
+# tts_provider = "wyoming"
 
 # OpenAI API key (if using OpenAI services)
 # openai_api_key = "sk-..."
@@ -81,15 +86,21 @@ Here's an example configuration file showing common options:
 # last_n_messages = 50
 ```
 
-## Service Provider
+## Provider Defaults
 
-You can choose to use local services (Wyoming/Ollama) or cloud services (OpenAI) by setting the `service_provider` option:
+You can choose local or cloud services per capability by setting provider keys in
+`[defaults]` (or in a command-specific section to override).
 
 ```toml
 [defaults]
-service_provider = "ollama"  # 'ollama' or 'openai'
-# openai_api_key = "sk-..."  # Required if using 'openai'
+llm_provider = "ollama"  # 'ollama', 'openai', or 'gemini'
+asr_provider = "wyoming" # 'wyoming' or 'openai'
+tts_provider = "wyoming" # 'wyoming', 'openai', or 'kokoro'
+# openai_api_key = "sk-..."  # Required for OpenAI providers
+# gemini_api_key = "..."     # Required for Gemini providers
 ```
+
+`local` is a deprecated alias for `ollama` (LLM) and `wyoming` (ASR/TTS).
 
 ## Provider-Specific Configuration
 
@@ -121,8 +132,15 @@ tts_openai_voice = "alloy"
 # API key (can also use OPENAI_API_KEY env var)
 # openai_api_key = "sk-..."
 
-# Custom base URL for OpenAI-compatible APIs
+# Custom base URL for OpenAI-compatible LLM APIs
 # openai_base_url = "http://localhost:8080/v1"
+
+# Custom ASR endpoint and optional prompt
+# asr_openai_base_url = "http://localhost:9898"
+# asr_openai_prompt = "Transcribe the following:"
+
+# Custom TTS endpoint
+# tts_openai_base_url = "http://localhost:8000/v1"
 ```
 
 ### Gemini
@@ -207,10 +225,12 @@ log_level = "WARNING"
 
 ## Command-Specific Settings
 
-Each command has its own section in the config file. The section name matches the command name:
+Each command has its own section in the config file. The section name matches the
+command name, and subcommands use dot notation:
 
 - `[transcribe]` - for `agent-cli transcribe`
 - `[voice-edit]` - for `agent-cli voice-edit`
 - `[transcribe-daemon]` - for `agent-cli transcribe-daemon`
+- `[memory.proxy]` - for `agent-cli memory proxy`
 
 Use `agent-cli <command> --help` to see all available options for each command.

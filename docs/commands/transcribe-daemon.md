@@ -70,9 +70,63 @@ agent-cli transcribe-daemon --silence-threshold 1.5
 | `-t`, `--transcription-log PATH` | JSON Lines log file | `~/.config/agent-cli/transcriptions.jsonl` |
 | `--clipboard` / `--no-clipboard` | Copy each transcription to clipboard | `false` |
 
-### Provider Configuration
+### Provider Selection
 
-Same as [`transcribe`](transcribe.md) command.
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--asr-provider` | ASR provider: `wyoming`, `openai` | `wyoming` |
+| `--llm-provider` | LLM provider: `ollama`, `openai`, `gemini` | `ollama` |
+
+### Audio Input
+
+| Option | Description |
+|--------|-------------|
+| `--input-device-index` | Index of audio input device |
+| `--input-device-name` | Input device name keywords |
+| `--list-devices` | List available devices |
+
+### ASR (Wyoming, local)
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--asr-wyoming-ip` | Wyoming ASR server IP | `localhost` |
+| `--asr-wyoming-port` | Wyoming ASR server port | `10300` |
+
+### ASR (OpenAI)
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--asr-openai-model` | OpenAI ASR model | `whisper-1` |
+| `--asr-openai-base-url` | Custom Whisper server URL | - |
+| `--asr-openai-prompt` | Custom prompt to guide transcription | - |
+
+### LLM (Ollama, local)
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--llm-ollama-model` | Ollama model to use | `gemma3:4b` |
+| `--llm-ollama-host` | Ollama server URL | `http://localhost:11434` |
+
+### LLM (OpenAI)
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--llm-openai-model` | OpenAI model to use | `gpt-5-mini` |
+| `--openai-api-key` | OpenAI API key (or set `OPENAI_API_KEY`) | - |
+| `--openai-base-url` | Custom OpenAI-compatible API URL (or set `OPENAI_BASE_URL`) | - |
+
+### LLM (Gemini)
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--llm-gemini-model` | Gemini model to use | `gemini-2.5-flash` |
+| `--gemini-api-key` | Gemini API key (or set `GEMINI_API_KEY`) | - |
+
+### LLM Cleanup
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--llm` / `--no-llm` | Use LLM to process transcript | `false` |
 
 ### Process Management
 
@@ -80,6 +134,16 @@ Same as [`transcribe`](transcribe.md) command.
 |--------|-------------|
 | `--stop` | Stop running daemon |
 | `--status` | Check if daemon is running |
+
+### General Options
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--log-level` | Set logging level | `WARNING` |
+| `--log-file PATH` | Path to a file to write logs to | - |
+| `--quiet`, `-q` | Suppress console output | `false` |
+| `--config PATH` | Path to a TOML configuration file | - |
+| `--print-args` | Print resolved arguments including config values | `false` |
 
 ## Output Files
 

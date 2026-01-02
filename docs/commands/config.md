@@ -14,56 +14,84 @@ agent-cli config [OPTIONS] COMMAND [ARGS]...
 
 ## Description
 
-The `config` command group helps you manage your `agent-cli` configuration. It allows you to initialize a template, view the current configuration, and edit it in your default editor.
+The `config` command helps you create, edit, and inspect your configuration file.
 
 ## Commands
 
-- `init`: Create a new config file template
-- `show`: Display current configuration
-- `edit`: Open config in your editor
+- `config init` - Create a new config template
+- `config edit` - Open the config file in your editor
+- `config show` - Print the config file path and contents
 
-### `config init`
+---
+
+## config init
 
 Create a new config file with all options commented out.
+
+### Usage
 
 ```bash
 agent-cli config init [OPTIONS]
 ```
 
-**Options:**
+### Options
 
 | Option | Description | Default |
 |--------|-------------|---------|
 | `--path`, `-p` | Custom path for config file | `~/.config/agent-cli/config.toml` |
 | `--force`, `-f` | Overwrite existing config without confirmation | `false` |
 
-### `config show`
-
-Display the config file location and contents.
+### Example
 
 ```bash
-agent-cli config show [OPTIONS]
+agent-cli config init
 ```
 
-**Options:**
+---
 
-| Option | Description |
-|--------|-------------|
-| `--path`, `-p` | Path to config file |
-| `--raw`, `-r` | Output raw file contents (for copy-paste) |
-
-### `config edit`
+## config edit
 
 Open the config file in your default editor.
+
+### Usage
 
 ```bash
 agent-cli config edit [OPTIONS]
 ```
 
-**Options:**
+### Options
 
-| Option | Description |
-|--------|-------------|
-| `--path`, `-p` | Path to config file |
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--path`, `-p` | Path to config file (auto-detected if not specified) | - |
 
-The editor is determined by: `$EDITOR` > `$VISUAL` > platform default.
+### Example
+
+```bash
+agent-cli config edit
+```
+
+---
+
+## config show
+
+Display the config file location and contents.
+
+### Usage
+
+```bash
+agent-cli config show [OPTIONS]
+```
+
+### Options
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--path`, `-p` | Path to config file (auto-detected if not specified) | - |
+| `--raw`, `-r` | Output raw file contents (for copy-paste) | `false` |
+
+### Example
+
+```bash
+agent-cli config show --raw
+```

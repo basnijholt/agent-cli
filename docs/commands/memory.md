@@ -91,6 +91,14 @@ agent-cli chat --openai-base-url http://localhost:8100/v1 --llm-provider openai
 | `--host` | Host to bind to | `0.0.0.0` |
 | `--port` | Port to bind to | `8100` |
 
+#### General Options
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--log-level` | Logging level | `INFO` |
+| `--config PATH` | Path to a TOML configuration file | - |
+| `--print-args` | Print resolved arguments including config values | `false` |
+
 ---
 
 ## memory add
@@ -135,6 +143,14 @@ agent-cli memory add -c work "Project deadline is Friday"
 | `--memory-path PATH` | Path to memory store | `./memory_db` |
 | `--git-versioning` / `--no-git-versioning` | Commit changes to git | `true` |
 
+### General Options
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--quiet`, `-q` | Suppress console output | `false` |
+| `--config PATH` | Path to a TOML configuration file | - |
+| `--print-args` | Print resolved arguments including config values | `false` |
+
 ### File Format
 
 Supports:
@@ -162,18 +178,18 @@ Supports:
 
 ## Memory Files
 
-Stored as Markdown at `{memory-path}/memories/{conversation_id}.md`:
+Stored as Markdown under `{memory-path}/entries/<conversation_id>/`:
 
-```markdown
-# Memories for: default
-
-## Facts
-
-- User prefers dark mode
-- User lives in Amsterdam
-- Project deadline is Friday
-
-## Summary
-
-User is working on a project with a Friday deadline...
 ```
+entries/
+  <conversation_id>/
+    facts/
+      <timestamp>__<uuid>.md
+    turns/
+      user/<timestamp>__<uuid>.md
+      assistant/<timestamp>__<uuid>.md
+    summaries/
+      summary.md
+```
+
+See `docs/architecture/memory.md` for the full schema and metadata format.

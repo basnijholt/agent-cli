@@ -75,13 +75,25 @@ agent-cli chat --openai-base-url http://localhost:8000/v1 --llm-provider openai
 |--------|-------------|---------|
 | `--host` | Host/IP to bind to | `0.0.0.0` |
 | `--port` | Port to bind to | `8000` |
+
+### General Options
+
+| Option | Description | Default |
+|--------|-------------|---------|
 | `--log-level` | Logging level | `INFO` |
+| `--config PATH` | Path to a TOML configuration file | - |
+| `--print-args` | Print resolved arguments including config values | `false` |
 
 ## Supported Document Types
 
-- Markdown (`.md`)
-- Text files (`.txt`)
-- PDF files (`.pdf`)
+Text files (loaded directly):
+
+- `.txt`, `.md`, `.json`, `.py`, `.js`, `.ts`, `.yaml`, `.yml`, `.rs`, `.go`
+- `.c`, `.cpp`, `.h`, `.sh`, `.toml`, `.rst`, `.ini`, `.cfg`
+
+Rich documents (converted via MarkItDown):
+
+- `.pdf`, `.docx`, `.pptx`, `.xlsx`, `.html`, `.htm`, `.csv`, `.xml`
 
 ## Architecture
 

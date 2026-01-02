@@ -52,7 +52,6 @@ agent-cli speak --list-devices
 | `--output-device-name` | Device name keywords for matching |
 | `--tts-speed` | Speech speed multiplier (1.0 = normal) |
 | `--list-devices` | List available audio devices |
-| `--save-file PATH` | Save audio to WAV file |
 
 ### Wyoming (Local) Configuration
 
@@ -87,6 +86,17 @@ agent-cli speak --list-devices
 | `--stop` | Stop running TTS process |
 | `--status` | Check if TTS process is running |
 | `--toggle` | Toggle TTS process on/off |
+
+### General Options
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--save-file PATH` | Save TTS response audio to WAV file | - |
+| `--log-level` | Set logging level | `WARNING` |
+| `--log-file PATH` | Path to a file to write logs to | - |
+| `--quiet`, `-q` | Suppress console output | `false` |
+| `--config PATH` | Path to a TOML configuration file | - |
+| `--print-args` | Print resolved arguments including config values | `false` |
 
 ## Available Voices
 

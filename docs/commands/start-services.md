@@ -1,5 +1,5 @@
 ---
-icon: lucide/play-circle
+icon: lucide/play
 ---
 
 # start-services
@@ -14,27 +14,28 @@ agent-cli start-services [OPTIONS]
 
 ## Description
 
-This starts all installed AI services (Ollama, Whisper, Piper, OpenWakeWord) in a single terminal session using [Zellij](https://zellij.dev/).
+Starts:
 
-It creates a Zellij session named `agent-cli` and attaches to it. You can detach from the session (leaving services running in the background) or quit to stop them.
+- Ollama (LLM server)
+- Wyoming Faster Whisper (speech-to-text)
+- Wyoming Piper (text-to-speech)
+- Wyoming OpenWakeWord (wake word detection)
+
+Services run inside a Zellij session named `agent-cli`.
 
 ## Options
 
 | Option | Description | Default |
 |--------|-------------|---------|
-| `--attach` / `--no-attach` | Attach to Zellij session after starting | `true` |
+| `--attach` / `--no-attach` | Attach to the Zellij session after starting | `true` |
+| `--help`, `-h` | Show help for the command | - |
 
-## Controls
-
-Once inside the Zellij session:
-- **Detach**: Press `Ctrl + o`, then `d` (leaves services running)
-- **Quit**: Press `Ctrl + q` (stops all services)
-- **Navigate**: Use `Alt + arrow keys` to switch between service panes
-
-## Reattaching
-
-If you detached or used `--no-attach`, you can reconnect later:
+## Examples
 
 ```bash
-zellij attach agent-cli
+# Start services and attach
+agent-cli start-services
+
+# Start services without attaching
+agent-cli start-services --no-attach
 ```

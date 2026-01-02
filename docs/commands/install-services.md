@@ -1,36 +1,34 @@
 ---
-icon: lucide/download-cloud
+icon: lucide/download
 ---
 
 # install-services
 
-Install all required AI services.
+Install the local AI services required by agent-cli.
 
 ## Usage
 
 ```bash
-agent-cli install-services
+agent-cli install-services [OPTIONS]
 ```
 
 ## Description
 
-This command installs the following services required by `agent-cli`:
+Installs the following services (based on your OS):
 
-- **Ollama**: Local LLM server
-- **Wyoming Faster Whisper**: Speech-to-text
-- **Wyoming Piper**: Text-to-speech
-- **Wyoming OpenWakeWord**: Wake word detection
+- Ollama (local LLM server)
+- Wyoming Faster Whisper (speech-to-text)
+- Wyoming Piper (text-to-speech)
+- Wyoming OpenWakeWord (wake word detection)
 
-It detects your operating system and runs the appropriate installation script.
+## Options
 
-## Examples
+| Option | Description |
+|--------|-------------|
+| `--help`, `-h` | Show help for the command |
+
+## Example
 
 ```bash
 agent-cli install-services
 ```
-
-## Next Steps
-
-After installation, you can:
-1. Start the services: `agent-cli start-services`
-2. Set up hotkeys: `agent-cli install-hotkeys`

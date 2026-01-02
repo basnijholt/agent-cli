@@ -49,7 +49,9 @@ These commands help set up Agent CLI and its services:
 
 ## Common Options
 
-All commands support these options:
+Most commands support these options (audio/text agents and servers). Installation
+and config commands have their own flags. Use `agent-cli <command> --help` to
+see the exact options.
 
 | Option | Description |
 |--------|-------------|
