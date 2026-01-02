@@ -146,13 +146,18 @@ Supports:
 
 ## Architecture
 
-```mermaid
-graph TB
-    client["Your Client"] <--> proxy["Memory Proxy<br/>:8100"]
-    proxy <--> llm["LLM Backend"]
-    proxy --- chroma["ChromaDB<br/>(Vector)"]
-    proxy --- markdown["Markdown<br/>(Files)"]
-    proxy --- git["Git<br/>(Version)"]
+```
+┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
+│   Your Client   │────▶│  Memory Proxy   │────▶│   LLM Backend   │
+│                 │◀────│  :8100          │◀────│                 │
+└─────────────────┘     └────────┬────────┘     └─────────────────┘
+                                 │
+                    ┌────────────┼────────────┐
+                    │            │            │
+           ┌────────▼───┐  ┌─────▼─────┐  ┌───▼───────┐
+           │  ChromaDB  │  │ Markdown  │  │    Git    │
+           │  (Vector)  │  │  (Files)  │  │ (Version) │
+           └────────────┘  └───────────┘  └───────────┘
 ```
 
 ## Memory Files

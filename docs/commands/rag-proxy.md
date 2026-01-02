@@ -85,12 +85,21 @@ agent-cli chat --openai-base-url http://localhost:8000/v1 --llm-provider openai
 
 ## Architecture
 
-```mermaid
-graph TB
-    client["Your Client<br/>(chat, curl)"] <--> proxy["RAG Proxy<br/>:8000"]
-    proxy <--> llm["LLM Backend<br/>(Ollama/OpenAI)"]
-    proxy --- chroma["ChromaDB<br/>(Vector Store)"]
-    chroma --- docs["docs-folder<br/>(Your Files)"]
+```
+┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
+│   Your Client   │────▶│   RAG Proxy     │────▶│   LLM Backend   │
+│  (chat, curl)   │◀────│  :8000          │◀────│ (Ollama/OpenAI) │
+└─────────────────┘     └────────┬────────┘     └─────────────────┘
+                                 │
+                        ┌────────▼────────┐
+                        │    ChromaDB     │
+                        │  (Vector Store) │
+                        └────────┬────────┘
+                                 │
+                        ┌────────▼────────┐
+                        │   docs-folder   │
+                        │  (Your Files)   │
+                        └─────────────────┘
 ```
 
 ## Usage with Other Clients
