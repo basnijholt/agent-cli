@@ -15,7 +15,7 @@ OLLAMA_BREW_SERVICE=false
 WHISPER_LAUNCHD=false
 if [ "$(uname -s)" = "Darwin" ]; then
     # Check if Ollama is running as a brew service
-    if brew services list 2>/dev/null | grep -q "ollama.*started"; then
+    if launchctl list homebrew.mxcl.ollama &>/dev/null; then
         OLLAMA_BREW_SERVICE=true
     fi
     # Check if Whisper is running as a launchd service (ARM only)
