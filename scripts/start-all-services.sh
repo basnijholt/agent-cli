@@ -10,9 +10,26 @@ fi
 # Get the current directory
 SCRIPTS_DIR="$(cd "$(dirname "$0")" && pwd)"
 
+# On macOS ARM, wyoming-mlx-whisper runs as a launchd service (installed separately)
+SKIP_WHISPER=false
+if [ "$(uname -s)" = "Darwin" ] && [ "$(uname -m)" = "arm64" ]; then
+    SKIP_WHISPER=true
+fi
 
-# Create .runtime directory and Zellij layout file
+# Create .runtime directory
 mkdir -p "$SCRIPTS_DIR/.runtime"
+
+# Whisper pane (skipped on macOS ARM - uses launchd service instead)
+if [ "$SKIP_WHISPER" = true ]; then
+    WHISPER_PANE=""
+else
+    WHISPER_PANE="            pane {
+                name \"Whisper\"
+                cwd \"$SCRIPTS_DIR\"
+                command \"./run-whisper.sh\"
+            }"
+fi
+
 cat > "$SCRIPTS_DIR/.runtime/agent-cli-layout.kdl" << EOF
 session_name "agent-cli"
 
@@ -31,11 +48,7 @@ layout {
             }
         }
         pane split_direction="horizontal" {
-            pane {
-                name "Whisper"
-                cwd "$SCRIPTS_DIR"
-                command "./run-whisper.sh"
-            }
+$WHISPER_PANE
             pane split_direction="horizontal" {
                 pane {
                     name "Piper"
