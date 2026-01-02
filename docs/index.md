@@ -99,8 +99,8 @@ The setup automatically installs:
 ## Requirements
 
 - [uv](https://docs.astral.sh/uv/) (recommended) or Python 3.11+
-- SSH key-based authentication to your Docker hosts (for Docker setup)
-- Shared storage (for Docker multi-host setups)
+- A microphone (for voice features)
+- Speakers (for text-to-speech features)
 
 ## Documentation
 
