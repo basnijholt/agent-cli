@@ -37,13 +37,15 @@ fi
 echo "🤖 Installing/upgrading agent-cli..."
 uv tool install --upgrade agent-cli
 
+# Start Ollama as a background service
+echo "🧠 Starting Ollama as a background service..."
+brew services start ollama
+
 # Preload default Ollama model
 echo "⬇️ Preloading default Ollama model (gemma3:4b)..."
 echo "⏳ This may take a few minutes depending on your internet connection..."
-# Start Ollama in background, then pull model synchronously
-(ollama serve >/dev/null 2>&1 &) && sleep 2 && ollama pull gemma3:4b
-# Stop the temporary ollama server
-pkill -f "ollama serve" || true
+sleep 2  # Give Ollama service time to start
+ollama pull gemma3:4b
 
 # Install wyoming-mlx-whisper as a launchd service (Apple Silicon only)
 if [ "$(uname -m)" = "arm64" ]; then
@@ -62,8 +64,12 @@ echo "Option 1 - Run all services at once:"
 echo "  ./start-all-services.sh"
 echo ""
 echo "Option 2 - Run services individually:"
-echo "  1. Ollama: ollama serve"
-echo "  2. Whisper: ./run-whisper.sh"
+echo "  1. Ollama: running as brew service (brew services start ollama)"
+if [ "$(uname -m)" = "arm64" ]; then
+    echo "  2. Whisper: running as launchd service (wyoming-mlx-whisper)"
+else
+    echo "  2. Whisper: ./run-whisper.sh"
+fi
 echo "  3. Piper: ./run-piper.sh"
 echo "  4. OpenWakeWord: ./run-openwakeword.sh"
 echo ""
