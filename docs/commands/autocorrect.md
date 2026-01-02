@@ -51,7 +51,7 @@ agent-cli autocorrect "this text has an eror"
 
 | Option | Description | Default |
 |--------|-------------|---------|
-| `--llm-openai-model` | OpenAI model to use | `gpt-4o-mini` |
+| `--llm-openai-model` | OpenAI model to use | `gpt-5-mini` |
 | `--openai-api-key` | OpenAI API key | `$OPENAI_API_KEY` |
 | `--openai-base-url` | Custom OpenAI-compatible API URL | - |
 
@@ -59,7 +59,7 @@ agent-cli autocorrect "this text has an eror"
 
 | Option | Description | Default |
 |--------|-------------|---------|
-| `--llm-gemini-model` | Gemini model to use | `gemini-2.0-flash` |
+| `--llm-gemini-model` | Gemini model to use | `gemini-2.5-flash` |
 | `--gemini-api-key` | Gemini API key | `$GEMINI_API_KEY` |
 
 ## Workflow Integration

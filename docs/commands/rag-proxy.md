@@ -116,7 +116,7 @@ curl http://localhost:8000/v1/chat/completions \
 from openai import OpenAI
 client = OpenAI(base_url="http://localhost:8000/v1", api_key="not-needed")
 response = client.chat.completions.create(
-    model="gpt-4",
+    model="gpt-5-mini",
     messages=[{"role": "user", "content": "Summarize my project notes"}]
 )
 ```

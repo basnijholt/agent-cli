@@ -109,7 +109,7 @@ llm_ollama_host = "http://localhost:11434"
 ```toml
 [openai]
 # LLM model
-llm_openai_model = "gpt-4o-mini"
+llm_openai_model = "gpt-5-mini"
 
 # ASR model
 asr_openai_model = "whisper-1"
@@ -130,7 +130,7 @@ tts_openai_voice = "alloy"
 ```toml
 [gemini]
 # Gemini model
-llm_gemini_model = "gemini-2.0-flash"
+llm_gemini_model = "gemini-2.5-flash"
 
 # API key (can also use GEMINI_API_KEY env var)
 # gemini_api_key = "..."
