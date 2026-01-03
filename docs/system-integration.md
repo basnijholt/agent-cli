@@ -20,9 +20,11 @@ agent-cli install-hotkeys
 
 This automatically installs all dependencies (skhd, terminal-notifier) and creates a default configuration with common hotkeys. See [`install-hotkeys`](commands/install-hotkeys.md) for all options.
 
-!!! note "Accessibility Permission Required"
-    After installation, grant Accessibility permissions to skhd:
-    System Settings → Privacy & Security → Accessibility → enable "skhd"
+> [!NOTE]
+> **Accessibility Permission Required**
+>
+> After installation, grant Accessibility permissions to skhd:
+> System Settings → Privacy & Security → Accessibility → enable "skhd"
 
 ### Manual skhd Configuration
 
