@@ -242,6 +242,7 @@ async def _async_main(  # noqa: PLR0912, PLR0915, C901
     audio_in_cfg: config.AudioInput | None = None,
     wyoming_asr_cfg: config.WyomingASR,
     openai_asr_cfg: config.OpenAIASR,
+    gemini_asr_cfg: config.GeminiASR,
     ollama_cfg: config.Ollama,
     openai_llm_cfg: config.OpenAILLM,
     gemini_llm_cfg: config.GeminiLLM,
@@ -301,6 +302,7 @@ async def _async_main(  # noqa: PLR0912, PLR0915, C901
                     audio_in_cfg,
                     wyoming_asr_cfg,
                     openai_asr_cfg,
+                    gemini_asr_cfg,
                 )
                 transcript = await live_transcriber(
                     logger=LOGGER,
@@ -431,6 +433,7 @@ def transcribe(  # noqa: PLR0912
     asr_openai_model: str = opts.ASR_OPENAI_MODEL,
     asr_openai_base_url: str | None = opts.ASR_OPENAI_BASE_URL,
     asr_openai_prompt: str | None = opts.ASR_OPENAI_PROMPT,
+    asr_gemini_model: str = opts.ASR_GEMINI_MODEL,
     # --- LLM Configuration ---
     llm_ollama_model: str = opts.LLM_OLLAMA_MODEL,
     llm_ollama_host: str = opts.LLM_OLLAMA_HOST,
@@ -516,6 +519,10 @@ def transcribe(  # noqa: PLR0912
         openai_base_url=asr_openai_base_url,
         asr_openai_prompt=asr_openai_prompt,
     )
+    gemini_asr_cfg = config.GeminiASR(
+        asr_gemini_model=asr_gemini_model,
+        gemini_api_key=gemini_api_key,
+    )
     ollama_cfg = config.Ollama(
         llm_ollama_model=llm_ollama_model,
         llm_ollama_host=llm_ollama_host,
@@ -541,6 +548,7 @@ def transcribe(  # noqa: PLR0912
                 general_cfg=general_cfg,
                 wyoming_asr_cfg=wyoming_asr_cfg,
                 openai_asr_cfg=openai_asr_cfg,
+                gemini_asr_cfg=gemini_asr_cfg,
                 ollama_cfg=ollama_cfg,
                 openai_llm_cfg=openai_llm_cfg,
                 gemini_llm_cfg=gemini_llm_cfg,
@@ -584,6 +592,7 @@ def transcribe(  # noqa: PLR0912
                 audio_in_cfg=audio_in_cfg,
                 wyoming_asr_cfg=wyoming_asr_cfg,
                 openai_asr_cfg=openai_asr_cfg,
+                gemini_asr_cfg=gemini_asr_cfg,
                 ollama_cfg=ollama_cfg,
                 openai_llm_cfg=openai_llm_cfg,
                 gemini_llm_cfg=gemini_llm_cfg,

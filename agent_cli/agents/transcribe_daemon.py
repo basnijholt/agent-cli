@@ -54,6 +54,7 @@ class DaemonConfig:
     provider: config.ProviderSelection
     wyoming_asr: config.WyomingASR
     openai_asr: config.OpenAIASR
+    gemini_asr: config.GeminiASR
     ollama: config.Ollama
     openai_llm: config.OpenAILLM
     gemini_llm: config.GeminiLLM
@@ -125,6 +126,8 @@ async def _process_segment(  # noqa: PLR0912
     transcriber = create_recorded_audio_transcriber(cfg.provider)
     if cfg.provider.asr_provider == "openai":
         transcript = await transcriber(segment, cfg.openai_asr, LOGGER, quiet=cfg.quiet)
+    elif cfg.provider.asr_provider == "gemini":
+        transcript = await transcriber(segment, cfg.gemini_asr, LOGGER, quiet=cfg.quiet)
     else:
         transcript = await transcriber(
             audio_data=segment,
@@ -339,6 +342,7 @@ def transcribe_daemon(  # noqa: PLR0912
     asr_openai_model: str = opts.ASR_OPENAI_MODEL,
     asr_openai_base_url: str | None = opts.ASR_OPENAI_BASE_URL,
     asr_openai_prompt: str | None = opts.ASR_OPENAI_PROMPT,
+    asr_gemini_model: str = opts.ASR_GEMINI_MODEL,
     # --- LLM Configuration ---
     llm_ollama_model: str = opts.LLM_OLLAMA_MODEL,
     llm_ollama_host: str = opts.LLM_OLLAMA_HOST,
@@ -458,6 +462,10 @@ def transcribe_daemon(  # noqa: PLR0912
             openai_api_key=openai_api_key,
             openai_base_url=asr_openai_base_url,
             asr_openai_prompt=asr_openai_prompt,
+        ),
+        gemini_asr=config.GeminiASR(
+            asr_gemini_model=asr_gemini_model,
+            gemini_api_key=gemini_api_key,
         ),
         ollama=config.Ollama(llm_ollama_model=llm_ollama_model, llm_ollama_host=llm_ollama_host),
         openai_llm=config.OpenAILLM(

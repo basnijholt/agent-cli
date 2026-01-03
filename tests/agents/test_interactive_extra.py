@@ -30,6 +30,10 @@ async def test_handle_conversation_turn_no_llm_response():
     audio_in_cfg = config.AudioInput()
     wyoming_asr_cfg = config.WyomingASR(asr_wyoming_ip="localhost", asr_wyoming_port=10300)
     openai_asr_cfg = config.OpenAIASR(asr_openai_model="whisper-1")
+    gemini_asr_cfg = config.GeminiASR(
+        asr_gemini_model="gemini-2.0-flash",
+        gemini_api_key="test-key",
+    )
     ollama_cfg = config.Ollama(llm_ollama_model="test-model", llm_ollama_host="localhost")
     openai_llm_cfg = config.OpenAILLM(llm_openai_model=DEFAULT_OPENAI_MODEL, openai_base_url=None)
     gemini_llm_cfg = config.GeminiLLM(
@@ -65,6 +69,7 @@ async def test_handle_conversation_turn_no_llm_response():
             audio_in_cfg=audio_in_cfg,
             wyoming_asr_cfg=wyoming_asr_cfg,
             openai_asr_cfg=openai_asr_cfg,
+            gemini_asr_cfg=gemini_asr_cfg,
             ollama_cfg=ollama_cfg,
             openai_llm_cfg=openai_llm_cfg,
             gemini_llm_cfg=gemini_llm_cfg,
@@ -96,6 +101,10 @@ async def test_handle_conversation_turn_no_instruction():
     audio_in_cfg = config.AudioInput()
     wyoming_asr_cfg = config.WyomingASR(asr_wyoming_ip="localhost", asr_wyoming_port=10300)
     openai_asr_cfg = config.OpenAIASR(asr_openai_model="whisper-1")
+    gemini_asr_cfg = config.GeminiASR(
+        asr_gemini_model="gemini-2.0-flash",
+        gemini_api_key="test-key",
+    )
     ollama_cfg = config.Ollama(llm_ollama_model="test-model", llm_ollama_host="localhost")
     openai_llm_cfg = config.OpenAILLM(llm_openai_model=DEFAULT_OPENAI_MODEL, openai_base_url=None)
     gemini_llm_cfg = config.GeminiLLM(
@@ -124,6 +133,7 @@ async def test_handle_conversation_turn_no_instruction():
             audio_in_cfg=audio_in_cfg,
             wyoming_asr_cfg=wyoming_asr_cfg,
             openai_asr_cfg=openai_asr_cfg,
+            gemini_asr_cfg=gemini_asr_cfg,
             ollama_cfg=ollama_cfg,
             openai_llm_cfg=openai_llm_cfg,
             gemini_llm_cfg=gemini_llm_cfg,
@@ -193,6 +203,10 @@ async def test_async_main_exception_handling():
     audio_in_cfg = config.AudioInput()
     wyoming_asr_cfg = config.WyomingASR(asr_wyoming_ip="localhost", asr_wyoming_port=10300)
     openai_asr_cfg = config.OpenAIASR(asr_openai_model="whisper-1")
+    gemini_asr_cfg = config.GeminiASR(
+        asr_gemini_model="gemini-2.0-flash",
+        gemini_api_key="test-key",
+    )
     ollama_cfg = config.Ollama(llm_ollama_model="test-model", llm_ollama_host="localhost")
     openai_llm_cfg = config.OpenAILLM(llm_openai_model=DEFAULT_OPENAI_MODEL, openai_base_url=None)
     gemini_llm_cfg = config.GeminiLLM(
@@ -220,6 +234,7 @@ async def test_async_main_exception_handling():
                 audio_in_cfg=audio_in_cfg,
                 wyoming_asr_cfg=wyoming_asr_cfg,
                 openai_asr_cfg=openai_asr_cfg,
+                gemini_asr_cfg=gemini_asr_cfg,
                 ollama_cfg=ollama_cfg,
                 openai_llm_cfg=openai_llm_cfg,
                 gemini_llm_cfg=gemini_llm_cfg,

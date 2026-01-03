@@ -62,6 +62,9 @@ async def test_async_main_from_file(tmp_path: Path):
         openai_asr_cfg = config.OpenAIASR(
             asr_openai_model="whisper-1",
         )
+        gemini_asr_cfg = config.GeminiASR(
+            asr_gemini_model="gemini-2.0-flash",
+        )
         ollama_cfg = config.Ollama(
             llm_ollama_model="gemma3:4b",
             llm_ollama_host="http://localhost:11434",
@@ -81,6 +84,7 @@ async def test_async_main_from_file(tmp_path: Path):
             general_cfg=general_cfg,
             wyoming_asr_cfg=wyoming_asr_cfg,
             openai_asr_cfg=openai_asr_cfg,
+            gemini_asr_cfg=gemini_asr_cfg,
             ollama_cfg=ollama_cfg,
             openai_llm_cfg=openai_llm_cfg,
             gemini_llm_cfg=gemini_llm_cfg,
@@ -133,6 +137,9 @@ async def test_async_main_from_file_with_llm(tmp_path: Path):
         openai_asr_cfg = config.OpenAIASR(
             asr_openai_model="whisper-1",
         )
+        gemini_asr_cfg = config.GeminiASR(
+            asr_gemini_model="gemini-2.0-flash",
+        )
         ollama_cfg = config.Ollama(
             llm_ollama_model="gemma3:4b",
             llm_ollama_host="http://localhost:11434",
@@ -152,6 +159,7 @@ async def test_async_main_from_file_with_llm(tmp_path: Path):
             general_cfg=general_cfg,
             wyoming_asr_cfg=wyoming_asr_cfg,
             openai_asr_cfg=openai_asr_cfg,
+            gemini_asr_cfg=gemini_asr_cfg,
             ollama_cfg=ollama_cfg,
             openai_llm_cfg=openai_llm_cfg,
             gemini_llm_cfg=gemini_llm_cfg,
@@ -203,6 +211,9 @@ async def test_async_main_from_file_with_logging(tmp_path: Path):
         openai_asr_cfg = config.OpenAIASR(
             asr_openai_model="whisper-1",
         )
+        gemini_asr_cfg = config.GeminiASR(
+            asr_gemini_model="gemini-2.0-flash",
+        )
         ollama_cfg = config.Ollama(
             llm_ollama_model="gemma3:4b",
             llm_ollama_host="http://localhost:11434",
@@ -222,6 +233,7 @@ async def test_async_main_from_file_with_logging(tmp_path: Path):
             general_cfg=general_cfg,
             wyoming_asr_cfg=wyoming_asr_cfg,
             openai_asr_cfg=openai_asr_cfg,
+            gemini_asr_cfg=gemini_asr_cfg,
             ollama_cfg=ollama_cfg,
             openai_llm_cfg=openai_llm_cfg,
             gemini_llm_cfg=gemini_llm_cfg,
@@ -275,6 +287,9 @@ async def test_async_main_from_file_error_handling(
         openai_asr_cfg = config.OpenAIASR(
             asr_openai_model="whisper-1",
         )
+        gemini_asr_cfg = config.GeminiASR(
+            asr_gemini_model="gemini-2.0-flash",
+        )
         ollama_cfg = config.Ollama(
             llm_ollama_model="gemma3:4b",
             llm_ollama_host="http://localhost:11434",
@@ -294,6 +309,7 @@ async def test_async_main_from_file_error_handling(
             general_cfg=general_cfg,
             wyoming_asr_cfg=wyoming_asr_cfg,
             openai_asr_cfg=openai_asr_cfg,
+            gemini_asr_cfg=gemini_asr_cfg,
             ollama_cfg=ollama_cfg,
             openai_llm_cfg=openai_llm_cfg,
             gemini_llm_cfg=gemini_llm_cfg,
@@ -364,6 +380,9 @@ async def test_async_main_save_recording_enabled(
         openai_asr_cfg = config.OpenAIASR(
             asr_openai_model="whisper-1",
         )
+        gemini_asr_cfg = config.GeminiASR(
+            asr_gemini_model="gemini-2.0-flash",
+        )
         ollama_cfg = config.Ollama(
             llm_ollama_model="gemma3:4b",
             llm_ollama_host="http://localhost:11434",
@@ -383,6 +402,7 @@ async def test_async_main_save_recording_enabled(
             audio_in_cfg=audio_in_cfg,
             wyoming_asr_cfg=wyoming_asr_cfg,
             openai_asr_cfg=openai_asr_cfg,
+            gemini_asr_cfg=gemini_asr_cfg,
             ollama_cfg=ollama_cfg,
             openai_llm_cfg=openai_llm_cfg,
             gemini_llm_cfg=gemini_llm_cfg,
@@ -429,6 +449,7 @@ def test_transcribe_command_last_recording_option(
             asr_openai_model="whisper-1",
             asr_openai_base_url=None,
             asr_openai_prompt=None,
+            asr_gemini_model="gemini-2.0-flash",
             llm_ollama_model="gemma3:4b",
             llm_ollama_host="http://localhost:11434",
             llm_openai_model=DEFAULT_OPENAI_MODEL,
@@ -484,6 +505,7 @@ def test_transcribe_command_from_file_option(tmp_path: Path):
             asr_openai_model="whisper-1",
             asr_openai_base_url=None,
             asr_openai_prompt=None,
+            asr_gemini_model="gemini-2.0-flash",
             llm_ollama_model="gemma3:4b",
             llm_ollama_host="http://localhost:11434",
             llm_openai_model=DEFAULT_OPENAI_MODEL,
@@ -551,6 +573,7 @@ def test_transcribe_command_last_recording_with_index(
             asr_openai_model="whisper-1",
             asr_openai_base_url=None,
             asr_openai_prompt=None,
+            asr_gemini_model="gemini-2.0-flash",
             llm_ollama_model="gemma3:4b",
             llm_ollama_host="http://localhost:11434",
             llm_openai_model=DEFAULT_OPENAI_MODEL,
@@ -616,6 +639,7 @@ def test_transcribe_command_last_recording_disabled(
             asr_openai_model="whisper-1",
             asr_openai_base_url=None,
             asr_openai_prompt=None,
+            asr_gemini_model="gemini-2.0-flash",
             llm_ollama_model="gemma3:4b",
             llm_ollama_host="http://localhost:11434",
             llm_openai_model=DEFAULT_OPENAI_MODEL,
@@ -662,6 +686,9 @@ def test_transcribe_command_conflicting_options() -> None:
             asr_wyoming_ip="localhost",
             asr_wyoming_port=10300,
             asr_openai_model="whisper-1",
+            asr_openai_base_url=None,
+            asr_openai_prompt=None,
+            asr_gemini_model="gemini-2.0-flash",
             llm_ollama_model="gemma3:4b",
             llm_ollama_host="http://localhost:11434",
             llm_openai_model=DEFAULT_OPENAI_MODEL,

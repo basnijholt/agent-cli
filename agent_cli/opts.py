@@ -26,7 +26,7 @@ LLM_PROVIDER: str = typer.Option(
 ASR_PROVIDER: str = typer.Option(
     "wyoming",
     "--asr-provider",
-    help="The ASR provider to use ('wyoming', 'openai').",
+    help="The ASR provider to use ('wyoming', 'openai', 'gemini').",
     rich_help_panel="Provider Selection",
 )
 TTS_PROVIDER: str = typer.Option(
@@ -151,6 +151,13 @@ ASR_OPENAI_PROMPT: str | None = typer.Option(
     "--asr-openai-prompt",
     help="Custom prompt to guide transcription (optional).",
     rich_help_panel="Audio Input: OpenAI-compatible",
+)
+# Gemini ASR
+ASR_GEMINI_MODEL: str = typer.Option(
+    "gemini-2.0-flash",
+    "--asr-gemini-model",
+    help="The Gemini model to use for ASR (transcription).",
+    rich_help_panel="Audio Input: Gemini",
 )
 
 

@@ -21,7 +21,7 @@ from agent_cli.core.audio import (
     setup_input_stream,
 )
 from agent_cli.core.utils import manage_send_receive_tasks
-from agent_cli.services import transcribe_audio_openai
+from agent_cli.services import transcribe_audio_gemini, transcribe_audio_openai
 from agent_cli.services._wyoming_utils import wyoming_client_context
 
 if TYPE_CHECKING:
@@ -106,6 +106,7 @@ def create_transcriber(
     audio_input_cfg: config.AudioInput,
     wyoming_asr_cfg: config.WyomingASR,
     openai_asr_cfg: config.OpenAIASR,
+    gemini_asr_cfg: config.GeminiASR | None = None,
 ) -> Callable[..., Awaitable[str | None]]:
     """Return the appropriate transcriber for live audio based on the provider."""
     if provider_cfg.asr_provider == "openai":
@@ -120,6 +121,15 @@ def create_transcriber(
             audio_input_cfg=audio_input_cfg,
             wyoming_asr_cfg=wyoming_asr_cfg,
         )
+    if provider_cfg.asr_provider == "gemini":
+        if gemini_asr_cfg is None:
+            msg = "Gemini ASR config is required when using gemini provider"
+            raise ValueError(msg)
+        return partial(
+            _transcribe_live_audio_gemini,
+            audio_input_cfg=audio_input_cfg,
+            gemini_asr_cfg=gemini_asr_cfg,
+        )
     msg = f"Unsupported ASR provider: {provider_cfg.asr_provider}"
     raise ValueError(msg)
 
@@ -132,6 +142,8 @@ def create_recorded_audio_transcriber(
         return transcribe_audio_openai
     if provider_cfg.asr_provider == "wyoming":
         return _transcribe_recorded_audio_wyoming
+    if provider_cfg.asr_provider == "gemini":
+        return transcribe_audio_gemini
     msg = f"Unsupported ASR provider: {provider_cfg.asr_provider}"
     raise ValueError(msg)
 
@@ -391,4 +403,33 @@ async def _transcribe_live_audio_openai(
         return await transcribe_audio_openai(audio_data, openai_asr_cfg, logger)
     except Exception:
         logger.exception("Error during transcription")
+        return ""
+
+
+async def _transcribe_live_audio_gemini(
+    *,
+    audio_input_cfg: config.AudioInput,
+    gemini_asr_cfg: config.GeminiASR,
+    logger: logging.Logger,
+    stop_event: InteractiveStopEvent,
+    live: Live,
+    quiet: bool = False,
+    save_recording: bool = True,
+    **_kwargs: object,
+) -> str | None:
+    """Record and transcribe live audio using Gemini's native audio understanding."""
+    audio_data = await record_audio_with_manual_stop(
+        audio_input_cfg.input_device_index,
+        stop_event,
+        logger,
+        quiet=quiet,
+        live=live,
+        save_recording=save_recording,
+    )
+    if not audio_data:
+        return None
+    try:
+        return await transcribe_audio_gemini(audio_data, gemini_asr_cfg, logger)
+    except Exception:
+        logger.exception("Error during Gemini transcription")
         return ""

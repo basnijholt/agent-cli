@@ -1,4 +1,4 @@
-"""Module for interacting with online services like OpenAI."""
+"""Module for interacting with online services like OpenAI and Gemini."""
 
 from __future__ import annotations
 
@@ -11,6 +11,44 @@ if TYPE_CHECKING:
     from openai import AsyncOpenAI
 
     from agent_cli import config
+
+
+async def transcribe_audio_gemini(
+    audio_data: bytes,
+    gemini_asr_cfg: config.GeminiASR,
+    logger: logging.Logger,
+    **_kwargs: object,
+) -> str:
+    """Transcribe audio using Gemini's native audio understanding.
+
+    Gemini can process audio natively and return transcriptions.
+    Supports WAV, MP3, AIFF, AAC, OGG, and FLAC formats.
+    """
+    import base64  # noqa: PLC0415
+
+    import google.generativeai as genai  # noqa: PLC0415
+
+    if not gemini_asr_cfg.gemini_api_key:
+        msg = "Gemini API key is not set."
+        raise ValueError(msg)
+
+    logger.info("Transcribing audio with Gemini %s...", gemini_asr_cfg.asr_gemini_model)
+
+    genai.configure(api_key=gemini_asr_cfg.gemini_api_key)
+    model = genai.GenerativeModel(gemini_asr_cfg.asr_gemini_model)
+
+    # Encode audio as base64 for inline data
+    audio_base64 = base64.b64encode(audio_data).decode("utf-8")
+    audio_part = {"mime_type": "audio/wav", "data": audio_base64}
+
+    response = await model.generate_content_async(
+        [
+            "Transcribe this audio accurately. Return only the transcription text, "
+            "nothing else. Do not include any prefixes, labels, or explanations.",
+            audio_part,
+        ],
+    )
+    return response.text.strip()
 
 
 def _get_openai_client(api_key: str | None, base_url: str | None = None) -> AsyncOpenAI:

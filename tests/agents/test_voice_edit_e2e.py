@@ -20,6 +20,7 @@ def get_configs() -> tuple[
     config.AudioInput,
     config.WyomingASR,
     config.OpenAIASR,
+    config.GeminiASR,
     config.Ollama,
     config.OpenAILLM,
     config.GeminiLLM,
@@ -45,6 +46,10 @@ def get_configs() -> tuple[
     audio_in_cfg = config.AudioInput(input_device_index=0)
     wyoming_asr_cfg = config.WyomingASR(asr_wyoming_ip="mock-asr-host", asr_wyoming_port=10300)
     openai_asr_cfg = config.OpenAIASR(asr_openai_model="whisper-1")
+    gemini_asr_cfg = config.GeminiASR(
+        asr_gemini_model="gemini-2.0-flash",
+        gemini_api_key="test-key",
+    )
     ollama_cfg = config.Ollama(
         llm_ollama_model="test-model",
         llm_ollama_host="http://localhost:11434",
@@ -68,6 +73,7 @@ def get_configs() -> tuple[
         audio_in_cfg,
         wyoming_asr_cfg,
         openai_asr_cfg,
+        gemini_asr_cfg,
         ollama_cfg,
         openai_llm_cfg,
         gemini_llm_cfg,
@@ -102,6 +108,7 @@ async def test_voice_edit_e2e(
         audio_in_cfg,
         wyoming_asr_cfg,
         openai_asr_cfg,
+        gemini_asr_cfg,
         ollama_cfg,
         openai_llm_cfg,
         gemini_llm_cfg,
@@ -123,6 +130,7 @@ async def test_voice_edit_e2e(
             audio_in_cfg=audio_in_cfg,
             wyoming_asr_cfg=wyoming_asr_cfg,
             openai_asr_cfg=openai_asr_cfg,
+            gemini_asr_cfg=gemini_asr_cfg,
             ollama_cfg=ollama_cfg,
             openai_llm_cfg=openai_llm_cfg,
             gemini_llm_cfg=gemini_llm_cfg,
@@ -141,6 +149,7 @@ async def test_voice_edit_e2e(
         audio_input_cfg=audio_in_cfg,
         wyoming_asr_cfg=wyoming_asr_cfg,
         openai_asr_cfg=openai_asr_cfg,
+        gemini_asr_cfg=gemini_asr_cfg,
         ollama_cfg=ollama_cfg,
         logger=ANY,
         quiet=False,
