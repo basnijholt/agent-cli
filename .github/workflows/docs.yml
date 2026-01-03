@@ -37,8 +37,8 @@ jobs:
       - name: Set up Python
         run: uv python install 3.12
 
-      - name: Install Zensical
-        run: uv tool install zensical
+      - name: Install Zensical with extensions
+        run: uv tool install zensical --with markdown-gfm-admonition
 
       - name: Build docs
         run: zensical build

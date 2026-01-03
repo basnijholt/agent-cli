@@ -15,7 +15,7 @@ Choose the best installation method for your platform and performance needs.
 | **NixOS**        | [System Integration](nixos.md) | ✅ NVIDIA GPU | Best        |
 | **Any Platform** | [Docker Setup](docker.md)      | ⚠️ Limited\*  | Good        |
 
-> [!NOTE]
+> [!WARNING]
 > Docker on macOS does not support GPU acceleration. For best performance on Mac, use the [native setup](macos.md).
 
 ## Installation Methods
