@@ -46,7 +46,7 @@ class ProviderSelection(BaseModel):
 
     llm_provider: Literal["ollama", "openai", "gemini"]
     asr_provider: Literal["wyoming", "openai", "gemini"]
-    tts_provider: Literal["wyoming", "openai", "kokoro"]
+    tts_provider: Literal["wyoming", "openai", "kokoro", "gemini"]
 
     @field_validator("llm_provider", mode="before")
     @classmethod
@@ -165,6 +165,14 @@ class KokoroTTS(BaseModel):
     tts_kokoro_model: str
     tts_kokoro_voice: str
     tts_kokoro_host: str
+
+
+class GeminiTTS(BaseModel):
+    """Configuration for the Gemini TTS provider."""
+
+    tts_gemini_model: str
+    tts_gemini_voice: str
+    gemini_api_key: str | None = None
 
 
 # --- Panel: Wake Word Options ---
