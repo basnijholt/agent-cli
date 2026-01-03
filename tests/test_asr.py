@@ -9,7 +9,7 @@ from wyoming.asr import Transcribe, Transcript, TranscriptChunk
 from wyoming.audio import AudioChunk, AudioStart, AudioStop
 
 from agent_cli import config
-from agent_cli.services import asr, transcribe_audio_gemini
+from agent_cli.services import asr, transcribe_audio_gemini, transcribe_audio_openai
 
 
 @pytest.mark.asyncio
@@ -88,6 +88,8 @@ async def test_receive_text() -> None:
 def test_create_transcriber():
     """Test that the correct transcriber is returned."""
     provider_cfg = MagicMock()
+
+    # OpenAI uses generic transcriber with transcribe_audio_openai
     provider_cfg.asr_provider = "openai"
     transcriber = asr.create_transcriber(
         provider_cfg,
@@ -96,8 +98,10 @@ def test_create_transcriber():
         MagicMock(),
         MagicMock(),
     )
-    assert transcriber.func is asr._transcribe_live_audio_openai
+    assert transcriber.func is asr._transcribe_live_audio_generic
+    assert transcriber.keywords["transcribe_base"] is transcribe_audio_openai
 
+    # Wyoming uses its own streaming implementation
     provider_cfg.asr_provider = "wyoming"
     transcriber = asr.create_transcriber(
         provider_cfg,
@@ -108,6 +112,7 @@ def test_create_transcriber():
     )
     assert transcriber.func is asr._transcribe_live_audio_wyoming
 
+    # Gemini uses generic transcriber with transcribe_audio_gemini
     provider_cfg.asr_provider = "gemini"
     transcriber = asr.create_transcriber(
         provider_cfg,
@@ -116,7 +121,8 @@ def test_create_transcriber():
         MagicMock(),
         MagicMock(),
     )
-    assert transcriber.func is asr._transcribe_live_audio_gemini
+    assert transcriber.func is asr._transcribe_live_audio_generic
+    assert transcriber.keywords["transcribe_base"] is transcribe_audio_gemini
 
 
 def test_create_recorded_audio_transcriber():

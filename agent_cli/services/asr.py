@@ -109,26 +109,33 @@ def create_transcriber(
     gemini_asr_cfg: config.GeminiASR | None = None,
 ) -> Callable[..., Awaitable[str | None]]:
     """Return the appropriate transcriber for live audio based on the provider."""
-    if provider_cfg.asr_provider == "openai":
-        return partial(
-            _transcribe_live_audio_openai,
-            audio_input_cfg=audio_input_cfg,
-            openai_asr_cfg=openai_asr_cfg,
-        )
     if provider_cfg.asr_provider == "wyoming":
+        # Wyoming has streaming support, uses its own implementation
         return partial(
             _transcribe_live_audio_wyoming,
             audio_input_cfg=audio_input_cfg,
             wyoming_asr_cfg=wyoming_asr_cfg,
+        )
+
+    # OpenAI and Gemini use the generic record-then-transcribe pattern
+    if provider_cfg.asr_provider == "openai":
+        return partial(
+            _transcribe_live_audio_generic,
+            audio_input_cfg=audio_input_cfg,
+            transcribe_base=transcribe_audio_openai,
+            transcribe_cfg=openai_asr_cfg,
+            provider_name="OpenAI",
         )
     if provider_cfg.asr_provider == "gemini":
         if gemini_asr_cfg is None:
             msg = "Gemini ASR config is required when using gemini provider"
             raise ValueError(msg)
         return partial(
-            _transcribe_live_audio_gemini,
+            _transcribe_live_audio_generic,
             audio_input_cfg=audio_input_cfg,
-            gemini_asr_cfg=gemini_asr_cfg,
+            transcribe_base=transcribe_audio_gemini,
+            transcribe_cfg=gemini_asr_cfg,
+            provider_name="Gemini",
         )
     msg = f"Unsupported ASR provider: {provider_cfg.asr_provider}"
     raise ValueError(msg)
@@ -377,10 +384,12 @@ async def _transcribe_live_audio_wyoming(
         return None
 
 
-async def _transcribe_live_audio_openai(
+async def _transcribe_live_audio_generic(
     *,
     audio_input_cfg: config.AudioInput,
-    openai_asr_cfg: config.OpenAIASR,
+    transcribe_base: Callable[..., Awaitable[str]],
+    transcribe_cfg: config.OpenAIASR | config.GeminiASR,
+    provider_name: str,
     logger: logging.Logger,
     stop_event: InteractiveStopEvent,
     live: Live,
@@ -388,7 +397,7 @@ async def _transcribe_live_audio_openai(
     save_recording: bool = True,
     **_kwargs: object,
 ) -> str | None:
-    """Record and transcribe live audio using OpenAI Whisper."""
+    """Record and transcribe live audio using a generic transcription function."""
     audio_data = await record_audio_with_manual_stop(
         audio_input_cfg.input_device_index,
         stop_event,
@@ -400,36 +409,7 @@ async def _transcribe_live_audio_openai(
     if not audio_data:
         return None
     try:
-        return await transcribe_audio_openai(audio_data, openai_asr_cfg, logger)
+        return await transcribe_base(audio_data, transcribe_cfg, logger)
     except Exception:
-        logger.exception("Error during OpenAI transcription")
-        return ""
-
-
-async def _transcribe_live_audio_gemini(
-    *,
-    audio_input_cfg: config.AudioInput,
-    gemini_asr_cfg: config.GeminiASR,
-    logger: logging.Logger,
-    stop_event: InteractiveStopEvent,
-    live: Live,
-    quiet: bool = False,
-    save_recording: bool = True,
-    **_kwargs: object,
-) -> str | None:
-    """Record and transcribe live audio using Gemini's native audio understanding."""
-    audio_data = await record_audio_with_manual_stop(
-        audio_input_cfg.input_device_index,
-        stop_event,
-        logger,
-        quiet=quiet,
-        live=live,
-        save_recording=save_recording,
-    )
-    if not audio_data:
-        return None
-    try:
-        return await transcribe_audio_gemini(audio_data, gemini_asr_cfg, logger)
-    except Exception:
-        logger.exception("Error during Gemini transcription")
+        logger.exception("Error during %s transcription", provider_name)
         return ""
