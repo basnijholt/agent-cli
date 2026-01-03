@@ -133,3 +133,12 @@ link = "https://www.youtube.com/watch?v=7sBTCgttH48"
 anchor_linenums = true
 
 [project.markdown_extensions.pymdownx.superfences]
+
+# Enable tabs (=== "Tab Name" syntax)
+[project.markdown_extensions.pymdownx.tabbed]
+alternate_style = true
+
+# Enable emoji/icon support (:fontawesome-brands-apple: etc.)
+[project.markdown_extensions.pymdownx.emoji]
+emoji_index = "zensical.extensions.emoji.twemoji"
+emoji_generator = "zensical.extensions.emoji.to_svg"
