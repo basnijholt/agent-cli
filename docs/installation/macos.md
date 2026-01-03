@@ -6,7 +6,7 @@ icon: lucide/apple
 
 Native macOS setup with full Metal GPU acceleration for optimal performance.
 
-> [!TIP]
+> [!NOTE]
 > **🍎 Recommended for macOS** — ~10x better performance than Docker via Metal GPU acceleration.
 
 ## Prerequisites

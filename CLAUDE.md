@@ -34,7 +34,7 @@ uv run pytest
 pre-commit run --all-files
 
 # Update auto-generated documentation (CODE:START blocks in markdown)
-uv run python docs/update_docs.py
+uv run python docs/run_markdown_code_runner.py
 ```
 
 ## Architecture Overview
@@ -111,4 +111,4 @@ The `docs_gen` module introspects Typer commands to generate Markdown tables. Do
 <!-- CODE:END -->
 ```
 
-Run `uv run python docs/update_docs.py` to regenerate all auto-generated content.
+Run `uv run python docs/run_markdown_code_runner.py` to regenerate all auto-generated content.

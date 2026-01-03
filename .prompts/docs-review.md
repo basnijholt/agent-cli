@@ -15,7 +15,7 @@ The `docs_gen` module (`agent_cli/docs_gen.py`) provides:
 - `config_example(cmd)`: Example TOML configuration
 - `commands_table()`: Commands overview table
 
-Run `uv run python docs/update_docs.py` to regenerate all auto-generated content.
+Run `uv run python docs/run_markdown_code_runner.py` to regenerate all auto-generated content.
 
 ## What This Review Is For
 
@@ -71,7 +71,7 @@ Every command should have a corresponding `docs/commands/<command>.md` file. Whe
 
 ```bash
 # Run update script and check for changes
-uv run python docs/update_docs.py
+uv run python docs/run_markdown_code_runner.py
 git diff docs/
 ```
 

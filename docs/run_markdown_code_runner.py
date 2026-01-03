@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Update all markdown files that use markdown-code-runner for auto-generation.
 
-Run from repo root: python docs/update_docs.py
+Run from repo root: python docs/run_markdown_code_runner.py
 """
 
 from __future__ import annotations
