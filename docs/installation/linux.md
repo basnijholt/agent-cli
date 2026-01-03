@@ -7,7 +7,7 @@ icon: lucide/terminal
 Native Linux setup with full NVIDIA GPU acceleration for optimal performance.
 
 > [!TIP]
-> **Recommended for Linux** — Optimal performance with full NVIDIA GPU acceleration.
+> **🐧 Recommended for Linux** — Optimal performance with full NVIDIA GPU acceleration.
 
 ## Prerequisites
 
