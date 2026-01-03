@@ -8,11 +8,11 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from agent_cli import config
+from agent_cli import config, constants
 from agent_cli.services import (
     _is_wav_file,
-    _pcm_to_wav,
     asr,
+    pcm_to_wav,
     synthesize_speech_openai,
     transcribe_audio_openai,
     tts,
@@ -45,10 +45,15 @@ def test_is_wav_file_with_short_data() -> None:
 
 
 def test_pcm_to_wav_creates_valid_wav() -> None:
-    """Test that _pcm_to_wav creates a valid WAV file with correct headers."""
+    """Test that pcm_to_wav creates a valid WAV file with correct headers."""
     pcm_data = b"\x00\x00" * 100  # 100 samples of silence
 
-    wav_data = _pcm_to_wav(pcm_data)
+    wav_data = pcm_to_wav(
+        pcm_data,
+        sample_rate=constants.AUDIO_RATE,
+        sample_width=constants.AUDIO_FORMAT_WIDTH,
+        channels=constants.AUDIO_CHANNELS,
+    )
 
     # Check WAV header
     assert wav_data[:4] == b"RIFF"
@@ -63,7 +68,12 @@ def test_pcm_to_wav_roundtrip() -> None:
     """Test that PCM data can be converted to WAV and read back."""
     pcm_data = b"\x00\x01\x02\x03" * 50  # Some test PCM data
 
-    wav_data = _pcm_to_wav(pcm_data)
+    wav_data = pcm_to_wav(
+        pcm_data,
+        sample_rate=constants.AUDIO_RATE,
+        sample_width=constants.AUDIO_FORMAT_WIDTH,
+        channels=constants.AUDIO_CHANNELS,
+    )
 
     # Read back the WAV file and verify the audio data
     with wave.open(BytesIO(wav_data), "rb") as wav_file:

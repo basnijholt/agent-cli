@@ -162,6 +162,7 @@ async def _handle_conversation_turn(
     wyoming_tts_cfg: config.WyomingTTS,
     openai_tts_cfg: config.OpenAITTS,
     kokoro_tts_cfg: config.KokoroTTS,
+    gemini_tts_cfg: config.GeminiTTS,
     live: Live,
 ) -> None:
     """Handles a single turn of the conversation."""
@@ -284,6 +285,7 @@ async def _handle_conversation_turn(
             wyoming_tts_cfg=wyoming_tts_cfg,
             openai_tts_cfg=openai_tts_cfg,
             kokoro_tts_cfg=kokoro_tts_cfg,
+            gemini_tts_cfg=gemini_tts_cfg,
             save_file=general_cfg.save_file,
             quiet=general_cfg.quiet,
             logger=LOGGER,
@@ -315,6 +317,7 @@ async def _async_main(
     wyoming_tts_cfg: config.WyomingTTS,
     openai_tts_cfg: config.OpenAITTS,
     kokoro_tts_cfg: config.KokoroTTS,
+    gemini_tts_cfg: config.GeminiTTS,
 ) -> None:
     """Main async function, consumes parsed arguments."""
     try:
@@ -361,6 +364,7 @@ async def _async_main(
                     wyoming_tts_cfg=wyoming_tts_cfg,
                     openai_tts_cfg=openai_tts_cfg,
                     kokoro_tts_cfg=kokoro_tts_cfg,
+                    gemini_tts_cfg=gemini_tts_cfg,
                     live=live,
                 )
     except Exception:
@@ -409,6 +413,8 @@ def chat(
     tts_kokoro_model: str = opts.TTS_KOKORO_MODEL,
     tts_kokoro_voice: str = opts.TTS_KOKORO_VOICE,
     tts_kokoro_host: str = opts.TTS_KOKORO_HOST,
+    tts_gemini_model: str = opts.TTS_GEMINI_MODEL,
+    tts_gemini_voice: str = opts.TTS_GEMINI_VOICE,
     # --- Process Management ---
     stop: bool = opts.STOP,
     status: bool = opts.STATUS,
@@ -520,6 +526,11 @@ def chat(
             tts_kokoro_voice=tts_kokoro_voice,
             tts_kokoro_host=tts_kokoro_host,
         )
+        gemini_tts_cfg = config.GeminiTTS(
+            tts_gemini_model=tts_gemini_model,
+            tts_gemini_voice=tts_gemini_voice,
+            gemini_api_key=gemini_api_key,
+        )
         history_cfg = config.History(
             history_dir=history_dir,
             last_n_messages=last_n_messages,
@@ -541,5 +552,6 @@ def chat(
                 wyoming_tts_cfg=wyoming_tts_cfg,
                 openai_tts_cfg=openai_tts_cfg,
                 kokoro_tts_cfg=kokoro_tts_cfg,
+                gemini_tts_cfg=gemini_tts_cfg,
             ),
         )
