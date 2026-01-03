@@ -22,7 +22,7 @@ are accepted.
 
 ## Managing Configuration
 
-Use the `config` command to manage your configuration files:
+Use the [`config`](commands/config.md) command to manage your configuration files:
 
 ```bash
 # Create a new config file with all options (commented out as a template)
@@ -228,9 +228,9 @@ log_level = "WARNING"
 Each command has its own section in the config file. The section name matches the
 command name, and subcommands use dot notation:
 
-- `[transcribe]` - for `agent-cli transcribe`
-- `[voice-edit]` - for `agent-cli voice-edit`
-- `[transcribe-daemon]` - for `agent-cli transcribe-daemon`
-- `[memory.proxy]` - for `agent-cli memory proxy`
+- `[transcribe]` - for [`agent-cli transcribe`](commands/transcribe.md)
+- `[voice-edit]` - for [`agent-cli voice-edit`](commands/voice-edit.md)
+- `[transcribe-daemon]` - for [`agent-cli transcribe-daemon`](commands/transcribe-daemon.md)
+- `[memory.proxy]` - for [`agent-cli memory proxy`](commands/memory.md)
 
-Use `agent-cli <command> --help` to see all available options for each command.
+Use `agent-cli <command> --help` to see all available options for each command, or browse the [Commands Reference](commands/index.md).

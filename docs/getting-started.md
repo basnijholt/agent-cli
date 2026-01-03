@@ -48,6 +48,8 @@ For a complete local setup with all AI services:
     agent-cli install-hotkeys
     ```
 
+    See: [`install-services`](commands/install-services.md) | [`start-services`](commands/start-services.md) | [`install-hotkeys`](commands/install-hotkeys.md)
+
 === "Using Shell Scripts"
 
     ```bash
@@ -81,6 +83,8 @@ agent-cli autocorrect "this has an eror"
 # Output: this has an error
 ```
 
+See: [`autocorrect`](commands/autocorrect.md)
+
 ### Test Transcription
 
 ```bash
@@ -91,11 +95,15 @@ agent-cli transcribe --list-devices
 agent-cli transcribe --input-device-index 1
 ```
 
+See: [`transcribe`](commands/transcribe.md)
+
 ### Test Text-to-Speech
 
 ```bash
 agent-cli speak "Hello, world!"
 ```
+
+See: [`speak`](commands/speak.md)
 
 ## Platform-Specific Guides
 

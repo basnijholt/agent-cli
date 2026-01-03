@@ -18,7 +18,7 @@ Agent CLI is designed to work with system-wide hotkeys, allowing you to trigger 
 agent-cli install-hotkeys
 ```
 
-This automatically installs all dependencies (skhd, terminal-notifier) and creates a default configuration with common hotkeys.
+This automatically installs all dependencies (skhd, terminal-notifier) and creates a default configuration with common hotkeys. See [`install-hotkeys`](commands/install-hotkeys.md) for all options.
 
 !!! note "Accessibility Permission Required"
     After installation, grant Accessibility permissions to skhd:
@@ -141,10 +141,10 @@ See the [NixOS installation guide](installation/nixos.md) for declarative hotkey
 
 | Hotkey | Command | Description |
 |--------|---------|-------------|
-| `Cmd/Super + Shift + R` | `transcribe --toggle` | Record voice → clipboard |
-| `Cmd/Super + Shift + A` | `autocorrect` | Fix clipboard text |
-| `Cmd/Super + Shift + V` | `voice-edit --toggle` | Edit clipboard with voice |
-| `Cmd/Super + Shift + S` | `speak` | Read clipboard aloud |
+| `Cmd/Super + Shift + R` | [`transcribe --toggle`](commands/transcribe.md) | Record voice → clipboard |
+| `Cmd/Super + Shift + A` | [`autocorrect`](commands/autocorrect.md) | Fix clipboard text |
+| `Cmd/Super + Shift + V` | [`voice-edit --toggle`](commands/voice-edit.md) | Edit clipboard with voice |
+| `Cmd/Super + Shift + S` | [`speak`](commands/speak.md) | Read clipboard aloud |
 
 ## Finding Your Audio Device
 
