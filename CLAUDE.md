@@ -16,25 +16,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Build & Development Commands
 
 ```bash
-# Install all dependencies (recommended for development)
-uv sync --all-extras
-
-# Or install specific extras only
-uv sync --extra rag      # RAG proxy dependencies
-uv sync --extra memory   # Memory proxy dependencies
-uv sync --extra vad      # Voice activity detection (transcribe-daemon)
-
-# Run the CLI during development
-uv run agent-cli <command>
-
-# Run tests (coverage enabled by default via pyproject.toml)
-uv run pytest
-
-# Linting (pre-commit runs ruff + other checks)
-pre-commit run --all-files
-
-# Update auto-generated documentation (CODE:START blocks in markdown)
-uv run python docs/run_markdown_code_runner.py
+uv sync --all-extras                           # Install with all extras (rag, memory, vad)
+uv run python docs/run_markdown_code_runner.py # Update auto-generated docs
 ```
 
 ## Architecture Overview
@@ -102,7 +85,7 @@ PID files are stored in `~/.cache/agent-cli/`.
 
 ### Documentation Auto-Generation
 
-The `docs_gen` module introspects Typer commands to generate Markdown tables. Documentation files use `markdown-code-runner` markers:
+The `docs_gen` module introspects Typer commands to generate Markdown tables. Documentation files use [markdown-code-runner](https://github.com/basnijholt/markdown-code-runner) markers:
 
 ```markdown
 <!-- CODE:START -->
