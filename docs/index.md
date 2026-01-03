@@ -42,6 +42,8 @@ What it does:
 
 I use it mostly for the `transcribe` function when working with LLMs. Being able to speak naturally means I can provide more context without the typing fatigue.
 
+Since then I have expanded the tool with many more features, all focused on local-first AI agents that integrate seamlessly with your system.
+
 <!-- OUTPUT:END -->
 
 ## Features
