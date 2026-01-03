@@ -5,9 +5,9 @@ Markdown documentation. Use with markdown-code-runner to auto-generate
 options tables in documentation.
 
 Example usage in Markdown files:
-    <!-- CODE:PYTHON:START -->
-    <!-- from agent_cli.docs_gen import options_table -->
-    <!-- print(options_table("transcribe")) -->
+    <!-- CODE:START -->
+    <!-- from agent_cli.docs_gen import all_options_for_docs -->
+    <!-- print(all_options_for_docs("transcribe")) -->
     <!-- CODE:END -->
     <!-- OUTPUT:START -->
     ...auto-generated table...
@@ -108,50 +108,23 @@ def _extract_options_from_click(cmd: click.Command) -> list[dict[str, Any]]:
     return options
 
 
-def get_command_options(command_path: str) -> list[dict[str, Any]]:
-    """Extract all options from a Typer command.
-
-    Args:
-        command_path: Command path like "transcribe" or "memory.proxy"
-
-    Returns:
-        List of option dictionaries with keys:
-        - name: Option flag (e.g., "--input-device-index")
-        - type: Type string (e.g., "INTEGER", "TEXT")
-        - default: Default value or "-" if none
-        - help: Help text
-        - panel: Rich help panel name for grouping
-        - envvar: Environment variable name if any
-        - required: Whether the option is required
-        - is_flag: Whether it's a boolean flag
-
-    """
+def _get_command_options(command_path: str) -> list[dict[str, Any]]:
+    """Extract all options from a Typer command."""
     cmd = _get_click_command(command_path)
     if cmd is None:
         return []
     return _extract_options_from_click(cmd)
 
 
-def options_table(
+def _options_table(
     command_path: str,
     panel: str | None = None,
     *,
     include_type: bool = True,
     include_default: bool = True,
 ) -> str:
-    """Generate a Markdown table of options for a command.
-
-    Args:
-        command_path: Command path like "transcribe" or "memory.proxy"
-        panel: Filter to specific rich_help_panel, or None for all
-        include_type: Include the Type column
-        include_default: Include the Default column
-
-    Returns:
-        Markdown table string
-
-    """
-    options = get_command_options(command_path)
+    """Generate a Markdown table of options for a command."""
+    options = _get_command_options(command_path)
     if panel:
         options = [o for o in options if o["panel"] == panel]
 
@@ -184,26 +157,15 @@ def options_table(
     return "\n".join(lines)
 
 
-def options_by_panel(
+def _options_by_panel(
     command_path: str,
     *,
     include_type: bool = True,
     include_default: bool = True,
     heading_level: int = 3,
 ) -> str:
-    """Generate options tables grouped by panel.
-
-    Args:
-        command_path: Command path like "transcribe" or "memory.proxy"
-        include_type: Include the Type column
-        include_default: Include the Default column
-        heading_level: Markdown heading level for panel names
-
-    Returns:
-        Markdown string with sectioned tables
-
-    """
-    options = get_command_options(command_path)
+    """Generate options tables grouped by panel."""
+    options = _get_command_options(command_path)
     if not options:
         return "*No options found*"
 
@@ -250,13 +212,8 @@ def options_by_panel(
     return "\n".join(output)
 
 
-def list_commands() -> list[str]:
-    """List all available commands including subcommands.
-
-    Returns:
-        List of command paths like ["transcribe", "memory.proxy", "memory.add"]
-
-    """
+def _list_commands() -> list[str]:
+    """List all available commands including subcommands."""
     click_app = get_command(app)
     commands = []
 
@@ -393,7 +350,7 @@ def config_example(command_path: str | None = None) -> str:
 # input_device_index = 1
 # output_device_index = 0"""
 
-    options = get_command_options(command_path)
+    options = _get_command_options(command_path)
     if not options:
         return f"# No configurable options for {command_path}"
 
@@ -437,7 +394,7 @@ def all_options_for_docs(command_path: str) -> str:
         Complete Markdown options section
 
     """
-    return options_by_panel(
+    return _options_by_panel(
         command_path,
         include_type=False,  # Types are often obvious and clutter the table
         include_default=True,
@@ -448,12 +405,12 @@ def all_options_for_docs(command_path: str) -> str:
 if __name__ == "__main__":
     # Demo: print options for transcribe command
     print("=== Available Commands ===")
-    for cmd in list_commands():
+    for cmd in _list_commands():
         print(f"  {cmd}")
     print()
 
     print("=== transcribe options by panel ===")
-    print(options_by_panel("transcribe"))
+    print(_options_by_panel("transcribe"))
 
     print("\n=== Environment Variables ===")
     print(env_vars_table())
