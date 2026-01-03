@@ -448,32 +448,3 @@ async def _transcribe_live_audio_gemini(
     except Exception:
         logger.exception("Error during Gemini transcription")
         return ""
-
-
-async def _transcribe_live_audio_gemini(
-    *,
-    audio_input_cfg: config.AudioInput,
-    gemini_asr_cfg: config.GeminiASR,
-    logger: logging.Logger,
-    stop_event: InteractiveStopEvent,
-    live: Live,
-    quiet: bool = False,
-    save_recording: bool = True,
-    **_kwargs: object,
-) -> str | None:
-    """Record and transcribe live audio using Gemini's native audio understanding."""
-    audio_data = await record_audio_with_manual_stop(
-        audio_input_cfg.input_device_index,
-        stop_event,
-        logger,
-        quiet=quiet,
-        live=live,
-        save_recording=save_recording,
-    )
-    if not audio_data:
-        return None
-    try:
-        return await transcribe_audio_gemini(audio_data, gemini_asr_cfg, logger)
-    except Exception:
-        logger.exception("Error during Gemini transcription")
-        return ""
