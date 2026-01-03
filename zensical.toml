@@ -123,3 +123,7 @@ link = "https://pypi.org/project/agent-cli/"
 [[project.extra.social]]
 icon = "fontawesome/brands/youtube"
 link = "https://www.youtube.com/watch?v=7sBTCgttH48"
+
+# Enable GitHub-style admonitions (> [!NOTE], > [!TIP], etc.)
+# This converts them to Zensical's native !!! syntax during build
+[project.markdown_extensions.gfm_admonition]
