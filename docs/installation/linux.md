@@ -1,5 +1,5 @@
 ---
-icon: lucide/terminal
+icon: fontawesome/brands/linux
 ---
 
 # Linux Native Installation
