@@ -24,6 +24,9 @@ Runs as a daemon, listening to your microphone and automatically segmenting spee
 
 Press `Ctrl+C` to stop the daemon.
 
+Segments shorter than 0.3s are discarded even if `--min-segment` is set lower.
+Saving MP3 files requires FFmpeg; if it's not available, audio saving is disabled with a warning.
+
 ## Installation
 
 Requires the `vad` extra:
@@ -156,8 +159,10 @@ agent-cli transcribe-daemon --silence-threshold 1.5
 JSON Lines format at `~/.config/agent-cli/transcriptions.jsonl`:
 
 ```json
-{"timestamp": "2024-01-15T10:30:45", "role": "user", "text": "Hello world", "audio_file": "..."}
+{"timestamp": "2024-01-15T10:30:45+00:00", "hostname": "my-host", "role": "user", "model": "wyoming", "raw_output": "Hello world", "processed_output": null, "audio_file": "/path/to/audio.mp3", "duration_seconds": 1.23}
 ```
+
+`processed_output` is null when `--llm` is disabled.
 
 ### Audio Files
 
