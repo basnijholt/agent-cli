@@ -415,6 +415,7 @@ def transcribe(  # noqa: PLR0912
         None,
         "--extra-instructions",
         help="Additional instructions for the LLM to process the transcription.",
+        rich_help_panel="LLM Configuration",
     ),
     from_file: Path | None = opts.FROM_FILE,
     last_recording: int = opts.LAST_RECORDING,

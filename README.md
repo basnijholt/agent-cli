@@ -465,7 +465,7 @@ the `[defaults]` section of your configuration file.
 │                             'gemini').                                       │
 │                             [default: ollama]                                │
 ╰──────────────────────────────────────────────────────────────────────────────╯
-╭─ LLM Configuration: Ollama (local) ──────────────────────────────────────────╮
+╭─ LLM: Ollama ────────────────────────────────────────────────────────────────╮
 │ --llm-ollama-model        TEXT  The Ollama model to use. Default is          │
 │                                 gemma3:4b.                                   │
 │                                 [default: gemma3:4b]                         │
@@ -473,7 +473,7 @@ the `[defaults]` section of your configuration file.
 │                                 http://localhost:11434.                      │
 │                                 [default: http://localhost:11434]            │
 ╰──────────────────────────────────────────────────────────────────────────────╯
-╭─ LLM Configuration: OpenAI ──────────────────────────────────────────────────╮
+╭─ LLM: OpenAI-compatible ─────────────────────────────────────────────────────╮
 │ --llm-openai-model        TEXT  The OpenAI model to use for LLM tasks.       │
 │                                 [default: gpt-5-mini]                        │
 │ --openai-api-key          TEXT  Your OpenAI API key. Can also be set with    │
@@ -484,7 +484,7 @@ the `[defaults]` section of your configuration file.
 │                                 http://localhost:8080/v1).                   │
 │                                 [env var: OPENAI_BASE_URL]                   │
 ╰──────────────────────────────────────────────────────────────────────────────╯
-╭─ LLM Configuration: Gemini ──────────────────────────────────────────────────╮
+╭─ LLM: Gemini ────────────────────────────────────────────────────────────────╮
 │ --llm-gemini-model        TEXT  The Gemini model to use for LLM tasks.       │
 │                                 [default: gemini-2.5-flash]                  │
 │ --gemini-api-key          TEXT  Your Gemini API key. Can also be set with    │
@@ -545,9 +545,14 @@ the `[defaults]` section of your configuration file.
  Wyoming ASR Client for streaming microphone audio to a transcription server.
 
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
-│ --extra-instructions          TEXT  Additional instructions for the LLM to   │
-│                                     process the transcription.               │
-│ --help                -h            Show this message and exit.              │
+│ --help  -h        Show this message and exit.                                │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ LLM Configuration ──────────────────────────────────────────────────────────╮
+│ --extra-instructions                TEXT  Additional instructions for the    │
+│                                           LLM to process the transcription.  │
+│ --llm                   --no-llm          Use an LLM to process the          │
+│                                           transcript.                        │
+│                                           [default: no-llm]                  │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Audio Recovery ─────────────────────────────────────────────────────────────╮
 │ --from-file                                PATH     Transcribe audio from a  │
@@ -571,20 +576,20 @@ the `[defaults]` section of your configuration file.
 │                             'gemini').                                       │
 │                             [default: ollama]                                │
 ╰──────────────────────────────────────────────────────────────────────────────╯
-╭─ ASR (Audio) Configuration ──────────────────────────────────────────────────╮
+╭─ Audio Input ────────────────────────────────────────────────────────────────╮
 │ --input-device-index        INTEGER  Index of the audio input device to use. │
 │ --input-device-name         TEXT     Device name keywords for partial        │
 │                                      matching.                               │
 │ --list-devices                       List available audio input and output   │
 │                                      devices and exit.                       │
 ╰──────────────────────────────────────────────────────────────────────────────╯
-╭─ ASR (Audio) Configuration: Wyoming (local) ─────────────────────────────────╮
+╭─ Audio Input: Wyoming ───────────────────────────────────────────────────────╮
 │ --asr-wyoming-ip          TEXT     Wyoming ASR server IP address.            │
 │                                    [default: localhost]                      │
 │ --asr-wyoming-port        INTEGER  Wyoming ASR server port.                  │
 │                                    [default: 10300]                          │
 ╰──────────────────────────────────────────────────────────────────────────────╯
-╭─ ASR (Audio) Configuration: OpenAI ──────────────────────────────────────────╮
+╭─ Audio Input: OpenAI-compatible ─────────────────────────────────────────────╮
 │ --asr-openai-model           TEXT  The OpenAI model to use for ASR           │
 │                                    (transcription).                          │
 │                                    [default: whisper-1]                      │
@@ -594,7 +599,7 @@ the `[defaults]` section of your configuration file.
 │ --asr-openai-prompt          TEXT  Custom prompt to guide transcription      │
 │                                    (optional).                               │
 ╰──────────────────────────────────────────────────────────────────────────────╯
-╭─ LLM Configuration: Ollama (local) ──────────────────────────────────────────╮
+╭─ LLM: Ollama ────────────────────────────────────────────────────────────────╮
 │ --llm-ollama-model        TEXT  The Ollama model to use. Default is          │
 │                                 gemma3:4b.                                   │
 │                                 [default: gemma3:4b]                         │
@@ -602,7 +607,7 @@ the `[defaults]` section of your configuration file.
 │                                 http://localhost:11434.                      │
 │                                 [default: http://localhost:11434]            │
 ╰──────────────────────────────────────────────────────────────────────────────╯
-╭─ LLM Configuration: OpenAI ──────────────────────────────────────────────────╮
+╭─ LLM: OpenAI-compatible ─────────────────────────────────────────────────────╮
 │ --llm-openai-model        TEXT  The OpenAI model to use for LLM tasks.       │
 │                                 [default: gpt-5-mini]                        │
 │ --openai-api-key          TEXT  Your OpenAI API key. Can also be set with    │
@@ -613,18 +618,14 @@ the `[defaults]` section of your configuration file.
 │                                 http://localhost:8080/v1).                   │
 │                                 [env var: OPENAI_BASE_URL]                   │
 ╰──────────────────────────────────────────────────────────────────────────────╯
-╭─ LLM Configuration: Gemini ──────────────────────────────────────────────────╮
+╭─ LLM: Gemini ────────────────────────────────────────────────────────────────╮
 │ --llm-gemini-model        TEXT  The Gemini model to use for LLM tasks.       │
 │                                 [default: gemini-2.5-flash]                  │
 │ --gemini-api-key          TEXT  Your Gemini API key. Can also be set with    │
 │                                 the GEMINI_API_KEY environment variable.     │
 │                                 [env var: GEMINI_API_KEY]                    │
 ╰──────────────────────────────────────────────────────────────────────────────╯
-╭─ LLM Configuration ──────────────────────────────────────────────────────────╮
-│ --llm    --no-llm      Use an LLM to process the transcript.                 │
-│                        [default: no-llm]                                     │
-╰──────────────────────────────────────────────────────────────────────────────╯
-╭─ Process Management Options ─────────────────────────────────────────────────╮
+╭─ Process Management ─────────────────────────────────────────────────────────╮
 │ --stop            Stop any running background process.                       │
 │ --status          Check if a background process is running.                  │
 │ --toggle          Toggle the background process on/off. If the process is    │
@@ -763,20 +764,20 @@ uv tool install "agent-cli[vad]"
 │                             'gemini').                                       │
 │                             [default: ollama]                                │
 ╰──────────────────────────────────────────────────────────────────────────────╯
-╭─ ASR (Audio) Configuration ──────────────────────────────────────────────────╮
+╭─ Audio Input ────────────────────────────────────────────────────────────────╮
 │ --input-device-index        INTEGER  Index of the audio input device to use. │
 │ --input-device-name         TEXT     Device name keywords for partial        │
 │                                      matching.                               │
 │ --list-devices                       List available audio input and output   │
 │                                      devices and exit.                       │
 ╰──────────────────────────────────────────────────────────────────────────────╯
-╭─ ASR (Audio) Configuration: Wyoming (local) ─────────────────────────────────╮
+╭─ Audio Input: Wyoming ───────────────────────────────────────────────────────╮
 │ --asr-wyoming-ip          TEXT     Wyoming ASR server IP address.            │
 │                                    [default: localhost]                      │
 │ --asr-wyoming-port        INTEGER  Wyoming ASR server port.                  │
 │                                    [default: 10300]                          │
 ╰──────────────────────────────────────────────────────────────────────────────╯
-╭─ ASR (Audio) Configuration: OpenAI ──────────────────────────────────────────╮
+╭─ Audio Input: OpenAI-compatible ─────────────────────────────────────────────╮
 │ --asr-openai-model           TEXT  The OpenAI model to use for ASR           │
 │                                    (transcription).                          │
 │                                    [default: whisper-1]                      │
@@ -786,7 +787,7 @@ uv tool install "agent-cli[vad]"
 │ --asr-openai-prompt          TEXT  Custom prompt to guide transcription      │
 │                                    (optional).                               │
 ╰──────────────────────────────────────────────────────────────────────────────╯
-╭─ LLM Configuration: Ollama (local) ──────────────────────────────────────────╮
+╭─ LLM: Ollama ────────────────────────────────────────────────────────────────╮
 │ --llm-ollama-model        TEXT  The Ollama model to use. Default is          │
 │                                 gemma3:4b.                                   │
 │                                 [default: gemma3:4b]                         │
@@ -794,7 +795,7 @@ uv tool install "agent-cli[vad]"
 │                                 http://localhost:11434.                      │
 │                                 [default: http://localhost:11434]            │
 ╰──────────────────────────────────────────────────────────────────────────────╯
-╭─ LLM Configuration: OpenAI ──────────────────────────────────────────────────╮
+╭─ LLM: OpenAI-compatible ─────────────────────────────────────────────────────╮
 │ --llm-openai-model        TEXT  The OpenAI model to use for LLM tasks.       │
 │                                 [default: gpt-5-mini]                        │
 │ --openai-api-key          TEXT  Your OpenAI API key. Can also be set with    │
@@ -805,7 +806,7 @@ uv tool install "agent-cli[vad]"
 │                                 http://localhost:8080/v1).                   │
 │                                 [env var: OPENAI_BASE_URL]                   │
 ╰──────────────────────────────────────────────────────────────────────────────╯
-╭─ LLM Configuration: Gemini ──────────────────────────────────────────────────╮
+╭─ LLM: Gemini ────────────────────────────────────────────────────────────────╮
 │ --llm-gemini-model        TEXT  The Gemini model to use for LLM tasks.       │
 │                                 [default: gemini-2.5-flash]                  │
 │ --gemini-api-key          TEXT  Your Gemini API key. Can also be set with    │
@@ -816,7 +817,7 @@ uv tool install "agent-cli[vad]"
 │ --llm    --no-llm      Use an LLM to process the transcript.                 │
 │                        [default: no-llm]                                     │
 ╰──────────────────────────────────────────────────────────────────────────────╯
-╭─ Process Management Options ─────────────────────────────────────────────────╮
+╭─ Process Management ─────────────────────────────────────────────────────────╮
 │ --stop            Stop any running background process.                       │
 │ --status          Check if a background process is running.                  │
 ╰──────────────────────────────────────────────────────────────────────────────╯
@@ -883,7 +884,7 @@ uv tool install "agent-cli[vad]"
 │                             'kokoro').                                       │
 │                             [default: wyoming]                               │
 ╰──────────────────────────────────────────────────────────────────────────────╯
-╭─ TTS (Text-to-Speech) Configuration ─────────────────────────────────────────╮
+╭─ Audio Output ───────────────────────────────────────────────────────────────╮
 │ --output-device-index        INTEGER  Index of the audio output device to    │
 │                                       use for TTS.                           │
 │ --output-device-name         TEXT     Output device name keywords for        │
@@ -893,7 +894,7 @@ uv tool install "agent-cli[vad]"
 │                                       speed).                                │
 │                                       [default: 1.0]                         │
 ╰──────────────────────────────────────────────────────────────────────────────╯
-╭─ TTS (Text-to-Speech) Configuration: Wyoming (local) ────────────────────────╮
+╭─ Audio Output: Wyoming ──────────────────────────────────────────────────────╮
 │ --tts-wyoming-ip              TEXT     Wyoming TTS server IP address.        │
 │                                        [default: localhost]                  │
 │ --tts-wyoming-port            INTEGER  Wyoming TTS server port.              │
@@ -904,7 +905,7 @@ uv tool install "agent-cli[vad]"
 │                                        'en_US').                             │
 │ --tts-wyoming-speaker         TEXT     Speaker name for Wyoming TTS voice.   │
 ╰──────────────────────────────────────────────────────────────────────────────╯
-╭─ TTS (Text-to-Speech) Configuration: OpenAI ─────────────────────────────────╮
+╭─ Audio Output: OpenAI-compatible ────────────────────────────────────────────╮
 │ --tts-openai-model           TEXT  The OpenAI model to use for TTS.          │
 │                                    [default: tts-1]                          │
 │ --tts-openai-voice           TEXT  The voice to use for OpenAI TTS.          │
@@ -913,7 +914,7 @@ uv tool install "agent-cli[vad]"
 │                                    API (e.g., http://localhost:8000/v1 for a │
 │                                    proxy).                                   │
 ╰──────────────────────────────────────────────────────────────────────────────╯
-╭─ TTS (Text-to-Speech) Configuration: Kokoro ─────────────────────────────────╮
+╭─ Audio Output: Kokoro ───────────────────────────────────────────────────────╮
 │ --tts-kokoro-model        TEXT  The Kokoro model to use for TTS.             │
 │                                 [default: kokoro]                            │
 │ --tts-kokoro-voice        TEXT  The voice to use for Kokoro TTS.             │
@@ -921,7 +922,7 @@ uv tool install "agent-cli[vad]"
 │ --tts-kokoro-host         TEXT  The base URL for the Kokoro API.             │
 │                                 [default: http://localhost:8880/v1]          │
 ╰──────────────────────────────────────────────────────────────────────────────╯
-╭─ ASR (Audio) Configuration ──────────────────────────────────────────────────╮
+╭─ Audio Input ────────────────────────────────────────────────────────────────╮
 │ --list-devices          List available audio input and output devices and    │
 │                         exit.                                                │
 ╰──────────────────────────────────────────────────────────────────────────────╯
@@ -935,7 +936,7 @@ uv tool install "agent-cli[vad]"
 │ --print-args                Print the command line arguments, including      │
 │                             variables taken from the configuration file.     │
 ╰──────────────────────────────────────────────────────────────────────────────╯
-╭─ Process Management Options ─────────────────────────────────────────────────╮
+╭─ Process Management ─────────────────────────────────────────────────────────╮
 │ --stop            Stop any running background process.                       │
 │ --status          Check if a background process is running.                  │
 │ --toggle          Toggle the background process on/off. If the process is    │
@@ -1007,25 +1008,25 @@ uv tool install "agent-cli[vad]"
 │                             'kokoro').                                       │
 │                             [default: wyoming]                               │
 ╰──────────────────────────────────────────────────────────────────────────────╯
-╭─ ASR (Audio) Configuration ──────────────────────────────────────────────────╮
+╭─ Audio Input ────────────────────────────────────────────────────────────────╮
 │ --input-device-index        INTEGER  Index of the audio input device to use. │
 │ --input-device-name         TEXT     Device name keywords for partial        │
 │                                      matching.                               │
 │ --list-devices                       List available audio input and output   │
 │                                      devices and exit.                       │
 ╰──────────────────────────────────────────────────────────────────────────────╯
-╭─ ASR (Audio) Configuration: Wyoming (local) ─────────────────────────────────╮
+╭─ Audio Input: Wyoming ───────────────────────────────────────────────────────╮
 │ --asr-wyoming-ip          TEXT     Wyoming ASR server IP address.            │
 │                                    [default: localhost]                      │
 │ --asr-wyoming-port        INTEGER  Wyoming ASR server port.                  │
 │                                    [default: 10300]                          │
 ╰──────────────────────────────────────────────────────────────────────────────╯
-╭─ ASR (Audio) Configuration: OpenAI ──────────────────────────────────────────╮
+╭─ Audio Input: OpenAI-compatible ─────────────────────────────────────────────╮
 │ --asr-openai-model        TEXT  The OpenAI model to use for ASR              │
 │                                 (transcription).                             │
 │                                 [default: whisper-1]                         │
 ╰──────────────────────────────────────────────────────────────────────────────╯
-╭─ LLM Configuration: Ollama (local) ──────────────────────────────────────────╮
+╭─ LLM: Ollama ────────────────────────────────────────────────────────────────╮
 │ --llm-ollama-model        TEXT  The Ollama model to use. Default is          │
 │                                 gemma3:4b.                                   │
 │                                 [default: gemma3:4b]                         │
@@ -1033,7 +1034,7 @@ uv tool install "agent-cli[vad]"
 │                                 http://localhost:11434.                      │
 │                                 [default: http://localhost:11434]            │
 ╰──────────────────────────────────────────────────────────────────────────────╯
-╭─ LLM Configuration: OpenAI ──────────────────────────────────────────────────╮
+╭─ LLM: OpenAI-compatible ─────────────────────────────────────────────────────╮
 │ --llm-openai-model        TEXT  The OpenAI model to use for LLM tasks.       │
 │                                 [default: gpt-5-mini]                        │
 │ --openai-api-key          TEXT  Your OpenAI API key. Can also be set with    │
@@ -1044,14 +1045,14 @@ uv tool install "agent-cli[vad]"
 │                                 http://localhost:8080/v1).                   │
 │                                 [env var: OPENAI_BASE_URL]                   │
 ╰──────────────────────────────────────────────────────────────────────────────╯
-╭─ LLM Configuration: Gemini ──────────────────────────────────────────────────╮
+╭─ LLM: Gemini ────────────────────────────────────────────────────────────────╮
 │ --llm-gemini-model        TEXT  The Gemini model to use for LLM tasks.       │
 │                                 [default: gemini-2.5-flash]                  │
 │ --gemini-api-key          TEXT  Your Gemini API key. Can also be set with    │
 │                                 the GEMINI_API_KEY environment variable.     │
 │                                 [env var: GEMINI_API_KEY]                    │
 ╰──────────────────────────────────────────────────────────────────────────────╯
-╭─ TTS (Text-to-Speech) Configuration ─────────────────────────────────────────╮
+╭─ Audio Output ───────────────────────────────────────────────────────────────╮
 │ --tts                    --no-tts             Enable text-to-speech for      │
 │                                               responses.                     │
 │                                               [default: no-tts]              │
@@ -1064,7 +1065,7 @@ uv tool install "agent-cli[vad]"
 │                                               0.5 = half speed).             │
 │                                               [default: 1.0]                 │
 ╰──────────────────────────────────────────────────────────────────────────────╯
-╭─ TTS (Text-to-Speech) Configuration: Wyoming (local) ────────────────────────╮
+╭─ Audio Output: Wyoming ──────────────────────────────────────────────────────╮
 │ --tts-wyoming-ip              TEXT     Wyoming TTS server IP address.        │
 │                                        [default: localhost]                  │
 │ --tts-wyoming-port            INTEGER  Wyoming TTS server port.              │
@@ -1075,7 +1076,7 @@ uv tool install "agent-cli[vad]"
 │                                        'en_US').                             │
 │ --tts-wyoming-speaker         TEXT     Speaker name for Wyoming TTS voice.   │
 ╰──────────────────────────────────────────────────────────────────────────────╯
-╭─ TTS (Text-to-Speech) Configuration: OpenAI ─────────────────────────────────╮
+╭─ Audio Output: OpenAI-compatible ────────────────────────────────────────────╮
 │ --tts-openai-model           TEXT  The OpenAI model to use for TTS.          │
 │                                    [default: tts-1]                          │
 │ --tts-openai-voice           TEXT  The voice to use for OpenAI TTS.          │
@@ -1084,7 +1085,7 @@ uv tool install "agent-cli[vad]"
 │                                    API (e.g., http://localhost:8000/v1 for a │
 │                                    proxy).                                   │
 ╰──────────────────────────────────────────────────────────────────────────────╯
-╭─ TTS (Text-to-Speech) Configuration: Kokoro ─────────────────────────────────╮
+╭─ Audio Output: Kokoro ───────────────────────────────────────────────────────╮
 │ --tts-kokoro-model        TEXT  The Kokoro model to use for TTS.             │
 │                                 [default: kokoro]                            │
 │ --tts-kokoro-voice        TEXT  The voice to use for Kokoro TTS.             │
@@ -1092,7 +1093,7 @@ uv tool install "agent-cli[vad]"
 │ --tts-kokoro-host         TEXT  The base URL for the Kokoro API.             │
 │                                 [default: http://localhost:8880/v1]          │
 ╰──────────────────────────────────────────────────────────────────────────────╯
-╭─ Process Management Options ─────────────────────────────────────────────────╮
+╭─ Process Management ─────────────────────────────────────────────────────────╮
 │ --stop            Stop any running background process.                       │
 │ --status          Check if a background process is running.                  │
 │ --toggle          Toggle the background process on/off. If the process is    │
@@ -1171,7 +1172,7 @@ uv tool install "agent-cli[vad]"
 │                             'kokoro').                                       │
 │                             [default: wyoming]                               │
 ╰──────────────────────────────────────────────────────────────────────────────╯
-╭─ Wake Word Options ──────────────────────────────────────────────────────────╮
+╭─ Wake Word ──────────────────────────────────────────────────────────────────╮
 │ --wake-server-ip          TEXT     Wyoming wake word server IP address.      │
 │                                    [default: localhost]                      │
 │ --wake-server-port        INTEGER  Wyoming wake word server port.            │
@@ -1180,25 +1181,25 @@ uv tool install "agent-cli[vad]"
 │                                    'ok_nabu', 'hey_jarvis').                 │
 │                                    [default: ok_nabu]                        │
 ╰──────────────────────────────────────────────────────────────────────────────╯
-╭─ ASR (Audio) Configuration ──────────────────────────────────────────────────╮
+╭─ Audio Input ────────────────────────────────────────────────────────────────╮
 │ --input-device-index        INTEGER  Index of the audio input device to use. │
 │ --input-device-name         TEXT     Device name keywords for partial        │
 │                                      matching.                               │
 │ --list-devices                       List available audio input and output   │
 │                                      devices and exit.                       │
 ╰──────────────────────────────────────────────────────────────────────────────╯
-╭─ ASR (Audio) Configuration: Wyoming (local) ─────────────────────────────────╮
+╭─ Audio Input: Wyoming ───────────────────────────────────────────────────────╮
 │ --asr-wyoming-ip          TEXT     Wyoming ASR server IP address.            │
 │                                    [default: localhost]                      │
 │ --asr-wyoming-port        INTEGER  Wyoming ASR server port.                  │
 │                                    [default: 10300]                          │
 ╰──────────────────────────────────────────────────────────────────────────────╯
-╭─ ASR (Audio) Configuration: OpenAI ──────────────────────────────────────────╮
+╭─ Audio Input: OpenAI-compatible ─────────────────────────────────────────────╮
 │ --asr-openai-model        TEXT  The OpenAI model to use for ASR              │
 │                                 (transcription).                             │
 │                                 [default: whisper-1]                         │
 ╰──────────────────────────────────────────────────────────────────────────────╯
-╭─ LLM Configuration: Ollama (local) ──────────────────────────────────────────╮
+╭─ LLM: Ollama ────────────────────────────────────────────────────────────────╮
 │ --llm-ollama-model        TEXT  The Ollama model to use. Default is          │
 │                                 gemma3:4b.                                   │
 │                                 [default: gemma3:4b]                         │
@@ -1206,7 +1207,7 @@ uv tool install "agent-cli[vad]"
 │                                 http://localhost:11434.                      │
 │                                 [default: http://localhost:11434]            │
 ╰──────────────────────────────────────────────────────────────────────────────╯
-╭─ LLM Configuration: OpenAI ──────────────────────────────────────────────────╮
+╭─ LLM: OpenAI-compatible ─────────────────────────────────────────────────────╮
 │ --llm-openai-model        TEXT  The OpenAI model to use for LLM tasks.       │
 │                                 [default: gpt-5-mini]                        │
 │ --openai-api-key          TEXT  Your OpenAI API key. Can also be set with    │
@@ -1217,14 +1218,14 @@ uv tool install "agent-cli[vad]"
 │                                 http://localhost:8080/v1).                   │
 │                                 [env var: OPENAI_BASE_URL]                   │
 ╰──────────────────────────────────────────────────────────────────────────────╯
-╭─ LLM Configuration: Gemini ──────────────────────────────────────────────────╮
+╭─ LLM: Gemini ────────────────────────────────────────────────────────────────╮
 │ --llm-gemini-model        TEXT  The Gemini model to use for LLM tasks.       │
 │                                 [default: gemini-2.5-flash]                  │
 │ --gemini-api-key          TEXT  Your Gemini API key. Can also be set with    │
 │                                 the GEMINI_API_KEY environment variable.     │
 │                                 [env var: GEMINI_API_KEY]                    │
 ╰──────────────────────────────────────────────────────────────────────────────╯
-╭─ TTS (Text-to-Speech) Configuration ─────────────────────────────────────────╮
+╭─ Audio Output ───────────────────────────────────────────────────────────────╮
 │ --tts                    --no-tts             Enable text-to-speech for      │
 │                                               responses.                     │
 │                                               [default: no-tts]              │
@@ -1237,7 +1238,7 @@ uv tool install "agent-cli[vad]"
 │                                               0.5 = half speed).             │
 │                                               [default: 1.0]                 │
 ╰──────────────────────────────────────────────────────────────────────────────╯
-╭─ TTS (Text-to-Speech) Configuration: Wyoming (local) ────────────────────────╮
+╭─ Audio Output: Wyoming ──────────────────────────────────────────────────────╮
 │ --tts-wyoming-ip              TEXT     Wyoming TTS server IP address.        │
 │                                        [default: localhost]                  │
 │ --tts-wyoming-port            INTEGER  Wyoming TTS server port.              │
@@ -1248,7 +1249,7 @@ uv tool install "agent-cli[vad]"
 │                                        'en_US').                             │
 │ --tts-wyoming-speaker         TEXT     Speaker name for Wyoming TTS voice.   │
 ╰──────────────────────────────────────────────────────────────────────────────╯
-╭─ TTS (Text-to-Speech) Configuration: OpenAI ─────────────────────────────────╮
+╭─ Audio Output: OpenAI-compatible ────────────────────────────────────────────╮
 │ --tts-openai-model           TEXT  The OpenAI model to use for TTS.          │
 │                                    [default: tts-1]                          │
 │ --tts-openai-voice           TEXT  The voice to use for OpenAI TTS.          │
@@ -1257,7 +1258,7 @@ uv tool install "agent-cli[vad]"
 │                                    API (e.g., http://localhost:8000/v1 for a │
 │                                    proxy).                                   │
 ╰──────────────────────────────────────────────────────────────────────────────╯
-╭─ TTS (Text-to-Speech) Configuration: Kokoro ─────────────────────────────────╮
+╭─ Audio Output: Kokoro ───────────────────────────────────────────────────────╮
 │ --tts-kokoro-model        TEXT  The Kokoro model to use for TTS.             │
 │                                 [default: kokoro]                            │
 │ --tts-kokoro-voice        TEXT  The voice to use for Kokoro TTS.             │
@@ -1265,7 +1266,7 @@ uv tool install "agent-cli[vad]"
 │ --tts-kokoro-host         TEXT  The base URL for the Kokoro API.             │
 │                                 [default: http://localhost:8880/v1]          │
 ╰──────────────────────────────────────────────────────────────────────────────╯
-╭─ Process Management Options ─────────────────────────────────────────────────╮
+╭─ Process Management ─────────────────────────────────────────────────────────╮
 │ --stop            Stop any running background process.                       │
 │ --status          Check if a background process is running.                  │
 │ --toggle          Toggle the background process on/off. If the process is    │
@@ -1351,20 +1352,20 @@ uv tool install "agent-cli[vad]"
 │                             'kokoro').                                       │
 │                             [default: wyoming]                               │
 ╰──────────────────────────────────────────────────────────────────────────────╯
-╭─ ASR (Audio) Configuration ──────────────────────────────────────────────────╮
+╭─ Audio Input ────────────────────────────────────────────────────────────────╮
 │ --input-device-index        INTEGER  Index of the audio input device to use. │
 │ --input-device-name         TEXT     Device name keywords for partial        │
 │                                      matching.                               │
 │ --list-devices                       List available audio input and output   │
 │                                      devices and exit.                       │
 ╰──────────────────────────────────────────────────────────────────────────────╯
-╭─ ASR (Audio) Configuration: Wyoming (local) ─────────────────────────────────╮
+╭─ Audio Input: Wyoming ───────────────────────────────────────────────────────╮
 │ --asr-wyoming-ip          TEXT     Wyoming ASR server IP address.            │
 │                                    [default: localhost]                      │
 │ --asr-wyoming-port        INTEGER  Wyoming ASR server port.                  │
 │                                    [default: 10300]                          │
 ╰──────────────────────────────────────────────────────────────────────────────╯
-╭─ ASR (Audio) Configuration: OpenAI ──────────────────────────────────────────╮
+╭─ Audio Input: OpenAI-compatible ─────────────────────────────────────────────╮
 │ --asr-openai-model           TEXT  The OpenAI model to use for ASR           │
 │                                    (transcription).                          │
 │                                    [default: whisper-1]                      │
@@ -1374,7 +1375,7 @@ uv tool install "agent-cli[vad]"
 │ --asr-openai-prompt          TEXT  Custom prompt to guide transcription      │
 │                                    (optional).                               │
 ╰──────────────────────────────────────────────────────────────────────────────╯
-╭─ LLM Configuration: Ollama (local) ──────────────────────────────────────────╮
+╭─ LLM: Ollama ────────────────────────────────────────────────────────────────╮
 │ --llm-ollama-model        TEXT  The Ollama model to use. Default is          │
 │                                 gemma3:4b.                                   │
 │                                 [default: gemma3:4b]                         │
@@ -1382,7 +1383,7 @@ uv tool install "agent-cli[vad]"
 │                                 http://localhost:11434.                      │
 │                                 [default: http://localhost:11434]            │
 ╰──────────────────────────────────────────────────────────────────────────────╯
-╭─ LLM Configuration: OpenAI ──────────────────────────────────────────────────╮
+╭─ LLM: OpenAI-compatible ─────────────────────────────────────────────────────╮
 │ --llm-openai-model        TEXT  The OpenAI model to use for LLM tasks.       │
 │                                 [default: gpt-5-mini]                        │
 │ --openai-api-key          TEXT  Your OpenAI API key. Can also be set with    │
@@ -1393,14 +1394,14 @@ uv tool install "agent-cli[vad]"
 │                                 http://localhost:8080/v1).                   │
 │                                 [env var: OPENAI_BASE_URL]                   │
 ╰──────────────────────────────────────────────────────────────────────────────╯
-╭─ LLM Configuration: Gemini ──────────────────────────────────────────────────╮
+╭─ LLM: Gemini ────────────────────────────────────────────────────────────────╮
 │ --llm-gemini-model        TEXT  The Gemini model to use for LLM tasks.       │
 │                                 [default: gemini-2.5-flash]                  │
 │ --gemini-api-key          TEXT  Your Gemini API key. Can also be set with    │
 │                                 the GEMINI_API_KEY environment variable.     │
 │                                 [env var: GEMINI_API_KEY]                    │
 ╰──────────────────────────────────────────────────────────────────────────────╯
-╭─ TTS (Text-to-Speech) Configuration ─────────────────────────────────────────╮
+╭─ Audio Output ───────────────────────────────────────────────────────────────╮
 │ --tts                    --no-tts             Enable text-to-speech for      │
 │                                               responses.                     │
 │                                               [default: no-tts]              │
@@ -1413,7 +1414,7 @@ uv tool install "agent-cli[vad]"
 │                                               0.5 = half speed).             │
 │                                               [default: 1.0]                 │
 ╰──────────────────────────────────────────────────────────────────────────────╯
-╭─ TTS (Text-to-Speech) Configuration: Wyoming (local) ────────────────────────╮
+╭─ Audio Output: Wyoming ──────────────────────────────────────────────────────╮
 │ --tts-wyoming-ip              TEXT     Wyoming TTS server IP address.        │
 │                                        [default: localhost]                  │
 │ --tts-wyoming-port            INTEGER  Wyoming TTS server port.              │
@@ -1424,7 +1425,7 @@ uv tool install "agent-cli[vad]"
 │                                        'en_US').                             │
 │ --tts-wyoming-speaker         TEXT     Speaker name for Wyoming TTS voice.   │
 ╰──────────────────────────────────────────────────────────────────────────────╯
-╭─ TTS (Text-to-Speech) Configuration: OpenAI ─────────────────────────────────╮
+╭─ Audio Output: OpenAI-compatible ────────────────────────────────────────────╮
 │ --tts-openai-model           TEXT  The OpenAI model to use for TTS.          │
 │                                    [default: tts-1]                          │
 │ --tts-openai-voice           TEXT  The voice to use for OpenAI TTS.          │
@@ -1433,7 +1434,7 @@ uv tool install "agent-cli[vad]"
 │                                    API (e.g., http://localhost:8000/v1 for a │
 │                                    proxy).                                   │
 ╰──────────────────────────────────────────────────────────────────────────────╯
-╭─ TTS (Text-to-Speech) Configuration: Kokoro ─────────────────────────────────╮
+╭─ Audio Output: Kokoro ───────────────────────────────────────────────────────╮
 │ --tts-kokoro-model        TEXT  The Kokoro model to use for TTS.             │
 │                                 [default: kokoro]                            │
 │ --tts-kokoro-voice        TEXT  The voice to use for Kokoro TTS.             │
@@ -1441,7 +1442,7 @@ uv tool install "agent-cli[vad]"
 │ --tts-kokoro-host         TEXT  The base URL for the Kokoro API.             │
 │                                 [default: http://localhost:8880/v1]          │
 ╰──────────────────────────────────────────────────────────────────────────────╯
-╭─ Process Management Options ─────────────────────────────────────────────────╮
+╭─ Process Management ─────────────────────────────────────────────────────────╮
 │ --stop            Stop any running background process.                       │
 │ --status          Check if a background process is running.                  │
 │ --toggle          Toggle the background process on/off. If the process is    │
@@ -1532,7 +1533,7 @@ uv tool install "agent-cli[vad]"
 │                                             insufficient.                    │
 │                                             [default: rag-tools]             │
 ╰──────────────────────────────────────────────────────────────────────────────╯
-╭─ LLM Configuration: OpenAI ──────────────────────────────────────────────────╮
+╭─ LLM: OpenAI-compatible ─────────────────────────────────────────────────────╮
 │ --openai-base-url        TEXT  Custom base URL for OpenAI-compatible API     │
 │                                (e.g., for llama-server:                      │
 │                                http://localhost:8080/v1).                    │
@@ -1686,7 +1687,7 @@ The `memory proxy` command is the core feature—a middleware server that gives 
 │                                                      [default:               │
 │                                                      git-versioning]         │
 ╰──────────────────────────────────────────────────────────────────────────────╯
-╭─ LLM Configuration: OpenAI ──────────────────────────────────────────────────╮
+╭─ LLM: OpenAI-compatible ─────────────────────────────────────────────────────╮
 │ --openai-base-url        TEXT  Custom base URL for OpenAI-compatible API     │
 │                                (e.g., for llama-server:                      │
 │                                http://localhost:8080/v1).                    │
