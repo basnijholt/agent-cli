@@ -4,11 +4,23 @@ icon: fontawesome/brands/windows
 
 # Windows Installation Guide
 
-`agent-cli` works natively on Windows - no WSL required! You can run all services (Ollama, Whisper, Piper) directly on Windows.
+`agent-cli` works natively on Windows - no WSL required! All services (Ollama, Whisper, Piper) run directly on Windows.
+
+## Prerequisites
+
+- Windows 10/11
+- 8GB+ RAM (16GB+ recommended for GPU acceleration)
+- 10GB free disk space
+
+### For GPU Acceleration (Optional)
+
+- NVIDIA GPU (GTX 1060+ or RTX series recommended)
+- NVIDIA drivers installed
+- CUDA 12 and cuDNN 9 (see [faster-whisper GPU docs](https://github.com/SYSTRAN/faster-whisper#gpu))
 
 ## Quick Start (Cloud Providers)
 
-The fastest way to get started is using cloud providers:
+The fastest way to get started - no local services needed:
 
 ```powershell
 # Install uv (Python package manager)
@@ -18,96 +30,101 @@ powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
 uv tool install agent-cli
 
 # Use with cloud providers (requires API keys)
+$env:OPENAI_API_KEY = "sk-..."
 agent-cli transcribe --asr-provider openai --llm-provider openai
 ```
 
-Set your API key as an environment variable:
-```powershell
-$env:OPENAI_API_KEY = "sk-..."
-```
+---
+
+## Full Local Setup (Recommended)
+
+For a completely local setup with no internet dependency.
+
+### Script-Based Installation (Recommended)
+
+1. **Clone the repository:**
+
+   ```powershell
+   git clone https://github.com/basnijholt/agent-cli.git
+   cd agent-cli
+   ```
+
+2. **Run the setup script:**
+
+   ```powershell
+   powershell -ExecutionPolicy Bypass -File scripts/setup-windows.ps1
+   ```
+
+3. **Start all services:**
+
+   ```powershell
+   powershell -ExecutionPolicy Bypass -File scripts/start-all-services-windows.ps1
+   ```
+
+4. **Test the setup:**
+
+   ```powershell
+   agent-cli transcribe
+   ```
+
+### Manual Installation
+
+If you prefer manual setup:
+
+1. **Install uv:**
+
+   ```powershell
+   powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
+   ```
+
+2. **Install Ollama:**
+
+   Download from [ollama.com](https://ollama.com/download/windows) and install. Then:
+
+   ```powershell
+   ollama pull gemma3:4b
+   ```
+
+3. **Install agent-cli:**
+
+   ```powershell
+   uv tool install agent-cli
+   ```
+
+4. **Run services individually:**
+
+   ```powershell
+   # Terminal 1: Ollama (may already be running as a service)
+   ollama serve
+
+   # Terminal 2: Whisper
+   powershell -ExecutionPolicy Bypass -File scripts/run-whisper-windows.ps1
+
+   # Terminal 3: Piper
+   powershell -ExecutionPolicy Bypass -File scripts/run-piper-windows.ps1
+   ```
 
 ---
 
-## Full Local Setup (No Cloud Required)
+## Services Overview
 
-For a completely local setup with no internet dependency, install these services:
+| Service     | Port  | GPU Support | Description              |
+| ----------- | ----- | ----------- | ------------------------ |
+| **Ollama**  | 11434 | ✅ CUDA     | LLM inference            |
+| **Whisper** | 10300 | ✅ CUDA     | Speech-to-text (ASR)     |
+| **Piper**   | 10200 | N/A         | Text-to-speech (TTS)     |
 
-### 1. Install Ollama (LLM)
+## GPU Acceleration
 
-Download and install from [ollama.com](https://ollama.com/download/windows). Then pull a model:
+The scripts automatically detect NVIDIA GPU and use:
 
-```powershell
-ollama pull gemma3:4b
-```
+- **With GPU (CUDA):** `large-v3` model for best accuracy
+- **Without GPU:** `tiny` model for faster CPU inference
 
-Ollama runs automatically as a service on `localhost:11434`.
-
-### 2. Install Whisper (Speech-to-Text)
-
-Install the Wyoming Whisper server:
-
-```powershell
-# Create a virtual environment for the server
-uv venv whisper-server
-whisper-server\Scripts\activate
-
-# Install wyoming-faster-whisper
-uv pip install wyoming-faster-whisper
-
-# Download a model and start the server
-# Use large-v3 for GPU, tiny for CPU-only
-wyoming-faster-whisper --model large-v3 --device cuda --uri tcp://0.0.0.0:10300 --data-dir ./whisper-data
-```
-
-> [!TIP]
-> For GPU acceleration, ensure you have CUDA 12 and cuDNN 9 installed. See the [faster-whisper docs](https://github.com/SYSTRAN/faster-whisper#gpu) for details.
-> For CPU-only, use `--model tiny --device cpu` instead.
-
-### 3. Install Piper (Text-to-Speech)
+To verify GPU is being used:
 
 ```powershell
-# Create a virtual environment for the server
-uv venv piper-server
-piper-server\Scripts\activate
-
-# Install wyoming-piper
-uv pip install wyoming-piper
-
-# Start the server (downloads voice automatically)
-wyoming-piper --voice en_US-lessac-medium --uri tcp://0.0.0.0:10200 --data-dir ./piper-data
-```
-
-### 4. Install agent-cli
-
-```powershell
-uv tool install agent-cli
-```
-
-### 5. Test Your Setup
-
-```powershell
-# Test transcription (speak into your microphone)
-agent-cli transcribe
-
-# Test with specific providers
-agent-cli transcribe --asr-provider wyoming --llm-provider ollama
-```
-
-> [!NOTE]
-> If audio doesn't work, run `agent-cli transcribe --list-devices` to find your microphone's device index, then use `--input-device-index <number>`.
-
----
-
-## Running Services at Startup
-
-To run the Wyoming servers automatically, you can create Windows Task Scheduler entries or use a simple batch script:
-
-```batch
-@echo off
-REM save as start-agent-services.bat
-
-start "Whisper" cmd /k "whisper-server\Scripts\activate && wyoming-faster-whisper --model large-v3 --device cuda --uri tcp://0.0.0.0:10300 --data-dir ./whisper-data"
-start "Piper" cmd /k "piper-server\Scripts\activate && wyoming-piper --voice en_US-lessac-medium --uri tcp://0.0.0.0:10200 --data-dir ./piper-data"
+nvidia-smi
 ```
 
 ---
@@ -152,28 +169,40 @@ Persistent
 }
 ```
 
-2. Double-click the script to run it, or place it in your Startup folder.
+2. Double-click the script to run it.
 
 > [!TIP]
-> To run the script at startup, press `Win+R`, type `shell:startup`, and place a shortcut to your `.ahk` file there.
+> To run at startup: Press `Win+R`, type `shell:startup`, and place a shortcut to your `.ahk` file there.
 
 ---
 
 ## Troubleshooting
 
 ### Audio device not found
-Run `agent-cli transcribe --list-devices` and use the `--input-device-index` flag with your microphone's index.
+
+Run `agent-cli transcribe --list-devices` and use `--input-device-index` with your microphone's index.
 
 ### Wyoming server connection refused
-Ensure the servers are running and listening on the correct ports:
-- Whisper: `tcp://localhost:10300`
-- Piper: `tcp://localhost:10200`
 
-### GPU not being used for Whisper
-Install CUDA 12 and cuDNN 9. You can verify GPU usage with:
+Ensure the services are running:
+
 ```powershell
-wyoming-faster-whisper --model large-v3 --uri tcp://0.0.0.0:10300 --device cuda
+# Check if ports are in use
+netstat -an | findstr "10300 10200 11434"
 ```
 
+### GPU not being used
+
+1. Verify NVIDIA drivers: `nvidia-smi`
+2. Check CUDA installation
+3. Set device explicitly: `$env:WHISPER_DEVICE = "cuda"`
+
 ### Ollama not responding
-Check that Ollama is running: `ollama list`. If not, start it from the Start Menu or run `ollama serve`.
+
+Check if Ollama is running:
+
+```powershell
+ollama list
+```
+
+If not, start it: `ollama serve` or launch from Start Menu.
