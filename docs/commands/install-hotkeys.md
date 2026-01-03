@@ -16,18 +16,19 @@ agent-cli install-hotkeys [OPTIONS]
 
 Sets up hotkeys for common workflows:
 
-macOS:
+**macOS:**
+
 - Cmd+Shift+R: Toggle voice transcription
 - Cmd+Shift+A: Autocorrect clipboard text
 - Cmd+Shift+V: Voice edit clipboard text
 
-Linux:
+**Linux:**
+
 - Super+Shift+R: Toggle voice transcription
 - Super+Shift+A: Autocorrect clipboard text
 - Super+Shift+V: Voice edit clipboard text
 
-On macOS, you may need to grant Accessibility permissions to skhd in
-System Settings -> Privacy & Security -> Accessibility.
+On macOS, you may need to grant Accessibility permissions to skhd in System Settings → Privacy & Security → Accessibility.
 
 ## Options
 
