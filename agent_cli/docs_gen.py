@@ -170,44 +170,25 @@ def _options_by_panel(
     if not options:
         return "*No options found*"
 
-    # Group by panel, preserving order
-    panels: dict[str, list[dict[str, Any]]] = {}
+    # Get unique panels in order of first appearance
+    panels: list[str] = []
     for opt in options:
-        panel = opt["panel"]
-        if panel not in panels:
-            panels[panel] = []
-        panels[panel].append(opt)
+        if opt["panel"] not in panels:
+            panels.append(opt["panel"])
 
     heading_prefix = "#" * heading_level
     output = []
 
-    for panel, panel_opts in panels.items():
+    for panel in panels:
         output.append(f"{heading_prefix} {panel}\n")
-
-        # Build table for this panel
-        header_parts = ["Option"]
-        if include_type:
-            header_parts.append("Type")
-        if include_default:
-            header_parts.append("Default")
-        header_parts.append("Description")
-
-        header = "| " + " | ".join(header_parts) + " |"
-        separator = "|" + "|".join("-" * (len(p) + 2) for p in header_parts) + "|"
-
-        output.append(header)
-        output.append(separator)
-
-        for opt in panel_opts:
-            row_parts = [f"`{opt['name']}`"]
-            if include_type:
-                row_parts.append(opt["type"])
-            if include_default:
-                default = opt["default"]
-                row_parts.append(f"`{default}`" if default != "-" else "-")
-            row_parts.append(opt["help"])
-            output.append("| " + " | ".join(row_parts) + " |")
-
+        output.append(
+            _options_table(
+                command_path,
+                panel=panel,
+                include_type=include_type,
+                include_default=include_default,
+            ),
+        )
         output.append("")  # Blank line between panels
 
     return "\n".join(output)
