@@ -391,14 +391,14 @@ agent-cli config edit
 
  Manage agent-cli configuration files.
 
-╭─ Options ──────────────────────────────────────────────────────────────────────────────╮
-│ --help  -h        Show this message and exit.                                          │
-╰────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ Commands ─────────────────────────────────────────────────────────────────────────────╮
-│ init   Create a new config file with all options commented out.                        │
-│ edit   Open the config file in your default editor.                                    │
-│ show   Display the config file location and contents.                                  │
-╰────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ Options ────────────────────────────────────────────────────────────────────╮
+│ --help  -h        Show this message and exit.                                │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Commands ───────────────────────────────────────────────────────────────────╮
+│ init   Create a new config file with all options commented out.              │
+│ edit   Open the config file in your default editor.                          │
+│ show   Display the config file location and contents.                        │
+╰──────────────────────────────────────────────────────────────────────────────╯
 
 ```
 
@@ -457,49 +457,53 @@ the `[defaults]` section of your configuration file.
 
  Correct text from clipboard using a local or remote LLM.
 
-╭─ General Options ──────────────────────────────────────────────────────────────────────╮
-│   text      [TEXT]  The text to correct. If not provided, reads from clipboard.        │
-╰────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ Options ──────────────────────────────────────────────────────────────────────────────╮
-│ --help  -h        Show this message and exit.                                          │
-╰────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ Provider Selection ───────────────────────────────────────────────────────────────────╮
-│ --llm-provider        TEXT  The LLM provider to use ('ollama', 'openai', 'gemini').    │
-│                             [default: ollama]                                          │
-╰────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ LLM: Ollama ──────────────────────────────────────────────────────────────────────────╮
-│ --llm-ollama-model        TEXT  The Ollama model to use. Default is gemma3:4b.         │
-│                                 [default: gemma3:4b]                                   │
-│ --llm-ollama-host         TEXT  The Ollama server host. Default is                     │
-│                                 http://localhost:11434.                                │
-│                                 [default: http://localhost:11434]                      │
-╰────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ LLM: OpenAI-compatible ───────────────────────────────────────────────────────────────╮
-│ --llm-openai-model        TEXT  The OpenAI model to use for LLM tasks.                 │
-│                                 [default: gpt-5-mini]                                  │
-│ --openai-api-key          TEXT  Your OpenAI API key. Can also be set with the          │
-│                                 OPENAI_API_KEY environment variable.                   │
-│                                 [env var: OPENAI_API_KEY]                              │
-│ --openai-base-url         TEXT  Custom base URL for OpenAI-compatible API (e.g., for   │
-│                                 llama-server: http://localhost:8080/v1).               │
-│                                 [env var: OPENAI_BASE_URL]                             │
-╰────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ LLM: Gemini ──────────────────────────────────────────────────────────────────────────╮
-│ --llm-gemini-model        TEXT  The Gemini model to use for LLM tasks.                 │
-│                                 [default: gemini-3-flash-preview]                      │
-│ --gemini-api-key          TEXT  Your Gemini API key. Can also be set with the          │
-│                                 GEMINI_API_KEY environment variable.                   │
-│                                 [env var: GEMINI_API_KEY]                              │
-╰────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ General Options ──────────────────────────────────────────────────────────────────────╮
-│ --log-level           TEXT  Set logging level.                                         │
-│                             [default: WARNING]                                         │
-│ --log-file            TEXT  Path to a file to write logs to.                           │
-│ --quiet       -q            Suppress console output from rich.                         │
-│ --config              TEXT  Path to a TOML configuration file.                         │
-│ --print-args                Print the command line arguments, including variables      │
-│                             taken from the configuration file.                         │
-╰────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ General Options ────────────────────────────────────────────────────────────╮
+│   text      [TEXT]  The text to correct. If not provided, reads from         │
+│                     clipboard.                                               │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Options ────────────────────────────────────────────────────────────────────╮
+│ --help  -h        Show this message and exit.                                │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Provider Selection ─────────────────────────────────────────────────────────╮
+│ --llm-provider        TEXT  The LLM provider to use ('ollama', 'openai',     │
+│                             'gemini').                                       │
+│                             [default: ollama]                                │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ LLM: Ollama ────────────────────────────────────────────────────────────────╮
+│ --llm-ollama-model        TEXT  The Ollama model to use. Default is          │
+│                                 gemma3:4b.                                   │
+│                                 [default: gemma3:4b]                         │
+│ --llm-ollama-host         TEXT  The Ollama server host. Default is           │
+│                                 http://localhost:11434.                      │
+│                                 [default: http://localhost:11434]            │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ LLM: OpenAI-compatible ─────────────────────────────────────────────────────╮
+│ --llm-openai-model        TEXT  The OpenAI model to use for LLM tasks.       │
+│                                 [default: gpt-5-mini]                        │
+│ --openai-api-key          TEXT  Your OpenAI API key. Can also be set with    │
+│                                 the OPENAI_API_KEY environment variable.     │
+│                                 [env var: OPENAI_API_KEY]                    │
+│ --openai-base-url         TEXT  Custom base URL for OpenAI-compatible API    │
+│                                 (e.g., for llama-server:                     │
+│                                 http://localhost:8080/v1).                   │
+│                                 [env var: OPENAI_BASE_URL]                   │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ LLM: Gemini ────────────────────────────────────────────────────────────────╮
+│ --llm-gemini-model        TEXT  The Gemini model to use for LLM tasks.       │
+│                                 [default: gemini-3-flash-preview]            │
+│ --gemini-api-key          TEXT  Your Gemini API key. Can also be set with    │
+│                                 the GEMINI_API_KEY environment variable.     │
+│                                 [env var: GEMINI_API_KEY]                    │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ General Options ────────────────────────────────────────────────────────────╮
+│ --log-level           TEXT  Set logging level.                               │
+│                             [default: WARNING]                               │
+│ --log-file            TEXT  Path to a file to write logs to.                 │
+│ --quiet       -q            Suppress console output from rich.               │
+│ --config              TEXT  Path to a TOML configuration file.               │
+│ --print-args                Print the command line arguments, including      │
+│                             variables taken from the configuration file.     │
+╰──────────────────────────────────────────────────────────────────────────────╯
 
 ```
 
@@ -544,102 +548,120 @@ the `[defaults]` section of your configuration file.
 
  Wyoming ASR Client for streaming microphone audio to a transcription server.
 
-╭─ Options ──────────────────────────────────────────────────────────────────────────────╮
-│ --help  -h        Show this message and exit.                                          │
-╰────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ LLM Configuration ────────────────────────────────────────────────────────────────────╮
-│ --extra-instructions                TEXT  Additional instructions for the LLM to       │
-│                                           process the transcription.                   │
-│ --llm                   --no-llm          Use an LLM to process the transcript.        │
-│                                           [default: no-llm]                            │
-╰────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ Audio Recovery ───────────────────────────────────────────────────────────────────────╮
-│ --from-file                                PATH     Transcribe audio from a saved WAV  │
-│                                                     file instead of recording.         │
-│ --last-recording                           INTEGER  Transcribe a saved recording. Use  │
-│                                                     1 for most recent, 2 for           │
-│                                                     second-to-last, etc. Use 0 to      │
-│                                                     disable (default).                 │
-│                                                     [default: 0]                       │
-│ --save-recording    --no-save-recording             Save the audio recording to disk   │
-│                                                     for recovery.                      │
-│                                                     [default: save-recording]          │
-╰────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ Provider Selection ───────────────────────────────────────────────────────────────────╮
-│ --asr-provider        TEXT  The ASR provider to use ('wyoming', 'openai', 'gemini').   │
-│                             [default: wyoming]                                         │
-│ --llm-provider        TEXT  The LLM provider to use ('ollama', 'openai', 'gemini').    │
-│                             [default: ollama]                                          │
-╰────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ Audio Input ──────────────────────────────────────────────────────────────────────────╮
-│ --input-device-index        INTEGER  Index of the audio input device to use.           │
-│ --input-device-name         TEXT     Device name keywords for partial matching.        │
-│ --list-devices                       List available audio input and output devices and │
-│                                      exit.                                             │
-╰────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ Audio Input: Wyoming ─────────────────────────────────────────────────────────────────╮
-│ --asr-wyoming-ip          TEXT     Wyoming ASR server IP address.                      │
-│                                    [default: localhost]                                │
-│ --asr-wyoming-port        INTEGER  Wyoming ASR server port.                            │
-│                                    [default: 10300]                                    │
-╰────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ Audio Input: OpenAI-compatible ───────────────────────────────────────────────────────╮
-│ --asr-openai-model           TEXT  The OpenAI model to use for ASR (transcription).    │
-│                                    [default: whisper-1]                                │
-│ --asr-openai-base-url        TEXT  Custom base URL for OpenAI-compatible ASR API       │
-│                                    (e.g., for custom Whisper server:                   │
-│                                    http://localhost:9898).                             │
-│ --asr-openai-prompt          TEXT  Custom prompt to guide transcription (optional).    │
-╰────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ Audio Input: Gemini ──────────────────────────────────────────────────────────────────╮
-│ --asr-gemini-model        TEXT  The Gemini model to use for ASR (transcription).       │
-│                                 [default: gemini-3-flash-preview]                      │
-╰────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ LLM: Ollama ──────────────────────────────────────────────────────────────────────────╮
-│ --llm-ollama-model        TEXT  The Ollama model to use. Default is gemma3:4b.         │
-│                                 [default: gemma3:4b]                                   │
-│ --llm-ollama-host         TEXT  The Ollama server host. Default is                     │
-│                                 http://localhost:11434.                                │
-│                                 [default: http://localhost:11434]                      │
-╰────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ LLM: OpenAI-compatible ───────────────────────────────────────────────────────────────╮
-│ --llm-openai-model        TEXT  The OpenAI model to use for LLM tasks.                 │
-│                                 [default: gpt-5-mini]                                  │
-│ --openai-api-key          TEXT  Your OpenAI API key. Can also be set with the          │
-│                                 OPENAI_API_KEY environment variable.                   │
-│                                 [env var: OPENAI_API_KEY]                              │
-│ --openai-base-url         TEXT  Custom base URL for OpenAI-compatible API (e.g., for   │
-│                                 llama-server: http://localhost:8080/v1).               │
-│                                 [env var: OPENAI_BASE_URL]                             │
-╰────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ LLM: Gemini ──────────────────────────────────────────────────────────────────────────╮
-│ --llm-gemini-model        TEXT  The Gemini model to use for LLM tasks.                 │
-│                                 [default: gemini-3-flash-preview]                      │
-│ --gemini-api-key          TEXT  Your Gemini API key. Can also be set with the          │
-│                                 GEMINI_API_KEY environment variable.                   │
-│                                 [env var: GEMINI_API_KEY]                              │
-╰────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ Process Management ───────────────────────────────────────────────────────────────────╮
-│ --stop            Stop any running background process.                                 │
-│ --status          Check if a background process is running.                            │
-│ --toggle          Toggle the background process on/off. If the process is running, it  │
-│                   will be stopped. If the process is not running, it will be started.  │
-╰────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ General Options ──────────────────────────────────────────────────────────────────────╮
-│ --clipboard              --no-clipboard          Copy result to clipboard.             │
-│                                                  [default: clipboard]                  │
-│ --log-level                                TEXT  Set logging level.                    │
-│                                                  [default: WARNING]                    │
-│ --log-file                                 TEXT  Path to a file to write logs to.      │
-│ --quiet              -q                          Suppress console output from rich.    │
-│ --config                                   TEXT  Path to a TOML configuration file.    │
-│ --print-args                                     Print the command line arguments,     │
-│                                                  including variables taken from the    │
-│                                                  configuration file.                   │
-│ --transcription-log                        PATH  Path to log transcription results     │
-│                                                  with timestamps, hostname, model, and │
-│                                                  raw output.                           │
-╰────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ Options ────────────────────────────────────────────────────────────────────╮
+│ --help  -h        Show this message and exit.                                │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ LLM Configuration ──────────────────────────────────────────────────────────╮
+│ --extra-instructions                TEXT  Additional instructions for the    │
+│                                           LLM to process the transcription.  │
+│ --llm                   --no-llm          Use an LLM to process the          │
+│                                           transcript.                        │
+│                                           [default: no-llm]                  │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Audio Recovery ─────────────────────────────────────────────────────────────╮
+│ --from-file                                PATH     Transcribe audio from a  │
+│                                                     saved WAV file instead   │
+│                                                     of recording.            │
+│ --last-recording                           INTEGER  Transcribe a saved       │
+│                                                     recording. Use 1 for     │
+│                                                     most recent, 2 for       │
+│                                                     second-to-last, etc. Use │
+│                                                     0 to disable (default).  │
+│                                                     [default: 0]             │
+│ --save-recording    --no-save-recording             Save the audio recording │
+│                                                     to disk for recovery.    │
+│                                                     [default:                │
+│                                                     save-recording]          │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Provider Selection ─────────────────────────────────────────────────────────╮
+│ --asr-provider        TEXT  The ASR provider to use ('wyoming', 'openai',    │
+│                             'gemini').                                       │
+│                             [default: wyoming]                               │
+│ --llm-provider        TEXT  The LLM provider to use ('ollama', 'openai',     │
+│                             'gemini').                                       │
+│                             [default: ollama]                                │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Audio Input ────────────────────────────────────────────────────────────────╮
+│ --input-device-index        INTEGER  Index of the audio input device to use. │
+│ --input-device-name         TEXT     Device name keywords for partial        │
+│                                      matching.                               │
+│ --list-devices                       List available audio input and output   │
+│                                      devices and exit.                       │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Audio Input: Wyoming ───────────────────────────────────────────────────────╮
+│ --asr-wyoming-ip          TEXT     Wyoming ASR server IP address.            │
+│                                    [default: localhost]                      │
+│ --asr-wyoming-port        INTEGER  Wyoming ASR server port.                  │
+│                                    [default: 10300]                          │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Audio Input: OpenAI-compatible ─────────────────────────────────────────────╮
+│ --asr-openai-model           TEXT  The OpenAI model to use for ASR           │
+│                                    (transcription).                          │
+│                                    [default: whisper-1]                      │
+│ --asr-openai-base-url        TEXT  Custom base URL for OpenAI-compatible ASR │
+│                                    API (e.g., for custom Whisper server:     │
+│                                    http://localhost:9898).                   │
+│ --asr-openai-prompt          TEXT  Custom prompt to guide transcription      │
+│                                    (optional).                               │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Audio Input: Gemini ────────────────────────────────────────────────────────╮
+│ --asr-gemini-model        TEXT  The Gemini model to use for ASR              │
+│                                 (transcription).                             │
+│                                 [default: gemini-3-flash-preview]            │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ LLM: Ollama ────────────────────────────────────────────────────────────────╮
+│ --llm-ollama-model        TEXT  The Ollama model to use. Default is          │
+│                                 gemma3:4b.                                   │
+│                                 [default: gemma3:4b]                         │
+│ --llm-ollama-host         TEXT  The Ollama server host. Default is           │
+│                                 http://localhost:11434.                      │
+│                                 [default: http://localhost:11434]            │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ LLM: OpenAI-compatible ─────────────────────────────────────────────────────╮
+│ --llm-openai-model        TEXT  The OpenAI model to use for LLM tasks.       │
+│                                 [default: gpt-5-mini]                        │
+│ --openai-api-key          TEXT  Your OpenAI API key. Can also be set with    │
+│                                 the OPENAI_API_KEY environment variable.     │
+│                                 [env var: OPENAI_API_KEY]                    │
+│ --openai-base-url         TEXT  Custom base URL for OpenAI-compatible API    │
+│                                 (e.g., for llama-server:                     │
+│                                 http://localhost:8080/v1).                   │
+│                                 [env var: OPENAI_BASE_URL]                   │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ LLM: Gemini ────────────────────────────────────────────────────────────────╮
+│ --llm-gemini-model        TEXT  The Gemini model to use for LLM tasks.       │
+│                                 [default: gemini-3-flash-preview]            │
+│ --gemini-api-key          TEXT  Your Gemini API key. Can also be set with    │
+│                                 the GEMINI_API_KEY environment variable.     │
+│                                 [env var: GEMINI_API_KEY]                    │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Process Management ─────────────────────────────────────────────────────────╮
+│ --stop            Stop any running background process.                       │
+│ --status          Check if a background process is running.                  │
+│ --toggle          Toggle the background process on/off. If the process is    │
+│                   running, it will be stopped. If the process is not         │
+│                   running, it will be started.                               │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ General Options ────────────────────────────────────────────────────────────╮
+│ --clipboard              --no-clipboard          Copy result to clipboard.   │
+│                                                  [default: clipboard]        │
+│ --log-level                                TEXT  Set logging level.          │
+│                                                  [default: WARNING]          │
+│ --log-file                                 TEXT  Path to a file to write     │
+│                                                  logs to.                    │
+│ --quiet              -q                          Suppress console output     │
+│                                                  from rich.                  │
+│ --config                                   TEXT  Path to a TOML              │
+│                                                  configuration file.         │
+│ --print-args                                     Print the command line      │
+│                                                  arguments, including        │
+│                                                  variables taken from the    │
+│                                                  configuration file.         │
+│ --transcription-log                        PATH  Path to log transcription   │
+│                                                  results with timestamps,    │
+│                                                  hostname, model, and raw    │
+│                                                  output.                     │
+╰──────────────────────────────────────────────────────────────────────────────╯
 
 ```
 
@@ -696,8 +718,9 @@ uv tool install "agent-cli[vad]"
 
  Run a continuous transcription daemon with voice activity detection.
 
- This command runs indefinitely, capturing audio from your microphone, detecting speech
- segments using Silero VAD, transcribing them, and logging results with timestamps.
+ This command runs indefinitely, capturing audio from your microphone,
+ detecting speech segments using Silero VAD, transcribing them, and logging
+ results with timestamps.
 
  Examples: # Basic daemon agent-cli transcribe-daemon
 
@@ -709,105 +732,121 @@ uv tool install "agent-cli[vad]"
   agent-cli transcribe-daemon --llm --role notes
 
   # Custom log file and audio directory
-  agent-cli transcribe-daemon --transcription-log ~/meeting.jsonl --audio-dir ~/audio
+  agent-cli transcribe-daemon --transcription-log ~/meeting.jsonl --audio-dir
+  ~/audio
 
 
-╭─ Options ──────────────────────────────────────────────────────────────────────────────╮
-│ --role               -r                     TEXT   Role name for logging (e.g.,        │
-│                                                    'meeting', 'notes', 'user').        │
-│                                                    [default: user]                     │
-│ --silence-threshold  -s                     FLOAT  Seconds of silence to end a speech  │
-│                                                    segment.                            │
-│                                                    [default: 1.0]                      │
-│ --min-segment        -m                     FLOAT  Minimum speech duration in seconds  │
-│                                                    to trigger a segment.               │
-│                                                    [default: 0.25]                     │
-│ --vad-threshold                             FLOAT  VAD speech detection threshold      │
-│                                                    (0.0-1.0). Higher = more aggressive │
-│                                                    filtering.                          │
-│                                                    [default: 0.3]                      │
-│ --save-audio             --no-save-audio           Save audio segments as MP3 files.   │
-│                                                    [default: save-audio]               │
-│ --audio-dir                                 PATH   Directory for MP3 files. Default:   │
-│                                                    ~/.config/agent-cli/audio           │
-│ --transcription-log  -t                     PATH   JSON Lines log file path. Default:  │
-│                                                    ~/.config/agent-cli/transcriptions… │
-│ --clipboard              --no-clipboard            Copy each transcription to          │
-│                                                    clipboard.                          │
-│                                                    [default: no-clipboard]             │
-│ --help               -h                            Show this message and exit.         │
-╰────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ Provider Selection ───────────────────────────────────────────────────────────────────╮
-│ --asr-provider        TEXT  The ASR provider to use ('wyoming', 'openai', 'gemini').   │
-│                             [default: wyoming]                                         │
-│ --llm-provider        TEXT  The LLM provider to use ('ollama', 'openai', 'gemini').    │
-│                             [default: ollama]                                          │
-╰────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ Audio Input ──────────────────────────────────────────────────────────────────────────╮
-│ --input-device-index        INTEGER  Index of the audio input device to use.           │
-│ --input-device-name         TEXT     Device name keywords for partial matching.        │
-│ --list-devices                       List available audio input and output devices and │
-│                                      exit.                                             │
-╰────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ Audio Input: Wyoming ─────────────────────────────────────────────────────────────────╮
-│ --asr-wyoming-ip          TEXT     Wyoming ASR server IP address.                      │
-│                                    [default: localhost]                                │
-│ --asr-wyoming-port        INTEGER  Wyoming ASR server port.                            │
-│                                    [default: 10300]                                    │
-╰────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ Audio Input: OpenAI-compatible ───────────────────────────────────────────────────────╮
-│ --asr-openai-model           TEXT  The OpenAI model to use for ASR (transcription).    │
-│                                    [default: whisper-1]                                │
-│ --asr-openai-base-url        TEXT  Custom base URL for OpenAI-compatible ASR API       │
-│                                    (e.g., for custom Whisper server:                   │
-│                                    http://localhost:9898).                             │
-│ --asr-openai-prompt          TEXT  Custom prompt to guide transcription (optional).    │
-╰────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ Audio Input: Gemini ──────────────────────────────────────────────────────────────────╮
-│ --asr-gemini-model        TEXT  The Gemini model to use for ASR (transcription).       │
-│                                 [default: gemini-3-flash-preview]                      │
-╰────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ LLM: Ollama ──────────────────────────────────────────────────────────────────────────╮
-│ --llm-ollama-model        TEXT  The Ollama model to use. Default is gemma3:4b.         │
-│                                 [default: gemma3:4b]                                   │
-│ --llm-ollama-host         TEXT  The Ollama server host. Default is                     │
-│                                 http://localhost:11434.                                │
-│                                 [default: http://localhost:11434]                      │
-╰────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ LLM: OpenAI-compatible ───────────────────────────────────────────────────────────────╮
-│ --llm-openai-model        TEXT  The OpenAI model to use for LLM tasks.                 │
-│                                 [default: gpt-5-mini]                                  │
-│ --openai-api-key          TEXT  Your OpenAI API key. Can also be set with the          │
-│                                 OPENAI_API_KEY environment variable.                   │
-│                                 [env var: OPENAI_API_KEY]                              │
-│ --openai-base-url         TEXT  Custom base URL for OpenAI-compatible API (e.g., for   │
-│                                 llama-server: http://localhost:8080/v1).               │
-│                                 [env var: OPENAI_BASE_URL]                             │
-╰────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ LLM: Gemini ──────────────────────────────────────────────────────────────────────────╮
-│ --llm-gemini-model        TEXT  The Gemini model to use for LLM tasks.                 │
-│                                 [default: gemini-3-flash-preview]                      │
-│ --gemini-api-key          TEXT  Your Gemini API key. Can also be set with the          │
-│                                 GEMINI_API_KEY environment variable.                   │
-│                                 [env var: GEMINI_API_KEY]                              │
-╰────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ LLM Configuration ────────────────────────────────────────────────────────────────────╮
-│ --llm    --no-llm      Use an LLM to process the transcript.                           │
-│                        [default: no-llm]                                               │
-╰────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ Process Management ───────────────────────────────────────────────────────────────────╮
-│ --stop            Stop any running background process.                                 │
-│ --status          Check if a background process is running.                            │
-╰────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ General Options ──────────────────────────────────────────────────────────────────────╮
-│ --log-level           TEXT  Set logging level.                                         │
-│                             [default: WARNING]                                         │
-│ --log-file            TEXT  Path to a file to write logs to.                           │
-│ --quiet       -q            Suppress console output from rich.                         │
-│ --config              TEXT  Path to a TOML configuration file.                         │
-│ --print-args                Print the command line arguments, including variables      │
-│                             taken from the configuration file.                         │
-╰────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ Options ────────────────────────────────────────────────────────────────────╮
+│ --role               -r                     TEXT   Role name for logging     │
+│                                                    (e.g., 'meeting',         │
+│                                                    'notes', 'user').         │
+│                                                    [default: user]           │
+│ --silence-threshold  -s                     FLOAT  Seconds of silence to end │
+│                                                    a speech segment.         │
+│                                                    [default: 1.0]            │
+│ --min-segment        -m                     FLOAT  Minimum speech duration   │
+│                                                    in seconds to trigger a   │
+│                                                    segment.                  │
+│                                                    [default: 0.25]           │
+│ --vad-threshold                             FLOAT  VAD speech detection      │
+│                                                    threshold (0.0-1.0).      │
+│                                                    Higher = more aggressive  │
+│                                                    filtering.                │
+│                                                    [default: 0.3]            │
+│ --save-audio             --no-save-audio           Save audio segments as    │
+│                                                    MP3 files.                │
+│                                                    [default: save-audio]     │
+│ --audio-dir                                 PATH   Directory for MP3 files.  │
+│                                                    Default:                  │
+│                                                    ~/.config/agent-cli/audio │
+│ --transcription-log  -t                     PATH   JSON Lines log file path. │
+│                                                    Default:                  │
+│                                                    ~/.config/agent-cli/tran… │
+│ --clipboard              --no-clipboard            Copy each transcription   │
+│                                                    to clipboard.             │
+│                                                    [default: no-clipboard]   │
+│ --help               -h                            Show this message and     │
+│                                                    exit.                     │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Provider Selection ─────────────────────────────────────────────────────────╮
+│ --asr-provider        TEXT  The ASR provider to use ('wyoming', 'openai',    │
+│                             'gemini').                                       │
+│                             [default: wyoming]                               │
+│ --llm-provider        TEXT  The LLM provider to use ('ollama', 'openai',     │
+│                             'gemini').                                       │
+│                             [default: ollama]                                │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Audio Input ────────────────────────────────────────────────────────────────╮
+│ --input-device-index        INTEGER  Index of the audio input device to use. │
+│ --input-device-name         TEXT     Device name keywords for partial        │
+│                                      matching.                               │
+│ --list-devices                       List available audio input and output   │
+│                                      devices and exit.                       │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Audio Input: Wyoming ───────────────────────────────────────────────────────╮
+│ --asr-wyoming-ip          TEXT     Wyoming ASR server IP address.            │
+│                                    [default: localhost]                      │
+│ --asr-wyoming-port        INTEGER  Wyoming ASR server port.                  │
+│                                    [default: 10300]                          │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Audio Input: OpenAI-compatible ─────────────────────────────────────────────╮
+│ --asr-openai-model           TEXT  The OpenAI model to use for ASR           │
+│                                    (transcription).                          │
+│                                    [default: whisper-1]                      │
+│ --asr-openai-base-url        TEXT  Custom base URL for OpenAI-compatible ASR │
+│                                    API (e.g., for custom Whisper server:     │
+│                                    http://localhost:9898).                   │
+│ --asr-openai-prompt          TEXT  Custom prompt to guide transcription      │
+│                                    (optional).                               │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Audio Input: Gemini ────────────────────────────────────────────────────────╮
+│ --asr-gemini-model        TEXT  The Gemini model to use for ASR              │
+│                                 (transcription).                             │
+│                                 [default: gemini-3-flash-preview]            │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ LLM: Ollama ────────────────────────────────────────────────────────────────╮
+│ --llm-ollama-model        TEXT  The Ollama model to use. Default is          │
+│                                 gemma3:4b.                                   │
+│                                 [default: gemma3:4b]                         │
+│ --llm-ollama-host         TEXT  The Ollama server host. Default is           │
+│                                 http://localhost:11434.                      │
+│                                 [default: http://localhost:11434]            │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ LLM: OpenAI-compatible ─────────────────────────────────────────────────────╮
+│ --llm-openai-model        TEXT  The OpenAI model to use for LLM tasks.       │
+│                                 [default: gpt-5-mini]                        │
+│ --openai-api-key          TEXT  Your OpenAI API key. Can also be set with    │
+│                                 the OPENAI_API_KEY environment variable.     │
+│                                 [env var: OPENAI_API_KEY]                    │
+│ --openai-base-url         TEXT  Custom base URL for OpenAI-compatible API    │
+│                                 (e.g., for llama-server:                     │
+│                                 http://localhost:8080/v1).                   │
+│                                 [env var: OPENAI_BASE_URL]                   │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ LLM: Gemini ────────────────────────────────────────────────────────────────╮
+│ --llm-gemini-model        TEXT  The Gemini model to use for LLM tasks.       │
+│                                 [default: gemini-3-flash-preview]            │
+│ --gemini-api-key          TEXT  Your Gemini API key. Can also be set with    │
+│                                 the GEMINI_API_KEY environment variable.     │
+│                                 [env var: GEMINI_API_KEY]                    │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ LLM Configuration ──────────────────────────────────────────────────────────╮
+│ --llm    --no-llm      Use an LLM to process the transcript.                 │
+│                        [default: no-llm]                                     │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Process Management ─────────────────────────────────────────────────────────╮
+│ --stop            Stop any running background process.                       │
+│ --status          Check if a background process is running.                  │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ General Options ────────────────────────────────────────────────────────────╮
+│ --log-level           TEXT  Set logging level.                               │
+│                             [default: WARNING]                               │
+│ --log-file            TEXT  Path to a file to write logs to.                 │
+│ --quiet       -q            Suppress console output from rich.               │
+│ --config              TEXT  Path to a TOML configuration file.               │
+│ --print-args                Print the command line arguments, including      │
+│                             variables taken from the configuration file.     │
+╰──────────────────────────────────────────────────────────────────────────────╯
 
 ```
 
@@ -851,69 +890,77 @@ uv tool install "agent-cli[vad]"
 
  Convert text to speech using Wyoming or OpenAI-compatible TTS server.
 
-╭─ General Options ──────────────────────────────────────────────────────────────────────╮
-│   text      [TEXT]  Text to speak. Reads from clipboard if not provided.               │
-╰────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ Options ──────────────────────────────────────────────────────────────────────────────╮
-│ --help  -h        Show this message and exit.                                          │
-╰────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ Provider Selection ───────────────────────────────────────────────────────────────────╮
-│ --tts-provider        TEXT  The TTS provider to use ('wyoming', 'openai', 'kokoro').   │
-│                             [default: wyoming]                                         │
-╰────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ Audio Output ─────────────────────────────────────────────────────────────────────────╮
-│ --output-device-index        INTEGER  Index of the audio output device to use for TTS. │
-│ --output-device-name         TEXT     Output device name keywords for partial          │
-│                                       matching.                                        │
-│ --tts-speed                  FLOAT    Speech speed multiplier (1.0 = normal, 2.0 =     │
-│                                       twice as fast, 0.5 = half speed).                │
-│                                       [default: 1.0]                                   │
-╰────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ Audio Output: Wyoming ────────────────────────────────────────────────────────────────╮
-│ --tts-wyoming-ip              TEXT     Wyoming TTS server IP address.                  │
-│                                        [default: localhost]                            │
-│ --tts-wyoming-port            INTEGER  Wyoming TTS server port.                        │
-│                                        [default: 10200]                                │
-│ --tts-wyoming-voice           TEXT     Voice name to use for Wyoming TTS (e.g.,        │
-│                                        'en_US-lessac-medium').                         │
-│ --tts-wyoming-language        TEXT     Language for Wyoming TTS (e.g., 'en_US').       │
-│ --tts-wyoming-speaker         TEXT     Speaker name for Wyoming TTS voice.             │
-╰────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ Audio Output: OpenAI-compatible ──────────────────────────────────────────────────────╮
-│ --tts-openai-model           TEXT  The OpenAI model to use for TTS.                    │
-│                                    [default: tts-1]                                    │
-│ --tts-openai-voice           TEXT  The voice to use for OpenAI-compatible TTS.         │
-│                                    [default: alloy]                                    │
-│ --tts-openai-base-url        TEXT  Custom base URL for OpenAI-compatible TTS API       │
-│                                    (e.g., http://localhost:8000/v1 for a proxy).       │
-╰────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ Audio Output: Kokoro ─────────────────────────────────────────────────────────────────╮
-│ --tts-kokoro-model        TEXT  The Kokoro model to use for TTS.                       │
-│                                 [default: kokoro]                                      │
-│ --tts-kokoro-voice        TEXT  The voice to use for Kokoro TTS.                       │
-│                                 [default: af_sky]                                      │
-│ --tts-kokoro-host         TEXT  The base URL for the Kokoro API.                       │
-│                                 [default: http://localhost:8880/v1]                    │
-╰────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ Audio Input ──────────────────────────────────────────────────────────────────────────╮
-│ --list-devices          List available audio input and output devices and exit.        │
-╰────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ General Options ──────────────────────────────────────────────────────────────────────╮
-│ --save-file           PATH  Save TTS response audio to WAV file.                       │
-│ --log-level           TEXT  Set logging level.                                         │
-│                             [default: WARNING]                                         │
-│ --log-file            TEXT  Path to a file to write logs to.                           │
-│ --quiet       -q            Suppress console output from rich.                         │
-│ --config              TEXT  Path to a TOML configuration file.                         │
-│ --print-args                Print the command line arguments, including variables      │
-│                             taken from the configuration file.                         │
-╰────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ Process Management ───────────────────────────────────────────────────────────────────╮
-│ --stop            Stop any running background process.                                 │
-│ --status          Check if a background process is running.                            │
-│ --toggle          Toggle the background process on/off. If the process is running, it  │
-│                   will be stopped. If the process is not running, it will be started.  │
-╰────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ General Options ────────────────────────────────────────────────────────────╮
+│   text      [TEXT]  Text to speak. Reads from clipboard if not provided.     │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Options ────────────────────────────────────────────────────────────────────╮
+│ --help  -h        Show this message and exit.                                │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Provider Selection ─────────────────────────────────────────────────────────╮
+│ --tts-provider        TEXT  The TTS provider to use ('wyoming', 'openai',    │
+│                             'kokoro').                                       │
+│                             [default: wyoming]                               │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Audio Output ───────────────────────────────────────────────────────────────╮
+│ --output-device-index        INTEGER  Index of the audio output device to    │
+│                                       use for TTS.                           │
+│ --output-device-name         TEXT     Output device name keywords for        │
+│                                       partial matching.                      │
+│ --tts-speed                  FLOAT    Speech speed multiplier (1.0 = normal, │
+│                                       2.0 = twice as fast, 0.5 = half        │
+│                                       speed).                                │
+│                                       [default: 1.0]                         │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Audio Output: Wyoming ──────────────────────────────────────────────────────╮
+│ --tts-wyoming-ip              TEXT     Wyoming TTS server IP address.        │
+│                                        [default: localhost]                  │
+│ --tts-wyoming-port            INTEGER  Wyoming TTS server port.              │
+│                                        [default: 10200]                      │
+│ --tts-wyoming-voice           TEXT     Voice name to use for Wyoming TTS     │
+│                                        (e.g., 'en_US-lessac-medium').        │
+│ --tts-wyoming-language        TEXT     Language for Wyoming TTS (e.g.,       │
+│                                        'en_US').                             │
+│ --tts-wyoming-speaker         TEXT     Speaker name for Wyoming TTS voice.   │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Audio Output: OpenAI-compatible ────────────────────────────────────────────╮
+│ --tts-openai-model           TEXT  The OpenAI model to use for TTS.          │
+│                                    [default: tts-1]                          │
+│ --tts-openai-voice           TEXT  The voice to use for OpenAI-compatible    │
+│                                    TTS.                                      │
+│                                    [default: alloy]                          │
+│ --tts-openai-base-url        TEXT  Custom base URL for OpenAI-compatible TTS │
+│                                    API (e.g., http://localhost:8000/v1 for a │
+│                                    proxy).                                   │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Audio Output: Kokoro ───────────────────────────────────────────────────────╮
+│ --tts-kokoro-model        TEXT  The Kokoro model to use for TTS.             │
+│                                 [default: kokoro]                            │
+│ --tts-kokoro-voice        TEXT  The voice to use for Kokoro TTS.             │
+│                                 [default: af_sky]                            │
+│ --tts-kokoro-host         TEXT  The base URL for the Kokoro API.             │
+│                                 [default: http://localhost:8880/v1]          │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Audio Input ────────────────────────────────────────────────────────────────╮
+│ --list-devices          List available audio input and output devices and    │
+│                         exit.                                                │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ General Options ────────────────────────────────────────────────────────────╮
+│ --save-file           PATH  Save TTS response audio to WAV file.             │
+│ --log-level           TEXT  Set logging level.                               │
+│                             [default: WARNING]                               │
+│ --log-file            TEXT  Path to a file to write logs to.                 │
+│ --quiet       -q            Suppress console output from rich.               │
+│ --config              TEXT  Path to a TOML configuration file.               │
+│ --print-args                Print the command line arguments, including      │
+│                             variables taken from the configuration file.     │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Process Management ─────────────────────────────────────────────────────────╮
+│ --stop            Stop any running background process.                       │
+│ --status          Check if a background process is running.                  │
+│ --toggle          Toggle the background process on/off. If the process is    │
+│                   running, it will be stopped. If the process is not         │
+│                   running, it will be started.                               │
+╰──────────────────────────────────────────────────────────────────────────────╯
 
 ```
 
@@ -954,7 +1001,8 @@ uv tool install "agent-cli[vad]"
 
  Usage: agent-cli voice-edit [OPTIONS]
 
- Interact with clipboard text via a voice command using local or remote services.
+ Interact with clipboard text via a voice command using local or remote
+ services.
 
  Usage:
 
@@ -965,116 +1013,132 @@ uv tool install "agent-cli[vad]"
   • List output devices: agent-cli voice-edit --list-output-devices
   • Save TTS to file: agent-cli voice-edit --tts --save-file response.wav
 
-╭─ Options ──────────────────────────────────────────────────────────────────────────────╮
-│ --help  -h        Show this message and exit.                                          │
-╰────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ Provider Selection ───────────────────────────────────────────────────────────────────╮
-│ --asr-provider        TEXT  The ASR provider to use ('wyoming', 'openai', 'gemini').   │
-│                             [default: wyoming]                                         │
-│ --llm-provider        TEXT  The LLM provider to use ('ollama', 'openai', 'gemini').    │
-│                             [default: ollama]                                          │
-│ --tts-provider        TEXT  The TTS provider to use ('wyoming', 'openai', 'kokoro').   │
-│                             [default: wyoming]                                         │
-╰────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ Audio Input ──────────────────────────────────────────────────────────────────────────╮
-│ --input-device-index        INTEGER  Index of the audio input device to use.           │
-│ --input-device-name         TEXT     Device name keywords for partial matching.        │
-│ --list-devices                       List available audio input and output devices and │
-│                                      exit.                                             │
-╰────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ Audio Input: Wyoming ─────────────────────────────────────────────────────────────────╮
-│ --asr-wyoming-ip          TEXT     Wyoming ASR server IP address.                      │
-│                                    [default: localhost]                                │
-│ --asr-wyoming-port        INTEGER  Wyoming ASR server port.                            │
-│                                    [default: 10300]                                    │
-╰────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ Audio Input: OpenAI-compatible ───────────────────────────────────────────────────────╮
-│ --asr-openai-model        TEXT  The OpenAI model to use for ASR (transcription).       │
-│                                 [default: whisper-1]                                   │
-╰────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ Audio Input: Gemini ──────────────────────────────────────────────────────────────────╮
-│ --asr-gemini-model        TEXT  The Gemini model to use for ASR (transcription).       │
-│                                 [default: gemini-3-flash-preview]                      │
-╰────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ LLM: Ollama ──────────────────────────────────────────────────────────────────────────╮
-│ --llm-ollama-model        TEXT  The Ollama model to use. Default is gemma3:4b.         │
-│                                 [default: gemma3:4b]                                   │
-│ --llm-ollama-host         TEXT  The Ollama server host. Default is                     │
-│                                 http://localhost:11434.                                │
-│                                 [default: http://localhost:11434]                      │
-╰────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ LLM: OpenAI-compatible ───────────────────────────────────────────────────────────────╮
-│ --llm-openai-model        TEXT  The OpenAI model to use for LLM tasks.                 │
-│                                 [default: gpt-5-mini]                                  │
-│ --openai-api-key          TEXT  Your OpenAI API key. Can also be set with the          │
-│                                 OPENAI_API_KEY environment variable.                   │
-│                                 [env var: OPENAI_API_KEY]                              │
-│ --openai-base-url         TEXT  Custom base URL for OpenAI-compatible API (e.g., for   │
-│                                 llama-server: http://localhost:8080/v1).               │
-│                                 [env var: OPENAI_BASE_URL]                             │
-╰────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ LLM: Gemini ──────────────────────────────────────────────────────────────────────────╮
-│ --llm-gemini-model        TEXT  The Gemini model to use for LLM tasks.                 │
-│                                 [default: gemini-3-flash-preview]                      │
-│ --gemini-api-key          TEXT  Your Gemini API key. Can also be set with the          │
-│                                 GEMINI_API_KEY environment variable.                   │
-│                                 [env var: GEMINI_API_KEY]                              │
-╰────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ Audio Output ─────────────────────────────────────────────────────────────────────────╮
-│ --tts                    --no-tts             Enable text-to-speech for responses.     │
-│                                               [default: no-tts]                        │
-│ --output-device-index                INTEGER  Index of the audio output device to use  │
-│                                               for TTS.                                 │
-│ --output-device-name                 TEXT     Output device name keywords for partial  │
-│                                               matching.                                │
-│ --tts-speed                          FLOAT    Speech speed multiplier (1.0 = normal,   │
-│                                               2.0 = twice as fast, 0.5 = half speed).  │
-│                                               [default: 1.0]                           │
-╰────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ Audio Output: Wyoming ────────────────────────────────────────────────────────────────╮
-│ --tts-wyoming-ip              TEXT     Wyoming TTS server IP address.                  │
-│                                        [default: localhost]                            │
-│ --tts-wyoming-port            INTEGER  Wyoming TTS server port.                        │
-│                                        [default: 10200]                                │
-│ --tts-wyoming-voice           TEXT     Voice name to use for Wyoming TTS (e.g.,        │
-│                                        'en_US-lessac-medium').                         │
-│ --tts-wyoming-language        TEXT     Language for Wyoming TTS (e.g., 'en_US').       │
-│ --tts-wyoming-speaker         TEXT     Speaker name for Wyoming TTS voice.             │
-╰────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ Audio Output: OpenAI-compatible ──────────────────────────────────────────────────────╮
-│ --tts-openai-model           TEXT  The OpenAI model to use for TTS.                    │
-│                                    [default: tts-1]                                    │
-│ --tts-openai-voice           TEXT  The voice to use for OpenAI-compatible TTS.         │
-│                                    [default: alloy]                                    │
-│ --tts-openai-base-url        TEXT  Custom base URL for OpenAI-compatible TTS API       │
-│                                    (e.g., http://localhost:8000/v1 for a proxy).       │
-╰────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ Audio Output: Kokoro ─────────────────────────────────────────────────────────────────╮
-│ --tts-kokoro-model        TEXT  The Kokoro model to use for TTS.                       │
-│                                 [default: kokoro]                                      │
-│ --tts-kokoro-voice        TEXT  The voice to use for Kokoro TTS.                       │
-│                                 [default: af_sky]                                      │
-│ --tts-kokoro-host         TEXT  The base URL for the Kokoro API.                       │
-│                                 [default: http://localhost:8880/v1]                    │
-╰────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ Process Management ───────────────────────────────────────────────────────────────────╮
-│ --stop            Stop any running background process.                                 │
-│ --status          Check if a background process is running.                            │
-│ --toggle          Toggle the background process on/off. If the process is running, it  │
-│                   will be stopped. If the process is not running, it will be started.  │
-╰────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ General Options ──────────────────────────────────────────────────────────────────────╮
-│ --save-file                         PATH  Save TTS response audio to WAV file.         │
-│ --clipboard       --no-clipboard          Copy result to clipboard.                    │
-│                                           [default: clipboard]                         │
-│ --log-level                         TEXT  Set logging level.                           │
-│                                           [default: WARNING]                           │
-│ --log-file                          TEXT  Path to a file to write logs to.             │
-│ --quiet       -q                          Suppress console output from rich.           │
-│ --config                            TEXT  Path to a TOML configuration file.           │
-│ --print-args                              Print the command line arguments, including  │
-│                                           variables taken from the configuration file. │
-╰────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ Options ────────────────────────────────────────────────────────────────────╮
+│ --help  -h        Show this message and exit.                                │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Provider Selection ─────────────────────────────────────────────────────────╮
+│ --asr-provider        TEXT  The ASR provider to use ('wyoming', 'openai',    │
+│                             'gemini').                                       │
+│                             [default: wyoming]                               │
+│ --llm-provider        TEXT  The LLM provider to use ('ollama', 'openai',     │
+│                             'gemini').                                       │
+│                             [default: ollama]                                │
+│ --tts-provider        TEXT  The TTS provider to use ('wyoming', 'openai',    │
+│                             'kokoro').                                       │
+│                             [default: wyoming]                               │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Audio Input ────────────────────────────────────────────────────────────────╮
+│ --input-device-index        INTEGER  Index of the audio input device to use. │
+│ --input-device-name         TEXT     Device name keywords for partial        │
+│                                      matching.                               │
+│ --list-devices                       List available audio input and output   │
+│                                      devices and exit.                       │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Audio Input: Wyoming ───────────────────────────────────────────────────────╮
+│ --asr-wyoming-ip          TEXT     Wyoming ASR server IP address.            │
+│                                    [default: localhost]                      │
+│ --asr-wyoming-port        INTEGER  Wyoming ASR server port.                  │
+│                                    [default: 10300]                          │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Audio Input: OpenAI-compatible ─────────────────────────────────────────────╮
+│ --asr-openai-model        TEXT  The OpenAI model to use for ASR              │
+│                                 (transcription).                             │
+│                                 [default: whisper-1]                         │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Audio Input: Gemini ────────────────────────────────────────────────────────╮
+│ --asr-gemini-model        TEXT  The Gemini model to use for ASR              │
+│                                 (transcription).                             │
+│                                 [default: gemini-3-flash-preview]            │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ LLM: Ollama ────────────────────────────────────────────────────────────────╮
+│ --llm-ollama-model        TEXT  The Ollama model to use. Default is          │
+│                                 gemma3:4b.                                   │
+│                                 [default: gemma3:4b]                         │
+│ --llm-ollama-host         TEXT  The Ollama server host. Default is           │
+│                                 http://localhost:11434.                      │
+│                                 [default: http://localhost:11434]            │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ LLM: OpenAI-compatible ─────────────────────────────────────────────────────╮
+│ --llm-openai-model        TEXT  The OpenAI model to use for LLM tasks.       │
+│                                 [default: gpt-5-mini]                        │
+│ --openai-api-key          TEXT  Your OpenAI API key. Can also be set with    │
+│                                 the OPENAI_API_KEY environment variable.     │
+│                                 [env var: OPENAI_API_KEY]                    │
+│ --openai-base-url         TEXT  Custom base URL for OpenAI-compatible API    │
+│                                 (e.g., for llama-server:                     │
+│                                 http://localhost:8080/v1).                   │
+│                                 [env var: OPENAI_BASE_URL]                   │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ LLM: Gemini ────────────────────────────────────────────────────────────────╮
+│ --llm-gemini-model        TEXT  The Gemini model to use for LLM tasks.       │
+│                                 [default: gemini-3-flash-preview]            │
+│ --gemini-api-key          TEXT  Your Gemini API key. Can also be set with    │
+│                                 the GEMINI_API_KEY environment variable.     │
+│                                 [env var: GEMINI_API_KEY]                    │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Audio Output ───────────────────────────────────────────────────────────────╮
+│ --tts                    --no-tts             Enable text-to-speech for      │
+│                                               responses.                     │
+│                                               [default: no-tts]              │
+│ --output-device-index                INTEGER  Index of the audio output      │
+│                                               device to use for TTS.         │
+│ --output-device-name                 TEXT     Output device name keywords    │
+│                                               for partial matching.          │
+│ --tts-speed                          FLOAT    Speech speed multiplier (1.0 = │
+│                                               normal, 2.0 = twice as fast,   │
+│                                               0.5 = half speed).             │
+│                                               [default: 1.0]                 │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Audio Output: Wyoming ──────────────────────────────────────────────────────╮
+│ --tts-wyoming-ip              TEXT     Wyoming TTS server IP address.        │
+│                                        [default: localhost]                  │
+│ --tts-wyoming-port            INTEGER  Wyoming TTS server port.              │
+│                                        [default: 10200]                      │
+│ --tts-wyoming-voice           TEXT     Voice name to use for Wyoming TTS     │
+│                                        (e.g., 'en_US-lessac-medium').        │
+│ --tts-wyoming-language        TEXT     Language for Wyoming TTS (e.g.,       │
+│                                        'en_US').                             │
+│ --tts-wyoming-speaker         TEXT     Speaker name for Wyoming TTS voice.   │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Audio Output: OpenAI-compatible ────────────────────────────────────────────╮
+│ --tts-openai-model           TEXT  The OpenAI model to use for TTS.          │
+│                                    [default: tts-1]                          │
+│ --tts-openai-voice           TEXT  The voice to use for OpenAI-compatible    │
+│                                    TTS.                                      │
+│                                    [default: alloy]                          │
+│ --tts-openai-base-url        TEXT  Custom base URL for OpenAI-compatible TTS │
+│                                    API (e.g., http://localhost:8000/v1 for a │
+│                                    proxy).                                   │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Audio Output: Kokoro ───────────────────────────────────────────────────────╮
+│ --tts-kokoro-model        TEXT  The Kokoro model to use for TTS.             │
+│                                 [default: kokoro]                            │
+│ --tts-kokoro-voice        TEXT  The voice to use for Kokoro TTS.             │
+│                                 [default: af_sky]                            │
+│ --tts-kokoro-host         TEXT  The base URL for the Kokoro API.             │
+│                                 [default: http://localhost:8880/v1]          │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Process Management ─────────────────────────────────────────────────────────╮
+│ --stop            Stop any running background process.                       │
+│ --status          Check if a background process is running.                  │
+│ --toggle          Toggle the background process on/off. If the process is    │
+│                   running, it will be stopped. If the process is not         │
+│                   running, it will be started.                               │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ General Options ────────────────────────────────────────────────────────────╮
+│ --save-file                         PATH  Save TTS response audio to WAV     │
+│                                           file.                              │
+│ --clipboard       --no-clipboard          Copy result to clipboard.          │
+│                                           [default: clipboard]               │
+│ --log-level                         TEXT  Set logging level.                 │
+│                                           [default: WARNING]                 │
+│ --log-file                          TEXT  Path to a file to write logs to.   │
+│ --quiet       -q                          Suppress console output from rich. │
+│ --config                            TEXT  Path to a TOML configuration file. │
+│ --print-args                              Print the command line arguments,  │
+│                                           including variables taken from the │
+│                                           configuration file.                │
+╰──────────────────────────────────────────────────────────────────────────────╯
 
 ```
 
@@ -1120,125 +1184,141 @@ uv tool install "agent-cli[vad]"
 
  Wake word-based voice assistant using local or remote services.
 
-╭─ Options ──────────────────────────────────────────────────────────────────────────────╮
-│ --help  -h        Show this message and exit.                                          │
-╰────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ Provider Selection ───────────────────────────────────────────────────────────────────╮
-│ --asr-provider        TEXT  The ASR provider to use ('wyoming', 'openai', 'gemini').   │
-│                             [default: wyoming]                                         │
-│ --llm-provider        TEXT  The LLM provider to use ('ollama', 'openai', 'gemini').    │
-│                             [default: ollama]                                          │
-│ --tts-provider        TEXT  The TTS provider to use ('wyoming', 'openai', 'kokoro').   │
-│                             [default: wyoming]                                         │
-╰────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ Wake Word ────────────────────────────────────────────────────────────────────────────╮
-│ --wake-server-ip          TEXT     Wyoming wake word server IP address.                │
-│                                    [default: localhost]                                │
-│ --wake-server-port        INTEGER  Wyoming wake word server port.                      │
-│                                    [default: 10400]                                    │
-│ --wake-word               TEXT     Name of wake word to detect (e.g., 'ok_nabu',       │
-│                                    'hey_jarvis').                                      │
-│                                    [default: ok_nabu]                                  │
-╰────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ Audio Input ──────────────────────────────────────────────────────────────────────────╮
-│ --input-device-index        INTEGER  Index of the audio input device to use.           │
-│ --input-device-name         TEXT     Device name keywords for partial matching.        │
-│ --list-devices                       List available audio input and output devices and │
-│                                      exit.                                             │
-╰────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ Audio Input: Wyoming ─────────────────────────────────────────────────────────────────╮
-│ --asr-wyoming-ip          TEXT     Wyoming ASR server IP address.                      │
-│                                    [default: localhost]                                │
-│ --asr-wyoming-port        INTEGER  Wyoming ASR server port.                            │
-│                                    [default: 10300]                                    │
-╰────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ Audio Input: OpenAI-compatible ───────────────────────────────────────────────────────╮
-│ --asr-openai-model        TEXT  The OpenAI model to use for ASR (transcription).       │
-│                                 [default: whisper-1]                                   │
-╰────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ Audio Input: Gemini ──────────────────────────────────────────────────────────────────╮
-│ --asr-gemini-model        TEXT  The Gemini model to use for ASR (transcription).       │
-│                                 [default: gemini-3-flash-preview]                      │
-╰────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ LLM: Ollama ──────────────────────────────────────────────────────────────────────────╮
-│ --llm-ollama-model        TEXT  The Ollama model to use. Default is gemma3:4b.         │
-│                                 [default: gemma3:4b]                                   │
-│ --llm-ollama-host         TEXT  The Ollama server host. Default is                     │
-│                                 http://localhost:11434.                                │
-│                                 [default: http://localhost:11434]                      │
-╰────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ LLM: OpenAI-compatible ───────────────────────────────────────────────────────────────╮
-│ --llm-openai-model        TEXT  The OpenAI model to use for LLM tasks.                 │
-│                                 [default: gpt-5-mini]                                  │
-│ --openai-api-key          TEXT  Your OpenAI API key. Can also be set with the          │
-│                                 OPENAI_API_KEY environment variable.                   │
-│                                 [env var: OPENAI_API_KEY]                              │
-│ --openai-base-url         TEXT  Custom base URL for OpenAI-compatible API (e.g., for   │
-│                                 llama-server: http://localhost:8080/v1).               │
-│                                 [env var: OPENAI_BASE_URL]                             │
-╰────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ LLM: Gemini ──────────────────────────────────────────────────────────────────────────╮
-│ --llm-gemini-model        TEXT  The Gemini model to use for LLM tasks.                 │
-│                                 [default: gemini-3-flash-preview]                      │
-│ --gemini-api-key          TEXT  Your Gemini API key. Can also be set with the          │
-│                                 GEMINI_API_KEY environment variable.                   │
-│                                 [env var: GEMINI_API_KEY]                              │
-╰────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ Audio Output ─────────────────────────────────────────────────────────────────────────╮
-│ --tts                    --no-tts             Enable text-to-speech for responses.     │
-│                                               [default: no-tts]                        │
-│ --output-device-index                INTEGER  Index of the audio output device to use  │
-│                                               for TTS.                                 │
-│ --output-device-name                 TEXT     Output device name keywords for partial  │
-│                                               matching.                                │
-│ --tts-speed                          FLOAT    Speech speed multiplier (1.0 = normal,   │
-│                                               2.0 = twice as fast, 0.5 = half speed).  │
-│                                               [default: 1.0]                           │
-╰────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ Audio Output: Wyoming ────────────────────────────────────────────────────────────────╮
-│ --tts-wyoming-ip              TEXT     Wyoming TTS server IP address.                  │
-│                                        [default: localhost]                            │
-│ --tts-wyoming-port            INTEGER  Wyoming TTS server port.                        │
-│                                        [default: 10200]                                │
-│ --tts-wyoming-voice           TEXT     Voice name to use for Wyoming TTS (e.g.,        │
-│                                        'en_US-lessac-medium').                         │
-│ --tts-wyoming-language        TEXT     Language for Wyoming TTS (e.g., 'en_US').       │
-│ --tts-wyoming-speaker         TEXT     Speaker name for Wyoming TTS voice.             │
-╰────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ Audio Output: OpenAI-compatible ──────────────────────────────────────────────────────╮
-│ --tts-openai-model           TEXT  The OpenAI model to use for TTS.                    │
-│                                    [default: tts-1]                                    │
-│ --tts-openai-voice           TEXT  The voice to use for OpenAI-compatible TTS.         │
-│                                    [default: alloy]                                    │
-│ --tts-openai-base-url        TEXT  Custom base URL for OpenAI-compatible TTS API       │
-│                                    (e.g., http://localhost:8000/v1 for a proxy).       │
-╰────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ Audio Output: Kokoro ─────────────────────────────────────────────────────────────────╮
-│ --tts-kokoro-model        TEXT  The Kokoro model to use for TTS.                       │
-│                                 [default: kokoro]                                      │
-│ --tts-kokoro-voice        TEXT  The voice to use for Kokoro TTS.                       │
-│                                 [default: af_sky]                                      │
-│ --tts-kokoro-host         TEXT  The base URL for the Kokoro API.                       │
-│                                 [default: http://localhost:8880/v1]                    │
-╰────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ Process Management ───────────────────────────────────────────────────────────────────╮
-│ --stop            Stop any running background process.                                 │
-│ --status          Check if a background process is running.                            │
-│ --toggle          Toggle the background process on/off. If the process is running, it  │
-│                   will be stopped. If the process is not running, it will be started.  │
-╰────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ General Options ──────────────────────────────────────────────────────────────────────╮
-│ --save-file                         PATH  Save TTS response audio to WAV file.         │
-│ --clipboard       --no-clipboard          Copy result to clipboard.                    │
-│                                           [default: clipboard]                         │
-│ --log-level                         TEXT  Set logging level.                           │
-│                                           [default: WARNING]                           │
-│ --log-file                          TEXT  Path to a file to write logs to.             │
-│ --quiet       -q                          Suppress console output from rich.           │
-│ --config                            TEXT  Path to a TOML configuration file.           │
-│ --print-args                              Print the command line arguments, including  │
-│                                           variables taken from the configuration file. │
-╰────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ Options ────────────────────────────────────────────────────────────────────╮
+│ --help  -h        Show this message and exit.                                │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Provider Selection ─────────────────────────────────────────────────────────╮
+│ --asr-provider        TEXT  The ASR provider to use ('wyoming', 'openai',    │
+│                             'gemini').                                       │
+│                             [default: wyoming]                               │
+│ --llm-provider        TEXT  The LLM provider to use ('ollama', 'openai',     │
+│                             'gemini').                                       │
+│                             [default: ollama]                                │
+│ --tts-provider        TEXT  The TTS provider to use ('wyoming', 'openai',    │
+│                             'kokoro').                                       │
+│                             [default: wyoming]                               │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Wake Word ──────────────────────────────────────────────────────────────────╮
+│ --wake-server-ip          TEXT     Wyoming wake word server IP address.      │
+│                                    [default: localhost]                      │
+│ --wake-server-port        INTEGER  Wyoming wake word server port.            │
+│                                    [default: 10400]                          │
+│ --wake-word               TEXT     Name of wake word to detect (e.g.,        │
+│                                    'ok_nabu', 'hey_jarvis').                 │
+│                                    [default: ok_nabu]                        │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Audio Input ────────────────────────────────────────────────────────────────╮
+│ --input-device-index        INTEGER  Index of the audio input device to use. │
+│ --input-device-name         TEXT     Device name keywords for partial        │
+│                                      matching.                               │
+│ --list-devices                       List available audio input and output   │
+│                                      devices and exit.                       │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Audio Input: Wyoming ───────────────────────────────────────────────────────╮
+│ --asr-wyoming-ip          TEXT     Wyoming ASR server IP address.            │
+│                                    [default: localhost]                      │
+│ --asr-wyoming-port        INTEGER  Wyoming ASR server port.                  │
+│                                    [default: 10300]                          │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Audio Input: OpenAI-compatible ─────────────────────────────────────────────╮
+│ --asr-openai-model        TEXT  The OpenAI model to use for ASR              │
+│                                 (transcription).                             │
+│                                 [default: whisper-1]                         │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Audio Input: Gemini ────────────────────────────────────────────────────────╮
+│ --asr-gemini-model        TEXT  The Gemini model to use for ASR              │
+│                                 (transcription).                             │
+│                                 [default: gemini-3-flash-preview]            │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ LLM: Ollama ────────────────────────────────────────────────────────────────╮
+│ --llm-ollama-model        TEXT  The Ollama model to use. Default is          │
+│                                 gemma3:4b.                                   │
+│                                 [default: gemma3:4b]                         │
+│ --llm-ollama-host         TEXT  The Ollama server host. Default is           │
+│                                 http://localhost:11434.                      │
+│                                 [default: http://localhost:11434]            │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ LLM: OpenAI-compatible ─────────────────────────────────────────────────────╮
+│ --llm-openai-model        TEXT  The OpenAI model to use for LLM tasks.       │
+│                                 [default: gpt-5-mini]                        │
+│ --openai-api-key          TEXT  Your OpenAI API key. Can also be set with    │
+│                                 the OPENAI_API_KEY environment variable.     │
+│                                 [env var: OPENAI_API_KEY]                    │
+│ --openai-base-url         TEXT  Custom base URL for OpenAI-compatible API    │
+│                                 (e.g., for llama-server:                     │
+│                                 http://localhost:8080/v1).                   │
+│                                 [env var: OPENAI_BASE_URL]                   │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ LLM: Gemini ────────────────────────────────────────────────────────────────╮
+│ --llm-gemini-model        TEXT  The Gemini model to use for LLM tasks.       │
+│                                 [default: gemini-3-flash-preview]            │
+│ --gemini-api-key          TEXT  Your Gemini API key. Can also be set with    │
+│                                 the GEMINI_API_KEY environment variable.     │
+│                                 [env var: GEMINI_API_KEY]                    │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Audio Output ───────────────────────────────────────────────────────────────╮
+│ --tts                    --no-tts             Enable text-to-speech for      │
+│                                               responses.                     │
+│                                               [default: no-tts]              │
+│ --output-device-index                INTEGER  Index of the audio output      │
+│                                               device to use for TTS.         │
+│ --output-device-name                 TEXT     Output device name keywords    │
+│                                               for partial matching.          │
+│ --tts-speed                          FLOAT    Speech speed multiplier (1.0 = │
+│                                               normal, 2.0 = twice as fast,   │
+│                                               0.5 = half speed).             │
+│                                               [default: 1.0]                 │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Audio Output: Wyoming ──────────────────────────────────────────────────────╮
+│ --tts-wyoming-ip              TEXT     Wyoming TTS server IP address.        │
+│                                        [default: localhost]                  │
+│ --tts-wyoming-port            INTEGER  Wyoming TTS server port.              │
+│                                        [default: 10200]                      │
+│ --tts-wyoming-voice           TEXT     Voice name to use for Wyoming TTS     │
+│                                        (e.g., 'en_US-lessac-medium').        │
+│ --tts-wyoming-language        TEXT     Language for Wyoming TTS (e.g.,       │
+│                                        'en_US').                             │
+│ --tts-wyoming-speaker         TEXT     Speaker name for Wyoming TTS voice.   │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Audio Output: OpenAI-compatible ────────────────────────────────────────────╮
+│ --tts-openai-model           TEXT  The OpenAI model to use for TTS.          │
+│                                    [default: tts-1]                          │
+│ --tts-openai-voice           TEXT  The voice to use for OpenAI-compatible    │
+│                                    TTS.                                      │
+│                                    [default: alloy]                          │
+│ --tts-openai-base-url        TEXT  Custom base URL for OpenAI-compatible TTS │
+│                                    API (e.g., http://localhost:8000/v1 for a │
+│                                    proxy).                                   │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Audio Output: Kokoro ───────────────────────────────────────────────────────╮
+│ --tts-kokoro-model        TEXT  The Kokoro model to use for TTS.             │
+│                                 [default: kokoro]                            │
+│ --tts-kokoro-voice        TEXT  The voice to use for Kokoro TTS.             │
+│                                 [default: af_sky]                            │
+│ --tts-kokoro-host         TEXT  The base URL for the Kokoro API.             │
+│                                 [default: http://localhost:8880/v1]          │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Process Management ─────────────────────────────────────────────────────────╮
+│ --stop            Stop any running background process.                       │
+│ --status          Check if a background process is running.                  │
+│ --toggle          Toggle the background process on/off. If the process is    │
+│                   running, it will be stopped. If the process is not         │
+│                   running, it will be started.                               │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ General Options ────────────────────────────────────────────────────────────╮
+│ --save-file                         PATH  Save TTS response audio to WAV     │
+│                                           file.                              │
+│ --clipboard       --no-clipboard          Copy result to clipboard.          │
+│                                           [default: clipboard]               │
+│ --log-level                         TEXT  Set logging level.                 │
+│                                           [default: WARNING]                 │
+│ --log-file                          TEXT  Path to a file to write logs to.   │
+│ --quiet       -q                          Suppress console output from rich. │
+│ --config                            TEXT  Path to a TOML configuration file. │
+│ --print-args                              Print the command line arguments,  │
+│                                           including variables taken from the │
+│                                           configuration file.                │
+╰──────────────────────────────────────────────────────────────────────────────╯
 
 ```
 
@@ -1291,125 +1371,141 @@ uv tool install "agent-cli[vad]"
 
  An chat agent that you can talk to.
 
-╭─ Options ──────────────────────────────────────────────────────────────────────────────╮
-│ --help  -h        Show this message and exit.                                          │
-╰────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ Provider Selection ───────────────────────────────────────────────────────────────────╮
-│ --asr-provider        TEXT  The ASR provider to use ('wyoming', 'openai', 'gemini').   │
-│                             [default: wyoming]                                         │
-│ --llm-provider        TEXT  The LLM provider to use ('ollama', 'openai', 'gemini').    │
-│                             [default: ollama]                                          │
-│ --tts-provider        TEXT  The TTS provider to use ('wyoming', 'openai', 'kokoro').   │
-│                             [default: wyoming]                                         │
-╰────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ Audio Input ──────────────────────────────────────────────────────────────────────────╮
-│ --input-device-index        INTEGER  Index of the audio input device to use.           │
-│ --input-device-name         TEXT     Device name keywords for partial matching.        │
-│ --list-devices                       List available audio input and output devices and │
-│                                      exit.                                             │
-╰────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ Audio Input: Wyoming ─────────────────────────────────────────────────────────────────╮
-│ --asr-wyoming-ip          TEXT     Wyoming ASR server IP address.                      │
-│                                    [default: localhost]                                │
-│ --asr-wyoming-port        INTEGER  Wyoming ASR server port.                            │
-│                                    [default: 10300]                                    │
-╰────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ Audio Input: OpenAI-compatible ───────────────────────────────────────────────────────╮
-│ --asr-openai-model           TEXT  The OpenAI model to use for ASR (transcription).    │
-│                                    [default: whisper-1]                                │
-│ --asr-openai-base-url        TEXT  Custom base URL for OpenAI-compatible ASR API       │
-│                                    (e.g., for custom Whisper server:                   │
-│                                    http://localhost:9898).                             │
-│ --asr-openai-prompt          TEXT  Custom prompt to guide transcription (optional).    │
-╰────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ Audio Input: Gemini ──────────────────────────────────────────────────────────────────╮
-│ --asr-gemini-model        TEXT  The Gemini model to use for ASR (transcription).       │
-│                                 [default: gemini-3-flash-preview]                      │
-╰────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ LLM: Ollama ──────────────────────────────────────────────────────────────────────────╮
-│ --llm-ollama-model        TEXT  The Ollama model to use. Default is gemma3:4b.         │
-│                                 [default: gemma3:4b]                                   │
-│ --llm-ollama-host         TEXT  The Ollama server host. Default is                     │
-│                                 http://localhost:11434.                                │
-│                                 [default: http://localhost:11434]                      │
-╰────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ LLM: OpenAI-compatible ───────────────────────────────────────────────────────────────╮
-│ --llm-openai-model        TEXT  The OpenAI model to use for LLM tasks.                 │
-│                                 [default: gpt-5-mini]                                  │
-│ --openai-api-key          TEXT  Your OpenAI API key. Can also be set with the          │
-│                                 OPENAI_API_KEY environment variable.                   │
-│                                 [env var: OPENAI_API_KEY]                              │
-│ --openai-base-url         TEXT  Custom base URL for OpenAI-compatible API (e.g., for   │
-│                                 llama-server: http://localhost:8080/v1).               │
-│                                 [env var: OPENAI_BASE_URL]                             │
-╰────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ LLM: Gemini ──────────────────────────────────────────────────────────────────────────╮
-│ --llm-gemini-model        TEXT  The Gemini model to use for LLM tasks.                 │
-│                                 [default: gemini-3-flash-preview]                      │
-│ --gemini-api-key          TEXT  Your Gemini API key. Can also be set with the          │
-│                                 GEMINI_API_KEY environment variable.                   │
-│                                 [env var: GEMINI_API_KEY]                              │
-╰────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ Audio Output ─────────────────────────────────────────────────────────────────────────╮
-│ --tts                    --no-tts             Enable text-to-speech for responses.     │
-│                                               [default: no-tts]                        │
-│ --output-device-index                INTEGER  Index of the audio output device to use  │
-│                                               for TTS.                                 │
-│ --output-device-name                 TEXT     Output device name keywords for partial  │
-│                                               matching.                                │
-│ --tts-speed                          FLOAT    Speech speed multiplier (1.0 = normal,   │
-│                                               2.0 = twice as fast, 0.5 = half speed).  │
-│                                               [default: 1.0]                           │
-╰────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ Audio Output: Wyoming ────────────────────────────────────────────────────────────────╮
-│ --tts-wyoming-ip              TEXT     Wyoming TTS server IP address.                  │
-│                                        [default: localhost]                            │
-│ --tts-wyoming-port            INTEGER  Wyoming TTS server port.                        │
-│                                        [default: 10200]                                │
-│ --tts-wyoming-voice           TEXT     Voice name to use for Wyoming TTS (e.g.,        │
-│                                        'en_US-lessac-medium').                         │
-│ --tts-wyoming-language        TEXT     Language for Wyoming TTS (e.g., 'en_US').       │
-│ --tts-wyoming-speaker         TEXT     Speaker name for Wyoming TTS voice.             │
-╰────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ Audio Output: OpenAI-compatible ──────────────────────────────────────────────────────╮
-│ --tts-openai-model           TEXT  The OpenAI model to use for TTS.                    │
-│                                    [default: tts-1]                                    │
-│ --tts-openai-voice           TEXT  The voice to use for OpenAI-compatible TTS.         │
-│                                    [default: alloy]                                    │
-│ --tts-openai-base-url        TEXT  Custom base URL for OpenAI-compatible TTS API       │
-│                                    (e.g., http://localhost:8000/v1 for a proxy).       │
-╰────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ Audio Output: Kokoro ─────────────────────────────────────────────────────────────────╮
-│ --tts-kokoro-model        TEXT  The Kokoro model to use for TTS.                       │
-│                                 [default: kokoro]                                      │
-│ --tts-kokoro-voice        TEXT  The voice to use for Kokoro TTS.                       │
-│                                 [default: af_sky]                                      │
-│ --tts-kokoro-host         TEXT  The base URL for the Kokoro API.                       │
-│                                 [default: http://localhost:8880/v1]                    │
-╰────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ Process Management ───────────────────────────────────────────────────────────────────╮
-│ --stop            Stop any running background process.                                 │
-│ --status          Check if a background process is running.                            │
-│ --toggle          Toggle the background process on/off. If the process is running, it  │
-│                   will be stopped. If the process is not running, it will be started.  │
-╰────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ History Options ──────────────────────────────────────────────────────────────────────╮
-│ --history-dir            PATH     Directory to store conversation history.             │
-│                                   [default: ~/.config/agent-cli/history]               │
-│ --last-n-messages        INTEGER  Number of messages to include in the conversation    │
-│                                   history. Set to 0 to disable history.                │
-│                                   [default: 50]                                        │
-╰────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ General Options ──────────────────────────────────────────────────────────────────────╮
-│ --save-file           PATH  Save TTS response audio to WAV file.                       │
-│ --log-level           TEXT  Set logging level.                                         │
-│                             [default: WARNING]                                         │
-│ --log-file            TEXT  Path to a file to write logs to.                           │
-│ --quiet       -q            Suppress console output from rich.                         │
-│ --config              TEXT  Path to a TOML configuration file.                         │
-│ --print-args                Print the command line arguments, including variables      │
-│                             taken from the configuration file.                         │
-╰────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ Options ────────────────────────────────────────────────────────────────────╮
+│ --help  -h        Show this message and exit.                                │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Provider Selection ─────────────────────────────────────────────────────────╮
+│ --asr-provider        TEXT  The ASR provider to use ('wyoming', 'openai',    │
+│                             'gemini').                                       │
+│                             [default: wyoming]                               │
+│ --llm-provider        TEXT  The LLM provider to use ('ollama', 'openai',     │
+│                             'gemini').                                       │
+│                             [default: ollama]                                │
+│ --tts-provider        TEXT  The TTS provider to use ('wyoming', 'openai',    │
+│                             'kokoro').                                       │
+│                             [default: wyoming]                               │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Audio Input ────────────────────────────────────────────────────────────────╮
+│ --input-device-index        INTEGER  Index of the audio input device to use. │
+│ --input-device-name         TEXT     Device name keywords for partial        │
+│                                      matching.                               │
+│ --list-devices                       List available audio input and output   │
+│                                      devices and exit.                       │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Audio Input: Wyoming ───────────────────────────────────────────────────────╮
+│ --asr-wyoming-ip          TEXT     Wyoming ASR server IP address.            │
+│                                    [default: localhost]                      │
+│ --asr-wyoming-port        INTEGER  Wyoming ASR server port.                  │
+│                                    [default: 10300]                          │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Audio Input: OpenAI-compatible ─────────────────────────────────────────────╮
+│ --asr-openai-model           TEXT  The OpenAI model to use for ASR           │
+│                                    (transcription).                          │
+│                                    [default: whisper-1]                      │
+│ --asr-openai-base-url        TEXT  Custom base URL for OpenAI-compatible ASR │
+│                                    API (e.g., for custom Whisper server:     │
+│                                    http://localhost:9898).                   │
+│ --asr-openai-prompt          TEXT  Custom prompt to guide transcription      │
+│                                    (optional).                               │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Audio Input: Gemini ────────────────────────────────────────────────────────╮
+│ --asr-gemini-model        TEXT  The Gemini model to use for ASR              │
+│                                 (transcription).                             │
+│                                 [default: gemini-3-flash-preview]            │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ LLM: Ollama ────────────────────────────────────────────────────────────────╮
+│ --llm-ollama-model        TEXT  The Ollama model to use. Default is          │
+│                                 gemma3:4b.                                   │
+│                                 [default: gemma3:4b]                         │
+│ --llm-ollama-host         TEXT  The Ollama server host. Default is           │
+│                                 http://localhost:11434.                      │
+│                                 [default: http://localhost:11434]            │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ LLM: OpenAI-compatible ─────────────────────────────────────────────────────╮
+│ --llm-openai-model        TEXT  The OpenAI model to use for LLM tasks.       │
+│                                 [default: gpt-5-mini]                        │
+│ --openai-api-key          TEXT  Your OpenAI API key. Can also be set with    │
+│                                 the OPENAI_API_KEY environment variable.     │
+│                                 [env var: OPENAI_API_KEY]                    │
+│ --openai-base-url         TEXT  Custom base URL for OpenAI-compatible API    │
+│                                 (e.g., for llama-server:                     │
+│                                 http://localhost:8080/v1).                   │
+│                                 [env var: OPENAI_BASE_URL]                   │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ LLM: Gemini ────────────────────────────────────────────────────────────────╮
+│ --llm-gemini-model        TEXT  The Gemini model to use for LLM tasks.       │
+│                                 [default: gemini-3-flash-preview]            │
+│ --gemini-api-key          TEXT  Your Gemini API key. Can also be set with    │
+│                                 the GEMINI_API_KEY environment variable.     │
+│                                 [env var: GEMINI_API_KEY]                    │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Audio Output ───────────────────────────────────────────────────────────────╮
+│ --tts                    --no-tts             Enable text-to-speech for      │
+│                                               responses.                     │
+│                                               [default: no-tts]              │
+│ --output-device-index                INTEGER  Index of the audio output      │
+│                                               device to use for TTS.         │
+│ --output-device-name                 TEXT     Output device name keywords    │
+│                                               for partial matching.          │
+│ --tts-speed                          FLOAT    Speech speed multiplier (1.0 = │
+│                                               normal, 2.0 = twice as fast,   │
+│                                               0.5 = half speed).             │
+│                                               [default: 1.0]                 │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Audio Output: Wyoming ──────────────────────────────────────────────────────╮
+│ --tts-wyoming-ip              TEXT     Wyoming TTS server IP address.        │
+│                                        [default: localhost]                  │
+│ --tts-wyoming-port            INTEGER  Wyoming TTS server port.              │
+│                                        [default: 10200]                      │
+│ --tts-wyoming-voice           TEXT     Voice name to use for Wyoming TTS     │
+│                                        (e.g., 'en_US-lessac-medium').        │
+│ --tts-wyoming-language        TEXT     Language for Wyoming TTS (e.g.,       │
+│                                        'en_US').                             │
+│ --tts-wyoming-speaker         TEXT     Speaker name for Wyoming TTS voice.   │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Audio Output: OpenAI-compatible ────────────────────────────────────────────╮
+│ --tts-openai-model           TEXT  The OpenAI model to use for TTS.          │
+│                                    [default: tts-1]                          │
+│ --tts-openai-voice           TEXT  The voice to use for OpenAI-compatible    │
+│                                    TTS.                                      │
+│                                    [default: alloy]                          │
+│ --tts-openai-base-url        TEXT  Custom base URL for OpenAI-compatible TTS │
+│                                    API (e.g., http://localhost:8000/v1 for a │
+│                                    proxy).                                   │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Audio Output: Kokoro ───────────────────────────────────────────────────────╮
+│ --tts-kokoro-model        TEXT  The Kokoro model to use for TTS.             │
+│                                 [default: kokoro]                            │
+│ --tts-kokoro-voice        TEXT  The voice to use for Kokoro TTS.             │
+│                                 [default: af_sky]                            │
+│ --tts-kokoro-host         TEXT  The base URL for the Kokoro API.             │
+│                                 [default: http://localhost:8880/v1]          │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Process Management ─────────────────────────────────────────────────────────╮
+│ --stop            Stop any running background process.                       │
+│ --status          Check if a background process is running.                  │
+│ --toggle          Toggle the background process on/off. If the process is    │
+│                   running, it will be stopped. If the process is not         │
+│                   running, it will be started.                               │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ History Options ────────────────────────────────────────────────────────────╮
+│ --history-dir            PATH     Directory to store conversation history.   │
+│                                   [default: ~/.config/agent-cli/history]     │
+│ --last-n-messages        INTEGER  Number of messages to include in the       │
+│                                   conversation history. Set to 0 to disable  │
+│                                   history.                                   │
+│                                   [default: 50]                              │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ General Options ────────────────────────────────────────────────────────────╮
+│ --save-file           PATH  Save TTS response audio to WAV file.             │
+│ --log-level           TEXT  Set logging level.                               │
+│                             [default: WARNING]                               │
+│ --log-file            TEXT  Path to a file to write logs to.                 │
+│ --quiet       -q            Suppress console output from rich.               │
+│ --config              TEXT  Path to a TOML configuration file.               │
+│ --print-args                Print the command line arguments, including      │
+│                             variables taken from the configuration file.     │
+╰──────────────────────────────────────────────────────────────────────────────╯
 
 ```
 
@@ -1457,49 +1553,52 @@ uv tool install "agent-cli[vad]"
  Start the RAG (Retrieval-Augmented Generation) Proxy Server.
 
  This server watches a folder for documents, indexes them, and provides an
- OpenAI-compatible API that proxies requests to a backend LLM (like llama.cpp), injecting
- relevant context from the documents.
+ OpenAI-compatible API that proxies requests to a backend LLM (like llama.cpp),
+ injecting relevant context from the documents.
 
-╭─ Options ──────────────────────────────────────────────────────────────────────────────╮
-│ --help  -h        Show this message and exit.                                          │
-╰────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ RAG Configuration ────────────────────────────────────────────────────────────────────╮
-│ --docs-folder                      PATH     Folder to watch for documents              │
-│                                             [default: ./rag_docs]                      │
-│ --chroma-path                      PATH     Path to ChromaDB persistence directory     │
-│                                             [default: ./rag_db]                        │
-│ --limit                            INTEGER  Number of document chunks to retrieve per  │
-│                                             query.                                     │
-│                                             [default: 3]                               │
-│ --rag-tools      --no-rag-tools             Allow agent to fetch full documents when   │
-│                                             snippets are insufficient.                 │
-│                                             [default: rag-tools]                       │
-╰────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ LLM: OpenAI-compatible ───────────────────────────────────────────────────────────────╮
-│ --openai-base-url        TEXT  Custom base URL for OpenAI-compatible API (e.g., for    │
-│                                llama-server: http://localhost:8080/v1).                │
-│                                [env var: OPENAI_BASE_URL]                              │
-│ --openai-api-key         TEXT  Your OpenAI API key. Can also be set with the           │
-│                                OPENAI_API_KEY environment variable.                    │
-│                                [env var: OPENAI_API_KEY]                               │
-╰────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ LLM Configuration ────────────────────────────────────────────────────────────────────╮
-│ --embedding-model        TEXT  Embedding model to use for vectorization.               │
-│                                [default: text-embedding-3-small]                       │
-╰────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ Server Configuration ─────────────────────────────────────────────────────────────────╮
-│ --host        TEXT     Host/IP to bind API servers to.                                 │
-│                        [default: 0.0.0.0]                                              │
-│ --port        INTEGER  Port to bind to                                                 │
-│                        [default: 8000]                                                 │
-╰────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ General Options ──────────────────────────────────────────────────────────────────────╮
-│ --log-level         TEXT  Set logging level.                                           │
-│                           [default: INFO]                                              │
-│ --config            TEXT  Path to a TOML configuration file.                           │
-│ --print-args              Print the command line arguments, including variables taken  │
-│                           from the configuration file.                                 │
-╰────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ Options ────────────────────────────────────────────────────────────────────╮
+│ --help  -h        Show this message and exit.                                │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ RAG Configuration ──────────────────────────────────────────────────────────╮
+│ --docs-folder                      PATH     Folder to watch for documents    │
+│                                             [default: ./rag_docs]            │
+│ --chroma-path                      PATH     Path to ChromaDB persistence     │
+│                                             directory                        │
+│                                             [default: ./rag_db]              │
+│ --limit                            INTEGER  Number of document chunks to     │
+│                                             retrieve per query.              │
+│                                             [default: 3]                     │
+│ --rag-tools      --no-rag-tools             Allow agent to fetch full        │
+│                                             documents when snippets are      │
+│                                             insufficient.                    │
+│                                             [default: rag-tools]             │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ LLM: OpenAI-compatible ─────────────────────────────────────────────────────╮
+│ --openai-base-url        TEXT  Custom base URL for OpenAI-compatible API     │
+│                                (e.g., for llama-server:                      │
+│                                http://localhost:8080/v1).                    │
+│                                [env var: OPENAI_BASE_URL]                    │
+│ --openai-api-key         TEXT  Your OpenAI API key. Can also be set with the │
+│                                OPENAI_API_KEY environment variable.          │
+│                                [env var: OPENAI_API_KEY]                     │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ LLM Configuration ──────────────────────────────────────────────────────────╮
+│ --embedding-model        TEXT  Embedding model to use for vectorization.     │
+│                                [default: text-embedding-3-small]             │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Server Configuration ───────────────────────────────────────────────────────╮
+│ --host        TEXT     Host/IP to bind API servers to.                       │
+│                        [default: 0.0.0.0]                                    │
+│ --port        INTEGER  Port to bind to                                       │
+│                        [default: 8000]                                       │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ General Options ────────────────────────────────────────────────────────────╮
+│ --log-level         TEXT  Set logging level.                                 │
+│                           [default: INFO]                                    │
+│ --config            TEXT  Path to a TOML configuration file.                 │
+│ --print-args              Print the command line arguments, including        │
+│                           variables taken from the configuration file.       │
+╰──────────────────────────────────────────────────────────────────────────────╯
 
 ```
 
@@ -1555,91 +1654,107 @@ The `memory proxy` command is the core feature—a middleware server that gives 
 
  Start the memory-backed chat proxy server.
 
- This server acts as a middleware between your chat client (e.g., a web UI, CLI, or IDE
- plugin) and an OpenAI-compatible LLM provider (e.g., OpenAI, Ollama, vLLM).
+ This server acts as a middleware between your chat client (e.g., a web UI,
+ CLI, or IDE plugin) and an OpenAI-compatible LLM provider (e.g., OpenAI,
+ Ollama, vLLM).
 
  Key Features:
 
-  • Simple Markdown Files: Memories are stored as human-readable Markdown files, serving
-    as the ultimate source of truth.
-  • Automatic Version Control: Built-in Git integration automatically commits changes,
-    providing a full history of memory evolution.
-  • Lightweight & Local: Minimal dependencies and runs entirely on your machine.
-  • Proxy Middleware: Works transparently with any OpenAI-compatible /chat/completions
-    endpoint.
+  • Simple Markdown Files: Memories are stored as human-readable Markdown
+    files, serving as the ultimate source of truth.
+  • Automatic Version Control: Built-in Git integration automatically commits
+    changes, providing a full history of memory evolution.
+  • Lightweight & Local: Minimal dependencies and runs entirely on your
+    machine.
+  • Proxy Middleware: Works transparently with any OpenAI-compatible
+    /chat/completions endpoint.
 
  How it works:
 
   1 Intercepts POST /v1/chat/completions requests.
-  2 Retrieves relevant memories (facts, previous conversations) from a local vector
-    database (ChromaDB) based on the user's query.
+  2 Retrieves relevant memories (facts, previous conversations) from a local
+    vector database (ChromaDB) based on the user's query.
   3 Injects these memories into the system prompt.
   4 Forwards the augmented request to the real LLM (--openai-base-url).
-  5 Extracts new facts from the conversation in the background and updates the long-term
-    memory store (including handling contradictions).
+  5 Extracts new facts from the conversation in the background and updates the
+    long-term memory store (including handling contradictions).
 
- Use this to give "long-term memory" to any OpenAI-compatible application. Point your
- client's base URL to http://localhost:8100/v1.
+ Use this to give "long-term memory" to any OpenAI-compatible application.
+ Point your client's base URL to http://localhost:8100/v1.
 
-╭─ Options ──────────────────────────────────────────────────────────────────────────────╮
-│ --help  -h        Show this message and exit.                                          │
-╰────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ Memory Configuration ─────────────────────────────────────────────────────────────────╮
-│ --memory-path                               PATH     Path to the memory store (files + │
-│                                                      derived vector index).            │
-│                                                      [default: ./memory_db]            │
-│ --default-top-k                             INTEGER  Number of memory entries to       │
-│                                                      retrieve per query.               │
-│                                                      [default: 5]                      │
-│ --max-entries                               INTEGER  Maximum stored memory entries per │
-│                                                      conversation (excluding summary). │
-│                                                      [default: 500]                    │
-│ --mmr-lambda                                FLOAT    MMR lambda (0-1): higher favors   │
-│                                                      relevance, lower favors           │
-│                                                      diversity.                        │
-│                                                      [default: 0.7]                    │
-│ --recency-weight                            FLOAT    Recency score weight (0.0-1.0).   │
-│                                                      Controls freshness vs. relevance. │
-│                                                      Default 0.2 (20% recency, 80%     │
-│                                                      semantic relevance).              │
-│                                                      [default: 0.2]                    │
-│ --score-threshold                           FLOAT    Minimum semantic relevance        │
-│                                                      threshold (0.0-1.0). Memories     │
-│                                                      below this score are discarded to │
-│                                                      reduce noise.                     │
-│                                                      [default: 0.35]                   │
-│ --summarization      --no-summarization              Enable automatic fact extraction  │
-│                                                      and summaries.                    │
-│                                                      [default: summarization]          │
-│ --git-versioning     --no-git-versioning             Enable automatic git commit of    │
-│                                                      memory changes.                   │
-│                                                      [default: git-versioning]         │
-╰────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ LLM: OpenAI-compatible ───────────────────────────────────────────────────────────────╮
-│ --openai-base-url        TEXT  Custom base URL for OpenAI-compatible API (e.g., for    │
-│                                llama-server: http://localhost:8080/v1).                │
-│                                [env var: OPENAI_BASE_URL]                              │
-│ --openai-api-key         TEXT  Your OpenAI API key. Can also be set with the           │
-│                                OPENAI_API_KEY environment variable.                    │
-│                                [env var: OPENAI_API_KEY]                               │
-╰────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ LLM Configuration ────────────────────────────────────────────────────────────────────╮
-│ --embedding-model        TEXT  Embedding model to use for vectorization.               │
-│                                [default: text-embedding-3-small]                       │
-╰────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ Server Configuration ─────────────────────────────────────────────────────────────────╮
-│ --host        TEXT     Host/IP to bind API servers to.                                 │
-│                        [default: 0.0.0.0]                                              │
-│ --port        INTEGER  Port to bind to                                                 │
-│                        [default: 8100]                                                 │
-╰────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ General Options ──────────────────────────────────────────────────────────────────────╮
-│ --log-level         TEXT  Set logging level.                                           │
-│                           [default: INFO]                                              │
-│ --config            TEXT  Path to a TOML configuration file.                           │
-│ --print-args              Print the command line arguments, including variables taken  │
-│                           from the configuration file.                                 │
-╰────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ Options ────────────────────────────────────────────────────────────────────╮
+│ --help  -h        Show this message and exit.                                │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Memory Configuration ───────────────────────────────────────────────────────╮
+│ --memory-path                               PATH     Path to the memory      │
+│                                                      store (files + derived  │
+│                                                      vector index).          │
+│                                                      [default: ./memory_db]  │
+│ --default-top-k                             INTEGER  Number of memory        │
+│                                                      entries to retrieve per │
+│                                                      query.                  │
+│                                                      [default: 5]            │
+│ --max-entries                               INTEGER  Maximum stored memory   │
+│                                                      entries per             │
+│                                                      conversation (excluding │
+│                                                      summary).               │
+│                                                      [default: 500]          │
+│ --mmr-lambda                                FLOAT    MMR lambda (0-1):       │
+│                                                      higher favors           │
+│                                                      relevance, lower favors │
+│                                                      diversity.              │
+│                                                      [default: 0.7]          │
+│ --recency-weight                            FLOAT    Recency score weight    │
+│                                                      (0.0-1.0). Controls     │
+│                                                      freshness vs.           │
+│                                                      relevance. Default 0.2  │
+│                                                      (20% recency, 80%       │
+│                                                      semantic relevance).    │
+│                                                      [default: 0.2]          │
+│ --score-threshold                           FLOAT    Minimum semantic        │
+│                                                      relevance threshold     │
+│                                                      (0.0-1.0). Memories     │
+│                                                      below this score are    │
+│                                                      discarded to reduce     │
+│                                                      noise.                  │
+│                                                      [default: 0.35]         │
+│ --summarization      --no-summarization              Enable automatic fact   │
+│                                                      extraction and          │
+│                                                      summaries.              │
+│                                                      [default:               │
+│                                                      summarization]          │
+│ --git-versioning     --no-git-versioning             Enable automatic git    │
+│                                                      commit of memory        │
+│                                                      changes.                │
+│                                                      [default:               │
+│                                                      git-versioning]         │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ LLM: OpenAI-compatible ─────────────────────────────────────────────────────╮
+│ --openai-base-url        TEXT  Custom base URL for OpenAI-compatible API     │
+│                                (e.g., for llama-server:                      │
+│                                http://localhost:8080/v1).                    │
+│                                [env var: OPENAI_BASE_URL]                    │
+│ --openai-api-key         TEXT  Your OpenAI API key. Can also be set with the │
+│                                OPENAI_API_KEY environment variable.          │
+│                                [env var: OPENAI_API_KEY]                     │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ LLM Configuration ──────────────────────────────────────────────────────────╮
+│ --embedding-model        TEXT  Embedding model to use for vectorization.     │
+│                                [default: text-embedding-3-small]             │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Server Configuration ───────────────────────────────────────────────────────╮
+│ --host        TEXT     Host/IP to bind API servers to.                       │
+│                        [default: 0.0.0.0]                                    │
+│ --port        INTEGER  Port to bind to                                       │
+│                        [default: 8100]                                       │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ General Options ────────────────────────────────────────────────────────────╮
+│ --log-level         TEXT  Set logging level.                                 │
+│                           [default: INFO]                                    │
+│ --config            TEXT  Path to a TOML configuration file.                 │
+│ --print-args              Print the command line arguments, including        │
+│                           variables taken from the configuration file.       │
+╰──────────────────────────────────────────────────────────────────────────────╯
 
 ```
 
@@ -1690,11 +1805,11 @@ agent-cli memory add -c work "Project deadline is Friday"
 
  Add memories directly without LLM extraction.
 
- This writes facts directly to the memory store, bypassing the LLM-based fact extraction.
- Useful for bulk imports or seeding memories.
+ This writes facts directly to the memory store, bypassing the LLM-based fact
+ extraction. Useful for bulk imports or seeding memories.
 
- The memory proxy file watcher (if running) will auto-index new files. Otherwise, they'll
- be indexed on next memory proxy startup.
+ The memory proxy file watcher (if running) will auto-index new files.
+ Otherwise, they'll be indexed on next memory proxy startup.
 
  Examples::
 
@@ -1715,29 +1830,35 @@ agent-cli memory add -c work "Project deadline is Friday"
   agent-cli memory add -c work "Project deadline is Friday"
 
 
-╭─ Arguments ────────────────────────────────────────────────────────────────────────────╮
-│   memories      [MEMORIES]...  Memories to add. Each argument becomes one fact.        │
-╰────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ Options ──────────────────────────────────────────────────────────────────────────────╮
-│ --file             -f                         PATH  Read memories from file. Use '-'   │
-│                                                     for stdin. Supports JSON array,    │
-│                                                     JSON object with 'memories' key,   │
-│                                                     or plain text (one per line).      │
-│ --conversation-id  -c                         TEXT  Conversation ID to add memories    │
-│                                                     to.                                │
-│                                                     [default: default]                 │
-│ --memory-path                                 PATH  Path to the memory store.          │
-│                                                     [default: ./memory_db]             │
-│ --git-versioning       --no-git-versioning          Commit changes to git.             │
-│                                                     [default: git-versioning]          │
-│ --help             -h                               Show this message and exit.        │
-╰────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ General Options ──────────────────────────────────────────────────────────────────────╮
-│ --quiet       -q            Suppress console output from rich.                         │
-│ --config              TEXT  Path to a TOML configuration file.                         │
-│ --print-args                Print the command line arguments, including variables      │
-│                             taken from the configuration file.                         │
-╰────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ Arguments ──────────────────────────────────────────────────────────────────╮
+│   memories      [MEMORIES]...  Memories to add. Each argument becomes one    │
+│                                fact.                                         │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Options ────────────────────────────────────────────────────────────────────╮
+│ --file             -f                         PATH  Read memories from file. │
+│                                                     Use '-' for stdin.       │
+│                                                     Supports JSON array,     │
+│                                                     JSON object with         │
+│                                                     'memories' key, or plain │
+│                                                     text (one per line).     │
+│ --conversation-id  -c                         TEXT  Conversation ID to add   │
+│                                                     memories to.             │
+│                                                     [default: default]       │
+│ --memory-path                                 PATH  Path to the memory       │
+│                                                     store.                   │
+│                                                     [default: ./memory_db]   │
+│ --git-versioning       --no-git-versioning          Commit changes to git.   │
+│                                                     [default:                │
+│                                                     git-versioning]          │
+│ --help             -h                               Show this message and    │
+│                                                     exit.                    │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ General Options ────────────────────────────────────────────────────────────╮
+│ --quiet       -q            Suppress console output from rich.               │
+│ --config              TEXT  Path to a TOML configuration file.               │
+│ --print-args                Print the command line arguments, including      │
+│                             variables taken from the configuration file.     │
+╰──────────────────────────────────────────────────────────────────────────────╯
 
 ```
 
