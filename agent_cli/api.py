@@ -118,7 +118,7 @@ async def _transcribe_with_provider(
             logger=LOGGER,
         )
     msg = f"Unsupported ASR provider: {provider_cfg.asr_provider}"
-    raise ValueError(msg)
+    raise NotImplementedError(msg)
 
 
 def _is_valid_audio_file(value: Any) -> bool:

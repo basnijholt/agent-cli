@@ -128,13 +128,16 @@ async def _process_segment(  # noqa: PLR0912
         transcript = await transcriber(segment, cfg.openai_asr, LOGGER, quiet=cfg.quiet)
     elif cfg.provider.asr_provider == "gemini":
         transcript = await transcriber(segment, cfg.gemini_asr, LOGGER, quiet=cfg.quiet)
-    else:
+    elif cfg.provider.asr_provider == "wyoming":
         transcript = await transcriber(
             audio_data=segment,
             wyoming_asr_cfg=cfg.wyoming_asr,
             logger=LOGGER,
             quiet=cfg.quiet,
         )
+    else:
+        msg = f"Unsupported ASR provider: {cfg.provider.asr_provider}"
+        raise NotImplementedError(msg)
 
     if not transcript or not transcript.strip():
         LOGGER.debug("Empty transcript, skipping")

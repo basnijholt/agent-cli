@@ -285,13 +285,16 @@ async def _async_main(  # noqa: PLR0912, PLR0915, C901
                     LOGGER,
                     quiet=general_cfg.quiet,
                 )
-            else:  # Wyoming expects keyword arguments
+            elif provider_cfg.asr_provider == "wyoming":
                 transcript = await recorded_transcriber(
                     audio_data=audio_data,
                     wyoming_asr_cfg=wyoming_asr_cfg,
                     logger=LOGGER,
                     quiet=general_cfg.quiet,
                 )
+            else:
+                msg = f"Unsupported ASR provider: {provider_cfg.asr_provider}"
+                raise NotImplementedError(msg)
         else:
             # Live recording transcription
             if not audio_in_cfg:
