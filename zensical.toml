@@ -59,6 +59,7 @@ nav = [
 
 [project.theme]
 language = "en"
+logo = "logo-clean.svg"
 
 features = [
     "announce.dismiss",
@@ -106,7 +107,6 @@ text = "Inter"
 code = "JetBrains Mono"
 
 [project.theme.icon]
-logo = "lucide/mic"
 repo = "lucide/github"
 
 [project.extra]
