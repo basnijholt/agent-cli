@@ -154,6 +154,7 @@ async def _handle_conversation_turn(
     audio_in_cfg: config.AudioInput,
     wyoming_asr_cfg: config.WyomingASR,
     openai_asr_cfg: config.OpenAIASR,
+    gemini_asr_cfg: config.GeminiASR,
     ollama_cfg: config.Ollama,
     openai_llm_cfg: config.OpenAILLM,
     gemini_llm_cfg: config.GeminiLLM,
@@ -171,6 +172,7 @@ async def _handle_conversation_turn(
         audio_in_cfg,
         wyoming_asr_cfg,
         openai_asr_cfg,
+        gemini_asr_cfg,
     )
     instruction = await transcriber(
         stop_event=stop_event,
@@ -305,6 +307,7 @@ async def _async_main(
     audio_in_cfg: config.AudioInput,
     wyoming_asr_cfg: config.WyomingASR,
     openai_asr_cfg: config.OpenAIASR,
+    gemini_asr_cfg: config.GeminiASR,
     ollama_cfg: config.Ollama,
     openai_llm_cfg: config.OpenAILLM,
     gemini_llm_cfg: config.GeminiLLM,
@@ -350,6 +353,7 @@ async def _async_main(
                     audio_in_cfg=audio_in_cfg,
                     wyoming_asr_cfg=wyoming_asr_cfg,
                     openai_asr_cfg=openai_asr_cfg,
+                    gemini_asr_cfg=gemini_asr_cfg,
                     ollama_cfg=ollama_cfg,
                     openai_llm_cfg=openai_llm_cfg,
                     gemini_llm_cfg=gemini_llm_cfg,
@@ -380,6 +384,7 @@ def chat(
     asr_openai_model: str = opts.ASR_OPENAI_MODEL,
     asr_openai_base_url: str | None = opts.ASR_OPENAI_BASE_URL,
     asr_openai_prompt: str | None = opts.ASR_OPENAI_PROMPT,
+    asr_gemini_model: str = opts.ASR_GEMINI_MODEL,
     # --- LLM Configuration ---
     llm_ollama_model: str = opts.LLM_OLLAMA_MODEL,
     llm_ollama_host: str = opts.LLM_OLLAMA_HOST,
@@ -474,6 +479,10 @@ def chat(
             openai_base_url=asr_openai_base_url,
             asr_openai_prompt=asr_openai_prompt,
         )
+        gemini_asr_cfg = config.GeminiASR(
+            asr_gemini_model=asr_gemini_model,
+            gemini_api_key=gemini_api_key,
+        )
         ollama_cfg = config.Ollama(
             llm_ollama_model=llm_ollama_model,
             llm_ollama_host=llm_ollama_host,
@@ -524,6 +533,7 @@ def chat(
                 audio_in_cfg=audio_in_cfg,
                 wyoming_asr_cfg=wyoming_asr_cfg,
                 openai_asr_cfg=openai_asr_cfg,
+                gemini_asr_cfg=gemini_asr_cfg,
                 ollama_cfg=ollama_cfg,
                 openai_llm_cfg=openai_llm_cfg,
                 gemini_llm_cfg=gemini_llm_cfg,

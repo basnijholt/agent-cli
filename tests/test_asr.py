@@ -8,7 +8,8 @@ import pytest
 from wyoming.asr import Transcribe, Transcript, TranscriptChunk
 from wyoming.audio import AudioChunk, AudioStart, AudioStop
 
-from agent_cli.services import asr
+from agent_cli import config
+from agent_cli.services import asr, transcribe_audio_gemini
 
 
 @pytest.mark.asyncio
@@ -93,6 +94,7 @@ def test_create_transcriber():
         MagicMock(),
         MagicMock(),
         MagicMock(),
+        MagicMock(),
     )
     assert transcriber.func is asr._transcribe_live_audio_openai
 
@@ -102,8 +104,19 @@ def test_create_transcriber():
         MagicMock(),
         MagicMock(),
         MagicMock(),
+        MagicMock(),
     )
     assert transcriber.func is asr._transcribe_live_audio_wyoming
+
+    provider_cfg.asr_provider = "gemini"
+    transcriber = asr.create_transcriber(
+        provider_cfg,
+        MagicMock(),
+        MagicMock(),
+        MagicMock(),
+        MagicMock(),
+    )
+    assert transcriber.func is asr._transcribe_live_audio_gemini
 
 
 def test_create_recorded_audio_transcriber():
@@ -116,6 +129,10 @@ def test_create_recorded_audio_transcriber():
     provider_cfg.asr_provider = "wyoming"
     transcriber = asr.create_recorded_audio_transcriber(provider_cfg)
     assert transcriber is asr._transcribe_recorded_audio_wyoming
+
+    provider_cfg.asr_provider = "gemini"
+    transcriber = asr.create_recorded_audio_transcriber(provider_cfg)
+    assert transcriber is asr.transcribe_audio_gemini
 
 
 @pytest.mark.asyncio
@@ -131,3 +148,41 @@ async def test_transcribe_recorded_audio_wyoming_connection_error(
     )
     assert result == ""
     mock_wyoming_client_context.assert_called_once()
+
+
+@pytest.mark.asyncio
+@patch("agent_cli.services.transcribe_audio_gemini")
+async def test_transcribe_audio_gemini_success(mock_transcribe: AsyncMock):
+    """Test that transcribe_audio_gemini calls the Gemini API correctly."""
+    mock_transcribe.return_value = "test transcription"
+
+    gemini_asr_cfg = config.GeminiASR(
+        asr_gemini_model="gemini-2.0-flash",
+        gemini_api_key="test-key",
+    )
+
+    result = await mock_transcribe(
+        audio_data=b"test audio",
+        gemini_asr_cfg=gemini_asr_cfg,
+        logger=MagicMock(),
+    )
+
+    assert result == "test transcription"
+    mock_transcribe.assert_called_once()
+
+
+@pytest.mark.asyncio
+@patch.dict("sys.modules", {"google.generativeai": MagicMock()})
+async def test_transcribe_audio_gemini_missing_api_key():
+    """Test that transcribe_audio_gemini raises error when API key is missing."""
+    gemini_asr_cfg = config.GeminiASR(
+        asr_gemini_model="gemini-2.0-flash",
+        gemini_api_key=None,
+    )
+
+    with pytest.raises(ValueError, match="Gemini API key is not set"):
+        await transcribe_audio_gemini(
+            audio_data=b"test audio",
+            gemini_asr_cfg=gemini_asr_cfg,
+            logger=MagicMock(),
+        )
