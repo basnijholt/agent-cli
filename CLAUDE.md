@@ -27,25 +27,14 @@ uv sync --extra vad      # Voice activity detection (transcribe-daemon)
 # Run the CLI during development
 uv run agent-cli <command>
 
-# Run tests
-uv run pytest                          # All tests with coverage
-uv run pytest tests/test_cli.py        # Single test file
-uv run pytest -k "test_autocorrect"    # Tests matching pattern
-uv run pytest -x                       # Stop on first failure
+# Run tests (coverage enabled by default via pyproject.toml)
+uv run pytest
 
-# Linting and formatting (via pre-commit)
-pre-commit run --all-files             # Run all checks
-uv run ruff check .                    # Lint only
-uv run ruff format .                   # Format only
+# Linting (pre-commit runs ruff + other checks)
+pre-commit run --all-files
 
-# Type checking
-uv run mypy agent_cli/
-
-# Update auto-generated documentation
-uv run python docs/update_docs.py      # Updates all CODE:START blocks in markdown
-
-# Check changes before committing
-git diff origin/main | cat             # Review all changes vs main branch
+# Update auto-generated documentation (CODE:START blocks in markdown)
+uv run python docs/update_docs.py
 ```
 
 ## Architecture Overview
