@@ -13,6 +13,29 @@ if TYPE_CHECKING:
     from agent_cli import config
 
 
+_RIFF_HEADER = b"RIFF"
+
+
+def _is_wav_file(data: bytes) -> bool:
+    """Check if data is a WAV file by looking for RIFF header."""
+    return len(data) >= len(_RIFF_HEADER) and data[: len(_RIFF_HEADER)] == _RIFF_HEADER
+
+
+def _pcm_to_wav(pcm_data: bytes) -> bytes:
+    """Convert raw PCM audio data to WAV format with headers."""
+    import wave  # noqa: PLC0415
+
+    from agent_cli import constants  # noqa: PLC0415
+
+    wav_buffer = io.BytesIO()
+    with wave.open(wav_buffer, "wb") as wav_file:
+        wav_file.setnchannels(constants.AUDIO_CHANNELS)
+        wav_file.setsampwidth(constants.AUDIO_FORMAT_WIDTH)  # 16-bit audio
+        wav_file.setframerate(constants.AUDIO_RATE)
+        wav_file.writeframes(pcm_data)
+    return wav_buffer.getvalue()
+
+
 async def transcribe_audio_gemini(
     audio_data: bytes,
     gemini_asr_cfg: config.GeminiASR,
@@ -23,6 +46,9 @@ async def transcribe_audio_gemini(
 
     Gemini can process audio natively and return transcriptions.
     Supports WAV, MP3, AIFF, AAC, OGG, and FLAC formats.
+
+    Accepts either raw PCM audio data or complete WAV files. Raw PCM
+    is automatically converted to WAV format since Gemini requires it.
     """
     from google import genai  # noqa: PLC0415
     from google.genai import types  # noqa: PLC0415
@@ -33,9 +59,14 @@ async def transcribe_audio_gemini(
 
     logger.info("Transcribing audio with Gemini %s...", gemini_asr_cfg.asr_gemini_model)
 
+    # Gemini requires complete WAV files with headers, not raw PCM
+    # Auto-convert raw PCM to WAV if needed
+    if not _is_wav_file(audio_data):
+        logger.debug("Converting raw PCM to WAV format for Gemini")
+        audio_data = _pcm_to_wav(audio_data)
+
     client = genai.Client(api_key=gemini_asr_cfg.gemini_api_key)
 
-    # Audio must be a complete WAV file with headers (not raw PCM)
     response = await client.aio.models.generate_content(
         model=gemini_asr_cfg.asr_gemini_model,
         contents=[

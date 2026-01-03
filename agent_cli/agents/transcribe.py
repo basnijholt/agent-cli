@@ -37,7 +37,6 @@ from agent_cli.services.asr import (
     create_recorded_audio_transcriber,
     get_last_recording,
     load_audio_from_file,
-    load_wav_file_bytes,
 )
 from agent_cli.services.llm import process_and_update_clipboard
 
@@ -261,12 +260,7 @@ async def _async_main(  # noqa: PLR0912, PLR0915, C901
     with maybe_live(not general_cfg.quiet) as live:
         if audio_file_path:
             # File-based transcription
-            # Gemini needs full WAV file with headers, others need raw PCM frames
-            if provider_cfg.asr_provider == "gemini":
-                audio_data = load_wav_file_bytes(audio_file_path, LOGGER)
-            else:
-                audio_data = load_audio_from_file(audio_file_path, LOGGER)
-
+            audio_data = load_audio_from_file(audio_file_path, LOGGER)
             if not audio_data:
                 print_with_style(
                     f"❌ Failed to load audio from {audio_file_path}",

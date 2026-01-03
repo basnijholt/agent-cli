@@ -101,21 +101,6 @@ def load_audio_from_file(filepath: Path, logger: logging.Logger) -> bytes | None
         return None
 
 
-def load_wav_file_bytes(filepath: Path, logger: logging.Logger) -> bytes | None:
-    """Load complete WAV file bytes (including headers) for APIs that need full WAV format.
-
-    Unlike load_audio_from_file which returns raw PCM frames, this returns the
-    entire WAV file which is needed by some APIs like Gemini.
-    """
-    try:
-        audio_data = filepath.read_bytes()
-        logger.info("Loaded WAV file from %s (%d bytes)", filepath, len(audio_data))
-        return audio_data
-    except OSError:
-        logger.exception("Failed to load WAV file from %s", filepath)
-        return None
-
-
 def create_transcriber(
     provider_cfg: config.ProviderSelection,
     audio_input_cfg: config.AudioInput,
