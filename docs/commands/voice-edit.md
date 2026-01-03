@@ -55,7 +55,7 @@ agent-cli voice-edit --stop
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--asr-provider` | `wyoming` | The ASR provider to use ('wyoming', 'openai'). |
+| `--asr-provider` | `wyoming` | The ASR provider to use ('wyoming', 'openai', 'gemini'). |
 | `--llm-provider` | `ollama` | The LLM provider to use ('ollama', 'openai', 'gemini'). |
 | `--tts-provider` | `wyoming` | The TTS provider to use ('wyoming', 'openai', 'kokoro'). |
 
@@ -79,6 +79,12 @@ agent-cli voice-edit --stop
 | Option | Default | Description |
 |--------|---------|-------------|
 | `--asr-openai-model` | `whisper-1` | The OpenAI model to use for ASR (transcription). |
+
+### Audio Input: Gemini
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--asr-gemini-model` | `gemini-3-flash-preview` | The Gemini model to use for ASR (transcription). |
 
 ### LLM: Ollama
 

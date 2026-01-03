@@ -53,7 +53,7 @@ agent-cli chat --last-n-messages 100 --history-dir ~/.my-chat-history
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--asr-provider` | `wyoming` | The ASR provider to use ('wyoming', 'openai'). |
+| `--asr-provider` | `wyoming` | The ASR provider to use ('wyoming', 'openai', 'gemini'). |
 | `--llm-provider` | `ollama` | The LLM provider to use ('ollama', 'openai', 'gemini'). |
 | `--tts-provider` | `wyoming` | The TTS provider to use ('wyoming', 'openai', 'kokoro'). |
 
@@ -79,6 +79,12 @@ agent-cli chat --last-n-messages 100 --history-dir ~/.my-chat-history
 | `--asr-openai-model` | `whisper-1` | The OpenAI model to use for ASR (transcription). |
 | `--asr-openai-base-url` | - | Custom base URL for OpenAI-compatible ASR API (e.g., for custom Whisper server: http://localhost:9898). |
 | `--asr-openai-prompt` | - | Custom prompt to guide transcription (optional). |
+
+### Audio Input: Gemini
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--asr-gemini-model` | `gemini-3-flash-preview` | The Gemini model to use for ASR (transcription). |
 
 ### LLM: Ollama
 

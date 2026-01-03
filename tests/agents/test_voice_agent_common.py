@@ -27,6 +27,10 @@ async def test_get_instruction_from_audio(mock_create_transcriber: MagicMock) ->
     audio_in_cfg = config.AudioInput(input_device_index=1)
     wyoming_asr_cfg = config.WyomingASR(asr_wyoming_ip="localhost", asr_wyoming_port=1234)
     openai_asr_cfg = config.OpenAIASR(asr_openai_model="whisper-1")
+    gemini_asr_cfg = config.GeminiASR(
+        asr_gemini_model="gemini-2.0-flash",
+        gemini_api_key="test-key",
+    )
     ollama_cfg = config.Ollama(llm_ollama_model="test-model", llm_ollama_host="localhost")
 
     result = await get_instruction_from_audio(
@@ -35,6 +39,7 @@ async def test_get_instruction_from_audio(mock_create_transcriber: MagicMock) ->
         audio_input_cfg=audio_in_cfg,
         wyoming_asr_cfg=wyoming_asr_cfg,
         openai_asr_cfg=openai_asr_cfg,
+        gemini_asr_cfg=gemini_asr_cfg,
         ollama_cfg=ollama_cfg,
         logger=MagicMock(),
         quiet=False,
@@ -58,6 +63,10 @@ async def test_get_instruction_from_audio_error(mock_create_transcriber: MagicMo
     audio_in_cfg = config.AudioInput(input_device_index=1)
     wyoming_asr_cfg = config.WyomingASR(asr_wyoming_ip="localhost", asr_wyoming_port=1234)
     openai_asr_cfg = config.OpenAIASR(asr_openai_model="whisper-1")
+    gemini_asr_cfg = config.GeminiASR(
+        asr_gemini_model="gemini-2.0-flash",
+        gemini_api_key="test-key",
+    )
     ollama_cfg = config.Ollama(llm_ollama_model="test-model", llm_ollama_host="localhost")
 
     result = await get_instruction_from_audio(
@@ -66,6 +75,7 @@ async def test_get_instruction_from_audio_error(mock_create_transcriber: MagicMo
         audio_input_cfg=audio_in_cfg,
         wyoming_asr_cfg=wyoming_asr_cfg,
         openai_asr_cfg=openai_asr_cfg,
+        gemini_asr_cfg=gemini_asr_cfg,
         ollama_cfg=ollama_cfg,
         logger=MagicMock(),
         quiet=False,

@@ -45,7 +45,7 @@ class ProviderSelection(BaseModel):
     """Configuration for selecting service providers."""
 
     llm_provider: Literal["ollama", "openai", "gemini"]
-    asr_provider: Literal["wyoming", "openai"]
+    asr_provider: Literal["wyoming", "openai", "gemini"]
     tts_provider: Literal["wyoming", "openai", "kokoro"]
 
     @field_validator("llm_provider", mode="before")
@@ -119,6 +119,13 @@ class OpenAIASR(BaseModel):
     openai_api_key: str | None = None
     openai_base_url: str | None = None
     asr_openai_prompt: str | None = None
+
+
+class GeminiASR(BaseModel):
+    """Configuration for the Gemini ASR provider."""
+
+    asr_gemini_model: str
+    gemini_api_key: str | None = None
 
 
 # --- Panel: TTS (Text-to-Speech) Configuration ---

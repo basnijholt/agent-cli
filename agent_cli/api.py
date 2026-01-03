@@ -94,6 +94,7 @@ async def _transcribe_with_provider(
     provider_cfg: config.ProviderSelection,
     wyoming_asr_cfg: config.WyomingASR,
     openai_asr_cfg: config.OpenAIASR,
+    gemini_asr_cfg: config.GeminiASR,
 ) -> str:
     """Transcribe audio using the configured provider."""
     transcriber = asr.create_recorded_audio_transcriber(provider_cfg)
@@ -110,8 +111,14 @@ async def _transcribe_with_provider(
             openai_asr_cfg=openai_asr_cfg,
             logger=LOGGER,
         )
+    if provider_cfg.asr_provider == "gemini":
+        return await transcriber(
+            audio_data=audio_data,
+            gemini_asr_cfg=gemini_asr_cfg,
+            logger=LOGGER,
+        )
     msg = f"Unsupported ASR provider: {provider_cfg.asr_provider}"
-    raise ValueError(msg)
+    raise NotImplementedError(msg)
 
 
 def _is_valid_audio_file(value: Any) -> bool:
@@ -170,6 +177,7 @@ def _load_transcription_configs() -> tuple[
     config.ProviderSelection,
     config.WyomingASR,
     config.OpenAIASR,
+    config.GeminiASR,
     config.Ollama,
     config.OpenAILLM,
     config.GeminiLLM,
@@ -194,6 +202,10 @@ def _load_transcription_configs() -> tuple[
         asr_openai_model=defaults.get("asr_openai_model", opts.ASR_OPENAI_MODEL.default),  # type: ignore[attr-defined]
         openai_api_key=defaults.get("openai_api_key", opts.OPENAI_API_KEY.default),  # type: ignore[attr-defined,union-attr]
     )
+    gemini_asr_cfg = config.GeminiASR(
+        asr_gemini_model=defaults.get("asr_gemini_model", opts.ASR_GEMINI_MODEL.default),  # type: ignore[attr-defined]
+        gemini_api_key=defaults.get("gemini_api_key", opts.GEMINI_API_KEY.default),  # type: ignore[attr-defined,union-attr]
+    )
     ollama_cfg = config.Ollama(
         llm_ollama_model=defaults.get("llm_ollama_model", opts.LLM_OLLAMA_MODEL.default),  # type: ignore[attr-defined]
         llm_ollama_host=defaults.get("llm_ollama_host", opts.LLM_OLLAMA_HOST.default),  # type: ignore[attr-defined]
@@ -212,6 +224,7 @@ def _load_transcription_configs() -> tuple[
         provider_cfg,
         wyoming_asr_cfg,
         openai_asr_cfg,
+        gemini_asr_cfg,
         ollama_cfg,
         openai_llm_cfg,
         gemini_llm_cfg,
@@ -309,6 +322,7 @@ async def transcribe_audio(
             provider_cfg,
             wyoming_asr_cfg,
             openai_asr_cfg,
+            gemini_asr_cfg,
             ollama_cfg,
             openai_llm_cfg,
             gemini_llm_cfg,
@@ -328,6 +342,7 @@ async def transcribe_audio(
             provider_cfg,
             wyoming_asr_cfg,
             openai_asr_cfg,
+            gemini_asr_cfg,
         )
 
         if not raw_transcript:
