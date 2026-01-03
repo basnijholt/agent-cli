@@ -16,25 +16,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Build & Development Commands
 
 ```bash
-# Install all dependencies (recommended for development)
-uv sync --all-extras
-
-# Or install specific extras only
-uv sync --extra rag      # RAG proxy dependencies
-uv sync --extra memory   # Memory proxy dependencies
-uv sync --extra vad      # Voice activity detection (transcribe-daemon)
-
-# Run the CLI during development
-uv run agent-cli <command>
-
-# Run tests (coverage enabled by default via pyproject.toml)
-uv run pytest
-
-# Linting (pre-commit runs ruff + other checks)
-pre-commit run --all-files
-
-# Update auto-generated documentation (CODE:START blocks in markdown)
-uv run python docs/run_markdown_code_runner.py
+uv sync --all-extras                           # Install with all extras (rag, memory, vad)
+uv run python docs/run_markdown_code_runner.py # Update auto-generated docs
 ```
 
 ## Architecture Overview
@@ -112,11 +95,3 @@ The `docs_gen` module introspects Typer commands to generate Markdown tables. Do
 ```
 
 Run `uv run python docs/run_markdown_code_runner.py` to regenerate all auto-generated content.
-
-The `docs_gen.py` module provides several functions:
-- `all_options_for_docs(command)`: Generate options tables for command docs
-- `features_list(link_prefix)`: Generate feature list for README/docs
-- `commands_table(category, link_prefix)`: Generate command tables
-- `env_vars_table()`: List all environment variables
-- `provider_matrix()`: Provider comparison matrix
-- `readme_section(section_name)`: Extract sections from README.md for reuse in docs
