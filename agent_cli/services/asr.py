@@ -21,7 +21,7 @@ from agent_cli.core.audio import (
     setup_input_stream,
 )
 from agent_cli.core.utils import manage_send_receive_tasks
-from agent_cli.services import transcribe_audio_openai
+from agent_cli.services import transcribe_audio_gemini, transcribe_audio_openai
 from agent_cli.services._wyoming_utils import wyoming_client_context
 
 if TYPE_CHECKING:
@@ -90,7 +90,7 @@ def get_last_recording(index: int = 1) -> Path | None:
 
 
 def load_audio_from_file(filepath: Path, logger: logging.Logger) -> bytes | None:
-    """Load audio data from a WAV file."""
+    """Load audio data from a WAV file (raw PCM frames only)."""
     try:
         with wave.open(str(filepath), "rb") as wav_file:
             audio_data = wav_file.readframes(wav_file.getnframes())
@@ -106,19 +106,36 @@ def create_transcriber(
     audio_input_cfg: config.AudioInput,
     wyoming_asr_cfg: config.WyomingASR,
     openai_asr_cfg: config.OpenAIASR,
+    gemini_asr_cfg: config.GeminiASR | None = None,
 ) -> Callable[..., Awaitable[str | None]]:
     """Return the appropriate transcriber for live audio based on the provider."""
-    if provider_cfg.asr_provider == "openai":
-        return partial(
-            _transcribe_live_audio_openai,
-            audio_input_cfg=audio_input_cfg,
-            openai_asr_cfg=openai_asr_cfg,
-        )
     if provider_cfg.asr_provider == "wyoming":
+        # Wyoming has streaming support, uses its own implementation
         return partial(
             _transcribe_live_audio_wyoming,
             audio_input_cfg=audio_input_cfg,
             wyoming_asr_cfg=wyoming_asr_cfg,
+        )
+
+    # OpenAI and Gemini use the buffered record-then-transcribe pattern
+    if provider_cfg.asr_provider == "openai":
+        return partial(
+            _transcribe_live_audio_buffered,
+            audio_input_cfg=audio_input_cfg,
+            transcribe_fn=transcribe_audio_openai,
+            transcribe_cfg=openai_asr_cfg,
+            provider_name="OpenAI",
+        )
+    if provider_cfg.asr_provider == "gemini":
+        if gemini_asr_cfg is None:
+            msg = "Gemini ASR config is required when using gemini provider"
+            raise ValueError(msg)
+        return partial(
+            _transcribe_live_audio_buffered,
+            audio_input_cfg=audio_input_cfg,
+            transcribe_fn=transcribe_audio_gemini,
+            transcribe_cfg=gemini_asr_cfg,
+            provider_name="Gemini",
         )
     msg = f"Unsupported ASR provider: {provider_cfg.asr_provider}"
     raise ValueError(msg)
@@ -132,6 +149,8 @@ def create_recorded_audio_transcriber(
         return transcribe_audio_openai
     if provider_cfg.asr_provider == "wyoming":
         return _transcribe_recorded_audio_wyoming
+    if provider_cfg.asr_provider == "gemini":
+        return transcribe_audio_gemini
     msg = f"Unsupported ASR provider: {provider_cfg.asr_provider}"
     raise ValueError(msg)
 
@@ -365,10 +384,12 @@ async def _transcribe_live_audio_wyoming(
         return None
 
 
-async def _transcribe_live_audio_openai(
+async def _transcribe_live_audio_buffered(
     *,
     audio_input_cfg: config.AudioInput,
-    openai_asr_cfg: config.OpenAIASR,
+    transcribe_fn: Callable[..., Awaitable[str]],
+    transcribe_cfg: config.OpenAIASR | config.GeminiASR,
+    provider_name: str,
     logger: logging.Logger,
     stop_event: InteractiveStopEvent,
     live: Live,
@@ -376,7 +397,10 @@ async def _transcribe_live_audio_openai(
     save_recording: bool = True,
     **_kwargs: object,
 ) -> str | None:
-    """Record and transcribe live audio using OpenAI Whisper."""
+    """Record audio to buffer, then transcribe.
+
+    Used for providers (OpenAI, Gemini) that don't support streaming transcription.
+    """
     audio_data = await record_audio_with_manual_stop(
         audio_input_cfg.input_device_index,
         stop_event,
@@ -388,7 +412,7 @@ async def _transcribe_live_audio_openai(
     if not audio_data:
         return None
     try:
-        return await transcribe_audio_openai(audio_data, openai_asr_cfg, logger)
+        return await transcribe_fn(audio_data, transcribe_cfg, logger)
     except Exception:
-        logger.exception("Error during transcription")
+        logger.exception("Error during %s transcription", provider_name)
         return ""

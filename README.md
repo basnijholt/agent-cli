@@ -489,7 +489,7 @@ the `[defaults]` section of your configuration file.
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ LLM: Gemini ────────────────────────────────────────────────────────────────╮
 │ --llm-gemini-model        TEXT  The Gemini model to use for LLM tasks.       │
-│                                 [default: gemini-2.5-flash]                  │
+│                                 [default: gemini-3-flash-preview]            │
 │ --gemini-api-key          TEXT  Your Gemini API key. Can also be set with    │
 │                                 the GEMINI_API_KEY environment variable.     │
 │                                 [env var: GEMINI_API_KEY]                    │
@@ -573,7 +573,8 @@ the `[defaults]` section of your configuration file.
 │                                                     save-recording]          │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Provider Selection ─────────────────────────────────────────────────────────╮
-│ --asr-provider        TEXT  The ASR provider to use ('wyoming', 'openai').   │
+│ --asr-provider        TEXT  The ASR provider to use ('wyoming', 'openai',    │
+│                             'gemini').                                       │
 │                             [default: wyoming]                               │
 │ --llm-provider        TEXT  The LLM provider to use ('ollama', 'openai',     │
 │                             'gemini').                                       │
@@ -602,6 +603,11 @@ the `[defaults]` section of your configuration file.
 │ --asr-openai-prompt          TEXT  Custom prompt to guide transcription      │
 │                                    (optional).                               │
 ╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Audio Input: Gemini ────────────────────────────────────────────────────────╮
+│ --asr-gemini-model        TEXT  The Gemini model to use for ASR              │
+│                                 (transcription).                             │
+│                                 [default: gemini-3-flash-preview]            │
+╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ LLM: Ollama ────────────────────────────────────────────────────────────────╮
 │ --llm-ollama-model        TEXT  The Ollama model to use. Default is          │
 │                                 gemma3:4b.                                   │
@@ -623,7 +629,7 @@ the `[defaults]` section of your configuration file.
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ LLM: Gemini ────────────────────────────────────────────────────────────────╮
 │ --llm-gemini-model        TEXT  The Gemini model to use for LLM tasks.       │
-│                                 [default: gemini-2.5-flash]                  │
+│                                 [default: gemini-3-flash-preview]            │
 │ --gemini-api-key          TEXT  Your Gemini API key. Can also be set with    │
 │                                 the GEMINI_API_KEY environment variable.     │
 │                                 [env var: GEMINI_API_KEY]                    │
@@ -761,7 +767,8 @@ uv tool install "agent-cli[vad]"
 │                                                    exit.                     │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Provider Selection ─────────────────────────────────────────────────────────╮
-│ --asr-provider        TEXT  The ASR provider to use ('wyoming', 'openai').   │
+│ --asr-provider        TEXT  The ASR provider to use ('wyoming', 'openai',    │
+│                             'gemini').                                       │
 │                             [default: wyoming]                               │
 │ --llm-provider        TEXT  The LLM provider to use ('ollama', 'openai',     │
 │                             'gemini').                                       │
@@ -790,6 +797,11 @@ uv tool install "agent-cli[vad]"
 │ --asr-openai-prompt          TEXT  Custom prompt to guide transcription      │
 │                                    (optional).                               │
 ╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Audio Input: Gemini ────────────────────────────────────────────────────────╮
+│ --asr-gemini-model        TEXT  The Gemini model to use for ASR              │
+│                                 (transcription).                             │
+│                                 [default: gemini-3-flash-preview]            │
+╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ LLM: Ollama ────────────────────────────────────────────────────────────────╮
 │ --llm-ollama-model        TEXT  The Ollama model to use. Default is          │
 │                                 gemma3:4b.                                   │
@@ -811,7 +823,7 @@ uv tool install "agent-cli[vad]"
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ LLM: Gemini ────────────────────────────────────────────────────────────────╮
 │ --llm-gemini-model        TEXT  The Gemini model to use for LLM tasks.       │
-│                                 [default: gemini-2.5-flash]                  │
+│                                 [default: gemini-3-flash-preview]            │
 │ --gemini-api-key          TEXT  Your Gemini API key. Can also be set with    │
 │                                 the GEMINI_API_KEY environment variable.     │
 │                                 [env var: GEMINI_API_KEY]                    │
@@ -1002,7 +1014,8 @@ uv tool install "agent-cli[vad]"
 │ --help  -h        Show this message and exit.                                │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Provider Selection ─────────────────────────────────────────────────────────╮
-│ --asr-provider        TEXT  The ASR provider to use ('wyoming', 'openai').   │
+│ --asr-provider        TEXT  The ASR provider to use ('wyoming', 'openai',    │
+│                             'gemini').                                       │
 │                             [default: wyoming]                               │
 │ --llm-provider        TEXT  The LLM provider to use ('ollama', 'openai',     │
 │                             'gemini').                                       │
@@ -1029,6 +1042,11 @@ uv tool install "agent-cli[vad]"
 │                                 (transcription).                             │
 │                                 [default: whisper-1]                         │
 ╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Audio Input: Gemini ────────────────────────────────────────────────────────╮
+│ --asr-gemini-model        TEXT  The Gemini model to use for ASR              │
+│                                 (transcription).                             │
+│                                 [default: gemini-3-flash-preview]            │
+╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ LLM: Ollama ────────────────────────────────────────────────────────────────╮
 │ --llm-ollama-model        TEXT  The Ollama model to use. Default is          │
 │                                 gemma3:4b.                                   │
@@ -1050,7 +1068,7 @@ uv tool install "agent-cli[vad]"
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ LLM: Gemini ────────────────────────────────────────────────────────────────╮
 │ --llm-gemini-model        TEXT  The Gemini model to use for LLM tasks.       │
-│                                 [default: gemini-2.5-flash]                  │
+│                                 [default: gemini-3-flash-preview]            │
 │ --gemini-api-key          TEXT  Your Gemini API key. Can also be set with    │
 │                                 the GEMINI_API_KEY environment variable.     │
 │                                 [env var: GEMINI_API_KEY]                    │
@@ -1166,7 +1184,8 @@ uv tool install "agent-cli[vad]"
 │ --help  -h        Show this message and exit.                                │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Provider Selection ─────────────────────────────────────────────────────────╮
-│ --asr-provider        TEXT  The ASR provider to use ('wyoming', 'openai').   │
+│ --asr-provider        TEXT  The ASR provider to use ('wyoming', 'openai',    │
+│                             'gemini').                                       │
 │                             [default: wyoming]                               │
 │ --llm-provider        TEXT  The LLM provider to use ('ollama', 'openai',     │
 │                             'gemini').                                       │
@@ -1202,6 +1221,11 @@ uv tool install "agent-cli[vad]"
 │                                 (transcription).                             │
 │                                 [default: whisper-1]                         │
 ╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Audio Input: Gemini ────────────────────────────────────────────────────────╮
+│ --asr-gemini-model        TEXT  The Gemini model to use for ASR              │
+│                                 (transcription).                             │
+│                                 [default: gemini-3-flash-preview]            │
+╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ LLM: Ollama ────────────────────────────────────────────────────────────────╮
 │ --llm-ollama-model        TEXT  The Ollama model to use. Default is          │
 │                                 gemma3:4b.                                   │
@@ -1223,7 +1247,7 @@ uv tool install "agent-cli[vad]"
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ LLM: Gemini ────────────────────────────────────────────────────────────────╮
 │ --llm-gemini-model        TEXT  The Gemini model to use for LLM tasks.       │
-│                                 [default: gemini-2.5-flash]                  │
+│                                 [default: gemini-3-flash-preview]            │
 │ --gemini-api-key          TEXT  Your Gemini API key. Can also be set with    │
 │                                 the GEMINI_API_KEY environment variable.     │
 │                                 [env var: GEMINI_API_KEY]                    │
@@ -1346,7 +1370,8 @@ uv tool install "agent-cli[vad]"
 │ --help  -h        Show this message and exit.                                │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Provider Selection ─────────────────────────────────────────────────────────╮
-│ --asr-provider        TEXT  The ASR provider to use ('wyoming', 'openai').   │
+│ --asr-provider        TEXT  The ASR provider to use ('wyoming', 'openai',    │
+│                             'gemini').                                       │
 │                             [default: wyoming]                               │
 │ --llm-provider        TEXT  The LLM provider to use ('ollama', 'openai',     │
 │                             'gemini').                                       │
@@ -1378,6 +1403,11 @@ uv tool install "agent-cli[vad]"
 │ --asr-openai-prompt          TEXT  Custom prompt to guide transcription      │
 │                                    (optional).                               │
 ╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Audio Input: Gemini ────────────────────────────────────────────────────────╮
+│ --asr-gemini-model        TEXT  The Gemini model to use for ASR              │
+│                                 (transcription).                             │
+│                                 [default: gemini-3-flash-preview]            │
+╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ LLM: Ollama ────────────────────────────────────────────────────────────────╮
 │ --llm-ollama-model        TEXT  The Ollama model to use. Default is          │
 │                                 gemma3:4b.                                   │
@@ -1399,7 +1429,7 @@ uv tool install "agent-cli[vad]"
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ LLM: Gemini ────────────────────────────────────────────────────────────────╮
 │ --llm-gemini-model        TEXT  The Gemini model to use for LLM tasks.       │
-│                                 [default: gemini-2.5-flash]                  │
+│                                 [default: gemini-3-flash-preview]            │
 │ --gemini-api-key          TEXT  Your Gemini API key. Can also be set with    │
 │                                 the GEMINI_API_KEY environment variable.     │
 │                                 [env var: GEMINI_API_KEY]                    │

@@ -11,7 +11,7 @@ install:
 
 # Run all tests
 test:
-    uv run pytest
+    uv run pytest tests
 
 # Lint and format
 lint:

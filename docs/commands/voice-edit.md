@@ -55,7 +55,7 @@ agent-cli voice-edit --stop
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--asr-provider` | `wyoming` | The ASR provider to use ('wyoming', 'openai'). |
+| `--asr-provider` | `wyoming` | The ASR provider to use ('wyoming', 'openai', 'gemini'). |
 | `--llm-provider` | `ollama` | The LLM provider to use ('ollama', 'openai', 'gemini'). |
 | `--tts-provider` | `wyoming` | The TTS provider to use ('wyoming', 'openai', 'kokoro'). |
 
@@ -80,6 +80,12 @@ agent-cli voice-edit --stop
 |--------|---------|-------------|
 | `--asr-openai-model` | `whisper-1` | The OpenAI model to use for ASR (transcription). |
 
+### Audio Input: Gemini
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--asr-gemini-model` | `gemini-3-flash-preview` | The Gemini model to use for ASR (transcription). |
+
 ### LLM: Ollama
 
 | Option | Default | Description |
@@ -99,7 +105,7 @@ agent-cli voice-edit --stop
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--llm-gemini-model` | `gemini-2.5-flash` | The Gemini model to use for LLM tasks. |
+| `--llm-gemini-model` | `gemini-3-flash-preview` | The Gemini model to use for LLM tasks. |
 | `--gemini-api-key` | - | Your Gemini API key. Can also be set with the GEMINI_API_KEY environment variable. |
 
 ### Audio Output
