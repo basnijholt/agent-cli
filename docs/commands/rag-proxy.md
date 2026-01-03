@@ -143,13 +143,13 @@ Any OpenAI-compatible client can use the RAG proxy:
 # curl
 curl http://localhost:8000/v1/chat/completions \
   -H "Content-Type: application/json" \
-  -d '{"model": "gpt-4", "messages": [{"role": "user", "content": "What do my notes say about X?"}]}'
+  -d '{"model": "<your-model>", "messages": [{"role": "user", "content": "What do my notes say about X?"}]}'
 
 # Python (openai library)
 from openai import OpenAI
 client = OpenAI(base_url="http://localhost:8000/v1", api_key="not-needed")
 response = client.chat.completions.create(
-    model="gpt-5-mini",
+    model="<your-model>",
     messages=[{"role": "user", "content": "Summarize my project notes"}]
 )
 ```

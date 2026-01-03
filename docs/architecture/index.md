@@ -44,7 +44,7 @@ Each AI capability (ASR, LLM, TTS) has multiple backend providers:
 
 | Provider | Implementation | GPU Support | Latency |
 |----------|---------------|-------------|---------|
-| `wyoming` | Wyoming Faster Whisper | CUDA/Metal | Low |
+| `wyoming` | Wyoming Whisper (faster-whisper/MLX) | CUDA/Metal | Low |
 | `openai` | OpenAI Whisper API | Cloud | Medium |
 
 ### LLM (Large Language Model)

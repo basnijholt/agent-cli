@@ -65,7 +65,7 @@ Choose the best installation method for your platform and performance needs.
 All installation methods set up these services:
 
 - **🧠 Ollama** - LLM server (gemma3:4b model)
-- **🎤 Wyoming Faster Whisper** - Speech-to-text
+- **🎤 Wyoming Whisper** - Speech-to-text (faster-whisper on Linux/Intel, MLX Whisper on Apple Silicon)
 - **🗣️ Wyoming Piper** - Text-to-speech
 - **👂 Wyoming OpenWakeWord** - Wake word detection
 
@@ -84,7 +84,7 @@ Once services are running, install the agent-cli package:
 
 ```bash
 # Using uv (recommended)
-uv tools install agent-cli
+uv tool install agent-cli
 
 # Using pip
 pip install agent-cli

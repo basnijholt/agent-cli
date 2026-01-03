@@ -18,7 +18,7 @@ This command:
 
 1. Starts listening to your microphone immediately
 2. Records your speech
-3. When you press `Ctrl+C`, sends audio to a Whisper server
+3. When you press `Ctrl+C`, stops recording and finalizes transcription (Wyoming streams live; OpenAI uploads after stop)
 4. Copies the transcribed text to your clipboard
 5. Optionally uses an LLM to clean up the transcript
 

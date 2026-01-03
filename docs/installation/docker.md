@@ -6,7 +6,8 @@ icon: lucide/container
 
 Universal Docker setup that works on any platform with Docker support.
 
-> **⚠️ Important Limitations**
+> [!WARNING]
+> **Important Limitations**
 >
 > - **macOS**: Docker does not support GPU acceleration. For 10x better performance, use [macOS native setup](macos.md)
 > - **Linux**: Limited GPU support. For full NVIDIA GPU acceleration, use [Linux native setup](linux.md)
@@ -37,7 +38,7 @@ Universal Docker setup that works on any platform with Docker support.
 3. **Install agent-cli:**
 
    ```bash
-   uv tools install agent-cli
+   uv tool install agent-cli
    # or: pip install agent-cli
    ```
 
