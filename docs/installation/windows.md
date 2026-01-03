@@ -114,7 +114,7 @@ Persistent  ; Keep script running with tray icon
 
 3.  Double-click the script to run it.
 
-> [!TIP]
+> [!NOTE]
 > Using `--toggle` stops an existing background recorder if it's already running, so you can press the same hotkey to start/stop the session without leaving a stray process behind.
 
 **Note on Audio Devices:**
