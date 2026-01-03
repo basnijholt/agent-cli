@@ -74,18 +74,19 @@ Most commands support multiple providers:
 ### LLM Providers (`--llm-provider`)
 
 - `ollama` - Local LLM via Ollama (default)
-- `openai` - OpenAI API
+- `openai` - OpenAI-compatible API
 - `gemini` - Google Gemini API
 
 ### ASR Providers (`--asr-provider`)
 
 - `wyoming` - Local Whisper via Wyoming (default)
-- `openai` - OpenAI Whisper API
+- `openai` - OpenAI-compatible Whisper API
+- `gemini` - Google Gemini API
 
 ### TTS Providers (`--tts-provider`)
 
 - `wyoming` - Local Piper via Wyoming (default)
-- `openai` - OpenAI TTS API
+- `openai` - OpenAI-compatible TTS API
 - `kokoro` - Local Kokoro TTS
 
 ## Process Management

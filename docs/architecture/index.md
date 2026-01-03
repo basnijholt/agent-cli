@@ -45,14 +45,14 @@ Each AI capability (ASR, LLM, TTS) has multiple backend providers:
 | Provider | Implementation | GPU Support | Latency |
 |----------|---------------|-------------|---------|
 | `wyoming` | Wyoming Whisper (faster-whisper/MLX) | CUDA/Metal | Low |
-| `openai` | OpenAI Whisper API | Cloud | Medium |
+| `openai` | OpenAI-compatible Whisper API | Cloud | Medium |
 
 ### LLM (Large Language Model)
 
 | Provider | Implementation | GPU Support | Privacy |
 |----------|---------------|-------------|---------|
 | `ollama` | Ollama (local) | CUDA/Metal | Full |
-| `openai` | OpenAI API | Cloud | Partial |
+| `openai` | OpenAI-compatible API | Cloud | Partial |
 | `gemini` | Google Gemini API | Cloud | Partial |
 
 ### TTS (Text-to-Speech)
@@ -60,7 +60,7 @@ Each AI capability (ASR, LLM, TTS) has multiple backend providers:
 | Provider | Implementation | Quality | Speed |
 |----------|---------------|---------|-------|
 | `wyoming` | Wyoming Piper | Good | Fast |
-| `openai` | OpenAI TTS | Excellent | Medium |
+| `openai` | OpenAI-compatible TTS | Excellent | Medium |
 | `kokoro` | Kokoro TTS | Good | Fast |
 
 ## Wyoming Protocol
@@ -145,7 +145,7 @@ Usage: [rag-proxy command](../commands/rag-proxy.md).
 - **pyperclip** - Clipboard access
 - **rich** - Terminal formatting
 - **wyoming** - Protocol for local AI services
-- **openai** - OpenAI API client
+- **openai** - OpenAI-compatible API client
 - **google-genai** - Google Gemini API client
 
 ### Optional Dependencies
