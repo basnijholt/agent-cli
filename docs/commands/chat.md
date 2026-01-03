@@ -175,7 +175,7 @@ The chat agent has access to tools that let it interact with your system:
 > For the advanced, vector-backed memory system, see the [`memory`](memory.md) command.
 
 - **read_file**: Read file contents
-- **execute_code**: Run shell commands
+- **execute_code**: Run a single command (no shell features like pipes or redirects)
 - **duckduckgo_search**: Search the web via DuckDuckGo
 - **add_memory**: Store information for future conversations
 - **search_memory**: Search stored memories

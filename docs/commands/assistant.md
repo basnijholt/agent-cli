@@ -166,13 +166,15 @@ agent-cli assistant --wake-server-ip 192.168.1.100 --wake-server-port 10400
 
 ## Available Wake Words
 
-The default OpenWakeWord server supports:
+Available wake words depend on which models you preload. The provided scripts preload `ok_nabu` by default.
 
-- `ok_nabu` (default)
+Common models include:
+
+- `ok_nabu` (default in provided scripts)
 - `hey_jarvis`
 - `alexa`
-- `hey_mycroft`
 
+Add more models via `--preload-model` when starting OpenWakeWord.
 Custom wake words can be trained and added to the OpenWakeWord server.
 
 ## Interaction Flow

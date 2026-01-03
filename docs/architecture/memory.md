@@ -183,7 +183,7 @@ entries/
 ### 2.3 Vector Schema (ChromaDB)
 All entries share a single collection but are partitioned by metadata.
 *   **ID:** Matches file UUID.
-*   **Embedding:** 1536d (OpenAI) or 384d (MiniLM).
+*   **Embedding:** Dimensionality depends on the configured embedding model (e.g., `text-embedding-3-small` is 1536d).
 *   **Metadata:** Mirrors front matter (`role`, `conversation_id`, `created_at`, `summary_kind`, `replaced_by`) for pre-filtering and maintenance.
 
 ### 2.4 Versioning (Git)
