@@ -1,11 +1,18 @@
 #!/usr/bin/env python3
-"""Update all markdown files that use markdown-code-runner for auto-generation."""
+"""Update all markdown files that use markdown-code-runner for auto-generation.
+
+Run from repo root: python docs/update_docs.py
+"""
 
 from __future__ import annotations
 
 import subprocess
 import sys
 from pathlib import Path
+
+from rich.console import Console
+
+console = Console()
 
 
 def find_markdown_files_with_code_blocks(docs_dir: Path) -> list[Path]:
@@ -21,17 +28,17 @@ def find_markdown_files_with_code_blocks(docs_dir: Path) -> list[Path]:
 def run_markdown_code_runner(files: list[Path]) -> bool:
     """Run markdown-code-runner on all files. Returns True if all succeeded."""
     if not files:
-        print("No files with CODE:START markers found.")
+        console.print("No files with CODE:START markers found.")
         return True
 
-    print(f"Found {len(files)} file(s) with auto-generated content:")
+    console.print(f"Found {len(files)} file(s) with auto-generated content:")
     for f in files:
-        print(f"  - {f}")
-    print()
+        console.print(f"  - {f}")
+    console.print()
 
     all_success = True
     for file in files:
-        print(f"Updating {file}...", end=" ")
+        console.print(f"Updating {file}...", end=" ")
         result = subprocess.run(
             ["markdown-code-runner", str(file)],  # noqa: S607
             check=False,
@@ -39,10 +46,10 @@ def run_markdown_code_runner(files: list[Path]) -> bool:
             text=True,
         )
         if result.returncode == 0:
-            print("✓")
+            console.print("[green]✓[/green]")
         else:
-            print("✗")
-            print(f"  Error: {result.stderr}")
+            console.print("[red]✗[/red]")
+            console.print(f"  [red]Error:[/red] {result.stderr}")
             all_success = False
 
     return all_success
@@ -52,7 +59,7 @@ def main() -> int:
     """Main entry point."""
     docs_dir = Path(__file__).parent
     if not docs_dir.exists():
-        print(f"Error: docs directory not found at {docs_dir}")
+        console.print(f"[red]Error:[/red] docs directory not found at {docs_dir}")
         return 1
 
     files = find_markdown_files_with_code_blocks(docs_dir)
