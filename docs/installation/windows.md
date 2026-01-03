@@ -37,7 +37,7 @@ For a completely local setup with no internet dependency, install these services
 Download and install from [ollama.com](https://ollama.com/download/windows). Then pull a model:
 
 ```powershell
-ollama pull llama3.2
+ollama pull gemma3:4b
 ```
 
 Ollama runs automatically as a service on `localhost:11434`.
@@ -55,11 +55,13 @@ whisper-server\Scripts\activate
 uv pip install wyoming-faster-whisper
 
 # Download a model and start the server
-wyoming-faster-whisper --model small --uri tcp://0.0.0.0:10300 --data-dir ./whisper-data
+# Use large-v3 for GPU, tiny for CPU-only
+wyoming-faster-whisper --model large-v3 --device cuda --uri tcp://0.0.0.0:10300 --data-dir ./whisper-data
 ```
 
 > [!TIP]
 > For GPU acceleration, ensure you have CUDA 12 and cuDNN 9 installed. See the [faster-whisper docs](https://github.com/SYSTRAN/faster-whisper#gpu) for details.
+> For CPU-only, use `--model tiny --device cpu` instead.
 
 ### 3. Install Piper (Text-to-Speech)
 
@@ -104,7 +106,7 @@ To run the Wyoming servers automatically, you can create Windows Task Scheduler 
 @echo off
 REM save as start-agent-services.bat
 
-start "Whisper" cmd /k "whisper-server\Scripts\activate && wyoming-faster-whisper --model small --uri tcp://0.0.0.0:10300 --data-dir ./whisper-data"
+start "Whisper" cmd /k "whisper-server\Scripts\activate && wyoming-faster-whisper --model large-v3 --device cuda --uri tcp://0.0.0.0:10300 --data-dir ./whisper-data"
 start "Piper" cmd /k "piper-server\Scripts\activate && wyoming-piper --voice en_US-lessac-medium --uri tcp://0.0.0.0:10200 --data-dir ./piper-data"
 ```
 
@@ -170,7 +172,7 @@ Ensure the servers are running and listening on the correct ports:
 ### GPU not being used for Whisper
 Install CUDA 12 and cuDNN 9. You can verify GPU usage with:
 ```powershell
-wyoming-faster-whisper --model small --uri tcp://0.0.0.0:10300 --device cuda
+wyoming-faster-whisper --model large-v3 --uri tcp://0.0.0.0:10300 --device cuda
 ```
 
 ### Ollama not responding
