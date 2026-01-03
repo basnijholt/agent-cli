@@ -2,12 +2,76 @@
 
 from __future__ import annotations
 
+import wave
+from io import BytesIO
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
 from agent_cli import config
-from agent_cli.services import asr, synthesize_speech_openai, transcribe_audio_openai, tts
+from agent_cli.services import (
+    _is_wav_file,
+    _pcm_to_wav,
+    asr,
+    synthesize_speech_openai,
+    transcribe_audio_openai,
+    tts,
+)
+
+# --- Tests for PCM/WAV helper functions ---
+
+
+def test_is_wav_file_with_valid_wav() -> None:
+    """Test that _is_wav_file returns True for valid WAV headers."""
+    # Minimal WAV header starts with "RIFF"
+    wav_data = b"RIFF\x00\x00\x00\x00WAVEfmt "
+    assert _is_wav_file(wav_data) is True
+
+
+def test_is_wav_file_with_raw_pcm() -> None:
+    """Test that _is_wav_file returns False for raw PCM data."""
+    pcm_data = b"\x00\x00\x01\x00\x02\x00"  # Raw audio samples
+    assert _is_wav_file(pcm_data) is False
+
+
+def test_is_wav_file_with_empty_data() -> None:
+    """Test that _is_wav_file returns False for empty data."""
+    assert _is_wav_file(b"") is False
+
+
+def test_is_wav_file_with_short_data() -> None:
+    """Test that _is_wav_file returns False for data shorter than header."""
+    assert _is_wav_file(b"RIF") is False
+
+
+def test_pcm_to_wav_creates_valid_wav() -> None:
+    """Test that _pcm_to_wav creates a valid WAV file with correct headers."""
+    pcm_data = b"\x00\x00" * 100  # 100 samples of silence
+
+    wav_data = _pcm_to_wav(pcm_data)
+
+    # Check WAV header
+    assert wav_data[:4] == b"RIFF"
+    assert wav_data[8:12] == b"WAVE"
+    assert wav_data[12:16] == b"fmt "
+
+    # Verify it's now detected as WAV
+    assert _is_wav_file(wav_data) is True
+
+
+def test_pcm_to_wav_roundtrip() -> None:
+    """Test that PCM data can be converted to WAV and read back."""
+    pcm_data = b"\x00\x01\x02\x03" * 50  # Some test PCM data
+
+    wav_data = _pcm_to_wav(pcm_data)
+
+    # Read back the WAV file and verify the audio data
+    with wave.open(BytesIO(wav_data), "rb") as wav_file:
+        assert wav_file.getnchannels() == 1  # Mono
+        assert wav_file.getsampwidth() == 2  # 16-bit
+        assert wav_file.getframerate() == 16000  # 16kHz
+        frames = wav_file.readframes(wav_file.getnframes())
+        assert frames == pcm_data
 
 
 @pytest.mark.asyncio

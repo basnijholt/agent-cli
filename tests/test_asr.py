@@ -157,28 +157,78 @@ async def test_transcribe_recorded_audio_wyoming_connection_error(
 
 
 @pytest.mark.asyncio
-@patch("agent_cli.services.transcribe_audio_gemini")
-async def test_transcribe_audio_gemini_success(mock_transcribe: AsyncMock):
+@patch("google.genai.Client")
+async def test_transcribe_audio_gemini_success(mock_client_class: MagicMock):
     """Test that transcribe_audio_gemini calls the Gemini API correctly."""
-    mock_transcribe.return_value = "test transcription"
+    # Setup mock client and response
+    mock_client = MagicMock()
+    mock_client_class.return_value = mock_client
+
+    mock_response = MagicMock()
+    mock_response.text = "  hello world  "  # With whitespace to test strip()
+    mock_client.aio.models.generate_content = AsyncMock(return_value=mock_response)
 
     gemini_asr_cfg = config.GeminiASR(
         asr_gemini_model="gemini-2.0-flash",
         gemini_api_key="test-key",
     )
 
-    result = await mock_transcribe(
-        audio_data=b"test audio",
+    # Test with WAV data (starts with RIFF header)
+    wav_data = b"RIFF\x00\x00\x00\x00WAVEfmt test audio data"
+    with patch("google.genai.types.Part"):
+        result = await transcribe_audio_gemini(
+            audio_data=wav_data,
+            gemini_asr_cfg=gemini_asr_cfg,
+            logger=MagicMock(),
+        )
+
+    assert result == "hello world"  # Should be stripped
+    mock_client_class.assert_called_once_with(api_key="test-key")
+    mock_client.aio.models.generate_content.assert_called_once()
+
+    # Verify the model parameter
+    call_args = mock_client.aio.models.generate_content.call_args
+    assert call_args.kwargs["model"] == "gemini-2.0-flash"
+
+
+@pytest.mark.asyncio
+@patch("google.genai.Client")
+@patch("google.genai.types.Part")
+async def test_transcribe_audio_gemini_converts_pcm_to_wav(
+    mock_part: MagicMock,
+    mock_client_class: MagicMock,
+):
+    """Test that transcribe_audio_gemini auto-converts PCM to WAV."""
+    mock_client = MagicMock()
+    mock_client_class.return_value = mock_client
+
+    mock_response = MagicMock()
+    mock_response.text = "transcribed text"
+    mock_client.aio.models.generate_content = AsyncMock(return_value=mock_response)
+
+    gemini_asr_cfg = config.GeminiASR(
+        asr_gemini_model="gemini-2.0-flash",
+        gemini_api_key="test-key",
+    )
+
+    # Test with raw PCM data (no RIFF header)
+    pcm_data = b"\x00\x00\x01\x00" * 100
+    result = await transcribe_audio_gemini(
+        audio_data=pcm_data,
         gemini_asr_cfg=gemini_asr_cfg,
         logger=MagicMock(),
     )
 
-    assert result == "test transcription"
-    mock_transcribe.assert_called_once()
+    assert result == "transcribed text"
+
+    # Verify the audio was converted to WAV (check the Part.from_bytes call)
+    audio_part_call = mock_part.from_bytes.call_args
+    assert audio_part_call.kwargs["mime_type"] == "audio/wav"
+    # The data should now be WAV format (starts with RIFF)
+    assert audio_part_call.kwargs["data"][:4] == b"RIFF"
 
 
 @pytest.mark.asyncio
-@patch.dict("sys.modules", {"google.generativeai": MagicMock()})
 async def test_transcribe_audio_gemini_missing_api_key():
     """Test that transcribe_audio_gemini raises error when API key is missing."""
     gemini_asr_cfg = config.GeminiASR(
