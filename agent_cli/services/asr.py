@@ -117,12 +117,12 @@ def create_transcriber(
             wyoming_asr_cfg=wyoming_asr_cfg,
         )
 
-    # OpenAI and Gemini use the generic record-then-transcribe pattern
+    # OpenAI and Gemini use the buffered record-then-transcribe pattern
     if provider_cfg.asr_provider == "openai":
         return partial(
-            _transcribe_live_audio_generic,
+            _transcribe_live_audio_buffered,
             audio_input_cfg=audio_input_cfg,
-            transcribe_base=transcribe_audio_openai,
+            transcribe_fn=transcribe_audio_openai,
             transcribe_cfg=openai_asr_cfg,
             provider_name="OpenAI",
         )
@@ -131,9 +131,9 @@ def create_transcriber(
             msg = "Gemini ASR config is required when using gemini provider"
             raise ValueError(msg)
         return partial(
-            _transcribe_live_audio_generic,
+            _transcribe_live_audio_buffered,
             audio_input_cfg=audio_input_cfg,
-            transcribe_base=transcribe_audio_gemini,
+            transcribe_fn=transcribe_audio_gemini,
             transcribe_cfg=gemini_asr_cfg,
             provider_name="Gemini",
         )
@@ -384,10 +384,10 @@ async def _transcribe_live_audio_wyoming(
         return None
 
 
-async def _transcribe_live_audio_generic(
+async def _transcribe_live_audio_buffered(
     *,
     audio_input_cfg: config.AudioInput,
-    transcribe_base: Callable[..., Awaitable[str]],
+    transcribe_fn: Callable[..., Awaitable[str]],
     transcribe_cfg: config.OpenAIASR | config.GeminiASR,
     provider_name: str,
     logger: logging.Logger,
@@ -397,7 +397,10 @@ async def _transcribe_live_audio_generic(
     save_recording: bool = True,
     **_kwargs: object,
 ) -> str | None:
-    """Record and transcribe live audio using a generic transcription function."""
+    """Record audio to buffer, then transcribe.
+
+    Used for providers (OpenAI, Gemini) that don't support streaming transcription.
+    """
     audio_data = await record_audio_with_manual_stop(
         audio_input_cfg.input_device_index,
         stop_event,
@@ -409,7 +412,7 @@ async def _transcribe_live_audio_generic(
     if not audio_data:
         return None
     try:
-        return await transcribe_base(audio_data, transcribe_cfg, logger)
+        return await transcribe_fn(audio_data, transcribe_cfg, logger)
     except Exception:
         logger.exception("Error during %s transcription", provider_name)
         return ""

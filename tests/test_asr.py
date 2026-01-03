@@ -98,8 +98,8 @@ def test_create_transcriber():
         MagicMock(),
         MagicMock(),
     )
-    assert transcriber.func is asr._transcribe_live_audio_generic
-    assert transcriber.keywords["transcribe_base"] is transcribe_audio_openai
+    assert transcriber.func is asr._transcribe_live_audio_buffered
+    assert transcriber.keywords["transcribe_fn"] is transcribe_audio_openai
 
     # Wyoming uses its own streaming implementation
     provider_cfg.asr_provider = "wyoming"
@@ -121,8 +121,8 @@ def test_create_transcriber():
         MagicMock(),
         MagicMock(),
     )
-    assert transcriber.func is asr._transcribe_live_audio_generic
-    assert transcriber.keywords["transcribe_base"] is transcribe_audio_gemini
+    assert transcriber.func is asr._transcribe_live_audio_buffered
+    assert transcriber.keywords["transcribe_fn"] is transcribe_audio_gemini
 
 
 def test_create_recorded_audio_transcriber():

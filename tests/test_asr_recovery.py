@@ -357,17 +357,17 @@ async def test_transcribe_live_audio_wyoming_with_save():
 
 
 @pytest.mark.asyncio
-async def test_transcribe_live_audio_generic_with_save():
-    """Test that generic transcription passes save_recording parameter."""
+async def test_transcribe_live_audio_buffered_with_save():
+    """Test that buffered transcription passes save_recording parameter."""
     with patch("agent_cli.services.asr.record_audio_with_manual_stop") as mock_record:
         # Setup mocks
         mock_record.return_value = b"audio_data"
         mock_transcribe = AsyncMock(return_value="test transcript")
 
-        # Call the generic function
-        result = await asr._transcribe_live_audio_generic(
+        # Call the buffered function
+        result = await asr._transcribe_live_audio_buffered(
             audio_input_cfg=config.AudioInput(input_device_index=None),
-            transcribe_base=mock_transcribe,
+            transcribe_fn=mock_transcribe,
             transcribe_cfg=config.OpenAIASR(
                 asr_openai_model="whisper-1",
                 openai_api_key="test-key",
