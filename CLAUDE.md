@@ -12,6 +12,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Run `pre-commit run --all-files` before committing
 - Use `git add <specific-file>` not `git add .`
 - CLI help in README.md is auto-generated - don't edit manually
+- Keep CLI startup fast (<300ms) - use top-level imports by default, only use lazy imports when a heavy dependency actually causes slowdown
 
 ## Build & Development Commands
 
