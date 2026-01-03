@@ -75,7 +75,7 @@ Here's an example configuration file showing common options:
 
 [voice-edit]
 # Enable TTS for responses
-# tts = false
+# enable_tts = false
 
 [assistant]
 # Wake word for activation

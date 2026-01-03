@@ -1136,7 +1136,7 @@ uv tool install "agent-cli[vad]"
 **How to Use It:**
 
 - **Start the agent**: `agent-cli assistant --wake-word "ok_nabu" --input-device-index 1`
-- **With TTS**: `agent-cli assistant --wake-word "ok_nabu" --tts --voice "en_US-lessac-medium"`
+- **With TTS**: `agent-cli assistant --wake-word "ok_nabu" --tts --tts-wyoming-voice "en_US-lessac-medium"`
 
 <details>
 <summary>See the output of <code>agent-cli assistant --help</code></summary>
