@@ -311,40 +311,6 @@ def commands_table(
     return "\n".join(lines)
 
 
-def features_list(link_prefix: str = "") -> str:
-    """Generate a bullet-list of main features for README.
-
-    Args:
-        link_prefix: Prefix for links (e.g., "docs/commands/" for README.md)
-
-    Returns:
-        Markdown bullet list of features
-
-    """
-    features = [
-        ("autocorrect", "Correct grammar and spelling in your text using a local LLM."),
-        ("transcribe", "Transcribe audio from your microphone to clipboard."),
-        ("speak", "Convert text to speech using a local TTS engine."),
-        ("voice-edit", "Edit clipboard text with voice commands."),
-        ("assistant", "Wake word-based voice assistant."),
-        ("chat", "Conversational AI with tool-calling capabilities."),
-        ("memory", "Long-term memory system with `memory proxy` and `memory add`."),
-        ("rag-proxy", "RAG proxy server for chatting with your documents."),
-        ("server", "HTTP API server for transcription."),
-        (
-            "transcribe-daemon",
-            "Continuous background transcription with VAD. "
-            'Install with `uv tool install "agent-cli[vad]"`.',
-        ),
-    ]
-    lines = []
-    for cmd, description in features:
-        doc_path = cmd.replace(".", "/")
-        link = f"{link_prefix}{doc_path}.md"
-        lines.append(f"- **[`{cmd}`]({link})**: {description}")
-    return "\n".join(lines)
-
-
 def config_example(command_path: str | None = None) -> str:
     """Generate example TOML configuration for a command.
 
