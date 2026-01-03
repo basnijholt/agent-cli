@@ -67,7 +67,7 @@ agent-cli chat --openai-base-url http://localhost:8000/v1 --llm-provider openai
 | `--limit` | `3` | Number of document chunks to retrieve per query. |
 | `--rag-tools/--no-rag-tools` | `true` | Allow agent to fetch full documents when snippets are insufficient. |
 
-### LLM: OpenAI
+### LLM: OpenAI-compatible
 
 | Option | Default | Description |
 |--------|---------|-------------|

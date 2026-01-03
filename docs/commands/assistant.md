@@ -78,7 +78,7 @@ agent-cli assistant --wake-server-ip 192.168.1.100 --wake-server-port 10400
 | `--asr-wyoming-ip` | `localhost` | Wyoming ASR server IP address. |
 | `--asr-wyoming-port` | `10300` | Wyoming ASR server port. |
 
-### Audio Input: OpenAI
+### Audio Input: OpenAI-compatible
 
 | Option | Default | Description |
 |--------|---------|-------------|
@@ -91,7 +91,7 @@ agent-cli assistant --wake-server-ip 192.168.1.100 --wake-server-port 10400
 | `--llm-ollama-model` | `gemma3:4b` | The Ollama model to use. Default is gemma3:4b. |
 | `--llm-ollama-host` | `http://localhost:11434` | The Ollama server host. Default is http://localhost:11434. |
 
-### LLM: OpenAI
+### LLM: OpenAI-compatible
 
 | Option | Default | Description |
 |--------|---------|-------------|
@@ -125,7 +125,7 @@ agent-cli assistant --wake-server-ip 192.168.1.100 --wake-server-port 10400
 | `--tts-wyoming-language` | - | Language for Wyoming TTS (e.g., 'en_US'). |
 | `--tts-wyoming-speaker` | - | Speaker name for Wyoming TTS voice. |
 
-### Audio Output: OpenAI
+### Audio Output: OpenAI-compatible
 
 | Option | Default | Description |
 |--------|---------|-------------|

@@ -82,7 +82,7 @@ agent-cli chat --openai-base-url http://localhost:8100/v1 --llm-provider openai
 | `--summarization/--no-summarization` | `true` | Enable automatic fact extraction and summaries. |
 | `--git-versioning/--no-git-versioning` | `true` | Enable automatic git commit of memory changes. |
 
-### LLM: OpenAI
+### LLM: OpenAI-compatible
 
 | Option | Default | Description |
 |--------|---------|-------------|

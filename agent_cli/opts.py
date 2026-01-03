@@ -62,21 +62,21 @@ LLM_OPENAI_MODEL: str = typer.Option(
     DEFAULT_OPENAI_MODEL,
     "--llm-openai-model",
     help="The OpenAI model to use for LLM tasks.",
-    rich_help_panel="LLM: OpenAI",
+    rich_help_panel="LLM: OpenAI-compatible",
 )
 OPENAI_API_KEY: str | None = typer.Option(
     None,
     "--openai-api-key",
     help="Your OpenAI API key. Can also be set with the OPENAI_API_KEY environment variable.",
     envvar="OPENAI_API_KEY",
-    rich_help_panel="LLM: OpenAI",
+    rich_help_panel="LLM: OpenAI-compatible",
 )
 OPENAI_BASE_URL: str | None = typer.Option(
     None,
     "--openai-base-url",
     help="Custom base URL for OpenAI-compatible API (e.g., for llama-server: http://localhost:8080/v1).",
     envvar="OPENAI_BASE_URL",
-    rich_help_panel="LLM: OpenAI",
+    rich_help_panel="LLM: OpenAI-compatible",
 )
 # Gemini
 LLM_GEMINI_MODEL: str = typer.Option(
@@ -138,19 +138,19 @@ ASR_OPENAI_MODEL: str = typer.Option(
     "whisper-1",
     "--asr-openai-model",
     help="The OpenAI model to use for ASR (transcription).",
-    rich_help_panel="Audio Input: OpenAI",
+    rich_help_panel="Audio Input: OpenAI-compatible",
 )
 ASR_OPENAI_BASE_URL: str | None = typer.Option(
     None,
     "--asr-openai-base-url",
     help="Custom base URL for OpenAI-compatible ASR API (e.g., for custom Whisper server: http://localhost:9898).",
-    rich_help_panel="Audio Input: OpenAI",
+    rich_help_panel="Audio Input: OpenAI-compatible",
 )
 ASR_OPENAI_PROMPT: str | None = typer.Option(
     None,
     "--asr-openai-prompt",
     help="Custom prompt to guide transcription (optional).",
-    rich_help_panel="Audio Input: OpenAI",
+    rich_help_panel="Audio Input: OpenAI-compatible",
 )
 
 
@@ -237,19 +237,19 @@ TTS_OPENAI_MODEL: str = typer.Option(
     "tts-1",
     "--tts-openai-model",
     help="The OpenAI model to use for TTS.",
-    rich_help_panel="Audio Output: OpenAI",
+    rich_help_panel="Audio Output: OpenAI-compatible",
 )
 TTS_OPENAI_VOICE: str = typer.Option(
     "alloy",
     "--tts-openai-voice",
     help="The voice to use for OpenAI TTS.",
-    rich_help_panel="Audio Output: OpenAI",
+    rich_help_panel="Audio Output: OpenAI-compatible",
 )
 TTS_OPENAI_BASE_URL: str | None = typer.Option(
     None,
     "--tts-openai-base-url",
     help="Custom base URL for OpenAI-compatible TTS API (e.g., http://localhost:8000/v1 for a proxy).",
-    rich_help_panel="Audio Output: OpenAI",
+    rich_help_panel="Audio Output: OpenAI-compatible",
 )
 
 

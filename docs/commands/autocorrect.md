@@ -53,7 +53,7 @@ agent-cli autocorrect "this text has an eror"
 | `--llm-ollama-model` | `gemma3:4b` | The Ollama model to use. Default is gemma3:4b. |
 | `--llm-ollama-host` | `http://localhost:11434` | The Ollama server host. Default is http://localhost:11434. |
 
-### LLM: OpenAI
+### LLM: OpenAI-compatible
 
 | Option | Default | Description |
 |--------|---------|-------------|

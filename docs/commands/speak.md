@@ -68,7 +68,7 @@ agent-cli speak --list-devices
 | `--tts-wyoming-language` | - | Language for Wyoming TTS (e.g., 'en_US'). |
 | `--tts-wyoming-speaker` | - | Speaker name for Wyoming TTS voice. |
 
-### Audio Output: OpenAI
+### Audio Output: OpenAI-compatible
 
 | Option | Default | Description |
 |--------|---------|-------------|
