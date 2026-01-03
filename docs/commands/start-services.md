@@ -17,7 +17,7 @@ agent-cli start-services [OPTIONS]
 Starts:
 
 - Ollama (LLM server)
-- Wyoming Faster Whisper (speech-to-text)
+- Wyoming Whisper (faster-whisper on Linux/Intel, MLX Whisper on Apple Silicon)
 - Wyoming Piper (text-to-speech)
 - Wyoming OpenWakeWord (wake word detection)
 

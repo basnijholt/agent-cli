@@ -5,7 +5,17 @@ Review documentation for accuracy, completeness, and consistency. Focus on thing
 Don't waste time on these—CI and pre-commit hooks handle them:
 
 - **README help output**: `markdown-code-runner` regenerates `agent-cli --help` blocks
+- **Options tables**: `docs_gen` module auto-generates options from CLI introspection
 - **Linting/formatting**: Handled by pre-commit
+
+The `docs_gen` module (`agent_cli/docs_gen.py`) provides:
+- `all_options_for_docs(cmd)`: Complete options tables grouped by panel
+- `env_vars_table()`: Environment variables documentation
+- `provider_matrix()`: Provider comparison table
+- `config_example(cmd)`: Example TOML configuration
+- `commands_table()`: Commands overview table
+
+Run `uv run python docs/update_docs.py` to regenerate all auto-generated content.
 
 ## What This Review Is For
 
@@ -31,41 +41,9 @@ git diff --name-only HEAD~20 | grep "\.py$"
 
 Look for new features, changed defaults, renamed options, or removed functionality.
 
-### 2. Verify Command Documentation (HIGH PRIORITY)
+### 2. Verify Command Documentation
 
-**Options tables in `docs/commands/` are manually maintained and frequently drift from the actual CLI.** This is the most common source of documentation errors.
-
-For EACH command doc file, systematically compare against the actual CLI:
-
-```bash
-# Get list of all commands
-agent-cli --help
-
-# For each command, dump actual options and compare to docs
-agent-cli transcribe --help
-agent-cli chat --help
-agent-cli autocorrect --help
-agent-cli speak --help
-agent-cli voice-edit --help
-agent-cli assistant --help
-agent-cli transcribe-daemon --help
-agent-cli rag-proxy --help
-agent-cli memory --help
-agent-cli server --help
-```
-
-**Check each option in the help output against the docs:**
-
-| Check | Common Issues |
-|-------|---------------|
-| Option exists in docs? | New options added to CLI but not documented |
-| Option still exists in CLI? | Removed options still in docs |
-| Default value correct? | Defaults change, docs not updated |
-| Short flag correct? | `-m` vs `-M`, missing short flags |
-| Description accurate? | Behavior changed, description stale |
-| Type correct? | `PATH` vs `TEXT`, `INTEGER` vs `FLOAT` |
-
-**Also check `agent_cli/opts.py`** - this defines shared options used across commands. Changes here affect multiple commands.
+Options tables are now auto-generated, so focus on what's NOT automated:
 
 **Check for missing command docs:**
 
@@ -78,6 +56,26 @@ ls docs/commands/*.md
 Every command should have a corresponding `docs/commands/<command>.md` file. When adding a new command doc, also update:
 - `docs/commands/index.md` - add to the commands table
 - `zensical.toml` - add to the `nav` sidebar under Commands
+
+**What still needs manual review:**
+
+| Check | What to Look For |
+|-------|------------------|
+| Description accuracy | Does the prose description match actual behavior? |
+| Example commands | Would these actually work? Are they useful? |
+| Workflow explanations | Is the step-by-step flow still accurate? |
+| Use cases | Are suggested use cases realistic? |
+| Cross-links | Do links to related commands work? |
+
+**Verify auto-generation is working:**
+
+```bash
+# Run update script and check for changes
+uv run python docs/update_docs.py
+git diff docs/
+```
+
+If the script produces changes, either commit them or investigate why docs drifted.
 
 ### 3. Verify docs/configuration.md
 
@@ -118,19 +116,19 @@ Check:
 
 These are particularly prone to errors when docs are AI-generated or AI-maintained:
 
-| Area | How to Verify | Past Issues |
-|------|---------------|-------------|
-| **Model names** | Check `agent_cli/opts.py` defaults | `gpt-4o-mini` → `gpt-5-mini` |
-| **Tool/function names** | Check `agent_cli/_tools.py` | `web_search` didn't exist, was `duckduckgo_search` |
-| **File paths** | Grep for `PID_DIR`, `CONFIG_DIR`, etc. | PID files documented in wrong directory |
+| Area | How to Verify | Notes |
+|------|---------------|-------|
+| **Tool/function names** | Check `agent_cli/_tools.py` | Tool names in prose/examples may drift |
+| **File paths** | Grep for `PID_DIR`, `CONFIG_DIR`, etc. | Paths in prose may be wrong |
 | **Dependencies** | Compare against `pyproject.toml` | Listed packages that don't exist |
-| **Environment variables** | Check `envvar=` in opts.py | Undocumented or renamed env vars |
 | **Provider names** | Check `agent_cli/services/` | Providers listed that aren't implemented |
 
-```bash
-# Verify model defaults
-grep -E "model.*=.*\"" agent_cli/opts.py
+**Now auto-generated (lower risk):**
+- Model defaults → captured in options tables via `docs_gen`
+- Environment variables → use `env_vars_table()` for accuracy
+- Option defaults/types → auto-generated from CLI introspection
 
+```bash
 # Verify tool names
 grep -E "def.*_tool|Tool\(" agent_cli/_tools.py
 
@@ -140,8 +138,8 @@ grep -rE "(PID_DIR|CONFIG_DIR|CACHE_DIR)" agent_cli/
 # Verify dependencies
 cat pyproject.toml | grep -A 50 "dependencies"
 
-# Verify env vars
-grep "envvar=" agent_cli/opts.py
+# Verify providers match implementations
+ls agent_cli/services/
 ```
 
 ### 6. Check Examples
@@ -155,9 +153,11 @@ For examples in any doc:
 
 The same info appears in multiple places. Check for conflicts:
 - README.md vs docs/index.md
-- docs/commands/*.md vs actual CLI help
+- Prose/examples in docs vs actual CLI behavior
 - docs/configuration.md vs agent_cli/example-config.toml
 - Provider/port info across architecture docs
+
+Note: Options tables are auto-generated, so conflicts there indicate the update script wasn't run.
 
 ### 8. Cross-Links for Navigation
 
@@ -215,8 +215,8 @@ For each issue, provide a ready-to-apply fix:
 ```
 ### Issue: [Brief description]
 
-- **File**: docs/commands/chat.md:45
-- **Problem**: `--history-dir` default shown as `~/.chat-history` but actual default is `~/.config/agent-cli/history`
-- **Fix**: Update the default value in the options table
-- **Verify**: `agent-cli chat --help`
+- **File**: docs/commands/chat.md:25
+- **Problem**: Example uses `--model gpt-4` but the default model is now `gpt-4o-mini`
+- **Fix**: Update the example to use the current default or a valid model name
+- **Verify**: `agent-cli chat --help` shows current default
 ```

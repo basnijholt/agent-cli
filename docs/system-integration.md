@@ -123,10 +123,10 @@ Install [AutoHotkey](https://www.autohotkey.com/) and create a script:
 
 ```ahk
 ; Transcribe to clipboard
-#+r::Run, wsl agent-cli transcribe --toggle --input-device-index 1
+#+r::Run, agent-cli transcribe --toggle --input-device-index 1
 
 ; Autocorrect clipboard
-#+a::Run, wsl agent-cli autocorrect
+#+a::Run, agent-cli autocorrect
 ```
 
 ### PowerToys

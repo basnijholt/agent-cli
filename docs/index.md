@@ -13,9 +13,9 @@ A collection of **local-first**, AI-powered command-line agents that run entirel
 Agent CLI provides a suite of powerful tools for voice and text interaction, designed for privacy, offline capability, and seamless integration with system-wide hotkeys and workflows.
 
 !!! important "Local and Private by Design"
-    All agents are designed to run **100% locally**. Your data—whether from your clipboard, microphone, or files—is never sent to any cloud API. This ensures your privacy and allows the tools to work completely offline.
+    All agents can run **100% locally**. Your data—whether from your clipboard, microphone, or files—stays on your machine unless you configure a cloud provider. This keeps workflows private and allows the tools to work offline.
 
-    You can also optionally configure the agents to use OpenAI/Gemini services.
+    You can optionally configure the agents to use OpenAI/Gemini services.
 
 ## Quick Demo
 

@@ -6,8 +6,8 @@ icon: lucide/apple
 
 Native macOS setup with full Metal GPU acceleration for optimal performance.
 
-> **🍎 Recommended for macOS**
-> This setup provides ~10x better performance than Docker by utilizing Metal GPU acceleration.
+> [!TIP]
+> **🍎 Recommended for macOS** — ~10x better performance than Docker via Metal GPU acceleration.
 
 ## Prerequisites
 
@@ -87,18 +87,24 @@ scripts/start-all-services.sh
 If you prefer running services individually:
 
 ```bash
-# Terminal 1: Ollama (native GPU acceleration)
+# Ollama (brew service recommended)
+brew services start ollama
+# Or run in foreground:
 ollama serve
 
-# Terminal 2: Whisper (CPU optimized)
+# Whisper (Apple Silicon: launchd service or manual)
+launchctl list com.wyoming_mlx_whisper
+# Or run in foreground:
 scripts/run-whisper.sh
 
-# Terminal 3: Piper (Apple Silicon compatible)
+# Piper
 scripts/run-piper.sh
 
-# Terminal 4: OpenWakeWord (macOS compatible fork)
+# OpenWakeWord
 scripts/run-openwakeword.sh
 ```
+
+Intel Macs: prefer Docker or a Linux-style Wyoming Faster Whisper setup; MLX Whisper is Apple Silicon only.
 
 ## Why Native Setup?
 

@@ -6,8 +6,8 @@ icon: lucide/terminal
 
 Native Linux setup with full NVIDIA GPU acceleration for optimal performance.
 
-> **🐧 Recommended for Linux**
-> This setup provides optimal performance with full NVIDIA GPU acceleration support.
+> [!TIP]
+> **🐧 Recommended for Linux** — Optimal performance with full NVIDIA GPU acceleration.
 
 ## Prerequisites
 
@@ -41,7 +41,7 @@ Native Linux setup with full NVIDIA GPU acceleration for optimal performance.
 3. **Install agent-cli:**
 
    ```bash
-   uv tools install agent-cli
+   uv tool install agent-cli
    ```
 
 4. **Test the setup:**

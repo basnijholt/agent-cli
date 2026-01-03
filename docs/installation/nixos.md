@@ -6,8 +6,8 @@ icon: lucide/snowflake
 
 Native NixOS setup using system configuration with full GPU acceleration support.
 
-> **❄️ For NixOS Users**
-> This setup integrates agent-cli services directly into your NixOS system configuration.
+> [!TIP]
+> **❄️ For NixOS Users** — Integrates agent-cli services directly into your NixOS system configuration.
 
 ## Prerequisites
 
