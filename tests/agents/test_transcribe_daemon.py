@@ -150,6 +150,10 @@ def daemon_config(tmp_path: Path, mock_vad: MagicMock) -> DaemonConfig:
             openai_base_url=None,
             asr_openai_prompt=None,
         ),
+        gemini_asr=config.GeminiASR(
+            asr_gemini_model="gemini-2.0-flash",
+            gemini_api_key=None,
+        ),
         ollama=config.Ollama(
             llm_ollama_model="gemma3:4b",
             llm_ollama_host="http://localhost:11434",
