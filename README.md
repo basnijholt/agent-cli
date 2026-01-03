@@ -573,7 +573,8 @@ the `[defaults]` section of your configuration file.
 │                                                     save-recording]          │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Provider Selection ─────────────────────────────────────────────────────────╮
-│ --asr-provider        TEXT  The ASR provider to use ('wyoming', 'openai').   │
+│ --asr-provider        TEXT  The ASR provider to use ('wyoming', 'openai',    │
+│                             'gemini').                                       │
 │                             [default: wyoming]                               │
 │ --llm-provider        TEXT  The LLM provider to use ('ollama', 'openai',     │
 │                             'gemini').                                       │
@@ -601,6 +602,11 @@ the `[defaults]` section of your configuration file.
 │                                    http://localhost:9898).                   │
 │ --asr-openai-prompt          TEXT  Custom prompt to guide transcription      │
 │                                    (optional).                               │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Audio Input: Gemini ────────────────────────────────────────────────────────╮
+│ --asr-gemini-model        TEXT  The Gemini model to use for ASR              │
+│                                 (transcription).                             │
+│                                 [default: gemini-2.0-flash]                  │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ LLM: Ollama ────────────────────────────────────────────────────────────────╮
 │ --llm-ollama-model        TEXT  The Ollama model to use. Default is          │
@@ -761,7 +767,8 @@ uv tool install "agent-cli[vad]"
 │                                                    exit.                     │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Provider Selection ─────────────────────────────────────────────────────────╮
-│ --asr-provider        TEXT  The ASR provider to use ('wyoming', 'openai').   │
+│ --asr-provider        TEXT  The ASR provider to use ('wyoming', 'openai',    │
+│                             'gemini').                                       │
 │                             [default: wyoming]                               │
 │ --llm-provider        TEXT  The LLM provider to use ('ollama', 'openai',     │
 │                             'gemini').                                       │
@@ -789,6 +796,11 @@ uv tool install "agent-cli[vad]"
 │                                    http://localhost:9898).                   │
 │ --asr-openai-prompt          TEXT  Custom prompt to guide transcription      │
 │                                    (optional).                               │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Audio Input: Gemini ────────────────────────────────────────────────────────╮
+│ --asr-gemini-model        TEXT  The Gemini model to use for ASR              │
+│                                 (transcription).                             │
+│                                 [default: gemini-2.0-flash]                  │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ LLM: Ollama ────────────────────────────────────────────────────────────────╮
 │ --llm-ollama-model        TEXT  The Ollama model to use. Default is          │
@@ -1002,7 +1014,8 @@ uv tool install "agent-cli[vad]"
 │ --help  -h        Show this message and exit.                                │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Provider Selection ─────────────────────────────────────────────────────────╮
-│ --asr-provider        TEXT  The ASR provider to use ('wyoming', 'openai').   │
+│ --asr-provider        TEXT  The ASR provider to use ('wyoming', 'openai',    │
+│                             'gemini').                                       │
 │                             [default: wyoming]                               │
 │ --llm-provider        TEXT  The LLM provider to use ('ollama', 'openai',     │
 │                             'gemini').                                       │
@@ -1028,6 +1041,11 @@ uv tool install "agent-cli[vad]"
 │ --asr-openai-model        TEXT  The OpenAI model to use for ASR              │
 │                                 (transcription).                             │
 │                                 [default: whisper-1]                         │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Audio Input: Gemini ────────────────────────────────────────────────────────╮
+│ --asr-gemini-model        TEXT  The Gemini model to use for ASR              │
+│                                 (transcription).                             │
+│                                 [default: gemini-2.0-flash]                  │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ LLM: Ollama ────────────────────────────────────────────────────────────────╮
 │ --llm-ollama-model        TEXT  The Ollama model to use. Default is          │
@@ -1166,7 +1184,8 @@ uv tool install "agent-cli[vad]"
 │ --help  -h        Show this message and exit.                                │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Provider Selection ─────────────────────────────────────────────────────────╮
-│ --asr-provider        TEXT  The ASR provider to use ('wyoming', 'openai').   │
+│ --asr-provider        TEXT  The ASR provider to use ('wyoming', 'openai',    │
+│                             'gemini').                                       │
 │                             [default: wyoming]                               │
 │ --llm-provider        TEXT  The LLM provider to use ('ollama', 'openai',     │
 │                             'gemini').                                       │
@@ -1201,6 +1220,11 @@ uv tool install "agent-cli[vad]"
 │ --asr-openai-model        TEXT  The OpenAI model to use for ASR              │
 │                                 (transcription).                             │
 │                                 [default: whisper-1]                         │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Audio Input: Gemini ────────────────────────────────────────────────────────╮
+│ --asr-gemini-model        TEXT  The Gemini model to use for ASR              │
+│                                 (transcription).                             │
+│                                 [default: gemini-2.0-flash]                  │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ LLM: Ollama ────────────────────────────────────────────────────────────────╮
 │ --llm-ollama-model        TEXT  The Ollama model to use. Default is          │
@@ -1346,7 +1370,8 @@ uv tool install "agent-cli[vad]"
 │ --help  -h        Show this message and exit.                                │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Provider Selection ─────────────────────────────────────────────────────────╮
-│ --asr-provider        TEXT  The ASR provider to use ('wyoming', 'openai').   │
+│ --asr-provider        TEXT  The ASR provider to use ('wyoming', 'openai',    │
+│                             'gemini').                                       │
 │                             [default: wyoming]                               │
 │ --llm-provider        TEXT  The LLM provider to use ('ollama', 'openai',     │
 │                             'gemini').                                       │
@@ -1377,6 +1402,11 @@ uv tool install "agent-cli[vad]"
 │                                    http://localhost:9898).                   │
 │ --asr-openai-prompt          TEXT  Custom prompt to guide transcription      │
 │                                    (optional).                               │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Audio Input: Gemini ────────────────────────────────────────────────────────╮
+│ --asr-gemini-model        TEXT  The Gemini model to use for ASR              │
+│                                 (transcription).                             │
+│                                 [default: gemini-2.0-flash]                  │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ LLM: Ollama ────────────────────────────────────────────────────────────────╮
 │ --llm-ollama-model        TEXT  The Ollama model to use. Default is          │

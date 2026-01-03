@@ -51,7 +51,7 @@ agent-cli assistant --wake-server-ip 192.168.1.100 --wake-server-port 10400
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--asr-provider` | `wyoming` | The ASR provider to use ('wyoming', 'openai'). |
+| `--asr-provider` | `wyoming` | The ASR provider to use ('wyoming', 'openai', 'gemini'). |
 | `--llm-provider` | `ollama` | The LLM provider to use ('ollama', 'openai', 'gemini'). |
 | `--tts-provider` | `wyoming` | The TTS provider to use ('wyoming', 'openai', 'kokoro'). |
 
@@ -83,6 +83,12 @@ agent-cli assistant --wake-server-ip 192.168.1.100 --wake-server-port 10400
 | Option | Default | Description |
 |--------|---------|-------------|
 | `--asr-openai-model` | `whisper-1` | The OpenAI model to use for ASR (transcription). |
+
+### Audio Input: Gemini
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--asr-gemini-model` | `gemini-2.0-flash` | The Gemini model to use for ASR (transcription). |
 
 ### LLM: Ollama
 
