@@ -21,19 +21,46 @@ def _is_wav_file(data: bytes) -> bool:
     return len(data) >= len(_RIFF_HEADER) and data[: len(_RIFF_HEADER)] == _RIFF_HEADER
 
 
-def _pcm_to_wav(pcm_data: bytes) -> bytes:
-    """Convert raw PCM audio data to WAV format with headers."""
-    import wave  # noqa: PLC0415
+def pcm_to_wav(
+    pcm_data: bytes,
+    *,
+    sample_rate: int = 16000,
+    sample_width: int = 2,
+    channels: int = 1,
+) -> bytes:
+    """Convert raw PCM audio data to WAV format.
 
-    from agent_cli import constants  # noqa: PLC0415
+    Args:
+        pcm_data: Raw PCM audio bytes
+        sample_rate: Sample rate in Hz (default: 16000)
+        sample_width: Bytes per sample (default: 2 for 16-bit)
+        channels: Number of audio channels (default: 1 for mono)
+
+    Returns:
+        WAV-formatted audio bytes
+
+    """
+    import wave  # noqa: PLC0415
 
     wav_buffer = io.BytesIO()
     with wave.open(wav_buffer, "wb") as wav_file:
-        wav_file.setnchannels(constants.AUDIO_CHANNELS)
-        wav_file.setsampwidth(constants.AUDIO_FORMAT_WIDTH)  # 16-bit audio
-        wav_file.setframerate(constants.AUDIO_RATE)
+        wav_file.setnchannels(channels)
+        wav_file.setsampwidth(sample_width)
+        wav_file.setframerate(sample_rate)
         wav_file.writeframes(pcm_data)
     return wav_buffer.getvalue()
+
+
+def _pcm_to_wav(pcm_data: bytes) -> bytes:
+    """Convert raw PCM audio (16kHz) to WAV format. Uses recording constants."""
+    from agent_cli import constants  # noqa: PLC0415
+
+    return pcm_to_wav(
+        pcm_data,
+        sample_rate=constants.AUDIO_RATE,
+        sample_width=constants.AUDIO_FORMAT_WIDTH,
+        channels=constants.AUDIO_CHANNELS,
+    )
 
 
 async def transcribe_audio_gemini(
@@ -199,17 +226,4 @@ async def synthesize_speech_gemini(
 
     # Gemini returns raw PCM: 24kHz, 16-bit, mono
     pcm_data = response.candidates[0].content.parts[0].inline_data.data
-    return _pcm_to_wav_24k(pcm_data)
-
-
-def _pcm_to_wav_24k(pcm_data: bytes) -> bytes:
-    """Convert raw PCM audio (24kHz, 16-bit, mono) to WAV format."""
-    import wave  # noqa: PLC0415
-
-    wav_buffer = io.BytesIO()
-    with wave.open(wav_buffer, "wb") as wav_file:
-        wav_file.setnchannels(1)  # Mono
-        wav_file.setsampwidth(2)  # 16-bit
-        wav_file.setframerate(24000)  # 24kHz
-        wav_file.writeframes(pcm_data)
-    return wav_buffer.getvalue()
+    return pcm_to_wav(pcm_data, sample_rate=24000)

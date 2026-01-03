@@ -23,7 +23,7 @@ from agent_cli.core.utils import (
     print_error_message,
     print_with_style,
 )
-from agent_cli.services import synthesize_speech_gemini, synthesize_speech_openai
+from agent_cli.services import pcm_to_wav, synthesize_speech_gemini, synthesize_speech_openai
 from agent_cli.services._wyoming_utils import wyoming_client_context
 
 if TYPE_CHECKING:
@@ -195,13 +195,12 @@ def _create_wav_data(
     channels: int,
 ) -> bytes:
     """Convert raw audio data to WAV format."""
-    wav_data = io.BytesIO()
-    with wave.open(wav_data, "wb") as wav_file:
-        wav_file.setnchannels(channels)
-        wav_file.setsampwidth(sample_width)
-        wav_file.setframerate(sample_rate)
-        wav_file.writeframes(audio_data)
-    return wav_data.getvalue()
+    return pcm_to_wav(
+        audio_data,
+        sample_rate=sample_rate,
+        sample_width=sample_width,
+        channels=channels,
+    )
 
 
 async def _dummy_synthesizer(**_kwargs: object) -> bytes | None:
