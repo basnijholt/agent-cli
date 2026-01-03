@@ -101,7 +101,7 @@ You can choose local or cloud services per capability by setting provider keys i
 ```toml
 [defaults]
 llm_provider = "ollama"  # 'ollama', 'openai', or 'gemini'
-asr_provider = "wyoming" # 'wyoming' or 'openai'
+asr_provider = "wyoming" # 'wyoming', 'openai', or 'gemini'
 tts_provider = "wyoming" # 'wyoming', 'openai', or 'kokoro'
 # openai_api_key = "sk-..."  # Required for OpenAI providers
 # gemini_api_key = "..."     # Required for Gemini providers

@@ -114,7 +114,7 @@ def speak(
     config_file: str | None = opts.CONFIG_FILE,
     print_args: bool = opts.PRINT_ARGS,
 ) -> None:
-    """Convert text to speech using Wyoming or OpenAI TTS server."""
+    """Convert text to speech using Wyoming or OpenAI-compatible TTS server."""
     if print_args:
         print_command_line_args(locals())
     setup_logging(log_level, log_file, quiet=quiet)

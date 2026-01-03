@@ -86,11 +86,13 @@ Add these fields if needed by tapping "Add new field":
 - **Key**: `extra_instructions`, **Value**: Custom instructions for processing
 
 **⚠️ CRITICAL SETUP REQUIREMENTS:**
+
 - The audio field name must be exactly `audio` (lowercase, case-sensitive)
 - Audio field type must be set to "File" (not "Text")
 - Form fields must be configured manually - iOS doesn't add them automatically
 
 **Common Issues:**
+
 - ❌ Field named "Audio" (uppercase) - won't work
 - ❌ Field type set to "Text" - won't work
 - ❌ No form fields configured - will give 422 error
@@ -106,11 +108,13 @@ Add these fields if needed by tapping "Add new field":
 ### Step 5: Add to Home Screen or Control Center
 
 **Add to Home Screen:**
+
 1. Go to Settings > Shortcuts
 2. Find your shortcut and tap the settings icon
 3. Tap **"Add to Home Screen"**
 
 **Add to Control Center:**
+
 1. Go to Settings > Control Center
 2. Add **"Shortcuts"** if not already added
 3. Your shortcut will be available in Control Center
@@ -182,14 +186,17 @@ extra-instructions = "Your custom cleanup instructions here"
 ### Advanced Shortcuts Features
 
 **Voice Activation:**
+
 - Add shortcut to Siri by saying "Hey Siri, add to Siri" while viewing the shortcut
 - Record a custom phrase like "Transcribe this"
 
 **Conditional Processing:**
+
 - Add **"If"** actions to handle different response cases
 - Show different notifications based on success/failure
 
 **Text Processing:**
+
 - Add text manipulation actions after transcription
 - Format text, convert case, etc.
 

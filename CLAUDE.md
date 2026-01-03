@@ -35,7 +35,7 @@ The codebase uses a **provider pattern** for AI services, allowing switching bet
 
 | Capability | Providers | Implementation |
 |------------|-----------|----------------|
-| ASR (Speech-to-Text) | `wyoming`, `openai` | `services/asr.py` |
+| ASR (Speech-to-Text) | `wyoming`, `openai`, `gemini` | `services/asr.py` |
 | LLM | `ollama`, `openai`, `gemini` | `services/llm.py` |
 | TTS (Text-to-Speech) | `wyoming`, `openai`, `kokoro` | `services/tts.py` |
 

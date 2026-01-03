@@ -17,7 +17,8 @@ It provides a suite of powerful tools for voice and text interaction, designed f
 
 I got tired of typing long prompts to LLMs. Speaking is faster, so I built this tool to transcribe my voice directly to the clipboard with a hotkey.
 
-What it does:
+**What it does:**
+
 - Voice transcription to clipboard with system-wide hotkeys (Cmd+Shift+R on macOS)
 - Autocorrect any text from your clipboard
 - Edit clipboard content with voice commands ("make this more formal")
@@ -693,6 +694,7 @@ uv tool install "agent-cli[vad]"
 - **Custom Silence Threshold**: `agent-cli transcribe-daemon --silence-threshold 1.5`
 
 **Output Files:**
+
 - **Transcription Log**: `~/.config/agent-cli/transcriptions.jsonl` (JSON Lines format)
 - **Audio Files**: `~/.config/agent-cli/audio/YYYY/MM/DD/*.mp3`
 
@@ -886,7 +888,7 @@ uv tool install "agent-cli[vad]"
 
  Usage: agent-cli speak [OPTIONS] [TEXT]
 
- Convert text to speech using Wyoming or OpenAI TTS server.
+ Convert text to speech using Wyoming or OpenAI-compatible TTS server.
 
 ╭─ General Options ────────────────────────────────────────────────────────────╮
 │   text      [TEXT]  Text to speak. Reads from clipboard if not provided.     │
@@ -923,7 +925,8 @@ uv tool install "agent-cli[vad]"
 ╭─ Audio Output: OpenAI-compatible ────────────────────────────────────────────╮
 │ --tts-openai-model           TEXT  The OpenAI model to use for TTS.          │
 │                                    [default: tts-1]                          │
-│ --tts-openai-voice           TEXT  The voice to use for OpenAI TTS.          │
+│ --tts-openai-voice           TEXT  The voice to use for OpenAI-compatible    │
+│                                    TTS.                                      │
 │                                    [default: alloy]                          │
 │ --tts-openai-base-url        TEXT  Custom base URL for OpenAI-compatible TTS │
 │                                    API (e.g., http://localhost:8000/v1 for a │
@@ -1100,7 +1103,8 @@ uv tool install "agent-cli[vad]"
 ╭─ Audio Output: OpenAI-compatible ────────────────────────────────────────────╮
 │ --tts-openai-model           TEXT  The OpenAI model to use for TTS.          │
 │                                    [default: tts-1]                          │
-│ --tts-openai-voice           TEXT  The voice to use for OpenAI TTS.          │
+│ --tts-openai-voice           TEXT  The voice to use for OpenAI-compatible    │
+│                                    TTS.                                      │
 │                                    [default: alloy]                          │
 │ --tts-openai-base-url        TEXT  Custom base URL for OpenAI-compatible TTS │
 │                                    API (e.g., http://localhost:8000/v1 for a │
@@ -1279,7 +1283,8 @@ uv tool install "agent-cli[vad]"
 ╭─ Audio Output: OpenAI-compatible ────────────────────────────────────────────╮
 │ --tts-openai-model           TEXT  The OpenAI model to use for TTS.          │
 │                                    [default: tts-1]                          │
-│ --tts-openai-voice           TEXT  The voice to use for OpenAI TTS.          │
+│ --tts-openai-voice           TEXT  The voice to use for OpenAI-compatible    │
+│                                    TTS.                                      │
 │                                    [default: alloy]                          │
 │ --tts-openai-base-url        TEXT  Custom base URL for OpenAI-compatible TTS │
 │                                    API (e.g., http://localhost:8000/v1 for a │
@@ -1461,7 +1466,8 @@ uv tool install "agent-cli[vad]"
 ╭─ Audio Output: OpenAI-compatible ────────────────────────────────────────────╮
 │ --tts-openai-model           TEXT  The OpenAI model to use for TTS.          │
 │                                    [default: tts-1]                          │
-│ --tts-openai-voice           TEXT  The voice to use for OpenAI TTS.          │
+│ --tts-openai-voice           TEXT  The voice to use for OpenAI-compatible    │
+│                                    TTS.                                      │
 │                                    [default: alloy]                          │
 │ --tts-openai-base-url        TEXT  Custom base URL for OpenAI-compatible TTS │
 │                                    API (e.g., http://localhost:8000/v1 for a │
@@ -1513,6 +1519,7 @@ uv tool install "agent-cli[vad]"
 **Purpose:** Enables "Chat with your Data" by running a local proxy server that injects document context into LLM requests.
 
 **Workflow:**
+
 1.  Start the server, pointing it to your documents folder and your local LLM (e.g., Ollama or llama.cpp) or OpenAI.
 2.  The server watches the folder and automatically indexes any text/markdown/PDF files into a local ChromaDB vector store.
 3.  Point any OpenAI-compatible client (including `agent-cli chat`) to this server's URL.
@@ -1608,12 +1615,14 @@ The `memory proxy` command is the core feature—a middleware server that gives 
 **Purpose:** Adds long-term conversational memory (self-hosted) to any OpenAI-compatible client.
 
 **Key Features:**
+
 - **Simple Markdown Files:** Your memories are stored as human-readable Markdown files, serving as the ultimate source of truth.
 - **Automatic Version Control:** Built-in Git integration automatically commits changes, giving you a full history of your memory's evolution.
 - **Lightweight & Local:** Minimal dependencies and runs entirely on your machine.
 - **Proxy Middleware:** Works transparently with any OpenAI-compatible `/chat/completions` endpoint (OpenAI, Ollama, vLLM).
 
 **Workflow:**
+
 - Stores a per-conversation memory collection in Chroma with the same embedding settings as `rag-proxy`, reranked with a cross-encoder.
 - For each turn, retrieves the top-k relevant memories (conversation + global) plus a rolling summary and augments the prompt.
 - After each reply, extracts salient facts and refreshes the running summary (disable with `--no-summarization`).

@@ -132,7 +132,7 @@ agent-cli voice-edit --stop
 | Option | Default | Description |
 |--------|---------|-------------|
 | `--tts-openai-model` | `tts-1` | The OpenAI model to use for TTS. |
-| `--tts-openai-voice` | `alloy` | The voice to use for OpenAI TTS. |
+| `--tts-openai-voice` | `alloy` | The voice to use for OpenAI-compatible TTS. |
 | `--tts-openai-base-url` | - | Custom base URL for OpenAI-compatible TTS API (e.g., http://localhost:8000/v1 for a proxy). |
 
 ### Audio Output: Kokoro
