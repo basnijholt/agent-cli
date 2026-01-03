@@ -108,7 +108,7 @@ agent-cli transcribe-daemon --silence-threshold 1.5
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--asr-gemini-model` | `gemini-2.0-flash` | The Gemini model to use for ASR (transcription). |
+| `--asr-gemini-model` | `gemini-3-flash-preview` | The Gemini model to use for ASR (transcription). |
 
 ### LLM: Ollama
 

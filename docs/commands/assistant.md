@@ -88,7 +88,7 @@ agent-cli assistant --wake-server-ip 192.168.1.100 --wake-server-port 10400
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--asr-gemini-model` | `gemini-2.0-flash` | The Gemini model to use for ASR (transcription). |
+| `--asr-gemini-model` | `gemini-3-flash-preview` | The Gemini model to use for ASR (transcription). |
 
 ### LLM: Ollama
 
