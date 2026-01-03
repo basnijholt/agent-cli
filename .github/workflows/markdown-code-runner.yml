@@ -1,4 +1,4 @@
-name: Update docs
+name: markdown-code-runner
 
 on:
   push:
@@ -7,7 +7,7 @@ on:
   pull_request:
 
 jobs:
-  update_docs:
+  markdown-code-runner:
     runs-on: macos-latest
     steps:
       - name: Check out repository
