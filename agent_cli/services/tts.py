@@ -59,11 +59,15 @@ def create_synthesizer(
             kokoro_tts_cfg=kokoro_tts_cfg,
         )
     if provider_cfg.tts_provider == "gemini":
+        assert gemini_tts_cfg is not None, "Gemini TTS config required"
         return partial(
             _synthesize_speech_gemini,
             gemini_tts_cfg=gemini_tts_cfg,
         )
-    return partial(_synthesize_speech_wyoming, wyoming_tts_cfg=wyoming_tts_cfg)
+    if provider_cfg.tts_provider == "wyoming":
+        return partial(_synthesize_speech_wyoming, wyoming_tts_cfg=wyoming_tts_cfg)
+    msg = f"Unknown TTS provider: {provider_cfg.tts_provider}"
+    raise NotImplementedError(msg)
 
 
 async def handle_tts_playback(
@@ -250,23 +254,16 @@ async def _synthesize_speech_kokoro(
 async def _synthesize_speech_gemini(
     *,
     text: str,
-    gemini_tts_cfg: config.GeminiTTS | None,
+    gemini_tts_cfg: config.GeminiTTS,
     logger: logging.Logger,
     **_kwargs: object,
 ) -> bytes | None:
     """Synthesize speech from text using Gemini TTS."""
-    if gemini_tts_cfg is None:
-        logger.error("Gemini TTS config is required")
-        return None
-    try:
-        return await synthesize_speech_gemini(
-            text=text,
-            gemini_tts_cfg=gemini_tts_cfg,
-            logger=logger,
-        )
-    except Exception:
-        logger.exception("Error during Gemini speech synthesis")
-        return None
+    return await synthesize_speech_gemini(
+        text=text,
+        gemini_tts_cfg=gemini_tts_cfg,
+        logger=logger,
+    )
 
 
 async def _synthesize_speech_wyoming(
