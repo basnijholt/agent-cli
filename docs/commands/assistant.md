@@ -109,7 +109,7 @@ agent-cli assistant --wake-server-ip 192.168.1.100 --wake-server-port 10400
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--llm-gemini-model` | `gemini-2.5-flash` | The Gemini model to use for LLM tasks. |
+| `--llm-gemini-model` | `gemini-3-flash-preview` | The Gemini model to use for LLM tasks. |
 | `--gemini-api-key` | - | Your Gemini API key. Can also be set with the GEMINI_API_KEY environment variable. |
 
 ### Audio Output

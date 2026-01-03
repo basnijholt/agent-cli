@@ -73,7 +73,7 @@ async def test_async_main_from_file(tmp_path: Path):
             llm_openai_model=DEFAULT_OPENAI_MODEL,
         )
         gemini_llm_cfg = config.GeminiLLM(
-            llm_gemini_model="gemini-2.5-flash",
+            llm_gemini_model="gemini-3-flash-preview",
         )
 
         # Call the unified function with file path
@@ -148,7 +148,7 @@ async def test_async_main_from_file_with_llm(tmp_path: Path):
             llm_openai_model=DEFAULT_OPENAI_MODEL,
         )
         gemini_llm_cfg = config.GeminiLLM(
-            llm_gemini_model="gemini-2.5-flash",
+            llm_gemini_model="gemini-3-flash-preview",
         )
 
         # Call the unified function with LLM enabled
@@ -222,7 +222,7 @@ async def test_async_main_from_file_with_logging(tmp_path: Path):
             llm_openai_model=DEFAULT_OPENAI_MODEL,
         )
         gemini_llm_cfg = config.GeminiLLM(
-            llm_gemini_model="gemini-2.5-flash",
+            llm_gemini_model="gemini-3-flash-preview",
         )
 
         # Call the unified function with logging enabled
@@ -298,7 +298,7 @@ async def test_async_main_from_file_error_handling(
             llm_openai_model=DEFAULT_OPENAI_MODEL,
         )
         gemini_llm_cfg = config.GeminiLLM(
-            llm_gemini_model="gemini-2.5-flash",
+            llm_gemini_model="gemini-3-flash-preview",
         )
 
         # Call the unified function (should handle error gracefully)
@@ -391,7 +391,7 @@ async def test_async_main_save_recording_enabled(
             llm_openai_model=DEFAULT_OPENAI_MODEL,
         )
         gemini_llm_cfg = config.GeminiLLM(
-            llm_gemini_model="gemini-2.5-flash",
+            llm_gemini_model="gemini-3-flash-preview",
         )
 
         # Call with save_recording=True
@@ -455,7 +455,7 @@ def test_transcribe_command_last_recording_option(
             llm_openai_model=DEFAULT_OPENAI_MODEL,
             openai_api_key=None,
             openai_base_url=None,
-            llm_gemini_model="gemini-2.5-flash",
+            llm_gemini_model="gemini-3-flash-preview",
             gemini_api_key=None,
             llm=False,
             stop=False,
@@ -511,7 +511,7 @@ def test_transcribe_command_from_file_option(tmp_path: Path):
             llm_openai_model=DEFAULT_OPENAI_MODEL,
             openai_api_key=None,
             openai_base_url=None,
-            llm_gemini_model="gemini-2.5-flash",
+            llm_gemini_model="gemini-3-flash-preview",
             gemini_api_key=None,
             llm=False,
             stop=False,
@@ -579,7 +579,7 @@ def test_transcribe_command_last_recording_with_index(
             llm_openai_model=DEFAULT_OPENAI_MODEL,
             openai_api_key=None,
             openai_base_url=None,
-            llm_gemini_model="gemini-2.5-flash",
+            llm_gemini_model="gemini-3-flash-preview",
             gemini_api_key=None,
             llm=False,
             stop=False,
@@ -645,7 +645,7 @@ def test_transcribe_command_last_recording_disabled(
             llm_openai_model=DEFAULT_OPENAI_MODEL,
             openai_api_key=None,
             openai_base_url=None,
-            llm_gemini_model="gemini-2.5-flash",
+            llm_gemini_model="gemini-3-flash-preview",
             gemini_api_key=None,
             llm=False,
             stop=False,
@@ -694,7 +694,7 @@ def test_transcribe_command_conflicting_options() -> None:
             llm_openai_model=DEFAULT_OPENAI_MODEL,
             openai_api_key=None,
             openai_base_url=None,
-            llm_gemini_model="gemini-2.5-flash",
+            llm_gemini_model="gemini-3-flash-preview",
             gemini_api_key=None,
             llm=False,
             stop=False,

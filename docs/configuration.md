@@ -155,7 +155,7 @@ tts_openai_voice = "alloy"
 ```toml
 [defaults]
 # Gemini model
-llm_gemini_model = "gemini-2.5-flash"
+llm_gemini_model = "gemini-3-flash-preview"
 
 # API key (can also use GEMINI_API_KEY env var)
 # gemini_api_key = "..."

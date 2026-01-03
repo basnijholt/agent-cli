@@ -80,7 +80,7 @@ OPENAI_BASE_URL: str | None = typer.Option(
 )
 # Gemini
 LLM_GEMINI_MODEL: str = typer.Option(
-    "gemini-2.5-flash",
+    "gemini-3-flash-preview",
     "--llm-gemini-model",
     help="The Gemini model to use for LLM tasks.",
     rich_help_panel="LLM: Gemini",
