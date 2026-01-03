@@ -10,6 +10,32 @@ fi
 # Get the current directory
 SCRIPTS_DIR="$(cd "$(dirname "$0")" && pwd)"
 
+# Help text for zellij panes
+HELP_TEXT='╔═══════════════════════════════════════════════════════════════════╗
+║                    Agent CLI Services                             ║
+╠═══════════════════════════════════════════════════════════════════╣
+║                                                                   ║
+║  🔴 IMPORTANT:                                                    ║
+║  • Ctrl-O d  → Detach (keeps services running in background!)     ║
+║  • Ctrl-Q    → Quit (STOPS all services!)                         ║
+║                                                                   ║
+║  To reattach later: $ zellij attach agent-cli                     ║
+║                                                                   ║
+╠═══════════════════════════════════════════════════════════════════╣
+║                                                                   ║
+║  Services Running:                                                ║
+║  • Ollama (LLM) - Port 11434                                      ║
+║  • Whisper (STT) - Port 10300                                     ║
+║  • Piper (TTS) - Port 10200                                       ║
+║  • OpenWakeWord - Port 10400                                      ║
+║                                                                   ║
+║  Navigation:                                                      ║
+║  • Alt + ← → ↑ ↓  - Move between panes                            ║
+║  • Ctrl-F         - Toggle this help                              ║
+║  • q              - Close this help                               ║
+║                                                                   ║
+╚═══════════════════════════════════════════════════════════════════╝'
+
 # On macOS, check if services are running via brew/launchd
 OLLAMA_BREW_SERVICE=false
 WHISPER_LAUNCHD=false
@@ -80,7 +106,7 @@ $OLLAMA_PANE
             pane {
                 name \"Help\"
                 command \"sh\"
-                args \"-c\" \"cat $SCRIPTS_DIR/zellij_help.txt | less\"
+                args \"-c\" \"echo '$HELP_TEXT' | less\"
             }
         }"
 
@@ -102,7 +128,7 @@ $BOTTOM_PANES
             height "80%"
             command "sh"
             close_on_exit true
-            args "-c" "cat $SCRIPTS_DIR/zellij_help.txt | less"
+            args "-c" "echo '$HELP_TEXT' | less"
         }
     }
 }
