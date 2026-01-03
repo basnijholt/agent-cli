@@ -133,6 +133,12 @@ Install [AutoHotkey](https://www.autohotkey.com/) and create a script:
 
 Use PowerToys Run or Keyboard Manager to create custom shortcuts.
 
+## iOS Setup
+
+Use iOS Shortcuts to trigger Agent CLI transcription from your iPhone by connecting to a running Agent CLI server on your local network.
+
+See the [iOS Shortcut Guide](iOS_Shortcut_Guide.md) for step-by-step setup instructions.
+
 ## NixOS Setup
 
 See the [NixOS installation guide](installation/nixos.md) for declarative hotkey configuration.
