@@ -74,7 +74,7 @@ Here's an example configuration file showing common options:
 # llm_provider = "ollama"
 
 [speak]
-# TTS provider: 'wyoming', 'openai', or 'kokoro'
+# TTS provider: 'wyoming', 'openai', 'kokoro', or 'gemini'
 # tts_provider = "wyoming"
 
 # Speech speed multiplier
@@ -102,7 +102,7 @@ You can choose local or cloud services per capability by setting provider keys i
 [defaults]
 llm_provider = "ollama"  # 'ollama', 'openai', or 'gemini'
 asr_provider = "wyoming" # 'wyoming', 'openai', or 'gemini'
-tts_provider = "wyoming" # 'wyoming', 'openai', or 'kokoro'
+tts_provider = "wyoming" # 'wyoming', 'openai', 'kokoro', or 'gemini'
 # openai_api_key = "sk-..."  # Required for OpenAI providers
 # gemini_api_key = "..."     # Required for Gemini providers
 ```
@@ -154,8 +154,15 @@ tts_openai_voice = "alloy"
 
 ```toml
 [defaults]
-# Gemini model
+# LLM model
 llm_gemini_model = "gemini-3-flash-preview"
+
+# ASR model
+asr_gemini_model = "gemini-3-flash-preview"
+
+# TTS model and voice
+tts_gemini_model = "gemini-2.5-flash-preview-tts"
+tts_gemini_voice = "Kore"
 
 # API key (can also use GEMINI_API_KEY env var)
 # gemini_api_key = "..."
