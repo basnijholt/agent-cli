@@ -102,7 +102,7 @@ PID files are stored in `~/.cache/agent-cli/`.
 
 ### Documentation Auto-Generation
 
-The `docs_gen` module introspects Typer commands to generate Markdown tables. Documentation files use `markdown-code-runner` markers:
+The `docs_gen` module introspects Typer commands to generate Markdown tables. Documentation files use [markdown-code-runner](https://github.com/basnijholt/markdown-code-runner) markers:
 
 ```markdown
 <!-- CODE:START -->
@@ -112,3 +112,11 @@ The `docs_gen` module introspects Typer commands to generate Markdown tables. Do
 ```
 
 Run `uv run python docs/run_markdown_code_runner.py` to regenerate all auto-generated content.
+
+The `docs_gen.py` module provides several functions:
+- `all_options_for_docs(command)`: Generate options tables for command docs
+- `features_list(link_prefix)`: Generate feature list for README/docs
+- `commands_table(category, link_prefix)`: Generate command tables
+- `env_vars_table()`: List all environment variables
+- `provider_matrix()`: Provider comparison matrix
+- `readme_section(section_name)`: Extract sections from README.md for reuse in docs
