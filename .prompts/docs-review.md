@@ -159,7 +159,38 @@ The same info appears in multiple places. Check for conflicts:
 - docs/configuration.md vs agent_cli/example-config.toml
 - Provider/port info across architecture docs
 
-### 8. Self-Check This Prompt
+### 8. Cross-Links for Navigation
+
+When commands are mentioned in prose or examples, they should link to their documentation pages. This improves discoverability and user navigation.
+
+**Key pages to check for missing cross-links:**
+
+| Page | Should Link To |
+|------|----------------|
+| `configuration.md` | `commands/config.md`, command-specific docs |
+| `getting-started.md` | Setup commands, test commands used in examples |
+| `system-integration.md` | `commands/install-hotkeys.md`, hotkey commands |
+| `commands/index.md` | Individual command pages |
+| Architecture docs | Related command pages |
+
+**Pattern to look for:**
+
+```bash
+# Find command mentions that might need links
+grep -rE "agent-cli (config|transcribe|speak|chat|autocorrect)" docs/*.md | grep -v "commands/"
+
+# Find backtick command references without links
+grep -E '`(transcribe|autocorrect|speak|config|memory)`' docs/*.md | grep -v '\[.*\]\('
+```
+
+**Good cross-link patterns:**
+- After code blocks: `See: [\`command\`](commands/command.md)`
+- In prose: `Use the [\`config\`](commands/config.md) command to...`
+- In tables: Link command names in the Command column
+
+**Don't over-link:** Code blocks themselves don't need links (they're not clickable). Add links in surrounding prose or after the block.
+
+### 9. Self-Check This Prompt
 
 This prompt can become outdated too. If you notice:
 - New automated checks that should be listed above
