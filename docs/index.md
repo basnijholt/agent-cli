@@ -101,11 +101,11 @@ agent-cli autocorrect "this has an eror"
 
 The setup automatically installs:
 
-- :white_check_mark: Package managers (Homebrew/uv) if needed
-- :white_check_mark: All AI services (Ollama, Whisper, TTS, etc.)
-- :white_check_mark: The `agent-cli` tool
-- :white_check_mark: System dependencies
-- :white_check_mark: Hotkey managers (if using hotkey scripts)
+- ✅ Package managers (Homebrew/uv) if needed
+- ✅ All AI services (Ollama, Whisper, TTS, etc.)
+- ✅ The `agent-cli` tool
+- ✅ System dependencies
+- ✅ Hotkey managers (if using hotkey scripts)
 
 ## Requirements
 
