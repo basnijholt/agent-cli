@@ -330,6 +330,7 @@ def features_list(link_prefix: str = "") -> str:
         ("chat", "Conversational AI with tool-calling capabilities."),
         ("memory", "Long-term memory system with `memory proxy` and `memory add`."),
         ("rag-proxy", "RAG proxy server for chatting with your documents."),
+        ("server", "HTTP API server for transcription."),
         (
             "transcribe-daemon",
             "Continuous background transcription with VAD. "
