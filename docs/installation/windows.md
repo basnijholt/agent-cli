@@ -1,121 +1,213 @@
 ---
-icon: lucide/app-window
+icon: fontawesome/brands/windows
 ---
 
 # Windows Installation Guide
 
-While `agent-cli` does not have an automated setup script for native Windows, you can achieve a seamless experience by using a **Split Setup**.
+> [!WARNING]
+> **Community Testing Needed!** This Windows setup has not been tested on real Windows hardware yet. The scripts are direct translations of the working Linux/macOS scripts.
+>
+> If you try this and it works (or doesn't), please [open an issue](https://github.com/basnijholt/agent-cli/issues) to let us know! Pull requests with improvements are very welcome.
 
-This approach uses **WSL 2 (Windows Subsystem for Linux)** to run the heavy AI services (the "Brain") while running the lightweight `agent-cli` tool natively on Windows (the "Ears") to access your microphone and clipboard.
+`agent-cli` works natively on Windows - no WSL required! All services (Ollama, Whisper, Piper) run directly on Windows.
 
 ## Prerequisites
 
-1.  **WSL 2**: Ensure you have WSL 2 installed (typically Ubuntu).
-    *   [How to install WSL](https://learn.microsoft.com/en-us/windows/wsl/install)
-2.  **Git**: Installed in both WSL and Windows.
-3.  **uv**: The Python package manager (installed on Windows).
+- Windows 10/11
+- 8GB+ RAM (16GB+ recommended for GPU acceleration)
+- 10GB free disk space
 
----
+### For GPU Acceleration (Optional)
 
-## Part 1: The "Brain" (WSL Side)
+- NVIDIA GPU (GTX 1060+ or RTX series recommended)
+- NVIDIA drivers installed
+- CUDA 12 and cuDNN 9 (see [faster-whisper GPU docs](https://github.com/SYSTRAN/faster-whisper#gpu))
 
-We will run the backend services (Ollama, Whisper, Piper, etc.) inside WSL.
+## Quick Start (Cloud Providers)
 
-1.  **Open your WSL terminal** (e.g., Ubuntu).
-2.  **Clone the repository and run the Linux setup:**
+The fastest way to get started - no local services needed:
 
-    ```bash
-    git clone https://github.com/basnijholt/agent-cli.git
-    cd agent-cli
-    ./scripts/setup-linux.sh
-    ```
-
-3.  **Start the services:**
-
-    ```bash
-    ./scripts/start-all-services.sh
-    ```
-
-    This will launch a Zellij session with all services running. By default, WSL forwards these ports (11434, 10300, 10200, 10400) to your Windows `localhost`.
-
----
-
-## Part 2: The "Ears" (Windows Side)
-
-Now we install the client on Windows so it can access your hardware (microphone) and interact with your desktop (clipboard).
-
-### 1. Install uv
-If you haven't installed `uv` yet, run this in PowerShell:
 ```powershell
+# Install uv (Python package manager)
 powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
-```
-`uv` will automatically manage the required Python version for the tool.
 
-### 2. Install agent-cli
-Run the following command to install the tool:
-
-```powershell
+# Install agent-cli
 uv tool install agent-cli
-```
 
-> [!NOTE]
-> `agent-cli` uses **sounddevice** for audio, which automatically includes the necessary PortAudio binaries for Windows. You typically do not need to install any external drivers or libraries manually.
-
-### 3. Test the Connection
-Run a command in PowerShell to verify that Windows can talk to the WSL services:
-
-```powershell
-# This records audio on Windows -> sends to WSL -> copies text to Windows clipboard
-agent-cli transcribe
+# Use with cloud providers (requires API keys)
+$env:OPENAI_API_KEY = "sk-..."
+agent-cli transcribe --asr-provider openai --llm-provider openai
 ```
 
 ---
 
-## Part 3: Automation (AutoHotkey)
+## Full Local Setup (Recommended)
 
-To invoke these commands globally (like the macOS/Linux hotkeys), use [AutoHotkey v2](https://www.autohotkey.com/).
+For a completely local setup with no internet dependency.
 
-1.  Create a file named `agent-cli.ahk`.
-2.  Paste the following script:
+### Script-Based Installation (Recommended)
+
+1. **Clone the repository:**
+
+   ```powershell
+   git clone https://github.com/basnijholt/agent-cli.git
+   cd agent-cli
+   ```
+
+2. **Run the setup script:**
+
+   ```powershell
+   powershell -ExecutionPolicy Bypass -File scripts/setup-windows.ps1
+   ```
+
+3. **Start all services:**
+
+   ```powershell
+   powershell -ExecutionPolicy Bypass -File scripts/start-all-services-windows.ps1
+   ```
+
+4. **Test the setup:**
+
+   ```powershell
+   agent-cli transcribe
+   ```
+
+### Manual Installation
+
+If you prefer manual setup:
+
+1. **Install uv:**
+
+   ```powershell
+   powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
+   ```
+
+2. **Install Ollama:**
+
+   Download from [ollama.com](https://ollama.com/download/windows) and install. Then:
+
+   ```powershell
+   ollama pull gemma3:4b
+   ```
+
+3. **Install agent-cli:**
+
+   ```powershell
+   uv tool install agent-cli
+   ```
+
+4. **Run services individually:**
+
+   ```powershell
+   # Terminal 1: Ollama (may already be running as a service)
+   ollama serve
+
+   # Terminal 2: Whisper
+   powershell -ExecutionPolicy Bypass -File scripts/run-whisper-windows.ps1
+
+   # Terminal 3: Piper
+   powershell -ExecutionPolicy Bypass -File scripts/run-piper-windows.ps1
+   ```
+
+---
+
+## Services Overview
+
+| Service     | Port  | GPU Support | Description              |
+| ----------- | ----- | ----------- | ------------------------ |
+| **Ollama**  | 11434 | ✅ CUDA     | LLM inference            |
+| **Whisper** | 10300 | ✅ CUDA     | Speech-to-text (ASR)     |
+| **Piper**   | 10200 | N/A         | Text-to-speech (TTS)     |
+
+## GPU Acceleration
+
+The scripts automatically detect NVIDIA GPU and use:
+
+- **With GPU (CUDA):** `large-v3` model for best accuracy
+- **Without GPU:** `tiny` model for faster CPU inference
+
+To verify GPU is being used:
+
+```powershell
+nvidia-smi
+```
+
+---
+
+## Global Hotkeys with AutoHotkey
+
+Use [AutoHotkey v2](https://www.autohotkey.com/) for global keyboard shortcuts.
+
+1. Create a file named `agent-cli.ahk`:
 
 ```autohotkey
 #Requires AutoHotkey v2.0
-Persistent  ; Keep script running with tray icon
+Persistent
 
-; Win+Shift+W to toggle transcription (W for Whisper)
+; Win+Shift+W - Toggle transcription
 #+w::{
     statusFile := A_Temp . "\agent-cli-status.txt"
     cmd := Format('{1} /C agent-cli transcribe --status > "{2}" 2>&1', A_ComSpec, statusFile)
     RunWait(cmd, , "Hide")
     status := FileRead(statusFile)
     if InStr(status, "not running") {
-        TrayTip("🎤 Starting transcription...", "agent-cli", 1)
-        Run("agent-cli transcribe --toggle --input-device-index 1", , "Hide")  ; adjust device index if needed
+        TrayTip("Starting transcription...", "agent-cli", 1)
+        Run("agent-cli transcribe --toggle", , "Hide")
     } else {
-        TrayTip("🛑 Stopping transcription...", "agent-cli", 1)
+        TrayTip("Stopping transcription...", "agent-cli", 1)
         Run("agent-cli transcribe --toggle", , "Hide")
     }
 }
 
-; Win+Shift+A to autocorrect clipboard
+; Win+Shift+A - Autocorrect clipboard
 #+a::{
-    TrayTip("✍️ Autocorrecting clipboard...", "agent-cli", 1)
+    TrayTip("Autocorrecting...", "agent-cli", 1)
     Run("agent-cli autocorrect", , "Hide")
 }
 
-; Win+Shift+E to voice edit selection
+; Win+Shift+E - Voice edit selection
 #+e::{
     Send("^c")
     ClipWait(1)
-    TrayTip("🗣️ Voice editing selection...", "agent-cli", 1)
-    Run("agent-cli voice-edit --input-device-index 1", , "Hide")  ; adjust device index if needed
+    TrayTip("Voice editing...", "agent-cli", 1)
+    Run("agent-cli voice-edit", , "Hide")
 }
 ```
 
-3.  Double-click the script to run it.
+2. Double-click the script to run it.
 
-> [!NOTE]
-> Using `--toggle` stops an existing background recorder if it's already running, so you can press the same hotkey to start/stop the session without leaving a stray process behind.
+> [!TIP]
+> To run at startup: Press `Win+R`, type `shell:startup`, and place a shortcut to your `.ahk` file there.
 
-**Note on Audio Devices:**
-If `agent-cli` doesn't pick up your microphone, run `agent-cli transcribe --list-devices` to find the correct `--input-device-index`.
+---
+
+## Troubleshooting
+
+### Audio device not found
+
+Run `agent-cli transcribe --list-devices` and use `--input-device-index` with your microphone's index.
+
+### Wyoming server connection refused
+
+Ensure the services are running:
+
+```powershell
+# Check if ports are in use
+netstat -an | findstr "10300 10200 11434"
+```
+
+### GPU not being used
+
+1. Verify NVIDIA drivers: `nvidia-smi`
+2. Check CUDA installation
+3. Set device explicitly: `$env:WHISPER_DEVICE = "cuda"`
+
+### Ollama not responding
+
+Check if Ollama is running:
+
+```powershell
+ollama list
+```
+
+If not, start it: `ollama serve` or launch from Start Menu.
