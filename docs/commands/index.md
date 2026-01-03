@@ -81,6 +81,7 @@ Most commands support multiple providers:
 
 - `wyoming` - Local Whisper via Wyoming (default)
 - `openai` - OpenAI Whisper API
+- `gemini` - Google Gemini API
 
 ### TTS Providers (`--tts-provider`)
 
