@@ -156,3 +156,60 @@ async def synthesize_speech_openai(
         response_format="wav",
     )
     return response.content
+
+
+async def synthesize_speech_gemini(
+    text: str,
+    gemini_tts_cfg: config.GeminiTTS,
+    logger: logging.Logger,
+) -> bytes:
+    """Synthesize speech using Gemini's native TTS.
+
+    Returns WAV audio data (converted from Gemini's raw PCM output).
+    """
+    from google import genai  # noqa: PLC0415
+    from google.genai import types  # noqa: PLC0415
+
+    if not gemini_tts_cfg.gemini_api_key:
+        msg = "Gemini API key is not set."
+        raise ValueError(msg)
+
+    logger.info(
+        "Synthesizing speech with Gemini %s (voice: %s)...",
+        gemini_tts_cfg.tts_gemini_model,
+        gemini_tts_cfg.tts_gemini_voice,
+    )
+
+    client = genai.Client(api_key=gemini_tts_cfg.gemini_api_key)
+
+    response = await client.aio.models.generate_content(
+        model=gemini_tts_cfg.tts_gemini_model,
+        contents=text,
+        config=types.GenerateContentConfig(
+            response_modalities=["AUDIO"],
+            speech_config=types.SpeechConfig(
+                voice_config=types.VoiceConfig(
+                    prebuilt_voice_config=types.PrebuiltVoiceConfig(
+                        voice_name=gemini_tts_cfg.tts_gemini_voice,
+                    ),
+                ),
+            ),
+        ),
+    )
+
+    # Gemini returns raw PCM: 24kHz, 16-bit, mono
+    pcm_data = response.candidates[0].content.parts[0].inline_data.data
+    return _pcm_to_wav_24k(pcm_data)
+
+
+def _pcm_to_wav_24k(pcm_data: bytes) -> bytes:
+    """Convert raw PCM audio (24kHz, 16-bit, mono) to WAV format."""
+    import wave  # noqa: PLC0415
+
+    wav_buffer = io.BytesIO()
+    with wave.open(wav_buffer, "wb") as wav_file:
+        wav_file.setnchannels(1)  # Mono
+        wav_file.setsampwidth(2)  # 16-bit
+        wav_file.setframerate(24000)  # 24kHz
+        wav_file.writeframes(pcm_data)
+    return wav_buffer.getvalue()

@@ -23,7 +23,7 @@ from agent_cli.core.utils import (
     print_error_message,
     print_with_style,
 )
-from agent_cli.services import synthesize_speech_openai
+from agent_cli.services import synthesize_speech_gemini, synthesize_speech_openai
 from agent_cli.services._wyoming_utils import wyoming_client_context
 
 if TYPE_CHECKING:
@@ -43,6 +43,7 @@ def create_synthesizer(
     wyoming_tts_cfg: config.WyomingTTS,
     openai_tts_cfg: config.OpenAITTS,
     kokoro_tts_cfg: config.KokoroTTS,
+    gemini_tts_cfg: config.GeminiTTS | None = None,
 ) -> Callable[..., Awaitable[bytes | None]]:
     """Return the appropriate synthesizer based on the config."""
     if not audio_output_cfg.enable_tts:
@@ -57,6 +58,11 @@ def create_synthesizer(
             _synthesize_speech_kokoro,
             kokoro_tts_cfg=kokoro_tts_cfg,
         )
+    if provider_cfg.tts_provider == "gemini":
+        return partial(
+            _synthesize_speech_gemini,
+            gemini_tts_cfg=gemini_tts_cfg,
+        )
     return partial(_synthesize_speech_wyoming, wyoming_tts_cfg=wyoming_tts_cfg)
 
 
@@ -68,6 +74,7 @@ async def handle_tts_playback(
     wyoming_tts_cfg: config.WyomingTTS,
     openai_tts_cfg: config.OpenAITTS,
     kokoro_tts_cfg: config.KokoroTTS,
+    gemini_tts_cfg: config.GeminiTTS | None = None,
     save_file: Path | None,
     quiet: bool,
     logger: logging.Logger,
@@ -89,6 +96,7 @@ async def handle_tts_playback(
             wyoming_tts_cfg=wyoming_tts_cfg,
             openai_tts_cfg=openai_tts_cfg,
             kokoro_tts_cfg=kokoro_tts_cfg,
+            gemini_tts_cfg=gemini_tts_cfg,
             logger=logger,
             quiet=quiet,
             play_audio_flag=play_audio,
@@ -240,6 +248,28 @@ async def _synthesize_speech_kokoro(
         return None
 
 
+async def _synthesize_speech_gemini(
+    *,
+    text: str,
+    gemini_tts_cfg: config.GeminiTTS | None,
+    logger: logging.Logger,
+    **_kwargs: object,
+) -> bytes | None:
+    """Synthesize speech from text using Gemini TTS."""
+    if gemini_tts_cfg is None:
+        logger.error("Gemini TTS config is required")
+        return None
+    try:
+        return await synthesize_speech_gemini(
+            text=text,
+            gemini_tts_cfg=gemini_tts_cfg,
+            logger=logger,
+        )
+    except Exception:
+        logger.exception("Error during Gemini speech synthesis")
+        return None
+
+
 async def _synthesize_speech_wyoming(
     *,
     text: str,
@@ -371,6 +401,7 @@ async def _speak_text(
     wyoming_tts_cfg: config.WyomingTTS,
     openai_tts_cfg: config.OpenAITTS,
     kokoro_tts_cfg: config.KokoroTTS,
+    gemini_tts_cfg: config.GeminiTTS | None = None,
     logger: logging.Logger,
     quiet: bool = False,
     play_audio_flag: bool = True,
@@ -384,6 +415,7 @@ async def _speak_text(
         wyoming_tts_cfg,
         openai_tts_cfg,
         kokoro_tts_cfg,
+        gemini_tts_cfg,
     )
     audio_data = None
     try:
@@ -393,6 +425,7 @@ async def _speak_text(
                 wyoming_tts_cfg=wyoming_tts_cfg,
                 openai_tts_cfg=openai_tts_cfg,
                 kokoro_tts_cfg=kokoro_tts_cfg,
+                gemini_tts_cfg=gemini_tts_cfg,
                 logger=logger,
                 quiet=quiet,
                 live=live,
