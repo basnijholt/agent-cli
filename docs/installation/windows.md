@@ -4,6 +4,11 @@ icon: fontawesome/brands/windows
 
 # Windows Installation Guide
 
+> [!WARNING]
+> **Community Testing Needed!** This Windows setup has not been tested on real Windows hardware yet. The scripts are direct translations of the working Linux/macOS scripts.
+>
+> If you try this and it works (or doesn't), please [open an issue](https://github.com/basnijholt/agent-cli/issues) to let us know! Pull requests with improvements are very welcome.
+
 `agent-cli` works natively on Windows - no WSL required! All services (Ollama, Whisper, Piper) run directly on Windows.
 
 ## Prerequisites
