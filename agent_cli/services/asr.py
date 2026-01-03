@@ -90,7 +90,7 @@ def get_last_recording(index: int = 1) -> Path | None:
 
 
 def load_audio_from_file(filepath: Path, logger: logging.Logger) -> bytes | None:
-    """Load audio data from a WAV file."""
+    """Load audio data from a WAV file (raw PCM frames only)."""
     try:
         with wave.open(str(filepath), "rb") as wav_file:
             audio_data = wav_file.readframes(wav_file.getnframes())
@@ -98,6 +98,21 @@ def load_audio_from_file(filepath: Path, logger: logging.Logger) -> bytes | None
             return audio_data
     except (OSError, wave.Error):
         logger.exception("Failed to load audio from %s", filepath)
+        return None
+
+
+def load_wav_file_bytes(filepath: Path, logger: logging.Logger) -> bytes | None:
+    """Load complete WAV file bytes (including headers) for APIs that need full WAV format.
+
+    Unlike load_audio_from_file which returns raw PCM frames, this returns the
+    entire WAV file which is needed by some APIs like Gemini.
+    """
+    try:
+        audio_data = filepath.read_bytes()
+        logger.info("Loaded WAV file from %s (%d bytes)", filepath, len(audio_data))
+        return audio_data
+    except OSError:
+        logger.exception("Failed to load WAV file from %s", filepath)
         return None
 
 

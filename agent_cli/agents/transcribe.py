@@ -37,6 +37,7 @@ from agent_cli.services.asr import (
     create_recorded_audio_transcriber,
     get_last_recording,
     load_audio_from_file,
+    load_wav_file_bytes,
 )
 from agent_cli.services.llm import process_and_update_clipboard
 
@@ -260,7 +261,12 @@ async def _async_main(  # noqa: PLR0912, PLR0915, C901
     with maybe_live(not general_cfg.quiet) as live:
         if audio_file_path:
             # File-based transcription
-            audio_data = load_audio_from_file(audio_file_path, LOGGER)
+            # Gemini needs full WAV file with headers, others need raw PCM frames
+            if provider_cfg.asr_provider == "gemini":
+                audio_data = load_wav_file_bytes(audio_file_path, LOGGER)
+            else:
+                audio_data = load_audio_from_file(audio_file_path, LOGGER)
+
             if not audio_data:
                 print_with_style(
                     f"❌ Failed to load audio from {audio_file_path}",
@@ -270,23 +276,25 @@ async def _async_main(  # noqa: PLR0912, PLR0915, C901
 
             recorded_transcriber = create_recorded_audio_transcriber(provider_cfg)
 
-            if provider_cfg.asr_provider == "openai":
-                asr_config = openai_asr_cfg
-            else:
-                asr_config = wyoming_asr_cfg
-
             # Call with appropriate arguments based on provider
             if provider_cfg.asr_provider == "openai":
                 transcript = await recorded_transcriber(
                     audio_data,
-                    asr_config,
+                    openai_asr_cfg,
+                    LOGGER,
+                    quiet=general_cfg.quiet,
+                )
+            elif provider_cfg.asr_provider == "gemini":
+                transcript = await recorded_transcriber(
+                    audio_data,
+                    gemini_asr_cfg,
                     LOGGER,
                     quiet=general_cfg.quiet,
                 )
             else:  # Wyoming expects keyword arguments
                 transcript = await recorded_transcriber(
                     audio_data=audio_data,
-                    wyoming_asr_cfg=asr_config,
+                    wyoming_asr_cfg=wyoming_asr_cfg,
                     logger=LOGGER,
                     quiet=general_cfg.quiet,
                 )

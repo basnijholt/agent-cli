@@ -24,9 +24,8 @@ async def transcribe_audio_gemini(
     Gemini can process audio natively and return transcriptions.
     Supports WAV, MP3, AIFF, AAC, OGG, and FLAC formats.
     """
-    import base64  # noqa: PLC0415
-
-    import google.generativeai as genai  # noqa: PLC0415
+    from google import genai  # noqa: PLC0415
+    from google.genai import types  # noqa: PLC0415
 
     if not gemini_asr_cfg.gemini_api_key:
         msg = "Gemini API key is not set."
@@ -34,18 +33,15 @@ async def transcribe_audio_gemini(
 
     logger.info("Transcribing audio with Gemini %s...", gemini_asr_cfg.asr_gemini_model)
 
-    genai.configure(api_key=gemini_asr_cfg.gemini_api_key)
-    model = genai.GenerativeModel(gemini_asr_cfg.asr_gemini_model)
+    client = genai.Client(api_key=gemini_asr_cfg.gemini_api_key)
 
-    # Encode audio as base64 for inline data
-    audio_base64 = base64.b64encode(audio_data).decode("utf-8")
-    audio_part = {"mime_type": "audio/wav", "data": audio_base64}
-
-    response = await model.generate_content_async(
-        [
+    # Audio must be a complete WAV file with headers (not raw PCM)
+    response = await client.aio.models.generate_content(
+        model=gemini_asr_cfg.asr_gemini_model,
+        contents=[
             "Transcribe this audio accurately. Return only the transcription text, "
             "nothing else. Do not include any prefixes, labels, or explanations.",
-            audio_part,
+            types.Part.from_bytes(data=audio_data, mime_type="audio/wav"),
         ],
     )
     return response.text.strip()
