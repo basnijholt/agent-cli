@@ -51,18 +51,6 @@ def pcm_to_wav(
     return wav_buffer.getvalue()
 
 
-def _pcm_to_wav(pcm_data: bytes) -> bytes:
-    """Convert raw PCM audio (16kHz) to WAV format. Uses recording constants."""
-    from agent_cli import constants  # noqa: PLC0415
-
-    return pcm_to_wav(
-        pcm_data,
-        sample_rate=constants.AUDIO_RATE,
-        sample_width=constants.AUDIO_FORMAT_WIDTH,
-        channels=constants.AUDIO_CHANNELS,
-    )
-
-
 async def transcribe_audio_gemini(
     audio_data: bytes,
     gemini_asr_cfg: config.GeminiASR,
@@ -89,8 +77,15 @@ async def transcribe_audio_gemini(
     # Gemini requires complete WAV files with headers, not raw PCM
     # Auto-convert raw PCM to WAV if needed
     if not _is_wav_file(audio_data):
+        from agent_cli import constants  # noqa: PLC0415
+
         logger.debug("Converting raw PCM to WAV format for Gemini")
-        audio_data = _pcm_to_wav(audio_data)
+        audio_data = pcm_to_wav(
+            audio_data,
+            sample_rate=constants.AUDIO_RATE,
+            sample_width=constants.AUDIO_FORMAT_WIDTH,
+            channels=constants.AUDIO_CHANNELS,
+        )
 
     client = genai.Client(api_key=gemini_asr_cfg.gemini_api_key)
 

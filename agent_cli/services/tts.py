@@ -192,21 +192,6 @@ async def _process_audio_events(
     return audio_data.getvalue(), sample_rate, sample_width, channels
 
 
-def _create_wav_data(
-    audio_data: bytes,
-    sample_rate: int,
-    sample_width: int,
-    channels: int,
-) -> bytes:
-    """Convert raw audio data to WAV format."""
-    return pcm_to_wav(
-        audio_data,
-        sample_rate=sample_rate,
-        sample_width=sample_width,
-        channels=channels,
-    )
-
-
 async def _dummy_synthesizer(**_kwargs: object) -> bytes | None:
     """A dummy synthesizer that does nothing."""
     return None
@@ -297,7 +282,12 @@ async def _synthesize_speech_wyoming(
                 )
                 audio_data, sample_rate, sample_width, channels = recv_task.result()
             if sample_rate and sample_width and channels and audio_data:
-                wav_data = _create_wav_data(audio_data, sample_rate, sample_width, channels)
+                wav_data = pcm_to_wav(
+                    audio_data,
+                    sample_rate=sample_rate,
+                    sample_width=sample_width,
+                    channels=channels,
+                )
                 logger.info("Speech synthesis completed: %d bytes", len(wav_data))
                 return wav_data
             logger.warning("No audio data received from TTS server")
