@@ -1,3 +1,7 @@
+---
+icon: lucide/container
+---
+
 # Docker Installation
 
 Universal Docker setup that works on any platform with Docker support.

@@ -1,3 +1,7 @@
+---
+icon: lucide/database
+---
+
 # Agent CLI: RAG Proxy Technical Specification
 
 This document describes the architectural decisions, design rationale, and technical approach for the `agent-cli` RAG (Retrieval-Augmented Generation) proxy subsystem.
@@ -26,6 +30,13 @@ LLMs only know what they were trained on. They don't know your company docs, you
 ### In One Sentence
 
 A local proxy that gives LLMs access to your documents using smarter multi-stage retrieval instead of the naive "find similar text" approach most tools use, while keeping everything as readable files on disk.
+
+### Related
+
+- [rag-proxy command](../commands/rag-proxy.md) - How to run the server
+- [Configuration](../configuration.md) - Config file keys and defaults
+- [Memory System Architecture](memory.md) - How memory differs from RAG
+- [memory command](../commands/memory.md) - Memory proxy usage
 
 ### Try It Now
 
@@ -188,9 +199,9 @@ The RAG proxy is an **OpenAI-compatible middleware** that intercepts chat reques
 
 **Implementation:**
 
-- Default: 800 characters per chunk, 200 character overlap.
-- Splits on sentence-ending punctuation (`.!?`).
-- Fallback to character-based splitting for oversized sentences (e.g., code blocks).
+- Default: 1200 characters per chunk, 200 character overlap.
+- Prefers separators in order: blank lines, newlines, ". ", ", ", and spaces.
+- Fallback to character-based splitting when no separator fits.
 
 ### 2.6 Tool-Augmented Retrieval
 
@@ -352,6 +363,8 @@ File system events trigger incremental updates:
 ---
 
 ## 8. Comparison with Memory System
+
+See [Memory System Architecture](memory.md) for the memory-specific pipeline and storage details.
 
 The RAG proxy and memory system share some infrastructure but serve different purposes:
 

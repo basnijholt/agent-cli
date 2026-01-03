@@ -94,7 +94,7 @@ wake-server-ip = "localhost"
 wake-server-port = 10400
 wake-word = "ok_nabu" # e.g., "ok_nabu", "hey_jarvis"
 # The assistant agent also uses ASR, LLM, and TTS settings from [defaults]
-tts = true
+enable_tts = true
 
 [autocorrect]
 # Use a more powerful model specifically for the autocorrect command.
@@ -107,7 +107,7 @@ llm-ollama-model = "devstral:24b"
 # llm-provider = "openai"
 # tts-provider = "openai"
 # llm-openai-model = "gpt-4-turbo"
-tts = true
+enable_tts = true
 tts-speed = 1.2
 # Conversation history settings
 history-dir = "~/.config/agent-cli/history"
@@ -140,7 +140,7 @@ Follow PEP8: use `snake_case` for variables, functions, and package names; `Came
 # Use a powerful local model for the voice assistant.
 llm-provider = "ollama"
 llm-ollama-model = "llama3"
-tts = true
+enable_tts = true
 
 [rag-proxy]
 # RAG (Retrieval-Augmented Generation) proxy server settings.
@@ -163,3 +163,20 @@ tts = true
 # git-versioning = true  # Enable automatic git commit of memory changes
 # host = "0.0.0.0"
 # port = 8100
+
+[transcribe-daemon]
+# Continuous transcription settings
+# role = "user"
+# silence-threshold = 1.0
+# min-segment = 0.25
+# vad-threshold = 0.3
+# save-audio = true
+# audio-dir = "~/.config/agent-cli/audio"
+# transcription-log = "~/.config/agent-cli/transcriptions.jsonl"
+# clipboard = false
+
+[server]
+# Transcription server settings
+# host = "0.0.0.0"
+# port = 61337
+# reload = false

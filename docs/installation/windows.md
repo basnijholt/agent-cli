@@ -1,3 +1,7 @@
+---
+icon: lucide/app-window
+---
+
 # Windows Installation Guide
 
 While `agent-cli` does not have an automated setup script for native Windows, you can achieve a seamless experience by using a **Split Setup**.

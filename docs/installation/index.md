@@ -1,3 +1,7 @@
+---
+icon: lucide/download
+---
+
 # Installation Guide
 
 Choose the best installation method for your platform and performance needs.

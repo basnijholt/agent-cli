@@ -1,0 +1,126 @@
+# Agent CLI Documentation
+# Built with Zensical - https://zensical.org
+
+[project]
+site_name = "Agent CLI"
+site_description = "Local-first, AI-powered command-line agents for voice and text interaction"
+site_author = "Bas Nijholt"
+site_url = "https://agent-cli.nijho.lt/"
+copyright = "Copyright &copy; 2025 Bas Nijholt"
+
+repo_url = "https://github.com/basnijholt/agent-cli"
+repo_name = "GitHub"
+edit_uri = "edit/main/docs"
+
+nav = [
+  { "Home" = "index.md" },
+  { "Getting Started" = "getting-started.md" },
+  { "Installation" = [
+    { "Overview" = "installation/index.md" },
+    { "macOS" = "installation/macos.md" },
+    { "Linux" = "installation/linux.md" },
+    { "NixOS" = "installation/nixos.md" },
+    { "Windows" = "installation/windows.md" },
+    { "Docker" = "installation/docker.md" },
+  ] },
+  { "Configuration" = "configuration.md" },
+  { "Commands" = [
+    { "Overview" = "commands/index.md" },
+    { "Voice & Audio" = [
+      { "transcribe" = "commands/transcribe.md" },
+      { "transcribe-daemon" = "commands/transcribe-daemon.md" },
+      { "speak" = "commands/speak.md" },
+      { "voice-edit" = "commands/voice-edit.md" },
+      { "assistant" = "commands/assistant.md" },
+    ] },
+    { "Text & Chat" = [
+      { "autocorrect" = "commands/autocorrect.md" },
+      { "chat" = "commands/chat.md" },
+    ] },
+    { "Servers & Proxies" = [
+      { "rag-proxy" = "commands/rag-proxy.md" },
+      { "memory" = "commands/memory.md" },
+      { "server" = "commands/server.md" },
+    ] },
+    { "Setup" = [
+      { "config" = "commands/config.md" },
+      { "install-services" = "commands/install-services.md" },
+      { "install-hotkeys" = "commands/install-hotkeys.md" },
+      { "start-services" = "commands/start-services.md" },
+    ] },
+  ] },
+  { "System Integration" = "system-integration.md" },
+  { "Architecture" = [
+    { "Overview" = "architecture/index.md" },
+    { "Memory System" = "architecture/memory.md" },
+    { "RAG System" = "architecture/rag.md" },
+  ] },
+]
+
+[project.theme]
+language = "en"
+
+features = [
+    "announce.dismiss",
+    "content.action.edit",
+    "content.action.view",
+    "content.code.annotate",
+    "content.code.copy",
+    "content.code.select",
+    "content.footnote.tooltips",
+    "content.tabs.link",
+    "content.tooltips",
+    "navigation.footer",
+    "navigation.indexes",
+    "navigation.instant",
+    "navigation.instant.prefetch",
+    "navigation.path",
+    "navigation.sections",
+    "navigation.top",
+    "navigation.tracking",
+    "search.highlight",
+]
+
+[[project.theme.palette]]
+media = "(prefers-color-scheme)"
+toggle.icon = "lucide/sun-moon"
+toggle.name = "Switch to light mode"
+
+[[project.theme.palette]]
+media = "(prefers-color-scheme: light)"
+scheme = "default"
+primary = "deep-purple"
+accent = "amber"
+toggle.icon = "lucide/sun"
+toggle.name = "Switch to dark mode"
+
+[[project.theme.palette]]
+media = "(prefers-color-scheme: dark)"
+scheme = "slate"
+primary = "deep-purple"
+accent = "amber"
+toggle.icon = "lucide/moon-star"
+toggle.name = "Switch to system preference"
+
+[project.theme.font]
+text = "Inter"
+code = "JetBrains Mono"
+
+[project.theme.icon]
+logo = "lucide/mic"
+repo = "lucide/github"
+
+[project.extra]
+generator = false
+
+[[project.extra.social]]
+icon = "fontawesome/brands/github"
+link = "https://github.com/basnijholt/agent-cli"
+
+[[project.extra.social]]
+icon = "fontawesome/brands/python"
+link = "https://pypi.org/project/agent-cli/"
+
+[[project.extra.social]]
+icon = "fontawesome/brands/youtube"
+link = "https://www.youtube.com/watch?v=7sBTCgttH48"

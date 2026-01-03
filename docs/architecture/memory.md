@@ -1,3 +1,7 @@
+---
+icon: lucide/brain
+---
+
 # Agent CLI: Memory System Technical Specification
 
 This document serves as the authoritative technical reference for the `agent-cli` memory subsystem. It details the component architecture, data structures, internal algorithms, and control flows implemented in the codebase.
@@ -32,6 +36,13 @@ LLMs are stateless. Every conversation starts fresh. They don't remember you tol
 ### In One Sentence
 
 A local-first system that gives LLMs persistent memory across conversations, with the twist that everything stays human-readable files on disk and it uses smarter scoring (recency + diversity + relevance) instead of just embedding similarity.
+
+### Related
+
+- [memory command](../commands/memory.md) - How to run the memory proxy and add memories
+- [Configuration](../configuration.md) - Config file keys and defaults
+- [RAG System Architecture](rag.md) - Related retrieval stack for documents
+- [rag-proxy command](../commands/rag-proxy.md) - Document retrieval server
 
 ### Try It Now
 
@@ -301,5 +312,5 @@ To replicate the system behavior, the following prompt strategies are required.
 | `score_threshold` | `0.35` | Minimum semantic relevance to consider. |
 | `enable_summarization` | `True` | Toggle for summary generation loop. |
 | `openai_base_url` | *required* | Base URL for LLM calls (can point to OpenAI-compatible proxies). |
-| `enable_git_versioning` | `False` | Toggle to enable/disable Git versioning of the memory store. |
+| `enable_git_versioning` | `True` | Toggle to enable/disable Git versioning of the memory store. |
 | `start_watcher` | `False` | Start a file watcher to keep Chroma in sync with on-disk edits. |

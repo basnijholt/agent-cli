@@ -1,0 +1,115 @@
+---
+icon: lucide/mic
+---
+
+# Agent CLI
+
+A collection of **local-first**, AI-powered command-line agents that run entirely on your machine.
+
+<img src="https://raw.githubusercontent.com/basnijholt/agent-cli/refs/heads/main/.github/logo.svg" alt="agent-cli logo" style="width: 250px; float: right; margin-left: 20px;" />
+
+## What is Agent CLI?
+
+Agent CLI provides a suite of powerful tools for voice and text interaction, designed for privacy, offline capability, and seamless integration with system-wide hotkeys and workflows.
+
+!!! important "Local and Private by Design"
+    All agents are designed to run **100% locally**. Your data—whether from your clipboard, microphone, or files—is never sent to any cloud API. This ensures your privacy and allows the tools to work completely offline.
+
+    You can also optionally configure the agents to use OpenAI/Gemini services.
+
+## Quick Demo
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/7sBTCgttH48" title="Agent-CLI Demo" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+
+## Why I Built This
+
+I got tired of typing long prompts to LLMs. Speaking is faster, so I built this tool to transcribe my voice directly to the clipboard with a hotkey.
+
+**What it does:**
+
+- Voice transcription to clipboard with system-wide hotkeys (Cmd+Shift+R on macOS)
+- Autocorrect any text from your clipboard
+- Edit clipboard content with voice commands ("make this more formal")
+- Runs locally—no internet required, your audio stays on your machine
+- Works with any app that can copy/paste
+
+I use it mostly for the `transcribe` function when working with LLMs. Being able to speak naturally means I can provide more context without the typing fatigue.
+
+## Features
+
+| Command | Description |
+|---------|-------------|
+| [`autocorrect`](commands/autocorrect.md) | Correct grammar and spelling using a local LLM |
+| [`transcribe`](commands/transcribe.md) | Transcribe audio from your microphone to clipboard |
+| [`transcribe-daemon`](commands/transcribe-daemon.md) | Continuous background transcription with VAD |
+| [`speak`](commands/speak.md) | Convert text to speech using a local TTS engine |
+| [`voice-edit`](commands/voice-edit.md) | Edit clipboard text with voice commands |
+| [`assistant`](commands/assistant.md) | Wake word-based voice assistant |
+| [`chat`](commands/chat.md) | Conversational AI with tool-calling capabilities |
+| [`rag-proxy`](commands/rag-proxy.md) | Chat with your documents via RAG |
+| [`memory`](commands/memory.md) | Long-term memory system for conversations |
+
+## Quick Start
+
+### Just want the CLI tool?
+
+If you already have AI services running (or plan to use OpenAI):
+
+```bash
+# Using uv (recommended)
+uv tool install agent-cli
+
+# Using pip
+pip install agent-cli
+```
+
+Then use it:
+
+```bash
+agent-cli autocorrect "this has an eror"
+```
+
+### Want automatic setup with everything?
+
+```bash
+# 1. Install agent-cli
+uv tool install agent-cli
+
+# 2. Install all required services
+agent-cli install-services
+
+# 3. Start all services
+agent-cli start-services
+
+# 4. (Optional) Set up system-wide hotkeys
+agent-cli install-hotkeys
+
+# 5. Use it!
+agent-cli autocorrect "this has an eror"
+```
+
+The setup automatically installs:
+
+- :white_check_mark: Package managers (Homebrew/uv) if needed
+- :white_check_mark: All AI services (Ollama, Whisper, TTS, etc.)
+- :white_check_mark: The `agent-cli` tool
+- :white_check_mark: System dependencies
+- :white_check_mark: Hotkey managers (if using hotkey scripts)
+
+## Requirements
+
+- [uv](https://docs.astral.sh/uv/) (recommended) or Python 3.11+
+- A microphone (for voice features)
+- Speakers (for text-to-speech features)
+
+## Documentation
+
+- [Getting Started](getting-started.md) - Installation and first steps
+- [Configuration](configuration.md) - All configuration options
+- [Commands](commands/index.md) - CLI reference
+- [System Integration](system-integration.md) - Hotkeys and system setup
+- [Architecture](architecture/index.md) - How it works under the hood
+
+## License
+
+MIT

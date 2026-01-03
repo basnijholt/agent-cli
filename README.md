@@ -143,7 +143,7 @@ The setup scripts automatically install:
   - [Installation Commands](#installation-commands)
   - [Configuration](#configuration)
     - [Managing Configuration](#managing-configuration)
-    - [Service Provider](#service-provider)
+    - [Provider Defaults](#provider-defaults)
   - [`autocorrect`](#autocorrect)
   - [`transcribe`](#transcribe)
   - [`transcribe-daemon`](#transcribe-daemon)
@@ -404,14 +404,18 @@ agent-cli config edit
 
 An example configuration file is also provided in [`example.agent-cli-config.toml`](./example.agent-cli-config.toml).
 
-#### Service Provider
+#### Provider Defaults
 
-You can choose to use local services (Wyoming/Ollama) or OpenAI services by setting the `service_provider` option in the `[defaults]` section of your configuration file.
+You can choose local or cloud services per capability by setting provider keys in
+the `[defaults]` section of your configuration file.
 
 ```toml
 [defaults]
-# service_provider = "openai"  # 'ollama' or 'openai' ('local' is a deprecated alias for ollama)
+# llm_provider = "ollama"  # 'ollama', 'openai', or 'gemini'
+# asr_provider = "wyoming" # 'wyoming' or 'openai'
+# tts_provider = "wyoming" # 'wyoming', 'openai', or 'kokoro'
 # openai_api_key = "sk-..."
+# gemini_api_key = "..."
 ```
 
 ### `autocorrect`
@@ -1132,7 +1136,7 @@ uv tool install "agent-cli[vad]"
 **How to Use It:**
 
 - **Start the agent**: `agent-cli assistant --wake-word "ok_nabu" --input-device-index 1`
-- **With TTS**: `agent-cli assistant --wake-word "ok_nabu" --tts --voice "en_US-lessac-medium"`
+- **With TTS**: `agent-cli assistant --wake-word "ok_nabu" --tts --tts-wyoming-voice "en_US-lessac-medium"`
 
 <details>
 <summary>See the output of <code>agent-cli assistant --help</code></summary>

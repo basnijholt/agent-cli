@@ -72,3 +72,4 @@ temp_rag_*/
 memory_db
 rag_db/
 *.log
+site/
