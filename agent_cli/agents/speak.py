@@ -35,6 +35,7 @@ async def _async_main(
     wyoming_tts_cfg: config.WyomingTTS,
     openai_tts_cfg: config.OpenAITTS,
     kokoro_tts_cfg: config.KokoroTTS,
+    gemini_tts_cfg: config.GeminiTTS | None = None,
 ) -> None:
     """Async entry point for the speak command."""
     # We only use setup_devices for its output device handling
@@ -63,6 +64,7 @@ async def _async_main(
             wyoming_tts_cfg=wyoming_tts_cfg,
             openai_tts_cfg=openai_tts_cfg,
             kokoro_tts_cfg=kokoro_tts_cfg,
+            gemini_tts_cfg=gemini_tts_cfg,
             save_file=general_cfg.save_file,
             quiet=general_cfg.quiet,
             logger=LOGGER,
@@ -102,6 +104,10 @@ def speak(
     tts_kokoro_model: str = opts.TTS_KOKORO_MODEL,
     tts_kokoro_voice: str = opts.TTS_KOKORO_VOICE,
     tts_kokoro_host: str = opts.TTS_KOKORO_HOST,
+    # Gemini
+    tts_gemini_model: str = opts.TTS_GEMINI_MODEL,
+    tts_gemini_voice: str = opts.TTS_GEMINI_VOICE,
+    gemini_api_key: str | None = opts.GEMINI_API_KEY,
     # --- General Options ---
     list_devices: bool = opts.LIST_DEVICES,
     save_file: Path | None = opts.SAVE_FILE,
@@ -166,6 +172,11 @@ def speak(
             tts_kokoro_voice=tts_kokoro_voice,
             tts_kokoro_host=tts_kokoro_host,
         )
+        gemini_tts_cfg = config.GeminiTTS(
+            tts_gemini_model=tts_gemini_model,
+            tts_gemini_voice=tts_gemini_voice,
+            gemini_api_key=gemini_api_key,
+        )
 
         asyncio.run(
             _async_main(
@@ -176,5 +187,6 @@ def speak(
                 wyoming_tts_cfg=wyoming_tts_cfg,
                 openai_tts_cfg=openai_tts_cfg,
                 kokoro_tts_cfg=kokoro_tts_cfg,
+                gemini_tts_cfg=gemini_tts_cfg,
             ),
         )

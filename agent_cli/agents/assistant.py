@@ -179,6 +179,7 @@ async def _async_main(
     wyoming_tts_cfg: config.WyomingTTS,
     openai_tts_cfg: config.OpenAITTS,
     kokoro_tts_cfg: config.KokoroTTS,
+    gemini_tts_cfg: config.GeminiTTS,
     wake_word_cfg: config.WakeWord,
     system_prompt: str,
     agent_instructions: str,
@@ -241,6 +242,7 @@ async def _async_main(
                 wyoming_tts_cfg=wyoming_tts_cfg,
                 openai_tts_cfg=openai_tts_cfg,
                 kokoro_tts_cfg=kokoro_tts_cfg,
+                gemini_tts_cfg=gemini_tts_cfg,
                 system_prompt=system_prompt,
                 agent_instructions=agent_instructions,
                 live=live,
@@ -293,6 +295,8 @@ def assistant(
     tts_kokoro_model: str = opts.TTS_KOKORO_MODEL,
     tts_kokoro_voice: str = opts.TTS_KOKORO_VOICE,
     tts_kokoro_host: str = opts.TTS_KOKORO_HOST,
+    tts_gemini_model: str = opts.TTS_GEMINI_MODEL,
+    tts_gemini_voice: str = opts.TTS_GEMINI_VOICE,
     # --- Process Management ---
     stop: bool = opts.STOP,
     status: bool = opts.STATUS,
@@ -393,6 +397,11 @@ def assistant(
             tts_kokoro_voice=tts_kokoro_voice,
             tts_kokoro_host=tts_kokoro_host,
         )
+        gemini_tts_cfg = config.GeminiTTS(
+            tts_gemini_model=tts_gemini_model,
+            tts_gemini_voice=tts_gemini_voice,
+            gemini_api_key=gemini_api_key,
+        )
         wake_word_cfg = config.WakeWord(
             wake_server_ip=wake_server_ip,
             wake_server_port=wake_server_port,
@@ -424,6 +433,7 @@ def assistant(
                 wyoming_tts_cfg=wyoming_tts_cfg,
                 openai_tts_cfg=openai_tts_cfg,
                 kokoro_tts_cfg=kokoro_tts_cfg,
+                gemini_tts_cfg=gemini_tts_cfg,
                 wake_word_cfg=wake_word_cfg,
                 system_prompt=system_prompt,
                 agent_instructions=agent_instructions,

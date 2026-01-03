@@ -68,6 +68,9 @@ tts-openai-voice = "alloy"
 # tts-kokoro-model = "kokoro"
 # tts-kokoro-voice = "af_sky"
 # tts-kokoro-host = "http://localhost:8880/v1"
+# Gemini TTS
+# tts-gemini-model = "gemini-2.5-flash-preview-tts"
+# tts-gemini-voice = "Kore"
 
 # --- Embedding Model (for RAG and Memory) ---
 # Used by rag-proxy and memory-proxy for vectorization.

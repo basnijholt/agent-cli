@@ -55,7 +55,7 @@ agent-cli chat --last-n-messages 100 --history-dir ~/.my-chat-history
 |--------|---------|-------------|
 | `--asr-provider` | `wyoming` | The ASR provider to use ('wyoming', 'openai', 'gemini'). |
 | `--llm-provider` | `ollama` | The LLM provider to use ('ollama', 'openai', 'gemini'). |
-| `--tts-provider` | `wyoming` | The TTS provider to use ('wyoming', 'openai', 'kokoro'). |
+| `--tts-provider` | `wyoming` | The TTS provider to use ('wyoming', 'openai', 'kokoro', 'gemini'). |
 
 ### Audio Input
 
@@ -142,6 +142,13 @@ agent-cli chat --last-n-messages 100 --history-dir ~/.my-chat-history
 | `--tts-kokoro-model` | `kokoro` | The Kokoro model to use for TTS. |
 | `--tts-kokoro-voice` | `af_sky` | The voice to use for Kokoro TTS. |
 | `--tts-kokoro-host` | `http://localhost:8880/v1` | The base URL for the Kokoro API. |
+
+### Audio Output: Gemini
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--tts-gemini-model` | `gemini-2.5-flash-preview-tts` | The Gemini model to use for TTS. |
+| `--tts-gemini-voice` | `Kore` | The voice to use for Gemini TTS (e.g., 'Kore', 'Puck', 'Charon', 'Fenrir'). |
 
 ### Process Management
 

@@ -32,7 +32,7 @@ ASR_PROVIDER: str = typer.Option(
 TTS_PROVIDER: str = typer.Option(
     "wyoming",
     "--tts-provider",
-    help="The TTS provider to use ('wyoming', 'openai', 'kokoro').",
+    help="The TTS provider to use ('wyoming', 'openai', 'kokoro', 'gemini').",
     rich_help_panel="Provider Selection",
 )
 
@@ -278,6 +278,20 @@ TTS_KOKORO_HOST: str = typer.Option(
     "--tts-kokoro-host",
     help="The base URL for the Kokoro API.",
     rich_help_panel="Audio Output: Kokoro",
+)
+
+# Gemini TTS
+TTS_GEMINI_MODEL: str = typer.Option(
+    "gemini-2.5-flash-preview-tts",
+    "--tts-gemini-model",
+    help="The Gemini model to use for TTS.",
+    rich_help_panel="Audio Output: Gemini",
+)
+TTS_GEMINI_VOICE: str = typer.Option(
+    "Kore",
+    "--tts-gemini-voice",
+    help="The voice to use for Gemini TTS (e.g., 'Kore', 'Puck', 'Charon', 'Fenrir').",
+    rich_help_panel="Audio Output: Gemini",
 )
 
 

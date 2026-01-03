@@ -28,6 +28,7 @@ def get_configs() -> tuple[
     config.WyomingTTS,
     config.OpenAITTS,
     config.KokoroTTS,
+    config.GeminiTTS,
 ]:
     """Get all the necessary configs for the e2e test."""
     provider_cfg = config.ProviderSelection(
@@ -67,6 +68,11 @@ def get_configs() -> tuple[
         tts_kokoro_voice="alloy",
         tts_kokoro_host="http://localhost:8000/v1",
     )
+    gemini_tts_cfg = config.GeminiTTS(
+        tts_gemini_model="gemini-2.5-flash-preview-tts",
+        tts_gemini_voice="Kore",
+        gemini_api_key="test-key",
+    )
     return (
         provider_cfg,
         general_cfg,
@@ -81,6 +87,7 @@ def get_configs() -> tuple[
         wyoming_tts_cfg,
         openai_tts_cfg,
         kokoro_tts_cfg,
+        gemini_tts_cfg,
     )
 
 
@@ -116,6 +123,7 @@ async def test_voice_edit_e2e(
         wyoming_tts_cfg,
         openai_tts_cfg,
         kokoro_tts_cfg,
+        gemini_tts_cfg,
     ) = get_configs()
 
     # This test focuses on the main loop, so we stop it after one run
@@ -138,6 +146,7 @@ async def test_voice_edit_e2e(
             wyoming_tts_cfg=wyoming_tts_cfg,
             openai_tts_cfg=openai_tts_cfg,
             kokoro_tts_cfg=kokoro_tts_cfg,
+            gemini_tts_cfg=gemini_tts_cfg,
         )
 
     # Assertions
@@ -166,6 +175,7 @@ async def test_voice_edit_e2e(
         wyoming_tts_cfg=wyoming_tts_cfg,
         openai_tts_cfg=openai_tts_cfg,
         kokoro_tts_cfg=kokoro_tts_cfg,
+        gemini_tts_cfg=gemini_tts_cfg,
         system_prompt=SYSTEM_PROMPT,
         agent_instructions=AGENT_INSTRUCTIONS,
         live=ANY,
