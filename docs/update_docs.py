@@ -25,7 +25,7 @@ def find_markdown_files_with_code_blocks(docs_dir: Path) -> list[Path]:
     return sorted(files_with_code)
 
 
-def run_markdown_code_runner(files: list[Path]) -> bool:
+def run_markdown_code_runner(files: list[Path], repo_root: Path) -> bool:
     """Run markdown-code-runner on all files. Returns True if all succeeded."""
     if not files:
         console.print("No files with CODE:START markers found.")
@@ -33,12 +33,13 @@ def run_markdown_code_runner(files: list[Path]) -> bool:
 
     console.print(f"Found {len(files)} file(s) with auto-generated content:")
     for f in files:
-        console.print(f"  - {f}")
+        console.print(f"  - {f.relative_to(repo_root)}")
     console.print()
 
     all_success = True
     for file in files:
-        console.print(f"Updating {file}...", end=" ")
+        rel_path = file.relative_to(repo_root)
+        console.print(f"Updating {rel_path}...", end=" ")
         result = subprocess.run(
             ["markdown-code-runner", str(file)],  # noqa: S607
             check=False,
@@ -57,13 +58,14 @@ def run_markdown_code_runner(files: list[Path]) -> bool:
 
 def main() -> int:
     """Main entry point."""
-    docs_dir = Path(__file__).parent
+    repo_root = Path(__file__).parent.parent
+    docs_dir = repo_root / "docs"
     if not docs_dir.exists():
         console.print(f"[red]Error:[/red] docs directory not found at {docs_dir}")
         return 1
 
     files = find_markdown_files_with_code_blocks(docs_dir)
-    success = run_markdown_code_runner(files)
+    success = run_markdown_code_runner(files, repo_root)
     return 0 if success else 1
 
 
