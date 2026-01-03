@@ -38,6 +38,13 @@ agent-cli config show --raw
 agent-cli config edit
 ```
 
+## Related
+
+- [Commands Reference](commands/index.md) - Command-specific flags and usage
+- [Architecture](architecture/index.md) - How configuration is loaded and applied
+- [memory](commands/memory.md) - Memory proxy config keys
+- [rag-proxy](commands/rag-proxy.md) - RAG proxy config keys
+
 ## Example Configuration
 
 Here's an example configuration file showing common options:

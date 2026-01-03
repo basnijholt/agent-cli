@@ -192,4 +192,10 @@ entries/
       summary.md
 ```
 
-See `docs/architecture/memory.md` for the full schema and metadata format.
+See [Memory System Architecture](../architecture/memory.md) for the full schema and metadata format.
+
+## Related
+
+- [Configuration](../configuration.md) - Config file keys for memory proxy defaults
+- [rag-proxy](rag-proxy.md) - Document RAG proxy server (contrast with memory)
+- [RAG System Architecture](../architecture/rag.md) - How RAG indexing and retrieval works

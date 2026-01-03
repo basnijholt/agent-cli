@@ -114,6 +114,13 @@ Rich documents (converted via MarkItDown):
                         └─────────────────┘
 ```
 
+## Related
+
+- [RAG System Architecture](../architecture/rag.md) - Detailed design and data flow
+- [memory](memory.md) - Long-term memory proxy (different retrieval and storage model)
+- [Memory System Architecture](../architecture/memory.md) - How memory storage works
+- [Configuration](../configuration.md) - Config file keys and defaults
+
 ## Usage with Other Clients
 
 Any OpenAI-compatible client can use the RAG proxy:

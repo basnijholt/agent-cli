@@ -37,6 +37,13 @@ LLMs are stateless. Every conversation starts fresh. They don't remember you tol
 
 A local-first system that gives LLMs persistent memory across conversations, with the twist that everything stays human-readable files on disk and it uses smarter scoring (recency + diversity + relevance) instead of just embedding similarity.
 
+### Related
+
+- [memory command](../commands/memory.md) - How to run the memory proxy and add memories
+- [Configuration](../configuration.md) - Config file keys and defaults
+- [RAG System Architecture](rag.md) - Related retrieval stack for documents
+- [rag-proxy command](../commands/rag-proxy.md) - Document retrieval server
+
 ### Try It Now
 
 Get an LLM that remembers you using [Ollama](https://ollama.com). Two options:

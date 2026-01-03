@@ -47,6 +47,11 @@ These commands help set up Agent CLI and its services:
 |---------|---------|
 | [`config`](config.md) | Manage configuration (init, show, edit) |
 
+## Related
+
+- [Configuration](../configuration.md) - Config file keys and defaults
+- [Architecture](../architecture/index.md) - How the system fits together
+
 ## Common Options
 
 Most commands support these options (audio/text agents and servers). Installation

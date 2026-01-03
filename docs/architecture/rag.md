@@ -31,6 +31,13 @@ LLMs only know what they were trained on. They don't know your company docs, you
 
 A local proxy that gives LLMs access to your documents using smarter multi-stage retrieval instead of the naive "find similar text" approach most tools use, while keeping everything as readable files on disk.
 
+### Related
+
+- [rag-proxy command](../commands/rag-proxy.md) - How to run the server
+- [Configuration](../configuration.md) - Config file keys and defaults
+- [Memory System Architecture](memory.md) - How memory differs from RAG
+- [memory command](../commands/memory.md) - Memory proxy usage
+
 ### Try It Now
 
 Chat with your documents using [Ollama](https://ollama.com). Two options:
@@ -356,6 +363,8 @@ File system events trigger incremental updates:
 ---
 
 ## 8. Comparison with Memory System
+
+See [Memory System Architecture](memory.md) for the memory-specific pipeline and storage details.
 
 The RAG proxy and memory system share some infrastructure but serve different purposes:
 

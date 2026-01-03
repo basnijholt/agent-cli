@@ -10,6 +10,8 @@ How Agent CLI works under the hood.
 
 Agent CLI is built around a modular service architecture where different AI capabilities are provided by interchangeable backends.
 
+For usage and flags, see [Commands Reference](../commands/index.md) and [Configuration](../configuration.md).
+
 ```
 ┌────────────────────────────────────────────────────────────────┐
 │                          Agent CLI                             │
@@ -124,10 +126,12 @@ Commands that run as background processes use a PID file system:
 ## Memory System
 
 See [Memory System Architecture](memory.md) for details on the long-term memory implementation.
+Usage: [memory command](../commands/memory.md).
 
 ## RAG System
 
 See [RAG System Architecture](rag.md) for details on the document retrieval system.
+Usage: [rag-proxy command](../commands/rag-proxy.md).
 
 ## Dependencies
 
