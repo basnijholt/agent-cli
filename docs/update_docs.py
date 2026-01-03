@@ -59,12 +59,8 @@ def run_markdown_code_runner(files: list[Path], repo_root: Path) -> bool:
 def main() -> int:
     """Main entry point."""
     repo_root = Path(__file__).parent.parent
-    docs_dir = repo_root / "docs"
-    if not docs_dir.exists():
-        console.print(f"[red]Error:[/red] docs directory not found at {docs_dir}")
-        return 1
 
-    files = find_markdown_files_with_code_blocks(docs_dir)
+    files = find_markdown_files_with_code_blocks(repo_root)
     success = run_markdown_code_runner(files, repo_root)
     return 0 if success else 1
 
