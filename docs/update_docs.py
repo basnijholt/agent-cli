@@ -16,11 +16,12 @@ console = Console()
 
 
 def find_markdown_files_with_code_blocks(docs_dir: Path) -> list[Path]:
-    """Find all markdown files containing CODE:START markers."""
+    """Find all markdown files containing markdown-code-runner markers."""
     files_with_code = []
     for md_file in docs_dir.rglob("*.md"):
         content = md_file.read_text()
-        if "<!-- CODE:START -->" in content:
+        # Match both CODE:START and CODE:BASH:START patterns
+        if "<!-- CODE:START -->" in content or "<!-- CODE:BASH:START -->" in content:
             files_with_code.append(md_file)
     return sorted(files_with_code)
 
