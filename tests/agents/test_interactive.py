@@ -112,6 +112,11 @@ async def test_async_main_list_devices(tmp_path: Path) -> None:
         tts_kokoro_voice="alloy",
         tts_kokoro_host="http://localhost:8000/v1",
     )
+    gemini_tts_cfg = config.GeminiTTS(
+        tts_gemini_model="gemini-2.5-flash-preview-tts",
+        tts_gemini_voice="Kore",
+        gemini_api_key="test-key",
+    )
 
     with (
         patch(
@@ -134,6 +139,7 @@ async def test_async_main_list_devices(tmp_path: Path) -> None:
             wyoming_tts_cfg=wyoming_tts_cfg,
             openai_tts_cfg=openai_tts_cfg,
             kokoro_tts_cfg=kokoro_tts_cfg,
+            gemini_tts_cfg=gemini_tts_cfg,
         )
         mock_setup_devices.assert_called_once()
 
@@ -175,6 +181,11 @@ async def test_async_main_list_output_devices(tmp_path: Path) -> None:
         tts_kokoro_voice="alloy",
         tts_kokoro_host="http://localhost:8000/v1",
     )
+    gemini_tts_cfg = config.GeminiTTS(
+        tts_gemini_model="gemini-2.5-flash-preview-tts",
+        tts_gemini_voice="Kore",
+        gemini_api_key="test-key",
+    )
 
     with (
         patch(
@@ -197,6 +208,7 @@ async def test_async_main_list_output_devices(tmp_path: Path) -> None:
             wyoming_tts_cfg=wyoming_tts_cfg,
             openai_tts_cfg=openai_tts_cfg,
             kokoro_tts_cfg=kokoro_tts_cfg,
+            gemini_tts_cfg=gemini_tts_cfg,
         )
         mock_setup_devices.assert_called_once()
 
@@ -245,6 +257,11 @@ async def test_async_main_full_loop(tmp_path: Path) -> None:
         tts_kokoro_voice="alloy",
         tts_kokoro_host="http://localhost:8000/v1",
     )
+    gemini_tts_cfg = config.GeminiTTS(
+        tts_gemini_model="gemini-2.5-flash-preview-tts",
+        tts_gemini_voice="Kore",
+        gemini_api_key="test-key",
+    )
 
     with (
         patch("agent_cli.agents.chat.setup_devices", return_value=(1, "mock_input", 1)),
@@ -284,6 +301,7 @@ async def test_async_main_full_loop(tmp_path: Path) -> None:
             wyoming_tts_cfg=wyoming_tts_cfg,
             openai_tts_cfg=openai_tts_cfg,
             kokoro_tts_cfg=kokoro_tts_cfg,
+            gemini_tts_cfg=gemini_tts_cfg,
         )
 
         # Verify that the core functions were called
@@ -298,6 +316,7 @@ async def test_async_main_full_loop(tmp_path: Path) -> None:
             wyoming_tts_cfg=wyoming_tts_cfg,
             openai_tts_cfg=openai_tts_cfg,
             kokoro_tts_cfg=kokoro_tts_cfg,
+            gemini_tts_cfg=gemini_tts_cfg,
             save_file=None,
             quiet=False,
             logger=mock_tts.call_args.kwargs["logger"],
