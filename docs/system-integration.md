@@ -42,6 +42,8 @@ cmd + shift + v : /path/to/agent-cli voice-edit --toggle --input-device-index 1
 cmd + shift + s : /path/to/agent-cli speak
 ```
 
+See: [`transcribe`](commands/transcribe.md), [`autocorrect`](commands/autocorrect.md), [`voice-edit`](commands/voice-edit.md), [`speak`](commands/speak.md)
+
 Reload skhd:
 
 ```bash

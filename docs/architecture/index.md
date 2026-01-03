@@ -110,10 +110,12 @@ Commands that run as background processes use a PID file system:
 
 ```
 ~/.cache/agent-cli/
-├── transcribe.pid
-├── voice-edit.pid
+├── assistant.pid
 ├── chat.pid
-└── assistant.pid
+├── speak.pid
+├── transcribe.pid
+├── transcribe-daemon.pid
+└── voice-edit.pid
 
 ~/.config/agent-cli/
 ├── config.toml              # Configuration
