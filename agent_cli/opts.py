@@ -249,7 +249,7 @@ TTS_OPENAI_MODEL: str = typer.Option(
 TTS_OPENAI_VOICE: str = typer.Option(
     "alloy",
     "--tts-openai-voice",
-    help="The voice to use for OpenAI TTS.",
+    help="The voice to use for OpenAI-compatible TTS.",
     rich_help_panel="Audio Output: OpenAI-compatible",
 )
 TTS_OPENAI_BASE_URL: str | None = typer.Option(

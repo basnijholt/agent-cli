@@ -208,7 +208,7 @@ async def _synthesize_speech_openai(
     logger: logging.Logger,
     **_kwargs: object,
 ) -> bytes | None:
-    """Synthesize speech from text using OpenAI TTS server."""
+    """Synthesize speech from text using OpenAI-compatible TTS server."""
     return await synthesize_speech_openai(
         text=text,
         openai_tts_cfg=openai_tts_cfg,

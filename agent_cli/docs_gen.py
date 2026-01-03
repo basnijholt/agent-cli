@@ -251,8 +251,8 @@ def provider_matrix() -> str:
     return """| Capability | Local (Default) | Cloud Options |
 |------------|-----------------|---------------|
 | **LLM** | Ollama (`ollama`) | OpenAI (`openai`), Gemini (`gemini`) |
-| **ASR** (Speech-to-Text) | Wyoming/Faster Whisper (`wyoming`) | OpenAI Whisper (`openai`) |
-| **TTS** (Text-to-Speech) | Wyoming/Piper (`wyoming`), Kokoro (`kokoro`) | OpenAI TTS (`openai`) |
+| **ASR** (Speech-to-Text) | Wyoming/Faster Whisper (`wyoming`) | OpenAI-compatible Whisper (`openai`), Gemini (`gemini`) |
+| **TTS** (Text-to-Speech) | Wyoming/Piper (`wyoming`), Kokoro (`kokoro`) | OpenAI-compatible TTS (`openai`) |
 | **Wake Word** | Wyoming/openWakeWord | - |"""
 
 
