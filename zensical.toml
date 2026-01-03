@@ -127,3 +127,9 @@ link = "https://www.youtube.com/watch?v=7sBTCgttH48"
 # Enable GitHub-style admonitions (> [!NOTE], > [!TIP], etc.)
 # This converts them to Zensical's native !!! syntax during build
 [project.markdown_extensions.gfm_admonition]
+
+# Enable syntax highlighting for fenced code blocks
+[project.markdown_extensions.pymdownx.highlight]
+anchor_linenums = true
+
+[project.markdown_extensions.pymdownx.superfences]

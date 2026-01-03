@@ -37,11 +37,11 @@ jobs:
       - name: Set up Python
         run: uv python install 3.12
 
-      - name: Install Zensical with extensions
-        run: uv tool install zensical --with markdown-gfm-admonition
+      - name: Install dependencies
+        run: uv sync
 
       - name: Build docs
-        run: zensical build
+        run: uv run zensical build
 
       - name: Setup Pages
         if: github.event_name != 'pull_request'

@@ -91,6 +91,8 @@ dev = [
     "notebook",
     "audiostretchy>=1.3.0",
     "pre-commit-uv>=4.1.4",
+    "zensical",
+    "markdown-gfm-admonition",
 ]
 
 [project.scripts]
