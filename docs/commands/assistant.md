@@ -53,7 +53,7 @@ agent-cli assistant --wake-server-ip 192.168.1.100 --wake-server-port 10400
 |--------|---------|-------------|
 | `--asr-provider` | `wyoming` | The ASR provider to use ('wyoming', 'openai', 'gemini'). |
 | `--llm-provider` | `ollama` | The LLM provider to use ('ollama', 'openai', 'gemini'). |
-| `--tts-provider` | `wyoming` | The TTS provider to use ('wyoming', 'openai', 'kokoro'). |
+| `--tts-provider` | `wyoming` | The TTS provider to use ('wyoming', 'openai', 'kokoro', 'gemini'). |
 
 ### Wake Word
 

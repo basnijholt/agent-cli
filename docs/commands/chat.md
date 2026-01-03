@@ -55,7 +55,7 @@ agent-cli chat --last-n-messages 100 --history-dir ~/.my-chat-history
 |--------|---------|-------------|
 | `--asr-provider` | `wyoming` | The ASR provider to use ('wyoming', 'openai', 'gemini'). |
 | `--llm-provider` | `ollama` | The LLM provider to use ('ollama', 'openai', 'gemini'). |
-| `--tts-provider` | `wyoming` | The TTS provider to use ('wyoming', 'openai', 'kokoro'). |
+| `--tts-provider` | `wyoming` | The TTS provider to use ('wyoming', 'openai', 'kokoro', 'gemini'). |
 
 ### Audio Input
 
