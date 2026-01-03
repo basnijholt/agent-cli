@@ -33,7 +33,8 @@ Agent CLI provides a suite of powerful tools for voice and text interaction, des
 
 I got tired of typing long prompts to LLMs. Speaking is faster, so I built this tool to transcribe my voice directly to the clipboard with a hotkey.
 
-What it does:
+**What it does:**
+
 - Voice transcription to clipboard with system-wide hotkeys (Cmd+Shift+R on macOS)
 - Autocorrect any text from your clipboard
 - Edit clipboard content with voice commands ("make this more formal")
