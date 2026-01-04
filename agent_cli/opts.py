@@ -381,6 +381,39 @@ TRANSCRIPTION_LOG: Path | None = typer.Option(
     rich_help_panel="General Options",
 )
 
+# --- Memory Options ---
+MEMORY_MODE: str = typer.Option(
+    "tools",
+    "--memory-mode",
+    help="Memory mode: 'off' (disabled), 'tools' (LLM decides via tools), 'auto' (automatic extraction).",
+    rich_help_panel="Memory Options",
+)
+MEMORY_PATH: Path | None = typer.Option(
+    None,
+    "--memory-path",
+    help="Path for memory database storage. Default: ~/.config/agent-cli/memory/vector_db",
+    rich_help_panel="Memory Options",
+)
+MEMORY_EMBEDDING_MODEL: str = typer.Option(
+    DEFAULT_OPENAI_EMBEDDING_MODEL,
+    "--memory-embedding-model",
+    help="Embedding model for semantic memory search.",
+    rich_help_panel="Memory Options",
+)
+MEMORY_TOP_K: int = typer.Option(
+    5,
+    "--memory-top-k",
+    help="Number of memories to retrieve per search.",
+    rich_help_panel="Memory Options",
+)
+MEMORY_SCORE_THRESHOLD: float = typer.Option(
+    0.35,
+    "--memory-score-threshold",
+    help="Minimum relevance score threshold for memory retrieval (0.0-1.0).",
+    rich_help_panel="Memory Options",
+)
+
+
 # --- Server Options ---
 SERVER_HOST: str = typer.Option(
     "0.0.0.0",  # noqa: S104

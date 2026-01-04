@@ -221,6 +221,8 @@ See [Memory System Architecture](../architecture/memory.md) for the full schema 
 
 ## Related
 
+- [chat command](chat.md) - Voice-based chat agent with integrated memory
+- [Memory System Architecture](../architecture/memory.md) - Full technical specification
 - [Configuration](../configuration.md) - Config file keys for memory proxy defaults
 - [rag-proxy](rag-proxy.md) - Document RAG proxy server (contrast with memory)
 - [RAG System Architecture](../architecture/rag.md) - How RAG indexing and retrieval works

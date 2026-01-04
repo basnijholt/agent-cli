@@ -2,99 +2,12 @@
 
 from __future__ import annotations
 
-import json
-import os
 import subprocess
-from datetime import UTC, datetime
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, TypeVar
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
-
-
-# Memory system helpers
-
-
-def _get_memory_file_path() -> Path:
-    """Get the path to the memory file.
-
-    If the environment variable ``AGENT_CLI_HISTORY_DIR`` is set (by the
-    running agent), store the memory file in that directory.
-    Otherwise fall back to the user's config directory.
-    """
-    history_dir = os.getenv("AGENT_CLI_HISTORY_DIR")
-    if history_dir:
-        return Path(history_dir).expanduser() / "long_term_memory.json"
-
-    return Path.home() / ".config" / "agent-cli" / "memory" / "long_term_memory.json"
-
-
-def _load_memories() -> list[dict[str, Any]]:
-    """Load memories from file, returning empty list if file doesn't exist."""
-    memory_file = _get_memory_file_path()
-    if not memory_file.exists():
-        return []
-
-    with memory_file.open("r") as f:
-        return json.load(f)
-
-
-def _save_memories(memories: list[dict[str, Any]]) -> None:
-    """Save memories to file, creating directories if needed."""
-    memory_file = _get_memory_file_path()
-    memory_file.parent.mkdir(parents=True, exist_ok=True)
-
-    with memory_file.open("w") as f:
-        json.dump(memories, f, indent=2)
-
-
-def _find_memory_by_id(memories: list[dict[str, Any]], memory_id: int) -> dict[str, Any] | None:
-    """Find a memory by ID in the memories list."""
-    for memory in memories:
-        if memory["id"] == memory_id:
-            return memory
-    return None
-
-
-def _format_memory_summary(memory: dict[str, Any]) -> str:
-    """Format a memory for display in search results."""
-    return (
-        f"ID: {memory['id']} | Category: {memory['category']} | "
-        f"Content: {memory['content']} | Tags: {', '.join(memory['tags'])}"
-    )
-
-
-def _format_memory_detailed(memory: dict[str, Any]) -> str:
-    """Format a memory with full details for listing."""
-    created = datetime.fromisoformat(memory["timestamp"]).strftime("%Y-%m-%d %H:%M")
-    updated_info = ""
-    if "updated_at" in memory:
-        updated = datetime.fromisoformat(memory["updated_at"]).strftime("%Y-%m-%d %H:%M")
-        updated_info = f" (updated: {updated})"
-
-    return (
-        f"ID: {memory['id']} | Category: {memory['category']}\n"
-        f"Content: {memory['content']}\n"
-        f"Tags: {', '.join(memory['tags']) if memory['tags'] else 'None'}\n"
-        f"Created: {created}{updated_info}\n"
-    )
-
-
-def _parse_tags(tags_string: str) -> list[str]:
-    """Parse comma-separated tags string into a list of clean tags."""
-    return [tag.strip() for tag in tags_string.split(",") if tag.strip()]
-
-
-R = TypeVar("R")
-
-
-def _memory_operation(operation_name: str, operation_func: Callable[[], str]) -> str:
-    """Wrapper for memory operations with consistent error handling."""
-    try:
-        return operation_func()
-    except Exception as e:
-        return f"Error {operation_name}: {e}"
+    from agent_cli.memory.client import MemoryClient
 
 
 def read_file(path: str) -> str:
@@ -133,236 +46,188 @@ def execute_code(code: str) -> str:
         return f"Error: Command not found: {code.split()[0]}"
 
 
-def add_memory(content: str, category: str = "general", tags: str = "") -> str:
-    """Add important information to long-term memory for future conversations.
-
-    Use this when the user shares:
-    - Personal information (name, job, location, family, etc.)
-    - Preferences (favorite foods, work style, communication preferences, etc.)
-    - Important facts they want remembered (birthdays, project details, goals, etc.)
-    - Tasks or commitments they mention
-
-    Always ask for permission before storing personal or sensitive information.
-
-    Args:
-        content: The specific information to remember (be descriptive and clear)
-        category: Type of memory - use "personal", "preferences", "facts", "tasks", "projects", or "general"
-        tags: Comma-separated keywords that would help find this memory later (e.g., "work, python, programming")
-
-    Returns:
-        Confirmation message with the memory ID
-
-    """
-
-    def _add_memory_operation() -> str:
-        memories = _load_memories()
-
-        memory = {
-            "id": len(memories) + 1,
-            "content": content,
-            "category": category,
-            "tags": _parse_tags(tags),
-            "timestamp": datetime.now(UTC).isoformat(),
-        }
-
-        memories.append(memory)
-        _save_memories(memories)
-
-        return f"Memory added successfully with ID {memory['id']}"
-
-    return _memory_operation("adding memory", _add_memory_operation)
+def _format_memory_content(content: str, category: str, tags: str) -> str:
+    """Format memory content with category and tags."""
+    formatted = f"[{category}] {content}"
+    if tags:
+        formatted += f" (tags: {tags})"
+    return formatted
 
 
-def search_memory(query: str, category: str = "") -> str:
-    """Search long-term memory for relevant information before answering questions.
+class MemoryTools:
+    """Memory tools bound to a specific client and conversation."""
 
-    Use this tool:
-    - Before answering questions about the user's preferences, personal info, or past conversations
-    - When the user asks "what do you remember about..." or similar questions
-    - When you need context about the user's work, projects, or goals
-    - To check if you've discussed a topic before
+    def __init__(
+        self,
+        memory_client: MemoryClient | None,
+        conversation_id: str = "default",
+    ) -> None:
+        self._client = memory_client
+        self._conversation_id = conversation_id
 
-    The search looks through memory content and tags for matches.
+    def _check(self) -> str | None:
+        if self._client is None:
+            return "Error: Memory system not initialized. Install with: pip install 'agent-cli[memory]'"
+        return None
 
-    Args:
-        query: Keywords to search for (e.g., "programming languages", "work schedule", "preferences")
-        category: Optional filter by category ("personal", "preferences", "facts", "tasks", "projects")
+    async def add_memory(
+        self,
+        content: str,
+        category: str = "general",
+        tags: str = "",
+    ) -> str:
+        """Add important information to long-term memory for future conversations.
 
-    Returns:
-        Relevant memories found, or message if none found
+        Use this when the user shares:
+        - Personal information (name, job, location, family, etc.)
+        - Preferences (favorite foods, work style, communication preferences, etc.)
+        - Important facts they want remembered (birthdays, project details, goals, etc.)
+        - Tasks or commitments they mention
 
-    """
+        Always ask for permission before storing personal or sensitive information.
 
-    def _search_memory_operation() -> str:
-        memories = _load_memories()
+        Args:
+            content: The specific information to remember (be descriptive and clear)
+            category: Type of memory - use "personal", "preferences", "facts", "tasks", "projects", or "general"
+            tags: Comma-separated keywords that would help find this memory later (e.g., "work, python, programming")
 
-        if not memories:
-            return "No memories found. Memory system not initialized."
+        Returns:
+            Confirmation message
 
-        # Simple text-based search
-        query_lower = query.lower()
-        relevant_memories = []
+        """
+        if error := self._check():
+            return error
 
-        for memory in memories:
-            # Check if query matches content, tags, or category
-            content_match = query_lower in memory["content"].lower()
-            tag_match = any(query_lower in tag.lower() for tag in memory["tags"])
-            category_match = not category or memory["category"].lower() == category.lower()
+        try:
+            formatted = _format_memory_content(content, category, tags)
+            await self._client.add(formatted, conversation_id=self._conversation_id)  # type: ignore[union-attr]
+            return "Memory added successfully."
+        except Exception as e:
+            return f"Error adding memory: {e}"
 
-            if (content_match or tag_match) and category_match:
-                relevant_memories.append(memory)
+    async def search_memory(self, query: str, category: str = "") -> str:
+        """Search long-term memory for relevant information before answering questions.
 
-        if not relevant_memories:
-            return f"No memories found matching '{query}'"
+        Use this tool:
+        - Before answering questions about the user's preferences, personal info, or past conversations
+        - When the user asks "what do you remember about..." or similar questions
+        - When you need context about the user's work, projects, or goals
+        - To check if you've discussed a topic before
 
-        # Format results
-        results = [_format_memory_summary(memory) for memory in relevant_memories[-5:]]
+        This performs semantic search to find conceptually related information.
 
-        return "\n".join(results)
+        Args:
+            query: Keywords to search for (e.g., "programming languages", "work schedule", "preferences")
+            category: Optional filter by category ("personal", "preferences", "facts", "tasks", "projects")
 
-    return _memory_operation("searching memory", _search_memory_operation)
+        Returns:
+            Relevant memories found, or message if none found
 
+        """
+        if error := self._check():
+            return error
 
-def update_memory(memory_id: int, content: str = "", category: str = "", tags: str = "") -> str:
-    """Update an existing memory by ID.
+        search_query = f"{category} {query}" if category else query
 
-    Use this tool:
-    - When the user wants to correct or modify previously stored information
-    - When information has changed (e.g., job change, preference updates)
-    - When the user says "update my memory about..." or "change the memory where..."
+        try:
+            result = await self._client.search(search_query, conversation_id=self._conversation_id)  # type: ignore[union-attr]
+            if not result.entries:
+                return f"No memories found matching '{query}'"
 
-    Only provide the fields that should be updated - empty fields will keep existing values.
+            lines = []
+            for entry in result.entries:
+                score_info = f" (relevance: {entry.score:.2f})" if entry.score else ""
+                lines.append(f"- {entry.content}{score_info}")
+            return "\n".join(lines)
+        except Exception as e:
+            return f"Error searching memory: {e}"
 
-    Args:
-        memory_id: The ID of the memory to update (use search_memory or list_all_memories to find IDs)
-        content: New content for the memory (leave empty to keep existing)
-        category: New category (leave empty to keep existing)
-        tags: New comma-separated tags (leave empty to keep existing)
+    def list_all_memories(self, limit: int = 10) -> str:
+        """List all memories with their details.
 
-    Returns:
-        Confirmation message or error if memory ID not found
+        Use this tool:
+        - When the user asks "show me all my memories" or "list everything you remember"
+        - When they want to see what information is stored
+        - To provide a complete overview of stored information
 
-    """
+        Shows memories in reverse chronological order (newest first).
 
-    def _update_memory_operation() -> str:
-        memories = _load_memories()
+        Args:
+            limit: Maximum number of memories to show (default 10, use higher numbers if user wants more)
 
-        if not memories:
-            return "No memories found. Memory system not initialized."
+        Returns:
+            Formatted list of all memories
 
-        # Find memory to update
-        memory_to_update = _find_memory_by_id(memories, memory_id)
-        if not memory_to_update:
-            return f"Memory with ID {memory_id} not found."
+        """
+        if error := self._check():
+            return error
 
-        # Update fields if provided
-        if content:
-            memory_to_update["content"] = content
-        if category:
-            memory_to_update["category"] = category
-        if tags:
-            memory_to_update["tags"] = _parse_tags(tags)
-
-        # Add update timestamp
-        memory_to_update["updated_at"] = datetime.now(UTC).isoformat()
-
-        _save_memories(memories)
-        return f"Memory ID {memory_id} updated successfully."
-
-    return _memory_operation("updating memory", _update_memory_operation)
-
-
-def list_all_memories(limit: int = 10) -> str:
-    """List all memories with their details.
-
-    Use this tool:
-    - When the user asks "show me all my memories" or "list everything you remember"
-    - When they want to see specific memory IDs for updating or reference
-    - To provide a complete overview of stored information
-
-    Shows memories in reverse chronological order (newest first).
-
-    Args:
-        limit: Maximum number of memories to show (default 10, use higher numbers if user wants more)
-
-    Returns:
-        Formatted list of all memories with IDs, content, categories, and tags
-
-    """
-
-    def _list_all_memories_operation() -> str:
-        memories = _load_memories()
-
-        if not memories:
-            return "No memories stored yet."
-
-        # Sort by ID (newest first) and limit results
-        memories_to_show = sorted(memories, key=lambda x: x["id"], reverse=True)[:limit]
-
-        results = [f"Showing {len(memories_to_show)} of {len(memories)} total memories:\n"]
-        results.extend(_format_memory_detailed(memory) for memory in memories_to_show)
-
-        if len(memories) > limit:
-            results.append(
-                f"... and {len(memories) - limit} more memories. Use a higher limit to see more.",
+        try:
+            entries = self._client.list_all(  # type: ignore[union-attr]
+                conversation_id=self._conversation_id,
+                include_summary=False,
             )
 
-        return "\n".join(results)
+            if not entries:
+                return "No memories stored yet."
 
-    return _memory_operation("listing memories", _list_all_memories_operation)
+            entries_to_show = entries[:limit]
+
+            results = [f"Showing {len(entries_to_show)} of {len(entries)} total memories:\n"]
+            for entry in entries_to_show:
+                created_at = entry.get("created_at", "unknown")
+                role = entry.get("role", "memory")
+                content = entry.get("content", "")
+                results.append(f"- [{role}] {content} (created: {created_at})")
+
+            if len(entries) > limit:
+                results.append(
+                    f"\n... and {len(entries) - limit} more memories. Use a higher limit to see more.",
+                )
+
+            return "\n".join(results)
+        except Exception as e:
+            return f"Error listing memories: {e}"
 
 
-def list_memory_categories() -> str:
-    """List all memory categories and their counts to see what has been remembered.
+def create_memory_tools(
+    memory_client: MemoryClient | None,
+    conversation_id: str = "default",
+) -> list:
+    """Create memory tools bound to a specific client and conversation.
 
-    Use this tool:
-    - When the user asks "what categories do you have?"
-    - To get a quick overview of memory organization
-    - When the user wants to know what types of information are stored
-
-    This provides a summary view before using list_all_memories for details.
+    Args:
+        memory_client: The MemoryClient instance, or None if not available.
+        conversation_id: The conversation ID for scoping memories.
 
     Returns:
-        Summary of memory categories with counts (e.g., "personal: 5 memories")
+        List of pydantic_ai Tool objects for memory operations.
 
     """
+    from pydantic_ai.tools import Tool  # noqa: PLC0415
 
-    def _list_categories_operation() -> str:
-        memories = _load_memories()
-
-        if not memories:
-            return "No memories found. Memory system not initialized."
-
-        # Count categories
-        categories: dict[str, int] = {}
-        for memory in memories:
-            category = memory["category"]
-            categories[category] = categories.get(category, 0) + 1
-
-        if not categories:
-            return "No memory categories found."
-
-        results = ["Memory Categories:"]
-        for category, count in sorted(categories.items()):
-            results.append(f"- {category}: {count} memories")
-
-        return "\n".join(results)
-
-    return _memory_operation("listing categories", _list_categories_operation)
+    mt = MemoryTools(memory_client, conversation_id)
+    return [
+        Tool(mt.add_memory),
+        Tool(mt.search_memory),
+        Tool(mt.list_all_memories),
+    ]
 
 
-def tools() -> list:
-    """Return a list of tools."""
+def tools(memory_client: MemoryClient | None = None, conversation_id: str = "default") -> list:
+    """Return a list of all tools for the chat agent.
+
+    Args:
+        memory_client: The MemoryClient instance, or None if not available.
+        conversation_id: The conversation ID for scoping memories.
+
+    """
     from pydantic_ai.common_tools.duckduckgo import duckduckgo_search_tool  # noqa: PLC0415
     from pydantic_ai.tools import Tool  # noqa: PLC0415
 
     return [
         Tool(read_file),
         Tool(execute_code),
-        Tool(add_memory),
-        Tool(search_memory),
-        Tool(update_memory),
-        Tool(list_all_memories),
-        Tool(list_memory_categories),
+        *create_memory_tools(memory_client, conversation_id),
         duckduckgo_search_tool(),
     ]
