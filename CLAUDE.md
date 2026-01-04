@@ -37,7 +37,7 @@ The codebase uses a **provider pattern** for AI services, allowing switching bet
 |------------|-----------|----------------|
 | ASR (Speech-to-Text) | `wyoming`, `openai`, `gemini` | `services/asr.py` |
 | LLM | `ollama`, `openai`, `gemini` | `services/llm.py` |
-| TTS (Text-to-Speech) | `wyoming`, `openai`, `kokoro` | `services/tts.py` |
+| TTS (Text-to-Speech) | `wyoming`, `openai`, `kokoro`, `gemini` | `services/tts.py` |
 
 Each agent accepts `--{asr,llm,tts}-provider` flags to select the backend.
 
@@ -57,7 +57,7 @@ agent_cli/
 ├── services/           # Provider implementations
 │   ├── asr.py          # Wyoming/OpenAI transcription
 │   ├── llm.py          # Ollama/OpenAI/Gemini LLM calls
-│   └── tts.py          # Wyoming/OpenAI/Kokoro TTS
+│   └── tts.py          # Wyoming/OpenAI/Kokoro/Gemini TTS
 ├── core/               # Shared utilities
 │   ├── audio.py        # Audio recording, device selection
 │   ├── process.py      # Background process management (--toggle, --stop)

@@ -59,6 +59,7 @@ async def test_handle_tts_playback(mock_speak_text: AsyncMock) -> None:
         wyoming_tts_cfg=wyoming_tts_cfg,
         openai_tts_cfg=openai_tts_cfg,
         kokoro_tts_cfg=kokoro_tts_cfg,
+        gemini_tts_cfg=None,
         logger=mock_speak_text.call_args.kwargs["logger"],
         quiet=False,
         play_audio_flag=True,

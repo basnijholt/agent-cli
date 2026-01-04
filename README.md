@@ -898,7 +898,7 @@ uv tool install "agent-cli[vad]"
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Provider Selection ─────────────────────────────────────────────────────────╮
 │ --tts-provider        TEXT  The TTS provider to use ('wyoming', 'openai',    │
-│                             'kokoro').                                       │
+│                             'kokoro', 'gemini').                             │
 │                             [default: wyoming]                               │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Audio Output ───────────────────────────────────────────────────────────────╮
@@ -939,6 +939,18 @@ uv tool install "agent-cli[vad]"
 │                                 [default: af_sky]                            │
 │ --tts-kokoro-host         TEXT  The base URL for the Kokoro API.             │
 │                                 [default: http://localhost:8880/v1]          │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Audio Output: Gemini ───────────────────────────────────────────────────────╮
+│ --tts-gemini-model        TEXT  The Gemini model to use for TTS.             │
+│                                 [default: gemini-2.5-flash-preview-tts]      │
+│ --tts-gemini-voice        TEXT  The voice to use for Gemini TTS (e.g.,       │
+│                                 'Kore', 'Puck', 'Charon', 'Fenrir').         │
+│                                 [default: Kore]                              │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ LLM: Gemini ────────────────────────────────────────────────────────────────╮
+│ --gemini-api-key        TEXT  Your Gemini API key. Can also be set with the  │
+│                               GEMINI_API_KEY environment variable.           │
+│                               [env var: GEMINI_API_KEY]                      │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Audio Input ────────────────────────────────────────────────────────────────╮
 │ --list-devices          List available audio input and output devices and    │
@@ -1024,7 +1036,7 @@ uv tool install "agent-cli[vad]"
 │                             'gemini').                                       │
 │                             [default: ollama]                                │
 │ --tts-provider        TEXT  The TTS provider to use ('wyoming', 'openai',    │
-│                             'kokoro').                                       │
+│                             'kokoro', 'gemini').                             │
 │                             [default: wyoming]                               │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Audio Input ────────────────────────────────────────────────────────────────╮
@@ -1118,6 +1130,13 @@ uv tool install "agent-cli[vad]"
 │ --tts-kokoro-host         TEXT  The base URL for the Kokoro API.             │
 │                                 [default: http://localhost:8880/v1]          │
 ╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Audio Output: Gemini ───────────────────────────────────────────────────────╮
+│ --tts-gemini-model        TEXT  The Gemini model to use for TTS.             │
+│                                 [default: gemini-2.5-flash-preview-tts]      │
+│ --tts-gemini-voice        TEXT  The voice to use for Gemini TTS (e.g.,       │
+│                                 'Kore', 'Puck', 'Charon', 'Fenrir').         │
+│                                 [default: Kore]                              │
+╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Process Management ─────────────────────────────────────────────────────────╮
 │ --stop            Stop any running background process.                       │
 │ --status          Check if a background process is running.                  │
@@ -1195,7 +1214,7 @@ uv tool install "agent-cli[vad]"
 │                             'gemini').                                       │
 │                             [default: ollama]                                │
 │ --tts-provider        TEXT  The TTS provider to use ('wyoming', 'openai',    │
-│                             'kokoro').                                       │
+│                             'kokoro', 'gemini').                             │
 │                             [default: wyoming]                               │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Wake Word ──────────────────────────────────────────────────────────────────╮
@@ -1298,6 +1317,13 @@ uv tool install "agent-cli[vad]"
 │ --tts-kokoro-host         TEXT  The base URL for the Kokoro API.             │
 │                                 [default: http://localhost:8880/v1]          │
 ╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Audio Output: Gemini ───────────────────────────────────────────────────────╮
+│ --tts-gemini-model        TEXT  The Gemini model to use for TTS.             │
+│                                 [default: gemini-2.5-flash-preview-tts]      │
+│ --tts-gemini-voice        TEXT  The voice to use for Gemini TTS (e.g.,       │
+│                                 'Kore', 'Puck', 'Charon', 'Fenrir').         │
+│                                 [default: Kore]                              │
+╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Process Management ─────────────────────────────────────────────────────────╮
 │ --stop            Stop any running background process.                       │
 │ --status          Check if a background process is running.                  │
@@ -1382,7 +1408,7 @@ uv tool install "agent-cli[vad]"
 │                             'gemini').                                       │
 │                             [default: ollama]                                │
 │ --tts-provider        TEXT  The TTS provider to use ('wyoming', 'openai',    │
-│                             'kokoro').                                       │
+│                             'kokoro', 'gemini').                             │
 │                             [default: wyoming]                               │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Audio Input ────────────────────────────────────────────────────────────────╮
@@ -1480,6 +1506,13 @@ uv tool install "agent-cli[vad]"
 │                                 [default: af_sky]                            │
 │ --tts-kokoro-host         TEXT  The base URL for the Kokoro API.             │
 │                                 [default: http://localhost:8880/v1]          │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Audio Output: Gemini ───────────────────────────────────────────────────────╮
+│ --tts-gemini-model        TEXT  The Gemini model to use for TTS.             │
+│                                 [default: gemini-2.5-flash-preview-tts]      │
+│ --tts-gemini-voice        TEXT  The voice to use for Gemini TTS (e.g.,       │
+│                                 'Kore', 'Puck', 'Charon', 'Fenrir').         │
+│                                 [default: Kore]                              │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Process Management ─────────────────────────────────────────────────────────╮
 │ --stop            Stop any running background process.                       │

@@ -88,6 +88,7 @@ Most commands support multiple providers:
 - `wyoming` - Local Piper via Wyoming (default)
 - `openai` - OpenAI-compatible TTS API
 - `kokoro` - Local Kokoro TTS
+- `gemini` - Google Gemini TTS API
 
 ## Process Management
 
