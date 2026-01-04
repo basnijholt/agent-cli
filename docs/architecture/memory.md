@@ -39,7 +39,8 @@ A local-first system that gives LLMs persistent memory across conversations, wit
 
 ### Related
 
-- [memory command](../commands/memory.md) - How to run the memory proxy and add memories
+- [chat command](../commands/chat.md) - Voice-based chat agent with integrated advanced memory
+- [memory command](../commands/memory.md) - Memory proxy server for any OpenAI-compatible app
 - [Configuration](../configuration.md) - Config file keys and defaults
 - [RAG System Architecture](rag.md) - Related retrieval stack for documents
 - [rag-proxy command](../commands/rag-proxy.md) - Document retrieval server
