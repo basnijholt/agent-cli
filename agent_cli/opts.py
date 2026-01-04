@@ -382,6 +382,12 @@ TRANSCRIPTION_LOG: Path | None = typer.Option(
 )
 
 # --- Memory Options ---
+MEMORY_MODE: str = typer.Option(
+    "tools",
+    "--memory-mode",
+    help="Memory mode: 'off' (disabled), 'tools' (LLM decides via tools), 'auto' (automatic extraction).",
+    rich_help_panel="Memory Options",
+)
 MEMORY_PATH: Path | None = typer.Option(
     None,
     "--memory-path",

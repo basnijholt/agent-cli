@@ -122,6 +122,30 @@ def _try_init_memory(
     return memory_client
 
 
+def _maybe_init_memory(
+    memory_cfg: config.Memory,
+    history_cfg: config.History,
+    openai_llm_cfg: config.OpenAILLM,
+    quiet: bool,
+) -> MemoryClient | None:
+    """Initialize memory if mode is not 'off', handling errors gracefully."""
+    if memory_cfg.mode == "off":
+        return None
+    try:
+        return _try_init_memory(memory_cfg, history_cfg, openai_llm_cfg, quiet)
+    except ImportError:
+        if not quiet:
+            console.print(
+                "[yellow]Memory system not available. "
+                "Install with: pip install 'agent-cli[memory]'[/yellow]",
+            )
+    except Exception as e:
+        if not quiet:
+            console.print(f"[yellow]Failed to initialize memory: {e}[/yellow]")
+        LOGGER.warning("Failed to initialize memory: %s", e)
+    return None
+
+
 # --- Conversation History ---
 
 
@@ -211,12 +235,36 @@ def _format_conversation_for_llm(history: list[ConversationEntry]) -> str:
     return "\n".join(formatted_lines)
 
 
+async def _maybe_extract_memories(
+    memory_cfg: config.Memory,
+    memory_client: MemoryClient | None,
+    instruction: str,
+    response_text: str,
+    conversation_id: str,
+    quiet: bool,
+) -> None:
+    """Extract memories in auto mode, silently skip otherwise."""
+    if memory_cfg.mode != "auto" or memory_client is None:
+        return
+    try:
+        await memory_client.extract_from_turn(
+            user_message=instruction,
+            assistant_message=response_text,
+            conversation_id=conversation_id,
+        )
+        if not quiet:
+            console.print("[dim]💾 Memory extraction complete[/dim]")
+    except Exception as e:
+        LOGGER.warning("Failed to extract memories: %s", e)
+
+
 async def _handle_conversation_turn(
     *,
     stop_event: InteractiveStopEvent,
     conversation_history: list[ConversationEntry],
     memory_client: MemoryClient | None,
     conversation_id: str,
+    memory_cfg: config.Memory,
     provider_cfg: config.ProviderSelection,
     general_cfg: config.General,
     history_cfg: config.History,
@@ -299,6 +347,8 @@ async def _handle_conversation_turn(
         quiet=general_cfg.quiet,
         stop_event=stop_event,
     ):
+        # Only include memory tools in "tools" mode
+        tool_memory_client = memory_client if memory_cfg.mode == "tools" else None
         response_text = await get_llm_response(
             system_prompt=SYSTEM_PROMPT,
             agent_instructions=AGENT_INSTRUCTIONS,
@@ -308,7 +358,7 @@ async def _handle_conversation_turn(
             openai_cfg=openai_llm_cfg,
             gemini_cfg=gemini_llm_cfg,
             logger=LOGGER,
-            tools=tools(memory_client, conversation_id),
+            tools=tools(tool_memory_client, conversation_id),
             quiet=True,  # Suppress internal output since we're showing our own timer
             live=live,
         )
@@ -334,6 +384,16 @@ async def _handle_conversation_turn(
             "content": response_text,
             "timestamp": datetime.now(UTC).isoformat(),
         },
+    )
+
+    # 5b. Auto-extract memories in "auto" mode
+    await _maybe_extract_memories(
+        memory_cfg,
+        memory_client,
+        instruction,
+        response_text,
+        conversation_id,
+        general_cfg.quiet,
     )
 
     # 6. Save history
@@ -401,24 +461,13 @@ async def _async_main(
         if audio_out_cfg.enable_tts:
             audio_out_cfg.output_device_index = tts_output_device_index
 
-        # Initialize memory system
-        try:
-            memory_client = _try_init_memory(
-                memory_cfg,
-                history_cfg,
-                openai_llm_cfg,
-                general_cfg.quiet,
-            )
-        except ImportError:
-            if not general_cfg.quiet:
-                console.print(
-                    "[yellow]Memory system not available. "
-                    "Install with: pip install 'agent-cli[memory]'[/yellow]",
-                )
-        except Exception as e:
-            if not general_cfg.quiet:
-                console.print(f"[yellow]Failed to initialize memory: {e}[/yellow]")
-            LOGGER.warning("Failed to initialize memory: %s", e)
+        # Initialize memory system (if not disabled)
+        memory_client = _maybe_init_memory(
+            memory_cfg,
+            history_cfg,
+            openai_llm_cfg,
+            general_cfg.quiet,
+        )
 
         # Load conversation history
         conversation_history = []
@@ -446,6 +495,7 @@ async def _async_main(
                     conversation_history=conversation_history,
                     memory_client=memory_client,
                     conversation_id=conversation_id,
+                    memory_cfg=memory_cfg,
                     provider_cfg=provider_cfg,
                     general_cfg=general_cfg,
                     history_cfg=history_cfg,
@@ -534,6 +584,7 @@ def chat(
         rich_help_panel="History Options",
     ),
     # --- Memory Options ---
+    memory_mode: str = opts.MEMORY_MODE,
     memory_path: Path | None = opts.MEMORY_PATH,
     memory_embedding_model: str = opts.MEMORY_EMBEDDING_MODEL,
     memory_top_k: int = opts.MEMORY_TOP_K,
@@ -641,6 +692,7 @@ def chat(
             last_n_messages=last_n_messages,
         )
         memory_cfg = config.Memory(
+            mode=memory_mode,  # type: ignore[arg-type]
             memory_path=memory_path,
             embedding_model=memory_embedding_model,
             top_k=memory_top_k,

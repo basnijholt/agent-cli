@@ -227,13 +227,22 @@ class History(BaseModel):
 # --- Panel: Memory Options ---
 
 
+MemoryMode = Literal["off", "tools", "auto"]
+
+
 class Memory(BaseModel):
     """Configuration for the vector-backed memory system.
 
     The memory system uses ChromaDB with vector embeddings for semantic search,
     recency-aware scoring, and automatic fact reconciliation.
+
+    Modes:
+        - off: Memory disabled
+        - tools: LLM decides via add_memory/search_memory tools (default)
+        - auto: Automatic extraction and injection each turn
     """
 
+    mode: MemoryMode = "tools"
     memory_path: Path | None = None
     embedding_model: str = "text-embedding-3-small"
     top_k: int = 5
