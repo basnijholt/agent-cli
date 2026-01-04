@@ -13,6 +13,7 @@ from agent_cli.services import (
     _is_wav_file,
     asr,
     pcm_to_wav,
+    synthesize_speech_gemini,
     synthesize_speech_openai,
     transcribe_audio_openai,
     tts,
@@ -323,3 +324,97 @@ async def test_synthesize_speech_kokoro_delegates_to_openai(
     assert openai_cfg_arg.tts_openai_base_url == "http://localhost:8880/v1"
     # api_key should be optional/None since base_url is provided
     assert openai_cfg_arg.openai_api_key is None
+
+
+# --- Tests for Gemini TTS ---
+
+
+@pytest.mark.asyncio
+@patch("google.genai.Client")
+async def test_synthesize_speech_gemini(mock_genai_client: MagicMock) -> None:
+    """Test the synthesize_speech_gemini function."""
+    mock_text = "test text"
+    mock_logger = MagicMock()
+
+    # Mock the Gemini client and response structure
+    mock_client_instance = mock_genai_client.return_value
+
+    # Gemini returns raw PCM data (24kHz, 16-bit, mono)
+    mock_pcm_data = b"\x00\x00" * 100  # 100 samples of silence
+    mock_part = MagicMock()
+    mock_part.inline_data.data = mock_pcm_data
+    mock_content = MagicMock()
+    mock_content.parts = [mock_part]
+    mock_candidate = MagicMock()
+    mock_candidate.content = mock_content
+    mock_response = MagicMock()
+    mock_response.candidates = [mock_candidate]
+
+    mock_client_instance.aio.models.generate_content = AsyncMock(return_value=mock_response)
+
+    gemini_tts_cfg = config.GeminiTTS(
+        tts_gemini_model="gemini-2.5-flash-preview-tts",
+        tts_gemini_voice="Kore",
+        gemini_api_key="test_api_key",
+    )
+
+    result = await synthesize_speech_gemini(mock_text, gemini_tts_cfg, mock_logger)
+
+    # Result should be WAV data (converted from PCM)
+    assert result[:4] == b"RIFF"  # WAV header
+    mock_genai_client.assert_called_once_with(api_key="test_api_key")
+    mock_client_instance.aio.models.generate_content.assert_called_once()
+
+    # Verify the call arguments
+    call_kwargs = mock_client_instance.aio.models.generate_content.call_args[1]
+    assert call_kwargs["model"] == "gemini-2.5-flash-preview-tts"
+    assert call_kwargs["contents"] == mock_text
+
+
+@pytest.mark.asyncio
+async def test_synthesize_speech_gemini_no_key() -> None:
+    """Test that synthesize_speech_gemini fails without an API key."""
+    with pytest.raises(ValueError, match="Gemini API key is not set"):
+        await synthesize_speech_gemini(
+            "test text",
+            config.GeminiTTS(
+                tts_gemini_model="gemini-2.5-flash-preview-tts",
+                tts_gemini_voice="Kore",
+                gemini_api_key=None,
+            ),
+            MagicMock(),
+        )
+
+
+def test_create_synthesizer_gemini() -> None:
+    """Test that create_synthesizer returns the Gemini synthesizer."""
+    provider_cfg = config.ProviderSelection(
+        asr_provider="wyoming",
+        llm_provider="ollama",
+        tts_provider="gemini",
+    )
+    audio_output_cfg = config.AudioOutput(enable_tts=True)
+    wyoming_tts_cfg = config.WyomingTTS(
+        tts_wyoming_ip="localhost",
+        tts_wyoming_port=1234,
+    )
+    openai_tts_cfg = config.OpenAITTS(tts_openai_model="tts-1", tts_openai_voice="alloy")
+    kokoro_tts_cfg = config.KokoroTTS(
+        tts_kokoro_model="tts-1",
+        tts_kokoro_voice="alloy",
+        tts_kokoro_host="http://localhost:8000/v1",
+    )
+    gemini_tts_cfg = config.GeminiTTS(
+        tts_gemini_model="gemini-2.5-flash-preview-tts",
+        tts_gemini_voice="Kore",
+        gemini_api_key="test-key",
+    )
+    synthesizer = tts.create_synthesizer(
+        provider_cfg,
+        audio_output_cfg,
+        wyoming_tts_cfg,
+        openai_tts_cfg,
+        kokoro_tts_cfg,
+        gemini_tts_cfg,
+    )
+    assert synthesizer.func == tts._synthesize_speech_gemini  # type: ignore[attr-defined]

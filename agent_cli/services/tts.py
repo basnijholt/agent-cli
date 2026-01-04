@@ -60,10 +60,7 @@ def create_synthesizer(
         )
     if provider_cfg.tts_provider == "gemini":
         assert gemini_tts_cfg is not None, "Gemini TTS config required"
-        return partial(
-            _synthesize_speech_gemini,
-            gemini_tts_cfg=gemini_tts_cfg,
-        )
+        return partial(_synthesize_speech_gemini, gemini_tts_cfg=gemini_tts_cfg)
     if provider_cfg.tts_provider == "wyoming":
         return partial(_synthesize_speech_wyoming, wyoming_tts_cfg=wyoming_tts_cfg)
     msg = f"Unknown TTS provider: {provider_cfg.tts_provider}"
@@ -244,11 +241,7 @@ async def _synthesize_speech_gemini(
     **_kwargs: object,
 ) -> bytes | None:
     """Synthesize speech from text using Gemini TTS."""
-    return await synthesize_speech_gemini(
-        text=text,
-        gemini_tts_cfg=gemini_tts_cfg,
-        logger=logger,
-    )
+    return await synthesize_speech_gemini(text=text, gemini_tts_cfg=gemini_tts_cfg, logger=logger)
 
 
 async def _synthesize_speech_wyoming(
