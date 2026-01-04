@@ -140,7 +140,7 @@ async def test_async_main_list_devices(tmp_path: Path) -> None:
             openai_tts_cfg=openai_tts_cfg,
             kokoro_tts_cfg=kokoro_tts_cfg,
             gemini_tts_cfg=gemini_tts_cfg,
-            advanced_memory_cfg=config.AdvancedMemory(enabled=False),
+            memory_cfg=config.Memory(),
         )
         mock_setup_devices.assert_called_once()
 
@@ -210,7 +210,7 @@ async def test_async_main_list_output_devices(tmp_path: Path) -> None:
             openai_tts_cfg=openai_tts_cfg,
             kokoro_tts_cfg=kokoro_tts_cfg,
             gemini_tts_cfg=gemini_tts_cfg,
-            advanced_memory_cfg=config.AdvancedMemory(enabled=False),
+            memory_cfg=config.Memory(),
         )
         mock_setup_devices.assert_called_once()
 
@@ -304,7 +304,7 @@ async def test_async_main_full_loop(tmp_path: Path) -> None:
             openai_tts_cfg=openai_tts_cfg,
             kokoro_tts_cfg=kokoro_tts_cfg,
             gemini_tts_cfg=gemini_tts_cfg,
-            advanced_memory_cfg=config.AdvancedMemory(enabled=False),
+            memory_cfg=config.Memory(),
         )
 
         # Verify that the core functions were called

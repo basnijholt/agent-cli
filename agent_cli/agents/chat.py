@@ -25,7 +25,7 @@ from typing import TYPE_CHECKING, TypedDict
 import typer
 
 from agent_cli import config, opts
-from agent_cli._tools import cleanup_advanced_memory, init_advanced_memory, tools
+from agent_cli._tools import cleanup_memory, init_memory, tools
 from agent_cli.cli import app
 from agent_cli.core import process
 from agent_cli.core.audio import setup_devices
@@ -69,20 +69,20 @@ def _get_conversation_id(history_cfg: config.History) -> str:
     return "default"
 
 
-def _try_init_advanced_memory(
-    advanced_memory_cfg: config.AdvancedMemory,
+def _try_init_memory(
+    memory_cfg: config.Memory,
     history_cfg: config.History,
     openai_llm_cfg: config.OpenAILLM,
     quiet: bool,
 ) -> object | None:
-    """Try to initialize the advanced memory system.
+    """Try to initialize the memory system.
 
     Returns the MemoryClient if successful, None otherwise.
     """
     from agent_cli.memory.client import MemoryClient  # noqa: PLC0415
 
     # Determine memory path
-    memory_path = advanced_memory_cfg.memory_path
+    memory_path = memory_cfg.memory_path
     if memory_path is None:
         if history_cfg.history_dir:
             memory_path = Path(history_cfg.history_dir).expanduser() / "vector_memory"
@@ -93,21 +93,21 @@ def _try_init_advanced_memory(
     openai_base_url = openai_llm_cfg.openai_base_url or "https://api.openai.com/v1"
 
     if not quiet:
-        console.print("[dim]Initializing advanced memory system...[/dim]")
+        console.print("[dim]Initializing memory system...[/dim]")
 
     memory_client = MemoryClient(
         memory_path=memory_path,
         openai_base_url=openai_base_url,
-        embedding_model=advanced_memory_cfg.embedding_model,
+        embedding_model=memory_cfg.embedding_model,
         embedding_api_key=openai_llm_cfg.openai_api_key,
         chat_api_key=openai_llm_cfg.openai_api_key,
-        default_top_k=advanced_memory_cfg.top_k,
-        score_threshold=advanced_memory_cfg.score_threshold,
-        recency_weight=advanced_memory_cfg.recency_weight,
-        mmr_lambda=advanced_memory_cfg.mmr_lambda,
-        enable_summarization=advanced_memory_cfg.enable_summarization,
-        enable_git_versioning=advanced_memory_cfg.enable_git_versioning,
-        max_entries=advanced_memory_cfg.max_entries,
+        default_top_k=memory_cfg.top_k,
+        score_threshold=memory_cfg.score_threshold,
+        recency_weight=memory_cfg.recency_weight,
+        mmr_lambda=memory_cfg.mmr_lambda,
+        enable_summarization=memory_cfg.enable_summarization,
+        enable_git_versioning=memory_cfg.enable_git_versioning,
+        max_entries=memory_cfg.max_entries,
         start_watcher=False,
     )
 
@@ -116,14 +116,14 @@ def _try_init_advanced_memory(
 
     # Generate conversation ID and initialize tools
     conversation_id = _get_conversation_id(history_cfg)
-    init_advanced_memory(
+    init_memory(
         memory_client,
         conversation_id,
         asyncio.get_running_loop(),
     )
 
     if not quiet:
-        console.print("[green]Advanced memory system initialized[/green]")
+        console.print("[green]Memory system initialized[/green]")
 
     return memory_client
 
@@ -393,7 +393,7 @@ async def _async_main(
     openai_tts_cfg: config.OpenAITTS,
     kokoro_tts_cfg: config.KokoroTTS,
     gemini_tts_cfg: config.GeminiTTS,
-    advanced_memory_cfg: config.AdvancedMemory,
+    memory_cfg: config.Memory,
 ) -> None:
     """Main async function, consumes parsed arguments."""
     memory_client = None
@@ -407,26 +407,24 @@ async def _async_main(
         if audio_out_cfg.enable_tts:
             audio_out_cfg.output_device_index = tts_output_device_index
 
-        # Initialize advanced memory if enabled
-        if advanced_memory_cfg.enabled:
-            try:
-                memory_client = _try_init_advanced_memory(
-                    advanced_memory_cfg,
-                    history_cfg,
-                    openai_llm_cfg,
-                    general_cfg.quiet,
+        # Initialize memory system
+        try:
+            memory_client = _try_init_memory(
+                memory_cfg,
+                history_cfg,
+                openai_llm_cfg,
+                general_cfg.quiet,
+            )
+        except ImportError:
+            if not general_cfg.quiet:
+                console.print(
+                    "[yellow]Memory system not available. "
+                    "Install with: pip install 'agent-cli[memory]'[/yellow]",
                 )
-            except (ImportError, Exception) as e:
-                msg = (
-                    "Advanced memory not available. Install with: uv pip install agent-cli[memory]"
-                    if isinstance(e, ImportError)
-                    else f"Failed to initialize advanced memory: {e}"
-                )
-                if not general_cfg.quiet:
-                    console.print(f"[yellow]{msg}[/yellow]")
-                    console.print("[yellow]Falling back to simple memory system.[/yellow]")
-                if not isinstance(e, ImportError):
-                    LOGGER.warning("Failed to initialize advanced memory: %s", e)
+        except Exception as e:
+            if not general_cfg.quiet:
+                console.print(f"[yellow]Failed to initialize memory: {e}[/yellow]")
+            LOGGER.warning("Failed to initialize memory: %s", e)
 
         # Load conversation history
         conversation_history = []
@@ -471,9 +469,9 @@ async def _async_main(
             console.print_exception()
         raise
     finally:
-        # Clean up advanced memory client
+        # Clean up memory client
         if memory_client is not None:
-            await cleanup_advanced_memory()
+            await cleanup_memory()
 
 
 @app.command("chat")
@@ -536,8 +534,7 @@ def chat(
         " Set to 0 to disable history.",
         rich_help_panel="History Options",
     ),
-    # --- Advanced Memory Options ---
-    advanced_memory: bool = opts.ADVANCED_MEMORY,
+    # --- Memory Options ---
     memory_path: Path | None = opts.MEMORY_PATH,
     memory_embedding_model: str = opts.MEMORY_EMBEDDING_MODEL,
     memory_top_k: int = opts.MEMORY_TOP_K,
@@ -644,8 +641,7 @@ def chat(
             history_dir=history_dir,
             last_n_messages=last_n_messages,
         )
-        advanced_memory_cfg = config.AdvancedMemory(
-            enabled=advanced_memory,
+        memory_cfg = config.Memory(
             memory_path=memory_path,
             embedding_model=memory_embedding_model,
             top_k=memory_top_k,
@@ -669,6 +665,6 @@ def chat(
                 openai_tts_cfg=openai_tts_cfg,
                 kokoro_tts_cfg=kokoro_tts_cfg,
                 gemini_tts_cfg=gemini_tts_cfg,
-                advanced_memory_cfg=advanced_memory_cfg,
+                memory_cfg=memory_cfg,
             ),
         )

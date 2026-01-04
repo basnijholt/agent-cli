@@ -39,7 +39,7 @@ A local-first system that gives LLMs persistent memory across conversations, wit
 
 ### Related
 
-- [chat command](../commands/chat.md) - Voice-based chat agent with integrated advanced memory
+- [chat command](../commands/chat.md) - Voice-based chat agent with integrated memory
 - [memory command](../commands/memory.md) - Memory proxy server for any OpenAI-compatible app
 - [Configuration](../configuration.md) - Config file keys and defaults
 - [RAG System Architecture](rag.md) - Related retrieval stack for documents

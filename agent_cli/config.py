@@ -224,17 +224,16 @@ class History(BaseModel):
         return None
 
 
-# --- Panel: Advanced Memory Options ---
+# --- Panel: Memory Options ---
 
 
-class AdvancedMemory(BaseModel):
-    """Configuration for advanced vector-backed memory system.
+class Memory(BaseModel):
+    """Configuration for the vector-backed memory system.
 
-    The advanced memory system uses ChromaDB with vector embeddings for
-    semantic search, providing better retrieval than simple keyword matching.
+    The memory system uses ChromaDB with vector embeddings for semantic search,
+    recency-aware scoring, and automatic fact reconciliation.
     """
 
-    enabled: bool = True
     memory_path: Path | None = None
     embedding_model: str = "text-embedding-3-small"
     top_k: int = 5

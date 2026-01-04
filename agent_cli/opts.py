@@ -381,18 +381,11 @@ TRANSCRIPTION_LOG: Path | None = typer.Option(
     rich_help_panel="General Options",
 )
 
-# --- Advanced Memory Options ---
-ADVANCED_MEMORY: bool = typer.Option(
-    True,  # noqa: FBT003
-    "--advanced-memory/--no-advanced-memory",
-    help="Use advanced vector-backed memory with semantic search. "
-    "Auto-falls back to simple memory if dependencies not installed.",
-    rich_help_panel="Memory Options",
-)
+# --- Memory Options ---
 MEMORY_PATH: Path | None = typer.Option(
     None,
     "--memory-path",
-    help="Path for advanced memory database storage. Default: ~/.config/agent-cli/memory/vector_db",
+    help="Path for memory database storage. Default: ~/.config/agent-cli/memory/vector_db",
     rich_help_panel="Memory Options",
 )
 MEMORY_EMBEDDING_MODEL: str = typer.Option(

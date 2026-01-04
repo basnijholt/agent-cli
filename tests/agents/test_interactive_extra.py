@@ -260,6 +260,6 @@ async def test_async_main_exception_handling():
                 openai_tts_cfg=openai_tts_cfg,
                 kokoro_tts_cfg=kokoro_tts_cfg,
                 gemini_tts_cfg=gemini_tts_cfg,
-                advanced_memory_cfg=config.AdvancedMemory(enabled=False),
+                memory_cfg=config.Memory(),
             )
         mock_console.print_exception.assert_called_once()
