@@ -588,9 +588,14 @@ def chat(
     # --- Memory Options ---
     memory_mode: str = opts.MEMORY_MODE,
     memory_path: Path | None = opts.MEMORY_PATH,
-    memory_embedding_model: str = opts.MEMORY_EMBEDDING_MODEL,
+    embedding_model: str = opts.EMBEDDING_MODEL,
     memory_top_k: int = opts.MEMORY_TOP_K,
     memory_score_threshold: float = opts.MEMORY_SCORE_THRESHOLD,
+    memory_max_entries: int = opts.MEMORY_MAX_ENTRIES,
+    memory_mmr_lambda: float = opts.MEMORY_MMR_LAMBDA,
+    memory_recency_weight: float = opts.MEMORY_RECENCY_WEIGHT,
+    memory_summarization: bool = opts.MEMORY_SUMMARIZATION,
+    memory_git_versioning: bool = opts.MEMORY_GIT_VERSIONING,
     # --- General Options ---
     save_file: Path | None = opts.SAVE_FILE,
     log_level: str = opts.LOG_LEVEL,
@@ -696,9 +701,14 @@ def chat(
         memory_cfg = config.Memory(
             mode=memory_mode,  # type: ignore[arg-type]
             memory_path=memory_path,
-            embedding_model=memory_embedding_model,
+            embedding_model=embedding_model,
             top_k=memory_top_k,
             score_threshold=memory_score_threshold,
+            max_entries=memory_max_entries,
+            mmr_lambda=memory_mmr_lambda,
+            recency_weight=memory_recency_weight,
+            enable_summarization=memory_summarization,
+            enable_git_versioning=memory_git_versioning,
         )
 
         asyncio.run(

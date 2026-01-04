@@ -2,6 +2,7 @@
 
 import copy
 from pathlib import Path
+from typing import Any
 
 import typer
 from typer.models import OptionInfo
@@ -9,7 +10,7 @@ from typer.models import OptionInfo
 from agent_cli.constants import DEFAULT_OPENAI_EMBEDDING_MODEL, DEFAULT_OPENAI_MODEL
 
 
-def with_default(option: OptionInfo, default: str) -> OptionInfo:
+def with_default(option: OptionInfo, default: Any) -> OptionInfo:
     """Create a copy of a typer Option with a different default value."""
     opt = copy.copy(option)
     opt.default = default
@@ -394,12 +395,6 @@ MEMORY_PATH: Path | None = typer.Option(
     help="Path for memory database storage. Default: ~/.config/agent-cli/memory/vector_db",
     rich_help_panel="Memory Options",
 )
-MEMORY_EMBEDDING_MODEL: str = typer.Option(
-    DEFAULT_OPENAI_EMBEDDING_MODEL,
-    "--memory-embedding-model",
-    help="Embedding model for semantic memory search.",
-    rich_help_panel="Memory Options",
-)
 MEMORY_TOP_K: int = typer.Option(
     5,
     "--memory-top-k",
@@ -410,6 +405,36 @@ MEMORY_SCORE_THRESHOLD: float = typer.Option(
     0.35,
     "--memory-score-threshold",
     help="Minimum relevance score threshold for memory retrieval (0.0-1.0).",
+    rich_help_panel="Memory Options",
+)
+MEMORY_MAX_ENTRIES: int = typer.Option(
+    500,
+    "--memory-max-entries",
+    help="Maximum stored memory entries per conversation (excluding summary).",
+    rich_help_panel="Memory Options",
+)
+MEMORY_MMR_LAMBDA: float = typer.Option(
+    0.7,
+    "--memory-mmr-lambda",
+    help="MMR lambda (0-1): higher favors relevance, lower favors diversity.",
+    rich_help_panel="Memory Options",
+)
+MEMORY_RECENCY_WEIGHT: float = typer.Option(
+    0.2,
+    "--memory-recency-weight",
+    help="Recency score weight (0.0-1.0). Controls freshness vs. relevance.",
+    rich_help_panel="Memory Options",
+)
+MEMORY_SUMMARIZATION: bool = typer.Option(
+    True,  # noqa: FBT003
+    "--memory-summarization/--no-memory-summarization",
+    help="Enable automatic fact extraction and summaries.",
+    rich_help_panel="Memory Options",
+)
+MEMORY_GIT_VERSIONING: bool = typer.Option(
+    False,  # noqa: FBT003
+    "--memory-git-versioning/--no-memory-git-versioning",
+    help="Enable automatic git commit of memory changes.",
     rich_help_panel="Memory Options",
 )
 

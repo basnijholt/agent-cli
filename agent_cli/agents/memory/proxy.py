@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from pathlib import Path  # noqa: TC003
+from pathlib import Path
 
 import typer
 from rich.logging import RichHandler
@@ -15,57 +15,23 @@ from agent_cli.core.utils import console, print_command_line_args, print_error_m
 
 @memory_app.command("proxy")
 def proxy(
-    memory_path: Path = typer.Option(  # noqa: B008
-        "./memory_db",
-        help="Path to the memory store (files + derived vector index).",
-        rich_help_panel="Memory Configuration",
-    ),
+    memory_path: Path | None = opts.MEMORY_PATH,
     openai_base_url: str | None = opts.OPENAI_BASE_URL,
     embedding_model: str = opts.EMBEDDING_MODEL,
     openai_api_key: str | None = opts.OPENAI_API_KEY,
-    default_top_k: int = typer.Option(
-        5,
-        help="Number of memory entries to retrieve per query.",
-        rich_help_panel="Memory Configuration",
-    ),
+    default_top_k: int = opts.MEMORY_TOP_K,
     host: str = opts.SERVER_HOST,
     port: int = typer.Option(
         8100,
         help="Port to bind to",
         rich_help_panel="Server Configuration",
     ),
-    max_entries: int = typer.Option(
-        500,
-        help="Maximum stored memory entries per conversation (excluding summary).",
-        rich_help_panel="Memory Configuration",
-    ),
-    mmr_lambda: float = typer.Option(
-        0.7,
-        help="MMR lambda (0-1): higher favors relevance, lower favors diversity.",
-        rich_help_panel="Memory Configuration",
-    ),
-    recency_weight: float = typer.Option(
-        0.2,
-        help="Recency score weight (0.0-1.0). Controls freshness vs. relevance. Default 0.2 (20% recency, 80% semantic relevance).",
-        rich_help_panel="Memory Configuration",
-    ),
-    score_threshold: float = typer.Option(
-        0.35,
-        help="Minimum semantic relevance threshold (0.0-1.0). Memories below this score are discarded to reduce noise.",
-        rich_help_panel="Memory Configuration",
-    ),
-    summarization: bool = typer.Option(
-        True,  # noqa: FBT003
-        "--summarization/--no-summarization",
-        help="Enable automatic fact extraction and summaries.",
-        rich_help_panel="Memory Configuration",
-    ),
-    git_versioning: bool = typer.Option(
-        True,  # noqa: FBT003
-        "--git-versioning/--no-git-versioning",
-        help="Enable automatic git commit of memory changes.",
-        rich_help_panel="Memory Configuration",
-    ),
+    max_entries: int = opts.MEMORY_MAX_ENTRIES,
+    mmr_lambda: float = opts.MEMORY_MMR_LAMBDA,
+    recency_weight: float = opts.MEMORY_RECENCY_WEIGHT,
+    score_threshold: float = opts.MEMORY_SCORE_THRESHOLD,
+    summarization: bool = opts.MEMORY_SUMMARIZATION,
+    git_versioning: bool = opts.with_default(opts.MEMORY_GIT_VERSIONING, default=True),
     log_level: str = opts.with_default(opts.LOG_LEVEL, "INFO"),
     config_file: str | None = opts.CONFIG_FILE,
     print_args: bool = opts.PRINT_ARGS,
@@ -127,6 +93,8 @@ def proxy(
     logging.getLogger("chromadb").setLevel(logging.WARNING)
     logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
 
+    if memory_path is None:
+        memory_path = Path("./memory_db")
     memory_path = memory_path.resolve()
     entries_dir, _ = ensure_store_dirs(memory_path)
     if openai_base_url is None:
