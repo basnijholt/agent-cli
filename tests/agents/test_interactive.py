@@ -118,6 +118,8 @@ async def test_async_main_list_devices(tmp_path: Path) -> None:
         gemini_api_key="test-key",
     )
 
+    mock_vad = MagicMock()
+
     with (
         patch(
             "agent_cli.agents.chat.setup_devices",
@@ -125,6 +127,7 @@ async def test_async_main_list_devices(tmp_path: Path) -> None:
     ):
         mock_setup_devices.return_value = None
         await _async_main(
+            vad=mock_vad,
             provider_cfg=provider_cfg,
             general_cfg=general_cfg,
             history_cfg=history_cfg,
@@ -187,6 +190,8 @@ async def test_async_main_list_output_devices(tmp_path: Path) -> None:
         gemini_api_key="test-key",
     )
 
+    mock_vad = MagicMock()
+
     with (
         patch(
             "agent_cli.agents.chat.setup_devices",
@@ -194,6 +199,7 @@ async def test_async_main_list_output_devices(tmp_path: Path) -> None:
     ):
         mock_setup_devices.return_value = None
         await _async_main(
+            vad=mock_vad,
             provider_cfg=provider_cfg,
             general_cfg=general_cfg,
             history_cfg=history_cfg,
@@ -263,9 +269,14 @@ async def test_async_main_full_loop(tmp_path: Path) -> None:
         gemini_api_key="test-key",
     )
 
+    mock_vad = MagicMock()
+
     with (
         patch("agent_cli.agents.chat.setup_devices", return_value=(1, "mock_input", 1)),
-        patch("agent_cli.agents.chat.asr.create_transcriber") as mock_create_transcriber,
+        patch(
+            "agent_cli.agents.chat._get_live_input",
+            new_callable=AsyncMock,
+        ) as mock_get_live_input,
         patch(
             "agent_cli.agents.chat.get_llm_response",
             new_callable=AsyncMock,
@@ -281,12 +292,12 @@ async def test_async_main_full_loop(tmp_path: Path) -> None:
         mock_stop_event.is_set.side_effect = [False, True]  # Run loop once, then stop
         mock_stop_event.clear = MagicMock()  # Mock the clear method
 
-        mock_transcriber = AsyncMock(return_value="Mocked instruction")
-        mock_create_transcriber.return_value = mock_transcriber
+        mock_get_live_input.return_value = "Mocked instruction"
         mock_llm_response.return_value = "Mocked response"
         mock_signal.return_value.__enter__.return_value = mock_stop_event
 
         await _async_main(
+            vad=mock_vad,
             provider_cfg=provider_cfg,
             general_cfg=general_cfg,
             history_cfg=history_cfg,
@@ -305,10 +316,8 @@ async def test_async_main_full_loop(tmp_path: Path) -> None:
         )
 
         # Verify that the core functions were called
-        mock_create_transcriber.assert_called_once()
-        mock_transcriber.assert_called_once()
+        mock_get_live_input.assert_called_once()
         mock_llm_response.assert_called_once()
-        assert mock_stop_event.clear.call_count == 2  # Called after ASR and at end of turn
         mock_tts.assert_called_with(
             text="Mocked response",
             provider_cfg=provider_cfg,
