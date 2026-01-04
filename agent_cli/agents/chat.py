@@ -13,6 +13,7 @@ This agent will:
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import json
 import logging
 import os
@@ -61,8 +62,6 @@ def _get_conversation_id(history_cfg: config.History) -> str:
 
     Uses a hash of the history directory path to ensure consistency across sessions.
     """
-    import hashlib  # noqa: PLC0415
-
     if history_cfg.history_dir:
         return hashlib.md5(
             str(Path(history_cfg.history_dir).resolve()).encode(),
@@ -81,7 +80,7 @@ def _try_init_memory(
 
     Returns the MemoryClient if successful, None otherwise.
     """
-    from agent_cli.memory.client import MemoryClient as MemoryClientImpl  # noqa: PLC0415
+    from agent_cli.memory.client import MemoryClient  # noqa: PLC0415
 
     # Determine memory path
     memory_path = memory_cfg.memory_path
@@ -97,7 +96,7 @@ def _try_init_memory(
     if not quiet:
         console.print("[dim]Initializing memory system...[/dim]")
 
-    memory_client = MemoryClientImpl(
+    memory_client = MemoryClient(
         memory_path=memory_path,
         openai_base_url=openai_base_url,
         embedding_model=memory_cfg.embedding_model,
