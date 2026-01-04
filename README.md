@@ -1395,7 +1395,15 @@ uv tool install "agent-cli[vad]"
 
  Usage: agent-cli chat [OPTIONS]
 
- An chat agent that you can talk to.
+ An interactive chat agent with voice and text input.
+
+ Supports two input modes:
+
+  • Live mode (default): Speak and see transcription appear, edit before
+    sending
+  • Direct mode: Speak until Ctrl+C, then send immediately
+
+ Use /help during chat to see available commands.
 
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
 │ --help  -h        Show this message and exit.                                │
@@ -1513,6 +1521,14 @@ uv tool install "agent-cli[vad]"
 │ --tts-gemini-voice        TEXT  The voice to use for Gemini TTS (e.g.,       │
 │                                 'Kore', 'Puck', 'Charon', 'Fenrir').         │
 │                                 [default: Kore]                              │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ VAD Options ────────────────────────────────────────────────────────────────╮
+│ --vad-threshold            FLOAT  VAD speech detection threshold (0.0-1.0).  │
+│                                   Higher = more aggressive filtering.        │
+│                                   [default: 0.3]                             │
+│ --silence-threshold        FLOAT  Seconds of silence to end a speech         │
+│                                   segment.                                   │
+│                                   [default: 1.0]                             │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Process Management ─────────────────────────────────────────────────────────╮
 │ --stop            Stop any running background process.                       │
