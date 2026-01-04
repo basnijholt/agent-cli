@@ -128,11 +128,11 @@ USER_MESSAGE_WITH_CONTEXT_TEMPLATE = """
 # --- Status Display ---
 
 STATUS_ICONS = {
-    VoiceInputStatus.LISTENING: "🎤 Listening",
-    VoiceInputStatus.RECORDING: "🔴 Recording...",
-    VoiceInputStatus.PROCESSING: "⏳ Processing...",
-    VoiceInputStatus.PAUSED: "⏸️  Paused [Esc]",
-    VoiceInputStatus.READY: "✓ Ready [Enter]",
+    VoiceInputStatus.LISTENING: "[Listening...]",
+    VoiceInputStatus.RECORDING: "[Recording...]",
+    VoiceInputStatus.PROCESSING: "[Processing...]",
+    VoiceInputStatus.PAUSED: "[Paused - Esc to resume]",
+    VoiceInputStatus.READY: "[Ready - Enter to send]",
 }
 
 
@@ -238,11 +238,11 @@ async def _get_live_input(
         # Raise KeyboardInterrupt to exit the chat
         raise KeyboardInterrupt
 
-    # Current status for the toolbar
-    current_status = STATUS_ICONS[VoiceInputStatus.LISTENING]
+    # Current status for the toolbar (use list for thread-safe mutation)
+    status_holder = [STATUS_ICONS[VoiceInputStatus.LISTENING]]
 
     def get_toolbar() -> str:
-        return current_status
+        return status_holder[0]
 
     session: PromptSession[str] = PromptSession(
         key_bindings=bindings,
@@ -251,30 +251,39 @@ async def _get_live_input(
 
     # Track the last known accumulated text length to insert only new content
     last_text_len = 0
+    loop = asyncio.get_event_loop()
 
     def on_status_change(new_status: VoiceInputStatus) -> None:
-        nonlocal current_status
-        current_status = STATUS_ICONS.get(new_status, "")
-        # Invalidate the app to refresh the toolbar
+        status_holder[0] = STATUS_ICONS.get(new_status, "")
+        # Schedule UI update on the event loop
         app = session.app
         if app is not None:
-            app.invalidate()
+            loop.call_soon_threadsafe(app.invalidate)
 
     def on_text_update(text: str) -> None:
         nonlocal last_text_len
         # Calculate the new text that was added
         if len(text) > last_text_len:
             new_text = text[last_text_len:]
-            # Insert new text at current cursor position
-            buffer = session.default_buffer
-            cursor_pos = buffer.cursor_position
-            current_text = buffer.text
-            # Add space separator if needed
-            if current_text and cursor_pos > 0 and current_text[cursor_pos - 1] != " ":
-                new_text = " " + new_text.lstrip()
-            # Insert at cursor position
-            buffer.text = current_text[:cursor_pos] + new_text + current_text[cursor_pos:]
-            buffer.cursor_position = cursor_pos + len(new_text)
+
+            def update_buffer() -> None:
+                # Insert new text at current cursor position
+                buffer = session.default_buffer
+                cursor_pos = buffer.cursor_position
+                current_text = buffer.text
+                # Add space separator if needed
+                text_to_insert = new_text
+                if current_text and cursor_pos > 0 and current_text[cursor_pos - 1] != " ":
+                    text_to_insert = " " + new_text.lstrip()
+                # Insert at cursor position
+                buffer.text = current_text[:cursor_pos] + text_to_insert + current_text[cursor_pos:]
+                buffer.cursor_position = cursor_pos + len(text_to_insert)
+                # Invalidate to refresh display
+                app = session.app
+                if app is not None:
+                    app.invalidate()
+
+            loop.call_soon_threadsafe(update_buffer)
         last_text_len = len(text)
 
     # Start voice input loop in background
