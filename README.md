@@ -1529,6 +1529,24 @@ uv tool install "agent-cli[vad]"
 │                                   history.                                   │
 │                                   [default: 50]                              │
 ╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Memory Options ─────────────────────────────────────────────────────────────╮
+│ --memory-mode                   TEXT     Memory mode: 'off' (disabled),      │
+│                                          'tools' (LLM decides via tools),    │
+│                                          'auto' (automatic extraction).      │
+│                                          [default: tools]                    │
+│ --memory-path                   PATH     Path for memory database storage.   │
+│                                          Default:                            │
+│                                          ~/.config/agent-cli/memory/vector_… │
+│ --memory-embedding-model        TEXT     Embedding model for semantic memory │
+│                                          search.                             │
+│                                          [default: text-embedding-3-small]   │
+│ --memory-top-k                  INTEGER  Number of memories to retrieve per  │
+│                                          search.                             │
+│                                          [default: 5]                        │
+│ --memory-score-threshold        FLOAT    Minimum relevance score threshold   │
+│                                          for memory retrieval (0.0-1.0).     │
+│                                          [default: 0.35]                     │
+╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ General Options ────────────────────────────────────────────────────────────╮
 │ --save-file           PATH  Save TTS response audio to WAV file.             │
 │ --log-level           TEXT  Set logging level.                               │
