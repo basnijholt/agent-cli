@@ -12,6 +12,7 @@ from agent_cli.agents.chat import (
 )
 from agent_cli.cli import app
 from agent_cli.constants import DEFAULT_OPENAI_MODEL
+from agent_cli.core.chat_state import ChatSessionState
 from agent_cli.core.utils import InteractiveStopEvent
 
 
@@ -19,7 +20,7 @@ from agent_cli.core.utils import InteractiveStopEvent
 async def test_handle_conversation_turn_no_llm_response():
     """Test that the conversation turn handles no response from the LLM."""
     stop_event = InteractiveStopEvent()
-    conversation_history = []
+    chat_state = ChatSessionState(tts_enabled=False)
     general_cfg = config.General(log_level="INFO", log_file=None, quiet=True, list_devices=True)
     provider_cfg = config.ProviderSelection(
         asr_provider="wyoming",
@@ -27,13 +28,6 @@ async def test_handle_conversation_turn_no_llm_response():
         tts_provider="wyoming",
     )
     history_cfg = config.History()
-    audio_in_cfg = config.AudioInput()
-    wyoming_asr_cfg = config.WyomingASR(asr_wyoming_ip="localhost", asr_wyoming_port=10300)
-    openai_asr_cfg = config.OpenAIASR(asr_openai_model="whisper-1")
-    gemini_asr_cfg = config.GeminiASR(
-        asr_gemini_model="gemini-2.0-flash",
-        gemini_api_key="test-key",
-    )
     ollama_cfg = config.Ollama(llm_ollama_model="test-model", llm_ollama_host="localhost")
     openai_llm_cfg = config.OpenAILLM(llm_openai_model=DEFAULT_OPENAI_MODEL, openai_base_url=None)
     gemini_llm_cfg = config.GeminiLLM(
@@ -56,25 +50,18 @@ async def test_handle_conversation_turn_no_llm_response():
     mock_live = MagicMock()
 
     with (
-        patch("agent_cli.agents.chat.asr.create_transcriber") as mock_create_transcriber,
         patch(
             "agent_cli.agents.chat.get_llm_response",
             new_callable=AsyncMock,
         ) as mock_llm_response,
     ):
-        mock_transcriber = AsyncMock(return_value="test instruction")
-        mock_create_transcriber.return_value = mock_transcriber
         mock_llm_response.return_value = ""
         await _handle_conversation_turn(
-            stop_event=stop_event,
-            conversation_history=conversation_history,
+            instruction="test instruction",
+            chat_state=chat_state,
             provider_cfg=provider_cfg,
             general_cfg=general_cfg,
             history_cfg=history_cfg,
-            audio_in_cfg=audio_in_cfg,
-            wyoming_asr_cfg=wyoming_asr_cfg,
-            openai_asr_cfg=openai_asr_cfg,
-            gemini_asr_cfg=gemini_asr_cfg,
             ollama_cfg=ollama_cfg,
             openai_llm_cfg=openai_llm_cfg,
             gemini_llm_cfg=gemini_llm_cfg,
@@ -84,19 +71,20 @@ async def test_handle_conversation_turn_no_llm_response():
             kokoro_tts_cfg=kokoro_tts_cfg,
             gemini_tts_cfg=gemini_tts_cfg,
             live=mock_live,
+            stop_event=stop_event,
         )
-        mock_create_transcriber.assert_called_once()
-        mock_transcriber.assert_awaited_once()
         mock_llm_response.assert_awaited_once()
 
-    assert len(conversation_history) == 1
+    # User message added but no assistant response (empty LLM response)
+    assert len(chat_state.conversation_history) == 1
+    assert chat_state.conversation_history[0]["role"] == "user"
 
 
 @pytest.mark.asyncio
-async def test_handle_conversation_turn_no_instruction():
-    """Test that the conversation turn exits early if no instruction is given."""
+async def test_handle_conversation_turn_with_response():
+    """Test that the conversation turn adds both user and assistant messages."""
     stop_event = InteractiveStopEvent()
-    conversation_history = []
+    chat_state = ChatSessionState(tts_enabled=False)
     general_cfg = config.General(log_level="INFO", log_file=None, quiet=True, list_devices=True)
     provider_cfg = config.ProviderSelection(
         asr_provider="wyoming",
@@ -104,13 +92,6 @@ async def test_handle_conversation_turn_no_instruction():
         tts_provider="wyoming",
     )
     history_cfg = config.History()
-    audio_in_cfg = config.AudioInput()
-    wyoming_asr_cfg = config.WyomingASR(asr_wyoming_ip="localhost", asr_wyoming_port=10300)
-    openai_asr_cfg = config.OpenAIASR(asr_openai_model="whisper-1")
-    gemini_asr_cfg = config.GeminiASR(
-        asr_gemini_model="gemini-2.0-flash",
-        gemini_api_key="test-key",
-    )
     ollama_cfg = config.Ollama(llm_ollama_model="test-model", llm_ollama_host="localhost")
     openai_llm_cfg = config.OpenAILLM(llm_openai_model=DEFAULT_OPENAI_MODEL, openai_base_url=None)
     gemini_llm_cfg = config.GeminiLLM(
@@ -132,19 +113,19 @@ async def test_handle_conversation_turn_no_instruction():
     )
     mock_live = MagicMock()
 
-    with patch("agent_cli.agents.chat.asr.create_transcriber") as mock_create_transcriber:
-        mock_transcriber = AsyncMock(return_value="")
-        mock_create_transcriber.return_value = mock_transcriber
+    with (
+        patch(
+            "agent_cli.agents.chat.get_llm_response",
+            new_callable=AsyncMock,
+        ) as mock_llm_response,
+    ):
+        mock_llm_response.return_value = "Hello, I'm an AI assistant."
         await _handle_conversation_turn(
-            stop_event=stop_event,
-            conversation_history=conversation_history,
+            instruction="Hello",
+            chat_state=chat_state,
             provider_cfg=provider_cfg,
             general_cfg=general_cfg,
             history_cfg=history_cfg,
-            audio_in_cfg=audio_in_cfg,
-            wyoming_asr_cfg=wyoming_asr_cfg,
-            openai_asr_cfg=openai_asr_cfg,
-            gemini_asr_cfg=gemini_asr_cfg,
             ollama_cfg=ollama_cfg,
             openai_llm_cfg=openai_llm_cfg,
             gemini_llm_cfg=gemini_llm_cfg,
@@ -154,10 +135,16 @@ async def test_handle_conversation_turn_no_instruction():
             kokoro_tts_cfg=kokoro_tts_cfg,
             gemini_tts_cfg=gemini_tts_cfg,
             live=mock_live,
+            stop_event=stop_event,
         )
-        mock_create_transcriber.assert_called_once()
-        mock_transcriber.assert_awaited_once()
-    assert not conversation_history
+        mock_llm_response.assert_awaited_once()
+
+    # Both user and assistant messages should be added
+    assert len(chat_state.conversation_history) == 2
+    assert chat_state.conversation_history[0]["role"] == "user"
+    assert chat_state.conversation_history[0]["content"] == "Hello"
+    assert chat_state.conversation_history[1]["role"] == "assistant"
+    assert chat_state.conversation_history[1]["content"] == "Hello, I'm an AI assistant."
 
 
 def test_chat_command_stop_and_status():
@@ -193,9 +180,16 @@ def test_chat_command_stop_and_status():
 def test_chat_command_list_output_devices():
     """Test the list-output-devices flag."""
     runner = CliRunner()
-    with patch(
-        "agent_cli.agents.chat.setup_devices",
-    ) as mock_setup_devices:
+    mock_vad_class = MagicMock()
+    with (
+        patch(
+            "agent_cli.agents.chat.setup_devices",
+        ) as mock_setup_devices,
+        patch.dict(
+            "sys.modules",
+            {"agent_cli.core.vad": MagicMock(VoiceActivityDetector=mock_vad_class)},
+        ),
+    ):
         mock_setup_devices.return_value = None
         result = runner.invoke(app, ["chat", "--list-devices"])
         assert result.exit_code == 0
@@ -239,12 +233,15 @@ async def test_async_main_exception_handling():
         gemini_api_key="test-key",
     )
 
+    mock_vad = MagicMock()
+
     with (
         patch("agent_cli.agents.chat.setup_devices", side_effect=Exception("Test error")),
         patch("agent_cli.agents.chat.console") as mock_console,
     ):
         with pytest.raises(Exception, match="Test error"):
             await _async_main(
+                vad=mock_vad,
                 provider_cfg=provider_cfg,
                 general_cfg=general_cfg,
                 history_cfg=history_cfg,
