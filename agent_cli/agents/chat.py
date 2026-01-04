@@ -215,6 +215,7 @@ async def _get_live_input(
     """
     voice_state = VoiceInputState()
     stop_event = asyncio.Event()
+    cancelled = False
 
     # Create transcriber
     transcriber = create_transcriber_from_config(
@@ -232,25 +233,38 @@ async def _get_live_input(
     @bindings.add("escape")
     def toggle_pause(event: object) -> None:  # noqa: ARG001
         voice_state.is_paused = not voice_state.is_paused
-        if not quiet:
-            status_msg = "⏸️  Paused" if voice_state.is_paused else "🎤 Resumed"
-            console.print(f"[dim]{status_msg}[/dim]", end="\r")
+
+    @bindings.add("c-c")
+    def handle_ctrl_c(event: object) -> None:  # noqa: ARG001
+        nonlocal cancelled
+        cancelled = True
+        stop_event.set()
+        # Get the app and exit
+        from prompt_toolkit.application import get_app  # noqa: PLC0415
+
+        get_app().exit(result="")
 
     session: PromptSession[str] = PromptSession(key_bindings=bindings)
-    current_status = VoiceInputStatus.LISTENING
+
+    # Track the last known accumulated text length to append only new content
+    last_text_len = 0
 
     def on_status_change(new_status: VoiceInputStatus) -> None:
-        nonlocal current_status
-        current_status = new_status
-        if not quiet:
-            # Update the status display
-            status_text = STATUS_ICONS.get(new_status, "")
-            console.print(f"[dim]{status_text}[/dim]" + " " * 20, end="\r")
+        # Status changes are now silent - prompt_toolkit handles display
+        pass
 
     def on_text_update(text: str) -> None:
-        # Update the prompt buffer with the new text
-        session.default_buffer.text = text
-        session.default_buffer.cursor_position = len(text)
+        nonlocal last_text_len
+        # Calculate the new text that was added
+        if len(text) > last_text_len:
+            new_text = text[last_text_len:]
+            # Append new text at the end of current buffer
+            current_text = session.default_buffer.text
+            if current_text and not current_text.endswith(" "):
+                new_text = " " + new_text.lstrip()
+            session.default_buffer.text = current_text + new_text
+            session.default_buffer.cursor_position = len(session.default_buffer.text)
+        last_text_len = len(text)
 
     # Start voice input loop in background
     voice_task = asyncio.create_task(
@@ -268,12 +282,14 @@ async def _get_live_input(
 
     try:
         if not quiet:
-            console.print("[dim]🎤 Listening (Esc=pause, Enter=send, type to switch to text)[/dim]")
+            console.print("[dim]🎤 Listening (Esc=pause, Enter=send, Ctrl+C=exit)[/dim]")
 
         # Run prompt (user can edit, Enter to submit)
         with patch_stdout():
             result = await session.prompt_async("│ ")
 
+        if cancelled:
+            return ""
         return result.strip()
     except (EOFError, KeyboardInterrupt):
         return ""
