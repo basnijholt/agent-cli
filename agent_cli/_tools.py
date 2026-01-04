@@ -2,99 +2,71 @@
 
 from __future__ import annotations
 
-import json
-import os
+import asyncio
 import subprocess
-from datetime import UTC, datetime
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, TypeVar
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from agent_cli.memory.client import MemoryClient
 
 
-# Memory system helpers
+# --- Memory System State ---
+# These module-level variables are set by init_memory() when the chat agent starts.
+
+_memory_client: MemoryClient | None = None
+_conversation_id: str = "default"
+_event_loop: asyncio.AbstractEventLoop | None = None
 
 
-def _get_memory_file_path() -> Path:
-    """Get the path to the memory file.
+def init_memory(
+    client: MemoryClient,
+    conversation_id: str = "default",
+    event_loop: asyncio.AbstractEventLoop | None = None,
+) -> None:
+    """Initialize the memory system.
 
-    If the environment variable ``AGENT_CLI_HISTORY_DIR`` is set (by the
-    running agent), store the memory file in that directory.
-    Otherwise fall back to the user's config directory.
+    Called by the chat agent on startup.
+
+    Args:
+        client: The MemoryClient instance to use for memory operations.
+        conversation_id: The conversation ID for scoping memories.
+        event_loop: The asyncio event loop for running async operations.
+
     """
-    history_dir = os.getenv("AGENT_CLI_HISTORY_DIR")
-    if history_dir:
-        return Path(history_dir).expanduser() / "long_term_memory.json"
-
-    return Path.home() / ".config" / "agent-cli" / "memory" / "long_term_memory.json"
-
-
-def _load_memories() -> list[dict[str, Any]]:
-    """Load memories from file, returning empty list if file doesn't exist."""
-    memory_file = _get_memory_file_path()
-    if not memory_file.exists():
-        return []
-
-    with memory_file.open("r") as f:
-        return json.load(f)
+    global _memory_client, _conversation_id, _event_loop
+    _memory_client = client
+    _conversation_id = conversation_id
+    _event_loop = event_loop
 
 
-def _save_memories(memories: list[dict[str, Any]]) -> None:
-    """Save memories to file, creating directories if needed."""
-    memory_file = _get_memory_file_path()
-    memory_file.parent.mkdir(parents=True, exist_ok=True)
+async def cleanup_memory() -> None:
+    """Clean up the memory system.
 
-    with memory_file.open("w") as f:
-        json.dump(memories, f, indent=2)
+    Called when the chat agent exits.
+    """
+    global _memory_client, _event_loop
+    if _memory_client is not None:
+        await _memory_client.stop()
+        _memory_client = None
+    _event_loop = None
 
 
-def _find_memory_by_id(memories: list[dict[str, Any]], memory_id: int) -> dict[str, Any] | None:
-    """Find a memory by ID in the memories list."""
-    for memory in memories:
-        if memory["id"] == memory_id:
-            return memory
+def _run_async(coro: Any, timeout: float = 30.0) -> Any:
+    """Run an async coroutine from sync context using the stored event loop."""
+    if _event_loop is None:
+        msg = "Event loop not initialized for memory system"
+        raise RuntimeError(msg)
+
+    future = asyncio.run_coroutine_threadsafe(coro, _event_loop)
+    return future.result(timeout=timeout)
+
+
+def _check_memory_initialized() -> str | None:
+    """Check if memory is initialized. Returns error message if not, None if OK."""
+    if _memory_client is None:
+        return "Error: Memory system not initialized. Install with: pip install 'agent-cli[memory]'"
     return None
-
-
-def _format_memory_summary(memory: dict[str, Any]) -> str:
-    """Format a memory for display in search results."""
-    return (
-        f"ID: {memory['id']} | Category: {memory['category']} | "
-        f"Content: {memory['content']} | Tags: {', '.join(memory['tags'])}"
-    )
-
-
-def _format_memory_detailed(memory: dict[str, Any]) -> str:
-    """Format a memory with full details for listing."""
-    created = datetime.fromisoformat(memory["timestamp"]).strftime("%Y-%m-%d %H:%M")
-    updated_info = ""
-    if "updated_at" in memory:
-        updated = datetime.fromisoformat(memory["updated_at"]).strftime("%Y-%m-%d %H:%M")
-        updated_info = f" (updated: {updated})"
-
-    return (
-        f"ID: {memory['id']} | Category: {memory['category']}\n"
-        f"Content: {memory['content']}\n"
-        f"Tags: {', '.join(memory['tags']) if memory['tags'] else 'None'}\n"
-        f"Created: {created}{updated_info}\n"
-    )
-
-
-def _parse_tags(tags_string: str) -> list[str]:
-    """Parse comma-separated tags string into a list of clean tags."""
-    return [tag.strip() for tag in tags_string.split(",") if tag.strip()]
-
-
-R = TypeVar("R")
-
-
-def _memory_operation(operation_name: str, operation_func: Callable[[], str]) -> str:
-    """Wrapper for memory operations with consistent error handling."""
-    try:
-        return operation_func()
-    except Exception as e:
-        return f"Error {operation_name}: {e}"
 
 
 def read_file(path: str) -> str:
@@ -150,27 +122,22 @@ def add_memory(content: str, category: str = "general", tags: str = "") -> str:
         tags: Comma-separated keywords that would help find this memory later (e.g., "work, python, programming")
 
     Returns:
-        Confirmation message with the memory ID
+        Confirmation message
 
     """
+    if error := _check_memory_initialized():
+        return error
 
-    def _add_memory_operation() -> str:
-        memories = _load_memories()
+    # Format content with metadata
+    formatted_content = f"[{category}] {content}"
+    if tags:
+        formatted_content += f" (tags: {tags})"
 
-        memory = {
-            "id": len(memories) + 1,
-            "content": content,
-            "category": category,
-            "tags": _parse_tags(tags),
-            "timestamp": datetime.now(UTC).isoformat(),
-        }
-
-        memories.append(memory)
-        _save_memories(memories)
-
-        return f"Memory added successfully with ID {memory['id']}"
-
-    return _memory_operation("adding memory", _add_memory_operation)
+    try:
+        _run_async(_memory_client.add(formatted_content, conversation_id=_conversation_id))  # type: ignore[union-attr]
+        return "Memory added successfully."
+    except Exception as e:
+        return f"Error adding memory: {e}"
 
 
 def search_memory(query: str, category: str = "") -> str:
@@ -182,7 +149,7 @@ def search_memory(query: str, category: str = "") -> str:
     - When you need context about the user's work, projects, or goals
     - To check if you've discussed a topic before
 
-    The search looks through memory content and tags for matches.
+    This performs semantic search to find conceptually related information.
 
     Args:
         query: Keywords to search for (e.g., "programming languages", "work schedule", "preferences")
@@ -192,84 +159,68 @@ def search_memory(query: str, category: str = "") -> str:
         Relevant memories found, or message if none found
 
     """
+    if error := _check_memory_initialized():
+        return error
 
-    def _search_memory_operation() -> str:
-        memories = _load_memories()
+    # Include category in search query if provided
+    search_query = f"{category} {query}" if category else query
 
-        if not memories:
-            return "No memories found. Memory system not initialized."
-
-        # Simple text-based search
-        query_lower = query.lower()
-        relevant_memories = []
-
-        for memory in memories:
-            # Check if query matches content, tags, or category
-            content_match = query_lower in memory["content"].lower()
-            tag_match = any(query_lower in tag.lower() for tag in memory["tags"])
-            category_match = not category or memory["category"].lower() == category.lower()
-
-            if (content_match or tag_match) and category_match:
-                relevant_memories.append(memory)
-
-        if not relevant_memories:
+    try:
+        result = _run_async(
+            _memory_client.search(search_query, conversation_id=_conversation_id),  # type: ignore[union-attr]
+        )
+        if not result.entries:
             return f"No memories found matching '{query}'"
 
-        # Format results
-        results = [_format_memory_summary(memory) for memory in relevant_memories[-5:]]
-
-        return "\n".join(results)
-
-    return _memory_operation("searching memory", _search_memory_operation)
+        # Format results with relevance scores
+        lines = []
+        for entry in result.entries:
+            score_info = f" (relevance: {entry.score:.2f})" if entry.score else ""
+            lines.append(f"- {entry.content}{score_info}")
+        return "\n".join(lines)
+    except Exception as e:
+        return f"Error searching memory: {e}"
 
 
 def update_memory(memory_id: int, content: str = "", category: str = "", tags: str = "") -> str:
-    """Update an existing memory by ID.
+    """Update an existing memory by adding new information.
 
     Use this tool:
     - When the user wants to correct or modify previously stored information
     - When information has changed (e.g., job change, preference updates)
     - When the user says "update my memory about..." or "change the memory where..."
 
-    Only provide the fields that should be updated - empty fields will keep existing values.
+    The memory system uses automatic reconciliation - adding new information will
+    update or replace related existing facts.
 
     Args:
-        memory_id: The ID of the memory to update (use search_memory or list_all_memories to find IDs)
-        content: New content for the memory (leave empty to keep existing)
-        category: New category (leave empty to keep existing)
-        tags: New comma-separated tags (leave empty to keep existing)
+        memory_id: Not used - the system automatically reconciles memories
+        content: The updated content to store
+        category: Category for the memory (leave empty for "general")
+        tags: Comma-separated tags (leave empty for none)
 
     Returns:
-        Confirmation message or error if memory ID not found
+        Confirmation message
 
     """
+    _ = memory_id  # System uses reconciliation, not ID-based updates
 
-    def _update_memory_operation() -> str:
-        memories = _load_memories()
+    if error := _check_memory_initialized():
+        return error
 
-        if not memories:
-            return "No memories found. Memory system not initialized."
+    if not content:
+        return "Please provide the updated content. The system will automatically reconcile it with existing memories."
 
-        # Find memory to update
-        memory_to_update = _find_memory_by_id(memories, memory_id)
-        if not memory_to_update:
-            return f"Memory with ID {memory_id} not found."
+    # Format content with metadata
+    formatted_content = f"[{category or 'general'}] {content}"
+    if tags:
+        formatted_content += f" (tags: {tags})"
 
-        # Update fields if provided
-        if content:
-            memory_to_update["content"] = content
-        if category:
-            memory_to_update["category"] = category
-        if tags:
-            memory_to_update["tags"] = _parse_tags(tags)
-
-        # Add update timestamp
-        memory_to_update["updated_at"] = datetime.now(UTC).isoformat()
-
-        _save_memories(memories)
-        return f"Memory ID {memory_id} updated successfully."
-
-    return _memory_operation("updating memory", _update_memory_operation)
+    try:
+        _run_async(_memory_client.add(formatted_content, conversation_id=_conversation_id))  # type: ignore[union-attr]
+        return "Memory updated successfully. The system has reconciled this information with existing memories."
+    except Exception as e:
+        return f"Error updating memory: {e}"
 
 
 def list_all_memories(limit: int = 10) -> str:
@@ -277,7 +228,7 @@ def list_all_memories(limit: int = 10) -> str:
 
     Use this tool:
     - When the user asks "show me all my memories" or "list everything you remember"
-    - When they want to see specific memory IDs for updating or reference
+    - When they want to see what information is stored
     - To provide a complete overview of stored information
 
     Shows memories in reverse chronological order (newest first).
@@ -286,30 +237,39 @@ def list_all_memories(limit: int = 10) -> str:
         limit: Maximum number of memories to show (default 10, use higher numbers if user wants more)
 
     Returns:
-        Formatted list of all memories with IDs, content, categories, and tags
+        Formatted list of all memories
 
     """
+    if error := _check_memory_initialized():
+        return error
 
-    def _list_all_memories_operation() -> str:
-        memories = _load_memories()
+    try:
+        entries = _memory_client.list_all(  # type: ignore[union-attr]
+            conversation_id=_conversation_id,
+            include_summary=False,
+        )
 
-        if not memories:
+        if not entries:
             return "No memories stored yet."
 
-        # Sort by ID (newest first) and limit results
-        memories_to_show = sorted(memories, key=lambda x: x["id"], reverse=True)[:limit]
+        # Limit results
+        entries_to_show = entries[:limit]
 
-        results = [f"Showing {len(memories_to_show)} of {len(memories)} total memories:\n"]
-        results.extend(_format_memory_detailed(memory) for memory in memories_to_show)
+        results = [f"Showing {len(entries_to_show)} of {len(entries)} total memories:\n"]
+        for entry in entries_to_show:
+            created_at = entry.get("created_at", "unknown")
+            role = entry.get("role", "memory")
+            content = entry.get("content", "")
+            results.append(f"- [{role}] {content} (created: {created_at})")
 
-        if len(memories) > limit:
+        if len(entries) > limit:
             results.append(
-                f"... and {len(memories) - limit} more memories. Use a higher limit to see more.",
+                f"\n... and {len(entries) - limit} more memories. Use a higher limit to see more.",
             )
 
         return "\n".join(results)
-
-    return _memory_operation("listing memories", _list_all_memories_operation)
+    except Exception as e:
+        return f"Error listing memories: {e}"
 
 
 def list_memory_categories() -> str:
@@ -323,32 +283,34 @@ def list_memory_categories() -> str:
     This provides a summary view before using list_all_memories for details.
 
     Returns:
-        Summary of memory categories with counts (e.g., "personal: 5 memories")
+        Summary of memory types with counts
 
     """
+    if error := _check_memory_initialized():
+        return error
 
-    def _list_categories_operation() -> str:
-        memories = _load_memories()
+    try:
+        entries = _memory_client.list_all(  # type: ignore[union-attr]
+            conversation_id=_conversation_id,
+            include_summary=False,
+        )
 
-        if not memories:
-            return "No memories found. Memory system not initialized."
+        if not entries:
+            return "No memories found."
 
-        # Count categories
-        categories: dict[str, int] = {}
-        for memory in memories:
-            category = memory["category"]
-            categories[category] = categories.get(category, 0) + 1
+        # Count by role (user, assistant, memory)
+        roles: dict[str, int] = {}
+        for entry in entries:
+            role = entry.get("role", "memory")
+            roles[role] = roles.get(role, 0) + 1
 
-        if not categories:
-            return "No memory categories found."
-
-        results = ["Memory Categories:"]
-        for category, count in sorted(categories.items()):
-            results.append(f"- {category}: {count} memories")
+        results = ["Memory Types:"]
+        for role, count in sorted(roles.items()):
+            results.append(f"- {role}: {count} entries")
 
         return "\n".join(results)
-
-    return _memory_operation("listing categories", _list_categories_operation)
+    except Exception as e:
+        return f"Error listing categories: {e}"
 
 
 def tools() -> list:

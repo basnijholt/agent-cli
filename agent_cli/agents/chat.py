@@ -25,7 +25,7 @@ from typing import TYPE_CHECKING, TypedDict
 import typer
 
 from agent_cli import config, opts
-from agent_cli._tools import tools
+from agent_cli._tools import cleanup_memory, init_memory, tools
 from agent_cli.cli import app
 from agent_cli.core import process
 from agent_cli.core.audio import setup_devices
@@ -52,6 +52,81 @@ if TYPE_CHECKING:
 
 
 LOGGER = logging.getLogger(__name__)
+
+
+def _get_conversation_id(history_cfg: config.History) -> str:
+    """Generate a stable conversation ID from history configuration.
+
+    Uses a hash of the history directory path to ensure consistency across sessions.
+    """
+    import hashlib  # noqa: PLC0415
+
+    if history_cfg.history_dir:
+        return hashlib.md5(
+            str(Path(history_cfg.history_dir).resolve()).encode(),
+            usedforsecurity=False,
+        ).hexdigest()[:12]
+    return "default"
+
+
+def _try_init_memory(
+    memory_cfg: config.Memory,
+    history_cfg: config.History,
+    openai_llm_cfg: config.OpenAILLM,
+    quiet: bool,
+) -> object | None:
+    """Try to initialize the memory system.
+
+    Returns the MemoryClient if successful, None otherwise.
+    """
+    from agent_cli.memory.client import MemoryClient  # noqa: PLC0415
+
+    # Determine memory path
+    memory_path = memory_cfg.memory_path
+    if memory_path is None:
+        if history_cfg.history_dir:
+            memory_path = Path(history_cfg.history_dir).expanduser() / "vector_memory"
+        else:
+            memory_path = Path.home() / ".config" / "agent-cli" / "memory" / "vector_db"
+
+    # Determine OpenAI base URL for embeddings
+    openai_base_url = openai_llm_cfg.openai_base_url or "https://api.openai.com/v1"
+
+    if not quiet:
+        console.print("[dim]Initializing memory system...[/dim]")
+
+    memory_client = MemoryClient(
+        memory_path=memory_path,
+        openai_base_url=openai_base_url,
+        embedding_model=memory_cfg.embedding_model,
+        embedding_api_key=openai_llm_cfg.openai_api_key,
+        chat_api_key=openai_llm_cfg.openai_api_key,
+        default_top_k=memory_cfg.top_k,
+        score_threshold=memory_cfg.score_threshold,
+        recency_weight=memory_cfg.recency_weight,
+        mmr_lambda=memory_cfg.mmr_lambda,
+        enable_summarization=memory_cfg.enable_summarization,
+        enable_git_versioning=memory_cfg.enable_git_versioning,
+        max_entries=memory_cfg.max_entries,
+        start_watcher=False,
+    )
+
+    # Start the memory client's file watcher
+    memory_client.start()
+
+    # Generate conversation ID and initialize tools
+    conversation_id = _get_conversation_id(history_cfg)
+    init_memory(
+        memory_client,
+        conversation_id,
+        asyncio.get_running_loop(),
+    )
+
+    if not quiet:
+        console.print("[green]Memory system initialized[/green]")
+
+    return memory_client
+
 
 # --- Conversation History ---
 
@@ -318,8 +393,11 @@ async def _async_main(
     openai_tts_cfg: config.OpenAITTS,
     kokoro_tts_cfg: config.KokoroTTS,
     gemini_tts_cfg: config.GeminiTTS,
+    memory_cfg: config.Memory,
 ) -> None:
     """Main async function, consumes parsed arguments."""
+    memory_client = None
+
     try:
         device_info = setup_devices(general_cfg, audio_in_cfg, audio_out_cfg)
         if device_info is None:
@@ -328,6 +406,25 @@ async def _async_main(
         audio_in_cfg.input_device_index = input_device_index
         if audio_out_cfg.enable_tts:
             audio_out_cfg.output_device_index = tts_output_device_index
+
+        # Initialize memory system
+        try:
+            memory_client = _try_init_memory(
+                memory_cfg,
+                history_cfg,
+                openai_llm_cfg,
+                general_cfg.quiet,
+            )
+        except ImportError:
+            if not general_cfg.quiet:
+                console.print(
+                    "[yellow]Memory system not available. "
+                    "Install with: pip install 'agent-cli[memory]'[/yellow]",
+                )
+        except Exception as e:
+            if not general_cfg.quiet:
+                console.print(f"[yellow]Failed to initialize memory: {e}[/yellow]")
+            LOGGER.warning("Failed to initialize memory: %s", e)
 
         # Load conversation history
         conversation_history = []
@@ -371,6 +468,10 @@ async def _async_main(
         if not general_cfg.quiet:
             console.print_exception()
         raise
+    finally:
+        # Clean up memory client
+        if memory_client is not None:
+            await cleanup_memory()
 
 
 @app.command("chat")
@@ -433,6 +534,11 @@ def chat(
         " Set to 0 to disable history.",
         rich_help_panel="History Options",
     ),
+    # --- Memory Options ---
+    memory_path: Path | None = opts.MEMORY_PATH,
+    memory_embedding_model: str = opts.MEMORY_EMBEDDING_MODEL,
+    memory_top_k: int = opts.MEMORY_TOP_K,
+    memory_score_threshold: float = opts.MEMORY_SCORE_THRESHOLD,
     # --- General Options ---
     save_file: Path | None = opts.SAVE_FILE,
     log_level: str = opts.LOG_LEVEL,
@@ -535,6 +641,12 @@ def chat(
             history_dir=history_dir,
             last_n_messages=last_n_messages,
         )
+        memory_cfg = config.Memory(
+            memory_path=memory_path,
+            embedding_model=memory_embedding_model,
+            top_k=memory_top_k,
+            score_threshold=memory_score_threshold,
+        )
 
         asyncio.run(
             _async_main(
@@ -553,5 +665,6 @@ def chat(
                 openai_tts_cfg=openai_tts_cfg,
                 kokoro_tts_cfg=kokoro_tts_cfg,
                 gemini_tts_cfg=gemini_tts_cfg,
+                memory_cfg=memory_cfg,
             ),
         )

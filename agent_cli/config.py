@@ -224,6 +224,34 @@ class History(BaseModel):
         return None
 
 
+# --- Panel: Memory Options ---
+
+
+class Memory(BaseModel):
+    """Configuration for the vector-backed memory system.
+
+    The memory system uses ChromaDB with vector embeddings for semantic search,
+    recency-aware scoring, and automatic fact reconciliation.
+    """
+
+    memory_path: Path | None = None
+    embedding_model: str = "text-embedding-3-small"
+    top_k: int = 5
+    score_threshold: float = 0.35
+    recency_weight: float = 0.2
+    mmr_lambda: float = 0.7
+    enable_summarization: bool = True
+    enable_git_versioning: bool = False
+    max_entries: int = 500
+
+    @field_validator("memory_path", mode="before")
+    @classmethod
+    def _expand_user_path(cls, v: str | None) -> Path | None:
+        if v:
+            return Path(v).expanduser()
+        return None
+
+
 def _config_path(config_path_str: str | None = None) -> Path | None:
     """Return a usable config path, expanding user directories."""
     if config_path_str:
