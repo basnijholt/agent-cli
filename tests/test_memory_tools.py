@@ -276,6 +276,24 @@ def test_create_memory_tools_with_none_client() -> None:
     assert len(result) == 3
 
 
+def test_create_memory_tools_read_only() -> None:
+    """Test create_memory_tools with read_only=True excludes add_memory."""
+    mock_client = MagicMock()
+    result = create_memory_tools(mock_client, "test", read_only=True)
+
+    assert isinstance(result, list)
+    assert len(result) == 2  # Only search_memory and list_all_memories
+
+
+def test_create_memory_tools_read_only_false() -> None:
+    """Test create_memory_tools with read_only=False includes add_memory."""
+    mock_client = MagicMock()
+    result = create_memory_tools(mock_client, "test", read_only=False)
+
+    assert isinstance(result, list)
+    assert len(result) == 3  # add_memory, search_memory, list_all_memories
+
+
 # --- Tests for tools function ---
 
 
@@ -294,6 +312,26 @@ def test_tools_with_memory_client() -> None:
     result = tools(mock_client, "conversation_123")
 
     assert isinstance(result, list)
+    assert len(result) == 6
+
+
+def test_tools_memory_read_only() -> None:
+    """Test tools function with memory_read_only=True has fewer memory tools."""
+    mock_client = MagicMock()
+    result = tools(mock_client, "test", memory_read_only=True)
+
+    assert isinstance(result, list)
+    # Should have: read_file, execute_code, 2 memory tools (no add_memory), duckduckgo_search
+    assert len(result) == 5
+
+
+def test_tools_memory_read_only_false() -> None:
+    """Test tools function with memory_read_only=False includes all memory tools."""
+    mock_client = MagicMock()
+    result = tools(mock_client, "test", memory_read_only=False)
+
+    assert isinstance(result, list)
+    # Should have: read_file, execute_code, 3 memory tools, duckduckgo_search
     assert len(result) == 6
 
 

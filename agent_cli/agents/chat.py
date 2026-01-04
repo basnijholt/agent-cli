@@ -348,8 +348,12 @@ async def _handle_conversation_turn(
         quiet=general_cfg.quiet,
         stop_event=stop_event,
     ):
-        # Only include memory tools in "tools" mode
-        tool_memory_client = memory_client if memory_cfg.mode == "tools" else None
+        # Memory tools access:
+        # - "off": no memory tools
+        # - "tools": full access (add, search, list)
+        # - "auto": read-only access (search, list) - extraction happens automatically
+        tool_memory_client = memory_client if memory_cfg.mode != "off" else None
+        memory_read_only = memory_cfg.mode == "auto"
         response_text = await get_llm_response(
             system_prompt=SYSTEM_PROMPT,
             agent_instructions=AGENT_INSTRUCTIONS,
@@ -359,7 +363,7 @@ async def _handle_conversation_turn(
             openai_cfg=openai_llm_cfg,
             gemini_cfg=gemini_llm_cfg,
             logger=LOGGER,
-            tools=tools(tool_memory_client, conversation_id),
+            tools=tools(tool_memory_client, conversation_id, memory_read_only=memory_read_only),
             quiet=True,  # Suppress internal output since we're showing our own timer
             live=live,
         )

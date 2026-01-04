@@ -193,12 +193,16 @@ class MemoryTools:
 def create_memory_tools(
     memory_client: MemoryClient | None,
     conversation_id: str = "default",
+    *,
+    read_only: bool = False,
 ) -> list:
     """Create memory tools bound to a specific client and conversation.
 
     Args:
         memory_client: The MemoryClient instance, or None if not available.
         conversation_id: The conversation ID for scoping memories.
+        read_only: If True, only include search/list tools (not add_memory).
+            Use this for "auto" mode where extraction happens automatically.
 
     Returns:
         List of pydantic_ai Tool objects for memory operations.
@@ -207,19 +211,28 @@ def create_memory_tools(
     from pydantic_ai.tools import Tool  # noqa: PLC0415
 
     mt = MemoryTools(memory_client, conversation_id)
-    return [
-        Tool(mt.add_memory),
+    tools_list = [
         Tool(mt.search_memory),
         Tool(mt.list_all_memories),
     ]
+    if not read_only:
+        tools_list.insert(0, Tool(mt.add_memory))
+    return tools_list
 
 
-def tools(memory_client: MemoryClient | None = None, conversation_id: str = "default") -> list:
+def tools(
+    memory_client: MemoryClient | None = None,
+    conversation_id: str = "default",
+    *,
+    memory_read_only: bool = False,
+) -> list:
     """Return a list of all tools for the chat agent.
 
     Args:
         memory_client: The MemoryClient instance, or None if not available.
         conversation_id: The conversation ID for scoping memories.
+        memory_read_only: If True, only include search/list memory tools (not add).
+            Use this for "auto" mode where extraction happens automatically.
 
     """
     from pydantic_ai.common_tools.duckduckgo import duckduckgo_search_tool  # noqa: PLC0415
@@ -228,6 +241,6 @@ def tools(memory_client: MemoryClient | None = None, conversation_id: str = "def
     return [
         Tool(read_file),
         Tool(execute_code),
-        *create_memory_tools(memory_client, conversation_id),
+        *create_memory_tools(memory_client, conversation_id, read_only=memory_read_only),
         duckduckgo_search_tool(),
     ]
