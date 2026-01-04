@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import os
 import subprocess
@@ -12,8 +13,67 @@ from typing import TYPE_CHECKING, Any, TypeVar
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+    from agent_cli.memory.client import MemoryClient
 
-# Memory system helpers
+
+# --- Advanced Memory State ---
+# These module-level variables are set by init_advanced_memory() when the chat
+# agent starts with --advanced-memory enabled.
+
+_memory_client: MemoryClient | None = None
+_conversation_id: str = "default"
+_event_loop: asyncio.AbstractEventLoop | None = None
+
+
+def init_advanced_memory(
+    client: MemoryClient,
+    conversation_id: str = "default",
+    event_loop: asyncio.AbstractEventLoop | None = None,
+) -> None:
+    """Initialize the advanced memory system.
+
+    Called by the chat agent when --advanced-memory is enabled.
+
+    Args:
+        client: The MemoryClient instance to use for memory operations.
+        conversation_id: The conversation ID for scoping memories.
+        event_loop: The asyncio event loop for running async operations.
+
+    """
+    global _memory_client, _conversation_id, _event_loop
+    _memory_client = client
+    _conversation_id = conversation_id
+    _event_loop = event_loop
+
+
+async def cleanup_advanced_memory() -> None:
+    """Clean up the advanced memory system.
+
+    Called when the chat agent exits.
+    """
+    global _memory_client, _event_loop
+    if _memory_client is not None:
+        await _memory_client.stop()
+        _memory_client = None
+    _event_loop = None
+
+
+def _is_advanced_memory() -> bool:
+    """Check if advanced memory is enabled and initialized."""
+    return _memory_client is not None and _event_loop is not None
+
+
+def _run_async(coro: Any, timeout: float = 30.0) -> Any:
+    """Run an async coroutine from sync context using the stored event loop."""
+    if _event_loop is None:
+        msg = "Event loop not initialized for advanced memory"
+        raise RuntimeError(msg)
+
+    future = asyncio.run_coroutine_threadsafe(coro, _event_loop)
+    return future.result(timeout=timeout)
+
+
+# --- Simple Memory System Helpers ---
 
 
 def _get_memory_file_path() -> Path:
@@ -133,6 +193,41 @@ def execute_code(code: str) -> str:
         return f"Error: Command not found: {code.split()[0]}"
 
 
+def _add_memory_simple(content: str, category: str, tags: str) -> str:
+    """Add memory using the simple JSON-based system."""
+    memories = _load_memories()
+
+    memory = {
+        "id": len(memories) + 1,
+        "content": content,
+        "category": category,
+        "tags": _parse_tags(tags),
+        "timestamp": datetime.now(UTC).isoformat(),
+    }
+
+    memories.append(memory)
+    _save_memories(memories)
+
+    return f"Memory added successfully with ID {memory['id']}"
+
+
+def _add_memory_advanced(content: str, category: str, tags: str) -> str:
+    """Add memory using the advanced vector-backed system."""
+    if _memory_client is None:
+        return "Error: Advanced memory not initialized"
+
+    # Format content with metadata for the advanced system
+    formatted_content = f"[{category}] {content}"
+    if tags:
+        formatted_content += f" (tags: {tags})"
+
+    try:
+        _run_async(_memory_client.add(formatted_content, conversation_id=_conversation_id))
+        return "Memory added successfully (advanced semantic memory)"
+    except Exception as e:
+        return f"Error adding memory: {e}"
+
+
 def add_memory(content: str, category: str = "general", tags: str = "") -> str:
     """Add important information to long-term memory for future conversations.
 
@@ -153,24 +248,66 @@ def add_memory(content: str, category: str = "general", tags: str = "") -> str:
         Confirmation message with the memory ID
 
     """
+    if _is_advanced_memory():
+        return _memory_operation(
+            "adding memory",
+            lambda: _add_memory_advanced(content, category, tags),
+        )
+    return _memory_operation("adding memory", lambda: _add_memory_simple(content, category, tags))
 
-    def _add_memory_operation() -> str:
-        memories = _load_memories()
 
-        memory = {
-            "id": len(memories) + 1,
-            "content": content,
-            "category": category,
-            "tags": _parse_tags(tags),
-            "timestamp": datetime.now(UTC).isoformat(),
-        }
+def _search_memory_simple(query: str, category: str) -> str:
+    """Search memory using the simple JSON-based system."""
+    memories = _load_memories()
 
-        memories.append(memory)
-        _save_memories(memories)
+    if not memories:
+        return "No memories found. Memory system not initialized."
 
-        return f"Memory added successfully with ID {memory['id']}"
+    # Simple text-based search
+    query_lower = query.lower()
+    relevant_memories = []
 
-    return _memory_operation("adding memory", _add_memory_operation)
+    for memory in memories:
+        # Check if query matches content, tags, or category
+        content_match = query_lower in memory["content"].lower()
+        tag_match = any(query_lower in tag.lower() for tag in memory["tags"])
+        category_match = not category or memory["category"].lower() == category.lower()
+
+        if (content_match or tag_match) and category_match:
+            relevant_memories.append(memory)
+
+    if not relevant_memories:
+        return f"No memories found matching '{query}'"
+
+    # Format results
+    results = [_format_memory_summary(memory) for memory in relevant_memories[-5:]]
+
+    return "\n".join(results)
+
+
+def _search_memory_advanced(query: str, category: str) -> str:
+    """Search memory using the advanced vector-backed system with semantic search."""
+    if _memory_client is None:
+        return "Error: Advanced memory not initialized"
+
+    # Include category in search query if provided
+    search_query = f"{category} {query}" if category else query
+
+    try:
+        result = _run_async(
+            _memory_client.search(search_query, conversation_id=_conversation_id),
+        )
+        if not result.entries:
+            return f"No memories found matching '{query}'"
+
+        # Format results with relevance scores
+        lines = []
+        for entry in result.entries:
+            score_info = f" (relevance: {entry.score:.2f})" if entry.score else ""
+            lines.append(f"- {entry.content}{score_info}")
+        return "\n".join(lines)
+    except Exception as e:
+        return f"Error searching memory: {e}"
 
 
 def search_memory(query: str, category: str = "") -> str:
@@ -183,6 +320,7 @@ def search_memory(query: str, category: str = "") -> str:
     - To check if you've discussed a topic before
 
     The search looks through memory content and tags for matches.
+    When using advanced memory, this performs semantic search to find conceptually related information.
 
     Args:
         query: Keywords to search for (e.g., "programming languages", "work schedule", "preferences")
@@ -192,35 +330,73 @@ def search_memory(query: str, category: str = "") -> str:
         Relevant memories found, or message if none found
 
     """
+    if _is_advanced_memory():
+        return _memory_operation(
+            "searching memory",
+            lambda: _search_memory_advanced(query, category),
+        )
+    return _memory_operation("searching memory", lambda: _search_memory_simple(query, category))
 
-    def _search_memory_operation() -> str:
-        memories = _load_memories()
 
-        if not memories:
-            return "No memories found. Memory system not initialized."
+def _update_memory_simple(memory_id: int, content: str, category: str, tags: str) -> str:
+    """Update memory using the simple JSON-based system."""
+    memories = _load_memories()
 
-        # Simple text-based search
-        query_lower = query.lower()
-        relevant_memories = []
+    if not memories:
+        return "No memories found. Memory system not initialized."
 
-        for memory in memories:
-            # Check if query matches content, tags, or category
-            content_match = query_lower in memory["content"].lower()
-            tag_match = any(query_lower in tag.lower() for tag in memory["tags"])
-            category_match = not category or memory["category"].lower() == category.lower()
+    # Find memory to update
+    memory_to_update = _find_memory_by_id(memories, memory_id)
+    if not memory_to_update:
+        return f"Memory with ID {memory_id} not found."
 
-            if (content_match or tag_match) and category_match:
-                relevant_memories.append(memory)
+    # Update fields if provided
+    if content:
+        memory_to_update["content"] = content
+    if category:
+        memory_to_update["category"] = category
+    if tags:
+        memory_to_update["tags"] = _parse_tags(tags)
 
-        if not relevant_memories:
-            return f"No memories found matching '{query}'"
+    # Add update timestamp
+    memory_to_update["updated_at"] = datetime.now(UTC).isoformat()
 
-        # Format results
-        results = [_format_memory_summary(memory) for memory in relevant_memories[-5:]]
+    _save_memories(memories)
+    return f"Memory ID {memory_id} updated successfully."
 
-        return "\n".join(results)
 
-    return _memory_operation("searching memory", _search_memory_operation)
+def _update_memory_advanced(memory_id: int, content: str, category: str, tags: str) -> str:
+    """Update memory using the advanced system.
+
+    Note: The advanced memory system uses the reconciliation pipeline which
+    automatically manages memory updates through fact extraction. Direct updates
+    are handled by adding new information that supersedes old information.
+    """
+    _ = memory_id  # Advanced system uses reconciliation, not ID-based updates
+    if _memory_client is None:
+        return "Error: Advanced memory not initialized"
+
+    if not content:
+        return (
+            "In advanced memory mode, please provide the updated content. "
+            "The system will automatically reconcile it with existing memories."
+        )
+
+    # Format content with metadata
+    formatted_content = f"[{category or 'general'}] {content}"
+    if tags:
+        formatted_content += f" (tags: {tags})"
+
+    try:
+        # Add the updated information - the advanced system's reconciliation
+        # pipeline will handle updating/replacing related facts
+        _run_async(_memory_client.add(formatted_content, conversation_id=_conversation_id))
+        return (
+            "Memory updated successfully. The advanced memory system has reconciled "
+            "this information with existing memories."
+        )
+    except Exception as e:
+        return f"Error updating memory: {e}"
 
 
 def update_memory(memory_id: int, content: str = "", category: str = "", tags: str = "") -> str:
@@ -232,6 +408,7 @@ def update_memory(memory_id: int, content: str = "", category: str = "", tags: s
     - When the user says "update my memory about..." or "change the memory where..."
 
     Only provide the fields that should be updated - empty fields will keep existing values.
+    In advanced memory mode, the system automatically reconciles updates with existing information.
 
     Args:
         memory_id: The ID of the memory to update (use search_memory or list_all_memories to find IDs)
@@ -243,33 +420,70 @@ def update_memory(memory_id: int, content: str = "", category: str = "", tags: s
         Confirmation message or error if memory ID not found
 
     """
+    if _is_advanced_memory():
+        return _memory_operation(
+            "updating memory",
+            lambda: _update_memory_advanced(memory_id, content, category, tags),
+        )
+    return _memory_operation(
+        "updating memory",
+        lambda: _update_memory_simple(memory_id, content, category, tags),
+    )
 
-    def _update_memory_operation() -> str:
-        memories = _load_memories()
 
-        if not memories:
-            return "No memories found. Memory system not initialized."
+def _list_all_memories_simple(limit: int) -> str:
+    """List all memories using the simple JSON-based system."""
+    memories = _load_memories()
 
-        # Find memory to update
-        memory_to_update = _find_memory_by_id(memories, memory_id)
-        if not memory_to_update:
-            return f"Memory with ID {memory_id} not found."
+    if not memories:
+        return "No memories stored yet."
 
-        # Update fields if provided
-        if content:
-            memory_to_update["content"] = content
-        if category:
-            memory_to_update["category"] = category
-        if tags:
-            memory_to_update["tags"] = _parse_tags(tags)
+    # Sort by ID (newest first) and limit results
+    memories_to_show = sorted(memories, key=lambda x: x["id"], reverse=True)[:limit]
 
-        # Add update timestamp
-        memory_to_update["updated_at"] = datetime.now(UTC).isoformat()
+    results = [f"Showing {len(memories_to_show)} of {len(memories)} total memories:\n"]
+    results.extend(_format_memory_detailed(memory) for memory in memories_to_show)
 
-        _save_memories(memories)
-        return f"Memory ID {memory_id} updated successfully."
+    if len(memories) > limit:
+        results.append(
+            f"... and {len(memories) - limit} more memories. Use a higher limit to see more.",
+        )
 
-    return _memory_operation("updating memory", _update_memory_operation)
+    return "\n".join(results)
+
+
+def _list_all_memories_advanced(limit: int) -> str:
+    """List all memories using the advanced vector-backed system."""
+    if _memory_client is None:
+        return "Error: Advanced memory not initialized"
+
+    try:
+        entries = _memory_client.list_all(
+            conversation_id=_conversation_id,
+            include_summary=False,
+        )
+
+        if not entries:
+            return "No memories stored yet."
+
+        # Limit results
+        entries_to_show = entries[:limit]
+
+        results = [f"Showing {len(entries_to_show)} of {len(entries)} total memories:\n"]
+        for entry in entries_to_show:
+            created_at = entry.get("created_at", "unknown")
+            role = entry.get("role", "memory")
+            content = entry.get("content", "")
+            results.append(f"- [{role}] {content} (created: {created_at})")
+
+        if len(entries) > limit:
+            results.append(
+                f"\n... and {len(entries) - limit} more memories. Use a higher limit to see more.",
+            )
+
+        return "\n".join(results)
+    except Exception as e:
+        return f"Error listing memories: {e}"
 
 
 def list_all_memories(limit: int = 10) -> str:
@@ -289,27 +503,61 @@ def list_all_memories(limit: int = 10) -> str:
         Formatted list of all memories with IDs, content, categories, and tags
 
     """
+    if _is_advanced_memory():
+        return _memory_operation("listing memories", lambda: _list_all_memories_advanced(limit))
+    return _memory_operation("listing memories", lambda: _list_all_memories_simple(limit))
 
-    def _list_all_memories_operation() -> str:
-        memories = _load_memories()
 
-        if not memories:
-            return "No memories stored yet."
+def _list_memory_categories_simple() -> str:
+    """List categories using the simple JSON-based system."""
+    memories = _load_memories()
 
-        # Sort by ID (newest first) and limit results
-        memories_to_show = sorted(memories, key=lambda x: x["id"], reverse=True)[:limit]
+    if not memories:
+        return "No memories found. Memory system not initialized."
 
-        results = [f"Showing {len(memories_to_show)} of {len(memories)} total memories:\n"]
-        results.extend(_format_memory_detailed(memory) for memory in memories_to_show)
+    # Count categories
+    categories: dict[str, int] = {}
+    for memory in memories:
+        category = memory["category"]
+        categories[category] = categories.get(category, 0) + 1
 
-        if len(memories) > limit:
-            results.append(
-                f"... and {len(memories) - limit} more memories. Use a higher limit to see more.",
-            )
+    if not categories:
+        return "No memory categories found."
+
+    results = ["Memory Categories:"]
+    for category, count in sorted(categories.items()):
+        results.append(f"- {category}: {count} memories")
+
+    return "\n".join(results)
+
+
+def _list_memory_categories_advanced() -> str:
+    """List categories using the advanced vector-backed system."""
+    if _memory_client is None:
+        return "Error: Advanced memory not initialized"
+
+    try:
+        entries = _memory_client.list_all(
+            conversation_id=_conversation_id,
+            include_summary=False,
+        )
+
+        if not entries:
+            return "No memories found. Memory system not initialized."
+
+        # Count by role (user, assistant, memory)
+        roles: dict[str, int] = {}
+        for entry in entries:
+            role = entry.get("role", "memory")
+            roles[role] = roles.get(role, 0) + 1
+
+        results = ["Memory Types (advanced memory system):"]
+        for role, count in sorted(roles.items()):
+            results.append(f"- {role}: {count} entries")
 
         return "\n".join(results)
-
-    return _memory_operation("listing memories", _list_all_memories_operation)
+    except Exception as e:
+        return f"Error listing categories: {e}"
 
 
 def list_memory_categories() -> str:
@@ -326,29 +574,9 @@ def list_memory_categories() -> str:
         Summary of memory categories with counts (e.g., "personal: 5 memories")
 
     """
-
-    def _list_categories_operation() -> str:
-        memories = _load_memories()
-
-        if not memories:
-            return "No memories found. Memory system not initialized."
-
-        # Count categories
-        categories: dict[str, int] = {}
-        for memory in memories:
-            category = memory["category"]
-            categories[category] = categories.get(category, 0) + 1
-
-        if not categories:
-            return "No memory categories found."
-
-        results = ["Memory Categories:"]
-        for category, count in sorted(categories.items()):
-            results.append(f"- {category}: {count} memories")
-
-        return "\n".join(results)
-
-    return _memory_operation("listing categories", _list_categories_operation)
+    if _is_advanced_memory():
+        return _memory_operation("listing categories", _list_memory_categories_advanced)
+    return _memory_operation("listing categories", _list_memory_categories_simple)
 
 
 def tools() -> list:
