@@ -189,45 +189,6 @@ class MemoryTools:
         except Exception as e:
             return f"Error listing memories: {e}"
 
-    def list_memory_categories(self) -> str:
-        """List all memory categories and their counts to see what has been remembered.
-
-        Use this tool:
-        - When the user asks "what categories do you have?"
-        - To get a quick overview of memory organization
-        - When the user wants to know what types of information are stored
-
-        This provides a summary view before using list_all_memories for details.
-
-        Returns:
-            Summary of memory types with counts
-
-        """
-        if error := self._check():
-            return error
-
-        try:
-            entries = self._client.list_all(  # type: ignore[union-attr]
-                conversation_id=self._conversation_id,
-                include_summary=False,
-            )
-
-            if not entries:
-                return "No memories found."
-
-            roles: dict[str, int] = {}
-            for entry in entries:
-                role = entry.get("role", "memory")
-                roles[role] = roles.get(role, 0) + 1
-
-            results = ["Memory Types:"]
-            for role, count in sorted(roles.items()):
-                results.append(f"- {role}: {count} entries")
-
-            return "\n".join(results)
-        except Exception as e:
-            return f"Error listing categories: {e}"
-
 
 def create_memory_tools(
     memory_client: MemoryClient | None,
@@ -250,7 +211,6 @@ def create_memory_tools(
         Tool(mt.add_memory),
         Tool(mt.search_memory),
         Tool(mt.list_all_memories),
-        Tool(mt.list_memory_categories),
     ]
 
 

@@ -144,7 +144,6 @@ You have access to the following tools:
 - add_memory: Add important information to long-term memory for future recall.
 - search_memory: Search your long-term memory for relevant information.
 - list_all_memories: Show all stored memories with their details.
-- list_memory_categories: See what types of information you've remembered.
 - duckduckgo_search: Search the web for current information.
 
 Memory Guidelines:

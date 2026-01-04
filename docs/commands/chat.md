@@ -214,9 +214,7 @@ The chat agent has access to tools that let it interact with your system:
 - **duckduckgo_search**: Search the web via DuckDuckGo
 - **add_memory**: Store information for future conversations (uses [vector memory](../architecture/memory.md))
 - **search_memory**: Search stored memories with semantic search
-- **update_memory**: Update existing memories
 - **list_all_memories**: List all stored memories
-- **list_memory_categories**: Show memory category summary
 
 ## Example Conversation
 
