@@ -6,7 +6,7 @@ icon: lucide/mic
 
 A collection of **local-first**, AI-powered command-line agents that run entirely on your machine.
 
-<img src="https://raw.githubusercontent.com/basnijholt/agent-cli/refs/heads/main/.github/logo.svg" alt="agent-cli logo" style="width: 250px; float: right; margin-left: 20px;" />
+<img src="https://raw.githubusercontent.com/basnijholt/agent-cli/refs/heads/main/.github/logo.svg" alt="agent-cli logo" style="width: 200px; float: right; margin-left: 20px;" />
 
 ## What is Agent CLI?
 
