@@ -25,7 +25,7 @@ from typing import TYPE_CHECKING, TypedDict
 import typer
 
 from agent_cli import config, opts
-from agent_cli._tools import cleanup_memory, init_memory, tools
+from agent_cli._tools import tools
 from agent_cli.cli import app
 from agent_cli.core import process
 from agent_cli.core.audio import setup_devices
@@ -49,6 +49,8 @@ from agent_cli.services.tts import handle_tts_playback
 
 if TYPE_CHECKING:
     from rich.live import Live
+
+    from agent_cli.memory.client import MemoryClient
 
 
 LOGGER = logging.getLogger(__name__)
@@ -74,12 +76,12 @@ def _try_init_memory(
     history_cfg: config.History,
     openai_llm_cfg: config.OpenAILLM,
     quiet: bool,
-) -> object | None:
+) -> MemoryClient | None:
     """Try to initialize the memory system.
 
     Returns the MemoryClient if successful, None otherwise.
     """
-    from agent_cli.memory.client import MemoryClient  # noqa: PLC0415
+    from agent_cli.memory.client import MemoryClient as MemoryClientImpl  # noqa: PLC0415
 
     # Determine memory path
     memory_path = memory_cfg.memory_path
@@ -95,7 +97,7 @@ def _try_init_memory(
     if not quiet:
         console.print("[dim]Initializing memory system...[/dim]")
 
-    memory_client = MemoryClient(
+    memory_client = MemoryClientImpl(
         memory_path=memory_path,
         openai_base_url=openai_base_url,
         embedding_model=memory_cfg.embedding_model,
@@ -113,14 +115,6 @@ def _try_init_memory(
 
     # Start the memory client's file watcher
     memory_client.start()
-
-    # Generate conversation ID and initialize tools
-    conversation_id = _get_conversation_id(history_cfg)
-    init_memory(
-        memory_client,
-        conversation_id,
-        asyncio.get_running_loop(),
-    )
 
     if not quiet:
         console.print("[green]Memory system initialized[/green]")
@@ -149,8 +143,7 @@ You have access to the following tools:
 - execute_code: Execute a shell command.
 - add_memory: Add important information to long-term memory for future recall.
 - search_memory: Search your long-term memory for relevant information.
-- update_memory: Modify existing memories by ID when information changes.
-- list_all_memories: Show all stored memories with their IDs and details.
+- list_all_memories: Show all stored memories with their details.
 - list_memory_categories: See what types of information you've remembered.
 - duckduckgo_search: Search the web for current information.
 
@@ -223,6 +216,8 @@ async def _handle_conversation_turn(
     *,
     stop_event: InteractiveStopEvent,
     conversation_history: list[ConversationEntry],
+    memory_client: MemoryClient | None,
+    conversation_id: str,
     provider_cfg: config.ProviderSelection,
     general_cfg: config.General,
     history_cfg: config.History,
@@ -314,7 +309,7 @@ async def _handle_conversation_turn(
             openai_cfg=openai_llm_cfg,
             gemini_cfg=gemini_llm_cfg,
             logger=LOGGER,
-            tools=tools(),
+            tools=tools(memory_client, conversation_id),
             quiet=True,  # Suppress internal output since we're showing our own timer
             live=live,
         )
@@ -439,6 +434,9 @@ async def _async_main(
                 history_cfg.last_n_messages,
             )
 
+        # Generate conversation ID for memory scoping
+        conversation_id = _get_conversation_id(history_cfg)
+
         with (
             maybe_live(not general_cfg.quiet) as live,
             signal_handling_context(LOGGER, general_cfg.quiet) as stop_event,
@@ -447,6 +445,8 @@ async def _async_main(
                 await _handle_conversation_turn(
                     stop_event=stop_event,
                     conversation_history=conversation_history,
+                    memory_client=memory_client,
+                    conversation_id=conversation_id,
                     provider_cfg=provider_cfg,
                     general_cfg=general_cfg,
                     history_cfg=history_cfg,
@@ -471,7 +471,7 @@ async def _async_main(
     finally:
         # Clean up memory client
         if memory_client is not None:
-            await cleanup_memory()
+            await memory_client.stop()
 
 
 @app.command("chat")

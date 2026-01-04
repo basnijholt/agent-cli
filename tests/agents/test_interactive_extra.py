@@ -68,6 +68,8 @@ async def test_handle_conversation_turn_no_llm_response():
         await _handle_conversation_turn(
             stop_event=stop_event,
             conversation_history=conversation_history,
+            memory_client=None,
+            conversation_id="test",
             provider_cfg=provider_cfg,
             general_cfg=general_cfg,
             history_cfg=history_cfg,
@@ -138,6 +140,8 @@ async def test_handle_conversation_turn_no_instruction():
         await _handle_conversation_turn(
             stop_event=stop_event,
             conversation_history=conversation_history,
+            memory_client=None,
+            conversation_id="test",
             provider_cfg=provider_cfg,
             general_cfg=general_cfg,
             history_cfg=history_cfg,
