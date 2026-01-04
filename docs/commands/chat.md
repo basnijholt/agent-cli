@@ -165,6 +165,16 @@ agent-cli chat --last-n-messages 100 --history-dir ~/.my-chat-history
 | `--history-dir` | `~/.config/agent-cli/history` | Directory to store conversation history. |
 | `--last-n-messages` | `50` | Number of messages to include in the conversation history. Set to 0 to disable history. |
 
+### Memory Options
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--advanced-memory/--no-advanced-memory` | `true` | Use advanced vector-backed memory with semantic search. Auto-falls back to simple memory if dependencies not installed. |
+| `--memory-path` | - | Path for advanced memory database storage. Default: ~/.config/agent-cli/memory/vector_db |
+| `--memory-embedding-model` | `text-embedding-3-small` | Embedding model for semantic memory search. |
+| `--memory-top-k` | `5` | Number of memories to retrieve per search. |
+| `--memory-score-threshold` | `0.35` | Minimum relevance score threshold for memory retrieval (0.0-1.0). |
+
 ### General Options
 
 | Option | Default | Description |
@@ -179,19 +189,43 @@ agent-cli chat --last-n-messages 100 --history-dir ~/.my-chat-history
 
 <!-- OUTPUT:END -->
 
+## Memory System
+
+The chat agent includes a built-in long-term memory system that allows it to remember information across conversations.
+
+### Advanced Memory (Default)
+
+By default, the chat agent uses the **advanced vector-backed memory system** with semantic search. This provides:
+
+- **Semantic search**: Find relevant memories based on meaning, not just keywords
+- **Recency-aware scoring**: Recent memories are weighted higher
+- **Diversity selection (MMR)**: Avoids redundant memories in context
+- **Automatic reconciliation**: Contradicting facts are updated, not duplicated
+
+> [!NOTE]
+> Advanced memory requires the `[memory]` extra: `pip install "agent-cli[memory]"`.
+> If not installed, the system automatically falls back to simple JSON storage with a warning.
+
+To disable advanced memory and use the simple JSON system:
+```bash
+agent-cli chat --no-advanced-memory
+```
+
+For more details on how the memory system works, see [Memory System Architecture](../architecture/memory.md).
+
+### Simple Memory Fallback
+
+When advanced memory is disabled or unavailable, the agent uses a simple JSON-based storage system with text matching.
+
 ## Available Tools
 
 The chat agent has access to tools that let it interact with your system:
 
-> [!NOTE]
-> The memory tools below use a simple, built-in JSON storage system.
-> For the advanced, vector-backed memory system, see the [`memory`](memory.md) command.
-
 - **read_file**: Read file contents
 - **execute_code**: Run a single command (no shell features like pipes or redirects)
 - **duckduckgo_search**: Search the web via DuckDuckGo
-- **add_memory**: Store information for future conversations
-- **search_memory**: Search stored memories
+- **add_memory**: Store information for future conversations (uses [advanced memory](../architecture/memory.md) when enabled)
+- **search_memory**: Search stored memories with semantic search
 - **update_memory**: Update existing memories
 - **list_all_memories**: List all stored memories
 - **list_memory_categories**: Show memory category summary
