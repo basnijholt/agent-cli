@@ -240,6 +240,7 @@ async def _maybe_extract_memories(
     instruction: str,
     response_text: str,
     conversation_id: str,
+    model: str,
     quiet: bool,
 ) -> None:
     """Extract memories in auto mode, silently skip otherwise."""
@@ -250,6 +251,7 @@ async def _maybe_extract_memories(
             user_message=instruction,
             assistant_message=response_text,
             conversation_id=conversation_id,
+            model=model,
         )
         if not quiet:
             console.print("[dim]💾 Memory extraction complete[/dim]")
@@ -392,6 +394,7 @@ async def _handle_conversation_turn(
         instruction,
         response_text,
         conversation_id,
+        openai_llm_cfg.llm_openai_model,
         general_cfg.quiet,
     )
 
