@@ -1530,6 +1530,10 @@ uv tool install "agent-cli[vad]"
 │                                   [default: 50]                              │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Memory Options ─────────────────────────────────────────────────────────────╮
+│ --memory-mode                   TEXT     Memory mode: 'off' (disabled),      │
+│                                          'tools' (LLM decides via tools),    │
+│                                          'auto' (automatic extraction).      │
+│                                          [default: tools]                    │
 │ --memory-path                   PATH     Path for memory database storage.   │
 │                                          Default:                            │
 │                                          ~/.config/agent-cli/memory/vector_… │

@@ -169,6 +169,7 @@ agent-cli chat --last-n-messages 100 --history-dir ~/.my-chat-history
 
 | Option | Default | Description |
 |--------|---------|-------------|
+| `--memory-mode` | `tools` | Memory mode: 'off' (disabled), 'tools' (LLM decides via tools), 'auto' (automatic extraction). |
 | `--memory-path` | - | Path for memory database storage. Default: ~/.config/agent-cli/memory/vector_db |
 | `--memory-embedding-model` | `text-embedding-3-small` | Embedding model for semantic memory search. |
 | `--memory-top-k` | `5` | Number of memories to retrieve per search. |
