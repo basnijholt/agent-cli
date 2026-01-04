@@ -50,8 +50,101 @@ from agent_cli.services.tts import handle_tts_playback
 if TYPE_CHECKING:
     from rich.live import Live
 
+    from agent_cli.memory.client import MemoryClient
+
 
 LOGGER = logging.getLogger(__name__)
+
+
+def _get_conversation_id(history_cfg: config.History) -> str:
+    """Generate a stable conversation ID from history configuration.
+
+    Uses a hash of the history directory path to ensure consistency across sessions.
+    """
+    import hashlib  # noqa: PLC0415
+
+    if history_cfg.history_dir:
+        return hashlib.md5(
+            str(Path(history_cfg.history_dir).resolve()).encode(),
+            usedforsecurity=False,
+        ).hexdigest()[:12]
+    return "default"
+
+
+def _try_init_memory(
+    memory_cfg: config.Memory,
+    history_cfg: config.History,
+    openai_llm_cfg: config.OpenAILLM,
+    quiet: bool,
+) -> MemoryClient | None:
+    """Try to initialize the memory system.
+
+    Returns the MemoryClient if successful, None otherwise.
+    """
+    from agent_cli.memory.client import MemoryClient as MemoryClientImpl  # noqa: PLC0415
+
+    # Determine memory path
+    memory_path = memory_cfg.memory_path
+    if memory_path is None:
+        if history_cfg.history_dir:
+            memory_path = Path(history_cfg.history_dir).expanduser() / "vector_memory"
+        else:
+            memory_path = Path.home() / ".config" / "agent-cli" / "memory" / "vector_db"
+
+    # Determine OpenAI base URL for embeddings
+    openai_base_url = openai_llm_cfg.openai_base_url or "https://api.openai.com/v1"
+
+    if not quiet:
+        console.print("[dim]Initializing memory system...[/dim]")
+
+    memory_client = MemoryClientImpl(
+        memory_path=memory_path,
+        openai_base_url=openai_base_url,
+        embedding_model=memory_cfg.embedding_model,
+        embedding_api_key=openai_llm_cfg.openai_api_key,
+        chat_api_key=openai_llm_cfg.openai_api_key,
+        default_top_k=memory_cfg.top_k,
+        score_threshold=memory_cfg.score_threshold,
+        recency_weight=memory_cfg.recency_weight,
+        mmr_lambda=memory_cfg.mmr_lambda,
+        enable_summarization=memory_cfg.enable_summarization,
+        enable_git_versioning=memory_cfg.enable_git_versioning,
+        max_entries=memory_cfg.max_entries,
+        start_watcher=False,
+    )
+
+    # Start the memory client's file watcher
+    memory_client.start()
+
+    if not quiet:
+        console.print("[green]Memory system initialized[/green]")
+
+    return memory_client
+
+
+def _maybe_init_memory(
+    memory_cfg: config.Memory,
+    history_cfg: config.History,
+    openai_llm_cfg: config.OpenAILLM,
+    quiet: bool,
+) -> MemoryClient | None:
+    """Initialize memory if mode is not 'off', handling errors gracefully."""
+    if memory_cfg.mode == "off":
+        return None
+    try:
+        return _try_init_memory(memory_cfg, history_cfg, openai_llm_cfg, quiet)
+    except ImportError:
+        if not quiet:
+            console.print(
+                "[yellow]Memory system not available. "
+                "Install with: pip install 'agent-cli[memory]'[/yellow]",
+            )
+    except Exception as e:
+        if not quiet:
+            console.print(f"[yellow]Failed to initialize memory: {e}[/yellow]")
+        LOGGER.warning("Failed to initialize memory: %s", e)
+    return None
+
 
 # --- Conversation History ---
 
@@ -74,9 +167,7 @@ You have access to the following tools:
 - execute_code: Execute a shell command.
 - add_memory: Add important information to long-term memory for future recall.
 - search_memory: Search your long-term memory for relevant information.
-- update_memory: Modify existing memories by ID when information changes.
-- list_all_memories: Show all stored memories with their IDs and details.
-- list_memory_categories: See what types of information you've remembered.
+- list_all_memories: Show all stored memories with their details.
 - duckduckgo_search: Search the web for current information.
 
 Memory Guidelines:
@@ -144,10 +235,36 @@ def _format_conversation_for_llm(history: list[ConversationEntry]) -> str:
     return "\n".join(formatted_lines)
 
 
+async def _maybe_extract_memories(
+    memory_cfg: config.Memory,
+    memory_client: MemoryClient | None,
+    instruction: str,
+    response_text: str,
+    conversation_id: str,
+    quiet: bool,
+) -> None:
+    """Extract memories in auto mode, silently skip otherwise."""
+    if memory_cfg.mode != "auto" or memory_client is None:
+        return
+    try:
+        await memory_client.extract_from_turn(
+            user_message=instruction,
+            assistant_message=response_text,
+            conversation_id=conversation_id,
+        )
+        if not quiet:
+            console.print("[dim]💾 Memory extraction complete[/dim]")
+    except Exception as e:
+        LOGGER.warning("Failed to extract memories: %s", e)
+
+
 async def _handle_conversation_turn(
     *,
     stop_event: InteractiveStopEvent,
     conversation_history: list[ConversationEntry],
+    memory_client: MemoryClient | None,
+    conversation_id: str,
+    memory_cfg: config.Memory,
     provider_cfg: config.ProviderSelection,
     general_cfg: config.General,
     history_cfg: config.History,
@@ -230,6 +347,8 @@ async def _handle_conversation_turn(
         quiet=general_cfg.quiet,
         stop_event=stop_event,
     ):
+        # Only include memory tools in "tools" mode
+        tool_memory_client = memory_client if memory_cfg.mode == "tools" else None
         response_text = await get_llm_response(
             system_prompt=SYSTEM_PROMPT,
             agent_instructions=AGENT_INSTRUCTIONS,
@@ -239,7 +358,7 @@ async def _handle_conversation_turn(
             openai_cfg=openai_llm_cfg,
             gemini_cfg=gemini_llm_cfg,
             logger=LOGGER,
-            tools=tools(),
+            tools=tools(tool_memory_client, conversation_id),
             quiet=True,  # Suppress internal output since we're showing our own timer
             live=live,
         )
@@ -265,6 +384,16 @@ async def _handle_conversation_turn(
             "content": response_text,
             "timestamp": datetime.now(UTC).isoformat(),
         },
+    )
+
+    # 5b. Auto-extract memories in "auto" mode
+    await _maybe_extract_memories(
+        memory_cfg,
+        memory_client,
+        instruction,
+        response_text,
+        conversation_id,
+        general_cfg.quiet,
     )
 
     # 6. Save history
@@ -318,8 +447,11 @@ async def _async_main(
     openai_tts_cfg: config.OpenAITTS,
     kokoro_tts_cfg: config.KokoroTTS,
     gemini_tts_cfg: config.GeminiTTS,
+    memory_cfg: config.Memory,
 ) -> None:
     """Main async function, consumes parsed arguments."""
+    memory_client = None
+
     try:
         device_info = setup_devices(general_cfg, audio_in_cfg, audio_out_cfg)
         if device_info is None:
@@ -328,6 +460,14 @@ async def _async_main(
         audio_in_cfg.input_device_index = input_device_index
         if audio_out_cfg.enable_tts:
             audio_out_cfg.output_device_index = tts_output_device_index
+
+        # Initialize memory system (if not disabled)
+        memory_client = _maybe_init_memory(
+            memory_cfg,
+            history_cfg,
+            openai_llm_cfg,
+            general_cfg.quiet,
+        )
 
         # Load conversation history
         conversation_history = []
@@ -342,6 +482,9 @@ async def _async_main(
                 history_cfg.last_n_messages,
             )
 
+        # Generate conversation ID for memory scoping
+        conversation_id = _get_conversation_id(history_cfg)
+
         with (
             maybe_live(not general_cfg.quiet) as live,
             signal_handling_context(LOGGER, general_cfg.quiet) as stop_event,
@@ -350,6 +493,9 @@ async def _async_main(
                 await _handle_conversation_turn(
                     stop_event=stop_event,
                     conversation_history=conversation_history,
+                    memory_client=memory_client,
+                    conversation_id=conversation_id,
+                    memory_cfg=memory_cfg,
                     provider_cfg=provider_cfg,
                     general_cfg=general_cfg,
                     history_cfg=history_cfg,
@@ -371,6 +517,10 @@ async def _async_main(
         if not general_cfg.quiet:
             console.print_exception()
         raise
+    finally:
+        # Clean up memory client
+        if memory_client is not None:
+            await memory_client.stop()
 
 
 @app.command("chat")
@@ -433,6 +583,12 @@ def chat(
         " Set to 0 to disable history.",
         rich_help_panel="History Options",
     ),
+    # --- Memory Options ---
+    memory_mode: str = opts.MEMORY_MODE,
+    memory_path: Path | None = opts.MEMORY_PATH,
+    memory_embedding_model: str = opts.MEMORY_EMBEDDING_MODEL,
+    memory_top_k: int = opts.MEMORY_TOP_K,
+    memory_score_threshold: float = opts.MEMORY_SCORE_THRESHOLD,
     # --- General Options ---
     save_file: Path | None = opts.SAVE_FILE,
     log_level: str = opts.LOG_LEVEL,
@@ -535,6 +691,13 @@ def chat(
             history_dir=history_dir,
             last_n_messages=last_n_messages,
         )
+        memory_cfg = config.Memory(
+            mode=memory_mode,  # type: ignore[arg-type]
+            memory_path=memory_path,
+            embedding_model=memory_embedding_model,
+            top_k=memory_top_k,
+            score_threshold=memory_score_threshold,
+        )
 
         asyncio.run(
             _async_main(
@@ -553,5 +716,6 @@ def chat(
                 openai_tts_cfg=openai_tts_cfg,
                 kokoro_tts_cfg=kokoro_tts_cfg,
                 gemini_tts_cfg=gemini_tts_cfg,
+                memory_cfg=memory_cfg,
             ),
         )
