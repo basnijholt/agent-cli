@@ -24,8 +24,6 @@ import typer
 from prompt_toolkit import PromptSession
 from prompt_toolkit.key_binding import KeyBindings
 from prompt_toolkit.patch_stdout import patch_stdout
-from rich.panel import Panel
-from rich.text import Text
 
 from agent_cli import config, opts
 from agent_cli._tools import tools
@@ -52,7 +50,6 @@ from agent_cli.core.utils import (
 )
 from agent_cli.core.voice_input import (
     VoiceInputState,
-    VoiceInputStatus,
     create_transcriber_from_config,
     run_voice_input_loop,
 )
@@ -125,16 +122,6 @@ USER_MESSAGE_WITH_CONTEXT_TEMPLATE = """
 </user-message>
 """
 
-# --- Status Display ---
-
-STATUS_ICONS = {
-    VoiceInputStatus.LISTENING: "[Listening...]",
-    VoiceInputStatus.RECORDING: "[Recording...]",
-    VoiceInputStatus.PROCESSING: "[Processing...]",
-    VoiceInputStatus.PAUSED: "[Paused - Esc to resume]",
-    VoiceInputStatus.READY: "[Ready - Enter to send]",
-}
-
 
 # --- Helper Functions ---
 
@@ -178,24 +165,6 @@ def _get_active_tools(state: ChatSessionState) -> list:
     return [t for t in all_tools if t.function.__name__ not in state.disabled_tools]
 
 
-def _create_input_panel(text: str, status: VoiceInputStatus) -> Panel:
-    """Create the input panel with current text and status."""
-    status_text = STATUS_ICONS.get(status, "")
-    content = Text()
-    content.append(text if text else "")
-    content.append("_", style="blink")  # Cursor
-    content.append("\n")
-    content.append(" " * 30)  # Spacing
-    content.append(status_text, style="dim")
-
-    return Panel(
-        content,
-        title="Your message",
-        border_style="blue",
-        padding=(0, 1),
-    )
-
-
 # --- Live Input Mode ---
 
 
@@ -216,7 +185,6 @@ async def _get_live_input(
     voice_state = VoiceInputState()
     stop_event = asyncio.Event()
 
-    # Create transcriber
     transcriber = create_transcriber_from_config(
         provider_cfg,
         openai_asr_cfg,
@@ -226,7 +194,6 @@ async def _get_live_input(
         quiet=True,
     )
 
-    # Create prompt session with key bindings
     bindings = KeyBindings()
 
     @bindings.add("escape")
@@ -235,64 +202,22 @@ async def _get_live_input(
 
     @bindings.add("c-c")
     def handle_ctrl_c(event: object) -> None:  # noqa: ARG001
-        # Raise KeyboardInterrupt to exit the chat
         raise KeyboardInterrupt
 
-    # Current status for the toolbar (use list for thread-safe mutation)
-    status_holder = [STATUS_ICONS[VoiceInputStatus.LISTENING]]
-
-    def get_toolbar() -> str:
-        return status_holder[0]
-
-    session: PromptSession[str] = PromptSession(
-        key_bindings=bindings,
-        bottom_toolbar=get_toolbar,
-    )
-
-    # Track the last known accumulated text length to insert only new content
-    last_text_len = 0
-    loop = asyncio.get_event_loop()
-
-    def on_status_change(new_status: VoiceInputStatus) -> None:
-        status_holder[0] = STATUS_ICONS.get(new_status, "")
-        # Schedule UI update on the event loop
-        app = session.app
-        if app is not None:
-            loop.call_soon_threadsafe(app.invalidate)
+    session: PromptSession[str] = PromptSession(key_bindings=bindings)
 
     def on_text_update(text: str) -> None:
-        nonlocal last_text_len
-        # Calculate the new text that was added
-        if len(text) > last_text_len:
-            new_text = text[last_text_len:]
+        # Just set the buffer text to the accumulated transcription
+        session.default_buffer.text = text
+        session.default_buffer.cursor_position = len(text)
+        if session.app:
+            session.app.invalidate()
 
-            def update_buffer() -> None:
-                # Insert new text at current cursor position
-                buffer = session.default_buffer
-                cursor_pos = buffer.cursor_position
-                current_text = buffer.text
-                # Add space separator if needed
-                text_to_insert = new_text
-                if current_text and cursor_pos > 0 and current_text[cursor_pos - 1] != " ":
-                    text_to_insert = " " + new_text.lstrip()
-                # Insert at cursor position
-                buffer.text = current_text[:cursor_pos] + text_to_insert + current_text[cursor_pos:]
-                buffer.cursor_position = cursor_pos + len(text_to_insert)
-                # Invalidate to refresh display
-                app = session.app
-                if app is not None:
-                    app.invalidate()
-
-            loop.call_soon_threadsafe(update_buffer)
-        last_text_len = len(text)
-
-    # Start voice input loop in background
     voice_task = asyncio.create_task(
         run_voice_input_loop(
             vad=vad,
             transcriber=transcriber,
             state=voice_state,
-            on_status_change=on_status_change,
             on_text_update=on_text_update,
             stop_event=stop_event,
             input_device_index=input_device_index,
@@ -304,13 +229,11 @@ async def _get_live_input(
         if not quiet:
             console.print("[dim]Esc=pause, Enter=send, Ctrl+C=exit[/dim]")
 
-        # Run prompt (user can edit, Enter to submit)
         with patch_stdout():
             result = await session.prompt_async("│ ")
 
         return result.strip()
     except (EOFError, KeyboardInterrupt):
-        # Return None to signal exit request
         return None
     finally:
         stop_event.set()
