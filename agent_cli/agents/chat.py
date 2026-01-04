@@ -208,14 +208,13 @@ async def _get_live_input(
     wyoming_asr_cfg: config.WyomingASR,
     input_device_index: int | None,
     quiet: bool,
-) -> str:
+) -> str | None:
     """Get input via live transcription with editing.
 
-    Returns the final text to send, or empty string if cancelled.
+    Returns the final text to send, empty string if no input, or None if user wants to exit.
     """
     voice_state = VoiceInputState()
     stop_event = asyncio.Event()
-    cancelled = False
 
     # Create transcriber
     transcriber = create_transcriber_from_config(
@@ -236,34 +235,46 @@ async def _get_live_input(
 
     @bindings.add("c-c")
     def handle_ctrl_c(event: object) -> None:  # noqa: ARG001
-        nonlocal cancelled
-        cancelled = True
-        stop_event.set()
-        # Get the app and exit
-        from prompt_toolkit.application import get_app  # noqa: PLC0415
+        # Raise KeyboardInterrupt to exit the chat
+        raise KeyboardInterrupt
 
-        get_app().exit(result="")
+    # Current status for the toolbar
+    current_status = STATUS_ICONS[VoiceInputStatus.LISTENING]
 
-    session: PromptSession[str] = PromptSession(key_bindings=bindings)
+    def get_toolbar() -> str:
+        return current_status
 
-    # Track the last known accumulated text length to append only new content
+    session: PromptSession[str] = PromptSession(
+        key_bindings=bindings,
+        bottom_toolbar=get_toolbar,
+    )
+
+    # Track the last known accumulated text length to insert only new content
     last_text_len = 0
 
     def on_status_change(new_status: VoiceInputStatus) -> None:
-        # Status changes are now silent - prompt_toolkit handles display
-        pass
+        nonlocal current_status
+        current_status = STATUS_ICONS.get(new_status, "")
+        # Invalidate the app to refresh the toolbar
+        app = session.app
+        if app is not None:
+            app.invalidate()
 
     def on_text_update(text: str) -> None:
         nonlocal last_text_len
         # Calculate the new text that was added
         if len(text) > last_text_len:
             new_text = text[last_text_len:]
-            # Append new text at the end of current buffer
-            current_text = session.default_buffer.text
-            if current_text and not current_text.endswith(" "):
+            # Insert new text at current cursor position
+            buffer = session.default_buffer
+            cursor_pos = buffer.cursor_position
+            current_text = buffer.text
+            # Add space separator if needed
+            if current_text and cursor_pos > 0 and current_text[cursor_pos - 1] != " ":
                 new_text = " " + new_text.lstrip()
-            session.default_buffer.text = current_text + new_text
-            session.default_buffer.cursor_position = len(session.default_buffer.text)
+            # Insert at cursor position
+            buffer.text = current_text[:cursor_pos] + new_text + current_text[cursor_pos:]
+            buffer.cursor_position = cursor_pos + len(new_text)
         last_text_len = len(text)
 
     # Start voice input loop in background
@@ -282,17 +293,16 @@ async def _get_live_input(
 
     try:
         if not quiet:
-            console.print("[dim]🎤 Listening (Esc=pause, Enter=send, Ctrl+C=exit)[/dim]")
+            console.print("[dim]Esc=pause, Enter=send, Ctrl+C=exit[/dim]")
 
         # Run prompt (user can edit, Enter to submit)
         with patch_stdout():
             result = await session.prompt_async("│ ")
 
-        if cancelled:
-            return ""
         return result.strip()
     except (EOFError, KeyboardInterrupt):
-        return ""
+        # Return None to signal exit request
+        return None
     finally:
         stop_event.set()
         voice_task.cancel()
@@ -554,6 +564,10 @@ async def _async_main(  # noqa: PLR0912, PLR0915
                             )
                         # Clear stop event after direct input
                         stop_event.clear()
+
+                    # None means user wants to exit (Ctrl+C in live mode)
+                    if instruction is None:
+                        break
 
                     if not instruction:
                         if not general_cfg.quiet:
