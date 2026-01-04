@@ -387,16 +387,19 @@ async def _handle_conversation_turn(
         },
     )
 
-    # 5b. Auto-extract memories in "auto" mode
-    await _maybe_extract_memories(
-        memory_cfg,
-        memory_client,
-        instruction,
-        response_text,
-        conversation_id,
-        openai_llm_cfg.llm_openai_model,
-        general_cfg.quiet,
-    )
+    # 5b. Auto-extract memories in "auto" mode (run in background, don't block)
+    if memory_cfg.mode == "auto" and memory_client is not None:
+        asyncio.create_task(  # noqa: RUF006
+            _maybe_extract_memories(
+                memory_cfg,
+                memory_client,
+                instruction,
+                response_text,
+                conversation_id,
+                openai_llm_cfg.llm_openai_model,
+                general_cfg.quiet,
+            ),
+        )
 
     # 6. Save history
     if history_cfg.history_dir:
