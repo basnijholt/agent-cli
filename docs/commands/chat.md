@@ -165,6 +165,16 @@ agent-cli chat --last-n-messages 100 --history-dir ~/.my-chat-history
 | `--history-dir` | `~/.config/agent-cli/history` | Directory to store conversation history. |
 | `--last-n-messages` | `50` | Number of messages to include in the conversation history. Set to 0 to disable history. |
 
+### Memory Options
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--advanced-memory/--no-advanced-memory` | `true` | Use advanced vector-backed memory with semantic search. Auto-falls back to simple memory if dependencies not installed. |
+| `--memory-path` | - | Path for advanced memory database storage. Default: ~/.config/agent-cli/memory/vector_db |
+| `--memory-embedding-model` | `text-embedding-3-small` | Embedding model for semantic memory search. |
+| `--memory-top-k` | `5` | Number of memories to retrieve per search. |
+| `--memory-score-threshold` | `0.35` | Minimum relevance score threshold for memory retrieval (0.0-1.0). |
+
 ### General Options
 
 | Option | Default | Description |

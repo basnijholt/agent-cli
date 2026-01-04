@@ -1529,6 +1529,36 @@ uv tool install "agent-cli[vad]"
 │                                   history.                                   │
 │                                   [default: 50]                              │
 ╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Memory Options ─────────────────────────────────────────────────────────────╮
+│ --advanced-memory       --no-advanced-memo…             Use advanced         │
+│                                                         vector-backed memory │
+│                                                         with semantic        │
+│                                                         search. Auto-falls   │
+│                                                         back to simple       │
+│                                                         memory if            │
+│                                                         dependencies not     │
+│                                                         installed.           │
+│                                                         [default:            │
+│                                                         advanced-memory]     │
+│ --memory-path                                  PATH     Path for advanced    │
+│                                                         memory database      │
+│                                                         storage. Default:    │
+│                                                         ~/.config/agent-cli… │
+│ --memory-embedding-…                           TEXT     Embedding model for  │
+│                                                         semantic memory      │
+│                                                         search.              │
+│                                                         [default:            │
+│                                                         text-embedding-3-sm… │
+│ --memory-top-k                                 INTEGER  Number of memories   │
+│                                                         to retrieve per      │
+│                                                         search.              │
+│                                                         [default: 5]         │
+│ --memory-score-thre…                           FLOAT    Minimum relevance    │
+│                                                         score threshold for  │
+│                                                         memory retrieval     │
+│                                                         (0.0-1.0).           │
+│                                                         [default: 0.35]      │
+╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ General Options ────────────────────────────────────────────────────────────╮
 │ --save-file           PATH  Save TTS response audio to WAV file.             │
 │ --log-level           TEXT  Set logging level.                               │
