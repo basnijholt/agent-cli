@@ -17,6 +17,7 @@ from agent_cli.agents.chat import (
     _get_conversation_id,
     _maybe_extract_memories,
     _maybe_init_memory,
+    _maybe_retrieve_memories,
 )
 from agent_cli.config import History, Memory, OpenAILLM
 
@@ -454,3 +455,113 @@ def test_maybe_init_memory_off_mode() -> None:
 
     result = _maybe_init_memory(memory_cfg, history_cfg, openai_cfg, quiet=True)
     assert result is None
+
+
+# --- Tests for _maybe_retrieve_memories ---
+
+
+@pytest.mark.asyncio
+async def test_maybe_retrieve_memories_off_mode() -> None:
+    """Test _maybe_retrieve_memories returns empty string when mode is not 'auto'."""
+    memory_cfg = Memory(mode="tools")  # Not 'auto'
+    mock_client = MagicMock()
+    mock_client.search = AsyncMock()
+
+    result = await _maybe_retrieve_memories(
+        memory_cfg=memory_cfg,
+        memory_client=mock_client,
+        instruction="test",
+        conversation_id="test",
+    )
+
+    assert result == ""
+    mock_client.search.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_maybe_retrieve_memories_auto_mode_with_results() -> None:
+    """Test _maybe_retrieve_memories returns formatted context in auto mode."""
+    memory_cfg = Memory(mode="auto", top_k=3)
+
+    # Create mock entries
+    entry1 = MagicMock()
+    entry1.content = "User likes pizza"
+    entry2 = MagicMock()
+    entry2.content = "User prefers Italian food"
+
+    mock_retrieval = MagicMock()
+    mock_retrieval.entries = [entry1, entry2]
+
+    mock_client = MagicMock()
+    mock_client.search = AsyncMock(return_value=mock_retrieval)
+
+    result = await _maybe_retrieve_memories(
+        memory_cfg=memory_cfg,
+        memory_client=mock_client,
+        instruction="What food do I like?",
+        conversation_id="conv123",
+    )
+
+    assert "<relevant-memories>" in result
+    assert "</relevant-memories>" in result
+    assert "User likes pizza" in result
+    assert "User prefers Italian food" in result
+    mock_client.search.assert_called_once_with(
+        query="What food do I like?",
+        conversation_id="conv123",
+        top_k=3,
+    )
+
+
+@pytest.mark.asyncio
+async def test_maybe_retrieve_memories_auto_mode_no_results() -> None:
+    """Test _maybe_retrieve_memories returns empty string when no memories found."""
+    memory_cfg = Memory(mode="auto")
+
+    mock_retrieval = MagicMock()
+    mock_retrieval.entries = []
+
+    mock_client = MagicMock()
+    mock_client.search = AsyncMock(return_value=mock_retrieval)
+
+    result = await _maybe_retrieve_memories(
+        memory_cfg=memory_cfg,
+        memory_client=mock_client,
+        instruction="test",
+        conversation_id="test",
+    )
+
+    assert result == ""
+
+
+@pytest.mark.asyncio
+async def test_maybe_retrieve_memories_no_client() -> None:
+    """Test _maybe_retrieve_memories returns empty string when client is None."""
+    memory_cfg = Memory(mode="auto")
+
+    result = await _maybe_retrieve_memories(
+        memory_cfg=memory_cfg,
+        memory_client=None,
+        instruction="test",
+        conversation_id="test",
+    )
+
+    assert result == ""
+
+
+@pytest.mark.asyncio
+async def test_maybe_retrieve_memories_handles_exception() -> None:
+    """Test _maybe_retrieve_memories handles exceptions gracefully."""
+    memory_cfg = Memory(mode="auto")
+    mock_client = MagicMock()
+    mock_client.search = AsyncMock(side_effect=RuntimeError("Search failed"))
+
+    # Should not raise, just return empty string
+    result = await _maybe_retrieve_memories(
+        memory_cfg=memory_cfg,
+        memory_client=mock_client,
+        instruction="test",
+        conversation_id="test",
+    )
+
+    assert result == ""

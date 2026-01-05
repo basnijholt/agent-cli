@@ -259,6 +259,35 @@ async def _maybe_extract_memories(
         LOGGER.warning("Failed to extract memories: %s", e)
 
 
+async def _maybe_retrieve_memories(
+    memory_cfg: config.Memory,
+    memory_client: MemoryClient | None,
+    instruction: str,
+    conversation_id: str,
+) -> str:
+    """Retrieve relevant memories in auto mode for prompt injection.
+
+    Returns formatted memory context string, or empty string if not applicable.
+    """
+    if memory_cfg.mode != "auto" or memory_client is None:
+        return ""
+    try:
+        retrieval = await memory_client.search(
+            query=instruction,
+            conversation_id=conversation_id,
+            top_k=memory_cfg.top_k,
+        )
+        if not retrieval.entries:
+            return ""
+        lines = ["\n<relevant-memories>"]
+        lines.extend(f"- {entry.content}" for entry in retrieval.entries)
+        lines.append("</relevant-memories>")
+        return "\n".join(lines)
+    except Exception as e:
+        LOGGER.warning("Failed to retrieve memories: %s", e)
+        return ""
+
+
 async def _handle_conversation_turn(
     *,
     stop_event: InteractiveStopEvent,
@@ -331,6 +360,15 @@ async def _handle_conversation_turn(
         instruction=instruction,
     )
 
+    # 3b. Auto-retrieve and inject memories in "auto" mode
+    memory_context = await _maybe_retrieve_memories(
+        memory_cfg,
+        memory_client,
+        instruction,
+        conversation_id,
+    )
+    system_prompt = SYSTEM_PROMPT + memory_context
+
     # 4. Get LLM response with timing
 
     start_time = time.monotonic()
@@ -355,7 +393,7 @@ async def _handle_conversation_turn(
         tool_memory_client = memory_client if memory_cfg.mode != "off" else None
         memory_read_only = memory_cfg.mode == "auto"
         response_text = await get_llm_response(
-            system_prompt=SYSTEM_PROMPT,
+            system_prompt=system_prompt,
             agent_instructions=AGENT_INSTRUCTIONS,
             user_input=user_message_with_context,
             provider_cfg=provider_cfg,
