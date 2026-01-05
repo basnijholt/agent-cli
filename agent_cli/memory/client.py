@@ -137,6 +137,32 @@ class MemoryClient:
         )
         evict_if_needed(self.collection, self.memory_path, conversation_id, self.max_entries)
 
+    async def extract_from_turn(
+        self,
+        user_message: str,
+        assistant_message: str,
+        conversation_id: str = "default",
+        model: str = DEFAULT_OPENAI_MODEL,
+    ) -> None:
+        """Extract and store facts from a conversation turn.
+
+        This is used for automatic memory extraction mode, where facts are
+        extracted from both user and assistant messages after each turn.
+        """
+        await extract_and_store_facts_and_summaries(
+            collection=self.collection,
+            memory_root=self.memory_path,
+            conversation_id=conversation_id,
+            user_message=user_message,
+            assistant_message=assistant_message,
+            openai_base_url=self.openai_base_url,
+            api_key=self.chat_api_key,
+            model=model,
+            enable_git_versioning=self.enable_git_versioning,
+            enable_summarization=self.enable_summarization,
+        )
+        evict_if_needed(self.collection, self.memory_path, conversation_id, self.max_entries)
+
     async def search(
         self,
         query: str,

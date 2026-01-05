@@ -6,7 +6,7 @@ import json
 import re
 import sys
 from datetime import UTC, datetime
-from pathlib import Path  # noqa: TC003
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 import typer
@@ -127,16 +127,8 @@ def add(
         "-c",
         help="Conversation ID to add memories to.",
     ),
-    memory_path: Path = typer.Option(  # noqa: B008
-        "./memory_db",
-        "--memory-path",
-        help="Path to the memory store.",
-    ),
-    git_versioning: bool = typer.Option(
-        True,  # noqa: FBT003
-        "--git-versioning/--no-git-versioning",
-        help="Commit changes to git.",
-    ),
+    memory_path: Path | None = opts.MEMORY_PATH,
+    git_versioning: bool = opts.with_default(opts.MEMORY_GIT_VERSIONING, default=True),
     quiet: bool = opts.QUIET,
     config_file: str | None = opts.CONFIG_FILE,
     print_args: bool = opts.PRINT_ARGS,
@@ -176,6 +168,8 @@ def add(
         console.print("[red]No memories provided. Use arguments or --file.[/red]")
         raise typer.Exit(1)
 
+    if memory_path is None:
+        memory_path = Path("./memory_db")
     memory_path = memory_path.resolve()
     records = _write_memories(memory_path, parsed, git_versioning)
 

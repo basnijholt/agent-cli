@@ -165,6 +165,26 @@ agent-cli chat --last-n-messages 100 --history-dir ~/.my-chat-history
 | `--history-dir` | `~/.config/agent-cli/history` | Directory to store conversation history. |
 | `--last-n-messages` | `50` | Number of messages to include in the conversation history. Set to 0 to disable history. |
 
+### Memory Options
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--memory-mode` | `tools` | Memory mode: 'off' (disabled), 'tools' (LLM decides via tools), 'auto' (automatic extraction). |
+| `--memory-path` | - | Path for memory database storage. Default: ~/.config/agent-cli/memory/vector_db |
+| `--memory-top-k` | `5` | Number of memories to retrieve per search. |
+| `--memory-score-threshold` | `0.35` | Minimum relevance score threshold for memory retrieval (0.0-1.0). |
+| `--memory-max-entries` | `500` | Maximum stored memory entries per conversation (excluding summary). |
+| `--memory-mmr-lambda` | `0.7` | MMR lambda (0-1): higher favors relevance, lower favors diversity. |
+| `--memory-recency-weight` | `0.2` | Recency score weight (0.0-1.0). Controls freshness vs. relevance. |
+| `--memory-summarization/--no-memory-summarization` | `true` | Enable automatic fact extraction and summaries. |
+| `--memory-git-versioning/--no-memory-git-versioning` | `false` | Enable automatic git commit of memory changes. |
+
+### LLM Configuration
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--embedding-model` | `text-embedding-3-small` | Embedding model to use for vectorization. |
+
 ### General Options
 
 | Option | Default | Description |
@@ -179,22 +199,53 @@ agent-cli chat --last-n-messages 100 --history-dir ~/.my-chat-history
 
 <!-- OUTPUT:END -->
 
+## Memory System
+
+The chat agent includes a built-in long-term memory system that allows it to remember information across conversations.
+
+The memory system uses a **vector-backed architecture** with semantic search. This provides:
+
+- **Semantic search**: Find relevant memories based on meaning, not just keywords
+- **Recency-aware scoring**: Recent memories are weighted higher
+- **Diversity selection (MMR)**: Avoids redundant memories in context
+- **Automatic reconciliation**: Contradicting facts are updated, not duplicated
+
+### Memory Modes
+
+Use `--memory-mode` to control how memory works:
+
+| Mode | Description |
+|------|-------------|
+| `off` | Memory system disabled |
+| `tools` (default) | LLM decides when to store/retrieve via tools. LLM asks permission before storing. |
+| `auto` | Automatic extraction after each conversation turn (no LLM tools exposed). |
+
+Example:
+
+```bash
+# Automatic memory extraction (no prompting, just remembers)
+agent-cli chat --memory-mode auto
+
+# Disable memory entirely
+agent-cli chat --memory-mode off
+```
+
+> [!NOTE]
+> The memory system requires the `[memory]` extra: `pip install "agent-cli[memory]"`.
+> If not installed, memory tools will not be available.
+
+For more details on how the memory system works, see [Memory System Architecture](../architecture/memory.md).
+
 ## Available Tools
 
 The chat agent has access to tools that let it interact with your system:
 
-> [!NOTE]
-> The memory tools below use a simple, built-in JSON storage system.
-> For the advanced, vector-backed memory system, see the [`memory`](memory.md) command.
-
 - **read_file**: Read file contents
 - **execute_code**: Run a single command (no shell features like pipes or redirects)
 - **duckduckgo_search**: Search the web via DuckDuckGo
-- **add_memory**: Store information for future conversations
-- **search_memory**: Search stored memories
-- **update_memory**: Update existing memories
+- **add_memory**: Store information for future conversations (uses [vector memory](../architecture/memory.md))
+- **search_memory**: Search stored memories with semantic search
 - **list_all_memories**: List all stored memories
-- **list_memory_categories**: Show memory category summary
 
 ## Example Conversation
 

@@ -1529,6 +1529,57 @@ uv tool install "agent-cli[vad]"
 │                                   history.                                   │
 │                                   [default: 50]                              │
 ╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Memory Options ─────────────────────────────────────────────────────────────╮
+│ --memory-mode                                  TEXT     Memory mode: 'off'   │
+│                                                         (disabled), 'tools'  │
+│                                                         (LLM decides via     │
+│                                                         tools), 'auto'       │
+│                                                         (automatic           │
+│                                                         extraction).         │
+│                                                         [default: tools]     │
+│ --memory-path                                  PATH     Path for memory      │
+│                                                         database storage.    │
+│                                                         Default:             │
+│                                                         ~/.config/agent-cli… │
+│ --memory-top-k                                 INTEGER  Number of memories   │
+│                                                         to retrieve per      │
+│                                                         search.              │
+│                                                         [default: 5]         │
+│ --memory-score-thre…                           FLOAT    Minimum relevance    │
+│                                                         score threshold for  │
+│                                                         memory retrieval     │
+│                                                         (0.0-1.0).           │
+│                                                         [default: 0.35]      │
+│ --memory-max-entries                           INTEGER  Maximum stored       │
+│                                                         memory entries per   │
+│                                                         conversation         │
+│                                                         (excluding summary). │
+│                                                         [default: 500]       │
+│ --memory-mmr-lambda                            FLOAT    MMR lambda (0-1):    │
+│                                                         higher favors        │
+│                                                         relevance, lower     │
+│                                                         favors diversity.    │
+│                                                         [default: 0.7]       │
+│ --memory-recency-we…                           FLOAT    Recency score weight │
+│                                                         (0.0-1.0). Controls  │
+│                                                         freshness vs.        │
+│                                                         relevance.           │
+│                                                         [default: 0.2]       │
+│ --memory-summarizat…    --no-memory-summar…             Enable automatic     │
+│                                                         fact extraction and  │
+│                                                         summaries.           │
+│                                                         [default:            │
+│                                                         memory-summarizatio… │
+│ --memory-git-versio…    --no-memory-git-ve…             Enable automatic git │
+│                                                         commit of memory     │
+│                                                         changes.             │
+│                                                         [default:            │
+│                                                         no-memory-git-versi… │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ LLM Configuration ──────────────────────────────────────────────────────────╮
+│ --embedding-model        TEXT  Embedding model to use for vectorization.     │
+│                                [default: text-embedding-3-small]             │
+╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ General Options ────────────────────────────────────────────────────────────╮
 │ --save-file           PATH  Save TTS response audio to WAV file.             │
 │ --log-level           TEXT  Set logging level.                               │
@@ -1718,49 +1769,45 @@ The `memory proxy` command is the core feature—a middleware server that gives 
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
 │ --help  -h        Show this message and exit.                                │
 ╰──────────────────────────────────────────────────────────────────────────────╯
-╭─ Memory Configuration ───────────────────────────────────────────────────────╮
-│ --memory-path                               PATH     Path to the memory      │
-│                                                      store (files + derived  │
-│                                                      vector index).          │
-│                                                      [default: ./memory_db]  │
-│ --default-top-k                             INTEGER  Number of memory        │
-│                                                      entries to retrieve per │
-│                                                      query.                  │
-│                                                      [default: 5]            │
-│ --max-entries                               INTEGER  Maximum stored memory   │
-│                                                      entries per             │
-│                                                      conversation (excluding │
-│                                                      summary).               │
-│                                                      [default: 500]          │
-│ --mmr-lambda                                FLOAT    MMR lambda (0-1):       │
-│                                                      higher favors           │
-│                                                      relevance, lower favors │
-│                                                      diversity.              │
-│                                                      [default: 0.7]          │
-│ --recency-weight                            FLOAT    Recency score weight    │
-│                                                      (0.0-1.0). Controls     │
-│                                                      freshness vs.           │
-│                                                      relevance. Default 0.2  │
-│                                                      (20% recency, 80%       │
-│                                                      semantic relevance).    │
-│                                                      [default: 0.2]          │
-│ --score-threshold                           FLOAT    Minimum semantic        │
-│                                                      relevance threshold     │
-│                                                      (0.0-1.0). Memories     │
-│                                                      below this score are    │
-│                                                      discarded to reduce     │
-│                                                      noise.                  │
-│                                                      [default: 0.35]         │
-│ --summarization      --no-summarization              Enable automatic fact   │
-│                                                      extraction and          │
-│                                                      summaries.              │
-│                                                      [default:               │
-│                                                      summarization]          │
-│ --git-versioning     --no-git-versioning             Enable automatic git    │
-│                                                      commit of memory        │
-│                                                      changes.                │
-│                                                      [default:               │
-│                                                      git-versioning]         │
+╭─ Memory Options ─────────────────────────────────────────────────────────────╮
+│ --memory-path                                  PATH     Path for memory      │
+│                                                         database storage.    │
+│                                                         Default:             │
+│                                                         ~/.config/agent-cli… │
+│ --memory-top-k                                 INTEGER  Number of memories   │
+│                                                         to retrieve per      │
+│                                                         search.              │
+│                                                         [default: 5]         │
+│ --memory-max-entries                           INTEGER  Maximum stored       │
+│                                                         memory entries per   │
+│                                                         conversation         │
+│                                                         (excluding summary). │
+│                                                         [default: 500]       │
+│ --memory-mmr-lambda                            FLOAT    MMR lambda (0-1):    │
+│                                                         higher favors        │
+│                                                         relevance, lower     │
+│                                                         favors diversity.    │
+│                                                         [default: 0.7]       │
+│ --memory-recency-we…                           FLOAT    Recency score weight │
+│                                                         (0.0-1.0). Controls  │
+│                                                         freshness vs.        │
+│                                                         relevance.           │
+│                                                         [default: 0.2]       │
+│ --memory-score-thre…                           FLOAT    Minimum relevance    │
+│                                                         score threshold for  │
+│                                                         memory retrieval     │
+│                                                         (0.0-1.0).           │
+│                                                         [default: 0.35]      │
+│ --memory-summarizat…    --no-memory-summar…             Enable automatic     │
+│                                                         fact extraction and  │
+│                                                         summaries.           │
+│                                                         [default:            │
+│                                                         memory-summarizatio… │
+│ --memory-git-versio…    --no-memory-git-ve…             Enable automatic git │
+│                                                         commit of memory     │
+│                                                         changes.             │
+│                                                         [default:            │
+│                                                         memory-git-versioni… │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ LLM: OpenAI-compatible ─────────────────────────────────────────────────────╮
 │ --openai-base-url        TEXT  Custom base URL for OpenAI-compatible API     │
@@ -1868,23 +1915,24 @@ agent-cli memory add -c work "Project deadline is Friday"
 │                                fact.                                         │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
-│ --file             -f                         PATH  Read memories from file. │
-│                                                     Use '-' for stdin.       │
-│                                                     Supports JSON array,     │
-│                                                     JSON object with         │
-│                                                     'memories' key, or plain │
-│                                                     text (one per line).     │
-│ --conversation-id  -c                         TEXT  Conversation ID to add   │
-│                                                     memories to.             │
-│                                                     [default: default]       │
-│ --memory-path                                 PATH  Path to the memory       │
-│                                                     store.                   │
-│                                                     [default: ./memory_db]   │
-│ --git-versioning       --no-git-versioning          Commit changes to git.   │
-│                                                     [default:                │
-│                                                     git-versioning]          │
-│ --help             -h                               Show this message and    │
-│                                                     exit.                    │
+│ --file             -f      PATH  Read memories from file. Use '-' for stdin. │
+│                                  Supports JSON array, JSON object with       │
+│                                  'memories' key, or plain text (one per      │
+│                                  line).                                      │
+│ --conversation-id  -c      TEXT  Conversation ID to add memories to.         │
+│                                  [default: default]                          │
+│ --help             -h            Show this message and exit.                 │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Memory Options ─────────────────────────────────────────────────────────────╮
+│ --memory-path                                    PATH  Path for memory       │
+│                                                        database storage.     │
+│                                                        Default:              │
+│                                                        ~/.config/agent-cli/… │
+│ --memory-git-version…    --no-memory-git-ver…          Enable automatic git  │
+│                                                        commit of memory      │
+│                                                        changes.              │
+│                                                        [default:             │
+│                                                        memory-git-versionin… │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ General Options ────────────────────────────────────────────────────────────╮
 │ --quiet       -q            Suppress console output from rich.               │

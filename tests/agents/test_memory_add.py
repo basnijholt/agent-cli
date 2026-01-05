@@ -154,7 +154,7 @@ def test_memory_add_single_memory(tmp_path: Path) -> None:
             "User likes Python",
             "--memory-path",
             str(memory_path),
-            "--no-git-versioning",
+            "--no-memory-git-versioning",
         ],
     )
     assert result.exit_code == 0
@@ -181,7 +181,7 @@ def test_memory_add_multiple_memories(tmp_path: Path) -> None:
             "Fact three",
             "--memory-path",
             str(memory_path),
-            "--no-git-versioning",
+            "--no-memory-git-versioning",
         ],
     )
     assert result.exit_code == 0
@@ -203,7 +203,7 @@ def test_memory_add_from_file(tmp_path: Path) -> None:
             str(input_file),
             "--memory-path",
             str(memory_path),
-            "--no-git-versioning",
+            "--no-memory-git-versioning",
         ],
     )
     assert result.exit_code == 0
@@ -225,7 +225,7 @@ def test_memory_add_with_conversation_id(tmp_path: Path) -> None:
             "work",
             "--memory-path",
             str(memory_path),
-            "--no-git-versioning",
+            "--no-memory-git-versioning",
         ],
     )
     assert result.exit_code == 0
@@ -247,7 +247,7 @@ def test_memory_add_no_memories_error(tmp_path: Path) -> None:
             "add",
             "--memory-path",
             str(memory_path),
-            "--no-git-versioning",
+            "--no-memory-git-versioning",
         ],
     )
     assert result.exit_code == 1
@@ -265,7 +265,7 @@ def test_memory_add_quiet_mode(tmp_path: Path) -> None:
             "Silent fact",
             "--memory-path",
             str(memory_path),
-            "--no-git-versioning",
+            "--no-memory-git-versioning",
             "--quiet",
         ],
     )

@@ -15,6 +15,9 @@ from fastapi.testclient import TestClient
 from agent_cli.constants import DEFAULT_OPENAI_EMBEDDING_MODEL
 from agent_cli.memory import api as memory_api
 
+# Extend timeout for these tests - Windows SSL initialization is slow
+pytestmark = pytest.mark.timeout(30)
+
 
 class _DummyReranker:
     def predict(self, pairs: list[tuple[str, str]]) -> list[float]:
