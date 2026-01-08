@@ -34,6 +34,8 @@ from agent_cli.core.utils import (
 )
 from agent_cli.services import asr
 from agent_cli.services.asr import (
+    GEMINI_SUPPORTED_FORMATS,
+    OPENAI_SUPPORTED_FORMATS,
     create_recorded_audio_transcriber,
     get_last_recording,
     load_audio_from_file,
@@ -260,7 +262,18 @@ async def _async_main(  # noqa: PLR0912, PLR0915, C901
     with maybe_live(not general_cfg.quiet) as live:
         if audio_file_path:
             # File-based transcription
-            audio_data = load_audio_from_file(audio_file_path, LOGGER)
+            # Determine if we can use native format support (skip PCM conversion)
+            suffix = audio_file_path.suffix.lower()
+            use_native_format = (
+                provider_cfg.asr_provider == "openai" and suffix in OPENAI_SUPPORTED_FORMATS
+            ) or (provider_cfg.asr_provider == "gemini" and suffix in GEMINI_SUPPORTED_FORMATS)
+
+            # Wyoming always needs PCM, OpenAI/Gemini can use native formats
+            audio_data = load_audio_from_file(
+                audio_file_path,
+                LOGGER,
+                convert_to_pcm=not use_native_format,
+            )
             if not audio_data:
                 print_with_style(
                     f"❌ Failed to load audio from {audio_file_path}",
@@ -277,6 +290,7 @@ async def _async_main(  # noqa: PLR0912, PLR0915, C901
                     openai_asr_cfg,
                     LOGGER,
                     quiet=general_cfg.quiet,
+                    file_suffix=suffix if use_native_format else ".wav",
                 )
             elif provider_cfg.asr_provider == "gemini":
                 transcript = await recorded_transcriber(
@@ -284,6 +298,7 @@ async def _async_main(  # noqa: PLR0912, PLR0915, C901
                     gemini_asr_cfg,
                     LOGGER,
                     quiet=general_cfg.quiet,
+                    file_suffix=suffix if use_native_format else ".wav",
                 )
             elif provider_cfg.asr_provider == "wyoming":
                 transcript = await recorded_transcriber(

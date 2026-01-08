@@ -93,7 +93,8 @@ async def test_async_main_from_file(tmp_path: Path):
         )
 
         # Verify the audio was loaded and transcribed
-        mock_load.assert_called_once_with(test_file, transcribe.LOGGER)
+        # Wyoming provider requires PCM conversion
+        mock_load.assert_called_once_with(test_file, transcribe.LOGGER, convert_to_pcm=True)
         mock_transcriber.assert_called_once()
         mock_clipboard.copy.assert_called_once_with("Test transcript from file")
 

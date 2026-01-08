@@ -154,7 +154,7 @@ def test_load_audio_from_file(tmp_path: Path):
     # Verify the logger was called
     logger.info.assert_called_once()
     # The logging uses %s formatting, not f-strings
-    assert "Loaded audio from" in logger.info.call_args[0][0]
+    assert "Loaded PCM audio from" in logger.info.call_args[0][0]
 
 
 def test_load_audio_from_file_not_found(tmp_path: Path):
