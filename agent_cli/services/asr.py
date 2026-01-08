@@ -4,8 +4,6 @@ from __future__ import annotations
 
 import asyncio
 import io
-import shutil
-import subprocess
 import wave
 from datetime import UTC, datetime
 from functools import partial
@@ -22,8 +20,12 @@ from agent_cli.core.audio import (
     read_from_queue,
     setup_input_stream,
 )
+from agent_cli.core.audio_format import check_ffmpeg_available, convert_audio_to_wyoming_format
 from agent_cli.core.utils import manage_send_receive_tasks
-from agent_cli.services import transcribe_audio_gemini, transcribe_audio_openai
+from agent_cli.services import (
+    transcribe_audio_gemini,
+    transcribe_audio_openai,
+)
 from agent_cli.services._wyoming_utils import wyoming_client_context
 
 if TYPE_CHECKING:
@@ -91,53 +93,27 @@ def get_last_recording(index: int = 1) -> Path | None:
     return None
 
 
-def _convert_audio_to_pcm(filepath: Path, logger: logging.Logger) -> bytes | None:
-    """Convert an audio file to raw PCM using ffmpeg.
-
-    Args:
-        filepath: Path to the audio file (mp3, m4a, ogg, flac, etc.)
-        logger: Logger instance
-
-    Returns:
-        Raw PCM audio bytes (16kHz, 16-bit, mono), or None if conversion failed.
-
-    """
-    ffmpeg_path = shutil.which("ffmpeg")
-    if not ffmpeg_path:
-        logger.error("ffmpeg not found. Please install ffmpeg to transcribe non-WAV audio files.")
-        return None
-
+def _load_raw_audio(filepath: Path, logger: logging.Logger) -> bytes | None:
+    """Load raw audio bytes from file without conversion."""
     try:
-        result = subprocess.run(
-            [
-                ffmpeg_path,
-                "-i",
-                str(filepath),
-                "-f",
-                "s16le",  # Raw PCM signed 16-bit little-endian
-                "-acodec",
-                "pcm_s16le",
-                "-ar",
-                str(constants.AUDIO_RATE),  # Sample rate
-                "-ac",
-                str(constants.AUDIO_CHANNELS),  # Mono
-                "-",  # Output to stdout
-            ],
-            capture_output=True,
-            check=True,
-        )
-        logger.info("Converted %s to PCM using ffmpeg", filepath)
-        return result.stdout
-    except subprocess.CalledProcessError:
-        logger.exception("ffmpeg failed to convert %s", filepath)
+        audio_data = filepath.read_bytes()
+        logger.info("Loaded raw audio from %s (%d bytes)", filepath, len(audio_data))
+        return audio_data
+    except OSError:
+        logger.exception("Failed to read audio file %s", filepath)
         return None
 
 
-# Audio formats supported by OpenAI Whisper API
-OPENAI_SUPPORTED_FORMATS = frozenset({".mp3", ".mp4", ".mpeg", ".mpga", ".m4a", ".wav", ".webm"})
-
-# Audio formats supported by Gemini
-GEMINI_SUPPORTED_FORMATS = frozenset({".wav", ".mp3", ".aiff", ".aac", ".ogg", ".flac", ".m4a"})
+def _load_wav_pcm(filepath: Path, logger: logging.Logger) -> bytes | None:
+    """Extract PCM frames from a WAV file."""
+    try:
+        with wave.open(str(filepath), "rb") as wav_file:
+            audio_data = wav_file.readframes(wav_file.getnframes())
+            logger.info("Loaded PCM audio from %s", filepath)
+            return audio_data
+    except (OSError, wave.Error):
+        logger.exception("Failed to load audio from %s", filepath)
+        return None
 
 
 def load_audio_from_file(
@@ -160,31 +136,27 @@ def load_audio_from_file(
         Audio data as bytes, or None if loading failed.
 
     """
-    suffix = filepath.suffix.lower()
-
     # If caller wants raw bytes (for APIs that handle conversion themselves)
     if not convert_to_pcm:
-        try:
-            audio_data = filepath.read_bytes()
-            logger.info("Loaded raw audio from %s (%d bytes)", filepath, len(audio_data))
-            return audio_data
-        except OSError:
-            logger.exception("Failed to read audio file %s", filepath)
-            return None
+        return _load_raw_audio(filepath, logger)
 
     # WAV files: extract PCM directly
-    if suffix == ".wav":
-        try:
-            with wave.open(str(filepath), "rb") as wav_file:
-                audio_data = wav_file.readframes(wav_file.getnframes())
-                logger.info("Loaded PCM audio from %s", filepath)
-                return audio_data
-        except (OSError, wave.Error):
-            logger.exception("Failed to load audio from %s", filepath)
-            return None
+    if filepath.suffix.lower() == ".wav":
+        return _load_wav_pcm(filepath, logger)
 
     # Other formats: convert to PCM using ffmpeg
-    return _convert_audio_to_pcm(filepath, logger)
+    if not check_ffmpeg_available():
+        logger.error("ffmpeg not found. Please install ffmpeg to transcribe non-WAV audio files.")
+        return None
+
+    try:
+        audio_bytes = filepath.read_bytes()
+        pcm_data = convert_audio_to_wyoming_format(audio_bytes, filepath.name)
+        logger.info("Converted %s to PCM using ffmpeg", filepath)
+        return pcm_data
+    except (OSError, RuntimeError):
+        logger.exception("Failed to convert %s", filepath)
+        return None
 
 
 def create_transcriber(

@@ -57,8 +57,8 @@ The `--from-file` option supports multiple audio formats:
 | Gemini | wav, mp3, aiff, aac, ogg, flac, m4a |
 | Wyoming | Any format (converted via ffmpeg) |
 
-!!! note
-    For non-WAV formats with the Wyoming provider, [ffmpeg](https://ffmpeg.org/) must be installed on your system.
+> [!NOTE]
+> For non-WAV formats with the Wyoming provider, [ffmpeg](https://ffmpeg.org/) must be installed on your system.
 
 ## Options
 

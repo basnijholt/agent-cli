@@ -62,6 +62,14 @@ _GEMINI_MIME_TYPES: dict[str, str] = {
     ".m4a": "audio/mp4",  # m4a is MP4 audio container
 }
 
+# Audio formats supported by Gemini (derived from MIME type mapping)
+GEMINI_SUPPORTED_FORMATS: frozenset[str] = frozenset(_GEMINI_MIME_TYPES.keys())
+
+# Audio formats supported by OpenAI Whisper API
+OPENAI_SUPPORTED_FORMATS: frozenset[str] = frozenset(
+    {".mp3", ".mp4", ".mpeg", ".mpga", ".m4a", ".wav", ".webm"},
+)
+
 
 async def transcribe_audio_gemini(
     audio_data: bytes,

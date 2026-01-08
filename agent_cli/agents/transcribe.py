@@ -32,10 +32,12 @@ from agent_cli.core.utils import (
     signal_handling_context,
     stop_or_status_or_toggle,
 )
-from agent_cli.services import asr
-from agent_cli.services.asr import (
+from agent_cli.services import (
     GEMINI_SUPPORTED_FORMATS,
     OPENAI_SUPPORTED_FORMATS,
+    asr,
+)
+from agent_cli.services.asr import (
     create_recorded_audio_transcriber,
     get_last_recording,
     load_audio_from_file,
