@@ -393,7 +393,7 @@ SERVER_HOST: str = typer.Option(
 FROM_FILE: Path | None = typer.Option(
     None,
     "--from-file",
-    help="Transcribe audio from a saved WAV file instead of recording.",
+    help="Transcribe audio from a file (supports wav, mp3, m4a, ogg, flac, aac, webm). Requires ffmpeg for non-WAV formats with Wyoming provider.",
     rich_help_panel="Audio Recovery",
 )
 LAST_RECORDING: int = typer.Option(
