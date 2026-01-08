@@ -34,12 +34,31 @@ agent-cli transcribe --input-device-index 1 --llm
 # List available audio devices
 agent-cli transcribe --list-devices
 
-# Transcribe from a saved file
+# Transcribe from a saved file (supports wav, mp3, m4a, ogg, flac, aac, webm)
 agent-cli transcribe --from-file recording.wav
+
+# Transcribe an MP3 file with OpenAI
+agent-cli transcribe --from-file podcast.mp3 --asr-provider openai
+
+# Transcribe an M4A voice memo with Gemini
+agent-cli transcribe --from-file voice_memo.m4a --asr-provider gemini
 
 # Re-transcribe most recent recording
 agent-cli transcribe --last-recording 1
 ```
+
+## Supported Audio Formats
+
+The `--from-file` option supports multiple audio formats:
+
+| Provider | Supported Formats |
+|----------|-------------------|
+| OpenAI | mp3, mp4, mpeg, mpga, m4a, wav, webm |
+| Gemini | wav, mp3, aiff, aac, ogg, flac |
+| Wyoming | Any format (converted via ffmpeg) |
+
+!!! note
+    For non-WAV formats with the Wyoming provider, [ffmpeg](https://ffmpeg.org/) must be installed on your system.
 
 ## Options
 
