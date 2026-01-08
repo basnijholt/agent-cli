@@ -5,6 +5,8 @@ from __future__ import annotations
 import io
 from typing import TYPE_CHECKING
 
+from agent_cli import constants
+
 if TYPE_CHECKING:
     import logging
 
@@ -105,8 +107,6 @@ async def transcribe_audio_gemini(
 
     # If raw PCM (no recognized format header), convert to WAV
     if not _is_wav_file(audio_data) and file_suffix.lower() == ".wav":
-        from agent_cli import constants  # noqa: PLC0415
-
         logger.debug("Converting raw PCM to WAV format for Gemini")
         audio_data = pcm_to_wav(
             audio_data,
