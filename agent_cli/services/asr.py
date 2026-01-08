@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import asyncio
 import io
+import shutil
+import subprocess
 import wave
 from datetime import UTC, datetime
 from functools import partial
@@ -100,9 +102,6 @@ def _convert_audio_to_pcm(filepath: Path, logger: logging.Logger) -> bytes | Non
         Raw PCM audio bytes (16kHz, 16-bit, mono), or None if conversion failed.
 
     """
-    import shutil  # noqa: PLC0415
-    import subprocess  # noqa: PLC0415
-
     ffmpeg_path = shutil.which("ffmpeg")
     if not ffmpeg_path:
         logger.error("ffmpeg not found. Please install ffmpeg to transcribe non-WAV audio files.")
