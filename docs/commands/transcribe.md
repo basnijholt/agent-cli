@@ -54,7 +54,7 @@ The `--from-file` option supports multiple audio formats:
 | Provider | Supported Formats |
 |----------|-------------------|
 | OpenAI | mp3, mp4, mpeg, mpga, m4a, wav, webm |
-| Gemini | wav, mp3, aiff, aac, ogg, flac |
+| Gemini | wav, mp3, aiff, aac, ogg, flac, m4a |
 | Wyoming | Any format (converted via ffmpeg) |
 
 !!! note

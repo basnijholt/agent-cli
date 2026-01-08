@@ -137,7 +137,7 @@ def _convert_audio_to_pcm(filepath: Path, logger: logging.Logger) -> bytes | Non
 OPENAI_SUPPORTED_FORMATS = frozenset({".mp3", ".mp4", ".mpeg", ".mpga", ".m4a", ".wav", ".webm"})
 
 # Audio formats supported by Gemini
-GEMINI_SUPPORTED_FORMATS = frozenset({".wav", ".mp3", ".aiff", ".aac", ".ogg", ".flac"})
+GEMINI_SUPPORTED_FORMATS = frozenset({".wav", ".mp3", ".aiff", ".aac", ".ogg", ".flac", ".m4a"})
 
 
 def load_audio_from_file(
