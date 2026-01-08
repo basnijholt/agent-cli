@@ -60,7 +60,7 @@ agent-cli transcribe --last-recording 1
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--from-file` | - | Transcribe audio from a saved WAV file instead of recording. |
+| `--from-file` | - | Transcribe audio from a file (supports wav, mp3, m4a, ogg, flac, aac, webm). Requires ffmpeg for non-WAV formats with Wyoming provider. |
 | `--last-recording` | `0` | Transcribe a saved recording. Use 1 for most recent, 2 for second-to-last, etc. Use 0 to disable (default). |
 | `--save-recording/--no-save-recording` | `true` | Save the audio recording to disk for recovery. |
 
