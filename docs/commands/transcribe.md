@@ -34,12 +34,31 @@ agent-cli transcribe --input-device-index 1 --llm
 # List available audio devices
 agent-cli transcribe --list-devices
 
-# Transcribe from a saved file
+# Transcribe from a saved file (supports wav, mp3, m4a, ogg, flac, aac, webm)
 agent-cli transcribe --from-file recording.wav
+
+# Transcribe an MP3 file with OpenAI
+agent-cli transcribe --from-file podcast.mp3 --asr-provider openai
+
+# Transcribe an M4A voice memo with Gemini
+agent-cli transcribe --from-file voice_memo.m4a --asr-provider gemini
 
 # Re-transcribe most recent recording
 agent-cli transcribe --last-recording 1
 ```
+
+## Supported Audio Formats
+
+The `--from-file` option supports multiple audio formats:
+
+| Provider | Supported Formats |
+|----------|-------------------|
+| OpenAI | mp3, mp4, mpeg, mpga, m4a, wav, webm |
+| Gemini | wav, mp3, aiff, aac, ogg, flac, m4a |
+| Wyoming | Any format (converted via ffmpeg) |
+
+> [!NOTE]
+> For non-WAV formats with the Wyoming provider, [ffmpeg](https://ffmpeg.org/) must be installed on your system.
 
 ## Options
 
@@ -60,7 +79,7 @@ agent-cli transcribe --last-recording 1
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--from-file` | - | Transcribe audio from a saved WAV file instead of recording. |
+| `--from-file` | - | Transcribe audio from a file (supports wav, mp3, m4a, ogg, flac, aac, webm). Requires ffmpeg for non-WAV formats with Wyoming provider. |
 | `--last-recording` | `0` | Transcribe a saved recording. Use 1 for most recent, 2 for second-to-last, etc. Use 0 to disable (default). |
 | `--save-recording/--no-save-recording` | `true` | Save the audio recording to disk for recovery. |
 

@@ -5,6 +5,8 @@ from __future__ import annotations
 import io
 from typing import TYPE_CHECKING
 
+from agent_cli import constants
+
 if TYPE_CHECKING:
     import logging
 
@@ -51,10 +53,32 @@ def pcm_to_wav(
     return wav_buffer.getvalue()
 
 
+# Map file extensions to MIME types for Gemini
+_GEMINI_MIME_TYPES: dict[str, str] = {
+    ".wav": "audio/wav",
+    ".mp3": "audio/mp3",
+    ".aiff": "audio/aiff",
+    ".aac": "audio/aac",
+    ".ogg": "audio/ogg",
+    ".flac": "audio/flac",
+    ".m4a": "audio/mp4",  # m4a is MP4 audio container
+}
+
+# Audio formats supported by Gemini (derived from MIME type mapping)
+GEMINI_SUPPORTED_FORMATS: frozenset[str] = frozenset(_GEMINI_MIME_TYPES.keys())
+
+# Audio formats supported by OpenAI Whisper API
+OPENAI_SUPPORTED_FORMATS: frozenset[str] = frozenset(
+    {".mp3", ".mp4", ".mpeg", ".mpga", ".m4a", ".wav", ".webm"},
+)
+
+
 async def transcribe_audio_gemini(
     audio_data: bytes,
     gemini_asr_cfg: config.GeminiASR,
     logger: logging.Logger,
+    *,
+    file_suffix: str = ".wav",
     **_kwargs: object,
 ) -> str:
     """Transcribe audio using Gemini's native audio understanding.
@@ -62,8 +86,12 @@ async def transcribe_audio_gemini(
     Gemini can process audio natively and return transcriptions.
     Supports WAV, MP3, AIFF, AAC, OGG, and FLAC formats.
 
-    Accepts either raw PCM audio data or complete WAV files. Raw PCM
-    is automatically converted to WAV format since Gemini requires it.
+    Args:
+        audio_data: Audio bytes (can be raw PCM or complete audio file)
+        gemini_asr_cfg: Gemini ASR configuration
+        logger: Logger instance
+        file_suffix: File extension for MIME type detection (default: .wav)
+
     """
     from google import genai  # noqa: PLC0415
     from google.genai import types  # noqa: PLC0415
@@ -74,11 +102,11 @@ async def transcribe_audio_gemini(
 
     logger.info("Transcribing audio with Gemini %s...", gemini_asr_cfg.asr_gemini_model)
 
-    # Gemini requires complete WAV files with headers, not raw PCM
-    # Auto-convert raw PCM to WAV if needed
-    if not _is_wav_file(audio_data):
-        from agent_cli import constants  # noqa: PLC0415
+    # Determine MIME type from file suffix
+    mime_type = _GEMINI_MIME_TYPES.get(file_suffix.lower(), "audio/wav")
 
+    # If raw PCM (no recognized format header), convert to WAV
+    if not _is_wav_file(audio_data) and file_suffix.lower() == ".wav":
         logger.debug("Converting raw PCM to WAV format for Gemini")
         audio_data = pcm_to_wav(
             audio_data,
@@ -87,6 +115,8 @@ async def transcribe_audio_gemini(
             channels=constants.AUDIO_CHANNELS,
         )
 
+    logger.debug("Using MIME type: %s", mime_type)
+
     client = genai.Client(api_key=gemini_asr_cfg.gemini_api_key)
 
     response = await client.aio.models.generate_content(
@@ -94,7 +124,7 @@ async def transcribe_audio_gemini(
         contents=[
             "Transcribe this audio accurately. Return only the transcription text, "
             "nothing else. Do not include any prefixes, labels, or explanations.",
-            types.Part.from_bytes(data=audio_data, mime_type="audio/wav"),
+            types.Part.from_bytes(data=audio_data, mime_type=mime_type),
         ],
     )
     return response.text.strip()
@@ -117,12 +147,23 @@ async def transcribe_audio_openai(
     audio_data: bytes,
     openai_asr_cfg: config.OpenAIASR,
     logger: logging.Logger,
+    *,
+    file_suffix: str = ".wav",
     **_kwargs: object,  # Accept extra kwargs for consistency with Wyoming
 ) -> str:
     """Transcribe audio using OpenAI's Whisper API or a compatible endpoint.
 
+    OpenAI Whisper supports: mp3, mp4, mpeg, mpga, m4a, wav, and webm formats.
+
     When openai_base_url is set, uses the custom endpoint instead of the official OpenAI API.
     This allows using self-hosted Whisper models or other compatible services.
+
+    Args:
+        audio_data: Audio bytes (can be raw PCM or complete audio file)
+        openai_asr_cfg: OpenAI ASR configuration
+        logger: Logger instance
+        file_suffix: File extension for filename (default: .wav)
+
     """
     if openai_asr_cfg.openai_base_url:
         logger.info(
@@ -140,7 +181,10 @@ async def transcribe_audio_openai(
         base_url=openai_asr_cfg.openai_base_url,
     )
     audio_file = io.BytesIO(audio_data)
-    audio_file.name = "audio.wav"
+    # Use the correct file extension so OpenAI knows the format
+    audio_file.name = f"audio{file_suffix}"
+
+    logger.debug("Using filename: %s", audio_file.name)
 
     transcription_params = {"model": openai_asr_cfg.asr_openai_model, "file": audio_file}
     if openai_asr_cfg.asr_openai_prompt:

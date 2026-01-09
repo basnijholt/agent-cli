@@ -560,8 +560,11 @@ the `[defaults]` section of your configuration file.
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Audio Recovery ─────────────────────────────────────────────────────────────╮
 │ --from-file                                PATH     Transcribe audio from a  │
-│                                                     saved WAV file instead   │
-│                                                     of recording.            │
+│                                                     file (supports wav, mp3, │
+│                                                     m4a, ogg, flac, aac,     │
+│                                                     webm). Requires ffmpeg   │
+│                                                     for non-WAV formats with │
+│                                                     Wyoming provider.        │
 │ --last-recording                           INTEGER  Transcribe a saved       │
 │                                                     recording. Use 1 for     │
 │                                                     most recent, 2 for       │

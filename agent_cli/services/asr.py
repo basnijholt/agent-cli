@@ -20,8 +20,12 @@ from agent_cli.core.audio import (
     read_from_queue,
     setup_input_stream,
 )
+from agent_cli.core.audio_format import check_ffmpeg_available, convert_audio_to_wyoming_format
 from agent_cli.core.utils import manage_send_receive_tasks
-from agent_cli.services import transcribe_audio_gemini, transcribe_audio_openai
+from agent_cli.services import (
+    transcribe_audio_gemini,
+    transcribe_audio_openai,
+)
 from agent_cli.services._wyoming_utils import wyoming_client_context
 
 if TYPE_CHECKING:
@@ -89,15 +93,69 @@ def get_last_recording(index: int = 1) -> Path | None:
     return None
 
 
-def load_audio_from_file(filepath: Path, logger: logging.Logger) -> bytes | None:
-    """Load audio data from a WAV file (raw PCM frames only)."""
+def _load_raw_audio(filepath: Path, logger: logging.Logger) -> bytes | None:
+    """Load raw audio bytes from file without conversion."""
+    try:
+        audio_data = filepath.read_bytes()
+        logger.info("Loaded raw audio from %s (%d bytes)", filepath, len(audio_data))
+        return audio_data
+    except OSError:
+        logger.exception("Failed to read audio file %s", filepath)
+        return None
+
+
+def _load_wav_pcm(filepath: Path, logger: logging.Logger) -> bytes | None:
+    """Extract PCM frames from a WAV file."""
     try:
         with wave.open(str(filepath), "rb") as wav_file:
             audio_data = wav_file.readframes(wav_file.getnframes())
-            logger.info("Loaded audio from %s", filepath)
+            logger.info("Loaded PCM audio from %s", filepath)
             return audio_data
     except (OSError, wave.Error):
         logger.exception("Failed to load audio from %s", filepath)
+        return None
+
+
+def load_audio_from_file(
+    filepath: Path,
+    logger: logging.Logger,
+    *,
+    convert_to_pcm: bool = True,
+) -> bytes | None:
+    """Load audio data from a file.
+
+    For WAV files, extracts raw PCM frames directly.
+    For other formats (mp3, m4a, ogg, flac, etc.), converts to PCM using ffmpeg.
+
+    Args:
+        filepath: Path to the audio file
+        logger: Logger instance
+        convert_to_pcm: If True, convert non-WAV files to PCM. If False, return raw file bytes.
+
+    Returns:
+        Audio data as bytes, or None if loading failed.
+
+    """
+    # If caller wants raw bytes (for APIs that handle conversion themselves)
+    if not convert_to_pcm:
+        return _load_raw_audio(filepath, logger)
+
+    # WAV files: extract PCM directly
+    if filepath.suffix.lower() == ".wav":
+        return _load_wav_pcm(filepath, logger)
+
+    # Other formats: convert to PCM using ffmpeg
+    if not check_ffmpeg_available():
+        logger.error("ffmpeg not found. Please install ffmpeg to transcribe non-WAV audio files.")
+        return None
+
+    try:
+        audio_bytes = filepath.read_bytes()
+        pcm_data = convert_audio_to_wyoming_format(audio_bytes, filepath.name)
+        logger.info("Converted %s to PCM using ffmpeg", filepath)
+        return pcm_data
+    except (OSError, RuntimeError):
+        logger.exception("Failed to convert %s", filepath)
         return None
 
 

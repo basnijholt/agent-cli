@@ -154,7 +154,7 @@ def test_load_audio_from_file(tmp_path: Path):
     # Verify the logger was called
     logger.info.assert_called_once()
     # The logging uses %s formatting, not f-strings
-    assert "Loaded audio from" in logger.info.call_args[0][0]
+    assert "Loaded PCM audio from" in logger.info.call_args[0][0]
 
 
 def test_load_audio_from_file_not_found(tmp_path: Path):
@@ -171,6 +171,42 @@ def test_load_audio_from_file_not_found(tmp_path: Path):
     logger.exception.assert_called_once()
     # Check that the error message was logged (format string is evaluated at call time)
     assert "Failed to load audio from" in logger.exception.call_args[0][0]
+
+
+def test_load_audio_from_file_raw_bytes(tmp_path: Path):
+    """Test loading audio without PCM conversion (for OpenAI/Gemini native formats)."""
+    logger = MagicMock()
+
+    # Create a fake MP3 file (just raw bytes, not actual MP3)
+    test_file = tmp_path / "test.mp3"
+    test_content = b"fake mp3 content for testing"
+    test_file.write_bytes(test_content)
+
+    # Load without conversion
+    audio_data = asr.load_audio_from_file(test_file, logger, convert_to_pcm=False)
+
+    assert audio_data == test_content
+    logger.info.assert_called_once()
+    assert "Loaded raw audio from" in logger.info.call_args[0][0]
+
+
+def test_load_audio_from_file_non_wav_no_ffmpeg(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    """Test loading non-WAV file when ffmpeg is not available."""
+    logger = MagicMock()
+
+    # Create a fake MP3 file
+    test_file = tmp_path / "test.mp3"
+    test_file.write_bytes(b"fake mp3")
+
+    # Mock check_ffmpeg_available to return False
+    monkeypatch.setattr("agent_cli.services.asr.check_ffmpeg_available", lambda: False)
+
+    # Try to load with PCM conversion (should fail)
+    audio_data = asr.load_audio_from_file(test_file, logger, convert_to_pcm=True)
+
+    assert audio_data is None
+    logger.error.assert_called_once()
+    assert "ffmpeg not found" in logger.error.call_args[0][0]
 
 
 @pytest.mark.asyncio
