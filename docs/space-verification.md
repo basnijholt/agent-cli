@@ -21,7 +21,7 @@ Compare our implementation against GTR (CodeRabbit's git-worktree-runner) and re
 | **Command** | `claude` | `claude` | ✅ | Verified |
 | **Alt commands** | `claude-code` | `claude-code` | ✅ | Verified |
 | **Special path** | `~/.claude/local/claude` | `~/.claude/local/claude` | ✅ | Both check this path |
-| **Detection env var** | None | `CLAUDE_CODE` | ⚠️ | **NO ENV VAR EXISTS** - Feature request #531 pending. Remove from code. |
+| **Detection env var** | None | `CLAUDECODE=1` | ✅ | **VERIFIED** - Claude Code sets `CLAUDECODE=1` (also `CLAUDE_CODE_ENTRYPOINT`) |
 | **Detection process** | N/A | Parent process contains "claude" | ✅ | Only reliable detection method |
 | **Launch args** | `(cd "$path" && "$claude_cmd" "$@")` | `[exe]` (no cd) | ⚠️ | GTR uses cd, we don't |
 | **Install URL** | https://claude.com/claude-code | https://docs.anthropic.com/en/docs/claude-code | ✅ | Ours is more accurate |
@@ -383,6 +383,13 @@ Record verification results here:
   - Cursor Agent: YES! Sets CURSOR_AGENT when running.
 
   Action: Remove fake env vars from 6 agents, fix OpenCode and Cursor to use real vars.
+
+2025-01-10: Live environment check inside Claude Code
+  - Claude Code: ACTUALLY SETS `CLAUDECODE=1` and `CLAUDE_CODE_ENTRYPOINT=cli`!
+  - Zellij: Sets `ZELLIJ=0` (presence check, not value check)
+  - Verified we're running in Zellij session "charming-lake"
+
+  Action: Fixed Claude Code detection to use CLAUDECODE=1.
 ```
 
 ---

@@ -18,8 +18,11 @@ class ClaudeCode(CodingAgent):
 
     def detect(self) -> bool:
         """Detect if running inside Claude Code."""
-        # Claude Code does not set any detection env var (feature request #531 pending)
-        # Only parent process detection works
+        # Check CLAUDECODE environment variable (set by Claude Code)
+        if os.environ.get("CLAUDECODE") == "1":
+            return True
+
+        # Fallback to parent process detection
         parent_names = _get_parent_process_names()
         return any("claude" in name for name in parent_names)
 
