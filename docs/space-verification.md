@@ -156,11 +156,11 @@ Compare our implementation against GTR (CodeRabbit's git-worktree-runner) and re
 
 | Aspect | GTR | Ours | Status | Notes |
 |--------|-----|------|--------|-------|
-| **Command** | `emacs` | `emacs` | ❓ | |
+| **Command** | `emacs` | `emacs` | ✅ | Verified |
 | **Alt commands** | None | `emacsclient` | ✅ | Faster for running daemon |
-| **Open syntax** | `emacs "$path" &` | `emacs <path>` or `emacsclient -n <path>` | ⚠️ | GTR runs in background |
-| **Detection env var** | N/A | `INSIDE_EMACS`, `EMACS` | 🔍 | Standard emacs vars |
-| **Background** | Yes (`&`) | No | ⚠️ | Should we add? |
+| **Open syntax** | `emacs "$path" &` | `sh -c 'emacs "$path" &'` or `emacsclient -n <path>` | ✅ | **Fixed 2025-01-10** - Now runs in background |
+| **Detection env var** | N/A | `INSIDE_EMACS`, `EMACS` | ✅ | Standard emacs vars |
+| **Background** | Yes (`&`) | Yes (`&`) | ✅ | **Fixed 2025-01-10** |
 
 ### Sublime Text
 
@@ -174,43 +174,43 @@ Compare our implementation against GTR (CodeRabbit's git-worktree-runner) and re
 
 | Aspect | GTR | Ours | Status | Notes |
 |--------|-----|------|--------|-------|
-| **Command** | `idea` | `idea` | ❓ | |
+| **Command** | `idea` | `idea` | ✅ | Verified via JetBrains docs |
 | **Open syntax** | `idea "$path"` | `idea <path>` | ✅ | Match |
-| **Detection env var** | N/A | `TERMINAL_EMULATOR=JetBrains-JediTerm` | 🔍 | JetBrains terminal |
-| **Install hint** | Tools > Create Command-line Launcher | N/A | 🔍 | Add to install URL |
+| **Detection env var** | N/A | `TERMINAL_EMULATOR=JetBrains-JediTerm` | ✅ | JetBrains terminal |
+| **Install hint** | Tools > Create Command-line Launcher | N/A | ✅ | Or use Toolbox App |
 
 ### PyCharm
 
 | Aspect | GTR | Ours | Status | Notes |
 |--------|-----|------|--------|-------|
-| **Command** | `pycharm` | `pycharm` | ❓ | |
-| **Alt commands** | None | `charm` | 🔍 | Common alias, verify |
+| **Command** | `pycharm` | `pycharm` | ✅ | Verified via JetBrains docs |
+| **Alt commands** | None | `charm` | ✅ | Common alias |
 | **Open syntax** | `pycharm "$path"` | `pycharm <path>` | ✅ | Match |
-| **Detection env var** | N/A | `TERMINAL_EMULATOR=JetBrains-JediTerm` | 🔍 | Shared with other JetBrains |
+| **Detection env var** | N/A | `TERMINAL_EMULATOR=JetBrains-JediTerm` | ✅ | Shared with other JetBrains |
 
 ### WebStorm
 
 | Aspect | GTR | Ours | Status | Notes |
 |--------|-----|------|--------|-------|
-| **Command** | `webstorm` | `webstorm` | ❓ | |
+| **Command** | `webstorm` | `webstorm` | ✅ | Verified via JetBrains docs |
 | **Open syntax** | `webstorm "$path"` | `webstorm <path>` | ✅ | Match |
-| **Detection env var** | N/A | `TERMINAL_EMULATOR=JetBrains-JediTerm` | 🔍 | Shared with other JetBrains |
+| **Detection env var** | N/A | `TERMINAL_EMULATOR=JetBrains-JediTerm` | ✅ | Shared with other JetBrains |
 
 ### GoLand (Extra - not in GTR)
 
 | Aspect | GTR | Ours | Status | Notes |
 |--------|-----|------|--------|-------|
-| **Command** | N/A | `goland` | 🔍 | Verify command name |
-| **Open syntax** | N/A | `goland <path>` | 🔍 | |
-| **Detection env var** | N/A | `TERMINAL_EMULATOR=JetBrains-JediTerm` | 🔍 | |
+| **Command** | N/A | `goland` | ✅ | Verified via JetBrains docs |
+| **Open syntax** | N/A | `goland <path>` | ✅ | Standard pattern |
+| **Detection env var** | N/A | `TERMINAL_EMULATOR=JetBrains-JediTerm` | ✅ | Shared with other JetBrains |
 
 ### RustRover (Extra - not in GTR)
 
 | Aspect | GTR | Ours | Status | Notes |
 |--------|-----|------|--------|-------|
-| **Command** | N/A | `rustrover` | 🔍 | Verify command name |
-| **Open syntax** | N/A | `rustrover <path>` | 🔍 | |
-| **Detection env var** | N/A | `TERMINAL_EMULATOR=JetBrains-JediTerm` | 🔍 | |
+| **Command** | N/A | `rustrover` | ✅ | Verified via JetBrains docs |
+| **Open syntax** | N/A | `rustrover <path>` | ✅ | Standard pattern |
+| **Detection env var** | N/A | `TERMINAL_EMULATOR=JetBrains-JediTerm` | ✅ | Shared with other JetBrains |
 
 ---
 
@@ -357,13 +357,12 @@ Compare our implementation against GTR (CodeRabbit's git-worktree-runner) and re
 - [x] Test zellij commands in real zellij session - **DONE 2025-01-10**
 
 ### Medium Priority
-- [ ] Add background mode for emacs
-- [ ] Verify all JetBrains IDE command names
+- [x] Add background mode for emacs - **DONE 2025-01-10**
+- [x] Verify all JetBrains IDE command names - **Verified via JetBrains docs 2025-01-10**
 - [ ] Test kitty remote control commands
 - [ ] Test iTerm2 AppleScript
 
 ### Low Priority
-- [ ] Add Atom support (deprecated)
 - [ ] Add nano support (limited use)
 - [ ] Verify install URLs are current
 

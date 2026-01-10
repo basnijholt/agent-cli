@@ -30,12 +30,17 @@ class Emacs(Editor):
         return term_program is not None and "emacs" in term_program.lower()
 
     def open_command(self, path: Path) -> list[str]:
-        """Return the command to open a directory in Emacs."""
+        """Return the command to open a directory in Emacs.
+
+        Uses background mode (&) for standalone emacs to match GTR behavior.
+        emacsclient uses -n flag which already runs in background.
+        """
         exe = self.get_executable()
         if exe is None:
             msg = f"{self.name} is not installed"
             raise RuntimeError(msg)
-        # Use emacsclient if available for faster opening
+        # Use emacsclient if available for faster opening (-n = don't wait)
         if "emacsclient" in exe:
             return [exe, "-n", str(path)]
-        return [exe, str(path)]
+        # Run standalone emacs in background like GTR does
+        return ["sh", "-c", f'{exe} "{path}" &']
