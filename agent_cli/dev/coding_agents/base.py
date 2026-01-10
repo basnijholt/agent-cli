@@ -48,11 +48,16 @@ class CodingAgent(ABC):
                 return exe
         return None
 
-    def launch_command(self, path: Path) -> list[str]:  # noqa: ARG002
+    def launch_command(
+        self,
+        path: Path,  # noqa: ARG002
+        extra_args: list[str] | None = None,
+    ) -> list[str]:
         """Return the command to launch this agent in a directory.
 
         Args:
             path: The directory to launch the agent in
+            extra_args: Additional arguments to pass to the agent
 
         Returns:
             List of command arguments
@@ -62,7 +67,10 @@ class CodingAgent(ABC):
         if exe is None:
             msg = f"{self.name} is not installed"
             raise RuntimeError(msg)
-        return [exe]
+        cmd = [exe]
+        if extra_args:
+            cmd.extend(extra_args)
+        return cmd
 
     def get_env(self) -> dict[str, str]:
         """Get any additional environment variables needed."""

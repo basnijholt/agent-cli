@@ -29,10 +29,17 @@ class OpenCode(CodingAgent):
         parent_names = _get_parent_process_names()
         return any("opencode" in name for name in parent_names)
 
-    def launch_command(self, path: Path) -> list[str]:  # noqa: ARG002
+    def launch_command(
+        self,
+        path: Path,  # noqa: ARG002
+        extra_args: list[str] | None = None,
+    ) -> list[str]:
         """Return the command to launch OpenCode."""
         exe = self.get_executable()
         if exe is None:
             msg = f"{self.name} is not installed. Install from {self.install_url}"
             raise RuntimeError(msg)
-        return [exe]
+        cmd = [exe]
+        if extra_args:
+            cmd.extend(extra_args)
+        return cmd

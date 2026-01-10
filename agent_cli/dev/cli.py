@@ -234,14 +234,18 @@ def _launch_editor(path: Path, editor: Editor) -> None:
         _warn(f"Could not open editor: {e}")
 
 
-def _launch_agent(path: Path, agent: CodingAgent) -> None:
+def _launch_agent(
+    path: Path,
+    agent: CodingAgent,
+    extra_args: list[str] | None = None,
+) -> None:
     """Launch agent in a new terminal tab.
 
     Agents are interactive TUIs that need a proper terminal.
     Priority: tmux/zellij tab > terminal tab > print instructions.
     """
     terminal = terminals.detect_current_terminal()
-    agent_cmd = " ".join(agent.launch_command(path))
+    agent_cmd = " ".join(agent.launch_command(path, extra_args))
 
     if terminal:
         # We're in a multiplexer (tmux/zellij) or supported terminal (kitty/iTerm2)
@@ -257,7 +261,7 @@ def _launch_agent(path: Path, agent: CodingAgent) -> None:
     else:
         console.print(f"\n[bold]To start {agent.name}:[/bold]")
     console.print(f"  cd {path}")
-    console.print(f"  {agent.command}")
+    console.print(f"  {agent_cmd}")
 
 
 @app.command("new")
@@ -303,6 +307,13 @@ def new(
         bool,
         typer.Option("--no-fetch", help="Skip git fetch before creating"),
     ] = False,
+    agent_args: Annotated[
+        list[str] | None,
+        typer.Option(
+            "--agent-args",
+            help="Extra arguments to pass to the agent (e.g., --agent-args='--dangerously-skip-permissions')",
+        ),
+    ] = None,
 ) -> None:
     """Create a new parallel development environment (git worktree)."""
     repo_root = _ensure_git_repo()
@@ -356,7 +367,7 @@ def new(
 
     # Launch agent (interactive TUI - needs terminal tab)
     if agent and agent.is_available():
-        _launch_agent(result.path, agent)
+        _launch_agent(result.path, agent, agent_args)
 
     # Print summary
     console.print()
@@ -520,6 +531,13 @@ def start_agent(
         str | None,
         typer.Option("--agent", "-a", help="Specific agent (claude, codex, gemini, aider)"),
     ] = None,
+    agent_args: Annotated[
+        list[str] | None,
+        typer.Option(
+            "--agent-args",
+            help="Extra arguments to pass to the agent (e.g., --agent-args='--dangerously-skip-permissions')",
+        ),
+    ] = None,
 ) -> None:
     """Start an AI coding agent in a dev environment."""
     repo_root = _ensure_git_repo()
@@ -546,7 +564,7 @@ def start_agent(
     _info(f"Starting {agent.name} in {wt.path}...")
     try:
         os.chdir(wt.path)
-        subprocess.run(agent.launch_command(wt.path), check=False)
+        subprocess.run(agent.launch_command(wt.path, agent_args), check=False)
     except Exception as e:
         _error(f"Failed to start agent: {e}")
 
