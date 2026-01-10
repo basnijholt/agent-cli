@@ -231,8 +231,12 @@ Speaker diarization identifies and labels different speakers in the transcript. 
    ```
 
 2. **HuggingFace token**: The pyannote-audio models are gated. You need to:
-   - Accept the license at [pyannote/speaker-diarization-3.1](https://huggingface.co/pyannote/speaker-diarization-3.1)
+   - Accept the license for all three models:
+     - [pyannote/speaker-diarization-3.1](https://huggingface.co/pyannote/speaker-diarization-3.1)
+     - [pyannote/segmentation-3.0](https://huggingface.co/pyannote/segmentation-3.0)
+     - [pyannote/wespeaker-voxceleb-resnet34-LM](https://huggingface.co/pyannote/wespeaker-voxceleb-resnet34-LM)
    - Get your token from [HuggingFace settings](https://huggingface.co/settings/tokens)
+   - Token must have **"Read access to contents of all public gated repos you can access"** permission
    - Provide it via `--hf-token` or the `HF_TOKEN` environment variable
 
 ### Output Formats

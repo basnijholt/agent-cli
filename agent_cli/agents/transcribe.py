@@ -558,7 +558,9 @@ def transcribe(  # noqa: PLR0912, PLR0911
             print_with_style(
                 "❌ --hf-token required for diarization. "
                 "Set HF_TOKEN env var or pass --hf-token. "
-                "Accept license at: https://huggingface.co/pyannote/speaker-diarization-3.1",
+                "Token must have 'Read access to contents of all public gated repos you can access' permission. "
+                "Accept licenses at: https://hf.co/pyannote/speaker-diarization-3.1, "
+                "https://hf.co/pyannote/segmentation-3.0, https://hf.co/pyannote/wespeaker-voxceleb-resnet34-LM",
                 style="red",
             )
             return

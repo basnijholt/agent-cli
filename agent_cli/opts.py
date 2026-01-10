@@ -425,7 +425,12 @@ DIARIZE_FORMAT: str = typer.Option(
 HF_TOKEN: str | None = typer.Option(
     None,
     "--hf-token",
-    help="HuggingFace token for pyannote models. Required for diarization. Accept license at: https://huggingface.co/pyannote/speaker-diarization-3.1",
+    help=(
+        "HuggingFace token for pyannote models. Required for diarization. "
+        "Token must have 'Read access to contents of all public gated repos you can access' permission. "
+        "Accept licenses at: https://hf.co/pyannote/speaker-diarization-3.1, "
+        "https://hf.co/pyannote/segmentation-3.0, https://hf.co/pyannote/wespeaker-voxceleb-resnet34-LM"
+    ),
     envvar="HF_TOKEN",
     rich_help_panel="Diarization",
 )
