@@ -387,10 +387,24 @@ async def _async_main(  # noqa: PLR0912, PLR0915, C901
                     )
                 except Exception as e:
                     LOGGER.exception("Diarization failed")
-                    print_with_style(
-                        f"❌ Diarization error: {e}",
-                        style="red",
-                    )
+                    error_msg = str(e)
+                    # Check if it's a gated repo access error
+                    if "403" in error_msg or "gated" in error_msg.lower():
+                        print_with_style(
+                            "❌ Diarization failed: HuggingFace model access denied.\n"
+                            "Accept licenses for ALL required models:\n"
+                            "  • https://hf.co/pyannote/speaker-diarization-3.1\n"
+                            "  • https://hf.co/pyannote/segmentation-3.0\n"
+                            "  • https://hf.co/pyannote/wespeaker-voxceleb-resnet34-LM\n"
+                            "  • https://hf.co/pyannote/speaker-diarization-community-1\n"
+                            "Token must have 'Read access to public gated repos' permission.",
+                            style="red",
+                        )
+                    else:
+                        print_with_style(
+                            f"❌ Diarization error: {e}",
+                            style="red",
+                        )
             else:
                 LOGGER.warning("No audio file available for diarization")
 
