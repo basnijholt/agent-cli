@@ -216,7 +216,7 @@ class TestSpeakerDiarizer:
             assert diarizer.max_speakers == 4
             mock_pipeline_class.from_pretrained.assert_called_once_with(
                 "pyannote/speaker-diarization-3.1",
-                use_auth_token="test_token",  # noqa: S106
+                token="test_token",  # noqa: S106
             )
 
     def test_diarizer_diarize(self, tmp_path: Path):

@@ -59,7 +59,7 @@ class SpeakerDiarizer:
 
         self.pipeline = Pipeline.from_pretrained(
             "pyannote/speaker-diarization-3.1",
-            use_auth_token=hf_token,
+            token=hf_token,
         )
         self.min_speakers = min_speakers
         self.max_speakers = max_speakers
