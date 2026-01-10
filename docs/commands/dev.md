@@ -60,6 +60,7 @@ agent-cli dev new [BRANCH] [OPTIONS]
 | `--agent`, `-a` | Start AI coding agent after creation |
 | `--with-editor` | Specific editor (cursor, vscode, zed, etc.) |
 | `--with-agent` | Specific agent (claude, codex, gemini, aider) |
+| `--agent-args` | Extra arguments to pass to the agent |
 | `--no-setup` | Skip automatic project setup (npm install, etc.) |
 | `--no-copy` | Skip copying .env files |
 | `--no-fetch` | Skip git fetch before creating |
@@ -218,6 +219,11 @@ Add defaults to your `~/.config/agent-cli/config.toml`:
 [dev]
 default_editor = "cursor"
 default_agent = "claude"
+
+# Per-agent arguments (applied automatically when launching agents)
+[dev.agent_args]
+claude = ["--dangerously-skip-permissions"]
+aider = ["--model", "gpt-4o"]
 ```
 
 Or per-project in `.agent-cli.toml`:
@@ -226,6 +232,9 @@ Or per-project in `.agent-cli.toml`:
 [dev]
 default_editor = "zed"
 default_agent = "aider"
+
+[dev.agent_args]
+claude = ["--dangerously-skip-permissions", "--model", "opus"]
 ```
 
 ## Automatic Features

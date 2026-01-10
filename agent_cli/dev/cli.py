@@ -220,6 +220,37 @@ def _resolve_agent(
     return agent
 
 
+def _get_config_agent_args() -> dict[str, list[str]] | None:
+    """Load agent_args from config file."""
+    from agent_cli.config import load_config  # noqa: PLC0415
+
+    config = load_config(None)
+    dev_config = config.get("dev", {})
+    return dev_config.get("agent_args")
+
+
+def _merge_agent_args(
+    agent: CodingAgent,
+    cli_args: list[str] | None,
+) -> list[str] | None:
+    """Merge CLI args with config args for an agent.
+
+    Config args are applied first, CLI args are appended (and can override).
+    """
+    config_args = _get_config_agent_args()
+    result: list[str] = []
+
+    # Add config args for this agent
+    if config_args and agent.name in config_args:
+        result.extend(config_args[agent.name])
+
+    # Add CLI args (these override/extend config args)
+    if cli_args:
+        result.extend(cli_args)
+
+    return result if result else None
+
+
 def _is_ssh_session() -> bool:
     """Check if we're in an SSH session."""
     return bool(os.environ.get("SSH_CONNECTION") or os.environ.get("SSH_CLIENT"))
@@ -367,7 +398,8 @@ def new(
 
     # Launch agent (interactive TUI - needs terminal tab)
     if agent and agent.is_available():
-        _launch_agent(result.path, agent, agent_args)
+        merged_args = _merge_agent_args(agent, agent_args)
+        _launch_agent(result.path, agent, merged_args)
 
     # Print summary
     console.print()
@@ -561,10 +593,11 @@ def start_agent(
     if not agent.is_available():
         _error(f"{agent.name} is not installed. Install from: {agent.install_url}")
 
+    merged_args = _merge_agent_args(agent, agent_args)
     _info(f"Starting {agent.name} in {wt.path}...")
     try:
         os.chdir(wt.path)
-        subprocess.run(agent.launch_command(wt.path, agent_args), check=False)
+        subprocess.run(agent.launch_command(wt.path, merged_args), check=False)
     except Exception as e:
         _error(f"Failed to start agent: {e}")
 
