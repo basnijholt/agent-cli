@@ -245,19 +245,19 @@ Compare our implementation against GTR (CodeRabbit's git-worktree-runner) and re
 
 | Aspect | Implementation | Status | Notes |
 |--------|---------------|--------|-------|
-| **Detection env var** | `TERM_PROGRAM=iTerm.app` or `ITERM_SESSION_ID` | 🔍 | |
+| **Detection env var** | `TERM_PROGRAM` contains `iterm` or `ITERM_SESSION_ID` | ✅ | Verified via docs |
 | **Platform** | macOS only | ✅ | |
-| **New tab** | AppleScript | 🔍 | Complex, needs testing |
-| **New pane** | AppleScript split | 🔍 | |
+| **New tab** | AppleScript `create tab with default profile` | ✅ | Verified via official docs |
+| **Run command** | `write text "cd <path> && <cmd>"` | ✅ | Standard iTerm2 pattern |
 
 ### Kitty
 
 | Aspect | Implementation | Status | Notes |
 |--------|---------------|--------|-------|
-| **Detection env var** | `TERM=xterm-kitty` or `KITTY_WINDOW_ID` | 🔍 | |
-| **New tab command** | `kitten @ launch --type=tab --cwd=<path>` | 🔍 | |
-| **New pane command** | `kitten @ launch --type=window --cwd=<path>` | 🔍 | |
-| **With command** | `--hold <cmd>` | 🔍 | |
+| **Detection env var** | `KITTY_WINDOW_ID` or `TERM` contains `kitty` | ✅ | Verified via docs |
+| **New tab command** | `kitten @ launch --type=tab --cwd=<path>` | ✅ | Verified via official docs |
+| **New window (outside)** | `kitty --directory <path>` | ✅ | For when not inside kitty |
+| **With command** | `-- sh -c <cmd>` | ✅ | Standard pattern |
 
 ### Warp
 
@@ -359,8 +359,8 @@ Compare our implementation against GTR (CodeRabbit's git-worktree-runner) and re
 ### Medium Priority
 - [x] Add background mode for emacs - **DONE 2025-01-10**
 - [x] Verify all JetBrains IDE command names - **Verified via JetBrains docs 2025-01-10**
-- [ ] Test kitty remote control commands
-- [ ] Test iTerm2 AppleScript
+- [x] Test kitty remote control commands - **Verified via official docs 2025-01-10**
+- [x] Test iTerm2 AppleScript - **Verified via official docs 2025-01-10**
 
 ### Low Priority
 - [ ] Add nano support (limited use)
