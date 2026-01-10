@@ -6,10 +6,15 @@ from .base import Terminal  # noqa: TC001
 from .gnome import GnomeTerminal
 from .iterm2 import ITerm2
 from .kitty import Kitty
+from .tmux import Tmux
 from .warp import Warp
+from .zellij import Zellij
 
 # All available terminals (in priority order for detection)
+# Terminal multiplexers first (tmux, zellij) as they run inside other terminals
 _TERMINALS: list[type[Terminal]] = [
+    Tmux,
+    Zellij,
     ITerm2,
     Kitty,
     Warp,
