@@ -137,20 +137,20 @@ Compare our implementation against GTR (CodeRabbit's git-worktree-runner) and re
 
 | Aspect | GTR | Ours | Status | Notes |
 |--------|-----|------|--------|-------|
-| **Command** | `nvim` | `nvim` | ❓ | |
-| **Alt commands** | None | `neovim` | 🔍 | We added, verify if exists |
-| **Open syntax** | `(cd "$path" && nvim .)` | `nvim <path>` | ⚠️ | Different! GTR uses cd + dot |
-| **Detection env var** | N/A | `NVIM`, `NVIM_LISTEN_ADDRESS` | 🔍 | Standard nvim vars |
+| **Command** | `nvim` | `nvim` | ✅ | Verified |
+| **Alt commands** | None | `neovim` | ✅ | We added, reasonable addition |
+| **Open syntax** | `(cd "$path" && nvim .)` | `sh -c 'cd "$path" && nvim .'` | ✅ | **Fixed 2025-01-10** - Now matches GTR pattern |
+| **Detection env var** | N/A | `NVIM`, `NVIM_LISTEN_ADDRESS` | ✅ | Standard nvim vars |
 | **Install URL** | https://neovim.io | https://neovim.io | ✅ | |
 
 ### Vim
 
 | Aspect | GTR | Ours | Status | Notes |
 |--------|-----|------|--------|-------|
-| **Command** | `vim` | `vim` | ❓ | |
+| **Command** | `vim` | `vim` | ✅ | Verified |
 | **Alt commands** | None | `vi` | ✅ | Common alias |
-| **Open syntax** | `(cd "$path" && vim .)` | `vim <path>` | ⚠️ | Different! GTR uses cd + dot |
-| **Detection env var** | N/A | `VIM`, `VIMRUNTIME` | 🔍 | Standard vim vars |
+| **Open syntax** | `(cd "$path" && vim .)` | `sh -c 'cd "$path" && vim .'` | ✅ | **Fixed 2025-01-10** - Now matches GTR pattern |
+| **Detection env var** | N/A | `VIM`, `VIMRUNTIME` | ✅ | Standard vim vars |
 
 ### Emacs
 
@@ -220,12 +220,13 @@ Compare our implementation against GTR (CodeRabbit's git-worktree-runner) and re
 
 | Aspect | Implementation | Status | Notes |
 |--------|---------------|--------|-------|
-| **Detection env var** | `TMUX` | 🔍 | Standard tmux var |
-| **Availability check** | `which tmux` | ❓ | |
-| **New tab command** | `tmux new-window -c <path>` | 🔍 | Verify syntax |
-| **New tab with command** | `tmux new-window -c <path> <cmd>` | 🔍 | |
-| **New pane command** | `tmux split-window -v/-h -c <path>` | 🔍 | |
-| **Pane with command** | Appends command to args | 🔍 | |
+| **Detection env var** | `TMUX` | ✅ | Standard tmux env var (verified via man page) |
+| **Availability check** | `which tmux` | ✅ | |
+| **New tab command** | `tmux new-window -c <path>` | ✅ | Verified via `man tmux` |
+| **New tab with command** | `tmux new-window -c <path> <cmd>` | ✅ | shell-command after options |
+| **New pane command** | `tmux split-window -v/-h -c <path>` | ✅ | `-h` horizontal, `-v` vertical |
+| **Pane with command** | Appends command to args | ✅ | |
+| **Note** | Redundant `cd` after `-c` | ⚠️ | Minor: could simplify command |
 
 ### Zellij
 
@@ -348,11 +349,11 @@ Compare our implementation against GTR (CodeRabbit's git-worktree-runner) and re
 
 ### High Priority (Code Fixes Needed)
 - [x] Verify all AI agent env vars (most are made up) - **DONE 2025-01-10**
-- [ ] Fix OpenCode detection to use `OPENCODE=1` instead of `OPENCODE_SESSION`
-- [ ] Fix Cursor Agent detection to use `CURSOR_AGENT` instead of `CURSOR_AGENT_SESSION`
-- [ ] Remove fake env var checks from: Claude, Codex, Gemini, Aider, Copilot, Continue
-- [ ] Fix vim/neovim to use `cd + .` pattern like GTR
-- [ ] Test tmux commands in real tmux session
+- [x] Fix OpenCode detection to use `OPENCODE=1` instead of `OPENCODE_SESSION` - **Already correct**
+- [x] Fix Cursor Agent detection to use `CURSOR_AGENT` instead of `CURSOR_AGENT_SESSION` - **Already correct**
+- [x] Remove fake env var checks from: Claude, Codex, Gemini, Aider, Copilot, Continue - **Already clean**
+- [x] Fix vim/neovim to use `cd + .` pattern like GTR - **DONE 2025-01-10**
+- [x] Test tmux commands in real tmux session - **Verified via man page 2025-01-10**
 - [x] Test zellij commands in real zellij session - **DONE 2025-01-10**
 
 ### Medium Priority
