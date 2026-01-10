@@ -16,27 +16,6 @@ The `dev` command helps you work on multiple features simultaneously by creating
 
 Inspired by [git-worktree-runner (gtr)](https://github.com/CodeRabbitAI/git-worktree-runner).
 
-### Comparison with gtr
-
-Both tools manage git worktrees with editor and AI agent integration. Key differences:
-
-| Aspect | gtr | agent-cli dev |
-|--------|-----|---------------|
-| Language | Bash (portable, no deps) | Python (part of agent-cli) |
-| Installation | `curl` one-liner or Homebrew | `pipx install agent-cli` |
-| Invocation | `git gtr new` | `agent-cli dev new` |
-| Project setup | Manual hooks (`gtr.hook.postCreate`) | Auto-detects project type |
-| Terminal multiplexers | Examples only | Built-in (tmux, zellij, kitty) |
-| Agent launching | Runs in current shell | Opens in new terminal tab |
-| Tab naming | No | Yes (names tab after agent) |
-| Run arbitrary commands | `gtr run` | `dev run` |
-| Config management | `gtr config` command | Config file only |
-| Worktree cleanup | `gtr clean` | `dev clean` (+ `--merged` for PRs) |
-
-**Choose gtr if**: You want a standalone tool with no dependencies, need hook-based customization, or prefer git subcommand style (`git gtr`).
-
-**Choose agent-cli dev if**: You already use agent-cli, want auto-detected project setup, or need terminal multiplexer integration for launching agents in new tabs.
-
 ## Quick Start
 
 ```bash
