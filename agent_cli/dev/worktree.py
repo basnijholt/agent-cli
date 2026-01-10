@@ -1,4 +1,4 @@
-"""Git worktree operations for the space module."""
+"""Git worktree operations for the dev module."""
 
 from __future__ import annotations
 

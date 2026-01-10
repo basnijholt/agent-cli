@@ -370,7 +370,7 @@ def new(
 
 
 @app.command("list")
-def list_spaces(
+def list_envs(
     porcelain: Annotated[
         bool,
         typer.Option("--porcelain", "-p", help="Machine-readable output"),

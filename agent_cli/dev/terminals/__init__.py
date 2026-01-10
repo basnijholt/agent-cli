@@ -1,4 +1,4 @@
-"""Terminal adapters for the space module."""
+"""Terminal adapters for the dev module."""
 
 from __future__ import annotations
 

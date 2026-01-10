@@ -30,7 +30,7 @@ class CodingAgent(ABC):
     def detect(self) -> bool:
         """Check if this agent is currently running/active in the environment.
 
-        This is used to auto-detect which agent to use when creating a new space.
+        This is used to auto-detect which agent to use when creating a new dev environment.
         """
 
     def is_available(self) -> bool:

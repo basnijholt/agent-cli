@@ -1,4 +1,4 @@
-"""AI coding agent adapters for the space module."""
+"""AI coding agent adapters for the dev module."""
 
 from __future__ import annotations
 

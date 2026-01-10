@@ -289,14 +289,14 @@ Compare our implementation against GTR (CodeRabbit's git-worktree-runner) and re
 | **Prune worktrees** | ❓ | `git worktree prune` |
 | **Branch from issue** | 🔍 | Parse GitHub/GitLab issue |
 
-### Space Management
+### Dev Environment Management
 
 | Aspect | Status | Notes |
 |--------|--------|-------|
-| **Create space** | ❓ | Worktree + editor + agent |
-| **List spaces** | ❓ | Show active worktrees |
-| **Delete space** | ❓ | Clean up worktree |
-| **Switch space** | ❓ | Change to different worktree |
+| **Create dev env** | ❓ | Worktree + editor + agent |
+| **List dev envs** | ❓ | Show active worktrees |
+| **Delete dev env** | ❓ | Clean up worktree |
+| **Switch dev env** | ❓ | Change to different worktree |
 
 ### Configuration
 

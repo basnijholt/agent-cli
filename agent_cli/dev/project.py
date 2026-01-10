@@ -1,4 +1,4 @@
-"""Project type detection and setup for the space module."""
+"""Project type detection and setup for the dev module."""
 
 from __future__ import annotations
 
