@@ -415,13 +415,13 @@ def remove(
         _error(error or "Failed to remove worktree")
 
 
-@app.command("go")
-def go(
+@app.command("path")
+def path_cmd(
     name: Annotated[str, typer.Argument(help="Branch name or directory name of the worktree")],
 ) -> None:
     """Print the path to a space (for shell integration).
 
-    Usage: cd "$(agent space go my-feature)"
+    Usage: cd "$(agent-cli space path my-feature)"
     """
     repo_root = _ensure_git_repo()
 
