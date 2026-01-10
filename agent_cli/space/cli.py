@@ -141,41 +141,44 @@ def _resolve_agent(
     return agent
 
 
-def _handle_new_tab(
-    path: Path,
-    commands: list[str],
-) -> None:
-    """Handle opening in a new terminal tab."""
+def _is_ssh_session() -> bool:
+    """Check if we're in an SSH session."""
+    return bool(os.environ.get("SSH_CONNECTION") or os.environ.get("SSH_CLIENT"))
+
+
+def _launch_editor(path: Path, editor: Editor) -> None:
+    """Launch editor via subprocess (editors are GUI apps that detach)."""
+    try:
+        subprocess.Popen(editor.open_command(path))
+        _success(f"Opened {editor.name}")
+    except Exception as e:
+        _warn(f"Could not open editor: {e}")
+
+
+def _launch_agent(path: Path, agent: CodingAgent) -> None:
+    """Launch agent in a new terminal tab.
+
+    Agents are interactive TUIs that need a proper terminal.
+    Priority: tmux/zellij tab > terminal tab > print instructions.
+    """
     terminal = terminals.detect_current_terminal()
+    agent_cmd = " ".join(agent.launch_command(path))
+
     if terminal:
-        full_cmd = " && ".join(commands)
-        if terminal.open_new_tab(path, full_cmd):
-            _success(f"Opened new tab in {terminal.name}")
-        else:
-            _warn("Could not open new tab")
-            console.print(f"  Run: cd {path}")
+        # We're in a multiplexer (tmux/zellij) or supported terminal (kitty/iTerm2)
+        if terminal.open_new_tab(path, agent_cmd):
+            _success(f"Started {agent.name} in new {terminal.name} tab")
+            return
+        _warn(f"Could not open new tab in {terminal.name}")
+
+    # No terminal detected or failed - print instructions
+    if _is_ssh_session():
+        console.print("\n[yellow]SSH session without terminal multiplexer.[/yellow]")
+        console.print("[bold]Start a multiplexer first, then run:[/bold]")
     else:
-        console.print("[yellow]Note:[/yellow] Terminal not detected, run manually:")
-        console.print(f"  cd {path}")
-
-
-def _launch_editor_and_agent(
-    path: Path,
-    editor: Editor | None,
-    agent: CodingAgent | None,
-) -> None:
-    """Launch editor and/or agent directly."""
-    if editor and editor.is_available():
-        try:
-            subprocess.Popen(editor.open_command(path))
-            _success(f"Opened {editor.name}")
-        except Exception as e:
-            _warn(f"Could not open editor: {e}")
-
-    if agent and agent.is_available():
         console.print(f"\n[bold]To start {agent.name}:[/bold]")
-        console.print(f"  cd {path}")
-        console.print(f"  {agent.command}")
+    console.print(f"  cd {path}")
+    console.print(f"  {agent.command}")
 
 
 @app.command("new")
@@ -218,10 +221,6 @@ def new(
         bool,
         typer.Option("--no-fetch", help="Skip git fetch before creating"),
     ] = False,
-    new_tab: Annotated[
-        bool,
-        typer.Option("--new-tab", "-t", help="Open in a new terminal tab"),
-    ] = False,
 ) -> None:
     """Create a new parallel development space (git worktree)."""
     repo_root = _ensure_git_repo()
@@ -262,20 +261,13 @@ def new(
     editor = _resolve_editor(editor_flag, editor_name, default_editor)
     agent = _resolve_agent(agent_flag, agent_name, default_agent)
 
-    # Build commands for new tab
-    commands: list[str] = []
+    # Launch editor (GUI app - subprocess works)
     if editor and editor.is_available():
-        commands.append(" ".join(editor.open_command(result.path)))
-        _info(f"Will open in {editor.name}")
-    if agent and agent.is_available():
-        commands.append(" ".join(agent.launch_command(result.path)))
-        _info(f"Will start {agent.name}")
+        _launch_editor(result.path, editor)
 
-    # Handle launching
-    if new_tab and commands:
-        _handle_new_tab(result.path, commands)
-    elif editor or agent:
-        _launch_editor_and_agent(result.path, editor, agent)
+    # Launch agent (interactive TUI - needs terminal tab)
+    if agent and agent.is_available():
+        _launch_agent(result.path, agent)
 
     # Print summary
     console.print()
