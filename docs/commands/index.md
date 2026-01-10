@@ -41,6 +41,12 @@ These commands help set up Agent CLI and its services:
 | [`install-hotkeys`](install-hotkeys.md) | Set up system-wide hotkeys |
 | [`start-services`](start-services.md) | Start all services in a Zellij terminal session |
 
+## Development Commands
+
+| Command | Purpose | Use Case |
+|---------|---------|----------|
+| [`space`](space.md) | Git worktree manager | Parallel development with AI agents |
+
 ## Configuration Commands
 
 | Command | Purpose |
