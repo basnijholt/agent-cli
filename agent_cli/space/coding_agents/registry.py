@@ -6,14 +6,22 @@ from .aider import Aider
 from .base import CodingAgent  # noqa: TC001
 from .claude import ClaudeCode
 from .codex import Codex
+from .continue_dev import ContinueDev
+from .copilot import Copilot
+from .cursor_agent import CursorAgent
 from .gemini import Gemini
+from .opencode import OpenCode
 
-# All available coding agents
+# All available coding agents (in priority order for detection)
 _AGENTS: list[type[CodingAgent]] = [
     ClaudeCode,
     Codex,
     Gemini,
     Aider,
+    Copilot,
+    ContinueDev,
+    OpenCode,
+    CursorAgent,
 ]
 
 # Cache for agent instances

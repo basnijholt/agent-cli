@@ -1,0 +1,38 @@
+"""Continue Dev CLI coding agent adapter."""
+
+from __future__ import annotations
+
+import os
+from typing import TYPE_CHECKING
+
+from .base import CodingAgent, _get_parent_process_names
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+
+class ContinueDev(CodingAgent):
+    """Continue Dev - AI code assistant."""
+
+    name = "continue"
+    command = "cn"
+    alt_commands = ("continue",)
+    install_url = "https://continue.dev"
+
+    def detect(self) -> bool:
+        """Detect if running inside Continue Dev."""
+        # Check environment variables
+        if os.environ.get("CONTINUE_SESSION"):
+            return True
+
+        # Check parent process names
+        parent_names = _get_parent_process_names()
+        return any("continue" in name or name == "cn" for name in parent_names)
+
+    def launch_command(self, path: Path) -> list[str]:  # noqa: ARG002
+        """Return the command to launch Continue Dev."""
+        exe = self.get_executable()
+        if exe is None:
+            msg = f"{self.name} is not installed. Install from {self.install_url}"
+            raise RuntimeError(msg)
+        return [exe]

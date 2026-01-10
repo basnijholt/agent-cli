@@ -4,14 +4,32 @@ from __future__ import annotations
 
 from .base import Editor  # noqa: TC001
 from .cursor import Cursor
+from .emacs import Emacs
+from .jetbrains import GoLand, IntelliJIdea, PyCharm, RustRover, WebStorm
+from .neovim import Neovim
+from .sublime import SublimeText
+from .vim import Vim
 from .vscode import VSCode
 from .zed import Zed
 
 # All available editors (in priority order for detection)
 _EDITORS: list[type[Editor]] = [
+    # Modern AI-focused editors first
     Cursor,
     VSCode,
     Zed,
+    # JetBrains IDEs
+    PyCharm,
+    IntelliJIdea,
+    WebStorm,
+    GoLand,
+    RustRover,
+    # Terminal editors
+    Neovim,
+    Vim,
+    Emacs,
+    # Other GUI editors
+    SublimeText,
 ]
 
 # Cache for editor instances
