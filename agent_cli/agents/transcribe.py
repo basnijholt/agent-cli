@@ -256,6 +256,7 @@ async def _async_main(  # noqa: PLR0912, PLR0915, C901
     audio_file_path: Path | None = None,
     save_recording: bool = True,
     process_name: str | None = None,
+    diarization_cfg: config.Diarization | None = None,
 ) -> None:
     """Unified async entry point for both live and file-based transcription."""
     start_time = time.monotonic()
@@ -335,6 +336,63 @@ async def _async_main(  # noqa: PLR0912, PLR0915, C901
                 )
 
         elapsed = time.monotonic() - start_time
+
+        # Apply diarization if enabled
+        if diarization_cfg and diarization_cfg.diarize and transcript:
+            # Determine audio file path for diarization
+            diarize_audio_path = audio_file_path
+            if not diarize_audio_path and save_recording:
+                # For live recordings, get the most recently saved file
+                diarize_audio_path = get_last_recording(1)
+
+            if diarize_audio_path and diarize_audio_path.exists():
+                try:
+                    from agent_cli.core.diarization import (  # noqa: PLC0415
+                        SpeakerDiarizer,
+                        align_transcript_with_speakers,
+                        format_diarized_output,
+                    )
+
+                    if not general_cfg.quiet:
+                        print_with_style("🎙️ Running speaker diarization...", style="blue")
+
+                    # hf_token is validated in CLI before calling _async_main
+                    assert diarization_cfg.hf_token is not None
+                    diarizer = SpeakerDiarizer(
+                        hf_token=diarization_cfg.hf_token,
+                        min_speakers=diarization_cfg.min_speakers,
+                        max_speakers=diarization_cfg.max_speakers,
+                    )
+                    segments = diarizer.diarize(diarize_audio_path)
+
+                    if segments:
+                        # Align transcript with speaker segments
+                        segments = align_transcript_with_speakers(transcript, segments)
+                        # Format output
+                        transcript = format_diarized_output(
+                            segments,
+                            output_format=diarization_cfg.diarize_format,
+                        )
+                        if not general_cfg.quiet:
+                            print_with_style(
+                                f"✅ Identified {len({s.speaker for s in segments})} speaker(s)",
+                                style="green",
+                            )
+                    else:
+                        LOGGER.warning("Diarization returned no segments")
+                except ImportError as e:
+                    print_with_style(
+                        f"❌ Diarization failed: {e}",
+                        style="red",
+                    )
+                except Exception as e:
+                    LOGGER.exception("Diarization failed")
+                    print_with_style(
+                        f"❌ Diarization error: {e}",
+                        style="red",
+                    )
+            else:
+                LOGGER.warning("No audio file available for diarization")
 
         if llm_enabled and transcript:
             if not general_cfg.quiet:
@@ -433,7 +491,7 @@ async def _async_main(  # noqa: PLR0912, PLR0915, C901
 
 
 @app.command("transcribe")
-def transcribe(  # noqa: PLR0912
+def transcribe(  # noqa: PLR0912, PLR0911
     *,
     extra_instructions: str | None = typer.Option(
         None,
@@ -478,6 +536,12 @@ def transcribe(  # noqa: PLR0912
     config_file: str | None = opts.CONFIG_FILE,
     print_args: bool = opts.PRINT_ARGS,
     transcription_log: Path | None = opts.TRANSCRIPTION_LOG,
+    # --- Diarization Options ---
+    diarize: bool = opts.DIARIZE,
+    diarize_format: str = opts.DIARIZE_FORMAT,
+    hf_token: str | None = opts.HF_TOKEN,
+    min_speakers: int | None = opts.MIN_SPEAKERS,
+    max_speakers: int | None = opts.MAX_SPEAKERS,
 ) -> None:
     """Wyoming ASR Client for streaming microphone audio to a transcription server."""
     if print_args:
@@ -487,6 +551,32 @@ def transcribe(  # noqa: PLR0912
     # Expand user path for transcription log
     if transcription_log:
         transcription_log = transcription_log.expanduser()
+
+    # Validate diarization options
+    if diarize:
+        if not hf_token:
+            print_with_style(
+                "❌ --hf-token required for diarization. "
+                "Set HF_TOKEN env var or pass --hf-token. "
+                "Accept license at: https://huggingface.co/pyannote/speaker-diarization-3.1",
+                style="red",
+            )
+            return
+        if not save_recording and not from_file and last_recording == 0:
+            print_with_style(
+                "❌ Diarization requires audio file. Use --save-recording (default) "
+                "or --from-file/--last-recording.",
+                style="red",
+            )
+            return
+
+    diarization_cfg = config.Diarization(
+        diarize=diarize,
+        diarize_format=diarize_format,
+        hf_token=hf_token,
+        min_speakers=min_speakers,
+        max_speakers=max_speakers,
+    )
 
     # Handle recovery options
     if last_recording and from_file:
@@ -576,6 +666,7 @@ def transcribe(  # noqa: PLR0912
                 gemini_llm_cfg=gemini_llm_cfg,
                 llm_enabled=llm,
                 transcription_log=transcription_log,
+                diarization_cfg=diarization_cfg,
             ),
         )
         return
@@ -622,5 +713,6 @@ def transcribe(  # noqa: PLR0912
                 transcription_log=transcription_log,
                 save_recording=save_recording,
                 process_name=process_name,
+                diarization_cfg=diarization_cfg,
             ),
         )

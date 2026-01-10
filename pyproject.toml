@@ -57,6 +57,10 @@ memory = [
 vad = [
     "silero-vad>=5.1",
 ]
+diarization = [
+    "pyannote-audio>=3.3",
+    "torch>=2.0",
+]
 test = [
     "pytest>=7.0.0",
     "pytest-asyncio>=0.20.0",

@@ -408,3 +408,36 @@ SAVE_RECORDING: bool = typer.Option(
     help="Save the audio recording to disk for recovery.",
     rich_help_panel="Audio Recovery",
 )
+
+# --- Diarization Options ---
+DIARIZE: bool = typer.Option(
+    False,  # noqa: FBT003
+    "--diarize/--no-diarize",
+    help="Enable speaker diarization (requires pyannote-audio). Install with: pip install agent-cli[diarization]",
+    rich_help_panel="Diarization",
+)
+DIARIZE_FORMAT: str = typer.Option(
+    "inline",
+    "--diarize-format",
+    help="Output format for diarization ('inline' for [Speaker N]: text, 'json' for structured output).",
+    rich_help_panel="Diarization",
+)
+HF_TOKEN: str | None = typer.Option(
+    None,
+    "--hf-token",
+    help="HuggingFace token for pyannote models. Required for diarization. Accept license at: https://huggingface.co/pyannote/speaker-diarization-3.1",
+    envvar="HF_TOKEN",
+    rich_help_panel="Diarization",
+)
+MIN_SPEAKERS: int | None = typer.Option(
+    None,
+    "--min-speakers",
+    help="Minimum number of speakers (optional hint for diarization).",
+    rich_help_panel="Diarization",
+)
+MAX_SPEAKERS: int | None = typer.Option(
+    None,
+    "--max-speakers",
+    help="Maximum number of speakers (optional hint for diarization).",
+    rich_help_panel="Diarization",
+)
