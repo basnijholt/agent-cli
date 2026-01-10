@@ -231,13 +231,14 @@ Compare our implementation against GTR (CodeRabbit's git-worktree-runner) and re
 
 | Aspect | Implementation | Status | Notes |
 |--------|---------------|--------|-------|
-| **Detection env var** | `ZELLIJ` | 🔍 | Standard zellij var |
-| **Availability check** | `which zellij` | ❓ | |
-| **New tab command** | `zellij action new-tab --cwd <path>` | 🔍 | Verify syntax |
-| **Send command** | `zellij action write-chars <cmd>` | 🔍 | |
-| **Send enter** | `zellij action write 10` | 🔍 | 10 = newline byte |
-| **New pane command** | `zellij action new-pane --direction <dir> --cwd <path>` | 🔍 | |
-| **Pane directions** | down, up, left, right | 🔍 | |
+| **Detection env var** | `ZELLIJ` | ✅ | Verified - presence check (value can be "0") |
+| **Availability check** | `which zellij` | ✅ | |
+| **New tab command** | `zellij action new-tab --cwd <path>` | ✅ | Verified via `--help` |
+| **Send command** | `zellij action write-chars <cmd>` | ✅ | Verified via `--help` |
+| **Send enter** | `zellij action write 10` | ✅ | Verified - 10 = newline byte |
+| **New pane command** | `zellij action new-pane --direction <dir> --cwd <path>` | ✅ | Verified via `--help` |
+| **Pane directions** | down, up, left, right | ✅ | Confirmed in help: "right\|down" |
+| **Note** | Redundant `cd` after `--cwd` | ⚠️ | Minor: could simplify command writing |
 
 ### iTerm2
 
@@ -352,7 +353,7 @@ Compare our implementation against GTR (CodeRabbit's git-worktree-runner) and re
 - [ ] Remove fake env var checks from: Claude, Codex, Gemini, Aider, Copilot, Continue
 - [ ] Fix vim/neovim to use `cd + .` pattern like GTR
 - [ ] Test tmux commands in real tmux session
-- [ ] Test zellij commands in real zellij session
+- [x] Test zellij commands in real zellij session - **DONE 2025-01-10**
 
 ### Medium Priority
 - [ ] Add background mode for emacs
