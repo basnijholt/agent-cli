@@ -284,17 +284,19 @@ Both tools manage git worktrees with editor and AI agent integration. Key differ
 
 | Aspect | Implementation | Status | Notes |
 |--------|---------------|--------|-------|
-| **Detection env var** | `TERM_PROGRAM=WarpTerminal` | 🔍 | |
+| **Detection env var** | `TERM_PROGRAM` contains "warp" | ✅ | Verified |
 | **Platform** | macOS only | ✅ | |
-| **New tab** | AppleScript | 🔍 | |
+| **New tab** | AppleScript with System Events | ✅ | Cmd+T keystroke |
+| **Tab naming** | Not supported | ✅ | No API available |
 
 ### GNOME Terminal
 
 | Aspect | Implementation | Status | Notes |
 |--------|---------------|--------|-------|
-| **Detection** | Check for gnome-terminal or GNOME_TERMINAL_SCREEN | 🔍 | |
-| **New tab command** | `gnome-terminal --tab --working-directory=<path>` | 🔍 | |
-| **Fallback** | `xdg-terminal` | 🔍 | |
+| **Detection env var** | `GNOME_TERMINAL_SERVICE` | ✅ | Verified via man page |
+| **New tab command** | `gnome-terminal --tab --working-directory=<path>` | ✅ | Verified via man page |
+| **Tab title** | `--title <name>` | ✅ | Verified via man page |
+| **Run command** | `-- bash -c "<cmd>; exec bash"` | ✅ | Keeps shell open |
 
 ---
 
@@ -304,29 +306,35 @@ Both tools manage git worktrees with editor and AI agent integration. Key differ
 
 | Aspect | Status | Notes |
 |--------|--------|-------|
-| **Create worktree** | ❓ | `git worktree add` |
-| **List worktrees** | ❓ | `git worktree list` |
-| **Remove worktree** | ❓ | `git worktree remove` |
-| **Prune worktrees** | ❓ | `git worktree prune` |
-| **Branch from issue** | 🔍 | Parse GitHub/GitLab issue |
+| **Create worktree** | ✅ | `dev new` - creates branch + worktree |
+| **List worktrees** | ✅ | `dev list` - shows all worktrees |
+| **Remove worktree** | ✅ | `dev rm` - removes worktree + optional branch |
+| **Prune worktrees** | ✅ | `dev clean` - runs `git worktree prune` |
+| **Run in worktree** | ✅ | `dev run <name> <cmd>` - runs command in worktree |
+| **Clean merged PRs** | ✅ | `dev clean --merged` - removes worktrees with merged PRs |
+| **Branch from issue** | ❌ | Not implemented (gtr doesn't have this either) |
 
 ### Dev Environment Management
 
 | Aspect | Status | Notes |
 |--------|--------|-------|
-| **Create dev env** | ❓ | Worktree + editor + agent |
-| **List dev envs** | ❓ | Show active worktrees |
-| **Delete dev env** | ❓ | Clean up worktree |
-| **Switch dev env** | ❓ | Change to different worktree |
+| **Create dev env** | ✅ | `dev new` with `-e` (editor) and `-a` (agent) flags |
+| **List dev envs** | ✅ | `dev list` shows all worktrees |
+| **Delete dev env** | ✅ | `dev rm` with optional `--delete-branch` |
+| **Open in editor** | ✅ | `dev editor <name>` |
+| **Start agent** | ✅ | `dev agent <name>` |
+| **Get path** | ✅ | `dev path <name>` for shell integration |
 
 ### Configuration
 
 | Aspect | Status | Notes |
 |--------|--------|-------|
-| **Default editor** | 🔍 | Config file or auto-detect |
-| **Default agent** | 🔍 | Config file or auto-detect |
-| **Default terminal** | 🔍 | Config file or auto-detect |
-| **Worktree base path** | 🔍 | Where to create worktrees |
+| **Default editor** | ✅ | `[dev] default_editor` in config |
+| **Default agent** | ✅ | `[dev] default_agent` in config |
+| **Per-agent args** | ✅ | `[dev.agent_args]` in config |
+| **Worktree base path** | ✅ | `AGENT_SPACE_DIR` or `GTR_WORKTREES_DIR` env var |
+| **Auto project setup** | ✅ | Detects npm/pip/cargo/go and runs install |
+| **Copy env files** | ✅ | Copies `.env*` files to new worktrees |
 
 ---
 
