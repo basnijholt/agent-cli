@@ -699,6 +699,160 @@ def _doctor_check_git() -> None:
         console.print("  [yellow]○[/yellow] Not in a git repository")
 
 
+@app.command("run")
+def run_cmd(
+    name: Annotated[str, typer.Argument(help="Branch name or directory name of the worktree")],
+    command: Annotated[list[str], typer.Argument(help="Command to run in the worktree")],
+) -> None:
+    """Run a command in a dev environment.
+
+    Example: agent-cli dev run my-feature npm test
+    """
+    repo_root = _ensure_git_repo()
+
+    wt = worktree.find_worktree_by_name(name, repo_root)
+    if wt is None:
+        _error(f"Worktree not found: {name}")
+
+    if not command:
+        _error("No command specified")
+
+    _info(f"Running in {wt.path}: {' '.join(command)}")
+    try:
+        result = subprocess.run(command, cwd=wt.path, check=False)
+        raise typer.Exit(result.returncode)
+    except FileNotFoundError:
+        _error(f"Command not found: {command[0]}")
+
+
+def _find_worktrees_with_merged_prs(repo_root: Path) -> list[worktree.WorktreeInfo]:
+    """Find worktrees whose PRs have been merged on GitHub."""
+    worktrees_list = worktree.list_worktrees()
+    to_remove = []
+
+    for wt in worktrees_list:
+        if wt.is_main or not wt.branch:
+            continue
+
+        # Check if PR for this branch is merged
+        result = subprocess.run(
+            ["gh", "pr", "list", "--head", wt.branch, "--state", "merged", "--json", "number"],  # noqa: S607
+            capture_output=True,
+            text=True,
+            cwd=repo_root,
+            check=False,
+        )
+        if result.returncode == 0 and result.stdout.strip() not in ("", "[]"):
+            to_remove.append(wt)
+
+    return to_remove
+
+
+def _clean_merged_worktrees(
+    repo_root: Path,
+    dry_run: bool,
+    yes: bool,
+) -> None:
+    """Remove worktrees with merged PRs (requires gh CLI)."""
+    _info("Checking for worktrees with merged PRs...")
+
+    # Check if gh CLI is available
+    gh_version = subprocess.run(
+        ["gh", "--version"],  # noqa: S607
+        capture_output=True,
+        check=False,
+    )
+    if gh_version.returncode != 0:
+        _error("GitHub CLI (gh) not found. Install from: https://cli.github.com/")
+
+    # Check if gh is authenticated
+    gh_auth = subprocess.run(
+        ["gh", "auth", "status"],  # noqa: S607
+        capture_output=True,
+        check=False,
+    )
+    if gh_auth.returncode != 0:
+        _error("Not authenticated with GitHub. Run: gh auth login")
+
+    to_remove = _find_worktrees_with_merged_prs(repo_root)
+
+    if not to_remove:
+        _info("No worktrees with merged PRs found")
+        return
+
+    console.print(f"\n[bold]Found {len(to_remove)} worktree(s) with merged PRs:[/bold]")
+    for wt in to_remove:
+        console.print(f"  • {wt.branch} ({wt.path})")
+
+    if dry_run:
+        _info("[dry-run] Would remove the above worktrees")
+    elif yes or typer.confirm("\nRemove these worktrees?"):
+        for wt in to_remove:
+            success, error = worktree.remove_worktree(
+                wt.path,
+                force=False,
+                delete_branch=True,
+                repo_path=repo_root,
+            )
+            if success:
+                _success(f"Removed {wt.branch}")
+            else:
+                _warn(f"Failed to remove {wt.branch}: {error}")
+
+
+@app.command("clean")
+def clean(
+    merged: Annotated[
+        bool,
+        typer.Option("--merged", help="Remove worktrees with merged PRs (requires gh CLI)"),
+    ] = False,
+    dry_run: Annotated[
+        bool,
+        typer.Option("--dry-run", "-n", help="Show what would be done without doing it"),
+    ] = False,
+    yes: Annotated[bool, typer.Option("--yes", "-y", help="Skip confirmation")] = False,
+) -> None:
+    """Clean up stale worktrees and empty directories.
+
+    Runs `git worktree prune` and removes empty worktree directories.
+    With --merged, also removes worktrees whose PRs have been merged.
+    """
+    repo_root = _ensure_git_repo()
+
+    # Run git worktree prune
+    _info("Pruning stale worktree references...")
+    result = subprocess.run(
+        ["git", "worktree", "prune"],  # noqa: S607
+        cwd=repo_root,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if result.returncode == 0:
+        _success("Pruned stale worktree administrative files")
+    else:
+        _warn(f"Prune failed: {result.stderr}")
+
+    # Find and remove empty directories in worktrees base dir
+    base_dir = worktree.resolve_worktree_base_dir(repo_root)
+    if base_dir and base_dir.exists():
+        cleaned = 0
+        for item in base_dir.iterdir():
+            if item.is_dir() and not any(item.iterdir()):
+                if dry_run:
+                    _info(f"[dry-run] Would remove empty directory: {item.name}")
+                else:
+                    item.rmdir()
+                    _info(f"Removed empty directory: {item.name}")
+                cleaned += 1
+        if cleaned > 0:
+            _success(f"Cleaned {cleaned} empty director{'y' if cleaned == 1 else 'ies'}")
+
+    # --merged mode: remove worktrees with merged PRs
+    if merged:
+        _clean_merged_worktrees(repo_root, dry_run, yes)
+
+
 @app.command("doctor")
 def doctor() -> None:
     """Check system requirements and available integrations."""

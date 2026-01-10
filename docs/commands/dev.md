@@ -29,9 +29,9 @@ Both tools manage git worktrees with editor and AI agent integration. Key differ
 | Terminal multiplexers | Examples only | Built-in (tmux, zellij, kitty) |
 | Agent launching | Runs in current shell | Opens in new terminal tab |
 | Tab naming | No | Yes (names tab after agent) |
-| Run arbitrary commands | `gtr run <branch> <cmd>` | No equivalent |
+| Run arbitrary commands | `gtr run` | `dev run` |
 | Config management | `gtr config` command | Config file only |
-| Worktree cleanup | `gtr clean` | No equivalent |
+| Worktree cleanup | `gtr clean` | `dev clean` (+ `--merged` for PRs) |
 
 **Choose gtr if**: You want a standalone tool with no dependencies, need hook-based customization, or prefer git subcommand style (`git gtr`).
 
@@ -153,6 +153,51 @@ Start an AI coding agent in a dev environment.
 
 ```bash
 agent-cli dev agent NAME [--with-agent AGENT]
+```
+
+### `dev run`
+
+Run a command in a dev environment.
+
+```bash
+agent-cli dev run NAME COMMAND...
+```
+
+**Example:**
+
+```bash
+# Run tests in the my-feature worktree
+agent-cli dev run my-feature npm test
+
+# Run multiple commands
+agent-cli dev run my-feature bash -c "npm install && npm test"
+```
+
+### `dev clean`
+
+Clean up stale worktrees and empty directories.
+
+```bash
+agent-cli dev clean [OPTIONS]
+```
+
+| Option | Description |
+|--------|-------------|
+| `--merged` | Remove worktrees with merged PRs (requires gh CLI) |
+| `--dry-run`, `-n` | Show what would be done without doing it |
+| `--yes`, `-y` | Skip confirmation |
+
+**Examples:**
+
+```bash
+# Prune stale worktrees and remove empty directories
+agent-cli dev clean
+
+# Also remove worktrees whose PRs have been merged
+agent-cli dev clean --merged
+
+# Preview what would be cleaned
+agent-cli dev clean --merged --dry-run
 ```
 
 ### `dev doctor`
