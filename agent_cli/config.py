@@ -224,6 +224,20 @@ class History(BaseModel):
         return None
 
 
+# --- Panel: Space (Parallel Development) Options ---
+
+
+class Space(BaseModel):
+    """Configuration for parallel development spaces (git worktrees)."""
+
+    default_agent: str | None = None
+    default_editor: str | None = None
+    default_terminal: str | None = None
+    auto_setup: bool = True
+    copy_env_files: bool = True
+    fetch_before_create: bool = True
+
+
 def _config_path(config_path_str: str | None = None) -> Path | None:
     """Return a usable config path, expanding user directories."""
     if config_path_str:
