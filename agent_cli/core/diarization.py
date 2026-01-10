@@ -88,7 +88,15 @@ class SpeakerDiarizer:
         audio_input = {"waveform": waveform, "sample_rate": sample_rate}
 
         # Run the pipeline
-        diarization: Annotation = self.pipeline(audio_input, **kwargs)
+        output = self.pipeline(audio_input, **kwargs)
+
+        # Handle both old (Annotation) and new (DiarizeOutput) API
+        if hasattr(output, "speaker_diarization"):
+            # New API: DiarizeOutput dataclass
+            diarization: Annotation = output.speaker_diarization
+        else:
+            # Old API: returns Annotation directly
+            diarization = output
 
         # Convert to our dataclass format
         segments: list[DiarizedSegment] = []
