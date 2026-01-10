@@ -32,12 +32,14 @@ class Terminal(ABC):
         self,
         path: Path,
         command: str | None = None,
+        tab_name: str | None = None,
     ) -> bool:
         """Open a new tab in this terminal.
 
         Args:
             path: The directory to open in
             command: Optional command to run in the new tab
+            tab_name: Optional name for the new tab
 
         Returns:
             True if successful, False otherwise

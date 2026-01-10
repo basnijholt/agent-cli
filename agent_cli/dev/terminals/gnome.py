@@ -30,12 +30,16 @@ class GnomeTerminal(Terminal):
         self,
         path: Path,
         command: str | None = None,
+        tab_name: str | None = None,
     ) -> bool:
         """Open a new tab in GNOME Terminal."""
         if not self.is_available():
             return False
 
         cmd = ["gnome-terminal", "--tab", f"--working-directory={path}"]
+
+        if tab_name:
+            cmd.extend(["--title", tab_name])
 
         if command:
             cmd.extend(["--", "bash", "-c", f"{command}; exec bash"])

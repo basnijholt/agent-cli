@@ -35,6 +35,7 @@ class Kitty(Terminal):
         self,
         path: Path,
         command: str | None = None,
+        tab_name: str | None = None,
     ) -> bool:
         """Open a new tab in Kitty using kitten."""
         if not self.is_available():
@@ -44,6 +45,8 @@ class Kitty(Terminal):
         if not self.detect():
             # Not in Kitty, open a new window instead
             cmd = ["kitty", "--directory", str(path)]
+            if tab_name:
+                cmd.extend(["--title", tab_name])
             if command:
                 cmd.extend(["--", "sh", "-c", command])
             try:
@@ -60,6 +63,9 @@ class Kitty(Terminal):
             "--type=tab",
             f"--cwd={path}",
         ]
+
+        if tab_name:
+            cmd.append(f"--tab-title={tab_name}")
 
         if command:
             cmd.extend(["--", "sh", "-c", command])

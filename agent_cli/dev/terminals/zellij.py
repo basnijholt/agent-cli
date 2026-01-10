@@ -31,6 +31,7 @@ class Zellij(Terminal):
         self,
         path: Path,
         command: str | None = None,
+        tab_name: str | None = None,
     ) -> bool:
         """Open a new tab in Zellij.
 
@@ -41,8 +42,11 @@ class Zellij(Terminal):
 
         try:
             # Create new tab using zellij action
+            cmd = ["zellij", "action", "new-tab", "--cwd", str(path)]
+            if tab_name:
+                cmd.extend(["--name", tab_name])
             subprocess.run(
-                ["zellij", "action", "new-tab", "--cwd", str(path)],  # noqa: S607
+                cmd,
                 check=True,
                 capture_output=True,
             )

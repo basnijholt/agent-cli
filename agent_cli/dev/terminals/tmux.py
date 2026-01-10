@@ -31,6 +31,7 @@ class Tmux(Terminal):
         self,
         path: Path,
         command: str | None = None,
+        tab_name: str | None = None,
     ) -> bool:
         """Open a new window in tmux.
 
@@ -45,6 +46,9 @@ class Tmux(Terminal):
         try:
             # Create new window in current session
             cmd = ["tmux", "new-window", "-c", str(path)]
+
+            if tab_name:
+                cmd.extend(["-n", tab_name])
 
             if shell_cmd:
                 # Run command in new window

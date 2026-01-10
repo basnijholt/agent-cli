@@ -29,8 +29,13 @@ class Warp(Terminal):
         self,
         path: Path,
         command: str | None = None,
+        tab_name: str | None = None,  # noqa: ARG002
     ) -> bool:
-        """Open a new tab in Warp using AppleScript."""
+        """Open a new tab in Warp using AppleScript.
+
+        Note: tab_name is accepted but not used - Warp doesn't have a simple
+        API for setting tab names via AppleScript.
+        """
         if not self.is_available():
             return False
 

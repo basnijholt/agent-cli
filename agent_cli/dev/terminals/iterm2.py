@@ -35,6 +35,7 @@ class ITerm2(Terminal):
         self,
         path: Path,
         command: str | None = None,
+        tab_name: str | None = None,
     ) -> bool:
         """Open a new tab in iTerm2 using AppleScript."""
         if not self.is_available():
@@ -43,12 +44,15 @@ class ITerm2(Terminal):
         # Build the command to run in the new tab
         shell_cmd = f'cd "{path}" && {command}' if command else f'cd "{path}"'
 
+        # Build name setting if provided
+        name_cmd = f'\nset name to "{tab_name}"' if tab_name else ""
+
         # AppleScript to open new tab in iTerm2
         applescript = f"""
             tell application "iTerm2"
                 tell current window
                     create tab with default profile
-                    tell current session
+                    tell current session{name_cmd}
                         write text "{shell_cmd}"
                     end tell
                 end tell

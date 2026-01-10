@@ -280,7 +280,7 @@ def _launch_agent(
 
     if terminal:
         # We're in a multiplexer (tmux/zellij) or supported terminal (kitty/iTerm2)
-        if terminal.open_new_tab(path, agent_cmd):
+        if terminal.open_new_tab(path, agent_cmd, tab_name=agent.name):
             _success(f"Started {agent.name} in new {terminal.name} tab")
             return
         _warn(f"Could not open new tab in {terminal.name}")
