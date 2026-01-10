@@ -44,7 +44,7 @@ Both tools manage git worktrees with editor and AI agent integration. Key differ
 | **Special path** | `~/.claude/local/claude` | `~/.claude/local/claude` | ✅ | Both check this path |
 | **Detection env var** | None | `CLAUDECODE=1` | ✅ | **VERIFIED** - Claude Code sets `CLAUDECODE=1` (also `CLAUDE_CODE_ENTRYPOINT`) |
 | **Detection process** | N/A | Parent process contains "claude" | ✅ | Only reliable detection method |
-| **Launch args** | `(cd "$path" && "$claude_cmd" "$@")` | `[exe]` (no cd) | ⚠️ | GTR uses cd, we don't |
+| **Launch args** | `(cd "$path" && "$claude_cmd" "$@")` | `[exe]` with `cwd=path` | ✅ | Different approach, same result |
 | **Install URL** | https://claude.com/claude-code | https://docs.anthropic.com/en/docs/claude-code | ✅ | Ours is more accurate |
 
 ### Codex (OpenAI)
@@ -53,9 +53,9 @@ Both tools manage git worktrees with editor and AI agent integration. Key differ
 |--------|-----|------|--------|-------|
 | **Command** | `codex` | `codex` | ✅ | Verified |
 | **Alt commands** | None | None | ✅ | |
-| **Detection env var** | None | `CODEX_SESSION` | ⚠️ | **NO ENV VAR EXISTS** - Only `CODEX_HOME` for config. Remove from code. |
+| **Detection env var** | None | Parent process only | ✅ | **Fixed** - No env var, uses parent process detection |
 | **Detection process** | N/A | Parent process contains "codex" | ✅ | Only reliable detection method |
-| **Launch args** | `(cd "$path" && codex "$@")` | `[exe]` | ⚠️ | GTR uses cd |
+| **Launch args** | `(cd "$path" && codex "$@")` | `[exe]` with `cwd=path` | ✅ | Different approach, same result |
 | **Install hint** | `npm install -g @openai/codex` | N/A | ✅ | Verified: `npm i -g @openai/codex` |
 
 ### Gemini CLI
@@ -64,9 +64,9 @@ Both tools manage git worktrees with editor and AI agent integration. Key differ
 |--------|-----|------|--------|-------|
 | **Command** | `gemini` | `gemini` | ✅ | Verified |
 | **Alt commands** | None | None | ✅ | |
-| **Detection env var** | None | `GEMINI_CLI` | ⚠️ | **NO ENV VAR EXISTS** - Remove from code. |
+| **Detection env var** | None | Parent process only | ✅ | **Fixed** - No env var, uses parent process detection |
 | **Detection process** | N/A | Parent process contains "gemini" | ✅ | Only reliable detection method |
-| **Launch args** | `(cd "$path" && gemini "$@")` | `[exe]` | ⚠️ | GTR uses cd |
+| **Launch args** | `(cd "$path" && gemini "$@")` | `[exe]` with `cwd=path` | ✅ | Different approach, same result |
 | **Install hint** | `npm install -g @google/gemini-cli` | N/A | ✅ | Verified package name |
 
 ### Aider
@@ -75,9 +75,9 @@ Both tools manage git worktrees with editor and AI agent integration. Key differ
 |--------|-----|------|--------|-------|
 | **Command** | `aider` | `aider` | ✅ | Verified |
 | **Alt commands** | None | None | ✅ | |
-| **Detection env var** | None | `AIDER_SESSION` | ⚠️ | **NO ENV VAR EXISTS** - Uses `AIDER_*` for config only. Remove from code. |
+| **Detection env var** | None | Parent process only | ✅ | **Fixed** - No env var, uses parent process detection |
 | **Detection process** | N/A | Parent process contains "aider" | ✅ | Only reliable detection method |
-| **Launch args** | `(cd "$path" && aider "$@")` | `[exe]` | ⚠️ | GTR uses cd |
+| **Launch args** | `(cd "$path" && aider "$@")` | `[exe]` with `cwd=path` | ✅ | Different approach, same result |
 | **Install hint** | `pip install aider-chat` | N/A | ✅ | Verified |
 | **Install URL** | https://aider.chat | https://aider.chat | ✅ | |
 
@@ -87,9 +87,9 @@ Both tools manage git worktrees with editor and AI agent integration. Key differ
 |--------|-----|------|--------|-------|
 | **Command** | `copilot` | `copilot` | ✅ | Verified |
 | **Alt commands** | None | None | ✅ | |
-| **Detection env var** | None | `COPILOT_SESSION` | ⚠️ | **NO ENV VAR EXISTS** - Remove from code. |
+| **Detection env var** | None | Parent process only | ✅ | **Fixed** - No env var, uses parent process detection |
 | **Detection process** | N/A | Parent process contains "copilot" | ✅ | Only reliable detection method |
-| **Launch args** | `(cd "$path" && copilot "$@")` | `[exe]` | ⚠️ | GTR uses cd |
+| **Launch args** | `(cd "$path" && copilot "$@")` | `[exe]` with `cwd=path` | ✅ | Different approach, same result |
 | **Install hint** | `npm install -g @github/copilot` | N/A | ✅ | Verified package name |
 
 ### Continue Dev
@@ -98,9 +98,9 @@ Both tools manage git worktrees with editor and AI agent integration. Key differ
 |--------|-----|------|--------|-------|
 | **Command** | `cn` | `cn` | ✅ | Verified |
 | **Alt commands** | None | `continue` | ✅ | We added alt - reasonable addition |
-| **Detection env var** | None | `CONTINUE_SESSION` | ⚠️ | **NO ENV VAR EXISTS** - Remove from code. |
+| **Detection env var** | None | Parent process only | ✅ | **Fixed** - No env var, uses parent process detection |
 | **Detection process** | N/A | Parent contains "continue" or "cn" | ✅ | Only reliable detection method |
-| **Launch args** | `(cd "$path" && cn "$@")` | `[exe]` | ⚠️ | GTR uses cd |
+| **Launch args** | `(cd "$path" && cn "$@")` | `[exe]` with `cwd=path` | ✅ | Different approach, same result |
 | **Install URL** | https://continue.dev | https://continue.dev | ✅ | |
 
 ### OpenCode
@@ -111,7 +111,7 @@ Both tools manage git worktrees with editor and AI agent integration. Key differ
 | **Alt commands** | None | None | ✅ | |
 | **Detection env var** | None | `OPENCODE_SESSION` | ✅ | **`OPENCODE=1` EXISTS!** - Update code to use this. |
 | **Detection process** | N/A | Parent process contains "opencode" | ✅ | Also works |
-| **Launch args** | `(cd "$path" && opencode "$@")` | `[exe]` | ⚠️ | GTR uses cd |
+| **Launch args** | `(cd "$path" && opencode "$@")` | `[exe]` with `cwd=path` | ✅ | Different approach, same result |
 | **Install URL** | https://opencode.ai | https://opencode.ai | ✅ | Verified |
 
 ### Cursor Agent
@@ -122,7 +122,7 @@ Both tools manage git worktrees with editor and AI agent integration. Key differ
 | **Alt commands** | `cursor` | `cursor` | ✅ | |
 | **Detection env var** | None | `CURSOR_AGENT_SESSION` | ✅ | **`CURSOR_AGENT` EXISTS!** - Update code to use this. |
 | **Detection process** | N/A | Parent contains "cursor-agent" | ✅ | Also works |
-| **Launch logic** | Try `cursor-agent`, then `cursor cli`, then `cursor` | Try `cursor-agent`, else `cursor cli` | ⚠️ | GTR has 3 fallbacks |
+| **Launch logic** | Try `cursor-agent`, then `cursor cli`, then `cursor` | Try `cursor-agent`, else `cursor cli` | ✅ | Minor: 2 vs 3 fallbacks |
 | **Install URL** | https://cursor.com | https://cursor.com | ✅ | |
 
 ---
@@ -252,7 +252,7 @@ Both tools manage git worktrees with editor and AI agent integration. Key differ
 | **New tab with command** | `tmux new-window -c <path> <cmd>` | ✅ | shell-command after options |
 | **New pane command** | `tmux split-window -v/-h -c <path>` | ✅ | `-h` horizontal, `-v` vertical |
 | **Pane with command** | Appends command to args | ✅ | |
-| **Note** | Redundant `cd` after `-c` | ⚠️ | Minor: could simplify command |
+| **Note** | No redundant `cd` | ✅ | **Fixed 2025-01-10** - `-c` sets cwd |
 
 ### Zellij
 
@@ -265,7 +265,7 @@ Both tools manage git worktrees with editor and AI agent integration. Key differ
 | **Send enter** | `zellij action write 10` | ✅ | Verified - 10 = newline byte |
 | **New pane command** | `zellij action new-pane --direction <dir> --cwd <path>` | ✅ | Verified via `--help` |
 | **Pane directions** | down, up, left, right | ✅ | Confirmed in help: "right\|down" |
-| **Note** | Redundant `cd` after `--cwd` | ⚠️ | Minor: could simplify command writing |
+| **Note** | No redundant `cd` | ✅ | **Fixed 2025-01-10** - `--cwd` sets cwd |
 
 ### iTerm2
 

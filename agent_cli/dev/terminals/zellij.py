@@ -52,9 +52,10 @@ class Zellij(Terminal):
             )
 
             # If command specified, write it to the new pane
+            # --cwd already sets the working directory, so no need for cd
             if command:
                 subprocess.run(
-                    ["zellij", "action", "write-chars", f"cd {path} && {command}"],  # noqa: S607
+                    ["zellij", "action", "write-chars", command],  # noqa: S607
                     check=True,
                     capture_output=True,
                 )
@@ -96,9 +97,10 @@ class Zellij(Terminal):
             )
 
             # If command specified, write it to the new pane
+            # --cwd already sets the working directory, so no need for cd
             if command:
                 subprocess.run(
-                    ["zellij", "action", "write-chars", f"cd {path} && {command}"],  # noqa: S607
+                    ["zellij", "action", "write-chars", command],  # noqa: S607
                     check=True,
                     capture_output=True,
                 )

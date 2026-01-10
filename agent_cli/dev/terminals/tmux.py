@@ -40,19 +40,17 @@ class Tmux(Terminal):
         if not self.is_available():
             return False
 
-        # Build the command to run in the new window
-        shell_cmd = f'cd "{path}" && {command}' if command else None
-
         try:
             # Create new window in current session
+            # -c sets the working directory, so no need for cd in command
             cmd = ["tmux", "new-window", "-c", str(path)]
 
             if tab_name:
                 cmd.extend(["-n", tab_name])
 
-            if shell_cmd:
-                # Run command in new window
-                cmd.extend([shell_cmd])
+            if command:
+                # Run command in new window (cwd already set by -c)
+                cmd.append(command)
 
             subprocess.run(cmd, check=True, capture_output=True)
             return True
@@ -79,10 +77,12 @@ class Tmux(Terminal):
 
         try:
             split_flag = "-h" if horizontal else "-v"
+            # -c sets the working directory, so no need for cd in command
             cmd = ["tmux", "split-window", split_flag, "-c", str(path)]
 
             if command:
-                cmd.append(f'cd "{path}" && {command}')
+                # Run command in new pane (cwd already set by -c)
+                cmd.append(command)
 
             subprocess.run(cmd, check=True, capture_output=True)
             return True
