@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import random
 import subprocess
 from typing import TYPE_CHECKING, Annotated, NoReturn
 
@@ -12,6 +13,23 @@ from rich.panel import Panel
 from rich.table import Table
 
 from agent_cli.cli import set_config_defaults
+
+# Word lists for generating random branch names (like Docker container names)
+_ADJECTIVES = [
+    "happy", "clever", "swift", "bright", "calm", "eager", "fancy", "gentle",
+    "jolly", "keen", "lively", "merry", "nice", "proud", "quick", "sharp",
+    "smart", "sunny", "witty", "zesty", "bold", "cool", "fresh", "grand",
+]
+_NOUNS = [
+    "fox", "owl", "bear", "wolf", "hawk", "lion", "tiger", "eagle", "falcon",
+    "otter", "panda", "raven", "shark", "whale", "zebra", "bison", "crane",
+    "dolphin", "gecko", "heron", "koala", "lemur", "moose", "newt", "oriole",
+]
+
+
+def _generate_branch_name() -> str:
+    """Generate a random branch name like 'clever-fox'."""
+    return f"{random.choice(_ADJECTIVES)}-{random.choice(_NOUNS)}"  # noqa: S311
 
 from . import coding_agents, editors, terminals, worktree
 from .project import copy_env_files, detect_project_type, run_setup
@@ -184,7 +202,10 @@ def _launch_agent(path: Path, agent: CodingAgent) -> None:
 
 @app.command("new")
 def new(
-    branch: Annotated[str, typer.Argument(help="Branch name for the new worktree")],
+    branch: Annotated[
+        str | None,
+        typer.Argument(help="Branch name (auto-generated if not provided)"),
+    ] = None,
     from_ref: Annotated[
         str | None,
         typer.Option("--from", "-f", help="Create branch from this ref (default: main/master)"),
@@ -225,6 +246,11 @@ def new(
 ) -> None:
     """Create a new parallel development space (git worktree)."""
     repo_root = _ensure_git_repo()
+
+    # Generate branch name if not provided
+    if branch is None:
+        branch = _generate_branch_name()
+        _info(f"Generated branch name: {branch}")
 
     # Create the worktree
     _info(f"Creating worktree for branch '{branch}'...")
