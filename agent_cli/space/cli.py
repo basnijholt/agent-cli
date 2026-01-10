@@ -29,11 +29,11 @@ app = typer.Typer(
     help="Parallel development environment manager using git worktrees.",
     add_completion=True,
     rich_markup_mode="markdown",
-    invoke_without_command=True,
+    no_args_is_help=True,
 )
 
 
-@app.callback(invoke_without_command=True)
+@app.callback()
 def space_callback(
     ctx: typer.Context,
     config_file: Annotated[
@@ -43,9 +43,6 @@ def space_callback(
 ) -> None:
     """Parallel development environment manager using git worktrees."""
     set_config_defaults(ctx, config_file)
-    # Show help when no command is given
-    if ctx.invoked_subcommand is None:
-        console.print(ctx.get_help())
 
 
 def _error(msg: str) -> NoReturn:
