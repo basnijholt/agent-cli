@@ -133,26 +133,29 @@ Both tools manage git worktrees with editor and AI agent integration. Key differ
 
 | Aspect | GTR | Ours | Status | Notes |
 |--------|-----|------|--------|-------|
-| **Command** | `code` | `code` | ❓ | |
+| **Command** | `code` | `code` | ✅ | Verified |
+| **Alt commands** | `code-insiders` | `code-insiders` | ✅ | |
 | **Open syntax** | `code "$path"` | `code <path>` | ✅ | Match |
-| **Detection env var** | N/A | `TERM_PROGRAM=vscode` | 🔍 | Verify env var |
-| **Install URL** | https://code.visualstudio.com | N/A | 🔍 | Add to our impl |
+| **Detection env var** | N/A | `TERM_PROGRAM=vscode` | ✅ | **Verified via official docs** |
+| **Install URL** | https://code.visualstudio.com | https://code.visualstudio.com | ✅ | |
 
 ### Cursor (Editor)
 
 | Aspect | GTR | Ours | Status | Notes |
 |--------|-----|------|--------|-------|
-| **Command** | `cursor` | `cursor` | ❓ | |
+| **Command** | `cursor` | `cursor` | ✅ | Verified |
 | **Open syntax** | `cursor "$path"` | `cursor <path>` | ✅ | Match |
-| **Detection env var** | N/A | `TERM_PROGRAM=cursor` | 🔍 | Verify env var |
+| **Detection env var** | N/A | `TERM_PROGRAM=cursor` or `CURSOR_AGENT` | ✅ | **Verified** - CURSOR_AGENT for agent mode |
+| **Install URL** | https://cursor.com | https://cursor.com | ✅ | |
 
 ### Zed
 
 | Aspect | GTR | Ours | Status | Notes |
 |--------|-----|------|--------|-------|
-| **Command** | `zed` | `zed` | ❓ | |
+| **Command** | `zed` | `zed` | ✅ | Verified |
 | **Open syntax** | `zed "$path"` | `zed <path>` | ✅ | Match |
-| **Detection env var** | N/A | `TERM_PROGRAM` contains "zed" | 🔍 | Verify |
+| **Detection env var** | N/A | `TERM_PROGRAM=zed` or `ZED_TERM` | ✅ | **Verified via GitHub PR #14213** - TERM_PROGRAM since v0.145.0 |
+| **Install URL** | https://zed.dev | https://zed.dev | ✅ | |
 
 ### Neovim
 
@@ -187,8 +190,10 @@ Both tools manage git worktrees with editor and AI agent integration. Key differ
 
 | Aspect | GTR | Ours | Status | Notes |
 |--------|-----|------|--------|-------|
-| **Command** | `subl` | `subl` | ❓ | |
+| **Command** | `subl` | `subl` | ✅ | Verified - official CLI helper |
+| **Alt commands** | N/A | `sublime_text`, `sublime` | ✅ | Linux executable name |
 | **Open syntax** | `subl "$path"` | `subl <path>` | ✅ | Match |
+| **Integrated terminal** | N/A | N/A | ✅ | **No built-in terminal** - packages like Terminus available |
 | **Install URL** | https://www.sublimetext.com | https://www.sublimetext.com | ✅ | |
 
 ### IntelliJ IDEA

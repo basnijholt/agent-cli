@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import os
-
 from .base import Editor, _get_term_program
 
 
@@ -16,10 +14,11 @@ class SublimeText(Editor):
     install_url = "https://www.sublimetext.com"
 
     def detect(self) -> bool:
-        """Detect if running inside Sublime Text's terminal."""
-        # Sublime doesn't typically have an integrated terminal
-        # but check for any environment variables
+        """Detect if running inside Sublime Text's terminal.
+
+        Note: Sublime Text does not have a built-in integrated terminal.
+        Terminal packages (like Terminus) may be used but don't set
+        specific environment variables for detection.
+        """
         term_program = _get_term_program()
-        if term_program and "sublime" in term_program.lower():
-            return True
-        return os.environ.get("SUBLIME_SESSION") is not None
+        return term_program is not None and "sublime" in term_program.lower()
