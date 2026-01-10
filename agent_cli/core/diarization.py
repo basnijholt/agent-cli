@@ -74,6 +74,8 @@ class SpeakerDiarizer:
             List of DiarizedSegment with speaker labels and timestamps.
 
         """
+        import torchaudio  # noqa: PLC0415
+
         # Build kwargs for speaker count hints
         kwargs: dict[str, int] = {}
         if self.min_speakers is not None:
@@ -81,8 +83,12 @@ class SpeakerDiarizer:
         if self.max_speakers is not None:
             kwargs["max_speakers"] = self.max_speakers
 
+        # Pre-load audio to avoid torchcodec/FFmpeg issues
+        waveform, sample_rate = torchaudio.load(str(audio_path))
+        audio_input = {"waveform": waveform, "sample_rate": sample_rate}
+
         # Run the pipeline
-        diarization: Annotation = self.pipeline(str(audio_path), **kwargs)
+        diarization: Annotation = self.pipeline(audio_input, **kwargs)
 
         # Convert to our dataclass format
         segments: list[DiarizedSegment] = []

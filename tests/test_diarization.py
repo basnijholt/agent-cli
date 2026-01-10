@@ -221,6 +221,8 @@ class TestSpeakerDiarizer:
 
     def test_diarizer_diarize(self, tmp_path: Path):
         """Test diarization with mocked pipeline."""
+        import torch  # noqa: PLC0415
+
         from agent_cli.core.diarization import SpeakerDiarizer  # noqa: PLC0415
 
         # Create a mock diarization result
@@ -243,12 +245,17 @@ class TestSpeakerDiarizer:
         mock_pipeline_class = MagicMock()
         mock_pipeline_class.from_pretrained.return_value = mock_pipeline
 
+        # Mock torchaudio.load
+        mock_waveform = torch.zeros(1, 16000)
+        mock_sample_rate = 16000
+
         with (
             patch("agent_cli.core.diarization._check_pyannote_installed"),
             patch.dict(
                 "sys.modules",
                 {"pyannote.audio": MagicMock(Pipeline=mock_pipeline_class)},
             ),
+            patch("torchaudio.load", return_value=(mock_waveform, mock_sample_rate)),
         ):
             diarizer = SpeakerDiarizer(hf_token="test_token")  # noqa: S106
             audio_file = tmp_path / "test.wav"
@@ -263,10 +270,16 @@ class TestSpeakerDiarizer:
             assert segments[1].speaker == "SPEAKER_01"
             assert segments[1].start == 2.5
             assert segments[1].end == 5.0
-            mock_pipeline.assert_called_once_with(str(audio_file))
+            # Pipeline should be called with audio dict, not file path
+            mock_pipeline.assert_called_once()
+            call_args = mock_pipeline.call_args[0][0]
+            assert "waveform" in call_args
+            assert "sample_rate" in call_args
 
     def test_diarizer_diarize_with_speaker_hints(self, tmp_path: Path):
         """Test diarization passes speaker hints to pipeline."""
+        import torch  # noqa: PLC0415
+
         from agent_cli.core.diarization import SpeakerDiarizer  # noqa: PLC0415
 
         mock_annotation = MagicMock()
@@ -278,12 +291,17 @@ class TestSpeakerDiarizer:
         mock_pipeline_class = MagicMock()
         mock_pipeline_class.from_pretrained.return_value = mock_pipeline
 
+        # Mock torchaudio.load
+        mock_waveform = torch.zeros(1, 16000)
+        mock_sample_rate = 16000
+
         with (
             patch("agent_cli.core.diarization._check_pyannote_installed"),
             patch.dict(
                 "sys.modules",
                 {"pyannote.audio": MagicMock(Pipeline=mock_pipeline_class)},
             ),
+            patch("torchaudio.load", return_value=(mock_waveform, mock_sample_rate)),
         ):
             diarizer = SpeakerDiarizer(
                 hf_token="test_token",  # noqa: S106
@@ -295,8 +313,8 @@ class TestSpeakerDiarizer:
 
             diarizer.diarize(audio_file)
 
-            mock_pipeline.assert_called_once_with(
-                str(audio_file),
-                min_speakers=2,
-                max_speakers=4,
-            )
+            # Check speaker hints were passed
+            mock_pipeline.assert_called_once()
+            call_kwargs = mock_pipeline.call_args[1]
+            assert call_kwargs["min_speakers"] == 2
+            assert call_kwargs["max_speakers"] == 4
