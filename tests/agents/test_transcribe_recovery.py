@@ -470,6 +470,11 @@ def test_transcribe_command_last_recording_option(
             config_file=None,
             print_args=False,
             transcription_log=None,
+            diarize=False,
+            diarize_format="inline",
+            hf_token=None,
+            min_speakers=None,
+            max_speakers=None,
         )
 
         # Verify _async_main_from_file was called
@@ -526,6 +531,11 @@ def test_transcribe_command_from_file_option(tmp_path: Path):
             config_file=None,
             print_args=False,
             transcription_log=None,
+            diarize=False,
+            diarize_format="inline",
+            hf_token=None,
+            min_speakers=None,
+            max_speakers=None,
         )
 
         # Verify _async_main_from_file was called with the right file
@@ -594,6 +604,11 @@ def test_transcribe_command_last_recording_with_index(
             config_file=None,
             print_args=False,
             transcription_log=None,
+            diarize=False,
+            diarize_format="inline",
+            hf_token=None,
+            min_speakers=None,
+            max_speakers=None,
         )
 
         # Verify _async_main_from_file was called
@@ -660,6 +675,11 @@ def test_transcribe_command_last_recording_disabled(
             config_file=None,
             print_args=False,
             transcription_log=None,
+            diarize=False,
+            diarize_format="inline",
+            hf_token=None,
+            min_speakers=None,
+            max_speakers=None,
         )
 
         # Verify _async_main was called for normal recording (not from file)
@@ -709,6 +729,11 @@ def test_transcribe_command_conflicting_options() -> None:
             config_file=None,
             print_args=False,
             transcription_log=None,
+            diarize=False,
+            diarize_format="inline",
+            hf_token=None,
+            min_speakers=None,
+            max_speakers=None,
         )
 
         # Verify error message

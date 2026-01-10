@@ -224,6 +224,19 @@ class History(BaseModel):
         return None
 
 
+# --- Panel: Diarization Options ---
+
+
+class Diarization(BaseModel):
+    """Configuration for speaker diarization."""
+
+    diarize: bool = False
+    diarize_format: str = "inline"
+    hf_token: str | None = None
+    min_speakers: int | None = None
+    max_speakers: int | None = None
+
+
 def _config_path(config_path_str: str | None = None) -> Path | None:
     """Return a usable config path, expanding user directories."""
     if config_path_str:
