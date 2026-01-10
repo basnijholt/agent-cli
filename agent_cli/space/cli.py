@@ -27,9 +27,25 @@ _NOUNS = [
 ]
 
 
-def _generate_branch_name() -> str:
-    """Generate a random branch name like 'clever-fox'."""
-    return f"{random.choice(_ADJECTIVES)}-{random.choice(_NOUNS)}"  # noqa: S311
+def _generate_branch_name(existing_branches: set[str] | None = None) -> str:
+    """Generate a unique random branch name like 'clever-fox'.
+
+    If the name already exists, adds a numeric suffix (clever-fox-2).
+    """
+    existing = existing_branches or set()
+    base = f"{random.choice(_ADJECTIVES)}-{random.choice(_NOUNS)}"  # noqa: S311
+
+    if base not in existing:
+        return base
+
+    # Add numeric suffix to avoid collision
+    for i in range(2, 100):
+        candidate = f"{base}-{i}"
+        if candidate not in existing:
+            return candidate
+
+    # Fallback: add random digits
+    return f"{base}-{random.randint(100, 999)}"  # noqa: S311
 
 from . import coding_agents, editors, terminals, worktree
 from .project import copy_env_files, detect_project_type, run_setup
@@ -249,7 +265,9 @@ def new(
 
     # Generate branch name if not provided
     if branch is None:
-        branch = _generate_branch_name()
+        # Get existing branches to avoid collisions
+        existing = {wt.branch for wt in worktree.list_worktrees() if wt.branch}
+        branch = _generate_branch_name(existing)
         _info(f"Generated branch name: {branch}")
 
     # Create the worktree
