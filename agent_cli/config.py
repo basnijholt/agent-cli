@@ -224,11 +224,11 @@ class History(BaseModel):
         return None
 
 
-# --- Panel: Space (Parallel Development) Options ---
+# --- Panel: Dev (Parallel Development) Options ---
 
 
-class Space(BaseModel):
-    """Configuration for parallel development spaces (git worktrees)."""
+class Dev(BaseModel):
+    """Configuration for parallel development environments (git worktrees)."""
 
     default_agent: str | None = None
     default_editor: str | None = None

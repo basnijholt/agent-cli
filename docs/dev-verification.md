@@ -1,6 +1,6 @@
-# Space Module Verification Checklist
+# Dev Module Verification Checklist
 
-Living document tracking verification status of all space module features.
+Living document tracking verification status of all dev module features.
 Compare our implementation against GTR (CodeRabbit's git-worktree-runner) and real-world testing.
 
 **Legend:**

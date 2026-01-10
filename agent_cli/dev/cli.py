@@ -1,4 +1,4 @@
-"""CLI commands for the space module."""
+"""CLI commands for the dev module."""
 
 from __future__ import annotations
 
@@ -91,8 +91,8 @@ def _generate_branch_name(existing_branches: set[str] | None = None) -> str:
     return f"{base}-{random.randint(100, 999)}"  # noqa: S311
 
 
-from . import coding_agents, editors, terminals, worktree
-from .project import copy_env_files, detect_project_type, run_setup
+from . import coding_agents, editors, terminals, worktree  # noqa: E402
+from .project import copy_env_files, detect_project_type, run_setup  # noqa: E402
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -103,7 +103,7 @@ if TYPE_CHECKING:
 console = Console()
 
 app = typer.Typer(
-    name="space",
+    name="dev",
     help="Parallel development environment manager using git worktrees.",
     add_completion=True,
     rich_markup_mode="markdown",
@@ -112,7 +112,7 @@ app = typer.Typer(
 
 
 @app.callback()
-def space_callback(
+def dev_callback(
     ctx: typer.Context,
     config_file: Annotated[
         str | None,
@@ -304,7 +304,7 @@ def new(
         typer.Option("--no-fetch", help="Skip git fetch before creating"),
     ] = False,
 ) -> None:
-    """Create a new parallel development space (git worktree)."""
+    """Create a new parallel development environment (git worktree)."""
     repo_root = _ensure_git_repo()
 
     # Generate branch name if not provided
@@ -362,7 +362,7 @@ def new(
     console.print()
     console.print(
         Panel(
-            f"[bold]Space created:[/bold] {result.path}\n[bold]Branch:[/bold] {result.branch}",
+            f"[bold]Dev environment created:[/bold] {result.path}\n[bold]Branch:[/bold] {result.branch}",
             title="[green]Success[/green]",
             border_style="green",
         ),
@@ -376,7 +376,7 @@ def list_spaces(
         typer.Option("--porcelain", "-p", help="Machine-readable output"),
     ] = False,
 ) -> None:
-    """List all spaces (worktrees) for the current repository."""
+    """List all dev environments (worktrees) for the current repository."""
     _ensure_git_repo()
 
     worktrees = worktree.list_worktrees()
@@ -390,7 +390,7 @@ def list_spaces(
             print(f"{wt.path}\t{wt.branch or '(detached)'}")
         return
 
-    table = Table(title="Spaces (Git Worktrees)")
+    table = Table(title="Dev Environments (Git Worktrees)")
     table.add_column("Name", style="cyan")
     table.add_column("Branch", style="green")
     table.add_column("Path", style="dim")
@@ -429,7 +429,7 @@ def remove(
     ] = False,
     yes: Annotated[bool, typer.Option("--yes", "-y", help="Skip confirmation")] = False,
 ) -> None:
-    """Remove a space (worktree)."""
+    """Remove a dev environment (worktree)."""
     repo_root = _ensure_git_repo()
 
     wt = worktree.find_worktree_by_name(name, repo_root)
@@ -463,9 +463,9 @@ def remove(
 def path_cmd(
     name: Annotated[str, typer.Argument(help="Branch name or directory name of the worktree")],
 ) -> None:
-    """Print the path to a space (for shell integration).
+    """Print the path to a dev environment (for shell integration).
 
-    Usage: cd "$(agent-cli space path my-feature)"
+    Usage: cd "$(agent-cli dev path my-feature)"
     """
     repo_root = _ensure_git_repo()
 
@@ -484,7 +484,7 @@ def open_editor(
         typer.Option("--editor", "-e", help="Specific editor to use"),
     ] = None,
 ) -> None:
-    """Open a space in an editor."""
+    """Open a dev environment in an editor."""
     repo_root = _ensure_git_repo()
 
     wt = worktree.find_worktree_by_name(name, repo_root)
@@ -521,7 +521,7 @@ def start_agent(
         typer.Option("--agent", "-a", help="Specific agent (claude, codex, gemini, aider)"),
     ] = None,
 ) -> None:
-    """Start an AI coding agent in a space."""
+    """Start an AI coding agent in a dev environment."""
     repo_root = _ensure_git_repo()
 
     wt = worktree.find_worktree_by_name(name, repo_root)
@@ -651,7 +651,7 @@ def _doctor_check_git() -> None:
 @app.command("doctor")
 def doctor() -> None:
     """Check system requirements and available integrations."""
-    console.print("[bold]Space Doctor[/bold]\n")
+    console.print("[bold]Dev Doctor[/bold]\n")
 
     _doctor_check_git()
     console.print()

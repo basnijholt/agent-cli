@@ -1,4 +1,4 @@
-"""Space - Parallel development environment manager using git worktrees.
+"""Dev - Parallel development environment manager using git worktrees.
 
 A Python implementation inspired by git-worktree-runner (gtr), providing:
 - Git worktree management with simplified commands

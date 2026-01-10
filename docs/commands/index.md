@@ -45,7 +45,7 @@ These commands help set up Agent CLI and its services:
 
 | Command | Purpose | Use Case |
 |---------|---------|----------|
-| [`space`](space.md) | Git worktree manager | Parallel development with AI agents |
+| [`dev`](dev.md) | Git worktree manager | Parallel development with AI agents |
 
 ## Configuration Commands
 

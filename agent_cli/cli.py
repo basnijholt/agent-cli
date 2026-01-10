@@ -83,7 +83,7 @@ from .agents import (  # noqa: E402, F401
     transcribe_daemon,
     voice_edit,
 )
+from .dev import app as dev_app  # noqa: E402
 from .install import hotkeys, services  # noqa: E402, F401
-from .space import app as space_app  # noqa: E402
 
-app.add_typer(space_app, name="space")
+app.add_typer(dev_app, name="dev")

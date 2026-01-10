@@ -2,13 +2,13 @@
 icon: lucide/git-branch
 ---
 
-# space
+# dev
 
 Parallel development environment manager using git worktrees.
 
 ## Overview
 
-The `space` command helps you work on multiple features simultaneously by creating isolated git worktrees. Each "space" is a separate working directory with its own branch, allowing you to:
+The `dev` command helps you work on multiple features simultaneously by creating isolated git worktrees. Each dev environment is a separate working directory with its own branch, allowing you to:
 
 - Switch between features without stashing changes
 - Run multiple AI coding agents in parallel
@@ -19,30 +19,30 @@ Inspired by [git-worktree-runner (gtr)](https://github.com/CodeRabbitAI/git-work
 ## Quick Start
 
 ```bash
-# Create a new space (auto-generates branch name like "clever-fox")
-agent-cli space new
+# Create a new dev environment (auto-generates branch name like "clever-fox")
+agent-cli dev new
 
-# Create a space with a specific branch name
-agent-cli space new my-feature
+# Create a dev environment with a specific branch name
+agent-cli dev new my-feature
 
-# Create a space and open in editor + start AI agent
-agent-cli space new my-feature -e -a
+# Create a dev environment and open in editor + start AI agent
+agent-cli dev new my-feature -e -a
 
-# List all spaces
-agent-cli space list
+# List all dev environments
+agent-cli dev list
 
-# Remove a space
-agent-cli space rm my-feature
+# Remove a dev environment
+agent-cli dev rm my-feature
 ```
 
 ## Subcommands
 
-### `space new`
+### `dev new`
 
-Create a new parallel development space.
+Create a new parallel development environment.
 
 ```bash
-agent-cli space new [BRANCH] [OPTIONS]
+agent-cli dev new [BRANCH] [OPTIONS]
 ```
 
 **Arguments:**
@@ -67,34 +67,34 @@ agent-cli space new [BRANCH] [OPTIONS]
 **Examples:**
 
 ```bash
-# Create space from a specific commit
-agent-cli space new hotfix --from v1.2.3
+# Create dev environment from a specific commit
+agent-cli dev new hotfix --from v1.2.3
 
-# Create space with Cursor and Claude
-agent-cli space new feature --with-editor cursor --with-agent claude
+# Create dev environment with Cursor and Claude
+agent-cli dev new feature --with-editor cursor --with-agent claude
 
-# Quick space with defaults from config
-agent-cli space new -e -a
+# Quick dev environment with defaults from config
+agent-cli dev new -e -a
 ```
 
-### `space list`
+### `dev list`
 
-List all spaces (worktrees) for the current repository.
+List all dev environments (worktrees) for the current repository.
 
 ```bash
-agent-cli space list [OPTIONS]
+agent-cli dev list [OPTIONS]
 ```
 
 | Option | Description |
 |--------|-------------|
 | `--porcelain`, `-p` | Machine-readable output (path + branch) |
 
-### `space rm`
+### `dev rm`
 
-Remove a space (worktree).
+Remove a dev environment (worktree).
 
 ```bash
-agent-cli space rm NAME [OPTIONS]
+agent-cli dev rm NAME [OPTIONS]
 ```
 
 | Option | Description |
@@ -102,71 +102,71 @@ agent-cli space rm NAME [OPTIONS]
 | `--force`, `-f` | Force removal even with uncommitted changes |
 | `--delete-branch`, `-d` | Also delete the branch |
 
-### `space path`
+### `dev path`
 
-Print the path to a space (for shell integration).
+Print the path to a dev environment (for shell integration).
 
 ```bash
-agent-cli space path NAME
+agent-cli dev path NAME
 ```
 
 **Example:**
 
 ```bash
-# Navigate to a space
-cd "$(agent-cli space path my-feature)"
+# Navigate to a dev environment
+cd "$(agent-cli dev path my-feature)"
 ```
 
-### `space editor`
+### `dev editor`
 
-Open a space in an editor.
+Open a dev environment in an editor.
 
 ```bash
-agent-cli space editor NAME [--with-editor EDITOR]
+agent-cli dev editor NAME [--with-editor EDITOR]
 ```
 
-### `space agent`
+### `dev agent`
 
-Start an AI coding agent in a space.
+Start an AI coding agent in a dev environment.
 
 ```bash
-agent-cli space agent NAME [--with-agent AGENT]
+agent-cli dev agent NAME [--with-agent AGENT]
 ```
 
-### `space doctor`
+### `dev doctor`
 
 Check system requirements and available integrations.
 
 ```bash
-agent-cli space doctor
+agent-cli dev doctor
 ```
 
 Shows available editors, AI agents, and terminals with their detection status.
 
 ## Discovery Commands
 
-### `space agents`
+### `dev agents`
 
 List available AI coding agents.
 
 ```bash
-agent-cli space agents
+agent-cli dev agents
 ```
 
-### `space editors`
+### `dev editors`
 
 List available editors.
 
 ```bash
-agent-cli space editors
+agent-cli dev editors
 ```
 
-### `space terminals`
+### `dev terminals`
 
 List available terminal multiplexers.
 
 ```bash
-agent-cli space terminals
+agent-cli dev terminals
 ```
 
 ## Supported Integrations
@@ -215,7 +215,7 @@ agent-cli space terminals
 Add defaults to your `~/.config/agent-cli/config.toml`:
 
 ```toml
-[space]
+[dev]
 default_editor = "cursor"
 default_agent = "claude"
 ```
@@ -223,7 +223,7 @@ default_agent = "claude"
 Or per-project in `.agent-cli.toml`:
 
 ```toml
-[space]
+[dev]
 default_editor = "zed"
 default_agent = "aider"
 ```
@@ -232,7 +232,7 @@ default_agent = "aider"
 
 ### Project Setup
 
-When creating a new space, automatic setup is performed based on detected project type:
+When creating a new dev environment, automatic setup is performed based on detected project type:
 
 | Project Type | Detection | Setup Command |
 |--------------|-----------|---------------|
@@ -247,7 +247,7 @@ When creating a new space, automatic setup is performed based on detected projec
 
 ### Environment Files
 
-Files matching these patterns are automatically copied to new spaces:
+Files matching these patterns are automatically copied to new dev environments:
 
 - `.env*` (e.g., `.env`, `.env.local`, `.env.development`)
 - `*.env` (e.g., `local.env`)
@@ -256,7 +256,7 @@ Use `--no-copy` to skip this.
 
 ### Agent Launch
 
-When launching an AI agent, the space command automatically:
+When launching an AI agent, the dev command automatically:
 
 1. Detects if you're in tmux/zellij and opens a new tab there
 2. Falls back to supported terminals (kitty, iTerm2)
@@ -264,20 +264,20 @@ When launching an AI agent, the space command automatically:
 
 ## Shell Integration
 
-Add a function to quickly navigate to spaces:
+Add a function to quickly navigate to dev environments:
 
 ```bash
 # ~/.bashrc or ~/.zshrc
-scd() {
-    cd "$(agent-cli space path "$1")"
+dcd() {
+    cd "$(agent-cli dev path "$1")"
 }
 
-# Usage: scd my-feature
+# Usage: dcd my-feature
 ```
 
 ## Tips
 
-- Use `agent-cli space new` without arguments for quick experimentation
-- Run `agent-cli space doctor` to verify your setup
+- Use `agent-cli dev new` without arguments for quick experimentation
+- Run `agent-cli dev doctor` to verify your setup
 - Combine `-e -a` flags to immediately start coding with AI assistance
 - Use `--from` to branch from a specific tag or commit
