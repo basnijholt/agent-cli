@@ -18,67 +18,67 @@ Compare our implementation against GTR (CodeRabbit's git-worktree-runner) and re
 
 | Aspect | GTR | Ours | Status | Notes |
 |--------|-----|------|--------|-------|
-| **Command** | `claude` | `claude` | ❓ | |
-| **Alt commands** | `claude-code` | `claude-code` | ❓ | |
-| **Special path** | `~/.claude/local/claude` | `~/.claude/local/claude` | ❓ | Check if this path exists on real installs |
-| **Detection env var** | None | `CLAUDE_CODE` | 🔍 | Does Claude set any env var? |
-| **Detection process** | N/A | Parent process contains "claude" | ❓ | |
+| **Command** | `claude` | `claude` | ✅ | Verified |
+| **Alt commands** | `claude-code` | `claude-code` | ✅ | Verified |
+| **Special path** | `~/.claude/local/claude` | `~/.claude/local/claude` | ✅ | Both check this path |
+| **Detection env var** | None | `CLAUDE_CODE` | ⚠️ | **NO ENV VAR EXISTS** - Feature request #531 pending. Remove from code. |
+| **Detection process** | N/A | Parent process contains "claude" | ✅ | Only reliable detection method |
 | **Launch args** | `(cd "$path" && "$claude_cmd" "$@")` | `[exe]` (no cd) | ⚠️ | GTR uses cd, we don't |
-| **Install URL** | https://claude.com/claude-code | https://docs.anthropic.com/en/docs/claude-code | 🔍 | Which is correct? |
+| **Install URL** | https://claude.com/claude-code | https://docs.anthropic.com/en/docs/claude-code | ✅ | Ours is more accurate |
 
 ### Codex (OpenAI)
 
 | Aspect | GTR | Ours | Status | Notes |
 |--------|-----|------|--------|-------|
-| **Command** | `codex` | `codex` | ❓ | |
+| **Command** | `codex` | `codex` | ✅ | Verified |
 | **Alt commands** | None | None | ✅ | |
-| **Detection env var** | None | `CODEX_SESSION` | 🔍 | Made up - verify if real |
-| **Detection process** | N/A | Parent process contains "codex" | ❓ | |
+| **Detection env var** | None | `CODEX_SESSION` | ⚠️ | **NO ENV VAR EXISTS** - Only `CODEX_HOME` for config. Remove from code. |
+| **Detection process** | N/A | Parent process contains "codex" | ✅ | Only reliable detection method |
 | **Launch args** | `(cd "$path" && codex "$@")` | `[exe]` | ⚠️ | GTR uses cd |
-| **Install hint** | `npm install -g @openai/codex` | N/A | 🔍 | Verify install method |
+| **Install hint** | `npm install -g @openai/codex` | N/A | ✅ | Verified: `npm i -g @openai/codex` |
 
 ### Gemini CLI
 
 | Aspect | GTR | Ours | Status | Notes |
 |--------|-----|------|--------|-------|
-| **Command** | `gemini` | `gemini` | ❓ | |
+| **Command** | `gemini` | `gemini` | ✅ | Verified |
 | **Alt commands** | None | None | ✅ | |
-| **Detection env var** | None | `GEMINI_CLI` | 🔍 | Made up - verify if real |
-| **Detection process** | N/A | Parent process contains "gemini" | ❓ | |
+| **Detection env var** | None | `GEMINI_CLI` | ⚠️ | **NO ENV VAR EXISTS** - Remove from code. |
+| **Detection process** | N/A | Parent process contains "gemini" | ✅ | Only reliable detection method |
 | **Launch args** | `(cd "$path" && gemini "$@")` | `[exe]` | ⚠️ | GTR uses cd |
-| **Install hint** | `npm install -g @google/gemini-cli` | N/A | 🔍 | Verify package name |
+| **Install hint** | `npm install -g @google/gemini-cli` | N/A | ✅ | Verified package name |
 
 ### Aider
 
 | Aspect | GTR | Ours | Status | Notes |
 |--------|-----|------|--------|-------|
-| **Command** | `aider` | `aider` | ❓ | |
+| **Command** | `aider` | `aider` | ✅ | Verified |
 | **Alt commands** | None | None | ✅ | |
-| **Detection env var** | None | `AIDER_SESSION` | 🔍 | Made up - verify if real |
-| **Detection process** | N/A | Parent process contains "aider" | ❓ | |
+| **Detection env var** | None | `AIDER_SESSION` | ⚠️ | **NO ENV VAR EXISTS** - Uses `AIDER_*` for config only. Remove from code. |
+| **Detection process** | N/A | Parent process contains "aider" | ✅ | Only reliable detection method |
 | **Launch args** | `(cd "$path" && aider "$@")` | `[exe]` | ⚠️ | GTR uses cd |
-| **Install hint** | `pip install aider-chat` | N/A | ❓ | |
+| **Install hint** | `pip install aider-chat` | N/A | ✅ | Verified |
 | **Install URL** | https://aider.chat | https://aider.chat | ✅ | |
 
 ### GitHub Copilot CLI
 
 | Aspect | GTR | Ours | Status | Notes |
 |--------|-----|------|--------|-------|
-| **Command** | `copilot` | `copilot` | ❓ | |
+| **Command** | `copilot` | `copilot` | ✅ | Verified |
 | **Alt commands** | None | None | ✅ | |
-| **Detection env var** | None | `COPILOT_SESSION` | 🔍 | Made up - verify if real |
-| **Detection process** | N/A | Parent process contains "copilot" | ❓ | |
+| **Detection env var** | None | `COPILOT_SESSION` | ⚠️ | **NO ENV VAR EXISTS** - Remove from code. |
+| **Detection process** | N/A | Parent process contains "copilot" | ✅ | Only reliable detection method |
 | **Launch args** | `(cd "$path" && copilot "$@")` | `[exe]` | ⚠️ | GTR uses cd |
-| **Install hint** | `npm install -g @github/copilot` | N/A | 🔍 | Verify package name |
+| **Install hint** | `npm install -g @github/copilot` | N/A | ✅ | Verified package name |
 
 ### Continue Dev
 
 | Aspect | GTR | Ours | Status | Notes |
 |--------|-----|------|--------|-------|
-| **Command** | `cn` | `cn` | ❓ | |
-| **Alt commands** | None | `continue` | 🔍 | We added alt, GTR doesn't have |
-| **Detection env var** | None | `CONTINUE_SESSION` | 🔍 | Made up - verify if real |
-| **Detection process** | N/A | Parent contains "continue" or "cn" | ❓ | |
+| **Command** | `cn` | `cn` | ✅ | Verified |
+| **Alt commands** | None | `continue` | ✅ | We added alt - reasonable addition |
+| **Detection env var** | None | `CONTINUE_SESSION` | ⚠️ | **NO ENV VAR EXISTS** - Remove from code. |
+| **Detection process** | N/A | Parent contains "continue" or "cn" | ✅ | Only reliable detection method |
 | **Launch args** | `(cd "$path" && cn "$@")` | `[exe]` | ⚠️ | GTR uses cd |
 | **Install URL** | https://continue.dev | https://continue.dev | ✅ | |
 
@@ -86,21 +86,21 @@ Compare our implementation against GTR (CodeRabbit's git-worktree-runner) and re
 
 | Aspect | GTR | Ours | Status | Notes |
 |--------|-----|------|--------|-------|
-| **Command** | `opencode` | `opencode` | ❓ | |
+| **Command** | `opencode` | `opencode` | ✅ | Verified |
 | **Alt commands** | None | None | ✅ | |
-| **Detection env var** | None | `OPENCODE_SESSION` | 🔍 | Made up - verify if real |
-| **Detection process** | N/A | Parent process contains "opencode" | ❓ | |
+| **Detection env var** | None | `OPENCODE_SESSION` | ✅ | **`OPENCODE=1` EXISTS!** - Update code to use this. |
+| **Detection process** | N/A | Parent process contains "opencode" | ✅ | Also works |
 | **Launch args** | `(cd "$path" && opencode "$@")` | `[exe]` | ⚠️ | GTR uses cd |
-| **Install URL** | https://opencode.ai | https://opencode.ai | ❓ | Verify URL exists |
+| **Install URL** | https://opencode.ai | https://opencode.ai | ✅ | Verified |
 
 ### Cursor Agent
 
 | Aspect | GTR | Ours | Status | Notes |
 |--------|-----|------|--------|-------|
-| **Command** | `cursor-agent` or `cursor` | `cursor-agent` | ❓ | |
+| **Command** | `cursor-agent` or `cursor` | `cursor-agent` | ✅ | Verified |
 | **Alt commands** | `cursor` | `cursor` | ✅ | |
-| **Detection env var** | None | `CURSOR_AGENT_SESSION` | 🔍 | Made up - verify if real |
-| **Detection process** | N/A | Parent contains "cursor-agent" | ❓ | |
+| **Detection env var** | None | `CURSOR_AGENT_SESSION` | ✅ | **`CURSOR_AGENT` EXISTS!** - Update code to use this. |
+| **Detection process** | N/A | Parent contains "cursor-agent" | ✅ | Also works |
 | **Launch logic** | Try `cursor-agent`, then `cursor cli`, then `cursor` | Try `cursor-agent`, else `cursor cli` | ⚠️ | GTR has 3 fallbacks |
 | **Install URL** | https://cursor.com | https://cursor.com | ✅ | |
 
@@ -345,8 +345,11 @@ Compare our implementation against GTR (CodeRabbit's git-worktree-runner) and re
 
 ## Action Items
 
-### High Priority
-- [ ] Verify all AI agent env vars (most are made up)
+### High Priority (Code Fixes Needed)
+- [x] Verify all AI agent env vars (most are made up) - **DONE 2025-01-10**
+- [ ] Fix OpenCode detection to use `OPENCODE=1` instead of `OPENCODE_SESSION`
+- [ ] Fix Cursor Agent detection to use `CURSOR_AGENT` instead of `CURSOR_AGENT_SESSION`
+- [ ] Remove fake env var checks from: Claude, Codex, Gemini, Aider, Copilot, Continue
 - [ ] Fix vim/neovim to use `cd + .` pattern like GTR
 - [ ] Test tmux commands in real tmux session
 - [ ] Test zellij commands in real zellij session
@@ -369,9 +372,17 @@ Compare our implementation against GTR (CodeRabbit's git-worktree-runner) and re
 Record verification results here:
 
 ```
-# Example format:
-# 2024-01-10: Verified tmux TMUX env var - confirmed set in tmux sessions
-# 2024-01-10: Tested `zellij action new-tab` - works with --cwd flag
+2025-01-10: AI Agent Environment Variables Research (8 subagents)
+  - Claude Code: NO env var set. Feature request #531 exists but not implemented.
+  - Codex: NO env var set. Only CODEX_HOME for config directory.
+  - Gemini CLI: NO env var set. Package: @google/gemini-cli confirmed.
+  - Aider: NO env var set. Uses AIDER_* for config only.
+  - Copilot CLI: NO env var set. Package: @github/copilot confirmed.
+  - Continue Dev: NO env var set. CLI command is `cn` confirmed.
+  - OpenCode: YES! Sets OPENCODE=1 when running (PR #1780).
+  - Cursor Agent: YES! Sets CURSOR_AGENT when running.
+
+  Action: Remove fake env vars from 6 agents, fix OpenCode and Cursor to use real vars.
 ```
 
 ---

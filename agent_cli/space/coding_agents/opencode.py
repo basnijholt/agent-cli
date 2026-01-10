@@ -21,8 +21,8 @@ class OpenCode(CodingAgent):
 
     def detect(self) -> bool:
         """Detect if running inside OpenCode."""
-        # Check environment variables
-        if os.environ.get("OPENCODE_SESSION"):
+        # Check OPENCODE environment variable (set by OpenCode since PR #1780)
+        if os.environ.get("OPENCODE") == "1":
             return True
 
         # Check parent process names

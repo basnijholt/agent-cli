@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 from typing import TYPE_CHECKING
 
 from .base import CodingAgent, _get_parent_process_names
@@ -21,11 +20,7 @@ class ContinueDev(CodingAgent):
 
     def detect(self) -> bool:
         """Detect if running inside Continue Dev."""
-        # Check environment variables
-        if os.environ.get("CONTINUE_SESSION"):
-            return True
-
-        # Check parent process names
+        # Continue Dev does not set any detection env var, only parent process detection works
         parent_names = _get_parent_process_names()
         return any("continue" in name or name == "cn" for name in parent_names)
 

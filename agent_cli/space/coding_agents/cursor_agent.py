@@ -21,8 +21,8 @@ class CursorAgent(CodingAgent):
 
     def detect(self) -> bool:
         """Detect if running inside Cursor Agent."""
-        # Check environment variables
-        if os.environ.get("CURSOR_AGENT_SESSION"):
+        # Check CURSOR_AGENT environment variable (set by Cursor when agent is running)
+        if os.environ.get("CURSOR_AGENT"):
             return True
 
         # Check parent process names

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 from typing import TYPE_CHECKING
 
 from .base import CodingAgent, _get_parent_process_names
@@ -21,11 +20,7 @@ class Gemini(CodingAgent):
 
     def detect(self) -> bool:
         """Detect if running inside Gemini CLI."""
-        # Check environment variables
-        if os.environ.get("GEMINI_SESSION") or os.environ.get("GEMINI_CLI"):
-            return True
-
-        # Check parent process names
+        # Gemini CLI does not set any detection env var, only parent process detection works
         parent_names = _get_parent_process_names()
         return any("gemini" in name for name in parent_names)
 
