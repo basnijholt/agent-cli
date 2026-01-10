@@ -16,14 +16,57 @@ from agent_cli.cli import set_config_defaults
 
 # Word lists for generating random branch names (like Docker container names)
 _ADJECTIVES = [
-    "happy", "clever", "swift", "bright", "calm", "eager", "fancy", "gentle",
-    "jolly", "keen", "lively", "merry", "nice", "proud", "quick", "sharp",
-    "smart", "sunny", "witty", "zesty", "bold", "cool", "fresh", "grand",
+    "happy",
+    "clever",
+    "swift",
+    "bright",
+    "calm",
+    "eager",
+    "fancy",
+    "gentle",
+    "jolly",
+    "keen",
+    "lively",
+    "merry",
+    "nice",
+    "proud",
+    "quick",
+    "sharp",
+    "smart",
+    "sunny",
+    "witty",
+    "zesty",
+    "bold",
+    "cool",
+    "fresh",
+    "grand",
 ]
 _NOUNS = [
-    "fox", "owl", "bear", "wolf", "hawk", "lion", "tiger", "eagle", "falcon",
-    "otter", "panda", "raven", "shark", "whale", "zebra", "bison", "crane",
-    "dolphin", "gecko", "heron", "koala", "lemur", "moose", "newt", "oriole",
+    "fox",
+    "owl",
+    "bear",
+    "wolf",
+    "hawk",
+    "lion",
+    "tiger",
+    "eagle",
+    "falcon",
+    "otter",
+    "panda",
+    "raven",
+    "shark",
+    "whale",
+    "zebra",
+    "bison",
+    "crane",
+    "dolphin",
+    "gecko",
+    "heron",
+    "koala",
+    "lemur",
+    "moose",
+    "newt",
+    "oriole",
 ]
 
 
@@ -46,6 +89,7 @@ def _generate_branch_name(existing_branches: set[str] | None = None) -> str:
 
     # Fallback: add random digits
     return f"{base}-{random.randint(100, 999)}"  # noqa: S311
+
 
 from . import coding_agents, editors, terminals, worktree
 from .project import copy_env_files, detect_project_type, run_setup
