@@ -175,7 +175,7 @@ Both tools manage git worktrees with editor and AI agent integration. Key differ
 | **Alt commands** | `sublime_text`, `sublime`, `sublime4` | ✅ | All work |
 | **Version** | Build 4200 | ✅ | From --help output |
 | **Nix package** | `sublime4` | ✅ | Requires `NIXPKGS_ALLOW_UNFREE=1` |
-| **Detection env var** | `TERM_PROGRAM` | ⚠️ | **No native integrated terminal** - detection is speculative. Terminal packages like Terminus may set this, but it's plugin-dependent. |
+| **Detection env var** | N/A | ❌ | **No native integrated terminal** - Sublime Text cannot be detected. Terminal packages like Terminus exist but are plugin-dependent. |
 
 ### JetBrains IDEs
 

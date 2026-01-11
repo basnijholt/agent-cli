@@ -17,4 +17,4 @@ class SublimeText(Editor):
     command = "subl"
     alt_commands = ("sublime_text", "sublime")
     install_url = "https://www.sublimetext.com"
-    detect_term_program = "sublime"
+    # No detect_term_program - Sublime has no native integrated terminal
