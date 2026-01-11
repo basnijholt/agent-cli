@@ -6,6 +6,7 @@ from .base import Editor  # noqa: TC001
 from .cursor import Cursor
 from .emacs import Emacs
 from .jetbrains import GoLand, IntelliJIdea, PyCharm, RustRover, WebStorm
+from .nano import Nano
 from .neovim import Neovim
 from .sublime import SublimeText
 from .vim import Vim
@@ -27,6 +28,7 @@ _EDITORS: list[type[Editor]] = [
     # Terminal editors
     Neovim,
     Vim,
+    Nano,
     Emacs,
     # Other GUI editors
     SublimeText,

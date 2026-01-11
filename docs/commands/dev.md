@@ -240,6 +240,7 @@ agent-cli dev terminals
 | Zed | `zed` | Fast, modern editor |
 | Neovim | `nvim` | Uses `cd && nvim .` pattern |
 | Vim | `vim` | Uses `cd && vim .` pattern |
+| Nano | `nano` | Uses `cd && nano .` pattern |
 | Emacs | `emacs` | Runs in background |
 | Sublime Text | `subl` | |
 | IntelliJ IDEA | `idea` | |

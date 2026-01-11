@@ -45,7 +45,7 @@ Both tools manage git worktrees with editor and AI agent integration. Key differ
 | **Detection env var** | None | `CLAUDECODE=1` | ✅ | **VERIFIED** - Claude Code sets `CLAUDECODE=1` (also `CLAUDE_CODE_ENTRYPOINT`) |
 | **Detection process** | N/A | Parent process contains "claude" | ✅ | Only reliable detection method |
 | **Launch args** | `(cd "$path" && "$claude_cmd" "$@")` | `[exe]` with `cwd=path` | ✅ | Different approach, same result |
-| **Install URL** | https://claude.com/claude-code | https://docs.anthropic.com/en/docs/claude-code | ✅ | Ours is more accurate |
+| **Install URL** | https://claude.com/claude-code | https://code.claude.com/docs/en/overview | ✅ | Updated 2026-01-10 |
 
 ### Codex (OpenAI)
 
@@ -397,8 +397,8 @@ Both tools manage git worktrees with editor and AI agent integration. Key differ
 - [x] Test iTerm2 AppleScript - **Verified via official docs 2025-01-10**
 
 ### Low Priority
-- [ ] Add nano support (limited use)
-- [ ] Verify install URLs are current
+- [x] Add nano support (limited use) - **DONE 2026-01-10**
+- [x] Verify install URLs are current - **DONE 2026-01-10** (fixed Claude Code URL)
 
 ---
 

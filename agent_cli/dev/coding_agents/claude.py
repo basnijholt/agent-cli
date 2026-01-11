@@ -14,7 +14,7 @@ class ClaudeCode(CodingAgent):
     name = "claude"
     command = "claude"
     alt_commands = ("claude-code",)
-    install_url = "https://docs.anthropic.com/en/docs/claude-code"
+    install_url = "https://code.claude.com/docs/en/overview"
 
     def detect(self) -> bool:
         """Detect if running inside Claude Code."""
