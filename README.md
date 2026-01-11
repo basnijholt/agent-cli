@@ -44,6 +44,7 @@ Since then I have expanded the tool with many more features, all focused on loca
 - **[`chat`](docs/commands/chat.md)**: Conversational AI with tool-calling capabilities.
 - **[`memory`](docs/commands/memory.md)**: Long-term memory system with `memory proxy` and `memory add`.
 - **[`rag-proxy`](docs/commands/rag-proxy.md)**: RAG proxy server for chatting with your documents.
+- **[`dev`](docs/commands/dev.md)**: Parallel development with git worktrees and AI coding agents.
 - **[`server`](docs/commands/server.md)**: HTTP API server for transcription.
 - **[`transcribe-daemon`](docs/commands/transcribe-daemon.md)**: Continuous background transcription with VAD. Install with `uv tool install "agent-cli[vad]"`.
 

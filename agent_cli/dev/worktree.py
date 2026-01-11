@@ -1,0 +1,483 @@
+"""Git worktree operations for the dev module."""
+
+from __future__ import annotations
+
+import contextlib
+import os
+import re
+import shutil
+import subprocess
+from dataclasses import dataclass
+from pathlib import Path
+
+
+def _run_git(
+    *args: str,
+    cwd: Path | None = None,
+    check: bool = True,
+    capture_output: bool = True,
+) -> subprocess.CompletedProcess[str]:
+    """Run a git command and return the result."""
+    cmd = ["git", *args]
+    return subprocess.run(
+        cmd,
+        cwd=cwd,
+        check=check,
+        capture_output=capture_output,
+        text=True,
+    )
+
+
+def git_available() -> bool:
+    """Check if git is available."""
+    return shutil.which("git") is not None
+
+
+def is_git_repo(path: Path | None = None) -> bool:
+    """Check if the given path is inside a git repository."""
+    try:
+        result = _run_git("rev-parse", "--git-dir", cwd=path, check=False)
+        return result.returncode == 0
+    except Exception:
+        return False
+
+
+def get_repo_root(path: Path | None = None) -> Path | None:
+    """Get the root directory of the git repository."""
+    try:
+        result = _run_git("rev-parse", "--show-toplevel", cwd=path)
+        return Path(result.stdout.strip())
+    except subprocess.CalledProcessError:
+        return None
+
+
+def get_common_dir(path: Path | None = None) -> Path | None:
+    """Get the common git directory (shared across worktrees)."""
+    try:
+        result = _run_git("rev-parse", "--git-common-dir", cwd=path)
+        common_dir = result.stdout.strip()
+        if common_dir == ".git":
+            # In main repo, resolve relative to toplevel
+            repo_root = get_repo_root(path)
+            return repo_root / ".git" if repo_root else None
+        return Path(common_dir)
+    except subprocess.CalledProcessError:
+        return None
+
+
+def get_main_repo_root(path: Path | None = None) -> Path | None:
+    """Get the main repository root (even when in a worktree)."""
+    common_dir = get_common_dir(path)
+    if common_dir is None:
+        return None
+    # common_dir is /path/to/repo/.git, so parent is repo root
+    if common_dir.name == ".git":
+        return common_dir.parent
+    # For bare repos or unusual setups, try to go up from common_dir
+    return common_dir.parent
+
+
+def sanitize_branch_name(branch: str) -> str:
+    """Sanitize a branch name for use as a directory name.
+
+    Converts slashes, spaces, and other problematic characters to hyphens.
+    """
+    # Replace problematic characters with hyphens
+    sanitized = re.sub(r'[\/\\ :*?"<>|#]', "-", branch)
+    # Remove leading/trailing hyphens
+    return sanitized.strip("-")
+
+
+def get_default_branch(path: Path | None = None) -> str:
+    """Get the default branch name (main or master)."""
+    try:
+        # Try to get from origin/HEAD
+        result = _run_git(
+            "symbolic-ref",
+            "--quiet",
+            "refs/remotes/origin/HEAD",
+            cwd=path,
+            check=False,
+        )
+        if result.returncode == 0:
+            # refs/remotes/origin/main -> main
+            return result.stdout.strip().replace("refs/remotes/origin/", "")
+    except Exception:  # noqa: S110
+        pass
+
+    # Try common branch names
+    for branch in ["main", "master"]:
+        try:
+            result = _run_git(
+                "show-ref",
+                "--verify",
+                "--quiet",
+                f"refs/remotes/origin/{branch}",
+                cwd=path,
+                check=False,
+            )
+            if result.returncode == 0:
+                return branch
+        except Exception:  # noqa: S110
+            pass
+
+    return "main"  # Default fallback
+
+
+def get_current_branch(path: Path | None = None) -> str | None:
+    """Get the current branch name."""
+    try:
+        result = _run_git("branch", "--show-current", cwd=path, check=False)
+        if result.returncode == 0 and result.stdout.strip():
+            return result.stdout.strip()
+        # Fallback for older git or detached HEAD
+        result = _run_git("rev-parse", "--abbrev-ref", "HEAD", cwd=path, check=False)
+        branch = result.stdout.strip()
+        return None if branch == "HEAD" else branch
+    except Exception:
+        return None
+
+
+@dataclass
+class WorktreeInfo:
+    """Information about a git worktree."""
+
+    path: Path
+    branch: str | None
+    commit: str | None
+    is_main: bool
+    is_detached: bool
+    is_locked: bool
+    is_prunable: bool
+
+    @property
+    def name(self) -> str:
+        """Get the worktree directory name."""
+        return self.path.name
+
+
+def list_worktrees(repo_path: Path | None = None) -> list[WorktreeInfo]:
+    """List all worktrees for the repository."""
+    worktrees: list[WorktreeInfo] = []
+
+    try:
+        result = _run_git("worktree", "list", "--porcelain", cwd=repo_path)
+    except subprocess.CalledProcessError:
+        return worktrees
+
+    # Parse porcelain output
+    current_wt: dict[str, str | bool] = {}
+
+    for line in result.stdout.splitlines():
+        if not line:
+            # End of worktree entry
+            if "worktree" in current_wt:
+                wt_path = Path(str(current_wt["worktree"]))
+                worktrees.append(
+                    WorktreeInfo(
+                        path=wt_path,
+                        branch=str(current_wt.get("branch", "")).replace(
+                            "refs/heads/",
+                            "",
+                        )
+                        or None,
+                        commit=str(current_wt.get("HEAD", "")) or None,
+                        is_main=len(worktrees) == 0,  # First worktree is main
+                        is_detached=current_wt.get("detached", False) is True,
+                        is_locked=current_wt.get("locked", False) is True,
+                        is_prunable=current_wt.get("prunable", False) is True,
+                    ),
+                )
+            current_wt = {}
+            continue
+
+        if line.startswith("worktree "):
+            current_wt["worktree"] = line[9:]
+        elif line.startswith("HEAD "):
+            current_wt["HEAD"] = line[5:]
+        elif line.startswith("branch "):
+            current_wt["branch"] = line[7:]
+        elif line == "detached":
+            current_wt["detached"] = True
+        elif line.startswith("locked"):
+            current_wt["locked"] = True
+        elif line.startswith("prunable"):
+            current_wt["prunable"] = True
+
+    # Handle last entry if no trailing newline
+    if "worktree" in current_wt:
+        wt_path = Path(str(current_wt["worktree"]))
+        worktrees.append(
+            WorktreeInfo(
+                path=wt_path,
+                branch=str(current_wt.get("branch", "")).replace("refs/heads/", "") or None,
+                commit=str(current_wt.get("HEAD", "")) or None,
+                is_main=len(worktrees) == 0,
+                is_detached=current_wt.get("detached", False) is True,
+                is_locked=current_wt.get("locked", False) is True,
+                is_prunable=current_wt.get("prunable", False) is True,
+            ),
+        )
+
+    return worktrees
+
+
+def resolve_worktree_base_dir(repo_root: Path) -> Path:
+    """Resolve the base directory for worktrees.
+
+    Default: <repo>-worktrees next to the repo.
+    Can be configured via GTR_WORKTREES_DIR environment variable.
+    """
+    env_dir = os.environ.get("AGENT_SPACE_DIR") or os.environ.get("GTR_WORKTREES_DIR")
+    if env_dir:
+        base_dir = Path(env_dir).expanduser()
+        if not base_dir.is_absolute():
+            base_dir = repo_root / base_dir
+        return base_dir
+
+    # Default: sibling directory named <repo>-worktrees
+    return repo_root.parent / f"{repo_root.name}-worktrees"
+
+
+def find_worktree_by_name(
+    name: str,
+    repo_path: Path | None = None,
+) -> WorktreeInfo | None:
+    """Find a worktree by branch name or directory name."""
+    worktrees = list_worktrees(repo_path)
+    sanitized = sanitize_branch_name(name)
+
+    for wt in worktrees:
+        # Match by branch name
+        if wt.branch == name:
+            return wt
+        # Match by directory name
+        if wt.path.name in {sanitized, name}:
+            return wt
+        # Match by sanitized branch name
+        if wt.branch and sanitize_branch_name(wt.branch) == sanitized:
+            return wt
+
+    return None
+
+
+@dataclass
+class CreateWorktreeResult:
+    """Result of creating a worktree."""
+
+    success: bool
+    path: Path | None
+    branch: str
+    error: str | None = None
+
+
+def create_worktree(
+    branch_name: str,
+    *,
+    repo_path: Path | None = None,
+    from_ref: str | None = None,
+    base_dir: Path | None = None,
+    prefix: str = "",
+    force: bool = False,
+    fetch: bool = True,
+) -> CreateWorktreeResult:
+    """Create a new git worktree.
+
+    Args:
+        branch_name: The branch name for the worktree
+        repo_path: Path to the repository (default: current directory)
+        from_ref: Reference to create the branch from (default: default branch)
+        base_dir: Base directory for worktrees (default: auto-resolved)
+        prefix: Prefix for the worktree directory name
+        force: Allow same branch in multiple worktrees
+        fetch: Fetch from origin before creating
+
+    Returns:
+        CreateWorktreeResult with success status and path or error
+
+    """
+    repo_root = get_main_repo_root(repo_path)
+    if repo_root is None:
+        return CreateWorktreeResult(
+            success=False,
+            path=None,
+            branch=branch_name,
+            error="Not in a git repository",
+        )
+
+    if base_dir is None:
+        base_dir = resolve_worktree_base_dir(repo_root)
+
+    sanitized_name = sanitize_branch_name(branch_name)
+    worktree_path = base_dir / f"{prefix}{sanitized_name}"
+
+    # Check if worktree already exists
+    if worktree_path.exists():
+        return CreateWorktreeResult(
+            success=False,
+            path=worktree_path,
+            branch=branch_name,
+            error=f"Worktree already exists at {worktree_path}",
+        )
+
+    # Create base directory if needed
+    base_dir.mkdir(parents=True, exist_ok=True)
+
+    # Fetch latest refs
+    if fetch:
+        _run_git("fetch", "origin", cwd=repo_root, check=False)
+
+    # Determine the reference to create from
+    if from_ref is None:
+        from_ref = get_default_branch(repo_root)
+
+    # Check if branch exists remotely or locally
+    remote_exists = False
+    local_exists = False
+
+    try:
+        result = _run_git(
+            "show-ref",
+            "--verify",
+            "--quiet",
+            f"refs/remotes/origin/{branch_name}",
+            cwd=repo_root,
+            check=False,
+        )
+        remote_exists = result.returncode == 0
+    except Exception:  # noqa: S110
+        pass
+
+    try:
+        result = _run_git(
+            "show-ref",
+            "--verify",
+            "--quiet",
+            f"refs/heads/{branch_name}",
+            cwd=repo_root,
+            check=False,
+        )
+        local_exists = result.returncode == 0
+    except Exception:  # noqa: S110
+        pass
+
+    force_flag = ["--force"] if force else []
+
+    try:
+        if remote_exists and not local_exists:
+            # Remote branch exists, create tracking branch
+            _run_git(
+                "branch",
+                "--track",
+                branch_name,
+                f"origin/{branch_name}",
+                cwd=repo_root,
+                check=False,
+            )
+            _run_git(
+                "worktree",
+                "add",
+                *force_flag,
+                str(worktree_path),
+                branch_name,
+                cwd=repo_root,
+            )
+        elif local_exists:
+            # Local branch exists
+            _run_git(
+                "worktree",
+                "add",
+                *force_flag,
+                str(worktree_path),
+                branch_name,
+                cwd=repo_root,
+            )
+        else:
+            # Create new branch from ref
+            _run_git(
+                "worktree",
+                "add",
+                *force_flag,
+                str(worktree_path),
+                "-b",
+                branch_name,
+                from_ref,
+                cwd=repo_root,
+            )
+
+        return CreateWorktreeResult(
+            success=True,
+            path=worktree_path,
+            branch=branch_name,
+        )
+
+    except subprocess.CalledProcessError as e:
+        return CreateWorktreeResult(
+            success=False,
+            path=worktree_path,
+            branch=branch_name,
+            error=e.stderr.strip() if e.stderr else str(e),
+        )
+
+
+def remove_worktree(
+    worktree_path: Path,
+    *,
+    force: bool = False,
+    delete_branch: bool = False,
+    repo_path: Path | None = None,
+) -> tuple[bool, str | None]:
+    """Remove a git worktree.
+
+    Args:
+        worktree_path: Path to the worktree to remove
+        force: Force removal even with uncommitted changes
+        delete_branch: Also delete the branch
+        repo_path: Path to the main repository
+
+    Returns:
+        Tuple of (success, error_message)
+
+    """
+    if not worktree_path.exists():
+        return False, f"Worktree not found at {worktree_path}"
+
+    repo_root = get_main_repo_root(repo_path)
+    if repo_root is None:
+        return False, "Not in a git repository"
+
+    # Get branch name before removing
+    branch_name = get_current_branch(worktree_path)
+
+    force_flag = ["--force"] if force else []
+
+    try:
+        _run_git(
+            "worktree",
+            "remove",
+            *force_flag,
+            str(worktree_path),
+            cwd=repo_root,
+        )
+    except subprocess.CalledProcessError as e:
+        return False, e.stderr.strip() if e.stderr else str(e)
+
+    # Delete branch if requested
+    if delete_branch and branch_name:
+        with contextlib.suppress(Exception):
+            _run_git(
+                "branch",
+                "-D" if force else "-d",
+                branch_name,
+                cwd=repo_root,
+                check=False,
+            )
+
+    return True, None
+
+
+def prune_worktrees(repo_path: Path | None = None) -> None:
+    """Prune stale worktree references."""
+    repo_root = get_main_repo_root(repo_path)
+    if repo_root:
+        _run_git("worktree", "prune", cwd=repo_root, check=False)

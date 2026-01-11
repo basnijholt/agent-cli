@@ -224,6 +224,23 @@ class History(BaseModel):
         return None
 
 
+# --- Panel: Dev (Parallel Development) Options ---
+
+
+class Dev(BaseModel):
+    """Configuration for parallel development environments (git worktrees)."""
+
+    default_agent: str | None = None
+    default_editor: str | None = None
+    default_terminal: str | None = None
+    agent_args: dict[str, list[str]] | None = (
+        None  # Per-agent args, e.g. {"claude": ["--dangerously-skip-permissions"]}
+    )
+    auto_setup: bool = True
+    copy_env_files: bool = True
+    fetch_before_create: bool = True
+
+
 def _config_path(config_path_str: str | None = None) -> Path | None:
     """Return a usable config path, expanding user directories."""
     if config_path_str:
