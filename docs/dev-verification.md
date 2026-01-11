@@ -137,8 +137,8 @@ Both tools manage git worktrees with editor and AI agent integration. Key differ
 | Aspect | Value | Status | Evidence |
 |--------|-------|--------|----------|
 | **Command** | `zed` | ✅ | Standard command |
-| **Detection env var** | `ZED_TERM=true` | ✅ | [Environment docs](https://zed.dev/docs/environment) - "built-in variables like `ZED_TERM=true`" |
-| **TERM_PROGRAM** | `Zed` (since v0.145.0) | ✅ | [GitHub PR #14213](https://github.com/zed-industries/zed/issues/4571) merged |
+| **Detection env var** | `ZED_TERM=true` | ✅ | [Source code](https://github.com/zed-industries/zed/blob/main/crates/terminal/src/terminal.rs) - `env.insert("ZED_TERM", "true")` in `insert_zed_terminal_env()`. Not in docs but IS in code. |
+| **TERM_PROGRAM** | `Zed` (since v0.145.0) | ✅ | [GitHub PR #14213](https://github.com/zed-industries/zed/pull/14213) - "Set TERM_PROGRAM and TERM_PROGRAM_VERSION" |
 
 ### Neovim
 
@@ -238,8 +238,8 @@ Both tools manage git worktrees with editor and AI agent integration. Key differ
 
 | Aspect | Value | Status | Evidence |
 |--------|-------|--------|----------|
-| **Detection env var** | `ITERM_SESSION_ID` | ✅ | [iTerm2 Variables docs](https://iterm2.com/documentation-variables.html) - "identifies the window number, tab number, and pane number" |
-| **Alt detection** | `TERM_PROGRAM=iTerm.app` | ✅ | [Community discussion](https://groups.google.com/g/iterm2-discuss/c/MpOWDIn6QTs) |
+| **Detection env var** | `ITERM_SESSION_ID` | ⚠️ | Undocumented - NOT in [iTerm2 Variables docs](https://iterm2.com/documentation-variables.html) (those are internal variables, not shell env vars). Community knowledge only. |
+| **Alt detection** | `TERM_PROGRAM=iTerm.app` | ⚠️ | [Community discussion](https://groups.google.com/g/iterm2-discuss/c/MpOWDIn6QTs) - no official docs |
 | **Platform** | macOS only | ✅ | |
 | **New tab** | AppleScript: `create tab with default profile` | ✅ | [iTerm2 docs](https://iterm2.com/documentation-scripting.html) |
 

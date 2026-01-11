@@ -87,9 +87,10 @@ class TestTerminalDetection:
 
         Evidence:
             Source: kitten @ launch --help
-            Quote: References KITTY_WINDOW_ID for remote control
+            Command: `kitten @ launch --help`
+            Output: "--match, -m ... field can be one of: id, ... window_id"
             Also: KITTY_LISTEN_ON for socket path
-            Verified: 2026-01-11 via `kitty --help` and docs
+            Verified: 2026-01-11 via `kitten @ launch --help` output
         """
         monkeypatch.setenv("KITTY_WINDOW_ID", "1")
         terminal = Kitty()
@@ -99,9 +100,10 @@ class TestTerminalDetection:
         """Kitty also detectable via TERM=xterm-kitty.
 
         Evidence:
-            Source: Kitty documentation
-            Note: TERM is set to xterm-kitty inside kitty terminal
-            Verified: 2026-01-11 via kitty docs
+            Source: Kitty FAQ
+            URL: https://sw.kovidgoyal.net/kitty/faq/#i-get-errors-about-the-terminal-being-unknown
+            Quote: "kitty uses the value xterm-kitty for the TERM environment variable"
+            Verified: 2026-01-11 via official kitty FAQ
         """
         monkeypatch.delenv("KITTY_WINDOW_ID", raising=False)
         monkeypatch.setenv("TERM", "xterm-kitty")
@@ -112,8 +114,11 @@ class TestTerminalDetection:
         """GNOME Terminal sets GNOME_TERMINAL_SERVICE.
 
         Evidence:
-            Source: gnome-terminal man page and source code
-            Verified: 2026-01-11 via `nix-shell -p gnome-terminal --run "gnome-terminal --help"`
+            Source: GNOME Terminal source code
+            URL: https://gitlab.gnome.org/GNOME/gnome-terminal/-/blob/master/src/terminal-app.cc
+            Code: Sets GNOME_TERMINAL_SERVICE for D-Bus service name
+            Format: ":1.123" (D-Bus connection ID)
+            Verified: 2026-01-11 via source code inspection
         """
         monkeypatch.setenv("GNOME_TERMINAL_SERVICE", ":1.123")
         terminal = GnomeTerminal()
@@ -123,13 +128,15 @@ class TestTerminalDetection:
         """iTerm2 sets ITERM_SESSION_ID environment variable.
 
         Evidence:
-            Source: iTerm2 Variables documentation
+            Source: Community knowledge (undocumented)
             URL: https://iterm2.com/documentation-variables.html
-            Quote: "$ITERM_SESSION_ID identifies the window number, tab number,
-                   and pane number"
-            Also detectable via TERM_PROGRAM=iTerm.app
+            Note: The Variables docs describe iTerm2's INTERNAL variables system,
+                  NOT shell environment variables. ITERM_SESSION_ID is set but
+                  not officially documented.
+            Format: "w0t0p0:UUID" (window, tab, pane, session UUID)
             Platform: macOS only
-            Verified: 2026-01-11 via web search confirming official docs
+            Status: ⚠️ Works but undocumented - community knowledge
+            Verified: 2026-01-11 - confirmed NOT in official docs
         """
         monkeypatch.setenv("ITERM_SESSION_ID", "w0t0p0:12345678-ABCD-EFGH-IJKL-MNOPQRSTUVWX")
         terminal = ITerm2()
@@ -312,16 +319,16 @@ class TestEditorDetection:
         assert editor.detect() is True
 
     def test_zed_detection_zed_term(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        """Zed sets ZED_TERM=true as a built-in variable.
+        """Zed sets ZED_TERM=true in integrated terminal.
 
         Evidence:
-            Source: Zed Environment documentation
-            URL: https://zed.dev/docs/environment
-            Quote: "Environment variables are assembled from multiple sources
-                   in priority order, including built-in variables like
-                   `ZED_TERM=true`"
-            Also: TERM_PROGRAM=Zed since v0.145.0 (GitHub PR #14213)
-            Verified: 2026-01-11 via official Zed docs
+            Source: Zed source code
+            URL: https://github.com/zed-industries/zed/blob/main/crates/terminal/src/terminal.rs
+            Code: `env.insert("ZED_TERM".to_string(), "true".to_string());`
+            Function: insert_zed_terminal_env()
+            Note: NOT in docs (zed.dev/docs/environment) but IS in source code
+            Also: TERM_PROGRAM=Zed since v0.145.0 (PR #14213)
+            Verified: 2026-01-11 via source code inspection
         """
         monkeypatch.setenv("ZED_TERM", "true")
         editor = Zed()
@@ -460,9 +467,11 @@ class TestCodingAgentDetection:
 
         Evidence:
             Source: GitHub PR #1780
-            URL: https://github.com/sst/opencode
-            Note: Sets OPENCODE=1 environment variable
-            Verified: 2026-01-11 via GitHub research
+            URL: https://github.com/sst/opencode/pull/1780
+            Title: "chore: add OPENCODE env var"
+            Code: Adds `OPENCODE=1` env var as per issue #1775
+            Merged: 2025-08-11 by @thdxr
+            Verified: 2026-01-11 via GitHub PR
         """
         monkeypatch.setenv("OPENCODE", "1")
         agent = OpenCode()
