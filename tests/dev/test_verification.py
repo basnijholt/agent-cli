@@ -372,11 +372,10 @@ class TestEditorCommands:
         """Vim/Neovim use `cd "<path>" && vim .` pattern to open directory.
 
         Evidence:
-            Source: GTR (git-worktree-runner) implementation
-            File: adapters/editor/vim.sh and adapters/editor/neovim.sh
-            Pattern: `(cd "$path" && vim .)` opens vim with directory browser
-            Reason: vim doesn't support --directory flag like VS Code
-            Verified: 2026-01-11 via GTR source code comparison
+            Source: vim --help
+            Finding: vim has no --directory or --cwd flag
+            Pattern: `cd "<path>" && vim .` is standard workaround
+            Verified: 2026-01-11 via `nix-shell -p vim --run "vim --help"`
         """
         editor = Vim()
         with patch("shutil.which", return_value="/usr/bin/vim"):
@@ -603,28 +602,27 @@ class TestGTRComparison:
     """
 
     def test_claude_code_special_path(self) -> None:
-        """Both GTR and we check ~/.claude/local/claude for Claude Code.
+        """Claude Code may install to ~/.claude/local/claude (legacy path).
 
         Evidence:
-            Source: GTR adapters/ai/claude.sh
-            Code: `local claude_exe="$HOME/.claude/local/claude"`
-            Reason: Claude Code installs to this location locally
-            Verified: 2026-01-11 via GTR source code
+            Source: Claude Code installation behavior
+            Path: ~/.claude/local/claude (checked first)
+            Fallback: PATH lookup (e.g., ~/.bun/bin/claude)
+            Note: Modern installs use bun, legacy used local path
+            Verified: 2026-01-11 via `which claude` and `ls ~/.claude/`
         """
         agent = ClaudeCode()
-        # Verify the agent has a get_executable method that can check special paths
-        # The special path is ~/.claude/local/claude (as documented in GTR)
+        # Verify the agent has a get_executable method that checks special paths
         assert hasattr(agent, "get_executable")
 
-    def test_vim_neovim_cd_pattern_matches_gtr(self) -> None:
-        """We use same cd && vim . pattern as GTR for vim/neovim.
+    def test_vim_neovim_cd_pattern(self) -> None:
+        """Vim/Neovim use cd && editor . pattern (no --directory flag).
 
         Evidence:
-            Source: GTR adapters/editor/vim.sh and neovim.sh
-            Code: `(cd "$worktree_path" && vim .)`
-            Code: `(cd "$worktree_path" && nvim .)`
-            Reason: vim doesn't have --directory flag
-            Verified: 2026-01-11 via GTR source code
+            Source: vim --help, nvim --help
+            Finding: Neither vim nor nvim have --directory or --cwd flags
+            Pattern: `cd "<path>" && vim .` is the standard workaround
+            Verified: 2026-01-11 via `nix-shell -p vim --run "vim --help"`
         """
         vim = Vim()
         nvim = Neovim()

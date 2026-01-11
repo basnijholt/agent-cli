@@ -39,7 +39,7 @@ Both tools manage git worktrees with editor and AI agent integration. Key differ
 |--------|-------|--------|----------|
 | **Command** | `claude` | ✅ | `which claude` returns path |
 | **Alt commands** | `claude-code` | ✅ | Documented in official docs |
-| **Special path** | `~/.claude/local/claude` | ✅ | Both GTR and we check this |
+| **Special path** | `~/.claude/local/claude` | ✅ | Legacy path, falls back to PATH (`which claude`) |
 | **Detection env var** | `CLAUDECODE=1` | ✅ | **Live test**: `env \| grep CLAUDE` shows `CLAUDECODE=1` and `CLAUDE_CODE_ENTRYPOINT=cli` |
 | **Install** | `npm i -g @anthropic-ai/claude-code` | ✅ | Official docs |
 
@@ -145,7 +145,7 @@ Both tools manage git worktrees with editor and AI agent integration. Key differ
 | Aspect | Value | Status | Evidence |
 |--------|-------|--------|----------|
 | **Command** | `nvim` | ✅ | `which nvim` returns path |
-| **Open syntax** | `sh -c 'cd "<path>" && nvim .'` | ✅ | Matches GTR pattern |
+| **Open syntax** | `sh -c 'cd "<path>" && nvim .'` | ✅ | nvim has no --directory flag (`nvim --help`) |
 | **Detection env var** | `NVIM` | ✅ | [Neovim vvars docs](https://neovim.io/doc/user/vvars.html) - "`$NVIM` is set to `v:servername` by terminal and `jobstart()`" |
 | **Deprecated var** | `NVIM_LISTEN_ADDRESS` | ✅ | Deprecated in favor of `$NVIM` |
 
@@ -154,7 +154,7 @@ Both tools manage git worktrees with editor and AI agent integration. Key differ
 | Aspect | Value | Status | Evidence |
 |--------|-------|--------|----------|
 | **Command** | `vim` | ✅ | `nix-shell -p vim --run "vim --version"` - VIM 9.1 |
-| **Open syntax** | `sh -c 'cd "<path>" && vim .'` | ✅ | Matches GTR pattern |
+| **Open syntax** | `sh -c 'cd "<path>" && vim .'` | ✅ | vim has no --directory flag (`vim --help`) |
 | **Detection env var** | `VIM`, `VIMRUNTIME` | ✅ | Exported to `:terminal` child processes - [known issue vim#7696](https://github.com/vim/vim/issues/7696) |
 
 ### Emacs
