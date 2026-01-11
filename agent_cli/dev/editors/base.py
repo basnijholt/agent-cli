@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import os
 import shutil
-from abc import ABC, abstractmethod
+from abc import ABC
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -26,12 +26,32 @@ class Editor(ABC):
     # URL for installation instructions
     install_url: str = ""
 
-    @abstractmethod
+    # Declarative detection: env vars that indicate running inside this editor
+    # e.g., ("NVIM", "NVIM_LISTEN_ADDRESS") for Neovim
+    detect_env_vars: tuple[str, ...] = ()
+
+    # Declarative detection: value to look for in TERM_PROGRAM
+    # e.g., "vscode" will match if TERM_PROGRAM contains "vscode" (case-insensitive)
+    detect_term_program: str | None = None
+
     def detect(self) -> bool:
         """Check if currently running inside this editor's terminal.
 
-        This is used to auto-detect which editor to use.
+        Default implementation uses declarative detection attributes.
+        Override for custom detection logic.
         """
+        # Check env vars first
+        for env_var in self.detect_env_vars:
+            if os.environ.get(env_var):
+                return True
+
+        # Check TERM_PROGRAM
+        if self.detect_term_program:
+            term_program = _get_term_program()
+            if term_program and self.detect_term_program.lower() in term_program.lower():
+                return True
+
+        return False
 
     def is_available(self) -> bool:
         """Check if this editor is installed and available."""

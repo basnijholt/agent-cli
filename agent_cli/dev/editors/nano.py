@@ -15,15 +15,8 @@ class Nano(Editor):
 
     name = "nano"
     command = "nano"
-    alt_commands = ()
     install_url = "https://www.nano-editor.org"
-
-    def detect(self) -> bool:
-        """Detect if running inside Nano.
-
-        Nano doesn't have an integrated terminal, so always returns False.
-        """
-        return False
+    # Nano has no integrated terminal, detection always returns False (default)
 
     def open_command(self, path: Path) -> list[str]:
         """Return the command to open a directory in Nano.

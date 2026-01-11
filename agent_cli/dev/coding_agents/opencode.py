@@ -2,13 +2,7 @@
 
 from __future__ import annotations
 
-import os
-from typing import TYPE_CHECKING
-
-from .base import CodingAgent, _get_parent_process_names
-
-if TYPE_CHECKING:
-    from pathlib import Path
+from .base import CodingAgent
 
 
 class OpenCode(CodingAgent):
@@ -16,30 +10,6 @@ class OpenCode(CodingAgent):
 
     name = "opencode"
     command = "opencode"
-    alt_commands = ()
     install_url = "https://opencode.ai"
-
-    def detect(self) -> bool:
-        """Detect if running inside OpenCode."""
-        # Check OPENCODE environment variable (set by OpenCode since PR #1780)
-        if os.environ.get("OPENCODE") == "1":
-            return True
-
-        # Check parent process names
-        parent_names = _get_parent_process_names()
-        return any("opencode" in name for name in parent_names)
-
-    def launch_command(
-        self,
-        path: Path,  # noqa: ARG002
-        extra_args: list[str] | None = None,
-    ) -> list[str]:
-        """Return the command to launch OpenCode."""
-        exe = self.get_executable()
-        if exe is None:
-            msg = f"{self.name} is not installed. Install from {self.install_url}"
-            raise RuntimeError(msg)
-        cmd = [exe]
-        if extra_args:
-            cmd.extend(extra_args)
-        return cmd
+    detect_env_var = "OPENCODE"
+    detect_process_name = "opencode"

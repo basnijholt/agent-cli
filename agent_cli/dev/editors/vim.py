@@ -2,10 +2,9 @@
 
 from __future__ import annotations
 
-import os
 from typing import TYPE_CHECKING
 
-from .base import Editor, _get_term_program
+from .base import Editor
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -18,16 +17,8 @@ class Vim(Editor):
     command = "vim"
     alt_commands = ("vi",)
     install_url = "https://www.vim.org"
-
-    def detect(self) -> bool:
-        """Detect if running inside Vim's terminal."""
-        # Check for Vim terminal environment
-        if os.environ.get("VIM"):
-            return True
-        if os.environ.get("VIMRUNTIME"):
-            return True
-        term_program = _get_term_program()
-        return term_program is not None and term_program.lower() == "vim"
+    detect_env_vars = ("VIM", "VIMRUNTIME")
+    detect_term_program = "vim"
 
     def open_command(self, path: Path) -> list[str]:
         """Return the command to open a directory in Vim.

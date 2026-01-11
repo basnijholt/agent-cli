@@ -2,9 +2,7 @@
 
 from __future__ import annotations
 
-import os
-
-from .base import Editor, _get_term_program
+from .base import Editor
 
 
 class Zed(Editor):
@@ -12,13 +10,6 @@ class Zed(Editor):
 
     name = "zed"
     command = "zed"
-    alt_commands = ()
     install_url = "https://zed.dev"
-
-    def detect(self) -> bool:
-        """Detect if running inside Zed's integrated terminal."""
-        term_program = _get_term_program()
-        if term_program is not None and "zed" in term_program.lower():
-            return True
-        # Zed also sets ZED_TERM
-        return os.environ.get("ZED_TERM") is not None
+    detect_env_vars = ("ZED_TERM",)
+    detect_term_program = "zed"

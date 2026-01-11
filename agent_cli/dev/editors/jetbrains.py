@@ -7,85 +7,67 @@ import os
 from .base import Editor, _get_term_program
 
 
-class IntelliJIdea(Editor):
+class _JetBrainsEditor(Editor):
+    """Base class for JetBrains IDEs with common detection logic."""
+
+    def detect(self) -> bool:
+        """Detect if running inside a JetBrains IDE's terminal.
+
+        JetBrains IDEs set TERMINAL_EMULATOR=JetBrains-JediTerm.
+        Also checks TERM_PROGRAM for the specific IDE name.
+        """
+        # Check for JetBrains terminal environment (shared across all JetBrains IDEs)
+        if os.environ.get("TERMINAL_EMULATOR") == "JetBrains-JediTerm":
+            return True
+        # Check TERM_PROGRAM for specific IDE
+        if self.detect_term_program:
+            term_program = _get_term_program()
+            if term_program and self.detect_term_program.lower() in term_program.lower():
+                return True
+        return False
+
+
+class IntelliJIdea(_JetBrainsEditor):
     """IntelliJ IDEA - The IDE for Java and other languages."""
 
     name = "idea"
     command = "idea"
-    alt_commands = ()
     install_url = "https://www.jetbrains.com/idea/"
-
-    def detect(self) -> bool:
-        """Detect if running inside IntelliJ IDEA's terminal."""
-        term_program = _get_term_program()
-        if term_program and "idea" in term_program.lower():
-            return True
-        # Check for JetBrains terminal environment
-        return os.environ.get("TERMINAL_EMULATOR") == "JetBrains-JediTerm"
+    detect_term_program = "idea"
 
 
-class PyCharm(Editor):
+class PyCharm(_JetBrainsEditor):
     """PyCharm - The Python IDE for Professional Developers."""
 
     name = "pycharm"
     command = "pycharm"
     alt_commands = ("charm",)
     install_url = "https://www.jetbrains.com/pycharm/"
-
-    def detect(self) -> bool:
-        """Detect if running inside PyCharm's terminal."""
-        term_program = _get_term_program()
-        if term_program and "pycharm" in term_program.lower():
-            return True
-        # Check for JetBrains terminal environment
-        terminal_emulator = os.environ.get("TERMINAL_EMULATOR", "")
-        return terminal_emulator == "JetBrains-JediTerm"
+    detect_term_program = "pycharm"
 
 
-class WebStorm(Editor):
+class WebStorm(_JetBrainsEditor):
     """WebStorm - The JavaScript and TypeScript IDE."""
 
     name = "webstorm"
     command = "webstorm"
-    alt_commands = ()
     install_url = "https://www.jetbrains.com/webstorm/"
-
-    def detect(self) -> bool:
-        """Detect if running inside WebStorm's terminal."""
-        term_program = _get_term_program()
-        if term_program and "webstorm" in term_program.lower():
-            return True
-        # Check for JetBrains terminal environment
-        return os.environ.get("TERMINAL_EMULATOR") == "JetBrains-JediTerm"
+    detect_term_program = "webstorm"
 
 
-class GoLand(Editor):
+class GoLand(_JetBrainsEditor):
     """GoLand - The IDE for Go developers."""
 
     name = "goland"
     command = "goland"
-    alt_commands = ()
     install_url = "https://www.jetbrains.com/go/"
-
-    def detect(self) -> bool:
-        """Detect if running inside GoLand's terminal."""
-        term_program = _get_term_program()
-        if term_program and "goland" in term_program.lower():
-            return True
-        return os.environ.get("TERMINAL_EMULATOR") == "JetBrains-JediTerm"
+    detect_term_program = "goland"
 
 
-class RustRover(Editor):
+class RustRover(_JetBrainsEditor):
     """RustRover - The IDE for Rust developers."""
 
     name = "rustrover"
     command = "rustrover"
-    alt_commands = ()
     install_url = "https://www.jetbrains.com/rust/"
-
-    def detect(self) -> bool:
-        """Detect if running inside RustRover's terminal."""
-        term_program = _get_term_program()
-        if term_program and "rustrover" in term_program.lower():
-            return True
-        return os.environ.get("TERMINAL_EMULATOR") == "JetBrains-JediTerm"
+    detect_term_program = "rustrover"

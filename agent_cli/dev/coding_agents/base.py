@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import os
 import shutil
-from abc import ABC, abstractmethod
+from abc import ABC
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -26,12 +26,30 @@ class CodingAgent(ABC):
     # URL for installation instructions
     install_url: str = ""
 
-    @abstractmethod
+    # Declarative detection: env var that indicates running inside this agent
+    # e.g., "CLAUDECODE" for Claude Code (checks if env var is set to "1")
+    detect_env_var: str | None = None
+
+    # Declarative detection: process name to look for in parent processes
+    # e.g., "aider" will match any parent process containing "aider"
+    detect_process_name: str | None = None
+
     def detect(self) -> bool:
         """Check if this agent is currently running/active in the environment.
 
-        This is used to auto-detect which agent to use when creating a new dev environment.
+        Default implementation uses declarative detection attributes.
+        Override for custom detection logic.
         """
+        # Check env var first (faster) - truthy check, not just "1"
+        if self.detect_env_var and os.environ.get(self.detect_env_var):
+            return True
+
+        # Fall back to parent process detection
+        if self.detect_process_name:
+            parent_names = _get_parent_process_names()
+            return any(self.detect_process_name in name for name in parent_names)
+
+        return False
 
     def is_available(self) -> bool:
         """Check if this agent is installed and available."""
@@ -66,6 +84,8 @@ class CodingAgent(ABC):
         exe = self.get_executable()
         if exe is None:
             msg = f"{self.name} is not installed"
+            if self.install_url:
+                msg += f". Install from {self.install_url}"
             raise RuntimeError(msg)
         cmd = [exe]
         if extra_args:

@@ -2,10 +2,9 @@
 
 from __future__ import annotations
 
-import os
 from typing import TYPE_CHECKING
 
-from .base import Editor, _get_term_program
+from .base import Editor
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -18,16 +17,8 @@ class Neovim(Editor):
     command = "nvim"
     alt_commands = ("neovim",)
     install_url = "https://neovim.io"
-
-    def detect(self) -> bool:
-        """Detect if running inside Neovim's terminal."""
-        # Check for Neovim terminal environment
-        if os.environ.get("NVIM"):
-            return True
-        if os.environ.get("NVIM_LISTEN_ADDRESS"):
-            return True
-        term_program = _get_term_program()
-        return term_program is not None and "nvim" in term_program.lower()
+    detect_env_vars = ("NVIM", "NVIM_LISTEN_ADDRESS")
+    detect_term_program = "nvim"
 
     def open_command(self, path: Path) -> list[str]:
         """Return the command to open a directory in Neovim.

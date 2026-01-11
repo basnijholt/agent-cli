@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-from .base import CodingAgent, _get_parent_process_names
+from .base import CodingAgent
 
 
 class ClaudeCode(CodingAgent):
@@ -15,16 +15,8 @@ class ClaudeCode(CodingAgent):
     command = "claude"
     alt_commands = ("claude-code",)
     install_url = "https://code.claude.com/docs/en/overview"
-
-    def detect(self) -> bool:
-        """Detect if running inside Claude Code."""
-        # Check CLAUDECODE environment variable (set by Claude Code)
-        if os.environ.get("CLAUDECODE") == "1":
-            return True
-
-        # Fallback to parent process detection
-        parent_names = _get_parent_process_names()
-        return any("claude" in name for name in parent_names)
+    detect_env_var = "CLAUDECODE"
+    detect_process_name = "claude"
 
     def get_executable(self) -> str | None:
         """Get the Claude executable path."""
@@ -35,18 +27,3 @@ class ClaudeCode(CodingAgent):
 
         # Fall back to PATH lookup
         return super().get_executable()
-
-    def launch_command(
-        self,
-        path: Path,  # noqa: ARG002
-        extra_args: list[str] | None = None,
-    ) -> list[str]:
-        """Return the command to launch Claude Code."""
-        exe = self.get_executable()
-        if exe is None:
-            msg = f"{self.name} is not installed. Install from {self.install_url}"
-            raise RuntimeError(msg)
-        cmd = [exe]
-        if extra_args:
-            cmd.extend(extra_args)
-        return cmd

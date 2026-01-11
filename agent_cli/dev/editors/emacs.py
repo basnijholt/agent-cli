@@ -2,10 +2,9 @@
 
 from __future__ import annotations
 
-import os
 from typing import TYPE_CHECKING
 
-from .base import Editor, _get_term_program
+from .base import Editor
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -18,16 +17,8 @@ class Emacs(Editor):
     command = "emacs"
     alt_commands = ("emacsclient",)
     install_url = "https://www.gnu.org/software/emacs/"
-
-    def detect(self) -> bool:
-        """Detect if running inside Emacs' terminal."""
-        # Check for Emacs terminal environment
-        if os.environ.get("INSIDE_EMACS"):
-            return True
-        if os.environ.get("EMACS"):
-            return True
-        term_program = _get_term_program()
-        return term_program is not None and "emacs" in term_program.lower()
+    detect_env_vars = ("INSIDE_EMACS", "EMACS")
+    detect_term_program = "emacs"
 
     def open_command(self, path: Path) -> list[str]:
         """Return the command to open a directory in Emacs.
