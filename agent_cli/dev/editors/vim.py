@@ -11,14 +11,23 @@ if TYPE_CHECKING:
 
 
 class Vim(Editor):
-    """Vim - The ubiquitous text editor."""
+    """Vim - The ubiquitous text editor.
+
+    Note: Vim does not have an integrated terminal in the traditional sense.
+    VIM and VIMRUNTIME env vars are used BY vim to locate runtime files,
+    NOT set to indicate running inside vim. Detection always returns False.
+
+    Evidence: https://vimdoc.sourceforge.net/htmldoc/starting.html
+    Quote: "The environment variable '$VIM' is used to locate various user
+           files for Vim" and "$VIMRUNTIME is used to locate various support
+           files, such as the on-line documentation"
+    """
 
     name = "vim"
     command = "vim"
     alt_commands = ("vi",)
     install_url = "https://www.vim.org"
-    detect_env_vars = ("VIM", "VIMRUNTIME")
-    # No detect_term_program - vim doesn't set TERM_PROGRAM (uses VIM/VIMRUNTIME)
+    # No detection - vim has no integrated terminal that sets env vars
 
     def open_command(self, path: Path) -> list[str]:
         """Return the command to open a directory in Vim.

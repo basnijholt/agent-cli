@@ -69,11 +69,17 @@ tests/dev/test_verification.py
 | Category | Total Claims | PASS | Undocumented | FAIL |
 |----------|-------------|------|--------------|------|
 | Terminals | 9 | 8 | 1 (iTerm2) | 0 |
-| Editors | 7 | 7 | 0 | 0 |
+| Editors | 11 | 11 | 0 | 0 |
 | Coding Agents | 8 | 8 | 0 | 0 |
-| **Total** | **24** | **23** | **1** | **0** |
+| **Total** | **28** | **27** | **1** | **0** |
 
-**Overall: 95.8% verified with primary sources, 4.2% community knowledge (acceptable).**
+**Overall: 96.4% verified with primary sources, 3.6% community knowledge (acceptable).**
+
+### Corrections Made
+
+- **Vim**: Removed incorrect `VIM`/`VIMRUNTIME` detection. These env vars are used BY vim to locate files, NOT to indicate running inside vim. Vim has no integrated terminal.
+- **Emacs**: Removed deprecated `EMACS` env var from detection. Only `INSIDE_EMACS` is used (deprecated in Emacs 25 per NEWS.25).
+- **Nano**: Added documentation confirming no integrated terminal (terminal-based editor).
 
 ---
 
@@ -102,8 +108,9 @@ tests/dev/test_verification.py
 |--------|-----------|--------|----------|
 | VS Code | `TERM_PROGRAM=vscode` | ✅ PASS | [code.visualstudio.com/docs/terminal/shell-integration](https://code.visualstudio.com/docs/terminal/shell-integration) |
 | Neovim | `$NVIM` env var | ✅ PASS | [neovim.io/doc/user/vvars.html](https://neovim.io/doc/user/vvars.html) |
-| Vim | `VIM`, `VIMRUNTIME` | ✅ PASS | Standard vim environment variables |
-| Emacs | `INSIDE_EMACS` | ✅ PASS | Source: [comint.el](https://github.com/emacs-mirror/emacs/blob/master/lisp/comint.el) `(format "INSIDE_EMACS=%s,comint" emacs-version)` |
+| Vim | No integrated terminal | ✅ PASS | [vimdoc.sourceforge.net](https://vimdoc.sourceforge.net/htmldoc/starting.html) - VIM/VIMRUNTIME are for locating files, NOT detection |
+| Nano | No integrated terminal | ✅ PASS | [nano-editor.org](https://www.nano-editor.org) - Terminal-based editor, no shell inside |
+| Emacs | `INSIDE_EMACS` only | ✅ PASS | Source: [comint.el](https://github.com/emacs-mirror/emacs/blob/master/lisp/comint.el). Note: `EMACS` env var deprecated in [Emacs 25](https://github.com/emacs-mirror/emacs/blob/master/etc/NEWS.25) |
 | JetBrains | `TERMINAL_EMULATOR=JetBrains-JediTerm` | ✅ PASS | [GitHub jediterm#253](https://github.com/JetBrains/jediterm/issues/253) - JetBrains contributor confirmed |
 | Zed | `ZED_TERM=true` | ✅ PASS | Source: [terminal.rs](https://github.com/zed-industries/zed/blob/main/crates/terminal/src/terminal.rs) `env.insert("ZED_TERM".to_string(), "true".to_string())` |
 | Zed | `TERM_PROGRAM=Zed` | ✅ PASS | Source: terminal.rs, added in v0.145.0 |
@@ -116,14 +123,16 @@ tests/dev/test_verification.py
 
 | Agent | Detection | Status | Evidence |
 |-------|-----------|--------|----------|
-| Claude Code | `CLAUDECODE=1` | ✅ PASS | Live test: `env \| grep CLAUDE` inside Claude Code session |
-| OpenCode | `OPENCODE=1` | ✅ PASS | [GitHub PR #1780](https://github.com/sst/opencode/pull/1780) merged 2025-08-11 |
-| Cursor Agent | `CURSOR_AGENT` | ✅ PASS | [cursor.com/docs/agent/terminal](https://cursor.com/docs/agent/terminal) |
+| Claude Code | `CLAUDECODE=1` env var | ✅ PASS | Live test: `env \| grep CLAUDE` inside Claude Code session |
+| OpenCode | `OPENCODE=1` env var | ✅ PASS | [GitHub PR #1780](https://github.com/sst/opencode/pull/1780) merged 2025-08-11 |
+| Cursor Agent | `CURSOR_AGENT` env var | ✅ PASS | [cursor.com/docs/agent/terminal](https://cursor.com/docs/agent/terminal) |
 | Aider | Parent process only | ✅ PASS | No env var - `aider --help` shows only config vars (AIDER_MODEL, etc.) |
-| Codex | `@openai/codex` npm | ✅ PASS | [npmjs.com/package/@openai/codex](https://www.npmjs.com/package/@openai/codex) |
-| Gemini | `@google/gemini-cli` npm | ✅ PASS | [npmjs.com/package/@google/gemini-cli](https://www.npmjs.com/package/@google/gemini-cli) |
-| Copilot | `@github/copilot` npm | ✅ PASS | [npmjs.com/package/@github/copilot](https://www.npmjs.com/package/@github/copilot) (NOT @github/copilot-cli) |
-| Continue Dev | `@continuedev/cli` npm, command `cn` | ✅ PASS | [npmjs.com/package/@continuedev/cli](https://www.npmjs.com/package/@continuedev/cli) |
+| Codex | Parent process only | ✅ PASS | No documented env var. Install: [npmjs.com/package/@openai/codex](https://www.npmjs.com/package/@openai/codex) |
+| Gemini | Parent process only | ✅ PASS | No documented env var. Install: [npmjs.com/package/@google/gemini-cli](https://www.npmjs.com/package/@google/gemini-cli) |
+| Copilot | Parent process only | ✅ PASS | No documented env var. Install: [npmjs.com/package/@github/copilot](https://www.npmjs.com/package/@github/copilot) |
+| Continue Dev | Parent process only | ✅ PASS | No documented env var. Install: [npmjs.com/package/@continuedev/cli](https://www.npmjs.com/package/@continuedev/cli), command `cn` |
+
+**Note on Parent Process Detection**: For agents without env vars, we detect by checking if any parent process name contains the agent name (e.g., "aider", "codex"). This is an implementation design decision, documented in `tests/dev/test_verification.py::test_parent_process_detection_rationale`.
 
 ---
 
@@ -131,18 +140,26 @@ tests/dev/test_verification.py
 
 All previous TODOs have been addressed:
 
+**Terminals:**
 - [x] Tmux: Evidence documented in `tests/dev/test_verification.py`
 - [x] Zellij: `--cwd`, `--name`, `write 10` documented with `--help` evidence
 - [x] Kitty: `KITTY_WINDOW_ID` and `TERM=xterm-kitty` documented with official sources
 - [x] GNOME Terminal: Source code evidence added (terminal-defines.hh, terminal-screen.cc)
 - [x] iTerm2: Marked as community knowledge (acceptable)
 - [x] Warp: Official docs evidence added
+
+**Editors:**
 - [x] Zed: Source code evidence added (terminal.rs)
 - [x] Neovim: Official vvars docs evidence added
-- [x] Emacs: Source code evidence added (comint.el) - URL fixed from broken GNU docs
+- [x] Emacs: Source code evidence added (comint.el), deprecated `EMACS` env var removed
+- [x] Vim: Corrected - VIM/VIMRUNTIME removed (NOT detection vars, vim has no integrated terminal)
+- [x] Nano: Documented as having no integrated terminal
 - [x] Sublime Text: Documented as having no integrated terminal
 - [x] JetBrains: GitHub issue with JetBrains contributor confirmation
+
+**Coding Agents:**
 - [x] Claude Code: Live test evidence documented
 - [x] OpenCode: GitHub PR evidence added
 - [x] Cursor Agent: Official docs evidence added
+- [x] Parent-process detection: Rationale documented for Aider, Codex, Gemini, Copilot, Continue Dev
 - [x] All npm packages: Verified against npmjs.com

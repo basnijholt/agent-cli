@@ -11,14 +11,23 @@ if TYPE_CHECKING:
 
 
 class Emacs(Editor):
-    """Emacs - An extensible, customizable text editor."""
+    """Emacs - An extensible, customizable text editor.
+
+    Detection via INSIDE_EMACS only. The legacy EMACS env var is deprecated.
+
+    Evidence: https://github.com/emacs-mirror/emacs/blob/master/etc/NEWS.25
+    Quote: "'M-x shell' and 'M-x compile' no longer set the EMACS environment
+           variable. This avoids clashing when other programs use the variable
+           for other purposes. [...] Use the INSIDE_EMACS environment variable
+           instead."
+    """
 
     name = "emacs"
     command = "emacs"
     alt_commands = ("emacsclient",)
     install_url = "https://www.gnu.org/software/emacs/"
-    detect_env_vars = ("INSIDE_EMACS", "EMACS")
-    # No detect_term_program - Emacs doesn't set TERM_PROGRAM (uses INSIDE_EMACS)
+    detect_env_vars = ("INSIDE_EMACS",)  # EMACS is deprecated since Emacs 25
+    # No detect_term_program - Emacs doesn't set TERM_PROGRAM
 
     def open_command(self, path: Path) -> list[str]:
         """Return the command to open a directory in Emacs.

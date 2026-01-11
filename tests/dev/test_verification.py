@@ -27,6 +27,7 @@ from agent_cli.dev.coding_agents.opencode import OpenCode
 from agent_cli.dev.editors.cursor import Cursor
 from agent_cli.dev.editors.emacs import Emacs
 from agent_cli.dev.editors.jetbrains import PyCharm
+from agent_cli.dev.editors.nano import Nano
 from agent_cli.dev.editors.neovim import Neovim
 from agent_cli.dev.editors.sublime import SublimeText
 from agent_cli.dev.editors.vim import Vim
@@ -373,6 +374,67 @@ class TestEditorDetection:
         assert "sublime_text" in editor.alt_commands
         assert "sublime" in editor.alt_commands
 
+    def test_vim_no_integrated_terminal(self) -> None:
+        """Vim has NO integrated terminal - VIM/VIMRUNTIME are NOT detection vars.
+
+        Evidence:
+            Source: Vim documentation
+            URL: https://vimdoc.sourceforge.net/htmldoc/starting.html
+            Quote: "The environment variable '$VIM' is used to locate various
+                   user files for Vim" and "$VIMRUNTIME is used to locate
+                   various support files, such as the on-line documentation"
+
+            Critical: VIM and VIMRUNTIME are used BY vim to find files,
+            NOT set to indicate running inside vim. Vim does not have an
+            integrated terminal like VS Code or Emacs.
+
+            Verified: 2026-01-11 via official vim documentation
+        """
+        editor = Vim()
+        # Vim should have no detect_env_vars since it has no integrated terminal
+        assert not hasattr(editor, "detect_env_vars") or not editor.detect_env_vars
+        # Detection should always return False
+        assert editor.detect() is False
+
+    def test_nano_no_integrated_terminal(self) -> None:
+        """Nano has NO integrated terminal - it's a simple terminal text editor.
+
+        Evidence:
+            Source: Nano official website and documentation
+            URL: https://www.nano-editor.org
+            Finding: Nano is a terminal-based editor, not an IDE with integrated
+                    terminal. It has no detection mechanism because you can't
+                    run a shell inside nano.
+
+            Verified: 2026-01-11 via official nano documentation
+        """
+        editor = Nano()
+        # Nano should have no detect_env_vars
+        assert not hasattr(editor, "detect_env_vars") or not editor.detect_env_vars
+        # Detection should always return False
+        assert editor.detect() is False
+
+    def test_emacs_deprecated_emacs_env_var(self) -> None:
+        """The EMACS env var is DEPRECATED - use INSIDE_EMACS instead.
+
+        Evidence:
+            Source: Emacs NEWS.25
+            URL: https://github.com/emacs-mirror/emacs/blob/master/etc/NEWS.25
+            Quote: "'M-x shell' and 'M-x compile' no longer set the EMACS
+                   environment variable. This avoids clashing when other
+                   programs use the variable for other purposes. [...]
+                   Use the INSIDE_EMACS environment variable instead."
+
+            Important: The EMACS env var conflicted with other programs.
+            Only INSIDE_EMACS should be used for detection.
+
+            Verified: 2026-01-11 via Emacs NEWS.25
+        """
+        editor = Emacs()
+        # Only INSIDE_EMACS should be in detect_env_vars, not EMACS
+        assert "INSIDE_EMACS" in editor.detect_env_vars
+        assert "EMACS" not in editor.detect_env_vars
+
 
 class TestEditorCommands:
     """Tests for editor open command syntax."""
@@ -528,6 +590,47 @@ class TestCodingAgentDetection:
             return_value=["bash", "aider", "zsh"],
         ):
             assert agent.detect() is True
+
+    def test_parent_process_detection_rationale(self) -> None:
+        """Agents without env vars use parent process detection as fallback.
+
+        Evidence:
+            Source: Implementation design decision
+            Reason: Not all AI coding agents set environment variables.
+                   For agents that don't (Codex, Gemini, Copilot, Aider,
+                   Continue Dev), we fall back to checking parent process names.
+
+            Rationale:
+            - Primary detection: Environment variables (fast, reliable)
+            - Fallback detection: Parent process name matching (works universally)
+
+            Agents using parent-process detection only:
+            - Aider: No env var, `aider --help` shows only config vars
+            - Codex: No documented env var
+            - Gemini: No documented env var
+            - Copilot: No documented env var
+
+            Agents using env var detection:
+            - Claude Code: CLAUDECODE=1 (live tested)
+            - OpenCode: OPENCODE=1 (GitHub PR #1780)
+            - Cursor Agent: CURSOR_AGENT (official docs)
+
+            Verified: 2026-01-11 via code review and documentation audit
+        """
+        # Verify Codex uses parent process detection
+        codex = Codex()
+        assert codex.detect_env_var is None
+        assert codex.detect_process_name == "codex"
+
+        # Verify Gemini uses parent process detection
+        gemini = Gemini()
+        assert gemini.detect_env_var is None
+        assert gemini.detect_process_name == "gemini"
+
+        # Verify Copilot uses parent process detection
+        copilot = Copilot()
+        assert copilot.detect_env_var is None
+        assert copilot.detect_process_name == "copilot"
 
 
 class TestCodingAgentInstallCommands:
