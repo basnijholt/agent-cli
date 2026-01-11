@@ -68,12 +68,12 @@ tests/dev/test_verification.py
 
 | Category | Total Claims | PASS | Undocumented | FAIL |
 |----------|-------------|------|--------------|------|
-| Terminals | 9 | 8 | 1 (iTerm2) | 0 |
-| Editors | 11 | 11 | 0 | 0 |
-| Coding Agents | 8 | 8 | 0 | 0 |
-| **Total** | **28** | **27** | **1** | **0** |
+| Terminals | 12 | 9 | 2 (iTerm2) | 1 |
+| Editors | 10 | 8 | 1 (JetBrains) | 1 |
+| Coding Agents | 8 | 3 | 0 | 5 |
+| **Total** | **30** | **20** | **3** | **7** |
 
-**Overall: 96.4% verified with primary sources, 3.6% community knowledge (acceptable).**
+**Overall: 66.7% verified with primary sources, 10.0% community knowledge, 23.3% unverified.**
 
 ### Corrections Made
 
@@ -91,7 +91,7 @@ tests/dev/test_verification.py
 | Tmux | `-c`, `-n` flags | ✅ PASS | `man tmux`: `new-window [-c start-directory] [-n window-name]` |
 | Zellij | `ZELLIJ=0` | ✅ PASS | [zellij.dev/documentation/integration.html](https://zellij.dev/documentation/integration.html) |
 | Zellij | `--cwd`, `--name` | ✅ PASS | `zellij action new-tab --help` |
-| Kitty | `KITTY_WINDOW_ID` | ✅ PASS | [sw.kovidgoyal.net/kitty/remote-control](https://sw.kovidgoyal.net/kitty/remote-control/) |
+| Kitty | `KITTY_WINDOW_ID` | ❌ FAIL | Unverified: test cites `kitten @ launch --help`, which does not document this env var |
 | Kitty | `TERM=xterm-kitty` | ✅ PASS | [sw.kovidgoyal.net/kitty/faq](https://sw.kovidgoyal.net/kitty/faq/) |
 | Kitty | `--type`, `--cwd`, `--tab-title` | ✅ PASS | `kitten @ launch --help` |
 | GNOME Terminal | `GNOME_TERMINAL_SERVICE` | ✅ PASS | Source: [terminal-defines.hh](https://gitlab.gnome.org/GNOME/gnome-terminal/-/blob/master/src/terminal-defines.hh) `#define TERMINAL_ENV_SERVICE_NAME "GNOME_TERMINAL_SERVICE"`, [terminal-screen.cc](https://gitlab.gnome.org/GNOME/gnome-terminal/-/blob/master/src/terminal-screen.cc) sets via `g_hash_table_replace` |
@@ -111,9 +111,9 @@ tests/dev/test_verification.py
 | Vim | No integrated terminal | ✅ PASS | [vimdoc.sourceforge.net](https://vimdoc.sourceforge.net/htmldoc/starting.html) - VIM/VIMRUNTIME are for locating files, NOT detection |
 | Nano | No integrated terminal | ✅ PASS | [nano-editor.org](https://www.nano-editor.org) - Terminal-based editor, no shell inside |
 | Emacs | `INSIDE_EMACS` only | ✅ PASS | Source: [comint.el](https://github.com/emacs-mirror/emacs/blob/master/lisp/comint.el). Note: `EMACS` env var deprecated in [Emacs 25](https://github.com/emacs-mirror/emacs/blob/master/etc/NEWS.25) |
-| JetBrains | `TERMINAL_EMULATOR=JetBrains-JediTerm` | ✅ PASS | [GitHub jediterm#253](https://github.com/JetBrains/jediterm/issues/253) - JetBrains contributor confirmed |
+| JetBrains | `TERMINAL_EMULATOR=JetBrains-JediTerm` | ⚠️ UNDOCUMENTED | [GitHub jediterm#253](https://github.com/JetBrains/jediterm/issues/253) (community knowledge) |
 | Zed | `ZED_TERM=true` | ✅ PASS | Source: [terminal.rs](https://github.com/zed-industries/zed/blob/main/crates/terminal/src/terminal.rs) `env.insert("ZED_TERM".to_string(), "true".to_string())` |
-| Zed | `TERM_PROGRAM=Zed` | ✅ PASS | Source: terminal.rs, added in v0.145.0 |
+| Zed | `TERM_PROGRAM=Zed` | ❌ FAIL | Mentioned in tests without URL/quote; needs PR #14213 link or source snippet |
 | Cursor | `CURSOR_AGENT` | ✅ PASS | [cursor.com/docs/agent/terminal](https://cursor.com/docs/agent/terminal) |
 | Sublime Text | No integrated terminal | ✅ PASS | [sublimetext.com/docs/command_line.html](https://www.sublimetext.com/docs/command_line.html) - CLI only |
 
@@ -126,40 +126,25 @@ tests/dev/test_verification.py
 | Claude Code | `CLAUDECODE=1` env var | ✅ PASS | Live test: `env \| grep CLAUDE` inside Claude Code session |
 | OpenCode | `OPENCODE=1` env var | ✅ PASS | [GitHub PR #1780](https://github.com/sst/opencode/pull/1780) merged 2025-08-11 |
 | Cursor Agent | `CURSOR_AGENT` env var | ✅ PASS | [cursor.com/docs/agent/terminal](https://cursor.com/docs/agent/terminal) |
-| Aider | Parent process only | ✅ PASS | No env var - `aider --help` shows only config vars (AIDER_MODEL, etc.) |
-| Codex | Parent process only | ✅ PASS | No documented env var. Install: [npmjs.com/package/@openai/codex](https://www.npmjs.com/package/@openai/codex) |
-| Gemini | Parent process only | ✅ PASS | No documented env var. Install: [npmjs.com/package/@google/gemini-cli](https://www.npmjs.com/package/@google/gemini-cli) |
-| Copilot | Parent process only | ✅ PASS | No documented env var. Install: [npmjs.com/package/@github/copilot](https://www.npmjs.com/package/@github/copilot) |
-| Continue Dev | Parent process only | ✅ PASS | No documented env var. Install: [npmjs.com/package/@continuedev/cli](https://www.npmjs.com/package/@continuedev/cli), command `cn` |
+| Aider | Parent process only | ❌ FAIL | No env var - `aider --help` shows only config vars; process-name detection is an implementation decision |
+| Codex | Parent process only | ❌ FAIL | No documented env var; process-name detection unverified (install: [npmjs.com/package/@openai/codex](https://www.npmjs.com/package/@openai/codex)) |
+| Gemini | Parent process only | ❌ FAIL | No documented env var; process-name detection unverified (install: [npmjs.com/package/@google/gemini-cli](https://www.npmjs.com/package/@google/gemini-cli)) |
+| Copilot | Parent process only | ❌ FAIL | No documented env var; process-name detection unverified (install: [npmjs.com/package/@github/copilot](https://www.npmjs.com/package/@github/copilot)) |
+| Continue Dev | Parent process only | ❌ FAIL | No documented env var; process-name detection unverified (install: [npmjs.com/package/@continuedev/cli](https://www.npmjs.com/package/@continuedev/cli), command `cn`) |
 
-**Note on Parent Process Detection**: For agents without env vars, we detect by checking if any parent process name contains the agent name (e.g., "aider", "codex"). This is an implementation design decision, documented in `tests/dev/test_verification.py::test_parent_process_detection_rationale`.
+**Note on Parent Process Detection**: For agents without env vars, we currently detect by checking if any parent process name contains the agent name (e.g., "aider", "codex"). This is an implementation decision (see `tests/dev/test_verification.py::test_parent_process_detection_rationale`), not backed by external evidence of process naming, so treat these detections as ❌ until verified.
 
 ---
 
-### Resolved TODOs
-
-All previous TODOs have been addressed:
+### Outstanding TODOs
 
 **Terminals:**
-- [x] Tmux: Evidence documented in `tests/dev/test_verification.py`
-- [x] Zellij: `--cwd`, `--name`, `write 10` documented with `--help` evidence
-- [x] Kitty: `KITTY_WINDOW_ID` and `TERM=xterm-kitty` documented with official sources
-- [x] GNOME Terminal: Source code evidence added (terminal-defines.hh, terminal-screen.cc)
-- [x] iTerm2: Marked as community knowledge (acceptable)
-- [x] Warp: Official docs evidence added
+- [ ] Kitty: find primary evidence for `KITTY_WINDOW_ID` (docs or source) or remove detection
+- [ ] iTerm2: if possible, locate primary docs for `ITERM_SESSION_ID`/`TERM_PROGRAM` (currently community knowledge)
 
 **Editors:**
-- [x] Zed: Source code evidence added (terminal.rs)
-- [x] Neovim: Official vvars docs evidence added
-- [x] Emacs: Source code evidence added (comint.el), deprecated `EMACS` env var removed
-- [x] Vim: Corrected - VIM/VIMRUNTIME removed (NOT detection vars, vim has no integrated terminal)
-- [x] Nano: Documented as having no integrated terminal
-- [x] Sublime Text: Documented as having no integrated terminal
-- [x] JetBrains: GitHub issue with JetBrains contributor confirmation
+- [ ] JetBrains: replace GitHub issue evidence with primary docs or keep flagged as community knowledge
+- [ ] Zed: add primary evidence for `TERM_PROGRAM=Zed` (PR #14213 link or source snippet)
 
 **Coding Agents:**
-- [x] Claude Code: Live test evidence documented
-- [x] OpenCode: GitHub PR evidence added
-- [x] Cursor Agent: Official docs evidence added
-- [x] Parent-process detection: Rationale documented for Aider, Codex, Gemini, Copilot, Continue Dev
-- [x] All npm packages: Verified against npmjs.com
+- [ ] Parent-process detection (Aider/Codex/Gemini/Copilot/Continue Dev): find external evidence for process names or treat as unverified assumptions
