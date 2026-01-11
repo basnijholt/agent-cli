@@ -40,8 +40,8 @@ class CodingAgent(ABC):
         Default implementation uses declarative detection attributes.
         Override for custom detection logic.
         """
-        # Check env var first (faster) - truthy check, not just "1"
-        if self.detect_env_var and os.environ.get(self.detect_env_var):
+        # Check env var first (faster) - checks for "1" specifically
+        if self.detect_env_var and os.environ.get(self.detect_env_var) == "1":
             return True
 
         # Fall back to parent process detection
