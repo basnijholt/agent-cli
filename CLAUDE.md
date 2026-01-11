@@ -13,7 +13,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Use `git add <specific-file>` not `git add .`
 - CLI help in README.md is auto-generated - don't edit manually
 - Keep CLI startup fast (<300ms) - use top-level imports by default, only use lazy imports when a heavy dependency actually causes slowdown
-- External library assumptions must be backed by evidence (official docs, man pages, source code). Document evidence in test docstrings that also verify the implementation.
+- External library assumptions (especially in `dev` command for terminals/editors/agents) must be backed by evidence (official docs, man pages, source code). Document evidence in test docstrings that also verify the implementation.
 
 ## Build & Development Commands
 
