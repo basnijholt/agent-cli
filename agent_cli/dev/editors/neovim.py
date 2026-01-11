@@ -17,7 +17,7 @@ class Neovim(Editor):
     command = "nvim"
     alt_commands = ("neovim",)
     install_url = "https://neovim.io"
-    detect_env_vars = ("NVIM", "NVIM_LISTEN_ADDRESS")
+    detect_env_vars = ("NVIM",)
     # No detect_term_program - Neovim doesn't set TERM_PROGRAM (uses $NVIM)
 
     def open_command(self, path: Path) -> list[str]:

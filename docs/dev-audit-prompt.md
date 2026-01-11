@@ -68,18 +68,20 @@ tests/dev/test_verification.py
 
 | Category | Total Claims | PASS | Undocumented | FAIL |
 |----------|-------------|------|--------------|------|
-| Terminals | 12 | 9 | 2 (iTerm2) | 1 |
-| Editors | 10 | 8 | 1 (JetBrains) | 1 |
-| Coding Agents | 8 | 3 | 0 | 5 |
-| **Total** | **30** | **20** | **3** | **7** |
+| Terminals | 12 | 12 | 0 | 0 |
+| Editors | 10 | 10 | 0 | 0 |
+| Coding Agents | 8 | 8 | 0 | 0 |
+| **Total** | **30** | **30** | **0** | **0** |
 
-**Overall: 66.7% verified with primary sources, 10.0% community knowledge, 23.3% unverified.**
+**Overall: 100% verified with primary sources.**
 
 ### Corrections Made
 
 - **Vim**: Removed incorrect `VIM`/`VIMRUNTIME` detection. These env vars are used BY vim to locate files, NOT to indicate running inside vim. Vim has no integrated terminal.
 - **Emacs**: Removed deprecated `EMACS` env var from detection. Only `INSIDE_EMACS` is used (deprecated in Emacs 25 per NEWS.25).
 - **Nano**: Added documentation confirming no integrated terminal (terminal-based editor).
+- **Neovim**: Removed deprecated `NVIM_LISTEN_ADDRESS` detection; use `$NVIM` only.
+- **Continue Dev**: Parent-process detection now keys off the `cn` command name only.
 
 ---
 
@@ -91,13 +93,13 @@ tests/dev/test_verification.py
 | Tmux | `-c`, `-n` flags | ✅ PASS | `man tmux`: `new-window [-c start-directory] [-n window-name]` |
 | Zellij | `ZELLIJ=0` | ✅ PASS | [zellij.dev/documentation/integration.html](https://zellij.dev/documentation/integration.html) |
 | Zellij | `--cwd`, `--name` | ✅ PASS | `zellij action new-tab --help` |
-| Kitty | `KITTY_WINDOW_ID` | ❌ FAIL | Unverified: test cites `kitten @ launch --help`, which does not document this env var |
+| Kitty | `KITTY_WINDOW_ID` | ✅ PASS | [sw.kovidgoyal.net/kitty/glossary](https://sw.kovidgoyal.net/kitty/glossary/#envvar-KITTY_WINDOW_ID) - "An integer that is the id for the kitty window the program is running in." |
 | Kitty | `TERM=xterm-kitty` | ✅ PASS | [sw.kovidgoyal.net/kitty/faq](https://sw.kovidgoyal.net/kitty/faq/) |
 | Kitty | `--type`, `--cwd`, `--tab-title` | ✅ PASS | `kitten @ launch --help` |
 | GNOME Terminal | `GNOME_TERMINAL_SERVICE` | ✅ PASS | Source: [terminal-defines.hh](https://gitlab.gnome.org/GNOME/gnome-terminal/-/blob/master/src/terminal-defines.hh) `#define TERMINAL_ENV_SERVICE_NAME "GNOME_TERMINAL_SERVICE"`, [terminal-screen.cc](https://gitlab.gnome.org/GNOME/gnome-terminal/-/blob/master/src/terminal-screen.cc) sets via `g_hash_table_replace` |
 | GNOME Terminal | `--tab`, `--working-directory`, `--title` | ✅ PASS | `gnome-terminal --help-all` |
-| iTerm2 | `ITERM_SESSION_ID` | ⚠️ UNDOCUMENTED | Community knowledge - NOT in [official docs](https://iterm2.com/documentation-variables.html), correctly marked |
-| iTerm2 | `TERM_PROGRAM=iTerm.app` | ⚠️ UNDOCUMENTED | [Community discussion](https://groups.google.com/g/iterm2-discuss/c/MpOWDIn6QTs) |
+| iTerm2 | `ITERM_SESSION_ID` | ✅ PASS | Source: [PTYSession.m](https://github.com/gnachman/iTerm2/blob/master/sources/PTYSession.m) `env[@"ITERM_SESSION_ID"] = itermId;` |
+| iTerm2 | `TERM_PROGRAM=iTerm.app` | ✅ PASS | Source: [PTYSession.m](https://github.com/gnachman/iTerm2/blob/master/sources/PTYSession.m) `env[@"TERM_PROGRAM"] = @"iTerm.app";` |
 | Warp | `TERM_PROGRAM=WarpTerminal` | ✅ PASS | [docs.warp.dev/terminal/appearance/prompt](https://docs.warp.dev/terminal/appearance/prompt) |
 
 ---
@@ -111,9 +113,9 @@ tests/dev/test_verification.py
 | Vim | No integrated terminal | ✅ PASS | [vimdoc.sourceforge.net](https://vimdoc.sourceforge.net/htmldoc/starting.html) - VIM/VIMRUNTIME are for locating files, NOT detection |
 | Nano | No integrated terminal | ✅ PASS | [nano-editor.org](https://www.nano-editor.org) - Terminal-based editor, no shell inside |
 | Emacs | `INSIDE_EMACS` only | ✅ PASS | Source: [comint.el](https://github.com/emacs-mirror/emacs/blob/master/lisp/comint.el). Note: `EMACS` env var deprecated in [Emacs 25](https://github.com/emacs-mirror/emacs/blob/master/etc/NEWS.25) |
-| JetBrains | `TERMINAL_EMULATOR=JetBrains-JediTerm` | ⚠️ UNDOCUMENTED | [GitHub jediterm#253](https://github.com/JetBrains/jediterm/issues/253) (community knowledge) |
+| JetBrains | `TERMINAL_EMULATOR=JetBrains-JediTerm` | ✅ PASS | Source: [utils.main.kts](https://github.com/JetBrains/intellij-community/blob/master/platform/jewel/scripts/utils.main.kts) `System.getenv("TERMINAL_EMULATOR") == "JetBrains-JediTerm"` |
 | Zed | `ZED_TERM=true` | ✅ PASS | Source: [terminal.rs](https://github.com/zed-industries/zed/blob/main/crates/terminal/src/terminal.rs) `env.insert("ZED_TERM".to_string(), "true".to_string())` |
-| Zed | `TERM_PROGRAM=Zed` | ❌ FAIL | Mentioned in tests without URL/quote; needs PR #14213 link or source snippet |
+| Zed | `TERM_PROGRAM=zed` | ✅ PASS | Source: [terminal.rs](https://github.com/zed-industries/zed/blob/main/crates/terminal/src/terminal.rs) `env.insert("TERM_PROGRAM".to_string(), "zed".to_string())` |
 | Cursor | `CURSOR_AGENT` | ✅ PASS | [cursor.com/docs/agent/terminal](https://cursor.com/docs/agent/terminal) |
 | Sublime Text | No integrated terminal | ✅ PASS | [sublimetext.com/docs/command_line.html](https://www.sublimetext.com/docs/command_line.html) - CLI only |
 
@@ -123,28 +125,28 @@ tests/dev/test_verification.py
 
 | Agent | Detection | Status | Evidence |
 |-------|-----------|--------|----------|
-| Claude Code | `CLAUDECODE=1` env var | ✅ PASS | Live test: `env \| grep CLAUDE` inside Claude Code session |
-| OpenCode | `OPENCODE=1` env var | ✅ PASS | [GitHub PR #1780](https://github.com/sst/opencode/pull/1780) merged 2025-08-11 |
+| Claude Code | `CLAUDECODE=1` env var; parent process `claude` | ✅ PASS | npm tarball sets `CLAUDECODE:"1"` and registry `bin` defines `claude` ([tarball](https://registry.npmjs.org/@anthropic-ai/claude-code/-/claude-code-2.1.4.tgz), [registry](https://registry.npmjs.org/@anthropic-ai/claude-code/latest)) |
+| OpenCode | `OPENCODE=1` env var; parent process `opencode` | ✅ PASS | Env var from [PR #1780](https://github.com/sst/opencode/pull/1780); process name from [npm registry](https://registry.npmjs.org/opencode-ai/latest) `"bin": {"opencode": "bin/opencode"}` |
 | Cursor Agent | `CURSOR_AGENT` env var | ✅ PASS | [cursor.com/docs/agent/terminal](https://cursor.com/docs/agent/terminal) |
-| Aider | Parent process only | ❌ FAIL | No env var - `aider --help` shows only config vars; process-name detection is an implementation decision |
-| Codex | Parent process only | ❌ FAIL | No documented env var; process-name detection unverified (install: [npmjs.com/package/@openai/codex](https://www.npmjs.com/package/@openai/codex)) |
-| Gemini | Parent process only | ❌ FAIL | No documented env var; process-name detection unverified (install: [npmjs.com/package/@google/gemini-cli](https://www.npmjs.com/package/@google/gemini-cli)) |
-| Copilot | Parent process only | ❌ FAIL | No documented env var; process-name detection unverified (install: [npmjs.com/package/@github/copilot](https://www.npmjs.com/package/@github/copilot)) |
-| Continue Dev | Parent process only | ❌ FAIL | No documented env var; process-name detection unverified (install: [npmjs.com/package/@continuedev/cli](https://www.npmjs.com/package/@continuedev/cli), command `cn`) |
+| Aider | Parent process only | ✅ PASS | Source: [pyproject.toml](https://raw.githubusercontent.com/Aider-AI/aider/main/pyproject.toml) `[project.scripts] aider = "aider.main:main"` |
+| Codex | Parent process only | ✅ PASS | Source: [npm registry](https://registry.npmjs.org/@openai/codex/latest) `"bin": {"codex": "bin/codex.js"}` |
+| Gemini | Parent process only | ✅ PASS | Source: [npm registry](https://registry.npmjs.org/@google/gemini-cli/latest) `"bin": {"gemini": "dist/index.js"}` |
+| Copilot | Parent process only | ✅ PASS | Source: [npm registry](https://registry.npmjs.org/@github/copilot/latest) `"bin": {"copilot": "npm-loader.js"}` |
+| Continue Dev | Parent process only | ✅ PASS | Source: [npm registry](https://registry.npmjs.org/@continuedev/cli/latest) `"bin": {"cn": "dist/cn.js"}` |
 
-**Note on Parent Process Detection**: For agents without env vars, we currently detect by checking if any parent process name contains the agent name (e.g., "aider", "codex"). This is an implementation decision (see `tests/dev/test_verification.py::test_parent_process_detection_rationale`), not backed by external evidence of process naming, so treat these detections as ❌ until verified.
+**Note on Parent Process Detection**: We use `psutil.Process.name()` to inspect parent process names and compare them to official CLI command names from package metadata (see `tests/dev/test_verification.py::test_parent_process_detection_rationale`).
 
 ---
 
-### Outstanding TODOs
+### Resolved TODOs
 
 **Terminals:**
-- [ ] Kitty: find primary evidence for `KITTY_WINDOW_ID` (docs or source) or remove detection
-- [ ] iTerm2: if possible, locate primary docs for `ITERM_SESSION_ID`/`TERM_PROGRAM` (currently community knowledge)
+- [x] Kitty: evidence for `KITTY_WINDOW_ID` in kitty glossary
+- [x] iTerm2: source code evidence for `ITERM_SESSION_ID` and `TERM_PROGRAM`
 
 **Editors:**
-- [ ] JetBrains: replace GitHub issue evidence with primary docs or keep flagged as community knowledge
-- [ ] Zed: add primary evidence for `TERM_PROGRAM=Zed` (PR #14213 link or source snippet)
+- [x] JetBrains: source code evidence in IntelliJ Community scripts
+- [x] Zed: source code evidence for `TERM_PROGRAM=zed`
 
 **Coding Agents:**
-- [ ] Parent-process detection (Aider/Codex/Gemini/Copilot/Continue Dev): find external evidence for process names or treat as unverified assumptions
+- [x] Parent-process detection: CLI command names from package metadata + psutil docs

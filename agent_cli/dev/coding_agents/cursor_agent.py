@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 from typing import TYPE_CHECKING
 
-from .base import CodingAgent, _get_parent_process_names
+from .base import CodingAgent
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -24,10 +24,7 @@ class CursorAgent(CodingAgent):
 
         CURSOR_AGENT uses presence check (not == "1"), so custom detection needed.
         """
-        if os.environ.get("CURSOR_AGENT"):
-            return True
-        parent_names = _get_parent_process_names()
-        return any("cursor-agent" in name for name in parent_names)
+        return os.environ.get("CURSOR_AGENT") is not None
 
     def launch_command(
         self,

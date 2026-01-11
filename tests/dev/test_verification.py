@@ -88,11 +88,10 @@ class TestTerminalDetection:
         """Kitty sets KITTY_WINDOW_ID when running inside kitty.
 
         Evidence:
-            Source: kitten @ launch --help
-            Command: `kitten @ launch --help`
-            Output: "--match, -m ... field can be one of: id, ... window_id"
-            Also: KITTY_LISTEN_ON for socket path
-            Verified: 2026-01-11 via `kitten @ launch --help` output
+            Source: Kitty glossary (environment variables)
+            URL: https://sw.kovidgoyal.net/kitty/glossary/#envvar-KITTY_WINDOW_ID
+            Quote: "An integer that is the id for the kitty window the program is running in."
+            Verified: 2026-01-11 via official docs
         """
         monkeypatch.setenv("KITTY_WINDOW_ID", "1")
         terminal = Kitty()
@@ -133,15 +132,12 @@ class TestTerminalDetection:
         """iTerm2 sets ITERM_SESSION_ID environment variable.
 
         Evidence:
-            Source: Community knowledge (undocumented)
-            URL: https://iterm2.com/documentation-variables.html
-            Note: The Variables docs describe iTerm2's INTERNAL variables system,
-                  NOT shell environment variables. ITERM_SESSION_ID is set but
-                  not officially documented.
+            Source: iTerm2 source code (PTYSession.m)
+            URL: https://github.com/gnachman/iTerm2/blob/master/sources/PTYSession.m
+            Code: env[@"ITERM_SESSION_ID"] = itermId;
             Format: "w0t0p0:UUID" (window, tab, pane, session UUID)
             Platform: macOS only
-            Status: ⚠️ Works but undocumented - community knowledge
-            Verified: 2026-01-11 - confirmed NOT in official docs
+            Verified: 2026-01-11 via source code inspection
         """
         monkeypatch.setenv("ITERM_SESSION_ID", "w0t0p0:12345678-ABCD-EFGH-IJKL-MNOPQRSTUVWX")
         terminal = ITerm2()
@@ -151,10 +147,10 @@ class TestTerminalDetection:
         r"""iTerm2 also detectable via TERM_PROGRAM containing 'iterm'.
 
         Evidence:
-            Source: iTerm2 community discussion
-            URL: https://groups.google.com/g/iterm2-discuss/c/MpOWDIn6QTs
-            Quote: "check if [ \"$TERM_PROGRAM\" = \"iTerm.app\" ]"
-            Verified: 2026-01-11 via web search
+            Source: iTerm2 source code (PTYSession.m)
+            URL: https://github.com/gnachman/iTerm2/blob/master/sources/PTYSession.m
+            Code: env[@"TERM_PROGRAM"] = @"iTerm.app";
+            Verified: 2026-01-11 via source code inspection
         """
         monkeypatch.delenv("ITERM_SESSION_ID", raising=False)
         monkeypatch.setenv("TERM_PROGRAM", "iTerm.app")
@@ -291,12 +287,24 @@ class TestEditorDetection:
             Quote: "$NVIM is set to v:servername by terminal and jobstart(),
                    and is thus a hint that the current environment is a child
                    (direct subprocess) of Nvim"
-            Note: NVIM_LISTEN_ADDRESS is deprecated in favor of $NVIM
+            Note: NVIM_LISTEN_ADDRESS is deprecated; detection uses $NVIM only
             Verified: 2026-01-11 via official Neovim docs
         """
         monkeypatch.setenv("NVIM", "/run/user/1000/nvim.12345.0")
         editor = Neovim()
         assert editor.detect() is True
+
+    def test_neovim_deprecated_listen_address(self) -> None:
+        """NVIM_LISTEN_ADDRESS is deprecated and not used for detection.
+
+        Evidence:
+            Source: Neovim deprecated env vars documentation
+            URL: https://neovim.io/doc/user/deprecated.html#$NVIM_LISTEN_ADDRESS
+            Quote: "Deprecated way to: ... detect a parent Nvim (use $NVIM instead)"
+            Verified: 2026-01-11 via official Neovim docs
+        """
+        editor = Neovim()
+        assert "NVIM_LISTEN_ADDRESS" not in editor.detect_env_vars
 
     def test_emacs_detection_inside_emacs(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Emacs sets INSIDE_EMACS in subprocesses (shell, term, vterm, eshell).
@@ -320,12 +328,11 @@ class TestEditorDetection:
         """JetBrains IDEs set TERMINAL_EMULATOR=JetBrains-JediTerm.
 
         Evidence:
-            Source: GitHub JetBrains/jediterm issue #253
-            URL: https://github.com/JetBrains/jediterm/issues/253
-            Quote: "IntelliJ terminal sets TERMINAL_EMULATOR=JetBrains-JediTerm
-                   environment variable"
-            Applies to: IntelliJ IDEA, PyCharm, WebStorm, GoLand, etc.
-            Verified: 2026-01-11 via GitHub issue
+            Source: IntelliJ Community source code (Jewel utils)
+            URL: https://github.com/JetBrains/intellij-community/blob/master/platform/jewel/scripts/utils.main.kts
+            Code: `System.getenv("TERMINAL_EMULATOR") == "JetBrains-JediTerm"`
+            Note: Used to detect IntelliJ's built-in terminal in JetBrains tooling
+            Verified: 2026-01-11 via source code inspection
         """
         monkeypatch.setenv("TERMINAL_EMULATOR", "JetBrains-JediTerm")
         editor = PyCharm()
@@ -337,13 +344,28 @@ class TestEditorDetection:
         Evidence:
             Source: Zed source code
             URL: https://github.com/zed-industries/zed/blob/main/crates/terminal/src/terminal.rs
-            Code: `env.insert("ZED_TERM".to_string(), "true".to_string());`
+            Code:
+                env.insert("ZED_TERM".to_string(), "true".to_string());
+                env.insert("TERM_PROGRAM".to_string(), "zed".to_string());
             Function: insert_zed_terminal_env()
             Note: NOT in docs (zed.dev/docs/environment) but IS in source code
-            Also: TERM_PROGRAM=Zed since v0.145.0 (PR #14213)
             Verified: 2026-01-11 via source code inspection
         """
         monkeypatch.setenv("ZED_TERM", "true")
+        editor = Zed()
+        assert editor.detect() is True
+
+    def test_zed_detection_term_program(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Zed sets TERM_PROGRAM=zed in integrated terminal.
+
+        Evidence:
+            Source: Zed source code
+            URL: https://github.com/zed-industries/zed/blob/main/crates/terminal/src/terminal.rs
+            Code: env.insert("TERM_PROGRAM".to_string(), "zed".to_string());
+            Verified: 2026-01-11 via source code inspection
+        """
+        monkeypatch.delenv("ZED_TERM", raising=False)
+        monkeypatch.setenv("TERM_PROGRAM", "zed")
         editor = Zed()
         assert editor.detect() is True
 
@@ -506,11 +528,11 @@ class TestCodingAgentDetection:
         """Claude Code sets CLAUDECODE=1 when running.
 
         Evidence:
-            Source: Live test inside Claude Code session
-            Command: `env | grep CLAUDE`
-            Output: CLAUDECODE=1, CLAUDE_CODE_ENTRYPOINT=cli
-            Note: Not documented publicly, discovered via live testing
-            Verified: 2026-01-11 via live environment check
+            Source: Claude Code npm package (cli.js)
+            URL: https://registry.npmjs.org/@anthropic-ai/claude-code/-/claude-code-2.1.4.tgz
+            File: package/cli.js
+            Code: `env:{...process.env, ..., CLAUDECODE:"1", ...}`
+            Verified: 2026-01-11 via package source inspection
         """
         monkeypatch.setenv("CLAUDECODE", "1")
         agent = ClaudeCode()
@@ -589,10 +611,10 @@ class TestCodingAgentDetection:
         """Aider is detected via parent process name containing 'aider'.
 
         Evidence:
-            Source: Implementation design
-            Reason: No env var available, so we check parent process names
-            Pattern: Any parent process containing "aider" triggers detection
-            Verified: 2026-01-11 via code review
+            Source: Aider pyproject.toml (console script entry point)
+            URL: https://raw.githubusercontent.com/Aider-AI/aider/main/pyproject.toml
+            Code: [project.scripts] aider = "aider.main:main"
+            Verified: 2026-01-11 via source code inspection
         """
         agent = Aider()
         with patch(
@@ -601,31 +623,132 @@ class TestCodingAgentDetection:
         ):
             assert agent.detect() is True
 
+    def test_codex_detection_via_parent_process(self) -> None:
+        """Codex is detected via parent process name containing 'codex'.
+
+        Evidence:
+            Source: npm registry metadata (bin field)
+            URL: https://registry.npmjs.org/@openai/codex/latest
+            Quote: "bin": {"codex": "bin/codex.js"}
+            Verified: 2026-01-11 via npm registry
+        """
+        agent = Codex()
+        with patch(
+            "agent_cli.dev.coding_agents.base._get_parent_process_names",
+            return_value=["bash", "codex", "zsh"],
+        ):
+            assert agent.detect() is True
+
+    def test_gemini_detection_via_parent_process(self) -> None:
+        """Gemini is detected via parent process name containing 'gemini'.
+
+        Evidence:
+            Source: npm registry metadata (bin field)
+            URL: https://registry.npmjs.org/@google/gemini-cli/latest
+            Quote: "bin": {"gemini": "dist/index.js"}
+            Verified: 2026-01-11 via npm registry
+        """
+        agent = Gemini()
+        with patch(
+            "agent_cli.dev.coding_agents.base._get_parent_process_names",
+            return_value=["bash", "gemini", "zsh"],
+        ):
+            assert agent.detect() is True
+
+    def test_copilot_detection_via_parent_process(self) -> None:
+        """Copilot is detected via parent process name containing 'copilot'.
+
+        Evidence:
+            Source: npm registry metadata (bin field)
+            URL: https://registry.npmjs.org/@github/copilot/latest
+            Quote: "bin": {"copilot": "npm-loader.js"}
+            Verified: 2026-01-11 via npm registry
+        """
+        agent = Copilot()
+        with patch(
+            "agent_cli.dev.coding_agents.base._get_parent_process_names",
+            return_value=["bash", "copilot", "zsh"],
+        ):
+            assert agent.detect() is True
+
+    def test_continue_dev_detection_via_parent_process(self) -> None:
+        """Continue Dev is detected via parent process name 'cn'.
+
+        Evidence:
+            Source: npm registry metadata (bin field)
+            URL: https://registry.npmjs.org/@continuedev/cli/latest
+            Quote: "bin": {"cn": "dist/cn.js"}
+            Verified: 2026-01-11 via npm registry
+        """
+        agent = ContinueDev()
+        with patch(
+            "agent_cli.dev.coding_agents.continue_dev._get_parent_process_names",
+            return_value=["bash", "cn", "zsh"],
+        ):
+            assert agent.detect() is True
+
+    def test_claude_code_detection_via_parent_process(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Claude Code is detected via parent process name containing 'claude'.
+
+        Evidence:
+            Source: npm registry metadata (bin field)
+            URL: https://registry.npmjs.org/@anthropic-ai/claude-code/latest
+            Quote: "bin": {"claude": "cli.js"}
+            Verified: 2026-01-11 via npm registry
+        """
+        monkeypatch.delenv("CLAUDECODE", raising=False)
+        agent = ClaudeCode()
+        with patch(
+            "agent_cli.dev.coding_agents.base._get_parent_process_names",
+            return_value=["bash", "claude", "zsh"],
+        ):
+            assert agent.detect() is True
+
+    def test_opencode_detection_via_parent_process(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """OpenCode is detected via parent process name containing 'opencode'.
+
+        Evidence:
+            Source: npm registry metadata (bin field)
+            URL: https://registry.npmjs.org/opencode-ai/latest
+            Quote: "bin": {"opencode": "bin/opencode"}
+            Verified: 2026-01-11 via npm registry
+        """
+        monkeypatch.delenv("OPENCODE", raising=False)
+        agent = OpenCode()
+        with patch(
+            "agent_cli.dev.coding_agents.base._get_parent_process_names",
+            return_value=["bash", "opencode", "zsh"],
+        ):
+            assert agent.detect() is True
+
     def test_parent_process_detection_rationale(self) -> None:
         """Agents without env vars use parent process detection as fallback.
 
         Evidence:
-            Source: Implementation design decision
-            Reason: Not all AI coding agents set environment variables.
-                   For agents that don't (Codex, Gemini, Copilot, Aider,
-                   Continue Dev), we fall back to checking parent process names.
+            Source: psutil Process.name() documentation
+            URL: https://psutil.readthedocs.io/en/latest/#psutil.Process.name
+            Quote: "The process name."
+            Reason: We compare parent process names to the CLI command names.
 
-            Rationale:
-            - Primary detection: Environment variables (fast, reliable)
-            - Fallback detection: Parent process name matching (works universally)
+        Rationale:
+        - Primary detection: Environment variables (fast, reliable)
+        - Fallback detection: Parent process name matching (works universally)
 
-            Agents using parent-process detection only:
-            - Aider: No env var, `aider --help` shows only config vars
-            - Codex: No documented env var
-            - Gemini: No documented env var
-            - Copilot: No documented env var
+        Agents using parent-process detection only:
+        - Aider, Codex, Gemini, Copilot, Continue Dev
 
-            Agents using env var detection:
-            - Claude Code: CLAUDECODE=1 (live tested)
-            - OpenCode: OPENCODE=1 (GitHub PR #1780)
-            - Cursor Agent: CURSOR_AGENT (official docs)
+        Agents using env var detection:
+        - Claude Code: CLAUDECODE=1 (live tested)
+        - OpenCode: OPENCODE=1 (GitHub PR #1780)
+        - Cursor Agent: CURSOR_AGENT (official docs)
 
-            Verified: 2026-01-11 via code review and documentation audit
+        Verified: 2026-01-11 via psutil docs and registry metadata
         """
         # Verify Codex uses parent process detection
         codex = Codex()

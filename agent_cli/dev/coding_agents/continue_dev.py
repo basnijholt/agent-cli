@@ -10,13 +10,12 @@ class ContinueDev(CodingAgent):
 
     name = "continue"
     command = "cn"
-    alt_commands = ("continue",)
     install_url = "https://continue.dev"
 
     def detect(self) -> bool:
         """Detect if running inside Continue Dev.
 
-        Custom detection needed because command is 'cn' but process may be 'continue'.
+        Custom detection needed because command is 'cn'.
         """
         parent_names = _get_parent_process_names()
-        return any("continue" in name or name == "cn" for name in parent_names)
+        return any(name == "cn" for name in parent_names)
