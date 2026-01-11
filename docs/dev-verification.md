@@ -175,6 +175,7 @@ Both tools manage git worktrees with editor and AI agent integration. Key differ
 | **Alt commands** | `sublime_text`, `sublime`, `sublime4` | ✅ | All work |
 | **Version** | Build 4200 | ✅ | From --help output |
 | **Nix package** | `sublime4` | ✅ | Requires `NIXPKGS_ALLOW_UNFREE=1` |
+| **Detection env var** | `TERM_PROGRAM` | ⚠️ | **No native integrated terminal** - detection is speculative. Terminal packages like Terminus may set this, but it's plugin-dependent. |
 
 ### JetBrains IDEs
 
@@ -237,7 +238,8 @@ Both tools manage git worktrees with editor and AI agent integration. Key differ
 
 | Aspect | Value | Status | Evidence |
 |--------|-------|--------|----------|
-| **Detection env var** | `ITERM_SESSION_ID`, `TERM_PROGRAM=iTerm.app` | ✅ | Standard iTerm2 vars |
+| **Detection env var** | `ITERM_SESSION_ID` | ✅ | [iTerm2 Variables docs](https://iterm2.com/documentation-variables.html) - "identifies the window number, tab number, and pane number" |
+| **Alt detection** | `TERM_PROGRAM=iTerm.app` | ✅ | [Community discussion](https://groups.google.com/g/iterm2-discuss/c/MpOWDIn6QTs) |
 | **Platform** | macOS only | ✅ | |
 | **New tab** | AppleScript: `create tab with default profile` | ✅ | [iTerm2 docs](https://iterm2.com/documentation-scripting.html) |
 
@@ -245,7 +247,7 @@ Both tools manage git worktrees with editor and AI agent integration. Key differ
 
 | Aspect | Value | Status | Evidence |
 |--------|-------|--------|----------|
-| **Detection env var** | `TERM_PROGRAM` contains "warp" | ✅ | Standard detection |
+| **Detection env var** | `TERM_PROGRAM=WarpTerminal` | ✅ | [Warp Prompt docs](https://docs.warp.dev/terminal/appearance/prompt) - `if [[ $TERM_PROGRAM != "WarpTerminal" ]]` |
 | **Platform** | macOS (and Linux beta) | ✅ | |
 | **New tab** | AppleScript with Cmd+T keystroke | ✅ | No native API |
 | **Tab naming** | Not supported | ✅ | No API available |

@@ -24,15 +24,19 @@ from agent_cli.dev.coding_agents.copilot import Copilot
 from agent_cli.dev.coding_agents.cursor_agent import CursorAgent
 from agent_cli.dev.coding_agents.gemini import Gemini
 from agent_cli.dev.coding_agents.opencode import OpenCode
+from agent_cli.dev.editors.cursor import Cursor
 from agent_cli.dev.editors.emacs import Emacs
 from agent_cli.dev.editors.jetbrains import PyCharm
 from agent_cli.dev.editors.neovim import Neovim
+from agent_cli.dev.editors.sublime import SublimeText
 from agent_cli.dev.editors.vim import Vim
 from agent_cli.dev.editors.vscode import VSCode
 from agent_cli.dev.editors.zed import Zed
 from agent_cli.dev.terminals.gnome import GnomeTerminal
+from agent_cli.dev.terminals.iterm2 import ITerm2
 from agent_cli.dev.terminals.kitty import Kitty
 from agent_cli.dev.terminals.tmux import Tmux
+from agent_cli.dev.terminals.warp import Warp
 from agent_cli.dev.terminals.zellij import Zellij
 
 
@@ -113,6 +117,51 @@ class TestTerminalDetection:
         """
         monkeypatch.setenv("GNOME_TERMINAL_SERVICE", ":1.123")
         terminal = GnomeTerminal()
+        assert terminal.detect() is True
+
+    def test_iterm2_detection_session_id(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """iTerm2 sets ITERM_SESSION_ID environment variable.
+
+        Evidence:
+            Source: iTerm2 Variables documentation
+            URL: https://iterm2.com/documentation-variables.html
+            Quote: "$ITERM_SESSION_ID identifies the window number, tab number,
+                   and pane number"
+            Also detectable via TERM_PROGRAM=iTerm.app
+            Platform: macOS only
+            Verified: 2026-01-11 via web search confirming official docs
+        """
+        monkeypatch.setenv("ITERM_SESSION_ID", "w0t0p0:12345678-ABCD-EFGH-IJKL-MNOPQRSTUVWX")
+        terminal = ITerm2()
+        assert terminal.detect() is True
+
+    def test_iterm2_detection_term_program(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        r"""iTerm2 also detectable via TERM_PROGRAM containing 'iterm'.
+
+        Evidence:
+            Source: iTerm2 community discussion
+            URL: https://groups.google.com/g/iterm2-discuss/c/MpOWDIn6QTs
+            Quote: "check if [ \"$TERM_PROGRAM\" = \"iTerm.app\" ]"
+            Verified: 2026-01-11 via web search
+        """
+        monkeypatch.delenv("ITERM_SESSION_ID", raising=False)
+        monkeypatch.setenv("TERM_PROGRAM", "iTerm.app")
+        terminal = ITerm2()
+        assert terminal.detect() is True
+
+    def test_warp_detection_term_program(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Warp sets TERM_PROGRAM=WarpTerminal.
+
+        Evidence:
+            Source: Warp Prompt documentation
+            URL: https://docs.warp.dev/terminal/appearance/prompt
+            Quote: `if [[ $TERM_PROGRAM != "WarpTerminal" ]]; then`
+            Platform: macOS (and Linux beta)
+            Note: Tab naming not supported - no API available
+            Verified: 2026-01-11 via official Warp docs
+        """
+        monkeypatch.setenv("TERM_PROGRAM", "WarpTerminal")
+        terminal = Warp()
         assert terminal.detect() is True
 
 
@@ -277,6 +326,65 @@ class TestEditorDetection:
         monkeypatch.setenv("ZED_TERM", "true")
         editor = Zed()
         assert editor.detect() is True
+
+    def test_cursor_detection_cursor_agent(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Cursor editor detectable via CURSOR_AGENT environment variable.
+
+        Evidence:
+            Source: Cursor Terminal documentation
+            URL: https://cursor.com/docs/agent/terminal
+            Quote: "You can use the CURSOR_AGENT environment variable in your
+                   shell config to detect when the Agent is running"
+            Note: Cursor is an AI-first code editor (VS Code fork)
+            Verified: 2026-01-11 via official Cursor docs (web search)
+        """
+        monkeypatch.setenv("CURSOR_AGENT", "1")
+        editor = Cursor()
+        assert editor.detect() is True
+
+    def test_cursor_detection_term_program(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Cursor also detectable via TERM_PROGRAM=cursor.
+
+        Evidence:
+            Source: Cursor behavior as VS Code fork
+            Note: Like VS Code, likely sets TERM_PROGRAM in integrated terminal
+            Caveat: Not explicitly documented - inferred from VS Code behavior
+            Verified: 2026-01-11 via code analysis (assumed, not proven)
+        """
+        monkeypatch.delenv("CURSOR_AGENT", raising=False)
+        monkeypatch.setenv("TERM_PROGRAM", "cursor")
+        editor = Cursor()
+        assert editor.detect() is True
+
+    def test_sublime_detection_term_program(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Sublime Text detection via TERM_PROGRAM (theoretical).
+
+        Evidence:
+            Source: Web search for Sublime Text terminal integration
+            Finding: Sublime Text has NO built-in integrated terminal
+            Note: Terminal packages like Terminus may set TERM_PROGRAM,
+                  but this is plugin-dependent, not native behavior
+            Caveat: This detection is speculative - Sublime doesn't natively
+                    run shells that would set TERM_PROGRAM
+            Verified: 2026-01-11 via web search confirming no native terminal
+        """
+        monkeypatch.setenv("TERM_PROGRAM", "sublime")
+        editor = SublimeText()
+        assert editor.detect() is True
+
+    def test_sublime_alt_commands(self) -> None:
+        """Sublime Text has multiple command alternatives.
+
+        Evidence:
+            Source: Sublime Text Command Line documentation
+            URL: https://www.sublimetext.com/docs/command_line.html
+            Commands: subl (symlink), sublime_text (binary), sublime
+            Verified: 2026-01-11 via official docs
+        """
+        editor = SublimeText()
+        assert editor.command == "subl"
+        assert "sublime_text" in editor.alt_commands
+        assert "sublime" in editor.alt_commands
 
 
 class TestEditorCommands:
