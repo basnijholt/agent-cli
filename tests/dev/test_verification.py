@@ -71,11 +71,12 @@ class TestTerminalDetection:
         """Zellij sets ZELLIJ environment variable (presence check, not value).
 
         Evidence:
-            Source: Live test inside zellij session
-            Command: `env | grep ZELLIJ`
-            Output: ZELLIJ=0, ZELLIJ_SESSION_NAME=charming-lake, ZELLIJ_PANE_ID=3
+            Source: Zellij Integration documentation
+            URL: https://zellij.dev/documentation/integration.html
+            Quote: "ZELLIJ gets set to `0` inside a zellij session"
+            Also: ZELLIJ_SESSION_NAME has session name as value
             Note: Value is "0" but presence indicates inside zellij
-            Verified: 2026-01-11 via live environment check
+            Verified: 2026-01-11 via official docs
         """
         # Zellij sets ZELLIJ=0 (presence check, not value check)
         monkeypatch.setenv("ZELLIJ", "0")
