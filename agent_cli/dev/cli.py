@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 import random
 import subprocess
+from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, NoReturn
 
 import typer
@@ -101,8 +102,6 @@ from .project import (  # noqa: E402
 )
 
 if TYPE_CHECKING:
-    from pathlib import Path
-
     from .coding_agents.base import CodingAgent
     from .editors.base import Editor
 
@@ -460,8 +459,10 @@ def list_envs(
     table = Table(title="Dev Environments (Git Worktrees)")
     table.add_column("Name", style="cyan")
     table.add_column("Branch", style="green")
-    table.add_column("Path", style="dim")
+    table.add_column("Path", style="dim", overflow="fold")
     table.add_column("Status", style="yellow")
+
+    home = Path.home()
 
     for wt in worktrees:
         name = "[bold]main[/bold]" if wt.is_main else wt.name
@@ -478,7 +479,13 @@ def list_envs(
             status_parts.append("prunable")
         status = ", ".join(status_parts) if status_parts else "ok"
 
-        table.add_row(name, branch_name, str(wt.path), status)
+        # Use ~ for home directory to shorten paths
+        try:
+            display_path = "~/" + str(wt.path.relative_to(home))
+        except ValueError:
+            display_path = str(wt.path)
+
+        table.add_row(name, branch_name, display_path, status)
 
     console.print(table)
 
