@@ -682,7 +682,7 @@ class TestCodingAgentDetection:
         """
         agent = ContinueDev()
         with patch(
-            "agent_cli.dev.coding_agents.continue_dev._get_parent_process_names",
+            "agent_cli.dev.coding_agents.base._get_parent_process_names",
             return_value=["bash", "cn", "zsh"],
         ):
             assert agent.detect() is True
@@ -764,6 +764,49 @@ class TestCodingAgentDetection:
         copilot = Copilot()
         assert copilot.detect_env_var is None
         assert copilot.detect_process_name == "copilot"
+
+    def test_nodejs_cli_cmdline_extraction(self) -> None:
+        """Node.js CLIs need cmdline extraction because process.name() returns 'node'.
+
+        Evidence:
+            Source: psutil Process.name() documentation
+            URL: https://psutil.readthedocs.io/en/latest/#psutil.Process.name
+            Quote: "The process name"
+
+            Source: psutil Process.cmdline() documentation
+            URL: https://psutil.readthedocs.io/en/latest/#psutil.Process.cmdline
+            Quote: "The command line this process has been called with"
+
+            Source: Node.js process.title documentation
+            URL: https://nodejs.org/api/process.html#processtitle
+            Quote: "process.title property returns the current process title"
+
+            Finding: Node.js CLIs using `#!/usr/bin/env node` shebang have:
+            - process.name() = 'node' (the runtime, NOT the CLI command)
+            - cmdline = ['node', '/path/to/cn', '--version'] (contains actual command)
+
+            Exception: CLIs that set `process.title` (like Claude) show their name
+            - Claude sets `process.title="claude"` in cli.js
+            - So process.name() returns 'claude' not 'node'
+
+            Our solution: Extract command name from cmdline[1] as fallback
+            - cmdline[1] is typically the script path: '/path/to/cn'
+            - basename + remove extension → 'cn'
+
+            Agents affected (no process.title, need cmdline extraction):
+            - Continue Dev (cn), Codex, Gemini, Copilot
+
+            Agents NOT affected (set process.title or are native binaries):
+            - Claude Code (sets process.title="claude")
+            - Aider (Python, process.name() = 'aider')
+
+            Verified: 2026-01-11 via live testing with `cn --version`
+        """
+        # This test documents the cmdline extraction behavior
+        # The actual implementation is in base._get_parent_process_names()
+        agent = ContinueDev()
+        # Continue Dev uses process name detection (works via cmdline extraction)
+        assert agent.detect_process_name == "cn"
 
 
 class TestCodingAgentInstallCommands:

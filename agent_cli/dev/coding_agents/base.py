@@ -102,8 +102,17 @@ class CodingAgent(ABC):
 
 
 def _get_parent_process_names() -> list[str]:
-    """Get names of parent processes (for detecting current agent)."""
+    """Get names of parent processes (for detecting current agent).
+
+    Extracts names from both process.name() and cmdline.
+    This handles Node.js CLIs that don't set process.title:
+    - process.name() returns 'node' for most Node.js CLI tools
+    - cmdline contains the actual script path like '/path/to/cn'
+    - CLI tools that set process.title (like Claude) show their name directly
+    """
     try:
+        from pathlib import PurePath  # noqa: PLC0415
+
         import psutil  # noqa: PLC0415
 
         process = psutil.Process(os.getpid())
@@ -112,7 +121,25 @@ def _get_parent_process_names() -> list[str]:
             process = process.parent()
             if process is None:
                 break
+            # Add the process name (works for native binaries and tools that set process.title)
             names.append(process.name().lower())
+
+            # Also check cmdline for the actual command (handles Node.js/Python CLIs)
+            # e.g., cmdline=['node', '/path/to/cn', '--version'] → extract 'cn'
+            try:
+                cmdline = process.cmdline()
+                if len(cmdline) >= 2:  # noqa: PLR2004
+                    # Get the script/command from cmdline[1] (the actual CLI tool)
+                    cmd_name = PurePath(cmdline[1]).name.lower()
+                    # Remove common extensions
+                    for ext in (".js", ".py", ".sh", ".exe"):
+                        if cmd_name.endswith(ext):
+                            cmd_name = cmd_name[: -len(ext)]
+                            break
+                    if cmd_name and cmd_name not in names:
+                        names.append(cmd_name)
+            except (psutil.AccessDenied, psutil.ZombieProcess, IndexError):
+                pass
         return names
     except ImportError:
         # psutil not available, return empty list

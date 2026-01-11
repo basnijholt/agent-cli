@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from .base import CodingAgent, _get_parent_process_names
+from .base import CodingAgent
 
 
 class ContinueDev(CodingAgent):
@@ -11,11 +11,5 @@ class ContinueDev(CodingAgent):
     name = "continue"
     command = "cn"
     install_url = "https://continue.dev"
-
-    def detect(self) -> bool:
-        """Detect if running inside Continue Dev.
-
-        Custom detection needed because command is 'cn'.
-        """
-        parent_names = _get_parent_process_names()
-        return any(name == "cn" for name in parent_names)
+    # Detection via cmdline extraction (cn runs as 'node' but cmdline contains '/path/to/cn')
+    detect_process_name = "cn"
