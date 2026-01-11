@@ -3,7 +3,7 @@
 Living document tracking verification status of all dev module features.
 All claims are backed by evidence from official docs, man pages, --help output, or live testing.
 
-**Last verified: 2025-01-11**
+**Last verified: 2026-01-11**
 
 ## Legend
 
@@ -294,7 +294,7 @@ Both tools manage git worktrees with editor and AI agent integration. Key differ
 ## Verification Log
 
 ```
-2025-01-11: Comprehensive verification with evidence collection
+2026-01-11: Comprehensive verification with evidence collection
   - Spawned 6 parallel agents to verify all categories
   - Verified terminals via man pages and --help: tmux, zellij, kitty, gnome-terminal
   - Verified editors via nix-shell: vim, emacs, sublime, JetBrains
@@ -305,7 +305,7 @@ Both tools manage git worktrees with editor and AI agent integration. Key differ
   - Fixed: JetBrains Nix commands are *-oss variants
   - Added: Direnv integration section (was missing)
 
-2025-01-10: AI Agent Environment Variables Research
+2026-01-10: AI Agent Environment Variables Research
   - Claude Code: Sets CLAUDECODE=1 and CLAUDE_CODE_ENTRYPOINT=cli (live verified)
   - OpenCode: Sets OPENCODE=1 (PR #1780)
   - Cursor Agent: Sets CURSOR_AGENT (official docs)
