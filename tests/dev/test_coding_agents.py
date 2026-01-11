@@ -125,14 +125,13 @@ class TestCursorAgentDetection:
         assert agent.detect() is True
 
     def test_detect_with_empty_env(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        """Empty env var means not running in Cursor Agent."""
+        """Empty env var means not running in Cursor Agent.
+
+        Note: CursorAgent uses env var detection only (no parent process fallback).
+        """
         monkeypatch.delenv("CURSOR_AGENT", raising=False)
         agent = CursorAgent()
-        with patch(
-            "agent_cli.dev.coding_agents.cursor_agent._get_parent_process_names",
-            return_value=[],
-        ):
-            assert agent.detect() is False
+        assert agent.detect() is False
 
 
 class TestClaudeCodeExecutable:
