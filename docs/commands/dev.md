@@ -326,12 +326,20 @@ With `--direnv`, a `.envrc` file is automatically generated based on the detecte
 
 | Project Type | Generated .envrc Content |
 |--------------|-------------------------|
+| Nix (flake.nix) | `use flake` |
+| Nix (shell.nix) | `use nix` |
 | Python (uv) | `source .venv/bin/activate` |
 | Python (poetry) | `source "$(poetry env info --path)/bin/activate"` |
 | Python (pip/venv) | `source .venv/bin/activate` (or detected venv path) |
 | Node.js (with .nvmrc) | `use node` |
 | Go | `layout go` |
 | Ruby | `layout ruby` |
+
+Multiple directives can be combined. For example, a Python project with `shell.nix` will get:
+```bash
+use nix
+source .venv/bin/activate
+```
 
 The generated `.envrc` is automatically trusted with `direnv allow`.
 

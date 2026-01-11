@@ -253,6 +253,28 @@ def _get_envrc_for_project(path: Path, project_type: ProjectType) -> str | None:
     return None
 
 
+def _is_nix_available() -> bool:
+    """Check if nix is available on the system."""
+    return shutil.which("nix") is not None
+
+
+def _get_nix_envrc(path: Path) -> str | None:
+    """Get .envrc content for Nix projects.
+
+    Returns 'use flake' for flake.nix, 'use nix' for shell.nix.
+    """
+    if not _is_nix_available():
+        return None
+
+    # Prefer flake.nix over shell.nix
+    if (path / "flake.nix").exists():
+        return "use flake"
+    if (path / "shell.nix").exists():
+        return "use nix"
+
+    return None
+
+
 def generate_envrc_content(path: Path, project_type: ProjectType | None = None) -> str | None:
     """Generate .envrc content based on project type and environment.
 
@@ -267,17 +289,29 @@ def generate_envrc_content(path: Path, project_type: ProjectType | None = None) 
     if project_type is None:
         project_type = detect_project_type(path)
 
+    lines: list[str] = []
+
+    # Check for Nix first (sets up the base environment)
+    nix_content = _get_nix_envrc(path)
+    if nix_content:
+        lines.append(nix_content)
+
+    # Add project-specific content
     if project_type:
-        content = _get_envrc_for_project(path, project_type)
-        if content:
-            return content + "\n"
+        project_content = _get_envrc_for_project(path, project_type)
+        if project_content:
+            lines.append(project_content)
 
     # Fallback: check for Python venv without detected project type
-    venv_path = detect_venv_path(path)
-    if venv_path:
-        return f"source {venv_path.name}/bin/activate\n"
+    if not lines:
+        venv_path = detect_venv_path(path)
+        if venv_path:
+            lines.append(f"source {venv_path.name}/bin/activate")
 
-    return None
+    if not lines:
+        return None
+
+    return "\n".join(lines) + "\n"
 
 
 def setup_direnv(
