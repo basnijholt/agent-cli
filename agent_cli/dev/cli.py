@@ -453,7 +453,7 @@ def list_envs(
 
     if porcelain:
         for wt in worktrees:
-            print(f"{wt.path}\t{wt.branch or '(detached)'}")
+            print(f"{wt.path.as_posix()}\t{wt.branch or '(detached)'}")
         return
 
     table = Table(title="Dev Environments (Git Worktrees)")
@@ -547,7 +547,7 @@ def path_cmd(
     if wt is None:
         _error(f"Worktree not found: {name}")
 
-    print(wt.path)
+    print(wt.path.as_posix())
 
 
 @app.command("editor")

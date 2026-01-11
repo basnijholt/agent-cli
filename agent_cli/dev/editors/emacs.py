@@ -41,6 +41,6 @@ class Emacs(Editor):
             raise RuntimeError(msg)
         # Use emacsclient if available for faster opening (-n = don't wait)
         if "emacsclient" in exe:
-            return [exe, "-n", str(path)]
+            return [exe, "-n", path.as_posix()]
         # Run standalone emacs in background like GTR does
-        return ["sh", "-c", f'{exe} "{path}" &']
+        return ["sh", "-c", f'{exe} "{path.as_posix()}" &']

@@ -12,7 +12,7 @@ This serves as both executable tests AND documentation of our verification.
 from __future__ import annotations
 
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest  # noqa: TC002
 
@@ -194,13 +194,23 @@ class TestTerminalCommands:
             Verified: 2026-01-11 via `man tmux | grep -A10 "new-window"`
         """
         terminal = Tmux()
-        with patch("shutil.which", return_value="/usr/bin/tmux"):
-            # Just verify it doesn't crash - actual command tested via mocking
+        mock_run = MagicMock(return_value=MagicMock(returncode=0))
+        with (
+            patch("shutil.which", return_value="/usr/bin/tmux"),
+            patch("subprocess.run", mock_run),
+        ):
+            # Verify the command syntax by checking what gets passed to subprocess
             terminal.open_new_tab(
                 Path("/test/path"),
                 command="echo hello",
                 tab_name="test-tab",
             )
+        # Verify correct flags were used
+        call_args = mock_run.call_args[0][0]
+        assert "new-window" in call_args
+        assert "-c" in call_args
+        assert "-n" in call_args
+        assert "test-tab" in call_args
 
     def test_zellij_new_tab_command_syntax(self) -> None:
         """Zellij uses `zellij action new-tab --cwd <path> --name <name>`.

@@ -82,7 +82,7 @@ class Editor(ABC):
         if exe is None:
             msg = f"{self.name} is not installed"
             raise RuntimeError(msg)
-        return [exe, str(path)]
+        return [exe, path.as_posix()]
 
     def __repr__(self) -> str:  # noqa: D105
         status = "available" if self.is_available() else "not installed"

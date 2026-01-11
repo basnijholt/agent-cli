@@ -104,11 +104,17 @@ class TestTerminalEditors:
         editor = Neovim()
         assert editor.detect() is True
 
-    def test_vim_detects_vim_env(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        """Vim detects VIM environment variable."""
+    def test_vim_no_detection(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Vim does NOT detect via VIM env var - it has no integrated terminal.
+
+        VIM/VIMRUNTIME are used BY vim to locate runtime files, NOT to indicate
+        running inside vim. Vim has no integrated terminal, so detect() always
+        returns False.
+        """
+        # Even with VIM set, detection should return False
         monkeypatch.setenv("VIM", "/usr/share/vim")
         editor = Vim()
-        assert editor.detect() is True
+        assert editor.detect() is False
 
 
 class TestEmacsEditor:

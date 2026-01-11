@@ -30,4 +30,4 @@ class Neovim(Editor):
         if exe is None:
             msg = f"{self.name} is not installed"
             raise RuntimeError(msg)
-        return ["sh", "-c", f'cd "{path}" && {exe} .']
+        return ["sh", "-c", f'cd "{path.as_posix()}" && {exe} .']
