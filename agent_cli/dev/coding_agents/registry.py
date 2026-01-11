@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from agent_cli.dev.registry import Registry
+
 from .aider import Aider
 from .base import CodingAgent  # noqa: TC001
 from .claude import ClaudeCode
@@ -24,40 +26,24 @@ _AGENTS: list[type[CodingAgent]] = [
     CursorAgent,
 ]
 
-# Cache for agent instances
-_agent_instances: dict[str, CodingAgent] = {}
+_registry: Registry[CodingAgent] = Registry(_AGENTS)
 
 
 def get_all_agents() -> list[CodingAgent]:
     """Get instances of all registered coding agents."""
-    agents = []
-    for agent_cls in _AGENTS:
-        name = agent_cls.name
-        if name not in _agent_instances:
-            _agent_instances[name] = agent_cls()
-        agents.append(_agent_instances[name])
-    return agents
+    return _registry.get_all()
 
 
 def get_available_agents() -> list[CodingAgent]:
     """Get all installed/available coding agents."""
-    return [agent for agent in get_all_agents() if agent.is_available()]
+    return _registry.get_available()
 
 
 def detect_current_agent() -> CodingAgent | None:
     """Detect which coding agent we're currently running in."""
-    for agent in get_all_agents():
-        if agent.detect():
-            return agent
-    return None
+    return _registry.detect_current()
 
 
 def get_agent(name: str) -> CodingAgent | None:
     """Get a coding agent by name."""
-    name_lower = name.lower()
-    for agent in get_all_agents():
-        if agent.name.lower() == name_lower:
-            return agent
-        if agent.command.lower() == name_lower:
-            return agent
-    return None
+    return _registry.get_by_name(name)

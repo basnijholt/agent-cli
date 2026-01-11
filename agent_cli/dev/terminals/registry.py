@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from agent_cli.dev.registry import Registry
+
 from .base import Terminal  # noqa: TC001
 from .gnome import GnomeTerminal
 from .iterm2 import ITerm2
@@ -21,38 +23,24 @@ _TERMINALS: list[type[Terminal]] = [
     GnomeTerminal,
 ]
 
-# Cache for terminal instances
-_terminal_instances: dict[str, Terminal] = {}
+_registry: Registry[Terminal] = Registry(_TERMINALS)
 
 
 def get_all_terminals() -> list[Terminal]:
     """Get instances of all registered terminals."""
-    terminals = []
-    for terminal_cls in _TERMINALS:
-        name = terminal_cls.name
-        if name not in _terminal_instances:
-            _terminal_instances[name] = terminal_cls()
-        terminals.append(_terminal_instances[name])
-    return terminals
+    return _registry.get_all()
 
 
 def get_available_terminals() -> list[Terminal]:
     """Get all installed/available terminals."""
-    return [terminal for terminal in get_all_terminals() if terminal.is_available()]
+    return _registry.get_available()
 
 
 def detect_current_terminal() -> Terminal | None:
     """Detect which terminal we're running in."""
-    for terminal in get_all_terminals():
-        if terminal.detect():
-            return terminal
-    return None
+    return _registry.detect_current()
 
 
 def get_terminal(name: str) -> Terminal | None:
     """Get a terminal by name."""
-    name_lower = name.lower()
-    for terminal in get_all_terminals():
-        if terminal.name.lower() == name_lower:
-            return terminal
-    return None
+    return _registry.get_by_name(name)

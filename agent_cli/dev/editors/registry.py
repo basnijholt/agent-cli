@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from agent_cli.dev.registry import Registry
+
 from .base import Editor  # noqa: TC001
 from .cursor import Cursor
 from .emacs import Emacs
@@ -34,40 +36,24 @@ _EDITORS: list[type[Editor]] = [
     SublimeText,
 ]
 
-# Cache for editor instances
-_editor_instances: dict[str, Editor] = {}
+_registry: Registry[Editor] = Registry(_EDITORS)
 
 
 def get_all_editors() -> list[Editor]:
     """Get instances of all registered editors."""
-    editors = []
-    for editor_cls in _EDITORS:
-        name = editor_cls.name
-        if name not in _editor_instances:
-            _editor_instances[name] = editor_cls()
-        editors.append(_editor_instances[name])
-    return editors
+    return _registry.get_all()
 
 
 def get_available_editors() -> list[Editor]:
     """Get all installed/available editors."""
-    return [editor for editor in get_all_editors() if editor.is_available()]
+    return _registry.get_available()
 
 
 def detect_current_editor() -> Editor | None:
     """Detect which editor's integrated terminal we're running in."""
-    for editor in get_all_editors():
-        if editor.detect():
-            return editor
-    return None
+    return _registry.detect_current()
 
 
 def get_editor(name: str) -> Editor | None:
     """Get an editor by name."""
-    name_lower = name.lower()
-    for editor in get_all_editors():
-        if editor.name.lower() == name_lower:
-            return editor
-        if editor.command.lower() == name_lower:
-            return editor
-    return None
+    return _registry.get_by_name(name)
