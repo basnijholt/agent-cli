@@ -61,6 +61,7 @@ agent-cli dev new [BRANCH] [OPTIONS]
 | `--with-editor` | Specific editor (cursor, vscode, zed, etc.) |
 | `--with-agent` | Specific agent (claude, codex, gemini, aider) |
 | `--agent-args` | Extra arguments to pass to the agent |
+| `--direnv` | Generate .envrc file for direnv (auto-detects venv) |
 | `--no-setup` | Skip automatic project setup (npm install, etc.) |
 | `--no-copy` | Skip copying .env files |
 | `--no-fetch` | Skip git fetch before creating |
@@ -307,6 +308,21 @@ Files matching these patterns are automatically copied to new dev environments:
 - `*.env` (e.g., `local.env`)
 
 Use `--no-copy` to skip this.
+
+### Direnv Integration
+
+With `--direnv`, a `.envrc` file is automatically generated based on the detected project type:
+
+| Project Type | Generated .envrc Content |
+|--------------|-------------------------|
+| Python (uv) | `source .venv/bin/activate` |
+| Python (poetry) | `source "$(poetry env info --path)/bin/activate"` |
+| Python (pip/venv) | `source .venv/bin/activate` (or detected venv path) |
+| Node.js (with .nvmrc) | `use node` |
+| Go | `layout go` |
+| Ruby | `layout ruby` |
+
+The generated `.envrc` is automatically trusted with `direnv allow`.
 
 ### Agent Launch
 

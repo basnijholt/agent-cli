@@ -92,7 +92,13 @@ def _generate_branch_name(existing_branches: set[str] | None = None) -> str:
 
 
 from . import coding_agents, editors, terminals, worktree  # noqa: E402
-from .project import copy_env_files, detect_project_type, run_setup  # noqa: E402
+from .project import (  # noqa: E402
+    copy_env_files,
+    detect_project_type,
+    is_direnv_available,
+    run_setup,
+    setup_direnv,
+)
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -296,7 +302,7 @@ def _launch_agent(
 
 
 @app.command("new")
-def new(
+def new(  # noqa: PLR0912
     branch: Annotated[
         str | None,
         typer.Argument(help="Branch name (auto-generated if not provided)"),
@@ -338,6 +344,10 @@ def new(
         bool,
         typer.Option("--no-fetch", help="Skip git fetch before creating"),
     ] = False,
+    direnv: Annotated[
+        bool,
+        typer.Option("--direnv", help="Generate .envrc file for direnv (auto-detects venv)"),
+    ] = False,
     agent_args: Annotated[
         list[str] | None,
         typer.Option(
@@ -378,6 +388,7 @@ def new(
             _info(f"Copied {len(copied)} env file(s)")
 
     # Detect and run project setup
+    project = None
     if not no_setup:
         project = detect_project_type(result.path)
         if project:
@@ -387,6 +398,19 @@ def new(
                 _success("Project setup complete")
             else:
                 _warn(f"Setup failed: {output}")
+
+    # Set up direnv if requested
+    if direnv:
+        if is_direnv_available():
+            success, msg = setup_direnv(result.path, project)
+            if success and "Created .envrc" in msg:
+                _success(msg)
+            elif success:
+                _info(msg)
+            else:
+                _warn(msg)
+        else:
+            _warn("direnv not installed, skipping .envrc generation")
 
     # Resolve editor and agent
     editor = _resolve_editor(editor_flag, editor_name, default_editor)
