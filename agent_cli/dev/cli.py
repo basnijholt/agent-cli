@@ -163,7 +163,7 @@ def _ensure_git_repo() -> Path:
 
 
 def _resolve_editor(
-    editor_flag: bool,
+    use_editor: bool,
     editor_name: str | None,
     default_editor: str | None = None,
 ) -> Editor | None:
@@ -176,7 +176,7 @@ def _resolve_editor(
         return editor
 
     # If no flag and no default, don't use an editor
-    if not editor_flag and not default_editor:
+    if not use_editor and not default_editor:
         return None
 
     # If default is set in config, use it
@@ -195,7 +195,7 @@ def _resolve_editor(
 
 
 def _resolve_agent(
-    agent_flag: bool,
+    use_agent: bool,
     agent_name: str | None,
     default_agent: str | None = None,
 ) -> CodingAgent | None:
@@ -208,7 +208,7 @@ def _resolve_agent(
         return agent
 
     # If no flag and no default, don't use an agent
-    if not agent_flag and not default_agent:
+    if not use_agent and not default_agent:
         return None
 
     # If default is set in config, use it
@@ -311,11 +311,11 @@ def new(  # noqa: PLR0912
         str | None,
         typer.Option("--from", "-f", help="Create branch from this ref (default: main/master)"),
     ] = None,
-    editor_flag: Annotated[
+    editor: Annotated[
         bool,
         typer.Option("--editor", "-e", help="Open in editor after creation"),
     ] = False,
-    agent_flag: Annotated[
+    agent: Annotated[
         bool,
         typer.Option("--agent", "-a", help="Start AI coding agent after creation"),
     ] = False,
@@ -413,17 +413,17 @@ def new(  # noqa: PLR0912
             _warn("direnv not installed, skipping .envrc generation")
 
     # Resolve editor and agent
-    editor = _resolve_editor(editor_flag, editor_name, default_editor)
-    agent = _resolve_agent(agent_flag, agent_name, default_agent)
+    resolved_editor = _resolve_editor(editor, editor_name, default_editor)
+    resolved_agent = _resolve_agent(agent, agent_name, default_agent)
 
     # Launch editor (GUI app - subprocess works)
-    if editor and editor.is_available():
-        _launch_editor(result.path, editor)
+    if resolved_editor and resolved_editor.is_available():
+        _launch_editor(result.path, resolved_editor)
 
     # Launch agent (interactive TUI - needs terminal tab)
-    if agent and agent.is_available():
-        merged_args = _merge_agent_args(agent, agent_args)
-        _launch_agent(result.path, agent, merged_args)
+    if resolved_agent and resolved_agent.is_available():
+        merged_args = _merge_agent_args(resolved_agent, agent_args)
+        _launch_agent(result.path, resolved_agent, merged_args)
 
     # Print summary
     console.print()

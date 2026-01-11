@@ -263,6 +263,12 @@ Add defaults to your `~/.config/agent-cli/config.toml`:
 
 ```toml
 [dev]
+# Default flags for 'dev new' command
+editor = true          # Always open editor (-e)
+agent = true           # Always start agent (-a)
+direnv = true          # Always generate .envrc (--direnv)
+
+# Which editor/agent to use when flags are enabled
 default_editor = "cursor"
 default_agent = "claude"
 
@@ -276,12 +282,17 @@ Or per-project in `.agent-cli.toml`:
 
 ```toml
 [dev]
+editor = true
+agent = true
+direnv = true
 default_editor = "zed"
 default_agent = "aider"
 
 [dev.agent_args]
 claude = ["--dangerously-skip-permissions", "--model", "opus"]
 ```
+
+With this configuration, running `agent-cli dev new` will automatically open the editor, start the agent, and set up direnv.
 
 ## Automatic Features
 
