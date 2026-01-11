@@ -10,6 +10,5 @@ A Python implementation inspired by git-worktree-runner (gtr), providing:
 
 from __future__ import annotations
 
-__all__ = ["app"]
-
-from .cli import app
+# Note: `app` is intentionally NOT imported here to avoid circular imports.
+# Import directly from agent_cli.dev.cli if needed.
