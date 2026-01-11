@@ -336,50 +336,28 @@ class TestEditorDetection:
             Quote: "You can use the CURSOR_AGENT environment variable in your
                    shell config to detect when the Agent is running"
             Note: Cursor is an AI-first code editor (VS Code fork)
+            Note: Cursor is proprietary, not available in nixpkgs for live testing
             Verified: 2026-01-11 via official Cursor docs (web search)
         """
         monkeypatch.setenv("CURSOR_AGENT", "1")
         editor = Cursor()
         assert editor.detect() is True
 
-    def test_cursor_detection_term_program(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        """Cursor also detectable via TERM_PROGRAM=cursor.
-
-        Evidence:
-            Source: Cursor behavior as VS Code fork
-            Note: Like VS Code, likely sets TERM_PROGRAM in integrated terminal
-            Caveat: Not explicitly documented - inferred from VS Code behavior
-            Verified: 2026-01-11 via code analysis (assumed, not proven)
-        """
-        monkeypatch.delenv("CURSOR_AGENT", raising=False)
-        monkeypatch.setenv("TERM_PROGRAM", "cursor")
-        editor = Cursor()
-        assert editor.detect() is True
-
-    def test_sublime_detection_term_program(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        """Sublime Text detection via TERM_PROGRAM (theoretical).
-
-        Evidence:
-            Source: Web search for Sublime Text terminal integration
-            Finding: Sublime Text has NO built-in integrated terminal
-            Note: Terminal packages like Terminus may set TERM_PROGRAM,
-                  but this is plugin-dependent, not native behavior
-            Caveat: This detection is speculative - Sublime doesn't natively
-                    run shells that would set TERM_PROGRAM
-            Verified: 2026-01-11 via web search confirming no native terminal
-        """
-        monkeypatch.setenv("TERM_PROGRAM", "sublime")
-        editor = SublimeText()
-        assert editor.detect() is True
-
-    def test_sublime_alt_commands(self) -> None:
-        """Sublime Text has multiple command alternatives.
+    def test_sublime_command_and_alternatives(self) -> None:
+        """Sublime Text command configuration (not terminal detection).
 
         Evidence:
             Source: Sublime Text Command Line documentation
             URL: https://www.sublimetext.com/docs/command_line.html
             Commands: subl (symlink), sublime_text (binary), sublime
-            Verified: 2026-01-11 via official docs
+
+            Important: Sublime Text has NO built-in integrated terminal.
+            The detect_term_program field exists but is theoretical -
+            terminal packages like Terminus may set TERM_PROGRAM, but
+            this is plugin-dependent, not native Sublime behavior.
+
+            Verified: 2026-01-11 via official CLI docs and web search
+                      confirming no native terminal
         """
         editor = SublimeText()
         assert editor.command == "subl"
