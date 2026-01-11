@@ -18,7 +18,7 @@ class Vim(Editor):
     alt_commands = ("vi",)
     install_url = "https://www.vim.org"
     detect_env_vars = ("VIM", "VIMRUNTIME")
-    detect_term_program = "vim"
+    # No detect_term_program - vim doesn't set TERM_PROGRAM (uses VIM/VIMRUNTIME)
 
     def open_command(self, path: Path) -> list[str]:
         """Return the command to open a directory in Vim.

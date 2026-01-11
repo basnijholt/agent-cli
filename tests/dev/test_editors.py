@@ -142,15 +142,11 @@ class TestJetBrainsEditors:
     """Tests for JetBrains IDE editors."""
 
     def test_pycharm_detects_jediterm(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        """PyCharm detects JetBrains-JediTerm terminal."""
-        monkeypatch.setenv("TERMINAL_EMULATOR", "JetBrains-JediTerm")
-        editor = PyCharm()
-        assert editor.detect() is True
+        """PyCharm detects JetBrains-JediTerm terminal.
 
-    def test_pycharm_detects_term_program(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        """PyCharm also detects via TERM_PROGRAM."""
-        monkeypatch.delenv("TERMINAL_EMULATOR", raising=False)
-        monkeypatch.setenv("TERM_PROGRAM", "pycharm")
+        Source: https://github.com/JetBrains/jediterm/issues/253
+        """
+        monkeypatch.setenv("TERMINAL_EMULATOR", "JetBrains-JediTerm")
         editor = PyCharm()
         assert editor.detect() is True
 

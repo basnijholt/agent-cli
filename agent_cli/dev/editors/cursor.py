@@ -12,4 +12,4 @@ class Cursor(Editor):
     command = "cursor"
     install_url = "https://cursor.com"
     detect_env_vars = ("CURSOR_AGENT",)
-    detect_term_program = "cursor"
+    # No detect_term_program - not verified (Cursor is proprietary)

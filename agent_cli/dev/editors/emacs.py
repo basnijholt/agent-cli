@@ -18,7 +18,7 @@ class Emacs(Editor):
     alt_commands = ("emacsclient",)
     install_url = "https://www.gnu.org/software/emacs/"
     detect_env_vars = ("INSIDE_EMACS", "EMACS")
-    detect_term_program = "emacs"
+    # No detect_term_program - Emacs doesn't set TERM_PROGRAM (uses INSIDE_EMACS)
 
     def open_command(self, path: Path) -> list[str]:
         """Return the command to open a directory in Emacs.

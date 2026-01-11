@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import os
 
-from .base import Editor, _get_term_program
+from .base import Editor
 
 
 class _JetBrainsEditor(Editor):
@@ -14,17 +14,9 @@ class _JetBrainsEditor(Editor):
         """Detect if running inside a JetBrains IDE's terminal.
 
         JetBrains IDEs set TERMINAL_EMULATOR=JetBrains-JediTerm.
-        Also checks TERM_PROGRAM for the specific IDE name.
+        Source: https://github.com/JetBrains/jediterm/issues/253
         """
-        # Check for JetBrains terminal environment (shared across all JetBrains IDEs)
-        if os.environ.get("TERMINAL_EMULATOR") == "JetBrains-JediTerm":
-            return True
-        # Check TERM_PROGRAM for specific IDE
-        if self.detect_term_program:
-            term_program = _get_term_program()
-            if term_program and self.detect_term_program.lower() in term_program.lower():
-                return True
-        return False
+        return os.environ.get("TERMINAL_EMULATOR") == "JetBrains-JediTerm"
 
 
 class IntelliJIdea(_JetBrainsEditor):
@@ -33,7 +25,6 @@ class IntelliJIdea(_JetBrainsEditor):
     name = "idea"
     command = "idea"
     install_url = "https://www.jetbrains.com/idea/"
-    detect_term_program = "idea"
 
 
 class PyCharm(_JetBrainsEditor):
@@ -43,7 +34,6 @@ class PyCharm(_JetBrainsEditor):
     command = "pycharm"
     alt_commands = ("charm",)
     install_url = "https://www.jetbrains.com/pycharm/"
-    detect_term_program = "pycharm"
 
 
 class WebStorm(_JetBrainsEditor):
@@ -52,7 +42,6 @@ class WebStorm(_JetBrainsEditor):
     name = "webstorm"
     command = "webstorm"
     install_url = "https://www.jetbrains.com/webstorm/"
-    detect_term_program = "webstorm"
 
 
 class GoLand(_JetBrainsEditor):
@@ -61,7 +50,6 @@ class GoLand(_JetBrainsEditor):
     name = "goland"
     command = "goland"
     install_url = "https://www.jetbrains.com/go/"
-    detect_term_program = "goland"
 
 
 class RustRover(_JetBrainsEditor):
@@ -70,4 +58,3 @@ class RustRover(_JetBrainsEditor):
     name = "rustrover"
     command = "rustrover"
     install_url = "https://www.jetbrains.com/rust/"
-    detect_term_program = "rustrover"

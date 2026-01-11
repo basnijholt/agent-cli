@@ -129,7 +129,7 @@ Both tools manage git worktrees with editor and AI agent integration. Key differ
 | Aspect | Value | Status | Evidence |
 |--------|-------|--------|----------|
 | **Command** | `cursor` | ✅ | Standard command |
-| **Detection env var** | `TERM_PROGRAM` (likely `vscode`) | ⚠️ | Fork of VS Code, likely inherits |
+| **Detection env var** | `CURSOR_AGENT` | ✅ | [Official docs](https://docs.cursor.com/agent/terminal) - TERM_PROGRAM unverified |
 | **Agent detection** | `CURSOR_AGENT` | ✅ | [Terminal docs](https://docs.cursor.com/en/agent/terminal) |
 
 ### Zed
@@ -155,7 +155,7 @@ Both tools manage git worktrees with editor and AI agent integration. Key differ
 |--------|-------|--------|----------|
 | **Command** | `vim` | ✅ | `nix-shell -p vim --run "vim --version"` - VIM 9.1 |
 | **Open syntax** | `sh -c 'cd "<path>" && vim .'` | ✅ | Matches GTR pattern |
-| **Detection env var** | `VIM`, `VIMRUNTIME` | ⚠️ | These are internal paths, not exported to shell. Vim uses compiled-in fallback paths |
+| **Detection env var** | `VIM`, `VIMRUNTIME` | ✅ | Exported to `:terminal` child processes - [known issue vim#7696](https://github.com/vim/vim/issues/7696) |
 
 ### Emacs
 
