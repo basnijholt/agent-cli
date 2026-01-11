@@ -235,9 +235,9 @@ class Dev(BaseModel):
     agent_args: dict[str, list[str]] | None = (
         None  # Per-agent args, e.g. {"claude": ["--dangerously-skip-permissions"]}
     )
-    auto_setup: bool = True
-    copy_env_files: bool = True
-    fetch_before_create: bool = True
+    setup: bool = True  # Run project setup (npm install, etc.)
+    copy_env: bool = True  # Copy .env files from main repo
+    fetch: bool = True  # Git fetch before creating worktree
 
 
 def _config_path(config_path_str: str | None = None) -> Path | None:

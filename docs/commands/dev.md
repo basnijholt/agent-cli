@@ -62,9 +62,9 @@ agent-cli dev new [BRANCH] [OPTIONS]
 | `--with-agent` | Specific agent (claude, codex, gemini, aider) |
 | `--agent-args` | Extra arguments to pass to the agent |
 | `--direnv` | Generate .envrc file for direnv (auto-detects venv) |
-| `--no-setup` | Skip automatic project setup (npm install, etc.) |
-| `--no-copy` | Skip copying .env files |
-| `--no-fetch` | Skip git fetch before creating |
+| `--setup/--no-setup` | Run automatic project setup (default: enabled) |
+| `--copy-env/--no-copy-env` | Copy .env files from main repo (default: enabled) |
+| `--fetch/--no-fetch` | Git fetch before creating (default: enabled) |
 
 **Examples:**
 
@@ -268,6 +268,11 @@ Add defaults to your `~/.config/agent-cli/config.toml`:
 editor = true          # Always open editor (-e)
 agent = true           # Always start agent (-a)
 direnv = true          # Always generate .envrc (--direnv)
+
+# Worktree creation behavior
+setup = true           # Run project setup (npm install, etc.)
+copy_env = true        # Copy .env files from main repo
+fetch = true           # Git fetch before creating
 
 # Which editor/agent to use when flags are enabled
 default_editor = "cursor"

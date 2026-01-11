@@ -334,15 +334,18 @@ def new(  # noqa: PLR0912
         str | None,
         typer.Option(hidden=True, help="Default editor from config"),
     ] = None,
-    no_setup: Annotated[
+    setup: Annotated[
         bool,
-        typer.Option("--no-setup", help="Skip automatic project setup"),
-    ] = False,
-    no_copy: Annotated[bool, typer.Option("--no-copy", help="Skip copying env files")] = False,
-    no_fetch: Annotated[
+        typer.Option("--setup/--no-setup", help="Run automatic project setup"),
+    ] = True,
+    copy_env: Annotated[
         bool,
-        typer.Option("--no-fetch", help="Skip git fetch before creating"),
-    ] = False,
+        typer.Option("--copy-env/--no-copy-env", help="Copy .env files from main repo"),
+    ] = True,
+    fetch: Annotated[
+        bool,
+        typer.Option("--fetch/--no-fetch", help="Git fetch before creating"),
+    ] = True,
     direnv: Annotated[
         bool,
         typer.Option("--direnv", help="Generate .envrc file for direnv (auto-detects venv)"),
@@ -371,7 +374,7 @@ def new(  # noqa: PLR0912
         branch,
         repo_path=repo_root,
         from_ref=from_ref,
-        fetch=not no_fetch,
+        fetch=fetch,
     )
 
     if not result.success:
@@ -381,14 +384,14 @@ def new(  # noqa: PLR0912
     _success(f"Created worktree at {result.path}")
 
     # Copy env files
-    if not no_copy:
+    if copy_env:
         copied = copy_env_files(repo_root, result.path)
         if copied:
             _info(f"Copied {len(copied)} env file(s)")
 
     # Detect and run project setup
     project = None
-    if not no_setup:
+    if setup:
         project = detect_project_type(result.path)
         if project:
             _info(f"Detected {project.description}, running setup...")

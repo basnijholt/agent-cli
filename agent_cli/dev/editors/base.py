@@ -47,7 +47,7 @@ class Editor(ABC):
 
         # Check TERM_PROGRAM
         if self.detect_term_program:
-            term_program = _get_term_program()
+            term_program = os.environ.get("TERM_PROGRAM")
             if term_program and self.detect_term_program.lower() in term_program.lower():
                 return True
 
@@ -87,8 +87,3 @@ class Editor(ABC):
     def __repr__(self) -> str:  # noqa: D105
         status = "available" if self.is_available() else "not installed"
         return f"<{self.__class__.__name__} {self.name!r} ({status})>"
-
-
-def _get_term_program() -> str | None:
-    """Get the TERM_PROGRAM environment variable."""
-    return os.environ.get("TERM_PROGRAM")
