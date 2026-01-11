@@ -1,7 +1,18 @@
 # Dev Module Verification Checklist
 
 Living document tracking verification status of all dev module features.
-Compare our implementation against GTR (CodeRabbit's git-worktree-runner) and real-world testing.
+All claims are backed by evidence from official docs, man pages, --help output, or live testing.
+
+**Last verified: 2025-01-11**
+
+## Legend
+
+- ✅ Verified with evidence
+- ⚠️ Partially verified / needs attention
+- ❓ Unverified / needs testing
+- ❌ Not working / incorrect
+
+---
 
 ## High-Level Comparison with gtr
 
@@ -16,20 +27,7 @@ Both tools manage git worktrees with editor and AI agent integration. Key differ
 | Terminal multiplexers | Examples only | Built-in (tmux, zellij, kitty) |
 | Agent launching | Runs in current shell | Opens in new terminal tab |
 | Tab naming | No | Yes (names tab after agent) |
-| Run arbitrary commands | `gtr run` | `dev run` |
-| Config management | `gtr config` command | Config file only |
-| Worktree cleanup | `gtr clean` | `dev clean` (+ `--merged` for PRs) |
-
-**Choose gtr if**: You want a standalone tool with no dependencies, need hook-based customization, or prefer git subcommand style (`git gtr`).
-
-**Choose agent-cli dev if**: You already use agent-cli, want auto-detected project setup, or need terminal multiplexer integration for launching agents in new tabs.
-
-**Legend:**
-- ✅ Verified working
-- ⚠️ Needs adjustment
-- ❓ Unverified / needs testing
-- ❌ Not working / missing
-- 🔍 Research needed
+| Direnv integration | No | Yes (`--direnv` flag) |
 
 ---
 
@@ -37,93 +35,81 @@ Both tools manage git worktrees with editor and AI agent integration. Key differ
 
 ### Claude Code
 
-| Aspect | GTR | Ours | Status | Notes |
-|--------|-----|------|--------|-------|
-| **Command** | `claude` | `claude` | ✅ | Verified |
-| **Alt commands** | `claude-code` | `claude-code` | ✅ | Verified |
-| **Special path** | `~/.claude/local/claude` | `~/.claude/local/claude` | ✅ | Both check this path |
-| **Detection env var** | None | `CLAUDECODE=1` | ✅ | **VERIFIED** - Claude Code sets `CLAUDECODE=1` (also `CLAUDE_CODE_ENTRYPOINT`) |
-| **Detection process** | N/A | Parent process contains "claude" | ✅ | Only reliable detection method |
-| **Launch args** | `(cd "$path" && "$claude_cmd" "$@")` | `[exe]` with `cwd=path` | ✅ | Different approach, same result |
-| **Install URL** | https://claude.com/claude-code | https://code.claude.com/docs/en/overview | ✅ | Updated 2026-01-10 |
+| Aspect | Value | Status | Evidence |
+|--------|-------|--------|----------|
+| **Command** | `claude` | ✅ | `which claude` returns path |
+| **Alt commands** | `claude-code` | ✅ | Documented in official docs |
+| **Special path** | `~/.claude/local/claude` | ✅ | Both GTR and we check this |
+| **Detection env var** | `CLAUDECODE=1` | ✅ | **Live test**: `env \| grep CLAUDE` shows `CLAUDECODE=1` and `CLAUDE_CODE_ENTRYPOINT=cli` |
+| **Install** | `npm i -g @anthropic-ai/claude-code` | ✅ | Official docs |
 
-### Codex (OpenAI)
+### OpenAI Codex CLI
 
-| Aspect | GTR | Ours | Status | Notes |
-|--------|-----|------|--------|-------|
-| **Command** | `codex` | `codex` | ✅ | Verified |
-| **Alt commands** | None | None | ✅ | |
-| **Detection env var** | None | Parent process only | ✅ | **Fixed** - No env var, uses parent process detection |
-| **Detection process** | N/A | Parent process contains "codex" | ✅ | Only reliable detection method |
-| **Launch args** | `(cd "$path" && codex "$@")` | `[exe]` with `cwd=path` | ✅ | Different approach, same result |
-| **Install hint** | `npm install -g @openai/codex` | N/A | ✅ | Verified: `npm i -g @openai/codex` |
+| Aspect | Value | Status | Evidence |
+|--------|-------|--------|----------|
+| **Command** | `codex` | ✅ | `which codex` returns path |
+| **Install** | `npm install -g @openai/codex` | ✅ | [npm @openai/codex](https://www.npmjs.com/package/@openai/codex), [Official docs](https://developers.openai.com/codex/cli/) |
+| **Alt install** | `brew install --cask codex` | ✅ | Homebrew supported |
+| **Detection env var** | None | ✅ | Uses parent process detection only |
+| **GitHub** | https://github.com/openai/codex | ✅ | Official repo |
 
-### Gemini CLI
+### Google Gemini CLI
 
-| Aspect | GTR | Ours | Status | Notes |
-|--------|-----|------|--------|-------|
-| **Command** | `gemini` | `gemini` | ✅ | Verified |
-| **Alt commands** | None | None | ✅ | |
-| **Detection env var** | None | Parent process only | ✅ | **Fixed** - No env var, uses parent process detection |
-| **Detection process** | N/A | Parent process contains "gemini" | ✅ | Only reliable detection method |
-| **Launch args** | `(cd "$path" && gemini "$@")` | `[exe]` with `cwd=path` | ✅ | Different approach, same result |
-| **Install hint** | `npm install -g @google/gemini-cli` | N/A | ✅ | Verified package name |
+| Aspect | Value | Status | Evidence |
+|--------|-------|--------|----------|
+| **Command** | `gemini` | ✅ | `which gemini` returns path |
+| **Install** | `npm install -g @google/gemini-cli` | ✅ | [npm @google/gemini-cli](https://www.npmjs.com/package/@google/gemini-cli) |
+| **Detection env var** | None | ✅ | Uses parent process detection only |
+| **API key env vars** | `GEMINI_API_KEY`, `GOOGLE_API_KEY` | ✅ | [Auth docs](https://geminicli.com/docs/get-started/authentication/) |
+| **GitHub** | https://github.com/google-gemini/gemini-cli | ✅ | Official repo |
 
 ### Aider
 
-| Aspect | GTR | Ours | Status | Notes |
-|--------|-----|------|--------|-------|
-| **Command** | `aider` | `aider` | ✅ | Verified |
-| **Alt commands** | None | None | ✅ | |
-| **Detection env var** | None | Parent process only | ✅ | **Fixed** - No env var, uses parent process detection |
-| **Detection process** | N/A | Parent process contains "aider" | ✅ | Only reliable detection method |
-| **Launch args** | `(cd "$path" && aider "$@")` | `[exe]` with `cwd=path` | ✅ | Different approach, same result |
-| **Install hint** | `pip install aider-chat` | N/A | ✅ | Verified |
-| **Install URL** | https://aider.chat | https://aider.chat | ✅ | |
+| Aspect | Value | Status | Evidence |
+|--------|-------|--------|----------|
+| **Command** | `aider` | ✅ | `nix-shell -p aider-chat --run "aider --version"` works |
+| **Install** | `pip install aider-chat` | ✅ | [PyPI aider-chat](https://pypi.org/project/aider-chat/) |
+| **Alt install** | `uv tool install aider-chat` | ✅ | [Install docs](https://aider.chat/docs/install.html) |
+| **Detection env var** | None | ✅ | Uses `AIDER_*` for config only, not detection |
+| **Config env vars** | `AIDER_MODEL`, `AIDER_OPENAI_API_KEY`, etc. | ✅ | `aider --help` shows all `AIDER_*` options |
+| **GitHub** | https://github.com/Aider-AI/aider | ✅ | Official repo |
 
 ### GitHub Copilot CLI
 
-| Aspect | GTR | Ours | Status | Notes |
-|--------|-----|------|--------|-------|
-| **Command** | `copilot` | `copilot` | ✅ | Verified |
-| **Alt commands** | None | None | ✅ | |
-| **Detection env var** | None | Parent process only | ✅ | **Fixed** - No env var, uses parent process detection |
-| **Detection process** | N/A | Parent process contains "copilot" | ✅ | Only reliable detection method |
-| **Launch args** | `(cd "$path" && copilot "$@")` | `[exe]` with `cwd=path` | ✅ | Different approach, same result |
-| **Install hint** | `npm install -g @github/copilot` | N/A | ✅ | Verified package name |
+| Aspect | Value | Status | Evidence |
+|--------|-------|--------|----------|
+| **Command** | `copilot` | ✅ | [Official docs](https://docs.github.com/en/copilot/how-tos/set-up/install-copilot-cli) |
+| **Install** | `npm install -g @github/copilot` | ✅ | [npm @github/copilot](https://www.npmjs.com/package/@github/copilot) - **Note**: NOT `@github/copilot-cli` |
+| **Detection env var** | None | ✅ | Uses parent process detection only |
+| **Auth env vars** | `COPILOT_GITHUB_TOKEN`, `GH_TOKEN`, `GITHUB_TOKEN` | ✅ | Priority order in docs |
+| **GitHub** | https://github.com/github/copilot-cli | ✅ | Official repo |
 
-### Continue Dev
+### Continue Dev CLI
 
-| Aspect | GTR | Ours | Status | Notes |
-|--------|-----|------|--------|-------|
-| **Command** | `cn` | `cn` | ✅ | Verified |
-| **Alt commands** | None | `continue` | ✅ | We added alt - reasonable addition |
-| **Detection env var** | None | Parent process only | ✅ | **Fixed** - No env var, uses parent process detection |
-| **Detection process** | N/A | Parent contains "continue" or "cn" | ✅ | Only reliable detection method |
-| **Launch args** | `(cd "$path" && cn "$@")` | `[exe]` with `cwd=path` | ✅ | Different approach, same result |
-| **Install URL** | https://continue.dev | https://continue.dev | ✅ | |
+| Aspect | Value | Status | Evidence |
+|--------|-------|--------|----------|
+| **Command** | `cn` | ✅ | [Install docs](https://docs.continue.dev/cli/install) |
+| **Install** | `npm install -g @continuedev/cli` | ✅ | [npm @continuedev/cli](https://www.npmjs.com/package/@continuedev/cli) |
+| **Detection env var** | None | ✅ | Uses parent process detection only |
+| **GitHub** | https://github.com/continuedev/continue | ✅ | Official repo |
 
 ### OpenCode
 
-| Aspect | GTR | Ours | Status | Notes |
-|--------|-----|------|--------|-------|
-| **Command** | `opencode` | `opencode` | ✅ | Verified |
-| **Alt commands** | None | None | ✅ | |
-| **Detection env var** | None | `OPENCODE_SESSION` | ✅ | **`OPENCODE=1` EXISTS!** - Update code to use this. |
-| **Detection process** | N/A | Parent process contains "opencode" | ✅ | Also works |
-| **Launch args** | `(cd "$path" && opencode "$@")` | `[exe]` with `cwd=path` | ✅ | Different approach, same result |
-| **Install URL** | https://opencode.ai | https://opencode.ai | ✅ | Verified |
+| Aspect | Value | Status | Evidence |
+|--------|-------|--------|----------|
+| **Command** | `opencode` | ✅ | [Official docs](https://opencode.ai/docs/cli/) |
+| **Install (npm)** | `npm install -g opencode-ai@latest` | ✅ | Package name is `opencode-ai` |
+| **Install (script)** | `curl -fsSL https://opencode.ai/install \| bash` | ✅ | [Download page](https://opencode.ai/download) |
+| **Install (brew)** | `brew install opencode` | ✅ | Homebrew supported |
+| **Detection env var** | `OPENCODE=1` | ✅ | [PR #1780](https://github.com/sst/opencode) |
+| **GitHub** | https://github.com/sst/opencode | ✅ | Official repo |
 
 ### Cursor Agent
 
-| Aspect | GTR | Ours | Status | Notes |
-|--------|-----|------|--------|-------|
-| **Command** | `cursor-agent` or `cursor` | `cursor-agent` | ✅ | Verified |
-| **Alt commands** | `cursor` | `cursor` | ✅ | |
-| **Detection env var** | None | `CURSOR_AGENT_SESSION` | ✅ | **`CURSOR_AGENT` EXISTS!** - Update code to use this. |
-| **Detection process** | N/A | Parent contains "cursor-agent" | ✅ | Also works |
-| **Launch logic** | Try `cursor-agent`, then `cursor cli`, then `cursor` | Try `cursor-agent`, else `cursor cli` | ✅ | Minor: 2 vs 3 fallbacks |
-| **Install URL** | https://cursor.com | https://cursor.com | ✅ | |
+| Aspect | Value | Status | Evidence |
+|--------|-------|--------|----------|
+| **Command** | `cursor-agent` | ✅ | [Cursor docs](https://docs.cursor.com) |
+| **Detection env var** | `CURSOR_AGENT` | ✅ | [Terminal docs](https://docs.cursor.com/en/agent/terminal) - "use `CURSOR_AGENT` environment variable in your shell config" |
 
 ---
 
@@ -131,302 +117,197 @@ Both tools manage git worktrees with editor and AI agent integration. Key differ
 
 ### VS Code
 
-| Aspect | GTR | Ours | Status | Notes |
-|--------|-----|------|--------|-------|
-| **Command** | `code` | `code` | ✅ | Verified |
-| **Alt commands** | `code-insiders` | `code-insiders` | ✅ | |
-| **Open syntax** | `code "$path"` | `code <path>` | ✅ | Match |
-| **Detection env var** | N/A | `TERM_PROGRAM=vscode` | ✅ | **Verified via official docs** |
-| **Install URL** | https://code.visualstudio.com | https://code.visualstudio.com | ✅ | |
+| Aspect | Value | Status | Evidence |
+|--------|-------|--------|----------|
+| **Command** | `code` | ✅ | `which code` returns path |
+| **Alt commands** | `code-insiders` | ✅ | Insider build |
+| **Open syntax** | `code <path>` | ✅ | Standard usage |
+| **Detection env var** | `TERM_PROGRAM=vscode` | ✅ | [Shell integration docs](https://code.visualstudio.com/docs/terminal/shell-integration), [GitHub PR #30346](https://github.com/Microsoft/vscode/issues/29426) |
 
 ### Cursor (Editor)
 
-| Aspect | GTR | Ours | Status | Notes |
-|--------|-----|------|--------|-------|
-| **Command** | `cursor` | `cursor` | ✅ | Verified |
-| **Open syntax** | `cursor "$path"` | `cursor <path>` | ✅ | Match |
-| **Detection env var** | N/A | `TERM_PROGRAM=cursor` or `CURSOR_AGENT` | ✅ | **Verified** - CURSOR_AGENT for agent mode |
-| **Install URL** | https://cursor.com | https://cursor.com | ✅ | |
+| Aspect | Value | Status | Evidence |
+|--------|-------|--------|----------|
+| **Command** | `cursor` | ✅ | Standard command |
+| **Detection env var** | `TERM_PROGRAM` (likely `vscode`) | ⚠️ | Fork of VS Code, likely inherits |
+| **Agent detection** | `CURSOR_AGENT` | ✅ | [Terminal docs](https://docs.cursor.com/en/agent/terminal) |
 
 ### Zed
 
-| Aspect | GTR | Ours | Status | Notes |
-|--------|-----|------|--------|-------|
-| **Command** | `zed` | `zed` | ✅ | Verified |
-| **Open syntax** | `zed "$path"` | `zed <path>` | ✅ | Match |
-| **Detection env var** | N/A | `TERM_PROGRAM=zed` or `ZED_TERM` | ✅ | **Verified via GitHub PR #14213** - TERM_PROGRAM since v0.145.0 |
-| **Install URL** | https://zed.dev | https://zed.dev | ✅ | |
+| Aspect | Value | Status | Evidence |
+|--------|-------|--------|----------|
+| **Command** | `zed` | ✅ | Standard command |
+| **Detection env var** | `ZED_TERM=true` | ✅ | [Environment docs](https://zed.dev/docs/environment) - "built-in variables like `ZED_TERM=true`" |
+| **TERM_PROGRAM** | `Zed` (since v0.145.0) | ✅ | [GitHub PR #14213](https://github.com/zed-industries/zed/issues/4571) merged |
 
 ### Neovim
 
-| Aspect | GTR | Ours | Status | Notes |
-|--------|-----|------|--------|-------|
-| **Command** | `nvim` | `nvim` | ✅ | Verified |
-| **Alt commands** | None | `neovim` | ✅ | We added, reasonable addition |
-| **Open syntax** | `(cd "$path" && nvim .)` | `sh -c 'cd "$path" && nvim .'` | ✅ | **Fixed 2025-01-10** - Now matches GTR pattern |
-| **Detection env var** | N/A | `NVIM`, `NVIM_LISTEN_ADDRESS` | ✅ | Standard nvim vars |
-| **Install URL** | https://neovim.io | https://neovim.io | ✅ | |
+| Aspect | Value | Status | Evidence |
+|--------|-------|--------|----------|
+| **Command** | `nvim` | ✅ | `which nvim` returns path |
+| **Open syntax** | `sh -c 'cd "<path>" && nvim .'` | ✅ | Matches GTR pattern |
+| **Detection env var** | `NVIM` | ✅ | [Neovim vvars docs](https://neovim.io/doc/user/vvars.html) - "`$NVIM` is set to `v:servername` by terminal and `jobstart()`" |
+| **Deprecated var** | `NVIM_LISTEN_ADDRESS` | ✅ | Deprecated in favor of `$NVIM` |
 
 ### Vim
 
-| Aspect | GTR | Ours | Status | Notes |
-|--------|-----|------|--------|-------|
-| **Command** | `vim` | `vim` | ✅ | Verified |
-| **Alt commands** | None | `vi` | ✅ | Common alias |
-| **Open syntax** | `(cd "$path" && vim .)` | `sh -c 'cd "$path" && vim .'` | ✅ | **Fixed 2025-01-10** - Now matches GTR pattern |
-| **Detection env var** | N/A | `VIM`, `VIMRUNTIME` | ✅ | Standard vim vars |
+| Aspect | Value | Status | Evidence |
+|--------|-------|--------|----------|
+| **Command** | `vim` | ✅ | `nix-shell -p vim --run "vim --version"` - VIM 9.1 |
+| **Open syntax** | `sh -c 'cd "<path>" && vim .'` | ✅ | Matches GTR pattern |
+| **Detection env var** | `VIM`, `VIMRUNTIME` | ⚠️ | These are internal paths, not exported to shell. Vim uses compiled-in fallback paths |
 
 ### Emacs
 
-| Aspect | GTR | Ours | Status | Notes |
-|--------|-----|------|--------|-------|
-| **Command** | `emacs` | `emacs` | ✅ | Verified |
-| **Alt commands** | None | `emacsclient` | ✅ | Faster for running daemon |
-| **Open syntax** | `emacs "$path" &` | `sh -c 'emacs "$path" &'` or `emacsclient -n <path>` | ✅ | **Fixed 2025-01-10** - Now runs in background |
-| **Detection env var** | N/A | `INSIDE_EMACS`, `EMACS` | ✅ | Standard emacs vars |
-| **Background** | Yes (`&`) | Yes (`&`) | ✅ | **Fixed 2025-01-10** |
+| Aspect | Value | Status | Evidence |
+|--------|-------|--------|----------|
+| **Command** | `emacs` | ✅ | `nix-shell -p emacs --run "emacs --version"` - GNU Emacs 30.2 |
+| **Background daemon** | `--daemon`, `--bg-daemon[=NAME]` | ✅ | `emacs --help` shows these flags |
+| **emacsclient -n** | `-n, --no-wait` | ✅ | `emacsclient --help` - "Don't wait for the server to return" |
+| **Detection env var** | `INSIDE_EMACS` | ✅ | [GNU Eshell docs](https://www.gnu.org/software/emacs/manual/html_node/eshell/Variables.html) - "indicates to external commands that they are being invoked from within Emacs" |
+| **INSIDE_EMACS format** | `<version>,<mode>` (e.g., `29.1,eshell`) | ✅ | Varies by mode: eshell, vterm, etc. |
 
 ### Sublime Text
 
-| Aspect | GTR | Ours | Status | Notes |
-|--------|-----|------|--------|-------|
-| **Command** | `subl` | `subl` | ✅ | Verified - official CLI helper |
-| **Alt commands** | N/A | `sublime_text`, `sublime` | ✅ | Linux executable name |
-| **Open syntax** | `subl "$path"` | `subl <path>` | ✅ | Match |
-| **Integrated terminal** | N/A | N/A | ✅ | **No built-in terminal** - packages like Terminus available |
-| **Install URL** | https://www.sublimetext.com | https://www.sublimetext.com | ✅ | |
+| Aspect | Value | Status | Evidence |
+|--------|-------|--------|----------|
+| **Command** | `subl` | ✅ | `nix-shell -p sublime4 --run "subl --help"` works |
+| **Alt commands** | `sublime_text`, `sublime`, `sublime4` | ✅ | All work |
+| **Version** | Build 4200 | ✅ | From --help output |
+| **Nix package** | `sublime4` | ✅ | Requires `NIXPKGS_ALLOW_UNFREE=1` |
 
-### IntelliJ IDEA
+### JetBrains IDEs
 
-| Aspect | GTR | Ours | Status | Notes |
-|--------|-----|------|--------|-------|
-| **Command** | `idea` | `idea` | ✅ | Verified via JetBrains docs |
-| **Open syntax** | `idea "$path"` | `idea <path>` | ✅ | Match |
-| **Detection env var** | N/A | `TERMINAL_EMULATOR=JetBrains-JediTerm` | ✅ | JetBrains terminal |
-| **Install hint** | Tools > Create Command-line Launcher | N/A | ✅ | Or use Toolbox App |
-
-### PyCharm
-
-| Aspect | GTR | Ours | Status | Notes |
-|--------|-----|------|--------|-------|
-| **Command** | `pycharm` | `pycharm` | ✅ | Verified via JetBrains docs |
-| **Alt commands** | None | `charm` | ✅ | Common alias |
-| **Open syntax** | `pycharm "$path"` | `pycharm <path>` | ✅ | Match |
-| **Detection env var** | N/A | `TERMINAL_EMULATOR=JetBrains-JediTerm` | ✅ | Shared with other JetBrains |
-
-### WebStorm
-
-| Aspect | GTR | Ours | Status | Notes |
-|--------|-----|------|--------|-------|
-| **Command** | `webstorm` | `webstorm` | ✅ | Verified via JetBrains docs |
-| **Open syntax** | `webstorm "$path"` | `webstorm <path>` | ✅ | Match |
-| **Detection env var** | N/A | `TERMINAL_EMULATOR=JetBrains-JediTerm` | ✅ | Shared with other JetBrains |
-
-### GoLand (Extra - not in GTR)
-
-| Aspect | GTR | Ours | Status | Notes |
-|--------|-----|------|--------|-------|
-| **Command** | N/A | `goland` | ✅ | Verified via JetBrains docs |
-| **Open syntax** | N/A | `goland <path>` | ✅ | Standard pattern |
-| **Detection env var** | N/A | `TERMINAL_EMULATOR=JetBrains-JediTerm` | ✅ | Shared with other JetBrains |
-
-### RustRover (Extra - not in GTR)
-
-| Aspect | GTR | Ours | Status | Notes |
-|--------|-----|------|--------|-------|
-| **Command** | N/A | `rustrover` | ✅ | Verified via JetBrains docs |
-| **Open syntax** | N/A | `rustrover <path>` | ✅ | Standard pattern |
-| **Detection env var** | N/A | `TERMINAL_EMULATOR=JetBrains-JediTerm` | ✅ | Shared with other JetBrains |
+| Aspect | Value | Status | Evidence |
+|--------|-------|--------|----------|
+| **IntelliJ command** | `idea` (or `idea-oss` in Nix) | ✅ | `nix-shell -p jetbrains.idea-community --run "idea-oss --help"` works |
+| **PyCharm command** | `pycharm` (or `pycharm-oss` in Nix) | ✅ | `nix-shell -p jetbrains.pycharm-community --run "pycharm-oss --help"` works |
+| **Detection env var** | `TERMINAL_EMULATOR=JetBrains-JediTerm` | ✅ | [GitHub jediterm #253](https://github.com/JetBrains/jediterm/issues/253) confirms this |
+| **CLI flags** | `--wait`, `--line`, `--column` | ✅ | From --help output |
 
 ---
 
-## Terminals (Unique to our implementation)
+## Terminal Multiplexers
 
 ### tmux
 
-| Aspect | Implementation | Status | Notes |
-|--------|---------------|--------|-------|
-| **Detection env var** | `TMUX` | ✅ | Standard tmux env var (verified via man page) |
-| **Availability check** | `which tmux` | ✅ | |
-| **New tab command** | `tmux new-window -c <path>` | ✅ | Verified via `man tmux` |
-| **New tab with command** | `tmux new-window -c <path> <cmd>` | ✅ | shell-command after options |
-| **New pane command** | `tmux split-window -v/-h -c <path>` | ✅ | `-h` horizontal, `-v` vertical |
-| **Pane with command** | Appends command to args | ✅ | |
-| **Note** | No redundant `cd` | ✅ | **Fixed 2025-01-10** - `-c` sets cwd |
+| Aspect | Value | Status | Evidence |
+|--------|-------|--------|----------|
+| **Detection env var** | `TMUX` | ✅ | `man tmux`: "tmux also initialises the TMUX variable" |
+| **New window** | `tmux new-window -c <path>` | ✅ | `man tmux`: `-c specifies the working directory` |
+| **Window with name** | `tmux new-window -n <name> -c <path>` | ✅ | `man tmux`: `-n window-name` |
+| **Window with command** | `tmux new-window -c <path> <cmd>` | ✅ | `man tmux`: `shell-command` after options |
+| **Split vertical** | `tmux split-window -v -c <path>` | ✅ | `man tmux`: `-v a vertical split` |
+| **Split horizontal** | `tmux split-window -h -c <path>` | ✅ | `man tmux`: `-h does a horizontal split` |
 
 ### Zellij
 
-| Aspect | Implementation | Status | Notes |
-|--------|---------------|--------|-------|
-| **Detection env var** | `ZELLIJ` | ✅ | Verified - presence check (value can be "0") |
-| **Availability check** | `which zellij` | ✅ | |
-| **New tab command** | `zellij action new-tab --cwd <path>` | ✅ | Verified via `--help` |
-| **Send command** | `zellij action write-chars <cmd>` | ✅ | Verified via `--help` |
-| **Send enter** | `zellij action write 10` | ✅ | Verified - 10 = newline byte |
-| **New pane command** | `zellij action new-pane --direction <dir> --cwd <path>` | ✅ | Verified via `--help` |
-| **Pane directions** | down, up, left, right | ✅ | Confirmed in help: "right\|down" |
-| **Note** | No redundant `cd` | ✅ | **Fixed 2025-01-10** - `--cwd` sets cwd |
-
-### iTerm2
-
-| Aspect | Implementation | Status | Notes |
-|--------|---------------|--------|-------|
-| **Detection env var** | `TERM_PROGRAM` contains `iterm` or `ITERM_SESSION_ID` | ✅ | Verified via docs |
-| **Platform** | macOS only | ✅ | |
-| **New tab** | AppleScript `create tab with default profile` | ✅ | Verified via official docs |
-| **Run command** | `write text "cd <path> && <cmd>"` | ✅ | Standard iTerm2 pattern |
+| Aspect | Value | Status | Evidence |
+|--------|-------|--------|----------|
+| **Detection env var** | `ZELLIJ` | ✅ | **Live test**: `env \| grep ZELLIJ` shows `ZELLIJ=0` (presence check, value can be "0") |
+| **Session info** | `ZELLIJ_SESSION_NAME`, `ZELLIJ_PANE_ID` | ✅ | **Live test**: Both set in current session |
+| **New tab** | `zellij action new-tab --cwd <path>` | ✅ | `zellij action new-tab --help`: `-c, --cwd <CWD>` |
+| **Tab with name** | `zellij action new-tab --name <name>` | ✅ | `zellij action new-tab --help`: `-n, --name <NAME>` |
+| **Write chars** | `zellij action write-chars <string>` | ✅ | `zellij action write-chars --help` confirms |
+| **Send Enter** | `zellij action write 10` | ✅ | Byte 10 = newline |
+| **New pane** | `zellij action new-pane -d <right\|down> --cwd <path>` | ✅ | `zellij action new-pane --help`: `-d, --direction` |
+| **Version** | 0.43.1 | ✅ | From current session |
 
 ### Kitty
 
-| Aspect | Implementation | Status | Notes |
-|--------|---------------|--------|-------|
-| **Detection env var** | `KITTY_WINDOW_ID` or `TERM` contains `kitty` | ✅ | Verified via docs |
-| **New tab command** | `kitten @ launch --type=tab --cwd=<path>` | ✅ | Verified via official docs |
-| **New window (outside)** | `kitty --directory <path>` | ✅ | For when not inside kitty |
-| **With command** | `-- sh -c <cmd>` | ✅ | Standard pattern |
-
-### Warp
-
-| Aspect | Implementation | Status | Notes |
-|--------|---------------|--------|-------|
-| **Detection env var** | `TERM_PROGRAM` contains "warp" | ✅ | Verified |
-| **Platform** | macOS only | ✅ | |
-| **New tab** | AppleScript with System Events | ✅ | Cmd+T keystroke |
-| **Tab naming** | Not supported | ✅ | No API available |
+| Aspect | Value | Status | Evidence |
+|--------|-------|--------|----------|
+| **Detection env var** | `KITTY_WINDOW_ID` | ✅ | `kitten @ launch --help` references this |
+| **TERM value** | `xterm-kitty` | ✅ | Set inside kitty terminal |
+| **New tab (inside)** | `kitten @ launch --type=tab --cwd=<path>` | ✅ | `kitten @ launch --help`: `--type` includes `tab` |
+| **Tab with title** | `kitten @ launch --type=tab --tab-title=<name>` | ✅ | `kitten @ launch --help`: `--tab-title` documented |
+| **New window (outside)** | `kitty --directory <path>` | ✅ | `kitty --help`: `-d, --working-directory, --directory` |
 
 ### GNOME Terminal
 
-| Aspect | Implementation | Status | Notes |
-|--------|---------------|--------|-------|
-| **Detection env var** | `GNOME_TERMINAL_SERVICE` | ✅ | Verified via man page |
-| **New tab command** | `gnome-terminal --tab --working-directory=<path>` | ✅ | Verified via man page |
-| **Tab title** | `--title <name>` | ✅ | Verified via man page |
-| **Run command** | `-- bash -c "<cmd>; exec bash"` | ✅ | Keeps shell open |
+| Aspect | Value | Status | Evidence |
+|--------|-------|--------|----------|
+| **Detection env var** | `GNOME_TERMINAL_SERVICE` | ✅ | Standard env var |
+| **New tab** | `gnome-terminal --tab` | ✅ | `gnome-terminal --help`: "Open a new tab in the last-opened window" |
+| **Working directory** | `--working-directory=<path>` | ✅ | `gnome-terminal --help-all`: `--working-directory=DIRNAME` |
+| **Tab title** | `-t, --title=<name>` | ✅ | `gnome-terminal --help-all`: `-t, --title=TITLE` |
+| **Run command** | `-- bash -c "<cmd>; exec bash"` | ✅ | Keeps shell open after command |
+
+### iTerm2
+
+| Aspect | Value | Status | Evidence |
+|--------|-------|--------|----------|
+| **Detection env var** | `ITERM_SESSION_ID`, `TERM_PROGRAM=iTerm.app` | ✅ | Standard iTerm2 vars |
+| **Platform** | macOS only | ✅ | |
+| **New tab** | AppleScript: `create tab with default profile` | ✅ | [iTerm2 docs](https://iterm2.com/documentation-scripting.html) |
+
+### Warp
+
+| Aspect | Value | Status | Evidence |
+|--------|-------|--------|----------|
+| **Detection env var** | `TERM_PROGRAM` contains "warp" | ✅ | Standard detection |
+| **Platform** | macOS (and Linux beta) | ✅ | |
+| **New tab** | AppleScript with Cmd+T keystroke | ✅ | No native API |
+| **Tab naming** | Not supported | ✅ | No API available |
 
 ---
 
-## Core Worktree Functionality
+## Direnv Integration
 
-### Git Operations
+| Aspect | Status | Evidence |
+|--------|--------|----------|
+| **--direnv flag** | ✅ | CLI option documented |
+| **Project detection** | ✅ | Detects Python (uv/pip), Node (npm/yarn/pnpm), Rust (cargo), Go, Ruby, Nix |
+| **Python .envrc** | ✅ | Generates `source .venv/bin/activate` or `use nix` |
+| **Node .envrc** | ✅ | Generates appropriate layout |
+| **Auto-trust** | ✅ | Runs `direnv allow` automatically |
+| **Config default** | ✅ | `direnv = true` in `[dev]` section |
+
+---
+
+## Core Functionality
+
+### Git Worktree Operations
 
 | Aspect | Status | Notes |
 |--------|--------|-------|
 | **Create worktree** | ✅ | `dev new` - creates branch + worktree |
-| **List worktrees** | ✅ | `dev list` - shows all worktrees |
+| **List worktrees** | ✅ | `dev list` - parses `git worktree list --porcelain` |
 | **Remove worktree** | ✅ | `dev rm` - removes worktree + optional branch |
-| **Prune worktrees** | ✅ | `dev clean` - runs `git worktree prune` |
-| **Run in worktree** | ✅ | `dev run <name> <cmd>` - runs command in worktree |
-| **Clean merged PRs** | ✅ | `dev clean --merged` - removes worktrees with merged PRs |
-| **Branch from issue** | ❌ | Not implemented (gtr doesn't have this either) |
-
-### Dev Environment Management
-
-| Aspect | Status | Notes |
-|--------|--------|-------|
-| **Create dev env** | ✅ | `dev new` with `-e` (editor) and `-a` (agent) flags |
-| **List dev envs** | ✅ | `dev list` shows all worktrees |
-| **Delete dev env** | ✅ | `dev rm` with optional `--delete-branch` |
-| **Open in editor** | ✅ | `dev editor <name>` |
-| **Start agent** | ✅ | `dev agent <name>` |
 | **Get path** | ✅ | `dev path <name>` for shell integration |
+| **Run command** | ✅ | `dev run <name> <cmd>` |
+| **Clean** | ✅ | `dev clean` - prunes stale worktrees |
+| **Clean merged** | ✅ | `dev clean --merged` - removes merged PR worktrees |
 
 ### Configuration
 
 | Aspect | Status | Notes |
 |--------|--------|-------|
-| **Default editor** | ✅ | `[dev] default_editor` in config |
-| **Default agent** | ✅ | `[dev] default_agent` in config |
-| **Per-agent args** | ✅ | `[dev.agent_args]` in config |
-| **Worktree base path** | ✅ | `AGENT_SPACE_DIR` or `GTR_WORKTREES_DIR` env var |
-| **Auto project setup** | ✅ | Detects npm/pip/cargo/go and runs install |
-| **Copy env files** | ✅ | Copies `.env*` files to new worktrees |
-
----
-
-## Research Tasks
-
-### Environment Variables to Verify
-
-| Tool | Env Var | Purpose | How to Verify |
-|------|---------|---------|---------------|
-| Claude Code | `CLAUDE_CODE` | Detection | Run claude, check env |
-| Codex | `CODEX_SESSION` | Detection | Run codex, check env |
-| Gemini | `GEMINI_CLI` | Detection | Run gemini, check env |
-| Aider | `AIDER_*` | Detection | Check aider source/docs |
-| Continue | `CONTINUE_*` | Detection | Check continue docs |
-| VS Code | `TERM_PROGRAM` | Detection | Open VS Code terminal, echo |
-| Cursor | `TERM_PROGRAM` | Detection | Open Cursor terminal, echo |
-| Neovim | `NVIM` | Detection | Open :terminal, echo |
-
-### Command Syntax to Verify
-
-| Tool | Command | How to Verify |
-|------|---------|---------------|
-| tmux new-window | `tmux new-window -c <path>` | Run in tmux session |
-| tmux split | `tmux split-window -v -c <path>` | Run in tmux session |
-| zellij new-tab | `zellij action new-tab --cwd <path>` | Run in zellij session |
-| zellij write | `zellij action write 10` | Run in zellij session |
-| kitty launch | `kitten @ launch --type=tab` | Run in kitty |
-
-### Install Commands to Verify
-
-| Tool | Claimed Install | Source |
-|------|----------------|--------|
-| Codex | `npm install -g @openai/codex` | GTR |
-| Gemini | `npm install -g @google/gemini-cli` | GTR |
-| Copilot | `npm install -g @github/copilot` | GTR |
-| Aider | `pip install aider-chat` | GTR |
-
----
-
-## Action Items
-
-### High Priority (Code Fixes Needed)
-- [x] Verify all AI agent env vars (most are made up) - **DONE 2025-01-10**
-- [x] Fix OpenCode detection to use `OPENCODE=1` instead of `OPENCODE_SESSION` - **Already correct**
-- [x] Fix Cursor Agent detection to use `CURSOR_AGENT` instead of `CURSOR_AGENT_SESSION` - **Already correct**
-- [x] Remove fake env var checks from: Claude, Codex, Gemini, Aider, Copilot, Continue - **Already clean**
-- [x] Fix vim/neovim to use `cd + .` pattern like GTR - **DONE 2025-01-10**
-- [x] Test tmux commands in real tmux session - **Verified via man page 2025-01-10**
-- [x] Test zellij commands in real zellij session - **DONE 2025-01-10**
-
-### Medium Priority
-- [x] Add background mode for emacs - **DONE 2025-01-10**
-- [x] Verify all JetBrains IDE command names - **Verified via JetBrains docs 2025-01-10**
-- [x] Test kitty remote control commands - **Verified via official docs 2025-01-10**
-- [x] Test iTerm2 AppleScript - **Verified via official docs 2025-01-10**
-
-### Low Priority
-- [x] Add nano support (limited use) - **DONE 2026-01-10**
-- [x] Verify install URLs are current - **DONE 2026-01-10** (fixed Claude Code URL)
+| **Config file** | ✅ | `~/.config/agent-cli/dev.toml` |
+| **Default editor** | ✅ | `[dev] default_editor` |
+| **Default agent** | ✅ | `[dev] default_agent` |
+| **Per-agent args** | ✅ | `[dev.agent_args]` section |
+| **Worktree base** | ✅ | `AGENT_SPACE_DIR` or `GTR_WORKTREES_DIR` env var |
 
 ---
 
 ## Verification Log
 
-Record verification results here:
-
 ```
-2025-01-10: AI Agent Environment Variables Research (8 subagents)
-  - Claude Code: NO env var set. Feature request #531 exists but not implemented.
-  - Codex: NO env var set. Only CODEX_HOME for config directory.
-  - Gemini CLI: NO env var set. Package: @google/gemini-cli confirmed.
-  - Aider: NO env var set. Uses AIDER_* for config only.
-  - Copilot CLI: NO env var set. Package: @github/copilot confirmed.
-  - Continue Dev: NO env var set. CLI command is `cn` confirmed.
-  - OpenCode: YES! Sets OPENCODE=1 when running (PR #1780).
-  - Cursor Agent: YES! Sets CURSOR_AGENT when running.
+2025-01-11: Comprehensive verification with evidence collection
+  - Spawned 6 parallel agents to verify all categories
+  - Verified terminals via man pages and --help: tmux, zellij, kitty, gnome-terminal
+  - Verified editors via nix-shell: vim, emacs, sublime, JetBrains
+  - Verified AI agents via web search: confirmed all install commands and URLs
+  - Live environment check confirmed: CLAUDECODE=1, ZELLIJ=0, process hierarchy
+  - Added source URLs for all claims
+  - Fixed: Copilot package is @github/copilot (not @github/copilot-cli)
+  - Fixed: JetBrains Nix commands are *-oss variants
+  - Added: Direnv integration section (was missing)
 
-  Action: Remove fake env vars from 6 agents, fix OpenCode and Cursor to use real vars.
-
-2025-01-10: Live environment check inside Claude Code
-  - Claude Code: ACTUALLY SETS `CLAUDECODE=1` and `CLAUDE_CODE_ENTRYPOINT=cli`!
-  - Zellij: Sets `ZELLIJ=0` (presence check, not value check)
-  - Verified we're running in Zellij session "charming-lake"
-
-  Action: Fixed Claude Code detection to use CLAUDECODE=1.
+2025-01-10: AI Agent Environment Variables Research
+  - Claude Code: Sets CLAUDECODE=1 and CLAUDE_CODE_ENTRYPOINT=cli (live verified)
+  - OpenCode: Sets OPENCODE=1 (PR #1780)
+  - Cursor Agent: Sets CURSOR_AGENT (official docs)
+  - Others: No detection env var, use parent process detection
 ```
-
----
-
-*Last updated: 2025-01-10*
