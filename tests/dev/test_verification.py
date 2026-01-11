@@ -115,10 +115,13 @@ class TestTerminalDetection:
         """GNOME Terminal sets GNOME_TERMINAL_SERVICE.
 
         Evidence:
-            Source: GNOME Terminal source code
-            URL: https://gitlab.gnome.org/GNOME/gnome-terminal/-/blob/master/src/terminal-app.cc
-            Code: Sets GNOME_TERMINAL_SERVICE for D-Bus service name
-            Format: ":1.123" (D-Bus connection ID)
+            Source: GNOME Terminal source code (two files)
+            Definition URL: https://gitlab.gnome.org/GNOME/gnome-terminal/-/blob/master/src/terminal-defines.hh
+            Definition: `#define TERMINAL_ENV_SERVICE_NAME "GNOME_TERMINAL_SERVICE"`
+            Setting URL: https://gitlab.gnome.org/GNOME/gnome-terminal/-/blob/master/src/terminal-screen.cc
+            Code: `g_hash_table_replace(env_table, g_strdup(TERMINAL_ENV_SERVICE_NAME),
+                   g_strdup(g_dbus_connection_get_unique_name(connection)));`
+            Format: ":1.123" (D-Bus connection unique name)
             Verified: 2026-01-11 via source code inspection
         """
         monkeypatch.setenv("GNOME_TERMINAL_SERVICE", ":1.123")
@@ -288,14 +291,12 @@ class TestEditorDetection:
         """Emacs sets INSIDE_EMACS in subprocesses (shell, term, vterm, eshell).
 
         Evidence:
-            Source: GNU Emacs Eshell Variables documentation
-            URL: https://www.gnu.org/software/emacs/manual/html_node/eshell/Variables.html
-            Quote: "INSIDE_EMACS indicates to external commands that they are
-                   being invoked from within Emacs so they can adjust their
-                   behavior if necessary. By default, its value is
-                   `emacs-version,eshell`"
-            Format: "<version>,<mode>" e.g., "29.1,eshell" or "vterm"
-            Verified: 2026-01-11 via GNU docs
+            Source: Emacs comint.el source code
+            URL: https://github.com/emacs-mirror/emacs/blob/master/lisp/comint.el
+            Code: `(list (format "INSIDE_EMACS=%s,comint" emacs-version))`
+            Context: Set in comint-exec-1 function's process-environment via nconc
+            Format: "<version>,<mode>" e.g., "29.1,comint" or "29.1,eshell"
+            Verified: 2026-01-11 via source code inspection
         """
         monkeypatch.setenv("INSIDE_EMACS", "29.1,eshell")
         editor = Emacs()
