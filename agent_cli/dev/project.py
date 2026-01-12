@@ -54,12 +54,24 @@ def _is_unidep_monorepo(path: Path) -> bool:
     return False
 
 
+def _unidep_cmd(subcommand: str) -> str:
+    """Generate unidep command with uvx fallback.
+
+    Falls back to `uvx unidep` if unidep is not installed globally.
+    """
+    return (
+        f"if command -v unidep &> /dev/null; then unidep {subcommand}; "
+        f"else uvx unidep {subcommand}; fi"
+    )
+
+
 def _detect_unidep_project(path: Path) -> ProjectType | None:
     """Detect unidep project and determine the appropriate install command.
 
     For single projects: unidep install -e . -n {env_name}
     For monorepos: unidep install-all -e -n {env_name}
 
+    Falls back to `uvx unidep` if unidep is not installed globally.
     The {env_name} placeholder is replaced with path.name at runtime by run_setup().
 
     Evidence: https://github.com/basnijholt/unidep README documents these commands.
@@ -80,7 +92,7 @@ def _detect_unidep_project(path: Path) -> ProjectType | None:
         return ProjectType(
             name="python-unidep-monorepo",
             # -n creates a named conda environment matching the worktree directory
-            setup_commands=["unidep install-all -e -n {env_name}"],
+            setup_commands=[_unidep_cmd("install-all -e -n {env_name}")],
             description="Python monorepo with unidep",
         )
 
@@ -89,7 +101,7 @@ def _detect_unidep_project(path: Path) -> ProjectType | None:
         return ProjectType(
             name="python-unidep",
             # -n creates a named conda environment matching the worktree directory
-            setup_commands=["unidep install -e . -n {env_name}"],
+            setup_commands=[_unidep_cmd("install -e . -n {env_name}")],
             description="Python project with unidep",
         )
 
