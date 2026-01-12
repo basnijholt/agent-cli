@@ -95,7 +95,7 @@ windows:
   - tabs:
       - title: {title}
         layout:
-          cwd: {path}
+          cwd: {path.as_posix()}
           commands:
             - exec: {command}
 """
