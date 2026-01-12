@@ -74,6 +74,13 @@ agent-cli --version
 agent-cli --help
 ```
 
+> [!TIP]
+> **Short aliases:** You can also use `agent` or `ag` instead of `agent-cli`:
+> ```bash
+> ag --version
+> agent transcribe --help
+> ```
+
 ## Test Your Setup
 
 ### Test Autocorrect
