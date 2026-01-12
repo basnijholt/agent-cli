@@ -20,6 +20,26 @@ class ProjectType:
     description: str
 
 
+def get_conda_env_name(path: Path) -> str:
+    """Get conda environment name, prefixed with repo name for worktrees.
+
+    For worktrees in `{repo}-worktrees/{branch}`, returns `{repo}-{branch}`.
+    For main repos or non-worktree directories, returns just the directory name.
+
+    This prevents conda env name collisions when working on multiple repos
+    with similarly named branches (e.g., both repos having a 'cool-bear' branch).
+
+    Evidence: Worktree directories follow the pattern established in worktree.py
+    line 239: `repo_root.parent / f"{repo_root.name}-worktrees"`
+    """
+    parent_name = path.parent.name
+    if parent_name.endswith("-worktrees"):
+        # Extract repo name by removing '-worktrees' suffix
+        repo_name = parent_name[: -len("-worktrees")]
+        return f"{repo_name}-{path.name}"
+    return path.name
+
+
 def _is_unidep_monorepo(path: Path) -> bool:
     """Check if this is a unidep monorepo with multiple requirements.yaml files.
 
@@ -231,8 +251,8 @@ def run_setup(
     outputs: list[str] = []
 
     for cmd_template in project_type.setup_commands:
-        # Substitute {env_name} placeholder with directory name (used by unidep)
-        cmd = cmd_template.replace("{env_name}", path.name)
+        # Substitute {env_name} placeholder with conda env name (used by unidep)
+        cmd = cmd_template.replace("{env_name}", get_conda_env_name(path))
         try:
             result = subprocess.run(  # noqa: S602
                 cmd,
@@ -331,7 +351,7 @@ def _get_python_envrc(path: Path, project_name: str) -> str | None:
         # Uses ${SHELL##*/} to detect shell at runtime (zsh, bash, etc.)
         # Redirect stderr to suppress "complete: command not found" from shell hooks
         # (completion setup commands aren't available in direnv's subshell)
-        env_name = path.name
+        env_name = get_conda_env_name(path)
         return f"""\
 # Activate micromamba/conda environment: {env_name}
 if command -v micromamba &> /dev/null; then
