@@ -312,6 +312,8 @@ When creating a new dev environment, automatic setup is performed based on detec
 | Project Type | Detection | Setup Command |
 |--------------|-----------|---------------|
 | Python (uv) | `pyproject.toml` + `uv.lock` | `uv sync` |
+| Python (unidep) | `requirements.yaml` or `[tool.unidep]` | `unidep install -e .` |
+| Python (unidep monorepo) | `requirements.yaml` in subdirs | `unidep install-all -e` |
 | Python (poetry) | `pyproject.toml` + `poetry.lock` | `poetry install` |
 | Python (pip) | `requirements.txt` | `pip install -r requirements.txt` |
 | Node.js (pnpm) | `pnpm-lock.yaml` | `pnpm install` |
@@ -341,11 +343,14 @@ With `--direnv`, a `.envrc` file is automatically generated based on the detecte
 | Nix (flake.nix) | `use flake` |
 | Nix (shell.nix) | `use nix` |
 | Python (uv) | `source .venv/bin/activate` |
+| Python (unidep) | `layout micromamba <dirname>` |
 | Python (poetry) | `source "$(poetry env info --path)/bin/activate"` |
 | Python (pip/venv) | `source .venv/bin/activate` (or detected venv path) |
 | Node.js (with .nvmrc) | `use node` |
 | Go | `layout go` |
 | Ruby | `layout ruby` |
+
+> **Note:** The `layout micromamba` function must be defined in your `~/.config/direnv/direnvrc`. See [unidep documentation](https://github.com/basnijholt/unidep) for details on using unidep with conda/micromamba environments.
 
 Multiple directives can be combined. For example, a Python project with `shell.nix` will get:
 ```bash

@@ -109,6 +109,69 @@ class TestDetectProjectType:
         assert project is not None
         assert project.name == "python-uv"
 
+    def test_python_unidep_with_requirements_yaml(self, tmp_path: Path) -> None:
+        """Detect Python project with unidep via requirements.yaml.
+
+        Evidence: https://github.com/basnijholt/unidep - requirements.yaml is
+        the primary configuration file for unidep projects.
+        """
+        (tmp_path / "requirements.yaml").write_text("dependencies:\n  - numpy")
+        project = detect_project_type(tmp_path)
+        assert project is not None
+        assert project.name == "python-unidep"
+        assert "unidep install -e ." in project.setup_commands
+
+    def test_python_unidep_with_tool_unidep_in_pyproject(self, tmp_path: Path) -> None:
+        """Detect Python project with unidep via [tool.unidep] in pyproject.toml.
+
+        Evidence: https://github.com/basnijholt/unidep - [tool.unidep] section
+        in pyproject.toml is an alternative to requirements.yaml.
+        """
+        (tmp_path / "pyproject.toml").write_text(
+            '[project]\nname = "test"\n\n[tool.unidep]\ndependencies = ["numpy"]',
+        )
+        project = detect_project_type(tmp_path)
+        assert project is not None
+        assert project.name == "python-unidep"
+        assert "unidep install -e ." in project.setup_commands
+
+    def test_python_unidep_monorepo(self, tmp_path: Path) -> None:
+        """Detect Python monorepo with unidep (multiple requirements.yaml).
+
+        Evidence: https://github.com/basnijholt/unidep - unidep install-all
+        is used for monorepos with multiple packages.
+        """
+        # Root requirements.yaml
+        (tmp_path / "requirements.yaml").write_text("dependencies:\n  - numpy")
+        # Subpackage with its own requirements.yaml
+        subpkg = tmp_path / "packages" / "pkg1"
+        subpkg.mkdir(parents=True)
+        (subpkg / "requirements.yaml").write_text("dependencies:\n  - pandas")
+
+        project = detect_project_type(tmp_path)
+        assert project is not None
+        assert project.name == "python-unidep-monorepo"
+        assert "unidep install-all -e" in project.setup_commands
+
+    def test_python_unidep_monorepo_with_tool_unidep(self, tmp_path: Path) -> None:
+        """Detect monorepo when subdirs have [tool.unidep] in pyproject.toml."""
+        (tmp_path / "requirements.yaml").write_text("dependencies:\n  - numpy")
+        subpkg = tmp_path / "packages" / "pkg1"
+        subpkg.mkdir(parents=True)
+        (subpkg / "pyproject.toml").write_text('[tool.unidep]\ndependencies = ["pandas"]')
+
+        project = detect_project_type(tmp_path)
+        assert project is not None
+        assert project.name == "python-unidep-monorepo"
+
+    def test_priority_uv_over_unidep(self, tmp_path: Path) -> None:
+        """Uv takes priority over unidep when both are present."""
+        (tmp_path / "uv.lock").touch()
+        (tmp_path / "requirements.yaml").write_text("dependencies:\n  - numpy")
+        project = detect_project_type(tmp_path)
+        assert project is not None
+        assert project.name == "python-uv"
+
 
 class TestDetectVenvPath:
     """Tests for detect_venv_path function."""
@@ -189,6 +252,30 @@ class TestGenerateEnvrcContent:
         content = generate_envrc_content(tmp_path)
         assert content is not None
         assert "source .venv/bin/activate" in content
+
+    def test_python_unidep(self, tmp_path: Path) -> None:
+        """Generate envrc for unidep project using layout micromamba.
+
+        Evidence: https://github.com/basnijholt/dotfiles/configs/direnv/direnvrc
+        defines layout_micromamba function for activating micromamba environments.
+        """
+        (tmp_path / "requirements.yaml").write_text("dependencies:\n  - numpy")
+        content = generate_envrc_content(tmp_path)
+        assert content is not None
+        assert "layout micromamba" in content
+        # Uses directory name as env name
+        assert tmp_path.name in content
+
+    def test_python_unidep_monorepo(self, tmp_path: Path) -> None:
+        """Generate envrc for unidep monorepo using layout micromamba."""
+        (tmp_path / "requirements.yaml").write_text("dependencies:\n  - numpy")
+        subpkg = tmp_path / "pkg1"
+        subpkg.mkdir()
+        (subpkg / "requirements.yaml").write_text("dependencies:\n  - pandas")
+
+        content = generate_envrc_content(tmp_path)
+        assert content is not None
+        assert "layout micromamba" in content
 
 
 class TestCopyEnvFiles:
