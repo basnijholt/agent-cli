@@ -103,6 +103,7 @@ agent-cli dev rm NAME [OPTIONS]
 |--------|-------------|
 | `--force`, `-f` | Force removal even with uncommitted changes |
 | `--delete-branch`, `-d` | Also delete the branch |
+| `--yes`, `-y` | Skip confirmation |
 
 ### `dev path`
 
@@ -257,6 +258,8 @@ agent-cli dev terminals
 | Zellij | `ZELLIJ` env var | `zellij action new-tab --cwd <path>` |
 | Kitty | `KITTY_WINDOW_ID` | `kitten @ launch --type=tab` |
 | iTerm2 | `ITERM_SESSION_ID` | AppleScript |
+| Warp | `TERM_PROGRAM=WarpTerminal` | URI scheme + Launch Configurations |
+| GNOME Terminal | `GNOME_TERMINAL_SERVICE` | `gnome-terminal --tab` |
 
 ## Configuration
 
@@ -316,15 +319,18 @@ When creating a new dev environment, automatic setup is performed based on detec
 | Node.js (npm) | `package-lock.json` | `npm install` |
 | Rust | `Cargo.toml` | `cargo build` |
 | Go | `go.mod` | `go mod download` |
+| Ruby | `Gemfile` or `Gemfile.lock` | `bundle install` |
 
 ### Environment Files
 
-Files matching these patterns are automatically copied to new dev environments:
+The following files are automatically copied to new dev environments:
 
-- `.env*` (e.g., `.env`, `.env.local`, `.env.development`)
-- `*.env` (e.g., `local.env`)
+- `.env`
+- `.env.local`
+- `.env.example`
+- `.envrc`
 
-Use `--no-copy` to skip this.
+Use `--no-copy-env` to skip this.
 
 ### Direnv Integration
 
