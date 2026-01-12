@@ -83,4 +83,5 @@ from .agents import (  # noqa: E402, F401
     transcribe_daemon,
     voice_edit,
 )
+from .dev import cli as dev_cli  # noqa: E402, F401
 from .install import hotkeys, services  # noqa: E402, F401
