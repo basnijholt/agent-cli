@@ -273,24 +273,22 @@ class TestGenerateEnvrcContent:
         assert "source .venv/bin/activate" in content
 
     def test_python_unidep_generates_conda_activation(self, tmp_path: Path) -> None:
-        """Unidep projects generate conda/micromamba activation in envrc.
+        """Unidep projects generate micromamba/conda activation in envrc.
 
-        Evidence: unidep projects typically use conda/micromamba environments.
-        The generated .envrc uses direnv-compatible PATH_add approach.
+        Evidence: unidep projects use conda/micromamba environments.
+        The generated .envrc uses shell hooks with runtime shell detection.
         """
         (tmp_path / "requirements.yaml").write_text("dependencies:\n  - numpy")
         content = generate_envrc_content(tmp_path)
         assert content is not None
-        # Should use direnv-compatible approach
-        assert "MAMBA_ROOT_PREFIX" in content
-        assert "CONDA_PREFIX" in content
-        assert "CONDA_DEFAULT_ENV" in content
-        assert "PATH_add" in content
+        assert "micromamba shell hook" in content
+        assert "micromamba activate" in content
+        assert "conda" in content  # fallback
         # Uses directory name as env name
         assert tmp_path.name in content
 
     def test_python_unidep_monorepo_generates_conda_activation(self, tmp_path: Path) -> None:
-        """Unidep monorepo generates conda/micromamba activation in envrc."""
+        """Unidep monorepo generates micromamba/conda activation in envrc."""
         (tmp_path / "requirements.yaml").write_text("dependencies:\n  - numpy")
         subpkg = tmp_path / "pkg1"
         subpkg.mkdir()
@@ -298,7 +296,7 @@ class TestGenerateEnvrcContent:
 
         content = generate_envrc_content(tmp_path)
         assert content is not None
-        assert "PATH_add" in content
+        assert "micromamba activate" in content
 
 
 class TestCopyEnvFiles:
