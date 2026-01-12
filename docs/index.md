@@ -12,6 +12,9 @@ A collection of **local-first**, AI-powered command-line agents that run entirel
 
 Agent CLI provides a suite of powerful tools for voice and text interaction, designed for privacy, offline capability, and seamless integration with system-wide hotkeys and workflows.
 
+> [!TIP]
+> **Short aliases available:** You can use `agent` or `ag` instead of `agent-cli` for convenience.
+
 > [!IMPORTANT]
 > **Local and Private by Design**
 >

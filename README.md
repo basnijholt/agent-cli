@@ -5,6 +5,9 @@
 `agent-cli` is a collection of **_local-first_**, AI-powered command-line agents that run entirely on your machine.
 It provides a suite of powerful tools for voice and text interaction, designed for privacy, offline capability, and seamless integration with system-wide hotkeys and workflows.
 
+> [!TIP]
+> **Short aliases available:** You can use `agent` or `ag` instead of `agent-cli` for convenience.
+
 > [!IMPORTANT]
 > **Local and Private by Design**
 > All agents in this tool are designed to run **100% locally**.
