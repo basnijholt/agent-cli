@@ -97,6 +97,8 @@ dev = [
 
 [project.scripts]
 agent-cli = "agent_cli.cli:app"
+agent = "agent_cli.cli:app"
+ag = "agent_cli.cli:app"
 
 [tool.setuptools.packages.find]
 include = ["agent_cli.*", "agent_cli"]
