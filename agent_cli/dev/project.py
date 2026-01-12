@@ -57,11 +57,12 @@ def _is_unidep_monorepo(path: Path) -> bool:
 def _unidep_cmd(subcommand: str) -> str:
     """Generate unidep command with uvx fallback.
 
-    Falls back to `uvx unidep` if unidep is not installed globally.
+    Falls back to `uvx unidep` if unidep is not installed globally but uvx is available.
     """
     return (
         f"if command -v unidep &> /dev/null; then unidep {subcommand}; "
-        f"else uvx unidep {subcommand}; fi"
+        f"elif command -v uvx &> /dev/null; then uvx unidep {subcommand}; "
+        f"else echo 'Error: neither unidep nor uvx found' >&2 && exit 1; fi"
     )
 
 
