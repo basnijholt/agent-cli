@@ -20,6 +20,95 @@ class ProjectType:
     description: str
 
 
+def _is_unidep_monorepo(path: Path) -> bool:
+    """Check if this is a unidep monorepo with multiple requirements.yaml files.
+
+    A monorepo is detected when there are requirements.yaml files in subdirectories,
+    indicating multiple packages managed together. Searches up to 2 levels deep.
+    Excludes common test/example directories to avoid false positives.
+    """
+    # Directories to exclude from monorepo detection (test fixtures, examples, etc.)
+    excluded_dirs = {"test", "tests", "example", "examples", "docs", "doc", "scripts"}
+
+    # Check for requirements.yaml or [tool.unidep] in subdirectories (depth 1-2)
+    for subdir in path.iterdir():
+        if not subdir.is_dir() or subdir.name.startswith("."):
+            continue
+        if subdir.name.lower() in excluded_dirs:
+            continue
+        # Check immediate children
+        if (subdir / "requirements.yaml").exists():
+            return True
+        pyproject = subdir / "pyproject.toml"
+        if pyproject.exists() and "[tool.unidep]" in pyproject.read_text():
+            return True
+        # Check one level deeper (e.g., packages/pkg1/)
+        for nested in subdir.iterdir():
+            if not nested.is_dir() or nested.name.startswith("."):
+                continue
+            if (nested / "requirements.yaml").exists():
+                return True
+            nested_pyproject = nested / "pyproject.toml"
+            if nested_pyproject.exists() and "[tool.unidep]" in nested_pyproject.read_text():
+                return True
+    return False
+
+
+def _unidep_cmd(subcommand: str) -> str:
+    """Generate unidep command with uvx fallback.
+
+    Falls back to `uvx unidep` if unidep is not installed globally but uvx is available.
+    """
+    return (
+        f"if command -v unidep &> /dev/null; then unidep {subcommand}; "
+        f"elif command -v uvx &> /dev/null; then uvx unidep {subcommand}; "
+        f"else echo 'Error: neither unidep nor uvx found' >&2 && exit 1; fi"
+    )
+
+
+def _detect_unidep_project(path: Path) -> ProjectType | None:
+    """Detect unidep project and determine the appropriate install command.
+
+    For single projects: unidep install -e . -n {env_name}
+    For monorepos: unidep install-all -e -n {env_name}
+
+    Falls back to `uvx unidep` if unidep is not installed globally.
+    The {env_name} placeholder is replaced with path.name at runtime by run_setup().
+
+    Evidence: https://github.com/basnijholt/unidep README documents these commands.
+    """
+    has_requirements_yaml = (path / "requirements.yaml").exists()
+    has_tool_unidep = False
+
+    if (path / "pyproject.toml").exists():
+        pyproject_content = (path / "pyproject.toml").read_text()
+        has_tool_unidep = "[tool.unidep]" in pyproject_content
+
+    # Determine if this is a monorepo (multiple requirements.yaml in subdirs)
+    is_monorepo = _is_unidep_monorepo(path)
+
+    # Detect monorepo even without root requirements.yaml
+    # (subdirs with requirements.yaml is enough)
+    if is_monorepo:
+        return ProjectType(
+            name="python-unidep-monorepo",
+            # -n creates a named conda environment matching the worktree directory
+            setup_commands=[_unidep_cmd("install-all -e -n {env_name}")],
+            description="Python monorepo with unidep",
+        )
+
+    # Single project requires root requirements.yaml or [tool.unidep]
+    if has_requirements_yaml or has_tool_unidep:
+        return ProjectType(
+            name="python-unidep",
+            # -n creates a named conda environment matching the worktree directory
+            setup_commands=[_unidep_cmd("install -e . -n {env_name}")],
+            description="Python project with unidep",
+        )
+
+    return None
+
+
 def detect_project_type(path: Path) -> ProjectType | None:  # noqa: PLR0911
     """Detect the project type based on files present.
 
@@ -34,6 +123,12 @@ def detect_project_type(path: Path) -> ProjectType | None:  # noqa: PLR0911
             setup_commands=["uv sync"],
             description="Python project with uv",
         )
+
+    # Python with unidep (Conda + Pip unified dependency management)
+    # Check for requirements.yaml (primary unidep config) or [tool.unidep] in pyproject.toml
+    unidep_project = _detect_unidep_project(path)
+    if unidep_project is not None:
+        return unidep_project
 
     # Python with Poetry
     if (path / "poetry.lock").exists():
@@ -135,7 +230,9 @@ def run_setup(
 
     outputs: list[str] = []
 
-    for cmd in project_type.setup_commands:
+    for cmd_template in project_type.setup_commands:
+        # Substitute {env_name} placeholder with directory name (used by unidep)
+        cmd = cmd_template.replace("{env_name}", path.name)
         try:
             result = subprocess.run(  # noqa: S602
                 cmd,
@@ -228,6 +325,22 @@ def _get_python_envrc(path: Path, project_name: str) -> str | None:
         return f"source {venv_path.name}/bin/activate" if venv_path else "source .venv/bin/activate"
     if project_name == "python-poetry":
         return 'source "$(poetry env info --path)/bin/activate"'
+    if project_name in ("python-unidep", "python-unidep-monorepo"):
+        # unidep projects use conda/micromamba environments
+        # Inline the activation logic (inspired by layout_micromamba pattern)
+        # Uses ${SHELL##*/} to detect shell at runtime (zsh, bash, etc.)
+        # Redirect stderr to suppress "complete: command not found" from shell hooks
+        # (completion setup commands aren't available in direnv's subshell)
+        env_name = path.name
+        return f"""\
+# Activate micromamba/conda environment: {env_name}
+if command -v micromamba &> /dev/null; then
+    eval "$(micromamba shell hook --shell=${{SHELL##*/}})" 2>/dev/null
+    micromamba activate {env_name}
+elif command -v conda &> /dev/null; then
+    eval "$(conda shell.${{SHELL##*/}} hook)" 2>/dev/null
+    conda activate {env_name}
+fi"""
     # Generic Python - look for existing venv
     venv_path = detect_venv_path(path)
     return f"source {venv_path.name}/bin/activate" if venv_path else None

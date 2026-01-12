@@ -109,6 +109,119 @@ class TestDetectProjectType:
         assert project is not None
         assert project.name == "python-uv"
 
+    def test_python_unidep_with_requirements_yaml(self, tmp_path: Path) -> None:
+        """Detect Python project with unidep via requirements.yaml.
+
+        Evidence: https://github.com/basnijholt/unidep - requirements.yaml is
+        the primary configuration file for unidep projects.
+        """
+        (tmp_path / "requirements.yaml").write_text("dependencies:\n  - numpy")
+        project = detect_project_type(tmp_path)
+        assert project is not None
+        assert project.name == "python-unidep"
+        # Command uses unidep with uvx fallback, -n {env_name} for named env
+        cmd = project.setup_commands[0]
+        assert "unidep install -e . -n {env_name}" in cmd
+        assert "uvx unidep" in cmd  # fallback
+
+    def test_python_unidep_with_tool_unidep_in_pyproject(self, tmp_path: Path) -> None:
+        """Detect Python project with unidep via [tool.unidep] in pyproject.toml.
+
+        Evidence: https://github.com/basnijholt/unidep - [tool.unidep] section
+        in pyproject.toml is an alternative to requirements.yaml.
+        """
+        (tmp_path / "pyproject.toml").write_text(
+            '[project]\nname = "test"\n\n[tool.unidep]\ndependencies = ["numpy"]',
+        )
+        project = detect_project_type(tmp_path)
+        assert project is not None
+        assert project.name == "python-unidep"
+        # Command uses unidep with uvx fallback, -n {env_name} for named env
+        cmd = project.setup_commands[0]
+        assert "unidep install -e . -n {env_name}" in cmd
+        assert "uvx unidep" in cmd  # fallback
+
+    def test_python_unidep_monorepo(self, tmp_path: Path) -> None:
+        """Detect Python monorepo with unidep (multiple requirements.yaml).
+
+        Evidence: https://github.com/basnijholt/unidep - unidep install-all
+        is used for monorepos with multiple packages.
+        """
+        # Root requirements.yaml
+        (tmp_path / "requirements.yaml").write_text("dependencies:\n  - numpy")
+        # Subpackage with its own requirements.yaml
+        subpkg = tmp_path / "packages" / "pkg1"
+        subpkg.mkdir(parents=True)
+        (subpkg / "requirements.yaml").write_text("dependencies:\n  - pandas")
+
+        project = detect_project_type(tmp_path)
+        assert project is not None
+        assert project.name == "python-unidep-monorepo"
+        # Command uses unidep with uvx fallback, -n {env_name} for named env
+        cmd = project.setup_commands[0]
+        assert "unidep install-all -e -n {env_name}" in cmd
+        assert "uvx unidep" in cmd  # fallback
+
+    def test_python_unidep_monorepo_with_tool_unidep(self, tmp_path: Path) -> None:
+        """Detect monorepo when subdirs have [tool.unidep] in pyproject.toml."""
+        (tmp_path / "requirements.yaml").write_text("dependencies:\n  - numpy")
+        subpkg = tmp_path / "packages" / "pkg1"
+        subpkg.mkdir(parents=True)
+        (subpkg / "pyproject.toml").write_text('[tool.unidep]\ndependencies = ["pandas"]')
+
+        project = detect_project_type(tmp_path)
+        assert project is not None
+        assert project.name == "python-unidep-monorepo"
+
+    def test_priority_uv_over_unidep(self, tmp_path: Path) -> None:
+        """Uv takes priority over unidep when both are present."""
+        (tmp_path / "uv.lock").touch()
+        (tmp_path / "requirements.yaml").write_text("dependencies:\n  - numpy")
+        project = detect_project_type(tmp_path)
+        assert project is not None
+        assert project.name == "python-uv"
+
+    def test_python_unidep_monorepo_without_root_requirements(self, tmp_path: Path) -> None:
+        """Detect monorepo when subdirs have requirements.yaml but root doesn't.
+
+        Evidence: https://github.com/basnijholt/unidep/tree/main/tests/simple_monorepo
+        shows a monorepo structure with only subdirs having requirements.yaml.
+        """
+        # No root requirements.yaml, only subdirs
+        subpkg1 = tmp_path / "project1"
+        subpkg2 = tmp_path / "project2"
+        subpkg1.mkdir()
+        subpkg2.mkdir()
+        (subpkg1 / "requirements.yaml").write_text("dependencies:\n  - numpy")
+        (subpkg2 / "requirements.yaml").write_text("dependencies:\n  - pandas")
+
+        project = detect_project_type(tmp_path)
+        assert project is not None
+        assert project.name == "python-unidep-monorepo"
+        # Command uses unidep with uvx fallback, -n {env_name} for named env
+        cmd = project.setup_commands[0]
+        assert "unidep install-all -e -n {env_name}" in cmd
+        assert "uvx unidep" in cmd  # fallback
+
+    def test_python_unidep_excludes_test_example_dirs(self, tmp_path: Path) -> None:
+        """Exclude test/example directories from monorepo detection.
+
+        Evidence: Directories like tests/, example/, docs/ often contain
+        requirements.yaml files as test fixtures, not actual dependencies.
+        """
+        # Only requirements.yaml in excluded directories - should NOT be monorepo
+        (tmp_path / "pyproject.toml").write_text('[project]\nname = "myproject"')
+        for excluded in ["tests", "example", "docs"]:
+            subdir = tmp_path / excluded / "fixture"
+            subdir.mkdir(parents=True)
+            (subdir / "requirements.yaml").write_text("dependencies:\n  - numpy")
+
+        project = detect_project_type(tmp_path)
+        # Should detect as generic python, not unidep monorepo
+        assert project is not None
+        assert project.name == "python"
+        assert project.name != "python-unidep-monorepo"
+
 
 class TestDetectVenvPath:
     """Tests for detect_venv_path function."""
@@ -189,6 +302,36 @@ class TestGenerateEnvrcContent:
         content = generate_envrc_content(tmp_path)
         assert content is not None
         assert "source .venv/bin/activate" in content
+
+    def test_python_unidep_generates_conda_activation(self, tmp_path: Path) -> None:
+        """Unidep projects generate micromamba/conda activation in envrc.
+
+        Evidence: unidep projects use conda/micromamba environments.
+        The generated .envrc uses shell hooks with runtime shell detection.
+        Stderr is redirected to suppress "complete: command not found" errors
+        from shell completion setup that isn't available in direnv's subshell.
+        """
+        (tmp_path / "requirements.yaml").write_text("dependencies:\n  - numpy")
+        content = generate_envrc_content(tmp_path)
+        assert content is not None
+        assert "micromamba shell hook" in content
+        assert "micromamba activate" in content
+        assert "conda" in content  # fallback
+        # Uses directory name as env name
+        assert tmp_path.name in content
+        # Stderr redirected to suppress completion errors in direnv subshell
+        assert "2>/dev/null" in content
+
+    def test_python_unidep_monorepo_generates_conda_activation(self, tmp_path: Path) -> None:
+        """Unidep monorepo generates micromamba/conda activation in envrc."""
+        (tmp_path / "requirements.yaml").write_text("dependencies:\n  - numpy")
+        subpkg = tmp_path / "pkg1"
+        subpkg.mkdir()
+        (subpkg / "requirements.yaml").write_text("dependencies:\n  - pandas")
+
+        content = generate_envrc_content(tmp_path)
+        assert content is not None
+        assert "micromamba activate" in content
 
 
 class TestCopyEnvFiles:
