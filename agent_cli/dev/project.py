@@ -63,12 +63,11 @@ def _detect_unidep_project(path: Path) -> ProjectType | None:
         pyproject_content = (path / "pyproject.toml").read_text()
         has_tool_unidep = "[tool.unidep]" in pyproject_content
 
-    if not has_requirements_yaml and not has_tool_unidep:
-        return None
-
     # Determine if this is a monorepo (multiple requirements.yaml in subdirs)
     is_monorepo = _is_unidep_monorepo(path)
 
+    # Detect monorepo even without root requirements.yaml
+    # (subdirs with requirements.yaml is enough)
     if is_monorepo:
         return ProjectType(
             name="python-unidep-monorepo",
@@ -76,11 +75,15 @@ def _detect_unidep_project(path: Path) -> ProjectType | None:
             description="Python monorepo with unidep",
         )
 
-    return ProjectType(
-        name="python-unidep",
-        setup_commands=["unidep install -e ."],
-        description="Python project with unidep",
-    )
+    # Single project requires root requirements.yaml or [tool.unidep]
+    if has_requirements_yaml or has_tool_unidep:
+        return ProjectType(
+            name="python-unidep",
+            setup_commands=["unidep install -e ."],
+            description="Python project with unidep",
+        )
+
+    return None
 
 
 def detect_project_type(path: Path) -> ProjectType | None:  # noqa: PLR0911
@@ -291,22 +294,14 @@ def detect_venv_path(path: Path) -> Path | None:
 
 
 def _get_python_envrc(path: Path, project_name: str) -> str | None:
-    """Get .envrc content for Python projects.
-
-    Evidence for direnv layouts:
-    - layout micromamba: Custom function defined in user's direnvrc
-      (see https://github.com/basnijholt/dotfiles/configs/direnv/direnvrc)
-    """
+    """Get .envrc content for Python projects."""
     if project_name == "python-uv":
         venv_path = detect_venv_path(path)
         return f"source {venv_path.name}/bin/activate" if venv_path else "source .venv/bin/activate"
     if project_name == "python-poetry":
         return 'source "$(poetry env info --path)/bin/activate"'
-    if project_name in ("python-unidep", "python-unidep-monorepo"):
-        # unidep projects typically use conda/micromamba environments
-        # Use the directory name as the environment name
-        env_name = path.name
-        return f"layout micromamba {env_name}"
+    # unidep projects typically use conda/micromamba environments which are
+    # managed externally (not via venv). Fall through to venv detection.
     # Generic Python - look for existing venv
     venv_path = detect_venv_path(path)
     return f"source {venv_path.name}/bin/activate" if venv_path else None

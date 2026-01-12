@@ -343,14 +343,12 @@ With `--direnv`, a `.envrc` file is automatically generated based on the detecte
 | Nix (flake.nix) | `use flake` |
 | Nix (shell.nix) | `use nix` |
 | Python (uv) | `source .venv/bin/activate` |
-| Python (unidep) | `layout micromamba <dirname>` |
+| Python (unidep) | Falls back to venv detection (conda envs managed externally) |
 | Python (poetry) | `source "$(poetry env info --path)/bin/activate"` |
 | Python (pip/venv) | `source .venv/bin/activate` (or detected venv path) |
 | Node.js (with .nvmrc) | `use node` |
 | Go | `layout go` |
 | Ruby | `layout ruby` |
-
-> **Note:** The `layout micromamba` function must be defined in your `~/.config/direnv/direnvrc`. See [unidep documentation](https://github.com/basnijholt/unidep) for details on using unidep with conda/micromamba environments.
 
 Multiple directives can be combined. For example, a Python project with `shell.nix` will get:
 ```bash

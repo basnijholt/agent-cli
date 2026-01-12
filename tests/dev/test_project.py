@@ -172,6 +172,25 @@ class TestDetectProjectType:
         assert project is not None
         assert project.name == "python-uv"
 
+    def test_python_unidep_monorepo_without_root_requirements(self, tmp_path: Path) -> None:
+        """Detect monorepo when subdirs have requirements.yaml but root doesn't.
+
+        Evidence: https://github.com/basnijholt/unidep/tree/main/tests/simple_monorepo
+        shows a monorepo structure with only subdirs having requirements.yaml.
+        """
+        # No root requirements.yaml, only subdirs
+        subpkg1 = tmp_path / "project1"
+        subpkg2 = tmp_path / "project2"
+        subpkg1.mkdir()
+        subpkg2.mkdir()
+        (subpkg1 / "requirements.yaml").write_text("dependencies:\n  - numpy")
+        (subpkg2 / "requirements.yaml").write_text("dependencies:\n  - pandas")
+
+        project = detect_project_type(tmp_path)
+        assert project is not None
+        assert project.name == "python-unidep-monorepo"
+        assert "unidep install-all -e" in project.setup_commands
+
 
 class TestDetectVenvPath:
     """Tests for detect_venv_path function."""
@@ -253,29 +272,27 @@ class TestGenerateEnvrcContent:
         assert content is not None
         assert "source .venv/bin/activate" in content
 
-    def test_python_unidep(self, tmp_path: Path) -> None:
-        """Generate envrc for unidep project using layout micromamba.
+    def test_python_unidep_no_envrc_without_venv(self, tmp_path: Path) -> None:
+        """Unidep projects without venv don't generate envrc.
 
-        Evidence: https://github.com/basnijholt/dotfiles/configs/direnv/direnvrc
-        defines layout_micromamba function for activating micromamba environments.
+        Evidence: unidep projects typically use conda/micromamba environments
+        which are managed externally and not detectable via standard venv paths.
         """
         (tmp_path / "requirements.yaml").write_text("dependencies:\n  - numpy")
         content = generate_envrc_content(tmp_path)
-        assert content is not None
-        assert "layout micromamba" in content
-        # Uses directory name as env name
-        assert tmp_path.name in content
+        # No venv, no envrc content for unidep
+        assert content is None
 
-    def test_python_unidep_monorepo(self, tmp_path: Path) -> None:
-        """Generate envrc for unidep monorepo using layout micromamba."""
+    def test_python_unidep_with_venv(self, tmp_path: Path) -> None:
+        """Unidep projects with venv generate standard envrc."""
         (tmp_path / "requirements.yaml").write_text("dependencies:\n  - numpy")
-        subpkg = tmp_path / "pkg1"
-        subpkg.mkdir()
-        (subpkg / "requirements.yaml").write_text("dependencies:\n  - pandas")
+        venv = tmp_path / ".venv" / "bin"
+        venv.mkdir(parents=True)
+        (venv / "activate").touch()
 
         content = generate_envrc_content(tmp_path)
         assert content is not None
-        assert "layout micromamba" in content
+        assert "source .venv/bin/activate" in content
 
 
 class TestCopyEnvFiles:
