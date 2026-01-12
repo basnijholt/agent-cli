@@ -25,10 +25,16 @@ def _is_unidep_monorepo(path: Path) -> bool:
 
     A monorepo is detected when there are requirements.yaml files in subdirectories,
     indicating multiple packages managed together. Searches up to 2 levels deep.
+    Excludes common test/example directories to avoid false positives.
     """
+    # Directories to exclude from monorepo detection (test fixtures, examples, etc.)
+    excluded_dirs = {"test", "tests", "example", "examples", "docs", "doc", "scripts"}
+
     # Check for requirements.yaml or [tool.unidep] in subdirectories (depth 1-2)
     for subdir in path.iterdir():
         if not subdir.is_dir() or subdir.name.startswith("."):
+            continue
+        if subdir.name.lower() in excluded_dirs:
             continue
         # Check immediate children
         if (subdir / "requirements.yaml").exists():
@@ -51,8 +57,10 @@ def _is_unidep_monorepo(path: Path) -> bool:
 def _detect_unidep_project(path: Path) -> ProjectType | None:
     """Detect unidep project and determine the appropriate install command.
 
-    For single projects: unidep install -e .
-    For monorepos: unidep install-all -e
+    For single projects: unidep install -e . -n {env_name}
+    For monorepos: unidep install-all -e -n {env_name}
+
+    The {env_name} placeholder is replaced with path.name at runtime by run_setup().
 
     Evidence: https://github.com/basnijholt/unidep README documents these commands.
     """
@@ -71,7 +79,8 @@ def _detect_unidep_project(path: Path) -> ProjectType | None:
     if is_monorepo:
         return ProjectType(
             name="python-unidep-monorepo",
-            setup_commands=["unidep install-all -e"],
+            # -n creates a named conda environment matching the worktree directory
+            setup_commands=["unidep install-all -e -n {env_name}"],
             description="Python monorepo with unidep",
         )
 
@@ -79,7 +88,8 @@ def _detect_unidep_project(path: Path) -> ProjectType | None:
     if has_requirements_yaml or has_tool_unidep:
         return ProjectType(
             name="python-unidep",
-            setup_commands=["unidep install -e ."],
+            # -n creates a named conda environment matching the worktree directory
+            setup_commands=["unidep install -e . -n {env_name}"],
             description="Python project with unidep",
         )
 
@@ -207,7 +217,9 @@ def run_setup(
 
     outputs: list[str] = []
 
-    for cmd in project_type.setup_commands:
+    for cmd_template in project_type.setup_commands:
+        # Substitute {env_name} placeholder with directory name (used by unidep)
+        cmd = cmd_template.replace("{env_name}", path.name)
         try:
             result = subprocess.run(  # noqa: S602
                 cmd,

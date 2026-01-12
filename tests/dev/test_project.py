@@ -119,7 +119,8 @@ class TestDetectProjectType:
         project = detect_project_type(tmp_path)
         assert project is not None
         assert project.name == "python-unidep"
-        assert "unidep install -e ." in project.setup_commands
+        # -n {env_name} creates a named conda environment (placeholder replaced at runtime)
+        assert "unidep install -e . -n {env_name}" in project.setup_commands
 
     def test_python_unidep_with_tool_unidep_in_pyproject(self, tmp_path: Path) -> None:
         """Detect Python project with unidep via [tool.unidep] in pyproject.toml.
@@ -133,7 +134,8 @@ class TestDetectProjectType:
         project = detect_project_type(tmp_path)
         assert project is not None
         assert project.name == "python-unidep"
-        assert "unidep install -e ." in project.setup_commands
+        # -n {env_name} creates a named conda environment (placeholder replaced at runtime)
+        assert "unidep install -e . -n {env_name}" in project.setup_commands
 
     def test_python_unidep_monorepo(self, tmp_path: Path) -> None:
         """Detect Python monorepo with unidep (multiple requirements.yaml).
@@ -151,7 +153,8 @@ class TestDetectProjectType:
         project = detect_project_type(tmp_path)
         assert project is not None
         assert project.name == "python-unidep-monorepo"
-        assert "unidep install-all -e" in project.setup_commands
+        # -n {env_name} creates a named conda environment (placeholder replaced at runtime)
+        assert "unidep install-all -e -n {env_name}" in project.setup_commands
 
     def test_python_unidep_monorepo_with_tool_unidep(self, tmp_path: Path) -> None:
         """Detect monorepo when subdirs have [tool.unidep] in pyproject.toml."""
@@ -189,7 +192,27 @@ class TestDetectProjectType:
         project = detect_project_type(tmp_path)
         assert project is not None
         assert project.name == "python-unidep-monorepo"
-        assert "unidep install-all -e" in project.setup_commands
+        # -n {env_name} creates a named conda environment (placeholder replaced at runtime)
+        assert "unidep install-all -e -n {env_name}" in project.setup_commands
+
+    def test_python_unidep_excludes_test_example_dirs(self, tmp_path: Path) -> None:
+        """Exclude test/example directories from monorepo detection.
+
+        Evidence: Directories like tests/, example/, docs/ often contain
+        requirements.yaml files as test fixtures, not actual dependencies.
+        """
+        # Only requirements.yaml in excluded directories - should NOT be monorepo
+        (tmp_path / "pyproject.toml").write_text('[project]\nname = "myproject"')
+        for excluded in ["tests", "example", "docs"]:
+            subdir = tmp_path / excluded / "fixture"
+            subdir.mkdir(parents=True)
+            (subdir / "requirements.yaml").write_text("dependencies:\n  - numpy")
+
+        project = detect_project_type(tmp_path)
+        # Should detect as generic python, not unidep monorepo
+        assert project is not None
+        assert project.name == "python"
+        assert project.name != "python-unidep-monorepo"
 
 
 class TestDetectVenvPath:
