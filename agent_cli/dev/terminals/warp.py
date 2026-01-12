@@ -55,6 +55,7 @@ class Warp(Terminal):
             return False
 
         # Simple case: no command, just open path via URI scheme
+        # Note: tab_name is ignored here - URI scheme doesn't support tab naming
         if command is None:
             try:
                 subprocess.run(

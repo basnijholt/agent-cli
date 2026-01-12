@@ -56,35 +56,3 @@ class Tmux(Terminal):
             return True
         except subprocess.CalledProcessError:
             return False
-
-    def open_new_pane(
-        self,
-        path: Path,
-        command: str | None = None,
-        *,
-        horizontal: bool = False,
-    ) -> bool:
-        """Open a new pane in tmux (split current window).
-
-        Args:
-            path: Directory to open in
-            command: Optional command to run
-            horizontal: If True, split horizontally; otherwise vertically
-
-        """
-        if not self.is_available():
-            return False
-
-        try:
-            split_flag = "-h" if horizontal else "-v"
-            # -c sets the working directory, so no need for cd in command
-            cmd = ["tmux", "split-window", split_flag, "-c", str(path)]
-
-            if command:
-                # Run command in new pane (cwd already set by -c)
-                cmd.append(command)
-
-            subprocess.run(cmd, check=True, capture_output=True)
-            return True
-        except subprocess.CalledProcessError:
-            return False

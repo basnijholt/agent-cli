@@ -19,42 +19,38 @@ class _JetBrainsEditor(Editor):
         return os.environ.get("TERMINAL_EMULATOR") == "JetBrains-JediTerm"
 
 
-class IntelliJIdea(_JetBrainsEditor):
-    """IntelliJ IDEA - The IDE for Java and other languages."""
+def _create_jetbrains_editor(
+    name: str,
+    command: str,
+    install_url: str,
+    alt_commands: tuple[str, ...] = (),
+) -> type[_JetBrainsEditor]:
+    """Factory to create JetBrains editor classes with minimal boilerplate."""
 
-    name = "idea"
-    command = "idea"
-    install_url = "https://www.jetbrains.com/idea/"
+    class _Editor(_JetBrainsEditor):
+        pass
 
-
-class PyCharm(_JetBrainsEditor):
-    """PyCharm - The Python IDE for Professional Developers."""
-
-    name = "pycharm"
-    command = "pycharm"
-    alt_commands = ("charm",)
-    install_url = "https://www.jetbrains.com/pycharm/"
-
-
-class WebStorm(_JetBrainsEditor):
-    """WebStorm - The JavaScript and TypeScript IDE."""
-
-    name = "webstorm"
-    command = "webstorm"
-    install_url = "https://www.jetbrains.com/webstorm/"
+    _Editor.name = name
+    _Editor.command = command
+    _Editor.alt_commands = alt_commands
+    _Editor.install_url = install_url
+    _Editor.__name__ = name.replace("-", "_").title().replace("_", "")
+    _Editor.__qualname__ = _Editor.__name__
+    return _Editor
 
 
-class GoLand(_JetBrainsEditor):
-    """GoLand - The IDE for Go developers."""
+# JetBrains IDE definitions: (name, command, url, alt_commands)
+_JETBRAINS_IDES = [
+    ("idea", "idea", "https://www.jetbrains.com/idea/", ()),
+    ("pycharm", "pycharm", "https://www.jetbrains.com/pycharm/", ("charm",)),
+    ("webstorm", "webstorm", "https://www.jetbrains.com/webstorm/", ()),
+    ("goland", "goland", "https://www.jetbrains.com/go/", ()),
+    ("rustrover", "rustrover", "https://www.jetbrains.com/rust/", ()),
+]
 
-    name = "goland"
-    command = "goland"
-    install_url = "https://www.jetbrains.com/go/"
-
-
-class RustRover(_JetBrainsEditor):
-    """RustRover - The IDE for Rust developers."""
-
-    name = "rustrover"
-    command = "rustrover"
-    install_url = "https://www.jetbrains.com/rust/"
+# Generate editor classes
+IntelliJIdea = _create_jetbrains_editor(*_JETBRAINS_IDES[0])
+PyCharm = _create_jetbrains_editor(*_JETBRAINS_IDES[1])
+WebStorm = _create_jetbrains_editor(*_JETBRAINS_IDES[2])
+GoLand = _create_jetbrains_editor(*_JETBRAINS_IDES[3])
+RustRover = _create_jetbrains_editor(*_JETBRAINS_IDES[4])

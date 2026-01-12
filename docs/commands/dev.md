@@ -125,7 +125,7 @@ cd "$(agent-cli dev path my-feature)"
 Open a dev environment in an editor.
 
 ```bash
-agent-cli dev editor NAME [--with-editor EDITOR]
+agent-cli dev editor NAME [--editor/-e EDITOR]
 ```
 
 ### `dev agent`
@@ -133,7 +133,7 @@ agent-cli dev editor NAME [--with-editor EDITOR]
 Start an AI coding agent in a dev environment.
 
 ```bash
-agent-cli dev agent NAME [--with-agent AGENT]
+agent-cli dev agent NAME [--agent/-a AGENT] [--agent-args ARGS]
 ```
 
 ### `dev run`
