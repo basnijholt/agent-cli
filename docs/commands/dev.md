@@ -343,7 +343,7 @@ With `--direnv`, a `.envrc` file is automatically generated based on the detecte
 | Nix (flake.nix) | `use flake` |
 | Nix (shell.nix) | `use nix` |
 | Python (uv) | `source .venv/bin/activate` |
-| Python (unidep) | `micromamba activate <dirname>` (with conda fallback) |
+| Python (unidep) | Sets `CONDA_PREFIX` and adds env to PATH (micromamba first, conda fallback) |
 | Python (poetry) | `source "$(poetry env info --path)/bin/activate"` |
 | Python (pip/venv) | `source .venv/bin/activate` (or detected venv path) |
 | Node.js (with .nvmrc) | `use node` |

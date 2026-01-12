@@ -276,16 +276,16 @@ class TestGenerateEnvrcContent:
         """Unidep projects generate conda/micromamba activation in envrc.
 
         Evidence: unidep projects typically use conda/micromamba environments.
-        The generated .envrc uses shell hooks to activate the environment.
+        The generated .envrc uses direnv-compatible PATH_add approach.
         """
         (tmp_path / "requirements.yaml").write_text("dependencies:\n  - numpy")
         content = generate_envrc_content(tmp_path)
         assert content is not None
-        # Should contain micromamba/conda activation
-        assert "micromamba shell hook" in content
-        assert "conda shell.bash hook" in content
-        assert "micromamba activate" in content
-        assert "conda activate" in content
+        # Should use direnv-compatible approach
+        assert "MAMBA_ROOT_PREFIX" in content
+        assert "CONDA_PREFIX" in content
+        assert "CONDA_DEFAULT_ENV" in content
+        assert "PATH_add" in content
         # Uses directory name as env name
         assert tmp_path.name in content
 
@@ -298,7 +298,7 @@ class TestGenerateEnvrcContent:
 
         content = generate_envrc_content(tmp_path)
         assert content is not None
-        assert "micromamba activate" in content
+        assert "PATH_add" in content
 
 
 class TestCopyEnvFiles:

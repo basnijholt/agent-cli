@@ -302,12 +302,25 @@ def _get_python_envrc(path: Path, project_name: str) -> str | None:
         return 'source "$(poetry env info --path)/bin/activate"'
     if project_name in ("python-unidep", "python-unidep-monorepo"):
         # unidep projects typically use conda/micromamba environments
-        # Generate activation using shell hooks (micromamba preferred, conda fallback)
+        # Use direnv-compatible approach: set env vars and add to PATH
+        # Try micromamba first, then conda as fallback
         env_name = path.name
         return f"""\
-# Activate conda/micromamba environment (tries micromamba first, then conda)
-eval "$(micromamba shell hook --shell=bash 2>/dev/null || conda shell.bash hook 2>/dev/null)"
-micromamba activate {env_name} 2>/dev/null || conda activate {env_name}"""
+# Activate conda/micromamba environment: {env_name}
+# Tries micromamba first, then conda as fallback
+_mamba_root="${{MAMBA_ROOT_PREFIX:-$HOME/micromamba}}"
+_conda_root="${{CONDA_PREFIX_1:-${{CONDA_ROOT:-$HOME/miniconda3}}}}"
+_env_path=""
+if [ -d "$_mamba_root/envs/{env_name}" ]; then
+    _env_path="$_mamba_root/envs/{env_name}"
+elif [ -d "$_conda_root/envs/{env_name}" ]; then
+    _env_path="$_conda_root/envs/{env_name}"
+fi
+if [ -n "$_env_path" ] && [ -d "$_env_path" ]; then
+    export CONDA_PREFIX="$_env_path"
+    export CONDA_DEFAULT_ENV="{env_name}"
+    PATH_add "$_env_path/bin"
+fi"""
     # Generic Python - look for existing venv
     venv_path = detect_venv_path(path)
     return f"source {venv_path.name}/bin/activate" if venv_path else None
