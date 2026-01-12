@@ -272,27 +272,33 @@ class TestGenerateEnvrcContent:
         assert content is not None
         assert "source .venv/bin/activate" in content
 
-    def test_python_unidep_no_envrc_without_venv(self, tmp_path: Path) -> None:
-        """Unidep projects without venv don't generate envrc.
+    def test_python_unidep_generates_conda_activation(self, tmp_path: Path) -> None:
+        """Unidep projects generate conda/micromamba activation in envrc.
 
-        Evidence: unidep projects typically use conda/micromamba environments
-        which are managed externally and not detectable via standard venv paths.
+        Evidence: unidep projects typically use conda/micromamba environments.
+        The generated .envrc uses shell hooks to activate the environment.
         """
         (tmp_path / "requirements.yaml").write_text("dependencies:\n  - numpy")
         content = generate_envrc_content(tmp_path)
-        # No venv, no envrc content for unidep
-        assert content is None
+        assert content is not None
+        # Should contain micromamba/conda activation
+        assert "micromamba shell hook" in content
+        assert "conda shell.bash hook" in content
+        assert "micromamba activate" in content
+        assert "conda activate" in content
+        # Uses directory name as env name
+        assert tmp_path.name in content
 
-    def test_python_unidep_with_venv(self, tmp_path: Path) -> None:
-        """Unidep projects with venv generate standard envrc."""
+    def test_python_unidep_monorepo_generates_conda_activation(self, tmp_path: Path) -> None:
+        """Unidep monorepo generates conda/micromamba activation in envrc."""
         (tmp_path / "requirements.yaml").write_text("dependencies:\n  - numpy")
-        venv = tmp_path / ".venv" / "bin"
-        venv.mkdir(parents=True)
-        (venv / "activate").touch()
+        subpkg = tmp_path / "pkg1"
+        subpkg.mkdir()
+        (subpkg / "requirements.yaml").write_text("dependencies:\n  - pandas")
 
         content = generate_envrc_content(tmp_path)
         assert content is not None
-        assert "source .venv/bin/activate" in content
+        assert "micromamba activate" in content
 
 
 class TestCopyEnvFiles:

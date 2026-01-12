@@ -300,8 +300,14 @@ def _get_python_envrc(path: Path, project_name: str) -> str | None:
         return f"source {venv_path.name}/bin/activate" if venv_path else "source .venv/bin/activate"
     if project_name == "python-poetry":
         return 'source "$(poetry env info --path)/bin/activate"'
-    # unidep projects typically use conda/micromamba environments which are
-    # managed externally (not via venv). Fall through to venv detection.
+    if project_name in ("python-unidep", "python-unidep-monorepo"):
+        # unidep projects typically use conda/micromamba environments
+        # Generate activation using shell hooks (micromamba preferred, conda fallback)
+        env_name = path.name
+        return f"""\
+# Activate conda/micromamba environment (tries micromamba first, then conda)
+eval "$(micromamba shell hook --shell=bash 2>/dev/null || conda shell.bash hook 2>/dev/null)"
+micromamba activate {env_name} 2>/dev/null || conda activate {env_name}"""
     # Generic Python - look for existing venv
     venv_path = detect_venv_path(path)
     return f"source {venv_path.name}/bin/activate" if venv_path else None
