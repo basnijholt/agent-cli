@@ -9,6 +9,7 @@ from agent_cli.dev.project import (
     detect_project_type,
     detect_venv_path,
     generate_envrc_content,
+    get_conda_env_name,
 )
 
 
@@ -383,3 +384,78 @@ class TestCopyEnvFiles:
         copied = copy_env_files(source, dest, patterns=["custom.conf"])
         assert len(copied) == 1
         assert (dest / "custom.conf").exists()
+
+
+class TestGetCondaEnvName:
+    """Tests for get_conda_env_name function."""
+
+    def test_regular_directory(self, tmp_path: Path) -> None:
+        """Regular directory returns just the directory name.
+
+        Evidence: Non-worktree directories should use simple names to avoid
+        unnecessarily long environment names.
+        """
+        project_dir = tmp_path / "my-project"
+        project_dir.mkdir()
+        assert get_conda_env_name(project_dir) == "my-project"
+
+    def test_worktree_directory(self, tmp_path: Path) -> None:
+        """Worktree directory returns repo-prefixed name.
+
+        Evidence: Worktrees are created in `{repo}-worktrees/{branch}` directories
+        (see worktree.py line 239). Prefixing with repo name prevents collisions
+        when multiple repos have branches with the same name.
+        """
+        # Simulate worktree structure: repo-worktrees/branch-name
+        worktrees_dir = tmp_path / "my-repo-worktrees"
+        worktrees_dir.mkdir()
+        branch_dir = worktrees_dir / "cool-bear"
+        branch_dir.mkdir()
+
+        assert get_conda_env_name(branch_dir) == "my-repo-cool-bear"
+
+    def test_worktree_with_sanitized_branch(self, tmp_path: Path) -> None:
+        """Worktree with sanitized branch name (slashes replaced).
+
+        Evidence: Branch names like 'feat/my-feature' are sanitized to
+        'feat-my-feature' by sanitize_branch_name() in worktree.py.
+        """
+        worktrees_dir = tmp_path / "project-worktrees"
+        worktrees_dir.mkdir()
+        # Branch 'feat/new-feature' becomes 'feat-new-feature' after sanitization
+        branch_dir = worktrees_dir / "feat-new-feature"
+        branch_dir.mkdir()
+
+        assert get_conda_env_name(branch_dir) == "project-feat-new-feature"
+
+    def test_nested_regular_directory(self, tmp_path: Path) -> None:
+        """Nested directory not in worktrees returns just directory name.
+
+        Evidence: Only directories directly under '*-worktrees' should be
+        treated as worktrees. Other nested directories use simple names.
+        """
+        parent = tmp_path / "some-other-parent"
+        parent.mkdir()
+        project_dir = parent / "my-project"
+        project_dir.mkdir()
+
+        assert get_conda_env_name(project_dir) == "my-project"
+
+    def test_envrc_uses_prefixed_name_for_worktree(self, tmp_path: Path) -> None:
+        """Generated envrc uses repo-prefixed conda env name for worktrees.
+
+        Evidence: The direnv activation should match the environment created
+        by unidep, which uses the prefixed name for worktrees.
+        """
+        # Create worktree-like structure
+        worktrees_dir = tmp_path / "myrepo-worktrees"
+        worktrees_dir.mkdir()
+        branch_dir = worktrees_dir / "cool-bear"
+        branch_dir.mkdir()
+        (branch_dir / "requirements.yaml").write_text("dependencies:\n  - numpy")
+
+        content = generate_envrc_content(branch_dir)
+        assert content is not None
+        # Should activate myrepo-cool-bear, not just cool-bear
+        assert "myrepo-cool-bear" in content
+        assert "micromamba activate myrepo-cool-bear" in content
