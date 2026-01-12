@@ -257,6 +257,61 @@ class TestTerminalCommands:
         """
         # Syntax verified via --help-all
 
+    def test_warp_uri_scheme(self) -> None:
+        """Warp uses URI scheme for simple tabs and Launch Configurations for commands.
+
+        Evidence:
+            URI scheme: https://docs.warp.dev/terminal/more-features/uri-scheme
+            Syntax: warp://action/new_tab?path=<path>
+            Launch configs: https://docs.warp.dev/terminal/sessions/launch-configurations
+            Config location: ~/.warp/launch_configurations/
+            Verified: 2026-01-11 via official Warp docs
+        """
+        terminal = Warp()
+        mock_run = MagicMock(return_value=MagicMock(returncode=0))
+        with (
+            patch.object(terminal, "is_available", return_value=True),
+            patch("subprocess.run", mock_run),
+        ):
+            # Simple case: no command uses URI scheme directly
+            terminal.open_new_tab(Path("/test/path"), command=None)
+
+        call_args = mock_run.call_args[0][0]
+        assert call_args[0] == "open"
+        assert "warp://action/new_tab?path=" in call_args[1]
+
+    def test_warp_launch_config_for_commands(self) -> None:
+        """Warp uses temporary Launch Configuration files for executing commands.
+
+        Evidence:
+            Source: https://docs.warp.dev/terminal/sessions/launch-configurations
+            YAML format supports 'commands' with 'exec' entries
+            URI: warp://launch/<config-path>
+            Verified: 2026-01-11 via official Warp docs
+        """
+        terminal = Warp()
+        mock_run = MagicMock(return_value=MagicMock(returncode=0))
+        mock_popen = MagicMock()
+        with (
+            patch.object(terminal, "is_available", return_value=True),
+            patch("subprocess.run", mock_run),
+            patch("subprocess.Popen", mock_popen),
+            patch("pathlib.Path.write_text") as mock_write,
+            patch("pathlib.Path.mkdir"),
+        ):
+            terminal.open_new_tab(
+                Path("/test/path"),
+                command="claude",
+                tab_name="my-agent",
+            )
+
+        # Verify YAML config was written
+        assert mock_write.called
+        yaml_content = mock_write.call_args[0][0]
+        assert "cwd: /test/path" in yaml_content
+        assert "exec: claude" in yaml_content
+        assert "title: my-agent" in yaml_content
+
 
 class TestEditorDetection:
     """Tests for editor detection via environment variables.

@@ -1,12 +1,23 @@
-"""Warp terminal adapter."""
+"""Warp terminal adapter.
+
+Uses Warp's URI scheme and Launch Configurations for reliable automation.
+Evidence: https://docs.warp.dev/terminal/more-features/uri-scheme
+Evidence: https://docs.warp.dev/terminal/sessions/launch-configurations
+"""
 
 from __future__ import annotations
 
 import subprocess
 import sys
+import uuid
 from pathlib import Path
 
 from .base import Terminal, _get_term_program
+
+
+def _get_warp_launch_config_dir() -> Path:
+    """Get the Warp launch configurations directory."""
+    return Path.home() / ".warp" / "launch_configurations"
 
 
 class Warp(Terminal):
@@ -29,41 +40,89 @@ class Warp(Terminal):
         self,
         path: Path,
         command: str | None = None,
-        tab_name: str | None = None,  # noqa: ARG002
+        tab_name: str | None = None,
     ) -> bool:
-        """Open a new tab in Warp using AppleScript.
+        """Open a new tab in Warp.
 
-        Note: tab_name is accepted but not used - Warp doesn't have a simple
-        API for setting tab names via AppleScript.
+        Uses URI scheme for simple path-only tabs, or Launch Configurations
+        when a command needs to be executed.
+
+        Evidence:
+            URI scheme: https://docs.warp.dev/terminal/more-features/uri-scheme
+            Launch configs: https://docs.warp.dev/terminal/sessions/launch-configurations
         """
         if not self.is_available():
             return False
 
-        # Build the command to run in the new tab
-        shell_cmd = f'cd "{path}" && {command}' if command else f'cd "{path}"'
+        # Simple case: no command, just open path via URI scheme
+        if command is None:
+            try:
+                subprocess.run(
+                    ["open", f"warp://action/new_tab?path={path}"],  # noqa: S607
+                    check=True,
+                    capture_output=True,
+                )
+                return True
+            except subprocess.CalledProcessError:
+                return False
 
-        # AppleScript to open new tab in Warp
-        # Warp uses similar AppleScript interface to iTerm2
-        applescript = f"""
-            tell application "Warp"
-                activate
-                tell application "System Events"
-                    tell process "Warp"
-                        keystroke "t" using command down
-                        delay 0.5
-                        keystroke "{shell_cmd}"
-                        keystroke return
-                    end tell
-                end tell
-            end tell
+        # Complex case: need to run a command - use Launch Configuration
+        return self._open_with_launch_config(path, command, tab_name)
+
+    def _open_with_launch_config(
+        self,
+        path: Path,
+        command: str,
+        tab_name: str | None = None,
+    ) -> bool:
+        """Open a new tab using a temporary Launch Configuration.
+
+        Creates a YAML config file, opens it via URI scheme, then cleans up.
         """
+        config_dir = _get_warp_launch_config_dir()
+        config_dir.mkdir(parents=True, exist_ok=True)
+
+        # Create unique config file name
+        config_name = f"agent-cli-{uuid.uuid4().hex[:8]}"
+        config_file = config_dir / f"{config_name}.yaml"
+
+        # Build the YAML config
+        title = tab_name or "agent-cli"
+        yaml_content = f"""---
+name: {config_name}
+windows:
+  - tabs:
+      - title: {title}
+        layout:
+          cwd: {path}
+          commands:
+            - exec: {command}
+"""
 
         try:
-            subprocess.run(
-                ["osascript", "-e", applescript],  # noqa: S607
+            # Write config file
+            config_file.write_text(yaml_content)
+
+            # Open via URI scheme
+            result = subprocess.run(
+                ["open", f"warp://launch/{config_file}"],  # noqa: S607
                 check=True,
                 capture_output=True,
             )
-            return True
+
+            # Clean up after a delay (give Warp time to read the file)
+            # We use a background process to delete after 2 seconds
+            subprocess.Popen(
+                ["sh", "-c", f'sleep 2 && rm -f "{config_file}"'],  # noqa: S607
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+
+            return result.returncode == 0
         except subprocess.CalledProcessError:
+            # Clean up on failure
+            config_file.unlink(missing_ok=True)
+            return False
+        except Exception:
+            config_file.unlink(missing_ok=True)
             return False
