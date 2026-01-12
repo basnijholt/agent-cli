@@ -277,6 +277,8 @@ class TestGenerateEnvrcContent:
 
         Evidence: unidep projects use conda/micromamba environments.
         The generated .envrc uses shell hooks with runtime shell detection.
+        Stderr is redirected to suppress "complete: command not found" errors
+        from shell completion setup that isn't available in direnv's subshell.
         """
         (tmp_path / "requirements.yaml").write_text("dependencies:\n  - numpy")
         content = generate_envrc_content(tmp_path)
@@ -286,6 +288,8 @@ class TestGenerateEnvrcContent:
         assert "conda" in content  # fallback
         # Uses directory name as env name
         assert tmp_path.name in content
+        # Stderr redirected to suppress completion errors in direnv subshell
+        assert "2>/dev/null" in content
 
     def test_python_unidep_monorepo_generates_conda_activation(self, tmp_path: Path) -> None:
         """Unidep monorepo generates micromamba/conda activation in envrc."""

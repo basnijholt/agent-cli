@@ -304,14 +304,16 @@ def _get_python_envrc(path: Path, project_name: str) -> str | None:
         # unidep projects use conda/micromamba environments
         # Inline the activation logic (inspired by layout_micromamba pattern)
         # Uses ${SHELL##*/} to detect shell at runtime (zsh, bash, etc.)
+        # Redirect stderr to suppress "complete: command not found" from shell hooks
+        # (completion setup commands aren't available in direnv's subshell)
         env_name = path.name
         return f"""\
 # Activate micromamba/conda environment: {env_name}
 if command -v micromamba &> /dev/null; then
-    eval "$(micromamba shell hook --shell=${{SHELL##*/}})"
+    eval "$(micromamba shell hook --shell=${{SHELL##*/}})" 2>/dev/null
     micromamba activate {env_name}
 elif command -v conda &> /dev/null; then
-    eval "$(conda shell.${{SHELL##*/}} hook)"
+    eval "$(conda shell.${{SHELL##*/}} hook)" 2>/dev/null
     conda activate {env_name}
 fi"""
     # Generic Python - look for existing venv
