@@ -312,6 +312,40 @@ class TestTerminalCommands:
         assert "exec: claude" in yaml_content
         assert "title: my-agent" in yaml_content
 
+    def test_iterm2_applescript_syntax(self) -> None:
+        """iTerm2 uses official AppleScript API for tab creation.
+
+        Evidence:
+            Source: https://iterm2.com/documentation-scripting.html
+            Commands: "create tab with default profile", "write text"
+            Quote: "Creates a tab with the default profile or a profile by name"
+            Note: AppleScript is deprecated in favor of Python API, but still
+                  documented and functional. Python API requires iTerm2's
+                  internal environment, making AppleScript practical for
+                  external CLI tools.
+            Verified: 2026-01-12 via official iTerm2 docs
+        """
+        terminal = ITerm2()
+        mock_run = MagicMock(return_value=MagicMock(returncode=0))
+        with (
+            patch.object(terminal, "is_available", return_value=True),
+            patch("subprocess.run", mock_run),
+        ):
+            terminal.open_new_tab(
+                Path("/test/path"),
+                command="claude",
+                tab_name="my-agent",
+            )
+
+        # Verify AppleScript was called with correct syntax
+        call_args = mock_run.call_args[0][0]
+        assert call_args[0] == "osascript"
+        applescript = call_args[2]  # -e argument
+        assert 'tell application "iTerm2"' in applescript
+        assert "create tab with default profile" in applescript
+        assert "write text" in applescript
+        assert 'set name to "my-agent"' in applescript
+
 
 class TestEditorDetection:
     """Tests for editor detection via environment variables.
