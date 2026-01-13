@@ -318,6 +318,7 @@ def _init_submodules(
     worktree_path: Path,
     *,
     on_log: Callable[[str], None] | None = None,
+    capture_output: bool = True,
 ) -> None:
     """Initialize git submodules in a worktree.
 
@@ -338,6 +339,7 @@ def _init_submodules(
         "--recursive",
         cwd=worktree_path,
         check=False,  # Don't fail if submodules can't be initialized
+        capture_output=capture_output,
     )
 
 
@@ -351,6 +353,7 @@ def _add_worktree(
     local_exists: bool,
     force: bool,
     on_log: Callable[[str], None] | None,
+    capture_output: bool = True,
 ) -> None:
     """Add a git worktree, handling different branch scenarios."""
     force_flag = ["--force"] if force else []
@@ -366,6 +369,7 @@ def _add_worktree(
             f"origin/{branch_name}",
             cwd=repo_root,
             check=False,
+            capture_output=capture_output,
         )
         if on_log:
             on_log(f"Running: git worktree add {worktree_path} {branch_name}")
@@ -376,6 +380,7 @@ def _add_worktree(
             str(worktree_path),
             branch_name,
             cwd=repo_root,
+            capture_output=capture_output,
         )
     elif local_exists:
         # Local branch exists
@@ -388,6 +393,7 @@ def _add_worktree(
             str(worktree_path),
             branch_name,
             cwd=repo_root,
+            capture_output=capture_output,
         )
     else:
         # Create new branch from ref
@@ -402,6 +408,7 @@ def _add_worktree(
             branch_name,
             from_ref,
             cwd=repo_root,
+            capture_output=capture_output,
         )
 
 
@@ -415,6 +422,7 @@ def create_worktree(
     force: bool = False,
     fetch: bool = True,
     on_log: Callable[[str], None] | None = None,
+    capture_output: bool = True,
 ) -> CreateWorktreeResult:
     """Create a new git worktree.
 
@@ -427,6 +435,7 @@ def create_worktree(
         force: Allow same branch in multiple worktrees
         fetch: Fetch from origin before creating
         on_log: Optional callback for logging status messages
+        capture_output: Whether to capture command output (False to stream)
 
     Returns:
         CreateWorktreeResult with success status and path or error
@@ -463,7 +472,7 @@ def create_worktree(
     if fetch:
         if on_log:
             on_log("Running: git fetch origin")
-        _run_git("fetch", "origin", cwd=repo_root, check=False)
+        _run_git("fetch", "origin", cwd=repo_root, check=False, capture_output=capture_output)
 
     # Determine the reference to create from
     # Use origin/{branch} to ensure we're using the freshly-fetched remote ref,
@@ -484,10 +493,11 @@ def create_worktree(
             local_exists=local_exists,
             force=force,
             on_log=on_log,
+            capture_output=capture_output,
         )
 
         # Initialize submodules in the new worktree
-        _init_submodules(worktree_path, on_log=on_log)
+        _init_submodules(worktree_path, on_log=on_log, capture_output=capture_output)
 
         return CreateWorktreeResult(
             success=True,

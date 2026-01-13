@@ -367,6 +367,10 @@ def new(  # noqa: PLR0912
             help="Extra arguments to pass to the agent (e.g., --agent-args='--dangerously-skip-permissions')",
         ),
     ] = None,
+    verbose: Annotated[
+        bool,
+        typer.Option("--verbose", "-v", help="Show detailed output and stream command output"),
+    ] = False,
 ) -> None:
     """Create a new parallel development environment (git worktree)."""
     repo_root = _ensure_git_repo()
@@ -386,6 +390,7 @@ def new(  # noqa: PLR0912
         from_ref=from_ref,
         fetch=fetch,
         on_log=_info,
+        capture_output=not verbose,
     )
 
     if not result.success:
@@ -407,7 +412,12 @@ def new(  # noqa: PLR0912
         project = detect_project_type(result.path)
         if project:
             _info(f"Detected {project.description}")
-            success, output = run_setup(result.path, project, on_log=_info)
+            success, output = run_setup(
+                result.path,
+                project,
+                on_log=_info,
+                capture_output=not verbose,
+            )
             if success:
                 _success("Project setup complete")
             else:
@@ -417,7 +427,12 @@ def new(  # noqa: PLR0912
     use_direnv = direnv if direnv is not None else is_direnv_available()
     if use_direnv:
         if is_direnv_available():
-            success, msg = setup_direnv(result.path, project, on_log=_info)
+            success, msg = setup_direnv(
+                result.path,
+                project,
+                on_log=_info,
+                capture_output=not verbose,
+            )
             # Show success for meaningful actions (created or allowed)
             if success and ("created" in msg or "allowed" in msg):
                 _success(msg)

@@ -65,6 +65,7 @@ agent-cli dev new [BRANCH] [OPTIONS]
 | `--setup/--no-setup` | Run automatic project setup (default: enabled) |
 | `--copy-env/--no-copy-env` | Copy .env files from main repo (default: enabled) |
 | `--fetch/--no-fetch` | Git fetch before creating (default: enabled) |
+| `--verbose`, `-v` | Stream live output from all commands (git, setup, direnv) |
 
 **Examples:**
 
