@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from agent_cli.dev.registry import Registry
 
+from .apple_terminal import AppleTerminal
 from .base import Terminal  # noqa: TC001
 from .gnome import GnomeTerminal
 from .iterm2 import ITerm2
@@ -20,6 +21,7 @@ _TERMINALS: list[type[Terminal]] = [
     ITerm2,
     Kitty,
     Warp,
+    AppleTerminal,
     GnomeTerminal,
 ]
 
