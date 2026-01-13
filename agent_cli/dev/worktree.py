@@ -323,6 +323,95 @@ def _check_branch_exists(branch_name: str, repo_root: Path) -> tuple[bool, bool]
     return remote_exists, local_exists
 
 
+def _parse_git_config_regexp(output: str, prefix: str, suffix: str) -> list[tuple[str, str]]:
+    """Parse git config --get-regexp output into (extracted_name, value) pairs."""
+    results: list[tuple[str, str]] = []
+    for line in output.strip().split("\n"):
+        if not line or " " not in line:
+            continue
+        key, value = line.split(" ", 1)
+        name = key.removeprefix(prefix).removesuffix(suffix)
+        results.append((name, value))
+    return results
+
+
+def _init_submodules_recursive(
+    repo_path: Path,
+    ref_modules_dir: Path | None,
+    on_log: Callable[[str], None] | None,
+    capture_output: bool,
+    depth: int = 0,
+) -> None:
+    """Recursively initialize submodules, using local clones when available."""
+    if not (repo_path / ".gitmodules").exists():
+        return
+
+    # Register submodules in .git/config
+    _run_git("submodule", "init", cwd=repo_path, check=False, capture_output=capture_output)
+
+    # Get submodule names and URLs from config
+    result = _run_git(
+        "config",
+        "--local",
+        "--get-regexp",
+        r"^submodule\..*\.url$",
+        cwd=repo_path,
+        check=False,
+    )
+    submodule_urls = _parse_git_config_regexp(result.stdout, "submodule.", ".url")
+    if not submodule_urls:
+        return
+
+    # Get submodule paths from .gitmodules (name != path in some cases)
+    result = _run_git(
+        "config",
+        "--file",
+        ".gitmodules",
+        "--get-regexp",
+        r"^submodule\..*\.path$",
+        cwd=repo_path,
+        check=False,
+    )
+    name_to_path = dict(_parse_git_config_regexp(result.stdout, "submodule.", ".path"))
+
+    # Override URLs to local paths where available, track for restoration
+    overrides: list[tuple[str, str]] = []  # (name, original_url)
+    for name, original_url in submodule_urls:
+        if ref_modules_dir is None:
+            continue
+        local_module = ref_modules_dir / name
+        if not local_module.exists():
+            continue
+        overrides.append((name, original_url))
+        _run_git("config", f"submodule.{name}.url", str(local_module), cwd=repo_path, check=False)
+        if on_log:
+            on_log(f"{'  ' * depth}Using local clone for {name}")
+
+    # Clone submodules (NOT recursive - we'll handle children ourselves)
+    _run_git(
+        "submodule",
+        "update",
+        cwd=repo_path,
+        check=False,
+        capture_output=capture_output,
+        allow_file_protocol=bool(overrides),
+    )
+
+    # Restore original URLs for future remote fetches
+    for name, original_url in overrides:
+        _run_git("config", f"submodule.{name}.url", original_url, cwd=repo_path, check=False)
+
+    # Recursively initialize nested submodules
+    for name, _original_url in submodule_urls:
+        child_repo = repo_path / name_to_path.get(name, name)
+        if not child_repo.exists():
+            continue
+        child_ref = ref_modules_dir / name / "modules" if ref_modules_dir else None
+        if child_ref and not child_ref.exists():
+            child_ref = None
+        _init_submodules_recursive(child_repo, child_ref, on_log, capture_output, depth + 1)
+
+
 def _init_submodules(
     worktree_path: Path,
     *,
@@ -338,55 +427,21 @@ def _init_submodules(
         on_log("Initializing submodules...")
 
     # Get reference repo's git dir for local submodule clones
-    ref_git_dir: Path | None = None
+    ref_modules_dir: Path | None = None
     if reference_repo is not None:
         result = _run_git("rev-parse", "--git-dir", cwd=reference_repo, check=False)
         if result.returncode == 0:
             ref_git_dir = Path(result.stdout.strip())
             if not ref_git_dir.is_absolute():
                 ref_git_dir = reference_repo / ref_git_dir
+            ref_modules_dir = ref_git_dir / "modules"
 
-    # Register submodules in .git/config, then read their URLs
-    _run_git("submodule", "init", cwd=worktree_path, check=False, capture_output=capture_output)
-
-    # Override URLs to local paths where available
-    overrides: list[tuple[str, str]] = []  # (config_key, original_url)
-    if ref_git_dir is not None:
-        result = _run_git(
-            "config",
-            "--local",
-            "--get-regexp",
-            r"^submodule\..*\.url$",
-            cwd=worktree_path,
-            check=False,
-        )
-        for line in result.stdout.strip().split("\n"):
-            if not line or " " not in line:
-                continue
-            config_key, original_url = line.split(" ", 1)
-            # submodule.<name>.url -> name (usually == path)
-            name = config_key.removeprefix("submodule.").removesuffix(".url")
-            local_module = ref_git_dir / "modules" / name
-            if local_module.exists():
-                overrides.append((config_key, original_url))
-                _run_git("config", config_key, str(local_module), cwd=worktree_path, check=False)
-                if on_log:
-                    on_log(f"Using local clone for {name}")
-
-    # Clone/update submodules (enable file:// protocol for local clones, disabled since git 2.38)
-    _run_git(
-        "submodule",
-        "update",
-        "--recursive",
-        cwd=worktree_path,
-        check=False,
-        capture_output=capture_output,
-        allow_file_protocol=bool(overrides),
+    _init_submodules_recursive(
+        worktree_path,
+        ref_modules_dir,
+        on_log,
+        capture_output,
     )
-
-    # Restore original URLs for future remote fetches
-    for config_key, original_url in overrides:
-        _run_git("config", config_key, original_url, cwd=worktree_path, check=False)
 
 
 def _add_worktree(
