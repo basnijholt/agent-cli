@@ -451,6 +451,7 @@ def new(  # noqa: PLR0912
             border_style="green",
         ),
     )
+    console.print(f'[dim]To enter the worktree:[/dim] cd "$(ag dev path {branch})"')
 
 
 @app.command("list")
