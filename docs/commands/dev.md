@@ -312,9 +312,9 @@ When creating a new dev environment, automatic setup is performed based on detec
 
 | Project Type | Detection | Setup Command |
 |--------------|-----------|---------------|
-| Python (uv) | `pyproject.toml` + `uv.lock` | `uv sync` |
-| Python (unidep) | `requirements.yaml` or `[tool.unidep]` | `unidep install -e .` |
-| Python (unidep monorepo) | `requirements.yaml` in subdirs | `unidep install-all -e` |
+| Python (uv) | `pyproject.toml` + `uv.lock` | `uv sync --all-extras` |
+| Python (unidep) | `requirements.yaml` or `[tool.unidep]` | `unidep install -e . -n <env>` * |
+| Python (unidep monorepo) | `requirements.yaml` in subdirs | `unidep install-all -e -n <env>` * |
 | Python (poetry) | `pyproject.toml` + `poetry.lock` | `poetry install` |
 | Python (pip) | `requirements.txt` | `pip install -r requirements.txt` |
 | Node.js (pnpm) | `pnpm-lock.yaml` | `pnpm install` |
@@ -323,6 +323,18 @@ When creating a new dev environment, automatic setup is performed based on detec
 | Rust | `Cargo.toml` | `cargo build` |
 | Go | `go.mod` | `go mod download` |
 | Ruby | `Gemfile` or `Gemfile.lock` | `bundle install` |
+
+\* For unidep projects, if `conda-lock.yml` is present, `-f conda-lock.yml` is also added.
+
+### Git Submodules
+
+Git submodules are automatically initialized and updated when creating a new dev environment:
+
+```bash
+git submodule update --init --recursive
+```
+
+This ensures all submodule dependencies are available in the worktree.
 
 ### Environment Files
 

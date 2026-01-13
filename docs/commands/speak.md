@@ -150,6 +150,10 @@ Common voices:
 
 - `af_sky`, `af_bella`, `am_adam`, and more
 
+### Gemini
+
+- `Kore` (default), `Puck`, `Charon`, `Fenrir`
+
 ## Use Cases
 
 ### Read Clipboard Aloud
