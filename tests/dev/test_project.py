@@ -12,6 +12,7 @@ from agent_cli.dev.project import (
     detect_venv_path,
     generate_envrc_content,
     get_conda_env_name,
+    setup_direnv,
 )
 
 
@@ -24,7 +25,7 @@ class TestDetectProjectType:
         project = detect_project_type(tmp_path)
         assert project is not None
         assert project.name == "python-uv"
-        assert "uv sync" in project.setup_commands
+        assert "uv sync --all-extras" in project.setup_commands
 
     def test_python_uv_in_pyproject(self, tmp_path: Path) -> None:
         """Detect Python project with uv in pyproject.toml."""
@@ -472,3 +473,101 @@ class TestGetCondaEnvName:
         # Should activate myrepo-cool-bear, not just cool-bear
         assert "myrepo-cool-bear" in content
         assert "micromamba activate myrepo-cool-bear" in content
+
+
+class TestSetupDirenv:
+    """Tests for setup_direnv function.
+
+    These tests verify the behavior when setting up direnv, particularly
+    when .envrc already exists (e.g., copied from the main repo).
+    """
+
+    def test_existing_envrc_runs_direnv_allow(
+        self,
+        tmp_path: Path,
+        mocker: pytest.MockerFixture,
+    ) -> None:
+        """When .envrc exists and allow=True, should run direnv allow.
+
+        This is the fix for the issue where .envrc was copied from the main repo
+        but direnv allow was not run on it.
+        """
+        # Create existing .envrc
+        envrc = tmp_path / ".envrc"
+        envrc.write_text("source .venv/bin/activate")
+
+        # Mock direnv availability and subprocess
+        mocker.patch("agent_cli.dev.project.is_direnv_available", return_value=True)
+        mock_run = mocker.patch("agent_cli.dev.project.subprocess.run")
+        mock_run.return_value.returncode = 0
+
+        success, msg = setup_direnv(tmp_path)
+
+        assert success is True
+        assert msg == "direnv: allowed existing .envrc"
+        mock_run.assert_called_once()
+        # Verify direnv allow was called
+        call_args = mock_run.call_args
+        assert call_args[0][0] == ["direnv", "allow"]
+
+    def test_existing_envrc_without_allow(
+        self,
+        tmp_path: Path,
+        mocker: pytest.MockerFixture,
+    ) -> None:
+        """When .envrc exists and allow=False, should not run direnv allow."""
+        # Create existing .envrc
+        envrc = tmp_path / ".envrc"
+        envrc.write_text("source .venv/bin/activate")
+
+        # Mock direnv availability
+        mocker.patch("agent_cli.dev.project.is_direnv_available", return_value=True)
+        mock_run = mocker.patch("agent_cli.dev.project.subprocess.run")
+
+        success, msg = setup_direnv(tmp_path, allow=False)
+
+        assert success is True
+        assert msg == "direnv: .envrc already exists (skipped direnv allow)"
+        mock_run.assert_not_called()
+
+    def test_existing_envrc_direnv_allow_failure(
+        self,
+        tmp_path: Path,
+        mocker: pytest.MockerFixture,
+    ) -> None:
+        """When .envrc exists but direnv allow fails, should report error."""
+        # Create existing .envrc
+        envrc = tmp_path / ".envrc"
+        envrc.write_text("source .venv/bin/activate")
+
+        # Mock direnv availability and subprocess
+        mocker.patch("agent_cli.dev.project.is_direnv_available", return_value=True)
+        mock_run = mocker.patch("agent_cli.dev.project.subprocess.run")
+        mock_run.return_value.returncode = 1
+        mock_run.return_value.stderr = "permission denied"
+
+        success, msg = setup_direnv(tmp_path)
+
+        assert success is True  # Still returns True (file exists, operation is recoverable)
+        assert "'direnv allow' failed" in msg
+        assert "permission denied" in msg
+
+    def test_logs_direnv_allow_when_existing_envrc(
+        self,
+        tmp_path: Path,
+        mocker: pytest.MockerFixture,
+    ) -> None:
+        """When .envrc exists, should log the direnv allow command."""
+        # Create existing .envrc
+        envrc = tmp_path / ".envrc"
+        envrc.write_text("source .venv/bin/activate")
+
+        # Mock direnv availability and subprocess
+        mocker.patch("agent_cli.dev.project.is_direnv_available", return_value=True)
+        mock_run = mocker.patch("agent_cli.dev.project.subprocess.run")
+        mock_run.return_value.returncode = 0
+
+        logged_messages: list[str] = []
+        setup_direnv(tmp_path, on_log=logged_messages.append)
+
+        assert "Running: direnv allow" in logged_messages
