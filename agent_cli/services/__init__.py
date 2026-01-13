@@ -165,10 +165,10 @@ async def transcribe_audio_openai(
         file_suffix: File extension for filename (default: .wav)
 
     """
-    if openai_asr_cfg.openai_base_url:
+    if openai_asr_cfg.asr_openai_base_url:
         logger.info(
             "Transcribing audio with custom OpenAI-compatible endpoint: %s",
-            openai_asr_cfg.openai_base_url,
+            openai_asr_cfg.asr_openai_base_url,
         )
     else:
         logger.info("Transcribing audio with OpenAI Whisper...")
@@ -178,7 +178,7 @@ async def transcribe_audio_openai(
 
     client = _get_openai_client(
         api_key=openai_asr_cfg.openai_api_key,
-        base_url=openai_asr_cfg.openai_base_url,
+        base_url=openai_asr_cfg.asr_openai_base_url,
     )
     audio_file = io.BytesIO(audio_data)
     # Use the correct file extension so OpenAI knows the format

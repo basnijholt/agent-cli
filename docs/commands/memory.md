@@ -51,11 +51,16 @@ uv sync --extra memory
 ### Examples
 
 ```bash
-# With local LLM (Ollama)
+# With local LLM (Ollama) - uses default embedding model
+agent-cli memory proxy \
+  --memory-path ./memory_db \
+  --openai-base-url http://localhost:11434/v1
+
+# With local Ollama embedding model (requires: ollama pull nomic-embed-text)
 agent-cli memory proxy \
   --memory-path ./memory_db \
   --openai-base-url http://localhost:11434/v1 \
-  --embedding-model embeddinggemma:300m
+  --embedding-model nomic-embed-text
 
 # Use with agent-cli chat
 agent-cli chat --openai-base-url http://localhost:8100/v1 --llm-provider openai
