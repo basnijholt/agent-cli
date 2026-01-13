@@ -478,6 +478,7 @@ def generate_envrc_content(path: Path, project_type: ProjectType | None = None) 
 def _run_direnv_allow(
     path: Path,
     on_log: Callable[[str], None] | None = None,
+    capture_output: bool = True,
 ) -> str | None:
     """Run `direnv allow` in the given path.
 
@@ -490,11 +491,11 @@ def _run_direnv_allow(
     result = subprocess.run(
         ["direnv", "allow"],  # noqa: S607
         cwd=path,
-        capture_output=True,
+        capture_output=capture_output,
         text=True,
         check=False,
     )
-    return result.stderr if result.returncode != 0 else None
+    return result.stderr if result.returncode != 0 and result.stderr else None
 
 
 def setup_direnv(
@@ -503,6 +504,7 @@ def setup_direnv(
     *,
     allow: bool = True,
     on_log: Callable[[str], None] | None = None,
+    capture_output: bool = True,
 ) -> tuple[bool, str]:
     """Set up direnv for a project by creating .envrc file.
 
@@ -511,6 +513,7 @@ def setup_direnv(
         project_type: Detected project type (auto-detected if None)
         allow: Whether to run `direnv allow` after creating .envrc
         on_log: Optional callback for logging status messages
+        capture_output: Whether to capture command output (False to stream)
 
     Returns:
         Tuple of (success, message)
@@ -525,7 +528,7 @@ def setup_direnv(
     if envrc_path.exists():
         if not allow:
             return True, "direnv: .envrc already exists (skipped direnv allow)"
-        error = _run_direnv_allow(path, on_log)
+        error = _run_direnv_allow(path, on_log, capture_output=capture_output)
         msg = (
             "direnv: allowed existing .envrc"
             if not error
@@ -544,7 +547,7 @@ def setup_direnv(
 
     # Run direnv allow to trust the file
     if allow:
-        error = _run_direnv_allow(path, on_log)
+        error = _run_direnv_allow(path, on_log, capture_output=capture_output)
         if error:
             return True, f"direnv: created .envrc but 'direnv allow' failed: {error}"
 

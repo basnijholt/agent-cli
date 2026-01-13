@@ -390,6 +390,7 @@ def new(  # noqa: PLR0912
         from_ref=from_ref,
         fetch=fetch,
         on_log=_info,
+        capture_output=not verbose,
     )
 
     if not result.success:
@@ -426,7 +427,12 @@ def new(  # noqa: PLR0912
     use_direnv = direnv if direnv is not None else is_direnv_available()
     if use_direnv:
         if is_direnv_available():
-            success, msg = setup_direnv(result.path, project, on_log=_info)
+            success, msg = setup_direnv(
+                result.path,
+                project,
+                on_log=_info,
+                capture_output=not verbose,
+            )
             # Show success for meaningful actions (created or allowed)
             if success and ("created" in msg or "allowed" in msg):
                 _success(msg)
