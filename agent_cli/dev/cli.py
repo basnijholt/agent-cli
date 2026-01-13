@@ -103,8 +103,6 @@ from .project import (  # noqa: E402
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
-
     from .coding_agents.base import CodingAgent
     from .editors.base import Editor
 
@@ -132,15 +130,6 @@ def dev_callback(
     set_config_defaults(ctx, config_file)
 
 
-def _make_log_callback(verbose: bool) -> Callable[[str], None] | None:
-    """Create a log callback that respects verbose flag."""
-
-    def log(msg: str) -> None:
-        _info(msg, verbose=verbose)
-
-    return log if verbose else None
-
-
 def _error(msg: str) -> NoReturn:
     """Print an error message and exit."""
     console.print(f"[bold red]Error:[/bold red] {msg}")
@@ -152,16 +141,8 @@ def _success(msg: str) -> None:
     console.print(f"[bold green]✓[/bold green] {msg}")
 
 
-def _info(msg: str, *, verbose: bool = True) -> None:
-    """Print an info message, with special styling for commands.
-
-    Args:
-        msg: The message to print
-        verbose: Only print if True (default: True for backwards compatibility)
-
-    """
-    if not verbose:
-        return
+def _info(msg: str) -> None:
+    """Print an info message, with special styling for commands."""
     # Style commands (messages starting with "Running: ")
     if msg.startswith("Running: "):
         cmd = msg[9:]  # Remove "Running: " prefix
@@ -392,7 +373,6 @@ def new(  # noqa: PLR0912
     ] = False,
 ) -> None:
     """Create a new parallel development environment (git worktree)."""
-    on_log = _make_log_callback(verbose)
     repo_root = _ensure_git_repo()
 
     # Generate branch name if not provided
@@ -400,16 +380,16 @@ def new(  # noqa: PLR0912
         # Get existing branches to avoid collisions
         existing = {wt.branch for wt in worktree.list_worktrees() if wt.branch}
         branch = _generate_branch_name(existing)
-        _info(f"Generated branch name: {branch}", verbose=verbose)
+        _info(f"Generated branch name: {branch}")
 
     # Create the worktree
-    _info(f"Creating worktree for branch '{branch}'...", verbose=verbose)
+    _info(f"Creating worktree for branch '{branch}'...")
     result = worktree.create_worktree(
         branch,
         repo_path=repo_root,
         from_ref=from_ref,
         fetch=fetch,
-        on_log=on_log,
+        on_log=_info,
     )
 
     if not result.success:
@@ -430,11 +410,11 @@ def new(  # noqa: PLR0912
     if setup:
         project = detect_project_type(result.path)
         if project:
-            _info(f"Detected {project.description}", verbose=verbose)
+            _info(f"Detected {project.description}")
             success, output = run_setup(
                 result.path,
                 project,
-                on_log=on_log,
+                on_log=_info,
                 capture_output=not verbose,
             )
             if success:
@@ -446,12 +426,12 @@ def new(  # noqa: PLR0912
     use_direnv = direnv if direnv is not None else is_direnv_available()
     if use_direnv:
         if is_direnv_available():
-            success, msg = setup_direnv(result.path, project, on_log=on_log)
+            success, msg = setup_direnv(result.path, project, on_log=_info)
             # Show success for meaningful actions (created or allowed)
             if success and ("created" in msg or "allowed" in msg):
                 _success(msg)
             elif success:
-                _info(msg, verbose=verbose)
+                _info(msg)
             else:
                 _warn(msg)
         elif direnv is True:
