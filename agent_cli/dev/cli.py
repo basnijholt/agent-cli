@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 import random
 import subprocess
@@ -791,10 +792,15 @@ def run_cmd(
         _error(f"Command not found: {command[0]}")
 
 
-def _find_worktrees_with_merged_prs(repo_root: Path) -> list[worktree.WorktreeInfo]:
-    """Find worktrees whose PRs have been merged on GitHub."""
+def _find_worktrees_with_merged_prs(
+    repo_root: Path,
+) -> list[tuple[worktree.WorktreeInfo, str]]:
+    """Find worktrees whose PRs have been merged on GitHub.
+
+    Returns a list of tuples containing (worktree_info, pr_url).
+    """
     worktrees_list = worktree.list_worktrees()
-    to_remove = []
+    to_remove: list[tuple[worktree.WorktreeInfo, str]] = []
 
     for wt in worktrees_list:
         if wt.is_main or not wt.branch:
@@ -802,14 +808,16 @@ def _find_worktrees_with_merged_prs(repo_root: Path) -> list[worktree.WorktreeIn
 
         # Check if PR for this branch is merged
         result = subprocess.run(
-            ["gh", "pr", "list", "--head", wt.branch, "--state", "merged", "--json", "number"],  # noqa: S607
+            ["gh", "pr", "list", "--head", wt.branch, "--state", "merged", "--json", "number,url"],  # noqa: S607
             capture_output=True,
             text=True,
             cwd=repo_root,
             check=False,
         )
         if result.returncode == 0 and result.stdout.strip() not in ("", "[]"):
-            to_remove.append(wt)
+            prs = json.loads(result.stdout)
+            pr_url = prs[0]["url"] if prs else ""
+            to_remove.append((wt, pr_url))
 
     return to_remove
 
@@ -847,13 +855,15 @@ def _clean_merged_worktrees(
         return
 
     console.print(f"\n[bold]Found {len(to_remove)} worktree(s) with merged PRs:[/bold]")
-    for wt in to_remove:
+    for wt, pr_url in to_remove:
         console.print(f"  • {wt.branch} ({wt.path})")
+        if pr_url:
+            console.print(f"    PR: [link={pr_url}]{pr_url}[/link]")
 
     if dry_run:
         _info("[dry-run] Would remove the above worktrees")
     elif yes or typer.confirm("\nRemove these worktrees?"):
-        for wt in to_remove:
+        for wt, _pr_url in to_remove:
             success, error = worktree.remove_worktree(
                 wt.path,
                 force=False,
