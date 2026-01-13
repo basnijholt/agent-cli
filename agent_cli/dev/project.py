@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import shutil
 import subprocess
 from dataclasses import dataclass
@@ -268,6 +269,13 @@ def run_setup(
             on_log(f"Running: {cmd}")
 
         try:
+            # Clear virtual environment variables to avoid warnings from uv/pip
+            # when running from within an activated environment
+            env = os.environ.copy()
+            env.pop("VIRTUAL_ENV", None)
+            env.pop("CONDA_PREFIX", None)
+            env.pop("CONDA_DEFAULT_ENV", None)
+
             result = subprocess.run(  # noqa: S602
                 cmd,
                 check=False,
@@ -275,6 +283,7 @@ def run_setup(
                 cwd=path,
                 capture_output=capture_output,
                 text=True,
+                env=env,
             )
             if result.returncode != 0:
                 error = result.stderr.strip() if result.stderr else f"Command failed: {cmd}"
