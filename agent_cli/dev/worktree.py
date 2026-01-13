@@ -439,8 +439,10 @@ def create_worktree(
         _run_git("fetch", "origin", cwd=repo_root, check=False)
 
     # Determine the reference to create from
+    # Use origin/{branch} to ensure we're using the freshly-fetched remote ref,
+    # not a potentially stale local branch
     if from_ref is None:
-        from_ref = get_default_branch(repo_root)
+        from_ref = f"origin/{get_default_branch(repo_root)}"
 
     # Check if branch exists remotely or locally
     remote_exists, local_exists = _check_branch_exists(branch_name, repo_root)
