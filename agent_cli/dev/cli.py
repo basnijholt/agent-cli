@@ -390,9 +390,8 @@ def new(  # noqa: PLR0912
     if copy_env:
         copied = copy_env_files(repo_root, result.path)
         if copied:
-            for f in copied:
-                _info(f"Copied {f.name}")
-            _success(f"Copied {len(copied)} env file(s)")
+            names = ", ".join(f.name for f in copied)
+            _success(f"Copied env file(s): {names}")
 
     # Detect and run project setup
     project = None
