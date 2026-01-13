@@ -442,7 +442,12 @@ def new(  # noqa: PLR0912
         project = detect_project_type(result.path)
         if project:
             _info(f"Detected {project.description}", verbose=verbose)
-            success, output = run_setup(result.path, project, on_log=on_log)
+            success, output = run_setup(
+                result.path,
+                project,
+                on_log=on_log,
+                capture_output=not verbose,
+            )
             if success:
                 _success("Project setup complete")
             else:
