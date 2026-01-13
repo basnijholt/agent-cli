@@ -158,6 +158,15 @@ def detect_project_type(path: Path) -> ProjectType | None:  # noqa: PLR0911
             description="Python project with uv",
         )
 
+    # Pixi (cross-platform package manager from prefix.dev)
+    # Evidence: https://pixi.sh/latest/ - pixi.toml is the config file, pixi.lock is the lockfile
+    if (path / "pixi.toml").exists() or (path / "pixi.lock").exists():
+        return ProjectType(
+            name="pixi",
+            setup_commands=["pixi install"],
+            description="Project with pixi",
+        )
+
     # Python with unidep (Conda + Pip unified dependency management)
     # Check for requirements.yaml (primary unidep config) or [tool.unidep] in pyproject.toml
     unidep_project = _detect_unidep_project(path)
@@ -397,6 +406,11 @@ fi"""
 def _get_envrc_for_project(path: Path, project_type: ProjectType) -> str | None:
     """Get .envrc content for a specific project type."""
     name = project_type.name
+
+    if name == "pixi":
+        # Evidence: https://pixi.sh/latest/features/environment/#direnv
+        # watch_file ensures direnv reloads when dependencies change
+        return 'watch_file pixi.lock\neval "$(pixi shell-hook)"'
 
     if name.startswith("python"):
         return _get_python_envrc(path, name)
