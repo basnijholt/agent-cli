@@ -382,6 +382,7 @@ agent-cli config edit
 <!-- echo '```yaml' -->
 <!-- export NO_COLOR=1 -->
 <!-- export TERM=dumb -->
+<!-- export COLUMNS=90 -->
 <!-- export TERMINAL_WIDTH=90 -->
 <!-- agent-cli config --help -->
 <!-- echo '```' -->
@@ -448,6 +449,7 @@ the `[defaults]` section of your configuration file.
 <!-- echo '```yaml' -->
 <!-- export NO_COLOR=1 -->
 <!-- export TERM=dumb -->
+<!-- export COLUMNS=90 -->
 <!-- export TERMINAL_WIDTH=90 -->
 <!-- agent-cli autocorrect --help -->
 <!-- echo '```' -->
@@ -539,6 +541,7 @@ the `[defaults]` section of your configuration file.
 <!-- echo '```yaml' -->
 <!-- export NO_COLOR=1 -->
 <!-- export TERM=dumb -->
+<!-- export COLUMNS=90 -->
 <!-- export TERMINAL_WIDTH=90 -->
 <!-- agent-cli transcribe --help -->
 <!-- echo '```' -->
@@ -712,6 +715,7 @@ uv tool install "agent-cli[vad]"
 <!-- echo '```yaml' -->
 <!-- export NO_COLOR=1 -->
 <!-- export TERM=dumb -->
+<!-- export COLUMNS=90 -->
 <!-- export TERMINAL_WIDTH=90 -->
 <!-- agent-cli transcribe-daemon --help -->
 <!-- echo '```' -->
@@ -884,6 +888,7 @@ uv tool install "agent-cli[vad]"
 <!-- echo '```yaml' -->
 <!-- export NO_COLOR=1 -->
 <!-- export TERM=dumb -->
+<!-- export COLUMNS=90 -->
 <!-- export TERMINAL_WIDTH=90 -->
 <!-- agent-cli speak --help -->
 <!-- echo '```' -->
@@ -1009,6 +1014,7 @@ uv tool install "agent-cli[vad]"
 <!-- echo '```yaml' -->
 <!-- export NO_COLOR=1 -->
 <!-- export TERM=dumb -->
+<!-- export COLUMNS=90 -->
 <!-- export TERMINAL_WIDTH=90 -->
 <!-- agent-cli voice-edit --help -->
 <!-- echo '```' -->
@@ -1197,6 +1203,7 @@ uv tool install "agent-cli[vad]"
 <!-- echo '```yaml' -->
 <!-- export NO_COLOR=1 -->
 <!-- export TERM=dumb -->
+<!-- export COLUMNS=90 -->
 <!-- export TERMINAL_WIDTH=90 -->
 <!-- agent-cli assistant --help -->
 <!-- echo '```' -->
@@ -1391,6 +1398,7 @@ uv tool install "agent-cli[vad]"
 <!-- echo '```yaml' -->
 <!-- export NO_COLOR=1 -->
 <!-- export TERM=dumb -->
+<!-- export COLUMNS=90 -->
 <!-- export TERMINAL_WIDTH=90 -->
 <!-- agent-cli chat --help -->
 <!-- echo '```' -->
@@ -1579,6 +1587,7 @@ uv tool install "agent-cli[vad]"
 <!-- echo '```yaml' -->
 <!-- export NO_COLOR=1 -->
 <!-- export TERM=dumb -->
+<!-- export COLUMNS=90 -->
 <!-- export TERMINAL_WIDTH=90 -->
 <!-- agent-cli rag-proxy --help -->
 <!-- echo '```' -->
@@ -1681,6 +1690,7 @@ The `memory proxy` command is the core feature—a middleware server that gives 
 <!-- echo '```yaml' -->
 <!-- export NO_COLOR=1 -->
 <!-- export TERM=dumb -->
+<!-- export COLUMNS=90 -->
 <!-- export TERMINAL_WIDTH=90 -->
 <!-- agent-cli memory proxy --help -->
 <!-- echo '```' -->
@@ -1832,6 +1842,7 @@ agent-cli memory add -c work "Project deadline is Friday"
 <!-- echo '```yaml' -->
 <!-- export NO_COLOR=1 -->
 <!-- export TERM=dumb -->
+<!-- export COLUMNS=90 -->
 <!-- export TERMINAL_WIDTH=90 -->
 <!-- agent-cli memory add --help -->
 <!-- echo '```' -->

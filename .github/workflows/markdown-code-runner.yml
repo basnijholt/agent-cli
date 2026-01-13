@@ -26,6 +26,7 @@ jobs:
         env:
           TERM: dumb
           NO_COLOR: 1
+          COLUMNS: 90
           TERMINAL_WIDTH: 90
         run: |
           uv sync
