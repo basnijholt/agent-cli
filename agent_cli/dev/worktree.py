@@ -9,6 +9,10 @@ import shutil
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 
 def _run_git(
@@ -271,7 +275,7 @@ class CreateWorktreeResult:
     error: str | None = None
 
 
-def create_worktree(
+def create_worktree(  # noqa: PLR0912
     branch_name: str,
     *,
     repo_path: Path | None = None,
@@ -280,6 +284,7 @@ def create_worktree(
     prefix: str = "",
     force: bool = False,
     fetch: bool = True,
+    on_log: Callable[[str], None] | None = None,
 ) -> CreateWorktreeResult:
     """Create a new git worktree.
 
@@ -291,6 +296,7 @@ def create_worktree(
         prefix: Prefix for the worktree directory name
         force: Allow same branch in multiple worktrees
         fetch: Fetch from origin before creating
+        on_log: Optional callback for logging status messages
 
     Returns:
         CreateWorktreeResult with success status and path or error
@@ -325,6 +331,8 @@ def create_worktree(
 
     # Fetch latest refs
     if fetch:
+        if on_log:
+            on_log("Running: git fetch origin")
         _run_git("fetch", "origin", cwd=repo_root, check=False)
 
     # Determine the reference to create from
@@ -366,6 +374,8 @@ def create_worktree(
     try:
         if remote_exists and not local_exists:
             # Remote branch exists, create tracking branch
+            if on_log:
+                on_log(f"Running: git branch --track {branch_name} origin/{branch_name}")
             _run_git(
                 "branch",
                 "--track",
@@ -374,6 +384,8 @@ def create_worktree(
                 cwd=repo_root,
                 check=False,
             )
+            if on_log:
+                on_log(f"Running: git worktree add {worktree_path} {branch_name}")
             _run_git(
                 "worktree",
                 "add",
@@ -384,6 +396,8 @@ def create_worktree(
             )
         elif local_exists:
             # Local branch exists
+            if on_log:
+                on_log(f"Running: git worktree add {worktree_path} {branch_name}")
             _run_git(
                 "worktree",
                 "add",
@@ -394,6 +408,8 @@ def create_worktree(
             )
         else:
             # Create new branch from ref
+            if on_log:
+                on_log(f"Running: git worktree add -b {branch_name} {worktree_path} {from_ref}")
             _run_git(
                 "worktree",
                 "add",

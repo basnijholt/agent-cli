@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from pathlib import Path  # noqa: TC003
 
+import pytest
+
 from agent_cli.dev.project import (
     copy_env_files,
     detect_project_type,
@@ -118,12 +120,14 @@ class TestDetectProjectType:
         """
         (tmp_path / "requirements.yaml").write_text("dependencies:\n  - numpy")
         project = detect_project_type(tmp_path)
-        assert project is not None
+        # Project detection requires unidep or uvx to be available
+        if project is None:
+            pytest.skip("Neither unidep nor uvx available")
+        assert project is not None  # type narrowing for mypy
         assert project.name == "python-unidep"
-        # Command uses unidep with uvx fallback, -n {env_name} for named env
+        # Command uses unidep (or uvx unidep), -n {env_name} for named env
         cmd = project.setup_commands[0]
         assert "unidep install -e . -n {env_name}" in cmd
-        assert "uvx unidep" in cmd  # fallback
 
     def test_python_unidep_with_tool_unidep_in_pyproject(self, tmp_path: Path) -> None:
         """Detect Python project with unidep via [tool.unidep] in pyproject.toml.
@@ -135,12 +139,14 @@ class TestDetectProjectType:
             '[project]\nname = "test"\n\n[tool.unidep]\ndependencies = ["numpy"]',
         )
         project = detect_project_type(tmp_path)
-        assert project is not None
+        # Project detection requires unidep or uvx to be available
+        if project is None:
+            pytest.skip("Neither unidep nor uvx available")
+        assert project is not None  # type narrowing for mypy
         assert project.name == "python-unidep"
-        # Command uses unidep with uvx fallback, -n {env_name} for named env
+        # Command uses unidep (or uvx unidep), -n {env_name} for named env
         cmd = project.setup_commands[0]
         assert "unidep install -e . -n {env_name}" in cmd
-        assert "uvx unidep" in cmd  # fallback
 
     def test_python_unidep_monorepo(self, tmp_path: Path) -> None:
         """Detect Python monorepo with unidep (multiple requirements.yaml).
@@ -156,12 +162,14 @@ class TestDetectProjectType:
         (subpkg / "requirements.yaml").write_text("dependencies:\n  - pandas")
 
         project = detect_project_type(tmp_path)
-        assert project is not None
+        # Project detection requires unidep or uvx to be available
+        if project is None:
+            pytest.skip("Neither unidep nor uvx available")
+        assert project is not None  # type narrowing for mypy
         assert project.name == "python-unidep-monorepo"
-        # Command uses unidep with uvx fallback, -n {env_name} for named env
+        # Command uses unidep (or uvx unidep), -n {env_name} for named env
         cmd = project.setup_commands[0]
         assert "unidep install-all -e -n {env_name}" in cmd
-        assert "uvx unidep" in cmd  # fallback
 
     def test_python_unidep_monorepo_with_tool_unidep(self, tmp_path: Path) -> None:
         """Detect monorepo when subdirs have [tool.unidep] in pyproject.toml."""
@@ -171,7 +179,10 @@ class TestDetectProjectType:
         (subpkg / "pyproject.toml").write_text('[tool.unidep]\ndependencies = ["pandas"]')
 
         project = detect_project_type(tmp_path)
-        assert project is not None
+        # Project detection requires unidep or uvx to be available
+        if project is None:
+            pytest.skip("Neither unidep nor uvx available")
+        assert project is not None  # type narrowing for mypy
         assert project.name == "python-unidep-monorepo"
 
     def test_priority_uv_over_unidep(self, tmp_path: Path) -> None:
@@ -197,12 +208,14 @@ class TestDetectProjectType:
         (subpkg2 / "requirements.yaml").write_text("dependencies:\n  - pandas")
 
         project = detect_project_type(tmp_path)
-        assert project is not None
+        # Project detection requires unidep or uvx to be available
+        if project is None:
+            pytest.skip("Neither unidep nor uvx available")
+        assert project is not None  # type narrowing for mypy
         assert project.name == "python-unidep-monorepo"
-        # Command uses unidep with uvx fallback, -n {env_name} for named env
+        # Command uses unidep (or uvx unidep), -n {env_name} for named env
         cmd = project.setup_commands[0]
         assert "unidep install-all -e -n {env_name}" in cmd
-        assert "uvx unidep" in cmd  # fallback
 
     def test_python_unidep_excludes_test_example_dirs(self, tmp_path: Path) -> None:
         """Exclude test/example directories from monorepo detection.

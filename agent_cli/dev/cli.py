@@ -377,6 +377,7 @@ def new(  # noqa: PLR0912
         repo_path=repo_root,
         from_ref=from_ref,
         fetch=fetch,
+        on_log=_info,
     )
 
     if not result.success:
@@ -389,15 +390,17 @@ def new(  # noqa: PLR0912
     if copy_env:
         copied = copy_env_files(repo_root, result.path)
         if copied:
-            _info(f"Copied {len(copied)} env file(s)")
+            for f in copied:
+                _info(f"Copied {f.name}")
+            _success(f"Copied {len(copied)} env file(s)")
 
     # Detect and run project setup
     project = None
     if setup:
         project = detect_project_type(result.path)
         if project:
-            _info(f"Detected {project.description}, running setup...")
-            success, output = run_setup(result.path, project)
+            _info(f"Detected {project.description}")
+            success, output = run_setup(result.path, project, on_log=_info)
             if success:
                 _success("Project setup complete")
             else:
@@ -406,7 +409,7 @@ def new(  # noqa: PLR0912
     # Set up direnv if requested
     if direnv:
         if is_direnv_available():
-            success, msg = setup_direnv(result.path, project)
+            success, msg = setup_direnv(result.path, project, on_log=_info)
             if success and "Created .envrc" in msg:
                 _success(msg)
             elif success:

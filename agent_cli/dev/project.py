@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
     from pathlib import Path
 
 
@@ -74,16 +75,17 @@ def _is_unidep_monorepo(path: Path) -> bool:
     return False
 
 
-def _unidep_cmd(subcommand: str) -> str:
-    """Generate unidep command with uvx fallback.
+def _unidep_cmd(subcommand: str) -> str | None:
+    """Generate unidep command, checking availability.
 
-    Falls back to `uvx unidep` if unidep is not installed globally but uvx is available.
+    Returns the command to run, or None if neither unidep nor uvx is available.
+    Prefers unidep if installed, falls back to uvx.
     """
-    return (
-        f"if command -v unidep &> /dev/null; then unidep {subcommand}; "
-        f"elif command -v uvx &> /dev/null; then uvx unidep {subcommand}; "
-        f"else echo 'Error: neither unidep nor uvx found' >&2 && exit 1; fi"
-    )
+    if shutil.which("unidep"):
+        return f"unidep {subcommand}"
+    if shutil.which("uvx"):
+        return f"uvx unidep {subcommand}"
+    return None
 
 
 def _detect_unidep_project(path: Path) -> ProjectType | None:
@@ -110,19 +112,25 @@ def _detect_unidep_project(path: Path) -> ProjectType | None:
     # Detect monorepo even without root requirements.yaml
     # (subdirs with requirements.yaml is enough)
     if is_monorepo:
+        cmd = _unidep_cmd("install-all -e -n {env_name}")
+        if cmd is None:
+            return None  # Neither unidep nor uvx available
         return ProjectType(
             name="python-unidep-monorepo",
             # -n creates a named conda environment matching the worktree directory
-            setup_commands=[_unidep_cmd("install-all -e -n {env_name}")],
+            setup_commands=[cmd],
             description="Python monorepo with unidep",
         )
 
     # Single project requires root requirements.yaml or [tool.unidep]
     if has_requirements_yaml or has_tool_unidep:
+        cmd = _unidep_cmd("install -e . -n {env_name}")
+        if cmd is None:
+            return None  # Neither unidep nor uvx available
         return ProjectType(
             name="python-unidep",
             # -n creates a named conda environment matching the worktree directory
-            setup_commands=[_unidep_cmd("install -e . -n {env_name}")],
+            setup_commands=[cmd],
             description="Python project with unidep",
         )
 
@@ -230,6 +238,7 @@ def run_setup(
     project_type: ProjectType | None = None,
     *,
     capture_output: bool = True,
+    on_log: Callable[[str], None] | None = None,
 ) -> tuple[bool, str]:
     """Run the setup commands for a project.
 
@@ -237,6 +246,7 @@ def run_setup(
         path: Path to the project directory
         project_type: Detected project type (auto-detected if None)
         capture_output: Whether to capture output or stream to console
+        on_log: Optional callback for logging status messages
 
     Returns:
         Tuple of (success, output_or_error)
@@ -253,6 +263,10 @@ def run_setup(
     for cmd_template in project_type.setup_commands:
         # Substitute {env_name} placeholder with conda env name (used by unidep)
         cmd = cmd_template.replace("{env_name}", get_conda_env_name(path))
+
+        if on_log:
+            on_log(f"Running: {cmd}")
+
         try:
             result = subprocess.run(  # noqa: S602
                 cmd,
@@ -452,6 +466,7 @@ def setup_direnv(
     project_type: ProjectType | None = None,
     *,
     allow: bool = True,
+    on_log: Callable[[str], None] | None = None,
 ) -> tuple[bool, str]:
     """Set up direnv for a project by creating .envrc file.
 
@@ -459,6 +474,7 @@ def setup_direnv(
         path: Path to the project directory
         project_type: Detected project type (auto-detected if None)
         allow: Whether to run `direnv allow` after creating .envrc
+        on_log: Optional callback for logging status messages
 
     Returns:
         Tuple of (success, message)
@@ -478,10 +494,14 @@ def setup_direnv(
         return True, "No direnv configuration needed for this project"
 
     # Write .envrc file
+    if on_log:
+        on_log("Creating .envrc file")
     envrc_path.write_text(content)
 
     # Run direnv allow to trust the file
     if allow:
+        if on_log:
+            on_log("Running: direnv allow")
         result = subprocess.run(
             ["direnv", "allow"],  # noqa: S607
             cwd=path,
