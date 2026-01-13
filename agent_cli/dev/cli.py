@@ -107,6 +107,7 @@ if TYPE_CHECKING:
     from .editors.base import Editor
 
 console = Console()
+err_console = Console(stderr=True)
 
 app = typer.Typer(
     name="dev",
@@ -132,7 +133,7 @@ def dev_callback(
 
 def _error(msg: str) -> NoReturn:
     """Print an error message and exit."""
-    console.print(f"[bold red]Error:[/bold red] {msg}")
+    err_console.print(f"[bold red]Error:[/bold red] {msg}")
     raise typer.Exit(1)
 
 
