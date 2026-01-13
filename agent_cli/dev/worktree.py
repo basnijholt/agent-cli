@@ -314,6 +314,33 @@ def _check_branch_exists(branch_name: str, repo_root: Path) -> tuple[bool, bool]
     return remote_exists, local_exists
 
 
+def _init_submodules(
+    worktree_path: Path,
+    *,
+    on_log: Callable[[str], None] | None = None,
+) -> None:
+    """Initialize git submodules in a worktree.
+
+    Git worktrees don't automatically initialize submodules, so we need to do it
+    manually after creating a worktree.
+    """
+    # Check if there are any submodules configured
+    gitmodules_path = worktree_path / ".gitmodules"
+    if not gitmodules_path.exists():
+        return
+
+    if on_log:
+        on_log("Running: git submodule update --init --recursive")
+    _run_git(
+        "submodule",
+        "update",
+        "--init",
+        "--recursive",
+        cwd=worktree_path,
+        check=False,  # Don't fail if submodules can't be initialized
+    )
+
+
 def _add_worktree(
     branch_name: str,
     worktree_path: Path,
@@ -458,6 +485,9 @@ def create_worktree(
             force=force,
             on_log=on_log,
         )
+
+        # Initialize submodules in the new worktree
+        _init_submodules(worktree_path, on_log=on_log)
 
         return CreateWorktreeResult(
             success=True,
