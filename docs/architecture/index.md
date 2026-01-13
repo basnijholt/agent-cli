@@ -28,12 +28,12 @@ For usage and flags, see [Commands Reference](../commands/index.md) and [Configu
 │     └──────┬──────┘   └──────┬──────┘   └──────┬──────┘        │
 └────────────┼─────────────────┼─────────────────┼───────────────┘
              │                 │                 │
-       ┌─────┴─────┐     ┌─────┴─────┐     ┌─────┴─────┐
-       ▼           ▼     ▼           ▼     ▼           ▼
-  ┌────────┐ ┌────────┐ ┌──────┐ ┌──────┐ ┌───────┐ ┌──────┐
-  │Wyoming │ │ OpenAI │ │Ollama│ │OpenAI│ │Wyoming│ │OpenAI│
-  │Whisper │ │Whisper │ │      │ │Gemini│ │ Piper │ │ TTS  │
-  └────────┘ └────────┘ └──────┘ └──────┘ └───────┘ └──────┘
+      ┌──────┼──────┐    ┌─────┼─────┐    ┌───────┼───────┐
+      ▼      ▼      ▼    ▼     ▼     ▼    ▼   ▼   ▼   ▼   ▼
+ ┌───────┐┌──────┐┌──────┐┌──────┐┌──────┐┌─────┐┌──────┐┌──────┐┌──────┐
+ │Wyoming││OpenAI││Gemini││Ollama││OpenAI││Piper││OpenAI││Kokoro││Gemini│
+ │Whisper││Whispr││ ASR  ││      ││Gemini││     ││ TTS  ││      ││ TTS  │
+ └───────┘└──────┘└──────┘└──────┘└──────┘└─────┘└──────┘└──────┘└──────┘
 ```
 
 ## Provider System
@@ -46,6 +46,7 @@ Each AI capability (ASR, LLM, TTS) has multiple backend providers:
 |----------|---------------|-------------|---------|
 | `wyoming` | Wyoming Whisper (faster-whisper/MLX) | CUDA/Metal | Low |
 | `openai` | OpenAI-compatible Whisper API | Cloud | Medium |
+| `gemini` | Google Gemini API | Cloud | Medium |
 
 ### LLM (Large Language Model)
 
@@ -62,6 +63,7 @@ Each AI capability (ASR, LLM, TTS) has multiple backend providers:
 | `wyoming` | Wyoming Piper | Good | Fast |
 | `openai` | OpenAI-compatible TTS | Excellent | Medium |
 | `kokoro` | Kokoro TTS | Good | Fast |
+| `gemini` | Google Gemini TTS | Good | Medium |
 
 ## Wyoming Protocol
 
@@ -79,6 +81,8 @@ Agent CLI uses the [Wyoming Protocol](https://github.com/rhasspy/wyoming) for lo
 | Piper (TTS) | 10200 | Wyoming |
 | OpenWakeWord | 10400 | Wyoming |
 | Ollama (LLM) | 11434 | HTTP |
+| RAG Proxy | 8000 | HTTP |
+| Memory Proxy | 8100 | HTTP |
 
 ## Audio Pipeline
 

@@ -355,6 +355,7 @@ def assistant(
         openai_asr_cfg = config.OpenAIASR(
             asr_openai_model=asr_openai_model,
             openai_api_key=openai_api_key,
+            openai_base_url=openai_base_url,
         )
         gemini_asr_cfg = config.GeminiASR(
             asr_gemini_model=asr_gemini_model,

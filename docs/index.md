@@ -44,7 +44,7 @@ I got tired of typing long prompts to LLMs. Speaking is faster, so I built this 
 - Runs locally - no internet required, your audio stays on your machine
 - Works with any app that can copy/paste
 
-I use it mostly for the `transcribe` function when working with LLMs. Being able to speak naturally means I can provide more context without the typing fatigue.
+I use it mostly for the `transcribe` command when working with LLMs. Being able to speak naturally means I can provide more context without the typing fatigue.
 
 Since then I have expanded the tool with many more features, all focused on local-first AI agents that integrate seamlessly with your system.
 
@@ -63,6 +63,8 @@ Since then I have expanded the tool with many more features, all focused on loca
 | [`chat`](commands/chat.md) | Conversational AI with tool-calling capabilities |
 | [`rag-proxy`](commands/rag-proxy.md) | Chat with your documents via RAG |
 | [`memory`](commands/memory.md) | Long-term memory system for conversations |
+| [`dev`](commands/dev.md) | Parallel development with git worktrees and AI coding agents |
+| [`server`](commands/server.md) | HTTP API server for transcription |
 
 ## Quick Start
 

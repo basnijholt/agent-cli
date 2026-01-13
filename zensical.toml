@@ -48,6 +48,9 @@ nav = [
       { "install-hotkeys" = "commands/install-hotkeys.md" },
       { "start-services" = "commands/start-services.md" },
     ] },
+    { "Development" = [
+      { "dev" = "commands/dev.md" },
+    ] },
   ] },
   { "System Integration" = "system-integration.md" },
   { "Architecture" = [

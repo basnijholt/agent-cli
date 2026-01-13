@@ -482,7 +482,7 @@ def chat(
         openai_asr_cfg = config.OpenAIASR(
             asr_openai_model=asr_openai_model,
             openai_api_key=openai_api_key,
-            openai_base_url=asr_openai_base_url,
+            openai_base_url=asr_openai_base_url or openai_base_url,
             asr_openai_prompt=asr_openai_prompt,
         )
         gemini_asr_cfg = config.GeminiASR(
