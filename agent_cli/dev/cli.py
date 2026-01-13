@@ -526,6 +526,129 @@ def list_envs(
     console.print(table)
 
 
+def _format_file_changes(status: worktree.WorktreeStatus) -> str:
+    """Format file changes for display (e.g., '2M 1S 3?')."""
+    parts: list[str] = []
+    if status.modified:
+        parts.append(f"{status.modified}M")
+    if status.staged:
+        parts.append(f"{status.staged}S")
+    if status.untracked:
+        parts.append(f"{status.untracked}?")
+    return " ".join(parts) if parts else "[dim]clean[/dim]"
+
+
+def _format_ahead_behind(status: worktree.WorktreeStatus) -> str:
+    """Format ahead/behind for display (e.g., '+3/-2')."""
+    if status.ahead == 0 and status.behind == 0:
+        return "[dim]—[/dim]"
+    parts: list[str] = []
+    if status.ahead:
+        parts.append(f"[green]+{status.ahead}[/green]")
+    if status.behind:
+        parts.append(f"[red]-{status.behind}[/red]")
+    return "/".join(parts)
+
+
+def _is_stale(status: worktree.WorktreeStatus, stale_days: int) -> bool:
+    """Check if worktree is stale based on last commit time."""
+    import time  # noqa: PLC0415
+
+    if status.last_commit_timestamp is None:
+        return False
+    days_since = (time.time() - status.last_commit_timestamp) / (60 * 60 * 24)
+    return days_since >= stale_days
+
+
+@app.command("status")
+def status_cmd(
+    stale_days: Annotated[
+        int,
+        typer.Option("--stale-days", "-s", help="Highlight worktrees inactive for N+ days"),
+    ] = 7,
+    porcelain: Annotated[
+        bool,
+        typer.Option("--porcelain", "-p", help="Machine-readable output"),
+    ] = False,
+) -> None:
+    """Show status of all dev environments (worktrees) with git status.
+
+    Displays file changes (Modified, Staged, Untracked), commits ahead/behind
+    upstream, and last commit time for each worktree.
+    """
+    _ensure_git_repo()
+
+    worktrees = worktree.list_worktrees()
+
+    if not worktrees:
+        console.print("[dim]No worktrees found[/dim]")
+        return
+
+    if porcelain:
+        # Machine-readable: name\tbranch\tmodified\tstaged\tuntracked\tahead\tbehind\ttimestamp
+        for wt in worktrees:
+            status = worktree.get_worktree_status(wt.path)
+            if status:
+                print(
+                    f"{wt.name}\t{wt.branch or ''}\t"
+                    f"{status.modified}\t{status.staged}\t{status.untracked}\t"
+                    f"{status.ahead}\t{status.behind}\t{status.last_commit_timestamp or ''}",
+                )
+            else:
+                print(f"{wt.name}\t{wt.branch or ''}\t\t\t\t\t\t")
+        return
+
+    table = Table(title="Dev Environment Status")
+    table.add_column("Name", style="cyan")
+    table.add_column("Branch", style="green")
+    table.add_column("Changes", justify="right")
+    table.add_column("↑/↓", justify="center")
+    table.add_column("Last Commit")
+
+    for wt in worktrees:
+        name = "[bold]main[/bold]" if wt.is_main else wt.name
+        branch_name = wt.branch or "(detached)"
+
+        status = worktree.get_worktree_status(wt.path)
+        if status is None:
+            table.add_row(name, branch_name, "[red]?[/red]", "", "")
+            continue
+
+        changes = _format_file_changes(status)
+        ahead_behind = _format_ahead_behind(status)
+
+        # Format last commit time with stale warning
+        last_commit = status.last_commit_time or "[dim]unknown[/dim]"
+        if _is_stale(status, stale_days):
+            last_commit = f"[yellow]{last_commit} ⚠️[/yellow]"
+
+        table.add_row(name, branch_name, changes, ahead_behind, last_commit)
+
+    console.print(table)
+
+    # Summary
+    total = len(worktrees)
+    stale_count = sum(
+        1
+        for wt in worktrees
+        if (s := worktree.get_worktree_status(wt.path)) and _is_stale(s, stale_days)
+    )
+    dirty_count = sum(
+        1
+        for wt in worktrees
+        if (s := worktree.get_worktree_status(wt.path))
+        and (s.modified > 0 or s.staged > 0 or s.untracked > 0)
+    )
+
+    summary_parts = [f"[bold]{total}[/bold] worktree{'s' if total != 1 else ''}"]
+    if dirty_count:
+        summary_parts.append(f"[yellow]{dirty_count} with uncommitted changes[/yellow]")
+    if stale_count:
+        summary_parts.append(f"[yellow]{stale_count} stale (>{stale_days} days)[/yellow]")
+
+    console.print("\n" + " · ".join(summary_parts))
+
+
 @app.command("rm")
 def remove(
     name: Annotated[str, typer.Argument(help="Branch or directory name of the worktree to remove")],

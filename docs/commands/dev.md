@@ -92,6 +92,76 @@ agent-cli dev list [OPTIONS]
 |--------|-------------|
 | `--porcelain`, `-p` | Machine-readable output (path + branch) |
 
+### `dev status`
+
+Show status of all dev environments with git status information.
+
+```bash
+agent-cli dev status [OPTIONS]
+```
+
+**Options:**
+
+| Option | Description |
+|--------|-------------|
+| `--stale-days`, `-s` | Highlight worktrees inactive for N+ days (default: 7) |
+| `--porcelain`, `-p` | Machine-readable output |
+
+**Output columns:**
+
+| Column | Description |
+|--------|-------------|
+| Name | Worktree directory name |
+| Branch | Git branch name |
+| Changes | File changes: `M` modified, `S` staged, `?` untracked |
+| ↑/↓ | Commits ahead (+) / behind (-) upstream |
+| Last Commit | Relative time since last commit |
+
+**Examples:**
+
+```bash
+# Show status of all worktrees
+agent-cli dev status
+
+# Highlight worktrees inactive for 14+ days
+agent-cli dev status --stale-days 14
+
+# Machine-readable output for scripting
+agent-cli dev status --porcelain
+```
+
+**Example output:**
+
+```
+                          Dev Environment Status
+┏━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━┳━━━━━━━━━┳━━━━━┳━━━━━━━━━━━━━━━━┓
+┃ Name        ┃ Branch          ┃ Changes ┃ ↑/↓ ┃ Last Commit    ┃
+┡━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━╇━━━━━━━━━╇━━━━━╇━━━━━━━━━━━━━━━━┩
+│ main        │ main            │      3M │  —  │ 24 minutes ago │
+│ my-feature  │ feat/my-feature │   clean │  —  │ 9 days ago ⚠️   │
+└─────────────┴─────────────────┴─────────┴─────┴────────────────┘
+
+2 worktrees · 1 with uncommitted changes · 1 stale (>7 days)
+```
+
+**Legend:**
+- `M` = Modified files (not staged)
+- `S` = Staged files
+- `?` = Untracked files
+- `+N` = N commits ahead of upstream
+- `-N` = N commits behind upstream
+- `⚠️` = Stale worktree (inactive for longer than `--stale-days`)
+
+**Porcelain format:**
+
+Tab-separated values: `name`, `branch`, `modified`, `staged`, `untracked`, `ahead`, `behind`, `timestamp`
+
+```bash
+$ agent-cli dev status --porcelain
+main	main	3	0	0	0	0	1768343512
+my-feature	feat/my-feature	0	0	0	0	0	1767544043
+```
+
 ### `dev rm`
 
 Remove a dev environment (worktree).
