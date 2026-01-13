@@ -317,6 +317,7 @@ def _check_branch_exists(branch_name: str, repo_root: Path) -> tuple[bool, bool]
 def _init_submodules(
     worktree_path: Path,
     *,
+    reference_repo: Path | None = None,
     on_log: Callable[[str], None] | None = None,
     capture_output: bool = True,
 ) -> None:
@@ -324,19 +325,30 @@ def _init_submodules(
 
     Git worktrees don't automatically initialize submodules, so we need to do it
     manually after creating a worktree.
+
+    Args:
+        worktree_path: Path to the new worktree
+        reference_repo: Path to use as reference for submodule objects. When provided,
+            git will use local objects from this repo and only fetch missing objects
+            from remote. This significantly speeds up submodule initialization when
+            submodules are already cloned in the main repo.
+        on_log: Optional callback for logging status messages
+        capture_output: Whether to capture command output
+
     """
     # Check if there are any submodules configured
     gitmodules_path = worktree_path / ".gitmodules"
     if not gitmodules_path.exists():
         return
 
+    args = ["submodule", "update", "--init", "--recursive"]
+    if reference_repo is not None:
+        args.extend(["--reference", str(reference_repo)])
+
     if on_log:
-        on_log("Running: git submodule update --init --recursive")
+        on_log(f"Running: git {' '.join(args)}")
     _run_git(
-        "submodule",
-        "update",
-        "--init",
-        "--recursive",
+        *args,
         cwd=worktree_path,
         check=False,  # Don't fail if submodules can't be initialized
         capture_output=capture_output,
@@ -496,8 +508,14 @@ def create_worktree(
             capture_output=capture_output,
         )
 
-        # Initialize submodules in the new worktree
-        _init_submodules(worktree_path, on_log=on_log, capture_output=capture_output)
+        # Initialize submodules in the new worktree, using main repo as reference
+        # to avoid re-fetching objects that already exist locally
+        _init_submodules(
+            worktree_path,
+            reference_repo=repo_root,
+            on_log=on_log,
+            capture_output=capture_output,
+        )
 
         return CreateWorktreeResult(
             success=True,
