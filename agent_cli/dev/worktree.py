@@ -9,6 +9,10 @@ import shutil
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 
 def _run_git(
@@ -271,6 +275,109 @@ class CreateWorktreeResult:
     error: str | None = None
 
 
+def _check_branch_exists(branch_name: str, repo_root: Path) -> tuple[bool, bool]:
+    """Check if a branch exists remotely and/or locally.
+
+    Returns:
+        Tuple of (remote_exists, local_exists)
+
+    """
+    remote_exists = False
+    local_exists = False
+
+    try:
+        result = _run_git(
+            "show-ref",
+            "--verify",
+            "--quiet",
+            f"refs/remotes/origin/{branch_name}",
+            cwd=repo_root,
+            check=False,
+        )
+        remote_exists = result.returncode == 0
+    except Exception:  # noqa: S110
+        pass
+
+    try:
+        result = _run_git(
+            "show-ref",
+            "--verify",
+            "--quiet",
+            f"refs/heads/{branch_name}",
+            cwd=repo_root,
+            check=False,
+        )
+        local_exists = result.returncode == 0
+    except Exception:  # noqa: S110
+        pass
+
+    return remote_exists, local_exists
+
+
+def _add_worktree(
+    branch_name: str,
+    worktree_path: Path,
+    repo_root: Path,
+    from_ref: str,
+    *,
+    remote_exists: bool,
+    local_exists: bool,
+    force: bool,
+    on_log: Callable[[str], None] | None,
+) -> None:
+    """Add a git worktree, handling different branch scenarios."""
+    force_flag = ["--force"] if force else []
+
+    if remote_exists and not local_exists:
+        # Remote branch exists, create tracking branch
+        if on_log:
+            on_log(f"Running: git branch --track {branch_name} origin/{branch_name}")
+        _run_git(
+            "branch",
+            "--track",
+            branch_name,
+            f"origin/{branch_name}",
+            cwd=repo_root,
+            check=False,
+        )
+        if on_log:
+            on_log(f"Running: git worktree add {worktree_path} {branch_name}")
+        _run_git(
+            "worktree",
+            "add",
+            *force_flag,
+            str(worktree_path),
+            branch_name,
+            cwd=repo_root,
+        )
+    elif local_exists:
+        # Local branch exists
+        if on_log:
+            on_log(f"Running: git worktree add {worktree_path} {branch_name}")
+        _run_git(
+            "worktree",
+            "add",
+            *force_flag,
+            str(worktree_path),
+            branch_name,
+            cwd=repo_root,
+        )
+    else:
+        # Create new branch from ref
+        if on_log:
+            on_log(f"Running: git worktree add -b {branch_name} {worktree_path} {from_ref}")
+        _run_git(
+            "worktree",
+            "add",
+            *force_flag,
+            str(worktree_path),
+            "-b",
+            branch_name,
+            from_ref,
+            cwd=repo_root,
+        )
+
+
 def create_worktree(
     branch_name: str,
     *,
@@ -280,6 +387,7 @@ def create_worktree(
     prefix: str = "",
     force: bool = False,
     fetch: bool = True,
+    on_log: Callable[[str], None] | None = None,
 ) -> CreateWorktreeResult:
     """Create a new git worktree.
 
@@ -291,6 +399,7 @@ def create_worktree(
         prefix: Prefix for the worktree directory name
         force: Allow same branch in multiple worktrees
         fetch: Fetch from origin before creating
+        on_log: Optional callback for logging status messages
 
     Returns:
         CreateWorktreeResult with success status and path or error
@@ -325,6 +434,8 @@ def create_worktree(
 
     # Fetch latest refs
     if fetch:
+        if on_log:
+            on_log("Running: git fetch origin")
         _run_git("fetch", "origin", cwd=repo_root, check=False)
 
     # Determine the reference to create from
@@ -332,78 +443,19 @@ def create_worktree(
         from_ref = get_default_branch(repo_root)
 
     # Check if branch exists remotely or locally
-    remote_exists = False
-    local_exists = False
+    remote_exists, local_exists = _check_branch_exists(branch_name, repo_root)
 
     try:
-        result = _run_git(
-            "show-ref",
-            "--verify",
-            "--quiet",
-            f"refs/remotes/origin/{branch_name}",
-            cwd=repo_root,
-            check=False,
+        _add_worktree(
+            branch_name,
+            worktree_path,
+            repo_root,
+            from_ref,
+            remote_exists=remote_exists,
+            local_exists=local_exists,
+            force=force,
+            on_log=on_log,
         )
-        remote_exists = result.returncode == 0
-    except Exception:  # noqa: S110
-        pass
-
-    try:
-        result = _run_git(
-            "show-ref",
-            "--verify",
-            "--quiet",
-            f"refs/heads/{branch_name}",
-            cwd=repo_root,
-            check=False,
-        )
-        local_exists = result.returncode == 0
-    except Exception:  # noqa: S110
-        pass
-
-    force_flag = ["--force"] if force else []
-
-    try:
-        if remote_exists and not local_exists:
-            # Remote branch exists, create tracking branch
-            _run_git(
-                "branch",
-                "--track",
-                branch_name,
-                f"origin/{branch_name}",
-                cwd=repo_root,
-                check=False,
-            )
-            _run_git(
-                "worktree",
-                "add",
-                *force_flag,
-                str(worktree_path),
-                branch_name,
-                cwd=repo_root,
-            )
-        elif local_exists:
-            # Local branch exists
-            _run_git(
-                "worktree",
-                "add",
-                *force_flag,
-                str(worktree_path),
-                branch_name,
-                cwd=repo_root,
-            )
-        else:
-            # Create new branch from ref
-            _run_git(
-                "worktree",
-                "add",
-                *force_flag,
-                str(worktree_path),
-                "-b",
-                branch_name,
-                from_ref,
-                cwd=repo_root,
-            )
 
         return CreateWorktreeResult(
             success=True,
