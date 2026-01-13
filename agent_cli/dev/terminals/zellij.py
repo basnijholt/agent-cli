@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 import shutil
 import subprocess
+import time
 from typing import TYPE_CHECKING
 
 from .base import Terminal
@@ -42,28 +43,34 @@ class Zellij(Terminal):
 
         try:
             # Create new tab using zellij action
-            cmd = ["zellij", "action", "new-tab", "--cwd", str(path)]
+            # Note: --cwd requires --layout in zellij 0.42+
+            cmd = ["zellij", "action", "new-tab", "--layout", "default", "--cwd", str(path)]
             if tab_name:
                 cmd.extend(["--name", tab_name])
             subprocess.run(
                 cmd,
                 check=True,
                 capture_output=True,
+                text=True,
             )
 
             # If command specified, write it to the new pane
             # --cwd already sets the working directory, so no need for cd
             if command:
+                # Small delay to ensure the new tab has focus
+                time.sleep(0.1)
                 subprocess.run(
                     ["zellij", "action", "write-chars", command],  # noqa: S607
                     check=True,
                     capture_output=True,
+                    text=True,
                 )
                 # Send enter key
                 subprocess.run(
                     ["zellij", "action", "write", "10"],  # 10 is newline  # noqa: S607
                     check=True,
                     capture_output=True,
+                    text=True,
                 )
 
             return True
