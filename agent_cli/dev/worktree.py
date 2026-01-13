@@ -363,6 +363,7 @@ def _init_submodules_recursive(
         return
 
     # Get submodule paths from .gitmodules (name != path in some cases)
+    # This is the canonical source - only submodules in .gitmodules should be initialized
     result = _run_git(
         "config",
         "--file",
@@ -373,6 +374,11 @@ def _init_submodules_recursive(
         check=False,
     )
     name_to_path = dict(_parse_git_config_regexp(result.stdout, "submodule.", ".path"))
+
+    # Filter to only submodules that exist in .gitmodules (not stale config entries)
+    submodule_urls = [(name, url) for name, url in submodule_urls if name in name_to_path]
+    if not submodule_urls:
+        return
 
     # Override URLs to local paths where available, track for restoration
     overrides: list[tuple[str, str]] = []  # (name, original_url)
