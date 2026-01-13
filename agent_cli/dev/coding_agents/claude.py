@@ -18,6 +18,16 @@ class ClaudeCode(CodingAgent):
     detect_env_var = "CLAUDECODE"
     detect_process_name = "claude"
 
+    def prompt_args(self, prompt: str) -> list[str]:
+        """Return prompt as positional argument.
+
+        Claude Code accepts prompt as a positional argument:
+        `claude "your prompt here"`
+
+        See: claude --help
+        """
+        return [prompt]
+
     def get_executable(self) -> str | None:
         """Get the Claude executable path."""
         # Check common installation path first

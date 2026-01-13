@@ -61,6 +61,7 @@ agent-cli dev new [BRANCH] [OPTIONS]
 | `--with-editor` | Specific editor (cursor, vscode, zed, etc.) |
 | `--with-agent` | Specific agent (claude, codex, gemini, aider) |
 | `--agent-args` | Extra arguments to pass to the agent |
+| `--prompt`, `-p` | Initial prompt to pass to the AI agent |
 | `--direnv` | Generate .envrc file for direnv (auto-detects venv) |
 | `--setup/--no-setup` | Run automatic project setup (default: enabled) |
 | `--copy-env/--no-copy-env` | Copy .env files from main repo (default: enabled) |
@@ -78,6 +79,9 @@ agent-cli dev new feature --with-editor cursor --with-agent claude
 
 # Quick dev environment with defaults from config
 agent-cli dev new -e -a
+
+# Create dev environment with an initial prompt for the agent
+agent-cli dev new fix-bug -a --prompt "Fix the login validation bug in auth.py"
 ```
 
 ### `dev list`
@@ -204,7 +208,25 @@ agent-cli dev editor NAME [--editor/-e EDITOR]
 Start an AI coding agent in a dev environment.
 
 ```bash
-agent-cli dev agent NAME [--agent/-a AGENT] [--agent-args ARGS]
+agent-cli dev agent NAME [--agent/-a AGENT] [--agent-args ARGS] [--prompt/-p PROMPT]
+```
+
+**Options:**
+
+| Option | Description |
+|--------|-------------|
+| `--agent`, `-a` | Specific agent (claude, codex, gemini, aider) |
+| `--agent-args` | Extra arguments to pass to the agent |
+| `--prompt`, `-p` | Initial prompt to pass to the AI agent |
+
+**Examples:**
+
+```bash
+# Start Claude in an existing worktree with a prompt
+agent-cli dev agent my-feature --prompt "Continue implementing the user settings page"
+
+# Start aider with a specific task
+agent-cli dev agent my-feature -a aider --prompt "Add unit tests for the auth module"
 ```
 
 ### `dev run`
