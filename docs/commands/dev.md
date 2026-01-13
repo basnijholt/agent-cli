@@ -166,6 +166,7 @@ agent-cli dev clean [OPTIONS]
 | Option | Description |
 |--------|-------------|
 | `--merged` | Remove worktrees with merged PRs (requires gh CLI) |
+| `--no-commits` | Remove worktrees with no commits ahead of default branch |
 | `--dry-run`, `-n` | Show what would be done without doing it |
 | `--yes`, `-y` | Skip confirmation |
 
@@ -177,6 +178,9 @@ agent-cli dev clean
 
 # Also remove worktrees whose PRs have been merged
 agent-cli dev clean --merged
+
+# Remove worktrees with no commits (abandoned or manually merged branches)
+agent-cli dev clean --no-commits
 
 # Preview what would be cleaned
 agent-cli dev clean --merged --dry-run
