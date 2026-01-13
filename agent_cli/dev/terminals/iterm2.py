@@ -41,19 +41,32 @@ class ITerm2(Terminal):
         if not self.is_available():
             return False
 
+        def escape_applescript(s: str) -> str:
+            """Escape string for AppleScript double-quoted string."""
+            # Escape backslashes first, then double quotes
+            return s.replace("\\", "\\\\").replace('"', '\\"')
+
         # Build the command to run in the new tab
         shell_cmd = f'cd "{path}" && {command}' if command else f'cd "{path}"'
+        shell_cmd_escaped = escape_applescript(shell_cmd)
 
         # Build name setting if provided
-        name_cmd = f'\nset name to "{tab_name}"' if tab_name else ""
+        name_cmd = ""
+        if tab_name:
+            tab_name_escaped = escape_applescript(tab_name)
+            name_cmd = f'\nset name to "{tab_name_escaped}"'
 
         # AppleScript to open new tab in iTerm2
+        # Handle case where no window exists by creating one
         applescript = f"""
             tell application "iTerm2"
+                if (count of windows) = 0 then
+                    create window with default profile
+                end if
                 tell current window
                     create tab with default profile
                     tell current session{name_cmd}
-                        write text "{shell_cmd}"
+                        write text "{shell_cmd_escaped}"
                     end tell
                 end tell
             end tell
@@ -64,6 +77,7 @@ class ITerm2(Terminal):
                 ["osascript", "-e", applescript],  # noqa: S607
                 check=True,
                 capture_output=True,
+                text=True,
             )
             return True
         except subprocess.CalledProcessError:
