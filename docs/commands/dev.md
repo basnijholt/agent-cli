@@ -251,7 +251,7 @@ agent-cli dev terminals
 | GoLand | `goland` | |
 | RustRover | `rustrover` | |
 
-### Terminal Multiplexers
+### Terminals
 
 | Terminal | Detection | New Tab Command |
 |----------|-----------|-----------------|
@@ -259,8 +259,11 @@ agent-cli dev terminals
 | Zellij | `ZELLIJ` env var | `zellij action new-tab --cwd <path>` |
 | Kitty | `KITTY_WINDOW_ID` | `kitten @ launch --type=tab` |
 | iTerm2 | `ITERM_SESSION_ID` | AppleScript |
+| Terminal.app | `TERM_PROGRAM=Apple_Terminal` | AppleScript + System Events * |
 | Warp | `TERM_PROGRAM=WarpTerminal` | URI scheme + Launch Configurations |
 | GNOME Terminal | `GNOME_TERMINAL_SERVICE` | `gnome-terminal --tab` |
+
+\* Requires accessibility permissions in System Preferences > Privacy & Security > Accessibility.
 
 ## Configuration
 
