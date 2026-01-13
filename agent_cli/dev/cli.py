@@ -792,6 +792,30 @@ def run_cmd(
         _error(f"Command not found: {command[0]}")
 
 
+def _find_worktrees_with_no_commits(repo_root: Path) -> list[worktree.WorktreeInfo]:
+    """Find worktrees whose branches have no commits ahead of the default branch."""
+    worktrees_list = worktree.list_worktrees()
+    default_branch = worktree.get_default_branch(repo_root)
+    to_remove: list[worktree.WorktreeInfo] = []
+
+    for wt in worktrees_list:
+        if wt.is_main or not wt.branch:
+            continue
+
+        # Check if branch has any commits ahead of default branch
+        result = subprocess.run(
+            ["git", "rev-list", f"{default_branch}..{wt.branch}", "--count"],  # noqa: S607
+            capture_output=True,
+            text=True,
+            cwd=repo_root,
+            check=False,
+        )
+        if result.returncode == 0 and result.stdout.strip() == "0":
+            to_remove.append(wt)
+
+    return to_remove
+
+
 def _find_worktrees_with_merged_prs(
     repo_root: Path,
 ) -> list[tuple[worktree.WorktreeInfo, str]]:
@@ -876,11 +900,55 @@ def _clean_merged_worktrees(
                 _warn(f"Failed to remove {wt.branch}: {error}")
 
 
+def _clean_no_commits_worktrees(
+    repo_root: Path,
+    dry_run: bool,
+    yes: bool,
+) -> None:
+    """Remove worktrees with no commits ahead of the default branch."""
+    _info("Checking for worktrees with no commits...")
+
+    to_remove = _find_worktrees_with_no_commits(repo_root)
+
+    if not to_remove:
+        _info("No worktrees with zero commits found")
+        return
+
+    default_branch = worktree.get_default_branch(repo_root)
+    console.print(
+        f"\n[bold]Found {len(to_remove)} worktree(s) with no commits ahead of {default_branch}:[/bold]",
+    )
+    for wt in to_remove:
+        console.print(f"  • {wt.branch} ({wt.path})")
+
+    if dry_run:
+        _info("[dry-run] Would remove the above worktrees")
+    elif yes or typer.confirm("\nRemove these worktrees?"):
+        for wt in to_remove:
+            success, error = worktree.remove_worktree(
+                wt.path,
+                force=False,
+                delete_branch=True,
+                repo_path=repo_root,
+            )
+            if success:
+                _success(f"Removed {wt.branch}")
+            else:
+                _warn(f"Failed to remove {wt.branch}: {error}")
+
+
 @app.command("clean")
 def clean(
     merged: Annotated[
         bool,
         typer.Option("--merged", help="Remove worktrees with merged PRs (requires gh CLI)"),
+    ] = False,
+    no_commits: Annotated[
+        bool,
+        typer.Option(
+            "--no-commits",
+            help="Remove worktrees with no commits ahead of default branch",
+        ),
     ] = False,
     dry_run: Annotated[
         bool,
@@ -892,6 +960,7 @@ def clean(
 
     Runs `git worktree prune` and removes empty worktree directories.
     With --merged, also removes worktrees whose PRs have been merged.
+    With --no-commits, removes worktrees with no commits ahead of the default branch.
     """
     repo_root = _ensure_git_repo()
 
@@ -927,6 +996,10 @@ def clean(
     # --merged mode: remove worktrees with merged PRs
     if merged:
         _clean_merged_worktrees(repo_root, dry_run, yes)
+
+    # --no-commits mode: remove worktrees with no commits ahead of default branch
+    if no_commits:
+        _clean_no_commits_worktrees(repo_root, dry_run, yes)
 
 
 @app.command("doctor")
