@@ -14,7 +14,7 @@ The `dev` command helps you work on multiple features simultaneously by creating
 - Run multiple AI coding agents in parallel
 - Keep your main branch clean while experimenting
 
-Inspired by [git-worktree-runner (gtr)](https://github.com/CodeRabbitAI/git-worktree-runner).
+Like [git-worktree-runner (gtr)](https://github.com/CodeRabbitAI/git-worktree-runner) but with many more QoL features.
 
 ## Quick Start
 
