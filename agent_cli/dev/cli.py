@@ -127,22 +127,9 @@ def dev_callback(
         str | None,
         typer.Option("--config", "-c", help="Path to config file"),
     ] = None,
-    verbose: Annotated[
-        bool,
-        typer.Option("--verbose", "-v", help="Show detailed output"),
-    ] = False,
 ) -> None:
     """Parallel development environment manager using git worktrees."""
     set_config_defaults(ctx, config_file)
-    # Store verbose flag in context for subcommands
-    if ctx.obj is None:
-        ctx.obj = {}
-    ctx.obj["verbose"] = verbose
-
-
-def _get_verbose(ctx: typer.Context) -> bool:
-    """Get verbose flag from context."""
-    return ctx.obj.get("verbose", False) if ctx.obj else False
 
 
 def _make_log_callback(verbose: bool) -> Callable[[str], None] | None:
@@ -341,7 +328,6 @@ def _launch_agent(
 
 @app.command("new")
 def new(  # noqa: PLR0912
-    ctx: typer.Context,
     branch: Annotated[
         str | None,
         typer.Argument(help="Branch name (auto-generated if not provided)"),
@@ -400,9 +386,12 @@ def new(  # noqa: PLR0912
             help="Extra arguments to pass to the agent (e.g., --agent-args='--dangerously-skip-permissions')",
         ),
     ] = None,
+    verbose: Annotated[
+        bool,
+        typer.Option("--verbose", "-v", help="Show detailed output and stream command output"),
+    ] = False,
 ) -> None:
     """Create a new parallel development environment (git worktree)."""
-    verbose = _get_verbose(ctx)
     on_log = _make_log_callback(verbose)
     repo_root = _ensure_git_repo()
 
@@ -647,7 +636,6 @@ def open_editor(
 
 @app.command("agent")
 def start_agent(
-    ctx: typer.Context,
     name: Annotated[str, typer.Argument(help="Branch name or directory name of the worktree")],
     agent_name: Annotated[
         str | None,
@@ -662,7 +650,6 @@ def start_agent(
     ] = None,
 ) -> None:
     """Start an AI coding agent in a dev environment."""
-    verbose = _get_verbose(ctx)
     repo_root = _ensure_git_repo()
 
     wt = worktree.find_worktree_by_name(name, repo_root)
@@ -685,7 +672,7 @@ def start_agent(
         _error(f"{agent.name} is not installed. Install from: {agent.install_url}")
 
     merged_args = _merge_agent_args(agent, agent_args)
-    _info(f"Starting {agent.name} in {wt.path}...", verbose=verbose)
+    _info(f"Starting {agent.name} in {wt.path}...")
     try:
         os.chdir(wt.path)
         subprocess.run(agent.launch_command(wt.path, merged_args), check=False)
@@ -792,7 +779,6 @@ def _doctor_check_git() -> None:
 
 @app.command("run")
 def run_cmd(
-    ctx: typer.Context,
     name: Annotated[str, typer.Argument(help="Branch name or directory name of the worktree")],
     command: Annotated[list[str], typer.Argument(help="Command to run in the worktree")],
 ) -> None:
@@ -800,7 +786,6 @@ def run_cmd(
 
     Example: agent-cli dev run my-feature npm test
     """
-    verbose = _get_verbose(ctx)
     repo_root = _ensure_git_repo()
 
     wt = worktree.find_worktree_by_name(name, repo_root)
@@ -810,7 +795,7 @@ def run_cmd(
     if not command:
         _error("No command specified")
 
-    _info(f"Running in {wt.path}: {' '.join(command)}", verbose=verbose)
+    _info(f"Running in {wt.path}: {' '.join(command)}")
     try:
         result = subprocess.run(command, cwd=wt.path, check=False)
         raise typer.Exit(result.returncode)
@@ -845,11 +830,9 @@ def _clean_merged_worktrees(
     repo_root: Path,
     dry_run: bool,
     yes: bool,
-    *,
-    verbose: bool = True,
 ) -> None:
     """Remove worktrees with merged PRs (requires gh CLI)."""
-    _info("Checking for worktrees with merged PRs...", verbose=verbose)
+    _info("Checking for worktrees with merged PRs...")
 
     # Check if gh CLI is available
     gh_version = subprocess.run(
@@ -872,7 +855,7 @@ def _clean_merged_worktrees(
     to_remove = _find_worktrees_with_merged_prs(repo_root)
 
     if not to_remove:
-        _info("No worktrees with merged PRs found", verbose=verbose)
+        _info("No worktrees with merged PRs found")
         return
 
     console.print(f"\n[bold]Found {len(to_remove)} worktree(s) with merged PRs:[/bold]")
@@ -880,7 +863,7 @@ def _clean_merged_worktrees(
         console.print(f"  • {wt.branch} ({wt.path})")
 
     if dry_run:
-        _info("[dry-run] Would remove the above worktrees", verbose=verbose)
+        _info("[dry-run] Would remove the above worktrees")
     elif yes or typer.confirm("\nRemove these worktrees?"):
         for wt in to_remove:
             success, error = worktree.remove_worktree(
@@ -897,7 +880,6 @@ def _clean_merged_worktrees(
 
 @app.command("clean")
 def clean(
-    ctx: typer.Context,
     merged: Annotated[
         bool,
         typer.Option("--merged", help="Remove worktrees with merged PRs (requires gh CLI)"),
@@ -913,11 +895,10 @@ def clean(
     Runs `git worktree prune` and removes empty worktree directories.
     With --merged, also removes worktrees whose PRs have been merged.
     """
-    verbose = _get_verbose(ctx)
     repo_root = _ensure_git_repo()
 
     # Run git worktree prune
-    _info("Pruning stale worktree references...", verbose=verbose)
+    _info("Pruning stale worktree references...")
     result = subprocess.run(
         ["git", "worktree", "prune"],  # noqa: S607
         cwd=repo_root,
@@ -937,17 +918,17 @@ def clean(
         for item in base_dir.iterdir():
             if item.is_dir() and not any(item.iterdir()):
                 if dry_run:
-                    _info(f"[dry-run] Would remove empty directory: {item.name}", verbose=verbose)
+                    _info(f"[dry-run] Would remove empty directory: {item.name}")
                 else:
                     item.rmdir()
-                    _info(f"Removed empty directory: {item.name}", verbose=verbose)
+                    _info(f"Removed empty directory: {item.name}")
                 cleaned += 1
         if cleaned > 0:
             _success(f"Cleaned {cleaned} empty director{'y' if cleaned == 1 else 'ies'}")
 
     # --merged mode: remove worktrees with merged PRs
     if merged:
-        _clean_merged_worktrees(repo_root, dry_run, yes, verbose=verbose)
+        _clean_merged_worktrees(repo_root, dry_run, yes)
 
 
 @app.command("doctor")
