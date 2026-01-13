@@ -9,6 +9,7 @@ import pytest  # noqa: TC002
 
 from agent_cli.dev.worktree import (
     WorktreeInfo,
+    _parse_git_config_regexp,
     find_worktree_by_name,
     list_worktrees,
     resolve_worktree_base_dir,
@@ -272,3 +273,84 @@ class TestWorktreeInfo:
             is_prunable=False,
         )
         assert wt.name == "my-worktree"
+
+
+class TestParseGitConfigRegexp:
+    """Tests for _parse_git_config_regexp function.
+
+    Based on real git config --get-regexp output from a repo with nested submodules:
+    - main-repo -> libs/middle (submodule) -> vendor/deep (nested submodule)
+    """
+
+    def test_parse_submodule_urls(self) -> None:
+        r"""Parse submodule URL config output.
+
+        Real output from: git config --local --get-regexp '^submodule\..*\.url$'
+        """
+        output = "submodule.libs/middle.url /home/user/test-fixture/middle-lib"
+        result = _parse_git_config_regexp(output, "submodule.", ".url")
+        assert result == [("libs/middle", "/home/user/test-fixture/middle-lib")]
+
+    def test_parse_submodule_paths(self) -> None:
+        r"""Parse submodule path config output.
+
+        Real output from: git config --file .gitmodules --get-regexp '^submodule\..*\.path$'
+        """
+        output = "submodule.libs/middle.path libs/middle"
+        result = _parse_git_config_regexp(output, "submodule.", ".path")
+        assert result == [("libs/middle", "libs/middle")]
+
+    def test_parse_nested_submodule(self) -> None:
+        """Parse nested submodule config.
+
+        Real output from nested submodule (libs/middle) with its own submodule (vendor/deep).
+        """
+        output = "submodule.vendor/deep.url /home/user/test-fixture/deep-lib"
+        result = _parse_git_config_regexp(output, "submodule.", ".url")
+        assert result == [("vendor/deep", "/home/user/test-fixture/deep-lib")]
+
+    def test_parse_multiple_submodules(self) -> None:
+        """Parse multiple submodules in output."""
+        output = (
+            "submodule.libs/foo.url /path/to/foo\n"
+            "submodule.libs/bar.url /path/to/bar\n"
+            "submodule.vendor/baz.url /path/to/baz"
+        )
+        result = _parse_git_config_regexp(output, "submodule.", ".url")
+        assert result == [
+            ("libs/foo", "/path/to/foo"),
+            ("libs/bar", "/path/to/bar"),
+            ("vendor/baz", "/path/to/baz"),
+        ]
+
+    def test_parse_url_with_spaces(self) -> None:
+        """Parse URL containing spaces (uses split(' ', 1))."""
+        output = "submodule.mylib.url /path/with spaces/to/repo"
+        result = _parse_git_config_regexp(output, "submodule.", ".url")
+        assert result == [("mylib", "/path/with spaces/to/repo")]
+
+    def test_parse_submodule_name_with_dots(self) -> None:
+        """Parse submodule name containing dots.
+
+        The name 'foo.bar' results in config key 'submodule.foo.bar.url'.
+        removeprefix/removesuffix correctly extracts 'foo.bar'.
+        """
+        output = "submodule.foo.bar.url /path/to/foobar"
+        result = _parse_git_config_regexp(output, "submodule.", ".url")
+        assert result == [("foo.bar", "/path/to/foobar")]
+
+    def test_parse_empty_output(self) -> None:
+        """Handle empty output (no submodules)."""
+        result = _parse_git_config_regexp("", "submodule.", ".url")
+        assert result == []
+
+    def test_parse_whitespace_only_output(self) -> None:
+        """Handle whitespace-only output."""
+        result = _parse_git_config_regexp("  \n  \n  ", "submodule.", ".url")
+        assert result == []
+
+    def test_parse_malformed_line_no_space(self) -> None:
+        """Skip malformed lines without space separator."""
+        output = "submodule.broken.url\nsubmodule.valid.url /path/to/valid"
+        result = _parse_git_config_regexp(output, "submodule.", ".url")
+        assert result == [("valid", "/path/to/valid")]
