@@ -48,7 +48,6 @@ def main(
     import dotenv  # noqa: PLC0415
 
     dotenv.load_dotenv()
-    print()
 
 
 def set_config_defaults(ctx: typer.Context, config_file: str | None) -> None:
