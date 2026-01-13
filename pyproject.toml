@@ -36,7 +36,7 @@ server = [
 ]
 rag = [
     "fastapi[standard]",
-    "chromadb>=0.4.22",
+    "chromadb>=0.4.22; python_version < '3.14'",
     "onnxruntime>=1.17.0; python_version < '3.14'",
     "huggingface-hub>=0.20.0",
     "transformers>=4.30.0",
@@ -46,7 +46,7 @@ rag = [
 ]
 memory = [
     "fastapi[standard]",
-    "chromadb>=0.4.22",
+    "chromadb>=0.4.22; python_version < '3.14'",
     "onnxruntime>=1.17.0; python_version < '3.14'",
     "huggingface-hub>=0.20.0",
     "transformers>=4.30.0",
