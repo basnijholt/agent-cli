@@ -95,6 +95,8 @@ def _detect_unidep_project(path: Path) -> ProjectType | None:
     For single projects: unidep install -e . -n {env_name}
     For monorepos: unidep install-all -e -n {env_name}
 
+    If conda-lock.yml exists, adds -f conda-lock.yml to use the locked dependencies.
+
     Falls back to `uvx unidep` if unidep is not installed globally.
     The {env_name} placeholder is replaced with path.name at runtime by run_setup().
 
@@ -107,13 +109,16 @@ def _detect_unidep_project(path: Path) -> ProjectType | None:
         pyproject_content = (path / "pyproject.toml").read_text()
         has_tool_unidep = "[tool.unidep]" in pyproject_content
 
+    # Check for conda-lock.yml to use locked dependencies
+    lock_flag = " -f conda-lock.yml" if (path / "conda-lock.yml").exists() else ""
+
     # Determine if this is a monorepo (multiple requirements.yaml in subdirs)
     is_monorepo = _is_unidep_monorepo(path)
 
     # Detect monorepo even without root requirements.yaml
     # (subdirs with requirements.yaml is enough)
     if is_monorepo:
-        cmd = _unidep_cmd("install-all -e -n {env_name}")
+        cmd = _unidep_cmd(f"install-all -e{lock_flag} -n {{env_name}}")
         if cmd is None:
             return None  # Neither unidep nor uvx available
         return ProjectType(
@@ -125,7 +130,7 @@ def _detect_unidep_project(path: Path) -> ProjectType | None:
 
     # Single project requires root requirements.yaml or [tool.unidep]
     if has_requirements_yaml or has_tool_unidep:
-        cmd = _unidep_cmd("install -e . -n {env_name}")
+        cmd = _unidep_cmd(f"install -e .{lock_flag} -n {{env_name}}")
         if cmd is None:
             return None  # Neither unidep nor uvx available
         return ProjectType(
