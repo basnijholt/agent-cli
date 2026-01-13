@@ -1,6 +1,6 @@
 """Dev - Parallel development environment manager using git worktrees.
 
-A Python implementation inspired by git-worktree-runner (gtr), providing:
+Like git-worktree-runner (gtr) but with many more QoL features:
 - Git worktree management with simplified commands
 - Editor integration (Cursor, VS Code, Zed)
 - AI coding agent integration (Claude, Codex, Gemini, Aider)
