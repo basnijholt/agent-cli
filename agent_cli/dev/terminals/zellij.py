@@ -43,7 +43,7 @@ class Zellij(Terminal):
 
         try:
             # Create new tab using zellij action
-            # Note: --cwd requires --layout in zellij 0.42+
+            # Workaround: --cwd requires --layout due to bug (github.com/zellij-org/zellij/issues/2981)
             cmd = ["zellij", "action", "new-tab", "--layout", "default", "--cwd", str(path)]
             if tab_name:
                 cmd.extend(["--name", tab_name])
