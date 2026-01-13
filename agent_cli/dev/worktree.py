@@ -688,3 +688,98 @@ def prune_worktrees(repo_path: Path | None = None) -> None:
     repo_root = get_main_repo_root(repo_path)
     if repo_root:
         _run_git("worktree", "prune", cwd=repo_root, check=False)
+
+
+@dataclass
+class WorktreeStatus:
+    """Git status information for a worktree."""
+
+    modified: int  # Files modified but not staged
+    staged: int  # Files staged for commit
+    untracked: int  # Untracked files
+    ahead: int  # Commits ahead of upstream
+    behind: int  # Commits behind upstream
+    last_commit_time: str | None  # Relative time of last commit (e.g., "2 hours ago")
+    last_commit_timestamp: int | None  # Unix timestamp of last commit
+
+
+def _parse_porcelain_status(output: str) -> tuple[int, int, int]:
+    """Parse git status --porcelain output into (modified, staged, untracked) counts."""
+    modified = 0
+    staged = 0
+    untracked = 0
+
+    for line in output.splitlines():
+        if len(line) < 2:  # noqa: PLR2004
+            continue
+        index_status = line[0]
+        worktree_status = line[1]
+
+        # Untracked files
+        if index_status == "?" and worktree_status == "?":
+            untracked += 1
+        else:
+            # Staged changes (index has modification)
+            if index_status in "MADRCU":
+                staged += 1
+            # Worktree changes (not staged)
+            if worktree_status in "MADRCU":
+                modified += 1
+
+    return modified, staged, untracked
+
+
+def _parse_ahead_behind(output: str) -> tuple[int, int]:
+    """Parse git rev-list --left-right --count output into (ahead, behind) counts."""
+    parts = output.strip().split()
+    if len(parts) == 2:  # noqa: PLR2004
+        return int(parts[1]), int(parts[0])  # ahead, behind
+    return 0, 0
+
+
+def get_worktree_status(worktree_path: Path) -> WorktreeStatus | None:
+    """Get git status information for a worktree.
+
+    Returns None if the worktree doesn't exist or isn't a valid git repo.
+    """
+    if not worktree_path.exists():
+        return None
+
+    # Get porcelain status for file counts
+    result = _run_git("status", "--porcelain", cwd=worktree_path, check=False)
+    modified, staged, untracked = (
+        _parse_porcelain_status(result.stdout) if result.returncode == 0 else (0, 0, 0)
+    )
+
+    # Get ahead/behind counts
+    result = _run_git(
+        "rev-list",
+        "--left-right",
+        "--count",
+        "@{upstream}...HEAD",
+        cwd=worktree_path,
+        check=False,
+    )
+    ahead, behind = _parse_ahead_behind(result.stdout) if result.returncode == 0 else (0, 0)
+
+    # Get last commit time
+    last_commit_time = None
+    last_commit_timestamp = None
+
+    result = _run_git("log", "-1", "--format=%ar", cwd=worktree_path, check=False)
+    if result.returncode == 0 and result.stdout.strip():
+        last_commit_time = result.stdout.strip()
+
+    result = _run_git("log", "-1", "--format=%at", cwd=worktree_path, check=False)
+    if result.returncode == 0 and result.stdout.strip():
+        last_commit_timestamp = int(result.stdout.strip())
+
+    return WorktreeStatus(
+        modified=modified,
+        staged=staged,
+        untracked=untracked,
+        ahead=ahead,
+        behind=behind,
+        last_commit_time=last_commit_time,
+        last_commit_timestamp=last_commit_timestamp,
+    )
