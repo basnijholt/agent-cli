@@ -142,8 +142,13 @@ def _success(msg: str) -> None:
 
 
 def _info(msg: str) -> None:
-    """Print an info message."""
-    console.print(f"[dim]→[/dim] {msg}")
+    """Print an info message, with special styling for commands."""
+    # Style commands (messages starting with "Running: ")
+    if msg.startswith("Running: "):
+        cmd = msg[9:]  # Remove "Running: " prefix
+        console.print(f"[dim]→[/dim] Running: [bold cyan]{cmd}[/bold cyan]")
+    else:
+        console.print(f"[dim]→[/dim] {msg}")
 
 
 def _warn(msg: str) -> None:
@@ -349,9 +354,12 @@ def new(  # noqa: PLR0912
         typer.Option("--fetch/--no-fetch", help="Git fetch before creating"),
     ] = True,
     direnv: Annotated[
-        bool,
-        typer.Option("--direnv", help="Generate .envrc file for direnv (auto-detects venv)"),
-    ] = False,
+        bool | None,
+        typer.Option(
+            "--direnv/--no-direnv",
+            help="Set up direnv (generate .envrc, run direnv allow). Default: enabled if direnv is installed.",
+        ),
+    ] = None,
     agent_args: Annotated[
         list[str] | None,
         typer.Option(
@@ -405,18 +413,21 @@ def new(  # noqa: PLR0912
             else:
                 _warn(f"Setup failed: {output}")
 
-    # Set up direnv if requested
-    if direnv:
+    # Set up direnv (default: enabled if direnv is installed)
+    use_direnv = direnv if direnv is not None else is_direnv_available()
+    if use_direnv:
         if is_direnv_available():
             success, msg = setup_direnv(result.path, project, on_log=_info)
-            if success and "Created .envrc" in msg:
+            # Show success for meaningful actions (created or allowed)
+            if success and ("created" in msg or "allowed" in msg):
                 _success(msg)
             elif success:
                 _info(msg)
             else:
                 _warn(msg)
-        else:
-            _warn("direnv not installed, skipping .envrc generation")
+        elif direnv is True:
+            # Only warn if user explicitly requested direnv
+            _warn("direnv not installed, skipping .envrc setup")
 
     # Resolve editor and agent
     resolved_editor = _resolve_editor(editor, editor_name, default_editor)

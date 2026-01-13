@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import shutil
 import subprocess
 from dataclasses import dataclass
@@ -148,7 +149,7 @@ def detect_project_type(path: Path) -> ProjectType | None:  # noqa: PLR0911
     ):
         return ProjectType(
             name="python-uv",
-            setup_commands=["uv sync"],
+            setup_commands=["uv sync --all-extras"],
             description="Python project with uv",
         )
 
@@ -268,6 +269,13 @@ def run_setup(
             on_log(f"Running: {cmd}")
 
         try:
+            # Clear virtual environment variables to avoid warnings from uv/pip
+            # when running from within an activated environment
+            env = os.environ.copy()
+            env.pop("VIRTUAL_ENV", None)
+            env.pop("CONDA_PREFIX", None)
+            env.pop("CONDA_DEFAULT_ENV", None)
+
             result = subprocess.run(  # noqa: S602
                 cmd,
                 check=False,
@@ -275,6 +283,7 @@ def run_setup(
                 cwd=path,
                 capture_output=capture_output,
                 text=True,
+                env=env,
             )
             if result.returncode != 0:
                 error = result.stderr.strip() if result.stderr else f"Command failed: {cmd}"
@@ -461,6 +470,28 @@ def generate_envrc_content(path: Path, project_type: ProjectType | None = None) 
     return "\n".join(lines) + "\n"
 
 
+def _run_direnv_allow(
+    path: Path,
+    on_log: Callable[[str], None] | None = None,
+) -> str | None:
+    """Run `direnv allow` in the given path.
+
+    Returns:
+        None on success, error message on failure.
+
+    """
+    if on_log:
+        on_log("Running: direnv allow")
+    result = subprocess.run(
+        ["direnv", "allow"],  # noqa: S607
+        cwd=path,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    return result.stderr if result.returncode != 0 else None
+
+
 def setup_direnv(
     path: Path,
     project_type: ProjectType | None = None,
@@ -485,31 +516,31 @@ def setup_direnv(
 
     envrc_path = path / ".envrc"
 
-    # Don't overwrite existing .envrc
+    # If .envrc already exists, just run direnv allow on it
     if envrc_path.exists():
-        return True, ".envrc already exists, skipping"
+        if not allow:
+            return True, "direnv: .envrc already exists (skipped direnv allow)"
+        error = _run_direnv_allow(path, on_log)
+        msg = (
+            "direnv: allowed existing .envrc"
+            if not error
+            else f"direnv: .envrc exists but 'direnv allow' failed: {error}"
+        )
+        return True, msg
 
     content = generate_envrc_content(path, project_type)
     if content is None:
-        return True, "No direnv configuration needed for this project"
+        return True, "direnv: no configuration needed for this project type"
 
     # Write .envrc file
     if on_log:
-        on_log("Creating .envrc file")
+        on_log("Creating .envrc file for direnv")
     envrc_path.write_text(content)
 
     # Run direnv allow to trust the file
     if allow:
-        if on_log:
-            on_log("Running: direnv allow")
-        result = subprocess.run(
-            ["direnv", "allow"],  # noqa: S607
-            cwd=path,
-            capture_output=True,
-            text=True,
-            check=False,
-        )
-        if result.returncode != 0:
-            return True, f"Created .envrc but 'direnv allow' failed: {result.stderr}"
+        error = _run_direnv_allow(path, on_log)
+        if error:
+            return True, f"direnv: created .envrc but 'direnv allow' failed: {error}"
 
-    return True, f"Created .envrc: {content.strip()}"
+    return True, f"direnv: created .envrc ({content.strip()})"
