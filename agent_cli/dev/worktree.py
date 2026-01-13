@@ -323,33 +323,6 @@ def _check_branch_exists(branch_name: str, repo_root: Path) -> tuple[bool, bool]
     return remote_exists, local_exists
 
 
-def _get_submodule_info(worktree_path: Path) -> list[tuple[str, str]]:
-    """Get list of (submodule_name, submodule_path) from .gitmodules file."""
-    result = _run_git(
-        "config",
-        "-f",
-        ".gitmodules",
-        "--get-regexp",
-        r"^submodule\..*\.path$",
-        cwd=worktree_path,
-        check=False,
-    )
-    if result.returncode != 0:
-        return []
-
-    submodules = []
-    for line in result.stdout.strip().split("\n"):
-        if line:
-            # Each line is: submodule.<name>.path <value>
-            parts = line.split()
-            if len(parts) >= 2:  # noqa: PLR2004
-                key = parts[0]
-                path = parts[-1]
-                name = key.removeprefix("submodule.").removesuffix(".path")
-                submodules.append((name, path))
-    return submodules
-
-
 def _init_submodules(
     worktree_path: Path,
     *,
@@ -357,25 +330,8 @@ def _init_submodules(
     on_log: Callable[[str], None] | None = None,
     capture_output: bool = True,
 ) -> None:
-    """Initialize git submodules in a worktree.
-
-    Git worktrees don't automatically initialize submodules, so we need to do it
-    manually after creating a worktree.
-
-    When reference_repo is provided, submodule URLs are temporarily overridden
-    to point to local paths, allowing git to clone locally without network access.
-
-    Args:
-        worktree_path: Path to the new worktree
-        reference_repo: Path to repo with existing submodule clones. When provided,
-            submodules are cloned from local paths instead of remote URLs.
-        on_log: Optional callback for logging status messages
-        capture_output: Whether to capture command output
-
-    """
-    # Check if there are any submodules configured
-    gitmodules_path = worktree_path / ".gitmodules"
-    if not gitmodules_path.exists():
+    """Initialize git submodules in a worktree, using local clones when available."""
+    if not (worktree_path / ".gitmodules").exists():
         return
 
     if on_log:
@@ -390,40 +346,34 @@ def _init_submodules(
             if not ref_git_dir.is_absolute():
                 ref_git_dir = reference_repo / ref_git_dir
 
-    # Initialize submodules - this registers them in .git/config
+    # Register submodules in .git/config, then read their URLs
     _run_git("submodule", "init", cwd=worktree_path, check=False, capture_output=capture_output)
 
-    # For each submodule, check if we can use local clone
-    submodules = _get_submodule_info(worktree_path)
-    local_overrides: list[tuple[str, str]] = []  # (name, original_url)
-
+    # Override URLs to local paths where available
+    overrides: list[tuple[str, str]] = []  # (config_key, original_url)
     if ref_git_dir is not None:
-        for name, path in submodules:
-            local_module = ref_git_dir / "modules" / path
+        result = _run_git(
+            "config",
+            "--local",
+            "--get-regexp",
+            r"^submodule\..*\.url$",
+            cwd=worktree_path,
+            check=False,
+        )
+        for line in result.stdout.strip().split("\n"):
+            if not line or " " not in line:
+                continue
+            config_key, original_url = line.split(" ", 1)
+            # submodule.<name>.url -> name (usually == path)
+            name = config_key.removeprefix("submodule.").removesuffix(".url")
+            local_module = ref_git_dir / "modules" / name
             if local_module.exists():
-                # Save original URL and override to local path
-                result = _run_git(
-                    "config",
-                    f"submodule.{name}.url",
-                    cwd=worktree_path,
-                    check=False,
-                )
-                if result.returncode == 0:
-                    original_url = result.stdout.strip()
-                    local_overrides.append((name, original_url))
-                    _run_git(
-                        "config",
-                        f"submodule.{name}.url",
-                        str(local_module),
-                        cwd=worktree_path,
-                        check=False,
-                        capture_output=capture_output,
-                    )
-                    if on_log:
-                        on_log(f"Using local clone for {path}")
+                overrides.append((config_key, original_url))
+                _run_git("config", config_key, str(local_module), cwd=worktree_path, check=False)
+                if on_log:
+                    on_log(f"Using local clone for {name}")
 
-    # Update submodules - will use local paths where available
-    # Enable file protocol if we have local overrides (disabled by default in git 2.38+)
+    # Clone/update submodules (enable file:// protocol for local clones, disabled since git 2.38)
     _run_git(
         "submodule",
         "update",
@@ -431,19 +381,12 @@ def _init_submodules(
         cwd=worktree_path,
         check=False,
         capture_output=capture_output,
-        allow_file_protocol=bool(local_overrides),
+        allow_file_protocol=bool(overrides),
     )
 
-    # Restore original URLs so future fetches work from remote
-    for name, original_url in local_overrides:
-        _run_git(
-            "config",
-            f"submodule.{name}.url",
-            original_url,
-            cwd=worktree_path,
-            check=False,
-            capture_output=capture_output,
-        )
+    # Restore original URLs for future remote fetches
+    for config_key, original_url in overrides:
+        _run_git("config", config_key, original_url, cwd=worktree_path, check=False)
 
 
 def _add_worktree(
