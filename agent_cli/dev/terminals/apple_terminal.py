@@ -32,10 +32,10 @@ class AppleTerminal(Terminal):
         command: str | None = None,
         tab_name: str | None = None,
     ) -> bool:
-        """Open a new window in Terminal.app using AppleScript.
+        """Open a new tab in Terminal.app using AppleScript.
 
-        Note: Terminal.app doesn't support tab creation via AppleScript without
-        System Events accessibility permissions, so we create a new window instead.
+        Requires System Events accessibility permissions in
+        System Preferences > Privacy & Security > Accessibility.
         """
         if not self.is_available():
             return False
@@ -52,13 +52,21 @@ class AppleTerminal(Terminal):
         title_cmd = ""
         if tab_name:
             tab_name_escaped = escape_applescript(tab_name)
-            title_cmd = f'\nset custom title of front window to "{tab_name_escaped}"'
+            title_cmd = (
+                f'\nset custom title of selected tab of front window to "{tab_name_escaped}"'
+            )
 
-        # AppleScript to open new window in Terminal.app
+        # AppleScript to open new tab in Terminal.app using System Events
         applescript = f"""
             tell application "Terminal"
-                do script "{shell_cmd_escaped}"
-                activate{title_cmd}
+                activate
+            end tell
+            tell application "System Events"
+                keystroke "t" using command down
+            end tell
+            delay 0.3
+            tell application "Terminal"
+                do script "{shell_cmd_escaped}" in selected tab of front window{title_cmd}
             end tell
         """
 
