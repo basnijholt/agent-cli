@@ -353,16 +353,11 @@ def _format_env_prefix(env: dict[str, str]) -> str:
     return " ".join(parts) + " "
 
 
-def _generate_heredoc_delimiter(content: str) -> str:
-    """Generate a unique heredoc delimiter that doesn't appear in the content."""
-    import hashlib  # noqa: PLC0415
+def _generate_heredoc_delimiter() -> str:
+    """Generate a unique heredoc delimiter using UUID."""
+    import uuid  # noqa: PLC0415
 
-    base = "PROMPT_END"
-    if base not in content:
-        return base
-    # Add hash suffix to make it unique
-    hash_suffix = hashlib.md5(content.encode()).hexdigest()[:8]  # noqa: S324
-    return f"{base}_{hash_suffix}"
+    return f"PROMPT_{uuid.uuid4().hex[:12]}"
 
 
 def _create_prompt_wrapper_script(
@@ -381,7 +376,7 @@ def _create_prompt_wrapper_script(
     claude_dir.mkdir(exist_ok=True)
 
     script_path = claude_dir / "run-agent.sh"
-    delimiter = _generate_heredoc_delimiter(prompt)
+    delimiter = _generate_heredoc_delimiter()
 
     # Build the agent command without the prompt
     exe = agent.get_executable()
