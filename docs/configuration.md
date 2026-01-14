@@ -179,7 +179,7 @@ asr_wyoming_port = 10300
 # TTS (Piper) server
 tts_wyoming_ip = "localhost"
 tts_wyoming_port = 10200
-tts_wyoming_voice = "en_US-lessac-medium"
+# tts_wyoming_voice = "en_US-lessac-medium"  # Optional: specify voice
 
 # Wake word server
 wake_server_ip = "localhost"
