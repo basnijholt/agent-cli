@@ -17,6 +17,7 @@ from rich.table import Table
 
 from agent_cli.cli import app as main_app
 from agent_cli.cli import set_config_defaults
+from agent_cli.config import load_config
 
 # Word lists for generating random branch names (like Docker container names)
 _ADJECTIVES = [
@@ -245,8 +246,6 @@ def _get_config_agent_args() -> dict[str, list[str]] | None:
     Note: The config loader may flatten section names, so we check both
     nested structure and flattened 'dev.agent_args' key.
     """
-    from agent_cli.config import load_config  # noqa: PLC0415
-
     config = load_config(None)
 
     # First try the simple nested structure (for testing/mocks)
@@ -269,8 +268,6 @@ def _get_config_agent_env() -> dict[str, dict[str, str]] | None:
     'dev.agent_env.claude' become top-level. We reconstruct the
     agent_env dict from these flattened keys.
     """
-    from agent_cli.config import load_config  # noqa: PLC0415
-
     config = load_config(None)
 
     # First try the simple nested structure (for testing/mocks)

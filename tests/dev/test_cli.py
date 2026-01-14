@@ -244,7 +244,7 @@ class TestGetConfigAgentArgs:
 
     def test_returns_none_when_no_config(self) -> None:
         """Returns None when no agent_args in config."""
-        with patch("agent_cli.config.load_config", return_value={}):
+        with patch("agent_cli.dev.cli.load_config", return_value={}):
             result = _get_config_agent_args()
             assert result is None
 
@@ -257,7 +257,7 @@ class TestGetConfigAgentArgs:
                 },
             },
         }
-        with patch("agent_cli.config.load_config", return_value=config):
+        with patch("agent_cli.dev.cli.load_config", return_value=config):
             result = _get_config_agent_args()
             assert result == {"claude": ["--dangerously-skip-permissions"]}
 
@@ -269,7 +269,7 @@ class TestGetConfigAgentArgs:
                 "aider": ["--model", "gpt-4o"],
             },
         }
-        with patch("agent_cli.config.load_config", return_value=config):
+        with patch("agent_cli.dev.cli.load_config", return_value=config):
             result = _get_config_agent_args()
             assert result == {
                 "claude": ["--dangerously-skip-permissions"],
@@ -282,13 +282,13 @@ class TestGetConfigAgentEnv:
 
     def test_returns_none_when_no_config(self) -> None:
         """Returns None when no agent_env in config."""
-        with patch("agent_cli.config.load_config", return_value={}):
+        with patch("agent_cli.dev.cli.load_config", return_value={}):
             result = _get_config_agent_env()
             assert result is None
 
     def test_returns_none_when_no_dev_section(self) -> None:
         """Returns None when no dev section in config."""
-        with patch("agent_cli.config.load_config", return_value={"other": {}}):
+        with patch("agent_cli.dev.cli.load_config", return_value={"other": {}}):
             result = _get_config_agent_env()
             assert result is None
 
@@ -301,7 +301,7 @@ class TestGetConfigAgentEnv:
                 },
             },
         }
-        with patch("agent_cli.config.load_config", return_value=config):
+        with patch("agent_cli.dev.cli.load_config", return_value=config):
             result = _get_config_agent_env()
             assert result == {"claude": {"CLAUDE_CODE_USE_VERTEX": "1", "ANTHROPIC_MODEL": "opus"}}
 
@@ -312,7 +312,7 @@ class TestGetConfigAgentEnv:
             "dev.agent_env.claude": {"CLAUDE_CODE_USE_VERTEX": "1", "ANTHROPIC_MODEL": "opus"},
             "dev.agent_env.aider": {"OPENAI_API_KEY": "sk-xxx"},
         }
-        with patch("agent_cli.config.load_config", return_value=config):
+        with patch("agent_cli.dev.cli.load_config", return_value=config):
             result = _get_config_agent_env()
             assert result == {
                 "claude": {"CLAUDE_CODE_USE_VERTEX": "1", "ANTHROPIC_MODEL": "opus"},
