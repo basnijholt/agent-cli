@@ -6,6 +6,7 @@ import json
 import os
 import random
 import shlex
+import shutil
 import subprocess
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, NoReturn
@@ -1209,8 +1210,6 @@ def install_skill(
     repository. Once installed, Claude Code can automatically use it when
     you ask to work on multiple features or parallelize development tasks.
     """
-    import shutil  # noqa: PLC0415
-
     # Use current repo root (works in worktrees too)
     repo_root = _get_current_repo_root()
     if repo_root is None:
