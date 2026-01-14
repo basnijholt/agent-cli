@@ -6,6 +6,7 @@ import json
 import os
 import random
 import shlex
+import shutil
 import subprocess
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, NoReturn
@@ -1173,3 +1174,76 @@ def doctor() -> None:
     for terminal in terminals.get_all_terminals():
         is_current = current_terminal is not None and terminal.name == current_terminal.name
         _print_item_status(terminal.name, terminal.is_available(), is_current, "not available")
+
+
+def _get_skill_source_dir() -> Path:
+    """Get the path to the bundled skill files."""
+    return Path(__file__).parent / "skill"
+
+
+def _get_current_repo_root() -> Path | None:
+    """Get the current repository root (works in worktrees too)."""
+    result = subprocess.run(
+        ["git", "rev-parse", "--show-toplevel"],  # noqa: S607
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if result.returncode == 0:
+        return Path(result.stdout.strip())
+    return None
+
+
+@app.command("install-skill")
+def install_skill(
+    force: Annotated[
+        bool,
+        typer.Option("--force", "-f", help="Overwrite existing skill files"),
+    ] = False,
+) -> None:
+    """Install Claude Code skill for parallel agent orchestration.
+
+    Installs a skill that teaches Claude Code how to use 'agent-cli dev' to
+    spawn parallel AI coding agents in isolated git worktrees.
+
+    The skill is installed to .claude/skills/agent-cli-dev/ in the current
+    repository. Once installed, Claude Code can automatically use it when
+    you ask to work on multiple features or parallelize development tasks.
+    """
+    # Use current repo root (works in worktrees too)
+    repo_root = _get_current_repo_root()
+    if repo_root is None:
+        _error("Not in a git repository")
+
+    skill_source = _get_skill_source_dir()
+    skill_dest = repo_root / ".claude" / "skills" / "agent-cli-dev"
+
+    # Check if skill source exists
+    if not skill_source.exists():
+        _error(f"Skill source not found: {skill_source}")
+
+    # Check if already installed
+    if skill_dest.exists() and not force:
+        _warn(f"Skill already installed at {skill_dest}")
+        console.print("[dim]Use --force to overwrite[/dim]")
+        raise typer.Exit(0)
+
+    # Create destination directory
+    skill_dest.parent.mkdir(parents=True, exist_ok=True)
+
+    # Copy skill files
+    if skill_dest.exists():
+        shutil.rmtree(skill_dest)
+
+    shutil.copytree(skill_source, skill_dest)
+
+    _success(f"Installed skill to {skill_dest}")
+    console.print()
+    console.print("[bold]What's next?[/bold]")
+    console.print("  • Claude Code will automatically use this skill when relevant")
+    console.print("  • Ask Claude to 'work on multiple features in parallel'")
+    console.print("  • Or ask 'spawn agents for auth, payments, and notifications'")
+    console.print()
+    console.print("[dim]Skill files:[/dim]")
+    for f in sorted(skill_dest.iterdir()):
+        console.print(f"  • {f.name}")
