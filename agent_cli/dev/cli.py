@@ -250,12 +250,29 @@ def _get_config_agent_env() -> dict[str, dict[str, str]] | None:
     Config format:
         [dev.agent_env]
         claude = { CLAUDE_CODE_USE_VERTEX = "1", ANTHROPIC_MODEL = "opus" }
+
+    Note: The config loader flattens nested dicts, so keys like
+    'dev.agent_env.claude' become top-level. We reconstruct the
+    agent_env dict from these flattened keys.
     """
     from agent_cli.config import load_config  # noqa: PLC0415
 
     config = load_config(None)
+
+    # First try the simple nested structure (for testing/mocks)
     dev_config = config.get("dev", {})
-    return dev_config.get("agent_env")
+    if isinstance(dev_config, dict) and "agent_env" in dev_config:
+        return dev_config["agent_env"]
+
+    # Handle flattened keys like "dev.agent_env.claude"
+    prefix = "dev.agent_env."
+    result: dict[str, dict[str, str]] = {}
+    for key, value in config.items():
+        if key.startswith(prefix) and isinstance(value, dict):
+            agent_name = key[len(prefix) :]
+            result[agent_name] = value
+
+    return result if result else None
 
 
 def _get_agent_env(agent: CodingAgent) -> dict[str, str]:

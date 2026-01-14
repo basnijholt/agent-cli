@@ -254,7 +254,7 @@ class TestGetConfigAgentEnv:
             assert result is None
 
     def test_returns_agent_env(self) -> None:
-        """Returns agent_env from config."""
+        """Returns agent_env from config (nested structure for mocks)."""
         config = {
             "dev": {
                 "agent_env": {
@@ -265,6 +265,20 @@ class TestGetConfigAgentEnv:
         with patch("agent_cli.config.load_config", return_value=config):
             result = _get_config_agent_env()
             assert result == {"claude": {"CLAUDE_CODE_USE_VERTEX": "1", "ANTHROPIC_MODEL": "opus"}}
+
+    def test_returns_agent_env_from_flattened_keys(self) -> None:
+        """Returns agent_env from flattened config keys (real config loader format)."""
+        # The real config loader flattens nested dicts to dotted keys
+        config = {
+            "dev.agent_env.claude": {"CLAUDE_CODE_USE_VERTEX": "1", "ANTHROPIC_MODEL": "opus"},
+            "dev.agent_env.aider": {"OPENAI_API_KEY": "sk-xxx"},
+        }
+        with patch("agent_cli.config.load_config", return_value=config):
+            result = _get_config_agent_env()
+            assert result == {
+                "claude": {"CLAUDE_CODE_USE_VERTEX": "1", "ANTHROPIC_MODEL": "opus"},
+                "aider": {"OPENAI_API_KEY": "sk-xxx"},
+            }
 
 
 class _MockAgent(CodingAgent):
