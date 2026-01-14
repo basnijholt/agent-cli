@@ -236,12 +236,26 @@ def _resolve_agent(
 
 
 def _get_config_agent_args() -> dict[str, list[str]] | None:
-    """Load agent_args from config file."""
+    """Load agent_args from config file.
+
+    Config format:
+        [dev.agent_args]
+        claude = ["--dangerously-skip-permissions"]
+
+    Note: The config loader may flatten section names, so we check both
+    nested structure and flattened 'dev.agent_args' key.
+    """
     from agent_cli.config import load_config  # noqa: PLC0415
 
     config = load_config(None)
+
+    # First try the simple nested structure (for testing/mocks)
     dev_config = config.get("dev", {})
-    return dev_config.get("agent_args")
+    if isinstance(dev_config, dict) and "agent_args" in dev_config:
+        return dev_config["agent_args"]
+
+    # Handle flattened key "dev.agent_args"
+    return config.get("dev.agent_args")
 
 
 def _get_config_agent_env() -> dict[str, dict[str, str]] | None:
