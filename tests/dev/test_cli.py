@@ -202,3 +202,62 @@ class TestDevPath:
             result = runner.invoke(app, ["dev", "path", "nonexistent"])
             assert result.exit_code != 0
             assert "not found" in result.output.lower()
+
+
+class TestDevInstallSkill:
+    """Tests for dev install-skill command."""
+
+    def test_install_skill_help(self) -> None:
+        """Install-skill command shows help."""
+        result = runner.invoke(app, ["dev", "install-skill", "--help"])
+        assert result.exit_code == 0
+        assert "Install Claude Code skill" in result.output
+        assert "--force" in result.output
+
+    def test_install_skill_requires_git_repo(self) -> None:
+        """Install-skill requires being in a git repo."""
+        with patch("agent_cli.dev.cli._get_current_repo_root", return_value=None):
+            result = runner.invoke(app, ["dev", "install-skill"])
+            assert result.exit_code != 0
+            assert "git" in result.output.lower()
+
+    def test_install_skill_copies_files(self, tmp_path: Path) -> None:
+        """Install-skill copies skill files to .claude/skills/."""
+        with patch("agent_cli.dev.cli._get_current_repo_root", return_value=tmp_path):
+            result = runner.invoke(app, ["dev", "install-skill"])
+            assert result.exit_code == 0
+            assert "Installed skill" in result.output
+
+            skill_dir = tmp_path / ".claude" / "skills" / "agent-cli-dev"
+            assert skill_dir.exists()
+            assert (skill_dir / "SKILL.md").exists()
+            assert (skill_dir / "examples.md").exists()
+
+    def test_install_skill_already_installed(self, tmp_path: Path) -> None:
+        """Install-skill warns if already installed."""
+        # Pre-create the skill directory
+        skill_dir = tmp_path / ".claude" / "skills" / "agent-cli-dev"
+        skill_dir.mkdir(parents=True)
+        (skill_dir / "SKILL.md").write_text("existing")
+
+        with patch("agent_cli.dev.cli._get_current_repo_root", return_value=tmp_path):
+            result = runner.invoke(app, ["dev", "install-skill"])
+            assert result.exit_code == 0
+            assert "already installed" in result.output.lower()
+
+    def test_install_skill_force_overwrites(self, tmp_path: Path) -> None:
+        """Install-skill --force overwrites existing files."""
+        # Pre-create the skill directory
+        skill_dir = tmp_path / ".claude" / "skills" / "agent-cli-dev"
+        skill_dir.mkdir(parents=True)
+        (skill_dir / "SKILL.md").write_text("old content")
+
+        with patch("agent_cli.dev.cli._get_current_repo_root", return_value=tmp_path):
+            result = runner.invoke(app, ["dev", "install-skill", "--force"])
+            assert result.exit_code == 0
+            assert "Installed skill" in result.output
+
+            # Verify content was replaced
+            content = (skill_dir / "SKILL.md").read_text()
+            assert "old content" not in content
+            assert "agent-cli-dev" in content
