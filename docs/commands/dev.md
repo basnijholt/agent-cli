@@ -322,7 +322,7 @@ agent-cli dev terminals
 |-------|---------|-----------|----------------|
 | Claude Code | `claude` | `CLAUDECODE=1` env var | `claude "prompt"` |
 | OpenAI Codex | `codex` | Parent process detection | `codex "prompt"` |
-| Google Gemini CLI | `gemini` | Parent process detection | `gemini -p "prompt"` |
+| Google Gemini CLI | `gemini` | Parent process detection | — (non-interactive only) |
 | Aider | `aider` | Parent process detection | `aider --message "prompt"` |
 | GitHub Copilot CLI | `copilot` | Parent process detection | `copilot --prompt "prompt"` |
 | Continue Dev | `cn` | Parent process detection | — |

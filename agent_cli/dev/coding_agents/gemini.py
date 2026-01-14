@@ -13,12 +13,7 @@ class Gemini(CodingAgent):
     install_url = "https://github.com/google-gemini/gemini-cli"
     detect_process_name = "gemini"
 
-    def prompt_args(self, prompt: str) -> list[str]:
-        """Return prompt using -p flag.
-
-        Gemini CLI uses -p for non-interactive prompts:
-        `gemini -p "your prompt here"`
-
-        See: https://github.com/google-gemini/gemini-cli README
-        """
-        return ["-p", prompt]
+    # Note: Gemini CLI's -p flag runs in non-interactive/headless mode (exits after
+    # response), unlike Claude/Codex which stay interactive. We don't implement
+    # prompt_args() here since the behavior differs from other agents.
+    # See: https://google-gemini.github.io/gemini-cli/docs/cli/headless.html
