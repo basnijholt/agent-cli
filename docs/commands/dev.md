@@ -288,6 +288,34 @@ agent-cli dev doctor
 
 Shows available editors, AI agents, and terminals with their detection status.
 
+### `dev install-skill`
+
+Install Claude Code skill for parallel agent orchestration.
+
+```bash
+agent-cli dev install-skill [OPTIONS]
+```
+
+Installs a skill that teaches Claude Code how to use `agent-cli dev` to spawn parallel AI coding agents in isolated git worktrees. The skill is installed to `.claude/skills/agent-cli-dev/` in the current repository.
+
+**Options:**
+
+| Option | Description |
+|--------|-------------|
+| `--force`, `-f` | Overwrite existing skill files |
+
+**Example:**
+
+```bash
+# Install the skill in your project
+agent-cli dev install-skill
+
+# Force reinstall if files already exist
+agent-cli dev install-skill --force
+```
+
+Once installed, Claude Code can automatically use the skill when you ask to work on multiple features or parallelize development tasks.
+
 ## Discovery Commands
 
 ### `dev agents`
