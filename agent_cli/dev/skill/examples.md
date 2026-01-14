@@ -1,16 +1,17 @@
 # Examples: Parallel Agent Workflows
 
-Real-world scenarios for spawning parallel AI coding agents, with prompts following Claude 4.5 best practices.
+Real-world scenarios for spawning parallel AI coding agents, optimized for Claude 4.5 models.
 
 ## Prompt structure guidelines
 
 Each prompt for a spawned agent should follow this structure:
 
 1. **Explicit task description** - Be specific about what to implement
-2. **Code exploration directive** - Always read existing code first
-3. **Context with motivation** - Explain why patterns matter
-4. **Anti-overengineering guidance** - Keep solutions simple
-5. **Structured report request** - Use consistent format for `.claude/REPORT.md`
+2. **Workflow directive** - Read files in parallel, commit incrementally, verify before completing
+3. **Code exploration** - Read and understand existing code before writing
+4. **Context with motivation** - Explain why patterns matter
+5. **Focused scope** - Keep solutions minimal, implement only what's requested
+6. **Structured report** - Write conclusions to `.claude/REPORT.md`
 
 ## Scenario 1: Multi-feature implementation
 
@@ -21,16 +22,23 @@ Each prompt for a spawned agent should follow this structure:
 ```bash
 agent-cli dev new auth-feature --agent --prompt "Implement JWT-based user authentication.
 
+<workflow>
+- Read multiple files in parallel when exploring the codebase
+- Make incremental git commits as you complete each component
+- Run tests and linting before writing your final report
+</workflow>
+
 <code_exploration>
-ALWAYS read and understand relevant files before writing any code. Start by exploring:
+Start by reading these files (in parallel if independent):
 - src/api/routes/ to understand existing endpoint patterns
 - src/models/ to see how models are structured
 - Any existing auth-related code to avoid duplication
-Do not speculate about code you have not inspected.
+
+Think carefully about the existing patterns before designing your implementation.
 </code_exploration>
 
 <context>
-Backend is FastAPI in src/api/. This authentication system will protect all user-facing endpoints, so reliability and security are critical. Follow the exact patterns you find in existing endpoints to maintain consistency across the codebase.
+Backend is FastAPI in src/api/. This authentication system protects all user-facing endpoints, so reliability and security are critical. Follow the exact patterns in existing endpoints to maintain codebase consistency.
 </context>
 
 <requirements>
@@ -42,12 +50,12 @@ Implement these endpoints following existing route patterns:
 - Store JWT_SECRET in environment variable
 </requirements>
 
-<avoid_overengineering>
-Keep the implementation simple and focused. Do not add features beyond what is requested. Do not create abstractions for hypothetical future requirements. A working, minimal implementation is better than an over-designed one.
-</avoid_overengineering>
+<scope>
+Keep the implementation simple and focused. Implement only what is requested. A working, minimal implementation is better than an over-designed one. Reuse existing abstractions where possible.
+</scope>
 
 <report>
-When complete, write to .claude/REPORT.md in this format:
+After verifying tests pass and linting is clean, write to .claude/REPORT.md:
 
 ## Summary
 [2-3 sentences on what was implemented]
@@ -57,23 +65,29 @@ When complete, write to .claude/REPORT.md in this format:
 
 ## Key Decisions
 - Decision 1: rationale
-- Decision 2: rationale
 
 ## Testing
 How to verify the implementation works
 
 ## Questions/Concerns
-Any items needing review or clarification
+Any items needing review
 </report>"
 
 agent-cli dev new payment-integration --agent --prompt "Integrate Stripe payment processing.
 
+<workflow>
+- Read multiple files in parallel when exploring the codebase
+- Make incremental git commits as you complete each component
+- Run tests and linting before writing your final report
+</workflow>
+
 <code_exploration>
-Before writing any code, thoroughly explore the codebase:
-- Read src/api/routes/ to understand endpoint patterns and error handling
-- Check src/models/ for existing model patterns
-- Look for any existing payment or billing code
-Never make assumptions about code structure without reading it first.
+Read these files to understand the codebase (parallelize independent reads):
+- src/api/routes/ for endpoint patterns and error handling
+- src/models/ for existing model patterns
+- Any existing payment or billing code
+
+Only make claims about code you have actually read.
 </code_exploration>
 
 <context>
@@ -87,12 +101,12 @@ This payment integration handles real money transactions and must be implemented
 - Include proper webhook signature verification for security
 </requirements>
 
-<avoid_overengineering>
-Implement only what is specified. Do not add subscription handling, multiple payment methods, or other features not requested. Do not create unnecessary abstractions. Focus on a working, secure implementation.
-</avoid_overengineering>
+<scope>
+Implement only what is specified. Focus on a working, secure implementation. Skip subscription handling, multiple payment methods, or other features unless explicitly requested.
+</scope>
 
 <report>
-When complete, write to .claude/REPORT.md:
+After verifying tests pass, write to .claude/REPORT.md:
 
 ## Summary
 [What was implemented]
@@ -112,16 +126,23 @@ When complete, write to .claude/REPORT.md:
 
 agent-cli dev new email-notifications --agent --prompt "Implement email notification system.
 
+<workflow>
+- Read multiple files in parallel when exploring the codebase
+- Make incremental git commits as you complete each component
+- Run tests and linting before writing your final report
+</workflow>
+
 <code_exploration>
 Start by reading the codebase to understand patterns:
-- Examine src/api/ for how background tasks are handled (if any)
+- Examine src/api/ for how background tasks are handled
 - Check existing configuration patterns for external services
-- Look for template handling patterns if they exist
-Do not implement before understanding the existing architecture.
+- Look for template handling patterns
+
+Understand the existing architecture before implementing.
 </code_exploration>
 
 <context>
-Email notifications are user-facing and must be reliable. Background processing prevents blocking API responses while sending emails. Template-based emails allow non-developers to modify content without code changes.
+Email notifications are user-facing and must be reliable. Background processing prevents blocking API responses. Template-based emails allow content changes without code changes.
 </context>
 
 <requirements>
@@ -132,12 +153,12 @@ Email notifications are user-facing and must be reliable. Background processing 
 - Store SMTP settings (host, port, user, password) in environment
 </requirements>
 
-<avoid_overengineering>
-Do not build a full notification preferences system. Do not add SMS or push notifications. Implement the minimum required for reliable email delivery.
-</avoid_overengineering>
+<scope>
+Implement the minimum required for reliable email delivery. Skip notification preferences, SMS, or push notifications unless requested.
+</scope>
 
 <report>
-When complete, write to .claude/REPORT.md with summary, files changed, library choice rationale, testing instructions, and any concerns.
+After verifying tests pass, write to .claude/REPORT.md with summary, files changed, library choice rationale, testing instructions, and any concerns.
 </report>"
 ```
 
@@ -151,14 +172,21 @@ When complete, write to .claude/REPORT.md with summary, files changed, library c
 agent-cli dev new cache-tests --agent --prompt "Write comprehensive tests for a caching layer.
 
 <task>
-Create a complete test suite that will drive the implementation of a caching system. The tests define the interface - write them as if the implementation already exists.
+Create a complete test suite that drives the implementation of a caching system. The tests define the interface - write them as if the implementation already exists.
 </task>
 
+<workflow>
+- Read test files in parallel to understand existing patterns
+- Commit tests incrementally as you complete each test category
+- Verify tests are syntactically valid before finishing
+</workflow>
+
 <code_exploration>
-First, explore the codebase:
-- Check tests/ for existing test patterns and fixtures
-- Look at conftest.py for shared fixtures
-- Understand the project's testing conventions
+First, explore the codebase (parallelize these reads):
+- tests/ for existing test patterns and fixtures
+- conftest.py for shared fixtures
+- Project testing conventions
+
 Follow the exact testing patterns you find.
 </code_exploration>
 
@@ -181,9 +209,9 @@ Write tests in tests/test_cache.py using pytest:
 - Edge cases: empty keys, None values, large values
 </test_requirements>
 
-<important>
-Do NOT implement the cache itself - only write tests. The tests should fail initially and pass once implementation is complete. Write tests that verify behavior, not implementation details.
-</important>
+<scope>
+Write only tests, not the implementation. The tests should fail initially and pass once implementation is complete. Write tests that verify behavior, not implementation details.
+</scope>
 
 <report>
 When complete, write to .claude/REPORT.md:
@@ -209,12 +237,20 @@ After reviewing the tests:
 ```bash
 agent-cli dev new cache-impl --from cache-tests --agent --prompt "Implement the caching layer to pass existing tests.
 
+<workflow>
+- Read all test files first to understand the complete interface
+- Run tests frequently as you implement: pytest tests/test_cache.py -v
+- Make incremental git commits after each passing test group
+- Verify all tests pass before writing your report
+</workflow>
+
 <code_exploration>
-CRITICAL: Read the tests first before writing any implementation.
-- Read tests/test_cache.py completely to understand expected behavior
+CRITICAL: Read the tests completely before writing any implementation.
+- Read tests/test_cache.py to understand expected behavior
 - Note the exact interface the tests expect
 - Identify edge cases the tests check for
-The tests define the contract - do not deviate from it.
+
+The tests define the contract - implement to match them exactly.
 </code_exploration>
 
 <requirements>
@@ -223,22 +259,20 @@ Implement in src/cache.py:
 - RedisBackend implementation (use redis-py)
 - MemoryBackend implementation (dict-based with TTL support)
 - Cache facade that selects backend based on configuration
-
-Run tests frequently as you implement: pytest tests/test_cache.py -v
 </requirements>
 
-<avoid_overengineering>
-Implement exactly what the tests require. Do not add features the tests don't verify. Do not create distributed caching, cache warming, or other advanced features unless tests require them.
-</avoid_overengineering>
+<scope>
+Implement exactly what the tests require. Skip features the tests don't verify. Skip distributed caching, cache warming, or advanced features unless tests require them.
+</scope>
 
 <report>
-When complete, write to .claude/REPORT.md:
+After ALL tests pass, write to .claude/REPORT.md:
 
 ## Implementation Approach
 [How the cache system works]
 
 ## Test Results
-[Output of pytest run]
+[Output of pytest run showing all tests pass]
 
 ## Deviations
 [Any places where tests seemed incorrect or ambiguous]
@@ -257,13 +291,21 @@ When complete, write to .claude/REPORT.md:
 ```bash
 agent-cli dev new refactor-users-errors --agent --prompt "Refactor error handling in the users module.
 
+<workflow>
+- Read all relevant files in parallel before making any changes
+- Make incremental git commits as you refactor each endpoint
+- Run tests after each change to catch regressions early
+- Run linting before writing your final report
+</workflow>
+
 <code_exploration>
-Before making any changes, thoroughly understand the current state:
+Think carefully about the current state before making changes:
 - Read ALL files in src/api/routes/users.py and related user logic
 - Document the current error handling patterns you find
 - Check how errors are handled in other modules for comparison
 - Look for any error handling utilities that already exist
-Never modify code you haven't read and understood.
+
+Only modify code you have read and understood.
 </code_exploration>
 
 <context>
@@ -285,11 +327,11 @@ logger.warning(f\"User not found: {user_id}\", extra={\"user_id\": user_id})
 </target_pattern>
 
 <scope>
-ONLY modify files in src/api/routes/users.py and directly related user logic. Do not refactor other modules - other agents are handling those.
+ONLY modify files in src/api/routes/users.py and directly related user logic. Other agents are handling other modules.
 </scope>
 
 <report>
-When complete, write to .claude/REPORT.md:
+After tests pass and linting is clean, write to .claude/REPORT.md:
 
 ## Changes Made
 | File | Change Description |
@@ -317,12 +359,19 @@ When complete, write to .claude/REPORT.md:
 ```bash
 agent-cli dev new plugin-system --agent --prompt "Implement a plugin system.
 
+<workflow>
+- Read existing codebase structure in parallel before designing
+- Make incremental git commits as you complete each component
+- Run tests and linting before writing your final report
+</workflow>
+
 <code_exploration>
-Before designing the plugin system:
+Think carefully about the architecture before implementing:
 - Read the existing codebase structure to understand where plugins fit
 - Check for any existing extension points or hooks
 - Look at how configuration is handled
 - Understand the application lifecycle
+
 Design the plugin system to integrate naturally with existing patterns.
 </code_exploration>
 
@@ -334,9 +383,9 @@ Design the plugin system to integrate naturally with existing patterns.
 - Plugins should be able to register event handlers
 </requirements>
 
-<avoid_overengineering>
-Do not build: plugin dependencies, versioning, hot-reloading, sandboxing, or a plugin marketplace. Implement the minimal system that allows extending functionality through plugins.
-</avoid_overengineering>
+<scope>
+Implement the minimal system that allows extending functionality through plugins. Skip: plugin dependencies, versioning, hot-reloading, sandboxing, or a plugin marketplace.
+</scope>
 
 <implementation_notes>
 - Use importlib for dynamic loading
@@ -345,16 +394,16 @@ Do not build: plugin dependencies, versioning, hot-reloading, sandboxing, or a p
 </implementation_notes>
 
 <report>
-When complete, write to .claude/REPORT.md:
+After tests pass, write to .claude/REPORT.md:
 
 ## Architecture
 [Diagram or description of how plugins integrate]
 
 ## Plugin Interface
-```python
+\`\`\`python
 class Plugin:
     # document the interface
-```
+\`\`\`
 
 ## Example Plugin
 [Show the example plugin code]
@@ -384,6 +433,11 @@ Create these documentation files:
 
 Use clear examples and explain the \"why\" not just the \"how\".
 </deliverables>
+
+<workflow>
+- Commit each documentation file as you complete it
+- Ensure markdown renders correctly
+</workflow>
 
 <report>
 When complete, write to .claude/REPORT.md:
