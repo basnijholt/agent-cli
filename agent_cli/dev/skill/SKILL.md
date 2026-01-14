@@ -7,6 +7,18 @@ description: Spawn parallel AI coding agents in isolated git worktrees. Use when
 
 This skill teaches you how to spawn parallel AI coding agents in isolated git worktrees using the `agent-cli dev` command.
 
+## Installation
+
+If `agent-cli` is not available, install it first:
+
+```bash
+# Install globally
+uv tool install agent-cli
+
+# Or run directly without installing
+uvx agent-cli dev new <branch-name> --agent --prompt "..."
+```
+
 ## When to spawn parallel agents
 
 Spawn separate agents when:
