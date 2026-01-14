@@ -2,6 +2,13 @@
 
 Real-world scenarios for spawning parallel AI coding agents, optimized for Claude 4.5 models.
 
+> **Note on prompts**: The examples below show prompt content inline for readability. In practice, **always use `--prompt-file`** for these multi-line prompts to avoid shell quoting issues:
+>
+> ```bash
+> # Write prompt to file, then spawn
+> agent-cli dev new my-feature --agent --prompt-file .claude/spawn-prompt.md
+> ```
+
 ## Prompt structure guidelines
 
 Each prompt for a spawned agent should follow this structure:

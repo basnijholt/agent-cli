@@ -396,7 +396,7 @@ def _launch_agent(
 
 
 @app.command("new")
-def new(  # noqa: PLR0912
+def new(  # noqa: PLR0912, PLR0915
     branch: Annotated[
         str | None,
         typer.Argument(help="Branch name (auto-generated if not provided)"),
@@ -463,12 +463,26 @@ def new(  # noqa: PLR0912
             help="Initial prompt to pass to the AI agent (e.g., --prompt='Fix the login bug')",
         ),
     ] = None,
+    prompt_file: Annotated[
+        Path | None,
+        typer.Option(
+            "--prompt-file",
+            "-P",
+            help="Read initial prompt from a file (avoids shell quoting issues with long prompts)",
+            exists=True,
+            readable=True,
+        ),
+    ] = None,
     verbose: Annotated[
         bool,
         typer.Option("--verbose", "-v", help="Show detailed output and stream command output"),
     ] = False,
 ) -> None:
     """Create a new parallel development environment (git worktree)."""
+    # Handle prompt-file option (takes precedence over --prompt)
+    if prompt_file is not None:
+        prompt = prompt_file.read_text().strip()
+
     repo_root = _ensure_git_repo()
 
     # Generate branch name if not provided
@@ -863,8 +877,22 @@ def start_agent(
             help="Initial prompt to pass to the AI agent (e.g., --prompt='Fix the login bug')",
         ),
     ] = None,
+    prompt_file: Annotated[
+        Path | None,
+        typer.Option(
+            "--prompt-file",
+            "-P",
+            help="Read initial prompt from a file (avoids shell quoting issues with long prompts)",
+            exists=True,
+            readable=True,
+        ),
+    ] = None,
 ) -> None:
     """Start an AI coding agent in a dev environment."""
+    # Handle prompt-file option (takes precedence over --prompt)
+    if prompt_file is not None:
+        prompt = prompt_file.read_text().strip()
+
     repo_root = _ensure_git_repo()
 
     wt = worktree.find_worktree_by_name(name, repo_root)

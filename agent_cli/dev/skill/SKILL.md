@@ -34,8 +34,14 @@ Do NOT spawn when:
 
 ## Core command
 
+For short prompts:
 ```bash
-agent-cli dev new <branch-name> --agent --prompt "<comprehensive-prompt>"
+agent-cli dev new <branch-name> --agent --prompt "Fix the login bug"
+```
+
+For longer prompts (recommended for multi-line or complex instructions):
+```bash
+agent-cli dev new <branch-name> --agent --prompt-file path/to/prompt.md
 ```
 
 This creates:
@@ -44,6 +50,8 @@ This creates:
 3. Opens a new terminal tab with an AI coding agent
 4. Passes your prompt to the agent
 
+**Important**: Use `--prompt-file` for prompts longer than a single line. The `--prompt` option passes text through the shell, which can cause issues with special characters (`!`, `$`, backticks, quotes) in ZSH and other shells. Using `--prompt-file` avoids all shell quoting issues.
+
 ## Writing effective prompts for spawned agents
 
 Spawned agents work in isolation, so prompts must be **self-contained**. Include:
@@ -51,6 +59,23 @@ Spawned agents work in isolation, so prompts must be **self-contained**. Include
 1. **Clear task description**: What to implement/fix/refactor
 2. **Relevant context**: File locations, patterns to follow, constraints
 3. **Report request**: Ask the agent to write conclusions to `.claude/REPORT.md`
+
+### Using --prompt-file (recommended)
+
+For any prompt longer than a single sentence:
+
+1. Write the prompt to a temporary file (e.g., `.claude/spawn-prompt.md`)
+2. Use `--prompt-file` to pass it to the agent
+3. The file can be deleted after spawning
+
+Example workflow:
+```bash
+# 1. Write prompt to file (Claude does this with the Write tool)
+# 2. Spawn agent with the file
+agent-cli dev new my-feature --agent --prompt-file .claude/spawn-prompt.md
+# 3. Optionally clean up
+rm .claude/spawn-prompt.md
+```
 
 ### Prompt template
 
@@ -101,7 +126,8 @@ Each agent works independently in its own branch. Results can be reviewed and me
 | Option | Description |
 |--------|-------------|
 | `--agent` / `-a` | Start AI coding agent after creation |
-| `--prompt` / `-p` | Initial prompt for the agent |
+| `--prompt` / `-p` | Initial prompt for the agent (short prompts only) |
+| `--prompt-file` / `-P` | Read prompt from file (recommended for longer prompts) |
 | `--from` / `-f` | Base branch (default: origin/main) |
 | `--with-agent` | Specific agent: claude, aider, codex, gemini |
 | `--agent-args` | Extra arguments for the agent |
