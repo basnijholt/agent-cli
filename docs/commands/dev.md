@@ -385,6 +385,11 @@ default_agent = "claude"
 [dev.agent_args]
 claude = ["--dangerously-skip-permissions"]
 aider = ["--model", "gpt-4o"]
+
+# Per-agent environment variables (applied when launching agents)
+[dev.agent_env.claude]
+CLAUDE_CODE_USE_VERTEX = "1"
+ANTHROPIC_MODEL = "claude-opus-4-5"
 ```
 
 Or per-project in `.agent-cli.toml`:
@@ -399,6 +404,9 @@ default_agent = "aider"
 
 [dev.agent_args]
 claude = ["--dangerously-skip-permissions", "--model", "opus"]
+
+[dev.agent_env.claude]
+ANTHROPIC_MODEL = "claude-sonnet-4-20250514"
 ```
 
 With this configuration, running `agent-cli dev new` will automatically open the editor, start the agent, and set up direnv.

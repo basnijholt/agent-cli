@@ -18,6 +18,7 @@ from rich.table import Table
 
 from agent_cli.cli import app as main_app
 from agent_cli.cli import set_config_defaults
+from agent_cli.config import load_config
 
 # Word lists for generating random branch names (like Docker container names)
 _ADJECTIVES = [
@@ -237,12 +238,70 @@ def _resolve_agent(
 
 
 def _get_config_agent_args() -> dict[str, list[str]] | None:
-    """Load agent_args from config file."""
-    from agent_cli.config import load_config  # noqa: PLC0415
+    """Load agent_args from config file.
 
+    Config format:
+        [dev.agent_args]
+        claude = ["--dangerously-skip-permissions"]
+
+    Note: The config loader may flatten section names, so we check both
+    nested structure and flattened 'dev.agent_args' key.
+    """
     config = load_config(None)
+
+    # First try the simple nested structure (for testing/mocks)
     dev_config = config.get("dev", {})
-    return dev_config.get("agent_args")
+    if isinstance(dev_config, dict) and "agent_args" in dev_config:
+        return dev_config["agent_args"]
+
+    # Handle flattened key "dev.agent_args"
+    return config.get("dev.agent_args")
+
+
+def _get_config_agent_env() -> dict[str, dict[str, str]] | None:
+    """Load agent_env from config file.
+
+    Config format:
+        [dev.agent_env]
+        claude = { CLAUDE_CODE_USE_VERTEX = "1", ANTHROPIC_MODEL = "opus" }
+
+    Note: The config loader flattens nested dicts, so keys like
+    'dev.agent_env.claude' become top-level. We reconstruct the
+    agent_env dict from these flattened keys.
+    """
+    config = load_config(None)
+
+    # First try the simple nested structure (for testing/mocks)
+    dev_config = config.get("dev", {})
+    if isinstance(dev_config, dict) and "agent_env" in dev_config:
+        return dev_config["agent_env"]
+
+    # Handle flattened keys like "dev.agent_env.claude"
+    prefix = "dev.agent_env."
+    result: dict[str, dict[str, str]] = {}
+    for key, value in config.items():
+        if key.startswith(prefix) and isinstance(value, dict):
+            agent_name = key[len(prefix) :]
+            result[agent_name] = value
+
+    return result if result else None
+
+
+def _get_agent_env(agent: CodingAgent) -> dict[str, str]:
+    """Get environment variables for an agent.
+
+    Merges config env vars with agent's built-in env vars.
+    Config env vars take precedence.
+    """
+    # Start with agent's built-in env vars
+    env = agent.get_env().copy()
+
+    # Add config env vars (these override built-in ones)
+    config_env = _get_config_agent_env()
+    if config_env and agent.name in config_env:
+        env.update(config_env[agent.name])
+
+    return env
 
 
 def _merge_agent_args(
@@ -281,23 +340,47 @@ def _launch_editor(path: Path, editor: Editor) -> None:
         _warn(f"Could not open editor: {e}")
 
 
+def _format_env_prefix(env: dict[str, str]) -> str:
+    """Format environment variables as shell prefix.
+
+    Returns a string like 'VAR1=value1 VAR2=value2 ' that can be
+    prepended to a command.
+    """
+    if not env:
+        return ""
+    # Quote values that contain spaces or special characters
+    parts = [f"{k}={shlex.quote(v)}" for k, v in sorted(env.items())]
+    return " ".join(parts) + " "
+
+
 def _launch_agent(
     path: Path,
     agent: CodingAgent,
     extra_args: list[str] | None = None,
     prompt: str | None = None,
+    env: dict[str, str] | None = None,
 ) -> None:
     """Launch agent in a new terminal tab.
 
     Agents are interactive TUIs that need a proper terminal.
     Priority: tmux/zellij tab > terminal tab > print instructions.
+
+    Args:
+        path: Directory to launch the agent in
+        agent: The coding agent to launch
+        extra_args: Additional CLI arguments for the agent
+        prompt: Optional initial prompt
+        env: Environment variables to set for the agent
+
     """
     terminal = terminals.detect_current_terminal()
     agent_cmd = shlex.join(agent.launch_command(path, extra_args, prompt))
+    env_prefix = _format_env_prefix(env or {})
+    full_cmd = env_prefix + agent_cmd
 
     if terminal:
         # We're in a multiplexer (tmux/zellij) or supported terminal (kitty/iTerm2)
-        if terminal.open_new_tab(path, agent_cmd, tab_name=agent.name):
+        if terminal.open_new_tab(path, full_cmd, tab_name=agent.name):
             _success(f"Started {agent.name} in new {terminal.name} tab")
             return
         _warn(f"Could not open new tab in {terminal.name}")
@@ -309,7 +392,7 @@ def _launch_agent(
     else:
         console.print(f"\n[bold]To start {agent.name}:[/bold]")
     console.print(f"  cd {path}")
-    console.print(f"  {agent_cmd}")
+    console.print(f"  {full_cmd}")
 
 
 @app.command("new")
@@ -468,7 +551,8 @@ def new(  # noqa: PLR0912
     # Launch agent (interactive TUI - needs terminal tab)
     if resolved_agent and resolved_agent.is_available():
         merged_args = _merge_agent_args(resolved_agent, agent_args)
-        _launch_agent(result.path, resolved_agent, merged_args, prompt)
+        agent_env = _get_agent_env(resolved_agent)
+        _launch_agent(result.path, resolved_agent, merged_args, prompt, agent_env)
 
     # Print summary
     console.print()
@@ -803,10 +887,18 @@ def start_agent(
         _error(f"{agent.name} is not installed. Install from: {agent.install_url}")
 
     merged_args = _merge_agent_args(agent, agent_args)
+    agent_env = _get_agent_env(agent)
     _info(f"Starting {agent.name} in {wt.path}...")
     try:
         os.chdir(wt.path)
-        subprocess.run(agent.launch_command(wt.path, merged_args, prompt), check=False)
+        # Merge agent env with current environment
+        run_env = os.environ.copy()
+        run_env.update(agent_env)
+        subprocess.run(
+            agent.launch_command(wt.path, merged_args, prompt),
+            check=False,
+            env=run_env,
+        )
     except Exception as e:
         _error(f"Failed to start agent: {e}")
 
