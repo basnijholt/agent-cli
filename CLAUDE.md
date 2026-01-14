@@ -97,3 +97,25 @@ The `docs_gen` module introspects Typer commands to generate Markdown tables. Do
 ```
 
 Run `uv run python docs/run_markdown_code_runner.py` to regenerate all auto-generated content.
+
+## Releases
+
+Use `gh release create` to create releases. The tag is created automatically.
+
+```bash
+# IMPORTANT: Ensure you're on latest origin/main before releasing!
+git fetch origin
+git checkout origin/main
+
+# Check current version
+git tag --sort=-v:refname | head -1
+
+# Create release (minor version bump: v0.21.1 -> v0.22.0)
+gh release create v0.22.0 --title "v0.22.0" --notes "release notes here"
+```
+
+Versioning:
+- **Patch** (v0.21.0 → v0.21.1): Bug fixes
+- **Minor** (v0.21.1 → v0.22.0): New features, non-breaking changes
+
+Write release notes manually describing what changed. Group by features and bug fixes.
