@@ -416,7 +416,6 @@ def _launch_agent(
     extra_args: list[str] | None = None,
     prompt: str | None = None,
     env: dict[str, str] | None = None,
-    prompt_from_file: bool = False,
 ) -> None:
     """Launch agent in a new terminal tab.
 
@@ -429,14 +428,15 @@ def _launch_agent(
         extra_args: Additional CLI arguments for the agent
         prompt: Optional initial prompt
         env: Environment variables to set for the agent
-        prompt_from_file: If True, use wrapper script to avoid shell quoting issues
 
     """
     terminal = terminals.detect_current_terminal()
 
-    # For prompts from files (likely long/complex), use wrapper script
-    # to avoid shell quoting issues with special characters
-    if prompt and prompt_from_file:
+    # Use wrapper script for prompts when opening in a terminal tab.
+    # All terminals pass commands through a shell (zellij write-chars, tmux new-window,
+    # bash -c, AppleScript, etc.), so special characters ($, !, `, etc.) get interpreted.
+    # The wrapper script uses a heredoc with quoted delimiter to prevent this.
+    if prompt and terminal is not None:
         script_path = _create_prompt_wrapper_script(path, agent, prompt, extra_args, env)
         full_cmd = f"bash {shlex.quote(str(script_path))}"
     else:
@@ -546,11 +546,8 @@ def new(  # noqa: PLR0912, PLR0915
 ) -> None:
     """Create a new parallel development environment (git worktree)."""
     # Handle prompt-file option (takes precedence over --prompt)
-    # Track whether prompt came from file to use wrapper script (avoids shell quoting issues)
-    prompt_from_file = False
     if prompt_file is not None:
         prompt = prompt_file.read_text().strip()
-        prompt_from_file = True
 
     repo_root = _ensure_git_repo()
 
@@ -635,14 +632,7 @@ def new(  # noqa: PLR0912, PLR0915
     if resolved_agent and resolved_agent.is_available():
         merged_args = _merge_agent_args(resolved_agent, agent_args)
         agent_env = _get_agent_env(resolved_agent)
-        _launch_agent(
-            result.path,
-            resolved_agent,
-            merged_args,
-            prompt,
-            agent_env,
-            prompt_from_file=prompt_from_file,
-        )
+        _launch_agent(result.path, resolved_agent, merged_args, prompt, agent_env)
 
     # Print summary
     console.print()
