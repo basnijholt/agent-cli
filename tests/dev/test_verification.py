@@ -305,12 +305,12 @@ class TestTerminalCommands:
                 tab_name="my-agent",
             )
 
-        # Verify YAML config was written
+        # Verify YAML config was written with quoted values (for special char safety)
         assert mock_write.called
         yaml_content = mock_write.call_args[0][0]
-        assert "cwd: /test/path" in yaml_content
-        assert "exec: claude" in yaml_content
-        assert "title: my-agent" in yaml_content
+        assert "cwd: '/test/path'" in yaml_content
+        assert "exec: 'claude'" in yaml_content
+        assert "title: 'my-agent'" in yaml_content
 
     def test_iterm2_applescript_syntax(self) -> None:
         """iTerm2 uses official AppleScript API for tab creation.

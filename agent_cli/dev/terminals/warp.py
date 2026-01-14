@@ -88,16 +88,19 @@ class Warp(Terminal):
         config_file = config_dir / f"{config_name}.yaml"
 
         # Build the YAML config
+        # Quote values that may contain special YAML characters (: # etc.)
         title = tab_name or "agent-cli"
+        # Escape single quotes by doubling them, then wrap in single quotes
+        escaped_command = command.replace("'", "''")
         yaml_content = f"""---
 name: {config_name}
 windows:
   - tabs:
-      - title: {title}
+      - title: '{title}'
         layout:
-          cwd: {path.as_posix()}
+          cwd: '{path.as_posix()}'
           commands:
-            - exec: {command}
+            - exec: '{escaped_command}'
 """
 
         try:

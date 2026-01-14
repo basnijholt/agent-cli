@@ -12,3 +12,13 @@ class Codex(CodingAgent):
     command = "codex"
     install_url = "https://github.com/openai/codex"
     detect_process_name = "codex"
+
+    def prompt_args(self, prompt: str) -> list[str]:
+        """Return prompt as positional argument.
+
+        Codex accepts prompt as a positional argument:
+        `codex "your prompt here"`
+
+        See: codex --help
+        """
+        return [prompt]

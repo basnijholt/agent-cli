@@ -30,6 +30,7 @@ class CursorAgent(CodingAgent):
         self,
         path: Path,  # noqa: ARG002
         extra_args: list[str] | None = None,
+        prompt: str | None = None,
     ) -> list[str]:
         """Return the command to launch Cursor Agent."""
         exe = self.get_executable()
@@ -42,4 +43,6 @@ class CursorAgent(CodingAgent):
         cmd = [exe] if exe.endswith("cursor-agent") else [exe, "cli"]
         if extra_args:
             cmd.extend(extra_args)
+        if prompt:
+            cmd.extend(self.prompt_args(prompt))
         return cmd

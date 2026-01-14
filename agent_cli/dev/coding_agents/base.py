@@ -66,16 +66,34 @@ class CodingAgent(ABC):
                 return exe
         return None
 
+    def prompt_args(self, prompt: str) -> list[str]:
+        """Return the CLI arguments to pass an initial prompt to the agent.
+
+        Override this method in subclasses for agents that support initial prompts.
+        Default implementation returns empty list (prompt not supported).
+
+        Args:
+            prompt: The initial prompt to pass to the agent
+
+        Returns:
+            List of CLI arguments (e.g., ["prompt text"] or ["-m", "prompt text"])
+
+        """
+        del prompt  # unused in base implementation
+        return []
+
     def launch_command(
         self,
         path: Path,  # noqa: ARG002
         extra_args: list[str] | None = None,
+        prompt: str | None = None,
     ) -> list[str]:
         """Return the command to launch this agent in a directory.
 
         Args:
             path: The directory to launch the agent in
             extra_args: Additional arguments to pass to the agent
+            prompt: Optional initial prompt to pass to the agent
 
         Returns:
             List of command arguments
@@ -90,6 +108,8 @@ class CodingAgent(ABC):
         cmd = [exe]
         if extra_args:
             cmd.extend(extra_args)
+        if prompt:
+            cmd.extend(self.prompt_args(prompt))
         return cmd
 
     def get_env(self) -> dict[str, str]:

@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import os
 import random
+import shlex
 import subprocess
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, NoReturn
@@ -283,6 +284,7 @@ def _launch_agent(
     path: Path,
     agent: CodingAgent,
     extra_args: list[str] | None = None,
+    prompt: str | None = None,
 ) -> None:
     """Launch agent in a new terminal tab.
 
@@ -290,7 +292,7 @@ def _launch_agent(
     Priority: tmux/zellij tab > terminal tab > print instructions.
     """
     terminal = terminals.detect_current_terminal()
-    agent_cmd = " ".join(agent.launch_command(path, extra_args))
+    agent_cmd = shlex.join(agent.launch_command(path, extra_args, prompt))
 
     if terminal:
         # We're in a multiplexer (tmux/zellij) or supported terminal (kitty/iTerm2)
@@ -367,6 +369,14 @@ def new(  # noqa: PLR0912
         typer.Option(
             "--agent-args",
             help="Extra arguments to pass to the agent (e.g., --agent-args='--dangerously-skip-permissions')",
+        ),
+    ] = None,
+    prompt: Annotated[
+        str | None,
+        typer.Option(
+            "--prompt",
+            "-p",
+            help="Initial prompt to pass to the AI agent (e.g., --prompt='Fix the login bug')",
         ),
     ] = None,
     verbose: Annotated[
@@ -457,7 +467,7 @@ def new(  # noqa: PLR0912
     # Launch agent (interactive TUI - needs terminal tab)
     if resolved_agent and resolved_agent.is_available():
         merged_args = _merge_agent_args(resolved_agent, agent_args)
-        _launch_agent(result.path, resolved_agent, merged_args)
+        _launch_agent(result.path, resolved_agent, merged_args, prompt)
 
     # Print summary
     console.print()
@@ -760,6 +770,14 @@ def start_agent(
             help="Extra arguments to pass to the agent (e.g., --agent-args='--dangerously-skip-permissions')",
         ),
     ] = None,
+    prompt: Annotated[
+        str | None,
+        typer.Option(
+            "--prompt",
+            "-p",
+            help="Initial prompt to pass to the AI agent (e.g., --prompt='Fix the login bug')",
+        ),
+    ] = None,
 ) -> None:
     """Start an AI coding agent in a dev environment."""
     repo_root = _ensure_git_repo()
@@ -787,7 +805,7 @@ def start_agent(
     _info(f"Starting {agent.name} in {wt.path}...")
     try:
         os.chdir(wt.path)
-        subprocess.run(agent.launch_command(wt.path, merged_args), check=False)
+        subprocess.run(agent.launch_command(wt.path, merged_args, prompt), check=False)
     except Exception as e:
         _error(f"Failed to start agent: {e}")
 
