@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import os
 import random
+import shlex
 import subprocess
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, NoReturn
@@ -290,8 +291,6 @@ def _launch_agent(
     Agents are interactive TUIs that need a proper terminal.
     Priority: tmux/zellij tab > terminal tab > print instructions.
     """
-    import shlex  # noqa: PLC0415
-
     terminal = terminals.detect_current_terminal()
     agent_cmd = shlex.join(agent.launch_command(path, extra_args, prompt))
 
