@@ -8,6 +8,7 @@ import random
 import shlex
 import shutil
 import subprocess
+import tempfile
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, NoReturn
 
@@ -374,8 +375,6 @@ def _create_prompt_wrapper_script(
 
     Script is written to a temp directory to avoid polluting the worktree.
     """
-    import tempfile  # noqa: PLC0415
-
     script_path = Path(tempfile.gettempdir()) / f"agent-cli-{worktree_path.name}.sh"
     delimiter = _generate_heredoc_delimiter()
 
