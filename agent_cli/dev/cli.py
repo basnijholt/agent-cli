@@ -8,6 +8,7 @@ import random
 import shlex
 import shutil
 import subprocess
+import tempfile
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, NoReturn
 
@@ -353,6 +354,57 @@ def _format_env_prefix(env: dict[str, str]) -> str:
     return " ".join(parts) + " "
 
 
+def _generate_heredoc_delimiter() -> str:
+    """Generate a unique heredoc delimiter using UUID."""
+    import uuid  # noqa: PLC0415
+
+    return f"PROMPT_{uuid.uuid4().hex[:12]}"
+
+
+def _create_prompt_wrapper_script(
+    worktree_path: Path,
+    agent: CodingAgent,
+    prompt: str,
+    extra_args: list[str] | None = None,
+    env: dict[str, str] | None = None,
+) -> Path:
+    """Create a wrapper script that launches the agent with the prompt.
+
+    Uses a heredoc with quoted delimiter to avoid ALL shell interpretation
+    of special characters ($, !, `, etc.) in the prompt content.
+
+    Script is written to a temp directory to avoid polluting the worktree.
+    """
+    script_path = Path(tempfile.gettempdir()) / f"agent-cli-{worktree_path.name}.sh"
+    delimiter = _generate_heredoc_delimiter()
+
+    # Build the agent command without the prompt
+    exe = agent.get_executable()
+    if exe is None:
+        msg = f"{agent.name} is not installed"
+        raise RuntimeError(msg)
+
+    cmd_parts = [shlex.quote(exe)]
+    if extra_args:
+        cmd_parts.extend(shlex.quote(arg) for arg in extra_args)
+
+    agent_cmd = " ".join(cmd_parts)
+    env_prefix = _format_env_prefix(env or {})
+
+    # Create script with heredoc - quoted delimiter prevents all shell expansion
+    script_content = f"""#!/usr/bin/env bash
+# Auto-generated script to launch agent with prompt
+# The heredoc with quoted delimiter (<<'{delimiter}') prevents shell interpretation
+{env_prefix}exec {agent_cmd} "$(cat <<'{delimiter}'
+{prompt}
+{delimiter}
+)"
+"""
+    script_path.write_text(script_content)
+    script_path.chmod(0o755)
+    return script_path
+
+
 def _launch_agent(
     path: Path,
     agent: CodingAgent,
@@ -374,9 +426,18 @@ def _launch_agent(
 
     """
     terminal = terminals.detect_current_terminal()
-    agent_cmd = shlex.join(agent.launch_command(path, extra_args, prompt))
-    env_prefix = _format_env_prefix(env or {})
-    full_cmd = env_prefix + agent_cmd
+
+    # Use wrapper script for prompts when opening in a terminal tab.
+    # All terminals pass commands through a shell (zellij write-chars, tmux new-window,
+    # bash -c, AppleScript, etc.), so special characters ($, !, `, etc.) get interpreted.
+    # The wrapper script uses a heredoc with quoted delimiter to prevent this.
+    if prompt and terminal is not None:
+        script_path = _create_prompt_wrapper_script(path, agent, prompt, extra_args, env)
+        full_cmd = f"bash {shlex.quote(str(script_path))}"
+    else:
+        agent_cmd = shlex.join(agent.launch_command(path, extra_args, prompt))
+        env_prefix = _format_env_prefix(env or {})
+        full_cmd = env_prefix + agent_cmd
 
     if terminal:
         # We're in a multiplexer (tmux/zellij) or supported terminal (kitty/iTerm2)
@@ -396,7 +457,7 @@ def _launch_agent(
 
 
 @app.command("new")
-def new(  # noqa: PLR0912
+def new(  # noqa: PLR0912, PLR0915
     branch: Annotated[
         str | None,
         typer.Argument(help="Branch name (auto-generated if not provided)"),
@@ -463,12 +524,26 @@ def new(  # noqa: PLR0912
             help="Initial prompt to pass to the AI agent (e.g., --prompt='Fix the login bug')",
         ),
     ] = None,
+    prompt_file: Annotated[
+        Path | None,
+        typer.Option(
+            "--prompt-file",
+            "-P",
+            help="Read initial prompt from a file (avoids shell quoting issues with long prompts)",
+            exists=True,
+            readable=True,
+        ),
+    ] = None,
     verbose: Annotated[
         bool,
         typer.Option("--verbose", "-v", help="Show detailed output and stream command output"),
     ] = False,
 ) -> None:
     """Create a new parallel development environment (git worktree)."""
+    # Handle prompt-file option (takes precedence over --prompt)
+    if prompt_file is not None:
+        prompt = prompt_file.read_text().strip()
+
     repo_root = _ensure_git_repo()
 
     # Generate branch name if not provided
@@ -863,8 +938,22 @@ def start_agent(
             help="Initial prompt to pass to the AI agent (e.g., --prompt='Fix the login bug')",
         ),
     ] = None,
+    prompt_file: Annotated[
+        Path | None,
+        typer.Option(
+            "--prompt-file",
+            "-P",
+            help="Read initial prompt from a file (avoids shell quoting issues with long prompts)",
+            exists=True,
+            readable=True,
+        ),
+    ] = None,
 ) -> None:
     """Start an AI coding agent in a dev environment."""
+    # Handle prompt-file option (takes precedence over --prompt)
+    if prompt_file is not None:
+        prompt = prompt_file.read_text().strip()
+
     repo_root = _ensure_git_repo()
 
     wt = worktree.find_worktree_by_name(name, repo_root)
