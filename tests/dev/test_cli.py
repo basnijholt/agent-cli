@@ -12,6 +12,7 @@ from agent_cli.dev.cli import (
     _format_env_prefix,
     _generate_branch_name,
     _get_agent_env,
+    _get_config_agent_args,
     _get_config_agent_env,
 )
 from agent_cli.dev.coding_agents.base import CodingAgent
@@ -236,6 +237,44 @@ class TestFormatEnvPrefix:
         """Empty values are quoted."""
         result = _format_env_prefix({"EMPTY": ""})
         assert result == "EMPTY='' "
+
+
+class TestGetConfigAgentArgs:
+    """Tests for _get_config_agent_args function."""
+
+    def test_returns_none_when_no_config(self) -> None:
+        """Returns None when no agent_args in config."""
+        with patch("agent_cli.config.load_config", return_value={}):
+            result = _get_config_agent_args()
+            assert result is None
+
+    def test_returns_agent_args_nested(self) -> None:
+        """Returns agent_args from nested config structure (for mocks)."""
+        config = {
+            "dev": {
+                "agent_args": {
+                    "claude": ["--dangerously-skip-permissions"],
+                },
+            },
+        }
+        with patch("agent_cli.config.load_config", return_value=config):
+            result = _get_config_agent_args()
+            assert result == {"claude": ["--dangerously-skip-permissions"]}
+
+    def test_returns_agent_args_from_flattened_key(self) -> None:
+        """Returns agent_args from flattened config key (real config loader format)."""
+        config = {
+            "dev.agent_args": {
+                "claude": ["--dangerously-skip-permissions"],
+                "aider": ["--model", "gpt-4o"],
+            },
+        }
+        with patch("agent_cli.config.load_config", return_value=config):
+            result = _get_config_agent_args()
+            assert result == {
+                "claude": ["--dangerously-skip-permissions"],
+                "aider": ["--model", "gpt-4o"],
+            }
 
 
 class TestGetConfigAgentEnv:
