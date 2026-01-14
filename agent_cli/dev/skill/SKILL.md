@@ -132,4 +132,6 @@ Each agent works independently in its own branch. Results can be reviewed and me
 | `--with-agent` | Specific agent: claude, aider, codex, gemini |
 | `--agent-args` | Extra arguments for the agent |
 
-For more examples, see [examples.md](examples.md).
+## Before spawning agents
+
+**Important**: Before spawning any agents, read [examples.md](examples.md) in this skill directory for comprehensive prompt templates and real-world scenarios. The examples show the proper structure for self-contained prompts that spawned agents can execute independently.
