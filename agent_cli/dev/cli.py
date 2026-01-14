@@ -371,11 +371,12 @@ def _create_prompt_wrapper_script(
 
     Uses a heredoc with quoted delimiter to avoid ALL shell interpretation
     of special characters ($, !, `, etc.) in the prompt content.
-    """
-    claude_dir = worktree_path / ".claude"
-    claude_dir.mkdir(exist_ok=True)
 
-    script_path = claude_dir / "run-agent.sh"
+    Script is written to a temp directory to avoid polluting the worktree.
+    """
+    import tempfile  # noqa: PLC0415
+
+    script_path = Path(tempfile.gettempdir()) / f"agent-cli-{worktree_path.name}.sh"
     delimiter = _generate_heredoc_delimiter()
 
     # Build the agent command without the prompt
