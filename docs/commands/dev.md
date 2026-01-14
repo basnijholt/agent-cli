@@ -318,16 +318,16 @@ agent-cli dev terminals
 
 ### AI Coding Agents
 
-| Agent | Command | Detection |
-|-------|---------|-----------|
-| Claude Code | `claude` | `CLAUDECODE=1` env var |
-| OpenAI Codex | `codex` | Parent process detection |
-| Google Gemini CLI | `gemini` | Parent process detection |
-| Aider | `aider` | Parent process detection |
-| GitHub Copilot CLI | `copilot` | Parent process detection |
-| Continue Dev | `cn` | Parent process detection |
-| OpenCode | `opencode` | `OPENCODE=1` env var |
-| Cursor Agent | `cursor-agent` | `CURSOR_AGENT` env var |
+| Agent | Command | Detection | Prompt Support |
+|-------|---------|-----------|----------------|
+| Claude Code | `claude` | `CLAUDECODE=1` env var | `claude "prompt"` |
+| OpenAI Codex | `codex` | Parent process detection | `codex "prompt"` |
+| Google Gemini CLI | `gemini` | Parent process detection | `gemini -p "prompt"` |
+| Aider | `aider` | Parent process detection | `aider --message "prompt"` |
+| GitHub Copilot CLI | `copilot` | Parent process detection | `copilot --prompt "prompt"` |
+| Continue Dev | `cn` | Parent process detection | — |
+| OpenCode | `opencode` | `OPENCODE=1` env var | — |
+| Cursor Agent | `cursor-agent` | `CURSOR_AGENT` env var | — |
 
 ### Editors
 
