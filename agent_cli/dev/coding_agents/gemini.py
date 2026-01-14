@@ -14,11 +14,11 @@ class Gemini(CodingAgent):
     detect_process_name = "gemini"
 
     def prompt_args(self, prompt: str) -> list[str]:
-        """Return prompt as positional argument.
+        """Return prompt using -p flag.
 
-        Gemini CLI accepts prompt as a positional argument:
-        `gemini "your prompt here"`
+        Gemini CLI uses -p for non-interactive prompts:
+        `gemini -p "your prompt here"`
 
-        See: https://github.com/google-gemini/gemini-cli
+        See: https://github.com/google-gemini/gemini-cli README
         """
-        return [prompt]
+        return ["-p", prompt]
