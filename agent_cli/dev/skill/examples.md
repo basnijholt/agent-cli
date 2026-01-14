@@ -351,10 +351,10 @@ When complete, write to .claude/REPORT.md:
 [Diagram or description of how plugins integrate]
 
 ## Plugin Interface
-\`\`\`python
+```python
 class Plugin:
     # document the interface
-\`\`\`
+```
 
 ## Example Plugin
 [Show the example plugin code]
