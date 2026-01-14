@@ -8,7 +8,13 @@ from unittest.mock import patch
 from typer.testing import CliRunner
 
 from agent_cli.cli import app
-from agent_cli.dev.cli import _generate_branch_name
+from agent_cli.dev.cli import (
+    _format_env_prefix,
+    _generate_branch_name,
+    _get_agent_env,
+    _get_config_agent_env,
+)
+from agent_cli.dev.coding_agents.base import CodingAgent
 from agent_cli.dev.worktree import WorktreeInfo
 
 runner = CliRunner(env={"NO_COLOR": "1", "TERM": "dumb"})
@@ -202,3 +208,106 @@ class TestDevPath:
             result = runner.invoke(app, ["dev", "path", "nonexistent"])
             assert result.exit_code != 0
             assert "not found" in result.output.lower()
+
+
+class TestFormatEnvPrefix:
+    """Tests for _format_env_prefix function."""
+
+    def test_empty_env(self) -> None:
+        """Empty env returns empty string."""
+        assert _format_env_prefix({}) == ""
+
+    def test_single_var(self) -> None:
+        """Single env var is formatted correctly."""
+        result = _format_env_prefix({"FOO": "bar"})
+        assert result == "FOO=bar "
+
+    def test_multiple_vars_sorted(self) -> None:
+        """Multiple env vars are sorted alphabetically."""
+        result = _format_env_prefix({"ZZZ": "last", "AAA": "first"})
+        assert result == "AAA=first ZZZ=last "
+
+    def test_quotes_special_chars(self) -> None:
+        """Values with spaces or special chars are quoted."""
+        result = _format_env_prefix({"MSG": "hello world"})
+        assert result == "MSG='hello world' "
+
+    def test_quotes_empty_value(self) -> None:
+        """Empty values are quoted."""
+        result = _format_env_prefix({"EMPTY": ""})
+        assert result == "EMPTY='' "
+
+
+class TestGetConfigAgentEnv:
+    """Tests for _get_config_agent_env function."""
+
+    def test_returns_none_when_no_config(self) -> None:
+        """Returns None when no agent_env in config."""
+        with patch("agent_cli.config.load_config", return_value={}):
+            result = _get_config_agent_env()
+            assert result is None
+
+    def test_returns_none_when_no_dev_section(self) -> None:
+        """Returns None when no dev section in config."""
+        with patch("agent_cli.config.load_config", return_value={"other": {}}):
+            result = _get_config_agent_env()
+            assert result is None
+
+    def test_returns_agent_env(self) -> None:
+        """Returns agent_env from config."""
+        config = {
+            "dev": {
+                "agent_env": {
+                    "claude": {"CLAUDE_CODE_USE_VERTEX": "1", "ANTHROPIC_MODEL": "opus"},
+                },
+            },
+        }
+        with patch("agent_cli.config.load_config", return_value=config):
+            result = _get_config_agent_env()
+            assert result == {"claude": {"CLAUDE_CODE_USE_VERTEX": "1", "ANTHROPIC_MODEL": "opus"}}
+
+
+class _MockAgent(CodingAgent):
+    """Mock agent for testing."""
+
+    name = "mock"
+    command = "mock"
+
+    def get_env(self) -> dict[str, str]:
+        """Return mock env vars."""
+        return {"BUILTIN_VAR": "builtin_value"}
+
+
+class TestGetAgentEnv:
+    """Tests for _get_agent_env function."""
+
+    def test_returns_builtin_env_when_no_config(self) -> None:
+        """Returns agent's built-in env when no config."""
+        agent = _MockAgent()
+        with patch("agent_cli.dev.cli._get_config_agent_env", return_value=None):
+            result = _get_agent_env(agent)
+            assert result == {"BUILTIN_VAR": "builtin_value"}
+
+    def test_config_overrides_builtin(self) -> None:
+        """Config env vars override built-in env vars."""
+        agent = _MockAgent()
+        config_env = {"mock": {"BUILTIN_VAR": "overridden", "NEW_VAR": "new_value"}}
+        with patch("agent_cli.dev.cli._get_config_agent_env", return_value=config_env):
+            result = _get_agent_env(agent)
+            assert result == {"BUILTIN_VAR": "overridden", "NEW_VAR": "new_value"}
+
+    def test_merges_builtin_and_config(self) -> None:
+        """Config env vars are merged with built-in env vars."""
+        agent = _MockAgent()
+        config_env = {"mock": {"CONFIG_VAR": "config_value"}}
+        with patch("agent_cli.dev.cli._get_config_agent_env", return_value=config_env):
+            result = _get_agent_env(agent)
+            assert result == {"BUILTIN_VAR": "builtin_value", "CONFIG_VAR": "config_value"}
+
+    def test_ignores_other_agents(self) -> None:
+        """Config for other agents is ignored."""
+        agent = _MockAgent()
+        config_env = {"other": {"OTHER_VAR": "other_value"}}
+        with patch("agent_cli.dev.cli._get_config_agent_env", return_value=config_env):
+            result = _get_agent_env(agent)
+            assert result == {"BUILTIN_VAR": "builtin_value"}
