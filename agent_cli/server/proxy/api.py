@@ -18,6 +18,7 @@ from agent_cli.agents.transcribe import (
 )
 from agent_cli.core.audio_format import VALID_EXTENSIONS, convert_audio_to_wyoming_format
 from agent_cli.core.transcription_logger import TranscriptionLogger, get_default_logger
+from agent_cli.server.common import log_requests_middleware
 from agent_cli.services import asr
 from agent_cli.services.llm import process_and_update_clipboard
 
@@ -35,20 +36,7 @@ app = FastAPI(
 @app.middleware("http")
 async def log_requests(request: Request, call_next) -> Any:  # type: ignore[no-untyped-def]  # noqa: ANN001
     """Log basic request information."""
-    client_ip = request.client.host if request.client else "unknown"
-    LOGGER.info("%s %s from %s", request.method, request.url.path, client_ip)
-
-    response = await call_next(request)
-
-    if response.status_code >= 400:  # noqa: PLR2004
-        LOGGER.warning(
-            "Request failed: %s %s → %d",
-            request.method,
-            request.url.path,
-            response.status_code,
-        )
-
-    return response
+    return await log_requests_middleware(request, call_next)
 
 
 class TranscriptionResponse(BaseModel):

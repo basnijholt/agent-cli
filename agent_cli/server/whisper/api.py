@@ -16,6 +16,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel
 
+from agent_cli import constants
+from agent_cli.server.common import log_requests_middleware
 from agent_cli.server.whisper import metrics
 
 if TYPE_CHECKING:
@@ -176,6 +178,12 @@ def create_app(  # noqa: C901, PLR0915
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+    # Add request logging middleware
+    @app.middleware("http")
+    async def log_requests(request: Any, call_next: Any) -> Any:
+        """Log basic request information."""
+        return await log_requests_middleware(request, call_next)
 
     # Add Prometheus metrics endpoint if enabled
     if enable_metrics and metrics.HAS_PROMETHEUS:
@@ -434,9 +442,9 @@ def create_app(  # noqa: C901, PLR0915
                 # Initialize WAV file on first chunk
                 if wav_file is None:
                     wav_file = wave.open(audio_buffer, "wb")  # noqa: SIM115
-                    wav_file.setnchannels(1)
-                    wav_file.setsampwidth(2)  # 16-bit
-                    wav_file.setframerate(16000)
+                    wav_file.setnchannels(constants.AUDIO_CHANNELS)
+                    wav_file.setsampwidth(constants.AUDIO_FORMAT_WIDTH)
+                    wav_file.setframerate(constants.AUDIO_RATE)
 
                 wav_file.writeframes(data)
 
