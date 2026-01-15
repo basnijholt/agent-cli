@@ -36,6 +36,12 @@ Run a local Whisper ASR server with automatic backend selection based on your pl
 > ```
 > Server is now running at `http://localhost:5000`. Verify with `curl http://localhost:5000/health`.
 >
+> Apple Silicon MLX-only setup:
+> ```bash
+> pip install "agent-cli[server]" mlx-whisper
+> agent-cli server whisper --backend mlx
+> ```
+>
 > Use it with any OpenAI-compatible client, or configure agent-cli to use it - see [Configuration](../configuration.md#using-local-whisper-server).
 
 ### Features
@@ -68,7 +74,7 @@ agent-cli server whisper --model large-v3 --model small --default-model large-v3
 # Force CPU mode
 agent-cli server whisper --device cpu
 
-# Download model without starting server
+# Download model without starting server (requires faster-whisper)
 agent-cli server whisper --model large-v3 --download-only
 
 # Preload model at startup (skip lazy loading)
@@ -216,9 +222,10 @@ The Whisper server is designed to work seamlessly with other agent-cli commands.
 
 ### Installation
 
-Requires the `whisper` extra:
+Requires server deps and a backend:
 
 ```bash
+# faster-whisper backend (also needed for --download-only)
 pip install "agent-cli[whisper]"
 # or
 uv sync --extra whisper
@@ -229,7 +236,7 @@ uv sync --extra whisper
 For optimal performance on M1/M2/M3/M4 Macs, install mlx-whisper:
 
 ```bash
-pip install mlx-whisper
+pip install "agent-cli[server]" mlx-whisper
 ```
 
 The server will automatically detect and use the MLX backend when available.

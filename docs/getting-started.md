@@ -38,6 +38,11 @@ For a complete local setup with all AI services:
 > pip install "agent-cli[whisper]"
 > agent-cli server whisper
 > ```
+> Apple Silicon MLX-only setup:
+> ```bash
+> pip install "agent-cli[server]" mlx-whisper
+> agent-cli server whisper --backend mlx
+> ```
 > See [Local Whisper Server](commands/server.md#whisper) for details.
 
 === "Using CLI Commands"
