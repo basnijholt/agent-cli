@@ -195,6 +195,48 @@ tts_kokoro_model = "kokoro"
 tts_kokoro_voice = "af_sky"
 ```
 
+## Using Local Whisper Server
+
+Run your own GPU-accelerated Whisper server for free, private, offline transcription.
+
+### Quick Start
+
+```bash
+# Terminal 1: Start the server
+agent-cli server whisper
+
+# Terminal 2: Transcribe using local server (Wyoming streams audio in real-time)
+agent-cli transcribe --asr-provider wyoming --asr-wyoming-port 10300
+```
+
+That's it! The server loads the model on first request and auto-unloads after 5 minutes of idle time to free VRAM.
+
+### Make It Permanent
+
+Add to your config file so all commands use your local server:
+
+```toml
+[defaults]
+asr_provider = "wyoming"
+asr_wyoming_port = 10300
+```
+
+Now just run `agent-cli transcribe` - it automatically uses your local server.
+
+### Why Use This?
+
+| Benefit | Description |
+|---------|-------------|
+| **Private** | Audio never leaves your machine |
+| **Fast** | GPU acceleration, no network latency |
+| **Streaming** | Wyoming streams audio as you speak (lower latency) |
+| **Offline** | Works without internet |
+| **VRAM-friendly** | Auto-unloads when idle |
+
+> [!TIP]
+> **OpenAI SDK users:** The server also exposes an OpenAI-compatible API on port 10301.
+> See [server whisper docs](commands/server.md#whisper) for all options.
+
 ## Audio Device Configuration
 
 ```toml

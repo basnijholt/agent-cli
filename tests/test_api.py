@@ -46,11 +46,11 @@ def test_transcribe_invalid_file_type(client: TestClient) -> None:
     assert "Unsupported audio format" in response.json()["detail"]
 
 
-@patch("agent_cli.api._build_context_payload")
-@patch("agent_cli.api.get_default_logger")
-@patch("agent_cli.api.process_and_update_clipboard")
-@patch("agent_cli.api._transcribe_with_provider")
-@patch("agent_cli.api._convert_audio_for_local_asr")
+@patch("agent_cli.server.proxy.api._build_context_payload")
+@patch("agent_cli.server.proxy.api.get_default_logger")
+@patch("agent_cli.server.proxy.api.process_and_update_clipboard")
+@patch("agent_cli.server.proxy.api._transcribe_with_provider")
+@patch("agent_cli.server.proxy.api._convert_audio_for_local_asr")
 def test_transcribe_success_with_cleanup(
     mock_convert: AsyncMock,
     mock_transcribe: AsyncMock,
@@ -94,8 +94,8 @@ def test_transcribe_success_with_cleanup(
     mock_context_builder.assert_called_once()
 
 
-@patch("agent_cli.api._convert_audio_for_local_asr")
-@patch("agent_cli.api._transcribe_with_provider")
+@patch("agent_cli.server.proxy.api._convert_audio_for_local_asr")
+@patch("agent_cli.server.proxy.api._transcribe_with_provider")
 def test_transcribe_success_without_cleanup(
     mock_transcribe: AsyncMock,
     mock_convert: AsyncMock,
@@ -129,8 +129,8 @@ def test_transcribe_success_without_cleanup(
     mock_transcribe.assert_called_once()
 
 
-@patch("agent_cli.api._convert_audio_for_local_asr")
-@patch("agent_cli.api._transcribe_with_provider")
+@patch("agent_cli.server.proxy.api._convert_audio_for_local_asr")
+@patch("agent_cli.server.proxy.api._transcribe_with_provider")
 def test_transcribe_empty_result(
     mock_transcribe: AsyncMock,
     mock_convert: AsyncMock,
@@ -157,8 +157,8 @@ def test_transcribe_empty_result(
     assert data["error"] == "No transcript generated from audio"
 
 
-@patch("agent_cli.api._convert_audio_for_local_asr")
-@patch("agent_cli.api._transcribe_with_provider")
+@patch("agent_cli.server.proxy.api._convert_audio_for_local_asr")
+@patch("agent_cli.server.proxy.api._transcribe_with_provider")
 def test_transcribe_with_exception(
     mock_transcribe: AsyncMock,
     mock_convert: AsyncMock,
@@ -188,9 +188,9 @@ def test_transcribe_with_exception(
 def test_transcribe_with_extra_instructions(client: TestClient) -> None:
     """Test transcription with extra instructions."""
     with (
-        patch("agent_cli.api._convert_audio_for_local_asr") as mock_convert,
-        patch("agent_cli.api._transcribe_with_provider") as mock_transcribe,
-        patch("agent_cli.api.process_and_update_clipboard") as mock_process,
+        patch("agent_cli.server.proxy.api._convert_audio_for_local_asr") as mock_convert,
+        patch("agent_cli.server.proxy.api._transcribe_with_provider") as mock_transcribe,
+        patch("agent_cli.server.proxy.api.process_and_update_clipboard") as mock_process,
     ):
         mock_convert.return_value = b"converted_audio_data"
         mock_transcribe.return_value = "hello world"
@@ -221,9 +221,9 @@ def test_transcribe_with_extra_instructions(client: TestClient) -> None:
 def test_string_boolean_cleanup(client: TestClient) -> None:
     """Test that cleanup parameter accepts string 'true'/'false' for iOS compatibility."""
     with (
-        patch("agent_cli.api._convert_audio_for_local_asr") as mock_convert,
-        patch("agent_cli.api._transcribe_with_provider") as mock_transcribe,
-        patch("agent_cli.api.process_and_update_clipboard") as mock_process,
+        patch("agent_cli.server.proxy.api._convert_audio_for_local_asr") as mock_convert,
+        patch("agent_cli.server.proxy.api._transcribe_with_provider") as mock_transcribe,
+        patch("agent_cli.server.proxy.api.process_and_update_clipboard") as mock_process,
     ):
         mock_process.return_value = "This is a test transcription."
         mock_convert.return_value = b"converted_audio_data"
@@ -276,9 +276,9 @@ def test_early_exception_no_crash(client: TestClient) -> None:
 def test_logging_failure_no_crash(client: TestClient) -> None:
     """Test that logging failures in finally block don't crash the server."""
     with (
-        patch("agent_cli.api._convert_audio_for_local_asr") as mock_convert,
-        patch("agent_cli.api._transcribe_with_provider") as mock_transcribe,
-        patch("agent_cli.api.get_default_logger") as mock_logger,
+        patch("agent_cli.server.proxy.api._convert_audio_for_local_asr") as mock_convert,
+        patch("agent_cli.server.proxy.api._transcribe_with_provider") as mock_transcribe,
+        patch("agent_cli.server.proxy.api.get_default_logger") as mock_logger,
     ):
         mock_convert.return_value = b"converted_audio_data"
         mock_transcribe.return_value = "test transcription"
@@ -310,9 +310,9 @@ def test_logging_failure_no_crash(client: TestClient) -> None:
 def test_exception_with_partial_processing(client: TestClient) -> None:
     """Test handling when exception occurs after partial processing."""
     with (
-        patch("agent_cli.api._convert_audio_for_local_asr") as mock_convert,
-        patch("agent_cli.api._transcribe_with_provider") as mock_transcribe,
-        patch("agent_cli.api.process_and_update_clipboard") as mock_process,
+        patch("agent_cli.server.proxy.api._convert_audio_for_local_asr") as mock_convert,
+        patch("agent_cli.server.proxy.api._transcribe_with_provider") as mock_transcribe,
+        patch("agent_cli.server.proxy.api.process_and_update_clipboard") as mock_process,
     ):
         mock_convert.return_value = b"converted_audio_data"
         mock_transcribe.return_value = "test transcription"
@@ -340,8 +340,8 @@ def test_exception_with_partial_processing(client: TestClient) -> None:
 def test_llm_connection_error_no_server_exit(client: TestClient) -> None:
     """Test that LLM connection errors don't cause server to exit."""
     with (
-        patch("agent_cli.api._convert_audio_for_local_asr") as mock_convert,
-        patch("agent_cli.api._transcribe_with_provider") as mock_transcribe,
+        patch("agent_cli.server.proxy.api._convert_audio_for_local_asr") as mock_convert,
+        patch("agent_cli.server.proxy.api._transcribe_with_provider") as mock_transcribe,
         patch("agent_cli.services.llm.create_llm_agent") as mock_create_agent,
     ):
         mock_convert.return_value = b"converted_audio_data"
@@ -388,8 +388,8 @@ def test_supported_audio_formats(client: TestClient) -> None:
     ]
 
     with (
-        patch("agent_cli.api._convert_audio_for_local_asr") as mock_convert,
-        patch("agent_cli.api._transcribe_with_provider") as mock_transcribe,
+        patch("agent_cli.server.proxy.api._convert_audio_for_local_asr") as mock_convert,
+        patch("agent_cli.server.proxy.api._transcribe_with_provider") as mock_transcribe,
     ):
         mock_convert.return_value = b"converted_audio_data"
         mock_transcribe.return_value = "test"
@@ -410,11 +410,11 @@ def test_supported_audio_formats(client: TestClient) -> None:
                 assert data["success"] is True, f"Failed for {ext}"
 
 
-@patch("agent_cli.api._build_context_payload")
-@patch("agent_cli.api.get_default_logger")
-@patch("agent_cli.api.process_and_update_clipboard")
-@patch("agent_cli.api._transcribe_with_provider")
-@patch("agent_cli.api._convert_audio_for_local_asr")
+@patch("agent_cli.server.proxy.api._build_context_payload")
+@patch("agent_cli.server.proxy.api.get_default_logger")
+@patch("agent_cli.server.proxy.api.process_and_update_clipboard")
+@patch("agent_cli.server.proxy.api._transcribe_with_provider")
+@patch("agent_cli.server.proxy.api._convert_audio_for_local_asr")
 def test_transcribe_cleanup_includes_context(
     mock_convert: AsyncMock,
     mock_transcribe: AsyncMock,
