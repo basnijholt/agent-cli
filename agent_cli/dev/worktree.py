@@ -282,6 +282,7 @@ class CreateWorktreeResult:
     path: Path | None
     branch: str
     error: str | None = None
+    warning: str | None = None
 
 
 def _check_branch_exists(branch_name: str, repo_root: Path) -> tuple[bool, bool]:
@@ -581,6 +582,9 @@ def create_worktree(
             on_log("Running: git fetch origin")
         _run_git("fetch", "origin", cwd=repo_root, check=False, capture_output=capture_output)
 
+    # Track if user explicitly provided --from (for warning generation)
+    from_ref_explicit = from_ref is not None
+
     # Determine the reference to create from
     # Use origin/{branch} to ensure we're using the freshly-fetched remote ref,
     # not a potentially stale local branch
@@ -589,6 +593,14 @@ def create_worktree(
 
     # Check if branch exists remotely or locally
     remote_exists, local_exists = _check_branch_exists(branch_name, repo_root)
+
+    # Generate warning if --from was specified but will be ignored
+    warning: str | None = None
+    if from_ref_explicit and (local_exists or remote_exists):
+        warning = (
+            f"Branch '{branch_name}' already exists. "
+            f"Using existing branch instead of creating from '{from_ref}'."
+        )
 
     try:
         _add_worktree(
@@ -616,6 +628,7 @@ def create_worktree(
             success=True,
             path=worktree_path,
             branch=branch_name,
+            warning=warning,
         )
 
     except subprocess.CalledProcessError as e:

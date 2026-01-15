@@ -211,6 +211,100 @@ class TestDevPath:
             assert "not found" in result.output.lower()
 
 
+class TestDevRm:
+    """Tests for dev rm command."""
+
+    def test_rm_force_skips_confirmation(self) -> None:
+        """The --force flag skips the confirmation prompt.
+
+        Bug fix: Previously --force only passed force to git worktree remove
+        but still prompted for confirmation. Now it skips the prompt entirely.
+
+        Evidence: typer.confirm() is only called when neither --yes nor --force
+        is provided (line 845 in cli.py).
+        """
+        mock_wt = WorktreeInfo(
+            path=Path("/repo-worktrees/feature"),
+            branch="feature",
+            commit="abc",
+            is_main=False,
+            is_detached=False,
+            is_locked=False,
+            is_prunable=False,
+        )
+
+        with (
+            patch("agent_cli.dev.worktree.get_main_repo_root", return_value=Path("/repo")),
+            patch("agent_cli.dev.worktree.git_available", return_value=True),
+            patch("agent_cli.dev.worktree.find_worktree_by_name", return_value=mock_wt),
+            patch(
+                "agent_cli.dev.worktree.remove_worktree",
+                return_value=(True, None),
+            ) as mock_remove,
+        ):
+            # With --force, should NOT prompt and should succeed
+            result = runner.invoke(app, ["dev", "rm", "feature", "--force"])
+            assert result.exit_code == 0
+            assert "Removed worktree" in result.output
+            # Verify remove_worktree was called with force=True
+            mock_remove.assert_called_once()
+            assert mock_remove.call_args[1]["force"] is True
+
+    def test_rm_yes_skips_confirmation(self) -> None:
+        """The --yes flag skips the confirmation prompt."""
+        mock_wt = WorktreeInfo(
+            path=Path("/repo-worktrees/feature"),
+            branch="feature",
+            commit="abc",
+            is_main=False,
+            is_detached=False,
+            is_locked=False,
+            is_prunable=False,
+        )
+
+        with (
+            patch("agent_cli.dev.worktree.get_main_repo_root", return_value=Path("/repo")),
+            patch("agent_cli.dev.worktree.git_available", return_value=True),
+            patch("agent_cli.dev.worktree.find_worktree_by_name", return_value=mock_wt),
+            patch(
+                "agent_cli.dev.worktree.remove_worktree",
+                return_value=(True, None),
+            ) as mock_remove,
+        ):
+            # With --yes, should NOT prompt and should succeed
+            result = runner.invoke(app, ["dev", "rm", "feature", "--yes"])
+            assert result.exit_code == 0
+            assert "Removed worktree" in result.output
+            mock_remove.assert_called_once()
+
+    def test_rm_without_flags_prompts(self) -> None:
+        """Without --force or --yes, rm prompts for confirmation."""
+        mock_wt = WorktreeInfo(
+            path=Path("/repo-worktrees/feature"),
+            branch="feature",
+            commit="abc",
+            is_main=False,
+            is_detached=False,
+            is_locked=False,
+            is_prunable=False,
+        )
+
+        with (
+            patch("agent_cli.dev.worktree.get_main_repo_root", return_value=Path("/repo")),
+            patch("agent_cli.dev.worktree.git_available", return_value=True),
+            patch("agent_cli.dev.worktree.find_worktree_by_name", return_value=mock_wt),
+            patch(
+                "agent_cli.dev.worktree.remove_worktree",
+                return_value=(True, None),
+            ) as mock_remove,
+        ):
+            # Without --force or --yes, should prompt (and abort on 'n')
+            result = runner.invoke(app, ["dev", "rm", "feature"], input="n\n")
+            assert result.exit_code != 0 or "Aborted" in result.output
+            # remove_worktree should NOT have been called since user said no
+            mock_remove.assert_not_called()
+
+
 class TestFormatEnvPrefix:
     """Tests for _format_env_prefix function."""
 
