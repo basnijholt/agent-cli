@@ -14,9 +14,8 @@ import pytest
 from fastapi.testclient import TestClient
 from typer.testing import CliRunner
 
-from agent_cli.agents.server import run_server
-from agent_cli.api import TranscriptionRequest, app, transcribe_audio
 from agent_cli.cli import app as cli_app
+from agent_cli.server.proxy.api import TranscriptionRequest, app, transcribe_audio
 
 if TYPE_CHECKING:
     from _pytest.monkeypatch import MonkeyPatch
@@ -33,9 +32,9 @@ async def test_full_transcription_workflow() -> None:
     """Test the full transcription workflow with mocked services."""
     # Create mock configs
     with (
-        patch("agent_cli.api._convert_audio_for_local_asr") as mock_convert,
-        patch("agent_cli.api._transcribe_with_provider") as mock_transcribe,
-        patch("agent_cli.api.process_and_update_clipboard") as mock_process,
+        patch("agent_cli.server.proxy.api._convert_audio_for_local_asr") as mock_convert,
+        patch("agent_cli.server.proxy.api._transcribe_with_provider") as mock_transcribe,
+        patch("agent_cli.server.proxy.api.process_and_update_clipboard") as mock_process,
     ):
         # Setup mocks
         mock_convert.return_value = b"converted_audio_data"
@@ -96,7 +95,19 @@ def test_server_command_in_cli() -> None:
     result = runner.invoke(cli_app, ["server", "--help"])
 
     assert result.exit_code == 0
-    assert "Run the FastAPI transcription web server" in result.stdout
+
+    # Strip ANSI color codes for more reliable testing
+    clean_output = re.sub(r"\x1b\[[0-9;]*m", "", result.stdout)
+    assert "whisper" in clean_output
+    assert "transcription-proxy" in clean_output
+
+
+def test_server_transcription_proxy_command_in_cli() -> None:
+    """Test that the server transcription-proxy command is registered in CLI."""
+    runner = CliRunner()
+    result = runner.invoke(cli_app, ["server", "transcription-proxy", "--help"])
+
+    assert result.exit_code == 0
 
     # Strip ANSI color codes for more reliable testing
     clean_output = re.sub(r"\x1b\[[0-9;]*m", "", result.stdout)
@@ -105,18 +116,31 @@ def test_server_command_in_cli() -> None:
     assert "--reload" in clean_output
 
 
-@patch("uvicorn.run")
-def test_run_server_function(mock_uvicorn_run: MagicMock) -> None:
-    """Test the run_server function."""
-    run_server(host="127.0.0.1", port=8080, reload=True)
+def test_server_whisper_command_in_cli() -> None:
+    """Test that the server whisper command is registered in CLI."""
+    runner = CliRunner()
+    result = runner.invoke(cli_app, ["server", "whisper", "--help"])
 
-    mock_uvicorn_run.assert_called_once_with(
-        "agent_cli.api:app",
-        host="127.0.0.1",
-        port=8080,
-        reload=True,
-        log_level="info",
-    )
+    assert result.exit_code == 0
+
+    # Strip ANSI color codes for more reliable testing
+    clean_output = re.sub(r"\x1b\[[0-9;]*m", "", result.stdout)
+    assert "--model" in clean_output
+    assert "--ttl" in clean_output
+    assert "--wyoming-port" in clean_output
+
+
+@patch("uvicorn.run")
+def test_server_transcription_proxy_runs_uvicorn(mock_uvicorn_run: MagicMock) -> None:
+    """Test the server transcription-proxy command runs uvicorn."""
+    runner = CliRunner()
+    runner.invoke(cli_app, ["server", "transcription-proxy", "--port", "8080"])
+
+    # The command should attempt to run uvicorn
+    mock_uvicorn_run.assert_called_once()
+    call_kwargs = mock_uvicorn_run.call_args[1]
+    assert call_kwargs["port"] == 8080
+    assert call_kwargs["log_level"] == "info"
 
 
 def test_api_configuration_handling(monkeypatch: MonkeyPatch) -> None:
@@ -140,7 +164,7 @@ def test_temp_file_cleanup(client: TestClient) -> None:
     temp_dir = Path(tempfile.gettempdir())
     temp_files_before = set(temp_dir.iterdir())
 
-    with patch("agent_cli.api._transcribe_with_provider") as mock_transcribe:
+    with patch("agent_cli.server.proxy.api._transcribe_with_provider") as mock_transcribe:
         mock_transcribe.return_value = "test"
 
         with tempfile.NamedTemporaryFile(suffix=".wav") as tmp:
@@ -170,8 +194,8 @@ def test_temp_file_cleanup(client: TestClient) -> None:
 async def test_concurrent_requests() -> None:
     """Test that the API can handle concurrent requests."""
     with (
-        patch("agent_cli.api._convert_audio_for_local_asr") as mock_convert,
-        patch("agent_cli.api._transcribe_with_provider") as mock_transcribe,
+        patch("agent_cli.server.proxy.api._convert_audio_for_local_asr") as mock_convert,
+        patch("agent_cli.server.proxy.api._transcribe_with_provider") as mock_transcribe,
     ):
         # Setup mocks
         mock_convert.return_value = b"converted_audio_data"
