@@ -134,7 +134,7 @@ def create_app(  # noqa: C901, PLR0915
     registry: WhisperModelRegistry,
     *,
     enable_wyoming: bool = True,
-    wyoming_uri: str = "tcp://0.0.0.0:3001",
+    wyoming_uri: str = "tcp://0.0.0.0:10300",
     background_preload: bool = False,
 ) -> FastAPI:
     """Create the FastAPI application.

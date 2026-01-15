@@ -69,7 +69,7 @@ def test_server_whisper_command(mock_uvicorn_run: pytest.MagicMock) -> None:
     """Test the server whisper command."""
     result = runner.invoke(
         app,
-        ["server", "whisper", "--model", "tiny", "--port", "5000"],
+        ["server", "whisper", "--model", "tiny", "--port", "10301"],
     )
     assert result.exit_code == 0
     assert "Starting Whisper ASR Server" in result.stdout
@@ -88,7 +88,7 @@ def test_server_whisper_command_mlx_without_faster_whisper(
     """Test MLX backend runs without faster-whisper installed."""
     result = runner.invoke(
         app,
-        ["server", "whisper", "--model", "tiny", "--backend", "mlx", "--port", "5000"],
+        ["server", "whisper", "--model", "tiny", "--backend", "mlx", "--port", "10301"],
     )
     assert result.exit_code == 0
     assert "Backend: mlx" in result.stdout

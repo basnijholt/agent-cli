@@ -34,7 +34,7 @@ Run a local Whisper ASR server with automatic backend selection based on your pl
 > pip install "agent-cli[whisper]"
 > agent-cli server whisper
 > ```
-> Server is now running at `http://localhost:5000`. Verify with `curl http://localhost:5000/health`.
+> Server is now running at `http://localhost:10301`. Verify with `curl http://localhost:10301/health`.
 >
 > Apple Silicon MLX-only setup:
 > ```bash
@@ -101,8 +101,8 @@ agent-cli server whisper --preload
 | `--ttl` | `300` | Seconds before unloading idle model |
 | `--preload` | `false` | Load model(s) at startup and wait for completion |
 | `--host` | `0.0.0.0` | Host to bind the server to |
-| `--port` | `5000` | HTTP API port |
-| `--wyoming-port` | `3001` | Wyoming protocol port |
+| `--port` | `10301` | HTTP API port |
+| `--wyoming-port` | `10300` | Wyoming protocol port |
 | `--no-wyoming` | `false` | Disable Wyoming server |
 | `--download-only` | `false` | Download model(s) and exit without starting server |
 | `--log-level` | `info` | Logging level: debug, info, warning, error |
@@ -130,19 +130,19 @@ Once running, the server exposes:
 
 ```bash
 # Transcribe an audio file
-curl -X POST http://localhost:5000/v1/audio/transcriptions \
+curl -X POST http://localhost:10301/v1/audio/transcriptions \
   -F "file=@recording.wav" \
   -F "model=whisper-1"
 
 # With language hint and verbose output
-curl -X POST http://localhost:5000/v1/audio/transcriptions \
+curl -X POST http://localhost:10301/v1/audio/transcriptions \
   -F "file=@recording.wav" \
   -F "model=whisper-1" \
   -F "language=en" \
   -F "response_format=verbose_json"
 
 # Get SRT subtitles
-curl -X POST http://localhost:5000/v1/audio/transcriptions \
+curl -X POST http://localhost:10301/v1/audio/transcriptions \
   -F "file=@recording.wav" \
   -F "model=whisper-1" \
   -F "response_format=srt"
@@ -153,7 +153,7 @@ curl -X POST http://localhost:5000/v1/audio/transcriptions \
 ```python
 from openai import OpenAI
 
-client = OpenAI(base_url="http://localhost:5000/v1", api_key="not-needed")
+client = OpenAI(base_url="http://localhost:10301/v1", api_key="not-needed")
 
 # Transcribe audio
 with open("recording.wav", "rb") as f:
@@ -170,7 +170,7 @@ The `/v1/audio/transcriptions/stream` endpoint provides real-time streaming tran
 
 #### Protocol
 
-1. Connect to `ws://localhost:5000/v1/audio/transcriptions/stream?model=whisper-1`
+1. Connect to `ws://localhost:10301/v1/audio/transcriptions/stream?model=whisper-1`
 2. Send binary audio chunks (16kHz, 16-bit, mono PCM)
 3. Send `EOS` (3 bytes: `0x45 0x4F 0x53`) to signal end of audio
 4. Receive JSON response with transcription
@@ -214,7 +214,7 @@ The `/v1/audio/transcriptions/stream` endpoint provides real-time streaming tran
 | Port already in use | Use `--port XXXX` to specify different port |
 | Model download fails | Check network connection, or use `--download-only` first |
 | Slow first request | Model is still downloading/loading. Use `--preload` to wait at startup |
-| Wyoming not working | Ensure port 3001 is not blocked; check with `nc -zv localhost 3001` |
+| Wyoming not working | Ensure port 10300 is not blocked; check with `nc -zv localhost 10300` |
 
 ### Using with agent-cli Commands
 

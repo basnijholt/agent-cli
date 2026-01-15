@@ -141,14 +141,14 @@ def whisper_cmd(  # noqa: PLR0912, PLR0915
             "-p",
             help="HTTP API port",
         ),
-    ] = 5000,
+    ] = 10301,
     wyoming_port: Annotated[
         int,
         typer.Option(
             "--wyoming-port",
             help="Wyoming protocol port",
         ),
-    ] = 3001,
+    ] = 10300,
     no_wyoming: Annotated[
         bool,
         typer.Option(

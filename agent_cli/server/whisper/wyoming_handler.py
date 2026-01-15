@@ -183,13 +183,13 @@ class WyomingWhisperHandler(AsyncEventHandler):
 
 async def start_wyoming_server(
     registry: WhisperModelRegistry,
-    uri: str = "tcp://0.0.0.0:3001",
+    uri: str = "tcp://0.0.0.0:10300",
 ) -> None:
     """Start the Wyoming ASR server.
 
     Args:
         registry: Model registry for transcription.
-        uri: URI to bind the server to (e.g., "tcp://0.0.0.0:3001").
+        uri: URI to bind the server to (e.g., "tcp://0.0.0.0:10300").
 
     """
     server = AsyncServer.from_uri(uri)
