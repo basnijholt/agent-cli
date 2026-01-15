@@ -195,6 +195,70 @@ tts_kokoro_model = "kokoro"
 tts_kokoro_voice = "af_sky"
 ```
 
+## Using Local Whisper Server
+
+You can run your own GPU-accelerated Whisper server with [`agent-cli server whisper`](commands/server.md#whisper) and use it with all transcription commands. This gives you:
+
+- **Privacy** - audio never leaves your local network
+- **No API costs** - no per-request fees
+- **Low latency** - local processing is faster than cloud round-trips
+- **Offline capability** - works without internet
+- **VRAM efficiency** - TTL-based unloading frees GPU when idle
+
+### Starting the Server
+
+```bash
+# Start with default settings (large-v3 model, 5-minute TTL)
+agent-cli server whisper
+
+# Or with custom settings
+agent-cli server whisper --model large-v3 --ttl 600 --port 5000
+```
+
+### Option 1: Via OpenAI Provider (Recommended)
+
+Point the OpenAI ASR provider at your local server:
+
+```toml
+[defaults]
+asr_provider = "openai"
+asr_openai_base_url = "http://localhost:5000/v1"
+
+# No API key needed for local server, but the field must exist
+# openai_api_key = "not-needed"
+```
+
+Or via environment variable:
+
+```bash
+export ASR_OPENAI_BASE_URL="http://localhost:5000/v1"
+agent-cli transcribe
+```
+
+### Option 2: Via Wyoming Provider
+
+The Whisper server also exposes the Wyoming protocol (used by Home Assistant):
+
+```toml
+[defaults]
+asr_provider = "wyoming"
+asr_wyoming_ip = "localhost"
+asr_wyoming_port = 3001
+```
+
+### Example Workflow
+
+```bash
+# Terminal 1: Start the Whisper server
+agent-cli server whisper --model large-v3 --ttl 300
+
+# Terminal 2: Use transcription commands (they now use local server)
+agent-cli transcribe --asr-provider openai --asr-openai-base-url http://localhost:5000/v1
+
+# Or with config file, just:
+agent-cli transcribe
+```
+
 ## Audio Device Configuration
 
 ```toml

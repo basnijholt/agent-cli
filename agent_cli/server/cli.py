@@ -305,10 +305,10 @@ def transcription_proxy_cmd(
 
     Examples:
         # Run on default port
-        agent-cli server proxy
+        agent-cli server transcription-proxy
 
         # Run on custom port
-        agent-cli server proxy --port 8080
+        agent-cli server transcription-proxy --port 8080
 
     """
     _check_server_deps()
