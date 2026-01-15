@@ -194,8 +194,7 @@ default-tag = "0.0.0"
 # Minimum lines number of a similarity (duplicate-code check)
 # Set higher than jscpd (15) to catch only very large duplications
 # jscpd is the primary checker; pylint is a secondary safety net
-# Current codebase has ~65-line duplications; set to 70 to pass but catch larger ones
-min-similarity-lines = 70
+min-similarity-lines = 20
 # Ignore comments when computing similarities
 ignore-comments = true
 # Ignore docstrings when computing similarities
