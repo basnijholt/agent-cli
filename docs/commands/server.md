@@ -31,12 +31,14 @@ Run a local Whisper ASR server powered by [faster-whisper](https://github.com/SY
 > pip install "agent-cli[whisper]"
 > agent-cli server whisper
 > ```
-> Server is now running at `http://localhost:5000`. Use it with any OpenAI-compatible client, or configure agent-cli to use it - see [Configuration](../configuration.md#using-local-whisper-server).
+> Server is now running at `http://localhost:5000`. Verify with `curl http://localhost:5000/health`.
+>
+> Use it with any OpenAI-compatible client, or configure agent-cli to use it - see [Configuration](../configuration.md#using-local-whisper-server).
 
 ### Features
 
 - **OpenAI-compatible API** at `/v1/audio/transcriptions` - drop-in replacement for OpenAI's Whisper API
-- **Wyoming protocol** for Home Assistant integration
+- **Wyoming protocol** for [Home Assistant](https://www.home-assistant.io/) voice integration (Wyoming is the standard protocol for local voice services)
 - **TTL-based VRAM management** - models unload after idle period, freeing GPU memory
 - **Multiple models** - run different model sizes with independent TTLs
 - **Lazy loading** - models load on first request, not at startup
