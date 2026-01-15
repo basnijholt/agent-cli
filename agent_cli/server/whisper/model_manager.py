@@ -5,15 +5,14 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import gc
-import io
 import logging
+import tempfile
 import time
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import TYPE_CHECKING, Any, Literal
 
 if TYPE_CHECKING:
-    from pathlib import Path
-
     from faster_whisper import WhisperModel
 
 logger = logging.getLogger(__name__)
@@ -307,20 +306,30 @@ class WhisperModelManager:
         start_time = time.time()
 
         try:
-            # Run transcription in thread pool
-            segments, info = await asyncio.to_thread(
-                model.transcribe,
-                io.BytesIO(audio),
-                language=language,
-                task=task,
-                initial_prompt=initial_prompt,
-                temperature=temperature,
-                vad_filter=vad_filter,
-                word_timestamps=word_timestamps,
-            )
+            # Write audio to temp file - faster_whisper/PyAV needs a real file or path
+            # to detect format correctly (BytesIO doesn't provide format hints)
+            with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
+                tmp.write(audio)
+                tmp_path = tmp.name
 
-            # Consume the generator
-            segment_list = list(segments)
+            try:
+                # Run transcription in thread pool
+                segments, info = await asyncio.to_thread(
+                    model.transcribe,
+                    tmp_path,
+                    language=language,
+                    task=task,
+                    initial_prompt=initial_prompt,
+                    temperature=temperature,
+                    vad_filter=vad_filter,
+                    word_timestamps=word_timestamps,
+                )
+                # Consume the generator before deleting file (segments is lazy)
+                segment_list = list(segments)
+            finally:
+                # Clean up temp file
+                with contextlib.suppress(OSError):
+                    Path(tmp_path).unlink()
             text = " ".join(seg.text.strip() for seg in segment_list)
 
             transcription_duration = time.time() - start_time

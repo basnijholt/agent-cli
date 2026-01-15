@@ -235,6 +235,8 @@ def whisper_cmd(
     # Print startup info
     console.print()
     console.print("[bold green]Starting Whisper ASR Server[/bold green]")
+    console.print()
+    console.print("[dim]Endpoints:[/dim]")
     console.print(f"  HTTP API: [cyan]http://{host}:{port}[/cyan]")
     if not no_wyoming:
         console.print(f"  Wyoming:  [cyan]{wyoming_uri}[/cyan]")
@@ -244,6 +246,17 @@ def whisper_cmd(
         is_default = m == registry.default_model
         suffix = " [yellow](default)[/yellow]" if is_default else ""
         console.print(f"  • {m} (ttl={ttl}s){suffix}")
+    console.print()
+    console.print("[dim]Usage with agent-cli:[/dim]")
+    console.print(
+        f"  [cyan]ag transcribe --asr-provider openai "
+        f"--asr-openai-base-url http://localhost:{port}/v1[/cyan]",
+    )
+    if not no_wyoming:
+        console.print(
+            f"  [cyan]ag transcribe --asr-wyoming-host {host} "
+            f"--asr-wyoming-port {wyoming_port}[/cyan]",
+        )
     console.print()
 
     # Create and run the app
