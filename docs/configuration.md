@@ -227,7 +227,6 @@ Now just run `agent-cli transcribe` - it automatically uses your local server.
 
 | Benefit | Description |
 |---------|-------------|
-| **Free** | No API costs |
 | **Private** | Audio never leaves your machine |
 | **Fast** | GPU acceleration, no network latency |
 | **Streaming** | Wyoming streams audio as you speak (lower latency) |
