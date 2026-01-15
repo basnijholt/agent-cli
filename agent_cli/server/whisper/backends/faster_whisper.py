@@ -72,7 +72,7 @@ class FasterWhisperBackend:
 
         assert self._model is not None  # for type checker
         logger.info(
-            "Loaded faster-whisper model %s on %s in %.2fs",
+            "Model %s loaded on %s in %.2fs",
             self._config.model_name,
             self._model.model.device,
             load_duration,
@@ -92,7 +92,7 @@ class FasterWhisperBackend:
 
         release_memory()
 
-        logger.debug("Unloaded faster-whisper model %s", self._config.model_name)
+        logger.info("Model %s unloaded", self._config.model_name)
 
     async def transcribe(
         self,

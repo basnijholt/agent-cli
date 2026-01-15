@@ -74,7 +74,7 @@ def _check_whisper_deps(backend: str, *, download_only: bool = False) -> None:
 
 
 @app.command("whisper")
-def whisper_cmd(  # noqa: PLR0915
+def whisper_cmd(  # noqa: PLR0912, PLR0915
     model: Annotated[
         list[str] | None,
         typer.Option(
@@ -221,6 +221,9 @@ def whisper_cmd(  # noqa: PLR0915
         resolved_backend = detect_backend()
 
     _check_whisper_deps(resolved_backend, download_only=download_only)
+
+    if backend == "auto" and not download_only:
+        logger.info("Selected %s backend (auto-detected)", resolved_backend)
 
     from agent_cli.server.whisper.model_manager import ModelConfig  # noqa: PLC0415
     from agent_cli.server.whisper.model_registry import WhisperModelRegistry  # noqa: PLC0415

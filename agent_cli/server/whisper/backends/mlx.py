@@ -142,9 +142,9 @@ class MLXWhisperBackend:
         self._loaded = True
         load_duration = time.time() - start_time
 
-        logger.debug(
-            "Prepared mlx-whisper model %s in %.2fs",
-            self._resolved_model,
+        logger.info(
+            "Model %s loaded in %.2fs",
+            self._config.model_name,
             load_duration,
         )
 
@@ -165,7 +165,7 @@ class MLXWhisperBackend:
         self._loaded = False
         release_memory()
 
-        logger.debug("Unloaded mlx-whisper model %s", self._resolved_model)
+        logger.info("Model %s unloaded", self._config.model_name)
 
     async def transcribe(
         self,
