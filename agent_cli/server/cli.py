@@ -204,6 +204,14 @@ def whisper_cmd(
     if model is None:
         model = ["large-v3"]
 
+    # Validate default model against model list
+    if default_model is not None and default_model not in model:
+        err_console.print(
+            f"[bold red]Error:[/bold red] --default-model '{default_model}' "
+            f"is not in the model list: {model}",
+        )
+        raise typer.Exit(1)
+
     # Handle download-only mode
     if download_only:
         console.print("[bold]Downloading model(s)...[/bold]")

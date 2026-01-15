@@ -29,6 +29,12 @@ class ModelConfig:
     cache_dir: Path | None = None
     cpu_threads: int = 4
 
+    def __post_init__(self) -> None:
+        """Validate configuration."""
+        if self.ttl_seconds < 1:
+            msg = f"ttl_seconds must be >= 1, got {self.ttl_seconds}"
+            raise ValueError(msg)
+
 
 @dataclass
 class ModelStats:
@@ -174,19 +180,26 @@ class WhisperModelManager:
 
         Returns True if model was unloaded, False if it wasn't loaded.
         """
+        # First check if model is loaded (with lock)
         async with self._lock:
             if self._model is None:
                 return False
 
-            # Wait for active requests to complete
-            while self._active_requests > 0:
-                logger.info(
-                    "Waiting for %d active requests before unloading %s",
-                    self._active_requests,
-                    self._config.model_name,
-                )
-                await asyncio.sleep(0.5)
+        # Wait for active requests without holding lock to avoid deadlock
+        # (transcribe() needs lock to decrement _active_requests)
+        while self._active_requests > 0:
+            logger.info(
+                "Waiting for %d active requests before unloading %s",
+                self._active_requests,
+                self._config.model_name,
+            )
+            await asyncio.sleep(0.5)
 
+        # Re-acquire lock and unload
+        async with self._lock:
+            # Re-check in case model was unloaded by another task
+            if self._model is None:
+                return False
             return await self._do_unload()
 
     async def _do_unload(self) -> bool:

@@ -426,25 +426,23 @@ def create_app(  # noqa: C901, PLR0915
             while True:
                 data = await websocket.receive_bytes()
 
-                # Check for end of stream (EOS marker)
-                eos_marker = b"EOS"
-                eos_len = len(eos_marker)
-                if data == eos_marker or data[-eos_len:] == eos_marker:
-                    # Write remaining data before EOS marker if present
-                    if (
-                        data[-eos_len:] == eos_marker
-                        and len(data) > eos_len
-                        and wav_file is not None
-                    ):
-                        wav_file.writeframes(data[:-eos_len])
-                    break
-
-                # Initialize WAV file on first chunk
+                # Initialize WAV file on first chunk (before EOS check)
                 if wav_file is None:
                     wav_file = wave.open(audio_buffer, "wb")  # noqa: SIM115
                     wav_file.setnchannels(constants.AUDIO_CHANNELS)
                     wav_file.setsampwidth(constants.AUDIO_FORMAT_WIDTH)
                     wav_file.setframerate(constants.AUDIO_RATE)
+
+                # Check for end of stream (EOS marker)
+                eos_marker = b"EOS"
+                eos_len = len(eos_marker)
+                if data == eos_marker:
+                    break
+                if data[-eos_len:] == eos_marker:
+                    # Write remaining data before EOS marker
+                    if len(data) > eos_len:
+                        wav_file.writeframes(data[:-eos_len])
+                    break
 
                 wav_file.writeframes(data)
 
