@@ -122,7 +122,7 @@ class WhisperModelRegistry:
                 ttl_seconds=manager.config.ttl_seconds,
                 ttl_remaining=manager.ttl_remaining,
                 total_requests=manager.stats.total_requests,
-                active_requests=manager._active_requests,
+                active_requests=manager.active_requests,
             )
             for name, manager in self._managers.items()
         ]

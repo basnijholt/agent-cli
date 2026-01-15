@@ -110,6 +110,11 @@ class WhisperModelManager:
             return None
         return str(self._model.model.device)
 
+    @property
+    def active_requests(self) -> int:
+        """Get the number of active requests."""
+        return self._active_requests
+
     async def start(self) -> None:
         """Start the TTL unload watcher."""
         if self._unload_task is None:

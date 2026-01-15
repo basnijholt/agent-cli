@@ -95,7 +95,6 @@ agent-cli server whisper --preload
 | `--wyoming-port` | `3001` | Wyoming protocol port |
 | `--no-wyoming` | `false` | Disable Wyoming server |
 | `--download-only` | `false` | Download model(s) and exit without starting server |
-| `--reload` | `false` | Enable auto-reload for development (not yet implemented) |
 
 
 <!-- OUTPUT:END -->
@@ -108,6 +107,8 @@ Once running, the server exposes:
 |----------|--------|-------------|
 | `/v1/audio/transcriptions` | POST | OpenAI-compatible transcription |
 | `/v1/audio/translations` | POST | OpenAI-compatible translation (to English) |
+| `/v1/audio/transcriptions/stream` | WebSocket | Real-time streaming transcription |
+| `/v1/model/unload` | POST | Manually unload a model from memory |
 | `/health` | GET | Health check with model status |
 | `/docs` | GET | Interactive API documentation |
 

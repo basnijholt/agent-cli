@@ -61,3 +61,17 @@ def test_server_transcription_proxy_command_with_options(
     assert "Starting Agent CLI transcription proxy on 127.0.0.1:8080" in result.stdout
     assert "Auto-reload enabled for development" in result.stdout
     mock_uvicorn_run.assert_called_once()
+
+
+@patch("uvicorn.run")
+@patch("agent_cli.server.cli.HAS_FASTER_WHISPER", True)
+def test_server_whisper_command(mock_uvicorn_run: pytest.MagicMock) -> None:
+    """Test the server whisper command."""
+    result = runner.invoke(
+        app,
+        ["server", "whisper", "--model", "tiny", "--port", "5000"],
+    )
+    assert result.exit_code == 0
+    assert "Starting Whisper ASR Server" in result.stdout
+    assert "tiny" in result.stdout
+    mock_uvicorn_run.assert_called_once()

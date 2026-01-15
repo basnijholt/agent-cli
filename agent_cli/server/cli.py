@@ -154,13 +154,6 @@ def whisper_cmd(
             help="Download model(s) and exit without starting server",
         ),
     ] = False,
-    reload: Annotated[  # noqa: ARG001
-        bool,
-        typer.Option(
-            "--reload",
-            help="Enable auto-reload for development (not yet implemented)",
-        ),
-    ] = False,
 ) -> None:
     """Run Whisper ASR server with TTL-based model unloading.
 
