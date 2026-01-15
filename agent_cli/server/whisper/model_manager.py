@@ -9,7 +9,7 @@ import io
 import logging
 import time
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -273,7 +273,7 @@ class WhisperModelManager:
         audio: bytes,
         *,
         language: str | None = None,
-        task: str = "transcribe",
+        task: Literal["transcribe", "translate"] = "transcribe",
         initial_prompt: str | None = None,
         temperature: float = 0.0,
         vad_filter: bool = True,

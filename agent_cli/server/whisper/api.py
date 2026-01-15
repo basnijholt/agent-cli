@@ -63,7 +63,7 @@ class TranscriptionResponse(BaseModel):
 class VerboseTranscriptionResponse(BaseModel):
     """OpenAI-compatible verbose transcription response."""
 
-    task: str
+    task: Literal["transcribe", "translate"]
     language: str
     duration: float
     text: str
@@ -268,9 +268,9 @@ def create_app(  # noqa: C901, PLR0915
         model: str,
         language: str | None,
         prompt: str | None,
-        response_format: str,
+        response_format: Literal["json", "text", "srt", "verbose_json", "vtt"],
         temperature: float,
-        task: str,
+        task: Literal["transcribe", "translate"],
     ) -> TranscriptionResponse | VerboseTranscriptionResponse | PlainTextResponse:
         """Perform transcription with the specified parameters."""
         # Resolve model name - "whisper-1" is OpenAI's model name, use default
