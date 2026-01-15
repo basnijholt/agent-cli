@@ -50,7 +50,7 @@ This creates:
 3. Opens a new terminal tab with an AI coding agent
 4. Passes your prompt to the agent
 
-**Important**: Use `--prompt-file` for prompts longer than a single line. The `--prompt` option passes text through the shell, which can cause issues with special characters (`!`, `$`, backticks, quotes) in ZSH and other shells. Using `--prompt-file` avoids all shell quoting issues.
+**Important**: Use `--prompt-file` for prompts longer than a single line. The `--prompt` option passes text through the shell, which can cause issues with special characters (exclamation marks, dollar signs, backticks, quotes) in ZSH and other shells. Using `--prompt-file` avoids all shell quoting issues.
 
 ## Writing effective prompts for spawned agents
 
