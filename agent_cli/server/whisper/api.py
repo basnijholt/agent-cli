@@ -100,8 +100,16 @@ class ModelStatusResponse(BaseModel):
     device: str | None
     ttl_seconds: int
     ttl_remaining: float | None
-    total_requests: int
     active_requests: int
+    # Stats
+    load_count: int
+    unload_count: int
+    total_requests: int
+    total_audio_seconds: float
+    total_transcription_seconds: float
+    last_load_time: float | None
+    last_request_time: float | None
+    load_duration_seconds: float | None
 
 
 class HealthResponse(BaseModel):
@@ -373,7 +381,9 @@ def create_app(  # noqa: C901, PLR0915
         await websocket.accept()
 
         try:
-            manager = registry.get_manager(model)
+            # Match OpenAI model aliases to the default model, like REST endpoints.
+            resolved_model = None if model in ("whisper-1", "whisper-large-v3") else model
+            manager = registry.get_manager(resolved_model)
         except ValueError as e:
             await websocket.send_json({"type": "error", "message": str(e)})
             await websocket.close()

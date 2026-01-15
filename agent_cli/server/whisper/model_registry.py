@@ -19,8 +19,16 @@ class ModelStatus:
     device: str | None
     ttl_seconds: int
     ttl_remaining: float | None
-    total_requests: int
     active_requests: int
+    # Stats
+    load_count: int
+    unload_count: int
+    total_requests: int
+    total_audio_seconds: float
+    total_transcription_seconds: float
+    last_load_time: float | None
+    last_request_time: float | None
+    load_duration_seconds: float | None
 
 
 class WhisperModelRegistry:
@@ -121,8 +129,15 @@ class WhisperModelRegistry:
                 device=manager.device,
                 ttl_seconds=manager.config.ttl_seconds,
                 ttl_remaining=manager.ttl_remaining,
-                total_requests=manager.stats.total_requests,
                 active_requests=manager.active_requests,
+                load_count=manager.stats.load_count,
+                unload_count=manager.stats.unload_count,
+                total_requests=manager.stats.total_requests,
+                total_audio_seconds=manager.stats.total_audio_seconds,
+                total_transcription_seconds=manager.stats.total_transcription_seconds,
+                last_load_time=manager.stats.last_load_time,
+                last_request_time=manager.stats.last_request_time,
+                load_duration_seconds=manager.stats.load_duration_seconds,
             )
             for name, manager in self._managers.items()
         ]
