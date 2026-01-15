@@ -243,7 +243,17 @@ The server will automatically detect and use the MLX backend when available.
 
 #### Docker
 
-Run the Whisper server in a container with GPU (CUDA) or CPU support using the [`whisper.Dockerfile`](https://github.com/basnijholt/agent-cli/blob/main/docker/whisper.Dockerfile):
+Pre-built images are available from GitHub Container Registry:
+
+```bash
+# Run with GPU support
+docker run -p 10300:10300 -p 10301:10301 --gpus all ghcr.io/basnijholt/agent-cli-whisper:latest-cuda
+
+# Run CPU-only
+docker run -p 10300:10300 -p 10301:10301 ghcr.io/basnijholt/agent-cli-whisper:latest-cpu
+```
+
+Or build from source using the [`whisper.Dockerfile`](https://github.com/basnijholt/agent-cli/blob/main/docker/whisper.Dockerfile):
 
 ```bash
 # Build and run with GPU support
