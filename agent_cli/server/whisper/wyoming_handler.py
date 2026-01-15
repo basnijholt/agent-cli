@@ -13,116 +13,15 @@ from wyoming.audio import AudioChunk, AudioStop
 from wyoming.info import AsrModel, AsrProgram, Attribution, Describe, Info
 from wyoming.server import AsyncEventHandler, AsyncServer
 
+from agent_cli.server.common import setup_wav_file
+from agent_cli.server.whisper.languages import WHISPER_LANGUAGE_CODES
+
 if TYPE_CHECKING:
     from wyoming.event import Event
 
     from agent_cli.server.whisper.model_registry import WhisperModelRegistry
 
 logger = logging.getLogger(__name__)
-
-# Language codes supported by Whisper
-_LANGUAGE_CODES = [
-    "af",
-    "am",
-    "ar",
-    "as",
-    "az",
-    "ba",
-    "be",
-    "bg",
-    "bn",
-    "bo",
-    "br",
-    "bs",
-    "ca",
-    "cs",
-    "cy",
-    "da",
-    "de",
-    "el",
-    "en",
-    "es",
-    "et",
-    "eu",
-    "fa",
-    "fi",
-    "fo",
-    "fr",
-    "gl",
-    "gu",
-    "ha",
-    "haw",
-    "he",
-    "hi",
-    "hr",
-    "ht",
-    "hu",
-    "hy",
-    "id",
-    "is",
-    "it",
-    "ja",
-    "jw",
-    "ka",
-    "kk",
-    "km",
-    "kn",
-    "ko",
-    "la",
-    "lb",
-    "ln",
-    "lo",
-    "lt",
-    "lv",
-    "mg",
-    "mi",
-    "mk",
-    "ml",
-    "mn",
-    "mr",
-    "ms",
-    "mt",
-    "my",
-    "ne",
-    "nl",
-    "nn",
-    "no",
-    "oc",
-    "pa",
-    "pl",
-    "ps",
-    "pt",
-    "ro",
-    "ru",
-    "sa",
-    "sd",
-    "si",
-    "sk",
-    "sl",
-    "sn",
-    "so",
-    "sq",
-    "sr",
-    "su",
-    "sv",
-    "sw",
-    "ta",
-    "te",
-    "tg",
-    "th",
-    "tk",
-    "tl",
-    "tr",
-    "tt",
-    "uk",
-    "ur",
-    "uz",
-    "vi",
-    "yi",
-    "yo",
-    "zh",
-    "yue",
-]
 
 
 class WyomingWhisperHandler(AsyncEventHandler):
@@ -186,9 +85,12 @@ class WyomingWhisperHandler(AsyncEventHandler):
             logger.debug("AudioChunk begin")
             self._audio_buffer = io.BytesIO()
             self._wav_file = wave.open(self._audio_buffer, "wb")  # noqa: SIM115
-            self._wav_file.setframerate(chunk.rate)
-            self._wav_file.setsampwidth(chunk.width)
-            self._wav_file.setnchannels(chunk.channels)
+            setup_wav_file(
+                self._wav_file,
+                rate=chunk.rate,
+                channels=chunk.channels,
+                sample_width=chunk.width,
+            )
 
         self._wav_file.writeframes(chunk.audio)
         return True
@@ -253,7 +155,7 @@ class WyomingWhisperHandler(AsyncEventHandler):
                     url="https://github.com/openai/whisper",
                 ),
                 installed=True,
-                languages=_LANGUAGE_CODES,
+                languages=WHISPER_LANGUAGE_CODES,
                 version="1.0",
             )
             for status in self._registry.list_status()

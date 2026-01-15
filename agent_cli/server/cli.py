@@ -154,6 +154,14 @@ def whisper_cmd(
             help="Download model(s) and exit without starting server",
         ),
     ] = False,
+    log_level: Annotated[
+        str,
+        typer.Option(
+            "--log-level",
+            "-l",
+            help="Logging level: debug, info, warning, error",
+        ),
+    ] = "info",
 ) -> None:
     """Run Whisper ASR server with TTL-based model unloading.
 
@@ -266,7 +274,7 @@ def whisper_cmd(
         fastapi_app,
         host=host,
         port=port,
-        log_level="info",
+        log_level=log_level.lower(),
     )
 
 

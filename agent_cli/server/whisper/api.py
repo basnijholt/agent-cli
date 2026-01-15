@@ -15,8 +15,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel
 
-from agent_cli import constants
-from agent_cli.server.common import log_requests_middleware
+from agent_cli.server.common import log_requests_middleware, setup_wav_file
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
@@ -25,18 +24,19 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-# Global registry - will be set by create_app()
-_registry: WhisperModelRegistry | None = None
-_wyoming_task: asyncio.Task[None] | None = None
 
-
-def _format_timestamp(seconds: float, *, always_include_hours: bool = False) -> str:
-    """Format seconds as HH:MM:SS,mmm for SRT format."""
+def _split_seconds(seconds: float) -> tuple[int, int, int, int]:
+    """Split seconds into (hours, minutes, seconds, milliseconds)."""
     hours = int(seconds // 3600)
     minutes = int((seconds % 3600) // 60)
     secs = int(seconds % 60)
     millis = int((seconds % 1) * 1000)
+    return hours, minutes, secs, millis
 
+
+def _format_timestamp(seconds: float, *, always_include_hours: bool = False) -> str:
+    """Format seconds as HH:MM:SS,mmm for SRT format."""
+    hours, minutes, secs, millis = _split_seconds(seconds)
     if always_include_hours or hours > 0:
         return f"{hours:02d}:{minutes:02d}:{secs:02d},{millis:03d}"
     return f"{minutes:02d}:{secs:02d},{millis:03d}"
@@ -44,10 +44,7 @@ def _format_timestamp(seconds: float, *, always_include_hours: bool = False) -> 
 
 def _format_vtt_timestamp(seconds: float) -> str:
     """Format seconds as HH:MM:SS.mmm for VTT format."""
-    hours = int(seconds // 3600)
-    minutes = int((seconds % 3600) // 60)
-    secs = int(seconds % 60)
-    millis = int((seconds % 1) * 1000)
+    hours, minutes, secs, millis = _split_seconds(seconds)
     return f"{hours:02d}:{minutes:02d}:{secs:02d}.{millis:03d}"
 
 
@@ -117,14 +114,11 @@ def create_app(  # noqa: C901, PLR0915
         Configured FastAPI application.
 
     """
-    global _registry
-
-    _registry = registry
 
     @asynccontextmanager
     async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
         """Manage application lifecycle."""
-        global _wyoming_task
+        wyoming_task: asyncio.Task[None] | None = None
 
         # Start the registry
         await registry.start()
@@ -136,7 +130,7 @@ def create_app(  # noqa: C901, PLR0915
                     start_wyoming_server,
                 )
 
-                _wyoming_task = asyncio.create_task(
+                wyoming_task = asyncio.create_task(
                     start_wyoming_server(registry, wyoming_uri),
                 )
                 logger.info("Started Wyoming server at %s", wyoming_uri)
@@ -148,10 +142,10 @@ def create_app(  # noqa: C901, PLR0915
         yield
 
         # Stop Wyoming server
-        if _wyoming_task is not None:
-            _wyoming_task.cancel()
+        if wyoming_task is not None:
+            wyoming_task.cancel()
             with contextlib.suppress(asyncio.CancelledError):
-                await _wyoming_task
+                await wyoming_task
 
         # Stop the registry
         await registry.stop()
@@ -383,9 +377,7 @@ def create_app(  # noqa: C901, PLR0915
                 # Initialize WAV file on first chunk (before EOS check)
                 if wav_file is None:
                     wav_file = wave.open(audio_buffer, "wb")  # noqa: SIM115
-                    wav_file.setnchannels(constants.AUDIO_CHANNELS)
-                    wav_file.setsampwidth(constants.AUDIO_FORMAT_WIDTH)
-                    wav_file.setframerate(constants.AUDIO_RATE)
+                    setup_wav_file(wav_file)
 
                 # Check for end of stream (EOS marker)
                 eos_marker = b"EOS"

@@ -95,6 +95,7 @@ agent-cli server whisper --preload
 | `--wyoming-port` | `3001` | Wyoming protocol port |
 | `--no-wyoming` | `false` | Disable Wyoming server |
 | `--download-only` | `false` | Download model(s) and exit without starting server |
+| `--log-level` | `info` | Logging level: debug, info, warning, error |
 
 
 <!-- OUTPUT:END -->
@@ -111,6 +112,98 @@ Once running, the server exposes:
 | `/v1/model/unload` | POST | Manually unload a model from memory |
 | `/health` | GET | Health check with model status |
 | `/docs` | GET | Interactive API documentation |
+
+### Using the API
+
+#### curl Example
+
+```bash
+# Transcribe an audio file
+curl -X POST http://localhost:5000/v1/audio/transcriptions \
+  -F "file=@recording.wav" \
+  -F "model=whisper-1"
+
+# With language hint and verbose output
+curl -X POST http://localhost:5000/v1/audio/transcriptions \
+  -F "file=@recording.wav" \
+  -F "model=whisper-1" \
+  -F "language=en" \
+  -F "response_format=verbose_json"
+
+# Get SRT subtitles
+curl -X POST http://localhost:5000/v1/audio/transcriptions \
+  -F "file=@recording.wav" \
+  -F "model=whisper-1" \
+  -F "response_format=srt"
+```
+
+#### Python Example (OpenAI SDK)
+
+```python
+from openai import OpenAI
+
+client = OpenAI(base_url="http://localhost:5000/v1", api_key="not-needed")
+
+# Transcribe audio
+with open("recording.wav", "rb") as f:
+    transcript = client.audio.transcriptions.create(
+        model="whisper-1",
+        file=f,
+    )
+print(transcript.text)
+```
+
+### WebSocket Streaming Protocol
+
+The `/v1/audio/transcriptions/stream` endpoint provides real-time streaming transcription.
+
+#### Protocol
+
+1. Connect to `ws://localhost:5000/v1/audio/transcriptions/stream?model=whisper-1`
+2. Send binary audio chunks (16kHz, 16-bit, mono PCM)
+3. Send `EOS` (3 bytes: `0x45 0x4F 0x53`) to signal end of audio
+4. Receive JSON response with transcription
+
+#### Message Format
+
+**Server response:**
+```json
+{
+  "type": "final",
+  "text": "transcribed text here",
+  "is_final": true,
+  "language": "en",
+  "duration": 3.5,
+  "segments": [...]
+}
+```
+
+**Error response:**
+```json
+{"type": "error", "message": "error description"}
+```
+
+### Model Selection Guide
+
+| Model | Size | VRAM | Speed | Accuracy | Use Case |
+|-------|------|------|-------|----------|----------|
+| `large-v3` | 3GB | ~3GB | Slow | Best | Highest accuracy, batch processing |
+| `medium` | 1.5GB | ~1.5GB | Medium | Good | Balanced accuracy/speed |
+| `small` | 500MB | ~1GB | Fast | Fair | Real-time, lower VRAM |
+| `tiny` | 150MB | ~500MB | Fastest | Basic | Very limited VRAM, quick transcription |
+
+> [!TIP]
+> Use `--model small --model large-v3` to run both models. Clients can request either via the `model` parameter.
+
+### Troubleshooting
+
+| Issue | Solution |
+|-------|----------|
+| CUDA out of memory | Use `--device cpu` or smaller model (e.g., `--model small`) |
+| Port already in use | Use `--port XXXX` to specify different port |
+| Model download fails | Check network connection, or use `--download-only` first |
+| Slow first request | Normal - model is loading. Use `--preload` to load at startup |
+| Wyoming not working | Ensure port 3001 is not blocked; check with `nc -zv localhost 3001` |
 
 ### Using with agent-cli Commands
 

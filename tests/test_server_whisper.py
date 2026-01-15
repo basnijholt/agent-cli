@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+import io
+import wave
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from fastapi.testclient import TestClient
 
 from agent_cli.server.whisper.model_manager import (
     ModelConfig,
@@ -318,3 +321,222 @@ class TestTranscriptionResult:
         )
         assert len(result.segments) == 2
         assert result.segments[0]["text"] == "Hello"
+
+
+def _create_test_wav() -> bytes:
+    """Create a minimal valid WAV file for testing."""
+    buffer = io.BytesIO()
+    with wave.open(buffer, "wb") as wav_file:
+        wav_file.setnchannels(1)
+        wav_file.setsampwidth(2)
+        wav_file.setframerate(16000)
+        # Write 0.1 seconds of silence (1600 samples)
+        wav_file.writeframes(b"\x00\x00" * 1600)
+    buffer.seek(0)
+    return buffer.read()
+
+
+class TestWhisperAPI:
+    """Tests for the Whisper API endpoints."""
+
+    @pytest.fixture
+    def mock_registry(self) -> WhisperModelRegistry:
+        """Create a mock registry with a configured model."""
+        registry = WhisperModelRegistry()
+        registry.register(ModelConfig(model_name="large-v3", ttl_seconds=300))
+        return registry
+
+    @pytest.fixture
+    def client(self, mock_registry: WhisperModelRegistry) -> TestClient:
+        """Create a test client with mocked transcription."""
+        from agent_cli.server.whisper.api import create_app  # noqa: PLC0415
+
+        app = create_app(mock_registry, enable_wyoming=False)
+        return TestClient(app)
+
+    def test_health_endpoint(self, client: TestClient) -> None:
+        """Test health check endpoint returns model status."""
+        response = client.get("/health")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "healthy"
+        assert len(data["models"]) == 1
+        assert data["models"][0]["name"] == "large-v3"
+        assert data["models"][0]["loaded"] is False
+
+    def test_health_with_no_models(self) -> None:
+        """Test health check with empty registry."""
+        from agent_cli.server.whisper.api import create_app  # noqa: PLC0415
+
+        registry = WhisperModelRegistry()
+        app = create_app(registry, enable_wyoming=False)
+        client = TestClient(app)
+
+        response = client.get("/health")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "healthy"
+        assert data["models"] == []
+
+    def test_transcribe_empty_audio_returns_400(self, client: TestClient) -> None:
+        """Test that empty audio file returns 400 error."""
+        response = client.post(
+            "/v1/audio/transcriptions",
+            files={"file": ("audio.wav", b"", "audio/wav")},
+            data={"model": "whisper-1"},
+        )
+        assert response.status_code == 400
+        assert "Empty audio file" in response.json()["detail"]
+
+    def test_transcribe_json_format(
+        self,
+        client: TestClient,
+        mock_registry: WhisperModelRegistry,
+    ) -> None:
+        """Test transcription with JSON response format."""
+        mock_result = TranscriptionResult(
+            text="Hello world",
+            language="en",
+            language_probability=0.95,
+            duration=1.5,
+            segments=[],
+        )
+
+        manager = mock_registry.get_manager()
+        with patch.object(
+            manager,
+            "transcribe",
+            new_callable=AsyncMock,
+            return_value=mock_result,
+        ):
+            response = client.post(
+                "/v1/audio/transcriptions",
+                files={"file": ("audio.wav", _create_test_wav(), "audio/wav")},
+                data={"model": "whisper-1", "response_format": "json"},
+            )
+
+        assert response.status_code == 200
+        assert response.json() == {"text": "Hello world"}
+
+    def test_transcribe_text_format(
+        self,
+        client: TestClient,
+        mock_registry: WhisperModelRegistry,
+    ) -> None:
+        """Test transcription with plain text response format."""
+        mock_result = TranscriptionResult(
+            text="Hello world",
+            language="en",
+            language_probability=0.95,
+            duration=1.5,
+            segments=[],
+        )
+
+        manager = mock_registry.get_manager()
+        with patch.object(
+            manager,
+            "transcribe",
+            new_callable=AsyncMock,
+            return_value=mock_result,
+        ):
+            response = client.post(
+                "/v1/audio/transcriptions",
+                files={"file": ("audio.wav", _create_test_wav(), "audio/wav")},
+                data={"model": "whisper-1", "response_format": "text"},
+            )
+
+        assert response.status_code == 200
+        assert response.text == "Hello world"
+
+    def test_transcribe_verbose_json_format(
+        self,
+        client: TestClient,
+        mock_registry: WhisperModelRegistry,
+    ) -> None:
+        """Test transcription with verbose JSON response format."""
+        mock_result = TranscriptionResult(
+            text="Hello world",
+            language="en",
+            language_probability=0.95,
+            duration=1.5,
+            segments=[{"id": 0, "start": 0.0, "end": 1.5, "text": "Hello world"}],
+        )
+
+        manager = mock_registry.get_manager()
+        with patch.object(
+            manager,
+            "transcribe",
+            new_callable=AsyncMock,
+            return_value=mock_result,
+        ):
+            response = client.post(
+                "/v1/audio/transcriptions",
+                files={"file": ("audio.wav", _create_test_wav(), "audio/wav")},
+                data={"model": "whisper-1", "response_format": "verbose_json"},
+            )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["text"] == "Hello world"
+        assert data["language"] == "en"
+        assert data["duration"] == 1.5
+        assert data["task"] == "transcribe"
+        assert len(data["segments"]) == 1
+
+    def test_translate_endpoint(
+        self,
+        client: TestClient,
+        mock_registry: WhisperModelRegistry,
+    ) -> None:
+        """Test translation endpoint calls with translate task."""
+        mock_result = TranscriptionResult(
+            text="Hello world",
+            language="en",
+            language_probability=0.95,
+            duration=1.5,
+            segments=[],
+        )
+
+        manager = mock_registry.get_manager()
+        with patch.object(
+            manager,
+            "transcribe",
+            new_callable=AsyncMock,
+            return_value=mock_result,
+        ) as mock_transcribe:
+            response = client.post(
+                "/v1/audio/translations",
+                files={"file": ("audio.wav", _create_test_wav(), "audio/wav")},
+                data={"model": "whisper-1"},
+            )
+
+            assert response.status_code == 200
+            # Verify translate task was passed
+            call_args = mock_transcribe.call_args
+            assert call_args.kwargs["task"] == "translate"
+
+    def test_unload_model_success(
+        self,
+        client: TestClient,
+        mock_registry: WhisperModelRegistry,
+    ) -> None:
+        """Test manually unloading a model."""
+        manager = mock_registry.get_manager()
+        with patch.object(
+            manager,
+            "unload",
+            new_callable=AsyncMock,
+            return_value=True,
+        ):
+            response = client.post("/v1/model/unload")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "success"
+        assert data["model"] == "large-v3"
+        assert data["was_loaded"] is True
+
+    def test_unload_nonexistent_model(self, client: TestClient) -> None:
+        """Test unloading a non-existent model returns 404."""
+        response = client.post("/v1/model/unload?model=nonexistent")
+        assert response.status_code == 404
