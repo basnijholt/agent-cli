@@ -140,7 +140,7 @@ class WhisperModelManager:
         """Get the backend, loading it if necessary.
 
         Returns:
-            The WhisperBackend instance (for backward compatibility).
+            The WhisperBackend instance.
 
         """
         await self._ensure_loaded()
