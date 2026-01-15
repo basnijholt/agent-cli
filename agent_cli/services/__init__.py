@@ -180,6 +180,17 @@ async def transcribe_audio_openai(
         api_key=openai_asr_cfg.openai_api_key,
         base_url=openai_asr_cfg.openai_base_url,
     )
+
+    # Convert raw PCM to WAV if needed (custom endpoints like faster-whisper require proper format)
+    if not _is_wav_file(audio_data) and file_suffix.lower() == ".wav":
+        logger.debug("Converting raw PCM to WAV format")
+        audio_data = pcm_to_wav(
+            audio_data,
+            sample_rate=constants.AUDIO_RATE,
+            sample_width=constants.AUDIO_FORMAT_WIDTH,
+            channels=constants.AUDIO_CHANNELS,
+        )
+
     audio_file = io.BytesIO(audio_data)
     # Use the correct file extension so OpenAI knows the format
     audio_file.name = f"audio{file_suffix}"

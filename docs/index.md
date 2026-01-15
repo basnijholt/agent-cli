@@ -64,7 +64,7 @@ Since then I have expanded the tool with many more features, all focused on loca
 | [`rag-proxy`](commands/rag-proxy.md) | Chat with your documents via RAG |
 | [`memory`](commands/memory.md) | Long-term memory system for conversations |
 | [`dev`](commands/dev.md) | Parallel development with git worktrees and AI coding agents |
-| [`server`](commands/server.md) | HTTP API server for transcription |
+| [`server`](commands/server.md) | Local Whisper ASR server and transcription proxy |
 
 ## Quick Start
 
