@@ -205,8 +205,8 @@ Run your own GPU-accelerated Whisper server for free, private, offline transcrip
 # Terminal 1: Start the server
 agent-cli server whisper
 
-# Terminal 2: Transcribe using local server
-agent-cli transcribe --asr-provider openai --asr-openai-base-url http://localhost:10301/v1
+# Terminal 2: Transcribe using local server (Wyoming streams audio in real-time)
+agent-cli transcribe --asr-provider wyoming --asr-wyoming-port 10300
 ```
 
 That's it! The server loads the model on first request and auto-unloads after 5 minutes of idle time to free VRAM.
@@ -217,8 +217,8 @@ Add to your config file so all commands use your local server:
 
 ```toml
 [defaults]
-asr_provider = "openai"
-asr_openai_base_url = "http://localhost:10301/v1"
+asr_provider = "wyoming"
+asr_wyoming_port = 10300
 ```
 
 Now just run `agent-cli transcribe` - it automatically uses your local server.
@@ -230,11 +230,12 @@ Now just run `agent-cli transcribe` - it automatically uses your local server.
 | **Free** | No API costs |
 | **Private** | Audio never leaves your machine |
 | **Fast** | GPU acceleration, no network latency |
+| **Streaming** | Wyoming streams audio as you speak (lower latency) |
 | **Offline** | Works without internet |
 | **VRAM-friendly** | Auto-unloads when idle |
 
 > [!TIP]
-> **Home Assistant users:** The server also exposes Wyoming protocol on port 10300.
+> **OpenAI SDK users:** The server also exposes an OpenAI-compatible API on port 10301.
 > See [server whisper docs](commands/server.md#whisper) for all options.
 
 ## Audio Device Configuration
