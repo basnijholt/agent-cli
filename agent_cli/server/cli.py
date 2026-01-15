@@ -52,7 +52,7 @@ def _check_whisper_deps() -> None:
 
 
 @app.command("whisper")
-def whisper_cmd(
+def whisper_cmd(  # noqa: PLR0915
     model: Annotated[
         list[str] | None,
         typer.Option(
@@ -149,6 +149,14 @@ def whisper_cmd(
             help="Logging level: debug, info, warning, error",
         ),
     ] = "info",
+    backend: Annotated[
+        str,
+        typer.Option(
+            "--backend",
+            "-b",
+            help="Backend: auto (platform detection), faster-whisper, mlx",
+        ),
+    ] = "auto",
 ) -> None:
     """Run Whisper ASR server with TTL-based model unloading.
 
@@ -214,6 +222,14 @@ def whisper_cmd(
     # Create registry and register models
     registry = WhisperModelRegistry(default_model=default_model or model[0])
 
+    # Validate backend option
+    valid_backends = ("auto", "faster-whisper", "mlx")
+    if backend not in valid_backends:
+        err_console.print(
+            f"[bold red]Error:[/bold red] --backend must be one of: {', '.join(valid_backends)}",
+        )
+        raise typer.Exit(1)
+
     for model_name in model:
         config = ModelConfig(
             model_name=model_name,
@@ -221,6 +237,7 @@ def whisper_cmd(
             compute_type=compute_type,
             ttl_seconds=ttl,
             cache_dir=cache_dir,
+            backend_type=backend,  # type: ignore[arg-type]
         )
         registry.register(config)
 
@@ -232,9 +249,17 @@ def whisper_cmd(
     # Build Wyoming URI
     wyoming_uri = f"tcp://{host}:{wyoming_port}"
 
+    # Determine actual backend being used
+    from agent_cli.server.whisper.backends import detect_backend  # noqa: PLC0415
+
+    actual_backend = backend if backend != "auto" else detect_backend()
+
     # Print startup info
     console.print()
     console.print("[bold green]Starting Whisper ASR Server[/bold green]")
+    console.print()
+    console.print("[dim]Configuration:[/dim]")
+    console.print(f"  Backend: [cyan]{actual_backend}[/cyan]")
     console.print()
     console.print("[dim]Endpoints:[/dim]")
     console.print(f"  HTTP API: [cyan]http://{host}:{port}[/cyan]")

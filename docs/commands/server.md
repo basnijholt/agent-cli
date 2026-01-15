@@ -23,7 +23,10 @@ agent-cli server [COMMAND] [OPTIONS]
 
 ## whisper
 
-Run a local Whisper ASR server powered by [faster-whisper](https://github.com/SYSTRAN/faster-whisper).
+Run a local Whisper ASR server with automatic backend selection based on your platform:
+
+- **macOS Apple Silicon** → [mlx-whisper](https://github.com/ml-explore/mlx-examples/tree/main/whisper) (Metal acceleration)
+- **Linux/CUDA** → [faster-whisper](https://github.com/SYSTRAN/faster-whisper) (CTranslate2)
 
 > [!NOTE]
 > **Quick Start** - Get transcription working in 30 seconds:
@@ -42,6 +45,7 @@ Run a local Whisper ASR server powered by [faster-whisper](https://github.com/SY
 - **TTL-based VRAM management** - models unload after idle period, freeing GPU memory
 - **Multiple models** - run different model sizes with independent TTLs
 - **Lazy loading** - models load on first request, not at startup
+- **Multi-platform support** - automatically uses the optimal backend for your hardware
 
 ### Usage
 
@@ -96,6 +100,7 @@ agent-cli server whisper --preload
 | `--no-wyoming` | `false` | Disable Wyoming server |
 | `--download-only` | `false` | Download model(s) and exit without starting server |
 | `--log-level` | `info` | Logging level: debug, info, warning, error |
+| `--backend` | `auto` | Backend: auto (platform detection), faster-whisper, mlx |
 
 
 <!-- OUTPUT:END -->
@@ -218,6 +223,16 @@ pip install "agent-cli[whisper]"
 # or
 uv sync --extra whisper
 ```
+
+#### macOS Apple Silicon
+
+For optimal performance on M1/M2/M3/M4 Macs, install mlx-whisper:
+
+```bash
+pip install mlx-whisper
+```
+
+The server will automatically detect and use the MLX backend when available.
 
 ---
 
