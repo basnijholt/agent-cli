@@ -441,7 +441,12 @@ def _launch_agent(
 
     if terminal:
         # We're in a multiplexer (tmux/zellij) or supported terminal (kitty/iTerm2)
-        if terminal.open_new_tab(path, full_cmd, tab_name=agent.name):
+        # Tab name format: repo@branch
+        repo_root = worktree.get_main_repo_root(path)
+        branch = worktree.get_current_branch(path)
+        repo_name = repo_root.name if repo_root else path.name
+        tab_name = f"{repo_name}@{branch}" if branch else repo_name
+        if terminal.open_new_tab(path, full_cmd, tab_name=tab_name):
             _success(f"Started {agent.name} in new {terminal.name} tab")
             return
         _warn(f"Could not open new tab in {terminal.name}")
