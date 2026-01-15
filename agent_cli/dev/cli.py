@@ -570,6 +570,10 @@ def new(  # noqa: PLR0912, PLR0915
     assert result.path is not None
     _success(f"Created worktree at {result.path}")
 
+    # Show warning if --from was ignored
+    if result.warning:
+        _warn(result.warning)
+
     # Copy env files
     if copy_env:
         copied = copy_env_files(repo_root, result.path)
@@ -842,7 +846,7 @@ def remove(
     if wt.is_main:
         _error("Cannot remove the main worktree")
 
-    if not yes:
+    if not yes and not force:
         console.print(f"[bold]Will remove:[/bold] {wt.path}")
         if delete_branch:
             console.print(f"[bold]Will delete branch:[/bold] {wt.branch}")

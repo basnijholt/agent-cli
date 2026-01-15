@@ -8,8 +8,10 @@ from unittest.mock import MagicMock, patch
 import pytest  # noqa: TC002
 
 from agent_cli.dev.worktree import (
+    CreateWorktreeResult,
     WorktreeInfo,
     _parse_git_config_regexp,
+    create_worktree,
     find_worktree_by_name,
     list_worktrees,
     resolve_worktree_base_dir,
@@ -354,3 +356,152 @@ class TestParseGitConfigRegexp:
         output = "submodule.broken.url\nsubmodule.valid.url /path/to/valid"
         result = _parse_git_config_regexp(output, "submodule.", ".url")
         assert result == [("valid", "/path/to/valid")]
+
+
+class TestCreateWorktreeResult:
+    """Tests for CreateWorktreeResult and warning field."""
+
+    def test_warning_field_default_none(self) -> None:
+        """CreateWorktreeResult.warning defaults to None."""
+        result = CreateWorktreeResult(success=True, path=Path("/test"), branch="test")
+        assert result.warning is None
+
+    def test_warning_field_can_be_set(self) -> None:
+        """CreateWorktreeResult.warning can be set."""
+        result = CreateWorktreeResult(
+            success=True,
+            path=Path("/test"),
+            branch="test",
+            warning="Test warning",
+        )
+        assert result.warning == "Test warning"
+
+
+class TestCreateWorktreeFromRefWarning:
+    """Tests for --from flag warning when branch already exists.
+
+    Bug fix: When --from is specified but the branch already exists,
+    the user should be warned that --from is being ignored and the
+    existing branch is used instead.
+
+    Evidence: create_worktree() now tracks whether from_ref was explicitly
+    provided and generates a warning when the branch already exists locally
+    or remotely.
+    """
+
+    def test_warning_when_local_branch_exists_and_from_specified(self) -> None:
+        """Warning is generated when local branch exists and --from is specified."""
+        with (
+            patch("agent_cli.dev.worktree.get_main_repo_root", return_value=Path("/repo")),
+            patch(
+                "agent_cli.dev.worktree.resolve_worktree_base_dir",
+                return_value=Path("/worktrees"),
+            ),
+            patch("agent_cli.dev.worktree._run_git") as mock_run,
+            patch("agent_cli.dev.worktree._check_branch_exists", return_value=(False, True)),
+            patch("agent_cli.dev.worktree._add_worktree"),
+            patch("agent_cli.dev.worktree._init_submodules"),
+            patch("pathlib.Path.exists", return_value=False),
+            patch("pathlib.Path.mkdir"),
+        ):
+            mock_run.return_value.returncode = 0
+            mock_run.return_value.stdout = ""
+
+            result = create_worktree(
+                "my-branch",
+                repo_path=Path("/repo"),
+                from_ref="feat/other-branch",  # Explicitly specified
+                fetch=False,
+            )
+
+            assert result.success is True
+            assert result.warning is not None
+            assert "my-branch" in result.warning
+            assert "already exists" in result.warning
+            assert "feat/other-branch" in result.warning
+
+    def test_warning_when_remote_branch_exists_and_from_specified(self) -> None:
+        """Warning is generated when remote branch exists and --from is specified."""
+        with (
+            patch("agent_cli.dev.worktree.get_main_repo_root", return_value=Path("/repo")),
+            patch(
+                "agent_cli.dev.worktree.resolve_worktree_base_dir",
+                return_value=Path("/worktrees"),
+            ),
+            patch("agent_cli.dev.worktree._run_git") as mock_run,
+            patch("agent_cli.dev.worktree._check_branch_exists", return_value=(True, False)),
+            patch("agent_cli.dev.worktree._add_worktree"),
+            patch("agent_cli.dev.worktree._init_submodules"),
+            patch("pathlib.Path.exists", return_value=False),
+            patch("pathlib.Path.mkdir"),
+        ):
+            mock_run.return_value.returncode = 0
+            mock_run.return_value.stdout = ""
+
+            result = create_worktree(
+                "my-branch",
+                repo_path=Path("/repo"),
+                from_ref="origin/main",  # Explicitly specified
+                fetch=False,
+            )
+
+            assert result.success is True
+            assert result.warning is not None
+            assert "already exists" in result.warning
+
+    def test_no_warning_when_from_not_specified(self) -> None:
+        """No warning when --from is not specified (uses default)."""
+        with (
+            patch("agent_cli.dev.worktree.get_main_repo_root", return_value=Path("/repo")),
+            patch(
+                "agent_cli.dev.worktree.resolve_worktree_base_dir",
+                return_value=Path("/worktrees"),
+            ),
+            patch("agent_cli.dev.worktree._run_git") as mock_run,
+            patch("agent_cli.dev.worktree._check_branch_exists", return_value=(False, True)),
+            patch("agent_cli.dev.worktree._add_worktree"),
+            patch("agent_cli.dev.worktree._init_submodules"),
+            patch("agent_cli.dev.worktree.get_default_branch", return_value="main"),
+            patch("pathlib.Path.exists", return_value=False),
+            patch("pathlib.Path.mkdir"),
+        ):
+            mock_run.return_value.returncode = 0
+            mock_run.return_value.stdout = ""
+
+            result = create_worktree(
+                "my-branch",
+                repo_path=Path("/repo"),
+                from_ref=None,  # Not specified, uses default
+                fetch=False,
+            )
+
+            assert result.success is True
+            assert result.warning is None  # No warning since --from wasn't explicit
+
+    def test_no_warning_when_branch_is_new(self) -> None:
+        """No warning when branch doesn't exist (will be created from --from)."""
+        with (
+            patch("agent_cli.dev.worktree.get_main_repo_root", return_value=Path("/repo")),
+            patch(
+                "agent_cli.dev.worktree.resolve_worktree_base_dir",
+                return_value=Path("/worktrees"),
+            ),
+            patch("agent_cli.dev.worktree._run_git") as mock_run,
+            patch("agent_cli.dev.worktree._check_branch_exists", return_value=(False, False)),
+            patch("agent_cli.dev.worktree._add_worktree"),
+            patch("agent_cli.dev.worktree._init_submodules"),
+            patch("pathlib.Path.exists", return_value=False),
+            patch("pathlib.Path.mkdir"),
+        ):
+            mock_run.return_value.returncode = 0
+            mock_run.return_value.stdout = ""
+
+            result = create_worktree(
+                "new-branch",
+                repo_path=Path("/repo"),
+                from_ref="feat/other-branch",  # Explicitly specified
+                fetch=False,
+            )
+
+            assert result.success is True
+            assert result.warning is None  # No warning since branch is new
