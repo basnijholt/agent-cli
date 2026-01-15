@@ -31,20 +31,33 @@ def test_main_with_args(mock_setup_logging: pytest.MagicMock) -> None:
     mock_setup_logging.assert_not_called()
 
 
-@patch("agent_cli.agents.server.run_server")
-def test_server_command(mock_run_server: pytest.MagicMock) -> None:
-    """Test the server command."""
-    result = runner.invoke(app, ["server"])
+def test_server_command() -> None:
+    """Test the server command shows subcommands."""
+    result = runner.invoke(app, ["server", "--help"])
     assert result.exit_code == 0
-    assert "Starting Agent CLI transcription server" in result.stdout
-    mock_run_server.assert_called_once_with(host="0.0.0.0", port=61337, reload=False)  # noqa: S104
+    assert "whisper" in result.stdout
+    assert "transcription-proxy" in result.stdout
 
 
-@patch("agent_cli.agents.server.run_server")
-def test_server_command_with_options(mock_run_server: pytest.MagicMock) -> None:
-    """Test the server command with custom options."""
-    result = runner.invoke(app, ["server", "--host", "127.0.0.1", "--port", "8080", "--reload"])
+@patch("uvicorn.run")
+def test_server_transcription_proxy_command(mock_uvicorn_run: pytest.MagicMock) -> None:
+    """Test the server transcription-proxy command."""
+    result = runner.invoke(app, ["server", "transcription-proxy", "--port", "61337"])
     assert result.exit_code == 0
-    assert "Starting Agent CLI transcription server on 127.0.0.1:8080" in result.stdout
+    assert "Starting Agent CLI transcription proxy" in result.stdout
+    mock_uvicorn_run.assert_called_once()
+
+
+@patch("uvicorn.run")
+def test_server_transcription_proxy_command_with_options(
+    mock_uvicorn_run: pytest.MagicMock,
+) -> None:
+    """Test the server transcription-proxy command with custom options."""
+    result = runner.invoke(
+        app,
+        ["server", "transcription-proxy", "--host", "127.0.0.1", "--port", "8080", "--reload"],
+    )
+    assert result.exit_code == 0
+    assert "Starting Agent CLI transcription proxy on 127.0.0.1:8080" in result.stdout
     assert "Auto-reload enabled for development" in result.stdout
-    mock_run_server.assert_called_once_with(host="127.0.0.1", port=8080, reload=True)
+    mock_uvicorn_run.assert_called_once()
