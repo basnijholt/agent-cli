@@ -38,7 +38,7 @@ Run a local Whisper ASR server with automatic backend selection based on your pl
 >
 > Apple Silicon MLX-only setup:
 > ```bash
-> pip install "agent-cli[server]" mlx-whisper
+> pip install "agent-cli[whisper-mlx]"
 > agent-cli server whisper --backend mlx
 > ```
 >
@@ -236,7 +236,7 @@ uv sync --extra whisper
 For optimal performance on M1/M2/M3/M4 Macs, install mlx-whisper:
 
 ```bash
-pip install "agent-cli[server]" mlx-whisper
+pip install "agent-cli[whisper-mlx]"
 ```
 
 The server will automatically detect and use the MLX backend when available.
