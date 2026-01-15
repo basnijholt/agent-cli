@@ -254,7 +254,7 @@ def whisper_cmd(
     )
     if not no_wyoming:
         console.print(
-            f"  [cyan]ag transcribe --asr-provider wyoming --asr-wyoming-host {host} "
+            f"  [cyan]ag transcribe --asr-provider wyoming --asr-wyoming-ip {host} "
             f"--asr-wyoming-port {wyoming_port}[/cyan]",
         )
     console.print()
