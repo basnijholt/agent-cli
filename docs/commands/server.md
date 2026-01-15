@@ -25,6 +25,14 @@ agent-cli server [COMMAND] [OPTIONS]
 
 Run a local Whisper ASR server powered by [faster-whisper](https://github.com/SYSTRAN/faster-whisper).
 
+> [!NOTE]
+> **Quick Start** - Get transcription working in 30 seconds:
+> ```bash
+> pip install "agent-cli[whisper]"
+> agent-cli server whisper
+> ```
+> Server is now running at `http://localhost:5000`. Use it with any OpenAI-compatible client, or configure agent-cli to use it - see [Configuration](../configuration.md#using-local-whisper-server).
+
 ### Features
 
 - **OpenAI-compatible API** at `/v1/audio/transcriptions` - drop-in replacement for OpenAI's Whisper API

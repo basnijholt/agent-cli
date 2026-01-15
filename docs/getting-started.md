@@ -32,6 +32,14 @@ pip install agent-cli
 
 For a complete local setup with all AI services:
 
+> [!TIP]
+> **Have a GPU?** Skip the setup below and run your own Whisper server in one command:
+> ```bash
+> pip install "agent-cli[whisper]"
+> agent-cli server whisper
+> ```
+> See [Local Whisper Server](commands/server.md#whisper) for details.
+
 === "Using CLI Commands"
 
     ```bash
