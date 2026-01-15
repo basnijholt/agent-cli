@@ -98,61 +98,6 @@ The `docs_gen` module introspects Typer commands to generate Markdown tables. Do
 
 Run `uv run python docs/run_markdown_code_runner.py` to regenerate all auto-generated content.
 
-## Code Duplication Detection
-
-This project uses two complementary tools to detect copy-paste code duplication:
-
-1. **[jscpd](https://github.com/kucherenko/jscpd)** (primary) - Fast token-based detection with threshold
-2. **[pylint duplicate-code](https://pylint.readthedocs.io/)** (secondary) - AST-based Python-specific detection
-
-Both run as pre-commit hooks to catch duplicated code before it enters the codebase.
-
-### Configuration
-
-**jscpd** (`.jscpd.json`):
-- **threshold**: 3% - Maximum allowed duplication percentage before failing
-- **minLines**: 15 - Minimum lines for a block to be considered duplication
-- **minTokens**: 100 - Minimum tokens for a block to be considered duplication
-
-**pylint** (`pyproject.toml` → `[tool.pylint.similarities]`):
-- **min-similarity-lines**: 70 - Catches very large duplications (safety net)
-- Ignores comments, docstrings, imports, and signatures
-
-### Running Manually
-
-```bash
-# jscpd - primary checker
-npx jscpd --config .jscpd.json agent_cli/
-
-# pylint - secondary checker
-uv run pylint --disable=all --enable=duplicate-code agent_cli/
-
-# Run both via pre-commit
-pre-commit run jscpd --all-files
-pre-commit run pylint-duplicate-code --all-files
-```
-
-### Ignoring Legitimate Duplicates
-
-For jscpd (rare cases):
-1. Add file patterns to the `ignore` array in `.jscpd.json`
-2. Use `--ignore-pattern` for regex-based exclusions
-
-For pylint:
-1. Increase `min-similarity-lines` in `pyproject.toml` (not recommended)
-2. Refactor the duplicated code (preferred)
-
-Common legitimate duplicates (already excluded):
-- Test files (`tests/**`, `test_*.py`)
-- Scripts directory (`scripts/**`)
-
-### Handling Violations
-
-When duplication is reported:
-1. Review the duplicated code blocks shown in the output
-2. Extract common functionality into a shared module in `core/` or `services/`
-3. Import and reuse the shared code from both locations
-
 ## Releases
 
 Use `gh release create` to create releases. The tag is created automatically.
