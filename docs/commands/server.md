@@ -45,16 +45,7 @@ agent-cli server --reload
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--host` | `0.0.0.0` | Host to bind the server to |
-| `--port` | `61337` | Port to bind the server to |
-| `--reload` | `false` | Enable auto-reload for development |
-
-### General Options
-
-| Option | Default | Description |
-|--------|---------|-------------|
-| `--config` | - | Path to a TOML configuration file. |
-| `--print-args` | `false` | Print the command line arguments, including variables taken from the configuration file. |
+| `--config` | - | Path to config file |
 
 
 <!-- OUTPUT:END -->
