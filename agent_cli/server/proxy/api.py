@@ -16,7 +16,11 @@ from agent_cli.agents.transcribe import (
     SYSTEM_PROMPT,
     _build_context_payload,
 )
-from agent_cli.core.audio_format import VALID_EXTENSIONS, convert_audio_to_wyoming_format
+from agent_cli.core.audio_format import (
+    VALID_EXTENSIONS,
+    convert_audio_to_wyoming_format,
+    is_valid_audio_file,
+)
 from agent_cli.core.transcription_logger import TranscriptionLogger, get_default_logger
 from agent_cli.server.common import log_requests_middleware
 from agent_cli.services import asr
@@ -109,18 +113,6 @@ async def _transcribe_with_provider(
     raise NotImplementedError(msg)
 
 
-def _is_valid_audio_file(value: Any) -> bool:
-    """Check if the provided value is a valid audio file."""
-    return (
-        hasattr(value, "filename")
-        and hasattr(value, "content_type")
-        and (
-            (value.content_type and value.content_type.startswith("audio/"))
-            or (value.filename and value.filename.lower().endswith(VALID_EXTENSIONS))
-        )
-    )
-
-
 async def _extract_audio_file_from_request(
     request: Request,
     audio: UploadFile | None,
@@ -135,7 +127,7 @@ async def _extract_audio_file_from_request(
     form_data = await request.form()
 
     for key, value in form_data.items():
-        if _is_valid_audio_file(value):
+        if is_valid_audio_file(value):
             LOGGER.info("Found audio file in field '%s': %s", key, value.filename)
             return value
 

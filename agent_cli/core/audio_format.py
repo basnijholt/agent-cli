@@ -15,6 +15,29 @@ logger = logging.getLogger(__name__)
 VALID_EXTENSIONS = (".wav", ".mp3", ".m4a", ".flac", ".ogg", ".aac", ".webm")
 
 
+def is_valid_audio_file(value: object) -> bool:
+    """Check if the provided value is a valid audio file.
+
+    Works with FastAPI UploadFile or any object with filename and content_type attributes.
+
+    Args:
+        value: Object to check (typically an UploadFile).
+
+    Returns:
+        True if the object appears to be a valid audio file.
+
+    """
+    filename = getattr(value, "filename", None)
+    content_type = getattr(value, "content_type", None)
+
+    if not filename and not content_type:
+        return False
+
+    if content_type and content_type.startswith("audio/"):
+        return True
+    return bool(filename and str(filename).lower().endswith(VALID_EXTENSIONS))
+
+
 def convert_audio_to_wyoming_format(
     audio_data: bytes,
     source_filename: str,

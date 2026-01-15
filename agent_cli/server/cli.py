@@ -11,7 +11,6 @@ import typer
 from rich.console import Console
 
 from agent_cli.cli import app as main_app
-from agent_cli.cli import set_config_defaults
 
 console = Console()
 err_console = Console(stderr=True)
@@ -29,18 +28,6 @@ app = typer.Typer(
     no_args_is_help=True,
 )
 main_app.add_typer(app, name="server")
-
-
-@app.callback()
-def server_callback(
-    ctx: typer.Context,
-    config_file: Annotated[
-        str | None,
-        typer.Option("--config", "-c", help="Path to config file"),
-    ] = None,
-) -> None:
-    """Run ASR server (Whisper or proxy mode)."""
-    set_config_defaults(ctx, config_file)
 
 
 def _check_server_deps() -> None:
