@@ -48,6 +48,28 @@ def _format_vtt_timestamp(seconds: float) -> str:
     return f"{hours:02d}:{minutes:02d}:{secs:02d}.{millis:03d}"
 
 
+def _format_srt(segments: list[dict[str, Any]]) -> str:
+    """Format segments as SRT subtitles."""
+    lines = []
+    for i, seg in enumerate(segments, 1):
+        start = _format_timestamp(seg["start"], always_include_hours=True)
+        end = _format_timestamp(seg["end"], always_include_hours=True)
+        text = seg["text"].strip()
+        lines.append(f"{i}\n{start} --> {end}\n{text}\n")
+    return "\n".join(lines)
+
+
+def _format_vtt(segments: list[dict[str, Any]]) -> str:
+    """Format segments as WebVTT subtitles."""
+    lines = ["WEBVTT", ""]
+    for seg in segments:
+        start = _format_vtt_timestamp(seg["start"])
+        end = _format_vtt_timestamp(seg["end"])
+        text = seg["text"].strip()
+        lines.append(f"{start} --> {end}\n{text}\n")
+    return "\n".join(lines)
+
+
 # --- Pydantic Models ---
 
 
@@ -69,6 +91,8 @@ class VerboseTranscriptionResponse(BaseModel):
 
 class ModelStatusResponse(BaseModel):
     """Status of a single model."""
+
+    model_config = {"from_attributes": True}
 
     name: str
     loaded: bool
@@ -179,18 +203,7 @@ def create_app(  # noqa: C901, PLR0915
         """Health check endpoint."""
         return HealthResponse(
             status="healthy",
-            models=[
-                ModelStatusResponse(
-                    name=s.name,
-                    loaded=s.loaded,
-                    device=s.device,
-                    ttl_seconds=s.ttl_seconds,
-                    ttl_remaining=s.ttl_remaining,
-                    total_requests=s.total_requests,
-                    active_requests=s.active_requests,
-                )
-                for s in registry.list_status()
-            ],
+            models=[ModelStatusResponse.model_validate(s) for s in registry.list_status()],
         )
 
     @app.post("/v1/model/unload", response_model=UnloadResponse)
@@ -316,26 +329,6 @@ def create_app(  # noqa: C901, PLR0915
 
         # Default is json format
         return TranscriptionResponse(text=result.text)
-
-    def _format_srt(segments: list[dict[str, Any]]) -> str:
-        """Format segments as SRT subtitles."""
-        lines = []
-        for i, seg in enumerate(segments, 1):
-            start = _format_timestamp(seg["start"], always_include_hours=True)
-            end = _format_timestamp(seg["end"], always_include_hours=True)
-            text = seg["text"].strip()
-            lines.append(f"{i}\n{start} --> {end}\n{text}\n")
-        return "\n".join(lines)
-
-    def _format_vtt(segments: list[dict[str, Any]]) -> str:
-        """Format segments as WebVTT subtitles."""
-        lines = ["WEBVTT", ""]
-        for seg in segments:
-            start = _format_vtt_timestamp(seg["start"])
-            end = _format_vtt_timestamp(seg["end"])
-            text = seg["text"].strip()
-            lines.append(f"{start} --> {end}\n{text}\n")
-        return "\n".join(lines)
 
     # --- WebSocket Streaming Endpoint ---
 
