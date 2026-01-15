@@ -9,7 +9,6 @@ from agent_cli.server.proxy.api import (
     TranscriptionResponse,
     app,
     health_check,
-    parse_transcription_form,
     transcribe_audio,
 )
 
@@ -19,6 +18,5 @@ __all__ = [
     "TranscriptionResponse",
     "app",
     "health_check",
-    "parse_transcription_form",
     "transcribe_audio",
 ]

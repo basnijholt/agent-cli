@@ -66,7 +66,7 @@ class TranscriptionRequest(BaseModel):
     extra_instructions: str | None = None
 
 
-async def parse_transcription_form(
+async def _parse_transcription_form(
     cleanup: Annotated[str | bool, Form()] = True,
     extra_instructions: Annotated[str | None, Form()] = None,
 ) -> TranscriptionRequest:
@@ -269,7 +269,7 @@ async def _process_transcript_cleanup(
 @app.post("/transcribe", response_model=TranscriptionResponse)
 async def transcribe_audio(
     request: Request,
-    form_data: Annotated[TranscriptionRequest, Depends(parse_transcription_form)],
+    form_data: Annotated[TranscriptionRequest, Depends(_parse_transcription_form)],
     audio: Annotated[UploadFile | None, File()] = None,
 ) -> TranscriptionResponse:
     """Transcribe audio file and optionally clean up the text.
