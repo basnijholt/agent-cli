@@ -18,3 +18,20 @@ repos:
     hooks:
       - id: mypy
         additional_dependencies: ["types-PyYAML"]
+  - repo: local
+    hooks:
+      - id: jscpd
+        name: jscpd (copy/paste detector)
+        entry: jscpd --config .jscpd.json
+        language: node
+        additional_dependencies: ["jscpd"]
+        pass_filenames: false
+        always_run: true
+      - id: pylint-duplicate-code
+        name: pylint (duplicate-code only)
+        entry: pylint --disable=all --enable=duplicate-code --ignore=tests,scripts agent_cli/
+        language: python
+        additional_dependencies: ["pylint"]
+        types: [python]
+        pass_filenames: false
+        always_run: true
