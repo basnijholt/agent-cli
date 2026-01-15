@@ -12,7 +12,7 @@ import typer
 from rich.console import Console
 
 from agent_cli.cli import app as main_app
-from agent_cli.core.utils import setup_logging
+from agent_cli.server.common import setup_rich_logging
 
 console = Console()
 err_console = Console(stderr=True)
@@ -204,7 +204,8 @@ def whisper_cmd(  # noqa: PLR0915
         agent-cli server whisper --model large-v3 --download-only
 
     """
-    setup_logging(log_level, None, quiet=False)
+    # Setup Rich logging for consistent output
+    setup_rich_logging(log_level, console=console)
 
     valid_backends = ("auto", "faster-whisper", "mlx")
     if backend not in valid_backends:
@@ -220,12 +221,6 @@ def whisper_cmd(  # noqa: PLR0915
         resolved_backend = detect_backend()
 
     _check_whisper_deps(resolved_backend, download_only=download_only)
-
-    logger.info(
-        "Whisper backend resolved to %s (requested: %s)",
-        resolved_backend,
-        backend,
-    )
 
     from agent_cli.server.whisper.model_manager import ModelConfig  # noqa: PLC0415
     from agent_cli.server.whisper.model_registry import WhisperModelRegistry  # noqa: PLC0415

@@ -5,6 +5,9 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING, Any
 
+from rich.console import Console
+from rich.logging import RichHandler
+
 from agent_cli import constants
 
 if TYPE_CHECKING:
@@ -13,6 +16,47 @@ if TYPE_CHECKING:
     from fastapi import Request
 
 logger = logging.getLogger(__name__)
+
+
+def setup_rich_logging(log_level: str = "info", *, console: Console | None = None) -> None:
+    """Configure logging to use Rich for consistent, pretty output.
+
+    This configures:
+    - All Python loggers to use RichHandler
+    - Uvicorn's loggers to use the same format
+
+    Args:
+        log_level: Logging level (debug, info, warning, error).
+        console: Optional Rich console to use (creates new one if not provided).
+
+    """
+    level = getattr(logging, log_level.upper(), logging.INFO)
+    rich_console = console or Console()
+
+    # Create Rich handler with clean format
+    handler = RichHandler(
+        console=rich_console,
+        show_time=True,
+        show_level=True,
+        show_path=False,  # Don't show file:line - too verbose
+        rich_tracebacks=True,
+        markup=True,
+    )
+    handler.setFormatter(logging.Formatter("%(message)s"))
+
+    # Configure root logger
+    root = logging.getLogger()
+    root.handlers.clear()
+    root.addHandler(handler)
+    root.setLevel(level)
+
+    # Configure uvicorn loggers to use same handler
+    for uvicorn_logger_name in ("uvicorn", "uvicorn.access", "uvicorn.error"):
+        uvicorn_logger = logging.getLogger(uvicorn_logger_name)
+        uvicorn_logger.handlers.clear()
+        uvicorn_logger.addHandler(handler)
+        uvicorn_logger.setLevel(level)
+        uvicorn_logger.propagate = False
 
 
 def setup_wav_file(

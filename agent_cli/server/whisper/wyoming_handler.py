@@ -193,7 +193,7 @@ async def start_wyoming_server(
 
     """
     server = AsyncServer.from_uri(uri)
-    logger.info("Wyoming server listening on %s", uri)
+    logger.debug("Wyoming server listening on %s", uri)
 
     # Create handler factory with registry
     handler_factory = partial(WyomingWhisperHandler, registry)

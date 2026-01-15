@@ -80,7 +80,7 @@ class WhisperModelRegistry:
         if self._default_model is None:
             self._default_model = config.model_name
 
-        logger.info(
+        logger.debug(
             "Registered model %s (device=%s, ttl=%ds)",
             config.model_name,
             config.device,
@@ -136,7 +136,7 @@ class WhisperModelRegistry:
             await manager.start()
 
         self._started = True
-        logger.info("Started registry with %d model(s)", len(self._managers))
+        logger.debug("Started registry with %d model(s)", len(self._managers))
 
     async def stop(self) -> None:
         """Stop all model managers and unload all models."""
@@ -144,7 +144,7 @@ class WhisperModelRegistry:
             await manager.stop()
 
         self._started = False
-        logger.info("Stopped registry")
+        logger.debug("Stopped registry")
 
     async def unload_all(self) -> int:
         """Unload all loaded models.
@@ -175,5 +175,5 @@ class WhisperModelRegistry:
 
             manager = self._managers[name]
             if not manager.is_loaded:
-                logger.info("Preloading model %s", name)
+                logger.debug("Preloading model %s", name)
                 await manager.get_model()

@@ -50,7 +50,7 @@ class FasterWhisperBackend:
 
         from faster_whisper import WhisperModel  # noqa: PLC0415
 
-        logger.info(
+        logger.debug(
             "Loading faster-whisper model %s (device=%s, compute_type=%s)",
             self._config.model_name,
             self._config.device,
@@ -85,14 +85,14 @@ class FasterWhisperBackend:
         if self._model is None:
             return
 
-        logger.info("Unloading faster-whisper model %s", self._config.model_name)
+        logger.debug("Unloading faster-whisper model %s", self._config.model_name)
 
         del self._model
         self._model = None
 
         release_memory()
 
-        logger.info("Unloaded faster-whisper model %s", self._config.model_name)
+        logger.debug("Unloaded faster-whisper model %s", self._config.model_name)
 
     async def transcribe(
         self,

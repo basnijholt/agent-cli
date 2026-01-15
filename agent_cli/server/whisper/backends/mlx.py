@@ -127,7 +127,7 @@ class MLXWhisperBackend:
         """Load the model for MLX and warm the cache."""
         import time  # noqa: PLC0415
 
-        logger.info(
+        logger.debug(
             "Preparing mlx-whisper model %s (resolved: %s)",
             self._config.model_name,
             self._resolved_model,
@@ -142,7 +142,7 @@ class MLXWhisperBackend:
         self._loaded = True
         load_duration = time.time() - start_time
 
-        logger.info(
+        logger.debug(
             "Prepared mlx-whisper model %s in %.2fs",
             self._resolved_model,
             load_duration,
@@ -159,13 +159,13 @@ class MLXWhisperBackend:
         if not self._loaded:
             return
 
-        logger.info("Unloading mlx-whisper model %s", self._resolved_model)
+        logger.debug("Unloading mlx-whisper model %s", self._resolved_model)
 
         self._model = None
         self._loaded = False
         release_memory()
 
-        logger.info("Unloaded mlx-whisper model %s", self._resolved_model)
+        logger.debug("Unloaded mlx-whisper model %s", self._resolved_model)
 
     async def transcribe(
         self,

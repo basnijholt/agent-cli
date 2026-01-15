@@ -125,11 +125,6 @@ class WhisperModelManager:
         """Start the TTL unload watcher."""
         if self._unload_task is None:
             self._unload_task = asyncio.create_task(self._unload_watcher())
-            logger.info(
-                "Started TTL watcher for model %s (ttl=%ds)",
-                self._config.model_name,
-                self._config.ttl_seconds,
-            )
 
     async def stop(self) -> None:
         """Stop the manager and unload the model."""

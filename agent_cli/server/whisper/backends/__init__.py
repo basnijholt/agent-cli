@@ -62,7 +62,7 @@ def create_backend(
     if backend_type == "auto":
         backend_type = detect_backend()
 
-    logger.info("Creating %s backend for model %s", backend_type, config.model_name)
+    logger.debug("Creating %s backend for model %s", backend_type, config.model_name)
 
     if backend_type == "mlx":
         from agent_cli.server.whisper.backends.mlx import MLXWhisperBackend  # noqa: PLC0415

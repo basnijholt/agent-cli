@@ -160,10 +160,6 @@ def create_app(  # noqa: C901, PLR0915
                     logger.exception("Background model preload failed")
 
             preload_task = asyncio.create_task(preload_models())
-            logger.info(
-                "Started background model preload for %d model(s) (downloads if needed)",
-                len(registry.models),
-            )
 
         # Start Wyoming server if enabled
         if enable_wyoming:
@@ -175,7 +171,6 @@ def create_app(  # noqa: C901, PLR0915
                 wyoming_task = asyncio.create_task(
                     start_wyoming_server(registry, wyoming_uri),
                 )
-                logger.info("Started Wyoming server at %s", wyoming_uri)
             except ImportError:
                 logger.warning("Wyoming not available, skipping Wyoming server")
             except Exception:
