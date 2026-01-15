@@ -146,19 +146,6 @@ class WhisperModelRegistry:
         self._started = False
         logger.debug("Stopped registry")
 
-    async def unload_all(self) -> int:
-        """Unload all loaded models.
-
-        Returns:
-            Number of models that were unloaded.
-
-        """
-        count = 0
-        for manager in self._managers.values():
-            if await manager.unload():
-                count += 1
-        return count
-
     async def preload(self, model_names: list[str] | None = None) -> None:
         """Preload models into memory.
 

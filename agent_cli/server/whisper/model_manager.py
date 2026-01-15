@@ -311,7 +311,3 @@ class WhisperModelManager:
                 self._stats.last_request_time = time.time()
                 if self._active_requests == 0:
                     self._condition.notify_all()
-
-
-# Re-export TranscriptionResult for backward compatibility
-__all__ = ["ModelConfig", "ModelStats", "TranscriptionResult", "WhisperModelManager"]
