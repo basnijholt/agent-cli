@@ -75,3 +75,21 @@ def test_server_whisper_command(mock_uvicorn_run: pytest.MagicMock) -> None:
     assert "Starting Whisper ASR Server" in result.stdout
     assert "tiny" in result.stdout
     mock_uvicorn_run.assert_called_once()
+
+
+@patch("uvicorn.run")
+@patch("agent_cli.server.cli.HAS_UVICORN", True)
+@patch("agent_cli.server.cli.HAS_FASTAPI", True)
+@patch("agent_cli.server.cli.HAS_FASTER_WHISPER", False)
+@patch("agent_cli.server.cli.HAS_MLX_WHISPER", True)
+def test_server_whisper_command_mlx_without_faster_whisper(
+    mock_uvicorn_run: pytest.MagicMock,
+) -> None:
+    """Test MLX backend runs without faster-whisper installed."""
+    result = runner.invoke(
+        app,
+        ["server", "whisper", "--model", "tiny", "--backend", "mlx", "--port", "5000"],
+    )
+    assert result.exit_code == 0
+    assert "Backend: mlx" in result.stdout
+    mock_uvicorn_run.assert_called_once()

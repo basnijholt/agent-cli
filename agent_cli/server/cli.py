@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 from importlib.util import find_spec
 from pathlib import Path  # noqa: TC003 - Typer evaluates annotations at runtime
 from typing import Annotated
@@ -11,9 +12,11 @@ import typer
 from rich.console import Console
 
 from agent_cli.cli import app as main_app
+from agent_cli.core.utils import setup_logging
 
 console = Console()
 err_console = Console(stderr=True)
+logger = logging.getLogger(__name__)
 
 # Check for optional dependencies
 HAS_UVICORN = find_spec("uvicorn") is not None
@@ -41,15 +44,6 @@ def _check_server_deps() -> None:
         raise typer.Exit(1)
 
 
-def _resolve_backend_for_deps(backend: str) -> str:
-    """Resolve auto backend selection for dependency checks."""
-    if backend != "auto":
-        return backend
-    from agent_cli.server.whisper.backends import detect_backend  # noqa: PLC0415
-
-    return detect_backend()
-
-
 def _check_whisper_deps(backend: str, *, download_only: bool = False) -> None:
     """Check that Whisper dependencies are available."""
     _check_server_deps()
@@ -62,8 +56,7 @@ def _check_whisper_deps(backend: str, *, download_only: bool = False) -> None:
             raise typer.Exit(1)
         return
 
-    resolved_backend = _resolve_backend_for_deps(backend)
-    if resolved_backend == "mlx":
+    if backend == "mlx":
         if not HAS_MLX_WHISPER:
             err_console.print(
                 "[bold red]Error:[/bold red] MLX Whisper backend requires mlx-whisper. "
@@ -130,7 +123,7 @@ def whisper_cmd(  # noqa: PLR0915
         bool,
         typer.Option(
             "--preload",
-            help="Load model(s) at startup instead of lazy loading",
+            help="Load model(s) at startup and wait for completion",
         ),
     ] = False,
     host: Annotated[
@@ -211,6 +204,8 @@ def whisper_cmd(  # noqa: PLR0915
         agent-cli server whisper --model large-v3 --download-only
 
     """
+    setup_logging(log_level, None, quiet=False)
+
     valid_backends = ("auto", "faster-whisper", "mlx")
     if backend not in valid_backends:
         err_console.print(
@@ -218,7 +213,19 @@ def whisper_cmd(  # noqa: PLR0915
         )
         raise typer.Exit(1)
 
-    _check_whisper_deps(backend, download_only=download_only)
+    resolved_backend = backend
+    if backend == "auto" and not download_only:
+        from agent_cli.server.whisper.backends import detect_backend  # noqa: PLC0415
+
+        resolved_backend = detect_backend()
+
+    _check_whisper_deps(resolved_backend, download_only=download_only)
+
+    logger.info(
+        "Whisper backend resolved to %s (requested: %s)",
+        resolved_backend,
+        backend,
+    )
 
     from agent_cli.server.whisper.model_manager import ModelConfig  # noqa: PLC0415
     from agent_cli.server.whisper.model_registry import WhisperModelRegistry  # noqa: PLC0415
@@ -265,7 +272,7 @@ def whisper_cmd(  # noqa: PLR0915
             compute_type=compute_type,
             ttl_seconds=ttl,
             cache_dir=cache_dir,
-            backend_type=backend,  # type: ignore[arg-type]
+            backend_type=resolved_backend,  # type: ignore[arg-type]
         )
         registry.register(config)
 
@@ -277,10 +284,7 @@ def whisper_cmd(  # noqa: PLR0915
     # Build Wyoming URI
     wyoming_uri = f"tcp://{host}:{wyoming_port}"
 
-    # Determine actual backend being used
-    from agent_cli.server.whisper.backends import detect_backend  # noqa: PLC0415
-
-    actual_backend = backend if backend != "auto" else detect_backend()
+    actual_backend = resolved_backend
 
     # Print startup info
     console.print()
@@ -319,6 +323,7 @@ def whisper_cmd(  # noqa: PLR0915
         registry,
         enable_wyoming=not no_wyoming,
         wyoming_uri=wyoming_uri,
+        background_preload=not preload,
     )
 
     import uvicorn  # noqa: PLC0415

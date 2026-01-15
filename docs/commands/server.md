@@ -50,7 +50,7 @@ Run a local Whisper ASR server with automatic backend selection based on your pl
 - **Wyoming protocol** for [Home Assistant](https://www.home-assistant.io/) voice integration (Wyoming is the standard protocol for local voice services)
 - **TTL-based VRAM management** - models unload after idle period, freeing GPU memory
 - **Multiple models** - run different model sizes with independent TTLs
-- **Lazy loading** - models load on first request, not at startup
+- **Background preloading** - downloads start at startup without blocking; use `--preload` to wait
 - **Multi-platform support** - automatically uses the optimal backend for your hardware
 
 ### Usage
@@ -77,7 +77,7 @@ agent-cli server whisper --device cpu
 # Download model without starting server (requires faster-whisper)
 agent-cli server whisper --model large-v3 --download-only
 
-# Preload model at startup (skip lazy loading)
+# Preload model at startup and wait until ready
 agent-cli server whisper --preload
 ```
 
@@ -99,7 +99,7 @@ agent-cli server whisper --preload
 | `--compute-type` | `auto` | Compute type: auto, float16, int8, int8_float16 |
 | `--cache-dir` | - | Model cache directory |
 | `--ttl` | `300` | Seconds before unloading idle model |
-| `--preload` | `false` | Load model(s) at startup instead of lazy loading |
+| `--preload` | `false` | Load model(s) at startup and wait for completion |
 | `--host` | `0.0.0.0` | Host to bind the server to |
 | `--port` | `5000` | HTTP API port |
 | `--wyoming-port` | `3001` | Wyoming protocol port |
@@ -213,7 +213,7 @@ The `/v1/audio/transcriptions/stream` endpoint provides real-time streaming tran
 | CUDA out of memory | Use `--device cpu` or smaller model (e.g., `--model small`) |
 | Port already in use | Use `--port XXXX` to specify different port |
 | Model download fails | Check network connection, or use `--download-only` first |
-| Slow first request | Normal - model is loading. Use `--preload` to load at startup |
+| Slow first request | Model is still downloading/loading. Use `--preload` to wait at startup |
 | Wyoming not working | Ensure port 3001 is not blocked; check with `nc -zv localhost 3001` |
 
 ### Using with agent-cli Commands

@@ -91,7 +91,7 @@ def _convert_audio_to_pcm(audio_bytes: bytes, source_filename: str | None) -> by
         logger.warning("FFmpeg conversion failed for MLX Whisper: %s", exc)
         msg = (
             "Unsupported audio format for MLX Whisper. "
-            "Provide a WAV file or install ffmpeg to convert uploads."
+            "Provide a 16kHz mono 16-bit WAV file or install ffmpeg to convert uploads."
         )
         raise InvalidAudioError(msg) from exc
 
@@ -107,13 +107,14 @@ class MLXWhisperBackend:
         self._config = config
         self._resolved_model = _resolve_mlx_model_name(config.model_name)
         self._loaded = False
+        self._model: object | None = None
 
     @property
     def is_loaded(self) -> bool:
         """Check if the model is loaded.
 
-        Note: mlx-whisper loads models lazily on first transcription,
-        so this tracks whether we've done initial setup.
+        Note: mlx-whisper caches models internally. This tracks whether
+        we've loaded the model at least once.
         """
         return self._loaded
 
@@ -123,7 +124,7 @@ class MLXWhisperBackend:
         return "mps" if self._loaded else None
 
     async def load(self) -> float:
-        """'Load' the model - for MLX this just validates and warms up."""
+        """Load the model for MLX and warm the cache."""
         import time  # noqa: PLC0415
 
         logger.info(
@@ -134,9 +135,9 @@ class MLXWhisperBackend:
 
         start_time = time.time()
 
-        # Import mlx_whisper to trigger any lazy initialization
-        # The actual model loads on first transcribe() call
-        import mlx_whisper  # noqa: PLC0415, F401
+        from mlx_whisper.load_models import load_model  # noqa: PLC0415
+
+        self._model = await asyncio.to_thread(load_model, self._resolved_model)
 
         self._loaded = True
         load_duration = time.time() - start_time
@@ -160,6 +161,7 @@ class MLXWhisperBackend:
 
         logger.info("Unloading mlx-whisper model %s", self._resolved_model)
 
+        self._model = None
         self._loaded = False
         release_memory()
 
