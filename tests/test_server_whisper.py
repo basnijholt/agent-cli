@@ -545,3 +545,81 @@ class TestWhisperAPI:
         """Test unloading a non-existent model returns 404."""
         response = client.post("/v1/model/unload?model=nonexistent")
         assert response.status_code == 404
+
+    @pytest.mark.parametrize(
+        "chunks",
+        [
+            [b"\x00\x00" * 160, b"EOS"],
+            [b"\x00\x00" * 160 + b"EOS"],
+        ],
+    )
+    def test_websocket_streaming_transcription(
+        self,
+        client: TestClient,
+        mock_registry: WhisperModelRegistry,
+        chunks: list[bytes],
+    ) -> None:
+        """Test WebSocket streaming endpoint returns a final transcription."""
+        mock_result = TranscriptionResult(
+            text="Hello world",
+            language="en",
+            language_probability=0.95,
+            duration=1.5,
+            segments=[],
+        )
+
+        manager = mock_registry.get_manager()
+        with (
+            patch.object(
+                manager,
+                "transcribe",
+                new_callable=AsyncMock,
+                return_value=mock_result,
+            ),
+            client.websocket_connect(
+                "/v1/audio/transcriptions/stream?model=whisper-1",
+            ) as websocket,
+        ):
+            for chunk in chunks:
+                websocket.send_bytes(chunk)
+            data = websocket.receive_json()
+
+        assert data["type"] == "final"
+        assert data["text"] == "Hello world"
+        assert data["is_final"] is True
+        assert data["segments"] == []
+
+    def test_websocket_streaming_unknown_model(self, client: TestClient) -> None:
+        """Test WebSocket returns an error for unknown models."""
+        with client.websocket_connect(
+            "/v1/audio/transcriptions/stream?model=missing-model",
+        ) as websocket:
+            data = websocket.receive_json()
+
+        assert data["type"] == "error"
+        assert "missing-model" in data["message"]
+
+    def test_websocket_streaming_transcribe_error(
+        self,
+        client: TestClient,
+        mock_registry: WhisperModelRegistry,
+    ) -> None:
+        """Test WebSocket returns an error if transcription fails."""
+        manager = mock_registry.get_manager()
+        with (
+            patch.object(
+                manager,
+                "transcribe",
+                new_callable=AsyncMock,
+                side_effect=RuntimeError("boom"),
+            ),
+            client.websocket_connect(
+                "/v1/audio/transcriptions/stream?model=whisper-1",
+            ) as websocket,
+        ):
+            websocket.send_bytes(b"\x00\x00" * 160)
+            websocket.send_bytes(b"EOS")
+            data = websocket.receive_json()
+
+        assert data["type"] == "error"
+        assert data["message"] == "boom"
