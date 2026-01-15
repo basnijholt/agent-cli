@@ -76,7 +76,6 @@ from .agents import (  # noqa: E402, F401
     chat,
     memory,
     rag_proxy,
-    server,
     speak,
     transcribe,
     transcribe_daemon,
@@ -84,3 +83,4 @@ from .agents import (  # noqa: E402, F401
 )
 from .dev import cli as dev_cli  # noqa: E402, F401
 from .install import hotkeys, services  # noqa: E402, F401
+from .server import cli as server_cli  # noqa: E402, F401
