@@ -3,10 +3,8 @@
 from __future__ import annotations
 
 from importlib.util import find_spec
-from typing import TYPE_CHECKING, Annotated
-
-if TYPE_CHECKING:
-    from pathlib import Path
+from pathlib import Path  # noqa: TC003 - Typer evaluates annotations at runtime
+from typing import Annotated
 
 import typer
 from rich.console import Console
