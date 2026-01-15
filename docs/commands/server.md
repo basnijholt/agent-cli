@@ -241,6 +241,40 @@ pip install "agent-cli[whisper-mlx]"
 
 The server will automatically detect and use the MLX backend when available.
 
+#### Docker
+
+Run the Whisper server in a container with GPU (CUDA) or CPU support using the [`whisper.Dockerfile`](https://github.com/basnijholt/agent-cli/blob/main/docker/whisper.Dockerfile):
+
+```bash
+# Build and run with GPU support
+docker build -f docker/whisper.Dockerfile --target cuda -t agent-cli-whisper:cuda .
+docker run -p 10300:10300 -p 10301:10301 --gpus all agent-cli-whisper:cuda
+
+# Build and run CPU-only
+docker build -f docker/whisper.Dockerfile --target cpu -t agent-cli-whisper:cpu .
+docker run -p 10300:10300 -p 10301:10301 agent-cli-whisper:cpu
+```
+
+Or use [Docker Compose](https://github.com/basnijholt/agent-cli/blob/main/docker/docker-compose.whisper.yml):
+
+```bash
+# With GPU
+docker compose -f docker/docker-compose.whisper.yml --profile cuda up
+
+# CPU only
+docker compose -f docker/docker-compose.whisper.yml --profile cpu up
+```
+
+Configure via environment variables:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `WHISPER_MODEL` | `large-v3` | Model to load |
+| `WHISPER_TTL` | `300` | Seconds before unloading idle model |
+| `WHISPER_DEVICE` | `cuda`/`cpu` | Device (set by target) |
+| `WHISPER_LOG_LEVEL` | `info` | Logging level |
+| `WHISPER_EXTRA_ARGS` | - | Additional CLI arguments |
+
 ---
 
 ## transcription-proxy

@@ -1,0 +1,61 @@
+# Docker Compose for agent-cli Whisper ASR server
+#
+# Usage:
+#   # CUDA (GPU)
+#   docker compose -f docker/docker-compose.whisper.yml --profile cuda up
+#
+#   # CPU only
+#   docker compose -f docker/docker-compose.whisper.yml --profile cpu up
+#
+# Build from source:
+#   docker compose -f docker/docker-compose.whisper.yml --profile cuda build
+#   docker compose -f docker/docker-compose.whisper.yml --profile cpu build
+
+services:
+  whisper-cuda:
+    build:
+      context: ..
+      dockerfile: docker/whisper.Dockerfile
+      target: cuda
+    image: agent-cli-whisper:cuda
+    profiles: [cuda]
+    ports:
+      - "10300:10300"  # Wyoming protocol
+      - "10301:10301"  # HTTP API
+    volumes:
+      - whisper-cache:/home/whisper/.cache
+    environment:
+      - WHISPER_MODEL=${WHISPER_MODEL:-large-v3}
+      - WHISPER_TTL=${WHISPER_TTL:-300}
+      - WHISPER_LOG_LEVEL=${WHISPER_LOG_LEVEL:-info}
+      - WHISPER_DEVICE=cuda
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    restart: unless-stopped
+
+  whisper-cpu:
+    build:
+      context: ..
+      dockerfile: docker/whisper.Dockerfile
+      target: cpu
+    image: agent-cli-whisper:cpu
+    profiles: [cpu]
+    ports:
+      - "10300:10300"  # Wyoming protocol
+      - "10301:10301"  # HTTP API
+    volumes:
+      - whisper-cache:/home/whisper/.cache
+    environment:
+      - WHISPER_MODEL=${WHISPER_MODEL:-small}
+      - WHISPER_TTL=${WHISPER_TTL:-300}
+      - WHISPER_LOG_LEVEL=${WHISPER_LOG_LEVEL:-info}
+      - WHISPER_DEVICE=cpu
+    restart: unless-stopped
+
+volumes:
+  whisper-cache:
