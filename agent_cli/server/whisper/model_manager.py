@@ -4,16 +4,23 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
-import gc
 import logging
-import tempfile
 import time
-from dataclasses import dataclass, field
-from pathlib import Path
-from typing import TYPE_CHECKING, Any, Literal
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Literal
 
 if TYPE_CHECKING:
-    from faster_whisper import WhisperModel
+    from pathlib import Path
+
+from agent_cli.server.whisper.backends import (
+    BackendConfig,
+    BackendType,
+    TranscriptionResult,
+    create_backend,
+)
+
+if TYPE_CHECKING:
+    from agent_cli.server.whisper.backends.base import WhisperBackend
 
 logger = logging.getLogger(__name__)
 
@@ -28,6 +35,7 @@ class ModelConfig:
     ttl_seconds: int = 300
     cache_dir: Path | None = None
     cpu_threads: int = 4
+    backend_type: BackendType = "auto"
 
     def __post_init__(self) -> None:
         """Validate configuration."""
@@ -50,28 +58,28 @@ class ModelStats:
     load_duration_seconds: float | None = None
 
 
-@dataclass
-class TranscriptionResult:
-    """Result of a transcription."""
-
-    text: str
-    language: str
-    language_probability: float
-    duration: float
-    segments: list[dict[str, Any]] = field(default_factory=list)
-
-
 class WhisperModelManager:
-    """Manages a single Whisper model with TTL-based unloading.
+    """Manages a Whisper model with TTL-based unloading.
 
     The model is loaded lazily on first request and unloaded after
     being idle for longer than the configured TTL.
+
+    Delegates actual transcription to a backend (faster-whisper or mlx).
     """
 
     def __init__(self, config: ModelConfig) -> None:
         """Initialize the model manager."""
         self._config = config
-        self._model: WhisperModel | None = None
+        self._backend: WhisperBackend = create_backend(
+            BackendConfig(
+                model_name=config.model_name,
+                device=config.device,
+                compute_type=config.compute_type,
+                cpu_threads=config.cpu_threads,
+                cache_dir=config.cache_dir,
+            ),
+            backend_type=config.backend_type,
+        )
         self._lock = asyncio.Lock()
         self._active_requests = 0
         self._stats = ModelStats()
@@ -91,7 +99,7 @@ class WhisperModelManager:
     @property
     def is_loaded(self) -> bool:
         """Check if the model is currently loaded."""
-        return self._model is not None
+        return self._backend.is_loaded
 
     @property
     def ttl_remaining(self) -> float | None:
@@ -105,9 +113,7 @@ class WhisperModelManager:
     @property
     def device(self) -> str | None:
         """Get the device the model is loaded on."""
-        if self._model is None:
-            return None
-        return str(self._model.model.device)
+        return self._backend.device
 
     @property
     def active_requests(self) -> int:
@@ -134,64 +140,36 @@ class WhisperModelManager:
             self._unload_task = None
         await self.unload()
 
-    async def get_model(self) -> WhisperModel:
-        """Get the model, loading it if necessary."""
+    async def get_model(self) -> WhisperBackend:
+        """Get the backend, loading it if necessary.
+
+        Returns:
+            The WhisperBackend instance (for backward compatibility).
+
+        """
+        await self._ensure_loaded()
+        return self._backend
+
+    async def _ensure_loaded(self) -> None:
+        """Ensure the model is loaded."""
         async with self._lock:
-            if self._model is None:
-                await self._load_model()
+            if not self._backend.is_loaded:
+                load_duration = await self._backend.load()
+                self._stats.load_count += 1
+                self._stats.last_load_time = time.time()
+                self._stats.load_duration_seconds = load_duration
             self._stats.last_request_time = time.time()
-            assert self._model is not None
-            return self._model
-
-    async def _load_model(self) -> None:
-        """Load the model into memory."""
-        from faster_whisper import WhisperModel  # noqa: PLC0415
-
-        logger.info(
-            "Loading Whisper model %s (device=%s, compute_type=%s)",
-            self._config.model_name,
-            self._config.device,
-            self._config.compute_type,
-        )
-
-        start_time = time.time()
-
-        # Run model loading in thread pool to avoid blocking
-        self._model = await asyncio.to_thread(
-            WhisperModel,
-            self._config.model_name,
-            device=self._config.device,
-            compute_type=self._config.compute_type,
-            cpu_threads=self._config.cpu_threads,
-            download_root=str(self._config.cache_dir) if self._config.cache_dir else None,
-        )
-
-        load_duration = time.time() - start_time
-        self._stats.load_count += 1
-        self._stats.last_load_time = time.time()
-        self._stats.last_request_time = time.time()
-        self._stats.load_duration_seconds = load_duration
-
-        assert self._model is not None  # For type checker
-        logger.info(
-            "Loaded model %s on %s in %.2fs",
-            self._config.model_name,
-            self._model.model.device,
-            load_duration,
-        )
 
     async def unload(self) -> bool:
         """Unload the model from memory.
 
         Returns True if model was unloaded, False if it wasn't loaded.
         """
-        # First check if model is loaded (with lock)
         async with self._lock:
-            if self._model is None:
+            if not self._backend.is_loaded:
                 return False
 
-        # Wait for active requests without holding lock to avoid deadlock
-        # (transcribe() needs lock to decrement _active_requests)
+        # Wait for active requests
         while self._active_requests > 0:
             logger.info(
                 "Waiting for %d active requests before unloading %s",
@@ -200,39 +178,12 @@ class WhisperModelManager:
             )
             await asyncio.sleep(0.5)
 
-        # Re-acquire lock and unload
         async with self._lock:
-            # Re-check in case model was unloaded by another task
-            if self._model is None:
+            if not self._backend.is_loaded:
                 return False
-            return await self._do_unload()
-
-    async def _do_unload(self) -> bool:
-        """Actually unload the model. Must be called with lock held."""
-        if self._model is None:
-            return False
-
-        logger.info("Unloading model %s", self._config.model_name)
-
-        del self._model
-        self._model = None
-
-        # Force memory release
-        gc.collect()
-
-        # Try to release CUDA memory if available
-        try:
-            import torch  # noqa: PLC0415
-
-            if torch.cuda.is_available():
-                torch.cuda.empty_cache()
-                logger.debug("Released CUDA memory")
-        except ImportError:
-            pass
-
-        self._stats.unload_count += 1
-        logger.info("Unloaded model %s", self._config.model_name)
-        return True
+            await self._backend.unload()
+            self._stats.unload_count += 1
+            return True
 
     async def _unload_watcher(self) -> None:
         """Background task that unloads model after TTL expires."""
@@ -243,7 +194,7 @@ class WhisperModelManager:
                 await asyncio.sleep(check_interval)
 
                 async with self._lock:
-                    if self._model is None:
+                    if not self._backend.is_loaded:
                         continue
 
                     if self._stats.last_request_time is None:
@@ -259,7 +210,8 @@ class WhisperModelManager:
                                 idle_time,
                                 self._config.ttl_seconds,
                             )
-                            await self._do_unload()
+                            await self._backend.unload()
+                            self._stats.unload_count += 1
                         else:
                             logger.debug(
                                 "Model %s would unload but has %d active requests",
@@ -298,7 +250,7 @@ class WhisperModelManager:
             TranscriptionResult with text and metadata
 
         """
-        model = await self.get_model()
+        await self._ensure_loaded()
 
         async with self._lock:
             self._active_requests += 1
@@ -306,68 +258,39 @@ class WhisperModelManager:
         start_time = time.time()
 
         try:
-            # Write audio to temp file - faster_whisper/PyAV needs a real file or path
-            # to detect format correctly (BytesIO doesn't provide format hints)
-            with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
-                tmp.write(audio)
-                tmp_path = tmp.name
-
-            try:
-                # Run transcription in thread pool
-                segments, info = await asyncio.to_thread(
-                    model.transcribe,
-                    tmp_path,
-                    language=language,
-                    task=task,
-                    initial_prompt=initial_prompt,
-                    temperature=temperature,
-                    vad_filter=vad_filter,
-                    word_timestamps=word_timestamps,
-                )
-                # Consume the generator before deleting file (segments is lazy)
-                segment_list = list(segments)
-            finally:
-                # Clean up temp file
-                with contextlib.suppress(OSError):
-                    Path(tmp_path).unlink()
-            text = " ".join(seg.text.strip() for seg in segment_list)
+            result = await self._backend.transcribe(
+                audio,
+                language=language,
+                task=task,
+                initial_prompt=initial_prompt,
+                temperature=temperature,
+                vad_filter=vad_filter,
+                word_timestamps=word_timestamps,
+            )
 
             transcription_duration = time.time() - start_time
 
             # Update stats
             self._stats.total_requests += 1
-            self._stats.total_audio_seconds += info.duration
+            self._stats.total_audio_seconds += result.duration
             self._stats.total_transcription_seconds += transcription_duration
             self._stats.last_request_time = time.time()
 
             logger.debug(
                 "Transcribed %.1fs audio in %.2fs (model=%s, lang=%s)",
-                info.duration,
+                result.duration,
                 transcription_duration,
                 self._config.model_name,
-                info.language,
+                result.language,
             )
 
-            return TranscriptionResult(
-                text=text,
-                language=info.language,
-                language_probability=info.language_probability,
-                duration=info.duration,
-                segments=[
-                    {
-                        "id": seg.id,
-                        "start": seg.start,
-                        "end": seg.end,
-                        "text": seg.text,
-                        "tokens": seg.tokens,
-                        "avg_logprob": seg.avg_logprob,
-                        "no_speech_prob": seg.no_speech_prob,
-                    }
-                    for seg in segment_list
-                ],
-            )
+            return result
 
         finally:
             async with self._lock:
                 self._active_requests -= 1
                 self._stats.last_request_time = time.time()
+
+
+# Re-export TranscriptionResult for backward compatibility
+__all__ = ["ModelConfig", "ModelStats", "TranscriptionResult", "WhisperModelManager"]

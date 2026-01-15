@@ -119,9 +119,14 @@ class TestWhisperModelManager:
             "sys.modules",
             {"faster_whisper": MagicMock(WhisperModel=MagicMock(return_value=mock_model))},
         ):
-            model = await manager.get_model()
+            backend = await manager.get_model()
 
-        assert model is mock_model
+        # get_model returns the backend, not the internal model
+        from agent_cli.server.whisper.backends.faster_whisper import (  # noqa: PLC0415
+            FasterWhisperBackend,
+        )
+
+        assert isinstance(backend, FasterWhisperBackend)
         assert manager.is_loaded
         assert manager.stats.load_count == 1
         assert manager.stats.last_load_time is not None
