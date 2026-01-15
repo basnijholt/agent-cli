@@ -10,59 +10,34 @@
 #   docker run -p 10300:10300 -p 10301:10301 agent-cli-whisper:cpu
 
 # =============================================================================
-# Base stage: common dependencies
-# =============================================================================
-FROM python:3.12-slim AS base
-
-# Install system dependencies
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-        ffmpeg \
-        git \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
-
-# Create non-root user
-RUN useradd -m -u 1000 whisper
-
-WORKDIR /app
-
-# Expose ports: Wyoming (10300) and HTTP API (10301)
-EXPOSE 10300 10301
-
-# Default environment variables
-ENV WHISPER_HOST=0.0.0.0 \
-    WHISPER_PORT=10301 \
-    WHISPER_WYOMING_PORT=10300 \
-    WHISPER_MODEL=large-v3 \
-    WHISPER_TTL=300 \
-    WHISPER_LOG_LEVEL=info
-
-# =============================================================================
 # CUDA target: GPU-accelerated with faster-whisper
 # =============================================================================
 FROM nvidia/cuda:12.4.1-cudnn-runtime-ubuntu22.04 AS cuda
 
-# Install system dependencies (same as base but on Ubuntu)
+# Install system dependencies
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
-        python3.12 \
-        python3.12-venv \
-        python3-pip \
+        curl \
         ffmpeg \
         git \
+        ca-certificates \
     && apt-get clean \
-    && rm -rf /var/lib/apt/lists/* \
-    && ln -sf /usr/bin/python3.12 /usr/bin/python3 \
-    && ln -sf /usr/bin/python3.12 /usr/bin/python
+    && rm -rf /var/lib/apt/lists/*
+
+# Install uv
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
 # Create non-root user
 RUN useradd -m -u 1000 whisper
 
 WORKDIR /app
 
-# Install agent-cli with whisper support
-RUN pip install --no-cache-dir "agent-cli[whisper]"
+# Install Python 3.13 and agent-cli with whisper support using uv tool
+ENV UV_PYTHON=3.13 \
+    UV_TOOL_BIN_DIR=/usr/local/bin \
+    UV_TOOL_DIR=/opt/uv-tools
+
+RUN uv tool install --python 3.13 "agent-cli[whisper]"
 
 # Create cache directory for models
 RUN mkdir -p /home/whisper/.cache && chown -R whisper:whisper /home/whisper
@@ -83,7 +58,7 @@ ENV WHISPER_HOST=0.0.0.0 \
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:${WHISPER_PORT}/health')" || exit 1
+    CMD python3 -c "import urllib.request; urllib.request.urlopen('http://localhost:${WHISPER_PORT}/health')" || exit 1
 
 ENTRYPOINT ["sh", "-c", "agent-cli server whisper \
     --host ${WHISPER_HOST} \
@@ -98,18 +73,46 @@ ENTRYPOINT ["sh", "-c", "agent-cli server whisper \
 # =============================================================================
 # CPU target: CPU-only with faster-whisper
 # =============================================================================
-FROM base AS cpu
+FROM python:3.13-slim AS cpu
+
+# Install system dependencies
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        ffmpeg \
+        git \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install uv
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+
+# Create non-root user
+RUN useradd -m -u 1000 whisper
+
+WORKDIR /app
 
 # Install agent-cli with whisper support
-RUN pip install --no-cache-dir "agent-cli[whisper]"
+ENV UV_TOOL_BIN_DIR=/usr/local/bin \
+    UV_TOOL_DIR=/opt/uv-tools
+
+RUN uv tool install "agent-cli[whisper]"
 
 # Create cache directory for models
 RUN mkdir -p /home/whisper/.cache && chown -R whisper:whisper /home/whisper
 
 USER whisper
 
-# Override device for CPU
-ENV WHISPER_DEVICE=cpu
+# Expose ports: Wyoming (10300) and HTTP API (10301)
+EXPOSE 10300 10301
+
+# Default environment variables
+ENV WHISPER_HOST=0.0.0.0 \
+    WHISPER_PORT=10301 \
+    WHISPER_WYOMING_PORT=10300 \
+    WHISPER_MODEL=large-v3 \
+    WHISPER_TTL=300 \
+    WHISPER_LOG_LEVEL=info \
+    WHISPER_DEVICE=cpu
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
