@@ -61,6 +61,14 @@ vad = [
     # TODO: remove python_version constraint when silero-vad's onnxruntime dep supports 3.14
     "silero-vad>=5.1; python_version < '3.14'",
 ]
+whisper = [
+    "fastapi[standard]",
+    "faster-whisper>=1.0.0",
+]
+whisper-mlx = [
+    "fastapi[standard]",
+    "mlx-whisper>=0.4.0; sys_platform == 'darwin' and platform_machine == 'arm64'",
+]
 test = [
     "pytest>=7.0.0",
     "pytest-asyncio>=0.20.0",
