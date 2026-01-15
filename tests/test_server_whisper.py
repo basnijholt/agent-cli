@@ -73,12 +73,17 @@ class TestWhisperModelManager:
 
     @pytest.fixture
     def config(self) -> ModelConfig:
-        """Create a test configuration."""
+        """Create a test configuration.
+
+        Uses backend_type="faster-whisper" explicitly to avoid auto-detection
+        choosing mlx on macOS ARM during CI tests.
+        """
         return ModelConfig(
             model_name="tiny",
             device="cpu",
             compute_type="int8",
             ttl_seconds=60,
+            backend_type="faster-whisper",
         )
 
     @pytest.fixture
