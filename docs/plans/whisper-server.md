@@ -18,7 +18,7 @@ Add a self-hosted Whisper ASR server to agent-cli that:
 ```bash
 # Subcommand approach
 agent-cli server whisper --model large-v3 --ttl 300 --port 5000
-agent-cli server proxy   # existing behavior (renamed from default)
+agent-cli server transcription-proxy   # existing behavior (renamed from default)
 ```
 
 ### Model Management
@@ -75,7 +75,7 @@ No model loaded ──────────► Load model ──────�
 agent_cli/
 ├── server/
 │   ├── __init__.py
-│   ├── cli.py                    # Typer app with whisper/proxy subcommands
+│   ├── cli.py                    # Typer app with whisper/transcription-proxy subcommands
 │   │
 │   ├── whisper/
 │   │   ├── __init__.py

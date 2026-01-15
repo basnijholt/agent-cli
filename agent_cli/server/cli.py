@@ -278,8 +278,8 @@ def whisper_cmd(
     )
 
 
-@app.command("proxy")
-def proxy_cmd(
+@app.command("transcription-proxy")
+def transcription_proxy_cmd(
     host: Annotated[
         str,
         typer.Option("--host", "-h", help="Host to bind the server to"),

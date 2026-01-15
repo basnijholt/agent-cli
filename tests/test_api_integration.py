@@ -99,13 +99,13 @@ def test_server_command_in_cli() -> None:
     # Strip ANSI color codes for more reliable testing
     clean_output = re.sub(r"\x1b\[[0-9;]*m", "", result.stdout)
     assert "whisper" in clean_output
-    assert "proxy" in clean_output
+    assert "transcription-proxy" in clean_output
 
 
-def test_server_proxy_command_in_cli() -> None:
-    """Test that the server proxy command is registered in CLI."""
+def test_server_transcription_proxy_command_in_cli() -> None:
+    """Test that the server transcription-proxy command is registered in CLI."""
     runner = CliRunner()
-    result = runner.invoke(cli_app, ["server", "proxy", "--help"])
+    result = runner.invoke(cli_app, ["server", "transcription-proxy", "--help"])
 
     assert result.exit_code == 0
 
@@ -131,10 +131,10 @@ def test_server_whisper_command_in_cli() -> None:
 
 
 @patch("uvicorn.run")
-def test_server_proxy_runs_uvicorn(mock_uvicorn_run: MagicMock) -> None:
-    """Test the server proxy command runs uvicorn."""
+def test_server_transcription_proxy_runs_uvicorn(mock_uvicorn_run: MagicMock) -> None:
+    """Test the server transcription-proxy command runs uvicorn."""
     runner = CliRunner()
-    runner.invoke(cli_app, ["server", "proxy", "--port", "8080"])
+    runner.invoke(cli_app, ["server", "transcription-proxy", "--port", "8080"])
 
     # The command should attempt to run uvicorn
     mock_uvicorn_run.assert_called_once()
