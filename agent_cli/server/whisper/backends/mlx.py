@@ -8,8 +8,10 @@ import logging
 import wave
 from typing import TYPE_CHECKING, Literal
 
+from agent_cli.core.audio_format import convert_audio_to_wyoming_format
 from agent_cli.server.whisper.backends.base import (
     BackendConfig,
+    InvalidAudioError,
     TranscriptionResult,
     release_memory,
 )
@@ -72,6 +74,20 @@ def _extract_pcm_from_wav(wav_bytes: bytes) -> bytes:
     """Extract raw PCM data from WAV bytes."""
     with io.BytesIO(wav_bytes) as buf, wave.open(buf, "rb") as wav_file:
         return wav_file.readframes(wav_file.getnframes())
+
+
+def _convert_audio_to_pcm(audio_bytes: bytes, source_filename: str | None) -> bytes:
+    """Convert audio bytes to raw PCM using FFmpeg."""
+    filename = source_filename or "audio"
+    try:
+        return convert_audio_to_wyoming_format(audio_bytes, filename)
+    except RuntimeError as exc:
+        logger.warning("FFmpeg conversion failed for MLX Whisper: %s", exc)
+        msg = (
+            "Unsupported audio format for MLX Whisper. "
+            "Provide a WAV file or install ffmpeg to convert uploads."
+        )
+        raise InvalidAudioError(msg) from exc
 
 
 class MLXWhisperBackend:
@@ -147,6 +163,7 @@ class MLXWhisperBackend:
         self,
         audio: bytes,
         *,
+        source_filename: str | None = None,
         language: str | None = None,
         task: Literal["transcribe", "translate"] = "transcribe",
         initial_prompt: str | None = None,
@@ -162,7 +179,11 @@ class MLXWhisperBackend:
             raise RuntimeError(msg)
 
         # Extract PCM from WAV and convert to float32
-        pcm_data = _extract_pcm_from_wav(audio)
+        try:
+            pcm_data = _extract_pcm_from_wav(audio)
+        except (wave.Error, EOFError) as exc:
+            logger.debug("WAV parsing failed (%s); converting with FFmpeg", exc)
+            pcm_data = _convert_audio_to_pcm(audio, source_filename)
         audio_array = _pcm_to_float(pcm_data)
 
         # Build kwargs for mlx_whisper.transcribe

@@ -32,6 +32,10 @@ class BackendConfig:
     cache_dir: Path | None = None
 
 
+class InvalidAudioError(ValueError):
+    """Raised when the input audio is invalid or unsupported."""
+
+
 @runtime_checkable
 class WhisperBackend(Protocol):
     """Protocol for Whisper transcription backends.
@@ -67,6 +71,7 @@ class WhisperBackend(Protocol):
         self,
         audio: bytes,
         *,
+        source_filename: str | None = None,
         language: str | None = None,
         task: Literal["transcribe", "translate"] = "transcribe",
         initial_prompt: str | None = None,
@@ -78,6 +83,7 @@ class WhisperBackend(Protocol):
 
         Args:
             audio: Audio data as bytes (WAV format, 16kHz, 16-bit, mono)
+            source_filename: Optional filename to help detect audio format.
             language: Language code or None for auto-detection
             task: "transcribe" or "translate" (to English)
             initial_prompt: Optional prompt to guide transcription

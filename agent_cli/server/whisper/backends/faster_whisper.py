@@ -98,6 +98,7 @@ class FasterWhisperBackend:
         self,
         audio: bytes,
         *,
+        source_filename: str | None = None,  # noqa: ARG002
         language: str | None = None,
         task: Literal["transcribe", "translate"] = "transcribe",
         initial_prompt: str | None = None,

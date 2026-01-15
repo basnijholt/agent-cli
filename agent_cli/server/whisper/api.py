@@ -16,6 +16,7 @@ from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel
 
 from agent_cli.server.common import log_requests_middleware, setup_wav_file
+from agent_cli.server.whisper.backends.base import InvalidAudioError
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
@@ -297,11 +298,14 @@ def create_app(  # noqa: C901, PLR0915
         try:
             result = await manager.transcribe(
                 audio_data,
+                source_filename=file.filename,
                 language=language,
                 task=task,
                 initial_prompt=prompt,
                 temperature=temperature,
             )
+        except InvalidAudioError as e:
+            raise HTTPException(status_code=400, detail=str(e)) from e
         except Exception as e:
             logger.exception("Transcription failed")
             raise HTTPException(status_code=500, detail=str(e)) from e

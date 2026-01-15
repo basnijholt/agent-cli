@@ -80,8 +80,9 @@ class WhisperModelManager:
             ),
             backend_type=config.backend_type,
         )
-        self._lock = asyncio.Lock()
+        self._condition = asyncio.Condition()
         self._active_requests = 0
+        self._unloading = False
         self._stats = ModelStats()
         self._unload_task: asyncio.Task[None] | None = None
         self._shutdown = False
@@ -150,40 +151,61 @@ class WhisperModelManager:
         await self._ensure_loaded()
         return self._backend
 
+    async def _load_if_needed_locked(self) -> None:
+        """Load the model if needed (expects condition lock held)."""
+        if not self._backend.is_loaded:
+            load_duration = await self._backend.load()
+            self._stats.load_count += 1
+            self._stats.last_load_time = time.time()
+            self._stats.load_duration_seconds = load_duration
+        self._stats.last_request_time = time.time()
+
     async def _ensure_loaded(self) -> None:
         """Ensure the model is loaded."""
-        async with self._lock:
-            if not self._backend.is_loaded:
-                load_duration = await self._backend.load()
-                self._stats.load_count += 1
-                self._stats.last_load_time = time.time()
-                self._stats.load_duration_seconds = load_duration
-            self._stats.last_request_time = time.time()
+        async with self._condition:
+            while self._unloading:
+                await self._condition.wait()
+            await self._load_if_needed_locked()
+
+    async def _begin_request(self) -> None:
+        """Begin a transcription request, waiting if unload is in progress."""
+        async with self._condition:
+            while self._unloading:
+                await self._condition.wait()
+            await self._load_if_needed_locked()
+            self._active_requests += 1
 
     async def unload(self) -> bool:
         """Unload the model from memory.
 
         Returns True if model was unloaded, False if it wasn't loaded.
         """
-        async with self._lock:
+        async with self._condition:
+            while self._unloading:
+                await self._condition.wait()
+
             if not self._backend.is_loaded:
                 return False
 
-        # Wait for active requests
-        while self._active_requests > 0:
-            logger.info(
-                "Waiting for %d active requests before unloading %s",
-                self._active_requests,
-                self._config.model_name,
-            )
-            await asyncio.sleep(0.5)
+            self._unloading = True
+            try:
+                while self._active_requests > 0:
+                    logger.info(
+                        "Waiting for %d active requests before unloading %s",
+                        self._active_requests,
+                        self._config.model_name,
+                    )
+                    await self._condition.wait()
 
-        async with self._lock:
-            if not self._backend.is_loaded:
-                return False
-            await self._backend.unload()
-            self._stats.unload_count += 1
-            return True
+                if not self._backend.is_loaded:
+                    return False
+
+                await self._backend.unload()
+                self._stats.unload_count += 1
+                return True
+            finally:
+                self._unloading = False
+                self._condition.notify_all()
 
     async def _unload_watcher(self) -> None:
         """Background task that unloads model after TTL expires."""
@@ -193,7 +215,9 @@ class WhisperModelManager:
             try:
                 await asyncio.sleep(check_interval)
 
-                async with self._lock:
+                async with self._condition:
+                    if self._unloading:
+                        continue
                     if not self._backend.is_loaded:
                         continue
 
@@ -228,6 +252,7 @@ class WhisperModelManager:
         self,
         audio: bytes,
         *,
+        source_filename: str | None = None,
         language: str | None = None,
         task: Literal["transcribe", "translate"] = "transcribe",
         initial_prompt: str | None = None,
@@ -239,6 +264,7 @@ class WhisperModelManager:
 
         Args:
             audio: Audio data as bytes (WAV format preferred)
+            source_filename: Optional filename to help detect audio format.
             language: Language code (e.g., "en") or None for auto-detection
             task: "transcribe" or "translate"
             initial_prompt: Optional prompt to guide transcription
@@ -250,16 +276,14 @@ class WhisperModelManager:
             TranscriptionResult with text and metadata
 
         """
-        await self._ensure_loaded()
-
-        async with self._lock:
-            self._active_requests += 1
+        await self._begin_request()
 
         start_time = time.time()
 
         try:
             result = await self._backend.transcribe(
                 audio,
+                source_filename=source_filename,
                 language=language,
                 task=task,
                 initial_prompt=initial_prompt,
@@ -287,9 +311,11 @@ class WhisperModelManager:
             return result
 
         finally:
-            async with self._lock:
+            async with self._condition:
                 self._active_requests -= 1
                 self._stats.last_request_time = time.time()
+                if self._active_requests == 0:
+                    self._condition.notify_all()
 
 
 # Re-export TranscriptionResult for backward compatibility
