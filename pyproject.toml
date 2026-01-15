@@ -76,6 +76,7 @@ dev = [
     "markdown-code-runner",
     "ruff",
     "notebook",
+    "pylint>=3.0.0",
 ]
 speed = ["audiostretchy>=1.3.0"]
 
@@ -97,6 +98,7 @@ dev = [
     "pre-commit-uv>=4.1.4",
     "zensical",
     "markdown-gfm-admonition",
+    "pylint>=3.0.0",
 ]
 
 [project.scripts]
@@ -187,3 +189,18 @@ default-version = "0.0.0"
 method = "git"
 match = ["v*"]
 default-tag = "0.0.0"
+
+[tool.pylint.similarities]
+# Minimum lines number of a similarity (duplicate-code check)
+# Set higher than jscpd (15) to catch only very large duplications
+# jscpd is the primary checker; pylint is a secondary safety net
+# Current codebase has ~65-line duplications; set to 70 to pass but catch larger ones
+min-similarity-lines = 70
+# Ignore comments when computing similarities
+ignore-comments = true
+# Ignore docstrings when computing similarities
+ignore-docstrings = true
+# Ignore imports when computing similarities
+ignore-imports = true
+# Ignore function signatures when computing similarities
+ignore-signatures = true
