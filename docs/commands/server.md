@@ -196,12 +196,12 @@ The `/v1/audio/transcriptions/stream` endpoint provides real-time streaming tran
 
 ### Model Selection Guide
 
-| Model | Size | VRAM | Speed | Accuracy | Use Case |
+| Model | Disk | VRAM | Speed | Accuracy | Use Case |
 |-------|------|------|-------|----------|----------|
-| `large-v3` | 3GB | ~3GB | Slow | Best | Highest accuracy, batch processing |
-| `medium` | 1.5GB | ~1.5GB | Medium | Good | Balanced accuracy/speed |
-| `small` | 500MB | ~1GB | Fast | Fair | Real-time, lower VRAM |
-| `tiny` | 150MB | ~500MB | Fastest | Basic | Very limited VRAM, quick transcription |
+| `large-v3` | ~3GB | ~4GB | Slow | Best | Highest accuracy, batch processing |
+| `medium` | ~1.5GB | ~2GB | Medium | Good | Balanced accuracy/speed |
+| `small` | ~500MB | ~1GB | Fast | Fair | Real-time, lower VRAM |
+| `tiny` | ~75MB | ~300MB | Fastest | Basic | Very limited VRAM, quick transcription |
 
 > [!TIP]
 > Use `--model small --model large-v3` to run both models. Clients can request either via the `model` parameter.
