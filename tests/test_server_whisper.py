@@ -7,7 +7,6 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from agent_cli.server.whisper import metrics
 from agent_cli.server.whisper.model_manager import (
     ModelConfig,
     ModelStats,
@@ -319,32 +318,3 @@ class TestTranscriptionResult:
         )
         assert len(result.segments) == 2
         assert result.segments[0]["text"] == "Hello"
-
-
-class TestMetrics:
-    """Tests for Prometheus metrics module."""
-
-    def test_init_metrics_without_prometheus(self) -> None:
-        """Test metrics initialization when prometheus_client is not installed."""
-        # Should not raise even if prometheus not installed
-        result = metrics.init_metrics()
-        # Result depends on whether prometheus_client is installed
-        assert isinstance(result, bool)
-
-    def test_record_functions_without_crash(self) -> None:
-        """Test that record functions don't crash when metrics not initialized."""
-        # These should not raise even if metrics are None
-        metrics.record_transcription_start("test-model")
-        metrics.record_transcription_complete(
-            "test-model",
-            duration=1.0,
-            audio_duration=2.0,
-            success=True,
-        )
-        metrics.update_model_status(
-            "test-model",
-            loaded=True,
-            load_time=0.5,
-            ttl_remaining=300.0,
-            active_requests=0,
-        )

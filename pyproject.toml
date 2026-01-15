@@ -64,7 +64,6 @@ vad = [
 whisper = [
     "fastapi[standard]",
     "faster-whisper>=1.0.0",
-    "prometheus-client>=0.17.0",
 ]
 test = [
     "pytest>=7.0.0",

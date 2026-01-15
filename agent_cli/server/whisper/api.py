@@ -6,7 +6,6 @@ import asyncio
 import contextlib
 import io
 import logging
-import time
 import wave
 from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING, Annotated, Any, Literal
@@ -18,7 +17,6 @@ from pydantic import BaseModel
 
 from agent_cli import constants
 from agent_cli.server.common import log_requests_middleware
-from agent_cli.server.whisper import metrics
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
@@ -105,7 +103,6 @@ class UnloadResponse(BaseModel):
 def create_app(  # noqa: C901, PLR0915
     registry: WhisperModelRegistry,
     *,
-    enable_metrics: bool = True,
     enable_wyoming: bool = True,
     wyoming_uri: str = "tcp://0.0.0.0:3001",
 ) -> FastAPI:
@@ -113,7 +110,6 @@ def create_app(  # noqa: C901, PLR0915
 
     Args:
         registry: The model registry to use.
-        enable_metrics: Whether to enable Prometheus metrics.
         enable_wyoming: Whether to start Wyoming server.
         wyoming_uri: URI for Wyoming server.
 
@@ -124,9 +120,6 @@ def create_app(  # noqa: C901, PLR0915
     global _registry
 
     _registry = registry
-
-    if enable_metrics:
-        metrics.init_metrics()
 
     @asynccontextmanager
     async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
@@ -184,24 +177,6 @@ def create_app(  # noqa: C901, PLR0915
     async def log_requests(request: Any, call_next: Any) -> Any:
         """Log basic request information."""
         return await log_requests_middleware(request, call_next)
-
-    # Add Prometheus metrics endpoint if enabled
-    if enable_metrics and metrics.HAS_PROMETHEUS:
-        from prometheus_client import CONTENT_TYPE_LATEST, generate_latest  # noqa: PLC0415
-        from starlette.responses import Response  # noqa: PLC0415
-
-        @app.get("/metrics")
-        async def prometheus_metrics() -> Response:
-            """Prometheus metrics endpoint."""
-            # Update model status metrics
-            for status in registry.list_status():
-                metrics.update_model_status(
-                    status.name,
-                    loaded=status.loaded,
-                    ttl_remaining=status.ttl_remaining,
-                    active_requests=status.active_requests,
-                )
-            return Response(content=generate_latest(), media_type=CONTENT_TYPE_LATEST)
 
     # --- Health & Status Endpoints ---
 
@@ -312,11 +287,6 @@ def create_app(  # noqa: C901, PLR0915
         if not audio_data:
             raise HTTPException(status_code=400, detail="Empty audio file")
 
-        # Record metrics
-        actual_model = manager.config.model_name
-        metrics.record_transcription_start(actual_model)
-
-        start_time = time.time()
         try:
             result = await manager.transcribe(
                 audio_data,
@@ -325,23 +295,7 @@ def create_app(  # noqa: C901, PLR0915
                 initial_prompt=prompt,
                 temperature=temperature,
             )
-
-            duration = time.time() - start_time
-            metrics.record_transcription_complete(
-                actual_model,
-                duration,
-                result.duration,
-                success=True,
-            )
-
         except Exception as e:
-            duration = time.time() - start_time
-            metrics.record_transcription_complete(
-                actual_model,
-                duration,
-                0.0,
-                success=False,
-            )
             logger.exception("Transcription failed")
             raise HTTPException(status_code=500, detail=str(e)) from e
 
@@ -392,7 +346,7 @@ def create_app(  # noqa: C901, PLR0915
     # --- WebSocket Streaming Endpoint ---
 
     @app.websocket("/v1/audio/transcriptions/stream")
-    async def stream_transcription(  # noqa: PLR0915
+    async def stream_transcription(
         websocket: WebSocket,
         model: Annotated[str | None, Query(description="Model to use")] = None,
         language: Annotated[str | None, Query(description="Language code")] = None,
@@ -460,23 +414,11 @@ def create_app(  # noqa: C901, PLR0915
                 return
 
             # Transcribe
-            actual_model = manager.config.model_name
-            metrics.record_transcription_start(actual_model)
-            start_time = time.time()
-
             try:
                 result = await manager.transcribe(
                     audio_data,
                     language=language,
                     task="transcribe",
-                )
-
-                duration = time.time() - start_time
-                metrics.record_transcription_complete(
-                    actual_model,
-                    duration,
-                    result.duration,
-                    success=True,
                 )
 
                 await websocket.send_json(
@@ -491,13 +433,6 @@ def create_app(  # noqa: C901, PLR0915
                 )
 
             except Exception as e:
-                duration = time.time() - start_time
-                metrics.record_transcription_complete(
-                    actual_model,
-                    duration,
-                    0.0,
-                    success=False,
-                )
                 await websocket.send_json({"type": "error", "message": str(e)})
 
         except Exception as e:

@@ -146,13 +146,6 @@ def whisper_cmd(
             help="Disable Wyoming server",
         ),
     ] = False,
-    no_metrics: Annotated[
-        bool,
-        typer.Option(
-            "--no-metrics",
-            help="Disable Prometheus metrics endpoint",
-        ),
-    ] = False,
     download_only: Annotated[
         bool,
         typer.Option(
@@ -173,7 +166,6 @@ def whisper_cmd(
     The server provides:
     - OpenAI-compatible /v1/audio/transcriptions endpoint
     - Wyoming protocol for Home Assistant integration
-    - Prometheus metrics at /metrics
     - WebSocket streaming at /v1/audio/transcriptions/stream
 
     Models are loaded lazily on first request and unloaded after being
@@ -259,8 +251,6 @@ def whisper_cmd(
     console.print(f"  HTTP API: [cyan]http://{host}:{port}[/cyan]")
     if not no_wyoming:
         console.print(f"  Wyoming:  [cyan]{wyoming_uri}[/cyan]")
-    if not no_metrics:
-        console.print(f"  Metrics:  [cyan]http://{host}:{port}/metrics[/cyan]")
     console.print()
     console.print("[dim]Models:[/dim]")
     for m in model:
@@ -274,7 +264,6 @@ def whisper_cmd(
 
     fastapi_app = create_app(
         registry,
-        enable_metrics=not no_metrics,
         enable_wyoming=not no_wyoming,
         wyoming_uri=wyoming_uri,
     )
