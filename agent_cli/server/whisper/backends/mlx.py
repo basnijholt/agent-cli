@@ -8,6 +8,7 @@ import logging
 import wave
 from typing import TYPE_CHECKING, Literal
 
+from agent_cli import constants
 from agent_cli.core.audio_format import convert_audio_to_wyoming_format
 from agent_cli.server.whisper.backends.base import (
     BackendConfig,
@@ -70,10 +71,15 @@ def _pcm_to_float(audio_bytes: bytes) -> NDArray[np.float32]:
     return np.frombuffer(audio_bytes, dtype=np.int16).astype(np.float32) / 32768.0
 
 
-def _extract_pcm_from_wav(wav_bytes: bytes) -> bytes:
-    """Extract raw PCM data from WAV bytes."""
+def _extract_pcm_from_wav(wav_bytes: bytes) -> tuple[bytes, int, int, int]:
+    """Extract raw PCM data and WAV parameters from WAV bytes."""
     with io.BytesIO(wav_bytes) as buf, wave.open(buf, "rb") as wav_file:
-        return wav_file.readframes(wav_file.getnframes())
+        return (
+            wav_file.readframes(wav_file.getnframes()),
+            wav_file.getframerate(),
+            wav_file.getnchannels(),
+            wav_file.getsampwidth(),
+        )
 
 
 def _convert_audio_to_pcm(audio_bytes: bytes, source_filename: str | None) -> bytes:
@@ -180,10 +186,27 @@ class MLXWhisperBackend:
 
         # Extract PCM from WAV and convert to float32
         try:
-            pcm_data = _extract_pcm_from_wav(audio)
+            pcm_data, sample_rate, channels, sample_width = _extract_pcm_from_wav(audio)
         except (wave.Error, EOFError) as exc:
             logger.debug("WAV parsing failed (%s); converting with FFmpeg", exc)
             pcm_data = _convert_audio_to_pcm(audio, source_filename)
+        else:
+            if (
+                sample_rate != constants.AUDIO_RATE
+                or channels != constants.AUDIO_CHANNELS
+                or sample_width != constants.AUDIO_FORMAT_WIDTH
+            ):
+                logger.debug(
+                    "WAV format mismatch (rate=%s, channels=%s, width=%s); converting with FFmpeg",
+                    sample_rate,
+                    channels,
+                    sample_width,
+                )
+                if source_filename and source_filename.lower().endswith(".wav"):
+                    conversion_name = source_filename
+                else:
+                    conversion_name = "audio.wav"
+                pcm_data = _convert_audio_to_pcm(audio, conversion_name)
         audio_array = _pcm_to_float(pcm_data)
 
         # Build kwargs for mlx_whisper.transcribe

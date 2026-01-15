@@ -19,6 +19,7 @@ err_console = Console(stderr=True)
 HAS_UVICORN = find_spec("uvicorn") is not None
 HAS_FASTAPI = find_spec("fastapi") is not None
 HAS_FASTER_WHISPER = find_spec("faster_whisper") is not None
+HAS_MLX_WHISPER = find_spec("mlx_whisper") is not None
 
 app = typer.Typer(
     name="server",
@@ -40,9 +41,37 @@ def _check_server_deps() -> None:
         raise typer.Exit(1)
 
 
-def _check_whisper_deps() -> None:
+def _resolve_backend_for_deps(backend: str) -> str:
+    """Resolve auto backend selection for dependency checks."""
+    if backend != "auto":
+        return backend
+    from agent_cli.server.whisper.backends import detect_backend  # noqa: PLC0415
+
+    return detect_backend()
+
+
+def _check_whisper_deps(backend: str, *, download_only: bool = False) -> None:
     """Check that Whisper dependencies are available."""
     _check_server_deps()
+    if download_only:
+        if not HAS_FASTER_WHISPER:
+            err_console.print(
+                "[bold red]Error:[/bold red] faster-whisper is required for --download-only. "
+                "Run: [cyan]pip install agent-cli[whisper][/cyan]",
+            )
+            raise typer.Exit(1)
+        return
+
+    resolved_backend = _resolve_backend_for_deps(backend)
+    if resolved_backend == "mlx":
+        if not HAS_MLX_WHISPER:
+            err_console.print(
+                "[bold red]Error:[/bold red] MLX Whisper backend requires mlx-whisper. "
+                "Run: [cyan]pip install mlx-whisper[/cyan]",
+            )
+            raise typer.Exit(1)
+        return
+
     if not HAS_FASTER_WHISPER:
         err_console.print(
             "[bold red]Error:[/bold red] Whisper dependencies not installed. "
@@ -182,7 +211,14 @@ def whisper_cmd(  # noqa: PLR0915
         agent-cli server whisper --model large-v3 --download-only
 
     """
-    _check_whisper_deps()
+    valid_backends = ("auto", "faster-whisper", "mlx")
+    if backend not in valid_backends:
+        err_console.print(
+            f"[bold red]Error:[/bold red] --backend must be one of: {', '.join(valid_backends)}",
+        )
+        raise typer.Exit(1)
+
+    _check_whisper_deps(backend, download_only=download_only)
 
     from agent_cli.server.whisper.model_manager import ModelConfig  # noqa: PLC0415
     from agent_cli.server.whisper.model_registry import WhisperModelRegistry  # noqa: PLC0415
@@ -221,14 +257,6 @@ def whisper_cmd(  # noqa: PLR0915
 
     # Create registry and register models
     registry = WhisperModelRegistry(default_model=default_model or model[0])
-
-    # Validate backend option
-    valid_backends = ("auto", "faster-whisper", "mlx")
-    if backend not in valid_backends:
-        err_console.print(
-            f"[bold red]Error:[/bold red] --backend must be one of: {', '.join(valid_backends)}",
-        )
-        raise typer.Exit(1)
 
     for model_name in model:
         config = ModelConfig(
