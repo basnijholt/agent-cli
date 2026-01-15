@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import gc
+import io
 import logging
 import time
 from dataclasses import dataclass, field
@@ -293,8 +294,6 @@ class WhisperModelManager:
             TranscriptionResult with text and metadata
 
         """
-        import io  # noqa: PLC0415
-
         model = await self.get_model()
 
         async with self._lock:

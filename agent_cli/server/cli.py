@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from importlib.util import find_spec
 from pathlib import Path  # noqa: TC003 - Typer evaluates annotations at runtime
 from typing import Annotated
@@ -186,8 +187,6 @@ def whisper_cmd(
 
     """
     _check_whisper_deps()
-
-    import asyncio  # noqa: PLC0415
 
     from agent_cli.server.whisper.model_manager import ModelConfig  # noqa: PLC0415
     from agent_cli.server.whisper.model_registry import WhisperModelRegistry  # noqa: PLC0415
