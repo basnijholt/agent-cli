@@ -1,6 +1,6 @@
 ---
 name: agent-cli-dev
-description: Spawn parallel AI coding agents in isolated git worktrees. Use when tasks can be parallelized across multiple independent features, when work benefits from isolation, or when the user asks to work on multiple things at once.
+description: Spawns AI coding agents in isolated git worktrees. Use when the user asks to spawn or launch an agent, delegate a task to a separate agent, work in a separate worktree, or parallelize development across features.
 ---
 
 # Parallel Development with agent-cli dev
@@ -132,6 +132,4 @@ Each agent works independently in its own branch. Results can be reviewed and me
 | `--with-agent` | Specific agent: claude, aider, codex, gemini |
 | `--agent-args` | Extra arguments for the agent |
 
-## Before spawning agents
-
-**Important**: Before spawning any agents, read [examples.md](examples.md) in this skill directory for comprehensive prompt templates and real-world scenarios. The examples show the proper structure for self-contained prompts that spawned agents can execute independently.
+@examples.md
