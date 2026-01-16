@@ -48,7 +48,7 @@ Since then I have expanded the tool with many more features, all focused on loca
 - **[`memory`](docs/commands/memory.md)**: Long-term memory system with `memory proxy` and `memory add`.
 - **[`rag-proxy`](docs/commands/rag-proxy.md)**: RAG proxy server for chatting with your documents.
 - **[`dev`](docs/commands/dev.md)**: Parallel development with git worktrees and AI coding agents.
-- **[`server`](docs/commands/server.md)**: Local Whisper ASR server and transcription proxy.
+- **[`server`](docs/commands/server.md)**: Local Whisper ASR server with OpenAI-compatible API and Home Assistant integration.
 - **[`transcribe-daemon`](docs/commands/transcribe-daemon.md)**: Continuous background transcription with VAD. Install with `uv tool install "agent-cli[vad]"`.
 
 ## Quick Start
@@ -309,9 +309,12 @@ Our installation scripts automatically handle all dependencies:
 |---------|---------|-----------------|
 | **[Ollama](https://ollama.ai/)** | Local LLM for text processing | ✅ Yes, with default model |
 | **[Wyoming Faster Whisper](https://github.com/rhasspy/wyoming-faster-whisper)** | Speech-to-text | ✅ Yes, via `uvx` |
+| **[`agent-cli server whisper`](docs/commands/server.md#whisper)** | Speech-to-text (alternative) | ✅ Built-in, `pip install "agent-cli[whisper]"` |
 | **[Wyoming Piper](https://github.com/rhasspy/wyoming-piper)** | Text-to-speech | ✅ Yes, via `uvx` |
 | **[Kokoro-FastAPI](https://github.com/remsky/Kokoro-FastAPI)** | Premium TTS (optional) | ⚙️ Can be added later |
 | **[Wyoming openWakeWord](https://github.com/rhasspy/wyoming-openwakeword)** | Wake word detection | ✅ Yes, for `assistant` |
+
+> **Why `agent-cli server whisper`?** The built-in Whisper server offers an OpenAI-compatible API (drop-in replacement), Wyoming protocol for Home Assistant, TTL-based VRAM management (auto-unloads idle models), and auto-selects the optimal backend ([MLX](https://github.com/ml-explore/mlx-examples/tree/main/whisper) on Apple Silicon, [faster-whisper](https://github.com/SYSTRAN/faster-whisper) on Linux/CUDA). Docker images available at `ghcr.io/basnijholt/agent-cli-whisper`.
 
 #### Alternative Cloud Services (Optional)
 
