@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import io
 import wave
+from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
@@ -122,8 +123,6 @@ class TestWhisperModelManager:
     @pytest.mark.asyncio
     async def test_load_model(self, manager: WhisperModelManager) -> None:
         """Test loading a model (mocked)."""
-        from concurrent.futures import ProcessPoolExecutor  # noqa: PLC0415
-
         from agent_cli.server.whisper.backends.faster_whisper import (  # noqa: PLC0415
             FasterWhisperBackend,
         )
@@ -151,7 +150,6 @@ class TestWhisperModelManager:
     @pytest.mark.asyncio
     async def test_ttl_remaining_after_load(self, manager: WhisperModelManager) -> None:
         """Test TTL remaining calculation."""
-        from concurrent.futures import ProcessPoolExecutor  # noqa: PLC0415
 
         async def mock_run_in_executor(
             _executor: object,
@@ -175,7 +173,6 @@ class TestWhisperModelManager:
     @pytest.mark.asyncio
     async def test_unload_after_load(self, manager: WhisperModelManager) -> None:
         """Test unloading after loading."""
-        from concurrent.futures import ProcessPoolExecutor  # noqa: PLC0415
 
         async def mock_run_in_executor(
             _executor: object,

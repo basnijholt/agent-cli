@@ -14,6 +14,7 @@ from agent_cli.core.audio_format import (
     convert_audio_to_wyoming_format,
     extract_pcm_from_wav,
 )
+from agent_cli.core.process import set_process_title
 from agent_cli.server.whisper.backends.base import (
     BackendConfig,
     InvalidAudioError,
@@ -111,8 +112,6 @@ def _load_model_in_subprocess(model_name: str) -> None:
     """Load model in subprocess. Called once when executor starts."""
     import mlx.core as mx  # noqa: PLC0415
     from mlx_whisper.transcribe import ModelHolder  # noqa: PLC0415
-
-    from agent_cli.core.process import set_process_title  # noqa: PLC0415
 
     set_process_title("whisper-mlx")
     ModelHolder.get_model(model_name, mx.float16)

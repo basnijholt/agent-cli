@@ -10,6 +10,7 @@ from multiprocessing import get_context
 from pathlib import Path
 from typing import Any, Literal
 
+from agent_cli.core.process import set_process_title
 from agent_cli.server.whisper.backends.base import (
     BackendConfig,
     TranscriptionResult,
@@ -30,8 +31,6 @@ def _load_model_in_subprocess(
 ) -> str:
     """Load model in subprocess. Returns actual device string."""
     from faster_whisper import WhisperModel  # noqa: PLC0415
-
-    from agent_cli.core.process import set_process_title  # noqa: PLC0415
 
     set_process_title("whisper-faster")
     model = WhisperModel(
