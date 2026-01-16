@@ -12,6 +12,7 @@ import typer
 from rich.console import Console
 
 from agent_cli.cli import app as main_app
+from agent_cli.core.process import set_process_title
 from agent_cli.server.common import setup_rich_logging
 
 console = Console()
@@ -34,12 +35,21 @@ app = typer.Typer(
 main_app.add_typer(app, name="server")
 
 
+@app.callback()
+def server_callback(ctx: typer.Context) -> None:
+    """Server command group callback."""
+    if ctx.invoked_subcommand is not None:
+        # Update process title to include full path: server-{subcommand}
+        set_process_title(f"server-{ctx.invoked_subcommand}")
+
+
 def _check_server_deps() -> None:
     """Check that server dependencies are available."""
     if not HAS_UVICORN or not HAS_FASTAPI:
         err_console.print(
             "[bold red]Error:[/bold red] Server dependencies not installed. "
-            "Run: [cyan]pip install agent-cli[server][/cyan]",
+            "Run: [cyan]pip install agent-cli\\[server][/cyan] "
+            "or [cyan]uv sync --extra server[/cyan]",
         )
         raise typer.Exit(1)
 
@@ -51,7 +61,8 @@ def _check_whisper_deps(backend: str, *, download_only: bool = False) -> None:
         if not HAS_FASTER_WHISPER:
             err_console.print(
                 "[bold red]Error:[/bold red] faster-whisper is required for --download-only. "
-                "Run: [cyan]pip install agent-cli[whisper][/cyan]",
+                "Run: [cyan]pip install agent-cli\\[whisper][/cyan] "
+                "or [cyan]uv sync --extra whisper[/cyan]",
             )
             raise typer.Exit(1)
         return
@@ -68,7 +79,8 @@ def _check_whisper_deps(backend: str, *, download_only: bool = False) -> None:
     if not HAS_FASTER_WHISPER:
         err_console.print(
             "[bold red]Error:[/bold red] Whisper dependencies not installed. "
-            "Run: [cyan]pip install agent-cli[whisper][/cyan]",
+            "Run: [cyan]pip install agent-cli\\[whisper][/cyan] "
+            "or [cyan]uv sync --extra whisper[/cyan]",
         )
         raise typer.Exit(1)
 

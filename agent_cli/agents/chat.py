@@ -445,6 +445,7 @@ def chat(
     """An chat agent that you can talk to."""
     if print_args:
         print_command_line_args(locals())
+
     setup_logging(log_level, log_file, quiet=quiet)
     general_cfg = config.General(
         log_level=log_level,

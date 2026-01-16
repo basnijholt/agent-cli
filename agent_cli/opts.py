@@ -368,6 +368,12 @@ QUIET: bool = typer.Option(
     help="Suppress console output from rich.",
     rich_help_panel="General Options",
 )
+JSON_OUTPUT: bool = typer.Option(
+    False,  # noqa: FBT003
+    "--json",
+    help="Output result as JSON for automation. Implies --quiet and --no-clipboard.",
+    rich_help_panel="General Options",
+)
 SAVE_FILE: Path | None = typer.Option(
     None,
     "--save-file",

@@ -3,18 +3,22 @@
 from __future__ import annotations
 
 import asyncio
-import io
 import logging
 import wave
-from typing import TYPE_CHECKING, Literal
+from concurrent.futures import ProcessPoolExecutor
+from multiprocessing import get_context
+from typing import TYPE_CHECKING, Any, Literal
 
 from agent_cli import constants
-from agent_cli.core.audio_format import convert_audio_to_wyoming_format
+from agent_cli.core.audio_format import (
+    convert_audio_to_wyoming_format,
+    extract_pcm_from_wav,
+)
+from agent_cli.core.process import set_process_title
 from agent_cli.server.whisper.backends.base import (
     BackendConfig,
     InvalidAudioError,
     TranscriptionResult,
-    release_memory,
 )
 
 if TYPE_CHECKING:
@@ -25,7 +29,6 @@ logger = logging.getLogger(__name__)
 
 # MLX model name mapping: canonical name -> HuggingFace repo
 _MLX_MODEL_MAP: dict[str, str] = {
-    # Direct mappings for common names
     "tiny": "mlx-community/whisper-tiny",
     "small": "mlx-community/whisper-small-mlx",
     "medium": "mlx-community/whisper-medium-mlx",
@@ -34,33 +37,21 @@ _MLX_MODEL_MAP: dict[str, str] = {
     "large-v3": "mlx-community/whisper-large-v3-mlx",
     "large-v3-turbo": "mlx-community/whisper-large-v3-turbo",
     "turbo": "mlx-community/whisper-large-v3-turbo",
-    # Quantized variants
     "large-v3-turbo-q4": "mlx-community/whisper-large-v3-turbo-q4",
 }
 
 
 def _resolve_mlx_model_name(model_name: str) -> str:
-    """Resolve a model name to an MLX HuggingFace repo.
-
-    If the name is already an mlx-community repo, return as-is.
-    Otherwise, try to map common names to MLX repos.
-    """
-    # Already an MLX repo
+    """Resolve a model name to an MLX HuggingFace repo."""
     if model_name.startswith("mlx-community/"):
         return model_name
-
-    # Try direct mapping
     if model_name in _MLX_MODEL_MAP:
         return _MLX_MODEL_MAP[model_name]
-
-    # Try without common prefixes (e.g., "whisper-large-v3-turbo" -> "large-v3-turbo")
     for prefix in ("whisper-", "openai/whisper-"):
         if model_name.startswith(prefix):
             stripped = model_name[len(prefix) :]
             if stripped in _MLX_MODEL_MAP:
                 return _MLX_MODEL_MAP[stripped]
-
-    # Return as-is and let mlx_whisper handle it
     return model_name
 
 
@@ -69,17 +60,6 @@ def _pcm_to_float(audio_bytes: bytes) -> NDArray[np.float32]:
     import numpy as np  # noqa: PLC0415
 
     return np.frombuffer(audio_bytes, dtype=np.int16).astype(np.float32) / 32768.0
-
-
-def _extract_pcm_from_wav(wav_bytes: bytes) -> tuple[bytes, int, int, int]:
-    """Extract raw PCM data and WAV parameters from WAV bytes."""
-    with io.BytesIO(wav_bytes) as buf, wave.open(buf, "rb") as wav_file:
-        return (
-            wav_file.readframes(wav_file.getnframes()),
-            wav_file.getframerate(),
-            wav_file.getnchannels(),
-            wav_file.getsampwidth(),
-        )
 
 
 def _convert_audio_to_pcm(audio_bytes: bytes, source_filename: str | None) -> bytes:
@@ -96,76 +76,131 @@ def _convert_audio_to_pcm(audio_bytes: bytes, source_filename: str | None) -> by
         raise InvalidAudioError(msg) from exc
 
 
+def _prepare_audio_pcm(audio: bytes, source_filename: str | None) -> bytes:
+    """Extract PCM from WAV or convert with FFmpeg if needed."""
+    try:
+        wav = extract_pcm_from_wav(audio)
+    except (wave.Error, EOFError) as exc:
+        logger.debug("WAV parsing failed (%s); converting with FFmpeg", exc)
+        return _convert_audio_to_pcm(audio, source_filename)
+
+    needs_conversion = (
+        wav.sample_rate != constants.AUDIO_RATE
+        or wav.num_channels != constants.AUDIO_CHANNELS
+        or wav.sample_width != constants.AUDIO_FORMAT_WIDTH
+    )
+    if needs_conversion:
+        logger.debug(
+            "WAV format mismatch (rate=%s, channels=%s, width=%s); converting",
+            wav.sample_rate,
+            wav.num_channels,
+            wav.sample_width,
+        )
+        name = (
+            source_filename
+            if source_filename and source_filename.lower().endswith(".wav")
+            else "audio.wav"
+        )
+        return _convert_audio_to_pcm(audio, name)
+    return wav.pcm_data
+
+
+# --- Subprocess worker functions (run in isolated process) ---
+
+
+def _load_model_in_subprocess(model_name: str) -> None:
+    """Load model in subprocess. Called once when executor starts."""
+    import mlx.core as mx  # noqa: PLC0415
+    from mlx_whisper.transcribe import ModelHolder  # noqa: PLC0415
+
+    set_process_title("whisper-mlx")
+    ModelHolder.get_model(model_name, mx.float16)
+
+
+def _transcribe_in_subprocess(
+    model_name: str,
+    audio_bytes: bytes,
+    audio_shape: tuple[int, ...],
+    audio_dtype: str,
+    kwargs: dict[str, Any],
+) -> dict[str, Any]:
+    """Run transcription in subprocess. Model stays loaded between calls."""
+    import mlx_whisper  # noqa: PLC0415
+    import numpy as np  # noqa: PLC0415
+
+    audio_array = np.frombuffer(audio_bytes, dtype=audio_dtype).reshape(audio_shape)
+    result = mlx_whisper.transcribe(audio_array, path_or_hf_repo=model_name, **kwargs)
+
+    return {
+        "text": result.get("text", ""),
+        "language": result.get("language", "en"),
+        "segments": result.get("segments", []),
+    }
+
+
 class MLXWhisperBackend:
     """Whisper backend using mlx-whisper for Apple Silicon.
 
-    Optimized for macOS with M1/M2/M3/M4 chips using Metal acceleration.
+    Uses subprocess isolation: when unloaded, the subprocess terminates
+    and the OS reclaims ALL memory (Python's pymalloc doesn't return
+    freed memory to OS otherwise).
     """
 
     def __init__(self, config: BackendConfig) -> None:
         """Initialize the backend."""
         self._config = config
         self._resolved_model = _resolve_mlx_model_name(config.model_name)
-        self._loaded = False
-        self._model: object | None = None
+        self._executor: ProcessPoolExecutor | None = None
 
     @property
     def is_loaded(self) -> bool:
-        """Check if the model is loaded.
-
-        Note: mlx-whisper caches models internally. This tracks whether
-        we've loaded the model at least once.
-        """
-        return self._loaded
+        """Check if the model is loaded."""
+        return self._executor is not None
 
     @property
     def device(self) -> str | None:
         """Get the device - always 'mps' (Metal) for MLX."""
-        return "mps" if self._loaded else None
+        return "mps" if self._executor is not None else None
 
     async def load(self) -> float:
-        """Load the model for MLX and warm the cache."""
+        """Start subprocess and load model."""
         import time  # noqa: PLC0415
 
         logger.debug(
-            "Preparing mlx-whisper model %s (resolved: %s)",
+            "Starting MLX subprocess for model %s (resolved: %s)",
             self._config.model_name,
             self._resolved_model,
         )
 
         start_time = time.time()
 
-        from mlx_whisper.load_models import load_model  # noqa: PLC0415
+        # Subprocess isolation: spawn context for clean state
+        ctx = get_context("spawn")
+        self._executor = ProcessPoolExecutor(max_workers=1, mp_context=ctx)
 
-        self._model = await asyncio.to_thread(load_model, self._resolved_model)
+        loop = asyncio.get_running_loop()
+        await loop.run_in_executor(
+            self._executor,
+            _load_model_in_subprocess,
+            self._resolved_model,
+        )
 
-        self._loaded = True
         load_duration = time.time() - start_time
-
         logger.info(
-            "Model %s loaded in %.2fs",
+            "Model %s loaded in subprocess in %.2fs",
             self._config.model_name,
             load_duration,
         )
-
         return load_duration
 
     async def unload(self) -> None:
-        """Unload the model.
-
-        Note: mlx-whisper caches models internally. We can trigger GC
-        but full unload may require process restart for large models.
-        """
-        if not self._loaded:
+        """Shutdown subprocess, releasing ALL memory."""
+        if self._executor is None:
             return
-
-        logger.debug("Unloading mlx-whisper model %s", self._resolved_model)
-
-        self._model = None
-        self._loaded = False
-        release_memory()
-
-        logger.info("Model %s unloaded", self._config.model_name)
+        logger.debug("Shutting down MLX subprocess for model %s", self._resolved_model)
+        self._executor.shutdown(wait=False, cancel_futures=True)
+        self._executor = None
+        logger.info("Model %s unloaded (subprocess terminated)", self._config.model_name)
 
     async def transcribe(
         self,
@@ -179,41 +214,15 @@ class MLXWhisperBackend:
         vad_filter: bool = True,  # noqa: ARG002 - not supported by mlx-whisper
         word_timestamps: bool = False,
     ) -> TranscriptionResult:
-        """Transcribe audio using mlx-whisper."""
-        import mlx_whisper  # noqa: PLC0415
-
-        if not self._loaded:
+        """Transcribe audio using mlx-whisper in subprocess."""
+        if self._executor is None:
             msg = "Model not loaded. Call load() first."
             raise RuntimeError(msg)
 
-        # Extract PCM from WAV and convert to float32
-        try:
-            pcm_data, sample_rate, channels, sample_width = _extract_pcm_from_wav(audio)
-        except (wave.Error, EOFError) as exc:
-            logger.debug("WAV parsing failed (%s); converting with FFmpeg", exc)
-            pcm_data = _convert_audio_to_pcm(audio, source_filename)
-        else:
-            if (
-                sample_rate != constants.AUDIO_RATE
-                or channels != constants.AUDIO_CHANNELS
-                or sample_width != constants.AUDIO_FORMAT_WIDTH
-            ):
-                logger.debug(
-                    "WAV format mismatch (rate=%s, channels=%s, width=%s); converting with FFmpeg",
-                    sample_rate,
-                    channels,
-                    sample_width,
-                )
-                if source_filename and source_filename.lower().endswith(".wav"):
-                    conversion_name = source_filename
-                else:
-                    conversion_name = "audio.wav"
-                pcm_data = _convert_audio_to_pcm(audio, conversion_name)
+        pcm_data = _prepare_audio_pcm(audio, source_filename)
         audio_array = _pcm_to_float(pcm_data)
 
-        # Build kwargs for mlx_whisper.transcribe
-        kwargs: dict[str, object] = {
-            "path_or_hf_repo": self._resolved_model,
+        kwargs: dict[str, Any] = {
             "temperature": temperature,
             "word_timestamps": word_timestamps,
         }
@@ -224,19 +233,21 @@ class MLXWhisperBackend:
         if initial_prompt:
             kwargs["initial_prompt"] = initial_prompt
 
-        # Run transcription in thread pool (mlx operations can block)
-        result = await asyncio.to_thread(mlx_whisper.transcribe, audio_array, **kwargs)
+        loop = asyncio.get_running_loop()
+        result = await loop.run_in_executor(
+            self._executor,
+            _transcribe_in_subprocess,
+            self._resolved_model,
+            audio_array.tobytes(),
+            audio_array.shape,
+            str(audio_array.dtype),
+            kwargs,
+        )
 
-        # Extract results - mlx_whisper returns a dict
         text = result.get("text", "").strip()
         detected_language = result.get("language", "en")
-
-        # MLX doesn't provide language probability directly
         language_probability = 1.0 if language else 0.95
-
-        # Calculate duration from segments or estimate from audio length
         segments = result.get("segments", [])
-        # Estimate: 16kHz, 16-bit mono = 32000 bytes/second
         duration = segments[-1].get("end", 0.0) if segments else len(pcm_data) / 32000.0
 
         return TranscriptionResult(

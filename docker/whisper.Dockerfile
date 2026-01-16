@@ -12,7 +12,7 @@
 # =============================================================================
 # CUDA target: GPU-accelerated with faster-whisper
 # =============================================================================
-FROM nvidia/cuda:12.4.1-cudnn-runtime-ubuntu22.04 AS cuda
+FROM nvidia/cuda:12.9.1-cudnn-runtime-ubuntu22.04 AS cuda
 
 # Install system dependencies
 RUN apt-get update && \

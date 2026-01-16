@@ -2,17 +2,51 @@
 
 from __future__ import annotations
 
+import io
 import logging
 import shutil
 import subprocess
 import tempfile
+import wave
 from pathlib import Path
+from typing import NamedTuple
 
 from agent_cli import constants
 
 logger = logging.getLogger(__name__)
 
 VALID_EXTENSIONS = (".wav", ".mp3", ".m4a", ".flac", ".ogg", ".aac", ".webm")
+
+
+class WavPcmData(NamedTuple):
+    """PCM data and parameters extracted from a WAV file."""
+
+    pcm_data: bytes
+    sample_rate: int
+    num_channels: int
+    sample_width: int
+
+
+def extract_pcm_from_wav(wav_bytes: bytes) -> WavPcmData:
+    """Extract raw PCM data and WAV parameters from WAV bytes.
+
+    Args:
+        wav_bytes: WAV file data as bytes.
+
+    Returns:
+        WavPcmData with pcm_data, sample_rate, num_channels, sample_width.
+
+    Raises:
+        wave.Error: If the data is not a valid WAV file.
+
+    """
+    with io.BytesIO(wav_bytes) as buf, wave.open(buf, "rb") as wav_file:
+        return WavPcmData(
+            pcm_data=wav_file.readframes(wav_file.getnframes()),
+            sample_rate=wav_file.getframerate(),
+            num_channels=wav_file.getnchannels(),
+            sample_width=wav_file.getsampwidth(),
+        )
 
 
 def is_valid_audio_file(value: object) -> bool:

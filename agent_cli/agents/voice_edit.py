@@ -34,6 +34,7 @@ This approach uses standard Unix background processes (&) instead of Python daem
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 from contextlib import suppress
 from pathlib import Path  # noqa: TC003
@@ -47,6 +48,7 @@ from agent_cli.cli import app
 from agent_cli.core import process
 from agent_cli.core.audio import setup_devices
 from agent_cli.core.utils import (
+    enable_json_mode,
     get_clipboard_text,
     maybe_live,
     print_command_line_args,
@@ -103,18 +105,18 @@ async def _async_main(
     openai_tts_cfg: config.OpenAITTS,
     kokoro_tts_cfg: config.KokoroTTS,
     gemini_tts_cfg: config.GeminiTTS,
-) -> None:
+) -> str | None:
     """Core asynchronous logic for the voice assistant."""
     device_info = setup_devices(general_cfg, audio_in_cfg, audio_out_cfg)
     if device_info is None:
-        return
+        return None
     input_device_index, _, tts_output_device_index = device_info
     audio_in_cfg.input_device_index = input_device_index
     audio_out_cfg.output_device_index = tts_output_device_index
 
     original_text = get_clipboard_text()
     if original_text is None:
-        return
+        return None
 
     if not general_cfg.quiet and original_text:
         print_input_panel(original_text, title="📝 Text to Process")
@@ -134,7 +136,7 @@ async def _async_main(
         if not audio_data:
             if not general_cfg.quiet:
                 print_with_style("No audio recorded", style="yellow")
-            return
+            return None
 
         instruction = await get_instruction_from_audio(
             audio_data=audio_data,
@@ -148,9 +150,9 @@ async def _async_main(
             quiet=general_cfg.quiet,
         )
         if not instruction:
-            return
+            return None
 
-        await process_instruction_and_respond(
+        return await process_instruction_and_respond(
             instruction=instruction,
             original_text=original_text,
             provider_cfg=provider_cfg,
@@ -221,6 +223,7 @@ def voice_edit(
     log_file: str | None = opts.LOG_FILE,
     list_devices: bool = opts.LIST_DEVICES,
     quiet: bool = opts.QUIET,
+    json_output: bool = opts.JSON_OUTPUT,
     config_file: str | None = opts.CONFIG_FILE,
     print_args: bool = opts.PRINT_ARGS,
 ) -> None:
@@ -236,11 +239,16 @@ def voice_edit(
     """
     if print_args:
         print_command_line_args(locals())
-    setup_logging(log_level, log_file, quiet=quiet)
+
+    effective_quiet = quiet or json_output
+    if json_output:
+        enable_json_mode()
+
+    setup_logging(log_level, log_file, quiet=effective_quiet)
     general_cfg = config.General(
         log_level=log_level,
         log_file=log_file,
-        quiet=quiet,
+        quiet=effective_quiet,
         list_devices=list_devices,
         clipboard=clipboard,
         save_file=save_file,
@@ -259,7 +267,7 @@ def voice_edit(
     with process.pid_file_context(process_name), suppress(KeyboardInterrupt):
         cfgs = config.create_provider_configs_from_locals(locals())
 
-        asyncio.run(
+        result = asyncio.run(
             _async_main(
                 provider_cfg=cfgs.provider,
                 general_cfg=general_cfg,
@@ -277,3 +285,5 @@ def voice_edit(
                 gemini_tts_cfg=cfgs.gemini_tts,
             ),
         )
+        if json_output:
+            print(json.dumps({"result": result}))

@@ -73,12 +73,19 @@ OPENAI_SUPPORTED_FORMATS: frozenset[str] = frozenset(
 )
 
 
+_GEMINI_TRANSCRIPTION_PROMPT = (
+    "Transcribe this audio accurately. Return only the transcription text, "
+    "nothing else. Do not include any prefixes, labels, or explanations."
+)
+
+
 async def transcribe_audio_gemini(
     audio_data: bytes,
     gemini_asr_cfg: config.GeminiASR,
     logger: logging.Logger,
     *,
     file_suffix: str = ".wav",
+    extra_instructions: str | None = None,
     **_kwargs: object,
 ) -> str:
     """Transcribe audio using Gemini's native audio understanding.
@@ -91,6 +98,7 @@ async def transcribe_audio_gemini(
         gemini_asr_cfg: Gemini ASR configuration
         logger: Logger instance
         file_suffix: File extension for MIME type detection (default: .wav)
+        extra_instructions: Additional context/instructions to improve transcription
 
     """
     from google import genai  # noqa: PLC0415
@@ -117,13 +125,20 @@ async def transcribe_audio_gemini(
 
     logger.debug("Using MIME type: %s", mime_type)
 
+    # Build the transcription prompt with optional context
+    effective_prompt = gemini_asr_cfg.get_effective_prompt(extra_instructions)
+    if effective_prompt:
+        prompt = f"{_GEMINI_TRANSCRIPTION_PROMPT}\n\nContext: {effective_prompt}"
+        logger.debug("Using Gemini ASR with context prompt")
+    else:
+        prompt = _GEMINI_TRANSCRIPTION_PROMPT
+
     client = genai.Client(api_key=gemini_asr_cfg.gemini_api_key)
 
     response = await client.aio.models.generate_content(
         model=gemini_asr_cfg.asr_gemini_model,
         contents=[
-            "Transcribe this audio accurately. Return only the transcription text, "
-            "nothing else. Do not include any prefixes, labels, or explanations.",
+            prompt,
             types.Part.from_bytes(data=audio_data, mime_type=mime_type),
         ],
     )
@@ -149,6 +164,7 @@ async def transcribe_audio_openai(
     logger: logging.Logger,
     *,
     file_suffix: str = ".wav",
+    extra_instructions: str | None = None,
     **_kwargs: object,  # Accept extra kwargs for consistency with Wyoming
 ) -> str:
     """Transcribe audio using OpenAI's Whisper API or a compatible endpoint.
@@ -163,6 +179,7 @@ async def transcribe_audio_openai(
         openai_asr_cfg: OpenAI ASR configuration
         logger: Logger instance
         file_suffix: File extension for filename (default: .wav)
+        extra_instructions: Additional context/instructions to improve transcription
 
     """
     if openai_asr_cfg.openai_base_url:
@@ -197,9 +214,16 @@ async def transcribe_audio_openai(
 
     logger.debug("Using filename: %s", audio_file.name)
 
-    transcription_params = {"model": openai_asr_cfg.asr_openai_model, "file": audio_file}
-    if openai_asr_cfg.asr_openai_prompt:
-        transcription_params["prompt"] = openai_asr_cfg.asr_openai_prompt
+    transcription_params: dict[str, object] = {
+        "model": openai_asr_cfg.asr_openai_model,
+        "file": audio_file,
+    }
+
+    # Get effective prompt combining config and extra_instructions
+    effective_prompt = openai_asr_cfg.get_effective_prompt(extra_instructions)
+    if effective_prompt:
+        transcription_params["prompt"] = effective_prompt
+        logger.debug("Using OpenAI ASR with prompt")
 
     response = await client.audio.transcriptions.create(**transcription_params)
     return response.text
