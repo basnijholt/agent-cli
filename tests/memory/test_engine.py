@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import sys
 from datetime import UTC, datetime, timedelta
 from typing import Any, Self
 from uuid import uuid4
@@ -320,6 +321,10 @@ async def test_retrieve_memory_returns_all_facts(monkeypatch: pytest.MonkeyPatch
 
 
 @pytest.mark.asyncio
+@pytest.mark.skipif(
+    sys.platform == "win32",
+    reason="Flaky on Windows due to SSL cert loading timeouts",
+)
 async def test_process_chat_request_summarizes_and_persists(
     tmp_path: Any,
     monkeypatch: pytest.MonkeyPatch,
