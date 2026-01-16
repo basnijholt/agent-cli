@@ -122,19 +122,24 @@ class TestWhisperModelManager:
     @pytest.mark.asyncio
     async def test_load_model(self, manager: WhisperModelManager) -> None:
         """Test loading a model (mocked)."""
-        mock_model = MagicMock()
-        mock_model.model.device = "cpu"
-
-        with patch.dict(
-            "sys.modules",
-            {"faster_whisper": MagicMock(WhisperModel=MagicMock(return_value=mock_model))},
-        ):
-            backend = await manager.get_model()
-
-        # get_model returns the backend, not the internal model
+        from agent_cli.server.whisper.backends.base import (  # noqa: PLC0415
+            SubprocessExecutor,
+        )
         from agent_cli.server.whisper.backends.faster_whisper import (  # noqa: PLC0415
             FasterWhisperBackend,
         )
+
+        def mock_start(self: SubprocessExecutor) -> None:
+            self._executor = MagicMock()  # type: ignore[assignment]
+
+        async def mock_run(_fn: object, *_args: object) -> str:
+            return "cpu"
+
+        with (
+            patch.object(SubprocessExecutor, "start", mock_start),
+            patch.object(SubprocessExecutor, "run", mock_run),
+        ):
+            backend = await manager.get_model()
 
         assert isinstance(backend, FasterWhisperBackend)
         assert manager.is_loaded
@@ -144,12 +149,19 @@ class TestWhisperModelManager:
     @pytest.mark.asyncio
     async def test_ttl_remaining_after_load(self, manager: WhisperModelManager) -> None:
         """Test TTL remaining calculation."""
-        mock_model = MagicMock()
-        mock_model.model.device = "cpu"
+        from agent_cli.server.whisper.backends.base import (  # noqa: PLC0415
+            SubprocessExecutor,
+        )
 
-        with patch.dict(
-            "sys.modules",
-            {"faster_whisper": MagicMock(WhisperModel=MagicMock(return_value=mock_model))},
+        def mock_start(self: SubprocessExecutor) -> None:
+            self._executor = MagicMock()  # type: ignore[assignment]
+
+        async def mock_run(_fn: object, *_args: object) -> str:
+            return "cpu"
+
+        with (
+            patch.object(SubprocessExecutor, "start", mock_start),
+            patch.object(SubprocessExecutor, "run", mock_run),
         ):
             await manager.get_model()
 
@@ -160,12 +172,19 @@ class TestWhisperModelManager:
     @pytest.mark.asyncio
     async def test_unload_after_load(self, manager: WhisperModelManager) -> None:
         """Test unloading after loading."""
-        mock_model = MagicMock()
-        mock_model.model.device = "cpu"
+        from agent_cli.server.whisper.backends.base import (  # noqa: PLC0415
+            SubprocessExecutor,
+        )
 
-        with patch.dict(
-            "sys.modules",
-            {"faster_whisper": MagicMock(WhisperModel=MagicMock(return_value=mock_model))},
+        def mock_start(self: SubprocessExecutor) -> None:
+            self._executor = MagicMock()  # type: ignore[assignment]
+
+        async def mock_run(_fn: object, *_args: object) -> str:
+            return "cpu"
+
+        with (
+            patch.object(SubprocessExecutor, "start", mock_start),
+            patch.object(SubprocessExecutor, "run", mock_run),
         ):
             await manager.get_model()
 
