@@ -89,6 +89,7 @@ agent-cli config show [OPTIONS]
 |--------|-------------|---------|
 | `--path`, `-p` | Path to config file (auto-detected if not specified) | - |
 | `--raw`, `-r` | Output raw file contents (for copy-paste) | `false` |
+| `--json` | Output as JSON for automation | `false` |
 
 ### Example
 
