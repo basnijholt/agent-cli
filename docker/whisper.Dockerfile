@@ -27,15 +27,17 @@ RUN apt-get update && \
 # Install uv
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
-# Create non-root user
-RUN useradd -m -u 1000 whisper
+# Create non-root user with explicit UID:GID 1000:1000
+RUN groupadd -g 1000 whisper && useradd -m -u 1000 -g whisper whisper
 
 WORKDIR /app
 
 # Install Python 3.13 and agent-cli with whisper support using uv tool
+# UV_PYTHON_INSTALL_DIR ensures Python is installed in accessible location (not /root/.local/)
 ENV UV_PYTHON=3.13 \
     UV_TOOL_BIN_DIR=/usr/local/bin \
-    UV_TOOL_DIR=/opt/uv-tools
+    UV_TOOL_DIR=/opt/uv-tools \
+    UV_PYTHON_INSTALL_DIR=/opt/uv-python
 
 RUN uv tool install --python 3.13 "agent-cli[whisper]"
 
@@ -86,8 +88,8 @@ RUN apt-get update && \
 # Install uv
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
-# Create non-root user
-RUN useradd -m -u 1000 whisper
+# Create non-root user with explicit UID:GID 1000:1000
+RUN groupadd -g 1000 whisper && useradd -m -u 1000 -g whisper whisper
 
 WORKDIR /app
 
