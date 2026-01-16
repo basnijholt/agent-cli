@@ -20,7 +20,7 @@ PID_DIR = Path.home() / ".cache" / "agent-cli"
 def set_process_title(process_name: str) -> None:
     """Set the process title for identification in ps output.
 
-    Sets the process title to 'agent-cli: {process_name}' so that background
+    Sets the process title to 'agent-cli-{process_name}' so that background
     processes are easily identifiable in `ps` output instead of showing as
     generic 'python' processes.
 
@@ -30,7 +30,7 @@ def set_process_title(process_name: str) -> None:
     """
     import setproctitle  # noqa: PLC0415
 
-    setproctitle.setproctitle(f"agent-cli: {process_name}")
+    setproctitle.setproctitle(f"agent-cli-{process_name}")
 
 
 def _get_pid_file(process_name: str) -> Path:
