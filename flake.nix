@@ -52,13 +52,8 @@
               export LD_LIBRARY_PATH="${
                 pkgs.lib.makeLibraryPath [ pkgs.portaudio ]
               }''${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
-
-              # Auto-sync Python dependencies
-              if [ -f pyproject.toml ]; then
-                echo "Syncing Python dependencies..."
-                uv sync --all-extras --quiet
-                echo "Ready! Run: agent-cli --help"
-              fi
+              uv sync --all-extras --quiet
+              echo "Ready! Run: agent-cli --help"
             '';
           };
         }
