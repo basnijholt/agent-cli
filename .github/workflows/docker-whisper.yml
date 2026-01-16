@@ -1,6 +1,11 @@
 name: Publish Whisper Docker Images
 
 on:
+  push:
+    branches: [add-whisper-dockerfile]
+    paths:
+      - 'docker/whisper.Dockerfile'
+      - '.github/workflows/docker-whisper.yml'
   release:
     types: [published]
   workflow_dispatch:
