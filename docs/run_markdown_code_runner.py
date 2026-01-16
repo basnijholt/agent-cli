@@ -16,7 +16,7 @@ from rich.console import Console
 console = Console()
 
 # Fixed terminal width for reproducible Rich output in CLI --help commands
-FIXED_TERMINAL_WIDTH = "80"
+FIXED_TERMINAL_WIDTH = "90"
 
 
 def find_markdown_files_with_code_blocks(docs_dir: Path) -> list[Path]:
