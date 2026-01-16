@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import io
 import wave
-from unittest.mock import AsyncMock, MagicMock, patch
+from typing import Any
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -34,21 +35,22 @@ async def test_mlx_transcribe_converts_mismatched_wav() -> None:
     config = BackendConfig(model_name="tiny")
     backend = MLXWhisperBackend(config)
     backend._loaded = True
+    backend._executor = MagicMock()  # Mock executor
 
     audio = _make_wav_bytes(rate=44100, channels=1, sampwidth=2)
     fake_result = {"text": "hello", "language": "en", "segments": []}
 
+    async def mock_run_in_executor(_executor: Any, _func: Any, *_args: Any) -> dict[str, Any]:
+        return fake_result
+
     with (
-        patch.dict("sys.modules", {"mlx_whisper": MagicMock()}),
         patch(
             "agent_cli.server.whisper.backends.mlx._convert_audio_to_pcm",
             return_value=b"\x00\x00",
         ) as mock_convert,
-        patch(
-            "agent_cli.server.whisper.backends.mlx.asyncio.to_thread",
-            new=AsyncMock(return_value=fake_result),
-        ),
+        patch("asyncio.get_running_loop") as mock_loop,
     ):
+        mock_loop.return_value.run_in_executor = mock_run_in_executor
         result = await backend.transcribe(audio, source_filename="sample.wav")
 
     mock_convert.assert_called_once_with(audio, "sample.wav")
@@ -61,18 +63,19 @@ async def test_mlx_transcribe_accepts_matching_wav() -> None:
     config = BackendConfig(model_name="tiny")
     backend = MLXWhisperBackend(config)
     backend._loaded = True
+    backend._executor = MagicMock()  # Mock executor
 
     audio = _make_wav_bytes(rate=16000, channels=1, sampwidth=2)
     fake_result = {"text": "hello", "language": "en", "segments": []}
 
+    async def mock_run_in_executor(_executor: Any, _func: Any, *_args: Any) -> dict[str, Any]:
+        return fake_result
+
     with (
-        patch.dict("sys.modules", {"mlx_whisper": MagicMock()}),
         patch("agent_cli.server.whisper.backends.mlx._convert_audio_to_pcm") as mock_convert,
-        patch(
-            "agent_cli.server.whisper.backends.mlx.asyncio.to_thread",
-            new=AsyncMock(return_value=fake_result),
-        ),
+        patch("asyncio.get_running_loop") as mock_loop,
     ):
+        mock_loop.return_value.run_in_executor = mock_run_in_executor
         result = await backend.transcribe(audio, source_filename="sample.wav")
 
     mock_convert.assert_not_called()
