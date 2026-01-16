@@ -46,6 +46,24 @@ jobs:
           "
           echo "=== Debug: CLI output sample ==="
           uv run agent-cli config --help 2>&1 | grep "^╭" | head -1 | wc -c
+          echo "=== Debug: Shell info ==="
+          echo "SHELL=$SHELL"
+          ls -la /bin/sh
+          echo "=== Debug: Subprocess test ==="
+          uv run python -c "
+          import subprocess
+          import os
+          code = '''export COLUMNS=90
+          export NO_COLOR=1
+          export TERM=dumb
+          agent-cli config --help
+          '''
+          result = subprocess.run(code, shell=True, capture_output=True, text=True)
+          for line in result.stdout.split('\n'):
+              if line.startswith('╭'):
+                  print(f'Subprocess width: {len(line)}')
+                  break
+          "
           echo "=== Running markdown-code-runner ==="
           uv run python docs/run_markdown_code_runner.py
 
