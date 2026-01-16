@@ -31,7 +31,6 @@ jobs:
         run: |
           uv sync
           uv run python docs/run_markdown_code_runner.py
-          find . -name "*.md" -exec sed -i 's/[[:space:]]*$//' {} \;
 
       - name: Commit updated docs
         id: commit
