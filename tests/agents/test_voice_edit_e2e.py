@@ -92,6 +92,7 @@ def get_configs() -> tuple[
 
 
 @pytest.mark.asyncio
+@patch("agent_cli.agents.voice_edit.pyperclip.paste", return_value="processed result")
 @patch("agent_cli.agents.voice_edit.process_instruction_and_respond", new_callable=AsyncMock)
 @patch("agent_cli.agents.voice_edit.get_instruction_from_audio", new_callable=AsyncMock)
 @patch("agent_cli.agents.voice_edit.asr.record_audio_with_manual_stop", new_callable=AsyncMock)
@@ -103,6 +104,7 @@ async def test_voice_edit_e2e(
     mock_record_audio: AsyncMock,
     mock_get_instruction: AsyncMock,
     mock_process_instruction: AsyncMock,
+    mock_pyperclip_paste: MagicMock,  # noqa: ARG001
 ) -> None:
     """Test end-to-end voice assistant functionality with simplified mocks."""
     mock_setup_devices.return_value = (0, "mock_device", None)
