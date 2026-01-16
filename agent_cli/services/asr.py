@@ -426,6 +426,8 @@ async def _transcribe_live_audio_wyoming(
         ) as client:
             # Get effective prompt for Wyoming
             effective_prompt = wyoming_asr_cfg.get_effective_prompt(extra_instructions)
+            if effective_prompt:
+                logger.info("Using initial_prompt for Wyoming ASR: %s...", effective_prompt[:50])
 
             stream_config = setup_input_stream(audio_input_cfg.input_device_index)
             with open_audio_stream(stream_config) as stream:
