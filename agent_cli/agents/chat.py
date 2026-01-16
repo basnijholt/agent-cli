@@ -32,7 +32,6 @@ from agent_cli.core.audio import setup_devices
 from agent_cli.core.utils import (
     InteractiveStopEvent,
     console,
-    enable_json_mode,
     format_timedelta_to_ago,
     live_timer,
     maybe_live,
@@ -440,7 +439,6 @@ def chat(
     log_file: str | None = opts.LOG_FILE,
     list_devices: bool = opts.LIST_DEVICES,
     quiet: bool = opts.QUIET,
-    json_output: bool = opts.JSON_OUTPUT,
     config_file: str | None = opts.CONFIG_FILE,
     print_args: bool = opts.PRINT_ARGS,
 ) -> None:
@@ -448,15 +446,11 @@ def chat(
     if print_args:
         print_command_line_args(locals())
 
-    effective_quiet = quiet or json_output
-    if json_output:
-        enable_json_mode()
-
-    setup_logging(log_level, log_file, quiet=effective_quiet)
+    setup_logging(log_level, log_file, quiet=quiet)
     general_cfg = config.General(
         log_level=log_level,
         log_file=log_file,
-        quiet=effective_quiet,
+        quiet=quiet,
         list_devices=list_devices,
         clipboard=False,  # Not used in chat mode
         save_file=save_file,

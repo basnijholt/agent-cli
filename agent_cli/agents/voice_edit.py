@@ -39,8 +39,6 @@ import logging
 from contextlib import suppress
 from pathlib import Path  # noqa: TC003
 
-import pyperclip
-
 from agent_cli import config, opts
 from agent_cli.agents._voice_agent_common import (
     get_instruction_from_audio,
@@ -154,7 +152,7 @@ async def _async_main(
         if not instruction:
             return None
 
-        await process_instruction_and_respond(
+        return await process_instruction_and_respond(
             instruction=instruction,
             original_text=original_text,
             provider_cfg=provider_cfg,
@@ -172,8 +170,6 @@ async def _async_main(
             live=live,
             logger=LOGGER,
         )
-        # Return the result from clipboard for JSON output
-        return pyperclip.paste()
 
 
 @app.command("voice-edit")
