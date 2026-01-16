@@ -64,6 +64,23 @@ def _resolve_mlx_model_name(model_name: str) -> str:
     return model_name
 
 
+def ensure_model_downloaded(model_name: str) -> None:
+    """Download model files if not already cached, without loading into memory.
+
+    This allows showing download progress at startup without using GPU memory.
+    """
+    from pathlib import Path  # noqa: PLC0415
+
+    from huggingface_hub import snapshot_download  # noqa: PLC0415
+
+    resolved = _resolve_mlx_model_name(model_name)
+    model_path = Path(resolved)
+    if not model_path.exists():
+        logger.info("Downloading model %s...", resolved)
+        snapshot_download(repo_id=resolved)
+        logger.info("Model %s downloaded", resolved)
+
+
 def _pcm_to_float(audio_bytes: bytes) -> NDArray[np.float32]:
     """Convert 16-bit PCM audio bytes to float32 array normalized to [-1, 1]."""
     import numpy as np  # noqa: PLC0415
@@ -117,6 +134,10 @@ class MLXWhisperBackend:
         we've loaded the model at least once.
         """
         return self._loaded
+
+    def ensure_downloaded(self) -> None:
+        """Download model files if not already cached, without loading into memory."""
+        ensure_model_downloaded(self._config.model_name)
 
     @property
     def device(self) -> str | None:

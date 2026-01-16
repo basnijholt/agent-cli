@@ -102,6 +102,10 @@ class WhisperModelManager:
         """Check if the model is currently loaded."""
         return self._backend.is_loaded
 
+    def ensure_downloaded(self) -> None:
+        """Download model files if not already cached, without loading into memory."""
+        self._backend.ensure_downloaded()
+
     @property
     def ttl_remaining(self) -> float | None:
         """Get seconds remaining before model unloads, or None if not loaded."""

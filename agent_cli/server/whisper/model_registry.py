@@ -161,21 +161,11 @@ class WhisperModelRegistry:
         self._started = False
         logger.debug("Stopped registry")
 
-    async def preload(self, model_names: list[str] | None = None) -> None:
-        """Preload models into memory.
+    def ensure_downloaded(self) -> None:
+        """Download all model files if not already cached, without loading into memory.
 
-        Args:
-            model_names: List of model names to preload, or None for all.
-
+        This shows download progress at startup for a better user experience.
         """
-        names = model_names or list(self._managers.keys())
-
-        for name in names:
-            if name not in self._managers:
-                logger.warning("Cannot preload unknown model: %s", name)
-                continue
-
-            manager = self._managers[name]
-            if not manager.is_loaded:
-                logger.debug("Preloading model %s", name)
-                await manager.get_model()
+        for name, manager in self._managers.items():
+            logger.debug("Ensuring model %s is downloaded", name)
+            manager.ensure_downloaded()
