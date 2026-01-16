@@ -24,10 +24,11 @@ HAS_UVICORN = find_spec("uvicorn") is not None
 HAS_FASTAPI = find_spec("fastapi") is not None
 HAS_FASTER_WHISPER = find_spec("faster_whisper") is not None
 HAS_MLX_WHISPER = find_spec("mlx_whisper") is not None
+HAS_PIPER = find_spec("piper") is not None
 
 app = typer.Typer(
     name="server",
-    help="Run ASR server (Whisper or proxy mode).",
+    help="Run ASR/TTS servers (Whisper, TTS, or proxy mode).",
     add_completion=True,
     rich_markup_mode="markdown",
     no_args_is_help=True,
@@ -50,6 +51,18 @@ def _check_server_deps() -> None:
             "[bold red]Error:[/bold red] Server dependencies not installed. "
             "Run: [cyan]pip install agent-cli\\[server][/cyan] "
             "or [cyan]uv sync --extra server[/cyan]",
+        )
+        raise typer.Exit(1)
+
+
+def _check_tts_deps() -> None:
+    """Check that TTS dependencies are available."""
+    _check_server_deps()
+    if not HAS_PIPER:
+        err_console.print(
+            "[bold red]Error:[/bold red] TTS dependencies not installed. "
+            "Run: [cyan]pip install agent-cli\\[tts][/cyan] "
+            "or [cyan]uv sync --extra tts[/cyan]",
         )
         raise typer.Exit(1)
 
@@ -395,4 +408,260 @@ def transcription_proxy_cmd(
         port=port,
         reload=reload,
         log_level="info",
+    )
+
+
+@app.command("tts")
+def tts_cmd(  # noqa: PLR0915
+    model: Annotated[
+        list[str] | None,
+        typer.Option(
+            "--model",
+            "-m",
+            help="Piper model name(s) to load (can specify multiple)",
+        ),
+    ] = None,
+    default_model: Annotated[
+        str | None,
+        typer.Option(
+            "--default-model",
+            help="Default model when not specified in request",
+        ),
+    ] = None,
+    voice: Annotated[
+        str | None,
+        typer.Option(
+            "--voice",
+            help="Default voice",
+        ),
+    ] = None,
+    device: Annotated[
+        str,
+        typer.Option(
+            "--device",
+            "-d",
+            help="Device: auto, cpu (Piper is CPU-only)",
+        ),
+    ] = "auto",
+    cache_dir: Annotated[
+        Path | None,
+        typer.Option(
+            "--cache-dir",
+            help="Model cache directory",
+        ),
+    ] = None,
+    ttl: Annotated[
+        int,
+        typer.Option(
+            "--ttl",
+            help="Seconds before unloading idle model",
+        ),
+    ] = 300,
+    preload: Annotated[
+        bool,
+        typer.Option(
+            "--preload",
+            help="Load model(s) at startup and wait for completion",
+        ),
+    ] = False,
+    host: Annotated[
+        str,
+        typer.Option(
+            "--host",
+            help="Host to bind the server to",
+        ),
+    ] = "0.0.0.0",  # noqa: S104
+    port: Annotated[
+        int,
+        typer.Option(
+            "--port",
+            "-p",
+            help="HTTP API port",
+        ),
+    ] = 10401,
+    wyoming_port: Annotated[
+        int,
+        typer.Option(
+            "--wyoming-port",
+            help="Wyoming protocol port",
+        ),
+    ] = 10400,
+    no_wyoming: Annotated[
+        bool,
+        typer.Option(
+            "--no-wyoming",
+            help="Disable Wyoming server",
+        ),
+    ] = False,
+    download_only: Annotated[
+        bool,
+        typer.Option(
+            "--download-only",
+            help="Download model(s) and exit without starting server",
+        ),
+    ] = False,
+    log_level: Annotated[
+        str,
+        typer.Option(
+            "--log-level",
+            "-l",
+            help="Logging level: debug, info, warning, error",
+        ),
+    ] = "info",
+    backend: Annotated[
+        str,
+        typer.Option(
+            "--backend",
+            "-b",
+            help="Backend: auto, piper",
+        ),
+    ] = "auto",
+) -> None:
+    """Run TTS server with TTL-based model unloading.
+
+    The server provides:
+    - OpenAI-compatible /v1/audio/speech endpoint
+    - Wyoming protocol for Home Assistant integration
+    - Voice list at /v1/voices
+
+    Models are loaded lazily on first request and unloaded after being
+    idle for the TTL duration, freeing memory for other applications.
+
+    Piper models use names like 'en_US-lessac-medium', 'en_GB-alan-medium'.
+    See https://github.com/rhasspy/piper for available models.
+
+    Examples:
+        # Run with default model
+        agent-cli server tts
+
+        # Run with specific model and 10-minute TTL
+        agent-cli server tts --model en_US-lessac-medium --ttl 600
+
+        # Run multiple models
+        agent-cli server tts --model en_US-lessac-medium --model en_GB-alan-medium
+
+        # Download model without starting server
+        agent-cli server tts --model en_US-lessac-medium --download-only
+
+    """
+    # Setup Rich logging for consistent output
+    setup_rich_logging(log_level, console=console)
+
+    valid_backends = ("auto", "piper")
+    if backend not in valid_backends:
+        err_console.print(
+            f"[bold red]Error:[/bold red] --backend must be one of: {', '.join(valid_backends)}",
+        )
+        raise typer.Exit(1)
+
+    _check_tts_deps()
+
+    from agent_cli.server.tts.model_manager import ModelConfig  # noqa: PLC0415
+    from agent_cli.server.tts.model_registry import TTSModelRegistry  # noqa: PLC0415
+
+    # Default model if none specified
+    if model is None:
+        model = ["en_US-lessac-medium"]
+
+    # Validate default model against model list
+    if default_model is not None and default_model not in model:
+        err_console.print(
+            f"[bold red]Error:[/bold red] --default-model '{default_model}' "
+            f"is not in the model list: {model}",
+        )
+        raise typer.Exit(1)
+
+    # Handle download-only mode
+    if download_only:
+        console.print("[bold]Downloading model(s)...[/bold]")
+        for model_name in model:
+            console.print(f"  Downloading [cyan]{model_name}[/cyan]...")
+            try:
+                from piper.download import (  # noqa: PLC0415
+                    ensure_voice_exists,
+                    find_voice,
+                    get_voices,
+                )
+
+                cache_path = str(cache_dir) if cache_dir else None
+                voices = get_voices(cache_path, update_voices=True)
+                find_voice(model_name, voices)
+                ensure_voice_exists(model_name, cache_path, cache_path, voices)
+                console.print(f"  [green]✓[/green] Downloaded {model_name}")
+            except Exception as e:
+                err_console.print(f"  [red]✗[/red] Failed to download {model_name}: {e}")
+                raise typer.Exit(1) from e
+        console.print("[bold green]All models downloaded successfully![/bold green]")
+        return
+
+    # Create registry and register models
+    registry = TTSModelRegistry(default_model=default_model or model[0])
+
+    for model_name in model:
+        config = ModelConfig(
+            model_name=model_name,
+            voice=voice,
+            device=device,
+            ttl_seconds=ttl,
+            cache_dir=cache_dir,
+            backend_type=backend,  # type: ignore[arg-type]
+        )
+        registry.register(config)
+
+    # Preload if requested
+    if preload:
+        console.print("[bold]Preloading model(s)...[/bold]")
+        asyncio.run(registry.preload())
+
+    # Build Wyoming URI
+    wyoming_uri = f"tcp://{host}:{wyoming_port}"
+
+    # Print startup info
+    console.print()
+    console.print("[bold green]Starting TTS Server[/bold green]")
+    console.print()
+    console.print("[dim]Configuration:[/dim]")
+    console.print("  Backend: [cyan]piper[/cyan]")
+    console.print()
+    console.print("[dim]Endpoints:[/dim]")
+    console.print(f"  HTTP API: [cyan]http://{host}:{port}[/cyan]")
+    if not no_wyoming:
+        console.print(f"  Wyoming:  [cyan]{wyoming_uri}[/cyan]")
+    console.print()
+    console.print("[dim]Models:[/dim]")
+    for m in model:
+        is_default = m == registry.default_model
+        suffix = " [yellow](default)[/yellow]" if is_default else ""
+        console.print(f"  • {m} (ttl={ttl}s){suffix}")
+    console.print()
+    console.print("[dim]Usage with OpenAI client:[/dim]")
+    console.print(
+        "  [cyan]from openai import OpenAI[/cyan]",
+    )
+    console.print(
+        f'  [cyan]client = OpenAI(base_url="http://localhost:{port}/v1", api_key="x")[/cyan]',
+    )
+    console.print(
+        '  [cyan]response = client.audio.speech.create(model="tts-1", voice="alloy", '
+        'input="Hello")[/cyan]',
+    )
+    console.print()
+
+    # Create and run the app
+    from agent_cli.server.tts.api import create_app  # noqa: PLC0415
+
+    fastapi_app = create_app(
+        registry,
+        enable_wyoming=not no_wyoming,
+        wyoming_uri=wyoming_uri,
+        background_preload=not preload,
+    )
+
+    import uvicorn  # noqa: PLC0415
+
+    uvicorn.run(
+        fastapi_app,
+        host=host,
+        port=port,
+        log_level=log_level.lower(),
     )

@@ -2,25 +2,20 @@
 
 from __future__ import annotations
 
-import asyncio
 import contextlib
 import io
 import logging
 import wave
-from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING, Annotated, Any, Literal
 
 from fastapi import FastAPI, File, Form, HTTPException, Query, UploadFile, WebSocket
-from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel
 
-from agent_cli.server.common import log_requests_middleware, setup_wav_file
+from agent_cli.server.common import configure_app, create_lifespan, setup_wav_file
 from agent_cli.server.whisper.backends.base import InvalidAudioError
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncIterator
-
     from agent_cli.server.whisper.model_registry import WhisperModelRegistry
 
 logger = logging.getLogger(__name__)
@@ -149,55 +144,13 @@ def create_app(  # noqa: C901, PLR0915
         Configured FastAPI application.
 
     """
-
-    @asynccontextmanager
-    async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
-        """Manage application lifecycle."""
-        wyoming_task: asyncio.Task[None] | None = None
-        preload_task: asyncio.Task[None] | None = None
-
-        # Start the registry
-        await registry.start()
-
-        if background_preload:
-
-            async def preload_models() -> None:
-                try:
-                    await registry.preload()
-                except Exception:
-                    logger.exception("Background model preload failed")
-
-            preload_task = asyncio.create_task(preload_models())
-
-        # Start Wyoming server if enabled
-        if enable_wyoming:
-            try:
-                from agent_cli.server.whisper.wyoming_handler import (  # noqa: PLC0415
-                    start_wyoming_server,
-                )
-
-                wyoming_task = asyncio.create_task(
-                    start_wyoming_server(registry, wyoming_uri),
-                )
-            except ImportError:
-                logger.warning("Wyoming not available, skipping Wyoming server")
-            except Exception:
-                logger.exception("Failed to start Wyoming server")
-
-        yield
-
-        # Stop Wyoming server
-        if wyoming_task is not None:
-            wyoming_task.cancel()
-            with contextlib.suppress(asyncio.CancelledError):
-                await wyoming_task
-        if preload_task is not None:
-            preload_task.cancel()
-            with contextlib.suppress(asyncio.CancelledError):
-                await preload_task
-
-        # Stop the registry
-        await registry.stop()
+    lifespan = create_lifespan(
+        registry,
+        wyoming_handler_module="agent_cli.server.whisper.wyoming_handler",
+        enable_wyoming=enable_wyoming,
+        wyoming_uri=wyoming_uri,
+        background_preload=background_preload,
+    )
 
     app = FastAPI(
         title="Whisper ASR Server",
@@ -206,20 +159,7 @@ def create_app(  # noqa: C901, PLR0915
         lifespan=lifespan,
     )
 
-    # Add CORS middleware
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=["*"],
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
-
-    # Add request logging middleware
-    @app.middleware("http")
-    async def log_requests(request: Any, call_next: Any) -> Any:
-        """Log basic request information."""
-        return await log_requests_middleware(request, call_next)
+    configure_app(app)
 
     # --- Health & Status Endpoints ---
 
