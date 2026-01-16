@@ -49,19 +49,27 @@ jobs:
           echo "=== Debug: Shell info ==="
           echo "SHELL=$SHELL"
           ls -la /bin/sh
-          echo "=== Debug: Subprocess test ==="
+          echo "=== Debug: Subprocess test (dash) ==="
           uv run python -c "
           import subprocess
-          import os
-          code = '''export COLUMNS=90
-          export NO_COLOR=1
-          export TERM=dumb
+          code = '''export COLUMNS=90 NO_COLOR=1 TERM=dumb
           agent-cli config --help
           '''
           result = subprocess.run(code, shell=True, capture_output=True, text=True)
           for line in result.stdout.split('\n'):
               if line.startswith('╭'):
-                  print(f'Subprocess width: {len(line)}')
+                  print(f'Subprocess width (dash): {len(line)}')
+                  break
+          "
+          echo "=== Debug: Subprocess test (bash -c) ==="
+          uv run python -c "
+          import subprocess
+          code = '''bash -c 'export COLUMNS=90 NO_COLOR=1 TERM=dumb; agent-cli config --help'
+          '''
+          result = subprocess.run(code, shell=True, capture_output=True, text=True)
+          for line in result.stdout.split('\n'):
+              if line.startswith('╭'):
+                  print(f'Subprocess width (bash): {len(line)}')
                   break
           "
           echo "=== Running markdown-code-runner ==="
