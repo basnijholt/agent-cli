@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 import platform
 import shlex
@@ -57,6 +58,11 @@ RAW_OPTION: bool = typer.Option(
     "--raw",
     "-r",
     help="Output raw file contents (for copy-paste).",
+)
+JSON_OPTION: bool = typer.Option(
+    False,  # noqa: FBT003
+    "--json",
+    help="Output as JSON for automation.",
 )
 
 
@@ -225,11 +231,24 @@ def config_edit(
 def config_show(
     path: Path | None = CONFIG_PATH_OPTION,
     raw: bool = RAW_OPTION,
+    json_output: bool = JSON_OPTION,
 ) -> None:
     """Display the config file location and contents."""
     config_file = _get_config_file(path)
 
     if config_file is None:
+        if json_output:
+            print(
+                json.dumps(
+                    {
+                        "path": None,
+                        "exists": False,
+                        "content": None,
+                        "searched_locations": [str(p) for p in CONFIG_PATHS],
+                    },
+                ),
+            )
+            raise typer.Exit(0)
         console.print("[yellow]No config file found.[/yellow]")
         console.print("\nSearched locations:")
         for p in CONFIG_PATHS:
@@ -241,6 +260,17 @@ def config_show(
         raise typer.Exit(0)
 
     if not config_file.exists():
+        if json_output:
+            print(
+                json.dumps(
+                    {
+                        "path": str(config_file),
+                        "exists": False,
+                        "content": None,
+                    },
+                ),
+            )
+            raise typer.Exit(1)
         console.print("[yellow]Config file not found.[/yellow]")
         console.print(f"\nProvided path does not exist: [cyan]{config_file}[/cyan]")
         console.print(
@@ -249,6 +279,18 @@ def config_show(
         raise typer.Exit(1)
 
     content = config_file.read_text(encoding="utf-8")
+
+    if json_output:
+        print(
+            json.dumps(
+                {
+                    "path": str(config_file),
+                    "exists": True,
+                    "content": content,
+                },
+            ),
+        )
+        return
 
     if raw:
         print(content, end="")

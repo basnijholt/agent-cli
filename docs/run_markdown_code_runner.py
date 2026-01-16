@@ -6,6 +6,7 @@ Run from repo root: python docs/run_markdown_code_runner.py
 
 from __future__ import annotations
 
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -13,6 +14,9 @@ from pathlib import Path
 from rich.console import Console
 
 console = Console()
+
+# Fixed terminal width for reproducible Rich output in CLI --help commands
+FIXED_TERMINAL_WIDTH = "90"
 
 
 def find_markdown_files_with_code_blocks(docs_dir: Path) -> list[Path]:
@@ -37,6 +41,10 @@ def run_markdown_code_runner(files: list[Path], repo_root: Path) -> bool:
         console.print(f"  - {f.relative_to(repo_root)}")
     console.print()
 
+    # Set fixed terminal width for reproducible Rich/Typer CLI help output
+    env = os.environ.copy()
+    env["COLUMNS"] = FIXED_TERMINAL_WIDTH
+
     all_success = True
     for file in files:
         rel_path = file.relative_to(repo_root)
@@ -46,6 +54,7 @@ def run_markdown_code_runner(files: list[Path], repo_root: Path) -> bool:
             check=False,
             capture_output=True,
             text=True,
+            env=env,
         )
         if result.returncode == 0:
             console.print("[green]✓[/green]")

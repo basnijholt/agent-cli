@@ -507,6 +507,8 @@ the `[defaults]` section of your configuration file.
 │                             [default: WARNING]                               │
 │ --log-file            TEXT  Path to a file to write logs to.                 │
 │ --quiet       -q            Suppress console output from rich.               │
+│ --json                      Output result as JSON for automation. Implies    │
+│                             --quiet and --no-clipboard.                      │
 │ --config              TEXT  Path to a TOML configuration file.               │
 │ --print-args                Print the command line arguments, including      │
 │                             variables taken from the configuration file.     │
@@ -661,6 +663,9 @@ the `[defaults]` section of your configuration file.
 │                                                  logs to.                    │
 │ --quiet              -q                          Suppress console output     │
 │                                                  from rich.                  │
+│ --json                                           Output result as JSON for   │
+│                                                  automation. Implies --quiet │
+│                                                  and --no-clipboard.         │
 │ --config                                   TEXT  Path to a TOML              │
 │                                                  configuration file.         │
 │ --print-args                                     Print the command line      │
@@ -972,6 +977,8 @@ uv tool install "agent-cli[vad]"
 │                             [default: WARNING]                               │
 │ --log-file            TEXT  Path to a file to write logs to.                 │
 │ --quiet       -q            Suppress console output from rich.               │
+│ --json                      Output result as JSON for automation. Implies    │
+│                             --quiet and --no-clipboard.                      │
 │ --config              TEXT  Path to a TOML configuration file.               │
 │ --print-args                Print the command line arguments, including      │
 │                             variables taken from the configuration file.     │
@@ -1163,6 +1170,9 @@ uv tool install "agent-cli[vad]"
 │                                           [default: WARNING]                 │
 │ --log-file                          TEXT  Path to a file to write logs to.   │
 │ --quiet       -q                          Suppress console output from rich. │
+│ --json                                    Output result as JSON for          │
+│                                           automation. Implies --quiet and    │
+│                                           --no-clipboard.                    │
 │ --config                            TEXT  Path to a TOML configuration file. │
 │ --print-args                              Print the command line arguments,  │
 │                                           including variables taken from the │

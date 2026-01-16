@@ -6,8 +6,6 @@ import logging
 import time
 from typing import TYPE_CHECKING
 
-import pyperclip
-
 from agent_cli.core.utils import print_input_panel, print_with_style
 from agent_cli.services import asr
 from agent_cli.services.llm import process_and_update_clipboard
@@ -93,11 +91,15 @@ async def process_instruction_and_respond(
     agent_instructions: str,
     live: Live | None,
     logger: logging.Logger,
-) -> None:
-    """Process instruction with LLM and handle TTS response."""
+) -> str | None:
+    """Process instruction with LLM and handle TTS response.
+
+    Returns the processed text, or None if processing failed.
+    """
+    result: str | None = None
     # Process with LLM if clipboard mode is enabled
     if general_cfg.clipboard:
-        await process_and_update_clipboard(
+        result = await process_and_update_clipboard(
             system_prompt=system_prompt,
             agent_instructions=agent_instructions,
             provider_cfg=provider_cfg,
@@ -113,22 +115,22 @@ async def process_instruction_and_respond(
         )
 
         # Handle TTS response if enabled
-        if audio_output_cfg.enable_tts:
-            response_text = pyperclip.paste()
-            if response_text and response_text.strip():
-                await handle_tts_playback(
-                    text=response_text,
-                    provider_cfg=provider_cfg,
-                    audio_output_cfg=audio_output_cfg,
-                    wyoming_tts_cfg=wyoming_tts_cfg,
-                    openai_tts_cfg=openai_tts_cfg,
-                    kokoro_tts_cfg=kokoro_tts_cfg,
-                    gemini_tts_cfg=gemini_tts_cfg,
-                    save_file=general_cfg.save_file,
-                    quiet=general_cfg.quiet,
-                    logger=logger,
-                    play_audio=not general_cfg.save_file,
-                    status_message="🔊 Speaking response...",
-                    description="TTS audio",
-                    live=live,
-                )
+        if audio_output_cfg.enable_tts and result and result.strip():
+            await handle_tts_playback(
+                text=result,
+                provider_cfg=provider_cfg,
+                audio_output_cfg=audio_output_cfg,
+                wyoming_tts_cfg=wyoming_tts_cfg,
+                openai_tts_cfg=openai_tts_cfg,
+                kokoro_tts_cfg=kokoro_tts_cfg,
+                gemini_tts_cfg=gemini_tts_cfg,
+                save_file=general_cfg.save_file,
+                quiet=general_cfg.quiet,
+                logger=logger,
+                play_audio=not general_cfg.save_file,
+                status_message="🔊 Speaking response...",
+                description="TTS audio",
+                live=live,
+            )
+
+    return result

@@ -42,6 +42,15 @@ if TYPE_CHECKING:
 console = Console()
 
 
+def enable_json_mode() -> None:
+    """Silence Rich console output for JSON mode.
+
+    Call this early in a command when --json flag is set.
+    All subsequent console.print() calls will be silenced.
+    """
+    console.quiet = True
+
+
 class InteractiveStopEvent:
     """A stop event with reset capability for chat agents."""
 
