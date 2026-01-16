@@ -72,6 +72,17 @@ jobs:
                   print(f'Subprocess width (bash): {len(line)}')
                   break
           "
+          echo "=== Debug: Subprocess test (no TERM) ==="
+          uv run python -c "
+          import subprocess
+          code = '''bash -c 'export COLUMNS=90 NO_COLOR=1; agent-cli config --help'
+          '''
+          result = subprocess.run(code, shell=True, capture_output=True, text=True)
+          for line in result.stdout.split('\n'):
+              if line.startswith('╭'):
+                  print(f'Subprocess width (no TERM): {len(line)}')
+                  break
+          "
           echo "=== Running markdown-code-runner ==="
           uv run python docs/run_markdown_code_runner.py
 
