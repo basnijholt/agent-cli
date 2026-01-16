@@ -25,7 +25,11 @@ class TestModelConfig:
     """Tests for ModelConfig dataclass."""
 
     def test_default_values(self) -> None:
-        """Test default configuration values."""
+        """Test default configuration values.
+
+        Note: This only tests the ModelConfig dataclass, not model loading,
+        so backend auto-detection is not triggered.
+        """
         config = ModelConfig(model_name="large-v3")
         assert config.model_name == "large-v3"
         assert config.device == "auto"
@@ -33,6 +37,7 @@ class TestModelConfig:
         assert config.ttl_seconds == 300
         assert config.cache_dir is None
         assert config.cpu_threads == 4
+        assert config.backend_type == "auto"
 
     def test_custom_values(self) -> None:
         """Test custom configuration values."""
@@ -73,12 +78,17 @@ class TestWhisperModelManager:
 
     @pytest.fixture
     def config(self) -> ModelConfig:
-        """Create a test configuration."""
+        """Create a test configuration.
+
+        Uses backend_type="faster-whisper" explicitly to avoid auto-detection
+        choosing mlx on macOS ARM during CI tests.
+        """
         return ModelConfig(
             model_name="tiny",
             device="cpu",
             compute_type="int8",
             ttl_seconds=60,
+            backend_type="faster-whisper",
         )
 
     @pytest.fixture
@@ -177,8 +187,12 @@ class TestWhisperModelRegistry:
 
     @pytest.fixture
     def config(self) -> ModelConfig:
-        """Create a test configuration."""
-        return ModelConfig(model_name="large-v3")
+        """Create a test configuration.
+
+        Uses backend_type="faster-whisper" explicitly to avoid auto-detection
+        choosing mlx on macOS ARM during CI tests.
+        """
+        return ModelConfig(model_name="large-v3", backend_type="faster-whisper")
 
     def test_init(self, registry: WhisperModelRegistry) -> None:
         """Test registry initialization."""
@@ -197,9 +211,9 @@ class TestWhisperModelRegistry:
 
     def test_register_multiple_models(self, registry: WhisperModelRegistry) -> None:
         """Test registering multiple models."""
-        registry.register(ModelConfig(model_name="large-v3"))
-        registry.register(ModelConfig(model_name="small"))
-        registry.register(ModelConfig(model_name="tiny"))
+        registry.register(ModelConfig(model_name="large-v3", backend_type="faster-whisper"))
+        registry.register(ModelConfig(model_name="small", backend_type="faster-whisper"))
+        registry.register(ModelConfig(model_name="tiny", backend_type="faster-whisper"))
 
         assert len(registry.models) == 3
         assert "large-v3" in registry.models
@@ -230,8 +244,8 @@ class TestWhisperModelRegistry:
 
     def test_get_manager_specific(self, registry: WhisperModelRegistry) -> None:
         """Test getting manager for specific model."""
-        registry.register(ModelConfig(model_name="large-v3"))
-        registry.register(ModelConfig(model_name="small"))
+        registry.register(ModelConfig(model_name="large-v3", backend_type="faster-whisper"))
+        registry.register(ModelConfig(model_name="small", backend_type="faster-whisper"))
 
         manager = registry.get_manager("small")
         assert manager.config.model_name == "small"
@@ -253,8 +267,8 @@ class TestWhisperModelRegistry:
 
     def test_set_default_model(self, registry: WhisperModelRegistry) -> None:
         """Test setting default model."""
-        registry.register(ModelConfig(model_name="large-v3"))
-        registry.register(ModelConfig(model_name="small"))
+        registry.register(ModelConfig(model_name="large-v3", backend_type="faster-whisper"))
+        registry.register(ModelConfig(model_name="small", backend_type="faster-whisper"))
 
         registry.default_model = "small"
         assert registry.default_model == "small"
@@ -271,8 +285,12 @@ class TestWhisperModelRegistry:
 
     def test_list_status(self, registry: WhisperModelRegistry) -> None:
         """Test listing model status."""
-        registry.register(ModelConfig(model_name="large-v3", ttl_seconds=300))
-        registry.register(ModelConfig(model_name="small", ttl_seconds=60))
+        registry.register(
+            ModelConfig(model_name="large-v3", ttl_seconds=300, backend_type="faster-whisper"),
+        )
+        registry.register(
+            ModelConfig(model_name="small", ttl_seconds=60, backend_type="faster-whisper"),
+        )
 
         statuses = registry.list_status()
         assert len(statuses) == 2
@@ -285,7 +303,7 @@ class TestWhisperModelRegistry:
     @pytest.mark.asyncio
     async def test_start_stop(self, registry: WhisperModelRegistry) -> None:
         """Test starting and stopping registry."""
-        registry.register(ModelConfig(model_name="large-v3"))
+        registry.register(ModelConfig(model_name="large-v3", backend_type="faster-whisper"))
 
         await registry.start()
         manager = registry.get_manager()
@@ -348,7 +366,9 @@ class TestWhisperAPI:
     def mock_registry(self) -> WhisperModelRegistry:
         """Create a mock registry with a configured model."""
         registry = WhisperModelRegistry()
-        registry.register(ModelConfig(model_name="large-v3", ttl_seconds=300))
+        registry.register(
+            ModelConfig(model_name="large-v3", ttl_seconds=300, backend_type="faster-whisper"),
+        )
         return registry
 
     @pytest.fixture

@@ -66,10 +66,23 @@ def test_server_transcription_proxy_command_with_options(
 @patch("uvicorn.run")
 @patch("agent_cli.server.cli.HAS_FASTER_WHISPER", True)
 def test_server_whisper_command(mock_uvicorn_run: pytest.MagicMock) -> None:
-    """Test the server whisper command."""
+    """Test the server whisper command.
+
+    Uses --backend faster-whisper explicitly to avoid auto-detection importing
+    mlx_whisper on macOS ARM, which triggers slow scipy imports that timeout in CI.
+    """
     result = runner.invoke(
         app,
-        ["server", "whisper", "--model", "tiny", "--port", "10301"],
+        [
+            "server",
+            "whisper",
+            "--model",
+            "tiny",
+            "--port",
+            "10301",
+            "--backend",
+            "faster-whisper",
+        ],
     )
     assert result.exit_code == 0
     assert "Starting Whisper ASR Server" in result.stdout
