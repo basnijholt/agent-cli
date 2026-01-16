@@ -108,6 +108,7 @@ async def test_voice_edit_e2e(
     mock_setup_devices.return_value = (0, "mock_device", None)
     mock_record_audio.return_value = b"audio data"
     mock_get_instruction.return_value = "this is a test"
+    mock_process_instruction.return_value = "processed result"
 
     (
         provider_cfg,

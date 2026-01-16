@@ -8,7 +8,7 @@ on:
 
 jobs:
   markdown-code-runner:
-    runs-on: macos-latest
+    runs-on: ubuntu-latest
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -31,7 +31,6 @@ jobs:
         run: |
           uv sync
           uv run python docs/run_markdown_code_runner.py
-          find . -name "*.md" -exec sed -i '' 's/[[:space:]]*$//' {} \;
 
       - name: Commit updated docs
         id: commit
