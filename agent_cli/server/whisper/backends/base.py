@@ -111,6 +111,15 @@ def release_memory() -> None:
     Only clears caches for modules that are already imported to avoid
     triggering slow imports unnecessarily.
     """
+    # Clear mlx_whisper's ModelHolder cache FIRST (before GC)
+    # The library caches the model at class level for reuse across transcribe() calls
+    if "mlx_whisper.transcribe" in sys.modules:
+        from mlx_whisper.transcribe import ModelHolder  # noqa: PLC0415
+
+        ModelHolder.model = None
+        ModelHolder.model_path = None
+
+    # Now run garbage collection to free unreferenced objects
     gc.collect()
 
     # Clear CUDA memory if available (only if torch is already imported)
@@ -125,11 +134,3 @@ def release_memory() -> None:
         import mlx.core as mx  # noqa: PLC0415
 
         mx.clear_cache()
-
-    # Clear mlx_whisper's ModelHolder cache (only if already imported)
-    # The library caches the model at class level for reuse across transcribe() calls
-    if "mlx_whisper.transcribe" in sys.modules:
-        from mlx_whisper.transcribe import ModelHolder  # noqa: PLC0415
-
-        ModelHolder.model = None
-        ModelHolder.model_path = None
