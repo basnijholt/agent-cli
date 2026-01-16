@@ -5,7 +5,7 @@ from __future__ import annotations
 import io
 import wave
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 from fastapi.testclient import TestClient
@@ -122,23 +122,25 @@ class TestWhisperModelManager:
     @pytest.mark.asyncio
     async def test_load_model(self, manager: WhisperModelManager) -> None:
         """Test loading a model (mocked)."""
-        from agent_cli.server.whisper.backends.base import (  # noqa: PLC0415
-            SubprocessExecutor,
-        )
+        from concurrent.futures import ProcessPoolExecutor  # noqa: PLC0415
+
         from agent_cli.server.whisper.backends.faster_whisper import (  # noqa: PLC0415
             FasterWhisperBackend,
         )
 
-        def mock_start(self: SubprocessExecutor) -> None:
-            self._executor = MagicMock()  # type: ignore[assignment]
-
-        async def mock_run(_fn: object, *_args: object) -> str:
+        async def mock_run_in_executor(
+            _executor: object,
+            _fn: object,
+            *_args: object,
+        ) -> str:
             return "cpu"
 
         with (
-            patch.object(SubprocessExecutor, "start", mock_start),
-            patch.object(SubprocessExecutor, "run", mock_run),
+            patch.object(ProcessPoolExecutor, "__init__", lambda *_a, **_kw: None),
+            patch.object(ProcessPoolExecutor, "shutdown"),
+            patch("asyncio.get_running_loop") as mock_loop,
         ):
+            mock_loop.return_value.run_in_executor = mock_run_in_executor
             backend = await manager.get_model()
 
         assert isinstance(backend, FasterWhisperBackend)
@@ -149,20 +151,21 @@ class TestWhisperModelManager:
     @pytest.mark.asyncio
     async def test_ttl_remaining_after_load(self, manager: WhisperModelManager) -> None:
         """Test TTL remaining calculation."""
-        from agent_cli.server.whisper.backends.base import (  # noqa: PLC0415
-            SubprocessExecutor,
-        )
+        from concurrent.futures import ProcessPoolExecutor  # noqa: PLC0415
 
-        def mock_start(self: SubprocessExecutor) -> None:
-            self._executor = MagicMock()  # type: ignore[assignment]
-
-        async def mock_run(_fn: object, *_args: object) -> str:
+        async def mock_run_in_executor(
+            _executor: object,
+            _fn: object,
+            *_args: object,
+        ) -> str:
             return "cpu"
 
         with (
-            patch.object(SubprocessExecutor, "start", mock_start),
-            patch.object(SubprocessExecutor, "run", mock_run),
+            patch.object(ProcessPoolExecutor, "__init__", lambda *_a, **_kw: None),
+            patch.object(ProcessPoolExecutor, "shutdown"),
+            patch("asyncio.get_running_loop") as mock_loop,
         ):
+            mock_loop.return_value.run_in_executor = mock_run_in_executor
             await manager.get_model()
 
         ttl = manager.ttl_remaining
@@ -172,28 +175,29 @@ class TestWhisperModelManager:
     @pytest.mark.asyncio
     async def test_unload_after_load(self, manager: WhisperModelManager) -> None:
         """Test unloading after loading."""
-        from agent_cli.server.whisper.backends.base import (  # noqa: PLC0415
-            SubprocessExecutor,
-        )
+        from concurrent.futures import ProcessPoolExecutor  # noqa: PLC0415
 
-        def mock_start(self: SubprocessExecutor) -> None:
-            self._executor = MagicMock()  # type: ignore[assignment]
-
-        async def mock_run(_fn: object, *_args: object) -> str:
+        async def mock_run_in_executor(
+            _executor: object,
+            _fn: object,
+            *_args: object,
+        ) -> str:
             return "cpu"
 
         with (
-            patch.object(SubprocessExecutor, "start", mock_start),
-            patch.object(SubprocessExecutor, "run", mock_run),
+            patch.object(ProcessPoolExecutor, "__init__", lambda *_a, **_kw: None),
+            patch.object(ProcessPoolExecutor, "shutdown"),
+            patch("asyncio.get_running_loop") as mock_loop,
         ):
+            mock_loop.return_value.run_in_executor = mock_run_in_executor
             await manager.get_model()
 
-        assert manager.is_loaded
+            assert manager.is_loaded
 
-        result = await manager.unload()
-        assert result is True
-        assert not manager.is_loaded
-        assert manager.stats.unload_count == 1
+            result = await manager.unload()
+            assert result is True
+            assert not manager.is_loaded
+            assert manager.stats.unload_count == 1
 
 
 class TestWhisperModelRegistry:
