@@ -128,6 +128,11 @@ class MLXWhisperBackend:
 
         Uses ModelHolder.get_model() to ensure the model is cached in the same
         location that mlx_whisper.transcribe() uses, avoiding double loading.
+
+        Note: We intentionally don't use asyncio.to_thread() here because it
+        creates a Future that holds a reference to the model, preventing memory
+        from being freed on unload. Loading is a one-time operation so briefly
+        blocking the event loop is acceptable.
         """
         import time  # noqa: PLC0415
 
@@ -145,12 +150,9 @@ class MLXWhisperBackend:
         # Use ModelHolder.get_model() instead of load_model() directly.
         # This populates the same cache that mlx_whisper.transcribe() uses,
         # preventing the model from being loaded twice.
+        # Note: Not using asyncio.to_thread() to avoid Future holding model reference.
         dtype = mx.float16
-        self._model = await asyncio.to_thread(
-            ModelHolder.get_model,
-            self._resolved_model,
-            dtype,
-        )
+        self._model = ModelHolder.get_model(self._resolved_model, dtype)
 
         self._loaded = True
         load_duration = time.time() - start_time
