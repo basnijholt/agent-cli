@@ -320,7 +320,6 @@ def whisper_cmd(  # noqa: PLR0912, PLR0915
         registry,
         enable_wyoming=not no_wyoming,
         wyoming_uri=wyoming_uri,
-        background_preload=not preload,
     )
 
     import uvicorn  # noqa: PLC0415

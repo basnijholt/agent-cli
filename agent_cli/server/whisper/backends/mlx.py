@@ -124,8 +124,15 @@ class MLXWhisperBackend:
         return "mps" if self._loaded else None
 
     async def load(self) -> float:
-        """Load the model for MLX and warm the cache."""
+        """Load the model for MLX and warm the cache.
+
+        Uses ModelHolder.get_model() to ensure the model is cached in the same
+        location that mlx_whisper.transcribe() uses, avoiding double loading.
+        """
         import time  # noqa: PLC0415
+
+        import mlx.core as mx  # noqa: PLC0415
+        from mlx_whisper.transcribe import ModelHolder  # noqa: PLC0415
 
         logger.debug(
             "Preparing mlx-whisper model %s (resolved: %s)",
@@ -135,9 +142,15 @@ class MLXWhisperBackend:
 
         start_time = time.time()
 
-        from mlx_whisper.load_models import load_model  # noqa: PLC0415
-
-        self._model = await asyncio.to_thread(load_model, self._resolved_model)
+        # Use ModelHolder.get_model() instead of load_model() directly.
+        # This populates the same cache that mlx_whisper.transcribe() uses,
+        # preventing the model from being loaded twice.
+        dtype = mx.float16
+        self._model = await asyncio.to_thread(
+            ModelHolder.get_model,
+            self._resolved_model,
+            dtype,
+        )
 
         self._loaded = True
         load_duration = time.time() - start_time
@@ -151,11 +164,7 @@ class MLXWhisperBackend:
         return load_duration
 
     async def unload(self) -> None:
-        """Unload the model.
-
-        Note: mlx-whisper caches models internally. We can trigger GC
-        but full unload may require process restart for large models.
-        """
+        """Unload the model and clear caches."""
         if not self._loaded:
             return
 
@@ -163,7 +172,7 @@ class MLXWhisperBackend:
 
         self._model = None
         self._loaded = False
-        release_memory()
+        release_memory()  # Clears MLX cache and ModelHolder cache
 
         logger.info("Model %s unloaded", self._config.model_name)
 
