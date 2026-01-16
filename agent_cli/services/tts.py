@@ -5,7 +5,6 @@ from __future__ import annotations
 import asyncio
 import importlib.util
 import io
-import wave
 from functools import partial
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -16,6 +15,7 @@ from wyoming.tts import Synthesize, SynthesizeVoice
 
 from agent_cli import config, constants
 from agent_cli.core.audio import open_audio_stream, setup_output_stream
+from agent_cli.core.audio_format import extract_pcm_from_wav
 from agent_cli.core.utils import (
     InteractiveStopEvent,
     live_timer,
@@ -325,40 +325,35 @@ async def _play_audio(
         wav_io = io.BytesIO(audio_data)
         speed = audio_output_cfg.tts_speed
         wav_io, speed_changed = _apply_speed_adjustment(wav_io, speed)
-        with wave.open(wav_io, "rb") as wav_file:
-            sample_rate = wav_file.getframerate()
-            channels = wav_file.getnchannels()
-            sample_width = wav_file.getsampwidth()
-            frames = wav_file.readframes(wav_file.getnframes())
-        if not speed_changed:
-            sample_rate = int(sample_rate * speed)
+        wav = extract_pcm_from_wav(wav_io.read())
+        sample_rate = wav.sample_rate if speed_changed else int(wav.sample_rate * speed)
         base_msg = f"🔊 Playing audio at {speed}x speed" if speed != 1.0 else "🔊 Playing audio"
         async with live_timer(live, base_msg, style="blue", quiet=quiet):
             stream_config = setup_output_stream(
                 audio_output_cfg.output_device_index,
                 sample_rate=sample_rate,
-                sample_width=sample_width,
-                channels=channels,
+                sample_width=wav.sample_width,
+                channels=wav.num_channels,
             )
             dtype = stream_config.dtype
 
             with open_audio_stream(stream_config) as stream:
                 chunk_size_frames = constants.AUDIO_CHUNK_SIZE
-                bytes_per_frame = channels * sample_width
+                bytes_per_frame = wav.num_channels * wav.sample_width
                 chunk_bytes = chunk_size_frames * bytes_per_frame
 
-                for i in range(0, len(frames), chunk_bytes):
+                for i in range(0, len(wav.pcm_data), chunk_bytes):
                     if stop_event and stop_event.is_set():
                         logger.info("Audio playback interrupted")
                         if not quiet:
                             print_with_style("⏹️ Audio playback interrupted", style="yellow")
                         break
-                    chunk = frames[i : i + chunk_bytes]
+                    chunk = wav.pcm_data[i : i + chunk_bytes]
 
                     # Convert bytes to numpy array for sounddevice
                     audio_array = np.frombuffer(chunk, dtype=dtype)
-                    if channels > 1:
-                        audio_array = audio_array.reshape(-1, channels)
+                    if wav.num_channels > 1:
+                        audio_array = audio_array.reshape(-1, wav.num_channels)
 
                     stream.write(audio_array)
                     await asyncio.sleep(0)
