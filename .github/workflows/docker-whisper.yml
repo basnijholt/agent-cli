@@ -58,6 +58,7 @@ jobs:
             type=semver,pattern={{major}}.{{minor}},suffix=-${{ matrix.suffix }}
             type=raw,value=latest,suffix=-${{ matrix.suffix }},enable=${{ github.event_name == 'release' }}
             type=raw,value=${{ github.event.inputs.tag || 'latest' }},suffix=-${{ matrix.suffix }},enable=${{ github.event_name == 'workflow_dispatch' }}
+            type=sha,suffix=-${{ matrix.suffix }},enable=${{ github.event_name == 'push' }}
 
       - name: Build and push
         uses: docker/build-push-action@v6
