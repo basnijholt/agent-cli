@@ -10,11 +10,16 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+import setproctitle
+
 if TYPE_CHECKING:
     from collections.abc import Generator
 
 # Default location for PID files
 PID_DIR = Path.home() / ".cache" / "agent-cli"
+
+# Store the original process title before any modifications
+_original_proctitle: str | None = None
 
 
 def set_process_title(process_name: str) -> None:
@@ -24,17 +29,21 @@ def set_process_title(process_name: str) -> None:
     - Process title: 'agent-cli-{name} ({original})' - identifiable prefix + original command
     - Thread name: 'ag-{name}' (max 15 chars) - shown as program name in btop/htop
 
+    The original command line is captured on first call and reused on subsequent
+    calls to prevent nested titles like 'agent-cli-x (agent-cli-y (...))'.
+
     Args:
         process_name: The name of the process (e.g., 'transcribe', 'chat').
 
     """
-    import setproctitle  # noqa: PLC0415
+    global _original_proctitle
 
-    # Get original command line before we modify it
-    original = setproctitle.getproctitle()
+    # Capture the original command line only once, before any modification
+    if _original_proctitle is None:
+        _original_proctitle = setproctitle.getproctitle()
 
     # Set the full process title: identifiable prefix + original command for debugging
-    setproctitle.setproctitle(f"agent-cli-{process_name} ({original})")
+    setproctitle.setproctitle(f"agent-cli-{process_name} ({_original_proctitle})")
 
     # Set the thread name (program name in htop/btop, limited to 15 chars on Linux)
     # Use shorter prefix "ag-" to fit more of the command name
