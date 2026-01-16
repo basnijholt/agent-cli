@@ -8,7 +8,7 @@ on:
 
 jobs:
   markdown-code-runner:
-    runs-on: macos-latest
+    runs-on: ubuntu-latest
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -18,6 +18,8 @@ jobs:
 
       - name: Set up Python
         uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
 
       - name: Install uv
         uses: astral-sh/setup-uv@v6
@@ -31,7 +33,6 @@ jobs:
         run: |
           uv sync
           uv run python docs/run_markdown_code_runner.py
-          find . -name "*.md" -exec sed -i '' 's/[[:space:]]*$//' {} \;
 
       - name: Commit updated docs
         id: commit

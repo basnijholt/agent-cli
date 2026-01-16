@@ -659,6 +659,10 @@ def list_envs(
         bool,
         typer.Option("--porcelain", "-p", help="Machine-readable output"),
     ] = False,
+    json_output: Annotated[
+        bool,
+        typer.Option("--json", help="Output as JSON for automation"),
+    ] = False,
 ) -> None:
     """List all dev environments (worktrees) for the current repository."""
     _ensure_git_repo()
@@ -666,7 +670,26 @@ def list_envs(
     worktrees = worktree.list_worktrees()
 
     if not worktrees:
-        console.print("[dim]No worktrees found[/dim]")
+        if json_output:
+            print(json.dumps({"worktrees": []}))
+        else:
+            console.print("[dim]No worktrees found[/dim]")
+        return
+
+    if json_output:
+        data = [
+            {
+                "name": wt.name,
+                "path": wt.path.as_posix(),
+                "branch": wt.branch,
+                "is_main": wt.is_main,
+                "is_detached": wt.is_detached,
+                "is_locked": wt.is_locked,
+                "is_prunable": wt.is_prunable,
+            }
+            for wt in worktrees
+        ]
+        print(json.dumps({"worktrees": data}))
         return
 
     if porcelain:
@@ -743,7 +766,7 @@ def _is_stale(status: worktree.WorktreeStatus, stale_days: int) -> bool:
 
 
 @app.command("status")
-def status_cmd(
+def status_cmd(  # noqa: PLR0912, PLR0915
     stale_days: Annotated[
         int,
         typer.Option("--stale-days", "-s", help="Highlight worktrees inactive for N+ days"),
@@ -751,6 +774,10 @@ def status_cmd(
     porcelain: Annotated[
         bool,
         typer.Option("--porcelain", "-p", help="Machine-readable output"),
+    ] = False,
+    json_output: Annotated[
+        bool,
+        typer.Option("--json", help="Output as JSON for automation"),
     ] = False,
 ) -> None:
     """Show status of all dev environments (worktrees) with git status.
@@ -763,7 +790,32 @@ def status_cmd(
     worktrees = worktree.list_worktrees()
 
     if not worktrees:
-        console.print("[dim]No worktrees found[/dim]")
+        if json_output:
+            print(json.dumps({"worktrees": []}))
+        else:
+            console.print("[dim]No worktrees found[/dim]")
+        return
+
+    if json_output:
+        data = []
+        for wt in worktrees:
+            status = worktree.get_worktree_status(wt.path)
+            entry: dict[str, str | int | bool | float | None] = {
+                "name": wt.name,
+                "branch": wt.branch,
+                "is_main": wt.is_main,
+            }
+            if status:
+                entry["modified"] = status.modified
+                entry["staged"] = status.staged
+                entry["untracked"] = status.untracked
+                entry["ahead"] = status.ahead
+                entry["behind"] = status.behind
+                entry["last_commit_timestamp"] = status.last_commit_timestamp
+                entry["last_commit_time"] = status.last_commit_time
+                entry["is_stale"] = _is_stale(status, stale_days)
+            data.append(entry)
+        print(json.dumps({"worktrees": data, "stale_days": stale_days}))
         return
 
     if porcelain:
@@ -1005,9 +1057,28 @@ def start_agent(
 
 
 @app.command("agents")
-def list_agents() -> None:
+def list_agents(
+    json_output: Annotated[
+        bool,
+        typer.Option("--json", help="Output as JSON for automation"),
+    ] = False,
+) -> None:
     """List available AI coding agents."""
     current = coding_agents.detect_current_agent()
+
+    if json_output:
+        data = [
+            {
+                "name": agent.name,
+                "command": agent.command,
+                "is_available": agent.is_available(),
+                "is_current": current is not None and agent.name == current.name,
+                "install_url": agent.install_url,
+            }
+            for agent in coding_agents.get_all_agents()
+        ]
+        print(json.dumps({"agents": data}))
+        return
 
     table = Table(title="AI Coding Agents")
     table.add_column("Status", width=3)
@@ -1028,9 +1099,28 @@ def list_agents() -> None:
 
 
 @app.command("editors")
-def list_editors_cmd() -> None:
+def list_editors_cmd(
+    json_output: Annotated[
+        bool,
+        typer.Option("--json", help="Output as JSON for automation"),
+    ] = False,
+) -> None:
     """List available editors."""
     current = editors.detect_current_editor()
+
+    if json_output:
+        data = [
+            {
+                "name": editor.name,
+                "command": editor.command,
+                "is_available": editor.is_available(),
+                "is_current": current is not None and editor.name == current.name,
+                "install_url": editor.install_url,
+            }
+            for editor in editors.get_all_editors()
+        ]
+        print(json.dumps({"editors": data}))
+        return
 
     table = Table(title="Editors")
     table.add_column("Status", width=3)
@@ -1051,9 +1141,26 @@ def list_editors_cmd() -> None:
 
 
 @app.command("terminals")
-def list_terminals_cmd() -> None:
+def list_terminals_cmd(
+    json_output: Annotated[
+        bool,
+        typer.Option("--json", help="Output as JSON for automation"),
+    ] = False,
+) -> None:
     """List available terminals."""
     current = terminals.detect_current_terminal()
+
+    if json_output:
+        data = [
+            {
+                "name": terminal.name,
+                "is_available": terminal.is_available(),
+                "is_current": current is not None and terminal.name == current.name,
+            }
+            for terminal in terminals.get_all_terminals()
+        ]
+        print(json.dumps({"terminals": data}))
+        return
 
     table = Table(title="Terminals")
     table.add_column("Status", width=3)
@@ -1338,8 +1445,53 @@ def clean(
 
 
 @app.command("doctor")
-def doctor() -> None:
+def doctor(
+    json_output: Annotated[
+        bool,
+        typer.Option("--json", help="Output as JSON for automation"),
+    ] = False,
+) -> None:
     """Check system requirements and available integrations."""
+    current_editor = editors.detect_current_editor()
+    current_agent = coding_agents.detect_current_agent()
+    current_terminal = terminals.detect_current_terminal()
+
+    if json_output:
+        repo_root = worktree.get_main_repo_root()
+        data = {
+            "git": {
+                "is_available": worktree.git_available(),
+                "repo_root": repo_root.as_posix() if repo_root else None,
+            },
+            "editors": [
+                {
+                    "name": editor.name,
+                    "is_available": editor.is_available(),
+                    "is_current": current_editor is not None and editor.name == current_editor.name,
+                }
+                for editor in editors.get_all_editors()
+            ],
+            "agents": [
+                {
+                    "name": agent.name,
+                    "is_available": agent.is_available(),
+                    "is_current": current_agent is not None and agent.name == current_agent.name,
+                }
+                for agent in coding_agents.get_all_agents()
+            ],
+            "terminals": [
+                {
+                    "name": terminal.name,
+                    "is_available": terminal.is_available(),
+                    "is_current": current_terminal is not None
+                    and terminal.name == current_terminal.name,
+                }
+                for terminal in terminals.get_all_terminals()
+            ],
+        }
+        print(json.dumps(data))
+        return
+
     console.print("[bold]Dev Doctor[/bold]\n")
 
     _doctor_check_git()
@@ -1347,7 +1499,6 @@ def doctor() -> None:
 
     # Check editors
     console.print("[bold]Editors:[/bold]")
-    current_editor = editors.detect_current_editor()
     for editor in editors.get_all_editors():
         is_current = current_editor is not None and editor.name == current_editor.name
         _print_item_status(editor.name, editor.is_available(), is_current)
@@ -1355,7 +1506,6 @@ def doctor() -> None:
 
     # Check agents
     console.print("[bold]AI Coding Agents:[/bold]")
-    current_agent = coding_agents.detect_current_agent()
     for agent in coding_agents.get_all_agents():
         is_current = current_agent is not None and agent.name == current_agent.name
         _print_item_status(agent.name, agent.is_available(), is_current)
@@ -1363,7 +1513,6 @@ def doctor() -> None:
 
     # Check terminals
     console.print("[bold]Terminals:[/bold]")
-    current_terminal = terminals.detect_current_terminal()
     for terminal in terminals.get_all_terminals():
         is_current = current_terminal is not None and terminal.name == current_terminal.name
         _print_item_status(terminal.name, terminal.is_available(), is_current, "not available")
