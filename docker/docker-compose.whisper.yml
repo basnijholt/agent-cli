@@ -1,23 +1,23 @@
 # Docker Compose for agent-cli Whisper ASR server
 #
-# Usage:
+# Usage (pre-built images from GHCR):
 #   # CUDA (GPU)
 #   docker compose -f docker/docker-compose.whisper.yml --profile cuda up
 #
 #   # CPU only
 #   docker compose -f docker/docker-compose.whisper.yml --profile cpu up
 #
-# Build from source:
-#   docker compose -f docker/docker-compose.whisper.yml --profile cuda build
-#   docker compose -f docker/docker-compose.whisper.yml --profile cpu build
+# Build from source (instead of using pre-built):
+#   docker compose -f docker/docker-compose.whisper.yml --profile cuda up --build
+#   docker compose -f docker/docker-compose.whisper.yml --profile cpu up --build
 
 services:
   whisper-cuda:
+    image: ghcr.io/basnijholt/agent-cli-whisper:latest-cuda
     build:
       context: ..
       dockerfile: docker/whisper.Dockerfile
       target: cuda
-    image: agent-cli-whisper:cuda
     profiles: [cuda]
     ports:
       - "10300:10300"  # Wyoming protocol
@@ -39,11 +39,11 @@ services:
     restart: unless-stopped
 
   whisper-cpu:
+    image: ghcr.io/basnijholt/agent-cli-whisper:latest-cpu
     build:
       context: ..
       dockerfile: docker/whisper.Dockerfile
       target: cpu
-    image: agent-cli-whisper:cpu
     profiles: [cpu]
     ports:
       - "10300:10300"  # Wyoming protocol
