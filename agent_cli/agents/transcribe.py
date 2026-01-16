@@ -10,7 +10,7 @@ import time
 from contextlib import suppress
 from datetime import UTC, datetime, timedelta
 from pathlib import Path  # noqa: TC003
-from typing import Any
+from typing import Any, TypedDict
 
 import pyperclip
 import typer
@@ -46,6 +46,15 @@ from agent_cli.services.asr import (
 from agent_cli.services.llm import process_and_update_clipboard
 
 LOGGER = logging.getLogger()
+
+
+class TranscriptResult(TypedDict, total=False):
+    """Result of transcription with optional LLM processing."""
+
+    raw_transcript: str | None
+    transcript: str | None
+    llm_enabled: bool
+
 
 SYSTEM_PROMPT = """
 CRITICAL: You must respond with ONLY the cleaned transcription text. Do NOT add any prefixes, explanations, or commentary whatsoever.
@@ -257,7 +266,7 @@ async def _async_main(  # noqa: PLR0912, PLR0915, C901
     audio_file_path: Path | None = None,
     save_recording: bool = True,
     process_name: str | None = None,
-) -> str | None:
+) -> TranscriptResult:
     """Unified async entry point for both live and file-based transcription."""
     start_time = time.monotonic()
     transcript: str | None
@@ -282,7 +291,11 @@ async def _async_main(  # noqa: PLR0912, PLR0915, C901
                     f"❌ Failed to load audio from {audio_file_path}",
                     style="red",
                 )
-                return None
+                return TranscriptResult(
+                    raw_transcript=None,
+                    transcript=None,
+                    llm_enabled=False,
+                )
 
             recorded_transcriber = create_recorded_audio_transcriber(provider_cfg)
 
@@ -399,7 +412,11 @@ async def _async_main(  # noqa: PLR0912, PLR0915, C901
                     processed_transcript=processed_transcript,
                     model_info=model_info,
                 )
-            return processed_transcript
+            return TranscriptResult(
+                raw_transcript=transcript,
+                transcript=processed_transcript,
+                llm_enabled=True,
+            )
 
     # When not using LLM, show transcript in output panel for consistency
     if transcript:
@@ -436,7 +453,11 @@ async def _async_main(  # noqa: PLR0912, PLR0915, C901
         if not general_cfg.quiet:
             print_with_style("⚠️ No transcript captured.", style="yellow")
 
-    return transcript
+    return TranscriptResult(
+        raw_transcript=transcript,
+        transcript=transcript,
+        llm_enabled=False,
+    )
 
 
 @app.command("transcribe")
@@ -490,7 +511,13 @@ def transcribe(  # noqa: PLR0912
     """Wyoming ASR Client for streaming microphone audio to a transcription server."""
     if print_args:
         print_command_line_args(locals())
-    setup_logging(log_level, log_file, quiet=quiet)
+
+    # JSON output implies quiet mode and no clipboard - set this early before any output
+    effective_quiet = quiet or json_output
+    if json_output:
+        enable_json_mode()
+
+    setup_logging(log_level, log_file, quiet=effective_quiet)
 
     # Expand user path for transcription log
     if transcription_log:
@@ -527,11 +554,7 @@ def transcribe(  # noqa: PLR0912
             return
 
     # Create all config objects once
-    # JSON output implies quiet mode and no clipboard
-    effective_quiet = quiet or json_output
     effective_clipboard = clipboard and not json_output
-    if json_output:
-        enable_json_mode()
     general_cfg = config.General(
         log_level=log_level,
         log_file=log_file,
@@ -575,7 +598,7 @@ def transcribe(  # noqa: PLR0912
     # Handle recovery mode (transcribing from file)
     if audio_file_path:
         # We're transcribing from a saved file
-        transcript = asyncio.run(
+        result = asyncio.run(
             _async_main(
                 audio_file_path=audio_file_path,
                 extra_instructions=extra_instructions,
@@ -592,7 +615,7 @@ def transcribe(  # noqa: PLR0912
             ),
         )
         if json_output:
-            print(json.dumps({"transcript": transcript}))
+            print(json.dumps(result))
         return
 
     # Normal recording mode
@@ -621,7 +644,7 @@ def transcribe(  # noqa: PLR0912
 
     # Use context manager for PID file management
     with process.pid_file_context(process_name), suppress(KeyboardInterrupt):
-        transcript = asyncio.run(
+        result = asyncio.run(
             _async_main(
                 extra_instructions=extra_instructions,
                 provider_cfg=provider_cfg,
@@ -640,4 +663,4 @@ def transcribe(  # noqa: PLR0912
             ),
         )
     if json_output:
-        print(json.dumps({"transcript": transcript}))
+        print(json.dumps(result))
