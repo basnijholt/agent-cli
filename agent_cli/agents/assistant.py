@@ -334,6 +334,7 @@ def assistant(
     ):
         return
 
+    process.set_process_title(process_name)
     with (
         process.pid_file_context(process_name),
         suppress(KeyboardInterrupt),

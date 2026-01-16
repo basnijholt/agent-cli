@@ -12,6 +12,7 @@ import typer
 from rich.console import Console
 
 from agent_cli.cli import app as main_app
+from agent_cli.core.process import set_process_title
 from agent_cli.server.common import setup_rich_logging
 
 console = Console()
@@ -325,6 +326,7 @@ def whisper_cmd(  # noqa: PLR0912, PLR0915
 
     import uvicorn  # noqa: PLC0415
 
+    set_process_title("server-whisper")
     uvicorn.run(
         fastapi_app,
         host=host,
@@ -377,6 +379,7 @@ def transcription_proxy_cmd(
 
     import uvicorn  # noqa: PLC0415
 
+    set_process_title("server-transcription-proxy")
     uvicorn.run(
         "agent_cli.server.proxy.api:app",
         host=host,

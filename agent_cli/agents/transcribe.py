@@ -605,6 +605,7 @@ def transcribe(  # noqa: PLR0912
     audio_in_cfg.input_device_index = input_device_index
 
     # Use context manager for PID file management
+    process.set_process_title(process_name)
     with process.pid_file_context(process_name), suppress(KeyboardInterrupt):
         asyncio.run(
             _async_main(

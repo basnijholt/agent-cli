@@ -154,15 +154,11 @@ def pid_file_context(process_name: str) -> Generator[Path, None, None]:
 
     Creates PID file on entry, cleans up on exit.
     Exits with error if process already running.
-    Also sets the process title for identification in ps output.
     """
     if is_process_running(process_name):
         existing_pid = _get_running_pid(process_name)
         print(f"Process {process_name} is already running (PID: {existing_pid})")
         sys.exit(1)
-
-    # Set process title for identification in ps output
-    set_process_title(process_name)
 
     # Clear any stale stop file from previous run (Windows only)
     if sys.platform == "win32":
