@@ -99,14 +99,39 @@ class WhisperBackend(Protocol):
 
 
 def release_memory() -> None:
-    """Release memory after model unload."""
+    """Release memory after model unload.
+
+    Clears memory caches for all supported backends:
+    - Python garbage collection
+    - CUDA memory cache (for faster-whisper with GPU)
+    - MLX buffer cache (for mlx-whisper on Apple Silicon)
+    - mlx_whisper's internal ModelHolder cache
+    """
     gc.collect()
 
-    # Try to release CUDA memory if available
+    # Clear CUDA memory if available
     try:
         import torch  # noqa: PLC0415
 
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
+    except ImportError:
+        pass
+
+    # Clear MLX buffer cache
+    try:
+        import mlx.core as mx  # noqa: PLC0415
+
+        mx.clear_cache()
+    except ImportError:
+        pass
+
+    # Clear mlx_whisper's ModelHolder cache
+    # The library caches the model at class level for reuse across transcribe() calls
+    try:
+        from mlx_whisper.transcribe import ModelHolder  # noqa: PLC0415
+
+        ModelHolder.model = None
+        ModelHolder.model_path = None
     except ImportError:
         pass
