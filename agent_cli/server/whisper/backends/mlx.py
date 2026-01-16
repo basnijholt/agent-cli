@@ -112,6 +112,9 @@ def _load_model_in_subprocess(model_name: str) -> None:
     import mlx.core as mx  # noqa: PLC0415
     from mlx_whisper.transcribe import ModelHolder  # noqa: PLC0415
 
+    from agent_cli.core.process import set_process_title  # noqa: PLC0415
+
+    set_process_title("whisper-mlx")
     ModelHolder.get_model(model_name, mx.float16)
 
 

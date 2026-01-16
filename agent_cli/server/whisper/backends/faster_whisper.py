@@ -31,6 +31,9 @@ def _load_model_in_subprocess(
     """Load model in subprocess. Returns actual device string."""
     from faster_whisper import WhisperModel  # noqa: PLC0415
 
+    from agent_cli.core.process import set_process_title  # noqa: PLC0415
+
+    set_process_title("whisper-faster")
     model = WhisperModel(
         model_name,
         device=device,
