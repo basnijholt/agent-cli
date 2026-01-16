@@ -48,7 +48,8 @@ def _check_server_deps() -> None:
     if not HAS_UVICORN or not HAS_FASTAPI:
         err_console.print(
             "[bold red]Error:[/bold red] Server dependencies not installed. "
-            "Run: [cyan]pip install agent-cli[server][/cyan]",
+            "Run: [cyan]pip install agent-cli\\[server][/cyan] "
+            "or [cyan]uv sync --extra server[/cyan]",
         )
         raise typer.Exit(1)
 
@@ -60,7 +61,8 @@ def _check_whisper_deps(backend: str, *, download_only: bool = False) -> None:
         if not HAS_FASTER_WHISPER:
             err_console.print(
                 "[bold red]Error:[/bold red] faster-whisper is required for --download-only. "
-                "Run: [cyan]pip install agent-cli[whisper][/cyan]",
+                "Run: [cyan]pip install agent-cli\\[whisper][/cyan] "
+                "or [cyan]uv sync --extra whisper[/cyan]",
             )
             raise typer.Exit(1)
         return
@@ -77,7 +79,8 @@ def _check_whisper_deps(backend: str, *, download_only: bool = False) -> None:
     if not HAS_FASTER_WHISPER:
         err_console.print(
             "[bold red]Error:[/bold red] Whisper dependencies not installed. "
-            "Run: [cyan]pip install agent-cli[whisper][/cyan]",
+            "Run: [cyan]pip install agent-cli\\[whisper][/cyan] "
+            "or [cyan]uv sync --extra whisper[/cyan]",
         )
         raise typer.Exit(1)
 
