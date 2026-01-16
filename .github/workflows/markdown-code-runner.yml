@@ -26,8 +26,8 @@ jobs:
         env:
           TERM: dumb
           NO_COLOR: 1
-          COLUMNS: 90
-          TERMINAL_WIDTH: 90
+          COLUMNS: 80
+          TERMINAL_WIDTH: 80
         run: |
           uv sync
           uv run python docs/run_markdown_code_runner.py
