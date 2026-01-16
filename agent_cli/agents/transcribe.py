@@ -20,6 +20,7 @@ from agent_cli.cli import app
 from agent_cli.core import process
 from agent_cli.core.audio import setup_devices
 from agent_cli.core.utils import (
+    enable_json_mode,
     format_short_timedelta,
     iter_lines_from_file_end,
     maybe_live,
@@ -256,7 +257,7 @@ async def _async_main(  # noqa: PLR0912, PLR0915, C901
     audio_file_path: Path | None = None,
     save_recording: bool = True,
     process_name: str | None = None,
-) -> None:
+) -> str | None:
     """Unified async entry point for both live and file-based transcription."""
     start_time = time.monotonic()
     transcript: str | None
@@ -281,7 +282,7 @@ async def _async_main(  # noqa: PLR0912, PLR0915, C901
                     f"❌ Failed to load audio from {audio_file_path}",
                     style="red",
                 )
-                return
+                return None
 
             recorded_transcriber = create_recorded_audio_transcriber(provider_cfg)
 
@@ -398,7 +399,7 @@ async def _async_main(  # noqa: PLR0912, PLR0915, C901
                     processed_transcript=processed_transcript,
                     model_info=model_info,
                 )
-            return
+            return processed_transcript
 
     # When not using LLM, show transcript in output panel for consistency
     if transcript:
@@ -434,6 +435,8 @@ async def _async_main(  # noqa: PLR0912, PLR0915, C901
         LOGGER.info("Transcript empty.")
         if not general_cfg.quiet:
             print_with_style("⚠️ No transcript captured.", style="yellow")
+
+    return transcript
 
 
 @app.command("transcribe")
@@ -479,6 +482,7 @@ def transcribe(  # noqa: PLR0912
     log_file: str | None = opts.LOG_FILE,
     list_devices: bool = opts.LIST_DEVICES,
     quiet: bool = opts.QUIET,
+    json_output: bool = opts.JSON_OUTPUT,
     config_file: str | None = opts.CONFIG_FILE,
     print_args: bool = opts.PRINT_ARGS,
     transcription_log: Path | None = opts.TRANSCRIPTION_LOG,
@@ -523,12 +527,17 @@ def transcribe(  # noqa: PLR0912
             return
 
     # Create all config objects once
+    # JSON output implies quiet mode and no clipboard
+    effective_quiet = quiet or json_output
+    effective_clipboard = clipboard and not json_output
+    if json_output:
+        enable_json_mode()
     general_cfg = config.General(
         log_level=log_level,
         log_file=log_file,
-        quiet=quiet,
+        quiet=effective_quiet,
         list_devices=list_devices,
-        clipboard=clipboard,
+        clipboard=effective_clipboard,
     )
     provider_cfg = config.ProviderSelection(
         asr_provider=asr_provider,
@@ -566,7 +575,7 @@ def transcribe(  # noqa: PLR0912
     # Handle recovery mode (transcribing from file)
     if audio_file_path:
         # We're transcribing from a saved file
-        asyncio.run(
+        transcript = asyncio.run(
             _async_main(
                 audio_file_path=audio_file_path,
                 extra_instructions=extra_instructions,
@@ -582,6 +591,8 @@ def transcribe(  # noqa: PLR0912
                 transcription_log=transcription_log,
             ),
         )
+        if json_output:
+            print(json.dumps({"transcript": transcript}))
         return
 
     # Normal recording mode
@@ -610,7 +621,7 @@ def transcribe(  # noqa: PLR0912
 
     # Use context manager for PID file management
     with process.pid_file_context(process_name), suppress(KeyboardInterrupt):
-        asyncio.run(
+        transcript = asyncio.run(
             _async_main(
                 extra_instructions=extra_instructions,
                 provider_cfg=provider_cfg,
@@ -628,3 +639,5 @@ def transcribe(  # noqa: PLR0912
                 process_name=process_name,
             ),
         )
+    if json_output:
+        print(json.dumps({"transcript": transcript}))

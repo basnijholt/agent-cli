@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import json
 import sys
 import time
 from typing import TYPE_CHECKING
@@ -14,7 +15,9 @@ import typer
 from agent_cli import config, opts
 from agent_cli.cli import app
 from agent_cli.core.utils import (
+    console,
     create_status,
+    enable_json_mode,
     get_clipboard_text,
     print_command_line_args,
     print_error_message,
@@ -110,15 +113,17 @@ def _display_result(
     elapsed: float,
     *,
     simple_output: bool,
+    clipboard: bool = True,
 ) -> None:
     """Handle output and clipboard copying based on desired verbosity."""
-    pyperclip.copy(corrected_text)
+    if clipboard:
+        pyperclip.copy(corrected_text)
 
     if simple_output:
         if original_text and corrected_text.strip() == original_text.strip():
-            print("✅ No correction needed.")
+            console.print("✅ No correction needed.")
         else:
-            print(corrected_text)
+            console.print(corrected_text)
     else:
         print_output_panel(
             corrected_text,
@@ -154,13 +159,13 @@ async def _async_autocorrect(
     openai_llm_cfg: config.OpenAILLM,
     gemini_llm_cfg: config.GeminiLLM,
     general_cfg: config.General,
-) -> None:
+) -> str | None:
     """Asynchronous version of the autocorrect command."""
     setup_logging(general_cfg.log_level, general_cfg.log_file, quiet=general_cfg.quiet)
     original_text = text if text is not None else get_clipboard_text(quiet=general_cfg.quiet)
 
     if original_text is None:
-        return
+        return None
 
     _display_original_text(original_text, general_cfg.quiet)
 
@@ -180,7 +185,14 @@ async def _async_autocorrect(
                 gemini_llm_cfg,
             )
 
-        _display_result(corrected_text, original_text, elapsed, simple_output=general_cfg.quiet)
+        _display_result(
+            corrected_text,
+            original_text,
+            elapsed,
+            simple_output=general_cfg.quiet,
+            clipboard=general_cfg.clipboard,
+        )
+        return corrected_text
 
     except Exception as e:
         if general_cfg.quiet:
@@ -221,12 +233,18 @@ def autocorrect(
     log_level: str = opts.LOG_LEVEL,
     log_file: str | None = opts.LOG_FILE,
     quiet: bool = opts.QUIET,
+    json_output: bool = opts.JSON_OUTPUT,
     config_file: str | None = opts.CONFIG_FILE,
     print_args: bool = opts.PRINT_ARGS,
 ) -> None:
     """Correct text from clipboard using a local or remote LLM."""
     if print_args:
         print_command_line_args(locals())
+
+    effective_quiet = quiet or json_output
+    if json_output:
+        enable_json_mode()
+
     provider_cfg = config.ProviderSelection(
         llm_provider=llm_provider,
         asr_provider="wyoming",  # Not used, but required by model
@@ -245,10 +263,11 @@ def autocorrect(
     general_cfg = config.General(
         log_level=log_level,
         log_file=log_file,
-        quiet=quiet,
-        clipboard=True,
+        quiet=effective_quiet,
+        clipboard=not json_output,
     )
-    asyncio.run(
+
+    corrected_text = asyncio.run(
         _async_autocorrect(
             text=text,
             provider_cfg=provider_cfg,
@@ -258,3 +277,5 @@ def autocorrect(
             general_cfg=general_cfg,
         ),
     )
+    if json_output:
+        print(json.dumps({"corrected_text": corrected_text}))
