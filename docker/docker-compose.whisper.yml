@@ -36,6 +36,9 @@ services:
             - driver: nvidia
               count: 1
               capabilities: [gpu]
+    # For NixOS or other CDI-based Docker setups, replace the `deploy` section with:
+    #   devices:
+    #     - nvidia.com/gpu=0    # Single GPU (use nvidia.com/gpu=all for all GPUs)
     restart: unless-stopped
 
   whisper-cpu:
