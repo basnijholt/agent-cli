@@ -99,7 +99,7 @@
               environmentVariables = lib.mkOption {
                 type = lib.types.attrsOf lib.types.str;
                 default = {
-                  OLLAMA_KEEP_ALIVE = "1h";
+                  OLLAMA_KEEP_ALIVE = "2h";
                 };
                 description = "Environment variables for Ollama";
               };
