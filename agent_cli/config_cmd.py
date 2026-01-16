@@ -14,6 +14,7 @@ import typer
 
 from agent_cli.cli import app
 from agent_cli.config import CONFIG_PATHS, USER_CONFIG_PATH, _config_path
+from agent_cli.core.process import set_process_title
 from agent_cli.core.utils import console
 
 config_app = typer.Typer(
@@ -23,6 +24,13 @@ config_app = typer.Typer(
     no_args_is_help=True,
 )
 app.add_typer(config_app, name="config", rich_help_panel="Configuration")
+
+
+@config_app.callback()
+def config_callback(ctx: typer.Context) -> None:
+    """Config command group callback."""
+    if ctx.invoked_subcommand is not None:
+        set_process_title(f"config-{ctx.invoked_subcommand}")
 
 
 # --- Config command options ---

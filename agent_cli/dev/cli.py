@@ -20,6 +20,7 @@ from rich.table import Table
 from agent_cli.cli import app as main_app
 from agent_cli.cli import set_config_defaults
 from agent_cli.config import load_config
+from agent_cli.core.process import set_process_title
 
 # Word lists for generating random branch names (like Docker container names)
 _ADJECTIVES = [
@@ -134,6 +135,8 @@ def dev_callback(
 ) -> None:
     """Parallel development environment manager using git worktrees."""
     set_config_defaults(ctx, config_file)
+    if ctx.invoked_subcommand is not None:
+        set_process_title(f"dev-{ctx.invoked_subcommand}")
 
 
 def _error(msg: str) -> NoReturn:

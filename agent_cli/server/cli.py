@@ -12,6 +12,7 @@ import typer
 from rich.console import Console
 
 from agent_cli.cli import app as main_app
+from agent_cli.core.process import set_process_title
 from agent_cli.server.common import setup_rich_logging
 
 console = Console()
@@ -32,6 +33,14 @@ app = typer.Typer(
     no_args_is_help=True,
 )
 main_app.add_typer(app, name="server")
+
+
+@app.callback()
+def server_callback(ctx: typer.Context) -> None:
+    """Server command group callback."""
+    if ctx.invoked_subcommand is not None:
+        # Update process title to include full path: server-{subcommand}
+        set_process_title(f"server-{ctx.invoked_subcommand}")
 
 
 def _check_server_deps() -> None:
