@@ -44,6 +44,9 @@ def run_markdown_code_runner(files: list[Path], repo_root: Path) -> bool:
     # Set fixed terminal width for reproducible Rich/Typer CLI help output
     env = os.environ.copy()
     env["COLUMNS"] = FIXED_TERMINAL_WIDTH
+    # Prevent Typer from forcing terminal mode in CI (GITHUB_ACTIONS),
+    # which treats TERM=dumb as a fixed 80-column terminal.
+    env["_TYPER_FORCE_DISABLE_TERMINAL"] = "1"
 
     all_success = True
     for file in files:
