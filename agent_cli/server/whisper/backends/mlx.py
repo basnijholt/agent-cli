@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import asyncio
-import io
 import logging
 import wave
 from concurrent.futures import ProcessPoolExecutor
@@ -11,7 +10,10 @@ from multiprocessing import get_context
 from typing import TYPE_CHECKING, Any, Literal
 
 from agent_cli import constants
-from agent_cli.core.audio_format import convert_audio_to_wyoming_format
+from agent_cli.core.audio_format import (
+    convert_audio_to_wyoming_format,
+    extract_pcm_from_wav,
+)
 from agent_cli.server.whisper.backends.base import (
     BackendConfig,
     InvalidAudioError,
@@ -72,17 +74,6 @@ def _pcm_to_float(audio_bytes: bytes) -> NDArray[np.float32]:
     return np.frombuffer(audio_bytes, dtype=np.int16).astype(np.float32) / 32768.0
 
 
-def _extract_pcm_from_wav(wav_bytes: bytes) -> tuple[bytes, int, int, int]:
-    """Extract raw PCM data and WAV parameters from WAV bytes."""
-    with io.BytesIO(wav_bytes) as buf, wave.open(buf, "rb") as wav_file:
-        return (
-            wav_file.readframes(wav_file.getnframes()),
-            wav_file.getframerate(),
-            wav_file.getnchannels(),
-            wav_file.getsampwidth(),
-        )
-
-
 def _convert_audio_to_pcm(audio_bytes: bytes, source_filename: str | None) -> bytes:
     """Convert audio bytes to raw PCM using FFmpeg."""
     filename = source_filename or "audio"
@@ -100,22 +91,22 @@ def _convert_audio_to_pcm(audio_bytes: bytes, source_filename: str | None) -> by
 def _prepare_audio_pcm(audio: bytes, source_filename: str | None) -> bytes:
     """Extract PCM from WAV or convert with FFmpeg if needed."""
     try:
-        pcm_data, sample_rate, channels, sample_width = _extract_pcm_from_wav(audio)
+        wav = extract_pcm_from_wav(audio)
     except (wave.Error, EOFError) as exc:
         logger.debug("WAV parsing failed (%s); converting with FFmpeg", exc)
         return _convert_audio_to_pcm(audio, source_filename)
 
     needs_conversion = (
-        sample_rate != constants.AUDIO_RATE
-        or channels != constants.AUDIO_CHANNELS
-        or sample_width != constants.AUDIO_FORMAT_WIDTH
+        wav.sample_rate != constants.AUDIO_RATE
+        or wav.num_channels != constants.AUDIO_CHANNELS
+        or wav.sample_width != constants.AUDIO_FORMAT_WIDTH
     )
     if needs_conversion:
         logger.debug(
             "WAV format mismatch (rate=%s, channels=%s, width=%s); converting with FFmpeg",
-            sample_rate,
-            channels,
-            sample_width,
+            wav.sample_rate,
+            wav.num_channels,
+            wav.sample_width,
         )
         name = (
             source_filename
@@ -123,7 +114,7 @@ def _prepare_audio_pcm(audio: bytes, source_filename: str | None) -> bytes:
             else "audio.wav"
         )
         return _convert_audio_to_pcm(audio, name)
-    return pcm_data
+    return wav.pcm_data
 
 
 # --- Subprocess worker functions (run in isolated process) ---
