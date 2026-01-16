@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from importlib.util import find_spec
 from pathlib import Path  # noqa: TC003 - Typer evaluates annotations at runtime
@@ -73,7 +74,7 @@ def _check_whisper_deps(backend: str, *, download_only: bool = False) -> None:
 
 
 @app.command("whisper")
-def whisper_cmd(  # noqa: PLR0915
+def whisper_cmd(  # noqa: PLR0912, PLR0915
     model: Annotated[
         list[str] | None,
         typer.Option(
@@ -118,6 +119,13 @@ def whisper_cmd(  # noqa: PLR0915
             help="Seconds before unloading idle model",
         ),
     ] = 300,
+    preload: Annotated[
+        bool,
+        typer.Option(
+            "--preload",
+            help="Load model(s) at startup and wait for completion",
+        ),
+    ] = False,
     host: Annotated[
         str,
         typer.Option(
@@ -265,8 +273,10 @@ def whisper_cmd(  # noqa: PLR0915
         )
         registry.register(config)
 
-    # Download models at startup (shows progress, but doesn't load into GPU memory)
-    registry.ensure_downloaded()
+    # Preload if requested
+    if preload:
+        console.print("[bold]Preloading model(s)...[/bold]")
+        asyncio.run(registry.preload())
 
     # Build Wyoming URI
     wyoming_uri = f"tcp://{host}:{wyoming_port}"
@@ -310,6 +320,7 @@ def whisper_cmd(  # noqa: PLR0915
         registry,
         enable_wyoming=not no_wyoming,
         wyoming_uri=wyoming_uri,
+        background_preload=not preload,
     )
 
     import uvicorn  # noqa: PLC0415

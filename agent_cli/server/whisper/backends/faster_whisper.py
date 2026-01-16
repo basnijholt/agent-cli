@@ -37,15 +37,6 @@ class FasterWhisperBackend:
         """Check if the model is loaded."""
         return self._model is not None
 
-    def ensure_downloaded(self) -> None:
-        """Download model files if not already cached, without loading into memory."""
-        from faster_whisper.utils import download_model  # noqa: PLC0415
-
-        download_model(
-            self._config.model_name,
-            cache_dir=str(self._config.cache_dir) if self._config.cache_dir else None,
-        )
-
     @property
     def device(self) -> str | None:
         """Get the device the model is on."""

@@ -55,10 +55,6 @@ class WhisperBackend(Protocol):
         """Get the device the model is loaded on, or None if not loaded."""
         ...
 
-    def ensure_downloaded(self) -> None:
-        """Download model files if not already cached, without loading into memory."""
-        ...
-
     async def load(self) -> float:
         """Load the model into memory.
 

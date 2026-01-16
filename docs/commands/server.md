@@ -99,6 +99,7 @@ agent-cli server whisper --preload
 | `--compute-type` | `auto` | Compute type: auto, float16, int8, int8_float16 |
 | `--cache-dir` | - | Model cache directory |
 | `--ttl` | `300` | Seconds before unloading idle model |
+| `--preload` | `false` | Load model(s) at startup and wait for completion |
 | `--host` | `0.0.0.0` | Host to bind the server to |
 | `--port` | `10301` | HTTP API port |
 | `--wyoming-port` | `10300` | Wyoming protocol port |

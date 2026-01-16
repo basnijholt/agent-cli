@@ -41,31 +41,28 @@ _MLX_MODEL_MAP: dict[str, str] = {
 
 
 def _resolve_mlx_model_name(model_name: str) -> str:
-    """Resolve a model name to an MLX HuggingFace repo."""
+    """Resolve a model name to an MLX HuggingFace repo.
+
+    If the name is already an mlx-community repo, return as-is.
+    Otherwise, try to map common names to MLX repos.
+    """
+    # Already an MLX repo
     if model_name.startswith("mlx-community/"):
         return model_name
+
+    # Try direct mapping
     if model_name in _MLX_MODEL_MAP:
         return _MLX_MODEL_MAP[model_name]
+
+    # Try without common prefixes (e.g., "whisper-large-v3-turbo" -> "large-v3-turbo")
     for prefix in ("whisper-", "openai/whisper-"):
         if model_name.startswith(prefix):
             stripped = model_name[len(prefix) :]
             if stripped in _MLX_MODEL_MAP:
                 return _MLX_MODEL_MAP[stripped]
+
+    # Return as-is and let mlx_whisper handle it
     return model_name
-
-
-def ensure_model_downloaded(model_name: str) -> None:
-    """Download model files if not already cached, without loading into memory."""
-    from pathlib import Path  # noqa: PLC0415
-
-    from huggingface_hub import snapshot_download  # noqa: PLC0415
-
-    resolved = _resolve_mlx_model_name(model_name)
-    model_path = Path(resolved)
-    if not model_path.exists():
-        logger.info("Downloading model %s...", resolved)
-        snapshot_download(repo_id=resolved)
-        logger.info("Model %s downloaded", resolved)
 
 
 def _pcm_to_float(audio_bytes: bytes) -> NDArray[np.float32]:
@@ -191,10 +188,6 @@ class MLXWhisperBackend:
     def is_loaded(self) -> bool:
         """Check if the model is loaded."""
         return self._loaded
-
-    def ensure_downloaded(self) -> None:
-        """Download model files if not already cached, without loading into memory."""
-        ensure_model_downloaded(self._config.model_name)
 
     @property
     def device(self) -> str | None:
