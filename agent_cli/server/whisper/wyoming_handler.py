@@ -52,6 +52,7 @@ class WyomingWhisperHandler(AsyncEventHandler):
         self._audio_buffer: io.BytesIO | None = None
         self._wav_file: wave.Wave_write | None = None
         self._language: str | None = None
+        self._initial_prompt: str | None = None
 
     async def handle_event(self, event: Event) -> bool:
         """Handle a Wyoming event.
@@ -120,6 +121,7 @@ class WyomingWhisperHandler(AsyncEventHandler):
                 audio_data,
                 language=self._language,
                 task="transcribe",
+                initial_prompt=self._initial_prompt,
             )
 
             logger.info("Wyoming transcription: %s", result.text[:100] if result.text else "")
@@ -129,16 +131,21 @@ class WyomingWhisperHandler(AsyncEventHandler):
             logger.exception("Wyoming transcription failed")
             await self.write_event(Transcript(text="").event())
 
-        # Reset language for next request
+        # Reset state for next request
         self._language = None
+        self._initial_prompt = None
         return False
 
     def _handle_transcribe(self, event: Event) -> bool:
-        """Handle transcribe event - sets language preference."""
+        """Handle transcribe event - sets language and prompt preferences."""
         logger.debug("Transcribe event")
         transcribe = Transcribe.from_event(event)
         if transcribe.language:
             self._language = transcribe.language
+        # Extract initial_prompt from context if provided
+        if transcribe.context and "initial_prompt" in transcribe.context:
+            self._initial_prompt = transcribe.context["initial_prompt"]
+            logger.debug("Using initial_prompt from context")
         return True
 
     async def _handle_describe(self) -> bool:
