@@ -64,6 +64,23 @@ def _resolve_mlx_model_name(model_name: str) -> str:
     return model_name
 
 
+def ensure_model_downloaded(model_name: str) -> None:
+    """Download model files if not already cached, without loading into memory.
+
+    This allows showing download progress at startup without using GPU memory.
+    """
+    from pathlib import Path  # noqa: PLC0415
+
+    from huggingface_hub import snapshot_download  # noqa: PLC0415
+
+    resolved = _resolve_mlx_model_name(model_name)
+    model_path = Path(resolved)
+    if not model_path.exists():
+        logger.info("Downloading model %s...", resolved)
+        snapshot_download(repo_id=resolved)
+        logger.info("Model %s downloaded", resolved)
+
+
 def _pcm_to_float(audio_bytes: bytes) -> NDArray[np.float32]:
     """Convert 16-bit PCM audio bytes to float32 array normalized to [-1, 1]."""
     import numpy as np  # noqa: PLC0415
@@ -118,14 +135,30 @@ class MLXWhisperBackend:
         """
         return self._loaded
 
+    def ensure_downloaded(self) -> None:
+        """Download model files if not already cached, without loading into memory."""
+        ensure_model_downloaded(self._config.model_name)
+
     @property
     def device(self) -> str | None:
         """Get the device - always 'mps' (Metal) for MLX."""
         return "mps" if self._loaded else None
 
     async def load(self) -> float:
-        """Load the model for MLX and warm the cache."""
+        """Load the model for MLX and warm the cache.
+
+        Uses ModelHolder.get_model() to ensure the model is cached in the same
+        location that mlx_whisper.transcribe() uses, avoiding double loading.
+
+        Note: We intentionally don't use asyncio.to_thread() here because it
+        creates a Future that holds a reference to the model, preventing memory
+        from being freed on unload. Loading is a one-time operation so briefly
+        blocking the event loop is acceptable.
+        """
         import time  # noqa: PLC0415
+
+        import mlx.core as mx  # noqa: PLC0415
+        from mlx_whisper.transcribe import ModelHolder  # noqa: PLC0415
 
         logger.debug(
             "Preparing mlx-whisper model %s (resolved: %s)",
@@ -135,9 +168,12 @@ class MLXWhisperBackend:
 
         start_time = time.time()
 
-        from mlx_whisper.load_models import load_model  # noqa: PLC0415
-
-        self._model = await asyncio.to_thread(load_model, self._resolved_model)
+        # Use ModelHolder.get_model() instead of load_model() directly.
+        # This populates the same cache that mlx_whisper.transcribe() uses,
+        # preventing the model from being loaded twice.
+        # Note: Not using asyncio.to_thread() to avoid Future holding model reference.
+        dtype = mx.float16
+        self._model = ModelHolder.get_model(self._resolved_model, dtype)
 
         self._loaded = True
         load_duration = time.time() - start_time
@@ -151,11 +187,7 @@ class MLXWhisperBackend:
         return load_duration
 
     async def unload(self) -> None:
-        """Unload the model.
-
-        Note: mlx-whisper caches models internally. We can trigger GC
-        but full unload may require process restart for large models.
-        """
+        """Unload the model and clear caches."""
         if not self._loaded:
             return
 
@@ -163,7 +195,7 @@ class MLXWhisperBackend:
 
         self._model = None
         self._loaded = False
-        release_memory()
+        release_memory()  # Clears MLX cache and ModelHolder cache
 
         logger.info("Model %s unloaded", self._config.model_name)
 

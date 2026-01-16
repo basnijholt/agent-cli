@@ -135,7 +135,6 @@ def create_app(  # noqa: C901, PLR0915
     *,
     enable_wyoming: bool = True,
     wyoming_uri: str = "tcp://0.0.0.0:10300",
-    background_preload: bool = False,
 ) -> FastAPI:
     """Create the FastAPI application.
 
@@ -143,7 +142,6 @@ def create_app(  # noqa: C901, PLR0915
         registry: The model registry to use.
         enable_wyoming: Whether to start Wyoming server.
         wyoming_uri: URI for Wyoming server.
-        background_preload: Whether to preload models in the background at startup.
 
     Returns:
         Configured FastAPI application.
@@ -154,20 +152,9 @@ def create_app(  # noqa: C901, PLR0915
     async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
         """Manage application lifecycle."""
         wyoming_task: asyncio.Task[None] | None = None
-        preload_task: asyncio.Task[None] | None = None
 
-        # Start the registry
+        # Start the registry (models load lazily on first request)
         await registry.start()
-
-        if background_preload:
-
-            async def preload_models() -> None:
-                try:
-                    await registry.preload()
-                except Exception:
-                    logger.exception("Background model preload failed")
-
-            preload_task = asyncio.create_task(preload_models())
 
         # Start Wyoming server if enabled
         if enable_wyoming:
@@ -191,10 +178,6 @@ def create_app(  # noqa: C901, PLR0915
             wyoming_task.cancel()
             with contextlib.suppress(asyncio.CancelledError):
                 await wyoming_task
-        if preload_task is not None:
-            preload_task.cancel()
-            with contextlib.suppress(asyncio.CancelledError):
-                await preload_task
 
         # Stop the registry
         await registry.stop()
