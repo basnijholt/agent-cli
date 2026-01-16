@@ -1,6 +1,6 @@
 ---
 name: agent-cli-dev
-description: Spawns AI coding agents in isolated git worktrees using agent-cli dev. Use when the user explicitly requests to spawn, launch, or delegate to a separate agent, work in a separate worktree or branch, offload a task to another agent, have an agent handle something independently, or parallelize work across multiple features. Key trigger phrases: "spawn an agent", "launch an agent for", "delegate this to an agent", "in a separate worktree", "have an agent work on", "offload this to", "work on X in parallel". Do NOT trigger for normal "implement X" or "investigate Y" requests without explicit spawning/delegation language.
+description: Spawns AI coding agents in isolated git worktrees. Use when the user asks to spawn or launch an agent, delegate a task to a separate agent, work in a separate worktree, or parallelize development across features.
 ---
 
 # Parallel Development with agent-cli dev
