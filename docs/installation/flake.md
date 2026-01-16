@@ -23,17 +23,16 @@ git clone https://github.com/basnijholt/agent-cli.git
 cd agent-cli
 nix develop
 
-# Inside the shell:
-uv sync --all-extras
-uv run agent-cli --help
+# Python deps are auto-installed, ready to use:
+agent-cli --help
 ```
 
-The dev shell provides:
-- Python 3.12 with uv for package management
-- System dependencies (portaudio, ffmpeg, sox)
-- Build tools (gcc, pkg-config)
+The dev shell automatically:
+- Syncs Python dependencies via uv
+- Sets up system dependencies (portaudio, ffmpeg, sox)
+- Configures LD_LIBRARY_PATH for audio libraries
 
-### Install agent-cli
+### Install agent-cli System-Wide
 
 ```bash
 # Using uv (recommended)
