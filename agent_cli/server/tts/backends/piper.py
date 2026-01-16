@@ -24,6 +24,15 @@ logger = logging.getLogger(__name__)
 WAV_HEADER_SIZE = 44
 
 
+def _get_default_cache_dir() -> str:
+    """Get default cache directory for Piper models."""
+    from pathlib import Path  # noqa: PLC0415
+
+    cache_dir = Path.home() / ".cache" / "piper"
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    return str(cache_dir)
+
+
 def _load_model_sync(
     model_name: str,
     cache_dir: str | None,
@@ -31,37 +40,39 @@ def _load_model_sync(
     """Load Piper model synchronously (for use in process pool).
 
     Args:
-        model_name: Model name or path.
+        model_name: Model name (e.g., 'en_US-lessac-medium') or path to .onnx file.
         cache_dir: Optional cache directory for downloaded models.
 
     Returns:
         Tuple of (PiperVoice, sample_rate).
 
     """
+    from pathlib import Path  # noqa: PLC0415
+
     from piper import PiperVoice  # noqa: PLC0415
-    from piper.download import ensure_voice_exists, find_voice, get_voices  # noqa: PLC0415
+    from piper.download_voices import download_voice  # noqa: PLC0415
 
-    # Get available voices
-    voices = get_voices(cache_dir or None, update_voices=False)
+    # Use default cache dir if not specified
+    download_dir = Path(cache_dir) if cache_dir else Path(_get_default_cache_dir())
+    download_dir.mkdir(parents=True, exist_ok=True)
 
-    # Try to find the voice
-    try:
-        find_voice(model_name, voices)
-    except ValueError:
-        # Voice not in cache, try to download it
-        voices = get_voices(cache_dir or None, update_voices=True)
-        find_voice(model_name, voices)
+    # Check if model_name is already a path to an existing file
+    model_path = Path(model_name)
+    if model_path.exists() and model_path.suffix == ".onnx":
+        # Direct path to model file
+        voice = PiperVoice.load(str(model_path), use_cuda=False)
+        return voice, voice.config.sample_rate
 
-    # Ensure model files exist
-    model_path, config_path = ensure_voice_exists(
-        model_name,
-        cache_dir or None,
-        cache_dir or None,
-        voices,
-    )
+    # Otherwise, treat as a voice name and download if needed
+    voice_code = model_name.strip()
+    expected_model_path = download_dir / f"{voice_code}.onnx"
+
+    if not expected_model_path.exists():
+        logger.info("Downloading Piper voice: %s", voice_code)
+        download_voice(voice_code, download_dir)
 
     # Load the voice
-    voice = PiperVoice.load(model_path, config_path=config_path, use_cuda=False)
+    voice = PiperVoice.load(str(expected_model_path), use_cuda=False)
 
     return voice, voice.config.sample_rate
 
@@ -84,6 +95,11 @@ def _synthesize_sync(
         Tuple of (audio_bytes, duration_seconds).
 
     """
+    from piper import SynthesisConfig  # noqa: PLC0415
+
+    # Create synthesis config with speed adjustment
+    syn_config = SynthesisConfig(length_scale=length_scale)
+
     # Create WAV buffer
     buffer = io.BytesIO()
     with wave.open(buffer, "wb") as wav_file:
@@ -91,12 +107,9 @@ def _synthesize_sync(
         wav_file.setsampwidth(2)  # 16-bit
         wav_file.setframerate(sample_rate)
 
-        # Synthesize with speed adjustment via length_scale
-        for audio_bytes in voice.synthesize_stream_raw(
-            text,
-            length_scale=length_scale,
-        ):
-            wav_file.writeframes(audio_bytes)
+        # Synthesize and write audio chunks
+        for audio_chunk in voice.synthesize(text, syn_config):
+            wav_file.writeframes(audio_chunk.audio_int16_bytes)
 
     audio_data = buffer.getvalue()
 
