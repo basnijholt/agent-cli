@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import io
 import wave
+from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 from fastapi.testclient import TestClient
@@ -122,19 +123,24 @@ class TestWhisperModelManager:
     @pytest.mark.asyncio
     async def test_load_model(self, manager: WhisperModelManager) -> None:
         """Test loading a model (mocked)."""
-        mock_model = MagicMock()
-        mock_model.model.device = "cpu"
-
-        with patch.dict(
-            "sys.modules",
-            {"faster_whisper": MagicMock(WhisperModel=MagicMock(return_value=mock_model))},
-        ):
-            backend = await manager.get_model()
-
-        # get_model returns the backend, not the internal model
         from agent_cli.server.whisper.backends.faster_whisper import (  # noqa: PLC0415
             FasterWhisperBackend,
         )
+
+        async def mock_run_in_executor(
+            _executor: object,
+            _fn: object,
+            *_args: object,
+        ) -> str:
+            return "cpu"
+
+        with (
+            patch.object(ProcessPoolExecutor, "__init__", lambda *_a, **_kw: None),
+            patch.object(ProcessPoolExecutor, "shutdown"),
+            patch("asyncio.get_running_loop") as mock_loop,
+        ):
+            mock_loop.return_value.run_in_executor = mock_run_in_executor
+            backend = await manager.get_model()
 
         assert isinstance(backend, FasterWhisperBackend)
         assert manager.is_loaded
@@ -144,13 +150,20 @@ class TestWhisperModelManager:
     @pytest.mark.asyncio
     async def test_ttl_remaining_after_load(self, manager: WhisperModelManager) -> None:
         """Test TTL remaining calculation."""
-        mock_model = MagicMock()
-        mock_model.model.device = "cpu"
 
-        with patch.dict(
-            "sys.modules",
-            {"faster_whisper": MagicMock(WhisperModel=MagicMock(return_value=mock_model))},
+        async def mock_run_in_executor(
+            _executor: object,
+            _fn: object,
+            *_args: object,
+        ) -> str:
+            return "cpu"
+
+        with (
+            patch.object(ProcessPoolExecutor, "__init__", lambda *_a, **_kw: None),
+            patch.object(ProcessPoolExecutor, "shutdown"),
+            patch("asyncio.get_running_loop") as mock_loop,
         ):
+            mock_loop.return_value.run_in_executor = mock_run_in_executor
             await manager.get_model()
 
         ttl = manager.ttl_remaining
@@ -160,21 +173,28 @@ class TestWhisperModelManager:
     @pytest.mark.asyncio
     async def test_unload_after_load(self, manager: WhisperModelManager) -> None:
         """Test unloading after loading."""
-        mock_model = MagicMock()
-        mock_model.model.device = "cpu"
 
-        with patch.dict(
-            "sys.modules",
-            {"faster_whisper": MagicMock(WhisperModel=MagicMock(return_value=mock_model))},
+        async def mock_run_in_executor(
+            _executor: object,
+            _fn: object,
+            *_args: object,
+        ) -> str:
+            return "cpu"
+
+        with (
+            patch.object(ProcessPoolExecutor, "__init__", lambda *_a, **_kw: None),
+            patch.object(ProcessPoolExecutor, "shutdown"),
+            patch("asyncio.get_running_loop") as mock_loop,
         ):
+            mock_loop.return_value.run_in_executor = mock_run_in_executor
             await manager.get_model()
 
-        assert manager.is_loaded
+            assert manager.is_loaded
 
-        result = await manager.unload()
-        assert result is True
-        assert not manager.is_loaded
-        assert manager.stats.unload_count == 1
+            result = await manager.unload()
+            assert result is True
+            assert not manager.is_loaded
+            assert manager.stats.unload_count == 1
 
 
 class TestWhisperModelRegistry:

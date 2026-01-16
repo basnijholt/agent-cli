@@ -3,55 +3,127 @@
 from __future__ import annotations
 
 import asyncio
-import contextlib
 import logging
 import tempfile
+from concurrent.futures import ProcessPoolExecutor
+from multiprocessing import get_context
 from pathlib import Path
-from typing import TYPE_CHECKING, Literal
+from typing import Any, Literal
 
+from agent_cli.core.process import set_process_title
 from agent_cli.server.whisper.backends.base import (
     BackendConfig,
     TranscriptionResult,
-    release_memory,
 )
 
-if TYPE_CHECKING:
-    from faster_whisper import WhisperModel
-
 logger = logging.getLogger(__name__)
+
+
+# --- Subprocess worker functions (run in isolated process) ---
+
+
+def _load_model_in_subprocess(
+    model_name: str,
+    device: str,
+    compute_type: str,
+    cpu_threads: int,
+    download_root: str | None,
+) -> str:
+    """Load model in subprocess. Returns actual device string."""
+    from faster_whisper import WhisperModel  # noqa: PLC0415
+
+    set_process_title("whisper-faster")
+    model = WhisperModel(
+        model_name,
+        device=device,
+        compute_type=compute_type,
+        cpu_threads=cpu_threads,
+        download_root=download_root,
+    )
+    return str(model.model.device)
+
+
+def _transcribe_in_subprocess(
+    model_name: str,
+    device: str,
+    compute_type: str,
+    cpu_threads: int,
+    download_root: str | None,
+    audio_bytes: bytes,
+    kwargs: dict[str, Any],
+) -> dict[str, Any]:
+    """Run transcription in subprocess. Model is loaded fresh each call."""
+    from faster_whisper import WhisperModel  # noqa: PLC0415
+
+    model = WhisperModel(
+        model_name,
+        device=device,
+        compute_type=compute_type,
+        cpu_threads=cpu_threads,
+        download_root=download_root,
+    )
+
+    # Write audio to temp file - faster-whisper needs a file path
+    with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
+        tmp.write(audio_bytes)
+        tmp_path = tmp.name
+
+    try:
+        segments, info = model.transcribe(tmp_path, **kwargs)
+        segment_list = list(segments)  # Consume lazy generator
+    finally:
+        Path(tmp_path).unlink(missing_ok=True)
+
+    return {
+        "text": " ".join(seg.text.strip() for seg in segment_list),
+        "language": info.language,
+        "language_probability": info.language_probability,
+        "duration": info.duration,
+        "segments": [
+            {
+                "id": seg.id,
+                "start": seg.start,
+                "end": seg.end,
+                "text": seg.text,
+                "tokens": seg.tokens,
+                "avg_logprob": seg.avg_logprob,
+                "no_speech_prob": seg.no_speech_prob,
+            }
+            for seg in segment_list
+        ],
+    }
 
 
 class FasterWhisperBackend:
     """Whisper backend using faster-whisper (CTranslate2).
 
-    Best for Linux with CUDA or CPU inference.
+    Uses subprocess isolation: when unloaded, the subprocess terminates
+    and the OS reclaims ALL memory (Python's pymalloc doesn't return
+    freed memory to OS otherwise).
     """
 
     def __init__(self, config: BackendConfig) -> None:
         """Initialize the backend."""
         self._config = config
-        self._model: WhisperModel | None = None
+        self._executor: ProcessPoolExecutor | None = None
+        self._device: str | None = None
 
     @property
     def is_loaded(self) -> bool:
         """Check if the model is loaded."""
-        return self._model is not None
+        return self._executor is not None
 
     @property
     def device(self) -> str | None:
         """Get the device the model is on."""
-        if self._model is None:
-            return None
-        return str(self._model.model.device)
+        return self._device
 
     async def load(self) -> float:
-        """Load the faster-whisper model."""
+        """Start subprocess and load model."""
         import time  # noqa: PLC0415
 
-        from faster_whisper import WhisperModel  # noqa: PLC0415
-
         logger.debug(
-            "Loading faster-whisper model %s (device=%s, compute_type=%s)",
+            "Starting faster-whisper subprocess for model %s (device=%s, compute_type=%s)",
             self._config.model_name,
             self._config.device,
             self._config.compute_type,
@@ -59,40 +131,43 @@ class FasterWhisperBackend:
 
         start_time = time.time()
 
-        self._model = await asyncio.to_thread(
-            WhisperModel,
+        # Subprocess isolation: spawn context for clean state
+        ctx = get_context("spawn")
+        self._executor = ProcessPoolExecutor(max_workers=1, mp_context=ctx)
+
+        download_root = str(self._config.cache_dir) if self._config.cache_dir else None
+        loop = asyncio.get_running_loop()
+        self._device = await loop.run_in_executor(
+            self._executor,
+            _load_model_in_subprocess,
             self._config.model_name,
-            device=self._config.device,
-            compute_type=self._config.compute_type,
-            cpu_threads=self._config.cpu_threads,
-            download_root=str(self._config.cache_dir) if self._config.cache_dir else None,
+            self._config.device,
+            self._config.compute_type,
+            self._config.cpu_threads,
+            download_root,
         )
 
         load_duration = time.time() - start_time
-
-        assert self._model is not None  # for type checker
         logger.info(
             "Model %s loaded on %s in %.2fs",
             self._config.model_name,
-            self._model.model.device,
+            self._device,
             load_duration,
         )
-
         return load_duration
 
     async def unload(self) -> None:
-        """Unload the model and free memory."""
-        if self._model is None:
+        """Shutdown subprocess, releasing ALL memory."""
+        if self._executor is None:
             return
-
-        logger.debug("Unloading faster-whisper model %s", self._config.model_name)
-
-        del self._model
-        self._model = None
-
-        release_memory()
-
-        logger.info("Model %s unloaded", self._config.model_name)
+        logger.debug(
+            "Shutting down faster-whisper subprocess for model %s",
+            self._config.model_name,
+        )
+        self._executor.shutdown(wait=False, cancel_futures=True)
+        self._executor = None
+        self._device = None
+        logger.info("Model %s unloaded (subprocess terminated)", self._config.model_name)
 
     async def transcribe(
         self,
@@ -106,50 +181,38 @@ class FasterWhisperBackend:
         vad_filter: bool = True,
         word_timestamps: bool = False,
     ) -> TranscriptionResult:
-        """Transcribe audio using faster-whisper."""
-        if self._model is None:
+        """Transcribe audio using faster-whisper in subprocess."""
+        if self._executor is None:
             msg = "Model not loaded. Call load() first."
             raise RuntimeError(msg)
 
-        # Write audio to temp file - faster-whisper needs a file path
-        with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
-            tmp.write(audio)
-            tmp_path = tmp.name
+        kwargs: dict[str, Any] = {
+            "language": language,
+            "task": task,
+            "initial_prompt": initial_prompt,
+            "temperature": temperature,
+            "vad_filter": vad_filter,
+            "word_timestamps": word_timestamps,
+        }
 
-        try:
-            segments, info = await asyncio.to_thread(
-                self._model.transcribe,
-                tmp_path,
-                language=language,
-                task=task,
-                initial_prompt=initial_prompt,
-                temperature=temperature,
-                vad_filter=vad_filter,
-                word_timestamps=word_timestamps,
-            )
-            # Consume the lazy generator before deleting file
-            segment_list = list(segments)
-        finally:
-            with contextlib.suppress(OSError):
-                Path(tmp_path).unlink()
-
-        text = " ".join(seg.text.strip() for seg in segment_list)
+        download_root = str(self._config.cache_dir) if self._config.cache_dir else None
+        loop = asyncio.get_running_loop()
+        result = await loop.run_in_executor(
+            self._executor,
+            _transcribe_in_subprocess,
+            self._config.model_name,
+            self._config.device,
+            self._config.compute_type,
+            self._config.cpu_threads,
+            download_root,
+            audio,
+            kwargs,
+        )
 
         return TranscriptionResult(
-            text=text,
-            language=info.language,
-            language_probability=info.language_probability,
-            duration=info.duration,
-            segments=[
-                {
-                    "id": seg.id,
-                    "start": seg.start,
-                    "end": seg.end,
-                    "text": seg.text,
-                    "tokens": seg.tokens,
-                    "avg_logprob": seg.avg_logprob,
-                    "no_speech_prob": seg.no_speech_prob,
-                }
-                for seg in segment_list
-            ],
+            text=result["text"],
+            language=result["language"],
+            language_probability=result["language_probability"],
+            duration=result["duration"],
+            segments=result["segments"],
         )

@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import gc
-import sys
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Literal, Protocol, runtime_checkable
 
@@ -97,19 +95,3 @@ class WhisperBackend(Protocol):
 
         """
         ...
-
-
-def release_memory() -> None:
-    """Release memory after model unload.
-
-    Clears memory caches for faster-whisper (CUDA).
-    MLX backend uses subprocess isolation instead.
-    """
-    gc.collect()
-
-    # Clear CUDA memory if available (only if torch is already imported)
-    if "torch" in sys.modules:
-        import torch  # noqa: PLC0415
-
-        if torch.cuda.is_available():
-            torch.cuda.empty_cache()
