@@ -145,28 +145,17 @@ def _transcribe_in_subprocess(
     kwargs: dict[str, Any],
 ) -> dict[str, Any]:
     """Run transcription in subprocess. Model stays loaded between calls."""
-    import gc  # noqa: PLC0415
-
-    import mlx.core as mx  # noqa: PLC0415
     import mlx_whisper  # noqa: PLC0415
     import numpy as np  # noqa: PLC0415
 
     audio_array = np.frombuffer(audio_bytes, dtype=audio_dtype).reshape(audio_shape)
     result = mlx_whisper.transcribe(audio_array, path_or_hf_repo=model_name, **kwargs)
 
-    # Return only serializable data
-    output = {
+    return {
         "text": result.get("text", ""),
         "language": result.get("language", "en"),
         "segments": result.get("segments", []),
     }
-
-    # Cleanup between transcriptions
-    del audio_array, result
-    gc.collect()
-    mx.clear_cache()
-
-    return output
 
 
 class MLXWhisperBackend:
