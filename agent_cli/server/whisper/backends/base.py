@@ -111,6 +111,7 @@ def release_memory() -> None:
     - CUDA memory cache (for faster-whisper with GPU)
     - MLX buffer cache (for mlx-whisper on Apple Silicon)
     - mlx_whisper's internal ModelHolder cache
+    - mlx_whisper's lru_cache entries (tokenizer, audio)
 
     Only clears caches for modules that are already imported to avoid
     triggering slow imports unnecessarily.
@@ -122,6 +123,19 @@ def release_memory() -> None:
 
         ModelHolder.model = None
         ModelHolder.model_path = None
+
+    # Clear mlx_whisper's lru_cache entries
+    if "mlx_whisper.tokenizer" in sys.modules:
+        from mlx_whisper.tokenizer import get_encoding, get_tokenizer  # noqa: PLC0415
+
+        get_encoding.cache_clear()
+        get_tokenizer.cache_clear()
+
+    if "mlx_whisper.audio" in sys.modules:
+        from mlx_whisper.audio import hanning, mel_filters  # noqa: PLC0415
+
+        mel_filters.cache_clear()
+        hanning.cache_clear()
 
     # Now run garbage collection to free unreferenced objects
     gc.collect()

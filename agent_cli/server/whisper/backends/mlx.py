@@ -14,7 +14,6 @@ from agent_cli.server.whisper.backends.base import (
     BackendConfig,
     InvalidAudioError,
     TranscriptionResult,
-    release_memory,
 )
 
 if TYPE_CHECKING:
@@ -113,18 +112,58 @@ def _convert_audio_to_pcm(audio_bytes: bytes, source_filename: str | None) -> by
         raise InvalidAudioError(msg) from exc
 
 
+def _clear_mlx_caches() -> None:
+    """Clear MLX caches - must be called from the same thread that did MLX work."""
+    import gc  # noqa: PLC0415
+
+    import mlx.core as mx  # noqa: PLC0415
+    from mlx_whisper.transcribe import ModelHolder  # noqa: PLC0415
+
+    # Clear ModelHolder cache
+    ModelHolder.model = None
+    ModelHolder.model_path = None
+
+    # Clear mlx_whisper lru_caches
+    try:
+        from mlx_whisper.audio import hanning, mel_filters  # noqa: PLC0415
+
+        mel_filters.cache_clear()
+        hanning.cache_clear()
+    except ImportError:
+        pass
+
+    try:
+        from mlx_whisper.tokenizer import get_encoding, get_tokenizer  # noqa: PLC0415
+
+        get_encoding.cache_clear()
+        get_tokenizer.cache_clear()
+    except ImportError:
+        pass
+
+    # Clear MLX caches
+    gc.collect()
+    mx.clear_cache()
+
+
 class MLXWhisperBackend:
     """Whisper backend using mlx-whisper for Apple Silicon.
 
     Optimized for macOS with M1/M2/M3/M4 chips using Metal acceleration.
+
+    Uses a dedicated single-thread executor so that MLX cache clearing
+    happens in the same thread that created the allocations.
     """
 
     def __init__(self, config: BackendConfig) -> None:
         """Initialize the backend."""
+        from concurrent.futures import ThreadPoolExecutor  # noqa: PLC0415
+
         self._config = config
         self._resolved_model = _resolve_mlx_model_name(config.model_name)
         self._loaded = False
         self._model: object | None = None
+        # Dedicated executor so cache clearing happens in the same thread
+        self._executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="mlx-whisper")
 
     @property
     def is_loaded(self) -> bool:
@@ -195,7 +234,17 @@ class MLXWhisperBackend:
 
         self._model = None
         self._loaded = False
-        release_memory()  # Clears MLX cache and ModelHolder cache
+
+        # Clear caches IN THE SAME THREAD that did MLX work
+        # This is critical because MLX may use thread-local allocations
+        loop = asyncio.get_running_loop()
+        await loop.run_in_executor(self._executor, _clear_mlx_caches)
+
+        # Shutdown and recreate executor to release any thread-local memory
+        self._executor.shutdown(wait=True)
+        from concurrent.futures import ThreadPoolExecutor  # noqa: PLC0415
+
+        self._executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="mlx-whisper")
 
         logger.info("Model %s unloaded", self._config.model_name)
 
@@ -256,10 +305,16 @@ class MLXWhisperBackend:
         if initial_prompt:
             kwargs["initial_prompt"] = initial_prompt
 
-        # Run transcription in thread pool (mlx operations can block)
-        result = await asyncio.to_thread(mlx_whisper.transcribe, audio_array, **kwargs)
+        # Run transcription in dedicated executor (same thread for cache management)
+        from functools import partial  # noqa: PLC0415
 
-        # Extract results - mlx_whisper returns a dict
+        loop = asyncio.get_running_loop()
+        result = await loop.run_in_executor(
+            self._executor,
+            partial(mlx_whisper.transcribe, audio_array, **kwargs),
+        )
+
+        # Extract results immediately and clear the result dict to help GC
         text = result.get("text", "").strip()
         detected_language = result.get("language", "en")
 
@@ -271,7 +326,7 @@ class MLXWhisperBackend:
         # Estimate: 16kHz, 16-bit mono = 32000 bytes/second
         duration = segments[-1].get("end", 0.0) if segments else len(pcm_data) / 32000.0
 
-        return TranscriptionResult(
+        transcription_result = TranscriptionResult(
             text=text,
             language=detected_language,
             language_probability=language_probability,
@@ -289,3 +344,8 @@ class MLXWhisperBackend:
                 for i, seg in enumerate(segments)
             ],
         )
+
+        # Clean up local references (actual cache clearing happens on unload in executor)
+        del result, segments, audio_array, pcm_data
+
+        return transcription_result
