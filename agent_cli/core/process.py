@@ -18,11 +18,11 @@ PID_DIR = Path.home() / ".cache" / "agent-cli"
 
 
 def set_process_title(process_name: str) -> None:
-    """Set the process title for identification in ps output.
+    """Set the process title and thread name for identification in ps/htop/btop.
 
-    Sets the process title to 'agent-cli-{process_name}' so that background
-    processes are easily identifiable in `ps` output instead of showing as
-    generic 'python' processes.
+    Sets both:
+    - Process title (command line): 'agent-cli-{process_name}' - shown in ps, htop command
+    - Thread name: 'ag-{process_name}' (max 15 chars) - shown as program name in btop/htop
 
     Args:
         process_name: The name of the process (e.g., 'transcribe', 'chat').
@@ -30,7 +30,13 @@ def set_process_title(process_name: str) -> None:
     """
     import setproctitle  # noqa: PLC0415
 
+    # Set the full process title (command line in ps)
     setproctitle.setproctitle(f"agent-cli-{process_name}")
+
+    # Set the thread name (program name in htop/btop, limited to 15 chars on Linux)
+    # Use shorter prefix "ag-" to fit more of the command name
+    thread_name = f"ag-{process_name}"[:15]
+    setproctitle.setthreadtitle(thread_name)
 
 
 def _get_pid_file(process_name: str) -> Path:
