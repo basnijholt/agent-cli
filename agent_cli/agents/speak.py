@@ -143,7 +143,6 @@ def speak(
         return
 
     # Use context manager for PID file management
-    process.set_process_title(process_name)
     with process.pid_file_context(process_name), suppress(KeyboardInterrupt):
         provider_cfg = config.ProviderSelection(
             tts_provider=tts_provider,

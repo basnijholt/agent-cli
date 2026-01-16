@@ -35,6 +35,14 @@ app = typer.Typer(
 main_app.add_typer(app, name="server")
 
 
+@app.callback()
+def server_callback(ctx: typer.Context) -> None:
+    """Server command group callback."""
+    if ctx.invoked_subcommand is not None:
+        # Update process title to include full path: server-{subcommand}
+        set_process_title(f"server-{ctx.invoked_subcommand}")
+
+
 def _check_server_deps() -> None:
     """Check that server dependencies are available."""
     if not HAS_UVICORN or not HAS_FASTAPI:
@@ -326,7 +334,6 @@ def whisper_cmd(  # noqa: PLR0912, PLR0915
 
     import uvicorn  # noqa: PLC0415
 
-    set_process_title("server-whisper")
     uvicorn.run(
         fastapi_app,
         host=host,
@@ -379,7 +386,6 @@ def transcription_proxy_cmd(
 
     import uvicorn  # noqa: PLC0415
 
-    set_process_title("server-transcription-proxy")
     uvicorn.run(
         "agent_cli.server.proxy.api:app",
         host=host,

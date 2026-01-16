@@ -8,6 +8,7 @@ import typer
 
 from . import __version__
 from .config import load_config, normalize_provider_defaults
+from .core.process import set_process_title
 from .core.utils import console
 
 app = typer.Typer(
@@ -48,6 +49,9 @@ def main(
     import dotenv  # noqa: PLC0415
 
     dotenv.load_dotenv()
+
+    # Set process title for identification in ps output
+    set_process_title(ctx.invoked_subcommand)
 
 
 def set_config_defaults(ctx: typer.Context, config_file: str | None) -> None:
