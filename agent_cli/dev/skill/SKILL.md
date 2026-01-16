@@ -135,3 +135,5 @@ Each agent works independently in its own branch. Results can be reviewed and me
 ## Before spawning agents
 
 **Important**: Before spawning any agents, read [examples.md](examples.md) in this skill directory for comprehensive prompt templates and real-world scenarios. The examples show the proper structure for self-contained prompts that spawned agents can execute independently.
+
+@examples.md
