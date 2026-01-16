@@ -130,7 +130,6 @@ def whisper_cmd(  # noqa: PLR0912, PLR0915
         str,
         typer.Option(
             "--host",
-            "-h",
             help="Host to bind the server to",
         ),
     ] = "0.0.0.0",  # noqa: S104
@@ -338,7 +337,7 @@ def whisper_cmd(  # noqa: PLR0912, PLR0915
 def transcription_proxy_cmd(
     host: Annotated[
         str,
-        typer.Option("--host", "-h", help="Host to bind the server to"),
+        typer.Option("--host", help="Host to bind the server to"),
     ] = "0.0.0.0",  # noqa: S104
     port: Annotated[
         int,
