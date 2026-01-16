@@ -293,6 +293,7 @@ async def _async_main(  # noqa: PLR0912, PLR0915, C901
                     LOGGER,
                     quiet=general_cfg.quiet,
                     file_suffix=suffix if use_native_format else ".wav",
+                    extra_instructions=extra_instructions,
                 )
             elif provider_cfg.asr_provider == "gemini":
                 transcript = await recorded_transcriber(
@@ -301,6 +302,7 @@ async def _async_main(  # noqa: PLR0912, PLR0915, C901
                     LOGGER,
                     quiet=general_cfg.quiet,
                     file_suffix=suffix if use_native_format else ".wav",
+                    extra_instructions=extra_instructions,
                 )
             elif provider_cfg.asr_provider == "wyoming":
                 transcript = await recorded_transcriber(
@@ -308,6 +310,7 @@ async def _async_main(  # noqa: PLR0912, PLR0915, C901
                     wyoming_asr_cfg=wyoming_asr_cfg,
                     logger=LOGGER,
                     quiet=general_cfg.quiet,
+                    extra_instructions=extra_instructions,
                 )
             else:
                 msg = f"Unsupported ASR provider: {provider_cfg.asr_provider}"
@@ -332,6 +335,7 @@ async def _async_main(  # noqa: PLR0912, PLR0915, C901
                     quiet=general_cfg.quiet,
                     live=live,
                     save_recording=save_recording,
+                    extra_instructions=extra_instructions,
                 )
 
         elapsed = time.monotonic() - start_time

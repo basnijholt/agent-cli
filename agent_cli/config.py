@@ -110,6 +110,17 @@ class WyomingASR(BaseModel):
 
     asr_wyoming_ip: str
     asr_wyoming_port: int
+    asr_wyoming_prompt: str | None = None
+
+    def get_effective_prompt(self, extra_instructions: str | None = None) -> str | None:
+        """Get the effective prompt, combining asr_wyoming_prompt with extra_instructions.
+
+        If both are set, asr_wyoming_prompt takes precedence and extra_instructions
+        is appended. If only one is set, that one is used.
+        """
+        if self.asr_wyoming_prompt and extra_instructions:
+            return f"{self.asr_wyoming_prompt}\n\n{extra_instructions}"
+        return self.asr_wyoming_prompt or extra_instructions
 
 
 class OpenAIASR(BaseModel):
@@ -120,12 +131,33 @@ class OpenAIASR(BaseModel):
     openai_base_url: str | None = None
     asr_openai_prompt: str | None = None
 
+    def get_effective_prompt(self, extra_instructions: str | None = None) -> str | None:
+        """Get the effective prompt, combining asr_openai_prompt with extra_instructions.
+
+        If both are set, asr_openai_prompt takes precedence and extra_instructions
+        is appended. If only one is set, that one is used.
+        """
+        if self.asr_openai_prompt and extra_instructions:
+            return f"{self.asr_openai_prompt}\n\n{extra_instructions}"
+        return self.asr_openai_prompt or extra_instructions
+
 
 class GeminiASR(BaseModel):
     """Configuration for the Gemini ASR provider."""
 
     asr_gemini_model: str
     gemini_api_key: str | None = None
+    asr_gemini_prompt: str | None = None
+
+    def get_effective_prompt(self, extra_instructions: str | None = None) -> str | None:
+        """Get the effective prompt, combining asr_gemini_prompt with extra_instructions.
+
+        If both are set, asr_gemini_prompt takes precedence and extra_instructions
+        is appended. If only one is set, that one is used.
+        """
+        if self.asr_gemini_prompt and extra_instructions:
+            return f"{self.asr_gemini_prompt}\n\n{extra_instructions}"
+        return self.asr_gemini_prompt or extra_instructions
 
 
 # --- Panel: TTS (Text-to-Speech) Configuration ---
