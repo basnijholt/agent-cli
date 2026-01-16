@@ -93,6 +93,9 @@ async def test_process_instruction_and_respond(
     mock_process_and_update_clipboard: MagicMock,
 ) -> None:
     """Test the process_instruction_and_respond function."""
+    # Mock the LLM to return a result
+    mock_process_and_update_clipboard.return_value = "processed text"
+
     general_cfg = config.General(
         log_level="INFO",
         log_file=None,
@@ -124,26 +127,23 @@ async def test_process_instruction_and_respond(
         tts_kokoro_host="http://localhost:8000/v1",
     )
 
-    with (
-        patch("agent_cli.agents.autocorrect.pyperclip.copy"),
-        patch("agent_cli.agents._voice_agent_common.pyperclip.paste"),
-    ):
-        await process_instruction_and_respond(
-            instruction="test instruction",
-            original_text="original text",
-            provider_cfg=provider_cfg,
-            general_cfg=general_cfg,
-            ollama_cfg=ollama_cfg,
-            openai_llm_cfg=openai_llm_cfg,
-            gemini_llm_cfg=gemini_llm_cfg,
-            audio_output_cfg=audio_out_cfg,
-            wyoming_tts_cfg=wyoming_tts_cfg,
-            openai_tts_cfg=openai_tts_cfg,
-            kokoro_tts_cfg=kokoro_tts_cfg,
-            system_prompt="system prompt",
-            agent_instructions="agent instructions",
-            live=MagicMock(),
-            logger=MagicMock(),
-        )
+    result = await process_instruction_and_respond(
+        instruction="test instruction",
+        original_text="original text",
+        provider_cfg=provider_cfg,
+        general_cfg=general_cfg,
+        ollama_cfg=ollama_cfg,
+        openai_llm_cfg=openai_llm_cfg,
+        gemini_llm_cfg=gemini_llm_cfg,
+        audio_output_cfg=audio_out_cfg,
+        wyoming_tts_cfg=wyoming_tts_cfg,
+        openai_tts_cfg=openai_tts_cfg,
+        kokoro_tts_cfg=kokoro_tts_cfg,
+        system_prompt="system prompt",
+        agent_instructions="agent instructions",
+        live=MagicMock(),
+        logger=MagicMock(),
+    )
+    assert result == "processed text"
     mock_process_and_update_clipboard.assert_called_once()
     mock_handle_tts_playback.assert_called_once()

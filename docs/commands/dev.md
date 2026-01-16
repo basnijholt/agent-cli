@@ -99,6 +99,7 @@ agent-cli dev list [OPTIONS]
 | Option | Description |
 |--------|-------------|
 | `--porcelain`, `-p` | Machine-readable output (path + branch) |
+| `--json` | Output as JSON for automation |
 
 ### `dev status`
 
@@ -114,6 +115,7 @@ agent-cli dev status [OPTIONS]
 |--------|-------------|
 | `--stale-days`, `-s` | Highlight worktrees inactive for N+ days (default: 7) |
 | `--porcelain`, `-p` | Machine-readable output |
+| `--json` | Output as JSON for automation |
 
 **Output columns:**
 
@@ -288,8 +290,12 @@ agent-cli dev clean --merged --dry-run
 Check system requirements and available integrations.
 
 ```bash
-agent-cli dev doctor
+agent-cli dev doctor [OPTIONS]
 ```
+
+| Option | Description |
+|--------|-------------|
+| `--json` | Output as JSON for automation |
 
 Shows available editors, AI agents, and terminals with their detection status.
 
@@ -328,24 +334,36 @@ Once installed, Claude Code can automatically use the skill when you ask to work
 List available AI coding agents.
 
 ```bash
-agent-cli dev agents
+agent-cli dev agents [OPTIONS]
 ```
+
+| Option | Description |
+|--------|-------------|
+| `--json` | Output as JSON for automation |
 
 ### `dev editors`
 
 List available editors.
 
 ```bash
-agent-cli dev editors
+agent-cli dev editors [OPTIONS]
 ```
+
+| Option | Description |
+|--------|-------------|
+| `--json` | Output as JSON for automation |
 
 ### `dev terminals`
 
 List available terminal multiplexers.
 
 ```bash
-agent-cli dev terminals
+agent-cli dev terminals [OPTIONS]
 ```
+
+| Option | Description |
+|--------|-------------|
+| `--json` | Output as JSON for automation |
 
 ## Supported Integrations
 
