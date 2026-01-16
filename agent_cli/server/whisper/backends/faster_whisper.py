@@ -2,14 +2,16 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import tempfile
+from concurrent.futures import ProcessPoolExecutor
+from multiprocessing import get_context
 from pathlib import Path
 from typing import Any, Literal
 
 from agent_cli.server.whisper.backends.base import (
     BackendConfig,
-    SubprocessExecutor,
     TranscriptionResult,
 )
 
@@ -48,7 +50,7 @@ def _transcribe_in_subprocess(
     audio_bytes: bytes,
     kwargs: dict[str, Any],
 ) -> dict[str, Any]:
-    """Run transcription in subprocess. Model is cached via lru_cache."""
+    """Run transcription in subprocess. Model is loaded fresh each call."""
     from faster_whisper import WhisperModel  # noqa: PLC0415
 
     model = WhisperModel(
@@ -93,29 +95,26 @@ def _transcribe_in_subprocess(
 class FasterWhisperBackend:
     """Whisper backend using faster-whisper (CTranslate2).
 
-    Uses subprocess isolation via SubprocessExecutor. When unloaded,
-    the subprocess terminates and the OS reclaims ALL memory.
+    Uses subprocess isolation: when unloaded, the subprocess terminates
+    and the OS reclaims ALL memory (Python's pymalloc doesn't return
+    freed memory to OS otherwise).
     """
 
     def __init__(self, config: BackendConfig) -> None:
         """Initialize the backend."""
         self._config = config
-        self._subprocess = SubprocessExecutor()
+        self._executor: ProcessPoolExecutor | None = None
         self._device: str | None = None
 
     @property
     def is_loaded(self) -> bool:
         """Check if the model is loaded."""
-        return self._subprocess.is_running
+        return self._executor is not None
 
     @property
     def device(self) -> str | None:
         """Get the device the model is on."""
         return self._device
-
-    def _download_root(self) -> str | None:
-        """Get download root as string or None."""
-        return str(self._config.cache_dir) if self._config.cache_dir else None
 
     async def load(self) -> float:
         """Start subprocess and load model."""
@@ -129,17 +128,24 @@ class FasterWhisperBackend:
         )
 
         start_time = time.time()
-        self._subprocess.start()
-        self._device = await self._subprocess.run(
+
+        # Subprocess isolation: spawn context for clean state
+        ctx = get_context("spawn")
+        self._executor = ProcessPoolExecutor(max_workers=1, mp_context=ctx)
+
+        download_root = str(self._config.cache_dir) if self._config.cache_dir else None
+        loop = asyncio.get_running_loop()
+        self._device = await loop.run_in_executor(
+            self._executor,
             _load_model_in_subprocess,
             self._config.model_name,
             self._config.device,
             self._config.compute_type,
             self._config.cpu_threads,
-            self._download_root(),
+            download_root,
         )
-        load_duration = time.time() - start_time
 
+        load_duration = time.time() - start_time
         logger.info(
             "Model %s loaded on %s in %.2fs",
             self._config.model_name,
@@ -150,13 +156,14 @@ class FasterWhisperBackend:
 
     async def unload(self) -> None:
         """Shutdown subprocess, releasing ALL memory."""
-        if not self._subprocess.is_running:
+        if self._executor is None:
             return
         logger.debug(
             "Shutting down faster-whisper subprocess for model %s",
             self._config.model_name,
         )
-        self._subprocess.stop()
+        self._executor.shutdown(wait=False, cancel_futures=True)
+        self._executor = None
         self._device = None
         logger.info("Model %s unloaded (subprocess terminated)", self._config.model_name)
 
@@ -173,7 +180,7 @@ class FasterWhisperBackend:
         word_timestamps: bool = False,
     ) -> TranscriptionResult:
         """Transcribe audio using faster-whisper in subprocess."""
-        if not self._subprocess.is_running:
+        if self._executor is None:
             msg = "Model not loaded. Call load() first."
             raise RuntimeError(msg)
 
@@ -186,13 +193,16 @@ class FasterWhisperBackend:
             "word_timestamps": word_timestamps,
         }
 
-        result = await self._subprocess.run(
+        download_root = str(self._config.cache_dir) if self._config.cache_dir else None
+        loop = asyncio.get_running_loop()
+        result = await loop.run_in_executor(
+            self._executor,
             _transcribe_in_subprocess,
             self._config.model_name,
             self._config.device,
             self._config.compute_type,
             self._config.cpu_threads,
-            self._download_root(),
+            download_root,
             audio,
             kwargs,
         )

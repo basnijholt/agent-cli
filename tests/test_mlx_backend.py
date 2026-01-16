@@ -9,7 +9,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from agent_cli.server.whisper.backends.base import BackendConfig, SubprocessExecutor
+from agent_cli.server.whisper.backends.base import BackendConfig
 from agent_cli.server.whisper.backends.mlx import MLXWhisperBackend
 
 
@@ -29,32 +29,27 @@ def _make_wav_bytes(
     return buffer.getvalue()
 
 
-def _mock_subprocess_executor() -> MagicMock:
-    """Create a mock SubprocessExecutor that appears running."""
-    mock = MagicMock(spec=SubprocessExecutor)
-    mock.is_running = True
-    return mock
-
-
 @pytest.mark.asyncio
 async def test_mlx_transcribe_converts_mismatched_wav() -> None:
     """Ensure MLX backend converts WAVs that do not match expected format."""
     config = BackendConfig(model_name="tiny")
     backend = MLXWhisperBackend(config)
-    backend._subprocess = _mock_subprocess_executor()
+    backend._executor = MagicMock()  # Simulate loaded state
 
     audio = _make_wav_bytes(rate=44100, channels=1, sampwidth=2)
     fake_result = {"text": "hello", "language": "en", "segments": []}
 
-    async def mock_run(_func: Any, *_args: Any) -> dict[str, Any]:
+    async def mock_run_in_executor(_executor: Any, _func: Any, *_args: Any) -> dict[str, Any]:
         return fake_result
 
-    backend._subprocess.run = mock_run
-
-    with patch(
-        "agent_cli.server.whisper.backends.mlx._convert_audio_to_pcm",
-        return_value=b"\x00\x00",
-    ) as mock_convert:
+    with (
+        patch(
+            "agent_cli.server.whisper.backends.mlx._convert_audio_to_pcm",
+            return_value=b"\x00\x00",
+        ) as mock_convert,
+        patch("asyncio.get_running_loop") as mock_loop,
+    ):
+        mock_loop.return_value.run_in_executor = mock_run_in_executor
         result = await backend.transcribe(audio, source_filename="sample.wav")
 
     mock_convert.assert_called_once_with(audio, "sample.wav")
@@ -66,17 +61,19 @@ async def test_mlx_transcribe_accepts_matching_wav() -> None:
     """Ensure MLX backend accepts 16kHz mono 16-bit WAV without conversion."""
     config = BackendConfig(model_name="tiny")
     backend = MLXWhisperBackend(config)
-    backend._subprocess = _mock_subprocess_executor()
+    backend._executor = MagicMock()  # Simulate loaded state
 
     audio = _make_wav_bytes(rate=16000, channels=1, sampwidth=2)
     fake_result = {"text": "hello", "language": "en", "segments": []}
 
-    async def mock_run(_func: Any, *_args: Any) -> dict[str, Any]:
+    async def mock_run_in_executor(_executor: Any, _func: Any, *_args: Any) -> dict[str, Any]:
         return fake_result
 
-    backend._subprocess.run = mock_run
-
-    with patch("agent_cli.server.whisper.backends.mlx._convert_audio_to_pcm") as mock_convert:
+    with (
+        patch("agent_cli.server.whisper.backends.mlx._convert_audio_to_pcm") as mock_convert,
+        patch("asyncio.get_running_loop") as mock_loop,
+    ):
+        mock_loop.return_value.run_in_executor = mock_run_in_executor
         result = await backend.transcribe(audio, source_filename="sample.wav")
 
     mock_convert.assert_not_called()
