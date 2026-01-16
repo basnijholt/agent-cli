@@ -21,8 +21,8 @@ def set_process_title(process_name: str) -> None:
     """Set the process title and thread name for identification in ps/htop/btop.
 
     Sets both:
-    - Process title (command line): 'agent-cli-{process_name}' - shown in ps, htop command
-    - Thread name: 'ag-{process_name}' (max 15 chars) - shown as program name in btop/htop
+    - Process title: 'agent-cli-{name} ({original})' - identifiable prefix + original command
+    - Thread name: 'ag-{name}' (max 15 chars) - shown as program name in btop/htop
 
     Args:
         process_name: The name of the process (e.g., 'transcribe', 'chat').
@@ -30,8 +30,11 @@ def set_process_title(process_name: str) -> None:
     """
     import setproctitle  # noqa: PLC0415
 
-    # Set the full process title (command line in ps)
-    setproctitle.setproctitle(f"agent-cli-{process_name}")
+    # Get original command line before we modify it
+    original = setproctitle.getproctitle()
+
+    # Set the full process title: identifiable prefix + original command for debugging
+    setproctitle.setproctitle(f"agent-cli-{process_name} ({original})")
 
     # Set the thread name (program name in htop/btop, limited to 15 chars on Linux)
     # Use shorter prefix "ag-" to fit more of the command name
