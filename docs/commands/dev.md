@@ -62,6 +62,7 @@ agent-cli dev new [BRANCH] [OPTIONS]
 | `--with-agent` | Specific agent (claude, codex, gemini, aider) |
 | `--agent-args` | Extra arguments to pass to the agent |
 | `--prompt`, `-p` | Initial prompt to pass to the AI agent |
+| `--prompt-file`, `-P` | Read initial prompt from a file (avoids shell quoting issues) |
 | `--direnv` | Generate .envrc file for direnv (auto-detects venv) |
 | `--setup/--no-setup` | Run automatic project setup (default: enabled) |
 | `--copy-env/--no-copy-env` | Copy .env files from main repo (default: enabled) |
@@ -82,6 +83,9 @@ agent-cli dev new -e -a
 
 # Create dev environment with an initial prompt for the agent
 agent-cli dev new fix-bug -a --prompt "Fix the login validation bug in auth.py"
+
+# Use --prompt-file for long prompts (avoids shell quoting issues)
+agent-cli dev new refactor -a --prompt-file task.md
 ```
 
 ### `dev list`
@@ -218,6 +222,7 @@ agent-cli dev agent NAME [--agent/-a AGENT] [--agent-args ARGS] [--prompt/-p PRO
 | `--agent`, `-a` | Specific agent (claude, codex, gemini, aider) |
 | `--agent-args` | Extra arguments to pass to the agent |
 | `--prompt`, `-p` | Initial prompt to pass to the AI agent |
+| `--prompt-file`, `-P` | Read initial prompt from a file (avoids shell quoting issues) |
 
 **Examples:**
 
@@ -458,6 +463,7 @@ When creating a new dev environment, automatic setup is performed based on detec
 | Rust | `Cargo.toml` | `cargo build` |
 | Go | `go.mod` | `go mod download` |
 | Ruby | `Gemfile` or `Gemfile.lock` | `bundle install` |
+| Pixi | `pixi.toml` or `pixi.lock` | `pixi install` |
 
 \* For unidep projects, if `conda-lock.yml` is present, `-f conda-lock.yml` is also added.
 
@@ -497,6 +503,7 @@ With `--direnv`, a `.envrc` file is automatically generated based on the detecte
 | Node.js (with .nvmrc) | `use node` |
 | Go | `layout go` |
 | Ruby | `layout ruby` |
+| Pixi | `watch_file pixi.lock` + `eval "$(pixi shell-hook)"` |
 
 Multiple directives can be combined. For example, a Python project with `shell.nix` will get:
 ```bash
