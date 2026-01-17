@@ -116,7 +116,7 @@ class TTSModelManager:
         start_time = time.time()
 
         async with self._manager.request():
-            backend: TTSBackend = self._manager.backend
+            backend: TTSBackend = self._manager.backend  # type: ignore[assignment]
             result = await backend.synthesize(
                 text,
                 voice=voice,

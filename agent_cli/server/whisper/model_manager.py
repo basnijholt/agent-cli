@@ -128,7 +128,7 @@ class WhisperModelManager:
         start_time = time.time()
 
         async with self._manager.request():
-            backend: WhisperBackend = self._manager.backend
+            backend: WhisperBackend = self._manager.backend  # type: ignore[assignment]
             result = await backend.transcribe(
                 audio,
                 source_filename=source_filename,

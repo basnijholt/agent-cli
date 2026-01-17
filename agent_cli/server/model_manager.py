@@ -111,9 +111,9 @@ class ModelManager:
             stats: Optional stats instance (creates new one if not provided).
 
         """
-        self._backend = backend
-        self._config = config
-        self._stats = stats or ModelStats()
+        self.backend = backend
+        self.config = config
+        self.stats = stats or ModelStats()
         self._condition = asyncio.Condition()
         self._active_requests = 0
         self._unloading = False
@@ -121,29 +121,14 @@ class ModelManager:
         self._shutdown = False
 
     @property
-    def backend(self) -> Any:
-        """Get the backend instance."""
-        return self._backend
-
-    @property
-    def config(self) -> ModelConfig:
-        """Get the model configuration."""
-        return self._config
-
-    @property
-    def stats(self) -> ModelStats:
-        """Get the model statistics."""
-        return self._stats
-
-    @property
     def is_loaded(self) -> bool:
         """Check if the model is currently loaded."""
-        return self._backend.is_loaded
+        return self.backend.is_loaded
 
     @property
     def device(self) -> str | None:
         """Get the device the model is loaded on."""
-        return self._backend.device
+        return self.backend.device
 
     @property
     def active_requests(self) -> int:
@@ -153,10 +138,10 @@ class ModelManager:
     @property
     def ttl_remaining(self) -> float | None:
         """Get seconds remaining before model unloads, or None if not loaded."""
-        if not self.is_loaded or self._stats.last_request_time is None:
+        if not self.is_loaded or self.stats.last_request_time is None:
             return None
-        elapsed = time.time() - self._stats.last_request_time
-        remaining = self._config.ttl_seconds - elapsed
+        elapsed = time.time() - self.stats.last_request_time
+        remaining = self.config.ttl_seconds - elapsed
         return max(0.0, remaining)
 
     async def start(self) -> None:
@@ -177,7 +162,7 @@ class ModelManager:
     async def get_model(self) -> Any:
         """Get the backend, loading it if necessary."""
         await self._ensure_loaded()
-        return self._backend
+        return self.backend
 
     @asynccontextmanager
     async def request(self) -> AsyncIterator[None]:
@@ -206,7 +191,7 @@ class ModelManager:
             while self._unloading:
                 await self._condition.wait()
 
-            if not self._backend.is_loaded:
+            if not self.backend.is_loaded:
                 return False
 
             self._unloading = True
@@ -215,15 +200,15 @@ class ModelManager:
                     logger.info(
                         "Waiting for %d active requests before unloading %s",
                         self._active_requests,
-                        self._config.model_name,
+                        self.config.model_name,
                     )
                     await self._condition.wait()
 
-                if not self._backend.is_loaded:
+                if not self.backend.is_loaded:
                     return False
 
-                await self._backend.unload()
-                self._stats.unload_count += 1
+                await self.backend.unload()
+                self.stats.unload_count += 1
                 return True
             finally:
                 self._unloading = False
@@ -231,12 +216,12 @@ class ModelManager:
 
     async def _load_if_needed_locked(self) -> None:
         """Load the model if needed (expects condition lock held)."""
-        if not self._backend.is_loaded:
-            load_duration = await self._backend.load()
-            self._stats.load_count += 1
-            self._stats.last_load_time = time.time()
-            self._stats.load_duration_seconds = load_duration
-        self._stats.last_request_time = time.time()
+        if not self.backend.is_loaded:
+            load_duration = await self.backend.load()
+            self.stats.load_count += 1
+            self.stats.last_load_time = time.time()
+            self.stats.load_duration_seconds = load_duration
+        self.stats.last_request_time = time.time()
 
     async def _ensure_loaded(self) -> None:
         """Ensure the model is loaded."""
@@ -257,13 +242,13 @@ class ModelManager:
         """End a request and notify waiters if no more active requests."""
         async with self._condition:
             self._active_requests -= 1
-            self._stats.last_request_time = time.time()
+            self.stats.last_request_time = time.time()
             if self._active_requests == 0:
                 self._condition.notify_all()
 
     async def _unload_watcher(self) -> None:
         """Background task that unloads model after TTL expires."""
-        check_interval = min(30, self._config.ttl_seconds / 2)
+        check_interval = min(30, self.config.ttl_seconds / 2)
 
         while not self._shutdown:
             try:
@@ -272,28 +257,28 @@ class ModelManager:
                 async with self._condition:
                     if self._unloading:
                         continue
-                    if not self._backend.is_loaded:
+                    if not self.backend.is_loaded:
                         continue
 
-                    if self._stats.last_request_time is None:
+                    if self.stats.last_request_time is None:
                         continue
 
-                    idle_time = time.time() - self._stats.last_request_time
+                    idle_time = time.time() - self.stats.last_request_time
 
-                    if idle_time >= self._config.ttl_seconds:
+                    if idle_time >= self.config.ttl_seconds:
                         if self._active_requests == 0:
                             logger.info(
                                 "Model %s idle for %.0fs (ttl=%ds), unloading",
-                                self._config.model_name,
+                                self.config.model_name,
                                 idle_time,
-                                self._config.ttl_seconds,
+                                self.config.ttl_seconds,
                             )
-                            await self._backend.unload()
-                            self._stats.unload_count += 1
+                            await self.backend.unload()
+                            self.stats.unload_count += 1
                         else:
                             logger.debug(
                                 "Model %s would unload but has %d active requests",
-                                self._config.model_name,
+                                self.config.model_name,
                                 self._active_requests,
                             )
 
