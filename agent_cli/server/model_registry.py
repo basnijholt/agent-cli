@@ -73,23 +73,6 @@ class ModelRegistry(Generic[ManagerT, ConfigT]):
 
     Each model can have its own configuration (device, TTL).
     Models are loaded lazily and unloaded independently based on their TTL.
-
-    Usage:
-        def create_manager(config: MyConfig) -> MyManager:
-            return MyManager(config)
-
-        registry = ModelRegistry(
-            manager_factory=create_manager,
-            get_model_name=lambda c: c.model_name,
-            default_model="my-model",
-        )
-        registry.register(config)
-        await registry.start()
-
-        manager = registry.get_manager()
-        # use manager...
-
-        await registry.stop()
     """
 
     def __init__(
