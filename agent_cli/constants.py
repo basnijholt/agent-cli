@@ -8,6 +8,7 @@ AUDIO_FORMAT_WIDTH = 2  # 2 bytes (16-bit)
 AUDIO_CHANNELS = 1
 AUDIO_RATE = 16000
 AUDIO_CHUNK_SIZE = 1024
+WAV_HEADER_SIZE = 44  # Standard WAV header size in bytes
 
 # Standard Wyoming audio configuration
 WYOMING_AUDIO_CONFIG = {

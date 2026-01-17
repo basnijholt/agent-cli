@@ -2,25 +2,20 @@
 
 from __future__ import annotations
 
-import asyncio
 import contextlib
 import io
 import logging
 import wave
-from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING, Annotated, Any, Literal
 
 from fastapi import FastAPI, File, Form, HTTPException, Query, UploadFile, WebSocket
-from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel
 
-from agent_cli.server.common import log_requests_middleware, setup_wav_file
+from agent_cli.server.common import configure_app, create_lifespan, setup_wav_file
 from agent_cli.server.whisper.backends.base import InvalidAudioError
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncIterator
-
     from agent_cli.server.whisper.model_registry import WhisperModelRegistry
 
 logger = logging.getLogger(__name__)
@@ -93,8 +88,6 @@ class VerboseTranscriptionResponse(BaseModel):
 class ModelStatusResponse(BaseModel):
     """Status of a single model."""
 
-    model_config = {"from_attributes": True}
-
     name: str
     loaded: bool
     device: str | None
@@ -135,7 +128,6 @@ def create_app(  # noqa: C901, PLR0915
     *,
     enable_wyoming: bool = True,
     wyoming_uri: str = "tcp://0.0.0.0:10300",
-    background_preload: bool = False,
 ) -> FastAPI:
     """Create the FastAPI application.
 
@@ -143,61 +135,17 @@ def create_app(  # noqa: C901, PLR0915
         registry: The model registry to use.
         enable_wyoming: Whether to start Wyoming server.
         wyoming_uri: URI for Wyoming server.
-        background_preload: Whether to preload models in the background at startup.
 
     Returns:
         Configured FastAPI application.
 
     """
-
-    @asynccontextmanager
-    async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
-        """Manage application lifecycle."""
-        wyoming_task: asyncio.Task[None] | None = None
-        preload_task: asyncio.Task[None] | None = None
-
-        # Start the registry
-        await registry.start()
-
-        if background_preload:
-
-            async def preload_models() -> None:
-                try:
-                    await registry.preload()
-                except Exception:
-                    logger.exception("Background model preload failed")
-
-            preload_task = asyncio.create_task(preload_models())
-
-        # Start Wyoming server if enabled
-        if enable_wyoming:
-            try:
-                from agent_cli.server.whisper.wyoming_handler import (  # noqa: PLC0415
-                    start_wyoming_server,
-                )
-
-                wyoming_task = asyncio.create_task(
-                    start_wyoming_server(registry, wyoming_uri),
-                )
-            except ImportError:
-                logger.warning("Wyoming not available, skipping Wyoming server")
-            except Exception:
-                logger.exception("Failed to start Wyoming server")
-
-        yield
-
-        # Stop Wyoming server
-        if wyoming_task is not None:
-            wyoming_task.cancel()
-            with contextlib.suppress(asyncio.CancelledError):
-                await wyoming_task
-        if preload_task is not None:
-            preload_task.cancel()
-            with contextlib.suppress(asyncio.CancelledError):
-                await preload_task
-
-        # Stop the registry
-        await registry.stop()
+    lifespan = create_lifespan(
+        registry,
+        wyoming_handler_module="agent_cli.server.whisper.wyoming_handler",
+        enable_wyoming=enable_wyoming,
+        wyoming_uri=wyoming_uri,
+    )
 
     app = FastAPI(
         title="Whisper ASR Server",
@@ -206,30 +154,33 @@ def create_app(  # noqa: C901, PLR0915
         lifespan=lifespan,
     )
 
-    # Add CORS middleware
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=["*"],
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
-
-    # Add request logging middleware
-    @app.middleware("http")
-    async def log_requests(request: Any, call_next: Any) -> Any:
-        """Log basic request information."""
-        return await log_requests_middleware(request, call_next)
+    configure_app(app)
 
     # --- Health & Status Endpoints ---
 
     @app.get("/health", response_model=HealthResponse)
     async def health_check() -> HealthResponse:
         """Health check endpoint."""
-        return HealthResponse(
-            status="healthy",
-            models=[ModelStatusResponse.model_validate(s) for s in registry.list_status()],
-        )
+        models = [
+            ModelStatusResponse(
+                name=s.name,
+                loaded=s.loaded,
+                device=s.device,
+                ttl_seconds=s.ttl_seconds,
+                ttl_remaining=s.ttl_remaining,
+                active_requests=s.active_requests,
+                load_count=s.load_count,
+                unload_count=s.unload_count,
+                total_requests=s.total_requests,
+                total_audio_seconds=s.total_audio_seconds,
+                total_transcription_seconds=s.extra.get("total_transcription_seconds", 0.0),
+                last_load_time=s.last_load_time,
+                last_request_time=s.last_request_time,
+                load_duration_seconds=s.load_duration_seconds,
+            )
+            for s in registry.list_status()
+        ]
+        return HealthResponse(status="healthy", models=models)
 
     @app.post("/v1/model/unload", response_model=UnloadResponse)
     async def unload_model(
