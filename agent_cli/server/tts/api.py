@@ -48,11 +48,16 @@ def _convert_wav_to_mp3(wav_data: bytes, bitrate: str = "128k") -> bytes:
                 str(output_path),
             ]
 
-            result = subprocess.run(
-                cmd,
-                capture_output=True,
-                check=False,
-            )
+            try:
+                result = subprocess.run(
+                    cmd,
+                    capture_output=True,
+                    check=False,
+                    timeout=60,  # 60 second timeout for ffmpeg conversion
+                )
+            except subprocess.TimeoutExpired as e:
+                msg = "FFmpeg conversion timed out after 60 seconds"
+                raise RuntimeError(msg) from e
 
             if result.returncode != 0:
                 stderr_text = result.stderr.decode("utf-8", errors="replace")
@@ -64,6 +69,48 @@ def _convert_wav_to_mp3(wav_data: bytes, bitrate: str = "128k") -> bytes:
         finally:
             input_path.unlink(missing_ok=True)
             output_path.unlink(missing_ok=True)
+
+
+def _format_audio_response(
+    audio: bytes,
+    response_format: str,
+    sample_rate: int,
+    sample_width: int,
+    channels: int,
+) -> StreamingResponse:
+    """Format audio data as a streaming response."""
+    if response_format == "wav":
+        return StreamingResponse(iter([audio]), media_type="audio/wav")
+
+    if response_format == "pcm":
+        pcm_data = (
+            audio[constants.WAV_HEADER_SIZE :] if len(audio) > constants.WAV_HEADER_SIZE else audio
+        )
+        return StreamingResponse(
+            iter([pcm_data]),
+            media_type="audio/pcm",
+            headers={
+                "X-Sample-Rate": str(sample_rate),
+                "X-Sample-Width": str(sample_width),
+                "X-Channels": str(channels),
+            },
+        )
+
+    if response_format == "mp3":
+        if not check_ffmpeg_available():
+            raise HTTPException(
+                status_code=422,
+                detail="MP3 format requires ffmpeg to be installed",
+            )
+        try:
+            mp3_data = _convert_wav_to_mp3(audio)
+        except RuntimeError as e:
+            raise HTTPException(status_code=500, detail=str(e)) from e
+        return StreamingResponse(iter([mp3_data]), media_type="audio/mpeg")
+
+    # Unreachable due to early validation
+    msg = f"Unsupported response_format: {response_format}"
+    raise HTTPException(status_code=422, detail=msg)  # pragma: no cover
 
 
 # --- Pydantic Models ---
@@ -222,7 +269,7 @@ def create_app(
                 voice_id=s.name,
                 name=s.name,
                 description=f"Piper TTS voice: {s.name}",
-                labels={"language": s.name.split("-")[0] if "-" in s.name else "en"},
+                labels={"language": s.name.split("_")[0] if "_" in s.name else "en"},
             )
             for s in registry.list_status()
         ]
@@ -254,6 +301,14 @@ def create_app(
             Audio stream in the requested format.
 
         """
+        # Validate response_format early to avoid wasted synthesis work
+        valid_formats = ("wav", "pcm", "mp3")
+        if response_format not in valid_formats:
+            raise HTTPException(
+                status_code=422,
+                detail=f"Unsupported response_format: {response_format}. Supported: {', '.join(valid_formats)}",
+            )
+
         # Resolve model name - "tts-1" and "tts-1-hd" are OpenAI's model names
         model_name = None if model in ("tts-1", "tts-1-hd") else model
 
@@ -262,7 +317,7 @@ def create_app(
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e)) from e
 
-        if not input or not input.strip():
+        if not input.strip():
             raise HTTPException(status_code=400, detail="Input text cannot be empty")
 
         # Clamp speed to valid range
@@ -280,49 +335,12 @@ def create_app(
             logger.exception("Synthesis failed")
             raise HTTPException(status_code=500, detail=str(e)) from e
 
-        # Format response based on requested format
-        if response_format == "wav":
-            return StreamingResponse(
-                iter([result.audio]),
-                media_type="audio/wav",
-            )
-
-        if response_format == "pcm":
-            # Return raw PCM data (skip WAV header)
-            pcm_data = (
-                result.audio[constants.WAV_HEADER_SIZE :]
-                if len(result.audio) > constants.WAV_HEADER_SIZE
-                else result.audio
-            )
-            return StreamingResponse(
-                iter([pcm_data]),
-                media_type="audio/pcm",
-                headers={
-                    "X-Sample-Rate": str(result.sample_rate),
-                    "X-Sample-Width": str(result.sample_width),
-                    "X-Channels": str(result.channels),
-                },
-            )
-
-        if response_format == "mp3":
-            if not check_ffmpeg_available():
-                raise HTTPException(
-                    status_code=422,
-                    detail="MP3 format requires ffmpeg to be installed",
-                )
-            try:
-                mp3_data = _convert_wav_to_mp3(result.audio)
-            except RuntimeError as e:
-                raise HTTPException(status_code=500, detail=str(e)) from e
-            return StreamingResponse(
-                iter([mp3_data]),
-                media_type="audio/mpeg",
-            )
-
-        # Unknown format
-        raise HTTPException(
-            status_code=422,
-            detail=f"Unsupported response_format: {response_format}. Supported: wav, pcm, mp3",
+        return _format_audio_response(
+            result.audio,
+            response_format,
+            result.sample_rate,
+            result.sample_width,
+            result.channels,
         )
 
     # --- Alternative endpoint accepting JSON body ---

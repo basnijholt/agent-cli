@@ -159,7 +159,8 @@ class WyomingTTSHandler(AsyncEventHandler):
                     url="https://github.com/rhasspy/piper",
                 ),
                 installed=True,
-                languages=["en"],  # Piper models are typically language-specific
+                # Extract language from model name (e.g., "en_US-lessac-medium" -> "en")
+                languages=[status.name.split("_")[0] if "_" in status.name else "en"],
                 version="1.0",
             )
             for status in self._registry.list_status()

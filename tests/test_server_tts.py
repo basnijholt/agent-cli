@@ -598,6 +598,21 @@ class TestTTSAPI:
         # Pydantic validation should reject invalid response_format
         assert response.status_code == 422
 
+    def test_synthesize_unsupported_format_form_endpoint(self, client: TestClient) -> None:
+        """Test that unsupported format returns 422 for form endpoint."""
+        response = client.post(
+            "/v1/audio/speech",
+            data={
+                "input": "Hello world",
+                "model": "tts-1",
+                "voice": "alloy",
+                "response_format": "unsupported",
+            },
+        )
+        # Early validation should reject invalid response_format
+        assert response.status_code == 422
+        assert "unsupported" in response.json()["detail"].lower()
+
     def test_synthesize_mp3_format_no_ffmpeg(
         self,
         client: TestClient,

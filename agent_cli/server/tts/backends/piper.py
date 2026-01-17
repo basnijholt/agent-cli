@@ -216,10 +216,8 @@ class PiperBackend:
             msg = "Text cannot be empty"
             raise InvalidTextError(msg)
 
-        # Clamp speed to valid range
-        speed = max(0.25, min(4.0, speed))
-
         # Convert speed to length_scale (inverse relationship)
+        # Speed is already validated/clamped by the API layer
         # length_scale < 1.0 = faster, > 1.0 = slower
         length_scale = 1.0 / speed
 
