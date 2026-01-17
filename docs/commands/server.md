@@ -17,7 +17,7 @@ agent-cli server [COMMAND] [OPTIONS]
 | Command | Description |
 |---------|-------------|
 | `whisper` | Run local Whisper ASR server with GPU acceleration and TTL-based VRAM management |
-| `tts` | Run local TTS server with Piper for fast, CPU-friendly speech synthesis |
+| `tts` | Run local TTS server with Kokoro (GPU) or Piper (CPU) backends |
 | `transcription-proxy` | Run proxy server that forwards to configured ASR providers |
 
 ---
@@ -290,26 +290,34 @@ Configure via environment variables:
 
 ## tts
 
-Run a local TTS (Text-to-Speech) server using [Piper](https://github.com/rhasspy/piper) for fast, CPU-friendly speech synthesis.
+Run a local TTS (Text-to-Speech) server with two backend options:
+
+- **[Kokoro](https://huggingface.co/hexgrad/Kokoro-82M)** - High-quality neural TTS with GPU acceleration (CUDA/MPS/CPU)
+- **[Piper](https://github.com/rhasspy/piper)** - Fast, CPU-friendly ONNX-based synthesis
 
 > [!NOTE]
-> **Quick Start** - Get TTS working in 30 seconds:
+> **Quick Start with Kokoro** (GPU-accelerated, auto-downloads from HuggingFace):
+> ```bash
+> pip install kokoro soundfile
+> agent-cli server tts --backend kokoro
+> ```
+>
+> **Quick Start with Piper** (CPU-friendly):
 > ```bash
 > pip install "agent-cli[tts]"
-> agent-cli server tts
+> agent-cli server tts --backend piper
 > ```
-> Server is now running at `http://localhost:10401`. Verify with `curl http://localhost:10401/health`.
 >
-> Use it with any OpenAI-compatible client - see examples below.
+> Server runs at `http://localhost:10401`. Verify with `curl http://localhost:10401/health`.
 
 ### Features
 
 - **OpenAI-compatible API** at `/v1/audio/speech` - drop-in replacement for OpenAI's TTS API
 - **Wyoming protocol** for [Home Assistant](https://www.home-assistant.io/) voice integration
 - **TTL-based memory management** - models unload after idle period
-- **Multiple models** - run different voices with independent TTLs
-- **Fast CPU synthesis** - Piper uses ONNX for efficient CPU-based TTS
-- **OpenAI voice mapping** - `alloy`, `echo`, `fable`, etc. map to Piper voices
+- **Multiple backends** - Kokoro (GPU) or Piper (CPU)
+- **Auto-download** - Models and voices download automatically on first use
+- **Multiple voices** - Run different voices with independent TTLs
 
 ### Usage
 
@@ -320,17 +328,23 @@ agent-cli server tts [OPTIONS]
 ### Examples
 
 ```bash
-# Run with default voice (en_US-lessac-medium)
-agent-cli server tts
+# Run with Kokoro (auto-downloads model and voice from HuggingFace)
+agent-cli server tts --backend kokoro
 
-# Use a specific voice with 10-minute TTL
-agent-cli server tts --model en_US-ryan-high --ttl 600
+# Kokoro with specific voice
+agent-cli server tts --backend kokoro --voice af_bella
 
-# Run multiple voices (requests can specify which to use)
-agent-cli server tts --model en_US-lessac-medium --model en_GB-alan-medium
+# Run with Piper (CPU-friendly)
+agent-cli server tts --backend piper
 
-# Preload all models at startup
-agent-cli server tts --model en_US-lessac-medium --model en_US-ryan-high --preload
+# Piper with specific voice and 10-minute TTL
+agent-cli server tts --backend piper --model en_US-ryan-high --ttl 600
+
+# Run multiple Piper voices
+agent-cli server tts --backend piper --model en_US-lessac-medium --model en_GB-alan-medium
+
+# Preload models at startup
+agent-cli server tts --preload
 ```
 
 ### Options
@@ -345,9 +359,9 @@ agent-cli server tts --model en_US-lessac-medium --model en_US-ryan-high --prelo
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--model` | - | Piper model name(s) to load (can specify multiple) |
+| `--model` | - | Model name(s) to load. Piper: 'en_US-lessac-medium'. Kokoro: 'kokoro' (auto-downloads) |
 | `--default-model` | - | Default model when not specified in request |
-| `--device` | `auto` | Device: auto, cpu (Piper is CPU-only) |
+| `--device` | `auto` | Device: auto, cpu, cuda, mps (Piper is CPU-only, Kokoro supports GPU) |
 | `--cache-dir` | - | Model cache directory |
 | `--ttl` | `300` | Seconds before unloading idle model |
 | `--preload` | `false` | Load model(s) at startup and wait for completion |
@@ -357,7 +371,8 @@ agent-cli server tts --model en_US-lessac-medium --model en_US-ryan-high --prelo
 | `--no-wyoming` | `false` | Disable Wyoming server |
 | `--download-only` | `false` | Download model(s) and exit without starting server |
 | `--log-level` | `info` | Logging level: debug, info, warning, error |
-| `--backend` | `auto` | Backend: auto, piper |
+| `--backend` | `auto` | Backend: auto, piper, kokoro |
+| `--voice` | - | Default voice for Kokoro (e.g., af_heart, af_bella) |
 
 
 <!-- OUTPUT:END -->
@@ -411,28 +426,52 @@ response.write_to_file("output.wav")
 
 ### Voice Selection
 
-With Piper, the **model name IS the voice**. The `voice` parameter is accepted for OpenAI API compatibility but is not used - instead, specify the voice by using the appropriate Piper model name via the `--model` flag or the `model` parameter in API requests.
+#### Kokoro Voices
 
-For example, to use the "lessac" voice, start the server with:
-```bash
-agent-cli server tts --model en_US-lessac-medium
-```
+Kokoro uses the `--voice` parameter. Voices auto-download from HuggingFace on first use.
 
-### Available Piper Voices
+The voice name prefix indicates accent: `af_` = American Female, `am_` = American Male, `bf_` = British Female, `bm_` = British Male.
 
-Browse all available voices at [rhasspy/piper](https://github.com/rhasspy/piper?tab=readme-ov-file#voices). Popular choices:
+| Voice | Accent | Gender | Notes |
+|-------|--------|--------|-------|
+| `af_heart` | American | Female | Default voice |
+| `af_bella` | American | Female | |
+| `af_nova` | American | Female | |
+| `af_sky` | American | Female | |
+| `am_adam` | American | Male | |
+| `am_michael` | American | Male | |
+| `bf_emma` | British | Female | |
+| `bm_george` | British | Male | |
 
-| Voice | Language | Quality | Description |
-|-------|----------|---------|-------------|
-| `en_US-lessac-medium` | English (US) | Medium | Balanced quality/speed |
-| `en_US-ryan-high` | English (US) | High | Higher quality, slower |
-| `en_GB-alan-medium` | English (UK) | Medium | British accent |
-| `de_DE-thorsten-high` | German | High | German voice |
-| `fr_FR-upmc-medium` | French | Medium | French voice |
+Browse all 30+ voices at [hexgrad/Kokoro-82M](https://huggingface.co/hexgrad/Kokoro-82M/tree/main/voices).
+
+#### Piper Voices
+
+With Piper, the **model name IS the voice**. Use `--model` to specify.
+
+| Voice | Language | Quality |
+|-------|----------|---------|
+| `en_US-lessac-medium` | English (US) | Medium |
+| `en_US-ryan-high` | English (US) | High |
+| `en_GB-alan-medium` | English (UK) | Medium |
+| `de_DE-thorsten-high` | German | High |
+| `fr_FR-upmc-medium` | French | Medium |
+
+Browse all voices at [rhasspy/piper](https://github.com/rhasspy/piper?tab=readme-ov-file#voices).
 
 ### Installation
 
-Requires the `tts` extra:
+#### Kokoro (GPU-accelerated)
+
+```bash
+pip install kokoro soundfile huggingface_hub
+```
+
+Kokoro requires PyTorch. For GPU acceleration:
+- **CUDA**: Install PyTorch with CUDA support
+- **Apple Silicon**: PyTorch automatically uses MPS
+
+#### Piper (CPU-friendly)
 
 ```bash
 pip install "agent-cli[tts]"
@@ -511,9 +550,10 @@ uv sync --extra server
 | Use Case | Recommended |
 |----------|-------------|
 | Local GPU-accelerated transcription | `whisper` |
-| Local text-to-speech | `tts` |
+| High-quality GPU TTS | `tts --backend kokoro` |
+| CPU-friendly TTS | `tts --backend piper` |
 | Home Assistant voice integration | `whisper` + `tts` (both have Wyoming protocol) |
 | iOS Shortcuts integration | `transcription-proxy` |
 | Forwarding to cloud providers | `transcription-proxy` |
 | Privacy-focused (no cloud) | `whisper` + `tts` |
-| VRAM-constrained system | `whisper` (TTL unloading), `tts` (CPU-only) |
+| VRAM-constrained system | `whisper` (TTL unloading), `tts --backend piper` (CPU-only) |

@@ -25,6 +25,7 @@ HAS_FASTAPI = find_spec("fastapi") is not None
 HAS_FASTER_WHISPER = find_spec("faster_whisper") is not None
 HAS_MLX_WHISPER = find_spec("mlx_whisper") is not None
 HAS_PIPER = find_spec("piper") is not None
+HAS_KOKORO = find_spec("kokoro") is not None
 
 app = typer.Typer(
     name="server",
@@ -55,14 +56,35 @@ def _check_server_deps() -> None:
         raise typer.Exit(1)
 
 
-def _check_tts_deps() -> None:
+def _check_tts_deps(backend: str = "auto") -> None:
     """Check that TTS dependencies are available."""
     _check_server_deps()
-    if not HAS_PIPER:
+
+    if backend == "kokoro":
+        if not HAS_KOKORO:
+            err_console.print(
+                "[bold red]Error:[/bold red] Kokoro backend requires kokoro. "
+                "Run: [cyan]pip install kokoro[/cyan]",
+            )
+            raise typer.Exit(1)
+        return
+
+    if backend == "piper":
+        if not HAS_PIPER:
+            err_console.print(
+                "[bold red]Error:[/bold red] Piper backend requires piper-tts. "
+                "Run: [cyan]pip install agent-cli\\[tts][/cyan] "
+                "or [cyan]uv sync --extra tts[/cyan]",
+            )
+            raise typer.Exit(1)
+        return
+
+    # For auto, check if either is available
+    if not HAS_PIPER and not HAS_KOKORO:
         err_console.print(
-            "[bold red]Error:[/bold red] TTS dependencies not installed. "
-            "Run: [cyan]pip install agent-cli\\[tts][/cyan] "
-            "or [cyan]uv sync --extra tts[/cyan]",
+            "[bold red]Error:[/bold red] No TTS backend available. "
+            "Run: [cyan]pip install agent-cli\\[tts][/cyan] for Piper "
+            "or [cyan]pip install kokoro[/cyan] for Kokoro",
         )
         raise typer.Exit(1)
 
@@ -411,13 +433,13 @@ def transcription_proxy_cmd(
 
 
 @app.command("tts")
-def tts_cmd(  # noqa: PLR0915
+def tts_cmd(  # noqa: PLR0912, PLR0915
     model: Annotated[
         list[str] | None,
         typer.Option(
             "--model",
             "-m",
-            help="Piper model name(s) to load (can specify multiple)",
+            help="Model name(s) to load. Piper: 'en_US-lessac-medium'. Kokoro: 'kokoro' (auto-downloads)",
         ),
     ] = None,
     default_model: Annotated[
@@ -432,7 +454,7 @@ def tts_cmd(  # noqa: PLR0915
         typer.Option(
             "--device",
             "-d",
-            help="Device: auto, cpu (Piper is CPU-only)",
+            help="Device: auto, cpu, cuda, mps (Piper is CPU-only, Kokoro supports GPU)",
         ),
     ] = "auto",
     cache_dir: Annotated[
@@ -505,9 +527,17 @@ def tts_cmd(  # noqa: PLR0915
         typer.Option(
             "--backend",
             "-b",
-            help="Backend: auto, piper",
+            help="Backend: auto, piper, kokoro",
         ),
     ] = "auto",
+    voice: Annotated[
+        str | None,
+        typer.Option(
+            "--voice",
+            "-v",
+            help="Default voice for Kokoro (e.g., af_heart, af_bella)",
+        ),
+    ] = None,
 ) -> None:
     """Run TTS server with TTL-based model unloading.
 
@@ -519,41 +549,60 @@ def tts_cmd(  # noqa: PLR0915
     Models are loaded lazily on first request and unloaded after being
     idle for the TTL duration, freeing memory for other applications.
 
-    Piper models use names like 'en_US-lessac-medium', 'en_GB-alan-medium'.
+    **Piper backend** (CPU-friendly):
+    Models use names like 'en_US-lessac-medium', 'en_GB-alan-medium'.
     See https://github.com/rhasspy/piper for available models.
 
-    Examples:
-        # Run with default model
-        agent-cli server tts
+    **Kokoro backend** (GPU-accelerated):
+    Model and voices auto-download from HuggingFace on first use.
+    Voices: af_heart, af_bella, am_adam, bf_emma, bm_george, etc.
+    See https://huggingface.co/hexgrad/Kokoro-82M for all voices.
 
-        # Run with specific model and 10-minute TTL
+    Examples:
+        # Run with Kokoro (auto-downloads model and voices)
+        agent-cli server tts --backend kokoro
+
+        # Run with Kokoro and specific voice
+        agent-cli server tts --backend kokoro --voice af_bella
+
+        # Run with default Piper model
+        agent-cli server tts --backend piper
+
+        # Run with specific Piper model and 10-minute TTL
         agent-cli server tts --model en_US-lessac-medium --ttl 600
 
-        # Run multiple models
-        agent-cli server tts --model en_US-lessac-medium --model en_GB-alan-medium
-
-        # Download model without starting server
+        # Download Piper model without starting server
         agent-cli server tts --model en_US-lessac-medium --download-only
 
     """
     # Setup Rich logging for consistent output
     setup_rich_logging(log_level, console=console)
 
-    valid_backends = ("auto", "piper")
+    valid_backends = ("auto", "piper", "kokoro")
     if backend not in valid_backends:
         err_console.print(
             f"[bold red]Error:[/bold red] --backend must be one of: {', '.join(valid_backends)}",
         )
         raise typer.Exit(1)
 
-    _check_tts_deps()
+    # Resolve backend for auto mode
+    resolved_backend = backend
+    if backend == "auto":
+        from agent_cli.server.tts.backends import (  # noqa: PLC0415
+            detect_backend as detect_tts_backend,
+        )
+
+        resolved_backend = detect_tts_backend()
+        logger.info("Selected %s backend (auto-detected)", resolved_backend)
+
+    _check_tts_deps(resolved_backend)
 
     from agent_cli.server.tts.model_manager import TTSModelConfig  # noqa: PLC0415
     from agent_cli.server.tts.model_registry import create_tts_registry  # noqa: PLC0415
 
-    # Default model if none specified
+    # Default model based on backend (Kokoro auto-downloads from HuggingFace)
     if model is None:
-        model = ["en_US-lessac-medium"]
+        model = ["kokoro"] if resolved_backend == "kokoro" else ["en_US-lessac-medium"]
 
     # Validate default model against model list
     if default_model is not None and default_model not in model:
@@ -563,8 +612,15 @@ def tts_cmd(  # noqa: PLR0915
         )
         raise typer.Exit(1)
 
-    # Handle download-only mode
+    # Handle download-only mode (Piper only)
     if download_only:
+        if resolved_backend == "kokoro":
+            err_console.print(
+                "[bold red]Error:[/bold red] --download-only is only supported for Piper backend. "
+                "For Kokoro, download models manually from HuggingFace.",
+            )
+            raise typer.Exit(1)
+
         from piper.download_voices import download_voice  # noqa: PLC0415
 
         # Use default cache dir if not specified
@@ -592,7 +648,7 @@ def tts_cmd(  # noqa: PLR0915
             device=device,
             ttl_seconds=ttl,
             cache_dir=cache_dir,
-            backend_type=backend,  # type: ignore[arg-type]
+            backend_type=resolved_backend,  # type: ignore[arg-type]
         )
         registry.register(config)
 
@@ -609,7 +665,9 @@ def tts_cmd(  # noqa: PLR0915
     console.print("[bold green]Starting TTS Server[/bold green]")
     console.print()
     console.print("[dim]Configuration:[/dim]")
-    console.print("  Backend: [cyan]piper[/cyan]")
+    console.print(f"  Backend: [cyan]{resolved_backend}[/cyan]")
+    if resolved_backend == "kokoro" and voice:
+        console.print(f"  Default voice: [cyan]{voice}[/cyan]")
     console.print()
     console.print("[dim]Endpoints:[/dim]")
     console.print(f"  HTTP API: [cyan]http://{host}:{port}[/cyan]")
@@ -629,10 +687,17 @@ def tts_cmd(  # noqa: PLR0915
     console.print(
         f'  [cyan]client = OpenAI(base_url="http://localhost:{port}/v1", api_key="x")[/cyan]',
     )
-    console.print(
-        '  [cyan]response = client.audio.speech.create(model="tts-1", voice="alloy", '
-        'input="Hello")[/cyan]',
-    )
+    if resolved_backend == "kokoro":
+        voice_example = voice or "af_heart"
+        console.print(
+            f'  [cyan]response = client.audio.speech.create(model="tts-1", voice="{voice_example}", '
+            'input="Hello")[/cyan]',
+        )
+    else:
+        console.print(
+            '  [cyan]response = client.audio.speech.create(model="tts-1", voice="alloy", '
+            'input="Hello")[/cyan]',
+        )
     console.print()
 
     # Create and run the app
