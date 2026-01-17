@@ -2,8 +2,12 @@
 
 from __future__ import annotations
 
+import asyncio
+import contextlib
+import importlib
 import logging
-from typing import TYPE_CHECKING, Any
+from contextlib import asynccontextmanager
+from typing import TYPE_CHECKING, Any, Protocol
 
 from rich.console import Console
 from rich.logging import RichHandler
@@ -12,10 +16,116 @@ from agent_cli import constants
 
 if TYPE_CHECKING:
     import wave
+    from collections.abc import AsyncIterator, Callable, Coroutine
+    from contextlib import AbstractAsyncContextManager
 
-    from fastapi import Request
+    from fastapi import FastAPI, Request
 
 logger = logging.getLogger(__name__)
+
+
+class RegistryProtocol(Protocol):
+    """Protocol for model registries."""
+
+    async def start(self) -> None:
+        """Start the registry."""
+        ...
+
+    async def stop(self) -> None:
+        """Stop the registry."""
+        ...
+
+    async def preload(self) -> None:
+        """Preload models."""
+        ...
+
+
+def create_lifespan(
+    registry: RegistryProtocol,
+    *,
+    wyoming_handler_module: str,
+    enable_wyoming: bool = True,
+    wyoming_uri: str = "tcp://0.0.0.0:10300",
+) -> Callable[[FastAPI], AbstractAsyncContextManager[None]]:
+    """Create a lifespan context manager for a server.
+
+    Args:
+        registry: The model registry to manage.
+        wyoming_handler_module: Module path containing start_wyoming_server function.
+        enable_wyoming: Whether to start Wyoming server.
+        wyoming_uri: URI for Wyoming server.
+
+    Returns:
+        A lifespan context manager function for FastAPI.
+
+    """
+
+    @asynccontextmanager
+    async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
+        """Manage application lifecycle."""
+        wyoming_task: asyncio.Task[None] | None = None
+
+        # Start the registry
+        await registry.start()
+
+        # Start Wyoming server if enabled
+        if enable_wyoming:
+            try:
+                module = importlib.import_module(wyoming_handler_module)
+                start_wyoming_server: Callable[
+                    [Any, str],
+                    Coroutine[Any, Any, None],
+                ] = module.start_wyoming_server
+
+                wyoming_task = asyncio.create_task(
+                    start_wyoming_server(registry, wyoming_uri),
+                )
+            except ImportError:
+                logger.warning("Wyoming not available, skipping Wyoming server")
+            except Exception:
+                logger.exception("Failed to start Wyoming server")
+
+        yield
+
+        # Stop Wyoming server
+        if wyoming_task is not None:
+            wyoming_task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await wyoming_task
+
+        # Stop the registry
+        await registry.stop()
+
+    return lifespan
+
+
+def configure_app(app: FastAPI) -> None:
+    """Configure a FastAPI app with common middleware.
+
+    Adds:
+    - CORS middleware allowing all origins
+    - Request logging middleware
+
+    Args:
+        app: The FastAPI application to configure.
+
+    """
+    from fastapi.middleware.cors import CORSMiddleware  # noqa: PLC0415
+
+    # Add CORS middleware
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+
+    # Add request logging middleware
+    @app.middleware("http")
+    async def log_requests(request: Any, call_next: Any) -> Any:
+        """Log basic request information."""
+        return await log_requests_middleware(request, call_next)
 
 
 def setup_rich_logging(log_level: str = "info", *, console: Console | None = None) -> None:
