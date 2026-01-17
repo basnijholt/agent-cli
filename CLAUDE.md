@@ -14,6 +14,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - CLI help in README.md is auto-generated - don't edit manually
 - Keep CLI startup fast (<300ms) - use top-level imports by default, only use lazy imports when a heavy dependency actually causes slowdown
 - External library assumptions (especially in `dev` command for terminals/editors/agents) must be backed by evidence (official docs, man pages, source code). Document evidence in test docstrings that also verify the implementation.
+- Private functions (`_name`) don't need parameter documentation in docstrings - a one-line description is sufficient
 
 ## Build & Development Commands
 
