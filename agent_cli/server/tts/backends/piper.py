@@ -223,7 +223,9 @@ class PiperBackend:
         # length_scale < 1.0 = faster, > 1.0 = slower
         length_scale = 1.0 / speed
 
-        # Run synthesis in executor to avoid blocking
+        # Run synthesis in executor to avoid blocking.
+        # Thread-safe: ONNX Runtime InferenceSession.run() is thread-safe since v1.10+,
+        # so concurrent requests can share the same PiperVoice instance safely.
         loop = asyncio.get_event_loop()
         audio_data, duration = await loop.run_in_executor(
             None,

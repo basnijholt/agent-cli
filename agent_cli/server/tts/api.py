@@ -202,6 +202,12 @@ def create_app(
             raise HTTPException(status_code=500, detail=str(e)) from e
 
         # Format response based on requested format
+        if response_format == "wav":
+            return StreamingResponse(
+                iter([result.audio]),
+                media_type="audio/wav",
+            )
+
         if response_format == "pcm":
             # Return raw PCM data (skip WAV header)
             pcm_data = (
@@ -231,10 +237,10 @@ def create_app(
                 },
             )
 
-        # Default is WAV format
-        return StreamingResponse(
-            iter([result.audio]),
-            media_type="audio/wav",
+        # Unknown format
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unsupported response_format: {response_format}. Supported: wav, pcm, mp3",
         )
 
     # --- Alternative endpoint accepting JSON body ---
