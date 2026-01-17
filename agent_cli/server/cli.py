@@ -249,8 +249,8 @@ def whisper_cmd(  # noqa: PLR0912, PLR0915
     if backend == "auto" and not download_only:
         logger.info("Selected %s backend (auto-detected)", resolved_backend)
 
-    from agent_cli.server.whisper.model_manager import ModelConfig  # noqa: PLC0415
-    from agent_cli.server.whisper.model_registry import WhisperModelRegistry  # noqa: PLC0415
+    from agent_cli.server.whisper.model_manager import WhisperModelConfig  # noqa: PLC0415
+    from agent_cli.server.whisper.model_registry import create_whisper_registry  # noqa: PLC0415
 
     # Default model if none specified
     if model is None:
@@ -285,10 +285,10 @@ def whisper_cmd(  # noqa: PLR0912, PLR0915
         return
 
     # Create registry and register models
-    registry = WhisperModelRegistry(default_model=default_model or model[0])
+    registry = create_whisper_registry(default_model=default_model or model[0])
 
     for model_name in model:
-        config = ModelConfig(
+        config = WhisperModelConfig(
             model_name=model_name,
             device=device,
             compute_type=compute_type,
@@ -556,8 +556,8 @@ def tts_cmd(  # noqa: PLR0915
 
     _check_tts_deps()
 
-    from agent_cli.server.tts.model_manager import ModelConfig  # noqa: PLC0415
-    from agent_cli.server.tts.model_registry import TTSModelRegistry  # noqa: PLC0415
+    from agent_cli.server.tts.model_manager import TTSModelConfig  # noqa: PLC0415
+    from agent_cli.server.tts.model_registry import create_tts_registry  # noqa: PLC0415
 
     # Default model if none specified
     if model is None:
@@ -592,10 +592,10 @@ def tts_cmd(  # noqa: PLR0915
         return
 
     # Create registry and register models
-    registry = TTSModelRegistry(default_model=default_model or model[0])
+    registry = create_tts_registry(default_model=default_model or model[0])
 
     for model_name in model:
-        config = ModelConfig(
+        config = TTSModelConfig(
             model_name=model_name,
             voice=voice,
             device=device,

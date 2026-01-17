@@ -1,6 +1,6 @@
-"""Base registry for managing multiple models.
+"""Registry for managing multiple models.
 
-This module provides a generic base class for model registries that handle:
+This module provides a concrete model registry that handles:
 - Registration of multiple models with independent configurations
 - Default model selection
 - Lifecycle management (start/stop)
@@ -10,12 +10,11 @@ This module provides a generic base class for model registries that handle:
 from __future__ import annotations
 
 import logging
-from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Generic, Protocol, TypeVar, runtime_checkable
+from typing import TYPE_CHECKING, Any, Generic, Protocol, TypeVar, runtime_checkable
 
 if TYPE_CHECKING:
-    from typing import Any
+    from collections.abc import Callable
 
 logger = logging.getLogger(__name__)
 
@@ -42,15 +41,14 @@ class ManagerProtocol(Protocol):
         ...
 
 
-# Type variables for generic registry
+# Type variable for manager type
 ManagerT = TypeVar("ManagerT", bound=ManagerProtocol)
 ConfigT = TypeVar("ConfigT")
-StatusT = TypeVar("StatusT")
 
 
 @dataclass
-class BaseModelStatus:
-    """Base status of a registered model."""
+class ModelStatus:
+    """Status of a registered model."""
 
     name: str
     loaded: bool
@@ -63,59 +61,80 @@ class BaseModelStatus:
     unload_count: int
     total_requests: int
     total_audio_seconds: float
+    total_processing_seconds: float
     last_load_time: float | None
     last_request_time: float | None
     load_duration_seconds: float | None
+    extra: dict[str, float]
 
 
-class BaseModelRegistry(ABC, Generic[ManagerT, ConfigT, StatusT]):
-    """Base registry for managing multiple models with independent TTLs.
+class ModelRegistry(Generic[ManagerT, ConfigT]):
+    """Registry for managing multiple models with independent TTLs.
 
     Each model can have its own configuration (device, TTL).
     Models are loaded lazily and unloaded independently based on their TTL.
+
+    Usage:
+        def create_manager(config: MyConfig) -> MyManager:
+            return MyManager(config)
+
+        registry = ModelRegistry(
+            manager_factory=create_manager,
+            get_model_name=lambda c: c.model_name,
+            default_model="my-model",
+        )
+        registry.register(config)
+        await registry.start()
+
+        manager = registry.get_manager()
+        # use manager...
+
+        await registry.stop()
     """
 
-    def __init__(self, default_model: str | None = None) -> None:
+    def __init__(
+        self,
+        manager_factory: Callable[[ConfigT], ManagerT],
+        get_model_name: Callable[[ConfigT], str],
+        get_status: Callable[[str, ManagerT], ModelStatus] | None = None,
+        default_model: str | None = None,
+    ) -> None:
         """Initialize the registry.
 
         Args:
+            manager_factory: Function to create a manager from config.
+            get_model_name: Function to get model name from config.
+            get_status: Optional function to get status from manager.
             default_model: Name of the default model to use when not specified.
 
         """
+        self._manager_factory = manager_factory
+        self._get_model_name = get_model_name
+        self._get_status = get_status or self._default_get_status
         self._managers: dict[str, ManagerT] = {}
         self._default_model = default_model
         self._started = False
 
-    @abstractmethod
-    def _create_manager(self, config: ConfigT) -> ManagerT:
-        """Create a manager instance from config."""
-        ...
-
-    @abstractmethod
-    def _get_model_name(self, config: ConfigT) -> str:
-        """Get the model name from config."""
-        ...
-
-    @abstractmethod
-    def _get_manager_status(self, name: str, manager: ManagerT) -> StatusT:
-        """Get status from a manager."""
-        ...
-
-    async def _start_manager(self, manager: ManagerT) -> None:
-        """Start a manager."""
-        await manager.start()
-
-    async def _stop_manager(self, manager: ManagerT) -> None:
-        """Stop a manager."""
-        await manager.stop()
-
-    async def _preload_manager(self, manager: ManagerT) -> None:
-        """Preload a manager's model."""
-        await manager.get_model()
-
-    def _is_manager_loaded(self, manager: ManagerT) -> bool:
-        """Check if a manager's model is loaded."""
-        return manager.is_loaded
+    @staticmethod
+    def _default_get_status(name: str, manager: Any) -> ModelStatus:
+        """Default status getter for managers with standard interface."""
+        return ModelStatus(
+            name=name,
+            loaded=manager.is_loaded,
+            device=manager.device,
+            ttl_seconds=manager.config.ttl_seconds,
+            ttl_remaining=manager.ttl_remaining,
+            active_requests=manager.active_requests,
+            load_count=manager.stats.load_count,
+            unload_count=manager.stats.unload_count,
+            total_requests=manager.stats.total_requests,
+            total_audio_seconds=manager.stats.total_audio_seconds,
+            total_processing_seconds=manager.stats.total_processing_seconds,
+            last_load_time=manager.stats.last_load_time,
+            last_request_time=manager.stats.last_request_time,
+            load_duration_seconds=manager.stats.load_duration_seconds,
+            extra=manager.stats.extra,
+        )
 
     @property
     def default_model(self) -> str | None:
@@ -151,7 +170,7 @@ class BaseModelRegistry(ABC, Generic[ManagerT, ConfigT, StatusT]):
             msg = f"Model '{model_name}' is already registered"
             raise ValueError(msg)
 
-        manager = self._create_manager(config)
+        manager = self._manager_factory(config)
         self._managers[model_name] = manager
 
         # Set as default if it's the first model
@@ -185,9 +204,9 @@ class BaseModelRegistry(ABC, Generic[ManagerT, ConfigT, StatusT]):
 
         return self._managers[name]
 
-    def list_status(self) -> list[StatusT]:
+    def list_status(self) -> list[ModelStatus]:
         """Get status of all registered models."""
-        return [self._get_manager_status(name, manager) for name, manager in self._managers.items()]
+        return [self._get_status(name, manager) for name, manager in self._managers.items()]
 
     async def start(self) -> None:
         """Start all model managers (TTL watchers)."""
@@ -195,7 +214,7 @@ class BaseModelRegistry(ABC, Generic[ManagerT, ConfigT, StatusT]):
             return
 
         for manager in self._managers.values():
-            await self._start_manager(manager)
+            await manager.start()
 
         self._started = True
         logger.debug("Started registry with %d model(s)", len(self._managers))
@@ -203,7 +222,7 @@ class BaseModelRegistry(ABC, Generic[ManagerT, ConfigT, StatusT]):
     async def stop(self) -> None:
         """Stop all model managers and unload all models."""
         for manager in self._managers.values():
-            await self._stop_manager(manager)
+            await manager.stop()
 
         self._started = False
         logger.debug("Stopped registry")
@@ -223,6 +242,6 @@ class BaseModelRegistry(ABC, Generic[ManagerT, ConfigT, StatusT]):
                 continue
 
             manager = self._managers[name]
-            if not self._is_manager_loaded(manager):
+            if not manager.is_loaded:
                 logger.debug("Preloading model %s", name)
-                await self._preload_manager(manager)
+                await manager.get_model()

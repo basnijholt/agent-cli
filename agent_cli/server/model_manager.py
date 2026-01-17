@@ -1,10 +1,12 @@
-"""Base model manager with TTL-based unloading.
+"""Model manager with TTL-based unloading.
 
-This module provides a generic base class for model managers that handle:
+This module provides a concrete model manager that handles:
 - Lazy loading of models on first request
 - TTL-based automatic unloading when idle
 - Active request tracking to prevent unload during processing
 - Concurrent request coordination
+
+The manager works with any backend that implements the BackendProtocol.
 """
 
 from __future__ import annotations
@@ -13,24 +15,20 @@ import asyncio
 import contextlib
 import logging
 import time
-from abc import ABC, abstractmethod
+from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Generic, TypeVar
+from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
 
 if TYPE_CHECKING:
+    from collections.abc import AsyncIterator
     from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
-# Type variables for generic model manager
-BackendT = TypeVar("BackendT")
-ConfigT = TypeVar("ConfigT", bound="BaseModelConfig")
-StatsT = TypeVar("StatsT", bound="BaseModelStats")
-
 
 @dataclass
-class BaseModelConfig:
-    """Base configuration for a model."""
+class ModelConfig:
+    """Configuration for a model."""
 
     model_name: str
     device: str = "auto"
@@ -45,8 +43,8 @@ class BaseModelConfig:
 
 
 @dataclass
-class BaseModelStats:
-    """Base runtime statistics for a model."""
+class ModelStats:
+    """Runtime statistics for a model."""
 
     load_count: int = 0
     unload_count: int = 0
@@ -59,72 +57,98 @@ class BaseModelStats:
     extra: dict[str, float] = field(default_factory=dict)
 
 
-class BaseModelManager(ABC, Generic[BackendT, ConfigT, StatsT]):
-    """Base class for model managers with TTL-based unloading.
+@runtime_checkable
+class BackendProtocol(Protocol):
+    """Protocol for model backends."""
 
-    Subclasses must implement:
-    - _create_backend(): Create the backend instance
-    - _create_stats(): Create the stats instance
-    - Backend-specific processing methods (e.g., transcribe, synthesize)
+    @property
+    def is_loaded(self) -> bool:
+        """Check if the model is loaded."""
+        ...
+
+    @property
+    def device(self) -> str | None:
+        """Get the device the model is loaded on."""
+        ...
+
+    async def load(self) -> float:
+        """Load the model, return load duration in seconds."""
+        ...
+
+    async def unload(self) -> None:
+        """Unload the model."""
+        ...
+
+
+class ModelManager:
+    """Manages a model with TTL-based unloading.
+
+    The model is loaded lazily on first request and unloaded after
+    being idle for longer than the configured TTL.
+
+    Usage:
+        manager = ModelManager(backend, config)
+        await manager.start()
+
+        # Use request context for processing
+        async with manager.request():
+            result = await backend.process(...)
+
+        await manager.stop()
     """
 
-    def __init__(self, config: ConfigT) -> None:
-        """Initialize the model manager."""
+    def __init__(
+        self,
+        backend: BackendProtocol,
+        config: ModelConfig,
+        stats: ModelStats | None = None,
+    ) -> None:
+        """Initialize the model manager.
+
+        Args:
+            backend: The backend instance to manage.
+            config: Model configuration.
+            stats: Optional stats instance (creates new one if not provided).
+
+        """
+        self._backend = backend
         self._config = config
-        self._backend: BackendT = self._create_backend()
+        self._stats = stats or ModelStats()
         self._condition = asyncio.Condition()
         self._active_requests = 0
         self._unloading = False
-        self._stats: StatsT = self._create_stats()
         self._unload_task: asyncio.Task[None] | None = None
         self._shutdown = False
 
-    @abstractmethod
-    def _create_backend(self) -> BackendT:
-        """Create and return the backend instance."""
-        ...
-
-    @abstractmethod
-    def _create_stats(self) -> StatsT:
-        """Create and return the stats instance."""
-        ...
+    @property
+    def backend(self) -> Any:
+        """Get the backend instance."""
+        return self._backend
 
     @property
-    @abstractmethod
-    def _backend_is_loaded(self) -> bool:
-        """Check if the backend is loaded."""
-        ...
-
-    @property
-    @abstractmethod
-    def _backend_device(self) -> str | None:
-        """Get the backend's device."""
-        ...
-
-    @abstractmethod
-    async def _backend_load(self) -> float:
-        """Load the backend, return load duration in seconds."""
-        ...
-
-    @abstractmethod
-    async def _backend_unload(self) -> None:
-        """Unload the backend."""
-        ...
-
-    @property
-    def config(self) -> ConfigT:
+    def config(self) -> ModelConfig:
         """Get the model configuration."""
         return self._config
 
     @property
-    def stats(self) -> StatsT:
+    def stats(self) -> ModelStats:
         """Get the model statistics."""
         return self._stats
 
     @property
     def is_loaded(self) -> bool:
         """Check if the model is currently loaded."""
-        return self._backend_is_loaded
+        return self._backend.is_loaded
+
+    @property
+    def device(self) -> str | None:
+        """Get the device the model is loaded on."""
+        return self._backend.device
+
+    @property
+    def active_requests(self) -> int:
+        """Get the number of active requests."""
+        return self._active_requests
 
     @property
     def ttl_remaining(self) -> float | None:
@@ -134,16 +158,6 @@ class BaseModelManager(ABC, Generic[BackendT, ConfigT, StatsT]):
         elapsed = time.time() - self._stats.last_request_time
         remaining = self._config.ttl_seconds - elapsed
         return max(0.0, remaining)
-
-    @property
-    def device(self) -> str | None:
-        """Get the device the model is loaded on."""
-        return self._backend_device
-
-    @property
-    def active_requests(self) -> int:
-        """Get the number of active requests."""
-        return self._active_requests
 
     async def start(self) -> None:
         """Start the TTL unload watcher."""
@@ -160,15 +174,65 @@ class BaseModelManager(ABC, Generic[BackendT, ConfigT, StatsT]):
             self._unload_task = None
         await self.unload()
 
-    async def get_model(self) -> BackendT:
+    async def get_model(self) -> Any:
         """Get the backend, loading it if necessary."""
         await self._ensure_loaded()
         return self._backend
 
+    @asynccontextmanager
+    async def request(self) -> AsyncIterator[None]:
+        """Context manager for processing requests.
+
+        Ensures the model is loaded and tracks active requests.
+        Use this around any backend operations.
+
+        Example:
+            async with manager.request():
+                result = await manager.backend.synthesize(text)
+
+        """
+        await self._begin_request()
+        try:
+            yield
+        finally:
+            await self._end_request()
+
+    async def unload(self) -> bool:
+        """Unload the model from memory.
+
+        Returns True if model was unloaded, False if it wasn't loaded.
+        """
+        async with self._condition:
+            while self._unloading:
+                await self._condition.wait()
+
+            if not self._backend.is_loaded:
+                return False
+
+            self._unloading = True
+            try:
+                while self._active_requests > 0:
+                    logger.info(
+                        "Waiting for %d active requests before unloading %s",
+                        self._active_requests,
+                        self._config.model_name,
+                    )
+                    await self._condition.wait()
+
+                if not self._backend.is_loaded:
+                    return False
+
+                await self._backend.unload()
+                self._stats.unload_count += 1
+                return True
+            finally:
+                self._unloading = False
+                self._condition.notify_all()
+
     async def _load_if_needed_locked(self) -> None:
         """Load the model if needed (expects condition lock held)."""
-        if not self._backend_is_loaded:
-            load_duration = await self._backend_load()
+        if not self._backend.is_loaded:
+            load_duration = await self._backend.load()
             self._stats.load_count += 1
             self._stats.last_load_time = time.time()
             self._stats.load_duration_seconds = load_duration
@@ -197,38 +261,6 @@ class BaseModelManager(ABC, Generic[BackendT, ConfigT, StatsT]):
             if self._active_requests == 0:
                 self._condition.notify_all()
 
-    async def unload(self) -> bool:
-        """Unload the model from memory.
-
-        Returns True if model was unloaded, False if it wasn't loaded.
-        """
-        async with self._condition:
-            while self._unloading:
-                await self._condition.wait()
-
-            if not self._backend_is_loaded:
-                return False
-
-            self._unloading = True
-            try:
-                while self._active_requests > 0:
-                    logger.info(
-                        "Waiting for %d active requests before unloading %s",
-                        self._active_requests,
-                        self._config.model_name,
-                    )
-                    await self._condition.wait()
-
-                if not self._backend_is_loaded:
-                    return False
-
-                await self._backend_unload()
-                self._stats.unload_count += 1
-                return True
-            finally:
-                self._unloading = False
-                self._condition.notify_all()
-
     async def _unload_watcher(self) -> None:
         """Background task that unloads model after TTL expires."""
         check_interval = min(30, self._config.ttl_seconds / 2)
@@ -240,7 +272,7 @@ class BaseModelManager(ABC, Generic[BackendT, ConfigT, StatsT]):
                 async with self._condition:
                     if self._unloading:
                         continue
-                    if not self._backend_is_loaded:
+                    if not self._backend.is_loaded:
                         continue
 
                     if self._stats.last_request_time is None:
@@ -256,7 +288,7 @@ class BaseModelManager(ABC, Generic[BackendT, ConfigT, StatsT]):
                                 idle_time,
                                 self._config.ttl_seconds,
                             )
-                            await self._backend_unload()
+                            await self._backend.unload()
                             self._stats.unload_count += 1
                         else:
                             logger.debug(

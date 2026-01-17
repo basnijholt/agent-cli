@@ -11,14 +11,17 @@ from unittest.mock import AsyncMock, patch
 import pytest
 from fastapi.testclient import TestClient
 
+from agent_cli.server.model_manager import ModelStats
+from agent_cli.server.whisper.backends import TranscriptionResult
 from agent_cli.server.whisper.model_manager import (
-    ModelConfig,
-    ModelStats,
-    TranscriptionResult,
+    WhisperModelConfig as ModelConfig,
+)
+from agent_cli.server.whisper.model_manager import (
     WhisperModelManager,
 )
 from agent_cli.server.whisper.model_registry import (
     WhisperModelRegistry,
+    create_whisper_registry,
 )
 
 
@@ -68,7 +71,7 @@ class TestModelStats:
         assert stats.unload_count == 0
         assert stats.total_requests == 0
         assert stats.total_audio_seconds == 0.0
-        assert stats.total_transcription_seconds == 0.0
+        assert stats.extra.get("total_transcription_seconds", 0.0) == 0.0
         assert stats.last_load_time is None
         assert stats.last_request_time is None
         assert stats.load_duration_seconds is None
@@ -109,10 +112,10 @@ class TestWhisperModelManager:
     async def test_start_stop(self, manager: WhisperModelManager) -> None:
         """Test starting and stopping the manager."""
         await manager.start()
-        assert manager._unload_task is not None
+        assert manager._manager._unload_task is not None
 
         await manager.stop()
-        assert manager._shutdown is True
+        assert manager._manager._shutdown is True
 
     @pytest.mark.asyncio
     async def test_unload_when_not_loaded(self, manager: WhisperModelManager) -> None:
@@ -203,7 +206,7 @@ class TestWhisperModelRegistry:
     @pytest.fixture
     def registry(self) -> WhisperModelRegistry:
         """Create a registry instance."""
-        return WhisperModelRegistry()
+        return create_whisper_registry()
 
     @pytest.fixture
     def config(self) -> ModelConfig:
@@ -327,7 +330,7 @@ class TestWhisperModelRegistry:
 
         await registry.start()
         manager = registry.get_manager()
-        assert manager._unload_task is not None
+        assert manager._manager._unload_task is not None
 
         await registry.stop()
 
@@ -385,7 +388,7 @@ class TestWhisperAPI:
     @pytest.fixture
     def mock_registry(self) -> WhisperModelRegistry:
         """Create a mock registry with a configured model."""
-        registry = WhisperModelRegistry()
+        registry = create_whisper_registry()
         registry.register(
             ModelConfig(model_name="large-v3", ttl_seconds=300, backend_type="faster-whisper"),
         )
@@ -413,7 +416,7 @@ class TestWhisperAPI:
         """Test health check with empty registry."""
         from agent_cli.server.whisper.api import create_app  # noqa: PLC0415
 
-        registry = WhisperModelRegistry()
+        registry = create_whisper_registry()
         app = create_app(registry, enable_wyoming=False)
         client = TestClient(app)
 
