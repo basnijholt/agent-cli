@@ -469,12 +469,6 @@ pip install "agent-cli[tts-kokoro]"
 uv sync --extra tts-kokoro
 ```
 
-> [!NOTE]
-> When using uv, you also need to install a spacy model (kokoro uses spacy for text processing):
-> ```bash
-> uv pip install https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl
-> ```
-
 Kokoro requires PyTorch. For GPU acceleration:
 - **CUDA**: Install PyTorch with CUDA support
 - **Apple Silicon**: PyTorch automatically uses MPS
