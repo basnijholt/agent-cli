@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 import logging
 from importlib.util import find_spec
-from pathlib import Path
+from pathlib import Path  # noqa: TC003 - Typer needs this at runtime
 from typing import Annotated
 
 import typer
@@ -64,7 +64,8 @@ def _check_tts_deps(backend: str = "auto") -> None:
         if not HAS_KOKORO:
             err_console.print(
                 "[bold red]Error:[/bold red] Kokoro backend requires kokoro. "
-                "Run: [cyan]pip install kokoro[/cyan]",
+                "Run: [cyan]pip install agent-cli\\[tts-kokoro][/cyan] "
+                "or [cyan]uv sync --extra tts-kokoro[/cyan]",
             )
             raise typer.Exit(1)
         return
@@ -84,9 +85,50 @@ def _check_tts_deps(backend: str = "auto") -> None:
         err_console.print(
             "[bold red]Error:[/bold red] No TTS backend available. "
             "Run: [cyan]pip install agent-cli\\[tts][/cyan] for Piper "
-            "or [cyan]pip install kokoro[/cyan] for Kokoro",
+            "or [cyan]pip install agent-cli\\[tts-kokoro][/cyan] for Kokoro",
         )
         raise typer.Exit(1)
+
+
+def _download_tts_models(
+    backend: str,
+    models: list[str],
+    cache_dir: Path | None,
+) -> None:
+    """Download TTS models/voices without starting the server."""
+    if backend == "kokoro":
+        from agent_cli.server.tts.backends.base import (  # noqa: PLC0415
+            get_backend_cache_dir,
+        )
+        from agent_cli.server.tts.backends.kokoro import (  # noqa: PLC0415
+            DEFAULT_VOICE,
+            _ensure_model,
+            _ensure_voice,
+        )
+
+        download_dir = cache_dir or get_backend_cache_dir("kokoro")
+        console.print("[bold]Downloading Kokoro model...[/bold]")
+        _ensure_model(download_dir)
+        console.print("  [green]✓[/green] Model ready")
+
+        voices = [v for v in models if v != "kokoro"] or [DEFAULT_VOICE]
+        for voice in voices:
+            console.print(f"  Downloading voice [cyan]{voice}[/cyan]...")
+            _ensure_voice(voice, download_dir)
+        console.print("[bold green]Download complete![/bold green]")
+        return
+
+    # Piper backend
+    from piper.download_voices import download_voice  # noqa: PLC0415
+
+    from agent_cli.server.tts.backends.base import get_backend_cache_dir  # noqa: PLC0415
+
+    download_dir = cache_dir or get_backend_cache_dir("piper")
+    console.print("[bold]Downloading Piper model(s)...[/bold]")
+    for model_name in models:
+        console.print(f"  Downloading [cyan]{model_name}[/cyan]...")
+        download_voice(model_name, download_dir)
+    console.print("[bold green]Download complete![/bold green]")
 
 
 def _check_whisper_deps(backend: str, *, download_only: bool = False) -> None:
@@ -433,7 +475,7 @@ def transcription_proxy_cmd(
 
 
 @app.command("tts")
-def tts_cmd(  # noqa: PLR0912, PLR0915
+def tts_cmd(  # noqa: PLR0915
     model: Annotated[
         list[str] | None,
         typer.Option(
@@ -560,8 +602,11 @@ def tts_cmd(  # noqa: PLR0912, PLR0915
         # Run with specific Piper model and 10-minute TTL
         agent-cli server tts --model en_US-lessac-medium --ttl 600
 
+        # Download Kokoro model and voices without starting server
+        agent-cli server tts --backend kokoro --model af_bella --model am_adam --download-only
+
         # Download Piper model without starting server
-        agent-cli server tts --model en_US-lessac-medium --download-only
+        agent-cli server tts --backend piper --model en_US-lessac-medium --download-only
 
     """
     # Setup Rich logging for consistent output
@@ -601,31 +646,8 @@ def tts_cmd(  # noqa: PLR0912, PLR0915
         )
         raise typer.Exit(1)
 
-    # Handle download-only mode (Piper only)
     if download_only:
-        if resolved_backend == "kokoro":
-            err_console.print(
-                "[bold red]Error:[/bold red] --download-only is only supported for Piper backend. "
-                "For Kokoro, download models manually from HuggingFace.",
-            )
-            raise typer.Exit(1)
-
-        from piper.download_voices import download_voice  # noqa: PLC0415
-
-        # Use default cache dir if not specified
-        download_dir = cache_dir or Path.home() / ".cache" / "piper"
-        download_dir.mkdir(parents=True, exist_ok=True)
-
-        console.print("[bold]Downloading model(s)...[/bold]")
-        for model_name in model:
-            console.print(f"  Downloading [cyan]{model_name}[/cyan]...")
-            try:
-                download_voice(model_name, download_dir)
-                console.print(f"  [green]✓[/green] Downloaded {model_name}")
-            except Exception as e:
-                err_console.print(f"  [red]✗[/red] Failed to download {model_name}: {e}")
-                raise typer.Exit(1) from e
-        console.print("[bold green]All models downloaded successfully![/bold green]")
+        _download_tts_models(resolved_backend, model, cache_dir)
         return
 
     # Create registry and register models

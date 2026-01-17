@@ -19,6 +19,7 @@ from agent_cli.server.tts.backends.base import (
     InvalidTextError,
     SynthesisResult,
     get_backend_cache_dir,
+    get_torch_device,
 )
 
 logger = logging.getLogger(__name__)
@@ -36,17 +37,6 @@ _subprocess_pipelines: dict[str, Any] = {}
 
 
 # --- Subprocess worker functions (run in isolated process) ---
-
-
-def _get_device() -> str:
-    """Detect the best available device for PyTorch."""
-    import torch  # noqa: PLC0415
-
-    if torch.cuda.is_available():
-        return "cuda"
-    if hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
-        return "mps"
-    return "cpu"
 
 
 def _hf_download(filename: str, local_dir: Path) -> Path:
@@ -126,7 +116,7 @@ def _load_model_in_subprocess(
 
     # Determine actual device
     if device == "auto":
-        device = _get_device()
+        device = get_torch_device()
 
     # Load and move model to device
     model = KModel(config=str(config_path), model=str(model_path)).eval()

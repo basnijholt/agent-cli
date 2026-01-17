@@ -11,6 +11,7 @@ if TYPE_CHECKING:
 from agent_cli.server.tts.backends.base import (
     BackendConfig,
     SynthesisResult,
+    has_gpu,
 )
 
 logger = logging.getLogger(__name__)
@@ -22,21 +23,16 @@ def detect_backend() -> Literal["piper", "kokoro"]:
     """Detect the best backend for the current platform.
 
     Returns:
-        "kokoro" if GPU is available, otherwise "piper" (CPU-friendly).
+        "kokoro" if GPU is available and kokoro is installed, otherwise "piper".
 
     """
-    try:
-        import torch  # noqa: PLC0415
-
-        if torch.cuda.is_available() or (
-            hasattr(torch.backends, "mps") and torch.backends.mps.is_available()
-        ):
-            # Check if kokoro is installed
+    if has_gpu():
+        try:
             import kokoro  # noqa: F401, PLC0415
 
             return "kokoro"
-    except ImportError:
-        pass
+        except ImportError:
+            pass
     return "piper"
 
 
