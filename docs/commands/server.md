@@ -298,7 +298,7 @@ Run a local TTS (Text-to-Speech) server with two backend options:
 > [!NOTE]
 > **Quick Start with Kokoro** (GPU-accelerated, auto-downloads from HuggingFace):
 > ```bash
-> pip install kokoro soundfile
+> pip install "agent-cli[tts-kokoro]"
 > agent-cli server tts --backend kokoro
 > ```
 >
@@ -464,8 +464,16 @@ Browse all voices at [rhasspy/piper](https://github.com/rhasspy/piper?tab=readme
 #### Kokoro (GPU-accelerated)
 
 ```bash
-pip install kokoro soundfile huggingface_hub
+pip install "agent-cli[tts-kokoro]"
+# or
+uv sync --extra tts-kokoro
 ```
+
+> [!NOTE]
+> When using uv, you also need to install a spacy model (kokoro uses spacy for text processing):
+> ```bash
+> uv pip install https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl
+> ```
 
 Kokoro requires PyTorch. For GPU acceleration:
 - **CUDA**: Install PyTorch with CUDA support
