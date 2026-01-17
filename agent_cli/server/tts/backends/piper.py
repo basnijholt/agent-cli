@@ -15,19 +15,13 @@ from agent_cli.server.tts.backends.base import (
     BackendConfig,
     InvalidTextError,
     SynthesisResult,
+    get_backend_cache_dir,
 )
 
 if TYPE_CHECKING:
     from piper import PiperVoice
 
 logger = logging.getLogger(__name__)
-
-
-def _get_default_cache_dir() -> str:
-    """Get default cache directory for Piper models."""
-    cache_dir = Path.home() / ".cache" / "piper"
-    cache_dir.mkdir(parents=True, exist_ok=True)
-    return str(cache_dir)
 
 
 def _load_model_sync(
@@ -48,7 +42,7 @@ def _load_model_sync(
     from piper.download_voices import download_voice  # noqa: PLC0415
 
     # Use default cache dir if not specified
-    download_dir = Path(cache_dir) if cache_dir else Path(_get_default_cache_dir())
+    download_dir = Path(cache_dir) if cache_dir else get_backend_cache_dir("piper")
     download_dir.mkdir(parents=True, exist_ok=True)
 
     # Check if model_name is already a path to an existing file

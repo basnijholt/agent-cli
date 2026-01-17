@@ -3,10 +3,15 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Protocol, runtime_checkable
+from pathlib import Path
+from typing import Protocol, runtime_checkable
 
-if TYPE_CHECKING:
-    from pathlib import Path
+
+def get_backend_cache_dir(backend_name: str) -> Path:
+    """Get default cache directory for a TTS backend."""
+    cache_dir = Path.home() / ".cache" / backend_name
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    return cache_dir
 
 
 @dataclass

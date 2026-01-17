@@ -530,14 +530,6 @@ def tts_cmd(  # noqa: PLR0912, PLR0915
             help="Backend: auto, piper, kokoro",
         ),
     ] = "auto",
-    voice: Annotated[
-        str | None,
-        typer.Option(
-            "--voice",
-            "-v",
-            help="Default voice for Kokoro (e.g., af_heart, af_bella)",
-        ),
-    ] = None,
 ) -> None:
     """Run TTS server with TTL-based model unloading.
 
@@ -561,9 +553,6 @@ def tts_cmd(  # noqa: PLR0912, PLR0915
     Examples:
         # Run with Kokoro (auto-downloads model and voices)
         agent-cli server tts --backend kokoro
-
-        # Run with Kokoro and specific voice
-        agent-cli server tts --backend kokoro --voice af_bella
 
         # Run with default Piper model
         agent-cli server tts --backend piper
@@ -666,8 +655,6 @@ def tts_cmd(  # noqa: PLR0912, PLR0915
     console.print()
     console.print("[dim]Configuration:[/dim]")
     console.print(f"  Backend: [cyan]{resolved_backend}[/cyan]")
-    if resolved_backend == "kokoro" and voice:
-        console.print(f"  Default voice: [cyan]{voice}[/cyan]")
     console.print()
     console.print("[dim]Endpoints:[/dim]")
     console.print(f"  HTTP API: [cyan]http://{host}:{port}[/cyan]")
@@ -688,9 +675,8 @@ def tts_cmd(  # noqa: PLR0912, PLR0915
         f'  [cyan]client = OpenAI(base_url="http://localhost:{port}/v1", api_key="x")[/cyan]',
     )
     if resolved_backend == "kokoro":
-        voice_example = voice or "af_heart"
         console.print(
-            f'  [cyan]response = client.audio.speech.create(model="tts-1", voice="{voice_example}", '
+            '  [cyan]response = client.audio.speech.create(model="tts-1", voice="af_heart", '
             'input="Hello")[/cyan]',
         )
     else:

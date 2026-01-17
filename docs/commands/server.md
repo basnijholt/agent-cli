@@ -331,9 +331,6 @@ agent-cli server tts [OPTIONS]
 # Run with Kokoro (auto-downloads model and voice from HuggingFace)
 agent-cli server tts --backend kokoro
 
-# Kokoro with specific voice
-agent-cli server tts --backend kokoro --voice af_bella
-
 # Run with Piper (CPU-friendly)
 agent-cli server tts --backend piper
 
@@ -372,7 +369,6 @@ agent-cli server tts --preload
 | `--download-only` | `false` | Download model(s) and exit without starting server |
 | `--log-level` | `info` | Logging level: debug, info, warning, error |
 | `--backend` | `auto` | Backend: auto, piper, kokoro |
-| `--voice` | - | Default voice for Kokoro (e.g., af_heart, af_bella) |
 
 
 <!-- OUTPUT:END -->
@@ -428,7 +424,7 @@ response.write_to_file("output.wav")
 
 #### Kokoro Voices
 
-Kokoro uses the `--voice` parameter. Voices auto-download from HuggingFace on first use.
+Kokoro voices are specified per-request via the API `voice` parameter. Voices auto-download from HuggingFace on first use.
 
 The voice name prefix indicates accent: `af_` = American Female, `am_` = American Male, `bf_` = British Female, `bm_` = British Male.
 

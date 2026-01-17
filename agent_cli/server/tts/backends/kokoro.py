@@ -15,10 +15,10 @@ from agent_cli.server.tts.backends.base import (
     BackendConfig,
     InvalidTextError,
     SynthesisResult,
+    get_backend_cache_dir,
 )
 
 if TYPE_CHECKING:
-    import numpy as np
     from kokoro import KModel, KPipeline
 
 logger = logging.getLogger(__name__)
@@ -65,13 +65,6 @@ KOKORO_VOICES = [
 
 # Default voice if none specified
 DEFAULT_VOICE = "af_heart"
-
-
-def _get_default_cache_dir() -> Path:
-    """Get default cache directory for Kokoro models."""
-    cache_dir = Path.home() / ".cache" / "kokoro"
-    cache_dir.mkdir(parents=True, exist_ok=True)
-    return cache_dir
 
 
 def _get_device() -> str:
@@ -227,7 +220,7 @@ class KokoroBackend:
         self._pipelines: dict[str, KPipeline] = {}  # Pipelines by lang_code
         self._sample_rate: int = constants.KOKORO_DEFAULT_SAMPLE_RATE
         self._device: str | None = None
-        self._cache_dir = config.cache_dir or _get_default_cache_dir()
+        self._cache_dir = config.cache_dir or get_backend_cache_dir("kokoro")
 
     @property
     def is_loaded(self) -> bool:
