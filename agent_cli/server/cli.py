@@ -298,15 +298,10 @@ def whisper_cmd(  # noqa: PLR0912, PLR0915
         )
         registry.register(config)
 
-    # Preload: --preload forces all, otherwise just the default model
+    # Preload models if requested
     if preload:
-        console.print("[bold]Preloading all model(s)...[/bold]")
+        console.print("[bold]Preloading model(s)...[/bold]")
         asyncio.run(registry.preload())
-    else:
-        default = registry.default_model
-        assert default is not None  # Always set after register()
-        console.print(f"[bold]Preloading default model ({default})...[/bold]")
-        asyncio.run(registry.preload([default]))
 
     # Build Wyoming URI
     wyoming_uri = f"tcp://{host}:{wyoming_port}"
@@ -430,13 +425,6 @@ def tts_cmd(  # noqa: PLR0915
         typer.Option(
             "--default-model",
             help="Default model when not specified in request",
-        ),
-    ] = None,
-    voice: Annotated[
-        str | None,
-        typer.Option(
-            "--voice",
-            help="Default voice",
         ),
     ] = None,
     device: Annotated[
@@ -601,7 +589,6 @@ def tts_cmd(  # noqa: PLR0915
     for model_name in model:
         config = TTSModelConfig(
             model_name=model_name,
-            voice=voice,
             device=device,
             ttl_seconds=ttl,
             cache_dir=cache_dir,
@@ -609,15 +596,10 @@ def tts_cmd(  # noqa: PLR0915
         )
         registry.register(config)
 
-    # Preload: --preload forces all, otherwise just the default model
+    # Preload models if requested
     if preload:
-        console.print("[bold]Preloading all model(s)...[/bold]")
+        console.print("[bold]Preloading model(s)...[/bold]")
         asyncio.run(registry.preload())
-    else:
-        default = registry.default_model
-        assert default is not None  # Always set after register()
-        console.print(f"[bold]Preloading default model ({default})...[/bold]")
-        asyncio.run(registry.preload([default]))
 
     # Build Wyoming URI
     wyoming_uri = f"tcp://{host}:{wyoming_port}"

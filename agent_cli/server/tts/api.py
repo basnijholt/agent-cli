@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Annotated, Any
+from typing import TYPE_CHECKING, Annotated
 
 from fastapi import FastAPI, Form, HTTPException, Query
 from fastapi.responses import StreamingResponse
@@ -17,16 +17,6 @@ if TYPE_CHECKING:
     from agent_cli.server.tts.model_registry import TTSModelRegistry
 
 logger = logging.getLogger(__name__)
-
-# OpenAI voice to Piper model mapping
-OPENAI_VOICE_MAP = {
-    "alloy": "en_US-lessac-medium",
-    "echo": "en_US-ryan-high",
-    "fable": "en_GB-alan-medium",
-    "onyx": "en_US-joe-medium",
-    "nova": "en_US-amy-medium",
-    "shimmer": "en_US-kathleen-low",
-}
 
 
 # --- Pydantic Models ---
@@ -70,18 +60,14 @@ class UnloadResponse(BaseModel):
     was_loaded: bool
 
 
-class VoiceInfo(BaseModel):
-    """Information about an available voice."""
+class SpeechRequest(BaseModel):
+    """Request body for JSON speech synthesis endpoint."""
 
-    voice_id: str
-    name: str
-    description: str | None = None
-
-
-class VoicesResponse(BaseModel):
-    """Response listing available voices."""
-
-    voices: list[VoiceInfo]
+    input: str
+    model: str = "tts-1"
+    voice: str = "alloy"
+    response_format: str = "wav"
+    speed: float = 1.0
 
 
 # --- App Factory ---
@@ -125,10 +111,27 @@ def create_app(
     @app.get("/health", response_model=HealthResponse)
     async def health_check() -> HealthResponse:
         """Health check endpoint."""
-        return HealthResponse(
-            status="healthy",
-            models=[ModelStatusResponse.model_validate(s) for s in registry.list_status()],
-        )
+        models = [
+            ModelStatusResponse(
+                name=s.name,
+                loaded=s.loaded,
+                device=s.device,
+                ttl_seconds=s.ttl_seconds,
+                ttl_remaining=s.ttl_remaining,
+                active_requests=s.active_requests,
+                load_count=s.load_count,
+                unload_count=s.unload_count,
+                total_requests=s.total_requests,
+                total_characters=int(s.extra.get("total_characters", 0.0)),
+                total_audio_seconds=s.total_audio_seconds,
+                total_synthesis_seconds=s.extra.get("total_synthesis_seconds", 0.0),
+                last_load_time=s.last_load_time,
+                last_request_time=s.last_request_time,
+                load_duration_seconds=s.load_duration_seconds,
+            )
+            for s in registry.list_status()
+        ]
+        return HealthResponse(status="healthy", models=models)
 
     @app.post("/v1/model/unload", response_model=UnloadResponse)
     async def unload_model(
@@ -145,19 +148,6 @@ def create_app(
             )
         except ValueError as e:
             raise HTTPException(status_code=404, detail=str(e)) from e
-
-    @app.get("/v1/voices", response_model=VoicesResponse)
-    async def list_voices() -> VoicesResponse:
-        """List available voices (OpenAI voice names mapped to Piper models)."""
-        voices = [
-            VoiceInfo(
-                voice_id=voice_id,
-                name=voice_id,
-                description=f"Maps to Piper model: {piper_model}",
-            )
-            for voice_id, piper_model in OPENAI_VOICE_MAP.items()
-        ]
-        return VoicesResponse(voices=voices)
 
     # --- OpenAI-Compatible TTS Endpoint ---
 
@@ -251,18 +241,18 @@ def create_app(
 
     @app.post("/v1/audio/speech/json")
     async def synthesize_speech_json(
-        request: dict[str, Any],
+        request: SpeechRequest,
     ) -> StreamingResponse:
         """Alternative TTS endpoint accepting JSON body.
 
         This is for clients that prefer JSON over form data.
         """
         return await synthesize_speech(
-            input=request.get("input", ""),
-            model=request.get("model", "tts-1"),
-            voice=request.get("voice", "alloy"),
-            response_format=request.get("response_format", "wav"),
-            speed=request.get("speed", 1.0),
+            input=request.input,
+            model=request.model,
+            voice=request.voice,
+            response_format=request.response_format,
+            speed=request.speed,
         )
 
     return app

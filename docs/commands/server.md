@@ -369,7 +369,6 @@ agent-cli server tts --model en_US-lessac-medium --model en_US-ryan-high --prelo
 |----------|--------|-------------|
 | `/v1/audio/speech` | POST | OpenAI-compatible speech synthesis |
 | `/v1/audio/speech/json` | POST | Alternative endpoint accepting JSON body |
-| `/v1/voices` | GET | List available voices |
 | `/v1/model/unload` | POST | Manually unload a model from memory |
 | `/health` | GET | Health check with model status |
 | `/docs` | GET | Interactive API documentation |
@@ -410,20 +409,14 @@ response = client.audio.speech.create(
 response.write_to_file("output.wav")
 ```
 
-### Voice Mapping
+### Voice Selection
 
-OpenAI voice names are mapped to Piper models:
+With Piper, the **model name IS the voice**. The `voice` parameter is accepted for OpenAI API compatibility but is not used - instead, specify the voice by using the appropriate Piper model name via the `--model` flag or the `model` parameter in API requests.
 
-| OpenAI Voice | Piper Model |
-|--------------|-------------|
-| `alloy` | `en_US-lessac-medium` |
-| `echo` | `en_US-ryan-high` |
-| `fable` | `en_GB-alan-medium` |
-| `onyx` | `en_US-joe-medium` |
-| `nova` | `en_US-amy-medium` |
-| `shimmer` | `en_US-kathleen-low` |
-
-You can also use Piper model names directly (e.g., `en_US-lessac-medium`).
+For example, to use the "lessac" voice, start the server with:
+```bash
+agent-cli server tts --model en_US-lessac-medium
+```
 
 ### Available Piper Voices
 

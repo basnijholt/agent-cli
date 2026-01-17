@@ -25,7 +25,6 @@ logger = logging.getLogger(__name__)
 class TTSModelConfig(ModelConfig):
     """Configuration for a TTS model."""
 
-    voice: str | None = None
     backend_type: BackendType = "auto"
 
 
@@ -41,7 +40,6 @@ class TTSModelManager:
         backend = create_backend(
             BackendConfig(
                 model_name=config.model_name,
-                voice=config.voice,
                 device=config.device,
                 cache_dir=config.cache_dir,
             ),

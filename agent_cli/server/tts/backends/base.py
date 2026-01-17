@@ -25,7 +25,6 @@ class BackendConfig:
     """Configuration for a TTS backend."""
 
     model_name: str
-    voice: str | None = None
     device: str = "auto"
     cache_dir: Path | None = None
 
