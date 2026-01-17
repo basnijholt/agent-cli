@@ -38,7 +38,7 @@ class WhisperModelManager:
 
     def __init__(self, config: WhisperModelConfig) -> None:
         """Initialize the Whisper model manager."""
-        self._config = config
+        self.config = config
         backend = create_backend(
             BackendConfig(
                 model_name=config.model_name,
@@ -50,11 +50,6 @@ class WhisperModelManager:
             backend_type=config.backend_type,
         )
         self._manager = ModelManager(backend, config)
-
-    @property
-    def config(self) -> WhisperModelConfig:
-        """Get the model configuration."""
-        return self._config
 
     @property
     def stats(self) -> ModelStats:
@@ -155,7 +150,7 @@ class WhisperModelManager:
             "Transcribed %.1fs audio in %.2fs (model=%s, lang=%s)",
             result.duration,
             transcription_duration,
-            self._config.model_name,
+            self.config.model_name,
             result.language,
         )
 

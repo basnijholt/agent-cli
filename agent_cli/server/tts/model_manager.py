@@ -37,7 +37,7 @@ class TTSModelManager:
 
     def __init__(self, config: TTSModelConfig) -> None:
         """Initialize the TTS model manager."""
-        self._config = config
+        self.config = config
         backend = create_backend(
             BackendConfig(
                 model_name=config.model_name,
@@ -48,11 +48,6 @@ class TTSModelManager:
             backend_type=config.backend_type,
         )
         self._manager = ModelManager(backend, config)
-
-    @property
-    def config(self) -> TTSModelConfig:
-        """Get the model configuration."""
-        return self._config
 
     @property
     def stats(self) -> ModelStats:
@@ -140,7 +135,7 @@ class TTSModelManager:
             len(text),
             result.duration,
             synthesis_duration,
-            self._config.model_name,
+            self.config.model_name,
         )
 
         return result

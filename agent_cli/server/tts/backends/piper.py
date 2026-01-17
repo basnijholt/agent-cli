@@ -7,6 +7,7 @@ import io
 import logging
 import time
 import wave
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from agent_cli import constants
@@ -24,8 +25,6 @@ logger = logging.getLogger(__name__)
 
 def _get_default_cache_dir() -> str:
     """Get default cache directory for Piper models."""
-    from pathlib import Path  # noqa: PLC0415
-
     cache_dir = Path.home() / ".cache" / "piper"
     cache_dir.mkdir(parents=True, exist_ok=True)
     return str(cache_dir)
@@ -45,8 +44,6 @@ def _load_model_sync(
         Tuple of (PiperVoice, sample_rate).
 
     """
-    from pathlib import Path  # noqa: PLC0415
-
     from piper import PiperVoice  # noqa: PLC0415
     from piper.download_voices import download_voice  # noqa: PLC0415
 
