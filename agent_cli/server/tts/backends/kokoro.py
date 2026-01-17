@@ -362,13 +362,14 @@ class KokoroBackend:
             # Clear GPU memory if applicable
             import torch  # noqa: PLC0415
 
-            if torch.cuda.is_available():
+            device = self._device
+            self._device = None
+
+            if device == "cuda" and torch.cuda.is_available():
                 torch.cuda.empty_cache()
                 torch.cuda.synchronize()
-            elif hasattr(torch.mps, "empty_cache"):
+            elif device == "mps" and hasattr(torch.mps, "empty_cache"):
                 torch.mps.empty_cache()
-
-            self._device = None
 
     async def synthesize(
         self,
