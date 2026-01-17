@@ -69,7 +69,8 @@ def _ensure_voice(voice_name: str, cache_dir: Path) -> Path:
     voice_path = cache_dir / "voices" / f"{voice_name}.pt"
     if not voice_path.exists():
         logger.info("Downloading voice '%s'...", voice_name)
-        _hf_download(f"voices/{voice_name}.pt", cache_dir / "voices")
+        # HuggingFace downloads to local_dir/filename, so pass cache_dir (not cache_dir/voices)
+        _hf_download(f"voices/{voice_name}.pt", cache_dir)
     return voice_path
 
 
@@ -91,6 +92,7 @@ def _resolve_voice_path(voice: str | None, cache_dir: Path) -> tuple[str, str]:
     # Explicit path to existing file
     path = Path(voice_name)
     if path.exists() and path.suffix == ".pt":
+        # Kokoro convention: first letter of voice name = language code (a=American, b=British, etc.)
         return str(path), path.stem[0].lower()
 
     # Download from HuggingFace if needed

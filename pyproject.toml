@@ -79,7 +79,7 @@ tts-kokoro = [
     "kokoro>=0.9.0",
     "soundfile>=0.12.0",
     "huggingface-hub>=0.20.0",
-    "pip",  # Required for spacy model auto-download
+    "pip",  # Kokoro uses spacy which calls `pip install` to download language models at runtime
 ]
 test = [
     "pytest>=7.0.0",
