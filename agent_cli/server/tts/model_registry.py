@@ -20,7 +20,6 @@ def create_tts_registry(
     """
     return ModelRegistry(
         manager_factory=TTSModelManager,
-        get_model_name=lambda c: c.model_name,
         default_model=default_model,
     )
 

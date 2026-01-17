@@ -95,22 +95,16 @@ class ModelRegistry(Generic[ManagerT, ConfigT]):
     def __init__(
         self,
         manager_factory: Callable[[ConfigT], ManagerT],
-        get_model_name: Callable[[ConfigT], str],
-        get_status: Callable[[str, ManagerT], ModelStatus] | None = None,
         default_model: str | None = None,
     ) -> None:
         """Initialize the registry.
 
         Args:
             manager_factory: Function to create a manager from config.
-            get_model_name: Function to get model name from config.
-            get_status: Optional function to get status from manager.
             default_model: Name of the default model to use when not specified.
 
         """
         self._manager_factory = manager_factory
-        self._get_model_name = get_model_name
-        self._get_status = get_status or self._default_get_status
         self._managers: dict[str, ManagerT] = {}
         self._default_model = default_model
         self._started = False
@@ -159,12 +153,13 @@ class ModelRegistry(Generic[ManagerT, ConfigT]):
 
         Args:
             config: Model configuration including name, device, TTL, etc.
+                Must have a model_name attribute.
 
         Raises:
             ValueError: If a model with this name is already registered.
 
         """
-        model_name = self._get_model_name(config)
+        model_name: str = config.model_name  # type: ignore[attr-defined]
 
         if model_name in self._managers:
             msg = f"Model '{model_name}' is already registered"
@@ -206,7 +201,7 @@ class ModelRegistry(Generic[ManagerT, ConfigT]):
 
     def list_status(self) -> list[ModelStatus]:
         """Get status of all registered models."""
-        return [self._get_status(name, manager) for name, manager in self._managers.items()]
+        return [self._default_get_status(name, manager) for name, manager in self._managers.items()]
 
     async def start(self) -> None:
         """Start all model managers (TTL watchers)."""
