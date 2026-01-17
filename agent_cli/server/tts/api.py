@@ -3,6 +3,9 @@
 from __future__ import annotations
 
 import logging
+import subprocess
+import tempfile
+from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, Literal
 
 from fastapi import FastAPI, Form, HTTPException, Query
@@ -10,6 +13,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from agent_cli import constants
+from agent_cli.core.audio_format import check_ffmpeg_available
 from agent_cli.server.common import configure_app, create_lifespan
 from agent_cli.server.tts.backends.base import InvalidTextError
 
@@ -17,6 +21,49 @@ if TYPE_CHECKING:
     from agent_cli.server.tts.model_registry import TTSModelRegistry
 
 logger = logging.getLogger(__name__)
+
+
+def _convert_wav_to_mp3(wav_data: bytes, bitrate: str = "128k") -> bytes:
+    """Convert WAV audio data to MP3 format using FFmpeg."""
+    with (
+        tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as input_file,
+        tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as output_file,
+    ):
+        input_path = Path(input_file.name)
+        output_path = Path(output_file.name)
+
+        try:
+            input_file.write(wav_data)
+            input_file.flush()
+
+            cmd = [
+                "ffmpeg",
+                "-y",
+                "-i",
+                str(input_path),
+                "-b:a",
+                bitrate,
+                "-q:a",
+                "2",
+                str(output_path),
+            ]
+
+            result = subprocess.run(
+                cmd,
+                capture_output=True,
+                check=False,
+            )
+
+            if result.returncode != 0:
+                stderr_text = result.stderr.decode("utf-8", errors="replace")
+                msg = f"FFmpeg WAV to MP3 conversion failed: {stderr_text}"
+                raise RuntimeError(msg)
+
+            return output_path.read_bytes()
+
+        finally:
+            input_path.unlink(missing_ok=True)
+            output_path.unlink(missing_ok=True)
 
 
 # --- Pydantic Models ---
@@ -190,7 +237,7 @@ def create_app(
         voice: Annotated[str, Form(description="Voice to use")] = "alloy",
         response_format: Annotated[
             str,
-            Form(description="Audio format: wav, mp3, pcm"),
+            Form(description="Audio format: wav, pcm, mp3"),
         ] = "wav",
         speed: Annotated[float, Form(description="Speed (0.25 to 4.0)")] = 1.0,
     ) -> StreamingResponse:
@@ -200,7 +247,7 @@ def create_app(
             input: Text to synthesize.
             model: Model to use (tts-1, tts-1-hd, or a Piper model name).
             voice: Voice name (alloy, echo, fable, onyx, nova, shimmer).
-            response_format: Output format (wav, mp3, pcm).
+            response_format: Output format (wav, pcm, mp3). MP3 requires ffmpeg.
             speed: Speed multiplier (0.25 to 4.0).
 
         Returns:
@@ -258,20 +305,23 @@ def create_app(
             )
 
         if response_format == "mp3":
-            # MP3 encoding would require additional dependencies
-            # For now, return WAV with a warning header
-            logger.warning("MP3 format requested but not supported, returning WAV")
+            if not check_ffmpeg_available():
+                raise HTTPException(
+                    status_code=422,
+                    detail="MP3 format requires ffmpeg to be installed",
+                )
+            try:
+                mp3_data = _convert_wav_to_mp3(result.audio)
+            except RuntimeError as e:
+                raise HTTPException(status_code=500, detail=str(e)) from e
             return StreamingResponse(
-                iter([result.audio]),
-                media_type="audio/wav",
-                headers={
-                    "X-Warning": "MP3 not supported, returning WAV",
-                },
+                iter([mp3_data]),
+                media_type="audio/mpeg",
             )
 
         # Unknown format
         raise HTTPException(
-            status_code=400,
+            status_code=422,
             detail=f"Unsupported response_format: {response_format}. Supported: wav, pcm, mp3",
         )
 

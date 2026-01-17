@@ -77,7 +77,7 @@ class WyomingTTSHandler(AsyncEventHandler):
             # Send empty audio response
             await self.write_event(
                 AudioStart(
-                    rate=22050,
+                    rate=constants.PIPER_DEFAULT_SAMPLE_RATE,
                     width=2,
                     channels=1,
                 ).event(),
@@ -136,7 +136,7 @@ class WyomingTTSHandler(AsyncEventHandler):
             # Send empty audio on error
             await self.write_event(
                 AudioStart(
-                    rate=22050,
+                    rate=constants.PIPER_DEFAULT_SAMPLE_RATE,
                     width=2,
                     channels=1,
                 ).event(),

@@ -7,6 +7,8 @@ from typing import TYPE_CHECKING, Self
 from wyoming.asr import Transcript
 from wyoming.audio import AudioChunk, AudioStart, AudioStop
 
+from agent_cli import constants
+
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
 
@@ -78,9 +80,13 @@ class MockTTSClient(MockWyomingClient):
 
     async def _generate_events(self) -> AsyncGenerator[Event, None]:
         """Generate audio synthesis events."""
-        yield AudioStart(rate=22050, width=2, channels=1).event()
+        yield AudioStart(
+            rate=constants.PIPER_DEFAULT_SAMPLE_RATE,
+            width=2,
+            channels=1,
+        ).event()
         yield AudioChunk(
-            rate=22050,
+            rate=constants.PIPER_DEFAULT_SAMPLE_RATE,
             width=2,
             channels=1,
             audio=self.audio_data,

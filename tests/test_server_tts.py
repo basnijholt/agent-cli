@@ -597,3 +597,87 @@ class TestTTSAPI:
         )
         # Pydantic validation should reject invalid response_format
         assert response.status_code == 422
+
+    def test_synthesize_mp3_format_no_ffmpeg(
+        self,
+        client: TestClient,
+        mock_registry: TTSModelRegistry,
+    ) -> None:
+        """Test that MP3 format returns 422 when ffmpeg is not available."""
+        mock_result = SynthesisResult(
+            audio=b"RIFF" + b"\x00" * 40 + b"\x00\x00" * 1000,
+            sample_rate=22050,
+            sample_width=2,
+            channels=1,
+            duration=1.5,
+        )
+
+        manager = mock_registry.get_manager()
+        with (
+            patch.object(
+                manager,
+                "synthesize",
+                new_callable=AsyncMock,
+                return_value=mock_result,
+            ),
+            patch(
+                "agent_cli.server.tts.api.check_ffmpeg_available",
+                return_value=False,
+            ),
+        ):
+            response = client.post(
+                "/v1/audio/speech",
+                data={
+                    "input": "Hello world",
+                    "model": "tts-1",
+                    "voice": "alloy",
+                    "response_format": "mp3",
+                },
+            )
+
+        assert response.status_code == 422
+        assert "ffmpeg" in response.json()["detail"].lower()
+
+    def test_synthesize_mp3_format_with_ffmpeg(
+        self,
+        client: TestClient,
+        mock_registry: TTSModelRegistry,
+    ) -> None:
+        """Test that MP3 format works when ffmpeg is available."""
+        mock_result = SynthesisResult(
+            audio=b"RIFF" + b"\x00" * 40 + b"\x00\x00" * 1000,
+            sample_rate=22050,
+            sample_width=2,
+            channels=1,
+            duration=1.5,
+        )
+
+        manager = mock_registry.get_manager()
+        with (
+            patch.object(
+                manager,
+                "synthesize",
+                new_callable=AsyncMock,
+                return_value=mock_result,
+            ),
+            patch(
+                "agent_cli.server.tts.api.check_ffmpeg_available",
+                return_value=True,
+            ),
+            patch(
+                "agent_cli.server.tts.api._convert_wav_to_mp3",
+                return_value=b"fake mp3 data",
+            ),
+        ):
+            response = client.post(
+                "/v1/audio/speech",
+                data={
+                    "input": "Hello world",
+                    "model": "tts-1",
+                    "voice": "alloy",
+                    "response_format": "mp3",
+                },
+            )
+
+        assert response.status_code == 200
+        assert response.headers["content-type"] == "audio/mpeg"

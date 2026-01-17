@@ -131,7 +131,7 @@ class PiperBackend:
         """
         self._config = config
         self._voice: PiperVoice | None = None
-        self._sample_rate: int = 22050  # Default, updated on load
+        self._sample_rate: int = constants.PIPER_DEFAULT_SAMPLE_RATE  # Updated on load
         self._device: str | None = None
 
     @property

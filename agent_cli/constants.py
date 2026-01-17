@@ -10,6 +10,9 @@ AUDIO_RATE = 16000
 AUDIO_CHUNK_SIZE = 1024
 WAV_HEADER_SIZE = 44  # Standard WAV header size in bytes
 
+# --- TTS Configuration ---
+PIPER_DEFAULT_SAMPLE_RATE = 22050  # Piper TTS default sample rate
+
 # Standard Wyoming audio configuration
 WYOMING_AUDIO_CONFIG = {
     "rate": AUDIO_RATE,
