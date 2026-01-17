@@ -46,7 +46,6 @@ def create_lifespan(
     wyoming_handler_module: str,
     enable_wyoming: bool = True,
     wyoming_uri: str = "tcp://0.0.0.0:10300",
-    background_preload: bool = False,
 ) -> Callable[[FastAPI], AbstractAsyncContextManager[None]]:
     """Create a lifespan context manager for a server.
 
@@ -55,7 +54,6 @@ def create_lifespan(
         wyoming_handler_module: Module path containing start_wyoming_server function.
         enable_wyoming: Whether to start Wyoming server.
         wyoming_uri: URI for Wyoming server.
-        background_preload: Whether to preload models in background at startup.
 
     Returns:
         A lifespan context manager function for FastAPI.
@@ -66,20 +64,9 @@ def create_lifespan(
     async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
         """Manage application lifecycle."""
         wyoming_task: asyncio.Task[None] | None = None
-        preload_task: asyncio.Task[None] | None = None
 
         # Start the registry
         await registry.start()
-
-        if background_preload:
-
-            async def preload_models() -> None:
-                try:
-                    await registry.preload()
-                except Exception:
-                    logger.exception("Background model preload failed")
-
-            preload_task = asyncio.create_task(preload_models())
 
         # Start Wyoming server if enabled
         if enable_wyoming:
@@ -105,10 +92,6 @@ def create_lifespan(
             wyoming_task.cancel()
             with contextlib.suppress(asyncio.CancelledError):
                 await wyoming_task
-        if preload_task is not None:
-            preload_task.cancel()
-            with contextlib.suppress(asyncio.CancelledError):
-                await preload_task
 
         # Stop the registry
         await registry.stop()

@@ -298,10 +298,15 @@ def whisper_cmd(  # noqa: PLR0912, PLR0915
         )
         registry.register(config)
 
-    # Preload if requested
+    # Preload: --preload forces all, otherwise just the default model
     if preload:
-        console.print("[bold]Preloading model(s)...[/bold]")
+        console.print("[bold]Preloading all model(s)...[/bold]")
         asyncio.run(registry.preload())
+    else:
+        default = registry.default_model
+        assert default is not None  # Always set after register()
+        console.print(f"[bold]Preloading default model ({default})...[/bold]")
+        asyncio.run(registry.preload([default]))
 
     # Build Wyoming URI
     wyoming_uri = f"tcp://{host}:{wyoming_port}"
@@ -345,7 +350,6 @@ def whisper_cmd(  # noqa: PLR0912, PLR0915
         registry,
         enable_wyoming=not no_wyoming,
         wyoming_uri=wyoming_uri,
-        background_preload=not preload,
     )
 
     import uvicorn  # noqa: PLC0415
@@ -605,10 +609,15 @@ def tts_cmd(  # noqa: PLR0915
         )
         registry.register(config)
 
-    # Preload if requested
+    # Preload: --preload forces all, otherwise just the default model
     if preload:
-        console.print("[bold]Preloading model(s)...[/bold]")
+        console.print("[bold]Preloading all model(s)...[/bold]")
         asyncio.run(registry.preload())
+    else:
+        default = registry.default_model
+        assert default is not None  # Always set after register()
+        console.print(f"[bold]Preloading default model ({default})...[/bold]")
+        asyncio.run(registry.preload([default]))
 
     # Build Wyoming URI
     wyoming_uri = f"tcp://{host}:{wyoming_port}"
@@ -651,7 +660,6 @@ def tts_cmd(  # noqa: PLR0915
         registry,
         enable_wyoming=not no_wyoming,
         wyoming_uri=wyoming_uri,
-        background_preload=not preload,
     )
 
     import uvicorn  # noqa: PLC0415

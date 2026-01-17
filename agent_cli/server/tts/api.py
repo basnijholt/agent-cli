@@ -92,7 +92,6 @@ def create_app(
     *,
     enable_wyoming: bool = True,
     wyoming_uri: str = "tcp://0.0.0.0:10400",
-    background_preload: bool = False,
 ) -> FastAPI:
     """Create the FastAPI application.
 
@@ -100,7 +99,6 @@ def create_app(
         registry: The model registry to use.
         enable_wyoming: Whether to start Wyoming server.
         wyoming_uri: URI for Wyoming server.
-        background_preload: Whether to preload models in the background at startup.
 
     Returns:
         Configured FastAPI application.
@@ -111,7 +109,6 @@ def create_app(
         wyoming_handler_module="agent_cli.server.tts.wyoming_handler",
         enable_wyoming=enable_wyoming,
         wyoming_uri=wyoming_uri,
-        background_preload=background_preload,
     )
 
     app = FastAPI(

@@ -128,7 +128,6 @@ def create_app(  # noqa: C901, PLR0915
     *,
     enable_wyoming: bool = True,
     wyoming_uri: str = "tcp://0.0.0.0:10300",
-    background_preload: bool = False,
 ) -> FastAPI:
     """Create the FastAPI application.
 
@@ -136,7 +135,6 @@ def create_app(  # noqa: C901, PLR0915
         registry: The model registry to use.
         enable_wyoming: Whether to start Wyoming server.
         wyoming_uri: URI for Wyoming server.
-        background_preload: Whether to preload models in the background at startup.
 
     Returns:
         Configured FastAPI application.
@@ -147,7 +145,6 @@ def create_app(  # noqa: C901, PLR0915
         wyoming_handler_module="agent_cli.server.whisper.wyoming_handler",
         enable_wyoming=enable_wyoming,
         wyoming_uri=wyoming_uri,
-        background_preload=background_preload,
     )
 
     app = FastAPI(
