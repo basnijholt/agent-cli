@@ -347,7 +347,6 @@ agent-cli server tts --model en_US-lessac-medium --model en_US-ryan-high --prelo
 |--------|---------|-------------|
 | `--model` | - | Piper model name(s) to load (can specify multiple) |
 | `--default-model` | - | Default model when not specified in request |
-| `--voice` | - | Default voice |
 | `--device` | `auto` | Device: auto, cpu (Piper is CPU-only) |
 | `--cache-dir` | - | Model cache directory |
 | `--ttl` | `300` | Seconds before unloading idle model |
