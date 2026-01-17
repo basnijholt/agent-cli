@@ -88,8 +88,6 @@ class VerboseTranscriptionResponse(BaseModel):
 class ModelStatusResponse(BaseModel):
     """Status of a single model."""
 
-    model_config = {"from_attributes": True}
-
     name: str
     loaded: bool
     device: str | None
@@ -166,10 +164,26 @@ def create_app(  # noqa: C901, PLR0915
     @app.get("/health", response_model=HealthResponse)
     async def health_check() -> HealthResponse:
         """Health check endpoint."""
-        return HealthResponse(
-            status="healthy",
-            models=[ModelStatusResponse.model_validate(s) for s in registry.list_status()],
-        )
+        models = [
+            ModelStatusResponse(
+                name=s.name,
+                loaded=s.loaded,
+                device=s.device,
+                ttl_seconds=s.ttl_seconds,
+                ttl_remaining=s.ttl_remaining,
+                active_requests=s.active_requests,
+                load_count=s.load_count,
+                unload_count=s.unload_count,
+                total_requests=s.total_requests,
+                total_audio_seconds=s.total_audio_seconds,
+                total_transcription_seconds=s.extra.get("total_transcription_seconds", 0.0),
+                last_load_time=s.last_load_time,
+                last_request_time=s.last_request_time,
+                load_duration_seconds=s.load_duration_seconds,
+            )
+            for s in registry.list_status()
+        ]
+        return HealthResponse(status="healthy", models=models)
 
     @app.post("/v1/model/unload", response_model=UnloadResponse)
     async def unload_model(
