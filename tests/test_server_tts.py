@@ -680,7 +680,7 @@ class TestTTSAPI:
                 return_value=True,
             ),
             patch(
-                "agent_cli.server.tts.api._convert_wav_to_mp3",
+                "agent_cli.server.tts.api.convert_to_mp3",
                 return_value=b"fake mp3 data",
             ),
         ):

@@ -3,9 +3,6 @@
 from __future__ import annotations
 
 import logging
-import subprocess
-import tempfile
-from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, Literal
 
 from fastapi import FastAPI, Form, HTTPException, Query
@@ -13,7 +10,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from agent_cli import constants
-from agent_cli.core.audio_format import check_ffmpeg_available
+from agent_cli.core.audio_format import check_ffmpeg_available, convert_to_mp3
 from agent_cli.server.common import configure_app, create_lifespan
 from agent_cli.server.tts.backends.base import InvalidTextError
 
@@ -21,54 +18,6 @@ if TYPE_CHECKING:
     from agent_cli.server.tts.model_registry import TTSModelRegistry
 
 logger = logging.getLogger(__name__)
-
-
-def _convert_wav_to_mp3(wav_data: bytes, bitrate: str = "128k") -> bytes:
-    """Convert WAV audio data to MP3 format using FFmpeg."""
-    with (
-        tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as input_file,
-        tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as output_file,
-    ):
-        input_path = Path(input_file.name)
-        output_path = Path(output_file.name)
-
-        try:
-            input_file.write(wav_data)
-            input_file.flush()
-
-            cmd = [
-                "ffmpeg",
-                "-y",
-                "-i",
-                str(input_path),
-                "-b:a",
-                bitrate,
-                "-q:a",
-                "2",
-                str(output_path),
-            ]
-
-            try:
-                result = subprocess.run(
-                    cmd,
-                    capture_output=True,
-                    check=False,
-                    timeout=60,  # 60 second timeout for ffmpeg conversion
-                )
-            except subprocess.TimeoutExpired as e:
-                msg = "FFmpeg conversion timed out after 60 seconds"
-                raise RuntimeError(msg) from e
-
-            if result.returncode != 0:
-                stderr_text = result.stderr.decode("utf-8", errors="replace")
-                msg = f"FFmpeg WAV to MP3 conversion failed: {stderr_text}"
-                raise RuntimeError(msg)
-
-            return output_path.read_bytes()
-
-        finally:
-            input_path.unlink(missing_ok=True)
-            output_path.unlink(missing_ok=True)
 
 
 def _format_audio_response(
@@ -103,7 +52,7 @@ def _format_audio_response(
                 detail="MP3 format requires ffmpeg to be installed",
             )
         try:
-            mp3_data = _convert_wav_to_mp3(audio)
+            mp3_data = convert_to_mp3(audio, input_format="wav")
         except RuntimeError as e:
             raise HTTPException(status_code=500, detail=str(e)) from e
         return StreamingResponse(iter([mp3_data]), media_type="audio/mpeg")
