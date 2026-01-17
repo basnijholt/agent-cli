@@ -2,9 +2,7 @@
 
 from __future__ import annotations
 
-import io
 import logging
-import wave
 from typing import TYPE_CHECKING, Annotated, Any
 
 from fastapi import FastAPI, Form, HTTPException, Query
@@ -271,30 +269,3 @@ def create_app(
         )
 
     return app
-
-
-def _create_wav_from_pcm(
-    pcm_data: bytes,
-    sample_rate: int,
-    sample_width: int,
-    channels: int,
-) -> bytes:
-    """Create a WAV file from raw PCM data.
-
-    Args:
-        pcm_data: Raw PCM audio data.
-        sample_rate: Sample rate in Hz.
-        sample_width: Bytes per sample.
-        channels: Number of audio channels.
-
-    Returns:
-        WAV file as bytes.
-
-    """
-    buffer = io.BytesIO()
-    with wave.open(buffer, "wb") as wav_file:
-        wav_file.setnchannels(channels)
-        wav_file.setsampwidth(sample_width)
-        wav_file.setframerate(sample_rate)
-        wav_file.writeframes(pcm_data)
-    return buffer.getvalue()
