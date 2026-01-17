@@ -339,6 +339,12 @@ class KokoroBackend:
         self._model = model
         self._device = device
 
+        # Warmup: create pipeline for default voice language
+        # This triggers spacy model download if needed
+        default_lang = DEFAULT_VOICE[0]  # 'a' from 'af_heart'
+        logger.info("Warming up pipeline for lang_code '%s'...", default_lang)
+        self._get_pipeline(default_lang)
+
         load_duration = time.time() - start_time
         logger.info(
             "Loaded Kokoro model on %s in %.2fs",
