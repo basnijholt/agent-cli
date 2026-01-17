@@ -11,6 +11,7 @@ from fastapi import FastAPI, Form, HTTPException, Query
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
+from agent_cli import constants
 from agent_cli.server.common import configure_app, create_lifespan
 from agent_cli.server.tts.backends.base import InvalidTextError
 
@@ -18,9 +19,6 @@ if TYPE_CHECKING:
     from agent_cli.server.tts.model_registry import TTSModelRegistry
 
 logger = logging.getLogger(__name__)
-
-# WAV header size in bytes (standard 44-byte header)
-WAV_HEADER_SIZE = 44
 
 # OpenAI voice to Piper model mapping
 OPENAI_VOICE_MAP = {
@@ -222,8 +220,8 @@ def create_app(
         if response_format == "pcm":
             # Return raw PCM data (skip WAV header)
             pcm_data = (
-                result.audio[WAV_HEADER_SIZE:]
-                if len(result.audio) > WAV_HEADER_SIZE
+                result.audio[constants.WAV_HEADER_SIZE :]
+                if len(result.audio) > constants.WAV_HEADER_SIZE
                 else result.audio
             )
             return StreamingResponse(

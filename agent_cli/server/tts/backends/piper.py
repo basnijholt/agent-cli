@@ -9,6 +9,7 @@ import time
 import wave
 from typing import TYPE_CHECKING, Any
 
+from agent_cli import constants
 from agent_cli.server.tts.backends.base import (
     BackendConfig,
     InvalidTextError,
@@ -19,9 +20,6 @@ if TYPE_CHECKING:
     from piper import PiperVoice
 
 logger = logging.getLogger(__name__)
-
-# WAV header size in bytes (standard 44-byte header)
-WAV_HEADER_SIZE = 44
 
 
 def _get_default_cache_dir() -> str:
@@ -114,7 +112,7 @@ def _synthesize_sync(
     audio_data = buffer.getvalue()
 
     # Calculate duration: PCM data size / (sample_rate * channels * bytes_per_sample)
-    data_size = len(audio_data) - WAV_HEADER_SIZE
+    data_size = len(audio_data) - constants.WAV_HEADER_SIZE
     duration = data_size / (sample_rate * 1 * 2)
 
     return audio_data, duration

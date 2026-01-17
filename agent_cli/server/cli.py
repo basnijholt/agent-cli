@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 import logging
 from importlib.util import find_spec
-from pathlib import Path  # noqa: TC003 - Typer evaluates annotations at runtime
+from pathlib import Path
 from typing import Annotated
 
 import typer
@@ -573,20 +573,17 @@ def tts_cmd(  # noqa: PLR0915
 
     # Handle download-only mode
     if download_only:
+        from piper.download_voices import download_voice  # noqa: PLC0415
+
+        # Use default cache dir if not specified
+        download_dir = cache_dir or Path.home() / ".cache" / "piper"
+        download_dir.mkdir(parents=True, exist_ok=True)
+
         console.print("[bold]Downloading model(s)...[/bold]")
         for model_name in model:
             console.print(f"  Downloading [cyan]{model_name}[/cyan]...")
             try:
-                from piper.download import (  # noqa: PLC0415
-                    ensure_voice_exists,
-                    find_voice,
-                    get_voices,
-                )
-
-                cache_path = str(cache_dir) if cache_dir else None
-                voices = get_voices(cache_path, update_voices=True)
-                find_voice(model_name, voices)
-                ensure_voice_exists(model_name, cache_path, cache_path, voices)
+                download_voice(model_name, download_dir)
                 console.print(f"  [green]✓[/green] Downloaded {model_name}")
             except Exception as e:
                 err_console.print(f"  [red]✗[/red] Failed to download {model_name}: {e}")

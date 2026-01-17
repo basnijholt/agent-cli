@@ -56,19 +56,3 @@ class TTSModelRegistry(
             last_request_time=manager.stats.last_request_time,
             load_duration_seconds=manager.stats.load_duration_seconds,
         )
-
-    async def _start_manager(self, manager: TTSModelManager) -> None:
-        """Start a manager."""
-        await manager.start()
-
-    async def _stop_manager(self, manager: TTSModelManager) -> None:
-        """Stop a manager."""
-        await manager.stop()
-
-    async def _preload_manager(self, manager: TTSModelManager) -> None:
-        """Preload a manager's model."""
-        await manager.get_model()
-
-    def _is_manager_loaded(self, manager: TTSModelManager) -> bool:
-        """Check if a manager's model is loaded."""
-        return manager.is_loaded

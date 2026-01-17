@@ -11,15 +11,14 @@ from wyoming.info import Attribution, Describe, Info, TtsProgram, TtsVoice
 from wyoming.server import AsyncEventHandler, AsyncServer
 from wyoming.tts import Synthesize
 
+from agent_cli import constants
+
 if TYPE_CHECKING:
     from wyoming.event import Event
 
     from agent_cli.server.tts.model_registry import TTSModelRegistry
 
 logger = logging.getLogger(__name__)
-
-# WAV header size in bytes (standard 44-byte header)
-WAV_HEADER_SIZE = 44
 
 
 class WyomingTTSHandler(AsyncEventHandler):
@@ -105,8 +104,8 @@ class WyomingTTSHandler(AsyncEventHandler):
 
             # Send audio data - skip WAV header to get raw PCM
             pcm_data = (
-                result.audio[WAV_HEADER_SIZE:]
-                if len(result.audio) > WAV_HEADER_SIZE
+                result.audio[constants.WAV_HEADER_SIZE :]
+                if len(result.audio) > constants.WAV_HEADER_SIZE
                 else result.audio
             )
 

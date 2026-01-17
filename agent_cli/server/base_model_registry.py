@@ -12,12 +12,38 @@ from __future__ import annotations
 import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Generic, TypeVar
+from typing import TYPE_CHECKING, Generic, Protocol, TypeVar, runtime_checkable
+
+if TYPE_CHECKING:
+    from typing import Any
 
 logger = logging.getLogger(__name__)
 
+
+@runtime_checkable
+class ManagerProtocol(Protocol):
+    """Protocol defining the interface for model managers."""
+
+    @property
+    def is_loaded(self) -> bool:
+        """Check if the model is loaded."""
+        ...
+
+    async def start(self) -> None:
+        """Start the manager."""
+        ...
+
+    async def stop(self) -> None:
+        """Stop the manager."""
+        ...
+
+    async def get_model(self) -> Any:
+        """Get the model, loading if needed."""
+        ...
+
+
 # Type variables for generic registry
-ManagerT = TypeVar("ManagerT")
+ManagerT = TypeVar("ManagerT", bound=ManagerProtocol)
 ConfigT = TypeVar("ConfigT")
 StatusT = TypeVar("StatusT")
 
@@ -75,25 +101,21 @@ class BaseModelRegistry(ABC, Generic[ManagerT, ConfigT, StatusT]):
         """Get status from a manager."""
         ...
 
-    @abstractmethod
     async def _start_manager(self, manager: ManagerT) -> None:
         """Start a manager."""
-        ...
+        await manager.start()
 
-    @abstractmethod
     async def _stop_manager(self, manager: ManagerT) -> None:
         """Stop a manager."""
-        ...
+        await manager.stop()
 
-    @abstractmethod
     async def _preload_manager(self, manager: ManagerT) -> None:
         """Preload a manager's model."""
-        ...
+        await manager.get_model()
 
-    @abstractmethod
     def _is_manager_loaded(self, manager: ManagerT) -> bool:
         """Check if a manager's model is loaded."""
-        ...
+        return manager.is_loaded
 
     @property
     def default_model(self) -> str | None:
