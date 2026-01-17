@@ -157,7 +157,7 @@ class PiperBackend:
         start_time = time.time()
 
         # Load synchronously since Piper is fast and CPU-only
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         voice, sample_rate = await loop.run_in_executor(
             None,
             _load_model_sync,
@@ -226,7 +226,7 @@ class PiperBackend:
         # Run synthesis in executor to avoid blocking.
         # Thread-safe: ONNX Runtime InferenceSession.run() is thread-safe since v1.10+,
         # so concurrent requests can share the same PiperVoice instance safely.
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         audio_data, duration = await loop.run_in_executor(
             None,
             _synthesize_sync,

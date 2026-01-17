@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Annotated
+from typing import TYPE_CHECKING, Annotated, Literal
 
 from fastapi import FastAPI, Form, HTTPException, Query
 from fastapi.responses import StreamingResponse
@@ -24,8 +24,6 @@ logger = logging.getLogger(__name__)
 
 class ModelStatusResponse(BaseModel):
     """Status of a single model."""
-
-    model_config = {"from_attributes": True}
 
     name: str
     loaded: bool
@@ -66,8 +64,24 @@ class SpeechRequest(BaseModel):
     input: str
     model: str = "tts-1"
     voice: str = "alloy"
-    response_format: str = "wav"
+    response_format: Literal["wav", "pcm", "mp3"] = "wav"
     speed: float = 1.0
+
+
+class VoiceInfo(BaseModel):
+    """Information about an available voice."""
+
+    voice_id: str
+    name: str
+    description: str
+    preview_url: str | None = None
+    labels: dict[str, str] | None = None
+
+
+class VoicesResponse(BaseModel):
+    """Response containing available voices."""
+
+    voices: list[VoiceInfo]
 
 
 # --- App Factory ---
@@ -148,6 +162,24 @@ def create_app(
             )
         except ValueError as e:
             raise HTTPException(status_code=404, detail=str(e)) from e
+
+    @app.get("/v1/voices", response_model=VoicesResponse)
+    async def list_voices() -> VoicesResponse:
+        """List available voices (models).
+
+        For Piper TTS, each model IS a voice. This endpoint returns
+        the list of registered models as available voices.
+        """
+        voices = [
+            VoiceInfo(
+                voice_id=s.name,
+                name=s.name,
+                description=f"Piper TTS voice: {s.name}",
+                labels={"language": s.name.split("-")[0] if "-" in s.name else "en"},
+            )
+            for s in registry.list_status()
+        ]
+        return VoicesResponse(voices=voices)
 
     # --- OpenAI-Compatible TTS Endpoint ---
 

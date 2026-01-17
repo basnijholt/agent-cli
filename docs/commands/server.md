@@ -368,6 +368,7 @@ agent-cli server tts --model en_US-lessac-medium --model en_US-ryan-high --prelo
 |----------|--------|-------------|
 | `/v1/audio/speech` | POST | OpenAI-compatible speech synthesis |
 | `/v1/audio/speech/json` | POST | Alternative endpoint accepting JSON body |
+| `/v1/voices` | GET | List available voices (models) |
 | `/v1/model/unload` | POST | Manually unload a model from memory |
 | `/health` | GET | Health check with model status |
 | `/docs` | GET | Interactive API documentation |
