@@ -66,41 +66,6 @@ KOKORO_VOICES = [
 # Default voice if none specified
 DEFAULT_VOICE = "af_heart"
 
-# Spacy model URL for runtime download
-SPACY_MODEL_URL = "https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl"
-
-
-def _ensure_spacy_model() -> None:
-    """Ensure spacy model is installed, downloading if necessary."""
-    import subprocess  # noqa: PLC0415
-    import sys  # noqa: PLC0415
-
-    import spacy.util  # noqa: PLC0415
-
-    if spacy.util.is_package("en_core_web_sm"):
-        return
-
-    logger.info("Downloading spacy model en_core_web_sm...")
-
-    # Try uv first (faster), fall back to pip
-    for cmd in [
-        ["uv", "pip", "install", SPACY_MODEL_URL],
-        [sys.executable, "-m", "pip", "install", SPACY_MODEL_URL],
-    ]:
-        try:
-            result = subprocess.run(cmd, capture_output=True, text=True, check=False)
-            if result.returncode == 0:
-                logger.info("Successfully installed spacy model")
-                return
-        except FileNotFoundError:
-            continue
-
-    msg = (
-        "Failed to install spacy model en_core_web_sm. Install manually with: uv pip install "
-        + SPACY_MODEL_URL
-    )
-    raise RuntimeError(msg)
-
 
 def _get_default_cache_dir() -> Path:
     """Get default cache directory for Kokoro models."""
@@ -279,8 +244,6 @@ class KokoroBackend:
         from kokoro import KPipeline  # noqa: PLC0415
 
         if lang_code not in self._pipelines:
-            # Ensure spacy model is installed before creating pipeline
-            _ensure_spacy_model()
             logger.debug("Creating Kokoro pipeline for lang_code: %s", lang_code)
             self._pipelines[lang_code] = KPipeline(
                 lang_code=lang_code,
