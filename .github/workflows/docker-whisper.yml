@@ -1,14 +1,19 @@
 name: Publish Whisper Docker Images
 
 on:
-  release:
-    types: [published]
+  workflow_run:
+    workflows: ["Upload Python Package"]
+    types: [completed]
   workflow_dispatch:
     inputs:
       tag:
         description: 'Tag to use for images (default: latest)'
         required: false
         default: 'latest'
+      version:
+        description: 'agent-cli version to install (e.g., 0.61.3). If empty, installs latest.'
+        required: false
+        default: ''
 
 env:
   REGISTRY: ghcr.io
@@ -17,6 +22,8 @@ env:
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
+    # Only run if the release workflow succeeded (or if manually triggered)
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     permissions:
       contents: read
       packages: write
@@ -32,6 +39,43 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
+
+      - name: Get version from release tag
+        id: version
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            # Manual trigger: use input or empty for latest
+            VERSION="${{ github.event.inputs.version }}"
+          else
+            # Triggered by release workflow: extract version from the release tag
+            # The workflow_run event has the head_branch which is the tag name
+            TAG="${{ github.event.workflow_run.head_branch }}"
+            # Remove 'v' prefix if present (v0.61.3 -> 0.61.3)
+            VERSION="${TAG#v}"
+          fi
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "Resolved version: ${VERSION:-latest}"
+
+      - name: Wait for PyPI availability
+        if: steps.version.outputs.version != ''
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          echo "Waiting for agent-cli==${VERSION} to be available on PyPI..."
+          MAX_ATTEMPTS=30
+          ATTEMPT=0
+          while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
+            ATTEMPT=$((ATTEMPT + 1))
+            echo "Attempt ${ATTEMPT}/${MAX_ATTEMPTS}: Checking PyPI for version ${VERSION}..."
+            # Use pip index versions to check if version exists
+            if pip index versions agent-cli 2>/dev/null | grep -q "${VERSION}"; then
+              echo "Version ${VERSION} is available on PyPI!"
+              exit 0
+            fi
+            echo "Version not yet available, waiting 30 seconds..."
+            sleep 30
+          done
+          echo "ERROR: Version ${VERSION} not found on PyPI after ${MAX_ATTEMPTS} attempts"
+          exit 1
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -49,10 +93,9 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
-            type=semver,pattern={{version}},suffix=-${{ matrix.suffix }}
-            type=semver,pattern={{major}}.{{minor}},suffix=-${{ matrix.suffix }}
-            type=raw,value=latest,suffix=-${{ matrix.suffix }},enable=${{ github.event_name == 'release' }}
-            type=raw,value=${{ github.event.inputs.tag || 'latest' }},suffix=-${{ matrix.suffix }},enable=${{ github.event_name == 'workflow_dispatch' }}
+            type=raw,value=${{ steps.version.outputs.version }},suffix=-${{ matrix.suffix }},enable=${{ steps.version.outputs.version != '' }}
+            type=raw,value=latest,suffix=-${{ matrix.suffix }},enable=${{ github.event_name == 'workflow_run' || github.event.inputs.tag == 'latest' }}
+            type=raw,value=${{ github.event.inputs.tag }},suffix=-${{ matrix.suffix }},enable=${{ github.event_name == 'workflow_dispatch' && github.event.inputs.tag != 'latest' }}
             type=sha,suffix=-${{ matrix.suffix }}
 
       - name: Build and push
@@ -64,5 +107,7 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            VERSION=${{ steps.version.outputs.version }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
