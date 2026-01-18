@@ -104,6 +104,25 @@ def _resolve_voice_path(voice: str | None, cache_dir: Path) -> tuple[str, str]:
     return str(voice_path), voice_name[0].lower()
 
 
+def _get_pipeline(voice: str | None, cache_dir: str) -> tuple[Any, str]:
+    """Get or create pipeline for the given voice. Returns (pipeline, voice_path)."""
+    from kokoro import KPipeline  # noqa: PLC0415
+
+    global _subprocess_model, _subprocess_device, _subprocess_pipelines  # noqa: PLW0602
+
+    cache_path = Path(cache_dir)
+    voice_path, lang_code = _resolve_voice_path(voice, cache_path)
+
+    if lang_code not in _subprocess_pipelines:
+        _subprocess_pipelines[lang_code] = KPipeline(
+            lang_code=lang_code,
+            model=_subprocess_model,
+            device=_subprocess_device,
+        )
+
+    return _subprocess_pipelines[lang_code], voice_path
+
+
 def _load_model_in_subprocess(
     model_name: str,
     device: str,
@@ -153,21 +172,10 @@ def _synthesize_in_subprocess(
 ) -> dict[str, Any]:
     """Synthesize text to audio in subprocess."""
     import numpy as np  # noqa: PLC0415
-    from kokoro import KPipeline  # noqa: PLC0415
 
-    global _subprocess_model, _subprocess_device, _subprocess_pipelines  # noqa: PLW0602
+    global _subprocess_model  # noqa: PLW0602
 
-    cache_path = Path(cache_dir)
-    voice_path, lang_code = _resolve_voice_path(voice, cache_path)
-
-    # Get or create pipeline for this language
-    if lang_code not in _subprocess_pipelines:
-        _subprocess_pipelines[lang_code] = KPipeline(
-            lang_code=lang_code,
-            model=_subprocess_model,
-            device=_subprocess_device,
-        )
-    pipeline = _subprocess_pipelines[lang_code]
+    pipeline, voice_path = _get_pipeline(voice, cache_dir)
 
     # Synthesize and collect audio chunks
     audio_chunks = [
@@ -208,24 +216,12 @@ def _synthesize_stream_in_subprocess(
     """Stream audio chunks through queue as Kokoro generates them."""
     import numpy as np  # noqa: PLC0415
 
-    global _subprocess_model, _subprocess_pipelines  # noqa: PLW0602
+    global _subprocess_model  # noqa: PLW0602
 
     writer = QueueWriter(output_queue)
-    cache_path = Path(cache_dir)
 
     try:
-        from kokoro import KPipeline  # noqa: PLC0415
-
-        voice_path, lang_code = _resolve_voice_path(voice, cache_path)
-
-        # Get or create pipeline for this language
-        if lang_code not in _subprocess_pipelines:
-            _subprocess_pipelines[lang_code] = KPipeline(
-                lang_code=lang_code,
-                model=_subprocess_model,
-                device=_subprocess_device,
-            )
-        pipeline = _subprocess_pipelines[lang_code]
+        pipeline, voice_path = _get_pipeline(voice, cache_dir)
 
         chunk_count = 0
         total_samples = 0

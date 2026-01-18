@@ -90,6 +90,16 @@ class TTSModelManager:
         """Unload the model from memory."""
         return await self._manager.unload()
 
+    def _update_stats(self, text: str, synthesis_duration: float) -> None:
+        """Update synthesis statistics."""
+        stats = self._manager.stats
+        stats.total_requests += 1
+        stats.total_processing_seconds += synthesis_duration
+        stats.extra["total_characters"] = stats.extra.get("total_characters", 0.0) + len(text)
+        stats.extra["total_synthesis_seconds"] = (
+            stats.extra.get("total_synthesis_seconds", 0.0) + synthesis_duration
+        )
+
     async def synthesize(
         self,
         text: str,
@@ -120,15 +130,8 @@ class TTSModelManager:
 
         synthesis_duration = time.time() - start_time
 
-        # Update stats
-        stats = self._manager.stats
-        stats.total_requests += 1
-        stats.total_audio_seconds += result.duration
-        stats.total_processing_seconds += synthesis_duration
-        stats.extra["total_characters"] = stats.extra.get("total_characters", 0.0) + len(text)
-        stats.extra["total_synthesis_seconds"] = (
-            stats.extra.get("total_synthesis_seconds", 0.0) + synthesis_duration
-        )
+        self._update_stats(text, synthesis_duration)
+        self._manager.stats.total_audio_seconds += result.duration
 
         logger.debug(
             "Synthesized %d chars to %.1fs audio in %.2fs (model=%s)",
@@ -176,15 +179,10 @@ class TTSModelManager:
 
         synthesis_duration = time.time() - start_time
 
-        # Update stats
-        stats = self._manager.stats
-        stats.total_requests += 1
-        stats.total_processing_seconds += synthesis_duration
-        stats.extra["total_characters"] = stats.extra.get("total_characters", 0.0) + len(text)
-        stats.extra["total_synthesis_seconds"] = (
-            stats.extra.get("total_synthesis_seconds", 0.0) + synthesis_duration
+        self._update_stats(text, synthesis_duration)
+        self._manager.stats.extra["streaming_requests"] = (
+            self._manager.stats.extra.get("streaming_requests", 0) + 1
         )
-        stats.extra["streaming_requests"] = stats.extra.get("streaming_requests", 0) + 1
 
         logger.debug(
             "Streamed %d chars in %d chunks (%d bytes) in %.2fs (model=%s)",
