@@ -4,7 +4,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Protocol, runtime_checkable
+
+if TYPE_CHECKING:
+    from collections.abc import AsyncIterator
 
 
 def get_torch_device() -> str:
@@ -104,6 +107,31 @@ class TTSBackend(Protocol):
 
         Returns:
             SynthesisResult with audio data and metadata.
+
+        """
+        ...
+
+    @property
+    def supports_streaming(self) -> bool:
+        """Check if backend supports streaming synthesis."""
+        return False
+
+    def synthesize_stream(
+        self,
+        text: str,
+        *,
+        voice: str | None = None,
+        speed: float = 1.0,
+    ) -> AsyncIterator[bytes]:
+        """Stream synthesized audio chunks as they are generated.
+
+        Args:
+            text: Text to synthesize.
+            voice: Voice to use (optional).
+            speed: Speech speed multiplier (0.25 to 4.0).
+
+        Yields:
+            Raw PCM audio chunks (int16, mono).
 
         """
         ...

@@ -16,6 +16,8 @@ from agent_cli.server.tts.backends import (
 )
 
 if TYPE_CHECKING:
+    from collections.abc import AsyncIterator
+
     from agent_cli.server.tts.backends.base import TTSBackend
 
 logger = logging.getLogger(__name__)
@@ -137,3 +139,58 @@ class TTSModelManager:
         )
 
         return result
+
+    @property
+    def supports_streaming(self) -> bool:
+        """Check if the backend supports streaming synthesis."""
+        backend: TTSBackend = self._manager.backend  # type: ignore[assignment]
+        return getattr(backend, "supports_streaming", False)
+
+    async def synthesize_stream(
+        self,
+        text: str,
+        *,
+        voice: str | None = None,
+        speed: float = 1.0,
+    ) -> AsyncIterator[bytes]:
+        """Stream synthesized audio chunks as they are generated."""
+        start_time = time.time()
+        chunk_count = 0
+        total_bytes = 0
+
+        async with self._manager.streaming_request():
+            backend: TTSBackend = self._manager.backend  # type: ignore[assignment]
+
+            if not getattr(backend, "supports_streaming", False):
+                msg = "Backend does not support streaming"
+                raise RuntimeError(msg)
+
+            async for chunk in backend.synthesize_stream(
+                text,
+                voice=voice,
+                speed=speed,
+            ):
+                chunk_count += 1
+                total_bytes += len(chunk)
+                yield chunk
+
+        synthesis_duration = time.time() - start_time
+
+        # Update stats
+        stats = self._manager.stats
+        stats.total_requests += 1
+        stats.total_processing_seconds += synthesis_duration
+        stats.extra["total_characters"] = stats.extra.get("total_characters", 0.0) + len(text)
+        stats.extra["total_synthesis_seconds"] = (
+            stats.extra.get("total_synthesis_seconds", 0.0) + synthesis_duration
+        )
+        stats.extra["streaming_requests"] = stats.extra.get("streaming_requests", 0) + 1
+
+        logger.debug(
+            "Streamed %d chars in %d chunks (%d bytes) in %.2fs (model=%s)",
+            len(text),
+            chunk_count,
+            total_bytes,
+            synthesis_duration,
+            self.config.model_name,
+        )

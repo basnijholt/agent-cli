@@ -182,6 +182,25 @@ class ModelManager:
         finally:
             await self._end_request()
 
+    @asynccontextmanager
+    async def streaming_request(self) -> AsyncIterator[None]:
+        """Context manager for streaming requests.
+
+        Same lifecycle as request() - ensures model is loaded and tracks
+        active requests. Use this around streaming backend operations.
+
+        Example:
+            async with manager.streaming_request():
+                async for chunk in manager.backend.synthesize_stream(text):
+                    yield chunk
+
+        """
+        await self._begin_request()
+        try:
+            yield
+        finally:
+            await self._end_request()
+
     async def unload(self) -> bool:
         """Unload the model from memory.
 

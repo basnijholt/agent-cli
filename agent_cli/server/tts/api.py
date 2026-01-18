@@ -14,7 +14,12 @@ from agent_cli.core.audio_format import check_ffmpeg_available, convert_to_mp3
 from agent_cli.server.common import configure_app, create_lifespan
 from agent_cli.server.tts.backends.base import InvalidTextError
 
+# Kokoro default sample rate for streaming
+KOKORO_SAMPLE_RATE = 24000
+
 if TYPE_CHECKING:
+    from collections.abc import AsyncIterator
+
     from agent_cli.server.tts.model_registry import TTSModelRegistry
 
 logger = logging.getLogger(__name__)
@@ -130,7 +135,7 @@ class VoicesResponse(BaseModel):
 # --- App Factory ---
 
 
-def create_app(
+def create_app(  # noqa: C901, PLR0915
     registry: TTSModelRegistry,
     *,
     enable_wyoming: bool = True,
@@ -290,6 +295,71 @@ def create_app(
             result.sample_rate,
             result.sample_width,
             result.channels,
+        )
+
+    # --- Streaming TTS Endpoint ---
+
+    @app.post("/v1/audio/speech/stream")
+    async def synthesize_speech_stream(
+        input: Annotated[str, Form(description="Text to synthesize")],  # noqa: A002
+        model: Annotated[str, Form(description="Model to use")] = "tts-1",
+        voice: Annotated[str, Form(description="Voice to use")] = "alloy",
+        speed: Annotated[float, Form(description="Speed (0.25 to 4.0)")] = 1.0,
+    ) -> StreamingResponse:
+        """Stream text-to-speech audio as it is generated.
+
+        Returns raw PCM audio (int16, mono) with metadata in headers.
+        Audio is streamed chunk by chunk for lower latency.
+
+        Args:
+            input: Text to synthesize.
+            model: Model to use (tts-1, tts-1-hd, or a model name).
+            voice: Voice name.
+            speed: Speed multiplier (0.25 to 4.0).
+
+        Returns:
+            Streaming PCM audio response.
+
+        """
+        model_name = None if model in ("tts-1", "tts-1-hd") else model
+
+        try:
+            manager = registry.get_manager(model_name)
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e)) from e
+
+        if not input.strip():
+            raise HTTPException(status_code=400, detail="Input text cannot be empty")
+
+        if not manager.supports_streaming:
+            raise HTTPException(
+                status_code=422,
+                detail="This model does not support streaming synthesis",
+            )
+
+        speed = max(0.25, min(4.0, speed))
+
+        async def generate_audio() -> AsyncIterator[bytes]:
+            try:
+                async for chunk in manager.synthesize_stream(
+                    input,
+                    voice=voice,
+                    speed=speed,
+                ):
+                    yield chunk
+            except InvalidTextError:
+                logger.exception("Streaming synthesis error")
+            except Exception:
+                logger.exception("Streaming synthesis failed")
+
+        return StreamingResponse(
+            generate_audio(),
+            media_type="audio/pcm",
+            headers={
+                "X-Sample-Rate": str(KOKORO_SAMPLE_RATE),
+                "X-Sample-Width": "2",
+                "X-Channels": "1",
+            },
         )
 
     # --- Alternative endpoint accepting JSON body ---

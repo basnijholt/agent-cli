@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
 
 import pytest
 from fastapi.testclient import TestClient
@@ -861,3 +861,112 @@ class TestTTSAPI:
 
         assert response.status_code == 200
         assert response.headers["content-type"] == "audio/mpeg"
+
+    def test_stream_endpoint_empty_text_returns_error(self, client: TestClient) -> None:
+        """Test that empty text returns error for stream endpoint."""
+        response = client.post(
+            "/v1/audio/speech/stream",
+            data={"input": "", "model": "tts-1", "voice": "alloy"},
+        )
+        assert response.status_code == 422
+
+    def test_stream_endpoint_whitespace_text_returns_400(
+        self,
+        client: TestClient,
+    ) -> None:
+        """Test that whitespace-only text returns 400 error for stream endpoint."""
+        response = client.post(
+            "/v1/audio/speech/stream",
+            data={"input": "   ", "model": "tts-1", "voice": "alloy"},
+        )
+        assert response.status_code == 400
+        assert "empty" in response.json()["detail"].lower()
+
+    def test_stream_endpoint_unsupported_backend(
+        self,
+        client: TestClient,
+    ) -> None:
+        """Test that streaming with unsupported backend returns 422."""
+        with patch.object(
+            TTSModelManager,
+            "supports_streaming",
+            new_callable=PropertyMock,
+            return_value=False,
+        ):
+            response = client.post(
+                "/v1/audio/speech/stream",
+                data={"input": "Hello world", "model": "tts-1", "voice": "alloy"},
+            )
+
+        assert response.status_code == 422
+        assert "streaming" in response.json()["detail"].lower()
+
+    def test_stream_endpoint_returns_pcm_headers(
+        self,
+        client: TestClient,
+        mock_registry: TTSModelRegistry,
+    ) -> None:
+        """Test that streaming endpoint returns correct PCM headers."""
+        from collections.abc import AsyncIterator  # noqa: PLC0415, TC003
+
+        async def mock_stream(
+            *_args: object,
+            **_kwargs: object,
+        ) -> AsyncIterator[bytes]:
+            yield b"\x00\x00" * 100
+
+        manager = mock_registry.get_manager()
+        with (
+            patch.object(
+                TTSModelManager,
+                "supports_streaming",
+                new_callable=PropertyMock,
+                return_value=True,
+            ),
+            patch.object(manager, "synthesize_stream", mock_stream),
+        ):
+            response = client.post(
+                "/v1/audio/speech/stream",
+                data={"input": "Hello world", "model": "tts-1", "voice": "alloy"},
+            )
+
+        assert response.status_code == 200
+        assert response.headers["content-type"] == "audio/pcm"
+        assert response.headers["x-sample-rate"] == "24000"
+        assert response.headers["x-sample-width"] == "2"
+        assert response.headers["x-channels"] == "1"
+
+    def test_stream_endpoint_returns_audio_chunks(
+        self,
+        client: TestClient,
+        mock_registry: TTSModelRegistry,
+    ) -> None:
+        """Test that streaming endpoint returns audio data."""
+        from collections.abc import AsyncIterator  # noqa: PLC0415, TC003
+
+        expected_data = b"\x00\x01" * 100 + b"\x02\x03" * 100
+
+        async def mock_stream(
+            *_args: object,
+            **_kwargs: object,
+        ) -> AsyncIterator[bytes]:
+            yield b"\x00\x01" * 100
+            yield b"\x02\x03" * 100
+
+        manager = mock_registry.get_manager()
+        with (
+            patch.object(
+                TTSModelManager,
+                "supports_streaming",
+                new_callable=PropertyMock,
+                return_value=True,
+            ),
+            patch.object(manager, "synthesize_stream", mock_stream),
+        ):
+            response = client.post(
+                "/v1/audio/speech/stream",
+                data={"input": "Hello world", "model": "tts-1", "voice": "alloy"},
+            )
+
+        assert response.status_code == 200
+        assert response.content == expected_data
