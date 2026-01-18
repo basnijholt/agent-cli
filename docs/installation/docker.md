@@ -58,9 +58,9 @@ The Docker setup provides:
 | Service          | Image                             | Port        | Purpose                        |
 | ---------------- | --------------------------------- | ----------- | ------------------------------ |
 | **whisper**      | agent-cli-whisper (custom)        | 10300/10301 | Speech-to-text (Faster Whisper)|
-| **tts**          | agent-cli-tts (custom)            | 10400/10401 | Text-to-speech (Kokoro/Piper)  |
+| **tts**          | agent-cli-tts (custom)            | 10200/10201 | Text-to-speech (Kokoro/Piper)  |
 | **ollama**       | ollama/ollama                     | 11434       | LLM server                     |
-| **openwakeword** | rhasspy/wyoming-openwakeword      | 10500       | Wake word detection            |
+| **openwakeword** | rhasspy/wyoming-openwakeword      | 10400       | Wake word detection            |
 
 ## Configuration
 
@@ -110,11 +110,11 @@ Services store data in Docker volumes:
 
 | Port  | Service      | Protocol |
 | ----- | ------------ | -------- |
+| 10200 | TTS          | Wyoming  |
+| 10201 | TTS          | HTTP API |
 | 10300 | Whisper      | Wyoming  |
 | 10301 | Whisper      | HTTP API |
-| 10400 | TTS          | Wyoming  |
-| 10401 | TTS          | HTTP API |
-| 10500 | OpenWakeWord | Wyoming  |
+| 10400 | OpenWakeWord | Wyoming  |
 | 11434 | Ollama       | HTTP API |
 
 ## Alternative: Native Installation

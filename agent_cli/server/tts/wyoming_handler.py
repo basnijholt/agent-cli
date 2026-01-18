@@ -231,13 +231,13 @@ class WyomingTTSHandler(AsyncEventHandler):
 
 async def start_wyoming_server(
     registry: TTSModelRegistry,
-    uri: str = "tcp://0.0.0.0:10400",
+    uri: str = "tcp://0.0.0.0:10200",
 ) -> None:
     """Start the Wyoming TTS server.
 
     Args:
         registry: Model registry for synthesis.
-        uri: URI to bind the server to (e.g., "tcp://0.0.0.0:10400").
+        uri: URI to bind the server to (e.g., "tcp://0.0.0.0:10200").
 
     """
     server = AsyncServer.from_uri(uri)

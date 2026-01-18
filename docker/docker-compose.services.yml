@@ -43,7 +43,8 @@ services:
     environment:
       - OLLAMA_MODEL=${OLLAMA_MODEL:-gemma3:4b}
     # Pull default model on startup, then serve
-    entrypoint: ["/bin/sh", "-c", "ollama serve & sleep 5 && ollama pull $${OLLAMA_MODEL} && wait"]
+    # Wait for Ollama to be ready (up to 30s) before pulling model
+    entrypoint: ["/bin/sh", "-c", "ollama serve & until ollama list >/dev/null 2>&1; do sleep 1; done && ollama pull $${OLLAMA_MODEL} && wait"]
     # For NVIDIA GPU support on Linux, uncomment the following:
     # deploy:
     #   resources:
@@ -62,7 +63,7 @@ services:
     image: rhasspy/wyoming-openwakeword
     profiles: [cuda, cpu]
     ports:
-      - "10500:10400"
+      - "10400:10400"
     volumes:
       - openwakeword-data:/data
     command: --preload-model ok_nabu --custom-model-dir /data
@@ -132,20 +133,16 @@ services:
       target: cuda
     profiles: [cuda]
     ports:
-      - "10400:10400"  # Wyoming protocol
-      - "10401:10401"  # HTTP API
+      - "10200:10200"  # Wyoming protocol
+      - "10201:10201"  # HTTP API
     volumes:
       - tts-cache:/home/tts/.cache
     environment:
-      - TTS_HOST=0.0.0.0
-      - TTS_PORT=10401
-      - TTS_WYOMING_PORT=10400
       - TTS_MODEL=${TTS_MODEL:-kokoro}
       - TTS_BACKEND=${TTS_BACKEND:-kokoro}
       - TTS_TTL=${TTS_TTL:-300}
       - TTS_LOG_LEVEL=${TTS_LOG_LEVEL:-info}
       - TTS_DEVICE=cuda
-      - TTS_EXTRA_ARGS=${TTS_EXTRA_ARGS:-}
     deploy:
       resources:
         reservations:
@@ -166,20 +163,16 @@ services:
       target: cpu
     profiles: [cpu]
     ports:
-      - "10400:10400"  # Wyoming protocol
-      - "10401:10401"  # HTTP API
+      - "10200:10200"  # Wyoming protocol
+      - "10201:10201"  # HTTP API
     volumes:
       - tts-cache:/home/tts/.cache
     environment:
-      - TTS_HOST=0.0.0.0
-      - TTS_PORT=10401
-      - TTS_WYOMING_PORT=10400
       - TTS_MODEL=${TTS_MODEL:-en_US-lessac-medium}
       - TTS_BACKEND=${TTS_BACKEND:-piper}
       - TTS_TTL=${TTS_TTL:-300}
       - TTS_LOG_LEVEL=${TTS_LOG_LEVEL:-info}
       - TTS_DEVICE=cpu
-      - TTS_EXTRA_ARGS=${TTS_EXTRA_ARGS:-}
     restart: unless-stopped
 
 volumes:

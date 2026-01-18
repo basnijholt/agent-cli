@@ -17,7 +17,7 @@ agent-cli server [COMMAND] [OPTIONS]
 | Server | Description | Default Port |
 |--------|-------------|--------------|
 | [whisper](whisper.md) | Local Whisper ASR server with GPU acceleration and TTL-based memory management | 10301 (HTTP), 10300 (Wyoming) |
-| [tts](tts.md) | Local TTS server with Kokoro (GPU) or Piper (CPU) backends | 10401 (HTTP), 10400 (Wyoming) |
+| [tts](tts.md) | Local TTS server with Kokoro (GPU) or Piper (CPU) backends | 10201 (HTTP), 10200 (Wyoming) |
 | [transcription-proxy](transcription-proxy.md) | Proxy server that forwards to configured ASR providers | 61337 |
 
 ## Quick Start
@@ -38,7 +38,7 @@ agent-cli server [COMMAND] [OPTIONS]
     agent-cli server tts --backend kokoro
     ```
 
-    Server runs at `http://localhost:10401` with OpenAI-compatible API.
+    Server runs at `http://localhost:10201` with OpenAI-compatible API.
 
 === "Transcription Proxy"
 
@@ -97,8 +97,8 @@ All servers share these capabilities:
 ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐
 │  Whisper Server │  │   TTS Server    │  │ Transcription   │
 │  (ASR)          │  │                 │  │ Proxy           │
-│  Port: 10301    │  │  Port: 10401    │  │ Port: 61337     │
-│  Wyoming: 10300 │  │  Wyoming: 10400 │  │                 │
+│  Port: 10301    │  │  Port: 10201    │  │ Port: 61337     │
+│  Wyoming: 10300 │  │  Wyoming: 10200 │  │                 │
 └─────────────────┘  └─────────────────┘  └────────┬────────┘
                                                     │
                               ┌─────────────────────┼─────────────────────┐

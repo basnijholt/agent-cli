@@ -534,14 +534,14 @@ def tts_cmd(  # noqa: PLR0915
             "-p",
             help="HTTP API port",
         ),
-    ] = 10401,
+    ] = 10201,
     wyoming_port: Annotated[
         int,
         typer.Option(
             "--wyoming-port",
             help="Wyoming protocol port",
         ),
-    ] = 10400,
+    ] = 10200,
     no_wyoming: Annotated[
         bool,
         typer.Option(

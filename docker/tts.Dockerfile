@@ -6,8 +6,8 @@
 #   docker build -f docker/tts.Dockerfile --target cpu -t agent-cli-tts:cpu .
 #
 # Run examples:
-#   docker run -p 10400:10400 -p 10401:10401 --gpus all agent-cli-tts:cuda
-#   docker run -p 10400:10400 -p 10401:10401 agent-cli-tts:cpu
+#   docker run -p 10200:10200 -p 10201:10201 --gpus all agent-cli-tts:cuda
+#   docker run -p 10200:10200 -p 10201:10201 agent-cli-tts:cpu
 
 # =============================================================================
 # CUDA target: GPU-accelerated with Kokoro TTS
@@ -49,13 +49,13 @@ RUN mkdir -p /home/tts/.cache && chown -R tts:tts /home/tts
 
 USER tts
 
-# Expose ports: Wyoming (10400) and HTTP API (10401)
-EXPOSE 10400 10401
+# Expose ports: Wyoming (10200) and HTTP API (10201)
+EXPOSE 10200 10201
 
 # Default environment variables
 ENV TTS_HOST=0.0.0.0 \
-    TTS_PORT=10401 \
-    TTS_WYOMING_PORT=10400 \
+    TTS_PORT=10201 \
+    TTS_WYOMING_PORT=10200 \
     TTS_MODEL=kokoro \
     TTS_BACKEND=kokoro \
     TTS_TTL=300 \
@@ -109,13 +109,13 @@ RUN mkdir -p /home/tts/.cache && chown -R tts:tts /home/tts
 
 USER tts
 
-# Expose ports: Wyoming (10400) and HTTP API (10401)
-EXPOSE 10400 10401
+# Expose ports: Wyoming (10200) and HTTP API (10201)
+EXPOSE 10200 10201
 
 # Default environment variables
 ENV TTS_HOST=0.0.0.0 \
-    TTS_PORT=10401 \
-    TTS_WYOMING_PORT=10400 \
+    TTS_PORT=10201 \
+    TTS_WYOMING_PORT=10200 \
     TTS_MODEL=en_US-lessac-medium \
     TTS_BACKEND=piper \
     TTS_TTL=300 \
