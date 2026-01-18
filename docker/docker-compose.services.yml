@@ -40,6 +40,10 @@ services:
       - "11434:11434"
     volumes:
       - ollama-data:/root/.ollama
+    environment:
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-gemma3:4b}
+    # Pull default model on startup, then serve
+    entrypoint: ["/bin/sh", "-c", "ollama serve & sleep 5 && ollama pull $${OLLAMA_MODEL} && wait"]
     # For NVIDIA GPU support on Linux, uncomment the following:
     # deploy:
     #   resources:
