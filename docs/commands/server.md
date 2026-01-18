@@ -432,10 +432,28 @@ This enables lower latency for real-time playback.
 ```bash
 # Stream audio directly to speaker (pcm is the default format)
 curl -X POST http://localhost:10401/v1/audio/speech \
-  -F "input=Hello world. This is a streaming test." \
-  -F "voice=af_heart" \
-  -F "stream_format=audio" \
+  -H "Content-Type: application/json" \
+  -d '{"input": "Hello world. This is a streaming test.", "voice": "af_heart", "stream_format": "audio"}' \
   --output - | aplay -r 24000 -f S16_LE -c 1
+```
+
+#### Python Streaming Example (OpenAI SDK)
+
+```python
+from openai import OpenAI
+
+client = OpenAI(base_url="http://localhost:10401/v1", api_key="not-needed")
+
+# Stream audio chunks as they're generated
+with client.audio.speech.with_streaming_response.create(
+    model="tts-1",
+    voice="af_heart",
+    input="Hello, this is a streaming test.",
+    extra_body={"stream_format": "audio"},
+) as response:
+    for chunk in response.iter_bytes():
+        # Process audio chunk (24kHz, 16-bit signed PCM, mono)
+        process_audio(chunk)
 ```
 
 #### Response Format
