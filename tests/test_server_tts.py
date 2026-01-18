@@ -862,27 +862,27 @@ class TestTTSAPI:
         assert response.status_code == 200
         assert response.headers["content-type"] == "audio/mpeg"
 
-    def test_stream_endpoint_empty_text_returns_error(self, client: TestClient) -> None:
-        """Test that empty text returns error for stream endpoint."""
+    def test_stream_format_empty_text_returns_error(self, client: TestClient) -> None:
+        """Test that empty text returns error for stream_format=audio."""
         response = client.post(
-            "/v1/audio/speech/stream",
-            data={"input": "", "model": "tts-1", "voice": "alloy"},
+            "/v1/audio/speech",
+            data={"input": "", "model": "tts-1", "voice": "alloy", "stream_format": "audio"},
         )
         assert response.status_code == 422
 
-    def test_stream_endpoint_whitespace_text_returns_400(
+    def test_stream_format_whitespace_text_returns_400(
         self,
         client: TestClient,
     ) -> None:
-        """Test that whitespace-only text returns 400 error for stream endpoint."""
+        """Test that whitespace-only text returns 400 for stream_format=audio."""
         response = client.post(
-            "/v1/audio/speech/stream",
-            data={"input": "   ", "model": "tts-1", "voice": "alloy"},
+            "/v1/audio/speech",
+            data={"input": "   ", "model": "tts-1", "voice": "alloy", "stream_format": "audio"},
         )
         assert response.status_code == 400
         assert "empty" in response.json()["detail"].lower()
 
-    def test_stream_endpoint_unsupported_backend(
+    def test_stream_format_unsupported_backend(
         self,
         client: TestClient,
     ) -> None:
@@ -894,19 +894,38 @@ class TestTTSAPI:
             return_value=False,
         ):
             response = client.post(
-                "/v1/audio/speech/stream",
-                data={"input": "Hello world", "model": "tts-1", "voice": "alloy"},
+                "/v1/audio/speech",
+                data={
+                    "input": "Hello world",
+                    "model": "tts-1",
+                    "voice": "alloy",
+                    "stream_format": "audio",
+                },
             )
 
         assert response.status_code == 422
         assert "streaming" in response.json()["detail"].lower()
 
-    def test_stream_endpoint_returns_pcm_headers(
+    def test_stream_format_invalid_value(self, client: TestClient) -> None:
+        """Test that invalid stream_format value returns 422."""
+        response = client.post(
+            "/v1/audio/speech",
+            data={
+                "input": "Hello world",
+                "model": "tts-1",
+                "voice": "alloy",
+                "stream_format": "invalid",
+            },
+        )
+        assert response.status_code == 422
+        assert "audio" in response.json()["detail"].lower()
+
+    def test_stream_format_returns_pcm_headers(
         self,
         client: TestClient,
         mock_registry: TTSModelRegistry,
     ) -> None:
-        """Test that streaming endpoint returns correct PCM headers."""
+        """Test that stream_format=audio returns correct PCM headers."""
         from collections.abc import AsyncIterator  # noqa: PLC0415, TC003
 
         async def mock_stream(
@@ -926,8 +945,13 @@ class TestTTSAPI:
             patch.object(manager, "synthesize_stream", mock_stream),
         ):
             response = client.post(
-                "/v1/audio/speech/stream",
-                data={"input": "Hello world", "model": "tts-1", "voice": "alloy"},
+                "/v1/audio/speech",
+                data={
+                    "input": "Hello world",
+                    "model": "tts-1",
+                    "voice": "alloy",
+                    "stream_format": "audio",
+                },
             )
 
         assert response.status_code == 200
@@ -936,12 +960,12 @@ class TestTTSAPI:
         assert response.headers["x-sample-width"] == "2"
         assert response.headers["x-channels"] == "1"
 
-    def test_stream_endpoint_returns_audio_chunks(
+    def test_stream_format_returns_audio_chunks(
         self,
         client: TestClient,
         mock_registry: TTSModelRegistry,
     ) -> None:
-        """Test that streaming endpoint returns audio data."""
+        """Test that stream_format=audio returns audio data."""
         from collections.abc import AsyncIterator  # noqa: PLC0415, TC003
 
         expected_data = b"\x00\x01" * 100 + b"\x02\x03" * 100
@@ -964,8 +988,13 @@ class TestTTSAPI:
             patch.object(manager, "synthesize_stream", mock_stream),
         ):
             response = client.post(
-                "/v1/audio/speech/stream",
-                data={"input": "Hello world", "model": "tts-1", "voice": "alloy"},
+                "/v1/audio/speech",
+                data={
+                    "input": "Hello world",
+                    "model": "tts-1",
+                    "voice": "alloy",
+                    "stream_format": "audio",
+                },
             )
 
         assert response.status_code == 200
