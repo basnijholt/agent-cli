@@ -389,18 +389,16 @@ agent-cli server tts --preload
 #### curl Example
 
 ```bash
-# Synthesize speech (form data)
+# Synthesize speech (JSON body, OpenAI-compatible)
 curl -X POST http://localhost:10401/v1/audio/speech \
-  -F "input=Hello, world!" \
-  -F "model=tts-1" \
-  -F "voice=alloy" \
+  -H "Content-Type: application/json" \
+  -d '{"input": "Hello, world!", "model": "tts-1", "voice": "alloy", "response_format": "wav"}' \
   --output speech.wav
 
 # With speed adjustment
 curl -X POST http://localhost:10401/v1/audio/speech \
-  -F "input=This is faster speech" \
-  -F "voice=echo" \
-  -F "speed=1.5" \
+  -H "Content-Type: application/json" \
+  -d '{"input": "This is faster speech", "voice": "echo", "speed": 1.5, "response_format": "wav"}' \
   --output fast.wav
 ```
 
