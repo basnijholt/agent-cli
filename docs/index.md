@@ -64,7 +64,7 @@ Since then I have expanded the tool with many more features, all focused on loca
 | [`rag-proxy`](commands/rag-proxy.md) | Chat with your documents via RAG |
 | [`memory`](commands/memory.md) | Long-term memory system for conversations |
 | [`dev`](commands/dev.md) | Parallel development with git worktrees and AI coding agents |
-| [`server`](commands/server.md) | Local ASR & TTS servers with dual-protocol, TTL-based memory, and multi-platform acceleration (MLX/CUDA) |
+| [`server`](commands/server.md) | Local ASR & TTS servers with dual-protocol (Wyoming & OpenAI), TTL-based memory, and multi-platform acceleration (MLX/CUDA) |
 
 ## Quick Start
 

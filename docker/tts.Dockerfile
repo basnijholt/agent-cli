@@ -16,8 +16,10 @@ FROM nvidia/cuda:12.9.1-cudnn-runtime-ubuntu22.04 AS cuda
 
 # Install system dependencies
 # espeak-ng is required for Kokoro's phoneme generation
+# build-essential is required for compiling C++ extensions (curated-tokenizers)
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
+        build-essential \
         curl \
         ffmpeg \
         git \
