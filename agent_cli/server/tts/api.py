@@ -137,7 +137,7 @@ def create_app(
     registry: TTSModelRegistry,
     *,
     enable_wyoming: bool = True,
-    wyoming_uri: str = "tcp://0.0.0.0:10400",
+    wyoming_uri: str = "tcp://0.0.0.0:10200",
 ) -> FastAPI:
     """Create the FastAPI application.
 

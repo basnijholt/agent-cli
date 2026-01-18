@@ -10,30 +10,34 @@ Universal Docker setup that works on any platform with Docker support.
 > **Important Limitations**
 >
 > - **macOS**: Docker does not support GPU acceleration. For 10x better performance, use [macOS native setup](macos.md)
-> - **Linux**: Limited GPU support. For full NVIDIA GPU acceleration, use [Linux native setup](linux.md)
-> - **Ollama on macOS**: Can be memory-intensive without GPU acceleration
+> - **Linux**: Requires NVIDIA Container Toolkit for GPU acceleration
 
 ## Prerequisites
 
 - Docker and Docker Compose installed
 - At least 8GB RAM available for Docker
 - 10GB free disk space
+- For GPU: NVIDIA Container Toolkit ([installation guide](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html))
 
 ## Quick Start
 
-1. **Start the services:**
+1. **Start all services with GPU acceleration:**
 
    ```bash
-   docker compose -f docker/docker-compose.yml up --build
+   docker compose -f docker/docker-compose.services.yml --profile cuda up
+   ```
+
+   Or for CPU-only:
+
+   ```bash
+   docker compose -f docker/docker-compose.services.yml --profile cpu up
    ```
 
 2. **Check if services are running:**
 
    ```bash
-   docker compose -f docker/docker-compose.yml logs
+   docker compose -f docker/docker-compose.services.yml logs
    ```
-
-   You should see logs from all services, with Ollama downloading the `gemma3:4b` model.
 
 3. **Install agent-cli:**
 
@@ -51,59 +55,67 @@ Universal Docker setup that works on any platform with Docker support.
 
 The Docker setup provides:
 
-| Service          | Image                        | Port  | Purpose                    |
-| ---------------- | ---------------------------- | ----- | -------------------------- |
-| **ollama**       | Custom build                 | 11434 | LLM server with gemma3:4b  |
-| **whisper**      | rhasspy/wyoming-whisper      | 10300 | Speech-to-text (large-v3)  |
-| **piper**        | rhasspy/wyoming-piper        | 10200 | Text-to-speech (ryan-high) |
-| **openwakeword** | rhasspy/wyoming-openwakeword | 10400 | Wake word detection        |
+| Service          | Image                             | Port        | Purpose                        |
+| ---------------- | --------------------------------- | ----------- | ------------------------------ |
+| **whisper**      | agent-cli-whisper (custom)        | 10300/10301 | Speech-to-text (Faster Whisper)|
+| **tts**          | agent-cli-tts (custom)            | 10200/10201 | Text-to-speech (Kokoro/Piper)  |
+| **ollama**       | ollama/ollama                     | 11434       | LLM server                     |
+| **openwakeword** | rhasspy/wyoming-openwakeword      | 10400       | Wake word detection            |
 
-## Configuration Files
+## Configuration
 
-The Docker setup uses:
+### Environment Variables
 
-- `docker/docker-compose.yml` - Service orchestration
-- `docker/Dockerfile` - Custom Ollama container
-- Data volumes for model persistence
+```bash
+# Whisper ASR
+WHISPER_MODEL=large-v3      # Model: tiny, base, small, medium, large-v3
+WHISPER_TTL=300             # Seconds before unloading idle model
 
-## Important Limitations
+# TTS
+TTS_MODEL=kokoro            # For CUDA: kokoro, For CPU: en_US-lessac-medium
+TTS_BACKEND=kokoro          # Backend: kokoro (GPU), piper (CPU)
+TTS_TTL=300                 # Seconds before unloading idle model
+```
 
-- **macOS**: No GPU acceleration (10x slower than native)
-- **Linux**: Limited GPU support
-- **Memory**: Requires 8GB+ RAM for smooth operation
+### GPU Support
+
+The CUDA profile automatically enables GPU for Whisper and TTS. For Ollama GPU support, edit the compose file and uncomment the `deploy` section under the ollama service.
 
 ## Managing Services
 
 ```bash
 # Start services in background
-docker compose -f docker/docker-compose.yml up -d
+docker compose -f docker/docker-compose.services.yml --profile cuda up -d
 
 # Stop services
-docker compose -f docker/docker-compose.yml down
+docker compose -f docker/docker-compose.services.yml --profile cuda down
 
 # View logs
-docker compose -f docker/docker-compose.yml logs -f
+docker compose -f docker/docker-compose.services.yml logs -f
 
-# Restart a specific service
-docker compose -f docker/docker-compose.yml restart ollama
+# Rebuild from source
+docker compose -f docker/docker-compose.services.yml --profile cuda up --build
 ```
 
 ## Data Persistence
 
-Services store data in local directories:
+Services store data in Docker volumes:
 
-- `./ollama/` - Ollama models and config
-- `./whisper-data/` - Whisper models
-- `./piper-data/` - Piper voice models
-- `./openwakeword-data/` - Wake word models
+- `agent-cli-whisper-cache` - Whisper models
+- `agent-cli-tts-cache` - TTS models and voices
+- `agent-cli-ollama-data` - Ollama models
+- `agent-cli-openwakeword-data` - Wake word models
 
-## Troubleshooting
+## Ports Reference
 
-### Common Issues
-
-- **Slow performance**: Use native setup for better performance
-- **Memory issues**: Increase Docker memory allocation to 8GB+
-- **Port conflicts**: Change port mappings in `docker/docker-compose.yml`
+| Port  | Service      | Protocol |
+| ----- | ------------ | -------- |
+| 10200 | TTS          | Wyoming  |
+| 10201 | TTS          | HTTP API |
+| 10300 | Whisper      | Wyoming  |
+| 10301 | Whisper      | HTTP API |
+| 10400 | OpenWakeWord | Wyoming  |
+| 11434 | Ollama       | HTTP API |
 
 ## Alternative: Native Installation
 

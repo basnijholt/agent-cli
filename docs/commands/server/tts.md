@@ -22,7 +22,7 @@ Run a local TTS (Text-to-Speech) server with two backend options:
 > agent-cli server tts --backend piper
 > ```
 >
-> Server runs at `http://localhost:10401`. Verify with `curl http://localhost:10401/health`.
+> Server runs at `http://localhost:10201`. Verify with `curl http://localhost:10201/health`.
 
 ## Features
 
@@ -77,8 +77,8 @@ agent-cli server tts --preload
 | `--ttl` | `300` | Seconds before unloading idle model |
 | `--preload` | `false` | Load model(s) at startup and wait for completion |
 | `--host` | `0.0.0.0` | Host to bind the server to |
-| `--port` | `10401` | HTTP API port |
-| `--wyoming-port` | `10400` | Wyoming protocol port |
+| `--port` | `10201` | HTTP API port |
+| `--wyoming-port` | `10200` | Wyoming protocol port |
 | `--no-wyoming` | `false` | Disable Wyoming server |
 | `--download-only` | `false` | Download model(s) and exit without starting server |
 | `--log-level` | `info` | Logging level: debug, info, warning, error |
@@ -104,13 +104,13 @@ agent-cli server tts --preload
 
 ```bash
 # Synthesize speech (JSON body, OpenAI-compatible)
-curl -X POST http://localhost:10401/v1/audio/speech \
+curl -X POST http://localhost:10201/v1/audio/speech \
   -H "Content-Type: application/json" \
   -d '{"input": "Hello, world!", "model": "tts-1", "voice": "alloy", "response_format": "wav"}' \
   --output speech.wav
 
 # With speed adjustment
-curl -X POST http://localhost:10401/v1/audio/speech \
+curl -X POST http://localhost:10201/v1/audio/speech \
   -H "Content-Type: application/json" \
   -d '{"input": "This is faster speech", "voice": "echo", "speed": 1.5, "response_format": "wav"}' \
   --output fast.wav
@@ -121,7 +121,7 @@ curl -X POST http://localhost:10401/v1/audio/speech \
 ```python
 from openai import OpenAI
 
-client = OpenAI(base_url="http://localhost:10401/v1", api_key="not-needed")
+client = OpenAI(base_url="http://localhost:10201/v1", api_key="not-needed")
 
 # Synthesize speech
 response = client.audio.speech.create(
@@ -145,7 +145,7 @@ This enables lower latency for real-time playback.
 
 ```bash
 # Stream audio directly to speaker (pcm is the default format)
-curl -X POST http://localhost:10401/v1/audio/speech \
+curl -X POST http://localhost:10201/v1/audio/speech \
   -H "Content-Type: application/json" \
   -d '{"input": "Hello world. This is a streaming test.", "voice": "af_heart", "stream_format": "audio"}' \
   --output - | aplay -r 24000 -f S16_LE -c 1
@@ -156,7 +156,7 @@ curl -X POST http://localhost:10401/v1/audio/speech \
 ```python
 from openai import OpenAI
 
-client = OpenAI(base_url="http://localhost:10401/v1", api_key="not-needed")
+client = OpenAI(base_url="http://localhost:10201/v1", api_key="not-needed")
 
 # Stream audio chunks as they're generated
 with client.audio.speech.with_streaming_response.create(
@@ -178,7 +178,7 @@ with client.audio.speech.with_streaming_response.create(
 
 ### Wyoming Protocol Streaming
 
-When using the Kokoro backend via Wyoming protocol (port 10400), streaming is automatic - audio chunks are sent as they're generated via `AudioChunk` messages.
+When using the Kokoro backend via Wyoming protocol (port 10200), streaming is automatic - audio chunks are sent as they're generated via `AudioChunk` messages.
 
 ### Architecture
 

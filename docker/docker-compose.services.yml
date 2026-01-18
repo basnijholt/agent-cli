@@ -1,0 +1,186 @@
+# Docker Compose for agent-cli services
+#
+# Provides all services needed for voice assistants:
+# - Whisper ASR (speech-to-text)
+# - TTS (text-to-speech)
+# - Ollama (LLM)
+# - OpenWakeWord (wake word detection)
+#
+# Usage:
+#   # Run all services with CUDA (GPU)
+#   docker compose -f docker/docker-compose.services.yml --profile cuda up
+#
+#   # Run all services with CPU only
+#   docker compose -f docker/docker-compose.services.yml --profile cpu up
+#
+#   # Build from source instead of using pre-built images
+#   docker compose -f docker/docker-compose.services.yml --profile cuda up --build
+#
+# Environment variables:
+#   WHISPER_MODEL      - Whisper model (default: large-v3 for CUDA, small for CPU)
+#   WHISPER_TTL        - Seconds before unloading idle model (default: 300)
+#   WHISPER_LOG_LEVEL  - Logging level (default: info)
+#
+#   TTS_MODEL          - TTS model/voice (default: kokoro for CUDA, en_US-lessac-medium for CPU)
+#   TTS_BACKEND        - Backend: auto, kokoro, piper (default: based on profile)
+#   TTS_TTL            - Seconds before unloading idle model (default: 300)
+#   TTS_LOG_LEVEL      - Logging level (default: info)
+#
+#   OLLAMA_MODEL       - Ollama model to pull on startup (default: gemma3:4b)
+
+services:
+  # ===========================================================================
+  # Ollama LLM
+  # ===========================================================================
+
+  ollama:
+    image: ollama/ollama
+    profiles: [cuda, cpu]
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama-data:/root/.ollama
+    environment:
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-gemma3:4b}
+    # Pull default model on startup, then serve
+    # Wait for Ollama to be ready (up to 30s) before pulling model
+    entrypoint: ["/bin/sh", "-c", "ollama serve & until ollama list >/dev/null 2>&1; do sleep 1; done && ollama pull $${OLLAMA_MODEL} && wait"]
+    # For NVIDIA GPU support on Linux, uncomment the following:
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1
+    #           capabilities: [gpu]
+    restart: unless-stopped
+
+  # ===========================================================================
+  # OpenWakeWord
+  # ===========================================================================
+
+  openwakeword:
+    image: rhasspy/wyoming-openwakeword
+    profiles: [cuda, cpu]
+    ports:
+      - "10400:10400"
+    volumes:
+      - openwakeword-data:/data
+    command: --preload-model ok_nabu --custom-model-dir /data
+    restart: unless-stopped
+
+  # ===========================================================================
+  # Whisper ASR Services
+  # ===========================================================================
+
+  whisper-cuda:
+    image: ghcr.io/basnijholt/agent-cli-whisper:latest-cuda
+    build:
+      context: ..
+      dockerfile: docker/whisper.Dockerfile
+      target: cuda
+    profiles: [cuda]
+    ports:
+      - "10300:10300"  # Wyoming protocol
+      - "10301:10301"  # HTTP API
+    volumes:
+      - whisper-cache:/home/whisper/.cache
+    environment:
+      - WHISPER_MODEL=${WHISPER_MODEL:-large-v3}
+      - WHISPER_TTL=${WHISPER_TTL:-300}
+      - WHISPER_LOG_LEVEL=${WHISPER_LOG_LEVEL:-info}
+      - WHISPER_DEVICE=cuda
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    # For NixOS or other CDI-based Docker setups, replace the `deploy` section with:
+    #   devices:
+    #     - nvidia.com/gpu=0    # Single GPU (use nvidia.com/gpu=all for all GPUs)
+    restart: unless-stopped
+
+  whisper-cpu:
+    image: ghcr.io/basnijholt/agent-cli-whisper:latest-cpu
+    build:
+      context: ..
+      dockerfile: docker/whisper.Dockerfile
+      target: cpu
+    profiles: [cpu]
+    ports:
+      - "10300:10300"  # Wyoming protocol
+      - "10301:10301"  # HTTP API
+    volumes:
+      - whisper-cache:/home/whisper/.cache
+    environment:
+      - WHISPER_MODEL=${WHISPER_MODEL:-small}
+      - WHISPER_TTL=${WHISPER_TTL:-300}
+      - WHISPER_LOG_LEVEL=${WHISPER_LOG_LEVEL:-info}
+      - WHISPER_DEVICE=cpu
+    restart: unless-stopped
+
+  # ===========================================================================
+  # TTS Services
+  # ===========================================================================
+
+  tts-cuda:
+    image: ghcr.io/basnijholt/agent-cli-tts:latest-cuda
+    build:
+      context: ..
+      dockerfile: docker/tts.Dockerfile
+      target: cuda
+    profiles: [cuda]
+    ports:
+      - "10200:10200"  # Wyoming protocol
+      - "10201:10201"  # HTTP API
+    volumes:
+      - tts-cache:/home/tts/.cache
+    environment:
+      - TTS_MODEL=${TTS_MODEL:-kokoro}
+      - TTS_BACKEND=${TTS_BACKEND:-kokoro}
+      - TTS_TTL=${TTS_TTL:-300}
+      - TTS_LOG_LEVEL=${TTS_LOG_LEVEL:-info}
+      - TTS_DEVICE=cuda
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    # For NixOS or other CDI-based Docker setups, replace the `deploy` section with:
+    #   devices:
+    #     - nvidia.com/gpu=0    # Single GPU (use nvidia.com/gpu=all for all GPUs)
+    restart: unless-stopped
+
+  tts-cpu:
+    image: ghcr.io/basnijholt/agent-cli-tts:latest-cpu
+    build:
+      context: ..
+      dockerfile: docker/tts.Dockerfile
+      target: cpu
+    profiles: [cpu]
+    ports:
+      - "10200:10200"  # Wyoming protocol
+      - "10201:10201"  # HTTP API
+    volumes:
+      - tts-cache:/home/tts/.cache
+    environment:
+      - TTS_MODEL=${TTS_MODEL:-en_US-lessac-medium}
+      - TTS_BACKEND=${TTS_BACKEND:-piper}
+      - TTS_TTL=${TTS_TTL:-300}
+      - TTS_LOG_LEVEL=${TTS_LOG_LEVEL:-info}
+      - TTS_DEVICE=cpu
+    restart: unless-stopped
+
+volumes:
+  ollama-data:
+    name: agent-cli-ollama-data
+  openwakeword-data:
+    name: agent-cli-openwakeword-data
+  whisper-cache:
+    name: agent-cli-whisper-cache
+  tts-cache:
+    name: agent-cli-tts-cache
