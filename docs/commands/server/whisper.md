@@ -29,7 +29,7 @@ Run a local Whisper ASR server with automatic backend selection based on your pl
 
 - **OpenAI-compatible API** at `/v1/audio/transcriptions` - drop-in replacement for OpenAI's Whisper API
 - **Wyoming protocol** for [Home Assistant](https://www.home-assistant.io/) voice integration (Wyoming is the standard protocol for local voice services)
-- **TTL-based VRAM management** - models unload after idle period, freeing GPU memory
+- **TTL-based memory management** - models unload after idle period, freeing RAM/VRAM
 - **Multiple models** - run different model sizes with independent TTLs
 - **Background preloading** - downloads start at startup without blocking; use `--preload` to wait
 - **Multi-platform support** - automatically uses the optimal backend for your hardware

@@ -16,7 +16,7 @@ agent-cli server [COMMAND] [OPTIONS]
 
 | Server | Description | Default Port |
 |--------|-------------|--------------|
-| [whisper](whisper.md) | Local Whisper ASR server with GPU acceleration and TTL-based VRAM management | 10301 (HTTP), 10300 (Wyoming) |
+| [whisper](whisper.md) | Local Whisper ASR server with GPU acceleration and TTL-based memory management | 10301 (HTTP), 10300 (Wyoming) |
 | [tts](tts.md) | Local TTS server with Kokoro (GPU) or Piper (CPU) backends | 10401 (HTTP), 10400 (Wyoming) |
 | [transcription-proxy](transcription-proxy.md) | Proxy server that forwards to configured ASR providers | 61337 |
 
@@ -49,13 +49,25 @@ agent-cli server [COMMAND] [OPTIONS]
 
     Proxy runs at `http://localhost:61337`, forwarding to your configured ASR provider.
 
+## Why These Servers?
+
+While Faster Whisper, Piper, and Kokoro are all available as standalone servers, agent-cli's implementations offer unique advantages:
+
+1. **Dual-protocol from one server** - Both OpenAI-compatible API and Wyoming protocol run from the same instance. Use the same server for Home Assistant voice pipelines AND your scripts/apps.
+
+2. **TTL-based memory management** - Like [LlamaSwap](https://github.com/mostlygeek/llama-swap), models load on-demand and automatically unload after idle periods. Run voice services 24/7 without permanently consuming RAM/VRAM - memory is freed when you're not actively using speech features.
+
+3. **Multi-platform acceleration** - Whisper automatically uses the optimal backend: [MLX Whisper](https://github.com/ml-explore/mlx-examples/tree/main/whisper) on Apple Silicon for native Metal acceleration, [Faster Whisper](https://github.com/SYSTRAN/faster-whisper) on Linux/CUDA for GPU acceleration.
+
+4. **Unified configuration** - Consistent CLI interface, environment variables, and Docker setup across all services.
+
 ## Common Features
 
 All servers share these capabilities:
 
 - **OpenAI-compatible APIs** - Drop-in replacement for OpenAI's audio APIs
 - **Wyoming protocol** - Integration with [Home Assistant](https://www.home-assistant.io/) voice services
-- **TTL-based memory management** - Models unload after idle periods, freeing GPU memory
+- **TTL-based memory management** - Models unload after idle periods (default: 5 minutes), freeing RAM/VRAM
 - **Health endpoints** - Monitor server status at `/health`
 - **Interactive docs** - Explore APIs at `/docs`
 
@@ -70,7 +82,7 @@ All servers share these capabilities:
 | iOS Shortcuts integration | [transcription-proxy](transcription-proxy.md) |
 | Forwarding to cloud providers | [transcription-proxy](transcription-proxy.md) |
 | Privacy-focused (no cloud) | [whisper](whisper.md) + [tts](tts.md) |
-| VRAM-constrained system | [whisper](whisper.md) (TTL unloading), [tts](tts.md) `--backend piper` (CPU-only) |
+| Memory-constrained system | Both servers support TTL unloading; use smaller whisper models or [tts](tts.md) `--backend piper` (CPU-only) |
 
 ## Architecture Overview
 

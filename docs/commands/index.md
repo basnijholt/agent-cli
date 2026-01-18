@@ -29,7 +29,14 @@ Agent CLI provides multiple commands, each designed for a specific purpose.
 |---------|---------|----------|
 | [`rag-proxy`](rag-proxy.md) | RAG server | Chat with your documents |
 | [`memory`](memory.md) | Long-term memory | Persistent conversation memory |
-| [`server`](server.md) | Transcription server | HTTP API for transcription |
+| [`server`](server/index.md) | ASR & TTS servers | Local Whisper and Kokoro/Piper with TTL-based memory management |
+
+The [`server`](server/index.md) command provides local ASR (speech-to-text) and TTS (text-to-speech) servers with unique advantages over standalone alternatives:
+
+- **Dual-protocol** - Both OpenAI-compatible API and Wyoming protocol from the same server
+- **TTL-based memory management** - Models load on-demand and unload after idle periods, freeing RAM/VRAM
+- **Multi-platform acceleration** - MLX Whisper on Apple Silicon, Faster Whisper on Linux/CUDA
+- **Unified configuration** - Consistent CLI, environment variables, and Docker setup
 
 ## Installation Commands
 
@@ -91,9 +98,9 @@ Most commands support multiple providers:
 
 ### TTS Providers (`--tts-provider`)
 
-- `wyoming` - Local Piper via Wyoming (default)
+- `wyoming` - Local TTS via Wyoming protocol (Kokoro or Piper, default)
 - `openai` - OpenAI-compatible TTS API
-- `kokoro` - Local Kokoro TTS
+- `kokoro` - Local Kokoro TTS (direct, without Wyoming)
 - `gemini` - Google Gemini TTS API
 
 ## Process Management
