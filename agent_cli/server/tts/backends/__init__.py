@@ -11,20 +11,28 @@ if TYPE_CHECKING:
 from agent_cli.server.tts.backends.base import (
     BackendConfig,
     SynthesisResult,
+    has_gpu,
 )
 
 logger = logging.getLogger(__name__)
 
-BackendType = Literal["piper", "auto"]
+BackendType = Literal["piper", "kokoro", "auto"]
 
 
-def detect_backend() -> Literal["piper"]:
+def detect_backend() -> Literal["piper", "kokoro"]:
     """Detect the best backend for the current platform.
 
     Returns:
-        "piper" as the default backend (CPU-friendly ONNX-based TTS).
+        "kokoro" if GPU is available and kokoro is installed, otherwise "piper".
 
     """
+    if has_gpu():
+        try:
+            import kokoro  # noqa: F401, PLC0415
+
+            return "kokoro"
+        except ImportError:
+            pass
     return "piper"
 
 
@@ -55,6 +63,11 @@ def create_backend(
         from agent_cli.server.tts.backends.piper import PiperBackend  # noqa: PLC0415
 
         return PiperBackend(config)
+
+    if backend_type == "kokoro":
+        from agent_cli.server.tts.backends.kokoro import KokoroBackend  # noqa: PLC0415
+
+        return KokoroBackend(config)
 
     msg = f"Unknown backend type: {backend_type}"
     raise ValueError(msg)

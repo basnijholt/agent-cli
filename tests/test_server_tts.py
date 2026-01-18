@@ -41,6 +41,19 @@ class TestTTSModelConfig:
         assert config.cache_dir == Path("/tmp/piper")  # noqa: S108
         assert config.backend_type == "piper"
 
+    def test_kokoro_backend_type(self) -> None:
+        """Test Kokoro backend configuration."""
+        config = TTSModelConfig(
+            model_name="/path/to/kokoro-v1_0.pth",
+            device="cuda",
+            ttl_seconds=300,
+            cache_dir=Path("/tmp/kokoro"),  # noqa: S108
+            backend_type="kokoro",
+        )
+        assert config.model_name == "/path/to/kokoro-v1_0.pth"
+        assert config.device == "cuda"
+        assert config.backend_type == "kokoro"
+
 
 class TestModelStats:
     """Tests for ModelStats dataclass with TTS-specific fields."""
@@ -288,6 +301,158 @@ class TestSynthesisResult:
         assert result.sample_width == 2
         assert result.channels == 1
         assert result.duration == 1.5
+
+
+class TestBackendFactory:
+    """Tests for the TTS backend factory."""
+
+    def test_create_piper_backend(self) -> None:
+        """Test creating a Piper backend."""
+        from agent_cli.server.tts.backends import BackendConfig, create_backend  # noqa: PLC0415
+
+        with patch(
+            "agent_cli.server.tts.backends.piper.PiperBackend.__init__",
+            return_value=None,
+        ):
+            backend = create_backend(
+                BackendConfig(model_name="en_US-lessac-medium"),
+                backend_type="piper",
+            )
+            assert backend.__class__.__name__ == "PiperBackend"
+
+    def test_create_kokoro_backend(self) -> None:
+        """Test creating a Kokoro backend."""
+        from agent_cli.server.tts.backends import BackendConfig, create_backend  # noqa: PLC0415
+
+        with patch(
+            "agent_cli.server.tts.backends.kokoro.KokoroBackend.__init__",
+            return_value=None,
+        ):
+            backend = create_backend(
+                BackendConfig(model_name="/path/to/kokoro.pth"),
+                backend_type="kokoro",
+            )
+            assert backend.__class__.__name__ == "KokoroBackend"
+
+    def test_create_unknown_backend_raises(self) -> None:
+        """Test that unknown backend type raises ValueError."""
+        from agent_cli.server.tts.backends import BackendConfig, create_backend  # noqa: PLC0415
+
+        with pytest.raises(ValueError, match="Unknown backend type"):
+            create_backend(
+                BackendConfig(model_name="test"),
+                backend_type="unknown",  # type: ignore[arg-type]
+            )
+
+
+class TestKokoroBackend:
+    """Tests for the Kokoro TTS backend."""
+
+    def test_default_voice(self) -> None:
+        """Test default voice is set correctly."""
+        from agent_cli.server.tts.backends.kokoro import DEFAULT_VOICE  # noqa: PLC0415
+
+        assert DEFAULT_VOICE == "af_heart"
+
+    def test_kokoro_hf_repo(self) -> None:
+        """Test Kokoro HuggingFace repo constant."""
+        from agent_cli.server.tts.backends.kokoro import KOKORO_HF_REPO  # noqa: PLC0415
+
+        assert KOKORO_HF_REPO == "hexgrad/Kokoro-82M"
+
+    def test_backend_init(self) -> None:
+        """Test KokoroBackend initialization."""
+        from agent_cli.server.tts.backends import BackendConfig  # noqa: PLC0415
+        from agent_cli.server.tts.backends.kokoro import KokoroBackend  # noqa: PLC0415
+
+        config = BackendConfig(model_name="kokoro", cache_dir=Path("/tmp/test"))  # noqa: S108
+        backend = KokoroBackend(config)
+
+        assert backend.is_loaded is False
+        assert backend.device is None
+        assert backend._cache_dir == Path("/tmp/test")  # noqa: S108
+
+    def test_resolve_model_path_auto(self, tmp_path: Path) -> None:
+        """Test model path resolution with auto/kokoro triggers download."""
+        from agent_cli.server.tts.backends.kokoro import _resolve_model_path  # noqa: PLC0415
+
+        with patch(
+            "agent_cli.server.tts.backends.kokoro._ensure_model",
+        ) as mock_ensure:
+            mock_ensure.return_value = Path("/cache/model/kokoro-v1_0.pth")
+            result = _resolve_model_path("kokoro", tmp_path)
+
+        mock_ensure.assert_called_once_with(tmp_path)
+        assert result == Path("/cache/model/kokoro-v1_0.pth")
+
+    def test_resolve_model_path_explicit(self, tmp_path: Path) -> None:
+        """Test model path resolution with explicit path."""
+        from agent_cli.server.tts.backends.kokoro import _resolve_model_path  # noqa: PLC0415
+
+        # Create a fake model file
+        model_file = tmp_path / "model.pth"
+        model_file.touch()
+
+        result = _resolve_model_path(str(model_file), tmp_path)
+        assert result == model_file
+
+    def test_resolve_voice_path_triggers_download(self, tmp_path: Path) -> None:
+        """Test voice path resolution triggers download when not cached."""
+        from agent_cli.server.tts.backends.kokoro import _resolve_voice_path  # noqa: PLC0415
+
+        with patch(
+            "agent_cli.server.tts.backends.kokoro._ensure_voice",
+        ) as mock_ensure:
+            voice_path = tmp_path / "voices" / "af_bella.pt"
+            mock_ensure.return_value = voice_path
+            _path, lang_code = _resolve_voice_path("af_bella", tmp_path)
+
+        mock_ensure.assert_called_once_with("af_bella", tmp_path)
+        assert lang_code == "a"
+
+    def test_resolve_voice_path_cached(self, tmp_path: Path) -> None:
+        """Test voice path resolution when voice is already cached."""
+        from agent_cli.server.tts.backends.kokoro import _resolve_voice_path  # noqa: PLC0415
+
+        # Create cached voice file
+        voices_dir = tmp_path / "voices"
+        voices_dir.mkdir()
+        voice_file = voices_dir / "af_heart.pt"
+        voice_file.touch()
+
+        path, lang_code = _resolve_voice_path("af_heart", tmp_path)
+
+        assert path == str(voice_file)
+        assert lang_code == "a"
+
+    def test_resolve_voice_path_explicit_file(self, tmp_path: Path) -> None:
+        """Test voice path resolution with explicit file path."""
+        from agent_cli.server.tts.backends.kokoro import _resolve_voice_path  # noqa: PLC0415
+
+        # Create explicit voice file
+        voice_file = tmp_path / "custom_voice.pt"
+        voice_file.touch()
+
+        path, lang_code = _resolve_voice_path(str(voice_file), tmp_path)
+
+        assert path == str(voice_file)
+        assert lang_code == "c"  # First letter of "custom_voice"
+
+    def test_resolve_voice_path_default(self, tmp_path: Path) -> None:
+        """Test voice path resolution uses default voice when None."""
+        from agent_cli.server.tts.backends.kokoro import (  # noqa: PLC0415
+            DEFAULT_VOICE,
+            _resolve_voice_path,
+        )
+
+        with patch(
+            "agent_cli.server.tts.backends.kokoro._ensure_voice",
+        ) as mock_ensure:
+            voice_path = tmp_path / "voices" / f"{DEFAULT_VOICE}.pt"
+            mock_ensure.return_value = voice_path
+            _resolve_voice_path(None, tmp_path)
+
+        mock_ensure.assert_called_once_with(DEFAULT_VOICE, tmp_path)
 
 
 class TestTTSAPI:

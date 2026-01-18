@@ -3,10 +3,34 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Protocol, runtime_checkable
+from pathlib import Path
+from typing import Protocol, runtime_checkable
 
-if TYPE_CHECKING:
-    from pathlib import Path
+
+def get_torch_device() -> str:
+    """Detect the best available PyTorch device."""
+    try:
+        import torch  # noqa: PLC0415
+
+        if torch.cuda.is_available():
+            return "cuda"
+        if hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
+            return "mps"
+    except ImportError:
+        pass
+    return "cpu"
+
+
+def has_gpu() -> bool:
+    """Check if a GPU (CUDA or MPS) is available."""
+    return get_torch_device() in ("cuda", "mps")
+
+
+def get_backend_cache_dir(backend_name: str) -> Path:
+    """Get default cache directory for a TTS backend."""
+    cache_dir = Path.home() / ".cache" / backend_name
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    return cache_dir
 
 
 @dataclass
