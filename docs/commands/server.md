@@ -422,12 +422,17 @@ response.write_to_file("output.wav")
 
 ### Streaming Synthesis (Kokoro)
 
-The Kokoro backend supports streaming synthesis via the `stream_format=audio` parameter (following OpenAI's API convention), which returns raw PCM audio chunks as they are generated. This enables lower latency for real-time playback.
+The Kokoro backend supports streaming synthesis following OpenAI's API convention:
+
+- `stream_format=audio` enables streaming
+- `response_format=pcm` is required (this is the default)
+
+This enables lower latency for real-time playback.
 
 #### Streaming Example
 
 ```bash
-# Stream audio directly to speaker
+# Stream audio directly to speaker (pcm is the default format)
 curl -X POST http://localhost:10401/v1/audio/speech \
   -F "input=Hello world. This is a streaming test." \
   -F "voice=af_heart" \
@@ -435,11 +440,11 @@ curl -X POST http://localhost:10401/v1/audio/speech \
   --output - | aplay -r 24000 -f S16_LE -c 1
 ```
 
-#### Response Format (when `stream_format=audio`)
+#### Response Format
 
 - **Content-Type**: `audio/pcm`
 - **Headers**: `X-Sample-Rate: 24000`, `X-Sample-Width: 2`, `X-Channels: 1`
-- **Body**: Raw 16-bit signed PCM audio chunks
+- **Body**: Raw 16-bit signed PCM audio chunks (same as OpenAI's PCM format)
 
 #### Wyoming Protocol Streaming
 
