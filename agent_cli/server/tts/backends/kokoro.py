@@ -370,22 +370,22 @@ class KokoroBackend:
         # Use Manager queue for cross-process communication
         # Manager queues work with already-running subprocesses
         manager = Manager()
-        queue = manager.Queue(maxsize=10)  # Backpressure control
-        loop = asyncio.get_running_loop()
-
-        # Submit streaming worker to subprocess
-        # Manager queue is a proxy that works with already-running subprocesses
-        future = loop.run_in_executor(
-            self._executor,
-            _synthesize_stream_in_subprocess,
-            text,
-            voice,
-            speed,
-            str(self._cache_dir),
-            queue,  # type: ignore[arg-type]
-        )
-
         try:
+            queue = manager.Queue(maxsize=10)  # Backpressure control
+            loop = asyncio.get_running_loop()
+
+            # Submit streaming worker to subprocess
+            # Manager queue is a proxy that works with already-running subprocesses
+            future = loop.run_in_executor(
+                self._executor,
+                _synthesize_stream_in_subprocess,
+                text,
+                voice,
+                speed,
+                str(self._cache_dir),
+                queue,  # type: ignore[arg-type]
+            )
+
             # Yield chunks as they arrive
             reader = AsyncQueueReader(queue, timeout=30.0)  # type: ignore[arg-type]
             async for chunk in reader:

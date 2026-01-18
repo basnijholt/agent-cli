@@ -14,9 +14,6 @@ from agent_cli.core.audio_format import check_ffmpeg_available, convert_to_mp3
 from agent_cli.server.common import configure_app, create_lifespan
 from agent_cli.server.tts.backends.base import InvalidTextError
 
-# Kokoro default sample rate for streaming
-KOKORO_SAMPLE_RATE = 24000
-
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
 
@@ -135,7 +132,7 @@ class VoicesResponse(BaseModel):
 # --- App Factory ---
 
 
-def create_app(  # noqa: C901, PLR0915
+def create_app(  # noqa: PLR0915
     registry: TTSModelRegistry,
     *,
     enable_wyoming: bool = True,
@@ -340,23 +337,18 @@ def create_app(  # noqa: C901, PLR0915
         speed = max(0.25, min(4.0, speed))
 
         async def generate_audio() -> AsyncIterator[bytes]:
-            try:
-                async for chunk in manager.synthesize_stream(
-                    input,
-                    voice=voice,
-                    speed=speed,
-                ):
-                    yield chunk
-            except InvalidTextError:
-                logger.exception("Streaming synthesis error")
-            except Exception:
-                logger.exception("Streaming synthesis failed")
+            async for chunk in manager.synthesize_stream(
+                input,
+                voice=voice,
+                speed=speed,
+            ):
+                yield chunk
 
         return StreamingResponse(
             generate_audio(),
             media_type="audio/pcm",
             headers={
-                "X-Sample-Rate": str(KOKORO_SAMPLE_RATE),
+                "X-Sample-Rate": str(constants.KOKORO_DEFAULT_SAMPLE_RATE),
                 "X-Sample-Width": "2",
                 "X-Channels": "1",
             },

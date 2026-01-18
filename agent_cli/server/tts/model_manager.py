@@ -7,6 +7,7 @@ import time
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from agent_cli import constants
 from agent_cli.server.model_manager import ModelConfig, ModelManager, ModelStats
 from agent_cli.server.tts.backends import (
     BackendConfig,
@@ -161,7 +162,7 @@ class TTSModelManager:
         chunk_count = 0
         total_bytes = 0
 
-        async with self._manager.streaming_request():
+        async with self._manager.request():
             backend: TTSBackend = self._manager.backend  # type: ignore[assignment]
 
             if not getattr(backend, "supports_streaming", False):
@@ -179,14 +180,20 @@ class TTSModelManager:
 
         synthesis_duration = time.time() - start_time
 
+        # Calculate audio duration from PCM bytes (16-bit mono)
+        bytes_per_second = constants.KOKORO_DEFAULT_SAMPLE_RATE * 2  # 2 bytes per sample
+        audio_seconds = total_bytes / bytes_per_second
+
         self._update_stats(text, synthesis_duration)
+        self._manager.stats.total_audio_seconds += audio_seconds
         self._manager.stats.extra["streaming_requests"] = (
             self._manager.stats.extra.get("streaming_requests", 0) + 1
         )
 
         logger.debug(
-            "Streamed %d chars in %d chunks (%d bytes) in %.2fs (model=%s)",
+            "Streamed %d chars to %.1fs audio in %d chunks (%d bytes) in %.2fs (model=%s)",
             len(text),
+            audio_seconds,
             chunk_count,
             total_bytes,
             synthesis_duration,

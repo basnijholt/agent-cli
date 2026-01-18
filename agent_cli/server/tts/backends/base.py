@@ -125,6 +125,8 @@ class TTSBackend(Protocol):
     ) -> AsyncIterator[bytes]:
         """Stream synthesized audio chunks as they are generated.
 
+        Implementations should be async generators (async def with yield).
+
         Args:
             text: Text to synthesize.
             voice: Voice to use (optional).
