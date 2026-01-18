@@ -109,7 +109,7 @@ class SpeechRequest(BaseModel):
     input: str
     model: str = "tts-1"
     voice: str = "alloy"
-    response_format: Literal["wav", "pcm", "mp3"] = "pcm"
+    response_format: Literal["mp3", "wav", "pcm"] = "mp3"
     speed: float = 1.0
     stream_format: Literal["audio"] | None = None
 
