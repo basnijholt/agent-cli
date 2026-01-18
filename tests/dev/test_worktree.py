@@ -13,6 +13,7 @@ from agent_cli.dev.worktree import (
     _parse_git_config_regexp,
     create_worktree,
     find_worktree_by_name,
+    get_main_repo_root,
     list_worktrees,
     resolve_worktree_base_dir,
     sanitize_branch_name,
@@ -108,6 +109,48 @@ class TestResolveWorktreeBaseDir:
         repo_root.mkdir()
         result = resolve_worktree_base_dir(repo_root)
         assert result == tmp_path / "agent"
+
+
+class TestGetMainRepoRoot:
+    """Tests for get_main_repo_root function."""
+
+    def test_regular_repo(self, tmp_path: Path) -> None:
+        """Regular repo returns parent of .git directory."""
+        mock_common_dir = MagicMock()
+        mock_common_dir.return_value = tmp_path / "repo" / ".git"
+
+        with patch("agent_cli.dev.worktree.get_common_dir", mock_common_dir):
+            result = get_main_repo_root(tmp_path / "repo")
+
+        assert result == tmp_path / "repo"
+
+    def test_submodule_uses_show_toplevel(self) -> None:
+        """Submodule (common_dir inside .git/modules/) uses --show-toplevel.
+
+        When working inside a git submodule, git rev-parse --git-common-dir
+        returns a path like /path/to/parent/.git/modules/submodule-name.
+        In this case, we should use --show-toplevel instead of just taking
+        the parent directory, which would incorrectly return .git/modules/.
+
+        This was a bug where submodules returned common_dir.parent which
+        pointed to .git/modules/ instead of the actual submodule directory.
+        """
+        submodule_common_dir = Path("/opt/parent/.git/modules/my-submodule")
+        submodule_toplevel = Path("/opt/parent/my-submodule")
+
+        mock_common_dir = MagicMock(return_value=submodule_common_dir)
+        mock_repo_root = MagicMock(return_value=submodule_toplevel)
+
+        with (
+            patch("agent_cli.dev.worktree.get_common_dir", mock_common_dir),
+            patch("agent_cli.dev.worktree.get_repo_root", mock_repo_root),
+        ):
+            result = get_main_repo_root(Path("/opt/parent/my-submodule"))
+
+        # Should use get_repo_root for submodules, not common_dir.parent
+        mock_repo_root.assert_called_once()
+        assert result == submodule_toplevel
+        assert ".git/modules" not in str(result)
 
 
 class TestListWorktrees:
