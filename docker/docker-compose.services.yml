@@ -1,0 +1,159 @@
+# Docker Compose for agent-cli ASR (Whisper) and TTS services
+#
+# This file provides GPU and CPU variants of both services using profiles.
+# Services can be run individually or together.
+#
+# Usage:
+#   # Run both Whisper and TTS with CUDA (GPU)
+#   docker compose -f docker/docker-compose.services.yml --profile cuda up
+#
+#   # Run both with CPU
+#   docker compose -f docker/docker-compose.services.yml --profile cpu up
+#
+#   # Run only Whisper with CUDA
+#   docker compose -f docker/docker-compose.services.yml --profile whisper-cuda up
+#
+#   # Run only TTS with CUDA
+#   docker compose -f docker/docker-compose.services.yml --profile tts-cuda up
+#
+#   # Build from source instead of using pre-built images
+#   docker compose -f docker/docker-compose.services.yml --profile cuda up --build
+#
+# Available profiles:
+#   cuda         - Both Whisper and TTS with GPU acceleration
+#   cpu          - Both Whisper and TTS with CPU only
+#   whisper-cuda - Only Whisper with GPU
+#   whisper-cpu  - Only Whisper with CPU
+#   tts-cuda     - Only TTS with GPU (Kokoro backend)
+#   tts-cpu      - Only TTS with CPU (Piper backend)
+#
+# Environment variables:
+#   WHISPER_MODEL      - Whisper model (default: large-v3 for CUDA, small for CPU)
+#   WHISPER_TTL        - Seconds before unloading idle model (default: 300)
+#   WHISPER_LOG_LEVEL  - Logging level (default: info)
+#
+#   TTS_MODEL          - TTS model/voice (default: kokoro for CUDA, en_US-lessac-medium for CPU)
+#   TTS_BACKEND        - Backend: auto, kokoro, piper (default: based on profile)
+#   TTS_TTL            - Seconds before unloading idle model (default: 300)
+#   TTS_LOG_LEVEL      - Logging level (default: info)
+
+services:
+  # ===========================================================================
+  # Whisper ASR Services
+  # ===========================================================================
+
+  whisper-cuda:
+    image: ghcr.io/basnijholt/agent-cli-whisper:latest-cuda
+    build:
+      context: ..
+      dockerfile: docker/whisper.Dockerfile
+      target: cuda
+    profiles: [cuda, whisper-cuda]
+    ports:
+      - "10300:10300"  # Wyoming protocol
+      - "10301:10301"  # HTTP API
+    volumes:
+      - whisper-cache:/home/whisper/.cache
+    environment:
+      - WHISPER_MODEL=${WHISPER_MODEL:-large-v3}
+      - WHISPER_TTL=${WHISPER_TTL:-300}
+      - WHISPER_LOG_LEVEL=${WHISPER_LOG_LEVEL:-info}
+      - WHISPER_DEVICE=cuda
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    # For NixOS or other CDI-based Docker setups, replace the `deploy` section with:
+    #   devices:
+    #     - nvidia.com/gpu=0    # Single GPU (use nvidia.com/gpu=all for all GPUs)
+    restart: unless-stopped
+
+  whisper-cpu:
+    image: ghcr.io/basnijholt/agent-cli-whisper:latest-cpu
+    build:
+      context: ..
+      dockerfile: docker/whisper.Dockerfile
+      target: cpu
+    profiles: [cpu, whisper-cpu]
+    ports:
+      - "10300:10300"  # Wyoming protocol
+      - "10301:10301"  # HTTP API
+    volumes:
+      - whisper-cache:/home/whisper/.cache
+    environment:
+      - WHISPER_MODEL=${WHISPER_MODEL:-small}
+      - WHISPER_TTL=${WHISPER_TTL:-300}
+      - WHISPER_LOG_LEVEL=${WHISPER_LOG_LEVEL:-info}
+      - WHISPER_DEVICE=cpu
+    restart: unless-stopped
+
+  # ===========================================================================
+  # TTS Services
+  # ===========================================================================
+
+  tts-cuda:
+    image: ghcr.io/basnijholt/agent-cli-tts:latest-cuda
+    build:
+      context: ..
+      dockerfile: docker/tts.Dockerfile
+      target: cuda
+    profiles: [cuda, tts-cuda]
+    ports:
+      - "10400:10400"  # Wyoming protocol
+      - "10401:10401"  # HTTP API
+    volumes:
+      - tts-cache:/home/tts/.cache
+    environment:
+      - TTS_HOST=0.0.0.0
+      - TTS_PORT=10401
+      - TTS_WYOMING_PORT=10400
+      - TTS_MODEL=${TTS_MODEL:-kokoro}
+      - TTS_BACKEND=${TTS_BACKEND:-kokoro}
+      - TTS_TTL=${TTS_TTL:-300}
+      - TTS_LOG_LEVEL=${TTS_LOG_LEVEL:-info}
+      - TTS_DEVICE=cuda
+      - TTS_EXTRA_ARGS=${TTS_EXTRA_ARGS:-}
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    # For NixOS or other CDI-based Docker setups, replace the `deploy` section with:
+    #   devices:
+    #     - nvidia.com/gpu=0    # Single GPU (use nvidia.com/gpu=all for all GPUs)
+    restart: unless-stopped
+
+  tts-cpu:
+    image: ghcr.io/basnijholt/agent-cli-tts:latest-cpu
+    build:
+      context: ..
+      dockerfile: docker/tts.Dockerfile
+      target: cpu
+    profiles: [cpu, tts-cpu]
+    ports:
+      - "10400:10400"  # Wyoming protocol
+      - "10401:10401"  # HTTP API
+    volumes:
+      - tts-cache:/home/tts/.cache
+    environment:
+      - TTS_HOST=0.0.0.0
+      - TTS_PORT=10401
+      - TTS_WYOMING_PORT=10400
+      - TTS_MODEL=${TTS_MODEL:-en_US-lessac-medium}
+      - TTS_BACKEND=${TTS_BACKEND:-piper}
+      - TTS_TTL=${TTS_TTL:-300}
+      - TTS_LOG_LEVEL=${TTS_LOG_LEVEL:-info}
+      - TTS_DEVICE=cpu
+      - TTS_EXTRA_ARGS=${TTS_EXTRA_ARGS:-}
+    restart: unless-stopped
+
+volumes:
+  whisper-cache:
+    name: agent-cli-whisper-cache
+  tts-cache:
+    name: agent-cli-tts-cache
