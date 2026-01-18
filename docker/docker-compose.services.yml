@@ -4,28 +4,16 @@
 # Services can be run individually or together.
 #
 # Usage:
-#   # Run both Whisper and TTS with CUDA (GPU)
+#   # Run with CUDA (GPU) - both Whisper and TTS
 #   docker compose -f docker/docker-compose.services.yml --profile cuda up
 #
-#   # Run both with CPU
+#   # Run with CPU only - both Whisper and TTS
 #   docker compose -f docker/docker-compose.services.yml --profile cpu up
-#
-#   # Run only Whisper with CUDA
-#   docker compose -f docker/docker-compose.services.yml --profile whisper-cuda up
-#
-#   # Run only TTS with CUDA
-#   docker compose -f docker/docker-compose.services.yml --profile tts-cuda up
 #
 #   # Build from source instead of using pre-built images
 #   docker compose -f docker/docker-compose.services.yml --profile cuda up --build
 #
-# Available profiles:
-#   cuda         - Both Whisper and TTS with GPU acceleration
-#   cpu          - Both Whisper and TTS with CPU only
-#   whisper-cuda - Only Whisper with GPU
-#   whisper-cpu  - Only Whisper with CPU
-#   tts-cuda     - Only TTS with GPU (Kokoro backend)
-#   tts-cpu      - Only TTS with CPU (Piper backend)
+# To run only one service, comment out the other in this file.
 #
 # Environment variables:
 #   WHISPER_MODEL      - Whisper model (default: large-v3 for CUDA, small for CPU)
@@ -48,7 +36,7 @@ services:
       context: ..
       dockerfile: docker/whisper.Dockerfile
       target: cuda
-    profiles: [cuda, whisper-cuda]
+    profiles: [cuda]
     ports:
       - "10300:10300"  # Wyoming protocol
       - "10301:10301"  # HTTP API
@@ -77,7 +65,7 @@ services:
       context: ..
       dockerfile: docker/whisper.Dockerfile
       target: cpu
-    profiles: [cpu, whisper-cpu]
+    profiles: [cpu]
     ports:
       - "10300:10300"  # Wyoming protocol
       - "10301:10301"  # HTTP API
@@ -100,7 +88,7 @@ services:
       context: ..
       dockerfile: docker/tts.Dockerfile
       target: cuda
-    profiles: [cuda, tts-cuda]
+    profiles: [cuda]
     ports:
       - "10400:10400"  # Wyoming protocol
       - "10401:10401"  # HTTP API
@@ -134,7 +122,7 @@ services:
       context: ..
       dockerfile: docker/tts.Dockerfile
       target: cpu
-    profiles: [cpu, tts-cpu]
+    profiles: [cpu]
     ports:
       - "10400:10400"  # Wyoming protocol
       - "10401:10401"  # HTTP API
