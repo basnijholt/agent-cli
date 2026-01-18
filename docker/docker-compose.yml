@@ -8,13 +8,13 @@
 #
 # Usage:
 #   # Run all services with CUDA (GPU)
-#   docker compose -f docker/docker-compose.services.yml --profile cuda up
+#   docker compose -f docker/docker-compose.yml --profile cuda up
 #
 #   # Run all services with CPU only
-#   docker compose -f docker/docker-compose.services.yml --profile cpu up
+#   docker compose -f docker/docker-compose.yml --profile cpu up
 #
 #   # Build from source instead of using pre-built images
-#   docker compose -f docker/docker-compose.services.yml --profile cuda up --build
+#   docker compose -f docker/docker-compose.yml --profile cuda up --build
 #
 # Environment variables:
 #   WHISPER_MODEL      - Whisper model (default: large-v3 for CUDA, small for CPU)

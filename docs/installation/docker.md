@@ -24,19 +24,19 @@ Universal Docker setup that works on any platform with Docker support.
 1. **Start all services with GPU acceleration:**
 
    ```bash
-   docker compose -f docker/docker-compose.services.yml --profile cuda up
+   docker compose -f docker/docker-compose.yml --profile cuda up
    ```
 
    Or for CPU-only:
 
    ```bash
-   docker compose -f docker/docker-compose.services.yml --profile cpu up
+   docker compose -f docker/docker-compose.yml --profile cpu up
    ```
 
 2. **Check if services are running:**
 
    ```bash
-   docker compose -f docker/docker-compose.services.yml logs
+   docker compose -f docker/docker-compose.yml logs
    ```
 
 3. **Install agent-cli:**
@@ -85,16 +85,16 @@ The CUDA profile automatically enables GPU for Whisper and TTS. For Ollama GPU s
 
 ```bash
 # Start services in background
-docker compose -f docker/docker-compose.services.yml --profile cuda up -d
+docker compose -f docker/docker-compose.yml --profile cuda up -d
 
 # Stop services
-docker compose -f docker/docker-compose.services.yml --profile cuda down
+docker compose -f docker/docker-compose.yml --profile cuda down
 
 # View logs
-docker compose -f docker/docker-compose.services.yml logs -f
+docker compose -f docker/docker-compose.yml logs -f
 
 # Rebuild from source
-docker compose -f docker/docker-compose.services.yml --profile cuda up --build
+docker compose -f docker/docker-compose.yml --profile cuda up --build
 ```
 
 ## Data Persistence
