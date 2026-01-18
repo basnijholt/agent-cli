@@ -532,19 +532,19 @@ class TestTTSAPI:
         assert data["voices"] == []
 
     def test_synthesize_empty_text_returns_error(self, client: TestClient) -> None:
-        """Test that empty text returns error (422 from form validation)."""
+        """Test that empty text returns 400 error."""
         response = client.post(
             "/v1/audio/speech",
-            data={"input": "", "model": "tts-1", "voice": "alloy"},
+            json={"input": "", "model": "tts-1", "voice": "alloy"},
         )
-        # Empty string in required Form field returns 422 validation error
-        assert response.status_code == 422
+        # Empty string returns 400 from our validation
+        assert response.status_code == 400
 
     def test_synthesize_whitespace_text_returns_400(self, client: TestClient) -> None:
         """Test that whitespace-only text returns 400 error."""
         response = client.post(
             "/v1/audio/speech",
-            data={"input": "   ", "model": "tts-1", "voice": "alloy"},
+            json={"input": "   ", "model": "tts-1", "voice": "alloy"},
         )
         assert response.status_code == 400
         assert "empty" in response.json()["detail"].lower()
@@ -572,7 +572,7 @@ class TestTTSAPI:
         ):
             response = client.post(
                 "/v1/audio/speech",
-                data={
+                json={
                     "input": "Hello world",
                     "model": "tts-1",
                     "voice": "alloy",
@@ -606,7 +606,7 @@ class TestTTSAPI:
         ):
             response = client.post(
                 "/v1/audio/speech",
-                data={
+                json={
                     "input": "Hello world",
                     "model": "tts-1",
                     "voice": "alloy",
@@ -625,7 +625,7 @@ class TestTTSAPI:
         client: TestClient,
         mock_registry: TTSModelRegistry,
     ) -> None:
-        """Test synthesis with JSON endpoint."""
+        """Test synthesis with JSON body (OpenAI-compatible)."""
         mock_result = SynthesisResult(
             audio=b"RIFF" + b"\x00" * 40 + b"\x00\x00" * 1000,
             sample_rate=22050,
@@ -642,7 +642,7 @@ class TestTTSAPI:
             return_value=mock_result,
         ):
             response = client.post(
-                "/v1/audio/speech/json",
+                "/v1/audio/speech",
                 json={
                     "input": "Hello world",
                     "model": "tts-1",
@@ -677,11 +677,11 @@ class TestTTSAPI:
         ) as mock_synthesize:
             response = client.post(
                 "/v1/audio/speech",
-                data={
+                json={
                     "input": "Hello world",
                     "model": "tts-1",
                     "voice": "alloy",
-                    "speed": "1.5",
+                    "speed": 1.5,
                 },
             )
 
@@ -740,7 +740,7 @@ class TestTTSAPI:
         ):
             response = client.post(
                 "/v1/audio/speech",
-                data={
+                json={
                     "input": "Hello world",
                     "model": "tts-1",  # OpenAI model name
                     "voice": "alloy",
@@ -752,7 +752,7 @@ class TestTTSAPI:
     def test_synthesize_unsupported_format(self, client: TestClient) -> None:
         """Test that unsupported format returns 422 validation error."""
         response = client.post(
-            "/v1/audio/speech/json",
+            "/v1/audio/speech",
             json={
                 "input": "Hello world",
                 "model": "tts-1",
@@ -762,21 +762,6 @@ class TestTTSAPI:
         )
         # Pydantic validation should reject invalid response_format
         assert response.status_code == 422
-
-    def test_synthesize_unsupported_format_form_endpoint(self, client: TestClient) -> None:
-        """Test that unsupported format returns 422 for form endpoint."""
-        response = client.post(
-            "/v1/audio/speech",
-            data={
-                "input": "Hello world",
-                "model": "tts-1",
-                "voice": "alloy",
-                "response_format": "unsupported",
-            },
-        )
-        # Early validation should reject invalid response_format
-        assert response.status_code == 422
-        assert "unsupported" in response.json()["detail"].lower()
 
     def test_synthesize_mp3_format_no_ffmpeg(
         self,
@@ -807,7 +792,7 @@ class TestTTSAPI:
         ):
             response = client.post(
                 "/v1/audio/speech",
-                data={
+                json={
                     "input": "Hello world",
                     "model": "tts-1",
                     "voice": "alloy",
@@ -851,7 +836,7 @@ class TestTTSAPI:
         ):
             response = client.post(
                 "/v1/audio/speech",
-                data={
+                json={
                     "input": "Hello world",
                     "model": "tts-1",
                     "voice": "alloy",
@@ -863,12 +848,18 @@ class TestTTSAPI:
         assert response.headers["content-type"] == "audio/mpeg"
 
     def test_stream_format_empty_text_returns_error(self, client: TestClient) -> None:
-        """Test that empty text returns error for stream_format=audio."""
+        """Test that empty text returns 400 for stream_format=audio."""
         response = client.post(
             "/v1/audio/speech",
-            data={"input": "", "model": "tts-1", "voice": "alloy", "stream_format": "audio"},
+            json={
+                "input": "",
+                "model": "tts-1",
+                "voice": "alloy",
+                "response_format": "pcm",
+                "stream_format": "audio",
+            },
         )
-        assert response.status_code == 422
+        assert response.status_code == 400
 
     def test_stream_format_whitespace_text_returns_400(
         self,
@@ -877,7 +868,13 @@ class TestTTSAPI:
         """Test that whitespace-only text returns 400 for stream_format=audio."""
         response = client.post(
             "/v1/audio/speech",
-            data={"input": "   ", "model": "tts-1", "voice": "alloy", "stream_format": "audio"},
+            json={
+                "input": "   ",
+                "model": "tts-1",
+                "voice": "alloy",
+                "response_format": "pcm",
+                "stream_format": "audio",
+            },
         )
         assert response.status_code == 400
         assert "empty" in response.json()["detail"].lower()
@@ -895,10 +892,11 @@ class TestTTSAPI:
         ):
             response = client.post(
                 "/v1/audio/speech",
-                data={
+                json={
                     "input": "Hello world",
                     "model": "tts-1",
                     "voice": "alloy",
+                    "response_format": "pcm",
                     "stream_format": "audio",
                 },
             )
@@ -910,15 +908,30 @@ class TestTTSAPI:
         """Test that invalid stream_format value returns 422."""
         response = client.post(
             "/v1/audio/speech",
-            data={
+            json={
                 "input": "Hello world",
                 "model": "tts-1",
                 "voice": "alloy",
+                "response_format": "pcm",
                 "stream_format": "invalid",
             },
         )
         assert response.status_code == 422
-        assert "audio" in response.json()["detail"].lower()
+
+    def test_stream_format_requires_pcm(self, client: TestClient) -> None:
+        """Test that streaming requires response_format=pcm."""
+        response = client.post(
+            "/v1/audio/speech",
+            json={
+                "input": "Hello world",
+                "model": "tts-1",
+                "voice": "alloy",
+                "response_format": "wav",
+                "stream_format": "audio",
+            },
+        )
+        assert response.status_code == 422
+        assert "pcm" in response.json()["detail"].lower()
 
     def test_stream_format_returns_pcm_headers(
         self,
@@ -946,10 +959,11 @@ class TestTTSAPI:
         ):
             response = client.post(
                 "/v1/audio/speech",
-                data={
+                json={
                     "input": "Hello world",
                     "model": "tts-1",
                     "voice": "alloy",
+                    "response_format": "pcm",
                     "stream_format": "audio",
                 },
             )
@@ -989,10 +1003,11 @@ class TestTTSAPI:
         ):
             response = client.post(
                 "/v1/audio/speech",
-                data={
+                json={
                     "input": "Hello world",
                     "model": "tts-1",
                     "voice": "alloy",
+                    "response_format": "pcm",
                     "stream_format": "audio",
                 },
             )
