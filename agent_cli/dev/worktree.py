@@ -79,13 +79,22 @@ def get_common_dir(path: Path | None = None) -> Path | None:
 
 
 def get_main_repo_root(path: Path | None = None) -> Path | None:
-    """Get the main repository root (even when in a worktree)."""
+    """Get the main repository root (even when in a worktree).
+
+    Handles regular repos, worktrees, and submodules correctly.
+    """
     common_dir = get_common_dir(path)
     if common_dir is None:
         return None
     # common_dir is /path/to/repo/.git, so parent is repo root
     if common_dir.name == ".git":
         return common_dir.parent
+    # Check if we're in a submodule (common_dir is inside .git/modules/)
+    # e.g., /path/to/parent/.git/modules/submodule-name
+    common_dir_str = str(common_dir)
+    if "/.git/modules/" in common_dir_str or "\\.git\\modules\\" in common_dir_str:
+        # For submodules, use --show-toplevel to get the submodule's working directory
+        return get_repo_root(path)
     # For bare repos or unusual setups, try to go up from common_dir
     return common_dir.parent
 
