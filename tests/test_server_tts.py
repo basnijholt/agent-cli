@@ -682,6 +682,7 @@ class TestTTSAPI:
                     "model": "tts-1",
                     "voice": "alloy",
                     "speed": 1.5,
+                    "response_format": "wav",  # Use WAV to avoid FFmpeg dependency
                 },
             )
 
@@ -744,10 +745,55 @@ class TestTTSAPI:
                     "input": "Hello world",
                     "model": "tts-1",  # OpenAI model name
                     "voice": "alloy",
+                    "response_format": "wav",  # Use WAV to avoid FFmpeg dependency
                 },
             )
 
         assert response.status_code == 200
+
+    def test_synthesize_uses_mp3_as_default_format(
+        self,
+        client: TestClient,
+        mock_registry: TTSModelRegistry,
+    ) -> None:
+        """Test that mp3 is the default response_format (OpenAI compatibility)."""
+        mock_result = SynthesisResult(
+            audio=b"RIFF" + b"\x00" * 40 + b"\x00\x00" * 1000,
+            sample_rate=22050,
+            sample_width=2,
+            channels=1,
+            duration=1.5,
+        )
+
+        manager = mock_registry.get_manager()
+        with (
+            patch.object(
+                manager,
+                "synthesize",
+                new_callable=AsyncMock,
+                return_value=mock_result,
+            ),
+            patch(
+                "agent_cli.server.tts.api.check_ffmpeg_available",
+                return_value=True,
+            ),
+            patch(
+                "agent_cli.server.tts.api.convert_to_mp3",
+                return_value=b"fake mp3 data",
+            ),
+        ):
+            response = client.post(
+                "/v1/audio/speech",
+                json={
+                    "input": "Hello world",
+                    "model": "tts-1",
+                    "voice": "alloy",
+                    # No response_format specified - should default to mp3
+                },
+            )
+
+        assert response.status_code == 200
+        assert response.headers["content-type"] == "audio/mpeg"
 
     def test_synthesize_unsupported_format(self, client: TestClient) -> None:
         """Test that unsupported format returns 422 validation error."""
