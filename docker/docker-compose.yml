@@ -2,7 +2,7 @@ services:
   ollama:
     build:
       context: ..
-      dockerfile: docker/Dockerfile
+      dockerfile: docker/ollama.Dockerfile
     ports:
       - "11434:11434"
     environment:

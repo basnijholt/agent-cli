@@ -63,7 +63,7 @@ The Docker setup provides:
 The Docker setup uses:
 
 - `docker/docker-compose.yml` - Service orchestration
-- `docker/Dockerfile` - Custom Ollama container
+- `docker/ollama.Dockerfile` - Custom Ollama container
 - Data volumes for model persistence
 
 ## Important Limitations
