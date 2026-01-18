@@ -39,7 +39,8 @@ ENV UV_PYTHON=3.13 \
     UV_TOOL_DIR=/opt/uv-tools \
     UV_PYTHON_INSTALL_DIR=/opt/uv-python
 
-RUN uv tool install --python 3.13 "agent-cli[whisper]"
+# --refresh bypasses uv cache to ensure latest version from PyPI
+RUN uv tool install --refresh --python 3.13 "agent-cli[whisper]"
 
 # Create cache directory for models
 RUN mkdir -p /home/whisper/.cache && chown -R whisper:whisper /home/whisper
@@ -97,7 +98,8 @@ WORKDIR /app
 ENV UV_TOOL_BIN_DIR=/usr/local/bin \
     UV_TOOL_DIR=/opt/uv-tools
 
-RUN uv tool install "agent-cli[whisper]"
+# --refresh bypasses uv cache to ensure latest version from PyPI
+RUN uv tool install --refresh "agent-cli[whisper]"
 
 # Create cache directory for models
 RUN mkdir -p /home/whisper/.cache && chown -R whisper:whisper /home/whisper

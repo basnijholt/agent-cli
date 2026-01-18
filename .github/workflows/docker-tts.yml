@@ -1,14 +1,10 @@
 name: Publish TTS Docker Images
 
 on:
-  release:
-    types: [published]
+  workflow_run:
+    workflows: ["Upload Python Package"]
+    types: [completed]
   workflow_dispatch:
-    inputs:
-      tag:
-        description: 'Tag to use for images (default: latest)'
-        required: false
-        default: 'latest'
 
 env:
   REGISTRY: ghcr.io
@@ -17,6 +13,7 @@ env:
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     permissions:
       contents: read
       packages: write
@@ -43,16 +40,23 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Get version from trigger
+        id: version
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_run" ]]; then
+            # Extract version from release tag (v0.61.3 -> 0.61.3)
+            TAG="${{ github.event.workflow_run.head_branch }}"
+            echo "version=${TAG#v}" >> $GITHUB_OUTPUT
+          fi
+
       - name: Extract metadata
         id: meta
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
-            type=semver,pattern={{version}},suffix=-${{ matrix.suffix }}
-            type=semver,pattern={{major}}.{{minor}},suffix=-${{ matrix.suffix }}
-            type=raw,value=latest,suffix=-${{ matrix.suffix }},enable=${{ github.event_name == 'release' }}
-            type=raw,value=${{ github.event.inputs.tag || 'latest' }},suffix=-${{ matrix.suffix }},enable=${{ github.event_name == 'workflow_dispatch' }}
+            type=raw,value=${{ steps.version.outputs.version }},suffix=-${{ matrix.suffix }},enable=${{ steps.version.outputs.version != '' }}
+            type=raw,value=latest,suffix=-${{ matrix.suffix }}
             type=sha,suffix=-${{ matrix.suffix }}
 
       - name: Build and push
