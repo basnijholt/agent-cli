@@ -148,7 +148,7 @@ class TTSModelManager:
     def supports_streaming(self) -> bool:
         """Check if the backend supports streaming synthesis."""
         backend: TTSBackend = self._manager.backend  # type: ignore[assignment]
-        return getattr(backend, "supports_streaming", False)
+        return backend.supports_streaming
 
     async def synthesize_stream(
         self,
@@ -165,7 +165,7 @@ class TTSModelManager:
         async with self._manager.request():
             backend: TTSBackend = self._manager.backend  # type: ignore[assignment]
 
-            if not getattr(backend, "supports_streaming", False):
+            if not backend.supports_streaming:
                 msg = "Backend does not support streaming"
                 raise RuntimeError(msg)
 
