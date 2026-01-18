@@ -131,6 +131,9 @@ class TestGetMainRepoRoot:
         returns a path like /path/to/parent/.git/modules/submodule-name.
         In this case, we should use --show-toplevel instead of just taking
         the parent directory, which would incorrectly return .git/modules/.
+
+        This was a bug where submodules returned common_dir.parent which
+        pointed to .git/modules/ instead of the actual submodule directory.
         """
         submodule_common_dir = Path("/opt/parent/.git/modules/my-submodule")
         submodule_toplevel = Path("/opt/parent/my-submodule")
@@ -147,27 +150,7 @@ class TestGetMainRepoRoot:
         # Should use get_repo_root for submodules, not common_dir.parent
         mock_repo_root.assert_called_once()
         assert result == submodule_toplevel
-
-    def test_submodule_not_git_modules_parent(self) -> None:
-        """Submodule should NOT return .git/modules as repo root.
-
-        This was a bug where submodules returned common_dir.parent which
-        pointed to .git/modules/ instead of the actual submodule directory.
-        """
-        submodule_common_dir = Path("/opt/stacks/.git/modules/compose-farm")
-
-        mock_common_dir = MagicMock(return_value=submodule_common_dir)
-        mock_repo_root = MagicMock(return_value=Path("/opt/stacks/compose-farm"))
-
-        with (
-            patch("agent_cli.dev.worktree.get_common_dir", mock_common_dir),
-            patch("agent_cli.dev.worktree.get_repo_root", mock_repo_root),
-        ):
-            result = get_main_repo_root()
-
-        # Must NOT be .git/modules
         assert ".git/modules" not in str(result)
-        assert result == Path("/opt/stacks/compose-farm")
 
 
 class TestListWorktrees:
