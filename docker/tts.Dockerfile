@@ -46,6 +46,9 @@ ENV UV_PYTHON=3.13 \
 
 RUN uv tool install --python 3.13 "agent-cli[tts-kokoro]"
 
+# Download spacy model required by misaki/Kokoro for grapheme-to-phoneme conversion
+RUN /opt/uv-tools/agent-cli/bin/python -m spacy download en_core_web_sm
+
 # Create cache directory for models
 RUN mkdir -p /home/tts/.cache && chown -R tts:tts /home/tts
 
