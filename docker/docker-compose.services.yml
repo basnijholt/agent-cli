@@ -1,19 +1,20 @@
-# Docker Compose for agent-cli ASR (Whisper) and TTS services
+# Docker Compose for agent-cli services
 #
-# This file provides GPU and CPU variants of both services using profiles.
-# Services can be run individually or together.
+# Provides all services needed for voice assistants:
+# - Whisper ASR (speech-to-text)
+# - TTS (text-to-speech)
+# - Ollama (LLM)
+# - OpenWakeWord (wake word detection)
 #
 # Usage:
-#   # Run with CUDA (GPU) - both Whisper and TTS
+#   # Run all services with CUDA (GPU)
 #   docker compose -f docker/docker-compose.services.yml --profile cuda up
 #
-#   # Run with CPU only - both Whisper and TTS
+#   # Run all services with CPU only
 #   docker compose -f docker/docker-compose.services.yml --profile cpu up
 #
 #   # Build from source instead of using pre-built images
 #   docker compose -f docker/docker-compose.services.yml --profile cuda up --build
-#
-# To run only one service, comment out the other in this file.
 #
 # Environment variables:
 #   WHISPER_MODEL      - Whisper model (default: large-v3 for CUDA, small for CPU)
@@ -24,8 +25,45 @@
 #   TTS_BACKEND        - Backend: auto, kokoro, piper (default: based on profile)
 #   TTS_TTL            - Seconds before unloading idle model (default: 300)
 #   TTS_LOG_LEVEL      - Logging level (default: info)
+#
+#   OLLAMA_MODEL       - Ollama model to pull on startup (default: gemma3:4b)
 
 services:
+  # ===========================================================================
+  # Ollama LLM
+  # ===========================================================================
+
+  ollama:
+    image: ollama/ollama
+    profiles: [cuda, cpu]
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama-data:/root/.ollama
+    # For NVIDIA GPU support on Linux, uncomment the following:
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1
+    #           capabilities: [gpu]
+    restart: unless-stopped
+
+  # ===========================================================================
+  # OpenWakeWord
+  # ===========================================================================
+
+  openwakeword:
+    image: rhasspy/wyoming-openwakeword
+    profiles: [cuda, cpu]
+    ports:
+      - "10500:10400"
+    volumes:
+      - openwakeword-data:/data
+    command: --preload-model ok_nabu --custom-model-dir /data
+    restart: unless-stopped
+
   # ===========================================================================
   # Whisper ASR Services
   # ===========================================================================
@@ -141,6 +179,10 @@ services:
     restart: unless-stopped
 
 volumes:
+  ollama-data:
+    name: agent-cli-ollama-data
+  openwakeword-data:
+    name: agent-cli-openwakeword-data
   whisper-cache:
     name: agent-cli-whisper-cache
   tts-cache:
