@@ -109,7 +109,7 @@ class SpeechRequest(BaseModel):
     input: str
     model: str = "tts-1"
     voice: str = "alloy"
-    response_format: Literal["wav", "pcm", "mp3"] = "wav"
+    response_format: Literal["wav", "pcm", "mp3"] = "pcm"
     speed: float = 1.0
     stream_format: Literal["audio"] | None = None
 
@@ -237,7 +237,7 @@ def create_app(
         response_format: Annotated[
             str,
             Form(description="Audio format: wav, pcm, mp3"),
-        ] = "wav",
+        ] = "pcm",
         speed: Annotated[float, Form(description="Speed (0.25 to 4.0)")] = 1.0,
         stream_format: Annotated[
             str | None,
@@ -272,12 +272,17 @@ def create_app(
         # Clamp speed to valid range
         speed = max(0.25, min(4.0, speed))
 
-        # Handle streaming mode (OpenAI uses stream_format=audio)
+        # Handle streaming mode (OpenAI uses stream_format=audio with response_format=pcm)
         if stream_format is not None:
             if stream_format != "audio":
                 raise HTTPException(
                     status_code=422,
                     detail="Only 'audio' stream_format is supported",
+                )
+            if response_format != "pcm":
+                raise HTTPException(
+                    status_code=422,
+                    detail="Streaming requires response_format=pcm",
                 )
             if not manager.supports_streaming:
                 raise HTTPException(
