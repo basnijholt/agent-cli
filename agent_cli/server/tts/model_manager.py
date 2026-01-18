@@ -7,6 +7,7 @@ import time
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from agent_cli import constants
 from agent_cli.server.model_manager import ModelConfig, ModelManager, ModelStats
 from agent_cli.server.tts.backends import (
     BackendConfig,
@@ -16,6 +17,8 @@ from agent_cli.server.tts.backends import (
 )
 
 if TYPE_CHECKING:
+    from collections.abc import AsyncIterator
+
     from agent_cli.server.tts.backends.base import TTSBackend
 
 logger = logging.getLogger(__name__)
@@ -88,6 +91,16 @@ class TTSModelManager:
         """Unload the model from memory."""
         return await self._manager.unload()
 
+    def _update_stats(self, text: str, synthesis_duration: float) -> None:
+        """Update synthesis statistics."""
+        stats = self._manager.stats
+        stats.total_requests += 1
+        stats.total_processing_seconds += synthesis_duration
+        stats.extra["total_characters"] = stats.extra.get("total_characters", 0.0) + len(text)
+        stats.extra["total_synthesis_seconds"] = (
+            stats.extra.get("total_synthesis_seconds", 0.0) + synthesis_duration
+        )
+
     async def synthesize(
         self,
         text: str,
@@ -118,15 +131,8 @@ class TTSModelManager:
 
         synthesis_duration = time.time() - start_time
 
-        # Update stats
-        stats = self._manager.stats
-        stats.total_requests += 1
-        stats.total_audio_seconds += result.duration
-        stats.total_processing_seconds += synthesis_duration
-        stats.extra["total_characters"] = stats.extra.get("total_characters", 0.0) + len(text)
-        stats.extra["total_synthesis_seconds"] = (
-            stats.extra.get("total_synthesis_seconds", 0.0) + synthesis_duration
-        )
+        self._update_stats(text, synthesis_duration)
+        self._manager.stats.total_audio_seconds += result.duration
 
         logger.debug(
             "Synthesized %d chars to %.1fs audio in %.2fs (model=%s)",
@@ -137,3 +143,59 @@ class TTSModelManager:
         )
 
         return result
+
+    @property
+    def supports_streaming(self) -> bool:
+        """Check if the backend supports streaming synthesis."""
+        backend: TTSBackend = self._manager.backend  # type: ignore[assignment]
+        return backend.supports_streaming
+
+    async def synthesize_stream(
+        self,
+        text: str,
+        *,
+        voice: str | None = None,
+        speed: float = 1.0,
+    ) -> AsyncIterator[bytes]:
+        """Stream synthesized audio chunks as they are generated."""
+        start_time = time.time()
+        chunk_count = 0
+        total_bytes = 0
+
+        async with self._manager.request():
+            backend: TTSBackend = self._manager.backend  # type: ignore[assignment]
+
+            if not backend.supports_streaming:
+                msg = "Backend does not support streaming"
+                raise RuntimeError(msg)
+
+            async for chunk in backend.synthesize_stream(
+                text,
+                voice=voice,
+                speed=speed,
+            ):
+                chunk_count += 1
+                total_bytes += len(chunk)
+                yield chunk
+
+        synthesis_duration = time.time() - start_time
+
+        # Calculate audio duration from PCM bytes (16-bit mono)
+        bytes_per_second = constants.KOKORO_DEFAULT_SAMPLE_RATE * 2  # 2 bytes per sample
+        audio_seconds = total_bytes / bytes_per_second
+
+        self._update_stats(text, synthesis_duration)
+        self._manager.stats.total_audio_seconds += audio_seconds
+        self._manager.stats.extra["streaming_requests"] = (
+            self._manager.stats.extra.get("streaming_requests", 0) + 1
+        )
+
+        logger.debug(
+            "Streamed %d chars to %.1fs audio in %d chunks (%d bytes) in %.2fs (model=%s)",
+            len(text),
+            audio_seconds,
+            chunk_count,
+            total_bytes,
+            synthesis_duration,
+            self.config.model_name,
+        )

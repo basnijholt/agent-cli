@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING, Annotated, Literal
 
-from fastapi import FastAPI, Form, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
@@ -15,6 +15,8 @@ from agent_cli.server.common import configure_app, create_lifespan
 from agent_cli.server.tts.backends.base import InvalidTextError
 
 if TYPE_CHECKING:
+    from collections.abc import AsyncIterator
+
     from agent_cli.server.tts.model_registry import TTSModelRegistry
 
 logger = logging.getLogger(__name__)
@@ -107,8 +109,9 @@ class SpeechRequest(BaseModel):
     input: str
     model: str = "tts-1"
     voice: str = "alloy"
-    response_format: Literal["wav", "pcm", "mp3"] = "wav"
+    response_format: Literal["wav", "pcm", "mp3"] = "pcm"
     speed: float = 1.0
+    stream_format: Literal["audio"] | None = None
 
 
 class VoiceInfo(BaseModel):
@@ -226,38 +229,15 @@ def create_app(
 
     # --- OpenAI-Compatible TTS Endpoint ---
 
-    @app.post("/v1/audio/speech")
-    async def synthesize_speech(
-        input: Annotated[str, Form(description="Text to synthesize")],  # noqa: A002
-        model: Annotated[str, Form(description="Model to use")] = "tts-1",
-        voice: Annotated[str, Form(description="Voice to use")] = "alloy",
-        response_format: Annotated[
-            str,
-            Form(description="Audio format: wav, pcm, mp3"),
-        ] = "wav",
-        speed: Annotated[float, Form(description="Speed (0.25 to 4.0)")] = 1.0,
+    async def _synthesize(
+        input_text: str,
+        model: str,
+        voice: str,
+        response_format: str,
+        speed: float,
+        stream_format: str | None,
     ) -> StreamingResponse:
-        """OpenAI-compatible text-to-speech endpoint.
-
-        Args:
-            input: Text to synthesize.
-            model: Model to use (tts-1, tts-1-hd, or a Piper model name).
-            voice: Voice name (alloy, echo, fable, onyx, nova, shimmer).
-            response_format: Output format (wav, pcm, mp3). MP3 requires ffmpeg.
-            speed: Speed multiplier (0.25 to 4.0).
-
-        Returns:
-            Audio stream in the requested format.
-
-        """
-        # Validate response_format early to avoid wasted synthesis work
-        valid_formats = ("wav", "pcm", "mp3")
-        if response_format not in valid_formats:
-            raise HTTPException(
-                status_code=422,
-                detail=f"Unsupported response_format: {response_format}. Supported: {', '.join(valid_formats)}",
-            )
-
+        """Core synthesis logic shared by JSON and form endpoints."""
         # Resolve model name - "tts-1" and "tts-1-hd" are OpenAI's model names
         model_name = None if model in ("tts-1", "tts-1-hd") else model
 
@@ -266,15 +246,59 @@ def create_app(
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e)) from e
 
-        if not input.strip():
+        if not input_text.strip():
             raise HTTPException(status_code=400, detail="Input text cannot be empty")
 
         # Clamp speed to valid range
         speed = max(0.25, min(4.0, speed))
 
+        # Handle streaming mode (OpenAI uses stream_format=audio with response_format=pcm)
+        if stream_format is not None:
+            if stream_format != "audio":
+                raise HTTPException(
+                    status_code=422,
+                    detail="Only 'audio' stream_format is supported",
+                )
+            if response_format != "pcm":
+                raise HTTPException(
+                    status_code=422,
+                    detail="Streaming requires response_format=pcm",
+                )
+            if not manager.supports_streaming:
+                raise HTTPException(
+                    status_code=422,
+                    detail="This model does not support streaming synthesis",
+                )
+
+            async def generate_audio() -> AsyncIterator[bytes]:
+                async for chunk in manager.synthesize_stream(
+                    input_text,
+                    voice=voice,
+                    speed=speed,
+                ):
+                    yield chunk
+
+            return StreamingResponse(
+                generate_audio(),
+                media_type="audio/pcm",
+                headers={
+                    "X-Sample-Rate": str(constants.KOKORO_DEFAULT_SAMPLE_RATE),
+                    "X-Sample-Width": "2",
+                    "X-Channels": "1",
+                },
+            )
+
+        # Non-streaming mode: validate format and synthesize complete audio
+        valid_formats = ("wav", "pcm", "mp3")
+        if response_format not in valid_formats:
+            raise HTTPException(
+                status_code=422,
+                detail=f"Unsupported response_format: {response_format}. Supported: {', '.join(valid_formats)}",
+            )
+
         try:
             result = await manager.synthesize(
-                input,
+                input_text,
                 voice=voice,
                 speed=speed,
             )
@@ -292,22 +316,20 @@ def create_app(
             result.channels,
         )
 
-    # --- Alternative endpoint accepting JSON body ---
+    @app.post("/v1/audio/speech")
+    async def synthesize_speech(request: SpeechRequest) -> StreamingResponse:
+        """OpenAI-compatible text-to-speech endpoint.
 
-    @app.post("/v1/audio/speech/json")
-    async def synthesize_speech_json(
-        request: SpeechRequest,
-    ) -> StreamingResponse:
-        """Alternative TTS endpoint accepting JSON body.
-
-        This is for clients that prefer JSON over form data.
+        Accepts JSON body with input, model, voice, response_format, speed,
+        and optional stream_format parameters.
         """
-        return await synthesize_speech(
-            input=request.input,
+        return await _synthesize(
+            input_text=request.input,
             model=request.model,
             voice=request.voice,
             response_format=request.response_format,
             speed=request.speed,
+            stream_format=request.stream_format,
         )
 
     return app

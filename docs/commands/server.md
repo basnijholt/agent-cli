@@ -377,7 +377,7 @@ agent-cli server tts --preload
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `/v1/audio/speech` | POST | OpenAI-compatible speech synthesis |
+| `/v1/audio/speech` | POST | OpenAI-compatible speech synthesis (supports `stream_format=audio` for Kokoro) |
 | `/v1/audio/speech/json` | POST | Alternative endpoint accepting JSON body |
 | `/v1/voices` | GET | List available voices (models) |
 | `/v1/model/unload` | POST | Manually unload a model from memory |
@@ -389,18 +389,16 @@ agent-cli server tts --preload
 #### curl Example
 
 ```bash
-# Synthesize speech (form data)
+# Synthesize speech (JSON body, OpenAI-compatible)
 curl -X POST http://localhost:10401/v1/audio/speech \
-  -F "input=Hello, world!" \
-  -F "model=tts-1" \
-  -F "voice=alloy" \
+  -H "Content-Type: application/json" \
+  -d '{"input": "Hello, world!", "model": "tts-1", "voice": "alloy", "response_format": "wav"}' \
   --output speech.wav
 
 # With speed adjustment
 curl -X POST http://localhost:10401/v1/audio/speech \
-  -F "input=This is faster speech" \
-  -F "voice=echo" \
-  -F "speed=1.5" \
+  -H "Content-Type: application/json" \
+  -d '{"input": "This is faster speech", "voice": "echo", "speed": 1.5, "response_format": "wav"}' \
   --output fast.wav
 ```
 
@@ -419,6 +417,62 @@ response = client.audio.speech.create(
 )
 response.write_to_file("output.wav")
 ```
+
+### Streaming Synthesis (Kokoro)
+
+The Kokoro backend supports streaming synthesis following OpenAI's API convention:
+
+- `stream_format=audio` enables streaming
+- `response_format=pcm` is required (this is the default)
+
+This enables lower latency for real-time playback.
+
+#### Streaming Example
+
+```bash
+# Stream audio directly to speaker (pcm is the default format)
+curl -X POST http://localhost:10401/v1/audio/speech \
+  -H "Content-Type: application/json" \
+  -d '{"input": "Hello world. This is a streaming test.", "voice": "af_heart", "stream_format": "audio"}' \
+  --output - | aplay -r 24000 -f S16_LE -c 1
+```
+
+#### Python Streaming Example (OpenAI SDK)
+
+```python
+from openai import OpenAI
+
+client = OpenAI(base_url="http://localhost:10401/v1", api_key="not-needed")
+
+# Stream audio chunks as they're generated
+with client.audio.speech.with_streaming_response.create(
+    model="tts-1",
+    voice="af_heart",
+    input="Hello, this is a streaming test.",
+    extra_body={"stream_format": "audio"},
+) as response:
+    for chunk in response.iter_bytes():
+        # Process audio chunk (24kHz, 16-bit signed PCM, mono)
+        process_audio(chunk)
+```
+
+#### Response Format
+
+- **Content-Type**: `audio/pcm`
+- **Headers**: `X-Sample-Rate: 24000`, `X-Sample-Width: 2`, `X-Channels: 1`
+- **Body**: Raw 16-bit signed PCM audio chunks (same as OpenAI's PCM format)
+
+#### Wyoming Protocol Streaming
+
+When using the Kokoro backend via Wyoming protocol (port 10400), streaming is automatic - audio chunks are sent as they're generated via `AudioChunk` messages.
+
+#### Architecture
+
+The Kokoro backend runs synthesis in an isolated subprocess. This design provides:
+
+- **Memory cleanup**: When the model is unloaded (via TTL or `/v1/model/unload`), the subprocess terminates and all GPU/CPU memory is immediately released
+- **Low latency**: Streaming delivers audio chunks as Kokoro generates them, reducing time-to-first-audio
+- **Stability**: Subprocess isolation prevents memory leaks from affecting the main server process
 
 ### Voice Selection
 

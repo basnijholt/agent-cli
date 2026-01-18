@@ -16,6 +16,7 @@ from agent_cli import constants
 if TYPE_CHECKING:
     from wyoming.event import Event
 
+    from agent_cli.server.tts.model_manager import TTSModelManager
     from agent_cli.server.tts.model_registry import TTSModelRegistry
 
 logger = logging.getLogger(__name__)
@@ -87,49 +88,11 @@ class WyomingTTSHandler(AsyncEventHandler):
 
         try:
             manager = self._registry.get_manager()
-            result = await manager.synthesize(
-                text,
-                voice=synthesize.voice,
-                speed=1.0,
-            )
 
-            # Send audio start
-            await self.write_event(
-                AudioStart(
-                    rate=result.sample_rate,
-                    width=result.sample_width,
-                    channels=result.channels,
-                ).event(),
-            )
-
-            # Send audio data - skip WAV header to get raw PCM
-            pcm_data = (
-                result.audio[constants.WAV_HEADER_SIZE :]
-                if len(result.audio) > constants.WAV_HEADER_SIZE
-                else result.audio
-            )
-
-            # Send in chunks for streaming
-            chunk_size = 4096
-            for i in range(0, len(pcm_data), chunk_size):
-                chunk = pcm_data[i : i + chunk_size]
-                await self.write_event(
-                    AudioChunk(
-                        audio=chunk,
-                        rate=result.sample_rate,
-                        width=result.sample_width,
-                        channels=result.channels,
-                    ).event(),
-                )
-
-            # Send audio stop
-            await self.write_event(AudioStop().event())
-
-            logger.info(
-                "Wyoming synthesis: %d chars -> %.1fs audio",
-                len(text),
-                result.duration,
-            )
+            if manager.supports_streaming:
+                await self._synthesize_streaming(manager, text, synthesize.voice)
+            else:
+                await self._synthesize_complete(manager, text, synthesize.voice)
 
         except Exception:
             logger.exception("Wyoming synthesis failed")
@@ -144,6 +107,86 @@ class WyomingTTSHandler(AsyncEventHandler):
             await self.write_event(AudioStop().event())
 
         return False
+
+    async def _synthesize_streaming(
+        self,
+        manager: TTSModelManager,
+        text: str,
+        voice: str | None,
+    ) -> None:
+        """Stream audio chunks as they're generated."""
+        sample_rate = constants.KOKORO_DEFAULT_SAMPLE_RATE
+
+        # Send audio start
+        await self.write_event(
+            AudioStart(rate=sample_rate, width=2, channels=1).event(),
+        )
+
+        chunk_count = 0
+        total_bytes = 0
+        async for chunk in manager.synthesize_stream(text, voice=voice, speed=1.0):
+            await self.write_event(
+                AudioChunk(audio=chunk, rate=sample_rate, width=2, channels=1).event(),
+            )
+            chunk_count += 1
+            total_bytes += len(chunk)
+
+        await self.write_event(AudioStop().event())
+
+        # Calculate duration from PCM bytes (16-bit mono)
+        duration = total_bytes / (sample_rate * 2)
+        logger.info(
+            "Wyoming streaming synthesis: %d chars -> %.1fs audio in %d chunks",
+            len(text),
+            duration,
+            chunk_count,
+        )
+
+    async def _synthesize_complete(
+        self,
+        manager: TTSModelManager,
+        text: str,
+        voice: str | None,
+    ) -> None:
+        """Synthesize complete audio then send in chunks."""
+        result = await manager.synthesize(text, voice=voice, speed=1.0)
+
+        # Send audio start
+        await self.write_event(
+            AudioStart(
+                rate=result.sample_rate,
+                width=result.sample_width,
+                channels=result.channels,
+            ).event(),
+        )
+
+        # Send audio data - skip WAV header to get raw PCM
+        pcm_data = (
+            result.audio[constants.WAV_HEADER_SIZE :]
+            if len(result.audio) > constants.WAV_HEADER_SIZE
+            else result.audio
+        )
+
+        # Send in chunks
+        chunk_size = 4096
+        for i in range(0, len(pcm_data), chunk_size):
+            chunk = pcm_data[i : i + chunk_size]
+            await self.write_event(
+                AudioChunk(
+                    audio=chunk,
+                    rate=result.sample_rate,
+                    width=result.sample_width,
+                    channels=result.channels,
+                ).event(),
+            )
+
+        await self.write_event(AudioStop().event())
+
+        logger.info(
+            "Wyoming synthesis: %d chars -> %.1fs audio",
+            len(text),
+            result.duration,
+        )
 
     async def _handle_describe(self) -> bool:
         """Handle describe event - return server capabilities."""

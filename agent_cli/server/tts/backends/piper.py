@@ -8,7 +8,7 @@ import logging
 import time
 import wave
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, NoReturn
 
 from agent_cli import constants
 from agent_cli.server.tts.backends.base import (
@@ -235,3 +235,19 @@ class PiperBackend:
             channels=1,  # Mono
             duration=duration,
         )
+
+    @property
+    def supports_streaming(self) -> bool:
+        """Piper backend does not support streaming synthesis."""
+        return False
+
+    def synthesize_stream(
+        self,
+        text: str,
+        *,
+        voice: str | None = None,
+        speed: float = 1.0,
+    ) -> NoReturn:
+        """Streaming is not supported by Piper backend."""
+        msg = "Streaming synthesis is not supported by Piper backend"
+        raise NotImplementedError(msg)

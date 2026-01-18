@@ -8,12 +8,14 @@ import logging
 import time
 import wave
 from concurrent.futures import ProcessPoolExecutor
-from multiprocessing import get_context
+from dataclasses import dataclass, field
+from multiprocessing import Manager, get_context
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from agent_cli import constants
 from agent_cli.core.process import set_process_title
+from agent_cli.server.streaming import AsyncQueueReader, QueueWriter
 from agent_cli.server.tts.backends.base import (
     BackendConfig,
     InvalidTextError,
@@ -21,6 +23,9 @@ from agent_cli.server.tts.backends.base import (
     get_backend_cache_dir,
     get_torch_device,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import AsyncIterator
 
 logger = logging.getLogger(__name__)
 
@@ -30,10 +35,24 @@ KOKORO_HF_REPO = "hexgrad/Kokoro-82M"
 # Default voice if none specified
 DEFAULT_VOICE = "af_heart"
 
-# --- Subprocess globals (only used within subprocess worker) ---
-_subprocess_model: Any = None
-_subprocess_device: str | None = None
-_subprocess_pipelines: dict[str, Any] = {}
+
+# --- Subprocess state (only used within subprocess worker) ---
+# This state persists across function calls within the subprocess because:
+# 1. Model loading is expensive and must be reused across synthesis calls
+# 2. PyTorch models cannot be pickled/passed through IPC queues
+# 3. The subprocess is long-lived (ProcessPoolExecutor reuses workers)
+
+
+@dataclass
+class _SubprocessState:
+    """Container for subprocess-local state. Not shared with main process."""
+
+    model: Any = None
+    device: str | None = None
+    pipelines: dict[str, Any] = field(default_factory=dict)
+
+
+_state = _SubprocessState()
 
 
 # --- Subprocess worker functions (run in isolated process) ---
@@ -100,6 +119,23 @@ def _resolve_voice_path(voice: str | None, cache_dir: Path) -> tuple[str, str]:
     return str(voice_path), voice_name[0].lower()
 
 
+def _get_pipeline(voice: str | None, cache_dir: str) -> tuple[Any, str]:
+    """Get or create pipeline for the given voice. Returns (pipeline, voice_path)."""
+    from kokoro import KPipeline  # noqa: PLC0415
+
+    cache_path = Path(cache_dir)
+    voice_path, lang_code = _resolve_voice_path(voice, cache_path)
+
+    if lang_code not in _state.pipelines:
+        _state.pipelines[lang_code] = KPipeline(
+            lang_code=lang_code,
+            model=_state.model,
+            device=_state.device,
+        )
+
+    return _state.pipelines[lang_code], voice_path
+
+
 def _load_model_in_subprocess(
     model_name: str,
     device: str,
@@ -127,16 +163,15 @@ def _load_model_in_subprocess(
     elif device == "mps":
         model = model.to(torch.device("mps"))
 
-    # Store globally for reuse
-    global _subprocess_model, _subprocess_device, _subprocess_pipelines
-    _subprocess_model = model
-    _subprocess_device = device
-    _subprocess_pipelines = {}
+    # Store in subprocess state for reuse
+    _state.model = model
+    _state.device = device
+    _state.pipelines = {}
 
     # Warmup pipeline for default language
     lang = DEFAULT_VOICE[0]
     logger.info("Warming up pipeline for lang_code '%s'...", lang)
-    _subprocess_pipelines[lang] = KPipeline(lang_code=lang, model=model, device=device)
+    _state.pipelines[lang] = KPipeline(lang_code=lang, model=model, device=device)
 
     return device
 
@@ -149,26 +184,13 @@ def _synthesize_in_subprocess(
 ) -> dict[str, Any]:
     """Synthesize text to audio in subprocess."""
     import numpy as np  # noqa: PLC0415
-    from kokoro import KPipeline  # noqa: PLC0415
 
-    global _subprocess_model, _subprocess_device, _subprocess_pipelines  # noqa: PLW0602
-
-    cache_path = Path(cache_dir)
-    voice_path, lang_code = _resolve_voice_path(voice, cache_path)
-
-    # Get or create pipeline for this language
-    if lang_code not in _subprocess_pipelines:
-        _subprocess_pipelines[lang_code] = KPipeline(
-            lang_code=lang_code,
-            model=_subprocess_model,
-            device=_subprocess_device,
-        )
-    pipeline = _subprocess_pipelines[lang_code]
+    pipeline, voice_path = _get_pipeline(voice, cache_dir)
 
     # Synthesize and collect audio chunks
     audio_chunks = [
         r.audio.numpy()
-        for r in pipeline(text, voice=voice_path, speed=speed, model=_subprocess_model)
+        for r in pipeline(text, voice=voice_path, speed=speed, model=_state.model)
         if r.audio is not None
     ]
     if not audio_chunks:
@@ -192,6 +214,46 @@ def _synthesize_in_subprocess(
         "sample_rate": sample_rate,
         "duration": len(audio_int16) / sample_rate,
     }
+
+
+def _synthesize_stream_in_subprocess(
+    text: str,
+    voice: str | None,
+    speed: float,
+    cache_dir: str,
+    output_queue: Any,  # Manager queue proxy
+) -> None:
+    """Stream audio chunks through queue as Kokoro generates them."""
+    import numpy as np  # noqa: PLC0415
+
+    writer = QueueWriter(output_queue)
+
+    try:
+        pipeline, voice_path = _get_pipeline(voice, cache_dir)
+
+        chunk_count = 0
+        total_samples = 0
+
+        for result in pipeline(text, voice=voice_path, speed=speed, model=_state.model):
+            if result.audio is not None:
+                # Convert to int16 PCM bytes
+                audio_int16 = (result.audio.numpy() * 32767).astype(np.int16)
+                writer.send_data(audio_int16.tobytes())
+                chunk_count += 1
+                total_samples += len(audio_int16)
+
+        sample_rate = constants.KOKORO_DEFAULT_SAMPLE_RATE
+        writer.send_done(
+            {
+                "chunk_count": chunk_count,
+                "total_samples": total_samples,
+                "duration": total_samples / sample_rate,
+                "sample_rate": sample_rate,
+            },
+        )
+
+    except Exception as e:
+        writer.send_error(e)
 
 
 class KokoroBackend:
@@ -283,3 +345,59 @@ class KokoroBackend:
             channels=1,
             duration=result["duration"],
         )
+
+    @property
+    def supports_streaming(self) -> bool:
+        """Kokoro backend supports streaming synthesis."""
+        return True
+
+    async def synthesize_stream(
+        self,
+        text: str,
+        *,
+        voice: str | None = None,
+        speed: float = 1.0,
+    ) -> AsyncIterator[bytes]:
+        """Stream synthesized audio chunks as they are generated."""
+        if self._executor is None:
+            msg = "Model not loaded. Call load() first."
+            raise RuntimeError(msg)
+
+        if not text or not text.strip():
+            msg = "Text cannot be empty"
+            raise InvalidTextError(msg)
+
+        # Use Manager queue for cross-process communication
+        # Manager queues work with already-running subprocesses
+        manager = Manager()
+        try:
+            queue = manager.Queue(maxsize=10)  # Backpressure control
+            loop = asyncio.get_running_loop()
+
+            # Submit streaming worker to subprocess
+            # Manager queue is a proxy that works with already-running subprocesses
+            future = loop.run_in_executor(
+                self._executor,
+                _synthesize_stream_in_subprocess,
+                text,
+                voice,
+                speed,
+                str(self._cache_dir),
+                queue,  # type: ignore[arg-type]
+            )
+
+            # Yield chunks as they arrive
+            reader = AsyncQueueReader(queue, timeout=30.0)  # type: ignore[arg-type]
+            async for chunk in reader:
+                if chunk.chunk_type == "done":
+                    break
+                if chunk.chunk_type == "error":
+                    msg = str(chunk.payload)
+                    raise RuntimeError(msg)
+                if chunk.payload is not None:
+                    yield chunk.payload  # type: ignore[misc]
+
+            # Ensure subprocess completes
+            await future
+        finally:
+            manager.shutdown()
