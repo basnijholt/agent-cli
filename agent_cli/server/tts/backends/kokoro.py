@@ -8,6 +8,7 @@ import logging
 import time
 import wave
 from concurrent.futures import ProcessPoolExecutor
+from dataclasses import dataclass, field
 from multiprocessing import Manager, get_context
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -34,10 +35,24 @@ KOKORO_HF_REPO = "hexgrad/Kokoro-82M"
 # Default voice if none specified
 DEFAULT_VOICE = "af_heart"
 
-# --- Subprocess globals (only used within subprocess worker) ---
-_subprocess_model: Any = None
-_subprocess_device: str | None = None
-_subprocess_pipelines: dict[str, Any] = {}
+
+# --- Subprocess state (only used within subprocess worker) ---
+# This state persists across function calls within the subprocess because:
+# 1. Model loading is expensive and must be reused across synthesis calls
+# 2. PyTorch models cannot be pickled/passed through IPC queues
+# 3. The subprocess is long-lived (ProcessPoolExecutor reuses workers)
+
+
+@dataclass
+class _SubprocessState:
+    """Container for subprocess-local state. Not shared with main process."""
+
+    model: Any = None
+    device: str | None = None
+    pipelines: dict[str, Any] = field(default_factory=dict)
+
+
+_state = _SubprocessState()
 
 
 # --- Subprocess worker functions (run in isolated process) ---
@@ -108,19 +123,17 @@ def _get_pipeline(voice: str | None, cache_dir: str) -> tuple[Any, str]:
     """Get or create pipeline for the given voice. Returns (pipeline, voice_path)."""
     from kokoro import KPipeline  # noqa: PLC0415
 
-    global _subprocess_model, _subprocess_device, _subprocess_pipelines  # noqa: PLW0602
-
     cache_path = Path(cache_dir)
     voice_path, lang_code = _resolve_voice_path(voice, cache_path)
 
-    if lang_code not in _subprocess_pipelines:
-        _subprocess_pipelines[lang_code] = KPipeline(
+    if lang_code not in _state.pipelines:
+        _state.pipelines[lang_code] = KPipeline(
             lang_code=lang_code,
-            model=_subprocess_model,
-            device=_subprocess_device,
+            model=_state.model,
+            device=_state.device,
         )
 
-    return _subprocess_pipelines[lang_code], voice_path
+    return _state.pipelines[lang_code], voice_path
 
 
 def _load_model_in_subprocess(
@@ -150,16 +163,15 @@ def _load_model_in_subprocess(
     elif device == "mps":
         model = model.to(torch.device("mps"))
 
-    # Store globally for reuse
-    global _subprocess_model, _subprocess_device, _subprocess_pipelines
-    _subprocess_model = model
-    _subprocess_device = device
-    _subprocess_pipelines = {}
+    # Store in subprocess state for reuse
+    _state.model = model
+    _state.device = device
+    _state.pipelines = {}
 
     # Warmup pipeline for default language
     lang = DEFAULT_VOICE[0]
     logger.info("Warming up pipeline for lang_code '%s'...", lang)
-    _subprocess_pipelines[lang] = KPipeline(lang_code=lang, model=model, device=device)
+    _state.pipelines[lang] = KPipeline(lang_code=lang, model=model, device=device)
 
     return device
 
@@ -173,14 +185,12 @@ def _synthesize_in_subprocess(
     """Synthesize text to audio in subprocess."""
     import numpy as np  # noqa: PLC0415
 
-    global _subprocess_model  # noqa: PLW0602
-
     pipeline, voice_path = _get_pipeline(voice, cache_dir)
 
     # Synthesize and collect audio chunks
     audio_chunks = [
         r.audio.numpy()
-        for r in pipeline(text, voice=voice_path, speed=speed, model=_subprocess_model)
+        for r in pipeline(text, voice=voice_path, speed=speed, model=_state.model)
         if r.audio is not None
     ]
     if not audio_chunks:
@@ -216,8 +226,6 @@ def _synthesize_stream_in_subprocess(
     """Stream audio chunks through queue as Kokoro generates them."""
     import numpy as np  # noqa: PLC0415
 
-    global _subprocess_model  # noqa: PLW0602
-
     writer = QueueWriter(output_queue)
 
     try:
@@ -226,7 +234,7 @@ def _synthesize_stream_in_subprocess(
         chunk_count = 0
         total_samples = 0
 
-        for result in pipeline(text, voice=voice_path, speed=speed, model=_subprocess_model):
+        for result in pipeline(text, voice=voice_path, speed=speed, model=_state.model):
             if result.audio is not None:
                 # Convert to int16 PCM bytes
                 audio_int16 = (result.audio.numpy() * 32767).astype(np.int16)
