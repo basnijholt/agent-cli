@@ -43,7 +43,7 @@ For a complete local setup with all AI services:
 > pip install "agent-cli[whisper-mlx]"
 > agent-cli server whisper --backend mlx
 > ```
-> See [Local Whisper Server](commands/server.md#whisper) for details.
+> See [Local Whisper Server](commands/server/whisper.md) for details.
 
 === "Using CLI Commands"
 

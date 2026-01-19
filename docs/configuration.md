@@ -235,7 +235,7 @@ Now just run `agent-cli transcribe` - it automatically uses your local server.
 
 > [!TIP]
 > **OpenAI SDK users:** The server also exposes an OpenAI-compatible API on port 10301.
-> See [server whisper docs](commands/server.md#whisper) for all options.
+> See [server whisper docs](commands/server/whisper.md) for all options.
 
 ## Audio Device Configuration
 
