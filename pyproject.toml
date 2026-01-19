@@ -1,6 +1,6 @@
 [build-system]
-requires = ["setuptools>=42", "wheel", "versioningit"]
-build-backend = "setuptools.build_meta"
+requires = ["hatchling", "versioningit"]
+build-backend = "hatchling.build"
 
 [project]
 name = "agent-cli"
@@ -126,11 +126,19 @@ agent-cli = "agent_cli.cli:app"
 agent = "agent_cli.cli:app"
 ag = "agent_cli.cli:app"
 
-[tool.setuptools.packages.find]
-include = ["agent_cli.*", "agent_cli"]
+[tool.hatch.version]
+source = "versioningit"
 
-[tool.setuptools.package-data]
-"agent_cli" = ["py.typed", "scripts/**/*", "example-config.toml"]
+[tool.hatch.build.targets.wheel]
+packages = ["agent_cli"]
+
+[tool.versioningit]
+default-version = "0.0.0"
+
+[tool.versioningit.vcs]
+method = "git"
+match = ["v*"]
+default-tag = "0.0.0"
 
 [tool.pytest.ini_options]
 asyncio_default_fixture_loop_scope = "function"
@@ -201,14 +209,6 @@ max-complexity = 18
 
 [tool.mypy]
 python_version = "3.11"
-
-[tool.versioningit]
-default-version = "0.0.0"
-
-[tool.versioningit.vcs]
-method = "git"
-match = ["v*"]
-default-tag = "0.0.0"
 
 [tool.pylint.similarities]
 # Minimum lines number of a similarity (duplicate-code check)
