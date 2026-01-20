@@ -55,6 +55,15 @@ def is_git_repo(path: Path | None = None) -> bool:
         return False
 
 
+def has_origin_remote(path: Path | None = None) -> bool:
+    """Check if the repository has an 'origin' remote configured."""
+    try:
+        result = _run_git("remote", "get-url", "origin", cwd=path, check=False)
+        return result.returncode == 0
+    except Exception:
+        return False
+
+
 def get_repo_root(path: Path | None = None) -> Path | None:
     """Get the root directory of the git repository."""
     try:
@@ -615,8 +624,11 @@ def create_worktree(
     # Create base directory if needed
     base_dir.mkdir(parents=True, exist_ok=True)
 
-    # Fetch latest refs
-    if fetch:
+    # Check if origin remote exists
+    origin_exists = has_origin_remote(repo_root)
+
+    # Fetch latest refs (only if origin exists)
+    if fetch and origin_exists:
         if on_log:
             on_log("Running: git fetch origin")
         _run_git("fetch", "origin", cwd=repo_root, check=False, capture_output=capture_output)
@@ -625,10 +637,10 @@ def create_worktree(
     from_ref_explicit = from_ref is not None
 
     # Determine the reference to create from
-    # Use origin/{branch} to ensure we're using the freshly-fetched remote ref,
-    # not a potentially stale local branch
+    # Use origin/{branch} if origin exists, otherwise use local branch
     if from_ref is None:
-        from_ref = f"origin/{get_default_branch(repo_root)}"
+        default_branch = get_default_branch(repo_root)
+        from_ref = f"origin/{default_branch}" if origin_exists else default_branch
 
     # Check if branch exists remotely or locally
     remote_exists, local_exists = _check_branch_exists(branch_name, repo_root)

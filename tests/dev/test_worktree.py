@@ -15,6 +15,7 @@ from agent_cli.dev.worktree import (
     create_worktree,
     find_worktree_by_name,
     get_main_repo_root,
+    has_origin_remote,
     list_worktrees,
     resolve_worktree_base_dir,
     sanitize_branch_name,
@@ -600,3 +601,163 @@ class TestPullLfs:
             logged: list[str] = []
             _pull_lfs(tmp_path, on_log=logged.append)
             assert logged == []  # No log means no action taken
+
+
+class TestHasOriginRemote:
+    """Tests for has_origin_remote function.
+
+    Validates detection of origin remote presence using `git remote get-url origin`.
+    """
+
+    def test_origin_exists(self) -> None:
+        """Return True when origin remote is configured."""
+        mock_run = MagicMock()
+        mock_run.return_value.returncode = 0
+        mock_run.return_value.stdout = "https://github.com/user/repo.git"
+
+        with patch("agent_cli.dev.worktree._run_git", mock_run):
+            assert has_origin_remote(Path("/repo")) is True
+
+        mock_run.assert_called_once_with(
+            "remote",
+            "get-url",
+            "origin",
+            cwd=Path("/repo"),
+            check=False,
+        )
+
+    def test_origin_not_exists(self) -> None:
+        """Return False when origin remote is not configured."""
+        mock_run = MagicMock()
+        mock_run.return_value.returncode = 2  # git returns non-zero when remote doesn't exist
+        mock_run.return_value.stdout = ""
+
+        with patch("agent_cli.dev.worktree._run_git", mock_run):
+            assert has_origin_remote(Path("/repo")) is False
+
+    def test_git_command_fails(self) -> None:
+        """Return False when git command raises exception."""
+        with patch(
+            "agent_cli.dev.worktree._run_git",
+            side_effect=Exception("git not found"),
+        ):
+            assert has_origin_remote(Path("/repo")) is False
+
+
+class TestCreateWorktreeNoOrigin:
+    """Tests for create_worktree when repository has no origin remote.
+
+    Bug fix: When a repository has no origin remote configured,
+    `dev new` would fail with "fatal: invalid reference: origin/main"
+    because it tried to create the worktree from origin/{branch}.
+
+    The fix:
+    1. Skip `git fetch origin` when no origin exists
+    2. Use the local default branch instead of origin/{branch} as the base ref
+    """
+
+    def test_uses_local_branch_when_no_origin(self) -> None:
+        """Use local branch as from_ref when no origin remote exists."""
+        with (
+            patch("agent_cli.dev.worktree.get_main_repo_root", return_value=Path("/repo")),
+            patch(
+                "agent_cli.dev.worktree.resolve_worktree_base_dir",
+                return_value=Path("/worktrees"),
+            ),
+            patch("agent_cli.dev.worktree._run_git") as mock_run,
+            patch("agent_cli.dev.worktree._check_branch_exists", return_value=(False, False)),
+            patch("agent_cli.dev.worktree._add_worktree") as mock_add_worktree,
+            patch("agent_cli.dev.worktree._init_submodules"),
+            patch("agent_cli.dev.worktree.get_default_branch", return_value="main"),
+            patch("agent_cli.dev.worktree.has_origin_remote", return_value=False),
+            patch("pathlib.Path.exists", return_value=False),
+            patch("pathlib.Path.mkdir"),
+        ):
+            mock_run.return_value.returncode = 0
+            mock_run.return_value.stdout = ""
+
+            result = create_worktree(
+                "new-branch",
+                repo_path=Path("/repo"),
+                from_ref=None,  # Auto-determine
+                fetch=True,
+            )
+
+            assert result.success is True
+            # Verify that _add_worktree was called with local "main" branch, not "origin/main"
+            mock_add_worktree.assert_called_once()
+            call_args = mock_add_worktree.call_args
+            from_ref_used = call_args[0][3]  # 4th positional arg is from_ref
+            assert from_ref_used == "main", f"Expected 'main', got '{from_ref_used}'"
+            assert "origin" not in from_ref_used
+
+    def test_skips_fetch_when_no_origin(self) -> None:
+        """Skip git fetch when no origin remote exists."""
+        fetch_called: list[tuple[str, ...]] = []
+
+        def mock_run_git(*args: str, **_kwargs: object) -> MagicMock:
+            if args[0] == "fetch":
+                fetch_called.append(args)
+            result = MagicMock()
+            result.returncode = 0
+            result.stdout = ""
+            return result
+
+        with (
+            patch("agent_cli.dev.worktree.get_main_repo_root", return_value=Path("/repo")),
+            patch(
+                "agent_cli.dev.worktree.resolve_worktree_base_dir",
+                return_value=Path("/worktrees"),
+            ),
+            patch("agent_cli.dev.worktree._run_git", side_effect=mock_run_git),
+            patch("agent_cli.dev.worktree._check_branch_exists", return_value=(False, False)),
+            patch("agent_cli.dev.worktree._add_worktree"),
+            patch("agent_cli.dev.worktree._init_submodules"),
+            patch("agent_cli.dev.worktree.get_default_branch", return_value="main"),
+            patch("agent_cli.dev.worktree.has_origin_remote", return_value=False),
+            patch("pathlib.Path.exists", return_value=False),
+            patch("pathlib.Path.mkdir"),
+        ):
+            result = create_worktree(
+                "new-branch",
+                repo_path=Path("/repo"),
+                from_ref=None,
+                fetch=True,  # Fetch is requested but should be skipped
+            )
+
+            assert result.success is True
+            assert len(fetch_called) == 0, "git fetch should not be called when no origin"
+
+    def test_uses_origin_when_available(self) -> None:
+        """Use origin/{branch} as from_ref when origin remote exists."""
+        with (
+            patch("agent_cli.dev.worktree.get_main_repo_root", return_value=Path("/repo")),
+            patch(
+                "agent_cli.dev.worktree.resolve_worktree_base_dir",
+                return_value=Path("/worktrees"),
+            ),
+            patch("agent_cli.dev.worktree._run_git") as mock_run,
+            patch("agent_cli.dev.worktree._check_branch_exists", return_value=(False, False)),
+            patch("agent_cli.dev.worktree._add_worktree") as mock_add_worktree,
+            patch("agent_cli.dev.worktree._init_submodules"),
+            patch("agent_cli.dev.worktree.get_default_branch", return_value="main"),
+            patch("agent_cli.dev.worktree.has_origin_remote", return_value=True),
+            patch("pathlib.Path.exists", return_value=False),
+            patch("pathlib.Path.mkdir"),
+        ):
+            mock_run.return_value.returncode = 0
+            mock_run.return_value.stdout = ""
+
+            result = create_worktree(
+                "new-branch",
+                repo_path=Path("/repo"),
+                from_ref=None,  # Auto-determine
+                fetch=True,
+            )
+
+            assert result.success is True
+            # Verify that _add_worktree was called with "origin/main"
+            mock_add_worktree.assert_called_once()
+            call_args = mock_add_worktree.call_args
+            from_ref_used = call_args[0][3]  # 4th positional arg is from_ref
+            assert from_ref_used == "origin/main", f"Expected 'origin/main', got '{from_ref_used}'"
