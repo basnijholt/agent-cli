@@ -253,7 +253,7 @@ async def _async_main(
                 print_with_style("✨ Ready for next command...", style="green")
 
 
-@app.command("assistant")
+@app.command("assistant", rich_help_panel="Voice Commands")
 def assistant(
     *,
     # --- Provider Selection ---

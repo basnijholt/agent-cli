@@ -122,7 +122,7 @@ app = typer.Typer(
     rich_markup_mode="markdown",
     no_args_is_help=True,
 )
-main_app.add_typer(app, name="dev")
+main_app.add_typer(app, name="dev", rich_help_panel="Development")
 
 
 @app.callback()
