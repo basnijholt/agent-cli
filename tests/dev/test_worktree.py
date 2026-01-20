@@ -11,6 +11,7 @@ from agent_cli.dev.worktree import (
     CreateWorktreeResult,
     WorktreeInfo,
     _parse_git_config_regexp,
+    _pull_lfs,
     create_worktree,
     find_worktree_by_name,
     get_main_repo_root,
@@ -444,6 +445,7 @@ class TestCreateWorktreeFromRefWarning:
             patch("agent_cli.dev.worktree._check_branch_exists", return_value=(False, True)),
             patch("agent_cli.dev.worktree._add_worktree"),
             patch("agent_cli.dev.worktree._init_submodules"),
+            patch("agent_cli.dev.worktree._pull_lfs"),
             patch("pathlib.Path.exists", return_value=False),
             patch("pathlib.Path.mkdir"),
         ):
@@ -475,6 +477,7 @@ class TestCreateWorktreeFromRefWarning:
             patch("agent_cli.dev.worktree._check_branch_exists", return_value=(True, False)),
             patch("agent_cli.dev.worktree._add_worktree"),
             patch("agent_cli.dev.worktree._init_submodules"),
+            patch("agent_cli.dev.worktree._pull_lfs"),
             patch("pathlib.Path.exists", return_value=False),
             patch("pathlib.Path.mkdir"),
         ):
@@ -533,6 +536,7 @@ class TestCreateWorktreeFromRefWarning:
             patch("agent_cli.dev.worktree._check_branch_exists", return_value=(False, False)),
             patch("agent_cli.dev.worktree._add_worktree"),
             patch("agent_cli.dev.worktree._init_submodules"),
+            patch("agent_cli.dev.worktree._pull_lfs"),
             patch("pathlib.Path.exists", return_value=False),
             patch("pathlib.Path.mkdir"),
         ):
@@ -548,3 +552,51 @@ class TestCreateWorktreeFromRefWarning:
 
             assert result.success is True
             assert result.warning is None  # No warning since branch is new
+
+
+class TestPullLfs:
+    """Tests for _pull_lfs function.
+
+    Evidence: https://git-lfs.com/ - Git LFS stores large files outside the repo
+    and replaces them with pointers. `git lfs pull` fetches the actual content.
+    """
+
+    def test_no_gitattributes(self, tmp_path: Path) -> None:
+        """Skip LFS pull when .gitattributes doesn't exist."""
+        # No .gitattributes file
+        logged: list[str] = []
+        _pull_lfs(tmp_path, on_log=logged.append)
+        assert logged == []  # No log means no action taken
+
+    def test_no_lfs_filter_in_gitattributes(self, tmp_path: Path) -> None:
+        """Skip LFS pull when .gitattributes doesn't contain filter=lfs."""
+        (tmp_path / ".gitattributes").write_text("*.txt text\n")
+        logged: list[str] = []
+        _pull_lfs(tmp_path, on_log=logged.append)
+        assert logged == []  # No log means no action taken
+
+    def test_lfs_pull_when_filter_present(self, tmp_path: Path) -> None:
+        """Run git lfs pull when filter=lfs is in .gitattributes."""
+        (tmp_path / ".gitattributes").write_text("*.bin filter=lfs diff=lfs merge=lfs -text\n")
+
+        with (
+            patch("agent_cli.dev.worktree.shutil.which", return_value="/usr/bin/git-lfs"),
+            patch("agent_cli.dev.worktree._run_git") as mock_run,
+        ):
+            mock_run.return_value.returncode = 0
+            logged: list[str] = []
+            _pull_lfs(tmp_path, on_log=logged.append)
+
+            assert "Pulling Git LFS files..." in logged
+            mock_run.assert_called_once()
+            call_args = mock_run.call_args
+            assert call_args[0] == ("lfs", "pull")
+
+    def test_skip_when_git_lfs_not_installed(self, tmp_path: Path) -> None:
+        """Skip LFS pull when git-lfs is not installed."""
+        (tmp_path / ".gitattributes").write_text("*.bin filter=lfs diff=lfs merge=lfs -text\n")
+
+        with patch("agent_cli.dev.worktree.shutil.which", return_value=None):
+            logged: list[str] = []
+            _pull_lfs(tmp_path, on_log=logged.append)
+            assert logged == []  # No log means no action taken

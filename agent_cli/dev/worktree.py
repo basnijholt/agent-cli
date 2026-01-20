@@ -461,6 +461,35 @@ def _init_submodules(
     )
 
 
+def _pull_lfs(
+    worktree_path: Path,
+    *,
+    on_log: Callable[[str], None] | None = None,
+    capture_output: bool = True,
+) -> None:
+    """Pull Git LFS files in a worktree if LFS is used.
+
+    Evidence: https://git-lfs.com/ - `git lfs pull` fetches LFS objects.
+    This is a no-op if LFS is not used or files are already present.
+    """
+    # Check if .gitattributes contains LFS filters
+    gitattributes = worktree_path / ".gitattributes"
+    if not gitattributes.exists():
+        return
+
+    if "filter=lfs" not in gitattributes.read_text():
+        return
+
+    # Check if git-lfs is installed
+    if not shutil.which("git-lfs"):
+        return
+
+    if on_log:
+        on_log("Pulling Git LFS files...")
+
+    _run_git("lfs", "pull", cwd=worktree_path, check=False, capture_output=capture_output)
+
+
 def _add_worktree(
     branch_name: str,
     worktree_path: Path,
@@ -630,6 +659,13 @@ def create_worktree(
         _init_submodules(
             worktree_path,
             reference_repo=repo_root,
+            on_log=on_log,
+            capture_output=capture_output,
+        )
+
+        # Pull Git LFS files if the repo uses LFS
+        _pull_lfs(
+            worktree_path,
             on_log=on_log,
             capture_output=capture_output,
         )

@@ -495,6 +495,16 @@ git submodule update --init --recursive
 
 This ensures all submodule dependencies are available in the worktree.
 
+### Git LFS
+
+If the repository uses Git LFS (detected via `filter=lfs` in `.gitattributes`), LFS files are automatically pulled:
+
+```bash
+git lfs pull
+```
+
+This ensures large files tracked by LFS are available in the worktree.
+
 ### Environment Files
 
 The following files are automatically copied to new dev environments:
