@@ -79,7 +79,7 @@ async def _async_main(
     return text
 
 
-@app.command("speak")
+@app.command("speak", rich_help_panel="Text Commands")
 def speak(
     *,
     text: str | None = typer.Argument(

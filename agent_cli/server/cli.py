@@ -34,7 +34,7 @@ app = typer.Typer(
     rich_markup_mode="markdown",
     no_args_is_help=True,
 )
-main_app.add_typer(app, name="server")
+main_app.add_typer(app, name="server", rich_help_panel="Servers")
 
 
 @app.callback()

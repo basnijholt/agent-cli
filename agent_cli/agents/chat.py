@@ -373,7 +373,7 @@ async def _async_main(
         raise
 
 
-@app.command("chat")
+@app.command("chat", rich_help_panel="Voice Commands")
 def chat(
     *,
     # --- Provider Selection ---

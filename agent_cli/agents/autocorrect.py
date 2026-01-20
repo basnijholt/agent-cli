@@ -208,7 +208,7 @@ async def _async_autocorrect(
         sys.exit(1)
 
 
-@app.command("autocorrect")
+@app.command("autocorrect", rich_help_panel="Text Commands")
 def autocorrect(
     *,
     text: str | None = typer.Argument(

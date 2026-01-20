@@ -172,7 +172,7 @@ async def _async_main(
         )
 
 
-@app.command("voice-edit")
+@app.command("voice-edit", rich_help_panel="Voice Commands")
 def voice_edit(
     *,
     # --- Provider Selection ---

@@ -14,7 +14,7 @@ memory_app = typer.Typer(
     no_args_is_help=True,
 )
 
-app.add_typer(memory_app, name="memory")
+app.add_typer(memory_app, name="memory", rich_help_panel="Servers")
 
 
 @memory_app.callback()

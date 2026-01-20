@@ -17,7 +17,7 @@ from agent_cli.core.utils import (
 )
 
 
-@app.command("rag-proxy")
+@app.command("rag-proxy", rich_help_panel="Servers")
 def rag_proxy(
     docs_folder: Path = typer.Option(  # noqa: B008
         "./rag_docs",

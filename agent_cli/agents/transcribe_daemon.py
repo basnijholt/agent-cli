@@ -286,7 +286,7 @@ async def _daemon_loop(cfg: DaemonConfig) -> None:  # noqa: PLR0912, PLR0915
                     await asyncio.wait(background_tasks, timeout=2.0)
 
 
-@app.command("transcribe-daemon")
+@app.command("transcribe-daemon", rich_help_panel="Voice Commands")
 def transcribe_daemon(  # noqa: PLR0912
     *,
     # Daemon-specific options
