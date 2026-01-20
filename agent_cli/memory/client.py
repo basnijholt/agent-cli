@@ -49,7 +49,7 @@ class MemoryClient:
         max_entries: int = 500,
         mmr_lambda: float = 0.7,
         recency_weight: float = 0.2,
-        score_threshold: float = 0.35,
+        score_threshold: float | None = None,
         start_watcher: bool = False,
         enable_git_versioning: bool = True,
     ) -> None:

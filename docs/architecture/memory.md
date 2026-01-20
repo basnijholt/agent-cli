@@ -207,8 +207,8 @@ Executed synchronously during `augment_chat_request`.
 *   **Model:** `Xenova/ms-marco-MiniLM-L-6-v2` (ONNX, quantized).
 *   **Input:** Pairs of `(user_query, memory_content)`.
 *   **Output:** Raw logit score.
-*   **Normalization:** `relevance = sigmoid(raw_score)`.
-*   **Thresholding:** Candidates with `relevance < score_threshold` (default 0.35) are hard-pruned.
+*   **Normalization:** Min-max scaling across the candidate batch (best match = 1.0, worst = 0.0).
+*   **Thresholding:** If `score_threshold` is set, candidates below it are pruned. Default is `None` (no filtering).
 
 ### Step 3: Recency Scoring
 Combines semantic relevance with temporal proximity.
@@ -309,7 +309,7 @@ To replicate the system behavior, the following prompt strategies are required.
 | `max_entries` | `500` | Hard cap on memories per conversation. |
 | `mmr_lambda` | `0.7` | Diversity weighting (1.0 = pure relevance). |
 | `recency_weight` | `0.2` | Score weight for temporal proximity. |
-| `score_threshold` | `0.35` | Minimum semantic relevance to consider. |
+| `score_threshold` | `None` | Minimum semantic relevance to consider (no filtering by default). |
 | `enable_summarization` | `True` | Toggle for summary generation loop. |
 | `openai_base_url` | *required* | Base URL for LLM calls (can point to OpenAI-compatible proxies). |
 | `enable_git_versioning` | `True` | Toggle to enable/disable Git versioning of the memory store. |
