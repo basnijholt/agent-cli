@@ -25,6 +25,7 @@ LOGGER = logging.getLogger(__name__)
 
 _DEFAULT_MMR_LAMBDA = 0.7
 _SUMMARY_ROLE = "summary"
+_MIN_MAX_EPSILON = 1e-8  # Avoid division by zero in min-max normalization
 
 
 def gather_relevant_existing_memories(
@@ -135,7 +136,7 @@ def retrieve_memory(
     include_summary: bool = True,
     mmr_lambda: float = _DEFAULT_MMR_LAMBDA,
     recency_weight: float = 0.2,
-    score_threshold: float = 0.35,
+    score_threshold: float | None = None,
     filters: dict[str, Any] | None = None,
 ) -> tuple[MemoryRetrieval, list[str]]:
     """Execute search + rerank + recency + MMR."""
@@ -161,8 +162,15 @@ def retrieve_memory(
             seen_ids.add(rec_id)
             raw_candidates.append(rec)
 
-    def _sigmoid(x: float) -> float:
-        return 1.0 / (1.0 + math.exp(-x))
+    def _min_max_normalize(scores: list[float]) -> list[float]:
+        """Normalize scores to 0-1 range using min-max scaling."""
+        if not scores:
+            return scores
+        min_score = min(scores)
+        max_score = max(scores)
+        if max_score - min_score < _MIN_MAX_EPSILON:
+            return [0.5] * len(scores)  # All scores equal
+        return [(s - min_score) / (max_score - min_score) for s in scores]
 
     def recency_score(meta: MemoryMetadata) -> float:
         dt = datetime.fromisoformat(meta.created_at)
@@ -176,10 +184,12 @@ def retrieve_memory(
     if raw_candidates:
         pairs = [(query, mem.content) for mem in raw_candidates]
         rr_scores = predict_relevance(reranker_model, pairs)
-        for mem, rr in zip(raw_candidates, rr_scores, strict=False):
-            relevance = _sigmoid(rr)
-            # Filter out low-relevance memories to reduce noise
-            if relevance < score_threshold:
+        # Normalize raw reranker scores to 0-1 range
+        normalized_scores = _min_max_normalize(rr_scores)
+
+        for mem, relevance in zip(raw_candidates, normalized_scores, strict=False):
+            # Filter out low-relevance memories if threshold is set
+            if score_threshold is not None and relevance < score_threshold:
                 continue
 
             recency = recency_score(mem.metadata)
@@ -235,7 +245,7 @@ async def augment_chat_request(
     include_global: bool = True,
     mmr_lambda: float = _DEFAULT_MMR_LAMBDA,
     recency_weight: float = 0.2,
-    score_threshold: float = 0.35,
+    score_threshold: float | None = None,
     filters: dict[str, Any] | None = None,
 ) -> tuple[ChatRequest, MemoryRetrieval | None, str, list[str]]:
     """Retrieve memory context and augment the chat request."""

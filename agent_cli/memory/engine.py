@@ -236,7 +236,7 @@ async def process_chat_request(
     max_entries: int = _DEFAULT_MAX_ENTRIES,
     mmr_lambda: float = _DEFAULT_MMR_LAMBDA,
     recency_weight: float = 0.2,
-    score_threshold: float = 0.35,
+    score_threshold: float | None = None,
     postprocess_in_background: bool = True,
     enable_git_versioning: bool = False,
     filters: dict[str, Any] | None = None,
