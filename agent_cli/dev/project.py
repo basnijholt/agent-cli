@@ -516,7 +516,7 @@ def install_precommit_hooks(
     if not config_file.exists():
         return True, "pre-commit: no .pre-commit-config.yaml found"
 
-    # Prefer prek (faster), fall back to pre-commit
+    # Prefer prek (faster), fall back to pre-commit, then uvx variants
     cmd: str | None = None
     tool_name: str = ""
 
@@ -526,8 +526,11 @@ def install_precommit_hooks(
     elif shutil.which("pre-commit"):
         cmd = "pre-commit install"
         tool_name = "pre-commit"
+    elif shutil.which("uvx"):
+        cmd = "uvx prek install"
+        tool_name = "uvx prek"
     else:
-        return True, "pre-commit: no prek or pre-commit available, skipping hook installation"
+        return True, "pre-commit: no prek, pre-commit, or uvx available, skipping hook installation"
 
     if on_log:
         on_log(f"Running: {cmd}")

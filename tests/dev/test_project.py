@@ -683,12 +683,34 @@ class TestInstallPrecommitHooks:
         assert success is True
         assert "installed hooks using pre-commit" in msg
 
+    def test_uses_uvx_as_final_fallback(
+        self,
+        tmp_path: Path,
+        mocker: pytest.MockerFixture,
+    ) -> None:
+        """Use uvx prek when neither prek nor pre-commit is available."""
+        # Create config file
+        (tmp_path / ".pre-commit-config.yaml").write_text("repos: []")
+
+        # Mock only uvx as available
+        def which_side_effect(cmd: str) -> str | None:
+            return "/usr/bin/uvx" if cmd == "uvx" else None
+
+        mocker.patch("agent_cli.dev.project.shutil.which", side_effect=which_side_effect)
+        mock_run = mocker.patch("agent_cli.dev.project.subprocess.run")
+        mock_run.return_value.returncode = 0
+
+        success, msg = install_precommit_hooks(tmp_path)
+
+        assert success is True
+        assert "installed hooks using uvx prek" in msg
+
     def test_no_tools_available(
         self,
         tmp_path: Path,
         mocker: pytest.MockerFixture,
     ) -> None:
-        """Return early if neither prek nor pre-commit is available."""
+        """Return early if no tools are available."""
         # Create config file
         (tmp_path / ".pre-commit-config.yaml").write_text("repos: []")
 
@@ -698,7 +720,7 @@ class TestInstallPrecommitHooks:
         success, msg = install_precommit_hooks(tmp_path)
 
         assert success is True
-        assert "no prek or pre-commit available" in msg
+        assert "no prek, pre-commit, or uvx available" in msg
 
     def test_install_failure(
         self,

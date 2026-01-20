@@ -503,6 +503,7 @@ If `.pre-commit-config.yaml` exists in the project, pre-commit hooks are automat
 |------|---------|-------|
 | prek | `prek install` | Preferred (faster) |
 | pre-commit | `pre-commit install` | Fallback |
+| uvx | `uvx prek install` | Final fallback (uses uv) |
 
 Use `--no-setup` to skip hook installation along with other project setup.
 
