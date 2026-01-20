@@ -83,7 +83,7 @@ agent-cli chat --openai-base-url http://localhost:8100/v1 --llm-provider openai
 | `--max-entries` | `500` | Maximum stored memory entries per conversation (excluding summary). |
 | `--mmr-lambda` | `0.7` | MMR lambda (0-1): higher favors relevance, lower favors diversity. |
 | `--recency-weight` | `0.2` | Recency score weight (0.0-1.0). Controls freshness vs. relevance. Default 0.2 (20% recency, 80% semantic relevance). |
-| `--score-threshold` | `0.35` | Minimum semantic relevance threshold (0.0-1.0). Memories below this score are discarded to reduce noise. |
+| `--score-threshold` | `None` | Minimum semantic relevance threshold (0.0-1.0). If set, memories below this score are discarded. Default is no filtering. |
 | `--summarization/--no-summarization` | `true` | Enable automatic fact extraction and summaries. |
 | `--git-versioning/--no-git-versioning` | `true` | Enable automatic git commit of memory changes. |
 
