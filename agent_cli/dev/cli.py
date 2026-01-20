@@ -103,6 +103,7 @@ from . import coding_agents, editors, terminals, worktree  # noqa: E402
 from .project import (  # noqa: E402
     copy_env_files,
     detect_project_type,
+    install_precommit_hooks,
     is_direnv_available,
     run_setup,
     setup_direnv,
@@ -465,7 +466,7 @@ def _launch_agent(
 
 
 @app.command("new")
-def new(  # noqa: PLR0912, PLR0915
+def new(  # noqa: PLR0912, PLR0915, C901
     branch: Annotated[
         str | None,
         typer.Argument(help="Branch name (auto-generated if not provided)"),
@@ -605,6 +606,19 @@ def new(  # noqa: PLR0912, PLR0915
                 _success("Project setup complete")
             else:
                 _warn(f"Setup failed: {output}")
+
+    # Install pre-commit hooks if .pre-commit-config.yaml exists
+    if setup:
+        success, msg = install_precommit_hooks(
+            result.path,
+            on_log=_info,
+            capture_output=not verbose,
+        )
+        if success and "installed" in msg:
+            _success(msg)
+        elif not success:
+            _warn(msg)
+        # Skip info message if no config found (not interesting to user)
 
     # Set up direnv (default: enabled if direnv is installed)
     use_direnv = direnv if direnv is not None else is_direnv_available()

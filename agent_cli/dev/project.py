@@ -489,6 +489,67 @@ def generate_envrc_content(path: Path, project_type: ProjectType | None = None) 
     return "\n".join(lines) + "\n"
 
 
+def install_precommit_hooks(
+    path: Path,
+    *,
+    on_log: Callable[[str], None] | None = None,
+    capture_output: bool = True,
+) -> tuple[bool, str]:
+    """Install pre-commit hooks if .pre-commit-config.yaml exists.
+
+    Uses prek (preferred) or pre-commit as fallback.
+
+    Evidence:
+    - prek: https://github.com/basnijholt/prek - faster pre-commit alternative
+    - pre-commit: https://pre-commit.com/ - 'pre-commit install' to set up hooks
+
+    Args:
+        path: Path to the project directory
+        on_log: Optional callback for logging status messages
+        capture_output: Whether to capture command output (False to stream)
+
+    Returns:
+        Tuple of (success, message)
+
+    """
+    config_file = path / ".pre-commit-config.yaml"
+    if not config_file.exists():
+        return True, "pre-commit: no .pre-commit-config.yaml found"
+
+    # Prefer prek (faster), fall back to pre-commit
+    cmd: str | None = None
+    tool_name: str = ""
+
+    if shutil.which("prek"):
+        cmd = "prek install"
+        tool_name = "prek"
+    elif shutil.which("pre-commit"):
+        cmd = "pre-commit install"
+        tool_name = "pre-commit"
+    else:
+        return True, "pre-commit: no prek or pre-commit available, skipping hook installation"
+
+    if on_log:
+        on_log(f"Running: {cmd}")
+
+    try:
+        result = subprocess.run(  # noqa: S602
+            cmd,
+            check=False,
+            shell=True,
+            cwd=path,
+            capture_output=capture_output,
+            text=True,
+        )
+        if result.returncode != 0:
+            error = result.stderr.strip() if result.stderr else f"Command failed: {cmd}"
+            return False, f"pre-commit: {tool_name} install failed: {error}"
+
+        return True, f"pre-commit: installed hooks using {tool_name}"
+    except Exception as e:
+        return False, f"pre-commit: {tool_name} install failed: {e}"
+
+
 def _run_direnv_allow(
     path: Path,
     on_log: Callable[[str], None] | None = None,

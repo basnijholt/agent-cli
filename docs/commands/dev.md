@@ -495,6 +495,17 @@ git submodule update --init --recursive
 
 This ensures all submodule dependencies are available in the worktree.
 
+### Pre-commit Hooks
+
+If `.pre-commit-config.yaml` exists in the project, pre-commit hooks are automatically installed:
+
+| Tool | Command | Notes |
+|------|---------|-------|
+| prek | `prek install` | Preferred (faster) |
+| pre-commit | `pre-commit install` | Fallback |
+
+Use `--no-setup` to skip hook installation along with other project setup.
+
 ### Environment Files
 
 The following files are automatically copied to new dev environments:

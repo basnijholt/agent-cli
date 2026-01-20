@@ -12,6 +12,7 @@ from agent_cli.dev.project import (
     detect_venv_path,
     generate_envrc_content,
     get_conda_env_name,
+    install_precommit_hooks,
     setup_direnv,
 )
 
@@ -619,3 +620,128 @@ class TestSetupDirenv:
         setup_direnv(tmp_path, on_log=logged_messages.append)
 
         assert "Running: direnv allow" in logged_messages
+
+
+class TestInstallPrecommitHooks:
+    """Tests for install_precommit_hooks function.
+
+    Evidence:
+    - prek: https://github.com/basnijholt/prek - faster pre-commit alternative
+    - pre-commit: https://pre-commit.com/ - 'pre-commit install' to set up hooks
+    """
+
+    def test_no_config_file(self, tmp_path: Path) -> None:
+        """Return early if no .pre-commit-config.yaml exists."""
+        success, msg = install_precommit_hooks(tmp_path)
+        assert success is True
+        assert "no .pre-commit-config.yaml found" in msg
+
+    def test_uses_prek_when_available(
+        self,
+        tmp_path: Path,
+        mocker: pytest.MockerFixture,
+    ) -> None:
+        """Use prek when available (preferred over pre-commit)."""
+        # Create config file
+        (tmp_path / ".pre-commit-config.yaml").write_text("repos: []")
+
+        # Mock prek as available
+        mocker.patch(
+            "agent_cli.dev.project.shutil.which",
+            side_effect=lambda x: "/usr/bin/prek" if x == "prek" else None,
+        )
+        mock_run = mocker.patch("agent_cli.dev.project.subprocess.run")
+        mock_run.return_value.returncode = 0
+
+        success, msg = install_precommit_hooks(tmp_path)
+
+        assert success is True
+        assert "installed hooks using prek" in msg
+        # Verify prek install was called
+        call_args = mock_run.call_args
+        assert "prek install" in call_args[1]["args"] if "args" in call_args[1] else call_args[0][0]
+
+    def test_uses_precommit_as_fallback(
+        self,
+        tmp_path: Path,
+        mocker: pytest.MockerFixture,
+    ) -> None:
+        """Use pre-commit when prek is not available."""
+        # Create config file
+        (tmp_path / ".pre-commit-config.yaml").write_text("repos: []")
+
+        # Mock only pre-commit as available
+        mocker.patch(
+            "agent_cli.dev.project.shutil.which",
+            side_effect=lambda x: "/usr/bin/pre-commit" if x == "pre-commit" else None,
+        )
+        mock_run = mocker.patch("agent_cli.dev.project.subprocess.run")
+        mock_run.return_value.returncode = 0
+
+        success, msg = install_precommit_hooks(tmp_path)
+
+        assert success is True
+        assert "installed hooks using pre-commit" in msg
+
+    def test_no_tools_available(
+        self,
+        tmp_path: Path,
+        mocker: pytest.MockerFixture,
+    ) -> None:
+        """Return early if neither prek nor pre-commit is available."""
+        # Create config file
+        (tmp_path / ".pre-commit-config.yaml").write_text("repos: []")
+
+        # Mock no tools available
+        mocker.patch("agent_cli.dev.project.shutil.which", return_value=None)
+
+        success, msg = install_precommit_hooks(tmp_path)
+
+        assert success is True
+        assert "no prek or pre-commit available" in msg
+
+    def test_install_failure(
+        self,
+        tmp_path: Path,
+        mocker: pytest.MockerFixture,
+    ) -> None:
+        """Handle install command failure."""
+        # Create config file
+        (tmp_path / ".pre-commit-config.yaml").write_text("repos: []")
+
+        # Mock prek as available but failing
+        mocker.patch(
+            "agent_cli.dev.project.shutil.which",
+            side_effect=lambda x: "/usr/bin/prek" if x == "prek" else None,
+        )
+        mock_run = mocker.patch("agent_cli.dev.project.subprocess.run")
+        mock_run.return_value.returncode = 1
+        mock_run.return_value.stderr = "hook installation failed"
+
+        success, msg = install_precommit_hooks(tmp_path)
+
+        assert success is False
+        assert "prek install failed" in msg
+        assert "hook installation failed" in msg
+
+    def test_logs_command(
+        self,
+        tmp_path: Path,
+        mocker: pytest.MockerFixture,
+    ) -> None:
+        """Log the install command when on_log callback is provided."""
+        # Create config file
+        (tmp_path / ".pre-commit-config.yaml").write_text("repos: []")
+
+        # Mock prek as available
+        mocker.patch(
+            "agent_cli.dev.project.shutil.which",
+            side_effect=lambda x: "/usr/bin/prek" if x == "prek" else None,
+        )
+        mock_run = mocker.patch("agent_cli.dev.project.subprocess.run")
+        mock_run.return_value.returncode = 0
+
+        logged_messages: list[str] = []
+        install_precommit_hooks(tmp_path, on_log=logged_messages.append)
+
+        assert "Running: prek install" in logged_messages
