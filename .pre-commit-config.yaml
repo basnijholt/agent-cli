@@ -40,4 +40,4 @@ repos:
         entry: python scripts/check_plugin_skill_sync.py
         language: python
         pass_filenames: false
-        files: (agent_cli/dev/skill/|\.claude-plugin/skills/)
+        files: (agent_cli/dev/skill/|\.claude-plugin/skills/|\.claude/skills/)

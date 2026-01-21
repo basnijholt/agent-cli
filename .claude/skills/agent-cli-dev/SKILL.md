@@ -47,8 +47,9 @@ agent-cli dev new <branch-name> --agent --prompt-file path/to/prompt.md
 This creates:
 1. A new git worktree with its own branch
 2. Runs project setup (installs dependencies)
-3. Opens a new terminal tab with an AI coding agent
-4. Passes your prompt to the agent
+3. Saves your prompt to `.claude/TASK.md` in the worktree (for reference)
+4. Opens a new terminal tab with an AI coding agent
+5. Passes your prompt to the agent
 
 **Important**: Use `--prompt-file` for prompts longer than a single line. The `--prompt` option passes text through the shell, which can cause issues with special characters (exclamation marks, dollar signs, backticks, quotes) in ZSH and other shells. Using `--prompt-file` avoids all shell quoting issues.
 

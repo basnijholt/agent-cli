@@ -5,8 +5,12 @@ import sys
 from pathlib import Path
 
 SYNC_PAIRS = [
+    # Plugin marketplace distribution
     ("agent_cli/dev/skill/SKILL.md", ".claude-plugin/skills/agent-cli-dev/SKILL.md"),
     ("agent_cli/dev/skill/examples.md", ".claude-plugin/skills/agent-cli-dev/examples.md"),
+    # Project-local skill (for Claude Code working on this repo)
+    ("agent_cli/dev/skill/SKILL.md", ".claude/skills/agent-cli-dev/SKILL.md"),
+    ("agent_cli/dev/skill/examples.md", ".claude/skills/agent-cli-dev/examples.md"),
 ]
 
 
@@ -34,7 +38,9 @@ def main() -> int:
         print("Plugin skill files are out of sync:")
         for source, target, reason in out_of_sync:
             print(f"  {source} -> {target} ({reason})")
-        print("\nRun: cp agent_cli/dev/skill/*.md .claude-plugin/skills/agent-cli-dev/")
+        print("\nRun:")
+        print("  cp agent_cli/dev/skill/*.md .claude-plugin/skills/agent-cli-dev/")
+        print("  cp agent_cli/dev/skill/*.md .claude/skills/agent-cli-dev/")
         return 1
 
     return 0
