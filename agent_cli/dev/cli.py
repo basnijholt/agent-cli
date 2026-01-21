@@ -344,6 +344,19 @@ def _launch_editor(path: Path, editor: Editor) -> None:
         _warn(f"Could not open editor: {e}")
 
 
+def _write_prompt_to_worktree(worktree_path: Path, prompt: str) -> Path:
+    """Write the prompt to .claude/TASK.md in the worktree.
+
+    This makes the task description available to the spawned agent
+    and provides a record of what was requested.
+    """
+    claude_dir = worktree_path / ".claude"
+    claude_dir.mkdir(parents=True, exist_ok=True)
+    task_file = claude_dir / "TASK.md"
+    task_file.write_text(prompt + "\n")
+    return task_file
+
+
 def _format_env_prefix(env: dict[str, str]) -> str:
     """Format environment variables as shell prefix.
 
@@ -626,6 +639,11 @@ def new(  # noqa: PLR0912, PLR0915
         elif direnv is True:
             # Only warn if user explicitly requested direnv
             _warn("direnv not installed, skipping .envrc setup")
+
+    # Write prompt to worktree (makes task available to the spawned agent)
+    if prompt:
+        task_file = _write_prompt_to_worktree(result.path, prompt)
+        _success(f"Wrote task to {task_file.relative_to(result.path)}")
 
     # Resolve editor and agent
     resolved_editor = _resolve_editor(editor, editor_name, default_editor)
@@ -1038,6 +1056,11 @@ def start_agent(
 
     if not agent.is_available():
         _error(f"{agent.name} is not installed. Install from: {agent.install_url}")
+
+    # Write prompt to worktree (makes task available to the agent)
+    if prompt:
+        task_file = _write_prompt_to_worktree(wt.path, prompt)
+        _success(f"Wrote task to {task_file.relative_to(wt.path)}")
 
     merged_args = _merge_agent_args(agent, agent_args)
     agent_env = _get_agent_env(agent)
