@@ -3,42 +3,402 @@
 from __future__ import annotations
 
 import os
+import platform
 import subprocess
+from typing import TYPE_CHECKING, Annotated
 
 import typer
+from rich.panel import Panel
+from rich.table import Table
 
 from agent_cli.cli import app
 from agent_cli.core.utils import console, print_error_message, print_with_style
-from agent_cli.install.common import (
-    execute_installation_script,
-    get_platform_script,
-    get_script_path,
-)
+from agent_cli.install.common import get_script_path
+
+if TYPE_CHECKING:
+    from agent_cli.install.launchd import ServiceConfig
+
+
+def _check_macos() -> None:
+    """Check that we're running on macOS."""
+    if platform.system() != "Darwin":
+        print_error_message(
+            "Service installation is only supported on macOS. "
+            "On Linux, use systemd or your distribution's service manager.",
+        )
+        raise typer.Exit(1)
+
+
+def _get_status_str(installed: bool, running: bool) -> str:
+    """Get display string for service status."""
+    if running:
+        return "[green]running[/green]"
+    if installed:
+        return "[yellow]installed[/yellow]"
+    return "[dim]not installed[/dim]"
+
+
+def _parse_service_selection(
+    response: str,
+    service_names: list[str],
+    valid_services: dict[str, ServiceConfig],
+) -> list[str]:
+    """Parse user input into a list of service names."""
+    selected = []
+    for raw_part in response.split(","):
+        part = raw_part.strip()
+        if not part:
+            continue
+        try:
+            idx = int(part)
+            if 1 <= idx <= len(service_names):
+                selected.append(service_names[idx - 1])
+            else:
+                console.print(f"[yellow]Warning: Invalid number {idx}, skipping[/yellow]")
+        except ValueError:
+            if part in valid_services:
+                selected.append(part)
+            else:
+                console.print(f"[yellow]Warning: Unknown service '{part}', skipping[/yellow]")
+    return selected
+
+
+def _display_service_table(
+    services: dict[str, ServiceConfig],
+    title: str,
+    *,
+    filter_installed: bool = False,
+) -> list[str]:
+    """Display service selection table and return list of service names shown."""
+    from agent_cli.install.launchd import get_service_status  # noqa: PLC0415
+
+    console.print()
+    console.print(f"[bold]{title}[/bold]")
+    console.print()
+
+    table = Table(show_header=True, header_style="bold")
+    table.add_column("#", style="dim", width=3)
+    table.add_column("Service", style="cyan", width=20)
+    table.add_column("Description", width=45)
+    table.add_column("Status", width=15)
+
+    if filter_installed:
+        items = [(n, s) for n, s in services.items() if get_service_status(n).installed]
+    else:
+        items = list(services.items())
+
+    for i, (name, svc) in enumerate(items, 1):
+        status = get_service_status(name)
+        status_str = _get_status_str(status.installed, status.running)
+        table.add_row(str(i), svc.display_name, svc.description, status_str)
+
+    console.print(table)
+    console.print()
+    return [name for name, _ in items]
+
+
+def _prompt_user_selection(service_names: list[str], valid_services: dict) -> list[str]:
+    """Prompt user for service selection and return selected names."""
+    try:
+        response = console.input(
+            "[bold]Enter service numbers (comma-separated) or 'all' [all]: [/bold]",
+        ).strip()
+    except (KeyboardInterrupt, EOFError):
+        console.print("\n[dim]Cancelled.[/dim]")
+        raise typer.Exit(0) from None
+
+    if not response or response.lower() == "all":
+        return service_names
+
+    return _parse_service_selection(response, service_names, valid_services)
+
+
+def _confirm_action(message: str) -> bool:
+    """Ask user for confirmation. Returns True if confirmed."""
+    try:
+        confirm = console.input(f"[bold]{message} [Y/n]: [/bold]").strip().lower()
+        return not confirm or confirm == "y"
+    except (KeyboardInterrupt, EOFError):
+        console.print("\n[dim]Cancelled.[/dim]")
+        raise typer.Exit(0) from None
+
+
+def _ensure_uv_installed(no_confirm: bool) -> None:
+    """Ensure uv is installed, prompting user if needed."""
+    from agent_cli.install.launchd import check_uv_installed, install_uv  # noqa: PLC0415
+
+    uv_installed, uv_path = check_uv_installed()
+    if uv_installed:
+        console.print(f"  [green]✓[/green] uv installed at {uv_path}")
+        return
+
+    console.print()
+    console.print("[yellow]uv is not installed. It's required for running services.[/yellow]")
+
+    if not no_confirm and not _confirm_action("Install uv now?"):
+        console.print("[dim]Skipping uv installation.[/dim]")
+        console.print(
+            "[yellow]Services may not work without uv. "
+            "Install from https://docs.astral.sh/uv/[/yellow]",
+        )
+        return
+
+    console.print("Installing uv...")
+    success, msg = install_uv()
+    if success:
+        console.print(f"  [green]✓[/green] {msg}")
+    else:
+        console.print(f"  [red]✗[/red] {msg}")
+        raise typer.Exit(1)
 
 
 @app.command("install-services", rich_help_panel="Installation")
-def install_services() -> None:
-    """Install all required services (Ollama, Whisper, Piper, OpenWakeWord).
+def install_services(  # noqa: PLR0912, PLR0915
+    services: Annotated[
+        list[str] | None,
+        typer.Argument(
+            help="Services to install (whisper, tts, transcription-proxy). "
+            "Omit for interactive selection.",
+        ),
+    ] = None,
+    all_services: Annotated[
+        bool,
+        typer.Option("--all", "-a", help="Install all available services"),
+    ] = False,
+    deps_only: Annotated[
+        bool,
+        typer.Option("--deps-only", help="Only install dependencies (uv) without services"),
+    ] = False,
+    skip_deps: Annotated[
+        bool,
+        typer.Option("--skip-deps", help="Skip dependency installation"),
+    ] = False,
+    no_confirm: Annotated[
+        bool,
+        typer.Option("--no-confirm", "-y", help="Skip confirmation prompts"),
+    ] = False,
+) -> None:
+    """Install agent-cli server services as macOS launchd services.
 
-    This command installs:
-    - Ollama (local LLM server)
-    - Wyoming Faster Whisper (speech-to-text)
-    - Wyoming Piper (text-to-speech)
-    - Wyoming OpenWakeWord (wake word detection)
+    This command installs agent-cli's built-in servers to run automatically
+    at login and restart on failure.
 
-    The appropriate installation method is used based on your operating system.
+    **Available services:**
+    - **whisper**: Speech-to-text ASR server (ports 10300/10301)
+    - **tts**: Text-to-speech with Kokoro (ports 10200/10201)
+    - **transcription-proxy**: Proxy for ASR providers (port 61337)
+
+    Services run via `uv tool run` and don't require a virtual environment.
+
+    **Examples:**
+
+        # Interactive selection (shows menu)
+        agent-cli install-services
+
+        # Install specific services
+        agent-cli install-services whisper tts
+
+        # Install all services
+        agent-cli install-services --all
+
+        # Skip confirmation prompts
+        agent-cli install-services whisper -y
+
+    After installation, check status with:
+        agent-cli server status
     """
-    script_name = get_platform_script("setup-macos.sh", "setup-linux.sh")
+    _check_macos()
 
-    execute_installation_script(
-        script_name=script_name,
-        operation_name="Install services",
-        success_message="Services installed successfully!",
-        next_steps=[
-            "Start services: agent-cli start-services",
-            "Set up hotkeys: agent-cli install-hotkeys",
-        ],
+    from agent_cli.install.launchd import (  # noqa: PLC0415
+        SERVICES,
+        check_uv_installed,
+        install_service,
+        install_uv,
     )
+
+    # Handle deps-only mode
+    if deps_only:
+        console.print("[bold]Checking dependencies...[/bold]")
+        uv_installed, uv_path = check_uv_installed()
+        if uv_installed:
+            console.print(f"  [green]✓[/green] uv already installed at {uv_path}")
+        else:
+            console.print("  Installing uv...")
+            success, msg = install_uv()
+            if success:
+                console.print(f"  [green]✓[/green] {msg}")
+            else:
+                console.print(f"  [red]✗[/red] {msg}")
+                raise typer.Exit(1)
+        return
+
+    # Determine which services to install
+    if all_services:
+        selected_services = list(SERVICES.keys())
+    elif services:
+        invalid = [s for s in services if s not in SERVICES]
+        if invalid:
+            print_error_message(
+                f"Unknown service(s): {', '.join(invalid)}. "
+                f"Available: {', '.join(SERVICES.keys())}",
+            )
+            raise typer.Exit(1)
+        selected_services = services
+    else:
+        service_names = _display_service_table(SERVICES, "Select services to install:")
+        selected_services = _prompt_user_selection(service_names, SERVICES)
+        if not selected_services:
+            console.print("[dim]No services selected.[/dim]")
+            raise typer.Exit(0)
+
+    # Check dependencies
+    if not skip_deps:
+        _ensure_uv_installed(no_confirm)
+
+    # Confirm installation
+    if not no_confirm:
+        console.print()
+        console.print(f"[bold]Will install:[/bold] {', '.join(selected_services)}")
+        if not _confirm_action("Continue?"):
+            console.print("[dim]Cancelled.[/dim]")
+            raise typer.Exit(0)
+
+    # Install services
+    console.print()
+    console.print("[bold]Installing services...[/bold]")
+
+    success_count = 0
+    failed = []
+
+    for svc_name in selected_services:
+        result = install_service(svc_name)
+        if result.success:
+            console.print(
+                f"  [green]✓[/green] {svc_name}: {result.message}. Logs: {result.log_dir}/",
+            )
+            success_count += 1
+        else:
+            console.print(f"  [red]✗[/red] {svc_name}: {result.message}")
+            failed.append(svc_name)
+
+    # Summary
+    console.print()
+    if success_count == len(selected_services):
+        panel = Panel(
+            f"[green]Successfully installed {success_count} service(s)![/green]\n\n"
+            "Check status: [cyan]agent-cli server status[/cyan]\n"
+            "View logs: [cyan]~/Library/Logs/agent-cli-<service>/[/cyan]",
+            title="Installation Complete",
+            border_style="green",
+        )
+        console.print(panel)
+    elif success_count > 0:
+        panel = Panel(
+            f"[yellow]Installed {success_count} service(s), "
+            f"{len(failed)} failed: {', '.join(failed)}[/yellow]\n\n"
+            "Check status: [cyan]agent-cli server status[/cyan]",
+            title="Partial Installation",
+            border_style="yellow",
+        )
+        console.print(panel)
+    else:
+        print_error_message(f"All installations failed: {', '.join(failed)}")
+        raise typer.Exit(1)
+
+
+@app.command("uninstall-services", rich_help_panel="Installation")
+def uninstall_services(
+    services: Annotated[
+        list[str] | None,
+        typer.Argument(
+            help="Services to uninstall (whisper, tts, transcription-proxy). "
+            "Omit for interactive selection.",
+        ),
+    ] = None,
+    all_services: Annotated[
+        bool,
+        typer.Option("--all", "-a", help="Uninstall all installed services"),
+    ] = False,
+    no_confirm: Annotated[
+        bool,
+        typer.Option("--no-confirm", "-y", help="Skip confirmation prompts"),
+    ] = False,
+) -> None:
+    """Uninstall agent-cli server launchd services.
+
+    This stops services and removes their launchd configuration.
+    Log files are preserved for debugging.
+
+    **Examples:**
+
+        # Interactive selection
+        agent-cli uninstall-services
+
+        # Uninstall specific services
+        agent-cli uninstall-services whisper tts
+
+        # Uninstall all services
+        agent-cli uninstall-services --all
+
+    """
+    _check_macos()
+
+    from agent_cli.install.launchd import (  # noqa: PLC0415
+        SERVICES,
+        get_service_status,
+        uninstall_service,
+    )
+
+    # Determine which services to uninstall
+    if all_services:
+        selected_services = [n for n in SERVICES if get_service_status(n).installed]
+        if not selected_services:
+            console.print("[dim]No services are currently installed.[/dim]")
+            return
+    elif services:
+        invalid = [s for s in services if s not in SERVICES]
+        if invalid:
+            print_error_message(
+                f"Unknown service(s): {', '.join(invalid)}. "
+                f"Available: {', '.join(SERVICES.keys())}",
+            )
+            raise typer.Exit(1)
+        selected_services = services
+    else:
+        # Interactive selection - show only installed services
+        installed = {n: s for n, s in SERVICES.items() if get_service_status(n).installed}
+        if not installed:
+            console.print("[dim]No services are currently installed.[/dim]")
+            return
+
+        service_names = _display_service_table(
+            SERVICES,
+            "Select services to uninstall:",
+            filter_installed=True,
+        )
+        selected_services = _prompt_user_selection(service_names, installed)
+        if not selected_services:
+            console.print("[dim]No services selected.[/dim]")
+            return
+
+    # Confirm uninstallation
+    if not no_confirm:
+        console.print()
+        console.print(f"[bold]Will uninstall:[/bold] {', '.join(selected_services)}")
+        if not _confirm_action("Continue?"):
+            console.print("[dim]Cancelled.[/dim]")
+            raise typer.Exit(0)
+
+    # Uninstall services
+    console.print()
+    console.print("[bold]Uninstalling services...[/bold]")
+
+    for svc_name in selected_services:
+        result = uninstall_service(svc_name)
+        console.print(f"  [green]✓[/green] {svc_name}: {result.message}")
+
+    console.print()
+    console.print("[dim]Note: Log files are preserved at ~/Library/Logs/agent-cli-<service>/[/dim]")
 
 
 @app.command("start-services", rich_help_panel="Service Management")

@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import platform
 from importlib.util import find_spec
-from pathlib import Path  # noqa: TC003 - Typer needs this at runtime
+from pathlib import Path  # noqa: TC003 - Path needed at runtime for typer annotations
 from typing import Annotated
 
 import typer
@@ -18,6 +19,13 @@ from agent_cli.server.common import setup_rich_logging
 console = Console()
 err_console = Console(stderr=True)
 logger = logging.getLogger(__name__)
+
+# Deprecation notice for server install/uninstall commands
+_DEPRECATION_NOTICE = (
+    "[yellow]⚠️  Deprecation notice:[/yellow] "
+    "'server install/uninstall' commands are deprecated.\n"
+    "   Use 'agent-cli install-services' or 'agent-cli uninstall-services' instead.\n"
+)
 
 # Check for optional dependencies
 HAS_UVICORN = find_spec("uvicorn") is not None
@@ -725,3 +733,163 @@ def tts_cmd(  # noqa: PLR0915
         port=port,
         log_level=log_level.lower(),
     )
+
+
+def _check_macos() -> None:
+    """Check that we're running on macOS."""
+    if platform.system() != "Darwin":
+        err_console.print(
+            "[bold red]Error:[/bold red] Service installation is only supported on macOS. "
+            "On Linux, use systemd or your distribution's service manager.",
+        )
+        raise typer.Exit(1)
+
+
+@app.command("install", deprecated=True)
+def install_service_cmd(
+    service: Annotated[
+        str,
+        typer.Argument(
+            help="Service to install: whisper, tts, or transcription-proxy",
+        ),
+    ],
+) -> None:
+    """Install a server as a macOS launchd service.
+
+    **DEPRECATED**: Use `agent-cli install-services` instead.
+
+    This installs the specified server to run automatically at login
+    and restart on failure. The service runs via `uv tool run`.
+
+    Available services:
+    - **whisper**: ASR server with Faster Whisper or MLX Whisper
+    - **tts**: TTS server with Kokoro or Piper backends
+    - **transcription-proxy**: Proxy to configured ASR providers
+
+    Examples:
+        # Install whisper server as background service
+        agent-cli install-services whisper
+
+        # Install TTS server
+        agent-cli install-services tts
+
+    After installation, view logs with:
+        tail -f ~/Library/Logs/agent-cli-whisper/*.log
+
+    """
+    console.print(_DEPRECATION_NOTICE)
+    _check_macos()
+
+    from agent_cli.install.launchd import SERVICES, install_service  # noqa: PLC0415
+
+    if service not in SERVICES:
+        err_console.print(
+            f"[bold red]Error:[/bold red] Unknown service '{service}'. "
+            f"Available: {', '.join(SERVICES.keys())}",
+        )
+        raise typer.Exit(1)
+
+    console.print(f"[bold]Installing agent-cli {service} as launchd service...[/bold]")
+
+    result = install_service(service)
+    if result.success:
+        console.print(f"[green]✓[/green] {service}: {result.message}")
+        if result.log_dir:
+            console.print(f"Logs: {result.log_dir}/")
+    else:
+        err_console.print(f"[bold red]Error:[/bold red] {result.message}")
+        raise typer.Exit(1)
+
+
+@app.command("uninstall", deprecated=True)
+def uninstall_service_cmd(
+    service: Annotated[
+        str,
+        typer.Argument(
+            help="Service to uninstall: whisper, tts, or transcription-proxy",
+        ),
+    ],
+) -> None:
+    """Uninstall a server launchd service.
+
+    **DEPRECATED**: Use `agent-cli uninstall-services` instead.
+
+    This stops the service and removes its launchd configuration.
+    Log files are preserved for debugging.
+
+    Examples:
+        # Uninstall whisper server
+        agent-cli uninstall-services whisper
+
+        # Uninstall TTS server
+        agent-cli uninstall-services tts
+
+    """
+    console.print(_DEPRECATION_NOTICE)
+    _check_macos()
+
+    from agent_cli.install.launchd import SERVICES, uninstall_service  # noqa: PLC0415
+
+    if service not in SERVICES:
+        err_console.print(
+            f"[bold red]Error:[/bold red] Unknown service '{service}'. "
+            f"Available: {', '.join(SERVICES.keys())}",
+        )
+        raise typer.Exit(1)
+
+    console.print(f"[bold]Uninstalling agent-cli {service} service...[/bold]")
+
+    result = uninstall_service(service)
+    console.print(f"[green]✓[/green] {service}: {result.message}")
+    console.print()
+    console.print("[dim]Note: Log files are preserved at ~/Library/Logs/agent-cli-<service>/[/dim]")
+
+
+@app.command("status")
+def status_service_cmd(
+    service: Annotated[
+        str | None,
+        typer.Argument(
+            help="Service to check, or omit for all services",
+        ),
+    ] = None,
+) -> None:
+    """Check status of server launchd services.
+
+    Shows whether each service is installed and running.
+
+    Examples:
+        # Check all services
+        agent-cli server status
+
+        # Check specific service
+        agent-cli server status whisper
+
+    """
+    _check_macos()
+
+    from agent_cli.install.launchd import SERVICES, get_service_status  # noqa: PLC0415
+
+    services_to_check = [service] if service else list(SERVICES.keys())
+
+    if service and service not in SERVICES:
+        err_console.print(
+            f"[bold red]Error:[/bold red] Unknown service '{service}'. "
+            f"Available: {', '.join(SERVICES.keys())}",
+        )
+        raise typer.Exit(1)
+
+    console.print("[bold]Server Service Status[/bold]")
+    console.print()
+
+    for svc_name in services_to_check:
+        status = get_service_status(svc_name)
+        if not status.installed:
+            console.print(f"  {svc_name}: [dim]not installed[/dim]")
+        elif status.running:
+            console.print(f"  {svc_name}: [green]running[/green] (pid {status.pid})")
+        else:
+            console.print(f"  {svc_name}: [yellow]installed but not running[/yellow]")
+
+    console.print()
+    console.print("[dim]Log locations: ~/Library/Logs/agent-cli-<service>/[/dim]")
