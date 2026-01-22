@@ -2,19 +2,18 @@
 
 from __future__ import annotations
 
-import io
 import logging
-import wave
 from functools import partial
 from typing import TYPE_CHECKING
 
 from wyoming.asr import Transcribe, Transcript
-from wyoming.audio import AudioChunk, AudioStop
+from wyoming.audio import AudioChunk, AudioChunkConverter, AudioStop
 from wyoming.info import AsrModel, AsrProgram, Attribution, Describe, Info
 from wyoming.server import AsyncEventHandler, AsyncServer
 
-from agent_cli.server.common import setup_wav_file
+from agent_cli import constants
 from agent_cli.server.whisper.languages import WHISPER_LANGUAGE_CODES
+from agent_cli.services import pcm_to_wav
 
 if TYPE_CHECKING:
     from wyoming.event import Event
@@ -49,8 +48,12 @@ class WyomingWhisperHandler(AsyncEventHandler):
         """
         super().__init__(*args, **kwargs)
         self._registry = registry
-        self._audio_buffer: io.BytesIO | None = None
-        self._wav_file: wave.Wave_write | None = None
+        self._audio_bytes: bytes = b""
+        self._audio_converter = AudioChunkConverter(
+            rate=constants.AUDIO_RATE,
+            width=constants.AUDIO_FORMAT_WIDTH,
+            channels=constants.AUDIO_CHANNELS,
+        )
         self._language: str | None = None
         self._initial_prompt: str | None = None
 
@@ -80,39 +83,31 @@ class WyomingWhisperHandler(AsyncEventHandler):
 
     async def _handle_audio_chunk(self, event: Event) -> bool:
         """Handle an audio chunk event."""
-        chunk = AudioChunk.from_event(event)
-
-        if self._wav_file is None:
+        if not self._audio_bytes:
             logger.debug("AudioChunk begin")
-            self._audio_buffer = io.BytesIO()
-            self._wav_file = wave.open(self._audio_buffer, "wb")  # noqa: SIM115
-            setup_wav_file(
-                self._wav_file,
-                rate=chunk.rate,
-                channels=chunk.channels,
-                sample_width=chunk.width,
-            )
 
-        self._wav_file.writeframes(chunk.audio)
+        chunk = AudioChunk.from_event(event)
+        chunk = self._audio_converter.convert(chunk)
+        self._audio_bytes += chunk.audio
         return True
 
     async def _handle_audio_stop(self) -> bool:
         """Handle audio stop event - transcribe the collected audio."""
         logger.debug("AudioStop")
 
-        if self._wav_file is None or self._audio_buffer is None:
+        if not self._audio_bytes:
             logger.warning("AudioStop received but no audio data")
             await self.write_event(Transcript(text="").event())
             return False
 
-        # Close WAV file
-        self._wav_file.close()
-        self._wav_file = None
-
-        # Get audio data
-        self._audio_buffer.seek(0)
-        audio_data = self._audio_buffer.read()
-        self._audio_buffer = None
+        # Wrap PCM in WAV format for the backend
+        audio_data = pcm_to_wav(
+            self._audio_bytes,
+            sample_rate=constants.AUDIO_RATE,
+            sample_width=constants.AUDIO_FORMAT_WIDTH,
+            channels=constants.AUDIO_CHANNELS,
+        )
+        self._audio_bytes = b""
 
         # Transcribe
         try:
