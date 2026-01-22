@@ -77,19 +77,23 @@ def _generate_plist(
     log_dir: Path,
 ) -> dict:
     """Generate plist dictionary for a launchd service."""
+    # Use macOS-specific extra if available (e.g., whisper-mlx instead of whisper)
+    extra = service.macos_extra or service.extra
+
     # Build command arguments
     program_args = [
         str(uv_path),
         "tool",
         "run",
     ]
-    # Add python version constraint if specified (e.g., for onnxruntime)
-    if service.python_version:
+    # Add python version constraint only if not using macos_extra
+    # (macos_extra typically avoids onnxruntime which lacks py3.14 wheels)
+    if service.python_version and not service.macos_extra:
         program_args.extend(["--python", service.python_version])
     program_args.extend(
         [
             "--from",
-            f"agent-cli[{service.extra}]",
+            f"agent-cli[{extra}]",
             "agent-cli",
             "server",
             service.name,

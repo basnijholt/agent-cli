@@ -26,6 +26,7 @@ class ServiceConfig:
     command_args: list[str]  # Additional args after "agent-cli server <name>"
     external: bool = False  # True for external services (ollama) that aren't agent-cli servers
     python_version: str | None = None  # Pin Python version for dependencies without py3.14 wheels
+    macos_extra: str | None = None  # Override extra on macOS (e.g., whisper-mlx)
 
 
 # Available services for installation
@@ -36,7 +37,8 @@ SERVICES: dict[str, ServiceConfig] = {
         description="Speech-to-text server (ports 10300/10301)",
         extra="whisper",
         command_args=[],
-        python_version="3.13",  # onnxruntime lacks py3.14 wheels
+        python_version="3.13",  # onnxruntime lacks py3.14 wheels (Linux only)
+        macos_extra="whisper-mlx",  # MLX backend on macOS (no python constraint needed)
     ),
     "tts": ServiceConfig(
         name="tts",
