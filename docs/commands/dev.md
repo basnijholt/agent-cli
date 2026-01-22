@@ -318,7 +318,7 @@ You can also install the skill globally via the Claude Code plugin marketplace:
 
 ```bash
 claude plugin marketplace add basnijholt/agent-cli
-claude plugin install agent-cli@agent-cli-dev
+claude plugin install agent-cli-dev@agent-cli
 ```
 
 This installs the skill globally so it's available in all projects without needing to run `dev install-skill` in each one.
