@@ -673,10 +673,6 @@ def new(  # noqa: PLR0912, PLR0915
 
 @app.command("list")
 def list_envs(
-    porcelain: Annotated[
-        bool,
-        typer.Option("--porcelain", "-p", help="Machine-readable output"),
-    ] = False,
     json_output: Annotated[
         bool,
         typer.Option("--json", help="Output as JSON for automation"),
@@ -708,11 +704,6 @@ def list_envs(
             for wt in worktrees
         ]
         print(json.dumps({"worktrees": data}))
-        return
-
-    if porcelain:
-        for wt in worktrees:
-            print(f"{wt.path.as_posix()}\t{wt.branch or '(detached)'}")
         return
 
     table = Table(title="Dev Environments (Git Worktrees)")
@@ -784,15 +775,11 @@ def _is_stale(status: worktree.WorktreeStatus, stale_days: int) -> bool:
 
 
 @app.command("status")
-def status_cmd(  # noqa: PLR0912, PLR0915
+def status_cmd(  # noqa: PLR0915
     stale_days: Annotated[
         int,
         typer.Option("--stale-days", "-s", help="Highlight worktrees inactive for N+ days"),
     ] = 7,
-    porcelain: Annotated[
-        bool,
-        typer.Option("--porcelain", "-p", help="Machine-readable output"),
-    ] = False,
     json_output: Annotated[
         bool,
         typer.Option("--json", help="Output as JSON for automation"),
@@ -834,20 +821,6 @@ def status_cmd(  # noqa: PLR0912, PLR0915
                 entry["is_stale"] = _is_stale(status, stale_days)
             data.append(entry)
         print(json.dumps({"worktrees": data, "stale_days": stale_days}))
-        return
-
-    if porcelain:
-        # Machine-readable: name\tbranch\tmodified\tstaged\tuntracked\tahead\tbehind\ttimestamp
-        for wt in worktrees:
-            status = worktree.get_worktree_status(wt.path)
-            if status:
-                print(
-                    f"{wt.name}\t{wt.branch or ''}\t"
-                    f"{status.modified}\t{status.staged}\t{status.untracked}\t"
-                    f"{status.ahead}\t{status.behind}\t{status.last_commit_timestamp or ''}",
-                )
-            else:
-                print(f"{wt.name}\t{wt.branch or ''}\t\t\t\t\t\t")
         return
 
     table = Table(title="Dev Environment Status")
