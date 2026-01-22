@@ -10,42 +10,34 @@ import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 
+from agent_cli.install.service_config import (
+    SERVICES,
+    ServiceConfig,
+    check_ollama_installed,
+    install_uv,
+)
+from agent_cli.install.service_config import (
+    find_uv as _find_uv_base,
+)
 
-@dataclass
-class ServiceConfig:
-    """Configuration for a launchd service."""
-
-    name: str
-    display_name: str
-    description: str
-    extra: str  # uv extra to install (e.g., "whisper", "tts-kokoro")
-    command_args: list[str]  # Additional args after "agent-cli server <name>"
-
-
-# Available services for launchd installation
-SERVICES: dict[str, ServiceConfig] = {
-    "whisper": ServiceConfig(
-        name="whisper",
-        display_name="Whisper ASR",
-        description="Speech-to-text server (ports 10300/10301)",
-        extra="whisper",
-        command_args=[],
-    ),
-    "tts": ServiceConfig(
-        name="tts",
-        display_name="Kokoro TTS",
-        description="Text-to-speech server (ports 10200/10201)",
-        extra="tts-kokoro",
-        command_args=["--backend", "kokoro"],
-    ),
-    "transcription-proxy": ServiceConfig(
-        name="transcription-proxy",
-        display_name="Transcription Proxy",
-        description="Proxy server for ASR providers (port 61337)",
-        extra="server",
-        command_args=[],
-    ),
-}
+# Re-export for interface compatibility
+__all__ = [
+    "SERVICES",
+    "InstallResult",
+    "ServiceConfig",
+    "ServiceStatus",
+    "UninstallResult",
+    "check_ollama_installed",
+    "check_uv_installed",
+    "get_log_command",
+    "get_log_dir",
+    "get_service_status",
+    "install_ollama",
+    "install_service",
+    "install_uv",
+    "start_ollama_service",
+    "uninstall_service",
+]
 
 
 def _get_label(service_name: str) -> str:
@@ -64,23 +56,22 @@ def _get_log_dir(service_name: str) -> Path:
     return Path.home() / "Library" / "Logs" / f"agent-cli-{service_name}"
 
 
+def get_log_dir(service_name: str) -> Path:
+    """Get log directory for a service."""
+    return _get_log_dir(service_name)
+
+
+def get_log_command(service_name: str) -> str:
+    """Get command to view logs for a service."""
+    log_dir = _get_log_dir(service_name)
+    return f"tail -f {log_dir}/*.log"
+
+
 def _find_uv() -> Path | None:
     """Find uv executable, preferring system paths over virtualenv."""
-    # Check common installation paths first
-    paths = [
-        Path.home() / ".local" / "bin" / "uv",
-        Path("/opt/homebrew/bin/uv"),
-        Path.home() / ".cargo" / "bin" / "uv",
-        Path("/usr/local/bin/uv"),
-    ]
-
-    for path in paths:
-        if path.is_file() and os.access(path, os.X_OK):
-            return path
-
-    # Fallback to which
-    which_result = shutil.which("uv")
-    return Path(which_result) if which_result else None
+    # macOS-specific paths (Homebrew)
+    macos_paths = [Path("/opt/homebrew/bin/uv")]
+    return _find_uv_base(extra_paths=macos_paths)
 
 
 def _generate_plist(
@@ -282,33 +273,49 @@ def uninstall_service(service_name: str) -> UninstallResult:
 
 
 def check_uv_installed() -> tuple[bool, Path | None]:
-    """Check if uv is installed.
-
-    Returns (is_installed, path).
-    """
+    """Check if uv is installed (with macOS-specific paths)."""
     uv_path = _find_uv()
     return (uv_path is not None, uv_path)
 
 
-def install_uv() -> tuple[bool, str]:
-    """Install uv using the official installer.
+# install_uv and check_ollama_installed are imported from service_config
+
+
+def install_ollama() -> tuple[bool, str]:
+    """Install Ollama using Homebrew (macOS).
 
     Returns (success, message).
     """
+    # Check if Homebrew is available
+    if not shutil.which("brew"):
+        return (
+            False,
+            "Homebrew not found. Install from https://brew.sh/ or install Ollama manually from https://ollama.ai",
+        )
+
     try:
-        # Use the official uv installer
-        result = subprocess.run(
-            ["curl", "-LsSf", "https://astral.sh/uv/install.sh"],  # noqa: S607
-            capture_output=True,
-            check=True,
-        )
         subprocess.run(
-            ["sh"],  # noqa: S607
-            input=result.stdout,
-            capture_output=True,
-            text=True,
+            ["brew", "install", "ollama"],  # noqa: S607
             check=True,
         )
-        return True, "uv installed successfully"
+        return True, "Ollama installed successfully via Homebrew"
     except subprocess.CalledProcessError as e:
-        return False, f"Failed to install uv: {e}"
+        return False, f"Failed to install Ollama: {e}"
+
+
+def start_ollama_service() -> tuple[bool, str]:
+    """Start Ollama as a Homebrew service.
+
+    Returns (success, message).
+    """
+    if not shutil.which("brew"):
+        return False, "Homebrew not found"
+
+    try:
+        subprocess.run(
+            ["brew", "services", "start", "ollama"],  # noqa: S607
+            check=True,
+        )
+        return True, "Ollama started as Homebrew service"
+    except subprocess.CalledProcessError as e:
+        return False, f"Failed to start Ollama service: {e}"

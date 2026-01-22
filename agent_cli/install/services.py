@@ -7,6 +7,9 @@ import platform
 import subprocess
 from typing import TYPE_CHECKING, Annotated
 
+if TYPE_CHECKING:
+    from types import ModuleType
+
 import typer
 from rich.panel import Panel
 from rich.table import Table
@@ -14,19 +17,25 @@ from rich.table import Table
 from agent_cli.cli import app
 from agent_cli.core.utils import console, print_error_message, print_with_style
 from agent_cli.install.common import get_script_path
+from agent_cli.install.service_config import SERVICES
 
 if TYPE_CHECKING:
-    from agent_cli.install.launchd import ServiceConfig
+    from agent_cli.install.service_config import ServiceConfig
 
 
-def _check_macos() -> None:
-    """Check that we're running on macOS."""
-    if platform.system() != "Darwin":
-        print_error_message(
-            "Service installation is only supported on macOS. "
-            "On Linux, use systemd or your distribution's service manager.",
-        )
-        raise typer.Exit(1)
+def _get_service_manager() -> ModuleType:
+    """Get the platform-specific service manager module."""
+    system = platform.system()
+    if system == "Darwin":
+        from agent_cli.install import launchd  # noqa: PLC0415
+
+        return launchd
+    if system == "Linux":
+        from agent_cli.install import systemd  # noqa: PLC0415
+
+        return systemd
+    print_error_message(f"Unsupported platform: {system}")
+    raise typer.Exit(1)
 
 
 def _get_status_str(installed: bool, running: bool) -> str:
@@ -70,7 +79,7 @@ def _display_service_table(
     filter_installed: bool = False,
 ) -> list[str]:
     """Display service selection table and return list of service names shown."""
-    from agent_cli.install.launchd import get_service_status  # noqa: PLC0415
+    manager = _get_service_manager()
 
     console.print()
     console.print(f"[bold]{title}[/bold]")
@@ -83,12 +92,12 @@ def _display_service_table(
     table.add_column("Status", width=15)
 
     if filter_installed:
-        items = [(n, s) for n, s in services.items() if get_service_status(n).installed]
+        items = [(n, s) for n, s in services.items() if manager.get_service_status(n).installed]
     else:
         items = list(services.items())
 
     for i, (name, svc) in enumerate(items, 1):
-        status = get_service_status(name)
+        status = manager.get_service_status(name)
         status_str = _get_status_str(status.installed, status.running)
         table.add_row(str(i), svc.display_name, svc.description, status_str)
 
@@ -125,9 +134,9 @@ def _confirm_action(message: str) -> bool:
 
 def _ensure_uv_installed(no_confirm: bool) -> None:
     """Ensure uv is installed, prompting user if needed."""
-    from agent_cli.install.launchd import check_uv_installed, install_uv  # noqa: PLC0415
+    manager = _get_service_manager()
 
-    uv_installed, uv_path = check_uv_installed()
+    uv_installed, uv_path = manager.check_uv_installed()
     if uv_installed:
         console.print(f"  [green]✓[/green] uv installed at {uv_path}")
         return
@@ -144,7 +153,7 @@ def _ensure_uv_installed(no_confirm: bool) -> None:
         return
 
     console.print("Installing uv...")
-    success, msg = install_uv()
+    success, msg = manager.install_uv()
     if success:
         console.print(f"  [green]✓[/green] {msg}")
     else:
@@ -152,8 +161,45 @@ def _ensure_uv_installed(no_confirm: bool) -> None:
         raise typer.Exit(1)
 
 
+def _ensure_ollama_installed(no_confirm: bool) -> None:
+    """Ensure Ollama is installed, prompting user if needed."""
+    manager = _get_service_manager()
+
+    ollama_installed, ollama_path = manager.check_ollama_installed()
+    if ollama_installed:
+        console.print(f"  [green]✓[/green] Ollama installed at {ollama_path}")
+        return
+
+    console.print()
+    console.print(
+        "[yellow]Ollama is not installed. It's required for local LLM inference.[/yellow]",
+    )
+
+    if not no_confirm and not _confirm_action("Install Ollama now?"):
+        console.print("[dim]Skipping Ollama installation.[/dim]")
+        console.print(
+            "[yellow]Install manually from https://ollama.ai/[/yellow]",
+        )
+        return
+
+    console.print("Installing Ollama...")
+    success, msg = manager.install_ollama()
+    if success:
+        console.print(f"  [green]✓[/green] {msg}")
+        # Start Ollama service
+        console.print("Starting Ollama service...")
+        success, msg = manager.start_ollama_service()
+        if success:
+            console.print(f"  [green]✓[/green] {msg}")
+        else:
+            console.print(f"  [yellow]![/yellow] {msg}")
+    else:
+        console.print(f"  [red]✗[/red] {msg}")
+        console.print("[yellow]Install manually from https://ollama.ai/[/yellow]")
+
+
 @app.command("install-services", rich_help_panel="Installation")
-def install_services(  # noqa: PLR0912, PLR0915
+def install_services(  # noqa: PLR0912, PLR0915, C901
     services: Annotated[
         list[str] | None,
         typer.Argument(
@@ -167,21 +213,29 @@ def install_services(  # noqa: PLR0912, PLR0915
     ] = False,
     deps_only: Annotated[
         bool,
-        typer.Option("--deps-only", help="Only install dependencies (uv) without services"),
+        typer.Option("--deps-only", help="Only install dependencies (uv, optionally Ollama)"),
     ] = False,
     skip_deps: Annotated[
         bool,
         typer.Option("--skip-deps", help="Skip dependency installation"),
+    ] = False,
+    install_ollama: Annotated[
+        bool,
+        typer.Option("--ollama", help="Also install/check Ollama for local LLM inference"),
     ] = False,
     no_confirm: Annotated[
         bool,
         typer.Option("--no-confirm", "-y", help="Skip confirmation prompts"),
     ] = False,
 ) -> None:
-    """Install agent-cli server services as macOS launchd services.
+    """Install agent-cli server services as background services.
 
     This command installs agent-cli's built-in servers to run automatically
     at login and restart on failure.
+
+    **Supported platforms:**
+    - **macOS**: launchd services (~/.local/Library/LaunchAgents/)
+    - **Linux**: systemd user services (~/.config/systemd/user/)
 
     **Available services:**
     - **whisper**: Speech-to-text ASR server (ports 10300/10301)
@@ -189,6 +243,9 @@ def install_services(  # noqa: PLR0912, PLR0915
     - **transcription-proxy**: Proxy for ASR providers (port 61337)
 
     Services run via `uv tool run` and don't require a virtual environment.
+
+    **Optional dependencies:**
+    - Use `--ollama` to also install Ollama for local LLM inference
 
     **Examples:**
 
@@ -198,8 +255,11 @@ def install_services(  # noqa: PLR0912, PLR0915
         # Install specific services
         agent-cli install-services whisper tts
 
-        # Install all services
-        agent-cli install-services --all
+        # Install all services with Ollama
+        agent-cli install-services --all --ollama
+
+        # Only install dependencies (uv, optionally Ollama)
+        agent-cli install-services --deps-only --ollama
 
         # Skip confirmation prompts
         agent-cli install-services whisper -y
@@ -207,29 +267,24 @@ def install_services(  # noqa: PLR0912, PLR0915
     After installation, check status with:
         agent-cli server status
     """
-    _check_macos()
-
-    from agent_cli.install.launchd import (  # noqa: PLC0415
-        SERVICES,
-        check_uv_installed,
-        install_service,
-        install_uv,
-    )
+    manager = _get_service_manager()
 
     # Handle deps-only mode
     if deps_only:
         console.print("[bold]Checking dependencies...[/bold]")
-        uv_installed, uv_path = check_uv_installed()
+        uv_installed, uv_path = manager.check_uv_installed()
         if uv_installed:
             console.print(f"  [green]✓[/green] uv already installed at {uv_path}")
         else:
             console.print("  Installing uv...")
-            success, msg = install_uv()
+            success, msg = manager.install_uv()
             if success:
                 console.print(f"  [green]✓[/green] {msg}")
             else:
                 console.print(f"  [red]✗[/red] {msg}")
                 raise typer.Exit(1)
+        if install_ollama:
+            _ensure_ollama_installed(no_confirm)
         return
 
     # Determine which services to install
@@ -254,6 +309,8 @@ def install_services(  # noqa: PLR0912, PLR0915
     # Check dependencies
     if not skip_deps:
         _ensure_uv_installed(no_confirm)
+        if install_ollama:
+            _ensure_ollama_installed(no_confirm)
 
     # Confirm installation
     if not no_confirm:
@@ -271,11 +328,17 @@ def install_services(  # noqa: PLR0912, PLR0915
     failed = []
 
     for svc_name in selected_services:
-        result = install_service(svc_name)
+        result = manager.install_service(svc_name)
         if result.success:
-            console.print(
-                f"  [green]✓[/green] {svc_name}: {result.message}. Logs: {result.log_dir}/",
-            )
+            if result.log_dir:
+                console.print(
+                    f"  [green]✓[/green] {svc_name}: {result.message}. Logs: {result.log_dir}/",
+                )
+            else:
+                log_cmd = manager.get_log_command(svc_name)
+                console.print(
+                    f"  [green]✓[/green] {svc_name}: {result.message}. Logs: [cyan]{log_cmd}[/cyan]",
+                )
             success_count += 1
         else:
             console.print(f"  [red]✗[/red] {svc_name}: {result.message}")
@@ -283,11 +346,16 @@ def install_services(  # noqa: PLR0912, PLR0915
 
     # Summary
     console.print()
+    system = platform.system()
+    if system == "Darwin":
+        log_hint = "View logs: [cyan]~/Library/Logs/agent-cli-<service>/[/cyan]"
+    else:
+        log_hint = "View logs: [cyan]journalctl --user -u agent-cli-<service> -f[/cyan]"
+
     if success_count == len(selected_services):
         panel = Panel(
             f"[green]Successfully installed {success_count} service(s)![/green]\n\n"
-            "Check status: [cyan]agent-cli server status[/cyan]\n"
-            "View logs: [cyan]~/Library/Logs/agent-cli-<service>/[/cyan]",
+            f"Check status: [cyan]agent-cli server status[/cyan]\n{log_hint}",
             title="Installation Complete",
             border_style="green",
         )
@@ -324,10 +392,10 @@ def uninstall_services(
         typer.Option("--no-confirm", "-y", help="Skip confirmation prompts"),
     ] = False,
 ) -> None:
-    """Uninstall agent-cli server launchd services.
+    """Uninstall agent-cli server services.
 
-    This stops services and removes their launchd configuration.
-    Log files are preserved for debugging.
+    This stops services and removes their configuration.
+    Log files are preserved for debugging (macOS only).
 
     **Examples:**
 
@@ -341,17 +409,11 @@ def uninstall_services(
         agent-cli uninstall-services --all
 
     """
-    _check_macos()
-
-    from agent_cli.install.launchd import (  # noqa: PLC0415
-        SERVICES,
-        get_service_status,
-        uninstall_service,
-    )
+    manager = _get_service_manager()
 
     # Determine which services to uninstall
     if all_services:
-        selected_services = [n for n in SERVICES if get_service_status(n).installed]
+        selected_services = [n for n in SERVICES if manager.get_service_status(n).installed]
         if not selected_services:
             console.print("[dim]No services are currently installed.[/dim]")
             return
@@ -366,7 +428,7 @@ def uninstall_services(
         selected_services = services
     else:
         # Interactive selection - show only installed services
-        installed = {n: s for n, s in SERVICES.items() if get_service_status(n).installed}
+        installed = {n: s for n, s in SERVICES.items() if manager.get_service_status(n).installed}
         if not installed:
             console.print("[dim]No services are currently installed.[/dim]")
             return
@@ -394,11 +456,14 @@ def uninstall_services(
     console.print("[bold]Uninstalling services...[/bold]")
 
     for svc_name in selected_services:
-        result = uninstall_service(svc_name)
+        result = manager.uninstall_service(svc_name)
         console.print(f"  [green]✓[/green] {svc_name}: {result.message}")
 
     console.print()
-    console.print("[dim]Note: Log files are preserved at ~/Library/Logs/agent-cli-<service>/[/dim]")
+    if platform.system() == "Darwin":
+        console.print(
+            "[dim]Note: Log files are preserved at ~/Library/Logs/agent-cli-<service>/[/dim]",
+        )
 
 
 @app.command("start-services", rich_help_panel="Service Management")

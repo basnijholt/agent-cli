@@ -7,7 +7,10 @@ import logging
 import platform
 from importlib.util import find_spec
 from pathlib import Path  # noqa: TC003 - Path needed at runtime for typer annotations
-from typing import Annotated
+from typing import TYPE_CHECKING, Annotated
+
+if TYPE_CHECKING:
+    from types import ModuleType
 
 import typer
 from rich.console import Console
@@ -845,6 +848,21 @@ def uninstall_service_cmd(
     console.print("[dim]Note: Log files are preserved at ~/Library/Logs/agent-cli-<service>/[/dim]")
 
 
+def _get_service_manager() -> ModuleType:
+    """Get the platform-specific service manager module."""
+    system = platform.system()
+    if system == "Darwin":
+        from agent_cli.install import launchd  # noqa: PLC0415
+
+        return launchd
+    if system == "Linux":
+        from agent_cli.install import systemd  # noqa: PLC0415
+
+        return systemd
+    err_console.print(f"[bold red]Error:[/bold red] Unsupported platform: {system}")
+    raise typer.Exit(1)
+
+
 @app.command("status")
 def status_service_cmd(
     service: Annotated[
@@ -854,7 +872,7 @@ def status_service_cmd(
         ),
     ] = None,
 ) -> None:
-    """Check status of server launchd services.
+    """Check status of server services.
 
     Shows whether each service is installed and running.
 
@@ -866,9 +884,9 @@ def status_service_cmd(
         agent-cli server status whisper
 
     """
-    _check_macos()
+    from agent_cli.install.service_config import SERVICES  # noqa: PLC0415
 
-    from agent_cli.install.launchd import SERVICES, get_service_status  # noqa: PLC0415
+    manager = _get_service_manager()
 
     services_to_check = [service] if service else list(SERVICES.keys())
 
@@ -883,7 +901,7 @@ def status_service_cmd(
     console.print()
 
     for svc_name in services_to_check:
-        status = get_service_status(svc_name)
+        status = manager.get_service_status(svc_name)
         if not status.installed:
             console.print(f"  {svc_name}: [dim]not installed[/dim]")
         elif status.running:
@@ -892,4 +910,8 @@ def status_service_cmd(
             console.print(f"  {svc_name}: [yellow]installed but not running[/yellow]")
 
     console.print()
-    console.print("[dim]Log locations: ~/Library/Logs/agent-cli-<service>/[/dim]")
+    system = platform.system()
+    if system == "Darwin":
+        console.print("[dim]Log locations: ~/Library/Logs/agent-cli-<service>/[/dim]")
+    else:
+        console.print("[dim]Log locations: journalctl --user -u agent-cli-<service>[/dim]")
