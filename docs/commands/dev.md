@@ -98,7 +98,6 @@ agent-cli dev list [OPTIONS]
 
 | Option | Description |
 |--------|-------------|
-| `--porcelain`, `-p` | Machine-readable output (path + branch) |
 | `--json` | Output as JSON for automation |
 
 ### `dev status`
@@ -114,7 +113,6 @@ agent-cli dev status [OPTIONS]
 | Option | Description |
 |--------|-------------|
 | `--stale-days`, `-s` | Highlight worktrees inactive for N+ days (default: 7) |
-| `--porcelain`, `-p` | Machine-readable output |
 | `--json` | Output as JSON for automation |
 
 **Output columns:**
@@ -135,9 +133,6 @@ agent-cli dev status
 
 # Highlight worktrees inactive for 14+ days
 agent-cli dev status --stale-days 14
-
-# Machine-readable output for scripting
-agent-cli dev status --porcelain
 ```
 
 **Example output:**
@@ -161,16 +156,6 @@ agent-cli dev status --porcelain
 - `+N` = N commits ahead of upstream
 - `-N` = N commits behind upstream
 - `⚠️` = Stale worktree (inactive for longer than `--stale-days`)
-
-**Porcelain format:**
-
-Tab-separated values: `name`, `branch`, `modified`, `staged`, `untracked`, `ahead`, `behind`, `timestamp`
-
-```bash
-$ agent-cli dev status --porcelain
-main	main	3	0	0	0	0	1768343512
-my-feature	feat/my-feature	0	0	0	0	0	1767544043
-```
 
 ### `dev rm`
 
