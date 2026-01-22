@@ -38,21 +38,18 @@ server = [
 ]
 rag = [
     "fastapi[standard]",
-    # TODO: remove python_version constraint when deps support 3.14 (https://github.com/basnijholt/agent-cli/issues/199)
-    "chromadb>=0.4.22; python_version < '3.14'",
-    "onnxruntime>=1.17.0; python_version < '3.14'",
+    "chromadb>=0.4.22",
+    "onnxruntime>=1.17.0",
     "huggingface-hub>=0.20.0",
     "transformers>=4.30.0",
     "watchfiles>=0.21.0",
     # Until here same as 'memory' extras
-    # TODO: remove python_version constraint when markitdown's magika->onnxruntime dep supports 3.14
-    "markitdown[docx,pdf,pptx]>=0.1.3; python_version < '3.14'",
+    "markitdown[docx,pdf,pptx]>=0.1.3",
 ]
 memory = [
     "fastapi[standard]",
-    # TODO: remove python_version constraint when deps support 3.14 (https://github.com/basnijholt/agent-cli/issues/199)
-    "chromadb>=0.4.22; python_version < '3.14'",
-    "onnxruntime>=1.17.0; python_version < '3.14'",
+    "chromadb>=0.4.22",
+    "onnxruntime>=1.17.0",
     "huggingface-hub>=0.20.0",
     "transformers>=4.30.0",
     "watchfiles>=0.21.0",
@@ -60,8 +57,7 @@ memory = [
     "pyyaml>=6.0.0",
 ]
 vad = [
-    # TODO: remove python_version constraint when silero-vad's onnxruntime dep supports 3.14
-    "silero-vad>=5.1; python_version < '3.14'",
+    "silero-vad>=5.1",
 ]
 whisper = [
     "fastapi[standard]",
