@@ -22,8 +22,9 @@ class ServiceConfig:
     name: str
     display_name: str
     description: str
-    extra: str  # uv extra to install (e.g., "whisper", "tts-kokoro")
+    extra: str  # uv extra to install (e.g., "whisper", "tts-kokoro"), empty for external
     command_args: list[str]  # Additional args after "agent-cli server <name>"
+    external: bool = False  # True for external services (ollama) that aren't agent-cli servers
 
 
 # Available services for installation
@@ -48,6 +49,14 @@ SERVICES: dict[str, ServiceConfig] = {
         description="Proxy server for ASR providers (port 61337)",
         extra="server",
         command_args=[],
+    ),
+    "ollama": ServiceConfig(
+        name="ollama",
+        display_name="Ollama",
+        description="Local LLM inference server (port 11434)",
+        extra="",
+        command_args=[],
+        external=True,
     ),
 }
 
@@ -95,11 +104,3 @@ def install_uv() -> tuple[bool, str]:
         return True, "uv installed successfully"
     except subprocess.CalledProcessError as e:
         return False, f"Failed to install uv: {e}"
-
-
-def check_ollama_installed() -> tuple[bool, Path | None]:
-    """Check if Ollama is installed."""
-    which_result = shutil.which("ollama")
-    if which_result:
-        return True, Path(which_result)
-    return False, None

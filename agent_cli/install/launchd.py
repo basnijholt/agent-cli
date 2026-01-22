@@ -13,7 +13,6 @@ from pathlib import Path
 from agent_cli.install.service_config import (
     SERVICES,
     ServiceConfig,
-    check_ollama_installed,
     install_uv,
 )
 from agent_cli.install.service_config import (
@@ -27,15 +26,12 @@ __all__ = [
     "ServiceConfig",
     "ServiceStatus",
     "UninstallResult",
-    "check_ollama_installed",
     "check_uv_installed",
     "get_log_command",
     "get_log_dir",
     "get_service_status",
-    "install_ollama",
     "install_service",
     "install_uv",
-    "start_ollama_service",
     "uninstall_service",
 ]
 
@@ -115,8 +111,50 @@ class ServiceStatus:
     pid: int | None = None
 
 
+def _get_ollama_status() -> ServiceStatus:
+    """Get status of Ollama via brew services."""
+    installed = shutil.which("ollama") is not None
+
+    if not installed:
+        return ServiceStatus(name="ollama", installed=False, running=False)
+
+    # Check brew services status
+    result = subprocess.run(
+        ["brew", "services", "list"],  # noqa: S607
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    running = False
+    pid = None
+    for line in result.stdout.splitlines():
+        if line.startswith("ollama "):
+            running = "started" in line
+            # Try to get PID from pgrep
+            if running:
+                pid_result = subprocess.run(
+                    ["pgrep", "-x", "ollama"],  # noqa: S607
+                    capture_output=True,
+                    text=True,
+                    check=False,
+                )
+                if pid_result.returncode == 0:
+                    with contextlib.suppress(ValueError):
+                        pid = int(pid_result.stdout.strip().split()[0])
+            break
+
+    return ServiceStatus(name="ollama", installed=True, running=running, pid=pid)
+
+
 def get_service_status(service_name: str) -> ServiceStatus:
     """Get the status of a launchd service."""
+    # Handle external services
+    if service_name in SERVICES and SERVICES[service_name].external:
+        if service_name == "ollama":
+            return _get_ollama_status()
+        return ServiceStatus(name=service_name, installed=False, running=False)
+
     plist_path = _get_plist_path(service_name)
     installed = plist_path.exists()
 
@@ -165,6 +203,29 @@ class InstallResult:
     log_dir: Path | None = None
 
 
+def _install_ollama() -> InstallResult:
+    """Install and start Ollama via Homebrew."""
+    if not shutil.which("brew"):
+        return InstallResult(
+            success=False,
+            message="Homebrew not found. Install from https://brew.sh/ or install Ollama manually from https://ollama.ai",
+        )
+
+    # Install ollama if not present
+    if not shutil.which("ollama"):
+        try:
+            subprocess.run(["brew", "install", "ollama"], check=True)  # noqa: S607
+        except subprocess.CalledProcessError as e:
+            return InstallResult(success=False, message=f"Failed to install Ollama: {e}")
+
+    # Start as brew service
+    try:
+        subprocess.run(["brew", "services", "start", "ollama"], check=True)  # noqa: S607
+        return InstallResult(success=True, message="Installed and started via Homebrew")
+    except subprocess.CalledProcessError as e:
+        return InstallResult(success=False, message=f"Failed to start Ollama service: {e}")
+
+
 def install_service(service_name: str) -> InstallResult:
     """Install a service as a macOS launchd service.
 
@@ -177,6 +238,12 @@ def install_service(service_name: str) -> InstallResult:
         )
 
     service = SERVICES[service_name]
+
+    # Handle external services (like ollama)
+    if service.external:
+        if service_name == "ollama":
+            return _install_ollama()
+        return InstallResult(success=False, message=f"Unknown external service: {service_name}")
 
     # Find uv
     uv_path = _find_uv()
@@ -239,11 +306,37 @@ class UninstallResult:
     was_running: bool = False
 
 
+def _uninstall_ollama() -> UninstallResult:
+    """Stop Ollama brew service (does not uninstall the binary)."""
+    if not shutil.which("ollama"):
+        return UninstallResult(success=True, message="Ollama was not installed", was_running=False)
+
+    # Stop the service
+    result = subprocess.run(
+        ["brew", "services", "stop", "ollama"],  # noqa: S607
+        capture_output=True,
+        check=False,
+    )
+    was_running = result.returncode == 0
+
+    return UninstallResult(
+        success=True,
+        message="Ollama service stopped" if was_running else "Ollama service was not running",
+        was_running=was_running,
+    )
+
+
 def uninstall_service(service_name: str) -> UninstallResult:
     """Uninstall a launchd service.
 
     Returns an UninstallResult with success status and message.
     """
+    # Handle external services
+    if service_name in SERVICES and SERVICES[service_name].external:
+        if service_name == "ollama":
+            return _uninstall_ollama()
+        return UninstallResult(success=True, message="Service was not installed", was_running=False)
+
     plist_path = _get_plist_path(service_name)
 
     if not plist_path.exists():
@@ -278,44 +371,4 @@ def check_uv_installed() -> tuple[bool, Path | None]:
     return (uv_path is not None, uv_path)
 
 
-# install_uv and check_ollama_installed are imported from service_config
-
-
-def install_ollama() -> tuple[bool, str]:
-    """Install Ollama using Homebrew (macOS).
-
-    Returns (success, message).
-    """
-    # Check if Homebrew is available
-    if not shutil.which("brew"):
-        return (
-            False,
-            "Homebrew not found. Install from https://brew.sh/ or install Ollama manually from https://ollama.ai",
-        )
-
-    try:
-        subprocess.run(
-            ["brew", "install", "ollama"],  # noqa: S607
-            check=True,
-        )
-        return True, "Ollama installed successfully via Homebrew"
-    except subprocess.CalledProcessError as e:
-        return False, f"Failed to install Ollama: {e}"
-
-
-def start_ollama_service() -> tuple[bool, str]:
-    """Start Ollama as a Homebrew service.
-
-    Returns (success, message).
-    """
-    if not shutil.which("brew"):
-        return False, "Homebrew not found"
-
-    try:
-        subprocess.run(
-            ["brew", "services", "start", "ollama"],  # noqa: S607
-            check=True,
-        )
-        return True, "Ollama started as Homebrew service"
-    except subprocess.CalledProcessError as e:
-        return False, f"Failed to start Ollama service: {e}"
+# install_uv is imported from service_config

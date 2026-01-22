@@ -161,49 +161,12 @@ def _ensure_uv_installed(no_confirm: bool) -> None:
         raise typer.Exit(1)
 
 
-def _ensure_ollama_installed(no_confirm: bool) -> None:
-    """Ensure Ollama is installed, prompting user if needed."""
-    manager = _get_service_manager()
-
-    ollama_installed, ollama_path = manager.check_ollama_installed()
-    if ollama_installed:
-        console.print(f"  [green]✓[/green] Ollama installed at {ollama_path}")
-        return
-
-    console.print()
-    console.print(
-        "[yellow]Ollama is not installed. It's required for local LLM inference.[/yellow]",
-    )
-
-    if not no_confirm and not _confirm_action("Install Ollama now?"):
-        console.print("[dim]Skipping Ollama installation.[/dim]")
-        console.print(
-            "[yellow]Install manually from https://ollama.ai/[/yellow]",
-        )
-        return
-
-    console.print("Installing Ollama...")
-    success, msg = manager.install_ollama()
-    if success:
-        console.print(f"  [green]✓[/green] {msg}")
-        # Start Ollama service
-        console.print("Starting Ollama service...")
-        success, msg = manager.start_ollama_service()
-        if success:
-            console.print(f"  [green]✓[/green] {msg}")
-        else:
-            console.print(f"  [yellow]![/yellow] {msg}")
-    else:
-        console.print(f"  [red]✗[/red] {msg}")
-        console.print("[yellow]Install manually from https://ollama.ai/[/yellow]")
-
-
 @app.command("install-services", rich_help_panel="Installation")
-def install_services(  # noqa: PLR0912, PLR0915, C901
+def install_services(  # noqa: PLR0912, PLR0915
     services: Annotated[
         list[str] | None,
         typer.Argument(
-            help="Services to install (whisper, tts, transcription-proxy). "
+            help="Services to install (whisper, tts, transcription-proxy, ollama). "
             "Omit for interactive selection.",
         ),
     ] = None,
@@ -211,17 +174,9 @@ def install_services(  # noqa: PLR0912, PLR0915, C901
         bool,
         typer.Option("--all", "-a", help="Install all available services"),
     ] = False,
-    deps_only: Annotated[
-        bool,
-        typer.Option("--deps-only", help="Only install dependencies (uv, optionally Ollama)"),
-    ] = False,
     skip_deps: Annotated[
         bool,
-        typer.Option("--skip-deps", help="Skip dependency installation"),
-    ] = False,
-    install_ollama: Annotated[
-        bool,
-        typer.Option("--ollama", help="Also install/check Ollama for local LLM inference"),
+        typer.Option("--skip-deps", help="Skip uv dependency check"),
     ] = False,
     no_confirm: Annotated[
         bool,
@@ -241,11 +196,10 @@ def install_services(  # noqa: PLR0912, PLR0915, C901
     - **whisper**: Speech-to-text ASR server (ports 10300/10301)
     - **tts**: Text-to-speech with Kokoro (ports 10200/10201)
     - **transcription-proxy**: Proxy for ASR providers (port 61337)
+    - **ollama**: Local LLM inference server (port 11434)
 
     Services run via `uv tool run` and don't require a virtual environment.
-
-    **Optional dependencies:**
-    - Use `--ollama` to also install Ollama for local LLM inference
+    Ollama is installed via Homebrew (macOS) or official installer (Linux).
 
     **Examples:**
 
@@ -255,11 +209,11 @@ def install_services(  # noqa: PLR0912, PLR0915, C901
         # Install specific services
         agent-cli install-services whisper tts
 
-        # Install all services with Ollama
-        agent-cli install-services --all --ollama
+        # Install all services including Ollama
+        agent-cli install-services --all
 
-        # Only install dependencies (uv, optionally Ollama)
-        agent-cli install-services --deps-only --ollama
+        # Install just Ollama
+        agent-cli install-services ollama
 
         # Skip confirmation prompts
         agent-cli install-services whisper -y
@@ -268,24 +222,6 @@ def install_services(  # noqa: PLR0912, PLR0915, C901
         agent-cli server status
     """
     manager = _get_service_manager()
-
-    # Handle deps-only mode
-    if deps_only:
-        console.print("[bold]Checking dependencies...[/bold]")
-        uv_installed, uv_path = manager.check_uv_installed()
-        if uv_installed:
-            console.print(f"  [green]✓[/green] uv already installed at {uv_path}")
-        else:
-            console.print("  Installing uv...")
-            success, msg = manager.install_uv()
-            if success:
-                console.print(f"  [green]✓[/green] {msg}")
-            else:
-                console.print(f"  [red]✗[/red] {msg}")
-                raise typer.Exit(1)
-        if install_ollama:
-            _ensure_ollama_installed(no_confirm)
-        return
 
     # Determine which services to install
     if all_services:
@@ -306,11 +242,10 @@ def install_services(  # noqa: PLR0912, PLR0915, C901
             console.print("[dim]No services selected.[/dim]")
             raise typer.Exit(0)
 
-    # Check dependencies
-    if not skip_deps:
+    # Check uv dependency only if we're installing non-external services
+    needs_uv = any(not SERVICES[s].external for s in selected_services)
+    if needs_uv and not skip_deps:
         _ensure_uv_installed(no_confirm)
-        if install_ollama:
-            _ensure_ollama_installed(no_confirm)
 
     # Confirm installation
     if not no_confirm:
