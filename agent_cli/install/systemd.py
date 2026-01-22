@@ -71,13 +71,20 @@ def _generate_unit_file(
         str(uv_path),
         "tool",
         "run",
-        "--from",
-        f"agent-cli[{service.extra}]",
-        "agent-cli",
-        "server",
-        service.name,
-        *service.command_args,
     ]
+    # Add python version constraint if specified (e.g., for onnxruntime)
+    if service.python_version:
+        exec_start_args.extend(["--python", service.python_version])
+    exec_start_args.extend(
+        [
+            "--from",
+            f"agent-cli[{service.extra}]",
+            "agent-cli",
+            "server",
+            service.name,
+            *service.command_args,
+        ],
+    )
     exec_start = " ".join(exec_start_args)
 
     return f"""[Unit]

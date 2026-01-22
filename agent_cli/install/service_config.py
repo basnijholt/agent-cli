@@ -25,6 +25,7 @@ class ServiceConfig:
     extra: str  # uv extra to install (e.g., "whisper", "tts-kokoro"), empty for external
     command_args: list[str]  # Additional args after "agent-cli server <name>"
     external: bool = False  # True for external services (ollama) that aren't agent-cli servers
+    python_version: str | None = None  # Pin Python version for dependencies without py3.14 wheels
 
 
 # Available services for installation
@@ -35,6 +36,7 @@ SERVICES: dict[str, ServiceConfig] = {
         description="Speech-to-text server (ports 10300/10301)",
         extra="whisper",
         command_args=[],
+        python_version="3.13",  # onnxruntime lacks py3.14 wheels
     ),
     "tts": ServiceConfig(
         name="tts",
@@ -42,6 +44,7 @@ SERVICES: dict[str, ServiceConfig] = {
         description="Text-to-speech server (ports 10200/10201)",
         extra="tts-kokoro",
         command_args=["--backend", "kokoro"],
+        python_version="3.13",  # onnxruntime lacks py3.14 wheels
     ),
     "transcription-proxy": ServiceConfig(
         name="transcription-proxy",

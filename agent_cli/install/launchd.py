@@ -82,13 +82,20 @@ def _generate_plist(
         str(uv_path),
         "tool",
         "run",
-        "--from",
-        f"agent-cli[{service.extra}]",
-        "agent-cli",
-        "server",
-        service.name,
-        *service.command_args,
     ]
+    # Add python version constraint if specified (e.g., for onnxruntime)
+    if service.python_version:
+        program_args.extend(["--python", service.python_version])
+    program_args.extend(
+        [
+            "--from",
+            f"agent-cli[{service.extra}]",
+            "agent-cli",
+            "server",
+            service.name,
+            *service.command_args,
+        ],
+    )
 
     return {
         "Label": _get_label(service.name),
