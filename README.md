@@ -140,6 +140,7 @@ The setup scripts automatically install:
 - [System Integration](#system-integration)
   - [macOS Hotkeys](#macos-hotkeys)
   - [Linux Hotkeys](#linux-hotkeys)
+  - [Claude Code Plugin](#claude-code-plugin)
 - [Prerequisites](#prerequisites)
   - [What You Need to Install Manually](#what-you-need-to-install-manually)
   - [What the Setup Scripts Install for You](#what-the-setup-scripts-install-for-you)
