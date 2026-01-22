@@ -12,15 +12,11 @@ if TYPE_CHECKING:
 
 import typer
 from rich.panel import Panel
-from rich.table import Table
 
 from agent_cli.cli import app
 from agent_cli.core.utils import console, print_error_message, print_with_style
 from agent_cli.install.common import get_script_path
 from agent_cli.install.service_config import SERVICES
-
-if TYPE_CHECKING:
-    from agent_cli.install.service_config import ServiceConfig
 
 
 def _get_service_manager() -> ModuleType:
@@ -36,90 +32,6 @@ def _get_service_manager() -> ModuleType:
         return systemd
     print_error_message(f"Unsupported platform: {system}")
     raise typer.Exit(1)
-
-
-def _get_status_str(installed: bool, running: bool) -> str:
-    """Get display string for service status."""
-    if running:
-        return "[green]running[/green]"
-    if installed:
-        return "[yellow]installed[/yellow]"
-    return "[dim]not installed[/dim]"
-
-
-def _parse_service_selection(
-    response: str,
-    service_names: list[str],
-    valid_services: dict[str, ServiceConfig],
-) -> list[str]:
-    """Parse user input into a list of service names."""
-    selected = []
-    for raw_part in response.split(","):
-        part = raw_part.strip()
-        if not part:
-            continue
-        try:
-            idx = int(part)
-            if 1 <= idx <= len(service_names):
-                selected.append(service_names[idx - 1])
-            else:
-                console.print(f"[yellow]Warning: Invalid number {idx}, skipping[/yellow]")
-        except ValueError:
-            if part in valid_services:
-                selected.append(part)
-            else:
-                console.print(f"[yellow]Warning: Unknown service '{part}', skipping[/yellow]")
-    return selected
-
-
-def _display_service_table(
-    services: dict[str, ServiceConfig],
-    title: str,
-    *,
-    filter_installed: bool = False,
-) -> list[str]:
-    """Display service selection table and return list of service names shown."""
-    manager = _get_service_manager()
-
-    console.print()
-    console.print(f"[bold]{title}[/bold]")
-    console.print()
-
-    table = Table(show_header=True, header_style="bold")
-    table.add_column("#", style="dim", width=3)
-    table.add_column("Service", style="cyan", width=20)
-    table.add_column("Description", width=45)
-    table.add_column("Status", width=15)
-
-    if filter_installed:
-        items = [(n, s) for n, s in services.items() if manager.get_service_status(n).installed]
-    else:
-        items = list(services.items())
-
-    for i, (name, svc) in enumerate(items, 1):
-        status = manager.get_service_status(name)
-        status_str = _get_status_str(status.installed, status.running)
-        table.add_row(str(i), svc.display_name, svc.description, status_str)
-
-    console.print(table)
-    console.print()
-    return [name for name, _ in items]
-
-
-def _prompt_user_selection(service_names: list[str], valid_services: dict) -> list[str]:
-    """Prompt user for service selection and return selected names."""
-    try:
-        response = console.input(
-            "[bold]Enter service numbers (comma-separated) or 'all' [all]: [/bold]",
-        ).strip()
-    except (KeyboardInterrupt, EOFError):
-        console.print("\n[dim]Cancelled.[/dim]")
-        raise typer.Exit(0) from None
-
-    if not response or response.lower() == "all":
-        return service_names
-
-    return _parse_service_selection(response, service_names, valid_services)
 
 
 def _confirm_action(message: str) -> bool:
@@ -166,8 +78,7 @@ def install_services(  # noqa: PLR0912, PLR0915
     services: Annotated[
         list[str] | None,
         typer.Argument(
-            help="Services to install (whisper, tts, transcription-proxy, ollama). "
-            "Omit for interactive selection.",
+            help="Services to install (whisper, tts, transcription-proxy, ollama).",
         ),
     ] = None,
     all_services: Annotated[
@@ -205,9 +116,6 @@ def install_services(  # noqa: PLR0912, PLR0915
 
     **Examples:**
 
-        # Interactive selection (shows menu)
-        agent-cli install-services
-
         # Install specific services
         agent-cli install-services whisper tts
 
@@ -223,12 +131,19 @@ def install_services(  # noqa: PLR0912, PLR0915
     After installation, check status with:
         agent-cli server status
     """
+    if not services and not all_services:
+        print_error_message(
+            f"Specify services to install or use --all. Available: {', '.join(SERVICES.keys())}",
+        )
+        raise typer.Exit(1)
+
     manager = _get_service_manager()
 
     # Determine which services to install
     if all_services:
         selected_services = list(SERVICES.keys())
-    elif services:
+    else:
+        assert services is not None  # Already checked above
         invalid = [s for s in services if s not in SERVICES]
         if invalid:
             print_error_message(
@@ -237,12 +152,6 @@ def install_services(  # noqa: PLR0912, PLR0915
             )
             raise typer.Exit(1)
         selected_services = services
-    else:
-        service_names = _display_service_table(SERVICES, "Select services to install:")
-        selected_services = _prompt_user_selection(service_names, SERVICES)
-        if not selected_services:
-            console.print("[dim]No services selected.[/dim]")
-            raise typer.Exit(0)
 
     # Check uv dependency only if we're installing non-external services
     needs_uv = any(not SERVICES[s].external for s in selected_services)
@@ -316,8 +225,7 @@ def uninstall_services(
     services: Annotated[
         list[str] | None,
         typer.Argument(
-            help="Services to uninstall (whisper, tts, transcription-proxy). "
-            "Omit for interactive selection.",
+            help="Services to uninstall (whisper, tts, transcription-proxy, ollama).",
         ),
     ] = None,
     all_services: Annotated[
@@ -336,9 +244,6 @@ def uninstall_services(
 
     **Examples:**
 
-        # Interactive selection
-        agent-cli uninstall-services
-
         # Uninstall specific services
         agent-cli uninstall-services whisper tts
 
@@ -346,6 +251,12 @@ def uninstall_services(
         agent-cli uninstall-services --all
 
     """
+    if not services and not all_services:
+        print_error_message(
+            f"Specify services to uninstall or use --all. Available: {', '.join(SERVICES.keys())}",
+        )
+        raise typer.Exit(1)
+
     manager = _get_service_manager()
 
     # Determine which services to uninstall
@@ -354,7 +265,8 @@ def uninstall_services(
         if not selected_services:
             console.print("[dim]No services are currently installed.[/dim]")
             return
-    elif services:
+    else:
+        assert services is not None  # Already checked above
         invalid = [s for s in services if s not in SERVICES]
         if invalid:
             print_error_message(
@@ -363,22 +275,6 @@ def uninstall_services(
             )
             raise typer.Exit(1)
         selected_services = services
-    else:
-        # Interactive selection - show only installed services
-        installed = {n: s for n, s in SERVICES.items() if manager.get_service_status(n).installed}
-        if not installed:
-            console.print("[dim]No services are currently installed.[/dim]")
-            return
-
-        service_names = _display_service_table(
-            SERVICES,
-            "Select services to uninstall:",
-            filter_installed=True,
-        )
-        selected_services = _prompt_user_selection(service_names, installed)
-        if not selected_services:
-            console.print("[dim]No services selected.[/dim]")
-            return
 
     # Confirm uninstallation
     if not no_confirm:
