@@ -196,10 +196,12 @@ def install_services(  # noqa: PLR0912, PLR0915
     - **whisper**: Speech-to-text ASR server (ports 10300/10301)
     - **tts**: Text-to-speech with Kokoro (ports 10200/10201)
     - **transcription-proxy**: Proxy for ASR providers (port 61337)
+
+    **Available third-party services:**
     - **ollama**: Local LLM inference server (port 11434)
 
     Services run via `uv tool run` and don't require a virtual environment.
-    Ollama is installed via Homebrew (macOS) or official installer (Linux).
+    Third-party services are installed via Homebrew (macOS) or official installer (Linux).
 
     **Examples:**
 
