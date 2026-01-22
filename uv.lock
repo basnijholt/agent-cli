@@ -95,6 +95,7 @@ tts-kokoro = [
     { name = "kokoro" },
     { name = "pip" },
     { name = "soundfile" },
+    { name = "transformers" },
 ]
 vad = [
     { name = "silero-vad" },
@@ -131,8 +132,8 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "audiostretchy", marker = "extra == 'speed'", specifier = ">=1.3.0" },
-    { name = "chromadb", marker = "python_full_version < '3.14' and extra == 'memory'", specifier = ">=0.4.22" },
-    { name = "chromadb", marker = "python_full_version < '3.14' and extra == 'rag'", specifier = ">=0.4.22" },
+    { name = "chromadb", marker = "extra == 'memory'", specifier = ">=0.4.22" },
+    { name = "chromadb", marker = "extra == 'rag'", specifier = ">=0.4.22" },
     { name = "dotenv" },
     { name = "fastapi", extras = ["standard"], marker = "extra == 'memory'" },
     { name = "fastapi", extras = ["standard"], marker = "extra == 'rag'" },
@@ -149,12 +150,12 @@ requires-dist = [
     { name = "huggingface-hub", marker = "extra == 'tts-kokoro'", specifier = ">=0.20.0" },
     { name = "kokoro", marker = "extra == 'tts-kokoro'", specifier = ">=0.9.0" },
     { name = "markdown-code-runner", marker = "extra == 'dev'" },
-    { name = "markitdown", extras = ["docx", "pdf", "pptx"], marker = "python_full_version < '3.14' and extra == 'rag'", specifier = ">=0.1.3" },
+    { name = "markitdown", extras = ["docx", "pdf", "pptx"], marker = "extra == 'rag'", specifier = ">=0.1.3" },
     { name = "mlx-whisper", marker = "platform_machine == 'arm64' and sys_platform == 'darwin' and extra == 'whisper-mlx'", specifier = ">=0.4.0" },
     { name = "notebook", marker = "extra == 'dev'" },
     { name = "numpy" },
-    { name = "onnxruntime", marker = "python_full_version < '3.14' and extra == 'memory'", specifier = ">=1.17.0" },
-    { name = "onnxruntime", marker = "python_full_version < '3.14' and extra == 'rag'", specifier = ">=1.17.0" },
+    { name = "onnxruntime", marker = "extra == 'memory'", specifier = ">=1.17.0" },
+    { name = "onnxruntime", marker = "extra == 'rag'", specifier = ">=1.17.0" },
     { name = "openai" },
     { name = "pip", marker = "extra == 'tts-kokoro'" },
     { name = "piper-tts", marker = "extra == 'tts'", specifier = ">=1.2.0" },
@@ -179,11 +180,12 @@ requires-dist = [
     { name = "rich" },
     { name = "ruff", marker = "extra == 'dev'" },
     { name = "setproctitle" },
-    { name = "silero-vad", marker = "python_full_version < '3.14' and extra == 'vad'", specifier = ">=5.1" },
+    { name = "silero-vad", marker = "extra == 'vad'", specifier = ">=5.1" },
     { name = "sounddevice" },
     { name = "soundfile", marker = "extra == 'tts-kokoro'", specifier = ">=0.12.0" },
     { name = "transformers", marker = "extra == 'memory'", specifier = ">=4.30.0" },
     { name = "transformers", marker = "extra == 'rag'", specifier = ">=4.30.0" },
+    { name = "transformers", marker = "extra == 'tts-kokoro'", specifier = ">=4.30.0" },
     { name = "typer" },
     { name = "versioningit", marker = "extra == 'dev'" },
     { name = "watchfiles", marker = "extra == 'memory'", specifier = ">=0.21.0" },
@@ -2593,15 +2595,15 @@ name = "mlx-whisper"
 version = "0.4.3"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "huggingface-hub" },
-    { name = "mlx" },
-    { name = "more-itertools" },
-    { name = "numba" },
-    { name = "numpy" },
-    { name = "scipy" },
-    { name = "tiktoken" },
-    { name = "torch" },
-    { name = "tqdm" },
+    { name = "huggingface-hub", marker = "sys_platform != 'win32'" },
+    { name = "mlx", marker = "sys_platform != 'win32'" },
+    { name = "more-itertools", marker = "sys_platform != 'win32'" },
+    { name = "numba", marker = "sys_platform != 'win32'" },
+    { name = "numpy", marker = "sys_platform != 'win32'" },
+    { name = "scipy", marker = "sys_platform != 'win32'" },
+    { name = "tiktoken", marker = "sys_platform != 'win32'" },
+    { name = "torch", marker = "sys_platform != 'win32'" },
+    { name = "tqdm", marker = "sys_platform != 'win32'" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/22/b7/a35232812a2ccfffcb7614ba96a91338551a660a0e9815cee668bf5743f0/mlx_whisper-0.4.3-py3-none-any.whl", hash = "sha256:6b82b6597a994643a3e5496c7bc229a672e5ca308458455bfe276e76ae024489", size = 890544, upload-time = "2025-08-29T14:56:13.815Z" },
@@ -2853,8 +2855,8 @@ name = "numba"
 version = "0.63.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "llvmlite" },
-    { name = "numpy" },
+    { name = "llvmlite", marker = "sys_platform != 'win32'" },
+    { name = "numpy", marker = "sys_platform != 'win32'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/dc/60/0145d479b2209bd8fdae5f44201eceb8ce5a23e0ed54c71f57db24618665/numba-0.63.1.tar.gz", hash = "sha256:b320aa675d0e3b17b40364935ea52a7b1c670c9037c39cf92c49502a75902f4b", size = 2761666, upload-time = "2025-12-10T02:57:39.002Z" }
 wheels = [
@@ -4608,7 +4610,7 @@ name = "scipy"
 version = "1.17.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "numpy" },
+    { name = "numpy", marker = "sys_platform != 'win32'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/56/3e/9cca699f3486ce6bc12ff46dc2031f1ec8eb9ccc9a320fdaf925f1417426/scipy-1.17.0.tar.gz", hash = "sha256:2591060c8e648d8b96439e111ac41fd8342fdeff1876be2e19dea3fe8930454e", size = 30396830, upload-time = "2026-01-10T21:34:23.009Z" }
 wheels = [
