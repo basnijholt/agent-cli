@@ -287,6 +287,25 @@ This script automatically:
 
 The script supports Hyprland, GNOME, KDE, Sway, i3, XFCE, and provides instructions for manual configuration on other environments.
 
+### Claude Code Plugin
+
+The [`dev`](docs/commands/dev.md) command is also available as a **Claude Code plugin**, enabling Claude to automatically spawn parallel AI agents in isolated git worktrees when you ask it to work on multiple features.
+
+```bash
+# Option 1: Install skill directly in your project (recommended)
+agent-cli dev install-skill
+
+# Option 2: Install via Claude Code plugin marketplace
+claude plugin marketplace add basnijholt/agent-cli
+claude plugin install agent-cli@agent-cli-dev
+```
+
+Once installed, Claude Code can automatically use this skill when you ask to:
+- "Work on these 3 features in parallel"
+- "Spawn agents for auth and payments"
+- "Delegate this refactoring to a separate agent"
+
+See the [plugin documentation](.claude-plugin/README.md) for more details.
 
 ## Prerequisites
 
