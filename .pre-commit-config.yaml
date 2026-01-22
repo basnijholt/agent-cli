@@ -35,3 +35,9 @@ repos:
         types: [python]
         pass_filenames: false
         always_run: true
+      - id: check-plugin-skill-sync
+        name: check plugin skill files in sync
+        entry: python scripts/check_plugin_skill_sync.py
+        language: python
+        pass_filenames: false
+        files: (agent_cli/dev/skill/|\.claude-plugin/skills/|\.claude/skills/)
