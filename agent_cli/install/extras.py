@@ -86,6 +86,42 @@ def _install_cmd() -> list[str]:
     return cmd
 
 
+def install_extras_programmatic(extras: list[str], *, quiet: bool = False) -> bool:
+    """Install extras programmatically (for auto-install feature).
+
+    Returns True if all extras were installed successfully, False otherwise.
+    """
+    available = _available_extras()
+
+    # Filter to valid extras only
+    valid_extras = [e for e in extras if e in available]
+    if not valid_extras:
+        return False
+
+    # If running from uv tool install, reinstall with extras to persist them
+    if _is_uv_tool_install():
+        current_extras = _get_current_uv_tool_extras()
+        new_extras = sorted(set(current_extras) | set(valid_extras))
+        return _install_via_uv_tool(new_extras)
+
+    # Standard pip/uv pip install for non-tool environments
+    cmd = _install_cmd()
+
+    for extra in valid_extras:
+        req_file = _requirements_path(extra)
+        if not quiet:
+            console.print(f"Installing [cyan]{extra}[/]...")
+        result = subprocess.run(
+            [*cmd, "-r", str(req_file)],
+            check=False,
+            capture_output=quiet,
+        )
+        if result.returncode != 0:
+            return False
+
+    return True
+
+
 @app.command("install-extras", rich_help_panel="Installation")
 def install_extras(
     extras: Annotated[list[str] | None, typer.Argument(help="Extras to install")] = None,

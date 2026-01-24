@@ -2,7 +2,20 @@
 
 from __future__ import annotations
 
-from agent_cli.core.deps import EXTRAS, check_extra_installed, get_install_hint, requires_extras
+import os
+from typing import TYPE_CHECKING
+from unittest.mock import patch
+
+from agent_cli.core.deps import (
+    EXTRAS,
+    _get_auto_install_setting,
+    check_extra_installed,
+    get_install_hint,
+    requires_extras,
+)
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 class TestRequiresExtrasDecorator:
@@ -61,3 +74,69 @@ class TestExtrasMetadata:
         essential = ["audio", "llm", "rag", "memory", "vad"]
         for extra in essential:
             assert extra in EXTRAS, f"Missing essential extra: {extra}"
+
+
+class TestAutoInstallSetting:
+    """Test the auto-install extras configuration."""
+
+    def test_default_is_enabled(self) -> None:
+        """Auto-install should be enabled by default."""
+        env = dict(os.environ)
+        env.pop("AGENT_CLI_NO_AUTO_INSTALL", None)
+        with (
+            patch.dict(os.environ, env, clear=True),
+            patch("agent_cli.core.deps._CONFIG_PATHS", []),
+        ):
+            assert _get_auto_install_setting() is True
+
+    def test_env_var_disables(self) -> None:
+        """AGENT_CLI_NO_AUTO_INSTALL=1 should disable auto-install."""
+        with patch.dict(os.environ, {"AGENT_CLI_NO_AUTO_INSTALL": "1"}):
+            assert _get_auto_install_setting() is False
+
+    def test_env_var_true_disables(self) -> None:
+        """AGENT_CLI_NO_AUTO_INSTALL=true should disable auto-install."""
+        with patch.dict(os.environ, {"AGENT_CLI_NO_AUTO_INSTALL": "true"}):
+            assert _get_auto_install_setting() is False
+
+    def test_env_var_yes_disables(self) -> None:
+        """AGENT_CLI_NO_AUTO_INSTALL=yes should disable auto-install."""
+        with patch.dict(os.environ, {"AGENT_CLI_NO_AUTO_INSTALL": "yes"}):
+            assert _get_auto_install_setting() is False
+
+    def test_config_file_disables(self, tmp_path: Path) -> None:
+        """Config file with auto_install_extras = false should disable."""
+        config_file = tmp_path / "config.toml"
+        config_file.write_text("auto_install_extras = false\n")
+
+        env = dict(os.environ)
+        env.pop("AGENT_CLI_NO_AUTO_INSTALL", None)
+        with (
+            patch.dict(os.environ, env, clear=True),
+            patch("agent_cli.core.deps._CONFIG_PATHS", [config_file]),
+        ):
+            assert _get_auto_install_setting() is False
+
+    def test_config_file_enables(self, tmp_path: Path) -> None:
+        """Config file with auto_install_extras = true should enable."""
+        config_file = tmp_path / "config.toml"
+        config_file.write_text("auto_install_extras = true\n")
+
+        env = dict(os.environ)
+        env.pop("AGENT_CLI_NO_AUTO_INSTALL", None)
+        with (
+            patch.dict(os.environ, env, clear=True),
+            patch("agent_cli.core.deps._CONFIG_PATHS", [config_file]),
+        ):
+            assert _get_auto_install_setting() is True
+
+    def test_env_var_takes_precedence(self, tmp_path: Path) -> None:
+        """Environment variable should take precedence over config file."""
+        config_file = tmp_path / "config.toml"
+        config_file.write_text("auto_install_extras = true\n")
+
+        with (
+            patch.dict(os.environ, {"AGENT_CLI_NO_AUTO_INSTALL": "1"}),
+            patch("agent_cli.core.deps._CONFIG_PATHS", [config_file]),
+        ):
+            assert _get_auto_install_setting() is False

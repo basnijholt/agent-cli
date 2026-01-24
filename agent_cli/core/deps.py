@@ -4,18 +4,54 @@ from __future__ import annotations
 
 import functools
 import json
+import os
+import tomllib
 from importlib.util import find_spec
 from pathlib import Path
 from typing import TYPE_CHECKING, TypeVar
 
 import typer
 
-from agent_cli.core.utils import print_error_message
+from agent_cli.core.utils import console, print_error_message
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
 F = TypeVar("F", bound="Callable[..., object]")
+
+# Config paths for auto-install setting lookup
+_CONFIG_PATHS = [
+    Path("agent-cli-config.toml"),
+    Path.home() / ".config" / "agent-cli" / "config.toml",
+]
+
+
+def _get_auto_install_setting() -> bool:
+    """Check if auto-install is enabled (default: True).
+
+    Can be disabled via:
+    - Environment variable: AGENT_CLI_NO_AUTO_INSTALL=1
+    - Config file: auto_install_extras = false
+    """
+    # Environment variable takes precedence (opt-out)
+    if os.environ.get("AGENT_CLI_NO_AUTO_INSTALL", "").lower() in ("1", "true", "yes"):
+        return False
+
+    # Check config files
+    for path in _CONFIG_PATHS:
+        expanded = path.expanduser()
+        if expanded.exists():
+            try:
+                with expanded.open("rb") as f:
+                    cfg = tomllib.load(f)
+                    # Check top-level setting
+                    if "auto_install_extras" in cfg:
+                        return bool(cfg["auto_install_extras"])
+            except (OSError, tomllib.TOMLDecodeError):
+                pass  # Ignore config read errors
+
+    return True  # Default: enabled
+
 
 # Load extras from JSON file
 _EXTRAS_FILE = Path(__file__).parent.parent / "_extras.json"
@@ -116,11 +152,38 @@ def get_combined_install_hint(extras: list[str]) -> str:
     return "\n".join(lines)
 
 
+def _try_auto_install(missing: list[str]) -> bool:
+    """Attempt to auto-install missing extras. Returns True if successful."""
+    # Lazy import to avoid circular dependency (extras.py imports from deps.py)
+    from agent_cli.install.extras import install_extras_programmatic  # noqa: PLC0415
+
+    # Flatten alternatives (e.g., "piper|kokoro" -> just pick the first one)
+    extras_to_install = []
+    for extra in missing:
+        if "|" in extra:
+            # For alternatives, install the first option
+            extras_to_install.append(extra.split("|")[0])
+        else:
+            extras_to_install.append(extra)
+
+    console.print(
+        f"[yellow]Auto-installing missing extras: {', '.join(extras_to_install)}[/]",
+    )
+    return install_extras_programmatic(extras_to_install)
+
+
 def requires_extras(*extras: str) -> Callable[[F], F]:
     """Decorator to declare required extras for a command.
 
-    When a required extra is missing, the decorator prints a helpful error
-    message and exits with code 1.
+    When a required extra is missing, the decorator will:
+    1. If auto_install_extras is enabled (default): attempt to install the missing
+       extras automatically
+    2. If auto-install is disabled or fails: print a helpful error message and
+       exit with code 1
+
+    Auto-install can be disabled via:
+    - Environment variable: AGENT_CLI_NO_AUTO_INSTALL=1
+    - Config file: auto_install_extras = false
 
     The decorator stores the required extras on the function for test validation.
 
@@ -149,7 +212,25 @@ def requires_extras(*extras: str) -> Callable[[F], F]:
 
             missing = [e for e in extras if not check_extra_installed(e)]
             if missing:
-                print_error_message(get_combined_install_hint(missing))
+                # Try auto-install if enabled
+                if _get_auto_install_setting():
+                    if _try_auto_install(missing):
+                        console.print("[green]Installation complete![/]")
+                        # Re-check after install
+                        still_missing = [e for e in extras if not check_extra_installed(e)]
+                        if not still_missing:
+                            return func(*args, **kwargs)
+                        # Some extras still missing after install
+                        print_error_message(
+                            "Auto-install completed but some dependencies are still missing.\n"
+                            + get_combined_install_hint(still_missing),
+                        )
+                    else:
+                        print_error_message(
+                            "Auto-install failed.\n" + get_combined_install_hint(missing),
+                        )
+                else:
+                    print_error_message(get_combined_install_hint(missing))
                 raise typer.Exit(1)
             return func(*args, **kwargs)
 
