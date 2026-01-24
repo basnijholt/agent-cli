@@ -14,6 +14,7 @@ import typer
 
 from agent_cli import config, opts
 from agent_cli.cli import app
+from agent_cli.core.deps import requires_extras
 from agent_cli.core.utils import (
     console,
     create_status,
@@ -209,6 +210,7 @@ async def _async_autocorrect(
 
 
 @app.command("autocorrect", rich_help_panel="Text Commands")
+@requires_extras("llm")
 def autocorrect(
     *,
     text: str | None = typer.Argument(

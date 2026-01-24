@@ -24,21 +24,20 @@ name = "agent-cli"
 source = { editable = "." }
 dependencies = [
     { name = "dotenv" },
-    { name = "google-genai" },
     { name = "httpx" },
     { name = "numpy" },
-    { name = "openai" },
     { name = "psutil", marker = "sys_platform == 'win32'" },
-    { name = "pydantic-ai-slim", extra = ["duckduckgo", "openai", "vertexai"] },
     { name = "pyperclip" },
     { name = "rich" },
     { name = "setproctitle" },
-    { name = "sounddevice" },
     { name = "typer" },
-    { name = "wyoming" },
 ]
 
 [package.optional-dependencies]
+audio = [
+    { name = "sounddevice" },
+    { name = "wyoming" },
+]
 dev = [
     { name = "markdown-code-runner" },
     { name = "notebook" },
@@ -53,6 +52,17 @@ dev = [
     { name = "ruff" },
     { name = "versioningit" },
 ]
+kokoro = [
+    { name = "fastapi", extra = ["standard"] },
+    { name = "huggingface-hub" },
+    { name = "kokoro" },
+    { name = "pip" },
+    { name = "soundfile" },
+    { name = "transformers" },
+]
+llm = [
+    { name = "pydantic-ai-slim", extra = ["duckduckgo", "google", "openai", "vertexai"] },
+]
 memory = [
     { name = "chromadb" },
     { name = "fastapi", extra = ["standard"] },
@@ -61,6 +71,10 @@ memory = [
     { name = "pyyaml" },
     { name = "transformers" },
     { name = "watchfiles" },
+]
+piper = [
+    { name = "fastapi", extra = ["standard"] },
+    { name = "piper-tts" },
 ]
 rag = [
     { name = "chromadb" },
@@ -85,27 +99,12 @@ test = [
     { name = "pytest-mock" },
     { name = "pytest-timeout" },
 ]
-tts = [
-    { name = "fastapi", extra = ["standard"] },
-    { name = "piper-tts" },
-]
-tts-kokoro = [
-    { name = "fastapi", extra = ["standard"] },
-    { name = "huggingface-hub" },
-    { name = "kokoro" },
-    { name = "pip" },
-    { name = "soundfile" },
-    { name = "transformers" },
-]
 vad = [
     { name = "silero-vad" },
 ]
 whisper = [
     { name = "fastapi", extra = ["standard"] },
-    { name = "faster-whisper" },
-]
-whisper-mlx = [
-    { name = "fastapi", extra = ["standard"] },
+    { name = "faster-whisper", marker = "platform_machine != 'arm64' or sys_platform != 'darwin'" },
     { name = "mlx-whisper", marker = "platform_machine == 'arm64' and sys_platform == 'darwin'" },
 ]
 
@@ -135,33 +134,30 @@ requires-dist = [
     { name = "chromadb", marker = "extra == 'memory'", specifier = ">=0.4.22" },
     { name = "chromadb", marker = "extra == 'rag'", specifier = ">=0.4.22" },
     { name = "dotenv" },
+    { name = "fastapi", extras = ["standard"], marker = "extra == 'kokoro'" },
     { name = "fastapi", extras = ["standard"], marker = "extra == 'memory'" },
+    { name = "fastapi", extras = ["standard"], marker = "extra == 'piper'" },
     { name = "fastapi", extras = ["standard"], marker = "extra == 'rag'" },
     { name = "fastapi", extras = ["standard"], marker = "extra == 'server'" },
-    { name = "fastapi", extras = ["standard"], marker = "extra == 'tts'" },
-    { name = "fastapi", extras = ["standard"], marker = "extra == 'tts-kokoro'" },
     { name = "fastapi", extras = ["standard"], marker = "extra == 'whisper'" },
-    { name = "fastapi", extras = ["standard"], marker = "extra == 'whisper-mlx'" },
-    { name = "faster-whisper", marker = "extra == 'whisper'", specifier = ">=1.0.0" },
-    { name = "google-genai", specifier = ">=1.25.0" },
+    { name = "faster-whisper", marker = "(platform_machine != 'arm64' and extra == 'whisper') or (sys_platform != 'darwin' and extra == 'whisper')", specifier = ">=1.0.0" },
     { name = "httpx" },
+    { name = "huggingface-hub", marker = "extra == 'kokoro'", specifier = ">=0.20.0" },
     { name = "huggingface-hub", marker = "extra == 'memory'", specifier = ">=0.20.0" },
     { name = "huggingface-hub", marker = "extra == 'rag'", specifier = ">=0.20.0" },
-    { name = "huggingface-hub", marker = "extra == 'tts-kokoro'", specifier = ">=0.20.0" },
-    { name = "kokoro", marker = "extra == 'tts-kokoro'", specifier = ">=0.9.0" },
+    { name = "kokoro", marker = "extra == 'kokoro'", specifier = ">=0.9.0" },
     { name = "markdown-code-runner", marker = "extra == 'dev'" },
     { name = "markitdown", extras = ["docx", "pdf", "pptx"], marker = "extra == 'rag'", specifier = ">=0.1.3" },
-    { name = "mlx-whisper", marker = "platform_machine == 'arm64' and sys_platform == 'darwin' and extra == 'whisper-mlx'", specifier = ">=0.4.0" },
+    { name = "mlx-whisper", marker = "platform_machine == 'arm64' and sys_platform == 'darwin' and extra == 'whisper'", specifier = ">=0.4.0" },
     { name = "notebook", marker = "extra == 'dev'" },
     { name = "numpy" },
     { name = "onnxruntime", marker = "extra == 'memory'", specifier = ">=1.17.0" },
     { name = "onnxruntime", marker = "extra == 'rag'", specifier = ">=1.17.0" },
-    { name = "openai" },
-    { name = "pip", marker = "extra == 'tts-kokoro'" },
-    { name = "piper-tts", marker = "extra == 'tts'", specifier = ">=1.2.0" },
+    { name = "pip", marker = "extra == 'kokoro'" },
+    { name = "piper-tts", marker = "extra == 'piper'", specifier = ">=1.2.0" },
     { name = "pre-commit", marker = "extra == 'dev'", specifier = ">=3.0.0" },
     { name = "psutil", marker = "sys_platform == 'win32'" },
-    { name = "pydantic-ai-slim", extras = ["duckduckgo", "openai", "vertexai"] },
+    { name = "pydantic-ai-slim", extras = ["duckduckgo", "google", "openai", "vertexai"], marker = "extra == 'llm'", specifier = ">=0.1.1" },
     { name = "pydantic-ai-slim", extras = ["openai"], marker = "extra == 'dev'" },
     { name = "pydantic-ai-slim", extras = ["openai"], marker = "extra == 'test'" },
     { name = "pylint", marker = "extra == 'dev'", specifier = ">=3.0.0" },
@@ -181,18 +177,18 @@ requires-dist = [
     { name = "ruff", marker = "extra == 'dev'" },
     { name = "setproctitle" },
     { name = "silero-vad", marker = "extra == 'vad'", specifier = ">=5.1" },
-    { name = "sounddevice" },
-    { name = "soundfile", marker = "extra == 'tts-kokoro'", specifier = ">=0.12.0" },
+    { name = "sounddevice", marker = "extra == 'audio'", specifier = ">=0.4.6" },
+    { name = "soundfile", marker = "extra == 'kokoro'", specifier = ">=0.12.0" },
+    { name = "transformers", marker = "extra == 'kokoro'", specifier = ">=4.40.0" },
     { name = "transformers", marker = "extra == 'memory'", specifier = ">=4.30.0" },
     { name = "transformers", marker = "extra == 'rag'", specifier = ">=4.30.0" },
-    { name = "transformers", marker = "extra == 'tts-kokoro'", specifier = ">=4.40.0" },
     { name = "typer" },
     { name = "versioningit", marker = "extra == 'dev'" },
     { name = "watchfiles", marker = "extra == 'memory'", specifier = ">=0.21.0" },
     { name = "watchfiles", marker = "extra == 'rag'", specifier = ">=0.21.0" },
-    { name = "wyoming" },
+    { name = "wyoming", marker = "extra == 'audio'", specifier = ">=1.5.2" },
 ]
-provides-extras = ["dev", "memory", "rag", "server", "speed", "test", "tts", "tts-kokoro", "vad", "whisper", "whisper-mlx"]
+provides-extras = ["audio", "dev", "kokoro", "llm", "memory", "piper", "rag", "server", "speed", "test", "vad", "whisper"]
 
 [package.metadata.requires-dev]
 dev = [
@@ -3782,6 +3778,9 @@ wheels = [
 [package.optional-dependencies]
 duckduckgo = [
     { name = "ddgs" },
+]
+google = [
+    { name = "google-genai" },
 ]
 openai = [
     { name = "openai" },
