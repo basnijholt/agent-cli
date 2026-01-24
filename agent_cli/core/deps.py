@@ -51,46 +51,63 @@ def check_extra_installed(extra: str) -> bool:
     return all(_check_package_installed(pkg) for pkg in packages)
 
 
+def _format_extra_item(extra: str) -> str:
+    """Format a single extra as a list item with description."""
+    desc, _ = EXTRAS.get(extra, ("", []))
+    if desc:
+        return f"  - '{extra}' ({desc})"
+    return f"  - '{extra}'"
+
+
+def _format_install_commands(extras: list[str]) -> list[str]:
+    """Format install commands for one or more extras."""
+    combined = ",".join(extras)
+    extras_args = " ".join(extras)
+    return [
+        "Install with:",
+        f'  uv tool install -p 3.13 "agent-cli[{combined}]"',
+        "  # or",
+        f"  agent-cli install-extras {extras_args}",
+    ]
+
+
 def get_install_hint(extra: str) -> str:
-    """Get install command hint for an extra.
+    """Get install command hint for a single extra.
 
     Supports `|` syntax for alternatives: "piper|kokoro" shows both options.
     """
     # Handle "extra1|extra2" syntax - show all options
     if "|" in extra:
         alternatives = extra.split("|")
-        options = []
-        for alt in alternatives:
-            desc, _ = EXTRAS.get(alt, ("", []))
-            options.append((alt, desc))
-
         lines = ["This command requires one of:"]
-        for alt, desc in options:
-            if desc:
-                lines.append(f"  - '{alt}' ({desc})")
-            else:
-                lines.append(f"  - '{alt}'")
+        lines.extend(_format_extra_item(alt) for alt in alternatives)
         lines.append("")
         lines.append("Install one with:")
-        for alt, _ in options:
-            lines.append(f'  uv tool install "agent-cli[{alt}]" -p 3.13')
+        lines.extend(f'  uv tool install -p 3.13 "agent-cli[{alt}]"' for alt in alternatives)
         lines.append("  # or")
-        for alt, _ in options:
-            lines.append(f"  agent-cli install-extras {alt}")
+        lines.extend(f"  agent-cli install-extras {alt}" for alt in alternatives)
         return "\n".join(lines)
 
     desc, _ = EXTRAS.get(extra, ("", []))
-    lines = [
-        f"This command requires the '{extra}' extra",
-    ]
+    header = f"This command requires the '{extra}' extra"
     if desc:
-        lines[0] += f" ({desc})"
-    lines[0] += "."
+        header += f" ({desc})"
+    header += "."
+
+    lines = [header, ""]
+    lines.extend(_format_install_commands([extra]))
+    return "\n".join(lines)
+
+
+def get_combined_install_hint(extras: list[str]) -> str:
+    """Get a combined install hint for multiple missing extras."""
+    if len(extras) == 1:
+        return get_install_hint(extras[0])
+
+    lines = ["This command requires the following extras:"]
+    lines.extend(_format_extra_item(extra) for extra in extras)
     lines.append("")
-    lines.append("Install with:")
-    lines.append(f'  uv tool install "agent-cli[{extra}]" -p 3.13')
-    lines.append("  # or")
-    lines.append(f"  agent-cli install-extras {extra}")
+    lines.extend(_format_install_commands(extras))
     return "\n".join(lines)
 
 
@@ -127,8 +144,7 @@ def requires_extras(*extras: str) -> Callable[[F], F]:
 
             missing = [e for e in extras if not check_extra_installed(e)]
             if missing:
-                for extra in missing:
-                    print_error_message(get_install_hint(extra))
+                print_error_message(get_combined_install_hint(missing))
                 raise typer.Exit(1)
             return func(*args, **kwargs)
 
