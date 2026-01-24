@@ -8,6 +8,7 @@ from agent_cli.agents.chat import chat
 from agent_cli.agents.memory.add import add
 from agent_cli.agents.memory.proxy import proxy
 from agent_cli.agents.rag_proxy import rag_proxy
+from agent_cli.agents.speak import speak
 from agent_cli.agents.transcribe import transcribe
 from agent_cli.agents.transcribe_daemon import transcribe_daemon
 from agent_cli.agents.voice_edit import voice_edit
@@ -35,22 +36,25 @@ class TestRequiresExtrasDecorator:
 class TestCommandDecoratorCoverage:
     """Test that all commands that use optional dependencies have decorators."""
 
-    def test_transcribe_has_audio_decorator(self) -> None:
-        """Transcribe command should require audio extra."""
+    def test_transcribe_has_audio_and_wyoming_decorator(self) -> None:
+        """Transcribe command should require audio and wyoming extras."""
         assert hasattr(transcribe, "_required_extras")
         assert "audio" in transcribe._required_extras
+        assert "wyoming" in transcribe._required_extras
 
-    def test_transcribe_daemon_has_audio_and_vad_decorator(self) -> None:
-        """transcribe-daemon command should require audio and vad extras."""
+    def test_transcribe_daemon_has_audio_vad_and_wyoming_decorator(self) -> None:
+        """transcribe-daemon command should require audio, vad, and wyoming extras."""
         assert hasattr(transcribe_daemon, "_required_extras")
         assert "audio" in transcribe_daemon._required_extras
         assert "vad" in transcribe_daemon._required_extras
+        assert "wyoming" in transcribe_daemon._required_extras
 
-    def test_chat_has_audio_and_llm_decorator(self) -> None:
-        """Chat command should require audio and llm extras."""
+    def test_chat_has_audio_llm_and_wyoming_decorator(self) -> None:
+        """Chat command should require audio, llm, and wyoming extras."""
         assert hasattr(chat, "_required_extras")
         assert "audio" in chat._required_extras
         assert "llm" in chat._required_extras
+        assert "wyoming" in chat._required_extras
 
     def test_assistant_has_required_decorators(self) -> None:
         """Assistant command should require audio, llm, and wyoming extras."""
@@ -59,11 +63,18 @@ class TestCommandDecoratorCoverage:
         assert "llm" in assistant._required_extras
         assert "wyoming" in assistant._required_extras
 
-    def test_voice_edit_has_audio_and_llm_decorator(self) -> None:
-        """voice-edit command should require audio and llm extras."""
+    def test_voice_edit_has_audio_llm_and_wyoming_decorator(self) -> None:
+        """voice-edit command should require audio, llm, and wyoming extras."""
         assert hasattr(voice_edit, "_required_extras")
         assert "audio" in voice_edit._required_extras
         assert "llm" in voice_edit._required_extras
+        assert "wyoming" in voice_edit._required_extras
+
+    def test_speak_has_audio_and_wyoming_decorator(self) -> None:
+        """Speak command should require audio and wyoming extras."""
+        assert hasattr(speak, "_required_extras")
+        assert "audio" in speak._required_extras
+        assert "wyoming" in speak._required_extras
 
     def test_autocorrect_has_llm_decorator(self) -> None:
         """Autocorrect command should require llm extra."""
