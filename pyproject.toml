@@ -10,6 +10,7 @@ authors = [{ name = "Bas Nijholt", email = "bas@nijho.lt" }]
 dependencies = [
     # Core dependencies that are always required
     "numpy",
+    "pydantic",  # Required for config.py models
     "rich",
     "pyperclip",
     "typer",

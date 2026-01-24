@@ -228,6 +228,7 @@ pycparser==2.23 ; implementation_name != 'PyPy' and platform_python_implementati
     # via cffi
 pydantic==2.12.5
     # via
+    #   agent-cli
     #   chromadb
     #   fastapi
     #   fastapi-cloud-cli

@@ -191,6 +191,7 @@ pybase64==1.4.3
     # via chromadb
 pydantic==2.12.5
     # via
+    #   agent-cli
     #   chromadb
     #   fastapi
     #   fastapi-cloud-cli
