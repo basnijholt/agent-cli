@@ -81,7 +81,7 @@ async def _async_main(
 
 
 @app.command("speak", rich_help_panel="Text Commands")
-@requires_extras("audio", "llm")
+@requires_extras("audio")
 def speak(
     *,
     text: str | None = typer.Argument(
