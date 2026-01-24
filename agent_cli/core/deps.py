@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING, TypeVar
 
 import typer
 
+from agent_cli.config import load_config
 from agent_cli.core.utils import console, print_error_message
 
 if TYPE_CHECKING:
@@ -23,8 +24,6 @@ def _get_auto_install_setting() -> bool:
     """Check if auto-install is enabled (default: True)."""
     if os.environ.get("AGENT_CLI_NO_AUTO_INSTALL", "").lower() in ("1", "true", "yes"):
         return False
-    from agent_cli.config import load_config  # noqa: PLC0415
-
     return load_config().get("settings", {}).get("auto_install_extras", True)
 
 
@@ -129,7 +128,6 @@ def get_combined_install_hint(extras: list[str]) -> str:
 
 def _try_auto_install(missing: list[str]) -> bool:
     """Attempt to auto-install missing extras. Returns True if successful."""
-    # Lazy import to avoid circular dependency (extras.py imports from deps.py)
     from agent_cli.install.extras import install_extras_programmatic  # noqa: PLC0415
 
     # Flatten alternatives (e.g., "piper|kokoro" -> just pick the first one)

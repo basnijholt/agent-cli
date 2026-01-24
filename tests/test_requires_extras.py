@@ -81,7 +81,7 @@ class TestAutoInstallSetting:
         env.pop("AGENT_CLI_NO_AUTO_INSTALL", None)
         with (
             patch.dict(os.environ, env, clear=True),
-            patch("agent_cli.config.load_config", return_value={}),
+            patch("agent_cli.core.deps.load_config", return_value={}),
         ):
             assert _get_auto_install_setting() is True
 
@@ -107,7 +107,7 @@ class TestAutoInstallSetting:
         with (
             patch.dict(os.environ, env, clear=True),
             patch(
-                "agent_cli.config.load_config",
+                "agent_cli.core.deps.load_config",
                 return_value={"settings": {"auto_install_extras": False}},
             ),
         ):
@@ -120,7 +120,7 @@ class TestAutoInstallSetting:
         with (
             patch.dict(os.environ, env, clear=True),
             patch(
-                "agent_cli.config.load_config",
+                "agent_cli.core.deps.load_config",
                 return_value={"settings": {"auto_install_extras": True}},
             ),
         ):
@@ -131,7 +131,7 @@ class TestAutoInstallSetting:
         with (
             patch.dict(os.environ, {"AGENT_CLI_NO_AUTO_INSTALL": "1"}),
             patch(
-                "agent_cli.config.load_config",
+                "agent_cli.core.deps.load_config",
                 return_value={"settings": {"auto_install_extras": True}},
             ),
         ):
