@@ -30,10 +30,25 @@ def _requirements_path(extra: str) -> Path:
     return _requirements_dir() / f"{extra}.txt"
 
 
+def _in_virtualenv() -> bool:
+    """Check if running inside a virtual environment."""
+    return sys.prefix != sys.base_prefix
+
+
 def _install_cmd() -> list[str]:
+    """Build the install command with appropriate flags."""
+    in_venv = _in_virtualenv()
     if shutil.which("uv"):
-        return ["uv", "pip", "install", "--python", sys.executable]
-    return [sys.executable, "-m", "pip", "install"]
+        cmd = ["uv", "pip", "install", "--python", sys.executable]
+        if not in_venv:
+            # Allow installing to system Python when not in a venv
+            cmd.append("--system")
+        return cmd
+    cmd = [sys.executable, "-m", "pip", "install"]
+    if not in_venv:
+        # Install to user site-packages when not in a venv
+        cmd.append("--user")
+    return cmd
 
 
 @app.command("install-extras", rich_help_panel="Installation")
