@@ -150,6 +150,7 @@ The setup scripts automatically install:
     - [Alternative Local LLM Servers](#alternative-local-llm-servers)
 - [Usage](#usage)
   - [Installation Commands](#installation-commands)
+    - [Installing Optional Extras](#installing-optional-extras)
   - [Configuration](#configuration)
     - [Managing Configuration](#managing-configuration)
     - [Provider Defaults](#provider-defaults)
