@@ -5,7 +5,6 @@ from __future__ import annotations
 import functools
 import json
 import os
-import tomllib
 from importlib.util import find_spec
 from pathlib import Path
 from typing import TYPE_CHECKING, TypeVar
@@ -25,25 +24,20 @@ def _get_auto_install_setting() -> bool:
 
     Can be disabled via:
     - Environment variable: AGENT_CLI_NO_AUTO_INSTALL=1
-    - Config file: auto_install_extras = false
+    - Config file [settings] section: auto_install_extras = false
     """
     # Environment variable takes precedence (opt-out)
     if os.environ.get("AGENT_CLI_NO_AUTO_INSTALL", "").lower() in ("1", "true", "yes"):
         return False
 
     # Import here to avoid circular import at module load time
-    from agent_cli.config import _config_path  # noqa: PLC0415
+    from agent_cli.config import load_config  # noqa: PLC0415
 
-    # Check config file for top-level setting
-    config_path = _config_path()
-    if config_path and config_path.exists():
-        try:
-            with config_path.open("rb") as f:
-                cfg = tomllib.load(f)
-                if "auto_install_extras" in cfg:
-                    return bool(cfg["auto_install_extras"])
-        except (OSError, tomllib.TOMLDecodeError):
-            pass  # Ignore config read errors
+    # Check [settings] section in config file
+    cfg = load_config()
+    settings = cfg.get("settings", {})
+    if "auto_install_extras" in settings:
+        return bool(settings["auto_install_extras"])
 
     return True  # Default: enabled
 
