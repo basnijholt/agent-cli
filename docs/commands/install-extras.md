@@ -32,10 +32,8 @@ Available extras:
 | Extra | Description |
 |-------|-------------|
 | `audio` | Audio recording/playback |
-| `gemini` | Google Gemini provider |
 | `llm` | LLM framework (pydantic-ai) |
 | `memory` | Long-term memory proxy |
-| `openai` | OpenAI API provider |
 | `rag` | RAG proxy (ChromaDB, embeddings) |
 | `server` | FastAPI server components |
 | `speed` | Audio speed adjustment (audiostretchy) |
