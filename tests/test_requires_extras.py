@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+import importlib
 import os
 from unittest.mock import patch
 
 import pytest
 import typer
 
+from agent_cli.core import deps as deps_module
 from agent_cli.core.deps import (
     EXTRAS,
     _check_and_install_extras,
@@ -16,6 +18,10 @@ from agent_cli.core.deps import (
     get_install_hint,
     requires_extras,
 )
+
+# Reload to get the real check_extra_installed (conftest mocks it)
+importlib.reload(deps_module)
+_real_check_extra_installed = deps_module.check_extra_installed
 
 
 class TestRequiresExtrasDecorator:
@@ -33,21 +39,11 @@ class TestRequiresExtrasDecorator:
 
     def test_check_extra_installed_unknown_extra(self) -> None:
         """Unknown extras should return False to trigger install attempt."""
-        import importlib  # noqa: PLC0415
-
-        from agent_cli.core import deps  # noqa: PLC0415
-
-        importlib.reload(deps)
-        assert deps.check_extra_installed("nonexistent-extra") is False
+        assert _real_check_extra_installed("nonexistent-extra") is False
 
     def test_check_extra_installed_with_pipe_syntax(self) -> None:
         """Pipe syntax: all unknown returns False, mixed depends on installed."""
-        import importlib  # noqa: PLC0415
-
-        from agent_cli.core import deps  # noqa: PLC0415
-
-        importlib.reload(deps)
-        assert deps.check_extra_installed("nonexistent|also-nonexistent") is False
+        assert _real_check_extra_installed("nonexistent|also-nonexistent") is False
 
     def test_get_install_hint_with_pipe_syntax(self) -> None:
         """Pipe syntax shows all alternatives in the hint."""
