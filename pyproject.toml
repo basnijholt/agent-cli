@@ -34,7 +34,7 @@ audio = ["sounddevice>=0.4.6"]
 wyoming = ["wyoming>=1.5.2"]
 openai = ["openai>=1.0.0"]
 gemini = ["google-genai>=1.25.0"]
-llm = ["pydantic-ai-slim[openai,duckduckgo,vertexai]>=0.1.1"]
+llm = ["pydantic-ai-slim[openai,google,duckduckgo,vertexai]>=0.1.1"]
 
 # Feature extras
 server = [

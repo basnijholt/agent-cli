@@ -55,7 +55,7 @@ gemini = [
     { name = "google-genai" },
 ]
 llm = [
-    { name = "pydantic-ai-slim", extra = ["duckduckgo", "openai", "vertexai"] },
+    { name = "pydantic-ai-slim", extra = ["duckduckgo", "google", "openai", "vertexai"] },
 ]
 memory = [
     { name = "chromadb" },
@@ -171,7 +171,7 @@ requires-dist = [
     { name = "piper-tts", marker = "extra == 'tts'", specifier = ">=1.2.0" },
     { name = "pre-commit", marker = "extra == 'dev'", specifier = ">=3.0.0" },
     { name = "psutil", marker = "sys_platform == 'win32'" },
-    { name = "pydantic-ai-slim", extras = ["duckduckgo", "openai", "vertexai"], marker = "extra == 'llm'", specifier = ">=0.1.1" },
+    { name = "pydantic-ai-slim", extras = ["duckduckgo", "google", "openai", "vertexai"], marker = "extra == 'llm'", specifier = ">=0.1.1" },
     { name = "pydantic-ai-slim", extras = ["openai"], marker = "extra == 'dev'" },
     { name = "pydantic-ai-slim", extras = ["openai"], marker = "extra == 'test'" },
     { name = "pylint", marker = "extra == 'dev'", specifier = ">=3.0.0" },
@@ -3792,6 +3792,9 @@ wheels = [
 [package.optional-dependencies]
 duckduckgo = [
     { name = "ddgs" },
+]
+google = [
+    { name = "google-genai" },
 ]
 openai = [
     { name = "openai" },
