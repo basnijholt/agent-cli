@@ -16,7 +16,7 @@ REPO_ROOT = Path(__file__).parent.parent.parent
 REQ_DIR = REPO_ROOT / "agent_cli" / "_requirements"
 
 # Extras to skip (dev/test dependencies, not runtime installable)
-SKIP_EXTRAS = {"dev", "test", "speed"}
+SKIP_EXTRAS = {"dev", "test"}
 
 
 def get_extras() -> list[str]:

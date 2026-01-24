@@ -28,6 +28,7 @@ Available extras:
 | `tts` | Local Piper TTS |
 | `tts-kokoro` | Kokoro neural TTS |
 | `server` | FastAPI server components |
+| `speed` | Audio speed adjustment (audiostretchy) |
 
 ## Options
 
