@@ -5,6 +5,7 @@ from __future__ import annotations
 import shutil
 import subprocess
 import sys
+import tomllib
 from pathlib import Path
 from typing import Annotated
 
@@ -46,6 +47,35 @@ def _requirements_path(extra: str) -> Path:
 def _in_virtualenv() -> bool:
     """Check if running inside a virtual environment."""
     return sys.prefix != sys.base_prefix
+
+
+def _is_uv_tool_install() -> bool:
+    """Check if running from a uv tool environment."""
+    receipt = Path(sys.prefix) / "uv-receipt.toml"
+    return receipt.exists()
+
+
+def _get_current_uv_tool_extras() -> list[str]:
+    """Get extras currently configured in uv-receipt.toml."""
+    receipt = Path(sys.prefix) / "uv-receipt.toml"
+    if not receipt.exists():
+        return []
+    data = tomllib.loads(receipt.read_text())
+    requirements = data.get("tool", {}).get("requirements", [])
+    for req in requirements:
+        if req.get("name") == "agent-cli":
+            return req.get("extras", [])
+    return []
+
+
+def _install_via_uv_tool(extras: list[str]) -> bool:
+    """Reinstall agent-cli via uv tool with the specified extras."""
+    extras_str = ",".join(extras)
+    package_spec = f"agent-cli[{extras_str}]"
+    console.print(f"Reinstalling via uv tool: [cyan]{package_spec}[/]")
+    cmd = ["uv", "tool", "install", package_spec, "--force"]
+    result = subprocess.run(cmd, check=False)
+    return result.returncode == 0
 
 
 def _install_cmd() -> list[str]:
@@ -106,6 +136,17 @@ def install_extras(
         print_error_message(f"Unknown extras: {invalid}. Use --list to see available.")
         raise typer.Exit(1)
 
+    # If running from uv tool install, reinstall with extras to persist them
+    if _is_uv_tool_install():
+        current_extras = _get_current_uv_tool_extras()
+        new_extras = sorted(set(current_extras) | set(extras))
+        if not _install_via_uv_tool(new_extras):
+            print_error_message("Failed to reinstall via uv tool")
+            raise typer.Exit(1)
+        console.print("[green]Done! Extras will persist across uv tool upgrade.[/]")
+        return
+
+    # Standard pip/uv pip install for non-tool environments
     cmd = _install_cmd()
 
     for extra in extras:
