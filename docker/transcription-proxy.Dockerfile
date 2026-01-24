@@ -20,7 +20,7 @@ RUN apt-get update && \
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
 # Create non-root user with explicit UID:GID 1000:1000
-RUN groupadd -g 1000 proxy && useradd -m -u 1000 -g proxy proxy
+RUN groupadd -g 1000 transcribe && useradd -m -u 1000 -g transcribe transcribe
 
 WORKDIR /app
 
@@ -31,7 +31,7 @@ ENV UV_TOOL_BIN_DIR=/usr/local/bin \
 # --refresh bypasses uv cache to ensure latest version from PyPI
 RUN uv tool install --refresh "agent-cli[server]"
 
-USER proxy
+USER transcribe
 
 # Expose port
 EXPOSE 61337

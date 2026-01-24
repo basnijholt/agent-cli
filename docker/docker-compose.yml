@@ -189,6 +189,8 @@ services:
     profiles: [cuda, cpu]
     ports:
       - "61337:61337"
+    # volumes:
+    #   - ./config.toml:/home/transcribe/.config/agent-cli/config.toml:ro
     environment:
       - PROXY_HOST=0.0.0.0
       - PROXY_PORT=${PROXY_PORT:-61337}
