@@ -40,8 +40,7 @@ Available extras:
 | `tts` | Local Piper TTS |
 | `tts-kokoro` | Kokoro neural TTS |
 | `vad` | Voice Activity Detection (silero-vad) |
-| `whisper` | Local Whisper ASR (faster-whisper) |
-| `whisper-mlx` | MLX Whisper for Apple Silicon |
+| `whisper` | Local Whisper ASR (platform-specific) |
 
 <!-- OUTPUT:END -->
 
