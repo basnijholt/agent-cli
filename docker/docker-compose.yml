@@ -27,6 +27,8 @@
 #   TTS_LOG_LEVEL      - Logging level (default: info)
 #
 #   OLLAMA_MODEL       - Ollama model to pull on startup (default: gemma3:4b)
+#
+#   PROXY_PORT         - Transcription proxy port (default: 61337)
 
 services:
   # ===========================================================================
@@ -173,6 +175,25 @@ services:
       - TTS_TTL=${TTS_TTL:-300}
       - TTS_LOG_LEVEL=${TTS_LOG_LEVEL:-info}
       - TTS_DEVICE=cpu
+    restart: unless-stopped
+
+  # ===========================================================================
+  # Transcription Proxy
+  # ===========================================================================
+
+  transcription-proxy:
+    image: ghcr.io/basnijholt/agent-cli-transcription-proxy:latest
+    build:
+      context: ..
+      dockerfile: docker/transcription-proxy.Dockerfile
+    profiles: [cuda, cpu]
+    ports:
+      - "61337:61337"
+    # volumes:
+    #   - ./config.toml:/home/transcribe/.config/agent-cli/config.toml:ro
+    environment:
+      - PROXY_HOST=0.0.0.0
+      - PROXY_PORT=${PROXY_PORT:-61337}
     restart: unless-stopped
 
 volumes:
