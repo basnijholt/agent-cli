@@ -25,9 +25,6 @@ from agent_cli.services import (
 )
 from agent_cli.services._wyoming_utils import wyoming_client_context
 
-# NOTE: Wyoming imports are lazy to support optional dependencies.
-# They are imported inside functions that need them.
-
 if TYPE_CHECKING:
     import logging
     from collections.abc import Awaitable, Callable

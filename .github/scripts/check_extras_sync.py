@@ -11,6 +11,7 @@ Usage:
 
 from __future__ import annotations
 
+import ast
 import sys
 import tomllib
 from pathlib import Path
@@ -31,16 +32,41 @@ def get_extras_from_pyproject() -> set[str]:
     return all_extras - SKIP_EXTRAS
 
 
+def _extract_dict_keys(node: ast.Dict) -> set[str]:
+    """Extract string keys from an AST Dict node."""
+    keys = set()
+    for key in node.keys:
+        if isinstance(key, ast.Constant) and isinstance(key.value, str):
+            keys.add(key.value)
+    return keys
+
+
 def get_extras_from_source() -> set[str]:
-    """Parse extras from agent_cli/_extras.py."""
+    """Parse extras from agent_cli/_extras.py using AST."""
     if not EXTRAS_FILE.exists():
         return set()
 
-    # Execute the file to get the EXTRAS dict
-    namespace: dict = {}
-    exec(EXTRAS_FILE.read_text(), namespace)  # noqa: S102
-    extras_dict = namespace.get("EXTRAS", {})
-    return set(extras_dict.keys())
+    # Parse the file using AST to extract EXTRAS dict keys
+    tree = ast.parse(EXTRAS_FILE.read_text())
+    for node in ast.walk(tree):
+        # Handle annotated assignment: EXTRAS: dict[...] = {...}
+        if (
+            isinstance(node, ast.AnnAssign)
+            and isinstance(node.target, ast.Name)
+            and node.target.id == "EXTRAS"
+            and isinstance(node.value, ast.Dict)
+        ):
+            return _extract_dict_keys(node.value)
+        # Handle plain assignment: EXTRAS = {...}
+        if isinstance(node, ast.Assign):
+            for target in node.targets:
+                if (
+                    isinstance(target, ast.Name)
+                    and target.id == "EXTRAS"
+                    and isinstance(node.value, ast.Dict)
+                ):
+                    return _extract_dict_keys(node.value)
+    return set()
 
 
 def main() -> int:
