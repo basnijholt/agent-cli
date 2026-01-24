@@ -43,7 +43,6 @@ def install_extras(
         bool,
         typer.Option("--list", "-l", help="List available extras"),
     ] = False,
-    upgrade: Annotated[bool, typer.Option("--upgrade", "-U", help="Upgrade packages")] = False,
 ) -> None:
     """Install optional extras (rag, memory, vad, etc.) with pinned versions.
 
@@ -71,8 +70,6 @@ def install_extras(
         raise typer.Exit(1)
 
     cmd = _install_cmd()
-    if upgrade:
-        cmd.append("--upgrade")
 
     for extra in extras:
         req_file = _requirements_path(extra)
