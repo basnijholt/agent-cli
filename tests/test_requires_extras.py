@@ -85,7 +85,7 @@ class TestAutoInstallSetting:
         env.pop("AGENT_CLI_NO_AUTO_INSTALL", None)
         with (
             patch.dict(os.environ, env, clear=True),
-            patch("agent_cli.core.deps._CONFIG_PATHS", []),
+            patch("agent_cli.config._config_path", return_value=None),
         ):
             assert _get_auto_install_setting() is True
 
@@ -113,7 +113,7 @@ class TestAutoInstallSetting:
         env.pop("AGENT_CLI_NO_AUTO_INSTALL", None)
         with (
             patch.dict(os.environ, env, clear=True),
-            patch("agent_cli.core.deps._CONFIG_PATHS", [config_file]),
+            patch("agent_cli.config._config_path", return_value=config_file),
         ):
             assert _get_auto_install_setting() is False
 
@@ -126,7 +126,7 @@ class TestAutoInstallSetting:
         env.pop("AGENT_CLI_NO_AUTO_INSTALL", None)
         with (
             patch.dict(os.environ, env, clear=True),
-            patch("agent_cli.core.deps._CONFIG_PATHS", [config_file]),
+            patch("agent_cli.config._config_path", return_value=config_file),
         ):
             assert _get_auto_install_setting() is True
 
@@ -137,6 +137,6 @@ class TestAutoInstallSetting:
 
         with (
             patch.dict(os.environ, {"AGENT_CLI_NO_AUTO_INSTALL": "1"}),
-            patch("agent_cli.core.deps._CONFIG_PATHS", [config_file]),
+            patch("agent_cli.config._config_path", return_value=config_file),
         ):
             assert _get_auto_install_setting() is False

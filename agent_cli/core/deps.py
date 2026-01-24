@@ -19,12 +19,6 @@ if TYPE_CHECKING:
 
 F = TypeVar("F", bound="Callable[..., object]")
 
-# Config paths for auto-install setting lookup
-_CONFIG_PATHS = [
-    Path("agent-cli-config.toml"),
-    Path.home() / ".config" / "agent-cli" / "config.toml",
-]
-
 
 def _get_auto_install_setting() -> bool:
     """Check if auto-install is enabled (default: True).
@@ -37,18 +31,19 @@ def _get_auto_install_setting() -> bool:
     if os.environ.get("AGENT_CLI_NO_AUTO_INSTALL", "").lower() in ("1", "true", "yes"):
         return False
 
-    # Check config files
-    for path in _CONFIG_PATHS:
-        expanded = path.expanduser()
-        if expanded.exists():
-            try:
-                with expanded.open("rb") as f:
-                    cfg = tomllib.load(f)
-                    # Check top-level setting
-                    if "auto_install_extras" in cfg:
-                        return bool(cfg["auto_install_extras"])
-            except (OSError, tomllib.TOMLDecodeError):
-                pass  # Ignore config read errors
+    # Import here to avoid circular import at module load time
+    from agent_cli.config import _config_path  # noqa: PLC0415
+
+    # Check config file for top-level setting
+    config_path = _config_path()
+    if config_path and config_path.exists():
+        try:
+            with config_path.open("rb") as f:
+                cfg = tomllib.load(f)
+                if "auto_install_extras" in cfg:
+                    return bool(cfg["auto_install_extras"])
+        except (OSError, tomllib.TOMLDecodeError):
+            pass  # Ignore config read errors
 
     return True  # Default: enabled
 
