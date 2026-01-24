@@ -6,7 +6,7 @@ This pre-commit hook verifies that:
 2. All extras in _extras.py exist in pyproject.toml
 
 Usage:
-    python scripts/check_extras_sync.py
+    python .github/scripts/check_extras_sync.py
 """
 
 from __future__ import annotations
@@ -15,7 +15,7 @@ import sys
 import tomllib
 from pathlib import Path
 
-REPO_ROOT = Path(__file__).parent.parent
+REPO_ROOT = Path(__file__).parent.parent.parent
 PYPROJECT = REPO_ROOT / "pyproject.toml"
 EXTRAS_FILE = REPO_ROOT / "agent_cli" / "_extras.py"
 

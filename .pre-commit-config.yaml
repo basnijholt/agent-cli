@@ -57,7 +57,7 @@ repos:
         files: (pyproject\.toml|uv\.lock)
       - id: check-extras-sync
         name: check extras in sync with pyproject.toml
-        entry: python scripts/check_extras_sync.py
+        entry: python .github/scripts/check_extras_sync.py
         language: python
         pass_filenames: false
         files: ^(pyproject\.toml|agent_cli/_extras\.py)$
