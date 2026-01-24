@@ -141,22 +141,39 @@ Usage: [rag-proxy command](../commands/rag-proxy.md).
 
 ## Dependencies
 
+Agent CLI uses a modular dependency structure. The base package is lightweight, with features installed as optional extras.
+
 ### Core Dependencies
 
+Always installed:
+
 - **typer** - CLI framework
-- **pydantic-ai-slim** - AI agent framework with tool support
-- **sounddevice** - Audio I/O
-- **pyperclip** - Clipboard access
+- **pydantic** - Data validation
 - **rich** - Terminal formatting
-- **wyoming** - Protocol for local AI services
-- **openai** - OpenAI-compatible API client
-- **google-genai** - Google Gemini API client
+- **pyperclip** - Clipboard access
+- **httpx** - HTTP client
 
-### Optional Dependencies
+### Provider Extras
 
-- **silero-vad** - Voice activity detection (for `transcribe-daemon`)
-- **chromadb** - Vector database (for RAG and memory)
-- **markitdown** - Document parsing (for RAG)
+Install with `agent-cli install-extras <name>` or `pip install agent-cli[name]`:
+
+| Extra | Purpose | Key Packages |
+|-------|---------|--------------|
+| `audio` | Voice features | sounddevice, wyoming, numpy |
+| `llm` | AI processing | pydantic-ai-slim (OpenAI, Gemini) |
+
+### Feature Extras
+
+| Extra | Purpose | Key Packages |
+|-------|---------|--------------|
+| `vad` | Voice activity detection | silero-vad |
+| `rag` | Document chat | chromadb, markitdown |
+| `memory` | Long-term memory | chromadb |
+| `server` | Local ASR/TTS servers | fastapi |
+| `faster-whisper` | Whisper (CUDA/CPU) | faster-whisper |
+| `mlx-whisper` | Whisper (Apple Silicon) | mlx-whisper |
+
+See [`install-extras`](../commands/install-extras.md) for the full list and installation instructions.
 
 ## Platform Support
 
