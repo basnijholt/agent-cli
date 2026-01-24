@@ -36,8 +36,9 @@ class TestRequiresExtrasDecorator:
         assert "requires one of:" in hint
         assert "'piper'" in hint
         assert "'kokoro'" in hint
-        assert "agent-cli[piper]" in hint
-        assert "agent-cli[kokoro]" in hint
+        # Brackets are escaped for rich markup (\\[)
+        assert "agent-cli\\[piper]" in hint
+        assert "agent-cli\\[kokoro]" in hint
 
 
 class TestExtrasMetadata:

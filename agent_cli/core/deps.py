@@ -65,9 +65,9 @@ def _format_install_commands(extras: list[str]) -> list[str]:
     extras_args = " ".join(extras)
     return [
         "Install with:",
-        f'  uv tool install -p 3.13 "agent-cli[{combined}]"',
+        f'  [bold cyan]uv tool install -p 3.13 "agent-cli\\[{combined}]"[/bold cyan]',
         "  # or",
-        f"  agent-cli install-extras {extras_args}",
+        f"  [bold cyan]agent-cli install-extras {extras_args}[/bold cyan]",
     ]
 
 
@@ -83,9 +83,14 @@ def get_install_hint(extra: str) -> str:
         lines.extend(_format_extra_item(alt) for alt in alternatives)
         lines.append("")
         lines.append("Install one with:")
-        lines.extend(f'  uv tool install -p 3.13 "agent-cli[{alt}]"' for alt in alternatives)
+        lines.extend(
+            f'  [bold cyan]uv tool install -p 3.13 "agent-cli\\[{alt}]"[/bold cyan]'
+            for alt in alternatives
+        )
         lines.append("  # or")
-        lines.extend(f"  agent-cli install-extras {alt}" for alt in alternatives)
+        lines.extend(
+            f"  [bold cyan]agent-cli install-extras {alt}[/bold cyan]" for alt in alternatives
+        )
         return "\n".join(lines)
 
     desc, _ = EXTRAS.get(extra, ("", []))

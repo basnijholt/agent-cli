@@ -211,8 +211,8 @@ def print_output_panel(
 
 
 def print_error_message(message: str, suggestion: str | None = None) -> None:
-    """Prints an error message in a panel."""
-    error_text = Text(message)
+    """Prints an error message in a panel with rich markup support."""
+    error_text = Text.from_markup(message)
     if suggestion:
         error_text.append("\n\n")
         error_text.append(suggestion)
