@@ -16,6 +16,11 @@ agent-cli install-extras [OPTIONS] [EXTRAS]...
 
 Some agent-cli features require additional Python dependencies that are not installed by default. This command installs them with pinned versions from the project's lock file, ensuring reproducible installations.
 
+This is functionally equivalent to `pip install agent-cli[extra]`, but with important advantages:
+- **Pinned versions**: Uses exact versions from the project's lock file for reproducibility
+- **Works post-install**: Install extras at runtime without reinstalling agent-cli
+- **uv-aware**: Uses uv when available for faster installs, falls back to pip
+
 Available extras:
 
 | Extra | Description |
