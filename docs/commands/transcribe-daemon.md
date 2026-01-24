@@ -32,7 +32,7 @@ Saving MP3 files requires FFmpeg; if it's not available, audio saving is disable
 Requires the `vad` extra:
 
 ```bash
-uv tool install "agent-cli[vad]"
+uv tool install "agent-cli[vad]" -p 3.13
 # or
 pip install "agent-cli[vad]"
 ```

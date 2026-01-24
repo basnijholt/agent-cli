@@ -49,7 +49,7 @@ Since then I have expanded the tool with many more features, all focused on loca
 - **[`rag-proxy`](docs/commands/rag-proxy.md)**: RAG proxy server for chatting with your documents.
 - **[`dev`](docs/commands/dev.md)**: Parallel development with git worktrees and AI coding agents.
 - **[`server`](docs/commands/server/index.md)**: Local ASR and TTS servers with dual-protocol (Wyoming & OpenAI), TTL-based memory management, and multi-platform acceleration. Whisper uses MLX on Apple Silicon or Faster Whisper on Linux/CUDA. TTS supports Kokoro (GPU) or Piper (CPU).
-- **[`transcribe-daemon`](docs/commands/transcribe-daemon.md)**: Continuous background transcription with VAD. Install with `uv tool install "agent-cli[vad]"`.
+- **[`transcribe-daemon`](docs/commands/transcribe-daemon.md)**: Continuous background transcription with VAD. Install with `uv tool install "agent-cli[vad]" -p 3.13`.
 
 ## Quick Start
 
@@ -59,11 +59,15 @@ If you already have AI services running (or plan to use OpenAI), simply install:
 
 ```bash
 # Using uv (recommended)
-uv tool install agent-cli
+uv tool install agent-cli -p 3.13
 
 # Using pip
 pip install agent-cli
 ```
+
+> [!NOTE]
+> The `-p 3.13` flag is required because some dependencies (like `onnxruntime`) don't support Python 3.14 yet.
+> See [uv issue #8206](https://github.com/astral-sh/uv/issues/8206) for details.
 
 Then use it:
 ```bash
@@ -98,12 +102,12 @@ agent-cli autocorrect "this has an eror"
 
 > [!NOTE]
 > `agent-cli` uses `sounddevice` for real-time microphone/voice features.
-> On Linux only, you need to install the system-level PortAudio library  (`sudo apt install portaudio19-dev` / your distro's equivalent on Linux) **before** you run `uv tool install agent-cli`.
+> On Linux only, you need to install the system-level PortAudio library  (`sudo apt install portaudio19-dev` / your distro's equivalent on Linux) **before** you run `uv tool install agent-cli -p 3.13`.
 > On Windows and macOS, this is handled automatically.
 
 ```bash
 # 1. Install agent-cli
-uv tool install agent-cli
+uv tool install agent-cli -p 3.13
 
 # 2. Install all required services
 agent-cli install-services
@@ -184,7 +188,7 @@ If you already have AI services set up or plan to use cloud services (OpenAI/Gem
 
 ```bash
 # Using uv (recommended)
-uv tool install agent-cli
+uv tool install agent-cli -p 3.13
 
 # Using pip
 pip install agent-cli
@@ -748,7 +752,7 @@ the `[defaults]` section of your configuration file.
 
 **Installation:** Requires the `vad` extra:
 ```bash
-uv tool install "agent-cli[vad]"
+uv tool install "agent-cli[vad]" -p 3.13
 ```
 
 **How to Use It:**

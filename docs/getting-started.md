@@ -22,11 +22,15 @@ If you already have AI services set up or plan to use cloud services (OpenAI/Gem
 
 ```bash
 # Using uv (recommended)
-uv tool install agent-cli
+uv tool install agent-cli -p 3.13
 
 # Using pip
 pip install agent-cli
 ```
+
+> [!NOTE]
+> The `-p 3.13` flag is required because some dependencies don't support Python 3.14 yet.
+> See [uv issue #8206](https://github.com/astral-sh/uv/issues/8206) for details.
 
 ### Option 2: Full Local Setup
 
@@ -49,7 +53,7 @@ For a complete local setup with all AI services:
 
     ```bash
     # 1. Install agent-cli
-    uv tool install agent-cli
+    uv tool install agent-cli -p 3.13
 
     # 2. Install all required services
     agent-cli install-services
