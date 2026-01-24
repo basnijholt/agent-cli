@@ -4,18 +4,28 @@ from __future__ import annotations
 
 import functools
 import json
+import os
 from importlib.util import find_spec
 from pathlib import Path
 from typing import TYPE_CHECKING, TypeVar
 
 import typer
 
-from agent_cli.core.utils import print_error_message
+from agent_cli.config import load_config
+from agent_cli.core.utils import console, print_error_message
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
 F = TypeVar("F", bound="Callable[..., object]")
+
+
+def _get_auto_install_setting() -> bool:
+    """Check if auto-install is enabled (default: True)."""
+    if os.environ.get("AGENT_CLI_NO_AUTO_INSTALL", "").lower() in ("1", "true", "yes"):
+        return False
+    return load_config().get("settings", {}).get("auto_install_extras", True)
+
 
 # Load extras from JSON file
 _EXTRAS_FILE = Path(__file__).parent.parent / "_extras.json"
@@ -44,7 +54,7 @@ def check_extra_installed(extra: str) -> bool:
         return any(check_extra_installed(e) for e in extra.split("|"))
 
     if extra not in EXTRAS:
-        return True  # Unknown extra, assume OK
+        return False  # Unknown extra, trigger install attempt to surface error
     _, packages = EXTRAS[extra]
 
     # All packages must be installed
@@ -116,44 +126,65 @@ def get_combined_install_hint(extras: list[str]) -> str:
     return "\n".join(lines)
 
 
+def _try_auto_install(missing: list[str]) -> bool:
+    """Attempt to auto-install missing extras. Returns True if successful."""
+    from agent_cli.install.extras import install_extras_programmatic  # noqa: PLC0415
+
+    # Flatten alternatives (e.g., "piper|kokoro" -> just pick the first one)
+    extras_to_install = []
+    for extra in missing:
+        if "|" in extra:
+            # For alternatives, install the first option
+            extras_to_install.append(extra.split("|")[0])
+        else:
+            extras_to_install.append(extra)
+
+    console.print(
+        f"[yellow]Auto-installing missing extras: {', '.join(extras_to_install)}[/]",
+    )
+    return install_extras_programmatic(extras_to_install)
+
+
+def _check_and_install_extras(extras: tuple[str, ...]) -> list[str]:
+    """Check for missing extras and attempt auto-install. Returns list of still-missing."""
+    missing = [e for e in extras if not check_extra_installed(e)]
+    if not missing:
+        return []
+
+    if not _get_auto_install_setting():
+        print_error_message(get_combined_install_hint(missing))
+        return missing
+
+    if not _try_auto_install(missing):
+        print_error_message("Auto-install failed.\n" + get_combined_install_hint(missing))
+        return missing
+
+    console.print("[green]Installation complete![/]")
+    still_missing = [e for e in extras if not check_extra_installed(e)]
+    if still_missing:
+        print_error_message(
+            "Auto-install completed but some dependencies are still missing.\n"
+            + get_combined_install_hint(still_missing),
+        )
+    return still_missing
+
+
 def requires_extras(*extras: str) -> Callable[[F], F]:
     """Decorator to declare required extras for a command.
 
-    When a required extra is missing, the decorator prints a helpful error
-    message and exits with code 1.
-
-    The decorator stores the required extras on the function for test validation.
-
-    Process management flags (--stop, --status, --toggle) skip the dependency
-    check since they just manage running processes without using the actual
-    dependencies.
-
-    Example:
-        @app.command("rag-proxy")
-        @requires_extras("rag")
-        def rag_proxy(...):
-            ...
-
+    Auto-installs missing extras by default. Disable via AGENT_CLI_NO_AUTO_INSTALL=1
+    or config [settings] auto_install_extras = false.
     """
 
     def decorator(func: F) -> F:
-        # Store extras on function for test introspection
         func._required_extras = extras  # type: ignore[attr-defined]
 
         @functools.wraps(func)
         def wrapper(*args: object, **kwargs: object) -> object:
-            # Skip dependency check for process management and info operations
-            # These don't need the actual dependencies, just manage processes or list info
-            if any(kwargs.get(flag) for flag in ("stop", "status", "toggle", "list_devices")):
-                return func(*args, **kwargs)
-
-            missing = [e for e in extras if not check_extra_installed(e)]
-            if missing:
-                print_error_message(get_combined_install_hint(missing))
+            if _check_and_install_extras(extras):
                 raise typer.Exit(1)
             return func(*args, **kwargs)
 
-        # Preserve the extras on wrapper too
         wrapper._required_extras = extras  # type: ignore[attr-defined]
         return wrapper  # type: ignore[return-value]
 

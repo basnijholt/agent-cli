@@ -86,6 +86,38 @@ def _install_cmd() -> list[str]:
     return cmd
 
 
+def _install_extras_impl(extras: list[str], *, quiet: bool = False) -> bool:
+    """Install extras. Returns True on success, False on failure."""
+    if _is_uv_tool_install():
+        current_extras = _get_current_uv_tool_extras()
+        new_extras = sorted(set(current_extras) | set(extras))
+        return _install_via_uv_tool(new_extras)
+
+    cmd = _install_cmd()
+    for extra in extras:
+        req_file = _requirements_path(extra)
+        if not quiet:
+            console.print(f"Installing [cyan]{extra}[/]...")
+        result = subprocess.run(
+            [*cmd, "-r", str(req_file)],
+            check=False,
+            capture_output=quiet,
+        )
+        if result.returncode != 0:
+            return False
+    return True
+
+
+def install_extras_programmatic(extras: list[str], *, quiet: bool = False) -> bool:
+    """Install extras programmatically (for auto-install feature)."""
+    available = _available_extras()
+    valid = [e for e in extras if e in available]
+    invalid = [e for e in extras if e not in available]
+    if invalid:
+        console.print(f"[yellow]Unknown extras (skipped): {', '.join(invalid)}[/]")
+    return bool(valid) and _install_extras_impl(valid, quiet=quiet)
+
+
 @app.command("install-extras", rich_help_panel="Installation")
 def install_extras(
     extras: Annotated[list[str] | None, typer.Argument(help="Extras to install")] = None,
@@ -128,25 +160,11 @@ def install_extras(
         print_error_message(f"Unknown extras: {invalid}. Use --list to see available.")
         raise typer.Exit(1)
 
-    # If running from uv tool install, reinstall with extras to persist them
+    if not _install_extras_impl(extras):
+        print_error_message("Failed to install extras")
+        raise typer.Exit(1)
+
     if _is_uv_tool_install():
-        current_extras = _get_current_uv_tool_extras()
-        new_extras = sorted(set(current_extras) | set(extras))
-        if not _install_via_uv_tool(new_extras):
-            print_error_message("Failed to reinstall via uv tool")
-            raise typer.Exit(1)
         console.print("[green]Done! Extras will persist across uv tool upgrade.[/]")
-        return
-
-    # Standard pip/uv pip install for non-tool environments
-    cmd = _install_cmd()
-
-    for extra in extras:
-        req_file = _requirements_path(extra)
-        console.print(f"Installing [cyan]{extra}[/]...")
-        result = subprocess.run([*cmd, "-r", str(req_file)], check=False)
-        if result.returncode != 0:
-            print_error_message(f"Failed to install '{extra}'")
-            raise typer.Exit(1)
-
-    console.print("[green]Done![/]")
+    else:
+        console.print("[green]Done![/]")

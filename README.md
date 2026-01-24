@@ -377,7 +377,14 @@ All necessary scripts are bundled with the package, so you can run these command
 
 #### Installing Optional Extras
 
-Some features require additional Python dependencies. Use `install-extras` to install them with pinned versions:
+Some features require additional Python dependencies. By default, **agent-cli will auto-install missing extras** when you run a command that needs them. To disable this, set `AGENT_CLI_NO_AUTO_INSTALL=1` or add to your config file:
+
+```toml
+[settings]
+auto_install_extras = false
+```
+
+You can also manually install extras with `install-extras`:
 
 ```bash
 # List available extras
