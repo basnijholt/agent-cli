@@ -42,7 +42,7 @@ Universal Docker setup that works on any platform with Docker support.
 3. **Install agent-cli:**
 
    ```bash
-   uv tool install agent-cli
+   uv tool install agent-cli -p 3.13
    # or: pip install agent-cli
    ```
 
