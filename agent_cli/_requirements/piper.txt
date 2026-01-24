@@ -89,6 +89,7 @@ psutil==7.2.1 ; sys_platform == 'win32'
     # via agent-cli
 pydantic==2.12.5
     # via
+    #   agent-cli
     #   fastapi
     #   fastapi-cloud-cli
     #   pydantic-extra-types

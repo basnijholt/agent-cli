@@ -231,6 +231,7 @@ pycparser==2.23 ; implementation_name != 'PyPy'
     # via cffi
 pydantic==2.12.5
     # via
+    #   agent-cli
     #   confection
     #   fastapi
     #   fastapi-cloud-cli
