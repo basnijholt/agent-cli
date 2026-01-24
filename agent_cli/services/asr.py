@@ -10,9 +10,6 @@ from functools import partial
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from wyoming.asr import Transcribe, Transcript, TranscriptChunk, TranscriptStart, TranscriptStop
-from wyoming.audio import AudioChunk, AudioStart, AudioStop
-
 from agent_cli import constants
 from agent_cli.core.audio import (
     open_audio_stream,
@@ -225,6 +222,9 @@ async def _send_audio(
     initial_prompt: str | None = None,
 ) -> None:
     """Read from mic and send to Wyoming server."""
+    from wyoming.asr import Transcribe  # noqa: PLC0415
+    from wyoming.audio import AudioChunk, AudioStart, AudioStop  # noqa: PLC0415
+
     # Build context with initial_prompt if provided
     context = {"initial_prompt": initial_prompt} if initial_prompt else None
     await client.write_event(Transcribe(context=context).event())
@@ -282,6 +282,13 @@ async def _receive_transcript(
     final_callback: Callable[[str], None] | None = None,
 ) -> str:
     """Receive transcription events and return the final transcript."""
+    from wyoming.asr import (  # noqa: PLC0415
+        Transcript,
+        TranscriptChunk,
+        TranscriptStart,
+        TranscriptStop,
+    )
+
     transcript_text = ""
     while True:
         event = await client.read_event()
@@ -370,6 +377,9 @@ async def _transcribe_recorded_audio_wyoming(
     **_kwargs: object,
 ) -> str:
     """Process pre-recorded audio data with Wyoming ASR server."""
+    from wyoming.asr import Transcribe  # noqa: PLC0415
+    from wyoming.audio import AudioChunk, AudioStart, AudioStop  # noqa: PLC0415
+
     try:
         async with wyoming_client_context(
             wyoming_asr_cfg.asr_wyoming_ip,

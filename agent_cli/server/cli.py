@@ -12,6 +12,7 @@ import typer
 from rich.console import Console
 
 from agent_cli.cli import app as main_app
+from agent_cli.core.deps import requires_extras
 from agent_cli.core.process import set_process_title
 from agent_cli.server.common import setup_rich_logging
 
@@ -163,6 +164,7 @@ def _check_whisper_deps(backend: str, *, download_only: bool = False) -> None:
 
 
 @app.command("whisper")
+@requires_extras("server", "faster-whisper|mlx-whisper")
 def whisper_cmd(  # noqa: PLR0912, PLR0915
     model: Annotated[
         list[str] | None,
@@ -422,6 +424,7 @@ def whisper_cmd(  # noqa: PLR0912, PLR0915
 
 
 @app.command("transcription-proxy")
+@requires_extras("server")
 def transcription_proxy_cmd(
     host: Annotated[
         str,
@@ -475,6 +478,7 @@ def transcription_proxy_cmd(
 
 
 @app.command("tts")
+@requires_extras("server", "piper|kokoro")
 def tts_cmd(  # noqa: PLR0915
     model: Annotated[
         list[str] | None,
