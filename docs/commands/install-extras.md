@@ -48,6 +48,7 @@ Available extras:
 | Option | Description |
 |--------|-------------|
 | `--list`, `-l` | List available extras |
+| `--all`, `-a` | Install all available extras |
 | `--help`, `-h` | Show help for the command |
 
 ## Examples
@@ -61,4 +62,7 @@ agent-cli install-extras vad
 
 # Install multiple extras
 agent-cli install-extras rag memory vad
+
+# Install all extras
+agent-cli install-extras --all
 ```

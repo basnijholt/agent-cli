@@ -71,6 +71,10 @@ def install_extras(
         bool,
         typer.Option("--list", "-l", help="List available extras"),
     ] = False,
+    all_extras: Annotated[
+        bool,
+        typer.Option("--all", "-a", help="Install all available extras"),
+    ] = False,
 ) -> None:
     """Install optional extras (rag, memory, vad, etc.) with pinned versions.
 
@@ -78,6 +82,7 @@ def install_extras(
         agent-cli install-extras rag           # Install RAG dependencies
         agent-cli install-extras memory vad    # Install multiple extras
         agent-cli install-extras --list        # Show available extras
+        agent-cli install-extras --all         # Install all extras
 
     """
     available = _available_extras()
@@ -89,8 +94,11 @@ def install_extras(
             console.print(f"  [cyan]{name}[/]: {desc}")
         return
 
+    if all_extras:
+        extras = available
+
     if not extras:
-        print_error_message("No extras specified. Use --list to see available.")
+        print_error_message("No extras specified. Use --list to see available, or --all.")
         raise typer.Exit(1)
 
     invalid = [e for e in extras if e not in available]
