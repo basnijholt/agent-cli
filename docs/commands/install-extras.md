@@ -40,7 +40,7 @@ Available extras:
 | `piper` | Local Piper TTS |
 | `kokoro` | Kokoro neural TTS |
 | `vad` | Voice Activity Detection (silero-vad) |
-| `whisper` | Local Whisper ASR (platform-specific) |
+| `whisper` | Local Whisper ASR |
 
 <!-- OUTPUT:END -->
 
