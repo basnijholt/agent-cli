@@ -13,20 +13,17 @@ import typer
 from agent_cli.cli import app
 from agent_cli.core.utils import console, print_error_message
 
-EXTRAS = {
-    "rag": "RAG proxy (ChromaDB, embeddings)",
-    "memory": "Long-term memory proxy",
-    "vad": "Voice Activity Detection",
-    "whisper": "Local Whisper ASR",
-    "whisper-mlx": "MLX Whisper (Apple Silicon)",
-    "tts": "Local Piper TTS",
-    "tts-kokoro": "Kokoro neural TTS",
-    "server": "FastAPI server components",
-}
-
 
 def _requirements_dir() -> Path:
     return Path(__file__).parent.parent / "_requirements"
+
+
+def _available_extras() -> list[str]:
+    """List available extras based on requirements files."""
+    req_dir = _requirements_dir()
+    if not req_dir.exists():
+        return []
+    return sorted(p.stem for p in req_dir.glob("*.txt"))
 
 
 def _requirements_path(extra: str) -> Path:
@@ -56,19 +53,19 @@ def install_extras(
         agent-cli install-extras --list        # Show available extras
 
     """
+    available = _available_extras()
+
     if list_extras:
         console.print("[bold]Available extras:[/]")
-        for name, desc in EXTRAS.items():
-            req_file = _requirements_path(name)
-            status = "[green]✓[/]" if req_file.exists() else "[red]✗[/]"
-            console.print(f"  {status} [cyan]{name}[/]: {desc}")
+        for name in available:
+            console.print(f"  [cyan]{name}[/]")
         return
 
     if not extras:
         print_error_message("No extras specified. Use --list to see available.")
         raise typer.Exit(1)
 
-    invalid = [e for e in extras if e not in EXTRAS]
+    invalid = [e for e in extras if e not in available]
     if invalid:
         print_error_message(f"Unknown extras: {invalid}. Use --list to see available.")
         raise typer.Exit(1)
@@ -79,12 +76,6 @@ def install_extras(
 
     for extra in extras:
         req_file = _requirements_path(extra)
-        if not req_file.exists():
-            print_error_message(
-                f"Requirements file missing for '{extra}'. "
-                "Run 'python .github/scripts/sync_requirements.py' to generate.",
-            )
-            raise typer.Exit(1)
         console.print(f"Installing [cyan]{extra}[/]...")
         result = subprocess.run([*cmd, "-r", str(req_file)], check=False)
         if result.returncode != 0:
