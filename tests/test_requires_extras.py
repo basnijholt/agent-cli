@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from agent_cli.core.deps import EXTRAS, check_extra_installed, requires_extras
+from agent_cli.core.deps import EXTRAS, check_extra_installed, get_install_hint, requires_extras
 
 
 class TestRequiresExtrasDecorator:
@@ -21,6 +21,23 @@ class TestRequiresExtrasDecorator:
     def test_check_extra_installed_unknown_extra(self) -> None:
         """Unknown extras should return True (assume OK)."""
         assert check_extra_installed("nonexistent-extra") is True
+
+    def test_check_extra_installed_with_pipe_syntax(self) -> None:
+        """Pipe syntax means any of the extras is sufficient."""
+        # At least one should be true (unknown extras return True)
+        assert check_extra_installed("nonexistent|also-nonexistent") is True
+        # tts|tts-kokoro - at least one may be installed in dev env
+        result = check_extra_installed("tts|tts-kokoro")
+        assert isinstance(result, bool)  # Just verify it doesn't error
+
+    def test_get_install_hint_with_pipe_syntax(self) -> None:
+        """Pipe syntax shows all alternatives in the hint."""
+        hint = get_install_hint("tts|tts-kokoro")
+        assert "requires one of:" in hint
+        assert "'tts'" in hint
+        assert "'tts-kokoro'" in hint
+        assert "agent-cli[tts]" in hint
+        assert "agent-cli[tts-kokoro]" in hint
 
 
 class TestExtrasMetadata:

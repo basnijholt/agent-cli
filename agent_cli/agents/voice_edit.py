@@ -174,7 +174,7 @@ async def _async_main(
 
 
 @app.command("voice-edit", rich_help_panel="Voice Commands")
-@requires_extras("audio", "llm", "tts-kokoro")
+@requires_extras("audio", "llm")
 def voice_edit(
     *,
     # --- Provider Selection ---

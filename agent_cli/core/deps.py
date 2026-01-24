@@ -40,9 +40,14 @@ _ANY_OF_EXTRAS = {"whisper"}
 def check_extra_installed(extra: str) -> bool:
     """Check if packages for an extra are installed using find_spec (no actual import).
 
-    For most extras, ALL packages must be installed.
+    Supports `|` syntax for alternatives: "tts|tts-kokoro" means ANY of these extras.
     For platform-specific extras (whisper), ANY package being installed is sufficient.
+    For regular extras, ALL packages must be installed.
     """
+    # Handle "extra1|extra2" syntax - any of these extras is sufficient
+    if "|" in extra:
+        return any(check_extra_installed(e) for e in extra.split("|"))
+
     if extra not in EXTRAS:
         return True  # Unknown extra, assume OK
     _, packages = EXTRAS[extra]
@@ -56,7 +61,33 @@ def check_extra_installed(extra: str) -> bool:
 
 
 def get_install_hint(extra: str) -> str:
-    """Get install command hint for an extra."""
+    """Get install command hint for an extra.
+
+    Supports `|` syntax for alternatives: "tts|tts-kokoro" shows both options.
+    """
+    # Handle "extra1|extra2" syntax - show all options
+    if "|" in extra:
+        alternatives = extra.split("|")
+        options = []
+        for alt in alternatives:
+            desc, _ = EXTRAS.get(alt, ("", []))
+            options.append((alt, desc))
+
+        lines = ["This command requires one of:"]
+        for alt, desc in options:
+            if desc:
+                lines.append(f"  - '{alt}' ({desc})")
+            else:
+                lines.append(f"  - '{alt}'")
+        lines.append("")
+        lines.append("Install one with:")
+        for alt, _ in options:
+            lines.append(f'  uv tool install "agent-cli[{alt}]" -p 3.13')
+        lines.append("  # or")
+        for alt, _ in options:
+            lines.append(f"  agent-cli install-extras {alt}")
+        return "\n".join(lines)
+
     desc, _ = EXTRAS.get(extra, ("", []))
     lines = [
         f"This command requires the '{extra}' extra",
