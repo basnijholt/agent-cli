@@ -32,15 +32,11 @@ RUN groupadd -g 1000 whisper && useradd -m -u 1000 -g whisper whisper
 
 WORKDIR /app
 
-# Install Python 3.13 and agent-cli with whisper support using uv tool
-# UV_PYTHON_INSTALL_DIR ensures Python is installed in accessible location (not /root/.local/)
-ENV UV_PYTHON=3.13 \
-    UV_TOOL_BIN_DIR=/usr/local/bin \
-    UV_TOOL_DIR=/opt/uv-tools \
-    UV_PYTHON_INSTALL_DIR=/opt/uv-python
-
-# --refresh bypasses uv cache to ensure latest version from PyPI
-RUN uv tool install --refresh --python 3.13 "agent-cli[whisper]"
+# Install from lock file for reproducible builds
+COPY pyproject.toml uv.lock ./
+ENV UV_PYTHON=3.13
+RUN uv sync --frozen --no-dev --extra whisper --no-install-project && \
+    ln -s /app/.venv/bin/agent-cli /usr/local/bin/agent-cli
 
 # Create cache directory for models
 RUN mkdir -p /home/whisper/.cache && chown -R whisper:whisper /home/whisper
@@ -94,12 +90,10 @@ RUN groupadd -g 1000 whisper && useradd -m -u 1000 -g whisper whisper
 
 WORKDIR /app
 
-# Install agent-cli with whisper support
-ENV UV_TOOL_BIN_DIR=/usr/local/bin \
-    UV_TOOL_DIR=/opt/uv-tools
-
-# --refresh bypasses uv cache to ensure latest version from PyPI
-RUN uv tool install --refresh "agent-cli[whisper]"
+# Install from lock file for reproducible builds
+COPY pyproject.toml uv.lock ./
+RUN uv sync --frozen --no-dev --extra whisper --no-install-project && \
+    ln -s /app/.venv/bin/agent-cli /usr/local/bin/agent-cli
 
 # Create cache directory for models
 RUN mkdir -p /home/whisper/.cache && chown -R whisper:whisper /home/whisper

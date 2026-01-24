@@ -77,6 +77,7 @@ tts-kokoro = [
     "soundfile>=0.12.0",
     "huggingface-hub>=0.20.0",
     "pip",  # Kokoro uses spacy which calls `pip install` to download language models at runtime
+    "transformers>=4.40.0",  # Ensure pre-built tokenizers wheels for Python 3.13+
 ]
 test = [
     "pytest>=7.0.0",
