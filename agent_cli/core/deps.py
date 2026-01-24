@@ -181,8 +181,6 @@ def requires_extras(*extras: str) -> Callable[[F], F]:
 
         @functools.wraps(func)
         def wrapper(*args: object, **kwargs: object) -> object:
-            if any(kwargs.get(flag) for flag in ("stop", "status", "toggle", "list_devices")):
-                return func(*args, **kwargs)
             if _check_and_install_extras(extras):
                 raise typer.Exit(1)
             return func(*args, **kwargs)
