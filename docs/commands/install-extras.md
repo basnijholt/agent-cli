@@ -37,8 +37,8 @@ Available extras:
 | `rag` | RAG proxy (ChromaDB, embeddings) |
 | `server` | FastAPI server components |
 | `speed` | Audio speed adjustment (audiostretchy) |
-| `tts-piper` | Local Piper TTS |
-| `tts-kokoro` | Kokoro neural TTS |
+| `piper` | Local Piper TTS |
+| `kokoro` | Kokoro neural TTS |
 | `vad` | Voice Activity Detection (silero-vad) |
 | `whisper` | Local Whisper ASR (platform-specific) |
 
