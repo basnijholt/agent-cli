@@ -59,19 +59,19 @@ memory = [
 vad = [
     "silero-vad>=5.1",
 ]
-whisper = [
+faster-whisper = [
     "fastapi[standard]",
     "faster-whisper>=1.0.0",
 ]
-whisper-mlx = [
+mlx-whisper = [
     "fastapi[standard]",
     "mlx-whisper>=0.4.0; sys_platform == 'darwin' and platform_machine == 'arm64'",
 ]
-tts = [
+piper = [
     "fastapi[standard]",
     "piper-tts>=1.2.0",
 ]
-tts-kokoro = [
+kokoro = [
     "fastapi[standard]",
     "kokoro>=0.9.0",
     "soundfile>=0.12.0",
@@ -91,7 +91,7 @@ dev = [
     "agent-cli[test]",
     "pre-commit>=3.0.0",
     "versioningit",
-    "markdown-code-runner",
+    "markdown-code-runner @ git+https://github.com/basnijholt/markdown-code-runner.git",
     "ruff",
     "notebook",
     "pylint>=3.0.0",
@@ -109,7 +109,7 @@ dev = [
     "pytest-mock",
     "pre-commit>=3.0.0",
     "versioningit",
-    "markdown-code-runner",
+    "markdown-code-runner @ git+https://github.com/basnijholt/markdown-code-runner.git",
     "ruff",
     "notebook",
     "audiostretchy>=1.3.0",
@@ -123,6 +123,9 @@ dev = [
 agent-cli = "agent_cli.cli:app"
 agent = "agent_cli.cli:app"
 ag = "agent_cli.cli:app"
+
+[tool.hatch.metadata]
+allow-direct-references = true
 
 [tool.hatch.version]
 source = "versioningit"

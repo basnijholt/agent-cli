@@ -16,7 +16,6 @@ Example usage in Markdown files:
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import Any, get_origin
 
 import click
@@ -367,47 +366,6 @@ def config_example(command_path: str | None = None) -> str:
             lines.append(f"# {key} = {default}  # {help_text}")
 
     return "\n".join(lines)
-
-
-def readme_section(section_name: str) -> str:
-    """Extract a section from README.md for reuse in other docs.
-
-    Sections are marked with HTML comments like:
-        <!-- SECTION:section_name:START -->
-        Content here...
-        <!-- SECTION:section_name:END -->
-
-    Args:
-        section_name: The name of the section to extract (e.g., "why-i-built-this")
-
-    Returns:
-        The content between the section markers (without the markers themselves)
-
-    """
-    # Find the README.md relative to this module
-    readme_path = Path(__file__).parent.parent / "README.md"
-    if not readme_path.exists():
-        return f"*Could not find README.md at {readme_path}*"
-
-    content = readme_path.read_text()
-
-    # Look for section markers
-    start_marker = f"<!-- SECTION:{section_name}:START -->"
-    end_marker = f"<!-- SECTION:{section_name}:END -->"
-
-    start_idx = content.find(start_marker)
-    if start_idx == -1:
-        return f"*Section '{section_name}' not found in README.md*"
-
-    end_idx = content.find(end_marker, start_idx)
-    if end_idx == -1:
-        return f"*End marker for section '{section_name}' not found in README.md*"
-
-    # Extract content between markers (excluding the markers themselves)
-    section_content = content[start_idx + len(start_marker) : end_idx]
-
-    # Strip leading/trailing whitespace but preserve internal formatting
-    return section_content.strip()
 
 
 def all_options_for_docs(command_path: str) -> str:
