@@ -41,3 +41,16 @@ repos:
         language: python
         pass_filenames: false
         files: (agent_cli/dev/skill/|\.claude-plugin/skills/|\.claude/skills/)
+      - id: uv-lock
+        name: uv lock
+        entry: uv lock
+        language: python
+        additional_dependencies: ["uv"]
+        pass_filenames: false
+        files: pyproject\.toml
+      - id: sync-requirements
+        name: sync extra requirements
+        entry: python .github/scripts/sync_requirements.py
+        language: python
+        pass_filenames: false
+        files: (pyproject\.toml|uv\.lock)

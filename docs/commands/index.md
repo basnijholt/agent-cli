@@ -46,6 +46,7 @@ These commands help set up Agent CLI and its services:
 |---------|---------|
 | [`install-services`](install-services.md) | Install all AI services (Ollama, Whisper, Piper, OpenWakeWord) |
 | [`install-hotkeys`](install-hotkeys.md) | Set up system-wide hotkeys |
+| [`install-extras`](install-extras.md) | Install optional Python dependencies (rag, memory, vad, etc.) |
 | [`start-services`](start-services.md) | Start all services in a Zellij terminal session |
 
 ## Development Commands
