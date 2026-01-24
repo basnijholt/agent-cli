@@ -14,6 +14,7 @@ from agent_cli import config, opts
 from agent_cli.cli import app
 from agent_cli.core import process
 from agent_cli.core.audio import setup_devices
+from agent_cli.core.deps import requires_extras
 from agent_cli.core.utils import (
     enable_json_mode,
     get_clipboard_text,
@@ -80,6 +81,7 @@ async def _async_main(
 
 
 @app.command("speak", rich_help_panel="Text Commands")
+@requires_extras("audio", "llm", "tts-kokoro")
 def speak(
     *,
     text: str | None = typer.Argument(
