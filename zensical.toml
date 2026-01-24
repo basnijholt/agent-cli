@@ -49,6 +49,7 @@ nav = [
     ] },
     { "Setup" = [
       { "config" = "commands/config.md" },
+      { "install-extras" = "commands/install-extras.md" },
       { "install-services" = "commands/install-services.md" },
       { "install-hotkeys" = "commands/install-hotkeys.md" },
       { "start-services" = "commands/start-services.md" },
