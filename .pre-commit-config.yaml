@@ -50,7 +50,7 @@ repos:
         files: pyproject\.toml
       - id: sync-requirements
         name: sync extra requirements
-        entry: python .github/scripts/sync_requirements.py --check
+        entry: python .github/scripts/sync_requirements.py
         language: python
         pass_filenames: false
-        files: (pyproject\.toml|uv\.lock|agent_cli/_requirements/)
+        files: (pyproject\.toml|uv\.lock)
