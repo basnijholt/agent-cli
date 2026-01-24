@@ -87,10 +87,6 @@ test = [
     { name = "pytest-mock" },
     { name = "pytest-timeout" },
 ]
-tts = [
-    { name = "fastapi", extra = ["standard"] },
-    { name = "piper-tts" },
-]
 tts-kokoro = [
     { name = "fastapi", extra = ["standard"] },
     { name = "huggingface-hub" },
@@ -98,6 +94,10 @@ tts-kokoro = [
     { name = "pip" },
     { name = "soundfile" },
     { name = "transformers" },
+]
+tts-piper = [
+    { name = "fastapi", extra = ["standard"] },
+    { name = "piper-tts" },
 ]
 vad = [
     { name = "silero-vad" },
@@ -137,8 +137,8 @@ requires-dist = [
     { name = "fastapi", extras = ["standard"], marker = "extra == 'memory'" },
     { name = "fastapi", extras = ["standard"], marker = "extra == 'rag'" },
     { name = "fastapi", extras = ["standard"], marker = "extra == 'server'" },
-    { name = "fastapi", extras = ["standard"], marker = "extra == 'tts'" },
     { name = "fastapi", extras = ["standard"], marker = "extra == 'tts-kokoro'" },
+    { name = "fastapi", extras = ["standard"], marker = "extra == 'tts-piper'" },
     { name = "fastapi", extras = ["standard"], marker = "extra == 'whisper'" },
     { name = "faster-whisper", marker = "(platform_machine != 'arm64' and extra == 'whisper') or (sys_platform != 'darwin' and extra == 'whisper')", specifier = ">=1.0.0" },
     { name = "httpx" },
@@ -154,7 +154,7 @@ requires-dist = [
     { name = "onnxruntime", marker = "extra == 'memory'", specifier = ">=1.17.0" },
     { name = "onnxruntime", marker = "extra == 'rag'", specifier = ">=1.17.0" },
     { name = "pip", marker = "extra == 'tts-kokoro'" },
-    { name = "piper-tts", marker = "extra == 'tts'", specifier = ">=1.2.0" },
+    { name = "piper-tts", marker = "extra == 'tts-piper'", specifier = ">=1.2.0" },
     { name = "pre-commit", marker = "extra == 'dev'", specifier = ">=3.0.0" },
     { name = "psutil", marker = "sys_platform == 'win32'" },
     { name = "pydantic-ai-slim", extras = ["duckduckgo", "google", "openai", "vertexai"], marker = "extra == 'llm'", specifier = ">=0.1.1" },
@@ -188,7 +188,7 @@ requires-dist = [
     { name = "watchfiles", marker = "extra == 'rag'", specifier = ">=0.21.0" },
     { name = "wyoming", marker = "extra == 'audio'", specifier = ">=1.5.2" },
 ]
-provides-extras = ["audio", "dev", "llm", "memory", "rag", "server", "speed", "test", "tts", "tts-kokoro", "vad", "whisper"]
+provides-extras = ["audio", "dev", "llm", "memory", "rag", "server", "speed", "test", "tts-kokoro", "tts-piper", "vad", "whisper"]
 
 [package.metadata.requires-dev]
 dev = [

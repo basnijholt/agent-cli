@@ -18,7 +18,7 @@ Run a local TTS (Text-to-Speech) server with two backend options:
 >
 > **Quick Start with Piper** (CPU-friendly):
 > ```bash
-> pip install "agent-cli[tts]"
+> pip install "agent-cli[tts-piper]"
 > agent-cli server tts --backend piper
 > ```
 >
@@ -240,7 +240,7 @@ Kokoro requires PyTorch. For GPU acceleration:
 ### Piper (CPU-friendly)
 
 ```bash
-pip install "agent-cli[tts]"
+pip install "agent-cli[tts-piper]"
 # or
-uv sync --extra tts
+uv sync --extra tts-piper
 ```
