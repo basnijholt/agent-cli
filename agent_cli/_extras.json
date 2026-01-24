@@ -1,0 +1,12 @@
+{
+  "audio": ["Audio recording/playback with Wyoming protocol", ["sounddevice", "wyoming"]],
+  "llm": ["LLM framework (pydantic-ai)", ["pydantic_ai"]],
+  "memory": ["Long-term memory proxy", ["chromadb", "yaml"]],
+  "rag": ["RAG proxy (ChromaDB, embeddings)", ["chromadb"]],
+  "server": ["FastAPI server components", ["fastapi"]],
+  "speed": ["Audio speed adjustment (audiostretchy)", ["audiostretchy"]],
+  "tts-piper": ["Local Piper TTS", ["piper"]],
+  "tts-kokoro": ["Kokoro neural TTS", ["kokoro"]],
+  "vad": ["Voice Activity Detection (silero-vad)", ["silero_vad"]],
+  "whisper": ["Local Whisper ASR (platform-specific)", ["faster_whisper", "mlx_whisper"]]
+}

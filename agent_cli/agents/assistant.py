@@ -41,6 +41,7 @@ from agent_cli.agents._voice_agent_common import (
 from agent_cli.cli import app
 from agent_cli.core import audio, process
 from agent_cli.core.audio import setup_devices
+from agent_cli.core.deps import requires_extras
 from agent_cli.core.utils import (
     InteractiveStopEvent,
     maybe_live,
@@ -254,6 +255,7 @@ async def _async_main(
 
 
 @app.command("assistant", rich_help_panel="Voice Commands")
+@requires_extras("audio", "llm")
 def assistant(
     *,
     # --- Provider Selection ---
