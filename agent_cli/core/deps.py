@@ -3,18 +3,25 @@
 from __future__ import annotations
 
 import functools
+import json
 from importlib.util import find_spec
+from pathlib import Path
 from typing import TYPE_CHECKING, TypeVar
 
 import typer
 
-from agent_cli._extras import EXTRAS
 from agent_cli.core.utils import print_error_message
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
 F = TypeVar("F", bound="Callable[..., object]")
+
+# Load extras from JSON file
+_EXTRAS_FILE = Path(__file__).parent.parent / "_extras.json"
+EXTRAS: dict[str, tuple[str, list[str]]] = {
+    k: (v[0], v[1]) for k, v in json.loads(_EXTRAS_FILE.read_text()).items()
+}
 
 
 def check_extra_installed(extra: str) -> bool:

@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Check that _extras.py is in sync with pyproject.toml.
+"""Check that _extras.json is in sync with pyproject.toml.
 
 This pre-commit hook verifies that:
-1. All extras in pyproject.toml (except dev/test) are in _extras.py
-2. All extras in _extras.py exist in pyproject.toml
+1. All extras in pyproject.toml (except dev/test) are in _extras.json
+2. All extras in _extras.json exist in pyproject.toml
 
 Usage:
     python .github/scripts/check_extras_sync.py
@@ -11,14 +11,14 @@ Usage:
 
 from __future__ import annotations
 
-import ast
+import json
 import sys
 import tomllib
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).parent.parent.parent
 PYPROJECT = REPO_ROOT / "pyproject.toml"
-EXTRAS_FILE = REPO_ROOT / "agent_cli" / "_extras.py"
+EXTRAS_FILE = REPO_ROOT / "agent_cli" / "_extras.json"
 
 # Extras to skip (dev/test dependencies, not runtime installable)
 SKIP_EXTRAS = {"dev", "test"}
@@ -32,41 +32,11 @@ def get_extras_from_pyproject() -> set[str]:
     return all_extras - SKIP_EXTRAS
 
 
-def _extract_dict_keys(node: ast.Dict) -> set[str]:
-    """Extract string keys from an AST Dict node."""
-    keys = set()
-    for key in node.keys:
-        if isinstance(key, ast.Constant) and isinstance(key.value, str):
-            keys.add(key.value)
-    return keys
-
-
 def get_extras_from_source() -> set[str]:
-    """Parse extras from agent_cli/_extras.py using AST."""
+    """Get extras from agent_cli/_extras.json."""
     if not EXTRAS_FILE.exists():
         return set()
-
-    # Parse the file using AST to extract EXTRAS dict keys
-    tree = ast.parse(EXTRAS_FILE.read_text())
-    for node in ast.walk(tree):
-        # Handle annotated assignment: EXTRAS: dict[...] = {...}
-        if (
-            isinstance(node, ast.AnnAssign)
-            and isinstance(node.target, ast.Name)
-            and node.target.id == "EXTRAS"
-            and isinstance(node.value, ast.Dict)
-        ):
-            return _extract_dict_keys(node.value)
-        # Handle plain assignment: EXTRAS = {...}
-        if isinstance(node, ast.Assign):
-            for target in node.targets:
-                if (
-                    isinstance(target, ast.Name)
-                    and target.id == "EXTRAS"
-                    and isinstance(node.value, ast.Dict)
-                ):
-                    return _extract_dict_keys(node.value)
-    return set()
+    return set(json.loads(EXTRAS_FILE.read_text()).keys())
 
 
 def main() -> int:
@@ -76,28 +46,28 @@ def main() -> int:
 
     errors = []
 
-    # Check for extras in pyproject.toml but not in _extras.py
+    # Check for extras in pyproject.toml but not in _extras.json
     missing_in_source = pyproject_extras - source_extras
     if missing_in_source:
         errors.append(
-            f"Extras in pyproject.toml but not in _extras.py: {sorted(missing_in_source)}",
+            f"Extras in pyproject.toml but not in _extras.json: {sorted(missing_in_source)}",
         )
 
-    # Check for extras in _extras.py but not in pyproject.toml
+    # Check for extras in _extras.json but not in pyproject.toml
     extra_in_source = source_extras - pyproject_extras
     if extra_in_source:
         errors.append(
-            f"Extras in _extras.py but not in pyproject.toml: {sorted(extra_in_source)}",
+            f"Extras in _extras.json but not in pyproject.toml: {sorted(extra_in_source)}",
         )
 
     if errors:
-        print("ERROR: _extras.py is out of sync with pyproject.toml")
+        print("ERROR: _extras.json is out of sync with pyproject.toml")
         for error in errors:
             print(f"  - {error}")
-        print("\nRun 'python scripts/sync_extras.py' to regenerate _extras.py")
+        print("\nRun 'python scripts/sync_extras.py' to regenerate _extras.json")
         return 1
 
-    print("OK: _extras.py is in sync with pyproject.toml")
+    print("OK: _extras.json is in sync with pyproject.toml")
     return 0
 
 

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from agent_cli._extras import EXTRAS
 from agent_cli.agents.assistant import assistant
 from agent_cli.agents.autocorrect import autocorrect
 from agent_cli.agents.chat import chat
@@ -12,7 +11,7 @@ from agent_cli.agents.rag_proxy import rag_proxy
 from agent_cli.agents.transcribe import transcribe
 from agent_cli.agents.transcribe_daemon import transcribe_daemon
 from agent_cli.agents.voice_edit import voice_edit
-from agent_cli.core.deps import check_extra_installed, requires_extras
+from agent_cli.core.deps import EXTRAS, check_extra_installed, requires_extras
 
 
 class TestRequiresExtrasDecorator:
@@ -88,7 +87,7 @@ class TestCommandDecoratorCoverage:
 
 
 class TestExtrasMetadata:
-    """Test the _extras.py metadata is properly structured."""
+    """Test the _extras.json metadata is properly structured."""
 
     def test_extras_dict_structure(self) -> None:
         """EXTRAS dict should have proper structure."""

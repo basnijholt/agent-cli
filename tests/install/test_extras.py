@@ -2,14 +2,14 @@
 
 from __future__ import annotations
 
-from agent_cli._extras import EXTRAS as EXTRAS_META
+from agent_cli.core.deps import EXTRAS as EXTRAS_META
 from agent_cli.install.extras import EXTRAS, _available_extras
 
 
 def test_extras_dict_matches_requirements_files() -> None:
     """Ensure extras with requirements files have descriptions.
 
-    Extras defined in _extras.py may or may not have requirements files.
+    Extras defined in _extras.json may or may not have requirements files.
     Those with requirements files (in _requirements/) should have descriptions.
     """
     available = set(_available_extras())
@@ -19,12 +19,12 @@ def test_extras_dict_matches_requirements_files() -> None:
     missing_docs = available - documented
     assert not missing_docs, (
         f"Extras missing from EXTRAS dict: {missing_docs}. "
-        "Add descriptions for these extras in agent_cli/_extras.py"
+        "Add descriptions for these extras in agent_cli/_extras.json"
     )
 
 
 def test_extras_metadata_structure() -> None:
-    """Ensure EXTRAS metadata in _extras.py has correct structure."""
+    """Ensure EXTRAS metadata in _extras.json has correct structure."""
     assert isinstance(EXTRAS_META, dict)
     for name, value in EXTRAS_META.items():
         assert isinstance(name, str), f"Extra name should be string: {name}"
@@ -36,7 +36,7 @@ def test_extras_metadata_structure() -> None:
 
 
 def test_install_extras_dict_derives_from_metadata() -> None:
-    """Ensure EXTRAS in install/extras.py derives from _extras.py."""
+    """Ensure EXTRAS in install/extras.py derives from _extras.json."""
     for name in EXTRAS:
-        assert name in EXTRAS_META, f"Extra {name} should be in _extras.py"
+        assert name in EXTRAS_META, f"Extra {name} should be in _extras.json"
         assert EXTRAS[name] == EXTRAS_META[name][0], f"Description mismatch for {name}"

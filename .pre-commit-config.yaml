@@ -60,4 +60,4 @@ repos:
         entry: python .github/scripts/check_extras_sync.py
         language: python
         pass_filenames: false
-        files: ^(pyproject\.toml|agent_cli/_extras\.py)$
+        files: ^(pyproject\.toml|agent_cli/_extras\.json)$

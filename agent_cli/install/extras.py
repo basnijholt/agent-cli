@@ -11,8 +11,8 @@ from typing import Annotated
 
 import typer
 
-from agent_cli._extras import EXTRAS as _EXTRAS_META
 from agent_cli.cli import app
+from agent_cli.core.deps import EXTRAS as _EXTRAS_META
 from agent_cli.core.utils import console, print_error_message
 
 # Extract descriptions from the centralized EXTRAS metadata

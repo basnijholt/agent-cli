@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Generate _extras.py from pyproject.toml.
+"""Generate _extras.json from pyproject.toml.
 
 This script parses the optional-dependencies in pyproject.toml and generates
-the agent_cli/_extras.py file with package-to-import mappings.
+the agent_cli/_extras.json file with package-to-import mappings.
 
 Usage:
     python scripts/sync_extras.py
@@ -10,6 +10,7 @@ Usage:
 
 from __future__ import annotations
 
+import json
 import re
 import sys
 import tomllib
@@ -17,7 +18,7 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).parent.parent
 PYPROJECT = REPO_ROOT / "pyproject.toml"
-EXTRAS_FILE = REPO_ROOT / "agent_cli" / "_extras.py"
+EXTRAS_FILE = REPO_ROOT / "agent_cli" / "_extras.json"
 
 # Extras to skip (dev/test dependencies, not runtime installable)
 SKIP_EXTRAS = {"dev", "test"}
@@ -97,37 +98,17 @@ def package_to_import_name(package: str) -> str:
     return package.replace("-", "_")
 
 
-def generate_extras_file(extras: set[str]) -> str:
-    """Generate the content for _extras.py."""
-    lines = [
-        '"""Extras metadata for optional dependencies.',
-        "",
-        "Auto-generated from pyproject.toml. DO NOT EDIT MANUALLY.",
-        "",
-        "Regenerate with: python scripts/sync_extras.py",
-        '"""',
-        "",
-        "from __future__ import annotations",
-        "",
-        "# Extra name -> (description, list of import names to check)",
-        '# Import names use Python module notation (e.g., "google.genai" not "google-genai")',
-        "EXTRAS: dict[str, tuple[str, list[str]]] = {",
-    ]
-
-    # Sort extras for consistent output
+def generate_extras_json(extras: set[str]) -> dict[str, list]:
+    """Generate the content for _extras.json."""
+    result = {}
     for extra in sorted(extras):
         if extra in EXTRA_METADATA:
             desc, imports = EXTRA_METADATA[extra]
-            imports_str = ", ".join(f'"{imp}"' for imp in imports)
-            lines.append(f'    "{extra}": ("{desc}", [{imports_str}]),')
+            result[extra] = [desc, imports]
         else:
             # Unknown extra - add a placeholder
-            lines.append(f'    "{extra}": ("TODO: add description", []),')
-
-    lines.append("}")
-    lines.append("")  # Trailing newline
-
-    return "\n".join(lines)
+            result[extra] = ["TODO: add description", []]
+    return result
 
 
 def check_missing_metadata(extras: set[str]) -> list[str]:
@@ -136,7 +117,7 @@ def check_missing_metadata(extras: set[str]) -> list[str]:
 
 
 def main() -> int:
-    """Generate _extras.py from pyproject.toml."""
+    """Generate _extras.json from pyproject.toml."""
     extras = get_extras_from_pyproject()
 
     # Check for missing metadata
@@ -146,8 +127,8 @@ def main() -> int:
         print("Please update EXTRA_METADATA in scripts/sync_extras.py")
 
     # Generate the file
-    content = generate_extras_file(extras)
-    EXTRAS_FILE.write_text(content)
+    content = generate_extras_json(extras)
+    EXTRAS_FILE.write_text(json.dumps(content, indent=2) + "\n")
     print(f"Generated {EXTRAS_FILE}")
 
     return 0
