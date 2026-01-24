@@ -24,6 +24,7 @@ from typer.main import get_command
 
 from agent_cli import opts
 from agent_cli.cli import app
+from agent_cli.install.extras import EXTRAS
 
 
 def _get_type_str(annotation: Any) -> str:
@@ -428,6 +429,17 @@ def all_options_for_docs(command_path: str) -> str:
         include_default=True,
         heading_level=3,
     )
+
+
+def extras_table() -> str:
+    """Generate a table of available extras for install-extras command."""
+    lines = [
+        "| Extra | Description |",
+        "|-------|-------------|",
+    ]
+    for name, description in EXTRAS.items():
+        lines.append(f"| `{name}` | {description} |")
+    return "\n".join(lines)
 
 
 if __name__ == "__main__":

@@ -13,6 +13,19 @@ import typer
 from agent_cli.cli import app
 from agent_cli.core.utils import console, print_error_message
 
+# Extra name -> description mapping (used for docs generation)
+EXTRAS: dict[str, str] = {
+    "rag": "RAG proxy (ChromaDB, embeddings)",
+    "memory": "Long-term memory proxy",
+    "vad": "Voice Activity Detection (silero-vad)",
+    "whisper": "Local Whisper ASR (faster-whisper)",
+    "whisper-mlx": "MLX Whisper for Apple Silicon",
+    "tts": "Local Piper TTS",
+    "tts-kokoro": "Kokoro neural TTS",
+    "server": "FastAPI server components",
+    "speed": "Audio speed adjustment (audiostretchy)",
+}
+
 
 def _requirements_dir() -> Path:
     return Path(__file__).parent.parent / "_requirements"
@@ -72,7 +85,8 @@ def install_extras(
     if list_extras:
         console.print("[bold]Available extras:[/]")
         for name in available:
-            console.print(f"  [cyan]{name}[/]")
+            desc = EXTRAS.get(name, "")
+            console.print(f"  [cyan]{name}[/]: {desc}")
         return
 
     if not extras:
