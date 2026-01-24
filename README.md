@@ -405,13 +405,14 @@ agent-cli install-extras rag memory vad
 
  Examples: agent-cli install-extras rag           # Install RAG dependencies agent-cli
  install-extras memory vad    # Install multiple extras agent-cli install-extras --list
- # Show available extras
+ # Show available extras agent-cli install-extras --all         # Install all extras
 
 ╭─ Arguments ────────────────────────────────────────────────────────────────────────────╮
 │   extras      [EXTRAS]...  Extras to install                                           │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Options ──────────────────────────────────────────────────────────────────────────────╮
 │ --list  -l        List available extras                                                │
+│ --all   -a        Install all available extras                                         │
 │ --help  -h        Show this message and exit.                                          │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 
