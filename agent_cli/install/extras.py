@@ -110,7 +110,11 @@ def _install_extras_impl(extras: list[str], *, quiet: bool = False) -> bool:
 
 def install_extras_programmatic(extras: list[str], *, quiet: bool = False) -> bool:
     """Install extras programmatically (for auto-install feature)."""
-    valid = [e for e in extras if e in _available_extras()]
+    available = _available_extras()
+    valid = [e for e in extras if e in available]
+    invalid = [e for e in extras if e not in available]
+    if invalid:
+        console.print(f"[yellow]Unknown extras (skipped): {', '.join(invalid)}[/]")
     return bool(valid) and _install_extras_impl(valid, quiet=quiet)
 
 
