@@ -55,12 +55,13 @@ Universal Docker setup that works on any platform with Docker support.
 
 The Docker setup provides:
 
-| Service          | Image                             | Port        | Purpose                        |
-| ---------------- | --------------------------------- | ----------- | ------------------------------ |
-| **whisper**      | agent-cli-whisper (custom)        | 10300/10301 | Speech-to-text (Faster Whisper)|
-| **tts**          | agent-cli-tts (custom)            | 10200/10201 | Text-to-speech (Kokoro/Piper)  |
-| **ollama**       | ollama/ollama                     | 11434       | LLM server                     |
-| **openwakeword** | rhasspy/wyoming-openwakeword      | 10400       | Wake word detection            |
+| Service                 | Image                             | Port        | Purpose                        |
+| ----------------------- | --------------------------------- | ----------- | ------------------------------ |
+| **whisper**             | agent-cli-whisper (custom)        | 10300/10301 | Speech-to-text (Faster Whisper)|
+| **tts**                 | agent-cli-tts (custom)            | 10200/10201 | Text-to-speech (Kokoro/Piper)  |
+| **transcription-proxy** | agent-cli-transcription-proxy     | 61337       | ASR proxy for iOS/external apps|
+| **ollama**              | ollama/ollama                     | 11434       | LLM server                     |
+| **openwakeword**        | rhasspy/wyoming-openwakeword      | 10400       | Wake word detection            |
 
 ## Configuration
 
@@ -75,6 +76,9 @@ WHISPER_TTL=300             # Seconds before unloading idle model
 TTS_MODEL=kokoro            # For CUDA: kokoro, For CPU: en_US-lessac-medium
 TTS_BACKEND=kokoro          # Backend: kokoro (GPU), piper (CPU)
 TTS_TTL=300                 # Seconds before unloading idle model
+
+# Transcription Proxy
+PROXY_PORT=61337            # Port for transcription proxy
 ```
 
 ### GPU Support
@@ -108,14 +112,15 @@ Services store data in Docker volumes:
 
 ## Ports Reference
 
-| Port  | Service      | Protocol |
-| ----- | ------------ | -------- |
-| 10200 | TTS          | Wyoming  |
-| 10201 | TTS          | HTTP API |
-| 10300 | Whisper      | Wyoming  |
-| 10301 | Whisper      | HTTP API |
-| 10400 | OpenWakeWord | Wyoming  |
-| 11434 | Ollama       | HTTP API |
+| Port  | Service             | Protocol |
+| ----- | ------------------- | -------- |
+| 10200 | TTS                 | Wyoming  |
+| 10201 | TTS                 | HTTP API |
+| 10300 | Whisper             | Wyoming  |
+| 10301 | Whisper             | HTTP API |
+| 10400 | OpenWakeWord        | Wyoming  |
+| 11434 | Ollama              | HTTP API |
+| 61337 | Transcription Proxy | HTTP API |
 
 ## Alternative: Native Installation
 

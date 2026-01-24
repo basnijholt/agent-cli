@@ -93,3 +93,26 @@ pip install "agent-cli[server]"
 # or
 uv sync --extra server
 ```
+
+## Docker
+
+Run as a Docker container:
+
+```bash
+# Build the image
+docker build -f docker/transcription-proxy.Dockerfile -t agent-cli-transcription-proxy .
+
+# Run standalone
+docker run -p 61337:61337 agent-cli-transcription-proxy
+
+# Or use docker-compose (included in both cuda and cpu profiles)
+docker compose -f docker/docker-compose.yml --profile cpu up transcription-proxy
+```
+
+To use a custom config, mount it as a volume:
+
+```bash
+docker run -p 61337:61337 \
+  -v ./config.toml:/root/.config/agent-cli/config.toml:ro \
+  agent-cli-transcription-proxy
+```
