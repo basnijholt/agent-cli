@@ -102,7 +102,6 @@ numba==0.63.1
     # via mlx-whisper
 numpy==2.3.5
     # via
-    #   agent-cli
     #   mlx-whisper
     #   numba
     #   scipy

@@ -33,9 +33,7 @@ markdown-it-py==4.0.0
 mdurl==0.1.2
     # via markdown-it-py
 numpy==2.3.5
-    # via
-    #   agent-cli
-    #   audiostretchy
+    # via audiostretchy
 psutil==7.2.1 ; sys_platform == 'win32'
     # via agent-cli
 pydantic==2.12.5

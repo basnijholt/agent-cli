@@ -164,7 +164,6 @@ num2words==0.5.14
     # via misaki
 numpy==2.3.5
     # via
-    #   agent-cli
     #   blis
     #   kokoro
     #   soundfile
