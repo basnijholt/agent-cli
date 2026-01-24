@@ -20,26 +20,12 @@ F = TypeVar("F", bound="Callable[..., object]")
 
 
 def _get_auto_install_setting() -> bool:
-    """Check if auto-install is enabled (default: True).
-
-    Can be disabled via:
-    - Environment variable: AGENT_CLI_NO_AUTO_INSTALL=1
-    - Config file [settings] section: auto_install_extras = false
-    """
-    # Environment variable takes precedence (opt-out)
+    """Check if auto-install is enabled (default: True)."""
     if os.environ.get("AGENT_CLI_NO_AUTO_INSTALL", "").lower() in ("1", "true", "yes"):
         return False
-
-    # Import here to avoid circular import at module load time
     from agent_cli.config import load_config  # noqa: PLC0415
 
-    # Check [settings] section in config file
-    cfg = load_config()
-    settings = cfg.get("settings", {})
-    if "auto_install_extras" in settings:
-        return bool(settings["auto_install_extras"])
-
-    return True  # Default: enabled
+    return load_config().get("settings", {}).get("auto_install_extras", True)
 
 
 # Load extras from JSON file
