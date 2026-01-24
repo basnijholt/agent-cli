@@ -10,8 +10,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from rich.live import Live
-from wyoming.audio import AudioChunk, AudioStart, AudioStop
-from wyoming.tts import Synthesize, SynthesizeVoice
 
 from agent_cli import config, constants
 from agent_cli.core.audio import open_audio_stream, setup_output_stream
@@ -32,6 +30,7 @@ if TYPE_CHECKING:
 
     from rich.live import Live
     from wyoming.client import AsyncClient
+    from wyoming.tts import Synthesize
 
 
 has_audiostretchy = importlib.util.find_spec("audiostretchy") is not None
@@ -134,6 +133,8 @@ def _create_synthesis_request(
     speaker: str | None = None,
 ) -> Synthesize:
     """Create a synthesis request with optional voice parameters."""
+    from wyoming.tts import Synthesize, SynthesizeVoice  # noqa: PLC0415
+
     synthesize_event = Synthesize(text=text)
 
     # Add voice parameters if specified
@@ -152,6 +153,8 @@ async def _process_audio_events(
     logger: logging.Logger,
 ) -> tuple[bytes, int | None, int | None, int | None]:
     """Process audio events from TTS server and return audio data with metadata."""
+    from wyoming.audio import AudioChunk, AudioStart, AudioStop  # noqa: PLC0415
+
     audio_data = io.BytesIO()
     sample_rate = None
     sample_width = None
