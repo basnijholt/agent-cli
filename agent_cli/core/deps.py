@@ -145,69 +145,48 @@ def _try_auto_install(missing: list[str]) -> bool:
     return install_extras_programmatic(extras_to_install)
 
 
+def _check_and_install_extras(extras: tuple[str, ...]) -> list[str]:
+    """Check for missing extras and attempt auto-install. Returns list of still-missing."""
+    missing = [e for e in extras if not check_extra_installed(e)]
+    if not missing:
+        return []
+
+    if not _get_auto_install_setting():
+        print_error_message(get_combined_install_hint(missing))
+        return missing
+
+    if not _try_auto_install(missing):
+        print_error_message("Auto-install failed.\n" + get_combined_install_hint(missing))
+        return missing
+
+    console.print("[green]Installation complete![/]")
+    still_missing = [e for e in extras if not check_extra_installed(e)]
+    if still_missing:
+        print_error_message(
+            "Auto-install completed but some dependencies are still missing.\n"
+            + get_combined_install_hint(still_missing),
+        )
+    return still_missing
+
+
 def requires_extras(*extras: str) -> Callable[[F], F]:
     """Decorator to declare required extras for a command.
 
-    When a required extra is missing, the decorator will:
-    1. If auto_install_extras is enabled (default): attempt to install the missing
-       extras automatically
-    2. If auto-install is disabled or fails: print a helpful error message and
-       exit with code 1
-
-    Auto-install can be disabled via:
-    - Environment variable: AGENT_CLI_NO_AUTO_INSTALL=1
-    - Config file: auto_install_extras = false
-
-    The decorator stores the required extras on the function for test validation.
-
-    Process management flags (--stop, --status, --toggle) skip the dependency
-    check since they just manage running processes without using the actual
-    dependencies.
-
-    Example:
-        @app.command("rag-proxy")
-        @requires_extras("rag")
-        def rag_proxy(...):
-            ...
-
+    Auto-installs missing extras by default. Disable via AGENT_CLI_NO_AUTO_INSTALL=1
+    or config [settings] auto_install_extras = false.
     """
 
     def decorator(func: F) -> F:
-        # Store extras on function for test introspection
         func._required_extras = extras  # type: ignore[attr-defined]
 
         @functools.wraps(func)
         def wrapper(*args: object, **kwargs: object) -> object:
-            # Skip dependency check for process management and info operations
-            # These don't need the actual dependencies, just manage processes or list info
             if any(kwargs.get(flag) for flag in ("stop", "status", "toggle", "list_devices")):
                 return func(*args, **kwargs)
-
-            missing = [e for e in extras if not check_extra_installed(e)]
-            if missing:
-                # Try auto-install if enabled
-                if _get_auto_install_setting():
-                    if _try_auto_install(missing):
-                        console.print("[green]Installation complete![/]")
-                        # Re-check after install
-                        still_missing = [e for e in extras if not check_extra_installed(e)]
-                        if not still_missing:
-                            return func(*args, **kwargs)
-                        # Some extras still missing after install
-                        print_error_message(
-                            "Auto-install completed but some dependencies are still missing.\n"
-                            + get_combined_install_hint(still_missing),
-                        )
-                    else:
-                        print_error_message(
-                            "Auto-install failed.\n" + get_combined_install_hint(missing),
-                        )
-                else:
-                    print_error_message(get_combined_install_hint(missing))
+            if _check_and_install_extras(extras):
                 raise typer.Exit(1)
             return func(*args, **kwargs)
 
-        # Preserve the extras on wrapper too
         wrapper._required_extras = extras  # type: ignore[attr-defined]
         return wrapper  # type: ignore[return-value]
 
