@@ -1,9 +1,7 @@
 {
   "audio": ["Audio recording/playback", ["sounddevice"]],
-  "gemini": ["Google Gemini provider", ["google.genai"]],
   "llm": ["LLM framework (pydantic-ai)", ["pydantic_ai"]],
   "memory": ["Long-term memory proxy", ["chromadb", "yaml"]],
-  "openai": ["OpenAI API provider", ["openai"]],
   "rag": ["RAG proxy (ChromaDB, embeddings)", ["chromadb"]],
   "server": ["FastAPI server components", ["fastapi"]],
   "speed": ["Audio speed adjustment (audiostretchy)", ["audiostretchy"]],

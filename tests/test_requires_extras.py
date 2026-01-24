@@ -114,6 +114,6 @@ class TestExtrasMetadata:
 
     def test_essential_extras_present(self) -> None:
         """Essential extras should be defined."""
-        essential = ["audio", "wyoming", "openai", "gemini", "llm", "rag", "memory", "vad"]
+        essential = ["audio", "wyoming", "llm", "rag", "memory", "vad"]
         for extra in essential:
             assert extra in EXTRAS, f"Missing essential extra: {extra}"
