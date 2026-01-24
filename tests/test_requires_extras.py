@@ -5,9 +5,14 @@ from __future__ import annotations
 import os
 from unittest.mock import patch
 
+import pytest
+import typer
+
 from agent_cli.core.deps import (
     EXTRAS,
+    _check_and_install_extras,
     _get_auto_install_setting,
+    _try_auto_install,
     check_extra_installed,
     get_install_hint,
     requires_extras,
@@ -136,3 +141,158 @@ class TestAutoInstallSetting:
             ),
         ):
             assert _get_auto_install_setting() is False
+
+
+class TestTryAutoInstall:
+    """Test the _try_auto_install function."""
+
+    def test_flattens_alternatives(self) -> None:
+        """Alternatives like 'piper|kokoro' should pick the first option."""
+        with patch(
+            "agent_cli.install.extras.install_extras_programmatic",
+            return_value=True,
+        ) as mock_install:
+            result = _try_auto_install(["audio", "piper|kokoro"])
+            assert result is True
+            mock_install.assert_called_once_with(["audio", "piper"])
+
+    def test_returns_install_result(self) -> None:
+        """Should return the result from install_extras_programmatic."""
+        with patch(
+            "agent_cli.install.extras.install_extras_programmatic",
+            return_value=False,
+        ):
+            assert _try_auto_install(["audio"]) is False
+
+        with patch(
+            "agent_cli.install.extras.install_extras_programmatic",
+            return_value=True,
+        ):
+            assert _try_auto_install(["audio"]) is True
+
+
+class TestCheckAndInstallExtras:
+    """Test the _check_and_install_extras function."""
+
+    def test_returns_empty_when_all_installed(self) -> None:
+        """Should return empty list when all extras are already installed."""
+        with patch("agent_cli.core.deps.check_extra_installed", return_value=True):
+            result = _check_and_install_extras(("audio", "llm"))
+            assert result == []
+
+    def test_returns_missing_when_auto_install_disabled(self) -> None:
+        """Should return missing list without installing when disabled."""
+        with (
+            patch("agent_cli.core.deps.check_extra_installed", return_value=False),
+            patch("agent_cli.core.deps._get_auto_install_setting", return_value=False),
+            patch("agent_cli.core.deps.print_error_message") as mock_error,
+        ):
+            result = _check_and_install_extras(("fake-extra",))
+            assert result == ["fake-extra"]
+            mock_error.assert_called_once()
+
+    def test_returns_missing_when_install_fails(self) -> None:
+        """Should return missing list when auto-install fails."""
+        with (
+            patch("agent_cli.core.deps.check_extra_installed", return_value=False),
+            patch("agent_cli.core.deps._get_auto_install_setting", return_value=True),
+            patch("agent_cli.core.deps._try_auto_install", return_value=False),
+            patch("agent_cli.core.deps.print_error_message") as mock_error,
+        ):
+            result = _check_and_install_extras(("fake-extra",))
+            assert result == ["fake-extra"]
+            mock_error.assert_called_once()
+            assert "Auto-install failed" in mock_error.call_args[0][0]
+
+    def test_returns_empty_when_install_succeeds(self) -> None:
+        """Should return empty list when auto-install succeeds."""
+        check_results = iter([False, True])  # First call: missing, second: installed
+        with (
+            patch(
+                "agent_cli.core.deps.check_extra_installed",
+                side_effect=lambda _: next(check_results),
+            ),
+            patch("agent_cli.core.deps._get_auto_install_setting", return_value=True),
+            patch("agent_cli.core.deps._try_auto_install", return_value=True),
+        ):
+            result = _check_and_install_extras(("fake-extra",))
+            assert result == []
+
+    def test_returns_still_missing_after_partial_install(self) -> None:
+        """Should return still-missing extras after install completes."""
+        # First check: missing, install succeeds, second check: still missing
+        with (
+            patch("agent_cli.core.deps.check_extra_installed", return_value=False),
+            patch("agent_cli.core.deps._get_auto_install_setting", return_value=True),
+            patch("agent_cli.core.deps._try_auto_install", return_value=True),
+            patch("agent_cli.core.deps.print_error_message") as mock_error,
+        ):
+            result = _check_and_install_extras(("fake-extra",))
+            assert result == ["fake-extra"]
+            mock_error.assert_called_once()
+            assert "still missing" in mock_error.call_args[0][0]
+
+
+class TestDecoratorIntegration:
+    """Test the requires_extras decorator end-to-end behavior."""
+
+    def test_calls_function_when_extras_installed(self) -> None:
+        """Decorated function should run when extras are installed."""
+        with patch("agent_cli.core.deps.check_extra_installed", return_value=True):
+
+            @requires_extras("audio")
+            def my_command() -> str:
+                return "success"
+
+            assert my_command() == "success"
+
+    def test_exits_when_extras_missing_and_auto_install_disabled(self) -> None:
+        """Should exit when extras missing and auto-install is disabled."""
+        with (
+            patch("agent_cli.core.deps.check_extra_installed", return_value=False),
+            patch("agent_cli.core.deps._get_auto_install_setting", return_value=False),
+            patch("agent_cli.core.deps.print_error_message"),
+        ):
+
+            @requires_extras("fake-extra")
+            def my_command() -> str:
+                return "success"
+
+            with pytest.raises(typer.Exit) as exc_info:
+                my_command()
+            assert exc_info.value.exit_code == 1
+
+    def test_auto_installs_and_runs_on_success(self) -> None:
+        """Should auto-install, then run the function on success."""
+        check_results = iter([False, True])  # Missing first, then installed
+        with (
+            patch(
+                "agent_cli.core.deps.check_extra_installed",
+                side_effect=lambda _: next(check_results),
+            ),
+            patch("agent_cli.core.deps._get_auto_install_setting", return_value=True),
+            patch("agent_cli.core.deps._try_auto_install", return_value=True),
+        ):
+
+            @requires_extras("fake-extra")
+            def my_command() -> str:
+                return "success"
+
+            assert my_command() == "success"
+
+    def test_exits_when_auto_install_fails(self) -> None:
+        """Should exit when auto-install fails."""
+        with (
+            patch("agent_cli.core.deps.check_extra_installed", return_value=False),
+            patch("agent_cli.core.deps._get_auto_install_setting", return_value=True),
+            patch("agent_cli.core.deps._try_auto_install", return_value=False),
+            patch("agent_cli.core.deps.print_error_message"),
+        ):
+
+            @requires_extras("fake-extra")
+            def my_command() -> str:
+                return "success"
+
+            with pytest.raises(typer.Exit) as exc_info:
+                my_command()
+            assert exc_info.value.exit_code == 1
