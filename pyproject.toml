@@ -91,7 +91,7 @@ dev = [
     "agent-cli[test]",
     "pre-commit>=3.0.0",
     "versioningit",
-    "markdown-code-runner @ git+https://github.com/basnijholt/markdown-code-runner.git",
+    "markdown-code-runner>=2.7.0",
     "ruff",
     "notebook",
     "pylint>=3.0.0",
@@ -109,7 +109,7 @@ dev = [
     "pytest-mock",
     "pre-commit>=3.0.0",
     "versioningit",
-    "markdown-code-runner @ git+https://github.com/basnijholt/markdown-code-runner.git",
+    "markdown-code-runner>=2.7.0",
     "ruff",
     "notebook",
     "audiostretchy>=1.3.0",
@@ -123,9 +123,6 @@ dev = [
 agent-cli = "agent_cli.cli:app"
 agent = "agent_cli.cli:app"
 ag = "agent_cli.cli:app"
-
-[tool.hatch.metadata]
-allow-direct-references = true
 
 [tool.hatch.version]
 source = "versioningit"
