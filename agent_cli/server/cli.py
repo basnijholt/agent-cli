@@ -164,7 +164,7 @@ def _check_whisper_deps(backend: str, *, download_only: bool = False) -> None:
 
 
 @app.command("whisper")
-@requires_extras("server", "whisper")
+@requires_extras("server", "faster-whisper|mlx-whisper")
 def whisper_cmd(  # noqa: PLR0912, PLR0915
     model: Annotated[
         list[str] | None,

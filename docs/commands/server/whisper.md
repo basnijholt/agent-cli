@@ -12,7 +12,7 @@ Run a local Whisper ASR server with automatic backend selection based on your pl
 > [!NOTE]
 > **Quick Start** - Get transcription working in 30 seconds:
 > ```bash
-> pip install "agent-cli[whisper]"
+> pip install "agent-cli[faster-whisper]"
 > agent-cli server whisper
 > ```
 > Server is now running at `http://localhost:10301`. Verify with `curl http://localhost:10301/health`.
@@ -207,7 +207,7 @@ Requires server deps and a backend:
 
 ```bash
 # faster-whisper backend (also needed for --download-only)
-pip install "agent-cli[whisper]"
+pip install "agent-cli[faster-whisper]"
 # or
 uv sync --extra whisper
 ```
