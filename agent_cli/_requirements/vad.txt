@@ -47,9 +47,7 @@ mpmath==1.3.0
 networkx==3.6.1
     # via torch
 numpy==2.3.5
-    # via
-    #   agent-cli
-    #   onnxruntime
+    # via onnxruntime
 nvidia-cublas-cu12==12.8.4.1 ; platform_machine == 'x86_64' and sys_platform == 'linux'
     # via
     #   nvidia-cudnn-cu12

@@ -160,7 +160,6 @@ mpmath==1.3.0
     # via sympy
 numpy==2.3.5
     # via
-    #   agent-cli
     #   chromadb
     #   magika
     #   onnxruntime

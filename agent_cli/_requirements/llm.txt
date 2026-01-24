@@ -85,8 +85,6 @@ markdown-it-py==4.0.0
     # via rich
 mdurl==0.1.2
     # via markdown-it-py
-numpy==2.3.5
-    # via agent-cli
 openai==2.15.0
     # via pydantic-ai-slim
 opentelemetry-api==1.39.1
