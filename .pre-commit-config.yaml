@@ -53,4 +53,4 @@ repos:
         entry: python .github/scripts/sync_requirements.py --check
         language: python
         pass_filenames: false
-        files: (pyproject\.toml|uv\.lock|agent_cli/requirements/)
+        files: (pyproject\.toml|uv\.lock|agent_cli/_requirements/)

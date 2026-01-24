@@ -26,7 +26,7 @@ EXTRAS = {
 
 
 def _requirements_dir() -> Path:
-    return Path(__file__).parent.parent / "requirements"
+    return Path(__file__).parent.parent / "_requirements"
 
 
 def _requirements_path(extra: str) -> Path:

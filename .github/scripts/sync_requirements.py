@@ -15,7 +15,7 @@ import tempfile
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).parent.parent.parent
-REQ_DIR = REPO_ROOT / "agent_cli" / "requirements"
+REQ_DIR = REPO_ROOT / "agent_cli" / "_requirements"
 
 EXTRAS = ["rag", "memory", "vad", "whisper", "whisper-mlx", "tts", "tts-kokoro", "server"]
 
