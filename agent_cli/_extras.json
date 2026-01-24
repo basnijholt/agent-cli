@@ -8,5 +8,5 @@
   "piper": ["Local Piper TTS", ["piper"]],
   "kokoro": ["Kokoro neural TTS", ["kokoro"]],
   "vad": ["Voice Activity Detection (silero-vad)", ["silero_vad"]],
-  "whisper": ["Local Whisper ASR (platform-specific)", ["faster_whisper", "mlx_whisper"]]
+  "whisper": ["Local Whisper ASR", ["faster_whisper"]]
 }

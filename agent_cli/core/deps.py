@@ -33,15 +33,10 @@ def _check_package_installed(pkg: str) -> bool:
         return False
 
 
-# Extras where ANY package being installed is sufficient (platform-specific)
-_ANY_OF_EXTRAS = {"whisper"}
-
-
 def check_extra_installed(extra: str) -> bool:
     """Check if packages for an extra are installed using find_spec (no actual import).
 
-    Supports `|` syntax for alternatives: "tts|tts-kokoro" means ANY of these extras.
-    For platform-specific extras (whisper), ANY package being installed is sufficient.
+    Supports `|` syntax for alternatives: "piper|kokoro" means ANY of these extras.
     For regular extras, ALL packages must be installed.
     """
     # Handle "extra1|extra2" syntax - any of these extras is sufficient
@@ -52,11 +47,7 @@ def check_extra_installed(extra: str) -> bool:
         return True  # Unknown extra, assume OK
     _, packages = EXTRAS[extra]
 
-    if extra in _ANY_OF_EXTRAS:
-        # For platform-specific extras, any one package is sufficient
-        return any(_check_package_installed(pkg) for pkg in packages)
-
-    # For regular extras, all packages must be installed
+    # All packages must be installed
     return all(_check_package_installed(pkg) for pkg in packages)
 
 
