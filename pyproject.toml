@@ -130,9 +130,6 @@ source = "versioningit"
 [tool.hatch.build.targets.wheel]
 packages = ["agent_cli"]
 
-[tool.hatch.build.targets.wheel.force-include]
-"agent_cli/requirements" = "agent_cli/requirements"
-
 [tool.pytest.ini_options]
 asyncio_default_fixture_loop_scope = "function"
 filterwarnings = [
