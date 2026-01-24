@@ -24,21 +24,20 @@ name = "agent-cli"
 source = { editable = "." }
 dependencies = [
     { name = "dotenv" },
-    { name = "google-genai" },
     { name = "httpx" },
     { name = "numpy" },
-    { name = "openai" },
     { name = "psutil", marker = "sys_platform == 'win32'" },
-    { name = "pydantic-ai-slim", extra = ["duckduckgo", "openai", "vertexai"] },
     { name = "pyperclip" },
     { name = "rich" },
     { name = "setproctitle" },
-    { name = "sounddevice" },
     { name = "typer" },
-    { name = "wyoming" },
 ]
 
 [package.optional-dependencies]
+audio = [
+    { name = "sounddevice" },
+    { name = "wyoming" },
+]
 dev = [
     { name = "markdown-code-runner" },
     { name = "notebook" },
@@ -52,6 +51,9 @@ dev = [
     { name = "pytest-timeout" },
     { name = "ruff" },
     { name = "versioningit" },
+]
+llm = [
+    { name = "pydantic-ai-slim", extra = ["duckduckgo", "google", "openai", "vertexai"] },
 ]
 memory = [
     { name = "chromadb" },
@@ -143,7 +145,6 @@ requires-dist = [
     { name = "fastapi", extras = ["standard"], marker = "extra == 'whisper'" },
     { name = "fastapi", extras = ["standard"], marker = "extra == 'whisper-mlx'" },
     { name = "faster-whisper", marker = "extra == 'whisper'", specifier = ">=1.0.0" },
-    { name = "google-genai", specifier = ">=1.25.0" },
     { name = "httpx" },
     { name = "huggingface-hub", marker = "extra == 'memory'", specifier = ">=0.20.0" },
     { name = "huggingface-hub", marker = "extra == 'rag'", specifier = ">=0.20.0" },
@@ -156,12 +157,11 @@ requires-dist = [
     { name = "numpy" },
     { name = "onnxruntime", marker = "extra == 'memory'", specifier = ">=1.17.0" },
     { name = "onnxruntime", marker = "extra == 'rag'", specifier = ">=1.17.0" },
-    { name = "openai" },
     { name = "pip", marker = "extra == 'tts-kokoro'" },
     { name = "piper-tts", marker = "extra == 'tts'", specifier = ">=1.2.0" },
     { name = "pre-commit", marker = "extra == 'dev'", specifier = ">=3.0.0" },
     { name = "psutil", marker = "sys_platform == 'win32'" },
-    { name = "pydantic-ai-slim", extras = ["duckduckgo", "openai", "vertexai"] },
+    { name = "pydantic-ai-slim", extras = ["duckduckgo", "google", "openai", "vertexai"], marker = "extra == 'llm'", specifier = ">=0.1.1" },
     { name = "pydantic-ai-slim", extras = ["openai"], marker = "extra == 'dev'" },
     { name = "pydantic-ai-slim", extras = ["openai"], marker = "extra == 'test'" },
     { name = "pylint", marker = "extra == 'dev'", specifier = ">=3.0.0" },
@@ -181,7 +181,7 @@ requires-dist = [
     { name = "ruff", marker = "extra == 'dev'" },
     { name = "setproctitle" },
     { name = "silero-vad", marker = "extra == 'vad'", specifier = ">=5.1" },
-    { name = "sounddevice" },
+    { name = "sounddevice", marker = "extra == 'audio'", specifier = ">=0.4.6" },
     { name = "soundfile", marker = "extra == 'tts-kokoro'", specifier = ">=0.12.0" },
     { name = "transformers", marker = "extra == 'memory'", specifier = ">=4.30.0" },
     { name = "transformers", marker = "extra == 'rag'", specifier = ">=4.30.0" },
@@ -190,9 +190,9 @@ requires-dist = [
     { name = "versioningit", marker = "extra == 'dev'" },
     { name = "watchfiles", marker = "extra == 'memory'", specifier = ">=0.21.0" },
     { name = "watchfiles", marker = "extra == 'rag'", specifier = ">=0.21.0" },
-    { name = "wyoming" },
+    { name = "wyoming", marker = "extra == 'audio'", specifier = ">=1.5.2" },
 ]
-provides-extras = ["dev", "memory", "rag", "server", "speed", "test", "tts", "tts-kokoro", "vad", "whisper", "whisper-mlx"]
+provides-extras = ["audio", "dev", "llm", "memory", "rag", "server", "speed", "test", "tts", "tts-kokoro", "vad", "whisper", "whisper-mlx"]
 
 [package.metadata.requires-dev]
 dev = [
@@ -3782,6 +3782,9 @@ wheels = [
 [package.optional-dependencies]
 duckduckgo = [
     { name = "ddgs" },
+]
+google = [
+    { name = "google-genai" },
 ]
 openai = [
     { name = "openai" },

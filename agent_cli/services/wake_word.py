@@ -6,9 +6,6 @@ import asyncio
 from functools import partial
 from typing import TYPE_CHECKING
 
-from wyoming.audio import AudioChunk, AudioStart, AudioStop
-from wyoming.wake import Detect, Detection, NotDetected
-
 from agent_cli import config, constants
 from agent_cli.core.audio import read_from_queue
 from agent_cli.core.utils import manage_send_receive_tasks
@@ -38,6 +35,8 @@ async def _send_audio_from_queue_for_wake_detection(
     progress_message: str,
 ) -> None:
     """Read from a queue and send to Wyoming wake word server."""
+    from wyoming.audio import AudioChunk, AudioStart, AudioStop  # noqa: PLC0415
+
     await client.write_event(AudioStart(**constants.WYOMING_AUDIO_CONFIG).event())
     seconds_streamed = 0.0
 
@@ -76,6 +75,8 @@ async def _receive_wake_detection(
         Name of detected wake word or None if no detection
 
     """
+    from wyoming.wake import Detection, NotDetected  # noqa: PLC0415
+
     while True:
         event = await client.read_event()
         if event is None:
@@ -108,6 +109,8 @@ async def _detect_wake_word_from_queue(
     progress_message: str = "Listening for wake word",
 ) -> str | None:
     """Detect wake word from an audio queue."""
+    from wyoming.wake import Detect  # noqa: PLC0415
+
     try:
         async with wyoming_client_context(
             wake_word_cfg.wake_server_ip,
