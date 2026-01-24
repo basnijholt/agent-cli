@@ -13,7 +13,6 @@ from agent_cli.core.deps import (
     _check_and_install_extras,
     _get_auto_install_setting,
     _try_auto_install,
-    check_extra_installed,
     get_install_hint,
     requires_extras,
 )
@@ -33,16 +32,22 @@ class TestRequiresExtrasDecorator:
         assert sample_command._required_extras == ("audio", "llm")
 
     def test_check_extra_installed_unknown_extra(self) -> None:
-        """Unknown extras should return True (assume OK)."""
-        assert check_extra_installed("nonexistent-extra") is True
+        """Unknown extras should return False to trigger install attempt."""
+        import importlib  # noqa: PLC0415
+
+        from agent_cli.core import deps  # noqa: PLC0415
+
+        importlib.reload(deps)
+        assert deps.check_extra_installed("nonexistent-extra") is False
 
     def test_check_extra_installed_with_pipe_syntax(self) -> None:
-        """Pipe syntax means any of the extras is sufficient."""
-        # At least one should be true (unknown extras return True)
-        assert check_extra_installed("nonexistent|also-nonexistent") is True
-        # piper|kokoro - at least one may be installed in dev env
-        result = check_extra_installed("piper|kokoro")
-        assert isinstance(result, bool)  # Just verify it doesn't error
+        """Pipe syntax: all unknown returns False, mixed depends on installed."""
+        import importlib  # noqa: PLC0415
+
+        from agent_cli.core import deps  # noqa: PLC0415
+
+        importlib.reload(deps)
+        assert deps.check_extra_installed("nonexistent|also-nonexistent") is False
 
     def test_get_install_hint_with_pipe_syntax(self) -> None:
         """Pipe syntax shows all alternatives in the hint."""

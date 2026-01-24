@@ -54,7 +54,7 @@ def check_extra_installed(extra: str) -> bool:
         return any(check_extra_installed(e) for e in extra.split("|"))
 
     if extra not in EXTRAS:
-        return True  # Unknown extra, assume OK
+        return False  # Unknown extra, trigger install attempt to surface error
     _, packages = EXTRAS[extra]
 
     # All packages must be installed
