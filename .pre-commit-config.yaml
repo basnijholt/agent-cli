@@ -52,5 +52,6 @@ repos:
         name: sync extra requirements
         entry: python .github/scripts/sync_requirements.py
         language: python
+        additional_dependencies: ["uv"]
         pass_filenames: false
         files: (pyproject\.toml|uv\.lock)
