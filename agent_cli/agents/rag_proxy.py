@@ -10,6 +10,7 @@ from rich.logging import RichHandler
 
 from agent_cli import constants, opts
 from agent_cli.cli import app
+from agent_cli.core.deps import requires_extras
 from agent_cli.core.utils import (
     console,
     print_command_line_args,
@@ -18,6 +19,7 @@ from agent_cli.core.utils import (
 
 
 @app.command("rag-proxy", rich_help_panel="Servers")
+@requires_extras("rag")
 def rag_proxy(
     docs_folder: Path = typer.Option(  # noqa: B008
         "./rag_docs",
