@@ -44,7 +44,8 @@ repos:
       - id: uv-lock
         name: uv lock
         entry: uv lock
-        language: system
+        language: python
+        additional_dependencies: ["uv"]
         pass_filenames: false
         files: pyproject\.toml
       - id: sync-requirements
