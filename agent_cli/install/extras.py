@@ -72,8 +72,9 @@ def _install_via_uv_tool(extras: list[str]) -> bool:
     """Reinstall agent-cli via uv tool with the specified extras."""
     extras_str = ",".join(extras)
     package_spec = f"agent-cli[{extras_str}]"
-    console.print(f"Reinstalling via uv tool: [cyan]{package_spec}[/]")
-    cmd = ["uv", "tool", "install", package_spec, "--force"]
+    python_version = f"{sys.version_info.major}.{sys.version_info.minor}"
+    console.print(f"Reinstalling via uv tool: [cyan]{package_spec}[/] (Python {python_version})")
+    cmd = ["uv", "tool", "install", package_spec, "--force", "--python", python_version]
     result = subprocess.run(cmd, check=False)
     return result.returncode == 0
 
