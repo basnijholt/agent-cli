@@ -54,7 +54,7 @@ def check_extra_installed(extra: str) -> bool:
 def get_install_hint(extra: str) -> str:
     """Get install command hint for an extra.
 
-    Supports `|` syntax for alternatives: "tts|tts-kokoro" shows both options.
+    Supports `|` syntax for alternatives: "piper|kokoro" shows both options.
     """
     # Handle "extra1|extra2" syntax - show all options
     if "|" in extra:
