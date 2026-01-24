@@ -24,23 +24,35 @@ EXTRAS: dict[str, tuple[str, list[str]]] = {
 }
 
 
+def _check_package_installed(pkg: str) -> bool:
+    """Check if a single package is installed."""
+    top_module = pkg.split(".")[0]
+    try:
+        return find_spec(top_module) is not None
+    except (ValueError, ModuleNotFoundError):
+        return False
+
+
+# Extras where ANY package being installed is sufficient (platform-specific)
+_ANY_OF_EXTRAS = {"whisper"}
+
+
 def check_extra_installed(extra: str) -> bool:
-    """Check if packages for an extra are installed using find_spec (no actual import)."""
+    """Check if packages for an extra are installed using find_spec (no actual import).
+
+    For most extras, ALL packages must be installed.
+    For platform-specific extras (whisper), ANY package being installed is sufficient.
+    """
     if extra not in EXTRAS:
         return True  # Unknown extra, assume OK
     _, packages = EXTRAS[extra]
-    for pkg in packages:
-        # Convert module path to top-level module for find_spec
-        # e.g., "google.genai" -> check "google" first
-        top_module = pkg.split(".")[0]
-        try:
-            if find_spec(top_module) is None:
-                return False
-        except (ValueError, ModuleNotFoundError):
-            # find_spec can raise ValueError if module's __spec__ is not set
-            # or ModuleNotFoundError for missing parent packages
-            return False
-    return True
+
+    if extra in _ANY_OF_EXTRAS:
+        # For platform-specific extras, any one package is sufficient
+        return any(_check_package_installed(pkg) for pkg in packages)
+
+    # For regular extras, all packages must be installed
+    return all(_check_package_installed(pkg) for pkg in packages)
 
 
 def get_install_hint(extra: str) -> str:

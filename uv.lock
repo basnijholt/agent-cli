@@ -104,10 +104,7 @@ vad = [
 ]
 whisper = [
     { name = "fastapi", extra = ["standard"] },
-    { name = "faster-whisper" },
-]
-whisper-mlx = [
-    { name = "fastapi", extra = ["standard"] },
+    { name = "faster-whisper", marker = "platform_machine != 'arm64' or sys_platform != 'darwin'" },
     { name = "mlx-whisper", marker = "platform_machine == 'arm64' and sys_platform == 'darwin'" },
 ]
 
@@ -143,8 +140,7 @@ requires-dist = [
     { name = "fastapi", extras = ["standard"], marker = "extra == 'tts'" },
     { name = "fastapi", extras = ["standard"], marker = "extra == 'tts-kokoro'" },
     { name = "fastapi", extras = ["standard"], marker = "extra == 'whisper'" },
-    { name = "fastapi", extras = ["standard"], marker = "extra == 'whisper-mlx'" },
-    { name = "faster-whisper", marker = "extra == 'whisper'", specifier = ">=1.0.0" },
+    { name = "faster-whisper", marker = "(platform_machine != 'arm64' and extra == 'whisper') or (sys_platform != 'darwin' and extra == 'whisper')", specifier = ">=1.0.0" },
     { name = "httpx" },
     { name = "huggingface-hub", marker = "extra == 'memory'", specifier = ">=0.20.0" },
     { name = "huggingface-hub", marker = "extra == 'rag'", specifier = ">=0.20.0" },
@@ -152,7 +148,7 @@ requires-dist = [
     { name = "kokoro", marker = "extra == 'tts-kokoro'", specifier = ">=0.9.0" },
     { name = "markdown-code-runner", marker = "extra == 'dev'" },
     { name = "markitdown", extras = ["docx", "pdf", "pptx"], marker = "extra == 'rag'", specifier = ">=0.1.3" },
-    { name = "mlx-whisper", marker = "platform_machine == 'arm64' and sys_platform == 'darwin' and extra == 'whisper-mlx'", specifier = ">=0.4.0" },
+    { name = "mlx-whisper", marker = "platform_machine == 'arm64' and sys_platform == 'darwin' and extra == 'whisper'", specifier = ">=0.4.0" },
     { name = "notebook", marker = "extra == 'dev'" },
     { name = "numpy" },
     { name = "onnxruntime", marker = "extra == 'memory'", specifier = ">=1.17.0" },
@@ -192,7 +188,7 @@ requires-dist = [
     { name = "watchfiles", marker = "extra == 'rag'", specifier = ">=0.21.0" },
     { name = "wyoming", marker = "extra == 'audio'", specifier = ">=1.5.2" },
 ]
-provides-extras = ["audio", "dev", "llm", "memory", "rag", "server", "speed", "test", "tts", "tts-kokoro", "vad", "whisper", "whisper-mlx"]
+provides-extras = ["audio", "dev", "llm", "memory", "rag", "server", "speed", "test", "tts", "tts-kokoro", "vad", "whisper"]
 
 [package.metadata.requires-dev]
 dev = [
