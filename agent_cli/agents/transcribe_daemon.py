@@ -25,6 +25,7 @@ from agent_cli.cli import app
 from agent_cli.core import process
 from agent_cli.core.audio import open_audio_stream, setup_devices, setup_input_stream
 from agent_cli.core.audio_format import check_ffmpeg_available, save_audio_as_mp3
+from agent_cli.core.deps import requires_extras
 from agent_cli.core.utils import (
     console,
     print_command_line_args,
@@ -287,6 +288,7 @@ async def _daemon_loop(cfg: DaemonConfig) -> None:  # noqa: PLR0912, PLR0915
 
 
 @app.command("transcribe-daemon", rich_help_panel="Voice Commands")
+@requires_extras("audio", "vad", "wyoming")
 def transcribe_daemon(  # noqa: PLR0912
     *,
     # Daemon-specific options

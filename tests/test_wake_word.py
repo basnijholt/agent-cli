@@ -46,8 +46,8 @@ class TestReceiveWakeDetection:
 
         # Mock Detection.is_type and Detection.from_event
         with (
-            patch("agent_cli.services.wake_word.Detection.is_type", return_value=True),
-            patch("agent_cli.services.wake_word.Detection.from_event") as mock_from_event,
+            patch("wyoming.wake.Detection.is_type", return_value=True),
+            patch("wyoming.wake.Detection.from_event") as mock_from_event,
         ):
             mock_detection = MagicMock()
             mock_detection.name = "test_wake_word"
@@ -71,8 +71,8 @@ class TestReceiveWakeDetection:
         mock_event.type = "detection"
 
         with (
-            patch("agent_cli.services.wake_word.Detection.is_type", return_value=True),
-            patch("agent_cli.services.wake_word.Detection.from_event") as mock_from_event,
+            patch("wyoming.wake.Detection.is_type", return_value=True),
+            patch("wyoming.wake.Detection.from_event") as mock_from_event,
         ):
             mock_detection = MagicMock()
             mock_detection.name = "test_wake_word"
@@ -99,8 +99,8 @@ class TestReceiveWakeDetection:
         mock_event.type = "not-detected"
 
         with (
-            patch("agent_cli.services.wake_word.Detection.is_type", return_value=False),
-            patch("agent_cli.services.wake_word.NotDetected.is_type", return_value=True),
+            patch("wyoming.wake.Detection.is_type", return_value=False),
+            patch("wyoming.wake.NotDetected.is_type", return_value=True),
         ):
             mock_client.read_event.return_value = mock_event
 

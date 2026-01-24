@@ -19,6 +19,7 @@ from agent_cli import config, opts
 from agent_cli.cli import app
 from agent_cli.core import process
 from agent_cli.core.audio import setup_devices
+from agent_cli.core.deps import requires_extras
 from agent_cli.core.utils import (
     enable_json_mode,
     format_short_timedelta,
@@ -461,6 +462,7 @@ async def _async_main(  # noqa: PLR0912, PLR0915, C901
 
 
 @app.command("transcribe", rich_help_panel="Voice Commands")
+@requires_extras("audio", "wyoming")
 def transcribe(  # noqa: PLR0912
     *,
     extra_instructions: str | None = typer.Option(

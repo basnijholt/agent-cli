@@ -29,6 +29,7 @@ from agent_cli._tools import tools
 from agent_cli.cli import app
 from agent_cli.core import process
 from agent_cli.core.audio import setup_devices
+from agent_cli.core.deps import requires_extras
 from agent_cli.core.utils import (
     InteractiveStopEvent,
     console,
@@ -374,6 +375,7 @@ async def _async_main(
 
 
 @app.command("chat", rich_help_panel="Voice Commands")
+@requires_extras("audio", "llm", "wyoming")
 def chat(
     *,
     # --- Provider Selection ---
