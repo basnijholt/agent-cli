@@ -12,20 +12,11 @@ from typing import Annotated
 import typer
 
 from agent_cli.cli import app
+from agent_cli.core.deps import EXTRAS as _EXTRAS_META
 from agent_cli.core.utils import console, print_error_message
 
-# Extra name -> description mapping (used for docs generation)
-EXTRAS: dict[str, str] = {
-    "rag": "RAG proxy (ChromaDB, embeddings)",
-    "memory": "Long-term memory proxy",
-    "vad": "Voice Activity Detection (silero-vad)",
-    "whisper": "Local Whisper ASR (faster-whisper)",
-    "whisper-mlx": "MLX Whisper for Apple Silicon",
-    "tts": "Local Piper TTS",
-    "tts-kokoro": "Kokoro neural TTS",
-    "server": "FastAPI server components",
-    "speed": "Audio speed adjustment (audiostretchy)",
-}
+# Extract descriptions from the centralized EXTRAS metadata
+EXTRAS: dict[str, str] = {name: desc for name, (desc, _) in _EXTRAS_META.items()}
 
 
 def _requirements_dir() -> Path:
