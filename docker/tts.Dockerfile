@@ -37,18 +37,12 @@ RUN groupadd -g 1000 tts && useradd -m -u 1000 -g tts tts
 
 WORKDIR /app
 
-# Install Python 3.13 and agent-cli with Kokoro TTS support using uv tool
-# UV_PYTHON_INSTALL_DIR ensures Python is installed in accessible location (not /root/.local/)
-ENV UV_PYTHON=3.13 \
-    UV_TOOL_BIN_DIR=/usr/local/bin \
-    UV_TOOL_DIR=/opt/uv-tools \
-    UV_PYTHON_INSTALL_DIR=/opt/uv-python
-
-# --refresh bypasses uv cache to ensure latest version from PyPI
-RUN uv tool install --refresh --python 3.13 "agent-cli[tts-kokoro]"
-
-# Download spacy model required by misaki/Kokoro for grapheme-to-phoneme conversion
-RUN /opt/uv-tools/agent-cli/bin/python -m spacy download en_core_web_sm
+# Install from lock file for reproducible builds
+COPY pyproject.toml uv.lock ./
+ENV UV_PYTHON=3.13
+RUN uv sync --frozen --no-dev --extra tts-kokoro --no-install-project && \
+    ln -s /app/.venv/bin/agent-cli /usr/local/bin/agent-cli && \
+    /app/.venv/bin/python -m spacy download en_core_web_sm
 
 # Create cache directory for models
 RUN mkdir -p /home/tts/.cache && chown -R tts:tts /home/tts
@@ -104,12 +98,10 @@ RUN groupadd -g 1000 tts && useradd -m -u 1000 -g tts tts
 
 WORKDIR /app
 
-# Install agent-cli with Piper TTS support
-ENV UV_TOOL_BIN_DIR=/usr/local/bin \
-    UV_TOOL_DIR=/opt/uv-tools
-
-# --refresh bypasses uv cache to ensure latest version from PyPI
-RUN uv tool install --refresh "agent-cli[tts]"
+# Install from lock file for reproducible builds
+COPY pyproject.toml uv.lock ./
+RUN uv sync --frozen --no-dev --extra tts --no-install-project && \
+    ln -s /app/.venv/bin/agent-cli /usr/local/bin/agent-cli
 
 # Create cache directory for models
 RUN mkdir -p /home/tts/.cache && chown -R tts:tts /home/tts
