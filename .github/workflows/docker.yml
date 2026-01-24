@@ -1,4 +1,4 @@
-name: Publish TTS Docker Images
+name: Publish Docker Images
 
 on:
   workflow_run:
@@ -8,7 +8,6 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}-tts
 
 jobs:
   build-and-push:
@@ -19,12 +18,32 @@ jobs:
       packages: write
 
     strategy:
+      fail-fast: false
       matrix:
         include:
-          - target: cuda
-            suffix: cuda
-          - target: cpu
-            suffix: cpu
+          # Whisper images
+          - image: whisper
+            dockerfile: docker/whisper.Dockerfile
+            target: cuda
+            suffix: "-cuda"
+          - image: whisper
+            dockerfile: docker/whisper.Dockerfile
+            target: cpu
+            suffix: "-cpu"
+          # TTS images
+          - image: tts
+            dockerfile: docker/tts.Dockerfile
+            target: cuda
+            suffix: "-cuda"
+          - image: tts
+            dockerfile: docker/tts.Dockerfile
+            target: cpu
+            suffix: "-cpu"
+          # Transcription proxy (single image, no target)
+          - image: transcription-proxy
+            dockerfile: docker/transcription-proxy.Dockerfile
+            target: ""
+            suffix: ""
 
     steps:
       - name: Checkout repository
@@ -53,20 +72,20 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          images: ${{ env.REGISTRY }}/${{ github.repository }}-${{ matrix.image }}
           tags: |
-            type=raw,value=${{ steps.version.outputs.version }},suffix=-${{ matrix.suffix }},enable=${{ steps.version.outputs.version != '' }}
-            type=raw,value=latest,suffix=-${{ matrix.suffix }}
-            type=sha,suffix=-${{ matrix.suffix }}
+            type=raw,value=${{ steps.version.outputs.version }}${{ matrix.suffix }},enable=${{ steps.version.outputs.version != '' }}
+            type=raw,value=latest${{ matrix.suffix }}
+            type=sha,suffix=${{ matrix.suffix }}
 
       - name: Build and push
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: docker/tts.Dockerfile
-          target: ${{ matrix.target }}
+          file: ${{ matrix.dockerfile }}
+          target: ${{ matrix.target || '' }}
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=${{ matrix.image }}${{ matrix.suffix }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.image }}${{ matrix.suffix }}
