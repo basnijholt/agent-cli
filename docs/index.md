@@ -101,11 +101,7 @@ agent-cli start-services
 # 4. (Optional) Set up system-wide hotkeys
 agent-cli install-hotkeys
 
-# 5. (Optional) Install extras for specific features
-agent-cli install-extras --list  # See available extras
-agent-cli install-extras rag memory vad  # Install what you need
-
-# 6. Use it!
+# 5. Use it!
 agent-cli autocorrect "this has an eror"
 ```
 
