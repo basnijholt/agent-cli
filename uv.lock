@@ -52,6 +52,14 @@ dev = [
     { name = "ruff" },
     { name = "versioningit" },
 ]
+kokoro = [
+    { name = "fastapi", extra = ["standard"] },
+    { name = "huggingface-hub" },
+    { name = "kokoro" },
+    { name = "pip" },
+    { name = "soundfile" },
+    { name = "transformers" },
+]
 llm = [
     { name = "pydantic-ai-slim", extra = ["duckduckgo", "google", "openai", "vertexai"] },
 ]
@@ -63,6 +71,10 @@ memory = [
     { name = "pyyaml" },
     { name = "transformers" },
     { name = "watchfiles" },
+]
+piper = [
+    { name = "fastapi", extra = ["standard"] },
+    { name = "piper-tts" },
 ]
 rag = [
     { name = "chromadb" },
@@ -86,18 +98,6 @@ test = [
     { name = "pytest-cov" },
     { name = "pytest-mock" },
     { name = "pytest-timeout" },
-]
-tts-kokoro = [
-    { name = "fastapi", extra = ["standard"] },
-    { name = "huggingface-hub" },
-    { name = "kokoro" },
-    { name = "pip" },
-    { name = "soundfile" },
-    { name = "transformers" },
-]
-tts-piper = [
-    { name = "fastapi", extra = ["standard"] },
-    { name = "piper-tts" },
 ]
 vad = [
     { name = "silero-vad" },
@@ -134,18 +134,18 @@ requires-dist = [
     { name = "chromadb", marker = "extra == 'memory'", specifier = ">=0.4.22" },
     { name = "chromadb", marker = "extra == 'rag'", specifier = ">=0.4.22" },
     { name = "dotenv" },
+    { name = "fastapi", extras = ["standard"], marker = "extra == 'kokoro'" },
     { name = "fastapi", extras = ["standard"], marker = "extra == 'memory'" },
+    { name = "fastapi", extras = ["standard"], marker = "extra == 'piper'" },
     { name = "fastapi", extras = ["standard"], marker = "extra == 'rag'" },
     { name = "fastapi", extras = ["standard"], marker = "extra == 'server'" },
-    { name = "fastapi", extras = ["standard"], marker = "extra == 'tts-kokoro'" },
-    { name = "fastapi", extras = ["standard"], marker = "extra == 'tts-piper'" },
     { name = "fastapi", extras = ["standard"], marker = "extra == 'whisper'" },
     { name = "faster-whisper", marker = "(platform_machine != 'arm64' and extra == 'whisper') or (sys_platform != 'darwin' and extra == 'whisper')", specifier = ">=1.0.0" },
     { name = "httpx" },
+    { name = "huggingface-hub", marker = "extra == 'kokoro'", specifier = ">=0.20.0" },
     { name = "huggingface-hub", marker = "extra == 'memory'", specifier = ">=0.20.0" },
     { name = "huggingface-hub", marker = "extra == 'rag'", specifier = ">=0.20.0" },
-    { name = "huggingface-hub", marker = "extra == 'tts-kokoro'", specifier = ">=0.20.0" },
-    { name = "kokoro", marker = "extra == 'tts-kokoro'", specifier = ">=0.9.0" },
+    { name = "kokoro", marker = "extra == 'kokoro'", specifier = ">=0.9.0" },
     { name = "markdown-code-runner", marker = "extra == 'dev'" },
     { name = "markitdown", extras = ["docx", "pdf", "pptx"], marker = "extra == 'rag'", specifier = ">=0.1.3" },
     { name = "mlx-whisper", marker = "platform_machine == 'arm64' and sys_platform == 'darwin' and extra == 'whisper'", specifier = ">=0.4.0" },
@@ -153,8 +153,8 @@ requires-dist = [
     { name = "numpy" },
     { name = "onnxruntime", marker = "extra == 'memory'", specifier = ">=1.17.0" },
     { name = "onnxruntime", marker = "extra == 'rag'", specifier = ">=1.17.0" },
-    { name = "pip", marker = "extra == 'tts-kokoro'" },
-    { name = "piper-tts", marker = "extra == 'tts-piper'", specifier = ">=1.2.0" },
+    { name = "pip", marker = "extra == 'kokoro'" },
+    { name = "piper-tts", marker = "extra == 'piper'", specifier = ">=1.2.0" },
     { name = "pre-commit", marker = "extra == 'dev'", specifier = ">=3.0.0" },
     { name = "psutil", marker = "sys_platform == 'win32'" },
     { name = "pydantic-ai-slim", extras = ["duckduckgo", "google", "openai", "vertexai"], marker = "extra == 'llm'", specifier = ">=0.1.1" },
@@ -178,17 +178,17 @@ requires-dist = [
     { name = "setproctitle" },
     { name = "silero-vad", marker = "extra == 'vad'", specifier = ">=5.1" },
     { name = "sounddevice", marker = "extra == 'audio'", specifier = ">=0.4.6" },
-    { name = "soundfile", marker = "extra == 'tts-kokoro'", specifier = ">=0.12.0" },
+    { name = "soundfile", marker = "extra == 'kokoro'", specifier = ">=0.12.0" },
+    { name = "transformers", marker = "extra == 'kokoro'", specifier = ">=4.40.0" },
     { name = "transformers", marker = "extra == 'memory'", specifier = ">=4.30.0" },
     { name = "transformers", marker = "extra == 'rag'", specifier = ">=4.30.0" },
-    { name = "transformers", marker = "extra == 'tts-kokoro'", specifier = ">=4.40.0" },
     { name = "typer" },
     { name = "versioningit", marker = "extra == 'dev'" },
     { name = "watchfiles", marker = "extra == 'memory'", specifier = ">=0.21.0" },
     { name = "watchfiles", marker = "extra == 'rag'", specifier = ">=0.21.0" },
     { name = "wyoming", marker = "extra == 'audio'", specifier = ">=1.5.2" },
 ]
-provides-extras = ["audio", "dev", "llm", "memory", "rag", "server", "speed", "test", "tts-kokoro", "tts-piper", "vad", "whisper"]
+provides-extras = ["audio", "dev", "kokoro", "llm", "memory", "piper", "rag", "server", "speed", "test", "vad", "whisper"]
 
 [package.metadata.requires-dev]
 dev = [

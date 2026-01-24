@@ -65,11 +65,11 @@ whisper = [
     "faster-whisper>=1.0.0; sys_platform != 'darwin' or platform_machine != 'arm64'",
     "mlx-whisper>=0.4.0; sys_platform == 'darwin' and platform_machine == 'arm64'",
 ]
-tts-piper = [
+piper = [
     "fastapi[standard]",
     "piper-tts>=1.2.0",
 ]
-tts-kokoro = [
+kokoro = [
     "fastapi[standard]",
     "kokoro>=0.9.0",
     "soundfile>=0.12.0",

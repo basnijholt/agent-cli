@@ -26,18 +26,18 @@ class TestRequiresExtrasDecorator:
         """Pipe syntax means any of the extras is sufficient."""
         # At least one should be true (unknown extras return True)
         assert check_extra_installed("nonexistent|also-nonexistent") is True
-        # tts-piper|tts-kokoro - at least one may be installed in dev env
-        result = check_extra_installed("tts-piper|tts-kokoro")
+        # piper|kokoro - at least one may be installed in dev env
+        result = check_extra_installed("piper|kokoro")
         assert isinstance(result, bool)  # Just verify it doesn't error
 
     def test_get_install_hint_with_pipe_syntax(self) -> None:
         """Pipe syntax shows all alternatives in the hint."""
-        hint = get_install_hint("tts-piper|tts-kokoro")
+        hint = get_install_hint("piper|kokoro")
         assert "requires one of:" in hint
-        assert "'tts-piper'" in hint
-        assert "'tts-kokoro'" in hint
-        assert "agent-cli[tts-piper]" in hint
-        assert "agent-cli[tts-kokoro]" in hint
+        assert "'piper'" in hint
+        assert "'kokoro'" in hint
+        assert "agent-cli[piper]" in hint
+        assert "agent-cli[kokoro]" in hint
 
 
 class TestExtrasMetadata:

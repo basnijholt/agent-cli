@@ -12,13 +12,13 @@ Run a local TTS (Text-to-Speech) server with two backend options:
 > [!NOTE]
 > **Quick Start with Kokoro** (GPU-accelerated, auto-downloads from HuggingFace):
 > ```bash
-> pip install "agent-cli[tts-kokoro]"
+> pip install "agent-cli[kokoro]"
 > agent-cli server tts --backend kokoro
 > ```
 >
 > **Quick Start with Piper** (CPU-friendly):
 > ```bash
-> pip install "agent-cli[tts-piper]"
+> pip install "agent-cli[piper]"
 > agent-cli server tts --backend piper
 > ```
 >
@@ -228,9 +228,9 @@ Browse all voices at [rhasspy/piper](https://github.com/rhasspy/piper?tab=readme
 ### Kokoro (GPU-accelerated)
 
 ```bash
-pip install "agent-cli[tts-kokoro]"
+pip install "agent-cli[kokoro]"
 # or
-uv sync --extra tts-kokoro
+uv sync --extra kokoro
 ```
 
 Kokoro requires PyTorch. For GPU acceleration:
@@ -240,7 +240,7 @@ Kokoro requires PyTorch. For GPU acceleration:
 ### Piper (CPU-friendly)
 
 ```bash
-pip install "agent-cli[tts-piper]"
+pip install "agent-cli[piper]"
 # or
-uv sync --extra tts-piper
+uv sync --extra piper
 ```
