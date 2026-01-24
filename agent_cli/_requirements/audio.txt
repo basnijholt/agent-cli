@@ -56,3 +56,5 @@ typing-extensions==4.15.0
     # via
     #   anyio
     #   typer
+wyoming==1.8.0
+    # via agent-cli

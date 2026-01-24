@@ -375,7 +375,7 @@ async def _async_main(
 
 
 @app.command("chat", rich_help_panel="Voice Commands")
-@requires_extras("audio", "llm", "wyoming")
+@requires_extras("audio", "llm", "tts-kokoro")
 def chat(
     *,
     # --- Provider Selection ---

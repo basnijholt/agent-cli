@@ -36,6 +36,7 @@ dependencies = [
 [package.optional-dependencies]
 audio = [
     { name = "sounddevice" },
+    { name = "wyoming" },
 ]
 dev = [
     { name = "markdown-code-runner" },
@@ -108,9 +109,6 @@ whisper = [
 whisper-mlx = [
     { name = "fastapi", extra = ["standard"] },
     { name = "mlx-whisper", marker = "platform_machine == 'arm64' and sys_platform == 'darwin'" },
-]
-wyoming = [
-    { name = "wyoming" },
 ]
 
 [package.dev-dependencies]
@@ -192,9 +190,9 @@ requires-dist = [
     { name = "versioningit", marker = "extra == 'dev'" },
     { name = "watchfiles", marker = "extra == 'memory'", specifier = ">=0.21.0" },
     { name = "watchfiles", marker = "extra == 'rag'", specifier = ">=0.21.0" },
-    { name = "wyoming", marker = "extra == 'wyoming'", specifier = ">=1.5.2" },
+    { name = "wyoming", marker = "extra == 'audio'", specifier = ">=1.5.2" },
 ]
-provides-extras = ["audio", "dev", "llm", "memory", "rag", "server", "speed", "test", "tts", "tts-kokoro", "vad", "whisper", "whisper-mlx", "wyoming"]
+provides-extras = ["audio", "dev", "llm", "memory", "rag", "server", "speed", "test", "tts", "tts-kokoro", "vad", "whisper", "whisper-mlx"]
 
 [package.metadata.requires-dev]
 dev = [

@@ -288,7 +288,7 @@ async def _daemon_loop(cfg: DaemonConfig) -> None:  # noqa: PLR0912, PLR0915
 
 
 @app.command("transcribe-daemon", rich_help_panel="Voice Commands")
-@requires_extras("audio", "vad", "wyoming")
+@requires_extras("audio", "vad", "llm")
 def transcribe_daemon(  # noqa: PLR0912
     *,
     # Daemon-specific options

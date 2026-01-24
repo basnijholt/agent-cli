@@ -255,7 +255,7 @@ async def _async_main(
 
 
 @app.command("assistant", rich_help_panel="Voice Commands")
-@requires_extras("audio", "llm", "wyoming")
+@requires_extras("audio", "llm", "tts-kokoro")
 def assistant(
     *,
     # --- Provider Selection ---

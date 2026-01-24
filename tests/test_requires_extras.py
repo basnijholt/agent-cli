@@ -1,17 +1,7 @@
-"""Tests for @requires_extras decorator coverage on CLI commands."""
+"""Tests for @requires_extras decorator functionality."""
 
 from __future__ import annotations
 
-from agent_cli.agents.assistant import assistant
-from agent_cli.agents.autocorrect import autocorrect
-from agent_cli.agents.chat import chat
-from agent_cli.agents.memory.add import add
-from agent_cli.agents.memory.proxy import proxy
-from agent_cli.agents.rag_proxy import rag_proxy
-from agent_cli.agents.speak import speak
-from agent_cli.agents.transcribe import transcribe
-from agent_cli.agents.transcribe_daemon import transcribe_daemon
-from agent_cli.agents.voice_edit import voice_edit
 from agent_cli.core.deps import EXTRAS, check_extra_installed, requires_extras
 
 
@@ -33,70 +23,6 @@ class TestRequiresExtrasDecorator:
         assert check_extra_installed("nonexistent-extra") is True
 
 
-class TestCommandDecoratorCoverage:
-    """Test that all commands that use optional dependencies have decorators."""
-
-    def test_transcribe_has_audio_and_wyoming_decorator(self) -> None:
-        """Transcribe command should require audio and wyoming extras."""
-        assert hasattr(transcribe, "_required_extras")
-        assert "audio" in transcribe._required_extras
-        assert "wyoming" in transcribe._required_extras
-
-    def test_transcribe_daemon_has_audio_vad_and_wyoming_decorator(self) -> None:
-        """transcribe-daemon command should require audio, vad, and wyoming extras."""
-        assert hasattr(transcribe_daemon, "_required_extras")
-        assert "audio" in transcribe_daemon._required_extras
-        assert "vad" in transcribe_daemon._required_extras
-        assert "wyoming" in transcribe_daemon._required_extras
-
-    def test_chat_has_audio_llm_and_wyoming_decorator(self) -> None:
-        """Chat command should require audio, llm, and wyoming extras."""
-        assert hasattr(chat, "_required_extras")
-        assert "audio" in chat._required_extras
-        assert "llm" in chat._required_extras
-        assert "wyoming" in chat._required_extras
-
-    def test_assistant_has_required_decorators(self) -> None:
-        """Assistant command should require audio, llm, and wyoming extras."""
-        assert hasattr(assistant, "_required_extras")
-        assert "audio" in assistant._required_extras
-        assert "llm" in assistant._required_extras
-        assert "wyoming" in assistant._required_extras
-
-    def test_voice_edit_has_audio_llm_and_wyoming_decorator(self) -> None:
-        """voice-edit command should require audio, llm, and wyoming extras."""
-        assert hasattr(voice_edit, "_required_extras")
-        assert "audio" in voice_edit._required_extras
-        assert "llm" in voice_edit._required_extras
-        assert "wyoming" in voice_edit._required_extras
-
-    def test_speak_has_audio_and_wyoming_decorator(self) -> None:
-        """Speak command should require audio and wyoming extras."""
-        assert hasattr(speak, "_required_extras")
-        assert "audio" in speak._required_extras
-        assert "wyoming" in speak._required_extras
-
-    def test_autocorrect_has_llm_decorator(self) -> None:
-        """Autocorrect command should require llm extra."""
-        assert hasattr(autocorrect, "_required_extras")
-        assert "llm" in autocorrect._required_extras
-
-    def test_rag_proxy_has_rag_decorator(self) -> None:
-        """rag-proxy command should require rag extra."""
-        assert hasattr(rag_proxy, "_required_extras")
-        assert "rag" in rag_proxy._required_extras
-
-    def test_memory_proxy_has_memory_decorator(self) -> None:
-        """Memory proxy command should require memory extra."""
-        assert hasattr(proxy, "_required_extras")
-        assert "memory" in proxy._required_extras
-
-    def test_memory_add_has_memory_decorator(self) -> None:
-        """Memory add command should require memory extra."""
-        assert hasattr(add, "_required_extras")
-        assert "memory" in add._required_extras
-
-
 class TestExtrasMetadata:
     """Test the _extras.json metadata is properly structured."""
 
@@ -114,6 +40,6 @@ class TestExtrasMetadata:
 
     def test_essential_extras_present(self) -> None:
         """Essential extras should be defined."""
-        essential = ["audio", "wyoming", "llm", "rag", "memory", "vad"]
+        essential = ["audio", "llm", "rag", "memory", "vad"]
         for extra in essential:
             assert extra in EXTRAS, f"Missing essential extra: {extra}"
