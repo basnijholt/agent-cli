@@ -13,6 +13,7 @@ import typer
 
 from agent_cli import opts
 from agent_cli.agents.memory import memory_app
+from agent_cli.core.deps import requires_extras
 from agent_cli.core.utils import console, print_command_line_args
 
 if TYPE_CHECKING:
@@ -110,6 +111,7 @@ def _write_memories(
 
 
 @memory_app.command("add")
+@requires_extras("memory")
 def add(
     memories: list[str] = typer.Argument(  # noqa: B008
         None,
