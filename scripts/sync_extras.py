@@ -44,11 +44,11 @@ EXTRA_METADATA: dict[str, tuple[str, list[str]]] = {
     "server": ("FastAPI server components", ["fastapi"]),
     "speed": ("Audio speed adjustment (audiostretchy)", ["audiostretchy"]),
     # Server backend extras
-    "piper": ("Piper TTS backend (CPU-friendly)", ["piper"]),
-    "kokoro": ("Kokoro TTS backend (GPU-accelerated)", ["kokoro"]),
+    "piper": ("Local Piper TTS", ["piper"]),
+    "kokoro": ("Kokoro neural TTS", ["kokoro"]),
     "qwen-tts": ("Qwen3-TTS backend (multilingual)", ["qwen_tts"]),
-    "faster-whisper": ("Faster Whisper ASR backend", ["faster_whisper"]),
-    "mlx-whisper": ("MLX Whisper ASR for Apple Silicon", ["mlx_whisper"]),
+    "faster-whisper": ("Whisper ASR (CUDA/CPU)", ["faster_whisper"]),
+    "mlx-whisper": ("Whisper ASR (Apple Silicon)", ["mlx_whisper"]),
 }
 
 
@@ -132,14 +132,9 @@ def main() -> int:
         print(f"Warning: The following extras need metadata in EXTRA_METADATA: {missing}")
         print("Please update EXTRA_METADATA in scripts/sync_extras.py")
 
-    # Generate the file (compact format with one entry per line)
+    # Generate the file
     content = generate_extras_json(extras)
-    lines = ["{"]
-    for i, (key, value) in enumerate(sorted(content.items())):
-        comma = "," if i < len(content) - 1 else ""
-        lines.append(f'  "{key}": {json.dumps(value)}{comma}')
-    lines.append("}")
-    EXTRAS_FILE.write_text("\n".join(lines) + "\n")
+    EXTRAS_FILE.write_text(json.dumps(content, indent=2) + "\n")
     print(f"Generated {EXTRAS_FILE}")
 
     return 0

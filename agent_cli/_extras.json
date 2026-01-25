@@ -1,14 +1,14 @@
 {
-  "audio": ["Audio recording/playback", ["sounddevice"]],
-  "faster-whisper": ["Faster Whisper ASR backend", ["faster_whisper"]],
-  "kokoro": ["Kokoro TTS backend (GPU-accelerated)", ["kokoro"]],
+  "audio": ["Audio recording/playback with Wyoming protocol", ["numpy", "sounddevice", "wyoming"]],
   "llm": ["LLM framework (pydantic-ai)", ["pydantic_ai"]],
   "memory": ["Long-term memory proxy", ["chromadb", "yaml"]],
-  "mlx-whisper": ["MLX Whisper ASR for Apple Silicon", ["mlx_whisper"]],
-  "piper": ["Piper TTS backend (CPU-friendly)", ["piper"]],
-  "qwen-tts": ["Qwen3-TTS backend (multilingual)", ["qwen_tts"]],
   "rag": ["RAG proxy (ChromaDB, embeddings)", ["chromadb"]],
   "server": ["FastAPI server components", ["fastapi"]],
   "speed": ["Audio speed adjustment (audiostretchy)", ["audiostretchy"]],
-  "vad": ["Voice Activity Detection (silero-vad)", ["silero_vad"]]
+  "piper": ["Local Piper TTS", ["piper"]],
+  "kokoro": ["Kokoro neural TTS", ["kokoro"]],
+  "qwen-tts": ["Qwen3-TTS backend (multilingual)", ["qwen_tts"]],
+  "vad": ["Voice Activity Detection (silero-vad)", ["silero_vad"]],
+  "faster-whisper": ["Whisper ASR (CUDA/CPU)", ["faster_whisper"]],
+  "mlx-whisper": ["Whisper ASR (Apple Silicon)", ["mlx_whisper"]]
 }
