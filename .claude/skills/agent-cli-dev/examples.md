@@ -45,12 +45,18 @@ agent-cli dev new review-changes --from HEAD --agent --prompt "Review the code c
 </code_exploration>
 
 <context>
-Code review catches issues before merge. Focus on real problems that affect correctness, security, or maintainability - not style nitpicks. Apply these criteria:
-- DRY: Does it avoid duplication?
-- KISS/YAGNI: Is it over-engineered? No dead code paths, no defensive programming
-- No pointless wrappers: Functions that just call another function should be inlined
-- Consistency: Does it match the style of surrounding code?
+Code review catches issues before merge. Focus on real problems - not style nitpicks. Apply these criteria:
+- Code cleanliness: Is the implementation clean and well-structured?
+- DRY principle: Does it avoid duplication?
+- Code reuse: Are there parts that should be reused from other places?
+- Organization: Is everything in the right place?
+- Consistency: Is it in the same style as other parts of the codebase?
+- Simplicity: Is it over-engineered? Remember KISS and YAGNI. No dead code paths, no defensive programming.
+- No pointless wrappers: Functions that just call another function should be inlined.
+- User experience: Does it provide a good user experience?
 - Tests: Are tests meaningful or just trivial coverage?
+- Live tests: Test changes with real services if applicable.
+- Rules: Does the code follow CLAUDE.md guidelines?
 </context>
 
 <scope>
