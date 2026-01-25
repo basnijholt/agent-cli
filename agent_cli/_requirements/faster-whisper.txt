@@ -176,6 +176,7 @@ tqdm==4.67.1
     #   huggingface-hub
 typer==0.21.1
     # via
+    #   agent-cli
     #   fastapi-cli
     #   fastapi-cloud-cli
 typer-slim==0.21.1

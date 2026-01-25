@@ -118,6 +118,7 @@ starlette==0.50.0
     # via fastapi
 typer==0.21.1
     # via
+    #   agent-cli
     #   fastapi-cli
     #   fastapi-cloud-cli
 typer-slim==0.21.1

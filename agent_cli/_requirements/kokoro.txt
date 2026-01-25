@@ -367,6 +367,7 @@ triton==3.5.1 ; platform_machine == 'x86_64' and sys_platform == 'linux'
     # via torch
 typer==0.21.1
     # via
+    #   agent-cli
     #   fastapi-cli
     #   fastapi-cloud-cli
 typer-slim==0.21.1
