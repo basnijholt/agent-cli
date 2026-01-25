@@ -20,13 +20,13 @@ console = Console()
 err_console = Console(stderr=True)
 logger = logging.getLogger(__name__)
 
-# Check for optional dependencies
-HAS_UVICORN = find_spec("uvicorn") is not None
-HAS_FASTAPI = find_spec("fastapi") is not None
-HAS_FASTER_WHISPER = find_spec("faster_whisper") is not None
-HAS_MLX_WHISPER = find_spec("mlx_whisper") is not None
-HAS_PIPER = find_spec("piper") is not None
-HAS_KOKORO = find_spec("kokoro") is not None
+# Check for optional dependencies at call time (not module load time)
+# This is important because auto-install may install packages after the module is loaded
+
+
+def _has(package: str) -> bool:
+    return find_spec(package) is not None
+
 
 app = typer.Typer(
     name="server",
@@ -48,7 +48,7 @@ def server_callback(ctx: typer.Context) -> None:
 
 def _check_server_deps() -> None:
     """Check that server dependencies are available."""
-    if not HAS_UVICORN or not HAS_FASTAPI:
+    if not _has("uvicorn") or not _has("fastapi"):
         err_console.print(
             "[bold red]Error:[/bold red] Server dependencies not installed. "
             "Run: [cyan]pip install agent-cli\\[server][/cyan] "
@@ -62,7 +62,7 @@ def _check_tts_deps(backend: str = "auto") -> None:
     _check_server_deps()
 
     if backend == "kokoro":
-        if not HAS_KOKORO:
+        if not _has("kokoro"):
             err_console.print(
                 "[bold red]Error:[/bold red] Kokoro backend requires kokoro. "
                 "Run: [cyan]pip install agent-cli\\[tts-kokoro][/cyan] "
@@ -72,7 +72,7 @@ def _check_tts_deps(backend: str = "auto") -> None:
         return
 
     if backend == "piper":
-        if not HAS_PIPER:
+        if not _has("piper"):
             err_console.print(
                 "[bold red]Error:[/bold red] Piper backend requires piper-tts. "
                 "Run: [cyan]pip install agent-cli\\[tts][/cyan] "
@@ -82,7 +82,7 @@ def _check_tts_deps(backend: str = "auto") -> None:
         return
 
     # For auto, check if either is available
-    if not HAS_PIPER and not HAS_KOKORO:
+    if not _has("piper") and not _has("kokoro"):
         err_console.print(
             "[bold red]Error:[/bold red] No TTS backend available. "
             "Run: [cyan]pip install agent-cli\\[tts][/cyan] for Piper "
@@ -136,7 +136,7 @@ def _check_whisper_deps(backend: str, *, download_only: bool = False) -> None:
     """Check that Whisper dependencies are available."""
     _check_server_deps()
     if download_only:
-        if not HAS_FASTER_WHISPER:
+        if not _has("faster_whisper"):
             err_console.print(
                 "[bold red]Error:[/bold red] faster-whisper is required for --download-only. "
                 "Run: [cyan]pip install agent-cli\\[whisper][/cyan] "
@@ -146,7 +146,7 @@ def _check_whisper_deps(backend: str, *, download_only: bool = False) -> None:
         return
 
     if backend == "mlx":
-        if not HAS_MLX_WHISPER:
+        if not _has("mlx_whisper"):
             err_console.print(
                 "[bold red]Error:[/bold red] MLX Whisper backend requires mlx-whisper. "
                 "Run: [cyan]pip install mlx-whisper[/cyan]",
@@ -154,7 +154,7 @@ def _check_whisper_deps(backend: str, *, download_only: bool = False) -> None:
             raise typer.Exit(1)
         return
 
-    if not HAS_FASTER_WHISPER:
+    if not _has("faster_whisper"):
         err_console.print(
             "[bold red]Error:[/bold red] Whisper dependencies not installed. "
             "Run: [cyan]pip install agent-cli\\[whisper][/cyan] "
