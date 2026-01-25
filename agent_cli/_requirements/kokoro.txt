@@ -291,6 +291,7 @@ rich==14.2.0
     #   agent-cli
     #   rich-toolkit
     #   typer
+    #   typer-slim
 rich-toolkit==0.17.1
     # via
     #   fastapi-cli
@@ -315,7 +316,9 @@ setuptools==80.9.0
     #   thinc
     #   torch
 shellingham==1.5.4
-    # via typer
+    # via
+    #   typer
+    #   typer-slim
 six==1.17.0
     # via python-dateutil
 smart-open==7.5.0
@@ -364,11 +367,11 @@ triton==3.5.1 ; platform_machine == 'x86_64' and sys_platform == 'linux'
     # via torch
 typer==0.21.1
     # via
-    #   agent-cli
     #   fastapi-cli
     #   fastapi-cloud-cli
 typer-slim==0.21.1
     # via
+    #   agent-cli
     #   spacy
     #   weasel
 typing-extensions==4.15.0

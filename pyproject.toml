@@ -12,7 +12,7 @@ dependencies = [
     "pydantic",  # Required for config.py models
     "rich",
     "pyperclip",
-    "typer",
+    "typer-slim[standard]",
     "dotenv",
     "httpx",
     "psutil; sys_platform == 'win32'",
