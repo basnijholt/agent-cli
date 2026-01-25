@@ -6,6 +6,7 @@ import asyncio
 import logging
 import tempfile
 from concurrent.futures import ProcessPoolExecutor
+from dataclasses import dataclass
 from multiprocessing import get_context
 from pathlib import Path
 from typing import Any, Literal
@@ -17,6 +18,24 @@ from agent_cli.server.whisper.backends.base import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+# --- Subprocess state (only used within subprocess worker) ---
+# This state persists across function calls within the subprocess because:
+# 1. Model loading is expensive and must be reused across transcription calls
+# 2. CTranslate2 models cannot be pickled/passed through IPC queues
+# 3. The subprocess is long-lived (ProcessPoolExecutor reuses workers)
+
+
+@dataclass
+class _SubprocessState:
+    """Container for subprocess-local state. Not shared with main process."""
+
+    model: Any = None
+    device: str | None = None
+
+
+_state = _SubprocessState()
 
 
 # --- Subprocess worker functions (run in isolated process) ---
@@ -40,28 +59,22 @@ def _load_model_in_subprocess(
         cpu_threads=cpu_threads,
         download_root=download_root,
     )
-    return str(model.model.device)
+
+    # Store in subprocess state for reuse across transcription calls
+    _state.model = model
+    _state.device = str(model.model.device)
+
+    return _state.device
 
 
 def _transcribe_in_subprocess(
-    model_name: str,
-    device: str,
-    compute_type: str,
-    cpu_threads: int,
-    download_root: str | None,
     audio_bytes: bytes,
     kwargs: dict[str, Any],
 ) -> dict[str, Any]:
-    """Run transcription in subprocess. Model is loaded fresh each call."""
-    from faster_whisper import WhisperModel  # noqa: PLC0415
-
-    model = WhisperModel(
-        model_name,
-        device=device,
-        compute_type=compute_type,
-        cpu_threads=cpu_threads,
-        download_root=download_root,
-    )
+    """Run transcription in subprocess. Reuses model from _state."""
+    if _state.model is None:
+        msg = "Model not loaded in subprocess. Call _load_model_in_subprocess first."
+        raise RuntimeError(msg)
 
     # Write audio to temp file - faster-whisper needs a file path
     with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
@@ -69,7 +82,7 @@ def _transcribe_in_subprocess(
         tmp_path = tmp.name
 
     try:
-        segments, info = model.transcribe(tmp_path, **kwargs)
+        segments, info = _state.model.transcribe(tmp_path, **kwargs)
         segment_list = list(segments)  # Consume lazy generator
     finally:
         Path(tmp_path).unlink(missing_ok=True)
@@ -195,16 +208,10 @@ class FasterWhisperBackend:
             "word_timestamps": word_timestamps,
         }
 
-        download_root = str(self._config.cache_dir) if self._config.cache_dir else None
         loop = asyncio.get_running_loop()
         result = await loop.run_in_executor(
             self._executor,
             _transcribe_in_subprocess,
-            self._config.model_name,
-            self._config.device,
-            self._config.compute_type,
-            self._config.cpu_threads,
-            download_root,
             audio,
             kwargs,
         )
