@@ -102,6 +102,16 @@ def _load_model_in_subprocess(
     else:
         load_kwargs["device_map"] = "cpu"
 
+    # Use Flash Attention 2 if available (10% speedup, requires flash-attn package)
+    if device == "cuda":
+        try:
+            import flash_attn  # noqa: F401, PLC0415
+
+            load_kwargs["attn_implementation"] = "flash_attention_2"
+            logger.info("Flash Attention 2 enabled")
+        except ImportError:
+            logger.info("flash-attn not installed, using default attention")
+
     # Load model
     model = Qwen3TTSModel.from_pretrained(model_name, cache_dir=cache_dir, **load_kwargs)
 
