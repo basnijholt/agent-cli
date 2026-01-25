@@ -334,6 +334,20 @@ class TestBackendFactory:
             )
             assert backend.__class__.__name__ == "KokoroBackend"
 
+    def test_create_qwen_backend(self) -> None:
+        """Test creating a Qwen backend."""
+        from agent_cli.server.tts.backends import BackendConfig, create_backend  # noqa: PLC0415
+
+        with patch(
+            "agent_cli.server.tts.backends.qwen.QwenBackend.__init__",
+            return_value=None,
+        ):
+            backend = create_backend(
+                BackendConfig(model_name="qwen"),
+                backend_type="qwen",
+            )
+            assert backend.__class__.__name__ == "QwenBackend"
+
     def test_create_unknown_backend_raises(self) -> None:
         """Test that unknown backend type raises ValueError."""
         from agent_cli.server.tts.backends import BackendConfig, create_backend  # noqa: PLC0415
@@ -453,6 +467,70 @@ class TestKokoroBackend:
             _resolve_voice_path(None, tmp_path)
 
         mock_ensure.assert_called_once_with(DEFAULT_VOICE, tmp_path)
+
+
+class TestQwenBackend:
+    """Tests for the Qwen TTS backend."""
+
+    def test_default_voice(self) -> None:
+        """Test default voice is set correctly."""
+        from agent_cli.server.tts.backends.qwen import DEFAULT_VOICE  # noqa: PLC0415
+
+        assert DEFAULT_VOICE == "Vivian"
+
+    def test_default_model(self) -> None:
+        """Test default Qwen model constant."""
+        from agent_cli.server.tts.backends.qwen import DEFAULT_QWEN_MODEL  # noqa: PLC0415
+
+        assert DEFAULT_QWEN_MODEL == "Qwen/Qwen3-TTS-12Hz-1.7B-CustomVoice"
+
+    def test_backend_init(self) -> None:
+        """Test QwenBackend initialization."""
+        from agent_cli.server.tts.backends import BackendConfig  # noqa: PLC0415
+        from agent_cli.server.tts.backends.qwen import QwenBackend  # noqa: PLC0415
+
+        config = BackendConfig(model_name="qwen", cache_dir=Path("/tmp/test"))  # noqa: S108
+        backend = QwenBackend(config)
+
+        assert backend.is_loaded is False
+        assert backend.device is None
+        assert backend._cache_dir == Path("/tmp/test")  # noqa: S108
+
+    def test_backend_init_with_default_model(self) -> None:
+        """Test QwenBackend uses default model when 'qwen' is specified."""
+        from agent_cli.server.tts.backends import BackendConfig  # noqa: PLC0415
+        from agent_cli.server.tts.backends.qwen import (  # noqa: PLC0415
+            DEFAULT_QWEN_MODEL,
+            QwenBackend,
+        )
+
+        config = BackendConfig(model_name="qwen")
+        backend = QwenBackend(config)
+
+        assert backend._model_name == DEFAULT_QWEN_MODEL
+
+    def test_voice_mapping(self) -> None:
+        """Test OpenAI voice names are mapped to Qwen voices."""
+        from agent_cli.server.tts.backends.qwen import VOICE_MAP  # noqa: PLC0415
+
+        # Check OpenAI-compatible names are mapped
+        assert VOICE_MAP["alloy"] == "Vivian"
+        assert VOICE_MAP["echo"] == "Ryan"
+        assert VOICE_MAP["nova"] == "Dylan"
+
+        # Check direct Qwen names work (lowercase)
+        assert VOICE_MAP["vivian"] == "Vivian"
+        assert VOICE_MAP["ryan"] == "Ryan"
+
+    def test_streaming_not_supported(self) -> None:
+        """Test that Qwen backend does not support streaming."""
+        from agent_cli.server.tts.backends import BackendConfig  # noqa: PLC0415
+        from agent_cli.server.tts.backends.qwen import QwenBackend  # noqa: PLC0415
+
+        config = BackendConfig(model_name="qwen")
+        backend = QwenBackend(config)
+
+        assert backend.supports_streaming is False
 
 
 class TestTTSAPI:

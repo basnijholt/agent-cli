@@ -16,7 +16,7 @@ from agent_cli.server.tts.backends.base import (
 
 logger = logging.getLogger(__name__)
 
-BackendType = Literal["piper", "kokoro", "auto"]
+BackendType = Literal["piper", "kokoro", "qwen", "auto"]
 
 
 def detect_backend() -> Literal["piper", "kokoro"]:
@@ -68,6 +68,11 @@ def create_backend(
         from agent_cli.server.tts.backends.kokoro import KokoroBackend  # noqa: PLC0415
 
         return KokoroBackend(config)
+
+    if backend_type == "qwen":
+        from agent_cli.server.tts.backends.qwen import QwenBackend  # noqa: PLC0415
+
+        return QwenBackend(config)
 
     msg = f"Unknown backend type: {backend_type}"
     raise ValueError(msg)

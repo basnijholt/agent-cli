@@ -39,6 +39,7 @@ Available extras:
 | `speed` | Audio speed adjustment (audiostretchy) |
 | `piper` | Local Piper TTS |
 | `kokoro` | Kokoro neural TTS |
+| `qwen-tts` | Qwen3-TTS backend (multilingual) |
 | `vad` | Voice Activity Detection (silero-vad) |
 | `faster-whisper` | Whisper ASR (CUDA/CPU) |
 | `mlx-whisper` | Whisper ASR (Apple Silicon) |

@@ -4,10 +4,11 @@ icon: lucide/volume-2
 
 # tts
 
-Run a local TTS (Text-to-Speech) server with two backend options:
+Run a local TTS (Text-to-Speech) server with three backend options:
 
 - **[Kokoro](https://huggingface.co/hexgrad/Kokoro-82M)** - High-quality neural TTS with GPU acceleration (CUDA/MPS/CPU)
 - **[Piper](https://github.com/rhasspy/piper)** - Fast, CPU-friendly ONNX-based synthesis
+- **[Qwen3-TTS](https://github.com/QwenLM/Qwen3-TTS)** - Multilingual neural TTS with 10+ languages (GPU recommended)
 
 > [!NOTE]
 > **Quick Start with Kokoro** (GPU-accelerated, auto-downloads from HuggingFace):
@@ -22,6 +23,12 @@ Run a local TTS (Text-to-Speech) server with two backend options:
 > agent-cli server tts --backend piper
 > ```
 >
+> **Quick Start with Qwen3-TTS** (multilingual, GPU-accelerated):
+> ```bash
+> pip install "agent-cli[qwen-tts]"
+> agent-cli server tts --backend qwen
+> ```
+>
 > Server runs at `http://localhost:10201`. Verify with `curl http://localhost:10201/health`.
 
 ## Features
@@ -29,7 +36,7 @@ Run a local TTS (Text-to-Speech) server with two backend options:
 - **OpenAI-compatible API** at `/v1/audio/speech` - drop-in replacement for OpenAI's TTS API
 - **Wyoming protocol** for [Home Assistant](https://www.home-assistant.io/) voice integration
 - **TTL-based memory management** - models unload after idle period
-- **Multiple backends** - Kokoro (GPU) or Piper (CPU)
+- **Multiple backends** - Kokoro (GPU), Piper (CPU), or Qwen3-TTS (multilingual GPU)
 - **Auto-download** - Models and voices download automatically on first use
 - **Multiple voices** - Run different voices with independent TTLs
 
@@ -47,6 +54,9 @@ agent-cli server tts --backend kokoro
 
 # Run with Piper (CPU-friendly)
 agent-cli server tts --backend piper
+
+# Run with Qwen3-TTS (multilingual, GPU-accelerated)
+agent-cli server tts --backend qwen
 
 # Piper with specific voice and 10-minute TTL
 agent-cli server tts --backend piper --model en_US-ryan-high --ttl 600
@@ -82,7 +92,7 @@ agent-cli server tts --preload
 | `--no-wyoming` | `false` | Disable Wyoming server |
 | `--download-only` | `false` | Download model(s) and exit without starting server |
 | `--log-level` | `info` | Logging level: debug, info, warning, error |
-| `--backend` | `auto` | Backend: auto, piper, kokoro |
+| `--backend` | `auto` | Backend: auto, piper, kokoro, qwen |
 
 
 <!-- OUTPUT:END -->
@@ -223,6 +233,26 @@ With Piper, the **model name IS the voice**. Use `--model` to specify.
 
 Browse all voices at [rhasspy/piper](https://github.com/rhasspy/piper?tab=readme-ov-file#voices).
 
+### Qwen3-TTS Voices
+
+Qwen voices are specified per-request via the API `voice` parameter. The model auto-downloads from HuggingFace on first use (~4GB).
+
+| Voice | Gender | Description |
+|-------|--------|-------------|
+| `Vivian` | Female | Default voice (clear, natural) |
+| `Serena` | Female | Warm and friendly |
+| `Ryan` | Male | Professional narrator |
+| `Dylan` | Male | Casual conversational |
+| `Eric` | Male | Clear and articulate |
+| `Aiden` | Male | Young adult |
+| `Ono_Anna` | Female | Japanese-accented English |
+| `Sohee` | Female | Korean-accented English |
+| `Uncle_Fu` | Male | Older, authoritative |
+
+OpenAI-compatible voice names (`alloy`, `echo`, `fable`, `onyx`, `nova`, `shimmer`) are automatically mapped to Qwen voices.
+
+**Supported Languages**: English, Chinese, Japanese, Korean, German, French, Spanish, Russian, Portuguese, Italian (use "Auto" for automatic detection).
+
 ## Installation
 
 ### Kokoro (GPU-accelerated)
@@ -244,3 +274,13 @@ pip install "agent-cli[piper]"
 # or
 uv sync --extra piper
 ```
+
+### Qwen3-TTS (Multilingual GPU)
+
+```bash
+pip install "agent-cli[qwen-tts]"
+# or
+uv sync --extra qwen-tts
+```
+
+Qwen3-TTS requires PyTorch and works best with CUDA. The model is ~3GB and auto-downloads from HuggingFace on first use.
