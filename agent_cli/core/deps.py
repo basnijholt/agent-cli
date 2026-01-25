@@ -142,7 +142,7 @@ def _try_auto_install(missing: list[str]) -> bool:
     console.print(
         f"[yellow]Auto-installing missing extras: {', '.join(extras_to_install)}[/]",
     )
-    return install_extras_programmatic(extras_to_install)
+    return install_extras_programmatic(extras_to_install, quiet=True)
 
 
 def _check_and_install_extras(extras: tuple[str, ...]) -> list[str]:

@@ -141,7 +141,7 @@ class TestTryAutoInstall:
         ) as mock_install:
             result = _try_auto_install(["audio", "piper|kokoro"])
             assert result is True
-            mock_install.assert_called_once_with(["audio", "piper"])
+            mock_install.assert_called_once_with(["audio", "piper"], quiet=True)
 
     def test_returns_install_result(self) -> None:
         """Should return the result from install_extras_programmatic."""

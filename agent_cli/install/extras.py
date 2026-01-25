@@ -60,13 +60,15 @@ def _get_current_uv_tool_extras() -> list[str]:
     return []
 
 
-def _install_via_uv_tool(extras: list[str]) -> bool:
+def _install_via_uv_tool(extras: list[str], *, quiet: bool = False) -> bool:
     """Reinstall agent-cli via uv tool with the specified extras."""
     current_version = get_version("agent-cli").split("+")[0]  # Strip local version
     extras_str = ",".join(extras)
     package_spec = f"agent-cli[{extras_str}]=={current_version}"
     python_version = f"{sys.version_info.major}.{sys.version_info.minor}"
     cmd = ["uv", "tool", "install", package_spec, "--force", "--python", python_version]
+    if quiet:
+        cmd.append("-q")
     console.print(f"Running: [cyan]{' '.join(cmd)}[/]")
     result = subprocess.run(cmd, check=False)
     return result.returncode == 0
@@ -93,7 +95,7 @@ def _install_extras_impl(extras: list[str], *, quiet: bool = False) -> bool:
     if _is_uv_tool_install():
         current_extras = _get_current_uv_tool_extras()
         new_extras = sorted(set(current_extras) | set(extras))
-        return _install_via_uv_tool(new_extras)
+        return _install_via_uv_tool(new_extras, quiet=quiet)
 
     cmd = _install_cmd()
     for extra in extras:
