@@ -51,21 +51,6 @@ VOICE_MAP = {
     "sohee": "Sohee",
 }
 
-# Supported languages
-SUPPORTED_LANGUAGES = [
-    "Auto",
-    "English",
-    "Chinese",
-    "Japanese",
-    "Korean",
-    "German",
-    "French",
-    "Spanish",
-    "Russian",
-    "Portuguese",
-    "Italian",
-]
-
 
 # --- Subprocess state (only used within subprocess worker) ---
 
@@ -88,7 +73,7 @@ _state = _SubprocessState()
 def _load_model_in_subprocess(
     model_name: str,
     device: str,
-    cache_dir: str,  # noqa: ARG001 - kept for API consistency with other backends
+    cache_dir: str,
 ) -> str:
     """Load Qwen3-TTS model in subprocess. Returns actual device string."""
     import torch  # noqa: PLC0415
@@ -113,18 +98,14 @@ def _load_model_in_subprocess(
     # Add device_map for CUDA
     if device == "cuda":
         load_kwargs["device_map"] = "cuda:0"
-        # Try to use Flash Attention 2 if available
-        try:
-            load_kwargs["attn_implementation"] = "flash_attention_2"
-        except Exception:
-            logger.debug("Flash Attention 2 not available, using default attention")
+        load_kwargs["attn_implementation"] = "flash_attention_2"
     elif device == "mps":
         load_kwargs["device_map"] = "mps"
     else:
         load_kwargs["device_map"] = "cpu"
 
     # Load model
-    model = Qwen3TTSModel.from_pretrained(model_name, **load_kwargs)
+    model = Qwen3TTSModel.from_pretrained(model_name, cache_dir=cache_dir, **load_kwargs)
 
     # Store in subprocess state for reuse
     _state.model = model

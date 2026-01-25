@@ -522,15 +522,6 @@ class TestQwenBackend:
         assert VOICE_MAP["vivian"] == "Vivian"
         assert VOICE_MAP["ryan"] == "Ryan"
 
-    def test_supported_languages(self) -> None:
-        """Test supported languages list."""
-        from agent_cli.server.tts.backends.qwen import SUPPORTED_LANGUAGES  # noqa: PLC0415
-
-        assert "Auto" in SUPPORTED_LANGUAGES
-        assert "English" in SUPPORTED_LANGUAGES
-        assert "Chinese" in SUPPORTED_LANGUAGES
-        assert "Japanese" in SUPPORTED_LANGUAGES
-
     def test_streaming_not_supported(self) -> None:
         """Test that Qwen backend does not support streaming."""
         from agent_cli.server.tts.backends import BackendConfig  # noqa: PLC0415
