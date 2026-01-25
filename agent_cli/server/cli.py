@@ -142,7 +142,7 @@ def _download_tts_models(
         download_dir = cache_dir or get_backend_cache_dir("qwen-tts")
         model_name = models[0] if models and models[0] != "qwen" else DEFAULT_QWEN_MODEL
         console.print(f"[bold]Downloading Qwen3-TTS model: {model_name}...[/bold]")
-        console.print("  This may take a while (model is ~3GB)")
+        console.print("  This may take a while (model is ~4GB)")
         snapshot_download(repo_id=model_name, cache_dir=download_dir)
         console.print("[bold green]Download complete![/bold green]")
         return

@@ -235,7 +235,7 @@ Browse all voices at [rhasspy/piper](https://github.com/rhasspy/piper?tab=readme
 
 ### Qwen3-TTS Voices
 
-Qwen voices are specified per-request via the API `voice` parameter. The model auto-downloads from HuggingFace on first use (~3GB).
+Qwen voices are specified per-request via the API `voice` parameter. The model auto-downloads from HuggingFace on first use (~4GB).
 
 | Voice | Gender | Description |
 |-------|--------|-------------|
