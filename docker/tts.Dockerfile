@@ -40,7 +40,7 @@ WORKDIR /app
 # Install from lock file for reproducible builds
 COPY pyproject.toml uv.lock ./
 ENV UV_PYTHON=3.13
-RUN uv sync --frozen --no-dev --extra tts-kokoro --no-install-project && \
+RUN uv sync --frozen --no-dev --extra kokoro --no-install-project && \
     ln -s /app/.venv/bin/agent-cli /usr/local/bin/agent-cli && \
     /app/.venv/bin/python -m spacy download en_core_web_sm
 
@@ -100,7 +100,7 @@ WORKDIR /app
 
 # Install from lock file for reproducible builds
 COPY pyproject.toml uv.lock ./
-RUN uv sync --frozen --no-dev --extra tts --no-install-project && \
+RUN uv sync --frozen --no-dev --extra piper --no-install-project && \
     ln -s /app/.venv/bin/agent-cli /usr/local/bin/agent-cli
 
 # Create cache directory for models
