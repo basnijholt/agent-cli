@@ -44,30 +44,6 @@ For longer prompts (recommended for multi-line or complex instructions):
 agent-cli dev new <branch-name> --agent --prompt-file path/to/prompt.md
 ```
 
-### IMPORTANT: Using --from for branch-based work
-
-**When reviewing, testing, or working on an existing branch, you MUST use `--from` to base the worktree off that branch:**
-
-```bash
-# Review the current branch (use HEAD or the branch name)
-agent-cli dev new review-feature --from HEAD --agent --prompt "Review the code changes..."
-
-# Create a worktree based on a specific branch
-agent-cli dev new test-feature --from feature-branch --agent --prompt "Test the changes..."
-```
-
-**Without `--from`, the worktree starts from `origin/main` and won't have the changes you want to review/test!**
-
-Use `--from` when:
-- Reviewing code on the current branch
-- Testing changes from an existing feature branch
-- Continuing work on an existing branch in a new worktree
-- Any task that needs access to uncommitted or branch-specific changes
-
-Default behavior (no `--from`) is only appropriate for:
-- Starting completely new, independent features
-- Work that should begin from a clean main branch state
-
 This creates:
 1. A new git worktree with its own branch
 2. Runs project setup (installs dependencies)
@@ -153,7 +129,7 @@ Each agent works independently in its own branch. Results can be reviewed and me
 | `--agent` / `-a` | Start AI coding agent after creation |
 | `--prompt` / `-p` | Initial prompt for the agent (short prompts only) |
 | `--prompt-file` / `-P` | Read prompt from file (recommended for longer prompts) |
-| `--from` / `-f` | Base branch (default: origin/main) |
+| `--from` / `-f` | Base ref (default: origin/main). **Use `--from HEAD` when reviewing/testing current branch!** |
 | `--with-agent` | Specific agent: claude, aider, codex, gemini |
 | `--agent-args` | Extra arguments for the agent |
 
