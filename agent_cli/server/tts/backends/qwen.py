@@ -29,9 +29,6 @@ DEFAULT_QWEN_MODEL = "Qwen/Qwen3-TTS-12Hz-1.7B-CustomVoice"
 # Default voice if none specified
 DEFAULT_VOICE = "Vivian"
 
-# Qwen3-TTS sample rate (24kHz like Kokoro)
-QWEN_SAMPLE_RATE = 24000
-
 # Voice name mapping: OpenAI-style names -> Qwen speaker names
 # Qwen supports: Vivian, Serena, Uncle_Fu, Dylan, Eric, Ryan, Aiden, Ono_Anna, Sohee
 VOICE_MAP = {

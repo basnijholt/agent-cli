@@ -506,7 +506,7 @@ def transcription_proxy_cmd(
 
 
 @app.command("tts")
-@requires_extras("server", "piper|kokoro")
+@requires_extras("server", "piper|kokoro|qwen-tts")
 def tts_cmd(  # noqa: PLR0912, PLR0915
     model: Annotated[
         list[str] | None,
