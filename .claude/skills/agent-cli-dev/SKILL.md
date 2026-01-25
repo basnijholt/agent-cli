@@ -34,14 +34,19 @@ Do NOT spawn when:
 
 ## Core command
 
-For short prompts:
+For new features (starts from origin/main):
 ```bash
-agent-cli dev new <branch-name> --agent --prompt "Fix the login bug"
+agent-cli dev new <branch-name> --agent --prompt "Implement the new feature..."
+```
+
+For work on current branch (review, test, fix) - use `--from HEAD`:
+```bash
+agent-cli dev new <branch-name> --from HEAD --agent --prompt "Review/test/fix..."
 ```
 
 For longer prompts (recommended for multi-line or complex instructions):
 ```bash
-agent-cli dev new <branch-name> --agent --prompt-file path/to/prompt.md
+agent-cli dev new <branch-name> --from HEAD --agent --prompt-file path/to/prompt.md
 ```
 
 This creates:
