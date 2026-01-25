@@ -6,6 +6,7 @@ import shutil
 import subprocess
 import sys
 import tomllib
+from importlib.metadata import version as get_version
 from pathlib import Path
 from typing import Annotated
 
@@ -61,8 +62,9 @@ def _get_current_uv_tool_extras() -> list[str]:
 
 def _install_via_uv_tool(extras: list[str]) -> bool:
     """Reinstall agent-cli via uv tool with the specified extras."""
+    current_version = get_version("agent-cli").split("+")[0]  # Strip local version
     extras_str = ",".join(extras)
-    package_spec = f"agent-cli[{extras_str}]"
+    package_spec = f"agent-cli[{extras_str}]=={current_version}"
     python_version = f"{sys.version_info.major}.{sys.version_info.minor}"
     console.print(f"Reinstalling via uv tool: [cyan]{package_spec}[/] (Python {python_version})")
     cmd = ["uv", "tool", "install", package_spec, "--force", "--python", python_version]
