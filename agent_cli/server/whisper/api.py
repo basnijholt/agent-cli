@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import contextlib
 import io
 import logging
@@ -16,6 +17,8 @@ from agent_cli.server.common import configure_app, create_lifespan, setup_wav_fi
 from agent_cli.server.whisper.backends.base import InvalidAudioError
 
 if TYPE_CHECKING:
+    from collections.abc import AsyncIterator
+
     from agent_cli.server.whisper.model_registry import WhisperModelRegistry
 
 logger = logging.getLogger(__name__)
@@ -311,6 +314,150 @@ def create_app(  # noqa: C901, PLR0915
 
     # --- WebSocket Streaming Endpoint ---
 
+    async def _create_audio_chunk_generator(
+        audio_queue: asyncio.Queue[bytes | None],
+    ) -> AsyncIterator[bytes]:
+        """Generate audio chunks from an async queue."""
+        while True:
+            chunk = await audio_queue.get()
+            if chunk is None:  # End of stream signal
+                break
+            yield chunk
+
+    async def _receive_audio_chunks(
+        websocket: WebSocket,
+        audio_queue: asyncio.Queue[bytes | None],
+    ) -> tuple[bool, bytes | None]:
+        """Receive audio chunks from WebSocket and push to queue.
+
+        Returns (success, full_audio_data) tuple. full_audio_data is only
+        populated when falling back to buffered mode.
+        """
+        eos_marker = b"EOS"
+        eos_len = len(eos_marker)
+        all_chunks: list[bytes] = []
+
+        try:
+            while True:
+                data = await websocket.receive_bytes()
+
+                # Check for end of stream
+                if data == eos_marker:
+                    await audio_queue.put(None)  # Signal end
+                    break
+                if data[-eos_len:] == eos_marker:
+                    # Handle data before EOS marker
+                    if len(data) > eos_len:
+                        chunk = data[:-eos_len]
+                        all_chunks.append(chunk)
+                        await audio_queue.put(chunk)
+                    await audio_queue.put(None)  # Signal end
+                    break
+
+                all_chunks.append(data)
+                await audio_queue.put(data)
+
+            return True, b"".join(all_chunks) if all_chunks else None
+        except Exception:
+            await audio_queue.put(None)  # Signal end on error
+            raise
+
+    async def _handle_streaming_transcription(
+        websocket: WebSocket,
+        manager: Any,
+        language: str | None,
+    ) -> None:
+        """Handle streaming transcription using the backend's streaming support."""
+        audio_queue: asyncio.Queue[bytes | None] = asyncio.Queue()
+
+        # Start receiving audio in background
+        receive_task = asyncio.create_task(
+            _receive_audio_chunks(websocket, audio_queue),
+        )
+
+        try:
+            # Stream transcription results
+            async for result in manager.transcribe_stream(
+                _create_audio_chunk_generator(audio_queue),
+                language=language,
+                task="transcribe",
+            ):
+                msg_type = "final" if result.is_final else "partial"
+                await websocket.send_json(
+                    {
+                        "type": msg_type,
+                        "text": result.text,
+                        "is_final": result.is_final,
+                        "language": result.language,
+                        "segment_start": result.segment_start,
+                        "segment_end": result.segment_end,
+                    },
+                )
+        finally:
+            # Ensure receive task completes
+            receive_task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await receive_task
+
+    async def _handle_buffered_transcription(
+        websocket: WebSocket,
+        manager: Any,
+        language: str | None,
+    ) -> None:
+        """Handle buffered transcription (fallback when streaming not supported)."""
+        audio_buffer = io.BytesIO()
+        wav_file: wave.Wave_write | None = None
+        eos_marker = b"EOS"
+        eos_len = len(eos_marker)
+
+        while True:
+            data = await websocket.receive_bytes()
+
+            # Initialize WAV file on first chunk
+            if wav_file is None:
+                wav_file = wave.open(audio_buffer, "wb")  # noqa: SIM115
+                setup_wav_file(wav_file)
+
+            # Check for end of stream
+            if data == eos_marker:
+                break
+            if data[-eos_len:] == eos_marker:
+                if len(data) > eos_len:
+                    wav_file.writeframes(data[:-eos_len])
+                break
+
+            wav_file.writeframes(data)
+
+        # Close WAV file
+        if wav_file is not None:
+            wav_file.close()
+
+        # Get audio data
+        audio_buffer.seek(0)
+        audio_data = audio_buffer.read()
+
+        if not audio_data:
+            await websocket.send_json({"type": "error", "message": "No audio received"})
+            return
+
+        # Transcribe
+        result = await manager.transcribe(
+            audio_data,
+            language=language,
+            task="transcribe",
+        )
+
+        await websocket.send_json(
+            {
+                "type": "final",
+                "text": result.text,
+                "is_final": True,
+                "language": result.language,
+                "duration": result.duration,
+                "segments": result.segments,
+            },
+        )
+
     @app.websocket("/v1/audio/transcriptions/stream")
     async def stream_transcription(
         websocket: WebSocket,
@@ -328,6 +475,10 @@ def create_app(  # noqa: C901, PLR0915
         {"type": "partial", "text": "...", "is_final": false}
         {"type": "final", "text": "...", "is_final": true, "segments": [...]}
         {"type": "error", "message": "..."}
+
+        Streaming behavior:
+        - If backend supports streaming: sends partial results as audio is processed
+        - Otherwise: buffers all audio and sends final result at end
         """
         await websocket.accept()
 
@@ -340,69 +491,17 @@ def create_app(  # noqa: C901, PLR0915
             await websocket.close()
             return
 
-        # Collect audio data
-        audio_buffer = io.BytesIO()
-        wav_file: wave.Wave_write | None = None
-
         try:
-            while True:
-                data = await websocket.receive_bytes()
-
-                # Initialize WAV file on first chunk (before EOS check)
-                if wav_file is None:
-                    wav_file = wave.open(audio_buffer, "wb")  # noqa: SIM115
-                    setup_wav_file(wav_file)
-
-                # Check for end of stream (EOS marker)
-                eos_marker = b"EOS"
-                eos_len = len(eos_marker)
-                if data == eos_marker:
-                    break
-                if data[-eos_len:] == eos_marker:
-                    # Write remaining data before EOS marker
-                    if len(data) > eos_len:
-                        wav_file.writeframes(data[:-eos_len])
-                    break
-
-                wav_file.writeframes(data)
-
-            # Close WAV file
-            if wav_file is not None:
-                wav_file.close()
-
-            # Get audio data
-            audio_buffer.seek(0)
-            audio_data = audio_buffer.read()
-
-            if not audio_data:
-                await websocket.send_json({"type": "error", "message": "No audio received"})
-                await websocket.close()
-                return
-
-            # Transcribe
-            try:
-                result = await manager.transcribe(
-                    audio_data,
-                    language=language,
-                    task="transcribe",
-                )
-
-                await websocket.send_json(
-                    {
-                        "type": "final",
-                        "text": result.text,
-                        "is_final": True,
-                        "language": result.language,
-                        "duration": result.duration,
-                        "segments": result.segments,
-                    },
-                )
-
-            except Exception as e:
-                await websocket.send_json({"type": "error", "message": str(e)})
+            # Check if streaming is supported (can check before loading model)
+            if manager.supports_streaming:
+                logger.debug("Using streaming transcription mode")
+                await _handle_streaming_transcription(websocket, manager, language)
+            else:
+                logger.debug("Using buffered transcription mode (streaming not supported)")
+                await _handle_buffered_transcription(websocket, manager, language)
 
         except Exception as e:
-            logger.exception("WebSocket error")
+            logger.exception("WebSocket transcription error")
             with contextlib.suppress(Exception):
                 await websocket.send_json({"type": "error", "message": str(e)})
 

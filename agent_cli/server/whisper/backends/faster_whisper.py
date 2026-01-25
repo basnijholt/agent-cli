@@ -9,13 +9,17 @@ from concurrent.futures import ProcessPoolExecutor
 from dataclasses import dataclass
 from multiprocessing import get_context
 from pathlib import Path
-from typing import Any, Literal
+from typing import TYPE_CHECKING, Any, Literal
 
 from agent_cli.core.process import set_process_title
 from agent_cli.server.whisper.backends.base import (
     BackendConfig,
+    PartialTranscriptionResult,
     TranscriptionResult,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import AsyncIterator
 
 logger = logging.getLogger(__name__)
 
@@ -223,3 +227,22 @@ class FasterWhisperBackend:
             duration=result["duration"],
             segments=result["segments"],
         )
+
+    @property
+    def supports_streaming(self) -> bool:
+        """Check if backend supports streaming transcription."""
+        return False
+
+    async def transcribe_stream(
+        self,
+        audio_chunks: AsyncIterator[bytes],  # noqa: ARG002
+        *,
+        language: str | None = None,  # noqa: ARG002
+        task: Literal["transcribe", "translate"] = "transcribe",  # noqa: ARG002
+        initial_prompt: str | None = None,  # noqa: ARG002
+    ) -> AsyncIterator[PartialTranscriptionResult]:
+        """Stream transcription - not supported by this backend."""
+        msg = "Streaming transcription not supported by faster-whisper backend"
+        raise NotImplementedError(msg)
+        # Yield statement to make this an async generator (never reached)
+        yield  # type: ignore[misc]

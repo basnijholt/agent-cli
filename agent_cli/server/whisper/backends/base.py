@@ -6,7 +6,19 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Literal, Protocol, runtime_checkable
 
 if TYPE_CHECKING:
+    from collections.abc import AsyncIterator
     from pathlib import Path
+
+
+@dataclass
+class PartialTranscriptionResult:
+    """Result of a partial (streaming) transcription."""
+
+    text: str
+    is_final: bool
+    language: str | None = None
+    segment_start: float | None = None
+    segment_end: float | None = None
 
 
 @dataclass
@@ -92,6 +104,35 @@ class WhisperBackend(Protocol):
 
         Returns:
             TranscriptionResult with text and metadata.
+
+        """
+        ...
+
+    @property
+    def supports_streaming(self) -> bool:
+        """Check if backend supports streaming transcription."""
+        return False
+
+    def transcribe_stream(
+        self,
+        audio_chunks: AsyncIterator[bytes],
+        *,
+        language: str | None = None,
+        task: Literal["transcribe", "translate"] = "transcribe",
+        initial_prompt: str | None = None,
+    ) -> AsyncIterator[PartialTranscriptionResult]:
+        """Stream transcription results as audio chunks arrive.
+
+        Implementations should be async generators (async def with yield).
+
+        Args:
+            audio_chunks: Async iterator of raw PCM audio chunks (16kHz, 16-bit, mono).
+            language: Language code or None for auto-detection.
+            task: "transcribe" or "translate" (to English).
+            initial_prompt: Optional prompt to guide transcription.
+
+        Yields:
+            PartialTranscriptionResult with partial or final text.
 
         """
         ...

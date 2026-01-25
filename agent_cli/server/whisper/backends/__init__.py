@@ -12,6 +12,7 @@ if TYPE_CHECKING:
 
 from agent_cli.server.whisper.backends.base import (
     BackendConfig,
+    PartialTranscriptionResult,
     TranscriptionResult,
 )
 
@@ -83,6 +84,7 @@ def create_backend(
 __all__ = [
     "BackendConfig",
     "BackendType",
+    "PartialTranscriptionResult",
     "TranscriptionResult",
     "create_backend",
     "detect_backend",

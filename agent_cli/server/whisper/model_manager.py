@@ -11,11 +11,14 @@ from agent_cli.server.model_manager import ModelConfig, ModelManager, ModelStats
 from agent_cli.server.whisper.backends import (
     BackendConfig,
     BackendType,
+    PartialTranscriptionResult,
     TranscriptionResult,
     create_backend,
 )
 
 if TYPE_CHECKING:
+    from collections.abc import AsyncIterator
+
     from agent_cli.server.whisper.backends.base import WhisperBackend
 
 logger = logging.getLogger(__name__)
@@ -155,3 +158,63 @@ class WhisperModelManager:
         )
 
         return result
+
+    @property
+    def supports_streaming(self) -> bool:
+        """Check if the backend supports streaming transcription."""
+        backend: WhisperBackend = self._manager.backend  # type: ignore[assignment]
+        return backend.supports_streaming
+
+    async def transcribe_stream(
+        self,
+        audio_chunks: AsyncIterator[bytes],
+        *,
+        language: str | None = None,
+        task: Literal["transcribe", "translate"] = "transcribe",
+        initial_prompt: str | None = None,
+    ) -> AsyncIterator[PartialTranscriptionResult]:
+        """Stream transcription results as audio chunks arrive.
+
+        Args:
+            audio_chunks: Async iterator of raw PCM audio chunks.
+            language: Language code or None for auto-detection.
+            task: "transcribe" or "translate".
+            initial_prompt: Optional prompt to guide transcription.
+
+        Yields:
+            PartialTranscriptionResult with partial or final text.
+
+        """
+        start_time = time.time()
+        result_count = 0
+
+        async with self._manager.request():
+            backend: WhisperBackend = self._manager.backend  # type: ignore[assignment]
+
+            if not backend.supports_streaming:
+                msg = "Backend does not support streaming"
+                raise RuntimeError(msg)
+
+            async for result in backend.transcribe_stream(
+                audio_chunks,
+                language=language,
+                task=task,
+                initial_prompt=initial_prompt,
+            ):
+                result_count += 1
+                yield result
+
+        transcription_duration = time.time() - start_time
+
+        # Update stats
+        stats = self._manager.stats
+        stats.total_requests += 1
+        stats.total_processing_seconds += transcription_duration
+        stats.extra["streaming_requests"] = stats.extra.get("streaming_requests", 0) + 1
+
+        logger.debug(
+            "Streamed transcription with %d results in %.2fs (model=%s)",
+            result_count,
+            transcription_duration,
+            self.config.model_name,
+        )

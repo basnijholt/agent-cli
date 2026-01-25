@@ -18,10 +18,13 @@ from agent_cli.core.process import set_process_title
 from agent_cli.server.whisper.backends.base import (
     BackendConfig,
     InvalidAudioError,
+    PartialTranscriptionResult,
     TranscriptionResult,
 )
 
 if TYPE_CHECKING:
+    from collections.abc import AsyncIterator
+
     import numpy as np
     from numpy.typing import NDArray
 
@@ -268,3 +271,22 @@ class MLXWhisperBackend:
                 for i, seg in enumerate(segments)
             ],
         )
+
+    @property
+    def supports_streaming(self) -> bool:
+        """Check if backend supports streaming transcription."""
+        return False
+
+    async def transcribe_stream(
+        self,
+        audio_chunks: AsyncIterator[bytes],  # noqa: ARG002
+        *,
+        language: str | None = None,  # noqa: ARG002
+        task: Literal["transcribe", "translate"] = "transcribe",  # noqa: ARG002
+        initial_prompt: str | None = None,  # noqa: ARG002
+    ) -> AsyncIterator[PartialTranscriptionResult]:
+        """Stream transcription - not supported by this backend."""
+        msg = "Streaming transcription not supported by MLX whisper backend"
+        raise NotImplementedError(msg)
+        # Yield statement to make this an async generator (never reached)
+        yield  # type: ignore[misc]
