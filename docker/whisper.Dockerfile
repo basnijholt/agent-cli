@@ -35,7 +35,7 @@ WORKDIR /app
 # Install from lock file for reproducible builds
 COPY pyproject.toml uv.lock ./
 ENV UV_PYTHON=3.13
-RUN uv sync --frozen --no-dev --extra whisper --no-install-project && \
+RUN uv sync --frozen --no-dev --extra server --extra faster-whisper --no-install-project && \
     ln -s /app/.venv/bin/agent-cli /usr/local/bin/agent-cli
 
 # Create cache directory for models
@@ -92,7 +92,7 @@ WORKDIR /app
 
 # Install from lock file for reproducible builds
 COPY pyproject.toml uv.lock ./
-RUN uv sync --frozen --no-dev --extra whisper --no-install-project && \
+RUN uv sync --frozen --no-dev --extra server --extra faster-whisper --no-install-project && \
     ln -s /app/.venv/bin/agent-cli /usr/local/bin/agent-cli
 
 # Create cache directory for models
