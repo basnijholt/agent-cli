@@ -18,6 +18,7 @@ from agent_cli.server.tts.backends.base import (
     get_backend_cache_dir,
     get_torch_device,
 )
+from agent_cli.services import pcm_to_wav
 
 logger = logging.getLogger(__name__)
 
@@ -158,8 +159,6 @@ def _synthesize_in_subprocess(
         audio = librosa.effects.time_stretch(audio.astype(np.float32), rate=speed)
 
     # Convert to int16 WAV using existing helper
-    from agent_cli.services import pcm_to_wav  # noqa: PLC0415
-
     audio_int16 = (audio * 32767).astype(np.int16)
     wav_bytes = pcm_to_wav(audio_int16.tobytes(), sample_rate=sr)
 
