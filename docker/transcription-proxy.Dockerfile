@@ -20,12 +20,12 @@ FROM python:3.13-slim
 # Create non-root user with explicit UID:GID 1000:1000
 RUN groupadd -g 1000 transcribe && useradd -m -u 1000 -g transcribe transcribe
 
-# Copy installed tool virtualenv from builder (keep original path for shebang compatibility)
-COPY --from=builder /root/.local/share/uv/tools/agent-cli /root/.local/share/uv/tools/agent-cli
+# Copy installed tool virtualenv from builder with execute permissions
+# Using --chmod=755 avoids a duplicate layer from running chmod after COPY
+COPY --from=builder --chmod=755 /root/.local/share/uv/tools/agent-cli /root/.local/share/uv/tools/agent-cli
 
-# Make tool accessible to non-root users and create symlinks
+# Make parent directories accessible to non-root users and create symlinks
 RUN chmod 755 /root /root/.local /root/.local/share /root/.local/share/uv /root/.local/share/uv/tools && \
-    chmod -R 755 /root/.local/share/uv/tools/agent-cli && \
     ln -s /root/.local/share/uv/tools/agent-cli/bin/agent-cli /usr/local/bin/agent-cli && \
     ln -s /root/.local/share/uv/tools/agent-cli/bin/agent /usr/local/bin/agent && \
     ln -s /root/.local/share/uv/tools/agent-cli/bin/ag /usr/local/bin/ag
