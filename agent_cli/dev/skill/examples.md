@@ -20,24 +20,31 @@ Real-world scenarios for spawning parallel AI coding agents, optimized for Claud
 agent-cli dev new review-changes --from HEAD --agent --prompt "Review the code changes on this branch.
 
 <workflow>
-- Use git diff origin/main...HEAD to see all changes on this branch
-- Read the changed files to understand the full context
+- Run git diff origin/main...HEAD to identify all changes
+- Read changed files in parallel to understand context
 - Check CLAUDE.md for project-specific guidelines
-- Test the changes with real services if applicable
+- Test changes with real services if applicable
 </workflow>
 
-<review_focus>
-- Code cleanliness: Is the implementation clean and well-structured?
-- DRY principle: Does it avoid duplication?
-- Code reuse: Are there parts that should be reused from other places?
-- Organization: Is everything in the right place?
-- Consistency: Is it in the same style as other parts of the codebase?
-- Simplicity: Is it not over-engineered? Remember KISS and YAGNI. No dead code paths and NO defensive programming.
-- No pointless wrappers: Identify functions/methods that just call another function and return its result. Callers should call the underlying function directly.
-- User experience: Does it provide a good user experience?
-- Tests: Are there tests, and do they cover the changes adequately? Are they testing something meaningful or are they just trivial?
-- Rules: Does the code follow the project's coding standards and guidelines in CLAUDE.md?
-</review_focus>
+<code_exploration>
+- Use git diff origin/main...HEAD to see the full diff
+- Read each changed file completely before judging
+- Look at surrounding code to understand patterns
+- Check existing tests to understand expected behavior
+</code_exploration>
+
+<context>
+Code review catches issues before merge. Focus on real problems that affect correctness, security, or maintainability - not style nitpicks. Apply these criteria:
+- DRY: Does it avoid duplication?
+- KISS/YAGNI: Is it over-engineered? No dead code paths, no defensive programming
+- No pointless wrappers: Functions that just call another function should be inlined
+- Consistency: Does it match the style of surrounding code?
+- Tests: Are tests meaningful or just trivial coverage?
+</context>
+
+<scope>
+Review only - identify issues but do not fix them. Write findings to report.
+</scope>
 
 <report>
 Write your review to .claude/REPORT.md:
@@ -52,9 +59,6 @@ Write your review to .claude/REPORT.md:
 
 ## Positive Observations
 [What's well done]
-
-## Recommendations
-[Suggestions for improvement]
 </report>"
 ```
 
