@@ -9,7 +9,18 @@ Real-world scenarios for spawning parallel AI coding agents, optimized for Claud
 > agent-cli dev new my-feature --agent --prompt-file .claude/spawn-prompt.md
 > ```
 
-## Scenario 0: Code review of current branch
+## Prompt structure guidelines
+
+Each prompt for a spawned agent should follow this structure:
+
+1. **Explicit task description** - Be specific about what to implement
+2. **Workflow directive** - Read files in parallel, commit incrementally, verify before completing
+3. **Code exploration** - Read and understand existing code before writing
+4. **Context with motivation** - Explain why patterns matter
+5. **Focused scope** - Keep solutions minimal, implement only what's requested
+6. **Structured report** - Write conclusions to `.claude/REPORT.md`
+
+## Scenario 1: Code review of current branch
 
 **User request**: "Review the code on this branch" or "Spawn an agent to review my changes"
 
@@ -64,18 +75,7 @@ Write your review to .claude/REPORT.md:
 
 **Common mistake**: Forgetting `--from HEAD` means the agent starts from `origin/main` and won't see any of the branch changes!
 
-## Prompt structure guidelines
-
-Each prompt for a spawned agent should follow this structure:
-
-1. **Explicit task description** - Be specific about what to implement
-2. **Workflow directive** - Read files in parallel, commit incrementally, verify before completing
-3. **Code exploration** - Read and understand existing code before writing
-4. **Context with motivation** - Explain why patterns matter
-5. **Focused scope** - Keep solutions minimal, implement only what's requested
-6. **Structured report** - Write conclusions to `.claude/REPORT.md`
-
-## Scenario 1: Multi-feature implementation
+## Scenario 2: Multi-feature implementation
 
 **User request**: "Implement user auth, payment processing, and email notifications"
 
@@ -224,7 +224,7 @@ After verifying tests pass, write to .claude/REPORT.md with summary, files chang
 </report>"
 ```
 
-## Scenario 2: Test-driven development
+## Scenario 3: Test-driven development
 
 **User request**: "Add a caching layer with comprehensive tests"
 
@@ -344,7 +344,7 @@ After ALL tests pass, write to .claude/REPORT.md:
 </report>"
 ```
 
-## Scenario 3: Large refactoring by module
+## Scenario 4: Large refactoring by module
 
 **User request**: "Refactor the API to use consistent error handling"
 
@@ -412,7 +412,7 @@ After tests pass and linting is clean, write to .claude/REPORT.md:
 </report>"
 ```
 
-## Scenario 4: Documentation and implementation in parallel
+## Scenario 5: Documentation and implementation in parallel
 
 **User request**: "Add a plugin system with documentation"
 
