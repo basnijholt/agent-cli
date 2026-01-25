@@ -9,6 +9,57 @@ Real-world scenarios for spawning parallel AI coding agents, optimized for Claud
 > agent-cli dev new my-feature --agent --prompt-file .claude/spawn-prompt.md
 > ```
 
+## Scenario 0: Code review of current branch
+
+**User request**: "Review the code on this branch" or "Spawn an agent to review my changes"
+
+**CRITICAL**: Use `--from HEAD` (or the branch name) so the review agent has access to the changes!
+
+```bash
+# Review the current branch - MUST use --from HEAD
+agent-cli dev new review-changes --from HEAD --agent --prompt "Review the code changes on this branch.
+
+<workflow>
+- Use git diff origin/main...HEAD to see all changes on this branch
+- Read the changed files to understand the full context
+- Check CLAUDE.md for project-specific guidelines
+- Test the changes with real services if applicable
+</workflow>
+
+<review_focus>
+- Code cleanliness: Is the implementation clean and well-structured?
+- DRY principle: Does it avoid duplication?
+- Code reuse: Are there parts that should be reused from other places?
+- Organization: Is everything in the right place?
+- Consistency: Is it in the same style as other parts of the codebase?
+- Simplicity: Is it not over-engineered? Remember KISS and YAGNI. No dead code paths and NO defensive programming.
+- No pointless wrappers: Identify functions/methods that just call another function and return its result. Callers should call the underlying function directly.
+- User experience: Does it provide a good user experience?
+- Tests: Are there tests, and do they cover the changes adequately? Are they testing something meaningful or are they just trivial?
+- Rules: Does the code follow the project's coding standards and guidelines in CLAUDE.md?
+</review_focus>
+
+<report>
+Write your review to .claude/REPORT.md:
+
+## Summary
+[Overall assessment of the changes]
+
+## Issues Found
+| Severity | File:Line | Issue | Suggestion |
+|----------|-----------|-------|------------|
+| Critical/High/Medium/Low | path:123 | description | fix |
+
+## Positive Observations
+[What's well done]
+
+## Recommendations
+[Suggestions for improvement]
+</report>"
+```
+
+**Common mistake**: Forgetting `--from HEAD` means the agent starts from `origin/main` and won't see any of the branch changes!
+
 ## Prompt structure guidelines
 
 Each prompt for a spawned agent should follow this structure:
