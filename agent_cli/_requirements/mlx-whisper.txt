@@ -180,8 +180,9 @@ tqdm==4.67.1 ; platform_machine == 'arm64' and sys_platform == 'darwin'
     # via
     #   huggingface-hub
     #   mlx-whisper
-typer==0.21.1 ; platform_machine == 'arm64' and sys_platform == 'darwin'
+typer==0.21.1
     # via
+    #   agent-cli
     #   fastapi-cli
     #   fastapi-cloud-cli
 typer-slim==0.21.1

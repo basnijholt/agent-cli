@@ -30,6 +30,7 @@ dependencies = [
     { name = "pyperclip" },
     { name = "rich" },
     { name = "setproctitle" },
+    { name = "typer" },
     { name = "typer-slim", extra = ["standard"] },
 ]
 
@@ -188,6 +189,7 @@ requires-dist = [
     { name = "transformers", marker = "extra == 'kokoro'", specifier = ">=4.40.0" },
     { name = "transformers", marker = "extra == 'memory'", specifier = ">=4.30.0" },
     { name = "transformers", marker = "extra == 'rag'", specifier = ">=4.30.0" },
+    { name = "typer" },
     { name = "typer-slim", extras = ["standard"] },
     { name = "versioningit", marker = "extra == 'dev'" },
     { name = "watchfiles", marker = "extra == 'memory'", specifier = ">=0.21.0" },

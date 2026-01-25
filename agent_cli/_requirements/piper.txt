@@ -140,6 +140,7 @@ sympy==1.14.0
     # via onnxruntime
 typer==0.21.1
     # via
+    #   agent-cli
     #   fastapi-cli
     #   fastapi-cloud-cli
 typer-slim==0.21.1

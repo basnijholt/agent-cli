@@ -343,6 +343,7 @@ transformers==4.57.5
     # via agent-cli
 typer==0.21.1
     # via
+    #   agent-cli
     #   chromadb
     #   fastapi-cli
     #   fastapi-cloud-cli
