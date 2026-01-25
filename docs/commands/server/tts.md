@@ -92,7 +92,7 @@ agent-cli server tts --preload
 | `--no-wyoming` | `false` | Disable Wyoming server |
 | `--download-only` | `false` | Download model(s) and exit without starting server |
 | `--log-level` | `info` | Logging level: debug, info, warning, error |
-| `--backend` | `auto` | Backend: auto, piper, kokoro |
+| `--backend` | `auto` | Backend: auto, piper, kokoro, qwen |
 
 
 <!-- OUTPUT:END -->
