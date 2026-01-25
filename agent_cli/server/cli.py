@@ -15,6 +15,8 @@ from agent_cli.cli import app as main_app
 from agent_cli.core.deps import requires_extras
 from agent_cli.core.process import set_process_title
 from agent_cli.server.common import setup_rich_logging
+from agent_cli.server.tts.backends.base import get_backend_cache_dir
+from agent_cli.server.tts.backends.qwen import DEFAULT_QWEN_MODEL
 
 console = Console()
 err_console = Console(stderr=True)
@@ -108,9 +110,6 @@ def _download_tts_models(
 ) -> None:
     """Download TTS models/voices without starting the server."""
     if backend == "kokoro":
-        from agent_cli.server.tts.backends.base import (  # noqa: PLC0415
-            get_backend_cache_dir,
-        )
         from agent_cli.server.tts.backends.kokoro import (  # noqa: PLC0415
             DEFAULT_VOICE,
             _ensure_model,
@@ -132,13 +131,6 @@ def _download_tts_models(
     if backend == "qwen":
         from huggingface_hub import snapshot_download  # noqa: PLC0415
 
-        from agent_cli.server.tts.backends.base import (  # noqa: PLC0415
-            get_backend_cache_dir,
-        )
-        from agent_cli.server.tts.backends.qwen import (  # noqa: PLC0415
-            DEFAULT_QWEN_MODEL,
-        )
-
         download_dir = cache_dir or get_backend_cache_dir("qwen-tts")
         model_name = models[0] if models and models[0] != "qwen" else DEFAULT_QWEN_MODEL
         console.print(f"[bold]Downloading Qwen3-TTS model: {model_name}...[/bold]")
@@ -149,8 +141,6 @@ def _download_tts_models(
 
     # Piper backend
     from piper.download_voices import download_voice  # noqa: PLC0415
-
-    from agent_cli.server.tts.backends.base import get_backend_cache_dir  # noqa: PLC0415
 
     download_dir = cache_dir or get_backend_cache_dir("piper")
     console.print("[bold]Downloading Piper model(s)...[/bold]")
