@@ -94,10 +94,9 @@ def _load_model_in_subprocess(
         "dtype": dtype,
     }
 
-    # Add device_map for CUDA
+    # Add device_map for CUDA/MPS/CPU
     if device == "cuda":
         load_kwargs["device_map"] = "cuda:0"
-        load_kwargs["attn_implementation"] = "flash_attention_2"
     elif device == "mps":
         load_kwargs["device_map"] = "mps"
     else:
