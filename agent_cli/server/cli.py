@@ -81,6 +81,16 @@ def _check_tts_deps(backend: str = "auto") -> None:
             raise typer.Exit(1)
         return
 
+    if backend == "qwen":
+        if not _has("qwen_tts"):
+            err_console.print(
+                "[bold red]Error:[/bold red] Qwen backend requires qwen-tts. "
+                "Run: [cyan]pip install agent-cli\\[qwen-tts][/cyan] "
+                "or [cyan]uv sync --extra qwen-tts[/cyan]",
+            )
+            raise typer.Exit(1)
+        return
+
     # For auto, check if either is available
     if not _has("piper") and not _has("kokoro"):
         err_console.print(
@@ -116,6 +126,24 @@ def _download_tts_models(
         for voice in voices:
             console.print(f"  Downloading voice [cyan]{voice}[/cyan]...")
             _ensure_voice(voice, download_dir)
+        console.print("[bold green]Download complete![/bold green]")
+        return
+
+    if backend == "qwen":
+        from huggingface_hub import snapshot_download  # noqa: PLC0415
+
+        from agent_cli.server.tts.backends.base import (  # noqa: PLC0415
+            get_backend_cache_dir,
+        )
+        from agent_cli.server.tts.backends.qwen import (  # noqa: PLC0415
+            DEFAULT_QWEN_MODEL,
+        )
+
+        download_dir = cache_dir or get_backend_cache_dir("qwen-tts")
+        model_name = models[0] if models and models[0] != "qwen" else DEFAULT_QWEN_MODEL
+        console.print(f"[bold]Downloading Qwen3-TTS model: {model_name}...[/bold]")
+        console.print("  This may take a while (model is ~3GB)")
+        snapshot_download(repo_id=model_name, cache_dir=download_dir)
         console.print("[bold green]Download complete![/bold green]")
         return
 
@@ -478,8 +506,8 @@ def transcription_proxy_cmd(
 
 
 @app.command("tts")
-@requires_extras("server", "piper|kokoro")
-def tts_cmd(  # noqa: PLR0915
+@requires_extras("server", "piper|kokoro|qwen-tts")
+def tts_cmd(  # noqa: PLR0912, PLR0915
     model: Annotated[
         list[str] | None,
         typer.Option(
@@ -573,7 +601,7 @@ def tts_cmd(  # noqa: PLR0915
         typer.Option(
             "--backend",
             "-b",
-            help="Backend: auto, piper, kokoro",
+            help="Backend: auto, piper, kokoro, qwen",
         ),
     ] = "auto",
 ) -> None:
@@ -596,12 +624,20 @@ def tts_cmd(  # noqa: PLR0915
     Voices: af_heart, af_bella, am_adam, bf_emma, bm_george, etc.
     See https://huggingface.co/hexgrad/Kokoro-82M for all voices.
 
+    **Qwen backend** (GPU-accelerated, multilingual):
+    High-quality Qwen3-TTS with 10+ language support.
+    Voices: Vivian, Ryan, Serena, Dylan, Eric, Aiden, Ono_Anna, Sohee, etc.
+    See https://github.com/QwenLM/Qwen3-TTS for details.
+
     Examples:
         # Run with Kokoro (auto-downloads model and voices)
         agent-cli server tts --backend kokoro
 
         # Run with default Piper model
         agent-cli server tts --backend piper
+
+        # Run with Qwen3-TTS (multilingual, GPU-accelerated)
+        agent-cli server tts --backend qwen
 
         # Run with specific Piper model and 10-minute TTL
         agent-cli server tts --model en_US-lessac-medium --ttl 600
@@ -616,7 +652,7 @@ def tts_cmd(  # noqa: PLR0915
     # Setup Rich logging for consistent output
     setup_rich_logging(log_level, console=console)
 
-    valid_backends = ("auto", "piper", "kokoro")
+    valid_backends = ("auto", "piper", "kokoro", "qwen")
     if backend not in valid_backends:
         err_console.print(
             f"[bold red]Error:[/bold red] --backend must be one of: {', '.join(valid_backends)}",
@@ -640,7 +676,12 @@ def tts_cmd(  # noqa: PLR0915
 
     # Default model based on backend (Kokoro auto-downloads from HuggingFace)
     if model is None:
-        model = ["kokoro"] if resolved_backend == "kokoro" else ["en_US-lessac-medium"]
+        if resolved_backend == "kokoro":
+            model = ["kokoro"]
+        elif resolved_backend == "qwen":
+            model = ["qwen"]
+        else:
+            model = ["en_US-lessac-medium"]
 
     # Validate default model against model list
     if default_model is not None and default_model not in model:
