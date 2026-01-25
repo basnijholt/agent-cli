@@ -105,6 +105,20 @@ def _load_model_in_subprocess(
     # Load model
     model = Qwen3TTSModel.from_pretrained(model_name, cache_dir=cache_dir, **load_kwargs)
 
+    # Apply torch.compile() for faster inference (20-30% speedup)
+    # Requires PyTorch 2.0+, warmup needed for first few inferences
+    if device == "cuda":
+        try:
+            logger.info("Applying torch.compile() optimization...")
+            model.model = torch.compile(
+                model.model,
+                mode="reduce-overhead",
+                fullgraph=False,
+            )
+            logger.info("torch.compile() optimization applied")
+        except Exception as e:
+            logger.warning("Could not apply torch.compile(): %s", e)
+
     # Store in subprocess state for reuse
     _state.model = model
     _state.device = device
