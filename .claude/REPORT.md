@@ -28,7 +28,7 @@ Fixed the `FasterWhisperBackend` to persist the Whisper model across transcripti
 
 ## Measured Performance
 
-Benchmark on CPU with `tiny` model (1 second audio):
+### tiny model (CPU, 1 second audio)
 
 ```
 Model load time: 2.198s
@@ -46,7 +46,23 @@ Speedup: 7.5x faster
 Time saved per call: 2.2s
 ```
 
-Larger models will show even greater improvements since they have longer load times.
+### large-v3 model (CPU, 1 second audio)
+
+```
+Model load time: 7.144s
+
+5 transcription calls:
+  Call 1: 7.193s
+  Call 2: 6.340s
+  Call 3: 6.513s
+  Call 4: 6.419s
+  Call 5: 6.667s
+
+OLD (reload each call): ~13.77s per transcription
+NEW (model persisted):  ~6.63s per transcription
+Speedup: 2.1x faster
+Time saved per call: 7.1s
+```
 
 ## Design Notes
 
