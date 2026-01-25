@@ -6,15 +6,20 @@ import asyncio
 import logging
 import tempfile
 from concurrent.futures import ProcessPoolExecutor
-from multiprocessing import get_context
+from multiprocessing import Manager, get_context
 from pathlib import Path
-from typing import Any, Literal
+from typing import TYPE_CHECKING, Any, Literal
 
 from agent_cli.core.process import set_process_title
+from agent_cli.server.streaming import AsyncQueueReader, QueueWriter
 from agent_cli.server.whisper.backends.base import (
     BackendConfig,
     TranscriptionResult,
+    TranscriptionSegment,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import AsyncIterator
 
 logger = logging.getLogger(__name__)
 
@@ -92,6 +97,68 @@ def _transcribe_in_subprocess(
             for seg in segment_list
         ],
     }
+
+
+def _transcribe_stream_in_subprocess(
+    model_name: str,
+    device: str,
+    compute_type: str,
+    cpu_threads: int,
+    download_root: str | None,
+    audio_bytes: bytes,
+    kwargs: dict[str, Any],
+    output_queue: Any,
+) -> None:
+    """Stream transcription segments through queue as they are processed."""
+    from faster_whisper import WhisperModel  # noqa: PLC0415
+
+    writer = QueueWriter(output_queue)
+
+    try:
+        model = WhisperModel(
+            model_name,
+            device=device,
+            compute_type=compute_type,
+            cpu_threads=cpu_threads,
+            download_root=download_root,
+        )
+
+        # Write audio to temp file - faster-whisper needs a file path
+        with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
+            tmp.write(audio_bytes)
+            tmp_path = tmp.name
+
+        try:
+            segments, info = model.transcribe(tmp_path, **kwargs)
+
+            # Iterate over lazy generator and send each segment as it's ready
+            segment_count = 0
+            for seg in segments:
+                writer.send_data(
+                    seg.text.encode("utf-8"),
+                    {
+                        "segment_id": seg.id,
+                        "start": seg.start,
+                        "end": seg.end,
+                        "language": info.language,
+                        "language_probability": info.language_probability,
+                    },
+                )
+                segment_count += 1
+
+            writer.send_done(
+                {
+                    "segment_count": segment_count,
+                    "language": info.language,
+                    "language_probability": info.language_probability,
+                    "duration": info.duration,
+                },
+            )
+        finally:
+            Path(tmp_path).unlink(missing_ok=True)
+
+    except Exception as e:
+        writer.send_error(e)
 
 
 class FasterWhisperBackend:
@@ -216,3 +283,77 @@ class FasterWhisperBackend:
             duration=result["duration"],
             segments=result["segments"],
         )
+
+    @property
+    def supports_streaming(self) -> bool:
+        """Faster-whisper backend supports streaming transcription."""
+        return True
+
+    async def transcribe_stream(
+        self,
+        audio: bytes,
+        *,
+        source_filename: str | None = None,  # noqa: ARG002
+        language: str | None = None,
+        task: Literal["transcribe", "translate"] = "transcribe",
+        initial_prompt: str | None = None,
+        temperature: float = 0.0,
+        vad_filter: bool = True,
+    ) -> AsyncIterator[TranscriptionSegment]:
+        """Stream transcription segments as they are processed."""
+        if self._executor is None:
+            msg = "Model not loaded. Call load() first."
+            raise RuntimeError(msg)
+
+        kwargs: dict[str, Any] = {
+            "language": language,
+            "task": task,
+            "initial_prompt": initial_prompt,
+            "temperature": temperature,
+            "vad_filter": vad_filter,
+        }
+
+        download_root = str(self._config.cache_dir) if self._config.cache_dir else None
+
+        # Use Manager queue for cross-process communication
+        manager = Manager()
+        try:
+            queue = manager.Queue(maxsize=10)  # Backpressure control
+            loop = asyncio.get_running_loop()
+
+            # Submit streaming worker to subprocess
+            future = loop.run_in_executor(
+                self._executor,
+                _transcribe_stream_in_subprocess,
+                self._config.model_name,
+                self._config.device,
+                self._config.compute_type,
+                self._config.cpu_threads,
+                download_root,
+                audio,
+                kwargs,
+                queue,  # type: ignore[arg-type]
+            )
+
+            # Yield segments as they arrive
+            reader = AsyncQueueReader(queue, timeout=60.0)  # type: ignore[arg-type]
+            async for chunk in reader:
+                if chunk.chunk_type == "done":
+                    break
+                if chunk.chunk_type == "error":
+                    msg = str(chunk.payload)
+                    raise RuntimeError(msg)
+                if chunk.payload is not None and chunk.metadata is not None:
+                    yield TranscriptionSegment(
+                        text=chunk.payload.decode("utf-8")
+                        if isinstance(chunk.payload, bytes)
+                        else str(chunk.payload),
+                        start=chunk.metadata["start"],
+                        end=chunk.metadata["end"],
+                        segment_id=chunk.metadata["segment_id"],
+                    )
+
+            # Ensure subprocess completes
+            await future
+        finally:
+            manager.shutdown()

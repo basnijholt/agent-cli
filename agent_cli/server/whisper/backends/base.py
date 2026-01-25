@@ -6,7 +6,18 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Literal, Protocol, runtime_checkable
 
 if TYPE_CHECKING:
+    from collections.abc import AsyncIterator
     from pathlib import Path
+
+
+@dataclass
+class TranscriptionSegment:
+    """A single segment from streaming transcription."""
+
+    text: str
+    start: float
+    end: float
+    segment_id: int
 
 
 @dataclass
@@ -92,6 +103,39 @@ class WhisperBackend(Protocol):
 
         Returns:
             TranscriptionResult with text and metadata.
+
+        """
+        ...
+
+    @property
+    def supports_streaming(self) -> bool:
+        """Check if this backend supports streaming transcription."""
+        ...
+
+    def transcribe_stream(
+        self,
+        audio: bytes,
+        *,
+        source_filename: str | None = None,
+        language: str | None = None,
+        task: Literal["transcribe", "translate"] = "transcribe",
+        initial_prompt: str | None = None,
+        temperature: float = 0.0,
+        vad_filter: bool = True,
+    ) -> AsyncIterator[TranscriptionSegment]:
+        """Stream transcription segments as they are processed.
+
+        Args:
+            audio: Audio data as bytes (WAV format, 16kHz, 16-bit, mono)
+            source_filename: Optional filename to help detect audio format.
+            language: Language code or None for auto-detection
+            task: "transcribe" or "translate" (to English)
+            initial_prompt: Optional prompt to guide transcription
+            temperature: Sampling temperature
+            vad_filter: Whether to use VAD filtering
+
+        Yields:
+            TranscriptionSegment for each processed segment.
 
         """
         ...
