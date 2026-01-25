@@ -3,10 +3,8 @@
 from __future__ import annotations
 
 import asyncio
-import io
 import logging
 import time
-import wave
 from concurrent.futures import ProcessPoolExecutor
 from dataclasses import dataclass
 from multiprocessing import get_context
@@ -153,27 +151,20 @@ def _synthesize_in_subprocess(
 
     audio = wavs[0]
 
-    # Apply speed adjustment if needed (using librosa if available)
+    # Apply speed adjustment if needed
     if speed != 1.0:
-        try:
-            import librosa  # noqa: PLC0415
+        import librosa  # noqa: PLC0415
 
-            audio = librosa.effects.time_stretch(audio.astype(np.float32), rate=speed)
-        except ImportError:
-            logger.warning("Speed adjustment requested but librosa not available")
+        audio = librosa.effects.time_stretch(audio.astype(np.float32), rate=speed)
 
-    # Convert to int16 WAV
+    # Convert to int16 WAV using existing helper
+    from agent_cli.services import pcm_to_wav  # noqa: PLC0415
+
     audio_int16 = (audio * 32767).astype(np.int16)
-
-    buffer = io.BytesIO()
-    with wave.open(buffer, "wb") as wav:
-        wav.setnchannels(1)
-        wav.setsampwidth(2)
-        wav.setframerate(sr)
-        wav.writeframes(audio_int16.tobytes())
+    wav_bytes = pcm_to_wav(audio_int16.tobytes(), sample_rate=sr)
 
     return {
-        "audio": buffer.getvalue(),
+        "audio": wav_bytes,
         "sample_rate": sr,
         "duration": len(audio_int16) / sr,
     }

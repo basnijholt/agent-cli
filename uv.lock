@@ -106,9 +106,7 @@ piper = [
 ]
 qwen-tts = [
     { name = "fastapi", extra = ["standard"] },
-    { name = "librosa" },
     { name = "qwen-tts" },
-    { name = "soundfile" },
 ]
 rag = [
     { name = "chromadb" },
@@ -177,7 +175,6 @@ requires-dist = [
     { name = "huggingface-hub", marker = "extra == 'memory'", specifier = ">=0.20.0" },
     { name = "huggingface-hub", marker = "extra == 'rag'", specifier = ">=0.20.0" },
     { name = "kokoro", marker = "extra == 'kokoro'", specifier = ">=0.9.0" },
-    { name = "librosa", marker = "extra == 'qwen-tts'", specifier = ">=0.10.0" },
     { name = "markdown-code-runner", marker = "extra == 'dev'", specifier = ">=2.7.0" },
     { name = "markitdown", extras = ["docx", "pdf", "pptx"], marker = "extra == 'rag'", specifier = ">=0.1.3" },
     { name = "mlx-whisper", marker = "platform_machine == 'arm64' and sys_platform == 'darwin' and extra == 'mlx-whisper'", specifier = ">=0.4.0" },
@@ -213,7 +210,6 @@ requires-dist = [
     { name = "silero-vad", marker = "extra == 'vad'", specifier = ">=5.1" },
     { name = "sounddevice", marker = "extra == 'audio'", specifier = ">=0.4.6" },
     { name = "soundfile", marker = "extra == 'kokoro'", specifier = ">=0.12.0" },
-    { name = "soundfile", marker = "extra == 'qwen-tts'", specifier = ">=0.12.0" },
     { name = "transformers", marker = "extra == 'kokoro'", specifier = ">=4.40.0" },
     { name = "transformers", marker = "extra == 'memory'", specifier = ">=4.30.0" },
     { name = "transformers", marker = "extra == 'rag'", specifier = ">=4.30.0" },
