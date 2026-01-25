@@ -43,6 +43,12 @@ EXTRA_METADATA: dict[str, tuple[str, list[str]]] = {
     "tts-kokoro": ("Kokoro neural TTS", ["kokoro"]),
     "server": ("FastAPI server components", ["fastapi"]),
     "speed": ("Audio speed adjustment (audiostretchy)", ["audiostretchy"]),
+    # Server backend extras
+    "piper": ("Piper TTS backend (CPU-friendly)", ["piper"]),
+    "kokoro": ("Kokoro TTS backend (GPU-accelerated)", ["kokoro"]),
+    "qwen-tts": ("Qwen3-TTS backend (multilingual)", ["qwen_tts"]),
+    "faster-whisper": ("Faster Whisper ASR backend", ["faster_whisper"]),
+    "mlx-whisper": ("MLX Whisper ASR for Apple Silicon", ["mlx_whisper"]),
 }
 
 

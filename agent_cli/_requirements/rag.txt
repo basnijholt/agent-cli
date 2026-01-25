@@ -339,7 +339,7 @@ tqdm==4.67.1
     #   chromadb
     #   huggingface-hub
     #   transformers
-transformers==4.57.5
+transformers==4.57.3
     # via agent-cli
 typer==0.21.1
     # via
