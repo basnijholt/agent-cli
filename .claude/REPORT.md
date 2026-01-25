@@ -64,6 +64,40 @@ Speedup: 2.1x faster
 Time saved per call: 7.1s
 ```
 
+## Memory Usage Comparison
+
+Tested with tiny model on CPU over 10 transcription calls:
+
+### OLD behavior (reload model each call)
+```
+Subprocess memory after 1st call: 635.3 MB
+
+10 calls:
+  Call 1: 695.5 MB
+  Call 2: 698.5 MB
+  Call 3: 737.2 MB
+  Call 4: 738.7 MB
+  ...
+  Call 10: 798.8 MB
+
+Memory growth: +103.3 MB (695 → 799 MB)
+```
+
+### NEW behavior (persist model)
+```
+Subprocess memory after load: 625.2 MB
+
+10 calls:
+  Call 1: 664.1 MB
+  Call 2: 664.3 MB
+  ...
+  Call 10: 664.3 MB
+
+Memory growth: +0.1 MB (stable at ~664 MB)
+```
+
+**The old code leaked ~10 MB per call** because Python's garbage collector doesn't fully reclaim the old model before the new one loads.
+
 ## Design Notes
 
 The pattern follows the existing Kokoro TTS backend implementation exactly:
@@ -79,3 +113,4 @@ None. The implementation:
 - Passes all pre-commit checks (ruff, mypy, etc.)
 - Follows established patterns in the codebase
 - Maintains subprocess isolation for memory management
+- **Fixes memory leak** in addition to improving performance
