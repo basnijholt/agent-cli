@@ -478,7 +478,7 @@ def _launch_agent(
 
 
 @app.command("new")
-def new(  # noqa: PLR0912, PLR0915
+def new(  # noqa: C901, PLR0912, PLR0915
     branch: Annotated[
         str | None,
         typer.Argument(help="Branch name (auto-generated if not provided)"),
@@ -564,6 +564,10 @@ def new(  # noqa: PLR0912, PLR0915
     # Handle prompt-file option (takes precedence over --prompt)
     if prompt_file is not None:
         prompt = prompt_file.read_text().strip()
+
+    # If a prompt is provided, automatically enable agent mode
+    if prompt:
+        agent = True
 
     repo_root = _ensure_git_repo()
 
