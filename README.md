@@ -414,9 +414,12 @@ agent-cli install-extras rag memory vad
 
  Install optional extras (rag, memory, vad, etc.) with pinned versions.
 
- Examples: agent-cli install-extras rag           # Install RAG dependencies agent-cli
- install-extras memory vad    # Install multiple extras agent-cli install-extras --list
- # Show available extras agent-cli install-extras --all         # Install all extras
+ Examples:
+
+  • agent-cli install-extras rag           # Install RAG dependencies
+  • agent-cli install-extras memory vad    # Install multiple extras
+  • agent-cli install-extras --list        # Show available extras
+  • agent-cli install-extras --all         # Install all extras
 
 ╭─ Arguments ────────────────────────────────────────────────────────────────────────────╮
 │   extras      [EXTRAS]...  Extras to install                                           │
