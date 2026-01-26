@@ -77,7 +77,6 @@ def rag_proxy(
     logging.getLogger("chromadb").setLevel(logging.WARNING)
     logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
 
-
     import uvicorn  # noqa: PLC0415
 
     from agent_cli.rag.api import create_app  # noqa: PLC0415

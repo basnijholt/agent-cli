@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
+from unittest.mock import patch
 
 import pytest
 from watchfiles import Change
@@ -34,13 +35,9 @@ async def test_watch_directory_skips_hidden(tmp_path: Path) -> None:
     (tmp_path / "gone.txt").touch()
     (tmp_path / "sub").mkdir()
 
-    # Patch awatch used inside watch_directory
-    original = watch_mod.awatch
-    watch_mod.awatch = fake_awatch  # type: ignore[assignment]
-    try:
+    # Patch awatch at the source module since it's imported lazily inside the function
+    with patch("watchfiles.awatch", fake_awatch):
         await watch_mod.watch_directory(tmp_path, handler)
-    finally:
-        watch_mod.awatch = original  # type: ignore[assignment]
 
     seen_paths = {p.name for _, p in called}
     assert "visible.txt" in seen_paths

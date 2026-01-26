@@ -9,7 +9,7 @@ LOGGER = logging.getLogger(__name__)
 
 def _download_onnx_model(model_name: str, onnx_filename: str) -> str:
     """Download the ONNX model, favoring the common `onnx/` folder layout."""
-    from huggingface_hub import hf_hub_download
+    from huggingface_hub import hf_hub_download  # noqa: PLC0415
 
     if "/" in onnx_filename:
         return hf_hub_download(repo_id=model_name, filename=onnx_filename)
@@ -43,8 +43,8 @@ class OnnxCrossEncoder:
         onnx_filename: str = "model.onnx",
     ) -> None:
         """Initialize the ONNX CrossEncoder."""
-        from onnxruntime import InferenceSession
-        from transformers import AutoTokenizer
+        from onnxruntime import InferenceSession  # noqa: PLC0415
+        from transformers import AutoTokenizer  # noqa: PLC0415
 
         self.model_name = model_name
 

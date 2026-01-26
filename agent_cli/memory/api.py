@@ -5,6 +5,9 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING, Any
 
+from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
+
 from agent_cli.constants import DEFAULT_OPENAI_EMBEDDING_MODEL
 from agent_cli.core.openai_proxy import proxy_request_to_upstream
 from agent_cli.memory.client import MemoryClient
@@ -12,8 +15,6 @@ from agent_cli.memory.models import ChatRequest  # noqa: TC001
 
 if TYPE_CHECKING:
     from pathlib import Path
-
-    from fastapi import FastAPI
 
 LOGGER = logging.getLogger(__name__)
 
@@ -33,9 +34,6 @@ def create_app(
     enable_git_versioning: bool = True,
 ) -> FastAPI:
     """Create the FastAPI app for memory-backed chat."""
-    from fastapi import FastAPI, Request  # noqa: PLC0415
-    from fastapi.middleware.cors import CORSMiddleware  # noqa: PLC0415
-
     LOGGER.info("Initializing memory client...")
 
     client = MemoryClient(

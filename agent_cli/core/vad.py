@@ -12,7 +12,7 @@ from agent_cli import constants
 try:
     import numpy as np
     import torch
-except ImportError as e: # TODO: move to func!
+except ImportError as e:
     msg = (
         "silero-vad is required for the transcribe-daemon command. "
         "Install it with: `pip install agent-cli[vad]` or `uv sync --extra vad`."

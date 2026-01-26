@@ -36,8 +36,8 @@ def _version_callback(value: bool) -> None:
         table = Table(show_header=False)
         table.add_column("Property", style="cyan")
         table.add_column("Value", style="magenta")
-        for prop, value in data:
-            table.add_row(prop, value)
+        for prop, val in data:
+            table.add_row(prop, val)
         console.print(table)
         raise typer.Exit
 

@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 import asyncio
-from collections.abc import Callable
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from watchfiles import Change
 
 
@@ -37,7 +38,7 @@ async def watch_directory(
         use_executor: If True, run handler in a thread pool executor.
 
     """
-    from watchfiles import awatch
+    from watchfiles import awatch  # noqa: PLC0415
 
     loop = asyncio.get_running_loop()
 

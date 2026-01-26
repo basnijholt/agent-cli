@@ -11,7 +11,7 @@ from rich.logging import RichHandler
 from agent_cli import constants, opts
 from agent_cli.agents.memory import memory_app
 from agent_cli.core.deps import requires_extras
-from agent_cli.core.utils import console, print_command_line_args, print_error_message
+from agent_cli.core.utils import console, print_command_line_args
 
 
 @memory_app.command("proxy")
