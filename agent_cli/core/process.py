@@ -10,8 +10,6 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-import setproctitle
-
 if TYPE_CHECKING:
     from collections.abc import Generator
 
@@ -36,6 +34,8 @@ def set_process_title(process_name: str) -> None:
         process_name: The name of the process (e.g., 'transcribe', 'chat').
 
     """
+    import setproctitle  # noqa: PLC0415
+
     global _original_proctitle
 
     # Capture the original command line only once, before any modification

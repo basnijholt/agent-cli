@@ -6,7 +6,6 @@ import json
 import logging
 from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
 
-import httpx
 from fastapi import HTTPException, Request, Response
 from fastapi.responses import StreamingResponse
 
@@ -33,6 +32,8 @@ async def proxy_request_to_upstream(
     api_key: str | None = None,
 ) -> Response:
     """Forward a raw HTTP request to an upstream OpenAI-compatible provider."""
+    import httpx  # noqa: PLC0415
+
     auth_header = request.headers.get("Authorization")
     headers = {}
     if auth_header:
@@ -82,6 +83,8 @@ async def forward_chat_request(
     exclude_fields: Iterable[str] = (),
 ) -> Any:
     """Forward a chat request to a backend LLM."""
+    import httpx  # noqa: PLC0415
+
     forward_payload = request.model_dump(exclude=set(exclude_fields))
     headers = {"Authorization": f"Bearer {api_key}"} if api_key else None
 

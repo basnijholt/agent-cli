@@ -9,10 +9,10 @@ import logging
 from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING, Any, Protocol
 
-from rich.console import Console
 from rich.logging import RichHandler
 
 from agent_cli import constants
+from agent_cli.core.utils import console
 
 if TYPE_CHECKING:
     import wave
@@ -128,7 +128,7 @@ def configure_app(app: FastAPI) -> None:
         return await log_requests_middleware(request, call_next)
 
 
-def setup_rich_logging(log_level: str = "info", *, console: Console | None = None) -> None:
+def setup_rich_logging(log_level: str = "info") -> None:
     """Configure logging to use Rich for consistent, pretty output.
 
     This configures:
@@ -141,11 +141,10 @@ def setup_rich_logging(log_level: str = "info", *, console: Console | None = Non
 
     """
     level = getattr(logging, log_level.upper(), logging.INFO)
-    rich_console = console or Console()
 
     # Create Rich handler with clean format
     handler = RichHandler(
-        console=rich_console,
+        console=console,
         show_time=True,
         show_level=True,
         show_path=False,  # Don't show file:line - too verbose

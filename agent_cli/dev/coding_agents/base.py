@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 import shutil
 from abc import ABC
+from pathlib import PurePath
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -131,8 +132,6 @@ def _get_parent_process_names() -> list[str]:
     - CLI tools that set process.title (like Claude) show their name directly
     """
     try:
-        from pathlib import PurePath  # noqa: PLC0415
-
         import psutil  # noqa: PLC0415
 
         process = psutil.Process(os.getpid())

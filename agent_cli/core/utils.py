@@ -39,6 +39,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 console = Console()
+err_console = Console(stderr=True)
 
 
 def enable_json_mode() -> None:
