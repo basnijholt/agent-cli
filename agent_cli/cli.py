@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
+import sys
+from pathlib import Path
 from typing import Annotated
 
 import typer
-from pathlib import Path
-import sys
 from rich.table import Table
+
 from . import __version__
 from .config import load_config, normalize_provider_defaults
 from .core.process import set_process_title

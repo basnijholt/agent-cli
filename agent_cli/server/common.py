@@ -80,7 +80,7 @@ def create_lifespan(
                 wyoming_task = asyncio.create_task(
                     start_wyoming_server(registry, wyoming_uri),
                 )
-            except ImportError:
+            except ImportError:  # TODO: Should be avail?
                 logger.warning("Wyoming not available, skipping Wyoming server")
             except Exception:
                 logger.exception("Failed to start Wyoming server")

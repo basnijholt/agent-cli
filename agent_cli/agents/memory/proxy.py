@@ -105,17 +105,10 @@ def proxy(
     if print_args:
         print_command_line_args(locals())
 
-    try:
-        import uvicorn  # noqa: PLC0415
+    import uvicorn  # noqa: PLC0415
 
-        from agent_cli.memory._files import ensure_store_dirs  # noqa: PLC0415
-        from agent_cli.memory.api import create_app  # noqa: PLC0415
-    except ImportError as exc:
-        print_error_message(
-            "Memory dependencies are not installed. Please install with "
-            "`pip install agent-cli[memory]` or `uv sync --extra memory`.",
-        )
-        raise typer.Exit(1) from exc
+    from agent_cli.memory._files import ensure_store_dirs  # noqa: PLC0415
+    from agent_cli.memory.api import create_app  # noqa: PLC0415
 
     logging.basicConfig(
         level=log_level.upper(),

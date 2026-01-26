@@ -12,8 +12,7 @@ from agent_cli import constants
 try:
     import numpy as np
     import torch
-    from silero_vad.utils_vad import OnnxWrapper
-except ImportError as e:
+except ImportError as e: # TODO: move to func!
     msg = (
         "silero-vad is required for the transcribe-daemon command. "
         "Install it with: `pip install agent-cli[vad]` or `uv sync --extra vad`."
@@ -56,6 +55,8 @@ class VoiceActivityDetector:
         if sample_rate not in (8000, 16000):
             msg = f"Sample rate must be 8000 or 16000, got {sample_rate}"
             raise ValueError(msg)
+
+        from silero_vad.utils_vad import OnnxWrapper  # noqa: PLC0415
 
         self.sample_rate = sample_rate
         self.threshold = threshold
