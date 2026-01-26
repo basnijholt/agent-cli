@@ -12,7 +12,6 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path  # noqa: TC003
 from typing import Any, TypedDict
 
-import pyperclip
 import typer
 
 from agent_cli import config, opts
@@ -364,6 +363,8 @@ async def _async_main(  # noqa: PLR0912, PLR0915, C901
                 )
             clipboard_snapshot: str | None = None
             if general_cfg.clipboard:
+                import pyperclip  # noqa: PLC0415
+
                 clipboard_snapshot = pyperclip.paste()
                 pyperclip.copy(transcript)
                 LOGGER.info("Copied raw transcript to clipboard before LLM processing.")
@@ -445,6 +446,8 @@ async def _async_main(  # noqa: PLR0912, PLR0915, C901
             )
 
         if general_cfg.clipboard:
+            import pyperclip  # noqa: PLC0415
+
             pyperclip.copy(transcript)
             LOGGER.info("Copied transcript to clipboard.")
         else:
