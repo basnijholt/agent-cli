@@ -10,6 +10,7 @@ from agent_cli.core.process import set_process_title
 memory_app = typer.Typer(
     name="memory",
     help="Memory system operations (add, proxy, etc.).",
+    add_completion=True,
     rich_markup_mode="markdown",
     no_args_is_help=True,
 )
