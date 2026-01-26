@@ -9,15 +9,13 @@ from pathlib import Path  # noqa: TC003 - Typer needs this at runtime
 from typing import Annotated
 
 import typer
-from rich.console import Console
 
 from agent_cli.cli import app as main_app
 from agent_cli.core.deps import requires_extras
 from agent_cli.core.process import set_process_title
+from agent_cli.core.utils import console, err_console
 from agent_cli.server.common import setup_rich_logging
 
-console = Console()
-err_console = Console(stderr=True)
 logger = logging.getLogger(__name__)
 
 # Check for optional dependencies at call time (not module load time)
@@ -295,7 +293,7 @@ def whisper_cmd(  # noqa: PLR0912, PLR0915
 
     """
     # Setup Rich logging for consistent output
-    setup_rich_logging(log_level, console=console)
+    setup_rich_logging(log_level)
 
     valid_backends = ("auto", "faster-whisper", "mlx")
     if backend not in valid_backends:
@@ -614,7 +612,7 @@ def tts_cmd(  # noqa: PLR0915
 
     """
     # Setup Rich logging for consistent output
-    setup_rich_logging(log_level, console=console)
+    setup_rich_logging(log_level)
 
     valid_backends = ("auto", "piper", "kokoro")
     if backend not in valid_backends:

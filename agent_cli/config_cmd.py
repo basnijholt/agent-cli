@@ -21,6 +21,7 @@ from agent_cli.core.utils import console
 config_app = typer.Typer(
     name="config",
     help="Manage agent-cli configuration files.",
+    add_completion=True,
     rich_markup_mode="markdown",
     no_args_is_help=True,
 )

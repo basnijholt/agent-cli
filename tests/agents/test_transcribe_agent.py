@@ -23,7 +23,7 @@ def test_transcribe_agent(
     mock_transcriber = AsyncMock(return_value="hello")
     mock_create_transcriber.return_value = mock_transcriber
     mock_setup_devices.return_value = (0, "mock_device", None)
-    with patch("agent_cli.agents.transcribe.pyperclip.copy") as mock_copy:
+    with patch("pyperclip.copy") as mock_copy, patch("pyperclip.paste", return_value=""):
         result = runner.invoke(
             app,
             [

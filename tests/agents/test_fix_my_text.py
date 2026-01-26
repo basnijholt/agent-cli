@@ -28,7 +28,7 @@ def test_system_prompt_and_instructions():
 def test_display_result_quiet_mode():
     """Test the _display_result function in quiet mode with real output."""
     # Test normal correction
-    with patch("agent_cli.agents.autocorrect.pyperclip.copy") as mock_copy:
+    with patch("pyperclip.copy") as mock_copy:
         output = io.StringIO()
         with redirect_stdout(output):
             autocorrect._display_result(
@@ -44,7 +44,7 @@ def test_display_result_quiet_mode():
 
 def test_display_result_no_correction_needed():
     """Test the _display_result function when no correction is needed."""
-    with patch("agent_cli.agents.autocorrect.pyperclip.copy") as mock_copy:
+    with patch("pyperclip.copy") as mock_copy:
         output = io.StringIO()
         with redirect_stdout(output):
             autocorrect._display_result(
@@ -63,7 +63,7 @@ def test_display_result_verbose_mode():
     mock_console = Console(file=io.StringIO(), width=80)
     with (
         patch("agent_cli.core.utils.console", mock_console),
-        patch("agent_cli.agents.autocorrect.pyperclip.copy") as mock_copy,
+        patch("pyperclip.copy") as mock_copy,
     ):
         autocorrect._display_result(
             "Hello world!",
@@ -193,7 +193,7 @@ async def test_autocorrect_command_with_text(
         clipboard=True,
     )
 
-    with patch("agent_cli.agents.autocorrect.pyperclip.copy"):
+    with patch("pyperclip.copy"):
         await autocorrect._async_autocorrect(
             text="input text",
             provider_cfg=provider_cfg,
@@ -258,7 +258,7 @@ async def test_autocorrect_command_from_clipboard(
         clipboard=True,
     )
 
-    with patch("agent_cli.agents.autocorrect.pyperclip.copy"):
+    with patch("pyperclip.copy"):
         await autocorrect._async_autocorrect(
             text=None,  # No text argument provided
             provider_cfg=provider_cfg,

@@ -42,9 +42,10 @@ audio = [
 ]
 dev = [
     { name = "markdown-code-runner" },
+    { name = "markdown-gfm-admonition" },
     { name = "notebook" },
     { name = "pre-commit" },
-    { name = "pydantic-ai-slim", extra = ["openai"] },
+    { name = "pre-commit-uv" },
     { name = "pylint" },
     { name = "pytest" },
     { name = "pytest-asyncio" },
@@ -53,6 +54,7 @@ dev = [
     { name = "pytest-timeout" },
     { name = "ruff" },
     { name = "versioningit" },
+    { name = "zensical" },
 ]
 faster-whisper = [
     { name = "fastapi", extra = ["standard"] },
@@ -102,7 +104,6 @@ speed = [
     { name = "audiostretchy" },
 ]
 test = [
-    { name = "pydantic-ai-slim", extra = ["openai"] },
     { name = "pytest" },
     { name = "pytest-asyncio" },
     { name = "pytest-cov" },
@@ -115,13 +116,11 @@ vad = [
 
 [package.dev-dependencies]
 dev = [
-    { name = "audiostretchy" },
     { name = "markdown-code-runner" },
     { name = "markdown-gfm-admonition" },
     { name = "notebook" },
     { name = "pre-commit" },
     { name = "pre-commit-uv" },
-    { name = "pydantic-ai-slim", extra = ["openai"] },
     { name = "pylint" },
     { name = "pytest" },
     { name = "pytest-asyncio" },
@@ -153,6 +152,7 @@ requires-dist = [
     { name = "huggingface-hub", marker = "extra == 'rag'", specifier = ">=0.20.0" },
     { name = "kokoro", marker = "extra == 'kokoro'", specifier = ">=0.9.0" },
     { name = "markdown-code-runner", marker = "extra == 'dev'", specifier = ">=2.7.0" },
+    { name = "markdown-gfm-admonition", marker = "extra == 'dev'" },
     { name = "markitdown", extras = ["docx", "pdf", "pptx"], marker = "extra == 'rag'", specifier = ">=0.1.3" },
     { name = "mlx-whisper", marker = "platform_machine == 'arm64' and sys_platform == 'darwin' and extra == 'mlx-whisper'", specifier = ">=0.4.0" },
     { name = "notebook", marker = "extra == 'dev'" },
@@ -162,11 +162,10 @@ requires-dist = [
     { name = "pip", marker = "extra == 'kokoro'" },
     { name = "piper-tts", marker = "extra == 'piper'", specifier = ">=1.2.0" },
     { name = "pre-commit", marker = "extra == 'dev'", specifier = ">=3.0.0" },
+    { name = "pre-commit-uv", marker = "extra == 'dev'", specifier = ">=4.1.4" },
     { name = "psutil", marker = "sys_platform == 'win32'" },
     { name = "pydantic" },
     { name = "pydantic-ai-slim", extras = ["duckduckgo", "google", "openai", "vertexai"], marker = "extra == 'llm'", specifier = ">=0.1.1" },
-    { name = "pydantic-ai-slim", extras = ["openai"], marker = "extra == 'dev'" },
-    { name = "pydantic-ai-slim", extras = ["openai"], marker = "extra == 'test'" },
     { name = "pylint", marker = "extra == 'dev'", specifier = ">=3.0.0" },
     { name = "pyperclip" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=7.0.0" },
@@ -195,18 +194,17 @@ requires-dist = [
     { name = "watchfiles", marker = "extra == 'memory'", specifier = ">=0.21.0" },
     { name = "watchfiles", marker = "extra == 'rag'", specifier = ">=0.21.0" },
     { name = "wyoming", marker = "extra == 'audio'", specifier = ">=1.5.2" },
+    { name = "zensical", marker = "extra == 'dev'" },
 ]
 provides-extras = ["audio", "dev", "faster-whisper", "kokoro", "llm", "memory", "mlx-whisper", "piper", "rag", "server", "speed", "test", "vad"]
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "audiostretchy", specifier = ">=1.3.0" },
     { name = "markdown-code-runner", specifier = ">=2.7.0" },
     { name = "markdown-gfm-admonition" },
     { name = "notebook" },
     { name = "pre-commit", specifier = ">=3.0.0" },
     { name = "pre-commit-uv", specifier = ">=4.1.4" },
-    { name = "pydantic-ai-slim", extras = ["openai"] },
     { name = "pylint", specifier = ">=3.0.0" },
     { name = "pytest", specifier = ">=7.0.0" },
     { name = "pytest-asyncio", specifier = ">=0.20.0" },

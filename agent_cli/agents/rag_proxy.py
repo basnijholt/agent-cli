@@ -77,16 +77,9 @@ def rag_proxy(
     logging.getLogger("chromadb").setLevel(logging.WARNING)
     logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
 
-    try:
-        import uvicorn  # noqa: PLC0415
+    import uvicorn  # noqa: PLC0415
 
-        from agent_cli.rag.api import create_app  # noqa: PLC0415
-    except ImportError as exc:
-        print_error_message(
-            "RAG dependencies are not installed. Please install with "
-            "`pip install agent-cli[rag]` or `uv sync --extra rag`.",
-        )
-        raise typer.Exit(1) from exc
+    from agent_cli.rag.api import create_app  # noqa: PLC0415
 
     docs_folder = docs_folder.resolve()
     chroma_path = chroma_path.resolve()

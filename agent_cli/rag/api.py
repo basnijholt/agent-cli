@@ -24,6 +24,7 @@ from agent_cli.rag.models import ChatRequest  # noqa: TC001
 if TYPE_CHECKING:
     from pathlib import Path
 
+
 LOGGER = logging.getLogger(__name__)
 
 

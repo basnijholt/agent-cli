@@ -12,7 +12,7 @@ def test_init_collection(tmp_path: Path) -> None:
     """Test collection initialization."""
     with (
         patch("chromadb.PersistentClient") as mock_client,
-        patch("agent_cli.core.chroma.embedding_functions.OpenAIEmbeddingFunction") as mock_openai,
+        patch("chromadb.utils.embedding_functions.OpenAIEmbeddingFunction") as mock_openai,
     ):
         chroma.init_collection(
             tmp_path,

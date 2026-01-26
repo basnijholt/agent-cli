@@ -13,7 +13,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, NoReturn
 
 import typer
-from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 
@@ -21,6 +20,7 @@ from agent_cli.cli import app as main_app
 from agent_cli.cli import set_config_defaults
 from agent_cli.config import load_config
 from agent_cli.core.process import set_process_title
+from agent_cli.core.utils import console, err_console
 
 # Word lists for generating random branch names (like Docker container names)
 _ADJECTIVES = [
@@ -111,9 +111,6 @@ from .project import (  # noqa: E402
 if TYPE_CHECKING:
     from .coding_agents.base import CodingAgent
     from .editors.base import Editor
-
-console = Console()
-err_console = Console(stderr=True)
 
 app = typer.Typer(
     name="dev",
