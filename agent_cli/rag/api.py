@@ -23,6 +23,8 @@ from agent_cli.rag.models import ChatRequest  # noqa: TC001
 
 if TYPE_CHECKING:
     from pathlib import Path
+    from fastapi import FastAPI, Request
+
 
 LOGGER = logging.getLogger(__name__)
 
@@ -38,6 +40,9 @@ def create_app(
     enable_rag_tools: bool = True,
 ) -> FastAPI:
     """Create the FastAPI app."""
+    from fastapi import FastAPI, Request
+    from fastapi.middleware.cors import CORSMiddleware
+
     # Initialize State
     LOGGER.info("Initializing RAG components...")
 

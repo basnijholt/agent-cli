@@ -5,11 +5,10 @@ from __future__ import annotations
 import asyncio
 from collections.abc import Callable
 from pathlib import Path
+from typing import TYPE_CHECKING
 
-from watchfiles import Change, awatch
-
-ChangeHandler = Callable[[Change, Path], None]
-PathFilter = Callable[[Path, Path], bool]
+if TYPE_CHECKING:
+    from watchfiles import Change
 
 
 def _default_skip_hidden(path: Path, root: Path) -> bool:
@@ -20,10 +19,10 @@ def _default_skip_hidden(path: Path, root: Path) -> bool:
 
 async def watch_directory(
     root: Path,
-    handler: ChangeHandler,
+    handler: Callable[[Change, Path], None],
     *,
     skip_hidden: bool = True,
-    ignore_filter: PathFilter | None = None,
+    ignore_filter: Callable[[Path, Path], bool] | None = None,
     use_executor: bool = True,
 ) -> None:
     """Watch a directory for file changes and invoke handler(change, path).
@@ -38,6 +37,8 @@ async def watch_directory(
         use_executor: If True, run handler in a thread pool executor.
 
     """
+    from watchfiles import awatch
+
     loop = asyncio.get_running_loop()
 
     # Determine which filter to use

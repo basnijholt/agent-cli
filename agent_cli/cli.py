@@ -5,7 +5,9 @@ from __future__ import annotations
 from typing import Annotated
 
 import typer
-
+from pathlib import Path
+import sys
+from rich.table import Table
 from . import __version__
 from .config import load_config, normalize_provider_defaults
 from .core.process import set_process_title
@@ -23,7 +25,19 @@ app = typer.Typer(
 
 def _version_callback(value: bool) -> None:
     if value:
-        console.print(f"agent-cli {__version__}")
+        path = Path(__file__).parent
+        data = [
+            ("agent-cli version", __version__),
+            ("agent-cli location", str(path)),
+            ("Python version", sys.version),
+            ("Python executable", sys.executable),
+        ]
+        table = Table(show_header=False)
+        table.add_column("Property", style="cyan")
+        table.add_column("Value", style="magenta")
+        for prop, value in data:
+            table.add_row(prop, value)
+        console.print(table)
         raise typer.Exit
 
 

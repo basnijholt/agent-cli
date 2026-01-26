@@ -4,9 +4,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-import chromadb
-from chromadb.config import Settings
-from chromadb.utils import embedding_functions
 
 from agent_cli.constants import DEFAULT_OPENAI_EMBEDDING_MODEL
 
@@ -28,6 +25,10 @@ def init_collection(
     subdir: str | None = None,
 ) -> Collection:
     """Initialize a Chroma collection with OpenAI-compatible embeddings."""
+    import chromadb  # noqa: PLC0415
+    from chromadb.config import Settings  # noqa: PLC0415
+    from chromadb.utils import embedding_functions  # noqa: PLC0415
+
     target_path = persistence_path / subdir if subdir else persistence_path
     target_path.mkdir(parents=True, exist_ok=True)
     client = chromadb.PersistentClient(
