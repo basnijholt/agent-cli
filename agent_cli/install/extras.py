@@ -122,7 +122,7 @@ def install_extras_programmatic(extras: list[str], *, quiet: bool = False) -> bo
     return bool(valid) and _install_extras_impl(valid, quiet=quiet)
 
 
-@app.command("install-extras", rich_help_panel="Installation")
+@app.command("install-extras", rich_help_panel="Installation", no_args_is_help=True)
 def install_extras(
     extras: Annotated[list[str] | None, typer.Argument(help="Extras to install")] = None,
     list_extras: Annotated[
@@ -137,10 +137,10 @@ def install_extras(
     """Install optional extras (rag, memory, vad, etc.) with pinned versions.
 
     Examples:
-        agent-cli install-extras rag           # Install RAG dependencies
-        agent-cli install-extras memory vad    # Install multiple extras
-        agent-cli install-extras --list        # Show available extras
-        agent-cli install-extras --all         # Install all extras
+        - `agent-cli install-extras rag`           # Install RAG dependencies
+        - `agent-cli install-extras memory vad`    # Install multiple extras
+        - `agent-cli install-extras --list`        # Show available extras
+        - `agent-cli install-extras --all`         # Install all extras
 
     """
     available = _available_extras()

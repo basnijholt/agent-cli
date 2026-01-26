@@ -9,7 +9,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 from uuid import uuid4
 
-import yaml
 from pydantic import ValidationError
 
 from agent_cli.core.utils import atomic_write_text
@@ -218,6 +217,8 @@ def load_snapshot(snapshot_path: Path) -> dict[str, MemoryFileRecord]:
 
 def _render_front_matter(doc_id: str, metadata: MemoryMetadata) -> str:
     """Return YAML front matter string."""
+    import yaml  # noqa: PLC0415
+
     meta_dict = metadata.model_dump(exclude_none=True)
     meta_dict = {"id": doc_id, **meta_dict}
     yaml_block = yaml.safe_dump(meta_dict, sort_keys=False)
@@ -233,6 +234,8 @@ def _split_front_matter(text: str) -> tuple[dict | None, str]:
         return None, text
     yaml_part = text[3:end]
     try:
+        import yaml  # noqa: PLC0415
+
         meta = yaml.safe_load(yaml_part) or {}
     except Exception:
         return None, text

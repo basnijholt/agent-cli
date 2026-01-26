@@ -35,7 +35,7 @@ async def test_async_main_from_file(tmp_path: Path):
     with (
         patch("agent_cli.agents.transcribe.create_recorded_audio_transcriber") as mock_create,
         patch("agent_cli.agents.transcribe.load_audio_from_file") as mock_load,
-        patch("agent_cli.agents.transcribe.pyperclip") as mock_clipboard,
+        patch("pyperclip.copy") as mock_pyperclip_copy,
     ):
         # Setup mocks
         mock_load.return_value = b"audio_data"
@@ -96,7 +96,7 @@ async def test_async_main_from_file(tmp_path: Path):
         # Wyoming provider requires PCM conversion
         mock_load.assert_called_once_with(test_file, transcribe.LOGGER, convert_to_pcm=True)
         mock_transcriber.assert_called_once()
-        mock_clipboard.copy.assert_called_once_with("Test transcript from file")
+        mock_pyperclip_copy.assert_called_once_with("Test transcript from file")
 
 
 @pytest.mark.asyncio
@@ -110,7 +110,8 @@ async def test_async_main_from_file_with_llm(tmp_path: Path):
         patch("agent_cli.agents.transcribe.create_recorded_audio_transcriber") as mock_create,
         patch("agent_cli.agents.transcribe.load_audio_from_file") as mock_load,
         patch("agent_cli.agents.transcribe.process_and_update_clipboard") as mock_process,
-        patch("agent_cli.agents.transcribe.pyperclip") as mock_clipboard,
+        patch("pyperclip.copy") as mock_pyperclip_copy,
+        patch("pyperclip.paste", return_value=""),
     ):
         # Setup mocks
         mock_load.return_value = b"audio_data"
@@ -171,7 +172,7 @@ async def test_async_main_from_file_with_llm(tmp_path: Path):
         # Verify LLM processing was called
         mock_process.assert_called_once()
         assert mock_process.call_args.kwargs["original_text"] == "Raw transcript"
-        mock_clipboard.copy.assert_called_once_with("Raw transcript")
+        mock_pyperclip_copy.assert_called_once_with("Raw transcript")
 
 
 @pytest.mark.asyncio
@@ -185,7 +186,7 @@ async def test_async_main_from_file_with_logging(tmp_path: Path):
     with (
         patch("agent_cli.agents.transcribe.create_recorded_audio_transcriber") as mock_create,
         patch("agent_cli.agents.transcribe.load_audio_from_file") as mock_load,
-        patch("agent_cli.agents.transcribe.pyperclip"),
+        patch("pyperclip.copy"),
     ):
         # Setup mocks
         mock_load.return_value = b"audio_data"
@@ -338,7 +339,8 @@ async def test_async_main_save_recording_enabled(
 
     with (
         patch("agent_cli.services.asr.wyoming_client_context") as mock_context,
-        patch("agent_cli.agents.transcribe.pyperclip"),
+        patch("pyperclip.copy"),
+        patch("pyperclip.paste", return_value=""),
         patch("agent_cli.agents.transcribe.signal_handling_context") as mock_signal,
         patch("agent_cli.services.asr.open_audio_stream") as mock_audio,
     ):

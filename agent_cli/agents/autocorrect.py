@@ -9,7 +9,6 @@ import sys
 import time
 from typing import TYPE_CHECKING
 
-import pyperclip
 import typer
 
 from agent_cli import config, opts
@@ -118,6 +117,8 @@ def _display_result(
 ) -> None:
     """Handle output and clipboard copying based on desired verbosity."""
     if clipboard:
+        import pyperclip  # noqa: PLC0415
+
         pyperclip.copy(corrected_text)
 
     if simple_output:

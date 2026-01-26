@@ -18,7 +18,6 @@ from contextlib import (
 )
 from typing import TYPE_CHECKING, Any
 
-import pyperclip
 from rich.console import Console
 from rich.live import Live
 from rich.panel import Panel
@@ -40,6 +39,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 console = Console()
+err_console = Console(stderr=True)
 
 
 def enable_json_mode() -> None:
@@ -233,6 +233,8 @@ def print_device_index(input_device_index: int | None, input_device_name: str | 
 
 def get_clipboard_text(*, quiet: bool = False) -> str | None:
     """Get text from clipboard, with an optional status message."""
+    import pyperclip  # noqa: PLC0415
+
     text = pyperclip.paste()
     if not text:
         if not quiet:

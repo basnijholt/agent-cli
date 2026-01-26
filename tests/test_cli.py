@@ -16,9 +16,10 @@ runner = CliRunner(env={"NO_COLOR": "1", "TERM": "dumb"})
 
 
 def test_main_no_args() -> None:
-    """Test the main function with no arguments."""
+    """Test the main function with no arguments shows help (no_args_is_help=True)."""
     result = runner.invoke(app)
-    assert "No command specified" in result.stdout
+    # Exit code 2 is the standard Typer exit code when no_args_is_help=True
+    assert result.exit_code == 2
     assert "Usage" in result.stdout
 
 

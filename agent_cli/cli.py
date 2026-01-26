@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+import sys
+from pathlib import Path
 from typing import Annotated
 
 import typer
+from rich.table import Table
 
 from . import __version__
 from .config import load_config, normalize_provider_defaults
@@ -14,15 +17,28 @@ from .core.utils import console
 app = typer.Typer(
     name="agent-cli",
     help="A suite of AI-powered command-line tools for text correction, audio transcription, and voice assistance.",
-    add_completion=True,
     context_settings={"help_option_names": ["-h", "--help"]},
+    add_completion=True,
     rich_markup_mode="markdown",
+    no_args_is_help=True,
 )
 
 
 def _version_callback(value: bool) -> None:
     if value:
-        console.print(f"agent-cli {__version__}")
+        path = Path(__file__).parent
+        data = [
+            ("agent-cli version", __version__),
+            ("agent-cli location", str(path)),
+            ("Python version", sys.version),
+            ("Python executable", sys.executable),
+        ]
+        table = Table(show_header=False)
+        table.add_column("Property", style="cyan")
+        table.add_column("Value", style="magenta")
+        for prop, val in data:
+            table.add_row(prop, val)
+        console.print(table)
         raise typer.Exit
 
 

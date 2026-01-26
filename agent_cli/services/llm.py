@@ -6,7 +6,6 @@ import sys
 import time
 from typing import TYPE_CHECKING
 
-import pyperclip
 from rich.live import Live
 
 from agent_cli.core.utils import console, live_timer, print_error_message, print_output_panel
@@ -156,6 +155,8 @@ async def get_llm_response(
         result_text = result.output
 
         if clipboard:
+            import pyperclip  # noqa: PLC0415
+
             pyperclip.copy(result_text)
             logger.info("Copied result to clipboard.")
 

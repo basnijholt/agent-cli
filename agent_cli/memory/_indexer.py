@@ -6,8 +6,6 @@ import logging
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
-from watchfiles import Change
-
 from agent_cli.core.watch import watch_directory
 from agent_cli.memory._files import (
     _DELETED_DIRNAME,
@@ -24,6 +22,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from chromadb import Collection
+    from watchfiles import Change
 
 LOGGER = logging.getLogger(__name__)
 
@@ -108,6 +107,8 @@ async def watch_memory_store(collection: Collection, root: Path, *, index: Memor
 
 
 def _handle_change(change: Change, path: Path, collection: Collection, index: MemoryIndex) -> None:
+    from watchfiles import Change  # noqa: PLC0415
+
     if path.suffix == ".tmp":
         return
 

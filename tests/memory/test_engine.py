@@ -147,6 +147,8 @@ class _DummyStreamResponse:
 
 
 class _DummyAsyncClient:
+    is_closed = False
+
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         pass
 
@@ -493,11 +495,6 @@ async def test_streaming_request_persists_user_and_assistant(
 
     # High score
     monkeypatch.setattr(_retrieval, "predict_relevance", lambda _model, pairs: [5.0 for _ in pairs])
-    monkeypatch.setattr(
-        engine._streaming,
-        "httpx",
-        type("H", (), {"AsyncClient": _DummyAsyncClient}),
-    )  # type: ignore[attr-defined]
 
     async def fake_stream_chat_sse(*_args: Any, **_kwargs: Any) -> Any:
         body = [
