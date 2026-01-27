@@ -10,6 +10,7 @@ from typing import Annotated
 
 import typer
 
+from agent_cli import opts
 from agent_cli.cli import app as main_app
 from agent_cli.core.deps import requires_extras
 from agent_cli.core.process import set_process_title
@@ -251,14 +252,7 @@ def whisper_cmd(  # noqa: PLR0912, PLR0915
             help="Download model(s) and exit without starting server",
         ),
     ] = False,
-    log_level: Annotated[
-        str,
-        typer.Option(
-            "--log-level",
-            "-l",
-            help="Logging level: debug, info, warning, error",
-        ),
-    ] = "info",
+    log_level: str = opts.SERVER_LOG_LEVEL,
     backend: Annotated[
         str,
         typer.Option(
@@ -436,14 +430,7 @@ def transcribe_proxy_cmd(
         bool,
         typer.Option("--reload", help="Enable auto-reload for development"),
     ] = False,
-    log_level: Annotated[
-        str,
-        typer.Option(
-            "--log-level",
-            "-l",
-            help="Logging level: debug, info, warning, error",
-        ),
-    ] = "info",
+    log_level: str = opts.SERVER_LOG_LEVEL,
 ) -> None:
     """Run transcription proxy server.
 
@@ -567,14 +554,7 @@ def tts_cmd(  # noqa: PLR0915
             help="Download model(s) and exit without starting server",
         ),
     ] = False,
-    log_level: Annotated[
-        str,
-        typer.Option(
-            "--log-level",
-            "-l",
-            help="Logging level: debug, info, warning, error",
-        ),
-    ] = "info",
+    log_level: str = opts.SERVER_LOG_LEVEL,
     backend: Annotated[
         str,
         typer.Option(
