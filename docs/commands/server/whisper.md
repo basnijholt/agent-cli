@@ -86,8 +86,13 @@ agent-cli server whisper --preload
 | `--wyoming-port` | `10300` | Wyoming protocol port |
 | `--no-wyoming` | `false` | Disable Wyoming server |
 | `--download-only` | `false` | Download model(s) and exit without starting server |
-| `--log-level` | `info` | Logging level: debug, info, warning, error |
 | `--backend` | `auto` | Backend: auto (platform detection), faster-whisper, mlx |
+
+### Server Configuration
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--log-level` | `info` | Logging level: debug, info, warning, error. |
 
 
 <!-- OUTPUT:END -->
