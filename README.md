@@ -559,17 +559,21 @@ the `[defaults]` section of your configuration file.
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Provider Selection ───────────────────────────────────────────────────────────────────╮
 │ --llm-provider        TEXT  The LLM provider to use ('ollama', 'openai', 'gemini').    │
+│                             [env var: LLM_PROVIDER]                                    │
 │                             [default: ollama]                                          │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ LLM: Ollama ──────────────────────────────────────────────────────────────────────────╮
 │ --llm-ollama-model        TEXT  The Ollama model to use. Default is gemma3:4b.         │
+│                                 [env var: LLM_OLLAMA_MODEL]                            │
 │                                 [default: gemma3:4b]                                   │
 │ --llm-ollama-host         TEXT  The Ollama server host. Default is                     │
 │                                 http://localhost:11434.                                │
+│                                 [env var: LLM_OLLAMA_HOST]                             │
 │                                 [default: http://localhost:11434]                      │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ LLM: OpenAI-compatible ───────────────────────────────────────────────────────────────╮
 │ --llm-openai-model        TEXT  The OpenAI model to use for LLM tasks.                 │
+│                                 [env var: LLM_OPENAI_MODEL]                            │
 │                                 [default: gpt-5-mini]                                  │
 │ --openai-api-key          TEXT  Your OpenAI API key. Can also be set with the          │
 │                                 OPENAI_API_KEY environment variable.                   │
@@ -580,6 +584,7 @@ the `[defaults]` section of your configuration file.
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ LLM: Gemini ──────────────────────────────────────────────────────────────────────────╮
 │ --llm-gemini-model        TEXT  The Gemini model to use for LLM tasks.                 │
+│                                 [env var: LLM_GEMINI_MODEL]                            │
 │                                 [default: gemini-3-flash-preview]                      │
 │ --gemini-api-key          TEXT  Your Gemini API key. Can also be set with the          │
 │                                 GEMINI_API_KEY environment variable.                   │
@@ -669,6 +674,7 @@ the `[defaults]` section of your configuration file.
 │                             [env var: ASR_PROVIDER]                                    │
 │                             [default: wyoming]                                         │
 │ --llm-provider        TEXT  The LLM provider to use ('ollama', 'openai', 'gemini').    │
+│                             [env var: LLM_PROVIDER]                                    │
 │                             [default: ollama]                                          │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Audio Input ──────────────────────────────────────────────────────────────────────────╮
@@ -699,13 +705,16 @@ the `[defaults]` section of your configuration file.
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ LLM: Ollama ──────────────────────────────────────────────────────────────────────────╮
 │ --llm-ollama-model        TEXT  The Ollama model to use. Default is gemma3:4b.         │
+│                                 [env var: LLM_OLLAMA_MODEL]                            │
 │                                 [default: gemma3:4b]                                   │
 │ --llm-ollama-host         TEXT  The Ollama server host. Default is                     │
 │                                 http://localhost:11434.                                │
+│                                 [env var: LLM_OLLAMA_HOST]                             │
 │                                 [default: http://localhost:11434]                      │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ LLM: OpenAI-compatible ───────────────────────────────────────────────────────────────╮
 │ --llm-openai-model        TEXT  The OpenAI model to use for LLM tasks.                 │
+│                                 [env var: LLM_OPENAI_MODEL]                            │
 │                                 [default: gpt-5-mini]                                  │
 │ --openai-api-key          TEXT  Your OpenAI API key. Can also be set with the          │
 │                                 OPENAI_API_KEY environment variable.                   │
@@ -716,6 +725,7 @@ the `[defaults]` section of your configuration file.
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ LLM: Gemini ──────────────────────────────────────────────────────────────────────────╮
 │ --llm-gemini-model        TEXT  The Gemini model to use for LLM tasks.                 │
+│                                 [env var: LLM_GEMINI_MODEL]                            │
 │                                 [default: gemini-3-flash-preview]                      │
 │ --gemini-api-key          TEXT  Your Gemini API key. Can also be set with the          │
 │                                 GEMINI_API_KEY environment variable.                   │
@@ -846,6 +856,7 @@ uv tool install "agent-cli[vad]" -p 3.13
 │                             [env var: ASR_PROVIDER]                                    │
 │                             [default: wyoming]                                         │
 │ --llm-provider        TEXT  The LLM provider to use ('ollama', 'openai', 'gemini').    │
+│                             [env var: LLM_PROVIDER]                                    │
 │                             [default: ollama]                                          │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Audio Input ──────────────────────────────────────────────────────────────────────────╮
@@ -876,13 +887,16 @@ uv tool install "agent-cli[vad]" -p 3.13
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ LLM: Ollama ──────────────────────────────────────────────────────────────────────────╮
 │ --llm-ollama-model        TEXT  The Ollama model to use. Default is gemma3:4b.         │
+│                                 [env var: LLM_OLLAMA_MODEL]                            │
 │                                 [default: gemma3:4b]                                   │
 │ --llm-ollama-host         TEXT  The Ollama server host. Default is                     │
 │                                 http://localhost:11434.                                │
+│                                 [env var: LLM_OLLAMA_HOST]                             │
 │                                 [default: http://localhost:11434]                      │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ LLM: OpenAI-compatible ───────────────────────────────────────────────────────────────╮
 │ --llm-openai-model        TEXT  The OpenAI model to use for LLM tasks.                 │
+│                                 [env var: LLM_OPENAI_MODEL]                            │
 │                                 [default: gpt-5-mini]                                  │
 │ --openai-api-key          TEXT  Your OpenAI API key. Can also be set with the          │
 │                                 OPENAI_API_KEY environment variable.                   │
@@ -893,6 +907,7 @@ uv tool install "agent-cli[vad]" -p 3.13
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ LLM: Gemini ──────────────────────────────────────────────────────────────────────────╮
 │ --llm-gemini-model        TEXT  The Gemini model to use for LLM tasks.                 │
+│                                 [env var: LLM_GEMINI_MODEL]                            │
 │                                 [default: gemini-3-flash-preview]                      │
 │ --gemini-api-key          TEXT  Your Gemini API key. Can also be set with the          │
 │                                 GEMINI_API_KEY environment variable.                   │
@@ -967,6 +982,7 @@ uv tool install "agent-cli[vad]" -p 3.13
 ╭─ Provider Selection ───────────────────────────────────────────────────────────────────╮
 │ --tts-provider        TEXT  The TTS provider to use ('wyoming', 'openai', 'kokoro',    │
 │                             'gemini').                                                 │
+│                             [env var: TTS_PROVIDER]                                    │
 │                             [default: wyoming]                                         │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Audio Output ─────────────────────────────────────────────────────────────────────────╮
@@ -1095,9 +1111,11 @@ uv tool install "agent-cli[vad]" -p 3.13
 │                             [env var: ASR_PROVIDER]                                    │
 │                             [default: wyoming]                                         │
 │ --llm-provider        TEXT  The LLM provider to use ('ollama', 'openai', 'gemini').    │
+│                             [env var: LLM_PROVIDER]                                    │
 │                             [default: ollama]                                          │
 │ --tts-provider        TEXT  The TTS provider to use ('wyoming', 'openai', 'kokoro',    │
 │                             'gemini').                                                 │
+│                             [env var: TTS_PROVIDER]                                    │
 │                             [default: wyoming]                                         │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Audio Input ──────────────────────────────────────────────────────────────────────────╮
@@ -1124,13 +1142,16 @@ uv tool install "agent-cli[vad]" -p 3.13
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ LLM: Ollama ──────────────────────────────────────────────────────────────────────────╮
 │ --llm-ollama-model        TEXT  The Ollama model to use. Default is gemma3:4b.         │
+│                                 [env var: LLM_OLLAMA_MODEL]                            │
 │                                 [default: gemma3:4b]                                   │
 │ --llm-ollama-host         TEXT  The Ollama server host. Default is                     │
 │                                 http://localhost:11434.                                │
+│                                 [env var: LLM_OLLAMA_HOST]                             │
 │                                 [default: http://localhost:11434]                      │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ LLM: OpenAI-compatible ───────────────────────────────────────────────────────────────╮
 │ --llm-openai-model        TEXT  The OpenAI model to use for LLM tasks.                 │
+│                                 [env var: LLM_OPENAI_MODEL]                            │
 │                                 [default: gpt-5-mini]                                  │
 │ --openai-api-key          TEXT  Your OpenAI API key. Can also be set with the          │
 │                                 OPENAI_API_KEY environment variable.                   │
@@ -1141,6 +1162,7 @@ uv tool install "agent-cli[vad]" -p 3.13
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ LLM: Gemini ──────────────────────────────────────────────────────────────────────────╮
 │ --llm-gemini-model        TEXT  The Gemini model to use for LLM tasks.                 │
+│                                 [env var: LLM_GEMINI_MODEL]                            │
 │                                 [default: gemini-3-flash-preview]                      │
 │ --gemini-api-key          TEXT  Your Gemini API key. Can also be set with the          │
 │                                 GEMINI_API_KEY environment variable.                   │
@@ -1263,9 +1285,11 @@ uv tool install "agent-cli[vad]" -p 3.13
 │                             [env var: ASR_PROVIDER]                                    │
 │                             [default: wyoming]                                         │
 │ --llm-provider        TEXT  The LLM provider to use ('ollama', 'openai', 'gemini').    │
+│                             [env var: LLM_PROVIDER]                                    │
 │                             [default: ollama]                                          │
 │ --tts-provider        TEXT  The TTS provider to use ('wyoming', 'openai', 'kokoro',    │
 │                             'gemini').                                                 │
+│                             [env var: TTS_PROVIDER]                                    │
 │                             [default: wyoming]                                         │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Wake Word ────────────────────────────────────────────────────────────────────────────╮
@@ -1301,13 +1325,16 @@ uv tool install "agent-cli[vad]" -p 3.13
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ LLM: Ollama ──────────────────────────────────────────────────────────────────────────╮
 │ --llm-ollama-model        TEXT  The Ollama model to use. Default is gemma3:4b.         │
+│                                 [env var: LLM_OLLAMA_MODEL]                            │
 │                                 [default: gemma3:4b]                                   │
 │ --llm-ollama-host         TEXT  The Ollama server host. Default is                     │
 │                                 http://localhost:11434.                                │
+│                                 [env var: LLM_OLLAMA_HOST]                             │
 │                                 [default: http://localhost:11434]                      │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ LLM: OpenAI-compatible ───────────────────────────────────────────────────────────────╮
 │ --llm-openai-model        TEXT  The OpenAI model to use for LLM tasks.                 │
+│                                 [env var: LLM_OPENAI_MODEL]                            │
 │                                 [default: gpt-5-mini]                                  │
 │ --openai-api-key          TEXT  Your OpenAI API key. Can also be set with the          │
 │                                 OPENAI_API_KEY environment variable.                   │
@@ -1318,6 +1345,7 @@ uv tool install "agent-cli[vad]" -p 3.13
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ LLM: Gemini ──────────────────────────────────────────────────────────────────────────╮
 │ --llm-gemini-model        TEXT  The Gemini model to use for LLM tasks.                 │
+│                                 [env var: LLM_GEMINI_MODEL]                            │
 │                                 [default: gemini-3-flash-preview]                      │
 │ --gemini-api-key          TEXT  Your Gemini API key. Can also be set with the          │
 │                                 GEMINI_API_KEY environment variable.                   │
@@ -1445,9 +1473,11 @@ uv tool install "agent-cli[vad]" -p 3.13
 │                             [env var: ASR_PROVIDER]                                    │
 │                             [default: wyoming]                                         │
 │ --llm-provider        TEXT  The LLM provider to use ('ollama', 'openai', 'gemini').    │
+│                             [env var: LLM_PROVIDER]                                    │
 │                             [default: ollama]                                          │
 │ --tts-provider        TEXT  The TTS provider to use ('wyoming', 'openai', 'kokoro',    │
 │                             'gemini').                                                 │
+│                             [env var: TTS_PROVIDER]                                    │
 │                             [default: wyoming]                                         │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Audio Input ──────────────────────────────────────────────────────────────────────────╮
@@ -1478,13 +1508,16 @@ uv tool install "agent-cli[vad]" -p 3.13
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ LLM: Ollama ──────────────────────────────────────────────────────────────────────────╮
 │ --llm-ollama-model        TEXT  The Ollama model to use. Default is gemma3:4b.         │
+│                                 [env var: LLM_OLLAMA_MODEL]                            │
 │                                 [default: gemma3:4b]                                   │
 │ --llm-ollama-host         TEXT  The Ollama server host. Default is                     │
 │                                 http://localhost:11434.                                │
+│                                 [env var: LLM_OLLAMA_HOST]                             │
 │                                 [default: http://localhost:11434]                      │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ LLM: OpenAI-compatible ───────────────────────────────────────────────────────────────╮
 │ --llm-openai-model        TEXT  The OpenAI model to use for LLM tasks.                 │
+│                                 [env var: LLM_OPENAI_MODEL]                            │
 │                                 [default: gpt-5-mini]                                  │
 │ --openai-api-key          TEXT  Your OpenAI API key. Can also be set with the          │
 │                                 OPENAI_API_KEY environment variable.                   │
@@ -1495,6 +1528,7 @@ uv tool install "agent-cli[vad]" -p 3.13
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ LLM: Gemini ──────────────────────────────────────────────────────────────────────────╮
 │ --llm-gemini-model        TEXT  The Gemini model to use for LLM tasks.                 │
+│                                 [env var: LLM_GEMINI_MODEL]                            │
 │                                 [default: gemini-3-flash-preview]                      │
 │ --gemini-api-key          TEXT  Your Gemini API key. Can also be set with the          │
 │                                 GEMINI_API_KEY environment variable.                   │
