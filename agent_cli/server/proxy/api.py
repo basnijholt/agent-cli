@@ -23,7 +23,6 @@ from agent_cli.core.audio_format import (
     is_valid_audio_file,
 )
 from agent_cli.core.transcription_logger import TranscriptionLogger, get_default_logger
-from agent_cli.opts import get_default
 from agent_cli.server.common import log_requests_middleware
 from agent_cli.services import asr
 from agent_cli.services.llm import process_and_update_clipboard
@@ -181,7 +180,7 @@ def _load_transcription_configs() -> tuple[
     provider_cfg = config.ProviderSelection(
         asr_provider=_cfg("asr_provider", defaults, opts.ASR_PROVIDER),
         llm_provider=_cfg("llm_provider", defaults, opts.LLM_PROVIDER),
-        tts_provider=get_default(opts.TTS_PROVIDER),
+        tts_provider=_cfg("tts_provider", defaults, opts.TTS_PROVIDER),
     )
     wyoming_asr_cfg = config.WyomingASR(
         asr_wyoming_ip=_cfg("asr_wyoming_ip", defaults, opts.ASR_WYOMING_IP),
