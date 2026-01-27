@@ -22,10 +22,11 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
 WORKDIR /app
 
-COPY pyproject.toml uv.lock ./
+COPY pyproject.toml uv.lock README.md ./
 COPY .git ./.git
 COPY agent_cli ./agent_cli
-RUN uv sync --frozen --no-dev --extra server --extra kokoro && \
+COPY scripts ./scripts
+RUN uv sync --frozen --no-dev --no-editable --extra server --extra kokoro && \
     /app/.venv/bin/python -m spacy download en_core_web_sm
 
 # =============================================================================
@@ -41,10 +42,11 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
 WORKDIR /app
 
-COPY pyproject.toml uv.lock ./
+COPY pyproject.toml uv.lock README.md ./
 COPY .git ./.git
 COPY agent_cli ./agent_cli
-RUN uv sync --frozen --no-dev --extra server --extra piper
+COPY scripts ./scripts
+RUN uv sync --frozen --no-dev --no-editable --extra server --extra piper
 
 # =============================================================================
 # CUDA target: GPU-accelerated with Kokoro TTS

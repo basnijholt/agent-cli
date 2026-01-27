@@ -20,10 +20,11 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
 WORKDIR /app
 
-COPY pyproject.toml uv.lock ./
+COPY pyproject.toml uv.lock README.md ./
 COPY .git ./.git
 COPY agent_cli ./agent_cli
-RUN uv sync --frozen --no-dev --extra server
+COPY scripts ./scripts
+RUN uv sync --frozen --no-dev --no-editable --extra server
 
 # =============================================================================
 # Runtime stage - minimal image
