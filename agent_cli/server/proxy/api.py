@@ -155,11 +155,11 @@ def _validate_audio_file(audio: UploadFile) -> None:
         )
 
 
-def _get_config(key: str, defaults: dict[str, Any], default: Any, envvar: str | None = None) -> Any:
-    """Get config with priority: env var > config file > default."""
-    if envvar and (env_val := os.environ.get(envvar)):
-        return int(env_val) if isinstance(default, int) else env_val
-    return defaults.get(key, default)
+def _cfg(key: str, defaults: dict[str, Any], opt: Any) -> Any:
+    """Get config with priority: env var > config file > option default."""
+    if opt.envvar and (env_val := os.environ.get(opt.envvar)):
+        return int(env_val) if isinstance(opt.default, int) else env_val
+    return defaults.get(key, opt.default)
 
 
 def _load_transcription_configs() -> tuple[
@@ -179,74 +179,34 @@ def _load_transcription_configs() -> tuple[
     defaults = {**wildcard_config, **command_config}
 
     provider_cfg = config.ProviderSelection(
-        asr_provider=_get_config(
-            "asr_provider",
-            defaults,
-            get_default(opts.ASR_PROVIDER),
-            "ASR_PROVIDER",
-        ),
-        llm_provider=_get_config(
-            "llm_provider",
-            defaults,
-            get_default(opts.LLM_PROVIDER),
-            "LLM_PROVIDER",
-        ),
+        asr_provider=_cfg("asr_provider", defaults, opts.ASR_PROVIDER),
+        llm_provider=_cfg("llm_provider", defaults, opts.LLM_PROVIDER),
         tts_provider=get_default(opts.TTS_PROVIDER),
     )
     wyoming_asr_cfg = config.WyomingASR(
-        asr_wyoming_ip=_get_config(
-            "asr_wyoming_ip",
-            defaults,
-            get_default(opts.ASR_WYOMING_IP),
-            "ASR_WYOMING_IP",
-        ),
-        asr_wyoming_port=_get_config(
-            "asr_wyoming_port",
-            defaults,
-            get_default(opts.ASR_WYOMING_PORT),
-            "ASR_WYOMING_PORT",
-        ),
+        asr_wyoming_ip=_cfg("asr_wyoming_ip", defaults, opts.ASR_WYOMING_IP),
+        asr_wyoming_port=_cfg("asr_wyoming_port", defaults, opts.ASR_WYOMING_PORT),
     )
     openai_asr_cfg = config.OpenAIASR(
-        asr_openai_model=_get_config(
-            "asr_openai_model",
-            defaults,
-            get_default(opts.ASR_OPENAI_MODEL),
-        ),
-        openai_api_key=_get_config("openai_api_key", defaults, None, "OPENAI_API_KEY"),
+        asr_openai_model=_cfg("asr_openai_model", defaults, opts.ASR_OPENAI_MODEL),
+        openai_api_key=_cfg("openai_api_key", defaults, opts.OPENAI_API_KEY),
     )
     gemini_asr_cfg = config.GeminiASR(
-        asr_gemini_model=_get_config(
-            "asr_gemini_model",
-            defaults,
-            get_default(opts.ASR_GEMINI_MODEL),
-        ),
-        gemini_api_key=_get_config("gemini_api_key", defaults, None, "GEMINI_API_KEY"),
+        asr_gemini_model=_cfg("asr_gemini_model", defaults, opts.ASR_GEMINI_MODEL),
+        gemini_api_key=_cfg("gemini_api_key", defaults, opts.GEMINI_API_KEY),
     )
     ollama_cfg = config.Ollama(
-        llm_ollama_model=_get_config(
-            "llm_ollama_model",
-            defaults,
-            get_default(opts.LLM_OLLAMA_MODEL),
-        ),
-        llm_ollama_host=_get_config("llm_ollama_host", defaults, get_default(opts.LLM_OLLAMA_HOST)),
+        llm_ollama_model=_cfg("llm_ollama_model", defaults, opts.LLM_OLLAMA_MODEL),
+        llm_ollama_host=_cfg("llm_ollama_host", defaults, opts.LLM_OLLAMA_HOST),
     )
     openai_llm_cfg = config.OpenAILLM(
-        llm_openai_model=_get_config(
-            "llm_openai_model",
-            defaults,
-            get_default(opts.LLM_OPENAI_MODEL),
-        ),
-        openai_api_key=_get_config("openai_api_key", defaults, None, "OPENAI_API_KEY"),
-        openai_base_url=_get_config("openai_base_url", defaults, None, "OPENAI_BASE_URL"),
+        llm_openai_model=_cfg("llm_openai_model", defaults, opts.LLM_OPENAI_MODEL),
+        openai_api_key=_cfg("openai_api_key", defaults, opts.OPENAI_API_KEY),
+        openai_base_url=_cfg("openai_base_url", defaults, opts.OPENAI_BASE_URL),
     )
     gemini_llm_cfg = config.GeminiLLM(
-        llm_gemini_model=_get_config(
-            "llm_gemini_model",
-            defaults,
-            get_default(opts.LLM_GEMINI_MODEL),
-        ),
-        gemini_api_key=_get_config("gemini_api_key", defaults, None, "GEMINI_API_KEY"),
+        llm_gemini_model=_cfg("llm_gemini_model", defaults, opts.LLM_GEMINI_MODEL),
+        gemini_api_key=_cfg("gemini_api_key", defaults, opts.GEMINI_API_KEY),
     )
 
     return (
