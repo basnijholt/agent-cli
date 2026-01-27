@@ -422,7 +422,7 @@ def whisper_cmd(  # noqa: PLR0912, PLR0915
 
 
 @app.command("transcribe-proxy")
-@requires_extras("server")
+@requires_extras("server", "audio", "llm")
 def transcribe_proxy_cmd(
     host: Annotated[
         str,
