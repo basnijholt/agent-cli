@@ -17,13 +17,13 @@ from agent_cli.agents.transcribe import (
     SYSTEM_PROMPT,
     _build_context_payload,
 )
-from agent_cli.constants import DEFAULT_OPENAI_MODEL
 from agent_cli.core.audio_format import (
     VALID_EXTENSIONS,
     convert_audio_to_wyoming_format,
     is_valid_audio_file,
 )
 from agent_cli.core.transcription_logger import TranscriptionLogger, get_default_logger
+from agent_cli.opts import get_default
 from agent_cli.server.common import log_requests_middleware
 from agent_cli.services import asr
 from agent_cli.services.llm import process_and_update_clipboard
@@ -182,50 +182,70 @@ def _load_transcription_configs() -> tuple[
         asr_provider=_get_config(
             "asr_provider",
             defaults,
-            opts.DEFAULT_ASR_PROVIDER,
+            get_default(opts.ASR_PROVIDER),
             "ASR_PROVIDER",
         ),
         llm_provider=_get_config(
             "llm_provider",
             defaults,
-            opts.DEFAULT_LLM_PROVIDER,
+            get_default(opts.LLM_PROVIDER),
             "LLM_PROVIDER",
         ),
-        tts_provider=opts.DEFAULT_TTS_PROVIDER,
+        tts_provider=get_default(opts.TTS_PROVIDER),
     )
     wyoming_asr_cfg = config.WyomingASR(
         asr_wyoming_ip=_get_config(
             "asr_wyoming_ip",
             defaults,
-            opts.DEFAULT_ASR_WYOMING_IP,
+            get_default(opts.ASR_WYOMING_IP),
             "ASR_WYOMING_IP",
         ),
         asr_wyoming_port=_get_config(
             "asr_wyoming_port",
             defaults,
-            opts.DEFAULT_ASR_WYOMING_PORT,
+            get_default(opts.ASR_WYOMING_PORT),
             "ASR_WYOMING_PORT",
         ),
     )
     openai_asr_cfg = config.OpenAIASR(
-        asr_openai_model=_get_config("asr_openai_model", defaults, opts.DEFAULT_ASR_OPENAI_MODEL),
+        asr_openai_model=_get_config(
+            "asr_openai_model",
+            defaults,
+            get_default(opts.ASR_OPENAI_MODEL),
+        ),
         openai_api_key=_get_config("openai_api_key", defaults, None, "OPENAI_API_KEY"),
     )
     gemini_asr_cfg = config.GeminiASR(
-        asr_gemini_model=_get_config("asr_gemini_model", defaults, opts.DEFAULT_ASR_GEMINI_MODEL),
+        asr_gemini_model=_get_config(
+            "asr_gemini_model",
+            defaults,
+            get_default(opts.ASR_GEMINI_MODEL),
+        ),
         gemini_api_key=_get_config("gemini_api_key", defaults, None, "GEMINI_API_KEY"),
     )
     ollama_cfg = config.Ollama(
-        llm_ollama_model=_get_config("llm_ollama_model", defaults, opts.DEFAULT_LLM_OLLAMA_MODEL),
-        llm_ollama_host=_get_config("llm_ollama_host", defaults, opts.DEFAULT_LLM_OLLAMA_HOST),
+        llm_ollama_model=_get_config(
+            "llm_ollama_model",
+            defaults,
+            get_default(opts.LLM_OLLAMA_MODEL),
+        ),
+        llm_ollama_host=_get_config("llm_ollama_host", defaults, get_default(opts.LLM_OLLAMA_HOST)),
     )
     openai_llm_cfg = config.OpenAILLM(
-        llm_openai_model=_get_config("llm_openai_model", defaults, DEFAULT_OPENAI_MODEL),
+        llm_openai_model=_get_config(
+            "llm_openai_model",
+            defaults,
+            get_default(opts.LLM_OPENAI_MODEL),
+        ),
         openai_api_key=_get_config("openai_api_key", defaults, None, "OPENAI_API_KEY"),
         openai_base_url=_get_config("openai_base_url", defaults, None, "OPENAI_BASE_URL"),
     )
     gemini_llm_cfg = config.GeminiLLM(
-        llm_gemini_model=_get_config("llm_gemini_model", defaults, opts.DEFAULT_LLM_GEMINI_MODEL),
+        llm_gemini_model=_get_config(
+            "llm_gemini_model",
+            defaults,
+            get_default(opts.LLM_GEMINI_MODEL),
+        ),
         gemini_api_key=_get_config("gemini_api_key", defaults, None, "GEMINI_API_KEY"),
     )
 

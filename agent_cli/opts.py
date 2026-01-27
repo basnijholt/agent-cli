@@ -8,17 +8,10 @@ from typer.models import OptionInfo
 
 from agent_cli.constants import DEFAULT_OPENAI_EMBEDDING_MODEL, DEFAULT_OPENAI_MODEL
 
-# Default values (for use outside of Typer CLI context)
-DEFAULT_ASR_PROVIDER = "wyoming"
-DEFAULT_LLM_PROVIDER = "ollama"
-DEFAULT_TTS_PROVIDER = "wyoming"
-DEFAULT_ASR_WYOMING_IP = "localhost"
-DEFAULT_ASR_WYOMING_PORT = 10300
-DEFAULT_ASR_OPENAI_MODEL = "whisper-1"
-DEFAULT_ASR_GEMINI_MODEL = "gemini-2.0-flash"
-DEFAULT_LLM_OLLAMA_MODEL = "llama3.2"
-DEFAULT_LLM_OLLAMA_HOST = "http://localhost:11434"
-DEFAULT_LLM_GEMINI_MODEL = "gemini-2.0-flash"
+
+def get_default(opt: OptionInfo) -> str | int | bool | None:
+    """Get default value from a typer Option (works around type annotations)."""
+    return opt.default  # type: ignore[return-value]
 
 
 def with_default(option: OptionInfo, default: str) -> OptionInfo:
