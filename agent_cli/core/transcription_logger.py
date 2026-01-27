@@ -20,7 +20,7 @@ class TranscriptionLogger:
 
         """
         if log_file is None:
-            log_file = Path.cwd() / "transcription_log.json"
+            log_file = Path.home() / ".config" / "agent-cli" / "transcription_log.jsonl"
         elif isinstance(log_file, str):
             log_file = Path(log_file)
 
