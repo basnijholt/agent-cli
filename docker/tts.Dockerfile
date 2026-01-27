@@ -26,7 +26,7 @@ COPY pyproject.toml uv.lock README.md ./
 COPY .git ./.git
 COPY agent_cli ./agent_cli
 COPY scripts ./scripts
-RUN uv sync --frozen --no-dev --no-editable --extra server --extra kokoro && \
+RUN uv sync --frozen --no-dev --no-editable --extra server --extra kokoro --extra audio && \
     /app/.venv/bin/python -m spacy download en_core_web_sm
 
 # =============================================================================
@@ -46,7 +46,7 @@ COPY pyproject.toml uv.lock README.md ./
 COPY .git ./.git
 COPY agent_cli ./agent_cli
 COPY scripts ./scripts
-RUN uv sync --frozen --no-dev --no-editable --extra server --extra piper
+RUN uv sync --frozen --no-dev --no-editable --extra server --extra piper --extra audio
 
 # =============================================================================
 # CUDA target: GPU-accelerated with Kokoro TTS
