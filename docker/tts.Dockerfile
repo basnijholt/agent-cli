@@ -53,15 +53,17 @@ RUN uv sync --frozen --no-dev --no-editable --extra server --extra piper
 # =============================================================================
 FROM nvidia/cuda:12.9.1-cudnn-runtime-ubuntu22.04 AS cuda
 
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
-        python3.13 \
-        python3.13-venv \
         ffmpeg \
         espeak-ng \
         libsndfile1 \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+ENV UV_PYTHON_INSTALL_DIR=/opt/python
+RUN uv python install 3.13
 
 RUN groupadd -g 1000 tts && useradd -m -u 1000 -g tts tts
 
@@ -69,7 +71,9 @@ WORKDIR /app
 
 COPY --from=builder-cuda /app/.venv /app/.venv
 
-RUN ln -s /app/.venv/bin/agent-cli /usr/local/bin/agent-cli && \
+# Fix venv python symlink to use uv-installed Python
+RUN ln -sf $(find /opt/python -name "python3.13" -type f | head -1) /app/.venv/bin/python && \
+    ln -s /app/.venv/bin/agent-cli /usr/local/bin/agent-cli && \
     mkdir -p /home/tts/.cache && chown -R tts:tts /home/tts
 
 USER tts
@@ -86,7 +90,7 @@ ENV TTS_HOST=0.0.0.0 \
     TTS_DEVICE=cuda
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-    CMD python3.13 -c "import urllib.request; urllib.request.urlopen('http://localhost:${TTS_PORT}/health')" || exit 1
+    CMD /app/.venv/bin/python -c "import urllib.request; urllib.request.urlopen('http://localhost:${TTS_PORT}/health')" || exit 1
 
 ENTRYPOINT ["sh", "-c", "agent-cli server tts \
     --host ${TTS_HOST} \
