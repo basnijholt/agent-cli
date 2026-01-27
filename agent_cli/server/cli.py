@@ -436,6 +436,14 @@ def transcribe_proxy_cmd(
         bool,
         typer.Option("--reload", help="Enable auto-reload for development"),
     ] = False,
+    log_level: Annotated[
+        str,
+        typer.Option(
+            "--log-level",
+            "-l",
+            help="Logging level: debug, info, warning, error",
+        ),
+    ] = "info",
 ) -> None:
     """Run transcription proxy server.
 
@@ -457,6 +465,7 @@ def transcribe_proxy_cmd(
 
     """
     _check_server_deps()
+    setup_rich_logging(log_level)
 
     console.print(
         f"[bold green]Starting Agent CLI transcription proxy on {host}:{port}[/bold green]",
@@ -471,7 +480,7 @@ def transcribe_proxy_cmd(
         host=host,
         port=port,
         reload=reload,
-        log_level="info",
+        log_level=log_level.lower(),
     )
 
 

@@ -84,21 +84,42 @@ class WyomingWhisperHandler(AsyncEventHandler):
     async def _handle_audio_chunk(self, event: Event) -> bool:
         """Handle an audio chunk event."""
         if not self._audio_bytes:
-            logger.debug("AudioChunk begin")
+            logger.debug("AudioChunk begin - receiving audio data")
 
         chunk = AudioChunk.from_event(event)
         chunk = self._audio_converter.convert(chunk)
         self._audio_bytes += chunk.audio
+        logger.debug(
+            "AudioChunk received: %d bytes (total accumulated: %d bytes)",
+            len(chunk.audio),
+            len(self._audio_bytes),
+        )
         return True
 
     async def _handle_audio_stop(self) -> bool:
         """Handle audio stop event - transcribe the collected audio."""
-        logger.debug("AudioStop")
+        logger.debug("AudioStop received")
 
         if not self._audio_bytes:
-            logger.warning("AudioStop received but no audio data")
+            logger.warning("AudioStop received but no audio data accumulated")
             await self.write_event(Transcript(text="").event())
             return False
+
+        pcm_bytes = len(self._audio_bytes)
+        # Calculate duration: bytes / (sample_rate * sample_width * channels)
+        duration_seconds = pcm_bytes / (
+            constants.AUDIO_RATE * constants.AUDIO_FORMAT_WIDTH * constants.AUDIO_CHANNELS
+        )
+        logger.debug(
+            "Audio accumulated: %d bytes PCM (%.2fs at %dHz)",
+            pcm_bytes,
+            duration_seconds,
+            constants.AUDIO_RATE,
+        )
+
+        # Check if audio is likely silence (all zeros or very low values)
+        if all(b == 0 for b in self._audio_bytes[:1000]):
+            logger.warning("Audio appears to be silence (first 1000 bytes are zeros)")
 
         # Wrap PCM in WAV format for the backend
         audio_data = pcm_to_wav(
@@ -107,11 +128,17 @@ class WyomingWhisperHandler(AsyncEventHandler):
             sample_width=constants.AUDIO_FORMAT_WIDTH,
             channels=constants.AUDIO_CHANNELS,
         )
+        logger.debug("Wrapped PCM in WAV: %d bytes", len(audio_data))
         self._audio_bytes = b""
 
         # Transcribe
         try:
             manager = self._registry.get_manager()
+            logger.debug(
+                "Calling transcribe with language=%s, initial_prompt=%s",
+                self._language,
+                self._initial_prompt[:50] if self._initial_prompt else None,
+            )
             result = await manager.transcribe(
                 audio_data,
                 language=self._language,
@@ -119,6 +146,14 @@ class WyomingWhisperHandler(AsyncEventHandler):
                 initial_prompt=self._initial_prompt,
             )
 
+            logger.debug(
+                "Transcription result: text=%r, duration=%.2fs, language=%s",
+                result.text[:200] if result.text else "",
+                result.duration,
+                result.language,
+            )
+            if not result.text:
+                logger.warning("Transcription returned empty text")
             logger.info("Wyoming transcription: %s", result.text[:100] if result.text else "")
             await self.write_event(Transcript(text=result.text).event())
 
