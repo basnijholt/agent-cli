@@ -59,7 +59,7 @@ The Docker setup provides:
 | ----------------------- | --------------------------------- | ----------- | ------------------------------ |
 | **whisper**             | agent-cli-whisper (custom)        | 10300/10301 | Speech-to-text (Faster Whisper)|
 | **tts**                 | agent-cli-tts (custom)            | 10200/10201 | Text-to-speech (Kokoro/Piper)  |
-| **transcription-proxy** | agent-cli-transcription-proxy     | 61337       | ASR proxy for iOS/external apps|
+| **transcribe-proxy** | agent-cli-transcribe-proxy     | 61337       | ASR proxy for iOS/external apps|
 | **ollama**              | ollama/ollama                     | 11434       | LLM server                     |
 | **openwakeword**        | rhasspy/wyoming-openwakeword      | 10400       | Wake word detection            |
 

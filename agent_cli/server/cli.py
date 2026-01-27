@@ -421,9 +421,9 @@ def whisper_cmd(  # noqa: PLR0912, PLR0915
     )
 
 
-@app.command("transcription-proxy")
+@app.command("transcribe-proxy")
 @requires_extras("server")
-def transcription_proxy_cmd(
+def transcribe_proxy_cmd(
     host: Annotated[
         str,
         typer.Option("--host", help="Host to bind the server to"),
@@ -450,10 +450,10 @@ def transcription_proxy_cmd(
 
     Examples:
         # Run on default port
-        agent-cli server transcription-proxy
+        agent-cli server transcribe-proxy
 
         # Run on custom port
-        agent-cli server transcription-proxy --port 8080
+        agent-cli server transcribe-proxy --port 8080
 
     """
     _check_server_deps()
