@@ -5,10 +5,13 @@ from __future__ import annotations
 import logging
 import os
 from pathlib import Path
-from typing import Annotated, Any
+from typing import TYPE_CHECKING, Annotated, Any
 
 from fastapi import Depends, FastAPI, File, Form, HTTPException, Request, UploadFile
 from pydantic import BaseModel
+
+if TYPE_CHECKING:
+    from typer.models import OptionInfo
 
 from agent_cli import config, opts
 from agent_cli.agents.transcribe import (
@@ -154,7 +157,7 @@ def _validate_audio_file(audio: UploadFile) -> None:
         )
 
 
-def _cfg(key: str, defaults: dict[str, Any], opt: Any) -> Any:
+def _cfg(key: str, defaults: dict[str, Any], opt: OptionInfo) -> Any:
     """Get config with priority: env var > config file > option default."""
     if opt.envvar and (env_val := os.environ.get(opt.envvar)):
         return int(env_val) if isinstance(opt.default, int) else env_val
