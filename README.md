@@ -591,7 +591,8 @@ the `[defaults]` section of your configuration file.
 │                                 [env var: GEMINI_API_KEY]                              │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ General Options ──────────────────────────────────────────────────────────────────────╮
-│ --log-level           TEXT  Set logging level.                                         │
+│ --log-level           TEXT  Set logging level (debug, info, warning, error).           │
+│                             [env var: LOG_LEVEL]                                       │
 │                             [default: WARNING]                                         │
 │ --log-file            TEXT  Path to a file to write logs to.                           │
 │ --quiet       -q            Suppress console output from rich.                         │
@@ -740,7 +741,9 @@ the `[defaults]` section of your configuration file.
 ╭─ General Options ──────────────────────────────────────────────────────────────────────╮
 │ --clipboard              --no-clipboard          Copy result to clipboard.             │
 │                                                  [default: clipboard]                  │
-│ --log-level                                TEXT  Set logging level.                    │
+│ --log-level                                TEXT  Set logging level (debug, info,       │
+│                                                  warning, error).                      │
+│                                                  [env var: LOG_LEVEL]                  │
 │                                                  [default: WARNING]                    │
 │ --log-file                                 TEXT  Path to a file to write logs to.      │
 │ --quiet              -q                          Suppress console output from rich.    │
@@ -922,7 +925,8 @@ uv tool install "agent-cli[vad]" -p 3.13
 │ --status          Check if a background process is running.                            │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ General Options ──────────────────────────────────────────────────────────────────────╮
-│ --log-level           TEXT  Set logging level.                                         │
+│ --log-level           TEXT  Set logging level (debug, info, warning, error).           │
+│                             [env var: LOG_LEVEL]                                       │
 │                             [default: WARNING]                                         │
 │ --log-file            TEXT  Path to a file to write logs to.                           │
 │ --quiet       -q            Suppress console output from rich.                         │
@@ -1036,7 +1040,8 @@ uv tool install "agent-cli[vad]" -p 3.13
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ General Options ──────────────────────────────────────────────────────────────────────╮
 │ --save-file           PATH  Save TTS response audio to WAV file.                       │
-│ --log-level           TEXT  Set logging level.                                         │
+│ --log-level           TEXT  Set logging level (debug, info, warning, error).           │
+│                             [env var: LOG_LEVEL]                                       │
 │                             [default: WARNING]                                         │
 │ --log-file            TEXT  Path to a file to write logs to.                           │
 │ --quiet       -q            Suppress console output from rich.                         │
@@ -1222,7 +1227,9 @@ uv tool install "agent-cli[vad]" -p 3.13
 │ --save-file                         PATH  Save TTS response audio to WAV file.         │
 │ --clipboard       --no-clipboard          Copy result to clipboard.                    │
 │                                           [default: clipboard]                         │
-│ --log-level                         TEXT  Set logging level.                           │
+│ --log-level                         TEXT  Set logging level (debug, info, warning,     │
+│                                           error).                                      │
+│                                           [env var: LOG_LEVEL]                         │
 │                                           [default: WARNING]                           │
 │ --log-file                          TEXT  Path to a file to write logs to.             │
 │ --quiet       -q                          Suppress console output from rich.           │
@@ -1405,7 +1412,9 @@ uv tool install "agent-cli[vad]" -p 3.13
 │ --save-file                         PATH  Save TTS response audio to WAV file.         │
 │ --clipboard       --no-clipboard          Copy result to clipboard.                    │
 │                                           [default: clipboard]                         │
-│ --log-level                         TEXT  Set logging level.                           │
+│ --log-level                         TEXT  Set logging level (debug, info, warning,     │
+│                                           error).                                      │
+│                                           [env var: LOG_LEVEL]                         │
 │                                           [default: WARNING]                           │
 │ --log-file                          TEXT  Path to a file to write logs to.             │
 │ --quiet       -q                          Suppress console output from rich.           │
@@ -1593,7 +1602,8 @@ uv tool install "agent-cli[vad]" -p 3.13
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ General Options ──────────────────────────────────────────────────────────────────────╮
 │ --save-file           PATH  Save TTS response audio to WAV file.                       │
-│ --log-level           TEXT  Set logging level.                                         │
+│ --log-level           TEXT  Set logging level (debug, info, warning, error).           │
+│                             [env var: LOG_LEVEL]                                       │
 │                             [default: WARNING]                                         │
 │ --log-file            TEXT  Path to a file to write logs to.                           │
 │ --quiet       -q            Suppress console output from rich.                         │
@@ -1685,7 +1695,8 @@ uv tool install "agent-cli[vad]" -p 3.13
 │                        [default: 8000]                                                 │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ General Options ──────────────────────────────────────────────────────────────────────╮
-│ --log-level         TEXT  Set logging level.                                           │
+│ --log-level         TEXT  Set logging level (debug, info, warning, error).             │
+│                           [env var: LOG_LEVEL]                                         │
 │                           [default: INFO]                                              │
 │ --config            TEXT  Path to a TOML configuration file.                           │
 │ --print-args              Print the command line arguments, including variables taken  │
@@ -1825,7 +1836,8 @@ The `memory proxy` command is the core feature—a middleware server that gives 
 │                        [default: 8100]                                                 │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ General Options ──────────────────────────────────────────────────────────────────────╮
-│ --log-level         TEXT  Set logging level.                                           │
+│ --log-level         TEXT  Set logging level (debug, info, warning, error).             │
+│                           [env var: LOG_LEVEL]                                         │
 │                           [default: INFO]                                              │
 │ --config            TEXT  Path to a TOML configuration file.                           │
 │ --print-args              Print the command line arguments, including variables taken  │

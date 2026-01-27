@@ -42,6 +42,7 @@ agent-cli server transcribe-proxy --reload
 | `--host` | `0.0.0.0` | Host to bind the server to |
 | `--port` | `61337` | Port to bind the server to |
 | `--reload` | `false` | Enable auto-reload for development |
+| `--log-level` | `info` | Logging level: debug, info, warning, error |
 
 
 <!-- OUTPUT:END -->

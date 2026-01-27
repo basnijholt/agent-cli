@@ -30,9 +30,14 @@ from agent_cli.services.llm import process_and_update_clipboard
 if TYPE_CHECKING:
     from typer.models import OptionInfo
 
-# Configure logging
-logging.basicConfig(level=logging.INFO)
+# Configure logging - respect LOG_LEVEL env var for debug diagnostics
+_log_level = os.environ.get("LOG_LEVEL", "INFO").upper()
+logging.basicConfig(
+    level=getattr(logging, _log_level, logging.INFO),
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+)
 LOGGER = logging.getLogger(__name__)
+LOGGER.debug("Transcribe-proxy logging initialized at %s level", _log_level)
 
 app = FastAPI(
     title="Agent CLI Transcription API",
@@ -93,21 +98,35 @@ async def _transcribe_with_provider(
     gemini_asr_cfg: config.GeminiASR,
 ) -> str:
     """Transcribe audio using the configured provider."""
+    LOGGER.debug(
+        "Transcribing %d bytes with provider=%s",
+        len(audio_data),
+        provider_cfg.asr_provider,
+    )
     transcriber = asr.create_recorded_audio_transcriber(provider_cfg)
 
     if provider_cfg.asr_provider == "wyoming":
-        return await transcriber(
+        LOGGER.debug(
+            "Wyoming config: ip=%s, port=%d",
+            wyoming_asr_cfg.asr_wyoming_ip,
+            wyoming_asr_cfg.asr_wyoming_port,
+        )
+        result = await transcriber(
             audio_data=audio_data,
             wyoming_asr_cfg=wyoming_asr_cfg,
             logger=LOGGER,
         )
+        LOGGER.debug("Wyoming transcription result: %r", result[:200] if result else result)
+        return result
     if provider_cfg.asr_provider == "openai":
+        LOGGER.debug("OpenAI config: model=%s", openai_asr_cfg.asr_openai_model)
         return await transcriber(
             audio_data=audio_data,
             openai_asr_cfg=openai_asr_cfg,
             logger=LOGGER,
         )
     if provider_cfg.asr_provider == "gemini":
+        LOGGER.debug("Gemini config: model=%s", gemini_asr_cfg.asr_gemini_model)
         return await transcriber(
             audio_data=audio_data,
             gemini_asr_cfg=gemini_asr_cfg,
@@ -223,11 +242,23 @@ def _load_transcription_configs() -> tuple[
     )
 
 
+_AUDIO_HEADER_LOG_SIZE = 20
+
+
 def _convert_audio_for_local_asr(audio_data: bytes, filename: str) -> bytes:
     """Convert audio to Wyoming format if needed for local ASR."""
-    LOGGER.info("Converting %s audio to Wyoming format", filename)
+    header = audio_data[:_AUDIO_HEADER_LOG_SIZE].hex()
+    LOGGER.debug(
+        "Input audio: filename=%s, size=%d bytes, header=%s",
+        filename,
+        len(audio_data),
+        header,
+    )
     converted_data = convert_audio_to_wyoming_format(audio_data, filename)
-    LOGGER.info("Audio conversion successful")
+    LOGGER.debug(
+        "Converted audio: size=%d bytes (PCM 16kHz mono 16-bit)",
+        len(converted_data),
+    )
     return converted_data
 
 
