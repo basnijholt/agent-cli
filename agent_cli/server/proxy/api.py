@@ -10,9 +10,6 @@ from typing import TYPE_CHECKING, Annotated, Any
 from fastapi import Depends, FastAPI, File, Form, HTTPException, Request, UploadFile
 from pydantic import BaseModel
 
-if TYPE_CHECKING:
-    from typer.models import OptionInfo
-
 from agent_cli import config, opts
 from agent_cli.agents.transcribe import (
     AGENT_INSTRUCTIONS,
@@ -29,6 +26,9 @@ from agent_cli.core.transcription_logger import TranscriptionLogger, get_default
 from agent_cli.server.common import log_requests_middleware
 from agent_cli.services import asr
 from agent_cli.services.llm import process_and_update_clipboard
+
+if TYPE_CHECKING:
+    from typer.models import OptionInfo
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
