@@ -4,8 +4,22 @@
 # Build example:
 #   docker build -f docker/transcribe-proxy.Dockerfile -t agent-cli-transcribe-proxy .
 #
-# Run example:
+# Run examples:
 #   docker run -p 61337:61337 agent-cli-transcribe-proxy
+#
+#   # With Wyoming ASR pointing to another container:
+#   docker run -p 61337:61337 \
+#     -e ASR_WYOMING_IP=whisper-server \
+#     -e ASR_WYOMING_PORT=10300 \
+#     agent-cli-transcribe-proxy
+#
+# Environment variables (priority: env var > config file > default):
+#   ASR_PROVIDER       - ASR provider: wyoming, openai, gemini (default: wyoming)
+#   ASR_WYOMING_IP     - Wyoming server IP (default: localhost)
+#   ASR_WYOMING_PORT   - Wyoming server port (default: 10300)
+#   LLM_PROVIDER       - LLM provider: ollama, openai, gemini (default: openai)
+#   OPENAI_API_KEY     - OpenAI API key
+#   GEMINI_API_KEY     - Gemini API key
 
 # =============================================================================
 # Builder stage - install dependencies and project
