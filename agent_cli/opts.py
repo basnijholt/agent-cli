@@ -9,11 +9,6 @@ from typer.models import OptionInfo
 from agent_cli.constants import DEFAULT_OPENAI_EMBEDDING_MODEL, DEFAULT_OPENAI_MODEL
 
 
-def get_default(opt: OptionInfo) -> str | int | bool | None:
-    """Get default value from a typer Option (works around type annotations)."""
-    return opt.default  # type: ignore[return-value]
-
-
 def with_default(option: OptionInfo, default: str) -> OptionInfo:
     """Create a copy of a typer Option with a different default value."""
     opt = copy.copy(option)
