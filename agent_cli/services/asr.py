@@ -392,7 +392,6 @@ async def _transcribe_recorded_audio_wyoming(
             effective_prompt = wyoming_asr_cfg.get_effective_prompt(extra_instructions)
             context = {"initial_prompt": effective_prompt} if effective_prompt else None
             await client.write_event(Transcribe(context=context).event())
-
             await client.write_event(AudioStart(**constants.WYOMING_AUDIO_CONFIG).event())
 
             chunk_size = constants.AUDIO_CHUNK_SIZE * 2
@@ -401,8 +400,10 @@ async def _transcribe_recorded_audio_wyoming(
                 await client.write_event(
                     AudioChunk(audio=chunk, **constants.WYOMING_AUDIO_CONFIG).event(),
                 )
+                logger.debug("Sent %d byte(s) of audio", len(chunk))
 
             await client.write_event(AudioStop().event())
+            logger.debug("Sent AudioStop")
 
             return await _receive_transcript(client, logger)
     except (ConnectionRefusedError, Exception):

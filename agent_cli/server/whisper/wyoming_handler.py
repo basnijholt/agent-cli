@@ -84,7 +84,7 @@ class WyomingWhisperHandler(AsyncEventHandler):
     async def _handle_audio_chunk(self, event: Event) -> bool:
         """Handle an audio chunk event."""
         if not self._audio_bytes:
-            logger.debug("AudioChunk: receiving audio data")
+            logger.debug("AudioChunk begin")
 
         chunk = AudioChunk.from_event(event)
         chunk = self._audio_converter.convert(chunk)
@@ -93,6 +93,8 @@ class WyomingWhisperHandler(AsyncEventHandler):
 
     async def _handle_audio_stop(self) -> bool:
         """Handle audio stop event - transcribe the collected audio."""
+        logger.debug("AudioStop")
+
         if not self._audio_bytes:
             logger.warning("AudioStop received but no audio data")
             await self.write_event(Transcript(text="").event())
@@ -117,8 +119,7 @@ class WyomingWhisperHandler(AsyncEventHandler):
                 initial_prompt=self._initial_prompt,
             )
 
-            if not result.text:
-                logger.warning("Transcription returned empty text")
+            logger.info("Wyoming transcription: %s", result.text[:100] if result.text else "")
             await self.write_event(Transcript(text=result.text).event())
 
         except Exception:
