@@ -83,6 +83,10 @@ ASR_PROVIDER=wyoming        # ASR provider: wyoming, openai, gemini
 ASR_WYOMING_IP=whisper      # Wyoming server hostname (container name in compose)
 ASR_WYOMING_PORT=10300      # Wyoming server port
 LLM_PROVIDER=ollama         # LLM provider: ollama, openai, gemini
+LLM_OLLAMA_MODEL=gemma3:4b  # Ollama model name
+LLM_OLLAMA_HOST=http://ollama:11434  # Ollama server URL (container name)
+LLM_OPENAI_MODEL=gpt-4.1-nano  # OpenAI model (if using openai provider)
+OPENAI_API_KEY=sk-...       # OpenAI API key (if using openai provider)
 ```
 
 ### GPU Support

@@ -20,6 +20,7 @@ def with_default(option: OptionInfo, default: str) -> OptionInfo:
 LLM_PROVIDER: str = typer.Option(
     "ollama",
     "--llm-provider",
+    envvar="LLM_PROVIDER",
     help="The LLM provider to use ('ollama', 'openai', 'gemini').",
     rich_help_panel="Provider Selection",
 )
@@ -33,6 +34,7 @@ ASR_PROVIDER: str = typer.Option(
 TTS_PROVIDER: str = typer.Option(
     "wyoming",
     "--tts-provider",
+    envvar="TTS_PROVIDER",
     help="The TTS provider to use ('wyoming', 'openai', 'kokoro', 'gemini').",
     rich_help_panel="Provider Selection",
 )
@@ -49,12 +51,14 @@ LLM: bool = typer.Option(
 LLM_OLLAMA_MODEL: str = typer.Option(
     "gemma3:4b",
     "--llm-ollama-model",
+    envvar="LLM_OLLAMA_MODEL",
     help="The Ollama model to use. Default is gemma3:4b.",
     rich_help_panel="LLM: Ollama",
 )
 LLM_OLLAMA_HOST: str = typer.Option(
     "http://localhost:11434",
     "--llm-ollama-host",
+    envvar="LLM_OLLAMA_HOST",
     help="The Ollama server host. Default is http://localhost:11434.",
     rich_help_panel="LLM: Ollama",
 )
@@ -62,6 +66,7 @@ LLM_OLLAMA_HOST: str = typer.Option(
 LLM_OPENAI_MODEL: str = typer.Option(
     DEFAULT_OPENAI_MODEL,
     "--llm-openai-model",
+    envvar="LLM_OPENAI_MODEL",
     help="The OpenAI model to use for LLM tasks.",
     rich_help_panel="LLM: OpenAI-compatible",
 )
@@ -83,6 +88,7 @@ OPENAI_BASE_URL: str | None = typer.Option(
 LLM_GEMINI_MODEL: str = typer.Option(
     "gemini-3-flash-preview",
     "--llm-gemini-model",
+    envvar="LLM_GEMINI_MODEL",
     help="The Gemini model to use for LLM tasks.",
     rich_help_panel="LLM: Gemini",
 )
