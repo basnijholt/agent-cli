@@ -29,7 +29,12 @@ RUN uv sync --frozen --no-dev --no-editable --extra server
 # =============================================================================
 # Runtime stage - minimal image
 # =============================================================================
-FROM python:3.13-slim
+FROM debian:bookworm-slim
+
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+
+ENV UV_PYTHON_INSTALL_DIR=/opt/python
+RUN uv python install 3.13
 
 RUN groupadd -g 1000 transcribe && useradd -m -u 1000 -g transcribe transcribe
 
@@ -37,7 +42,8 @@ WORKDIR /app
 
 COPY --from=builder /app/.venv /app/.venv
 
-RUN ln -s /app/.venv/bin/agent-cli /usr/local/bin/agent-cli
+RUN ln -sf $(uv python find 3.13) /app/.venv/bin/python && \
+    ln -s /app/.venv/bin/agent-cli /usr/local/bin/agent-cli
 
 USER transcribe
 
@@ -47,7 +53,7 @@ ENV PROXY_HOST=0.0.0.0 \
     PROXY_PORT=61337
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
-    CMD python3 -c "import urllib.request; urllib.request.urlopen('http://localhost:${PROXY_PORT}/health')" || exit 1
+    CMD /app/.venv/bin/python -c "import urllib.request; urllib.request.urlopen('http://localhost:${PROXY_PORT}/health')" || exit 1
 
 ENTRYPOINT ["sh", "-c", "agent-cli server transcription-proxy \
     --host ${PROXY_HOST} \

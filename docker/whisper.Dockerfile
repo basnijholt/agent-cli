@@ -33,13 +33,14 @@ RUN uv sync --frozen --no-dev --no-editable --extra server --extra faster-whispe
 # =============================================================================
 FROM nvidia/cuda:12.9.1-cudnn-runtime-ubuntu22.04 AS cuda
 
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-        python3.13 \
-        python3.13-venv \
-        ffmpeg \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
+    apt-get install -y --no-install-recommends ffmpeg && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+
+ENV UV_PYTHON_INSTALL_DIR=/opt/python
+RUN uv python install 3.13
 
 RUN groupadd -g 1000 whisper && useradd -m -u 1000 -g whisper whisper
 
@@ -47,7 +48,8 @@ WORKDIR /app
 
 COPY --from=builder /app/.venv /app/.venv
 
-RUN ln -s /app/.venv/bin/agent-cli /usr/local/bin/agent-cli && \
+RUN ln -sf $(uv python find 3.13) /app/.venv/bin/python && \
+    ln -s /app/.venv/bin/agent-cli /usr/local/bin/agent-cli && \
     mkdir -p /home/whisper/.cache && chown -R whisper:whisper /home/whisper
 
 USER whisper
@@ -63,7 +65,7 @@ ENV WHISPER_HOST=0.0.0.0 \
     WHISPER_DEVICE=cuda
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-    CMD python3.13 -c "import urllib.request; urllib.request.urlopen('http://localhost:${WHISPER_PORT}/health')" || exit 1
+    CMD /app/.venv/bin/python -c "import urllib.request; urllib.request.urlopen('http://localhost:${WHISPER_PORT}/health')" || exit 1
 
 ENTRYPOINT ["sh", "-c", "agent-cli server whisper \
     --host ${WHISPER_HOST} \
@@ -78,13 +80,16 @@ ENTRYPOINT ["sh", "-c", "agent-cli server whisper \
 # =============================================================================
 # CPU target: CPU-only with faster-whisper
 # =============================================================================
-FROM python:3.13-slim AS cpu
+FROM debian:bookworm-slim AS cpu
+
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-        ffmpeg \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
+    apt-get install -y --no-install-recommends ffmpeg && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+
+ENV UV_PYTHON_INSTALL_DIR=/opt/python
+RUN uv python install 3.13
 
 RUN groupadd -g 1000 whisper && useradd -m -u 1000 -g whisper whisper
 
@@ -92,7 +97,8 @@ WORKDIR /app
 
 COPY --from=builder /app/.venv /app/.venv
 
-RUN ln -s /app/.venv/bin/agent-cli /usr/local/bin/agent-cli && \
+RUN ln -sf $(uv python find 3.13) /app/.venv/bin/python && \
+    ln -s /app/.venv/bin/agent-cli /usr/local/bin/agent-cli && \
     mkdir -p /home/whisper/.cache && chown -R whisper:whisper /home/whisper
 
 USER whisper
@@ -108,7 +114,7 @@ ENV WHISPER_HOST=0.0.0.0 \
     WHISPER_DEVICE=cpu
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-    CMD python3 -c "import urllib.request; urllib.request.urlopen('http://localhost:${WHISPER_PORT}/health')" || exit 1
+    CMD /app/.venv/bin/python -c "import urllib.request; urllib.request.urlopen('http://localhost:${WHISPER_PORT}/health')" || exit 1
 
 ENTRYPOINT ["sh", "-c", "agent-cli server whisper \
     --host ${WHISPER_HOST} \
