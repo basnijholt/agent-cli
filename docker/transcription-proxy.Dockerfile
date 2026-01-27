@@ -7,32 +7,36 @@
 # Run example:
 #   docker run -p 61337:61337 agent-cli-transcription-proxy
 
-FROM python:3.13-slim
-
-# Install system dependencies
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-        git \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
+# =============================================================================
+# Builder stage - install dependencies and project
+# =============================================================================
+FROM python:3.13-slim AS builder
 
 # Install uv
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+
+WORKDIR /app
+
+# Install from lock file for reproducible builds
+COPY pyproject.toml uv.lock ./
+COPY agent_cli ./agent_cli
+RUN uv sync --frozen --no-dev --extra server
+
+# =============================================================================
+# Runtime stage - minimal image
+# =============================================================================
+FROM python:3.13-slim
 
 # Create non-root user with explicit UID:GID 1000:1000
 RUN groupadd -g 1000 transcribe && useradd -m -u 1000 -g transcribe transcribe
 
 WORKDIR /app
 
-# Install from lock file for reproducible builds
-# First sync dependencies only (cached layer), then install project
-COPY pyproject.toml uv.lock ./
-RUN uv sync --frozen --no-dev --extra server --no-install-project
+# Copy only the virtual environment from builder
+COPY --from=builder /app/.venv /app/.venv
 
-# Copy source and install the project
-COPY agent_cli ./agent_cli
-RUN uv sync --frozen --no-dev --extra server && \
-    ln -s /app/.venv/bin/agent-cli /usr/local/bin/agent-cli
+# Create symlink for agent-cli
+RUN ln -s /app/.venv/bin/agent-cli /usr/local/bin/agent-cli
 
 USER transcribe
 
