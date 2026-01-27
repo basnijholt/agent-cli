@@ -33,6 +33,10 @@ FROM debian:bookworm-slim
 
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends ffmpeg && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+
 ENV UV_PYTHON_INSTALL_DIR=/opt/python
 RUN uv python install 3.13
 
