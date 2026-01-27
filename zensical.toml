@@ -44,7 +44,7 @@ nav = [
         { "Overview" = "commands/server/index.md" },
         { "whisper" = "commands/server/whisper.md" },
         { "tts" = "commands/server/tts.md" },
-        { "transcription-proxy" = "commands/server/transcription-proxy.md" },
+        { "transcribe-proxy" = "commands/server/transcribe-proxy.md" },
       ] },
     ] },
     { "Setup" = [

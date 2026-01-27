@@ -91,7 +91,7 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-  # Single-target images (transcription-proxy)
+  # Single-target images (transcribe-proxy)
   build-single-target:
     runs-on: ubuntu-latest
     if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
@@ -102,8 +102,8 @@ jobs:
     strategy:
       matrix:
         include:
-          - image: transcription-proxy
-            dockerfile: docker/transcription-proxy.Dockerfile
+          - image: transcribe-proxy
+            dockerfile: docker/transcribe-proxy.Dockerfile
 
     steps:
       - name: Checkout repository

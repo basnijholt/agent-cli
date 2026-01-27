@@ -21,7 +21,7 @@ This guide shows how to create an iOS Shortcut that records audio, sends it to y
 
 2. Start the server:
    ```bash
-   agent-cli server transcription-proxy --host 0.0.0.0 --port 61337
+   agent-cli server transcribe-proxy --host 0.0.0.0 --port 61337
    ```
 
 3. Test the server is working:
