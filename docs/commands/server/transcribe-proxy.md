@@ -116,8 +116,14 @@ Configure the proxy using environment variables (priority: env var > config file
 | `ASR_WYOMING_IP` | `localhost` | Wyoming ASR server hostname/IP |
 | `ASR_WYOMING_PORT` | `10300` | Wyoming ASR server port |
 | `LLM_PROVIDER` | `ollama` | LLM provider: `ollama`, `openai`, `gemini` |
-| `OPENAI_API_KEY` | - | OpenAI API key (for OpenAI provider) |
-| `GEMINI_API_KEY` | - | Gemini API key (for Gemini provider) |
+| `LLM_OLLAMA_MODEL` | `gemma3:4b` | Ollama model name |
+| `LLM_OLLAMA_HOST` | `http://localhost:11434` | Ollama server URL |
+| `LLM_OPENAI_MODEL` | `gpt-4.1-nano` | OpenAI model name |
+| `LLM_GEMINI_MODEL` | `gemini-3-flash-preview` | Gemini model name |
+| `TTS_PROVIDER` | `wyoming` | TTS provider: `wyoming`, `openai`, `kokoro`, `gemini` |
+| `OPENAI_API_KEY` | - | OpenAI API key |
+| `OPENAI_BASE_URL` | - | Custom OpenAI-compatible API base URL |
+| `GEMINI_API_KEY` | - | Gemini API key |
 
 Example with Wyoming ASR in Docker Compose:
 
