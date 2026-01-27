@@ -38,7 +38,7 @@ COPY pyproject.toml uv.lock README.md ./
 COPY .git ./.git
 COPY agent_cli ./agent_cli
 COPY scripts ./scripts
-RUN uv sync --frozen --no-dev --no-editable --extra server --extra audio --extra llm
+RUN uv sync --frozen --no-dev --no-editable --extra server --extra wyoming --extra llm
 
 # =============================================================================
 # Runtime stage - minimal image

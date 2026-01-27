@@ -26,7 +26,7 @@ COPY pyproject.toml uv.lock README.md ./
 COPY .git ./.git
 COPY agent_cli ./agent_cli
 COPY scripts ./scripts
-RUN uv sync --frozen --no-dev --no-editable --extra server --extra faster-whisper --extra audio
+RUN uv sync --frozen --no-dev --no-editable --extra server --extra faster-whisper --extra wyoming
 
 # =============================================================================
 # CUDA target: GPU-accelerated with faster-whisper

@@ -1,5 +1,6 @@
 {
-  "audio": ["Audio recording/playback with Wyoming protocol", ["numpy", "sounddevice", "wyoming"]],
+  "wyoming": ["Wyoming protocol for ASR/TTS servers", ["wyoming"]],
+  "audio": ["Local audio recording/playback", ["numpy", "sounddevice", "wyoming"]],
   "llm": ["LLM framework (pydantic-ai)", ["pydantic_ai"]],
   "memory": ["Long-term memory proxy", ["chromadb", "yaml"]],
   "rag": ["RAG proxy (ChromaDB, embeddings)", ["chromadb"]],
