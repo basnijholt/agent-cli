@@ -2,10 +2,10 @@
 # A lightweight proxy that forwards requests to configured ASR providers
 #
 # Build example:
-#   docker build -f docker/transcription-proxy.Dockerfile -t agent-cli-transcription-proxy .
+#   docker build -f docker/transcribe-proxy.Dockerfile -t agent-cli-transcribe-proxy .
 #
 # Run example:
-#   docker run -p 61337:61337 agent-cli-transcription-proxy
+#   docker run -p 61337:61337 agent-cli-transcribe-proxy
 
 # =============================================================================
 # Builder stage - install dependencies and project
@@ -59,7 +59,7 @@ ENV PROXY_HOST=0.0.0.0 \
 HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
     CMD /app/.venv/bin/python -c "import urllib.request; urllib.request.urlopen('http://localhost:${PROXY_PORT}/health')" || exit 1
 
-ENTRYPOINT ["sh", "-c", "agent-cli server transcription-proxy \
+ENTRYPOINT ["sh", "-c", "agent-cli server transcribe-proxy \
     --host ${PROXY_HOST} \
     --port ${PROXY_PORT} \
     ${PROXY_EXTRA_ARGS:-}"]
