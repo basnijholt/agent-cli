@@ -79,6 +79,10 @@ TTS_TTL=300                 # Seconds before unloading idle model
 
 # Transcription Proxy
 PROXY_PORT=61337            # Port for transcription proxy
+ASR_PROVIDER=wyoming        # ASR provider: wyoming, openai, gemini
+ASR_WYOMING_IP=whisper      # Wyoming server hostname (container name in compose)
+ASR_WYOMING_PORT=10300      # Wyoming server port
+LLM_PROVIDER=ollama         # LLM provider: ollama, openai, gemini
 ```
 
 ### GPU Support

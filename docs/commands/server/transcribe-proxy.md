@@ -106,6 +106,30 @@ docker run -p 61337:61337 ghcr.io/basnijholt/agent-cli-transcribe-proxy:latest
 docker compose -f docker/docker-compose.yml --profile cpu up transcribe-proxy
 ```
 
+### Environment Variables
+
+Configure the proxy using environment variables (priority: env var > config file > default):
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `ASR_PROVIDER` | `wyoming` | ASR provider: `wyoming`, `openai`, `gemini` |
+| `ASR_WYOMING_IP` | `localhost` | Wyoming ASR server hostname/IP |
+| `ASR_WYOMING_PORT` | `10300` | Wyoming ASR server port |
+| `LLM_PROVIDER` | `ollama` | LLM provider: `ollama`, `openai`, `gemini` |
+| `OPENAI_API_KEY` | - | OpenAI API key (for OpenAI provider) |
+| `GEMINI_API_KEY` | - | Gemini API key (for Gemini provider) |
+
+Example with Wyoming ASR in Docker Compose:
+
+```bash
+docker run -p 61337:61337 \
+  -e ASR_WYOMING_IP=agent-cli-whisper \
+  -e ASR_WYOMING_PORT=10300 \
+  ghcr.io/basnijholt/agent-cli-transcribe-proxy:latest
+```
+
+### Custom Config File
+
 To use a custom config, mount it as a volume:
 
 ```bash
