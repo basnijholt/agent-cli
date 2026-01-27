@@ -98,16 +98,6 @@ class WyomingWhisperHandler(AsyncEventHandler):
             await self.write_event(Transcript(text="").event())
             return False
 
-        pcm_bytes = len(self._audio_bytes)
-        duration_seconds = pcm_bytes / (
-            constants.AUDIO_RATE * constants.AUDIO_FORMAT_WIDTH * constants.AUDIO_CHANNELS
-        )
-        logger.debug("AudioStop: %d bytes (%.2fs)", pcm_bytes, duration_seconds)
-
-        # Check if audio is likely silence
-        if all(b == 0 for b in self._audio_bytes[:1000]):
-            logger.warning("Audio appears to be silence")
-
         # Wrap PCM in WAV format for the backend
         audio_data = pcm_to_wav(
             self._audio_bytes,
@@ -128,12 +118,7 @@ class WyomingWhisperHandler(AsyncEventHandler):
             )
 
             if not result.text:
-                logger.warning(
-                    "Transcription returned empty text (duration=%.2fs)",
-                    result.duration,
-                )
-            else:
-                logger.info("Transcription: %s", result.text[:100] if result.text else "")
+                logger.warning("Transcription returned empty text")
             await self.write_event(Transcript(text=result.text).event())
 
         except Exception:

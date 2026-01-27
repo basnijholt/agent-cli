@@ -242,24 +242,9 @@ def _load_transcription_configs() -> tuple[
     )
 
 
-_AUDIO_HEADER_LOG_SIZE = 20
-
-
 def _convert_audio_for_local_asr(audio_data: bytes, filename: str) -> bytes:
     """Convert audio to Wyoming format if needed for local ASR."""
-    header = audio_data[:_AUDIO_HEADER_LOG_SIZE].hex()
-    LOGGER.debug(
-        "Input audio: filename=%s, size=%d bytes, header=%s",
-        filename,
-        len(audio_data),
-        header,
-    )
-    converted_data = convert_audio_to_wyoming_format(audio_data, filename)
-    LOGGER.debug(
-        "Converted audio: size=%d bytes (PCM 16kHz mono 16-bit)",
-        len(converted_data),
-    )
-    return converted_data
+    return convert_audio_to_wyoming_format(audio_data, filename)
 
 
 async def _process_transcript_cleanup(

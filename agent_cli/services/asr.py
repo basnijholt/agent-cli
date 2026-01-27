@@ -380,21 +380,6 @@ async def _transcribe_recorded_audio_wyoming(
     from wyoming.asr import Transcribe  # noqa: PLC0415
     from wyoming.audio import AudioChunk, AudioStart, AudioStop  # noqa: PLC0415
 
-    logger.debug(
-        "Wyoming transcription: %d bytes to %s:%d",
-        len(audio_data),
-        wyoming_asr_cfg.asr_wyoming_ip,
-        wyoming_asr_cfg.asr_wyoming_port,
-    )
-    # Log audio header to help debug format issues
-    _header_size = 20
-    if len(audio_data) >= _header_size:
-        logger.debug(
-            "Audio header (first %d bytes): %s",
-            _header_size,
-            audio_data[:_header_size].hex(),
-        )
-
     try:
         async with wyoming_client_context(
             wyoming_asr_cfg.asr_wyoming_ip,
@@ -403,33 +388,23 @@ async def _transcribe_recorded_audio_wyoming(
             logger,
             quiet=quiet,
         ) as client:
-            logger.debug("Wyoming client connected")
-
             # Get effective prompt and pass via context
             effective_prompt = wyoming_asr_cfg.get_effective_prompt(extra_instructions)
             context = {"initial_prompt": effective_prompt} if effective_prompt else None
             await client.write_event(Transcribe(context=context).event())
-            logger.debug("Sent Transcribe event with context=%s", context)
 
             await client.write_event(AudioStart(**constants.WYOMING_AUDIO_CONFIG).event())
-            logger.debug("Sent AudioStart: %s", constants.WYOMING_AUDIO_CONFIG)
 
             chunk_size = constants.AUDIO_CHUNK_SIZE * 2
-            total_sent = 0
             for i in range(0, len(audio_data), chunk_size):
                 chunk = audio_data[i : i + chunk_size]
                 await client.write_event(
                     AudioChunk(audio=chunk, **constants.WYOMING_AUDIO_CONFIG).event(),
                 )
-                total_sent += len(chunk)
 
-            logger.debug("Sent %d bytes of audio in chunks", total_sent)
             await client.write_event(AudioStop().event())
-            logger.debug("Sent AudioStop, waiting for transcript...")
 
-            result = await _receive_transcript(client, logger)
-            logger.debug("Received transcript: %r", result[:200] if result else result)
-            return result
+            return await _receive_transcript(client, logger)
     except (ConnectionRefusedError, Exception):
         logger.warning("Failed to connect to Wyoming ASR server")
         return ""
