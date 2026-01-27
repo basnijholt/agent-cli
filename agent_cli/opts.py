@@ -26,6 +26,7 @@ LLM_PROVIDER: str = typer.Option(
 ASR_PROVIDER: str = typer.Option(
     "wyoming",
     "--asr-provider",
+    envvar="ASR_PROVIDER",
     help="The ASR provider to use ('wyoming', 'openai', 'gemini').",
     rich_help_panel="Provider Selection",
 )
@@ -124,12 +125,14 @@ LIST_DEVICES: bool = typer.Option(
 ASR_WYOMING_IP: str = typer.Option(
     "localhost",
     "--asr-wyoming-ip",
+    envvar="ASR_WYOMING_IP",
     help="Wyoming ASR server IP address.",
     rich_help_panel="Audio Input: Wyoming",
 )
 ASR_WYOMING_PORT: int = typer.Option(
     10300,
     "--asr-wyoming-port",
+    envvar="ASR_WYOMING_PORT",
     help="Wyoming ASR server port.",
     rich_help_panel="Audio Input: Wyoming",
 )

@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import logging
+import os
 from pathlib import Path
-from typing import Annotated, Any
+from typing import TYPE_CHECKING, Annotated, Any
 
 from fastapi import Depends, FastAPI, File, Form, HTTPException, Request, UploadFile
 from pydantic import BaseModel
@@ -25,6 +26,9 @@ from agent_cli.core.transcription_logger import TranscriptionLogger, get_default
 from agent_cli.server.common import log_requests_middleware
 from agent_cli.services import asr
 from agent_cli.services.llm import process_and_update_clipboard
+
+if TYPE_CHECKING:
+    from typer.models import OptionInfo
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -153,6 +157,13 @@ def _validate_audio_file(audio: UploadFile) -> None:
         )
 
 
+def _cfg(key: str, defaults: dict[str, Any], opt: OptionInfo) -> Any:
+    """Get config with priority: env var > config file > option default."""
+    if opt.envvar and (env_val := os.environ.get(opt.envvar)):
+        return int(env_val) if isinstance(opt.default, int) else env_val
+    return defaults.get(key, opt.default)
+
+
 def _load_transcription_configs() -> tuple[
     config.ProviderSelection,
     config.WyomingASR,
@@ -163,41 +174,41 @@ def _load_transcription_configs() -> tuple[
     config.GeminiLLM,
     dict[str, Any],
 ]:
-    """Load and create all required configuration objects."""
+    """Load config objects. Priority: env var > config file > default."""
     loaded_config = config.load_config()
     wildcard_config = loaded_config.get("defaults", {})
     command_config = loaded_config.get("transcribe", {})
     defaults = {**wildcard_config, **command_config}
 
     provider_cfg = config.ProviderSelection(
-        asr_provider=defaults.get("asr_provider", opts.ASR_PROVIDER.default),  # type: ignore[attr-defined]
-        llm_provider=defaults.get("llm_provider", opts.LLM_PROVIDER.default),  # type: ignore[attr-defined]
-        tts_provider=opts.TTS_PROVIDER.default,  # type: ignore[attr-defined]
+        asr_provider=_cfg("asr_provider", defaults, opts.ASR_PROVIDER),
+        llm_provider=_cfg("llm_provider", defaults, opts.LLM_PROVIDER),
+        tts_provider=_cfg("tts_provider", defaults, opts.TTS_PROVIDER),
     )
     wyoming_asr_cfg = config.WyomingASR(
-        asr_wyoming_ip=defaults.get("asr_wyoming_ip", opts.ASR_WYOMING_IP.default),  # type: ignore[attr-defined]
-        asr_wyoming_port=defaults.get("asr_wyoming_port", opts.ASR_WYOMING_PORT.default),  # type: ignore[attr-defined]
+        asr_wyoming_ip=_cfg("asr_wyoming_ip", defaults, opts.ASR_WYOMING_IP),
+        asr_wyoming_port=_cfg("asr_wyoming_port", defaults, opts.ASR_WYOMING_PORT),
     )
     openai_asr_cfg = config.OpenAIASR(
-        asr_openai_model=defaults.get("asr_openai_model", opts.ASR_OPENAI_MODEL.default),  # type: ignore[attr-defined]
-        openai_api_key=defaults.get("openai_api_key", opts.OPENAI_API_KEY.default),  # type: ignore[attr-defined,union-attr]
+        asr_openai_model=_cfg("asr_openai_model", defaults, opts.ASR_OPENAI_MODEL),
+        openai_api_key=_cfg("openai_api_key", defaults, opts.OPENAI_API_KEY),
     )
     gemini_asr_cfg = config.GeminiASR(
-        asr_gemini_model=defaults.get("asr_gemini_model", opts.ASR_GEMINI_MODEL.default),  # type: ignore[attr-defined]
-        gemini_api_key=defaults.get("gemini_api_key", opts.GEMINI_API_KEY.default),  # type: ignore[attr-defined,union-attr]
+        asr_gemini_model=_cfg("asr_gemini_model", defaults, opts.ASR_GEMINI_MODEL),
+        gemini_api_key=_cfg("gemini_api_key", defaults, opts.GEMINI_API_KEY),
     )
     ollama_cfg = config.Ollama(
-        llm_ollama_model=defaults.get("llm_ollama_model", opts.LLM_OLLAMA_MODEL.default),  # type: ignore[attr-defined]
-        llm_ollama_host=defaults.get("llm_ollama_host", opts.LLM_OLLAMA_HOST.default),  # type: ignore[attr-defined]
+        llm_ollama_model=_cfg("llm_ollama_model", defaults, opts.LLM_OLLAMA_MODEL),
+        llm_ollama_host=_cfg("llm_ollama_host", defaults, opts.LLM_OLLAMA_HOST),
     )
     openai_llm_cfg = config.OpenAILLM(
-        llm_openai_model=defaults.get("llm_openai_model", opts.LLM_OPENAI_MODEL.default),  # type: ignore[attr-defined]
-        openai_api_key=defaults.get("openai_api_key", opts.OPENAI_API_KEY.default),  # type: ignore[attr-defined,union-attr]
-        openai_base_url=defaults.get("openai_base_url", opts.OPENAI_BASE_URL.default),  # type: ignore[attr-defined,union-attr]
+        llm_openai_model=_cfg("llm_openai_model", defaults, opts.LLM_OPENAI_MODEL),
+        openai_api_key=_cfg("openai_api_key", defaults, opts.OPENAI_API_KEY),
+        openai_base_url=_cfg("openai_base_url", defaults, opts.OPENAI_BASE_URL),
     )
     gemini_llm_cfg = config.GeminiLLM(
-        llm_gemini_model=defaults.get("llm_gemini_model", opts.LLM_GEMINI_MODEL.default),  # type: ignore[attr-defined]
-        gemini_api_key=defaults.get("gemini_api_key", opts.GEMINI_API_KEY.default),  # type: ignore[attr-defined,union-attr]
+        llm_gemini_model=_cfg("llm_gemini_model", defaults, opts.LLM_GEMINI_MODEL),
+        gemini_api_key=_cfg("gemini_api_key", defaults, opts.GEMINI_API_KEY),
     )
 
     return (

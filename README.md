@@ -666,6 +666,7 @@ the `[defaults]` section of your configuration file.
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Provider Selection ───────────────────────────────────────────────────────────────────╮
 │ --asr-provider        TEXT  The ASR provider to use ('wyoming', 'openai', 'gemini').   │
+│                             [env var: ASR_PROVIDER]                                    │
 │                             [default: wyoming]                                         │
 │ --llm-provider        TEXT  The LLM provider to use ('ollama', 'openai', 'gemini').    │
 │                             [default: ollama]                                          │
@@ -678,8 +679,10 @@ the `[defaults]` section of your configuration file.
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Audio Input: Wyoming ─────────────────────────────────────────────────────────────────╮
 │ --asr-wyoming-ip          TEXT     Wyoming ASR server IP address.                      │
+│                                    [env var: ASR_WYOMING_IP]                           │
 │                                    [default: localhost]                                │
 │ --asr-wyoming-port        INTEGER  Wyoming ASR server port.                            │
+│                                    [env var: ASR_WYOMING_PORT]                         │
 │                                    [default: 10300]                                    │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Audio Input: OpenAI-compatible ───────────────────────────────────────────────────────╮
@@ -840,6 +843,7 @@ uv tool install "agent-cli[vad]" -p 3.13
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Provider Selection ───────────────────────────────────────────────────────────────────╮
 │ --asr-provider        TEXT  The ASR provider to use ('wyoming', 'openai', 'gemini').   │
+│                             [env var: ASR_PROVIDER]                                    │
 │                             [default: wyoming]                                         │
 │ --llm-provider        TEXT  The LLM provider to use ('ollama', 'openai', 'gemini').    │
 │                             [default: ollama]                                          │
@@ -852,8 +856,10 @@ uv tool install "agent-cli[vad]" -p 3.13
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Audio Input: Wyoming ─────────────────────────────────────────────────────────────────╮
 │ --asr-wyoming-ip          TEXT     Wyoming ASR server IP address.                      │
+│                                    [env var: ASR_WYOMING_IP]                           │
 │                                    [default: localhost]                                │
 │ --asr-wyoming-port        INTEGER  Wyoming ASR server port.                            │
+│                                    [env var: ASR_WYOMING_PORT]                         │
 │                                    [default: 10300]                                    │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Audio Input: OpenAI-compatible ───────────────────────────────────────────────────────╮
@@ -1086,6 +1092,7 @@ uv tool install "agent-cli[vad]" -p 3.13
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Provider Selection ───────────────────────────────────────────────────────────────────╮
 │ --asr-provider        TEXT  The ASR provider to use ('wyoming', 'openai', 'gemini').   │
+│                             [env var: ASR_PROVIDER]                                    │
 │                             [default: wyoming]                                         │
 │ --llm-provider        TEXT  The LLM provider to use ('ollama', 'openai', 'gemini').    │
 │                             [default: ollama]                                          │
@@ -1101,8 +1108,10 @@ uv tool install "agent-cli[vad]" -p 3.13
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Audio Input: Wyoming ─────────────────────────────────────────────────────────────────╮
 │ --asr-wyoming-ip          TEXT     Wyoming ASR server IP address.                      │
+│                                    [env var: ASR_WYOMING_IP]                           │
 │                                    [default: localhost]                                │
 │ --asr-wyoming-port        INTEGER  Wyoming ASR server port.                            │
+│                                    [env var: ASR_WYOMING_PORT]                         │
 │                                    [default: 10300]                                    │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Audio Input: OpenAI-compatible ───────────────────────────────────────────────────────╮
@@ -1251,6 +1260,7 @@ uv tool install "agent-cli[vad]" -p 3.13
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Provider Selection ───────────────────────────────────────────────────────────────────╮
 │ --asr-provider        TEXT  The ASR provider to use ('wyoming', 'openai', 'gemini').   │
+│                             [env var: ASR_PROVIDER]                                    │
 │                             [default: wyoming]                                         │
 │ --llm-provider        TEXT  The LLM provider to use ('ollama', 'openai', 'gemini').    │
 │                             [default: ollama]                                          │
@@ -1275,8 +1285,10 @@ uv tool install "agent-cli[vad]" -p 3.13
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Audio Input: Wyoming ─────────────────────────────────────────────────────────────────╮
 │ --asr-wyoming-ip          TEXT     Wyoming ASR server IP address.                      │
+│                                    [env var: ASR_WYOMING_IP]                           │
 │                                    [default: localhost]                                │
 │ --asr-wyoming-port        INTEGER  Wyoming ASR server port.                            │
+│                                    [env var: ASR_WYOMING_PORT]                         │
 │                                    [default: 10300]                                    │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Audio Input: OpenAI-compatible ───────────────────────────────────────────────────────╮
@@ -1430,6 +1442,7 @@ uv tool install "agent-cli[vad]" -p 3.13
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Provider Selection ───────────────────────────────────────────────────────────────────╮
 │ --asr-provider        TEXT  The ASR provider to use ('wyoming', 'openai', 'gemini').   │
+│                             [env var: ASR_PROVIDER]                                    │
 │                             [default: wyoming]                                         │
 │ --llm-provider        TEXT  The LLM provider to use ('ollama', 'openai', 'gemini').    │
 │                             [default: ollama]                                          │
@@ -1445,8 +1458,10 @@ uv tool install "agent-cli[vad]" -p 3.13
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Audio Input: Wyoming ─────────────────────────────────────────────────────────────────╮
 │ --asr-wyoming-ip          TEXT     Wyoming ASR server IP address.                      │
+│                                    [env var: ASR_WYOMING_IP]                           │
 │                                    [default: localhost]                                │
 │ --asr-wyoming-port        INTEGER  Wyoming ASR server port.                            │
+│                                    [env var: ASR_WYOMING_PORT]                         │
 │                                    [default: 10300]                                    │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Audio Input: OpenAI-compatible ───────────────────────────────────────────────────────╮
