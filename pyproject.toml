@@ -31,7 +31,8 @@ Homepage = "https://github.com/basnijholt/agent-cli"
 
 [project.optional-dependencies]
 # Provider extras (previously base dependencies, now optional)
-audio = ["numpy", "sounddevice>=0.4.6", "wyoming>=1.5.2"]
+wyoming = ["wyoming>=1.5.2"]  # Wyoming protocol only (for servers)
+audio = ["numpy", "sounddevice>=0.4.6", "agent-cli[wyoming]"]  # Local audio recording
 llm = ["pydantic-ai-slim[openai,google,duckduckgo,vertexai]>=0.1.1"]
 
 # Feature extras
