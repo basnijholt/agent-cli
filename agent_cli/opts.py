@@ -360,7 +360,8 @@ CLIPBOARD: bool = typer.Option(
 LOG_LEVEL: str = typer.Option(
     "WARNING",
     "--log-level",
-    help="Set logging level.",
+    envvar="LOG_LEVEL",
+    help="Set logging level (debug, info, warning, error).",
     case_sensitive=False,
     rich_help_panel="General Options",
 )
@@ -401,6 +402,14 @@ SERVER_HOST: str = typer.Option(
     "0.0.0.0",  # noqa: S104
     "--host",
     help="Host/IP to bind API servers to.",
+    rich_help_panel="Server Configuration",
+)
+SERVER_LOG_LEVEL: str = typer.Option(
+    "info",
+    "--log-level",
+    "-l",
+    envvar="LOG_LEVEL",
+    help="Logging level: debug, info, warning, error.",
     rich_help_panel="Server Configuration",
 )
 
