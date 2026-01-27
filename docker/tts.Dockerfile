@@ -10,40 +10,32 @@
 #   docker run -p 10200:10200 -p 10201:10201 agent-cli-tts:cpu
 
 # =============================================================================
-# Builder stage for CUDA - install dependencies and project with Kokoro
+# Builder stage for CUDA - Kokoro TTS (requires build tools)
 # =============================================================================
 FROM python:3.13-slim AS builder-cuda
 
-# Install build dependencies
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-        build-essential \
-        git \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
+    apt-get install -y --no-install-recommends build-essential git && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Install uv
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
 WORKDIR /app
 
-# Install from lock file for reproducible builds
 COPY pyproject.toml uv.lock ./
 COPY agent_cli ./agent_cli
 RUN uv sync --frozen --no-dev --extra server --extra kokoro && \
     /app/.venv/bin/python -m spacy download en_core_web_sm
 
 # =============================================================================
-# Builder stage for CPU - install dependencies and project with Piper
+# Builder stage for CPU - Piper TTS
 # =============================================================================
 FROM python:3.13-slim AS builder-cpu
 
-# Install uv
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
 WORKDIR /app
 
-# Install from lock file for reproducible builds
 COPY pyproject.toml uv.lock ./
 COPY agent_cli ./agent_cli
 RUN uv sync --frozen --no-dev --extra server --extra piper
@@ -53,7 +45,6 @@ RUN uv sync --frozen --no-dev --extra server --extra piper
 # =============================================================================
 FROM nvidia/cuda:12.9.1-cudnn-runtime-ubuntu22.04 AS cuda
 
-# Install system dependencies
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
         python3.13 \
@@ -64,26 +55,19 @@ RUN apt-get update && \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# Create non-root user with explicit UID:GID 1000:1000
 RUN groupadd -g 1000 tts && useradd -m -u 1000 -g tts tts
 
 WORKDIR /app
 
-# Copy only the virtual environment from builder
 COPY --from=builder-cuda /app/.venv /app/.venv
 
-# Create symlink for agent-cli
-RUN ln -s /app/.venv/bin/agent-cli /usr/local/bin/agent-cli
-
-# Create cache directory for models
-RUN mkdir -p /home/tts/.cache && chown -R tts:tts /home/tts
+RUN ln -s /app/.venv/bin/agent-cli /usr/local/bin/agent-cli && \
+    mkdir -p /home/tts/.cache && chown -R tts:tts /home/tts
 
 USER tts
 
-# Expose ports: Wyoming (10200) and HTTP API (10201)
 EXPOSE 10200 10201
 
-# Default environment variables
 ENV TTS_HOST=0.0.0.0 \
     TTS_PORT=10201 \
     TTS_WYOMING_PORT=10200 \
@@ -93,7 +77,6 @@ ENV TTS_HOST=0.0.0.0 \
     TTS_LOG_LEVEL=info \
     TTS_DEVICE=cuda
 
-# Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
     CMD python3.13 -c "import urllib.request; urllib.request.urlopen('http://localhost:${TTS_PORT}/health')" || exit 1
 
@@ -113,33 +96,23 @@ ENTRYPOINT ["sh", "-c", "agent-cli server tts \
 # =============================================================================
 FROM python:3.13-slim AS cpu
 
-# Install system dependencies
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-        ffmpeg \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
+    apt-get install -y --no-install-recommends ffmpeg && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Create non-root user with explicit UID:GID 1000:1000
 RUN groupadd -g 1000 tts && useradd -m -u 1000 -g tts tts
 
 WORKDIR /app
 
-# Copy only the virtual environment from builder
 COPY --from=builder-cpu /app/.venv /app/.venv
 
-# Create symlink for agent-cli
-RUN ln -s /app/.venv/bin/agent-cli /usr/local/bin/agent-cli
-
-# Create cache directory for models
-RUN mkdir -p /home/tts/.cache && chown -R tts:tts /home/tts
+RUN ln -s /app/.venv/bin/agent-cli /usr/local/bin/agent-cli && \
+    mkdir -p /home/tts/.cache && chown -R tts:tts /home/tts
 
 USER tts
 
-# Expose ports: Wyoming (10200) and HTTP API (10201)
 EXPOSE 10200 10201
 
-# Default environment variables
 ENV TTS_HOST=0.0.0.0 \
     TTS_PORT=10201 \
     TTS_WYOMING_PORT=10200 \
@@ -149,9 +122,8 @@ ENV TTS_HOST=0.0.0.0 \
     TTS_LOG_LEVEL=info \
     TTS_DEVICE=cpu
 
-# Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:${TTS_PORT}/health')" || exit 1
+    CMD python3 -c "import urllib.request; urllib.request.urlopen('http://localhost:${TTS_PORT}/health')" || exit 1
 
 ENTRYPOINT ["sh", "-c", "agent-cli server tts \
     --host ${TTS_HOST} \
