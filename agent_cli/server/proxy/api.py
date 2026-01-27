@@ -30,14 +30,7 @@ from agent_cli.services.llm import process_and_update_clipboard
 if TYPE_CHECKING:
     from typer.models import OptionInfo
 
-# Configure logging - respect LOG_LEVEL env var for debug diagnostics
-_log_level = os.environ.get("LOG_LEVEL", "INFO").upper()
-logging.basicConfig(
-    level=getattr(logging, _log_level, logging.INFO),
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-)
 LOGGER = logging.getLogger(__name__)
-LOGGER.debug("Transcribe-proxy logging initialized at %s level", _log_level)
 
 app = FastAPI(
     title="Agent CLI Transcription API",
