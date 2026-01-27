@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import os
 from pathlib import Path
 from typing import Annotated, Any
 
@@ -16,6 +17,7 @@ from agent_cli.agents.transcribe import (
     SYSTEM_PROMPT,
     _build_context_payload,
 )
+from agent_cli.constants import DEFAULT_OPENAI_MODEL
 from agent_cli.core.audio_format import (
     VALID_EXTENSIONS,
     convert_audio_to_wyoming_format,
@@ -153,6 +155,13 @@ def _validate_audio_file(audio: UploadFile) -> None:
         )
 
 
+def _get_config(key: str, defaults: dict[str, Any], default: Any, envvar: str | None = None) -> Any:
+    """Get config with priority: env var > config file > default."""
+    if envvar and (env_val := os.environ.get(envvar)):
+        return int(env_val) if isinstance(default, int) else env_val
+    return defaults.get(key, default)
+
+
 def _load_transcription_configs() -> tuple[
     config.ProviderSelection,
     config.WyomingASR,
@@ -163,41 +172,61 @@ def _load_transcription_configs() -> tuple[
     config.GeminiLLM,
     dict[str, Any],
 ]:
-    """Load and create all required configuration objects."""
+    """Load config objects. Priority: env var > config file > default."""
     loaded_config = config.load_config()
     wildcard_config = loaded_config.get("defaults", {})
     command_config = loaded_config.get("transcribe", {})
     defaults = {**wildcard_config, **command_config}
 
     provider_cfg = config.ProviderSelection(
-        asr_provider=defaults.get("asr_provider", opts.ASR_PROVIDER.default),  # type: ignore[attr-defined]
-        llm_provider=defaults.get("llm_provider", opts.LLM_PROVIDER.default),  # type: ignore[attr-defined]
-        tts_provider=opts.TTS_PROVIDER.default,  # type: ignore[attr-defined]
+        asr_provider=_get_config(
+            "asr_provider",
+            defaults,
+            opts.DEFAULT_ASR_PROVIDER,
+            "ASR_PROVIDER",
+        ),
+        llm_provider=_get_config(
+            "llm_provider",
+            defaults,
+            opts.DEFAULT_LLM_PROVIDER,
+            "LLM_PROVIDER",
+        ),
+        tts_provider=opts.DEFAULT_TTS_PROVIDER,
     )
     wyoming_asr_cfg = config.WyomingASR(
-        asr_wyoming_ip=defaults.get("asr_wyoming_ip", opts.ASR_WYOMING_IP.default),  # type: ignore[attr-defined]
-        asr_wyoming_port=defaults.get("asr_wyoming_port", opts.ASR_WYOMING_PORT.default),  # type: ignore[attr-defined]
+        asr_wyoming_ip=_get_config(
+            "asr_wyoming_ip",
+            defaults,
+            opts.DEFAULT_ASR_WYOMING_IP,
+            "ASR_WYOMING_IP",
+        ),
+        asr_wyoming_port=_get_config(
+            "asr_wyoming_port",
+            defaults,
+            opts.DEFAULT_ASR_WYOMING_PORT,
+            "ASR_WYOMING_PORT",
+        ),
     )
     openai_asr_cfg = config.OpenAIASR(
-        asr_openai_model=defaults.get("asr_openai_model", opts.ASR_OPENAI_MODEL.default),  # type: ignore[attr-defined]
-        openai_api_key=defaults.get("openai_api_key", opts.OPENAI_API_KEY.default),  # type: ignore[attr-defined,union-attr]
+        asr_openai_model=_get_config("asr_openai_model", defaults, opts.DEFAULT_ASR_OPENAI_MODEL),
+        openai_api_key=_get_config("openai_api_key", defaults, None, "OPENAI_API_KEY"),
     )
     gemini_asr_cfg = config.GeminiASR(
-        asr_gemini_model=defaults.get("asr_gemini_model", opts.ASR_GEMINI_MODEL.default),  # type: ignore[attr-defined]
-        gemini_api_key=defaults.get("gemini_api_key", opts.GEMINI_API_KEY.default),  # type: ignore[attr-defined,union-attr]
+        asr_gemini_model=_get_config("asr_gemini_model", defaults, opts.DEFAULT_ASR_GEMINI_MODEL),
+        gemini_api_key=_get_config("gemini_api_key", defaults, None, "GEMINI_API_KEY"),
     )
     ollama_cfg = config.Ollama(
-        llm_ollama_model=defaults.get("llm_ollama_model", opts.LLM_OLLAMA_MODEL.default),  # type: ignore[attr-defined]
-        llm_ollama_host=defaults.get("llm_ollama_host", opts.LLM_OLLAMA_HOST.default),  # type: ignore[attr-defined]
+        llm_ollama_model=_get_config("llm_ollama_model", defaults, opts.DEFAULT_LLM_OLLAMA_MODEL),
+        llm_ollama_host=_get_config("llm_ollama_host", defaults, opts.DEFAULT_LLM_OLLAMA_HOST),
     )
     openai_llm_cfg = config.OpenAILLM(
-        llm_openai_model=defaults.get("llm_openai_model", opts.LLM_OPENAI_MODEL.default),  # type: ignore[attr-defined]
-        openai_api_key=defaults.get("openai_api_key", opts.OPENAI_API_KEY.default),  # type: ignore[attr-defined,union-attr]
-        openai_base_url=defaults.get("openai_base_url", opts.OPENAI_BASE_URL.default),  # type: ignore[attr-defined,union-attr]
+        llm_openai_model=_get_config("llm_openai_model", defaults, DEFAULT_OPENAI_MODEL),
+        openai_api_key=_get_config("openai_api_key", defaults, None, "OPENAI_API_KEY"),
+        openai_base_url=_get_config("openai_base_url", defaults, None, "OPENAI_BASE_URL"),
     )
     gemini_llm_cfg = config.GeminiLLM(
-        llm_gemini_model=defaults.get("llm_gemini_model", opts.LLM_GEMINI_MODEL.default),  # type: ignore[attr-defined]
-        gemini_api_key=defaults.get("gemini_api_key", opts.GEMINI_API_KEY.default),  # type: ignore[attr-defined,union-attr]
+        llm_gemini_model=_get_config("llm_gemini_model", defaults, opts.DEFAULT_LLM_GEMINI_MODEL),
+        gemini_api_key=_get_config("gemini_api_key", defaults, None, "GEMINI_API_KEY"),
     )
 
     return (
