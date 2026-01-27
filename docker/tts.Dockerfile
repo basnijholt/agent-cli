@@ -23,6 +23,7 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 WORKDIR /app
 
 COPY pyproject.toml uv.lock ./
+COPY .git ./.git
 COPY agent_cli ./agent_cli
 RUN uv sync --frozen --no-dev --extra server --extra kokoro && \
     /app/.venv/bin/python -m spacy download en_core_web_sm
@@ -32,11 +33,16 @@ RUN uv sync --frozen --no-dev --extra server --extra kokoro && \
 # =============================================================================
 FROM python:3.13-slim AS builder-cpu
 
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends git && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
 WORKDIR /app
 
 COPY pyproject.toml uv.lock ./
+COPY .git ./.git
 COPY agent_cli ./agent_cli
 RUN uv sync --frozen --no-dev --extra server --extra piper
 
