@@ -33,9 +33,14 @@ RUN groupadd -g 1000 whisper && useradd -m -u 1000 -g whisper whisper
 WORKDIR /app
 
 # Install from lock file for reproducible builds
+# First sync dependencies only (cached layer), then install project
 COPY pyproject.toml uv.lock ./
 ENV UV_PYTHON=3.13
-RUN uv sync --frozen --no-dev --extra server --extra faster-whisper --no-install-project && \
+RUN uv sync --frozen --no-dev --extra server --extra faster-whisper --no-install-project
+
+# Copy source and install the project
+COPY agent_cli ./agent_cli
+RUN uv sync --frozen --no-dev --extra server --extra faster-whisper && \
     ln -s /app/.venv/bin/agent-cli /usr/local/bin/agent-cli
 
 # Create cache directory for models
@@ -91,8 +96,13 @@ RUN groupadd -g 1000 whisper && useradd -m -u 1000 -g whisper whisper
 WORKDIR /app
 
 # Install from lock file for reproducible builds
+# First sync dependencies only (cached layer), then install project
 COPY pyproject.toml uv.lock ./
-RUN uv sync --frozen --no-dev --extra server --extra faster-whisper --no-install-project && \
+RUN uv sync --frozen --no-dev --extra server --extra faster-whisper --no-install-project
+
+# Copy source and install the project
+COPY agent_cli ./agent_cli
+RUN uv sync --frozen --no-dev --extra server --extra faster-whisper && \
     ln -s /app/.venv/bin/agent-cli /usr/local/bin/agent-cli
 
 # Create cache directory for models
