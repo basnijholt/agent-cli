@@ -558,7 +558,8 @@ the `[defaults]` section of your configuration file.
 │ --help  -h        Show this message and exit.                                          │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Provider Selection ───────────────────────────────────────────────────────────────────╮
-│ --llm-provider        TEXT  The LLM provider to use ('ollama', 'openai', 'gemini').    │
+│ --llm-provider        TEXT  The LLM provider to use ('ollama', 'openai', 'gemini',     │
+│                             'none'). Use 'none' to disable LLM post-processing.        │
 │                             [env var: LLM_PROVIDER]                                    │
 │                             [default: ollama]                                          │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
@@ -676,7 +677,8 @@ the `[defaults]` section of your configuration file.
 │ --asr-provider        TEXT  The ASR provider to use ('wyoming', 'openai', 'gemini').   │
 │                             [env var: ASR_PROVIDER]                                    │
 │                             [default: wyoming]                                         │
-│ --llm-provider        TEXT  The LLM provider to use ('ollama', 'openai', 'gemini').    │
+│ --llm-provider        TEXT  The LLM provider to use ('ollama', 'openai', 'gemini',     │
+│                             'none'). Use 'none' to disable LLM post-processing.        │
 │                             [env var: LLM_PROVIDER]                                    │
 │                             [default: ollama]                                          │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
@@ -873,7 +875,8 @@ uv tool install "agent-cli[vad]" -p 3.13
 │ --asr-provider        TEXT  The ASR provider to use ('wyoming', 'openai', 'gemini').   │
 │                             [env var: ASR_PROVIDER]                                    │
 │                             [default: wyoming]                                         │
-│ --llm-provider        TEXT  The LLM provider to use ('ollama', 'openai', 'gemini').    │
+│ --llm-provider        TEXT  The LLM provider to use ('ollama', 'openai', 'gemini',     │
+│                             'none'). Use 'none' to disable LLM post-processing.        │
 │                             [env var: LLM_PROVIDER]                                    │
 │                             [default: ollama]                                          │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
@@ -1137,7 +1140,8 @@ uv tool install "agent-cli[vad]" -p 3.13
 │ --asr-provider        TEXT  The ASR provider to use ('wyoming', 'openai', 'gemini').   │
 │                             [env var: ASR_PROVIDER]                                    │
 │                             [default: wyoming]                                         │
-│ --llm-provider        TEXT  The LLM provider to use ('ollama', 'openai', 'gemini').    │
+│ --llm-provider        TEXT  The LLM provider to use ('ollama', 'openai', 'gemini',     │
+│                             'none'). Use 'none' to disable LLM post-processing.        │
 │                             [env var: LLM_PROVIDER]                                    │
 │                             [default: ollama]                                          │
 │ --tts-provider        TEXT  The TTS provider to use ('wyoming', 'openai', 'kokoro',    │
@@ -1323,7 +1327,8 @@ uv tool install "agent-cli[vad]" -p 3.13
 │ --asr-provider        TEXT  The ASR provider to use ('wyoming', 'openai', 'gemini').   │
 │                             [env var: ASR_PROVIDER]                                    │
 │                             [default: wyoming]                                         │
-│ --llm-provider        TEXT  The LLM provider to use ('ollama', 'openai', 'gemini').    │
+│ --llm-provider        TEXT  The LLM provider to use ('ollama', 'openai', 'gemini',     │
+│                             'none'). Use 'none' to disable LLM post-processing.        │
 │                             [env var: LLM_PROVIDER]                                    │
 │                             [default: ollama]                                          │
 │ --tts-provider        TEXT  The TTS provider to use ('wyoming', 'openai', 'kokoro',    │
@@ -1521,7 +1526,8 @@ uv tool install "agent-cli[vad]" -p 3.13
 │ --asr-provider        TEXT  The ASR provider to use ('wyoming', 'openai', 'gemini').   │
 │                             [env var: ASR_PROVIDER]                                    │
 │                             [default: wyoming]                                         │
-│ --llm-provider        TEXT  The LLM provider to use ('ollama', 'openai', 'gemini').    │
+│ --llm-provider        TEXT  The LLM provider to use ('ollama', 'openai', 'gemini',     │
+│                             'none'). Use 'none' to disable LLM post-processing.        │
 │                             [env var: LLM_PROVIDER]                                    │
 │                             [default: ollama]                                          │
 │ --tts-provider        TEXT  The TTS provider to use ('wyoming', 'openai', 'kokoro',    │

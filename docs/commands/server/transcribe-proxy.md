@@ -125,7 +125,7 @@ Configure the proxy using environment variables (priority: env var > config file
 | `ASR_OPENAI_BASE_URL` | - | Custom OpenAI-compatible ASR endpoint |
 | `ASR_OPENAI_PROMPT` | - | Custom prompt to guide transcription |
 | `ASR_GEMINI_MODEL` | `gemini-3-flash-preview` | Gemini ASR model name |
-| `LLM_PROVIDER` | `ollama` | LLM provider: `ollama`, `openai`, `gemini` |
+| `LLM_PROVIDER` | `ollama` | LLM provider: `ollama`, `openai`, `gemini`, `none`. Use `none` to disable LLM post-processing |
 | `LLM_OLLAMA_MODEL` | `gemma3:4b` | Ollama model name |
 | `LLM_OLLAMA_HOST` | `http://localhost:11434` | Ollama server URL |
 | `LLM_OPENAI_MODEL` | `gpt-5-mini` | OpenAI model name |

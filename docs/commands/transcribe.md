@@ -88,7 +88,7 @@ The `--from-file` option supports multiple audio formats:
 | Option | Default | Description |
 |--------|---------|-------------|
 | `--asr-provider` | `wyoming` | The ASR provider to use ('wyoming', 'openai', 'gemini'). |
-| `--llm-provider` | `ollama` | The LLM provider to use ('ollama', 'openai', 'gemini'). |
+| `--llm-provider` | `ollama` | The LLM provider to use ('ollama', 'openai', 'gemini', 'none'). Use 'none' to disable LLM post-processing. |
 
 ### Audio Input
 

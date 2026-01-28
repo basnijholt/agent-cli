@@ -65,7 +65,9 @@ async def log_effective_config() -> None:
         LOGGER.info("  Model: %s", gemini_asr_cfg.asr_gemini_model)
 
     LOGGER.info("LLM provider: %s", provider_cfg.llm_provider)
-    if provider_cfg.llm_provider == "ollama":
+    if provider_cfg.llm_provider == "none":
+        LOGGER.info("  LLM post-processing disabled")
+    elif provider_cfg.llm_provider == "ollama":
         LOGGER.info("  Model: %s", ollama_cfg.llm_ollama_model)
         LOGGER.info("  Host: %s", ollama_cfg.llm_ollama_host)
     elif provider_cfg.llm_provider == "openai":
@@ -284,6 +286,10 @@ async def _process_transcript_cleanup(
 ) -> str | None:
     """Process transcript cleanup with LLM if requested."""
     if not cleanup:
+        return None
+
+    # Skip LLM processing if provider is set to 'none'
+    if provider_cfg.llm_provider == "none":
         return None
 
     instructions = AGENT_INSTRUCTIONS

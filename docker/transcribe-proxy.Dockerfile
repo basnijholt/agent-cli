@@ -17,7 +17,7 @@
 #   ASR_PROVIDER       - ASR provider: wyoming, openai, gemini (default: wyoming)
 #   ASR_WYOMING_IP     - Wyoming server IP (default: localhost)
 #   ASR_WYOMING_PORT   - Wyoming server port (default: 10300)
-#   LLM_PROVIDER       - LLM provider: ollama, openai, gemini (default: openai)
+#   LLM_PROVIDER       - LLM provider: ollama, openai, gemini, none (default: openai)
 #   OPENAI_API_KEY     - OpenAI API key
 #   GEMINI_API_KEY     - Gemini API key
 

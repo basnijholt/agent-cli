@@ -44,7 +44,7 @@ agent-cli autocorrect "this text has an eror"
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--llm-provider` | `ollama` | The LLM provider to use ('ollama', 'openai', 'gemini'). |
+| `--llm-provider` | `ollama` | The LLM provider to use ('ollama', 'openai', 'gemini', 'none'). Use 'none' to disable LLM post-processing. |
 
 ### LLM: Ollama
 

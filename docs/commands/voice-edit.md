@@ -56,7 +56,7 @@ agent-cli voice-edit --stop
 | Option | Default | Description |
 |--------|---------|-------------|
 | `--asr-provider` | `wyoming` | The ASR provider to use ('wyoming', 'openai', 'gemini'). |
-| `--llm-provider` | `ollama` | The LLM provider to use ('ollama', 'openai', 'gemini'). |
+| `--llm-provider` | `ollama` | The LLM provider to use ('ollama', 'openai', 'gemini', 'none'). Use 'none' to disable LLM post-processing. |
 | `--tts-provider` | `wyoming` | The TTS provider to use ('wyoming', 'openai', 'kokoro', 'gemini'). |
 
 ### Audio Input

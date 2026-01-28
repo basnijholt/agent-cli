@@ -24,7 +24,7 @@ LLM_PROVIDER: str = typer.Option(
     "ollama",
     "--llm-provider",
     envvar="LLM_PROVIDER",
-    help="The LLM provider to use ('ollama', 'openai', 'gemini').",
+    help="The LLM provider to use ('ollama', 'openai', 'gemini', 'none'). Use 'none' to disable LLM post-processing.",
     rich_help_panel="Provider Selection",
 )
 ASR_PROVIDER: str = typer.Option(
