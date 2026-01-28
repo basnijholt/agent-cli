@@ -145,7 +145,7 @@ def speak(
     Save to file instead of playing:
         `agent-cli speak "Hello" --save-file greeting.wav`
 
-    Use OpenAI TTS:
+    Use OpenAI-compatible TTS:
         `agent-cli speak "Hello" --tts-provider openai`
     """
     if print_args:

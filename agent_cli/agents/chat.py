@@ -463,7 +463,7 @@ def chat(
 
     **Examples**:
 
-    Start with OpenAI for speech and LLM, with TTS enabled:
+    Use OpenAI-compatible providers for speech and LLM, with TTS enabled:
 
         agent-cli chat --asr-provider openai --llm-provider openai --tts
 

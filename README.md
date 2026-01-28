@@ -48,7 +48,7 @@ Since then I have expanded the tool with many more features, all focused on loca
 - **[`memory`](docs/commands/memory.md)**: Long-term memory system with `memory proxy` and `memory add`.
 - **[`rag-proxy`](docs/commands/rag-proxy.md)**: RAG proxy server for chatting with your documents.
 - **[`dev`](docs/commands/dev.md)**: Parallel development with git worktrees and AI coding agents.
-- **[`server`](docs/commands/server/index.md)**: Local ASR and TTS servers with dual-protocol (Wyoming & OpenAI), TTL-based memory management, and multi-platform acceleration. Whisper uses MLX on Apple Silicon or Faster Whisper on Linux/CUDA. TTS supports Kokoro (GPU) or Piper (CPU).
+- **[`server`](docs/commands/server/index.md)**: Local ASR and TTS servers with dual-protocol (Wyoming & OpenAI-compatible APIs), TTL-based memory management, and multi-platform acceleration. Whisper uses MLX on Apple Silicon or Faster Whisper on Linux/CUDA. TTS supports Kokoro (GPU) or Piper (CPU).
 - **[`transcribe-daemon`](docs/commands/transcribe-daemon.md)**: Continuous background transcription with VAD. Install with `uv tool install "agent-cli[vad]" -p 3.13`.
 
 ## Quick Start
@@ -1122,7 +1122,7 @@ uv tool install "agent-cli[vad]" -p 3.13
 
  Save to file instead of playing: agent-cli speak "Hello" --save-file greeting.wav
 
- Use OpenAI TTS: agent-cli speak "Hello" --tts-provider openai
+ Use OpenAI-compatible TTS: agent-cli speak "Hello" --tts-provider openai
 
 ╭─ General Options ──────────────────────────────────────────────────────────────────────╮
 │   text      [TEXT]  Text to synthesize. If not provided, reads from clipboard.         │
@@ -1691,7 +1691,7 @@ uv tool install "agent-cli[vad]" -p 3.13
 
  Examples:
 
- Start with OpenAI for speech and LLM, with TTS enabled:
+ Use OpenAI-compatible providers for speech and LLM, with TTS enabled:
 
 
   agent-cli chat --asr-provider openai --llm-provider openai --tts
@@ -1910,7 +1910,7 @@ uv tool install "agent-cli[vad]" -p 3.13
 
  Quick start:
 
-  • agent-cli rag-proxy — Start with defaults (./rag_docs, OpenAI API)
+  • agent-cli rag-proxy — Start with defaults (./rag_docs, OpenAI-compatible API)
   • agent-cli rag-proxy --docs-folder ~/notes — Index your notes folder
 
  How it works:
