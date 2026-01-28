@@ -63,21 +63,21 @@ agent-cli dev new [BRANCH] [OPTIONS]
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--from, -f` | - | Create branch from this ref (default: main/master) |
-| `--editor, -e` | `false` | Open in editor after creation |
-| `--agent, -a` | `false` | Start AI coding agent after creation |
-| `--with-agent` | - | Specific agent to use (claude, codex, gemini, aider) |
-| `--with-editor` | - | Specific editor to use (cursor, vscode, zed) |
+| `--from, -f` | - | Git ref (branch/tag/commit) to branch from. Defaults to origin/main or origin/master |
+| `--editor, -e` | `false` | Open the worktree in an editor. Uses --with-editor, config default, or auto-detects |
+| `--agent, -a` | `false` | Start an AI coding agent in a new terminal tab. Uses --with-agent, config default, or auto-detects. Implied by --prompt |
+| `--with-agent` | - | Which AI agent to start: claude, codex, gemini, aider, copilot, cn (Continue), opencode, cursor-agent |
+| `--with-editor` | - | Which editor to open: cursor, vscode, zed, nvim, vim, emacs, sublime, idea, pycharm, etc. |
 | `--default-agent` | - | Default agent from config |
 | `--default-editor` | - | Default editor from config |
-| `--setup/--no-setup` | `true` | Run automatic project setup |
-| `--copy-env/--no-copy-env` | `true` | Copy .env files from main repo |
-| `--fetch/--no-fetch` | `true` | Git fetch before creating |
-| `--direnv/--no-direnv` | - | Set up direnv (generate .envrc, run direnv allow). Default: enabled if direnv is installed. |
-| `--agent-args` | - | Extra arguments to pass to the agent (e.g., --agent-args='--dangerously-skip-permissions') |
-| `--prompt, -p` | - | Initial prompt to pass to the AI agent (e.g., --prompt='Fix the login bug') |
-| `--prompt-file, -P` | - | Read initial prompt from a file (avoids shell quoting issues with long prompts) |
-| `--verbose, -v` | `false` | Show detailed output and stream command output |
+| `--setup/--no-setup` | `true` | Run project setup after creation: npm/pnpm/yarn install, poetry/uv sync, cargo build, etc. Auto-detects project type |
+| `--copy-env/--no-copy-env` | `true` | Copy .env, .env.local, .env.example from main repo to worktree |
+| `--fetch/--no-fetch` | `true` | Run 'git fetch' before creating the worktree to ensure refs are up-to-date |
+| `--direnv/--no-direnv` | - | Generate .envrc based on project type and run 'direnv allow'. Auto-enabled if direnv is installed |
+| `--agent-args` | - | Extra CLI args for the agent. Can be repeated. Example: --agent-args='--dangerously-skip-permissions' |
+| `--prompt, -p` | - | Initial task for the AI agent. Saved to .claude/TASK.md. Implies --agent. Example: --prompt='Fix the login bug' |
+| `--prompt-file, -P` | - | Read the agent prompt from a file. Useful for long prompts to avoid shell quoting. Implies --agent |
+| `--verbose, -v` | `false` | Stream output from setup commands instead of hiding it |
 
 
 <!-- OUTPUT:END -->
@@ -119,7 +119,7 @@ agent-cli dev list [OPTIONS]
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--json` | `false` | Output as JSON for automation |
+| `--json` | `false` | Output as JSON. Fields: name, path, branch, is_main, is_detached, is_locked, is_prunable |
 
 
 <!-- OUTPUT:END -->
@@ -144,8 +144,8 @@ agent-cli dev status [OPTIONS]
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--stale-days, -s` | `7` | Highlight worktrees inactive for N+ days |
-| `--json` | `false` | Output as JSON for automation |
+| `--stale-days, -s` | `7` | Mark worktrees as stale if inactive for N+ days (default: 7) |
+| `--json` | `false` | Output as JSON with fields: name, branch, modified, staged, untracked, ahead, behind, last_commit_timestamp, is_stale |
 
 
 <!-- OUTPUT:END -->
@@ -210,9 +210,9 @@ agent-cli dev rm NAME [OPTIONS]
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--force, -f` | `false` | Force removal even with uncommitted changes |
-| `--delete-branch, -d` | `false` | Also delete the branch |
-| `--yes, -y` | `false` | Skip confirmation |
+| `--force, -f` | `false` | Force removal even if worktree has uncommitted changes |
+| `--delete-branch, -d` | `false` | Also delete the git branch (not just the worktree) |
+| `--yes, -y` | `false` | Skip confirmation prompt |
 
 
 <!-- OUTPUT:END -->
@@ -250,7 +250,7 @@ agent-cli dev editor NAME [--editor/-e EDITOR]
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--editor, -e` | - | Specific editor to use |
+| `--editor, -e` | - | Override auto-detection. Options: cursor, vscode, zed, nvim, vim, emacs, sublime, idea, pycharm, etc. |
 
 
 <!-- OUTPUT:END -->
@@ -275,10 +275,10 @@ agent-cli dev agent NAME [--agent/-a AGENT] [--agent-args ARGS] [--prompt/-p PRO
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--agent, -a` | - | Specific agent (claude, codex, gemini, aider) |
-| `--agent-args` | - | Extra arguments to pass to the agent (e.g., --agent-args='--dangerously-skip-permissions') |
-| `--prompt, -p` | - | Initial prompt to pass to the AI agent (e.g., --prompt='Fix the login bug') |
-| `--prompt-file, -P` | - | Read initial prompt from a file (avoids shell quoting issues with long prompts) |
+| `--agent, -a` | - | Which agent: claude, codex, gemini, aider, copilot, cn, opencode, cursor-agent. Auto-detects if omitted |
+| `--agent-args` | - | Extra CLI args for the agent. Example: --agent-args='--dangerously-skip-permissions' |
+| `--prompt, -p` | - | Initial task for the agent. Saved to .claude/TASK.md. Example: --prompt='Add unit tests for auth' |
+| `--prompt-file, -P` | - | Read the agent prompt from a file instead of command line |
 
 
 <!-- OUTPUT:END -->
@@ -329,10 +329,10 @@ agent-cli dev clean [OPTIONS]
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--merged` | `false` | Remove worktrees with merged PRs (requires gh CLI) |
-| `--no-commits` | `false` | Remove worktrees with no commits ahead of default branch |
-| `--dry-run, -n` | `false` | Show what would be done without doing it |
-| `--yes, -y` | `false` | Skip confirmation |
+| `--merged` | `false` | Also remove worktrees whose GitHub PRs are merged (requires gh CLI and auth) |
+| `--no-commits` | `false` | Also remove worktrees with 0 commits ahead of default branch (abandoned branches) |
+| `--dry-run, -n` | `false` | Preview what would be removed without actually removing |
+| `--yes, -y` | `false` | Skip confirmation prompts |
 
 
 <!-- OUTPUT:END -->
@@ -371,7 +371,7 @@ agent-cli dev doctor [OPTIONS]
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--json` | `false` | Output as JSON for automation |
+| `--json` | `false` | Output as JSON with git, editors, agents, terminals status |
 
 
 <!-- OUTPUT:END -->
@@ -400,7 +400,7 @@ Installs a skill that teaches Claude Code how to use `agent-cli dev` to spawn pa
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--force, -f` | `false` | Overwrite existing skill files |
+| `--force, -f` | `false` | Overwrite existing skill files if already installed |
 
 
 <!-- OUTPUT:END -->
@@ -448,7 +448,7 @@ agent-cli dev agents [OPTIONS]
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--json` | `false` | Output as JSON for automation |
+| `--json` | `false` | Output as JSON with name, command, is_available, is_current, install_url |
 
 
 <!-- OUTPUT:END -->
@@ -471,7 +471,7 @@ agent-cli dev editors [OPTIONS]
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--json` | `false` | Output as JSON for automation |
+| `--json` | `false` | Output as JSON with name, command, is_available, is_current, install_url |
 
 
 <!-- OUTPUT:END -->
@@ -494,7 +494,7 @@ agent-cli dev terminals [OPTIONS]
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--json` | `false` | Output as JSON for automation |
+| `--json` | `false` | Output as JSON with name, is_available, is_current |
 
 
 <!-- OUTPUT:END -->

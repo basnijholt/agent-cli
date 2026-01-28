@@ -114,7 +114,27 @@ if TYPE_CHECKING:
 
 app = typer.Typer(
     name="dev",
-    help="Parallel development environment manager using git worktrees.",
+    help="""Parallel development environment manager using git worktrees.
+
+Creates isolated working directories for each feature branch, allowing you to
+work on multiple features simultaneously without stashing changes. Each worktree
+has its own branch and working directory.
+
+**Common workflows:**
+
+- `dev new feature-x -a` — Create worktree + start AI agent in new terminal tab
+- `dev new feature-x -e -a` — Create worktree + open editor + start agent
+- `dev new -a -p "Fix the auth bug"` — Create worktree + start agent with prompt
+- `dev status` — See all worktrees with uncommitted changes
+- `dev clean --merged` — Remove worktrees whose PRs are merged
+
+**Automatic features:**
+
+- Project setup (npm install, poetry install, uv sync, etc.)
+- Environment file copying (.env, .env.local)
+- Direnv setup (.envrc generation)
+- Git submodules and LFS initialization
+""",
     add_completion=True,
     rich_markup_mode="markdown",
     no_args_is_help=True,
@@ -130,7 +150,11 @@ def dev_callback(
         typer.Option("--config", "-c", help="Path to config file"),
     ] = None,
 ) -> None:
-    """Parallel development environment manager using git worktrees."""
+    """Parallel development environment manager using git worktrees.
+
+    Creates isolated working directories for each feature branch. Each worktree
+    has its own branch, allowing parallel development without stashing changes.
+    """
     set_config_defaults(ctx, config_file)
     if ctx.invoked_subcommand is not None:
         set_process_title(f"dev-{ctx.invoked_subcommand}")
@@ -478,27 +502,47 @@ def _launch_agent(
 def new(  # noqa: C901, PLR0912, PLR0915
     branch: Annotated[
         str | None,
-        typer.Argument(help="Branch name (auto-generated if not provided)"),
+        typer.Argument(
+            help="Branch name for the worktree. If omitted, generates a random name like 'clever-fox'",
+        ),
     ] = None,
     from_ref: Annotated[
         str | None,
-        typer.Option("--from", "-f", help="Create branch from this ref (default: main/master)"),
+        typer.Option(
+            "--from",
+            "-f",
+            help="Git ref (branch/tag/commit) to branch from. Defaults to origin/main or origin/master",
+        ),
     ] = None,
     editor: Annotated[
         bool,
-        typer.Option("--editor", "-e", help="Open in editor after creation"),
+        typer.Option(
+            "--editor",
+            "-e",
+            help="Open the worktree in an editor. Uses --with-editor, config default, or auto-detects",
+        ),
     ] = False,
     agent: Annotated[
         bool,
-        typer.Option("--agent", "-a", help="Start AI coding agent after creation"),
+        typer.Option(
+            "--agent",
+            "-a",
+            help="Start an AI coding agent in a new terminal tab. Uses --with-agent, config default, or auto-detects. Implied by --prompt",
+        ),
     ] = False,
     agent_name: Annotated[
         str | None,
-        typer.Option("--with-agent", help="Specific agent to use (claude, codex, gemini, aider)"),
+        typer.Option(
+            "--with-agent",
+            help="Which AI agent to start: claude, codex, gemini, aider, copilot, cn (Continue), opencode, cursor-agent",
+        ),
     ] = None,
     editor_name: Annotated[
         str | None,
-        typer.Option("--with-editor", help="Specific editor to use (cursor, vscode, zed)"),
+        typer.Option(
+            "--with-editor",
+            help="Which editor to open: cursor, vscode, zed, nvim, vim, emacs, sublime, idea, pycharm, etc.",
+        ),
     ] = None,
     default_agent: Annotated[
         str | None,
@@ -510,28 +554,37 @@ def new(  # noqa: C901, PLR0912, PLR0915
     ] = None,
     setup: Annotated[
         bool,
-        typer.Option("--setup/--no-setup", help="Run automatic project setup"),
+        typer.Option(
+            "--setup/--no-setup",
+            help="Run project setup after creation: npm/pnpm/yarn install, poetry/uv sync, cargo build, etc. Auto-detects project type",
+        ),
     ] = True,
     copy_env: Annotated[
         bool,
-        typer.Option("--copy-env/--no-copy-env", help="Copy .env files from main repo"),
+        typer.Option(
+            "--copy-env/--no-copy-env",
+            help="Copy .env, .env.local, .env.example from main repo to worktree",
+        ),
     ] = True,
     fetch: Annotated[
         bool,
-        typer.Option("--fetch/--no-fetch", help="Git fetch before creating"),
+        typer.Option(
+            "--fetch/--no-fetch",
+            help="Run 'git fetch' before creating the worktree to ensure refs are up-to-date",
+        ),
     ] = True,
     direnv: Annotated[
         bool | None,
         typer.Option(
             "--direnv/--no-direnv",
-            help="Set up direnv (generate .envrc, run direnv allow). Default: enabled if direnv is installed.",
+            help="Generate .envrc based on project type and run 'direnv allow'. Auto-enabled if direnv is installed",
         ),
     ] = None,
     agent_args: Annotated[
         list[str] | None,
         typer.Option(
             "--agent-args",
-            help="Extra arguments to pass to the agent (e.g., --agent-args='--dangerously-skip-permissions')",
+            help="Extra CLI args for the agent. Can be repeated. Example: --agent-args='--dangerously-skip-permissions'",
         ),
     ] = None,
     prompt: Annotated[
@@ -539,7 +592,7 @@ def new(  # noqa: C901, PLR0912, PLR0915
         typer.Option(
             "--prompt",
             "-p",
-            help="Initial prompt to pass to the AI agent (e.g., --prompt='Fix the login bug')",
+            help="Initial task for the AI agent. Saved to .claude/TASK.md. Implies --agent. Example: --prompt='Fix the login bug'",
         ),
     ] = None,
     prompt_file: Annotated[
@@ -547,17 +600,44 @@ def new(  # noqa: C901, PLR0912, PLR0915
         typer.Option(
             "--prompt-file",
             "-P",
-            help="Read initial prompt from a file (avoids shell quoting issues with long prompts)",
+            help="Read the agent prompt from a file. Useful for long prompts to avoid shell quoting. Implies --agent",
             exists=True,
             readable=True,
         ),
     ] = None,
     verbose: Annotated[
         bool,
-        typer.Option("--verbose", "-v", help="Show detailed output and stream command output"),
+        typer.Option(
+            "--verbose",
+            "-v",
+            help="Stream output from setup commands instead of hiding it",
+        ),
     ] = False,
 ) -> None:
-    """Create a new parallel development environment (git worktree)."""
+    """Create a new parallel development environment (git worktree).
+
+    Creates an isolated git worktree with its own branch and working directory.
+    Optionally runs project setup, opens an editor, and/or starts an AI agent.
+
+    **What happens:**
+
+    1. Creates git worktree at `../REPO-worktrees/BRANCH/`
+    2. Copies .env files from main repo (--copy-env)
+    3. Runs project setup: npm install, uv sync, etc. (--setup)
+    4. Sets up direnv if installed (--direnv)
+    5. Opens editor if requested (-e/--editor)
+    6. Starts AI agent in new terminal tab if requested (-a/--agent or --prompt)
+
+    **Examples:**
+
+    - `dev new feature-x` — Create worktree, branching from origin/main (default)
+    - `dev new feature-x -a` — Create + start Claude/detected agent
+    - `dev new feature-x -e -a` — Create + open editor + start agent
+    - `dev new -a --prompt "Fix auth bug"` — Auto-named branch + agent with task
+    - `dev new hotfix --from v1.2.3` — Branch from a tag instead of main
+    - `dev new feature-x --from origin/develop` — Branch from develop instead
+    - `dev new feature-x --with-agent aider --with-editor cursor` — Specific tools
+    """
     # Handle prompt-file option (takes precedence over --prompt)
     if prompt_file is not None:
         prompt = prompt_file.read_text().strip()
@@ -676,10 +756,17 @@ def new(  # noqa: C901, PLR0912, PLR0915
 def list_envs(
     json_output: Annotated[
         bool,
-        typer.Option("--json", help="Output as JSON for automation"),
+        typer.Option(
+            "--json",
+            help="Output as JSON. Fields: name, path, branch, is_main, is_detached, is_locked, is_prunable",
+        ),
     ] = False,
 ) -> None:
-    """List all dev environments (worktrees) for the current repository."""
+    """List all dev environments (worktrees) for the current repository.
+
+    Shows each worktree's name, branch, path, and status (main, detached, locked, prunable).
+    Use `dev status` for more details including uncommitted changes and commit history.
+    """
     _ensure_git_repo()
 
     worktrees = worktree.list_worktrees()
@@ -779,17 +866,28 @@ def _is_stale(status: worktree.WorktreeStatus, stale_days: int) -> bool:
 def status_cmd(  # noqa: PLR0915
     stale_days: Annotated[
         int,
-        typer.Option("--stale-days", "-s", help="Highlight worktrees inactive for N+ days"),
+        typer.Option(
+            "--stale-days",
+            "-s",
+            help="Mark worktrees as stale if inactive for N+ days (default: 7)",
+        ),
     ] = 7,
     json_output: Annotated[
         bool,
-        typer.Option("--json", help="Output as JSON for automation"),
+        typer.Option(
+            "--json",
+            help="Output as JSON with fields: name, branch, modified, staged, untracked, ahead, behind, last_commit_timestamp, is_stale",
+        ),
     ] = False,
 ) -> None:
-    """Show status of all dev environments (worktrees) with git status.
+    """Show detailed status of all dev environments with git information.
 
-    Displays file changes (Modified, Staged, Untracked), commits ahead/behind
-    upstream, and last commit time for each worktree.
+    Displays for each worktree:
+    - **Changes**: Modified (M), Staged (S), Untracked (?) file counts
+    - **↑/↓**: Commits ahead (+N) or behind (-N) upstream
+    - **Last Commit**: Time since last commit, with ⚠️ for stale worktrees
+
+    Use this to find worktrees with uncommitted work or that need cleanup.
     """
     _ensure_git_repo()
 
@@ -877,18 +975,39 @@ def status_cmd(  # noqa: PLR0915
 
 @app.command("rm")
 def remove(
-    name: Annotated[str, typer.Argument(help="Branch or directory name of the worktree to remove")],
+    name: Annotated[
+        str,
+        typer.Argument(help="Worktree to remove. Can be branch name or directory name"),
+    ],
     force: Annotated[
         bool,
-        typer.Option("--force", "-f", help="Force removal even with uncommitted changes"),
+        typer.Option(
+            "--force",
+            "-f",
+            help="Force removal even if worktree has uncommitted changes",
+        ),
     ] = False,
     delete_branch: Annotated[
         bool,
-        typer.Option("--delete-branch", "-d", help="Also delete the branch"),
+        typer.Option(
+            "--delete-branch",
+            "-d",
+            help="Also delete the git branch (not just the worktree)",
+        ),
     ] = False,
-    yes: Annotated[bool, typer.Option("--yes", "-y", help="Skip confirmation")] = False,
+    yes: Annotated[
+        bool,
+        typer.Option("--yes", "-y", help="Skip confirmation prompt"),
+    ] = False,
 ) -> None:
-    """Remove a dev environment (worktree)."""
+    """Remove a dev environment (worktree) and optionally its branch.
+
+    By default, prompts for confirmation and refuses to remove worktrees with
+    uncommitted changes. Use --force to override, --delete-branch to also
+    delete the git branch.
+
+    Cannot remove the main worktree.
+    """
     repo_root = _ensure_git_repo()
 
     wt = worktree.find_worktree_by_name(name, repo_root)
@@ -920,11 +1039,16 @@ def remove(
 
 @app.command("path")
 def path_cmd(
-    name: Annotated[str, typer.Argument(help="Branch name or directory name of the worktree")],
+    name: Annotated[
+        str,
+        typer.Argument(help="Worktree to get path for. Can be branch name or directory name"),
+    ],
 ) -> None:
-    """Print the path to a dev environment (for shell integration).
+    """Print the absolute path to a dev environment.
 
-    Usage: cd "$(agent-cli dev path my-feature)"
+    Useful for shell integration and scripting.
+
+    **Example:** `cd "$(agent-cli dev path my-feature)"`
     """
     repo_root = _ensure_git_repo()
 
@@ -937,13 +1061,24 @@ def path_cmd(
 
 @app.command("editor")
 def open_editor(
-    name: Annotated[str, typer.Argument(help="Branch name or directory name of the worktree")],
+    name: Annotated[
+        str,
+        typer.Argument(help="Worktree to open. Can be branch name or directory name"),
+    ],
     editor_name: Annotated[
         str | None,
-        typer.Option("--editor", "-e", help="Specific editor to use"),
+        typer.Option(
+            "--editor",
+            "-e",
+            help="Override auto-detection. Options: cursor, vscode, zed, nvim, vim, emacs, sublime, idea, pycharm, etc.",
+        ),
     ] = None,
 ) -> None:
-    """Open a dev environment in an editor."""
+    """Open a dev environment in an editor.
+
+    Without --editor, auto-detects based on current environment or uses
+    the first available editor. Run `dev editors` to see what's available.
+    """
     repo_root = _ensure_git_repo()
 
     wt = worktree.find_worktree_by_name(name, repo_root)
@@ -974,16 +1109,25 @@ def open_editor(
 
 @app.command("agent")
 def start_agent(
-    name: Annotated[str, typer.Argument(help="Branch name or directory name of the worktree")],
+    name: Annotated[
+        str,
+        typer.Argument(
+            help="Worktree to start the agent in. Can be branch name or directory name",
+        ),
+    ],
     agent_name: Annotated[
         str | None,
-        typer.Option("--agent", "-a", help="Specific agent (claude, codex, gemini, aider)"),
+        typer.Option(
+            "--agent",
+            "-a",
+            help="Which agent: claude, codex, gemini, aider, copilot, cn, opencode, cursor-agent. Auto-detects if omitted",
+        ),
     ] = None,
     agent_args: Annotated[
         list[str] | None,
         typer.Option(
             "--agent-args",
-            help="Extra arguments to pass to the agent (e.g., --agent-args='--dangerously-skip-permissions')",
+            help="Extra CLI args for the agent. Example: --agent-args='--dangerously-skip-permissions'",
         ),
     ] = None,
     prompt: Annotated[
@@ -991,7 +1135,7 @@ def start_agent(
         typer.Option(
             "--prompt",
             "-p",
-            help="Initial prompt to pass to the AI agent (e.g., --prompt='Fix the login bug')",
+            help="Initial task for the agent. Saved to .claude/TASK.md. Example: --prompt='Add unit tests for auth'",
         ),
     ] = None,
     prompt_file: Annotated[
@@ -999,13 +1143,23 @@ def start_agent(
         typer.Option(
             "--prompt-file",
             "-P",
-            help="Read initial prompt from a file (avoids shell quoting issues with long prompts)",
+            help="Read the agent prompt from a file instead of command line",
             exists=True,
             readable=True,
         ),
     ] = None,
 ) -> None:
-    """Start an AI coding agent in a dev environment."""
+    """Start an AI coding agent in an existing dev environment.
+
+    Launches the agent directly in your current terminal (not a new tab).
+    Use this when the worktree already exists and you want to start/resume work.
+
+    **Examples:**
+
+    - `dev agent my-feature` — Start auto-detected agent in worktree
+    - `dev agent my-feature -a claude` — Start Claude specifically
+    - `dev agent my-feature -p "Continue the auth refactor"` — Start with a task
+    """
     # Handle prompt-file option (takes precedence over --prompt)
     if prompt_file is not None:
         prompt = prompt_file.read_text().strip()
@@ -1057,10 +1211,20 @@ def start_agent(
 def list_agents(
     json_output: Annotated[
         bool,
-        typer.Option("--json", help="Output as JSON for automation"),
+        typer.Option(
+            "--json",
+            help="Output as JSON with name, command, is_available, is_current, install_url",
+        ),
     ] = False,
 ) -> None:
-    """List available AI coding agents."""
+    """List available AI coding agents and their installation status.
+
+    Shows all supported agents: claude, codex, gemini, aider, copilot,
+    cn (Continue), opencode, cursor-agent.
+
+    ✓ = installed, ✗ = not installed (shows install URL).
+    Current agent (detected from parent process) is marked.
+    """
     current = coding_agents.detect_current_agent()
 
     if json_output:
@@ -1099,10 +1263,20 @@ def list_agents(
 def list_editors_cmd(
     json_output: Annotated[
         bool,
-        typer.Option("--json", help="Output as JSON for automation"),
+        typer.Option(
+            "--json",
+            help="Output as JSON with name, command, is_available, is_current, install_url",
+        ),
     ] = False,
 ) -> None:
-    """List available editors."""
+    """List available editors and their installation status.
+
+    Shows all supported editors: cursor, vscode, zed, nvim, vim, emacs,
+    sublime, idea, pycharm, webstorm, goland, rustrover.
+
+    ✓ = installed, ✗ = not installed.
+    Current editor (if detectable) is marked.
+    """
     current = editors.detect_current_editor()
 
     if json_output:
@@ -1141,10 +1315,17 @@ def list_editors_cmd(
 def list_terminals_cmd(
     json_output: Annotated[
         bool,
-        typer.Option("--json", help="Output as JSON for automation"),
+        typer.Option("--json", help="Output as JSON with name, is_available, is_current"),
     ] = False,
 ) -> None:
-    """List available terminals."""
+    """List available terminal multiplexers and their status.
+
+    Shows supported terminals: tmux, zellij, kitty, iTerm2, Terminal.app,
+    Warp, GNOME Terminal.
+
+    These are used to open new tabs when launching AI agents with `dev new -a`.
+    The current terminal (if detectable) is marked.
+    """
     current = terminals.detect_current_terminal()
 
     if json_output:
@@ -1207,12 +1388,25 @@ def _doctor_check_git() -> None:
 
 @app.command("run")
 def run_cmd(
-    name: Annotated[str, typer.Argument(help="Branch name or directory name of the worktree")],
-    command: Annotated[list[str], typer.Argument(help="Command to run in the worktree")],
+    name: Annotated[
+        str,
+        typer.Argument(help="Worktree to run command in. Can be branch name or directory name"),
+    ],
+    command: Annotated[
+        list[str],
+        typer.Argument(help="Command and arguments to run"),
+    ],
 ) -> None:
-    """Run a command in a dev environment.
+    """Run a command in a dev environment's directory.
 
-    Example: agent-cli dev run my-feature npm test
+    Executes the command with the worktree as the current directory.
+    Exit code is passed through from the command.
+
+    **Examples:**
+
+    - `dev run my-feature npm test` — Run tests
+    - `dev run my-feature git status` — Check git status
+    - `dev run my-feature bash -c "npm install && npm test"` — Multiple commands
     """
     repo_root = _ensure_git_repo()
 
@@ -1380,26 +1574,47 @@ def _clean_no_commits_worktrees(
 def clean(
     merged: Annotated[
         bool,
-        typer.Option("--merged", help="Remove worktrees with merged PRs (requires gh CLI)"),
+        typer.Option(
+            "--merged",
+            help="Also remove worktrees whose GitHub PRs are merged (requires gh CLI and auth)",
+        ),
     ] = False,
     no_commits: Annotated[
         bool,
         typer.Option(
             "--no-commits",
-            help="Remove worktrees with no commits ahead of default branch",
+            help="Also remove worktrees with 0 commits ahead of default branch (abandoned branches)",
         ),
     ] = False,
     dry_run: Annotated[
         bool,
-        typer.Option("--dry-run", "-n", help="Show what would be done without doing it"),
+        typer.Option(
+            "--dry-run",
+            "-n",
+            help="Preview what would be removed without actually removing",
+        ),
     ] = False,
-    yes: Annotated[bool, typer.Option("--yes", "-y", help="Skip confirmation")] = False,
+    yes: Annotated[
+        bool,
+        typer.Option("--yes", "-y", help="Skip confirmation prompts"),
+    ] = False,
 ) -> None:
     """Clean up stale worktrees and empty directories.
 
-    Runs `git worktree prune` and removes empty worktree directories.
-    With --merged, also removes worktrees whose PRs have been merged.
-    With --no-commits, removes worktrees with no commits ahead of the default branch.
+    Always runs `git worktree prune` to remove stale administrative files,
+    and removes empty directories in the worktrees folder.
+
+    **Modes:**
+
+    - Default: Just prune stale refs and empty directories
+    - `--merged`: Also remove worktrees whose PRs are merged on GitHub
+    - `--no-commits`: Also remove worktrees with no commits (abandoned branches)
+
+    **Examples:**
+
+    - `dev clean` — Basic cleanup
+    - `dev clean --merged` — Remove worktrees with merged PRs
+    - `dev clean --merged --dry-run` — Preview what would be removed
     """
     repo_root = _ensure_git_repo()
 
@@ -1445,10 +1660,20 @@ def clean(
 def doctor(
     json_output: Annotated[
         bool,
-        typer.Option("--json", help="Output as JSON for automation"),
+        typer.Option("--json", help="Output as JSON with git, editors, agents, terminals status"),
     ] = False,
 ) -> None:
-    """Check system requirements and available integrations."""
+    """Check system requirements and show available integrations.
+
+    Shows availability status for:
+    - **Git**: Is git installed? Are we in a git repo?
+    - **Editors**: Which editors are installed and which is current?
+    - **Agents**: Which AI coding agents are installed?
+    - **Terminals**: Which terminal multiplexers are detected?
+
+    Items marked with ✓ are available, ✗ are not installed.
+    Current editor/agent/terminal is marked with (current).
+    """
     current_editor = editors.detect_current_editor()
     current_agent = coding_agents.detect_current_agent()
     current_terminal = terminals.detect_current_terminal()
@@ -1537,17 +1762,22 @@ def _get_current_repo_root() -> Path | None:
 def install_skill(
     force: Annotated[
         bool,
-        typer.Option("--force", "-f", help="Overwrite existing skill files"),
+        typer.Option("--force", "-f", help="Overwrite existing skill files if already installed"),
     ] = False,
 ) -> None:
     """Install Claude Code skill for parallel agent orchestration.
 
-    Installs a skill that teaches Claude Code how to use 'agent-cli dev' to
+    Installs a skill that teaches Claude Code how to use `agent-cli dev` to
     spawn parallel AI coding agents in isolated git worktrees.
 
-    The skill is installed to .claude/skills/agent-cli-dev/ in the current
-    repository. Once installed, Claude Code can automatically use it when
-    you ask to work on multiple features or parallelize development tasks.
+    **What it does:**
+
+    - Copies skill files to `.claude/skills/agent-cli-dev/` in current repo
+    - Enables Claude Code to automatically spawn parallel agents
+    - Works when you ask to "work on multiple features" or "parallelize tasks"
+
+    **Alternative:** Install globally via Claude Code plugin marketplace:
+    `claude plugin marketplace add basnijholt/agent-cli`
     """
     # Use current repo root (works in worktrees too)
     repo_root = _get_current_repo_root()
