@@ -621,7 +621,7 @@ def new(  # noqa: C901, PLR0912, PLR0915
 
     **What happens:**
 
-    1. Creates a git worktree at ../<repo>-worktrees/<branch>/
+    1. Creates git worktree at `../REPO-worktrees/BRANCH/`
     2. Copies .env files from main repo (--copy-env)
     3. Runs project setup: npm install, uv sync, etc. (--setup)
     4. Sets up direnv if installed (--direnv)
