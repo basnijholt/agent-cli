@@ -168,6 +168,7 @@ ASR_OPENAI_PROMPT: str | None = typer.Option(
 ASR_GEMINI_MODEL: str = typer.Option(
     "gemini-3-flash-preview",
     "--asr-gemini-model",
+    envvar="ASR_GEMINI_MODEL",
     help="The Gemini model to use for ASR (transcription).",
     rich_help_panel="Audio Input: Gemini",
 )
