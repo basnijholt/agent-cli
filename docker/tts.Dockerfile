@@ -65,7 +65,9 @@ RUN apt-get update && \
 ENV UV_PYTHON_INSTALL_DIR=/opt/python
 RUN uv python install 3.13
 
-RUN groupadd -g 1000 tts && useradd -m -u 1000 -g tts tts
+RUN userdel -r ubuntu 2>/dev/null || true; \
+    groupadd -g 1000 tts 2>/dev/null || true; \
+    useradd -m -u 1000 -g 1000 tts
 
 WORKDIR /app
 
@@ -116,7 +118,8 @@ RUN apt-get update && \
 ENV UV_PYTHON_INSTALL_DIR=/opt/python
 RUN uv python install 3.13
 
-RUN groupadd -g 1000 tts && useradd -m -u 1000 -g tts tts
+RUN getent group 1000 || groupadd -g 1000 tts; \
+    id -u 1000 >/dev/null 2>&1 || useradd -m -u 1000 -g 1000 tts
 
 WORKDIR /app
 
