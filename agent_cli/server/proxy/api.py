@@ -207,6 +207,7 @@ def _load_transcription_configs() -> tuple[
         asr_openai_model=_cfg("asr_openai_model", defaults, opts.ASR_OPENAI_MODEL),
         openai_api_key=_cfg("openai_api_key", defaults, opts.OPENAI_API_KEY),
         openai_base_url=_cfg("asr_openai_base_url", defaults, opts.ASR_OPENAI_BASE_URL),
+        asr_openai_prompt=_cfg("asr_openai_prompt", defaults, opts.ASR_OPENAI_PROMPT),
     )
     gemini_asr_cfg = config.GeminiASR(
         asr_gemini_model=_cfg("asr_gemini_model", defaults, opts.ASR_GEMINI_MODEL),
