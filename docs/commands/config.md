@@ -44,8 +44,8 @@ agent-cli config init [OPTIONS]
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--path, -p` | - | Custom path for config file. Default: ~/.config/agent-cli/config.toml |
-| `--force, -f` | `false` | Overwrite existing config without confirmation. |
+| `--path, -p` | - | Where to create the config file (default: `~/.config/agent-cli/config.toml`). |
+| `--force, -f` | `false` | Overwrite existing config without prompting for confirmation. |
 
 
 <!-- OUTPUT:END -->
@@ -78,7 +78,7 @@ agent-cli config edit [OPTIONS]
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--path, -p` | - | Path to config file. Uses auto-detection if not specified. |
+| `--path, -p` | - | Override auto-detection and use this config file path. |
 
 
 <!-- OUTPUT:END -->
@@ -111,9 +111,9 @@ agent-cli config show [OPTIONS]
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--path, -p` | - | Path to config file. Uses auto-detection if not specified. |
-| `--raw, -r` | `false` | Output raw file contents (for copy-paste). |
-| `--json` | `false` | Output as JSON for automation. |
+| `--path, -p` | - | Override auto-detection and use this config file path. |
+| `--raw, -r` | `false` | Print plain file contents without syntax highlighting or line numbers. |
+| `--json` | `false` | Output as JSON with `path`, `exists`, and `content` fields. |
 
 
 <!-- OUTPUT:END -->
