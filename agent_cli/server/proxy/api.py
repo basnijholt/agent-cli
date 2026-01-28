@@ -44,13 +44,15 @@ app = FastAPI(
 @app.on_event("startup")
 async def log_effective_config() -> None:
     """Log effective configuration on startup to help debug env var issues."""
-    provider_cfg, wyoming_cfg, openai_cfg, *_ = _load_transcription_configs()
+    provider_cfg, wyoming_cfg, openai_cfg, gemini_cfg, *_ = _load_transcription_configs()
     LOGGER.info("ASR provider: %s", provider_cfg.asr_provider)
     if provider_cfg.asr_provider == "wyoming":
         LOGGER.info("  Wyoming: %s:%d", wyoming_cfg.asr_wyoming_ip, wyoming_cfg.asr_wyoming_port)
     elif provider_cfg.asr_provider == "openai":
         LOGGER.info("  Model: %s", openai_cfg.asr_openai_model)
         LOGGER.info("  Base URL: %s", openai_cfg.openai_base_url or "https://api.openai.com/v1")
+    elif provider_cfg.asr_provider == "gemini":
+        LOGGER.info("  Model: %s", gemini_cfg.asr_gemini_model)
 
 
 @app.middleware("http")
