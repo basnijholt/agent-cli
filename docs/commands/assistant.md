@@ -59,9 +59,9 @@ agent-cli assistant --wake-server-ip 192.168.1.100 --wake-server-port 10400
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--wake-server-ip` | `localhost` | Wyoming wake word server IP address. |
+| `--wake-server-ip` | `localhost` | Wyoming wake word server IP (requires wyoming-openwakeword or similar). |
 | `--wake-server-port` | `10400` | Wyoming wake word server port. |
-| `--wake-word` | `ok_nabu` | Name of wake word to detect (e.g., 'ok_nabu', 'hey_jarvis'). |
+| `--wake-word` | `ok_nabu` | Wake word to detect. Common options: `ok_nabu`, `hey_jarvis`, `alexa`. Must match a model loaded in your wake word server. |
 
 ### Audio Input
 
