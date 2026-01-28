@@ -70,18 +70,18 @@ agent-cli server tts --preload
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--model` | - | Model name(s) to load. Piper: 'en_US-lessac-medium'. Kokoro: 'kokoro' (auto-downloads) |
+| `--model, -m` | - | Model name(s) to load. Piper: 'en_US-lessac-medium'. Kokoro: 'kokoro' (auto-downloads) |
 | `--default-model` | - | Default model when not specified in request |
-| `--device` | `auto` | Device: auto, cpu, cuda, mps (Piper is CPU-only, Kokoro supports GPU) |
+| `--device, -d` | `auto` | Device: auto, cpu, cuda, mps (Piper is CPU-only, Kokoro supports GPU) |
 | `--cache-dir` | - | Model cache directory |
 | `--ttl` | `300` | Seconds before unloading idle model |
 | `--preload` | `false` | Load model(s) at startup and wait for completion |
 | `--host` | `0.0.0.0` | Host to bind the server to |
-| `--port` | `10201` | HTTP API port |
+| `--port, -p` | `10201` | HTTP API port |
 | `--wyoming-port` | `10200` | Wyoming protocol port |
 | `--no-wyoming` | `false` | Disable Wyoming server |
 | `--download-only` | `false` | Download model(s) and exit without starting server |
-| `--backend` | `auto` | Backend: auto, piper, kokoro |
+| `--backend, -b` | `auto` | Backend: auto, piper, kokoro |
 
 ### General Options
 
