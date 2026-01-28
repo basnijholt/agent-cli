@@ -654,8 +654,7 @@ the `[defaults]` section of your configuration file.
 │ --log-file            TEXT                        Path to a file to write logs to.     │
 │ --quiet       -q                                  Suppress console output from rich.   │
 │ --json                                            Output result as JSON (implies       │
-│                                                   --quiet and --no-clipboard). Keys    │
-│                                                   vary by command.                     │
+│                                                   --quiet and --no-clipboard).         │
 │ --config              TEXT                        Path to a TOML configuration file.   │
 │ --print-args                                      Print the command line arguments,    │
 │                                                   including variables taken from the   │
@@ -836,8 +835,7 @@ the `[defaults]` section of your configuration file.
 │                                                                  output from rich.     │
 │ --json                                                           Output result as JSON │
 │                                                                  (implies --quiet and  │
-│                                                                  --no-clipboard). Keys │
-│                                                                  vary by command.      │
+│                                                                  --no-clipboard).      │
 │ --config                                   TEXT                  Path to a TOML        │
 │                                                                  configuration file.   │
 │ --print-args                                                     Print the command     │
@@ -1199,8 +1197,7 @@ uv tool install "agent-cli[vad]" -p 3.13
 │ --log-file            TEXT                        Path to a file to write logs to.     │
 │ --quiet       -q                                  Suppress console output from rich.   │
 │ --json                                            Output result as JSON (implies       │
-│                                                   --quiet and --no-clipboard). Keys    │
-│                                                   vary by command.                     │
+│                                                   --quiet and --no-clipboard).         │
 │ --config              TEXT                        Path to a TOML configuration file.   │
 │ --print-args                                      Print the command line arguments,    │
 │                                                   including variables taken from the   │
@@ -1406,8 +1403,7 @@ uv tool install "agent-cli[vad]" -p 3.13
 │                                                               from rich.               │
 │ --json                                                        Output result as JSON    │
 │                                                               (implies --quiet and     │
-│                                                               --no-clipboard). Keys    │
-│                                                               vary by command.         │
+│                                                               --no-clipboard).         │
 │ --config                            TEXT                      Path to a TOML           │
 │                                                               configuration file.      │
 │ --print-args                                                  Print the command line   │
