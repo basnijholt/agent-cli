@@ -620,7 +620,7 @@ class TestWhisperAPI:
                 return_value=mock_result,
             ),
             client.websocket_connect(
-                "/v1/audio/transcriptions/stream?model=whisper-1",
+                "/v1/audio/transcriptions/stream?model=whisper-1&use_vad=false",
             ) as websocket,
         ):
             for chunk in chunks:
@@ -657,7 +657,7 @@ class TestWhisperAPI:
                 side_effect=RuntimeError("boom"),
             ),
             client.websocket_connect(
-                "/v1/audio/transcriptions/stream?model=whisper-1",
+                "/v1/audio/transcriptions/stream?model=whisper-1&use_vad=false",
             ) as websocket,
         ):
             websocket.send_bytes(b"\x00\x00" * 160)
