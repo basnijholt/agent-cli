@@ -64,7 +64,7 @@ def rag_proxy(
 
     **Quick start:**
 
-    - `agent-cli rag-proxy` — Start with defaults (./rag_docs, local Ollama)
+    - `agent-cli rag-proxy` — Start with defaults (./rag_docs, OpenAI API)
     - `agent-cli rag-proxy --docs-folder ~/notes` — Index your notes folder
 
     **How it works:**
