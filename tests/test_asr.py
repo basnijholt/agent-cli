@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import sys
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -157,6 +158,10 @@ async def test_transcribe_recorded_audio_wyoming_connection_error(
 
 
 @pytest.mark.asyncio
+@pytest.mark.skipif(
+    sys.platform == "darwin",
+    reason="Flaky timeout on macOS CI due to slow cryptography import",
+)
 @patch("google.genai.Client")
 async def test_transcribe_audio_gemini_success(mock_client_class: MagicMock):
     """Test that transcribe_audio_gemini calls the Gemini API correctly."""
