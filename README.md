@@ -1868,25 +1868,68 @@ uv tool install "agent-cli[vad]" -p 3.13
 
  Usage: agent-cli rag-proxy [OPTIONS]
 
- Start the RAG (Retrieval-Augmented Generation) Proxy Server.
+ Start a RAG proxy server that enables "chat with your documents".
 
- This server watches a folder for documents, indexes them, and provides an
- OpenAI-compatible API that proxies requests to a backend LLM (like llama.cpp), injecting
- relevant context from the documents.
+ Watches a folder for documents, indexes them into a vector store, and provides an
+ OpenAI-compatible API at /v1/chat/completions. When you send a chat request, the server
+ retrieves relevant document chunks and injects them as context before forwarding to your
+ LLM backend.
+
+ Quick start:
+
+  • agent-cli rag-proxy — Start with defaults (./rag_docs, OpenAI API)
+  • agent-cli rag-proxy --docs-folder ~/notes — Index your notes folder
+
+ How it works:
+
+  1 Documents in --docs-folder are chunked, embedded, and stored in ChromaDB
+  2 A file watcher auto-reindexes when files change
+  3 Chat requests trigger a semantic search for relevant chunks
+  4 Retrieved context is injected into the prompt before forwarding to the LLM
+  5 Responses include a rag_sources field listing which documents were used
+
+ Supported file formats:
+
+ Text: .txt, .md, .json, .py, .js, .ts, .yaml, .toml, .rst, etc. Rich documents (via
+ MarkItDown): .pdf, .docx, .pptx, .xlsx, .html, .csv
+
+ API endpoints:
+
+  • POST /v1/chat/completions — Main chat endpoint (OpenAI-compatible)
+  • GET /health — Health check with configuration info
+  • GET /files — List indexed files with chunk counts
+  • POST /reindex — Trigger manual reindex
+  • All other paths are proxied to the LLM backend
+
+ Per-request overrides (in JSON body):
+
+  • rag_top_k: Override --limit for this request
+  • rag_enable_tools: Override --rag-tools for this request
 
 ╭─ Options ──────────────────────────────────────────────────────────────────────────────╮
 │ --help  -h        Show this message and exit.                                          │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ RAG Configuration ────────────────────────────────────────────────────────────────────╮
-│ --docs-folder                      PATH     Folder to watch for documents              │
+│ --docs-folder                      PATH     Folder to watch for documents. Files are   │
+│                                             auto-indexed on startup and when changed.  │
+│                                             Must not overlap with --chroma-path.       │
 │                                             [default: ./rag_docs]                      │
-│ --chroma-path                      PATH     Path to ChromaDB persistence directory     │
+│ --chroma-path                      PATH     ChromaDB storage directory for vector      │
+│                                             embeddings. Must be separate from          │
+│                                             --docs-folder to avoid indexing database   │
+│                                             files.                                     │
 │                                             [default: ./rag_db]                        │
 │ --limit                            INTEGER  Number of document chunks to retrieve per  │
-│                                             query.                                     │
+│                                             query. Higher values provide more context  │
+│                                             but use more tokens. Can be overridden     │
+│                                             per-request via rag_top_k in the JSON      │
+│                                             body.                                      │
 │                                             [default: 3]                               │
-│ --rag-tools      --no-rag-tools             Allow agent to fetch full documents when   │
-│                                             snippets are insufficient.                 │
+│ --rag-tools      --no-rag-tools             Enable read_full_document() tool so the    │
+│                                             LLM can request full document content when │
+│                                             retrieved snippets are insufficient. Can   │
+│                                             be overridden per-request via              │
+│                                             rag_enable_tools in the JSON body.         │
 │                                             [default: rag-tools]                       │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ LLM: OpenAI-compatible ───────────────────────────────────────────────────────────────╮
@@ -1904,7 +1947,8 @@ uv tool install "agent-cli[vad]" -p 3.13
 ╭─ Server Configuration ─────────────────────────────────────────────────────────────────╮
 │ --host        TEXT     Host/IP to bind API servers to.                                 │
 │                        [default: 0.0.0.0]                                              │
-│ --port        INTEGER  Port to bind to                                                 │
+│ --port        INTEGER  Port for the RAG proxy API (e.g.,                               │
+│                        http://localhost:8000/v1/chat/completions).                     │
 │                        [default: 8000]                                                 │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ General Options ──────────────────────────────────────────────────────────────────────╮
