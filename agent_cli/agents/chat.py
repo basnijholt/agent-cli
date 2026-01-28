@@ -473,7 +473,7 @@ def chat(
 
     Use local Ollama LLM with Wyoming ASR:
 
-        agent-cli chat --llm-provider ollama --llm-ollama-model llama3.2
+        agent-cli chat --llm-provider ollama
     """
     if print_args:
         print_command_line_args(locals())

@@ -1543,7 +1543,7 @@ uv tool install "agent-cli[vad]" -p 3.13
  Use local Ollama LLM with Wyoming ASR:
 
 
-  agent-cli chat --llm-provider ollama --llm-ollama-model llama3.2
+  agent-cli chat --llm-provider ollama
 
 
 ╭─ Options ──────────────────────────────────────────────────────────────────────────────╮
