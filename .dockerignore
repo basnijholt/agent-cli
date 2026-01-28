@@ -1,0 +1,44 @@
+# Ignore build artifacts
+**/__pycache__
+**/*.pyc
+**/*.pyo
+*.egg-info
+dist/
+build/
+.eggs/
+
+# Ignore development files
+.github/
+.venv/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+htmlcov/
+.coverage
+coverage.xml
+
+# Ignore IDE files
+.vscode/
+.idea/
+
+# Ignore nix/direnv artifacts
+**/.direnv/
+**/.envrc
+
+# Ignore local scripts and configs
+*.md
+!README.md
+docs/
+tests/
+
+# Ignore specific problematic directories (nvidia-asr-server is 8GB)
+scripts/nvidia-asr-server/
+agent_cli/scripts/nvidia-asr-server/
+
+# Ignore unrelated local projects and data
+Kokoro-FastAPI/
+whisper-fastapi/
+wyoming-mlx-whisper/
+rag_db/
+memory_db/
+site/
