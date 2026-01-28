@@ -121,6 +121,7 @@ async def health_check() -> HealthResponse:
 
 async def _transcribe_with_provider(
     audio_data: bytes,
+    filename: str,
     provider_cfg: config.ProviderSelection,
     wyoming_asr_cfg: config.WyomingASR,
     openai_asr_cfg: config.OpenAIASR,
@@ -128,6 +129,7 @@ async def _transcribe_with_provider(
 ) -> str:
     """Transcribe audio using the configured provider."""
     transcriber = asr.create_recorded_audio_transcriber(provider_cfg)
+    file_suffix = Path(filename).suffix.lower() or ".wav"
 
     if provider_cfg.asr_provider == "wyoming":
         return await transcriber(
@@ -140,12 +142,14 @@ async def _transcribe_with_provider(
             audio_data=audio_data,
             openai_asr_cfg=openai_asr_cfg,
             logger=LOGGER,
+            file_suffix=file_suffix,
         )
     if provider_cfg.asr_provider == "gemini":
         return await transcriber(
             audio_data=audio_data,
             gemini_asr_cfg=gemini_asr_cfg,
             logger=LOGGER,
+            file_suffix=file_suffix,
         )
     msg = f"Unsupported ASR provider: {provider_cfg.asr_provider}"
     raise NotImplementedError(msg)
@@ -356,8 +360,14 @@ async def transcribe_audio(
             defaults,
         ) = _load_transcription_configs()
 
-        # Save uploaded file
+        # Read uploaded file
         audio_data = await audio_file.read()
+        LOGGER.info(
+            "Received audio: filename=%s, size=%d bytes, content_type=%s",
+            audio_file.filename,
+            len(audio_data),
+            getattr(audio_file, "content_type", None),
+        )
 
         # Convert audio to Wyoming format if using local ASR
         if provider_cfg.asr_provider == "wyoming":
@@ -366,6 +376,7 @@ async def transcribe_audio(
         # Transcribe audio using the configured provider
         raw_transcript = await _transcribe_with_provider(
             audio_data,
+            audio_file.filename or "audio.wav",
             provider_cfg,
             wyoming_asr_cfg,
             openai_asr_cfg,

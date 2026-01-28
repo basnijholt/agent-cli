@@ -17,6 +17,7 @@ if TYPE_CHECKING:
 
 
 _RIFF_HEADER = b"RIFF"
+_LOG_TRUNCATE_LENGTH = 100
 
 
 def _is_wav_file(data: bytes) -> bool:
@@ -112,9 +113,17 @@ async def transcribe_audio_gemini(
     # Determine MIME type from file suffix
     mime_type = _GEMINI_MIME_TYPES.get(file_suffix.lower(), "audio/wav")
 
+    logger.debug(
+        "Received audio: size=%d bytes, file_suffix=%s, is_wav=%s",
+        len(audio_data),
+        file_suffix,
+        _is_wav_file(audio_data),
+    )
+
     # If raw PCM (no recognized format header), convert to WAV
+    # Only do this if file_suffix is .wav but data doesn't have WAV header (indicating raw PCM)
     if not _is_wav_file(audio_data) and file_suffix.lower() == ".wav":
-        logger.debug("Converting raw PCM to WAV format for Gemini")
+        logger.debug("Wrapping raw PCM data with WAV header (16kHz, 16-bit, mono)")
         audio_data = pcm_to_wav(
             audio_data,
             sample_rate=constants.AUDIO_RATE,
@@ -141,7 +150,19 @@ async def transcribe_audio_gemini(
             types.Part.from_bytes(data=audio_data, mime_type=mime_type),
         ],
     )
-    return response.text.strip()
+    text = response.text.strip()
+
+    if text:
+        logger.info(
+            "Transcription result: %s",
+            text[:_LOG_TRUNCATE_LENGTH] + "..." if len(text) > _LOG_TRUNCATE_LENGTH else text,
+        )
+    else:
+        logger.warning(
+            "Empty transcription returned - audio may be silent, corrupted, or in wrong format",
+        )
+
+    return text
 
 
 def _get_openai_client(api_key: str | None, base_url: str | None = None) -> AsyncOpenAI:
@@ -197,9 +218,17 @@ async def transcribe_audio_openai(
         base_url=openai_asr_cfg.openai_base_url,
     )
 
+    logger.debug(
+        "Received audio: size=%d bytes, file_suffix=%s, is_wav=%s",
+        len(audio_data),
+        file_suffix,
+        _is_wav_file(audio_data),
+    )
+
     # Convert raw PCM to WAV if needed (custom endpoints like faster-whisper require proper format)
+    # Only do this if file_suffix is .wav but data doesn't have WAV header (indicating raw PCM)
     if not _is_wav_file(audio_data) and file_suffix.lower() == ".wav":
-        logger.debug("Converting raw PCM to WAV format")
+        logger.debug("Wrapping raw PCM data with WAV header (16kHz, 16-bit, mono)")
         audio_data = pcm_to_wav(
             audio_data,
             sample_rate=constants.AUDIO_RATE,
@@ -211,7 +240,7 @@ async def transcribe_audio_openai(
     # Use the correct file extension so OpenAI knows the format
     audio_file.name = f"audio{file_suffix}"
 
-    logger.debug("Using filename: %s", audio_file.name)
+    logger.debug("Sending to OpenAI with filename: %s", audio_file.name)
 
     transcription_params: dict[str, object] = {
         "model": openai_asr_cfg.asr_openai_model,
@@ -225,7 +254,19 @@ async def transcribe_audio_openai(
         logger.debug("Using OpenAI ASR with prompt")
 
     response = await client.audio.transcriptions.create(**transcription_params)
-    return response.text
+    text = response.text
+
+    if text:
+        logger.info(
+            "Transcription result: %s",
+            text[:_LOG_TRUNCATE_LENGTH] + "..." if len(text) > _LOG_TRUNCATE_LENGTH else text,
+        )
+    else:
+        logger.warning(
+            "Empty transcription returned - audio may be silent, corrupted, or in wrong format",
+        )
+
+    return text
 
 
 async def synthesize_speech_openai(
