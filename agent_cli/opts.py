@@ -2,11 +2,14 @@
 
 import copy
 from pathlib import Path
+from typing import Literal
 
 import typer
 from typer.models import OptionInfo
 
 from agent_cli.constants import DEFAULT_OPENAI_EMBEDDING_MODEL, DEFAULT_OPENAI_MODEL
+
+LogLevel = Literal["debug", "info", "warning", "error"]
 
 
 def with_default(option: OptionInfo, default: str) -> OptionInfo:
@@ -361,11 +364,11 @@ CLIPBOARD: bool = typer.Option(
     help="Copy result to clipboard.",
     rich_help_panel="General Options",
 )
-LOG_LEVEL: str = typer.Option(
+LOG_LEVEL: LogLevel = typer.Option(
     "info",
     "--log-level",
     envvar="LOG_LEVEL",
-    help="Set logging level (debug, info, warning, error).",
+    help="Set logging level.",
     case_sensitive=False,
     rich_help_panel="General Options",
 )

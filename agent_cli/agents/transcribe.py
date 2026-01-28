@@ -504,7 +504,7 @@ def transcribe(  # noqa: PLR0912
     toggle: bool = opts.TOGGLE,
     # --- General Options ---
     clipboard: bool = opts.CLIPBOARD,
-    log_level: str = opts.LOG_LEVEL,
+    log_level: opts.LogLevel = opts.LOG_LEVEL,
     log_file: str | None = opts.LOG_FILE,
     list_devices: bool = opts.LIST_DEVICES,
     quiet: bool = opts.QUIET,

@@ -591,16 +591,18 @@ the `[defaults]` section of your configuration file.
 │                                 [env var: GEMINI_API_KEY]                              │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ General Options ──────────────────────────────────────────────────────────────────────╮
-│ --log-level           TEXT  Set logging level (debug, info, warning, error).           │
-│                             [env var: LOG_LEVEL]                                       │
-│                             [default: info]                                            │
-│ --log-file            TEXT  Path to a file to write logs to.                           │
-│ --quiet       -q            Suppress console output from rich.                         │
-│ --json                      Output result as JSON for automation. Implies --quiet and  │
-│                             --no-clipboard.                                            │
-│ --config              TEXT  Path to a TOML configuration file.                         │
-│ --print-args                Print the command line arguments, including variables      │
-│                             taken from the configuration file.                         │
+│ --log-level           [debug|info|warning|error]  Set logging level.                   │
+│                                                   [env var: LOG_LEVEL]                 │
+│                                                   [default: info]                      │
+│ --log-file            TEXT                        Path to a file to write logs to.     │
+│ --quiet       -q                                  Suppress console output from rich.   │
+│ --json                                            Output result as JSON for            │
+│                                                   automation. Implies --quiet and      │
+│                                                   --no-clipboard.                      │
+│ --config              TEXT                        Path to a TOML configuration file.   │
+│ --print-args                                      Print the command line arguments,    │
+│                                                   including variables taken from the   │
+│                                                   configuration file.                  │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 
 ```
@@ -743,23 +745,32 @@ the `[defaults]` section of your configuration file.
 │                   will be stopped. If the process is not running, it will be started.  │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ General Options ──────────────────────────────────────────────────────────────────────╮
-│ --clipboard              --no-clipboard          Copy result to clipboard.             │
-│                                                  [default: clipboard]                  │
-│ --log-level                                TEXT  Set logging level (debug, info,       │
-│                                                  warning, error).                      │
-│                                                  [env var: LOG_LEVEL]                  │
-│                                                  [default: info]                       │
-│ --log-file                                 TEXT  Path to a file to write logs to.      │
-│ --quiet              -q                          Suppress console output from rich.    │
-│ --json                                           Output result as JSON for automation. │
-│                                                  Implies --quiet and --no-clipboard.   │
-│ --config                                   TEXT  Path to a TOML configuration file.    │
-│ --print-args                                     Print the command line arguments,     │
-│                                                  including variables taken from the    │
-│                                                  configuration file.                   │
-│ --transcription-log                        PATH  Path to log transcription results     │
-│                                                  with timestamps, hostname, model, and │
-│                                                  raw output.                           │
+│ --clipboard              --no-clipboard                          Copy result to        │
+│                                                                  clipboard.            │
+│                                                                  [default: clipboard]  │
+│ --log-level                                [debug|info|warning|  Set logging level.    │
+│                                            error]                [env var: LOG_LEVEL]  │
+│                                                                  [default: info]       │
+│ --log-file                                 TEXT                  Path to a file to     │
+│                                                                  write logs to.        │
+│ --quiet              -q                                          Suppress console      │
+│                                                                  output from rich.     │
+│ --json                                                           Output result as JSON │
+│                                                                  for automation.       │
+│                                                                  Implies --quiet and   │
+│                                                                  --no-clipboard.       │
+│ --config                                   TEXT                  Path to a TOML        │
+│                                                                  configuration file.   │
+│ --print-args                                                     Print the command     │
+│                                                                  line arguments,       │
+│                                                                  including variables   │
+│                                                                  taken from the        │
+│                                                                  configuration file.   │
+│ --transcription-log                        PATH                  Path to log           │
+│                                                                  transcription results │
+│                                                                  with timestamps,      │
+│                                                                  hostname, model, and  │
+│                                                                  raw output.           │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 
 ```
@@ -933,14 +944,15 @@ uv tool install "agent-cli[vad]" -p 3.13
 │ --status          Check if a background process is running.                            │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ General Options ──────────────────────────────────────────────────────────────────────╮
-│ --log-level           TEXT  Set logging level (debug, info, warning, error).           │
-│                             [env var: LOG_LEVEL]                                       │
-│                             [default: info]                                            │
-│ --log-file            TEXT  Path to a file to write logs to.                           │
-│ --quiet       -q            Suppress console output from rich.                         │
-│ --config              TEXT  Path to a TOML configuration file.                         │
-│ --print-args                Print the command line arguments, including variables      │
-│                             taken from the configuration file.                         │
+│ --log-level           [debug|info|warning|error]  Set logging level.                   │
+│                                                   [env var: LOG_LEVEL]                 │
+│                                                   [default: info]                      │
+│ --log-file            TEXT                        Path to a file to write logs to.     │
+│ --quiet       -q                                  Suppress console output from rich.   │
+│ --config              TEXT                        Path to a TOML configuration file.   │
+│ --print-args                                      Print the command line arguments,    │
+│                                                   including variables taken from the   │
+│                                                   configuration file.                  │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 
 ```
@@ -1047,17 +1059,19 @@ uv tool install "agent-cli[vad]" -p 3.13
 │ --list-devices          List available audio input and output devices and exit.        │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ General Options ──────────────────────────────────────────────────────────────────────╮
-│ --save-file           PATH  Save TTS response audio to WAV file.                       │
-│ --log-level           TEXT  Set logging level (debug, info, warning, error).           │
-│                             [env var: LOG_LEVEL]                                       │
-│                             [default: info]                                            │
-│ --log-file            TEXT  Path to a file to write logs to.                           │
-│ --quiet       -q            Suppress console output from rich.                         │
-│ --json                      Output result as JSON for automation. Implies --quiet and  │
-│                             --no-clipboard.                                            │
-│ --config              TEXT  Path to a TOML configuration file.                         │
-│ --print-args                Print the command line arguments, including variables      │
-│                             taken from the configuration file.                         │
+│ --save-file           PATH                        Save TTS response audio to WAV file. │
+│ --log-level           [debug|info|warning|error]  Set logging level.                   │
+│                                                   [env var: LOG_LEVEL]                 │
+│                                                   [default: info]                      │
+│ --log-file            TEXT                        Path to a file to write logs to.     │
+│ --quiet       -q                                  Suppress console output from rich.   │
+│ --json                                            Output result as JSON for            │
+│                                                   automation. Implies --quiet and      │
+│                                                   --no-clipboard.                      │
+│ --config              TEXT                        Path to a TOML configuration file.   │
+│ --print-args                                      Print the command line arguments,    │
+│                                                   including variables taken from the   │
+│                                                   configuration file.                  │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Process Management ───────────────────────────────────────────────────────────────────╮
 │ --stop            Stop any running background process.                                 │
@@ -1234,20 +1248,28 @@ uv tool install "agent-cli[vad]" -p 3.13
 │                   will be stopped. If the process is not running, it will be started.  │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ General Options ──────────────────────────────────────────────────────────────────────╮
-│ --save-file                         PATH  Save TTS response audio to WAV file.         │
-│ --clipboard       --no-clipboard          Copy result to clipboard.                    │
-│                                           [default: clipboard]                         │
-│ --log-level                         TEXT  Set logging level (debug, info, warning,     │
-│                                           error).                                      │
-│                                           [env var: LOG_LEVEL]                         │
-│                                           [default: info]                              │
-│ --log-file                          TEXT  Path to a file to write logs to.             │
-│ --quiet       -q                          Suppress console output from rich.           │
-│ --json                                    Output result as JSON for automation.        │
-│                                           Implies --quiet and --no-clipboard.          │
-│ --config                            TEXT  Path to a TOML configuration file.           │
-│ --print-args                              Print the command line arguments, including  │
-│                                           variables taken from the configuration file. │
+│ --save-file                         PATH                      Save TTS response audio  │
+│                                                               to WAV file.             │
+│ --clipboard       --no-clipboard                              Copy result to           │
+│                                                               clipboard.               │
+│                                                               [default: clipboard]     │
+│ --log-level                         [debug|info|warning|erro  Set logging level.       │
+│                                     r]                        [env var: LOG_LEVEL]     │
+│                                                               [default: info]          │
+│ --log-file                          TEXT                      Path to a file to write  │
+│                                                               logs to.                 │
+│ --quiet       -q                                              Suppress console output  │
+│                                                               from rich.               │
+│ --json                                                        Output result as JSON    │
+│                                                               for automation. Implies  │
+│                                                               --quiet and              │
+│                                                               --no-clipboard.          │
+│ --config                            TEXT                      Path to a TOML           │
+│                                                               configuration file.      │
+│ --print-args                                                  Print the command line   │
+│                                                               arguments, including     │
+│                                                               variables taken from the │
+│                                                               configuration file.      │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 
 ```
@@ -1421,18 +1443,24 @@ uv tool install "agent-cli[vad]" -p 3.13
 │                   will be stopped. If the process is not running, it will be started.  │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ General Options ──────────────────────────────────────────────────────────────────────╮
-│ --save-file                         PATH  Save TTS response audio to WAV file.         │
-│ --clipboard       --no-clipboard          Copy result to clipboard.                    │
-│                                           [default: clipboard]                         │
-│ --log-level                         TEXT  Set logging level (debug, info, warning,     │
-│                                           error).                                      │
-│                                           [env var: LOG_LEVEL]                         │
-│                                           [default: info]                              │
-│ --log-file                          TEXT  Path to a file to write logs to.             │
-│ --quiet       -q                          Suppress console output from rich.           │
-│ --config                            TEXT  Path to a TOML configuration file.           │
-│ --print-args                              Print the command line arguments, including  │
-│                                           variables taken from the configuration file. │
+│ --save-file                         PATH                      Save TTS response audio  │
+│                                                               to WAV file.             │
+│ --clipboard       --no-clipboard                              Copy result to           │
+│                                                               clipboard.               │
+│                                                               [default: clipboard]     │
+│ --log-level                         [debug|info|warning|erro  Set logging level.       │
+│                                     r]                        [env var: LOG_LEVEL]     │
+│                                                               [default: info]          │
+│ --log-file                          TEXT                      Path to a file to write  │
+│                                                               logs to.                 │
+│ --quiet       -q                                              Suppress console output  │
+│                                                               from rich.               │
+│ --config                            TEXT                      Path to a TOML           │
+│                                                               configuration file.      │
+│ --print-args                                                  Print the command line   │
+│                                                               arguments, including     │
+│                                                               variables taken from the │
+│                                                               configuration file.      │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 
 ```
@@ -1617,15 +1645,16 @@ uv tool install "agent-cli[vad]" -p 3.13
 │                                   [default: 50]                                        │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ General Options ──────────────────────────────────────────────────────────────────────╮
-│ --save-file           PATH  Save TTS response audio to WAV file.                       │
-│ --log-level           TEXT  Set logging level (debug, info, warning, error).           │
-│                             [env var: LOG_LEVEL]                                       │
-│                             [default: info]                                            │
-│ --log-file            TEXT  Path to a file to write logs to.                           │
-│ --quiet       -q            Suppress console output from rich.                         │
-│ --config              TEXT  Path to a TOML configuration file.                         │
-│ --print-args                Print the command line arguments, including variables      │
-│                             taken from the configuration file.                         │
+│ --save-file           PATH                        Save TTS response audio to WAV file. │
+│ --log-level           [debug|info|warning|error]  Set logging level.                   │
+│                                                   [env var: LOG_LEVEL]                 │
+│                                                   [default: info]                      │
+│ --log-file            TEXT                        Path to a file to write logs to.     │
+│ --quiet       -q                                  Suppress console output from rich.   │
+│ --config              TEXT                        Path to a TOML configuration file.   │
+│ --print-args                                      Print the command line arguments,    │
+│                                                   including variables taken from the   │
+│                                                   configuration file.                  │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 
 ```
@@ -1711,12 +1740,13 @@ uv tool install "agent-cli[vad]" -p 3.13
 │                        [default: 8000]                                                 │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ General Options ──────────────────────────────────────────────────────────────────────╮
-│ --log-level         TEXT  Set logging level (debug, info, warning, error).             │
-│                           [env var: LOG_LEVEL]                                         │
-│                           [default: info]                                              │
-│ --config            TEXT  Path to a TOML configuration file.                           │
-│ --print-args              Print the command line arguments, including variables taken  │
-│                           from the configuration file.                                 │
+│ --log-level         [debug|info|warning|error]  Set logging level.                     │
+│                                                 [env var: LOG_LEVEL]                   │
+│                                                 [default: info]                        │
+│ --config            TEXT                        Path to a TOML configuration file.     │
+│ --print-args                                    Print the command line arguments,      │
+│                                                 including variables taken from the     │
+│                                                 configuration file.                    │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 
 ```
@@ -1852,12 +1882,13 @@ The `memory proxy` command is the core feature—a middleware server that gives 
 │                        [default: 8100]                                                 │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ General Options ──────────────────────────────────────────────────────────────────────╮
-│ --log-level         TEXT  Set logging level (debug, info, warning, error).             │
-│                           [env var: LOG_LEVEL]                                         │
-│                           [default: info]                                              │
-│ --config            TEXT  Path to a TOML configuration file.                           │
-│ --print-args              Print the command line arguments, including variables taken  │
-│                           from the configuration file.                                 │
+│ --log-level         [debug|info|warning|error]  Set logging level.                     │
+│                                                 [env var: LOG_LEVEL]                   │
+│                                                 [default: info]                        │
+│ --config            TEXT                        Path to a TOML configuration file.     │
+│ --print-args                                    Print the command line arguments,      │
+│                                                 including variables taken from the     │
+│                                                 configuration file.                    │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 
 ```

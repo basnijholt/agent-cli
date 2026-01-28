@@ -45,7 +45,7 @@ def rag_proxy(
         help="Port to bind to",
         rich_help_panel="Server Configuration",
     ),
-    log_level: str = opts.LOG_LEVEL,
+    log_level: opts.LogLevel = opts.LOG_LEVEL,
     config_file: str | None = opts.CONFIG_FILE,
     print_args: bool = opts.PRINT_ARGS,
     enable_rag_tools: bool = typer.Option(

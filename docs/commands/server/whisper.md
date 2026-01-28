@@ -92,7 +92,7 @@ agent-cli server whisper --preload
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--log-level` | `info` | Set logging level (debug, info, warning, error). |
+| `--log-level` | `info` | Set logging level. |
 
 
 <!-- OUTPUT:END -->

@@ -233,7 +233,7 @@ def autocorrect(
     llm_gemini_model: str = opts.LLM_GEMINI_MODEL,
     gemini_api_key: str | None = opts.GEMINI_API_KEY,
     # --- General Options ---
-    log_level: str = opts.LOG_LEVEL,
+    log_level: opts.LogLevel = opts.LOG_LEVEL,
     log_file: str | None = opts.LOG_FILE,
     quiet: bool = opts.QUIET,
     json_output: bool = opts.JSON_OUTPUT,

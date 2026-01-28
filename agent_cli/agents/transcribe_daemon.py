@@ -361,7 +361,7 @@ def transcribe_daemon(  # noqa: PLR0912
     stop: bool = opts.STOP,
     status: bool = opts.STATUS,
     # --- General Options ---
-    log_level: str = opts.LOG_LEVEL,
+    log_level: opts.LogLevel = opts.LOG_LEVEL,
     log_file_logging: str | None = opts.LOG_FILE,
     list_devices: bool = opts.LIST_DEVICES,
     quiet: bool = opts.QUIET,

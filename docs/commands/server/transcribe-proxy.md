@@ -47,7 +47,7 @@ agent-cli server transcribe-proxy --reload
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--log-level` | `info` | Set logging level (debug, info, warning, error). |
+| `--log-level` | `info` | Set logging level. |
 
 
 <!-- OUTPUT:END -->
