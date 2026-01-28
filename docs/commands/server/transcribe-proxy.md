@@ -60,6 +60,43 @@ agent-cli server transcribe-proxy --reload
 | `/health` | GET | Health check |
 | `/docs` | GET | Interactive API documentation |
 
+### POST /transcribe
+
+Transcribe an audio file with optional LLM post-processing.
+
+**Request Parameters (multipart/form-data):**
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `audio` | file | required | Audio file (wav, mp3, m4a, ogg, flac, aac, webm) |
+| `cleanup` | boolean | `true` | Whether to apply LLM post-processing to clean up the transcript |
+| `extra_instructions` | string | - | Additional instructions for the LLM cleanup |
+
+**Disabling LLM Post-Processing:**
+
+If you only need raw transcription without LLM cleanup (e.g., for simple note-taking or environments without LLM infrastructure), pass `cleanup=false`:
+
+```bash
+curl -X POST http://localhost:61337/transcribe \
+  -F "audio=@recording.wav" \
+  -F "cleanup=false"
+```
+
+This skips the LLM step entirely, reducing latency and removing the LLM dependency for that request.
+
+**Response:**
+
+```json
+{
+  "raw_transcript": "the original transcription",
+  "cleaned_transcript": "The cleaned transcription." | null,
+  "success": true,
+  "error": null
+}
+```
+
+When `cleanup=false`, the `cleaned_transcript` field will be `null`.
+
 ## How It Works
 
 The transcription proxy acts as a bridge between client applications and your configured ASR provider:
