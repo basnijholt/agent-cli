@@ -485,13 +485,21 @@ agent-cli config edit
 
  Manage agent-cli configuration files.
 
+ Config files are TOML format and searched in order:
+
+  1 ./agent-cli-config.toml (project-local)
+  2 ~/.config/agent-cli/config.toml (user default)
+
+ Settings in [defaults] apply to all commands. Override per-command with sections like
+ [chat] or [transcribe]. CLI arguments override config file settings.
+
 ╭─ Options ──────────────────────────────────────────────────────────────────────────────╮
 │ --help  -h        Show this message and exit.                                          │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Commands ─────────────────────────────────────────────────────────────────────────────╮
-│ init   Create a new config file with all options commented out.                        │
+│ init   Create a new config file with all options as commented-out examples.            │
 │ edit   Open the config file in your default editor.                                    │
-│ show   Display the config file location and contents.                                  │
+│ show   Display the active config file path and contents.                               │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 
 ```
