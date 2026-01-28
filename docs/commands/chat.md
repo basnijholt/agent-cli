@@ -172,7 +172,7 @@ agent-cli chat --last-n-messages 100 --history-dir ~/.my-chat-history
 | `--save-file` | - | Save TTS response audio to WAV file. |
 | `--log-level` | `info` | Set logging level. |
 | `--log-file` | - | Path to a file to write logs to. |
-| `--quiet` | `false` | Suppress console output from rich. |
+| `--quiet, -q` | `false` | Suppress console output from rich. |
 | `--config` | - | Path to a TOML configuration file. |
 | `--print-args` | `false` | Print the command line arguments, including variables taken from the configuration file. |
 

@@ -80,16 +80,26 @@ def _extract_options_from_click(cmd: click.Command) -> list[dict[str, Any]]:
     options = []
     for param in cmd.params:
         if isinstance(param, click.Option):
-            # Get the primary option name (longest one, usually --foo)
-            opt_names = [n for n in param.opts if n.startswith("--")]
-            if not opt_names:
-                opt_names = param.opts
-            primary_name = max(opt_names, key=len) if opt_names else param.name
+            # Get long and short option names
+            long_opts = [n for n in param.opts if n.startswith("--")]
+            short_opts = [n for n in param.opts if n.startswith("-") and not n.startswith("--")]
 
-            # Handle boolean flags
+            # Build display name: prefer long form, include short if available
+            if long_opts:
+                primary_name = max(long_opts, key=len)
+                # Include short flag if available (e.g., "--from", "-f" -> "--from, -f")
+                if short_opts:
+                    primary_name = f"{primary_name}, {short_opts[0]}"
+            elif short_opts:
+                primary_name = short_opts[0]
+            else:
+                primary_name = f"--{param.name}"
+
+            # Handle boolean flags with --foo/--no-foo pattern
             if param.is_flag and param.secondary_opts:
                 # e.g., --llm/--no-llm
-                primary_name = f"{opt_names[0]}/{param.secondary_opts[0]}"
+                base_opt = long_opts[0] if long_opts else param.opts[0]
+                primary_name = f"{base_opt}/{param.secondary_opts[0]}"
 
             # Get panel from rich_help_panel or use default
             panel = getattr(param, "rich_help_panel", None) or "Options"

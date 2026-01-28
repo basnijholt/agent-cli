@@ -156,7 +156,7 @@ The `--from-file` option supports multiple audio formats:
 | `--clipboard/--no-clipboard` | `true` | Copy result to clipboard. |
 | `--log-level` | `info` | Set logging level. |
 | `--log-file` | - | Path to a file to write logs to. |
-| `--quiet` | `false` | Suppress console output from rich. |
+| `--quiet, -q` | `false` | Suppress console output from rich. |
 | `--json` | `false` | Output result as JSON for automation. Implies --quiet and --no-clipboard. |
 | `--config` | - | Path to a TOML configuration file. |
 | `--print-args` | `false` | Print the command line arguments, including variables taken from the configuration file. |

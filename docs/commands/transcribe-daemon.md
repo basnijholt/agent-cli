@@ -65,13 +65,13 @@ agent-cli transcribe-daemon --silence-threshold 1.5
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--role` | `user` | Role name for logging (e.g., 'meeting', 'notes', 'user'). |
-| `--silence-threshold` | `1.0` | Seconds of silence to end a speech segment. |
-| `--min-segment` | `0.25` | Minimum speech duration in seconds to trigger a segment. |
+| `--role, -r` | `user` | Role name for logging (e.g., 'meeting', 'notes', 'user'). |
+| `--silence-threshold, -s` | `1.0` | Seconds of silence to end a speech segment. |
+| `--min-segment, -m` | `0.25` | Minimum speech duration in seconds to trigger a segment. |
 | `--vad-threshold` | `0.3` | VAD speech detection threshold (0.0-1.0). Higher = more aggressive filtering. |
 | `--save-audio/--no-save-audio` | `true` | Save audio segments as MP3 files. |
 | `--audio-dir` | - | Directory for MP3 files. Default: ~/.config/agent-cli/audio |
-| `--transcription-log` | - | JSON Lines log file path. Default: ~/.config/agent-cli/transcriptions.jsonl |
+| `--transcription-log, -t` | - | JSON Lines log file path. Default: ~/.config/agent-cli/transcriptions.jsonl |
 | `--clipboard/--no-clipboard` | `false` | Copy each transcription to clipboard. |
 
 ### Provider Selection
@@ -151,7 +151,7 @@ agent-cli transcribe-daemon --silence-threshold 1.5
 |--------|---------|-------------|
 | `--log-level` | `info` | Set logging level. |
 | `--log-file` | - | Path to a file to write logs to. |
-| `--quiet` | `false` | Suppress console output from rich. |
+| `--quiet, -q` | `false` | Suppress console output from rich. |
 | `--config` | - | Path to a TOML configuration file. |
 | `--print-args` | `false` | Print the command line arguments, including variables taken from the configuration file. |
 

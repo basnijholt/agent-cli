@@ -74,19 +74,19 @@ agent-cli server whisper --preload
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--model` | - | Model name(s) to load (can specify multiple) |
+| `--model, -m` | - | Model name(s) to load (can specify multiple) |
 | `--default-model` | - | Default model when not specified in request |
-| `--device` | `auto` | Device: auto, cuda, cuda:0, cpu |
+| `--device, -d` | `auto` | Device: auto, cuda, cuda:0, cpu |
 | `--compute-type` | `auto` | Compute type: auto, float16, int8, int8_float16 |
 | `--cache-dir` | - | Model cache directory |
 | `--ttl` | `300` | Seconds before unloading idle model |
 | `--preload` | `false` | Load model(s) at startup and wait for completion |
 | `--host` | `0.0.0.0` | Host to bind the server to |
-| `--port` | `10301` | HTTP API port |
+| `--port, -p` | `10301` | HTTP API port |
 | `--wyoming-port` | `10300` | Wyoming protocol port |
 | `--no-wyoming` | `false` | Disable Wyoming server |
 | `--download-only` | `false` | Download model(s) and exit without starting server |
-| `--backend` | `auto` | Backend: auto (platform detection), faster-whisper, mlx |
+| `--backend, -b` | `auto` | Backend: auto (platform detection), faster-whisper, mlx |
 
 ### General Options
 
