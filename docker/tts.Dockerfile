@@ -65,15 +65,20 @@ RUN apt-get update && \
 ENV UV_PYTHON_INSTALL_DIR=/opt/python
 RUN uv python install 3.13
 
+# Delete pre-existing ubuntu user (UID 1000) and create tts user for uniformity with CPU target
+RUN userdel -r ubuntu && \
+    groupadd -g 1000 tts && \
+    useradd -m -u 1000 -g 1000 tts
+
 WORKDIR /app
 
 COPY --from=builder-cuda /app/.venv /app/.venv
 
 RUN ln -sf $(uv python find 3.13) /app/.venv/bin/python && \
     ln -s /app/.venv/bin/agent-cli /usr/local/bin/agent-cli && \
-    mkdir -p /home/ubuntu/.cache && chown -R ubuntu:ubuntu /home/ubuntu
+    mkdir -p /home/tts/.cache && chown -R tts:tts /home/tts
 
-USER ubuntu
+USER tts
 
 EXPOSE 10200 10201
 

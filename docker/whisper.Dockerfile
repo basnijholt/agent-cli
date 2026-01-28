@@ -42,15 +42,20 @@ RUN apt-get update && \
 ENV UV_PYTHON_INSTALL_DIR=/opt/python
 RUN uv python install 3.13
 
+# Delete pre-existing ubuntu user (UID 1000) and create whisper user for uniformity with CPU target
+RUN userdel -r ubuntu && \
+    groupadd -g 1000 whisper && \
+    useradd -m -u 1000 -g 1000 whisper
+
 WORKDIR /app
 
 COPY --from=builder /app/.venv /app/.venv
 
 RUN ln -sf $(uv python find 3.13) /app/.venv/bin/python && \
     ln -s /app/.venv/bin/agent-cli /usr/local/bin/agent-cli && \
-    mkdir -p /home/ubuntu/.cache && chown -R ubuntu:ubuntu /home/ubuntu
+    mkdir -p /home/whisper/.cache && chown -R whisper:whisper /home/whisper
 
-USER ubuntu
+USER whisper
 
 EXPOSE 10300 10301
 
