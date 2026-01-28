@@ -1119,16 +1119,23 @@ uv tool install "agent-cli[vad]" -p 3.13
 
  Usage: agent-cli voice-edit [OPTIONS]
 
- Interact with clipboard text via a voice command using local or remote services.
+ Edit or query clipboard text using voice commands.
 
- Usage:
+ Workflow: Captures clipboard text → records your voice command → transcribes it → sends
+ both to an LLM → copies result back to clipboard.
 
-  • Run in foreground: agent-cli voice-edit --input-device-index 1
-  • Run in background: agent-cli voice-edit --input-device-index 1 &
-  • Check status: agent-cli voice-edit --status
-  • Stop background process: agent-cli voice-edit --stop
-  • List output devices: agent-cli voice-edit --list-output-devices
-  • Save TTS to file: agent-cli voice-edit --tts --save-file response.wav
+ Use this for hands-free text editing (e.g., "make this more formal") or asking questions
+ about clipboard content (e.g., "summarize this").
+
+ Typical hotkey integration: Run voice-edit & on keypress to start recording, then send
+ SIGINT (via --stop) on second keypress to process.
+
+ Examples:
+
+  • Basic usage: agent-cli voice-edit
+  • With TTS response: agent-cli voice-edit --tts
+  • Toggle on/off: agent-cli voice-edit --toggle
+  • List audio devices: agent-cli voice-edit --list-devices
 
 ╭─ Options ──────────────────────────────────────────────────────────────────────────────╮
 │ --help  -h        Show this message and exit.                                          │
