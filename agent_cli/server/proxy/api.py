@@ -366,7 +366,7 @@ async def transcribe_audio(
             "Received audio: filename=%s, size=%d bytes, content_type=%s",
             audio_file.filename,
             len(audio_data),
-            getattr(audio_file, "content_type", None),
+            audio_file.content_type,
         )
 
         # Convert audio to Wyoming format if using local ASR

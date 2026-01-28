@@ -52,6 +52,7 @@ async def test_full_transcription_workflow() -> None:
             # Create mock upload file
             class MockUploadFile:
                 filename = "test.wav"
+                content_type = "audio/wav"
 
                 async def read(self) -> bytes:
                     return audio_data
@@ -215,6 +216,7 @@ async def test_concurrent_requests() -> None:
         class MockUploadFile:
             def __init__(self, idx: int) -> None:
                 self.filename = f"test{idx}.wav"
+                self.content_type = "audio/wav"
                 self.idx = idx
 
             async def read(self) -> bytes:
