@@ -70,7 +70,7 @@ Transcribe an audio file with optional LLM post-processing.
 |-----------|------|---------|-------------|
 | `audio` | file | required | Audio file (wav, mp3, m4a, ogg, flac, aac, webm) |
 | `cleanup` | boolean | `true` | Whether to apply LLM post-processing to clean up the transcript |
-| `extra_instructions` | string | - | Additional instructions for the LLM cleanup |
+| `extra_instructions` | string | - | Additional instructions for the LLM cleanup (appended to any config file instructions) |
 
 **Disabling LLM Post-Processing:**
 
