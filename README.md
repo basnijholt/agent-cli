@@ -1826,41 +1826,61 @@ The `memory proxy` command is the core feature—a middleware server that gives 
   5 Extracts new facts from the conversation in the background and updates the long-term
     memory store (including handling contradictions).
 
- Use this to give "long-term memory" to any OpenAI-compatible application. Point your
- client's base URL to http://localhost:8100/v1.
+ Example:
+
+
+  # Start proxy pointing to local Ollama
+  agent-cli memory proxy --openai-base-url http://localhost:11434/v1
+
+  # Then configure your chat client to use http://localhost:8100/v1
+  # as its OpenAI base URL. All requests flow through the memory proxy.
+
+
+ Per-request overrides: Clients can include these fields in the request body: memory_id
+ (conversation ID), memory_top_k, memory_recency_weight, memory_score_threshold.
 
 ╭─ Options ──────────────────────────────────────────────────────────────────────────────╮
 │ --help  -h        Show this message and exit.                                          │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Memory Configuration ─────────────────────────────────────────────────────────────────╮
-│ --memory-path                               PATH     Path to the memory store (files + │
-│                                                      derived vector index).            │
+│ --memory-path                               PATH     Directory for memory storage.     │
+│                                                      Contains entries/ (Markdown       │
+│                                                      files) and chroma/ (vector        │
+│                                                      index). Created automatically if  │
+│                                                      it doesn't exist.                 │
 │                                                      [default: ./memory_db]            │
-│ --default-top-k                             INTEGER  Number of memory entries to       │
-│                                                      retrieve per query.               │
+│ --default-top-k                             INTEGER  Number of relevant memories to    │
+│                                                      inject into each request. Higher  │
+│                                                      values provide more context but   │
+│                                                      increase token usage.             │
 │                                                      [default: 5]                      │
-│ --max-entries                               INTEGER  Maximum stored memory entries per │
-│                                                      conversation (excluding summary). │
+│ --max-entries                               INTEGER  Maximum entries per conversation  │
+│                                                      before oldest are evicted.        │
+│                                                      Summaries are preserved           │
+│                                                      separately.                       │
 │                                                      [default: 500]                    │
 │ --mmr-lambda                                FLOAT    MMR lambda (0-1): higher favors   │
 │                                                      relevance, lower favors           │
 │                                                      diversity.                        │
 │                                                      [default: 0.7]                    │
-│ --recency-weight                            FLOAT    Recency score weight (0.0-1.0).   │
-│                                                      Controls freshness vs. relevance. │
-│                                                      Default 0.2 (20% recency, 80%     │
-│                                                      semantic relevance).              │
+│ --recency-weight                            FLOAT    Weight for recency vs semantic    │
+│                                                      relevance (0.0-1.0). At 0.2: 20%  │
+│                                                      recency, 80% semantic similarity. │
 │                                                      [default: 0.2]                    │
 │ --score-threshold                           FLOAT    Minimum semantic relevance        │
 │                                                      threshold (0.0-1.0). Memories     │
 │                                                      below this score are discarded to │
 │                                                      reduce noise.                     │
 │                                                      [default: 0.35]                   │
-│ --summarization      --no-summarization              Enable automatic fact extraction  │
-│                                                      and summaries.                    │
+│ --summarization      --no-summarization              Extract facts and generate        │
+│                                                      summaries after each turn using   │
+│                                                      the LLM. Disable to only store    │
+│                                                      raw conversation turns.           │
 │                                                      [default: summarization]          │
-│ --git-versioning     --no-git-versioning             Enable automatic git commit of    │
-│                                                      memory changes.                   │
+│ --git-versioning     --no-git-versioning             Auto-commit memory changes to     │
+│                                                      git. Initializes a repo in        │
+│                                                      --memory-path if needed. Provides │
+│                                                      full history of memory evolution. │
 │                                                      [default: git-versioning]         │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ LLM: OpenAI-compatible ───────────────────────────────────────────────────────────────╮
@@ -1973,12 +1993,16 @@ agent-cli memory add -c work "Project deadline is Friday"
 │                                                     for stdin. Supports JSON array,    │
 │                                                     JSON object with 'memories' key,   │
 │                                                     or plain text (one per line).      │
-│ --conversation-id  -c                         TEXT  Conversation ID to add memories    │
-│                                                     to.                                │
+│ --conversation-id  -c                         TEXT  Conversation namespace for these   │
+│                                                     memories. Memories are retrieved   │
+│                                                     per-conversation unless shared     │
+│                                                     globally.                          │
 │                                                     [default: default]                 │
-│ --memory-path                                 PATH  Path to the memory store.          │
+│ --memory-path                                 PATH  Directory for memory storage (same │
+│                                                     as memory proxy --memory-path).    │
 │                                                     [default: ./memory_db]             │
-│ --git-versioning       --no-git-versioning          Commit changes to git.             │
+│ --git-versioning       --no-git-versioning          Auto-commit changes to git for     │
+│                                                     version history.                   │
 │                                                     [default: git-versioning]          │
 │ --help             -h                               Show this message and exit.        │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
