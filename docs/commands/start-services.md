@@ -35,7 +35,7 @@ Services run inside a Zellij session named `agent-cli`.
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--attach/--no-attach` | `true` | Attach to Zellij session after starting |
+| `--attach/--no-attach` | `true` | Attach to the Zellij session after starting. With `--no-attach`, services start in background and you can reattach later with `zellij attach agent-cli` |
 
 
 <!-- OUTPUT:END -->
