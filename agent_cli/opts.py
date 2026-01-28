@@ -146,18 +146,21 @@ ASR_WYOMING_PORT: int = typer.Option(
 ASR_OPENAI_MODEL: str = typer.Option(
     "whisper-1",
     "--asr-openai-model",
+    envvar="ASR_OPENAI_MODEL",
     help="The OpenAI model to use for ASR (transcription).",
     rich_help_panel="Audio Input: OpenAI-compatible",
 )
 ASR_OPENAI_BASE_URL: str | None = typer.Option(
     None,
     "--asr-openai-base-url",
+    envvar="ASR_OPENAI_BASE_URL",
     help="Custom base URL for OpenAI-compatible ASR API (e.g., for custom Whisper server: http://localhost:9898).",
     rich_help_panel="Audio Input: OpenAI-compatible",
 )
 ASR_OPENAI_PROMPT: str | None = typer.Option(
     None,
     "--asr-openai-prompt",
+    envvar="ASR_OPENAI_PROMPT",
     help="Custom prompt to guide transcription (optional).",
     rich_help_panel="Audio Input: OpenAI-compatible",
 )
