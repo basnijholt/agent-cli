@@ -149,7 +149,7 @@ agent-cli transcribe-daemon --silence-threshold 1.5
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--log-level` | `WARNING` | Set logging level. |
+| `--log-level` | `info` | Set logging level (debug, info, warning, error). |
 | `--log-file` | - | Path to a file to write logs to. |
 | `--quiet` | `false` | Suppress console output from rich. |
 | `--config` | - | Path to a TOML configuration file. |

@@ -72,7 +72,7 @@ agent-cli autocorrect "this text has an eror"
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--log-level` | `WARNING` | Set logging level. |
+| `--log-level` | `info` | Set logging level (debug, info, warning, error). |
 | `--log-file` | - | Path to a file to write logs to. |
 | `--quiet` | `false` | Suppress console output from rich. |
 | `--json` | `false` | Output result as JSON for automation. Implies --quiet and --no-clipboard. |

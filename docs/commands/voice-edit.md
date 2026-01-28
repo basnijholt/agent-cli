@@ -164,7 +164,7 @@ agent-cli voice-edit --stop
 |--------|---------|-------------|
 | `--save-file` | - | Save TTS response audio to WAV file. |
 | `--clipboard/--no-clipboard` | `true` | Copy result to clipboard. |
-| `--log-level` | `WARNING` | Set logging level. |
+| `--log-level` | `info` | Set logging level (debug, info, warning, error). |
 | `--log-file` | - | Path to a file to write logs to. |
 | `--quiet` | `false` | Suppress console output from rich. |
 | `--json` | `false` | Output result as JSON for automation. Implies --quiet and --no-clipboard. |
