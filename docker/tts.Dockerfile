@@ -51,7 +51,7 @@ RUN uv sync --frozen --no-dev --no-editable --extra server --extra piper --extra
 # =============================================================================
 # CUDA target: GPU-accelerated with Kokoro TTS
 # =============================================================================
-FROM nvidia/cuda:12.9.1-cudnn-runtime-ubuntu22.04 AS cuda
+FROM nvidia/cuda:13.1.1-cudnn-runtime-ubuntu22.04 AS cuda
 
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
