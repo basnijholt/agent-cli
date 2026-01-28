@@ -89,13 +89,18 @@ This skips the LLM step entirely, reducing latency and removing the LLM dependen
 ```json
 {
   "raw_transcript": "the original transcription",
-  "cleaned_transcript": "The cleaned transcription." | null,
+  "cleaned_transcript": "The cleaned transcription.",
   "success": true,
   "error": null
 }
 ```
 
-When `cleanup=false`, the `cleaned_transcript` field will be `null`.
+| Field | Type | Description |
+|-------|------|-------------|
+| `raw_transcript` | string | The raw transcription from the ASR provider |
+| `cleaned_transcript` | string or null | The LLM-cleaned transcript, or `null` if `cleanup=false` |
+| `success` | boolean | Whether the transcription succeeded |
+| `error` | string or null | Error message if something went wrong |
 
 ## How It Works
 
