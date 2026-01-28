@@ -117,8 +117,8 @@ agent-cli assistant --wake-server-ip 192.168.1.100 --wake-server-port 10400
 | Option | Default | Description |
 |--------|---------|-------------|
 | `--tts/--no-tts` | `false` | Enable text-to-speech for responses. |
-| `--output-device-index` | - | Index of the audio output device to use for TTS. |
-| `--output-device-name` | - | Output device name keywords for partial matching. |
+| `--output-device-index` | - | Audio output device index (see `--list-devices` for available devices). |
+| `--output-device-name` | - | Partial match on device name (e.g., 'speakers', 'headphones'). |
 | `--tts-speed` | `1.0` | Speech speed multiplier (1.0 = normal, 2.0 = twice as fast, 0.5 = half speed). |
 
 ### Audio Output: Wyoming
@@ -136,7 +136,7 @@ agent-cli assistant --wake-server-ip 192.168.1.100 --wake-server-port 10400
 | Option | Default | Description |
 |--------|---------|-------------|
 | `--tts-openai-model` | `tts-1` | The OpenAI model to use for TTS. |
-| `--tts-openai-voice` | `alloy` | The voice to use for OpenAI-compatible TTS. |
+| `--tts-openai-voice` | `alloy` | Voice for OpenAI TTS (alloy, echo, fable, onyx, nova, shimmer). |
 | `--tts-openai-base-url` | - | Custom base URL for OpenAI-compatible TTS API (e.g., http://localhost:8000/v1 for a proxy). |
 
 ### Audio Output: Kokoro
@@ -166,7 +166,7 @@ agent-cli assistant --wake-server-ip 192.168.1.100 --wake-server-port 10400
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--save-file` | - | Save TTS response audio to WAV file. |
+| `--save-file` | - | Save audio to WAV file instead of playing through speakers. |
 | `--clipboard/--no-clipboard` | `true` | Copy result to clipboard. |
 | `--log-level` | `info` | Set logging level. |
 | `--log-file` | - | Path to a file to write logs to. |
