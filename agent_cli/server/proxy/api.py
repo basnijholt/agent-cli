@@ -41,6 +41,20 @@ app = FastAPI(
 )
 
 
+@app.on_event("startup")
+async def log_effective_config() -> None:
+    """Log effective configuration on startup to help debug env var issues."""
+    provider_cfg, wyoming_cfg, openai_cfg, gemini_cfg, *_ = _load_transcription_configs()
+    LOGGER.info("ASR provider: %s", provider_cfg.asr_provider)
+    if provider_cfg.asr_provider == "wyoming":
+        LOGGER.info("  Wyoming: %s:%d", wyoming_cfg.asr_wyoming_ip, wyoming_cfg.asr_wyoming_port)
+    elif provider_cfg.asr_provider == "openai":
+        LOGGER.info("  Model: %s", openai_cfg.asr_openai_model)
+        LOGGER.info("  Base URL: %s", openai_cfg.openai_base_url or "https://api.openai.com/v1")
+    elif provider_cfg.asr_provider == "gemini":
+        LOGGER.info("  Model: %s", gemini_cfg.asr_gemini_model)
+
+
 @app.middleware("http")
 async def log_requests(request: Request, call_next) -> Any:  # type: ignore[no-untyped-def]  # noqa: ANN001
     """Log basic request information."""
@@ -192,6 +206,8 @@ def _load_transcription_configs() -> tuple[
     openai_asr_cfg = config.OpenAIASR(
         asr_openai_model=_cfg("asr_openai_model", defaults, opts.ASR_OPENAI_MODEL),
         openai_api_key=_cfg("openai_api_key", defaults, opts.OPENAI_API_KEY),
+        openai_base_url=_cfg("asr_openai_base_url", defaults, opts.ASR_OPENAI_BASE_URL),
+        asr_openai_prompt=_cfg("asr_openai_prompt", defaults, opts.ASR_OPENAI_PROMPT),
     )
     gemini_asr_cfg = config.GeminiASR(
         asr_gemini_model=_cfg("asr_gemini_model", defaults, opts.ASR_GEMINI_MODEL),

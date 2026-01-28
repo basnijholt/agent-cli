@@ -591,7 +591,8 @@ the `[defaults]` section of your configuration file.
 │                                 [env var: GEMINI_API_KEY]                              │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ General Options ──────────────────────────────────────────────────────────────────────╮
-│ --log-level           TEXT  Set logging level.                                         │
+│ --log-level           TEXT  Set logging level (debug, info, warning, error).           │
+│                             [env var: LOG_LEVEL]                                       │
 │                             [default: WARNING]                                         │
 │ --log-file            TEXT  Path to a file to write logs to.                           │
 │ --quiet       -q            Suppress console output from rich.                         │
@@ -693,11 +694,14 @@ the `[defaults]` section of your configuration file.
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Audio Input: OpenAI-compatible ───────────────────────────────────────────────────────╮
 │ --asr-openai-model           TEXT  The OpenAI model to use for ASR (transcription).    │
+│                                    [env var: ASR_OPENAI_MODEL]                         │
 │                                    [default: whisper-1]                                │
 │ --asr-openai-base-url        TEXT  Custom base URL for OpenAI-compatible ASR API       │
 │                                    (e.g., for custom Whisper server:                   │
 │                                    http://localhost:9898).                             │
+│                                    [env var: ASR_OPENAI_BASE_URL]                      │
 │ --asr-openai-prompt          TEXT  Custom prompt to guide transcription (optional).    │
+│                                    [env var: ASR_OPENAI_PROMPT]                        │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Audio Input: Gemini ──────────────────────────────────────────────────────────────────╮
 │ --asr-gemini-model        TEXT  The Gemini model to use for ASR (transcription).       │
@@ -740,7 +744,9 @@ the `[defaults]` section of your configuration file.
 ╭─ General Options ──────────────────────────────────────────────────────────────────────╮
 │ --clipboard              --no-clipboard          Copy result to clipboard.             │
 │                                                  [default: clipboard]                  │
-│ --log-level                                TEXT  Set logging level.                    │
+│ --log-level                                TEXT  Set logging level (debug, info,       │
+│                                                  warning, error).                      │
+│                                                  [env var: LOG_LEVEL]                  │
 │                                                  [default: WARNING]                    │
 │ --log-file                                 TEXT  Path to a file to write logs to.      │
 │ --quiet              -q                          Suppress console output from rich.    │
@@ -875,11 +881,14 @@ uv tool install "agent-cli[vad]" -p 3.13
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Audio Input: OpenAI-compatible ───────────────────────────────────────────────────────╮
 │ --asr-openai-model           TEXT  The OpenAI model to use for ASR (transcription).    │
+│                                    [env var: ASR_OPENAI_MODEL]                         │
 │                                    [default: whisper-1]                                │
 │ --asr-openai-base-url        TEXT  Custom base URL for OpenAI-compatible ASR API       │
 │                                    (e.g., for custom Whisper server:                   │
 │                                    http://localhost:9898).                             │
+│                                    [env var: ASR_OPENAI_BASE_URL]                      │
 │ --asr-openai-prompt          TEXT  Custom prompt to guide transcription (optional).    │
+│                                    [env var: ASR_OPENAI_PROMPT]                        │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Audio Input: Gemini ──────────────────────────────────────────────────────────────────╮
 │ --asr-gemini-model        TEXT  The Gemini model to use for ASR (transcription).       │
@@ -922,7 +931,8 @@ uv tool install "agent-cli[vad]" -p 3.13
 │ --status          Check if a background process is running.                            │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ General Options ──────────────────────────────────────────────────────────────────────╮
-│ --log-level           TEXT  Set logging level.                                         │
+│ --log-level           TEXT  Set logging level (debug, info, warning, error).           │
+│                             [env var: LOG_LEVEL]                                       │
 │                             [default: WARNING]                                         │
 │ --log-file            TEXT  Path to a file to write logs to.                           │
 │ --quiet       -q            Suppress console output from rich.                         │
@@ -1036,7 +1046,8 @@ uv tool install "agent-cli[vad]" -p 3.13
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ General Options ──────────────────────────────────────────────────────────────────────╮
 │ --save-file           PATH  Save TTS response audio to WAV file.                       │
-│ --log-level           TEXT  Set logging level.                                         │
+│ --log-level           TEXT  Set logging level (debug, info, warning, error).           │
+│                             [env var: LOG_LEVEL]                                       │
 │                             [default: WARNING]                                         │
 │ --log-file            TEXT  Path to a file to write logs to.                           │
 │ --quiet       -q            Suppress console output from rich.                         │
@@ -1134,6 +1145,7 @@ uv tool install "agent-cli[vad]" -p 3.13
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Audio Input: OpenAI-compatible ───────────────────────────────────────────────────────╮
 │ --asr-openai-model        TEXT  The OpenAI model to use for ASR (transcription).       │
+│                                 [env var: ASR_OPENAI_MODEL]                            │
 │                                 [default: whisper-1]                                   │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Audio Input: Gemini ──────────────────────────────────────────────────────────────────╮
@@ -1222,7 +1234,9 @@ uv tool install "agent-cli[vad]" -p 3.13
 │ --save-file                         PATH  Save TTS response audio to WAV file.         │
 │ --clipboard       --no-clipboard          Copy result to clipboard.                    │
 │                                           [default: clipboard]                         │
-│ --log-level                         TEXT  Set logging level.                           │
+│ --log-level                         TEXT  Set logging level (debug, info, warning,     │
+│                                           error).                                      │
+│                                           [env var: LOG_LEVEL]                         │
 │                                           [default: WARNING]                           │
 │ --log-file                          TEXT  Path to a file to write logs to.             │
 │ --quiet       -q                          Suppress console output from rich.           │
@@ -1317,6 +1331,7 @@ uv tool install "agent-cli[vad]" -p 3.13
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Audio Input: OpenAI-compatible ───────────────────────────────────────────────────────╮
 │ --asr-openai-model        TEXT  The OpenAI model to use for ASR (transcription).       │
+│                                 [env var: ASR_OPENAI_MODEL]                            │
 │                                 [default: whisper-1]                                   │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Audio Input: Gemini ──────────────────────────────────────────────────────────────────╮
@@ -1405,7 +1420,9 @@ uv tool install "agent-cli[vad]" -p 3.13
 │ --save-file                         PATH  Save TTS response audio to WAV file.         │
 │ --clipboard       --no-clipboard          Copy result to clipboard.                    │
 │                                           [default: clipboard]                         │
-│ --log-level                         TEXT  Set logging level.                           │
+│ --log-level                         TEXT  Set logging level (debug, info, warning,     │
+│                                           error).                                      │
+│                                           [env var: LOG_LEVEL]                         │
 │                                           [default: WARNING]                           │
 │ --log-file                          TEXT  Path to a file to write logs to.             │
 │ --quiet       -q                          Suppress console output from rich.           │
@@ -1496,11 +1513,14 @@ uv tool install "agent-cli[vad]" -p 3.13
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Audio Input: OpenAI-compatible ───────────────────────────────────────────────────────╮
 │ --asr-openai-model           TEXT  The OpenAI model to use for ASR (transcription).    │
+│                                    [env var: ASR_OPENAI_MODEL]                         │
 │                                    [default: whisper-1]                                │
 │ --asr-openai-base-url        TEXT  Custom base URL for OpenAI-compatible ASR API       │
 │                                    (e.g., for custom Whisper server:                   │
 │                                    http://localhost:9898).                             │
+│                                    [env var: ASR_OPENAI_BASE_URL]                      │
 │ --asr-openai-prompt          TEXT  Custom prompt to guide transcription (optional).    │
+│                                    [env var: ASR_OPENAI_PROMPT]                        │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Audio Input: Gemini ──────────────────────────────────────────────────────────────────╮
 │ --asr-gemini-model        TEXT  The Gemini model to use for ASR (transcription).       │
@@ -1593,7 +1613,8 @@ uv tool install "agent-cli[vad]" -p 3.13
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ General Options ──────────────────────────────────────────────────────────────────────╮
 │ --save-file           PATH  Save TTS response audio to WAV file.                       │
-│ --log-level           TEXT  Set logging level.                                         │
+│ --log-level           TEXT  Set logging level (debug, info, warning, error).           │
+│                             [env var: LOG_LEVEL]                                       │
 │                             [default: WARNING]                                         │
 │ --log-file            TEXT  Path to a file to write logs to.                           │
 │ --quiet       -q            Suppress console output from rich.                         │
@@ -1685,7 +1706,8 @@ uv tool install "agent-cli[vad]" -p 3.13
 │                        [default: 8000]                                                 │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ General Options ──────────────────────────────────────────────────────────────────────╮
-│ --log-level         TEXT  Set logging level.                                           │
+│ --log-level         TEXT  Set logging level (debug, info, warning, error).             │
+│                           [env var: LOG_LEVEL]                                         │
 │                           [default: INFO]                                              │
 │ --config            TEXT  Path to a TOML configuration file.                           │
 │ --print-args              Print the command line arguments, including variables taken  │
@@ -1825,7 +1847,8 @@ The `memory proxy` command is the core feature—a middleware server that gives 
 │                        [default: 8100]                                                 │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ General Options ──────────────────────────────────────────────────────────────────────╮
-│ --log-level         TEXT  Set logging level.                                           │
+│ --log-level         TEXT  Set logging level (debug, info, warning, error).             │
+│                           [env var: LOG_LEVEL]                                         │
 │                           [default: INFO]                                              │
 │ --config            TEXT  Path to a TOML configuration file.                           │
 │ --print-args              Print the command line arguments, including variables taken  │
