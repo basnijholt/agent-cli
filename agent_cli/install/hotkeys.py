@@ -13,20 +13,31 @@ from agent_cli.install.common import execute_installation_script, get_platform_s
 def install_hotkeys() -> None:
     """Install system-wide hotkeys for agent-cli commands.
 
-    Sets up the following hotkeys:
+    Sets up three global hotkeys:
 
-    macOS:
-    - Cmd+Shift+R: Toggle voice transcription
-    - Cmd+Shift+A: Autocorrect clipboard text
-    - Cmd+Shift+V: Voice edit clipboard text
+    | Hotkey (macOS / Linux)  | Action                                          |
+    |-------------------------|-------------------------------------------------|
+    | Cmd/Super + Shift + R   | Toggle voice transcription (start/stop)         |
+    | Cmd/Super + Shift + A   | Autocorrect clipboard text (grammar/spelling)   |
+    | Cmd/Super + Shift + V   | Voice edit clipboard text (voice commands)      |
 
-    Linux:
-    - Super+Shift+R: Toggle voice transcription
-    - Super+Shift+A: Autocorrect clipboard text
-    - Super+Shift+V: Voice edit clipboard text
+    **macOS** (fully automatic):
 
-    Note: On macOS, you may need to grant Accessibility permissions to skhd
-    in System Settings → Privacy & Security → Accessibility.
+    1. Installs `skhd` (hotkey daemon) and `terminal-notifier` via Homebrew
+    2. Creates config at `~/.config/skhd/skhdrc`
+    3. Starts skhd as a background service
+    4. May require Accessibility permissions: System Settings → Privacy & Security → Accessibility → enable 'skhd'
+
+    **Linux** (manual DE configuration):
+
+    1. Installs `libnotify` for notifications (if missing)
+    2. Prints binding instructions for your desktop environment
+    3. You manually add hotkeys pointing to the installed scripts
+
+    Supported Linux DEs: Hyprland, Sway, i3, GNOME, KDE, XFCE.
+
+    **Customizing hotkeys** (macOS): Edit `~/.config/skhd/skhdrc` and restart skhd:
+    `skhd --restart-service`
     """
     script_name = get_platform_script("setup-macos-hotkeys.sh", "setup-linux-hotkeys.sh")
     system = platform.system().lower()
