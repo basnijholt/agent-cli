@@ -62,10 +62,10 @@ agent-cli chat --openai-base-url http://localhost:8000/v1 --llm-provider openai
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--docs-folder` | `./rag_docs` | Folder to watch for documents |
-| `--chroma-path` | `./rag_db` | Path to ChromaDB persistence directory |
-| `--limit` | `3` | Number of document chunks to retrieve per query. |
-| `--rag-tools/--no-rag-tools` | `true` | Allow agent to fetch full documents when snippets are insufficient. |
+| `--docs-folder` | `./rag_docs` | Folder to watch for documents. Files are auto-indexed on startup and when changed. Must not overlap with `--chroma-path`. |
+| `--chroma-path` | `./rag_db` | ChromaDB storage directory for vector embeddings. Must be separate from `--docs-folder` to avoid indexing database files. |
+| `--limit` | `3` | Number of document chunks to retrieve per query. Higher values provide more context but use more tokens. Can be overridden per-request via `rag_top_k` in the JSON body. |
+| `--rag-tools/--no-rag-tools` | `true` | Enable `read_full_document()` tool so the LLM can request full document content when retrieved snippets are insufficient. Can be overridden per-request via `rag_enable_tools` in the JSON body. |
 
 ### LLM: OpenAI-compatible
 
@@ -85,7 +85,7 @@ agent-cli chat --openai-base-url http://localhost:8000/v1 --llm-provider openai
 | Option | Default | Description |
 |--------|---------|-------------|
 | `--host` | `0.0.0.0` | Host/IP to bind API servers to. |
-| `--port` | `8000` | Port to bind to |
+| `--port` | `8000` | Port for the RAG proxy API. Point your client to `http://\<host\>:\<port\>/v1/chat/completions`. |
 
 ### General Options
 
