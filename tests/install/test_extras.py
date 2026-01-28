@@ -54,28 +54,14 @@ def test_install_extras_help_lists_all_extras() -> None:
     available = set(_available_extras())
     docstring = install_extras.__doc__ or ""
 
-    # Get the argument help text from the function's type hints
-    # Using get_type_hints with include_extras=True to access Annotated metadata
+    # Get the argument help text from Annotated metadata
+    # The type hint is Annotated[..., typer.Argument(help="...")]
     hints = typing.get_type_hints(install_extras, include_extras=True)
-    extras_hint = hints.get("extras")
-    arg_help = ""
-    if extras_hint and hasattr(extras_hint, "__metadata__"):
-        for meta in extras_hint.__metadata__:
-            if hasattr(meta, "help") and meta.help:
-                arg_help = meta.help
-                break
+    extras_hint = hints["extras"]
+    arg_help = extras_hint.__metadata__[0].help  # typer.models.ArgumentInfo.help
 
-    missing_in_docstring = []
-    missing_in_arg_help = []
-
-    for extra in available:
-        # Check docstring contains the extra name (with backticks for markdown)
-        if f"`{extra}`" not in docstring:
-            missing_in_docstring.append(extra)
-
-        # Check argument help contains the extra name (with backticks)
-        if f"`{extra}`" not in arg_help:
-            missing_in_arg_help.append(extra)
+    missing_in_docstring = [e for e in available if f"`{e}`" not in docstring]
+    missing_in_arg_help = [e for e in available if f"`{e}`" not in arg_help]
 
     assert not missing_in_docstring, (
         f"Extras missing from install_extras docstring: {missing_in_docstring}. "
