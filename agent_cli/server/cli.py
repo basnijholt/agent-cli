@@ -372,6 +372,7 @@ def whisper_cmd(  # noqa: PLR0912, PLR0915
     console.print()
     console.print("[dim]Configuration:[/dim]")
     console.print(f"  Backend: [cyan]{actual_backend}[/cyan]")
+    console.print(f"  Log level: [cyan]{log_level}[/cyan]")
     console.print()
     console.print("[dim]Endpoints:[/dim]")
     console.print(f"  HTTP API: [cyan]http://{host}:{port}[/cyan]")
@@ -457,6 +458,7 @@ def transcribe_proxy_cmd(
     console.print(
         f"[bold green]Starting Agent CLI transcription proxy on {host}:{port}[/bold green]",
     )
+    console.print(f"[dim]Log level: {log_level}[/dim]")
     if reload:
         console.print("[yellow]Auto-reload enabled for development[/yellow]")
 
@@ -668,6 +670,7 @@ def tts_cmd(  # noqa: PLR0915
     console.print()
     console.print("[dim]Configuration:[/dim]")
     console.print(f"  Backend: [cyan]{resolved_backend}[/cyan]")
+    console.print(f"  Log level: [cyan]{log_level}[/cyan]")
     console.print()
     console.print("[dim]Endpoints:[/dim]")
     console.print(f"  HTTP API: [cyan]http://{host}:{port}[/cyan]")
