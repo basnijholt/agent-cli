@@ -61,7 +61,7 @@ agent-cli dev new [BRANCH] [OPTIONS]
 | `--with-editor` | Specific editor (cursor, vscode, zed, etc.) |
 | `--with-agent` | Specific agent (claude, codex, gemini, aider) |
 | `--agent-args` | Extra arguments to pass to the agent |
-| `--prompt`, `-p` | Initial prompt to pass to the AI agent (saved to `.claude/TASK.md` in worktree) |
+| `--prompt`, `-p` | Initial prompt to pass to the AI agent (saved to `.claude/TASK.md` in worktree). Implies `--agent`. |
 | `--prompt-file`, `-P` | Read initial prompt from a file (saved to `.claude/TASK.md` in worktree) |
 | `--direnv` | Generate .envrc file for direnv (auto-detects venv) |
 | `--setup/--no-setup` | Run automatic project setup (default: enabled) |
@@ -208,7 +208,7 @@ agent-cli dev agent NAME [--agent/-a AGENT] [--agent-args ARGS] [--prompt/-p PRO
 |--------|-------------|
 | `--agent`, `-a` | Specific agent (claude, codex, gemini, aider) |
 | `--agent-args` | Extra arguments to pass to the agent |
-| `--prompt`, `-p` | Initial prompt to pass to the AI agent (saved to `.claude/TASK.md` in worktree) |
+| `--prompt`, `-p` | Initial prompt to pass to the AI agent (saved to `.claude/TASK.md` in worktree). Implies `--agent`. |
 | `--prompt-file`, `-P` | Read initial prompt from a file (saved to `.claude/TASK.md` in worktree) |
 
 **Examples:**
