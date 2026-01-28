@@ -65,14 +65,14 @@ agent-cli transcribe-daemon --silence-threshold 1.5
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--role, -r` | `user` | Role name for logging (e.g., 'meeting', 'notes', 'user'). |
-| `--silence-threshold, -s` | `1.0` | Seconds of silence to end a speech segment. |
-| `--min-segment, -m` | `0.25` | Minimum speech duration in seconds to trigger a segment. |
-| `--vad-threshold` | `0.3` | VAD speech detection threshold (0.0-1.0). Higher = more aggressive filtering. |
-| `--save-audio/--no-save-audio` | `true` | Save audio segments as MP3 files. |
-| `--audio-dir` | - | Directory for MP3 files. Default: ~/.config/agent-cli/audio |
-| `--transcription-log, -t` | - | JSON Lines log file path. Default: ~/.config/agent-cli/transcriptions.jsonl |
-| `--clipboard/--no-clipboard` | `false` | Copy each transcription to clipboard. |
+| `--role, -r` | `user` | Label for log entries. Use to distinguish speakers or contexts in logs. |
+| `--silence-threshold, -s` | `1.0` | Seconds of silence after speech to finalize a segment. Increase for slower speakers. |
+| `--min-segment, -m` | `0.25` | Minimum seconds of speech required before a segment is processed. Filters brief sounds. |
+| `--vad-threshold` | `0.3` | Silero VAD confidence threshold (0.0-1.0). Higher values require clearer speech; lower values are more sensitive to quiet/distant voices. |
+| `--save-audio/--no-save-audio` | `true` | Save each speech segment as MP3. Requires `ffmpeg` to be installed. |
+| `--audio-dir` | - | Base directory for MP3 files. Files are organized by date: `YYYY/MM/DD/HHMMSS_mmm.mp3`. Default: `~/.config/agent-cli/audio`. |
+| `--transcription-log, -t` | - | JSONL file for transcript logging (one JSON object per line with timestamp, role, raw/processed text, audio path). Default: `~/.config/agent-cli/transcriptions.jsonl`. |
+| `--clipboard/--no-clipboard` | `false` | Copy each completed transcription to clipboard (overwrites previous). Useful with `--llm` to get cleaned text. |
 
 ### Provider Selection
 

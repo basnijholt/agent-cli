@@ -296,45 +296,45 @@ def transcribe_daemon(  # noqa: PLR0912
         "user",
         "--role",
         "-r",
-        help="Role name for logging (e.g., 'meeting', 'notes', 'user').",
+        help="Label for log entries. Use to distinguish speakers or contexts in logs.",
     ),
     silence_threshold: float = typer.Option(
         1.0,
         "--silence-threshold",
         "-s",
-        help="Seconds of silence to end a speech segment.",
+        help="Seconds of silence after speech to finalize a segment. Increase for slower speakers.",
     ),
     min_segment: float = typer.Option(
         0.25,
         "--min-segment",
         "-m",
-        help="Minimum speech duration in seconds to trigger a segment.",
+        help="Minimum seconds of speech required before a segment is processed. Filters brief sounds.",
     ),
     vad_threshold: float = typer.Option(
         0.3,
         "--vad-threshold",
-        help="VAD speech detection threshold (0.0-1.0). Higher = more aggressive filtering.",
+        help="Silero VAD confidence threshold (0.0-1.0). Higher values require clearer speech; lower values are more sensitive to quiet/distant voices.",
     ),
     save_audio: bool = typer.Option(
         True,  # noqa: FBT003
         "--save-audio/--no-save-audio",
-        help="Save audio segments as MP3 files.",
+        help="Save each speech segment as MP3. Requires `ffmpeg` to be installed.",
     ),
     audio_dir: Path | None = typer.Option(  # noqa: B008
         None,
         "--audio-dir",
-        help="Directory for MP3 files. Default: ~/.config/agent-cli/audio",
+        help="Base directory for MP3 files. Files are organized by date: `YYYY/MM/DD/HHMMSS_mmm.mp3`. Default: `~/.config/agent-cli/audio`.",
     ),
     transcription_log: Path | None = typer.Option(  # noqa: B008
         None,
         "--transcription-log",
         "-t",
-        help="JSON Lines log file path. Default: ~/.config/agent-cli/transcriptions.jsonl",
+        help="JSONL file for transcript logging (one JSON object per line with timestamp, role, raw/processed text, audio path). Default: `~/.config/agent-cli/transcriptions.jsonl`.",
     ),
     clipboard: bool = typer.Option(
         False,  # noqa: FBT003
         "--clipboard/--no-clipboard",
-        help="Copy each transcription to clipboard.",
+        help="Copy each completed transcription to clipboard (overwrites previous). Useful with `--llm` to get cleaned text.",
     ),
     # --- Provider Selection ---
     asr_provider: str = opts.ASR_PROVIDER,
@@ -368,25 +368,37 @@ def transcribe_daemon(  # noqa: PLR0912
     config_file: str | None = opts.CONFIG_FILE,
     print_args: bool = opts.PRINT_ARGS,
 ) -> None:
-    """Run a continuous transcription daemon with voice activity detection.
+    """Continuous transcription daemon using Silero VAD for speech detection.
 
-    This command runs indefinitely, capturing audio from your microphone,
-    detecting speech segments using Silero VAD, transcribing them, and
-    logging results with timestamps.
+    Unlike `transcribe` (single recording session), this daemon runs indefinitely
+    and automatically detects speech segments using Voice Activity Detection (VAD).
+    Each detected segment is transcribed and logged with timestamps.
 
-    Examples:
-        # Basic daemon
+    **How it works:**
+
+    1. Listens continuously to microphone input
+    2. Silero VAD detects when you start/stop speaking
+    3. After `--silence-threshold` seconds of silence, the segment is finalized
+    4. Segment is transcribed (and optionally cleaned by LLM with `--llm`)
+    5. Results are appended to the JSONL log file
+    6. Audio is saved as MP3 if `--save-audio` is enabled (requires `ffmpeg`)
+
+    **Use cases:** Meeting transcription, note-taking, voice journaling, accessibility.
+
+    **Examples:**
+
         agent-cli transcribe-daemon
-
-        # With role and custom silence threshold
         agent-cli transcribe-daemon --role meeting --silence-threshold 1.5
+        agent-cli transcribe-daemon --llm --clipboard --role notes
+        agent-cli transcribe-daemon --transcription-log ~/meeting.jsonl --no-save-audio
+        agent-cli transcribe-daemon --asr-provider openai --llm-provider gemini --llm
 
-        # With LLM cleanup
-        agent-cli transcribe-daemon --llm --role notes
+    **Tips:**
 
-        # Custom log file and audio directory
-        agent-cli transcribe-daemon --transcription-log ~/meeting.jsonl --audio-dir ~/audio
-
+    - Use `--role` to tag entries (e.g., `speaker1`, `meeting`, `personal`)
+    - Adjust `--vad-threshold` if detection is too sensitive (increase) or missing speech (decrease)
+    - Use `--stop` to cleanly terminate a running daemon
+    - With `--llm`, transcripts are cleaned up (punctuation, filler words removed)
     """
     if print_args:
         print_command_line_args(locals())

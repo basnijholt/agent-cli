@@ -853,46 +853,76 @@ uv tool install "agent-cli[vad]" -p 3.13
 
  Usage: agent-cli transcribe-daemon [OPTIONS]
 
- Run a continuous transcription daemon with voice activity detection.
+ Continuous transcription daemon using Silero VAD for speech detection.
 
- This command runs indefinitely, capturing audio from your microphone, detecting speech
- segments using Silero VAD, transcribing them, and logging results with timestamps.
+ Unlike transcribe (single recording session), this daemon runs indefinitely and
+ automatically detects speech segments using Voice Activity Detection (VAD). Each
+ detected segment is transcribed and logged with timestamps.
 
- Examples: # Basic daemon agent-cli transcribe-daemon
+ How it works:
+
+  1 Listens continuously to microphone input
+  2 Silero VAD detects when you start/stop speaking
+  3 After --silence-threshold seconds of silence, the segment is finalized
+  4 Segment is transcribed (and optionally cleaned by LLM with --llm)
+  5 Results are appended to the JSONL log file
+  6 Audio is saved as MP3 if --save-audio is enabled (requires ffmpeg)
+
+ Use cases: Meeting transcription, note-taking, voice journaling, accessibility.
+
+ Examples:
 
 
-  # With role and custom silence threshold
+  agent-cli transcribe-daemon
   agent-cli transcribe-daemon --role meeting --silence-threshold 1.5
+  agent-cli transcribe-daemon --llm --clipboard --role notes
+  agent-cli transcribe-daemon --transcription-log ~/meeting.jsonl --no-save-audio
+  agent-cli transcribe-daemon --asr-provider openai --llm-provider gemini --llm
 
-  # With LLM cleanup
-  agent-cli transcribe-daemon --llm --role notes
 
-  # Custom log file and audio directory
-  agent-cli transcribe-daemon --transcription-log ~/meeting.jsonl --audio-dir ~/audio
+ Tips:
 
+  • Use --role to tag entries (e.g., speaker1, meeting, personal)
+  • Adjust --vad-threshold if detection is too sensitive (increase) or missing speech
+    (decrease)
+  • Use --stop to cleanly terminate a running daemon
+  • With --llm, transcripts are cleaned up (punctuation, filler words removed)
 
 ╭─ Options ──────────────────────────────────────────────────────────────────────────────╮
-│ --role               -r                     TEXT   Role name for logging (e.g.,        │
-│                                                    'meeting', 'notes', 'user').        │
+│ --role               -r                     TEXT   Label for log entries. Use to       │
+│                                                    distinguish speakers or contexts in │
+│                                                    logs.                               │
 │                                                    [default: user]                     │
-│ --silence-threshold  -s                     FLOAT  Seconds of silence to end a speech  │
-│                                                    segment.                            │
+│ --silence-threshold  -s                     FLOAT  Seconds of silence after speech to  │
+│                                                    finalize a segment. Increase for    │
+│                                                    slower speakers.                    │
 │                                                    [default: 1.0]                      │
-│ --min-segment        -m                     FLOAT  Minimum speech duration in seconds  │
-│                                                    to trigger a segment.               │
+│ --min-segment        -m                     FLOAT  Minimum seconds of speech required  │
+│                                                    before a segment is processed.      │
+│                                                    Filters brief sounds.               │
 │                                                    [default: 0.25]                     │
-│ --vad-threshold                             FLOAT  VAD speech detection threshold      │
-│                                                    (0.0-1.0). Higher = more aggressive │
-│                                                    filtering.                          │
+│ --vad-threshold                             FLOAT  Silero VAD confidence threshold     │
+│                                                    (0.0-1.0). Higher values require    │
+│                                                    clearer speech; lower values are    │
+│                                                    more sensitive to quiet/distant     │
+│                                                    voices.                             │
 │                                                    [default: 0.3]                      │
-│ --save-audio             --no-save-audio           Save audio segments as MP3 files.   │
+│ --save-audio             --no-save-audio           Save each speech segment as MP3.    │
+│                                                    Requires ffmpeg to be installed.    │
 │                                                    [default: save-audio]               │
-│ --audio-dir                                 PATH   Directory for MP3 files. Default:   │
-│                                                    ~/.config/agent-cli/audio           │
-│ --transcription-log  -t                     PATH   JSON Lines log file path. Default:  │
+│ --audio-dir                                 PATH   Base directory for MP3 files. Files │
+│                                                    are organized by date:              │
+│                                                    YYYY/MM/DD/HHMMSS_mmm.mp3. Default: │
+│                                                    ~/.config/agent-cli/audio.          │
+│ --transcription-log  -t                     PATH   JSONL file for transcript logging   │
+│                                                    (one JSON object per line with      │
+│                                                    timestamp, role, raw/processed      │
+│                                                    text, audio path). Default:         │
 │                                                    ~/.config/agent-cli/transcriptions… │
-│ --clipboard              --no-clipboard            Copy each transcription to          │
-│                                                    clipboard.                          │
+│ --clipboard              --no-clipboard            Copy each completed transcription   │
+│                                                    to clipboard (overwrites previous). │
+│                                                    Useful with --llm to get cleaned    │
+│                                                    text.                               │
 │                                                    [default: no-clipboard]             │
 │ --help               -h                            Show this message and exit.         │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
