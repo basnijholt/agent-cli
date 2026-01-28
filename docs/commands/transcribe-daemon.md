@@ -79,7 +79,7 @@ agent-cli transcribe-daemon --silence-threshold 1.5
 | Option | Default | Description |
 |--------|---------|-------------|
 | `--asr-provider` | `wyoming` | The ASR provider to use ('wyoming', 'openai', 'gemini'). |
-| `--llm-provider` | `ollama` | The LLM provider to use ('ollama', 'openai', 'gemini', 'none'). Use 'none' to disable LLM post-processing. |
+| `--llm-provider` | `ollama` | The LLM provider to use ('ollama', 'openai', 'gemini'). |
 
 ### Audio Input
 
