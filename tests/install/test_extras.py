@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import typing
+
 from agent_cli.core.deps import EXTRAS as EXTRAS_META
-from agent_cli.install.extras import EXTRAS, _available_extras
+from agent_cli.install.extras import EXTRAS, _available_extras, install_extras
 
 
 def test_extras_dict_matches_requirements_files() -> None:
@@ -40,3 +42,46 @@ def test_install_extras_dict_derives_from_metadata() -> None:
     for name in EXTRAS:
         assert name in EXTRAS_META, f"Extra {name} should be in _extras.json"
         assert EXTRAS[name] == EXTRAS_META[name][0], f"Description mismatch for {name}"
+
+
+def test_install_extras_help_lists_all_extras() -> None:
+    """Ensure the install_extras help text mentions all available extras.
+
+    When new extras are added to _extras.json, the docstring and argument help
+    in install_extras() must be updated to include them. This test catches
+    missing extras in the help text.
+    """
+    available = set(_available_extras())
+    docstring = install_extras.__doc__ or ""
+
+    # Get the argument help text from the function's type hints
+    # Using get_type_hints with include_extras=True to access Annotated metadata
+    hints = typing.get_type_hints(install_extras, include_extras=True)
+    extras_hint = hints.get("extras")
+    arg_help = ""
+    if extras_hint and hasattr(extras_hint, "__metadata__"):
+        for meta in extras_hint.__metadata__:
+            if hasattr(meta, "help") and meta.help:
+                arg_help = meta.help
+                break
+
+    missing_in_docstring = []
+    missing_in_arg_help = []
+
+    for extra in available:
+        # Check docstring contains the extra name (with backticks for markdown)
+        if f"`{extra}`" not in docstring:
+            missing_in_docstring.append(extra)
+
+        # Check argument help contains the extra name (with backticks)
+        if f"`{extra}`" not in arg_help:
+            missing_in_arg_help.append(extra)
+
+    assert not missing_in_docstring, (
+        f"Extras missing from install_extras docstring: {missing_in_docstring}. "
+        "Update the docstring in agent_cli/install/extras.py to include these extras."
+    )
+    assert not missing_in_arg_help, (
+        f"Extras missing from install_extras argument help: {missing_in_arg_help}. "
+        "Update the 'extras' argument help text in agent_cli/install/extras.py."
+    )
