@@ -127,17 +127,17 @@ def add(
         "default",
         "--conversation-id",
         "-c",
-        help="Conversation ID to add memories to.",
+        help="Conversation namespace for these memories. Memories are retrieved per-conversation unless shared globally.",
     ),
     memory_path: Path = typer.Option(  # noqa: B008
         "./memory_db",
         "--memory-path",
-        help="Path to the memory store.",
+        help="Directory for memory storage (same as `memory proxy --memory-path`).",
     ),
     git_versioning: bool = typer.Option(
         True,  # noqa: FBT003
         "--git-versioning/--no-git-versioning",
-        help="Commit changes to git.",
+        help="Auto-commit changes to git for version history.",
     ),
     quiet: bool = opts.QUIET,
     config_file: str | None = opts.CONFIG_FILE,

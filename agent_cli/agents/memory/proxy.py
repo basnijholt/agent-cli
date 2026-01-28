@@ -19,7 +19,7 @@ from agent_cli.core.utils import console, print_command_line_args
 def proxy(
     memory_path: Path = typer.Option(  # noqa: B008
         "./memory_db",
-        help="Path to the memory store (files + derived vector index).",
+        help="Directory for memory storage. Contains `entries/` (Markdown files) and `chroma/` (vector index). Created automatically if it doesn't exist.",
         rich_help_panel="Memory Configuration",
     ),
     openai_base_url: str | None = opts.OPENAI_BASE_URL,
@@ -27,7 +27,7 @@ def proxy(
     openai_api_key: str | None = opts.OPENAI_API_KEY,
     default_top_k: int = typer.Option(
         5,
-        help="Number of memory entries to retrieve per query.",
+        help="Number of relevant memories to inject into each request. Higher values provide more context but increase token usage.",
         rich_help_panel="Memory Configuration",
     ),
     host: str = opts.SERVER_HOST,
@@ -38,7 +38,7 @@ def proxy(
     ),
     max_entries: int = typer.Option(
         500,
-        help="Maximum stored memory entries per conversation (excluding summary).",
+        help="Maximum entries per conversation before oldest are evicted. Summaries are preserved separately.",
         rich_help_panel="Memory Configuration",
     ),
     mmr_lambda: float = typer.Option(
@@ -48,7 +48,7 @@ def proxy(
     ),
     recency_weight: float = typer.Option(
         0.2,
-        help="Recency score weight (0.0-1.0). Controls freshness vs. relevance. Default 0.2 (20% recency, 80% semantic relevance).",
+        help="Weight for recency vs semantic relevance (0.0-1.0). At 0.2: 20% recency, 80% semantic similarity.",
         rich_help_panel="Memory Configuration",
     ),
     score_threshold: float = typer.Option(
@@ -59,13 +59,13 @@ def proxy(
     summarization: bool = typer.Option(
         True,  # noqa: FBT003
         "--summarization/--no-summarization",
-        help="Enable automatic fact extraction and summaries.",
+        help="Extract facts and generate summaries after each turn using the LLM. Disable to only store raw conversation turns.",
         rich_help_panel="Memory Configuration",
     ),
     git_versioning: bool = typer.Option(
         True,  # noqa: FBT003
         "--git-versioning/--no-git-versioning",
-        help="Enable automatic git commit of memory changes.",
+        help="Auto-commit memory changes to git. Initializes a repo in `--memory-path` if needed. Provides full history of memory evolution.",
         rich_help_panel="Memory Configuration",
     ),
     log_level: opts.LogLevel = opts.LOG_LEVEL,
@@ -78,7 +78,7 @@ def proxy(
     CLI, or IDE plugin) and an OpenAI-compatible LLM provider (e.g., OpenAI,
     Ollama, vLLM).
 
-    Key Features:
+    **Key Features:**
 
     - **Simple Markdown Files:** Memories are stored as human-readable Markdown
       files, serving as the ultimate source of truth.
@@ -89,7 +89,7 @@ def proxy(
     - **Proxy Middleware:** Works transparently with any OpenAI-compatible
       `/chat/completions` endpoint.
 
-    How it works:
+    **How it works:**
 
     1.  Intercepts `POST /v1/chat/completions` requests.
     2.  **Retrieves** relevant memories (facts, previous conversations) from a
@@ -99,8 +99,17 @@ def proxy(
     5.  **Extracts** new facts from the conversation in the background and
         updates the long-term memory store (including handling contradictions).
 
-    Use this to give "long-term memory" to any OpenAI-compatible application.
-    Point your client's base URL to `http://localhost:8100/v1`.
+    **Example:**
+
+        # Start proxy pointing to local Ollama
+        agent-cli memory proxy --openai-base-url http://localhost:11434/v1
+
+        # Then configure your chat client to use http://localhost:8100/v1
+        # as its OpenAI base URL. All requests flow through the memory proxy.
+
+    **Per-request overrides:** Clients can include these fields in the request
+    body: `memory_id` (conversation ID), `memory_top_k`, `memory_recency_weight`,
+    `memory_score_threshold`.
     """
     if print_args:
         print_command_line_args(locals())
