@@ -215,13 +215,13 @@ TTS_SPEED: float = typer.Option(
 OUTPUT_DEVICE_INDEX: int | None = typer.Option(
     None,
     "--output-device-index",
-    help="Index of the audio output device to use for TTS.",
+    help="Audio output device index (see `--list-devices` for available devices).",
     rich_help_panel="Audio Output",
 )
 OUTPUT_DEVICE_NAME: str | None = typer.Option(
     None,
     "--output-device-name",
-    help="Output device name keywords for partial matching.",
+    help="Partial match on device name (e.g., 'speakers', 'headphones').",
     rich_help_panel="Audio Output",
 )
 # Wyoming (local service)
@@ -265,7 +265,7 @@ TTS_OPENAI_MODEL: str = typer.Option(
 TTS_OPENAI_VOICE: str = typer.Option(
     "alloy",
     "--tts-openai-voice",
-    help="The voice to use for OpenAI-compatible TTS.",
+    help="Voice for OpenAI TTS (alloy, echo, fable, onyx, nova, shimmer).",
     rich_help_panel="Audio Output: OpenAI-compatible",
 )
 TTS_OPENAI_BASE_URL: str | None = typer.Option(
@@ -394,7 +394,7 @@ JSON_OUTPUT: bool = typer.Option(
 SAVE_FILE: Path | None = typer.Option(
     None,
     "--save-file",
-    help="Save TTS response audio to WAV file.",
+    help="Save audio to WAV file instead of playing through speakers.",
     rich_help_panel="General Options",
 )
 TRANSCRIPTION_LOG: Path | None = typer.Option(

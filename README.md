@@ -995,10 +995,25 @@ uv tool install "agent-cli[vad]" -p 3.13
 
  Usage: agent-cli speak [OPTIONS] [TEXT]
 
- Convert text to speech using Wyoming or OpenAI-compatible TTS server.
+ Convert text to speech and play audio through speakers.
+
+ By default, synthesized audio plays immediately. Use --save-file to save to a WAV file
+ instead (skips playback).
+
+ Text can be provided as an argument or read from clipboard automatically.
+
+ Examples:
+
+ Speak text directly: agent-cli speak "Hello, world!"
+
+ Speak clipboard contents: agent-cli speak
+
+ Save to file instead of playing: agent-cli speak "Hello" --save-file greeting.wav
+
+ Use OpenAI TTS: agent-cli speak "Hello" --tts-provider openai
 
 ╭─ General Options ──────────────────────────────────────────────────────────────────────╮
-│   text      [TEXT]  Text to speak. Reads from clipboard if not provided.               │
+│   text      [TEXT]  Text to synthesize. If not provided, reads from clipboard.         │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Options ──────────────────────────────────────────────────────────────────────────────╮
 │ --help  -h        Show this message and exit.                                          │
@@ -1010,9 +1025,10 @@ uv tool install "agent-cli[vad]" -p 3.13
 │                             [default: wyoming]                                         │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Audio Output ─────────────────────────────────────────────────────────────────────────╮
-│ --output-device-index        INTEGER  Index of the audio output device to use for TTS. │
-│ --output-device-name         TEXT     Output device name keywords for partial          │
-│                                       matching.                                        │
+│ --output-device-index        INTEGER  Audio output device index (see --list-devices    │
+│                                       for available devices).                          │
+│ --output-device-name         TEXT     Partial match on device name (e.g., 'speakers',  │
+│                                       'headphones').                                   │
 │ --tts-speed                  FLOAT    Speech speed multiplier (1.0 = normal, 2.0 =     │
 │                                       twice as fast, 0.5 = half speed).                │
 │                                       [default: 1.0]                                   │
@@ -1030,7 +1046,8 @@ uv tool install "agent-cli[vad]" -p 3.13
 ╭─ Audio Output: OpenAI-compatible ──────────────────────────────────────────────────────╮
 │ --tts-openai-model           TEXT  The OpenAI model to use for TTS.                    │
 │                                    [default: tts-1]                                    │
-│ --tts-openai-voice           TEXT  The voice to use for OpenAI-compatible TTS.         │
+│ --tts-openai-voice           TEXT  Voice for OpenAI TTS (alloy, echo, fable, onyx,     │
+│                                    nova, shimmer).                                     │
 │                                    [default: alloy]                                    │
 │ --tts-openai-base-url        TEXT  Custom base URL for OpenAI-compatible TTS API       │
 │                                    (e.g., http://localhost:8000/v1 for a proxy).       │
@@ -1059,7 +1076,8 @@ uv tool install "agent-cli[vad]" -p 3.13
 │ --list-devices          List available audio input and output devices and exit.        │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ General Options ──────────────────────────────────────────────────────────────────────╮
-│ --save-file           PATH                        Save TTS response audio to WAV file. │
+│ --save-file           PATH                        Save audio to WAV file instead of    │
+│                                                   playing through speakers.            │
 │ --log-level           [debug|info|warning|error]  Set logging level.                   │
 │                                                   [env var: LOG_LEVEL]                 │
 │                                                   [default: info]                      │
@@ -1200,10 +1218,10 @@ uv tool install "agent-cli[vad]" -p 3.13
 ╭─ Audio Output ─────────────────────────────────────────────────────────────────────────╮
 │ --tts                    --no-tts             Enable text-to-speech for responses.     │
 │                                               [default: no-tts]                        │
-│ --output-device-index                INTEGER  Index of the audio output device to use  │
-│                                               for TTS.                                 │
-│ --output-device-name                 TEXT     Output device name keywords for partial  │
-│                                               matching.                                │
+│ --output-device-index                INTEGER  Audio output device index (see           │
+│                                               --list-devices for available devices).   │
+│ --output-device-name                 TEXT     Partial match on device name (e.g.,      │
+│                                               'speakers', 'headphones').               │
 │ --tts-speed                          FLOAT    Speech speed multiplier (1.0 = normal,   │
 │                                               2.0 = twice as fast, 0.5 = half speed).  │
 │                                               [default: 1.0]                           │
@@ -1221,7 +1239,8 @@ uv tool install "agent-cli[vad]" -p 3.13
 ╭─ Audio Output: OpenAI-compatible ──────────────────────────────────────────────────────╮
 │ --tts-openai-model           TEXT  The OpenAI model to use for TTS.                    │
 │                                    [default: tts-1]                                    │
-│ --tts-openai-voice           TEXT  The voice to use for OpenAI-compatible TTS.         │
+│ --tts-openai-voice           TEXT  Voice for OpenAI TTS (alloy, echo, fable, onyx,     │
+│                                    nova, shimmer).                                     │
 │                                    [default: alloy]                                    │
 │ --tts-openai-base-url        TEXT  Custom base URL for OpenAI-compatible TTS API       │
 │                                    (e.g., http://localhost:8000/v1 for a proxy).       │
@@ -1248,8 +1267,9 @@ uv tool install "agent-cli[vad]" -p 3.13
 │                   will be stopped. If the process is not running, it will be started.  │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ General Options ──────────────────────────────────────────────────────────────────────╮
-│ --save-file                         PATH                      Save TTS response audio  │
-│                                                               to WAV file.             │
+│ --save-file                         PATH                      Save audio to WAV file   │
+│                                                               instead of playing       │
+│                                                               through speakers.        │
 │ --clipboard       --no-clipboard                              Copy result to           │
 │                                                               clipboard.               │
 │                                                               [default: clipboard]     │
@@ -1395,10 +1415,10 @@ uv tool install "agent-cli[vad]" -p 3.13
 ╭─ Audio Output ─────────────────────────────────────────────────────────────────────────╮
 │ --tts                    --no-tts             Enable text-to-speech for responses.     │
 │                                               [default: no-tts]                        │
-│ --output-device-index                INTEGER  Index of the audio output device to use  │
-│                                               for TTS.                                 │
-│ --output-device-name                 TEXT     Output device name keywords for partial  │
-│                                               matching.                                │
+│ --output-device-index                INTEGER  Audio output device index (see           │
+│                                               --list-devices for available devices).   │
+│ --output-device-name                 TEXT     Partial match on device name (e.g.,      │
+│                                               'speakers', 'headphones').               │
 │ --tts-speed                          FLOAT    Speech speed multiplier (1.0 = normal,   │
 │                                               2.0 = twice as fast, 0.5 = half speed).  │
 │                                               [default: 1.0]                           │
@@ -1416,7 +1436,8 @@ uv tool install "agent-cli[vad]" -p 3.13
 ╭─ Audio Output: OpenAI-compatible ──────────────────────────────────────────────────────╮
 │ --tts-openai-model           TEXT  The OpenAI model to use for TTS.                    │
 │                                    [default: tts-1]                                    │
-│ --tts-openai-voice           TEXT  The voice to use for OpenAI-compatible TTS.         │
+│ --tts-openai-voice           TEXT  Voice for OpenAI TTS (alloy, echo, fable, onyx,     │
+│                                    nova, shimmer).                                     │
 │                                    [default: alloy]                                    │
 │ --tts-openai-base-url        TEXT  Custom base URL for OpenAI-compatible TTS API       │
 │                                    (e.g., http://localhost:8000/v1 for a proxy).       │
@@ -1443,8 +1464,9 @@ uv tool install "agent-cli[vad]" -p 3.13
 │                   will be stopped. If the process is not running, it will be started.  │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ General Options ──────────────────────────────────────────────────────────────────────╮
-│ --save-file                         PATH                      Save TTS response audio  │
-│                                                               to WAV file.             │
+│ --save-file                         PATH                      Save audio to WAV file   │
+│                                                               instead of playing       │
+│                                                               through speakers.        │
 │ --clipboard       --no-clipboard                              Copy result to           │
 │                                                               clipboard.               │
 │                                                               [default: clipboard]     │
@@ -1590,10 +1612,10 @@ uv tool install "agent-cli[vad]" -p 3.13
 ╭─ Audio Output ─────────────────────────────────────────────────────────────────────────╮
 │ --tts                    --no-tts             Enable text-to-speech for responses.     │
 │                                               [default: no-tts]                        │
-│ --output-device-index                INTEGER  Index of the audio output device to use  │
-│                                               for TTS.                                 │
-│ --output-device-name                 TEXT     Output device name keywords for partial  │
-│                                               matching.                                │
+│ --output-device-index                INTEGER  Audio output device index (see           │
+│                                               --list-devices for available devices).   │
+│ --output-device-name                 TEXT     Partial match on device name (e.g.,      │
+│                                               'speakers', 'headphones').               │
 │ --tts-speed                          FLOAT    Speech speed multiplier (1.0 = normal,   │
 │                                               2.0 = twice as fast, 0.5 = half speed).  │
 │                                               [default: 1.0]                           │
@@ -1611,7 +1633,8 @@ uv tool install "agent-cli[vad]" -p 3.13
 ╭─ Audio Output: OpenAI-compatible ──────────────────────────────────────────────────────╮
 │ --tts-openai-model           TEXT  The OpenAI model to use for TTS.                    │
 │                                    [default: tts-1]                                    │
-│ --tts-openai-voice           TEXT  The voice to use for OpenAI-compatible TTS.         │
+│ --tts-openai-voice           TEXT  Voice for OpenAI TTS (alloy, echo, fable, onyx,     │
+│                                    nova, shimmer).                                     │
 │                                    [default: alloy]                                    │
 │ --tts-openai-base-url        TEXT  Custom base URL for OpenAI-compatible TTS API       │
 │                                    (e.g., http://localhost:8000/v1 for a proxy).       │
@@ -1645,7 +1668,8 @@ uv tool install "agent-cli[vad]" -p 3.13
 │                                   [default: 50]                                        │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ General Options ──────────────────────────────────────────────────────────────────────╮
-│ --save-file           PATH                        Save TTS response audio to WAV file. │
+│ --save-file           PATH                        Save audio to WAV file instead of    │
+│                                                   playing through speakers.            │
 │ --log-level           [debug|info|warning|error]  Set logging level.                   │
 │                                                   [env var: LOG_LEVEL]                 │
 │                                                   [default: info]                      │
