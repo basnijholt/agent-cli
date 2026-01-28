@@ -2,11 +2,14 @@
 
 import copy
 from pathlib import Path
+from typing import Literal
 
 import typer
 from typer.models import OptionInfo
 
 from agent_cli.constants import DEFAULT_OPENAI_EMBEDDING_MODEL, DEFAULT_OPENAI_MODEL
+
+LogLevel = Literal["debug", "info", "warning", "error"]
 
 
 def with_default(option: OptionInfo, default: str) -> OptionInfo:
@@ -146,18 +149,21 @@ ASR_WYOMING_PORT: int = typer.Option(
 ASR_OPENAI_MODEL: str = typer.Option(
     "whisper-1",
     "--asr-openai-model",
+    envvar="ASR_OPENAI_MODEL",
     help="The OpenAI model to use for ASR (transcription).",
     rich_help_panel="Audio Input: OpenAI-compatible",
 )
 ASR_OPENAI_BASE_URL: str | None = typer.Option(
     None,
     "--asr-openai-base-url",
+    envvar="ASR_OPENAI_BASE_URL",
     help="Custom base URL for OpenAI-compatible ASR API (e.g., for custom Whisper server: http://localhost:9898).",
     rich_help_panel="Audio Input: OpenAI-compatible",
 )
 ASR_OPENAI_PROMPT: str | None = typer.Option(
     None,
     "--asr-openai-prompt",
+    envvar="ASR_OPENAI_PROMPT",
     help="Custom prompt to guide transcription (optional).",
     rich_help_panel="Audio Input: OpenAI-compatible",
 )
@@ -165,6 +171,7 @@ ASR_OPENAI_PROMPT: str | None = typer.Option(
 ASR_GEMINI_MODEL: str = typer.Option(
     "gemini-3-flash-preview",
     "--asr-gemini-model",
+    envvar="ASR_GEMINI_MODEL",
     help="The Gemini model to use for ASR (transcription).",
     rich_help_panel="Audio Input: Gemini",
 )
@@ -357,9 +364,10 @@ CLIPBOARD: bool = typer.Option(
     help="Copy result to clipboard.",
     rich_help_panel="General Options",
 )
-LOG_LEVEL: str = typer.Option(
-    "WARNING",
+LOG_LEVEL: LogLevel = typer.Option(
+    "info",
     "--log-level",
+    envvar="LOG_LEVEL",
     help="Set logging level.",
     case_sensitive=False,
     rich_help_panel="General Options",

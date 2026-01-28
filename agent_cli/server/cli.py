@@ -10,6 +10,7 @@ from typing import Annotated
 
 import typer
 
+from agent_cli import opts
 from agent_cli.cli import app as main_app
 from agent_cli.core.deps import requires_extras
 from agent_cli.core.process import set_process_title
@@ -251,14 +252,7 @@ def whisper_cmd(  # noqa: PLR0912, PLR0915
             help="Download model(s) and exit without starting server",
         ),
     ] = False,
-    log_level: Annotated[
-        str,
-        typer.Option(
-            "--log-level",
-            "-l",
-            help="Logging level: debug, info, warning, error",
-        ),
-    ] = "info",
+    log_level: opts.LogLevel = opts.LOG_LEVEL,
     backend: Annotated[
         str,
         typer.Option(
@@ -378,6 +372,7 @@ def whisper_cmd(  # noqa: PLR0912, PLR0915
     console.print()
     console.print("[dim]Configuration:[/dim]")
     console.print(f"  Backend: [cyan]{actual_backend}[/cyan]")
+    console.print(f"  Log level: [cyan]{log_level}[/cyan]")
     console.print()
     console.print("[dim]Endpoints:[/dim]")
     console.print(f"  HTTP API: [cyan]http://{host}:{port}[/cyan]")
@@ -436,6 +431,7 @@ def transcribe_proxy_cmd(
         bool,
         typer.Option("--reload", help="Enable auto-reload for development"),
     ] = False,
+    log_level: opts.LogLevel = opts.LOG_LEVEL,
 ) -> None:
     """Run transcription proxy server.
 
@@ -457,10 +453,12 @@ def transcribe_proxy_cmd(
 
     """
     _check_server_deps()
+    setup_rich_logging(log_level)
 
     console.print(
         f"[bold green]Starting Agent CLI transcription proxy on {host}:{port}[/bold green]",
     )
+    console.print(f"[dim]Log level: {log_level}[/dim]")
     if reload:
         console.print("[yellow]Auto-reload enabled for development[/yellow]")
 
@@ -471,7 +469,7 @@ def transcribe_proxy_cmd(
         host=host,
         port=port,
         reload=reload,
-        log_level="info",
+        log_level=log_level.lower(),
     )
 
 
@@ -558,14 +556,7 @@ def tts_cmd(  # noqa: PLR0915
             help="Download model(s) and exit without starting server",
         ),
     ] = False,
-    log_level: Annotated[
-        str,
-        typer.Option(
-            "--log-level",
-            "-l",
-            help="Logging level: debug, info, warning, error",
-        ),
-    ] = "info",
+    log_level: opts.LogLevel = opts.LOG_LEVEL,
     backend: Annotated[
         str,
         typer.Option(
@@ -679,6 +670,7 @@ def tts_cmd(  # noqa: PLR0915
     console.print()
     console.print("[dim]Configuration:[/dim]")
     console.print(f"  Backend: [cyan]{resolved_backend}[/cyan]")
+    console.print(f"  Log level: [cyan]{log_level}[/cyan]")
     console.print()
     console.print("[dim]Endpoints:[/dim]")
     console.print(f"  HTTP API: [cyan]http://{host}:{port}[/cyan]")
