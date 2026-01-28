@@ -42,19 +42,15 @@ RUN apt-get update && \
 ENV UV_PYTHON_INSTALL_DIR=/opt/python
 RUN uv python install 3.13
 
-RUN userdel -r ubuntu 2>/dev/null || true; \
-    groupadd -g 1000 whisper 2>/dev/null || true; \
-    useradd -m -u 1000 -g 1000 whisper
-
 WORKDIR /app
 
 COPY --from=builder /app/.venv /app/.venv
 
 RUN ln -sf $(uv python find 3.13) /app/.venv/bin/python && \
     ln -s /app/.venv/bin/agent-cli /usr/local/bin/agent-cli && \
-    mkdir -p /home/whisper/.cache && chown -R whisper:whisper /home/whisper
+    mkdir -p /home/ubuntu/.cache && chown -R ubuntu:ubuntu /home/ubuntu
 
-USER whisper
+USER ubuntu
 
 EXPOSE 10300 10301
 

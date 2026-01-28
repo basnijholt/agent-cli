@@ -65,19 +65,15 @@ RUN apt-get update && \
 ENV UV_PYTHON_INSTALL_DIR=/opt/python
 RUN uv python install 3.13
 
-RUN userdel -r ubuntu 2>/dev/null || true; \
-    groupadd -g 1000 tts 2>/dev/null || true; \
-    useradd -m -u 1000 -g 1000 tts
-
 WORKDIR /app
 
 COPY --from=builder-cuda /app/.venv /app/.venv
 
 RUN ln -sf $(uv python find 3.13) /app/.venv/bin/python && \
     ln -s /app/.venv/bin/agent-cli /usr/local/bin/agent-cli && \
-    mkdir -p /home/tts/.cache && chown -R tts:tts /home/tts
+    mkdir -p /home/ubuntu/.cache && chown -R ubuntu:ubuntu /home/ubuntu
 
-USER tts
+USER ubuntu
 
 EXPOSE 10200 10201
 
