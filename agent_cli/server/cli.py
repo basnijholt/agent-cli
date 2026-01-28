@@ -33,9 +33,9 @@ app = typer.Typer(
 
 **Available servers:**
 
-• `whisper` - Local speech-to-text using Whisper models (faster-whisper or MLX)
-• `tts` - Local text-to-speech using Piper (CPU) or Kokoro (GPU)
-• `transcribe-proxy` - Proxy to external ASR providers (OpenAI, Gemini, Wyoming)
+- `whisper` - Local speech-to-text using Whisper models (faster-whisper or MLX)
+- `tts` - Local text-to-speech using Piper (CPU) or Kokoro (GPU)
+- `transcribe-proxy` - Proxy to external ASR providers (OpenAI, Gemini, Wyoming)
 
 **Common workflows:**
 
@@ -486,14 +486,14 @@ def transcribe_proxy_cmd(
 
     The server exposes:
 
-    • `POST /transcribe` - Accepts audio files, returns `{raw_transcript, cleaned_transcript}`
-    • `GET /health` - Health check endpoint
+    - `POST /transcribe` - Accepts audio files, returns `{raw_transcript, cleaned_transcript}`
+    - `GET /health` - Health check endpoint
 
     **When to use this vs `server whisper`:**
 
-    • Use `transcribe-proxy` when you want to use cloud ASR (OpenAI/Gemini)
+    - Use `transcribe-proxy` when you want to use cloud ASR (OpenAI/Gemini)
       or connect to a remote Wyoming server
-    • Use `server whisper` when you want to run a local Whisper model
+    - Use `server whisper` when you want to run a local Whisper model
 
     Configuration is read from `~/.config/agent-cli/config.yaml` or env vars
     like `ASR_PROVIDER`, `LLM_PROVIDER`, `OPENAI_API_KEY`, etc.

@@ -22,18 +22,18 @@ def install_services() -> None:
 
     This command installs the following services:
 
-    • **Ollama** - Local LLM server for text processing
-    • **Wyoming Faster Whisper** - Speech-to-text transcription
-    • **Wyoming Piper** - Text-to-speech synthesis
-    • **Wyoming OpenWakeWord** - Wake word detection ("ok nabu", etc.)
+    - **Ollama** - Local LLM server for text processing
+    - **Wyoming Faster Whisper** - Speech-to-text transcription
+    - **Wyoming Piper** - Text-to-speech synthesis
+    - **Wyoming OpenWakeWord** - Wake word detection ("ok nabu", etc.)
 
     The appropriate installation method is used based on your operating system
     (Homebrew on macOS, apt/pip on Linux).
 
     **Requirements:**
 
-    • macOS: Homebrew must be installed
-    • Linux: Requires sudo access for system packages
+    - macOS: Homebrew must be installed
+    - Linux: Requires sudo access for system packages
 
     **Examples:**
 
@@ -75,19 +75,19 @@ def start_services(
 
     Starts these services, each in its own Zellij pane:
 
-    • **Ollama** - LLM server (port 11434)
-    • **Wyoming Whisper** - Speech-to-text (port 10300)
-    • **Wyoming Piper** - Text-to-speech (port 10200)
-    • **Wyoming OpenWakeWord** - Wake word detection (port 10400)
+    - **Ollama** - LLM server (port 11434)
+    - **Wyoming Whisper** - Speech-to-text (port 10300)
+    - **Wyoming Piper** - Text-to-speech (port 10200)
+    - **Wyoming OpenWakeWord** - Wake word detection (port 10400)
 
     Services run in a Zellij terminal multiplexer session named `agent-cli`.
     If a session already exists, the command attaches to it instead of
     starting new services.
 
     **Keyboard shortcuts:**
-    • `Ctrl-O d` - Detach (keeps services running in background)
-    • `Ctrl-Q` - Quit (stops all services)
-    • `Alt + arrows` - Navigate between panes
+    - `Ctrl-O d` - Detach (keeps services running in background)
+    - `Ctrl-Q` - Quit (stops all services)
+    - `Alt + arrows` - Navigate between panes
 
     **Examples:**
 
