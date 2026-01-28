@@ -15,19 +15,24 @@ from .core.process import set_process_title
 from .core.utils import console
 
 _HELP = """\
-AI-powered voice and text tools with flexible provider backends.
+AI-powered voice, text, and development tools.
 
-**Core Capabilities:**
+**Voice & Text:**
 
 - **Voice-to-text** - Transcribe speech with optional LLM cleanup
 - **Text-to-speech** - Convert text to natural-sounding audio
 - **Voice chat** - Conversational AI with memory and tool use
 - **Text correction** - Fix grammar, spelling, and punctuation
 
+**Development:**
+
+- **Parallel development** - Git worktrees with integrated coding agents
+- **Local servers** - ASR/TTS with Wyoming + OpenAI-compatible APIs,
+  MLX on macOS ARM, CUDA/CPU Whisper, and automatic model TTL
+
 **Provider Flexibility:**
 
-Supports local (Ollama, Wyoming) and cloud (OpenAI, Gemini) backends.
-Mix providers freely: use local ASR with cloud LLM, or vice versa.
+Mix local (Ollama, Wyoming) and cloud (OpenAI, Gemini) backends freely.
 
 Run `agent-cli <command> --help` for detailed command documentation.
 """
@@ -74,7 +79,7 @@ def main(
         ),
     ] = False,
 ) -> None:
-    """AI-powered voice and text tools with flexible provider backends."""
+    """AI-powered voice, text, and development tools."""
     if ctx.invoked_subcommand is None:
         console.print("[bold red]No command specified.[/bold red]")
         console.print("[bold yellow]Running --help for your convenience.[/bold yellow]")
