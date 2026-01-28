@@ -1512,7 +1512,39 @@ uv tool install "agent-cli[vad]" -p 3.13
 
  Usage: agent-cli chat [OPTIONS]
 
- An chat agent that you can talk to.
+ Voice-based conversational chat agent with memory and tools.
+
+ Runs an interactive loop: listen → transcribe → LLM → speak response. Conversation
+ history is persisted and included as context for continuity.
+
+ Built-in tools (LLM uses automatically when relevant):
+
+  • add_memory/search_memory/update_memory - persistent long-term memory
+  • duckduckgo_search - web search for current information
+  • read_file/execute_code - file access and shell commands
+
+ Process management: Use --toggle to start/stop via hotkey (bind to a keyboard shortcut),
+ --stop to terminate, or --status to check state.
+
+ Examples:
+
+ Start with OpenAI for speech and LLM, with TTS enabled:
+
+
+  agent-cli chat --asr-provider openai --llm-provider openai --tts
+
+
+ Start in background mode (toggle on/off with hotkey):
+
+
+  agent-cli chat --toggle
+
+
+ Use local Ollama LLM with Wyoming ASR:
+
+
+  agent-cli chat --llm-provider ollama --llm-ollama-model llama3.2
+
 
 ╭─ Options ──────────────────────────────────────────────────────────────────────────────╮
 │ --help  -h        Show this message and exit.                                          │
@@ -1638,10 +1670,13 @@ uv tool install "agent-cli[vad]" -p 3.13
 │                   will be stopped. If the process is not running, it will be started.  │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ History Options ──────────────────────────────────────────────────────────────────────╮
-│ --history-dir            PATH     Directory to store conversation history.             │
+│ --history-dir            PATH     Directory for conversation history and long-term     │
+│                                   memory. Both conversation.json and                   │
+│                                   long_term_memory.json are stored here.               │
 │                                   [default: ~/.config/agent-cli/history]               │
-│ --last-n-messages        INTEGER  Number of messages to include in the conversation    │
-│                                   history. Set to 0 to disable history.                │
+│ --last-n-messages        INTEGER  Number of past messages to include as context for    │
+│                                   the LLM. Set to 0 to start fresh each session        │
+│                                   (memory tools still persist).                        │
 │                                   [default: 50]                                        │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ General Options ──────────────────────────────────────────────────────────────────────╮

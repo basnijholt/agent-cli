@@ -1,13 +1,15 @@
-"""An chat agent that you can talk to.
+"""Voice-based conversational chat agent with memory and tools.
 
-This agent will:
-- Listen for your voice command.
-- Transcribe the command.
-- Send the transcription to an LLM.
-- Speak the LLM's response.
-- Remember the conversation history.
-- Attach timestamps to the saved conversation.
-- Format timestamps as "ago" when sending to the LLM.
+Runs an interactive voice loop: listens for speech, transcribes it,
+sends to the LLM (with conversation context), and optionally speaks the response.
+
+**Available tools** (automatically used by the LLM when relevant):
+- `add_memory`/`search_memory`/`update_memory` - persistent long-term memory
+- `duckduckgo_search` - web search for current information
+- `read_file`/`execute_code` - file access and shell commands
+
+**Process management**: Use `--toggle` to start/stop via hotkey, `--stop` to terminate,
+or `--status` to check if running. Useful for binding to a keyboard shortcut.
 """
 
 from __future__ import annotations
@@ -425,14 +427,15 @@ def chat(
     history_dir: Path = typer.Option(  # noqa: B008
         "~/.config/agent-cli/history",
         "--history-dir",
-        help="Directory to store conversation history.",
+        help="Directory for conversation history and long-term memory. "
+        "Both `conversation.json` and `long_term_memory.json` are stored here.",
         rich_help_panel="History Options",
     ),
     last_n_messages: int = typer.Option(
         50,
         "--last-n-messages",
-        help="Number of messages to include in the conversation history."
-        " Set to 0 to disable history.",
+        help="Number of past messages to include as context for the LLM. "
+        "Set to 0 to start fresh each session (memory tools still persist).",
         rich_help_panel="History Options",
     ),
     # --- General Options ---
@@ -444,7 +447,34 @@ def chat(
     config_file: str | None = opts.CONFIG_FILE,
     print_args: bool = opts.PRINT_ARGS,
 ) -> None:
-    """An chat agent that you can talk to."""
+    """Voice-based conversational chat agent with memory and tools.
+
+    Runs an interactive loop: listen → transcribe → LLM → speak response.
+    Conversation history is persisted and included as context for continuity.
+
+    **Built-in tools** (LLM uses automatically when relevant):
+
+    - `add_memory`/`search_memory`/`update_memory` - persistent long-term memory
+    - `duckduckgo_search` - web search for current information
+    - `read_file`/`execute_code` - file access and shell commands
+
+    **Process management**: Use `--toggle` to start/stop via hotkey (bind to
+    a keyboard shortcut), `--stop` to terminate, or `--status` to check state.
+
+    **Examples**:
+
+    Start with OpenAI for speech and LLM, with TTS enabled:
+
+        agent-cli chat --asr-provider openai --llm-provider openai --tts
+
+    Start in background mode (toggle on/off with hotkey):
+
+        agent-cli chat --toggle
+
+    Use local Ollama LLM with Wyoming ASR:
+
+        agent-cli chat --llm-provider ollama --llm-ollama-model llama3.2
+    """
     if print_args:
         print_command_line_args(locals())
 
