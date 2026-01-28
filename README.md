@@ -1314,7 +1314,28 @@ uv tool install "agent-cli[vad]" -p 3.13
 
  Usage: agent-cli assistant [OPTIONS]
 
- Wake word-based voice assistant using local or remote services.
+ Hands-free voice assistant using wake word detection.
+
+ Continuously listens for a wake word, then records your speech until you say the wake
+ word again. The recording is transcribed and sent to an LLM for a conversational
+ response, optionally spoken back via TTS.
+
+ Conversation flow:
+
+  1 Say wake word → starts recording
+  2 Speak your question/command
+  3 Say wake word again → stops recording and processes
+
+ The assistant runs in a loop, ready for the next command after each response. Stop with
+ Ctrl+C or --stop.
+
+ Requirements:
+
+  • Wyoming wake word server (e.g., wyoming-openwakeword on port 10400)
+  • Wyoming ASR server (e.g., wyoming-whisper on port 10300)
+  • Optional: TTS server for spoken responses (enable with --tts)
+
+ Example: assistant --wake-word ok_nabu --tts --input-device-name USB
 
 ╭─ Options ──────────────────────────────────────────────────────────────────────────────╮
 │ --help  -h        Show this message and exit.                                          │
@@ -1332,12 +1353,14 @@ uv tool install "agent-cli[vad]" -p 3.13
 │                             [default: wyoming]                                         │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Wake Word ────────────────────────────────────────────────────────────────────────────╮
-│ --wake-server-ip          TEXT     Wyoming wake word server IP address.                │
+│ --wake-server-ip          TEXT     Wyoming wake word server IP (requires               │
+│                                    wyoming-openwakeword or similar).                   │
 │                                    [default: localhost]                                │
 │ --wake-server-port        INTEGER  Wyoming wake word server port.                      │
 │                                    [default: 10400]                                    │
-│ --wake-word               TEXT     Name of wake word to detect (e.g., 'ok_nabu',       │
-│                                    'hey_jarvis').                                      │
+│ --wake-word               TEXT     Wake word to detect. Common options: ok_nabu,       │
+│                                    hey_jarvis, alexa. Must match a model loaded in     │
+│                                    your wake word server.                              │
 │                                    [default: ok_nabu]                                  │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Audio Input ──────────────────────────────────────────────────────────────────────────╮

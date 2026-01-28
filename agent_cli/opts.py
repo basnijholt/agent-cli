@@ -181,7 +181,7 @@ ASR_GEMINI_MODEL: str = typer.Option(
 WAKE_SERVER_IP: str = typer.Option(
     "localhost",
     "--wake-server-ip",
-    help="Wyoming wake word server IP address.",
+    help="Wyoming wake word server IP (requires wyoming-openwakeword or similar).",
     rich_help_panel="Wake Word",
 )
 WAKE_SERVER_PORT: int = typer.Option(
@@ -193,7 +193,7 @@ WAKE_SERVER_PORT: int = typer.Option(
 WAKE_WORD: str = typer.Option(
     "ok_nabu",
     "--wake-word",
-    help="Name of wake word to detect (e.g., 'ok_nabu', 'hey_jarvis').",
+    help="Wake word to detect. Common options: `ok_nabu`, `hey_jarvis`, `alexa`. Must match a model loaded in your wake word server.",
     rich_help_panel="Wake Word",
 )
 
