@@ -42,7 +42,7 @@ def rag_proxy(
     host: str = opts.SERVER_HOST,
     port: int = typer.Option(
         8000,
-        help=r"Port for the RAG proxy API. Point your client to `http://\<host\>:\<port\>/v1/chat/completions`.",
+        help="Port for the RAG proxy API (e.g., `http://localhost:8000/v1/chat/completions`).",
         rich_help_panel="Server Configuration",
     ),
     log_level: opts.LogLevel = opts.LOG_LEVEL,

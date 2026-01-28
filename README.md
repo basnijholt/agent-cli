@@ -1779,8 +1779,8 @@ uv tool install "agent-cli[vad]" -p 3.13
 ╭─ Server Configuration ─────────────────────────────────────────────────────────────────╮
 │ --host        TEXT     Host/IP to bind API servers to.                                 │
 │                        [default: 0.0.0.0]                                              │
-│ --port        INTEGER  Port for the RAG proxy API. Point your client to                │
-│                        http://\<host\>:\<port\>/v1/chat/completions.                   │
+│ --port        INTEGER  Port for the RAG proxy API (e.g.,                               │
+│                        http://localhost:8000/v1/chat/completions).                     │
 │                        [default: 8000]                                                 │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ General Options ──────────────────────────────────────────────────────────────────────╮

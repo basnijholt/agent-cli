@@ -85,7 +85,7 @@ agent-cli chat --openai-base-url http://localhost:8000/v1 --llm-provider openai
 | Option | Default | Description |
 |--------|---------|-------------|
 | `--host` | `0.0.0.0` | Host/IP to bind API servers to. |
-| `--port` | `8000` | Port for the RAG proxy API. Point your client to `http://\<host\>:\<port\>/v1/chat/completions`. |
+| `--port` | `8000` | Port for the RAG proxy API (e.g., `http://localhost:8000/v1/chat/completions`). |
 
 ### General Options
 
