@@ -80,7 +80,7 @@ The `--from-file` option supports multiple audio formats:
 | Option | Default | Description |
 |--------|---------|-------------|
 | `--from-file` | - | Transcribe from audio file instead of microphone. Supports wav, mp3, m4a, ogg, flac, aac, webm. Requires `ffmpeg` for non-WAV formats with Wyoming. |
-| `--last-recording` | `0` | Re-transcribe a saved recording (1=most recent, 2=second-to-last, etc). Useful to retry with `--llm` or different provider. |
+| `--last-recording` | `0` | Re-transcribe a saved recording (1=most recent, 2=second-to-last, etc). Useful after connection failures or to retry with different options. |
 | `--save-recording/--no-save-recording` | `true` | Save recordings to ~/.cache/agent-cli/ for `--last-recording` recovery. |
 
 ### Provider Selection

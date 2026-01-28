@@ -425,7 +425,7 @@ LAST_RECORDING: int = typer.Option(
     0,
     "--last-recording",
     help="Re-transcribe a saved recording (1=most recent, 2=second-to-last, etc). "
-    "Useful to retry with `--llm` or different provider.",
+    "Useful after connection failures or to retry with different options.",
     rich_help_panel="Audio Recovery",
 )
 SAVE_RECORDING: bool = typer.Option(

@@ -682,8 +682,9 @@ the `[defaults]` section of your configuration file.
 │                                                     formats with Wyoming.              │
 │ --last-recording                           INTEGER  Re-transcribe a saved recording    │
 │                                                     (1=most recent, 2=second-to-last,  │
-│                                                     etc). Useful to retry with --llm   │
-│                                                     or different provider.             │
+│                                                     etc). Useful after connection      │
+│                                                     failures or to retry with          │
+│                                                     different options.                 │
 │                                                     [default: 0]                       │
 │ --save-recording    --no-save-recording             Save recordings to                 │
 │                                                     ~/.cache/agent-cli/ for            │
