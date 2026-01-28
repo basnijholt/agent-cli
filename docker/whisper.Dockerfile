@@ -31,7 +31,7 @@ RUN uv sync --frozen --no-dev --no-editable --extra server --extra faster-whispe
 # =============================================================================
 # CUDA target: GPU-accelerated with faster-whisper
 # =============================================================================
-FROM nvidia/cuda:12.9.1-cudnn-runtime-ubuntu22.04 AS cuda
+FROM nvcr.io/nvidia/cuda:12.9.1-cudnn-runtime-ubuntu24.04 AS cuda
 
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
@@ -42,7 +42,10 @@ RUN apt-get update && \
 ENV UV_PYTHON_INSTALL_DIR=/opt/python
 RUN uv python install 3.13
 
-RUN groupadd -g 1000 whisper && useradd -m -u 1000 -g whisper whisper
+# Delete pre-existing ubuntu user (UID 1000) and create whisper user for uniformity with CPU target
+RUN userdel -r ubuntu && \
+    groupadd -g 1000 whisper && \
+    useradd -m -u 1000 -g 1000 whisper
 
 WORKDIR /app
 
@@ -91,7 +94,8 @@ RUN apt-get update && \
 ENV UV_PYTHON_INSTALL_DIR=/opt/python
 RUN uv python install 3.13
 
-RUN groupadd -g 1000 whisper && useradd -m -u 1000 -g whisper whisper
+RUN getent group 1000 || groupadd -g 1000 whisper; \
+    id -u 1000 >/dev/null 2>&1 || useradd -m -u 1000 -g 1000 whisper
 
 WORKDIR /app
 
