@@ -694,11 +694,14 @@ the `[defaults]` section of your configuration file.
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Audio Input: OpenAI-compatible ───────────────────────────────────────────────────────╮
 │ --asr-openai-model           TEXT  The OpenAI model to use for ASR (transcription).    │
+│                                    [env var: ASR_OPENAI_MODEL]                         │
 │                                    [default: whisper-1]                                │
 │ --asr-openai-base-url        TEXT  Custom base URL for OpenAI-compatible ASR API       │
 │                                    (e.g., for custom Whisper server:                   │
 │                                    http://localhost:9898).                             │
+│                                    [env var: ASR_OPENAI_BASE_URL]                      │
 │ --asr-openai-prompt          TEXT  Custom prompt to guide transcription (optional).    │
+│                                    [env var: ASR_OPENAI_PROMPT]                        │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Audio Input: Gemini ──────────────────────────────────────────────────────────────────╮
 │ --asr-gemini-model        TEXT  The Gemini model to use for ASR (transcription).       │
@@ -878,11 +881,14 @@ uv tool install "agent-cli[vad]" -p 3.13
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Audio Input: OpenAI-compatible ───────────────────────────────────────────────────────╮
 │ --asr-openai-model           TEXT  The OpenAI model to use for ASR (transcription).    │
+│                                    [env var: ASR_OPENAI_MODEL]                         │
 │                                    [default: whisper-1]                                │
 │ --asr-openai-base-url        TEXT  Custom base URL for OpenAI-compatible ASR API       │
 │                                    (e.g., for custom Whisper server:                   │
 │                                    http://localhost:9898).                             │
+│                                    [env var: ASR_OPENAI_BASE_URL]                      │
 │ --asr-openai-prompt          TEXT  Custom prompt to guide transcription (optional).    │
+│                                    [env var: ASR_OPENAI_PROMPT]                        │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Audio Input: Gemini ──────────────────────────────────────────────────────────────────╮
 │ --asr-gemini-model        TEXT  The Gemini model to use for ASR (transcription).       │
@@ -1139,6 +1145,7 @@ uv tool install "agent-cli[vad]" -p 3.13
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Audio Input: OpenAI-compatible ───────────────────────────────────────────────────────╮
 │ --asr-openai-model        TEXT  The OpenAI model to use for ASR (transcription).       │
+│                                 [env var: ASR_OPENAI_MODEL]                            │
 │                                 [default: whisper-1]                                   │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Audio Input: Gemini ──────────────────────────────────────────────────────────────────╮
@@ -1324,6 +1331,7 @@ uv tool install "agent-cli[vad]" -p 3.13
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Audio Input: OpenAI-compatible ───────────────────────────────────────────────────────╮
 │ --asr-openai-model        TEXT  The OpenAI model to use for ASR (transcription).       │
+│                                 [env var: ASR_OPENAI_MODEL]                            │
 │                                 [default: whisper-1]                                   │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Audio Input: Gemini ──────────────────────────────────────────────────────────────────╮
@@ -1505,11 +1513,14 @@ uv tool install "agent-cli[vad]" -p 3.13
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Audio Input: OpenAI-compatible ───────────────────────────────────────────────────────╮
 │ --asr-openai-model           TEXT  The OpenAI model to use for ASR (transcription).    │
+│                                    [env var: ASR_OPENAI_MODEL]                         │
 │                                    [default: whisper-1]                                │
 │ --asr-openai-base-url        TEXT  Custom base URL for OpenAI-compatible ASR API       │
 │                                    (e.g., for custom Whisper server:                   │
 │                                    http://localhost:9898).                             │
+│                                    [env var: ASR_OPENAI_BASE_URL]                      │
 │ --asr-openai-prompt          TEXT  Custom prompt to guide transcription (optional).    │
+│                                    [env var: ASR_OPENAI_PROMPT]                        │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Audio Input: Gemini ──────────────────────────────────────────────────────────────────╮
 │ --asr-gemini-model        TEXT  The Gemini model to use for ASR (transcription).       │
