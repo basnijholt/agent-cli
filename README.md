@@ -549,10 +549,37 @@ the `[defaults]` section of your configuration file.
 
  Usage: agent-cli autocorrect [OPTIONS] [TEXT]
 
- Correct text from clipboard using a local or remote LLM.
+ Fix grammar, spelling, and punctuation using an LLM.
+
+ Reads text from clipboard (or argument), sends to LLM for correction, and copies the
+ result back to clipboard. Only makes technical corrections without changing meaning or
+ tone.
+
+ Workflow:
+
+  1 Read text from clipboard (or TEXT argument)
+  2 Send to LLM for grammar/spelling/punctuation fixes
+  3 Copy corrected text to clipboard (unless --json)
+  4 Display result
+
+ Examples:
+
+
+  # Correct text from clipboard (default)
+  agent-cli autocorrect
+
+  # Correct specific text
+  agent-cli autocorrect "this is incorect"
+
+  # Use OpenAI instead of local Ollama
+  agent-cli autocorrect --llm-provider openai
+
+  # Get JSON output for scripting (disables clipboard)
+  agent-cli autocorrect --json
+
 
 ╭─ General Options ──────────────────────────────────────────────────────────────────────╮
-│   text      [TEXT]  The text to correct. If not provided, reads from clipboard.        │
+│   text      [TEXT]  Text to correct. If omitted, reads from system clipboard.          │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Options ──────────────────────────────────────────────────────────────────────────────╮
 │ --help  -h        Show this message and exit.                                          │

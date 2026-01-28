@@ -1,4 +1,4 @@
-"""Read text from clipboard, correct it using a local or remote LLM, and write the result back to the clipboard."""
+"""Fix grammar, spelling, and punctuation in text using an LLM."""
 
 from __future__ import annotations
 
@@ -216,7 +216,7 @@ def autocorrect(
     *,
     text: str | None = typer.Argument(
         None,
-        help="The text to correct. If not provided, reads from clipboard.",
+        help="Text to correct. If omitted, reads from system clipboard.",
         rich_help_panel="General Options",
     ),
     # --- Provider Selection ---
@@ -240,7 +240,33 @@ def autocorrect(
     config_file: str | None = opts.CONFIG_FILE,
     print_args: bool = opts.PRINT_ARGS,
 ) -> None:
-    """Correct text from clipboard using a local or remote LLM."""
+    """Fix grammar, spelling, and punctuation using an LLM.
+
+    Reads text from clipboard (or argument), sends to LLM for correction,
+    and copies the result back to clipboard. Only makes technical corrections
+    without changing meaning or tone.
+
+    **Workflow:**
+    1. Read text from clipboard (or `TEXT` argument)
+    2. Send to LLM for grammar/spelling/punctuation fixes
+    3. Copy corrected text to clipboard (unless `--json`)
+    4. Display result
+
+    **Examples:**
+    ```bash
+    # Correct text from clipboard (default)
+    agent-cli autocorrect
+
+    # Correct specific text
+    agent-cli autocorrect "this is incorect"
+
+    # Use OpenAI instead of local Ollama
+    agent-cli autocorrect --llm-provider openai
+
+    # Get JSON output for scripting (disables clipboard)
+    agent-cli autocorrect --json
+    ```
+    """
     if print_args:
         print_command_line_args(locals())
 
