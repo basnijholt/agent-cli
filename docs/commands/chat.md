@@ -61,9 +61,9 @@ agent-cli chat --last-n-messages 100 --history-dir ~/.my-chat-history
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--input-device-index` | - | Index of the audio input device to use. |
-| `--input-device-name` | - | Device name keywords for partial matching. |
-| `--list-devices` | `false` | List available audio input and output devices and exit. |
+| `--input-device-index` | - | Audio input device index (see `--list-devices`). Uses system default if omitted. |
+| `--input-device-name` | - | Select input device by name substring (e.g., `MacBook` or `USB`). |
+| `--list-devices` | `false` | List available audio devices with their indices and exit. |
 
 ### Audio Input: Wyoming
 
@@ -154,9 +154,9 @@ agent-cli chat --last-n-messages 100 --history-dir ~/.my-chat-history
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--stop` | `false` | Stop any running background process. |
-| `--status` | `false` | Check if a background process is running. |
-| `--toggle` | `false` | Toggle the background process on/off. If the process is running, it will be stopped. If the process is not running, it will be started. |
+| `--stop` | `false` | Stop any running instance (sends SIGINT to trigger transcription). |
+| `--status` | `false` | Check if an instance is currently recording. |
+| `--toggle` | `false` | Start recording if not running, stop if running. Ideal for hotkey binding. |
 
 ### History Options
 

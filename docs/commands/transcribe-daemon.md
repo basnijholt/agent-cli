@@ -85,9 +85,9 @@ agent-cli transcribe-daemon --silence-threshold 1.5
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--input-device-index` | - | Index of the audio input device to use. |
-| `--input-device-name` | - | Device name keywords for partial matching. |
-| `--list-devices` | `false` | List available audio input and output devices and exit. |
+| `--input-device-index` | - | Audio input device index (see `--list-devices`). Uses system default if omitted. |
+| `--input-device-name` | - | Select input device by name substring (e.g., `MacBook` or `USB`). |
+| `--list-devices` | `false` | List available audio devices with their indices and exit. |
 
 ### Audio Input: Wyoming
 
@@ -136,14 +136,14 @@ agent-cli transcribe-daemon --silence-threshold 1.5
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--llm/--no-llm` | `false` | Use an LLM to process the transcript. |
+| `--llm/--no-llm` | `false` | Clean up transcript with LLM: fix errors, add punctuation, remove filler words. Uses `--extra-instructions` if set (via CLI or config file). |
 
 ### Process Management
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--stop` | `false` | Stop any running background process. |
-| `--status` | `false` | Check if a background process is running. |
+| `--stop` | `false` | Stop any running instance (sends SIGINT to trigger transcription). |
+| `--status` | `false` | Check if an instance is currently recording. |
 
 ### General Options
 

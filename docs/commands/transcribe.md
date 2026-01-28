@@ -72,16 +72,16 @@ The `--from-file` option supports multiple audio formats:
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--extra-instructions` | - | Additional instructions for the LLM to process the transcription. |
-| `--llm/--no-llm` | `false` | Use an LLM to process the transcript. |
+| `--extra-instructions` | - | Extra instructions appended to the LLM cleanup prompt (requires `--llm`). |
+| `--llm/--no-llm` | `false` | Clean up transcript with LLM: fix errors, add punctuation, remove filler words. Uses `--extra-instructions` if set (via CLI or config file). |
 
 ### Audio Recovery
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--from-file` | - | Transcribe audio from a file (supports wav, mp3, m4a, ogg, flac, aac, webm). Requires ffmpeg for non-WAV formats with Wyoming provider. |
-| `--last-recording` | `0` | Transcribe a saved recording. Use 1 for most recent, 2 for second-to-last, etc. Use 0 to disable (default). |
-| `--save-recording/--no-save-recording` | `true` | Save the audio recording to disk for recovery. |
+| `--from-file` | - | Transcribe from audio file instead of microphone. Supports wav, mp3, m4a, ogg, flac, aac, webm. Requires `ffmpeg` for non-WAV formats with Wyoming. |
+| `--last-recording` | `0` | Re-transcribe a saved recording (1=most recent, 2=second-to-last, etc). Useful after connection failures or to retry with different options. |
+| `--save-recording/--no-save-recording` | `true` | Save recordings to ~/.cache/agent-cli/ for `--last-recording` recovery. |
 
 ### Provider Selection
 
@@ -94,9 +94,9 @@ The `--from-file` option supports multiple audio formats:
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--input-device-index` | - | Index of the audio input device to use. |
-| `--input-device-name` | - | Device name keywords for partial matching. |
-| `--list-devices` | `false` | List available audio input and output devices and exit. |
+| `--input-device-index` | - | Audio input device index (see `--list-devices`). Uses system default if omitted. |
+| `--input-device-name` | - | Select input device by name substring (e.g., `MacBook` or `USB`). |
+| `--list-devices` | `false` | List available audio devices with their indices and exit. |
 
 ### Audio Input: Wyoming
 
@@ -145,9 +145,9 @@ The `--from-file` option supports multiple audio formats:
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--stop` | `false` | Stop any running background process. |
-| `--status` | `false` | Check if a background process is running. |
-| `--toggle` | `false` | Toggle the background process on/off. If the process is running, it will be stopped. If the process is not running, it will be started. |
+| `--stop` | `false` | Stop any running instance (sends SIGINT to trigger transcription). |
+| `--status` | `false` | Check if an instance is currently recording. |
+| `--toggle` | `false` | Start recording if not running, stop if running. Ideal for hotkey binding. |
 
 ### General Options
 
@@ -157,10 +157,10 @@ The `--from-file` option supports multiple audio formats:
 | `--log-level` | `info` | Set logging level. |
 | `--log-file` | - | Path to a file to write logs to. |
 | `--quiet, -q` | `false` | Suppress console output from rich. |
-| `--json` | `false` | Output result as JSON for automation. Implies --quiet and --no-clipboard. |
+| `--json` | `false` | Output result as JSON (implies `--quiet` and `--no-clipboard`). Keys: `raw_transcript`, `transcript`, `llm_enabled`. |
 | `--config` | - | Path to a TOML configuration file. |
 | `--print-args` | `false` | Print the command line arguments, including variables taken from the configuration file. |
-| `--transcription-log` | - | Path to log transcription results with timestamps, hostname, model, and raw output. |
+| `--transcription-log` | - | Append transcripts to JSONL file (timestamp, hostname, model, raw/processed text). Recent entries provide context for LLM cleanup. |
 
 
 <!-- OUTPUT:END -->

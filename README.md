@@ -645,9 +645,10 @@ the `[defaults]` section of your configuration file.
 │                                                   [default: info]                      │
 │ --log-file            TEXT                        Path to a file to write logs to.     │
 │ --quiet       -q                                  Suppress console output from rich.   │
-│ --json                                            Output result as JSON for            │
-│                                                   automation. Implies --quiet and      │
-│                                                   --no-clipboard.                      │
+│ --json                                            Output result as JSON (implies       │
+│                                                   --quiet and --no-clipboard). Keys:   │
+│                                                   raw_transcript, transcript,          │
+│                                                   llm_enabled.                         │
 │ --config              TEXT                        Path to a TOML configuration file.   │
 │ --print-args                                      Print the command line arguments,    │
 │                                                   including variables taken from the   │
@@ -695,30 +696,50 @@ the `[defaults]` section of your configuration file.
 
  Usage: agent-cli transcribe [OPTIONS]
 
- Wyoming ASR Client for streaming microphone audio to a transcription server.
+ Record audio from microphone and transcribe to text.
+
+ Records until you press Ctrl+C (or send SIGINT), then transcribes using your configured
+ ASR provider. The transcript is copied to the clipboard by default.
+
+ With --llm: Passes the raw transcript through an LLM to clean up speech recognition
+ errors, add punctuation, remove filler words, and improve readability.
+
+ With --toggle: Bind to a hotkey for push-to-talk. First call starts recording, second
+ call stops and transcribes.
+
+ Examples:
+
+  • Record and transcribe: agent-cli transcribe
+  • With LLM cleanup: agent-cli transcribe --llm
+  • Re-transcribe last recording: agent-cli transcribe --last-recording 1
 
 ╭─ Options ──────────────────────────────────────────────────────────────────────────────╮
 │ --help  -h        Show this message and exit.                                          │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ LLM Configuration ────────────────────────────────────────────────────────────────────╮
-│ --extra-instructions                TEXT  Additional instructions for the LLM to       │
-│                                           process the transcription.                   │
-│ --llm                   --no-llm          Use an LLM to process the transcript.        │
+│ --extra-instructions                TEXT  Extra instructions appended to the LLM       │
+│                                           cleanup prompt (requires --llm).             │
+│ --llm                   --no-llm          Clean up transcript with LLM: fix errors,    │
+│                                           add punctuation, remove filler words. Uses   │
+│                                           --extra-instructions if set (via CLI or      │
+│                                           config file).                                │
 │                                           [default: no-llm]                            │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Audio Recovery ───────────────────────────────────────────────────────────────────────╮
-│ --from-file                                PATH     Transcribe audio from a file       │
-│                                                     (supports wav, mp3, m4a, ogg,      │
-│                                                     flac, aac, webm). Requires ffmpeg  │
-│                                                     for non-WAV formats with Wyoming   │
-│                                                     provider.                          │
-│ --last-recording                           INTEGER  Transcribe a saved recording. Use  │
-│                                                     1 for most recent, 2 for           │
-│                                                     second-to-last, etc. Use 0 to      │
-│                                                     disable (default).                 │
+│ --from-file                                PATH     Transcribe from audio file instead │
+│                                                     of microphone. Supports wav, mp3,  │
+│                                                     m4a, ogg, flac, aac, webm.         │
+│                                                     Requires ffmpeg for non-WAV        │
+│                                                     formats with Wyoming.              │
+│ --last-recording                           INTEGER  Re-transcribe a saved recording    │
+│                                                     (1=most recent, 2=second-to-last,  │
+│                                                     etc). Useful after connection      │
+│                                                     failures or to retry with          │
+│                                                     different options.                 │
 │                                                     [default: 0]                       │
-│ --save-recording    --no-save-recording             Save the audio recording to disk   │
-│                                                     for recovery.                      │
+│ --save-recording    --no-save-recording             Save recordings to                 │
+│                                                     ~/.cache/agent-cli/ for            │
+│                                                     --last-recording recovery.         │
 │                                                     [default: save-recording]          │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Provider Selection ───────────────────────────────────────────────────────────────────╮
@@ -730,10 +751,12 @@ the `[defaults]` section of your configuration file.
 │                             [default: ollama]                                          │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Audio Input ──────────────────────────────────────────────────────────────────────────╮
-│ --input-device-index        INTEGER  Index of the audio input device to use.           │
-│ --input-device-name         TEXT     Device name keywords for partial matching.        │
-│ --list-devices                       List available audio input and output devices and │
-│                                      exit.                                             │
+│ --input-device-index        INTEGER  Audio input device index (see --list-devices).    │
+│                                      Uses system default if omitted.                   │
+│ --input-device-name         TEXT     Select input device by name substring (e.g.,      │
+│                                      MacBook or USB).                                  │
+│ --list-devices                       List available audio devices with their indices   │
+│                                      and exit.                                         │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Audio Input: Wyoming ─────────────────────────────────────────────────────────────────╮
 │ --asr-wyoming-ip          TEXT     Wyoming ASR server IP address.                      │
@@ -788,10 +811,10 @@ the `[defaults]` section of your configuration file.
 │                                 [env var: GEMINI_API_KEY]                              │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Process Management ───────────────────────────────────────────────────────────────────╮
-│ --stop            Stop any running background process.                                 │
-│ --status          Check if a background process is running.                            │
-│ --toggle          Toggle the background process on/off. If the process is running, it  │
-│                   will be stopped. If the process is not running, it will be started.  │
+│ --stop            Stop any running instance (sends SIGINT to trigger transcription).   │
+│ --status          Check if an instance is currently recording.                         │
+│ --toggle          Start recording if not running, stop if running. Ideal for hotkey    │
+│                   binding.                                                             │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ General Options ──────────────────────────────────────────────────────────────────────╮
 │ --clipboard              --no-clipboard                          Copy result to        │
@@ -805,9 +828,11 @@ the `[defaults]` section of your configuration file.
 │ --quiet              -q                                          Suppress console      │
 │                                                                  output from rich.     │
 │ --json                                                           Output result as JSON │
-│                                                                  for automation.       │
-│                                                                  Implies --quiet and   │
-│                                                                  --no-clipboard.       │
+│                                                                  (implies --quiet and  │
+│                                                                  --no-clipboard).      │
+│                                                                  Keys: raw_transcript, │
+│                                                                  transcript,           │
+│                                                                  llm_enabled.          │
 │ --config                                   TEXT                  Path to a TOML        │
 │                                                                  configuration file.   │
 │ --print-args                                                     Print the command     │
@@ -815,11 +840,13 @@ the `[defaults]` section of your configuration file.
 │                                                                  including variables   │
 │                                                                  taken from the        │
 │                                                                  configuration file.   │
-│ --transcription-log                        PATH                  Path to log           │
-│                                                                  transcription results │
-│                                                                  with timestamps,      │
-│                                                                  hostname, model, and  │
-│                                                                  raw output.           │
+│ --transcription-log                        PATH                  Append transcripts to │
+│                                                                  JSONL file            │
+│                                                                  (timestamp, hostname, │
+│                                                                  model, raw/processed  │
+│                                                                  text). Recent entries │
+│                                                                  provide context for   │
+│                                                                  LLM cleanup.          │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 
 ```
@@ -957,10 +984,12 @@ uv tool install "agent-cli[vad]" -p 3.13
 │                             [default: ollama]                                          │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Audio Input ──────────────────────────────────────────────────────────────────────────╮
-│ --input-device-index        INTEGER  Index of the audio input device to use.           │
-│ --input-device-name         TEXT     Device name keywords for partial matching.        │
-│ --list-devices                       List available audio input and output devices and │
-│                                      exit.                                             │
+│ --input-device-index        INTEGER  Audio input device index (see --list-devices).    │
+│                                      Uses system default if omitted.                   │
+│ --input-device-name         TEXT     Select input device by name substring (e.g.,      │
+│                                      MacBook or USB).                                  │
+│ --list-devices                       List available audio devices with their indices   │
+│                                      and exit.                                         │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Audio Input: Wyoming ─────────────────────────────────────────────────────────────────╮
 │ --asr-wyoming-ip          TEXT     Wyoming ASR server IP address.                      │
@@ -1015,12 +1044,14 @@ uv tool install "agent-cli[vad]" -p 3.13
 │                                 [env var: GEMINI_API_KEY]                              │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ LLM Configuration ────────────────────────────────────────────────────────────────────╮
-│ --llm    --no-llm      Use an LLM to process the transcript.                           │
+│ --llm    --no-llm      Clean up transcript with LLM: fix errors, add punctuation,      │
+│                        remove filler words. Uses --extra-instructions if set (via CLI  │
+│                        or config file).                                                │
 │                        [default: no-llm]                                               │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Process Management ───────────────────────────────────────────────────────────────────╮
-│ --stop            Stop any running background process.                                 │
-│ --status          Check if a background process is running.                            │
+│ --stop            Stop any running instance (sends SIGINT to trigger transcription).   │
+│ --status          Check if an instance is currently recording.                         │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ General Options ──────────────────────────────────────────────────────────────────────╮
 │ --log-level           [debug|info|warning|error]  Set logging level.                   │
@@ -1152,7 +1183,7 @@ uv tool install "agent-cli[vad]" -p 3.13
 │                               [env var: GEMINI_API_KEY]                                │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Audio Input ──────────────────────────────────────────────────────────────────────────╮
-│ --list-devices          List available audio input and output devices and exit.        │
+│ --list-devices          List available audio devices with their indices and exit.      │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ General Options ──────────────────────────────────────────────────────────────────────╮
 │ --save-file           PATH                        Save audio to WAV file instead of    │
@@ -1162,19 +1193,20 @@ uv tool install "agent-cli[vad]" -p 3.13
 │                                                   [default: info]                      │
 │ --log-file            TEXT                        Path to a file to write logs to.     │
 │ --quiet       -q                                  Suppress console output from rich.   │
-│ --json                                            Output result as JSON for            │
-│                                                   automation. Implies --quiet and      │
-│                                                   --no-clipboard.                      │
+│ --json                                            Output result as JSON (implies       │
+│                                                   --quiet and --no-clipboard). Keys:   │
+│                                                   raw_transcript, transcript,          │
+│                                                   llm_enabled.                         │
 │ --config              TEXT                        Path to a TOML configuration file.   │
 │ --print-args                                      Print the command line arguments,    │
 │                                                   including variables taken from the   │
 │                                                   configuration file.                  │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Process Management ───────────────────────────────────────────────────────────────────╮
-│ --stop            Stop any running background process.                                 │
-│ --status          Check if a background process is running.                            │
-│ --toggle          Toggle the background process on/off. If the process is running, it  │
-│                   will be stopped. If the process is not running, it will be started.  │
+│ --stop            Stop any running instance (sends SIGINT to trigger transcription).   │
+│ --status          Check if an instance is currently recording.                         │
+│ --toggle          Start recording if not running, stop if running. Ideal for hotkey    │
+│                   binding.                                                             │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 
 ```
@@ -1250,10 +1282,12 @@ uv tool install "agent-cli[vad]" -p 3.13
 │                             [default: wyoming]                                         │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Audio Input ──────────────────────────────────────────────────────────────────────────╮
-│ --input-device-index        INTEGER  Index of the audio input device to use.           │
-│ --input-device-name         TEXT     Device name keywords for partial matching.        │
-│ --list-devices                       List available audio input and output devices and │
-│                                      exit.                                             │
+│ --input-device-index        INTEGER  Audio input device index (see --list-devices).    │
+│                                      Uses system default if omitted.                   │
+│ --input-device-name         TEXT     Select input device by name substring (e.g.,      │
+│                                      MacBook or USB).                                  │
+│ --list-devices                       List available audio devices with their indices   │
+│                                      and exit.                                         │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Audio Input: Wyoming ─────────────────────────────────────────────────────────────────╮
 │ --asr-wyoming-ip          TEXT     Wyoming ASR server IP address.                      │
@@ -1347,10 +1381,10 @@ uv tool install "agent-cli[vad]" -p 3.13
 │                                 [default: Kore]                                        │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Process Management ───────────────────────────────────────────────────────────────────╮
-│ --stop            Stop any running background process.                                 │
-│ --status          Check if a background process is running.                            │
-│ --toggle          Toggle the background process on/off. If the process is running, it  │
-│                   will be stopped. If the process is not running, it will be started.  │
+│ --stop            Stop any running instance (sends SIGINT to trigger transcription).   │
+│ --status          Check if an instance is currently recording.                         │
+│ --toggle          Start recording if not running, stop if running. Ideal for hotkey    │
+│                   binding.                                                             │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ General Options ──────────────────────────────────────────────────────────────────────╮
 │ --save-file                         PATH                      Save audio to WAV file   │
@@ -1367,9 +1401,10 @@ uv tool install "agent-cli[vad]" -p 3.13
 │ --quiet       -q                                              Suppress console output  │
 │                                                               from rich.               │
 │ --json                                                        Output result as JSON    │
-│                                                               for automation. Implies  │
-│                                                               --quiet and              │
-│                                                               --no-clipboard.          │
+│                                                               (implies --quiet and     │
+│                                                               --no-clipboard). Keys:   │
+│                                                               raw_transcript,          │
+│                                                               transcript, llm_enabled. │
 │ --config                            TEXT                      Path to a TOML           │
 │                                                               configuration file.      │
 │ --print-args                                                  Print the command line   │
@@ -1470,10 +1505,12 @@ uv tool install "agent-cli[vad]" -p 3.13
 │                                    [default: ok_nabu]                                  │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Audio Input ──────────────────────────────────────────────────────────────────────────╮
-│ --input-device-index        INTEGER  Index of the audio input device to use.           │
-│ --input-device-name         TEXT     Device name keywords for partial matching.        │
-│ --list-devices                       List available audio input and output devices and │
-│                                      exit.                                             │
+│ --input-device-index        INTEGER  Audio input device index (see --list-devices).    │
+│                                      Uses system default if omitted.                   │
+│ --input-device-name         TEXT     Select input device by name substring (e.g.,      │
+│                                      MacBook or USB).                                  │
+│ --list-devices                       List available audio devices with their indices   │
+│                                      and exit.                                         │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Audio Input: Wyoming ─────────────────────────────────────────────────────────────────╮
 │ --asr-wyoming-ip          TEXT     Wyoming ASR server IP address.                      │
@@ -1567,10 +1604,10 @@ uv tool install "agent-cli[vad]" -p 3.13
 │                                 [default: Kore]                                        │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Process Management ───────────────────────────────────────────────────────────────────╮
-│ --stop            Stop any running background process.                                 │
-│ --status          Check if a background process is running.                            │
-│ --toggle          Toggle the background process on/off. If the process is running, it  │
-│                   will be stopped. If the process is not running, it will be started.  │
+│ --stop            Stop any running instance (sends SIGINT to trigger transcription).   │
+│ --status          Check if an instance is currently recording.                         │
+│ --toggle          Start recording if not running, stop if running. Ideal for hotkey    │
+│                   binding.                                                             │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ General Options ──────────────────────────────────────────────────────────────────────╮
 │ --save-file                         PATH                      Save audio to WAV file   │
@@ -1693,10 +1730,12 @@ uv tool install "agent-cli[vad]" -p 3.13
 │                             [default: wyoming]                                         │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Audio Input ──────────────────────────────────────────────────────────────────────────╮
-│ --input-device-index        INTEGER  Index of the audio input device to use.           │
-│ --input-device-name         TEXT     Device name keywords for partial matching.        │
-│ --list-devices                       List available audio input and output devices and │
-│                                      exit.                                             │
+│ --input-device-index        INTEGER  Audio input device index (see --list-devices).    │
+│                                      Uses system default if omitted.                   │
+│ --input-device-name         TEXT     Select input device by name substring (e.g.,      │
+│                                      MacBook or USB).                                  │
+│ --list-devices                       List available audio devices with their indices   │
+│                                      and exit.                                         │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Audio Input: Wyoming ─────────────────────────────────────────────────────────────────╮
 │ --asr-wyoming-ip          TEXT     Wyoming ASR server IP address.                      │
@@ -1796,10 +1835,10 @@ uv tool install "agent-cli[vad]" -p 3.13
 │                                 [default: Kore]                                        │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Process Management ───────────────────────────────────────────────────────────────────╮
-│ --stop            Stop any running background process.                                 │
-│ --status          Check if a background process is running.                            │
-│ --toggle          Toggle the background process on/off. If the process is running, it  │
-│                   will be stopped. If the process is not running, it will be started.  │
+│ --stop            Stop any running instance (sends SIGINT to trigger transcription).   │
+│ --status          Check if an instance is currently recording.                         │
+│ --toggle          Start recording if not running, stop if running. Ideal for hotkey    │
+│                   binding.                                                             │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ History Options ──────────────────────────────────────────────────────────────────────╮
 │ --history-dir            PATH     Directory for conversation history and long-term     │

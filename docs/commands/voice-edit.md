@@ -63,9 +63,9 @@ agent-cli voice-edit --stop
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--input-device-index` | - | Index of the audio input device to use. |
-| `--input-device-name` | - | Device name keywords for partial matching. |
-| `--list-devices` | `false` | List available audio input and output devices and exit. |
+| `--input-device-index` | - | Audio input device index (see `--list-devices`). Uses system default if omitted. |
+| `--input-device-name` | - | Select input device by name substring (e.g., `MacBook` or `USB`). |
+| `--list-devices` | `false` | List available audio devices with their indices and exit. |
 
 ### Audio Input: Wyoming
 
@@ -154,9 +154,9 @@ agent-cli voice-edit --stop
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--stop` | `false` | Stop any running background process. |
-| `--status` | `false` | Check if a background process is running. |
-| `--toggle` | `false` | Toggle the background process on/off. If the process is running, it will be stopped. If the process is not running, it will be started. |
+| `--stop` | `false` | Stop any running instance (sends SIGINT to trigger transcription). |
+| `--status` | `false` | Check if an instance is currently recording. |
+| `--toggle` | `false` | Start recording if not running, stop if running. Ideal for hotkey binding. |
 
 ### General Options
 
@@ -167,7 +167,7 @@ agent-cli voice-edit --stop
 | `--log-level` | `info` | Set logging level. |
 | `--log-file` | - | Path to a file to write logs to. |
 | `--quiet, -q` | `false` | Suppress console output from rich. |
-| `--json` | `false` | Output result as JSON for automation. Implies --quiet and --no-clipboard. |
+| `--json` | `false` | Output result as JSON (implies `--quiet` and `--no-clipboard`). Keys: `raw_transcript`, `transcript`, `llm_enabled`. |
 | `--config` | - | Path to a TOML configuration file. |
 | `--print-args` | `false` | Print the command line arguments, including variables taken from the configuration file. |
 

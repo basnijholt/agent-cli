@@ -47,7 +47,8 @@ TTS_PROVIDER: str = typer.Option(
 LLM: bool = typer.Option(
     False,  # noqa: FBT003
     "--llm/--no-llm",
-    help="Use an LLM to process the transcript.",
+    help="Clean up transcript with LLM: fix errors, add punctuation, remove filler words. "
+    "Uses `--extra-instructions` if set (via CLI or config file).",
     rich_help_panel="LLM Configuration",
 )
 # Ollama (local service)
@@ -114,19 +115,19 @@ EMBEDDING_MODEL: str = typer.Option(
 INPUT_DEVICE_INDEX: int | None = typer.Option(
     None,
     "--input-device-index",
-    help="Index of the audio input device to use.",
+    help="Audio input device index (see `--list-devices`). Uses system default if omitted.",
     rich_help_panel="Audio Input",
 )
 INPUT_DEVICE_NAME: str | None = typer.Option(
     None,
     "--input-device-name",
-    help="Device name keywords for partial matching.",
+    help="Select input device by name substring (e.g., `MacBook` or `USB`).",
     rich_help_panel="Audio Input",
 )
 LIST_DEVICES: bool = typer.Option(
     False,  # noqa: FBT003
     "--list-devices",
-    help="List available audio input and output devices and exit.",
+    help="List available audio devices with their indices and exit.",
     is_eager=True,
     rich_help_panel="Audio Input",
 )
@@ -315,21 +316,19 @@ TTS_GEMINI_VOICE: str = typer.Option(
 STOP: bool = typer.Option(
     False,  # noqa: FBT003
     "--stop",
-    help="Stop any running background process.",
+    help="Stop any running instance (sends SIGINT to trigger transcription).",
     rich_help_panel="Process Management",
 )
 STATUS: bool = typer.Option(
     False,  # noqa: FBT003
     "--status",
-    help="Check if a background process is running.",
+    help="Check if an instance is currently recording.",
     rich_help_panel="Process Management",
 )
 TOGGLE: bool = typer.Option(
     False,  # noqa: FBT003
     "--toggle",
-    help="Toggle the background process on/off. "
-    "If the process is running, it will be stopped. "
-    "If the process is not running, it will be started.",
+    help="Start recording if not running, stop if running. Ideal for hotkey binding.",
     rich_help_panel="Process Management",
 )
 
@@ -388,7 +387,8 @@ QUIET: bool = typer.Option(
 JSON_OUTPUT: bool = typer.Option(
     False,  # noqa: FBT003
     "--json",
-    help="Output result as JSON for automation. Implies --quiet and --no-clipboard.",
+    help="Output result as JSON (implies `--quiet` and `--no-clipboard`). "
+    "Keys: `raw_transcript`, `transcript`, `llm_enabled`.",
     rich_help_panel="General Options",
 )
 SAVE_FILE: Path | None = typer.Option(
@@ -400,7 +400,8 @@ SAVE_FILE: Path | None = typer.Option(
 TRANSCRIPTION_LOG: Path | None = typer.Option(
     None,
     "--transcription-log",
-    help="Path to log transcription results with timestamps, hostname, model, and raw output.",
+    help="Append transcripts to JSONL file (timestamp, hostname, model, raw/processed text). "
+    "Recent entries provide context for LLM cleanup.",
     rich_help_panel="General Options",
 )
 
@@ -416,18 +417,21 @@ SERVER_HOST: str = typer.Option(
 FROM_FILE: Path | None = typer.Option(
     None,
     "--from-file",
-    help="Transcribe audio from a file (supports wav, mp3, m4a, ogg, flac, aac, webm). Requires ffmpeg for non-WAV formats with Wyoming provider.",
+    help="Transcribe from audio file instead of microphone. "
+    "Supports wav, mp3, m4a, ogg, flac, aac, webm. "
+    "Requires `ffmpeg` for non-WAV formats with Wyoming.",
     rich_help_panel="Audio Recovery",
 )
 LAST_RECORDING: int = typer.Option(
     0,
     "--last-recording",
-    help="Transcribe a saved recording. Use 1 for most recent, 2 for second-to-last, etc. Use 0 to disable (default).",
+    help="Re-transcribe a saved recording (1=most recent, 2=second-to-last, etc). "
+    "Useful after connection failures or to retry with different options.",
     rich_help_panel="Audio Recovery",
 )
 SAVE_RECORDING: bool = typer.Option(
     True,  # noqa: FBT003
     "--save-recording/--no-save-recording",
-    help="Save the audio recording to disk for recovery.",
+    help="Save recordings to ~/.cache/agent-cli/ for `--last-recording` recovery.",
     rich_help_panel="Audio Recovery",
 )

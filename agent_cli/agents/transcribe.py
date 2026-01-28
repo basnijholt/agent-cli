@@ -471,7 +471,7 @@ def transcribe(  # noqa: PLR0912
     extra_instructions: str | None = typer.Option(
         None,
         "--extra-instructions",
-        help="Additional instructions for the LLM to process the transcription.",
+        help="Extra instructions appended to the LLM cleanup prompt (requires `--llm`).",
         rich_help_panel="LLM Configuration",
     ),
     from_file: Path | None = opts.FROM_FILE,
@@ -513,7 +513,25 @@ def transcribe(  # noqa: PLR0912
     print_args: bool = opts.PRINT_ARGS,
     transcription_log: Path | None = opts.TRANSCRIPTION_LOG,
 ) -> None:
-    """Wyoming ASR Client for streaming microphone audio to a transcription server."""
+    """Record audio from microphone and transcribe to text.
+
+    Records until you press Ctrl+C (or send SIGINT), then transcribes using your
+    configured ASR provider. The transcript is copied to the clipboard by default.
+
+    **With `--llm`**: Passes the raw transcript through an LLM to clean up speech
+    recognition errors, add punctuation, remove filler words, and improve readability.
+
+    **With `--toggle`**: Bind to a hotkey for push-to-talk. First call starts recording,
+    second call stops and transcribes.
+
+    **Examples**:
+
+    - Record and transcribe: `agent-cli transcribe`
+
+    - With LLM cleanup: `agent-cli transcribe --llm`
+
+    - Re-transcribe last recording: `agent-cli transcribe --last-recording 1`
+    """
     if print_args:
         print_command_line_args(locals())
 
