@@ -29,7 +29,30 @@ def _has(package: str) -> bool:
 
 app = typer.Typer(
     name="server",
-    help="Run ASR/TTS servers (Whisper, TTS, or proxy mode).",
+    help="""Run local ASR/TTS servers with OpenAI-compatible APIs.
+
+**Available servers:**
+
+• `whisper` - Local speech-to-text using Whisper models (faster-whisper or MLX)
+• `tts` - Local text-to-speech using Piper (CPU) or Kokoro (GPU)
+• `transcribe-proxy` - Proxy to external ASR providers (OpenAI, Gemini, Wyoming)
+
+**Common workflows:**
+
+```bash
+# Run local Whisper server (lazy loads large-v3 by default)
+agent-cli server whisper
+
+# Run local TTS with Kokoro backend (GPU-accelerated)
+agent-cli server tts --backend kokoro
+
+# Run transcription proxy using your configured ASR provider
+agent-cli server transcribe-proxy
+```
+
+All servers support Home Assistant via Wyoming protocol and can be used as
+drop-in replacements for OpenAI's audio APIs.
+""",
     add_completion=True,
     rich_markup_mode="markdown",
     no_args_is_help=True,
@@ -170,14 +193,18 @@ def whisper_cmd(  # noqa: PLR0912, PLR0915
         typer.Option(
             "--model",
             "-m",
-            help="Model name(s) to load (can specify multiple)",
+            help=(
+                "Whisper model(s) to load. Common models: `tiny`, `base`, `small`, "
+                "`medium`, `large-v3`, `distil-large-v3`. Can specify multiple for "
+                "different accuracy/speed tradeoffs. Default: `large-v3`"
+            ),
         ),
     ] = None,
     default_model: Annotated[
         str | None,
         typer.Option(
             "--default-model",
-            help="Default model when not specified in request",
+            help=("Model to use when client doesn't specify one. Must be in the `--model` list"),
         ),
     ] = None,
     device: Annotated[
@@ -185,42 +212,54 @@ def whisper_cmd(  # noqa: PLR0912, PLR0915
         typer.Option(
             "--device",
             "-d",
-            help="Device: auto, cuda, cuda:0, cpu",
+            help=(
+                "Compute device: `auto` (detect GPU), `cuda`, `cuda:0`, `cpu`. "
+                "MLX backend always uses Apple Silicon"
+            ),
         ),
     ] = "auto",
     compute_type: Annotated[
         str,
         typer.Option(
             "--compute-type",
-            help="Compute type: auto, float16, int8, int8_float16",
+            help=(
+                "Precision for faster-whisper: `auto`, `float16`, `int8`, `int8_float16`. "
+                "Lower precision = faster + less VRAM"
+            ),
         ),
     ] = "auto",
     cache_dir: Annotated[
         Path | None,
         typer.Option(
             "--cache-dir",
-            help="Model cache directory",
+            help="Custom directory for downloaded models (default: HuggingFace cache)",
         ),
     ] = None,
     ttl: Annotated[
         int,
         typer.Option(
             "--ttl",
-            help="Seconds before unloading idle model",
+            help=(
+                "Seconds of inactivity before unloading model from memory. "
+                "Set to 0 to keep loaded indefinitely"
+            ),
         ),
     ] = 300,
     preload: Annotated[
         bool,
         typer.Option(
             "--preload",
-            help="Load model(s) at startup and wait for completion",
+            help=(
+                "Load model(s) immediately at startup instead of on first request. "
+                "Useful for reducing first-request latency"
+            ),
         ),
     ] = False,
     host: Annotated[
         str,
         typer.Option(
             "--host",
-            help="Host to bind the server to",
+            help="Network interface to bind. Use `0.0.0.0` for all interfaces",
         ),
     ] = "0.0.0.0",  # noqa: S104
     port: Annotated[
@@ -228,28 +267,28 @@ def whisper_cmd(  # noqa: PLR0912, PLR0915
         typer.Option(
             "--port",
             "-p",
-            help="HTTP API port",
+            help="Port for OpenAI-compatible HTTP API (`/v1/audio/transcriptions`)",
         ),
     ] = 10301,
     wyoming_port: Annotated[
         int,
         typer.Option(
             "--wyoming-port",
-            help="Wyoming protocol port",
+            help="Port for Wyoming protocol (Home Assistant integration)",
         ),
     ] = 10300,
     no_wyoming: Annotated[
         bool,
         typer.Option(
             "--no-wyoming",
-            help="Disable Wyoming server",
+            help="Disable Wyoming protocol server (only run HTTP API)",
         ),
     ] = False,
     download_only: Annotated[
         bool,
         typer.Option(
             "--download-only",
-            help="Download model(s) and exit without starting server",
+            help="Download model(s) to cache and exit. Useful for Docker builds",
         ),
     ] = False,
     log_level: opts.LogLevel = opts.LOG_LEVEL,
@@ -258,7 +297,10 @@ def whisper_cmd(  # noqa: PLR0912, PLR0915
         typer.Option(
             "--backend",
             "-b",
-            help="Backend: auto (platform detection), faster-whisper, mlx",
+            help=(
+                "Inference backend: `auto` (faster-whisper on CUDA/CPU, MLX on Apple Silicon), "
+                "`faster-whisper`, `mlx`"
+            ),
         ),
     ] = "auto",
 ) -> None:
@@ -421,35 +463,51 @@ def whisper_cmd(  # noqa: PLR0912, PLR0915
 def transcribe_proxy_cmd(
     host: Annotated[
         str,
-        typer.Option("--host", help="Host to bind the server to"),
+        typer.Option("--host", help="Network interface to bind. Use `0.0.0.0` for all interfaces"),
     ] = "0.0.0.0",  # noqa: S104
     port: Annotated[
         int,
-        typer.Option("--port", "-p", help="Port to bind the server to"),
+        typer.Option("--port", "-p", help="Port for the HTTP API"),
     ] = 61337,
     reload: Annotated[
         bool,
-        typer.Option("--reload", help="Enable auto-reload for development"),
+        typer.Option("--reload", help="Auto-reload on code changes (development only)"),
     ] = False,
     log_level: opts.LogLevel = opts.LOG_LEVEL,
 ) -> None:
-    """Run transcription proxy server.
+    r"""Run transcription proxy that forwards to your configured ASR provider.
 
-    This server proxies transcription requests to configured ASR providers
-    (Wyoming, OpenAI, or Gemini) based on your agent-cli configuration.
+    Unlike `server whisper` which runs a local Whisper model, this proxy
+    forwards audio to external ASR providers configured in your agent-cli
+    config file or environment variables.
 
-    It exposes:
-    - /transcribe endpoint for audio transcription
-    - /health endpoint for health checks
+    **Supported ASR providers:** `wyoming`, `openai`, `gemini`
+    **Supported LLM providers for cleanup:** `ollama`, `openai`, `gemini`
 
-    This is the original server command functionality.
+    The server exposes:
+
+    • `POST /transcribe` - Accepts audio files, returns `{raw_transcript, cleaned_transcript}`
+    • `GET /health` - Health check endpoint
+
+    **When to use this vs `server whisper`:**
+
+    • Use `transcribe-proxy` when you want to use cloud ASR (OpenAI/Gemini)
+      or connect to a remote Wyoming server
+    • Use `server whisper` when you want to run a local Whisper model
+
+    Configuration is read from `~/.config/agent-cli/config.yaml` or env vars
+    like `ASR_PROVIDER`, `LLM_PROVIDER`, `OPENAI_API_KEY`, etc.
 
     Examples:
-        # Run on default port
+        # Run with providers from config file
         agent-cli server transcribe-proxy
 
-        # Run on custom port
-        agent-cli server transcribe-proxy --port 8080
+        # Run with OpenAI ASR via env vars
+        ASR_PROVIDER=openai OPENAI_API_KEY=sk-... agent-cli server transcribe-proxy
+
+        # Test with curl
+        curl -X POST http://localhost:61337/transcribe \
+          -F "audio=@recording.wav" -F "cleanup=true"
 
     """
     _check_server_deps()
@@ -481,14 +539,18 @@ def tts_cmd(  # noqa: PLR0915
         typer.Option(
             "--model",
             "-m",
-            help="Model name(s) to load. Piper: 'en_US-lessac-medium'. Kokoro: 'kokoro' (auto-downloads)",
+            help=(
+                "Model/voice(s) to load. Piper: `en_US-lessac-medium`, `en_GB-alan-medium`. "
+                "Kokoro: `af_heart`, `af_bella`, `am_adam`. "
+                "Auto-downloads on first use"
+            ),
         ),
     ] = None,
     default_model: Annotated[
         str | None,
         typer.Option(
             "--default-model",
-            help="Default model when not specified in request",
+            help=("Voice to use when client doesn't specify one. Must be in the `--model` list"),
         ),
     ] = None,
     device: Annotated[
@@ -496,35 +558,44 @@ def tts_cmd(  # noqa: PLR0915
         typer.Option(
             "--device",
             "-d",
-            help="Device: auto, cpu, cuda, mps (Piper is CPU-only, Kokoro supports GPU)",
+            help=(
+                "Compute device: `auto`, `cpu`, `cuda`, `mps`. "
+                "Piper is CPU-only; Kokoro supports GPU acceleration"
+            ),
         ),
     ] = "auto",
     cache_dir: Annotated[
         Path | None,
         typer.Option(
             "--cache-dir",
-            help="Model cache directory",
+            help="Custom directory for downloaded models (default: ~/.cache/agent-cli/tts/)",
         ),
     ] = None,
     ttl: Annotated[
         int,
         typer.Option(
             "--ttl",
-            help="Seconds before unloading idle model",
+            help=(
+                "Seconds of inactivity before unloading model from memory. "
+                "Set to 0 to keep loaded indefinitely"
+            ),
         ),
     ] = 300,
     preload: Annotated[
         bool,
         typer.Option(
             "--preload",
-            help="Load model(s) at startup and wait for completion",
+            help=(
+                "Load model(s) immediately at startup instead of on first request. "
+                "Useful for reducing first-request latency"
+            ),
         ),
     ] = False,
     host: Annotated[
         str,
         typer.Option(
             "--host",
-            help="Host to bind the server to",
+            help="Network interface to bind. Use `0.0.0.0` for all interfaces",
         ),
     ] = "0.0.0.0",  # noqa: S104
     port: Annotated[
@@ -532,28 +603,28 @@ def tts_cmd(  # noqa: PLR0915
         typer.Option(
             "--port",
             "-p",
-            help="HTTP API port",
+            help="Port for OpenAI-compatible HTTP API (`/v1/audio/speech`)",
         ),
     ] = 10201,
     wyoming_port: Annotated[
         int,
         typer.Option(
             "--wyoming-port",
-            help="Wyoming protocol port",
+            help="Port for Wyoming protocol (Home Assistant integration)",
         ),
     ] = 10200,
     no_wyoming: Annotated[
         bool,
         typer.Option(
             "--no-wyoming",
-            help="Disable Wyoming server",
+            help="Disable Wyoming protocol server (only run HTTP API)",
         ),
     ] = False,
     download_only: Annotated[
         bool,
         typer.Option(
             "--download-only",
-            help="Download model(s) and exit without starting server",
+            help="Download model(s)/voice(s) to cache and exit. Useful for Docker builds",
         ),
     ] = False,
     log_level: opts.LogLevel = opts.LOG_LEVEL,
@@ -562,7 +633,10 @@ def tts_cmd(  # noqa: PLR0915
         typer.Option(
             "--backend",
             "-b",
-            help="Backend: auto, piper, kokoro",
+            help=(
+                "TTS engine: `auto` (prefer Kokoro if available), "
+                "`piper` (CPU, many languages), `kokoro` (GPU, high quality)"
+            ),
         ),
     ] = "auto",
 ) -> None:
