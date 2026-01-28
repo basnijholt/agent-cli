@@ -229,15 +229,23 @@ def voice_edit(
     config_file: str | None = opts.CONFIG_FILE,
     print_args: bool = opts.PRINT_ARGS,
 ) -> None:
-    """Interact with clipboard text via a voice command using local or remote services.
+    """Edit or query clipboard text using voice commands.
 
-    Usage:
-    - Run in foreground: agent-cli voice-edit --input-device-index 1
-    - Run in background: agent-cli voice-edit --input-device-index 1 &
-    - Check status: agent-cli voice-edit --status
-    - Stop background process: agent-cli voice-edit --stop
-    - List output devices: agent-cli voice-edit --list-output-devices
-    - Save TTS to file: agent-cli voice-edit --tts --save-file response.wav
+    **Workflow:** Captures clipboard text → records your voice command → transcribes
+    it → sends both to an LLM → copies result back to clipboard.
+
+    Use this for hands-free text editing (e.g., "make this more formal") or
+    asking questions about clipboard content (e.g., "summarize this").
+
+    **Typical hotkey integration:** Run `voice-edit &` on keypress to start
+    recording, then send SIGINT (via `--stop`) on second keypress to process.
+
+    **Examples:**
+
+    - Basic usage: `agent-cli voice-edit`
+    - With TTS response: `agent-cli voice-edit --tts`
+    - Toggle on/off: `agent-cli voice-edit --toggle`
+    - List audio devices: `agent-cli voice-edit --list-devices`
     """
     if print_args:
         print_command_line_args(locals())
