@@ -39,9 +39,9 @@ agent-cli server transcribe-proxy --reload
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--host` | `0.0.0.0` | Host to bind the server to |
-| `--port, -p` | `61337` | Port to bind the server to |
-| `--reload` | `false` | Enable auto-reload for development |
+| `--host` | `0.0.0.0` | Network interface to bind. Use `0.0.0.0` for all interfaces |
+| `--port, -p` | `61337` | Port for the HTTP API |
+| `--reload` | `false` | Auto-reload on code changes (development only) |
 
 ### General Options
 
