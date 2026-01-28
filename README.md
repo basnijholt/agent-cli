@@ -817,10 +817,9 @@ the `[defaults]` section of your configuration file.
 │                                 [env var: GEMINI_API_KEY]                              │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Process Management ───────────────────────────────────────────────────────────────────╮
-│ --stop            Stop any running instance (sends SIGINT to trigger transcription).   │
-│ --status          Check if an instance is currently recording.                         │
-│ --toggle          Start recording if not running, stop if running. Ideal for hotkey    │
-│                   binding.                                                             │
+│ --stop            Stop any running instance of this command.                           │
+│ --status          Check if an instance is currently running.                           │
+│ --toggle          Start if not running, stop if running. Ideal for hotkey binding.     │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ General Options ──────────────────────────────────────────────────────────────────────╮
 │ --clipboard              --no-clipboard                          Copy result to        │
@@ -1053,8 +1052,8 @@ uv tool install "agent-cli[vad]" -p 3.13
 │                        [default: no-llm]                                               │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Process Management ───────────────────────────────────────────────────────────────────╮
-│ --stop            Stop any running instance (sends SIGINT to trigger transcription).   │
-│ --status          Check if an instance is currently recording.                         │
+│ --stop            Stop any running instance of this command.                           │
+│ --status          Check if an instance is currently running.                           │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ General Options ──────────────────────────────────────────────────────────────────────╮
 │ --log-level           [debug|info|warning|error]  Set logging level.                   │
@@ -1204,10 +1203,9 @@ uv tool install "agent-cli[vad]" -p 3.13
 │                                                   configuration file.                  │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Process Management ───────────────────────────────────────────────────────────────────╮
-│ --stop            Stop any running instance (sends SIGINT to trigger transcription).   │
-│ --status          Check if an instance is currently recording.                         │
-│ --toggle          Start recording if not running, stop if running. Ideal for hotkey    │
-│                   binding.                                                             │
+│ --stop            Stop any running instance of this command.                           │
+│ --status          Check if an instance is currently running.                           │
+│ --toggle          Start if not running, stop if running. Ideal for hotkey binding.     │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 
 ```
@@ -1382,10 +1380,9 @@ uv tool install "agent-cli[vad]" -p 3.13
 │                                 [default: Kore]                                        │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Process Management ───────────────────────────────────────────────────────────────────╮
-│ --stop            Stop any running instance (sends SIGINT to trigger transcription).   │
-│ --status          Check if an instance is currently recording.                         │
-│ --toggle          Start recording if not running, stop if running. Ideal for hotkey    │
-│                   binding.                                                             │
+│ --stop            Stop any running instance of this command.                           │
+│ --status          Check if an instance is currently running.                           │
+│ --toggle          Start if not running, stop if running. Ideal for hotkey binding.     │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ General Options ──────────────────────────────────────────────────────────────────────╮
 │ --save-file                         PATH                      Save audio to WAV file   │
@@ -1603,10 +1600,9 @@ uv tool install "agent-cli[vad]" -p 3.13
 │                                 [default: Kore]                                        │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Process Management ───────────────────────────────────────────────────────────────────╮
-│ --stop            Stop any running instance (sends SIGINT to trigger transcription).   │
-│ --status          Check if an instance is currently recording.                         │
-│ --toggle          Start recording if not running, stop if running. Ideal for hotkey    │
-│                   binding.                                                             │
+│ --stop            Stop any running instance of this command.                           │
+│ --status          Check if an instance is currently running.                           │
+│ --toggle          Start if not running, stop if running. Ideal for hotkey binding.     │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ General Options ──────────────────────────────────────────────────────────────────────╮
 │ --save-file                         PATH                      Save audio to WAV file   │
@@ -1834,10 +1830,9 @@ uv tool install "agent-cli[vad]" -p 3.13
 │                                 [default: Kore]                                        │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Process Management ───────────────────────────────────────────────────────────────────╮
-│ --stop            Stop any running instance (sends SIGINT to trigger transcription).   │
-│ --status          Check if an instance is currently recording.                         │
-│ --toggle          Start recording if not running, stop if running. Ideal for hotkey    │
-│                   binding.                                                             │
+│ --stop            Stop any running instance of this command.                           │
+│ --status          Check if an instance is currently running.                           │
+│ --toggle          Start if not running, stop if running. Ideal for hotkey binding.     │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ History Options ──────────────────────────────────────────────────────────────────────╮
 │ --history-dir            PATH     Directory for conversation history and long-term     │

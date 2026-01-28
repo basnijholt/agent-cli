@@ -316,19 +316,19 @@ TTS_GEMINI_VOICE: str = typer.Option(
 STOP: bool = typer.Option(
     False,  # noqa: FBT003
     "--stop",
-    help="Stop any running instance (sends SIGINT to trigger transcription).",
+    help="Stop any running instance of this command.",
     rich_help_panel="Process Management",
 )
 STATUS: bool = typer.Option(
     False,  # noqa: FBT003
     "--status",
-    help="Check if an instance is currently recording.",
+    help="Check if an instance is currently running.",
     rich_help_panel="Process Management",
 )
 TOGGLE: bool = typer.Option(
     False,  # noqa: FBT003
     "--toggle",
-    help="Start recording if not running, stop if running. Ideal for hotkey binding.",
+    help="Start if not running, stop if running. Ideal for hotkey binding.",
     rich_help_panel="Process Management",
 )
 

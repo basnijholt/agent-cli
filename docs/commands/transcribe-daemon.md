@@ -142,8 +142,8 @@ agent-cli transcribe-daemon --silence-threshold 1.5
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--stop` | `false` | Stop any running instance (sends SIGINT to trigger transcription). |
-| `--status` | `false` | Check if an instance is currently recording. |
+| `--stop` | `false` | Stop any running instance of this command. |
+| `--status` | `false` | Check if an instance is currently running. |
 
 ### General Options
 

@@ -154,9 +154,9 @@ agent-cli voice-edit --stop
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--stop` | `false` | Stop any running instance (sends SIGINT to trigger transcription). |
-| `--status` | `false` | Check if an instance is currently recording. |
-| `--toggle` | `false` | Start recording if not running, stop if running. Ideal for hotkey binding. |
+| `--stop` | `false` | Stop any running instance of this command. |
+| `--status` | `false` | Check if an instance is currently running. |
+| `--toggle` | `false` | Start if not running, stop if running. Ideal for hotkey binding. |
 
 ### General Options
 
