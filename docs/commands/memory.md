@@ -165,8 +165,8 @@ agent-cli memory add -c work "Project deadline is Friday"
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--file` | - | Read memories from file. Use '-' for stdin. Supports JSON array, JSON object with 'memories' key, or plain text (one per line). |
-| `--conversation-id` | `default` | Conversation ID to add memories to. |
+| `--file, -f` | - | Read memories from file. Use '-' for stdin. Supports JSON array, JSON object with 'memories' key, or plain text (one per line). |
+| `--conversation-id, -c` | `default` | Conversation ID to add memories to. |
 | `--memory-path` | `./memory_db` | Path to the memory store. |
 | `--git-versioning/--no-git-versioning` | `true` | Commit changes to git. |
 
@@ -174,7 +174,7 @@ agent-cli memory add -c work "Project deadline is Friday"
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--quiet` | `false` | Suppress console output from rich. |
+| `--quiet, -q` | `false` | Suppress console output from rich. |
 | `--config` | - | Path to a TOML configuration file. |
 | `--print-args` | `false` | Print the command line arguments, including variables taken from the configuration file. |
 
