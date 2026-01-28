@@ -20,13 +20,31 @@ from agent_cli.install.common import (
 def install_services() -> None:
     """Install all required services (Ollama, Whisper, Piper, OpenWakeWord).
 
-    This command installs:
-    - Ollama (local LLM server)
-    - Wyoming Faster Whisper (speech-to-text)
-    - Wyoming Piper (text-to-speech)
-    - Wyoming OpenWakeWord (wake word detection)
+    This command installs the following services:
 
-    The appropriate installation method is used based on your operating system.
+    • **Ollama** - Local LLM server for text processing
+    • **Wyoming Faster Whisper** - Speech-to-text transcription
+    • **Wyoming Piper** - Text-to-speech synthesis
+    • **Wyoming OpenWakeWord** - Wake word detection ("ok nabu", etc.)
+
+    The appropriate installation method is used based on your operating system
+    (Homebrew on macOS, apt/pip on Linux).
+
+    **Requirements:**
+
+    • macOS: Homebrew must be installed
+    • Linux: Requires sudo access for system packages
+
+    **Examples:**
+
+    Install all services:
+        `agent-cli install-services`
+
+    **After installation:**
+
+    1. Start the services: `agent-cli start-services`
+    2. Test transcription: `agent-cli transcribe --list-devices`
+    3. Set up hotkeys (optional): `agent-cli install-hotkeys`
     """
     script_name = get_platform_script("setup-macos.sh", "setup-linux.sh")
 
