@@ -387,8 +387,7 @@ QUIET: bool = typer.Option(
 JSON_OUTPUT: bool = typer.Option(
     False,  # noqa: FBT003
     "--json",
-    help="Output result as JSON (implies `--quiet` and `--no-clipboard`). "
-    "Keys: `raw_transcript`, `transcript`, `llm_enabled`.",
+    help="Output result as JSON (implies `--quiet` and `--no-clipboard`).",
     rich_help_panel="General Options",
 )
 SAVE_FILE: Path | None = typer.Option(

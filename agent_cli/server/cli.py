@@ -314,7 +314,8 @@ def whisper_cmd(  # noqa: PLR0912, PLR0915
     Models are loaded lazily on first request and unloaded after being
     idle for the TTL duration, freeing VRAM for other applications.
 
-    Examples:
+    **Examples:**
+
         # Run with default large-v3 model
         agent-cli server whisper
 
@@ -326,7 +327,6 @@ def whisper_cmd(  # noqa: PLR0912, PLR0915
 
         # Download model without starting server
         agent-cli server whisper --model large-v3 --download-only
-
     """
     # Setup Rich logging for consistent output
     setup_rich_logging(log_level)
@@ -498,7 +498,8 @@ def transcribe_proxy_cmd(
     Configuration is read from `~/.config/agent-cli/config.yaml` or env vars
     like `ASR_PROVIDER`, `LLM_PROVIDER`, `OPENAI_API_KEY`, etc.
 
-    Examples:
+    **Examples:**
+
         # Run with providers from config file
         agent-cli server transcribe-proxy
 
@@ -506,9 +507,8 @@ def transcribe_proxy_cmd(
         ASR_PROVIDER=openai OPENAI_API_KEY=sk-... agent-cli server transcribe-proxy
 
         # Test with curl
-        curl -X POST http://localhost:61337/transcribe \
+        curl -X POST http://localhost:61337/transcribe \\
           -F "audio=@recording.wav" -F "cleanup=true"
-
     """
     _check_server_deps()
     setup_rich_logging(log_level)
@@ -659,7 +659,8 @@ def tts_cmd(  # noqa: PLR0915
     Voices: af_heart, af_bella, am_adam, bf_emma, bm_george, etc.
     See https://huggingface.co/hexgrad/Kokoro-82M for all voices.
 
-    Examples:
+    **Examples:**
+
         # Run with Kokoro (auto-downloads model and voices)
         agent-cli server tts --backend kokoro
 
@@ -674,7 +675,6 @@ def tts_cmd(  # noqa: PLR0915
 
         # Download Piper model without starting server
         agent-cli server tts --backend piper --model en_US-lessac-medium --download-only
-
     """
     # Setup Rich logging for consistent output
     setup_rich_logging(log_level)

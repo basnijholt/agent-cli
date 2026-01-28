@@ -157,7 +157,7 @@ The `--from-file` option supports multiple audio formats:
 | `--log-level` | `info` | Set logging level. |
 | `--log-file` | - | Path to a file to write logs to. |
 | `--quiet, -q` | `false` | Suppress console output from rich. |
-| `--json` | `false` | Output result as JSON (implies `--quiet` and `--no-clipboard`). Keys: `raw_transcript`, `transcript`, `llm_enabled`. |
+| `--json` | `false` | Output result as JSON (implies `--quiet` and `--no-clipboard`). |
 | `--config` | - | Path to a TOML configuration file. |
 | `--print-args` | `false` | Print the command line arguments, including variables taken from the configuration file. |
 | `--transcription-log` | - | Append transcripts to JSONL file (timestamp, hostname, model, raw/processed text). Recent entries provide context for LLM cleanup. |
