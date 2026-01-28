@@ -14,9 +14,32 @@ from .config import load_config, normalize_provider_defaults
 from .core.process import set_process_title
 from .core.utils import console
 
+_HELP = """\
+AI-powered voice, text, and development tools.
+
+**Voice & Text:**
+
+- **Voice-to-text** - Transcribe speech with optional LLM cleanup
+- **Text-to-speech** - Convert text to natural-sounding audio
+- **Voice chat** - Conversational AI with memory and tool use
+- **Text correction** - Fix grammar, spelling, and punctuation
+
+**Development:**
+
+- **Parallel development** - Git worktrees with integrated coding agents
+- **Local servers** - ASR/TTS with Wyoming + OpenAI-compatible APIs,
+  MLX on macOS ARM, CUDA/CPU Whisper, and automatic model TTL
+
+**Provider Flexibility:**
+
+Mix local (Ollama, Wyoming) and cloud (OpenAI, Gemini) backends freely.
+
+Run `agent-cli <command> --help` for detailed command documentation.
+"""
+
 app = typer.Typer(
     name="agent-cli",
-    help="A suite of AI-powered command-line tools for text correction, audio transcription, and voice assistance.",
+    help=_HELP,
     context_settings={"help_option_names": ["-h", "--help"]},
     add_completion=True,
     rich_markup_mode="markdown",
@@ -56,7 +79,7 @@ def main(
         ),
     ] = False,
 ) -> None:
-    """A suite of AI-powered tools."""
+    """AI-powered voice, text, and development tools."""
     if ctx.invoked_subcommand is None:
         console.print("[bold red]No command specified.[/bold red]")
         console.print("[bold yellow]Running --help for your convenience.[/bold yellow]")
