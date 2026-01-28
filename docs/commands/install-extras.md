@@ -58,8 +58,8 @@ Available extras:
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--list, -l` | `false` | List available extras |
-| `--all, -a` | `false` | Install all available extras |
+| `--list, -l` | `false` | Show available extras with descriptions (what each one enables) |
+| `--all, -a` | `false` | Install all available extras at once |
 
 
 <!-- OUTPUT:END -->
