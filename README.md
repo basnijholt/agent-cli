@@ -1713,7 +1713,7 @@ uv tool install "agent-cli[vad]" -p 3.13
 ╭─ General Options ──────────────────────────────────────────────────────────────────────╮
 │ --log-level         TEXT  Set logging level (debug, info, warning, error).             │
 │                           [env var: LOG_LEVEL]                                         │
-│                           [default: INFO]                                              │
+│                           [default: info]                                              │
 │ --config            TEXT  Path to a TOML configuration file.                           │
 │ --print-args              Print the command line arguments, including variables taken  │
 │                           from the configuration file.                                 │
@@ -1854,7 +1854,7 @@ The `memory proxy` command is the core feature—a middleware server that gives 
 ╭─ General Options ──────────────────────────────────────────────────────────────────────╮
 │ --log-level         TEXT  Set logging level (debug, info, warning, error).             │
 │                           [env var: LOG_LEVEL]                                         │
-│                           [default: INFO]                                              │
+│                           [default: info]                                              │
 │ --config            TEXT  Path to a TOML configuration file.                           │
 │ --print-args              Print the command line arguments, including variables taken  │
 │                           from the configuration file.                                 │
