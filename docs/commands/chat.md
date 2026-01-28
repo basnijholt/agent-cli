@@ -162,8 +162,8 @@ agent-cli chat --last-n-messages 100 --history-dir ~/.my-chat-history
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--history-dir` | `~/.config/agent-cli/history` | Directory to store conversation history. |
-| `--last-n-messages` | `50` | Number of messages to include in the conversation history. Set to 0 to disable history. |
+| `--history-dir` | `~/.config/agent-cli/history` | Directory for conversation history and long-term memory. Both `conversation.json` and `long_term_memory.json` are stored here. |
+| `--last-n-messages` | `50` | Number of past messages to include as context for the LLM. Set to 0 to start fresh each session (memory tools still persist). |
 
 ### General Options
 
