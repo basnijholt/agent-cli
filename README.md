@@ -593,7 +593,7 @@ the `[defaults]` section of your configuration file.
 ╭─ General Options ──────────────────────────────────────────────────────────────────────╮
 │ --log-level           TEXT  Set logging level (debug, info, warning, error).           │
 │                             [env var: LOG_LEVEL]                                       │
-│                             [default: WARNING]                                         │
+│                             [default: info]                                            │
 │ --log-file            TEXT  Path to a file to write logs to.                           │
 │ --quiet       -q            Suppress console output from rich.                         │
 │ --json                      Output result as JSON for automation. Implies --quiet and  │
@@ -748,7 +748,7 @@ the `[defaults]` section of your configuration file.
 │ --log-level                                TEXT  Set logging level (debug, info,       │
 │                                                  warning, error).                      │
 │                                                  [env var: LOG_LEVEL]                  │
-│                                                  [default: WARNING]                    │
+│                                                  [default: info]                       │
 │ --log-file                                 TEXT  Path to a file to write logs to.      │
 │ --quiet              -q                          Suppress console output from rich.    │
 │ --json                                           Output result as JSON for automation. │
@@ -935,7 +935,7 @@ uv tool install "agent-cli[vad]" -p 3.13
 ╭─ General Options ──────────────────────────────────────────────────────────────────────╮
 │ --log-level           TEXT  Set logging level (debug, info, warning, error).           │
 │                             [env var: LOG_LEVEL]                                       │
-│                             [default: WARNING]                                         │
+│                             [default: info]                                            │
 │ --log-file            TEXT  Path to a file to write logs to.                           │
 │ --quiet       -q            Suppress console output from rich.                         │
 │ --config              TEXT  Path to a TOML configuration file.                         │
@@ -1050,7 +1050,7 @@ uv tool install "agent-cli[vad]" -p 3.13
 │ --save-file           PATH  Save TTS response audio to WAV file.                       │
 │ --log-level           TEXT  Set logging level (debug, info, warning, error).           │
 │                             [env var: LOG_LEVEL]                                       │
-│                             [default: WARNING]                                         │
+│                             [default: info]                                            │
 │ --log-file            TEXT  Path to a file to write logs to.                           │
 │ --quiet       -q            Suppress console output from rich.                         │
 │ --json                      Output result as JSON for automation. Implies --quiet and  │
@@ -1240,7 +1240,7 @@ uv tool install "agent-cli[vad]" -p 3.13
 │ --log-level                         TEXT  Set logging level (debug, info, warning,     │
 │                                           error).                                      │
 │                                           [env var: LOG_LEVEL]                         │
-│                                           [default: WARNING]                           │
+│                                           [default: info]                              │
 │ --log-file                          TEXT  Path to a file to write logs to.             │
 │ --quiet       -q                          Suppress console output from rich.           │
 │ --json                                    Output result as JSON for automation.        │
@@ -1427,7 +1427,7 @@ uv tool install "agent-cli[vad]" -p 3.13
 │ --log-level                         TEXT  Set logging level (debug, info, warning,     │
 │                                           error).                                      │
 │                                           [env var: LOG_LEVEL]                         │
-│                                           [default: WARNING]                           │
+│                                           [default: info]                              │
 │ --log-file                          TEXT  Path to a file to write logs to.             │
 │ --quiet       -q                          Suppress console output from rich.           │
 │ --config                            TEXT  Path to a TOML configuration file.           │
@@ -1620,7 +1620,7 @@ uv tool install "agent-cli[vad]" -p 3.13
 │ --save-file           PATH  Save TTS response audio to WAV file.                       │
 │ --log-level           TEXT  Set logging level (debug, info, warning, error).           │
 │                             [env var: LOG_LEVEL]                                       │
-│                             [default: WARNING]                                         │
+│                             [default: info]                                            │
 │ --log-file            TEXT  Path to a file to write logs to.                           │
 │ --quiet       -q            Suppress console output from rich.                         │
 │ --config              TEXT  Path to a TOML configuration file.                         │

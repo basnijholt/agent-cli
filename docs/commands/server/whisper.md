@@ -88,11 +88,11 @@ agent-cli server whisper --preload
 | `--download-only` | `false` | Download model(s) and exit without starting server |
 | `--backend` | `auto` | Backend: auto (platform detection), faster-whisper, mlx |
 
-### Server Configuration
+### General Options
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--log-level` | `info` | Logging level: debug, info, warning, error. |
+| `--log-level` | `info` | Set logging level (debug, info, warning, error). |
 
 
 <!-- OUTPUT:END -->

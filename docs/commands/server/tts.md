@@ -83,11 +83,11 @@ agent-cli server tts --preload
 | `--download-only` | `false` | Download model(s) and exit without starting server |
 | `--backend` | `auto` | Backend: auto, piper, kokoro |
 
-### Server Configuration
+### General Options
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--log-level` | `info` | Logging level: debug, info, warning, error. |
+| `--log-level` | `info` | Set logging level (debug, info, warning, error). |
 
 
 <!-- OUTPUT:END -->

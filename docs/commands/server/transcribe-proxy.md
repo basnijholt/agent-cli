@@ -43,11 +43,11 @@ agent-cli server transcribe-proxy --reload
 | `--port` | `61337` | Port to bind the server to |
 | `--reload` | `false` | Enable auto-reload for development |
 
-### Server Configuration
+### General Options
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--log-level` | `info` | Logging level: debug, info, warning, error. |
+| `--log-level` | `info` | Set logging level (debug, info, warning, error). |
 
 
 <!-- OUTPUT:END -->
