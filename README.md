@@ -412,21 +412,43 @@ agent-cli install-extras rag memory vad
 
  Usage: agent-cli install-extras [OPTIONS] [EXTRAS]...
 
- Install optional extras (rag, memory, vad, etc.) with pinned versions.
+ Install optional dependencies with pinned, compatible versions.
+
+ Many agent-cli features require optional dependencies. This command installs them with
+ version pinning to ensure compatibility. Dependencies persist across uv tool upgrade
+ when installed via uv tool.
+
+ Available extras:
+
+  • rag - RAG proxy server (ChromaDB, embeddings)
+  • memory - Long-term memory proxy (ChromaDB)
+  • vad - Voice Activity Detection (silero-vad)
+  • audio - Local audio recording/playback
+  • piper - Local Piper TTS engine
+  • kokoro - Kokoro neural TTS engine
+  • faster-whisper - Whisper ASR for CUDA/CPU
+  • mlx-whisper - Whisper ASR for Apple Silicon
+  • wyoming - Wyoming protocol for ASR/TTS servers
+  • server - FastAPI server components
+  • speed - Audio speed adjustment
+  • llm - LLM framework (pydantic-ai)
 
  Examples:
 
-  • agent-cli install-extras rag           # Install RAG dependencies
-  • agent-cli install-extras memory vad    # Install multiple extras
-  • agent-cli install-extras --list        # Show available extras
-  • agent-cli install-extras --all         # Install all extras
+
+  agent-cli install-extras rag           # Install RAG dependencies
+  agent-cli install-extras memory vad    # Install multiple extras
+  agent-cli install-extras --list        # Show available extras
+  agent-cli install-extras --all         # Install all extras
+
 
 ╭─ Arguments ────────────────────────────────────────────────────────────────────────────╮
-│   extras      [EXTRAS]...  Extras to install                                           │
+│   extras      [EXTRAS]...  Extras to install: rag, memory, vad, audio, piper, kokoro,  │
+│                            faster-whisper, mlx-whisper, wyoming, server, speed, llm    │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Options ──────────────────────────────────────────────────────────────────────────────╮
-│ --list  -l        List available extras                                                │
-│ --all   -a        Install all available extras                                         │
+│ --list  -l        Show available extras with descriptions (what each one enables)      │
+│ --all   -a        Install all available extras at once                                 │
 │ --help  -h        Show this message and exit.                                          │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 

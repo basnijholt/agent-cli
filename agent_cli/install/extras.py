@@ -124,23 +124,52 @@ def install_extras_programmatic(extras: list[str], *, quiet: bool = False) -> bo
 
 @app.command("install-extras", rich_help_panel="Installation", no_args_is_help=True)
 def install_extras(
-    extras: Annotated[list[str] | None, typer.Argument(help="Extras to install")] = None,
+    extras: Annotated[
+        list[str] | None,
+        typer.Argument(
+            help="Extras to install: `rag`, `memory`, `vad`, `audio`, `piper`, `kokoro`, "
+            "`faster-whisper`, `mlx-whisper`, `wyoming`, `server`, `speed`, `llm`",
+        ),
+    ] = None,
     list_extras: Annotated[
         bool,
-        typer.Option("--list", "-l", help="List available extras"),
+        typer.Option(
+            "--list",
+            "-l",
+            help="Show available extras with descriptions (what each one enables)",
+        ),
     ] = False,
     all_extras: Annotated[
         bool,
-        typer.Option("--all", "-a", help="Install all available extras"),
+        typer.Option("--all", "-a", help="Install all available extras at once"),
     ] = False,
 ) -> None:
-    """Install optional extras (rag, memory, vad, etc.) with pinned versions.
+    """Install optional dependencies with pinned, compatible versions.
 
-    Examples:
-        - `agent-cli install-extras rag`           # Install RAG dependencies
-        - `agent-cli install-extras memory vad`    # Install multiple extras
-        - `agent-cli install-extras --list`        # Show available extras
-        - `agent-cli install-extras --all`         # Install all extras
+    Many agent-cli features require optional dependencies. This command installs
+    them with version pinning to ensure compatibility. Dependencies persist
+    across `uv tool upgrade` when installed via `uv tool`.
+
+    **Available extras:**
+    - `rag` - RAG proxy server (ChromaDB, embeddings)
+    - `memory` - Long-term memory proxy (ChromaDB)
+    - `vad` - Voice Activity Detection (silero-vad)
+    - `audio` - Local audio recording/playback
+    - `piper` - Local Piper TTS engine
+    - `kokoro` - Kokoro neural TTS engine
+    - `faster-whisper` - Whisper ASR for CUDA/CPU
+    - `mlx-whisper` - Whisper ASR for Apple Silicon
+    - `wyoming` - Wyoming protocol for ASR/TTS servers
+    - `server` - FastAPI server components
+    - `speed` - Audio speed adjustment
+    - `llm` - LLM framework (pydantic-ai)
+
+    **Examples:**
+
+        agent-cli install-extras rag           # Install RAG dependencies
+        agent-cli install-extras memory vad    # Install multiple extras
+        agent-cli install-extras --list        # Show available extras
+        agent-cli install-extras --all         # Install all extras
 
     """
     available = _available_extras()
