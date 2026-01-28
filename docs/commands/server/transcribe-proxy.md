@@ -121,12 +121,17 @@ Configure the proxy using environment variables (priority: env var > config file
 | `ASR_PROVIDER` | `wyoming` | ASR provider: `wyoming`, `openai`, `gemini` |
 | `ASR_WYOMING_IP` | `localhost` | Wyoming ASR server hostname/IP |
 | `ASR_WYOMING_PORT` | `10300` | Wyoming ASR server port |
+| `ASR_OPENAI_MODEL` | `whisper-1` | OpenAI ASR model name |
+| `ASR_OPENAI_BASE_URL` | - | Custom OpenAI-compatible ASR endpoint |
+| `ASR_OPENAI_PROMPT` | - | Custom prompt to guide transcription |
+| `ASR_GEMINI_MODEL` | `gemini-3-flash-preview` | Gemini ASR model name |
 | `LLM_PROVIDER` | `ollama` | LLM provider: `ollama`, `openai`, `gemini` |
 | `LLM_OLLAMA_MODEL` | `gemma3:4b` | Ollama model name |
 | `LLM_OLLAMA_HOST` | `http://localhost:11434` | Ollama server URL |
-| `LLM_OPENAI_MODEL` | `gpt-4.1-nano` | OpenAI model name |
+| `LLM_OPENAI_MODEL` | `gpt-5-mini` | OpenAI model name |
 | `LLM_GEMINI_MODEL` | `gemini-3-flash-preview` | Gemini model name |
 | `TTS_PROVIDER` | `wyoming` | TTS provider: `wyoming`, `openai`, `kokoro`, `gemini` |
+| `LOG_LEVEL` | `info` | Logging level: `debug`, `info`, `warning`, `error` |
 | `OPENAI_API_KEY` | - | OpenAI API key |
 | `OPENAI_BASE_URL` | - | Custom OpenAI-compatible API base URL |
 | `GEMINI_API_KEY` | - | Gemini API key |
