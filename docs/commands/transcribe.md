@@ -73,7 +73,7 @@ The `--from-file` option supports multiple audio formats:
 | Option | Default | Description |
 |--------|---------|-------------|
 | `--extra-instructions` | - | Extra instructions appended to the LLM cleanup prompt (requires `--llm`). |
-| `--llm/--no-llm` | `false` | Clean up transcript with LLM: fix errors, add punctuation, remove filler words. |
+| `--llm/--no-llm` | `false` | Clean up transcript with LLM: fix errors, add punctuation, remove filler words. Uses `--extra-instructions` if set (via CLI or config file). |
 
 ### Audio Recovery
 

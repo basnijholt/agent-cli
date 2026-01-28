@@ -47,7 +47,8 @@ TTS_PROVIDER: str = typer.Option(
 LLM: bool = typer.Option(
     False,  # noqa: FBT003
     "--llm/--no-llm",
-    help="Clean up transcript with LLM: fix errors, add punctuation, remove filler words.",
+    help="Clean up transcript with LLM: fix errors, add punctuation, remove filler words. "
+    "Uses `--extra-instructions` if set (via CLI or config file).",
     rich_help_panel="LLM Configuration",
 )
 # Ollama (local service)

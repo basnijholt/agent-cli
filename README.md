@@ -671,7 +671,9 @@ the `[defaults]` section of your configuration file.
 │ --extra-instructions                TEXT  Extra instructions appended to the LLM       │
 │                                           cleanup prompt (requires --llm).             │
 │ --llm                   --no-llm          Clean up transcript with LLM: fix errors,    │
-│                                           add punctuation, remove filler words.        │
+│                                           add punctuation, remove filler words. Uses   │
+│                                           --extra-instructions if set (via CLI or      │
+│                                           config file).                                │
 │                                           [default: no-llm]                            │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Audio Recovery ───────────────────────────────────────────────────────────────────────╮
@@ -964,7 +966,8 @@ uv tool install "agent-cli[vad]" -p 3.13
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ LLM Configuration ────────────────────────────────────────────────────────────────────╮
 │ --llm    --no-llm      Clean up transcript with LLM: fix errors, add punctuation,      │
-│                        remove filler words.                                            │
+│                        remove filler words. Uses --extra-instructions if set (via CLI  │
+│                        or config file).                                                │
 │                        [default: no-llm]                                               │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Process Management ───────────────────────────────────────────────────────────────────╮

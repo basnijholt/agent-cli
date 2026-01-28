@@ -136,7 +136,7 @@ agent-cli transcribe-daemon --silence-threshold 1.5
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--llm/--no-llm` | `false` | Clean up transcript with LLM: fix errors, add punctuation, remove filler words. |
+| `--llm/--no-llm` | `false` | Clean up transcript with LLM: fix errors, add punctuation, remove filler words. Uses `--extra-instructions` if set (via CLI or config file). |
 
 ### Process Management
 
