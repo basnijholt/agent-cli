@@ -91,7 +91,7 @@ agent-cli chat --openai-base-url http://localhost:8000/v1 --llm-provider openai
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--log-level` | `INFO` | Set logging level (debug, info, warning, error). |
+| `--log-level` | `info` | Set logging level (debug, info, warning, error). |
 | `--config` | - | Path to a TOML configuration file. |
 | `--print-args` | `false` | Print the command line arguments, including variables taken from the configuration file. |
 
