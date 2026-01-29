@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import functools
+import importlib
 import json
 import os
 from importlib.util import find_spec
@@ -12,7 +13,7 @@ from typing import TYPE_CHECKING, TypeVar
 import typer
 
 from agent_cli.config import load_config
-from agent_cli.core.utils import console, print_error_message
+from agent_cli.core.utils import err_console, print_error_message
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -139,7 +140,7 @@ def _try_auto_install(missing: list[str]) -> bool:
         else:
             extras_to_install.append(extra)
 
-    console.print(
+    err_console.print(
         f"[yellow]Auto-installing missing extras: {', '.join(extras_to_install)}[/]",
     )
     return install_extras_programmatic(extras_to_install, quiet=True)
@@ -159,7 +160,9 @@ def _check_and_install_extras(extras: tuple[str, ...]) -> list[str]:
         print_error_message("Auto-install failed.\n" + get_combined_install_hint(missing))
         return missing
 
-    console.print("[green]Installation complete![/]")
+    err_console.print("[green]Installation complete![/]")
+    # Invalidate import caches so find_spec() can see newly installed packages
+    importlib.invalidate_caches()
     still_missing = [e for e in extras if not check_extra_installed(e)]
     if still_missing:
         print_error_message(

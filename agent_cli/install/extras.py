@@ -14,7 +14,7 @@ import typer
 
 from agent_cli.cli import app
 from agent_cli.core.deps import EXTRAS as _EXTRAS_META
-from agent_cli.core.utils import console, print_error_message
+from agent_cli.core.utils import console, err_console, print_error_message
 
 # Extract descriptions from the centralized EXTRAS metadata
 EXTRAS: dict[str, str] = {name: desc for name, (desc, _) in _EXTRAS_META.items()}
@@ -69,7 +69,8 @@ def _install_via_uv_tool(extras: list[str], *, quiet: bool = False) -> bool:
     cmd = ["uv", "tool", "install", package_spec, "--force", "--python", python_version]
     if quiet:
         cmd.append("-q")
-    console.print(f"Running: [cyan]{' '.join(cmd)}[/]")
+    # Use stderr for status messages so they don't pollute stdout (e.g., for hotkey notifications)
+    err_console.print(f"Running: [cyan]{' '.join(cmd)}[/]")
     result = subprocess.run(cmd, check=False)
     return result.returncode == 0
 
@@ -118,7 +119,8 @@ def install_extras_programmatic(extras: list[str], *, quiet: bool = False) -> bo
     valid = [e for e in extras if e in available]
     invalid = [e for e in extras if e not in available]
     if invalid:
-        console.print(f"[yellow]Unknown extras (skipped): {', '.join(invalid)}[/]")
+        # Use stderr so warning doesn't pollute stdout (e.g., for hotkey notifications)
+        err_console.print(f"[yellow]Unknown extras (skipped): {', '.join(invalid)}[/]")
     return bool(valid) and _install_extras_impl(valid, quiet=quiet)
 
 
