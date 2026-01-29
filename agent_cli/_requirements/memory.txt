@@ -7,6 +7,7 @@ annotated-types==0.7.0
 anyio==4.12.1
     # via
     #   httpx
+    #   openai
     #   starlette
     #   watchfiles
 attrs==25.4.0
@@ -45,7 +46,9 @@ colorama==0.4.6 ; os_name == 'nt' or sys_platform == 'win32'
 coloredlogs==15.0.1
     # via onnxruntime
 distro==1.9.0
-    # via posthog
+    # via
+    #   openai
+    #   posthog
 dnspython==2.8.0
     # via email-validator
 dotenv==0.9.9
@@ -96,6 +99,7 @@ httpx==0.28.1
     #   chromadb
     #   fastapi
     #   fastapi-cloud-cli
+    #   openai
 huggingface-hub==0.36.0
     # via
     #   agent-cli
@@ -115,6 +119,8 @@ importlib-resources==6.5.2
     # via chromadb
 jinja2==3.1.6
     # via fastapi
+jiter==0.12.0
+    # via openai
 jsonschema==4.26.0
     # via chromadb
 jsonschema-specifications==2025.9.1
@@ -142,6 +148,8 @@ onnxruntime==1.20.1
     # via
     #   agent-cli
     #   chromadb
+openai==2.15.0
+    # via agent-cli
 opentelemetry-api==1.39.1
     # via
     #   chromadb
@@ -195,6 +203,7 @@ pydantic==2.12.5
     #   chromadb
     #   fastapi
     #   fastapi-cloud-cli
+    #   openai
     #   pydantic-extra-types
     #   pydantic-settings
 pydantic-core==2.41.5
@@ -281,6 +290,8 @@ six==1.17.0
     #   kubernetes
     #   posthog
     #   python-dateutil
+sniffio==1.3.1
+    # via openai
 starlette==0.50.0
     # via fastapi
 sympy==1.14.0
@@ -295,6 +306,7 @@ tqdm==4.67.1
     # via
     #   chromadb
     #   huggingface-hub
+    #   openai
     #   transformers
 transformers==4.57.5
     # via agent-cli
@@ -313,6 +325,7 @@ typing-extensions==4.15.0
     #   fastapi
     #   grpcio
     #   huggingface-hub
+    #   openai
     #   opentelemetry-api
     #   opentelemetry-exporter-otlp-proto-grpc
     #   opentelemetry-sdk
