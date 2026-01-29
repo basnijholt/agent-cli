@@ -60,7 +60,7 @@ memory = [
     "pyyaml>=6.0.0",
 ]
 vad = [
-    "silero-vad>=5.1",
+    "silero-vad-lite>=0.2.1",
 ]
 faster-whisper = [
     "fastapi[standard]",

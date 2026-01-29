@@ -3,37 +3,21 @@
 from __future__ import annotations
 
 import logging
-import urllib.request
 from collections import deque
-from pathlib import Path
 
 from agent_cli import constants
 
 try:
     import numpy as np
-    import torch
+    from silero_vad_lite import SileroVAD
 except ImportError as e:
     msg = (
-        "silero-vad is required for the transcribe-daemon command. "
+        "silero-vad-lite is required for the transcribe-daemon command. "
         "Install it with: `pip install agent-cli[vad]` or `uv sync --extra vad`."
     )
     raise ImportError(msg) from e
 
 LOGGER = logging.getLogger(__name__)
-
-_SILERO_VAD_ONNX_URL = (
-    "https://github.com/snakers4/silero-vad/raw/master/src/silero_vad/data/silero_vad.onnx"
-)
-
-
-def _get_model_path() -> Path:
-    """Get the path to the Silero VAD ONNX model, downloading if needed."""
-    cache_dir = Path.home() / ".cache" / "silero-vad"
-    cache_dir.mkdir(parents=True, exist_ok=True)
-    model_path = cache_dir / "silero_vad.onnx"
-    if not model_path.exists():
-        urllib.request.urlretrieve(_SILERO_VAD_ONNX_URL, model_path)  # noqa: S310
-    return model_path
 
 
 class VoiceActivityDetector:
@@ -56,8 +40,6 @@ class VoiceActivityDetector:
             msg = f"Sample rate must be 8000 or 16000, got {sample_rate}"
             raise ValueError(msg)
 
-        from silero_vad.utils_vad import OnnxWrapper  # noqa: PLC0415
-
         self.sample_rate = sample_rate
         self.threshold = threshold
         self.silence_threshold_ms = silence_threshold_ms
@@ -74,7 +56,7 @@ class VoiceActivityDetector:
         )
 
         # Model and state
-        self._model = OnnxWrapper(str(_get_model_path()))
+        self._model = SileroVAD(sample_rate=sample_rate)
         self._pre_speech_buffer: deque[bytes] = deque(maxlen=pre_speech_windows)
         self._pending = bytearray()
         self._audio_buffer = bytearray()
@@ -92,7 +74,7 @@ class VoiceActivityDetector:
 
     def reset(self) -> None:
         """Reset VAD state for a new recording session."""
-        self._model.reset_states()
+        self._model = SileroVAD(sample_rate=self.sample_rate)
         self._pre_speech_buffer.clear()
         self._pending.clear()
         self._audio_buffer.clear()
@@ -103,7 +85,7 @@ class VoiceActivityDetector:
     def _is_speech(self, window: bytes) -> bool:
         """Check if audio window contains speech."""
         audio = np.frombuffer(window, dtype=np.int16).astype(np.float32) / 32768.0
-        prob = float(self._model(torch.from_numpy(audio), self.sample_rate).item())
+        prob = self._model.process(audio)
         LOGGER.debug("Speech prob: %.3f, threshold: %.2f", prob, self.threshold)
         return prob >= self.threshold
 
@@ -154,7 +136,7 @@ class VoiceActivityDetector:
                     self._silence_samples = 0
                     self._speech_samples = 0
                     self._audio_buffer.clear()
-                    self._model.reset_states()
+                    self._model = SileroVAD(sample_rate=self.sample_rate)
             else:
                 # Not speaking - maintain rolling pre-speech buffer (auto-limited by deque maxlen)
                 self._pre_speech_buffer.append(window)
