@@ -42,6 +42,7 @@ server = [
 rag = [
     "fastapi[standard]",
     "chromadb>=0.4.22",
+    "openai>=1.0.0",  # Required by chromadb's OpenAIEmbeddingFunction
     "onnxruntime>=1.17.0",
     "huggingface-hub>=0.20.0",
     "transformers>=4.30.0",
@@ -52,6 +53,7 @@ rag = [
 memory = [
     "fastapi[standard]",
     "chromadb>=0.4.22",
+    "openai>=1.0.0",  # Required by chromadb's OpenAIEmbeddingFunction
     "onnxruntime>=1.17.0",
     "huggingface-hub>=0.20.0",
     "transformers>=4.30.0",
