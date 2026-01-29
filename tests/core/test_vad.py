@@ -9,10 +9,10 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-# Skip all tests in this module on Windows - torch/silero-vad can hang during initialization
+# Skip all tests in this module on Windows - silero-vad-lite can hang during initialization
 if sys.platform == "win32":
     pytest.skip(
-        "silero-vad/torch initialization can hang on Windows CI",
+        "silero-vad-lite initialization can hang on Windows CI",
         allow_module_level=True,
     )
 
@@ -31,10 +31,10 @@ def mock_silero_vad() -> MagicMock:
 
 
 def test_import_error_without_silero_vad() -> None:
-    """Test that ImportError is raised with helpful message when silero-vad is missing."""
+    """Test that ImportError is raised with helpful message when silero-vad-lite is missing."""
     import importlib  # noqa: PLC0415
 
-    with patch.dict("sys.modules", {"torch": None, "silero_vad": None}):
+    with patch.dict("sys.modules", {"silero_vad_lite": None}):
         # Remove cached module
         if "agent_cli.core.vad" in sys.modules:
             del sys.modules["agent_cli.core.vad"]
