@@ -74,7 +74,6 @@ class VoiceActivityDetector:
 
     def reset(self) -> None:
         """Reset VAD state for a new recording session."""
-        # silero-vad-lite doesn't have reset_states, create fresh model
         self._model = SileroVAD(sample_rate=self.sample_rate)
         self._pre_speech_buffer.clear()
         self._pending.clear()
