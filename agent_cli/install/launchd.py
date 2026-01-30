@@ -7,12 +7,14 @@ import os
 import plistlib
 import shutil
 import subprocess
-from dataclasses import dataclass
 from pathlib import Path
 
 from agent_cli.install.service_config import (
     SERVICES,
+    InstallResult,
     ServiceConfig,
+    ServiceStatus,
+    UninstallResult,
     install_uv,
 )
 from agent_cli.install.service_config import (
@@ -47,19 +49,14 @@ def _get_plist_path(service_name: str) -> Path:
     return Path.home() / "Library" / "LaunchAgents" / f"{_get_label(service_name)}.plist"
 
 
-def _get_log_dir(service_name: str) -> Path:
+def get_log_dir(service_name: str) -> Path:
     """Get log directory for a service."""
     return Path.home() / "Library" / "Logs" / f"agent-cli-{service_name}"
 
 
-def get_log_dir(service_name: str) -> Path:
-    """Get log directory for a service."""
-    return _get_log_dir(service_name)
-
-
 def get_log_command(service_name: str) -> str:
     """Get command to view logs for a service."""
-    log_dir = _get_log_dir(service_name)
+    log_dir = get_log_dir(service_name)
     return f"tail -f {log_dir}/*.log"
 
 
@@ -110,16 +107,6 @@ def _generate_plist(
         "StandardOutPath": str(log_dir / "stdout.log"),
         "StandardErrorPath": str(log_dir / "stderr.log"),
     }
-
-
-@dataclass
-class ServiceStatus:
-    """Status of a launchd service."""
-
-    name: str
-    installed: bool
-    running: bool
-    pid: int | None = None
 
 
 def _get_ollama_status() -> ServiceStatus:
@@ -205,15 +192,6 @@ def get_service_status(service_name: str) -> ServiceStatus:
     )
 
 
-@dataclass
-class InstallResult:
-    """Result of installing a service."""
-
-    success: bool
-    message: str
-    log_dir: Path | None = None
-
-
 def _install_ollama() -> InstallResult:
     """Install and start Ollama via Homebrew."""
     if not shutil.which("brew"):
@@ -265,7 +243,7 @@ def install_service(service_name: str) -> InstallResult:
         )
 
     home_dir = Path.home()
-    log_dir = _get_log_dir(service_name)
+    log_dir = get_log_dir(service_name)
     plist_path = _get_plist_path(service_name)
 
     # Create directories
@@ -306,15 +284,6 @@ def install_service(service_name: str) -> InstallResult:
         message="Installed and started",
         log_dir=log_dir,
     )
-
-
-@dataclass
-class UninstallResult:
-    """Result of uninstalling a service."""
-
-    success: bool
-    message: str
-    was_running: bool = False
 
 
 def _uninstall_ollama() -> UninstallResult:

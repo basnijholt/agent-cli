@@ -4,12 +4,14 @@ from __future__ import annotations
 
 import shutil
 import subprocess
-from dataclasses import dataclass
 from pathlib import Path
 
 from agent_cli.install.service_config import (
     SERVICES,
+    InstallResult,
     ServiceConfig,
+    ServiceStatus,
+    UninstallResult,
     find_uv,
     install_uv,
 )
@@ -99,16 +101,6 @@ RestartSec=5
 [Install]
 WantedBy=default.target
 """
-
-
-@dataclass
-class ServiceStatus:
-    """Status of a systemd service."""
-
-    name: str
-    installed: bool
-    running: bool
-    pid: int | None = None
 
 
 def _get_ollama_status() -> ServiceStatus:
@@ -202,15 +194,6 @@ def get_service_status(service_name: str) -> ServiceStatus:
         running=running,
         pid=pid,
     )
-
-
-@dataclass
-class InstallResult:
-    """Result of installing a service."""
-
-    success: bool
-    message: str
-    log_dir: Path | None = None
 
 
 def _install_ollama() -> InstallResult:
@@ -338,15 +321,6 @@ def install_service(service_name: str) -> InstallResult:  # noqa: PLR0911
         message="Installed and started",
         log_dir=None,  # systemd uses journalctl, not file-based logs
     )
-
-
-@dataclass
-class UninstallResult:
-    """Result of uninstalling a service."""
-
-    success: bool
-    message: str
-    was_running: bool = False
 
 
 def _uninstall_ollama() -> UninstallResult:

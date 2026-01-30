@@ -16,22 +16,16 @@ from rich.panel import Panel
 from agent_cli.cli import app
 from agent_cli.core.utils import console, print_error_message, print_with_style
 from agent_cli.install.common import get_script_path
-from agent_cli.install.service_config import SERVICES
+from agent_cli.install.service_config import SERVICES, get_service_manager
 
 
 def _get_service_manager() -> ModuleType:
-    """Get the platform-specific service manager module."""
-    system = platform.system()
-    if system == "Darwin":
-        from agent_cli.install import launchd  # noqa: PLC0415
-
-        return launchd
-    if system == "Linux":
-        from agent_cli.install import systemd  # noqa: PLC0415
-
-        return systemd
-    print_error_message(f"Unsupported platform: {system}")
-    raise typer.Exit(1)
+    """Get the platform-specific service manager module, with CLI error handling."""
+    try:
+        return get_service_manager()
+    except RuntimeError as e:
+        print_error_message(str(e))
+        raise typer.Exit(1) from None
 
 
 def _confirm_action(message: str) -> bool:
@@ -100,7 +94,7 @@ def install_services(  # noqa: PLR0912, PLR0915
     at login and restart on failure.
 
     **Supported platforms:**
-    - **macOS**: launchd services (~/.local/Library/LaunchAgents/)
+    - **macOS**: launchd services (~/Library/LaunchAgents/)
     - **Linux**: systemd user services (~/.config/systemd/user/)
 
     **Available services:**

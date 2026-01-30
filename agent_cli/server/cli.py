@@ -917,18 +917,14 @@ def uninstall_service_cmd(
 
 
 def _get_service_manager() -> ModuleType:
-    """Get the platform-specific service manager module."""
-    system = platform.system()
-    if system == "Darwin":
-        from agent_cli.install import launchd  # noqa: PLC0415
+    """Get the platform-specific service manager module, with CLI error handling."""
+    from agent_cli.install.service_config import get_service_manager  # noqa: PLC0415
 
-        return launchd
-    if system == "Linux":
-        from agent_cli.install import systemd  # noqa: PLC0415
-
-        return systemd
-    err_console.print(f"[bold red]Error:[/bold red] Unsupported platform: {system}")
-    raise typer.Exit(1)
+    try:
+        return get_service_manager()
+    except RuntimeError as e:
+        err_console.print(f"[bold red]Error:[/bold red] {e}")
+        raise typer.Exit(1) from None
 
 
 @app.command("status")

@@ -192,7 +192,6 @@ requires-dist = [
     { name = "silero-vad-lite", marker = "extra == 'vad'", specifier = ">=0.2.1" },
     { name = "sounddevice", marker = "extra == 'audio'", specifier = ">=0.4.6" },
     { name = "soundfile", marker = "extra == 'kokoro'", specifier = ">=0.12.0" },
-    { name = "transformers", marker = "extra == 'kokoro'", specifier = ">=4.30.0" },
     { name = "transformers", marker = "extra == 'kokoro'", specifier = ">=4.40.0" },
     { name = "transformers", marker = "extra == 'memory'", specifier = ">=4.30.0" },
     { name = "transformers", marker = "extra == 'rag'", specifier = ">=4.30.0" },

@@ -1,14 +1,17 @@
 """Shared service configuration for cross-platform service management."""
 
-# pylint: disable=duplicate-code
-
 from __future__ import annotations
 
 import os
+import platform
 import shutil
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from types import ModuleType
 
 
 @dataclass
@@ -109,3 +112,53 @@ def install_uv() -> tuple[bool, str]:
         return True, "uv installed successfully"
     except subprocess.CalledProcessError as e:
         return False, f"Failed to install uv: {e}"
+
+
+# Shared result dataclasses used by both launchd and systemd modules
+
+
+@dataclass
+class ServiceStatus:
+    """Status of a service."""
+
+    name: str
+    installed: bool
+    running: bool
+    pid: int | None = None
+
+
+@dataclass
+class InstallResult:
+    """Result of installing a service."""
+
+    success: bool
+    message: str
+    log_dir: Path | None = None
+
+
+@dataclass
+class UninstallResult:
+    """Result of uninstalling a service."""
+
+    success: bool
+    message: str
+    was_running: bool = False
+
+
+def get_service_manager() -> ModuleType:
+    """Get the platform-specific service manager module.
+
+    Returns the launchd module on macOS or systemd module on Linux.
+    Raises RuntimeError on unsupported platforms.
+    """
+    system = platform.system()
+    if system == "Darwin":
+        from agent_cli.install import launchd  # noqa: PLC0415
+
+        return launchd
+    if system == "Linux":
+        from agent_cli.install import systemd  # noqa: PLC0415
+
+        return systemd
+    msg = f"Unsupported platform: {system}"
+    raise RuntimeError(msg)
