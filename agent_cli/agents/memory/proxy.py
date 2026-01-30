@@ -68,7 +68,7 @@ def proxy(
         help="Auto-commit memory changes to git. Initializes a repo in `--memory-path` if needed. Provides full history of memory evolution.",
         rich_help_panel="Memory Configuration",
     ),
-    log_level: opts.LogLevel = opts.LOG_LEVEL,
+    log_level: opts.LogLevel = opts.SERVER_LOG_LEVEL,
     config_file: str | None = opts.CONFIG_FILE,
     print_args: bool = opts.PRINT_ARGS,
 ) -> None:
