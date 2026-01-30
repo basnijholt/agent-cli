@@ -15,27 +15,10 @@ from agent_cli.install.service_config import (
     ServiceConfig,
     ServiceStatus,
     UninstallResult,
-    install_uv,
 )
 from agent_cli.install.service_config import (
     find_uv as _find_uv_base,
 )
-
-# Re-export for interface compatibility
-__all__ = [
-    "SERVICES",
-    "InstallResult",
-    "ServiceConfig",
-    "ServiceStatus",
-    "UninstallResult",
-    "check_uv_installed",
-    "get_log_command",
-    "get_log_dir",
-    "get_service_status",
-    "install_service",
-    "install_uv",
-    "uninstall_service",
-]
 
 
 def _get_label(service_name: str) -> str:

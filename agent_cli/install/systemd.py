@@ -13,24 +13,7 @@ from agent_cli.install.service_config import (
     ServiceStatus,
     UninstallResult,
     find_uv,
-    install_uv,
 )
-
-# Re-export for interface compatibility
-__all__ = [
-    "SERVICES",
-    "InstallResult",
-    "ServiceConfig",
-    "ServiceStatus",
-    "UninstallResult",
-    "check_uv_installed",
-    "get_log_command",
-    "get_log_dir",
-    "get_service_status",
-    "install_service",
-    "install_uv",
-    "uninstall_service",
-]
 
 
 def _get_unit_name(service_name: str) -> str:

@@ -25,7 +25,7 @@ class ServiceConfig:
     name: str
     display_name: str
     description: str
-    extra: str  # uv extra to install (e.g., "whisper", "tts-kokoro"), empty for external
+    extra: str  # uv extras to install (e.g., "server,kokoro,wyoming"), empty for external
     command_args: list[str]  # Additional args after "agent-cli server <name>"
     external: bool = False  # True for external services (ollama) that aren't agent-cli servers
     python_version: str | None = None  # Pin Python version for dependencies without py3.14 wheels
@@ -38,16 +38,16 @@ SERVICES: dict[str, ServiceConfig] = {
         name="whisper",
         display_name="Whisper ASR",
         description="Speech-to-text server (ports 10300/10301)",
-        extra="whisper",
+        extra="server,faster-whisper,wyoming",
         command_args=[],
         python_version="3.13",  # onnxruntime lacks py3.14 wheels (Linux only)
-        macos_extra="whisper-mlx",  # MLX backend on macOS (no python constraint needed)
+        macos_extra="server,mlx-whisper,wyoming",
     ),
     "tts": ServiceConfig(
         name="tts",
         display_name="Kokoro TTS",
         description="Text-to-speech server (ports 10200/10201)",
-        extra="tts-kokoro",
+        extra="server,kokoro,wyoming",
         command_args=["--backend", "kokoro"],
         python_version="3.12",  # curated-tokenizers (via kokoro→misaki→spacy) lacks py3.13 wheels
     ),
