@@ -364,13 +364,14 @@ CLIPBOARD: bool = typer.Option(
     rich_help_panel="General Options",
 )
 LOG_LEVEL: LogLevel = typer.Option(
-    "info",
+    "warning",
     "--log-level",
     envvar="LOG_LEVEL",
     help="Set logging level.",
     case_sensitive=False,
     rich_help_panel="General Options",
 )
+SERVER_LOG_LEVEL: LogLevel = with_default(LOG_LEVEL, "info")
 LOG_FILE: str | None = typer.Option(
     None,
     "--log-file",

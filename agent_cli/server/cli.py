@@ -291,7 +291,7 @@ def whisper_cmd(  # noqa: PLR0912, PLR0915
             help="Download model(s) to cache and exit. Useful for Docker builds",
         ),
     ] = False,
-    log_level: opts.LogLevel = opts.LOG_LEVEL,
+    log_level: opts.LogLevel = opts.SERVER_LOG_LEVEL,
     backend: Annotated[
         str,
         typer.Option(
@@ -473,7 +473,7 @@ def transcribe_proxy_cmd(
         bool,
         typer.Option("--reload", help="Auto-reload on code changes (development only)"),
     ] = False,
-    log_level: opts.LogLevel = opts.LOG_LEVEL,
+    log_level: opts.LogLevel = opts.SERVER_LOG_LEVEL,
 ) -> None:
     r"""Run transcription proxy that forwards to your configured ASR provider.
 
@@ -627,7 +627,7 @@ def tts_cmd(  # noqa: PLR0915
             help="Download model(s)/voice(s) to cache and exit. Useful for Docker builds",
         ),
     ] = False,
-    log_level: opts.LogLevel = opts.LOG_LEVEL,
+    log_level: opts.LogLevel = opts.SERVER_LOG_LEVEL,
     backend: Annotated[
         str,
         typer.Option(
