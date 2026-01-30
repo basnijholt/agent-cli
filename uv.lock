@@ -24,26 +24,28 @@ name = "agent-cli"
 source = { editable = "." }
 dependencies = [
     { name = "dotenv" },
-    { name = "google-genai" },
     { name = "httpx" },
-    { name = "numpy" },
-    { name = "openai" },
     { name = "psutil", marker = "sys_platform == 'win32'" },
-    { name = "pydantic-ai-slim", extra = ["duckduckgo", "openai", "vertexai"] },
+    { name = "pydantic" },
     { name = "pyperclip" },
     { name = "rich" },
     { name = "setproctitle" },
-    { name = "sounddevice" },
     { name = "typer" },
-    { name = "wyoming" },
+    { name = "typer-slim", extra = ["standard"] },
 ]
 
 [package.optional-dependencies]
+audio = [
+    { name = "numpy" },
+    { name = "sounddevice" },
+    { name = "wyoming" },
+]
 dev = [
     { name = "markdown-code-runner" },
+    { name = "markdown-gfm-admonition" },
     { name = "notebook" },
     { name = "pre-commit" },
-    { name = "pydantic-ai-slim", extra = ["openai"] },
+    { name = "pre-commit-uv" },
     { name = "pylint" },
     { name = "pytest" },
     { name = "pytest-asyncio" },
@@ -52,15 +54,40 @@ dev = [
     { name = "pytest-timeout" },
     { name = "ruff" },
     { name = "versioningit" },
+    { name = "zensical" },
+]
+faster-whisper = [
+    { name = "fastapi", extra = ["standard"] },
+    { name = "faster-whisper" },
+]
+kokoro = [
+    { name = "fastapi", extra = ["standard"] },
+    { name = "huggingface-hub" },
+    { name = "kokoro" },
+    { name = "pip" },
+    { name = "soundfile" },
+    { name = "transformers" },
+]
+llm = [
+    { name = "pydantic-ai-slim", extra = ["duckduckgo", "google", "openai", "vertexai"] },
 ]
 memory = [
     { name = "chromadb" },
     { name = "fastapi", extra = ["standard"] },
     { name = "huggingface-hub" },
     { name = "onnxruntime" },
+    { name = "openai" },
     { name = "pyyaml" },
     { name = "transformers" },
     { name = "watchfiles" },
+]
+mlx-whisper = [
+    { name = "fastapi", extra = ["standard"], marker = "platform_machine == 'arm64' and sys_platform == 'darwin'" },
+    { name = "mlx-whisper", marker = "platform_machine == 'arm64' and sys_platform == 'darwin'" },
+]
+piper = [
+    { name = "fastapi", extra = ["standard"] },
+    { name = "piper-tts" },
 ]
 rag = [
     { name = "chromadb" },
@@ -68,6 +95,7 @@ rag = [
     { name = "huggingface-hub" },
     { name = "markitdown", extra = ["docx", "pdf", "pptx"] },
     { name = "onnxruntime" },
+    { name = "openai" },
     { name = "transformers" },
     { name = "watchfiles" },
 ]
@@ -78,46 +106,26 @@ speed = [
     { name = "audiostretchy" },
 ]
 test = [
-    { name = "pydantic-ai-slim", extra = ["openai"] },
     { name = "pytest" },
     { name = "pytest-asyncio" },
     { name = "pytest-cov" },
     { name = "pytest-mock" },
     { name = "pytest-timeout" },
 ]
-tts = [
-    { name = "fastapi", extra = ["standard"] },
-    { name = "piper-tts" },
-]
-tts-kokoro = [
-    { name = "fastapi", extra = ["standard"] },
-    { name = "huggingface-hub" },
-    { name = "kokoro" },
-    { name = "pip" },
-    { name = "soundfile" },
-    { name = "transformers" },
-]
 vad = [
-    { name = "silero-vad" },
+    { name = "silero-vad-lite" },
 ]
-whisper = [
-    { name = "fastapi", extra = ["standard"] },
-    { name = "faster-whisper" },
-]
-whisper-mlx = [
-    { name = "fastapi", extra = ["standard"] },
-    { name = "mlx-whisper", marker = "platform_machine == 'arm64' and sys_platform == 'darwin'" },
+wyoming = [
+    { name = "wyoming" },
 ]
 
 [package.dev-dependencies]
 dev = [
-    { name = "audiostretchy" },
     { name = "markdown-code-runner" },
     { name = "markdown-gfm-admonition" },
     { name = "notebook" },
     { name = "pre-commit" },
     { name = "pre-commit-uv" },
-    { name = "pydantic-ai-slim", extra = ["openai"] },
     { name = "pylint" },
     { name = "pytest" },
     { name = "pytest-asyncio" },
@@ -135,35 +143,36 @@ requires-dist = [
     { name = "chromadb", marker = "extra == 'memory'", specifier = ">=0.4.22" },
     { name = "chromadb", marker = "extra == 'rag'", specifier = ">=0.4.22" },
     { name = "dotenv" },
+    { name = "fastapi", extras = ["standard"], marker = "platform_machine == 'arm64' and sys_platform == 'darwin' and extra == 'mlx-whisper'" },
+    { name = "fastapi", extras = ["standard"], marker = "extra == 'faster-whisper'" },
+    { name = "fastapi", extras = ["standard"], marker = "extra == 'kokoro'" },
     { name = "fastapi", extras = ["standard"], marker = "extra == 'memory'" },
+    { name = "fastapi", extras = ["standard"], marker = "extra == 'piper'" },
     { name = "fastapi", extras = ["standard"], marker = "extra == 'rag'" },
     { name = "fastapi", extras = ["standard"], marker = "extra == 'server'" },
-    { name = "fastapi", extras = ["standard"], marker = "extra == 'tts'" },
-    { name = "fastapi", extras = ["standard"], marker = "extra == 'tts-kokoro'" },
-    { name = "fastapi", extras = ["standard"], marker = "extra == 'whisper'" },
-    { name = "fastapi", extras = ["standard"], marker = "extra == 'whisper-mlx'" },
-    { name = "faster-whisper", marker = "extra == 'whisper'", specifier = ">=1.0.0" },
-    { name = "google-genai", specifier = ">=1.25.0" },
+    { name = "faster-whisper", marker = "extra == 'faster-whisper'", specifier = ">=1.0.0" },
     { name = "httpx" },
+    { name = "huggingface-hub", marker = "extra == 'kokoro'", specifier = ">=0.20.0" },
     { name = "huggingface-hub", marker = "extra == 'memory'", specifier = ">=0.20.0" },
     { name = "huggingface-hub", marker = "extra == 'rag'", specifier = ">=0.20.0" },
-    { name = "huggingface-hub", marker = "extra == 'tts-kokoro'", specifier = ">=0.20.0" },
-    { name = "kokoro", marker = "extra == 'tts-kokoro'", specifier = ">=0.9.0" },
-    { name = "markdown-code-runner", marker = "extra == 'dev'" },
+    { name = "kokoro", marker = "extra == 'kokoro'", specifier = ">=0.9.0" },
+    { name = "markdown-code-runner", marker = "extra == 'dev'", specifier = ">=2.7.0" },
+    { name = "markdown-gfm-admonition", marker = "extra == 'dev'" },
     { name = "markitdown", extras = ["docx", "pdf", "pptx"], marker = "extra == 'rag'", specifier = ">=0.1.3" },
-    { name = "mlx-whisper", marker = "platform_machine == 'arm64' and sys_platform == 'darwin' and extra == 'whisper-mlx'", specifier = ">=0.4.0" },
+    { name = "mlx-whisper", marker = "platform_machine == 'arm64' and sys_platform == 'darwin' and extra == 'mlx-whisper'", specifier = ">=0.4.0" },
     { name = "notebook", marker = "extra == 'dev'" },
-    { name = "numpy" },
+    { name = "numpy", marker = "extra == 'audio'" },
     { name = "onnxruntime", marker = "extra == 'memory'", specifier = ">=1.17.0" },
     { name = "onnxruntime", marker = "extra == 'rag'", specifier = ">=1.17.0" },
-    { name = "openai" },
-    { name = "pip", marker = "extra == 'tts-kokoro'" },
-    { name = "piper-tts", marker = "extra == 'tts'", specifier = ">=1.2.0" },
+    { name = "openai", marker = "extra == 'memory'", specifier = ">=1.0.0" },
+    { name = "openai", marker = "extra == 'rag'", specifier = ">=1.0.0" },
+    { name = "pip", marker = "extra == 'kokoro'" },
+    { name = "piper-tts", marker = "extra == 'piper'", specifier = ">=1.2.0" },
     { name = "pre-commit", marker = "extra == 'dev'", specifier = ">=3.0.0" },
+    { name = "pre-commit-uv", marker = "extra == 'dev'", specifier = ">=4.1.4" },
     { name = "psutil", marker = "sys_platform == 'win32'" },
-    { name = "pydantic-ai-slim", extras = ["duckduckgo", "openai", "vertexai"] },
-    { name = "pydantic-ai-slim", extras = ["openai"], marker = "extra == 'dev'" },
-    { name = "pydantic-ai-slim", extras = ["openai"], marker = "extra == 'test'" },
+    { name = "pydantic" },
+    { name = "pydantic-ai-slim", extras = ["duckduckgo", "google", "openai", "vertexai"], marker = "extra == 'llm'", specifier = ">=0.1.1" },
     { name = "pylint", marker = "extra == 'dev'", specifier = ">=3.0.0" },
     { name = "pyperclip" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=7.0.0" },
@@ -180,29 +189,31 @@ requires-dist = [
     { name = "rich" },
     { name = "ruff", marker = "extra == 'dev'" },
     { name = "setproctitle" },
-    { name = "silero-vad", marker = "extra == 'vad'", specifier = ">=5.1" },
-    { name = "sounddevice" },
-    { name = "soundfile", marker = "extra == 'tts-kokoro'", specifier = ">=0.12.0" },
+    { name = "silero-vad-lite", marker = "extra == 'vad'", specifier = ">=0.2.1" },
+    { name = "sounddevice", marker = "extra == 'audio'", specifier = ">=0.4.6" },
+    { name = "soundfile", marker = "extra == 'kokoro'", specifier = ">=0.12.0" },
+    { name = "transformers", marker = "extra == 'kokoro'", specifier = ">=4.30.0" },
+    { name = "transformers", marker = "extra == 'kokoro'", specifier = ">=4.40.0" },
     { name = "transformers", marker = "extra == 'memory'", specifier = ">=4.30.0" },
     { name = "transformers", marker = "extra == 'rag'", specifier = ">=4.30.0" },
-    { name = "transformers", marker = "extra == 'tts-kokoro'", specifier = ">=4.30.0" },
     { name = "typer" },
+    { name = "typer-slim", extras = ["standard"] },
     { name = "versioningit", marker = "extra == 'dev'" },
     { name = "watchfiles", marker = "extra == 'memory'", specifier = ">=0.21.0" },
     { name = "watchfiles", marker = "extra == 'rag'", specifier = ">=0.21.0" },
-    { name = "wyoming" },
+    { name = "wyoming", marker = "extra == 'audio'", specifier = ">=1.5.2" },
+    { name = "wyoming", marker = "extra == 'wyoming'", specifier = ">=1.5.2" },
+    { name = "zensical", marker = "extra == 'dev'" },
 ]
-provides-extras = ["dev", "memory", "rag", "server", "speed", "test", "tts", "tts-kokoro", "vad", "whisper", "whisper-mlx"]
+provides-extras = ["audio", "dev", "faster-whisper", "kokoro", "llm", "memory", "mlx-whisper", "piper", "rag", "server", "speed", "test", "vad", "wyoming"]
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "audiostretchy", specifier = ">=1.3.0" },
-    { name = "markdown-code-runner" },
+    { name = "markdown-code-runner", specifier = ">=2.7.0" },
     { name = "markdown-gfm-admonition" },
     { name = "notebook" },
     { name = "pre-commit", specifier = ">=3.0.0" },
     { name = "pre-commit-uv", specifier = ">=4.1.4" },
-    { name = "pydantic-ai-slim", extras = ["openai"] },
     { name = "pylint", specifier = ">=3.0.0" },
     { name = "pytest", specifier = ">=7.0.0" },
     { name = "pytest-asyncio", specifier = ">=0.20.0" },
@@ -2374,11 +2385,11 @@ wheels = [
 
 [[package]]
 name = "markdown-code-runner"
-version = "2.6.0"
+version = "2.7.0"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/41/2d/785751876430c6a3940512899c4cb34434500266aa15ef2f53e87ac5039a/markdown_code_runner-2.6.0.tar.gz", hash = "sha256:664db3515f28b5179a0b46bce6edab4c9bb65195d31a73cef93c05960941dd23", size = 97184, upload-time = "2026-01-14T18:08:33.9Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/28/d1/2a7753e05dcc711552721048a34341b63a6a2b09e70ac738c7a4c81ca414/markdown_code_runner-2.7.0.tar.gz", hash = "sha256:b36f9314839c0db3ee5e5d644e1b4471454af8f624eb15bd5a5d68dbc6430afe", size = 99832, upload-time = "2026-01-24T21:20:04.772Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/e6/c0/c20e44a9bfeca1c0d40767dbab1361d693f27cc04dcd2e47bdc83fb58d53/markdown_code_runner-2.6.0-py3-none-any.whl", hash = "sha256:f6b8a96c35e272e493e915c736ddf07f5dfc7ac0502d59c949b7cb4c861165cc", size = 13434, upload-time = "2026-01-14T18:08:32.999Z" },
+    { url = "https://files.pythonhosted.org/packages/cf/92/9d7fa0567cf3d38b551bb1a30c177285e0e42ae2b10c16946af7e8a38e73/markdown_code_runner-2.7.0-py3-none-any.whl", hash = "sha256:fad5d5fbad9c49687141ab9c39ed7e054f857b97aa79d11f031de157afd21c20", size = 14692, upload-time = "2026-01-24T21:20:03.382Z" },
 ]
 
 [[package]]
@@ -3783,6 +3794,9 @@ wheels = [
 duckduckgo = [
     { name = "ddgs" },
 ]
+google = [
+    { name = "google-genai" },
+]
 openai = [
     { name = "openai" },
     { name = "tiktoken" },
@@ -4729,18 +4743,23 @@ wheels = [
 ]
 
 [[package]]
-name = "silero-vad"
-version = "6.2.0"
+name = "silero-vad-lite"
+version = "0.2.1"
 source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "onnxruntime" },
-    { name = "packaging" },
-    { name = "torch" },
-    { name = "torchaudio" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/00/4d/0a03f56a4946114c8fa25bd66cafe75bd5807fb73c3bfad2a7603597c4d1/silero_vad-6.2.0.tar.gz", hash = "sha256:27f90e994bc57fdf3d0d1a25f70f65d81854c11974a4f911f7e61792e7a893fd", size = 14569087, upload-time = "2025-11-06T08:39:09.333Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/8d/8a/9c33e393a2068ac7e51bff755c001d0fd95a5221de310b760e5c1c0c5047/silero_vad_lite-0.2.1.tar.gz", hash = "sha256:74ccc2dc955a80a53f9520c3924a0a99b80691ab0632ddec08725b459a8f5d13", size = 1956112, upload-time = "2024-10-01T07:45:56.271Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/9e/76/12cbd574562511a8914731436b6c584112186bb6bf149e9f952af4940146/silero_vad-6.2.0-py3-none-any.whl", hash = "sha256:8a31f1e58e73cdc20820d842f757e678e0ae1b0ee1cb7b8aa50f20f8fd7f7638", size = 6118499, upload-time = "2025-11-06T08:39:07.856Z" },
+    { url = "https://files.pythonhosted.org/packages/67/44/e883159ccc321125839d74f849c349e23f33b61de14845ad799dad6bbe54/silero_vad_lite-0.2.1-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:5a4198be1dbb413ac0031cf76e5eedd1ad34f9922c74055eb653a41e02d64c7a", size = 30750461, upload-time = "2024-10-01T07:44:00.309Z" },
+    { url = "https://files.pythonhosted.org/packages/02/4e/d4f6fa9e2c4b585dd55f51c8964c3b2228506fcf5d6523cd01531333a9dc/silero_vad_lite-0.2.1-cp311-cp311-macosx_11_0_x86_64.whl", hash = "sha256:958ff533c37e84bbe88ee6fb41f6b43f8f261c48117bc81fa776fec4b2cec3f8", size = 30752295, upload-time = "2024-10-01T07:44:06.476Z" },
+    { url = "https://files.pythonhosted.org/packages/6d/bf/209b65437a8d90b8f20c21d1d04a6de545c2beaeed1c54da467169b3eca5/silero_vad_lite-0.2.1-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:a865faa68535bbb9498288568c2d1e4bb4052b61aa12d038938fe1ce53863f3d", size = 10123116, upload-time = "2024-10-01T07:44:09.079Z" },
+    { url = "https://files.pythonhosted.org/packages/e6/32/fdebefaa7b2a7dcc82fc3eb62ad40064cc83935300613c96fa23d8e057fa/silero_vad_lite-0.2.1-cp311-cp311-win_amd64.whl", hash = "sha256:d85e6e95133e013cc9d587f701fc462d2fd6b7b23f1b36a902dc8d8f990e2434", size = 6612344, upload-time = "2024-10-01T07:44:11.533Z" },
+    { url = "https://files.pythonhosted.org/packages/a2/ea/e389cd02b963a56421550f11a88eaca13f93771e2c065e1f56a36d565469/silero_vad_lite-0.2.1-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:3de3c2dfd9b8f90a5725498479c016eb5b8aa3eb918c1132cb734757025d5f88", size = 30750460, upload-time = "2024-10-01T07:44:14.147Z" },
+    { url = "https://files.pythonhosted.org/packages/0a/9f/1a90098f5017c842bdf8c2c5e1edca7b4689980ff03924bcce3e8800e04b/silero_vad_lite-0.2.1-cp312-cp312-macosx_11_0_x86_64.whl", hash = "sha256:21bc8e03d74ca952cca4cb20cde711fc886cd1dd5093b7fc51de1607ec890fab", size = 30752295, upload-time = "2024-10-01T07:44:17.914Z" },
+    { url = "https://files.pythonhosted.org/packages/dc/4c/f8c6ef56058bbcffaaea88f8dd424486cd3cdcfd0244657502fe5bc25a48/silero_vad_lite-0.2.1-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:ae45855b5ce6fc5d16a608580f3a8378a1d31951802fef4584a60c53b25b7160", size = 10123117, upload-time = "2024-10-01T07:44:20.708Z" },
+    { url = "https://files.pythonhosted.org/packages/1e/4e/b240c77663d14882cfd78005bbef0391506b843283e278b2c2683627499d/silero_vad_lite-0.2.1-cp312-cp312-win_amd64.whl", hash = "sha256:8bab6364ae0b0316c4e787e90b5efd229fbad18b351b3e80fe0dc5e7bdcdebdc", size = 6612344, upload-time = "2024-10-01T07:44:23.47Z" },
+    { url = "https://files.pythonhosted.org/packages/e9/45/692d9cc332e53d3c77d06303d7b978b8e2423454f075c02b95989796eb96/silero_vad_lite-0.2.1-cp313-cp313-macosx_11_0_arm64.whl", hash = "sha256:6eb4c81dce2d61102865f17ceb60a6afa6e1ca0a7330c4a55e07e3137b74db44", size = 30750459, upload-time = "2024-10-01T07:44:26.348Z" },
+    { url = "https://files.pythonhosted.org/packages/71/7a/fda5268fe3b661d16f6eae56444e14c1f2eb62aae51ca01cc01bd6194f58/silero_vad_lite-0.2.1-cp313-cp313-macosx_11_0_x86_64.whl", hash = "sha256:95c32ecd7c62c67903f5e67e18cc8ca1d0b93c3b020571698236502a66adb94e", size = 30752298, upload-time = "2024-10-01T07:44:29.441Z" },
+    { url = "https://files.pythonhosted.org/packages/f8/04/9de02bae297ed88c44b0f76f4e9d2149ef4fc30a932f5ea38ee686c86b9e/silero_vad_lite-0.2.1-cp313-cp313-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:a0d73a7676acf3fe6c743394b994eec33a9104d95dc32de2867cc4f63df19ff1", size = 10123118, upload-time = "2024-10-01T07:44:32.89Z" },
+    { url = "https://files.pythonhosted.org/packages/f3/cb/3ee98dd6174c7331e38b90c36eb675b406add4ab7edb45604096affda3e5/silero_vad_lite-0.2.1-cp313-cp313-win_amd64.whl", hash = "sha256:5b11772d09383dc6e7cb89976110a75be17876427f7a019649a3761790dc83db", size = 6612343, upload-time = "2024-10-01T07:44:36.145Z" },
 ]
 
 [[package]]
@@ -5230,32 +5249,6 @@ wheels = [
 ]
 
 [[package]]
-name = "torchaudio"
-version = "2.9.1"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "torch" },
-]
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/3f/6b/34e489fcb4adc4b571a166f2670cc7f156cbe3337867a892fade0a1a5224/torchaudio-2.9.1-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:6e3f5943135701168d30196e2befd46290180cdbb9ee508b167730d51f43208f", size = 807349, upload-time = "2025-11-12T15:25:57.843Z" },
-    { url = "https://files.pythonhosted.org/packages/a6/52/66830da8b638368bc0aef064f3307c88d28b526ff8e60a1fda681466b1b3/torchaudio-2.9.1-cp311-cp311-manylinux_2_28_aarch64.whl", hash = "sha256:d192cf3b1b677f6666dad60caf0ce7bab66965751570c694645dd905a6c61724", size = 474291, upload-time = "2025-11-12T15:25:45.21Z" },
-    { url = "https://files.pythonhosted.org/packages/cb/6f/d8f1f36c9f63ddef78f00f8f8ddb9638128ceb5f6824c28bead5af48fc63/torchaudio-2.9.1-cp311-cp311-manylinux_2_28_x86_64.whl", hash = "sha256:8327e21f51dced2b6de3ac6a63f04bae9be9bc213e151f85c76164568c7ebc3d", size = 2058677, upload-time = "2025-11-12T15:25:53.09Z" },
-    { url = "https://files.pythonhosted.org/packages/c3/ef/0ec42e783774bd1dda8bc2489e18b3e9c0a250384e0131cec9f35949f385/torchaudio-2.9.1-cp311-cp311-win_amd64.whl", hash = "sha256:b41339a71b186bad238d94cfb68d4c202db0033088a7b824ce5484674bf67057", size = 664681, upload-time = "2025-11-12T15:25:59.08Z" },
-    { url = "https://files.pythonhosted.org/packages/f1/83/71cbadd7b66753818b5775f2088bad4f721d581de276996df4968000a626/torchaudio-2.9.1-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:7581ef170794c599aed55918e00d0acd9e5c9a0f19400c9a9a840955180365c5", size = 808098, upload-time = "2025-11-12T15:26:01.408Z" },
-    { url = "https://files.pythonhosted.org/packages/ef/2d/32e8bec360459107f9b451cc1a5b6fdd5f1d3e653e65a111502084f21e3a/torchaudio-2.9.1-cp312-cp312-manylinux_2_28_aarch64.whl", hash = "sha256:742f9d24db5f1f46d8c7e29c599fe55b866d92c4a8181fcb95eab12da225ceb0", size = 474604, upload-time = "2025-11-12T15:25:49.122Z" },
-    { url = "https://files.pythonhosted.org/packages/fe/0d/b5af1d55ede1ca07769a2cf71256073d8958e2a5521fc734fc19f5343283/torchaudio-2.9.1-cp312-cp312-manylinux_2_28_x86_64.whl", hash = "sha256:4533fdafba73d7bcfcb5f1225b2cc8974a290ed0fe54c44638d6f440e91b8999", size = 2059899, upload-time = "2025-11-12T15:26:19.363Z" },
-    { url = "https://files.pythonhosted.org/packages/2e/7c/df90eb0b337cbad59296ed91778e32be069330f5186256d4ce9ea603d324/torchaudio-2.9.1-cp312-cp312-win_amd64.whl", hash = "sha256:923dccc67be4a6cbb45c3dcc2d69ee182bda75b09b69bc88cd3bcdfc739883a2", size = 665337, upload-time = "2025-11-12T15:26:07.407Z" },
-    { url = "https://files.pythonhosted.org/packages/c0/1b/3321ad6379ac2d968064704e8d015c31ccae5d1ece070f87fb44b17d90e6/torchaudio-2.9.1-cp313-cp313-macosx_12_0_arm64.whl", hash = "sha256:bb69557484c92513a980027ec4cb314b0f43cf4442bbfd97440e66528dbad22d", size = 808136, upload-time = "2025-11-12T15:26:00.276Z" },
-    { url = "https://files.pythonhosted.org/packages/76/e2/fe55b3882157fd57aa131f5bcad90f0329be90827e1c0e0c482662ddef38/torchaudio-2.9.1-cp313-cp313-manylinux_2_28_aarch64.whl", hash = "sha256:ba2799ceec5e4373a0aa26df30d608f1eaaefd8ac4a7ae0c3446f63106f5b5a5", size = 474349, upload-time = "2025-11-12T15:26:02.78Z" },
-    { url = "https://files.pythonhosted.org/packages/74/d3/0b090c03cac5a20691507e0945589a696fb10402ccd2457eea47dbf8a71b/torchaudio-2.9.1-cp313-cp313-manylinux_2_28_x86_64.whl", hash = "sha256:bc3c8e9a240bfad8bc61f769324a4f3ce5d60eec161369d457c595c35dbb10c7", size = 2060343, upload-time = "2025-11-12T15:26:03.88Z" },
-    { url = "https://files.pythonhosted.org/packages/a0/db/2555cfd428f4bf09a4df1c6f9204d0acc217c46edb35776c16e7a2a9a1c9/torchaudio-2.9.1-cp313-cp313-win_amd64.whl", hash = "sha256:13ee96ea9bbbc85e198cb671273af06f010e6981d7b912d001eef6bc74e23f4f", size = 665301, upload-time = "2025-11-12T15:26:04.952Z" },
-    { url = "https://files.pythonhosted.org/packages/0c/58/e82d8b5f447abdddc950965f1395f36baef3602643dd069100c6369ba73e/torchaudio-2.9.1-cp313-cp313t-macosx_11_0_arm64.whl", hash = "sha256:9290f6a6409deb1f9113d5aef97ec646eeee6410b6bcc57ab8b57066b54da7c1", size = 813456, upload-time = "2025-11-12T15:26:13.963Z" },
-    { url = "https://files.pythonhosted.org/packages/ce/45/dd9ad6af9bb595095cd98028d270f933760968b92a3497282e31289ef3b4/torchaudio-2.9.1-cp313-cp313t-manylinux_2_28_aarch64.whl", hash = "sha256:eeae7ca60b64c4bfb78fbd104a089d072b151423d5d2f90da1da00787f03b800", size = 476577, upload-time = "2025-11-12T15:26:09.54Z" },
-    { url = "https://files.pythonhosted.org/packages/79/97/c49aeb01d8a9ced2b8215a38b69b8eafd1afe295a487a73b7030c6ff3396/torchaudio-2.9.1-cp313-cp313t-manylinux_2_28_x86_64.whl", hash = "sha256:5f445e896215e6f7bba497dc68aab1e6cb077ae0ab3a90095067f16df6a9bb98", size = 2062158, upload-time = "2025-11-12T15:26:10.487Z" },
-    { url = "https://files.pythonhosted.org/packages/ba/70/30b2a0ecca2a0a5e6a8cee8952fdea3872854ea5bcd86fe3df369fdc2543/torchaudio-2.9.1-cp313-cp313t-win_amd64.whl", hash = "sha256:c558ba70d548f7491245ed7a35310f6310d83fc7591f073ab5fed9fd38cef987", size = 669253, upload-time = "2025-11-12T15:26:06.285Z" },
-]
-
-[[package]]
 name = "tornado"
 version = "6.5.4"
 source = { registry = "https://pypi.org/simple" }
@@ -5353,6 +5346,12 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/17/d4/064570dec6358aa9049d4708e4a10407d74c99258f8b2136bb8702303f1a/typer_slim-0.21.1.tar.gz", hash = "sha256:73495dd08c2d0940d611c5a8c04e91c2a0a98600cbd4ee19192255a233b6dbfd", size = 110478, upload-time = "2026-01-06T11:21:11.176Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/c8/0a/4aca634faf693e33004796b6cee0ae2e1dba375a800c16ab8d3eff4bb800/typer_slim-0.21.1-py3-none-any.whl", hash = "sha256:6e6c31047f171ac93cc5a973c9e617dbc5ab2bddc4d0a3135dc161b4e2020e0d", size = 47444, upload-time = "2026-01-06T11:21:12.441Z" },
+]
+
+[package.optional-dependencies]
+standard = [
+    { name = "rich" },
+    { name = "shellingham" },
 ]
 
 [[package]]

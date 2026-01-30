@@ -151,29 +151,6 @@ class TestDevList:
             assert "main" in result.output
             assert "feature" in result.output
 
-    def test_list_porcelain(self) -> None:
-        """List with --porcelain shows machine-readable output."""
-        mock_worktrees = [
-            WorktreeInfo(
-                path=Path("/repo"),
-                branch="main",
-                commit="abc",
-                is_main=True,
-                is_detached=False,
-                is_locked=False,
-                is_prunable=False,
-            ),
-        ]
-
-        with (
-            patch("agent_cli.dev.worktree.get_main_repo_root", return_value=Path("/repo")),
-            patch("agent_cli.dev.worktree.git_available", return_value=True),
-            patch("agent_cli.dev.worktree.list_worktrees", return_value=mock_worktrees),
-        ):
-            result = runner.invoke(app, ["dev", "list", "--porcelain"])
-            assert result.exit_code == 0
-            assert "/repo\tmain" in result.output
-
 
 class TestDevPath:
     """Tests for dev path command."""

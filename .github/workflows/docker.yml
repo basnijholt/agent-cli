@@ -1,0 +1,152 @@
+name: Publish Docker Images
+
+on:
+  workflow_run:
+    workflows: ["Upload Python Package"]
+    types: [completed]
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  # Images with cuda/cpu targets (whisper, tts)
+  build-multi-target:
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    permissions:
+      contents: read
+      packages: write
+
+    strategy:
+      matrix:
+        include:
+          - image: whisper
+            dockerfile: docker/whisper.Dockerfile
+            target: cuda
+            suffix: cuda
+          - image: whisper
+            dockerfile: docker/whisper.Dockerfile
+            target: cpu
+            suffix: cpu
+          - image: tts
+            dockerfile: docker/tts.Dockerfile
+            target: cuda
+            suffix: cuda
+          - image: tts
+            dockerfile: docker/tts.Dockerfile
+            target: cpu
+            suffix: cpu
+
+    steps:
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /usr/local/lib/android
+          df -h
+
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0  # Full history for version detection
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Get version from trigger
+        id: version
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_run" ]]; then
+            # Extract version from release tag (v0.61.3 -> 0.61.3)
+            TAG="${{ github.event.workflow_run.head_branch }}"
+            echo "version=${TAG#v}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ github.repository }}-${{ matrix.image }}
+          tags: |
+            type=raw,value=${{ steps.version.outputs.version }},suffix=-${{ matrix.suffix }},enable=${{ steps.version.outputs.version != '' }}
+            type=raw,value=latest,suffix=-${{ matrix.suffix }}
+            type=sha,suffix=-${{ matrix.suffix }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          target: ${{ matrix.target }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # Single-target images (transcribe-proxy)
+  build-single-target:
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    permissions:
+      contents: read
+      packages: write
+
+    strategy:
+      matrix:
+        include:
+          - image: transcribe-proxy
+            dockerfile: docker/transcribe-proxy.Dockerfile
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0  # Full history for version detection
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Get version from trigger
+        id: version
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_run" ]]; then
+            # Extract version from release tag (v0.61.3 -> 0.61.3)
+            TAG="${{ github.event.workflow_run.head_branch }}"
+            echo "version=${TAG#v}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ github.repository }}-${{ matrix.image }}
+          tags: |
+            type=raw,value=${{ steps.version.outputs.version }},enable=${{ steps.version.outputs.version != '' }}
+            type=raw,value=latest
+            type=sha
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

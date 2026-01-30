@@ -14,6 +14,7 @@ from agent_cli import config, opts
 from agent_cli.cli import app
 from agent_cli.core import process
 from agent_cli.core.audio import setup_devices
+from agent_cli.core.deps import requires_extras
 from agent_cli.core.utils import (
     enable_json_mode,
     get_clipboard_text,
@@ -80,11 +81,12 @@ async def _async_main(
 
 
 @app.command("speak", rich_help_panel="Text Commands")
+@requires_extras("audio")
 def speak(
     *,
     text: str | None = typer.Argument(
         None,
-        help="Text to speak. Reads from clipboard if not provided.",
+        help="Text to synthesize. If not provided, reads from clipboard.",
         rich_help_panel="General Options",
     ),
     # --- Provider Selection ---
@@ -118,14 +120,34 @@ def speak(
     stop: bool = opts.STOP,
     status: bool = opts.STATUS,
     toggle: bool = opts.TOGGLE,
-    log_level: str = opts.LOG_LEVEL,
+    log_level: opts.LogLevel = opts.LOG_LEVEL,
     log_file: str | None = opts.LOG_FILE,
     quiet: bool = opts.QUIET,
     json_output: bool = opts.JSON_OUTPUT,
     config_file: str | None = opts.CONFIG_FILE,
     print_args: bool = opts.PRINT_ARGS,
 ) -> None:
-    """Convert text to speech using Wyoming or OpenAI-compatible TTS server."""
+    """Convert text to speech and play audio through speakers.
+
+    By default, synthesized audio plays immediately. Use `--save-file` to save
+    to a WAV file instead (skips playback).
+
+    Text can be provided as an argument or read from clipboard automatically.
+
+    **Examples:**
+
+    Speak text directly:
+        `agent-cli speak "Hello, world!"`
+
+    Speak clipboard contents:
+        `agent-cli speak`
+
+    Save to file instead of playing:
+        `agent-cli speak "Hello" --save-file greeting.wav`
+
+    Use OpenAI-compatible TTS:
+        `agent-cli speak "Hello" --tts-provider openai`
+    """
     if print_args:
         print_command_line_args(locals())
 

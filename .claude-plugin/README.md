@@ -17,10 +17,10 @@ The plugin provides a skill that enables Claude Code to:
 
 ```bash
 # Using uv (recommended)
-uv tool install agent-cli
+uv tool install agent-cli -p 3.13
 
 # Or run directly without installing
-uvx agent-cli dev new my-feature --agent --prompt "..."
+uvx --python 3.13 agent-cli dev new my-feature --agent --prompt "..."
 ```
 
 ### Install the Claude Code plugin

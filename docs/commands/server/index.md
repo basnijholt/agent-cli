@@ -18,7 +18,7 @@ agent-cli server [COMMAND] [OPTIONS]
 |--------|-------------|--------------|
 | [whisper](whisper.md) | Local Whisper ASR server with GPU acceleration and TTL-based memory management | 10301 (HTTP), 10300 (Wyoming) |
 | [tts](tts.md) | Local TTS server with Kokoro (GPU) or Piper (CPU) backends | 10201 (HTTP), 10200 (Wyoming) |
-| [transcription-proxy](transcription-proxy.md) | Proxy server that forwards to configured ASR providers | 61337 |
+| [transcribe-proxy](transcribe-proxy.md) | Proxy server that forwards to configured ASR providers | 61337 |
 
 ## Quick Start
 
@@ -44,7 +44,7 @@ agent-cli server [COMMAND] [OPTIONS]
 
     ```bash
     pip install "agent-cli[server]"
-    agent-cli server transcription-proxy
+    agent-cli server transcribe-proxy
     ```
 
     Proxy runs at `http://localhost:61337`, forwarding to your configured ASR provider.
@@ -79,8 +79,8 @@ All servers share these capabilities:
 | High-quality GPU TTS | [tts](tts.md) `--backend kokoro` |
 | CPU-friendly TTS | [tts](tts.md) `--backend piper` |
 | Home Assistant voice integration | [whisper](whisper.md) + [tts](tts.md) (both have Wyoming protocol) |
-| iOS Shortcuts integration | [transcription-proxy](transcription-proxy.md) |
-| Forwarding to cloud providers | [transcription-proxy](transcription-proxy.md) |
+| iOS Shortcuts integration | [transcribe-proxy](transcribe-proxy.md) |
+| Forwarding to cloud providers | [transcribe-proxy](transcribe-proxy.md) |
 | Privacy-focused (no cloud) | [whisper](whisper.md) + [tts](tts.md) |
 | Memory-constrained system | Both servers support TTL unloading; use smaller whisper models or [tts](tts.md) `--backend piper` (CPU-only) |
 

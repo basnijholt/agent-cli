@@ -18,7 +18,6 @@ from contextlib import (
 )
 from typing import TYPE_CHECKING, Any
 
-import pyperclip
 from rich.console import Console
 from rich.live import Live
 from rich.panel import Panel
@@ -40,6 +39,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 console = Console()
+err_console = Console(stderr=True)
 
 
 def enable_json_mode() -> None:
@@ -211,8 +211,8 @@ def print_output_panel(
 
 
 def print_error_message(message: str, suggestion: str | None = None) -> None:
-    """Prints an error message in a panel."""
-    error_text = Text(message)
+    """Prints an error message in a panel with rich markup support."""
+    error_text = Text.from_markup(message)
     if suggestion:
         error_text.append("\n\n")
         error_text.append(suggestion)
@@ -233,6 +233,8 @@ def print_device_index(input_device_index: int | None, input_device_name: str | 
 
 def get_clipboard_text(*, quiet: bool = False) -> str | None:
     """Get text from clipboard, with an optional status message."""
+    import pyperclip  # noqa: PLC0415
+
     text = pyperclip.paste()
     if not text:
         if not quiet:

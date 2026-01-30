@@ -1,29 +1,4 @@
-r"""Wake word-based voice assistant that records when wake word is detected.
-
-This agent uses Wyoming wake word detection to implement a hands-free voice assistant that:
-1. Continuously listens for a wake word
-2. When the wake word is detected, starts recording user speech
-3. When the wake word is detected again, stops recording and processes the speech
-4. Sends the recorded speech to ASR for transcription
-5. Optionally processes the transcript with an LLM and speaks the response
-
-WORKFLOW:
-1. Agent starts listening for the specified wake word
-2. First wake word detection -> start recording user speech
-3. Second wake word detection -> stop recording and process the speech
-4. Transcribe the recorded speech using Wyoming ASR
-5. Optionally process with LLM and respond with TTS
-
-USAGE:
-- Start the agent: assistant --wake-word "ok_nabu" --input-device-index 1
-- The agent runs continuously until stopped with Ctrl+C or --stop
-- Uses background process management for daemon-like operation
-
-REQUIREMENTS:
-- Wyoming wake word server (e.g., wyoming-openwakeword)
-- Wyoming ASR server (e.g., wyoming-whisper)
-- Optional: Wyoming TTS server for responses
-"""
+"""Wake word-based voice assistant using Wyoming protocol services."""
 
 from __future__ import annotations
 
@@ -41,6 +16,7 @@ from agent_cli.agents._voice_agent_common import (
 from agent_cli.cli import app
 from agent_cli.core import audio, process
 from agent_cli.core.audio import setup_devices
+from agent_cli.core.deps import requires_extras
 from agent_cli.core.utils import (
     InteractiveStopEvent,
     maybe_live,
@@ -254,6 +230,7 @@ async def _async_main(
 
 
 @app.command("assistant", rich_help_panel="Voice Commands")
+@requires_extras("audio", "llm")
 def assistant(
     *,
     # --- Provider Selection ---
@@ -304,14 +281,35 @@ def assistant(
     # --- General Options ---
     save_file: Path | None = opts.SAVE_FILE,
     clipboard: bool = opts.CLIPBOARD,
-    log_level: str = opts.LOG_LEVEL,
+    log_level: opts.LogLevel = opts.LOG_LEVEL,
     log_file: str | None = opts.LOG_FILE,
     list_devices: bool = opts.LIST_DEVICES,
     quiet: bool = opts.QUIET,
     config_file: str | None = opts.CONFIG_FILE,
     print_args: bool = opts.PRINT_ARGS,
 ) -> None:
-    """Wake word-based voice assistant using local or remote services."""
+    """Hands-free voice assistant using wake word detection.
+
+    Continuously listens for a wake word, then records your speech until you say
+    the wake word again. The recording is transcribed and sent to an LLM for a
+    conversational response, optionally spoken back via TTS.
+
+    **Conversation flow:**
+      1. Say wake word → starts recording
+      2. Speak your question/command
+      3. Say wake word again → stops recording and processes
+
+    The assistant runs in a loop, ready for the next command after each response.
+    Stop with Ctrl+C or `--stop`.
+
+    **Requirements:**
+      - Wyoming wake word server (e.g., wyoming-openwakeword on port 10400)
+      - Wyoming ASR server (e.g., wyoming-whisper on port 10300)
+      - Optional: TTS server for spoken responses (enable with `--tts`)
+
+    **Example:**
+      `assistant --wake-word ok_nabu --tts --input-device-name USB`
+    """
     if print_args:
         print_command_line_args(locals())
 

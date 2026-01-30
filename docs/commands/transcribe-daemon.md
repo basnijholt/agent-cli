@@ -32,7 +32,7 @@ Saving MP3 files requires FFmpeg; if it's not available, audio saving is disable
 Requires the `vad` extra:
 
 ```bash
-uv tool install "agent-cli[vad]"
+uv tool install "agent-cli[vad]" -p 3.13
 # or
 pip install "agent-cli[vad]"
 ```
@@ -65,14 +65,14 @@ agent-cli transcribe-daemon --silence-threshold 1.5
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--role` | `user` | Role name for logging (e.g., 'meeting', 'notes', 'user'). |
-| `--silence-threshold` | `1.0` | Seconds of silence to end a speech segment. |
-| `--min-segment` | `0.25` | Minimum speech duration in seconds to trigger a segment. |
-| `--vad-threshold` | `0.3` | VAD speech detection threshold (0.0-1.0). Higher = more aggressive filtering. |
-| `--save-audio/--no-save-audio` | `true` | Save audio segments as MP3 files. |
-| `--audio-dir` | - | Directory for MP3 files. Default: ~/.config/agent-cli/audio |
-| `--transcription-log` | - | JSON Lines log file path. Default: ~/.config/agent-cli/transcriptions.jsonl |
-| `--clipboard/--no-clipboard` | `false` | Copy each transcription to clipboard. |
+| `--role, -r` | `user` | Label for log entries. Use to distinguish speakers or contexts in logs. |
+| `--silence-threshold, -s` | `1.0` | Seconds of silence after speech to finalize a segment. Increase for slower speakers. |
+| `--min-segment, -m` | `0.25` | Minimum seconds of speech required before a segment is processed. Filters brief sounds. |
+| `--vad-threshold` | `0.3` | Silero VAD confidence threshold (0.0-1.0). Higher values require clearer speech; lower values are more sensitive to quiet/distant voices. |
+| `--save-audio/--no-save-audio` | `true` | Save each speech segment as MP3. Requires `ffmpeg` to be installed. |
+| `--audio-dir` | - | Base directory for MP3 files. Files are organized by date: `YYYY/MM/DD/HHMMSS_mmm.mp3`. Default: `~/.config/agent-cli/audio`. |
+| `--transcription-log, -t` | - | JSONL file for transcript logging (one JSON object per line with timestamp, role, raw/processed text, audio path). Default: `~/.config/agent-cli/transcriptions.jsonl`. |
+| `--clipboard/--no-clipboard` | `false` | Copy each completed transcription to clipboard (overwrites previous). Useful with `--llm` to get cleaned text. |
 
 ### Provider Selection
 
@@ -85,9 +85,9 @@ agent-cli transcribe-daemon --silence-threshold 1.5
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--input-device-index` | - | Index of the audio input device to use. |
-| `--input-device-name` | - | Device name keywords for partial matching. |
-| `--list-devices` | `false` | List available audio input and output devices and exit. |
+| `--input-device-index` | - | Audio input device index (see `--list-devices`). Uses system default if omitted. |
+| `--input-device-name` | - | Select input device by name substring (e.g., `MacBook` or `USB`). |
+| `--list-devices` | `false` | List available audio devices with their indices and exit. |
 
 ### Audio Input: Wyoming
 
@@ -136,22 +136,22 @@ agent-cli transcribe-daemon --silence-threshold 1.5
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--llm/--no-llm` | `false` | Use an LLM to process the transcript. |
+| `--llm/--no-llm` | `false` | Clean up transcript with LLM: fix errors, add punctuation, remove filler words. Uses `--extra-instructions` if set (via CLI or config file). |
 
 ### Process Management
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--stop` | `false` | Stop any running background process. |
-| `--status` | `false` | Check if a background process is running. |
+| `--stop` | `false` | Stop any running instance of this command. |
+| `--status` | `false` | Check if an instance is currently running. |
 
 ### General Options
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--log-level` | `WARNING` | Set logging level. |
+| `--log-level` | `warning` | Set logging level. |
 | `--log-file` | - | Path to a file to write logs to. |
-| `--quiet` | `false` | Suppress console output from rich. |
+| `--quiet, -q` | `false` | Suppress console output from rich. |
 | `--config` | - | Path to a TOML configuration file. |
 | `--print-args` | `false` | Print the command line arguments, including variables taken from the configuration file. |
 

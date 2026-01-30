@@ -16,9 +16,10 @@ runner = CliRunner(env={"NO_COLOR": "1", "TERM": "dumb"})
 
 
 def test_main_no_args() -> None:
-    """Test the main function with no arguments."""
+    """Test the main function with no arguments shows help (no_args_is_help=True)."""
     result = runner.invoke(app)
-    assert "No command specified" in result.stdout
+    # Exit code 2 is the standard Typer exit code when no_args_is_help=True
+    assert result.exit_code == 2
     assert "Usage" in result.stdout
 
 
@@ -36,26 +37,26 @@ def test_server_command() -> None:
     result = runner.invoke(app, ["server", "--help"])
     assert result.exit_code == 0
     assert "whisper" in result.stdout
-    assert "transcription-proxy" in result.stdout
+    assert "transcribe-proxy" in result.stdout
 
 
 @patch("uvicorn.run")
-def test_server_transcription_proxy_command(mock_uvicorn_run: pytest.MagicMock) -> None:
-    """Test the server transcription-proxy command."""
-    result = runner.invoke(app, ["server", "transcription-proxy", "--port", "61337"])
+def test_server_transcribe_proxy_command(mock_uvicorn_run: pytest.MagicMock) -> None:
+    """Test the server transcribe-proxy command."""
+    result = runner.invoke(app, ["server", "transcribe-proxy", "--port", "61337"])
     assert result.exit_code == 0
     assert "Starting Agent CLI transcription proxy" in result.stdout
     mock_uvicorn_run.assert_called_once()
 
 
 @patch("uvicorn.run")
-def test_server_transcription_proxy_command_with_options(
+def test_server_transcribe_proxy_command_with_options(
     mock_uvicorn_run: pytest.MagicMock,
 ) -> None:
-    """Test the server transcription-proxy command with custom options."""
+    """Test the server transcribe-proxy command with custom options."""
     result = runner.invoke(
         app,
-        ["server", "transcription-proxy", "--host", "127.0.0.1", "--port", "8080", "--reload"],
+        ["server", "transcribe-proxy", "--host", "127.0.0.1", "--port", "8080", "--reload"],
     )
     assert result.exit_code == 0
     assert "Starting Agent CLI transcription proxy on 127.0.0.1:8080" in result.stdout

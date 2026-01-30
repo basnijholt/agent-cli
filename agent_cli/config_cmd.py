@@ -20,7 +20,18 @@ from agent_cli.core.utils import console
 
 config_app = typer.Typer(
     name="config",
-    help="Manage agent-cli configuration files.",
+    help="""Manage agent-cli configuration files.
+
+Config files are TOML format and searched in order:
+
+1. `./agent-cli-config.toml` (project-local)
+2. `~/.config/agent-cli/config.toml` (user default)
+
+Settings in `[defaults]` apply to all commands. Override per-command
+with sections like `[chat]` or `[transcribe]`. CLI arguments override
+config file settings.
+""",
+    add_completion=True,
     rich_markup_mode="markdown",
     no_args_is_help=True,
 )
@@ -39,30 +50,30 @@ CONFIG_PATH_OPTION: Path | None = typer.Option(
     None,
     "--path",
     "-p",
-    help="Path to config file. Uses auto-detection if not specified.",
+    help="Override auto-detection and use this config file path.",
 )
 CONFIG_PATH_INIT_OPTION: Path | None = typer.Option(
     None,
     "--path",
     "-p",
-    help="Custom path for config file. Default: ~/.config/agent-cli/config.toml",
+    help="Where to create the config file (default: `~/.config/agent-cli/config.toml`).",
 )
 FORCE_OPTION: bool = typer.Option(
     False,  # noqa: FBT003
     "--force",
     "-f",
-    help="Overwrite existing config without confirmation.",
+    help="Overwrite existing config without prompting for confirmation.",
 )
 RAW_OPTION: bool = typer.Option(
     False,  # noqa: FBT003
     "--raw",
     "-r",
-    help="Output raw file contents (for copy-paste).",
+    help="Print plain file contents without syntax highlighting or line numbers.",
 )
 JSON_OPTION: bool = typer.Option(
     False,  # noqa: FBT003
     "--json",
-    help="Output as JSON for automation.",
+    help="Output as JSON with `path`, `exists`, and `content` fields.",
 )
 
 
@@ -148,10 +159,13 @@ def config_init(
     path: Path | None = CONFIG_PATH_INIT_OPTION,
     force: bool = FORCE_OPTION,
 ) -> None:
-    """Create a new config file with all options commented out.
+    """Create a new config file with all options as commented-out examples.
 
-    The generated config file serves as a template showing all available
-    options. Uncomment and modify the options you want to customize.
+    Generates a TOML template with `[defaults]` for global settings and
+    command-specific sections like `[chat]`, `[transcribe]`, etc. Uncomment
+    and edit the options you want to customize.
+
+    Example: `agent-cli config init && agent-cli config edit`
     """
     target_path = _get_config_file(path) or USER_CONFIG_PATH
 
@@ -181,7 +195,9 @@ def config_edit(
 ) -> None:
     """Open the config file in your default editor.
 
-    The editor is determined by: $EDITOR > $VISUAL > platform default.
+    Editor preference: `$EDITOR` → `$VISUAL` → `nano`/`vim` → `vi` (or
+    `notepad` on Windows). If no config exists, run `agent-cli config init`
+    first.
     """
     config_file = _get_config_file(path)
 
@@ -233,7 +249,11 @@ def config_show(
     raw: bool = RAW_OPTION,
     json_output: bool = JSON_OPTION,
 ) -> None:
-    """Display the config file location and contents."""
+    """Display the active config file path and contents.
+
+    By default, shows syntax-highlighted TOML with line numbers. Use `--raw`
+    for plain output (useful for piping), or `--json` for programmatic access.
+    """
     config_file = _get_config_file(path)
 
     if config_file is None:

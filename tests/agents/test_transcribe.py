@@ -21,11 +21,13 @@ from tests.mocks.wyoming import MockASRClient
 @patch("agent_cli.services.asr.setup_input_stream")
 @patch("agent_cli.agents.transcribe.process_and_update_clipboard", new_callable=AsyncMock)
 @patch("agent_cli.services.asr.wyoming_client_context")
-@patch("agent_cli.agents.transcribe.pyperclip")
+@patch("pyperclip.copy")
+@patch("pyperclip.paste")
 @patch("agent_cli.agents.transcribe.signal_handling_context")
 async def test_transcribe_main_llm_enabled(
     mock_signal_handling_context: MagicMock,
-    mock_pyperclip: MagicMock,
+    mock_pyperclip_paste: MagicMock,
+    mock_pyperclip_copy: MagicMock,
     mock_wyoming_client_context: MagicMock,
     mock_process_and_update_clipboard: AsyncMock,
     mock_setup_input_stream: MagicMock,
@@ -48,7 +50,7 @@ async def test_transcribe_main_llm_enabled(
     mock_signal_handling_context.return_value.__enter__.return_value = stop_event
     asyncio.get_event_loop().call_later(0.1, stop_event.set)
 
-    mock_pyperclip.paste.return_value = ""
+    mock_pyperclip_paste.return_value = ""
 
     # The function we are testing
     with caplog.at_level(logging.INFO):
@@ -96,8 +98,8 @@ async def test_transcribe_main_llm_enabled(
 
     # Assertions
     mock_process_and_update_clipboard.assert_called_once()
-    mock_pyperclip.copy.assert_called_once_with("hello world")
-    mock_pyperclip.paste.assert_called_once()
+    mock_pyperclip_copy.assert_called_once_with("hello world")
+    mock_pyperclip_paste.assert_called_once()
     assert "Copied raw transcript to clipboard before LLM processing." in caplog.text
 
 
@@ -105,11 +107,11 @@ async def test_transcribe_main_llm_enabled(
 @patch("agent_cli.services.asr.open_audio_stream")
 @patch("agent_cli.services.asr.setup_input_stream")
 @patch("agent_cli.services.asr.wyoming_client_context")
-@patch("agent_cli.agents.transcribe.pyperclip")
+@patch("pyperclip.copy")
 @patch("agent_cli.agents.transcribe.signal_handling_context")
 async def test_transcribe_main(
     mock_signal_handling_context: MagicMock,
-    mock_pyperclip: MagicMock,
+    mock_pyperclip_copy: MagicMock,
     mock_wyoming_client_context: MagicMock,
     mock_setup_input_stream: MagicMock,
     mock_open_audio_stream: MagicMock,
@@ -177,7 +179,7 @@ async def test_transcribe_main(
 
     # Assertions
     assert "Copied transcript to clipboard." in caplog.text
-    mock_pyperclip.copy.assert_called_once_with("hello world")
+    mock_pyperclip_copy.assert_called_once_with("hello world")
     mock_wyoming_client_context.assert_called_once()
 
 
@@ -328,7 +330,8 @@ def test_gather_recent_context_prefers_raw(tmp_path: Path) -> None:
 
 @pytest.mark.asyncio
 @patch("agent_cli.agents.transcribe.signal_handling_context")
-@patch("agent_cli.agents.transcribe.pyperclip")
+@patch("pyperclip.copy")
+@patch("pyperclip.paste")
 @patch("agent_cli.services.asr.wyoming_client_context")
 @patch("agent_cli.agents.transcribe.process_and_update_clipboard", new_callable=AsyncMock)
 @patch("agent_cli.services.asr.open_audio_stream")
@@ -338,7 +341,8 @@ async def test_transcribe_includes_clipboard_context(
     mock_open_audio_stream: MagicMock,
     mock_process_and_update_clipboard: AsyncMock,
     mock_wyoming_client_context: MagicMock,
-    mock_pyperclip: MagicMock,
+    mock_pyperclip_paste: MagicMock,
+    mock_pyperclip_copy: MagicMock,
     mock_signal_handling_context: MagicMock,
 ) -> None:
     """Ensure clipboard content is forwarded to the LLM context."""
@@ -347,8 +351,9 @@ async def test_transcribe_includes_clipboard_context(
     mock_stream.read.return_value = (MagicMock(tobytes=lambda: b"\0" * 1024), False)
     mock_open_audio_stream.return_value.__enter__.return_value = mock_stream
     assert mock_setup_input_stream  # Used to satisfy linter
+    assert mock_pyperclip_copy  # Used to satisfy linter
 
-    mock_pyperclip.paste.return_value = "Clipboard reference text"
+    mock_pyperclip_paste.return_value = "Clipboard reference text"
 
     mock_asr_client = MockASRClient("hello world")
     mock_wyoming_client_context.return_value.__aenter__.return_value = mock_asr_client
@@ -408,7 +413,8 @@ async def test_transcribe_includes_clipboard_context(
 
 @pytest.mark.asyncio
 @patch("agent_cli.agents.transcribe.signal_handling_context")
-@patch("agent_cli.agents.transcribe.pyperclip")
+@patch("pyperclip.copy")
+@patch("pyperclip.paste")
 @patch("agent_cli.services.asr.wyoming_client_context")
 @patch("agent_cli.agents.transcribe.process_and_update_clipboard", new_callable=AsyncMock)
 @patch("agent_cli.services.asr.open_audio_stream")
@@ -418,7 +424,8 @@ async def test_transcribe_with_logging(
     mock_open_audio_stream: MagicMock,
     mock_process_and_update_clipboard: AsyncMock,
     mock_wyoming_client_context: MagicMock,
-    mock_pyperclip: MagicMock,
+    mock_pyperclip_paste: MagicMock,
+    mock_pyperclip_copy: MagicMock,
     mock_signal_handling_context: MagicMock,
     tmp_path: Path,
 ) -> None:
@@ -430,6 +437,7 @@ async def test_transcribe_with_logging(
     mock_stream.read.return_value = (MagicMock(tobytes=lambda: b"\0" * 1024), False)
     mock_open_audio_stream.return_value.__enter__.return_value = mock_stream
     assert mock_setup_input_stream  # Used to satisfy linter
+    assert mock_pyperclip_copy  # Used to satisfy linter
 
     # Mock the Wyoming client
     mock_asr_client = MockASRClient("hello world")
@@ -441,7 +449,7 @@ async def test_transcribe_with_logging(
     asyncio.get_event_loop().call_later(0.1, stop_event.set)
 
     # Mock clipboard and LLM response
-    mock_pyperclip.paste.return_value = ""
+    mock_pyperclip_paste.return_value = ""
     mock_process_and_update_clipboard.return_value = "Hello, world!"
 
     provider_cfg = config.ProviderSelection(
@@ -486,7 +494,7 @@ async def test_transcribe_with_logging(
         save_recording=False,  # Disable for testing
     )
 
-    mock_pyperclip.paste.assert_called_once()
+    mock_pyperclip_paste.assert_called_once()
 
     # Verify log file was created and contains expected entry
     assert log_file.exists()

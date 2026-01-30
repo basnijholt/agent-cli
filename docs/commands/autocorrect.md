@@ -72,10 +72,10 @@ agent-cli autocorrect "this text has an eror"
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--log-level` | `WARNING` | Set logging level. |
+| `--log-level` | `warning` | Set logging level. |
 | `--log-file` | - | Path to a file to write logs to. |
-| `--quiet` | `false` | Suppress console output from rich. |
-| `--json` | `false` | Output result as JSON for automation. Implies --quiet and --no-clipboard. |
+| `--quiet, -q` | `false` | Suppress console output from rich. |
+| `--json` | `false` | Output result as JSON (implies `--quiet` and `--no-clipboard`). |
 | `--config` | - | Path to a TOML configuration file. |
 | `--print-args` | `false` | Print the command line arguments, including variables taken from the configuration file. |
 

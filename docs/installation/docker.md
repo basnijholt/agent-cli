@@ -42,7 +42,7 @@ Universal Docker setup that works on any platform with Docker support.
 3. **Install agent-cli:**
 
    ```bash
-   uv tool install agent-cli
+   uv tool install agent-cli -p 3.13
    # or: pip install agent-cli
    ```
 
@@ -55,12 +55,13 @@ Universal Docker setup that works on any platform with Docker support.
 
 The Docker setup provides:
 
-| Service          | Image                             | Port        | Purpose                        |
-| ---------------- | --------------------------------- | ----------- | ------------------------------ |
-| **whisper**      | agent-cli-whisper (custom)        | 10300/10301 | Speech-to-text (Faster Whisper)|
-| **tts**          | agent-cli-tts (custom)            | 10200/10201 | Text-to-speech (Kokoro/Piper)  |
-| **ollama**       | ollama/ollama                     | 11434       | LLM server                     |
-| **openwakeword** | rhasspy/wyoming-openwakeword      | 10400       | Wake word detection            |
+| Service                 | Image                             | Port        | Purpose                        |
+| ----------------------- | --------------------------------- | ----------- | ------------------------------ |
+| **whisper**             | agent-cli-whisper (custom)        | 10300/10301 | Speech-to-text (Faster Whisper)|
+| **tts**                 | agent-cli-tts (custom)            | 10200/10201 | Text-to-speech (Kokoro/Piper)  |
+| **transcribe-proxy** | agent-cli-transcribe-proxy     | 61337       | ASR proxy for iOS/external apps|
+| **ollama**              | ollama/ollama                     | 11434       | LLM server                     |
+| **openwakeword**        | rhasspy/wyoming-openwakeword      | 10400       | Wake word detection            |
 
 ## Configuration
 
@@ -75,6 +76,17 @@ WHISPER_TTL=300             # Seconds before unloading idle model
 TTS_MODEL=kokoro            # For CUDA: kokoro, For CPU: en_US-lessac-medium
 TTS_BACKEND=kokoro          # Backend: kokoro (GPU), piper (CPU)
 TTS_TTL=300                 # Seconds before unloading idle model
+
+# Transcription Proxy
+PROXY_PORT=61337            # Port for transcription proxy
+ASR_PROVIDER=wyoming        # ASR provider: wyoming, openai, gemini
+ASR_WYOMING_IP=whisper      # Wyoming server hostname (container name in compose)
+ASR_WYOMING_PORT=10300      # Wyoming server port
+LLM_PROVIDER=ollama         # LLM provider: ollama, openai, gemini
+LLM_OLLAMA_MODEL=gemma3:4b  # Ollama model name
+LLM_OLLAMA_HOST=http://ollama:11434  # Ollama server URL (container name)
+LLM_OPENAI_MODEL=gpt-4.1-nano  # OpenAI model (if using openai provider)
+OPENAI_API_KEY=sk-...       # OpenAI API key (if using openai provider)
 ```
 
 ### GPU Support
@@ -108,14 +120,15 @@ Services store data in Docker volumes:
 
 ## Ports Reference
 
-| Port  | Service      | Protocol |
-| ----- | ------------ | -------- |
-| 10200 | TTS          | Wyoming  |
-| 10201 | TTS          | HTTP API |
-| 10300 | Whisper      | Wyoming  |
-| 10301 | Whisper      | HTTP API |
-| 10400 | OpenWakeWord | Wyoming  |
-| 11434 | Ollama       | HTTP API |
+| Port  | Service             | Protocol |
+| ----- | ------------------- | -------- |
+| 10200 | TTS                 | Wyoming  |
+| 10201 | TTS                 | HTTP API |
+| 10300 | Whisper             | Wyoming  |
+| 10301 | Whisper             | HTTP API |
+| 10400 | OpenWakeWord        | Wyoming  |
+| 11434 | Ollama              | HTTP API |
+| 61337 | Transcription Proxy | HTTP API |
 
 ## Alternative: Native Installation
 

@@ -27,6 +27,20 @@
 #   TTS_LOG_LEVEL      - Logging level (default: info)
 #
 #   OLLAMA_MODEL       - Ollama model to pull on startup (default: gemma3:4b)
+#
+#   PROXY_PORT         - Transcription proxy port (default: 61337)
+#   LOG_LEVEL          - Proxy logging level: debug, info, warning, error (default: info)
+#
+#   ASR_PROVIDER       - ASR backend: wyoming or openai (default: wyoming)
+#   ASR_WYOMING_IP     - Hostname/IP of Wyoming whisper server (default: whisper-cuda or whisper-cpu)
+#   ASR_WYOMING_PORT   - Wyoming protocol port (default: 10300)
+#   ASR_OPENAI_BASE_URL - OpenAI-compatible ASR endpoint (for ASR_PROVIDER=openai)
+#   ASR_OPENAI_API_KEY  - API key for OpenAI ASR (for ASR_PROVIDER=openai)
+#
+#   LLM_PROVIDER       - LLM for post-processing: none, ollama, openai (default: none)
+#   LLM_OPENAI_MODEL   - Model name for OpenAI LLM provider
+#   OPENAI_BASE_URL    - OpenAI-compatible LLM endpoint
+#   OPENAI_API_KEY     - API key for OpenAI LLM
 
 services:
   # ===========================================================================
@@ -173,6 +187,44 @@ services:
       - TTS_TTL=${TTS_TTL:-300}
       - TTS_LOG_LEVEL=${TTS_LOG_LEVEL:-info}
       - TTS_DEVICE=cpu
+    restart: unless-stopped
+
+  # ===========================================================================
+  # Transcription Proxy
+  # ===========================================================================
+
+  transcribe-proxy:
+    image: ghcr.io/basnijholt/agent-cli-transcribe-proxy:latest
+    build:
+      context: ..
+      dockerfile: docker/transcribe-proxy.Dockerfile
+    profiles: [cuda, cpu]
+    ports:
+      - "61337:61337"
+    # Optional: mount config file for additional settings
+    # volumes:
+    #   - ./config.toml:/home/transcribe/.config/agent-cli/config.toml:ro
+    environment:
+      - PROXY_HOST=0.0.0.0
+      - PROXY_PORT=${PROXY_PORT:-61337}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      # ASR Configuration - Wyoming protocol (recommended for Docker Compose)
+      # Set ASR_WYOMING_IP to whisper-cuda or whisper-cpu based on your profile
+      - ASR_PROVIDER=${ASR_PROVIDER:-wyoming}
+      - ASR_WYOMING_IP=${ASR_WYOMING_IP:-whisper-cuda}
+      - ASR_WYOMING_PORT=${ASR_WYOMING_PORT:-10300}
+      # Alternative: OpenAI-compatible API (uncomment to use)
+      # - ASR_PROVIDER=openai
+      # - ASR_OPENAI_BASE_URL=http://whisper-cuda:10301/v1
+      # - ASR_OPENAI_API_KEY=dummy
+      # LLM Post-processing (optional - uncomment to enable)
+      # - LLM_PROVIDER=ollama
+      # - OLLAMA_HOST=http://ollama:11434
+      # Alternative: OpenAI-compatible LLM
+      # - LLM_PROVIDER=openai
+      # - LLM_OPENAI_MODEL=gpt-4o-mini
+      # - OPENAI_BASE_URL=https://api.openai.com/v1
+      # - OPENAI_API_KEY=your-api-key
     restart: unless-stopped
 
 volumes:

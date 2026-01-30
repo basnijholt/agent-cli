@@ -12,7 +12,7 @@ Run a local Whisper ASR server with automatic backend selection based on your pl
 > [!NOTE]
 > **Quick Start** - Get transcription working in 30 seconds:
 > ```bash
-> pip install "agent-cli[whisper]"
+> pip install "agent-cli[faster-whisper]"
 > agent-cli server whisper
 > ```
 > Server is now running at `http://localhost:10301`. Verify with `curl http://localhost:10301/health`.
@@ -74,20 +74,25 @@ agent-cli server whisper --preload
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--model` | - | Model name(s) to load (can specify multiple) |
-| `--default-model` | - | Default model when not specified in request |
-| `--device` | `auto` | Device: auto, cuda, cuda:0, cpu |
-| `--compute-type` | `auto` | Compute type: auto, float16, int8, int8_float16 |
-| `--cache-dir` | - | Model cache directory |
-| `--ttl` | `300` | Seconds before unloading idle model |
-| `--preload` | `false` | Load model(s) at startup and wait for completion |
-| `--host` | `0.0.0.0` | Host to bind the server to |
-| `--port` | `10301` | HTTP API port |
-| `--wyoming-port` | `10300` | Wyoming protocol port |
-| `--no-wyoming` | `false` | Disable Wyoming server |
-| `--download-only` | `false` | Download model(s) and exit without starting server |
-| `--log-level` | `info` | Logging level: debug, info, warning, error |
-| `--backend` | `auto` | Backend: auto (platform detection), faster-whisper, mlx |
+| `--model, -m` | - | Whisper model(s) to load. Common models: `tiny`, `base`, `small`, `medium`, `large-v3`, `distil-large-v3`. Can specify multiple for different accuracy/speed tradeoffs. Default: `large-v3` |
+| `--default-model` | - | Model to use when client doesn't specify one. Must be in the `--model` list |
+| `--device, -d` | `auto` | Compute device: `auto` (detect GPU), `cuda`, `cuda:0`, `cpu`. MLX backend always uses Apple Silicon |
+| `--compute-type` | `auto` | Precision for faster-whisper: `auto`, `float16`, `int8`, `int8_float16`. Lower precision = faster + less VRAM |
+| `--cache-dir` | - | Custom directory for downloaded models (default: HuggingFace cache) |
+| `--ttl` | `300` | Seconds of inactivity before unloading model from memory. Set to 0 to keep loaded indefinitely |
+| `--preload` | `false` | Load model(s) immediately at startup instead of on first request. Useful for reducing first-request latency |
+| `--host` | `0.0.0.0` | Network interface to bind. Use `0.0.0.0` for all interfaces |
+| `--port, -p` | `10301` | Port for OpenAI-compatible HTTP API (`/v1/audio/transcriptions`) |
+| `--wyoming-port` | `10300` | Port for Wyoming protocol (Home Assistant integration) |
+| `--no-wyoming` | `false` | Disable Wyoming protocol server (only run HTTP API) |
+| `--download-only` | `false` | Download model(s) to cache and exit. Useful for Docker builds |
+| `--backend, -b` | `auto` | Inference backend: `auto` (faster-whisper on CUDA/CPU, MLX on Apple Silicon), `faster-whisper`, `mlx` |
+
+### General Options
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--log-level` | `info` | Set logging level. |
 
 
 <!-- OUTPUT:END -->
@@ -207,7 +212,7 @@ Requires server deps and a backend:
 
 ```bash
 # faster-whisper backend (also needed for --download-only)
-pip install "agent-cli[whisper]"
+pip install "agent-cli[faster-whisper]"
 # or
 uv sync --extra whisper
 ```

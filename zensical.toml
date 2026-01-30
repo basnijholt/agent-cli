@@ -44,11 +44,12 @@ nav = [
         { "Overview" = "commands/server/index.md" },
         { "whisper" = "commands/server/whisper.md" },
         { "tts" = "commands/server/tts.md" },
-        { "transcription-proxy" = "commands/server/transcription-proxy.md" },
+        { "transcribe-proxy" = "commands/server/transcribe-proxy.md" },
       ] },
     ] },
     { "Setup" = [
       { "config" = "commands/config.md" },
+      { "install-extras" = "commands/install-extras.md" },
       { "install-services" = "commands/install-services.md" },
       { "install-hotkeys" = "commands/install-hotkeys.md" },
       { "start-services" = "commands/start-services.md" },

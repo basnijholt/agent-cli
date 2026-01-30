@@ -20,7 +20,68 @@ Each prompt for a spawned agent should follow this structure:
 5. **Focused scope** - Keep solutions minimal, implement only what's requested
 6. **Structured report** - Write conclusions to `.claude/REPORT.md`
 
-## Scenario 1: Multi-feature implementation
+## Scenario 1: Code review of current branch
+
+**User request**: "Review the code on this branch" or "Spawn an agent to review my changes"
+
+**CRITICAL**: Use `--from HEAD` (or the branch name) so the review agent has access to the changes!
+
+```bash
+# Review the current branch - MUST use --from HEAD
+agent-cli dev new review-changes --from HEAD --agent --prompt "Review the code changes on this branch.
+
+<workflow>
+- Run git diff origin/main...HEAD to identify all changes
+- Read changed files in parallel to understand context
+- Check CLAUDE.md for project-specific guidelines
+- Test changes with real services if applicable
+</workflow>
+
+<code_exploration>
+- Use git diff origin/main...HEAD to see the full diff
+- Read each changed file completely before judging
+- Look at surrounding code to understand patterns
+- Check existing tests to understand expected behavior
+</code_exploration>
+
+<context>
+Code review catches issues before merge. Focus on real problems - not style nitpicks. Apply these criteria:
+- Code cleanliness: Is the implementation clean and well-structured?
+- DRY principle: Does it avoid duplication?
+- Code reuse: Are there parts that should be reused from other places?
+- Organization: Is everything in the right place?
+- Consistency: Is it in the same style as other parts of the codebase?
+- Simplicity: Is it over-engineered? Remember KISS and YAGNI. No dead code paths, no defensive programming.
+- No pointless wrappers: Functions that just call another function should be inlined.
+- User experience: Does it provide a good user experience?
+- Tests: Are tests meaningful or just trivial coverage?
+- Live tests: Test changes with real services if applicable.
+- Rules: Does the code follow CLAUDE.md guidelines?
+</context>
+
+<scope>
+Review only - identify issues but do not fix them. Write findings to report.
+</scope>
+
+<report>
+Write your review to .claude/REPORT.md:
+
+## Summary
+[Overall assessment of the changes]
+
+## Issues Found
+| Severity | File:Line | Issue | Suggestion |
+|----------|-----------|-------|------------|
+| Critical/High/Medium/Low | path:123 | description | fix |
+
+## Positive Observations
+[What's well done]
+</report>"
+```
+
+**Common mistake**: Forgetting `--from HEAD` means the agent starts from `origin/main` and won't see any of the branch changes!
+
+## Scenario 2: Multi-feature implementation
 
 **User request**: "Implement user auth, payment processing, and email notifications"
 
@@ -169,7 +230,7 @@ After verifying tests pass, write to .claude/REPORT.md with summary, files chang
 </report>"
 ```
 
-## Scenario 2: Test-driven development
+## Scenario 3: Test-driven development
 
 **User request**: "Add a caching layer with comprehensive tests"
 
@@ -289,7 +350,7 @@ After ALL tests pass, write to .claude/REPORT.md:
 </report>"
 ```
 
-## Scenario 3: Large refactoring by module
+## Scenario 4: Large refactoring by module
 
 **User request**: "Refactor the API to use consistent error handling"
 
@@ -357,7 +418,7 @@ After tests pass and linting is clean, write to .claude/REPORT.md:
 </report>"
 ```
 
-## Scenario 4: Documentation and implementation in parallel
+## Scenario 5: Documentation and implementation in parallel
 
 **User request**: "Add a plugin system with documentation"
 

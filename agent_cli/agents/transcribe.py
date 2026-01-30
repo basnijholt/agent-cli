@@ -12,13 +12,13 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path  # noqa: TC003
 from typing import Any, TypedDict
 
-import pyperclip
 import typer
 
 from agent_cli import config, opts
 from agent_cli.cli import app
 from agent_cli.core import process
 from agent_cli.core.audio import setup_devices
+from agent_cli.core.deps import requires_extras
 from agent_cli.core.utils import (
     enable_json_mode,
     format_short_timedelta,
@@ -363,6 +363,8 @@ async def _async_main(  # noqa: PLR0912, PLR0915, C901
                 )
             clipboard_snapshot: str | None = None
             if general_cfg.clipboard:
+                import pyperclip  # noqa: PLC0415
+
                 clipboard_snapshot = pyperclip.paste()
                 pyperclip.copy(transcript)
                 LOGGER.info("Copied raw transcript to clipboard before LLM processing.")
@@ -444,6 +446,8 @@ async def _async_main(  # noqa: PLR0912, PLR0915, C901
             )
 
         if general_cfg.clipboard:
+            import pyperclip  # noqa: PLC0415
+
             pyperclip.copy(transcript)
             LOGGER.info("Copied transcript to clipboard.")
         else:
@@ -461,12 +465,13 @@ async def _async_main(  # noqa: PLR0912, PLR0915, C901
 
 
 @app.command("transcribe", rich_help_panel="Voice Commands")
+@requires_extras("audio", "llm")
 def transcribe(  # noqa: PLR0912
     *,
     extra_instructions: str | None = typer.Option(
         None,
         "--extra-instructions",
-        help="Additional instructions for the LLM to process the transcription.",
+        help="Extra instructions appended to the LLM cleanup prompt (requires `--llm`).",
         rich_help_panel="LLM Configuration",
     ),
     from_file: Path | None = opts.FROM_FILE,
@@ -499,7 +504,7 @@ def transcribe(  # noqa: PLR0912
     toggle: bool = opts.TOGGLE,
     # --- General Options ---
     clipboard: bool = opts.CLIPBOARD,
-    log_level: str = opts.LOG_LEVEL,
+    log_level: opts.LogLevel = opts.LOG_LEVEL,
     log_file: str | None = opts.LOG_FILE,
     list_devices: bool = opts.LIST_DEVICES,
     quiet: bool = opts.QUIET,
@@ -508,7 +513,25 @@ def transcribe(  # noqa: PLR0912
     print_args: bool = opts.PRINT_ARGS,
     transcription_log: Path | None = opts.TRANSCRIPTION_LOG,
 ) -> None:
-    """Wyoming ASR Client for streaming microphone audio to a transcription server."""
+    """Record audio from microphone and transcribe to text.
+
+    Records until you press Ctrl+C (or send SIGINT), then transcribes using your
+    configured ASR provider. The transcript is copied to the clipboard by default.
+
+    **With `--llm`**: Passes the raw transcript through an LLM to clean up speech
+    recognition errors, add punctuation, remove filler words, and improve readability.
+
+    **With `--toggle`**: Bind to a hotkey for push-to-talk. First call starts recording,
+    second call stops and transcribes.
+
+    **Examples**:
+
+    - Record and transcribe: `agent-cli transcribe`
+
+    - With LLM cleanup: `agent-cli transcribe --llm`
+
+    - Re-transcribe last recording: `agent-cli transcribe --last-recording 1`
+    """
     if print_args:
         print_command_line_args(locals())
 

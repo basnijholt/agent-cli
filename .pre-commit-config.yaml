@@ -8,7 +8,7 @@ repos:
       - id: end-of-file-fixer
       - id: mixed-line-ending
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: "v0.14.13"
+    rev: "v0.14.14"
     hooks:
       - id: ruff
         args: ["--fix"]
@@ -41,3 +41,23 @@ repos:
         language: python
         pass_filenames: false
         files: (agent_cli/dev/skill/|\.claude-plugin/skills/|\.claude/skills/)
+      - id: uv-lock
+        name: uv lock
+        entry: uv lock
+        language: python
+        additional_dependencies: ["uv"]
+        pass_filenames: false
+        files: pyproject\.toml
+      - id: sync-requirements
+        name: sync extra requirements
+        entry: python .github/scripts/sync_requirements.py
+        language: python
+        additional_dependencies: ["uv"]
+        pass_filenames: false
+        files: (pyproject\.toml|uv\.lock)
+      - id: check-extras-sync
+        name: check extras in sync with pyproject.toml
+        entry: python .github/scripts/check_extras_sync.py
+        language: python
+        pass_filenames: false
+        files: ^(pyproject\.toml|agent_cli/_extras\.json)$

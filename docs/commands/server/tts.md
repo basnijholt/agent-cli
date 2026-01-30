@@ -12,13 +12,13 @@ Run a local TTS (Text-to-Speech) server with two backend options:
 > [!NOTE]
 > **Quick Start with Kokoro** (GPU-accelerated, auto-downloads from HuggingFace):
 > ```bash
-> pip install "agent-cli[tts-kokoro]"
+> pip install "agent-cli[kokoro]"
 > agent-cli server tts --backend kokoro
 > ```
 >
 > **Quick Start with Piper** (CPU-friendly):
 > ```bash
-> pip install "agent-cli[tts]"
+> pip install "agent-cli[piper]"
 > agent-cli server tts --backend piper
 > ```
 >
@@ -70,19 +70,24 @@ agent-cli server tts --preload
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--model` | - | Model name(s) to load. Piper: 'en_US-lessac-medium'. Kokoro: 'kokoro' (auto-downloads) |
-| `--default-model` | - | Default model when not specified in request |
-| `--device` | `auto` | Device: auto, cpu, cuda, mps (Piper is CPU-only, Kokoro supports GPU) |
-| `--cache-dir` | - | Model cache directory |
-| `--ttl` | `300` | Seconds before unloading idle model |
-| `--preload` | `false` | Load model(s) at startup and wait for completion |
-| `--host` | `0.0.0.0` | Host to bind the server to |
-| `--port` | `10201` | HTTP API port |
-| `--wyoming-port` | `10200` | Wyoming protocol port |
-| `--no-wyoming` | `false` | Disable Wyoming server |
-| `--download-only` | `false` | Download model(s) and exit without starting server |
-| `--log-level` | `info` | Logging level: debug, info, warning, error |
-| `--backend` | `auto` | Backend: auto, piper, kokoro |
+| `--model, -m` | - | Model/voice(s) to load. Piper: `en_US-lessac-medium`, `en_GB-alan-medium`. Kokoro: `af_heart`, `af_bella`, `am_adam`. Auto-downloads on first use |
+| `--default-model` | - | Voice to use when client doesn't specify one. Must be in the `--model` list |
+| `--device, -d` | `auto` | Compute device: `auto`, `cpu`, `cuda`, `mps`. Piper is CPU-only; Kokoro supports GPU acceleration |
+| `--cache-dir` | - | Custom directory for downloaded models (default: ~/.cache/agent-cli/tts/) |
+| `--ttl` | `300` | Seconds of inactivity before unloading model from memory. Set to 0 to keep loaded indefinitely |
+| `--preload` | `false` | Load model(s) immediately at startup instead of on first request. Useful for reducing first-request latency |
+| `--host` | `0.0.0.0` | Network interface to bind. Use `0.0.0.0` for all interfaces |
+| `--port, -p` | `10201` | Port for OpenAI-compatible HTTP API (`/v1/audio/speech`) |
+| `--wyoming-port` | `10200` | Port for Wyoming protocol (Home Assistant integration) |
+| `--no-wyoming` | `false` | Disable Wyoming protocol server (only run HTTP API) |
+| `--download-only` | `false` | Download model(s)/voice(s) to cache and exit. Useful for Docker builds |
+| `--backend, -b` | `auto` | TTS engine: `auto` (prefer Kokoro if available), `piper` (CPU, many languages), `kokoro` (GPU, high quality) |
+
+### General Options
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--log-level` | `info` | Set logging level. |
 
 
 <!-- OUTPUT:END -->
@@ -228,9 +233,9 @@ Browse all voices at [rhasspy/piper](https://github.com/rhasspy/piper?tab=readme
 ### Kokoro (GPU-accelerated)
 
 ```bash
-pip install "agent-cli[tts-kokoro]"
+pip install "agent-cli[kokoro]"
 # or
-uv sync --extra tts-kokoro
+uv sync --extra kokoro
 ```
 
 Kokoro requires PyTorch. For GPU acceleration:
@@ -240,7 +245,7 @@ Kokoro requires PyTorch. For GPU acceleration:
 ### Piper (CPU-friendly)
 
 ```bash
-pip install "agent-cli[tts]"
+pip install "agent-cli[piper]"
 # or
-uv sync --extra tts
+uv sync --extra piper
 ```

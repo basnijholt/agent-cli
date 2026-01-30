@@ -5,8 +5,6 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING
 
-from watchfiles import Change
-
 from agent_cli.core.watch import watch_directory
 from agent_cli.rag._indexing import index_file, remove_file
 from agent_cli.rag._utils import should_ignore_path
@@ -15,6 +13,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from chromadb import Collection
+    from watchfiles import Change
 
 LOGGER = logging.getLogger(__name__)
 
@@ -50,6 +49,8 @@ def _handle_change(
     file_hashes: dict[str, str],
     file_mtimes: dict[str, float],
 ) -> None:
+    from watchfiles import Change  # noqa: PLC0415
+
     try:
         if change == Change.deleted:
             LOGGER.info("[deleted] Removing from index: %s", file_path.name)

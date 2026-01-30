@@ -10,47 +10,55 @@
 #   docker run -p 10300:10300 -p 10301:10301 agent-cli-whisper:cpu
 
 # =============================================================================
-# CUDA target: GPU-accelerated with faster-whisper
+# Builder stage - install dependencies and project
 # =============================================================================
-FROM nvidia/cuda:12.9.1-cudnn-runtime-ubuntu22.04 AS cuda
+FROM python:3.13-slim AS builder
 
-# Install system dependencies
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-        curl \
-        ffmpeg \
-        git \
-        ca-certificates \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
+    apt-get install -y --no-install-recommends git && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Install uv
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
-
-# Create non-root user with explicit UID:GID 1000:1000
-RUN groupadd -g 1000 whisper && useradd -m -u 1000 -g whisper whisper
 
 WORKDIR /app
 
-# Install Python 3.13 and agent-cli with whisper support using uv tool
-# UV_PYTHON_INSTALL_DIR ensures Python is installed in accessible location (not /root/.local/)
-ENV UV_PYTHON=3.13 \
-    UV_TOOL_BIN_DIR=/usr/local/bin \
-    UV_TOOL_DIR=/opt/uv-tools \
-    UV_PYTHON_INSTALL_DIR=/opt/uv-python
+COPY pyproject.toml uv.lock README.md ./
+COPY .git ./.git
+COPY agent_cli ./agent_cli
+COPY scripts ./scripts
+RUN uv sync --frozen --no-dev --no-editable --extra server --extra faster-whisper --extra wyoming
 
-# --refresh bypasses uv cache to ensure latest version from PyPI
-RUN uv tool install --refresh --python 3.13 "agent-cli[whisper]"
+# =============================================================================
+# CUDA target: GPU-accelerated with faster-whisper
+# =============================================================================
+FROM nvcr.io/nvidia/cuda:12.9.1-cudnn-runtime-ubuntu24.04 AS cuda
 
-# Create cache directory for models
-RUN mkdir -p /home/whisper/.cache && chown -R whisper:whisper /home/whisper
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends ffmpeg && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+
+ENV UV_PYTHON_INSTALL_DIR=/opt/python
+RUN uv python install 3.13
+
+# Delete pre-existing ubuntu user (UID 1000) and create whisper user for uniformity with CPU target
+RUN userdel -r ubuntu && \
+    groupadd -g 1000 whisper && \
+    useradd -m -u 1000 -g 1000 whisper
+
+WORKDIR /app
+
+COPY --from=builder /app/.venv /app/.venv
+
+RUN ln -sf $(uv python find 3.13) /app/.venv/bin/python && \
+    ln -s /app/.venv/bin/agent-cli /usr/local/bin/agent-cli && \
+    mkdir -p /home/whisper/.cache && chown -R whisper:whisper /home/whisper
 
 USER whisper
 
-# Expose ports: Wyoming (10300) and HTTP API (10301)
 EXPOSE 10300 10301
 
-# Default environment variables
 ENV WHISPER_HOST=0.0.0.0 \
     WHISPER_PORT=10301 \
     WHISPER_WYOMING_PORT=10300 \
@@ -59,9 +67,8 @@ ENV WHISPER_HOST=0.0.0.0 \
     WHISPER_LOG_LEVEL=info \
     WHISPER_DEVICE=cuda
 
-# Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-    CMD python3 -c "import urllib.request; urllib.request.urlopen('http://localhost:${WHISPER_PORT}/health')" || exit 1
+    CMD /app/.venv/bin/python -c "import urllib.request; urllib.request.urlopen('http://localhost:${WHISPER_PORT}/health')" || exit 1
 
 ENTRYPOINT ["sh", "-c", "agent-cli server whisper \
     --host ${WHISPER_HOST} \
@@ -76,40 +83,32 @@ ENTRYPOINT ["sh", "-c", "agent-cli server whisper \
 # =============================================================================
 # CPU target: CPU-only with faster-whisper
 # =============================================================================
-FROM python:3.13-slim AS cpu
+FROM debian:bookworm-slim AS cpu
 
-# Install system dependencies
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-        ffmpeg \
-        git \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
-
-# Install uv
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
-# Create non-root user with explicit UID:GID 1000:1000
-RUN groupadd -g 1000 whisper && useradd -m -u 1000 -g whisper whisper
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends ffmpeg && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+
+ENV UV_PYTHON_INSTALL_DIR=/opt/python
+RUN uv python install 3.13
+
+RUN getent group 1000 || groupadd -g 1000 whisper; \
+    id -u 1000 >/dev/null 2>&1 || useradd -m -u 1000 -g 1000 whisper
 
 WORKDIR /app
 
-# Install agent-cli with whisper support
-ENV UV_TOOL_BIN_DIR=/usr/local/bin \
-    UV_TOOL_DIR=/opt/uv-tools
+COPY --from=builder /app/.venv /app/.venv
 
-# --refresh bypasses uv cache to ensure latest version from PyPI
-RUN uv tool install --refresh "agent-cli[whisper]"
-
-# Create cache directory for models
-RUN mkdir -p /home/whisper/.cache && chown -R whisper:whisper /home/whisper
+RUN ln -sf $(uv python find 3.13) /app/.venv/bin/python && \
+    ln -s /app/.venv/bin/agent-cli /usr/local/bin/agent-cli && \
+    mkdir -p /home/whisper/.cache && chown -R whisper:whisper /home/whisper
 
 USER whisper
 
-# Expose ports: Wyoming (10300) and HTTP API (10301)
 EXPOSE 10300 10301
 
-# Default environment variables
 ENV WHISPER_HOST=0.0.0.0 \
     WHISPER_PORT=10301 \
     WHISPER_WYOMING_PORT=10300 \
@@ -118,9 +117,8 @@ ENV WHISPER_HOST=0.0.0.0 \
     WHISPER_LOG_LEVEL=info \
     WHISPER_DEVICE=cpu
 
-# Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:${WHISPER_PORT}/health')" || exit 1
+    CMD /app/.venv/bin/python -c "import urllib.request; urllib.request.urlopen('http://localhost:${WHISPER_PORT}/health')" || exit 1
 
 ENTRYPOINT ["sh", "-c", "agent-cli server whisper \
     --host ${WHISPER_HOST} \

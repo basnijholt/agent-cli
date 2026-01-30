@@ -47,6 +47,7 @@ from agent_cli.agents._voice_agent_common import (
 from agent_cli.cli import app
 from agent_cli.core import process
 from agent_cli.core.audio import setup_devices
+from agent_cli.core.deps import requires_extras
 from agent_cli.core.utils import (
     enable_json_mode,
     get_clipboard_text,
@@ -173,6 +174,7 @@ async def _async_main(
 
 
 @app.command("voice-edit", rich_help_panel="Voice Commands")
+@requires_extras("audio", "llm")
 def voice_edit(
     *,
     # --- Provider Selection ---
@@ -219,7 +221,7 @@ def voice_edit(
     # --- General Options ---
     save_file: Path | None = opts.SAVE_FILE,
     clipboard: bool = opts.CLIPBOARD,
-    log_level: str = opts.LOG_LEVEL,
+    log_level: opts.LogLevel = opts.LOG_LEVEL,
     log_file: str | None = opts.LOG_FILE,
     list_devices: bool = opts.LIST_DEVICES,
     quiet: bool = opts.QUIET,
@@ -227,15 +229,23 @@ def voice_edit(
     config_file: str | None = opts.CONFIG_FILE,
     print_args: bool = opts.PRINT_ARGS,
 ) -> None:
-    """Interact with clipboard text via a voice command using local or remote services.
+    """Edit or query clipboard text using voice commands.
 
-    Usage:
-    - Run in foreground: agent-cli voice-edit --input-device-index 1
-    - Run in background: agent-cli voice-edit --input-device-index 1 &
-    - Check status: agent-cli voice-edit --status
-    - Stop background process: agent-cli voice-edit --stop
-    - List output devices: agent-cli voice-edit --list-output-devices
-    - Save TTS to file: agent-cli voice-edit --tts --save-file response.wav
+    **Workflow:** Captures clipboard text → records your voice command → transcribes
+    it → sends both to an LLM → copies result back to clipboard.
+
+    Use this for hands-free text editing (e.g., "make this more formal") or
+    asking questions about clipboard content (e.g., "summarize this").
+
+    **Typical hotkey integration:** Run `voice-edit &` on keypress to start
+    recording, then send SIGINT (via `--stop`) on second keypress to process.
+
+    **Examples:**
+
+    - Basic usage: `agent-cli voice-edit`
+    - With TTS response: `agent-cli voice-edit --tts`
+    - Toggle on/off: `agent-cli voice-edit --toggle`
+    - List audio devices: `agent-cli voice-edit --list-devices`
     """
     if print_args:
         print_command_line_args(locals())

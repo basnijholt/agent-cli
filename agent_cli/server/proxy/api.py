@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import logging
+import os
 from pathlib import Path
-from typing import Annotated, Any
+from typing import TYPE_CHECKING, Annotated, Any
 
 from fastapi import Depends, FastAPI, File, Form, HTTPException, Request, UploadFile
 from pydantic import BaseModel
@@ -26,6 +27,9 @@ from agent_cli.server.common import log_requests_middleware
 from agent_cli.services import asr
 from agent_cli.services.llm import process_and_update_clipboard
 
+if TYPE_CHECKING:
+    from typer.models import OptionInfo
+
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 LOGGER = logging.getLogger(__name__)
@@ -35,6 +39,40 @@ app = FastAPI(
     description="Web service for audio transcription and text cleanup",
     version="1.0.0",
 )
+
+
+@app.on_event("startup")
+async def log_effective_config() -> None:
+    """Log effective configuration on startup to help debug env var issues."""
+    (
+        provider_cfg,
+        wyoming_cfg,
+        openai_asr_cfg,
+        gemini_asr_cfg,
+        ollama_cfg,
+        openai_llm_cfg,
+        gemini_llm_cfg,
+        _,
+    ) = _load_transcription_configs()
+
+    LOGGER.info("ASR provider: %s", provider_cfg.asr_provider)
+    if provider_cfg.asr_provider == "wyoming":
+        LOGGER.info("  Wyoming: %s:%d", wyoming_cfg.asr_wyoming_ip, wyoming_cfg.asr_wyoming_port)
+    elif provider_cfg.asr_provider == "openai":
+        LOGGER.info("  Model: %s", openai_asr_cfg.asr_openai_model)
+        LOGGER.info("  Base URL: %s", openai_asr_cfg.openai_base_url or "https://api.openai.com/v1")
+    elif provider_cfg.asr_provider == "gemini":
+        LOGGER.info("  Model: %s", gemini_asr_cfg.asr_gemini_model)
+
+    LOGGER.info("LLM provider: %s", provider_cfg.llm_provider)
+    if provider_cfg.llm_provider == "ollama":
+        LOGGER.info("  Model: %s", ollama_cfg.llm_ollama_model)
+        LOGGER.info("  Host: %s", ollama_cfg.llm_ollama_host)
+    elif provider_cfg.llm_provider == "openai":
+        LOGGER.info("  Model: %s", openai_llm_cfg.llm_openai_model)
+        LOGGER.info("  Base URL: %s", openai_llm_cfg.openai_base_url or "https://api.openai.com/v1")
+    elif provider_cfg.llm_provider == "gemini":
+        LOGGER.info("  Model: %s", gemini_llm_cfg.llm_gemini_model)
 
 
 @app.middleware("http")
@@ -83,6 +121,7 @@ async def health_check() -> HealthResponse:
 
 async def _transcribe_with_provider(
     audio_data: bytes,
+    filename: str,
     provider_cfg: config.ProviderSelection,
     wyoming_asr_cfg: config.WyomingASR,
     openai_asr_cfg: config.OpenAIASR,
@@ -90,6 +129,7 @@ async def _transcribe_with_provider(
 ) -> str:
     """Transcribe audio using the configured provider."""
     transcriber = asr.create_recorded_audio_transcriber(provider_cfg)
+    file_suffix = Path(filename).suffix.lower() or ".wav"
 
     if provider_cfg.asr_provider == "wyoming":
         return await transcriber(
@@ -102,12 +142,14 @@ async def _transcribe_with_provider(
             audio_data=audio_data,
             openai_asr_cfg=openai_asr_cfg,
             logger=LOGGER,
+            file_suffix=file_suffix,
         )
     if provider_cfg.asr_provider == "gemini":
         return await transcriber(
             audio_data=audio_data,
             gemini_asr_cfg=gemini_asr_cfg,
             logger=LOGGER,
+            file_suffix=file_suffix,
         )
     msg = f"Unsupported ASR provider: {provider_cfg.asr_provider}"
     raise NotImplementedError(msg)
@@ -153,6 +195,13 @@ def _validate_audio_file(audio: UploadFile) -> None:
         )
 
 
+def _cfg(key: str, defaults: dict[str, Any], opt: OptionInfo) -> Any:
+    """Get config with priority: env var > config file > option default."""
+    if opt.envvar and (env_val := os.environ.get(opt.envvar)):
+        return int(env_val) if isinstance(opt.default, int) else env_val
+    return defaults.get(key, opt.default)
+
+
 def _load_transcription_configs() -> tuple[
     config.ProviderSelection,
     config.WyomingASR,
@@ -163,41 +212,43 @@ def _load_transcription_configs() -> tuple[
     config.GeminiLLM,
     dict[str, Any],
 ]:
-    """Load and create all required configuration objects."""
+    """Load config objects. Priority: env var > config file > default."""
     loaded_config = config.load_config()
     wildcard_config = loaded_config.get("defaults", {})
     command_config = loaded_config.get("transcribe", {})
     defaults = {**wildcard_config, **command_config}
 
     provider_cfg = config.ProviderSelection(
-        asr_provider=defaults.get("asr_provider", opts.ASR_PROVIDER.default),  # type: ignore[attr-defined]
-        llm_provider=defaults.get("llm_provider", opts.LLM_PROVIDER.default),  # type: ignore[attr-defined]
-        tts_provider=opts.TTS_PROVIDER.default,  # type: ignore[attr-defined]
+        asr_provider=_cfg("asr_provider", defaults, opts.ASR_PROVIDER),
+        llm_provider=_cfg("llm_provider", defaults, opts.LLM_PROVIDER),
+        tts_provider=_cfg("tts_provider", defaults, opts.TTS_PROVIDER),
     )
     wyoming_asr_cfg = config.WyomingASR(
-        asr_wyoming_ip=defaults.get("asr_wyoming_ip", opts.ASR_WYOMING_IP.default),  # type: ignore[attr-defined]
-        asr_wyoming_port=defaults.get("asr_wyoming_port", opts.ASR_WYOMING_PORT.default),  # type: ignore[attr-defined]
+        asr_wyoming_ip=_cfg("asr_wyoming_ip", defaults, opts.ASR_WYOMING_IP),
+        asr_wyoming_port=_cfg("asr_wyoming_port", defaults, opts.ASR_WYOMING_PORT),
     )
     openai_asr_cfg = config.OpenAIASR(
-        asr_openai_model=defaults.get("asr_openai_model", opts.ASR_OPENAI_MODEL.default),  # type: ignore[attr-defined]
-        openai_api_key=defaults.get("openai_api_key", opts.OPENAI_API_KEY.default),  # type: ignore[attr-defined,union-attr]
+        asr_openai_model=_cfg("asr_openai_model", defaults, opts.ASR_OPENAI_MODEL),
+        openai_api_key=_cfg("openai_api_key", defaults, opts.OPENAI_API_KEY),
+        openai_base_url=_cfg("asr_openai_base_url", defaults, opts.ASR_OPENAI_BASE_URL),
+        asr_openai_prompt=_cfg("asr_openai_prompt", defaults, opts.ASR_OPENAI_PROMPT),
     )
     gemini_asr_cfg = config.GeminiASR(
-        asr_gemini_model=defaults.get("asr_gemini_model", opts.ASR_GEMINI_MODEL.default),  # type: ignore[attr-defined]
-        gemini_api_key=defaults.get("gemini_api_key", opts.GEMINI_API_KEY.default),  # type: ignore[attr-defined,union-attr]
+        asr_gemini_model=_cfg("asr_gemini_model", defaults, opts.ASR_GEMINI_MODEL),
+        gemini_api_key=_cfg("gemini_api_key", defaults, opts.GEMINI_API_KEY),
     )
     ollama_cfg = config.Ollama(
-        llm_ollama_model=defaults.get("llm_ollama_model", opts.LLM_OLLAMA_MODEL.default),  # type: ignore[attr-defined]
-        llm_ollama_host=defaults.get("llm_ollama_host", opts.LLM_OLLAMA_HOST.default),  # type: ignore[attr-defined]
+        llm_ollama_model=_cfg("llm_ollama_model", defaults, opts.LLM_OLLAMA_MODEL),
+        llm_ollama_host=_cfg("llm_ollama_host", defaults, opts.LLM_OLLAMA_HOST),
     )
     openai_llm_cfg = config.OpenAILLM(
-        llm_openai_model=defaults.get("llm_openai_model", opts.LLM_OPENAI_MODEL.default),  # type: ignore[attr-defined]
-        openai_api_key=defaults.get("openai_api_key", opts.OPENAI_API_KEY.default),  # type: ignore[attr-defined,union-attr]
-        openai_base_url=defaults.get("openai_base_url", opts.OPENAI_BASE_URL.default),  # type: ignore[attr-defined,union-attr]
+        llm_openai_model=_cfg("llm_openai_model", defaults, opts.LLM_OPENAI_MODEL),
+        openai_api_key=_cfg("openai_api_key", defaults, opts.OPENAI_API_KEY),
+        openai_base_url=_cfg("openai_base_url", defaults, opts.OPENAI_BASE_URL),
     )
     gemini_llm_cfg = config.GeminiLLM(
-        llm_gemini_model=defaults.get("llm_gemini_model", opts.LLM_GEMINI_MODEL.default),  # type: ignore[attr-defined]
-        gemini_api_key=defaults.get("gemini_api_key", opts.GEMINI_API_KEY.default),  # type: ignore[attr-defined,union-attr]
+        llm_gemini_model=_cfg("llm_gemini_model", defaults, opts.LLM_GEMINI_MODEL),
+        gemini_api_key=_cfg("gemini_api_key", defaults, opts.GEMINI_API_KEY),
     )
 
     return (
@@ -309,8 +360,14 @@ async def transcribe_audio(
             defaults,
         ) = _load_transcription_configs()
 
-        # Save uploaded file
+        # Read uploaded file
         audio_data = await audio_file.read()
+        LOGGER.info(
+            "Received audio: filename=%s, size=%d bytes, content_type=%s",
+            audio_file.filename,
+            len(audio_data),
+            audio_file.content_type,
+        )
 
         # Convert audio to Wyoming format if using local ASR
         if provider_cfg.asr_provider == "wyoming":
@@ -319,6 +376,7 @@ async def transcribe_audio(
         # Transcribe audio using the configured provider
         raw_transcript = await _transcribe_with_provider(
             audio_data,
+            audio_file.filename or "audio.wav",
             provider_cfg,
             wyoming_asr_cfg,
             openai_asr_cfg,

@@ -16,7 +16,6 @@ Example usage in Markdown files:
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import Any, get_origin
 
 import click
@@ -24,6 +23,7 @@ from typer.main import get_command
 
 from agent_cli import opts
 from agent_cli.cli import app
+from agent_cli.install.extras import EXTRAS
 
 
 def _get_type_str(annotation: Any) -> str:
@@ -80,16 +80,26 @@ def _extract_options_from_click(cmd: click.Command) -> list[dict[str, Any]]:
     options = []
     for param in cmd.params:
         if isinstance(param, click.Option):
-            # Get the primary option name (longest one, usually --foo)
-            opt_names = [n for n in param.opts if n.startswith("--")]
-            if not opt_names:
-                opt_names = param.opts
-            primary_name = max(opt_names, key=len) if opt_names else param.name
+            # Get long and short option names
+            long_opts = [n for n in param.opts if n.startswith("--")]
+            short_opts = [n for n in param.opts if n.startswith("-") and not n.startswith("--")]
 
-            # Handle boolean flags
+            # Build display name: prefer long form, include short if available
+            if long_opts:
+                primary_name = max(long_opts, key=len)
+                # Include short flag if available (e.g., "--from", "-f" -> "--from, -f")
+                if short_opts:
+                    primary_name = f"{primary_name}, {short_opts[0]}"
+            elif short_opts:
+                primary_name = short_opts[0]
+            else:
+                primary_name = f"--{param.name}"
+
+            # Handle boolean flags with --foo/--no-foo pattern
             if param.is_flag and param.secondary_opts:
                 # e.g., --llm/--no-llm
-                primary_name = f"{opt_names[0]}/{param.secondary_opts[0]}"
+                base_opt = long_opts[0] if long_opts else param.opts[0]
+                primary_name = f"{base_opt}/{param.secondary_opts[0]}"
 
             # Get panel from rich_help_panel or use default
             panel = getattr(param, "rich_help_panel", None) or "Options"
@@ -368,47 +378,6 @@ def config_example(command_path: str | None = None) -> str:
     return "\n".join(lines)
 
 
-def readme_section(section_name: str) -> str:
-    """Extract a section from README.md for reuse in other docs.
-
-    Sections are marked with HTML comments like:
-        <!-- SECTION:section_name:START -->
-        Content here...
-        <!-- SECTION:section_name:END -->
-
-    Args:
-        section_name: The name of the section to extract (e.g., "why-i-built-this")
-
-    Returns:
-        The content between the section markers (without the markers themselves)
-
-    """
-    # Find the README.md relative to this module
-    readme_path = Path(__file__).parent.parent / "README.md"
-    if not readme_path.exists():
-        return f"*Could not find README.md at {readme_path}*"
-
-    content = readme_path.read_text()
-
-    # Look for section markers
-    start_marker = f"<!-- SECTION:{section_name}:START -->"
-    end_marker = f"<!-- SECTION:{section_name}:END -->"
-
-    start_idx = content.find(start_marker)
-    if start_idx == -1:
-        return f"*Section '{section_name}' not found in README.md*"
-
-    end_idx = content.find(end_marker, start_idx)
-    if end_idx == -1:
-        return f"*End marker for section '{section_name}' not found in README.md*"
-
-    # Extract content between markers (excluding the markers themselves)
-    section_content = content[start_idx + len(start_marker) : end_idx]
-
-    # Strip leading/trailing whitespace but preserve internal formatting
-    return section_content.strip()
-
-
 def all_options_for_docs(command_path: str) -> str:
     """Generate complete options documentation for a command page.
 
@@ -428,6 +397,17 @@ def all_options_for_docs(command_path: str) -> str:
         include_default=True,
         heading_level=3,
     )
+
+
+def extras_table() -> str:
+    """Generate a table of available extras for install-extras command."""
+    lines = [
+        "| Extra | Description |",
+        "|-------|-------------|",
+    ]
+    for name, description in EXTRAS.items():
+        lines.append(f"| `{name}` | {description} |")
+    return "\n".join(lines)
 
 
 if __name__ == "__main__":

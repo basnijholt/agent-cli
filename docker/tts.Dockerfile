@@ -10,55 +10,78 @@
 #   docker run -p 10200:10200 -p 10201:10201 agent-cli-tts:cpu
 
 # =============================================================================
-# CUDA target: GPU-accelerated with Kokoro TTS
+# Builder stage for CUDA - Kokoro TTS (requires build tools)
 # =============================================================================
-FROM nvidia/cuda:12.9.1-cudnn-runtime-ubuntu22.04 AS cuda
+FROM python:3.13-slim AS builder-cuda
 
-# Install system dependencies
-# espeak-ng is required for Kokoro's phoneme generation
-# build-essential is required for compiling C++ extensions (curated-tokenizers)
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-        build-essential \
-        curl \
-        ffmpeg \
-        git \
-        ca-certificates \
-        espeak-ng \
-        libsndfile1 \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
+    apt-get install -y --no-install-recommends build-essential git && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Install uv
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
-
-# Create non-root user with explicit UID:GID 1000:1000
-RUN groupadd -g 1000 tts && useradd -m -u 1000 -g tts tts
 
 WORKDIR /app
 
-# Install Python 3.13 and agent-cli with Kokoro TTS support using uv tool
-# UV_PYTHON_INSTALL_DIR ensures Python is installed in accessible location (not /root/.local/)
-ENV UV_PYTHON=3.13 \
-    UV_TOOL_BIN_DIR=/usr/local/bin \
-    UV_TOOL_DIR=/opt/uv-tools \
-    UV_PYTHON_INSTALL_DIR=/opt/uv-python
+COPY pyproject.toml uv.lock README.md ./
+COPY .git ./.git
+COPY agent_cli ./agent_cli
+COPY scripts ./scripts
+RUN uv sync --frozen --no-dev --no-editable --extra server --extra kokoro --extra wyoming && \
+    /app/.venv/bin/python -m spacy download en_core_web_sm
 
-# --refresh bypasses uv cache to ensure latest version from PyPI
-RUN uv tool install --refresh --python 3.13 "agent-cli[tts-kokoro]"
+# =============================================================================
+# Builder stage for CPU - Piper TTS
+# =============================================================================
+FROM python:3.13-slim AS builder-cpu
 
-# Download spacy model required by misaki/Kokoro for grapheme-to-phoneme conversion
-RUN /opt/uv-tools/agent-cli/bin/python -m spacy download en_core_web_sm
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends git && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Create cache directory for models
-RUN mkdir -p /home/tts/.cache && chown -R tts:tts /home/tts
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+
+WORKDIR /app
+
+COPY pyproject.toml uv.lock README.md ./
+COPY .git ./.git
+COPY agent_cli ./agent_cli
+COPY scripts ./scripts
+RUN uv sync --frozen --no-dev --no-editable --extra server --extra piper --extra wyoming
+
+# =============================================================================
+# CUDA target: GPU-accelerated with Kokoro TTS
+# =============================================================================
+FROM nvcr.io/nvidia/cuda:12.9.1-cudnn-runtime-ubuntu24.04 AS cuda
+
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        ffmpeg \
+        espeak-ng \
+        libsndfile1 \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+ENV UV_PYTHON_INSTALL_DIR=/opt/python
+RUN uv python install 3.13
+
+# Delete pre-existing ubuntu user (UID 1000) and create tts user for uniformity with CPU target
+RUN userdel -r ubuntu && \
+    groupadd -g 1000 tts && \
+    useradd -m -u 1000 -g 1000 tts
+
+WORKDIR /app
+
+COPY --from=builder-cuda /app/.venv /app/.venv
+
+RUN ln -sf $(uv python find 3.13) /app/.venv/bin/python && \
+    ln -s /app/.venv/bin/agent-cli /usr/local/bin/agent-cli && \
+    mkdir -p /home/tts/.cache && chown -R tts:tts /home/tts
 
 USER tts
 
-# Expose ports: Wyoming (10200) and HTTP API (10201)
 EXPOSE 10200 10201
 
-# Default environment variables
 ENV TTS_HOST=0.0.0.0 \
     TTS_PORT=10201 \
     TTS_WYOMING_PORT=10200 \
@@ -68,9 +91,8 @@ ENV TTS_HOST=0.0.0.0 \
     TTS_LOG_LEVEL=info \
     TTS_DEVICE=cuda
 
-# Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-    CMD python3 -c "import urllib.request; urllib.request.urlopen('http://localhost:${TTS_PORT}/health')" || exit 1
+    CMD /app/.venv/bin/python -c "import urllib.request; urllib.request.urlopen('http://localhost:${TTS_PORT}/health')" || exit 1
 
 ENTRYPOINT ["sh", "-c", "agent-cli server tts \
     --host ${TTS_HOST} \
@@ -86,40 +108,32 @@ ENTRYPOINT ["sh", "-c", "agent-cli server tts \
 # =============================================================================
 # CPU target: CPU-only with Piper TTS
 # =============================================================================
-FROM python:3.13-slim AS cpu
+FROM debian:bookworm-slim AS cpu
 
-# Install system dependencies
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-        ffmpeg \
-        git \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
-
-# Install uv
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
-# Create non-root user with explicit UID:GID 1000:1000
-RUN groupadd -g 1000 tts && useradd -m -u 1000 -g tts tts
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends ffmpeg && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+
+ENV UV_PYTHON_INSTALL_DIR=/opt/python
+RUN uv python install 3.13
+
+RUN getent group 1000 || groupadd -g 1000 tts; \
+    id -u 1000 >/dev/null 2>&1 || useradd -m -u 1000 -g 1000 tts
 
 WORKDIR /app
 
-# Install agent-cli with Piper TTS support
-ENV UV_TOOL_BIN_DIR=/usr/local/bin \
-    UV_TOOL_DIR=/opt/uv-tools
+COPY --from=builder-cpu /app/.venv /app/.venv
 
-# --refresh bypasses uv cache to ensure latest version from PyPI
-RUN uv tool install --refresh "agent-cli[tts]"
-
-# Create cache directory for models
-RUN mkdir -p /home/tts/.cache && chown -R tts:tts /home/tts
+RUN ln -sf $(uv python find 3.13) /app/.venv/bin/python && \
+    ln -s /app/.venv/bin/agent-cli /usr/local/bin/agent-cli && \
+    mkdir -p /home/tts/.cache && chown -R tts:tts /home/tts
 
 USER tts
 
-# Expose ports: Wyoming (10200) and HTTP API (10201)
 EXPOSE 10200 10201
 
-# Default environment variables
 ENV TTS_HOST=0.0.0.0 \
     TTS_PORT=10201 \
     TTS_WYOMING_PORT=10200 \
@@ -129,9 +143,8 @@ ENV TTS_HOST=0.0.0.0 \
     TTS_LOG_LEVEL=info \
     TTS_DEVICE=cpu
 
-# Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:${TTS_PORT}/health')" || exit 1
+    CMD /app/.venv/bin/python -c "import urllib.request; urllib.request.urlopen('http://localhost:${TTS_PORT}/health')" || exit 1
 
 ENTRYPOINT ["sh", "-c", "agent-cli server tts \
     --host ${TTS_HOST} \

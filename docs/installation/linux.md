@@ -41,7 +41,7 @@ Native Linux setup with full NVIDIA GPU acceleration for optimal performance.
 3. **Install agent-cli:**
 
    ```bash
-   uv tool install agent-cli
+   uv tool install agent-cli -p 3.13
    ```
 
 4. **Test the setup:**
