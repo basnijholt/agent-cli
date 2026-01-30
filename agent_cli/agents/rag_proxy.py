@@ -45,7 +45,7 @@ def rag_proxy(
         help="Port for the RAG proxy API (e.g., `http://localhost:8000/v1/chat/completions`).",
         rich_help_panel="Server Configuration",
     ),
-    log_level: opts.LogLevel = opts.LOG_LEVEL,
+    log_level: opts.LogLevel = opts.SERVER_LOG_LEVEL,
     config_file: str | None = opts.CONFIG_FILE,
     print_args: bool = opts.PRINT_ARGS,
     enable_rag_tools: bool = typer.Option(
