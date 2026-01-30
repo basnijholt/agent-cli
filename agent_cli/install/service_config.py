@@ -49,7 +49,7 @@ SERVICES: dict[str, ServiceConfig] = {
         description="Text-to-speech server (ports 10200/10201)",
         extra="tts-kokoro",
         command_args=["--backend", "kokoro"],
-        python_version="3.13",  # onnxruntime lacks py3.14 wheels
+        python_version="3.12",  # curated-tokenizers (via kokoro→misaki→spacy) lacks py3.13 wheels
     ),
     "transcription-proxy": ServiceConfig(
         name="transcription-proxy",
