@@ -170,7 +170,7 @@ agent-cli chat --last-n-messages 100 --history-dir ~/.my-chat-history
 | Option | Default | Description |
 |--------|---------|-------------|
 | `--save-file` | - | Save audio to WAV file instead of playing through speakers. |
-| `--log-level` | `info` | Set logging level. |
+| `--log-level` | `warning` | Set logging level. |
 | `--log-file` | - | Path to a file to write logs to. |
 | `--quiet, -q` | `false` | Suppress console output from rich. |
 | `--config` | - | Path to a TOML configuration file. |

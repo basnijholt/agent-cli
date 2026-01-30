@@ -108,7 +108,7 @@ agent-cli speak --list-devices
 | Option | Default | Description |
 |--------|---------|-------------|
 | `--save-file` | - | Save audio to WAV file instead of playing through speakers. |
-| `--log-level` | `info` | Set logging level. |
+| `--log-level` | `warning` | Set logging level. |
 | `--log-file` | - | Path to a file to write logs to. |
 | `--quiet, -q` | `false` | Suppress console output from rich. |
 | `--json` | `false` | Output result as JSON (implies `--quiet` and `--no-clipboard`). |

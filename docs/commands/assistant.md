@@ -168,7 +168,7 @@ agent-cli assistant --wake-server-ip 192.168.1.100 --wake-server-port 10400
 |--------|---------|-------------|
 | `--save-file` | - | Save audio to WAV file instead of playing through speakers. |
 | `--clipboard/--no-clipboard` | `true` | Copy result to clipboard. |
-| `--log-level` | `info` | Set logging level. |
+| `--log-level` | `warning` | Set logging level. |
 | `--log-file` | - | Path to a file to write logs to. |
 | `--quiet, -q` | `false` | Suppress console output from rich. |
 | `--config` | - | Path to a TOML configuration file. |

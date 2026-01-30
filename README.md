@@ -650,7 +650,7 @@ the `[defaults]` section of your configuration file.
 ╭─ General Options ──────────────────────────────────────────────────────────────────────╮
 │ --log-level           [debug|info|warning|error]  Set logging level.                   │
 │                                                   [env var: LOG_LEVEL]                 │
-│                                                   [default: info]                      │
+│                                                   [default: warning]                   │
 │ --log-file            TEXT                        Path to a file to write logs to.     │
 │ --quiet       -q                                  Suppress console output from rich.   │
 │ --json                                            Output result as JSON (implies       │
@@ -827,7 +827,7 @@ the `[defaults]` section of your configuration file.
 │                                                                  [default: clipboard]  │
 │ --log-level                                [debug|info|warning|  Set logging level.    │
 │                                            error]                [env var: LOG_LEVEL]  │
-│                                                                  [default: info]       │
+│                                                                  [default: warning]    │
 │ --log-file                                 TEXT                  Path to a file to     │
 │                                                                  write logs to.        │
 │ --quiet              -q                                          Suppress console      │
@@ -1058,7 +1058,7 @@ uv tool install "agent-cli[vad]" -p 3.13
 ╭─ General Options ──────────────────────────────────────────────────────────────────────╮
 │ --log-level           [debug|info|warning|error]  Set logging level.                   │
 │                                                   [env var: LOG_LEVEL]                 │
-│                                                   [default: info]                      │
+│                                                   [default: warning]                   │
 │ --log-file            TEXT                        Path to a file to write logs to.     │
 │ --quiet       -q                                  Suppress console output from rich.   │
 │ --config              TEXT                        Path to a TOML configuration file.   │
@@ -1192,7 +1192,7 @@ uv tool install "agent-cli[vad]" -p 3.13
 │                                                   playing through speakers.            │
 │ --log-level           [debug|info|warning|error]  Set logging level.                   │
 │                                                   [env var: LOG_LEVEL]                 │
-│                                                   [default: info]                      │
+│                                                   [default: warning]                   │
 │ --log-file            TEXT                        Path to a file to write logs to.     │
 │ --quiet       -q                                  Suppress console output from rich.   │
 │ --json                                            Output result as JSON (implies       │
@@ -1393,7 +1393,7 @@ uv tool install "agent-cli[vad]" -p 3.13
 │                                                               [default: clipboard]     │
 │ --log-level                         [debug|info|warning|erro  Set logging level.       │
 │                                     r]                        [env var: LOG_LEVEL]     │
-│                                                               [default: info]          │
+│                                                               [default: warning]       │
 │ --log-file                          TEXT                      Path to a file to write  │
 │                                                               logs to.                 │
 │ --quiet       -q                                              Suppress console output  │
@@ -1613,7 +1613,7 @@ uv tool install "agent-cli[vad]" -p 3.13
 │                                                               [default: clipboard]     │
 │ --log-level                         [debug|info|warning|erro  Set logging level.       │
 │                                     r]                        [env var: LOG_LEVEL]     │
-│                                                               [default: info]          │
+│                                                               [default: warning]       │
 │ --log-file                          TEXT                      Path to a file to write  │
 │                                                               logs to.                 │
 │ --quiet       -q                                              Suppress console output  │
@@ -1849,7 +1849,7 @@ uv tool install "agent-cli[vad]" -p 3.13
 │                                                   playing through speakers.            │
 │ --log-level           [debug|info|warning|error]  Set logging level.                   │
 │                                                   [env var: LOG_LEVEL]                 │
-│                                                   [default: info]                      │
+│                                                   [default: warning]                   │
 │ --log-file            TEXT                        Path to a file to write logs to.     │
 │ --quiet       -q                                  Suppress console output from rich.   │
 │ --config              TEXT                        Path to a TOML configuration file.   │
