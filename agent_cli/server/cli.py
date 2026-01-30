@@ -186,7 +186,7 @@ def _check_whisper_deps(backend: str, *, download_only: bool = False) -> None:
 
 
 @app.command("whisper")
-@requires_extras("server", "faster-whisper|mlx-whisper")
+@requires_extras("server", "faster-whisper|mlx-whisper", "wyoming")
 def whisper_cmd(  # noqa: PLR0912, PLR0915
     model: Annotated[
         list[str] | None,
@@ -532,7 +532,7 @@ def transcribe_proxy_cmd(
 
 
 @app.command("tts")
-@requires_extras("server", "piper|kokoro")
+@requires_extras("server", "piper|kokoro", "wyoming")
 def tts_cmd(  # noqa: PLR0915
     model: Annotated[
         list[str] | None,
