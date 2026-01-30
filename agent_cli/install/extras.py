@@ -68,7 +68,9 @@ def _install_via_uv_tool(extras: list[str], *, quiet: bool = False) -> bool:
     if quiet:
         cmd.append("-q")
     # Use stderr for status messages so they don't pollute stdout (e.g., for hotkey notifications)
-    err_console.print(f"Running: [cyan]{' '.join(cmd)}[/]")
+    # Escape brackets to prevent Rich from interpreting them as markup
+    cmd_str = " ".join(cmd).replace("[", r"\[")
+    err_console.print(f"Running: [cyan]{cmd_str}[/]")
     result = subprocess.run(cmd, check=False)
     return result.returncode == 0
 

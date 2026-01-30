@@ -176,6 +176,8 @@ def _info(msg: str) -> None:
     # Style commands (messages starting with "Running: ")
     if msg.startswith("Running: "):
         cmd = msg[9:]  # Remove "Running: " prefix
+        # Escape brackets to prevent Rich from interpreting them as markup
+        cmd = cmd.replace("[", r"\[")
         console.print(f"[dim]→[/dim] Running: [bold cyan]{cmd}[/bold cyan]")
     else:
         console.print(f"[dim]→[/dim] {msg}")
