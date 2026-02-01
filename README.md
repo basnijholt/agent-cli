@@ -303,7 +303,7 @@ agent-cli dev install-skill
 
 # Option 2: Install via Claude Code plugin marketplace
 claude plugin marketplace add basnijholt/agent-cli
-claude plugin install agent-cli@agent-cli-dev
+claude plugin install agent-cli-dev@agent-cli
 ```
 
 Once installed, Claude Code can automatically use this skill when you ask to:

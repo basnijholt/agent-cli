@@ -30,7 +30,7 @@ uvx --python 3.13 agent-cli dev new my-feature --agent --prompt "..."
 claude plugin marketplace add basnijholt/agent-cli
 
 # Then install
-claude plugin install agent-cli@agent-cli-dev
+claude plugin install agent-cli-dev@agent-cli
 ```
 
 ## Usage
