@@ -1,6 +1,6 @@
 # Agent CLI
 
-<img src="https://raw.githubusercontent.com/basnijholt/agent-cli/refs/heads/main/.github/logo.svg" alt="agent-cli logo" align="right" style="width: 250px;" />
+<img src="https://raw.githubusercontent.com/basnijholt/agent-cli/refs/heads/main/.github/logo.svg" alt="agent-cli logo" align="right" style="width: 200px;" />
 
 `agent-cli` is a collection of **_local-first_**, AI-powered command-line agents that run entirely on your machine.
 It provides a suite of powerful tools for voice and text interaction, designed for privacy, offline capability, and seamless integration with system-wide hotkeys and workflows.
