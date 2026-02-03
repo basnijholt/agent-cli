@@ -24,14 +24,23 @@ logger = logging.getLogger(__name__)
 # Model name mapping: canonical name -> HuggingFace repo
 _MODEL_MAP: dict[str, str] = {
     "tiny": "openai/whisper-tiny",
+    "tiny.en": "openai/whisper-tiny.en",
     "base": "openai/whisper-base",
+    "base.en": "openai/whisper-base.en",
     "small": "openai/whisper-small",
+    "small.en": "openai/whisper-small.en",
     "medium": "openai/whisper-medium",
+    "medium.en": "openai/whisper-medium.en",
     "large": "openai/whisper-large",
     "large-v2": "openai/whisper-large-v2",
     "large-v3": "openai/whisper-large-v3",
     "large-v3-turbo": "openai/whisper-large-v3-turbo",
     "turbo": "openai/whisper-large-v3-turbo",
+    # Distil variants (smaller, faster)
+    "distil-large-v2": "distil-whisper/distil-large-v2",
+    "distil-large-v3": "distil-whisper/distil-large-v3",
+    "distil-medium.en": "distil-whisper/distil-medium.en",
+    "distil-small.en": "distil-whisper/distil-small.en",
 }
 
 
