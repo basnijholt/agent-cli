@@ -261,11 +261,11 @@ services:
       - RAG_CHROMA_PATH=/data/db
       - RAG_LIMIT=${RAG_LIMIT:-3}
       - RAG_ENABLE_TOOLS=${RAG_ENABLE_TOOLS:-true}
+      - EMBEDDING_MODEL=${EMBEDDING_MODEL:-text-embedding-3-small}
       - LOG_LEVEL=${LOG_LEVEL:-info}
       # OpenAI-compatible backend configuration
       - OPENAI_BASE_URL=${OPENAI_BASE_URL:-http://ollama:11434/v1}
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
-      - EMBEDDING_MODEL=${EMBEDDING_MODEL:-text-embedding-3-small}
     restart: unless-stopped
 
   # ===========================================================================
@@ -294,11 +294,11 @@ services:
       - MEMORY_SCORE_THRESHOLD=${MEMORY_SCORE_THRESHOLD:-0.35}
       - MEMORY_SUMMARIZATION=${MEMORY_SUMMARIZATION:-true}
       - MEMORY_GIT_VERSIONING=${MEMORY_GIT_VERSIONING:-true}
+      - EMBEDDING_MODEL=${EMBEDDING_MODEL:-text-embedding-3-small}
       - LOG_LEVEL=${LOG_LEVEL:-info}
       # OpenAI-compatible backend configuration
       - OPENAI_BASE_URL=${OPENAI_BASE_URL:-http://ollama:11434/v1}
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
-      - EMBEDDING_MODEL=${EMBEDDING_MODEL:-text-embedding-3-small}
     restart: unless-stopped
 
 volumes:
