@@ -1974,8 +1974,12 @@ uv tool install "agent-cli[vad]" -p 3.13
 │                                [env var: OPENAI_API_KEY]                               │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ LLM Configuration ────────────────────────────────────────────────────────────────────╮
-│ --embedding-model        TEXT  Embedding model to use for vectorization.               │
-│                                [default: text-embedding-3-small]                       │
+│ --embedding-base-url        TEXT  Base URL for embedding API. Falls back to            │
+│                                   --openai-base-url if not set. Useful when using      │
+│                                   different providers for chat vs embeddings.          │
+│                                   [env var: EMBEDDING_BASE_URL]                        │
+│ --embedding-model           TEXT  Embedding model to use for vectorization.            │
+│                                   [default: text-embedding-3-small]                    │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Server Configuration ─────────────────────────────────────────────────────────────────╮
 │ --host        TEXT     Host/IP to bind API servers to.                                 │
@@ -2137,8 +2141,12 @@ The `memory proxy` command is the core feature—a middleware server that gives 
 │                                [env var: OPENAI_API_KEY]                               │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ LLM Configuration ────────────────────────────────────────────────────────────────────╮
-│ --embedding-model        TEXT  Embedding model to use for vectorization.               │
-│                                [default: text-embedding-3-small]                       │
+│ --embedding-base-url        TEXT  Base URL for embedding API. Falls back to            │
+│                                   --openai-base-url if not set. Useful when using      │
+│                                   different providers for chat vs embeddings.          │
+│                                   [env var: EMBEDDING_BASE_URL]                        │
+│ --embedding-model           TEXT  Embedding model to use for vectorization.            │
+│                                   [default: text-embedding-3-small]                    │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Server Configuration ─────────────────────────────────────────────────────────────────╮
 │ --host        TEXT     Host/IP to bind API servers to.                                 │
