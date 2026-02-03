@@ -46,11 +46,9 @@ COPY scripts ./scripts
 RUN uv sync --frozen --no-dev --no-editable --extra rag
 
 # =============================================================================
-# Runtime stage - minimal image
+# Runtime stage - minimal image using Python slim directly
 # =============================================================================
-FROM debian:bookworm-slim
-
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+FROM python:3.13-slim
 
 # Install runtime dependencies:
 # - libgomp1: Required by onnxruntime for parallel processing
@@ -59,17 +57,13 @@ RUN apt-get update && \
     apt-get install -y --no-install-recommends libgomp1 git && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
-ENV UV_PYTHON_INSTALL_DIR=/opt/python
-RUN uv python install 3.13
-
 RUN groupadd -g 1000 rag && useradd -m -u 1000 -g rag rag
 
 WORKDIR /app
 
 COPY --from=builder /app/.venv /app/.venv
 
-RUN ln -sf $(uv python find 3.13) /app/.venv/bin/python && \
-    ln -s /app/.venv/bin/agent-cli /usr/local/bin/agent-cli
+RUN ln -s /app/.venv/bin/agent-cli /usr/local/bin/agent-cli
 
 # Create data directories
 RUN mkdir -p /data/docs /data/db && chown -R rag:rag /data
@@ -92,7 +86,7 @@ ENV RAG_HOST=0.0.0.0 \
     LOG_LEVEL=info
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
-    CMD /app/.venv/bin/python -c "import urllib.request; urllib.request.urlopen('http://localhost:${RAG_PORT}/health')" || exit 1
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:${RAG_PORT}/health')" || exit 1
 
 ENTRYPOINT ["sh", "-c", "agent-cli rag-proxy \
     --host ${RAG_HOST} \
