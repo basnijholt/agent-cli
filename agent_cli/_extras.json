@@ -29,7 +29,8 @@
     "Long-term memory proxy",
     [
       "chromadb",
-      "yaml"
+      "yaml",
+      "pydantic_ai"
     ]
   ],
   "mlx-whisper": [
@@ -43,7 +44,8 @@
   "rag": [
     "RAG proxy (ChromaDB, embeddings)",
     [
-      "chromadb"
+      "chromadb",
+      "pydantic_ai"
     ]
   ],
   "server": [

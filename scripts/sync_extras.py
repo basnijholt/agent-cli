@@ -35,8 +35,8 @@ EXTRA_METADATA: dict[str, tuple[str, list[str]]] = {
     "llm": ("LLM framework (pydantic-ai)", ["pydantic_ai"]),
     "llm-core": ("Minimal LLM support for Docker images", ["pydantic_ai"]),
     # Feature extras
-    "rag": ("RAG proxy (ChromaDB, embeddings)", ["chromadb"]),
-    "memory": ("Long-term memory proxy", ["chromadb", "yaml"]),
+    "rag": ("RAG proxy (ChromaDB, embeddings)", ["chromadb", "pydantic_ai"]),
+    "memory": ("Long-term memory proxy", ["chromadb", "yaml", "pydantic_ai"]),
     "vad": ("Voice Activity Detection (silero-vad)", ["silero_vad"]),
     "whisper": ("Local Whisper ASR (faster-whisper)", ["faster_whisper"]),
     "whisper-mlx": ("MLX Whisper for Apple Silicon", ["mlx_whisper"]),
