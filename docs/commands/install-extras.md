@@ -35,7 +35,6 @@ Available extras:
 | `faster-whisper` | TODO: add description |
 | `kokoro` | TODO: add description |
 | `llm` | LLM framework (pydantic-ai) |
-| `llm-core` | Minimal LLM support for Docker images |
 | `memory` | Long-term memory proxy |
 | `mlx-whisper` | TODO: add description |
 | `piper` | TODO: add description |

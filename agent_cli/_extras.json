@@ -19,12 +19,6 @@
       "pydantic_ai"
     ]
   ],
-  "llm-core": [
-    "Minimal LLM support for Docker images",
-    [
-      "pydantic_ai"
-    ]
-  ],
   "memory": [
     "Long-term memory proxy",
     [

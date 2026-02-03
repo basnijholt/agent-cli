@@ -71,9 +71,6 @@ kokoro = [
 llm = [
     { name = "pydantic-ai-slim", extra = ["duckduckgo", "google", "openai", "vertexai"] },
 ]
-llm-core = [
-    { name = "pydantic-ai-slim", extra = ["google", "openai"] },
-]
 memory = [
     { name = "chromadb" },
     { name = "fastapi", extra = ["standard"] },
@@ -178,7 +175,6 @@ requires-dist = [
     { name = "psutil", marker = "sys_platform == 'win32'" },
     { name = "pydantic" },
     { name = "pydantic-ai-slim", extras = ["duckduckgo", "google", "openai", "vertexai"], marker = "extra == 'llm'", specifier = ">=0.1.1" },
-    { name = "pydantic-ai-slim", extras = ["google", "openai"], marker = "extra == 'llm-core'", specifier = ">=0.1.1" },
     { name = "pydantic-ai-slim", extras = ["google", "openai"], marker = "extra == 'memory'", specifier = ">=0.1.1" },
     { name = "pydantic-ai-slim", extras = ["google", "openai"], marker = "extra == 'rag'", specifier = ">=0.1.1" },
     { name = "pylint", marker = "extra == 'dev'", specifier = ">=3.0.0" },
@@ -212,7 +208,7 @@ requires-dist = [
     { name = "wyoming", marker = "extra == 'wyoming'", specifier = ">=1.5.2" },
     { name = "zensical", marker = "extra == 'dev'" },
 ]
-provides-extras = ["audio", "dev", "faster-whisper", "kokoro", "llm", "llm-core", "memory", "mlx-whisper", "piper", "rag", "server", "speed", "test", "vad", "wyoming"]
+provides-extras = ["audio", "dev", "faster-whisper", "kokoro", "llm", "memory", "mlx-whisper", "piper", "rag", "server", "speed", "test", "vad", "wyoming"]
 
 [package.metadata.requires-dev]
 dev = [
