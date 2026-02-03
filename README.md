@@ -433,7 +433,6 @@ agent-cli install-extras rag memory vad
   • server - FastAPI server components
   • speed - Audio speed adjustment
   • llm - LLM framework (pydantic-ai)
-  • llm-core - Minimal LLM support for Docker
 
  Examples:
 
@@ -447,7 +446,7 @@ agent-cli install-extras rag memory vad
 ╭─ Arguments ────────────────────────────────────────────────────────────────────────────╮
 │   extras      [EXTRAS]...  Extras to install: rag, memory, vad, audio, piper, kokoro,  │
 │                            faster-whisper, mlx-whisper, whisper-transformers, wyoming, │
-│                            server, speed, llm, llm-core                                │
+│                            server, speed, llm                                          │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Options ──────────────────────────────────────────────────────────────────────────────╮
 │ --list  -l        Show available extras with descriptions (what each one enables)      │

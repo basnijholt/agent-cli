@@ -177,7 +177,7 @@ def _check_whisper_deps(backend: str, *, download_only: bool = False) -> None:
         return
 
     if backend == "transformers":
-        if not _has("transformers"):
+        if not _has("transformers") or not _has("torch"):
             err_console.print(
                 "[bold red]Error:[/bold red] Transformers backend requires transformers and torch. "
                 "Run: [cyan]pip install agent-cli\\[whisper-transformers][/cyan] "
@@ -196,7 +196,7 @@ def _check_whisper_deps(backend: str, *, download_only: bool = False) -> None:
 
 
 @app.command("whisper")
-@requires_extras("server", "faster-whisper|mlx-whisper", "wyoming")
+@requires_extras("server", "faster-whisper|mlx-whisper|whisper-transformers", "wyoming")
 def whisper_cmd(  # noqa: PLR0912, PLR0915
     model: Annotated[
         list[str] | None,

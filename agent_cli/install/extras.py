@@ -131,7 +131,7 @@ def install_extras(
         typer.Argument(
             help="Extras to install: `rag`, `memory`, `vad`, `audio`, `piper`, `kokoro`, "
             "`faster-whisper`, `mlx-whisper`, `whisper-transformers`, `wyoming`, `server`, "
-            "`speed`, `llm`, `llm-core`",
+            "`speed`, `llm`",
         ),
     ] = None,
     list_extras: Annotated[
@@ -167,7 +167,6 @@ def install_extras(
     - `server` - FastAPI server components
     - `speed` - Audio speed adjustment
     - `llm` - LLM framework (pydantic-ai)
-    - `llm-core` - Minimal LLM support for Docker
 
     **Examples:**
 
