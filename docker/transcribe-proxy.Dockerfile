@@ -41,15 +41,24 @@ COPY scripts ./scripts
 RUN uv sync --frozen --no-dev --no-editable --extra server --extra wyoming --extra llm-core
 
 # =============================================================================
+# FFmpeg stage - download static binary (77MB vs 420MB for Debian package)
+# =============================================================================
+FROM debian:bookworm-slim AS ffmpeg-downloader
+
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends curl xz-utils ca-certificates && \
+    curl -sL https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz -o /tmp/ff.tar.xz && \
+    tar xf /tmp/ff.tar.xz -C /tmp && \
+    mv /tmp/ffmpeg-*-amd64-static/ffmpeg /usr/local/bin/ffmpeg && \
+    chmod +x /usr/local/bin/ffmpeg
+
+# =============================================================================
 # Runtime stage - minimal image
 # =============================================================================
 FROM debian:bookworm-slim
 
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
-
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends ffmpeg && \
-    apt-get clean && rm -rf /var/lib/apt/lists/*
+COPY --from=ffmpeg-downloader /usr/local/bin/ffmpeg /usr/local/bin/ffmpeg
 
 ENV UV_PYTHON_INSTALL_DIR=/opt/python
 RUN uv python install 3.13
