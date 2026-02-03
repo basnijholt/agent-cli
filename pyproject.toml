@@ -33,7 +33,8 @@ Homepage = "https://github.com/basnijholt/agent-cli"
 # Provider extras (previously base dependencies, now optional)
 wyoming = ["wyoming>=1.5.2"]  # Wyoming protocol only (for servers)
 audio = ["numpy", "sounddevice>=0.4.6", "agent-cli[wyoming]"]  # Local audio recording
-llm = ["pydantic-ai-slim[openai,google,duckduckgo,vertexai]>=0.1.1"]
+llm-core = ["pydantic-ai-slim[openai,google]>=0.1.1"]  # Minimal LLM support for Docker
+llm = ["pydantic-ai-slim[openai,google,duckduckgo,vertexai]>=0.1.1"]  # Full LLM with tools
 
 # Feature extras
 server = [
