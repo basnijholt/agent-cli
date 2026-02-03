@@ -24,11 +24,9 @@
 # =============================================================================
 # Builder stage - install dependencies and project
 # =============================================================================
-FROM python:3.13-slim AS builder
+FROM python:3.13-alpine AS builder
 
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends git && \
-    apt-get clean && rm -rf /var/lib/apt/lists/*
+RUN apk add --no-cache git
 
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
@@ -41,36 +39,21 @@ COPY scripts ./scripts
 RUN uv sync --frozen --no-dev --no-editable --extra server --extra wyoming --extra llm-core
 
 # =============================================================================
-# FFmpeg stage - download static binary (77MB vs 420MB for Debian package)
+# Runtime stage - minimal Alpine image
 # =============================================================================
-FROM debian:bookworm-slim AS ffmpeg-downloader
+FROM python:3.13-alpine
 
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends curl xz-utils ca-certificates && \
-    curl -sL https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz -o /tmp/ff.tar.xz && \
-    tar xf /tmp/ff.tar.xz -C /tmp && \
-    mv /tmp/ffmpeg-*-amd64-static/ffmpeg /usr/local/bin/ffmpeg && \
-    chmod +x /usr/local/bin/ffmpeg
-
-# =============================================================================
-# Runtime stage - minimal image
-# =============================================================================
-FROM debian:bookworm-slim
+RUN apk add --no-cache ffmpeg
 
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
-COPY --from=ffmpeg-downloader /usr/local/bin/ffmpeg /usr/local/bin/ffmpeg
 
-ENV UV_PYTHON_INSTALL_DIR=/opt/python
-RUN uv python install 3.13
-
-RUN groupadd -g 1000 transcribe && useradd -m -u 1000 -g transcribe transcribe
+RUN addgroup -g 1000 transcribe && adduser -u 1000 -G transcribe -D transcribe
 
 WORKDIR /app
 
 COPY --from=builder /app/.venv /app/.venv
 
-RUN ln -sf $(uv python find 3.13) /app/.venv/bin/python && \
-    ln -s /app/.venv/bin/agent-cli /usr/local/bin/agent-cli
+RUN ln -s /app/.venv/bin/agent-cli /usr/local/bin/agent-cli
 
 USER transcribe
 
@@ -80,7 +63,7 @@ ENV PROXY_HOST=0.0.0.0 \
     PROXY_PORT=61337
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
-    CMD /app/.venv/bin/python -c "import urllib.request; urllib.request.urlopen('http://localhost:${PROXY_PORT}/health')" || exit 1
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:${PROXY_PORT}/health')" || exit 1
 
 ENTRYPOINT ["sh", "-c", "agent-cli server transcribe-proxy \
     --host ${PROXY_HOST} \
