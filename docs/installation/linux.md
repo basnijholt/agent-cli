@@ -15,6 +15,11 @@ Native Linux setup with full NVIDIA GPU acceleration for optimal performance.
 - 8GB+ RAM (16GB+ recommended for GPU acceleration)
 - 10GB free disk space
 - Python 3.11 or higher
+- **PortAudio development libraries** (required for audio features):
+  - Ubuntu/Debian: `sudo apt install portaudio19-dev`
+  - Fedora: `sudo dnf install portaudio-devel`
+  - Arch: `sudo pacman -S portaudio`
+  - openSUSE: `sudo zypper install portaudio-devel`
 
 ### For GPU Acceleration (Optional)
 
