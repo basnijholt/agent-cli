@@ -99,6 +99,7 @@ ENV MEMORY_HOST=0.0.0.0 \
     MEMORY_SCORE_THRESHOLD=0.35 \
     MEMORY_SUMMARIZATION=true \
     MEMORY_GIT_VERSIONING=true \
+    EMBEDDING_MODEL=text-embedding-3-small \
     LOG_LEVEL=info
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
@@ -113,6 +114,7 @@ ENTRYPOINT ["sh", "-c", "agent-cli memory proxy \
     --mmr-lambda ${MEMORY_MMR_LAMBDA} \
     --recency-weight ${MEMORY_RECENCY_WEIGHT} \
     --score-threshold ${MEMORY_SCORE_THRESHOLD} \
+    --embedding-model ${EMBEDDING_MODEL} \
     --log-level ${LOG_LEVEL} \
     $([ \"${MEMORY_SUMMARIZATION}\" = \"false\" ] && echo '--no-summarization' || echo '--summarization') \
     $([ \"${MEMORY_GIT_VERSIONING}\" = \"false\" ] && echo '--no-git-versioning' || echo '--git-versioning') \

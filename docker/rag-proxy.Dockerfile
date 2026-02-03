@@ -88,6 +88,7 @@ ENV RAG_HOST=0.0.0.0 \
     RAG_CHROMA_PATH=/data/db \
     RAG_LIMIT=3 \
     RAG_ENABLE_TOOLS=true \
+    EMBEDDING_MODEL=text-embedding-3-small \
     LOG_LEVEL=info
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
@@ -99,6 +100,7 @@ ENTRYPOINT ["sh", "-c", "agent-cli rag-proxy \
     --docs-folder ${RAG_DOCS_FOLDER} \
     --chroma-path ${RAG_CHROMA_PATH} \
     --limit ${RAG_LIMIT} \
+    --embedding-model ${EMBEDDING_MODEL} \
     --log-level ${LOG_LEVEL} \
     $([ \"${RAG_ENABLE_TOOLS}\" = \"false\" ] && echo '--no-rag-tools' || echo '--rag-tools') \
     ${RAG_EXTRA_ARGS:-}"]
