@@ -32,16 +32,17 @@ Available extras:
 | Extra | Description |
 |-------|-------------|
 | `audio` | Audio recording/playback |
-| `faster-whisper` | TODO: add description |
-| `kokoro` | TODO: add description |
+| `faster-whisper` | Whisper ASR via CTranslate2 |
+| `kokoro` | Kokoro neural TTS (GPU) |
 | `llm` | LLM framework (pydantic-ai) |
 | `memory` | Long-term memory proxy |
-| `mlx-whisper` | TODO: add description |
-| `piper` | TODO: add description |
+| `mlx-whisper` | Whisper ASR for Apple Silicon |
+| `piper` | Piper TTS (CPU) |
 | `rag` | RAG proxy (ChromaDB, embeddings) |
 | `server` | FastAPI server components |
 | `speed` | Audio speed adjustment (audiostretchy) |
 | `vad` | Voice Activity Detection (silero-vad) |
+| `whisper-transformers` | Whisper ASR via HuggingFace transformers |
 | `wyoming` | Wyoming protocol support |
 
 <!-- OUTPUT:END -->

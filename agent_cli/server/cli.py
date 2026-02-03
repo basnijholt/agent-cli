@@ -161,8 +161,8 @@ def _check_whisper_deps(backend: str, *, download_only: bool = False) -> None:
         if not _has("faster_whisper"):
             err_console.print(
                 "[bold red]Error:[/bold red] faster-whisper is required for --download-only. "
-                "Run: [cyan]pip install agent-cli\\[whisper][/cyan] "
-                "or [cyan]uv sync --extra whisper[/cyan]",
+                "Run: [cyan]pip install agent-cli\\[faster-whisper][/cyan] "
+                "or [cyan]uv sync --extra faster-whisper[/cyan]",
             )
             raise typer.Exit(1)
         return
@@ -176,11 +176,21 @@ def _check_whisper_deps(backend: str, *, download_only: bool = False) -> None:
             raise typer.Exit(1)
         return
 
+    if backend == "transformers":
+        if not _has("transformers"):
+            err_console.print(
+                "[bold red]Error:[/bold red] Transformers backend requires transformers and torch. "
+                "Run: [cyan]pip install agent-cli\\[whisper-transformers][/cyan] "
+                "or [cyan]uv sync --extra whisper-transformers[/cyan]",
+            )
+            raise typer.Exit(1)
+        return
+
     if not _has("faster_whisper"):
         err_console.print(
             "[bold red]Error:[/bold red] Whisper dependencies not installed. "
-            "Run: [cyan]pip install agent-cli\\[whisper][/cyan] "
-            "or [cyan]uv sync --extra whisper[/cyan]",
+            "Run: [cyan]pip install agent-cli\\[faster-whisper][/cyan] "
+            "or [cyan]uv sync --extra faster-whisper[/cyan]",
         )
         raise typer.Exit(1)
 
@@ -299,7 +309,7 @@ def whisper_cmd(  # noqa: PLR0912, PLR0915
             "-b",
             help=(
                 "Inference backend: `auto` (faster-whisper on CUDA/CPU, MLX on Apple Silicon), "
-                "`faster-whisper`, `mlx`"
+                "`faster-whisper`, `mlx`, `transformers` (HuggingFace, supports safetensors)"
             ),
         ),
     ] = "auto",
@@ -331,7 +341,7 @@ def whisper_cmd(  # noqa: PLR0912, PLR0915
     # Setup Rich logging for consistent output
     setup_rich_logging(log_level)
 
-    valid_backends = ("auto", "faster-whisper", "mlx")
+    valid_backends = ("auto", "faster-whisper", "mlx", "transformers")
     if backend not in valid_backends:
         err_console.print(
             f"[bold red]Error:[/bold red] --backend must be one of: {', '.join(valid_backends)}",
