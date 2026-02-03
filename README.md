@@ -9,10 +9,11 @@ It provides a suite of powerful tools for voice and text interaction, designed f
 > **Short aliases available:** You can use `agent` or `ag` instead of `agent-cli` for convenience.
 
 > [!IMPORTANT]
-> **Local by Default**
-> All agents run **locally by default** using Ollama, Whisper, and Piper.
-> Your data stays on your machine unless you explicitly configure cloud providers.
-> You can optionally switch to OpenAI or Gemini for any capability.
+> **Local and Private by Design**
+> All agents in this tool are designed to run **100% locally**.
+> Your data, whether it's from your clipboard, microphone, or files, is never sent to any cloud API.
+> This ensures your privacy and allows the tools to work completely offline.
+> You can also optionally configure the agents to use OpenAI/Gemini services.
 
 <!-- SECTION:why-i-built-this:START -->
 ## Why I built this
