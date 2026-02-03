@@ -41,6 +41,17 @@
 #   LLM_OPENAI_MODEL   - Model name for OpenAI LLM provider
 #   OPENAI_BASE_URL    - OpenAI-compatible LLM endpoint
 #   OPENAI_API_KEY     - API key for OpenAI LLM
+#
+#   RAG_PORT           - RAG proxy port (default: 8000)
+#   RAG_LIMIT          - Number of document chunks per query (default: 3)
+#   RAG_ENABLE_TOOLS   - Enable read_full_document tool (default: true)
+#   EMBEDDING_MODEL    - Embedding model for RAG/memory (default: text-embedding-3-small)
+#
+#   MEMORY_PORT        - Memory proxy port (default: 8100)
+#   MEMORY_TOP_K       - Number of memories per query (default: 5)
+#   MEMORY_MAX_ENTRIES - Max entries per conversation (default: 500)
+#   MEMORY_SUMMARIZATION - Enable fact extraction (default: true)
+#   MEMORY_GIT_VERSIONING - Enable git versioning (default: true)
 
 services:
   # ===========================================================================
@@ -227,6 +238,69 @@ services:
       # - OPENAI_API_KEY=your-api-key
     restart: unless-stopped
 
+  # ===========================================================================
+  # RAG Proxy
+  # ===========================================================================
+
+  rag-proxy:
+    image: ghcr.io/basnijholt/agent-cli-rag-proxy:latest
+    build:
+      context: ..
+      dockerfile: docker/rag-proxy.Dockerfile
+    profiles: [cuda, cpu]
+    ports:
+      - "8000:8000"
+    volumes:
+      - rag-docs:/data/docs
+      - rag-db:/data/db
+      - rag-cache:/home/rag/.cache
+    environment:
+      - RAG_HOST=0.0.0.0
+      - RAG_PORT=${RAG_PORT:-8000}
+      - RAG_DOCS_FOLDER=/data/docs
+      - RAG_CHROMA_PATH=/data/db
+      - RAG_LIMIT=${RAG_LIMIT:-3}
+      - RAG_ENABLE_TOOLS=${RAG_ENABLE_TOOLS:-true}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      # OpenAI-compatible backend configuration
+      - OPENAI_BASE_URL=${OPENAI_BASE_URL:-http://ollama:11434/v1}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - EMBEDDING_MODEL=${EMBEDDING_MODEL:-text-embedding-3-small}
+    restart: unless-stopped
+
+  # ===========================================================================
+  # Memory Proxy
+  # ===========================================================================
+
+  memory-proxy:
+    image: ghcr.io/basnijholt/agent-cli-memory-proxy:latest
+    build:
+      context: ..
+      dockerfile: docker/memory-proxy.Dockerfile
+    profiles: [cuda, cpu]
+    ports:
+      - "8100:8100"
+    volumes:
+      - memory-data:/data/memory
+      - memory-cache:/home/memory/.cache
+    environment:
+      - MEMORY_HOST=0.0.0.0
+      - MEMORY_PORT=${MEMORY_PORT:-8100}
+      - MEMORY_PATH=/data/memory
+      - MEMORY_TOP_K=${MEMORY_TOP_K:-5}
+      - MEMORY_MAX_ENTRIES=${MEMORY_MAX_ENTRIES:-500}
+      - MEMORY_MMR_LAMBDA=${MEMORY_MMR_LAMBDA:-0.7}
+      - MEMORY_RECENCY_WEIGHT=${MEMORY_RECENCY_WEIGHT:-0.2}
+      - MEMORY_SCORE_THRESHOLD=${MEMORY_SCORE_THRESHOLD:-0.35}
+      - MEMORY_SUMMARIZATION=${MEMORY_SUMMARIZATION:-true}
+      - MEMORY_GIT_VERSIONING=${MEMORY_GIT_VERSIONING:-true}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      # OpenAI-compatible backend configuration
+      - OPENAI_BASE_URL=${OPENAI_BASE_URL:-http://ollama:11434/v1}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - EMBEDDING_MODEL=${EMBEDDING_MODEL:-text-embedding-3-small}
+    restart: unless-stopped
+
 volumes:
   ollama-data:
     name: agent-cli-ollama-data
@@ -236,3 +310,13 @@ volumes:
     name: agent-cli-whisper-cache
   tts-cache:
     name: agent-cli-tts-cache
+  rag-docs:
+    name: agent-cli-rag-docs
+  rag-db:
+    name: agent-cli-rag-db
+  rag-cache:
+    name: agent-cli-rag-cache
+  memory-data:
+    name: agent-cli-memory-data
+  memory-cache:
+    name: agent-cli-memory-cache
