@@ -46,6 +46,7 @@
 #   RAG_LIMIT          - Number of document chunks per query (default: 3)
 #   RAG_ENABLE_TOOLS   - Enable read_full_document tool (default: true)
 #   EMBEDDING_MODEL    - Embedding model for RAG/memory (default: text-embedding-3-small)
+#   EMBEDDING_BASE_URL - Separate endpoint for embeddings (falls back to OPENAI_BASE_URL)
 #
 #   MEMORY_PORT        - Memory proxy port (default: 8100)
 #   MEMORY_TOP_K       - Number of memories per query (default: 5)
@@ -262,6 +263,7 @@ services:
       - RAG_LIMIT=${RAG_LIMIT:-3}
       - RAG_ENABLE_TOOLS=${RAG_ENABLE_TOOLS:-true}
       - EMBEDDING_MODEL=${EMBEDDING_MODEL:-text-embedding-3-small}
+      - EMBEDDING_BASE_URL=${EMBEDDING_BASE_URL:-}
       - LOG_LEVEL=${LOG_LEVEL:-info}
       # OpenAI-compatible backend configuration
       - OPENAI_BASE_URL=${OPENAI_BASE_URL:-http://ollama:11434/v1}
@@ -295,6 +297,7 @@ services:
       - MEMORY_SUMMARIZATION=${MEMORY_SUMMARIZATION:-true}
       - MEMORY_GIT_VERSIONING=${MEMORY_GIT_VERSIONING:-true}
       - EMBEDDING_MODEL=${EMBEDDING_MODEL:-text-embedding-3-small}
+      - EMBEDDING_BASE_URL=${EMBEDDING_BASE_URL:-}
       - LOG_LEVEL=${LOG_LEVEL:-info}
       # OpenAI-compatible backend configuration
       - OPENAI_BASE_URL=${OPENAI_BASE_URL:-http://ollama:11434/v1}

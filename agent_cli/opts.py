@@ -109,6 +109,14 @@ EMBEDDING_MODEL: str = typer.Option(
     help="Embedding model to use for vectorization.",
     rich_help_panel="LLM Configuration",
 )
+EMBEDDING_BASE_URL: str | None = typer.Option(
+    None,
+    "--embedding-base-url",
+    envvar="EMBEDDING_BASE_URL",
+    help="Base URL for embedding API. Falls back to `--openai-base-url` if not set. "
+    "Useful when using different providers for chat vs embeddings.",
+    rich_help_panel="LLM Configuration",
+)
 
 # --- ASR (Audio) Configuration ---
 # General ASR

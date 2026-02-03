@@ -98,6 +98,7 @@ agent-cli chat --openai-base-url http://localhost:8100/v1 --llm-provider openai
 
 | Option | Default | Description |
 |--------|---------|-------------|
+| `--embedding-base-url` | - | Base URL for embedding API. Falls back to `--openai-base-url` if not set. Useful when using different providers for chat vs embeddings. |
 | `--embedding-model` | `text-embedding-3-small` | Embedding model to use for vectorization. |
 
 ### Server Configuration

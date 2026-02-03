@@ -23,6 +23,7 @@ def proxy(
         rich_help_panel="Memory Configuration",
     ),
     openai_base_url: str | None = opts.OPENAI_BASE_URL,
+    embedding_base_url: str | None = opts.EMBEDDING_BASE_URL,
     embedding_model: str = opts.EMBEDDING_MODEL,
     openai_api_key: str | None = opts.OPENAI_API_KEY,
     default_top_k: int = typer.Option(
@@ -135,12 +136,15 @@ def proxy(
     entries_dir, _ = ensure_store_dirs(memory_path)
     if openai_base_url is None:
         openai_base_url = constants.DEFAULT_OPENAI_BASE_URL
+    effective_embedding_url = embedding_base_url or openai_base_url
 
     console.print(f"[bold green]Starting Memory Proxy on {host}:{port}[/bold green]")
     console.print(f"  💾 Memory store: [blue]{memory_path}[/blue]")
     console.print(f"  📁 Entries: [blue]{entries_dir}[/blue]")
     console.print(f"  🤖 Backend: [blue]{openai_base_url}[/blue]")
-    console.print(f"  🧠 Embeddings: Using [blue]{embedding_model}[/blue]")
+    console.print(
+        f"  🧠 Embeddings: [blue]{embedding_model}[/blue] via [blue]{effective_embedding_url}[/blue]",
+    )
     console.print(f"  🔍 Memory top_k: [blue]{default_top_k}[/blue] entries per query")
     console.print(f"  🧹 Max entries per conversation: [blue]{max_entries}[/blue]")
     console.print(
@@ -154,6 +158,7 @@ def proxy(
     fastapi_app = create_app(
         memory_path,
         openai_base_url,
+        embedding_base_url=effective_embedding_url,
         embedding_model=embedding_model,
         embedding_api_key=openai_api_key,
         chat_api_key=openai_api_key,
