@@ -84,10 +84,12 @@ def _load_model_in_subprocess(
         model_name,
         cache_dir=download_root,
     )
+    dtype = torch.float16 if device != "cpu" else torch.float32
     _state.model = AutoModelForSpeechSeq2Seq.from_pretrained(
         model_name,
         cache_dir=download_root,
-        torch_dtype=torch.float16 if device != "cpu" else torch.float32,
+        torch_dtype=dtype,
+        low_cpu_mem_usage=True,
     )
     _state.model.to(device)
     _state.model.eval()
@@ -113,8 +115,11 @@ def _transcribe_in_subprocess(
         audio_bytes = wav_file.readframes(wav_file.getnframes())
         duration = wav_file.getnframes() / sample_rate
 
-    # Convert to float tensor
-    audio_tensor = torch.frombuffer(audio_bytes, dtype=torch.int16).float() / 32768.0
+    # Convert to float tensor (copy buffer to avoid non-writable tensor warning)
+    import numpy as np  # noqa: PLC0415
+
+    audio_array = np.frombuffer(audio_bytes, dtype=np.int16).astype(np.float32) / 32768.0
+    audio_tensor = torch.from_numpy(audio_array)
 
     # Process audio
     inputs = _state.processor(
@@ -124,14 +129,27 @@ def _transcribe_in_subprocess(
     )
     inputs = {k: v.to(_state.device) for k, v in inputs.items()}
 
-    generate_args: dict[str, Any] = {
-        **inputs,
-        "num_beams": kwargs.get("beam_size", 5),
-    }
-
     language = kwargs.get("language")
     task = kwargs.get("task", "transcribe")
     initial_prompt = kwargs.get("initial_prompt")
+
+    # Build generate arguments - use language/task directly instead of deprecated forced_decoder_ids
+    generate_args: dict[str, Any] = {
+        **inputs,
+        "num_beams": kwargs.get("beam_size", 5),
+        "task": task,
+        "return_timestamps": False,
+    }
+
+    # Add attention_mask if available (avoids warning about pad token)
+    if "attention_mask" not in generate_args:
+        generate_args["attention_mask"] = inputs.get(
+            "attention_mask",
+            torch.ones_like(inputs["input_features"][:, 0, :]),
+        )
+
+    if language:
+        generate_args["language"] = language
 
     if initial_prompt:
         prompt_ids = (
@@ -144,16 +162,6 @@ def _transcribe_in_subprocess(
             .to(_state.device)
         )
         generate_args["prompt_ids"] = prompt_ids
-
-    tokenizer = _state.processor.tokenizer
-    # Ensure per-request prompt settings; clear language when None to avoid leaks.
-    tokenizer.language = language
-    tokenizer.task = task
-    generate_args["forced_decoder_ids"] = tokenizer.get_decoder_prompt_ids(
-        task=task,
-        language=language,
-        no_timestamps=True,
-    )
 
     with torch.no_grad():
         generated_ids = _state.model.generate(**generate_args)
