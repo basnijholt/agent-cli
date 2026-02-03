@@ -18,10 +18,12 @@ Native macOS setup with full Metal GPU acceleration for optimal performance.
 
 ## Quick Start
 
-1. **Run the setup script:**
+1. **Clone and run the setup script:**
 
    ```bash
-   scripts/setup-macos.sh
+   git clone https://github.com/basnijholt/agent-cli.git
+   cd agent-cli
+   ./scripts/setup-macos.sh
    ```
 
 2. **Start all services:**
