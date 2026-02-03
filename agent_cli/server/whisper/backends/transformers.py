@@ -4,10 +4,13 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import tempfile
+import time
 import wave
 from concurrent.futures import ProcessPoolExecutor
 from dataclasses import dataclass
 from multiprocessing import get_context
+from pathlib import Path
 from typing import Any, Literal
 
 from agent_cli.core.process import set_process_title
@@ -142,8 +145,15 @@ def _transcribe_in_subprocess(
         )
         generate_args["prompt_ids"] = prompt_ids
 
-    if language:
-        _state.processor.tokenizer.set_prefix_tokens(language=language, task=task)
+    tokenizer = _state.processor.tokenizer
+    # Ensure per-request prompt settings; clear language when None to avoid leaks.
+    tokenizer.language = language
+    tokenizer.task = task
+    generate_args["forced_decoder_ids"] = tokenizer.get_decoder_prompt_ids(
+        task=task,
+        language=language,
+        no_timestamps=True,
+    )
 
     with torch.no_grad():
         generated_ids = _state.model.generate(**generate_args)
@@ -184,8 +194,6 @@ class TransformersWhisperBackend:
 
     async def load(self) -> float:
         """Start subprocess and load model."""
-        import time  # noqa: PLC0415
-
         logger.debug(
             "Starting transformers subprocess for model %s (resolved: %s, device=%s)",
             self._config.model_name,
@@ -243,9 +251,6 @@ class TransformersWhisperBackend:
         word_timestamps: bool = False,  # noqa: ARG002 - not supported
     ) -> TranscriptionResult:
         """Transcribe audio using transformers in subprocess."""
-        import tempfile  # noqa: PLC0415
-        from pathlib import Path  # noqa: PLC0415
-
         if self._executor is None:
             msg = "Model not loaded. Call load() first."
             raise RuntimeError(msg)
