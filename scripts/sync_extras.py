@@ -33,6 +33,7 @@ EXTRA_METADATA: dict[str, tuple[str, list[str]]] = {
     "openai": ("OpenAI API provider", ["openai"]),
     "gemini": ("Google Gemini provider", ["google.genai"]),
     "llm": ("LLM framework (pydantic-ai)", ["pydantic_ai"]),
+    "llm-core": ("Minimal LLM support for Docker images", ["pydantic_ai"]),
     # Feature extras
     "rag": ("RAG proxy (ChromaDB, embeddings)", ["chromadb"]),
     "memory": ("Long-term memory proxy", ["chromadb", "yaml"]),
