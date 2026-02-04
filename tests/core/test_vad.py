@@ -17,13 +17,21 @@ if TYPE_CHECKING:
 @pytest.fixture(scope="module", autouse=True)
 def ensure_model_cached() -> None:
     """Ensure Silero VAD model is cached before running tests."""
+    import shutil  # noqa: PLC0415
     import urllib.request  # noqa: PLC0415
 
     from agent_cli.core.vad import SILERO_VAD_CACHE, SILERO_VAD_URL  # noqa: PLC0415
 
     if not SILERO_VAD_CACHE.exists():
         SILERO_VAD_CACHE.parent.mkdir(parents=True, exist_ok=True)
-        urllib.request.urlretrieve(SILERO_VAD_URL, SILERO_VAD_CACHE)  # noqa: S310
+        try:
+            with (
+                urllib.request.urlopen(SILERO_VAD_URL, timeout=30) as response,  # noqa: S310
+                SILERO_VAD_CACHE.open("wb") as f,
+            ):
+                shutil.copyfileobj(response, f)
+        except Exception as e:
+            pytest.skip(f"Failed to download VAD model: {e}")
 
 
 def test_import_error_without_onnxruntime() -> None:
