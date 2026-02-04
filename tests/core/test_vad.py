@@ -5,14 +5,14 @@ from __future__ import annotations
 import struct
 import sys
 from typing import TYPE_CHECKING
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 
-# Skip all tests in this module on Windows - silero-vad-lite can hang during initialization
+# Skip all tests in this module on Windows - silero-vad can hang during initialization
 if sys.platform == "win32":
     pytest.skip(
-        "silero-vad-lite initialization can hang on Windows CI",
+        "silero-vad initialization can hang on Windows CI",
         allow_module_level=True,
     )
 
@@ -22,19 +22,23 @@ if TYPE_CHECKING:
     from typing import Any
 
 
-@pytest.fixture
-def mock_silero_vad() -> MagicMock:
-    """Mock silero_vad module."""
-    mock_model = MagicMock()
-    mock_model.audio_forward.return_value = 0.0  # No speech by default
-    return mock_model
+@pytest.fixture(scope="module", autouse=True)
+def ensure_model_cached() -> None:
+    """Ensure Silero VAD model is cached before running tests."""
+    import urllib.request  # noqa: PLC0415
+
+    from agent_cli.core.vad import SILERO_VAD_CACHE, SILERO_VAD_URL  # noqa: PLC0415
+
+    if not SILERO_VAD_CACHE.exists():
+        SILERO_VAD_CACHE.parent.mkdir(parents=True, exist_ok=True)
+        urllib.request.urlretrieve(SILERO_VAD_URL, SILERO_VAD_CACHE)  # noqa: S310
 
 
-def test_import_error_without_silero_vad() -> None:
-    """Test that ImportError is raised with helpful message when silero-vad-lite is missing."""
+def test_import_error_without_onnxruntime() -> None:
+    """Test that ImportError is raised with helpful message when onnxruntime is missing."""
     import importlib  # noqa: PLC0415
 
-    with patch.dict("sys.modules", {"silero_vad_lite": None}):
+    with patch.dict("sys.modules", {"onnxruntime": None}):
         # Remove cached module
         if "agent_cli.core.vad" in sys.modules:
             del sys.modules["agent_cli.core.vad"]
