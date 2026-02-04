@@ -27,24 +27,14 @@ def _create_vad(
     silence_threshold_ms: int,
     min_speech_duration_ms: int,
 ) -> VoiceActivityDetector:
-    """Create a VoiceActivityDetector instance.
-
-    Raises ImportError if onnxruntime is not available.
-    """
+    """Create a VoiceActivityDetector instance."""
     from agent_cli.core.vad import VoiceActivityDetector as _VoiceActivityDetector  # noqa: PLC0415
 
-    try:
-        return _VoiceActivityDetector(
-            threshold=threshold,
-            silence_threshold_ms=silence_threshold_ms,
-            min_speech_duration_ms=min_speech_duration_ms,
-        )
-    except ImportError as e:
-        msg = (
-            "VAD requires onnxruntime. Install it with: "
-            "`pip install agent-cli[vad]` or `uv sync --extra vad`"
-        )
-        raise ImportError(msg) from e
+    return _VoiceActivityDetector(
+        threshold=threshold,
+        silence_threshold_ms=silence_threshold_ms,
+        min_speech_duration_ms=min_speech_duration_ms,
+    )
 
 
 def _split_seconds(seconds: float) -> tuple[int, int, int, int]:
@@ -393,16 +383,11 @@ def create_app(  # noqa: C901, PLR0915
         # Initialize VAD if requested
         vad = None
         if use_vad:
-            try:
-                vad = _create_vad(
-                    threshold=vad_threshold,
-                    silence_threshold_ms=vad_silence_ms,
-                    min_speech_duration_ms=vad_min_speech_ms,
-                )
-            except ImportError as e:
-                await websocket.send_json({"type": "error", "message": str(e)})
-                await websocket.close()
-                return
+            vad = _create_vad(
+                threshold=vad_threshold,
+                silence_threshold_ms=vad_silence_ms,
+                min_speech_duration_ms=vad_min_speech_ms,
+            )
 
         try:
             if vad is not None:
@@ -436,7 +421,7 @@ def create_app(  # noqa: C901, PLR0915
             """Transcribe segment and send partial result."""
             nonlocal final_language, total_duration
             result = await _transcribe_segment(manager, segment, language)
-            if result and result.text.strip():
+            if result.text.strip():
                 all_segments_text.append(result.text.strip())
                 final_language = result.language
                 total_duration += result.duration
@@ -556,22 +541,17 @@ def create_app(  # noqa: C901, PLR0915
         manager: Any,
         segment: bytes,
         language: str | None,
-    ) -> Any | None:
+    ) -> Any:
         """Transcribe a raw PCM audio segment by wrapping it in WAV format."""
-        try:
-            # Wrap raw PCM in WAV format for transcription
-            wav_buffer = io.BytesIO()
-            with wave.open(wav_buffer, "wb") as wav_file:
-                setup_wav_file(wav_file)
-                wav_file.writeframes(segment)
-            wav_buffer.seek(0)
-            return await manager.transcribe(
-                wav_buffer.read(),
-                language=language,
-                task="transcribe",
-            )
-        except Exception:
-            logger.exception("Failed to transcribe segment")
-            return None
+        wav_buffer = io.BytesIO()
+        with wave.open(wav_buffer, "wb") as wav_file:
+            setup_wav_file(wav_file)
+            wav_file.writeframes(segment)
+        wav_buffer.seek(0)
+        return await manager.transcribe(
+            wav_buffer.read(),
+            language=language,
+            task="transcribe",
+        )
 
     return app

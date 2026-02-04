@@ -793,22 +793,3 @@ class TestWhisperAPI:
         assert final["type"] == "final"
         assert final["text"] == "First segment Second segment"
         assert final["duration"] == pytest.approx(1.8)
-
-    def test_websocket_vad_not_available(
-        self,
-        client: TestClient,
-    ) -> None:
-        """Test error message when VAD is requested but not available."""
-        with (
-            patch(
-                "agent_cli.server.whisper.api._create_vad",
-                side_effect=ImportError("VAD not available"),
-            ),
-            client.websocket_connect(
-                "/v1/audio/transcriptions/stream?model=whisper-1&use_vad=true",
-            ) as websocket,
-        ):
-            data = websocket.receive_json()
-
-        assert data["type"] == "error"
-        assert "VAD not available" in data["message"]
