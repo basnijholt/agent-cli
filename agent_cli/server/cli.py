@@ -29,15 +29,23 @@ def _has(package: str) -> bool:
 
 app = typer.Typer(
     name="server",
-    help="""Run local ASR/TTS servers with OpenAI-compatible APIs.
+    help="""Local ASR/TTS servers with dual-protocol support and smart memory management.
+
+**Key features:**
+
+- **Dual protocol:** OpenAI-compatible HTTP API and Wyoming protocol (Home Assistant)
+- **Multiple backends:** Choose the right engine for your hardware
+- **Automatic memory management:** Models unload after idle timeout, freeing VRAM/RAM
 
 **Available servers:**
 
-- `whisper` - Local speech-to-text using Whisper models (faster-whisper or MLX)
-- `tts` - Local text-to-speech using Piper (CPU) or Kokoro (GPU)
-- `transcribe-proxy` - Proxy to external ASR providers (OpenAI, Gemini, Wyoming)
+| Server | Backends | Default Ports |
+|--------|----------|---------------|
+| `whisper` | faster-whisper, MLX, transformers | HTTP: 10301, Wyoming: 10300 |
+| `tts` | Piper (CPU), Kokoro (GPU) | HTTP: 10201, Wyoming: 10200 |
+| `transcribe-proxy` | OpenAI-compatible, Gemini, Wyoming | HTTP: 61337 |
 
-**Common workflows:**
+**Examples:**
 
 ```bash
 # Run local Whisper server (lazy loads large-v3 by default)
@@ -50,8 +58,8 @@ agent-cli server tts --backend kokoro
 agent-cli server transcribe-proxy
 ```
 
-All servers support Home Assistant via Wyoming protocol and can be used as
-drop-in replacements for OpenAI's audio APIs.
+Models load on first request and automatically unload after 5 minutes of inactivity
+(configurable via `--ttl`), so VRAM isn't wasted when the server is idle.
 """,
     add_completion=True,
     rich_markup_mode="markdown",
