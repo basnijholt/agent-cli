@@ -36,7 +36,7 @@ EXTRA_METADATA: dict[str, tuple[str, list[str]]] = {
     # Feature extras
     "rag": ("RAG proxy (ChromaDB, embeddings)", ["chromadb", "pydantic_ai"]),
     "memory": ("Long-term memory proxy", ["chromadb", "yaml", "pydantic_ai"]),
-    "vad": ("Voice Activity Detection (silero-vad)", ["silero_vad"]),
+    "vad": ("Voice Activity Detection (Silero VAD via ONNX)", ["onnxruntime"]),
     "whisper": ("Local Whisper ASR (faster-whisper)", ["faster_whisper"]),
     "whisper-mlx": ("MLX Whisper for Apple Silicon", ["mlx_whisper"]),
     "tts": ("Local Piper TTS", ["piper"]),

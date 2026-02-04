@@ -158,7 +158,7 @@ def install_extras(
     **Available extras:**
     - `rag` - RAG proxy server (ChromaDB, embeddings)
     - `memory` - Long-term memory proxy (ChromaDB)
-    - `vad` - Voice Activity Detection (silero-vad)
+    - `vad` - Voice Activity Detection (Silero VAD via ONNX)
     - `audio` - Local audio recording/playback
     - `piper` - Local Piper TTS engine
     - `kokoro` - Kokoro neural TTS engine
