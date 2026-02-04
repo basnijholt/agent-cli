@@ -6,6 +6,7 @@ import functools
 import importlib
 import json
 import os
+import shutil
 import sys
 from importlib.util import find_spec
 from pathlib import Path
@@ -46,8 +47,6 @@ def _reexec_with_uvx_extras(extras: list[str]) -> bool:
     Returns False if re-exec is not possible (already tried, or not in uvx).
     Otherwise, replaces the current process (never returns).
     """
-    import shutil  # noqa: PLC0415
-
     # Prevent infinite loops - if we already tried re-exec, don't try again
     if os.environ.get(_REEXEC_MARKER):
         return False
@@ -78,6 +77,26 @@ def _reexec_with_uvx_extras(extras: list[str]) -> bool:
     new_env[_REEXEC_MARKER] = "1"
     os.execvpe(uvx_path, new_cmd, new_env)  # noqa: S606
     return True  # Never reached, execvpe replaces the process
+
+
+def _reexec_self() -> None:
+    """Re-execute the current command after auto-install.
+
+    After uv tool install, the new packages are in a different venv.
+    Re-exec ourselves so we run from the newly installed version.
+    """
+    # Prevent infinite loops
+    if os.environ.get(_REEXEC_MARKER):
+        return
+
+    executable = shutil.which("agent-cli") or sys.executable
+    new_cmd = [executable, *sys.argv[1:]]
+
+    err_console.print("[yellow]Re-running with installed extras...[/]")
+
+    new_env = os.environ.copy()
+    new_env[_REEXEC_MARKER] = "1"
+    os.execvpe(executable, new_cmd, new_env)  # noqa: S606
 
 
 # Load extras from JSON file
@@ -246,7 +265,14 @@ def _check_and_install_extras(extras: tuple[str, ...]) -> list[str]:
         return missing
 
     err_console.print("[green]Installation complete![/]")
-    # Invalidate import caches so find_spec() can see newly installed packages
+
+    # Re-exec ourselves so the new packages are visible
+    # The newly installed version will run with all extras available
+    # If re-exec succeeds, this never returns
+    _reexec_self()
+
+    # If we get here, re-exec was skipped (loop prevention) or failed
+    # Check if extras are now available in this process
     importlib.invalidate_caches()
     still_missing = [e for e in extras if not check_extra_installed(e)]
     if still_missing:
