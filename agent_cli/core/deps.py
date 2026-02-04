@@ -53,14 +53,15 @@ def _reexec(cmd: list[str], message: str) -> None:
 
 
 def _reexec_with_uvx_extras(extras: list[str]) -> bool:
-    """Re-execute with uvx --with for extras. Returns False if not applicable."""
+    """Re-execute with uvx running agent-cli[extras] directly."""
     if os.environ.get(_REEXEC_MARKER) or not _is_uvx_cache():
         return False
     uvx_path = shutil.which("uvx")
     if not uvx_path:
         return False
     extras_str = ",".join(extras)
-    cmd = [uvx_path, "--with", f"agent-cli[{extras_str}]", "agent-cli", *sys.argv[1:]]
+    # Run agent-cli[extras] directly, not as --with (which doesn't merge extras)
+    cmd = [uvx_path, f"agent-cli[{extras_str}]", *sys.argv[1:]]
     _reexec(cmd, f"Re-running with extras: {extras_str}")
     return True  # Never reached
 
