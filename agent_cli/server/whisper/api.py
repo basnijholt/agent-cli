@@ -21,6 +21,27 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+_EOS_MARKER = b"EOS"
+
+
+def _parse_eos(data: bytes) -> tuple[bytes, bool]:
+    """Parse data for EOS marker, returning (audio_chunk, is_eos)."""
+    if data == _EOS_MARKER:
+        return b"", True
+    if data.endswith(_EOS_MARKER):
+        return data[: -len(_EOS_MARKER)], True
+    return data, False
+
+
+def _wrap_pcm_as_wav(pcm_data: bytes) -> bytes:
+    """Wrap raw PCM audio data in WAV format."""
+    wav_buffer = io.BytesIO()
+    with wave.open(wav_buffer, "wb") as wav_file:
+        setup_wav_file(wav_file)
+        wav_file.writeframes(pcm_data)
+    wav_buffer.seek(0)
+    return wav_buffer.read()
+
 
 def _create_vad(
     threshold: float,
@@ -429,8 +450,6 @@ def create_app(  # noqa: C901, PLR0915
         all_segments_text: list[str] = []
         total_duration: float = 0.0
         final_language: str | None = None
-        eos_marker = b"EOS"
-        eos_len = len(eos_marker)
 
         async def process_segment(segment: bytes) -> None:
             """Transcribe segment and send partial result."""
@@ -451,19 +470,7 @@ def create_app(  # noqa: C901, PLR0915
 
         while True:
             data = await websocket.receive_bytes()
-
-            # Check for end of stream
-            is_eos = data == eos_marker
-            audio_chunk = b""
-
-            if is_eos:
-                pass  # No audio to process
-            elif data[-eos_len:] == eos_marker:
-                # Audio followed by EOS marker
-                audio_chunk = data[:-eos_len]
-                is_eos = True
-            else:
-                audio_chunk = data
+            audio_chunk, is_eos = _parse_eos(data)
 
             # Process audio chunk through VAD
             if audio_chunk:
@@ -495,50 +502,28 @@ def create_app(  # noqa: C901, PLR0915
         language: str | None,
     ) -> None:
         """Handle streaming transcription with buffered mode (no VAD)."""
-        audio_buffer = io.BytesIO()
-        wav_file: wave.Wave_write | None = None
-        eos_marker = b"EOS"
-        eos_len = len(eos_marker)
+        pcm_chunks: list[bytes] = []
 
         while True:
             data = await websocket.receive_bytes()
-
-            # Initialize WAV file on first chunk (before EOS check)
-            if wav_file is None:
-                wav_file = wave.open(audio_buffer, "wb")  # noqa: SIM115
-                setup_wav_file(wav_file)
-
-            # Check for end of stream
-            if data == eos_marker:
-                break
-            if data[-eos_len:] == eos_marker:
-                # Write remaining data before EOS marker
-                if len(data) > eos_len:
-                    wav_file.writeframes(data[:-eos_len])
+            audio_chunk, is_eos = _parse_eos(data)
+            if audio_chunk:
+                pcm_chunks.append(audio_chunk)
+            if is_eos:
                 break
 
-            wav_file.writeframes(data)
-
-        # Close WAV file
-        if wav_file is not None:
-            wav_file.close()
-
-        # Get audio data
-        audio_buffer.seek(0)
-        audio_data = audio_buffer.read()
-
-        if not audio_data:
+        if not pcm_chunks:
             await websocket.send_json({"type": "error", "message": "No audio received"})
             return
 
         # Transcribe
+        audio_data = _wrap_pcm_as_wav(b"".join(pcm_chunks))
         try:
             result = await manager.transcribe(
                 audio_data,
                 language=language,
                 task="transcribe",
             )
-
             await websocket.send_json(
                 {
                     "type": "final",
@@ -557,16 +542,10 @@ def create_app(  # noqa: C901, PLR0915
         segment: bytes,
         language: str | None,
     ) -> Any | None:
-        """Transcribe a raw PCM audio segment by wrapping it in WAV format."""
+        """Transcribe a raw PCM audio segment."""
         try:
-            # Wrap raw PCM in WAV format for transcription
-            wav_buffer = io.BytesIO()
-            with wave.open(wav_buffer, "wb") as wav_file:
-                setup_wav_file(wav_file)
-                wav_file.writeframes(segment)
-            wav_buffer.seek(0)
             return await manager.transcribe(
-                wav_buffer.read(),
+                _wrap_pcm_as_wav(segment),
                 language=language,
                 task="transcribe",
             )
