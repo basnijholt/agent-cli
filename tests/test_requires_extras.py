@@ -201,6 +201,7 @@ class TestCheckAndInstallExtras:
             ),
             patch("agent_cli.core.deps._get_auto_install_setting", return_value=True),
             patch("agent_cli.core.deps._try_auto_install", return_value=True),
+            patch("agent_cli.core.deps._reexec_self"),  # Prevent actual re-exec
         ):
             result = _check_and_install_extras(("fake-extra",))
             assert result == []
@@ -212,6 +213,7 @@ class TestCheckAndInstallExtras:
             patch("agent_cli.core.deps.check_extra_installed", return_value=False),
             patch("agent_cli.core.deps._get_auto_install_setting", return_value=True),
             patch("agent_cli.core.deps._try_auto_install", return_value=True),
+            patch("agent_cli.core.deps._reexec_self"),  # Prevent actual re-exec
             patch("agent_cli.core.deps.print_error_message") as mock_error,
         ):
             result = _check_and_install_extras(("fake-extra",))
@@ -259,6 +261,7 @@ class TestDecoratorIntegration:
             ),
             patch("agent_cli.core.deps._get_auto_install_setting", return_value=True),
             patch("agent_cli.core.deps._try_auto_install", return_value=True),
+            patch("agent_cli.core.deps._reexec_self"),  # Prevent actual re-exec
         ):
 
             @requires_extras("fake-extra")
