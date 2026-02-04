@@ -59,7 +59,9 @@ The Docker setup provides:
 | ----------------------- | --------------------------------- | ----------- | ------------------------------ |
 | **whisper**             | agent-cli-whisper (custom)        | 10300/10301 | Speech-to-text (Faster Whisper)|
 | **tts**                 | agent-cli-tts (custom)            | 10200/10201 | Text-to-speech (Kokoro/Piper)  |
-| **transcribe-proxy** | agent-cli-transcribe-proxy     | 61337       | ASR proxy for iOS/external apps|
+| **transcribe-proxy**    | agent-cli-transcribe-proxy        | 61337       | ASR proxy for iOS/external apps|
+| **rag-proxy**           | agent-cli-rag-proxy               | 8000        | Document-aware chat (RAG)      |
+| **memory-proxy**        | agent-cli-memory-proxy            | 8100        | Long-term memory chat          |
 | **ollama**              | ollama/ollama                     | 11434       | LLM server                     |
 | **openwakeword**        | rhasspy/wyoming-openwakeword      | 10400       | Wake word detection            |
 
@@ -87,6 +89,19 @@ LLM_OLLAMA_MODEL=gemma3:4b  # Ollama model name
 LLM_OLLAMA_HOST=http://ollama:11434  # Ollama server URL (container name)
 LLM_OPENAI_MODEL=gpt-4.1-nano  # OpenAI model (if using openai provider)
 OPENAI_API_KEY=sk-...       # OpenAI API key (if using openai provider)
+
+# RAG Proxy
+RAG_PORT=8000               # Port for RAG proxy
+RAG_LIMIT=3                 # Number of document chunks per query
+RAG_ENABLE_TOOLS=true       # Enable read_full_document tool
+EMBEDDING_MODEL=text-embedding-3-small  # Embedding model for RAG/memory
+
+# Memory Proxy
+MEMORY_PORT=8100            # Port for memory proxy
+MEMORY_TOP_K=5              # Number of memories per query
+MEMORY_MAX_ENTRIES=500      # Max entries per conversation before eviction
+MEMORY_SUMMARIZATION=true   # Enable fact extraction from conversations
+MEMORY_GIT_VERSIONING=true  # Enable git versioning for memory changes
 ```
 
 ### GPU Support
@@ -117,11 +132,18 @@ Services store data in Docker volumes:
 - `agent-cli-tts-cache` - TTS models and voices
 - `agent-cli-ollama-data` - Ollama models
 - `agent-cli-openwakeword-data` - Wake word models
+- `agent-cli-rag-docs` - Documents to index for RAG
+- `agent-cli-rag-db` - RAG vector database (ChromaDB)
+- `agent-cli-rag-cache` - RAG embedding models
+- `agent-cli-memory-data` - Memory entries and vector index
+- `agent-cli-memory-cache` - Memory embedding models
 
 ## Ports Reference
 
 | Port  | Service             | Protocol |
 | ----- | ------------------- | -------- |
+| 8000  | RAG Proxy           | HTTP API |
+| 8100  | Memory Proxy        | HTTP API |
 | 10200 | TTS                 | Wyoming  |
 | 10201 | TTS                 | HTTP API |
 | 10300 | Whisper             | Wyoming  |

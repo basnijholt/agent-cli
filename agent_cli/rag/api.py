@@ -32,6 +32,7 @@ def create_app(
     docs_folder: Path,
     chroma_path: Path,
     openai_base_url: str,
+    embedding_base_url: str | None = None,
     embedding_model: str = DEFAULT_OPENAI_EMBEDDING_MODEL,
     embedding_api_key: str | None = None,
     chat_api_key: str | None = None,
@@ -47,7 +48,7 @@ def create_app(
         chroma_path,
         name="docs",
         embedding_model=embedding_model,
-        openai_base_url=openai_base_url,
+        openai_base_url=embedding_base_url or openai_base_url,
         openai_api_key=embedding_api_key,
     )
 

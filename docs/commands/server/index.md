@@ -25,7 +25,7 @@ agent-cli server [COMMAND] [OPTIONS]
 === "Whisper (Speech-to-Text)"
 
     ```bash
-    pip install "agent-cli[whisper]"
+    pip install "agent-cli[faster-whisper]"
     agent-cli server whisper
     ```
 
@@ -34,7 +34,7 @@ agent-cli server [COMMAND] [OPTIONS]
 === "TTS (Text-to-Speech)"
 
     ```bash
-    pip install "agent-cli[tts-kokoro]"
+    pip install "agent-cli[kokoro]"
     agent-cli server tts --backend kokoro
     ```
 

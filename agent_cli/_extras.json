@@ -1,14 +1,84 @@
 {
-  "wyoming": ["Wyoming protocol for ASR/TTS servers", ["wyoming"]],
-  "audio": ["Local audio recording/playback", ["numpy", "sounddevice", "wyoming"]],
-  "llm": ["LLM framework (pydantic-ai)", ["pydantic_ai"]],
-  "memory": ["Long-term memory proxy", ["chromadb", "openai", "yaml"]],
-  "rag": ["RAG proxy (ChromaDB, embeddings)", ["chromadb", "openai"]],
-  "server": ["FastAPI server components", ["fastapi"]],
-  "speed": ["Audio speed adjustment (audiostretchy)", ["audiostretchy"]],
-  "piper": ["Local Piper TTS", ["piper"]],
-  "kokoro": ["Kokoro neural TTS", ["kokoro"]],
-  "vad": ["Voice Activity Detection (silero-vad)", ["silero_vad"]],
-  "faster-whisper": ["Whisper ASR (CUDA/CPU)", ["faster_whisper"]],
-  "mlx-whisper": ["Whisper ASR (Apple Silicon)", ["mlx_whisper"]]
+  "audio": [
+    "Audio recording/playback",
+    [
+      "sounddevice"
+    ]
+  ],
+  "faster-whisper": [
+    "Whisper ASR via CTranslate2",
+    [
+      "faster_whisper"
+    ]
+  ],
+  "kokoro": [
+    "Kokoro neural TTS (GPU)",
+    [
+      "kokoro"
+    ]
+  ],
+  "llm": [
+    "LLM framework (pydantic-ai)",
+    [
+      "pydantic_ai"
+    ]
+  ],
+  "memory": [
+    "Long-term memory proxy",
+    [
+      "chromadb",
+      "yaml",
+      "pydantic_ai"
+    ]
+  ],
+  "mlx-whisper": [
+    "Whisper ASR for Apple Silicon",
+    [
+      "mlx_whisper"
+    ]
+  ],
+  "piper": [
+    "Piper TTS (CPU)",
+    [
+      "piper"
+    ]
+  ],
+  "rag": [
+    "RAG proxy (ChromaDB, embeddings)",
+    [
+      "chromadb",
+      "pydantic_ai"
+    ]
+  ],
+  "server": [
+    "FastAPI server components",
+    [
+      "fastapi"
+    ]
+  ],
+  "speed": [
+    "Audio speed adjustment (audiostretchy)",
+    [
+      "audiostretchy"
+    ]
+  ],
+  "vad": [
+    "Voice Activity Detection (Silero VAD via ONNX)",
+    [
+      "onnxruntime"
+    ]
+  ],
+  "whisper-transformers": [
+    "Whisper ASR via HuggingFace transformers",
+    [
+      "transformers",
+      "torch"
+    ]
+  ],
+  "wyoming": [
+    "Wyoming protocol support",
+    [
+      "wyoming"
+    ]
+  ]
 }

@@ -77,6 +77,7 @@ memory = [
     { name = "huggingface-hub" },
     { name = "onnxruntime" },
     { name = "openai" },
+    { name = "pydantic-ai-slim", extra = ["google", "openai"] },
     { name = "pyyaml" },
     { name = "transformers" },
     { name = "watchfiles" },
@@ -96,6 +97,7 @@ rag = [
     { name = "markitdown", extra = ["docx", "pdf", "pptx"] },
     { name = "onnxruntime" },
     { name = "openai" },
+    { name = "pydantic-ai-slim", extra = ["google", "openai"] },
     { name = "transformers" },
     { name = "watchfiles" },
 ]
@@ -113,7 +115,12 @@ test = [
     { name = "pytest-timeout" },
 ]
 vad = [
-    { name = "silero-vad-lite" },
+    { name = "onnxruntime" },
+]
+whisper-transformers = [
+    { name = "fastapi", extra = ["standard"] },
+    { name = "torch" },
+    { name = "transformers" },
 ]
 wyoming = [
     { name = "wyoming" },
@@ -150,6 +157,7 @@ requires-dist = [
     { name = "fastapi", extras = ["standard"], marker = "extra == 'piper'" },
     { name = "fastapi", extras = ["standard"], marker = "extra == 'rag'" },
     { name = "fastapi", extras = ["standard"], marker = "extra == 'server'" },
+    { name = "fastapi", extras = ["standard"], marker = "extra == 'whisper-transformers'" },
     { name = "faster-whisper", marker = "extra == 'faster-whisper'", specifier = ">=1.0.0" },
     { name = "httpx" },
     { name = "huggingface-hub", marker = "extra == 'kokoro'", specifier = ">=0.20.0" },
@@ -164,6 +172,7 @@ requires-dist = [
     { name = "numpy", marker = "extra == 'audio'" },
     { name = "onnxruntime", marker = "extra == 'memory'", specifier = ">=1.17.0" },
     { name = "onnxruntime", marker = "extra == 'rag'", specifier = ">=1.17.0" },
+    { name = "onnxruntime", marker = "extra == 'vad'", specifier = ">=1.16.0" },
     { name = "openai", marker = "extra == 'memory'", specifier = ">=1.0.0" },
     { name = "openai", marker = "extra == 'rag'", specifier = ">=1.0.0" },
     { name = "pip", marker = "extra == 'kokoro'" },
@@ -173,6 +182,8 @@ requires-dist = [
     { name = "psutil", marker = "sys_platform == 'win32'" },
     { name = "pydantic" },
     { name = "pydantic-ai-slim", extras = ["duckduckgo", "google", "openai", "vertexai"], marker = "extra == 'llm'", specifier = ">=0.1.1" },
+    { name = "pydantic-ai-slim", extras = ["google", "openai"], marker = "extra == 'memory'", specifier = ">=0.1.1" },
+    { name = "pydantic-ai-slim", extras = ["google", "openai"], marker = "extra == 'rag'", specifier = ">=0.1.1" },
     { name = "pylint", marker = "extra == 'dev'", specifier = ">=3.0.0" },
     { name = "pyperclip" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=7.0.0" },
@@ -189,12 +200,13 @@ requires-dist = [
     { name = "rich" },
     { name = "ruff", marker = "extra == 'dev'" },
     { name = "setproctitle" },
-    { name = "silero-vad-lite", marker = "extra == 'vad'", specifier = ">=0.2.1" },
     { name = "sounddevice", marker = "extra == 'audio'", specifier = ">=0.4.6" },
     { name = "soundfile", marker = "extra == 'kokoro'", specifier = ">=0.12.0" },
+    { name = "torch", marker = "extra == 'whisper-transformers'", specifier = ">=2.0.0" },
     { name = "transformers", marker = "extra == 'kokoro'", specifier = ">=4.40.0" },
     { name = "transformers", marker = "extra == 'memory'", specifier = ">=4.30.0" },
     { name = "transformers", marker = "extra == 'rag'", specifier = ">=4.30.0" },
+    { name = "transformers", marker = "extra == 'whisper-transformers'", specifier = ">=4.30.0" },
     { name = "typer" },
     { name = "typer-slim", extras = ["standard"] },
     { name = "versioningit", marker = "extra == 'dev'" },
@@ -204,7 +216,7 @@ requires-dist = [
     { name = "wyoming", marker = "extra == 'wyoming'", specifier = ">=1.5.2" },
     { name = "zensical", marker = "extra == 'dev'" },
 ]
-provides-extras = ["audio", "dev", "faster-whisper", "kokoro", "llm", "memory", "mlx-whisper", "piper", "rag", "server", "speed", "test", "vad", "wyoming"]
+provides-extras = ["audio", "dev", "faster-whisper", "kokoro", "llm", "memory", "mlx-whisper", "piper", "rag", "server", "speed", "test", "vad", "whisper-transformers", "wyoming"]
 
 [package.metadata.requires-dev]
 dev = [
@@ -4739,26 +4751,6 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/58/15/8b3609fd3830ef7b27b655beb4b4e9c62313a4e8da8c676e142cc210d58e/shellingham-1.5.4.tar.gz", hash = "sha256:8dbca0739d487e5bd35ab3ca4b36e11c4078f3a234bfce294b0a0291363404de", size = 10310, upload-time = "2023-10-24T04:13:40.426Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/e0/f9/0595336914c5619e5f28a1fb793285925a8cd4b432c9da0a987836c7f822/shellingham-1.5.4-py2.py3-none-any.whl", hash = "sha256:7ecfff8f2fd72616f7481040475a65b2bf8af90a56c89140852d1120324e8686", size = 9755, upload-time = "2023-10-24T04:13:38.866Z" },
-]
-
-[[package]]
-name = "silero-vad-lite"
-version = "0.2.1"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/8d/8a/9c33e393a2068ac7e51bff755c001d0fd95a5221de310b760e5c1c0c5047/silero_vad_lite-0.2.1.tar.gz", hash = "sha256:74ccc2dc955a80a53f9520c3924a0a99b80691ab0632ddec08725b459a8f5d13", size = 1956112, upload-time = "2024-10-01T07:45:56.271Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/67/44/e883159ccc321125839d74f849c349e23f33b61de14845ad799dad6bbe54/silero_vad_lite-0.2.1-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:5a4198be1dbb413ac0031cf76e5eedd1ad34f9922c74055eb653a41e02d64c7a", size = 30750461, upload-time = "2024-10-01T07:44:00.309Z" },
-    { url = "https://files.pythonhosted.org/packages/02/4e/d4f6fa9e2c4b585dd55f51c8964c3b2228506fcf5d6523cd01531333a9dc/silero_vad_lite-0.2.1-cp311-cp311-macosx_11_0_x86_64.whl", hash = "sha256:958ff533c37e84bbe88ee6fb41f6b43f8f261c48117bc81fa776fec4b2cec3f8", size = 30752295, upload-time = "2024-10-01T07:44:06.476Z" },
-    { url = "https://files.pythonhosted.org/packages/6d/bf/209b65437a8d90b8f20c21d1d04a6de545c2beaeed1c54da467169b3eca5/silero_vad_lite-0.2.1-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:a865faa68535bbb9498288568c2d1e4bb4052b61aa12d038938fe1ce53863f3d", size = 10123116, upload-time = "2024-10-01T07:44:09.079Z" },
-    { url = "https://files.pythonhosted.org/packages/e6/32/fdebefaa7b2a7dcc82fc3eb62ad40064cc83935300613c96fa23d8e057fa/silero_vad_lite-0.2.1-cp311-cp311-win_amd64.whl", hash = "sha256:d85e6e95133e013cc9d587f701fc462d2fd6b7b23f1b36a902dc8d8f990e2434", size = 6612344, upload-time = "2024-10-01T07:44:11.533Z" },
-    { url = "https://files.pythonhosted.org/packages/a2/ea/e389cd02b963a56421550f11a88eaca13f93771e2c065e1f56a36d565469/silero_vad_lite-0.2.1-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:3de3c2dfd9b8f90a5725498479c016eb5b8aa3eb918c1132cb734757025d5f88", size = 30750460, upload-time = "2024-10-01T07:44:14.147Z" },
-    { url = "https://files.pythonhosted.org/packages/0a/9f/1a90098f5017c842bdf8c2c5e1edca7b4689980ff03924bcce3e8800e04b/silero_vad_lite-0.2.1-cp312-cp312-macosx_11_0_x86_64.whl", hash = "sha256:21bc8e03d74ca952cca4cb20cde711fc886cd1dd5093b7fc51de1607ec890fab", size = 30752295, upload-time = "2024-10-01T07:44:17.914Z" },
-    { url = "https://files.pythonhosted.org/packages/dc/4c/f8c6ef56058bbcffaaea88f8dd424486cd3cdcfd0244657502fe5bc25a48/silero_vad_lite-0.2.1-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:ae45855b5ce6fc5d16a608580f3a8378a1d31951802fef4584a60c53b25b7160", size = 10123117, upload-time = "2024-10-01T07:44:20.708Z" },
-    { url = "https://files.pythonhosted.org/packages/1e/4e/b240c77663d14882cfd78005bbef0391506b843283e278b2c2683627499d/silero_vad_lite-0.2.1-cp312-cp312-win_amd64.whl", hash = "sha256:8bab6364ae0b0316c4e787e90b5efd229fbad18b351b3e80fe0dc5e7bdcdebdc", size = 6612344, upload-time = "2024-10-01T07:44:23.47Z" },
-    { url = "https://files.pythonhosted.org/packages/e9/45/692d9cc332e53d3c77d06303d7b978b8e2423454f075c02b95989796eb96/silero_vad_lite-0.2.1-cp313-cp313-macosx_11_0_arm64.whl", hash = "sha256:6eb4c81dce2d61102865f17ceb60a6afa6e1ca0a7330c4a55e07e3137b74db44", size = 30750459, upload-time = "2024-10-01T07:44:26.348Z" },
-    { url = "https://files.pythonhosted.org/packages/71/7a/fda5268fe3b661d16f6eae56444e14c1f2eb62aae51ca01cc01bd6194f58/silero_vad_lite-0.2.1-cp313-cp313-macosx_11_0_x86_64.whl", hash = "sha256:95c32ecd7c62c67903f5e67e18cc8ca1d0b93c3b020571698236502a66adb94e", size = 30752298, upload-time = "2024-10-01T07:44:29.441Z" },
-    { url = "https://files.pythonhosted.org/packages/f8/04/9de02bae297ed88c44b0f76f4e9d2149ef4fc30a932f5ea38ee686c86b9e/silero_vad_lite-0.2.1-cp313-cp313-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:a0d73a7676acf3fe6c743394b994eec33a9104d95dc32de2867cc4f63df19ff1", size = 10123118, upload-time = "2024-10-01T07:44:32.89Z" },
-    { url = "https://files.pythonhosted.org/packages/f3/cb/3ee98dd6174c7331e38b90c36eb675b406add4ab7edb45604096affda3e5/silero_vad_lite-0.2.1-cp313-cp313-win_amd64.whl", hash = "sha256:5b11772d09383dc6e7cb89976110a75be17876427f7a019649a3761790dc83db", size = 6612343, upload-time = "2024-10-01T07:44:36.145Z" },
 ]
 
 [[package]]

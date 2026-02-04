@@ -63,7 +63,9 @@ def _install_via_uv_tool(extras: list[str], *, quiet: bool = False) -> bool:
     """Reinstall agent-cli via uv tool with the specified extras."""
     extras_str = ",".join(extras)
     package_spec = f"agent-cli[{extras_str}]"
-    python_version = f"{sys.version_info.major}.{sys.version_info.minor}"
+    # Cap at Python 3.13 for compatibility - onnxruntime doesn't support 3.14 yet
+    major, minor = sys.version_info[:2]
+    python_version = f"{major}.{min(minor, 13)}"
     cmd = ["uv", "tool", "install", package_spec, "--force", "--python", python_version]
     if quiet:
         cmd.append("-q")
@@ -130,7 +132,8 @@ def install_extras(
         list[str] | None,
         typer.Argument(
             help="Extras to install: `rag`, `memory`, `vad`, `audio`, `piper`, `kokoro`, "
-            "`faster-whisper`, `mlx-whisper`, `wyoming`, `server`, `speed`, `llm`",
+            "`faster-whisper`, `mlx-whisper`, `whisper-transformers`, `wyoming`, `server`, "
+            "`speed`, `llm`",
         ),
     ] = None,
     list_extras: Annotated[
@@ -155,12 +158,13 @@ def install_extras(
     **Available extras:**
     - `rag` - RAG proxy server (ChromaDB, embeddings)
     - `memory` - Long-term memory proxy (ChromaDB)
-    - `vad` - Voice Activity Detection (silero-vad)
+    - `vad` - Voice Activity Detection (Silero VAD via ONNX)
     - `audio` - Local audio recording/playback
     - `piper` - Local Piper TTS engine
     - `kokoro` - Kokoro neural TTS engine
     - `faster-whisper` - Whisper ASR for CUDA/CPU
     - `mlx-whisper` - Whisper ASR for Apple Silicon
+    - `whisper-transformers` - Whisper ASR via HuggingFace transformers (safetensors)
     - `wyoming` - Wyoming protocol for ASR/TTS servers
     - `server` - FastAPI server components
     - `speed` - Audio speed adjustment

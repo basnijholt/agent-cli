@@ -40,7 +40,19 @@ A local proxy that gives LLMs access to your documents using smarter multi-stage
 
 ### Try It Now
 
-Chat with your documents using [Ollama](https://ollama.com). Two options:
+Chat with your documents using [Ollama](https://ollama.com). Three options:
+
+**Option 0: With Docker Compose (easiest)**
+
+```bash
+# Start RAG proxy with Ollama backend
+docker compose -f docker/docker-compose.yml --profile cpu up rag-proxy ollama
+
+# Copy your documents into the volume
+docker cp ./my-docs/. $(docker volume inspect agent-cli-rag-docs --format '{{ .Mountpoint }}')/
+
+# Point your chat client at http://localhost:8000/v1
+```
 
 **Option A: With [Open WebUI](https://github.com/open-webui/open-webui) (web interface)**
 

@@ -8,6 +8,7 @@ Run a local Whisper ASR server with automatic backend selection based on your pl
 
 - **macOS Apple Silicon** → [mlx-whisper](https://github.com/ml-explore/mlx-examples/tree/main/whisper) (Metal acceleration)
 - **Linux/CUDA** → [faster-whisper](https://github.com/SYSTRAN/faster-whisper) (CTranslate2)
+- **HuggingFace** → [transformers](https://huggingface.co/docs/transformers/model_doc/whisper) (supports safetensors models)
 
 > [!NOTE]
 > **Quick Start** - Get transcription working in 30 seconds:
@@ -19,7 +20,7 @@ Run a local Whisper ASR server with automatic backend selection based on your pl
 >
 > Apple Silicon MLX-only setup:
 > ```bash
-> pip install "agent-cli[whisper-mlx]"
+> pip install "agent-cli[mlx-whisper]"
 > agent-cli server whisper --backend mlx
 > ```
 >
@@ -86,7 +87,7 @@ agent-cli server whisper --preload
 | `--wyoming-port` | `10300` | Port for Wyoming protocol (Home Assistant integration) |
 | `--no-wyoming` | `false` | Disable Wyoming protocol server (only run HTTP API) |
 | `--download-only` | `false` | Download model(s) to cache and exit. Useful for Docker builds |
-| `--backend, -b` | `auto` | Inference backend: `auto` (faster-whisper on CUDA/CPU, MLX on Apple Silicon), `faster-whisper`, `mlx` |
+| `--backend, -b` | `auto` | Inference backend: `auto` (faster-whisper on CUDA/CPU, MLX on Apple Silicon), `faster-whisper`, `mlx`, `transformers` (HuggingFace, supports safetensors) |
 
 ### General Options
 
@@ -211,10 +212,10 @@ The Whisper server is designed to work seamlessly with other agent-cli commands.
 Requires server deps and a backend:
 
 ```bash
-# faster-whisper backend (also needed for --download-only)
+# faster-whisper backend (default on CUDA/CPU)
 pip install "agent-cli[faster-whisper]"
 # or
-uv sync --extra whisper
+uv sync --extra faster-whisper
 ```
 
 ### macOS Apple Silicon
@@ -222,10 +223,21 @@ uv sync --extra whisper
 For optimal performance on M1/M2/M3/M4 Macs, install mlx-whisper:
 
 ```bash
-pip install "agent-cli[whisper-mlx]"
+pip install "agent-cli[mlx-whisper]"
 ```
 
 The server will automatically detect and use the MLX backend when available.
+
+### HuggingFace Transformers
+
+For loading models in safetensors format (instead of CTranslate2 `.bin` files):
+
+```bash
+pip install "agent-cli[whisper-transformers]"
+agent-cli server whisper --backend transformers
+```
+
+This uses HuggingFace's `transformers` library, which supports loading `.safetensors` models directly from the Hub.
 
 ### Docker
 

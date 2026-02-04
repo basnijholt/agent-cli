@@ -166,7 +166,7 @@ Install with `agent-cli install-extras <name>` or `pip install agent-cli[name]`:
 
 | Extra | Purpose | Key Packages |
 |-------|---------|--------------|
-| `vad` | Voice activity detection | silero-vad |
+| `vad` | Voice activity detection | onnxruntime |
 | `rag` | Document chat | chromadb, markitdown |
 | `memory` | Long-term memory | chromadb |
 | `server` | Local ASR/TTS servers | fastapi |
