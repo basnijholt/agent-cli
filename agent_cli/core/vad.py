@@ -20,10 +20,12 @@ if TYPE_CHECKING:
 LOGGER = logging.getLogger(__name__)
 
 # Silero VAD model URL and cache location
+SILERO_VAD_VERSION = "v5.1.2"
 SILERO_VAD_URL = (
-    "https://github.com/snakers4/silero-vad/raw/v5.1.2/src/silero_vad/data/silero_vad.onnx"
+    f"https://github.com/snakers4/silero-vad/raw/{SILERO_VAD_VERSION}"
+    "/src/silero_vad/data/silero_vad.onnx"
 )
-SILERO_VAD_CACHE = Path.home() / ".cache" / "agent-cli" / "silero_vad.onnx"
+SILERO_VAD_CACHE = Path.home() / ".cache" / "agent-cli" / f"silero_vad_{SILERO_VAD_VERSION}.onnx"
 
 
 def _get_model_path() -> Path:
