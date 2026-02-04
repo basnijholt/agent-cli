@@ -21,15 +21,6 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-# VAD availability check - the vad extra may not be installed
-_VAD_AVAILABLE = False
-try:
-    from agent_cli.core.vad import VoiceActivityDetector as _VoiceActivityDetector
-
-    _VAD_AVAILABLE = True
-except ImportError:
-    _VoiceActivityDetector = None  # type: ignore[misc, assignment]
-
 
 def _create_vad(
     threshold: float,
@@ -38,19 +29,22 @@ def _create_vad(
 ) -> VoiceActivityDetector:
     """Create a VoiceActivityDetector instance.
 
-    Raises ImportError if VAD is not available.
+    Raises ImportError if onnxruntime is not available.
     """
-    if not _VAD_AVAILABLE:
+    from agent_cli.core.vad import VoiceActivityDetector as _VoiceActivityDetector  # noqa: PLC0415
+
+    try:
+        return _VoiceActivityDetector(
+            threshold=threshold,
+            silence_threshold_ms=silence_threshold_ms,
+            min_speech_duration_ms=min_speech_duration_ms,
+        )
+    except ImportError as e:
         msg = (
-            "VAD is not available. Install it with: "
+            "VAD requires onnxruntime. Install it with: "
             "`pip install agent-cli[vad]` or `uv sync --extra vad`"
         )
-        raise ImportError(msg)
-    return _VoiceActivityDetector(
-        threshold=threshold,
-        silence_threshold_ms=silence_threshold_ms,
-        min_speech_duration_ms=min_speech_duration_ms,
-    )
+        raise ImportError(msg) from e
 
 
 def _split_seconds(seconds: float) -> tuple[int, int, int, int]:
