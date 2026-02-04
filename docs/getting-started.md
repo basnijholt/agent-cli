@@ -13,6 +13,7 @@ Before you begin, ensure you have:
 - **[uv](https://docs.astral.sh/uv/)** (recommended) or Python 3.11+
 - **A microphone** for voice features
 - **Speakers** for text-to-speech features
+- **PortAudio** (Linux only): `sudo apt install portaudio19-dev` or equivalent for your distro
 
 ## Installation
 
@@ -39,12 +40,12 @@ For a complete local setup with all AI services:
 > [!TIP]
 > **Have a GPU?** Skip the setup below and run your own Whisper server in one command:
 > ```bash
-> pip install "agent-cli[whisper]"
+> pip install "agent-cli[faster-whisper]"
 > agent-cli server whisper
 > ```
 > Apple Silicon MLX-only setup:
 > ```bash
-> pip install "agent-cli[whisper-mlx]"
+> pip install "agent-cli[mlx-whisper]"
 > agent-cli server whisper --backend mlx
 > ```
 > See [Local Whisper Server](commands/server/whisper.md) for details.

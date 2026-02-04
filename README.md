@@ -334,7 +334,7 @@ Our installation scripts automatically handle all dependencies:
 |---------|---------|-----------------|
 | **[Ollama](https://ollama.ai/)** | Local LLM for text processing | ✅ Yes, with default model |
 | **[Wyoming Faster Whisper](https://github.com/rhasspy/wyoming-faster-whisper)** | Speech-to-text | ✅ Yes, via `uvx` |
-| **[`agent-cli server whisper`](docs/commands/server/whisper.md)** | Speech-to-text (alternative) | ✅ Built-in, `pip install "agent-cli[whisper]"` |
+| **[`agent-cli server whisper`](docs/commands/server/whisper.md)** | Speech-to-text (alternative) | ✅ Built-in, `pip install "agent-cli[faster-whisper]"` |
 | **[Wyoming Piper](https://github.com/rhasspy/wyoming-piper)** | Text-to-speech | ✅ Yes, via `uvx` |
 | **[Kokoro-FastAPI](https://github.com/remsky/Kokoro-FastAPI)** | Premium TTS (optional) | ⚙️ Can be added later |
 | **[Wyoming openWakeWord](https://github.com/rhasspy/wyoming-openwakeword)** | Wake word detection | ✅ Yes, for `assistant` |
@@ -542,8 +542,8 @@ the `[defaults]` section of your configuration file.
 ```toml
 [defaults]
 # llm_provider = "ollama"  # 'ollama', 'openai', or 'gemini'
-# asr_provider = "wyoming" # 'wyoming' or 'openai'
-# tts_provider = "wyoming" # 'wyoming', 'openai', or 'kokoro'
+# asr_provider = "wyoming" # 'wyoming', 'openai', or 'gemini'
+# tts_provider = "wyoming" # 'wyoming', 'openai', 'kokoro', or 'gemini'
 # openai_api_key = "sk-..."
 # gemini_api_key = "..."
 ```
@@ -555,7 +555,7 @@ the `[defaults]` section of your configuration file.
 **Workflow:** This is a simple, one-shot command.
 
 1.  It reads text from your system clipboard (or from a direct argument).
-2.  It sends the text to a local Ollama LLM with a prompt to perform only technical corrections.
+2.  It sends the text to your configured LLM provider (default: Ollama) with a prompt to perform only technical corrections.
 3.  The corrected text is copied back to your clipboard, replacing the original.
 
 **How to Use It:** This tool is ideal for integrating with a system-wide hotkey.

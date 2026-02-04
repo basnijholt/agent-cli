@@ -20,7 +20,7 @@ Run a local Whisper ASR server with automatic backend selection based on your pl
 >
 > Apple Silicon MLX-only setup:
 > ```bash
-> pip install "agent-cli[whisper-mlx]"
+> pip install "agent-cli[mlx-whisper]"
 > agent-cli server whisper --backend mlx
 > ```
 >
