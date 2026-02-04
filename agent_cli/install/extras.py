@@ -132,7 +132,8 @@ def install_extras(
         list[str] | None,
         typer.Argument(
             help="Extras to install: `rag`, `memory`, `vad`, `audio`, `piper`, `kokoro`, "
-            "`faster-whisper`, `mlx-whisper`, `wyoming`, `server`, `speed`, `llm`",
+            "`faster-whisper`, `mlx-whisper`, `whisper-transformers`, `wyoming`, `server`, "
+            "`speed`, `llm`",
         ),
     ] = None,
     list_extras: Annotated[
@@ -163,6 +164,7 @@ def install_extras(
     - `kokoro` - Kokoro neural TTS engine
     - `faster-whisper` - Whisper ASR for CUDA/CPU
     - `mlx-whisper` - Whisper ASR for Apple Silicon
+    - `whisper-transformers` - Whisper ASR via HuggingFace transformers (safetensors)
     - `wyoming` - Wyoming protocol for ASR/TTS servers
     - `server` - FastAPI server components
     - `speed` - Audio speed adjustment

@@ -428,6 +428,7 @@ agent-cli install-extras rag memory vad
   • kokoro - Kokoro neural TTS engine
   • faster-whisper - Whisper ASR for CUDA/CPU
   • mlx-whisper - Whisper ASR for Apple Silicon
+  • whisper-transformers - Whisper ASR via HuggingFace transformers (safetensors)
   • wyoming - Wyoming protocol for ASR/TTS servers
   • server - FastAPI server components
   • speed - Audio speed adjustment
@@ -444,7 +445,8 @@ agent-cli install-extras rag memory vad
 
 ╭─ Arguments ────────────────────────────────────────────────────────────────────────────╮
 │   extras      [EXTRAS]...  Extras to install: rag, memory, vad, audio, piper, kokoro,  │
-│                            faster-whisper, mlx-whisper, wyoming, server, speed, llm    │
+│                            faster-whisper, mlx-whisper, whisper-transformers, wyoming, │
+│                            server, speed, llm                                          │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Options ──────────────────────────────────────────────────────────────────────────────╮
 │ --list  -l        Show available extras with descriptions (what each one enables)      │

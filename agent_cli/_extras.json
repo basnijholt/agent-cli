@@ -6,12 +6,16 @@
     ]
   ],
   "faster-whisper": [
-    "TODO: add description",
-    []
+    "Whisper ASR via CTranslate2",
+    [
+      "faster_whisper"
+    ]
   ],
   "kokoro": [
-    "TODO: add description",
-    []
+    "Kokoro neural TTS (GPU)",
+    [
+      "kokoro"
+    ]
   ],
   "llm": [
     "LLM framework (pydantic-ai)",
@@ -28,12 +32,16 @@
     ]
   ],
   "mlx-whisper": [
-    "TODO: add description",
-    []
+    "Whisper ASR for Apple Silicon",
+    [
+      "mlx_whisper"
+    ]
   ],
   "piper": [
-    "TODO: add description",
-    []
+    "Piper TTS (CPU)",
+    [
+      "piper"
+    ]
   ],
   "rag": [
     "RAG proxy (ChromaDB, embeddings)",
@@ -58,6 +66,13 @@
     "Voice Activity Detection (silero-vad)",
     [
       "silero_vad"
+    ]
+  ],
+  "whisper-transformers": [
+    "Whisper ASR via HuggingFace transformers",
+    [
+      "transformers",
+      "torch"
     ]
   ],
   "wyoming": [
