@@ -41,7 +41,7 @@ Available extras:
 | `rag` | RAG proxy (ChromaDB, embeddings) |
 | `server` | FastAPI server components |
 | `speed` | Audio speed adjustment (audiostretchy) |
-| `vad` | Voice Activity Detection (silero-vad) |
+| `vad` | Voice Activity Detection (Silero VAD via ONNX) |
 | `whisper-transformers` | Whisper ASR via HuggingFace transformers |
 | `wyoming` | Wyoming protocol support |
 
