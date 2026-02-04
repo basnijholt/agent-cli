@@ -60,8 +60,8 @@ def _reexec_with_uvx_extras(extras: list[str]) -> bool:
     if not uvx_path:
         return False
     extras_str = ",".join(extras)
-    # Run agent-cli[extras] directly, not as --with (which doesn't merge extras)
-    cmd = [uvx_path, f"agent-cli[{extras_str}]", *sys.argv[1:]]
+    # Run agent-cli[extras] directly with Python 3.13 (some deps lack 3.14 wheels)
+    cmd = [uvx_path, "--python", "3.13", f"agent-cli[{extras_str}]", *sys.argv[1:]]
     _reexec(cmd, f"Re-running with extras: {extras_str}")
     return True  # Never reached
 
