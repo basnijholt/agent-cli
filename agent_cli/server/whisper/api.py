@@ -3,17 +3,16 @@
 from __future__ import annotations
 
 import contextlib
-import io
 import logging
-import wave
 from typing import TYPE_CHECKING, Annotated, Any, Literal
 
 from fastapi import FastAPI, File, Form, HTTPException, Query, UploadFile, WebSocket
 from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel
 
-from agent_cli.server.common import configure_app, create_lifespan, setup_wav_file
+from agent_cli.server.common import configure_app, create_lifespan
 from agent_cli.server.whisper.backends.base import InvalidAudioError
+from agent_cli.services import pcm_to_wav
 
 if TYPE_CHECKING:
     from agent_cli.core.vad import VoiceActivityDetector
@@ -31,16 +30,6 @@ def _parse_eos(data: bytes) -> tuple[bytes, bool]:
     if data.endswith(_EOS_MARKER):
         return data[: -len(_EOS_MARKER)], True
     return data, False
-
-
-def _wrap_pcm_as_wav(pcm_data: bytes) -> bytes:
-    """Wrap raw PCM audio data in WAV format."""
-    wav_buffer = io.BytesIO()
-    with wave.open(wav_buffer, "wb") as wav_file:
-        setup_wav_file(wav_file)
-        wav_file.writeframes(pcm_data)
-    wav_buffer.seek(0)
-    return wav_buffer.read()
 
 
 def _create_vad(
@@ -517,7 +506,7 @@ def create_app(  # noqa: C901, PLR0915
             return
 
         # Transcribe
-        audio_data = _wrap_pcm_as_wav(b"".join(pcm_chunks))
+        audio_data = pcm_to_wav(b"".join(pcm_chunks))
         try:
             result = await manager.transcribe(
                 audio_data,
@@ -545,7 +534,7 @@ def create_app(  # noqa: C901, PLR0915
         """Transcribe a raw PCM audio segment."""
         try:
             return await manager.transcribe(
-                _wrap_pcm_as_wav(segment),
+                pcm_to_wav(segment),
                 language=language,
                 task="transcribe",
             )
