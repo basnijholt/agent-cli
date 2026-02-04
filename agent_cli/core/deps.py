@@ -41,62 +41,33 @@ def _is_uvx_cache() -> bool:
     return "/cache/uv/" in prefix_str or "/archive-v" in prefix_str
 
 
-def _reexec_with_uvx_extras(extras: list[str]) -> bool:
-    """Re-execute current command with uvx --with for extras.
-
-    Returns False if re-exec is not possible (already tried, or not in uvx).
-    Otherwise, replaces the current process (never returns).
-    """
-    # Prevent infinite loops - if we already tried re-exec, don't try again
+def _reexec(cmd: list[str], message: str) -> None:
+    """Re-execute with a new command, preventing infinite loops."""
     if os.environ.get(_REEXEC_MARKER):
-        return False
+        return
+    err_console.print(f"[yellow]{message}[/]")
+    new_env = os.environ.copy()
+    new_env[_REEXEC_MARKER] = "1"
+    os.execvpe(cmd[0], cmd, new_env)  # noqa: S606
 
-    if not _is_uvx_cache():
-        return False
 
+def _reexec_with_uvx_extras(extras: list[str]) -> bool:
+    """Re-execute with uvx --with for extras. Returns False if not applicable."""
+    if os.environ.get(_REEXEC_MARKER) or not _is_uvx_cache():
+        return False
     uvx_path = shutil.which("uvx")
     if not uvx_path:
         return False
-
     extras_str = ",".join(extras)
-    # sys.argv[1:] are the arguments after the script name
-    original_args = sys.argv[1:]
-
-    new_cmd = [
-        uvx_path,
-        "--with",
-        f"agent-cli[{extras_str}]",
-        "agent-cli",
-        *original_args,
-    ]
-
-    err_console.print(f"[yellow]Re-running with extras: {extras_str}[/]")
-
-    # Set marker in environment before exec to prevent infinite loops
-    new_env = os.environ.copy()
-    new_env[_REEXEC_MARKER] = "1"
-    os.execvpe(uvx_path, new_cmd, new_env)  # noqa: S606
-    return True  # Never reached, execvpe replaces the process
+    cmd = [uvx_path, "--with", f"agent-cli[{extras_str}]", "agent-cli", *sys.argv[1:]]
+    _reexec(cmd, f"Re-running with extras: {extras_str}")
+    return True  # Never reached
 
 
 def _reexec_self() -> None:
-    """Re-execute the current command after auto-install.
-
-    After uv tool install, the new packages are in a different venv.
-    Re-exec ourselves so we run from the newly installed version.
-    """
-    # Prevent infinite loops
-    if os.environ.get(_REEXEC_MARKER):
-        return
-
+    """Re-execute after auto-install so new packages are visible."""
     executable = shutil.which("agent-cli") or sys.executable
-    new_cmd = [executable, *sys.argv[1:]]
-
-    err_console.print("[yellow]Re-running with installed extras...[/]")
-
-    new_env = os.environ.copy()
-    new_env[_REEXEC_MARKER] = "1"
-    os.execvpe(executable, new_cmd, new_env)  # noqa: S606
+    _reexec([executable, *sys.argv[1:]], "Re-running with installed extras...")
 
 
 # Load extras from JSON file
