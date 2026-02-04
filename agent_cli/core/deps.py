@@ -179,6 +179,19 @@ def get_combined_install_hint(extras: list[str]) -> str:
     return "\n".join(lines)
 
 
+def _resolve_alternative(extra: str) -> str | None:
+    """For an alternative extra like 'a|b|c', return the installed one or first option."""
+    if "|" not in extra:
+        return extra
+    alternatives = extra.split("|")
+    # Check if any alternative is already installed - use that one
+    for alt in alternatives:
+        if check_extra_installed(alt):
+            return alt
+    # None installed, return first option for installation
+    return alternatives[0]
+
+
 def _try_auto_install(
     missing: list[str],
     all_required: tuple[str, ...] | None = None,
@@ -195,17 +208,15 @@ def _try_auto_install(
     # Use all required extras if provided, otherwise just missing
     extras_source = all_required if all_required is not None else missing
 
-    # Flatten alternatives (e.g., "piper|kokoro" -> just pick the first one)
+    # Resolve alternatives: use installed one if present, otherwise first option
     extras_to_install = []
     for extra in extras_source:
-        if "|" in extra:
-            # For alternatives, install the first option
-            extras_to_install.append(extra.split("|")[0])
-        else:
-            extras_to_install.append(extra)
+        resolved = _resolve_alternative(extra)
+        if resolved:
+            extras_to_install.append(resolved)
 
-    # Show only the missing ones in the message
-    missing_display = [e.split("|")[0] if "|" in e else e for e in missing]
+    # Show only the missing ones in the message (resolved)
+    missing_display = [_resolve_alternative(e) or e.split("|")[0] for e in missing]
     err_console.print(
         f"[yellow]Auto-installing missing extras: {', '.join(missing_display)}[/]",
     )
@@ -222,8 +233,8 @@ def _check_and_install_extras(extras: tuple[str, ...]) -> list[str]:
         print_error_message(get_combined_install_hint(missing))
         return missing
 
-    # Flatten alternatives for install (e.g., "piper|kokoro" -> "piper")
-    extras_to_install = [e.split("|")[0] if "|" in e else e for e in extras]
+    # Resolve alternatives: use installed one if present, otherwise first option
+    extras_to_install = [_resolve_alternative(e) or e.split("|")[0] for e in extras]
 
     # For uvx cache environments, re-exec with --with flag
     # This replaces the current process if successful (never returns)
