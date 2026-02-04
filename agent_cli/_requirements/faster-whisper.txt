@@ -100,9 +100,7 @@ numpy==2.3.5
     #   ctranslate2
     #   onnxruntime
 onnxruntime==1.20.1
-    # via
-    #   agent-cli
-    #   faster-whisper
+    # via faster-whisper
 packaging==25.0
     # via
     #   huggingface-hub

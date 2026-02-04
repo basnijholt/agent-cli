@@ -59,7 +59,6 @@ dev = [
 faster-whisper = [
     { name = "fastapi", extra = ["standard"] },
     { name = "faster-whisper" },
-    { name = "onnxruntime" },
 ]
 kokoro = [
     { name = "fastapi", extra = ["standard"] },
@@ -86,7 +85,6 @@ memory = [
 mlx-whisper = [
     { name = "fastapi", extra = ["standard"], marker = "platform_machine == 'arm64' and sys_platform == 'darwin'" },
     { name = "mlx-whisper", marker = "platform_machine == 'arm64' and sys_platform == 'darwin'" },
-    { name = "onnxruntime" },
 ]
 piper = [
     { name = "fastapi", extra = ["standard"] },
@@ -121,7 +119,6 @@ vad = [
 ]
 whisper-transformers = [
     { name = "fastapi", extra = ["standard"] },
-    { name = "onnxruntime" },
     { name = "torch" },
     { name = "transformers" },
 ]
@@ -173,12 +170,9 @@ requires-dist = [
     { name = "mlx-whisper", marker = "platform_machine == 'arm64' and sys_platform == 'darwin' and extra == 'mlx-whisper'", specifier = ">=0.4.0" },
     { name = "notebook", marker = "extra == 'dev'" },
     { name = "numpy", marker = "extra == 'audio'" },
-    { name = "onnxruntime", marker = "extra == 'faster-whisper'", specifier = ">=1.16.0" },
     { name = "onnxruntime", marker = "extra == 'memory'", specifier = ">=1.17.0" },
-    { name = "onnxruntime", marker = "extra == 'mlx-whisper'", specifier = ">=1.16.0" },
     { name = "onnxruntime", marker = "extra == 'rag'", specifier = ">=1.17.0" },
     { name = "onnxruntime", marker = "extra == 'vad'", specifier = ">=1.16.0" },
-    { name = "onnxruntime", marker = "extra == 'whisper-transformers'", specifier = ">=1.16.0" },
     { name = "openai", marker = "extra == 'memory'", specifier = ">=1.0.0" },
     { name = "openai", marker = "extra == 'rag'", specifier = ">=1.0.0" },
     { name = "pip", marker = "extra == 'kokoro'" },
