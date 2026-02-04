@@ -212,10 +212,10 @@ The Whisper server is designed to work seamlessly with other agent-cli commands.
 Requires server deps and a backend:
 
 ```bash
-# faster-whisper backend (also needed for --download-only)
+# faster-whisper backend (default on CUDA/CPU)
 pip install "agent-cli[faster-whisper]"
 # or
-uv sync --extra whisper
+uv sync --extra faster-whisper
 ```
 
 ### macOS Apple Silicon

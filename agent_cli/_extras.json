@@ -71,7 +71,8 @@
   "whisper-transformers": [
     "Whisper ASR via HuggingFace transformers",
     [
-      "transformers"
+      "transformers",
+      "torch"
     ]
   ],
   "wyoming": [

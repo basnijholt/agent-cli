@@ -51,6 +51,21 @@ def _resolve_model_name(model_name: str) -> str:
     return _MODEL_MAP.get(model_name, f"openai/whisper-{model_name}")
 
 
+def download_model(model_name: str, cache_dir: Path | None = None) -> str:
+    """Download a Whisper model from the HuggingFace Hub.
+
+    Returns the resolved repo name.
+    """
+    from huggingface_hub import snapshot_download  # noqa: PLC0415
+
+    resolved_model = _resolve_model_name(model_name)
+    snapshot_download(
+        repo_id=resolved_model,
+        cache_dir=str(cache_dir) if cache_dir else None,
+    )
+    return resolved_model
+
+
 # --- Subprocess state (only used within subprocess worker) ---
 
 
@@ -107,10 +122,7 @@ def _load_model_in_subprocess(
     return device
 
 
-def _transcribe_in_subprocess(
-    audio_bytes: bytes,
-    kwargs: dict[str, Any],
-) -> dict[str, Any]:
+def _transcribe_in_subprocess(kwargs: dict[str, Any]) -> dict[str, Any]:
     """Run transcription in subprocess. Reuses model from _state."""
     import torch  # noqa: PLC0415
 
@@ -289,7 +301,6 @@ class TransformersWhisperBackend:
             result = await loop.run_in_executor(
                 self._executor,
                 _transcribe_in_subprocess,
-                audio,
                 kwargs,
             )
         finally:

@@ -55,6 +55,16 @@ def _resolve_mlx_model_name(model_name: str) -> str:
     return model_name
 
 
+def download_model(model_name: str) -> str:
+    """Download an MLX Whisper model and return the resolved repo name."""
+    import mlx.core as mx  # noqa: PLC0415
+    from mlx_whisper.transcribe import ModelHolder  # noqa: PLC0415
+
+    resolved_model = _resolve_mlx_model_name(model_name)
+    ModelHolder.get_model(resolved_model, mx.float16)
+    return resolved_model
+
+
 def _pcm_to_float(audio_bytes: bytes) -> NDArray[np.float32]:
     """Convert 16-bit PCM audio bytes to float32 array normalized to [-1, 1]."""
     import numpy as np  # noqa: PLC0415
