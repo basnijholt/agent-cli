@@ -35,9 +35,10 @@ def _get_auto_install_setting() -> bool:
 
 def _is_uvx_cache() -> bool:
     """Check if running from uvx cache (ephemeral) vs uv tool (persistent)."""
-    # uvx uses ~/.cache/uv/archive-v0/... paths
-    # uv tool uses ~/.local/share/uv/tools/...
-    prefix_str = str(Path(sys.prefix).resolve())
+    # uvx uses ~/.cache/uv/archive-v0/... (or AppData\Local\uv\cache on Windows)
+    # uv tool uses ~/.local/share/uv/tools/... (or AppData\Local\uv\tools on Windows)
+    # Use as_posix() for cross-platform forward-slash paths
+    prefix_str = Path(sys.prefix).resolve().as_posix()
     return "/cache/uv/" in prefix_str or "/archive-v" in prefix_str
 
 
