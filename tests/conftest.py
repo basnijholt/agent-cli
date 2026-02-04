@@ -15,7 +15,7 @@ from rich.console import Console
 from agent_cli.core import deps
 
 
-def _mock_check_extra_installed(extra: str) -> bool:  # noqa: ARG001
+def _mock__check_extra_installed(extra: str) -> bool:  # noqa: ARG001
     """Always return True for tests - all extras assumed available."""
     return True
 
@@ -27,7 +27,7 @@ def pytest_configure() -> None:
     import sounddevice during test collection, which triggers Pa_Initialize()
     and hangs on Windows CI without audio hardware.
 
-    Also mocks check_extra_installed to always return True so tests that
+    Also mocks _check_extra_installed to always return True so tests that
     exercise command logic don't fail on missing optional dependencies.
     """
     if "sounddevice" not in sys.modules:
@@ -37,9 +37,9 @@ def pytest_configure() -> None:
         mock_sd.OutputStream = MagicMock()
         sys.modules["sounddevice"] = mock_sd
 
-    # Mock check_extra_installed to always return True for tests
+    # Mock _check_extra_installed to always return True for tests
     # This allows tests to exercise command logic without needing all extras
-    deps.check_extra_installed = _mock_check_extra_installed
+    deps._check_extra_installed = _mock__check_extra_installed
 
 
 def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
