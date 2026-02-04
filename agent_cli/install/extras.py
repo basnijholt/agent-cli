@@ -63,7 +63,7 @@ def _install_via_uv_tool(extras: list[str], *, quiet: bool = False) -> bool:
     """Reinstall agent-cli via uv tool with the specified extras."""
     extras_str = ",".join(extras)
     package_spec = f"agent-cli[{extras_str}]"
-    # Cap at Python 3.13 for compatibility - some deps (e.g., silero-vad-lite) don't support 3.14 yet
+    # Cap at Python 3.13 for compatibility - onnxruntime doesn't support 3.14 yet
     major, minor = sys.version_info[:2]
     python_version = f"{major}.{min(minor, 13)}"
     cmd = ["uv", "tool", "install", package_spec, "--force", "--python", python_version]
@@ -158,7 +158,7 @@ def install_extras(
     **Available extras:**
     - `rag` - RAG proxy server (ChromaDB, embeddings)
     - `memory` - Long-term memory proxy (ChromaDB)
-    - `vad` - Voice Activity Detection (silero-vad)
+    - `vad` - Voice Activity Detection (Silero VAD via ONNX)
     - `audio` - Local audio recording/playback
     - `piper` - Local Piper TTS engine
     - `kokoro` - Kokoro neural TTS engine

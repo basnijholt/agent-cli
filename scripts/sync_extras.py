@@ -36,7 +36,7 @@ EXTRA_METADATA: dict[str, tuple[str, list[str]]] = {
     # Feature extras
     "rag": ("RAG proxy (ChromaDB, embeddings)", ["chromadb", "pydantic_ai"]),
     "memory": ("Long-term memory proxy", ["chromadb", "yaml", "pydantic_ai"]),
-    "vad": ("Voice Activity Detection (silero-vad)", ["silero_vad"]),
+    "vad": ("Voice Activity Detection (Silero VAD via ONNX)", ["onnxruntime"]),
     "whisper": ("Local Whisper ASR (faster-whisper)", ["faster_whisper"]),
     "whisper-mlx": ("MLX Whisper for Apple Silicon", ["mlx_whisper"]),
     "tts": ("Local Piper TTS", ["piper"]),
@@ -130,11 +130,12 @@ def main() -> int:
     """Generate _extras.json from pyproject.toml."""
     extras = get_extras_from_pyproject()
 
-    # Check for missing metadata
+    # Check for missing metadata - fail if any extras lack proper metadata
     missing = check_missing_metadata(extras)
     if missing:
-        print(f"Warning: The following extras need metadata in EXTRA_METADATA: {missing}")
+        print(f"ERROR: The following extras need metadata in EXTRA_METADATA: {missing}")
         print("Please update EXTRA_METADATA in scripts/sync_extras.py")
+        return 1
 
     # Generate the file
     content = generate_extras_json(extras)
