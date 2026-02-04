@@ -9,18 +9,13 @@ import logging
 import urllib.request
 from collections import deque
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from agent_cli import constants
 
-try:
+if TYPE_CHECKING:
     import numpy as np
-    import onnxruntime
-except ImportError as e:
-    msg = (
-        "onnxruntime is required for the transcribe-daemon command. "
-        "Install it with: `pip install agent-cli[vad]` or `uv sync --extra vad`."
-    )
-    raise ImportError(msg) from e
+    from numpy.typing import NDArray
 
 LOGGER = logging.getLogger(__name__)
 
@@ -50,6 +45,8 @@ class _SileroVADOnnx:
 
     def __init__(self, *, force_cpu: bool = True) -> None:
         """Initialize the ONNX model session."""
+        import onnxruntime  # noqa: PLC0415
+
         model_path = _get_model_path()
 
         opts = onnxruntime.SessionOptions()
@@ -67,22 +64,17 @@ class _SileroVADOnnx:
 
     def reset_states(self, batch_size: int = 1) -> None:
         """Reset the internal state for a new audio stream."""
+        import numpy as np  # noqa: PLC0415
+
         self._state = np.zeros((2, batch_size, 128), dtype=np.float32)
         self._context = np.zeros(0, dtype=np.float32)
         self._last_sr = 0
         self._last_batch_size = 0
 
-    def __call__(self, audio: np.ndarray, sample_rate: int) -> float:
-        """Process an audio chunk and return speech probability.
+    def __call__(self, audio: NDArray[np.floating], sample_rate: int) -> float:
+        """Process an audio chunk and return speech probability."""
+        import numpy as np  # noqa: PLC0415
 
-        Args:
-            audio: Audio samples as float32 numpy array (512 samples for 16kHz, 256 for 8kHz)
-            sample_rate: Sample rate (8000 or 16000)
-
-        Returns:
-            Speech probability (0.0 to 1.0)
-
-        """
         if sample_rate not in self._sample_rates:
             msg = f"Supported sample rates: {self._sample_rates}"
             raise ValueError(msg)
@@ -196,6 +188,8 @@ class VoiceActivityDetector:
 
     def _is_speech(self, window: bytes) -> bool:
         """Check if audio window contains speech."""
+        import numpy as np  # noqa: PLC0415
+
         audio = np.frombuffer(window, dtype=np.int16).astype(np.float32) / 32768.0
         prob = self._model(audio, self.sample_rate)
         LOGGER.debug("Speech prob: %.3f, threshold: %.2f", prob, self.threshold)

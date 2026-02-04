@@ -35,16 +35,10 @@ def ensure_model_cached() -> None:
 
 
 def test_import_error_without_onnxruntime() -> None:
-    """Test that ImportError is raised with helpful message when onnxruntime is missing."""
-    import importlib  # noqa: PLC0415
-
-    with patch.dict("sys.modules", {"onnxruntime": None}):
-        # Remove cached module
-        if "agent_cli.core.vad" in sys.modules:
-            del sys.modules["agent_cli.core.vad"]
-
-        with pytest.raises(ImportError, match="agent-cli\\[vad\\]"):
-            importlib.import_module("agent_cli.core.vad")
+    """Test that ModuleNotFoundError is raised when onnxruntime is missing."""
+    # With lazy imports, error happens at instantiation, not module import
+    with patch.dict("sys.modules", {"onnxruntime": None}), pytest.raises(ModuleNotFoundError):
+        VoiceActivityDetector()
 
 
 @pytest.fixture
