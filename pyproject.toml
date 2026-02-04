@@ -69,15 +69,18 @@ vad = [
 faster-whisper = [
     "fastapi[standard]",
     "faster-whisper>=1.0.0",
+    "agent-cli[vad]",  # VAD for streaming transcription
 ]
 mlx-whisper = [
     "fastapi[standard]; sys_platform == 'darwin' and platform_machine == 'arm64'",
     "mlx-whisper>=0.4.0; sys_platform == 'darwin' and platform_machine == 'arm64'",
+    "agent-cli[vad]",  # VAD for streaming transcription
 ]
 whisper-transformers = [
     "fastapi[standard]",
     "transformers>=4.30.0",
     "torch>=2.0.0",
+    "agent-cli[vad]",  # VAD for streaming transcription
 ]
 piper = [
     "fastapi[standard]",
