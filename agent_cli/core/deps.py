@@ -6,6 +6,7 @@ import functools
 import importlib
 import json
 import os
+import sys
 from importlib.util import find_spec
 from pathlib import Path
 from typing import TYPE_CHECKING, TypeVar
@@ -20,12 +21,63 @@ if TYPE_CHECKING:
 
 F = TypeVar("F", bound="Callable[..., object]")
 
+# Marker to prevent infinite re-exec loops
+_REEXEC_MARKER = "_AGENT_CLI_REEXEC"
+
 
 def _get_auto_install_setting() -> bool:
     """Check if auto-install is enabled (default: True)."""
     if os.environ.get("AGENT_CLI_NO_AUTO_INSTALL", "").lower() in ("1", "true", "yes"):
         return False
     return load_config().get("settings", {}).get("auto_install_extras", True)
+
+
+def _is_uvx_cache() -> bool:
+    """Check if running from uvx cache (ephemeral) vs uv tool (persistent)."""
+    # uvx uses ~/.cache/uv/archive-v0/... paths
+    # uv tool uses ~/.local/share/uv/tools/...
+    prefix_str = str(Path(sys.prefix).resolve())
+    return "/cache/uv/" in prefix_str or "/archive-v" in prefix_str
+
+
+def _reexec_with_uvx_extras(extras: list[str]) -> bool:
+    """Re-execute current command with uvx --with for extras.
+
+    Returns False if re-exec is not possible (already tried, or not in uvx).
+    Otherwise, replaces the current process (never returns).
+    """
+    import shutil  # noqa: PLC0415
+
+    # Prevent infinite loops - if we already tried re-exec, don't try again
+    if os.environ.get(_REEXEC_MARKER):
+        return False
+
+    if not _is_uvx_cache():
+        return False
+
+    uvx_path = shutil.which("uvx")
+    if not uvx_path:
+        return False
+
+    extras_str = ",".join(extras)
+    # sys.argv[1:] are the arguments after the script name
+    original_args = sys.argv[1:]
+
+    new_cmd = [
+        uvx_path,
+        "--with",
+        f"agent-cli[{extras_str}]",
+        "agent-cli",
+        *original_args,
+    ]
+
+    err_console.print(f"[yellow]Re-running with extras: {extras_str}[/]")
+
+    # Set marker in environment before exec to prevent infinite loops
+    new_env = os.environ.copy()
+    new_env[_REEXEC_MARKER] = "1"
+    os.execvpe(uvx_path, new_cmd, new_env)  # noqa: S606
+    return True  # Never reached, execvpe replaces the process
 
 
 # Load extras from JSON file
@@ -127,21 +179,35 @@ def get_combined_install_hint(extras: list[str]) -> str:
     return "\n".join(lines)
 
 
-def _try_auto_install(missing: list[str]) -> bool:
-    """Attempt to auto-install missing extras. Returns True if successful."""
+def _try_auto_install(
+    missing: list[str],
+    all_required: tuple[str, ...] | None = None,
+) -> bool:
+    """Attempt to auto-install missing extras. Returns True if successful.
+
+    If all_required is provided, ensures all those extras are installed
+    (not just the missing ones) to handle uv tool reinstall properly.
+    With --force, uv replaces the entire install, so we must include
+    ALL required extras to avoid losing ones that were already installed.
+    """
     from agent_cli.install.extras import install_extras_programmatic  # noqa: PLC0415
+
+    # Use all required extras if provided, otherwise just missing
+    extras_source = all_required if all_required is not None else missing
 
     # Flatten alternatives (e.g., "piper|kokoro" -> just pick the first one)
     extras_to_install = []
-    for extra in missing:
+    for extra in extras_source:
         if "|" in extra:
             # For alternatives, install the first option
             extras_to_install.append(extra.split("|")[0])
         else:
             extras_to_install.append(extra)
 
+    # Show only the missing ones in the message
+    missing_display = [e.split("|")[0] if "|" in e else e for e in missing]
     err_console.print(
-        f"[yellow]Auto-installing missing extras: {', '.join(extras_to_install)}[/]",
+        f"[yellow]Auto-installing missing extras: {', '.join(missing_display)}[/]",
     )
     return install_extras_programmatic(extras_to_install, quiet=True)
 
@@ -156,7 +222,15 @@ def _check_and_install_extras(extras: tuple[str, ...]) -> list[str]:
         print_error_message(get_combined_install_hint(missing))
         return missing
 
-    if not _try_auto_install(missing):
+    # Flatten alternatives for install (e.g., "piper|kokoro" -> "piper")
+    extras_to_install = [e.split("|")[0] if "|" in e else e for e in extras]
+
+    # For uvx cache environments, re-exec with --with flag
+    # This replaces the current process if successful (never returns)
+    _reexec_with_uvx_extras(extras_to_install)
+
+    # Not in uvx (or re-exec failed), try normal auto-install
+    if not _try_auto_install(missing, all_required=extras):
         print_error_message("Auto-install failed.\n" + get_combined_install_hint(missing))
         return missing
 
