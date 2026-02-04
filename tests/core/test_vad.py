@@ -3,18 +3,10 @@
 from __future__ import annotations
 
 import struct
-import sys
 from typing import TYPE_CHECKING
 from unittest.mock import patch
 
 import pytest
-
-# Skip all tests in this module on Windows - silero-vad can hang during initialization
-if sys.platform == "win32":
-    pytest.skip(
-        "silero-vad initialization can hang on Windows CI",
-        allow_module_level=True,
-    )
 
 from agent_cli.core.vad import VoiceActivityDetector
 
