@@ -20,7 +20,7 @@ if TYPE_CHECKING:
 LOGGER = logging.getLogger(__name__)
 
 # Silero VAD model URL and cache location
-SILERO_VAD_VERSION = "v5.1.2"
+SILERO_VAD_VERSION = "v6.2"
 SILERO_VAD_URL = (
     f"https://github.com/snakers4/silero-vad/raw/{SILERO_VAD_VERSION}"
     "/src/silero_vad/data/silero_vad.onnx"
