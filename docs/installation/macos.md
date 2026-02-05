@@ -52,19 +52,19 @@ The `setup-macos.sh` script:
 - ✅ Installs `uv` if needed
 - ✅ Installs/checks Ollama (native macOS app)
 - ✅ Installs Zellij for session management
-- ✅ Prepares Wyoming service runners
+- ✅ Installs Whisper and TTS as launchd daemons via `agent-cli daemon install`
 
 ## Services Overview
 
-| Service          | Implementation         | Port  | GPU Support          |
-| ---------------- | ---------------------- | ----- | -------------------- |
-| **Ollama**       | Native macOS app       | 11434 | ✅ Metal GPU         |
-| **Whisper**      | Wyoming MLX Whisper    | 10300 | ✅ Apple Silicon MLX |
-| **Piper**        | Wyoming Piper (via uv) | 10200 | N/A                  |
-| **OpenWakeWord** | Wyoming OpenWakeWord   | 10400 | N/A                  |
+| Service          | Implementation          | Port  | GPU Support          |
+| ---------------- | ----------------------- | ----- | -------------------- |
+| **Ollama**       | Native macOS app        | 11434 | ✅ Metal GPU         |
+| **Whisper**      | MLX Whisper (via daemon)| 10300 | ✅ Apple Silicon MLX |
+| **TTS (Kokoro)** | Kokoro TTS (via daemon) | 10200 | ✅ Metal GPU (MPS)   |
+| **OpenWakeWord** | Wyoming OpenWakeWord    | 10400 | N/A                  |
 
 > [!NOTE]
-> Whisper uses [wyoming-mlx-whisper](https://github.com/basnijholt/wyoming-mlx-whisper) with `whisper-large-v3-turbo` for near real-time transcription on Apple Silicon.
+> Whisper and TTS run as launchd daemons via `agent-cli daemon install`, using MLX and Metal for GPU acceleration on Apple Silicon.
 
 ## Session Management with Zellij
 
@@ -95,13 +95,14 @@ brew services start ollama
 # Or run in foreground:
 ollama serve
 
-# Whisper (Apple Silicon: launchd service or manual)
-launchctl list com.wyoming_mlx_whisper
-# Or run in foreground:
-agent-cli server whisper
+# Whisper and TTS are installed as launchd daemons
+agent-cli daemon status              # Check all daemon status
+agent-cli daemon install whisper     # Install whisper daemon
+agent-cli daemon install tts-kokoro  # Install TTS daemon
 
-# Piper
-agent-cli server tts --backend piper
+# Or run in foreground (without daemon):
+agent-cli server whisper
+agent-cli server tts --backend kokoro
 
 # OpenWakeWord
 scripts/run-openwakeword.sh
