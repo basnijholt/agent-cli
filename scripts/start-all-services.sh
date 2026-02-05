@@ -39,6 +39,7 @@ HELP_TEXT='╔══════════════════════
 # On macOS, check if services are running via brew/launchd
 OLLAMA_BREW_SERVICE=false
 WHISPER_LAUNCHD=false
+TTS_LAUNCHD=false
 if [ "$(uname -s)" = "Darwin" ]; then
     # Check if Ollama is running as a brew service
     if launchctl list homebrew.mxcl.ollama &>/dev/null; then
@@ -47,6 +48,10 @@ if [ "$(uname -s)" = "Darwin" ]; then
     # Check if Whisper is running as an agent-cli daemon
     if launchctl list com.agent_cli.whisper &>/dev/null; then
         WHISPER_LAUNCHD=true
+    fi
+    # Check if TTS is running as an agent-cli daemon (tts-kokoro or tts-piper)
+    if launchctl list com.agent_cli.tts &>/dev/null; then
+        TTS_LAUNCHD=true
     fi
 fi
 
@@ -83,14 +88,25 @@ else
             }"
 fi
 
+# Generate TTS pane based on whether launchd service is running
+if [ "$TTS_LAUNCHD" = true ]; then
+    TTS_PANE="                pane {
+                    name \"TTS (launchd)\"
+                    command \"sh\"
+                    args \"-c\" \"echo '🔊 TTS is running as a background launchd service'; echo ''; echo 'Service: com.agent_cli.tts'; echo 'Logs: ~/Library/Logs/agent-cli-tts/'; echo ''; echo 'To view logs:'; echo '  tail -f ~/Library/Logs/agent-cli-tts/tts.out'; echo ''; echo 'To uninstall:'; echo '  agent-cli daemon uninstall tts-kokoro  # or tts-piper'; echo ''; read -r\"
+                }"
+else
+    TTS_PANE="                pane {
+                    name \"TTS\"
+                    command \"agent-cli\"
+                    args \"server\" \"tts\" \"--backend\" \"piper\"
+                }"
+fi
+
 BOTTOM_PANES="        pane split_direction=\"horizontal\" {
 $WHISPER_PANE
             pane split_direction=\"horizontal\" {
-                pane {
-                    name \"Piper\"
-                    command \"agent-cli\"
-                    args \"server\" \"tts\" \"--backend\" \"piper\"
-                }
+$TTS_PANE
                 pane {
                     name \"OpenWakeWord\"
                     cwd \"$SCRIPTS_DIR\"
