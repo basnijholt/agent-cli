@@ -23,6 +23,7 @@ from agent_cli.install.service_config import (
     UninstallResult,
     build_service_command,
     find_uv,
+    get_default_services,
     get_service_manager,
     install_uv,
 )
@@ -307,8 +308,8 @@ class TestDaemonCLI:
 
         result = runner.invoke(app, ["daemon", "install", "--all", "-y"])
         assert result.exit_code == 0
-        # Should install all services
-        assert mock_manager.install_service.call_count == len(SERVICES)
+        # Should install default services (one TTS backend auto-selected)
+        assert mock_manager.install_service.call_count == len(get_default_services())
 
     @patch("agent_cli.daemon.cli.get_service_manager")
     def test_daemon_uninstall_no_args(self, mock_get_manager: MagicMock) -> None:

@@ -31,6 +31,39 @@ class ServiceConfig:
     macos_extra: str | None = None  # Override extra on macOS (e.g., whisper-mlx)
 
 
+# TTS services that are mutually exclusive (same ports)
+TTS_SERVICES = ("tts-kokoro", "tts-piper")
+
+
+def detect_preferred_tts() -> str:
+    """Detect the preferred TTS backend based on platform.
+
+    Returns tts-kokoro on macOS (MPS) or Linux with CUDA hints,
+    otherwise tts-piper for CPU-only systems.
+    """
+    system = platform.system()
+    if system == "Darwin":
+        # macOS has MPS on Apple Silicon
+        return "tts-kokoro"
+    if system == "Linux":
+        # Check for CUDA availability hints
+        cuda_hints = [
+            Path("/usr/local/cuda").exists(),
+            shutil.which("nvidia-smi") is not None,
+            os.environ.get("CUDA_HOME") is not None,
+        ]
+        if any(cuda_hints):
+            return "tts-kokoro"
+    return "tts-piper"
+
+
+def get_default_services() -> list[str]:
+    """Get default services for --all, picking one TTS backend automatically."""
+    preferred_tts = detect_preferred_tts()
+    excluded_tts = "tts-piper" if preferred_tts == "tts-kokoro" else "tts-kokoro"
+    return [name for name in SERVICES if name != excluded_tts]
+
+
 # Available services for installation
 SERVICES: dict[str, ServiceConfig] = {
     "whisper": ServiceConfig(
