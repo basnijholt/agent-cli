@@ -36,22 +36,28 @@ HELP_TEXT='╔══════════════════════
 ║                                                                   ║
 ╚═══════════════════════════════════════════════════════════════════╝'
 
-# On macOS, check if services are running via brew/launchd
+# Check if services are running via system service managers
 OLLAMA_BREW_SERVICE=false
-WHISPER_LAUNCHD=false
-TTS_LAUNCHD=false
+WHISPER_DAEMON=false
+TTS_DAEMON=false
 if [ "$(uname -s)" = "Darwin" ]; then
-    # Check if Ollama is running as a brew service
+    # macOS: Check launchd services
     if launchctl list homebrew.mxcl.ollama &>/dev/null; then
         OLLAMA_BREW_SERVICE=true
     fi
-    # Check if Whisper is running as an agent-cli daemon
     if launchctl list com.agent_cli.whisper &>/dev/null; then
-        WHISPER_LAUNCHD=true
+        WHISPER_DAEMON=true
     fi
-    # Check if TTS is running as an agent-cli daemon (tts-kokoro or tts-piper)
     if launchctl list com.agent_cli.tts &>/dev/null; then
-        TTS_LAUNCHD=true
+        TTS_DAEMON=true
+    fi
+elif [ "$(uname -s)" = "Linux" ]; then
+    # Linux: Check systemd user services
+    if systemctl --user is-active --quiet agent-cli-whisper.service 2>/dev/null; then
+        WHISPER_DAEMON=true
+    fi
+    if systemctl --user is-active --quiet agent-cli-tts.service 2>/dev/null; then
+        TTS_DAEMON=true
     fi
 fi
 
@@ -73,12 +79,12 @@ else
             }"
 fi
 
-# Generate Whisper pane command based on whether launchd service is running
-if [ "$WHISPER_LAUNCHD" = true ]; then
+# Generate Whisper pane command based on whether daemon is running
+if [ "$WHISPER_DAEMON" = true ]; then
     WHISPER_PANE="            pane {
-                name \"Whisper (launchd)\"
+                name \"Whisper (daemon)\"
                 command \"sh\"
-                args \"-c\" \"echo '🎤 Whisper is running as a background launchd service'; echo ''; echo 'Service: com.agent_cli.whisper'; echo 'Logs: ~/Library/Logs/agent-cli-whisper/'; echo ''; echo 'To view logs:'; echo '  tail -f ~/Library/Logs/agent-cli-whisper/whisper.out'; echo ''; echo 'To uninstall:'; echo '  agent-cli daemon uninstall whisper'; echo ''; read -r\"
+                args \"-c\" \"agent-cli daemon status whisper; echo ''; echo 'Press Enter to close'; read -r\"
             }"
 else
     WHISPER_PANE="            pane {
@@ -88,12 +94,12 @@ else
             }"
 fi
 
-# Generate TTS pane based on whether launchd service is running
-if [ "$TTS_LAUNCHD" = true ]; then
+# Generate TTS pane based on whether daemon is running
+if [ "$TTS_DAEMON" = true ]; then
     TTS_PANE="                pane {
-                    name \"TTS (launchd)\"
+                    name \"TTS (daemon)\"
                     command \"sh\"
-                    args \"-c\" \"echo '🔊 TTS is running as a background launchd service'; echo ''; echo 'Service: com.agent_cli.tts'; echo 'Logs: ~/Library/Logs/agent-cli-tts/'; echo ''; echo 'To view logs:'; echo '  tail -f ~/Library/Logs/agent-cli-tts/tts.out'; echo ''; echo 'To uninstall:'; echo '  agent-cli daemon uninstall tts-kokoro  # or tts-piper'; echo ''; read -r\"
+                    args \"-c\" \"agent-cli daemon status tts-kokoro tts-piper; echo ''; echo 'Press Enter to close'; read -r\"
                 }"
 else
     TTS_PANE="                pane {
