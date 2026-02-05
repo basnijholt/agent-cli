@@ -7,10 +7,7 @@ import logging
 import platform
 from importlib.util import find_spec
 from pathlib import Path  # noqa: TC003 - Path needed at runtime for typer annotations
-from typing import TYPE_CHECKING, Annotated
-
-if TYPE_CHECKING:
-    from agent_cli.install.service_config import ServiceManager
+from typing import Annotated
 
 import typer
 
@@ -827,19 +824,6 @@ def tts_cmd(  # noqa: PLR0915
     )
 
 
-def _get_service_manager() -> ServiceManager:
-    """Get the platform-specific service manager, with CLI error handling."""
-    from agent_cli.install.service_config import (  # noqa: PLC0415
-        get_service_manager,
-    )
-
-    try:
-        return get_service_manager()
-    except RuntimeError as e:
-        err_console.print(f"[bold red]Error:[/bold red] {e}")
-        raise typer.Exit(1) from None
-
-
 @app.command("status")
 def status_service_cmd(
     service: Annotated[
@@ -861,9 +845,16 @@ def status_service_cmd(
         agent-cli server status whisper
 
     """
-    from agent_cli.install.service_config import SERVICES  # noqa: PLC0415
+    from agent_cli.install.service_config import (  # noqa: PLC0415
+        SERVICES,
+        get_service_manager,
+    )
 
-    manager = _get_service_manager()
+    try:
+        manager = get_service_manager()
+    except RuntimeError as e:
+        err_console.print(f"[bold red]Error:[/bold red] {e}")
+        raise typer.Exit(1) from None
 
     services_to_check = [service] if service else list(SERVICES.keys())
 
