@@ -1,0 +1,121 @@
+---
+icon: lucide/settings
+---
+
+# daemon
+
+Manage agent-cli servers as background daemons.
+
+## Usage
+
+```bash
+agent-cli daemon [COMMAND] [OPTIONS]
+```
+
+## Description
+
+Install, uninstall, and monitor agent-cli servers running as system daemons:
+
+- **macOS**: launchd services (`~/Library/LaunchAgents/`)
+- **Linux**: systemd user services (`~/.config/systemd/user/`)
+
+Daemons run via `uv tool run` and start automatically at login.
+
+## Available Daemons
+
+| Daemon | Description | Ports |
+|--------|-------------|-------|
+| `whisper` | Speech-to-text ASR server | 10300/10301 |
+| `tts` | Text-to-speech (Kokoro) | 10200/10201 |
+| `transcription-proxy` | ASR provider proxy | 61337 |
+
+## Commands
+
+### `status`
+
+Check status of installed daemons.
+
+```bash
+# Check all daemons
+agent-cli daemon status
+
+# Check specific daemon
+agent-cli daemon status whisper
+```
+
+### `install`
+
+Install server daemons as background processes.
+
+```bash
+# Install specific daemons
+agent-cli daemon install whisper tts
+
+# Install all daemons
+agent-cli daemon install --all
+
+# Skip confirmation prompts
+agent-cli daemon install whisper -y
+```
+
+**Options:**
+
+| Option | Description |
+|--------|-------------|
+| `--all, -a` | Install all available services |
+| `--skip-deps` | Skip uv dependency check |
+| `--no-confirm, -y` | Skip confirmation prompts |
+
+### `uninstall`
+
+Uninstall server daemons.
+
+```bash
+# Uninstall specific daemons
+agent-cli daemon uninstall whisper tts
+
+# Uninstall all daemons
+agent-cli daemon uninstall --all
+```
+
+**Options:**
+
+| Option | Description |
+|--------|-------------|
+| `--all, -a` | Uninstall all installed services |
+| `--no-confirm, -y` | Skip confirmation prompts |
+
+## Examples
+
+```bash
+# Install whisper as a background daemon
+agent-cli daemon install whisper
+
+# Check status of all daemons
+agent-cli daemon status
+
+# Uninstall a daemon
+agent-cli daemon uninstall whisper
+```
+
+## Logs
+
+- **macOS**: `~/Library/Logs/agent-cli-<service>/`
+- **Linux**: `journalctl --user -u agent-cli-<service> -f`
+
+## Full Help
+
+<details>
+<summary>See the output of <code>agent-cli daemon --help</code></summary>
+
+<!-- CODE:BASH:START -->
+<!-- echo '```yaml' -->
+<!-- export NO_COLOR=1 -->
+<!-- export TERM=dumb -->
+<!-- export COLUMNS=90 -->
+<!-- export TERMINAL_WIDTH=90 -->
+<!-- agent-cli daemon --help -->
+<!-- echo '```' -->
+<!-- CODE:END -->
+
+</details>

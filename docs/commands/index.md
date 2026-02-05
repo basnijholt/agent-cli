@@ -30,6 +30,7 @@ Agent CLI provides multiple commands, each designed for a specific purpose.
 | [`rag-proxy`](rag-proxy.md) | RAG server | Chat with your documents |
 | [`memory`](memory.md) | Long-term memory | Persistent conversation memory |
 | [`server`](server/index.md) | ASR & TTS servers | Local Whisper and Kokoro/Piper with TTL-based memory management |
+| [`daemon`](daemon.md) | Service manager | Install/manage servers as system daemons |
 
 The [`server`](server/index.md) command provides local ASR (speech-to-text) and TTS (text-to-speech) servers with unique advantages over standalone alternatives:
 
