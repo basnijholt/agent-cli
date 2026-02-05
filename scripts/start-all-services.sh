@@ -84,7 +84,7 @@ if [ "$WHISPER_DAEMON" = true ]; then
     WHISPER_PANE="            pane {
                 name \"Whisper (daemon)\"
                 command \"sh\"
-                args \"-c\" \"agent-cli daemon status whisper; echo ''; echo 'Press Enter to close'; read -r\"
+                args \"-c\" \"echo '🎤 Whisper running via daemon'; echo ''; echo 'Check status: agent-cli daemon status whisper'; echo ''; read -r\"
             }"
 else
     WHISPER_PANE="            pane {
@@ -99,7 +99,7 @@ if [ "$TTS_DAEMON" = true ]; then
     TTS_PANE="                pane {
                     name \"TTS (daemon)\"
                     command \"sh\"
-                    args \"-c\" \"agent-cli daemon status tts-kokoro tts-piper; echo ''; echo 'Press Enter to close'; read -r\"
+                    args \"-c\" \"echo '🔊 TTS running via daemon'; echo ''; echo 'Check status: agent-cli daemon status'; echo ''; read -r\"
                 }"
 else
     TTS_PANE="                pane {
