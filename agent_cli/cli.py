@@ -125,5 +125,5 @@ from .agents import (  # noqa: E402, F401
     voice_edit,
 )
 from .dev import cli as dev_cli  # noqa: E402, F401
-from .install import extras, hotkeys, services  # noqa: E402, F401
+from .install import extras, hotkeys  # noqa: E402, F401
 from .server import cli as server_cli  # noqa: E402, F401
