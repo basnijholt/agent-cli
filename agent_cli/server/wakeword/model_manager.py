@@ -7,17 +7,12 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from agent_cli.server.model_manager import ModelConfig, ModelManager, ModelStats
-from agent_cli.server.wakeword.backends import (
-    BackendType,
-    DetectionResult,
-    WakewordBackendConfig,
-    create_backend,
-)
+from agent_cli.server.wakeword.backend import DetectionResult, OpenWakeWordBackend
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from agent_cli.server.wakeword.backends.base import ModelInfo, WakewordBackend
+    from agent_cli.server.wakeword.backend import ModelInfo
 
 logger = logging.getLogger(__name__)
 
@@ -26,7 +21,6 @@ logger = logging.getLogger(__name__)
 class WakewordModelConfig(ModelConfig):
     """Configuration for a wakeword model."""
 
-    backend_type: BackendType = "openwakeword"
     threshold: float = 0.5
     trigger_level: int = 1
     refractory_seconds: float = 2.0
@@ -34,25 +28,17 @@ class WakewordModelConfig(ModelConfig):
 
 
 class WakewordModelManager:
-    """Manages a wakeword model with TTL-based unloading.
-
-    Thin wrapper around ModelManager that adds wakeword-specific methods.
-    """
+    """Manages a wakeword model with TTL-based unloading."""
 
     def __init__(self, config: WakewordModelConfig) -> None:
         """Initialize the wakeword model manager."""
         self.config = config
-        backend = create_backend(
-            WakewordBackendConfig(
-                model_name=config.model_name,
-                device=config.device,
-                cache_dir=config.cache_dir,
-                threshold=config.threshold,
-                trigger_level=config.trigger_level,
-                refractory_seconds=config.refractory_seconds,
-                custom_model_dir=config.custom_model_dir,
-            ),
-            backend_type=config.backend_type,
+        backend = OpenWakeWordBackend(
+            model_name=config.model_name,
+            threshold=config.threshold,
+            trigger_level=config.trigger_level,
+            refractory_seconds=config.refractory_seconds,
+            custom_model_dir=config.custom_model_dir,
         )
         self._manager = ModelManager(backend, config)
 
@@ -89,7 +75,7 @@ class WakewordModelManager:
         """Stop the manager and unload the model."""
         await self._manager.stop()
 
-    async def get_model(self) -> WakewordBackend:
+    async def get_model(self) -> OpenWakeWordBackend:
         """Get the backend, loading it if necessary."""
         return await self._manager.get_model()
 
@@ -100,24 +86,15 @@ class WakewordModelManager:
     def reset(self) -> None:
         """Reset the detector state for a new audio stream."""
         if self._manager.is_loaded:
-            backend: WakewordBackend = self._manager.backend  # type: ignore[assignment]
+            backend: OpenWakeWordBackend = self._manager.backend  # type: ignore[assignment]
             backend.reset()
 
     async def process_audio(self, audio_chunk: bytes) -> list[DetectionResult]:
-        """Process an audio chunk and return any detections.
-
-        Args:
-            audio_chunk: Raw PCM audio bytes (16-bit, 16kHz, mono).
-
-        Returns:
-            List of detections found in this chunk.
-
-        """
+        """Process an audio chunk and return any detections."""
         async with self._manager.request():
-            backend: WakewordBackend = self._manager.backend  # type: ignore[assignment]
+            backend: OpenWakeWordBackend = self._manager.backend  # type: ignore[assignment]
             detections = backend.process_audio(audio_chunk)
 
-        # Update stats
         if detections:
             stats = self._manager.stats
             stats.total_requests += len(detections)
@@ -130,6 +107,6 @@ class WakewordModelManager:
     def get_available_models(self) -> list[ModelInfo]:
         """Get list of available wake word models."""
         if self._manager.is_loaded:
-            backend: WakewordBackend = self._manager.backend  # type: ignore[assignment]
+            backend: OpenWakeWordBackend = self._manager.backend  # type: ignore[assignment]
             return backend.get_available_models()
         return []

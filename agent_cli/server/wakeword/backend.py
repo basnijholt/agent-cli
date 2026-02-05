@@ -6,14 +6,8 @@ import asyncio
 import logging
 import re
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
-
-from agent_cli.server.wakeword.backends.base import (
-    BackendConfig,
-    DetectionResult,
-    ModelInfo,
-)
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -22,14 +16,26 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-# Wakeword detection uses 16kHz audio
 WAKEWORD_SAMPLE_RATE = 16000
 
 
-def _get_phrase(name: str) -> str:
-    """Convert model name to human-readable phrase."""
-    phrase = name.lower().strip().replace("_", " ")
-    return " ".join(w.capitalize() for w in phrase.split())
+@dataclass
+class DetectionResult:
+    """Result of a wake word detection."""
+
+    name: str
+    timestamp: int  # milliseconds into the audio stream
+    probability: float
+
+
+@dataclass
+class ModelInfo:
+    """Information about an available wake word model."""
+
+    name: str
+    phrase: str
+    languages: list[str] = field(default_factory=lambda: ["en"])
+    is_builtin: bool = True
 
 
 @dataclass
@@ -43,30 +49,37 @@ class DetectorState:
     last_triggered: float | None = None
 
 
+def _get_phrase(name: str) -> str:
+    """Convert model name to human-readable phrase."""
+    phrase = name.lower().strip().replace("_", " ")
+    return " ".join(w.capitalize() for w in phrase.split())
+
+
 class OpenWakeWordBackend:
-    """OpenWakeWord backend for wake word detection.
+    """OpenWakeWord backend for wake word detection."""
 
-    This backend uses the pyopen-wakeword library for detection.
-    Unlike ASR/TTS models, wakeword models are lightweight and CPU-based.
-    """
-
-    def __init__(self, config: BackendConfig) -> None:
-        """Initialize the backend.
-
-        Args:
-            config: Backend configuration.
-
-        """
-        self._config = config
+    def __init__(
+        self,
+        model_name: str,
+        *,
+        threshold: float = 0.5,
+        trigger_level: int = 1,
+        refractory_seconds: float = 2.0,
+        custom_model_dir: Path | None = None,
+    ) -> None:
+        """Initialize the backend."""
+        self._model_name = model_name
+        self._threshold = threshold
+        self._trigger_level = trigger_level
+        self._refractory_seconds = refractory_seconds
         self._features: OpenWakeWordFeatures | None = None
         self._detector: DetectorState | None = None
         self._device: str | None = None
         self._custom_models: dict[str, Path] = {}
         self._audio_timestamp: int = 0
 
-        # Load custom models from directory if specified
-        if config.custom_model_dir:
-            self._load_custom_models(config.custom_model_dir)
+        if custom_model_dir:
+            self._load_custom_models(custom_model_dir)
 
     def _load_custom_models(self, custom_dir: Path) -> None:
         """Load custom wake word models from a directory."""
@@ -93,12 +106,7 @@ class OpenWakeWordBackend:
         return self._device
 
     async def load(self) -> float:
-        """Load the wake word model.
-
-        Returns:
-            Load duration in seconds.
-
-        """
+        """Load the wake word model."""
         start_time = time.time()
 
         def _load() -> None:
@@ -110,26 +118,20 @@ class OpenWakeWordBackend:
 
             self._features = OpenWakeWordFeatures.from_builtin()
 
-            model_name = self._config.model_name
             oww_model: OpenWakeWord | None = None
 
-            # Check if it's a custom model
-            if model_name in self._custom_models:
-                oww_model = OpenWakeWord.from_model(self._custom_models[model_name])
+            if self._model_name in self._custom_models:
+                oww_model = OpenWakeWord.from_model(self._custom_models[self._model_name])
             else:
-                # Try as a builtin model
                 try:
-                    model = Model(model_name)
+                    model = Model(self._model_name)
                     oww_model = OpenWakeWord.from_builtin(model)
                 except ValueError:
-                    # Try common variations
-                    model_variations = [
-                        model_name,
-                        model_name.lower(),
-                        model_name.replace("-", "_"),
-                        model_name.replace("_", "-"),
-                    ]
-                    for variation in model_variations:
+                    for variation in [
+                        self._model_name.lower(),
+                        self._model_name.replace("-", "_"),
+                        self._model_name.replace("_", "-"),
+                    ]:
                         try:
                             model = Model(variation)
                             oww_model = OpenWakeWord.from_builtin(model)
@@ -138,25 +140,19 @@ class OpenWakeWordBackend:
                             continue
 
             if oww_model is None:
-                msg = f"Could not load wake word model: {model_name}"
+                msg = f"Could not load wake word model: {self._model_name}"
                 raise ValueError(msg)
 
             self._detector = DetectorState(
-                id=model_name,
+                id=self._model_name,
                 oww_model=oww_model,
-                triggers_left=self._config.trigger_level,
+                triggers_left=self._trigger_level,
             )
             self._device = "cpu"
 
         await asyncio.get_event_loop().run_in_executor(None, _load)
         load_duration = time.time() - start_time
-
-        logger.info(
-            "Loaded wakeword model %s in %.2fs",
-            self._config.model_name,
-            load_duration,
-        )
-
+        logger.info("Loaded wakeword model %s in %.2fs", self._model_name, load_duration)
         return load_duration
 
     async def unload(self) -> None:
@@ -166,7 +162,7 @@ class OpenWakeWordBackend:
             self._features = None
             self._device = None
             self._audio_timestamp = 0
-            logger.info("Unloaded wakeword model %s", self._config.model_name)
+            logger.info("Unloaded wakeword model %s", self._model_name)
 
     def reset(self) -> None:
         """Reset the detector state for a new audio stream."""
@@ -175,54 +171,40 @@ class OpenWakeWordBackend:
             self._features.reset()
         if self._detector is not None:
             self._detector.is_detected = False
-            self._detector.triggers_left = self._config.trigger_level
+            self._detector.triggers_left = self._trigger_level
             self._detector.last_triggered = None
             self._detector.oww_model.reset()
 
     def process_audio(self, audio_chunk: bytes) -> list[DetectionResult]:
-        """Process an audio chunk and return any detections.
-
-        Args:
-            audio_chunk: Raw PCM audio bytes (16-bit, 16kHz, mono).
-
-        Returns:
-            List of detections found in this chunk.
-
-        """
+        """Process an audio chunk and return any detections."""
         if self._features is None or self._detector is None:
             return []
 
         detections: list[DetectionResult] = []
-
-        # Calculate chunk duration in milliseconds
-        # 16-bit = 2 bytes per sample, 16kHz sample rate
         chunk_ms = len(audio_chunk) // 2 * 1000 // WAKEWORD_SAMPLE_RATE
 
         for features in self._features.process_streaming(audio_chunk):
             detector = self._detector
 
-            # Check refractory period
             skip_detector = (detector.last_triggered is not None) and (
-                (time.monotonic() - detector.last_triggered) < self._config.refractory_seconds
+                (time.monotonic() - detector.last_triggered) < self._refractory_seconds
             )
 
             for prob in detector.oww_model.process_streaming(features):
                 if skip_detector:
                     continue
 
-                if prob <= self._config.threshold:
-                    # Reset trigger count on low probability
-                    detector.triggers_left = self._config.trigger_level
+                if prob <= self._threshold:
+                    detector.triggers_left = self._trigger_level
                     continue
 
                 detector.triggers_left -= 1
                 if detector.triggers_left > 0:
                     continue
 
-                # Detection!
                 detector.is_detected = True
                 detector.last_triggered = time.monotonic()
-                detector.triggers_left = self._config.trigger_level
+                detector.triggers_left = self._trigger_level
 
                 detections.append(
                     DetectionResult(
@@ -245,7 +227,6 @@ class OpenWakeWordBackend:
         """Get list of available wake word models."""
         from pyopen_wakeword import Model  # noqa: PLC0415
 
-        # Add builtin models
         models = [
             ModelInfo(
                 name=model.value,
@@ -256,7 +237,6 @@ class OpenWakeWordBackend:
             for model in Model
         ]
 
-        # Add custom models
         models.extend(
             ModelInfo(
                 name=custom_name,
