@@ -14,6 +14,9 @@ from agent_cli.install.service_config import (
     find_uv,
 )
 
+# Linux-specific paths for uv
+_LINUX_UV_PATHS = [Path("/usr/bin/uv")]
+
 
 def _get_unit_name(service_name: str) -> str:
     """Get systemd unit name for a service."""
@@ -34,13 +37,6 @@ def get_log_dir(service_name: str) -> Path:
 def get_log_command(service_name: str) -> str:
     """Get command to view logs for a service."""
     return f"journalctl --user -u agent-cli-{service_name} -f"
-
-
-def _find_uv() -> Path | None:
-    """Find uv executable, preferring system paths over virtualenv."""
-    # Linux-specific paths
-    linux_paths = [Path("/usr/bin/uv")]
-    return find_uv(extra_paths=linux_paths)
 
 
 def _generate_unit_file(
@@ -144,7 +140,7 @@ def install_service(service_name: str) -> InstallResult:
     service = SERVICES[service_name]
 
     # Find uv
-    uv_path = _find_uv()
+    uv_path = find_uv(extra_paths=_LINUX_UV_PATHS)
     if not uv_path:
         return InstallResult(
             success=False,
@@ -266,7 +262,7 @@ def uninstall_service(service_name: str) -> UninstallResult:
 
 def check_uv_installed() -> tuple[bool, Path | None]:
     """Check if uv is installed (with Linux-specific paths)."""
-    uv_path = _find_uv()
+    uv_path = find_uv(extra_paths=_LINUX_UV_PATHS)
     return (uv_path is not None, uv_path)
 
 

@@ -14,10 +14,11 @@ from agent_cli.install.service_config import (
     ServiceConfig,
     ServiceStatus,
     UninstallResult,
+    find_uv,
 )
-from agent_cli.install.service_config import (
-    find_uv as _find_uv_base,
-)
+
+# macOS-specific paths for uv (Homebrew)
+_MACOS_UV_PATHS = [Path("/opt/homebrew/bin/uv")]
 
 
 def _get_label(service_name: str) -> str:
@@ -40,13 +41,6 @@ def get_log_command(service_name: str) -> str:
     """Get command to view logs for a service."""
     log_dir = get_log_dir(service_name)
     return f"tail -f {log_dir}/*.log"
-
-
-def _find_uv() -> Path | None:
-    """Find uv executable, preferring system paths over virtualenv."""
-    # macOS-specific paths (Homebrew)
-    macos_paths = [Path("/opt/homebrew/bin/uv")]
-    return _find_uv_base(extra_paths=macos_paths)
 
 
 def _generate_plist(
@@ -146,7 +140,7 @@ def install_service(service_name: str) -> InstallResult:
     service = SERVICES[service_name]
 
     # Find uv
-    uv_path = _find_uv()
+    uv_path = find_uv(extra_paths=_MACOS_UV_PATHS)
     if not uv_path:
         return InstallResult(
             success=False,
@@ -232,7 +226,7 @@ def uninstall_service(service_name: str) -> UninstallResult:
 
 def check_uv_installed() -> tuple[bool, Path | None]:
     """Check if uv is installed (with macOS-specific paths)."""
-    uv_path = _find_uv()
+    uv_path = find_uv(extra_paths=_MACOS_UV_PATHS)
     return (uv_path is not None, uv_path)
 
 
