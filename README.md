@@ -730,7 +730,7 @@ the `[defaults]` section of your configuration file.
 │ --llm                   --no-llm          Clean up transcript with LLM: fix errors,    │
 │                                           add punctuation, remove filler words. Uses   │
 │                                           --extra-instructions if set (via CLI or      │
-│                                           config file).                                │
+│                                           config file). Not compatible with --diarize. │
 │                                           [default: no-llm]                            │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Audio Recovery ───────────────────────────────────────────────────────────────────────╮
@@ -1088,7 +1088,7 @@ uv tool install "agent-cli[vad]" -p 3.13
 ╭─ LLM Configuration ────────────────────────────────────────────────────────────────────╮
 │ --llm    --no-llm      Clean up transcript with LLM: fix errors, add punctuation,      │
 │                        remove filler words. Uses --extra-instructions if set (via CLI  │
-│                        or config file).                                                │
+│                        or config file). Not compatible with --diarize.                 │
 │                        [default: no-llm]                                               │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Process Management ───────────────────────────────────────────────────────────────────╮

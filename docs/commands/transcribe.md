@@ -85,7 +85,7 @@ The `--from-file` option supports multiple audio formats:
 | Option | Default | Description |
 |--------|---------|-------------|
 | `--extra-instructions` | - | Extra instructions appended to the LLM cleanup prompt (requires `--llm`). |
-| `--llm/--no-llm` | `false` | Clean up transcript with LLM: fix errors, add punctuation, remove filler words. Uses `--extra-instructions` if set (via CLI or config file). |
+| `--llm/--no-llm` | `false` | Clean up transcript with LLM: fix errors, add punctuation, remove filler words. Uses `--extra-instructions` if set (via CLI or config file). Not compatible with --diarize. |
 
 ### Audio Recovery
 
@@ -185,8 +185,6 @@ The `--from-file` option supports multiple audio formats:
 | `--max-speakers` | - | Maximum number of speakers (optional hint for diarization). |
 | `--align-words/--no-align-words` | `false` | Use wav2vec2 forced alignment for word-level speaker assignment (more accurate but slower). |
 | `--align-language` | `en` | Language code for word alignment model (e.g., 'en', 'fr', 'de', 'es'). |
-
-Note: `--llm` is not compatible with `--diarize` because cleanup can alter speaker labels.
 
 
 <!-- OUTPUT:END -->
