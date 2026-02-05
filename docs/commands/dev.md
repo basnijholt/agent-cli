@@ -333,6 +333,7 @@ agent-cli dev clean [OPTIONS]
 | `--no-commits` | `false` | Also remove worktrees with 0 commits ahead of default branch (abandoned branches) |
 | `--dry-run, -n` | `false` | Preview what would be removed without actually removing |
 | `--yes, -y` | `false` | Skip confirmation prompts |
+| `--force, -f` | `false` | Force removal of worktrees with modified or untracked files |
 
 
 <!-- OUTPUT:END -->
