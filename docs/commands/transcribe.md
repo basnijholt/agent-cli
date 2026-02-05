@@ -177,7 +177,7 @@ The `--from-file` option supports multiple audio formats:
 |--------|---------|-------------|
 | `--diarize/--no-diarize` | `false` | Enable speaker diarization (requires pyannote-audio). Install with: pip install agent-cli[diarization] |
 | `--diarize-format` | `inline` | Output format for diarization ('inline' for [Speaker N]: text, 'json' for structured output). |
-| `--hf-token` | - | HuggingFace token for pyannote models. Required for diarization. Accept license at: https://huggingface.co/pyannote/speaker-diarization-3.1 |
+| `--hf-token` | - | HuggingFace token for pyannote models. Required for diarization. Token must have 'Read access to contents of all public gated repos you can access' permission. Accept licenses at: https://hf.co/pyannote/speaker-diarization-3.1, https://hf.co/pyannote/segmentation-3.0, https://hf.co/pyannote/wespeaker-voxceleb-resnet34-LM |
 | `--min-speakers` | - | Minimum number of speakers (optional hint for diarization). |
 | `--max-speakers` | - | Maximum number of speakers (optional hint for diarization). |
 
