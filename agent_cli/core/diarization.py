@@ -213,29 +213,6 @@ def _split_into_sentences(text: str) -> list[str]:
     return sentences
 
 
-def _get_dominant_speaker(
-    start_time: float,
-    end_time: float,
-    segments: list[DiarizedSegment],
-) -> str | None:
-    """Find which speaker is dominant during a time range."""
-    speaker_durations: dict[str, float] = {}
-
-    for seg in segments:
-        # Calculate overlap between time range and segment
-        overlap_start = max(start_time, seg.start)
-        overlap_end = min(end_time, seg.end)
-        overlap = max(0, overlap_end - overlap_start)
-
-        if overlap > 0:
-            speaker_durations[seg.speaker] = speaker_durations.get(seg.speaker, 0) + overlap
-
-    if not speaker_durations:
-        return None
-
-    return max(speaker_durations, key=lambda s: speaker_durations[s])
-
-
 def _get_dominant_speaker_and_bounds(
     start_time: float,
     end_time: float,

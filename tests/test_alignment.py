@@ -17,6 +17,7 @@ from agent_cli.core.alignment import (
     _get_blank_id,
     _get_trellis,
     _get_wildcard_emission,
+    _merge_repeats,
     _segments_to_words,
     align,
 )
@@ -191,6 +192,90 @@ class TestBacktrack:
         path = _backtrack(trellis, emission, [], blank_id=0, beam_width=2)
 
         assert path == []
+
+    def test_deterministic_alignment(self) -> None:
+        """Test backtracking produces correct path for known emissions.
+
+        Constructs emissions where token 1 peaks at frames 1-2 and token 2
+        peaks at frames 3-4, so the optimal path should transition from
+        token 0→1 around frame 1 and from token 1→2 around frame 3.
+        """
+        # 6 frames, 3 classes (blank=0, token_a=1, token_b=2)
+        emission = torch.full((6, 3), -10.0)
+        emission[:, 0] = -2.0  # blank has moderate probability everywhere
+        emission[1, 1] = -0.1  # token 1 peaks at frames 1-2
+        emission[2, 1] = -0.1
+        emission[3, 2] = -0.1  # token 2 peaks at frames 3-4
+        emission[4, 2] = -0.1
+
+        tokens = [1, 2]
+        trellis = _get_trellis(emission, tokens, blank_id=0)
+        path = _backtrack(trellis, emission, tokens, blank_id=0)
+
+        assert len(path) > 0
+        # Path should cover all time steps from 0 to 5
+        time_indices = sorted({p[1] for p in path})
+        assert time_indices[0] == 0
+        assert time_indices[-1] == 5
+        # Both token indices should appear in the path
+        token_indices = {p[0] for p in path}
+        assert 0 in token_indices
+        assert 1 in token_indices
+
+    def test_path_covers_all_frames(self) -> None:
+        """Test that the returned path has one entry per frame."""
+        emission = torch.randn(10, 5)
+        tokens = [1, 2, 3]
+        trellis = _get_trellis(emission, tokens, blank_id=0)
+        path = _backtrack(trellis, emission, tokens, blank_id=0)
+
+        assert len(path) == 10
+        # Time indices should be monotonically increasing 0..9
+        time_indices = [p[1] for p in path]
+        assert time_indices == list(range(10))
+
+
+class TestMergeRepeats:
+    """Tests for _merge_repeats function."""
+
+    def test_groups_consecutive_same_tokens(self) -> None:
+        """Test that consecutive entries with the same token index are merged."""
+        path = [
+            (0, 0, 0.8),
+            (0, 1, 0.6),  # token 0, frames 0-1
+            (1, 2, 0.9),  # token 1, frame 2
+            (2, 3, 0.7),
+            (2, 4, 0.5),  # token 2, frames 3-4
+        ]
+        segments = _merge_repeats(path)
+
+        assert len(segments) == 3
+        assert segments[0] == (0, 0, 2, pytest.approx(0.7))
+        assert segments[1] == (1, 2, 3, pytest.approx(0.9))
+        assert segments[2] == (2, 3, 5, pytest.approx(0.6))
+
+    def test_single_entry_path(self) -> None:
+        """Test path with a single entry."""
+        path = [(0, 5, 0.95)]
+        segments = _merge_repeats(path)
+
+        assert len(segments) == 1
+        assert segments[0] == (0, 5, 6, pytest.approx(0.95))
+
+    def test_empty_path(self) -> None:
+        """Test that empty path returns empty segments."""
+        assert _merge_repeats([]) == []
+
+    def test_no_repeats(self) -> None:
+        """Test path where every entry has a different token index."""
+        path = [(0, 0, 0.8), (1, 1, 0.7), (2, 2, 0.9)]
+        segments = _merge_repeats(path)
+
+        assert len(segments) == 3
+        for i, seg in enumerate(segments):
+            assert seg[0] == i  # token_idx
+            assert seg[1] == i  # start
+            assert seg[2] == i + 1  # end
 
 
 class TestGetTrellis:

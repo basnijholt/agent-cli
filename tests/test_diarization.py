@@ -11,7 +11,7 @@ import pytest
 from agent_cli.core.alignment import AlignedWord
 from agent_cli.core.diarization import (
     DiarizedSegment,
-    _get_dominant_speaker,
+    _get_dominant_speaker_window,
     align_transcript_with_speakers,
     align_transcript_with_words,
     align_words_to_speakers,
@@ -371,14 +371,14 @@ class TestSpeakerDiarizer:
             assert call_kwargs["max_speakers"] == 4
 
 
-class TestGetDominantSpeaker:
-    """Tests for the _get_dominant_speaker function."""
+class TestGetDominantSpeakerWindow:
+    """Tests for the _get_dominant_speaker_window function."""
 
     def test_single_segment_full_overlap(self):
         """Test with single segment fully overlapping time range."""
         segments = [DiarizedSegment(speaker="SPEAKER_00", start=0.0, end=5.0)]
-        result = _get_dominant_speaker(1.0, 3.0, segments)
-        assert result == "SPEAKER_00"
+        speaker, _ = _get_dominant_speaker_window(1.0, 3.0, segments, 0)
+        assert speaker == "SPEAKER_00"
 
     def test_multiple_segments_picks_most_overlap(self):
         """Test that speaker with most overlap wins."""
@@ -387,8 +387,8 @@ class TestGetDominantSpeaker:
             DiarizedSegment(speaker="SPEAKER_01", start=1.0, end=4.0),  # 2s overlap
         ]
         # Time range 1.0-3.0: SPEAKER_00 has 1s, SPEAKER_01 has 2s
-        result = _get_dominant_speaker(1.0, 3.0, segments)
-        assert result == "SPEAKER_01"
+        speaker, _ = _get_dominant_speaker_window(1.0, 3.0, segments, 0)
+        assert speaker == "SPEAKER_01"
 
     def test_no_overlap_returns_none(self):
         """Test that None is returned when no segments overlap."""
@@ -396,13 +396,13 @@ class TestGetDominantSpeaker:
             DiarizedSegment(speaker="SPEAKER_00", start=0.0, end=1.0),
             DiarizedSegment(speaker="SPEAKER_01", start=5.0, end=6.0),
         ]
-        result = _get_dominant_speaker(2.0, 4.0, segments)
-        assert result is None
+        speaker, _ = _get_dominant_speaker_window(2.0, 4.0, segments, 0)
+        assert speaker is None
 
     def test_empty_segments_returns_none(self):
         """Test with empty segment list."""
-        result = _get_dominant_speaker(0.0, 1.0, [])
-        assert result is None
+        speaker, _ = _get_dominant_speaker_window(0.0, 1.0, [], 0)
+        assert speaker is None
 
     def test_same_speaker_multiple_segments(self):
         """Test that durations from same speaker are summed."""
@@ -412,8 +412,18 @@ class TestGetDominantSpeaker:
             DiarizedSegment(speaker="SPEAKER_00", start=2.0, end=3.0),  # 1s
         ]
         # SPEAKER_00 has 2s total, SPEAKER_01 has 1s
-        result = _get_dominant_speaker(0.0, 3.0, segments)
-        assert result == "SPEAKER_00"
+        speaker, _ = _get_dominant_speaker_window(0.0, 3.0, segments, 0)
+        assert speaker == "SPEAKER_00"
+
+    def test_cursor_advances_past_earlier_segments(self):
+        """Test that cursor skips segments ending before the query window."""
+        segments = [
+            DiarizedSegment(speaker="SPEAKER_00", start=0.0, end=1.0),
+            DiarizedSegment(speaker="SPEAKER_01", start=2.0, end=4.0),
+        ]
+        speaker, cursor = _get_dominant_speaker_window(2.5, 3.5, segments, 0)
+        assert speaker == "SPEAKER_01"
+        assert cursor == 1
 
 
 class TestAlignWordsToSpeakers:

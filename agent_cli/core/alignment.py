@@ -15,7 +15,8 @@ if TYPE_CHECKING:
     import torch
 
 SAMPLE_RATE = 16000
-DEFAULT_BEAM_WIDTH = 5
+DEFAULT_BEAM_WIDTH = 2
+MIN_WAV2VEC2_SAMPLES = 400
 
 # Torchaudio bundled models
 ALIGN_MODELS: dict[str, str] = {
@@ -73,9 +74,18 @@ def align(
         waveform = torchaudio.functional.resample(waveform, sample_rate, SAMPLE_RATE)
         sample_rate = SAMPLE_RATE
 
+    # Handle minimum input length for wav2vec2 models
+    lengths = None
+    if waveform.shape[-1] < MIN_WAV2VEC2_SAMPLES:
+        lengths = torch.as_tensor([waveform.shape[-1]]).to(device)
+        waveform = torch.nn.functional.pad(
+            waveform,
+            (0, MIN_WAV2VEC2_SAMPLES - waveform.shape[-1]),
+        )
+
     # Get emissions
     with torch.inference_mode():
-        emissions, _ = model(waveform.to(device))
+        emissions, _ = model(waveform.to(device), lengths=lengths)
         emissions = torch.log_softmax(emissions, dim=-1).cpu()
 
     emission = emissions[0]
@@ -214,16 +224,10 @@ def _backtrack(
 
     t, j = trellis.shape[0] - 1, trellis.shape[1] - 1
 
-    # Bounds check
-    if j >= len(tokens):
-        j = len(tokens) - 1
-    if j < 0:
-        return []
-
     init_state = _BeamState(
         token_index=j,
         time_index=t,
-        score=float(trellis[t, min(j, trellis.shape[1] - 1)]),
+        score=float(trellis[t, j]),
         path=[(j, t, emission[t, blank_id].exp().item())],
     )
 
@@ -235,18 +239,14 @@ def _backtrack(
         for beam in beams:
             t, j = beam.time_index, beam.token_index
 
-            if t <= 0 or j <= 0 or j >= len(tokens):
+            if t <= 0:
                 continue
 
             p_stay = emission[t - 1, blank_id]
             p_change = _get_wildcard_emission(emission[t - 1], [tokens[j]], blank_id)[0]
 
-            stay_score = float(trellis[t - 1, j]) if j < trellis.shape[1] else float("-inf")
-            change_score = (
-                float(trellis[t - 1, j - 1])
-                if j > 0 and j - 1 < trellis.shape[1]
-                else float("-inf")
-            )
+            stay_score = float(trellis[t - 1, j])
+            change_score = float(trellis[t - 1, j - 1]) if j > 0 else float("-inf")
 
             # Stay path
             if not math.isinf(stay_score):
