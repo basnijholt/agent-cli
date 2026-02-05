@@ -1,13 +1,15 @@
-"""An chat agent that you can talk to.
+"""Voice-based conversational chat agent with memory and tools.
 
-This agent will:
-- Listen for your voice command.
-- Transcribe the command.
-- Send the transcription to an LLM.
-- Speak the LLM's response.
-- Remember the conversation history.
-- Attach timestamps to the saved conversation.
-- Format timestamps as "ago" when sending to the LLM.
+Runs an interactive voice loop: listens for speech, transcribes it,
+sends to the LLM (with conversation context), and optionally speaks the response.
+
+**Available tools** (automatically used by the LLM when relevant):
+- `add_memory`/`search_memory`/`update_memory` - persistent long-term memory
+- `duckduckgo_search` - web search for current information
+- `read_file`/`execute_code` - file access and shell commands
+
+**Process management**: Use `--toggle` to start/stop via hotkey, `--stop` to terminate,
+or `--status` to check if running. Useful for binding to a keyboard shortcut.
 """
 
 from __future__ import annotations
@@ -29,6 +31,7 @@ from agent_cli._tools import tools
 from agent_cli.cli import app
 from agent_cli.core import process
 from agent_cli.core.audio import setup_devices
+from agent_cli.core.deps import requires_extras
 from agent_cli.core.utils import (
     InteractiveStopEvent,
     console,
@@ -373,7 +376,8 @@ async def _async_main(
         raise
 
 
-@app.command("chat")
+@app.command("chat", rich_help_panel="Voice Commands")
+@requires_extras("audio", "llm")
 def chat(
     *,
     # --- Provider Selection ---
@@ -423,28 +427,57 @@ def chat(
     history_dir: Path = typer.Option(  # noqa: B008
         "~/.config/agent-cli/history",
         "--history-dir",
-        help="Directory to store conversation history.",
+        help="Directory for conversation history and long-term memory. "
+        "Both `conversation.json` and `long_term_memory.json` are stored here.",
         rich_help_panel="History Options",
     ),
     last_n_messages: int = typer.Option(
         50,
         "--last-n-messages",
-        help="Number of messages to include in the conversation history."
-        " Set to 0 to disable history.",
+        help="Number of past messages to include as context for the LLM. "
+        "Set to 0 to start fresh each session (memory tools still persist).",
         rich_help_panel="History Options",
     ),
     # --- General Options ---
     save_file: Path | None = opts.SAVE_FILE,
-    log_level: str = opts.LOG_LEVEL,
+    log_level: opts.LogLevel = opts.LOG_LEVEL,
     log_file: str | None = opts.LOG_FILE,
     list_devices: bool = opts.LIST_DEVICES,
     quiet: bool = opts.QUIET,
     config_file: str | None = opts.CONFIG_FILE,
     print_args: bool = opts.PRINT_ARGS,
 ) -> None:
-    """An chat agent that you can talk to."""
+    """Voice-based conversational chat agent with memory and tools.
+
+    Runs an interactive loop: listen → transcribe → LLM → speak response.
+    Conversation history is persisted and included as context for continuity.
+
+    **Built-in tools** (LLM uses automatically when relevant):
+
+    - `add_memory`/`search_memory`/`update_memory` - persistent long-term memory
+    - `duckduckgo_search` - web search for current information
+    - `read_file`/`execute_code` - file access and shell commands
+
+    **Process management**: Use `--toggle` to start/stop via hotkey (bind to
+    a keyboard shortcut), `--stop` to terminate, or `--status` to check state.
+
+    **Examples**:
+
+    Use OpenAI-compatible providers for speech and LLM, with TTS enabled:
+
+        agent-cli chat --asr-provider openai --llm-provider openai --tts
+
+    Start in background mode (toggle on/off with hotkey):
+
+        agent-cli chat --toggle
+
+    Use local Ollama LLM with Wyoming ASR:
+
+        agent-cli chat --llm-provider ollama
+    """
     if print_args:
         print_command_line_args(locals())
+
     setup_logging(log_level, log_file, quiet=quiet)
     general_cfg = config.General(
         log_level=log_level,
@@ -466,71 +499,7 @@ def chat(
         return
 
     with process.pid_file_context(process_name), suppress(KeyboardInterrupt):
-        provider_cfg = config.ProviderSelection(
-            asr_provider=asr_provider,
-            llm_provider=llm_provider,
-            tts_provider=tts_provider,
-        )
-        audio_in_cfg = config.AudioInput(
-            input_device_index=input_device_index,
-            input_device_name=input_device_name,
-        )
-        wyoming_asr_cfg = config.WyomingASR(
-            asr_wyoming_ip=asr_wyoming_ip,
-            asr_wyoming_port=asr_wyoming_port,
-        )
-        openai_asr_cfg = config.OpenAIASR(
-            asr_openai_model=asr_openai_model,
-            openai_api_key=openai_api_key,
-            openai_base_url=asr_openai_base_url,
-            asr_openai_prompt=asr_openai_prompt,
-        )
-        gemini_asr_cfg = config.GeminiASR(
-            asr_gemini_model=asr_gemini_model,
-            gemini_api_key=gemini_api_key,
-        )
-        ollama_cfg = config.Ollama(
-            llm_ollama_model=llm_ollama_model,
-            llm_ollama_host=llm_ollama_host,
-        )
-        openai_llm_cfg = config.OpenAILLM(
-            llm_openai_model=llm_openai_model,
-            openai_api_key=openai_api_key,
-            openai_base_url=openai_base_url,
-        )
-        gemini_llm_cfg = config.GeminiLLM(
-            llm_gemini_model=llm_gemini_model,
-            gemini_api_key=gemini_api_key,
-        )
-        audio_out_cfg = config.AudioOutput(
-            enable_tts=enable_tts,
-            output_device_index=output_device_index,
-            output_device_name=output_device_name,
-            tts_speed=tts_speed,
-        )
-        wyoming_tts_cfg = config.WyomingTTS(
-            tts_wyoming_ip=tts_wyoming_ip,
-            tts_wyoming_port=tts_wyoming_port,
-            tts_wyoming_voice=tts_wyoming_voice,
-            tts_wyoming_language=tts_wyoming_language,
-            tts_wyoming_speaker=tts_wyoming_speaker,
-        )
-        openai_tts_cfg = config.OpenAITTS(
-            tts_openai_model=tts_openai_model,
-            tts_openai_voice=tts_openai_voice,
-            openai_api_key=openai_api_key,
-            tts_openai_base_url=tts_openai_base_url,
-        )
-        kokoro_tts_cfg = config.KokoroTTS(
-            tts_kokoro_model=tts_kokoro_model,
-            tts_kokoro_voice=tts_kokoro_voice,
-            tts_kokoro_host=tts_kokoro_host,
-        )
-        gemini_tts_cfg = config.GeminiTTS(
-            tts_gemini_model=tts_gemini_model,
-            tts_gemini_voice=tts_gemini_voice,
-            gemini_api_key=gemini_api_key,
-        )
+        cfgs = config.create_provider_configs_from_locals(locals())
         history_cfg = config.History(
             history_dir=history_dir,
             last_n_messages=last_n_messages,
@@ -538,20 +507,20 @@ def chat(
 
         asyncio.run(
             _async_main(
-                provider_cfg=provider_cfg,
+                provider_cfg=cfgs.provider,
                 general_cfg=general_cfg,
                 history_cfg=history_cfg,
-                audio_in_cfg=audio_in_cfg,
-                wyoming_asr_cfg=wyoming_asr_cfg,
-                openai_asr_cfg=openai_asr_cfg,
-                gemini_asr_cfg=gemini_asr_cfg,
-                ollama_cfg=ollama_cfg,
-                openai_llm_cfg=openai_llm_cfg,
-                gemini_llm_cfg=gemini_llm_cfg,
-                audio_out_cfg=audio_out_cfg,
-                wyoming_tts_cfg=wyoming_tts_cfg,
-                openai_tts_cfg=openai_tts_cfg,
-                kokoro_tts_cfg=kokoro_tts_cfg,
-                gemini_tts_cfg=gemini_tts_cfg,
+                audio_in_cfg=cfgs.audio_in,
+                wyoming_asr_cfg=cfgs.wyoming_asr,
+                openai_asr_cfg=cfgs.openai_asr,
+                gemini_asr_cfg=cfgs.gemini_asr,
+                ollama_cfg=cfgs.ollama,
+                openai_llm_cfg=cfgs.openai_llm,
+                gemini_llm_cfg=cfgs.gemini_llm,
+                audio_out_cfg=cfgs.audio_out,
+                wyoming_tts_cfg=cfgs.wyoming_tts,
+                openai_tts_cfg=cfgs.openai_tts,
+                kokoro_tts_cfg=cfgs.kokoro_tts,
+                gemini_tts_cfg=cfgs.gemini_tts,
             ),
         )

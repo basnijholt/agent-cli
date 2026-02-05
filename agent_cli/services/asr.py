@@ -10,9 +10,6 @@ from functools import partial
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from wyoming.asr import Transcribe, Transcript, TranscriptChunk, TranscriptStart, TranscriptStop
-from wyoming.audio import AudioChunk, AudioStart, AudioStop
-
 from agent_cli import constants
 from agent_cli.core.audio import (
     open_audio_stream,
@@ -222,9 +219,15 @@ async def _send_audio(
     live: Live,
     quiet: bool = False,
     save_recording: bool = True,
+    initial_prompt: str | None = None,
 ) -> None:
     """Read from mic and send to Wyoming server."""
-    await client.write_event(Transcribe().event())
+    from wyoming.asr import Transcribe  # noqa: PLC0415
+    from wyoming.audio import AudioChunk, AudioStart, AudioStop  # noqa: PLC0415
+
+    # Build context with initial_prompt if provided
+    context = {"initial_prompt": initial_prompt} if initial_prompt else None
+    await client.write_event(Transcribe(context=context).event())
     await client.write_event(AudioStart(**constants.WYOMING_AUDIO_CONFIG).event())
 
     # Buffer to save audio if requested
@@ -279,6 +282,13 @@ async def _receive_transcript(
     final_callback: Callable[[str], None] | None = None,
 ) -> str:
     """Receive transcription events and return the final transcript."""
+    from wyoming.asr import (  # noqa: PLC0415
+        Transcript,
+        TranscriptChunk,
+        TranscriptStart,
+        TranscriptStop,
+    )
+
     transcript_text = ""
     while True:
         event = await client.read_event()
@@ -363,9 +373,13 @@ async def _transcribe_recorded_audio_wyoming(
     wyoming_asr_cfg: config.WyomingASR,
     logger: logging.Logger,
     quiet: bool = False,
+    extra_instructions: str | None = None,
     **_kwargs: object,
 ) -> str:
     """Process pre-recorded audio data with Wyoming ASR server."""
+    from wyoming.asr import Transcribe  # noqa: PLC0415
+    from wyoming.audio import AudioChunk, AudioStart, AudioStop  # noqa: PLC0415
+
     try:
         async with wyoming_client_context(
             wyoming_asr_cfg.asr_wyoming_ip,
@@ -374,7 +388,10 @@ async def _transcribe_recorded_audio_wyoming(
             logger,
             quiet=quiet,
         ) as client:
-            await client.write_event(Transcribe().event())
+            # Get effective prompt and pass via context
+            effective_prompt = wyoming_asr_cfg.get_effective_prompt(extra_instructions)
+            context = {"initial_prompt": effective_prompt} if effective_prompt else None
+            await client.write_event(Transcribe(context=context).event())
             await client.write_event(AudioStart(**constants.WYOMING_AUDIO_CONFIG).event())
 
             chunk_size = constants.AUDIO_CHUNK_SIZE * 2
@@ -405,6 +422,7 @@ async def _transcribe_live_audio_wyoming(
     save_recording: bool = True,
     chunk_callback: Callable[[str], None] | None = None,
     final_callback: Callable[[str], None] | None = None,
+    extra_instructions: str | None = None,
     **_kwargs: object,
 ) -> str | None:
     """Unified ASR transcription function."""
@@ -416,6 +434,11 @@ async def _transcribe_live_audio_wyoming(
             logger,
             quiet=quiet,
         ) as client:
+            # Get effective prompt for Wyoming
+            effective_prompt = wyoming_asr_cfg.get_effective_prompt(extra_instructions)
+            if effective_prompt:
+                logger.info("Using initial_prompt for Wyoming ASR: %s...", effective_prompt[:50])
+
             stream_config = setup_input_stream(audio_input_cfg.input_device_index)
             with open_audio_stream(stream_config) as stream:
                 _, recv_task = await manage_send_receive_tasks(
@@ -427,6 +450,7 @@ async def _transcribe_live_audio_wyoming(
                         live=live,
                         quiet=quiet,
                         save_recording=save_recording,
+                        initial_prompt=effective_prompt,
                     ),
                     _receive_transcript(
                         client,
@@ -453,6 +477,7 @@ async def _transcribe_live_audio_buffered(
     live: Live,
     quiet: bool = False,
     save_recording: bool = True,
+    extra_instructions: str | None = None,
     **_kwargs: object,
 ) -> str | None:
     """Record audio to buffer, then transcribe.
@@ -470,7 +495,12 @@ async def _transcribe_live_audio_buffered(
     if not audio_data:
         return None
     try:
-        return await transcribe_fn(audio_data, transcribe_cfg, logger)
+        return await transcribe_fn(
+            audio_data,
+            transcribe_cfg,
+            logger,
+            extra_instructions=extra_instructions,
+        )
     except Exception:
         logger.exception("Error during %s transcription", provider_name)
         return ""

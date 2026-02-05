@@ -3,18 +3,10 @@
 from __future__ import annotations
 
 import struct
-import sys
 from typing import TYPE_CHECKING
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
-
-# Skip all tests in this module on Windows - torch/silero-vad can hang during initialization
-if sys.platform == "win32":
-    pytest.skip(
-        "silero-vad/torch initialization can hang on Windows CI",
-        allow_module_level=True,
-    )
 
 from agent_cli.core.vad import VoiceActivityDetector
 
@@ -22,25 +14,31 @@ if TYPE_CHECKING:
     from typing import Any
 
 
-@pytest.fixture
-def mock_silero_vad() -> MagicMock:
-    """Mock silero_vad module."""
-    mock_model = MagicMock()
-    mock_model.audio_forward.return_value = 0.0  # No speech by default
-    return mock_model
+@pytest.fixture(scope="module", autouse=True)
+def ensure_model_cached() -> None:
+    """Ensure Silero VAD model is cached before running tests."""
+    import shutil  # noqa: PLC0415
+    import urllib.request  # noqa: PLC0415
+
+    from agent_cli.core.vad import SILERO_VAD_CACHE, SILERO_VAD_URL  # noqa: PLC0415
+
+    if not SILERO_VAD_CACHE.exists():
+        SILERO_VAD_CACHE.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            with (
+                urllib.request.urlopen(SILERO_VAD_URL, timeout=30) as response,  # noqa: S310
+                SILERO_VAD_CACHE.open("wb") as f,
+            ):
+                shutil.copyfileobj(response, f)
+        except Exception as e:
+            pytest.skip(f"Failed to download VAD model: {e}")
 
 
-def test_import_error_without_silero_vad() -> None:
-    """Test that ImportError is raised with helpful message when silero-vad is missing."""
-    import importlib  # noqa: PLC0415
-
-    with patch.dict("sys.modules", {"torch": None, "silero_vad": None}):
-        # Remove cached module
-        if "agent_cli.core.vad" in sys.modules:
-            del sys.modules["agent_cli.core.vad"]
-
-        with pytest.raises(ImportError, match="agent-cli\\[vad\\]"):
-            importlib.import_module("agent_cli.core.vad")
+def test_import_error_without_onnxruntime() -> None:
+    """Test that ModuleNotFoundError is raised when onnxruntime is missing."""
+    # With lazy imports, error happens at instantiation, not module import
+    with patch.dict("sys.modules", {"onnxruntime": None}), pytest.raises(ModuleNotFoundError):
+        VoiceActivityDetector()
 
 
 @pytest.fixture

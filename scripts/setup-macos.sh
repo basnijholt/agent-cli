@@ -47,15 +47,9 @@ echo "⏳ This may take a few minutes depending on your internet connection..."
 sleep 2  # Give Ollama service time to start
 ollama pull gemma3:4b
 
-# Install wyoming-mlx-whisper as a launchd service (Apple Silicon only)
-if [ "$(uname -m)" = "arm64" ]; then
-    echo "🎤 Installing wyoming-mlx-whisper as a background service..."
-    echo "   This will run speech-to-text on Apple Silicon using MLX"
-    curl -fsSL https://raw.githubusercontent.com/basnijholt/wyoming-mlx-whisper/main/scripts/install_service.sh | bash
-    echo "✅ wyoming-mlx-whisper installed as launchd service"
-else
-    echo "ℹ️ Skipping wyoming-mlx-whisper service (Intel Mac - use Linux-style setup)"
-fi
+# Install whisper and tts as launchd daemons
+echo "🎤 Installing whisper and tts-kokoro as background daemons..."
+agent-cli daemon install whisper tts-kokoro -y
 
 echo ""
 echo "✅ Setup complete! You can now run the services:"
@@ -65,12 +59,8 @@ echo "  ./start-all-services.sh"
 echo ""
 echo "Option 2 - Run services individually:"
 echo "  1. Ollama: running as brew service (brew services start ollama)"
-if [ "$(uname -m)" = "arm64" ]; then
-    echo "  2. Whisper: running as launchd service (wyoming-mlx-whisper)"
-else
-    echo "  2. Whisper: ./run-whisper.sh"
-fi
-echo "  3. Piper: ./run-piper.sh"
+echo "  2. Whisper: running as launchd daemon (agent-cli daemon status whisper)"
+echo "  3. TTS: running as launchd daemon (agent-cli daemon status tts-kokoro)"
 echo "  4. OpenWakeWord: ./run-openwakeword.sh"
 echo ""
 echo "🎉 agent-cli has been installed and is ready to use!"

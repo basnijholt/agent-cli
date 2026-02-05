@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 from contextlib import suppress
 from pathlib import Path  # noqa: TC003
@@ -13,7 +14,9 @@ from agent_cli import config, opts
 from agent_cli.cli import app
 from agent_cli.core import process
 from agent_cli.core.audio import setup_devices
+from agent_cli.core.deps import requires_extras
 from agent_cli.core.utils import (
+    enable_json_mode,
     get_clipboard_text,
     maybe_live,
     print_command_line_args,
@@ -36,12 +39,12 @@ async def _async_main(
     openai_tts_cfg: config.OpenAITTS,
     kokoro_tts_cfg: config.KokoroTTS,
     gemini_tts_cfg: config.GeminiTTS | None = None,
-) -> None:
+) -> str | None:
     """Async entry point for the speak command."""
     # We only use setup_devices for its output device handling
     device_info = setup_devices(general_cfg, None, audio_out_cfg)
     if device_info is None:
-        return
+        return None
     _, _, output_device_index = device_info
     audio_out_cfg.output_device_index = output_device_index
 
@@ -49,7 +52,7 @@ async def _async_main(
     if text is None:
         text = get_clipboard_text(quiet=general_cfg.quiet)
         if not text:
-            return
+            return None
         if not general_cfg.quiet:
             print_input_panel(text, title="📋 Text from Clipboard")
     elif not general_cfg.quiet:
@@ -74,13 +77,16 @@ async def _async_main(
             live=live,
         )
 
+    return text
 
-@app.command("speak")
+
+@app.command("speak", rich_help_panel="Text Commands")
+@requires_extras("audio")
 def speak(
     *,
     text: str | None = typer.Argument(
         None,
-        help="Text to speak. Reads from clipboard if not provided.",
+        help="Text to synthesize. If not provided, reads from clipboard.",
         rich_help_panel="General Options",
     ),
     # --- Provider Selection ---
@@ -114,20 +120,46 @@ def speak(
     stop: bool = opts.STOP,
     status: bool = opts.STATUS,
     toggle: bool = opts.TOGGLE,
-    log_level: str = opts.LOG_LEVEL,
+    log_level: opts.LogLevel = opts.LOG_LEVEL,
     log_file: str | None = opts.LOG_FILE,
     quiet: bool = opts.QUIET,
+    json_output: bool = opts.JSON_OUTPUT,
     config_file: str | None = opts.CONFIG_FILE,
     print_args: bool = opts.PRINT_ARGS,
 ) -> None:
-    """Convert text to speech using Wyoming or OpenAI-compatible TTS server."""
+    """Convert text to speech and play audio through speakers.
+
+    By default, synthesized audio plays immediately. Use `--save-file` to save
+    to a WAV file instead (skips playback).
+
+    Text can be provided as an argument or read from clipboard automatically.
+
+    **Examples:**
+
+    Speak text directly:
+        `agent-cli speak "Hello, world!"`
+
+    Speak clipboard contents:
+        `agent-cli speak`
+
+    Save to file instead of playing:
+        `agent-cli speak "Hello" --save-file greeting.wav`
+
+    Use OpenAI-compatible TTS:
+        `agent-cli speak "Hello" --tts-provider openai`
+    """
     if print_args:
         print_command_line_args(locals())
-    setup_logging(log_level, log_file, quiet=quiet)
+
+    effective_quiet = quiet or json_output
+    if json_output:
+        enable_json_mode()
+
+    setup_logging(log_level, log_file, quiet=effective_quiet)
     general_cfg = config.General(
         log_level=log_level,
         log_file=log_file,
-        quiet=quiet,
+        quiet=effective_quiet,
         list_devices=list_devices,
         save_file=save_file,
     )
@@ -178,7 +210,7 @@ def speak(
             gemini_api_key=gemini_api_key,
         )
 
-        asyncio.run(
+        spoken_text = asyncio.run(
             _async_main(
                 general_cfg=general_cfg,
                 text=text,
@@ -190,3 +222,8 @@ def speak(
                 gemini_tts_cfg=gemini_tts_cfg,
             ),
         )
+        if json_output:
+            result = {"text": spoken_text}
+            if save_file:
+                result["file"] = str(save_file)
+            print(json.dumps(result))

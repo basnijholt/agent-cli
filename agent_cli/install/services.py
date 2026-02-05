@@ -20,13 +20,31 @@ from agent_cli.install.common import (
 def install_services() -> None:
     """Install all required services (Ollama, Whisper, Piper, OpenWakeWord).
 
-    This command installs:
-    - Ollama (local LLM server)
-    - Wyoming Faster Whisper (speech-to-text)
-    - Wyoming Piper (text-to-speech)
-    - Wyoming OpenWakeWord (wake word detection)
+    This command installs the following services:
 
-    The appropriate installation method is used based on your operating system.
+    - **Ollama** - Local LLM server for text processing
+    - **Wyoming Faster Whisper** - Speech-to-text transcription
+    - **Wyoming Piper** - Text-to-speech synthesis
+    - **Wyoming OpenWakeWord** - Wake word detection ("ok nabu", etc.)
+
+    The appropriate installation method is used based on your operating system
+    (Homebrew on macOS, apt/pip on Linux).
+
+    **Requirements:**
+
+    - macOS: Homebrew must be installed
+    - Linux: Requires sudo access for system packages
+
+    **Examples:**
+
+    Install all services:
+        `agent-cli install-services`
+
+    **After installation:**
+
+    1. Start the services: `agent-cli start-services`
+    2. Test transcription: `agent-cli transcribe --list-devices`
+    3. Set up hotkeys (optional): `agent-cli install-hotkeys`
     """
     script_name = get_platform_script("setup-macos.sh", "setup-linux.sh")
 
@@ -46,19 +64,41 @@ def start_services(
     attach: bool = typer.Option(
         True,  # noqa: FBT003
         "--attach/--no-attach",
-        help="Attach to Zellij session after starting",
+        help=(
+            "Attach to the Zellij session after starting. "
+            "With `--no-attach`, services start in background and you can "
+            "reattach later with `zellij attach agent-cli`"
+        ),
     ),
 ) -> None:
     """Start all agent-cli services in a Zellij session.
 
-    This starts:
-    - Ollama (LLM server)
-    - Wyoming Faster Whisper (speech-to-text)
-    - Wyoming Piper (text-to-speech)
-    - Wyoming OpenWakeWord (wake word detection)
+    Starts these services, each in its own Zellij pane:
 
-    Services run in a Zellij terminal multiplexer session named 'agent-cli'.
-    Use Ctrl-Q to quit or Ctrl-O d to detach from the session.
+    - **Ollama** - LLM server (port 11434)
+    - **Wyoming Whisper** - Speech-to-text (port 10300)
+    - **Wyoming Piper** - Text-to-speech (port 10200)
+    - **Wyoming OpenWakeWord** - Wake word detection (port 10400)
+
+    Services run in a Zellij terminal multiplexer session named `agent-cli`.
+    If a session already exists, the command attaches to it instead of
+    starting new services.
+
+    **Keyboard shortcuts:**
+    - `Ctrl-O d` - Detach (keeps services running in background)
+    - `Ctrl-Q` - Quit (stops all services)
+    - `Alt + arrows` - Navigate between panes
+
+    **Examples:**
+
+    Start services and attach:
+        `agent-cli start-services`
+
+    Start in background (for scripts or automation):
+        `agent-cli start-services --no-attach`
+
+    Reattach to running services:
+        `zellij attach agent-cli`
     """
     try:
         script_path = get_script_path("start-all-services.sh")

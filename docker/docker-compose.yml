@@ -1,52 +1,325 @@
+# Docker Compose for agent-cli services
+#
+# Provides all services needed for voice assistants:
+# - Whisper ASR (speech-to-text)
+# - TTS (text-to-speech)
+# - Ollama (LLM)
+# - OpenWakeWord (wake word detection)
+#
+# Usage:
+#   # Run all services with CUDA (GPU)
+#   docker compose -f docker/docker-compose.yml --profile cuda up
+#
+#   # Run all services with CPU only
+#   docker compose -f docker/docker-compose.yml --profile cpu up
+#
+#   # Build from source instead of using pre-built images
+#   docker compose -f docker/docker-compose.yml --profile cuda up --build
+#
+# Environment variables:
+#   WHISPER_MODEL      - Whisper model (default: large-v3 for CUDA, small for CPU)
+#   WHISPER_TTL        - Seconds before unloading idle model (default: 300)
+#   WHISPER_LOG_LEVEL  - Logging level (default: info)
+#
+#   TTS_MODEL          - TTS model/voice (default: kokoro for CUDA, en_US-lessac-medium for CPU)
+#   TTS_BACKEND        - Backend: auto, kokoro, piper (default: based on profile)
+#   TTS_TTL            - Seconds before unloading idle model (default: 300)
+#   TTS_LOG_LEVEL      - Logging level (default: info)
+#
+#   OLLAMA_MODEL       - Ollama model to pull on startup (default: gemma3:4b)
+#
+#   PROXY_PORT         - Transcription proxy port (default: 61337)
+#   LOG_LEVEL          - Proxy logging level: debug, info, warning, error (default: info)
+#
+#   ASR_PROVIDER       - ASR backend: wyoming or openai (default: wyoming)
+#   ASR_WYOMING_IP     - Hostname/IP of Wyoming whisper server (default: whisper-cuda or whisper-cpu)
+#   ASR_WYOMING_PORT   - Wyoming protocol port (default: 10300)
+#   ASR_OPENAI_BASE_URL - OpenAI-compatible ASR endpoint (for ASR_PROVIDER=openai)
+#   ASR_OPENAI_API_KEY  - API key for OpenAI ASR (for ASR_PROVIDER=openai)
+#
+#   LLM_PROVIDER       - LLM for post-processing: none, ollama, openai (default: none)
+#   LLM_OPENAI_MODEL   - Model name for OpenAI LLM provider
+#   OPENAI_BASE_URL    - OpenAI-compatible LLM endpoint
+#   OPENAI_API_KEY     - API key for OpenAI LLM
+#
+#   RAG_PORT           - RAG proxy port (default: 8000)
+#   RAG_LIMIT          - Number of document chunks per query (default: 3)
+#   RAG_ENABLE_TOOLS   - Enable read_full_document tool (default: true)
+#   EMBEDDING_MODEL    - Embedding model for RAG/memory (default: text-embedding-3-small)
+#   EMBEDDING_BASE_URL - Separate endpoint for embeddings (falls back to OPENAI_BASE_URL)
+#
+#   MEMORY_PORT        - Memory proxy port (default: 8100)
+#   MEMORY_TOP_K       - Number of memories per query (default: 5)
+#   MEMORY_MAX_ENTRIES - Max entries per conversation (default: 500)
+#   MEMORY_SUMMARIZATION - Enable fact extraction (default: true)
+#   MEMORY_GIT_VERSIONING - Enable git versioning (default: true)
+
 services:
+  # ===========================================================================
+  # Ollama LLM
+  # ===========================================================================
+
   ollama:
-    build:
-      context: ..
-      dockerfile: docker/Dockerfile
+    image: ollama/ollama
+    profiles: [cuda, cpu]
     ports:
       - "11434:11434"
-    environment:
-      - OLLAMA_THINK=false
     volumes:
-      - ./ollama:/root/.ollama
-    # On macOS, Docker does not support GPU acceleration. For better
-    # performance, it is recommended to install Ollama natively:
-    # https://ollama.com/download
-    #
-    # On Linux with an NVIDIA GPU, you can uncomment the following
-    # lines to enable GPU acceleration.
+      - ollama-data:/root/.ollama
+    environment:
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-gemma3:4b}
+    # Pull default model on startup, then serve
+    # Wait for Ollama to be ready (up to 30s) before pulling model
+    entrypoint: ["/bin/sh", "-c", "ollama serve & until ollama list >/dev/null 2>&1; do sleep 1; done && ollama pull $${OLLAMA_MODEL} && wait"]
+    # For NVIDIA GPU support on Linux, uncomment the following:
     # deploy:
     #   resources:
     #     reservations:
     #       devices:
     #         - driver: nvidia
-    #           count: all
+    #           count: 1
     #           capabilities: [gpu]
+    restart: unless-stopped
 
-  piper:
-    image: rhasspy/wyoming-piper
-    ports:
-      - "10200:10200"
-    volumes:
-      - ./piper-data:/data
-    command: --voice en-us-ryan-high
-
-  whisper:
-    image: rhasspy/wyoming-whisper
-    ports:
-      - "10300:10300"
-    volumes:
-      - ./whisper-data:/data
-    command: --model large-v3 --language en
-    # The official rhasspy/wyoming-whisper image does not currently
-    # support GPU acceleration.
-    # see https://github.com/rhasspy/wyoming-faster-whisper/issues/35
-    # and https://github.com/rhasspy/wyoming-faster-whisper/pull/44
+  # ===========================================================================
+  # OpenWakeWord
+  # ===========================================================================
 
   openwakeword:
     image: rhasspy/wyoming-openwakeword
+    profiles: [cuda, cpu]
     ports:
       - "10400:10400"
     volumes:
-      - ./openwakeword-data:/data
+      - openwakeword-data:/data
     command: --preload-model ok_nabu --custom-model-dir /data
+    restart: unless-stopped
+
+  # ===========================================================================
+  # Whisper ASR Services
+  # ===========================================================================
+
+  whisper-cuda:
+    image: ghcr.io/basnijholt/agent-cli-whisper:latest-cuda
+    build:
+      context: ..
+      dockerfile: docker/whisper.Dockerfile
+      target: cuda
+    profiles: [cuda]
+    ports:
+      - "10300:10300"  # Wyoming protocol
+      - "10301:10301"  # HTTP API
+    volumes:
+      - whisper-cache:/home/whisper/.cache
+    environment:
+      - WHISPER_MODEL=${WHISPER_MODEL:-large-v3}
+      - WHISPER_TTL=${WHISPER_TTL:-300}
+      - WHISPER_LOG_LEVEL=${WHISPER_LOG_LEVEL:-info}
+      - WHISPER_DEVICE=cuda
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    # For NixOS or other CDI-based Docker setups, replace the `deploy` section with:
+    #   devices:
+    #     - nvidia.com/gpu=0    # Single GPU (use nvidia.com/gpu=all for all GPUs)
+    restart: unless-stopped
+
+  whisper-cpu:
+    image: ghcr.io/basnijholt/agent-cli-whisper:latest-cpu
+    build:
+      context: ..
+      dockerfile: docker/whisper.Dockerfile
+      target: cpu
+    profiles: [cpu]
+    ports:
+      - "10300:10300"  # Wyoming protocol
+      - "10301:10301"  # HTTP API
+    volumes:
+      - whisper-cache:/home/whisper/.cache
+    environment:
+      - WHISPER_MODEL=${WHISPER_MODEL:-small}
+      - WHISPER_TTL=${WHISPER_TTL:-300}
+      - WHISPER_LOG_LEVEL=${WHISPER_LOG_LEVEL:-info}
+      - WHISPER_DEVICE=cpu
+    restart: unless-stopped
+
+  # ===========================================================================
+  # TTS Services
+  # ===========================================================================
+
+  tts-cuda:
+    image: ghcr.io/basnijholt/agent-cli-tts:latest-cuda
+    build:
+      context: ..
+      dockerfile: docker/tts.Dockerfile
+      target: cuda
+    profiles: [cuda]
+    ports:
+      - "10200:10200"  # Wyoming protocol
+      - "10201:10201"  # HTTP API
+    volumes:
+      - tts-cache:/home/tts/.cache
+    environment:
+      - TTS_MODEL=${TTS_MODEL:-kokoro}
+      - TTS_BACKEND=${TTS_BACKEND:-kokoro}
+      - TTS_TTL=${TTS_TTL:-300}
+      - TTS_LOG_LEVEL=${TTS_LOG_LEVEL:-info}
+      - TTS_DEVICE=cuda
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    # For NixOS or other CDI-based Docker setups, replace the `deploy` section with:
+    #   devices:
+    #     - nvidia.com/gpu=0    # Single GPU (use nvidia.com/gpu=all for all GPUs)
+    restart: unless-stopped
+
+  tts-cpu:
+    image: ghcr.io/basnijholt/agent-cli-tts:latest-cpu
+    build:
+      context: ..
+      dockerfile: docker/tts.Dockerfile
+      target: cpu
+    profiles: [cpu]
+    ports:
+      - "10200:10200"  # Wyoming protocol
+      - "10201:10201"  # HTTP API
+    volumes:
+      - tts-cache:/home/tts/.cache
+    environment:
+      - TTS_MODEL=${TTS_MODEL:-en_US-lessac-medium}
+      - TTS_BACKEND=${TTS_BACKEND:-piper}
+      - TTS_TTL=${TTS_TTL:-300}
+      - TTS_LOG_LEVEL=${TTS_LOG_LEVEL:-info}
+      - TTS_DEVICE=cpu
+    restart: unless-stopped
+
+  # ===========================================================================
+  # Transcription Proxy
+  # ===========================================================================
+
+  transcribe-proxy:
+    image: ghcr.io/basnijholt/agent-cli-transcribe-proxy:latest
+    build:
+      context: ..
+      dockerfile: docker/transcribe-proxy.Dockerfile
+    profiles: [cuda, cpu]
+    ports:
+      - "61337:61337"
+    # Optional: mount config file for additional settings
+    # volumes:
+    #   - ./config.toml:/home/transcribe/.config/agent-cli/config.toml:ro
+    environment:
+      - PROXY_HOST=0.0.0.0
+      - PROXY_PORT=${PROXY_PORT:-61337}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      # ASR Configuration - Wyoming protocol (recommended for Docker Compose)
+      # Set ASR_WYOMING_IP to whisper-cuda or whisper-cpu based on your profile
+      - ASR_PROVIDER=${ASR_PROVIDER:-wyoming}
+      - ASR_WYOMING_IP=${ASR_WYOMING_IP:-whisper-cuda}
+      - ASR_WYOMING_PORT=${ASR_WYOMING_PORT:-10300}
+      # Alternative: OpenAI-compatible API (uncomment to use)
+      # - ASR_PROVIDER=openai
+      # - ASR_OPENAI_BASE_URL=http://whisper-cuda:10301/v1
+      # - ASR_OPENAI_API_KEY=dummy
+      # LLM Post-processing (optional - uncomment to enable)
+      # - LLM_PROVIDER=ollama
+      # - OLLAMA_HOST=http://ollama:11434
+      # Alternative: OpenAI-compatible LLM
+      # - LLM_PROVIDER=openai
+      # - LLM_OPENAI_MODEL=gpt-4o-mini
+      # - OPENAI_BASE_URL=https://api.openai.com/v1
+      # - OPENAI_API_KEY=your-api-key
+    restart: unless-stopped
+
+  # ===========================================================================
+  # RAG Proxy
+  # ===========================================================================
+
+  rag-proxy:
+    image: ghcr.io/basnijholt/agent-cli-rag-proxy:latest
+    build:
+      context: ..
+      dockerfile: docker/rag-proxy.Dockerfile
+    profiles: [cuda, cpu]
+    ports:
+      - "8000:8000"
+    volumes:
+      - rag-docs:/data/docs
+      - rag-db:/data/db
+      - rag-cache:/home/rag/.cache
+    environment:
+      - RAG_HOST=0.0.0.0
+      - RAG_PORT=${RAG_PORT:-8000}
+      - RAG_DOCS_FOLDER=/data/docs
+      - RAG_CHROMA_PATH=/data/db
+      - RAG_LIMIT=${RAG_LIMIT:-3}
+      - RAG_ENABLE_TOOLS=${RAG_ENABLE_TOOLS:-true}
+      - EMBEDDING_MODEL=${EMBEDDING_MODEL:-text-embedding-3-small}
+      - EMBEDDING_BASE_URL=${EMBEDDING_BASE_URL:-}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      # OpenAI-compatible backend configuration
+      - OPENAI_BASE_URL=${OPENAI_BASE_URL:-http://ollama:11434/v1}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+    restart: unless-stopped
+
+  # ===========================================================================
+  # Memory Proxy
+  # ===========================================================================
+
+  memory-proxy:
+    image: ghcr.io/basnijholt/agent-cli-memory-proxy:latest
+    build:
+      context: ..
+      dockerfile: docker/memory-proxy.Dockerfile
+    profiles: [cuda, cpu]
+    ports:
+      - "8100:8100"
+    volumes:
+      - memory-data:/data/memory
+      - memory-cache:/home/memory/.cache
+    environment:
+      - MEMORY_HOST=0.0.0.0
+      - MEMORY_PORT=${MEMORY_PORT:-8100}
+      - MEMORY_PATH=/data/memory
+      - MEMORY_TOP_K=${MEMORY_TOP_K:-5}
+      - MEMORY_MAX_ENTRIES=${MEMORY_MAX_ENTRIES:-500}
+      - MEMORY_MMR_LAMBDA=${MEMORY_MMR_LAMBDA:-0.7}
+      - MEMORY_RECENCY_WEIGHT=${MEMORY_RECENCY_WEIGHT:-0.2}
+      - MEMORY_SCORE_THRESHOLD=${MEMORY_SCORE_THRESHOLD:-0.35}
+      - MEMORY_SUMMARIZATION=${MEMORY_SUMMARIZATION:-true}
+      - MEMORY_GIT_VERSIONING=${MEMORY_GIT_VERSIONING:-true}
+      - EMBEDDING_MODEL=${EMBEDDING_MODEL:-text-embedding-3-small}
+      - EMBEDDING_BASE_URL=${EMBEDDING_BASE_URL:-}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      # OpenAI-compatible backend configuration
+      - OPENAI_BASE_URL=${OPENAI_BASE_URL:-http://ollama:11434/v1}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+    restart: unless-stopped
+
+volumes:
+  ollama-data:
+    name: agent-cli-ollama-data
+  openwakeword-data:
+    name: agent-cli-openwakeword-data
+  whisper-cache:
+    name: agent-cli-whisper-cache
+  tts-cache:
+    name: agent-cli-tts-cache
+  rag-docs:
+    name: agent-cli-rag-docs
+  rag-db:
+    name: agent-cli-rag-db
+  rag-cache:
+    name: agent-cli-rag-cache
+  memory-data:
+    name: agent-cli-memory-data
+  memory-cache:
+    name: agent-cli-memory-cache

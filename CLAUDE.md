@@ -12,7 +12,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Run `pre-commit run --all-files` before committing
 - Use `git add <specific-file>` not `git add .`
 - CLI help in README.md is auto-generated - don't edit manually
-- Keep CLI startup fast (<300ms) - use top-level imports by default, only use lazy imports when a heavy dependency actually causes slowdown
+- Keep CLI startup fast (<300ms) - use top-level imports by default for first-party and stdlib imports, use lazy imports for ALL 3rd party dependencies (except pydantic, typer, and rich)
+- External library assumptions (especially in `dev` command for terminals/editors/agents) must be backed by evidence (official docs, man pages, source code). Document evidence in test docstrings that also verify the implementation.
+- Private functions (`_name`) don't need parameter documentation in docstrings - a one-line description is sufficient
 
 ## Build & Development Commands
 
@@ -96,3 +98,25 @@ The `docs_gen` module introspects Typer commands to generate Markdown tables. Do
 ```
 
 Run `uv run python docs/run_markdown_code_runner.py` to regenerate all auto-generated content.
+
+## Releases
+
+Use `gh release create` to create releases. The tag is created automatically.
+
+```bash
+# IMPORTANT: Ensure you're on latest origin/main before releasing!
+git fetch origin
+git checkout origin/main
+
+# Check current version
+git tag --sort=-v:refname | head -1
+
+# Create release (minor version bump: v0.21.1 -> v0.22.0)
+gh release create v0.22.0 --title "v0.22.0" --notes "release notes here"
+```
+
+Versioning:
+- **Patch** (v0.21.0 → v0.21.1): Bug fixes
+- **Minor** (v0.21.1 → v0.22.0): New features, non-breaking changes
+
+Write release notes manually describing what changed. Group by features and bug fixes.

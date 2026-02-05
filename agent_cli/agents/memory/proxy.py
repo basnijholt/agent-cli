@@ -10,22 +10,25 @@ from rich.logging import RichHandler
 
 from agent_cli import constants, opts
 from agent_cli.agents.memory import memory_app
-from agent_cli.core.utils import console, print_command_line_args, print_error_message
+from agent_cli.core.deps import requires_extras
+from agent_cli.core.utils import console, print_command_line_args
 
 
 @memory_app.command("proxy")
+@requires_extras("memory")
 def proxy(
     memory_path: Path = typer.Option(  # noqa: B008
         "./memory_db",
-        help="Path to the memory store (files + derived vector index).",
+        help="Directory for memory storage. Contains `entries/` (Markdown files) and `chroma/` (vector index). Created automatically if it doesn't exist.",
         rich_help_panel="Memory Configuration",
     ),
     openai_base_url: str | None = opts.OPENAI_BASE_URL,
+    embedding_base_url: str | None = opts.EMBEDDING_BASE_URL,
     embedding_model: str = opts.EMBEDDING_MODEL,
     openai_api_key: str | None = opts.OPENAI_API_KEY,
     default_top_k: int = typer.Option(
         5,
-        help="Number of memory entries to retrieve per query.",
+        help="Number of relevant memories to inject into each request. Higher values provide more context but increase token usage.",
         rich_help_panel="Memory Configuration",
     ),
     host: str = opts.SERVER_HOST,
@@ -36,7 +39,7 @@ def proxy(
     ),
     max_entries: int = typer.Option(
         500,
-        help="Maximum stored memory entries per conversation (excluding summary).",
+        help="Maximum entries per conversation before oldest are evicted. Summaries are preserved separately.",
         rich_help_panel="Memory Configuration",
     ),
     mmr_lambda: float = typer.Option(
@@ -46,7 +49,7 @@ def proxy(
     ),
     recency_weight: float = typer.Option(
         0.2,
-        help="Recency score weight (0.0-1.0). Controls freshness vs. relevance. Default 0.2 (20% recency, 80% semantic relevance).",
+        help="Weight for recency vs semantic relevance (0.0-1.0). At 0.2: 20% recency, 80% semantic similarity.",
         rich_help_panel="Memory Configuration",
     ),
     score_threshold: float = typer.Option(
@@ -57,16 +60,16 @@ def proxy(
     summarization: bool = typer.Option(
         True,  # noqa: FBT003
         "--summarization/--no-summarization",
-        help="Enable automatic fact extraction and summaries.",
+        help="Extract facts and generate summaries after each turn using the LLM. Disable to only store raw conversation turns.",
         rich_help_panel="Memory Configuration",
     ),
     git_versioning: bool = typer.Option(
         True,  # noqa: FBT003
         "--git-versioning/--no-git-versioning",
-        help="Enable automatic git commit of memory changes.",
+        help="Auto-commit memory changes to git. Initializes a repo in `--memory-path` if needed. Provides full history of memory evolution.",
         rich_help_panel="Memory Configuration",
     ),
-    log_level: str = opts.with_default(opts.LOG_LEVEL, "INFO"),
+    log_level: opts.LogLevel = opts.SERVER_LOG_LEVEL,
     config_file: str | None = opts.CONFIG_FILE,
     print_args: bool = opts.PRINT_ARGS,
 ) -> None:
@@ -76,7 +79,7 @@ def proxy(
     CLI, or IDE plugin) and an OpenAI-compatible LLM provider (e.g., OpenAI,
     Ollama, vLLM).
 
-    Key Features:
+    **Key Features:**
 
     - **Simple Markdown Files:** Memories are stored as human-readable Markdown
       files, serving as the ultimate source of truth.
@@ -87,7 +90,7 @@ def proxy(
     - **Proxy Middleware:** Works transparently with any OpenAI-compatible
       `/chat/completions` endpoint.
 
-    How it works:
+    **How it works:**
 
     1.  Intercepts `POST /v1/chat/completions` requests.
     2.  **Retrieves** relevant memories (facts, previous conversations) from a
@@ -97,23 +100,25 @@ def proxy(
     5.  **Extracts** new facts from the conversation in the background and
         updates the long-term memory store (including handling contradictions).
 
-    Use this to give "long-term memory" to any OpenAI-compatible application.
-    Point your client's base URL to `http://localhost:8100/v1`.
+    **Example:**
+
+        # Start proxy pointing to local Ollama
+        agent-cli memory proxy --openai-base-url http://localhost:11434/v1
+
+        # Then configure your chat client to use http://localhost:8100/v1
+        # as its OpenAI base URL. All requests flow through the memory proxy.
+
+    **Per-request overrides:** Clients can include these fields in the request
+    body: `memory_id` (conversation ID), `memory_top_k`, `memory_recency_weight`,
+    `memory_score_threshold`.
     """
     if print_args:
         print_command_line_args(locals())
 
-    try:
-        import uvicorn  # noqa: PLC0415
+    import uvicorn  # noqa: PLC0415
 
-        from agent_cli.memory._files import ensure_store_dirs  # noqa: PLC0415
-        from agent_cli.memory.api import create_app  # noqa: PLC0415
-    except ImportError as exc:
-        print_error_message(
-            "Memory dependencies are not installed. Please install with "
-            "`pip install agent-cli[memory]` or `uv sync --extra memory`.",
-        )
-        raise typer.Exit(1) from exc
+    from agent_cli.memory._files import ensure_store_dirs  # noqa: PLC0415
+    from agent_cli.memory.api import create_app  # noqa: PLC0415
 
     logging.basicConfig(
         level=log_level.upper(),
@@ -131,12 +136,15 @@ def proxy(
     entries_dir, _ = ensure_store_dirs(memory_path)
     if openai_base_url is None:
         openai_base_url = constants.DEFAULT_OPENAI_BASE_URL
+    effective_embedding_url = embedding_base_url or openai_base_url
 
     console.print(f"[bold green]Starting Memory Proxy on {host}:{port}[/bold green]")
     console.print(f"  💾 Memory store: [blue]{memory_path}[/blue]")
     console.print(f"  📁 Entries: [blue]{entries_dir}[/blue]")
     console.print(f"  🤖 Backend: [blue]{openai_base_url}[/blue]")
-    console.print(f"  🧠 Embeddings: Using [blue]{embedding_model}[/blue]")
+    console.print(
+        f"  🧠 Embeddings: [blue]{embedding_model}[/blue] via [blue]{effective_embedding_url}[/blue]",
+    )
     console.print(f"  🔍 Memory top_k: [blue]{default_top_k}[/blue] entries per query")
     console.print(f"  🧹 Max entries per conversation: [blue]{max_entries}[/blue]")
     console.print(
@@ -150,6 +158,7 @@ def proxy(
     fastapi_app = create_app(
         memory_path,
         openai_base_url,
+        embedding_base_url=effective_embedding_url,
         embedding_model=embedding_model,
         embedding_api_key=openai_api_key,
         chat_api_key=openai_api_key,

@@ -18,10 +18,12 @@ Native macOS setup with full Metal GPU acceleration for optimal performance.
 
 ## Quick Start
 
-1. **Run the setup script:**
+1. **Clone and run the setup script:**
 
    ```bash
-   scripts/setup-macos.sh
+   git clone https://github.com/basnijholt/agent-cli.git
+   cd agent-cli
+   ./scripts/setup-macos.sh
    ```
 
 2. **Start all services:**
@@ -33,7 +35,7 @@ Native macOS setup with full Metal GPU acceleration for optimal performance.
 3. **Install agent-cli:**
 
    ```bash
-   uv tool install agent-cli
+   uv tool install agent-cli -p 3.13
    # or: pip install agent-cli
    ```
 
@@ -50,19 +52,19 @@ The `setup-macos.sh` script:
 - ✅ Installs `uv` if needed
 - ✅ Installs/checks Ollama (native macOS app)
 - ✅ Installs Zellij for session management
-- ✅ Prepares Wyoming service runners
+- ✅ Installs Whisper and TTS as launchd daemons via `agent-cli daemon install`
 
 ## Services Overview
 
-| Service          | Implementation         | Port  | GPU Support          |
-| ---------------- | ---------------------- | ----- | -------------------- |
-| **Ollama**       | Native macOS app       | 11434 | ✅ Metal GPU         |
-| **Whisper**      | Wyoming MLX Whisper    | 10300 | ✅ Apple Silicon MLX |
-| **Piper**        | Wyoming Piper (via uv) | 10200 | N/A                  |
-| **OpenWakeWord** | Wyoming OpenWakeWord   | 10400 | N/A                  |
+| Service          | Implementation          | Port  | GPU Support          |
+| ---------------- | ----------------------- | ----- | -------------------- |
+| **Ollama**       | Native macOS app        | 11434 | ✅ Metal GPU         |
+| **Whisper**      | MLX Whisper (via daemon)| 10300 | ✅ Apple Silicon MLX |
+| **TTS (Kokoro)** | Kokoro TTS (via daemon) | 10200 | ✅ Metal GPU (MPS)   |
+| **OpenWakeWord** | Wyoming OpenWakeWord    | 10400 | N/A                  |
 
 > [!NOTE]
-> Whisper uses [wyoming-mlx-whisper](https://github.com/basnijholt/wyoming-mlx-whisper) with `whisper-large-v3-turbo` for near real-time transcription on Apple Silicon.
+> Whisper and TTS run as launchd daemons via `agent-cli daemon install`, using MLX and Metal for GPU acceleration on Apple Silicon.
 
 ## Session Management with Zellij
 
@@ -93,13 +95,14 @@ brew services start ollama
 # Or run in foreground:
 ollama serve
 
-# Whisper (Apple Silicon: launchd service or manual)
-launchctl list com.wyoming_mlx_whisper
-# Or run in foreground:
-scripts/run-whisper.sh
+# Whisper and TTS are installed as launchd daemons
+agent-cli daemon status              # Check all daemon status
+agent-cli daemon install whisper     # Install whisper daemon
+agent-cli daemon install tts-kokoro  # Install TTS daemon
 
-# Piper
-scripts/run-piper.sh
+# Or run in foreground (without daemon):
+agent-cli server whisper
+agent-cli server tts --backend kokoro
 
 # OpenWakeWord
 scripts/run-openwakeword.sh

@@ -51,11 +51,16 @@ uv sync --extra memory
 ### Examples
 
 ```bash
-# With local LLM (Ollama)
+# With local LLM (Ollama) - uses default embedding model
+agent-cli memory proxy \
+  --memory-path ./memory_db \
+  --openai-base-url http://localhost:11434/v1
+
+# With local Ollama embedding model (requires: ollama pull nomic-embed-text)
 agent-cli memory proxy \
   --memory-path ./memory_db \
   --openai-base-url http://localhost:11434/v1 \
-  --embedding-model embeddinggemma:300m
+  --embedding-model nomic-embed-text
 
 # Use with agent-cli chat
 agent-cli chat --openai-base-url http://localhost:8100/v1 --llm-provider openai
@@ -73,14 +78,14 @@ agent-cli chat --openai-base-url http://localhost:8100/v1 --llm-provider openai
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--memory-path` | `./memory_db` | Path to the memory store (files + derived vector index). |
-| `--default-top-k` | `5` | Number of memory entries to retrieve per query. |
-| `--max-entries` | `500` | Maximum stored memory entries per conversation (excluding summary). |
+| `--memory-path` | `./memory_db` | Directory for memory storage. Contains `entries/` (Markdown files) and `chroma/` (vector index). Created automatically if it doesn't exist. |
+| `--default-top-k` | `5` | Number of relevant memories to inject into each request. Higher values provide more context but increase token usage. |
+| `--max-entries` | `500` | Maximum entries per conversation before oldest are evicted. Summaries are preserved separately. |
 | `--mmr-lambda` | `0.7` | MMR lambda (0-1): higher favors relevance, lower favors diversity. |
-| `--recency-weight` | `0.2` | Recency score weight (0.0-1.0). Controls freshness vs. relevance. Default 0.2 (20% recency, 80% semantic relevance). |
+| `--recency-weight` | `0.2` | Weight for recency vs semantic relevance (0.0-1.0). At 0.2: 20% recency, 80% semantic similarity. |
 | `--score-threshold` | `0.35` | Minimum semantic relevance threshold (0.0-1.0). Memories below this score are discarded to reduce noise. |
-| `--summarization/--no-summarization` | `true` | Enable automatic fact extraction and summaries. |
-| `--git-versioning/--no-git-versioning` | `true` | Enable automatic git commit of memory changes. |
+| `--summarization/--no-summarization` | `true` | Extract facts and generate summaries after each turn using the LLM. Disable to only store raw conversation turns. |
+| `--git-versioning/--no-git-versioning` | `true` | Auto-commit memory changes to git. Initializes a repo in `--memory-path` if needed. Provides full history of memory evolution. |
 
 ### LLM: OpenAI-compatible
 
@@ -93,6 +98,7 @@ agent-cli chat --openai-base-url http://localhost:8100/v1 --llm-provider openai
 
 | Option | Default | Description |
 |--------|---------|-------------|
+| `--embedding-base-url` | - | Base URL for embedding API. Falls back to `--openai-base-url` if not set. Useful when using different providers for chat vs embeddings. |
 | `--embedding-model` | `text-embedding-3-small` | Embedding model to use for vectorization. |
 
 ### Server Configuration
@@ -106,7 +112,7 @@ agent-cli chat --openai-base-url http://localhost:8100/v1 --llm-provider openai
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--log-level` | `INFO` | Set logging level. |
+| `--log-level` | `info` | Set logging level. |
 | `--config` | - | Path to a TOML configuration file. |
 | `--print-args` | `false` | Print the command line arguments, including variables taken from the configuration file. |
 
@@ -160,16 +166,16 @@ agent-cli memory add -c work "Project deadline is Friday"
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--file` | - | Read memories from file. Use '-' for stdin. Supports JSON array, JSON object with 'memories' key, or plain text (one per line). |
-| `--conversation-id` | `default` | Conversation ID to add memories to. |
-| `--memory-path` | `./memory_db` | Path to the memory store. |
-| `--git-versioning/--no-git-versioning` | `true` | Commit changes to git. |
+| `--file, -f` | - | Read memories from file. Use '-' for stdin. Supports JSON array, JSON object with 'memories' key, or plain text (one per line). |
+| `--conversation-id, -c` | `default` | Conversation namespace for these memories. Memories are retrieved per-conversation unless shared globally. |
+| `--memory-path` | `./memory_db` | Directory for memory storage (same as `memory proxy --memory-path`). |
+| `--git-versioning/--no-git-versioning` | `true` | Auto-commit changes to git for version history. |
 
 ### General Options
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--quiet` | `false` | Suppress console output from rich. |
+| `--quiet, -q` | `false` | Suppress console output from rich. |
 | `--config` | - | Path to a TOML configuration file. |
 | `--print-args` | `false` | Print the command line arguments, including variables taken from the configuration file. |
 

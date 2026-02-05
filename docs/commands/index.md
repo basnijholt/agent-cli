@@ -11,7 +11,7 @@ Agent CLI provides multiple commands, each designed for a specific purpose.
 | Command | Purpose | Use Case |
 |---------|---------|----------|
 | [`transcribe`](transcribe.md) | Speech-to-text | Record voice → get text in clipboard |
-| [`transcribe-daemon`](transcribe-daemon.md) | Continuous transcription | Background service with VAD |
+| [`transcribe-live`](transcribe-live.md) | Continuous transcription | Background service with VAD |
 | [`speak`](speak.md) | Text-to-speech | Read text aloud |
 | [`voice-edit`](voice-edit.md) | Voice-powered editor | Edit clipboard text with voice commands |
 | [`assistant`](assistant.md) | Wake word assistant | Hands-free voice interaction |
@@ -29,7 +29,15 @@ Agent CLI provides multiple commands, each designed for a specific purpose.
 |---------|---------|----------|
 | [`rag-proxy`](rag-proxy.md) | RAG server | Chat with your documents |
 | [`memory`](memory.md) | Long-term memory | Persistent conversation memory |
-| [`server`](server.md) | Transcription server | HTTP API for transcription |
+| [`server`](server/index.md) | ASR & TTS servers | Local Whisper and Kokoro/Piper with TTL-based memory management |
+| [`daemon`](daemon.md) | Service manager | Install/manage servers as system daemons |
+
+The [`server`](server/index.md) command provides local ASR (speech-to-text) and TTS (text-to-speech) servers with unique advantages over standalone alternatives:
+
+- **Dual-protocol** - Both OpenAI-compatible API and Wyoming protocol from the same server
+- **TTL-based memory management** - Models load on-demand and unload after idle periods, freeing RAM/VRAM
+- **Multi-platform acceleration** - MLX Whisper on Apple Silicon, Faster Whisper on Linux/CUDA
+- **Unified configuration** - Consistent CLI, environment variables, and Docker setup
 
 ## Installation Commands
 
@@ -39,7 +47,14 @@ These commands help set up Agent CLI and its services:
 |---------|---------|
 | [`install-services`](install-services.md) | Install all AI services (Ollama, Whisper, Piper, OpenWakeWord) |
 | [`install-hotkeys`](install-hotkeys.md) | Set up system-wide hotkeys |
+| [`install-extras`](install-extras.md) | Install optional Python dependencies (rag, memory, vad, etc.) |
 | [`start-services`](start-services.md) | Start all services in a Zellij terminal session |
+
+## Development Commands
+
+| Command | Purpose | Use Case |
+|---------|---------|----------|
+| [`dev`](dev.md) | Git worktree manager | Parallel development with AI agents |
 
 ## Configuration Commands
 
@@ -85,9 +100,9 @@ Most commands support multiple providers:
 
 ### TTS Providers (`--tts-provider`)
 
-- `wyoming` - Local Piper via Wyoming (default)
+- `wyoming` - Local TTS via Wyoming protocol (Kokoro or Piper, default)
 - `openai` - OpenAI-compatible TTS API
-- `kokoro` - Local Kokoro TTS
+- `kokoro` - Local Kokoro TTS (direct, without Wyoming)
 - `gemini` - Google Gemini TTS API
 
 ## Process Management

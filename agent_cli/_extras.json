@@ -1,0 +1,90 @@
+{
+  "audio": [
+    "Audio recording/playback",
+    [
+      "sounddevice"
+    ]
+  ],
+  "diarization": [
+    "Speaker diarization (pyannote.audio)",
+    [
+      "pyannote.audio"
+    ]
+  ],
+  "faster-whisper": [
+    "Whisper ASR via CTranslate2",
+    [
+      "faster_whisper"
+    ]
+  ],
+  "kokoro": [
+    "Kokoro neural TTS (GPU)",
+    [
+      "kokoro"
+    ]
+  ],
+  "llm": [
+    "LLM framework (pydantic-ai)",
+    [
+      "pydantic_ai"
+    ]
+  ],
+  "memory": [
+    "Long-term memory proxy",
+    [
+      "chromadb",
+      "yaml",
+      "pydantic_ai"
+    ]
+  ],
+  "mlx-whisper": [
+    "Whisper ASR for Apple Silicon",
+    [
+      "mlx_whisper"
+    ]
+  ],
+  "piper": [
+    "Piper TTS (CPU)",
+    [
+      "piper"
+    ]
+  ],
+  "rag": [
+    "RAG proxy (ChromaDB, embeddings)",
+    [
+      "chromadb",
+      "pydantic_ai"
+    ]
+  ],
+  "server": [
+    "FastAPI server components",
+    [
+      "fastapi"
+    ]
+  ],
+  "speed": [
+    "Audio speed adjustment (audiostretchy)",
+    [
+      "audiostretchy"
+    ]
+  ],
+  "vad": [
+    "Voice Activity Detection (Silero VAD via ONNX)",
+    [
+      "onnxruntime"
+    ]
+  ],
+  "whisper-transformers": [
+    "Whisper ASR via HuggingFace transformers",
+    [
+      "transformers",
+      "torch"
+    ]
+  ],
+  "wyoming": [
+    "Wyoming protocol support",
+    [
+      "wyoming"
+    ]
+  ]
+}

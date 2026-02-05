@@ -10,16 +10,17 @@ import time
 from contextlib import suppress
 from datetime import UTC, datetime, timedelta
 from pathlib import Path  # noqa: TC003
-from typing import Any
+from typing import Any, TypedDict
 
-import pyperclip
 import typer
 
 from agent_cli import config, opts
 from agent_cli.cli import app
 from agent_cli.core import process
 from agent_cli.core.audio import setup_devices
+from agent_cli.core.deps import requires_extras
 from agent_cli.core.utils import (
+    enable_json_mode,
     format_short_timedelta,
     iter_lines_from_file_end,
     maybe_live,
@@ -45,6 +46,15 @@ from agent_cli.services.asr import (
 from agent_cli.services.llm import process_and_update_clipboard
 
 LOGGER = logging.getLogger()
+
+
+class TranscriptResult(TypedDict, total=False):
+    """Result of transcription with optional LLM processing."""
+
+    raw_transcript: str | None
+    transcript: str | None
+    llm_enabled: bool
+
 
 SYSTEM_PROMPT = """
 CRITICAL: You must respond with ONLY the cleaned transcription text. Do NOT add any prefixes, explanations, or commentary whatsoever.
@@ -257,7 +267,7 @@ async def _async_main(  # noqa: PLR0912, PLR0915, C901
     save_recording: bool = True,
     process_name: str | None = None,
     diarization_cfg: config.Diarization | None = None,
-) -> None:
+) -> TranscriptResult:
     """Unified async entry point for both live and file-based transcription."""
     start_time = time.monotonic()
     transcript: str | None
@@ -282,7 +292,11 @@ async def _async_main(  # noqa: PLR0912, PLR0915, C901
                     f"❌ Failed to load audio from {audio_file_path}",
                     style="red",
                 )
-                return
+                return TranscriptResult(
+                    raw_transcript=None,
+                    transcript=None,
+                    llm_enabled=False,
+                )
 
             recorded_transcriber = create_recorded_audio_transcriber(provider_cfg)
 
@@ -294,6 +308,7 @@ async def _async_main(  # noqa: PLR0912, PLR0915, C901
                     LOGGER,
                     quiet=general_cfg.quiet,
                     file_suffix=suffix if use_native_format else ".wav",
+                    extra_instructions=extra_instructions,
                 )
             elif provider_cfg.asr_provider == "gemini":
                 transcript = await recorded_transcriber(
@@ -302,6 +317,7 @@ async def _async_main(  # noqa: PLR0912, PLR0915, C901
                     LOGGER,
                     quiet=general_cfg.quiet,
                     file_suffix=suffix if use_native_format else ".wav",
+                    extra_instructions=extra_instructions,
                 )
             elif provider_cfg.asr_provider == "wyoming":
                 transcript = await recorded_transcriber(
@@ -309,6 +325,7 @@ async def _async_main(  # noqa: PLR0912, PLR0915, C901
                     wyoming_asr_cfg=wyoming_asr_cfg,
                     logger=LOGGER,
                     quiet=general_cfg.quiet,
+                    extra_instructions=extra_instructions,
                 )
             else:
                 msg = f"Unsupported ASR provider: {provider_cfg.asr_provider}"
@@ -333,6 +350,7 @@ async def _async_main(  # noqa: PLR0912, PLR0915, C901
                     quiet=general_cfg.quiet,
                     live=live,
                     save_recording=save_recording,
+                    extra_instructions=extra_instructions,
                 )
 
         elapsed = time.monotonic() - start_time
@@ -417,6 +435,8 @@ async def _async_main(  # noqa: PLR0912, PLR0915, C901
                 )
             clipboard_snapshot: str | None = None
             if general_cfg.clipboard:
+                import pyperclip  # noqa: PLC0415
+
                 clipboard_snapshot = pyperclip.paste()
                 pyperclip.copy(transcript)
                 LOGGER.info("Copied raw transcript to clipboard before LLM processing.")
@@ -466,7 +486,11 @@ async def _async_main(  # noqa: PLR0912, PLR0915, C901
                     processed_transcript=processed_transcript,
                     model_info=model_info,
                 )
-            return
+            return TranscriptResult(
+                raw_transcript=transcript,
+                transcript=processed_transcript,
+                llm_enabled=True,
+            )
 
     # When not using LLM, show transcript in output panel for consistency
     if transcript:
@@ -494,6 +518,8 @@ async def _async_main(  # noqa: PLR0912, PLR0915, C901
             )
 
         if general_cfg.clipboard:
+            import pyperclip  # noqa: PLC0415
+
             pyperclip.copy(transcript)
             LOGGER.info("Copied transcript to clipboard.")
         else:
@@ -503,14 +529,21 @@ async def _async_main(  # noqa: PLR0912, PLR0915, C901
         if not general_cfg.quiet:
             print_with_style("⚠️ No transcript captured.", style="yellow")
 
+    return TranscriptResult(
+        raw_transcript=transcript,
+        transcript=transcript,
+        llm_enabled=False,
+    )
 
-@app.command("transcribe")
-def transcribe(  # noqa: PLR0912, PLR0911
+
+@app.command("transcribe", rich_help_panel="Voice Commands")
+@requires_extras("audio", "llm")
+def transcribe(  # noqa: PLR0912, PLR0911, PLR0915, C901
     *,
     extra_instructions: str | None = typer.Option(
         None,
         "--extra-instructions",
-        help="Additional instructions for the LLM to process the transcription.",
+        help="Extra instructions appended to the LLM cleanup prompt (requires `--llm`).",
         rich_help_panel="LLM Configuration",
     ),
     from_file: Path | None = opts.FROM_FILE,
@@ -543,10 +576,11 @@ def transcribe(  # noqa: PLR0912, PLR0911
     toggle: bool = opts.TOGGLE,
     # --- General Options ---
     clipboard: bool = opts.CLIPBOARD,
-    log_level: str = opts.LOG_LEVEL,
+    log_level: opts.LogLevel = opts.LOG_LEVEL,
     log_file: str | None = opts.LOG_FILE,
     list_devices: bool = opts.LIST_DEVICES,
     quiet: bool = opts.QUIET,
+    json_output: bool = opts.JSON_OUTPUT,
     config_file: str | None = opts.CONFIG_FILE,
     print_args: bool = opts.PRINT_ARGS,
     transcription_log: Path | None = opts.TRANSCRIPTION_LOG,
@@ -557,10 +591,34 @@ def transcribe(  # noqa: PLR0912, PLR0911
     min_speakers: int | None = opts.MIN_SPEAKERS,
     max_speakers: int | None = opts.MAX_SPEAKERS,
 ) -> None:
-    """Wyoming ASR Client for streaming microphone audio to a transcription server."""
+    """Record audio from microphone and transcribe to text.
+
+    Records until you press Ctrl+C (or send SIGINT), then transcribes using your
+    configured ASR provider. The transcript is copied to the clipboard by default.
+
+    **With `--llm`**: Passes the raw transcript through an LLM to clean up speech
+    recognition errors, add punctuation, remove filler words, and improve readability.
+
+    **With `--toggle`**: Bind to a hotkey for push-to-talk. First call starts recording,
+    second call stops and transcribes.
+
+    **Examples**:
+
+    - Record and transcribe: `agent-cli transcribe`
+
+    - With LLM cleanup: `agent-cli transcribe --llm`
+
+    - Re-transcribe last recording: `agent-cli transcribe --last-recording 1`
+    """
     if print_args:
         print_command_line_args(locals())
-    setup_logging(log_level, log_file, quiet=quiet)
+
+    # JSON output implies quiet mode and no clipboard - set this early before any output
+    effective_quiet = quiet or json_output
+    if json_output:
+        enable_json_mode()
+
+    setup_logging(log_level, log_file, quiet=effective_quiet)
 
     # Expand user path for transcription log
     if transcription_log:
@@ -625,12 +683,13 @@ def transcribe(  # noqa: PLR0912, PLR0911
             return
 
     # Create all config objects once
+    effective_clipboard = clipboard and not json_output
     general_cfg = config.General(
         log_level=log_level,
         log_file=log_file,
-        quiet=quiet,
+        quiet=effective_quiet,
         list_devices=list_devices,
-        clipboard=clipboard,
+        clipboard=effective_clipboard,
     )
     provider_cfg = config.ProviderSelection(
         asr_provider=asr_provider,
@@ -644,7 +703,7 @@ def transcribe(  # noqa: PLR0912, PLR0911
     openai_asr_cfg = config.OpenAIASR(
         asr_openai_model=asr_openai_model,
         openai_api_key=openai_api_key,
-        openai_base_url=asr_openai_base_url,
+        openai_base_url=asr_openai_base_url or openai_base_url,
         asr_openai_prompt=asr_openai_prompt,
     )
     gemini_asr_cfg = config.GeminiASR(
@@ -668,7 +727,7 @@ def transcribe(  # noqa: PLR0912, PLR0911
     # Handle recovery mode (transcribing from file)
     if audio_file_path:
         # We're transcribing from a saved file
-        asyncio.run(
+        result = asyncio.run(
             _async_main(
                 audio_file_path=audio_file_path,
                 extra_instructions=extra_instructions,
@@ -685,6 +744,8 @@ def transcribe(  # noqa: PLR0912, PLR0911
                 diarization_cfg=diarization_cfg,
             ),
         )
+        if json_output:
+            print(json.dumps(result))
         return
 
     # Normal recording mode
@@ -713,7 +774,7 @@ def transcribe(  # noqa: PLR0912, PLR0911
 
     # Use context manager for PID file management
     with process.pid_file_context(process_name), suppress(KeyboardInterrupt):
-        asyncio.run(
+        result = asyncio.run(
             _async_main(
                 extra_instructions=extra_instructions,
                 provider_cfg=provider_cfg,
@@ -732,3 +793,5 @@ def transcribe(  # noqa: PLR0912, PLR0911
                 diarization_cfg=diarization_cfg,
             ),
         )
+    if json_output:
+        print(json.dumps(result))

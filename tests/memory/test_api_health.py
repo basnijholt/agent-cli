@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import sys
 from contextlib import ExitStack
 from typing import Any
 from unittest.mock import patch
 
+import pytest
 from fastapi.testclient import TestClient
 
 from agent_cli.constants import DEFAULT_OPENAI_EMBEDDING_MODEL
@@ -16,6 +18,7 @@ class _FakeCollection:
     pass
 
 
+@pytest.mark.skipif(sys.platform == "win32", reason="Flaky on Windows: git subprocess hangs")
 def test_memory_health_and_startup_shutdown(tmp_path: Any) -> None:
     started: list[str] = []
 

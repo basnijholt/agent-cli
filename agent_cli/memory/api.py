@@ -22,6 +22,7 @@ LOGGER = logging.getLogger(__name__)
 def create_app(
     memory_path: Path,
     openai_base_url: str,
+    embedding_base_url: str | None = None,
     embedding_model: str = DEFAULT_OPENAI_EMBEDDING_MODEL,
     embedding_api_key: str | None = None,
     chat_api_key: str | None = None,
@@ -30,7 +31,7 @@ def create_app(
     max_entries: int = 500,
     mmr_lambda: float = 0.7,
     recency_weight: float = 0.2,
-    score_threshold: float = 0.35,
+    score_threshold: float | None = None,
     enable_git_versioning: bool = True,
 ) -> FastAPI:
     """Create the FastAPI app for memory-backed chat."""
@@ -39,6 +40,7 @@ def create_app(
     client = MemoryClient(
         memory_path=memory_path,
         openai_base_url=openai_base_url,
+        embedding_base_url=embedding_base_url,
         embedding_model=embedding_model,
         embedding_api_key=embedding_api_key,
         chat_api_key=chat_api_key,

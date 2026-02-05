@@ -8,29 +8,29 @@ on:
 
 jobs:
   markdown-code-runner:
-    runs-on: macos-latest
+    runs-on: ubuntu-latest
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           persist-credentials: false
           fetch-depth: 0
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.13.11"
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v6
+        uses: astral-sh/setup-uv@v7
 
       - name: Run markdown-code-runner
         env:
           TERM: dumb
           NO_COLOR: 1
-          TERMINAL_WIDTH: 90
         run: |
           uv sync
           uv run python docs/run_markdown_code_runner.py
-          find . -name "*.md" -exec sed -i '' 's/[[:space:]]*$//' {} \;
 
       - name: Commit updated docs
         id: commit

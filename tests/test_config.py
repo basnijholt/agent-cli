@@ -12,7 +12,14 @@ from typer import Context
 from typer.testing import CliRunner
 
 from agent_cli.cli import app, set_config_defaults
-from agent_cli.config import ProviderSelection, load_config, normalize_provider_defaults
+from agent_cli.config import (
+    GeminiASR,
+    OpenAIASR,
+    ProviderSelection,
+    WyomingASR,
+    load_config,
+    normalize_provider_defaults,
+)
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -186,10 +193,80 @@ def test_rag_proxy_help_includes_config_option() -> None:
     assert "--config" in clean_output
 
 
-def test_server_help_includes_config_option() -> None:
-    """Ensure server command wires config option (for defaults loading)."""
-    result = runner.invoke(app, ["server", "--help"])
-    assert result.exit_code == 0
-    # Strip ANSI color codes for more reliable testing
-    clean_output = re.sub(r"\x1b\[[0-9;]*m", "", result.stdout)
-    assert "--config" in clean_output
+class TestASRGetEffectivePrompt:
+    """Tests for get_effective_prompt() on ASR config classes."""
+
+    @pytest.mark.parametrize(
+        ("config_prompt", "extra_instructions", "expected"),
+        [
+            # Both set → combined with double newline
+            ("base prompt", "extra context", "base prompt\n\nextra context"),
+            # Only config prompt → returns config prompt
+            ("base prompt", None, "base prompt"),
+            # Only extra_instructions → returns extra_instructions
+            (None, "extra context", "extra context"),
+            # Neither set → returns None
+            (None, None, None),
+            # Empty string config prompt with extra → returns extra (falsy check)
+            ("", "extra context", "extra context"),
+            # Config prompt with empty extra → returns config prompt
+            ("base prompt", "", "base prompt"),
+        ],
+    )
+    def test_wyoming_asr_get_effective_prompt(
+        self,
+        config_prompt: str | None,
+        extra_instructions: str | None,
+        expected: str | None,
+    ) -> None:
+        """Test WyomingASR.get_effective_prompt() combines prompts correctly."""
+        cfg = WyomingASR(
+            asr_wyoming_ip="localhost",
+            asr_wyoming_port=10300,
+            asr_wyoming_prompt=config_prompt,
+        )
+        assert cfg.get_effective_prompt(extra_instructions) == expected
+
+    @pytest.mark.parametrize(
+        ("config_prompt", "extra_instructions", "expected"),
+        [
+            ("base prompt", "extra context", "base prompt\n\nextra context"),
+            ("base prompt", None, "base prompt"),
+            (None, "extra context", "extra context"),
+            (None, None, None),
+        ],
+    )
+    def test_openai_asr_get_effective_prompt(
+        self,
+        config_prompt: str | None,
+        extra_instructions: str | None,
+        expected: str | None,
+    ) -> None:
+        """Test OpenAIASR.get_effective_prompt() combines prompts correctly."""
+        cfg = OpenAIASR(
+            asr_openai_model="whisper-1",
+            asr_openai_prompt=config_prompt,
+        )
+        assert cfg.get_effective_prompt(extra_instructions) == expected
+
+    @pytest.mark.parametrize(
+        ("config_prompt", "extra_instructions", "expected"),
+        [
+            ("base prompt", "extra context", "base prompt\n\nextra context"),
+            ("base prompt", None, "base prompt"),
+            (None, "extra context", "extra context"),
+            (None, None, None),
+        ],
+    )
+    def test_gemini_asr_get_effective_prompt(
+        self,
+        config_prompt: str | None,
+        extra_instructions: str | None,
+        expected: str | None,
+    ) -> None:
+        """Test GeminiASR.get_effective_prompt() combines prompts correctly."""
+        cfg = GeminiASR(
+            asr_gemini_model="gemini-2.0-flash",
+            asr_gemini_prompt=config_prompt,
+        )
+        assert cfg.get_effective_prompt(extra_instructions) == expected

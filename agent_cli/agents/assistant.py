@@ -1,29 +1,4 @@
-r"""Wake word-based voice assistant that records when wake word is detected.
-
-This agent uses Wyoming wake word detection to implement a hands-free voice assistant that:
-1. Continuously listens for a wake word
-2. When the wake word is detected, starts recording user speech
-3. When the wake word is detected again, stops recording and processes the speech
-4. Sends the recorded speech to ASR for transcription
-5. Optionally processes the transcript with an LLM and speaks the response
-
-WORKFLOW:
-1. Agent starts listening for the specified wake word
-2. First wake word detection -> start recording user speech
-3. Second wake word detection -> stop recording and process the speech
-4. Transcribe the recorded speech using Wyoming ASR
-5. Optionally process with LLM and respond with TTS
-
-USAGE:
-- Start the agent: assistant --wake-word "ok_nabu" --input-device-index 1
-- The agent runs continuously until stopped with Ctrl+C or --stop
-- Uses background process management for daemon-like operation
-
-REQUIREMENTS:
-- Wyoming wake word server (e.g., wyoming-openwakeword)
-- Wyoming ASR server (e.g., wyoming-whisper)
-- Optional: Wyoming TTS server for responses
-"""
+"""Wake word-based voice assistant using Wyoming protocol services."""
 
 from __future__ import annotations
 
@@ -41,6 +16,7 @@ from agent_cli.agents._voice_agent_common import (
 from agent_cli.cli import app
 from agent_cli.core import audio, process
 from agent_cli.core.audio import setup_devices
+from agent_cli.core.deps import requires_extras
 from agent_cli.core.utils import (
     InteractiveStopEvent,
     maybe_live,
@@ -253,7 +229,8 @@ async def _async_main(
                 print_with_style("✨ Ready for next command...", style="green")
 
 
-@app.command("assistant")
+@app.command("assistant", rich_help_panel="Voice Commands")
+@requires_extras("audio", "llm")
 def assistant(
     *,
     # --- Provider Selection ---
@@ -304,16 +281,38 @@ def assistant(
     # --- General Options ---
     save_file: Path | None = opts.SAVE_FILE,
     clipboard: bool = opts.CLIPBOARD,
-    log_level: str = opts.LOG_LEVEL,
+    log_level: opts.LogLevel = opts.LOG_LEVEL,
     log_file: str | None = opts.LOG_FILE,
     list_devices: bool = opts.LIST_DEVICES,
     quiet: bool = opts.QUIET,
     config_file: str | None = opts.CONFIG_FILE,
     print_args: bool = opts.PRINT_ARGS,
 ) -> None:
-    """Wake word-based voice assistant using local or remote services."""
+    """Hands-free voice assistant using wake word detection.
+
+    Continuously listens for a wake word, then records your speech until you say
+    the wake word again. The recording is transcribed and sent to an LLM for a
+    conversational response, optionally spoken back via TTS.
+
+    **Conversation flow:**
+      1. Say wake word → starts recording
+      2. Speak your question/command
+      3. Say wake word again → stops recording and processes
+
+    The assistant runs in a loop, ready for the next command after each response.
+    Stop with Ctrl+C or `--stop`.
+
+    **Requirements:**
+      - Wyoming wake word server (e.g., wyoming-openwakeword on port 10400)
+      - Wyoming ASR server (e.g., wyoming-whisper on port 10300)
+      - Optional: TTS server for spoken responses (enable with `--tts`)
+
+    **Example:**
+      `assistant --wake-word ok_nabu --tts --input-device-name USB`
+    """
     if print_args:
         print_command_line_args(locals())
+
     setup_logging(log_level, log_file, quiet=quiet)
     general_cfg = config.General(
         log_level=log_level,
@@ -339,69 +338,7 @@ def assistant(
         suppress(KeyboardInterrupt),
         maybe_live(not general_cfg.quiet) as live,
     ):
-        provider_cfg = config.ProviderSelection(
-            asr_provider=asr_provider,
-            llm_provider=llm_provider,
-            tts_provider=tts_provider,
-        )
-        audio_in_cfg = config.AudioInput(
-            input_device_index=input_device_index,
-            input_device_name=input_device_name,
-        )
-        wyoming_asr_cfg = config.WyomingASR(
-            asr_wyoming_ip=asr_wyoming_ip,
-            asr_wyoming_port=asr_wyoming_port,
-        )
-        openai_asr_cfg = config.OpenAIASR(
-            asr_openai_model=asr_openai_model,
-            openai_api_key=openai_api_key,
-        )
-        gemini_asr_cfg = config.GeminiASR(
-            asr_gemini_model=asr_gemini_model,
-            gemini_api_key=gemini_api_key,
-        )
-        ollama_cfg = config.Ollama(
-            llm_ollama_model=llm_ollama_model,
-            llm_ollama_host=llm_ollama_host,
-        )
-        openai_llm_cfg = config.OpenAILLM(
-            llm_openai_model=llm_openai_model,
-            openai_api_key=openai_api_key,
-            openai_base_url=openai_base_url,
-        )
-        gemini_llm_cfg = config.GeminiLLM(
-            llm_gemini_model=llm_gemini_model,
-            gemini_api_key=gemini_api_key,
-        )
-        audio_out_cfg = config.AudioOutput(
-            enable_tts=enable_tts,
-            output_device_index=output_device_index,
-            output_device_name=output_device_name,
-            tts_speed=tts_speed,
-        )
-        wyoming_tts_cfg = config.WyomingTTS(
-            tts_wyoming_ip=tts_wyoming_ip,
-            tts_wyoming_port=tts_wyoming_port,
-            tts_wyoming_voice=tts_wyoming_voice,
-            tts_wyoming_language=tts_wyoming_language,
-            tts_wyoming_speaker=tts_wyoming_speaker,
-        )
-        openai_tts_cfg = config.OpenAITTS(
-            tts_openai_model=tts_openai_model,
-            tts_openai_voice=tts_openai_voice,
-            openai_api_key=openai_api_key,
-            tts_openai_base_url=tts_openai_base_url,
-        )
-        kokoro_tts_cfg = config.KokoroTTS(
-            tts_kokoro_model=tts_kokoro_model,
-            tts_kokoro_voice=tts_kokoro_voice,
-            tts_kokoro_host=tts_kokoro_host,
-        )
-        gemini_tts_cfg = config.GeminiTTS(
-            tts_gemini_model=tts_gemini_model,
-            tts_gemini_voice=tts_gemini_voice,
-            gemini_api_key=gemini_api_key,
-        )
+        cfgs = config.create_provider_configs_from_locals(locals())
         wake_word_cfg = config.WakeWord(
             wake_server_ip=wake_server_ip,
             wake_server_port=wake_server_port,
@@ -420,20 +357,20 @@ def assistant(
 
         asyncio.run(
             _async_main(
-                provider_cfg=provider_cfg,
+                provider_cfg=cfgs.provider,
                 general_cfg=general_cfg,
-                audio_in_cfg=audio_in_cfg,
-                wyoming_asr_cfg=wyoming_asr_cfg,
-                openai_asr_cfg=openai_asr_cfg,
-                gemini_asr_cfg=gemini_asr_cfg,
-                ollama_cfg=ollama_cfg,
-                openai_llm_cfg=openai_llm_cfg,
-                gemini_llm_cfg=gemini_llm_cfg,
-                audio_out_cfg=audio_out_cfg,
-                wyoming_tts_cfg=wyoming_tts_cfg,
-                openai_tts_cfg=openai_tts_cfg,
-                kokoro_tts_cfg=kokoro_tts_cfg,
-                gemini_tts_cfg=gemini_tts_cfg,
+                audio_in_cfg=cfgs.audio_in,
+                wyoming_asr_cfg=cfgs.wyoming_asr,
+                openai_asr_cfg=cfgs.openai_asr,
+                gemini_asr_cfg=cfgs.gemini_asr,
+                ollama_cfg=cfgs.ollama,
+                openai_llm_cfg=cfgs.openai_llm,
+                gemini_llm_cfg=cfgs.gemini_llm,
+                audio_out_cfg=cfgs.audio_out,
+                wyoming_tts_cfg=cfgs.wyoming_tts,
+                openai_tts_cfg=cfgs.openai_tts,
+                kokoro_tts_cfg=cfgs.kokoro_tts,
+                gemini_tts_cfg=cfgs.gemini_tts,
                 wake_word_cfg=wake_word_cfg,
                 system_prompt=system_prompt,
                 agent_instructions=agent_instructions,

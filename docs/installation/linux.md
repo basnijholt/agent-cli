@@ -15,6 +15,11 @@ Native Linux setup with full NVIDIA GPU acceleration for optimal performance.
 - 8GB+ RAM (16GB+ recommended for GPU acceleration)
 - 10GB free disk space
 - Python 3.11 or higher
+- **PortAudio development libraries** (required for audio features):
+  - Ubuntu/Debian: `sudo apt install portaudio19-dev`
+  - Fedora: `sudo dnf install portaudio-devel`
+  - Arch: `sudo pacman -S portaudio`
+  - openSUSE: `sudo zypper install portaudio-devel`
 
 ### For GPU Acceleration (Optional)
 
@@ -41,7 +46,7 @@ Native Linux setup with full NVIDIA GPU acceleration for optimal performance.
 3. **Install agent-cli:**
 
    ```bash
-   uv tool install agent-cli
+   uv tool install agent-cli -p 3.13
    ```
 
 4. **Test the setup:**
@@ -67,10 +72,10 @@ curl -fsSL https://ollama.ai/install.sh | sh
 ollama serve
 
 # Terminal 2: Whisper (with GPU)
-scripts/run-whisper.sh
+agent-cli server whisper
 
 # Terminal 3: Piper
-scripts/run-piper.sh
+agent-cli server tts --backend piper
 
 # Terminal 4: OpenWakeWord
 scripts/run-openwakeword.sh

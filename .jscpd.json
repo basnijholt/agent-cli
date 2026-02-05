@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json.schemastore.org/jscpd.json",
+  "threshold": 3,
+  "reporters": ["console"],
+  "path": ["agent_cli/"],
+  "ignore": [
+    "**/node_modules/**",
+    "**/.git/**",
+    "**/.venv/**",
+    "**/venv/**",
+    "**/__pycache__/**",
+    "**/*.egg-info/**",
+    "**/build/**",
+    "**/dist/**",
+    "**/tests/**",
+    "**/test_*.py",
+    "**/*_test.py",
+    "**/scripts/**"
+  ],
+  "format": ["python"],
+  "minLines": 15,
+  "minTokens": 100,
+  "absolute": false,
+  "gitignore": true
+}

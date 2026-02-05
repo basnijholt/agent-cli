@@ -13,6 +13,7 @@ Before you begin, ensure you have:
 - **[uv](https://docs.astral.sh/uv/)** (recommended) or Python 3.11+
 - **A microphone** for voice features
 - **Speakers** for text-to-speech features
+- **PortAudio** (Linux only): `sudo apt install portaudio19-dev` or equivalent for your distro
 
 ## Installation
 
@@ -22,21 +23,38 @@ If you already have AI services set up or plan to use cloud services (OpenAI/Gem
 
 ```bash
 # Using uv (recommended)
-uv tool install agent-cli
+uv tool install agent-cli -p 3.13
 
 # Using pip
 pip install agent-cli
 ```
 
+> [!NOTE]
+> The `-p 3.13` flag is required because some dependencies don't support Python 3.14 yet.
+> See [uv issue #8206](https://github.com/astral-sh/uv/issues/8206) for details.
+
 ### Option 2: Full Local Setup
 
 For a complete local setup with all AI services:
+
+> [!TIP]
+> **Have a GPU?** Skip the setup below and run your own Whisper server in one command:
+> ```bash
+> pip install "agent-cli[faster-whisper]"
+> agent-cli server whisper
+> ```
+> Apple Silicon MLX-only setup:
+> ```bash
+> pip install "agent-cli[mlx-whisper]"
+> agent-cli server whisper --backend mlx
+> ```
+> See [Local Whisper Server](commands/server/whisper.md) for details.
 
 === "Using CLI Commands"
 
     ```bash
     # 1. Install agent-cli
-    uv tool install agent-cli
+    uv tool install agent-cli -p 3.13
 
     # 2. Install all required services
     agent-cli install-services
@@ -73,6 +91,13 @@ For a complete local setup with all AI services:
 agent-cli --version
 agent-cli --help
 ```
+
+> [!TIP]
+> **Short aliases:** You can also use `agent` or `ag` instead of `agent-cli`:
+> ```bash
+> ag --version
+> agent transcribe --help
+> ```
 
 ## Test Your Setup
 

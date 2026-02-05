@@ -16,6 +16,40 @@ if TYPE_CHECKING:
 # Default location for PID files
 PID_DIR = Path.home() / ".cache" / "agent-cli"
 
+# Store the original process title before any modifications
+_original_proctitle: str | None = None
+
+
+def set_process_title(process_name: str) -> None:
+    """Set the process title and thread name for identification in ps/htop/btop.
+
+    Sets both:
+    - Process title: 'agent-cli-{name} ({original})' - identifiable prefix + original command
+    - Thread name: 'ag-{name}' (max 15 chars) - shown as program name in btop/htop
+
+    The original command line is captured on first call and reused on subsequent
+    calls to prevent nested titles like 'agent-cli-x (agent-cli-y (...))'.
+
+    Args:
+        process_name: The name of the process (e.g., 'transcribe', 'chat').
+
+    """
+    import setproctitle  # noqa: PLC0415
+
+    global _original_proctitle
+
+    # Capture the original command line only once, before any modification
+    if _original_proctitle is None:
+        _original_proctitle = setproctitle.getproctitle()
+
+    # Set the full process title: identifiable prefix + original command for debugging
+    setproctitle.setproctitle(f"agent-cli-{process_name} ({_original_proctitle})")
+
+    # Set the thread name (program name in htop/btop, limited to 15 chars on Linux)
+    # Use shorter prefix "ag-" to fit more of the command name
+    thread_name = f"ag-{process_name}"[:15]
+    setproctitle.setthreadtitle(thread_name)
+
 
 def _get_pid_file(process_name: str) -> Path:
     """Get the path to the PID file for a given process name."""

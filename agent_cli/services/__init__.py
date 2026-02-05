@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import io
+import wave
 from typing import TYPE_CHECKING
 
 from agent_cli import constants
@@ -16,6 +17,7 @@ if TYPE_CHECKING:
 
 
 _RIFF_HEADER = b"RIFF"
+_LOG_TRUNCATE_LENGTH = 100
 
 
 def _is_wav_file(data: bytes) -> bool:
@@ -42,8 +44,6 @@ def pcm_to_wav(
         WAV-formatted audio bytes
 
     """
-    import wave  # noqa: PLC0415
-
     wav_buffer = io.BytesIO()
     with wave.open(wav_buffer, "wb") as wav_file:
         wav_file.setnchannels(channels)
@@ -73,12 +73,19 @@ OPENAI_SUPPORTED_FORMATS: frozenset[str] = frozenset(
 )
 
 
+_GEMINI_TRANSCRIPTION_PROMPT = (
+    "Transcribe this audio accurately. Return only the transcription text, "
+    "nothing else. Do not include any prefixes, labels, or explanations."
+)
+
+
 async def transcribe_audio_gemini(
     audio_data: bytes,
     gemini_asr_cfg: config.GeminiASR,
     logger: logging.Logger,
     *,
     file_suffix: str = ".wav",
+    extra_instructions: str | None = None,
     **_kwargs: object,
 ) -> str:
     """Transcribe audio using Gemini's native audio understanding.
@@ -91,6 +98,7 @@ async def transcribe_audio_gemini(
         gemini_asr_cfg: Gemini ASR configuration
         logger: Logger instance
         file_suffix: File extension for MIME type detection (default: .wav)
+        extra_instructions: Additional context/instructions to improve transcription
 
     """
     from google import genai  # noqa: PLC0415
@@ -105,9 +113,17 @@ async def transcribe_audio_gemini(
     # Determine MIME type from file suffix
     mime_type = _GEMINI_MIME_TYPES.get(file_suffix.lower(), "audio/wav")
 
+    logger.debug(
+        "Received audio: size=%d bytes, file_suffix=%s, is_wav=%s",
+        len(audio_data),
+        file_suffix,
+        _is_wav_file(audio_data),
+    )
+
     # If raw PCM (no recognized format header), convert to WAV
+    # Only do this if file_suffix is .wav but data doesn't have WAV header (indicating raw PCM)
     if not _is_wav_file(audio_data) and file_suffix.lower() == ".wav":
-        logger.debug("Converting raw PCM to WAV format for Gemini")
+        logger.debug("Wrapping raw PCM data with WAV header (16kHz, 16-bit, mono)")
         audio_data = pcm_to_wav(
             audio_data,
             sample_rate=constants.AUDIO_RATE,
@@ -117,17 +133,36 @@ async def transcribe_audio_gemini(
 
     logger.debug("Using MIME type: %s", mime_type)
 
+    # Build the transcription prompt with optional context
+    effective_prompt = gemini_asr_cfg.get_effective_prompt(extra_instructions)
+    if effective_prompt:
+        prompt = f"{_GEMINI_TRANSCRIPTION_PROMPT}\n\nContext: {effective_prompt}"
+        logger.debug("Using Gemini ASR with context prompt")
+    else:
+        prompt = _GEMINI_TRANSCRIPTION_PROMPT
+
     client = genai.Client(api_key=gemini_asr_cfg.gemini_api_key)
 
     response = await client.aio.models.generate_content(
         model=gemini_asr_cfg.asr_gemini_model,
         contents=[
-            "Transcribe this audio accurately. Return only the transcription text, "
-            "nothing else. Do not include any prefixes, labels, or explanations.",
+            prompt,
             types.Part.from_bytes(data=audio_data, mime_type=mime_type),
         ],
     )
-    return response.text.strip()
+    text = response.text.strip()
+
+    if text:
+        logger.info(
+            "Transcription result: %s",
+            text[:_LOG_TRUNCATE_LENGTH] + "..." if len(text) > _LOG_TRUNCATE_LENGTH else text,
+        )
+    else:
+        logger.warning(
+            "Empty transcription returned - audio may be silent, corrupted, or in wrong format",
+        )
+
+    return text
 
 
 def _get_openai_client(api_key: str | None, base_url: str | None = None) -> AsyncOpenAI:
@@ -149,6 +184,7 @@ async def transcribe_audio_openai(
     logger: logging.Logger,
     *,
     file_suffix: str = ".wav",
+    extra_instructions: str | None = None,
     **_kwargs: object,  # Accept extra kwargs for consistency with Wyoming
 ) -> str:
     """Transcribe audio using OpenAI's Whisper API or a compatible endpoint.
@@ -163,6 +199,7 @@ async def transcribe_audio_openai(
         openai_asr_cfg: OpenAI ASR configuration
         logger: Logger instance
         file_suffix: File extension for filename (default: .wav)
+        extra_instructions: Additional context/instructions to improve transcription
 
     """
     if openai_asr_cfg.openai_base_url:
@@ -180,18 +217,56 @@ async def transcribe_audio_openai(
         api_key=openai_asr_cfg.openai_api_key,
         base_url=openai_asr_cfg.openai_base_url,
     )
+
+    logger.debug(
+        "Received audio: size=%d bytes, file_suffix=%s, is_wav=%s",
+        len(audio_data),
+        file_suffix,
+        _is_wav_file(audio_data),
+    )
+
+    # Convert raw PCM to WAV if needed (custom endpoints like faster-whisper require proper format)
+    # Only do this if file_suffix is .wav but data doesn't have WAV header (indicating raw PCM)
+    if not _is_wav_file(audio_data) and file_suffix.lower() == ".wav":
+        logger.debug("Wrapping raw PCM data with WAV header (16kHz, 16-bit, mono)")
+        audio_data = pcm_to_wav(
+            audio_data,
+            sample_rate=constants.AUDIO_RATE,
+            sample_width=constants.AUDIO_FORMAT_WIDTH,
+            channels=constants.AUDIO_CHANNELS,
+        )
+
     audio_file = io.BytesIO(audio_data)
     # Use the correct file extension so OpenAI knows the format
     audio_file.name = f"audio{file_suffix}"
 
-    logger.debug("Using filename: %s", audio_file.name)
+    logger.debug("Sending to OpenAI with filename: %s", audio_file.name)
 
-    transcription_params = {"model": openai_asr_cfg.asr_openai_model, "file": audio_file}
-    if openai_asr_cfg.asr_openai_prompt:
-        transcription_params["prompt"] = openai_asr_cfg.asr_openai_prompt
+    transcription_params: dict[str, object] = {
+        "model": openai_asr_cfg.asr_openai_model,
+        "file": audio_file,
+    }
+
+    # Get effective prompt combining config and extra_instructions
+    effective_prompt = openai_asr_cfg.get_effective_prompt(extra_instructions)
+    if effective_prompt:
+        transcription_params["prompt"] = effective_prompt
+        logger.debug("Using OpenAI ASR with prompt")
 
     response = await client.audio.transcriptions.create(**transcription_params)
-    return response.text
+    text = response.text
+
+    if text:
+        logger.info(
+            "Transcription result: %s",
+            text[:_LOG_TRUNCATE_LENGTH] + "..." if len(text) > _LOG_TRUNCATE_LENGTH else text,
+        )
+    else:
+        logger.warning(
+            "Empty transcription returned - audio may be silent, corrupted, or in wrong format",
+        )
+
+    return text
 
 
 async def synthesize_speech_openai(

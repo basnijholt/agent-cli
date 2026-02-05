@@ -1,6 +1,6 @@
 [build-system]
-requires = ["setuptools>=42", "wheel", "versioningit"]
-build-backend = "setuptools.build_meta"
+requires = ["hatchling", "versioningit"]
+build-backend = "hatchling.build"
 
 [project]
 name = "agent-cli"
@@ -8,20 +8,19 @@ description = "A suite of AI-powered command-line tools for text correction, aud
 dynamic = ["version"]
 authors = [{ name = "Bas Nijholt", email = "bas@nijho.lt" }]
 dependencies = [
-    "wyoming",
-    "sounddevice",
-    "numpy",
+    # Core dependencies that are always required
+    "pydantic",  # Required for config.py models
     "rich",
     "pyperclip",
-    "pydantic-ai-slim[openai,duckduckgo,vertexai]",
-    "typer",
-    "openai",
+    "typer-slim[standard]",  # Depend on both typer and typer-slim to prevent
+    "typer",  # uv namespace corruption (astral-sh/uv#17645)
     "dotenv",
-    "google-genai>=1.25.0",
     "httpx",
     "psutil; sys_platform == 'win32'",
+    "setproctitle",
 ]
-requires-python = ">=3.11"
+# TODO: remove <3.14 constraint when onnxruntime supports 3.14 (https://github.com/microsoft/onnxruntime/issues/26309)
+requires-python = ">=3.11,<3.14"
 
 [project.readme]
 file = "README.md"
@@ -31,12 +30,20 @@ content-type = "text/markdown"
 Homepage = "https://github.com/basnijholt/agent-cli"
 
 [project.optional-dependencies]
+# Provider extras (previously base dependencies, now optional)
+wyoming = ["wyoming>=1.5.2"]  # Wyoming protocol only (for servers)
+audio = ["numpy", "sounddevice>=0.4.6", "agent-cli[wyoming]"]  # Local audio recording
+llm = ["pydantic-ai-slim[openai,google,duckduckgo,vertexai]>=0.1.1"]  # LLM framework with tools
+
+# Feature extras
 server = [
     "fastapi[standard]",
 ]
 rag = [
+    "pydantic-ai-slim[openai,google]>=0.1.1",  # pydantic-ai for LLM integration
     "fastapi[standard]",
     "chromadb>=0.4.22",
+    "openai>=1.0.0",  # Required by chromadb's OpenAIEmbeddingFunction
     "onnxruntime>=1.17.0",
     "huggingface-hub>=0.20.0",
     "transformers>=4.30.0",
@@ -45,8 +52,10 @@ rag = [
     "markitdown[docx,pdf,pptx]>=0.1.3",
 ]
 memory = [
+    "pydantic-ai-slim[openai,google]>=0.1.1",  # pydantic-ai for LLM integration
     "fastapi[standard]",
     "chromadb>=0.4.22",
+    "openai>=1.0.0",  # Required by chromadb's OpenAIEmbeddingFunction
     "onnxruntime>=1.17.0",
     "huggingface-hub>=0.20.0",
     "transformers>=4.30.0",
@@ -55,16 +64,43 @@ memory = [
     "pyyaml>=6.0.0",
 ]
 vad = [
-    "silero-vad>=5.1",
+    "onnxruntime>=1.16.0",
 ]
 diarization = [
     "pyannote-audio>=3.3",
 ]
+faster-whisper = [
+    "fastapi[standard]",
+    "faster-whisper>=1.0.0",
+]
+mlx-whisper = [
+    "fastapi[standard]; sys_platform == 'darwin' and platform_machine == 'arm64'",
+    "mlx-whisper>=0.4.0; sys_platform == 'darwin' and platform_machine == 'arm64'",
+]
+whisper-transformers = [
+    "fastapi[standard]",
+    "transformers>=4.30.0",
+    "torch>=2.0.0",
+]
+piper = [
+    "fastapi[standard]",
+    "piper-tts>=1.2.0",
+]
+kokoro = [
+    "fastapi[standard]",
+    "kokoro>=0.9.0",
+    "soundfile>=0.12.0",
+    "huggingface-hub>=0.20.0",
+    "pip",  # Kokoro uses spacy which calls `pip install` to download language models at runtime
+    "transformers>=4.40.0",  # Ensure pre-built tokenizers wheels for Python 3.13+
+]
+speed = ["audiostretchy>=1.3.0"]
+
+# Development extras
 test = [
     "pytest>=7.0.0",
     "pytest-asyncio>=0.20.0",
     "pytest-cov>=4.0.0",
-    "pydantic-ai-slim[openai]",
     "pytest-timeout",
     "pytest-mock",
 ]
@@ -72,11 +108,14 @@ dev = [
     "agent-cli[test]",
     "pre-commit>=3.0.0",
     "versioningit",
-    "markdown-code-runner",
+    "markdown-code-runner>=2.7.0",
     "ruff",
     "notebook",
+    "pylint>=3.0.0",
+    "pre-commit-uv>=4.1.4",
+    "zensical",
+    "markdown-gfm-admonition",
 ]
-speed = ["audiostretchy>=1.3.0"]
 
 # Duplicate of test+dev optional-dependencies groups
 [dependency-groups]
@@ -84,15 +123,14 @@ dev = [
     "pytest>=7.0.0",
     "pytest-asyncio>=0.20.0",
     "pytest-cov>=4.0.0",
-    "pydantic-ai-slim[openai]",
     "pytest-timeout",
     "pytest-mock",
     "pre-commit>=3.0.0",
     "versioningit",
-    "markdown-code-runner",
+    "markdown-code-runner>=2.7.0",
     "ruff",
     "notebook",
-    "audiostretchy>=1.3.0",
+    "pylint>=3.0.0",
     "pre-commit-uv>=4.1.4",
     "zensical",
     "markdown-gfm-admonition",
@@ -100,12 +138,14 @@ dev = [
 
 [project.scripts]
 agent-cli = "agent_cli.cli:app"
+agent = "agent_cli.cli:app"
+ag = "agent_cli.cli:app"
 
-[tool.setuptools.packages.find]
-include = ["agent_cli.*", "agent_cli"]
+[tool.hatch.version]
+source = "versioningit"
 
-[tool.setuptools.package-data]
-"agent_cli" = ["py.typed", "scripts/**/*", "example-config.toml"]
+[tool.hatch.build.targets.wheel]
+packages = ["agent_cli"]
 
 [tool.pytest.ini_options]
 asyncio_default_fixture_loop_scope = "function"
@@ -184,3 +224,17 @@ default-version = "0.0.0"
 method = "git"
 match = ["v*"]
 default-tag = "0.0.0"
+
+[tool.pylint.similarities]
+# Minimum lines number of a similarity (duplicate-code check)
+# Set higher than jscpd (15) to catch only very large duplications
+# jscpd is the primary checker; pylint is a secondary safety net
+min-similarity-lines = 20
+# Ignore comments when computing similarities
+ignore-comments = true
+# Ignore docstrings when computing similarities
+ignore-docstrings = true
+# Ignore imports when computing similarities
+ignore-imports = true
+# Ignore function signatures when computing similarities
+ignore-signatures = true

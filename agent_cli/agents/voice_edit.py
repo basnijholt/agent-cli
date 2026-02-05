@@ -34,6 +34,7 @@ This approach uses standard Unix background processes (&) instead of Python daem
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 from contextlib import suppress
 from pathlib import Path  # noqa: TC003
@@ -46,7 +47,9 @@ from agent_cli.agents._voice_agent_common import (
 from agent_cli.cli import app
 from agent_cli.core import process
 from agent_cli.core.audio import setup_devices
+from agent_cli.core.deps import requires_extras
 from agent_cli.core.utils import (
+    enable_json_mode,
     get_clipboard_text,
     maybe_live,
     print_command_line_args,
@@ -103,18 +106,18 @@ async def _async_main(
     openai_tts_cfg: config.OpenAITTS,
     kokoro_tts_cfg: config.KokoroTTS,
     gemini_tts_cfg: config.GeminiTTS,
-) -> None:
+) -> str | None:
     """Core asynchronous logic for the voice assistant."""
     device_info = setup_devices(general_cfg, audio_in_cfg, audio_out_cfg)
     if device_info is None:
-        return
+        return None
     input_device_index, _, tts_output_device_index = device_info
     audio_in_cfg.input_device_index = input_device_index
     audio_out_cfg.output_device_index = tts_output_device_index
 
     original_text = get_clipboard_text()
     if original_text is None:
-        return
+        return None
 
     if not general_cfg.quiet and original_text:
         print_input_panel(original_text, title="📝 Text to Process")
@@ -134,7 +137,7 @@ async def _async_main(
         if not audio_data:
             if not general_cfg.quiet:
                 print_with_style("No audio recorded", style="yellow")
-            return
+            return None
 
         instruction = await get_instruction_from_audio(
             audio_data=audio_data,
@@ -148,9 +151,9 @@ async def _async_main(
             quiet=general_cfg.quiet,
         )
         if not instruction:
-            return
+            return None
 
-        await process_instruction_and_respond(
+        return await process_instruction_and_respond(
             instruction=instruction,
             original_text=original_text,
             provider_cfg=provider_cfg,
@@ -170,7 +173,8 @@ async def _async_main(
         )
 
 
-@app.command("voice-edit")
+@app.command("voice-edit", rich_help_panel="Voice Commands")
+@requires_extras("audio", "llm")
 def voice_edit(
     *,
     # --- Provider Selection ---
@@ -217,30 +221,44 @@ def voice_edit(
     # --- General Options ---
     save_file: Path | None = opts.SAVE_FILE,
     clipboard: bool = opts.CLIPBOARD,
-    log_level: str = opts.LOG_LEVEL,
+    log_level: opts.LogLevel = opts.LOG_LEVEL,
     log_file: str | None = opts.LOG_FILE,
     list_devices: bool = opts.LIST_DEVICES,
     quiet: bool = opts.QUIET,
+    json_output: bool = opts.JSON_OUTPUT,
     config_file: str | None = opts.CONFIG_FILE,
     print_args: bool = opts.PRINT_ARGS,
 ) -> None:
-    """Interact with clipboard text via a voice command using local or remote services.
+    """Edit or query clipboard text using voice commands.
 
-    Usage:
-    - Run in foreground: agent-cli voice-edit --input-device-index 1
-    - Run in background: agent-cli voice-edit --input-device-index 1 &
-    - Check status: agent-cli voice-edit --status
-    - Stop background process: agent-cli voice-edit --stop
-    - List output devices: agent-cli voice-edit --list-output-devices
-    - Save TTS to file: agent-cli voice-edit --tts --save-file response.wav
+    **Workflow:** Captures clipboard text → records your voice command → transcribes
+    it → sends both to an LLM → copies result back to clipboard.
+
+    Use this for hands-free text editing (e.g., "make this more formal") or
+    asking questions about clipboard content (e.g., "summarize this").
+
+    **Typical hotkey integration:** Run `voice-edit &` on keypress to start
+    recording, then send SIGINT (via `--stop`) on second keypress to process.
+
+    **Examples:**
+
+    - Basic usage: `agent-cli voice-edit`
+    - With TTS response: `agent-cli voice-edit --tts`
+    - Toggle on/off: `agent-cli voice-edit --toggle`
+    - List audio devices: `agent-cli voice-edit --list-devices`
     """
     if print_args:
         print_command_line_args(locals())
-    setup_logging(log_level, log_file, quiet=quiet)
+
+    effective_quiet = quiet or json_output
+    if json_output:
+        enable_json_mode()
+
+    setup_logging(log_level, log_file, quiet=effective_quiet)
     general_cfg = config.General(
         log_level=log_level,
         log_file=log_file,
-        quiet=quiet,
+        quiet=effective_quiet,
         list_devices=list_devices,
         clipboard=clipboard,
         save_file=save_file,
@@ -257,85 +275,25 @@ def voice_edit(
         return
 
     with process.pid_file_context(process_name), suppress(KeyboardInterrupt):
-        provider_cfg = config.ProviderSelection(
-            asr_provider=asr_provider,
-            llm_provider=llm_provider,
-            tts_provider=tts_provider,
-        )
-        audio_in_cfg = config.AudioInput(
-            input_device_index=input_device_index,
-            input_device_name=input_device_name,
-        )
-        wyoming_asr_cfg = config.WyomingASR(
-            asr_wyoming_ip=asr_wyoming_ip,
-            asr_wyoming_port=asr_wyoming_port,
-        )
-        openai_asr_cfg = config.OpenAIASR(
-            asr_openai_model=asr_openai_model,
-            openai_api_key=openai_api_key,
-        )
-        gemini_asr_cfg = config.GeminiASR(
-            asr_gemini_model=asr_gemini_model,
-            gemini_api_key=gemini_api_key,
-        )
-        ollama_cfg = config.Ollama(
-            llm_ollama_model=llm_ollama_model,
-            llm_ollama_host=llm_ollama_host,
-        )
-        openai_llm_cfg = config.OpenAILLM(
-            llm_openai_model=llm_openai_model,
-            openai_api_key=openai_api_key,
-            openai_base_url=openai_base_url,
-        )
-        gemini_llm_cfg = config.GeminiLLM(
-            llm_gemini_model=llm_gemini_model,
-            gemini_api_key=gemini_api_key,
-        )
-        audio_out_cfg = config.AudioOutput(
-            enable_tts=enable_tts,
-            output_device_index=output_device_index,
-            output_device_name=output_device_name,
-            tts_speed=tts_speed,
-        )
-        wyoming_tts_cfg = config.WyomingTTS(
-            tts_wyoming_ip=tts_wyoming_ip,
-            tts_wyoming_port=tts_wyoming_port,
-            tts_wyoming_voice=tts_wyoming_voice,
-            tts_wyoming_language=tts_wyoming_language,
-            tts_wyoming_speaker=tts_wyoming_speaker,
-        )
-        openai_tts_cfg = config.OpenAITTS(
-            tts_openai_model=tts_openai_model,
-            tts_openai_voice=tts_openai_voice,
-            openai_api_key=openai_api_key,
-            tts_openai_base_url=tts_openai_base_url,
-        )
-        kokoro_tts_cfg = config.KokoroTTS(
-            tts_kokoro_model=tts_kokoro_model,
-            tts_kokoro_voice=tts_kokoro_voice,
-            tts_kokoro_host=tts_kokoro_host,
-        )
-        gemini_tts_cfg = config.GeminiTTS(
-            tts_gemini_model=tts_gemini_model,
-            tts_gemini_voice=tts_gemini_voice,
-            gemini_api_key=gemini_api_key,
-        )
+        cfgs = config.create_provider_configs_from_locals(locals())
 
-        asyncio.run(
+        result = asyncio.run(
             _async_main(
-                provider_cfg=provider_cfg,
+                provider_cfg=cfgs.provider,
                 general_cfg=general_cfg,
-                audio_in_cfg=audio_in_cfg,
-                wyoming_asr_cfg=wyoming_asr_cfg,
-                openai_asr_cfg=openai_asr_cfg,
-                gemini_asr_cfg=gemini_asr_cfg,
-                ollama_cfg=ollama_cfg,
-                openai_llm_cfg=openai_llm_cfg,
-                gemini_llm_cfg=gemini_llm_cfg,
-                audio_out_cfg=audio_out_cfg,
-                wyoming_tts_cfg=wyoming_tts_cfg,
-                openai_tts_cfg=openai_tts_cfg,
-                kokoro_tts_cfg=kokoro_tts_cfg,
-                gemini_tts_cfg=gemini_tts_cfg,
+                audio_in_cfg=cfgs.audio_in,
+                wyoming_asr_cfg=cfgs.wyoming_asr,
+                openai_asr_cfg=cfgs.openai_asr,
+                gemini_asr_cfg=cfgs.gemini_asr,
+                ollama_cfg=cfgs.ollama,
+                openai_llm_cfg=cfgs.openai_llm,
+                gemini_llm_cfg=cfgs.gemini_llm,
+                audio_out_cfg=cfgs.audio_out,
+                wyoming_tts_cfg=cfgs.wyoming_tts,
+                openai_tts_cfg=cfgs.openai_tts,
+                kokoro_tts_cfg=cfgs.kokoro_tts,
+                gemini_tts_cfg=cfgs.gemini_tts,
             ),
         )
+        if json_output:
+            print(json.dumps({"result": result}))

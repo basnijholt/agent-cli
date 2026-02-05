@@ -61,9 +61,9 @@ agent-cli chat --last-n-messages 100 --history-dir ~/.my-chat-history
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--input-device-index` | - | Index of the audio input device to use. |
-| `--input-device-name` | - | Device name keywords for partial matching. |
-| `--list-devices` | `false` | List available audio input and output devices and exit. |
+| `--input-device-index` | - | Audio input device index (see `--list-devices`). Uses system default if omitted. |
+| `--input-device-name` | - | Select input device by name substring (e.g., `MacBook` or `USB`). |
+| `--list-devices` | `false` | List available audio devices with their indices and exit. |
 
 ### Audio Input: Wyoming
 
@@ -113,8 +113,8 @@ agent-cli chat --last-n-messages 100 --history-dir ~/.my-chat-history
 | Option | Default | Description |
 |--------|---------|-------------|
 | `--tts/--no-tts` | `false` | Enable text-to-speech for responses. |
-| `--output-device-index` | - | Index of the audio output device to use for TTS. |
-| `--output-device-name` | - | Output device name keywords for partial matching. |
+| `--output-device-index` | - | Audio output device index (see `--list-devices` for available devices). |
+| `--output-device-name` | - | Partial match on device name (e.g., 'speakers', 'headphones'). |
 | `--tts-speed` | `1.0` | Speech speed multiplier (1.0 = normal, 2.0 = twice as fast, 0.5 = half speed). |
 
 ### Audio Output: Wyoming
@@ -132,7 +132,7 @@ agent-cli chat --last-n-messages 100 --history-dir ~/.my-chat-history
 | Option | Default | Description |
 |--------|---------|-------------|
 | `--tts-openai-model` | `tts-1` | The OpenAI model to use for TTS. |
-| `--tts-openai-voice` | `alloy` | The voice to use for OpenAI-compatible TTS. |
+| `--tts-openai-voice` | `alloy` | Voice for OpenAI TTS (alloy, echo, fable, onyx, nova, shimmer). |
 | `--tts-openai-base-url` | - | Custom base URL for OpenAI-compatible TTS API (e.g., http://localhost:8000/v1 for a proxy). |
 
 ### Audio Output: Kokoro
@@ -154,25 +154,25 @@ agent-cli chat --last-n-messages 100 --history-dir ~/.my-chat-history
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--stop` | `false` | Stop any running background process. |
-| `--status` | `false` | Check if a background process is running. |
-| `--toggle` | `false` | Toggle the background process on/off. If the process is running, it will be stopped. If the process is not running, it will be started. |
+| `--stop` | `false` | Stop any running instance of this command. |
+| `--status` | `false` | Check if an instance is currently running. |
+| `--toggle` | `false` | Start if not running, stop if running. Ideal for hotkey binding. |
 
 ### History Options
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--history-dir` | `~/.config/agent-cli/history` | Directory to store conversation history. |
-| `--last-n-messages` | `50` | Number of messages to include in the conversation history. Set to 0 to disable history. |
+| `--history-dir` | `~/.config/agent-cli/history` | Directory for conversation history and long-term memory. Both `conversation.json` and `long_term_memory.json` are stored here. |
+| `--last-n-messages` | `50` | Number of past messages to include as context for the LLM. Set to 0 to start fresh each session (memory tools still persist). |
 
 ### General Options
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--save-file` | - | Save TTS response audio to WAV file. |
-| `--log-level` | `WARNING` | Set logging level. |
+| `--save-file` | - | Save audio to WAV file instead of playing through speakers. |
+| `--log-level` | `warning` | Set logging level. |
 | `--log-file` | - | Path to a file to write logs to. |
-| `--quiet` | `false` | Suppress console output from rich. |
+| `--quiet, -q` | `false` | Suppress console output from rich. |
 | `--config` | - | Path to a TOML configuration file. |
 | `--print-args` | `false` | Print the command line arguments, including variables taken from the configuration file. |
 

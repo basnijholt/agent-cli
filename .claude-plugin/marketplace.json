@@ -1,0 +1,21 @@
+{
+  "name": "agent-cli",
+  "owner": {
+    "name": "Bas Nijholt",
+    "github": "basnijholt"
+  },
+  "metadata": {
+    "description": "Parallel development environment manager using git worktrees",
+    "repository": "https://github.com/basnijholt/agent-cli",
+    "homepage": "https://github.com/basnijholt/agent-cli",
+    "documentation": "https://github.com/basnijholt/agent-cli/blob/main/docs/commands/dev.md",
+    "keywords": ["git", "worktree", "parallel", "agents", "development", "claude", "ai"],
+    "license": "MIT"
+  },
+  "plugins": [
+    {
+      "name": "agent-cli-dev",
+      "source": "./.claude-plugin"
+    }
+  ]
+}

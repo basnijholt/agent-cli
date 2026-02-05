@@ -16,9 +16,10 @@ runner = CliRunner(env={"NO_COLOR": "1", "TERM": "dumb"})
 
 
 def test_main_no_args() -> None:
-    """Test the main function with no arguments."""
+    """Test the main function with no arguments shows help (no_args_is_help=True)."""
     result = runner.invoke(app)
-    assert "No command specified" in result.stdout
+    # Exit code 2 is the standard Typer exit code when no_args_is_help=True
+    assert result.exit_code == 2
     assert "Usage" in result.stdout
 
 
@@ -31,20 +32,33 @@ def test_main_with_args(mock_setup_logging: pytest.MagicMock) -> None:
     mock_setup_logging.assert_not_called()
 
 
-@patch("agent_cli.agents.server.run_server")
-def test_server_command(mock_run_server: pytest.MagicMock) -> None:
-    """Test the server command."""
-    result = runner.invoke(app, ["server"])
+def test_server_command() -> None:
+    """Test the server command shows subcommands."""
+    result = runner.invoke(app, ["server", "--help"])
     assert result.exit_code == 0
-    assert "Starting Agent CLI transcription server" in result.stdout
-    mock_run_server.assert_called_once_with(host="0.0.0.0", port=61337, reload=False)  # noqa: S104
+    assert "whisper" in result.stdout
+    assert "transcribe-proxy" in result.stdout
 
 
-@patch("agent_cli.agents.server.run_server")
-def test_server_command_with_options(mock_run_server: pytest.MagicMock) -> None:
-    """Test the server command with custom options."""
-    result = runner.invoke(app, ["server", "--host", "127.0.0.1", "--port", "8080", "--reload"])
+@patch("uvicorn.run")
+def test_server_transcribe_proxy_command(mock_uvicorn_run: pytest.MagicMock) -> None:
+    """Test the server transcribe-proxy command."""
+    result = runner.invoke(app, ["server", "transcribe-proxy", "--port", "61337"])
     assert result.exit_code == 0
-    assert "Starting Agent CLI transcription server on 127.0.0.1:8080" in result.stdout
+    assert "Starting Agent CLI transcription proxy" in result.stdout
+    mock_uvicorn_run.assert_called_once()
+
+
+@patch("uvicorn.run")
+def test_server_transcribe_proxy_command_with_options(
+    mock_uvicorn_run: pytest.MagicMock,
+) -> None:
+    """Test the server transcribe-proxy command with custom options."""
+    result = runner.invoke(
+        app,
+        ["server", "transcribe-proxy", "--host", "127.0.0.1", "--port", "8080", "--reload"],
+    )
+    assert result.exit_code == 0
+    assert "Starting Agent CLI transcription proxy on 127.0.0.1:8080" in result.stdout
     assert "Auto-reload enabled for development" in result.stdout
-    mock_run_server.assert_called_once_with(host="127.0.0.1", port=8080, reload=True)
+    mock_uvicorn_run.assert_called_once()

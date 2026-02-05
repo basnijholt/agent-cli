@@ -13,7 +13,10 @@
 [defaults]
 
 # --- Provider Selection ---
-# Select the default provider for each service ("ollama"/"openai"/"gemini" for LLM, "wyoming"/"openai" for ASR).
+# Select the default provider for each service.
+# LLM: "ollama", "openai", or "gemini"
+# ASR: "wyoming", "openai", or "gemini"
+# TTS: "wyoming", "openai", "kokoro", or "gemini"
 llm-provider = "ollama"  # "local" still works as a deprecated alias
 tts-provider = "wyoming"
 
@@ -167,7 +170,7 @@ enable_tts = true
 # host = "0.0.0.0"
 # port = 8100
 
-[transcribe-daemon]
+[transcribe-live]
 # Continuous transcription settings
 # role = "user"
 # silence-threshold = 1.0

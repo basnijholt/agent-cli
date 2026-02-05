@@ -28,12 +28,12 @@ For usage and flags, see [Commands Reference](../commands/index.md) and [Configu
 │     └──────┬──────┘   └──────┬──────┘   └──────┬──────┘        │
 └────────────┼─────────────────┼─────────────────┼───────────────┘
              │                 │                 │
-       ┌─────┴─────┐     ┌─────┴─────┐     ┌─────┴─────┐
-       ▼           ▼     ▼           ▼     ▼           ▼
-  ┌────────┐ ┌────────┐ ┌──────┐ ┌──────┐ ┌───────┐ ┌──────┐
-  │Wyoming │ │ OpenAI │ │Ollama│ │OpenAI│ │Wyoming│ │OpenAI│
-  │Whisper │ │Whisper │ │      │ │Gemini│ │ Piper │ │ TTS  │
-  └────────┘ └────────┘ └──────┘ └──────┘ └───────┘ └──────┘
+      ┌──────┼──────┐    ┌─────┼─────┐    ┌───────┼───────┐
+      ▼      ▼      ▼    ▼     ▼     ▼    ▼   ▼   ▼   ▼   ▼
+ ┌───────┐┌──────┐┌──────┐┌──────┐┌──────┐┌─────┐┌──────┐┌──────┐┌──────┐
+ │Wyoming││OpenAI││Gemini││Ollama││OpenAI││Piper││OpenAI││Kokoro││Gemini│
+ │Whisper││Whispr││ ASR  ││      ││Gemini││     ││ TTS  ││      ││ TTS  │
+ └───────┘└──────┘└──────┘└──────┘└──────┘└─────┘└──────┘└──────┘└──────┘
 ```
 
 ## Provider System
@@ -46,6 +46,7 @@ Each AI capability (ASR, LLM, TTS) has multiple backend providers:
 |----------|---------------|-------------|---------|
 | `wyoming` | Wyoming Whisper (faster-whisper/MLX) | CUDA/Metal | Low |
 | `openai` | OpenAI-compatible Whisper API | Cloud | Medium |
+| `gemini` | Google Gemini API | Cloud | Medium |
 
 ### LLM (Large Language Model)
 
@@ -62,6 +63,7 @@ Each AI capability (ASR, LLM, TTS) has multiple backend providers:
 | `wyoming` | Wyoming Piper | Good | Fast |
 | `openai` | OpenAI-compatible TTS | Excellent | Medium |
 | `kokoro` | Kokoro TTS | Good | Fast |
+| `gemini` | Google Gemini TTS | Good | Medium |
 
 ## Wyoming Protocol
 
@@ -79,6 +81,8 @@ Agent CLI uses the [Wyoming Protocol](https://github.com/rhasspy/wyoming) for lo
 | Piper (TTS) | 10200 | Wyoming |
 | OpenWakeWord | 10400 | Wyoming |
 | Ollama (LLM) | 11434 | HTTP |
+| RAG Proxy | 8000 | HTTP |
+| Memory Proxy | 8100 | HTTP |
 
 ## Audio Pipeline
 
@@ -114,12 +118,12 @@ Commands that run as background processes use a PID file system:
 ├── chat.pid
 ├── speak.pid
 ├── transcribe.pid
-├── transcribe-daemon.pid
+├── transcribe-live.pid
 └── voice-edit.pid
 
 ~/.config/agent-cli/
 ├── config.toml              # Configuration
-├── audio/                   # Saved recordings (transcribe-daemon)
+├── audio/                   # Saved recordings (transcribe-live)
 ├── history/                 # Chat history
 ├── transcriptions/          # Saved WAV files
 └── transcriptions.jsonl     # Transcription log
@@ -137,22 +141,39 @@ Usage: [rag-proxy command](../commands/rag-proxy.md).
 
 ## Dependencies
 
+Agent CLI uses a modular dependency structure. The base package is lightweight, with features installed as optional extras.
+
 ### Core Dependencies
 
+Always installed:
+
 - **typer** - CLI framework
-- **pydantic-ai-slim** - AI agent framework with tool support
-- **sounddevice** - Audio I/O
-- **pyperclip** - Clipboard access
+- **pydantic** - Data validation
 - **rich** - Terminal formatting
-- **wyoming** - Protocol for local AI services
-- **openai** - OpenAI-compatible API client
-- **google-genai** - Google Gemini API client
+- **pyperclip** - Clipboard access
+- **httpx** - HTTP client
 
-### Optional Dependencies
+### Provider Extras
 
-- **silero-vad** - Voice activity detection (for `transcribe-daemon`)
-- **chromadb** - Vector database (for RAG and memory)
-- **markitdown** - Document parsing (for RAG)
+Install with `agent-cli install-extras <name>` or `pip install agent-cli[name]`:
+
+| Extra | Purpose | Key Packages |
+|-------|---------|--------------|
+| `audio` | Voice features | sounddevice, wyoming, numpy |
+| `llm` | AI processing | pydantic-ai-slim (OpenAI, Gemini) |
+
+### Feature Extras
+
+| Extra | Purpose | Key Packages |
+|-------|---------|--------------|
+| `vad` | Voice activity detection | onnxruntime |
+| `rag` | Document chat | chromadb, markitdown |
+| `memory` | Long-term memory | chromadb |
+| `server` | Local ASR/TTS servers | fastapi |
+| `faster-whisper` | Whisper (CUDA/CPU) | faster-whisper |
+| `mlx-whisper` | Whisper (Apple Silicon) | mlx-whisper |
+
+See [`install-extras`](../commands/install-extras.md) for the full list and installation instructions.
 
 ## Platform Support
 

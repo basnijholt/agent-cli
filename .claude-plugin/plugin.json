@@ -1,0 +1,10 @@
+{
+  "name": "agent-cli-dev",
+  "version": "1.0.0",
+  "author": {
+    "name": "Bas Nijholt",
+    "github": "basnijholt"
+  },
+  "description": "Spawn parallel AI coding agents in isolated git worktrees. Creates isolated development environments with automatic project setup, letting you work on multiple features simultaneously with different AI agents (Claude, Codex, Gemini, Aider).",
+  "skills": ["./skills/agent-cli-dev"]
+}

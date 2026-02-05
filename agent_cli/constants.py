@@ -8,6 +8,11 @@ AUDIO_FORMAT_WIDTH = 2  # 2 bytes (16-bit)
 AUDIO_CHANNELS = 1
 AUDIO_RATE = 16000
 AUDIO_CHUNK_SIZE = 1024
+WAV_HEADER_SIZE = 44  # Standard WAV header size in bytes
+
+# --- TTS Configuration ---
+PIPER_DEFAULT_SAMPLE_RATE = 22050  # Piper TTS default sample rate
+KOKORO_DEFAULT_SAMPLE_RATE = 24000  # Kokoro TTS default sample rate
 
 # Standard Wyoming audio configuration
 WYOMING_AUDIO_CONFIG = {

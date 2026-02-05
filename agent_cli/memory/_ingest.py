@@ -9,8 +9,6 @@ from time import perf_counter
 from typing import TYPE_CHECKING
 from uuid import uuid4
 
-import httpx
-
 from agent_cli.memory._git import commit_changes
 from agent_cli.memory._persistence import delete_memory_files, persist_entries, persist_summary
 from agent_cli.memory._prompt import (
@@ -58,6 +56,7 @@ async def extract_salient_facts(
     if not user_message and not assistant_message:
         return []
 
+    import httpx  # noqa: PLC0415
     from pydantic_ai import Agent  # noqa: PLC0415
     from pydantic_ai.exceptions import AgentRunError, UnexpectedModelBehavior  # noqa: PLC0415
     from pydantic_ai.models.openai import OpenAIChatModel  # noqa: PLC0415
@@ -174,15 +173,17 @@ async def reconcile_facts(
             if f.strip()
         ]
         return entries, [], {}
-    id_map: dict[int, str] = {idx: mem.id for idx, mem in enumerate(existing)}
-    existing_json = [{"id": idx, "text": mem.content} for idx, mem in enumerate(existing)]
-    existing_ids = set(id_map.keys())
 
+    import httpx  # noqa: PLC0415
     from pydantic_ai import Agent, ModelRetry, PromptedOutput  # noqa: PLC0415
     from pydantic_ai.exceptions import AgentRunError, UnexpectedModelBehavior  # noqa: PLC0415
     from pydantic_ai.models.openai import OpenAIChatModel  # noqa: PLC0415
     from pydantic_ai.providers.openai import OpenAIProvider  # noqa: PLC0415
     from pydantic_ai.settings import ModelSettings  # noqa: PLC0415
+
+    id_map: dict[int, str] = {idx: mem.id for idx, mem in enumerate(existing)}
+    existing_json = [{"id": idx, "text": mem.content} for idx, mem in enumerate(existing)]
+    existing_ids = set(id_map.keys())
 
     provider = OpenAIProvider(api_key=api_key or "dummy", base_url=openai_base_url)
     model_cfg = OpenAIChatModel(

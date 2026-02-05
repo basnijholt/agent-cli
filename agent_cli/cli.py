@@ -2,26 +2,66 @@
 
 from __future__ import annotations
 
+import sys
+from pathlib import Path
 from typing import Annotated
 
 import typer
+from rich.table import Table
 
 from . import __version__
 from .config import load_config, normalize_provider_defaults
+from .core.process import set_process_title
 from .core.utils import console
+
+_HELP = """\
+AI-powered voice, text, and development tools.
+
+**Voice & Text:**
+
+- **Voice-to-text** - Transcribe speech with optional LLM cleanup
+- **Text-to-speech** - Convert text to natural-sounding audio
+- **Voice chat** - Conversational AI with memory and tool use
+- **Text correction** - Fix grammar, spelling, and punctuation
+
+**Development:**
+
+- **Parallel development** - Git worktrees with integrated coding agents
+- **Local servers** - ASR/TTS with Wyoming + OpenAI-compatible APIs,
+  MLX on macOS ARM, CUDA/CPU Whisper, and automatic model TTL
+
+**Provider Flexibility:**
+
+Mix local (Ollama, Wyoming) and cloud (OpenAI, Gemini) backends freely.
+
+Run `agent-cli <command> --help` for detailed command documentation.
+"""
 
 app = typer.Typer(
     name="agent-cli",
-    help="A suite of AI-powered command-line tools for text correction, audio transcription, and voice assistance.",
-    add_completion=True,
+    help=_HELP,
     context_settings={"help_option_names": ["-h", "--help"]},
+    add_completion=True,
     rich_markup_mode="markdown",
+    no_args_is_help=True,
 )
 
 
 def _version_callback(value: bool) -> None:
     if value:
-        console.print(f"agent-cli {__version__}")
+        path = Path(__file__).parent
+        data = [
+            ("agent-cli version", __version__),
+            ("agent-cli location", str(path)),
+            ("Python version", sys.version),
+            ("Python executable", sys.executable),
+        ]
+        table = Table(show_header=False)
+        table.add_column("Property", style="cyan")
+        table.add_column("Value", style="magenta")
+        for prop, val in data:
+            table.add_row(prop, val)
+        console.print(table)
         raise typer.Exit
 
 
@@ -39,7 +79,7 @@ def main(
         ),
     ] = False,
 ) -> None:
-    """A suite of AI-powered tools."""
+    """AI-powered voice, text, and development tools."""
     if ctx.invoked_subcommand is None:
         console.print("[bold red]No command specified.[/bold red]")
         console.print("[bold yellow]Running --help for your convenience.[/bold yellow]")
@@ -48,7 +88,9 @@ def main(
     import dotenv  # noqa: PLC0415
 
     dotenv.load_dotenv()
-    print()
+
+    # Set process title for identification in ps output
+    set_process_title(ctx.invoked_subcommand)
 
 
 def set_config_defaults(ctx: typer.Context, config_file: str | None) -> None:
@@ -77,10 +119,12 @@ from .agents import (  # noqa: E402, F401
     chat,
     memory,
     rag_proxy,
-    server,
     speak,
     transcribe,
-    transcribe_daemon,
+    transcribe_live,
     voice_edit,
 )
-from .install import hotkeys, services  # noqa: E402, F401
+from .daemon import cli as daemon_cli  # noqa: E402, F401
+from .dev import cli as dev_cli  # noqa: E402, F401
+from .install import extras, hotkeys, services  # noqa: E402, F401
+from .server import cli as server_cli  # noqa: E402, F401

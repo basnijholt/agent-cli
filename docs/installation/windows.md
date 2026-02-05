@@ -32,7 +32,7 @@ The fastest way to get started - no local services needed:
 powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
 
 # Install agent-cli
-uv tool install agent-cli
+uv tool install agent-cli -p 3.13
 
 # Use with cloud providers (requires API keys)
 $env:OPENAI_API_KEY = "sk-..."
@@ -93,7 +93,7 @@ If you prefer manual setup:
 3. **Install agent-cli:**
 
    ```powershell
-   uv tool install agent-cli
+   uv tool install agent-cli -p 3.13
    ```
 
 4. **Run services individually:**
@@ -103,10 +103,10 @@ If you prefer manual setup:
    ollama serve
 
    # Terminal 2: Whisper
-   powershell -ExecutionPolicy Bypass -File scripts/run-whisper-windows.ps1
+   agent-cli server whisper
 
    # Terminal 3: Piper
-   powershell -ExecutionPolicy Bypass -File scripts/run-piper-windows.ps1
+   agent-cli server tts --backend piper
    ```
 
 ---

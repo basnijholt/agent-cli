@@ -2,11 +2,14 @@
 
 import copy
 from pathlib import Path
+from typing import Literal
 
 import typer
 from typer.models import OptionInfo
 
 from agent_cli.constants import DEFAULT_OPENAI_EMBEDDING_MODEL, DEFAULT_OPENAI_MODEL
+
+LogLevel = Literal["debug", "info", "warning", "error"]
 
 
 def with_default(option: OptionInfo, default: str) -> OptionInfo:
@@ -20,18 +23,21 @@ def with_default(option: OptionInfo, default: str) -> OptionInfo:
 LLM_PROVIDER: str = typer.Option(
     "ollama",
     "--llm-provider",
+    envvar="LLM_PROVIDER",
     help="The LLM provider to use ('ollama', 'openai', 'gemini').",
     rich_help_panel="Provider Selection",
 )
 ASR_PROVIDER: str = typer.Option(
     "wyoming",
     "--asr-provider",
+    envvar="ASR_PROVIDER",
     help="The ASR provider to use ('wyoming', 'openai', 'gemini').",
     rich_help_panel="Provider Selection",
 )
 TTS_PROVIDER: str = typer.Option(
     "wyoming",
     "--tts-provider",
+    envvar="TTS_PROVIDER",
     help="The TTS provider to use ('wyoming', 'openai', 'kokoro', 'gemini').",
     rich_help_panel="Provider Selection",
 )
@@ -41,19 +47,22 @@ TTS_PROVIDER: str = typer.Option(
 LLM: bool = typer.Option(
     False,  # noqa: FBT003
     "--llm/--no-llm",
-    help="Use an LLM to process the transcript.",
+    help="Clean up transcript with LLM: fix errors, add punctuation, remove filler words. "
+    "Uses `--extra-instructions` if set (via CLI or config file).",
     rich_help_panel="LLM Configuration",
 )
 # Ollama (local service)
 LLM_OLLAMA_MODEL: str = typer.Option(
     "gemma3:4b",
     "--llm-ollama-model",
+    envvar="LLM_OLLAMA_MODEL",
     help="The Ollama model to use. Default is gemma3:4b.",
     rich_help_panel="LLM: Ollama",
 )
 LLM_OLLAMA_HOST: str = typer.Option(
     "http://localhost:11434",
     "--llm-ollama-host",
+    envvar="LLM_OLLAMA_HOST",
     help="The Ollama server host. Default is http://localhost:11434.",
     rich_help_panel="LLM: Ollama",
 )
@@ -61,6 +70,7 @@ LLM_OLLAMA_HOST: str = typer.Option(
 LLM_OPENAI_MODEL: str = typer.Option(
     DEFAULT_OPENAI_MODEL,
     "--llm-openai-model",
+    envvar="LLM_OPENAI_MODEL",
     help="The OpenAI model to use for LLM tasks.",
     rich_help_panel="LLM: OpenAI-compatible",
 )
@@ -82,6 +92,7 @@ OPENAI_BASE_URL: str | None = typer.Option(
 LLM_GEMINI_MODEL: str = typer.Option(
     "gemini-3-flash-preview",
     "--llm-gemini-model",
+    envvar="LLM_GEMINI_MODEL",
     help="The Gemini model to use for LLM tasks.",
     rich_help_panel="LLM: Gemini",
 )
@@ -98,25 +109,33 @@ EMBEDDING_MODEL: str = typer.Option(
     help="Embedding model to use for vectorization.",
     rich_help_panel="LLM Configuration",
 )
+EMBEDDING_BASE_URL: str | None = typer.Option(
+    None,
+    "--embedding-base-url",
+    envvar="EMBEDDING_BASE_URL",
+    help="Base URL for embedding API. Falls back to `--openai-base-url` if not set. "
+    "Useful when using different providers for chat vs embeddings.",
+    rich_help_panel="LLM Configuration",
+)
 
 # --- ASR (Audio) Configuration ---
 # General ASR
 INPUT_DEVICE_INDEX: int | None = typer.Option(
     None,
     "--input-device-index",
-    help="Index of the audio input device to use.",
+    help="Audio input device index (see `--list-devices`). Uses system default if omitted.",
     rich_help_panel="Audio Input",
 )
 INPUT_DEVICE_NAME: str | None = typer.Option(
     None,
     "--input-device-name",
-    help="Device name keywords for partial matching.",
+    help="Select input device by name substring (e.g., `MacBook` or `USB`).",
     rich_help_panel="Audio Input",
 )
 LIST_DEVICES: bool = typer.Option(
     False,  # noqa: FBT003
     "--list-devices",
-    help="List available audio input and output devices and exit.",
+    help="List available audio devices with their indices and exit.",
     is_eager=True,
     rich_help_panel="Audio Input",
 )
@@ -124,12 +143,14 @@ LIST_DEVICES: bool = typer.Option(
 ASR_WYOMING_IP: str = typer.Option(
     "localhost",
     "--asr-wyoming-ip",
+    envvar="ASR_WYOMING_IP",
     help="Wyoming ASR server IP address.",
     rich_help_panel="Audio Input: Wyoming",
 )
 ASR_WYOMING_PORT: int = typer.Option(
     10300,
     "--asr-wyoming-port",
+    envvar="ASR_WYOMING_PORT",
     help="Wyoming ASR server port.",
     rich_help_panel="Audio Input: Wyoming",
 )
@@ -137,18 +158,21 @@ ASR_WYOMING_PORT: int = typer.Option(
 ASR_OPENAI_MODEL: str = typer.Option(
     "whisper-1",
     "--asr-openai-model",
+    envvar="ASR_OPENAI_MODEL",
     help="The OpenAI model to use for ASR (transcription).",
     rich_help_panel="Audio Input: OpenAI-compatible",
 )
 ASR_OPENAI_BASE_URL: str | None = typer.Option(
     None,
     "--asr-openai-base-url",
+    envvar="ASR_OPENAI_BASE_URL",
     help="Custom base URL for OpenAI-compatible ASR API (e.g., for custom Whisper server: http://localhost:9898).",
     rich_help_panel="Audio Input: OpenAI-compatible",
 )
 ASR_OPENAI_PROMPT: str | None = typer.Option(
     None,
     "--asr-openai-prompt",
+    envvar="ASR_OPENAI_PROMPT",
     help="Custom prompt to guide transcription (optional).",
     rich_help_panel="Audio Input: OpenAI-compatible",
 )
@@ -156,6 +180,7 @@ ASR_OPENAI_PROMPT: str | None = typer.Option(
 ASR_GEMINI_MODEL: str = typer.Option(
     "gemini-3-flash-preview",
     "--asr-gemini-model",
+    envvar="ASR_GEMINI_MODEL",
     help="The Gemini model to use for ASR (transcription).",
     rich_help_panel="Audio Input: Gemini",
 )
@@ -165,7 +190,7 @@ ASR_GEMINI_MODEL: str = typer.Option(
 WAKE_SERVER_IP: str = typer.Option(
     "localhost",
     "--wake-server-ip",
-    help="Wyoming wake word server IP address.",
+    help="Wyoming wake word server IP (requires wyoming-openwakeword or similar).",
     rich_help_panel="Wake Word",
 )
 WAKE_SERVER_PORT: int = typer.Option(
@@ -177,7 +202,7 @@ WAKE_SERVER_PORT: int = typer.Option(
 WAKE_WORD: str = typer.Option(
     "ok_nabu",
     "--wake-word",
-    help="Name of wake word to detect (e.g., 'ok_nabu', 'hey_jarvis').",
+    help="Wake word to detect. Common options: `ok_nabu`, `hey_jarvis`, `alexa`. Must match a model loaded in your wake word server.",
     rich_help_panel="Wake Word",
 )
 
@@ -199,13 +224,13 @@ TTS_SPEED: float = typer.Option(
 OUTPUT_DEVICE_INDEX: int | None = typer.Option(
     None,
     "--output-device-index",
-    help="Index of the audio output device to use for TTS.",
+    help="Audio output device index (see `--list-devices` for available devices).",
     rich_help_panel="Audio Output",
 )
 OUTPUT_DEVICE_NAME: str | None = typer.Option(
     None,
     "--output-device-name",
-    help="Output device name keywords for partial matching.",
+    help="Partial match on device name (e.g., 'speakers', 'headphones').",
     rich_help_panel="Audio Output",
 )
 # Wyoming (local service)
@@ -249,7 +274,7 @@ TTS_OPENAI_MODEL: str = typer.Option(
 TTS_OPENAI_VOICE: str = typer.Option(
     "alloy",
     "--tts-openai-voice",
-    help="The voice to use for OpenAI-compatible TTS.",
+    help="Voice for OpenAI TTS (alloy, echo, fable, onyx, nova, shimmer).",
     rich_help_panel="Audio Output: OpenAI-compatible",
 )
 TTS_OPENAI_BASE_URL: str | None = typer.Option(
@@ -299,21 +324,19 @@ TTS_GEMINI_VOICE: str = typer.Option(
 STOP: bool = typer.Option(
     False,  # noqa: FBT003
     "--stop",
-    help="Stop any running background process.",
+    help="Stop any running instance of this command.",
     rich_help_panel="Process Management",
 )
 STATUS: bool = typer.Option(
     False,  # noqa: FBT003
     "--status",
-    help="Check if a background process is running.",
+    help="Check if an instance is currently running.",
     rich_help_panel="Process Management",
 )
 TOGGLE: bool = typer.Option(
     False,  # noqa: FBT003
     "--toggle",
-    help="Toggle the background process on/off. "
-    "If the process is running, it will be stopped. "
-    "If the process is not running, it will be started.",
+    help="Start if not running, stop if running. Ideal for hotkey binding.",
     rich_help_panel="Process Management",
 )
 
@@ -348,13 +371,15 @@ CLIPBOARD: bool = typer.Option(
     help="Copy result to clipboard.",
     rich_help_panel="General Options",
 )
-LOG_LEVEL: str = typer.Option(
-    "WARNING",
+LOG_LEVEL: LogLevel = typer.Option(
+    "warning",
     "--log-level",
+    envvar="LOG_LEVEL",
     help="Set logging level.",
     case_sensitive=False,
     rich_help_panel="General Options",
 )
+SERVER_LOG_LEVEL: LogLevel = with_default(LOG_LEVEL, "info")
 LOG_FILE: str | None = typer.Option(
     None,
     "--log-file",
@@ -368,16 +393,23 @@ QUIET: bool = typer.Option(
     help="Suppress console output from rich.",
     rich_help_panel="General Options",
 )
+JSON_OUTPUT: bool = typer.Option(
+    False,  # noqa: FBT003
+    "--json",
+    help="Output result as JSON (implies `--quiet` and `--no-clipboard`).",
+    rich_help_panel="General Options",
+)
 SAVE_FILE: Path | None = typer.Option(
     None,
     "--save-file",
-    help="Save TTS response audio to WAV file.",
+    help="Save audio to WAV file instead of playing through speakers.",
     rich_help_panel="General Options",
 )
 TRANSCRIPTION_LOG: Path | None = typer.Option(
     None,
     "--transcription-log",
-    help="Path to log transcription results with timestamps, hostname, model, and raw output.",
+    help="Append transcripts to JSONL file (timestamp, hostname, model, raw/processed text). "
+    "Recent entries provide context for LLM cleanup.",
     rich_help_panel="General Options",
 )
 
@@ -393,19 +425,22 @@ SERVER_HOST: str = typer.Option(
 FROM_FILE: Path | None = typer.Option(
     None,
     "--from-file",
-    help="Transcribe audio from a file (supports wav, mp3, m4a, ogg, flac, aac, webm). Requires ffmpeg for non-WAV formats with Wyoming provider.",
+    help="Transcribe from audio file instead of microphone. "
+    "Supports wav, mp3, m4a, ogg, flac, aac, webm. "
+    "Requires `ffmpeg` for non-WAV formats with Wyoming.",
     rich_help_panel="Audio Recovery",
 )
 LAST_RECORDING: int = typer.Option(
     0,
     "--last-recording",
-    help="Transcribe a saved recording. Use 1 for most recent, 2 for second-to-last, etc. Use 0 to disable (default).",
+    help="Re-transcribe a saved recording (1=most recent, 2=second-to-last, etc). "
+    "Useful after connection failures or to retry with different options.",
     rich_help_panel="Audio Recovery",
 )
 SAVE_RECORDING: bool = typer.Option(
     True,  # noqa: FBT003
     "--save-recording/--no-save-recording",
-    help="Save the audio recording to disk for recovery.",
+    help="Save recordings to ~/.cache/agent-cli/ for `--last-recording` recovery.",
     rich_help_panel="Audio Recovery",
 )
 

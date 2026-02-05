@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-import httpx
-
 from agent_cli.core.sse import extract_content_from_chunk, parse_chunk
 
 if TYPE_CHECKING:
@@ -20,6 +18,8 @@ async def stream_chat_sse(
     request_timeout: float = 120.0,
 ) -> AsyncGenerator[str, None]:
     """Stream Server-Sent Events from an OpenAI-compatible chat completion endpoint."""
+    import httpx  # noqa: PLC0415
+
     url = f"{openai_base_url.rstrip('/')}/chat/completions"
     async with (
         httpx.AsyncClient(timeout=request_timeout) as client,

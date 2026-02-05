@@ -41,6 +41,7 @@ class MemoryClient:
         self,
         memory_path: Path,
         openai_base_url: str,
+        embedding_base_url: str | None = None,
         embedding_model: str = DEFAULT_OPENAI_EMBEDDING_MODEL,
         embedding_api_key: str | None = None,
         chat_api_key: str | None = None,
@@ -49,7 +50,7 @@ class MemoryClient:
         max_entries: int = 500,
         mmr_lambda: float = 0.7,
         recency_weight: float = 0.2,
-        score_threshold: float = 0.35,
+        score_threshold: float | None = None,
         start_watcher: bool = False,
         enable_git_versioning: bool = True,
     ) -> None:
@@ -74,7 +75,7 @@ class MemoryClient:
         self.collection: Collection = init_memory_collection(
             self.memory_path,
             embedding_model=embedding_model,
-            openai_base_url=self.openai_base_url,
+            openai_base_url=embedding_base_url or self.openai_base_url,
             openai_api_key=embedding_api_key,
         )
 
