@@ -1469,6 +1469,8 @@ def _clean_merged_worktrees(
     repo_root: Path,
     dry_run: bool,
     yes: bool,
+    *,
+    force: bool = False,
 ) -> None:
     """Remove worktrees with merged PRs (requires gh CLI)."""
     _info("Checking for worktrees with merged PRs...")
@@ -1509,7 +1511,7 @@ def _clean_merged_worktrees(
         for wt, _pr_url in to_remove:
             success, error = worktree.remove_worktree(
                 wt.path,
-                force=False,
+                force=force,
                 delete_branch=True,
                 repo_path=repo_root,
             )
@@ -1523,6 +1525,8 @@ def _clean_no_commits_worktrees(
     repo_root: Path,
     dry_run: bool,
     yes: bool,
+    *,
+    force: bool = False,
 ) -> None:
     """Remove worktrees with no commits ahead of the default branch."""
     _info("Checking for worktrees with no commits...")
@@ -1546,7 +1550,7 @@ def _clean_no_commits_worktrees(
         for wt in to_remove:
             success, error = worktree.remove_worktree(
                 wt.path,
-                force=False,
+                force=force,
                 delete_branch=True,
                 repo_path=repo_root,
             )
@@ -1584,6 +1588,14 @@ def clean(
         bool,
         typer.Option("--yes", "-y", help="Skip confirmation prompts"),
     ] = False,
+    force: Annotated[
+        bool,
+        typer.Option(
+            "--force",
+            "-f",
+            help="Force removal of worktrees with modified or untracked files",
+        ),
+    ] = False,
 ) -> None:
     """Clean up stale worktrees and empty directories.
 
@@ -1601,6 +1613,7 @@ def clean(
     - `dev clean` — Basic cleanup
     - `dev clean --merged` — Remove worktrees with merged PRs
     - `dev clean --merged --dry-run` — Preview what would be removed
+    - `dev clean --no-commits --force` — Force remove abandoned worktrees with local changes
     """
     repo_root = _ensure_git_repo()
 
@@ -1635,11 +1648,11 @@ def clean(
 
     # --merged mode: remove worktrees with merged PRs
     if merged:
-        _clean_merged_worktrees(repo_root, dry_run, yes)
+        _clean_merged_worktrees(repo_root, dry_run, yes, force=force)
 
     # --no-commits mode: remove worktrees with no commits ahead of default branch
     if no_commits:
-        _clean_no_commits_worktrees(repo_root, dry_run, yes)
+        _clean_no_commits_worktrees(repo_root, dry_run, yes, force=force)
 
 
 @app.command("doctor")
