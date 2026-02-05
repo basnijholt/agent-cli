@@ -23,13 +23,6 @@ from agent_cli.server.common import setup_rich_logging
 
 logger = logging.getLogger(__name__)
 
-# Deprecation notice for server install/uninstall commands
-_DEPRECATION_NOTICE = (
-    "[yellow]⚠️  Deprecation notice:[/yellow] "
-    "'server install/uninstall' commands are deprecated.\n"
-    "   Use 'agent-cli install-services' or 'agent-cli uninstall-services' instead.\n"
-)
-
 # Check for optional dependencies at call time (not module load time)
 # This is important because auto-install may install packages after the module is loaded
 
@@ -832,116 +825,6 @@ def tts_cmd(  # noqa: PLR0915
         port=port,
         log_level=log_level.lower(),
     )
-
-
-def _check_macos() -> None:
-    """Check that we're running on macOS."""
-    if platform.system() != "Darwin":
-        err_console.print(
-            "[bold red]Error:[/bold red] Service installation is only supported on macOS. "
-            "On Linux, use systemd or your distribution's service manager.",
-        )
-        raise typer.Exit(1)
-
-
-@app.command("install", deprecated=True)
-def install_service_cmd(
-    service: Annotated[
-        str,
-        typer.Argument(
-            help="Service to install: whisper, tts, or transcription-proxy",
-        ),
-    ],
-) -> None:
-    """Install a server as a macOS launchd service.
-
-    **DEPRECATED**: Use `agent-cli install-services` instead.
-
-    This installs the specified server to run automatically at login
-    and restart on failure. The service runs via `uv tool run`.
-
-    Available services:
-    - **whisper**: ASR server with Faster Whisper or MLX Whisper
-    - **tts**: TTS server with Kokoro or Piper backends
-    - **transcription-proxy**: Proxy to configured ASR providers
-
-    Examples:
-        # Install whisper server as background service
-        agent-cli install-services whisper
-
-        # Install TTS server
-        agent-cli install-services tts
-
-    After installation, view logs with:
-        tail -f ~/Library/Logs/agent-cli-whisper/*.log
-
-    """
-    console.print(_DEPRECATION_NOTICE)
-    _check_macos()
-
-    from agent_cli.install.launchd import SERVICES, install_service  # noqa: PLC0415
-
-    if service not in SERVICES:
-        err_console.print(
-            f"[bold red]Error:[/bold red] Unknown service '{service}'. "
-            f"Available: {', '.join(SERVICES.keys())}",
-        )
-        raise typer.Exit(1)
-
-    console.print(f"[bold]Installing agent-cli {service} as launchd service...[/bold]")
-
-    result = install_service(service)
-    if result.success:
-        console.print(f"[green]✓[/green] {service}: {result.message}")
-        if result.log_dir:
-            console.print(f"Logs: {result.log_dir}/")
-    else:
-        err_console.print(f"[bold red]Error:[/bold red] {result.message}")
-        raise typer.Exit(1)
-
-
-@app.command("uninstall", deprecated=True)
-def uninstall_service_cmd(
-    service: Annotated[
-        str,
-        typer.Argument(
-            help="Service to uninstall: whisper, tts, or transcription-proxy",
-        ),
-    ],
-) -> None:
-    """Uninstall a server launchd service.
-
-    **DEPRECATED**: Use `agent-cli uninstall-services` instead.
-
-    This stops the service and removes its launchd configuration.
-    Log files are preserved for debugging.
-
-    Examples:
-        # Uninstall whisper server
-        agent-cli uninstall-services whisper
-
-        # Uninstall TTS server
-        agent-cli uninstall-services tts
-
-    """
-    console.print(_DEPRECATION_NOTICE)
-    _check_macos()
-
-    from agent_cli.install.launchd import SERVICES, uninstall_service  # noqa: PLC0415
-
-    if service not in SERVICES:
-        err_console.print(
-            f"[bold red]Error:[/bold red] Unknown service '{service}'. "
-            f"Available: {', '.join(SERVICES.keys())}",
-        )
-        raise typer.Exit(1)
-
-    console.print(f"[bold]Uninstalling agent-cli {service} service...[/bold]")
-
-    result = uninstall_service(service)
-    console.print(f"[green]✓[/green] {service}: {result.message}")
-    console.print()
-    console.print("[dim]Note: Log files are preserved at ~/Library/Logs/agent-cli-<service>/[/dim]")
 
 
 def _get_service_manager() -> ModuleType:
