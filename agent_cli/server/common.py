@@ -8,6 +8,7 @@ import importlib
 import logging
 import os
 import signal
+import sys
 from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING, Any, Protocol
 
@@ -43,7 +44,9 @@ def _get_parent_ppid() -> int:
 
 
 async def _orphan_watchdog(check_interval: float = 2.0) -> None:
-    """Detect if parent process chain is orphaned and shutdown."""
+    """Detect if parent process chain is orphaned and shutdown (Unix only)."""
+    if sys.platform == "win32":
+        return  # No orphan detection on Windows
     while True:
         await asyncio.sleep(check_interval)
         # Check if our parent's parent is PID 1 (orphaned via uv)
