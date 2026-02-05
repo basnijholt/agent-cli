@@ -19,8 +19,8 @@ if ($UseWindowsTerminal) {
     # Start Windows Terminal with multiple tabs
     wt --title "agent-cli services" `
         new-tab --title "Ollama" powershell -NoExit -Command "ollama serve" `; `
-        new-tab --title "Whisper" powershell -NoExit -ExecutionPolicy Bypass -File "$ScriptDir\run-whisper-windows.ps1" `; `
-        new-tab --title "Piper" powershell -NoExit -ExecutionPolicy Bypass -File "$ScriptDir\run-piper-windows.ps1"
+        new-tab --title "Whisper" powershell -NoExit -Command "agent-cli server whisper" `; `
+        new-tab --title "Piper" powershell -NoExit -Command "agent-cli server tts --backend piper"
 
     Write-Host ""
     Write-Host "✅ Services started in Windows Terminal tabs!" -ForegroundColor Green
@@ -33,8 +33,8 @@ if ($UseWindowsTerminal) {
 
     # Start each service in a new PowerShell window
     Start-Process powershell -ArgumentList "-NoExit", "-Command", "Write-Host 'Ollama' -ForegroundColor Cyan; ollama serve"
-    Start-Process powershell -ArgumentList "-NoExit", "-ExecutionPolicy", "Bypass", "-File", "$ScriptDir\run-whisper-windows.ps1"
-    Start-Process powershell -ArgumentList "-NoExit", "-ExecutionPolicy", "Bypass", "-File", "$ScriptDir\run-piper-windows.ps1"
+    Start-Process powershell -ArgumentList "-NoExit", "-Command", "Write-Host 'Whisper' -ForegroundColor Cyan; agent-cli server whisper"
+    Start-Process powershell -ArgumentList "-NoExit", "-Command", "Write-Host 'Piper' -ForegroundColor Cyan; agent-cli server tts --backend piper"
 
     Write-Host ""
     Write-Host "✅ Services started in separate windows!" -ForegroundColor Green

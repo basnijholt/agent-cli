@@ -55,8 +55,8 @@ Write-Host "  .\scripts\start-all-services-windows.ps1" -ForegroundColor Gray
 Write-Host ""
 Write-Host "Option 2 - Run services individually:" -ForegroundColor White
 Write-Host "  1. Ollama: ollama serve  (or it runs automatically as a service)" -ForegroundColor Gray
-Write-Host "  2. Whisper: .\scripts\run-whisper-windows.ps1" -ForegroundColor Gray
-Write-Host "  3. Piper: .\scripts\run-piper-windows.ps1" -ForegroundColor Gray
+Write-Host "  2. Whisper: agent-cli server whisper" -ForegroundColor Gray
+Write-Host "  3. Piper: agent-cli server tts --backend piper" -ForegroundColor Gray
 Write-Host ""
 Write-Host "📝 Note: Scripts use uvx to run without needing virtual environments." -ForegroundColor Yellow
 Write-Host "For GPU acceleration, make sure NVIDIA drivers and CUDA 12 are installed." -ForegroundColor Yellow
