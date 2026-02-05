@@ -45,6 +45,18 @@ agent-cli transcribe --from-file voice_memo.m4a --asr-provider gemini
 
 # Re-transcribe most recent recording
 agent-cli transcribe --last-recording 1
+
+# Transcribe with speaker diarization (identifies different speakers)
+agent-cli transcribe --diarize --hf-token YOUR_HF_TOKEN
+
+# Diarization with JSON output format
+agent-cli transcribe --diarize --diarize-format json --hf-token YOUR_HF_TOKEN
+
+# Diarize a file with known number of speakers
+agent-cli transcribe --from-file meeting.wav --diarize --min-speakers 2 --max-speakers 4 --hf-token YOUR_HF_TOKEN
+
+# Use wav2vec2 for word-level alignment (more accurate but slower)
+agent-cli transcribe --from-file meeting.wav --diarize --align-words --hf-token YOUR_HF_TOKEN
 ```
 
 ## Supported Audio Formats
@@ -162,6 +174,16 @@ The `--from-file` option supports multiple audio formats:
 | `--print-args` | `false` | Print the command line arguments, including variables taken from the configuration file. |
 | `--transcription-log` | - | Append transcripts to JSONL file (timestamp, hostname, model, raw/processed text). Recent entries provide context for LLM cleanup. |
 
+### Diarization
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--diarize/--no-diarize` | `false` | Enable speaker diarization (requires pyannote-audio). Install with: pip install agent-cli[diarization] |
+| `--diarize-format` | `inline` | Output format for diarization ('inline' for [Speaker N]: text, 'json' for structured output). |
+| `--hf-token` | - | HuggingFace token for pyannote models. Required for diarization. Token must have 'Read access to contents of all public gated repos you can access' permission. Accept licenses at: https://hf.co/pyannote/speaker-diarization-3.1, https://hf.co/pyannote/segmentation-3.0, https://hf.co/pyannote/wespeaker-voxceleb-resnet34-LM |
+| `--min-speakers` | - | Minimum number of speakers (optional hint for diarization). |
+| `--max-speakers` | - | Maximum number of speakers (optional hint for diarization). |
+
 
 <!-- OUTPUT:END -->
 
@@ -198,3 +220,57 @@ agent-cli transcribe --transcription-log ~/.config/agent-cli/transcriptions.log
 - Use `--list-devices` to find your microphone's index
 - Enable `--llm` for cleaner output with proper punctuation
 - Use `--last-recording 1` to re-transcribe if you need to adjust settings
+
+## Speaker Diarization
+
+Speaker diarization identifies and labels different speakers in the transcript. This is useful for meeting recordings, interviews, or any multi-speaker audio.
+
+### Requirements
+
+1. **Install the diarization extra**:
+   ```bash
+   pip install agent-cli[diarization]
+   # or with uv
+   uv sync --extra diarization
+   ```
+
+2. **HuggingFace token**: The pyannote-audio models are gated. You need to:
+   - Accept the license for all three models:
+     - [pyannote/speaker-diarization-3.1](https://huggingface.co/pyannote/speaker-diarization-3.1)
+     - [pyannote/segmentation-3.0](https://huggingface.co/pyannote/segmentation-3.0)
+     - [pyannote/wespeaker-voxceleb-resnet34-LM](https://huggingface.co/pyannote/wespeaker-voxceleb-resnet34-LM)
+   - Get your token from [HuggingFace settings](https://huggingface.co/settings/tokens)
+   - Token must have **"Read access to contents of all public gated repos you can access"** permission
+   - Provide it via `--hf-token` or the `HF_TOKEN` environment variable
+
+### Output Formats
+
+**Inline format** (default):
+```
+[SPEAKER_00]: Hello, how are you today?
+[SPEAKER_01]: I'm doing well, thanks for asking!
+[SPEAKER_00]: Great to hear.
+```
+
+**JSON format** (`--diarize-format json`):
+```json
+{
+  "segments": [
+    {"speaker": "SPEAKER_00", "start": 0.0, "end": 2.5, "text": "Hello, how are you today?"},
+    {"speaker": "SPEAKER_01", "start": 2.7, "end": 4.1, "text": "I'm doing well, thanks for asking!"},
+    {"speaker": "SPEAKER_00", "start": 4.3, "end": 5.2, "text": "Great to hear."}
+  ]
+}
+```
+
+### Speaker Hints
+
+If you know how many speakers are in the recording, use `--min-speakers` and `--max-speakers` to improve accuracy:
+
+```bash
+# For a two-person interview
+agent-cli transcribe --from-file interview.wav --diarize --min-speakers 2 --max-speakers 2 --hf-token YOUR_TOKEN
+```
+
+> [!NOTE]
+> Diarization requires the audio file to be saved. When using live recording with `--diarize`, ensure `--save-recording` is enabled (it's enabled by default).
