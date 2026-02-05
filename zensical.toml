@@ -46,6 +46,7 @@ nav = [
         { "tts" = "commands/server/tts.md" },
         { "transcribe-proxy" = "commands/server/transcribe-proxy.md" },
       ] },
+      { "daemon" = "commands/daemon.md" },
     ] },
     { "Setup" = [
       { "config" = "commands/config.md" },
