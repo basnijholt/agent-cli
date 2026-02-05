@@ -124,7 +124,7 @@ from .agents import (  # noqa: E402, F401
     transcribe_daemon,
     voice_edit,
 )
+from .daemon import cli as daemon_cli  # noqa: E402, F401
 from .dev import cli as dev_cli  # noqa: E402, F401
 from .install import extras, hotkeys, services  # noqa: E402, F401
 from .server import cli as server_cli  # noqa: E402, F401
-from .services import cli as services_cli  # noqa: E402, F401

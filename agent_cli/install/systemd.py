@@ -31,12 +31,6 @@ def _get_unit_path(service_name: str) -> Path:
     return Path.home() / ".config" / "systemd" / "user" / _get_unit_name(service_name)
 
 
-def _get_log_dir(service_name: str) -> Path:
-    """Get log directory for a service (for compatibility)."""
-    # systemd uses journalctl, but we provide a consistent interface
-    return Path.home() / ".local" / "share" / "agent-cli" / "logs" / service_name
-
-
 def _get_log_command(service_name: str) -> str:
     """Get command to view logs for a service."""
     return f"journalctl --user -u agent-cli-{service_name} -f"

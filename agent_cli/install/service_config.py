@@ -108,12 +108,6 @@ def find_uv(extra_paths: list[Path] | None = None) -> Path | None:
     return Path(which_result) if which_result else None
 
 
-def check_uv_installed(extra_paths: list[Path] | None = None) -> tuple[bool, Path | None]:
-    """Check if uv is installed."""
-    uv_path = find_uv(extra_paths)
-    return (uv_path is not None, uv_path)
-
-
 def install_uv() -> tuple[bool, str]:
     """Install uv using the official installer."""
     try:

@@ -1,6 +1,6 @@
-"""CLI commands for service installation and management.
+"""CLI commands for daemon installation and management.
 
-Manage agent-cli server services as background processes:
+Manage agent-cli servers as background daemons:
 - macOS: launchd services (~/Library/LaunchAgents/)
 - Linux: systemd user services (~/.config/systemd/user/)
 """
@@ -18,16 +18,16 @@ from agent_cli.core.utils import console, err_console
 from agent_cli.install.service_config import SERVICES, get_service_manager
 
 app = typer.Typer(
-    name="services",
-    help="""Manage agent-cli servers as background services.
+    name="daemon",
+    help="""Manage agent-cli servers as background daemons.
 
-Install, uninstall, and monitor agent-cli servers running as system services
+Install, uninstall, and monitor agent-cli servers running as system daemons
 (launchd on macOS, systemd on Linux).
 
-**Available services:**
+**Available daemons:**
 
-| Service | Description | Ports |
-|---------|-------------|-------|
+| Daemon | Description | Ports |
+|--------|-------------|-------|
 | `whisper` | Speech-to-text ASR | 10300/10301 |
 | `tts` | Text-to-speech (Kokoro) | 10200/10201 |
 | `transcription-proxy` | ASR provider proxy | 61337 |
@@ -35,23 +35,23 @@ Install, uninstall, and monitor agent-cli servers running as system services
 **Examples:**
 
 ```bash
-# Install whisper as a background service
-agent-cli services install whisper
+# Install whisper as a background daemon
+agent-cli daemon install whisper
 
-# Check status of all services
-agent-cli services status
+# Check status of all daemons
+agent-cli daemon status
 
-# Uninstall a service
-agent-cli services uninstall whisper
+# Uninstall a daemon
+agent-cli daemon uninstall whisper
 ```
 
-Services run via `uv tool run` and start automatically at login.
+Daemons run via `uv tool run` and start automatically at login.
 """,
     add_completion=True,
     rich_markup_mode="markdown",
     no_args_is_help=True,
 )
-main_app.add_typer(app, name="services", rich_help_panel="Servers")
+main_app.add_typer(app, name="daemon", rich_help_panel="Servers")
 
 
 @app.command("status")
@@ -63,16 +63,16 @@ def status_cmd(
         ),
     ] = None,
 ) -> None:
-    """Check status of installed services.
+    """Check status of installed daemons.
 
-    Shows whether each service is installed and running.
+    Shows whether each daemon is installed and running.
 
     Examples:
-        # Check all services
-        agent-cli services status
+        # Check all daemons
+        agent-cli daemon status
 
-        # Check specific service
-        agent-cli services status whisper
+        # Check specific daemon
+        agent-cli daemon status whisper
 
     """
     try:
@@ -174,7 +174,7 @@ def install_cmd(  # noqa: PLR0912, PLR0915
         typer.Option("--no-confirm", "-y", help="Skip confirmation prompts"),
     ] = False,
 ) -> None:
-    """Install server services as background services.
+    """Install server daemons as background processes.
 
     Installs agent-cli's built-in servers to run automatically
     at login and restart on failure.
@@ -183,26 +183,26 @@ def install_cmd(  # noqa: PLR0912, PLR0915
     - **macOS**: launchd services (~/Library/LaunchAgents/)
     - **Linux**: systemd user services (~/.config/systemd/user/)
 
-    **Available services:**
+    **Available daemons:**
     - **whisper**: Speech-to-text ASR server (ports 10300/10301)
     - **tts**: Text-to-speech with Kokoro (ports 10200/10201)
     - **transcription-proxy**: Proxy for ASR providers (port 61337)
 
-    Services run via `uv tool run` and don't require a virtual environment.
+    Daemons run via `uv tool run` and don't require a virtual environment.
 
     **Examples:**
 
-        # Install specific services
-        agent-cli services install whisper tts
+        # Install specific daemons
+        agent-cli daemon install whisper tts
 
-        # Install all services
-        agent-cli services install --all
+        # Install all daemons
+        agent-cli daemon install --all
 
         # Skip confirmation prompts
-        agent-cli services install whisper -y
+        agent-cli daemon install whisper -y
 
     After installation, check status with:
-        agent-cli services status
+        agent-cli daemon status
     """
     if not services and not all_services:
         err_console.print(
@@ -277,17 +277,17 @@ def install_cmd(  # noqa: PLR0912, PLR0915
 
     if success_count == len(selected_services):
         panel = Panel(
-            f"[green]Successfully installed {success_count} service(s)![/green]\n\n"
-            f"Check status: [cyan]agent-cli services status[/cyan]\n{log_hint}",
+            f"[green]Successfully installed {success_count} daemon(s)![/green]\n\n"
+            f"Check status: [cyan]agent-cli daemon status[/cyan]\n{log_hint}",
             title="Installation Complete",
             border_style="green",
         )
         console.print(panel)
     elif success_count > 0:
         panel = Panel(
-            f"[yellow]Installed {success_count} service(s), "
+            f"[yellow]Installed {success_count} daemon(s), "
             f"{len(failed)} failed: {', '.join(failed)}[/yellow]\n\n"
-            "Check status: [cyan]agent-cli services status[/cyan]",
+            "Check status: [cyan]agent-cli daemon status[/cyan]",
             title="Partial Installation",
             border_style="yellow",
         )
@@ -316,18 +316,18 @@ def uninstall_cmd(
         typer.Option("--no-confirm", "-y", help="Skip confirmation prompts"),
     ] = False,
 ) -> None:
-    """Uninstall server services.
+    """Uninstall server daemons.
 
-    Stops services and removes their configuration.
+    Stops daemons and removes their configuration.
     Log files are preserved for debugging (macOS only).
 
     **Examples:**
 
-        # Uninstall specific services
-        agent-cli services uninstall whisper tts
+        # Uninstall specific daemons
+        agent-cli daemon uninstall whisper tts
 
-        # Uninstall all services
-        agent-cli services uninstall --all
+        # Uninstall all daemons
+        agent-cli daemon uninstall --all
 
     """
     if not services and not all_services:
