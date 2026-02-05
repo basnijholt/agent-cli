@@ -27,7 +27,6 @@ class ServiceConfig:
     description: str
     extra: str  # uv extras to install (e.g., "server,kokoro,wyoming"), empty for external
     command_args: list[str]  # Additional args after "agent-cli server <name>"
-    external: bool = False  # True for external services (ollama) that aren't agent-cli servers
     python_version: str | None = None  # Pin Python version for dependencies without py3.14 wheels
     macos_extra: str | None = None  # Override extra on macOS (e.g., whisper-mlx)
 
@@ -57,14 +56,6 @@ SERVICES: dict[str, ServiceConfig] = {
         description="Proxy server for ASR providers (port 61337)",
         extra="server",
         command_args=[],
-    ),
-    "ollama": ServiceConfig(
-        name="ollama",
-        display_name="Ollama",
-        description="Local LLM inference server (port 11434)",
-        extra="",
-        command_args=[],
-        external=True,
     ),
 }
 

@@ -72,7 +72,7 @@ def install_services(  # noqa: PLR0912, PLR0915
     services: Annotated[
         list[str] | None,
         typer.Argument(
-            help="Services to install (whisper, tts, transcription-proxy, ollama).",
+            help="Services to install (whisper, tts, transcription-proxy).",
         ),
     ] = None,
     all_services: Annotated[
@@ -102,22 +102,15 @@ def install_services(  # noqa: PLR0912, PLR0915
     - **tts**: Text-to-speech with Kokoro (ports 10200/10201)
     - **transcription-proxy**: Proxy for ASR providers (port 61337)
 
-    **Available third-party services:**
-    - **ollama**: Local LLM inference server (port 11434)
-
     Services run via `uv tool run` and don't require a virtual environment.
-    Third-party services are installed via Homebrew (macOS) or official installer (Linux).
 
     **Examples:**
 
         # Install specific services
         agent-cli install-services whisper tts
 
-        # Install all services including Ollama
+        # Install all services
         agent-cli install-services --all
-
-        # Install just Ollama
-        agent-cli install-services ollama
 
         # Skip confirmation prompts
         agent-cli install-services whisper -y
@@ -147,9 +140,8 @@ def install_services(  # noqa: PLR0912, PLR0915
             raise typer.Exit(1)
         selected_services = services
 
-    # Check uv dependency only if we're installing non-external services
-    needs_uv = any(not SERVICES[s].external for s in selected_services)
-    if needs_uv and not skip_deps:
+    # Check uv dependency
+    if not skip_deps:
         _ensure_uv_installed(no_confirm)
 
     # Confirm installation
@@ -219,7 +211,7 @@ def uninstall_services(
     services: Annotated[
         list[str] | None,
         typer.Argument(
-            help="Services to uninstall (whisper, tts, transcription-proxy, ollama).",
+            help="Services to uninstall (whisper, tts, transcription-proxy).",
         ),
     ] = None,
     all_services: Annotated[
