@@ -34,7 +34,7 @@ async def test_mlx_transcribe_converts_mismatched_wav() -> None:
     """Ensure MLX backend converts WAVs that do not match expected format."""
     config = BackendConfig(model_name="tiny")
     backend = MLXWhisperBackend(config)
-    backend._executor = MagicMock()  # Simulate loaded state
+    backend._subprocess._executor = MagicMock()  # Simulate loaded state
 
     audio = _make_wav_bytes(rate=44100, channels=1, sampwidth=2)
     fake_result = {"text": "hello", "language": "en", "segments": []}
@@ -61,7 +61,7 @@ async def test_mlx_transcribe_accepts_matching_wav() -> None:
     """Ensure MLX backend accepts 16kHz mono 16-bit WAV without conversion."""
     config = BackendConfig(model_name="tiny")
     backend = MLXWhisperBackend(config)
-    backend._executor = MagicMock()  # Simulate loaded state
+    backend._subprocess._executor = MagicMock()  # Simulate loaded state
 
     audio = _make_wav_bytes(rate=16000, channels=1, sampwidth=2)
     fake_result = {"text": "hello", "language": "en", "segments": []}
