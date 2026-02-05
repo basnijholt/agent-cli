@@ -64,7 +64,7 @@ def main() -> int:
         print("ERROR: _extras.json is out of sync with pyproject.toml")
         for error in errors:
             print(f"  - {error}")
-        print("\nRun 'python scripts/sync_extras.py' to regenerate _extras.json")
+        print("\nRun 'python .github/scripts/sync_extras.py' to regenerate _extras.json")
         return 1
 
     print("OK: _extras.json is in sync with pyproject.toml")
