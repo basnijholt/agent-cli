@@ -833,3 +833,180 @@ def tts_cmd(  # noqa: PLR0915
         port=port,
         log_level=log_level.lower(),
     )
+
+
+def _check_wakeword_deps() -> None:
+    """Check that wakeword dependencies are available."""
+    if not _has("wyoming") or not _has("pyopen_wakeword"):
+        err_console.print(
+            "[bold red]Error:[/bold red] Wakeword dependencies not installed. "
+            "Run: [cyan]pip install agent-cli\\[wakeword][/cyan] "
+            "or [cyan]uv sync --extra wakeword[/cyan]",
+        )
+        raise typer.Exit(1)
+
+
+@app.command("wakeword")
+@requires_extras("wakeword")
+def wakeword_cmd(
+    model: Annotated[
+        list[str] | None,
+        typer.Option(
+            "--model",
+            "-m",
+            help=(
+                "Wake word model(s) to load. Common models: `okay_nabu`, `hey_jarvis`, "
+                "`alexa`, `hey_mycroft`. Can specify multiple for different wake words"
+            ),
+        ),
+    ] = None,
+    default_model: Annotated[
+        str | None,
+        typer.Option(
+            "--default-model",
+            help=("Model to use when client doesn't specify one. Must be in the `--model` list"),
+        ),
+    ] = None,
+    threshold: Annotated[
+        float,
+        typer.Option(
+            "--threshold",
+            help="Wake word detection threshold (0.0-1.0, higher = more strict)",
+        ),
+    ] = 0.5,
+    trigger_level: Annotated[
+        int,
+        typer.Option(
+            "--trigger-level",
+            help="Number of consecutive activations before detection (default: 1)",
+        ),
+    ] = 1,
+    refractory_seconds: Annotated[
+        float,
+        typer.Option(
+            "--refractory-seconds",
+            help="Seconds before the same wake word can be detected again",
+        ),
+    ] = 2.0,
+    custom_model_dir: Annotated[
+        Path | None,
+        typer.Option(
+            "--custom-model-dir",
+            help="Path to directory with custom wake word models (.tflite files)",
+        ),
+    ] = None,
+    ttl: Annotated[
+        int,
+        typer.Option(
+            "--ttl",
+            help=(
+                "Seconds of inactivity before unloading model from memory. "
+                "Set to 0 to keep loaded indefinitely"
+            ),
+        ),
+    ] = 300,
+    preload: Annotated[
+        bool,
+        typer.Option(
+            "--preload",
+            help=(
+                "Load model(s) immediately at startup instead of on first request. "
+                "Useful for reducing first-request latency"
+            ),
+        ),
+    ] = False,
+    uri: Annotated[
+        str,
+        typer.Option(
+            "--uri",
+            help="Wyoming server URI to bind to",
+        ),
+    ] = "tcp://0.0.0.0:10400",
+    log_level: opts.LogLevel = opts.SERVER_LOG_LEVEL,
+) -> None:
+    """Run wake word detection server (Wyoming protocol).
+
+    Provides Wyoming protocol for Home Assistant voice pipeline integration.
+    Uses openWakeWord for detection.
+
+    Models are loaded lazily on first request and unloaded after being
+    idle for the TTL duration, freeing memory for other applications.
+
+    Supported builtin models: okay_nabu, hey_jarvis, alexa, hey_mycroft, etc.
+
+    **Examples:**
+
+        # Run with default okay_nabu model
+        agent-cli server wakeword
+
+        # Run with specific model and custom threshold
+        agent-cli server wakeword --model hey_jarvis --threshold 0.6
+
+        # Run with custom models from a directory
+        agent-cli server wakeword --custom-model-dir /path/to/models
+    """
+    setup_rich_logging(log_level)
+    _check_wakeword_deps()
+
+    from agent_cli.server.wakeword.model_manager import WakewordModelConfig  # noqa: PLC0415
+    from agent_cli.server.wakeword.model_registry import (  # noqa: PLC0415
+        create_wakeword_registry,
+    )
+
+    # Default model if none specified
+    if model is None:
+        model = ["okay_nabu"]
+
+    # Validate default model against model list
+    if default_model is not None and default_model not in model:
+        err_console.print(
+            f"[bold red]Error:[/bold red] --default-model '{default_model}' "
+            f"is not in the model list: {model}",
+        )
+        raise typer.Exit(1)
+
+    # Create registry and register models
+    registry = create_wakeword_registry(default_model=default_model or model[0])
+
+    for model_name in model:
+        config = WakewordModelConfig(
+            model_name=model_name,
+            device="cpu",
+            ttl_seconds=ttl,
+            threshold=threshold,
+            trigger_level=trigger_level,
+            refractory_seconds=refractory_seconds,
+            custom_model_dir=custom_model_dir,
+        )
+        registry.register(config)
+
+    # Preload models if requested
+    if preload:
+        console.print("[bold]Preloading model(s)...[/bold]")
+        asyncio.run(registry.preload())
+
+    # Print startup info
+    console.print()
+    console.print("[bold green]Starting Wakeword Server (Wyoming)[/bold green]")
+    console.print()
+    console.print("[dim]Configuration:[/dim]")
+    console.print("  Backend: [cyan]openwakeword[/cyan]")
+    console.print(f"  Threshold: [cyan]{threshold}[/cyan]")
+    console.print(f"  Trigger level: [cyan]{trigger_level}[/cyan]")
+    console.print(f"  Refractory: [cyan]{refractory_seconds}s[/cyan]")
+    console.print(f"  TTL: [cyan]{ttl}s[/cyan]")
+    console.print()
+    console.print("[dim]Server:[/dim]")
+    console.print(f"  Wyoming: [cyan]{uri}[/cyan]")
+    console.print()
+    console.print("[dim]Models:[/dim]")
+    for m in model:
+        is_default = m == registry.default_model
+        suffix = " [yellow](default)[/yellow]" if is_default else ""
+        console.print(f"  • {m}{suffix}")
+    console.print()
+
+    # Run Wyoming server
+    from agent_cli.server.wakeword.api import run_server  # noqa: PLC0415
+
+    asyncio.run(run_server(registry, uri))
