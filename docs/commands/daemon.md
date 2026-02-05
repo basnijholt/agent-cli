@@ -26,7 +26,8 @@ Daemons run via `uv tool run` and start automatically at login.
 | Daemon | Description | Ports |
 |--------|-------------|-------|
 | `whisper` | Speech-to-text ASR server | 10300/10301 |
-| `tts` | Text-to-speech (Kokoro) | 10200/10201 |
+| `tts-kokoro` | Text-to-speech with Kokoro (GPU) | 10200/10201 |
+| `tts-piper` | Text-to-speech with Piper (CPU) | 10200/10201 |
 | `transcription-proxy` | ASR provider proxy | 61337 |
 
 ## Commands
@@ -49,7 +50,7 @@ Install server daemons as background processes.
 
 ```bash
 # Install specific daemons
-agent-cli daemon install whisper tts
+agent-cli daemon install whisper tts-kokoro
 
 # Install all daemons
 agent-cli daemon install --all
@@ -72,7 +73,7 @@ Uninstall server daemons.
 
 ```bash
 # Uninstall specific daemons
-agent-cli daemon uninstall whisper tts
+agent-cli daemon uninstall whisper tts-kokoro
 
 # Uninstall all daemons
 agent-cli daemon uninstall --all
@@ -131,11 +132,12 @@ agent-cli daemon uninstall whisper
  Available daemons:
 
 
-   Daemon                Description               Ports
-  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-   whisper               Speech-to-text ASR        10300/10301
-   tts                   Text-to-speech (Kokoro)   10200/10201
-   transcription-proxy   ASR provider proxy        61337
+   Daemon                Description            Ports
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   whisper               Speech-to-text ASR     10300/10301
+   tts-kokoro            Text-to-speech (GPU)   10200/10201
+   tts-piper             Text-to-speech (CPU)   10200/10201
+   transcription-proxy   ASR provider proxy     61337
 
 
  Examples:
@@ -143,6 +145,9 @@ agent-cli daemon uninstall whisper
 
   # Install whisper as a background daemon
   agent-cli daemon install whisper
+
+  # Install GPU-accelerated TTS
+  agent-cli daemon install tts-kokoro
 
   # Check status of all daemons
   agent-cli daemon status

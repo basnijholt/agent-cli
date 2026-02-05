@@ -46,7 +46,8 @@ class TestServiceConfig:
     def test_services_defined(self) -> None:
         """Test that expected services are defined."""
         assert "whisper" in SERVICES
-        assert "tts" in SERVICES
+        assert "tts-kokoro" in SERVICES
+        assert "tts-piper" in SERVICES
         assert "transcription-proxy" in SERVICES
 
     def test_service_config_fields(self) -> None:
