@@ -68,6 +68,12 @@
       "onnxruntime"
     ]
   ],
+  "wakeword": [
+    "Wake word detection (openWakeWord)",
+    [
+      "pyopen_wakeword"
+    ]
+  ],
   "whisper-transformers": [
     "Whisper ASR via HuggingFace transformers",
     [

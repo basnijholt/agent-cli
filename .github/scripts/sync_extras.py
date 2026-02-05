@@ -53,6 +53,8 @@ EXTRA_METADATA: dict[str, tuple[str, list[str]]] = {
     # TTS backends
     "piper": ("Piper TTS (CPU)", ["piper"]),
     "kokoro": ("Kokoro neural TTS (GPU)", ["kokoro"]),
+    # Wakeword
+    "wakeword": ("Wake word detection (openWakeWord)", ["pyopen_wakeword"]),
 }
 
 

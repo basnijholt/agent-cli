@@ -837,22 +837,17 @@ def tts_cmd(  # noqa: PLR0915
 
 def _check_wakeword_deps() -> None:
     """Check that wakeword dependencies are available."""
-    if not _has("wyoming"):
-        err_console.print(
-            "[bold red]Error:[/bold red] Wyoming not installed. "
-            "Run: [cyan]pip install wyoming[/cyan]",
-        )
-        raise typer.Exit(1)
-    if not _has("pyopen_wakeword"):
+    if not _has("wyoming") or not _has("pyopen_wakeword"):
         err_console.print(
             "[bold red]Error:[/bold red] Wakeword dependencies not installed. "
-            "Run: [cyan]pip install pyopen-wakeword[/cyan]",
+            "Run: [cyan]pip install agent-cli\\[wakeword][/cyan] "
+            "or [cyan]uv sync --extra wakeword[/cyan]",
         )
         raise typer.Exit(1)
 
 
 @app.command("wakeword")
-@requires_extras("wyoming")
+@requires_extras("wakeword")
 def wakeword_cmd(
     model: Annotated[
         list[str] | None,
