@@ -2,11 +2,8 @@
 
 from __future__ import annotations
 
-import asyncio
 import logging
 import wave
-from concurrent.futures import ProcessPoolExecutor
-from multiprocessing import get_context
 from typing import TYPE_CHECKING, Any, Literal
 
 from agent_cli import constants
@@ -15,6 +12,7 @@ from agent_cli.core.audio_format import (
     extract_pcm_from_wav,
 )
 from agent_cli.core.process import set_process_title
+from agent_cli.server.subprocess import SubprocessExecutor
 from agent_cli.server.whisper.backends.base import (
     BackendConfig,
     InvalidAudioError,
@@ -160,17 +158,17 @@ class MLXWhisperBackend:
         """Initialize the backend."""
         self._config = config
         self._resolved_model = _resolve_mlx_model_name(config.model_name)
-        self._executor: ProcessPoolExecutor | None = None
+        self._subprocess = SubprocessExecutor()
 
     @property
     def is_loaded(self) -> bool:
         """Check if the model is loaded."""
-        return self._executor is not None
+        return self._subprocess.is_running
 
     @property
     def device(self) -> str | None:
         """Get the device - always 'mps' (Metal) for MLX."""
-        return "mps" if self._executor is not None else None
+        return "mps" if self._subprocess.is_running else None
 
     async def load(self) -> float:
         """Start subprocess and load model."""
@@ -183,14 +181,9 @@ class MLXWhisperBackend:
         )
 
         start_time = time.time()
+        self._subprocess.start()
 
-        # Subprocess isolation: spawn context for clean state
-        ctx = get_context("spawn")
-        self._executor = ProcessPoolExecutor(max_workers=1, mp_context=ctx)
-
-        loop = asyncio.get_running_loop()
-        await loop.run_in_executor(
-            self._executor,
+        await self._subprocess.run(
             _load_model_in_subprocess,
             self._resolved_model,
         )
@@ -205,11 +198,10 @@ class MLXWhisperBackend:
 
     async def unload(self) -> None:
         """Shutdown subprocess, releasing ALL memory."""
-        if self._executor is None:
+        if not self._subprocess.is_running:
             return
         logger.debug("Shutting down MLX subprocess for model %s", self._resolved_model)
-        self._executor.shutdown(wait=False, cancel_futures=True)
-        self._executor = None
+        self._subprocess.stop()
         logger.info("Model %s unloaded (subprocess terminated)", self._config.model_name)
 
     async def transcribe(
@@ -225,7 +217,7 @@ class MLXWhisperBackend:
         word_timestamps: bool = False,
     ) -> TranscriptionResult:
         """Transcribe audio using mlx-whisper in subprocess."""
-        if self._executor is None:
+        if not self._subprocess.is_running:
             msg = "Model not loaded. Call load() first."
             raise RuntimeError(msg)
 
@@ -243,9 +235,7 @@ class MLXWhisperBackend:
         if initial_prompt:
             kwargs["initial_prompt"] = initial_prompt
 
-        loop = asyncio.get_running_loop()
-        result = await loop.run_in_executor(
-            self._executor,
+        result = await self._subprocess.run(
             _transcribe_in_subprocess,
             self._resolved_model,
             audio_array.tobytes(),

@@ -2,16 +2,14 @@
 
 from __future__ import annotations
 
-import asyncio
 import logging
 import tempfile
-from concurrent.futures import ProcessPoolExecutor
 from dataclasses import dataclass
-from multiprocessing import get_context
 from pathlib import Path
 from typing import Any, Literal
 
 from agent_cli.core.process import set_process_title
+from agent_cli.server.subprocess import SubprocessExecutor
 from agent_cli.server.whisper.backends.base import (
     BackendConfig,
     TranscriptionResult,
@@ -118,13 +116,13 @@ class FasterWhisperBackend:
     def __init__(self, config: BackendConfig) -> None:
         """Initialize the backend."""
         self._config = config
-        self._executor: ProcessPoolExecutor | None = None
+        self._subprocess = SubprocessExecutor()
         self._device: str | None = None
 
     @property
     def is_loaded(self) -> bool:
         """Check if the model is loaded."""
-        return self._executor is not None
+        return self._subprocess.is_running
 
     @property
     def device(self) -> str | None:
@@ -143,15 +141,10 @@ class FasterWhisperBackend:
         )
 
         start_time = time.time()
-
-        # Subprocess isolation: spawn context for clean state
-        ctx = get_context("spawn")
-        self._executor = ProcessPoolExecutor(max_workers=1, mp_context=ctx)
+        self._subprocess.start()
 
         download_root = str(self._config.cache_dir) if self._config.cache_dir else None
-        loop = asyncio.get_running_loop()
-        self._device = await loop.run_in_executor(
-            self._executor,
+        self._device = await self._subprocess.run(
             _load_model_in_subprocess,
             self._config.model_name,
             self._config.device,
@@ -171,14 +164,13 @@ class FasterWhisperBackend:
 
     async def unload(self) -> None:
         """Shutdown subprocess, releasing ALL memory."""
-        if self._executor is None:
+        if not self._subprocess.is_running:
             return
         logger.debug(
             "Shutting down faster-whisper subprocess for model %s",
             self._config.model_name,
         )
-        self._executor.shutdown(wait=False, cancel_futures=True)
-        self._executor = None
+        self._subprocess.stop()
         self._device = None
         logger.info("Model %s unloaded (subprocess terminated)", self._config.model_name)
 
@@ -195,7 +187,7 @@ class FasterWhisperBackend:
         word_timestamps: bool = False,
     ) -> TranscriptionResult:
         """Transcribe audio using faster-whisper in subprocess."""
-        if self._executor is None:
+        if not self._subprocess.is_running:
             msg = "Model not loaded. Call load() first."
             raise RuntimeError(msg)
 
@@ -208,9 +200,7 @@ class FasterWhisperBackend:
             "word_timestamps": word_timestamps,
         }
 
-        loop = asyncio.get_running_loop()
-        result = await loop.run_in_executor(
-            self._executor,
+        result = await self._subprocess.run(
             _transcribe_in_subprocess,
             audio,
             kwargs,

@@ -2,19 +2,17 @@
 
 from __future__ import annotations
 
-import asyncio
 import io
 import logging
 import time
 import wave
-from concurrent.futures import ProcessPoolExecutor
 from dataclasses import dataclass
-from multiprocessing import get_context
 from pathlib import Path
 from typing import Any, NoReturn
 
 from agent_cli import constants
 from agent_cli.core.process import set_process_title
+from agent_cli.server.subprocess import SubprocessExecutor
 from agent_cli.server.tts.backends.base import (
     BackendConfig,
     InvalidTextError,
@@ -143,14 +141,14 @@ class PiperBackend:
     def __init__(self, config: BackendConfig) -> None:
         """Initialize the Piper backend."""
         self._config = config
-        self._executor: ProcessPoolExecutor | None = None
+        self._subprocess = SubprocessExecutor()
         self._sample_rate: int = constants.PIPER_DEFAULT_SAMPLE_RATE  # Updated on load
         self._device: str | None = None
 
     @property
     def is_loaded(self) -> bool:
         """Check if the model is loaded."""
-        return self._executor is not None
+        return self._subprocess.is_running
 
     @property
     def device(self) -> str | None:
@@ -159,18 +157,13 @@ class PiperBackend:
 
     async def load(self) -> float:
         """Start subprocess and load model."""
-        if self._executor is not None:
+        if self._subprocess.is_running:
             return 0.0
 
         start_time = time.time()
+        self._subprocess.start()
 
-        # Subprocess isolation: spawn context for clean state
-        ctx = get_context("spawn")
-        self._executor = ProcessPoolExecutor(max_workers=1, mp_context=ctx)
-
-        loop = asyncio.get_running_loop()
-        self._sample_rate = await loop.run_in_executor(
-            self._executor,
+        self._sample_rate = await self._subprocess.run(
             _load_model_in_subprocess,
             self._config.model_name,
             str(self._config.cache_dir) if self._config.cache_dir else None,
@@ -189,10 +182,9 @@ class PiperBackend:
 
     async def unload(self) -> None:
         """Shutdown subprocess, releasing all memory."""
-        if self._executor is None:
+        if not self._subprocess.is_running:
             return
-        self._executor.shutdown(wait=False, cancel_futures=True)
-        self._executor = None
+        self._subprocess.stop()
         self._device = None
         logger.info("Piper model %s unloaded (subprocess terminated)", self._config.model_name)
 
@@ -204,7 +196,7 @@ class PiperBackend:
         speed: float = 1.0,
     ) -> SynthesisResult:
         """Synthesize text to audio."""
-        if self._executor is None:
+        if not self._subprocess.is_running:
             msg = "Model not loaded. Call load() first."
             raise RuntimeError(msg)
 
@@ -216,9 +208,7 @@ class PiperBackend:
         # length_scale < 1.0 = faster, > 1.0 = slower
         length_scale = 1.0 / speed
 
-        loop = asyncio.get_running_loop()
-        audio_data, duration = await loop.run_in_executor(
-            self._executor,
+        audio_data, duration = await self._subprocess.run(
             _synthesize_in_subprocess,
             text,
             length_scale,

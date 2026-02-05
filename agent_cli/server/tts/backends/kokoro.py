@@ -7,15 +7,15 @@ import io
 import logging
 import time
 import wave
-from concurrent.futures import ProcessPoolExecutor
 from dataclasses import dataclass, field
-from multiprocessing import Manager, get_context
+from multiprocessing import Manager
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from agent_cli import constants
 from agent_cli.core.process import set_process_title
 from agent_cli.server.streaming import AsyncQueueReader, QueueWriter
+from agent_cli.server.subprocess import SubprocessExecutor
 from agent_cli.server.tts.backends.base import (
     BackendConfig,
     InvalidTextError,
@@ -267,14 +267,14 @@ class KokoroBackend:
     def __init__(self, config: BackendConfig) -> None:
         """Initialize the Kokoro backend."""
         self._config = config
-        self._executor: ProcessPoolExecutor | None = None
+        self._subprocess = SubprocessExecutor()
         self._device: str | None = None
         self._cache_dir = config.cache_dir or get_backend_cache_dir("kokoro")
 
     @property
     def is_loaded(self) -> bool:
         """Check if the model is currently loaded."""
-        return self._executor is not None
+        return self._subprocess.is_running
 
     @property
     def device(self) -> str | None:
@@ -283,16 +283,13 @@ class KokoroBackend:
 
     async def load(self) -> float:
         """Load model in subprocess. Downloads from HuggingFace if needed."""
-        if self._executor is not None:
+        if self._subprocess.is_running:
             return 0.0
 
         start_time = time.time()
-        ctx = get_context("spawn")
-        self._executor = ProcessPoolExecutor(max_workers=1, mp_context=ctx)
+        self._subprocess.start()
 
-        loop = asyncio.get_running_loop()
-        self._device = await loop.run_in_executor(
-            self._executor,
+        self._device = await self._subprocess.run(
             _load_model_in_subprocess,
             self._config.model_name,
             self._config.device,
@@ -305,10 +302,9 @@ class KokoroBackend:
 
     async def unload(self) -> None:
         """Shutdown subprocess, releasing all memory."""
-        if self._executor is None:
+        if not self._subprocess.is_running:
             return
-        self._executor.shutdown(wait=False, cancel_futures=True)
-        self._executor = None
+        self._subprocess.stop()
         self._device = None
         logger.info("Kokoro model unloaded (subprocess terminated)")
 
@@ -320,7 +316,7 @@ class KokoroBackend:
         speed: float = 1.0,
     ) -> SynthesisResult:
         """Synthesize text to audio."""
-        if self._executor is None:
+        if not self._subprocess.is_running:
             msg = "Model not loaded. Call load() first."
             raise RuntimeError(msg)
 
@@ -328,9 +324,7 @@ class KokoroBackend:
             msg = "Text cannot be empty"
             raise InvalidTextError(msg)
 
-        loop = asyncio.get_running_loop()
-        result = await loop.run_in_executor(
-            self._executor,
+        result = await self._subprocess.run(
             _synthesize_in_subprocess,
             text,
             voice,
@@ -359,7 +353,7 @@ class KokoroBackend:
         speed: float = 1.0,
     ) -> AsyncIterator[bytes]:
         """Stream synthesized audio chunks as they are generated."""
-        if self._executor is None:
+        if not self._subprocess.is_running:
             msg = "Model not loaded. Call load() first."
             raise RuntimeError(msg)
 
@@ -377,7 +371,7 @@ class KokoroBackend:
             # Submit streaming worker to subprocess
             # Manager queue is a proxy that works with already-running subprocesses
             future = loop.run_in_executor(
-                self._executor,
+                self._subprocess.executor,
                 _synthesize_stream_in_subprocess,
                 text,
                 voice,
