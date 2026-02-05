@@ -50,6 +50,8 @@ class TestServiceConfig:
         assert "tts-kokoro" in SERVICES
         assert "tts-piper" in SERVICES
         assert "transcription-proxy" in SERVICES
+        assert "memory" in SERVICES
+        assert "rag" in SERVICES
 
     def test_service_config_fields(self) -> None:
         """Test ServiceConfig has required fields."""
@@ -111,6 +113,46 @@ class TestServiceConfig:
         )
         cmd = build_service_command(service, uv_path, use_macos_extra=True)
         assert "agent-cli[server,macos-dep]" in cmd
+
+    def test_build_service_command_custom_command(self, tmp_path: Path) -> None:
+        """Test building service command with custom command path."""
+        uv_path = tmp_path / "uv"
+        uv_path.touch()
+        # Test custom command like "memory proxy"
+        service = ServiceConfig(
+            name="memory",
+            display_name="Memory Proxy",
+            description="Memory proxy",
+            extra="memory",
+            command_args=["--port", "8100"],
+            command=["memory", "proxy"],
+        )
+        cmd = build_service_command(service, uv_path)
+        assert "agent-cli[memory]" in cmd
+        assert "memory" in cmd
+        assert "proxy" in cmd
+        assert "--port" in cmd
+        assert "8100" in cmd
+        # Should NOT have "server" in the command
+        assert cmd.count("server") == 0
+
+    def test_memory_and_rag_services(self, tmp_path: Path) -> None:
+        """Test that memory and rag services have correct custom commands."""
+        uv_path = tmp_path / "uv"
+        uv_path.touch()
+
+        memory = SERVICES["memory"]
+        assert memory.command == ["memory", "proxy"]
+        cmd = build_service_command(memory, uv_path)
+        assert "agent-cli[memory]" in cmd
+        assert "memory" in cmd
+        assert "proxy" in cmd
+
+        rag = SERVICES["rag"]
+        assert rag.command == ["rag-proxy"]
+        cmd = build_service_command(rag, uv_path)
+        assert "agent-cli[rag]" in cmd
+        assert "rag-proxy" in cmd
 
     def test_find_uv_in_path(self, tmp_path: Path) -> None:
         """Test finding uv when it exists in extra_paths."""
