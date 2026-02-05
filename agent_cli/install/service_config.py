@@ -188,5 +188,13 @@ def get_service_manager() -> ServiceManager:
         from agent_cli.install.systemd import manager  # noqa: PLC0415
 
         return manager
-    msg = f"Unsupported platform: {system}"
+    msg = (
+        f"Unsupported platform: {system}\n\n"
+        "The daemon command manages system services using launchd (macOS) or\n"
+        "systemd (Linux). Windows is not currently supported.\n\n"
+        "Alternatives:\n"
+        "  - Run servers manually: agent-cli server <name>\n"
+        "  - Use Docker: docker run -p 10300:10300 agent-cli server whisper\n\n"
+        "See: https://github.com/basnijholt/agent-cli#servers"
+    )
     raise RuntimeError(msg)
