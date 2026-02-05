@@ -56,15 +56,15 @@ The `setup-macos.sh` script:
 
 ## Services Overview
 
-| Service          | Implementation         | Port  | GPU Support          |
-| ---------------- | ---------------------- | ----- | -------------------- |
-| **Ollama**       | Native macOS app       | 11434 | ✅ Metal GPU         |
-| **Whisper**      | Wyoming MLX Whisper    | 10300 | ✅ Apple Silicon MLX |
-| **TTS (Kokoro)** | Kokoro TTS (via daemon)| 10200 | ✅ Metal GPU (MPS)   |
-| **OpenWakeWord** | Wyoming OpenWakeWord   | 10400 | N/A                  |
+| Service          | Implementation          | Port  | GPU Support          |
+| ---------------- | ----------------------- | ----- | -------------------- |
+| **Ollama**       | Native macOS app        | 11434 | ✅ Metal GPU         |
+| **Whisper**      | MLX Whisper (via daemon)| 10300 | ✅ Apple Silicon MLX |
+| **TTS (Kokoro)** | Kokoro TTS (via daemon) | 10200 | ✅ Metal GPU (MPS)   |
+| **OpenWakeWord** | Wyoming OpenWakeWord    | 10400 | N/A                  |
 
 > [!NOTE]
-> Whisper uses [wyoming-mlx-whisper](https://github.com/basnijholt/wyoming-mlx-whisper) with `whisper-large-v3-turbo` for near real-time transcription on Apple Silicon. TTS uses Kokoro with GPU acceleration on macOS.
+> Whisper and TTS run as launchd daemons via `agent-cli daemon install`, using MLX and Metal for GPU acceleration on Apple Silicon.
 
 ## Session Management with Zellij
 
