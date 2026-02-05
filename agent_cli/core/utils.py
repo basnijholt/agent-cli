@@ -38,8 +38,8 @@ if TYPE_CHECKING:
     from logging import Handler
     from pathlib import Path
 
-console = Console()
-err_console = Console(stderr=True)
+console = Console(soft_wrap=True)
+err_console = Console(stderr=True, soft_wrap=True)
 
 
 def enable_json_mode() -> None:
