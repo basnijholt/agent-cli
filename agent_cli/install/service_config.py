@@ -26,9 +26,11 @@ class ServiceConfig:
     display_name: str
     description: str
     extra: str  # uv extras to install (e.g., "server,kokoro,wyoming"), empty for external
-    command_args: list[str]  # Additional args after "agent-cli server <name>"
+    command_args: list[str]  # Additional args after the base command
     python_version: str | None = None  # Pin Python version for dependencies without py3.14 wheels
     macos_extra: str | None = None  # Override extra on macOS (e.g., whisper-mlx)
+    # Custom command path (default: ["server", name]). For non-server commands like "memory proxy"
+    command: list[str] | None = None
 
 
 # TTS services that are mutually exclusive (same ports)
@@ -97,6 +99,22 @@ SERVICES: dict[str, ServiceConfig] = {
         extra="server",
         command_args=[],
     ),
+    "memory": ServiceConfig(
+        name="memory",
+        display_name="Memory Proxy",
+        description="Long-term memory proxy for LLMs (port 8100)",
+        extra="memory",
+        command_args=[],
+        command=["memory", "proxy"],
+    ),
+    "rag": ServiceConfig(
+        name="rag",
+        display_name="RAG Proxy",
+        description="Document retrieval proxy for LLMs (port 8000)",
+        extra="rag",
+        command_args=[],
+        command=["rag-proxy"],
+    ),
 }
 
 
@@ -116,13 +134,15 @@ def build_service_command(
     if service.python_version and not (use_macos_extra and service.macos_extra):
         args.extend(["--python", service.python_version])
 
+    # Build the command: either custom command path or default "server <name>"
+    cmd_path = service.command if service.command else ["server", service.name]
+
     args.extend(
         [
             "--from",
             f"agent-cli[{extra}]",
             "agent-cli",
-            "server",
-            service.name,
+            *cmd_path,
             *service.command_args,
         ],
     )

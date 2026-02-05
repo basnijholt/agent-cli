@@ -36,6 +36,8 @@ Install, uninstall, and monitor agent-cli servers running as system daemons
 | `tts-kokoro` | Text-to-speech (GPU) | 10200/10201 |
 | `tts-piper` | Text-to-speech (CPU) | 10200/10201 |
 | `transcription-proxy` | ASR provider proxy | 61337 |
+| `memory` | Long-term memory proxy | 8100 |
+| `rag` | Document retrieval proxy | 8000 |
 
 **Examples:**
 
@@ -197,7 +199,7 @@ def install_cmd(  # noqa: PLR0912, PLR0915
     services: Annotated[
         list[str] | None,
         typer.Argument(
-            help="Services to install (whisper, tts-kokoro, tts-piper, transcription-proxy).",
+            help="Services to install (whisper, tts-kokoro, tts-piper, transcription-proxy, memory, rag).",
         ),
     ] = None,
     all_services: Annotated[
@@ -231,6 +233,8 @@ def install_cmd(  # noqa: PLR0912, PLR0915
     - **tts-kokoro**: Text-to-speech with Kokoro/GPU (ports 10200/10201)
     - **tts-piper**: Text-to-speech with Piper/CPU (ports 10200/10201)
     - **transcription-proxy**: Proxy for ASR providers (port 61337)
+    - **memory**: Long-term memory proxy for LLMs (port 8100)
+    - **rag**: Document retrieval proxy for LLMs (port 8000)
 
     Note: tts-kokoro and tts-piper use the same ports and are mutually exclusive.
     Use `--all` to auto-select based on your platform (kokoro on GPU, piper on CPU).
@@ -352,7 +356,7 @@ def uninstall_cmd(
     services: Annotated[
         list[str] | None,
         typer.Argument(
-            help="Services to uninstall (whisper, tts-kokoro, tts-piper, transcription-proxy).",
+            help="Services to uninstall (whisper, tts-kokoro, tts-piper, transcription-proxy, memory, rag).",
         ),
     ] = None,
     all_services: Annotated[
