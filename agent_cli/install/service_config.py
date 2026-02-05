@@ -195,6 +195,6 @@ def get_service_manager() -> ServiceManager:
         "Alternatives:\n"
         "  - Run servers manually: agent-cli server <name>\n"
         "  - Use Docker: docker run -p 10300:10300 agent-cli server whisper\n\n"
-        "See: https://github.com/basnijholt/agent-cli#servers"
+        "See: https://agent-cli.nijho.lt/installation/docker/"
     )
     raise RuntimeError(msg)
