@@ -15,7 +15,11 @@ from rich.panel import Panel
 
 from agent_cli.cli import app as main_app
 from agent_cli.core.utils import console, err_console
-from agent_cli.install.service_config import SERVICES, get_service_manager
+from agent_cli.install.service_config import (
+    SERVICES,
+    get_default_services,
+    get_service_manager,
+)
 
 app = typer.Typer(
     name="daemon",
@@ -198,7 +202,11 @@ def install_cmd(  # noqa: PLR0912, PLR0915
     ] = None,
     all_services: Annotated[
         bool,
-        typer.Option("--all", "-a", help="Install all available services"),
+        typer.Option(
+            "--all",
+            "-a",
+            help="Install all services (auto-selects tts-kokoro on GPU, tts-piper on CPU)",
+        ),
     ] = False,
     skip_deps: Annotated[
         bool,
@@ -224,6 +232,9 @@ def install_cmd(  # noqa: PLR0912, PLR0915
     - **tts-piper**: Text-to-speech with Piper/CPU (ports 10200/10201)
     - **transcription-proxy**: Proxy for ASR providers (port 61337)
 
+    Note: tts-kokoro and tts-piper use the same ports and are mutually exclusive.
+    Use `--all` to auto-select based on your platform (kokoro on GPU, piper on CPU).
+
     Daemons run via `uv tool run` and don't require a virtual environment.
 
     **Examples:**
@@ -231,7 +242,7 @@ def install_cmd(  # noqa: PLR0912, PLR0915
         # Install specific daemons
         agent-cli daemon install whisper tts-kokoro
 
-        # Install all daemons
+        # Install all daemons (auto-selects TTS backend)
         agent-cli daemon install --all
 
         # Skip confirmation prompts
@@ -255,7 +266,8 @@ def install_cmd(  # noqa: PLR0912, PLR0915
 
     # Determine which services to install
     if all_services:
-        selected_services = list(SERVICES.keys())
+        # Get default services (auto-selects one TTS backend based on platform)
+        selected_services = get_default_services()
     else:
         assert services is not None  # Already checked above
         invalid = [s for s in services if s not in SERVICES]
