@@ -8,9 +8,12 @@ from dataclasses import dataclass
 from pathlib import Path  # noqa: TC003
 from typing import TYPE_CHECKING
 
+from agent_cli import constants
 from agent_cli.core.alignment import AlignedWord, align
+from agent_cli.core.audio_format import convert_audio_to_wyoming_format
 
 if TYPE_CHECKING:
+    import torch
     from pyannote.core import Annotation
 
 
@@ -26,6 +29,47 @@ def _check_pyannote_installed() -> None:
         raise ImportError(msg) from e
 
 
+def _load_audio_for_diarization(audio_path: Path) -> tuple[torch.Tensor, int]:
+    """Load audio for diarization, falling back to FFmpeg conversion when needed."""
+    import torch  # noqa: PLC0415
+    import torchaudio  # noqa: PLC0415
+
+    def normalize_waveform(
+        waveform: torch.Tensor,
+        sample_rate: int,
+    ) -> tuple[torch.Tensor, int]:
+        if waveform.dim() > 1 and waveform.shape[0] > 1:
+            waveform = waveform.mean(dim=0, keepdim=True)
+        if sample_rate != constants.AUDIO_RATE:
+            waveform = torchaudio.functional.resample(
+                waveform,
+                sample_rate,
+                constants.AUDIO_RATE,
+            )
+            sample_rate = constants.AUDIO_RATE
+        if waveform.dtype != torch.float32:
+            waveform = waveform.float()
+        return waveform, sample_rate
+
+    if audio_path.suffix.lower() == ".wav":
+        try:
+            waveform, sample_rate = torchaudio.load(str(audio_path))
+        except (RuntimeError, OSError, ValueError):
+            waveform = None
+        else:
+            return normalize_waveform(waveform, sample_rate)
+
+    pcm_data = convert_audio_to_wyoming_format(audio_path.read_bytes(), audio_path.name)
+    try:
+        pcm_tensor = torch.frombuffer(pcm_data, dtype=torch.int16)
+    except (AttributeError, TypeError):
+        import numpy as np  # noqa: PLC0415
+
+        pcm_tensor = torch.from_numpy(np.frombuffer(pcm_data, dtype=np.int16))
+    waveform = pcm_tensor.float().div(32768.0).unsqueeze(0)
+    return normalize_waveform(waveform, constants.AUDIO_RATE)
+
+
 @dataclass
 class DiarizedSegment:
     """A segment of speech attributed to a specific speaker."""
@@ -34,6 +78,29 @@ class DiarizedSegment:
     start: float
     end: float
     text: str = ""
+
+
+_ABBREVIATIONS = {
+    "dr.",
+    "mr.",
+    "mrs.",
+    "ms.",
+    "prof.",
+    "sr.",
+    "jr.",
+    "st.",
+    "vs.",
+    "etc.",
+    "e.g.",
+    "i.e.",
+    "u.s.",
+    "u.k.",
+    "a.m.",
+    "p.m.",
+    "no.",
+}
+_INITIALISM_RE = re.compile(r"(?:[A-Za-z]\.){2,}$")
+_SINGLE_INITIAL_LEN = 2
 
 
 class SpeakerDiarizer:
@@ -77,8 +144,6 @@ class SpeakerDiarizer:
             List of DiarizedSegment with speaker labels and timestamps.
 
         """
-        import torchaudio  # noqa: PLC0415
-
         # Build kwargs for speaker count hints
         kwargs: dict[str, int] = {}
         if self.min_speakers is not None:
@@ -87,7 +152,7 @@ class SpeakerDiarizer:
             kwargs["max_speakers"] = self.max_speakers
 
         # Pre-load audio to avoid torchcodec/FFmpeg issues
-        waveform, sample_rate = torchaudio.load(str(audio_path))
+        waveform, sample_rate = _load_audio_for_diarization(audio_path)
         audio_input = {"waveform": waveform, "sample_rate": sample_rate}
 
         # Run the pipeline
@@ -104,16 +169,48 @@ class SpeakerDiarizer:
                     end=turn.end,
                 ),
             )
+        segments.sort(key=lambda segment: (segment.start, segment.end))
 
         return segments
 
 
 def _split_into_sentences(text: str) -> list[str]:
     """Split text into sentences, preserving punctuation."""
-    # Split on sentence-ending punctuation followed by space or end
-    pattern = r"(?<=[.!?])\s+"
-    sentences = re.split(pattern, text.strip())
-    return [s.strip() for s in sentences if s.strip()]
+    text = text.strip()
+    if not text:
+        return []
+
+    def is_abbreviation(token: str) -> bool:
+        token = token.strip("\"')]}").lower()
+        if token in _ABBREVIATIONS:
+            return True
+        if _INITIALISM_RE.match(token):
+            return True
+        return len(token) == _SINGLE_INITIAL_LEN and token[0].isalpha() and token[1] == "."
+
+    sentences: list[str] = []
+    start = 0
+    pattern = re.compile(r"[.!?](?:[\"'\)\]\}]+)?")
+
+    for match in pattern.finditer(text):
+        end = match.end()
+        if end < len(text) and not text[end].isspace():
+            continue
+        chunk = text[start:end].strip()
+        if not chunk:
+            start = end
+            continue
+        last_token = chunk.split()[-1]
+        if is_abbreviation(last_token):
+            continue
+        sentences.append(chunk)
+        start = end
+
+    remainder = text[start:].strip()
+    if remainder:
+        sentences.append(remainder)
+
+    return sentences
 
 
 def _get_dominant_speaker(
@@ -137,6 +234,38 @@ def _get_dominant_speaker(
         return None
 
     return max(speaker_durations, key=lambda s: speaker_durations[s])
+
+
+def _get_dominant_speaker_and_bounds(
+    start_time: float,
+    end_time: float,
+    segments: list[DiarizedSegment],
+) -> tuple[str | None, float | None, float | None]:
+    """Find dominant speaker and their overlapping bounds in a time range."""
+    speaker_durations: dict[str, float] = {}
+    speaker_bounds: dict[str, tuple[float, float]] = {}
+
+    for seg in segments:
+        overlap_start = max(start_time, seg.start)
+        overlap_end = min(end_time, seg.end)
+        overlap = max(0, overlap_end - overlap_start)
+
+        if overlap > 0:
+            speaker_durations[seg.speaker] = speaker_durations.get(seg.speaker, 0) + overlap
+            bounds = speaker_bounds.get(seg.speaker)
+            if bounds is None:
+                speaker_bounds[seg.speaker] = (seg.start, seg.end)
+            else:
+                speaker_bounds[seg.speaker] = (min(bounds[0], seg.start), max(bounds[1], seg.end))
+
+    if not speaker_durations:
+        return None, None, None
+
+    speaker = max(speaker_durations, key=lambda s: speaker_durations[s])
+    bounds = speaker_bounds.get(speaker)
+    if bounds is None:
+        return speaker, None, None
+    return speaker, bounds[0], bounds[1]
 
 
 def align_transcript_with_speakers(
@@ -195,25 +324,36 @@ def align_transcript_with_speakers(
         sentence_end = current_time + sentence_duration
 
         # Find dominant speaker for this time range
-        speaker = _get_dominant_speaker(current_time, sentence_end, segments)
+        speaker, speaker_start, speaker_end = _get_dominant_speaker_and_bounds(
+            current_time,
+            sentence_end,
+            segments,
+        )
         if speaker is None:
             # No speaker found, use the last known speaker or first
             speaker = result[-1].speaker if result else segments[0].speaker
+            speaker_start = current_time
+            speaker_end = sentence_end
+        else:
+            if speaker_start is None:
+                speaker_start = current_time
+            if speaker_end is None:
+                speaker_end = sentence_end
 
         # Merge with previous segment if same speaker
         if result and result[-1].speaker == speaker:
             result[-1] = DiarizedSegment(
                 speaker=speaker,
                 start=result[-1].start,
-                end=sentence_end,
+                end=max(result[-1].end, speaker_end),
                 text=result[-1].text + " " + sentence,
             )
         else:
             result.append(
                 DiarizedSegment(
                     speaker=speaker,
-                    start=current_time,
-                    end=sentence_end,
+                    start=speaker_start,
+                    end=speaker_end,
                     text=sentence,
                 ),
             )
@@ -256,6 +396,36 @@ def format_diarized_output(
     return "\n".join(lines)
 
 
+def _get_dominant_speaker_window(
+    start_time: float,
+    end_time: float,
+    segments: list[DiarizedSegment],
+    start_index: int,
+) -> tuple[str | None, int]:
+    """Find dominant speaker within a time window using an index cursor."""
+    speaker_durations: dict[str, float] = {}
+    idx = start_index
+
+    while idx < len(segments) and segments[idx].end <= start_time:
+        idx += 1
+
+    scan = idx
+    while scan < len(segments) and segments[scan].start < end_time:
+        seg = segments[scan]
+        overlap_start = max(start_time, seg.start)
+        overlap_end = min(end_time, seg.end)
+        overlap = max(0, overlap_end - overlap_start)
+        if overlap > 0:
+            speaker_durations[seg.speaker] = speaker_durations.get(seg.speaker, 0) + overlap
+        scan += 1
+
+    if not speaker_durations:
+        return None, idx
+
+    speaker = max(speaker_durations, key=lambda s: speaker_durations[s])
+    return speaker, idx
+
+
 def align_words_to_speakers(
     words: list[AlignedWord],
     segments: list[DiarizedSegment],
@@ -274,13 +444,20 @@ def align_words_to_speakers(
         return segments
 
     result: list[DiarizedSegment] = []
+    sorted_segments = sorted(segments, key=lambda segment: (segment.start, segment.end))
+    start_index = 0
 
     for word in words:
         # Find speaker with most overlap for this word
-        speaker = _get_dominant_speaker(word.start, word.end, segments)
+        speaker, start_index = _get_dominant_speaker_window(
+            word.start,
+            word.end,
+            sorted_segments,
+            start_index,
+        )
         if speaker is None:
             # Use last known speaker or first segment's speaker
-            speaker = result[-1].speaker if result else segments[0].speaker
+            speaker = result[-1].speaker if result else sorted_segments[0].speaker
 
         # Merge with previous segment if same speaker
         if result and result[-1].speaker == speaker:
@@ -325,4 +502,6 @@ def align_transcript_with_words(
         return segments
 
     words = align(audio_path, transcript, language)
+    if not words:
+        return align_transcript_with_speakers(transcript, segments)
     return align_words_to_speakers(words, segments)

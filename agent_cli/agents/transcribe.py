@@ -646,6 +646,12 @@ def transcribe(  # noqa: PLR0912, PLR0911, PLR0915, C901
 
     # Validate diarization options
     if diarize:
+        if llm:
+            print_with_style(
+                "❌ --llm cannot be used with --diarize. Speaker labels must remain unchanged.",
+                style="red",
+            )
+            return
         if not hf_token:
             print_with_style(
                 "❌ --hf-token required for diarization. "
