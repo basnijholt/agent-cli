@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 import logging
 from importlib.util import find_spec
-from pathlib import Path  # noqa: TC003 - Typer needs this at runtime
+from pathlib import Path  # noqa: TC003 - Path needed at runtime for typer annotations
 from typing import Annotated
 
 import typer
