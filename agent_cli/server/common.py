@@ -6,6 +6,8 @@ import asyncio
 import contextlib
 import importlib
 import logging
+import os
+import signal
 from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING, Any, Protocol
 
@@ -22,6 +24,33 @@ if TYPE_CHECKING:
     from fastapi import FastAPI, Request
 
 logger = logging.getLogger(__name__)
+
+
+def _get_parent_ppid() -> int:
+    """Get the PPID of our parent process (i.e., our grandparent)."""
+    import subprocess  # noqa: PLC0415
+
+    try:
+        result = subprocess.run(
+            ["ps", "-o", "ppid=", "-p", str(os.getppid())],  # noqa: S607
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        return int(result.stdout.strip())
+    except (subprocess.SubprocessError, ValueError):
+        return 0
+
+
+async def _orphan_watchdog(check_interval: float = 2.0) -> None:
+    """Detect if parent process chain is orphaned and shutdown."""
+    while True:
+        await asyncio.sleep(check_interval)
+        # Check if our parent's parent is PID 1 (orphaned via uv)
+        if _get_parent_ppid() == 1:
+            logger.warning("Parent process orphaned. Shutting down.")
+            os.kill(os.getpid(), signal.SIGTERM)
+            return
 
 
 class RegistryProtocol(Protocol):
@@ -64,9 +93,13 @@ def create_lifespan(
     async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
         """Manage application lifecycle."""
         wyoming_task: asyncio.Task[None] | None = None
+        watchdog_task: asyncio.Task[None] | None = None
 
         # Start the registry
         await registry.start()
+
+        # Start orphan watchdog to detect parent death
+        watchdog_task = asyncio.create_task(_orphan_watchdog())
 
         # Start Wyoming server if enabled
         if enable_wyoming:
@@ -86,6 +119,12 @@ def create_lifespan(
                 logger.exception("Failed to start Wyoming server")
 
         yield
+
+        # Stop watchdog
+        if watchdog_task is not None:
+            watchdog_task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await watchdog_task
 
         # Stop Wyoming server
         if wyoming_task is not None:
