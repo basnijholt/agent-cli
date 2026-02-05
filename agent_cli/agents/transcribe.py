@@ -19,6 +19,12 @@ from agent_cli.cli import app
 from agent_cli.core import process
 from agent_cli.core.audio import setup_devices
 from agent_cli.core.deps import requires_extras
+from agent_cli.core.diarization import (
+    SpeakerDiarizer,
+    align_transcript_with_speakers,
+    align_transcript_with_words,
+    format_diarized_output,
+)
 from agent_cli.core.utils import (
     enable_json_mode,
     format_short_timedelta,
@@ -248,6 +254,53 @@ def log_transcription(
         f.write(json.dumps(log_entry) + "\n")
 
 
+def _apply_diarization(
+    transcript: str,
+    audio_path: Path,
+    diarization_cfg: config.Diarization,
+    quiet: bool,
+) -> str:
+    """Apply speaker diarization to transcript."""
+    if not quiet:
+        print_with_style("🎙️ Running speaker diarization...", style="blue")
+
+    assert diarization_cfg.hf_token is not None
+    diarizer = SpeakerDiarizer(
+        hf_token=diarization_cfg.hf_token,
+        min_speakers=diarization_cfg.min_speakers,
+        max_speakers=diarization_cfg.max_speakers,
+    )
+    segments = diarizer.diarize(audio_path)
+
+    if not segments:
+        LOGGER.warning("Diarization returned no segments")
+        return transcript
+
+    # Align transcript with speaker segments
+    if diarization_cfg.align_words:
+        if not quiet:
+            print_with_style("🔤 Running word-level alignment...", style="blue")
+        segments = align_transcript_with_words(
+            transcript,
+            segments,
+            audio_path=audio_path,
+            language=diarization_cfg.align_language,
+        )
+    else:
+        segments = align_transcript_with_speakers(transcript, segments)
+
+    # Format output
+    result = format_diarized_output(
+        segments,
+        output_format=diarization_cfg.diarize_format,
+    )
+    if not quiet:
+        num_speakers = len({s.speaker for s in segments})
+        print_with_style(f"✅ Identified {num_speakers} speaker(s)", style="green")
+
+    return result
+
+
 async def _async_main(  # noqa: PLR0912, PLR0915, C901
     *,
     extra_instructions: str | None,
@@ -266,6 +319,7 @@ async def _async_main(  # noqa: PLR0912, PLR0915, C901
     audio_file_path: Path | None = None,
     save_recording: bool = True,
     process_name: str | None = None,
+    diarization_cfg: config.Diarization | None = None,
 ) -> TranscriptResult:
     """Unified async entry point for both live and file-based transcription."""
     start_time = time.monotonic()
@@ -353,6 +407,42 @@ async def _async_main(  # noqa: PLR0912, PLR0915, C901
                 )
 
         elapsed = time.monotonic() - start_time
+
+        # Apply diarization if enabled
+        if diarization_cfg and diarization_cfg.diarize and transcript:
+            # Determine audio file path for diarization
+            diarize_audio_path = audio_file_path
+            if not diarize_audio_path and save_recording:
+                diarize_audio_path = get_last_recording(1)
+
+            if diarize_audio_path and diarize_audio_path.exists():
+                try:
+                    transcript = _apply_diarization(
+                        transcript,
+                        diarize_audio_path,
+                        diarization_cfg,
+                        quiet=general_cfg.quiet,
+                    )
+                except ImportError as e:
+                    print_with_style(f"❌ Diarization failed: {e}", style="red")
+                except Exception as e:
+                    LOGGER.exception("Diarization failed")
+                    error_msg = str(e)
+                    if "403" in error_msg or "gated" in error_msg.lower():
+                        print_with_style(
+                            "❌ Diarization failed: HuggingFace model access denied.\n"
+                            "Accept licenses for ALL required models:\n"
+                            "  • https://hf.co/pyannote/speaker-diarization-3.1\n"
+                            "  • https://hf.co/pyannote/segmentation-3.0\n"
+                            "  • https://hf.co/pyannote/wespeaker-voxceleb-resnet34-LM\n"
+                            "  • https://hf.co/pyannote/speaker-diarization-community-1\n"
+                            "Token must have 'Read access to public gated repos' permission.",
+                            style="red",
+                        )
+                    else:
+                        print_with_style(f"❌ Diarization error: {e}", style="red")
+            else:
+                LOGGER.warning("No audio file available for diarization")
 
         if llm_enabled and transcript:
             if not general_cfg.quiet:
@@ -466,7 +556,7 @@ async def _async_main(  # noqa: PLR0912, PLR0915, C901
 
 @app.command("transcribe", rich_help_panel="Voice Commands")
 @requires_extras("audio", "llm")
-def transcribe(  # noqa: PLR0912
+def transcribe(  # noqa: PLR0912, PLR0911, PLR0915, C901
     *,
     extra_instructions: str | None = typer.Option(
         None,
@@ -512,6 +602,14 @@ def transcribe(  # noqa: PLR0912
     config_file: str | None = opts.CONFIG_FILE,
     print_args: bool = opts.PRINT_ARGS,
     transcription_log: Path | None = opts.TRANSCRIPTION_LOG,
+    # --- Diarization Options ---
+    diarize: bool = opts.DIARIZE,
+    diarize_format: opts.DiarizeFormat = opts.DIARIZE_FORMAT,
+    hf_token: str | None = opts.HF_TOKEN,
+    min_speakers: int | None = opts.MIN_SPEAKERS,
+    max_speakers: int | None = opts.MAX_SPEAKERS,
+    align_words: bool = opts.ALIGN_WORDS,
+    align_language: str = opts.ALIGN_LANGUAGE,
 ) -> None:
     """Record audio from microphone and transcribe to text.
 
@@ -545,6 +643,36 @@ def transcribe(  # noqa: PLR0912
     # Expand user path for transcription log
     if transcription_log:
         transcription_log = transcription_log.expanduser()
+
+    # Validate diarization options
+    if diarize:
+        if not hf_token:
+            print_with_style(
+                "❌ --hf-token required for diarization. "
+                "Set HF_TOKEN env var or pass --hf-token. "
+                "Token must have 'Read access to contents of all public gated repos you can access' permission. "
+                "Accept licenses at: https://hf.co/pyannote/speaker-diarization-3.1, "
+                "https://hf.co/pyannote/segmentation-3.0, https://hf.co/pyannote/wespeaker-voxceleb-resnet34-LM",
+                style="red",
+            )
+            return
+        if not save_recording and not from_file and last_recording == 0:
+            print_with_style(
+                "❌ Diarization requires audio file. Use --save-recording (default) "
+                "or --from-file/--last-recording.",
+                style="red",
+            )
+            return
+
+    diarization_cfg = config.Diarization(
+        diarize=diarize,
+        diarize_format=diarize_format,
+        hf_token=hf_token,
+        min_speakers=min_speakers,
+        max_speakers=max_speakers,
+        align_words=align_words,
+        align_language=align_language,
+    )
 
     # Handle recovery options
     if last_recording and from_file:
@@ -635,6 +763,7 @@ def transcribe(  # noqa: PLR0912
                 gemini_llm_cfg=gemini_llm_cfg,
                 llm_enabled=llm,
                 transcription_log=transcription_log,
+                diarization_cfg=diarization_cfg,
             ),
         )
         if json_output:
@@ -683,6 +812,7 @@ def transcribe(  # noqa: PLR0912
                 transcription_log=transcription_log,
                 save_recording=save_recording,
                 process_name=process_name,
+                diarization_cfg=diarization_cfg,
             ),
         )
     if json_output:

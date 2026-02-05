@@ -37,6 +37,7 @@ EXTRA_METADATA: dict[str, tuple[str, list[str]]] = {
     "rag": ("RAG proxy (ChromaDB, embeddings)", ["chromadb", "pydantic_ai"]),
     "memory": ("Long-term memory proxy", ["chromadb", "yaml", "pydantic_ai"]),
     "vad": ("Voice Activity Detection (Silero VAD via ONNX)", ["onnxruntime"]),
+    "diarization": ("Speaker diarization (pyannote.audio)", ["pyannote.audio"]),
     "whisper": ("Local Whisper ASR (faster-whisper)", ["faster_whisper"]),
     "whisper-mlx": ("MLX Whisper for Apple Silicon", ["mlx_whisper"]),
     "tts": ("Local Piper TTS", ["piper"]),
