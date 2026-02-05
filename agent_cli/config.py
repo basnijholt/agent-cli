@@ -256,6 +256,19 @@ class History(BaseModel):
         return None
 
 
+# --- Panel: Diarization Options ---
+
+
+class Diarization(BaseModel):
+    """Configuration for speaker diarization."""
+
+    diarize: bool = False
+    diarize_format: str = "inline"
+    hf_token: str | None = None
+    min_speakers: int | None = None
+    max_speakers: int | None = None
+
+
 # --- Panel: Dev (Parallel Development) Options ---
 
 
