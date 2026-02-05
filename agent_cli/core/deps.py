@@ -7,7 +7,9 @@ import importlib
 import json
 import os
 import shutil
+import subprocess
 import sys
+import tomllib
 from importlib.util import find_spec
 from pathlib import Path
 from typing import TYPE_CHECKING, TypeVar
@@ -15,7 +17,7 @@ from typing import TYPE_CHECKING, TypeVar
 import typer
 
 from agent_cli.config import load_config
-from agent_cli.core.utils import err_console, print_error_message
+from agent_cli.core.utils import console, err_console, print_error_message
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -154,6 +156,107 @@ def get_combined_install_hint(extras: list[str]) -> str:
 
 # -- Installation --
 
+_REQUIREMENTS_DIR = Path(__file__).parent.parent / "_requirements"
+
+
+def available_extras() -> list[str]:
+    """List available extras based on requirements files."""
+    if not _REQUIREMENTS_DIR.exists():
+        return []
+    return sorted(p.stem for p in _REQUIREMENTS_DIR.glob("*.txt"))
+
+
+def _requirements_path(extra: str) -> Path:
+    """Get the requirements file path for an extra."""
+    return _REQUIREMENTS_DIR / f"{extra}.txt"
+
+
+def _in_virtualenv() -> bool:
+    """Check if running inside a virtual environment."""
+    return sys.prefix != sys.base_prefix
+
+
+def is_uv_tool_install() -> bool:
+    """Check if running from a uv tool environment."""
+    receipt = Path(sys.prefix) / "uv-receipt.toml"
+    return receipt.exists()
+
+
+def _get_current_uv_tool_extras() -> list[str]:
+    """Get extras currently configured in uv-receipt.toml."""
+    receipt = Path(sys.prefix) / "uv-receipt.toml"
+    if not receipt.exists():
+        return []
+    data = tomllib.loads(receipt.read_text())
+    requirements = data.get("tool", {}).get("requirements", [])
+    for req in requirements:
+        if req.get("name") == "agent-cli":
+            return req.get("extras", [])
+    return []
+
+
+def _install_via_uv_tool(extras: list[str], *, quiet: bool = False) -> bool:
+    """Reinstall agent-cli via uv tool with the specified extras."""
+    extras_str = ",".join(extras)
+    package_spec = f"agent-cli[{extras_str}]"
+    # Cap at Python 3.13 for compatibility - onnxruntime doesn't support 3.14 yet
+    major, minor = sys.version_info[:2]
+    python_version = f"{major}.{min(minor, 13)}"
+    cmd = ["uv", "tool", "install", package_spec, "--force", "--python", python_version]
+    if quiet:
+        cmd.append("-q")
+    # Use stderr for status messages so they don't pollute stdout
+    cmd_str = " ".join(cmd).replace("[", r"\[")
+    err_console.print(f"Running: [cyan]{cmd_str}[/]")
+    result = subprocess.run(cmd, check=False)
+    return result.returncode == 0
+
+
+def _install_cmd() -> list[str]:
+    """Build the install command with appropriate flags."""
+    in_venv = _in_virtualenv()
+    if shutil.which("uv"):
+        cmd = ["uv", "pip", "install", "--python", sys.executable]
+        if not in_venv:
+            cmd.append("--system")
+        return cmd
+    cmd = [sys.executable, "-m", "pip", "install"]
+    if not in_venv:
+        cmd.append("--user")
+    return cmd
+
+
+def install_extras_impl(extras: list[str], *, quiet: bool = False) -> bool:
+    """Install extras. Returns True on success, False on failure."""
+    if is_uv_tool_install():
+        current_extras = _get_current_uv_tool_extras()
+        new_extras = sorted(set(current_extras) | set(extras))
+        return _install_via_uv_tool(new_extras, quiet=quiet)
+
+    cmd = _install_cmd()
+    for extra in extras:
+        req_file = _requirements_path(extra)
+        if not quiet:
+            console.print(f"Installing [cyan]{extra}[/]...")
+        result = subprocess.run(
+            [*cmd, "-r", str(req_file)],
+            check=False,
+            capture_output=quiet,
+        )
+        if result.returncode != 0:
+            return False
+    return True
+
+
+def _install_extras_programmatic(extras: list[str], *, quiet: bool = False) -> bool:
+    """Install extras programmatically (for auto-install feature)."""
+    available = available_extras()
+    valid = [e for e in extras if e in available]
+    invalid = [e for e in extras if e not in available]
+    if invalid:
+        err_console.print(f"[yellow]Unknown extras (skipped): {', '.join(invalid)}[/]")
+    return bool(valid) and install_extras_impl(valid, quiet=quiet)
+
 
 def _resolve_extras_for_install(extras: tuple[str, ...]) -> list[str]:
     """Normalize extras: resolve 'a|b' alternatives to concrete extras.
@@ -200,12 +303,10 @@ def _maybe_reexec_with_uvx(extras: list[str]) -> None:
 
 def _try_auto_install(missing_display: list[str], extras_to_install: list[str]) -> bool:
     """Attempt to auto-install extras. Returns True if successful."""
-    from agent_cli.install.extras import install_extras_programmatic  # noqa: PLC0415
-
     err_console.print(
         f"[yellow]Auto-installing missing extras: {', '.join(missing_display)}[/]",
     )
-    return install_extras_programmatic(extras_to_install, quiet=True)
+    return _install_extras_programmatic(extras_to_install, quiet=True)
 
 
 def _maybe_reexec_after_install() -> None:
