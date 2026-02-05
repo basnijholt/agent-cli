@@ -5,10 +5,7 @@ from __future__ import annotations
 import os
 import platform
 import subprocess
-from typing import TYPE_CHECKING, Annotated
-
-if TYPE_CHECKING:
-    from types import ModuleType
+from typing import Annotated
 
 import typer
 from rich.panel import Panel
@@ -16,10 +13,10 @@ from rich.panel import Panel
 from agent_cli.cli import app
 from agent_cli.core.utils import console, print_error_message, print_with_style
 from agent_cli.install.common import get_script_path
-from agent_cli.install.service_config import SERVICES, get_service_manager
+from agent_cli.install.service_config import SERVICES, ServiceManager, get_service_manager
 
 
-def _get_service_manager() -> ModuleType:
+def _get_service_manager() -> ServiceManager:
     """Get the platform-specific service manager module, with CLI error handling."""
     try:
         return get_service_manager()

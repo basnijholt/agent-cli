@@ -8,10 +8,10 @@ import shutil
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, NamedTuple
 
 if TYPE_CHECKING:
-    from types import ModuleType
+    from collections.abc import Callable
 
 
 @dataclass
@@ -165,20 +165,34 @@ class UninstallResult:
     was_running: bool = False
 
 
-def get_service_manager() -> ModuleType:
-    """Get the platform-specific service manager module.
+class ServiceManager(NamedTuple):
+    """Platform-specific service manager interface.
 
-    Returns the launchd module on macOS or systemd module on Linux.
+    Both launchd (macOS) and systemd (Linux) modules provide these functions.
+    """
+
+    check_uv_installed: Callable[[], tuple[bool, Path | None]]
+    install_uv: Callable[[], tuple[bool, str]]
+    install_service: Callable[[str], InstallResult]
+    uninstall_service: Callable[[str], UninstallResult]
+    get_service_status: Callable[[str], ServiceStatus]
+    get_log_command: Callable[[str], str]
+
+
+def get_service_manager() -> ServiceManager:
+    """Get the platform-specific service manager.
+
+    Returns a ServiceManager for macOS (launchd) or Linux (systemd).
     Raises RuntimeError on unsupported platforms.
     """
     system = platform.system()
     if system == "Darwin":
-        from agent_cli.install import launchd  # noqa: PLC0415
+        from agent_cli.install.launchd import manager  # noqa: PLC0415
 
-        return launchd
+        return manager
     if system == "Linux":
-        from agent_cli.install import systemd  # noqa: PLC0415
+        from agent_cli.install.systemd import manager  # noqa: PLC0415
 
-        return systemd
+        return manager
     msg = f"Unsupported platform: {system}"
     raise RuntimeError(msg)

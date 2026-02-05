@@ -10,7 +10,7 @@ from pathlib import Path  # noqa: TC003 - Path needed at runtime for typer annot
 from typing import TYPE_CHECKING, Annotated
 
 if TYPE_CHECKING:
-    from types import ModuleType
+    from agent_cli.install.service_config import ServiceManager
 
 import typer
 
@@ -827,9 +827,11 @@ def tts_cmd(  # noqa: PLR0915
     )
 
 
-def _get_service_manager() -> ModuleType:
-    """Get the platform-specific service manager module, with CLI error handling."""
-    from agent_cli.install.service_config import get_service_manager  # noqa: PLC0415
+def _get_service_manager() -> ServiceManager:
+    """Get the platform-specific service manager, with CLI error handling."""
+    from agent_cli.install.service_config import (  # noqa: PLC0415
+        get_service_manager,
+    )
 
     try:
         return get_service_manager()

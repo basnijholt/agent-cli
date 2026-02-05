@@ -9,10 +9,12 @@ from agent_cli.install.service_config import (
     SERVICES,
     InstallResult,
     ServiceConfig,
+    ServiceManager,
     ServiceStatus,
     UninstallResult,
     build_service_command,
     find_uv,
+    install_uv,
 )
 
 # Linux-specific paths for uv
@@ -29,13 +31,13 @@ def _get_unit_path(service_name: str) -> Path:
     return Path.home() / ".config" / "systemd" / "user" / _get_unit_name(service_name)
 
 
-def get_log_dir(service_name: str) -> Path:
+def _get_log_dir(service_name: str) -> Path:
     """Get log directory for a service (for compatibility)."""
     # systemd uses journalctl, but we provide a consistent interface
     return Path.home() / ".local" / "share" / "agent-cli" / "logs" / service_name
 
 
-def get_log_command(service_name: str) -> str:
+def _get_log_command(service_name: str) -> str:
     """Get command to view logs for a service."""
     return f"journalctl --user -u agent-cli-{service_name} -f"
 
@@ -61,7 +63,7 @@ WantedBy=default.target
 """
 
 
-def get_service_status(service_name: str) -> ServiceStatus:
+def _get_service_status(service_name: str) -> ServiceStatus:
     """Get the status of a systemd service."""
     unit_path = _get_unit_path(service_name)
     installed = unit_path.exists()
@@ -108,7 +110,7 @@ def get_service_status(service_name: str) -> ServiceStatus:
     )
 
 
-def install_service(service_name: str) -> InstallResult:
+def _install_service(service_name: str) -> InstallResult:
     """Install a service as a Linux systemd user service.
 
     Returns an InstallResult with success status and message.
@@ -192,7 +194,7 @@ def install_service(service_name: str) -> InstallResult:
     )
 
 
-def uninstall_service(service_name: str) -> UninstallResult:
+def _uninstall_service(service_name: str) -> UninstallResult:
     """Uninstall a systemd user service.
 
     Returns an UninstallResult with success status and message.
@@ -208,7 +210,7 @@ def uninstall_service(service_name: str) -> UninstallResult:
         )
 
     # Check if running before stopping
-    status = get_service_status(service_name)
+    status = _get_service_status(service_name)
     was_running = status.running
 
     # Stop service
@@ -242,10 +244,18 @@ def uninstall_service(service_name: str) -> UninstallResult:
     )
 
 
-def check_uv_installed() -> tuple[bool, Path | None]:
+def _check_uv_installed() -> tuple[bool, Path | None]:
     """Check if uv is installed (with Linux-specific paths)."""
     uv_path = find_uv(extra_paths=_LINUX_UV_PATHS)
     return (uv_path is not None, uv_path)
 
 
-# install_uv is imported from service_config
+# Export the service manager instance
+manager = ServiceManager(
+    check_uv_installed=_check_uv_installed,
+    install_uv=install_uv,
+    install_service=_install_service,
+    uninstall_service=_uninstall_service,
+    get_service_status=_get_service_status,
+    get_log_command=_get_log_command,
+)

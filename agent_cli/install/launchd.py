@@ -12,10 +12,12 @@ from agent_cli.install.service_config import (
     SERVICES,
     InstallResult,
     ServiceConfig,
+    ServiceManager,
     ServiceStatus,
     UninstallResult,
     build_service_command,
     find_uv,
+    install_uv,
 )
 
 # macOS-specific paths for uv (Homebrew)
@@ -33,14 +35,14 @@ def _get_plist_path(service_name: str) -> Path:
     return Path.home() / "Library" / "LaunchAgents" / f"{_get_label(service_name)}.plist"
 
 
-def get_log_dir(service_name: str) -> Path:
+def _get_log_dir(service_name: str) -> Path:
     """Get log directory for a service."""
     return Path.home() / "Library" / "Logs" / f"agent-cli-{service_name}"
 
 
-def get_log_command(service_name: str) -> str:
+def _get_log_command(service_name: str) -> str:
     """Get command to view logs for a service."""
-    log_dir = get_log_dir(service_name)
+    log_dir = _get_log_dir(service_name)
     return f"tail -f {log_dir}/*.log"
 
 
@@ -62,7 +64,7 @@ def _generate_plist(
     }
 
 
-def get_service_status(service_name: str) -> ServiceStatus:
+def _get_service_status(service_name: str) -> ServiceStatus:
     """Get the status of a launchd service."""
     plist_path = _get_plist_path(service_name)
     installed = plist_path.exists()
@@ -103,7 +105,7 @@ def get_service_status(service_name: str) -> ServiceStatus:
     )
 
 
-def install_service(service_name: str) -> InstallResult:
+def _install_service(service_name: str) -> InstallResult:
     """Install a service as a macOS launchd service.
 
     Returns an InstallResult with success status and message.
@@ -125,7 +127,7 @@ def install_service(service_name: str) -> InstallResult:
         )
 
     home_dir = Path.home()
-    log_dir = get_log_dir(service_name)
+    log_dir = _get_log_dir(service_name)
     plist_path = _get_plist_path(service_name)
 
     # Create directories
@@ -168,7 +170,7 @@ def install_service(service_name: str) -> InstallResult:
     )
 
 
-def uninstall_service(service_name: str) -> UninstallResult:
+def _uninstall_service(service_name: str) -> UninstallResult:
     """Uninstall a launchd service.
 
     Returns an UninstallResult with success status and message.
@@ -201,7 +203,18 @@ def uninstall_service(service_name: str) -> UninstallResult:
     )
 
 
-def check_uv_installed() -> tuple[bool, Path | None]:
+def _check_uv_installed() -> tuple[bool, Path | None]:
     """Check if uv is installed (with macOS-specific paths)."""
     uv_path = find_uv(extra_paths=_MACOS_UV_PATHS)
     return (uv_path is not None, uv_path)
+
+
+# Export the service manager instance
+manager = ServiceManager(
+    check_uv_installed=_check_uv_installed,
+    install_uv=install_uv,
+    install_service=_install_service,
+    uninstall_service=_uninstall_service,
+    get_service_status=_get_service_status,
+    get_log_command=_get_log_command,
+)
