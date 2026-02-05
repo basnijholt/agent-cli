@@ -111,7 +111,7 @@ def test_default_log_file() -> None:
 
 
 def test_transcribe_live_command_exists() -> None:
-    """Test that the transcribe-daemon command is registered."""
+    """Test that the transcribe-live command is registered."""
     assert callable(transcribe_live)
 
 
