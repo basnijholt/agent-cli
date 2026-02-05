@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import subprocess
+import sys
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -391,6 +392,10 @@ class TestLaunchdModule:
         # mock_run may or may not be called depending on early return
         assert mock_run.call_count >= 0
 
+    @pytest.mark.skipif(
+        sys.platform == "win32",
+        reason="launchd is macOS only, os.getuid() unavailable",
+    )
     @patch("subprocess.run")
     @patch("pathlib.Path.exists", return_value=True)
     def test_launchd_get_service_status_installed_not_running(
