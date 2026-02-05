@@ -170,6 +170,20 @@ def get_current_branch(path: Path | None = None) -> str | None:
         return None
 
 
+def _resolve_ref_to_sha(ref: str, cwd: Path | None = None) -> str:
+    """Resolve a git ref to its absolute SHA.
+
+    Important when running from a worktree: relative refs like HEAD must be
+    resolved from the original context, not from repo_root where git commands
+    execute (which has a different HEAD).
+    """
+    try:
+        result = _run_git("rev-parse", ref, cwd=cwd, check=True)
+        return result.stdout.strip() or ref
+    except subprocess.CalledProcessError:
+        return ref  # Keep original if resolution fails
+
+
 @dataclass
 class WorktreeInfo:
     """Information about a git worktree."""
@@ -642,17 +656,8 @@ def create_worktree(
         default_branch = get_default_branch(repo_root)
         from_ref = f"origin/{default_branch}" if origin_exists else default_branch
     else:
-        # Resolve relative refs (HEAD, @, HEAD~1, etc.) to absolute SHA from the
-        # original repo_path context. This is important when running from a worktree,
-        # because git commands are executed from repo_root (main repo), where HEAD
-        # points to a different commit than the worktree's HEAD.
-        try:
-            result = _run_git("rev-parse", from_ref, cwd=repo_path, check=True)
-            resolved_sha = result.stdout.strip()
-            if resolved_sha:
-                from_ref = resolved_sha
-        except subprocess.CalledProcessError:
-            pass  # Keep original from_ref if resolution fails
+        # Resolve from repo_path context (not repo_root) so HEAD works in worktrees
+        from_ref = _resolve_ref_to_sha(from_ref, cwd=repo_path)
 
     # Check if branch exists remotely or locally
     remote_exists, local_exists = _check_branch_exists(branch_name, repo_root)
