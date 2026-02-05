@@ -11,6 +11,7 @@ import platform
 from typing import Annotated
 
 import typer
+from rich.panel import Panel
 
 from agent_cli.cli import app as main_app
 from agent_cli.core.utils import console, err_console
@@ -209,8 +210,6 @@ def install_cmd(  # noqa: PLR0912, PLR0915
     After installation, check status with:
         agent-cli services status
     """
-    from rich.panel import Panel  # noqa: PLC0415
-
     from agent_cli.install.service_config import (  # noqa: PLC0415
         SERVICES,
         get_service_manager,
