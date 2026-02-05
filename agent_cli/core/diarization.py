@@ -254,9 +254,12 @@ def _get_dominant_speaker_and_bounds(
             speaker_durations[seg.speaker] = speaker_durations.get(seg.speaker, 0) + overlap
             bounds = speaker_bounds.get(seg.speaker)
             if bounds is None:
-                speaker_bounds[seg.speaker] = (seg.start, seg.end)
+                speaker_bounds[seg.speaker] = (overlap_start, overlap_end)
             else:
-                speaker_bounds[seg.speaker] = (min(bounds[0], seg.start), max(bounds[1], seg.end))
+                speaker_bounds[seg.speaker] = (
+                    min(bounds[0], overlap_start),
+                    max(bounds[1], overlap_end),
+                )
 
     if not speaker_durations:
         return None, None, None
