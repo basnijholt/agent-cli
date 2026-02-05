@@ -837,7 +837,12 @@ def tts_cmd(  # noqa: PLR0915
 
 def _check_wakeword_deps() -> None:
     """Check that wakeword dependencies are available."""
-    _check_server_deps()
+    if not _has("wyoming"):
+        err_console.print(
+            "[bold red]Error:[/bold red] Wyoming not installed. "
+            "Run: [cyan]pip install wyoming[/cyan]",
+        )
+        raise typer.Exit(1)
     if not _has("pyopen_wakeword"):
         err_console.print(
             "[bold red]Error:[/bold red] Wakeword dependencies not installed. "
@@ -847,7 +852,7 @@ def _check_wakeword_deps() -> None:
 
 
 @app.command("wakeword")
-@requires_extras("server", "wyoming")
+@requires_extras("wyoming")
 def wakeword_cmd(
     model: Annotated[
         list[str] | None,
@@ -915,49 +920,24 @@ def wakeword_cmd(
             ),
         ),
     ] = False,
-    host: Annotated[
+    uri: Annotated[
         str,
         typer.Option(
-            "--host",
-            help="Network interface to bind. Use `0.0.0.0` for all interfaces",
+            "--uri",
+            help="Wyoming server URI to bind to",
         ),
-    ] = "0.0.0.0",  # noqa: S104
-    port: Annotated[
-        int,
-        typer.Option(
-            "--port",
-            "-p",
-            help="Port for HTTP API",
-        ),
-    ] = 10401,
-    wyoming_port: Annotated[
-        int,
-        typer.Option(
-            "--wyoming-port",
-            help="Port for Wyoming protocol (Home Assistant integration)",
-        ),
-    ] = 10400,
-    no_wyoming: Annotated[
-        bool,
-        typer.Option(
-            "--no-wyoming",
-            help="Disable Wyoming protocol server (only run HTTP API)",
-        ),
-    ] = False,
+    ] = "tcp://0.0.0.0:10400",
     log_level: opts.LogLevel = opts.SERVER_LOG_LEVEL,
 ) -> None:
-    """Run wake word detection server with TTL-based model unloading.
+    """Run wake word detection server (Wyoming protocol).
 
-    The server provides:
-    - Wyoming protocol for Home Assistant integration
-    - WebSocket endpoint for real-time detection at /v1/detect
-    - Health endpoint at /health
+    Provides Wyoming protocol for Home Assistant voice pipeline integration.
+    Uses openWakeWord for detection.
 
     Models are loaded lazily on first request and unloaded after being
     idle for the TTL duration, freeing memory for other applications.
 
-    Uses openWakeWord for detection. Supported builtin models include:
-    okay_nabu, hey_jarvis, alexa, hey_mycroft, and more.
+    Supported builtin models: okay_nabu, hey_jarvis, alexa, hey_mycroft, etc.
 
     **Examples:**
 
@@ -970,9 +950,7 @@ def wakeword_cmd(
         # Run with custom models from a directory
         agent-cli server wakeword --custom-model-dir /path/to/models
     """
-    # Setup Rich logging for consistent output
     setup_rich_logging(log_level)
-
     _check_wakeword_deps()
 
     from agent_cli.server.wakeword.model_manager import WakewordModelConfig  # noqa: PLC0415
@@ -998,7 +976,7 @@ def wakeword_cmd(
     for model_name in model:
         config = WakewordModelConfig(
             model_name=model_name,
-            device="cpu",  # Wakeword detection is CPU-based
+            device="cpu",
             ttl_seconds=ttl,
             threshold=threshold,
             trigger_level=trigger_level,
@@ -1012,47 +990,28 @@ def wakeword_cmd(
         console.print("[bold]Preloading model(s)...[/bold]")
         asyncio.run(registry.preload())
 
-    # Build Wyoming URI
-    wyoming_uri = f"tcp://{host}:{wyoming_port}"
-
     # Print startup info
     console.print()
-    console.print("[bold green]Starting Wakeword Detection Server[/bold green]")
+    console.print("[bold green]Starting Wakeword Server (Wyoming)[/bold green]")
     console.print()
     console.print("[dim]Configuration:[/dim]")
     console.print("  Backend: [cyan]openwakeword[/cyan]")
     console.print(f"  Threshold: [cyan]{threshold}[/cyan]")
     console.print(f"  Trigger level: [cyan]{trigger_level}[/cyan]")
     console.print(f"  Refractory: [cyan]{refractory_seconds}s[/cyan]")
-    console.print(f"  Log level: [cyan]{log_level}[/cyan]")
+    console.print(f"  TTL: [cyan]{ttl}s[/cyan]")
     console.print()
-    console.print("[dim]Endpoints:[/dim]")
-    console.print(f"  HTTP API: [cyan]http://{host}:{port}[/cyan]")
-    if not no_wyoming:
-        console.print(f"  Wyoming:  [cyan]{wyoming_uri}[/cyan]")
-    console.print(f"  WebSocket: [cyan]ws://{host}:{port}/v1/detect[/cyan]")
+    console.print("[dim]Server:[/dim]")
+    console.print(f"  Wyoming: [cyan]{uri}[/cyan]")
     console.print()
     console.print("[dim]Models:[/dim]")
     for m in model:
         is_default = m == registry.default_model
         suffix = " [yellow](default)[/yellow]" if is_default else ""
-        console.print(f"  • {m} (ttl={ttl}s){suffix}")
+        console.print(f"  • {m}{suffix}")
     console.print()
 
-    # Create and run the app
-    from agent_cli.server.wakeword.api import create_app  # noqa: PLC0415
+    # Run Wyoming server
+    from agent_cli.server.wakeword.api import run_server  # noqa: PLC0415
 
-    fastapi_app = create_app(
-        registry,
-        enable_wyoming=not no_wyoming,
-        wyoming_uri=wyoming_uri,
-    )
-
-    import uvicorn  # noqa: PLC0415
-
-    uvicorn.run(
-        fastapi_app,
-        host=host,
-        port=port,
-        log_level=log_level.lower(),
-    )
+    asyncio.run(run_server(registry, uri))
