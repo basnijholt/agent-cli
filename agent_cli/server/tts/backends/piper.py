@@ -213,6 +213,7 @@ class PiperBackend:
             raise InvalidTextError(msg)
 
         # Convert speed to length_scale (inverse relationship)
+        # length_scale < 1.0 = faster, > 1.0 = slower
         length_scale = 1.0 / speed
 
         loop = asyncio.get_running_loop()
@@ -226,8 +227,8 @@ class PiperBackend:
         return SynthesisResult(
             audio=audio_data,
             sample_rate=self._sample_rate,
-            sample_width=2,
-            channels=1,
+            sample_width=2,  # 16-bit
+            channels=1,  # Mono
             duration=duration,
         )
 
