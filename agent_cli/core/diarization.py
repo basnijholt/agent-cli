@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import dataclass
 from pathlib import Path  # noqa: TC003
 from typing import TYPE_CHECKING
+
+from agent_cli.core.alignment import AlignedWord, align
 
 if TYPE_CHECKING:
     from pyannote.core import Annotation
@@ -112,80 +115,117 @@ class SpeakerDiarizer:
         return segments
 
 
+def _split_into_sentences(text: str) -> list[str]:
+    """Split text into sentences, preserving punctuation."""
+    # Split on sentence-ending punctuation followed by space or end
+    pattern = r"(?<=[.!?])\s+"
+    sentences = re.split(pattern, text.strip())
+    return [s.strip() for s in sentences if s.strip()]
+
+
+def _get_dominant_speaker(
+    start_time: float,
+    end_time: float,
+    segments: list[DiarizedSegment],
+) -> str | None:
+    """Find which speaker is dominant during a time range."""
+    speaker_durations: dict[str, float] = {}
+
+    for seg in segments:
+        # Calculate overlap between time range and segment
+        overlap_start = max(start_time, seg.start)
+        overlap_end = min(end_time, seg.end)
+        overlap = max(0, overlap_end - overlap_start)
+
+        if overlap > 0:
+            speaker_durations[seg.speaker] = speaker_durations.get(seg.speaker, 0) + overlap
+
+    if not speaker_durations:
+        return None
+
+    return max(speaker_durations, key=lambda s: speaker_durations[s])
+
+
 def align_transcript_with_speakers(
     transcript: str,
     segments: list[DiarizedSegment],
 ) -> list[DiarizedSegment]:
-    """Align transcript text with speaker segments using simple word distribution.
+    """Align transcript sentences with speaker segments.
 
-    This is a basic alignment that distributes words proportionally based on
-    segment duration. For more accurate word-level alignment, consider using
-    WhisperX or similar tools.
+    Uses sentence-based alignment to avoid splitting sentences mid-phrase.
+    Each sentence is assigned to the speaker who is dominant during
+    its estimated time range.
 
     Args:
         transcript: The full transcript text.
         segments: List of speaker segments with timestamps.
 
     Returns:
-        List of DiarizedSegment with text filled in.
+        List of DiarizedSegment with text, one per sentence, merged by speaker.
 
     """
-    if not segments:
+    if not segments or not transcript.strip():
         return segments
 
-    words = transcript.split()
-    if not words:
+    sentences = _split_into_sentences(transcript)
+    if not sentences:
         return segments
 
-    # Calculate total duration
-    total_duration = sum(seg.end - seg.start for seg in segments)
+    # Calculate total duration and timing
+    audio_start = min(seg.start for seg in segments)
+    audio_end = max(seg.end for seg in segments)
+    total_duration = audio_end - audio_start
+
     if total_duration <= 0:
-        # Fallback: distribute words evenly
-        words_per_segment = len(words) // len(segments)
-        result = []
-        word_idx = 0
-        for i, seg in enumerate(segments):
-            # Last segment gets remaining words
-            if i == len(segments) - 1:
-                seg_words = words[word_idx:]
-            else:
-                seg_words = words[word_idx : word_idx + words_per_segment]
-                word_idx += words_per_segment
+        # Fallback: assign all text to first speaker
+        return [
+            DiarizedSegment(
+                speaker=segments[0].speaker,
+                start=segments[0].start,
+                end=segments[-1].end,
+                text=transcript,
+            ),
+        ]
+
+    # Count total characters to estimate timing
+    total_chars = sum(len(s) for s in sentences)
+    if total_chars == 0:
+        return segments
+
+    # Assign each sentence to a speaker based on estimated timing
+    result: list[DiarizedSegment] = []
+    current_time = audio_start
+
+    for sentence in sentences:
+        # Estimate sentence duration based on character proportion
+        sentence_duration = (len(sentence) / total_chars) * total_duration
+        sentence_end = current_time + sentence_duration
+
+        # Find dominant speaker for this time range
+        speaker = _get_dominant_speaker(current_time, sentence_end, segments)
+        if speaker is None:
+            # No speaker found, use the last known speaker or first
+            speaker = result[-1].speaker if result else segments[0].speaker
+
+        # Merge with previous segment if same speaker
+        if result and result[-1].speaker == speaker:
+            result[-1] = DiarizedSegment(
+                speaker=speaker,
+                start=result[-1].start,
+                end=sentence_end,
+                text=result[-1].text + " " + sentence,
+            )
+        else:
             result.append(
                 DiarizedSegment(
-                    speaker=seg.speaker,
-                    start=seg.start,
-                    end=seg.end,
-                    text=" ".join(seg_words),
+                    speaker=speaker,
+                    start=current_time,
+                    end=sentence_end,
+                    text=sentence,
                 ),
             )
-        return result
 
-    # Distribute words based on segment duration
-    result = []
-    word_idx = 0
-    for i, seg in enumerate(segments):
-        seg_duration = seg.end - seg.start
-        # Calculate proportion of words for this segment
-        if i == len(segments) - 1:
-            # Last segment gets all remaining words
-            seg_words = words[word_idx:]
-        else:
-            proportion = seg_duration / total_duration
-            word_count = max(1, round(proportion * len(words)))
-            seg_words = words[word_idx : word_idx + word_count]
-            word_idx += word_count
-            # Adjust total_duration for remaining segments
-            total_duration -= seg_duration
-
-        result.append(
-            DiarizedSegment(
-                speaker=seg.speaker,
-                start=seg.start,
-                end=seg.end,
-                text=" ".join(seg_words),
-            ),
-        )
+        current_time = sentence_end
 
     return result
 
@@ -221,3 +261,75 @@ def format_diarized_output(
     # Inline format: [Speaker X]: text
     lines = [f"[{seg.speaker}]: {seg.text}" for seg in segments if seg.text]
     return "\n".join(lines)
+
+
+def align_words_to_speakers(
+    words: list[AlignedWord],
+    segments: list[DiarizedSegment],
+) -> list[DiarizedSegment]:
+    """Assign speakers to words using precise word timestamps.
+
+    Args:
+        words: List of AlignedWord with start/end times from forced alignment.
+        segments: List of speaker segments from diarization.
+
+    Returns:
+        List of DiarizedSegment with text, merged by consecutive speaker.
+
+    """
+    if not segments or not words:
+        return segments
+
+    result: list[DiarizedSegment] = []
+
+    for word in words:
+        # Find speaker with most overlap for this word
+        speaker = _get_dominant_speaker(word.start, word.end, segments)
+        if speaker is None:
+            # Use last known speaker or first segment's speaker
+            speaker = result[-1].speaker if result else segments[0].speaker
+
+        # Merge with previous segment if same speaker
+        if result and result[-1].speaker == speaker:
+            result[-1] = DiarizedSegment(
+                speaker=speaker,
+                start=result[-1].start,
+                end=word.end,
+                text=result[-1].text + " " + word.word,
+            )
+        else:
+            result.append(
+                DiarizedSegment(
+                    speaker=speaker,
+                    start=word.start,
+                    end=word.end,
+                    text=word.word,
+                ),
+            )
+
+    return result
+
+
+def align_transcript_with_words(
+    transcript: str,
+    segments: list[DiarizedSegment],
+    audio_path: Path,
+    language: str = "en",
+) -> list[DiarizedSegment]:
+    """Align transcript using wav2vec2 forced alignment for word-level precision.
+
+    Args:
+        transcript: The full transcript text.
+        segments: List of speaker segments from diarization.
+        audio_path: Path to the audio file for alignment.
+        language: Language code for alignment model.
+
+    Returns:
+        List of DiarizedSegment with precise word-level speaker assignment.
+
+    """
+    if not segments or not transcript.strip():
+        return segments
+
+    words = align(audio_path, transcript, language)
+    return align_words_to_speakers(words, segments)

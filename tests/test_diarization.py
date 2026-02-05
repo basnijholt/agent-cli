@@ -40,39 +40,65 @@ class TestAlignTranscriptWithSpeakers:
 
     def test_empty_segments(self):
         """Test with empty segment list."""
-        result = align_transcript_with_speakers("Hello world", [])
+        result = align_transcript_with_speakers("Hello world.", [])
         assert result == []
 
     def test_empty_transcript(self):
         """Test with empty transcript."""
         segments = [DiarizedSegment(speaker="SPEAKER_00", start=0.0, end=2.0)]
         result = align_transcript_with_speakers("", segments)
-        assert len(result) == 1
-        assert result[0].text == ""
+        # Returns original segments when transcript is empty
+        assert result == segments
 
     def test_single_segment(self):
         """Test alignment with a single segment."""
         segments = [DiarizedSegment(speaker="SPEAKER_00", start=0.0, end=5.0)]
-        result = align_transcript_with_speakers("Hello world", segments)
+        result = align_transcript_with_speakers("Hello world.", segments)
         assert len(result) == 1
-        assert result[0].text == "Hello world"
+        assert result[0].text == "Hello world."
         assert result[0].speaker == "SPEAKER_00"
 
-    def test_multiple_segments_proportional(self):
-        """Test word distribution based on segment duration."""
+    def test_two_sentences_two_speakers(self):
+        """Test that sentences are assigned to the correct speakers."""
         segments = [
             DiarizedSegment(speaker="SPEAKER_00", start=0.0, end=2.0),  # 2s
             DiarizedSegment(speaker="SPEAKER_01", start=2.0, end=4.0),  # 2s
         ]
-        result = align_transcript_with_speakers("one two three four", segments)
+        # Two sentences of roughly equal length
+        transcript = "Hello, how are you? I am doing well."
+        result = align_transcript_with_speakers(transcript, segments)
         assert len(result) == 2
-        # With equal durations, words should be split roughly evenly
-        # Last segment gets remaining words
+        assert result[0].speaker == "SPEAKER_00"
+        assert result[0].text == "Hello, how are you?"
+        assert result[1].speaker == "SPEAKER_01"
+        assert result[1].text == "I am doing well."
+
+    def test_three_sentences_three_speakers(self):
+        """Test sentences distribute across three speakers."""
+        segments = [
+            DiarizedSegment(speaker="SPEAKER_00", start=0.0, end=1.0),  # 1s
+            DiarizedSegment(speaker="SPEAKER_01", start=1.0, end=2.0),  # 1s
+            DiarizedSegment(speaker="SPEAKER_02", start=2.0, end=3.0),  # 1s
+        ]
+        # Three sentences of roughly equal length
+        transcript = "First sentence here. Second sentence here. Third sentence here."
+        result = align_transcript_with_speakers(transcript, segments)
+        assert len(result) == 3
         assert result[0].speaker == "SPEAKER_00"
         assert result[1].speaker == "SPEAKER_01"
-        # Total words should equal original
-        all_words = result[0].text.split() + result[1].text.split()
-        assert all_words == ["one", "two", "three", "four"]
+        assert result[2].speaker == "SPEAKER_02"
+
+    def test_consecutive_sentences_same_speaker_merged(self):
+        """Test that consecutive sentences from same speaker are merged."""
+        segments = [
+            DiarizedSegment(speaker="SPEAKER_00", start=0.0, end=3.0),  # 3s - one speaker
+        ]
+        transcript = "First sentence. Second sentence. Third sentence."
+        result = align_transcript_with_speakers(transcript, segments)
+        # All sentences should be merged into one segment
+        assert len(result) == 1
+        assert result[0].speaker == "SPEAKER_00"
+        assert result[0].text == "First sentence. Second sentence. Third sentence."
 
     def test_zero_duration_fallback(self):
         """Test fallback when total duration is zero."""
@@ -80,11 +106,24 @@ class TestAlignTranscriptWithSpeakers:
             DiarizedSegment(speaker="SPEAKER_00", start=0.0, end=0.0),
             DiarizedSegment(speaker="SPEAKER_01", start=0.0, end=0.0),
         ]
-        result = align_transcript_with_speakers("one two three four", segments)
-        assert len(result) == 2
-        # Words should be distributed evenly
-        all_words = result[0].text.split() + result[1].text.split()
-        assert all_words == ["one", "two", "three", "four"]
+        transcript = "All text goes to first speaker."
+        result = align_transcript_with_speakers(transcript, segments)
+        # Zero duration fallback: all text to first speaker
+        assert len(result) == 1
+        assert result[0].speaker == "SPEAKER_00"
+        assert result[0].text == transcript
+
+    def test_single_sentence_no_punctuation(self):
+        """Test that text without punctuation is treated as single sentence."""
+        segments = [
+            DiarizedSegment(speaker="SPEAKER_00", start=0.0, end=2.0),
+            DiarizedSegment(speaker="SPEAKER_01", start=2.0, end=4.0),
+        ]
+        # No punctuation = single sentence = assigned to dominant speaker at start
+        transcript = "hello world how are you"
+        result = align_transcript_with_speakers(transcript, segments)
+        assert len(result) == 1
+        assert result[0].text == transcript
 
 
 class TestFormatDiarizedOutput:

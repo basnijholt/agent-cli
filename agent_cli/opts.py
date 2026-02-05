@@ -481,3 +481,15 @@ MAX_SPEAKERS: int | None = typer.Option(
     help="Maximum number of speakers (optional hint for diarization).",
     rich_help_panel="Diarization",
 )
+ALIGN_WORDS: bool = typer.Option(
+    False,  # noqa: FBT003
+    "--align-words/--no-align-words",
+    help="Use wav2vec2 forced alignment for word-level speaker assignment (more accurate but slower).",
+    rich_help_panel="Diarization",
+)
+ALIGN_LANGUAGE: str = typer.Option(
+    "en",
+    "--align-language",
+    help="Language code for word alignment model (e.g., 'en', 'fr', 'de', 'es').",
+    rich_help_panel="Diarization",
+)

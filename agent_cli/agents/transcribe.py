@@ -368,6 +368,7 @@ async def _async_main(  # noqa: PLR0912, PLR0915, C901
                     from agent_cli.core.diarization import (  # noqa: PLC0415
                         SpeakerDiarizer,
                         align_transcript_with_speakers,
+                        align_transcript_with_words,
                         format_diarized_output,
                     )
 
@@ -385,15 +386,29 @@ async def _async_main(  # noqa: PLR0912, PLR0915, C901
 
                     if segments:
                         # Align transcript with speaker segments
-                        segments = align_transcript_with_speakers(transcript, segments)
+                        if diarization_cfg.align_words:
+                            if not general_cfg.quiet:
+                                print_with_style(
+                                    "🔤 Running word-level alignment...",
+                                    style="blue",
+                                )
+                            segments = align_transcript_with_words(
+                                transcript,
+                                segments,
+                                audio_path=diarize_audio_path,
+                                language=diarization_cfg.align_language,
+                            )
+                        else:
+                            segments = align_transcript_with_speakers(transcript, segments)
                         # Format output
                         transcript = format_diarized_output(
                             segments,
                             output_format=diarization_cfg.diarize_format,
                         )
                         if not general_cfg.quiet:
+                            num_speakers = len({s.speaker for s in segments})
                             print_with_style(
-                                f"✅ Identified {len({s.speaker for s in segments})} speaker(s)",
+                                f"✅ Identified {num_speakers} speaker(s)",
                                 style="green",
                             )
                     else:
@@ -590,6 +605,8 @@ def transcribe(  # noqa: PLR0912, PLR0911, PLR0915, C901
     hf_token: str | None = opts.HF_TOKEN,
     min_speakers: int | None = opts.MIN_SPEAKERS,
     max_speakers: int | None = opts.MAX_SPEAKERS,
+    align_words: bool = opts.ALIGN_WORDS,
+    align_language: str = opts.ALIGN_LANGUAGE,
 ) -> None:
     """Record audio from microphone and transcribe to text.
 
@@ -650,6 +667,8 @@ def transcribe(  # noqa: PLR0912, PLR0911, PLR0915, C901
         hf_token=hf_token,
         min_speakers=min_speakers,
         max_speakers=max_speakers,
+        align_words=align_words,
+        align_language=align_language,
     )
 
     # Handle recovery options

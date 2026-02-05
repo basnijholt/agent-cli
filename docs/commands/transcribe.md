@@ -54,6 +54,9 @@ agent-cli transcribe --diarize --diarize-format json --hf-token YOUR_HF_TOKEN
 
 # Diarize a file with known number of speakers
 agent-cli transcribe --from-file meeting.wav --diarize --min-speakers 2 --max-speakers 4 --hf-token YOUR_HF_TOKEN
+
+# Use wav2vec2 for word-level alignment (more accurate but slower)
+agent-cli transcribe --from-file meeting.wav --diarize --align-words --hf-token YOUR_HF_TOKEN
 ```
 
 ## Supported Audio Formats

@@ -478,6 +478,8 @@ def test_transcribe_command_last_recording_option(
             hf_token=None,
             min_speakers=None,
             max_speakers=None,
+            align_words=False,
+            align_language="en",
         )
 
         # Verify _async_main_from_file was called
@@ -540,6 +542,8 @@ def test_transcribe_command_from_file_option(tmp_path: Path):
             hf_token=None,
             min_speakers=None,
             max_speakers=None,
+            align_words=False,
+            align_language="en",
         )
 
         # Verify _async_main_from_file was called with the right file
@@ -614,6 +618,8 @@ def test_transcribe_command_last_recording_with_index(
             hf_token=None,
             min_speakers=None,
             max_speakers=None,
+            align_words=False,
+            align_language="en",
         )
 
         # Verify _async_main_from_file was called
@@ -686,6 +692,8 @@ def test_transcribe_command_last_recording_disabled(
             hf_token=None,
             min_speakers=None,
             max_speakers=None,
+            align_words=False,
+            align_language="en",
         )
 
         # Verify _async_main was called for normal recording (not from file)
@@ -741,6 +749,8 @@ def test_transcribe_command_conflicting_options() -> None:
             hf_token=None,
             min_speakers=None,
             max_speakers=None,
+            align_words=False,
+            align_language="en",
         )
 
         # Verify error message
