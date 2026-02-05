@@ -170,7 +170,7 @@ enable_tts = true
 # host = "0.0.0.0"
 # port = 8100
 
-[transcribe-daemon]
+[transcribe-live]
 # Continuous transcription settings
 # role = "user"
 # silence-threshold = 1.0

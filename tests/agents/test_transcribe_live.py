@@ -1,4 +1,4 @@
-"""Tests for the transcribe daemon agent."""
+"""Tests for the transcribe-live agent."""
 
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from agent_cli import config
-from agent_cli.agents.transcribe_daemon import (
+from agent_cli.agents.transcribe_live import (
     _DEFAULT_AUDIO_DIR,
     _DEFAULT_LOG_FILE,
     _MIN_SEGMENT_DURATION_SECONDS,
@@ -19,7 +19,7 @@ from agent_cli.agents.transcribe_daemon import (
     _generate_audio_path,
     _log_segment,
     _process_segment,
-    transcribe_daemon,
+    transcribe_live,
 )
 
 if TYPE_CHECKING:
@@ -110,9 +110,9 @@ def test_default_log_file() -> None:
     assert "agent-cli" in str(_DEFAULT_LOG_FILE)
 
 
-def test_transcribe_daemon_command_exists() -> None:
-    """Test that the transcribe-daemon command is registered."""
-    assert callable(transcribe_daemon)
+def test_transcribe_live_command_exists() -> None:
+    """Test that the transcribe-live command is registered."""
+    assert callable(transcribe_live)
 
 
 def test_min_segment_duration_constant() -> None:
@@ -198,7 +198,7 @@ async def test_process_segment_skips_short_segments(
 
     # Should return early without processing
     with patch(
-        "agent_cli.agents.transcribe_daemon.create_recorded_audio_transcriber",
+        "agent_cli.agents.transcribe_live.create_recorded_audio_transcriber",
     ) as mock_transcriber:
         await _process_segment(daemon_config, segment, timestamp)
         # Transcriber should not be called for short segments
@@ -216,7 +216,7 @@ async def test_process_segment_transcribes_audio(
     mock_transcriber = AsyncMock(return_value="Hello world")
 
     with patch(
-        "agent_cli.agents.transcribe_daemon.create_recorded_audio_transcriber",
+        "agent_cli.agents.transcribe_live.create_recorded_audio_transcriber",
         return_value=mock_transcriber,
     ):
         await _process_segment(daemon_config, segment, timestamp)
@@ -243,7 +243,7 @@ async def test_process_segment_skips_empty_transcript(
     mock_transcriber = AsyncMock(return_value="")  # Empty transcript
 
     with patch(
-        "agent_cli.agents.transcribe_daemon.create_recorded_audio_transcriber",
+        "agent_cli.agents.transcribe_live.create_recorded_audio_transcriber",
         return_value=mock_transcriber,
     ):
         await _process_segment(daemon_config, segment, timestamp)
@@ -266,11 +266,11 @@ async def test_process_segment_with_llm_enabled(
 
     with (
         patch(
-            "agent_cli.agents.transcribe_daemon.create_recorded_audio_transcriber",
+            "agent_cli.agents.transcribe_live.create_recorded_audio_transcriber",
             return_value=mock_transcriber,
         ),
         patch(
-            "agent_cli.agents.transcribe_daemon.process_and_update_clipboard",
+            "agent_cli.agents.transcribe_live.process_and_update_clipboard",
             mock_llm_processor,
         ),
     ):
@@ -300,7 +300,7 @@ async def test_process_segment_with_clipboard(
 
     with (
         patch(
-            "agent_cli.agents.transcribe_daemon.create_recorded_audio_transcriber",
+            "agent_cli.agents.transcribe_live.create_recorded_audio_transcriber",
             return_value=mock_transcriber,
         ),
         patch("pyperclip.copy") as mock_copy,
@@ -324,11 +324,11 @@ async def test_process_segment_saves_audio(
 
     with (
         patch(
-            "agent_cli.agents.transcribe_daemon.create_recorded_audio_transcriber",
+            "agent_cli.agents.transcribe_live.create_recorded_audio_transcriber",
             return_value=mock_transcriber,
         ),
         patch(
-            "agent_cli.agents.transcribe_daemon.save_audio_as_mp3",
+            "agent_cli.agents.transcribe_live.save_audio_as_mp3",
         ) as mock_save_mp3,
     ):
         await _process_segment(daemon_config, segment, timestamp)
@@ -353,11 +353,11 @@ async def test_process_segment_handles_mp3_save_error(
 
     with (
         patch(
-            "agent_cli.agents.transcribe_daemon.create_recorded_audio_transcriber",
+            "agent_cli.agents.transcribe_live.create_recorded_audio_transcriber",
             return_value=mock_transcriber,
         ),
         patch(
-            "agent_cli.agents.transcribe_daemon.save_audio_as_mp3",
+            "agent_cli.agents.transcribe_live.save_audio_as_mp3",
             side_effect=RuntimeError("FFmpeg not found"),
         ),
     ):
@@ -380,7 +380,7 @@ async def test_process_segment_with_openai_provider(
     mock_transcriber = AsyncMock(return_value="Hello world")
 
     with patch(
-        "agent_cli.agents.transcribe_daemon.create_recorded_audio_transcriber",
+        "agent_cli.agents.transcribe_live.create_recorded_audio_transcriber",
         return_value=mock_transcriber,
     ):
         await _process_segment(daemon_config, segment, timestamp)
