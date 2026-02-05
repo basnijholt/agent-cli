@@ -278,9 +278,9 @@ class TestSpeakerDiarizer:
             (mock_turn2, None, "SPEAKER_01"),
         ]
 
-        # Mock DiarizeOutput (new API) - set spec to avoid auto-creating attributes
-        mock_output = MagicMock(spec=[])  # Empty spec means hasattr returns False
-        mock_output.itertracks = mock_annotation.itertracks
+        # Mock DiarizeOutput (new API)
+        mock_output = MagicMock()
+        mock_output.speaker_diarization = mock_annotation
 
         mock_pipeline = MagicMock()
         mock_pipeline.return_value = mock_output
@@ -328,8 +328,12 @@ class TestSpeakerDiarizer:
         mock_annotation = MagicMock()
         mock_annotation.itertracks.return_value = []
 
+        # Mock DiarizeOutput (new API)
+        mock_output = MagicMock()
+        mock_output.speaker_diarization = mock_annotation
+
         mock_pipeline = MagicMock()
-        mock_pipeline.return_value = mock_annotation
+        mock_pipeline.return_value = mock_output
 
         mock_pipeline_class = MagicMock()
         mock_pipeline_class.from_pretrained.return_value = mock_pipeline

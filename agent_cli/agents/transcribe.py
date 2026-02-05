@@ -19,6 +19,12 @@ from agent_cli.cli import app
 from agent_cli.core import process
 from agent_cli.core.audio import setup_devices
 from agent_cli.core.deps import requires_extras
+from agent_cli.core.diarization import (
+    SpeakerDiarizer,
+    align_transcript_with_speakers,
+    align_transcript_with_words,
+    format_diarized_output,
+)
 from agent_cli.core.utils import (
     enable_json_mode,
     format_short_timedelta,
@@ -365,13 +371,6 @@ async def _async_main(  # noqa: PLR0912, PLR0915, C901
 
             if diarize_audio_path and diarize_audio_path.exists():
                 try:
-                    from agent_cli.core.diarization import (  # noqa: PLC0415
-                        SpeakerDiarizer,
-                        align_transcript_with_speakers,
-                        align_transcript_with_words,
-                        format_diarized_output,
-                    )
-
                     if not general_cfg.quiet:
                         print_with_style("🎙️ Running speaker diarization...", style="blue")
 
