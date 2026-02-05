@@ -1,10 +1,11 @@
 """Forced alignment using wav2vec2 for word-level timestamps.
 
-Based on whisperx's alignment approach.
+Based on whisperx's alignment approach with beam search backtracking.
 """
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
@@ -14,6 +15,7 @@ if TYPE_CHECKING:
     import torch
 
 SAMPLE_RATE = 16000
+DEFAULT_BEAM_WIDTH = 5
 
 # Torchaudio bundled models
 ALIGN_MODELS: dict[str, str] = {
@@ -114,6 +116,11 @@ def _build_alignment_tokens(
     words: list[str],
     dictionary: dict[str, int],
 ) -> tuple[list[int], list[int | None]]:
+    """Build token sequence for alignment with wildcard support.
+
+    Characters not in dictionary get token -1 (wildcard).
+    This allows alignment to proceed even with unknown characters.
+    """
     tokens: list[int] = []
     token_to_word: list[int | None] = []
     word_separator = dictionary.get("|")
@@ -123,7 +130,10 @@ def _build_alignment_tokens(
             char_lower = char.lower()
             if char_lower in dictionary:
                 tokens.append(dictionary[char_lower])
-                token_to_word.append(index)
+            else:
+                # Use wildcard (-1) for unknown characters
+                tokens.append(-1)
+            token_to_word.append(index)
         if word_separator is not None and index < len(words) - 1:
             tokens.append(word_separator)
             token_to_word.append(None)
@@ -131,7 +141,34 @@ def _build_alignment_tokens(
     return tokens, token_to_word
 
 
+def _get_wildcard_emission(
+    frame_emission: torch.Tensor,
+    tokens: list[int],
+    blank_id: int,
+) -> torch.Tensor:
+    """Get emission scores, using max non-blank for wildcard tokens (-1).
+
+    Wildcards are used for characters not in the model's dictionary.
+    For these, we use the maximum probability across all non-blank tokens.
+    """
+    import torch  # noqa: PLC0415
+
+    tokens_tensor = torch.tensor(tokens) if not isinstance(tokens, torch.Tensor) else tokens
+    wildcard_mask = tokens_tensor == -1
+
+    # Get scores for non-wildcard positions (clamp to avoid -1 index)
+    regular_scores = frame_emission[tokens_tensor.clamp(min=0).long()]
+
+    # For wildcards, use max non-blank score
+    max_valid_score = frame_emission.clone()
+    max_valid_score[blank_id] = float("-inf")
+    max_valid_score = max_valid_score.max()
+
+    return torch.where(wildcard_mask, max_valid_score, regular_scores)
+
+
 def _get_trellis(emission: torch.Tensor, tokens: list[int], blank_id: int) -> torch.Tensor:
+    """Build CTC trellis with wildcard support for unknown characters."""
     import torch  # noqa: PLC0415
 
     num_frames, num_tokens = emission.shape[0], len(tokens)
@@ -141,11 +178,23 @@ def _get_trellis(emission: torch.Tensor, tokens: list[int], blank_id: int) -> to
     trellis[-num_tokens + 1 :, 0] = float("inf")
 
     for t in range(num_frames - 1):
+        # Use wildcard emission for proper handling of unknown characters
+        token_emissions = _get_wildcard_emission(emission[t], tokens[1:], blank_id)
         trellis[t + 1, 1:] = torch.maximum(
             trellis[t, 1:] + emission[t, blank_id],
-            trellis[t, :-1] + emission[t, [tokens[i] for i in range(1, len(tokens))]],
+            trellis[t, :-1] + token_emissions,
         )
     return trellis
+
+
+@dataclass
+class _BeamState:
+    """State for beam search backtracking."""
+
+    token_index: int
+    time_index: int
+    score: float
+    path: list[tuple[int, int, float]]
 
 
 def _backtrack(
@@ -153,28 +202,97 @@ def _backtrack(
     emission: torch.Tensor,
     tokens: list[int],
     blank_id: int,
+    beam_width: int = DEFAULT_BEAM_WIDTH,
 ) -> list[tuple[int, int, float]]:
-    """Returns list of (token_idx, time_idx, score)."""
+    """Beam search backtracking for more robust CTC alignment.
+
+    Based on WhisperX's backtrack_beam implementation.
+    Returns list of (token_idx, time_idx, score).
+    """
+    if not tokens or trellis.shape[1] == 0:
+        return []
+
     t, j = trellis.shape[0] - 1, trellis.shape[1] - 1
-    path = [(j, t, emission[t, blank_id].exp().item())]
 
-    while j > 0 and t > 0:
-        stayed = trellis[t - 1, j] + emission[t - 1, blank_id]
-        changed = trellis[t - 1, j - 1] + emission[t - 1, tokens[j]]
+    # Bounds check
+    if j >= len(tokens):
+        j = len(tokens) - 1
+    if j < 0:
+        return []
 
-        t -= 1
-        if changed > stayed:
-            j -= 1
-            score = emission[t, tokens[j + 1]].exp().item()
-        else:
-            score = emission[t, blank_id].exp().item()
-        path.append((j, t, score))
+    init_state = _BeamState(
+        token_index=j,
+        time_index=t,
+        score=float(trellis[t, min(j, trellis.shape[1] - 1)]),
+        path=[(j, t, emission[t, blank_id].exp().item())],
+    )
 
+    beams = [init_state]
+
+    while beams and beams[0].token_index > 0:
+        next_beams: list[_BeamState] = []
+
+        for beam in beams:
+            t, j = beam.time_index, beam.token_index
+
+            if t <= 0 or j <= 0 or j >= len(tokens):
+                continue
+
+            p_stay = emission[t - 1, blank_id]
+            p_change = _get_wildcard_emission(emission[t - 1], [tokens[j]], blank_id)[0]
+
+            stay_score = float(trellis[t - 1, j]) if j < trellis.shape[1] else float("-inf")
+            change_score = (
+                float(trellis[t - 1, j - 1])
+                if j > 0 and j - 1 < trellis.shape[1]
+                else float("-inf")
+            )
+
+            # Stay path
+            if not math.isinf(stay_score):
+                new_path = beam.path.copy()
+                new_path.append((j, t - 1, p_stay.exp().item()))
+                next_beams.append(
+                    _BeamState(
+                        token_index=j,
+                        time_index=t - 1,
+                        score=stay_score,
+                        path=new_path,
+                    ),
+                )
+
+            # Change path
+            if j > 0 and not math.isinf(change_score):
+                new_path = beam.path.copy()
+                new_path.append((j - 1, t - 1, p_change.exp().item()))
+                next_beams.append(
+                    _BeamState(
+                        token_index=j - 1,
+                        time_index=t - 1,
+                        score=change_score,
+                        path=new_path,
+                    ),
+                )
+
+        # Keep top beam_width paths by score
+        beams = sorted(next_beams, key=lambda x: x.score, reverse=True)[:beam_width]
+
+        if not beams:
+            break
+
+    if not beams:
+        return []
+
+    # Complete the best path
+    best_beam = beams[0]
+    t = best_beam.time_index
+    j = best_beam.token_index
     while t > 0:
+        prob = emission[t - 1, blank_id].exp().item()
+        best_beam.path.append((j, t - 1, prob))
         t -= 1
-        path.append((0, t, emission[t, blank_id].exp().item()))
 
-    return path[::-1]
+    return best_beam.path[::-1]
 
 
 def _merge_repeats(

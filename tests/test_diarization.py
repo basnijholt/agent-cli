@@ -8,9 +8,13 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from agent_cli.core.alignment import AlignedWord
 from agent_cli.core.diarization import (
     DiarizedSegment,
+    _get_dominant_speaker,
     align_transcript_with_speakers,
+    align_transcript_with_words,
+    align_words_to_speakers,
     format_diarized_output,
 )
 
@@ -365,3 +369,196 @@ class TestSpeakerDiarizer:
             call_kwargs = mock_pipeline.call_args[1]
             assert call_kwargs["min_speakers"] == 2
             assert call_kwargs["max_speakers"] == 4
+
+
+class TestGetDominantSpeaker:
+    """Tests for the _get_dominant_speaker function."""
+
+    def test_single_segment_full_overlap(self):
+        """Test with single segment fully overlapping time range."""
+        segments = [DiarizedSegment(speaker="SPEAKER_00", start=0.0, end=5.0)]
+        result = _get_dominant_speaker(1.0, 3.0, segments)
+        assert result == "SPEAKER_00"
+
+    def test_multiple_segments_picks_most_overlap(self):
+        """Test that speaker with most overlap wins."""
+        segments = [
+            DiarizedSegment(speaker="SPEAKER_00", start=0.0, end=2.0),  # 1s overlap
+            DiarizedSegment(speaker="SPEAKER_01", start=1.0, end=4.0),  # 2s overlap
+        ]
+        # Time range 1.0-3.0: SPEAKER_00 has 1s, SPEAKER_01 has 2s
+        result = _get_dominant_speaker(1.0, 3.0, segments)
+        assert result == "SPEAKER_01"
+
+    def test_no_overlap_returns_none(self):
+        """Test that None is returned when no segments overlap."""
+        segments = [
+            DiarizedSegment(speaker="SPEAKER_00", start=0.0, end=1.0),
+            DiarizedSegment(speaker="SPEAKER_01", start=5.0, end=6.0),
+        ]
+        result = _get_dominant_speaker(2.0, 4.0, segments)
+        assert result is None
+
+    def test_empty_segments_returns_none(self):
+        """Test with empty segment list."""
+        result = _get_dominant_speaker(0.0, 1.0, [])
+        assert result is None
+
+    def test_same_speaker_multiple_segments(self):
+        """Test that durations from same speaker are summed."""
+        segments = [
+            DiarizedSegment(speaker="SPEAKER_00", start=0.0, end=1.0),  # 1s
+            DiarizedSegment(speaker="SPEAKER_01", start=1.0, end=2.0),  # 1s
+            DiarizedSegment(speaker="SPEAKER_00", start=2.0, end=3.0),  # 1s
+        ]
+        # SPEAKER_00 has 2s total, SPEAKER_01 has 1s
+        result = _get_dominant_speaker(0.0, 3.0, segments)
+        assert result == "SPEAKER_00"
+
+
+class TestAlignWordsToSpeakers:
+    """Tests for the align_words_to_speakers function."""
+
+    def test_empty_words(self):
+        """Test with empty word list."""
+        segments = [DiarizedSegment(speaker="SPEAKER_00", start=0.0, end=5.0)]
+        result = align_words_to_speakers([], segments)
+        assert result == segments
+
+    def test_empty_segments(self):
+        """Test with empty segment list."""
+        words = [AlignedWord(word="hello", start=0.0, end=1.0)]
+        result = align_words_to_speakers(words, [])
+        assert result == []
+
+    def test_single_word_single_speaker(self):
+        """Test single word assigned to single speaker."""
+        words = [AlignedWord(word="hello", start=0.5, end=1.5)]
+        segments = [DiarizedSegment(speaker="SPEAKER_00", start=0.0, end=2.0)]
+
+        result = align_words_to_speakers(words, segments)
+
+        assert len(result) == 1
+        assert result[0].speaker == "SPEAKER_00"
+        assert result[0].text == "hello"
+        assert result[0].start == 0.5
+        assert result[0].end == 1.5
+
+    def test_words_assigned_to_correct_speakers(self):
+        """Test words are assigned based on overlap with speaker segments."""
+        words = [
+            AlignedWord(word="hello", start=0.0, end=1.0),
+            AlignedWord(word="there", start=1.0, end=2.0),
+            AlignedWord(word="friend", start=2.0, end=3.0),
+        ]
+        segments = [
+            DiarizedSegment(speaker="SPEAKER_00", start=0.0, end=1.5),
+            DiarizedSegment(speaker="SPEAKER_01", start=1.5, end=3.0),
+        ]
+
+        result = align_words_to_speakers(words, segments)
+
+        assert len(result) == 2
+        assert result[0].speaker == "SPEAKER_00"
+        assert "hello" in result[0].text
+        assert result[1].speaker == "SPEAKER_01"
+
+    def test_consecutive_words_same_speaker_merged(self):
+        """Test that consecutive words from same speaker are merged."""
+        words = [
+            AlignedWord(word="hello", start=0.0, end=0.5),
+            AlignedWord(word="world", start=0.5, end=1.0),
+        ]
+        segments = [DiarizedSegment(speaker="SPEAKER_00", start=0.0, end=2.0)]
+
+        result = align_words_to_speakers(words, segments)
+
+        assert len(result) == 1
+        assert result[0].text == "hello world"
+        assert result[0].start == 0.0
+        assert result[0].end == 1.0
+
+    def test_word_without_overlap_uses_last_speaker(self):
+        """Test word without overlap uses previous speaker."""
+        words = [
+            AlignedWord(word="hello", start=0.0, end=1.0),
+            AlignedWord(word="gap", start=5.0, end=6.0),  # No segment here
+        ]
+        segments = [DiarizedSegment(speaker="SPEAKER_00", start=0.0, end=2.0)]
+
+        result = align_words_to_speakers(words, segments)
+
+        # "gap" should use SPEAKER_00 (last known speaker)
+        assert len(result) == 1
+        assert result[0].speaker == "SPEAKER_00"
+        assert "gap" in result[0].text
+
+
+class TestAlignTranscriptWithWords:
+    """Tests for the align_transcript_with_words function."""
+
+    def test_empty_transcript(self):
+        """Test with empty transcript."""
+        segments = [DiarizedSegment(speaker="SPEAKER_00", start=0.0, end=2.0)]
+        result = align_transcript_with_words("", segments, audio_path=None, language="en")
+        assert result == segments
+
+    def test_empty_segments(self, tmp_path: Path):
+        """Test with empty segment list."""
+        result = align_transcript_with_words(
+            "hello world",
+            [],
+            audio_path=tmp_path / "test.wav",
+            language="en",
+        )
+        assert result == []
+
+    def test_calls_align_and_assigns_speakers(self, tmp_path: Path):
+        """Test that alignment is called and speakers are assigned."""
+        audio_file = tmp_path / "test.wav"
+        audio_file.touch()
+
+        segments = [
+            DiarizedSegment(speaker="SPEAKER_00", start=0.0, end=1.0),
+            DiarizedSegment(speaker="SPEAKER_01", start=1.0, end=2.0),
+        ]
+
+        mock_words = [
+            AlignedWord(word="hello", start=0.0, end=0.5),
+            AlignedWord(word="world", start=1.0, end=1.5),
+        ]
+
+        with patch("agent_cli.core.diarization.align", return_value=mock_words):
+            result = align_transcript_with_words(
+                "hello world",
+                segments,
+                audio_path=audio_file,
+                language="en",
+            )
+
+        assert len(result) == 2
+        assert result[0].speaker == "SPEAKER_00"
+        assert result[0].text == "hello"
+        assert result[1].speaker == "SPEAKER_01"
+        assert result[1].text == "world"
+
+    def test_passes_language_to_align(self, tmp_path: Path):
+        """Test that language is passed to align function."""
+        audio_file = tmp_path / "test.wav"
+        audio_file.touch()
+
+        segments = [DiarizedSegment(speaker="SPEAKER_00", start=0.0, end=2.0)]
+
+        with patch("agent_cli.core.diarization.align") as mock_align:
+            mock_align.return_value = [AlignedWord(word="bonjour", start=0.0, end=1.0)]
+
+            align_transcript_with_words(
+                "bonjour",
+                segments,
+                audio_path=audio_file,
+                language="fr",
+            )
+
+            mock_align.assert_called_once()
+            call_args = mock_align.call_args
+            assert call_args[0][2] == "fr"  # language argument
