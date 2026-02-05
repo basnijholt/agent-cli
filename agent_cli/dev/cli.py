@@ -393,29 +393,15 @@ def _format_env_prefix(env: dict[str, str]) -> str:
     return " ".join(parts) + " "
 
 
-def _generate_heredoc_delimiter() -> str:
-    """Generate a unique heredoc delimiter using UUID."""
-    import uuid  # noqa: PLC0415
-
-    return f"PROMPT_{uuid.uuid4().hex[:12]}"
-
-
 def _create_prompt_wrapper_script(
     worktree_path: Path,
     agent: CodingAgent,
-    prompt: str,
+    task_file: Path,
     extra_args: list[str] | None = None,
     env: dict[str, str] | None = None,
 ) -> Path:
-    """Create a wrapper script that launches the agent with the prompt.
-
-    Uses a heredoc with quoted delimiter to avoid ALL shell interpretation
-    of special characters ($, !, `, etc.) in the prompt content.
-
-    Script is written to a temp directory to avoid polluting the worktree.
-    """
+    """Create a wrapper script that reads prompt from file to avoid shell quoting issues."""
     script_path = Path(tempfile.gettempdir()) / f"agent-cli-{worktree_path.name}.sh"
-    delimiter = _generate_heredoc_delimiter()
 
     # Build the agent command without the prompt
     exe = agent.get_executable()
@@ -430,14 +416,11 @@ def _create_prompt_wrapper_script(
     agent_cmd = " ".join(cmd_parts)
     env_prefix = _format_env_prefix(env or {})
 
-    # Create script with heredoc - quoted delimiter prevents all shell expansion
+    task_file_rel = task_file.relative_to(worktree_path)
     script_content = f"""#!/usr/bin/env bash
 # Auto-generated script to launch agent with prompt
-# The heredoc with quoted delimiter (<<'{delimiter}') prevents shell interpretation
-{env_prefix}exec {agent_cmd} "$(cat <<'{delimiter}'
-{prompt}
-{delimiter}
-)"
+# Reads prompt from file to avoid shell parsing issues with special characters
+{env_prefix}exec {agent_cmd} "$(cat {shlex.quote(str(task_file_rel))})"
 """
     script_path.write_text(script_content)
     script_path.chmod(0o755)
@@ -449,6 +432,7 @@ def _launch_agent(
     agent: CodingAgent,
     extra_args: list[str] | None = None,
     prompt: str | None = None,
+    task_file: Path | None = None,
     env: dict[str, str] | None = None,
 ) -> None:
     """Launch agent in a new terminal tab.
@@ -460,18 +444,17 @@ def _launch_agent(
         path: Directory to launch the agent in
         agent: The coding agent to launch
         extra_args: Additional CLI arguments for the agent
-        prompt: Optional initial prompt
+        prompt: Optional initial prompt (used when task_file is not available)
+        task_file: Path to file containing the prompt (preferred, avoids shell quoting issues)
         env: Environment variables to set for the agent
 
     """
     terminal = terminals.detect_current_terminal()
 
-    # Use wrapper script for prompts when opening in a terminal tab.
-    # All terminals pass commands through a shell (zellij write-chars, tmux new-window,
-    # bash -c, AppleScript, etc.), so special characters ($, !, `, etc.) get interpreted.
-    # The wrapper script uses a heredoc with quoted delimiter to prevent this.
-    if prompt and terminal is not None:
-        script_path = _create_prompt_wrapper_script(path, agent, prompt, extra_args, env)
+    # Use wrapper script when opening in a terminal tab - all terminals pass commands
+    # through a shell, so special characters get interpreted. Reading from file avoids this.
+    if task_file and terminal is not None:
+        script_path = _create_prompt_wrapper_script(path, agent, task_file, extra_args, env)
         full_cmd = f"bash {shlex.quote(str(script_path))}"
     else:
         agent_cmd = shlex.join(agent.launch_command(path, extra_args, prompt))
@@ -724,6 +707,7 @@ def new(  # noqa: C901, PLR0912, PLR0915
             _warn("direnv not installed, skipping .envrc setup")
 
     # Write prompt to worktree (makes task available to the spawned agent)
+    task_file = None
     if prompt:
         task_file = _write_prompt_to_worktree(result.path, prompt)
         _success(f"Wrote task to {task_file.relative_to(result.path)}")
@@ -740,7 +724,7 @@ def new(  # noqa: C901, PLR0912, PLR0915
     if resolved_agent and resolved_agent.is_available():
         merged_args = _merge_agent_args(resolved_agent, agent_args)
         agent_env = _get_agent_env(resolved_agent)
-        _launch_agent(result.path, resolved_agent, merged_args, prompt, agent_env)
+        _launch_agent(result.path, resolved_agent, merged_args, prompt, task_file, agent_env)
 
     # Print summary
     console.print()
