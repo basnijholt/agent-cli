@@ -254,6 +254,53 @@ def log_transcription(
         f.write(json.dumps(log_entry) + "\n")
 
 
+def _apply_diarization(
+    transcript: str,
+    audio_path: Path,
+    diarization_cfg: config.Diarization,
+    quiet: bool,
+) -> str:
+    """Apply speaker diarization to transcript."""
+    if not quiet:
+        print_with_style("🎙️ Running speaker diarization...", style="blue")
+
+    assert diarization_cfg.hf_token is not None
+    diarizer = SpeakerDiarizer(
+        hf_token=diarization_cfg.hf_token,
+        min_speakers=diarization_cfg.min_speakers,
+        max_speakers=diarization_cfg.max_speakers,
+    )
+    segments = diarizer.diarize(audio_path)
+
+    if not segments:
+        LOGGER.warning("Diarization returned no segments")
+        return transcript
+
+    # Align transcript with speaker segments
+    if diarization_cfg.align_words:
+        if not quiet:
+            print_with_style("🔤 Running word-level alignment...", style="blue")
+        segments = align_transcript_with_words(
+            transcript,
+            segments,
+            audio_path=audio_path,
+            language=diarization_cfg.align_language,
+        )
+    else:
+        segments = align_transcript_with_speakers(transcript, segments)
+
+    # Format output
+    result = format_diarized_output(
+        segments,
+        output_format=diarization_cfg.diarize_format,
+    )
+    if not quiet:
+        num_speakers = len({s.speaker for s in segments})
+        print_with_style(f"✅ Identified {num_speakers} speaker(s)", style="green")
+
+    return result
+
+
 async def _async_main(  # noqa: PLR0912, PLR0915, C901
     *,
     extra_instructions: str | None,
@@ -366,61 +413,21 @@ async def _async_main(  # noqa: PLR0912, PLR0915, C901
             # Determine audio file path for diarization
             diarize_audio_path = audio_file_path
             if not diarize_audio_path and save_recording:
-                # For live recordings, get the most recently saved file
                 diarize_audio_path = get_last_recording(1)
 
             if diarize_audio_path and diarize_audio_path.exists():
                 try:
-                    if not general_cfg.quiet:
-                        print_with_style("🎙️ Running speaker diarization...", style="blue")
-
-                    # hf_token is validated in CLI before calling _async_main
-                    assert diarization_cfg.hf_token is not None
-                    diarizer = SpeakerDiarizer(
-                        hf_token=diarization_cfg.hf_token,
-                        min_speakers=diarization_cfg.min_speakers,
-                        max_speakers=diarization_cfg.max_speakers,
+                    transcript = _apply_diarization(
+                        transcript,
+                        diarize_audio_path,
+                        diarization_cfg,
+                        quiet=general_cfg.quiet,
                     )
-                    segments = diarizer.diarize(diarize_audio_path)
-
-                    if segments:
-                        # Align transcript with speaker segments
-                        if diarization_cfg.align_words:
-                            if not general_cfg.quiet:
-                                print_with_style(
-                                    "🔤 Running word-level alignment...",
-                                    style="blue",
-                                )
-                            segments = align_transcript_with_words(
-                                transcript,
-                                segments,
-                                audio_path=diarize_audio_path,
-                                language=diarization_cfg.align_language,
-                            )
-                        else:
-                            segments = align_transcript_with_speakers(transcript, segments)
-                        # Format output
-                        transcript = format_diarized_output(
-                            segments,
-                            output_format=diarization_cfg.diarize_format,
-                        )
-                        if not general_cfg.quiet:
-                            num_speakers = len({s.speaker for s in segments})
-                            print_with_style(
-                                f"✅ Identified {num_speakers} speaker(s)",
-                                style="green",
-                            )
-                    else:
-                        LOGGER.warning("Diarization returned no segments")
                 except ImportError as e:
-                    print_with_style(
-                        f"❌ Diarization failed: {e}",
-                        style="red",
-                    )
+                    print_with_style(f"❌ Diarization failed: {e}", style="red")
                 except Exception as e:
                     LOGGER.exception("Diarization failed")
                     error_msg = str(e)
-                    # Check if it's a gated repo access error
                     if "403" in error_msg or "gated" in error_msg.lower():
                         print_with_style(
                             "❌ Diarization failed: HuggingFace model access denied.\n"
@@ -433,10 +440,7 @@ async def _async_main(  # noqa: PLR0912, PLR0915, C901
                             style="red",
                         )
                     else:
-                        print_with_style(
-                            f"❌ Diarization error: {e}",
-                            style="red",
-                        )
+                        print_with_style(f"❌ Diarization error: {e}", style="red")
             else:
                 LOGGER.warning("No audio file available for diarization")
 
@@ -600,7 +604,7 @@ def transcribe(  # noqa: PLR0912, PLR0911, PLR0915, C901
     transcription_log: Path | None = opts.TRANSCRIPTION_LOG,
     # --- Diarization Options ---
     diarize: bool = opts.DIARIZE,
-    diarize_format: str = opts.DIARIZE_FORMAT,
+    diarize_format: opts.DiarizeFormat = opts.DIARIZE_FORMAT,
     hf_token: str | None = opts.HF_TOKEN,
     min_speakers: int | None = opts.MIN_SPEAKERS,
     max_speakers: int | None = opts.MAX_SPEAKERS,

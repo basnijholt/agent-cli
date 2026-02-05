@@ -2,14 +2,14 @@
 
 import copy
 from pathlib import Path
-from typing import Literal
+from typing import Literal, TypeAlias
 
 import typer
 from typer.models import OptionInfo
 
 from agent_cli.constants import DEFAULT_OPENAI_EMBEDDING_MODEL, DEFAULT_OPENAI_MODEL
 
-LogLevel = Literal["debug", "info", "warning", "error"]
+LogLevel: TypeAlias = Literal["debug", "info", "warning", "error"]
 
 
 def with_default(option: OptionInfo, default: str) -> OptionInfo:
@@ -451,7 +451,8 @@ DIARIZE: bool = typer.Option(
     help="Enable speaker diarization (requires pyannote-audio). Install with: pip install agent-cli[diarization]",
     rich_help_panel="Diarization",
 )
-DIARIZE_FORMAT: str = typer.Option(
+DiarizeFormat: TypeAlias = Literal["inline", "json"]
+DIARIZE_FORMAT: DiarizeFormat = typer.Option(
     "inline",
     "--diarize-format",
     help="Output format for diarization ('inline' for [Speaker N]: text, 'json' for structured output).",
