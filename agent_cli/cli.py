@@ -121,7 +121,7 @@ from .agents import (  # noqa: E402, F401
     rag_proxy,
     speak,
     transcribe,
-    transcribe_daemon,
+    transcribe_live,
     voice_edit,
 )
 from .daemon import cli as daemon_cli  # noqa: E402, F401

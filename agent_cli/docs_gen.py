@@ -283,7 +283,7 @@ def commands_table(
     # Define command metadata
     command_info = {
         "transcribe": ("Speech-to-text", "Record voice → text in clipboard", "voice"),
-        "transcribe-daemon": ("Continuous transcription", "Background VAD service", "voice"),
+        "transcribe-live": ("Continuous transcription", "Live VAD-based transcription", "voice"),
         "speak": ("Text-to-speech", "Read text aloud", "voice"),
         "voice-edit": ("Voice-powered editor", "Edit clipboard with voice", "voice"),
         "assistant": ("Wake word assistant", "Hands-free voice interaction", "voice"),

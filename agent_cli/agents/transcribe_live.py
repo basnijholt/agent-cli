@@ -1,4 +1,4 @@
-"""Continuous transcription daemon with voice activity detection."""
+"""Continuous live transcription with voice activity detection."""
 
 from __future__ import annotations
 
@@ -287,9 +287,9 @@ async def _daemon_loop(cfg: DaemonConfig) -> None:  # noqa: PLR0912, PLR0915
                     await asyncio.wait(background_tasks, timeout=2.0)
 
 
-@app.command("transcribe-daemon", rich_help_panel="Voice Commands")
+@app.command("transcribe-live", rich_help_panel="Voice Commands")
 @requires_extras("audio", "vad", "llm")
-def transcribe_daemon(  # noqa: PLR0912
+def transcribe_live(  # noqa: PLR0912
     *,
     # Daemon-specific options
     role: str = typer.Option(
@@ -368,9 +368,9 @@ def transcribe_daemon(  # noqa: PLR0912
     config_file: str | None = opts.CONFIG_FILE,
     print_args: bool = opts.PRINT_ARGS,
 ) -> None:
-    """Continuous transcription daemon using Silero VAD for speech detection.
+    """Continuous live transcription using Silero VAD for speech detection.
 
-    Unlike `transcribe` (single recording session), this daemon runs indefinitely
+    Unlike `transcribe` (single recording session), this runs indefinitely
     and automatically detects speech segments using Voice Activity Detection (VAD).
     Each detected segment is transcribed and logged with timestamps.
 
@@ -387,24 +387,24 @@ def transcribe_daemon(  # noqa: PLR0912
 
     **Examples:**
 
-        agent-cli transcribe-daemon
-        agent-cli transcribe-daemon --role meeting --silence-threshold 1.5
-        agent-cli transcribe-daemon --llm --clipboard --role notes
-        agent-cli transcribe-daemon --transcription-log ~/meeting.jsonl --no-save-audio
-        agent-cli transcribe-daemon --asr-provider openai --llm-provider gemini --llm
+        agent-cli transcribe-live
+        agent-cli transcribe-live --role meeting --silence-threshold 1.5
+        agent-cli transcribe-live --llm --clipboard --role notes
+        agent-cli transcribe-live --transcription-log ~/meeting.jsonl --no-save-audio
+        agent-cli transcribe-live --asr-provider openai --llm-provider gemini --llm
 
     **Tips:**
 
     - Use `--role` to tag entries (e.g., `speaker1`, `meeting`, `personal`)
     - Adjust `--vad-threshold` if detection is too sensitive (increase) or missing speech (decrease)
-    - Use `--stop` to cleanly terminate a running daemon
+    - Use `--stop` to cleanly terminate a running process
     - With `--llm`, transcripts are cleaned up (punctuation, filler words removed)
     """
     if print_args:
         print_command_line_args(locals())
     setup_logging(log_level, log_file_logging, quiet=quiet)
 
-    process_name = "transcribe-daemon"
+    process_name = "transcribe-live"
 
     # Handle stop/status commands
     if stop:

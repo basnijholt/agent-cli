@@ -11,7 +11,7 @@ Agent CLI provides multiple commands, each designed for a specific purpose.
 | Command | Purpose | Use Case |
 |---------|---------|----------|
 | [`transcribe`](transcribe.md) | Speech-to-text | Record voice → get text in clipboard |
-| [`transcribe-daemon`](transcribe-daemon.md) | Continuous transcription | Background service with VAD |
+| [`transcribe-live`](transcribe-live.md) | Continuous transcription | Background service with VAD |
 | [`speak`](speak.md) | Text-to-speech | Read text aloud |
 | [`voice-edit`](voice-edit.md) | Voice-powered editor | Edit clipboard text with voice commands |
 | [`assistant`](assistant.md) | Wake word assistant | Hands-free voice interaction |

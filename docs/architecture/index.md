@@ -118,12 +118,12 @@ Commands that run as background processes use a PID file system:
 ├── chat.pid
 ├── speak.pid
 ├── transcribe.pid
-├── transcribe-daemon.pid
+├── transcribe-live.pid
 └── voice-edit.pid
 
 ~/.config/agent-cli/
 ├── config.toml              # Configuration
-├── audio/                   # Saved recordings (transcribe-daemon)
+├── audio/                   # Saved recordings (transcribe-live)
 ├── history/                 # Chat history
 ├── transcriptions/          # Saved WAV files
 └── transcriptions.jsonl     # Transcription log
