@@ -68,9 +68,9 @@ echo "  1. Ollama: running as brew service (brew services start ollama)"
 if [ "$(uname -m)" = "arm64" ]; then
     echo "  2. Whisper: running as launchd service (wyoming-mlx-whisper)"
 else
-    echo "  2. Whisper: ./run-whisper.sh"
+    echo "  2. Whisper: agent-cli server whisper"
 fi
-echo "  3. Piper: ./run-piper.sh"
+echo "  3. Piper: agent-cli server tts --backend piper"
 echo "  4. OpenWakeWord: ./run-openwakeword.sh"
 echo ""
 echo "🎉 agent-cli has been installed and is ready to use!"

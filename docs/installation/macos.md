@@ -98,10 +98,10 @@ ollama serve
 # Whisper (Apple Silicon: launchd service or manual)
 launchctl list com.wyoming_mlx_whisper
 # Or run in foreground:
-scripts/run-whisper.sh
+agent-cli server whisper
 
 # Piper
-scripts/run-piper.sh
+agent-cli server tts --backend piper
 
 # OpenWakeWord
 scripts/run-openwakeword.sh

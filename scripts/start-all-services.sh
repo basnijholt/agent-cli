@@ -80,8 +80,8 @@ if [ "$WHISPER_LAUNCHD" = true ]; then
 else
     WHISPER_PANE="            pane {
                 name \"Whisper\"
-                cwd \"$SCRIPTS_DIR\"
-                command \"./run-whisper.sh\"
+                command \"agent-cli\"
+                args \"server\" \"whisper\"
             }"
 fi
 
@@ -90,8 +90,8 @@ $WHISPER_PANE
             pane split_direction=\"horizontal\" {
                 pane {
                     name \"Piper\"
-                    cwd \"$SCRIPTS_DIR\"
-                    command \"./run-piper.sh\"
+                    command \"agent-cli\"
+                    args \"server\" \"tts\" \"--backend\" \"piper\"
                 }
                 pane {
                     name \"OpenWakeWord\"
