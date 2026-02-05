@@ -40,15 +40,23 @@ def _has(package: str) -> bool:
 
 app = typer.Typer(
     name="server",
-    help="""Run local ASR/TTS servers with OpenAI-compatible APIs.
+    help="""Local ASR/TTS servers with dual-protocol support and smart memory management.
+
+**Key features:**
+
+- **Dual protocol:** OpenAI-compatible HTTP API and Wyoming protocol (Home Assistant)
+- **Multiple backends:** Choose the right engine for your hardware
+- **Automatic memory management:** Models unload after idle timeout, freeing VRAM/RAM
 
 **Available servers:**
 
-- `whisper` - Local speech-to-text using Whisper models (faster-whisper or MLX)
-- `tts` - Local text-to-speech using Piper (CPU) or Kokoro (GPU)
-- `transcribe-proxy` - Proxy to external ASR providers (OpenAI, Gemini, Wyoming)
+| Server | Backends | Default Ports |
+|--------|----------|---------------|
+| `whisper` | faster-whisper, MLX, transformers | HTTP: 10301, Wyoming: 10300 |
+| `tts` | Piper (CPU), Kokoro (GPU) | HTTP: 10201, Wyoming: 10200 |
+| `transcribe-proxy` | OpenAI-compatible, Gemini, Wyoming | HTTP: 61337 |
 
-**Common workflows:**
+**Examples:**
 
 ```bash
 # Run local Whisper server (lazy loads large-v3 by default)
@@ -61,8 +69,8 @@ agent-cli server tts --backend kokoro
 agent-cli server transcribe-proxy
 ```
 
-All servers support Home Assistant via Wyoming protocol and can be used as
-drop-in replacements for OpenAI's audio APIs.
+Models load on first request and automatically unload after 5 minutes of inactivity
+(configurable via `--ttl`), so VRAM isn't wasted when the server is idle.
 """,
     add_completion=True,
     rich_markup_mode="markdown",
@@ -168,16 +176,6 @@ def _download_tts_models(
 def _check_whisper_deps(backend: str, *, download_only: bool = False) -> None:
     """Check that Whisper dependencies are available."""
     _check_server_deps()
-    if download_only:
-        if not _has("faster_whisper"):
-            err_console.print(
-                "[bold red]Error:[/bold red] faster-whisper is required for --download-only. "
-                "Run: [cyan]pip install agent-cli\\[whisper][/cyan] "
-                "or [cyan]uv sync --extra whisper[/cyan]",
-            )
-            raise typer.Exit(1)
-        return
-
     if backend == "mlx":
         if not _has("mlx_whisper"):
             err_console.print(
@@ -187,17 +185,34 @@ def _check_whisper_deps(backend: str, *, download_only: bool = False) -> None:
             raise typer.Exit(1)
         return
 
+    if backend == "transformers":
+        if not _has("transformers") or not _has("torch"):
+            err_console.print(
+                "[bold red]Error:[/bold red] Transformers backend requires transformers and torch. "
+                "Run: [cyan]pip install agent-cli\\[whisper-transformers][/cyan] "
+                "or [cyan]uv sync --extra whisper-transformers[/cyan]",
+            )
+            raise typer.Exit(1)
+        return
+
     if not _has("faster_whisper"):
-        err_console.print(
-            "[bold red]Error:[/bold red] Whisper dependencies not installed. "
-            "Run: [cyan]pip install agent-cli\\[whisper][/cyan] "
-            "or [cyan]uv sync --extra whisper[/cyan]",
-        )
+        if download_only:
+            err_console.print(
+                "[bold red]Error:[/bold red] faster-whisper is required for --download-only. "
+                "Run: [cyan]pip install agent-cli\\[faster-whisper][/cyan] "
+                "or [cyan]uv sync --extra faster-whisper[/cyan]",
+            )
+        else:
+            err_console.print(
+                "[bold red]Error:[/bold red] Whisper dependencies not installed. "
+                "Run: [cyan]pip install agent-cli\\[faster-whisper][/cyan] "
+                "or [cyan]uv sync --extra faster-whisper[/cyan]",
+            )
         raise typer.Exit(1)
 
 
 @app.command("whisper")
-@requires_extras("server", "faster-whisper|mlx-whisper", "wyoming")
+@requires_extras("server", "faster-whisper|mlx-whisper|whisper-transformers", "wyoming")
 def whisper_cmd(  # noqa: PLR0912, PLR0915
     model: Annotated[
         list[str] | None,
@@ -310,7 +325,7 @@ def whisper_cmd(  # noqa: PLR0912, PLR0915
             "-b",
             help=(
                 "Inference backend: `auto` (faster-whisper on CUDA/CPU, MLX on Apple Silicon), "
-                "`faster-whisper`, `mlx`"
+                "`faster-whisper`, `mlx`, `transformers` (HuggingFace, supports safetensors)"
             ),
         ),
     ] = "auto",
@@ -342,7 +357,7 @@ def whisper_cmd(  # noqa: PLR0912, PLR0915
     # Setup Rich logging for consistent output
     setup_rich_logging(log_level)
 
-    valid_backends = ("auto", "faster-whisper", "mlx")
+    valid_backends = ("auto", "faster-whisper", "mlx", "transformers")
     if backend not in valid_backends:
         err_console.print(
             f"[bold red]Error:[/bold red] --backend must be one of: {', '.join(valid_backends)}",
@@ -350,7 +365,7 @@ def whisper_cmd(  # noqa: PLR0912, PLR0915
         raise typer.Exit(1)
 
     resolved_backend = backend
-    if backend == "auto" and not download_only:
+    if backend == "auto":
         from agent_cli.server.whisper.backends import detect_backend  # noqa: PLC0415
 
         resolved_backend = detect_backend()
@@ -381,13 +396,26 @@ def whisper_cmd(  # noqa: PLR0912, PLR0915
         for model_name in model:
             console.print(f"  Downloading [cyan]{model_name}[/cyan]...")
             try:
-                from faster_whisper import WhisperModel  # noqa: PLC0415
+                if resolved_backend == "transformers":
+                    from agent_cli.server.whisper.backends.transformers import (  # noqa: PLC0415
+                        download_model as download_transformers_model,
+                    )
 
-                _ = WhisperModel(
-                    model_name,
-                    device="cpu",  # Don't need GPU for download
-                    download_root=str(cache_dir) if cache_dir else None,
-                )
+                    download_transformers_model(model_name, cache_dir=cache_dir)
+                elif resolved_backend == "mlx":
+                    from agent_cli.server.whisper.backends.mlx import (  # noqa: PLC0415
+                        download_model as download_mlx_model,
+                    )
+
+                    download_mlx_model(model_name)
+                else:
+                    from faster_whisper import WhisperModel  # noqa: PLC0415
+
+                    _ = WhisperModel(
+                        model_name,
+                        device="cpu",  # Don't need GPU for download
+                        download_root=str(cache_dir) if cache_dir else None,
+                    )
                 console.print(f"  [green]✓[/green] Downloaded {model_name}")
             except Exception as e:
                 err_console.print(f"  [red]✗[/red] Failed to download {model_name}: {e}")

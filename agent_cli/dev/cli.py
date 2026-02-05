@@ -1779,7 +1779,9 @@ def install_skill(
     - Works when you ask to "work on multiple features" or "parallelize tasks"
 
     **Alternative:** Install globally via Claude Code plugin marketplace:
-    `claude plugin marketplace add basnijholt/agent-cli`
+
+    1. `claude plugin marketplace add basnijholt/agent-cli`
+    2. `claude plugin install agent-cli-dev@agent-cli`
     """
     # Use current repo root (works in worktrees too)
     repo_root = _get_current_repo_root()

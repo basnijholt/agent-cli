@@ -1,6 +1,6 @@
 # Agent CLI
 
-<img src="https://raw.githubusercontent.com/basnijholt/agent-cli/refs/heads/main/.github/logo.svg" alt="agent-cli logo" align="right" style="width: 250px;" />
+<img src="https://raw.githubusercontent.com/basnijholt/agent-cli/refs/heads/main/.github/logo.svg" alt="agent-cli logo" align="right" style="width: 200px;" />
 
 `agent-cli` is a collection of **_local-first_**, AI-powered command-line agents that run entirely on your machine.
 It provides a suite of powerful tools for voice and text interaction, designed for privacy, offline capability, and seamless integration with system-wide hotkeys and workflows.
@@ -303,7 +303,7 @@ agent-cli dev install-skill
 
 # Option 2: Install via Claude Code plugin marketplace
 claude plugin marketplace add basnijholt/agent-cli
-claude plugin install agent-cli@agent-cli-dev
+claude plugin install agent-cli-dev@agent-cli
 ```
 
 Once installed, Claude Code can automatically use this skill when you ask to:
@@ -334,7 +334,7 @@ Our installation scripts automatically handle all dependencies:
 |---------|---------|-----------------|
 | **[Ollama](https://ollama.ai/)** | Local LLM for text processing | ✅ Yes, with default model |
 | **[Wyoming Faster Whisper](https://github.com/rhasspy/wyoming-faster-whisper)** | Speech-to-text | ✅ Yes, via `uvx` |
-| **[`agent-cli server whisper`](docs/commands/server/whisper.md)** | Speech-to-text (alternative) | ✅ Built-in, `pip install "agent-cli[whisper]"` |
+| **[`agent-cli server whisper`](docs/commands/server/whisper.md)** | Speech-to-text (alternative) | ✅ Built-in, `pip install "agent-cli[faster-whisper]"` |
 | **[Wyoming Piper](https://github.com/rhasspy/wyoming-piper)** | Text-to-speech | ✅ Yes, via `uvx` |
 | **[Kokoro-FastAPI](https://github.com/remsky/Kokoro-FastAPI)** | Premium TTS (optional) | ⚙️ Can be added later |
 | **[Wyoming openWakeWord](https://github.com/rhasspy/wyoming-openwakeword)** | Wake word detection | ✅ Yes, for `assistant` |
@@ -420,18 +420,19 @@ agent-cli install-extras rag memory vad
 
  Available extras:
 
-  • rag - RAG proxy server (ChromaDB, embeddings)
-  • memory - Long-term memory proxy (ChromaDB)
-  • vad - Voice Activity Detection (silero-vad)
-  • audio - Local audio recording/playback
-  • piper - Local Piper TTS engine
-  • kokoro - Kokoro neural TTS engine
-  • faster-whisper - Whisper ASR for CUDA/CPU
-  • mlx-whisper - Whisper ASR for Apple Silicon
-  • wyoming - Wyoming protocol for ASR/TTS servers
-  • server - FastAPI server components
-  • speed - Audio speed adjustment
+  • audio - Audio recording/playback
+  • faster-whisper - Whisper ASR via CTranslate2
+  • kokoro - Kokoro neural TTS (GPU)
   • llm - LLM framework (pydantic-ai)
+  • memory - Long-term memory proxy
+  • mlx-whisper - Whisper ASR for Apple Silicon
+  • piper - Piper TTS (CPU)
+  • rag - RAG proxy (ChromaDB, embeddings)
+  • server - FastAPI server components
+  • speed - Audio speed adjustment (audiostretchy)
+  • vad - Voice Activity Detection (Silero VAD via ONNX)
+  • whisper-transformers - Whisper ASR via HuggingFace transformers
+  • wyoming - Wyoming protocol support
 
  Examples:
 
@@ -443,8 +444,9 @@ agent-cli install-extras rag memory vad
 
 
 ╭─ Arguments ────────────────────────────────────────────────────────────────────────────╮
-│   extras      [EXTRAS]...  Extras to install: rag, memory, vad, audio, piper, kokoro,  │
-│                            faster-whisper, mlx-whisper, wyoming, server, speed, llm    │
+│   extras      [EXTRAS]...  Extras to install: audio, faster-whisper, kokoro, llm,      │
+│                            memory, mlx-whisper, piper, rag, server, speed, vad,        │
+│                            whisper-transformers, wyoming                               │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Options ──────────────────────────────────────────────────────────────────────────────╮
 │ --list  -l        Show available extras with descriptions (what each one enables)      │
@@ -540,8 +542,8 @@ the `[defaults]` section of your configuration file.
 ```toml
 [defaults]
 # llm_provider = "ollama"  # 'ollama', 'openai', or 'gemini'
-# asr_provider = "wyoming" # 'wyoming' or 'openai'
-# tts_provider = "wyoming" # 'wyoming', 'openai', or 'kokoro'
+# asr_provider = "wyoming" # 'wyoming', 'openai', or 'gemini'
+# tts_provider = "wyoming" # 'wyoming', 'openai', 'kokoro', or 'gemini'
 # openai_api_key = "sk-..."
 # gemini_api_key = "..."
 ```
@@ -553,7 +555,7 @@ the `[defaults]` section of your configuration file.
 **Workflow:** This is a simple, one-shot command.
 
 1.  It reads text from your system clipboard (or from a direct argument).
-2.  It sends the text to a local Ollama LLM with a prompt to perform only technical corrections.
+2.  It sends the text to your configured LLM provider (default: Ollama) with a prompt to perform only technical corrections.
 3.  The corrected text is copied back to your clipboard, replacing the original.
 
 **How to Use It:** This tool is ideal for integrating with a system-wide hotkey.
@@ -1974,8 +1976,12 @@ uv tool install "agent-cli[vad]" -p 3.13
 │                                [env var: OPENAI_API_KEY]                               │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ LLM Configuration ────────────────────────────────────────────────────────────────────╮
-│ --embedding-model        TEXT  Embedding model to use for vectorization.               │
-│                                [default: text-embedding-3-small]                       │
+│ --embedding-base-url        TEXT  Base URL for embedding API. Falls back to            │
+│                                   --openai-base-url if not set. Useful when using      │
+│                                   different providers for chat vs embeddings.          │
+│                                   [env var: EMBEDDING_BASE_URL]                        │
+│ --embedding-model           TEXT  Embedding model to use for vectorization.            │
+│                                   [default: text-embedding-3-small]                    │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Server Configuration ─────────────────────────────────────────────────────────────────╮
 │ --host        TEXT     Host/IP to bind API servers to.                                 │
@@ -2137,8 +2143,12 @@ The `memory proxy` command is the core feature—a middleware server that gives 
 │                                [env var: OPENAI_API_KEY]                               │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ LLM Configuration ────────────────────────────────────────────────────────────────────╮
-│ --embedding-model        TEXT  Embedding model to use for vectorization.               │
-│                                [default: text-embedding-3-small]                       │
+│ --embedding-base-url        TEXT  Base URL for embedding API. Falls back to            │
+│                                   --openai-base-url if not set. Useful when using      │
+│                                   different providers for chat vs embeddings.          │
+│                                   [env var: EMBEDDING_BASE_URL]                        │
+│ --embedding-model           TEXT  Embedding model to use for vectorization.            │
+│                                   [default: text-embedding-3-small]                    │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Server Configuration ─────────────────────────────────────────────────────────────────╮
 │ --host        TEXT     Host/IP to bind API servers to.                                 │

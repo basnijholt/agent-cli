@@ -104,6 +104,10 @@ jobs:
         include:
           - image: transcribe-proxy
             dockerfile: docker/transcribe-proxy.Dockerfile
+          - image: rag-proxy
+            dockerfile: docker/rag-proxy.Dockerfile
+          - image: memory-proxy
+            dockerfile: docker/memory-proxy.Dockerfile
 
     steps:
       - name: Checkout repository

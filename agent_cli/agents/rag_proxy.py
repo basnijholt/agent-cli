@@ -32,6 +32,7 @@ def rag_proxy(
         rich_help_panel="RAG Configuration",
     ),
     openai_base_url: str | None = opts.OPENAI_BASE_URL,
+    embedding_base_url: str | None = opts.EMBEDDING_BASE_URL,
     embedding_model: str = opts.EMBEDDING_MODEL,
     openai_api_key: str | None = opts.OPENAI_API_KEY,
     limit: int = typer.Option(
@@ -138,22 +139,26 @@ def rag_proxy(
 
     if openai_base_url is None:
         openai_base_url = constants.DEFAULT_OPENAI_BASE_URL
+    effective_embedding_url = embedding_base_url or openai_base_url
 
     console.print(f"[bold green]Starting RAG Proxy on {host}:{port}[/bold green]")
     console.print(f"  📂 Docs: [blue]{docs_folder}[/blue]")
     console.print(f"  💾 DB: [blue]{chroma_path}[/blue]")
     console.print(f"  🤖 Backend: [blue]{openai_base_url}[/blue]")
-    console.print(f"  🧠 Embeddings: Using [blue]{embedding_model}[/blue]")
+    console.print(
+        f"  🧠 Embeddings: [blue]{embedding_model}[/blue] via [blue]{effective_embedding_url}[/blue]",
+    )
     console.print(f"  🔍 Limit: [blue]{limit}[/blue] chunks per query")
 
     fastapi_app = create_app(
         docs_folder,
         chroma_path,
         openai_base_url,
-        embedding_model,
-        openai_api_key,
-        openai_api_key,
-        limit,
+        embedding_base_url=effective_embedding_url,
+        embedding_model=embedding_model,
+        embedding_api_key=openai_api_key,
+        chat_api_key=openai_api_key,
+        limit=limit,
         enable_rag_tools=enable_rag_tools,
     )
 

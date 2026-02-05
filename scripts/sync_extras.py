@@ -34,15 +34,25 @@ EXTRA_METADATA: dict[str, tuple[str, list[str]]] = {
     "gemini": ("Google Gemini provider", ["google.genai"]),
     "llm": ("LLM framework (pydantic-ai)", ["pydantic_ai"]),
     # Feature extras
-    "rag": ("RAG proxy (ChromaDB, embeddings)", ["chromadb"]),
-    "memory": ("Long-term memory proxy", ["chromadb", "yaml"]),
-    "vad": ("Voice Activity Detection (silero-vad)", ["silero_vad"]),
+    "rag": ("RAG proxy (ChromaDB, embeddings)", ["chromadb", "pydantic_ai"]),
+    "memory": ("Long-term memory proxy", ["chromadb", "yaml", "pydantic_ai"]),
+    "vad": ("Voice Activity Detection (Silero VAD via ONNX)", ["onnxruntime"]),
     "whisper": ("Local Whisper ASR (faster-whisper)", ["faster_whisper"]),
     "whisper-mlx": ("MLX Whisper for Apple Silicon", ["mlx_whisper"]),
     "tts": ("Local Piper TTS", ["piper"]),
     "tts-kokoro": ("Kokoro neural TTS", ["kokoro"]),
     "server": ("FastAPI server components", ["fastapi"]),
     "speed": ("Audio speed adjustment (audiostretchy)", ["audiostretchy"]),
+    # Whisper backends
+    "faster-whisper": ("Whisper ASR via CTranslate2", ["faster_whisper"]),
+    "mlx-whisper": ("Whisper ASR for Apple Silicon", ["mlx_whisper"]),
+    "whisper-transformers": (
+        "Whisper ASR via HuggingFace transformers",
+        ["transformers", "torch"],
+    ),
+    # TTS backends
+    "piper": ("Piper TTS (CPU)", ["piper"]),
+    "kokoro": ("Kokoro neural TTS (GPU)", ["kokoro"]),
 }
 
 
@@ -120,11 +130,12 @@ def main() -> int:
     """Generate _extras.json from pyproject.toml."""
     extras = get_extras_from_pyproject()
 
-    # Check for missing metadata
+    # Check for missing metadata - fail if any extras lack proper metadata
     missing = check_missing_metadata(extras)
     if missing:
-        print(f"Warning: The following extras need metadata in EXTRA_METADATA: {missing}")
+        print(f"ERROR: The following extras need metadata in EXTRA_METADATA: {missing}")
         print("Please update EXTRA_METADATA in scripts/sync_extras.py")
+        return 1
 
     # Generate the file
     content = generate_extras_json(extras)

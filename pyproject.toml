@@ -33,13 +33,14 @@ Homepage = "https://github.com/basnijholt/agent-cli"
 # Provider extras (previously base dependencies, now optional)
 wyoming = ["wyoming>=1.5.2"]  # Wyoming protocol only (for servers)
 audio = ["numpy", "sounddevice>=0.4.6", "agent-cli[wyoming]"]  # Local audio recording
-llm = ["pydantic-ai-slim[openai,google,duckduckgo,vertexai]>=0.1.1"]
+llm = ["pydantic-ai-slim[openai,google,duckduckgo,vertexai]>=0.1.1"]  # LLM framework with tools
 
 # Feature extras
 server = [
     "fastapi[standard]",
 ]
 rag = [
+    "pydantic-ai-slim[openai,google]>=0.1.1",  # pydantic-ai for LLM integration
     "fastapi[standard]",
     "chromadb>=0.4.22",
     "openai>=1.0.0",  # Required by chromadb's OpenAIEmbeddingFunction
@@ -51,6 +52,7 @@ rag = [
     "markitdown[docx,pdf,pptx]>=0.1.3",
 ]
 memory = [
+    "pydantic-ai-slim[openai,google]>=0.1.1",  # pydantic-ai for LLM integration
     "fastapi[standard]",
     "chromadb>=0.4.22",
     "openai>=1.0.0",  # Required by chromadb's OpenAIEmbeddingFunction
@@ -62,7 +64,7 @@ memory = [
     "pyyaml>=6.0.0",
 ]
 vad = [
-    "silero-vad-lite>=0.2.1",
+    "onnxruntime>=1.16.0",
 ]
 faster-whisper = [
     "fastapi[standard]",
@@ -71,6 +73,11 @@ faster-whisper = [
 mlx-whisper = [
     "fastapi[standard]; sys_platform == 'darwin' and platform_machine == 'arm64'",
     "mlx-whisper>=0.4.0; sys_platform == 'darwin' and platform_machine == 'arm64'",
+]
+whisper-transformers = [
+    "fastapi[standard]",
+    "transformers>=4.30.0",
+    "torch>=2.0.0",
 ]
 piper = [
     "fastapi[standard]",

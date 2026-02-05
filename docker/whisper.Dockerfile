@@ -83,25 +83,19 @@ ENTRYPOINT ["sh", "-c", "agent-cli server whisper \
 # =============================================================================
 # CPU target: CPU-only with faster-whisper
 # =============================================================================
-FROM debian:bookworm-slim AS cpu
+FROM python:3.13-slim AS cpu
 
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends ffmpeg && \
-    apt-get clean && rm -rf /var/lib/apt/lists/*
-
-ENV UV_PYTHON_INSTALL_DIR=/opt/python
-RUN uv python install 3.13
-
-RUN getent group 1000 || groupadd -g 1000 whisper; \
-    id -u 1000 >/dev/null 2>&1 || useradd -m -u 1000 -g 1000 whisper
+RUN groupadd -g 1000 whisper && useradd -m -u 1000 -g 1000 whisper
 
 WORKDIR /app
 
 COPY --from=builder /app/.venv /app/.venv
 
-RUN ln -sf $(uv python find 3.13) /app/.venv/bin/python && \
+# Install imageio-ffmpeg for bundled static ffmpeg binary (77MB vs 420MB for Debian package)
+RUN uv pip install --python /app/.venv/bin/python imageio-ffmpeg && \
+    ln -s $(/app/.venv/bin/python -c "import imageio_ffmpeg; print(imageio_ffmpeg.get_ffmpeg_exe())") /usr/local/bin/ffmpeg && \
     ln -s /app/.venv/bin/agent-cli /usr/local/bin/agent-cli && \
     mkdir -p /home/whisper/.cache && chown -R whisper:whisper /home/whisper
 
@@ -118,7 +112,7 @@ ENV WHISPER_HOST=0.0.0.0 \
     WHISPER_DEVICE=cpu
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-    CMD /app/.venv/bin/python -c "import urllib.request; urllib.request.urlopen('http://localhost:${WHISPER_PORT}/health')" || exit 1
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:${WHISPER_PORT}/health')" || exit 1
 
 ENTRYPOINT ["sh", "-c", "agent-cli server whisper \
     --host ${WHISPER_HOST} \
