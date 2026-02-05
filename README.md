@@ -853,27 +853,35 @@ the `[defaults]` section of your configuration file.
 │                                                                  LLM cleanup.          │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Diarization ──────────────────────────────────────────────────────────────────────────╮
-│ --diarize           --no-diarize             Enable speaker diarization (requires      │
-│                                              pyannote-audio). Install with: pip        │
-│                                              install agent-cli[diarization]            │
-│                                              [default: no-diarize]                     │
-│ --diarize-format                    TEXT     Output format for diarization ('inline'   │
-│                                              for [Speaker N]: text, 'json' for         │
-│                                              structured output).                       │
-│                                              [default: inline]                         │
-│ --hf-token                          TEXT     HuggingFace token for pyannote models.    │
-│                                              Required for diarization. Token must have │
-│                                              'Read access to contents of all public    │
-│                                              gated repos you can access' permission.   │
-│                                              Accept licenses at:                       │
-│                                              https://hf.co/pyannote/speaker-diarizati… │
-│                                              https://hf.co/pyannote/segmentation-3.0,  │
-│                                              https://hf.co/pyannote/wespeaker-voxcele… │
-│                                              [env var: HF_TOKEN]                       │
-│ --min-speakers                      INTEGER  Minimum number of speakers (optional hint │
-│                                              for diarization).                         │
-│ --max-speakers                      INTEGER  Maximum number of speakers (optional hint │
-│                                              for diarization).                         │
+│ --diarize           --no-diarize                 Enable speaker diarization (requires  │
+│                                                  pyannote-audio). Install with: pip    │
+│                                                  install agent-cli[diarization]        │
+│                                                  [default: no-diarize]                 │
+│ --diarize-format                        TEXT     Output format for diarization         │
+│                                                  ('inline' for [Speaker N]: text,      │
+│                                                  'json' for structured output).        │
+│                                                  [default: inline]                     │
+│ --hf-token                              TEXT     HuggingFace token for pyannote        │
+│                                                  models. Required for diarization.     │
+│                                                  Token must have 'Read access to       │
+│                                                  contents of all public gated repos    │
+│                                                  you can access' permission. Accept    │
+│                                                  licenses at:                          │
+│                                                  https://hf.co/pyannote/speaker-diari… │
+│                                                  https://hf.co/pyannote/segmentation-… │
+│                                                  https://hf.co/pyannote/wespeaker-vox… │
+│                                                  [env var: HF_TOKEN]                   │
+│ --min-speakers                          INTEGER  Minimum number of speakers (optional  │
+│                                                  hint for diarization).                │
+│ --max-speakers                          INTEGER  Maximum number of speakers (optional  │
+│                                                  hint for diarization).                │
+│ --align-words       --no-align-words             Use wav2vec2 forced alignment for     │
+│                                                  word-level speaker assignment (more   │
+│                                                  accurate but slower).                 │
+│                                                  [default: no-align-words]             │
+│ --align-language                        TEXT     Language code for word alignment      │
+│                                                  model (e.g., 'en', 'fr', 'de', 'es'). │
+│                                                  [default: en]                         │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 
 ```
