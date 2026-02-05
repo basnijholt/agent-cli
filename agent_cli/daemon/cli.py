@@ -29,7 +29,8 @@ Install, uninstall, and monitor agent-cli servers running as system daemons
 | Daemon | Description | Ports |
 |--------|-------------|-------|
 | `whisper` | Speech-to-text ASR | 10300/10301 |
-| `tts` | Text-to-speech (Kokoro) | 10200/10201 |
+| `tts-kokoro` | Text-to-speech (GPU) | 10200/10201 |
+| `tts-piper` | Text-to-speech (CPU) | 10200/10201 |
 | `transcription-proxy` | ASR provider proxy | 61337 |
 
 **Examples:**
@@ -37,6 +38,9 @@ Install, uninstall, and monitor agent-cli servers running as system daemons
 ```bash
 # Install whisper as a background daemon
 agent-cli daemon install whisper
+
+# Install GPU-accelerated TTS
+agent-cli daemon install tts-kokoro
 
 # Check status of all daemons
 agent-cli daemon status
@@ -83,7 +87,7 @@ def status_cmd(
         agent-cli daemon status whisper
 
         # Show more log lines
-        agent-cli daemon status tts --logs 20
+        agent-cli daemon status tts-kokoro --logs 20
 
         # Hide logs
         agent-cli daemon status --logs 0
@@ -189,7 +193,7 @@ def install_cmd(  # noqa: PLR0912, PLR0915
     services: Annotated[
         list[str] | None,
         typer.Argument(
-            help="Services to install (whisper, tts, transcription-proxy).",
+            help="Services to install (whisper, tts-kokoro, tts-piper, transcription-proxy).",
         ),
     ] = None,
     all_services: Annotated[
@@ -216,7 +220,8 @@ def install_cmd(  # noqa: PLR0912, PLR0915
 
     **Available daemons:**
     - **whisper**: Speech-to-text ASR server (ports 10300/10301)
-    - **tts**: Text-to-speech with Kokoro (ports 10200/10201)
+    - **tts-kokoro**: Text-to-speech with Kokoro/GPU (ports 10200/10201)
+    - **tts-piper**: Text-to-speech with Piper/CPU (ports 10200/10201)
     - **transcription-proxy**: Proxy for ASR providers (port 61337)
 
     Daemons run via `uv tool run` and don't require a virtual environment.
@@ -224,7 +229,7 @@ def install_cmd(  # noqa: PLR0912, PLR0915
     **Examples:**
 
         # Install specific daemons
-        agent-cli daemon install whisper tts
+        agent-cli daemon install whisper tts-kokoro
 
         # Install all daemons
         agent-cli daemon install --all
@@ -335,7 +340,7 @@ def uninstall_cmd(
     services: Annotated[
         list[str] | None,
         typer.Argument(
-            help="Services to uninstall (whisper, tts, transcription-proxy).",
+            help="Services to uninstall (whisper, tts-kokoro, tts-piper, transcription-proxy).",
         ),
     ] = None,
     all_services: Annotated[

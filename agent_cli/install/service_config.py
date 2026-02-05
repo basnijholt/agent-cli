@@ -42,13 +42,20 @@ SERVICES: dict[str, ServiceConfig] = {
         python_version="3.13",  # onnxruntime lacks py3.14 wheels (Linux only)
         macos_extra="server,mlx-whisper,wyoming",
     ),
-    "tts": ServiceConfig(
-        name="tts",
+    "tts-kokoro": ServiceConfig(
+        name="tts",  # Server command is still "tts"
         display_name="Kokoro TTS",
-        description="Text-to-speech server (ports 10200/10201)",
+        description="Text-to-speech with Kokoro (GPU, ports 10200/10201)",
         extra="server,kokoro,wyoming",
         command_args=["--backend", "kokoro"],
         python_version="3.12",  # curated-tokenizers (via kokoro→misaki→spacy) lacks py3.13 wheels
+    ),
+    "tts-piper": ServiceConfig(
+        name="tts",  # Server command is still "tts"
+        display_name="Piper TTS",
+        description="Text-to-speech with Piper (CPU, ports 10200/10201)",
+        extra="server,piper,wyoming",
+        command_args=["--backend", "piper"],
     ),
     "transcription-proxy": ServiceConfig(
         name="transcription-proxy",
