@@ -220,10 +220,13 @@ async def _synthesize_speech_kokoro(
     **_kwargs: object,
 ) -> bytes | None:
     """Synthesize speech from text using Kokoro TTS server via OpenAI client."""
+    host = kokoro_tts_cfg.tts_kokoro_host
+    if not host.startswith(("http://", "https://")):
+        host = f"http://{host}"
     openai_tts_cfg = config.OpenAITTS(
         tts_openai_model=kokoro_tts_cfg.tts_kokoro_model,
         tts_openai_voice=kokoro_tts_cfg.tts_kokoro_voice,
-        tts_openai_base_url=kokoro_tts_cfg.tts_kokoro_host,
+        tts_openai_base_url=host,
     )
     try:
         return await synthesize_speech_openai(

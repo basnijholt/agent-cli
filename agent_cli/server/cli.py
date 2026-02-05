@@ -803,6 +803,18 @@ def tts_cmd(  # noqa: PLR0915
             'input="Hello")[/cyan]',
         )
     console.print()
+    voice = "af_heart" if resolved_backend == "kokoro" else "alloy"
+    console.print("[dim]Usage with agent-cli:[/dim]")
+    console.print(
+        f'  [cyan]ag speak "Hello" --tts-provider openai '
+        f"--tts-openai-base-url http://localhost:{port}/v1 --tts-openai-voice {voice}[/cyan]",
+    )
+    if not no_wyoming:
+        console.print(
+            f'  [cyan]ag speak "Hello" --tts-provider wyoming --tts-wyoming-ip {host} '
+            f"--tts-wyoming-port {wyoming_port}[/cyan]",
+        )
+    console.print()
 
     # Create and run the app
     from agent_cli.server.tts.api import create_app  # noqa: PLC0415
