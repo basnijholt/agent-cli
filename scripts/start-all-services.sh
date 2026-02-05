@@ -36,19 +36,28 @@ HELP_TEXT='╔══════════════════════
 ║                                                                   ║
 ╚═══════════════════════════════════════════════════════════════════╝'
 
-# On macOS, check if services are running via brew/launchd
+# Check if services are running via system service managers
 OLLAMA_BREW_SERVICE=false
-WHISPER_LAUNCHD=false
+WHISPER_DAEMON=false
+TTS_DAEMON=false
 if [ "$(uname -s)" = "Darwin" ]; then
-    # Check if Ollama is running as a brew service
+    # macOS: Check launchd services
     if launchctl list homebrew.mxcl.ollama &>/dev/null; then
         OLLAMA_BREW_SERVICE=true
     fi
-    # Check if Whisper is running as a launchd service (ARM only)
-    if [ "$(uname -m)" = "arm64" ]; then
-        if launchctl list com.wyoming_mlx_whisper &>/dev/null; then
-            WHISPER_LAUNCHD=true
-        fi
+    if launchctl list com.agent_cli.whisper &>/dev/null; then
+        WHISPER_DAEMON=true
+    fi
+    if launchctl list com.agent_cli.tts &>/dev/null; then
+        TTS_DAEMON=true
+    fi
+elif [ "$(uname -s)" = "Linux" ]; then
+    # Linux: Check systemd user services
+    if systemctl --user is-active --quiet agent-cli-whisper.service 2>/dev/null; then
+        WHISPER_DAEMON=true
+    fi
+    if systemctl --user is-active --quiet agent-cli-tts.service 2>/dev/null; then
+        TTS_DAEMON=true
     fi
 fi
 
@@ -70,29 +79,40 @@ else
             }"
 fi
 
-# Generate Whisper pane command based on whether launchd service is running
-if [ "$WHISPER_LAUNCHD" = true ]; then
+# Generate Whisper pane command based on whether daemon is running
+if [ "$WHISPER_DAEMON" = true ]; then
     WHISPER_PANE="            pane {
-                name \"Whisper (launchd)\"
+                name \"Whisper (daemon)\"
                 command \"sh\"
-                args \"-c\" \"echo '🎤 Whisper is running as a background launchd service'; echo ''; echo 'Service: com.wyoming_mlx_whisper'; echo 'Logs: ~/Library/Logs/wyoming-mlx-whisper/'; echo ''; echo 'To view logs:'; echo '  tail -f ~/Library/Logs/wyoming-mlx-whisper/wyoming-mlx-whisper.out'; echo ''; echo 'To uninstall:'; echo '  curl -fsSL https://raw.githubusercontent.com/basnijholt/wyoming-mlx-whisper/main/scripts/uninstall_service.sh | bash'; echo ''; read -r\"
+                args \"-c\" \"echo '🎤 Whisper running via daemon'; echo ''; echo 'Check status: agent-cli daemon status whisper'; echo ''; read -r\"
             }"
 else
     WHISPER_PANE="            pane {
                 name \"Whisper\"
-                cwd \"$SCRIPTS_DIR\"
-                command \"./run-whisper.sh\"
+                command \"agent-cli\"
+                args \"server\" \"whisper\"
             }"
+fi
+
+# Generate TTS pane based on whether daemon is running
+if [ "$TTS_DAEMON" = true ]; then
+    TTS_PANE="                pane {
+                    name \"TTS (daemon)\"
+                    command \"sh\"
+                    args \"-c\" \"echo '🔊 TTS running via daemon'; echo ''; echo 'Check status: agent-cli daemon status'; echo ''; read -r\"
+                }"
+else
+    TTS_PANE="                pane {
+                    name \"TTS\"
+                    command \"agent-cli\"
+                    args \"server\" \"tts\" \"--backend\" \"piper\"
+                }"
 fi
 
 BOTTOM_PANES="        pane split_direction=\"horizontal\" {
 $WHISPER_PANE
             pane split_direction=\"horizontal\" {
-                pane {
-                    name \"Piper\"
-                    cwd \"$SCRIPTS_DIR\"
-                    command \"./run-piper.sh\"
-                }
+$TTS_PANE
                 pane {
                     name \"OpenWakeWord\"
                     cwd \"$SCRIPTS_DIR\"

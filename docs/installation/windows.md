@@ -103,10 +103,10 @@ If you prefer manual setup:
    ollama serve
 
    # Terminal 2: Whisper
-   powershell -ExecutionPolicy Bypass -File scripts/run-whisper-windows.ps1
+   agent-cli server whisper
 
    # Terminal 3: Piper
-   powershell -ExecutionPolicy Bypass -File scripts/run-piper-windows.ps1
+   agent-cli server tts --backend piper
    ```
 
 ---
