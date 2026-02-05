@@ -420,19 +420,19 @@ agent-cli install-extras rag memory vad
 
  Available extras:
 
-  • rag - RAG proxy server (ChromaDB, embeddings)
-  • memory - Long-term memory proxy (ChromaDB)
-  • vad - Voice Activity Detection (Silero VAD via ONNX)
-  • audio - Local audio recording/playback
-  • piper - Local Piper TTS engine
-  • kokoro - Kokoro neural TTS engine
-  • faster-whisper - Whisper ASR for CUDA/CPU
-  • mlx-whisper - Whisper ASR for Apple Silicon
-  • whisper-transformers - Whisper ASR via HuggingFace transformers (safetensors)
-  • wyoming - Wyoming protocol for ASR/TTS servers
-  • server - FastAPI server components
-  • speed - Audio speed adjustment
+  • audio - Audio recording/playback
+  • faster-whisper - Whisper ASR via CTranslate2
+  • kokoro - Kokoro neural TTS (GPU)
   • llm - LLM framework (pydantic-ai)
+  • memory - Long-term memory proxy
+  • mlx-whisper - Whisper ASR for Apple Silicon
+  • piper - Piper TTS (CPU)
+  • rag - RAG proxy (ChromaDB, embeddings)
+  • server - FastAPI server components
+  • speed - Audio speed adjustment (audiostretchy)
+  • vad - Voice Activity Detection (Silero VAD via ONNX)
+  • whisper-transformers - Whisper ASR via HuggingFace transformers
+  • wyoming - Wyoming protocol support
 
  Examples:
 
@@ -444,9 +444,9 @@ agent-cli install-extras rag memory vad
 
 
 ╭─ Arguments ────────────────────────────────────────────────────────────────────────────╮
-│   extras      [EXTRAS]...  Extras to install: rag, memory, vad, audio, piper, kokoro,  │
-│                            faster-whisper, mlx-whisper, whisper-transformers, wyoming, │
-│                            server, speed, llm                                          │
+│   extras      [EXTRAS]...  Extras to install: audio, faster-whisper, kokoro, llm,      │
+│                            memory, mlx-whisper, piper, rag, server, speed, vad,        │
+│                            whisper-transformers, wyoming                               │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Options ──────────────────────────────────────────────────────────────────────────────╮
 │ --list  -l        Show available extras with descriptions (what each one enables)      │

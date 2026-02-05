@@ -5,7 +5,8 @@ from __future__ import annotations
 import typing
 
 from agent_cli.core.deps import EXTRAS as EXTRAS_META
-from agent_cli.install.extras import EXTRAS, _available_extras, install_extras
+from agent_cli.core.deps import available_extras
+from agent_cli.install.extras import EXTRAS, install_extras
 
 
 def test_extras_dict_matches_requirements_files() -> None:
@@ -14,7 +15,7 @@ def test_extras_dict_matches_requirements_files() -> None:
     Extras defined in _extras.json may or may not have requirements files.
     Those with requirements files (in _requirements/) should have descriptions.
     """
-    available = set(_available_extras())
+    available = set(available_extras())
     documented = set(EXTRAS.keys())
 
     # Only check that extras with requirements files have documentation
@@ -51,7 +52,7 @@ def test_install_extras_help_lists_all_extras() -> None:
     in install_extras() must be updated to include them. This test catches
     missing extras in the help text.
     """
-    available = set(_available_extras())
+    available = set(available_extras())
     docstring = install_extras.__doc__ or ""
 
     # Get the argument help text from Annotated metadata
