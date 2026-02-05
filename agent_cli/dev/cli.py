@@ -400,14 +400,7 @@ def _create_prompt_wrapper_script(
     extra_args: list[str] | None = None,
     env: dict[str, str] | None = None,
 ) -> Path:
-    """Create a wrapper script that launches the agent with the prompt from a file.
-
-    Reads the prompt from the task file instead of embedding it in the script.
-    This avoids shell parsing issues with special characters (backticks, quotes, etc.)
-    that occur when using heredocs inside command substitution.
-
-    Script is written to a temp directory to avoid polluting the worktree.
-    """
+    """Create a wrapper script that reads prompt from file to avoid shell quoting issues."""
     script_path = Path(tempfile.gettempdir()) / f"agent-cli-{worktree_path.name}.sh"
 
     # Build the agent command without the prompt
@@ -423,12 +416,7 @@ def _create_prompt_wrapper_script(
     agent_cmd = " ".join(cmd_parts)
     env_prefix = _format_env_prefix(env or {})
 
-    # Use relative path from worktree for the task file
     task_file_rel = task_file.relative_to(worktree_path)
-
-    # Read prompt from file instead of embedding in heredoc.
-    # This avoids bash parsing issues with backticks and other special chars
-    # that break when using heredocs inside $(...) command substitution.
     script_content = f"""#!/usr/bin/env bash
 # Auto-generated script to launch agent with prompt
 # Reads prompt from file to avoid shell parsing issues with special characters
@@ -463,10 +451,8 @@ def _launch_agent(
     """
     terminal = terminals.detect_current_terminal()
 
-    # Use wrapper script for prompts when opening in a terminal tab.
-    # All terminals pass commands through a shell (zellij write-chars, tmux new-window,
-    # bash -c, AppleScript, etc.), so special characters ($, !, `, etc.) get interpreted.
-    # The wrapper script reads from a file to avoid heredoc parsing issues with backticks.
+    # Use wrapper script when opening in a terminal tab - all terminals pass commands
+    # through a shell, so special characters get interpreted. Reading from file avoids this.
     if task_file and terminal is not None:
         script_path = _create_prompt_wrapper_script(path, agent, task_file, extra_args, env)
         full_cmd = f"bash {shlex.quote(str(script_path))}"
