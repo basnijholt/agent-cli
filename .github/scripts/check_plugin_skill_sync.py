@@ -16,7 +16,7 @@ SYNC_PAIRS = [
 
 def main() -> int:
     """Check that plugin skill files match source files."""
-    root = Path(__file__).parent.parent
+    root = Path(__file__).parent.parent.parent
     out_of_sync = []
 
     for source, target in SYNC_PAIRS:

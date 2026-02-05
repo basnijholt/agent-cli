@@ -5,7 +5,7 @@ This script parses the optional-dependencies in pyproject.toml and generates
 the agent_cli/_extras.json file with package-to-import mappings.
 
 Usage:
-    python scripts/sync_extras.py
+    python .github/scripts/sync_extras.py
 """
 
 from __future__ import annotations
@@ -16,7 +16,7 @@ import sys
 import tomllib
 from pathlib import Path
 
-REPO_ROOT = Path(__file__).parent.parent
+REPO_ROOT = Path(__file__).parent.parent.parent
 PYPROJECT = REPO_ROOT / "pyproject.toml"
 EXTRAS_FILE = REPO_ROOT / "agent_cli" / "_extras.json"
 
@@ -134,7 +134,7 @@ def main() -> int:
     missing = check_missing_metadata(extras)
     if missing:
         print(f"ERROR: The following extras need metadata in EXTRA_METADATA: {missing}")
-        print("Please update EXTRA_METADATA in scripts/sync_extras.py")
+        print("Please update EXTRA_METADATA in .github/scripts/sync_extras.py")
         return 1
 
     # Generate the file
