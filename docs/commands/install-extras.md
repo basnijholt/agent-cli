@@ -42,6 +42,7 @@ Available extras:
 | `server` | FastAPI server components |
 | `speed` | Audio speed adjustment (audiostretchy) |
 | `vad` | Voice Activity Detection (Silero VAD via ONNX) |
+| `wakeword` | Wake word detection (openWakeWord) |
 | `whisper-transformers` | Whisper ASR via HuggingFace transformers |
 | `wyoming` | Wyoming protocol support |
 
