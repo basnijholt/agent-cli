@@ -15,6 +15,7 @@ from rich.panel import Panel
 
 from agent_cli.cli import app as main_app
 from agent_cli.core.utils import console, err_console
+from agent_cli.install.service_config import SERVICES, get_service_manager
 
 app = typer.Typer(
     name="services",
@@ -74,11 +75,6 @@ def status_cmd(
         agent-cli services status whisper
 
     """
-    from agent_cli.install.service_config import (  # noqa: PLC0415
-        SERVICES,
-        get_service_manager,
-    )
-
     try:
         manager = get_service_manager()
     except RuntimeError as e:
@@ -126,8 +122,6 @@ def _confirm_action(message: str) -> bool:
 
 def _ensure_uv_installed(no_confirm: bool) -> None:
     """Ensure uv is installed, prompting user if needed."""
-    from agent_cli.install.service_config import get_service_manager  # noqa: PLC0415
-
     try:
         manager = get_service_manager()
     except RuntimeError as e:
@@ -210,11 +204,6 @@ def install_cmd(  # noqa: PLR0912, PLR0915
     After installation, check status with:
         agent-cli services status
     """
-    from agent_cli.install.service_config import (  # noqa: PLC0415
-        SERVICES,
-        get_service_manager,
-    )
-
     if not services and not all_services:
         err_console.print(
             f"[bold red]Error:[/bold red] Specify services to install or use --all. "
@@ -341,11 +330,6 @@ def uninstall_cmd(
         agent-cli services uninstall --all
 
     """
-    from agent_cli.install.service_config import (  # noqa: PLC0415
-        SERVICES,
-        get_service_manager,
-    )
-
     if not services and not all_services:
         err_console.print(
             f"[bold red]Error:[/bold red] Specify services to uninstall or use --all. "
