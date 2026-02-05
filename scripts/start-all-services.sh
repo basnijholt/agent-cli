@@ -44,11 +44,9 @@ if [ "$(uname -s)" = "Darwin" ]; then
     if launchctl list homebrew.mxcl.ollama &>/dev/null; then
         OLLAMA_BREW_SERVICE=true
     fi
-    # Check if Whisper is running as a launchd service (ARM only)
-    if [ "$(uname -m)" = "arm64" ]; then
-        if launchctl list com.wyoming_mlx_whisper &>/dev/null; then
-            WHISPER_LAUNCHD=true
-        fi
+    # Check if Whisper is running as an agent-cli daemon
+    if launchctl list com.agent_cli.whisper &>/dev/null; then
+        WHISPER_LAUNCHD=true
     fi
 fi
 
@@ -75,7 +73,7 @@ if [ "$WHISPER_LAUNCHD" = true ]; then
     WHISPER_PANE="            pane {
                 name \"Whisper (launchd)\"
                 command \"sh\"
-                args \"-c\" \"echo '🎤 Whisper is running as a background launchd service'; echo ''; echo 'Service: com.wyoming_mlx_whisper'; echo 'Logs: ~/Library/Logs/wyoming-mlx-whisper/'; echo ''; echo 'To view logs:'; echo '  tail -f ~/Library/Logs/wyoming-mlx-whisper/wyoming-mlx-whisper.out'; echo ''; echo 'To uninstall:'; echo '  curl -fsSL https://raw.githubusercontent.com/basnijholt/wyoming-mlx-whisper/main/scripts/uninstall_service.sh | bash'; echo ''; read -r\"
+                args \"-c\" \"echo '🎤 Whisper is running as a background launchd service'; echo ''; echo 'Service: com.agent_cli.whisper'; echo 'Logs: ~/Library/Logs/agent-cli-whisper/'; echo ''; echo 'To view logs:'; echo '  tail -f ~/Library/Logs/agent-cli-whisper/whisper.out'; echo ''; echo 'To uninstall:'; echo '  agent-cli daemon uninstall whisper'; echo ''; read -r\"
             }"
 else
     WHISPER_PANE="            pane {
