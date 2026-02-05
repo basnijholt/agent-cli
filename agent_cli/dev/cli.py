@@ -470,11 +470,6 @@ def _launch_agent(
     if task_file and terminal is not None:
         script_path = _create_prompt_wrapper_script(path, agent, task_file, extra_args, env)
         full_cmd = f"bash {shlex.quote(str(script_path))}"
-    elif prompt and terminal is not None:
-        # Fallback: write prompt to temp file for the wrapper script
-        temp_task_file = _write_prompt_to_worktree(path, prompt)
-        script_path = _create_prompt_wrapper_script(path, agent, temp_task_file, extra_args, env)
-        full_cmd = f"bash {shlex.quote(str(script_path))}"
     else:
         agent_cmd = shlex.join(agent.launch_command(path, extra_args, prompt))
         env_prefix = _format_env_prefix(env or {})
