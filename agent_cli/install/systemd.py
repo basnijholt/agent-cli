@@ -36,6 +36,31 @@ def _get_log_command(service_name: str) -> str:
     return f"journalctl --user -u agent-cli-{service_name} -f"
 
 
+def _get_recent_logs(service_name: str, num_lines: int = 10) -> list[str]:
+    """Get recent log lines for a service using journalctl."""
+    result = subprocess.run(
+        [  # noqa: S607
+            "journalctl",
+            "--user",
+            "-u",
+            f"agent-cli-{service_name}",
+            "-n",
+            str(num_lines),
+            "--no-pager",
+            "-o",
+            "cat",  # Output only the message, no metadata
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    if result.returncode != 0:
+        return []
+
+    return [line.rstrip() for line in result.stdout.splitlines() if line.strip()]
+
+
 def _generate_unit_file(
     service: ServiceConfig,
     uv_path: Path,
@@ -252,4 +277,5 @@ manager = ServiceManager(
     uninstall_service=_uninstall_service,
     get_service_status=_get_service_status,
     get_log_command=_get_log_command,
+    get_recent_logs=_get_recent_logs,
 )

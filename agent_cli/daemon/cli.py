@@ -62,10 +62,18 @@ def status_cmd(
             help="Service to check, or omit for all services",
         ),
     ] = None,
+    logs: Annotated[
+        int,
+        typer.Option(
+            "--logs",
+            "-l",
+            help="Number of recent log lines to show (0 to disable)",
+        ),
+    ] = 10,
 ) -> None:
     """Check status of installed daemons.
 
-    Shows whether each daemon is installed and running.
+    Shows whether each daemon is installed and running, along with recent log output.
 
     Examples:
         # Check all daemons
@@ -73,6 +81,12 @@ def status_cmd(
 
         # Check specific daemon
         agent-cli daemon status whisper
+
+        # Show more log lines
+        agent-cli daemon status tts --logs 20
+
+        # Hide logs
+        agent-cli daemon status --logs 0
 
     """
     try:
@@ -102,12 +116,29 @@ def status_cmd(
         else:
             console.print(f"  {svc_name}: [yellow]installed but not running[/yellow]")
 
+        # Show recent logs for installed services
+        if logs > 0 and status.installed:
+            log_lines = manager.get_recent_logs(svc_name, logs)
+            if log_lines:
+                console.print()
+                console.print(f"  [dim]Recent logs ({len(log_lines)} lines):[/dim]")
+                max_line_width = 120
+                for line in log_lines:
+                    # Truncate long lines for readability
+                    display_line = (
+                        line[:max_line_width] + "..." if len(line) > max_line_width else line
+                    )
+                    console.print(f"    [dim]{display_line}[/dim]")
+            elif status.running:
+                console.print()
+                console.print("  [dim]No recent logs available[/dim]")
+
     console.print()
     system = platform.system()
     if system == "Darwin":
-        console.print("[dim]Log locations: ~/Library/Logs/agent-cli-<service>/[/dim]")
+        console.print("[dim]Full logs: ~/Library/Logs/agent-cli-<service>/[/dim]")
     else:
-        console.print("[dim]Log locations: journalctl --user -u agent-cli-<service>[/dim]")
+        console.print("[dim]Full logs: journalctl --user -u agent-cli-<service> -f[/dim]")
 
 
 def _confirm_action(message: str) -> bool:

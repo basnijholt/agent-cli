@@ -46,6 +46,29 @@ def _get_log_command(service_name: str) -> str:
     return f"tail -f {log_dir}/*.log"
 
 
+def _get_recent_logs(service_name: str, num_lines: int = 10) -> list[str]:
+    """Get recent log lines for a service."""
+    log_dir = _get_log_dir(service_name)
+    stderr_log = log_dir / "stderr.log"
+    stdout_log = log_dir / "stdout.log"
+
+    lines: list[str] = []
+
+    # Prefer stderr as it usually has more useful info
+    for log_file in [stderr_log, stdout_log]:
+        if log_file.exists():
+            try:
+                with log_file.open() as f:
+                    all_lines = f.readlines()
+                    lines = [line.rstrip() for line in all_lines[-num_lines:]]
+                    if lines:
+                        break
+            except OSError:
+                continue
+
+    return lines
+
+
 def _generate_plist(
     service: ServiceConfig,
     uv_path: Path,
@@ -217,4 +240,5 @@ manager = ServiceManager(
     uninstall_service=_uninstall_service,
     get_service_status=_get_service_status,
     get_log_command=_get_log_command,
+    get_recent_logs=_get_recent_logs,
 )

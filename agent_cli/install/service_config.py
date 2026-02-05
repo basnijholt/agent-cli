@@ -171,6 +171,7 @@ class ServiceManager(NamedTuple):
     uninstall_service: Callable[[str], UninstallResult]
     get_service_status: Callable[[str], ServiceStatus]
     get_log_command: Callable[[str], str]
+    get_recent_logs: Callable[[str, int], list[str]]
 
 
 def get_service_manager() -> ServiceManager:
