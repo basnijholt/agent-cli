@@ -14,6 +14,7 @@ from agent_cli.install.service_config import (
     ServiceConfig,
     ServiceStatus,
     UninstallResult,
+    build_service_command,
     find_uv,
 )
 
@@ -50,33 +51,9 @@ def _generate_plist(
     log_dir: Path,
 ) -> dict:
     """Generate plist dictionary for a launchd service."""
-    # Use macOS-specific extra if available (e.g., whisper-mlx instead of whisper)
-    extra = service.macos_extra or service.extra
-
-    # Build command arguments
-    program_args = [
-        str(uv_path),
-        "tool",
-        "run",
-    ]
-    # Add python version constraint only if not using macos_extra
-    # (macos_extra typically avoids onnxruntime which lacks py3.14 wheels)
-    if service.python_version and not service.macos_extra:
-        program_args.extend(["--python", service.python_version])
-    program_args.extend(
-        [
-            "--from",
-            f"agent-cli[{extra}]",
-            "agent-cli",
-            "server",
-            service.name,
-            *service.command_args,
-        ],
-    )
-
     return {
         "Label": _get_label(service.name),
-        "ProgramArguments": program_args,
+        "ProgramArguments": build_service_command(service, uv_path, use_macos_extra=True),
         "RunAtLoad": True,
         "KeepAlive": True,
         "WorkingDirectory": str(home_dir),
@@ -228,6 +205,3 @@ def check_uv_installed() -> tuple[bool, Path | None]:
     """Check if uv is installed (with macOS-specific paths)."""
     uv_path = find_uv(extra_paths=_MACOS_UV_PATHS)
     return (uv_path is not None, uv_path)
-
-
-# install_uv is imported from service_config

@@ -60,6 +60,35 @@ SERVICES: dict[str, ServiceConfig] = {
 }
 
 
+def build_service_command(
+    service: ServiceConfig,
+    uv_path: Path,
+    *,
+    use_macos_extra: bool = False,
+) -> list[str]:
+    """Build the command args for running a service via uv tool run."""
+    extra = (service.macos_extra or service.extra) if use_macos_extra else service.extra
+
+    args = [str(uv_path), "tool", "run"]
+
+    # Add python version constraint (skip on macOS when using macos_extra,
+    # since macos_extra typically avoids deps that lack py3.14 wheels)
+    if service.python_version and not (use_macos_extra and service.macos_extra):
+        args.extend(["--python", service.python_version])
+
+    args.extend(
+        [
+            "--from",
+            f"agent-cli[{extra}]",
+            "agent-cli",
+            "server",
+            service.name,
+            *service.command_args,
+        ],
+    )
+    return args
+
+
 def find_uv(extra_paths: list[Path] | None = None) -> Path | None:
     """Find uv executable, preferring system paths over virtualenv."""
     paths = [
