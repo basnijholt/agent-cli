@@ -459,11 +459,13 @@ def whisper_cmd(  # noqa: PLR0912, PLR0915
     console.print(
         f"  [cyan]ag transcribe --asr-provider openai "
         f"--asr-openai-base-url http://localhost:{port}/v1[/cyan]",
+        soft_wrap=True,
     )
     if not no_wyoming:
         console.print(
             f"  [cyan]ag transcribe --asr-provider wyoming --asr-wyoming-ip {host} "
             f"--asr-wyoming-port {wyoming_port}[/cyan]",
+            soft_wrap=True,
         )
     console.print()
 
@@ -791,16 +793,19 @@ def tts_cmd(  # noqa: PLR0915
     )
     console.print(
         f'  [cyan]client = OpenAI(base_url="http://localhost:{port}/v1", api_key="x")[/cyan]',
+        soft_wrap=True,
     )
     if resolved_backend == "kokoro":
         console.print(
             '  [cyan]response = client.audio.speech.create(model="tts-1", voice="af_heart", '
             'input="Hello")[/cyan]',
+            soft_wrap=True,
         )
     else:
         console.print(
             '  [cyan]response = client.audio.speech.create(model="tts-1", voice="alloy", '
             'input="Hello")[/cyan]',
+            soft_wrap=True,
         )
     console.print()
     voice = "af_heart" if resolved_backend == "kokoro" else "alloy"
@@ -808,11 +813,13 @@ def tts_cmd(  # noqa: PLR0915
     console.print(
         f'  [cyan]ag speak "Hello" --tts-provider openai '
         f"--tts-openai-base-url http://localhost:{port}/v1 --tts-openai-voice {voice}[/cyan]",
+        soft_wrap=True,
     )
     if not no_wyoming:
         console.print(
             f'  [cyan]ag speak "Hello" --tts-provider wyoming --tts-wyoming-ip {host} '
             f"--tts-wyoming-port {wyoming_port}[/cyan]",
+            soft_wrap=True,
         )
     console.print()
 
