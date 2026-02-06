@@ -76,6 +76,8 @@ def align(
         sample_rate = SAMPLE_RATE
 
     # Handle minimum input length for wav2vec2 models
+    # Save original length before padding for correct duration computation
+    original_length = waveform.shape[-1]
     lengths = None
     if waveform.shape[-1] < MIN_WAV2VEC2_SAMPLES:
         lengths = torch.as_tensor([waveform.shape[-1]]).to(device)
@@ -109,7 +111,7 @@ def align(
     if trellis.shape[0] <= 1:
         return _fallback_word_alignment(words, waveform, sample_rate)
 
-    duration = waveform.shape[1] / sample_rate
+    duration = original_length / sample_rate
     ratio = duration / (trellis.shape[0] - 1)
 
     return _segments_to_words(char_segments, token_to_word, words, ratio)

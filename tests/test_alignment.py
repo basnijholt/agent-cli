@@ -12,8 +12,8 @@ import torch
 from agent_cli.core.alignment import (
     AlignedWord,
     _backtrack,
-    _BeamState,
     _build_alignment_tokens,
+    _fallback_word_alignment,
     _fill_missing_word_bounds,
     _get_blank_id,
     _get_trellis,
@@ -139,23 +139,6 @@ class TestGetWildcardEmission:
 
         # Should get max non-blank (0.3), not blank (0.9)
         assert scores[0].item() == pytest.approx(0.3)
-
-
-class TestBeamState:
-    """Tests for _BeamState dataclass."""
-
-    def test_beam_state_creation(self) -> None:
-        """Test creating a beam state."""
-        state = _BeamState(
-            token_index=5,
-            time_index=10,
-            score=0.95,
-            path=[(5, 10, 0.9)],
-        )
-        assert state.token_index == 5
-        assert state.time_index == 10
-        assert state.score == 0.95
-        assert len(state.path) == 1
 
 
 class TestBacktrack:
@@ -640,3 +623,90 @@ class TestDeterministicPipeline:
         # Words should be ordered
         assert result[0].end <= result[1].start
         assert result[1].end <= result[2].start
+
+
+class TestFallbackWordAlignment:
+    """Tests for _fallback_word_alignment function."""
+
+    def test_proportional_timing(self) -> None:
+        """Test that words get timestamps proportional to character length."""
+        waveform = torch.zeros(1, 16000)  # 1 second at 16kHz
+        words = ["hi", "there"]  # 2 + 5 = 7 chars
+
+        result = _fallback_word_alignment(words, waveform, 16000)
+
+        assert len(result) == 2
+        assert result[0].word == "hi"
+        assert result[1].word == "there"
+        # "hi" = 2/7 of 1s ≈ 0.286s, "there" = 5/7 ≈ 0.714s
+        assert result[0].start == pytest.approx(0.0)
+        assert result[0].end == pytest.approx(2 / 7)
+        assert result[1].start == pytest.approx(2 / 7)
+        assert result[1].end == pytest.approx(1.0)
+
+    def test_single_word(self) -> None:
+        """Test that a single word spans the full duration."""
+        waveform = torch.zeros(1, 32000)  # 2 seconds
+        result = _fallback_word_alignment(["hello"], waveform, 16000)
+
+        assert len(result) == 1
+        assert result[0].start == pytest.approx(0.0)
+        assert result[0].end == pytest.approx(2.0)
+
+    def test_empty_words(self) -> None:
+        """Test that empty word list returns empty."""
+        waveform = torch.zeros(1, 16000)
+        assert _fallback_word_alignment([], waveform, 16000) == []
+
+    def test_zero_duration(self) -> None:
+        """Test that zero-length waveform gives zero timestamps."""
+        waveform = torch.zeros(1, 0)
+        result = _fallback_word_alignment(["hello"], waveform, 16000)
+
+        assert len(result) == 1
+        assert result[0].start == 0.0
+        assert result[0].end == 0.0
+
+
+class TestAlignPaddingBranch:
+    """Tests for the padding branch in align() for short audio."""
+
+    def test_short_audio_uses_original_duration(self, tmp_path: Path) -> None:
+        """Test that padding doesn't inflate timestamps.
+
+        When audio is shorter than 400 samples, it gets padded for wav2vec2.
+        The duration computation must use the original (pre-padding) length
+        to avoid stretching timestamps. This matches WhisperX behavior where
+        duration = t2 - t1 (actual segment duration, not padded).
+        """
+        audio_file = tmp_path / "test.wav"
+        audio_file.touch()
+
+        original_samples = 200  # shorter than MIN_WAV2VEC2_SAMPLES (400)
+        mock_waveform = torch.zeros(1, original_samples)
+        # Model produces emissions from padded input (400 samples)
+        mock_emissions = torch.randn(1, 20, 29)
+
+        mock_model = MagicMock()
+        mock_model.return_value = (mock_emissions, None)
+        mock_model.to = MagicMock(return_value=mock_model)
+
+        mock_bundle = MagicMock()
+        mock_bundle.get_model.return_value = mock_model
+        mock_bundle.get_labels.return_value = list("abcdefghijklmnopqrstuvwxyz|' ")
+
+        mock_pipelines = MagicMock()
+        mock_pipelines.__dict__ = {"WAV2VEC2_ASR_BASE_960H": mock_bundle}
+
+        with (
+            patch("torchaudio.load", return_value=(mock_waveform, 16000)),
+            patch("torchaudio.pipelines", mock_pipelines),
+        ):
+            words = align(audio_file, "hi", language="en")
+
+            assert isinstance(words, list)
+            if words:
+                # All timestamps must be within the original audio duration
+                original_duration = original_samples / 16000  # 0.0125s
+                for word in words:
+                    assert word.end <= original_duration + 0.001
