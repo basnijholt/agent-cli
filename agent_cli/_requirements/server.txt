@@ -32,11 +32,11 @@ email-validator==2.3.0
     # via
     #   fastapi
     #   pydantic
-fastapi==0.128.0
+fastapi==0.128.2
     # via agent-cli
 fastapi-cli==0.0.20
     # via fastapi
-fastapi-cloud-cli==0.10.1
+fastapi-cloud-cli==0.11.0
     # via fastapi-cli
 fastar==0.8.0
     # via fastapi-cloud-cli
@@ -66,7 +66,7 @@ markupsafe==3.0.3
     # via jinja2
 mdurl==0.1.2
     # via markdown-it-py
-psutil==7.2.1 ; sys_platform == 'win32'
+psutil==7.2.2 ; sys_platform == 'win32'
     # via agent-cli
 pydantic==2.12.5
     # via
@@ -90,23 +90,23 @@ python-dotenv==1.2.1
     #   dotenv
     #   pydantic-settings
     #   uvicorn
-python-multipart==0.0.21
+python-multipart==0.0.22
     # via fastapi
 pyyaml==6.0.3
     # via uvicorn
-rich==14.2.0
+rich==14.3.2
     # via
     #   agent-cli
     #   rich-toolkit
     #   typer
     #   typer-slim
-rich-toolkit==0.17.1
+rich-toolkit==0.18.1
     # via
     #   fastapi-cli
     #   fastapi-cloud-cli
 rignore==0.7.6
     # via fastapi-cloud-cli
-sentry-sdk==2.49.0
+sentry-sdk==2.52.0
     # via fastapi-cloud-cli
 setproctitle==1.3.7
     # via agent-cli
@@ -137,9 +137,10 @@ typing-extensions==4.15.0
     #   typing-inspection
 typing-inspection==0.4.2
     # via
+    #   fastapi
     #   pydantic
     #   pydantic-settings
-urllib3==2.3.0
+urllib3==2.6.3
     # via sentry-sdk
 uvicorn==0.40.0
     # via

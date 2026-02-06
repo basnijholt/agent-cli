@@ -16,8 +16,10 @@ certifi==2026.1.4
     #   httpcore
     #   httpx
     #   requests
-cffi==2.0.0 ; platform_python_implementation != 'CPython'
-    # via brotlicffi
+cffi==2.0.0
+    # via
+    #   brotlicffi
+    #   cryptography
 charset-normalizer==3.4.4
     # via requests
 click==8.3.1
@@ -30,6 +32,8 @@ colorama==0.4.6
     #   click
     #   griffe
     #   tqdm
+cryptography==46.0.4
+    # via google-auth
 ddgs==9.10.0
     # via pydantic-ai-slim
 distro==1.9.0
@@ -40,13 +44,13 @@ dotenv==0.9.9
     # via agent-cli
 fake-useragent==2.2.0
     # via ddgs
-genai-prices==0.0.51
+genai-prices==0.0.52
     # via pydantic-ai-slim
-google-auth==2.47.0
+google-auth==2.48.0
     # via
     #   google-genai
     #   pydantic-ai-slim
-google-genai==1.58.0
+google-genai==1.62.0
     # via pydantic-ai-slim
 griffe==1.15.0
     # via pydantic-ai-slim
@@ -76,9 +80,9 @@ idna==3.11
     #   requests
 importlib-metadata==8.7.1
     # via opentelemetry-api
-jiter==0.12.0
+jiter==0.13.0
     # via openai
-logfire-api==4.18.0
+logfire-api==4.22.0
     # via pydantic-graph
 lxml==6.0.2
     # via ddgs
@@ -86,21 +90,21 @@ markdown-it-py==4.0.0
     # via rich
 mdurl==0.1.2
     # via markdown-it-py
-openai==2.15.0
+openai==2.17.0
     # via pydantic-ai-slim
 opentelemetry-api==1.39.1
     # via pydantic-ai-slim
 primp==0.15.0
     # via ddgs
-psutil==7.2.1 ; sys_platform == 'win32'
+psutil==7.2.2 ; sys_platform == 'win32'
     # via agent-cli
-pyasn1==0.6.1
+pyasn1==0.6.2
     # via
     #   pyasn1-modules
     #   rsa
 pyasn1-modules==0.4.2
     # via google-auth
-pycparser==2.23 ; implementation_name != 'PyPy' and platform_python_implementation != 'CPython'
+pycparser==3.0 ; implementation_name != 'PyPy'
     # via cffi
 pydantic==2.12.5
     # via
@@ -110,11 +114,11 @@ pydantic==2.12.5
     #   openai
     #   pydantic-ai-slim
     #   pydantic-graph
-pydantic-ai-slim==1.42.0
+pydantic-ai-slim==1.56.0
     # via agent-cli
 pydantic-core==2.41.5
     # via pydantic
-pydantic-graph==1.42.0
+pydantic-graph==1.56.0
     # via pydantic-ai-slim
 pygments==2.19.2
     # via rich
@@ -130,7 +134,7 @@ requests==2.32.5
     #   google-genai
     #   pydantic-ai-slim
     #   tiktoken
-rich==14.2.0
+rich==14.3.2
     # via
     #   agent-cli
     #   typer
@@ -149,11 +153,11 @@ sniffio==1.3.1
     #   openai
 socksio==1.0.0
     # via httpx
-tenacity==9.1.2
+tenacity==9.1.3
     # via google-genai
 tiktoken==0.12.0
     # via pydantic-ai-slim
-tqdm==4.67.1
+tqdm==4.67.3
     # via openai
 typer==0.21.1
     # via agent-cli
@@ -175,7 +179,7 @@ typing-inspection==0.4.2
     #   pydantic
     #   pydantic-ai-slim
     #   pydantic-graph
-urllib3==2.3.0
+urllib3==2.6.3
     # via requests
 websockets==15.0.1
     # via google-genai
