@@ -492,6 +492,6 @@ ALIGN_WORDS: bool = typer.Option(
 ALIGN_LANGUAGE: str = typer.Option(
     "en",
     "--align-language",
-    help="Language code for word alignment model (e.g., 'en', 'fr', 'de', 'es').",
+    help="Language code for word alignment model (e.g., 'en', 'fr', 'de', 'es', 'it').",
     rich_help_panel="Diarization",
 )

@@ -888,7 +888,7 @@ the `[defaults]` section of your configuration file.
 │                                                        [default: no-align-words]       │
 │ --align-language                        TEXT           Language code for word          │
 │                                                        alignment model (e.g., 'en',    │
-│                                                        'fr', 'de', 'es').              │
+│                                                        'fr', 'de', 'es', 'it').        │
 │                                                        [default: en]                   │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 

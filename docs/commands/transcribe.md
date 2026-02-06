@@ -184,7 +184,7 @@ The `--from-file` option supports multiple audio formats:
 | `--min-speakers` | - | Minimum number of speakers (optional hint for diarization). |
 | `--max-speakers` | - | Maximum number of speakers (optional hint for diarization). |
 | `--align-words/--no-align-words` | `false` | Use wav2vec2 forced alignment for word-level speaker assignment (more accurate but slower). |
-| `--align-language` | `en` | Language code for word alignment model (e.g., 'en', 'fr', 'de', 'es'). |
+| `--align-language` | `en` | Language code for word alignment model (e.g., 'en', 'fr', 'de', 'es', 'it'). |
 
 
 <!-- OUTPUT:END -->
