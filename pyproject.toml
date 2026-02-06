@@ -19,8 +19,7 @@ dependencies = [
     "psutil; sys_platform == 'win32'",
     "setproctitle",
 ]
-# TODO: remove <3.14 constraint when onnxruntime supports 3.14 (https://github.com/microsoft/onnxruntime/issues/26309)
-requires-python = ">=3.11,<3.14"
+requires-python = ">=3.11"
 
 [project.readme]
 file = "README.md"
@@ -44,7 +43,8 @@ rag = [
     "fastapi[standard]",
     "chromadb>=0.4.22",
     "openai>=1.0.0",  # Required by chromadb's OpenAIEmbeddingFunction
-    "onnxruntime>=1.17.0",
+    "onnxruntime>=1.24.1; sys_platform != 'win32'",
+    "onnxruntime>=1.17.0; sys_platform == 'win32'",  # markitdown pins onnxruntime<=1.20.1 on Windows
     "huggingface-hub>=0.20.0",
     "transformers>=4.30.0",
     "watchfiles>=0.21.0",
@@ -56,7 +56,8 @@ memory = [
     "fastapi[standard]",
     "chromadb>=0.4.22",
     "openai>=1.0.0",  # Required by chromadb's OpenAIEmbeddingFunction
-    "onnxruntime>=1.17.0",
+    "onnxruntime>=1.24.1; sys_platform != 'win32'",
+    "onnxruntime>=1.17.0; sys_platform == 'win32'",  # markitdown pins onnxruntime<=1.20.1 on Windows
     "huggingface-hub>=0.20.0",
     "transformers>=4.30.0",
     "watchfiles>=0.21.0",
@@ -64,7 +65,8 @@ memory = [
     "pyyaml>=6.0.0",
 ]
 vad = [
-    "onnxruntime>=1.16.0",
+    "onnxruntime>=1.24.1; sys_platform != 'win32'",
+    "onnxruntime>=1.16.0; sys_platform == 'win32'",  # markitdown pins onnxruntime<=1.20.1 on Windows
 ]
 faster-whisper = [
     "fastapi[standard]",

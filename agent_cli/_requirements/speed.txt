@@ -34,9 +34,11 @@ markdown-it-py==4.0.0
     # via rich
 mdurl==0.1.2
     # via markdown-it-py
-numpy==2.3.5
+numpy==2.3.5 ; sys_platform != 'win32'
     # via audiostretchy
-psutil==7.2.1 ; sys_platform == 'win32'
+numpy==2.4.2 ; sys_platform == 'win32'
+    # via audiostretchy
+psutil==7.2.2 ; sys_platform == 'win32'
     # via agent-cli
 pydantic==2.12.5
     # via agent-cli
@@ -48,7 +50,7 @@ pyperclip==1.11.0
     # via agent-cli
 python-dotenv==1.2.1
     # via dotenv
-rich==14.2.0
+rich==14.3.2
     # via
     #   agent-cli
     #   typer
