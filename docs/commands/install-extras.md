@@ -32,6 +32,7 @@ Available extras:
 | Extra | Description |
 |-------|-------------|
 | `audio` | Audio recording/playback |
+| `diarization` | Speaker diarization (pyannote.audio) |
 | `faster-whisper` | Whisper ASR via CTranslate2 |
 | `kokoro` | Kokoro neural TTS (GPU) |
 | `llm` | LLM framework (pydantic-ai) |

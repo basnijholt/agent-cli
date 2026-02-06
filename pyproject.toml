@@ -66,6 +66,9 @@ memory = [
 vad = [
     "onnxruntime>=1.16.0",
 ]
+diarization = [
+    "pyannote-audio>=3.3",
+]
 faster-whisper = [
     "fastapi[standard]",
     "faster-whisper>=1.0.0",
