@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import sys
 from typing import TYPE_CHECKING, Any
 
 from agent_cli.constants import DEFAULT_OPENAI_EMBEDDING_MODEL
@@ -12,6 +13,47 @@ if TYPE_CHECKING:
 
     from chromadb import Collection
     from pydantic import BaseModel
+
+
+def _patch_chromadb_for_python314() -> None:
+    """Patch pydantic so chromadb works on Python 3.14.
+
+    PyPI chromadb uses pydantic.v1.BaseSettings which breaks on 3.14.
+    We make ``from pydantic import BaseSettings`` succeed (pointing at
+    pydantic-settings) and tolerate the three untyped fields in
+    chromadb's Settings class.  Remove once chromadb ships a fix
+    (https://github.com/chroma-core/chroma/pull/6356).
+    """
+    import pydantic  # noqa: PLC0415
+    from pydantic._internal import _model_construction  # noqa: PLC0415
+    from pydantic_settings import BaseSettings  # noqa: PLC0415
+
+    pydantic.BaseSettings = BaseSettings  # type: ignore[attr-defined]
+
+    _orig = _model_construction.inspect_namespace
+
+    def _patched(*args: Any, **kwargs: Any) -> Any:
+        try:
+            return _orig(*args, **kwargs)
+        except pydantic.errors.PydanticUserError as exc:
+            if "non-annotated attribute" not in str(exc):
+                raise
+            ns = args[0] if args else kwargs.get("namespace", {})
+            ann = args[1] if len(args) > 1 else kwargs.get("raw_annotations", {})
+            for field in (
+                "chroma_coordinator_host",
+                "chroma_logservice_host",
+                "chroma_logservice_port",
+            ):
+                if field in ns and field not in ann:
+                    ann[field] = type(ns[field])
+            return _orig(*args, **kwargs)
+
+    _model_construction.inspect_namespace = _patched
+
+
+if sys.version_info >= (3, 14):
+    _patch_chromadb_for_python314()
 
 
 def init_collection(

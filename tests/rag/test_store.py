@@ -3,11 +3,14 @@
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from agent_cli.constants import DEFAULT_OPENAI_EMBEDDING_MODEL
 from agent_cli.core import chroma
 from agent_cli.rag import _store
 
 
+@pytest.mark.timeout(10)
 def test_init_collection(tmp_path: Path) -> None:
     """Test collection initialization."""
     with (

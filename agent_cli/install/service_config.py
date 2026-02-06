@@ -27,7 +27,9 @@ class ServiceConfig:
     description: str
     extra: str  # uv extras to install (e.g., "server,kokoro,wyoming"), empty for external
     command_args: list[str]  # Additional args after the base command
-    python_version: str | None = None  # Pin Python version for dependencies without py3.14 wheels
+    python_version: str | None = (
+        None  # Pin Python version for dependencies without newer Python wheels
+    )
     macos_extra: str | None = None  # Override extra on macOS (e.g., whisper-mlx)
     # Custom command path (default: ["server", name]). For non-server commands like "memory proxy"
     command: list[str] | None = None
@@ -74,7 +76,7 @@ SERVICES: dict[str, ServiceConfig] = {
         description="Speech-to-text server (ports 10300/10301)",
         extra="server,faster-whisper,wyoming",
         command_args=[],
-        python_version="3.13",  # onnxruntime lacks py3.14 wheels (Linux only)
+        python_version=None,
         macos_extra="server,mlx-whisper,wyoming",
     ),
     "tts-kokoro": ServiceConfig(
@@ -130,7 +132,7 @@ def build_service_command(
     args = [str(uv_path), "tool", "run"]
 
     # Add python version constraint (skip on macOS when using macos_extra,
-    # since macos_extra typically avoids deps that lack py3.14 wheels)
+    # since macos_extra typically avoids deps that need version pinning)
     if service.python_version and not (use_macos_extra and service.macos_extra):
         args.extend(["--python", service.python_version])
 

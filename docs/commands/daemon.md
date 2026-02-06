@@ -134,14 +134,14 @@ agent-cli daemon uninstall whisper
  Available daemons:
 
 
-   Daemon                Description                Ports
-  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-   whisper               Speech-to-text ASR         10300/10301
-   tts-kokoro            Text-to-speech (GPU)       10200/10201
-   tts-piper             Text-to-speech (CPU)       10200/10201
-   transcription-proxy   ASR provider proxy         61337
-   memory                Long-term memory proxy     8100
-   rag                   Document retrieval proxy   8000
+  Daemon               Description               Ports
+  ──────────────────────────────────────────────────────────
+  whisper              Speech-to-text ASR        10300/10301
+  tts-kokoro           Text-to-speech (GPU)      10200/10201
+  tts-piper            Text-to-speech (CPU)      10200/10201
+  transcription-proxy  ASR provider proxy        61337
+  memory               Long-term memory proxy    8100
+  rag                  Document retrieval proxy  8000
 
 
  Examples:
@@ -166,9 +166,9 @@ agent-cli daemon uninstall whisper
 │ --help  -h        Show this message and exit.                                          │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Commands ─────────────────────────────────────────────────────────────────────────────╮
-│ status      Check status of installed daemons.                                         │
-│ install     Install server daemons as background processes.                            │
-│ uninstall   Uninstall server daemons.                                                  │
+│ status     Check status of installed daemons.                                          │
+│ install    Install server daemons as background processes.                             │
+│ uninstall  Uninstall server daemons.                                                   │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 
 ```
