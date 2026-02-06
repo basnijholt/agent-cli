@@ -19,8 +19,7 @@ dependencies = [
     "psutil; sys_platform == 'win32'",
     "setproctitle",
 ]
-# TODO: remove <3.14 constraint when onnxruntime supports 3.14 (https://github.com/microsoft/onnxruntime/issues/26309)
-requires-python = ">=3.11,<3.14"
+requires-python = ">=3.11"
 
 [project.readme]
 file = "README.md"

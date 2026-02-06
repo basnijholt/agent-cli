@@ -13,10 +13,10 @@ If `agent-cli` is not available, install it first:
 
 ```bash
 # Install globally
-uv tool install agent-cli -p 3.13
+uv tool install agent-cli
 
 # Or run directly without installing
-uvx --python 3.13 agent-cli dev new <branch-name> --agent --prompt "..."
+uvx agent-cli dev new <branch-name> --agent --prompt "..."
 ```
 
 ## When to spawn parallel agents
