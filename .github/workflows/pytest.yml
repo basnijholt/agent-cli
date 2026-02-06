@@ -16,6 +16,9 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
         python-version: ["3.11", "3.14"]
+        exclude:
+          - os: windows-latest
+            python-version: "3.14"  # markitdown caps onnxruntime<=1.20.1 which has no 3.14 wheels (microsoft/markitdown#1551)
 
     steps:
       - uses: actions/checkout@v6
