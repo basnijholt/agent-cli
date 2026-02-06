@@ -44,7 +44,7 @@ rag = [
     "chromadb>=0.4.22",
     "openai>=1.0.0",  # Required by chromadb's OpenAIEmbeddingFunction
     "onnxruntime>=1.24.1; sys_platform != 'win32'",
-    "onnxruntime>=1.17.0; sys_platform == 'win32'",  # markitdown pins onnxruntime<=1.20.1 on Windows
+    "onnxruntime>=1.17.0; sys_platform == 'win32'",  # markitdown pins onnxruntime<=1.20.1 on Windows (microsoft/markitdown#1551)
     "huggingface-hub>=0.20.0",
     "transformers>=4.30.0",
     "watchfiles>=0.21.0",
@@ -57,7 +57,7 @@ memory = [
     "chromadb>=0.4.22",
     "openai>=1.0.0",  # Required by chromadb's OpenAIEmbeddingFunction
     "onnxruntime>=1.24.1; sys_platform != 'win32'",
-    "onnxruntime>=1.17.0; sys_platform == 'win32'",  # markitdown pins onnxruntime<=1.20.1 on Windows
+    "onnxruntime>=1.17.0; sys_platform == 'win32'",  # markitdown pins onnxruntime<=1.20.1 on Windows (microsoft/markitdown#1551)
     "huggingface-hub>=0.20.0",
     "transformers>=4.30.0",
     "watchfiles>=0.21.0",
@@ -66,7 +66,7 @@ memory = [
 ]
 vad = [
     "onnxruntime>=1.24.1; sys_platform != 'win32'",
-    "onnxruntime>=1.16.0; sys_platform == 'win32'",  # markitdown pins onnxruntime<=1.20.1 on Windows
+    "onnxruntime>=1.16.0; sys_platform == 'win32'",  # markitdown pins onnxruntime<=1.20.1 on Windows (microsoft/markitdown#1551)
 ]
 faster-whisper = [
     "fastapi[standard]",
