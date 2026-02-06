@@ -24,7 +24,6 @@ from uuid import uuid4
 import httpx
 import pytest
 import uvicorn
-from chromadb.utils import embedding_functions
 
 import agent_cli.memory._tasks as memory_tasks
 import agent_cli.memory.api as memory_api
@@ -105,6 +104,8 @@ async def test_memory_api_updates_latest_fact(  # noqa: PLR0915
 
     # Use real ChromaDB but with local embeddings (DefaultEmbeddingFunction)
     # so we don't need a running embedding server or OpenAI key.
+    from chromadb.utils import embedding_functions  # noqa: PLC0415
+
     real_ef = embedding_functions.DefaultEmbeddingFunction()
     monkeypatch.setattr(
         "agent_cli.core.chroma.embedding_functions.OpenAIEmbeddingFunction",
