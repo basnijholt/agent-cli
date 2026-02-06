@@ -29,11 +29,17 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@v7
       - name: Run pytest (macOS - all extras)
-        if: matrix.os == 'macos-latest'
+        if: matrix.os == 'macos-latest' && matrix.python-version != '3.14'
         run: uv run --all-extras pytest -vvv
+      - name: Run pytest (macOS 3.14 - exclude rag/memory, chromadb uses pydantic v1)
+        if: matrix.os == 'macos-latest' && matrix.python-version == '3.14'
+        run: uv run --extra audio --extra llm --extra vad --extra faster-whisper --extra mlx-whisper --extra piper --extra kokoro --extra server --extra speed --extra test pytest -vvv --ignore=tests/rag --ignore=tests/memory
       - name: Run pytest (non-macOS - exclude mlx-whisper)
-        if: matrix.os != 'macos-latest'
+        if: matrix.os != 'macos-latest' && matrix.python-version != '3.14'
         run: uv run --extra audio --extra llm --extra rag --extra memory --extra vad --extra faster-whisper --extra piper --extra kokoro --extra server --extra speed --extra test pytest -vvv
+      - name: Run pytest (non-macOS 3.14 - exclude mlx-whisper, rag/memory)
+        if: matrix.os != 'macos-latest' && matrix.python-version == '3.14'
+        run: uv run --extra audio --extra llm --extra vad --extra faster-whisper --extra piper --extra kokoro --extra server --extra speed --extra test pytest -vvv --ignore=tests/rag --ignore=tests/memory
       - name: Upload coverage reports to Codecov
         if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.14'
         uses: codecov/codecov-action@v5
