@@ -574,6 +574,33 @@ class TestAlignTranscriptWithWords:
             call_args = mock_align.call_args
             assert call_args[0][2] == "fr"  # language argument
 
+    def test_falls_back_to_sentence_alignment(self, tmp_path: Path):
+        """Test that empty alignment result falls back to sentence-based assignment.
+
+        When align() returns no words (e.g., backtrack failure, no alignable
+        characters), align_transcript_with_words should fall back to
+        align_transcript_with_speakers rather than returning raw segments.
+        """
+        audio_file = tmp_path / "test.wav"
+        audio_file.touch()
+
+        segments = [
+            DiarizedSegment(speaker="SPEAKER_00", start=0.0, end=2.0),
+            DiarizedSegment(speaker="SPEAKER_01", start=2.0, end=4.0),
+        ]
+
+        with patch("agent_cli.core.diarization.align", return_value=[]):
+            result = align_transcript_with_words(
+                "Hello there. How are you?",
+                segments,
+                audio_path=audio_file,
+                language="en",
+            )
+
+        # Should have used sentence-based fallback, not returned raw segments
+        assert any(seg.text for seg in result)
+        assert result[0].speaker == "SPEAKER_00"
+
 
 class TestSplitIntoSentences:
     """Tests for the _split_into_sentences function."""

@@ -14,6 +14,7 @@ from agent_cli.core.alignment import (
     _backtrack,
     _BeamState,
     _build_alignment_tokens,
+    _fill_missing_word_bounds,
     _get_blank_id,
     _get_trellis,
     _get_wildcard_emission,
@@ -448,3 +449,194 @@ class TestAlign:
             assert words[0].start < words[0].end
             assert words[1].start < words[1].end
             assert words[0].end <= words[1].start
+
+
+class TestFillMissingWordBounds:
+    """Tests for _fill_missing_word_bounds function."""
+
+    def test_all_bounds_present(self) -> None:
+        """Test that words with known bounds are returned unchanged."""
+        words = ["hello", "world"]
+        bounds: list[tuple[float, float] | None] = [(0.0, 0.5), (0.5, 1.0)]
+        result = _fill_missing_word_bounds(words, bounds)
+
+        assert len(result) == 2
+        assert result[0] == AlignedWord("hello", 0.0, 0.5)
+        assert result[1] == AlignedWord("world", 0.5, 1.0)
+
+    def test_first_word_missing_with_later_known(self) -> None:
+        """Test that a missing first word gets the next known start."""
+        words = ["aaa", "hello"]
+        bounds: list[tuple[float, float] | None] = [None, (0.5, 1.0)]
+        result = _fill_missing_word_bounds(words, bounds)
+
+        assert len(result) == 2
+        assert result[0].word == "aaa"
+        assert result[0].start == 0.5  # uses next known start
+        assert result[0].end == 0.5  # zero-width
+        assert result[1] == AlignedWord("hello", 0.5, 1.0)
+
+    def test_last_word_missing_with_earlier_known(self) -> None:
+        """Test that a missing last word gets the previous end."""
+        words = ["hello", "aaa"]
+        bounds: list[tuple[float, float] | None] = [(0.0, 0.5), None]
+        result = _fill_missing_word_bounds(words, bounds)
+
+        assert len(result) == 2
+        assert result[0] == AlignedWord("hello", 0.0, 0.5)
+        assert result[1].word == "aaa"
+        assert result[1].start == 0.5  # uses previous end
+        assert result[1].end == 0.5  # zero-width
+
+    def test_middle_word_missing(self) -> None:
+        """Test that a missing middle word gets interpolated."""
+        words = ["hello", "aaa", "world"]
+        bounds: list[tuple[float, float] | None] = [(0.0, 0.3), None, (0.6, 1.0)]
+        result = _fill_missing_word_bounds(words, bounds)
+
+        assert len(result) == 3
+        assert result[0] == AlignedWord("hello", 0.0, 0.3)
+        assert result[1].word == "aaa"
+        assert result[1].start == 0.3  # uses previous end
+        assert result[1].end == 0.3  # zero-width
+        assert result[2] == AlignedWord("world", 0.6, 1.0)
+
+    def test_all_bounds_missing(self) -> None:
+        """Test that words with no known bounds are skipped."""
+        words = ["aaa", "bbb"]
+        bounds: list[tuple[float, float] | None] = [None, None]
+        result = _fill_missing_word_bounds(words, bounds)
+
+        assert result == []
+
+    def test_empty_words(self) -> None:
+        """Test with empty word list."""
+        assert _fill_missing_word_bounds([], []) == []
+
+    def test_overlapping_bounds_clamped(self) -> None:
+        """Test that overlapping start times are clamped to previous end."""
+        words = ["hello", "world"]
+        bounds: list[tuple[float, float] | None] = [(0.0, 0.7), (0.3, 1.0)]
+        result = _fill_missing_word_bounds(words, bounds)
+
+        assert result[0].end == 0.7
+        assert result[1].start == 0.7  # clamped to previous end
+        assert result[1].end == 1.0
+
+
+class TestDeterministicPipeline:
+    """End-to-end deterministic test for the CTC alignment pipeline.
+
+    Constructs a synthetic emission matrix with clear peaks at known positions,
+    runs the full pipeline, and asserts word boundaries match expected positions.
+    """
+
+    def test_two_tokens_clear_peaks(self) -> None:
+        """Two tokens with clear peaks produce correct word boundaries.
+
+        Emission matrix: 20 frames, 4 classes (blank=0, a=1, b=2, sep=3).
+        Token 'a' peaks at frames 3-6, separator '|' peaks at frames 8-10,
+        token 'b' peaks at frames 12-15. The separator peak is necessary
+        to force the CTC trellis to transition between tokens at the
+        right location (without it, blank emissions keep the path stuck
+        on the first token).
+        """
+        num_frames = 20
+        num_classes = 4  # blank, a, b, separator |
+        blank_id = 0
+
+        emission = torch.full((num_frames, num_classes), -10.0)
+        emission[:, blank_id] = -1.0  # blank moderate everywhere
+
+        # Token a=1 peaks at frames 3-6
+        for f in range(3, 7):
+            emission[f, 1] = -0.01
+
+        # Separator |=3 peaks at frames 8-10 (silence between words)
+        for f in range(8, 11):
+            emission[f, 3] = -0.01
+
+        # Token b=2 peaks at frames 12-15
+        for f in range(12, 16):
+            emission[f, 2] = -0.01
+
+        dictionary = {"a": 1, "b": 2, "|": 3, "[pad]": 0}
+        words = ["a", "b"]
+        tokens, token_to_word = _build_alignment_tokens(words, dictionary)
+        assert tokens == [1, 3, 2]  # a, |, b
+
+        trellis = _get_trellis(emission, tokens, blank_id)
+        path = _backtrack(trellis, emission, tokens, blank_id)
+        assert len(path) == num_frames
+
+        char_segments = _merge_repeats(path)
+        duration = 1.0  # 1 second of audio
+        ratio = duration / (trellis.shape[0] - 1)
+
+        result = _segments_to_words(char_segments, token_to_word, words, ratio)
+
+        assert len(result) == 2
+        assert result[0].word == "a"
+        assert result[1].word == "b"
+
+        # Both words should have non-negative duration
+        assert result[0].end >= result[0].start
+        assert result[1].end >= result[1].start
+
+        # Words should not overlap and should be ordered
+        assert result[0].end <= result[1].start
+
+        # Word "a" should cover at least the peak region (frames 3-6)
+        assert result[0].end >= 6 * ratio
+
+        # Word "b" should start within or near its peak region (frames 12-15)
+        assert result[1].start <= 15 * ratio
+
+    def test_three_words_with_wildcard(self) -> None:
+        """Three words including one with a wildcard character.
+
+        Tests that the full pipeline handles wildcard tokens correctly and
+        produces reasonable boundaries for all words.
+        """
+        num_frames = 12
+        num_classes = 5  # blank=0, h=1, i=2, separator=3, x=4
+        blank_id = 0
+
+        emission = torch.full((num_frames, num_classes), -10.0)
+        emission[:, blank_id] = -1.0
+
+        # "h" peaks at frames 1-2
+        emission[1, 1] = -0.01
+        emission[2, 1] = -0.01
+        # "i" peaks at frames 4-5
+        emission[4, 2] = -0.01
+        emission[5, 2] = -0.01
+        # "x" peaks at frames 8-9
+        emission[8, 4] = -0.01
+        emission[9, 4] = -0.01
+
+        dictionary = {"h": 1, "i": 2, "|": 3, "x": 4, "[pad]": 0}
+        # "h!" has wildcard for "!", "i" is clean, "x" is clean
+        words = ["h!", "i", "x"]
+        tokens, token_to_word = _build_alignment_tokens(words, dictionary)
+        # h=1, wildcard=-1 for "!", sep=3, i=2, sep=3, x=4
+        assert tokens == [1, -1, 3, 2, 3, 4]
+
+        trellis = _get_trellis(emission, tokens, blank_id)
+        path = _backtrack(trellis, emission, tokens, blank_id)
+        assert len(path) == num_frames
+
+        char_segments = _merge_repeats(path)
+        ratio = 1.0 / (trellis.shape[0] - 1)
+        result = _segments_to_words(char_segments, token_to_word, words, ratio)
+
+        assert len(result) == 3
+        assert result[0].word == "h!"
+        assert result[1].word == "i"
+        assert result[2].word == "x"
+        # All words should have non-negative durations
+        for w in result:
+            assert w.end >= w.start
+        # Words should be ordered
+        assert result[0].end <= result[1].start
+        assert result[1].end <= result[2].start

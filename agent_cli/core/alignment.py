@@ -15,6 +15,7 @@ if TYPE_CHECKING:
     import torch
 
 SAMPLE_RATE = 16000
+# WhisperX's backtrack_beam signature defaults to 5, but align() calls it with 2.
 DEFAULT_BEAM_WIDTH = 2
 MIN_WAV2VEC2_SAMPLES = 400
 
@@ -89,7 +90,7 @@ def align(
         emissions = torch.log_softmax(emissions, dim=-1).cpu()
 
     emission = emissions[0]
-    words = _split_words(transcript)
+    words = transcript.split()
     if not words:
         return []
     tokens, token_to_word = _build_alignment_tokens(words, dictionary)
@@ -97,8 +98,9 @@ def align(
         return _fallback_word_alignment(words, waveform, sample_rate)
 
     # CTC forced alignment
-    trellis = _get_trellis(emission, tokens, _get_blank_id(dictionary))
-    path = _backtrack(trellis, emission, tokens, _get_blank_id(dictionary))
+    blank_id = _get_blank_id(dictionary)
+    trellis = _get_trellis(emission, tokens, blank_id)
+    path = _backtrack(trellis, emission, tokens, blank_id)
     if not path:
         return _fallback_word_alignment(words, waveform, sample_rate)
     char_segments = _merge_repeats(path)
@@ -118,10 +120,6 @@ def _get_blank_id(dictionary: dict[str, int]) -> int:
         if char in ("[pad]", "<pad>"):
             return code
     return 0
-
-
-def _split_words(text: str) -> list[str]:
-    return text.split()
 
 
 def _build_alignment_tokens(
