@@ -517,9 +517,9 @@ agent-cli config edit
 │ --help  -h        Show this message and exit.                                          │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Commands ─────────────────────────────────────────────────────────────────────────────╮
-│ init   Create a new config file with all options as commented-out examples.            │
-│ edit   Open the config file in your default editor.                                    │
-│ show   Display the active config file path and contents.                               │
+│ init  Create a new config file with all options as commented-out examples.             │
+│ edit  Open the config file in your default editor.                                     │
+│ show  Display the active config file path and contents.                                │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 
 ```
