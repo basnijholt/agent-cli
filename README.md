@@ -421,6 +421,7 @@ agent-cli install-extras rag memory vad
  Available extras:
 
   • audio - Audio recording/playback
+  • diarization - Speaker diarization (pyannote.audio)
   • faster-whisper - Whisper ASR via CTranslate2
   • kokoro - Kokoro neural TTS (GPU)
   • llm - LLM framework (pydantic-ai)
@@ -444,9 +445,9 @@ agent-cli install-extras rag memory vad
 
 
 ╭─ Arguments ────────────────────────────────────────────────────────────────────────────╮
-│   extras      [EXTRAS]...  Extras to install: audio, faster-whisper, kokoro, llm,      │
-│                            memory, mlx-whisper, piper, rag, server, speed, vad,        │
-│                            whisper-transformers, wyoming                               │
+│   extras      [EXTRAS]...  Extras to install: audio, diarization, faster-whisper,      │
+│                            kokoro, llm, memory, mlx-whisper, piper, rag, server,       │
+│                            speed, vad, whisper-transformers, wyoming                   │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Options ──────────────────────────────────────────────────────────────────────────────╮
 │ --list  -l        Show available extras with descriptions (what each one enables)      │
