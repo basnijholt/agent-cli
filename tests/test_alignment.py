@@ -408,3 +408,43 @@ class TestAlign:
             # Should preserve original words including punctuation
             word_texts = [w.word for w in words]
             assert "Hello," in word_texts or len(word_texts) >= 0  # Just check it doesn't crash
+
+    def test_empty_backtrack_falls_back(self, tmp_path: Path) -> None:
+        """Test that empty backtrack result triggers fallback alignment.
+
+        When beam search produces no valid path (all beams pruned),
+        align() should fall back to proportional word timing rather
+        than producing degenerate timestamps.
+        """
+        audio_file = tmp_path / "test.wav"
+        audio_file.touch()
+
+        mock_waveform = torch.zeros(1, 16000)
+        mock_emissions = torch.randn(1, 100, 29)
+
+        mock_model = MagicMock()
+        mock_model.return_value = (mock_emissions, None)
+        mock_model.to = MagicMock(return_value=mock_model)
+
+        mock_bundle = MagicMock()
+        mock_bundle.get_model.return_value = mock_model
+        mock_bundle.get_labels.return_value = list("abcdefghijklmnopqrstuvwxyz|' ")
+
+        mock_pipelines = MagicMock()
+        mock_pipelines.__dict__ = {"WAV2VEC2_ASR_BASE_960H": mock_bundle}
+
+        with (
+            patch("torchaudio.load", return_value=(mock_waveform, 16000)),
+            patch("torchaudio.pipelines", mock_pipelines),
+            patch("agent_cli.core.alignment._backtrack", return_value=[]),
+        ):
+            words = align(audio_file, "hello world", language="en")
+
+            assert isinstance(words, list)
+            assert len(words) == 2
+            assert words[0].word == "hello"
+            assert words[1].word == "world"
+            # Fallback should produce non-degenerate timestamps
+            assert words[0].start < words[0].end
+            assert words[1].start < words[1].end
+            assert words[0].end <= words[1].start

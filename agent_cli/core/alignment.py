@@ -99,6 +99,8 @@ def align(
     # CTC forced alignment
     trellis = _get_trellis(emission, tokens, _get_blank_id(dictionary))
     path = _backtrack(trellis, emission, tokens, _get_blank_id(dictionary))
+    if not path:
+        return _fallback_word_alignment(words, waveform, sample_rate)
     char_segments = _merge_repeats(path)
 
     # Convert to words
@@ -119,7 +121,7 @@ def _get_blank_id(dictionary: dict[str, int]) -> int:
 
 
 def _split_words(text: str) -> list[str]:
-    return [word for word in text.split() if word]
+    return text.split()
 
 
 def _build_alignment_tokens(

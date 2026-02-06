@@ -213,41 +213,6 @@ def _split_into_sentences(text: str) -> list[str]:
     return sentences
 
 
-def _get_dominant_speaker_and_bounds(
-    start_time: float,
-    end_time: float,
-    segments: list[DiarizedSegment],
-) -> tuple[str | None, float | None, float | None]:
-    """Find dominant speaker and their overlapping bounds in a time range."""
-    speaker_durations: dict[str, float] = {}
-    speaker_bounds: dict[str, tuple[float, float]] = {}
-
-    for seg in segments:
-        overlap_start = max(start_time, seg.start)
-        overlap_end = min(end_time, seg.end)
-        overlap = max(0, overlap_end - overlap_start)
-
-        if overlap > 0:
-            speaker_durations[seg.speaker] = speaker_durations.get(seg.speaker, 0) + overlap
-            bounds = speaker_bounds.get(seg.speaker)
-            if bounds is None:
-                speaker_bounds[seg.speaker] = (overlap_start, overlap_end)
-            else:
-                speaker_bounds[seg.speaker] = (
-                    min(bounds[0], overlap_start),
-                    max(bounds[1], overlap_end),
-                )
-
-    if not speaker_durations:
-        return None, None, None
-
-    speaker = max(speaker_durations, key=lambda s: speaker_durations[s])
-    bounds = speaker_bounds.get(speaker)
-    if bounds is None:
-        return speaker, None, None
-    return speaker, bounds[0], bounds[1]
-
-
 def align_transcript_with_speakers(
     transcript: str,
     segments: list[DiarizedSegment],
@@ -296,7 +261,9 @@ def align_transcript_with_speakers(
 
     # Assign each sentence to a speaker based on estimated timing
     result: list[DiarizedSegment] = []
+    sorted_segments = sorted(segments, key=lambda seg: (seg.start, seg.end))
     current_time = audio_start
+    start_index = 0
 
     for sentence in sentences:
         # Estimate sentence duration based on character proportion
@@ -304,36 +271,29 @@ def align_transcript_with_speakers(
         sentence_end = current_time + sentence_duration
 
         # Find dominant speaker for this time range
-        speaker, speaker_start, speaker_end = _get_dominant_speaker_and_bounds(
+        speaker, start_index = _get_dominant_speaker_window(
             current_time,
             sentence_end,
-            segments,
+            sorted_segments,
+            start_index,
         )
         if speaker is None:
-            # No speaker found, use the last known speaker or first
             speaker = result[-1].speaker if result else segments[0].speaker
-            speaker_start = current_time
-            speaker_end = sentence_end
-        else:
-            if speaker_start is None:
-                speaker_start = current_time
-            if speaker_end is None:
-                speaker_end = sentence_end
 
         # Merge with previous segment if same speaker
         if result and result[-1].speaker == speaker:
             result[-1] = DiarizedSegment(
                 speaker=speaker,
                 start=result[-1].start,
-                end=max(result[-1].end, speaker_end),
+                end=sentence_end,
                 text=result[-1].text + " " + sentence,
             )
         else:
             result.append(
                 DiarizedSegment(
                     speaker=speaker,
-                    start=speaker_start,
-                    end=speaker_end,
+                    start=current_time,
+                    end=sentence_end,
                     text=sentence,
                 ),
             )

@@ -12,6 +12,7 @@ from agent_cli.core.alignment import AlignedWord
 from agent_cli.core.diarization import (
     DiarizedSegment,
     _get_dominant_speaker_window,
+    _split_into_sentences,
     align_transcript_with_speakers,
     align_transcript_with_words,
     align_words_to_speakers,
@@ -572,3 +573,75 @@ class TestAlignTranscriptWithWords:
             mock_align.assert_called_once()
             call_args = mock_align.call_args
             assert call_args[0][2] == "fr"  # language argument
+
+
+class TestSplitIntoSentences:
+    """Tests for the _split_into_sentences function."""
+
+    def test_simple_sentences(self):
+        """Test splitting basic sentences ending with periods."""
+        result = _split_into_sentences("Hello world. How are you.")
+        assert result == ["Hello world.", "How are you."]
+
+    def test_question_marks(self):
+        """Test splitting on question marks."""
+        result = _split_into_sentences("What is this? It is a test.")
+        assert result == ["What is this?", "It is a test."]
+
+    def test_exclamation_marks(self):
+        """Test splitting on exclamation marks."""
+        result = _split_into_sentences("Wow! That is great.")
+        assert result == ["Wow!", "That is great."]
+
+    def test_abbreviations_not_split(self):
+        """Test that common abbreviations don't cause splits."""
+        result = _split_into_sentences("Dr. Smith went home. He was tired.")
+        assert result == ["Dr. Smith went home.", "He was tired."]
+
+    def test_multiple_abbreviations(self):
+        """Test multiple abbreviations in one sentence."""
+        result = _split_into_sentences("Mr. and Mrs. Jones left. They went home.")
+        assert result == ["Mr. and Mrs. Jones left.", "They went home."]
+
+    def test_initialism_not_split(self):
+        """Test that initialisms like U.S. don't cause splits."""
+        result = _split_into_sentences("The U.S. is large. It has many states.")
+        assert result == ["The U.S. is large.", "It has many states."]
+
+    def test_no_punctuation(self):
+        """Text without sentence-ending punctuation returns as single sentence."""
+        result = _split_into_sentences("hello world how are you")
+        assert result == ["hello world how are you"]
+
+    def test_empty_string(self):
+        """Test that empty string returns empty list."""
+        assert _split_into_sentences("") == []
+
+    def test_whitespace_only(self):
+        """Test that whitespace-only string returns empty list."""
+        assert _split_into_sentences("   ") == []
+
+    def test_single_sentence(self):
+        """Test a single sentence with period."""
+        result = _split_into_sentences("Hello world.")
+        assert result == ["Hello world."]
+
+    def test_quoted_sentence(self):
+        """Test sentence ending with closing quote after punctuation."""
+        result = _split_into_sentences('He said "hello." She replied.')
+        assert result == ['He said "hello."', "She replied."]
+
+    def test_eg_abbreviation(self):
+        """Test that e.g. is not treated as sentence boundary."""
+        result = _split_into_sentences("Use tools e.g. hammers and nails. Then build.")
+        assert result == ["Use tools e.g. hammers and nails.", "Then build."]
+
+    def test_single_initial(self):
+        """Test single-letter initial like 'J.' doesn't split."""
+        result = _split_into_sentences("J. Smith arrived. He sat down.")
+        assert result == ["J. Smith arrived.", "He sat down."]
+
+    def test_mixed_punctuation(self):
+        """Test mixing question marks, exclamation marks, and periods."""
+        result = _split_into_sentences("Really? Yes! It works.")
+        assert result == ["Really?", "Yes!", "It works."]
