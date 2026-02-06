@@ -88,9 +88,9 @@ markupsafe==3.0.3 ; platform_machine == 'arm64' and sys_platform == 'darwin'
     # via jinja2
 mdurl==0.1.2 ; python_full_version < '3.14' or sys_platform != 'win32'
     # via markdown-it-py
-mlx==0.30.5 ; platform_machine == 'arm64' and sys_platform == 'darwin'
+mlx==0.30.6 ; platform_machine == 'arm64' and sys_platform == 'darwin'
     # via mlx-whisper
-mlx-metal==0.30.5 ; platform_machine == 'arm64' and sys_platform == 'darwin'
+mlx-metal==0.30.6 ; platform_machine == 'arm64' and sys_platform == 'darwin'
     # via mlx
 mlx-whisper==0.4.3 ; platform_machine == 'arm64' and sys_platform == 'darwin'
     # via agent-cli
