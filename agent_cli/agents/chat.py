@@ -272,7 +272,7 @@ async def _handle_conversation_turn(
 
     # 6. Save history
     if history_cfg.history_dir:
-        history_path = Path(history_cfg.history_dir).expanduser()
+        history_path = Path(history_cfg.history_dir).expanduser()  # noqa: ASYNC240
         history_path.mkdir(parents=True, exist_ok=True)
         # Share the history directory with the memory tools
         os.environ["AGENT_CLI_HISTORY_DIR"] = str(history_path)
@@ -335,7 +335,7 @@ async def _async_main(
         # Load conversation history
         conversation_history = []
         if history_cfg.history_dir:
-            history_path = Path(history_cfg.history_dir).expanduser()
+            history_path = Path(history_cfg.history_dir).expanduser()  # noqa: ASYNC240
             history_path.mkdir(parents=True, exist_ok=True)
             # Share the history directory with the memory tools
             os.environ["AGENT_CLI_HISTORY_DIR"] = str(history_path)

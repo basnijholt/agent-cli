@@ -304,7 +304,7 @@ class TransformersWhisperBackend:
                 kwargs,
             )
         finally:
-            Path(tmp_path).unlink(missing_ok=True)
+            Path(tmp_path).unlink(missing_ok=True)  # noqa: ASYNC240
 
         return TranscriptionResult(
             text=result["text"],
