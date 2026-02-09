@@ -130,7 +130,7 @@ def execute_code(code: str) -> str:
     except subprocess.CalledProcessError as e:
         return f"Error executing code: {e.stderr}"
     except FileNotFoundError:
-        return f"Error: Command not found: {code.split()[0]}"
+        return f"Error: Command not found: {code.split(maxsplit=1)[0]}"
 
 
 def add_memory(content: str, category: str = "general", tags: str = "") -> str:

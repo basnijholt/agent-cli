@@ -61,7 +61,7 @@ EXTRAS: dict[str, tuple[str, list[str]]] = {
 
 def _check_package_installed(pkg: str) -> bool:
     """Check if a single package is installed."""
-    top_module = pkg.split(".")[0]
+    top_module = pkg.split(".", maxsplit=1)[0]
     try:
         return find_spec(top_module) is not None
     except (ValueError, ModuleNotFoundError):

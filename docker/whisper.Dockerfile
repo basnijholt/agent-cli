@@ -12,7 +12,7 @@
 # =============================================================================
 # Builder stage - install dependencies and project
 # =============================================================================
-FROM python:3.13-slim AS builder
+FROM python:3.14-slim AS builder
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends git && \
@@ -83,7 +83,7 @@ ENTRYPOINT ["sh", "-c", "agent-cli server whisper \
 # =============================================================================
 # CPU target: CPU-only with faster-whisper
 # =============================================================================
-FROM python:3.13-slim AS cpu
+FROM python:3.14-slim AS cpu
 
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
