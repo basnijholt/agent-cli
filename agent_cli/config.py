@@ -322,16 +322,28 @@ def normalize_provider_defaults(cfg: dict[str, Any]) -> dict[str, Any]:
     return normalized
 
 
-def _replace_dashed_keys(cfg: dict[str, Any]) -> dict[str, Any]:
-    return {k.replace("-", "_"): v for k, v in cfg.items()}
+def _replace_dashed_keys(cfg: Any) -> Any:
+    """Recursively replace dashed keys in dictionaries."""
+    if isinstance(cfg, dict):
+        return {k.replace("-", "_"): _replace_dashed_keys(v) for k, v in cfg.items()}
+    return cfg
 
 
 def _flatten_nested_sections(cfg: dict[str, Any], prefix: str = "") -> dict[str, Any]:
-    """Flatten nested TOML sections: {"a": {"b": {"x": 1}}} -> {"a.b": {"x": 1}}."""
-    result = {}
+    """Flatten nested TOML sections while preserving scalar parent options.
+
+    Example:
+        {"a": {"x": 1, "b": {"y": 2}}} -> {"a": {"x": 1}, "a.b": {"y": 2}}
+        {"a": {"b": {"x": 1}}} -> {"a.b": {"x": 1}}
+
+    """
+    result: dict[str, Any] = {}
     for key, value in cfg.items():
         full_key = f"{prefix}.{key}" if prefix else key
         if isinstance(value, dict) and any(isinstance(v, dict) for v in value.values()):
+            scalar_items = {k: v for k, v in value.items() if not isinstance(v, dict)}
+            if scalar_items:
+                result[full_key] = scalar_items
             result.update(_flatten_nested_sections(value, full_key))
         else:
             result[full_key] = value

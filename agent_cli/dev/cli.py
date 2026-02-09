@@ -862,7 +862,7 @@ def new(  # noqa: C901, PLR0912, PLR0915
         str | None,
         typer.Option(
             "--branch-name-agent",
-            help="Headless agent for AI branch naming: claude, codex, or gemini. If omitted, tries available agents in that order",
+            help="Headless agent for AI branch naming: claude, codex, or gemini. If omitted, uses --with-agent when supported, otherwise tries available agents in that order",
         ),
     ] = None,
     branch_name_timeout: Annotated[
@@ -963,12 +963,18 @@ def new(  # noqa: C901, PLR0912, PLR0915
             branch = _generate_branch_name(existing, repo_root=repo_root)
             _info(f"Generated branch name: {branch}")
         else:
+            effective_branch_name_agent = branch_name_agent
+            if effective_branch_name_agent is None and agent_name:
+                candidate = agent_name.lower().strip()
+                if candidate in _BRANCH_NAME_AGENTS:
+                    effective_branch_name_agent = candidate
+
             branch = _generate_ai_branch_name(
                 repo_root,
                 existing,
                 prompt,
                 from_ref,
-                branch_name_agent,
+                effective_branch_name_agent,
                 branch_name_timeout,
             )
             if branch:

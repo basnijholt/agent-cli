@@ -77,7 +77,7 @@ agent-cli dev new [BRANCH] [OPTIONS]
 | `--copy-env/--no-copy-env` | `true` | Copy .env, .env.local, .env.example from main repo to worktree |
 | `--fetch/--no-fetch` | `true` | Run 'git fetch' before creating the worktree to ensure refs are up-to-date |
 | `--branch-name-mode` | `random` | How to auto-name branches when BRANCH is omitted: random (default), auto (AI only when --prompt/--prompt-file is set), or ai (always try AI first) |
-| `--branch-name-agent` | - | Headless agent for AI branch naming: claude, codex, or gemini. If omitted, tries available agents in that order |
+| `--branch-name-agent` | - | Headless agent for AI branch naming: claude, codex, or gemini. If omitted, uses --with-agent when supported, otherwise tries available agents in that order |
 | `--branch-name-timeout` | `20.0` | Timeout in seconds for AI branch naming command |
 | `--direnv/--no-direnv` | - | Generate .envrc based on project type and run 'direnv allow'. Auto-enabled if direnv is installed |
 | `--agent-args` | - | Extra CLI args for the agent. Can be repeated. Example: --agent-args='--dangerously-skip-permissions' |

@@ -321,6 +321,60 @@ class TestDevNewBranchNaming:
         mock_ai.assert_called_once()
         mock_random.assert_not_called()
 
+    def test_new_uses_with_agent_for_branch_naming_when_supported(self, tmp_path: Path) -> None:
+        """When --branch-name-agent is omitted, --with-agent is used if supported."""
+        wt_path = tmp_path / "repo-worktrees" / "feat-login-retry"
+        wt_path.mkdir(parents=True)
+
+        with (
+            patch("agent_cli.dev.cli._ensure_git_repo", return_value=Path("/repo")),
+            patch("agent_cli.dev.worktree.list_worktrees", return_value=[]),
+            patch(
+                "agent_cli.dev.cli._generate_ai_branch_name",
+                return_value="feat/login-retry",
+            ) as mock_ai,
+            patch(
+                "agent_cli.dev.cli._generate_branch_name",
+                return_value="happy-fox",
+            ) as mock_random,
+            patch(
+                "agent_cli.dev.worktree.create_worktree",
+                return_value=CreateWorktreeResult(
+                    success=True,
+                    path=wt_path,
+                    branch="feat/login-retry",
+                ),
+            ),
+            patch("agent_cli.dev.cli._resolve_editor", return_value=None),
+            patch("agent_cli.dev.cli._resolve_agent", return_value=None),
+        ):
+            result = runner.invoke(
+                app,
+                [
+                    "dev",
+                    "new",
+                    "--branch-name-mode",
+                    "ai",
+                    "--with-agent",
+                    "codex",
+                    "--no-setup",
+                    "--no-copy-env",
+                    "--no-fetch",
+                    "--no-direnv",
+                ],
+            )
+
+        assert result.exit_code == 0
+        mock_random.assert_not_called()
+        mock_ai.assert_called_once_with(
+            Path("/repo"),
+            set(),
+            None,
+            None,
+            "codex",
+            20.0,
+        )
+
     def test_new_falls_back_to_random_when_ai_fails(self, tmp_path: Path) -> None:
         """AI naming failure falls back to random naming."""
         wt_path = tmp_path / "repo-worktrees" / "happy-fox"
