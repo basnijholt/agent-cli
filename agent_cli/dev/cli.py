@@ -4,13 +4,12 @@ from __future__ import annotations
 
 import json
 import os
-import random
 import shlex
 import shutil
 import subprocess
 import tempfile
 from pathlib import Path
-from typing import TYPE_CHECKING, Annotated, NoReturn
+from typing import TYPE_CHECKING, Annotated, Literal, NoReturn
 
 import typer
 from rich.panel import Panel
@@ -22,85 +21,11 @@ from agent_cli.config import load_config
 from agent_cli.core.process import set_process_title
 from agent_cli.core.utils import console, err_console
 
-# Word lists for generating random branch names (like Docker container names)
-_ADJECTIVES = [
-    "happy",
-    "clever",
-    "swift",
-    "bright",
-    "calm",
-    "eager",
-    "fancy",
-    "gentle",
-    "jolly",
-    "keen",
-    "lively",
-    "merry",
-    "nice",
-    "proud",
-    "quick",
-    "sharp",
-    "smart",
-    "sunny",
-    "witty",
-    "zesty",
-    "bold",
-    "cool",
-    "fresh",
-    "grand",
-]
-_NOUNS = [
-    "fox",
-    "owl",
-    "bear",
-    "wolf",
-    "hawk",
-    "lion",
-    "tiger",
-    "eagle",
-    "falcon",
-    "otter",
-    "panda",
-    "raven",
-    "shark",
-    "whale",
-    "zebra",
-    "bison",
-    "crane",
-    "dolphin",
-    "gecko",
-    "heron",
-    "koala",
-    "lemur",
-    "moose",
-    "newt",
-    "oriole",
-]
-
-
-def _generate_branch_name(existing_branches: set[str] | None = None) -> str:
-    """Generate a unique random branch name like 'clever-fox'.
-
-    If the name already exists, adds a numeric suffix (clever-fox-2).
-    """
-    existing = existing_branches or set()
-    base = f"{random.choice(_ADJECTIVES)}-{random.choice(_NOUNS)}"  # noqa: S311
-
-    if base not in existing:
-        return base
-
-    # Add numeric suffix to avoid collision
-    for i in range(2, 100):
-        candidate = f"{base}-{i}"
-        if candidate not in existing:
-            return candidate
-
-    # Fallback: add random digits
-    return f"{base}-{random.randint(100, 999)}"  # noqa: S311
-
-
-from . import coding_agents, editors, terminals, worktree  # noqa: E402
-from .project import (  # noqa: E402
+from . import coding_agents, editors, terminals, worktree
+from ._branch_name import AGENTS as _BRANCH_NAME_AGENTS
+from ._branch_name import generate_ai_branch_name as _generate_ai_branch_name
+from ._branch_name import generate_random_branch_name as _generate_branch_name
+from .project import (
     copy_env_files,
     detect_project_type,
     is_direnv_available,
@@ -156,6 +81,17 @@ def dev_callback(
     has its own branch, allowing parallel development without stashing changes.
     """
     set_config_defaults(ctx, config_file)
+
+    # The [dev] section config is intended for `dev new` options.
+    # Click expects subcommand defaults under ctx.default_map["new"].
+    if isinstance(ctx.default_map, dict):
+        flat_defaults = {k: v for k, v in ctx.default_map.items() if not isinstance(v, dict)}
+        nested_defaults = {k: dict(v) for k, v in ctx.default_map.items() if isinstance(v, dict)}
+
+        if flat_defaults:
+            nested_defaults["new"] = {**flat_defaults, **nested_defaults.get("new", {})}
+            ctx.default_map = nested_defaults
+
     if ctx.invoked_subcommand is not None:
         set_process_title(f"dev-{ctx.invoked_subcommand}")
 
@@ -311,7 +247,7 @@ def _get_config_agent_env() -> dict[str, dict[str, str]] | None:
             agent_name = key[len(prefix) :]
             result[agent_name] = value
 
-    return result if result else None
+    return result or None
 
 
 def _get_agent_env(agent: CodingAgent) -> dict[str, str]:
@@ -350,7 +286,7 @@ def _merge_agent_args(
     if cli_args:
         result.extend(cli_args)
 
-    return result if result else None
+    return result or None
 
 
 def _is_ssh_session() -> bool:
@@ -488,7 +424,7 @@ def new(  # noqa: C901, PLR0912, PLR0915
     branch: Annotated[
         str | None,
         typer.Argument(
-            help="Branch name for the worktree. If omitted, generates a random name like 'clever-fox'",
+            help="Branch name for the worktree. If omitted, auto-generates one (random by default, AI with --branch-name-mode)",
         ),
     ] = None,
     from_ref: Annotated[
@@ -558,6 +494,29 @@ def new(  # noqa: C901, PLR0912, PLR0915
             help="Run 'git fetch' before creating the worktree to ensure refs are up-to-date",
         ),
     ] = True,
+    branch_name_mode: Annotated[
+        Literal["random", "auto", "ai"],
+        typer.Option(
+            "--branch-name-mode",
+            case_sensitive=False,
+            help="How to auto-name branches when BRANCH is omitted: random (default), auto (AI only when --prompt/--prompt-file is set), or ai (always try AI first)",
+        ),
+    ] = "random",
+    branch_name_agent: Annotated[
+        str | None,
+        typer.Option(
+            "--branch-name-agent",
+            help="Headless agent for AI branch naming: claude, codex, or gemini. If omitted, uses --with-agent when supported, otherwise tries available agents in that order",
+        ),
+    ] = None,
+    branch_name_timeout: Annotated[
+        float,
+        typer.Option(
+            "--branch-name-timeout",
+            min=1.0,
+            help="Timeout in seconds for AI branch naming command",
+        ),
+    ] = 20.0,
     direnv: Annotated[
         bool | None,
         typer.Option(
@@ -619,6 +578,7 @@ def new(  # noqa: C901, PLR0912, PLR0915
     - `dev new feature-x -a` — Create + start Claude/detected agent
     - `dev new feature-x -e -a` — Create + open editor + start agent
     - `dev new -a --prompt "Fix auth bug"` — Auto-named branch + agent with task
+    - `dev new --branch-name-mode ai -a --prompt "Refactor auth flow"` — AI-generated branch name
     - `dev new hotfix --from v1.2.3` — Branch from a tag instead of main
     - `dev new feature-x --from origin/develop` — Branch from develop instead
     - `dev new feature-x --with-agent aider --with-editor cursor` — Specific tools
@@ -637,8 +597,36 @@ def new(  # noqa: C901, PLR0912, PLR0915
     if branch is None:
         # Get existing branches to avoid collisions
         existing = {wt.branch for wt in worktree.list_worktrees() if wt.branch}
-        branch = _generate_branch_name(existing)
-        _info(f"Generated branch name: {branch}")
+        # In auto mode, only use AI naming when we have task context.
+        if branch_name_mode == "auto" and not prompt:
+            use_ai = False
+        else:
+            use_ai = branch_name_mode != "random"
+
+        if not use_ai:
+            branch = _generate_branch_name(existing, repo_root=repo_root)
+            _info(f"Generated branch name: {branch}")
+        else:
+            effective_branch_name_agent = branch_name_agent
+            if effective_branch_name_agent is None and agent_name:
+                candidate = agent_name.lower().strip()
+                if candidate in _BRANCH_NAME_AGENTS:
+                    effective_branch_name_agent = candidate
+
+            branch = _generate_ai_branch_name(
+                repo_root,
+                existing,
+                prompt,
+                from_ref,
+                effective_branch_name_agent,
+                branch_name_timeout,
+            )
+            if branch:
+                _info(f"AI-generated branch name: {branch}")
+            else:
+                _warn("Could not generate branch name with AI. Falling back to random naming.")
+                branch = _generate_branch_name(existing, repo_root=repo_root)
+                _info(f"Generated branch name: {branch}")
 
     # Create the worktree
     _info(f"Creating worktree for branch '{branch}'...")

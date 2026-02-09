@@ -318,7 +318,7 @@ class CreateWorktreeResult:
     warning: str | None = None
 
 
-def _check_branch_exists(branch_name: str, repo_root: Path) -> tuple[bool, bool]:
+def check_branch_exists(branch_name: str, repo_root: Path) -> tuple[bool, bool]:
     """Check if a branch exists remotely and/or locally.
 
     Returns:
@@ -660,7 +660,7 @@ def create_worktree(
         from_ref = _resolve_ref_to_sha(from_ref, cwd=repo_path)
 
     # Check if branch exists remotely or locally
-    remote_exists, local_exists = _check_branch_exists(branch_name, repo_root)
+    remote_exists, local_exists = check_branch_exists(branch_name, repo_root)
 
     # Generate warning if --from was specified but will be ignored
     warning: str | None = None
