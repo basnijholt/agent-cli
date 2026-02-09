@@ -199,6 +199,8 @@ ignore = [
     "FBT001",  # Boolean-typed positional argument in function definition
     "FBT002",  # Boolean-typed keyword-only argument in function definition
     "BLE001",  # Do not catch blind exception: `Exception`
+    "ASYNC240",  # Sync Path methods in async functions (harmless for mkdir/unlink/glob)
+    "FURB171",  # Single-item container membership test
 ]
 
 [tool.ruff.lint.per-file-ignores]
@@ -207,6 +209,7 @@ ignore = [
 ".github/*" = ["INP001"]
 "example/*" = ["INP001", "D100"]
 "docs/*" = ["INP001", "E501"]
+"scripts/*" = ["INP001", "UP042"]
 
 [tool.ruff.lint.mccabe]
 max-complexity = 18
