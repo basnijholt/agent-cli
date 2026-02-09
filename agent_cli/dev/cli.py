@@ -247,7 +247,7 @@ def _get_config_agent_env() -> dict[str, dict[str, str]] | None:
             agent_name = key[len(prefix) :]
             result[agent_name] = value
 
-    return result if result else None
+    return result or None
 
 
 def _get_agent_env(agent: CodingAgent) -> dict[str, str]:
@@ -286,7 +286,7 @@ def _merge_agent_args(
     if cli_args:
         result.extend(cli_args)
 
-    return result if result else None
+    return result or None
 
 
 def _is_ssh_session() -> bool:

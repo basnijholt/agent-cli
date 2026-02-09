@@ -188,7 +188,7 @@ async def _process_segment(  # noqa: PLR0912
     if cfg.clipboard:
         import pyperclip  # noqa: PLC0415
 
-        text_to_copy = processed if processed else transcript
+        text_to_copy = processed or transcript
         pyperclip.copy(text_to_copy)
 
     # Log
