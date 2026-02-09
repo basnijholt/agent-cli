@@ -100,21 +100,7 @@ _CLAUDE_BRANCH_SCHEMA = json.dumps(
 
 def _branch_exists_in_repo(repo_root: Path, branch_name: str) -> bool:
     """Check whether a branch already exists locally or on origin."""
-    refs = (f"refs/heads/{branch_name}", f"refs/remotes/origin/{branch_name}")
-    for ref in refs:
-        try:
-            result = subprocess.run(
-                ["git", "show-ref", "--verify", "--quiet", ref],  # noqa: S607
-                cwd=repo_root,
-                check=False,
-                capture_output=True,
-                text=True,
-            )
-        except OSError:
-            continue
-        if result.returncode == 0:
-            return True
-    return False
+    return any(worktree.check_branch_exists(branch_name, repo_root))
 
 
 def _ensure_unique_branch_name(
@@ -390,13 +376,14 @@ def _generate_ai_branch_name(
         return None, error
 
     for agent_name in agents:
-        branch = _generate_branch_name_with_agent(
-            agent_name,
-            repo_root,
-            prompt,
-            from_ref,
-            timeout_seconds,
-        )
+        with err_console.status(f"Generating branch name with {agent_name}..."):
+            branch = _generate_branch_name_with_agent(
+                agent_name,
+                repo_root,
+                prompt,
+                from_ref,
+                timeout_seconds,
+            )
         if branch:
             return _ensure_unique_branch_name(branch, existing_branches, repo_root=repo_root), None
 
@@ -1002,12 +989,10 @@ def new(  # noqa: C901, PLR0912, PLR0915
             if branch:
                 _info(f"AI-generated branch name: {branch}")
             else:
-                if ai_error:
-                    _warn(
-                        f"Could not generate branch name with AI ({ai_error}). Falling back to random naming.",
-                    )
-                else:
-                    _warn("Could not generate branch name with AI. Falling back to random naming.")
+                detail = f" ({ai_error})" if ai_error else ""
+                _warn(
+                    f"Could not generate branch name with AI{detail}. Falling back to random naming.",
+                )
                 branch = _generate_branch_name(existing, repo_root=repo_root)
                 _info(f"Generated branch name: {branch}")
 
