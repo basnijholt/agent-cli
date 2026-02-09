@@ -22,7 +22,6 @@ from agent_cli.dev.cli import (
     _get_config_agent_args,
     _get_config_agent_env,
     _normalize_ai_branch_candidate,
-    _resolve_branch_name_agents,
 )
 from agent_cli.dev.coding_agents.base import CodingAgent
 from agent_cli.dev.worktree import CreateWorktreeResult, WorktreeInfo
@@ -138,35 +137,6 @@ class TestAiBranchNamingPrompt:
         assert "Use repository context" not in prompt
 
 
-class TestResolveBranchNameAgents:
-    """Tests for branch-name agent resolution."""
-
-    def test_specific_agent_available(self) -> None:
-        """Returns requested agent when installed."""
-        with patch("agent_cli.dev.cli.shutil.which", return_value="/usr/bin/claude"):
-            agents, error = _resolve_branch_name_agents("claude")
-        assert agents == ["claude"]
-        assert error is None
-
-    def test_specific_agent_missing(self) -> None:
-        """Returns a clear error when requested agent is missing."""
-        with patch("agent_cli.dev.cli.shutil.which", return_value=None):
-            agents, error = _resolve_branch_name_agents("claude")
-        assert agents == []
-        assert error is not None
-        assert "not installed" in error
-
-    def test_fallback_agent_order(self) -> None:
-        """Auto mode returns installed agents in preferred order."""
-        with patch(
-            "agent_cli.dev.cli.shutil.which",
-            side_effect=lambda name: "/usr/bin/bin" if name in {"codex", "gemini"} else None,
-        ):
-            agents, error = _resolve_branch_name_agents(None)
-        assert agents == ["codex", "gemini"]
-        assert error is None
-
-
 class TestGenerateAiBranchName:
     """Tests for AI branch-name generation orchestration."""
 
@@ -174,15 +144,15 @@ class TestGenerateAiBranchName:
         """Falls through to next available agent when one fails."""
         with (
             patch(
-                "agent_cli.dev.cli._resolve_branch_name_agents",
-                return_value=(["claude", "codex"], None),
+                "agent_cli.dev.cli.shutil.which",
+                side_effect=lambda name: "/usr/bin/bin" if name in {"claude", "codex"} else None,
             ),
             patch(
                 "agent_cli.dev.cli._generate_branch_name_with_agent",
                 side_effect=[None, "feat/login-retry"],
             ),
         ):
-            branch, error = _generate_ai_branch_name(
+            branch = _generate_ai_branch_name(
                 Path("/repo"),
                 set(),
                 "Fix login retries",
@@ -191,15 +161,24 @@ class TestGenerateAiBranchName:
                 20.0,
             )
         assert branch == "feat/login-retry"
-        assert error is None
+
+    def test_returns_none_when_no_agents_available(self) -> None:
+        """Returns None when no agents are installed."""
+        with patch("agent_cli.dev.cli.shutil.which", return_value=None):
+            branch = _generate_ai_branch_name(
+                Path("/repo"),
+                set(),
+                "Fix login retries",
+                None,
+                None,
+                20.0,
+            )
+        assert branch is None
 
     def test_adds_suffix_when_ai_name_exists_in_repo(self) -> None:
         """AI-generated branch gets de-duplicated against existing git refs."""
         with (
-            patch(
-                "agent_cli.dev.cli._resolve_branch_name_agents",
-                return_value=(["claude"], None),
-            ),
+            patch("agent_cli.dev.cli.shutil.which", return_value="/usr/bin/claude"),
             patch(
                 "agent_cli.dev.cli._generate_branch_name_with_agent",
                 return_value="feat/login-retry",
@@ -209,16 +188,15 @@ class TestGenerateAiBranchName:
                 side_effect=lambda _repo, branch: branch == "feat/login-retry",
             ),
         ):
-            branch, error = _generate_ai_branch_name(
+            branch = _generate_ai_branch_name(
                 Path("/repo"),
                 set(),
                 "Fix login retries",
                 None,
-                None,
+                "claude",
                 20.0,
             )
         assert branch == "feat/login-retry-2"
-        assert error is None
 
 
 class TestDevClean:
@@ -290,7 +268,7 @@ class TestDevNewBranchNaming:
             patch("agent_cli.dev.worktree.list_worktrees", return_value=[]),
             patch(
                 "agent_cli.dev.cli._generate_ai_branch_name",
-                return_value=("feat/login-retry", None),
+                return_value="feat/login-retry",
             ) as mock_ai,
             patch(
                 "agent_cli.dev.cli._generate_branch_name",
@@ -342,7 +320,7 @@ class TestDevNewBranchNaming:
             patch("agent_cli.dev.worktree.list_worktrees", return_value=[]),
             patch(
                 "agent_cli.dev.cli._generate_ai_branch_name",
-                return_value=(None, "timeout"),
+                return_value=None,
             ),
             patch(
                 "agent_cli.dev.cli._generate_branch_name",
@@ -415,6 +393,56 @@ class TestDevNewBranchNaming:
 
         assert result.exit_code == 0
         mock_ai.assert_not_called()
+
+    def test_new_uses_dev_config_defaults_for_branch_naming(self, tmp_path: Path) -> None:
+        """[dev] defaults should apply to `dev new` options via parent callback."""
+        config_path = tmp_path / "config.toml"
+        config_path.write_text(
+            """[dev]
+branch_name_mode = "ai"
+branch_name_agent = "codex"
+branch_name_timeout = 7.5
+setup = false
+copy_env = false
+fetch = false
+direnv = false
+""",
+        )
+        wt_path = tmp_path / "repo-worktrees" / "feat-login-retry"
+        wt_path.mkdir(parents=True)
+
+        with (
+            patch("agent_cli.dev.cli._ensure_git_repo", return_value=Path("/repo")),
+            patch("agent_cli.dev.worktree.list_worktrees", return_value=[]),
+            patch(
+                "agent_cli.dev.cli._generate_ai_branch_name",
+                return_value="feat/login-retry",
+            ) as mock_ai,
+            patch("agent_cli.dev.cli._generate_branch_name") as mock_random,
+            patch(
+                "agent_cli.dev.worktree.create_worktree",
+                return_value=CreateWorktreeResult(
+                    success=True,
+                    path=wt_path,
+                    branch="feat/login-retry",
+                ),
+            ) as mock_create,
+            patch("agent_cli.dev.cli._resolve_editor", return_value=None),
+            patch("agent_cli.dev.cli._resolve_agent", return_value=None),
+        ):
+            result = runner.invoke(app, ["dev", "--config", str(config_path), "new"])
+
+        assert result.exit_code == 0
+        mock_random.assert_not_called()
+        mock_ai.assert_called_once_with(
+            Path("/repo"),
+            set(),
+            None,
+            None,
+            "codex",
+            7.5,
+        )
+        assert mock_create.call_args.kwargs["fetch"] is False
 
 
 class TestDevHelp:

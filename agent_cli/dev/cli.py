@@ -125,12 +125,7 @@ def _ensure_unique_branch_name(
         if is_available(candidate):
             return candidate
 
-    for _ in range(20):
-        candidate = f"{base_name}-{random.randint(100, 999)}"  # noqa: S311
-        if is_available(candidate):
-            return candidate
-
-    return f"{base_name}-{random.randint(1000, 9999)}"  # noqa: S311
+    return f"{base_name}-{random.randint(100, 999)}"  # noqa: S311
 
 
 def _parse_json_lines(output: str) -> list[dict[str, object]]:
@@ -147,27 +142,6 @@ def _parse_json_lines(output: str) -> list[dict[str, object]]:
         if isinstance(item, dict):
             parsed.append(item)
     return parsed
-
-
-def _extract_json_object(output: str) -> dict[str, object] | None:
-    """Extract a JSON object from plain or mixed output."""
-    stripped = output.strip()
-    if not stripped:
-        return None
-
-    try:
-        item = json.loads(stripped)
-    except json.JSONDecodeError:
-        start = stripped.find("{")
-        end = stripped.rfind("}")
-        if start < 0 or end <= start:
-            return None
-        try:
-            item = json.loads(stripped[start : end + 1])
-        except json.JSONDecodeError:
-            return None
-
-    return item if isinstance(item, dict) else None
 
 
 def _extract_branch_from_claude_output(output: str) -> str | None:
@@ -203,28 +177,19 @@ def _extract_branch_from_codex_output(output: str) -> str | None:
 
 def _extract_branch_from_gemini_output(output: str) -> str | None:
     """Extract branch name from `gemini -p -o json` output."""
-    payload = _extract_json_object(output)
-    if payload is None:
-        return None
-    response = payload.get("response")
-    if isinstance(response, str) and response.strip():
-        return response
+    for raw_line in output.splitlines():
+        stripped = raw_line.strip()
+        if not stripped:
+            continue
+        try:
+            item = json.loads(stripped)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(item, dict):
+            response = item.get("response")
+            if isinstance(response, str) and response.strip():
+                return response
     return None
-
-
-def _is_valid_git_branch_name(branch_name: str, repo_root: Path) -> bool:
-    """Validate a branch name with git check-ref-format."""
-    try:
-        result = subprocess.run(
-            ["git", "check-ref-format", "--branch", branch_name],  # noqa: S607
-            cwd=repo_root,
-            check=False,
-            capture_output=True,
-            text=True,
-        )
-    except OSError:
-        return False
-    return result.returncode == 0
 
 
 def _normalize_ai_branch_candidate(candidate: str, repo_root: Path) -> str | None:
@@ -245,7 +210,18 @@ def _normalize_ai_branch_candidate(candidate: str, repo_root: Path) -> str | Non
         branch = branch[:_MAX_BRANCH_NAME_LEN].rstrip("./-")
     if not branch:
         return None
-    return branch if _is_valid_git_branch_name(branch, repo_root) else None
+
+    try:
+        result = subprocess.run(
+            ["git", "check-ref-format", "--branch", branch],  # noqa: S607
+            cwd=repo_root,
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+    except OSError:
+        return None
+    return branch if result.returncode == 0 else None
 
 
 def _build_branch_naming_prompt(
@@ -283,7 +259,7 @@ def _generate_branch_name_with_agent(
     from_ref: str | None,
     timeout_seconds: float,
 ) -> str | None:
-    """Generate a branch name with a specific headless coding agent."""
+    """Run a headless agent to generate a branch name."""
     naming_prompt = _build_branch_naming_prompt(repo_root, prompt, from_ref)
 
     agent_commands: dict[str, tuple[list[str], Callable[[str], str | None]]] = {
@@ -346,22 +322,6 @@ def _generate_branch_name_with_agent(
     return _normalize_ai_branch_candidate(raw_branch, repo_root)
 
 
-def _resolve_branch_name_agents(preferred_agent: str | None) -> tuple[list[str], str | None]:
-    """Resolve preferred and fallback agents for AI branch naming."""
-    if preferred_agent:
-        agent = preferred_agent.lower().strip()
-        if agent not in _BRANCH_NAME_AGENTS:
-            return [], f"unsupported branch naming agent '{preferred_agent}'"
-        if shutil.which(agent) is None:
-            return [], f"branch naming agent '{agent}' is not installed"
-        return [agent], None
-
-    available = [agent for agent in _BRANCH_NAME_AGENTS if shutil.which(agent)]
-    if not available:
-        return [], "no supported headless agent found (claude, codex, gemini)"
-    return available, None
-
-
 def _generate_ai_branch_name(
     repo_root: Path,
     existing_branches: set[str],
@@ -369,11 +329,15 @@ def _generate_ai_branch_name(
     from_ref: str | None,
     preferred_agent: str | None,
     timeout_seconds: float,
-) -> tuple[str | None, str | None]:
-    """Generate an AI branch name with fallback across supported agents."""
-    agents, error = _resolve_branch_name_agents(preferred_agent)
-    if not agents:
-        return None, error
+) -> str | None:
+    """Generate an AI branch name, trying available agents in order."""
+    if preferred_agent:
+        agent = preferred_agent.lower().strip()
+        if agent not in _BRANCH_NAME_AGENTS or shutil.which(agent) is None:
+            return None
+        agents = [agent]
+    else:
+        agents = [a for a in _BRANCH_NAME_AGENTS if shutil.which(a)]
 
     for agent_name in agents:
         with err_console.status(f"Generating branch name with {agent_name}..."):
@@ -385,9 +349,13 @@ def _generate_ai_branch_name(
                 timeout_seconds,
             )
         if branch:
-            return _ensure_unique_branch_name(branch, existing_branches, repo_root=repo_root), None
+            return _ensure_unique_branch_name(
+                branch,
+                existing_branches,
+                repo_root=repo_root,
+            )
 
-    return None, "agents did not return a valid branch name"
+    return None
 
 
 def _generate_branch_name(
@@ -463,6 +431,17 @@ def dev_callback(
     has its own branch, allowing parallel development without stashing changes.
     """
     set_config_defaults(ctx, config_file)
+
+    # The [dev] section config is intended for `dev new` options.
+    # Click expects subcommand defaults under ctx.default_map["new"].
+    if isinstance(ctx.default_map, dict):
+        flat_defaults = {k: v for k, v in ctx.default_map.items() if not isinstance(v, dict)}
+        nested_defaults = {k: dict(v) for k, v in ctx.default_map.items() if isinstance(v, dict)}
+
+        if flat_defaults:
+            nested_defaults["new"] = {**flat_defaults, **nested_defaults.get("new", {})}
+            ctx.default_map = nested_defaults
+
     if ctx.invoked_subcommand is not None:
         set_process_title(f"dev-{ctx.invoked_subcommand}")
 
@@ -978,7 +957,7 @@ def new(  # noqa: C901, PLR0912, PLR0915
             branch = _generate_branch_name(existing, repo_root=repo_root)
             _info(f"Generated branch name: {branch}")
         else:
-            branch, ai_error = _generate_ai_branch_name(
+            branch = _generate_ai_branch_name(
                 repo_root,
                 existing,
                 prompt,
@@ -989,10 +968,7 @@ def new(  # noqa: C901, PLR0912, PLR0915
             if branch:
                 _info(f"AI-generated branch name: {branch}")
             else:
-                detail = f" ({ai_error})" if ai_error else ""
-                _warn(
-                    f"Could not generate branch name with AI{detail}. Falling back to random naming.",
-                )
+                _warn("Could not generate branch name with AI. Falling back to random naming.")
                 branch = _generate_branch_name(existing, repo_root=repo_root)
                 _info(f"Generated branch name: {branch}")
 
