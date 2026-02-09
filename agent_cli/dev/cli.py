@@ -236,7 +236,7 @@ def _is_valid_git_branch_name(branch_name: str, repo_root: Path) -> bool:
             capture_output=True,
             text=True,
         )
-    except Exception:
+    except OSError:
         return False
     return result.returncode == 0
 
@@ -290,26 +290,6 @@ def _build_branch_naming_prompt(
     )
 
 
-def _run_headless_branch_namer(
-    command: list[str],
-    timeout_seconds: float,
-    *,
-    cwd: Path | None = None,
-) -> subprocess.CompletedProcess[str] | None:
-    """Run a headless agent command and capture output."""
-    try:
-        return subprocess.run(
-            command,
-            check=False,
-            capture_output=True,
-            text=True,
-            timeout=timeout_seconds,
-            cwd=cwd,
-        )
-    except (OSError, subprocess.TimeoutExpired):
-        return None
-
-
 def _generate_branch_name_with_agent(
     agent_name: str,
     repo_root: Path,
@@ -320,8 +300,8 @@ def _generate_branch_name_with_agent(
     """Generate a branch name with a specific headless coding agent."""
     naming_prompt = _build_branch_naming_prompt(repo_root, prompt, from_ref)
 
-    if agent_name == "claude":
-        result = _run_headless_branch_namer(
+    agent_commands: dict[str, tuple[list[str], Callable[[str], str | None]]] = {
+        "claude": (
             [
                 "claude",
                 "-p",
@@ -334,14 +314,9 @@ def _generate_branch_name_with_agent(
                 _CLAUDE_BRANCH_SCHEMA,
                 naming_prompt,
             ],
-            timeout_seconds,
-            cwd=repo_root,
-        )
-        if result is None or result.returncode != 0:
-            return None
-        raw_branch = _extract_branch_from_claude_output(result.stdout)
-    elif agent_name == "codex":
-        result = _run_headless_branch_namer(
+            _extract_branch_from_claude_output,
+        ),
+        "codex": (
             [
                 "codex",
                 "-a",
@@ -352,24 +327,34 @@ def _generate_branch_name_with_agent(
                 "--json",
                 naming_prompt,
             ],
-            timeout_seconds,
-            cwd=repo_root,
-        )
-        if result is None or result.returncode != 0:
-            return None
-        raw_branch = _extract_branch_from_codex_output(result.stdout)
-    elif agent_name == "gemini":
-        result = _run_headless_branch_namer(
+            _extract_branch_from_codex_output,
+        ),
+        "gemini": (
             ["gemini", "-p", naming_prompt, "-o", "json"],
-            timeout_seconds,
+            _extract_branch_from_gemini_output,
+        ),
+    }
+
+    entry = agent_commands.get(agent_name)
+    if entry is None:
+        return None
+    command, extractor = entry
+
+    try:
+        result = subprocess.run(
+            command,
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=timeout_seconds,
             cwd=repo_root,
         )
-        if result is None or result.returncode != 0:
-            return None
-        raw_branch = _extract_branch_from_gemini_output(result.stdout)
-    else:
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    if result.returncode != 0:
         return None
 
+    raw_branch = extractor(result.stdout)
     if not raw_branch:
         return None
     return _normalize_ai_branch_candidate(raw_branch, repo_root)
@@ -442,6 +427,8 @@ from .project import (  # noqa: E402
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from .coding_agents.base import CodingAgent
     from .editors.base import Editor
 
@@ -994,13 +981,13 @@ def new(  # noqa: C901, PLR0912, PLR0915
     if branch is None:
         # Get existing branches to avoid collisions
         existing = {wt.branch for wt in worktree.list_worktrees() if wt.branch}
-        mode = branch_name_mode.lower().strip()
-
         # In auto mode, only use AI naming when we have task context.
-        if mode == "auto" and not prompt:
-            mode = "random"
+        if branch_name_mode == "auto" and not prompt:
+            use_ai = False
+        else:
+            use_ai = branch_name_mode != "random"
 
-        if mode == "random":
+        if not use_ai:
             branch = _generate_branch_name(existing, repo_root=repo_root)
             _info(f"Generated branch name: {branch}")
         else:
