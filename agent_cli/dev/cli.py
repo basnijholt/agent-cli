@@ -125,7 +125,13 @@ def _ensure_unique_branch_name(
         if is_available(candidate):
             return candidate
 
-    return f"{base_name}-{random.randint(100, 999)}"  # noqa: S311
+    for _ in range(20):
+        candidate = f"{base_name}-{random.randint(100, 999)}"  # noqa: S311
+        if is_available(candidate):
+            return candidate
+
+    # Last resort: large range, unchecked (98 sequential + 20 random exhausted)
+    return f"{base_name}-{random.randint(1000, 9999)}"  # noqa: S311
 
 
 def _parse_json_lines(output: str) -> list[dict[str, object]]:

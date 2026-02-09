@@ -68,6 +68,17 @@ class TestGenerateBranchName:
             name = _generate_branch_name(repo_root=Path("/repo"))
         assert name == "happy-fox-2"
 
+    def test_random_fallback_checks_availability(self) -> None:
+        """Random fallback skips names that already exist."""
+        # All sequential suffixes (2-99) are taken
+        existing = {"happy-fox"} | {f"happy-fox-{i}" for i in range(2, 100)}
+        with (
+            patch("agent_cli.dev.cli.random.choice", side_effect=["happy", "fox"]),
+            patch("agent_cli.dev.cli.random.randint", side_effect=[500, 501]),
+        ):
+            name = _generate_branch_name(existing | {"happy-fox-500"})
+        assert name == "happy-fox-501"
+
 
 class TestAiBranchNameParsers:
     """Tests for AI branch-name response parsing helpers."""
