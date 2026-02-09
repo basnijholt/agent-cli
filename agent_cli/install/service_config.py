@@ -135,7 +135,7 @@ def build_service_command(
         args.extend(["--python", service.python_version])
 
     # Build the command: either custom command path or default "server <name>"
-    cmd_path = service.command if service.command else ["server", service.name]
+    cmd_path = service.command or ["server", service.name]
 
     args.extend(
         [
