@@ -264,6 +264,9 @@ class Dev(BaseModel):
 
     default_agent: str | None = None
     default_editor: str | None = None
+    branch_name_mode: Literal["random", "auto", "ai"] = "random"
+    branch_name_agent: Literal["claude", "codex", "gemini"] | None = None
+    branch_name_timeout: float = 20.0  # seconds
     agent_args: dict[str, list[str]] | None = (
         None  # Per-agent args, e.g. {"claude": ["--dangerously-skip-permissions"]}
     )

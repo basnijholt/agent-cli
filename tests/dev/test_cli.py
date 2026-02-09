@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import subprocess
 from pathlib import Path
 from unittest.mock import patch
 
@@ -9,14 +10,22 @@ from typer.testing import CliRunner
 
 from agent_cli.cli import app
 from agent_cli.dev.cli import (
+    _build_branch_naming_prompt,
+    _clean_no_commits_worktrees,
+    _extract_branch_from_claude_output,
+    _extract_branch_from_codex_output,
+    _extract_branch_from_gemini_output,
     _format_env_prefix,
+    _generate_ai_branch_name,
     _generate_branch_name,
     _get_agent_env,
     _get_config_agent_args,
     _get_config_agent_env,
+    _normalize_ai_branch_candidate,
+    _resolve_branch_name_agents,
 )
 from agent_cli.dev.coding_agents.base import CodingAgent
-from agent_cli.dev.worktree import WorktreeInfo
+from agent_cli.dev.worktree import CreateWorktreeResult, WorktreeInfo
 
 runner = CliRunner(env={"NO_COLOR": "1", "TERM": "dumb"})
 
@@ -47,6 +56,365 @@ class TestGenerateBranchName:
         existing: set[str] = set()
         name = _generate_branch_name(existing)
         assert name  # Non-empty
+
+    def test_avoids_existing_repo_branches(self) -> None:
+        """Adds suffix when branch exists in repo refs (not just worktrees)."""
+        with (
+            patch("agent_cli.dev.cli.random.choice", side_effect=["happy", "fox"]),
+            patch(
+                "agent_cli.dev.cli._branch_exists_in_repo",
+                side_effect=lambda _repo, branch: branch == "happy-fox",
+            ),
+        ):
+            name = _generate_branch_name(repo_root=Path("/repo"))
+        assert name == "happy-fox-2"
+
+
+class TestAiBranchNameParsers:
+    """Tests for AI branch-name response parsing helpers."""
+
+    def test_extract_branch_from_claude_output(self) -> None:
+        """Claude parser prefers structured_output branch."""
+        output = (
+            '{"type":"result","result":"ignored",'
+            '"structured_output":{"branch":"feat/login-retry"}}\n'
+        )
+        assert _extract_branch_from_claude_output(output) == "feat/login-retry"
+
+    def test_extract_branch_from_codex_output(self) -> None:
+        """Codex parser extracts agent_message text from JSONL."""
+        output = (
+            '{"type":"turn.started"}\n'
+            '{"type":"item.completed","item":{"type":"reasoning","text":"thinking"}}\n'
+            '{"type":"item.completed","item":{"type":"agent_message","text":"fix/login-retry"}}'
+        )
+        assert _extract_branch_from_codex_output(output) == "fix/login-retry"
+
+    def test_extract_branch_from_gemini_output(self) -> None:
+        """Gemini parser handles non-JSON preamble lines."""
+        output = 'Hook registry initialized\n{"response":"chore/update-tests"}\n'
+        assert _extract_branch_from_gemini_output(output) == "chore/update-tests"
+
+
+class TestAiBranchNameNormalization:
+    """Tests for AI branch-name normalization and validation."""
+
+    def test_normalize_branch_candidate(self) -> None:
+        """Normalizes markdown/spacing and validates via git check-ref-format."""
+        with patch("agent_cli.dev.cli.subprocess.run") as mock_run:
+            mock_run.return_value = subprocess.CompletedProcess([], 0, "", "")
+            branch = _normalize_ai_branch_candidate("`Feature/Login Retry Logic`", Path("/repo"))
+            assert branch == "feature/login-retry-logic"
+
+    def test_normalize_returns_none_when_invalid(self) -> None:
+        """Invalid names are rejected when git check-ref-format fails."""
+        with patch("agent_cli.dev.cli.subprocess.run") as mock_run:
+            mock_run.return_value = subprocess.CompletedProcess([], 1, "", "invalid")
+            branch = _normalize_ai_branch_candidate("invalid branch name", Path("/repo"))
+            assert branch is None
+
+
+class TestAiBranchNamingPrompt:
+    """Tests for branch naming prompt construction."""
+
+    def test_prompt_includes_no_tools_instruction(self) -> None:
+        """Prompt explicitly forbids tool usage for faster headless responses."""
+        prompt = _build_branch_naming_prompt(
+            repo_root=Path("/repo"),
+            prompt="Refactor auth flow",
+            from_ref="origin/main",
+        )
+        assert "Do not use tools, do not inspect files" in prompt
+        assert "Task: Refactor auth flow" in prompt
+
+    def test_prompt_without_task_uses_generic_fallback(self) -> None:
+        """Missing task uses a generic fallback instead of asking for repo context."""
+        prompt = _build_branch_naming_prompt(
+            repo_root=Path("/repo"),
+            prompt=None,
+            from_ref=None,
+        )
+        assert "Task: General maintenance task." in prompt
+        assert "Use repository context" not in prompt
+
+
+class TestResolveBranchNameAgents:
+    """Tests for branch-name agent resolution."""
+
+    def test_specific_agent_available(self) -> None:
+        """Returns requested agent when installed."""
+        with patch("agent_cli.dev.cli.shutil.which", return_value="/usr/bin/claude"):
+            agents, error = _resolve_branch_name_agents("claude")
+        assert agents == ["claude"]
+        assert error is None
+
+    def test_specific_agent_missing(self) -> None:
+        """Returns a clear error when requested agent is missing."""
+        with patch("agent_cli.dev.cli.shutil.which", return_value=None):
+            agents, error = _resolve_branch_name_agents("claude")
+        assert agents == []
+        assert error is not None
+        assert "not installed" in error
+
+    def test_fallback_agent_order(self) -> None:
+        """Auto mode returns installed agents in preferred order."""
+        with patch(
+            "agent_cli.dev.cli.shutil.which",
+            side_effect=lambda name: "/usr/bin/bin" if name in {"codex", "gemini"} else None,
+        ):
+            agents, error = _resolve_branch_name_agents(None)
+        assert agents == ["codex", "gemini"]
+        assert error is None
+
+
+class TestGenerateAiBranchName:
+    """Tests for AI branch-name generation orchestration."""
+
+    def test_uses_second_agent_if_first_fails(self) -> None:
+        """Falls through to next available agent when one fails."""
+        with (
+            patch(
+                "agent_cli.dev.cli._resolve_branch_name_agents",
+                return_value=(["claude", "codex"], None),
+            ),
+            patch(
+                "agent_cli.dev.cli._generate_branch_name_with_agent",
+                side_effect=[None, "feat/login-retry"],
+            ),
+        ):
+            branch, error = _generate_ai_branch_name(
+                Path("/repo"),
+                set(),
+                "Fix login retries",
+                None,
+                None,
+                20.0,
+            )
+        assert branch == "feat/login-retry"
+        assert error is None
+
+    def test_adds_suffix_when_ai_name_exists_in_repo(self) -> None:
+        """AI-generated branch gets de-duplicated against existing git refs."""
+        with (
+            patch(
+                "agent_cli.dev.cli._resolve_branch_name_agents",
+                return_value=(["claude"], None),
+            ),
+            patch(
+                "agent_cli.dev.cli._generate_branch_name_with_agent",
+                return_value="feat/login-retry",
+            ),
+            patch(
+                "agent_cli.dev.cli._branch_exists_in_repo",
+                side_effect=lambda _repo, branch: branch == "feat/login-retry",
+            ),
+        ):
+            branch, error = _generate_ai_branch_name(
+                Path("/repo"),
+                set(),
+                "Fix login retries",
+                None,
+                None,
+                20.0,
+            )
+        assert branch == "feat/login-retry-2"
+        assert error is None
+
+
+class TestDevClean:
+    """Tests for dev clean command."""
+
+    def test_clean_forwards_force_to_modes(self, tmp_path: Path) -> None:
+        """--force is forwarded to both merged and no-commits clean modes."""
+        base_dir = tmp_path / "repo-worktrees"
+        base_dir.mkdir()
+
+        with (
+            patch("agent_cli.dev.cli._ensure_git_repo", return_value=Path("/repo")),
+            patch(
+                "agent_cli.dev.cli.subprocess.run",
+                return_value=subprocess.CompletedProcess([], 0, "", ""),
+            ),
+            patch("agent_cli.dev.worktree.resolve_worktree_base_dir", return_value=base_dir),
+            patch("agent_cli.dev.cli._clean_merged_worktrees") as mock_merged,
+            patch("agent_cli.dev.cli._clean_no_commits_worktrees") as mock_no_commits,
+        ):
+            result = runner.invoke(
+                app,
+                ["dev", "clean", "--merged", "--no-commits", "--force", "--yes"],
+            )
+
+        assert result.exit_code == 0
+        assert mock_merged.call_args.kwargs["force"] is True
+        assert mock_no_commits.call_args.kwargs["force"] is True
+
+    def test_clean_no_commits_force_passed_to_remove_worktree(self) -> None:
+        """No-commits cleaner passes force through to worktree removal."""
+        wt = WorktreeInfo(
+            path=Path("/repo-worktrees/feature"),
+            branch="feature",
+            commit="abc",
+            is_main=False,
+            is_detached=False,
+            is_locked=False,
+            is_prunable=False,
+        )
+        with (
+            patch("agent_cli.dev.cli._find_worktrees_with_no_commits", return_value=[wt]),
+            patch("agent_cli.dev.cli.worktree.get_default_branch", return_value="main"),
+            patch(
+                "agent_cli.dev.cli.worktree.remove_worktree",
+                return_value=(True, None),
+            ) as mock_remove,
+        ):
+            _clean_no_commits_worktrees(
+                Path("/repo"),
+                dry_run=False,
+                yes=True,
+                force=True,
+            )
+
+        assert mock_remove.call_args.kwargs["force"] is True
+
+
+class TestDevNewBranchNaming:
+    """Tests for branch naming behavior in `dev new`."""
+
+    def test_new_uses_ai_branch_name_when_enabled(self, tmp_path: Path) -> None:
+        """--branch-name-mode ai uses AI-generated branch names."""
+        wt_path = tmp_path / "repo-worktrees" / "feat-login-retry"
+        wt_path.mkdir(parents=True)
+
+        with (
+            patch("agent_cli.dev.cli._ensure_git_repo", return_value=Path("/repo")),
+            patch("agent_cli.dev.worktree.list_worktrees", return_value=[]),
+            patch(
+                "agent_cli.dev.cli._generate_ai_branch_name",
+                return_value=("feat/login-retry", None),
+            ) as mock_ai,
+            patch(
+                "agent_cli.dev.cli._generate_branch_name",
+                return_value="happy-fox",
+            ) as mock_random,
+            patch(
+                "agent_cli.dev.worktree.create_worktree",
+                return_value=CreateWorktreeResult(
+                    success=True,
+                    path=wt_path,
+                    branch="feat/login-retry",
+                ),
+            ),
+            patch(
+                "agent_cli.dev.cli._write_prompt_to_worktree",
+                return_value=wt_path / ".claude/TASK.md",
+            ),
+            patch("agent_cli.dev.cli._resolve_editor", return_value=None),
+            patch("agent_cli.dev.cli._resolve_agent", return_value=None),
+        ):
+            result = runner.invoke(
+                app,
+                [
+                    "dev",
+                    "new",
+                    "--branch-name-mode",
+                    "ai",
+                    "--prompt",
+                    "Fix login retries",
+                    "--no-setup",
+                    "--no-copy-env",
+                    "--no-fetch",
+                    "--no-direnv",
+                ],
+            )
+
+        assert result.exit_code == 0
+        assert "AI-generated branch name: feat/login-retry" in result.output
+        mock_ai.assert_called_once()
+        mock_random.assert_not_called()
+
+    def test_new_falls_back_to_random_when_ai_fails(self, tmp_path: Path) -> None:
+        """AI naming failure falls back to random naming."""
+        wt_path = tmp_path / "repo-worktrees" / "happy-fox"
+        wt_path.mkdir(parents=True)
+
+        with (
+            patch("agent_cli.dev.cli._ensure_git_repo", return_value=Path("/repo")),
+            patch("agent_cli.dev.worktree.list_worktrees", return_value=[]),
+            patch(
+                "agent_cli.dev.cli._generate_ai_branch_name",
+                return_value=(None, "timeout"),
+            ),
+            patch(
+                "agent_cli.dev.cli._generate_branch_name",
+                return_value="happy-fox",
+            ) as mock_random,
+            patch(
+                "agent_cli.dev.worktree.create_worktree",
+                return_value=CreateWorktreeResult(
+                    success=True,
+                    path=wt_path,
+                    branch="happy-fox",
+                ),
+            ),
+            patch("agent_cli.dev.cli._resolve_editor", return_value=None),
+            patch("agent_cli.dev.cli._resolve_agent", return_value=None),
+        ):
+            result = runner.invoke(
+                app,
+                [
+                    "dev",
+                    "new",
+                    "--branch-name-mode",
+                    "ai",
+                    "--no-setup",
+                    "--no-copy-env",
+                    "--no-fetch",
+                    "--no-direnv",
+                ],
+            )
+
+        assert result.exit_code == 0
+        assert "Falling back to random naming" in result.output
+        assert "Generated branch name: happy-fox" in result.output
+        mock_random.assert_called_once()
+
+    def test_new_auto_without_prompt_uses_random(self, tmp_path: Path) -> None:
+        """Auto mode without prompt should not call AI naming."""
+        wt_path = tmp_path / "repo-worktrees" / "happy-fox"
+        wt_path.mkdir(parents=True)
+
+        with (
+            patch("agent_cli.dev.cli._ensure_git_repo", return_value=Path("/repo")),
+            patch("agent_cli.dev.worktree.list_worktrees", return_value=[]),
+            patch("agent_cli.dev.cli._generate_ai_branch_name") as mock_ai,
+            patch("agent_cli.dev.cli._generate_branch_name", return_value="happy-fox"),
+            patch(
+                "agent_cli.dev.worktree.create_worktree",
+                return_value=CreateWorktreeResult(
+                    success=True,
+                    path=wt_path,
+                    branch="happy-fox",
+                ),
+            ),
+            patch("agent_cli.dev.cli._resolve_editor", return_value=None),
+            patch("agent_cli.dev.cli._resolve_agent", return_value=None),
+        ):
+            result = runner.invoke(
+                app,
+                [
+                    "dev",
+                    "new",
+                    "--branch-name-mode",
+                    "auto",
+                    "--no-setup",
+                    "--no-copy-env",
+                    "--no-fetch",
+                    "--no-direnv",
+                ],
+            )
+
+        assert result.exit_code == 0
+        mock_ai.assert_not_called()
 
 
 class TestDevHelp:

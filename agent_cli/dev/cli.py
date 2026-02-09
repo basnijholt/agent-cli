@@ -5,12 +5,13 @@ from __future__ import annotations
 import json
 import os
 import random
+import re
 import shlex
 import shutil
 import subprocess
 import tempfile
 from pathlib import Path
-from typing import TYPE_CHECKING, Annotated, NoReturn
+from typing import TYPE_CHECKING, Annotated, Literal, NoReturn
 
 import typer
 from rich.panel import Panel
@@ -78,25 +79,357 @@ _NOUNS = [
 ]
 
 
-def _generate_branch_name(existing_branches: set[str] | None = None) -> str:
+_BRANCH_NAME_AGENTS: tuple[str, ...] = ("claude", "codex", "gemini")
+_MAX_BRANCH_NAME_LEN = 80
+_MAX_BRANCH_TASK_LEN = 1200
+_CLAUDE_BRANCH_SCHEMA = json.dumps(
+    {
+        "type": "object",
+        "properties": {
+            "branch": {
+                "type": "string",
+                "pattern": r"^[a-z0-9][a-z0-9._/-]{1,79}$",
+            },
+        },
+        "required": ["branch"],
+        "additionalProperties": False,
+    },
+    separators=(",", ":"),
+)
+
+
+def _branch_exists_in_repo(repo_root: Path, branch_name: str) -> bool:
+    """Check whether a branch already exists locally or on origin."""
+    refs = (f"refs/heads/{branch_name}", f"refs/remotes/origin/{branch_name}")
+    for ref in refs:
+        try:
+            result = subprocess.run(
+                ["git", "show-ref", "--verify", "--quiet", ref],  # noqa: S607
+                cwd=repo_root,
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+        except OSError:
+            continue
+        if result.returncode == 0:
+            return True
+    return False
+
+
+def _ensure_unique_branch_name(
+    base_name: str,
+    existing_branches: set[str] | None = None,
+    *,
+    repo_root: Path | None = None,
+) -> str:
+    """Add a numeric suffix when a branch name collides."""
+    existing = existing_branches or set()
+
+    def is_available(candidate: str) -> bool:
+        if candidate in existing:
+            return False
+        return repo_root is None or not _branch_exists_in_repo(repo_root, candidate)
+
+    if is_available(base_name):
+        return base_name
+
+    for i in range(2, 100):
+        candidate = f"{base_name}-{i}"
+        if is_available(candidate):
+            return candidate
+
+    for _ in range(20):
+        candidate = f"{base_name}-{random.randint(100, 999)}"  # noqa: S311
+        if is_available(candidate):
+            return candidate
+
+    return f"{base_name}-{random.randint(1000, 9999)}"  # noqa: S311
+
+
+def _parse_json_lines(output: str) -> list[dict[str, object]]:
+    """Parse JSONL output and ignore non-JSON lines."""
+    parsed: list[dict[str, object]] = []
+    for raw_line in output.splitlines():
+        stripped_line = raw_line.strip()
+        if not stripped_line:
+            continue
+        try:
+            item = json.loads(stripped_line)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(item, dict):
+            parsed.append(item)
+    return parsed
+
+
+def _extract_json_object(output: str) -> dict[str, object] | None:
+    """Extract a JSON object from plain or mixed output."""
+    stripped = output.strip()
+    if not stripped:
+        return None
+
+    try:
+        item = json.loads(stripped)
+    except json.JSONDecodeError:
+        start = stripped.find("{")
+        end = stripped.rfind("}")
+        if start < 0 or end <= start:
+            return None
+        try:
+            item = json.loads(stripped[start : end + 1])
+        except json.JSONDecodeError:
+            return None
+
+    return item if isinstance(item, dict) else None
+
+
+def _extract_branch_from_claude_output(output: str) -> str | None:
+    """Extract branch name from `claude -p --output-format json` output."""
+    for event in reversed(_parse_json_lines(output)):
+        structured = event.get("structured_output")
+        if isinstance(structured, dict):
+            branch = structured.get("branch")
+            if isinstance(branch, str) and branch.strip():
+                return branch
+        result = event.get("result")
+        if isinstance(result, str) and result.strip():
+            return result
+    return None
+
+
+def _extract_branch_from_codex_output(output: str) -> str | None:
+    """Extract branch name from `codex exec --json` output."""
+    branch: str | None = None
+    for event in _parse_json_lines(output):
+        if event.get("type") != "item.completed":
+            continue
+        item = event.get("item")
+        if not isinstance(item, dict):
+            continue
+        if item.get("type") != "agent_message":
+            continue
+        text = item.get("text")
+        if isinstance(text, str) and text.strip():
+            branch = text
+    return branch
+
+
+def _extract_branch_from_gemini_output(output: str) -> str | None:
+    """Extract branch name from `gemini -p -o json` output."""
+    payload = _extract_json_object(output)
+    if payload is None:
+        return None
+    response = payload.get("response")
+    if isinstance(response, str) and response.strip():
+        return response
+    return None
+
+
+def _is_valid_git_branch_name(branch_name: str, repo_root: Path) -> bool:
+    """Validate a branch name with git check-ref-format."""
+    try:
+        result = subprocess.run(
+            ["git", "check-ref-format", "--branch", branch_name],  # noqa: S607
+            cwd=repo_root,
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+    except Exception:
+        return False
+    return result.returncode == 0
+
+
+def _normalize_ai_branch_candidate(candidate: str, repo_root: Path) -> str | None:
+    """Normalize model output into a safe branch slug."""
+    lines = [line.strip() for line in candidate.replace("`", "").splitlines() if line.strip()]
+    if not lines:
+        return None
+
+    branch = lines[0].strip().strip("'\"")
+    branch = re.sub(r"^(branch|name)\s*:\s*", "", branch, flags=re.IGNORECASE)
+    branch = branch.lower()
+    branch = re.sub(r"\s+", "-", branch)
+    branch = re.sub(r"[^a-z0-9._/-]", "-", branch)
+    branch = re.sub(r"/{2,}", "/", branch)
+    branch = re.sub(r"-{2,}", "-", branch)
+    branch = branch.strip("./-")
+    if len(branch) > _MAX_BRANCH_NAME_LEN:
+        branch = branch[:_MAX_BRANCH_NAME_LEN].rstrip("./-")
+    if not branch:
+        return None
+    return branch if _is_valid_git_branch_name(branch, repo_root) else None
+
+
+def _build_branch_naming_prompt(
+    repo_root: Path,
+    prompt: str | None,
+    from_ref: str | None,
+) -> str:
+    """Build a constrained prompt for branch name generation."""
+    task = (prompt or "").strip()
+    if not task:
+        task = "General maintenance task."
+    if len(task) > _MAX_BRANCH_TASK_LEN:
+        task = task[:_MAX_BRANCH_TASK_LEN] + "..."
+
+    base_ref = from_ref or "default branch"
+    return (
+        "Generate exactly one git branch name.\n"
+        "Return only the branch name and nothing else.\n"
+        "Do not use tools, do not inspect files, and do not ask follow-up questions.\n"
+        "Rules:\n"
+        "- lowercase ascii only\n"
+        "- allowed characters: a-z 0-9 / - _ .\n"
+        "- no spaces, no backticks, no explanation\n"
+        "- max 80 characters\n"
+        f"Repository: {repo_root.name}\n"
+        f"Base ref: {base_ref}\n"
+        f"Task: {task}\n"
+    )
+
+
+def _run_headless_branch_namer(
+    command: list[str],
+    timeout_seconds: float,
+    *,
+    cwd: Path | None = None,
+) -> subprocess.CompletedProcess[str] | None:
+    """Run a headless agent command and capture output."""
+    try:
+        return subprocess.run(
+            command,
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=timeout_seconds,
+            cwd=cwd,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+
+
+def _generate_branch_name_with_agent(
+    agent_name: str,
+    repo_root: Path,
+    prompt: str | None,
+    from_ref: str | None,
+    timeout_seconds: float,
+) -> str | None:
+    """Generate a branch name with a specific headless coding agent."""
+    naming_prompt = _build_branch_naming_prompt(repo_root, prompt, from_ref)
+
+    if agent_name == "claude":
+        result = _run_headless_branch_namer(
+            [
+                "claude",
+                "-p",
+                "--output-format",
+                "json",
+                "--permission-mode",
+                "plan",
+                "--no-session-persistence",
+                "--json-schema",
+                _CLAUDE_BRANCH_SCHEMA,
+                naming_prompt,
+            ],
+            timeout_seconds,
+            cwd=repo_root,
+        )
+        if result is None or result.returncode != 0:
+            return None
+        raw_branch = _extract_branch_from_claude_output(result.stdout)
+    elif agent_name == "codex":
+        result = _run_headless_branch_namer(
+            [
+                "codex",
+                "-a",
+                "never",
+                "exec",
+                "-s",
+                "read-only",
+                "--json",
+                naming_prompt,
+            ],
+            timeout_seconds,
+            cwd=repo_root,
+        )
+        if result is None or result.returncode != 0:
+            return None
+        raw_branch = _extract_branch_from_codex_output(result.stdout)
+    elif agent_name == "gemini":
+        result = _run_headless_branch_namer(
+            ["gemini", "-p", naming_prompt, "-o", "json"],
+            timeout_seconds,
+            cwd=repo_root,
+        )
+        if result is None or result.returncode != 0:
+            return None
+        raw_branch = _extract_branch_from_gemini_output(result.stdout)
+    else:
+        return None
+
+    if not raw_branch:
+        return None
+    return _normalize_ai_branch_candidate(raw_branch, repo_root)
+
+
+def _resolve_branch_name_agents(preferred_agent: str | None) -> tuple[list[str], str | None]:
+    """Resolve preferred and fallback agents for AI branch naming."""
+    if preferred_agent:
+        agent = preferred_agent.lower().strip()
+        if agent not in _BRANCH_NAME_AGENTS:
+            return [], f"unsupported branch naming agent '{preferred_agent}'"
+        if shutil.which(agent) is None:
+            return [], f"branch naming agent '{agent}' is not installed"
+        return [agent], None
+
+    available = [agent for agent in _BRANCH_NAME_AGENTS if shutil.which(agent)]
+    if not available:
+        return [], "no supported headless agent found (claude, codex, gemini)"
+    return available, None
+
+
+def _generate_ai_branch_name(
+    repo_root: Path,
+    existing_branches: set[str],
+    prompt: str | None,
+    from_ref: str | None,
+    preferred_agent: str | None,
+    timeout_seconds: float,
+) -> tuple[str | None, str | None]:
+    """Generate an AI branch name with fallback across supported agents."""
+    agents, error = _resolve_branch_name_agents(preferred_agent)
+    if not agents:
+        return None, error
+
+    for agent_name in agents:
+        branch = _generate_branch_name_with_agent(
+            agent_name,
+            repo_root,
+            prompt,
+            from_ref,
+            timeout_seconds,
+        )
+        if branch:
+            return _ensure_unique_branch_name(branch, existing_branches, repo_root=repo_root), None
+
+    return None, "agents did not return a valid branch name"
+
+
+def _generate_branch_name(
+    existing_branches: set[str] | None = None,
+    *,
+    repo_root: Path | None = None,
+) -> str:
     """Generate a unique random branch name like 'clever-fox'.
 
     If the name already exists, adds a numeric suffix (clever-fox-2).
     """
     existing = existing_branches or set()
     base = f"{random.choice(_ADJECTIVES)}-{random.choice(_NOUNS)}"  # noqa: S311
-
-    if base not in existing:
-        return base
-
-    # Add numeric suffix to avoid collision
-    for i in range(2, 100):
-        candidate = f"{base}-{i}"
-        if candidate not in existing:
-            return candidate
-
-    # Fallback: add random digits
-    return f"{base}-{random.randint(100, 999)}"  # noqa: S311
+    return _ensure_unique_branch_name(base, existing, repo_root=repo_root)
 
 
 from . import coding_agents, editors, terminals, worktree  # noqa: E402
@@ -488,7 +821,7 @@ def new(  # noqa: C901, PLR0912, PLR0915
     branch: Annotated[
         str | None,
         typer.Argument(
-            help="Branch name for the worktree. If omitted, generates a random name like 'clever-fox'",
+            help="Branch name for the worktree. If omitted, auto-generates one (random by default, AI with --branch-name-mode)",
         ),
     ] = None,
     from_ref: Annotated[
@@ -558,6 +891,29 @@ def new(  # noqa: C901, PLR0912, PLR0915
             help="Run 'git fetch' before creating the worktree to ensure refs are up-to-date",
         ),
     ] = True,
+    branch_name_mode: Annotated[
+        Literal["random", "auto", "ai"],
+        typer.Option(
+            "--branch-name-mode",
+            case_sensitive=False,
+            help="How to auto-name branches when BRANCH is omitted: random (default), auto (AI only when --prompt/--prompt-file is set), or ai (always try AI first)",
+        ),
+    ] = "random",
+    branch_name_agent: Annotated[
+        str | None,
+        typer.Option(
+            "--branch-name-agent",
+            help="Headless agent for AI branch naming: claude, codex, or gemini. If omitted, tries available agents in that order",
+        ),
+    ] = None,
+    branch_name_timeout: Annotated[
+        float,
+        typer.Option(
+            "--branch-name-timeout",
+            min=1.0,
+            help="Timeout in seconds for AI branch naming command",
+        ),
+    ] = 20.0,
     direnv: Annotated[
         bool | None,
         typer.Option(
@@ -619,6 +975,7 @@ def new(  # noqa: C901, PLR0912, PLR0915
     - `dev new feature-x -a` — Create + start Claude/detected agent
     - `dev new feature-x -e -a` — Create + open editor + start agent
     - `dev new -a --prompt "Fix auth bug"` — Auto-named branch + agent with task
+    - `dev new --branch-name-mode ai -a --prompt "Refactor auth flow"` — AI-generated branch name
     - `dev new hotfix --from v1.2.3` — Branch from a tag instead of main
     - `dev new feature-x --from origin/develop` — Branch from develop instead
     - `dev new feature-x --with-agent aider --with-editor cursor` — Specific tools
@@ -637,8 +994,35 @@ def new(  # noqa: C901, PLR0912, PLR0915
     if branch is None:
         # Get existing branches to avoid collisions
         existing = {wt.branch for wt in worktree.list_worktrees() if wt.branch}
-        branch = _generate_branch_name(existing)
-        _info(f"Generated branch name: {branch}")
+        mode = branch_name_mode.lower().strip()
+
+        # In auto mode, only use AI naming when we have task context.
+        if mode == "auto" and not prompt:
+            mode = "random"
+
+        if mode == "random":
+            branch = _generate_branch_name(existing, repo_root=repo_root)
+            _info(f"Generated branch name: {branch}")
+        else:
+            branch, ai_error = _generate_ai_branch_name(
+                repo_root,
+                existing,
+                prompt,
+                from_ref,
+                branch_name_agent,
+                branch_name_timeout,
+            )
+            if branch:
+                _info(f"AI-generated branch name: {branch}")
+            else:
+                if ai_error:
+                    _warn(
+                        f"Could not generate branch name with AI ({ai_error}). Falling back to random naming.",
+                    )
+                else:
+                    _warn("Could not generate branch name with AI. Falling back to random naming.")
+                branch = _generate_branch_name(existing, repo_root=repo_root)
+                _info(f"Generated branch name: {branch}")
 
     # Create the worktree
     _info(f"Creating worktree for branch '{branch}'...")
@@ -1469,6 +1853,8 @@ def _clean_merged_worktrees(
     repo_root: Path,
     dry_run: bool,
     yes: bool,
+    *,
+    force: bool = False,
 ) -> None:
     """Remove worktrees with merged PRs (requires gh CLI)."""
     _info("Checking for worktrees with merged PRs...")
@@ -1509,7 +1895,7 @@ def _clean_merged_worktrees(
         for wt, _pr_url in to_remove:
             success, error = worktree.remove_worktree(
                 wt.path,
-                force=False,
+                force=force,
                 delete_branch=True,
                 repo_path=repo_root,
             )
@@ -1523,6 +1909,8 @@ def _clean_no_commits_worktrees(
     repo_root: Path,
     dry_run: bool,
     yes: bool,
+    *,
+    force: bool = False,
 ) -> None:
     """Remove worktrees with no commits ahead of the default branch."""
     _info("Checking for worktrees with no commits...")
@@ -1546,7 +1934,7 @@ def _clean_no_commits_worktrees(
         for wt in to_remove:
             success, error = worktree.remove_worktree(
                 wt.path,
-                force=False,
+                force=force,
                 delete_branch=True,
                 repo_path=repo_root,
             )
@@ -1584,6 +1972,14 @@ def clean(
         bool,
         typer.Option("--yes", "-y", help="Skip confirmation prompts"),
     ] = False,
+    force: Annotated[
+        bool,
+        typer.Option(
+            "--force",
+            "-f",
+            help="Force removal of worktrees with modified or untracked files",
+        ),
+    ] = False,
 ) -> None:
     """Clean up stale worktrees and empty directories.
 
@@ -1601,6 +1997,7 @@ def clean(
     - `dev clean` — Basic cleanup
     - `dev clean --merged` — Remove worktrees with merged PRs
     - `dev clean --merged --dry-run` — Preview what would be removed
+    - `dev clean --no-commits --force` — Force remove abandoned worktrees with local changes
     """
     repo_root = _ensure_git_repo()
 
@@ -1635,11 +2032,11 @@ def clean(
 
     # --merged mode: remove worktrees with merged PRs
     if merged:
-        _clean_merged_worktrees(repo_root, dry_run, yes)
+        _clean_merged_worktrees(repo_root, dry_run, yes, force=force)
 
     # --no-commits mode: remove worktrees with no commits ahead of default branch
     if no_commits:
-        _clean_no_commits_worktrees(repo_root, dry_run, yes)
+        _clean_no_commits_worktrees(repo_root, dry_run, yes, force=force)
 
 
 @app.command("doctor")

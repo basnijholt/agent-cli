@@ -19,8 +19,11 @@ Like [git-worktree-runner (gtr)](https://github.com/CodeRabbitAI/git-worktree-ru
 ## Quick Start
 
 ```bash
-# Create a new dev environment (auto-generates branch name like "clever-fox")
+# Create a new dev environment (auto-generates a random branch name like "clever-fox")
 agent-cli dev new
+
+# Create a new dev environment with AI-generated branch name from the prompt
+agent-cli dev new --branch-name-mode ai -a --prompt "Refactor auth flow"
 
 # Create a dev environment with a specific branch name
 agent-cli dev new my-feature
@@ -73,6 +76,9 @@ agent-cli dev new [BRANCH] [OPTIONS]
 | `--setup/--no-setup` | `true` | Run project setup after creation: npm/pnpm/yarn install, poetry/uv sync, cargo build, etc. Auto-detects project type |
 | `--copy-env/--no-copy-env` | `true` | Copy .env, .env.local, .env.example from main repo to worktree |
 | `--fetch/--no-fetch` | `true` | Run 'git fetch' before creating the worktree to ensure refs are up-to-date |
+| `--branch-name-mode` | `random` | How to auto-name branches when BRANCH is omitted: random (default), auto (AI only when --prompt/--prompt-file is set), or ai (always try AI first) |
+| `--branch-name-agent` | - | Headless agent for AI branch naming: claude, codex, or gemini. If omitted, tries available agents in that order |
+| `--branch-name-timeout` | `20.0` | Timeout in seconds for AI branch naming command |
 | `--direnv/--no-direnv` | - | Generate .envrc based on project type and run 'direnv allow'. Auto-enabled if direnv is installed |
 | `--agent-args` | - | Extra CLI args for the agent. Can be repeated. Example: --agent-args='--dangerously-skip-permissions' |
 | `--prompt, -p` | - | Initial task for the AI agent. Saved to .claude/TASK.md. Implies --agent. Example: --prompt='Fix the login bug' |
@@ -333,6 +339,7 @@ agent-cli dev clean [OPTIONS]
 | `--no-commits` | `false` | Also remove worktrees with 0 commits ahead of default branch (abandoned branches) |
 | `--dry-run, -n` | `false` | Preview what would be removed without actually removing |
 | `--yes, -y` | `false` | Skip confirmation prompts |
+| `--force, -f` | `false` | Force removal of worktrees with modified or untracked files |
 
 
 <!-- OUTPUT:END -->
@@ -561,6 +568,11 @@ direnv = true          # Always generate .envrc (--direnv)
 setup = true           # Run project setup (npm install, etc.)
 copy_env = true        # Copy .env files from main repo
 fetch = true           # Git fetch before creating
+
+# Branch naming behavior when BRANCH argument is omitted
+branch_name_mode = "random"    # random | auto | ai
+branch_name_agent = "claude"   # claude | codex | gemini (optional)
+branch_name_timeout = 20.0     # seconds
 
 # Which editor/agent to use when flags are enabled
 default_editor = "cursor"
