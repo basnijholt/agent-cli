@@ -9,19 +9,21 @@ from unittest.mock import patch
 from typer.testing import CliRunner
 
 from agent_cli.cli import app
-from agent_cli.dev.cli import (
+from agent_cli.dev._branch_name import (
     _build_branch_naming_prompt,
-    _clean_no_commits_worktrees,
     _extract_branch_from_claude_output,
     _extract_branch_from_codex_output,
     _extract_branch_from_gemini_output,
+    _normalize_ai_branch_candidate,
+    generate_ai_branch_name,
+    generate_random_branch_name,
+)
+from agent_cli.dev.cli import (
+    _clean_no_commits_worktrees,
     _format_env_prefix,
-    _generate_ai_branch_name,
-    _generate_branch_name,
     _get_agent_env,
     _get_config_agent_args,
     _get_config_agent_env,
-    _normalize_ai_branch_candidate,
 )
 from agent_cli.dev.coding_agents.base import CodingAgent
 from agent_cli.dev.worktree import CreateWorktreeResult, WorktreeInfo
@@ -30,11 +32,11 @@ runner = CliRunner(env={"NO_COLOR": "1", "TERM": "dumb"})
 
 
 class TestGenerateBranchName:
-    """Tests for _generate_branch_name function."""
+    """Tests for generate_random_branch_name function."""
 
     def test_generates_adjective_noun(self) -> None:
         """Generates name in adjective-noun format."""
-        name = _generate_branch_name()
+        name = generate_random_branch_name()
         parts = name.split("-")
         assert len(parts) >= 2
 
@@ -44,7 +46,7 @@ class TestGenerateBranchName:
         # Run multiple times to ensure it generates unique names
         names = set()
         for _ in range(10):
-            name = _generate_branch_name(existing)
+            name = generate_random_branch_name(existing)
             assert name not in existing
             names.add(name)
 
@@ -53,19 +55,19 @@ class TestGenerateBranchName:
         # This test is a bit tricky since names are random
         # We just verify it doesn't crash with a full set
         existing: set[str] = set()
-        name = _generate_branch_name(existing)
+        name = generate_random_branch_name(existing)
         assert name  # Non-empty
 
     def test_avoids_existing_repo_branches(self) -> None:
         """Adds suffix when branch exists in repo refs (not just worktrees)."""
         with (
-            patch("agent_cli.dev.cli.random.choice", side_effect=["happy", "fox"]),
+            patch("agent_cli.dev._branch_name.random.choice", side_effect=["happy", "fox"]),
             patch(
-                "agent_cli.dev.cli._branch_exists_in_repo",
+                "agent_cli.dev._branch_name._branch_exists_in_repo",
                 side_effect=lambda _repo, branch: branch == "happy-fox",
             ),
         ):
-            name = _generate_branch_name(repo_root=Path("/repo"))
+            name = generate_random_branch_name(repo_root=Path("/repo"))
         assert name == "happy-fox-2"
 
     def test_random_fallback_checks_availability(self) -> None:
@@ -73,10 +75,10 @@ class TestGenerateBranchName:
         # All sequential suffixes (2-99) are taken
         existing = {"happy-fox"} | {f"happy-fox-{i}" for i in range(2, 100)}
         with (
-            patch("agent_cli.dev.cli.random.choice", side_effect=["happy", "fox"]),
-            patch("agent_cli.dev.cli.random.randint", side_effect=[500, 501]),
+            patch("agent_cli.dev._branch_name.random.choice", side_effect=["happy", "fox"]),
+            patch("agent_cli.dev._branch_name.random.randint", side_effect=[500, 501]),
         ):
-            name = _generate_branch_name(existing | {"happy-fox-500"})
+            name = generate_random_branch_name(existing | {"happy-fox-500"})
         assert name == "happy-fox-501"
 
 
@@ -111,14 +113,14 @@ class TestAiBranchNameNormalization:
 
     def test_normalize_branch_candidate(self) -> None:
         """Normalizes markdown/spacing and validates via git check-ref-format."""
-        with patch("agent_cli.dev.cli.subprocess.run") as mock_run:
+        with patch("agent_cli.dev._branch_name.subprocess.run") as mock_run:
             mock_run.return_value = subprocess.CompletedProcess([], 0, "", "")
             branch = _normalize_ai_branch_candidate("`Feature/Login Retry Logic`", Path("/repo"))
             assert branch == "feature/login-retry-logic"
 
     def test_normalize_returns_none_when_invalid(self) -> None:
         """Invalid names are rejected when git check-ref-format fails."""
-        with patch("agent_cli.dev.cli.subprocess.run") as mock_run:
+        with patch("agent_cli.dev._branch_name.subprocess.run") as mock_run:
             mock_run.return_value = subprocess.CompletedProcess([], 1, "", "invalid")
             branch = _normalize_ai_branch_candidate("invalid branch name", Path("/repo"))
             assert branch is None
@@ -155,15 +157,15 @@ class TestGenerateAiBranchName:
         """Falls through to next available agent when one fails."""
         with (
             patch(
-                "agent_cli.dev.cli.shutil.which",
+                "agent_cli.dev._branch_name.shutil.which",
                 side_effect=lambda name: "/usr/bin/bin" if name in {"claude", "codex"} else None,
             ),
             patch(
-                "agent_cli.dev.cli._generate_branch_name_with_agent",
+                "agent_cli.dev._branch_name._generate_branch_name_with_agent",
                 side_effect=[None, "feat/login-retry"],
             ),
         ):
-            branch = _generate_ai_branch_name(
+            branch = generate_ai_branch_name(
                 Path("/repo"),
                 set(),
                 "Fix login retries",
@@ -175,8 +177,8 @@ class TestGenerateAiBranchName:
 
     def test_returns_none_when_no_agents_available(self) -> None:
         """Returns None when no agents are installed."""
-        with patch("agent_cli.dev.cli.shutil.which", return_value=None):
-            branch = _generate_ai_branch_name(
+        with patch("agent_cli.dev._branch_name.shutil.which", return_value=None):
+            branch = generate_ai_branch_name(
                 Path("/repo"),
                 set(),
                 "Fix login retries",
@@ -189,17 +191,17 @@ class TestGenerateAiBranchName:
     def test_adds_suffix_when_ai_name_exists_in_repo(self) -> None:
         """AI-generated branch gets de-duplicated against existing git refs."""
         with (
-            patch("agent_cli.dev.cli.shutil.which", return_value="/usr/bin/claude"),
+            patch("agent_cli.dev._branch_name.shutil.which", return_value="/usr/bin/claude"),
             patch(
-                "agent_cli.dev.cli._generate_branch_name_with_agent",
+                "agent_cli.dev._branch_name._generate_branch_name_with_agent",
                 return_value="feat/login-retry",
             ),
             patch(
-                "agent_cli.dev.cli._branch_exists_in_repo",
+                "agent_cli.dev._branch_name._branch_exists_in_repo",
                 side_effect=lambda _repo, branch: branch == "feat/login-retry",
             ),
         ):
-            branch = _generate_ai_branch_name(
+            branch = generate_ai_branch_name(
                 Path("/repo"),
                 set(),
                 "Fix login retries",
