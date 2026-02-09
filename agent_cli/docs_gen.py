@@ -356,7 +356,7 @@ def config_example(command_path: str | None = None) -> str:
 
     for opt in options:
         # Skip process management and meta options
-        if opt["panel"] in ("Process Management Options",):
+        if opt["panel"] == "Process Management Options":
             continue
 
         # Convert flag name to config key

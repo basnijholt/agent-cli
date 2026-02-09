@@ -207,6 +207,7 @@ ignore = [
 ".github/*" = ["INP001"]
 "example/*" = ["INP001", "D100"]
 "docs/*" = ["INP001", "E501"]
+"scripts/*" = ["INP001"]
 
 [tool.ruff.lint.mccabe]
 max-complexity = 18
