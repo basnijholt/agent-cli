@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import time
 from pathlib import Path
@@ -273,6 +274,28 @@ class TestAgentState:
             path.write_text("not valid json{{{")
             state = agent_state.load_state(tmp_path / "repo")
             assert state.agents == {}
+
+    def test_load_state_agents_is_list(self, tmp_path: Path) -> None:
+        """Returns empty agents when 'agents' is a list instead of dict."""
+        with patch.object(agent_state, "STATE_BASE", tmp_path / ".cache"):
+            path = agent_state._state_file_path(tmp_path / "repo")
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(json.dumps({"agents": [], "last_poll_at": 0.0}))
+            state = agent_state.load_state(tmp_path / "repo")
+            assert state.agents == {}
+
+    def test_save_state_uses_pid_in_temp_file(self, tmp_path: Path) -> None:
+        """Temp file includes PID to avoid races between concurrent writers."""
+        with patch.object(agent_state, "STATE_BASE", tmp_path / ".cache"):
+            repo = tmp_path / "repo"
+            state = agent_state.AgentStateFile()
+            agent_state.save_state(repo, state)
+            # Verify the final file exists and no stale .tmp files remain
+            path = agent_state._state_file_path(repo)
+            assert path.exists()
+            # Ensure PID-suffixed temp doesn't linger
+            pid_tmp = path.with_suffix(f".{os.getpid()}.tmp")
+            assert not pid_tmp.exists()
 
 
 # ---------------------------------------------------------------------------
@@ -652,3 +675,27 @@ class TestInjectCompletionHook:
             )
         )
         assert sentinel_count == 1
+
+    def test_hooks_value_is_list_not_dict(self, tmp_path: Path) -> None:
+        """Handles corrupt settings where 'hooks' is a list instead of dict."""
+        settings_path = tmp_path / ".claude" / "settings.local.json"
+        settings_path.parent.mkdir(parents=True)
+        settings_path.write_text(json.dumps({"hooks": []}))
+
+        inject_completion_hook(tmp_path, "claude")
+
+        settings = json.loads(settings_path.read_text())
+        assert isinstance(settings["hooks"], dict)
+        assert "Stop" in settings["hooks"]
+
+    def test_stop_value_is_not_list(self, tmp_path: Path) -> None:
+        """Handles corrupt settings where 'Stop' is not a list."""
+        settings_path = tmp_path / ".claude" / "settings.local.json"
+        settings_path.parent.mkdir(parents=True)
+        settings_path.write_text(json.dumps({"hooks": {"Stop": "invalid"}}))
+
+        inject_completion_hook(tmp_path, "claude")
+
+        settings = json.loads(settings_path.read_text())
+        assert isinstance(settings["hooks"]["Stop"], list)
+        assert len(settings["hooks"]["Stop"]) == 1

@@ -74,7 +74,10 @@ def load_state(repo_root: Path) -> AgentStateFile:
         return AgentStateFile()
 
     agents: dict[str, TrackedAgent] = {}
-    for name, agent_data in data.get("agents", {}).items():
+    raw_agents = data.get("agents", {})
+    if not isinstance(raw_agents, dict):
+        raw_agents = {}
+    for name, agent_data in raw_agents.items():
         status = agent_data.get("status", "running")
         if status not in ("running", "done", "dead"):
             status = "running"
@@ -106,8 +109,9 @@ def save_state(repo_root: Path, state: AgentStateFile) -> None:
         "agents": {name: asdict(agent) for name, agent in state.agents.items()},
         "last_poll_at": state.last_poll_at,
     }
-    # Write to temp file then rename for atomicity
-    tmp = path.with_suffix(".tmp")
+    # Write to temp file then rename for atomicity.
+    # Use PID in suffix to avoid races between concurrent writers.
+    tmp = path.with_suffix(f".{os.getpid()}.tmp")
     tmp.write_text(json.dumps(data, indent=2) + "\n")
     tmp.rename(path)
 
@@ -201,9 +205,15 @@ def inject_completion_hook(worktree_path: Path, agent_type: str) -> None:
         except json.JSONDecodeError:
             settings = {}
 
-    # Merge Stop hook
-    hooks = settings.setdefault("hooks", {})
-    stop_hooks = hooks.setdefault("Stop", [])
+    # Merge Stop hook — guard against non-dict values from corrupt files
+    hooks = settings.get("hooks")
+    if not isinstance(hooks, dict):
+        hooks = {}
+        settings["hooks"] = hooks
+    stop_hooks = hooks.get("Stop")
+    if not isinstance(stop_hooks, list):
+        stop_hooks = []
+        hooks["Stop"] = stop_hooks
 
     # Check if our hook is already present
     sentinel_cmd = "touch .claude/DONE"
