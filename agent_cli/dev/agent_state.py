@@ -6,7 +6,6 @@ import json
 import os
 import re
 import time
-from contextlib import suppress
 from dataclasses import asdict, dataclass, field
 from hashlib import sha256
 from pathlib import Path
@@ -14,7 +13,7 @@ from typing import Literal
 
 STATE_BASE = Path.home() / ".cache" / "agent-cli"
 
-AgentStatus = Literal["running", "idle", "done", "dead"]
+AgentStatus = Literal["running", "done", "dead"]
 
 
 @dataclass
@@ -27,15 +26,12 @@ class TrackedAgent:
     agent_type: str
     started_at: float
     status: AgentStatus = "running"
-    last_output_hash: str = ""
-    last_change_at: float = 0.0
 
 
 @dataclass
 class AgentStateFile:
     """State file for one repository's tracked agents."""
 
-    repo_root: str
     agents: dict[str, TrackedAgent] = field(default_factory=dict)
     last_poll_at: float = 0.0
 
@@ -46,18 +42,11 @@ def _repo_slug(repo_root: Path) -> str:
     Includes a short path hash to avoid collisions between repositories with
     the same trailing directory names.
     """
-    slug = _legacy_repo_slug(repo_root)
-    digest = sha256(str(repo_root.expanduser().resolve()).encode()).hexdigest()[:10]
-    return f"{slug}_{digest}"
-
-
-def _legacy_repo_slug(repo_root: Path) -> str:
-    """Legacy slug format used before path hashing."""
-    # Use the last two path components for readability, e.g. "Work_my-project"
     parts = repo_root.parts[-2:]
     slug = "_".join(parts)
-    # Sanitize: keep only alphanumeric, dash, underscore
-    return re.sub(r"[^a-zA-Z0-9_-]", "_", slug)
+    slug = re.sub(r"[^a-zA-Z0-9_-]", "_", slug)
+    digest = sha256(str(repo_root.expanduser().resolve()).encode()).hexdigest()[:10]
+    return f"{slug}_{digest}"
 
 
 def _state_dir(repo_root: Path) -> Path:
@@ -70,46 +59,43 @@ def _state_file_path(repo_root: Path) -> Path:
     return _state_dir(repo_root) / "agents.json"
 
 
-def _legacy_state_file_path(repo_root: Path) -> Path:
-    """Return the pre-hash legacy path for agents.json."""
-    return STATE_BASE / _legacy_repo_slug(repo_root) / "agents.json"
-
-
-def _load_state_from_path(path: Path, repo_root: Path) -> AgentStateFile | None:
-    """Load state from one path, returning ``None`` when unavailable."""
-    if not path.exists():
-        return None
-    try:
-        data = json.loads(path.read_text())
-        agents = {}
-        for name, agent_data in data.get("agents", {}).items():
-            agents[name] = TrackedAgent(**agent_data)
-        return AgentStateFile(
-            repo_root=data.get("repo_root", str(repo_root)),
-            agents=agents,
-            last_poll_at=data.get("last_poll_at", 0.0),
-        )
-    except (OSError, json.JSONDecodeError, TypeError, KeyError):
-        return None
-
-
 def load_state(repo_root: Path) -> AgentStateFile:
     """Load agent state from disk.
 
     Returns an empty state if the file does not exist or is corrupt.
     """
-    state = _load_state_from_path(_state_file_path(repo_root), repo_root)
-    if state is not None:
-        return state
+    path = _state_file_path(repo_root)
+    if not path.exists():
+        return AgentStateFile()
 
-    # Backward compatibility with pre-hash state path.
-    legacy_state = _load_state_from_path(_legacy_state_file_path(repo_root), repo_root)
-    if legacy_state is not None:
-        with suppress(OSError):
-            save_state(repo_root, legacy_state)
-        return legacy_state
+    try:
+        data = json.loads(path.read_text())
+    except (OSError, json.JSONDecodeError, TypeError):
+        return AgentStateFile()
 
-    return AgentStateFile(repo_root=str(repo_root))
+    agents: dict[str, TrackedAgent] = {}
+    for name, agent_data in data.get("agents", {}).items():
+        status = agent_data.get("status", "running")
+        if status not in ("running", "done", "dead"):
+            status = "running"
+        try:
+            agents[name] = TrackedAgent(
+                name=str(agent_data["name"]),
+                pane_id=str(agent_data["pane_id"]),
+                worktree_path=str(agent_data["worktree_path"]),
+                agent_type=str(agent_data["agent_type"]),
+                started_at=float(agent_data["started_at"]),
+                status=status,
+            )
+        except (KeyError, TypeError, ValueError):
+            continue
+
+    raw_last_poll_at = data.get("last_poll_at", 0.0)
+    try:
+        last_poll_at = float(raw_last_poll_at)
+    except (TypeError, ValueError):
+        last_poll_at = 0.0
+    return AgentStateFile(agents=agents, last_poll_at=last_poll_at)
 
 
 def save_state(repo_root: Path, state: AgentStateFile) -> None:
@@ -117,7 +103,6 @@ def save_state(repo_root: Path, state: AgentStateFile) -> None:
     path = _state_file_path(repo_root)
     path.parent.mkdir(parents=True, exist_ok=True)
     data = {
-        "repo_root": state.repo_root,
         "agents": {name: asdict(agent) for name, agent in state.agents.items()},
         "last_poll_at": state.last_poll_at,
     }
@@ -148,7 +133,6 @@ def register_agent(
         worktree_path=str(worktree_path),
         agent_type=agent_type,
         started_at=now,
-        last_change_at=now,
     )
     state.agents[name] = agent
     save_state(repo_root, state)
@@ -182,9 +166,7 @@ def generate_agent_name(
     """
     state = load_state(repo_root)
     existing = {
-        name
-        for name, existing_agent in state.agents.items()
-        if existing_agent.status in ("running", "idle")
+        name for name, existing_agent in state.agents.items() if existing_agent.status == "running"
     }
 
     if explicit_name:

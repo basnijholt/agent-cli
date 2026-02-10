@@ -8,7 +8,7 @@ from pathlib import Path
 from . import agent_state, tmux_ops
 
 
-def _check_agent_status(agent: agent_state.TrackedAgent, now: float) -> None:
+def _check_agent_status(agent: agent_state.TrackedAgent) -> None:
     """Check and update a single agent's status in-place."""
     if not tmux_ops.pane_exists(agent.pane_id):
         agent.status = "dead"
@@ -20,28 +20,20 @@ def _check_agent_status(agent: agent_state.TrackedAgent, now: float) -> None:
             agent.status = "done"
             return
 
-    output = tmux_ops.capture_pane(agent.pane_id)
-    if output is not None:
-        h = tmux_ops.hash_output(output)
-        if h != agent.last_output_hash:
-            agent.last_output_hash = h
-            agent.last_change_at = now
-            agent.status = "running"
-        else:
-            agent.status = "idle"
+    agent.status = "running"
 
 
 def poll_once(repo_root: Path) -> dict[str, str]:
     """Perform a single poll of all tracked agents.
 
-    Checks pane existence, completion sentinels, and output quiescence.
+    Checks pane existence and completion sentinels.
     Updates the state file and returns ``{agent_name: status}``.
     """
     state = agent_state.load_state(repo_root)
     now = time.time()
 
     for agent in state.agents.values():
-        _check_agent_status(agent, now)
+        _check_agent_status(agent)
 
     state.last_poll_at = now
     agent_state.save_state(repo_root, state)
@@ -56,7 +48,8 @@ def wait_for_agent(
 ) -> tuple[str, float]:
     """Block until a tracked agent finishes.
 
-    Returns ``(final_status, elapsed_seconds)``.
+    Returns ``(final_status, elapsed_seconds)`` where ``final_status`` is one
+    of ``done``, ``dead``, or ``quiet``.
     Raises ``TimeoutError`` if *timeout* > 0 and is exceeded.
     Raises ``KeyError`` if the agent is not found.
     """
@@ -67,7 +60,8 @@ def wait_for_agent(
         raise KeyError(msg)
 
     start = time.time()
-    consecutive_idle = 0
+    consecutive_quiet = 0
+    previous_output_hash = ""
 
     while True:
         elapsed = time.time() - start
@@ -75,21 +69,26 @@ def wait_for_agent(
             msg = f"Timeout after {elapsed:.0f}s"
             raise TimeoutError(msg)
 
-        _check_agent_status(agent, time.time())
+        _check_agent_status(agent)
 
         if agent.status in ("dead", "done"):
             _update_agent_status(repo_root, name, agent.status)
             return agent.status, elapsed
 
-        if agent.status == "idle":
-            consecutive_idle += 1
+        output = tmux_ops.capture_pane(agent.pane_id)
+        if output is None:
+            consecutive_quiet = 0
         else:
-            consecutive_idle = 0
+            output_hash = tmux_ops.hash_output(output)
+            if output_hash == previous_output_hash:
+                consecutive_quiet += 1
+            else:
+                previous_output_hash = output_hash
+                consecutive_quiet = 0
 
-        # Require 2 consecutive idle polls to confirm
-        if consecutive_idle >= 2:  # noqa: PLR2004
-            _update_agent_status(repo_root, name, "idle")
-            return "idle", elapsed
+        # Require two quiet polls to infer completion for agents without sentinels.
+        if consecutive_quiet >= 2:  # noqa: PLR2004
+            return "quiet", elapsed
 
         time.sleep(interval)
 

@@ -68,7 +68,6 @@ def _status_style(status: str) -> str:
     """Return a Rich-styled status string."""
     styles = {
         "running": "[bold green]running[/bold green]",
-        "idle": "[bold yellow]idle[/bold yellow]",
         "done": "[bold cyan]done[/bold cyan]",
         "dead": "[bold red]dead[/bold red]",
     }
@@ -84,13 +83,12 @@ def poll_cmd(
 ) -> None:
     """Check status of all tracked agents.
 
-    Performs a single poll of all tracked agents (checks tmux panes,
-    output quiescence, and completion sentinels) then displays results.
+    Performs a single poll of all tracked agents (checks tmux panes and
+    completion sentinels) then displays results.
 
     **Status values:**
 
-    - **running** — Agent output is still changing
-    - **idle** — Agent output has not changed since last poll
+    - **running** — Agent pane exists and task is still in progress
     - **done** — Agent wrote a completion sentinel (.claude/DONE)
     - **dead** — tmux pane no longer exists
 
@@ -127,7 +125,6 @@ def poll_cmd(
                     "pane_id": a.pane_id,
                     "started_at": a.started_at,
                     "duration_seconds": round(now - a.started_at),
-                    "last_change_at": a.last_change_at,
                 }
                 for a in state.agents.values()
             ],
@@ -164,7 +161,7 @@ def poll_cmd(
     parts = [f"{total} agent{'s' if total != 1 else ''}"]
     parts.extend(
         f"{count} {status}"
-        for status in ("running", "idle", "done", "dead")
+        for status in ("running", "done", "dead")
         if (count := by_status.get(status, 0))
     )
     console.print(f"\n[dim]{' · '.join(parts)}[/dim]")
@@ -260,12 +257,13 @@ def wait_cmd(
 ) -> None:
     """Block until a tracked agent finishes.
 
-    Polls the agent's tmux pane until it reaches idle, done, or dead status.
+    Polls the agent's tmux pane until it reaches done/dead, with output
+    quiescence as a fallback for agents without completion sentinels.
     Useful for orchestration: launch an agent, wait for it, then act on results.
 
     **Exit codes:**
 
-    - 0 — Agent finished (idle or done)
+    - 0 — Agent finished (done or quiet fallback)
     - 1 — Agent died (pane closed unexpectedly)
     - 2 — Timeout reached
 
@@ -280,7 +278,7 @@ def wait_cmd(
     _ensure_tmux()
     repo_root, agent = _lookup_agent(name)
 
-    if agent.status in ("done", "dead", "idle"):
+    if agent.status in ("done", "dead"):
         console.print(f"Agent '{name}' is already {_status_style(agent.status)}")
         raise typer.Exit(0 if agent.status != "dead" else 1)
 
@@ -296,5 +294,11 @@ def wait_cmd(
         warn(f"Agent '{name}' died (pane closed) after {_format_duration(elapsed)}")
         raise typer.Exit(1)
 
-    success(f"Agent '{name}' is {status} after {_format_duration(elapsed)}")
+    if status == "quiet":
+        success(
+            f"Agent '{name}' appears quiet after {_format_duration(elapsed)} "
+            "(no output changes detected)",
+        )
+    else:
+        success(f"Agent '{name}' is {status} after {_format_duration(elapsed)}")
     raise typer.Exit(0)

@@ -148,35 +148,36 @@ class TestAgentState:
             assert state.agents == {}
             assert state.last_poll_at == 0.0
 
-    def test_load_legacy_state_file(self, tmp_path: Path) -> None:
-        """Loads state from legacy non-hashed slug path."""
+    def test_load_state_ignores_unknown_agent_fields(self, tmp_path: Path) -> None:
+        """Loads agent rows even when old schema includes extra fields."""
         with patch.object(agent_state, "STATE_BASE", tmp_path / ".cache"):
             repo = tmp_path / "repo"
-            legacy_path = agent_state._legacy_state_file_path(repo)
-            legacy_path.parent.mkdir(parents=True, exist_ok=True)
-            legacy_path.write_text(
+            state_path = agent_state._state_file_path(repo)
+            state_path.parent.mkdir(parents=True, exist_ok=True)
+            state_path.write_text(
                 json.dumps(
                     {
-                        "repo_root": str(repo),
                         "agents": {
-                            "legacy-agent": {
-                                "name": "legacy-agent",
+                            "agent": {
+                                "name": "agent",
                                 "pane_id": "%42",
                                 "worktree_path": str(tmp_path / "wt"),
                                 "agent_type": "claude",
                                 "started_at": 123.0,
                                 "status": "running",
+                                # Older schema fields should be ignored.
                                 "last_output_hash": "",
                                 "last_change_at": 123.0,
                             },
                         },
-                        "last_poll_at": 0.0,
+                        "last_poll_at": 12.5,
                     },
                 ),
             )
 
             state = agent_state.load_state(repo)
-            assert "legacy-agent" in state.agents
+            assert "agent" in state.agents
+            assert state.last_poll_at == 12.5
 
     def test_save_and_load_state(self, tmp_path: Path) -> None:
         """Round-trips state through JSON."""
@@ -371,18 +372,13 @@ class TestPollerRegression:
 
             agent_state.register_agent(repo, "worker", "%3", wt, "codex")
 
-            # Seed hash so repeated identical output transitions to idle.
-            state = agent_state.load_state(repo)
-            state.agents["worker"].last_output_hash = "h1"
-            agent_state.save_state(repo, state)
-
             with (
                 patch("agent_cli.dev.tmux_ops.pane_exists", return_value=True),
                 patch("agent_cli.dev.tmux_ops.capture_pane", return_value="output"),
                 patch("agent_cli.dev.tmux_ops.hash_output", return_value="h1"),
             ):
                 status, _elapsed = poller.wait_for_agent(repo, "worker", timeout=1, interval=0)
-                assert status == "idle"
+                assert status == "quiet"
 
 
 # ---------------------------------------------------------------------------
@@ -400,7 +396,7 @@ class TestPollCommand:
             patch("agent_cli.dev.orchestration._ensure_git_repo", return_value=Path("/repo")),
             patch(
                 "agent_cli.dev.agent_state.load_state",
-                return_value=agent_state.AgentStateFile(repo_root="/repo"),
+                return_value=agent_state.AgentStateFile(),
             ),
         ):
             result = runner.invoke(app, ["dev", "poll"])
@@ -409,7 +405,7 @@ class TestPollCommand:
 
     def test_poll_json_output(self) -> None:
         """Returns JSON with agent status."""
-        state = agent_state.AgentStateFile(repo_root="/repo")
+        state = agent_state.AgentStateFile()
         state.agents["test"] = agent_state.TrackedAgent(
             name="test",
             pane_id="%3",
@@ -435,7 +431,7 @@ class TestPollCommand:
 
     def test_poll_detects_dead_agent(self) -> None:
         """Marks agent as dead when pane is gone."""
-        state = agent_state.AgentStateFile(repo_root="/repo")
+        state = agent_state.AgentStateFile()
         state.agents["test"] = agent_state.TrackedAgent(
             name="test",
             pane_id="%3",
@@ -462,7 +458,7 @@ class TestOutputCommand:
 
     def test_output_captures_pane(self) -> None:
         """Captures and prints pane output."""
-        state = agent_state.AgentStateFile(repo_root="/repo")
+        state = agent_state.AgentStateFile()
         state.agents["test"] = agent_state.TrackedAgent(
             name="test",
             pane_id="%3",
@@ -489,7 +485,7 @@ class TestOutputCommand:
             patch("agent_cli.dev.orchestration._ensure_git_repo", return_value=Path("/repo")),
             patch(
                 "agent_cli.dev.agent_state.load_state",
-                return_value=agent_state.AgentStateFile(repo_root="/repo"),
+                return_value=agent_state.AgentStateFile(),
             ),
         ):
             result = runner.invoke(app, ["dev", "output", "nonexistent"])
@@ -502,7 +498,7 @@ class TestSendCommand:
 
     def test_send_keys_to_agent(self) -> None:
         """Sends keys to agent's tmux pane."""
-        state = agent_state.AgentStateFile(repo_root="/repo")
+        state = agent_state.AgentStateFile()
         state.agents["test"] = agent_state.TrackedAgent(
             name="test",
             pane_id="%3",
@@ -524,7 +520,7 @@ class TestSendCommand:
 
     def test_send_to_dead_agent(self) -> None:
         """Errors when sending to dead agent."""
-        state = agent_state.AgentStateFile(repo_root="/repo")
+        state = agent_state.AgentStateFile()
         state.agents["test"] = agent_state.TrackedAgent(
             name="test",
             pane_id="%3",
@@ -549,7 +545,7 @@ class TestWaitCommand:
 
     def test_wait_already_done(self) -> None:
         """Returns immediately if agent is already done."""
-        state = agent_state.AgentStateFile(repo_root="/repo")
+        state = agent_state.AgentStateFile()
         state.agents["test"] = agent_state.TrackedAgent(
             name="test",
             pane_id="%3",
@@ -570,7 +566,7 @@ class TestWaitCommand:
 
     def test_wait_already_dead(self) -> None:
         """Returns exit code 1 if agent is dead."""
-        state = agent_state.AgentStateFile(repo_root="/repo")
+        state = agent_state.AgentStateFile()
         state.agents["test"] = agent_state.TrackedAgent(
             name="test",
             pane_id="%3",
