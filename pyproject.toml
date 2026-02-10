@@ -199,6 +199,9 @@ ignore = [
     "FBT001",  # Boolean-typed positional argument in function definition
     "FBT002",  # Boolean-typed keyword-only argument in function definition
     "BLE001",  # Do not catch blind exception: `Exception`
+    "COM812",  # Missing trailing comma (conflicts with formatter)
+    "D203",  # Incorrect blank line before class (incompatible with D211)
+    "D213",  # Multi-line summary second line (incompatible with D212)
 ]
 
 [tool.ruff.lint.per-file-ignores]
