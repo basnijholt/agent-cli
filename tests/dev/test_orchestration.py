@@ -13,7 +13,7 @@ from typer.testing import CliRunner
 
 from agent_cli.cli import app
 from agent_cli.dev import agent_state, tmux_ops
-from agent_cli.dev.cli import _inject_completion_hook
+from agent_cli.dev.agent_state import inject_completion_hook
 
 runner = CliRunner(env={"NO_COLOR": "1", "TERM": "dumb"})
 
@@ -461,7 +461,7 @@ class TestInjectCompletionHook:
 
     def test_injects_stop_hook(self, tmp_path: Path) -> None:
         """Creates .claude/settings.json with Stop hook."""
-        _inject_completion_hook(tmp_path, "claude")
+        inject_completion_hook(tmp_path, "claude")
 
         settings_path = tmp_path / ".claude" / "settings.json"
         assert settings_path.exists()
@@ -477,7 +477,7 @@ class TestInjectCompletionHook:
         settings_path.parent.mkdir(parents=True)
         settings_path.write_text(json.dumps({"model": "opus", "hooks": {"PreToolUse": []}}))
 
-        _inject_completion_hook(tmp_path, "claude")
+        inject_completion_hook(tmp_path, "claude")
 
         settings = json.loads(settings_path.read_text())
         assert settings["model"] == "opus"
@@ -486,13 +486,13 @@ class TestInjectCompletionHook:
 
     def test_skips_non_claude_agents(self, tmp_path: Path) -> None:
         """Does nothing for non-Claude agents."""
-        _inject_completion_hook(tmp_path, "aider")
+        inject_completion_hook(tmp_path, "aider")
         assert not (tmp_path / ".claude" / "settings.json").exists()
 
     def test_idempotent(self, tmp_path: Path) -> None:
         """Doesn't duplicate hook on repeated calls."""
-        _inject_completion_hook(tmp_path, "claude")
-        _inject_completion_hook(tmp_path, "claude")
+        inject_completion_hook(tmp_path, "claude")
+        inject_completion_hook(tmp_path, "claude")
 
         settings = json.loads((tmp_path / ".claude" / "settings.json").read_text())
         stop_hooks = settings["hooks"]["Stop"]

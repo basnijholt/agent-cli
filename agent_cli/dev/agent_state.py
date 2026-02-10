@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 import time
 from dataclasses import asdict, dataclass, field
@@ -167,3 +168,40 @@ def generate_agent_name(
     while f"{candidate}-{n}" in existing:
         n += 1
     return f"{candidate}-{n}"
+
+
+def inject_completion_hook(worktree_path: Path, agent_type: str) -> None:
+    """Inject a Stop hook into .claude/settings.json for completion detection.
+
+    Only applies to Claude Code agents. Merges with existing settings.
+    """
+    if agent_type != "claude":
+        return
+
+    settings_path = worktree_path / ".claude" / "settings.json"
+    settings_path.parent.mkdir(parents=True, exist_ok=True)
+
+    settings: dict = {}
+    if settings_path.exists():
+        try:
+            settings = json.loads(settings_path.read_text())
+        except json.JSONDecodeError:
+            settings = {}
+
+    # Merge Stop hook
+    hooks = settings.setdefault("hooks", {})
+    stop_hooks = hooks.setdefault("Stop", [])
+
+    # Check if our hook is already present
+    sentinel_cmd = "touch .claude/DONE"
+    for entry in stop_hooks:
+        if sentinel_cmd in entry.get("hooks", []):
+            return  # Already injected
+
+    stop_hooks.append({"matcher": "", "hooks": [sentinel_cmd]})
+    settings_path.write_text(json.dumps(settings, indent=2) + "\n")
+
+
+def is_tmux() -> bool:
+    """Check if we're running inside tmux."""
+    return bool(os.environ.get("TMUX"))

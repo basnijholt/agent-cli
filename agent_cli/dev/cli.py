@@ -417,7 +417,7 @@ def _launch_agent(
                 root = repo_root or path
                 name = agent_state.generate_agent_name(root, path, agent.name, agent_name)
                 agent_state.register_agent(root, name, pane_id, path, agent.name)
-                _inject_completion_hook(path, agent.name)
+                agent_state.inject_completion_hook(path, agent.name)
                 _success(f"Started {agent.name} in new tmux tab (tracking as [cyan]{name}[/cyan])")
                 return name
             _warn("Could not open new tmux window")
@@ -436,38 +436,6 @@ def _launch_agent(
     console.print(f"  cd {path}")
     console.print(f"  {full_cmd}")
     return None
-
-
-def _inject_completion_hook(worktree_path: Path, agent_type: str) -> None:
-    """Inject a Stop hook into .claude/settings.json for completion detection.
-
-    Only applies to Claude Code agents. Merges with existing settings.
-    """
-    if agent_type != "claude":
-        return
-
-    settings_path = worktree_path / ".claude" / "settings.json"
-    settings_path.parent.mkdir(parents=True, exist_ok=True)
-
-    settings: dict = {}
-    if settings_path.exists():
-        try:
-            settings = json.loads(settings_path.read_text())
-        except json.JSONDecodeError:
-            settings = {}
-
-    # Merge Stop hook
-    hooks = settings.setdefault("hooks", {})
-    stop_hooks = hooks.setdefault("Stop", [])
-
-    # Check if our hook is already present
-    sentinel_cmd = "touch .claude/DONE"
-    for entry in stop_hooks:
-        if sentinel_cmd in entry.get("hooks", []):
-            return  # Already injected
-
-    stop_hooks.append({"matcher": "", "hooks": [sentinel_cmd]})
-    settings_path.write_text(json.dumps(settings, indent=2) + "\n")
 
 
 @app.command("new")
@@ -1899,7 +1867,9 @@ def install_skill(
 
 def _ensure_tmux() -> None:
     """Exit with an error if not running inside tmux."""
-    if not os.environ.get("TMUX"):
+    from . import agent_state  # noqa: PLC0415
+
+    if not agent_state.is_tmux():
         _error("Agent tracking requires tmux. Start a tmux session first.")
 
 
@@ -1965,7 +1935,8 @@ def poll_cmd(
     """
     import time  # noqa: PLC0415
 
-    from . import agent_state, tmux_ops  # noqa: PLC0415
+    from . import agent_state  # noqa: PLC0415
+    from .poller import poll_once  # noqa: PLC0415
 
     _ensure_tmux()
     repo_root = _ensure_git_repo()
@@ -1975,34 +1946,11 @@ def poll_cmd(
         _info("No tracked agents. Launch one with 'dev new -a' or 'dev agent --tab'.")
         return
 
+    poll_once(repo_root)
+
+    # Reload state after polling
+    state = agent_state.load_state(repo_root)
     now = time.time()
-
-    # Poll each agent
-    for agent in state.agents.values():
-        # Check if pane still exists
-        if not tmux_ops.pane_exists(agent.pane_id):
-            agent.status = "dead"
-            continue
-
-        # Check for completion sentinel (Claude Code hook)
-        done_path = Path(agent.worktree_path) / ".claude" / "DONE"
-        if done_path.exists():
-            agent.status = "done"
-            continue
-
-        # Quiescence detection: compare output hash
-        output = tmux_ops.capture_pane(agent.pane_id)
-        if output is not None:
-            h = tmux_ops.hash_output(output)
-            if h != agent.last_output_hash:
-                agent.last_output_hash = h
-                agent.last_change_at = now
-                agent.status = "running"
-            else:
-                agent.status = "idle"
-
-    state.last_poll_at = now
-    agent_state.save_state(repo_root, state)
 
     if json_output:
         data = {
@@ -2107,7 +2055,6 @@ def output_cmd(
                 _warn("Pane closed.")
                 break
             if output != prev:
-                # Clear and reprint (simple approach)
                 print(output, end="", flush=True)
                 prev = output
             _time.sleep(1.0)
@@ -2186,66 +2133,27 @@ def wait_cmd(
     - `dev wait my-feature --timeout 300` — Wait up to 5 minutes
     - `dev wait my-feature -i 2` — Poll every 2 seconds
     """
-    import time as _time  # noqa: PLC0415
-
-    from . import agent_state, tmux_ops  # noqa: PLC0415
+    from .poller import wait_for_agent  # noqa: PLC0415
 
     _ensure_tmux()
-    repo_root, agent = _lookup_agent(name)
+    _repo_root, agent = _lookup_agent(name)
 
     if agent.status in ("done", "dead", "idle"):
         console.print(f"Agent '{name}' is already {_status_style(agent.status)}")
         raise typer.Exit(0 if agent.status != "dead" else 1)
 
+    repo_root = _ensure_git_repo()
     _info(f"Waiting for agent '{name}' to finish (polling every {interval}s)...")
 
-    start = _time.time()
-    consecutive_idle = 0
+    try:
+        status, elapsed = wait_for_agent(repo_root, name, timeout=timeout, interval=interval)
+    except TimeoutError:
+        _warn(f"Timeout after {_format_duration(timeout)}")
+        raise typer.Exit(2) from None
 
-    while True:
-        elapsed = _time.time() - start
-        if timeout > 0 and elapsed >= timeout:
-            _warn(f"Timeout after {_format_duration(elapsed)}")
-            raise typer.Exit(2)
+    if status == "dead":
+        _warn(f"Agent '{name}' died (pane closed) after {_format_duration(elapsed)}")
+        raise typer.Exit(1)
 
-        # Check pane existence
-        if not tmux_ops.pane_exists(agent.pane_id):
-            agent.status = "dead"
-            state = agent_state.load_state(repo_root)
-            if name in state.agents:
-                state.agents[name].status = "dead"
-                agent_state.save_state(repo_root, state)
-            _warn(f"Agent '{name}' died (pane closed) after {_format_duration(elapsed)}")
-            raise typer.Exit(1)
-
-        # Check completion sentinel
-        done_path = Path(agent.worktree_path) / ".claude" / "DONE"
-        if done_path.exists():
-            state = agent_state.load_state(repo_root)
-            if name in state.agents:
-                state.agents[name].status = "done"
-                agent_state.save_state(repo_root, state)
-            _success(f"Agent '{name}' completed after {_format_duration(elapsed)}")
-            raise typer.Exit(0)
-
-        # Quiescence detection
-        output = tmux_ops.capture_pane(agent.pane_id)
-        if output is not None:
-            h = tmux_ops.hash_output(output)
-            if h == agent.last_output_hash:
-                consecutive_idle += 1
-            else:
-                consecutive_idle = 0
-                agent.last_output_hash = h
-                agent.last_change_at = _time.time()
-
-        # Require 2 consecutive idle polls to confirm
-        if consecutive_idle >= 2:  # noqa: PLR2004
-            state = agent_state.load_state(repo_root)
-            if name in state.agents:
-                state.agents[name].status = "idle"
-                agent_state.save_state(repo_root, state)
-            _success(f"Agent '{name}' is idle after {_format_duration(elapsed)}")
-            raise typer.Exit(0)
-
-        _time.sleep(interval)
+    _success(f"Agent '{name}' is {status} after {_format_duration(elapsed)}")
+    raise typer.Exit(0)
