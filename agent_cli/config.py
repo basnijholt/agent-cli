@@ -344,7 +344,8 @@ def _flatten_nested_sections(cfg: dict[str, Any], prefix: str = "") -> dict[str,
             scalar_items = {k: v for k, v in value.items() if not isinstance(v, dict)}
             if scalar_items:
                 result[full_key] = scalar_items
-            result.update(_flatten_nested_sections(value, full_key))
+            dict_items = {k: v for k, v in value.items() if isinstance(v, dict)}
+            result.update(_flatten_nested_sections(dict_items, full_key))
         else:
             result[full_key] = value
     return result
