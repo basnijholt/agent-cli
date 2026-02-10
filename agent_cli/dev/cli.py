@@ -18,7 +18,7 @@ from agent_cli.cli import set_config_defaults
 from agent_cli.core.process import set_process_title
 from agent_cli.core.utils import console
 
-from . import coding_agents, editors, terminals, worktree
+from . import cleanup, coding_agents, editors, terminals, worktree
 from ._branch_name import AGENTS as BRANCH_NAME_AGENTS
 from ._branch_name import generate_ai_branch_name, generate_random_branch_name
 from ._output import error, info, success, warn
@@ -1170,8 +1170,6 @@ def _clean_merged_worktrees(
     force: bool = False,
 ) -> None:
     """Remove worktrees with merged PRs (requires gh CLI)."""
-    from . import cleanup  # noqa: PLC0415
-
     info("Checking for worktrees with merged PRs...")
 
     ok, error_msg = cleanup.check_gh_available()
@@ -1209,8 +1207,6 @@ def _clean_no_commits_worktrees(
     force: bool = False,
 ) -> None:
     """Remove worktrees with no commits ahead of the default branch."""
-    from . import cleanup  # noqa: PLC0415
-
     info("Checking for worktrees with no commits...")
 
     to_remove = cleanup.find_worktrees_with_no_commits(repo_root)
