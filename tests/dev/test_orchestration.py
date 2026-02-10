@@ -284,6 +284,35 @@ class TestAgentState:
             state = agent_state.load_state(tmp_path / "repo")
             assert state.agents == {}
 
+    def test_load_state_skips_non_dict_agent_data(self, tmp_path: Path) -> None:
+        """Skips agent entries that are not dicts (e.g. from partially corrupt cache)."""
+        with patch.object(agent_state, "STATE_BASE", tmp_path / ".cache"):
+            repo = tmp_path / "repo"
+            state_path = agent_state._state_file_path(repo)
+            state_path.parent.mkdir(parents=True, exist_ok=True)
+            state_path.write_text(
+                json.dumps(
+                    {
+                        "agents": {
+                            "good": {
+                                "name": "good",
+                                "pane_id": "%1",
+                                "worktree_path": "/tmp/wt",  # noqa: S108
+                                "agent_type": "claude",
+                                "started_at": 100.0,
+                                "status": "running",
+                            },
+                            "bad_string": "not a dict",
+                            "bad_int": 42,
+                            "bad_list": [1, 2, 3],
+                        },
+                    },
+                ),
+            )
+            state = agent_state.load_state(repo)
+            assert len(state.agents) == 1
+            assert "good" in state.agents
+
     def test_save_state_uses_pid_in_temp_file(self, tmp_path: Path) -> None:
         """Temp file includes PID to avoid races between concurrent writers."""
         with patch.object(agent_state, "STATE_BASE", tmp_path / ".cache"):
@@ -790,3 +819,20 @@ class TestInjectCompletionHook:
         ]
         assert "touch .claude/DONE-agent-a" in commands
         assert "touch .claude/DONE-agent-b" in commands
+
+    def test_stop_hooks_with_non_dict_entries(self, tmp_path: Path) -> None:
+        """Non-dict entries in Stop list don't crash hook injection."""
+        settings_path = tmp_path / ".claude" / "settings.local.json"
+        settings_path.parent.mkdir(parents=True)
+        settings_path.write_text(
+            json.dumps({"hooks": {"Stop": ["stale-string", 42, None]}}),
+        )
+
+        inject_completion_hook(tmp_path, "claude", "worker")
+
+        settings = json.loads(settings_path.read_text())
+        stop_hooks = settings["hooks"]["Stop"]
+        # Non-dict entries preserved, our hook appended
+        assert len(stop_hooks) == 4
+        last_hook = stop_hooks[-1]
+        assert last_hook["hooks"][0]["command"] == "touch .claude/DONE-worker"

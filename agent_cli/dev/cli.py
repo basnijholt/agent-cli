@@ -912,11 +912,11 @@ def start_agent(
     agent_env = get_agent_env(agent)
 
     if tab:
-        # Launch in a new tmux tab with tracking
-        from . import tmux_ops  # noqa: PLC0415
-
-        if not tmux_ops.is_tmux():
-            error("Agent tracking requires tmux. Start a tmux session first.")
+        # Launch in a new tmux tab with tracking — require being *inside* a tmux
+        # session (TMUX env var), not just having a reachable tmux server, so the
+        # new window is visible in the user's current session.
+        if not os.environ.get("TMUX"):
+            error("--tab requires running inside a tmux session. Start tmux first.")
         launch_agent(
             wt.path,
             agent,

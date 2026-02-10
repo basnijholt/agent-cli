@@ -75,6 +75,8 @@ def load_state(repo_root: Path) -> AgentStateFile:
     if not isinstance(raw_agents, dict):
         raw_agents = {}
     for name, agent_data in raw_agents.items():
+        if not isinstance(agent_data, dict):
+            continue
         status = agent_data.get("status", "running")
         if status not in ("running", "done", "dead", "quiet"):
             status = "running"
@@ -219,9 +221,11 @@ def inject_completion_hook(worktree_path: Path, agent_type: str, agent_name: str
     # Check if our hook is already present
     sentinel_cmd = f"touch .claude/DONE-{agent_name}"
     for entry in stop_hooks:
+        if not isinstance(entry, dict):
+            continue
         for hook in entry.get("hooks", []):
             cmd = hook.get("command", "") if isinstance(hook, dict) else hook
-            if sentinel_cmd in cmd:
+            if isinstance(cmd, str) and sentinel_cmd in cmd:
                 return  # Already injected
 
     stop_hooks.append(
