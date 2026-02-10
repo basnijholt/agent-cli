@@ -210,17 +210,25 @@ def output_cmd(
         print(output, end="")
         return
 
-    # Follow mode
+    # Follow mode: only print new lines that appear since last capture
     try:
-        prev = ""
+        prev_lines: list[str] = []
         while True:
             output = tmux_ops.capture_pane(agent.pane_id, lines)
             if output is None:
                 warn("Pane closed.")
                 break
-            if output != prev:
-                print(output, end="", flush=True)
-                prev = output
+            cur_lines = output.splitlines(keepends=True)
+            if cur_lines != prev_lines:
+                # Find first diverging line
+                common = 0
+                limit = min(len(prev_lines), len(cur_lines))
+                while common < limit and prev_lines[common] == cur_lines[common]:
+                    common += 1
+                new_content = cur_lines[common:]
+                if new_content:
+                    print("".join(new_content), end="", flush=True)
+                prev_lines = cur_lines
             time.sleep(1.0)
     except KeyboardInterrupt:
         pass
@@ -300,13 +308,12 @@ def wait_cmd(
     from .poller import wait_for_agent  # noqa: PLC0415
 
     _ensure_tmux()
-    _repo_root, agent = _lookup_agent(name)
+    repo_root, agent = _lookup_agent(name)
 
     if agent.status in ("done", "dead", "idle"):
         console.print(f"Agent '{name}' is already {_status_style(agent.status)}")
         raise typer.Exit(0 if agent.status != "dead" else 1)
 
-    repo_root = _ensure_git_repo()
     info(f"Waiting for agent '{name}' to finish (polling every {interval}s)...")
 
     try:

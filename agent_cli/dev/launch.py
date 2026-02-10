@@ -255,7 +255,7 @@ def launch_agent(
     task_file: Path | None = None,
     env: dict[str, str] | None = None,
     *,
-    track: bool = True,
+    track: bool = False,
     agent_name: str | None = None,
 ) -> str | None:
     """Launch agent in a new terminal tab.
