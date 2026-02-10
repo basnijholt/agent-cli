@@ -18,14 +18,14 @@ from agent_cli.dev._branch_name import (
     generate_ai_branch_name,
     generate_random_branch_name,
 )
-from agent_cli.dev.cli import (
-    _clean_no_commits_worktrees,
-    _format_env_prefix,
-    _get_agent_env,
-    _get_config_agent_args,
-    _get_config_agent_env,
-)
+from agent_cli.dev.cli import _clean_no_commits_worktrees
 from agent_cli.dev.coding_agents.base import CodingAgent
+from agent_cli.dev.launch import (
+    _format_env_prefix,
+    get_agent_env,
+    get_config_agent_args,
+    get_config_agent_env,
+)
 from agent_cli.dev.worktree import CreateWorktreeResult, WorktreeInfo
 
 runner = CliRunner(env={"NO_COLOR": "1", "TERM": "dumb"})
@@ -251,11 +251,10 @@ class TestDevClean:
             is_prunable=False,
         )
         with (
-            patch("agent_cli.dev.cli._find_worktrees_with_no_commits", return_value=[wt]),
-            patch("agent_cli.dev.cli.worktree.get_default_branch", return_value="main"),
+            patch("agent_cli.dev.cleanup.find_worktrees_with_no_commits", return_value=[wt]),
             patch(
-                "agent_cli.dev.cli.worktree.remove_worktree",
-                return_value=(True, None),
+                "agent_cli.dev.cleanup.remove_worktrees",
+                return_value=[("feature", True, None)],
             ) as mock_remove,
         ):
             _clean_no_commits_worktrees(
@@ -280,11 +279,11 @@ class TestDevNewBranchNaming:
             patch("agent_cli.dev.cli._ensure_git_repo", return_value=Path("/repo")),
             patch("agent_cli.dev.worktree.list_worktrees", return_value=[]),
             patch(
-                "agent_cli.dev.cli._generate_ai_branch_name",
+                "agent_cli.dev.cli.generate_ai_branch_name",
                 return_value="feat/login-retry",
             ) as mock_ai,
             patch(
-                "agent_cli.dev.cli._generate_branch_name",
+                "agent_cli.dev.cli.generate_random_branch_name",
                 return_value="happy-fox",
             ) as mock_random,
             patch(
@@ -296,11 +295,11 @@ class TestDevNewBranchNaming:
                 ),
             ),
             patch(
-                "agent_cli.dev.cli._write_prompt_to_worktree",
+                "agent_cli.dev.cli.write_prompt_to_worktree",
                 return_value=wt_path / ".claude/TASK.md",
             ),
-            patch("agent_cli.dev.cli._resolve_editor", return_value=None),
-            patch("agent_cli.dev.cli._resolve_agent", return_value=None),
+            patch("agent_cli.dev.cli.resolve_editor", return_value=None),
+            patch("agent_cli.dev.cli.resolve_agent", return_value=None),
         ):
             result = runner.invoke(
                 app,
@@ -332,11 +331,11 @@ class TestDevNewBranchNaming:
             patch("agent_cli.dev.cli._ensure_git_repo", return_value=Path("/repo")),
             patch("agent_cli.dev.worktree.list_worktrees", return_value=[]),
             patch(
-                "agent_cli.dev.cli._generate_ai_branch_name",
+                "agent_cli.dev.cli.generate_ai_branch_name",
                 return_value="feat/login-retry",
             ) as mock_ai,
             patch(
-                "agent_cli.dev.cli._generate_branch_name",
+                "agent_cli.dev.cli.generate_random_branch_name",
                 return_value="happy-fox",
             ) as mock_random,
             patch(
@@ -347,8 +346,8 @@ class TestDevNewBranchNaming:
                     branch="feat/login-retry",
                 ),
             ),
-            patch("agent_cli.dev.cli._resolve_editor", return_value=None),
-            patch("agent_cli.dev.cli._resolve_agent", return_value=None),
+            patch("agent_cli.dev.cli.resolve_editor", return_value=None),
+            patch("agent_cli.dev.cli.resolve_agent", return_value=None),
         ):
             result = runner.invoke(
                 app,
@@ -386,11 +385,11 @@ class TestDevNewBranchNaming:
             patch("agent_cli.dev.cli._ensure_git_repo", return_value=Path("/repo")),
             patch("agent_cli.dev.worktree.list_worktrees", return_value=[]),
             patch(
-                "agent_cli.dev.cli._generate_ai_branch_name",
+                "agent_cli.dev.cli.generate_ai_branch_name",
                 return_value=None,
             ),
             patch(
-                "agent_cli.dev.cli._generate_branch_name",
+                "agent_cli.dev.cli.generate_random_branch_name",
                 return_value="happy-fox",
             ) as mock_random,
             patch(
@@ -401,8 +400,8 @@ class TestDevNewBranchNaming:
                     branch="happy-fox",
                 ),
             ),
-            patch("agent_cli.dev.cli._resolve_editor", return_value=None),
-            patch("agent_cli.dev.cli._resolve_agent", return_value=None),
+            patch("agent_cli.dev.cli.resolve_editor", return_value=None),
+            patch("agent_cli.dev.cli.resolve_agent", return_value=None),
         ):
             result = runner.invoke(
                 app,
@@ -431,8 +430,8 @@ class TestDevNewBranchNaming:
         with (
             patch("agent_cli.dev.cli._ensure_git_repo", return_value=Path("/repo")),
             patch("agent_cli.dev.worktree.list_worktrees", return_value=[]),
-            patch("agent_cli.dev.cli._generate_ai_branch_name") as mock_ai,
-            patch("agent_cli.dev.cli._generate_branch_name", return_value="happy-fox"),
+            patch("agent_cli.dev.cli.generate_ai_branch_name") as mock_ai,
+            patch("agent_cli.dev.cli.generate_random_branch_name", return_value="happy-fox"),
             patch(
                 "agent_cli.dev.worktree.create_worktree",
                 return_value=CreateWorktreeResult(
@@ -441,8 +440,8 @@ class TestDevNewBranchNaming:
                     branch="happy-fox",
                 ),
             ),
-            patch("agent_cli.dev.cli._resolve_editor", return_value=None),
-            patch("agent_cli.dev.cli._resolve_agent", return_value=None),
+            patch("agent_cli.dev.cli.resolve_editor", return_value=None),
+            patch("agent_cli.dev.cli.resolve_agent", return_value=None),
         ):
             result = runner.invoke(
                 app,
@@ -482,10 +481,10 @@ direnv = false
             patch("agent_cli.dev.cli._ensure_git_repo", return_value=Path("/repo")),
             patch("agent_cli.dev.worktree.list_worktrees", return_value=[]),
             patch(
-                "agent_cli.dev.cli._generate_ai_branch_name",
+                "agent_cli.dev.cli.generate_ai_branch_name",
                 return_value="feat/login-retry",
             ) as mock_ai,
-            patch("agent_cli.dev.cli._generate_branch_name") as mock_random,
+            patch("agent_cli.dev.cli.generate_random_branch_name") as mock_random,
             patch(
                 "agent_cli.dev.worktree.create_worktree",
                 return_value=CreateWorktreeResult(
@@ -494,8 +493,8 @@ direnv = false
                     branch="feat/login-retry",
                 ),
             ) as mock_create,
-            patch("agent_cli.dev.cli._resolve_editor", return_value=None),
-            patch("agent_cli.dev.cli._resolve_agent", return_value=None),
+            patch("agent_cli.dev.cli.resolve_editor", return_value=None),
+            patch("agent_cli.dev.cli.resolve_agent", return_value=None),
         ):
             result = runner.invoke(app, ["dev", "--config", str(config_path), "new"])
 
@@ -774,12 +773,12 @@ class TestFormatEnvPrefix:
 
 
 class TestGetConfigAgentArgs:
-    """Tests for _get_config_agent_args function."""
+    """Tests for get_config_agent_args function."""
 
     def test_returns_none_when_no_config(self) -> None:
         """Returns None when no agent_args in config."""
-        with patch("agent_cli.dev.cli.load_config", return_value={}):
-            result = _get_config_agent_args()
+        with patch("agent_cli.dev.launch.load_config", return_value={}):
+            result = get_config_agent_args()
             assert result is None
 
     def test_returns_agent_args_nested(self) -> None:
@@ -791,8 +790,8 @@ class TestGetConfigAgentArgs:
                 },
             },
         }
-        with patch("agent_cli.dev.cli.load_config", return_value=config):
-            result = _get_config_agent_args()
+        with patch("agent_cli.dev.launch.load_config", return_value=config):
+            result = get_config_agent_args()
             assert result == {"claude": ["--dangerously-skip-permissions"]}
 
     def test_returns_agent_args_from_flattened_key(self) -> None:
@@ -803,8 +802,8 @@ class TestGetConfigAgentArgs:
                 "aider": ["--model", "gpt-4o"],
             },
         }
-        with patch("agent_cli.dev.cli.load_config", return_value=config):
-            result = _get_config_agent_args()
+        with patch("agent_cli.dev.launch.load_config", return_value=config):
+            result = get_config_agent_args()
             assert result == {
                 "claude": ["--dangerously-skip-permissions"],
                 "aider": ["--model", "gpt-4o"],
@@ -812,18 +811,18 @@ class TestGetConfigAgentArgs:
 
 
 class TestGetConfigAgentEnv:
-    """Tests for _get_config_agent_env function."""
+    """Tests for get_config_agent_env function."""
 
     def test_returns_none_when_no_config(self) -> None:
         """Returns None when no agent_env in config."""
-        with patch("agent_cli.dev.cli.load_config", return_value={}):
-            result = _get_config_agent_env()
+        with patch("agent_cli.dev.launch.load_config", return_value={}):
+            result = get_config_agent_env()
             assert result is None
 
     def test_returns_none_when_no_dev_section(self) -> None:
         """Returns None when no dev section in config."""
-        with patch("agent_cli.dev.cli.load_config", return_value={"other": {}}):
-            result = _get_config_agent_env()
+        with patch("agent_cli.dev.launch.load_config", return_value={"other": {}}):
+            result = get_config_agent_env()
             assert result is None
 
     def test_returns_agent_env(self) -> None:
@@ -835,8 +834,8 @@ class TestGetConfigAgentEnv:
                 },
             },
         }
-        with patch("agent_cli.dev.cli.load_config", return_value=config):
-            result = _get_config_agent_env()
+        with patch("agent_cli.dev.launch.load_config", return_value=config):
+            result = get_config_agent_env()
             assert result == {"claude": {"CLAUDE_CODE_USE_VERTEX": "1", "ANTHROPIC_MODEL": "opus"}}
 
     def test_returns_agent_env_from_flattened_keys(self) -> None:
@@ -846,8 +845,8 @@ class TestGetConfigAgentEnv:
             "dev.agent_env.claude": {"CLAUDE_CODE_USE_VERTEX": "1", "ANTHROPIC_MODEL": "opus"},
             "dev.agent_env.aider": {"OPENAI_API_KEY": "sk-xxx"},
         }
-        with patch("agent_cli.dev.cli.load_config", return_value=config):
-            result = _get_config_agent_env()
+        with patch("agent_cli.dev.launch.load_config", return_value=config):
+            result = get_config_agent_env()
             assert result == {
                 "claude": {"CLAUDE_CODE_USE_VERTEX": "1", "ANTHROPIC_MODEL": "opus"},
                 "aider": {"OPENAI_API_KEY": "sk-xxx"},
@@ -866,37 +865,37 @@ class _MockAgent(CodingAgent):
 
 
 class TestGetAgentEnv:
-    """Tests for _get_agent_env function."""
+    """Tests for get_agent_env function."""
 
     def test_returns_builtin_env_when_no_config(self) -> None:
         """Returns agent's built-in env when no config."""
         agent = _MockAgent()
-        with patch("agent_cli.dev.cli._get_config_agent_env", return_value=None):
-            result = _get_agent_env(agent)
+        with patch("agent_cli.dev.launch.get_config_agent_env", return_value=None):
+            result = get_agent_env(agent)
             assert result == {"BUILTIN_VAR": "builtin_value"}
 
     def test_config_overrides_builtin(self) -> None:
         """Config env vars override built-in env vars."""
         agent = _MockAgent()
         config_env = {"mock": {"BUILTIN_VAR": "overridden", "NEW_VAR": "new_value"}}
-        with patch("agent_cli.dev.cli._get_config_agent_env", return_value=config_env):
-            result = _get_agent_env(agent)
+        with patch("agent_cli.dev.launch.get_config_agent_env", return_value=config_env):
+            result = get_agent_env(agent)
             assert result == {"BUILTIN_VAR": "overridden", "NEW_VAR": "new_value"}
 
     def test_merges_builtin_and_config(self) -> None:
         """Config env vars are merged with built-in env vars."""
         agent = _MockAgent()
         config_env = {"mock": {"CONFIG_VAR": "config_value"}}
-        with patch("agent_cli.dev.cli._get_config_agent_env", return_value=config_env):
-            result = _get_agent_env(agent)
+        with patch("agent_cli.dev.launch.get_config_agent_env", return_value=config_env):
+            result = get_agent_env(agent)
             assert result == {"BUILTIN_VAR": "builtin_value", "CONFIG_VAR": "config_value"}
 
     def test_ignores_other_agents(self) -> None:
         """Config for other agents is ignored."""
         agent = _MockAgent()
         config_env = {"other": {"OTHER_VAR": "other_value"}}
-        with patch("agent_cli.dev.cli._get_config_agent_env", return_value=config_env):
-            result = _get_agent_env(agent)
+        with patch("agent_cli.dev.launch.get_config_agent_env", return_value=config_env):
+            result = get_agent_env(agent)
             assert result == {"BUILTIN_VAR": "builtin_value"}
 
 
