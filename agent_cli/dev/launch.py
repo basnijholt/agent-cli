@@ -29,9 +29,9 @@ def resolve_editor(
     if editor_name:
         editor = editors.get_editor(editor_name)
         if editor is None:
-            from ._output import _warn  # noqa: PLC0415
+            from ._output import warn  # noqa: PLC0415
 
-            _warn(f"Editor '{editor_name}' not found")
+            warn(f"Editor '{editor_name}' not found")
         return editor
 
     # If no flag and no default, don't use an editor
@@ -43,9 +43,9 @@ def resolve_editor(
         editor = editors.get_editor(default_editor)
         if editor is not None:
             return editor
-        from ._output import _warn  # noqa: PLC0415
+        from ._output import warn  # noqa: PLC0415
 
-        _warn(f"Default editor '{default_editor}' from config not found")
+        warn(f"Default editor '{default_editor}' from config not found")
 
     # Auto-detect current or first available
     editor = editors.detect_current_editor()
@@ -65,9 +65,9 @@ def resolve_agent(
     if agent_name:
         agent = coding_agents.get_agent(agent_name)
         if agent is None:
-            from ._output import _warn  # noqa: PLC0415
+            from ._output import warn  # noqa: PLC0415
 
-            _warn(f"Agent '{agent_name}' not found")
+            warn(f"Agent '{agent_name}' not found")
         return agent
 
     # If no flag and no default, don't use an agent
@@ -79,9 +79,9 @@ def resolve_agent(
         agent = coding_agents.get_agent(default_agent)
         if agent is not None:
             return agent
-        from ._output import _warn  # noqa: PLC0415
+        from ._output import warn  # noqa: PLC0415
 
-        _warn(f"Default agent '{default_agent}' from config not found")
+        warn(f"Default agent '{default_agent}' from config not found")
 
     # Auto-detect current or first available
     agent = coding_agents.detect_current_agent()
@@ -187,13 +187,13 @@ def _is_ssh_session() -> bool:
 
 def launch_editor(path: Path, editor: Editor) -> None:
     """Launch editor via subprocess (editors are GUI apps that detach)."""
-    from ._output import _success, _warn  # noqa: PLC0415
+    from ._output import success, warn  # noqa: PLC0415
 
     try:
         subprocess.Popen(editor.open_command(path))
-        _success(f"Opened {editor.name}")
+        success(f"Opened {editor.name}")
     except Exception as e:
-        _warn(f"Could not open editor: {e}")
+        warn(f"Could not open editor: {e}")
 
 
 def write_prompt_to_worktree(worktree_path: Path, prompt: str) -> Path:
@@ -278,7 +278,7 @@ def launch_agent(
 
     Returns the tracked agent name if tracking was successful, else ``None``.
     """
-    from ._output import _success, _warn  # noqa: PLC0415
+    from ._output import success, warn  # noqa: PLC0415
     from .terminals.tmux import Tmux  # noqa: PLC0415
 
     terminal = terminals.detect_current_terminal()
@@ -311,14 +311,14 @@ def launch_agent(
                 name = agent_state.generate_agent_name(root, path, agent.name, agent_name)
                 agent_state.register_agent(root, name, pane_id, path, agent.name)
                 agent_state.inject_completion_hook(path, agent.name)
-                _success(f"Started {agent.name} in new tmux tab (tracking as [cyan]{name}[/cyan])")
+                success(f"Started {agent.name} in new tmux tab (tracking as [cyan]{name}[/cyan])")
                 return name
-            _warn("Could not open new tmux window")
+            warn("Could not open new tmux window")
         elif terminal.open_new_tab(path, full_cmd, tab_name=tab_name):
-            _success(f"Started {agent.name} in new {terminal.name} tab")
+            success(f"Started {agent.name} in new {terminal.name} tab")
             return None
         else:
-            _warn(f"Could not open new tab in {terminal.name}")
+            warn(f"Could not open new tab in {terminal.name}")
 
     # No terminal detected or failed - print instructions
     if _is_ssh_session():

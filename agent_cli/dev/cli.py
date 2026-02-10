@@ -21,7 +21,7 @@ from agent_cli.core.utils import console
 from . import coding_agents, editors, terminals, worktree
 from ._branch_name import AGENTS as BRANCH_NAME_AGENTS
 from ._branch_name import generate_ai_branch_name, generate_random_branch_name
-from ._output import _error, _info, _success, _warn
+from ._output import error, info, success, warn
 from .launch import (
     get_agent_env,
     launch_agent,
@@ -101,11 +101,11 @@ def dev_callback(
 def _ensure_git_repo() -> Path:
     """Ensure we're in a git repository and return the repo root."""
     if not worktree.git_available():
-        _error("Git is not installed or not in PATH")
+        error("Git is not installed or not in PATH")
 
     repo_root = worktree.get_main_repo_root()
     if repo_root is None:
-        _error("Not in a git repository")
+        error("Not in a git repository")
 
     return repo_root
 
@@ -131,7 +131,7 @@ def _resolve_branch_name(
 
     if not use_ai:
         branch = generate_random_branch_name(existing, repo_root=repo_root)
-        _info(f"Generated branch name: {branch}")
+        info(f"Generated branch name: {branch}")
         return branch
 
     effective_agent = branch_name_agent
@@ -149,12 +149,12 @@ def _resolve_branch_name(
         branch_name_timeout,
     )
     if branch:
-        _info(f"AI-generated branch name: {branch}")
+        info(f"AI-generated branch name: {branch}")
         return branch
 
-    _warn("Could not generate branch name with AI. Falling back to random naming.")
+    warn("Could not generate branch name with AI. Falling back to random naming.")
     branch = generate_random_branch_name(existing, repo_root=repo_root)
-    _info(f"Generated branch name: {branch}")
+    info(f"Generated branch name: {branch}")
     return branch
 
 
@@ -172,41 +172,41 @@ def _setup_worktree_env(
         copied = copy_env_files(repo_root, worktree_path)
         if copied:
             names = ", ".join(f.name for f in copied)
-            _success(f"Copied env file(s): {names}")
+            success(f"Copied env file(s): {names}")
 
     project = None
     if setup:
         project = detect_project_type(worktree_path)
         if project:
-            _info(f"Detected {project.description}")
-            success, output = run_setup(
+            info(f"Detected {project.description}")
+            setup_ok, output = run_setup(
                 worktree_path,
                 project,
-                on_log=_info,
+                on_log=info,
                 capture_output=not verbose,
             )
-            if success:
-                _success("Project setup complete")
+            if setup_ok:
+                success("Project setup complete")
             else:
-                _warn(f"Setup failed: {output}")
+                warn(f"Setup failed: {output}")
 
     use_direnv = direnv if direnv is not None else is_direnv_available()
     if use_direnv:
         if is_direnv_available():
-            success, msg = setup_direnv(
+            direnv_ok, msg = setup_direnv(
                 worktree_path,
                 project,
-                on_log=_info,
+                on_log=info,
                 capture_output=not verbose,
             )
-            if success and ("created" in msg or "allowed" in msg):
-                _success(msg)
-            elif success:
-                _info(msg)
+            if direnv_ok and ("created" in msg or "allowed" in msg):
+                success(msg)
+            elif direnv_ok:
+                info(msg)
             else:
-                _warn(msg)
+                warn(msg)
         elif direnv is True:
-            _warn("direnv not installed, skipping .envrc setup")
+            warn("direnv not installed, skipping .envrc setup")
 
 
 @app.command("new")
@@ -395,22 +395,22 @@ def new(
     )
 
     # Create the worktree
-    _info(f"Creating worktree for branch '{branch}'...")
+    info(f"Creating worktree for branch '{branch}'...")
     result = worktree.create_worktree(
         branch,
         repo_path=repo_root,
         from_ref=from_ref,
         fetch=fetch,
-        on_log=_info,
+        on_log=info,
         capture_output=not verbose,
     )
     if not result.success:
-        _error(result.error or "Failed to create worktree")
+        error(result.error or "Failed to create worktree")
 
     assert result.path is not None
-    _success(f"Created worktree at {result.path}")
+    success(f"Created worktree at {result.path}")
     if result.warning:
-        _warn(result.warning)
+        warn(result.warning)
 
     # Environment setup (env files, project setup, direnv)
     _setup_worktree_env(
@@ -426,7 +426,7 @@ def new(
     task_file = None
     if prompt:
         task_file = write_prompt_to_worktree(result.path, prompt)
-        _success(f"Wrote task to {task_file.relative_to(result.path)}")
+        success(f"Wrote task to {task_file.relative_to(result.path)}")
 
     # Resolve and launch editor/agent
     resolved_editor = resolve_editor(editor, editor_name, default_editor)
@@ -712,10 +712,10 @@ def remove(
 
     wt = worktree.find_worktree_by_name(name, repo_root)
     if wt is None:
-        _error(f"Worktree not found: {name}")
+        error(f"Worktree not found: {name}")
 
     if wt.is_main:
-        _error("Cannot remove the main worktree")
+        error("Cannot remove the main worktree")
 
     if not yes and not force:
         console.print(f"[bold]Will remove:[/bold] {wt.path}")
@@ -724,17 +724,17 @@ def remove(
         if not typer.confirm("Continue?"):
             raise typer.Abort
 
-    success, error = worktree.remove_worktree(
+    removed, remove_err = worktree.remove_worktree(
         wt.path,
         force=force,
         delete_branch=delete_branch,
         repo_path=repo_root,
     )
 
-    if success:
-        _success(f"Removed worktree: {wt.path}")
+    if removed:
+        success(f"Removed worktree: {wt.path}")
     else:
-        _error(error or "Failed to remove worktree")
+        error(remove_err or "Failed to remove worktree")
 
 
 @app.command("path")
@@ -754,7 +754,7 @@ def path_cmd(
 
     wt = worktree.find_worktree_by_name(name, repo_root)
     if wt is None:
-        _error(f"Worktree not found: {name}")
+        error(f"Worktree not found: {name}")
 
     print(wt.path.as_posix())
 
@@ -783,28 +783,28 @@ def open_editor(
 
     wt = worktree.find_worktree_by_name(name, repo_root)
     if wt is None:
-        _error(f"Worktree not found: {name}")
+        error(f"Worktree not found: {name}")
 
     if editor_name:
         editor = editors.get_editor(editor_name)
         if editor is None:
-            _error(f"Editor not found: {editor_name}")
+            error(f"Editor not found: {editor_name}")
     else:
         editor = editors.detect_current_editor()
         if editor is None:
             available = editors.get_available_editors()
             if not available:
-                _error("No editors available")
+                error("No editors available")
             editor = available[0]
 
     if not editor.is_available():
-        _error(f"{editor.name} is not installed")
+        error(f"{editor.name} is not installed")
 
     try:
         subprocess.Popen(editor.open_command(wt.path))
-        _success(f"Opened {wt.path} in {editor.name}")
+        success(f"Opened {wt.path} in {editor.name}")
     except Exception as e:
-        _error(f"Failed to open editor: {e}")
+        error(f"Failed to open editor: {e}")
 
 
 @app.command("agent")
@@ -885,28 +885,28 @@ def start_agent(
 
     wt = worktree.find_worktree_by_name(name, repo_root)
     if wt is None:
-        _error(f"Worktree not found: {name}")
+        error(f"Worktree not found: {name}")
 
     if agent_name:
         agent = coding_agents.get_agent(agent_name)
         if agent is None:
-            _error(f"Agent not found: {agent_name}")
+            error(f"Agent not found: {agent_name}")
     else:
         agent = coding_agents.detect_current_agent()
         if agent is None:
             available = coding_agents.get_available_agents()
             if not available:
-                _error("No AI coding agents available")
+                error("No AI coding agents available")
             agent = available[0]
 
     if not agent.is_available():
-        _error(f"{agent.name} is not installed. Install from: {agent.install_url}")
+        error(f"{agent.name} is not installed. Install from: {agent.install_url}")
 
     # Write prompt to worktree (makes task available to the agent)
     task_file = None
     if prompt:
         task_file = write_prompt_to_worktree(wt.path, prompt)
-        _success(f"Wrote task to {task_file.relative_to(wt.path)}")
+        success(f"Wrote task to {task_file.relative_to(wt.path)}")
 
     merged_args = merge_agent_args(agent, agent_args)
     agent_env = get_agent_env(agent)
@@ -916,7 +916,7 @@ def start_agent(
         from . import agent_state as _agent_state  # noqa: PLC0415
 
         if not _agent_state.is_tmux():
-            _error("Agent tracking requires tmux. Start a tmux session first.")
+            error("Agent tracking requires tmux. Start a tmux session first.")
         launch_agent(
             wt.path,
             agent,
@@ -929,7 +929,7 @@ def start_agent(
         )
         return
 
-    _info(f"Starting {agent.name} in {wt.path}...")
+    info(f"Starting {agent.name} in {wt.path}...")
     try:
         os.chdir(wt.path)
         # Merge agent env with current environment
@@ -941,7 +941,7 @@ def start_agent(
             env=run_env,
         )
     except Exception as e:
-        _error(f"Failed to start agent: {e}")
+        error(f"Failed to start agent: {e}")
 
 
 @app.command("agents")
@@ -1103,7 +1103,7 @@ def _print_item_status(
     """Print status of an item (editor, agent, terminal)."""
     if available:
         note = " [yellow](current)[/yellow]" if is_current else ""
-        _success(f"{name}{note}")
+        success(f"{name}{note}")
     else:
         console.print(f"  [dim]○[/dim] {name} ({not_available_msg})")
 
@@ -1112,13 +1112,13 @@ def _doctor_check_git() -> None:
     """Check git status for doctor command."""
     console.print("[bold]Git:[/bold]")
     if worktree.git_available():
-        _success("Git is available")
+        success("Git is available")
     else:
         console.print("  [red]✗[/red] Git is not installed")
 
     repo_root = worktree.get_main_repo_root()
     if repo_root:
-        _success(f"In git repository: {repo_root}")
+        success(f"In git repository: {repo_root}")
     else:
         console.print("  [yellow]○[/yellow] Not in a git repository")
 
@@ -1149,17 +1149,17 @@ def run_cmd(
 
     wt = worktree.find_worktree_by_name(name, repo_root)
     if wt is None:
-        _error(f"Worktree not found: {name}")
+        error(f"Worktree not found: {name}")
 
     if not command:
-        _error("No command specified")
+        error("No command specified")
 
-    _info(f"Running in {wt.path}: {' '.join(command)}")
+    info(f"Running in {wt.path}: {' '.join(command)}")
     try:
         result = subprocess.run(command, cwd=wt.path, check=False)
         raise typer.Exit(result.returncode)
     except FileNotFoundError:
-        _error(f"Command not found: {command[0]}")
+        error(f"Command not found: {command[0]}")
 
 
 def _clean_merged_worktrees(
@@ -1172,16 +1172,16 @@ def _clean_merged_worktrees(
     """Remove worktrees with merged PRs (requires gh CLI)."""
     from . import cleanup  # noqa: PLC0415
 
-    _info("Checking for worktrees with merged PRs...")
+    info("Checking for worktrees with merged PRs...")
 
     ok, error_msg = cleanup.check_gh_available()
     if not ok:
-        _error(error_msg)
+        error(error_msg)
 
     to_remove = cleanup.find_worktrees_with_merged_prs(repo_root)
 
     if not to_remove:
-        _info("No worktrees with merged PRs found")
+        info("No worktrees with merged PRs found")
         return
 
     console.print(f"\n[bold]Found {len(to_remove)} worktree(s) with merged PRs:[/bold]")
@@ -1191,14 +1191,14 @@ def _clean_merged_worktrees(
             console.print(f"    PR: [link={pr_url}]{pr_url}[/link]")
 
     if dry_run:
-        _info("[dry-run] Would remove the above worktrees")
+        info("[dry-run] Would remove the above worktrees")
     elif yes or typer.confirm("\nRemove these worktrees?"):
         results = cleanup.remove_worktrees([wt for wt, _ in to_remove], repo_root, force=force)
-        for branch, success, error in results:
-            if success:
-                _success(f"Removed {branch}")
+        for branch, ok, remove_err in results:
+            if ok:
+                success(f"Removed {branch}")
             else:
-                _warn(f"Failed to remove {branch}: {error}")
+                warn(f"Failed to remove {branch}: {remove_err}")
 
 
 def _clean_no_commits_worktrees(
@@ -1211,12 +1211,12 @@ def _clean_no_commits_worktrees(
     """Remove worktrees with no commits ahead of the default branch."""
     from . import cleanup  # noqa: PLC0415
 
-    _info("Checking for worktrees with no commits...")
+    info("Checking for worktrees with no commits...")
 
     to_remove = cleanup.find_worktrees_with_no_commits(repo_root)
 
     if not to_remove:
-        _info("No worktrees with zero commits found")
+        info("No worktrees with zero commits found")
         return
 
     default_branch = worktree.get_default_branch(repo_root)
@@ -1227,14 +1227,14 @@ def _clean_no_commits_worktrees(
         console.print(f"  • {wt.branch} ({wt.path})")
 
     if dry_run:
-        _info("[dry-run] Would remove the above worktrees")
+        info("[dry-run] Would remove the above worktrees")
     elif yes or typer.confirm("\nRemove these worktrees?"):
         results = cleanup.remove_worktrees(to_remove, repo_root, force=force)
-        for branch, success, error in results:
-            if success:
-                _success(f"Removed {branch}")
+        for branch, ok, remove_err in results:
+            if ok:
+                success(f"Removed {branch}")
             else:
-                _warn(f"Failed to remove {branch}: {error}")
+                warn(f"Failed to remove {branch}: {remove_err}")
 
 
 @app.command("clean")
@@ -1295,7 +1295,7 @@ def clean(
     repo_root = _ensure_git_repo()
 
     # Run git worktree prune
-    _info("Pruning stale worktree references...")
+    info("Pruning stale worktree references...")
     result = subprocess.run(
         ["git", "worktree", "prune"],  # noqa: S607
         cwd=repo_root,
@@ -1304,9 +1304,9 @@ def clean(
         check=False,
     )
     if result.returncode == 0:
-        _success("Pruned stale worktree administrative files")
+        success("Pruned stale worktree administrative files")
     else:
-        _warn(f"Prune failed: {result.stderr}")
+        warn(f"Prune failed: {result.stderr}")
 
     # Find and remove empty directories in worktrees base dir
     base_dir = worktree.resolve_worktree_base_dir(repo_root)
@@ -1315,13 +1315,13 @@ def clean(
         for item in base_dir.iterdir():
             if item.is_dir() and not any(item.iterdir()):
                 if dry_run:
-                    _info(f"[dry-run] Would remove empty directory: {item.name}")
+                    info(f"[dry-run] Would remove empty directory: {item.name}")
                 else:
                     item.rmdir()
-                    _info(f"Removed empty directory: {item.name}")
+                    info(f"Removed empty directory: {item.name}")
                 cleaned += 1
         if cleaned > 0:
-            _success(f"Cleaned {cleaned} empty director{'y' if cleaned == 1 else 'ies'}")
+            success(f"Cleaned {cleaned} empty director{'y' if cleaned == 1 else 'ies'}")
 
     # --merged mode: remove worktrees with merged PRs
     if merged:
@@ -1460,18 +1460,18 @@ def install_skill(
     # Use current repo root (works in worktrees too)
     repo_root = _get_current_repo_root()
     if repo_root is None:
-        _error("Not in a git repository")
+        error("Not in a git repository")
 
     skill_source = _get_skill_source_dir()
     skill_dest = repo_root / ".claude" / "skills" / "agent-cli-dev"
 
     # Check if skill source exists
     if not skill_source.exists():
-        _error(f"Skill source not found: {skill_source}")
+        error(f"Skill source not found: {skill_source}")
 
     # Check if already installed
     if skill_dest.exists() and not force:
-        _warn(f"Skill already installed at {skill_dest}")
+        warn(f"Skill already installed at {skill_dest}")
         console.print("[dim]Use --force to overwrite[/dim]")
         raise typer.Exit(0)
 
@@ -1484,7 +1484,7 @@ def install_skill(
 
     shutil.copytree(skill_source, skill_dest)
 
-    _success(f"Installed skill to {skill_dest}")
+    success(f"Installed skill to {skill_dest}")
     console.print()
     console.print("[bold]What's next?[/bold]")
     console.print("  • Claude Code will automatically use this skill when relevant")

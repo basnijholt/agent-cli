@@ -12,7 +12,7 @@ import typer
 from agent_cli.core.utils import console
 
 from . import worktree
-from ._output import _error, _info, _success, _warn
+from ._output import error, info, success, warn
 from .cli import app
 
 if TYPE_CHECKING:
@@ -22,11 +22,11 @@ if TYPE_CHECKING:
 def _ensure_git_repo() -> Path:
     """Ensure we're in a git repository and return the repo root."""
     if not worktree.git_available():
-        _error("Git is not installed or not in PATH")
+        error("Git is not installed or not in PATH")
 
     repo_root = worktree.get_main_repo_root()
     if repo_root is None:
-        _error("Not in a git repository")
+        error("Not in a git repository")
 
     return repo_root
 
@@ -36,7 +36,7 @@ def _ensure_tmux() -> None:
     from . import agent_state as _agent_state  # noqa: PLC0415
 
     if not _agent_state.is_tmux():
-        _error("Agent tracking requires tmux. Start a tmux session first.")
+        error("Agent tracking requires tmux. Start a tmux session first.")
 
 
 def _lookup_agent(name: str) -> tuple[Path, agent_state.TrackedAgent]:
@@ -47,7 +47,7 @@ def _lookup_agent(name: str) -> tuple[Path, agent_state.TrackedAgent]:
     state = _agent_state.load_state(repo_root)
     agent = state.agents.get(name)
     if agent is None:
-        _error(f"Agent '{name}' not found. Run 'dev poll' to see tracked agents.")
+        error(f"Agent '{name}' not found. Run 'dev poll' to see tracked agents.")
     return repo_root, agent
 
 
@@ -107,7 +107,7 @@ def poll_cmd(
     state = _agent_state.load_state(repo_root)
 
     if not state.agents:
-        _info("No tracked agents. Launch one with 'dev new -a' or 'dev agent --tab'.")
+        info("No tracked agents. Launch one with 'dev new -a' or 'dev agent --tab'.")
         return
 
     poll_once(repo_root)
@@ -201,12 +201,12 @@ def output_cmd(
     _repo_root, agent = _lookup_agent(name)
 
     if agent.status == "dead":
-        _error(f"Agent '{name}' is dead (tmux pane closed). No output available.")
+        error(f"Agent '{name}' is dead (tmux pane closed). No output available.")
 
     if not follow:
         output = tmux_ops.capture_pane(agent.pane_id, lines)
         if output is None:
-            _error(f"Could not capture output from pane {agent.pane_id}")
+            error(f"Could not capture output from pane {agent.pane_id}")
         print(output, end="")
         return
 
@@ -216,7 +216,7 @@ def output_cmd(
         while True:
             output = tmux_ops.capture_pane(agent.pane_id, lines)
             if output is None:
-                _warn("Pane closed.")
+                warn("Pane closed.")
                 break
             if output != prev:
                 print(output, end="", flush=True)
@@ -257,12 +257,12 @@ def send_cmd(
     _repo_root, agent = _lookup_agent(name)
 
     if agent.status == "dead":
-        _error(f"Agent '{name}' is dead (tmux pane closed). Cannot send messages.")
+        error(f"Agent '{name}' is dead (tmux pane closed). Cannot send messages.")
 
     if tmux_ops.send_keys(agent.pane_id, message, enter=not no_enter):
-        _success(f"Sent message to {name}")
+        success(f"Sent message to {name}")
     else:
-        _error(f"Failed to send message to pane {agent.pane_id}")
+        error(f"Failed to send message to pane {agent.pane_id}")
 
 
 @app.command("wait")
@@ -307,17 +307,17 @@ def wait_cmd(
         raise typer.Exit(0 if agent.status != "dead" else 1)
 
     repo_root = _ensure_git_repo()
-    _info(f"Waiting for agent '{name}' to finish (polling every {interval}s)...")
+    info(f"Waiting for agent '{name}' to finish (polling every {interval}s)...")
 
     try:
         status, elapsed = wait_for_agent(repo_root, name, timeout=timeout, interval=interval)
     except TimeoutError:
-        _warn(f"Timeout after {_format_duration(timeout)}")
+        warn(f"Timeout after {_format_duration(timeout)}")
         raise typer.Exit(2) from None
 
     if status == "dead":
-        _warn(f"Agent '{name}' died (pane closed) after {_format_duration(elapsed)}")
+        warn(f"Agent '{name}' died (pane closed) after {_format_duration(elapsed)}")
         raise typer.Exit(1)
 
-    _success(f"Agent '{name}' is {status} after {_format_duration(elapsed)}")
+    success(f"Agent '{name}' is {status} after {_format_duration(elapsed)}")
     raise typer.Exit(0)
