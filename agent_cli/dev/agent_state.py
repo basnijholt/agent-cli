@@ -27,7 +27,7 @@ class TrackedAgent:
     started_at: float
     status: AgentStatus = "running"
     last_output_hash: str = ""
-    consecutive_quiet: int = 0
+    last_output_change_at: float = 0.0
 
 
 @dataclass
@@ -92,7 +92,7 @@ def load_state(repo_root: Path) -> AgentStateFile:
                 started_at=float(agent_data["started_at"]),
                 status=status,
                 last_output_hash=str(agent_data.get("last_output_hash", "")),
-                consecutive_quiet=int(agent_data.get("consecutive_quiet", 0)),
+                last_output_change_at=float(agent_data.get("last_output_change_at", 0.0)),
             )
         except (KeyError, TypeError, ValueError):
             continue

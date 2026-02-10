@@ -7,9 +7,8 @@ from pathlib import Path
 
 from . import agent_state, tmux_ops
 
-# Number of consecutive polls with unchanged output before marking as "quiet".
-# At the default 5s interval, 6 polls ≈ 30s of unchanged output.
-QUIET_THRESHOLD = 6
+# Seconds of unchanged output before marking an agent as "quiet".
+QUIET_SECONDS = 10.0
 
 
 def _check_agent_status(agent: agent_state.TrackedAgent) -> None:
@@ -27,20 +26,20 @@ def _check_agent_status(agent: agent_state.TrackedAgent) -> None:
     agent.status = "running"
 
 
-def _check_quiescence(agent: agent_state.TrackedAgent) -> None:
+def _check_quiescence(agent: agent_state.TrackedAgent, now: float) -> None:
     """Track output changes and mark agent as quiet if output is stable."""
     output = tmux_ops.capture_pane(agent.pane_id)
     if output is None:
         return
 
     output_hash = tmux_ops.hash_output(output)
-    if output_hash == agent.last_output_hash:
-        agent.consecutive_quiet += 1
-    else:
+    if output_hash != agent.last_output_hash:
         agent.last_output_hash = output_hash
-        agent.consecutive_quiet = 0
+        agent.last_output_change_at = now
+        return
 
-    if agent.consecutive_quiet >= QUIET_THRESHOLD:
+    # Hash unchanged — mark quiet if enough wall-clock time has passed
+    if agent.last_output_change_at > 0 and (now - agent.last_output_change_at) >= QUIET_SECONDS:
         agent.status = "quiet"
 
 
@@ -56,7 +55,7 @@ def poll_once(repo_root: Path) -> dict[str, str]:
     for agent in state.agents.values():
         _check_agent_status(agent)
         if agent.status == "running":
-            _check_quiescence(agent)
+            _check_quiescence(agent, now)
 
     state.last_poll_at = now
     agent_state.save_state(repo_root, state)

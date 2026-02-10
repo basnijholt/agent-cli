@@ -374,7 +374,7 @@ class TestPollerRegression:
                 assert statuses["worker"] == "running"
 
     def test_poll_detects_quiescence_for_non_claude_agents(self, tmp_path: Path) -> None:
-        """poll_once marks agent as quiet after enough polls with unchanged output."""
+        """poll_once marks agent as quiet after enough time with unchanged output."""
         with patch.object(agent_state, "STATE_BASE", tmp_path / ".cache"):
             repo = tmp_path / "repo"
             wt = tmp_path / "worktree"
@@ -385,18 +385,24 @@ class TestPollerRegression:
                 patch("agent_cli.dev.tmux_ops.capture_pane", return_value="output"),
                 patch("agent_cli.dev.tmux_ops.hash_output", return_value="h1"),
             ):
-                # First poll sets the hash, consecutive_quiet stays 0
-                statuses = poller.poll_once(repo)
+                t0 = time.time()
+                # First poll sets the hash and last_output_change_at
+                with patch("time.time", return_value=t0):
+                    statuses = poller.poll_once(repo)
                 assert statuses["worker"] == "running"
 
-                # Polls 2-7: hash matches, consecutive_quiet increments 1..6
-                for _i in range(poller.QUIET_THRESHOLD):
+                # Second poll 1s later — too soon, still running
+                with patch("time.time", return_value=t0 + 1):
                     statuses = poller.poll_once(repo)
+                assert statuses["worker"] == "running"
 
+                # Third poll after QUIET_SECONDS — now quiet
+                with patch("time.time", return_value=t0 + poller.QUIET_SECONDS + 1):
+                    statuses = poller.poll_once(repo)
                 assert statuses["worker"] == "quiet"
 
     def test_poll_resets_quiescence_on_output_change(self, tmp_path: Path) -> None:
-        """Output change resets the quiescence counter."""
+        """Output change resets the quiescence timer."""
         with patch.object(agent_state, "STATE_BASE", tmp_path / ".cache"):
             repo = tmp_path / "repo"
             wt = tmp_path / "worktree"
@@ -406,22 +412,30 @@ class TestPollerRegression:
                 patch("agent_cli.dev.tmux_ops.pane_exists", return_value=True),
                 patch("agent_cli.dev.tmux_ops.capture_pane", return_value="output"),
             ):
-                # Use a side_effect to return different hashes
-                hashes = ["h1", "h1", "h1", "h2", "h2", "h2", "h2", "h2", "h2", "h2"]
-                with patch("agent_cli.dev.tmux_ops.hash_output", side_effect=hashes):
-                    # First 3 polls: h1, h1, h1 → consecutive_quiet = 2 (first sets hash)
-                    for _ in range(3):
-                        statuses = poller.poll_once(repo)
-                    assert statuses["worker"] == "running"
+                t0 = time.time()
 
-                    # 4th poll: h2 → reset, consecutive_quiet = 0
+                # First poll: hash h1
+                with (
+                    patch("agent_cli.dev.tmux_ops.hash_output", return_value="h1"),
+                    patch("time.time", return_value=t0),
+                ):
+                    poller.poll_once(repo)
+
+                # After QUIET_SECONDS, hash changes to h2 — timer resets
+                with (
+                    patch("agent_cli.dev.tmux_ops.hash_output", return_value="h2"),
+                    patch("time.time", return_value=t0 + poller.QUIET_SECONDS + 1),
+                ):
                     statuses = poller.poll_once(repo)
-                    assert statuses["worker"] == "running"
+                assert statuses["worker"] == "running"
 
-                    # Polls 5-10: h2 repeated → consecutive_quiet = 1..6
-                    for _ in range(poller.QUIET_THRESHOLD):
-                        statuses = poller.poll_once(repo)
-                    assert statuses["worker"] == "quiet"
+                # QUIET_SECONDS after the reset — now quiet
+                with (
+                    patch("agent_cli.dev.tmux_ops.hash_output", return_value="h2"),
+                    patch("time.time", return_value=t0 + 2 * poller.QUIET_SECONDS + 2),
+                ):
+                    statuses = poller.poll_once(repo)
+                assert statuses["worker"] == "quiet"
 
     def test_wait_ignores_done_sentinel_for_non_claude_agents(self, tmp_path: Path) -> None:
         """wait_for_agent should use quiescence for non-Claude agents even if DONE exists."""
@@ -434,12 +448,23 @@ class TestPollerRegression:
 
             agent_state.register_agent(repo, "worker", "%3", wt, "codex")
 
+            call_count = 0
+            t0 = 1000.0
+
+            def advancing_time() -> float:
+                """Each call advances time beyond QUIET_SECONDS."""
+                nonlocal call_count
+                call_count += 1
+                return t0 + call_count * (poller.QUIET_SECONDS + 1)
+
             with (
                 patch("agent_cli.dev.tmux_ops.pane_exists", return_value=True),
                 patch("agent_cli.dev.tmux_ops.capture_pane", return_value="output"),
                 patch("agent_cli.dev.tmux_ops.hash_output", return_value="h1"),
+                patch("time.time", side_effect=advancing_time),
+                patch("time.sleep"),
             ):
-                status, _elapsed = poller.wait_for_agent(repo, "worker", timeout=1, interval=0)
+                status, _elapsed = poller.wait_for_agent(repo, "worker", timeout=0, interval=0)
                 assert status == "quiet"
 
 
