@@ -9,11 +9,13 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
+import typer
 from typer.testing import CliRunner
 
 from agent_cli.cli import app
-from agent_cli.dev import agent_state, tmux_ops
+from agent_cli.dev import agent_state, launch, poller, tmux_ops
 from agent_cli.dev.agent_state import inject_completion_hook
+from agent_cli.dev.terminals.tmux import Tmux
 
 runner = CliRunner(env={"NO_COLOR": "1", "TERM": "dumb"})
 
@@ -133,12 +135,48 @@ class TestAgentState:
         assert "my-project" in slug
         assert "/" not in slug
 
+    def test_repo_slug_avoids_cross_clone_collisions(self) -> None:
+        """Distinct roots with same tail produce different slugs."""
+        slug1 = agent_state._repo_slug(Path("/Users/alice/Work/my-project"))
+        slug2 = agent_state._repo_slug(Path("/Volumes/external/Work/my-project"))
+        assert slug1 != slug2
+
     def test_load_empty_state(self, tmp_path: Path) -> None:
         """Returns empty state when no file exists."""
         with patch.object(agent_state, "STATE_BASE", tmp_path / ".cache"):
             state = agent_state.load_state(tmp_path / "repo")
             assert state.agents == {}
             assert state.last_poll_at == 0.0
+
+    def test_load_legacy_state_file(self, tmp_path: Path) -> None:
+        """Loads state from legacy non-hashed slug path."""
+        with patch.object(agent_state, "STATE_BASE", tmp_path / ".cache"):
+            repo = tmp_path / "repo"
+            legacy_path = agent_state._legacy_state_file_path(repo)
+            legacy_path.parent.mkdir(parents=True, exist_ok=True)
+            legacy_path.write_text(
+                json.dumps(
+                    {
+                        "repo_root": str(repo),
+                        "agents": {
+                            "legacy-agent": {
+                                "name": "legacy-agent",
+                                "pane_id": "%42",
+                                "worktree_path": str(tmp_path / "wt"),
+                                "agent_type": "claude",
+                                "started_at": 123.0,
+                                "status": "running",
+                                "last_output_hash": "",
+                                "last_change_at": 123.0,
+                            },
+                        },
+                        "last_poll_at": 0.0,
+                    },
+                ),
+            )
+
+            state = agent_state.load_state(repo)
+            assert "legacy-agent" in state.agents
 
     def test_save_and_load_state(self, tmp_path: Path) -> None:
         """Round-trips state through JSON."""
@@ -219,6 +257,24 @@ class TestAgentState:
                     explicit_name="reviewer",
                 )
 
+    def test_generate_agent_name_allows_reuse_after_done(self, tmp_path: Path) -> None:
+        """Explicit names can be reused when prior run is terminal."""
+        with patch.object(agent_state, "STATE_BASE", tmp_path / ".cache"):
+            repo = tmp_path / "repo"
+            agent_state.register_agent(repo, "reviewer", "%1", tmp_path / "auth", "claude")
+
+            state = agent_state.load_state(repo)
+            state.agents["reviewer"].status = "done"
+            agent_state.save_state(repo, state)
+
+            name = agent_state.generate_agent_name(
+                repo,
+                tmp_path / "auth",
+                "claude",
+                explicit_name="reviewer",
+            )
+            assert name == "reviewer"
+
     def test_load_corrupt_state(self, tmp_path: Path) -> None:
         """Returns empty state on corrupt JSON."""
         with patch.object(agent_state, "STATE_BASE", tmp_path / ".cache"):
@@ -227,6 +283,106 @@ class TestAgentState:
             path.write_text("not valid json{{{")
             state = agent_state.load_state(tmp_path / "repo")
             assert state.agents == {}
+
+
+# ---------------------------------------------------------------------------
+# launch/poller regression tests
+# ---------------------------------------------------------------------------
+
+
+class TestLaunchTracking:
+    """Tests for tracked launch edge cases."""
+
+    def test_tracked_launch_validates_name_before_opening_tmux_window(self, tmp_path: Path) -> None:
+        """Duplicate tracked name should fail without creating a tmux window."""
+        agent = MagicMock()
+        agent.name = "claude"
+        agent.launch_command.return_value = ["claude"]
+
+        with (
+            patch("agent_cli.dev.launch.terminals.detect_current_terminal", return_value=Tmux()),
+            patch("agent_cli.dev.launch.worktree.get_main_repo_root", return_value=tmp_path),
+            patch("agent_cli.dev.launch.worktree.get_current_branch", return_value="feature"),
+            patch(
+                "agent_cli.dev.agent_state.generate_agent_name",
+                side_effect=ValueError("name exists"),
+            ),
+            patch("agent_cli.dev.tmux_ops.open_window_with_pane_id") as mock_open_window,
+        ):
+            with pytest.raises(typer.Exit) as exc:
+                launch.launch_agent(tmp_path, agent, track=True, agent_name="reviewer")
+            assert exc.value.exit_code == 1
+            mock_open_window.assert_not_called()
+
+    def test_tracked_claude_launch_clears_stale_done_file(self, tmp_path: Path) -> None:
+        """Tracked Claude launch removes stale completion sentinel before spawn."""
+        done_path = tmp_path / ".claude" / "DONE"
+        done_path.parent.mkdir(parents=True, exist_ok=True)
+        done_path.write_text("stale\n")
+
+        agent = MagicMock()
+        agent.name = "claude"
+        agent.launch_command.return_value = ["claude"]
+
+        with (
+            patch("agent_cli.dev.launch.terminals.detect_current_terminal", return_value=Tmux()),
+            patch("agent_cli.dev.launch.worktree.get_main_repo_root", return_value=tmp_path),
+            patch("agent_cli.dev.launch.worktree.get_current_branch", return_value="feature"),
+            patch("agent_cli.dev.agent_state.generate_agent_name", return_value="reviewer"),
+            patch("agent_cli.dev.tmux_ops.open_window_with_pane_id", return_value="%7"),
+            patch("agent_cli.dev.agent_state.register_agent"),
+            patch("agent_cli.dev.agent_state.inject_completion_hook"),
+        ):
+            result = launch.launch_agent(tmp_path, agent, track=True)
+            assert result == "reviewer"
+            assert not done_path.exists()
+
+
+class TestPollerRegression:
+    """Regression tests for completion detection logic."""
+
+    def test_poll_ignores_done_sentinel_for_non_claude_agents(self, tmp_path: Path) -> None:
+        """Non-Claude agents should not be marked done by stale Claude sentinels."""
+        with patch.object(agent_state, "STATE_BASE", tmp_path / ".cache"):
+            repo = tmp_path / "repo"
+            wt = tmp_path / "worktree"
+            done_path = wt / ".claude" / "DONE"
+            done_path.parent.mkdir(parents=True, exist_ok=True)
+            done_path.write_text("stale\n")
+
+            agent_state.register_agent(repo, "worker", "%3", wt, "codex")
+
+            with (
+                patch("agent_cli.dev.tmux_ops.pane_exists", return_value=True),
+                patch("agent_cli.dev.tmux_ops.capture_pane", return_value="output"),
+                patch("agent_cli.dev.tmux_ops.hash_output", return_value="h1"),
+            ):
+                statuses = poller.poll_once(repo)
+                assert statuses["worker"] == "running"
+
+    def test_wait_ignores_done_sentinel_for_non_claude_agents(self, tmp_path: Path) -> None:
+        """wait_for_agent should use quiescence for non-Claude agents even if DONE exists."""
+        with patch.object(agent_state, "STATE_BASE", tmp_path / ".cache"):
+            repo = tmp_path / "repo"
+            wt = tmp_path / "worktree"
+            done_path = wt / ".claude" / "DONE"
+            done_path.parent.mkdir(parents=True, exist_ok=True)
+            done_path.write_text("stale\n")
+
+            agent_state.register_agent(repo, "worker", "%3", wt, "codex")
+
+            # Seed hash so repeated identical output transitions to idle.
+            state = agent_state.load_state(repo)
+            state.agents["worker"].last_output_hash = "h1"
+            agent_state.save_state(repo, state)
+
+            with (
+                patch("agent_cli.dev.tmux_ops.pane_exists", return_value=True),
+                patch("agent_cli.dev.tmux_ops.capture_pane", return_value="output"),
+                patch("agent_cli.dev.tmux_ops.hash_output", return_value="h1"),
+            ):
+                status, _elapsed = poller.wait_for_agent(repo, "worker", timeout=1, interval=0)
+                assert status == "idle"
 
 
 # ---------------------------------------------------------------------------

@@ -13,7 +13,7 @@ from agent_cli.config import load_config
 from agent_cli.core.utils import console
 
 from . import coding_agents, editors, terminals, worktree
-from ._output import success, warn
+from ._output import error, success, warn
 
 if TYPE_CHECKING:
     from .coding_agents.base import CodingAgent
@@ -295,10 +295,18 @@ def launch_agent(
         if isinstance(terminal, Tmux) and track:
             from . import agent_state, tmux_ops  # noqa: PLC0415
 
+            root = repo_root or path
+            try:
+                name = agent_state.generate_agent_name(root, path, agent.name, agent_name)
+            except ValueError as exc:
+                error(str(exc))
+
+            # Remove stale completion sentinel before launching a new tracked Claude run.
+            if agent.name == "claude":
+                (path / ".claude" / "DONE").unlink(missing_ok=True)
+
             pane_id = tmux_ops.open_window_with_pane_id(path, full_cmd, tab_name=tab_name)
             if pane_id:
-                root = repo_root or path
-                name = agent_state.generate_agent_name(root, path, agent.name, agent_name)
                 agent_state.register_agent(root, name, pane_id, path, agent.name)
                 agent_state.inject_completion_hook(path, agent.name)
                 success(f"Started {agent.name} in new tmux tab (tracking as [cyan]{name}[/cyan])")

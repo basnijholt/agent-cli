@@ -6,7 +6,9 @@ import json
 import os
 import re
 import time
+from contextlib import suppress
 from dataclasses import asdict, dataclass, field
+from hashlib import sha256
 from pathlib import Path
 from typing import Literal
 
@@ -39,7 +41,18 @@ class AgentStateFile:
 
 
 def _repo_slug(repo_root: Path) -> str:
-    """Convert a repo root path to a filesystem-safe slug."""
+    """Convert a repo root path to a filesystem-safe slug.
+
+    Includes a short path hash to avoid collisions between repositories with
+    the same trailing directory names.
+    """
+    slug = _legacy_repo_slug(repo_root)
+    digest = sha256(str(repo_root.expanduser().resolve()).encode()).hexdigest()[:10]
+    return f"{slug}_{digest}"
+
+
+def _legacy_repo_slug(repo_root: Path) -> str:
+    """Legacy slug format used before path hashing."""
     # Use the last two path components for readability, e.g. "Work_my-project"
     parts = repo_root.parts[-2:]
     slug = "_".join(parts)
@@ -57,15 +70,15 @@ def _state_file_path(repo_root: Path) -> Path:
     return _state_dir(repo_root) / "agents.json"
 
 
-def load_state(repo_root: Path) -> AgentStateFile:
-    """Load agent state from disk.
+def _legacy_state_file_path(repo_root: Path) -> Path:
+    """Return the pre-hash legacy path for agents.json."""
+    return STATE_BASE / _legacy_repo_slug(repo_root) / "agents.json"
 
-    Returns an empty state if the file does not exist or is corrupt.
-    """
-    path = _state_file_path(repo_root)
+
+def _load_state_from_path(path: Path, repo_root: Path) -> AgentStateFile | None:
+    """Load state from one path, returning ``None`` when unavailable."""
     if not path.exists():
-        return AgentStateFile(repo_root=str(repo_root))
-
+        return None
     try:
         data = json.loads(path.read_text())
         agents = {}
@@ -76,8 +89,27 @@ def load_state(repo_root: Path) -> AgentStateFile:
             agents=agents,
             last_poll_at=data.get("last_poll_at", 0.0),
         )
-    except (json.JSONDecodeError, TypeError, KeyError):
-        return AgentStateFile(repo_root=str(repo_root))
+    except (OSError, json.JSONDecodeError, TypeError, KeyError):
+        return None
+
+
+def load_state(repo_root: Path) -> AgentStateFile:
+    """Load agent state from disk.
+
+    Returns an empty state if the file does not exist or is corrupt.
+    """
+    state = _load_state_from_path(_state_file_path(repo_root), repo_root)
+    if state is not None:
+        return state
+
+    # Backward compatibility with pre-hash state path.
+    legacy_state = _load_state_from_path(_legacy_state_file_path(repo_root), repo_root)
+    if legacy_state is not None:
+        with suppress(OSError):
+            save_state(repo_root, legacy_state)
+        return legacy_state
+
+    return AgentStateFile(repo_root=str(repo_root))
 
 
 def save_state(repo_root: Path, state: AgentStateFile) -> None:
@@ -104,6 +136,11 @@ def register_agent(
 ) -> TrackedAgent:
     """Register a new tracked agent in the state file."""
     state = load_state(repo_root)
+    # Keep only active agents; terminal entries should not reserve names forever.
+    for existing_name in list(state.agents):
+        if state.agents[existing_name].status in ("done", "dead"):
+            del state.agents[existing_name]
+
     now = time.time()
     agent = TrackedAgent(
         name=name,
@@ -139,11 +176,16 @@ def generate_agent_name(
 ) -> str:
     """Generate a unique agent name.
 
-    If *explicit_name* is given, uses that (raises if it collides).
+    If *explicit_name* is given, uses that (raises if it collides with an active
+    agent).
     Otherwise auto-generates from the worktree branch name.
     """
     state = load_state(repo_root)
-    existing = set(state.agents.keys())
+    existing = {
+        name
+        for name, existing_agent in state.agents.items()
+        if existing_agent.status in ("running", "idle")
+    }
 
     if explicit_name:
         if explicit_name in existing:

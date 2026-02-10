@@ -14,10 +14,11 @@ def _check_agent_status(agent: agent_state.TrackedAgent, now: float) -> None:
         agent.status = "dead"
         return
 
-    done_path = Path(agent.worktree_path) / ".claude" / "DONE"
-    if done_path.exists():
-        agent.status = "done"
-        return
+    if agent.agent_type == "claude":
+        done_path = Path(agent.worktree_path) / ".claude" / "DONE"
+        if done_path.exists():
+            agent.status = "done"
+            return
 
     output = tmux_ops.capture_pane(agent.pane_id)
     if output is not None:
