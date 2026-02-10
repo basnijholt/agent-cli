@@ -913,9 +913,9 @@ def start_agent(
 
     if tab:
         # Launch in a new tmux tab with tracking
-        from . import agent_state as _agent_state  # noqa: PLC0415
+        from . import tmux_ops  # noqa: PLC0415
 
-        if not _agent_state.is_tmux():
+        if not tmux_ops.is_tmux():
             error("Agent tracking requires tmux. Start a tmux session first.")
         launch_agent(
             wt.path,

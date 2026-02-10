@@ -51,14 +51,9 @@ def _repo_slug(repo_root: Path) -> str:
     return f"{slug}_{digest}"
 
 
-def _state_dir(repo_root: Path) -> Path:
-    """Return the state directory for a repo."""
-    return STATE_BASE / _repo_slug(repo_root)
-
-
 def _state_file_path(repo_root: Path) -> Path:
     """Return the path to the agents.json state file."""
-    return _state_dir(repo_root) / "agents.json"
+    return STATE_BASE / _repo_slug(repo_root) / "agents.json"
 
 
 def load_state(repo_root: Path) -> AgentStateFile:
@@ -129,11 +124,6 @@ def register_agent(
 ) -> TrackedAgent:
     """Register a new tracked agent in the state file."""
     state = load_state(repo_root)
-    # Keep only active agents; terminal entries should not reserve names forever.
-    for existing_name in list(state.agents):
-        if state.agents[existing_name].status in ("done", "dead", "quiet"):
-            del state.agents[existing_name]
-
     now = time.time()
     agent = TrackedAgent(
         name=name,
@@ -241,21 +231,3 @@ def inject_completion_hook(worktree_path: Path, agent_type: str, agent_name: str
         },
     )
     settings_path.write_text(json.dumps(settings, indent=2) + "\n")
-
-
-def is_tmux() -> bool:
-    """Check if tmux is available (inside a session or server is reachable)."""
-    if os.environ.get("TMUX"):
-        return True
-    # Not inside tmux, but check if a tmux server is running
-    import subprocess  # noqa: PLC0415
-
-    try:
-        subprocess.run(
-            ["tmux", "list-sessions"],  # noqa: S607
-            check=True,
-            capture_output=True,
-        )
-        return True
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        return False

@@ -3,11 +3,28 @@
 from __future__ import annotations
 
 import hashlib
+import os
 import subprocess
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from pathlib import Path
+
+
+def is_tmux() -> bool:
+    """Check if tmux is available (inside a session or server is reachable)."""
+    if os.environ.get("TMUX"):
+        return True
+    # Not inside tmux, but check if a tmux server is running
+    try:
+        subprocess.run(
+            ["tmux", "list-sessions"],  # noqa: S607
+            check=True,
+            capture_output=True,
+        )
+        return True
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        return False
 
 
 def open_window_with_pane_id(
