@@ -34,6 +34,7 @@ from .project import (
 )
 
 if TYPE_CHECKING:
+    from . import agent_state
     from .coding_agents.base import CodingAgent
     from .editors.base import Editor
 
@@ -370,21 +371,23 @@ def _launch_agent(
     prompt: str | None = None,
     task_file: Path | None = None,
     env: dict[str, str] | None = None,
-) -> None:
+    *,
+    track: bool = True,
+    agent_name: str | None = None,
+) -> str | None:
     """Launch agent in a new terminal tab.
 
     Agents are interactive TUIs that need a proper terminal.
     Priority: tmux/zellij tab > terminal tab > print instructions.
 
-    Args:
-        path: Directory to launch the agent in
-        agent: The coding agent to launch
-        extra_args: Additional CLI arguments for the agent
-        prompt: Optional initial prompt (used when task_file is not available)
-        task_file: Path to file containing the prompt (preferred, avoids shell quoting issues)
-        env: Environment variables to set for the agent
+    When *track* is ``True`` and tmux is detected, the agent is registered
+    in the orchestration state file so it can be monitored with ``dev poll``,
+    ``dev output``, ``dev send``, and ``dev wait``.
 
+    Returns the tracked agent name if tracking was successful, else ``None``.
     """
+    from .terminals.tmux import Tmux  # noqa: PLC0415
+
     terminal = terminals.detect_current_terminal()
 
     # Use wrapper script when opening in a terminal tab - all terminals pass commands
@@ -404,10 +407,25 @@ def _launch_agent(
         branch = worktree.get_current_branch(path)
         repo_name = repo_root.name if repo_root else path.name
         tab_name = f"{repo_name}@{branch}" if branch else repo_name
-        if terminal.open_new_tab(path, full_cmd, tab_name=tab_name):
+
+        # Use tmux_ops for tracked launch when in tmux
+        if isinstance(terminal, Tmux) and track:
+            from . import agent_state, tmux_ops  # noqa: PLC0415
+
+            pane_id = tmux_ops.open_window_with_pane_id(path, full_cmd, tab_name=tab_name)
+            if pane_id:
+                root = repo_root or path
+                name = agent_state.generate_agent_name(root, path, agent.name, agent_name)
+                agent_state.register_agent(root, name, pane_id, path, agent.name)
+                _inject_completion_hook(path, agent.name)
+                _success(f"Started {agent.name} in new tmux tab (tracking as [cyan]{name}[/cyan])")
+                return name
+            _warn("Could not open new tmux window")
+        elif terminal.open_new_tab(path, full_cmd, tab_name=tab_name):
             _success(f"Started {agent.name} in new {terminal.name} tab")
-            return
-        _warn(f"Could not open new tab in {terminal.name}")
+            return None
+        else:
+            _warn(f"Could not open new tab in {terminal.name}")
 
     # No terminal detected or failed - print instructions
     if _is_ssh_session():
@@ -417,6 +435,39 @@ def _launch_agent(
         console.print(f"\n[bold]To start {agent.name}:[/bold]")
     console.print(f"  cd {path}")
     console.print(f"  {full_cmd}")
+    return None
+
+
+def _inject_completion_hook(worktree_path: Path, agent_type: str) -> None:
+    """Inject a Stop hook into .claude/settings.json for completion detection.
+
+    Only applies to Claude Code agents. Merges with existing settings.
+    """
+    if agent_type != "claude":
+        return
+
+    settings_path = worktree_path / ".claude" / "settings.json"
+    settings_path.parent.mkdir(parents=True, exist_ok=True)
+
+    settings: dict = {}
+    if settings_path.exists():
+        try:
+            settings = json.loads(settings_path.read_text())
+        except json.JSONDecodeError:
+            settings = {}
+
+    # Merge Stop hook
+    hooks = settings.setdefault("hooks", {})
+    stop_hooks = hooks.setdefault("Stop", [])
+
+    # Check if our hook is already present
+    sentinel_cmd = "touch .claude/DONE"
+    for entry in stop_hooks:
+        if sentinel_cmd in entry.get("hooks", []):
+            return  # Already injected
+
+    stop_hooks.append({"matcher": "", "hooks": [sentinel_cmd]})
+    settings_path.write_text(json.dumps(settings, indent=2) + "\n")
 
 
 @app.command("new")
@@ -1122,17 +1173,34 @@ def start_agent(
             readable=True,
         ),
     ] = None,
+    tab: Annotated[
+        bool,
+        typer.Option(
+            "--tab",
+            help="Launch in a new tmux tab (tracked) instead of the current terminal",
+        ),
+    ] = False,
+    tracked_name: Annotated[
+        str | None,
+        typer.Option(
+            "--name",
+            help="Explicit name for tracking (used with --tab). Auto-generated if omitted",
+        ),
+    ] = None,
 ) -> None:
     """Start an AI coding agent in an existing dev environment.
 
-    Launches the agent directly in your current terminal (not a new tab).
-    Use this when the worktree already exists and you want to start/resume work.
+    By default, launches the agent directly in your current terminal.
+    With ``--tab``, launches in a new tmux tab with orchestration tracking
+    (can then use ``dev poll``, ``dev output``, ``dev send``, ``dev wait``).
 
     **Examples:**
 
-    - `dev agent my-feature` — Start auto-detected agent in worktree
+    - `dev agent my-feature` — Start agent in current terminal
     - `dev agent my-feature -a claude` — Start Claude specifically
     - `dev agent my-feature -p "Continue the auth refactor"` — Start with a task
+    - `dev agent my-feature --tab` — Start in new tracked tmux tab
+    - `dev agent my-feature --tab --name reviewer -p "Review the changes"` — Named tracked agent
     """
     # Handle prompt-file option (takes precedence over --prompt)
     if prompt_file is not None:
@@ -1160,12 +1228,29 @@ def start_agent(
         _error(f"{agent.name} is not installed. Install from: {agent.install_url}")
 
     # Write prompt to worktree (makes task available to the agent)
+    task_file = None
     if prompt:
         task_file = _write_prompt_to_worktree(wt.path, prompt)
         _success(f"Wrote task to {task_file.relative_to(wt.path)}")
 
     merged_args = _merge_agent_args(agent, agent_args)
     agent_env = _get_agent_env(agent)
+
+    if tab:
+        # Launch in a new tmux tab with tracking
+        _ensure_tmux()
+        _launch_agent(
+            wt.path,
+            agent,
+            merged_args,
+            prompt,
+            task_file,
+            agent_env,
+            track=True,
+            agent_name=tracked_name,
+        )
+        return
+
     _info(f"Starting {agent.name} in {wt.path}...")
     try:
         os.chdir(wt.path)
@@ -1805,3 +1890,362 @@ def install_skill(
     console.print("[dim]Skill files:[/dim]")
     for f in sorted(skill_dest.iterdir()):
         console.print(f"  • {f.name}")
+
+
+# ---------------------------------------------------------------------------
+# Orchestration commands (tmux-only)
+# ---------------------------------------------------------------------------
+
+
+def _ensure_tmux() -> None:
+    """Exit with an error if not running inside tmux."""
+    if not os.environ.get("TMUX"):
+        _error("Agent tracking requires tmux. Start a tmux session first.")
+
+
+def _lookup_agent(name: str) -> tuple[Path, agent_state.TrackedAgent]:
+    """Look up a tracked agent by name. Exits on error."""
+    from . import agent_state  # noqa: PLC0415
+
+    repo_root = _ensure_git_repo()
+    state = agent_state.load_state(repo_root)
+    agent = state.agents.get(name)
+    if agent is None:
+        _error(f"Agent '{name}' not found. Run 'dev poll' to see tracked agents.")
+    return repo_root, agent
+
+
+def _format_duration(seconds: float) -> str:
+    """Format seconds into a human-readable duration."""
+    if seconds < 60:  # noqa: PLR2004
+        return f"{int(seconds)}s"
+    minutes = int(seconds // 60)
+    secs = int(seconds % 60)
+    if minutes < 60:  # noqa: PLR2004
+        return f"{minutes}m {secs}s"
+    hours = int(minutes // 60)
+    mins = minutes % 60
+    return f"{hours}h {mins}m"
+
+
+def _status_style(status: str) -> str:
+    """Return a Rich-styled status string."""
+    styles = {
+        "running": "[bold green]running[/bold green]",
+        "idle": "[bold yellow]idle[/bold yellow]",
+        "done": "[bold cyan]done[/bold cyan]",
+        "dead": "[bold red]dead[/bold red]",
+    }
+    return styles.get(status, status)
+
+
+@app.command("poll")
+def poll_cmd(
+    json_output: Annotated[
+        bool,
+        typer.Option("--json", help="Output as JSON"),
+    ] = False,
+) -> None:
+    """Check status of all tracked agents.
+
+    Performs a single poll of all tracked agents (checks tmux panes,
+    output quiescence, and completion sentinels) then displays results.
+
+    **Status values:**
+
+    - **running** — Agent output is still changing
+    - **idle** — Agent output has not changed since last poll
+    - **done** — Agent wrote a completion sentinel (.claude/DONE)
+    - **dead** — tmux pane no longer exists
+
+    **Examples:**
+
+    - `dev poll` — Show status table
+    - `dev poll --json` — Machine-readable output
+    """
+    import time  # noqa: PLC0415
+
+    from . import agent_state, tmux_ops  # noqa: PLC0415
+
+    _ensure_tmux()
+    repo_root = _ensure_git_repo()
+    state = agent_state.load_state(repo_root)
+
+    if not state.agents:
+        _info("No tracked agents. Launch one with 'dev new -a' or 'dev agent --tab'.")
+        return
+
+    now = time.time()
+
+    # Poll each agent
+    for agent in state.agents.values():
+        # Check if pane still exists
+        if not tmux_ops.pane_exists(agent.pane_id):
+            agent.status = "dead"
+            continue
+
+        # Check for completion sentinel (Claude Code hook)
+        done_path = Path(agent.worktree_path) / ".claude" / "DONE"
+        if done_path.exists():
+            agent.status = "done"
+            continue
+
+        # Quiescence detection: compare output hash
+        output = tmux_ops.capture_pane(agent.pane_id)
+        if output is not None:
+            h = tmux_ops.hash_output(output)
+            if h != agent.last_output_hash:
+                agent.last_output_hash = h
+                agent.last_change_at = now
+                agent.status = "running"
+            else:
+                agent.status = "idle"
+
+    state.last_poll_at = now
+    agent_state.save_state(repo_root, state)
+
+    if json_output:
+        data = {
+            "agents": [
+                {
+                    "name": a.name,
+                    "status": a.status,
+                    "agent_type": a.agent_type,
+                    "worktree_path": a.worktree_path,
+                    "pane_id": a.pane_id,
+                    "started_at": a.started_at,
+                    "duration_seconds": round(now - a.started_at),
+                    "last_change_at": a.last_change_at,
+                }
+                for a in state.agents.values()
+            ],
+            "last_poll_at": state.last_poll_at,
+        }
+        print(json.dumps(data, indent=2))
+        return
+
+    table = Table(title="Agent Status")
+    table.add_column("Name", style="cyan")
+    table.add_column("Status")
+    table.add_column("Agent", style="dim")
+    table.add_column("Worktree", style="dim")
+    table.add_column("Duration", style="dim")
+
+    for a in state.agents.values():
+        table.add_row(
+            a.name,
+            _status_style(a.status),
+            a.agent_type,
+            Path(a.worktree_path).name,
+            _format_duration(now - a.started_at),
+        )
+
+    console.print(table)
+
+    # Summary line
+    total = len(state.agents)
+    by_status: dict[str, int] = {}
+    for a in state.agents.values():
+        by_status[a.status] = by_status.get(a.status, 0) + 1
+    parts = [f"{total} agent{'s' if total != 1 else ''}"]
+    parts.extend(
+        f"{count} {status}"
+        for status in ("running", "idle", "done", "dead")
+        if (count := by_status.get(status, 0))
+    )
+    console.print(f"\n[dim]{' · '.join(parts)}[/dim]")
+
+
+@app.command("output")
+def output_cmd(
+    name: Annotated[
+        str,
+        typer.Argument(help="Agent name (from 'dev poll')"),
+    ],
+    lines: Annotated[
+        int,
+        typer.Option("--lines", "-n", help="Number of lines to capture"),
+    ] = 50,
+    follow: Annotated[
+        bool,
+        typer.Option("--follow", "-f", help="Continuously stream output (Ctrl+C to stop)"),
+    ] = False,
+) -> None:
+    """Get recent terminal output from a tracked agent.
+
+    Captures the last N lines from the agent's tmux pane.
+
+    **Examples:**
+
+    - `dev output my-feature` — Last 50 lines
+    - `dev output my-feature -n 200` — Last 200 lines
+    - `dev output my-feature -f` — Follow output continuously
+    """
+    import time as _time  # noqa: PLC0415
+
+    from . import tmux_ops  # noqa: PLC0415
+
+    _ensure_tmux()
+    _repo_root, agent = _lookup_agent(name)
+
+    if agent.status == "dead":
+        _error(f"Agent '{name}' is dead (tmux pane closed). No output available.")
+
+    if not follow:
+        output = tmux_ops.capture_pane(agent.pane_id, lines)
+        if output is None:
+            _error(f"Could not capture output from pane {agent.pane_id}")
+        print(output, end="")
+        return
+
+    # Follow mode
+    try:
+        prev = ""
+        while True:
+            output = tmux_ops.capture_pane(agent.pane_id, lines)
+            if output is None:
+                _warn("Pane closed.")
+                break
+            if output != prev:
+                # Clear and reprint (simple approach)
+                print(output, end="", flush=True)
+                prev = output
+            _time.sleep(1.0)
+    except KeyboardInterrupt:
+        pass
+
+
+@app.command("send")
+def send_cmd(
+    name: Annotated[
+        str,
+        typer.Argument(help="Agent name (from 'dev poll')"),
+    ],
+    message: Annotated[
+        str,
+        typer.Argument(help="Text to send to the agent's terminal"),
+    ],
+    no_enter: Annotated[
+        bool,
+        typer.Option("--no-enter", help="Don't press Enter after sending"),
+    ] = False,
+) -> None:
+    """Send text input to a running agent's terminal.
+
+    Types the message into the agent's tmux pane using ``tmux send-keys``.
+    By default, presses Enter after the message.
+
+    **Examples:**
+
+    - `dev send my-feature "Fix the failing tests"` — Send a message
+    - `dev send my-feature "/exit" --no-enter` — Send without pressing Enter
+    """
+    from . import tmux_ops  # noqa: PLC0415
+
+    _ensure_tmux()
+    _repo_root, agent = _lookup_agent(name)
+
+    if agent.status == "dead":
+        _error(f"Agent '{name}' is dead (tmux pane closed). Cannot send messages.")
+
+    if tmux_ops.send_keys(agent.pane_id, message, enter=not no_enter):
+        _success(f"Sent message to {name}")
+    else:
+        _error(f"Failed to send message to pane {agent.pane_id}")
+
+
+@app.command("wait")
+def wait_cmd(
+    name: Annotated[
+        str,
+        typer.Argument(help="Agent name (from 'dev poll')"),
+    ],
+    timeout: Annotated[
+        float,
+        typer.Option("--timeout", "-t", help="Timeout in seconds (0 = no timeout)"),
+    ] = 0,
+    interval: Annotated[
+        float,
+        typer.Option("--interval", "-i", help="Poll interval in seconds"),
+    ] = 5.0,
+) -> None:
+    """Block until a tracked agent finishes.
+
+    Polls the agent's tmux pane until it reaches idle, done, or dead status.
+    Useful for orchestration: launch an agent, wait for it, then act on results.
+
+    **Exit codes:**
+
+    - 0 — Agent finished (idle or done)
+    - 1 — Agent died (pane closed unexpectedly)
+    - 2 — Timeout reached
+
+    **Examples:**
+
+    - `dev wait my-feature` — Wait indefinitely
+    - `dev wait my-feature --timeout 300` — Wait up to 5 minutes
+    - `dev wait my-feature -i 2` — Poll every 2 seconds
+    """
+    import time as _time  # noqa: PLC0415
+
+    from . import agent_state, tmux_ops  # noqa: PLC0415
+
+    _ensure_tmux()
+    repo_root, agent = _lookup_agent(name)
+
+    if agent.status in ("done", "dead", "idle"):
+        console.print(f"Agent '{name}' is already {_status_style(agent.status)}")
+        raise typer.Exit(0 if agent.status != "dead" else 1)
+
+    _info(f"Waiting for agent '{name}' to finish (polling every {interval}s)...")
+
+    start = _time.time()
+    consecutive_idle = 0
+
+    while True:
+        elapsed = _time.time() - start
+        if timeout > 0 and elapsed >= timeout:
+            _warn(f"Timeout after {_format_duration(elapsed)}")
+            raise typer.Exit(2)
+
+        # Check pane existence
+        if not tmux_ops.pane_exists(agent.pane_id):
+            agent.status = "dead"
+            state = agent_state.load_state(repo_root)
+            if name in state.agents:
+                state.agents[name].status = "dead"
+                agent_state.save_state(repo_root, state)
+            _warn(f"Agent '{name}' died (pane closed) after {_format_duration(elapsed)}")
+            raise typer.Exit(1)
+
+        # Check completion sentinel
+        done_path = Path(agent.worktree_path) / ".claude" / "DONE"
+        if done_path.exists():
+            state = agent_state.load_state(repo_root)
+            if name in state.agents:
+                state.agents[name].status = "done"
+                agent_state.save_state(repo_root, state)
+            _success(f"Agent '{name}' completed after {_format_duration(elapsed)}")
+            raise typer.Exit(0)
+
+        # Quiescence detection
+        output = tmux_ops.capture_pane(agent.pane_id)
+        if output is not None:
+            h = tmux_ops.hash_output(output)
+            if h == agent.last_output_hash:
+                consecutive_idle += 1
+            else:
+                consecutive_idle = 0
+                agent.last_output_hash = h
+                agent.last_change_at = _time.time()
+
+        # Require 2 consecutive idle polls to confirm
+        if consecutive_idle >= 2:  # noqa: PLR2004
+            state = agent_state.load_state(repo_root)
+            if name in state.agents:
+                state.agents[name].status = "idle"
+                agent_state.save_state(repo_root, state)
+            _success(f"Agent '{name}' is idle after {_format_duration(elapsed)}")
+            raise typer.Exit(0)
+
+        _time.sleep(interval)
