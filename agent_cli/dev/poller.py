@@ -18,7 +18,7 @@ def _check_agent_status(agent: agent_state.TrackedAgent) -> None:
         return
 
     if agent.agent_type == "claude":
-        done_path = Path(agent.worktree_path) / ".claude" / "DONE"
+        done_path = agent_state.sentinel_path(Path(agent.worktree_path), agent.name)
         if done_path.exists():
             agent.status = "done"
             return

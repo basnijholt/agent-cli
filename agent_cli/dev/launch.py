@@ -269,8 +269,6 @@ def launch_agent(
 
     Returns the tracked agent name if tracking was successful, else ``None``.
     """
-    from .terminals.tmux import Tmux  # noqa: PLC0415
-
     terminal = terminals.detect_current_terminal()
 
     # Use wrapper script when opening in a terminal tab - all terminals pass commands
@@ -291,8 +289,8 @@ def launch_agent(
         repo_name = repo_root.name if repo_root else path.name
         tab_name = f"{repo_name}@{branch}" if branch else repo_name
 
-        # Use tmux_ops for tracked launch when in tmux
-        if isinstance(terminal, Tmux) and track:
+        # Use tmux_ops for tracked launch (tmux server must be reachable)
+        if track:
             from . import agent_state, tmux_ops  # noqa: PLC0415
 
             root = repo_root or path
@@ -303,12 +301,12 @@ def launch_agent(
 
             # Remove stale completion sentinel before launching a new tracked Claude run.
             if agent.name == "claude":
-                (path / ".claude" / "DONE").unlink(missing_ok=True)
+                agent_state.sentinel_path(path, name).unlink(missing_ok=True)
 
             pane_id = tmux_ops.open_window_with_pane_id(path, full_cmd, tab_name=tab_name)
             if pane_id:
                 agent_state.register_agent(root, name, pane_id, path, agent.name)
-                agent_state.inject_completion_hook(path, agent.name)
+                agent_state.inject_completion_hook(path, agent.name, name)
                 success(f"Started {agent.name} in new tmux tab (tracking as [cyan]{name}[/cyan])")
                 return name
             warn("Could not open new tmux window")

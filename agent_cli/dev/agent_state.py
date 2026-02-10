@@ -189,10 +189,17 @@ def generate_agent_name(
     return f"{candidate}-{n}"
 
 
-def inject_completion_hook(worktree_path: Path, agent_type: str) -> None:
+def sentinel_path(worktree_path: Path, agent_name: str) -> Path:
+    """Return the completion sentinel path for a tracked agent."""
+    return worktree_path / ".claude" / f"DONE-{agent_name}"
+
+
+def inject_completion_hook(worktree_path: Path, agent_type: str, agent_name: str) -> None:
     """Inject a Stop hook into .claude/settings.local.json for completion detection.
 
     Uses settings.local.json (not settings.json) to avoid dirtying tracked files.
+    The sentinel file is unique per tracked agent name to avoid collisions when
+    multiple Claude sessions share the same worktree.
     Only applies to Claude Code agents. Merges with existing settings.
     """
     if agent_type != "claude":
@@ -220,7 +227,7 @@ def inject_completion_hook(worktree_path: Path, agent_type: str) -> None:
         hooks["Stop"] = stop_hooks
 
     # Check if our hook is already present
-    sentinel_cmd = "touch .claude/DONE"
+    sentinel_cmd = f"touch .claude/DONE-{agent_name}"
     for entry in stop_hooks:
         for hook in entry.get("hooks", []):
             cmd = hook.get("command", "") if isinstance(hook, dict) else hook

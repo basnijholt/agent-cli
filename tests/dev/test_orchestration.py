@@ -329,7 +329,7 @@ class TestLaunchTracking:
 
     def test_tracked_claude_launch_clears_stale_done_file(self, tmp_path: Path) -> None:
         """Tracked Claude launch removes stale completion sentinel before spawn."""
-        done_path = tmp_path / ".claude" / "DONE"
+        done_path = tmp_path / ".claude" / "DONE-reviewer"
         done_path.parent.mkdir(parents=True, exist_ok=True)
         done_path.write_text("stale\n")
 
@@ -699,8 +699,8 @@ class TestInjectCompletionHook:
     """Tests for Claude Code hook injection."""
 
     def test_injects_stop_hook(self, tmp_path: Path) -> None:
-        """Creates .claude/settings.local.json with Stop hook."""
-        inject_completion_hook(tmp_path, "claude")
+        """Creates .claude/settings.local.json with Stop hook unique to agent name."""
+        inject_completion_hook(tmp_path, "claude", "my-agent")
 
         settings_path = tmp_path / ".claude" / "settings.local.json"
         assert settings_path.exists()
@@ -710,7 +710,7 @@ class TestInjectCompletionHook:
         hooks = settings["hooks"]["Stop"]
         assert any(
             any(
-                isinstance(hook, dict) and hook.get("command") == "touch .claude/DONE"
+                isinstance(hook, dict) and hook.get("command") == "touch .claude/DONE-my-agent"
                 for hook in h.get("hooks", [])
             )
             for h in hooks
@@ -722,7 +722,7 @@ class TestInjectCompletionHook:
         settings_path.parent.mkdir(parents=True)
         settings_path.write_text(json.dumps({"model": "opus", "hooks": {"PreToolUse": []}}))
 
-        inject_completion_hook(tmp_path, "claude")
+        inject_completion_hook(tmp_path, "claude", "reviewer")
 
         settings = json.loads(settings_path.read_text())
         assert settings["model"] == "opus"
@@ -731,13 +731,13 @@ class TestInjectCompletionHook:
 
     def test_skips_non_claude_agents(self, tmp_path: Path) -> None:
         """Does nothing for non-Claude agents."""
-        inject_completion_hook(tmp_path, "aider")
+        inject_completion_hook(tmp_path, "aider", "worker")
         assert not (tmp_path / ".claude" / "settings.local.json").exists()
 
     def test_idempotent(self, tmp_path: Path) -> None:
         """Doesn't duplicate hook on repeated calls."""
-        inject_completion_hook(tmp_path, "claude")
-        inject_completion_hook(tmp_path, "claude")
+        inject_completion_hook(tmp_path, "claude", "reviewer")
+        inject_completion_hook(tmp_path, "claude", "reviewer")
 
         settings = json.loads((tmp_path / ".claude" / "settings.local.json").read_text())
         stop_hooks = settings["hooks"]["Stop"]
@@ -745,7 +745,7 @@ class TestInjectCompletionHook:
             1
             for h in stop_hooks
             if any(
-                isinstance(hook, dict) and hook.get("command") == "touch .claude/DONE"
+                isinstance(hook, dict) and hook.get("command") == "touch .claude/DONE-reviewer"
                 for hook in h.get("hooks", [])
             )
         )
@@ -757,7 +757,7 @@ class TestInjectCompletionHook:
         settings_path.parent.mkdir(parents=True)
         settings_path.write_text(json.dumps({"hooks": []}))
 
-        inject_completion_hook(tmp_path, "claude")
+        inject_completion_hook(tmp_path, "claude", "worker")
 
         settings = json.loads(settings_path.read_text())
         assert isinstance(settings["hooks"], dict)
@@ -769,8 +769,24 @@ class TestInjectCompletionHook:
         settings_path.parent.mkdir(parents=True)
         settings_path.write_text(json.dumps({"hooks": {"Stop": "invalid"}}))
 
-        inject_completion_hook(tmp_path, "claude")
+        inject_completion_hook(tmp_path, "claude", "worker")
 
         settings = json.loads(settings_path.read_text())
         assert isinstance(settings["hooks"]["Stop"], list)
         assert len(settings["hooks"]["Stop"]) == 1
+
+    def test_different_agents_get_different_sentinels(self, tmp_path: Path) -> None:
+        """Two agents in the same worktree get distinct sentinel commands."""
+        inject_completion_hook(tmp_path, "claude", "agent-a")
+        inject_completion_hook(tmp_path, "claude", "agent-b")
+
+        settings = json.loads((tmp_path / ".claude" / "settings.local.json").read_text())
+        stop_hooks = settings["hooks"]["Stop"]
+        commands = [
+            hook.get("command", "")
+            for h in stop_hooks
+            for hook in h.get("hooks", [])
+            if isinstance(hook, dict)
+        ]
+        assert "touch .claude/DONE-agent-a" in commands
+        assert "touch .claude/DONE-agent-b" in commands
