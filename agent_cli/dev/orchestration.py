@@ -75,7 +75,7 @@ def _status_style(status: str) -> str:
     return styles.get(status, status)
 
 
-@app.command("poll")
+@app.command("poll", rich_help_panel="Agent Orchestration")
 def poll_cmd(
     json_output: Annotated[
         bool,
@@ -170,7 +170,7 @@ def poll_cmd(
     console.print(f"\n[dim]{' · '.join(parts)}[/dim]")
 
 
-@app.command("output")
+@app.command("output", rich_help_panel="Agent Orchestration")
 def output_cmd(
     name: Annotated[
         str,
@@ -204,7 +204,7 @@ def output_cmd(
     print(output, end="")
 
 
-@app.command("send")
+@app.command("send", rich_help_panel="Agent Orchestration")
 def send_cmd(
     name: Annotated[
         str,
@@ -243,7 +243,7 @@ def send_cmd(
         error(f"Failed to send message to pane {agent.pane_id}")
 
 
-@app.command("wait")
+@app.command("wait", rich_help_panel="Agent Orchestration")
 def wait_cmd(
     name: Annotated[
         str,
