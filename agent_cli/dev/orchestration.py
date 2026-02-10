@@ -180,10 +180,6 @@ def output_cmd(
         int,
         typer.Option("--lines", "-n", help="Number of lines to capture"),
     ] = 50,
-    follow: Annotated[
-        bool,
-        typer.Option("--follow", "-f", help="Continuously stream output (Ctrl+C to stop)"),
-    ] = False,
 ) -> None:
     """Get recent terminal output from a tracked agent.
 
@@ -193,7 +189,6 @@ def output_cmd(
 
     - `dev output my-feature` — Last 50 lines
     - `dev output my-feature -n 200` — Last 200 lines
-    - `dev output my-feature -f` — Follow output continuously
     """
     from . import tmux_ops  # noqa: PLC0415
 
@@ -203,35 +198,10 @@ def output_cmd(
     if agent.status == "dead":
         error(f"Agent '{name}' is dead (tmux pane closed). No output available.")
 
-    if not follow:
-        output = tmux_ops.capture_pane(agent.pane_id, lines)
-        if output is None:
-            error(f"Could not capture output from pane {agent.pane_id}")
-        print(output, end="")
-        return
-
-    # Follow mode: only print new lines that appear since last capture
-    try:
-        prev_lines: list[str] = []
-        while True:
-            output = tmux_ops.capture_pane(agent.pane_id, lines)
-            if output is None:
-                warn("Pane closed.")
-                break
-            cur_lines = output.splitlines(keepends=True)
-            if cur_lines != prev_lines:
-                # Find first diverging line
-                common = 0
-                limit = min(len(prev_lines), len(cur_lines))
-                while common < limit and prev_lines[common] == cur_lines[common]:
-                    common += 1
-                new_content = cur_lines[common:]
-                if new_content:
-                    print("".join(new_content), end="", flush=True)
-                prev_lines = cur_lines
-            time.sleep(1.0)
-    except KeyboardInterrupt:
-        pass
+    output = tmux_ops.capture_pane(agent.pane_id, lines)
+    if output is None:
+        error(f"Could not capture output from pane {agent.pane_id}")
+    print(output, end="")
 
 
 @app.command("send")
