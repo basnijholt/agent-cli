@@ -263,23 +263,13 @@ def launch_agent(
     prompt: str | None = None,
     task_file: Path | None = None,
     env: dict[str, str] | None = None,
-    *,
-    track: bool = True,
-    agent_name: str | None = None,
-) -> str | None:
+) -> None:
     """Launch agent in a new terminal tab.
 
     Agents are interactive TUIs that need a proper terminal.
     Priority: tmux/zellij tab > terminal tab > print instructions.
-
-    When *track* is ``True`` and tmux is detected, the agent is registered
-    in the orchestration state file so it can be monitored with ``dev poll``,
-    ``dev output``, ``dev send``, and ``dev wait``.
-
-    Returns the tracked agent name if tracking was successful, else ``None``.
     """
     from ._output import success, warn  # noqa: PLC0415
-    from .terminals.tmux import Tmux  # noqa: PLC0415
 
     terminal = terminals.detect_current_terminal()
 
@@ -301,24 +291,10 @@ def launch_agent(
         repo_name = repo_root.name if repo_root else path.name
         tab_name = f"{repo_name}@{branch}" if branch else repo_name
 
-        # Use tmux_ops for tracked launch when in tmux
-        if isinstance(terminal, Tmux) and track:
-            from . import agent_state, tmux_ops  # noqa: PLC0415
-
-            pane_id = tmux_ops.open_window_with_pane_id(path, full_cmd, tab_name=tab_name)
-            if pane_id:
-                root = repo_root or path
-                name = agent_state.generate_agent_name(root, path, agent.name, agent_name)
-                agent_state.register_agent(root, name, pane_id, path, agent.name)
-                agent_state.inject_completion_hook(path, agent.name)
-                success(f"Started {agent.name} in new tmux tab (tracking as [cyan]{name}[/cyan])")
-                return name
-            warn("Could not open new tmux window")
-        elif terminal.open_new_tab(path, full_cmd, tab_name=tab_name):
+        if terminal.open_new_tab(path, full_cmd, tab_name=tab_name):
             success(f"Started {agent.name} in new {terminal.name} tab")
-            return None
-        else:
-            warn(f"Could not open new tab in {terminal.name}")
+            return
+        warn(f"Could not open new tab in {terminal.name}")
 
     # No terminal detected or failed - print instructions
     if _is_ssh_session():
@@ -328,4 +304,3 @@ def launch_agent(
         console.print(f"\n[bold]To start {agent.name}:[/bold]")
     console.print(f"  cd {path}")
     console.print(f"  {full_cmd}")
-    return None

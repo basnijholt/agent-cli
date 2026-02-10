@@ -285,8 +285,6 @@ agent-cli dev agent NAME [--agent/-a AGENT] [--agent-args ARGS] [--prompt/-p PRO
 | `--agent-args` | - | Extra CLI args for the agent. Example: --agent-args='--dangerously-skip-permissions' |
 | `--prompt, -p` | - | Initial task for the agent. Saved to .claude/TASK.md. Example: --prompt='Add unit tests for auth' |
 | `--prompt-file, -P` | - | Read the agent prompt from a file instead of command line |
-| `--tab` | `false` | Launch in a new tmux tab (tracked) instead of the current terminal |
-| `--name` | - | Explicit name for tracking (used with --tab). Auto-generated if omitted |
 
 
 <!-- OUTPUT:END -->

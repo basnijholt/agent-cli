@@ -848,34 +848,16 @@ def start_agent(
             readable=True,
         ),
     ] = None,
-    tab: Annotated[
-        bool,
-        typer.Option(
-            "--tab",
-            help="Launch in a new tmux tab (tracked) instead of the current terminal",
-        ),
-    ] = False,
-    tracked_name: Annotated[
-        str | None,
-        typer.Option(
-            "--name",
-            help="Explicit name for tracking (used with --tab). Auto-generated if omitted",
-        ),
-    ] = None,
 ) -> None:
     """Start an AI coding agent in an existing dev environment.
 
-    By default, launches the agent directly in your current terminal.
-    With ``--tab``, launches in a new tmux tab with orchestration tracking
-    (can then use ``dev poll``, ``dev output``, ``dev send``, ``dev wait``).
+    Launches the agent directly in your current terminal.
 
     **Examples:**
 
     - `dev agent my-feature` — Start agent in current terminal
     - `dev agent my-feature -a claude` — Start Claude specifically
     - `dev agent my-feature -p "Continue the auth refactor"` — Start with a task
-    - `dev agent my-feature --tab` — Start in new tracked tmux tab
-    - `dev agent my-feature --tab --name reviewer -p "Review the changes"` — Named tracked agent
     """
     # Handle prompt-file option (takes precedence over --prompt)
     if prompt_file is not None:
@@ -910,24 +892,6 @@ def start_agent(
 
     merged_args = merge_agent_args(agent, agent_args)
     agent_env = get_agent_env(agent)
-
-    if tab:
-        # Launch in a new tmux tab with tracking
-        from . import agent_state as _agent_state  # noqa: PLC0415
-
-        if not _agent_state.is_tmux():
-            error("Agent tracking requires tmux. Start a tmux session first.")
-        launch_agent(
-            wt.path,
-            agent,
-            merged_args,
-            prompt,
-            task_file,
-            agent_env,
-            track=True,
-            agent_name=tracked_name,
-        )
-        return
 
     info(f"Starting {agent.name} in {wt.path}...")
     try:
@@ -1494,7 +1458,3 @@ def install_skill(
     console.print("[dim]Skill files:[/dim]")
     for f in sorted(skill_dest.iterdir()):
         console.print(f"  • {f.name}")
-
-
-# Register orchestration commands (poll, output, send, wait)
-from . import orchestration  # noqa: E402, F401
