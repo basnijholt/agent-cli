@@ -76,9 +76,7 @@ def wait_for_agent(
             return agent.status, elapsed
 
         output = tmux_ops.capture_pane(agent.pane_id)
-        if output is None:
-            consecutive_quiet = 0
-        else:
+        if output is not None:
             output_hash = tmux_ops.hash_output(output)
             if output_hash == previous_output_hash:
                 consecutive_quiet += 1
@@ -86,8 +84,9 @@ def wait_for_agent(
                 previous_output_hash = output_hash
                 consecutive_quiet = 0
 
-        # Require two quiet polls to infer completion for agents without sentinels.
-        if consecutive_quiet >= 2:  # noqa: PLR2004
+        # Require several quiet polls to infer completion for agents without sentinels.
+        # At the default 5s interval, 6 polls = 30s of unchanged output.
+        if consecutive_quiet >= 6:  # noqa: PLR2004
             return "quiet", elapsed
 
         time.sleep(interval)

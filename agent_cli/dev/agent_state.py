@@ -139,19 +139,6 @@ def register_agent(
     return agent
 
 
-def unregister_agent(repo_root: Path, name: str) -> bool:
-    """Remove an agent from the state file.
-
-    Returns ``True`` if the agent was found and removed.
-    """
-    state = load_state(repo_root)
-    if name not in state.agents:
-        return False
-    del state.agents[name]
-    save_state(repo_root, state)
-    return True
-
-
 def generate_agent_name(
     repo_root: Path,
     worktree_path: Path,
@@ -208,7 +195,8 @@ def inject_completion_hook(worktree_path: Path, agent_type: str) -> None:
     settings: dict = {}
     if settings_path.exists():
         try:
-            settings = json.loads(settings_path.read_text())
+            raw = json.loads(settings_path.read_text())
+            settings = raw if isinstance(raw, dict) else {}
         except json.JSONDecodeError:
             settings = {}
 
@@ -219,13 +207,33 @@ def inject_completion_hook(worktree_path: Path, agent_type: str) -> None:
     # Check if our hook is already present
     sentinel_cmd = "touch .claude/DONE"
     for entry in stop_hooks:
-        if sentinel_cmd in entry.get("hooks", []):
-            return  # Already injected
+        for hook in entry.get("hooks", []):
+            cmd = hook.get("command", "") if isinstance(hook, dict) else hook
+            if sentinel_cmd in cmd:
+                return  # Already injected
 
-    stop_hooks.append({"matcher": "", "hooks": [sentinel_cmd]})
+    stop_hooks.append(
+        {
+            "matcher": "",
+            "hooks": [{"type": "command", "command": sentinel_cmd}],
+        },
+    )
     settings_path.write_text(json.dumps(settings, indent=2) + "\n")
 
 
 def is_tmux() -> bool:
-    """Check if we're running inside tmux."""
-    return bool(os.environ.get("TMUX"))
+    """Check if tmux is available (inside a session or server is reachable)."""
+    if os.environ.get("TMUX"):
+        return True
+    # Not inside tmux, but check if a tmux server is running
+    import subprocess  # noqa: PLC0415
+
+    try:
+        subprocess.run(
+            ["tmux", "list-sessions"],  # noqa: S607
+            check=True,
+            capture_output=True,
+        )
+        return True
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        return False

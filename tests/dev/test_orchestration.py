@@ -198,17 +198,6 @@ class TestAgentState:
             assert state.agents["test-agent"].pane_id == "%42"
             assert state.agents["test-agent"].agent_type == "claude"
 
-    def test_unregister_agent(self, tmp_path: Path) -> None:
-        """Removes agent from state."""
-        with patch.object(agent_state, "STATE_BASE", tmp_path / ".cache"):
-            repo = tmp_path / "repo"
-            agent_state.register_agent(repo, "a1", "%1", tmp_path / "wt", "claude")
-            assert agent_state.unregister_agent(repo, "a1") is True
-            assert agent_state.unregister_agent(repo, "a1") is False
-
-            state = agent_state.load_state(repo)
-            assert "a1" not in state.agents
-
     def test_generate_agent_name_first(self, tmp_path: Path) -> None:
         """First agent in worktree uses branch name."""
         with patch.object(agent_state, "STATE_BASE", tmp_path / ".cache"):
@@ -621,7 +610,13 @@ class TestInjectCompletionHook:
         assert "hooks" in settings
         assert "Stop" in settings["hooks"]
         hooks = settings["hooks"]["Stop"]
-        assert any("touch .claude/DONE" in h.get("hooks", []) for h in hooks)
+        assert any(
+            any(
+                isinstance(hook, dict) and hook.get("command") == "touch .claude/DONE"
+                for hook in h.get("hooks", [])
+            )
+            for h in hooks
+        )
 
     def test_merges_with_existing_settings(self, tmp_path: Path) -> None:
         """Preserves existing settings when injecting hook."""
@@ -648,5 +643,12 @@ class TestInjectCompletionHook:
 
         settings = json.loads((tmp_path / ".claude" / "settings.json").read_text())
         stop_hooks = settings["hooks"]["Stop"]
-        sentinel_count = sum(1 for h in stop_hooks if "touch .claude/DONE" in h.get("hooks", []))
+        sentinel_count = sum(
+            1
+            for h in stop_hooks
+            if any(
+                isinstance(hook, dict) and hook.get("command") == "touch .claude/DONE"
+                for hook in h.get("hooks", [])
+            )
+        )
         assert sentinel_count == 1
