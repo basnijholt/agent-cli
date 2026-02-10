@@ -7,7 +7,7 @@ import os
 import shutil
 import subprocess
 from pathlib import Path
-from typing import TYPE_CHECKING, Annotated, Literal, NoReturn
+from typing import Annotated, Literal
 
 import typer
 from rich.panel import Panel
@@ -16,12 +16,13 @@ from rich.table import Table
 from agent_cli.cli import app as main_app
 from agent_cli.cli import set_config_defaults
 from agent_cli.core.process import set_process_title
-from agent_cli.core.utils import console, err_console
+from agent_cli.core.utils import console
 
 from . import coding_agents, editors, terminals, worktree
 from ._branch_name import AGENTS as _BRANCH_NAME_AGENTS
 from ._branch_name import generate_ai_branch_name as _generate_ai_branch_name
 from ._branch_name import generate_random_branch_name as _generate_branch_name
+from ._output import _error, _info, _success, _warn
 from .launch import (
     get_agent_env as _get_agent_env,
 )
@@ -50,9 +51,6 @@ from .project import (
     run_setup,
     setup_direnv,
 )
-
-if TYPE_CHECKING:
-    from . import agent_state
 
 app = typer.Typer(
     name="dev",
@@ -113,34 +111,6 @@ def dev_callback(
         set_process_title(f"dev-{ctx.invoked_subcommand}")
 
 
-def _error(msg: str) -> NoReturn:
-    """Print an error message and exit."""
-    err_console.print(f"[bold red]Error:[/bold red] {msg}")
-    raise typer.Exit(1)
-
-
-def _success(msg: str) -> None:
-    """Print a success message."""
-    console.print(f"[bold green]✓[/bold green] {msg}")
-
-
-def _info(msg: str) -> None:
-    """Print an info message, with special styling for commands."""
-    # Style commands (messages starting with "Running: ")
-    if msg.startswith("Running: "):
-        cmd = msg[9:]  # Remove "Running: " prefix
-        # Escape brackets to prevent Rich from interpreting them as markup
-        cmd = cmd.replace("[", r"\[")
-        console.print(f"[dim]→[/dim] Running: [bold cyan]{cmd}[/bold cyan]")
-    else:
-        console.print(f"[dim]→[/dim] {msg}")
-
-
-def _warn(msg: str) -> None:
-    """Print a warning message."""
-    console.print(f"[yellow]Warning:[/yellow] {msg}")
-
-
 def _ensure_git_repo() -> Path:
     """Ensure we're in a git repository and return the repo root."""
     if not worktree.git_available():
@@ -153,8 +123,107 @@ def _ensure_git_repo() -> Path:
     return repo_root
 
 
+def _resolve_branch_name(
+    branch: str | None,
+    branch_name_mode: str,
+    prompt: str | None,
+    agent_name: str | None,
+    branch_name_agent: str | None,
+    branch_name_timeout: float,
+    repo_root: Path,
+    from_ref: str | None,
+) -> str:
+    """Generate or validate the branch name for a new worktree."""
+    if branch is not None:
+        return branch
+
+    existing = {wt.branch for wt in worktree.list_worktrees() if wt.branch}
+
+    # In auto mode, only use AI naming when we have task context.
+    use_ai = branch_name_mode != "random" and (branch_name_mode != "auto" or bool(prompt))
+
+    if not use_ai:
+        branch = _generate_branch_name(existing, repo_root=repo_root)
+        _info(f"Generated branch name: {branch}")
+        return branch
+
+    effective_agent = branch_name_agent
+    if effective_agent is None and agent_name:
+        candidate = agent_name.lower().strip()
+        if candidate in _BRANCH_NAME_AGENTS:
+            effective_agent = candidate
+
+    branch = _generate_ai_branch_name(
+        repo_root,
+        existing,
+        prompt,
+        from_ref,
+        effective_agent,
+        branch_name_timeout,
+    )
+    if branch:
+        _info(f"AI-generated branch name: {branch}")
+        return branch
+
+    _warn("Could not generate branch name with AI. Falling back to random naming.")
+    branch = _generate_branch_name(existing, repo_root=repo_root)
+    _info(f"Generated branch name: {branch}")
+    return branch
+
+
+def _setup_worktree_env(
+    worktree_path: Path,
+    repo_root: Path,
+    *,
+    copy_env: bool,
+    setup: bool,
+    direnv: bool | None,
+    verbose: bool,
+) -> None:
+    """Copy env files, run project setup, and configure direnv."""
+    if copy_env:
+        copied = copy_env_files(repo_root, worktree_path)
+        if copied:
+            names = ", ".join(f.name for f in copied)
+            _success(f"Copied env file(s): {names}")
+
+    project = None
+    if setup:
+        project = detect_project_type(worktree_path)
+        if project:
+            _info(f"Detected {project.description}")
+            success, output = run_setup(
+                worktree_path,
+                project,
+                on_log=_info,
+                capture_output=not verbose,
+            )
+            if success:
+                _success("Project setup complete")
+            else:
+                _warn(f"Setup failed: {output}")
+
+    use_direnv = direnv if direnv is not None else is_direnv_available()
+    if use_direnv:
+        if is_direnv_available():
+            success, msg = setup_direnv(
+                worktree_path,
+                project,
+                on_log=_info,
+                capture_output=not verbose,
+            )
+            if success and ("created" in msg or "allowed" in msg):
+                _success(msg)
+            elif success:
+                _info(msg)
+            else:
+                _warn(msg)
+        elif direnv is True:
+            _warn("direnv not installed, skipping .envrc setup")
+
+
 @app.command("new")
-def new(  # noqa: C901, PLR0912, PLR0915
+def new(
     branch: Annotated[
         str | None,
         typer.Argument(
@@ -327,40 +396,16 @@ def new(  # noqa: C901, PLR0912, PLR0915
 
     repo_root = _ensure_git_repo()
 
-    # Generate branch name if not provided
-    if branch is None:
-        # Get existing branches to avoid collisions
-        existing = {wt.branch for wt in worktree.list_worktrees() if wt.branch}
-        # In auto mode, only use AI naming when we have task context.
-        if branch_name_mode == "auto" and not prompt:
-            use_ai = False
-        else:
-            use_ai = branch_name_mode != "random"
-
-        if not use_ai:
-            branch = _generate_branch_name(existing, repo_root=repo_root)
-            _info(f"Generated branch name: {branch}")
-        else:
-            effective_branch_name_agent = branch_name_agent
-            if effective_branch_name_agent is None and agent_name:
-                candidate = agent_name.lower().strip()
-                if candidate in _BRANCH_NAME_AGENTS:
-                    effective_branch_name_agent = candidate
-
-            branch = _generate_ai_branch_name(
-                repo_root,
-                existing,
-                prompt,
-                from_ref,
-                effective_branch_name_agent,
-                branch_name_timeout,
-            )
-            if branch:
-                _info(f"AI-generated branch name: {branch}")
-            else:
-                _warn("Could not generate branch name with AI. Falling back to random naming.")
-                branch = _generate_branch_name(existing, repo_root=repo_root)
-                _info(f"Generated branch name: {branch}")
+    branch = _resolve_branch_name(
+        branch,
+        branch_name_mode,
+        prompt,
+        agent_name,
+        branch_name_agent,
+        branch_name_timeout,
+        repo_root,
+        from_ref,
+    )
 
     # Create the worktree
     _info(f"Creating worktree for branch '{branch}'...")
@@ -372,61 +417,23 @@ def new(  # noqa: C901, PLR0912, PLR0915
         on_log=_info,
         capture_output=not verbose,
     )
-
     if not result.success:
         _error(result.error or "Failed to create worktree")
 
     assert result.path is not None
     _success(f"Created worktree at {result.path}")
-
-    # Show warning if --from was ignored
     if result.warning:
         _warn(result.warning)
 
-    # Copy env files
-    if copy_env:
-        copied = copy_env_files(repo_root, result.path)
-        if copied:
-            names = ", ".join(f.name for f in copied)
-            _success(f"Copied env file(s): {names}")
-
-    # Detect and run project setup
-    project = None
-    if setup:
-        project = detect_project_type(result.path)
-        if project:
-            _info(f"Detected {project.description}")
-            success, output = run_setup(
-                result.path,
-                project,
-                on_log=_info,
-                capture_output=not verbose,
-            )
-            if success:
-                _success("Project setup complete")
-            else:
-                _warn(f"Setup failed: {output}")
-
-    # Set up direnv (default: enabled if direnv is installed)
-    use_direnv = direnv if direnv is not None else is_direnv_available()
-    if use_direnv:
-        if is_direnv_available():
-            success, msg = setup_direnv(
-                result.path,
-                project,
-                on_log=_info,
-                capture_output=not verbose,
-            )
-            # Show success for meaningful actions (created or allowed)
-            if success and ("created" in msg or "allowed" in msg):
-                _success(msg)
-            elif success:
-                _info(msg)
-            else:
-                _warn(msg)
-        elif direnv is True:
-            # Only warn if user explicitly requested direnv
-            _warn("direnv not installed, skipping .envrc setup")
+    # Environment setup (env files, project setup, direnv)
+    _setup_worktree_env(
+        result.path,
+        repo_root,
+        copy_env=copy_env,
+        setup=setup,
+        direnv=direnv,
+        verbose=verbose,
+    )
 
     # Write prompt to worktree (makes task available to the spawned agent)
     task_file = None
@@ -434,15 +441,13 @@ def new(  # noqa: C901, PLR0912, PLR0915
         task_file = _write_prompt_to_worktree(result.path, prompt)
         _success(f"Wrote task to {task_file.relative_to(result.path)}")
 
-    # Resolve editor and agent
+    # Resolve and launch editor/agent
     resolved_editor = _resolve_editor(editor, editor_name, default_editor)
     resolved_agent = _resolve_agent(agent, agent_name, default_agent)
 
-    # Launch editor (GUI app - subprocess works)
     if resolved_editor and resolved_editor.is_available():
         _launch_editor(result.path, resolved_editor)
 
-    # Launch agent (interactive TUI - needs terminal tab)
     if resolved_agent and resolved_agent.is_available():
         merged_args = _merge_agent_args(resolved_agent, agent_args)
         agent_env = _get_agent_env(resolved_agent)
@@ -921,7 +926,10 @@ def start_agent(
 
     if tab:
         # Launch in a new tmux tab with tracking
-        _ensure_tmux()
+        from . import agent_state as _agent_state  # noqa: PLC0415
+
+        if not _agent_state.is_tmux():
+            _error("Agent tracking requires tmux. Start a tmux session first.")
         _launch_agent(
             wt.path,
             agent,
@@ -1501,300 +1509,5 @@ def install_skill(
         console.print(f"  • {f.name}")
 
 
-# ---------------------------------------------------------------------------
-# Orchestration commands (tmux-only)
-# ---------------------------------------------------------------------------
-
-
-def _ensure_tmux() -> None:
-    """Exit with an error if not running inside tmux."""
-    from . import agent_state  # noqa: PLC0415
-
-    if not agent_state.is_tmux():
-        _error("Agent tracking requires tmux. Start a tmux session first.")
-
-
-def _lookup_agent(name: str) -> tuple[Path, agent_state.TrackedAgent]:
-    """Look up a tracked agent by name. Exits on error."""
-    from . import agent_state  # noqa: PLC0415
-
-    repo_root = _ensure_git_repo()
-    state = agent_state.load_state(repo_root)
-    agent = state.agents.get(name)
-    if agent is None:
-        _error(f"Agent '{name}' not found. Run 'dev poll' to see tracked agents.")
-    return repo_root, agent
-
-
-def _format_duration(seconds: float) -> str:
-    """Format seconds into a human-readable duration."""
-    if seconds < 60:  # noqa: PLR2004
-        return f"{int(seconds)}s"
-    minutes = int(seconds // 60)
-    secs = int(seconds % 60)
-    if minutes < 60:  # noqa: PLR2004
-        return f"{minutes}m {secs}s"
-    hours = int(minutes // 60)
-    mins = minutes % 60
-    return f"{hours}h {mins}m"
-
-
-def _status_style(status: str) -> str:
-    """Return a Rich-styled status string."""
-    styles = {
-        "running": "[bold green]running[/bold green]",
-        "idle": "[bold yellow]idle[/bold yellow]",
-        "done": "[bold cyan]done[/bold cyan]",
-        "dead": "[bold red]dead[/bold red]",
-    }
-    return styles.get(status, status)
-
-
-@app.command("poll")
-def poll_cmd(
-    json_output: Annotated[
-        bool,
-        typer.Option("--json", help="Output as JSON"),
-    ] = False,
-) -> None:
-    """Check status of all tracked agents.
-
-    Performs a single poll of all tracked agents (checks tmux panes,
-    output quiescence, and completion sentinels) then displays results.
-
-    **Status values:**
-
-    - **running** — Agent output is still changing
-    - **idle** — Agent output has not changed since last poll
-    - **done** — Agent wrote a completion sentinel (.claude/DONE)
-    - **dead** — tmux pane no longer exists
-
-    **Examples:**
-
-    - `dev poll` — Show status table
-    - `dev poll --json` — Machine-readable output
-    """
-    import time  # noqa: PLC0415
-
-    from . import agent_state  # noqa: PLC0415
-    from .poller import poll_once  # noqa: PLC0415
-
-    _ensure_tmux()
-    repo_root = _ensure_git_repo()
-    state = agent_state.load_state(repo_root)
-
-    if not state.agents:
-        _info("No tracked agents. Launch one with 'dev new -a' or 'dev agent --tab'.")
-        return
-
-    poll_once(repo_root)
-
-    # Reload state after polling
-    state = agent_state.load_state(repo_root)
-    now = time.time()
-
-    if json_output:
-        data = {
-            "agents": [
-                {
-                    "name": a.name,
-                    "status": a.status,
-                    "agent_type": a.agent_type,
-                    "worktree_path": a.worktree_path,
-                    "pane_id": a.pane_id,
-                    "started_at": a.started_at,
-                    "duration_seconds": round(now - a.started_at),
-                    "last_change_at": a.last_change_at,
-                }
-                for a in state.agents.values()
-            ],
-            "last_poll_at": state.last_poll_at,
-        }
-        print(json.dumps(data, indent=2))
-        return
-
-    table = Table(title="Agent Status")
-    table.add_column("Name", style="cyan")
-    table.add_column("Status")
-    table.add_column("Agent", style="dim")
-    table.add_column("Worktree", style="dim")
-    table.add_column("Duration", style="dim")
-
-    for a in state.agents.values():
-        table.add_row(
-            a.name,
-            _status_style(a.status),
-            a.agent_type,
-            Path(a.worktree_path).name,
-            _format_duration(now - a.started_at),
-        )
-
-    console.print(table)
-
-    # Summary line
-    total = len(state.agents)
-    by_status: dict[str, int] = {}
-    for a in state.agents.values():
-        by_status[a.status] = by_status.get(a.status, 0) + 1
-    parts = [f"{total} agent{'s' if total != 1 else ''}"]
-    parts.extend(
-        f"{count} {status}"
-        for status in ("running", "idle", "done", "dead")
-        if (count := by_status.get(status, 0))
-    )
-    console.print(f"\n[dim]{' · '.join(parts)}[/dim]")
-
-
-@app.command("output")
-def output_cmd(
-    name: Annotated[
-        str,
-        typer.Argument(help="Agent name (from 'dev poll')"),
-    ],
-    lines: Annotated[
-        int,
-        typer.Option("--lines", "-n", help="Number of lines to capture"),
-    ] = 50,
-    follow: Annotated[
-        bool,
-        typer.Option("--follow", "-f", help="Continuously stream output (Ctrl+C to stop)"),
-    ] = False,
-) -> None:
-    """Get recent terminal output from a tracked agent.
-
-    Captures the last N lines from the agent's tmux pane.
-
-    **Examples:**
-
-    - `dev output my-feature` — Last 50 lines
-    - `dev output my-feature -n 200` — Last 200 lines
-    - `dev output my-feature -f` — Follow output continuously
-    """
-    import time as _time  # noqa: PLC0415
-
-    from . import tmux_ops  # noqa: PLC0415
-
-    _ensure_tmux()
-    _repo_root, agent = _lookup_agent(name)
-
-    if agent.status == "dead":
-        _error(f"Agent '{name}' is dead (tmux pane closed). No output available.")
-
-    if not follow:
-        output = tmux_ops.capture_pane(agent.pane_id, lines)
-        if output is None:
-            _error(f"Could not capture output from pane {agent.pane_id}")
-        print(output, end="")
-        return
-
-    # Follow mode
-    try:
-        prev = ""
-        while True:
-            output = tmux_ops.capture_pane(agent.pane_id, lines)
-            if output is None:
-                _warn("Pane closed.")
-                break
-            if output != prev:
-                print(output, end="", flush=True)
-                prev = output
-            _time.sleep(1.0)
-    except KeyboardInterrupt:
-        pass
-
-
-@app.command("send")
-def send_cmd(
-    name: Annotated[
-        str,
-        typer.Argument(help="Agent name (from 'dev poll')"),
-    ],
-    message: Annotated[
-        str,
-        typer.Argument(help="Text to send to the agent's terminal"),
-    ],
-    no_enter: Annotated[
-        bool,
-        typer.Option("--no-enter", help="Don't press Enter after sending"),
-    ] = False,
-) -> None:
-    """Send text input to a running agent's terminal.
-
-    Types the message into the agent's tmux pane using ``tmux send-keys``.
-    By default, presses Enter after the message.
-
-    **Examples:**
-
-    - `dev send my-feature "Fix the failing tests"` — Send a message
-    - `dev send my-feature "/exit" --no-enter` — Send without pressing Enter
-    """
-    from . import tmux_ops  # noqa: PLC0415
-
-    _ensure_tmux()
-    _repo_root, agent = _lookup_agent(name)
-
-    if agent.status == "dead":
-        _error(f"Agent '{name}' is dead (tmux pane closed). Cannot send messages.")
-
-    if tmux_ops.send_keys(agent.pane_id, message, enter=not no_enter):
-        _success(f"Sent message to {name}")
-    else:
-        _error(f"Failed to send message to pane {agent.pane_id}")
-
-
-@app.command("wait")
-def wait_cmd(
-    name: Annotated[
-        str,
-        typer.Argument(help="Agent name (from 'dev poll')"),
-    ],
-    timeout: Annotated[
-        float,
-        typer.Option("--timeout", "-t", help="Timeout in seconds (0 = no timeout)"),
-    ] = 0,
-    interval: Annotated[
-        float,
-        typer.Option("--interval", "-i", help="Poll interval in seconds"),
-    ] = 5.0,
-) -> None:
-    """Block until a tracked agent finishes.
-
-    Polls the agent's tmux pane until it reaches idle, done, or dead status.
-    Useful for orchestration: launch an agent, wait for it, then act on results.
-
-    **Exit codes:**
-
-    - 0 — Agent finished (idle or done)
-    - 1 — Agent died (pane closed unexpectedly)
-    - 2 — Timeout reached
-
-    **Examples:**
-
-    - `dev wait my-feature` — Wait indefinitely
-    - `dev wait my-feature --timeout 300` — Wait up to 5 minutes
-    - `dev wait my-feature -i 2` — Poll every 2 seconds
-    """
-    from .poller import wait_for_agent  # noqa: PLC0415
-
-    _ensure_tmux()
-    _repo_root, agent = _lookup_agent(name)
-
-    if agent.status in ("done", "dead", "idle"):
-        console.print(f"Agent '{name}' is already {_status_style(agent.status)}")
-        raise typer.Exit(0 if agent.status != "dead" else 1)
-
-    repo_root = _ensure_git_repo()
-    _info(f"Waiting for agent '{name}' to finish (polling every {interval}s)...")
-
-    try:
-        status, elapsed = wait_for_agent(repo_root, name, timeout=timeout, interval=interval)
-    except TimeoutError:
-        _warn(f"Timeout after {_format_duration(timeout)}")
-        raise typer.Exit(2) from None
-
-    if status == "dead":
-        _warn(f"Agent '{name}' died (pane closed) after {_format_duration(elapsed)}")
-        raise typer.Exit(1)
-
-    _success(f"Agent '{name}' is {status} after {_format_duration(elapsed)}")
-    raise typer.Exit(0)
+# Register orchestration commands (poll, output, send, wait)
+from . import orchestration  # noqa: E402, F401

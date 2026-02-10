@@ -29,7 +29,7 @@ def resolve_editor(
     if editor_name:
         editor = editors.get_editor(editor_name)
         if editor is None:
-            from .cli import _warn  # noqa: PLC0415
+            from ._output import _warn  # noqa: PLC0415
 
             _warn(f"Editor '{editor_name}' not found")
         return editor
@@ -43,7 +43,7 @@ def resolve_editor(
         editor = editors.get_editor(default_editor)
         if editor is not None:
             return editor
-        from .cli import _warn  # noqa: PLC0415
+        from ._output import _warn  # noqa: PLC0415
 
         _warn(f"Default editor '{default_editor}' from config not found")
 
@@ -65,7 +65,7 @@ def resolve_agent(
     if agent_name:
         agent = coding_agents.get_agent(agent_name)
         if agent is None:
-            from .cli import _warn  # noqa: PLC0415
+            from ._output import _warn  # noqa: PLC0415
 
             _warn(f"Agent '{agent_name}' not found")
         return agent
@@ -79,7 +79,7 @@ def resolve_agent(
         agent = coding_agents.get_agent(default_agent)
         if agent is not None:
             return agent
-        from .cli import _warn  # noqa: PLC0415
+        from ._output import _warn  # noqa: PLC0415
 
         _warn(f"Default agent '{default_agent}' from config not found")
 
@@ -187,7 +187,7 @@ def is_ssh_session() -> bool:
 
 def launch_editor(path: Path, editor: Editor) -> None:
     """Launch editor via subprocess (editors are GUI apps that detach)."""
-    from .cli import _success, _warn  # noqa: PLC0415
+    from ._output import _success, _warn  # noqa: PLC0415
 
     try:
         subprocess.Popen(editor.open_command(path))
@@ -278,7 +278,7 @@ def launch_agent(
 
     Returns the tracked agent name if tracking was successful, else ``None``.
     """
-    from .cli import _success, _warn  # noqa: PLC0415
+    from ._output import _success, _warn  # noqa: PLC0415
     from .terminals.tmux import Tmux  # noqa: PLC0415
 
     terminal = terminals.detect_current_terminal()

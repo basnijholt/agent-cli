@@ -241,7 +241,7 @@ class TestPollCommand:
         """Shows message when no agents are tracked."""
         with (
             patch.dict("os.environ", _TMUX_ENV),
-            patch("agent_cli.dev.cli._ensure_git_repo", return_value=Path("/repo")),
+            patch("agent_cli.dev.orchestration._ensure_git_repo", return_value=Path("/repo")),
             patch(
                 "agent_cli.dev.agent_state.load_state",
                 return_value=agent_state.AgentStateFile(repo_root="/repo"),
@@ -264,7 +264,7 @@ class TestPollCommand:
 
         with (
             patch.dict("os.environ", _TMUX_ENV),
-            patch("agent_cli.dev.cli._ensure_git_repo", return_value=Path("/repo")),
+            patch("agent_cli.dev.orchestration._ensure_git_repo", return_value=Path("/repo")),
             patch("agent_cli.dev.agent_state.load_state", return_value=state),
             patch("agent_cli.dev.agent_state.save_state"),
             patch("agent_cli.dev.tmux_ops.pane_exists", return_value=True),
@@ -290,7 +290,7 @@ class TestPollCommand:
 
         with (
             patch.dict("os.environ", _TMUX_ENV),
-            patch("agent_cli.dev.cli._ensure_git_repo", return_value=Path("/repo")),
+            patch("agent_cli.dev.orchestration._ensure_git_repo", return_value=Path("/repo")),
             patch("agent_cli.dev.agent_state.load_state", return_value=state),
             patch("agent_cli.dev.agent_state.save_state"),
             patch("agent_cli.dev.tmux_ops.pane_exists", return_value=False),
@@ -318,7 +318,7 @@ class TestOutputCommand:
 
         with (
             patch.dict("os.environ", _TMUX_ENV),
-            patch("agent_cli.dev.cli._ensure_git_repo", return_value=Path("/repo")),
+            patch("agent_cli.dev.orchestration._ensure_git_repo", return_value=Path("/repo")),
             patch("agent_cli.dev.agent_state.load_state", return_value=state),
             patch("agent_cli.dev.tmux_ops.capture_pane", return_value="hello world\n"),
         ):
@@ -330,7 +330,7 @@ class TestOutputCommand:
         """Errors when agent name doesn't exist."""
         with (
             patch.dict("os.environ", _TMUX_ENV),
-            patch("agent_cli.dev.cli._ensure_git_repo", return_value=Path("/repo")),
+            patch("agent_cli.dev.orchestration._ensure_git_repo", return_value=Path("/repo")),
             patch(
                 "agent_cli.dev.agent_state.load_state",
                 return_value=agent_state.AgentStateFile(repo_root="/repo"),
@@ -358,7 +358,7 @@ class TestSendCommand:
 
         with (
             patch.dict("os.environ", _TMUX_ENV),
-            patch("agent_cli.dev.cli._ensure_git_repo", return_value=Path("/repo")),
+            patch("agent_cli.dev.orchestration._ensure_git_repo", return_value=Path("/repo")),
             patch("agent_cli.dev.agent_state.load_state", return_value=state),
             patch("agent_cli.dev.tmux_ops.send_keys", return_value=True) as mock_send,
         ):
@@ -380,7 +380,7 @@ class TestSendCommand:
 
         with (
             patch.dict("os.environ", _TMUX_ENV),
-            patch("agent_cli.dev.cli._ensure_git_repo", return_value=Path("/repo")),
+            patch("agent_cli.dev.orchestration._ensure_git_repo", return_value=Path("/repo")),
             patch("agent_cli.dev.agent_state.load_state", return_value=state),
         ):
             result = runner.invoke(app, ["dev", "send", "test", "hello"])
@@ -405,7 +405,7 @@ class TestWaitCommand:
 
         with (
             patch.dict("os.environ", _TMUX_ENV),
-            patch("agent_cli.dev.cli._ensure_git_repo", return_value=Path("/repo")),
+            patch("agent_cli.dev.orchestration._ensure_git_repo", return_value=Path("/repo")),
             patch("agent_cli.dev.agent_state.load_state", return_value=state),
         ):
             result = runner.invoke(app, ["dev", "wait", "test"])
@@ -426,7 +426,7 @@ class TestWaitCommand:
 
         with (
             patch.dict("os.environ", _TMUX_ENV),
-            patch("agent_cli.dev.cli._ensure_git_repo", return_value=Path("/repo")),
+            patch("agent_cli.dev.orchestration._ensure_git_repo", return_value=Path("/repo")),
             patch("agent_cli.dev.agent_state.load_state", return_value=state),
         ):
             result = runner.invoke(app, ["dev", "wait", "test"])
@@ -440,7 +440,7 @@ class TestNotInTmux:
         """Poll command fails outside tmux."""
         with (
             patch.dict("os.environ", {}, clear=True),
-            patch("agent_cli.dev.cli._ensure_git_repo", return_value=Path("/repo")),
+            patch("agent_cli.dev.orchestration._ensure_git_repo", return_value=Path("/repo")),
         ):
             result = runner.invoke(app, ["dev", "poll"])
             assert result.exit_code == 1
@@ -450,7 +450,7 @@ class TestNotInTmux:
         """Send command fails outside tmux."""
         with (
             patch.dict("os.environ", {}, clear=True),
-            patch("agent_cli.dev.cli._ensure_git_repo", return_value=Path("/repo")),
+            patch("agent_cli.dev.orchestration._ensure_git_repo", return_value=Path("/repo")),
         ):
             result = runner.invoke(app, ["dev", "send", "test", "hello"])
             assert result.exit_code == 1
