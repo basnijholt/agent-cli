@@ -182,14 +182,15 @@ def generate_agent_name(
 
 
 def inject_completion_hook(worktree_path: Path, agent_type: str) -> None:
-    """Inject a Stop hook into .claude/settings.json for completion detection.
+    """Inject a Stop hook into .claude/settings.local.json for completion detection.
 
+    Uses settings.local.json (not settings.json) to avoid dirtying tracked files.
     Only applies to Claude Code agents. Merges with existing settings.
     """
     if agent_type != "claude":
         return
 
-    settings_path = worktree_path / ".claude" / "settings.json"
+    settings_path = worktree_path / ".claude" / "settings.local.json"
     settings_path.parent.mkdir(parents=True, exist_ok=True)
 
     settings: dict = {}

@@ -601,10 +601,10 @@ class TestInjectCompletionHook:
     """Tests for Claude Code hook injection."""
 
     def test_injects_stop_hook(self, tmp_path: Path) -> None:
-        """Creates .claude/settings.json with Stop hook."""
+        """Creates .claude/settings.local.json with Stop hook."""
         inject_completion_hook(tmp_path, "claude")
 
-        settings_path = tmp_path / ".claude" / "settings.json"
+        settings_path = tmp_path / ".claude" / "settings.local.json"
         assert settings_path.exists()
         settings = json.loads(settings_path.read_text())
         assert "hooks" in settings
@@ -620,7 +620,7 @@ class TestInjectCompletionHook:
 
     def test_merges_with_existing_settings(self, tmp_path: Path) -> None:
         """Preserves existing settings when injecting hook."""
-        settings_path = tmp_path / ".claude" / "settings.json"
+        settings_path = tmp_path / ".claude" / "settings.local.json"
         settings_path.parent.mkdir(parents=True)
         settings_path.write_text(json.dumps({"model": "opus", "hooks": {"PreToolUse": []}}))
 
@@ -634,14 +634,14 @@ class TestInjectCompletionHook:
     def test_skips_non_claude_agents(self, tmp_path: Path) -> None:
         """Does nothing for non-Claude agents."""
         inject_completion_hook(tmp_path, "aider")
-        assert not (tmp_path / ".claude" / "settings.json").exists()
+        assert not (tmp_path / ".claude" / "settings.local.json").exists()
 
     def test_idempotent(self, tmp_path: Path) -> None:
         """Doesn't duplicate hook on repeated calls."""
         inject_completion_hook(tmp_path, "claude")
         inject_completion_hook(tmp_path, "claude")
 
-        settings = json.loads((tmp_path / ".claude" / "settings.json").read_text())
+        settings = json.loads((tmp_path / ".claude" / "settings.local.json").read_text())
         stop_hooks = settings["hooks"]["Stop"]
         sentinel_count = sum(
             1
