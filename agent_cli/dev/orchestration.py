@@ -69,6 +69,7 @@ def _status_style(status: str) -> str:
     styles = {
         "running": "[bold green]running[/bold green]",
         "done": "[bold cyan]done[/bold cyan]",
+        "quiet": "[bold cyan]quiet[/bold cyan]",
         "dead": "[bold red]dead[/bold red]",
     }
     return styles.get(status, status)
@@ -90,6 +91,7 @@ def poll_cmd(
 
     - **running** — Agent pane exists and task is still in progress
     - **done** — Agent wrote a completion sentinel (.claude/DONE)
+    - **quiet** — Agent output unchanged for several consecutive polls
     - **dead** — tmux pane no longer exists
 
     **Examples:**
@@ -161,7 +163,7 @@ def poll_cmd(
     parts = [f"{total} agent{'s' if total != 1 else ''}"]
     parts.extend(
         f"{count} {status}"
-        for status in ("running", "done", "dead")
+        for status in ("running", "done", "quiet", "dead")
         if (count := by_status.get(status, 0))
     )
     console.print(f"\n[dim]{' · '.join(parts)}[/dim]")
@@ -278,7 +280,7 @@ def wait_cmd(
     _ensure_tmux()
     repo_root, agent = _lookup_agent(name)
 
-    if agent.status in ("done", "dead"):
+    if agent.status in ("done", "quiet", "dead"):
         console.print(f"Agent '{name}' is already {_status_style(agent.status)}")
         raise typer.Exit(0 if agent.status != "dead" else 1)
 

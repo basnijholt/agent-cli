@@ -13,7 +13,7 @@ from typing import Literal
 
 STATE_BASE = Path.home() / ".cache" / "agent-cli"
 
-AgentStatus = Literal["running", "done", "dead"]
+AgentStatus = Literal["running", "done", "dead", "quiet"]
 
 
 @dataclass
@@ -26,6 +26,8 @@ class TrackedAgent:
     agent_type: str
     started_at: float
     status: AgentStatus = "running"
+    last_output_hash: str = ""
+    consecutive_quiet: int = 0
 
 
 @dataclass
@@ -79,7 +81,7 @@ def load_state(repo_root: Path) -> AgentStateFile:
         raw_agents = {}
     for name, agent_data in raw_agents.items():
         status = agent_data.get("status", "running")
-        if status not in ("running", "done", "dead"):
+        if status not in ("running", "done", "dead", "quiet"):
             status = "running"
         try:
             agents[name] = TrackedAgent(
@@ -89,6 +91,8 @@ def load_state(repo_root: Path) -> AgentStateFile:
                 agent_type=str(agent_data["agent_type"]),
                 started_at=float(agent_data["started_at"]),
                 status=status,
+                last_output_hash=str(agent_data.get("last_output_hash", "")),
+                consecutive_quiet=int(agent_data.get("consecutive_quiet", 0)),
             )
         except (KeyError, TypeError, ValueError):
             continue
@@ -127,7 +131,7 @@ def register_agent(
     state = load_state(repo_root)
     # Keep only active agents; terminal entries should not reserve names forever.
     for existing_name in list(state.agents):
-        if state.agents[existing_name].status in ("done", "dead"):
+        if state.agents[existing_name].status in ("done", "dead", "quiet"):
             del state.agents[existing_name]
 
     now = time.time()

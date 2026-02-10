@@ -7,6 +7,10 @@ from pathlib import Path
 
 from . import agent_state, tmux_ops
 
+# Number of consecutive polls with unchanged output before marking as "quiet".
+# At the default 5s interval, 6 polls ≈ 30s of unchanged output.
+QUIET_THRESHOLD = 6
+
 
 def _check_agent_status(agent: agent_state.TrackedAgent) -> None:
     """Check and update a single agent's status in-place."""
@@ -23,10 +27,27 @@ def _check_agent_status(agent: agent_state.TrackedAgent) -> None:
     agent.status = "running"
 
 
+def _check_quiescence(agent: agent_state.TrackedAgent) -> None:
+    """Track output changes and mark agent as quiet if output is stable."""
+    output = tmux_ops.capture_pane(agent.pane_id)
+    if output is None:
+        return
+
+    output_hash = tmux_ops.hash_output(output)
+    if output_hash == agent.last_output_hash:
+        agent.consecutive_quiet += 1
+    else:
+        agent.last_output_hash = output_hash
+        agent.consecutive_quiet = 0
+
+    if agent.consecutive_quiet >= QUIET_THRESHOLD:
+        agent.status = "quiet"
+
+
 def poll_once(repo_root: Path) -> dict[str, str]:
     """Perform a single poll of all tracked agents.
 
-    Checks pane existence and completion sentinels.
+    Checks pane existence, completion sentinels, and output quiescence.
     Updates the state file and returns ``{agent_name: status}``.
     """
     state = agent_state.load_state(repo_root)
@@ -34,6 +55,8 @@ def poll_once(repo_root: Path) -> dict[str, str]:
 
     for agent in state.agents.values():
         _check_agent_status(agent)
+        if agent.status == "running":
+            _check_quiescence(agent)
 
     state.last_poll_at = now
     agent_state.save_state(repo_root, state)
@@ -54,14 +77,11 @@ def wait_for_agent(
     Raises ``KeyError`` if the agent is not found.
     """
     state = agent_state.load_state(repo_root)
-    agent = state.agents.get(name)
-    if agent is None:
+    if name not in state.agents:
         msg = f"Agent '{name}' not found"
         raise KeyError(msg)
 
     start = time.time()
-    consecutive_quiet = 0
-    previous_output_hash = ""
 
     while True:
         elapsed = time.time() - start
@@ -69,32 +89,10 @@ def wait_for_agent(
             msg = f"Timeout after {elapsed:.0f}s"
             raise TimeoutError(msg)
 
-        _check_agent_status(agent)
+        statuses = poll_once(repo_root)
+        status = statuses.get(name, "dead")
 
-        if agent.status in ("dead", "done"):
-            _update_agent_status(repo_root, name, agent.status)
-            return agent.status, elapsed
-
-        output = tmux_ops.capture_pane(agent.pane_id)
-        if output is not None:
-            output_hash = tmux_ops.hash_output(output)
-            if output_hash == previous_output_hash:
-                consecutive_quiet += 1
-            else:
-                previous_output_hash = output_hash
-                consecutive_quiet = 0
-
-        # Require several quiet polls to infer completion for agents without sentinels.
-        # At the default 5s interval, 6 polls = 30s of unchanged output.
-        if consecutive_quiet >= 6:  # noqa: PLR2004
-            return "quiet", elapsed
+        if status in ("dead", "done", "quiet"):
+            return status, elapsed
 
         time.sleep(interval)
-
-
-def _update_agent_status(repo_root: Path, name: str, status: agent_state.AgentStatus) -> None:
-    """Update a single agent's status in the state file."""
-    state = agent_state.load_state(repo_root)
-    if name in state.agents:
-        state.agents[name].status = status
-        agent_state.save_state(repo_root, state)

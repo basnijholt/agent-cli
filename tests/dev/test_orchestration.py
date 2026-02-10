@@ -373,6 +373,56 @@ class TestPollerRegression:
                 statuses = poller.poll_once(repo)
                 assert statuses["worker"] == "running"
 
+    def test_poll_detects_quiescence_for_non_claude_agents(self, tmp_path: Path) -> None:
+        """poll_once marks agent as quiet after enough polls with unchanged output."""
+        with patch.object(agent_state, "STATE_BASE", tmp_path / ".cache"):
+            repo = tmp_path / "repo"
+            wt = tmp_path / "worktree"
+            agent_state.register_agent(repo, "worker", "%3", wt, "codex")
+
+            with (
+                patch("agent_cli.dev.tmux_ops.pane_exists", return_value=True),
+                patch("agent_cli.dev.tmux_ops.capture_pane", return_value="output"),
+                patch("agent_cli.dev.tmux_ops.hash_output", return_value="h1"),
+            ):
+                # First poll sets the hash, consecutive_quiet stays 0
+                statuses = poller.poll_once(repo)
+                assert statuses["worker"] == "running"
+
+                # Polls 2-7: hash matches, consecutive_quiet increments 1..6
+                for _i in range(poller.QUIET_THRESHOLD):
+                    statuses = poller.poll_once(repo)
+
+                assert statuses["worker"] == "quiet"
+
+    def test_poll_resets_quiescence_on_output_change(self, tmp_path: Path) -> None:
+        """Output change resets the quiescence counter."""
+        with patch.object(agent_state, "STATE_BASE", tmp_path / ".cache"):
+            repo = tmp_path / "repo"
+            wt = tmp_path / "worktree"
+            agent_state.register_agent(repo, "worker", "%3", wt, "codex")
+
+            with (
+                patch("agent_cli.dev.tmux_ops.pane_exists", return_value=True),
+                patch("agent_cli.dev.tmux_ops.capture_pane", return_value="output"),
+            ):
+                # Use a side_effect to return different hashes
+                hashes = ["h1", "h1", "h1", "h2", "h2", "h2", "h2", "h2", "h2", "h2"]
+                with patch("agent_cli.dev.tmux_ops.hash_output", side_effect=hashes):
+                    # First 3 polls: h1, h1, h1 → consecutive_quiet = 2 (first sets hash)
+                    for _ in range(3):
+                        statuses = poller.poll_once(repo)
+                    assert statuses["worker"] == "running"
+
+                    # 4th poll: h2 → reset, consecutive_quiet = 0
+                    statuses = poller.poll_once(repo)
+                    assert statuses["worker"] == "running"
+
+                    # Polls 5-10: h2 repeated → consecutive_quiet = 1..6
+                    for _ in range(poller.QUIET_THRESHOLD):
+                        statuses = poller.poll_once(repo)
+                    assert statuses["worker"] == "quiet"
+
     def test_wait_ignores_done_sentinel_for_non_claude_agents(self, tmp_path: Path) -> None:
         """wait_for_agent should use quiescence for non-Claude agents even if DONE exists."""
         with patch.object(agent_state, "STATE_BASE", tmp_path / ".cache"):
