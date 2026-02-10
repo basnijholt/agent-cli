@@ -19,30 +19,17 @@ from agent_cli.core.process import set_process_title
 from agent_cli.core.utils import console
 
 from . import coding_agents, editors, terminals, worktree
-from ._branch_name import AGENTS as _BRANCH_NAME_AGENTS
-from ._branch_name import generate_ai_branch_name as _generate_ai_branch_name
-from ._branch_name import generate_random_branch_name as _generate_branch_name
+from ._branch_name import AGENTS as BRANCH_NAME_AGENTS
+from ._branch_name import generate_ai_branch_name, generate_random_branch_name
 from ._output import _error, _info, _success, _warn
 from .launch import (
-    get_agent_env as _get_agent_env,
-)
-from .launch import (
-    launch_agent as _launch_agent,
-)
-from .launch import (
-    launch_editor as _launch_editor,
-)
-from .launch import (
-    merge_agent_args as _merge_agent_args,
-)
-from .launch import (
-    resolve_agent as _resolve_agent,
-)
-from .launch import (
-    resolve_editor as _resolve_editor,
-)
-from .launch import (
-    write_prompt_to_worktree as _write_prompt_to_worktree,
+    get_agent_env,
+    launch_agent,
+    launch_editor,
+    merge_agent_args,
+    resolve_agent,
+    resolve_editor,
+    write_prompt_to_worktree,
 )
 from .project import (
     copy_env_files,
@@ -143,17 +130,17 @@ def _resolve_branch_name(
     use_ai = branch_name_mode != "random" and (branch_name_mode != "auto" or bool(prompt))
 
     if not use_ai:
-        branch = _generate_branch_name(existing, repo_root=repo_root)
+        branch = generate_random_branch_name(existing, repo_root=repo_root)
         _info(f"Generated branch name: {branch}")
         return branch
 
     effective_agent = branch_name_agent
     if effective_agent is None and agent_name:
         candidate = agent_name.lower().strip()
-        if candidate in _BRANCH_NAME_AGENTS:
+        if candidate in BRANCH_NAME_AGENTS:
             effective_agent = candidate
 
-    branch = _generate_ai_branch_name(
+    branch = generate_ai_branch_name(
         repo_root,
         existing,
         prompt,
@@ -166,7 +153,7 @@ def _resolve_branch_name(
         return branch
 
     _warn("Could not generate branch name with AI. Falling back to random naming.")
-    branch = _generate_branch_name(existing, repo_root=repo_root)
+    branch = generate_random_branch_name(existing, repo_root=repo_root)
     _info(f"Generated branch name: {branch}")
     return branch
 
@@ -438,20 +425,20 @@ def new(
     # Write prompt to worktree (makes task available to the spawned agent)
     task_file = None
     if prompt:
-        task_file = _write_prompt_to_worktree(result.path, prompt)
+        task_file = write_prompt_to_worktree(result.path, prompt)
         _success(f"Wrote task to {task_file.relative_to(result.path)}")
 
     # Resolve and launch editor/agent
-    resolved_editor = _resolve_editor(editor, editor_name, default_editor)
-    resolved_agent = _resolve_agent(agent, agent_name, default_agent)
+    resolved_editor = resolve_editor(editor, editor_name, default_editor)
+    resolved_agent = resolve_agent(agent, agent_name, default_agent)
 
     if resolved_editor and resolved_editor.is_available():
-        _launch_editor(result.path, resolved_editor)
+        launch_editor(result.path, resolved_editor)
 
     if resolved_agent and resolved_agent.is_available():
-        merged_args = _merge_agent_args(resolved_agent, agent_args)
-        agent_env = _get_agent_env(resolved_agent)
-        _launch_agent(result.path, resolved_agent, merged_args, prompt, task_file, agent_env)
+        merged_args = merge_agent_args(resolved_agent, agent_args)
+        agent_env = get_agent_env(resolved_agent)
+        launch_agent(result.path, resolved_agent, merged_args, prompt, task_file, agent_env)
 
     # Print summary
     console.print()
@@ -918,11 +905,11 @@ def start_agent(
     # Write prompt to worktree (makes task available to the agent)
     task_file = None
     if prompt:
-        task_file = _write_prompt_to_worktree(wt.path, prompt)
+        task_file = write_prompt_to_worktree(wt.path, prompt)
         _success(f"Wrote task to {task_file.relative_to(wt.path)}")
 
-    merged_args = _merge_agent_args(agent, agent_args)
-    agent_env = _get_agent_env(agent)
+    merged_args = merge_agent_args(agent, agent_args)
+    agent_env = get_agent_env(agent)
 
     if tab:
         # Launch in a new tmux tab with tracking
@@ -930,7 +917,7 @@ def start_agent(
 
         if not _agent_state.is_tmux():
             _error("Agent tracking requires tmux. Start a tmux session first.")
-        _launch_agent(
+        launch_agent(
             wt.path,
             agent,
             merged_args,

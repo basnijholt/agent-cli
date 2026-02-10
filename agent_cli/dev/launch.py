@@ -180,7 +180,7 @@ def merge_agent_args(
     return result or None
 
 
-def is_ssh_session() -> bool:
+def _is_ssh_session() -> bool:
     """Check if we're in an SSH session."""
     return bool(os.environ.get("SSH_CONNECTION") or os.environ.get("SSH_CLIENT"))
 
@@ -209,7 +209,7 @@ def write_prompt_to_worktree(worktree_path: Path, prompt: str) -> Path:
     return task_file
 
 
-def format_env_prefix(env: dict[str, str]) -> str:
+def _format_env_prefix(env: dict[str, str]) -> str:
     """Format environment variables as shell prefix.
 
     Returns a string like 'VAR1=value1 VAR2=value2 ' that can be
@@ -222,7 +222,7 @@ def format_env_prefix(env: dict[str, str]) -> str:
     return " ".join(parts) + " "
 
 
-def create_prompt_wrapper_script(
+def _create_prompt_wrapper_script(
     worktree_path: Path,
     agent: CodingAgent,
     task_file: Path,
@@ -243,7 +243,7 @@ def create_prompt_wrapper_script(
         cmd_parts.extend(shlex.quote(arg) for arg in extra_args)
 
     agent_cmd = " ".join(cmd_parts)
-    env_prefix = format_env_prefix(env or {})
+    env_prefix = _format_env_prefix(env or {})
 
     task_file_rel = task_file.relative_to(worktree_path)
     script_content = f"""#!/usr/bin/env bash
@@ -286,11 +286,11 @@ def launch_agent(
     # Use wrapper script when opening in a terminal tab - all terminals pass commands
     # through a shell, so special characters get interpreted. Reading from file avoids this.
     if task_file and terminal is not None:
-        script_path = create_prompt_wrapper_script(path, agent, task_file, extra_args, env)
+        script_path = _create_prompt_wrapper_script(path, agent, task_file, extra_args, env)
         full_cmd = f"bash {shlex.quote(str(script_path))}"
     else:
         agent_cmd = shlex.join(agent.launch_command(path, extra_args, prompt))
-        env_prefix = format_env_prefix(env or {})
+        env_prefix = _format_env_prefix(env or {})
         full_cmd = env_prefix + agent_cmd
 
     if terminal:
@@ -321,7 +321,7 @@ def launch_agent(
             _warn(f"Could not open new tab in {terminal.name}")
 
     # No terminal detected or failed - print instructions
-    if is_ssh_session():
+    if _is_ssh_session():
         console.print("\n[yellow]SSH session without terminal multiplexer.[/yellow]")
         console.print("[bold]Start a multiplexer first, then run:[/bold]")
     else:
