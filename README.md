@@ -421,6 +421,7 @@ agent-cli install-extras rag memory vad
  Available extras:
 
   • audio - Audio recording/playback
+  • diarization - Speaker diarization (pyannote.audio)
   • faster-whisper - Whisper ASR via CTranslate2
   • kokoro - Kokoro neural TTS (GPU)
   • llm - LLM framework (pydantic-ai)
@@ -444,9 +445,9 @@ agent-cli install-extras rag memory vad
 
 
 ╭─ Arguments ────────────────────────────────────────────────────────────────────────────╮
-│   extras      [EXTRAS]...  Extras to install: audio, faster-whisper, kokoro, llm,      │
-│                            memory, mlx-whisper, piper, rag, server, speed, vad,        │
-│                            whisper-transformers, wyoming                               │
+│   extras      [EXTRAS]...  Extras to install: audio, diarization, faster-whisper,      │
+│                            kokoro, llm, memory, mlx-whisper, piper, rag, server,       │
+│                            speed, vad, whisper-transformers, wyoming                   │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Options ──────────────────────────────────────────────────────────────────────────────╮
 │ --list  -l        Show available extras with descriptions (what each one enables)      │
@@ -730,7 +731,7 @@ the `[defaults]` section of your configuration file.
 │ --llm                   --no-llm          Clean up transcript with LLM: fix errors,    │
 │                                           add punctuation, remove filler words. Uses   │
 │                                           --extra-instructions if set (via CLI or      │
-│                                           config file).                                │
+│                                           config file). Not compatible with --diarize. │
 │                                           [default: no-llm]                            │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Audio Recovery ───────────────────────────────────────────────────────────────────────╮
@@ -851,6 +852,44 @@ the `[defaults]` section of your configuration file.
 │                                                                  text). Recent entries │
 │                                                                  provide context for   │
 │                                                                  LLM cleanup.          │
+╰────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ Diarization ──────────────────────────────────────────────────────────────────────────╮
+│ --diarize           --no-diarize                       Enable speaker diarization      │
+│                                                        (requires pyannote-audio).      │
+│                                                        Install with: pip install       │
+│                                                        agent-cli[diarization]          │
+│                                                        [default: no-diarize]           │
+│ --diarize-format                        [inline|json]  Output format for diarization   │
+│                                                        ('inline' for [Speaker N]:      │
+│                                                        text, 'json' for structured     │
+│                                                        output).                        │
+│                                                        [default: inline]               │
+│ --hf-token                              TEXT           HuggingFace token for pyannote  │
+│                                                        models. Required for            │
+│                                                        diarization. Token must have    │
+│                                                        'Read access to contents of all │
+│                                                        public gated repos you can      │
+│                                                        access' permission. Accept      │
+│                                                        licenses at:                    │
+│                                                        https://hf.co/pyannote/speaker… │
+│                                                        https://hf.co/pyannote/segment… │
+│                                                        https://hf.co/pyannote/wespeak… │
+│                                                        [env var: HF_TOKEN]             │
+│ --min-speakers                          INTEGER        Minimum number of speakers      │
+│                                                        (optional hint for              │
+│                                                        diarization).                   │
+│ --max-speakers                          INTEGER        Maximum number of speakers      │
+│                                                        (optional hint for              │
+│                                                        diarization).                   │
+│ --align-words       --no-align-words                   Use wav2vec2 forced alignment   │
+│                                                        for word-level speaker          │
+│                                                        assignment (more accurate but   │
+│                                                        slower).                        │
+│                                                        [default: no-align-words]       │
+│ --align-language                        TEXT           Language code for word          │
+│                                                        alignment model (e.g., 'en',    │
+│                                                        'fr', 'de', 'es', 'it').        │
+│                                                        [default: en]                   │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 
 ```
@@ -1050,7 +1089,7 @@ uv tool install "agent-cli[vad]" -p 3.13
 ╭─ LLM Configuration ────────────────────────────────────────────────────────────────────╮
 │ --llm    --no-llm      Clean up transcript with LLM: fix errors, add punctuation,      │
 │                        remove filler words. Uses --extra-instructions if set (via CLI  │
-│                        or config file).                                                │
+│                        or config file). Not compatible with --diarize.                 │
 │                        [default: no-llm]                                               │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Process Management ───────────────────────────────────────────────────────────────────╮
