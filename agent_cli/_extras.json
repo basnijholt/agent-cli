@@ -68,6 +68,13 @@
       "onnxruntime"
     ]
   ],
+  "vectordb": [
+    "Vector database with embeddings (ChromaDB)",
+    [
+      "chromadb",
+      "pydantic_ai"
+    ]
+  ],
   "whisper-transformers": [
     "Whisper ASR via HuggingFace transformers",
     [
