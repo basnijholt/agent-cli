@@ -57,12 +57,17 @@ async def test_watch_docs(tmp_path: Path) -> None:
 
 @pytest.mark.asyncio
 async def test_watch_docs_passes_ignore_filter(tmp_path: Path) -> None:
-    """Test that watch_docs passes the should_ignore_path filter to watch_directory."""
+    """Test that watch_docs passes a configured ignore filter to watch_directory."""
     mock_collection = MagicMock()
     docs_folder = tmp_path / "docs"
     docs_folder.mkdir()
+    (docs_folder / ".gitignore").write_text("*.log\n")
     file_hashes: dict[str, str] = {}
     file_mtimes: dict[str, float] = {}
+    debug_log = docs_folder / "debug.log"
+    debug_log.touch()
+    readme = docs_folder / "readme.md"
+    readme.touch()
 
     async def fake_watch_directory(
         _root: Path,
@@ -71,9 +76,10 @@ async def test_watch_docs_passes_ignore_filter(tmp_path: Path) -> None:
         ignore_filter: Any = None,
         **_kwargs: Any,
     ) -> None:
-        # Verify ignore_filter is provided and is the should_ignore_path function
+        # Verify ignore_filter is provided and applies loaded .gitignore rules.
         assert ignore_filter is not None
-        assert ignore_filter.__name__ == "should_ignore_path"
+        assert ignore_filter(debug_log, docs_folder)
+        assert not ignore_filter(readme, docs_folder)
 
     with patch(
         "agent_cli.rag._indexer.watch_directory",

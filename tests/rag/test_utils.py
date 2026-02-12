@@ -502,3 +502,175 @@ class TestShouldIgnorePath:
         other_path = Path("/some/other/path.txt")
         with pytest.raises(ValueError, match="is not in the subpath"):
             _utils.should_ignore_path(other_path, tmp_path)
+
+
+class TestGitignoreSupport:
+    """Tests for .gitignore pattern matching in should_ignore_path."""
+
+    def test_gitignore_wildcard_pattern(self, tmp_path: Path) -> None:
+        """Test that *.log pattern ignores log files."""
+        (tmp_path / ".gitignore").write_text("*.log\n")
+        patterns = _utils.load_gitignore_patterns(tmp_path)
+        f = tmp_path / "debug.log"
+        f.touch()
+        assert _utils.should_ignore_path(f, tmp_path, gitignore_patterns=patterns)
+
+    def test_gitignore_does_not_ignore_unmatched(self, tmp_path: Path) -> None:
+        """Test that files not matching gitignore patterns are kept."""
+        (tmp_path / ".gitignore").write_text("*.log\n")
+        patterns = _utils.load_gitignore_patterns(tmp_path)
+        f = tmp_path / "readme.md"
+        f.touch()
+        assert not _utils.should_ignore_path(f, tmp_path, gitignore_patterns=patterns)
+
+    def test_gitignore_directory_pattern(self, tmp_path: Path) -> None:
+        """Test that directory-only patterns (trailing /) work."""
+        (tmp_path / ".gitignore").write_text("output/\n")
+        patterns = _utils.load_gitignore_patterns(tmp_path)
+        out = tmp_path / "output"
+        out.mkdir()
+        f = out / "result.txt"
+        f.touch()
+        assert _utils.should_ignore_path(f, tmp_path, gitignore_patterns=patterns)
+
+    def test_gitignore_rooted_pattern(self, tmp_path: Path) -> None:
+        """Test that rooted patterns (leading /) only match at the root."""
+        (tmp_path / ".gitignore").write_text("/secret.txt\n")
+        patterns = _utils.load_gitignore_patterns(tmp_path)
+        # Root-level match
+        f = tmp_path / "secret.txt"
+        f.touch()
+        assert _utils.should_ignore_path(f, tmp_path, gitignore_patterns=patterns)
+        # Nested should NOT match
+        subdir = tmp_path / "sub"
+        subdir.mkdir()
+        f2 = subdir / "secret.txt"
+        f2.touch()
+        assert not _utils.should_ignore_path(f2, tmp_path, gitignore_patterns=patterns)
+
+    def test_gitignore_negation_pattern(self, tmp_path: Path) -> None:
+        """Test that negation patterns (!) un-ignore files."""
+        (tmp_path / ".gitignore").write_text("*.log\n!important.log\n")
+        patterns = _utils.load_gitignore_patterns(tmp_path)
+        f1 = tmp_path / "debug.log"
+        f1.touch()
+        assert _utils.should_ignore_path(f1, tmp_path, gitignore_patterns=patterns)
+        f2 = tmp_path / "important.log"
+        f2.touch()
+        assert not _utils.should_ignore_path(f2, tmp_path, gitignore_patterns=patterns)
+
+    def test_gitignore_comment_and_blank_lines(self, tmp_path: Path) -> None:
+        """Test that comments and blank lines in .gitignore are skipped."""
+        (tmp_path / ".gitignore").write_text("# comment\n\n*.tmp\n")
+        patterns = _utils.load_gitignore_patterns(tmp_path)
+        assert len(patterns) == 1
+        assert patterns[0].pattern == "*.tmp"
+
+    def test_gitignore_nested_directory_pattern(self, tmp_path: Path) -> None:
+        """Test pattern with path separator matches nested paths."""
+        (tmp_path / ".gitignore").write_text("logs/*.log\n")
+        patterns = _utils.load_gitignore_patterns(tmp_path)
+        logs = tmp_path / "logs"
+        logs.mkdir()
+        f = logs / "app.log"
+        f.touch()
+        assert _utils.should_ignore_path(f, tmp_path, gitignore_patterns=patterns)
+
+    def test_gitignore_nested_directory_pattern_no_overmatch(self, tmp_path: Path) -> None:
+        """Test pattern with slash does not over-match deeper directories."""
+        (tmp_path / ".gitignore").write_text("logs/*.log\n")
+        patterns = _utils.load_gitignore_patterns(tmp_path)
+        nested = tmp_path / "logs" / "sub"
+        nested.mkdir(parents=True)
+        f = nested / "app.log"
+        f.touch()
+        assert not _utils.should_ignore_path(f, tmp_path, gitignore_patterns=patterns)
+
+    def test_gitignore_double_star_pattern(self, tmp_path: Path) -> None:
+        """Test that ** matches across directories."""
+        (tmp_path / ".gitignore").write_text("**/test_output\n")
+        patterns = _utils.load_gitignore_patterns(tmp_path)
+        deep = tmp_path / "a" / "b" / "test_output"
+        deep.mkdir(parents=True)
+        f = deep / "result.txt"
+        f.touch()
+        assert _utils.should_ignore_path(f, tmp_path, gitignore_patterns=patterns)
+
+    def test_no_gitignore_file(self, tmp_path: Path) -> None:
+        """Test that missing .gitignore returns empty patterns."""
+        patterns = _utils.load_gitignore_patterns(tmp_path)
+        assert patterns == []
+
+    def test_parent_gitignore_is_loaded(self, tmp_path: Path) -> None:
+        """Test that parent .gitignore is loaded when inside a git repo."""
+        (tmp_path / ".git").mkdir()
+        (tmp_path / ".gitignore").write_text("*.bak\n")
+        subdir = tmp_path / "docs"
+        subdir.mkdir()
+        patterns = _utils.load_gitignore_patterns(subdir)
+        assert any(p.pattern == "*.bak" for p in patterns)
+
+    def test_parent_gitignore_not_loaded_outside_repo_root(self, tmp_path: Path) -> None:
+        """Test that .gitignore above repository root is ignored."""
+        outer = tmp_path / "outer"
+        repo_root = outer / "repo"
+        docs = repo_root / "docs"
+        docs.mkdir(parents=True)
+        (repo_root / ".git").mkdir()
+        (outer / ".gitignore").write_text("*.foo\n")
+
+        patterns = _utils.load_gitignore_patterns(docs)
+        f = docs / "a.foo"
+        f.touch()
+        assert not _utils.should_ignore_path(f, docs, gitignore_patterns=patterns)
+
+    def test_not_in_git_repo_only_loads_docs_gitignore(self, tmp_path: Path) -> None:
+        """Test that parent .gitignore is ignored when not in a git repo."""
+        (tmp_path / ".gitignore").write_text("*.foo\n")
+        docs = tmp_path / "docs"
+        docs.mkdir()
+        (docs / ".gitignore").write_text("*.bar\n")
+
+        patterns = _utils.load_gitignore_patterns(docs)
+        foo = docs / "x.foo"
+        foo.touch()
+        bar = docs / "x.bar"
+        bar.touch()
+        assert not _utils.should_ignore_path(foo, docs, gitignore_patterns=patterns)
+        assert _utils.should_ignore_path(bar, docs, gitignore_patterns=patterns)
+
+    def test_parent_rooted_pattern_anchored_at_parent(self, tmp_path: Path) -> None:
+        """Test rooted parent pattern stays rooted to parent gitignore directory."""
+        (tmp_path / ".gitignore").write_text("/foo\n")
+        subdir = tmp_path / "docs"
+        subdir.mkdir()
+        patterns = _utils.load_gitignore_patterns(subdir)
+        f = subdir / "foo"
+        f.touch()
+        assert not _utils.should_ignore_path(f, subdir, gitignore_patterns=patterns)
+
+    def test_gitignore_slash_pattern_is_not_suffix_match(self, tmp_path: Path) -> None:
+        """Test slash patterns are rooted to gitignore directory, not suffix-matched."""
+        (tmp_path / ".gitignore").write_text("foo/bar\n")
+        patterns = _utils.load_gitignore_patterns(tmp_path)
+        f = tmp_path / "x" / "foo" / "bar"
+        f.parent.mkdir(parents=True)
+        f.touch()
+        assert not _utils.should_ignore_path(f, tmp_path, gitignore_patterns=patterns)
+
+    def test_negation_cannot_reinclude_file_in_ignored_directory(self, tmp_path: Path) -> None:
+        """Test !file does not re-include when parent directory remains ignored."""
+        (tmp_path / ".gitignore").write_text("logs/\n!logs/keep.txt\n")
+        patterns = _utils.load_gitignore_patterns(tmp_path)
+        logs = tmp_path / "logs"
+        logs.mkdir()
+        f = logs / "keep.txt"
+        f.touch()
+        assert _utils.should_ignore_path(f, tmp_path, gitignore_patterns=patterns)
+
+    def test_gitignore_no_patterns_means_no_extra_ignoring(self, tmp_path: Path) -> None:
+        """Test that passing None patterns behaves like no gitignore."""
+        f = tmp_path / "normal.txt"
+        f.touch()
+        assert not _utils.should_ignore_path(f, tmp_path, gitignore_patterns=None)
+        assert not _utils.should_ignore_path(f, tmp_path, gitignore_patterns=[])
