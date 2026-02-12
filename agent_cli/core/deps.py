@@ -103,7 +103,7 @@ def _format_install_commands(extras: list[str]) -> list[str]:
     extras_args = " ".join(extras)
     return [
         "Install with:",
-        f'  [bold cyan]uv tool install -p 3.13 "agent-cli\\[{combined}]"[/bold cyan]',
+        f'  [bold cyan]uv tool install "agent-cli\\[{combined}]"[/bold cyan]',
         "  # or",
         f"  [bold cyan]agent-cli install-extras {extras_args}[/bold cyan]",
     ]
@@ -122,8 +122,7 @@ def _get_install_hint(extra: str) -> str:
         lines.append("")
         lines.append("Install one with:")
         lines.extend(
-            f'  [bold cyan]uv tool install -p 3.13 "agent-cli\\[{alt}]"[/bold cyan]'
-            for alt in alternatives
+            f'  [bold cyan]uv tool install "agent-cli\\[{alt}]"[/bold cyan]' for alt in alternatives
         )
         lines.append("  # or")
         lines.extend(
@@ -199,10 +198,7 @@ def _install_via_uv_tool(extras: list[str], *, quiet: bool = False) -> bool:
     """Reinstall agent-cli via uv tool with the specified extras."""
     extras_str = ",".join(extras)
     package_spec = f"agent-cli[{extras_str}]"
-    # Cap at Python 3.13 for compatibility - onnxruntime doesn't support 3.14 yet
-    major, minor = sys.version_info[:2]
-    python_version = f"{major}.{min(minor, 13)}"
-    cmd = ["uv", "tool", "install", package_spec, "--force", "--python", python_version]
+    cmd = ["uv", "tool", "install", package_spec, "--force"]
     if quiet:
         cmd.append("-q")
     # Use stderr for status messages so they don't pollute stdout
@@ -296,8 +292,7 @@ def _maybe_reexec_with_uvx(extras: list[str]) -> None:
     if not uvx_path:
         return
     extras_str = ",".join(extras)
-    # Run agent-cli[extras] directly with Python 3.13 (some deps lack 3.14 wheels)
-    cmd = [uvx_path, "--python", "3.13", f"agent-cli[{extras_str}]", *sys.argv[1:]]
+    cmd = [uvx_path, f"agent-cli[{extras_str}]", *sys.argv[1:]]
     _maybe_exec_with_marker(cmd, f"Re-running with extras: {extras_str}")
 
 

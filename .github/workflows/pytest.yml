@@ -15,7 +15,10 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
-        python-version: ["3.11", "3.13"]
+        python-version: ["3.11", "3.14"]
+        exclude:
+          - os: windows-latest
+            python-version: "3.14"  # markitdown caps onnxruntime<=1.20.1 which has no 3.14 wheels (microsoft/markitdown#1551)
 
     steps:
       - uses: actions/checkout@v6
@@ -35,7 +38,7 @@ jobs:
         if: matrix.os != 'macos-latest'
         run: uv run --extra audio --extra llm --extra rag --extra memory --extra vad --extra faster-whisper --extra piper --extra kokoro --extra server --extra speed --extra test pytest -vvv
       - name: Upload coverage reports to Codecov
-        if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.13'
+        if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.14'
         uses: codecov/codecov-action@v5
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}

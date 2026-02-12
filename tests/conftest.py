@@ -29,6 +29,7 @@ def pytest_configure() -> None:
 
     Also mocks _check_extra_installed to always return True so tests that
     exercise command logic don't fail on missing optional dependencies.
+
     """
     if "sounddevice" not in sys.modules:
         mock_sd = MagicMock()

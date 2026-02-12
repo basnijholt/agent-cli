@@ -73,15 +73,11 @@ If you already have AI services running (or plan to use OpenAI):
 
 ```bash
 # Using uv (recommended)
-uv tool install agent-cli -p 3.13
+uv tool install agent-cli
 
 # Using pip
 pip install agent-cli
 ```
-
-> [!NOTE]
-> The `-p 3.13` flag is required because some dependencies don't support Python 3.14 yet.
-> See [uv issue #8206](https://github.com/astral-sh/uv/issues/8206) for details.
 
 Then use it:
 
@@ -93,7 +89,7 @@ agent-cli autocorrect "this has an eror"
 
 ```bash
 # 1. Install agent-cli
-uv tool install agent-cli -p 3.13
+uv tool install agent-cli
 
 # 2. Install all required services
 agent-cli install-services
