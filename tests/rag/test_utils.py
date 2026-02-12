@@ -564,7 +564,7 @@ class TestGitignoreSupport:
         (tmp_path / ".gitignore").write_text("# comment\n\n*.tmp\n")
         patterns = _utils.load_gitignore_patterns(tmp_path)
         assert len(patterns) == 1
-        assert patterns[0] == "*.tmp"
+        assert patterns[0].pattern == "*.tmp"
 
     def test_gitignore_nested_directory_pattern(self, tmp_path: Path) -> None:
         """Test pattern with path separator matches nested paths."""
@@ -575,6 +575,16 @@ class TestGitignoreSupport:
         f = logs / "app.log"
         f.touch()
         assert _utils.should_ignore_path(f, tmp_path, gitignore_patterns=patterns)
+
+    def test_gitignore_nested_directory_pattern_no_overmatch(self, tmp_path: Path) -> None:
+        """Test pattern with slash does not over-match deeper directories."""
+        (tmp_path / ".gitignore").write_text("logs/*.log\n")
+        patterns = _utils.load_gitignore_patterns(tmp_path)
+        nested = tmp_path / "logs" / "sub"
+        nested.mkdir(parents=True)
+        f = nested / "app.log"
+        f.touch()
+        assert not _utils.should_ignore_path(f, tmp_path, gitignore_patterns=patterns)
 
     def test_gitignore_double_star_pattern(self, tmp_path: Path) -> None:
         """Test that ** matches across directories."""
@@ -597,7 +607,36 @@ class TestGitignoreSupport:
         subdir = tmp_path / "docs"
         subdir.mkdir()
         patterns = _utils.load_gitignore_patterns(subdir)
-        assert "*.bak" in patterns
+        assert any(p.pattern == "*.bak" for p in patterns)
+
+    def test_parent_rooted_pattern_anchored_at_parent(self, tmp_path: Path) -> None:
+        """Test rooted parent pattern stays rooted to parent gitignore directory."""
+        (tmp_path / ".gitignore").write_text("/foo\n")
+        subdir = tmp_path / "docs"
+        subdir.mkdir()
+        patterns = _utils.load_gitignore_patterns(subdir)
+        f = subdir / "foo"
+        f.touch()
+        assert not _utils.should_ignore_path(f, subdir, gitignore_patterns=patterns)
+
+    def test_gitignore_slash_pattern_is_not_suffix_match(self, tmp_path: Path) -> None:
+        """Test slash patterns are rooted to gitignore directory, not suffix-matched."""
+        (tmp_path / ".gitignore").write_text("foo/bar\n")
+        patterns = _utils.load_gitignore_patterns(tmp_path)
+        f = tmp_path / "x" / "foo" / "bar"
+        f.parent.mkdir(parents=True)
+        f.touch()
+        assert not _utils.should_ignore_path(f, tmp_path, gitignore_patterns=patterns)
+
+    def test_negation_cannot_reinclude_file_in_ignored_directory(self, tmp_path: Path) -> None:
+        """Test !file does not re-include when parent directory remains ignored."""
+        (tmp_path / ".gitignore").write_text("logs/\n!logs/keep.txt\n")
+        patterns = _utils.load_gitignore_patterns(tmp_path)
+        logs = tmp_path / "logs"
+        logs.mkdir()
+        f = logs / "keep.txt"
+        f.touch()
+        assert _utils.should_ignore_path(f, tmp_path, gitignore_patterns=patterns)
 
     def test_gitignore_no_patterns_means_no_extra_ignoring(self, tmp_path: Path) -> None:
         """Test that passing None patterns behaves like no gitignore."""
