@@ -602,12 +602,42 @@ class TestGitignoreSupport:
         assert patterns == []
 
     def test_parent_gitignore_is_loaded(self, tmp_path: Path) -> None:
-        """Test that .gitignore from parent directories is picked up."""
+        """Test that parent .gitignore is loaded when inside a git repo."""
+        (tmp_path / ".git").mkdir()
         (tmp_path / ".gitignore").write_text("*.bak\n")
         subdir = tmp_path / "docs"
         subdir.mkdir()
         patterns = _utils.load_gitignore_patterns(subdir)
         assert any(p.pattern == "*.bak" for p in patterns)
+
+    def test_parent_gitignore_not_loaded_outside_repo_root(self, tmp_path: Path) -> None:
+        """Test that .gitignore above repository root is ignored."""
+        outer = tmp_path / "outer"
+        repo_root = outer / "repo"
+        docs = repo_root / "docs"
+        docs.mkdir(parents=True)
+        (repo_root / ".git").mkdir()
+        (outer / ".gitignore").write_text("*.foo\n")
+
+        patterns = _utils.load_gitignore_patterns(docs)
+        f = docs / "a.foo"
+        f.touch()
+        assert not _utils.should_ignore_path(f, docs, gitignore_patterns=patterns)
+
+    def test_not_in_git_repo_only_loads_docs_gitignore(self, tmp_path: Path) -> None:
+        """Test that parent .gitignore is ignored when not in a git repo."""
+        (tmp_path / ".gitignore").write_text("*.foo\n")
+        docs = tmp_path / "docs"
+        docs.mkdir()
+        (docs / ".gitignore").write_text("*.bar\n")
+
+        patterns = _utils.load_gitignore_patterns(docs)
+        foo = docs / "x.foo"
+        foo.touch()
+        bar = docs / "x.bar"
+        bar.touch()
+        assert not _utils.should_ignore_path(foo, docs, gitignore_patterns=patterns)
+        assert _utils.should_ignore_path(bar, docs, gitignore_patterns=patterns)
 
     def test_parent_rooted_pattern_anchored_at_parent(self, tmp_path: Path) -> None:
         """Test rooted parent pattern stays rooted to parent gitignore directory."""

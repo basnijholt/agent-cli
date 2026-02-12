@@ -208,20 +208,42 @@ def _matches_gitignore(
     return _is_path_ignored_by_rules(parts, is_dir, gitignore_patterns)
 
 
+def _find_git_root(start: Path) -> Path | None:
+    """Find the nearest git repository root at or above ``start``."""
+    current = start.resolve()
+    while True:
+        if (current / ".git").exists():
+            return current
+        parent = current.parent
+        if parent == current:
+            return None
+        current = parent
+
+
 def load_gitignore_patterns(docs_folder: Path) -> list[GitignorePattern]:
     """Load .gitignore patterns from the docs folder and its parents.
 
-    Walks up from ``docs_folder`` to the filesystem root, collecting
-    ``.gitignore`` files.  Patterns from parent directories are applied
-    first (lower priority), then patterns from directories closer to
-    ``docs_folder`` (higher priority), matching Git's behaviour.
+    Walks up from ``docs_folder`` to the git repository root, collecting
+    ``.gitignore`` files. If ``docs_folder`` is not inside a git repo,
+    only ``docs_folder/.gitignore`` is considered.
+
+    Patterns from parent directories are applied first (lower priority),
+    then patterns from directories closer to ``docs_folder`` (higher priority),
+    matching Git's behaviour.
     """
     gitignore_files: list[Path] = []
     current = docs_folder.resolve()
+    git_root = _find_git_root(current)
     while True:
         candidate = current / ".gitignore"
         if candidate.is_file():
             gitignore_files.append(candidate)
+
+        if git_root is None:
+            break
+        if current == git_root:
+            break
+
         parent = current.parent
         if parent == current:
             break
