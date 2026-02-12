@@ -27,8 +27,8 @@ def install_extras(
         list[str] | None,
         typer.Argument(
             help="Extras to install: `audio`, `faster-whisper`, `kokoro`, `llm`, `memory`, "
-            "`mlx-whisper`, `piper`, `rag`, `server`, `speed`, `vad`, `whisper-transformers`, "
-            "`wyoming`",
+            "`mlx-whisper`, `piper`, `rag`, `server`, `speed`, `vad`, `vectordb`, "
+            "`whisper-transformers`, `wyoming`",
         ),
     ] = None,
     list_extras: Annotated[
@@ -62,6 +62,7 @@ def install_extras(
     - `server` - FastAPI server components
     - `speed` - Audio speed adjustment (audiostretchy)
     - `vad` - Voice Activity Detection (Silero VAD via ONNX)
+    - `vectordb` - Vector database with embeddings (ChromaDB)
     - `whisper-transformers` - Whisper ASR via HuggingFace transformers
     - `wyoming` - Wyoming protocol support
 
