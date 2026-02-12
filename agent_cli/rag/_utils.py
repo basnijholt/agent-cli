@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import fnmatch
 import hashlib
 import logging
 from typing import TYPE_CHECKING
@@ -33,7 +34,140 @@ DEFAULT_IGNORE_FILES: frozenset[str] = frozenset(
 )
 
 
-def should_ignore_path(path: Path, base_folder: Path) -> bool:
+def _parse_gitignore(gitignore_path: Path) -> list[str]:
+    """Parse a .gitignore file and return a list of patterns."""
+    try:
+        text = gitignore_path.read_text(errors="ignore")
+    except OSError:
+        return []
+    patterns = []
+    for line in text.splitlines():
+        line = line.strip()  # noqa: PLW2901
+        # Skip empty lines and comments
+        if not line or line.startswith("#"):
+            continue
+        patterns.append(line)
+    return patterns
+
+
+def _gitignore_pattern_matches(pattern: str, rel_path_str: str, is_dir: bool) -> bool:
+    """Check if a single gitignore pattern matches a relative path.
+
+    Supports:
+    - Simple filename patterns (e.g. ``*.log``)
+    - Directory-only patterns with trailing ``/`` (e.g. ``build/``)
+    - Rooted patterns with leading ``/`` (e.g. ``/dist``)
+    - Patterns with ``/`` that match against the full path
+    - ``**`` for matching across directories
+    """
+    # Directory-only pattern (trailing /)
+    dir_only = pattern.endswith("/")
+    if dir_only:
+        pattern = pattern.rstrip("/")
+
+    # Rooted pattern (leading /)
+    rooted = pattern.startswith("/")
+    if rooted:
+        pattern = pattern.lstrip("/")
+
+    # Convert ** to fnmatch-compatible pattern
+    # "**/" matches any number of directories
+    glob_pattern = pattern.replace("**/", "__GLOBSTAR__/")
+    glob_pattern = glob_pattern.replace("/**", "/__GLOBSTAR__")
+    glob_pattern = glob_pattern.replace("**", "__GLOBSTAR__")
+
+    # For patterns without /, match against any path component (unless rooted)
+    if "/" not in pattern and not rooted:
+        # Simple pattern like "*.log" or "build" — match against each component
+        parts = rel_path_str.split("/")
+        # For dir-only patterns, only match directory components (all except last for files)
+        components_to_check = (parts[:-1] if not is_dir else parts) if dir_only else parts
+        return any(fnmatch.fnmatch(part, pattern) for part in components_to_check)
+
+    # Pattern contains / — match against full relative path
+    # Restore ** handling
+    glob_pattern = glob_pattern.replace("__GLOBSTAR__", "*")
+
+    if rooted:
+        # Must match from the root
+        return fnmatch.fnmatch(rel_path_str, glob_pattern)
+
+    # Non-rooted patterns with / can match anywhere in the path
+    # Try matching from each directory level
+    parts = rel_path_str.split("/")
+    for i in range(len(parts)):
+        sub_path = "/".join(parts[i:])
+        if fnmatch.fnmatch(sub_path, glob_pattern):
+            return True
+    return False
+
+
+def _matches_gitignore(
+    rel_path_str: str,
+    is_dir: bool,
+    gitignore_patterns: list[str],
+) -> bool:
+    """Check if a path matches gitignore patterns.
+
+    Processes patterns in order; negation patterns (``!``) can un-ignore
+    previously matched paths.  Also checks parent directories: if a
+    parent directory is ignored, the file inside it is ignored too.
+    """
+    # Build list of paths to check: all parent dirs, then the file/dir itself
+    parts = rel_path_str.split("/")
+    paths_to_check = [("/".join(parts[:i]), True) for i in range(1, len(parts))]
+    paths_to_check.append((rel_path_str, is_dir))
+
+    ignored = False
+    for pattern in gitignore_patterns:
+        if pattern.startswith("!"):
+            neg_pattern = pattern[1:]
+            for check_path, check_is_dir in paths_to_check:
+                if _gitignore_pattern_matches(neg_pattern, check_path, check_is_dir):
+                    ignored = False
+                    break
+        else:
+            for check_path, check_is_dir in paths_to_check:
+                if _gitignore_pattern_matches(pattern, check_path, check_is_dir):
+                    ignored = True
+                    break
+    return ignored
+
+
+def load_gitignore_patterns(docs_folder: Path) -> list[str]:
+    """Load .gitignore patterns from the docs folder and its parents.
+
+    Walks up from ``docs_folder`` to the filesystem root, collecting
+    ``.gitignore`` files.  Patterns from parent directories are applied
+    first (lower priority), then patterns from directories closer to
+    ``docs_folder`` (higher priority), matching Git's behaviour.
+    """
+    gitignore_files: list[Path] = []
+    current = docs_folder.resolve()
+    while True:
+        candidate = current / ".gitignore"
+        if candidate.is_file():
+            gitignore_files.append(candidate)
+        parent = current.parent
+        if parent == current:
+            break
+        current = parent
+
+    # Reverse so parent patterns come first (lower priority)
+    gitignore_files.reverse()
+
+    all_patterns: list[str] = []
+    for gi in gitignore_files:
+        all_patterns.extend(_parse_gitignore(gi))
+    return all_patterns
+
+
+def should_ignore_path(
+    path: Path,
+    base_folder: Path,
+    *,
+    gitignore_patterns: list[str] | None = None,
+) -> bool:
     """Check if a path should be ignored during indexing.
 
     Ignores:
@@ -41,10 +175,13 @@ def should_ignore_path(path: Path, base_folder: Path) -> bool:
     - Common development directories (__pycache__, node_modules, venv, etc.)
     - .egg-info directories
     - OS metadata files (Thumbs.db)
+    - Paths matching .gitignore patterns (when provided)
 
     Args:
         path: The file path to check.
         base_folder: The base folder for computing relative paths.
+        gitignore_patterns: Pre-parsed gitignore patterns from
+            :func:`load_gitignore_patterns`.
 
     Returns:
         True if the path should be ignored, False otherwise.
@@ -64,7 +201,17 @@ def should_ignore_path(path: Path, base_folder: Path) -> bool:
             return True
 
     # Check specific file patterns
-    return path.name in DEFAULT_IGNORE_FILES
+    if path.name in DEFAULT_IGNORE_FILES:
+        return True
+
+    # Check gitignore patterns
+    if gitignore_patterns:
+        rel_path_str = "/".join(rel_parts)
+        is_dir = path.is_dir()
+        if _matches_gitignore(rel_path_str, is_dir, gitignore_patterns):
+            return True
+
+    return False
 
 
 # Files to read as plain text directly (fast path)

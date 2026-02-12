@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 
 from agent_cli.core.watch import watch_directory
 from agent_cli.rag._indexing import index_file, remove_file
-from agent_cli.rag._utils import should_ignore_path
+from agent_cli.rag._utils import load_gitignore_patterns, should_ignore_path
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -26,6 +26,7 @@ async def watch_docs(
 ) -> None:
     """Watch docs folder for changes and update index asynchronously."""
     LOGGER.info("📁 Watching folder: %s", docs_folder)
+    gitignore_patterns = load_gitignore_patterns(docs_folder)
 
     await watch_directory(
         docs_folder,
@@ -37,7 +38,9 @@ async def watch_docs(
             file_hashes,
             file_mtimes,
         ),
-        ignore_filter=should_ignore_path,
+        ignore_filter=lambda p, base: should_ignore_path(
+            p, base, gitignore_patterns=gitignore_patterns
+        ),
     )
 
 
