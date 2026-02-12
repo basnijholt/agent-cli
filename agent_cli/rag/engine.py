@@ -134,7 +134,8 @@ def _convert_messages(
 
     for m in history_msgs:
         if m.role == "system":
-            pyd_messages.append(ModelRequest(parts=[SystemPromptPart(content=m.content)]))
+            if m.content:  # Skip empty system messages (rejected by some providers)
+                pyd_messages.append(ModelRequest(parts=[SystemPromptPart(content=m.content)]))
         elif m.role == "user":
             pyd_messages.append(ModelRequest(parts=[UserPromptPart(content=m.content)]))
         elif m.role == "assistant":
@@ -228,7 +229,7 @@ async def process_chat_request(
     # - If CLI flag `enable_rag_tools` is False, tools are disabled globally.
     # - If CLI flag is True, check request.rag_enable_tools (default True).
     tools_allowed = enable_rag_tools and (request.rag_enable_tools is not False)
-    system_prompt = ""
+    system_prompt: str | tuple[()] = ()  # No system prompt by default
     if retrieval and retrieval.context:
         truncated = truncate_context(retrieval.context)
         template = RAG_PROMPT_WITH_TOOLS if tools_allowed else RAG_PROMPT_NO_TOOLS
