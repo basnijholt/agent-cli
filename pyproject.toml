@@ -30,68 +30,50 @@ content-type = "text/markdown"
 Homepage = "https://github.com/basnijholt/agent-cli"
 
 [project.optional-dependencies]
-# Provider extras (previously base dependencies, now optional)
-wyoming = ["wyoming>=1.5.2"]  # Wyoming protocol only (for servers)
-audio = ["numpy", "sounddevice>=0.4.6", "agent-cli[wyoming]"]  # Local audio recording
-llm = ["pydantic-ai-slim[openai,google,duckduckgo,vertexai]>=0.1.1"]  # LLM framework with tools
+# Base building blocks
+wyoming = ["wyoming>=1.5.2"]
+server = ["fastapi[standard]"]
+
+# Provider extras
+audio = ["numpy", "sounddevice>=0.4.6", "agent-cli[wyoming]"]
+llm = ["pydantic-ai-slim[openai,google,duckduckgo,vertexai]>=0.1.1"]
+
+# Shared base for rag + memory (vector DB with embeddings and LLM integration)
+vectordb = [
+    "agent-cli[server]",
+    "pydantic-ai-slim[openai,google]>=0.1.1",
+    "chromadb>=0.4.22",
+    "openai>=1.0.0",  # Required by chromadb's OpenAIEmbeddingFunction
+    "onnxruntime>=1.17.0",
+    "huggingface-hub>=0.20.0",
+    "transformers>=4.30.0",
+    "watchfiles>=0.21.0",
+]
+rag = ["agent-cli[vectordb]", "markitdown[docx,pdf,pptx]>=0.1.3"]
+memory = ["agent-cli[vectordb]", "pyyaml>=6.0.0"]
 
 # Feature extras
-server = [
-    "fastapi[standard]",
-]
-rag = [
-    "pydantic-ai-slim[openai,google]>=0.1.1",  # pydantic-ai for LLM integration
-    "fastapi[standard]",
-    "chromadb>=0.4.22",
-    "openai>=1.0.0",  # Required by chromadb's OpenAIEmbeddingFunction
-    "onnxruntime>=1.17.0",
-    "huggingface-hub>=0.20.0",
-    "transformers>=4.30.0",
-    "watchfiles>=0.21.0",
-    # Until here same as 'memory' extras
-    "markitdown[docx,pdf,pptx]>=0.1.3",
-]
-memory = [
-    "pydantic-ai-slim[openai,google]>=0.1.1",  # pydantic-ai for LLM integration
-    "fastapi[standard]",
-    "chromadb>=0.4.22",
-    "openai>=1.0.0",  # Required by chromadb's OpenAIEmbeddingFunction
-    "onnxruntime>=1.17.0",
-    "huggingface-hub>=0.20.0",
-    "transformers>=4.30.0",
-    "watchfiles>=0.21.0",
-    # Until here same as 'rag' extras
-    "pyyaml>=6.0.0",
-]
-vad = [
-    "onnxruntime>=1.16.0",
-]
-faster-whisper = [
-    "fastapi[standard]",
-    "faster-whisper>=1.0.0",
-]
+vad = ["onnxruntime>=1.16.0"]
+speed = ["audiostretchy>=1.3.0"]
+
+# ASR backends
+faster-whisper = ["agent-cli[server]", "faster-whisper>=1.0.0"]
 mlx-whisper = [
-    "fastapi[standard]; sys_platform == 'darwin' and platform_machine == 'arm64'",
+    "agent-cli[server]; sys_platform == 'darwin' and platform_machine == 'arm64'",
     "mlx-whisper>=0.4.0; sys_platform == 'darwin' and platform_machine == 'arm64'",
 ]
-whisper-transformers = [
-    "fastapi[standard]",
-    "transformers>=4.30.0",
-    "torch>=2.0.0",
-]
-piper = [
-    "fastapi[standard]",
-    "piper-tts>=1.2.0",
-]
+whisper-transformers = ["agent-cli[server]", "transformers>=4.30.0", "torch>=2.0.0"]
+
+# TTS backends
+piper = ["agent-cli[server]", "piper-tts>=1.2.0"]
 kokoro = [
-    "fastapi[standard]",
+    "agent-cli[server]",
     "kokoro>=0.9.0",
     "soundfile>=0.12.0",
     "huggingface-hub>=0.20.0",
     "pip",  # Kokoro uses spacy which calls `pip install` to download language models at runtime
     "transformers>=4.40.0",  # Ensure pre-built tokenizers wheels for Python 3.13+
 ]
-speed = ["audiostretchy>=1.3.0"]
 
 # Development extras
 test = [
