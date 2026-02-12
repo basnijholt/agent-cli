@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-from functools import partial, update_wrapper
 from typing import TYPE_CHECKING
 
 from agent_cli.core.watch import watch_directory
@@ -28,10 +27,9 @@ async def watch_docs(
     """Watch docs folder for changes and update index asynchronously."""
     LOGGER.info("📁 Watching folder: %s", docs_folder)
     gitignore_patterns = load_gitignore_patterns(docs_folder)
-    ignore_filter = update_wrapper(
-        partial(should_ignore_path, gitignore_patterns=gitignore_patterns),
-        should_ignore_path,
-    )
+
+    def ignore_filter(path: Path, base_folder: Path) -> bool:
+        return should_ignore_path(path, base_folder, gitignore_patterns=gitignore_patterns)
 
     await watch_directory(
         docs_folder,
