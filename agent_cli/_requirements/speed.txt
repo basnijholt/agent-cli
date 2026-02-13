@@ -52,13 +52,10 @@ rich==14.2.0
     # via
     #   agent-cli
     #   typer
-    #   typer-slim
 setproctitle==1.3.7
     # via agent-cli
 shellingham==1.5.4
-    # via
-    #   typer
-    #   typer-slim
+    # via typer
 termcolor==3.3.0
     # via fire
 typer==0.21.1
