@@ -335,7 +335,6 @@ rich==14.2.0
     #   chromadb
     #   rich-toolkit
     #   typer
-    #   typer-slim
 rich-toolkit==0.17.1
     # via
     #   fastapi-cli
@@ -355,9 +354,7 @@ sentry-sdk==2.49.0
 setproctitle==1.3.7
     # via agent-cli
 shellingham==1.5.4
-    # via
-    #   typer
-    #   typer-slim
+    # via typer
 six==1.17.0
     # via
     #   kubernetes

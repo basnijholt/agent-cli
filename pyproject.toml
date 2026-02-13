@@ -12,7 +12,7 @@ dependencies = [
     "pydantic",  # Required for config.py models
     "rich",
     "pyperclip",
-    "typer-slim[standard]",  # Depend on both typer and typer-slim to prevent
+    "typer-slim",  # Depend on both typer and typer-slim to prevent
     "typer",  # uv namespace corruption (astral-sh/uv#17645)
     "dotenv",
     "httpx",

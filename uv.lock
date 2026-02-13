@@ -31,7 +31,7 @@ dependencies = [
     { name = "rich" },
     { name = "setproctitle" },
     { name = "typer" },
-    { name = "typer-slim", extra = ["standard"] },
+    { name = "typer-slim" },
 ]
 
 [package.optional-dependencies]
@@ -225,7 +225,7 @@ requires-dist = [
     { name = "transformers", marker = "extra == 'vectordb'", specifier = ">=4.30.0" },
     { name = "transformers", marker = "extra == 'whisper-transformers'", specifier = ">=4.30.0" },
     { name = "typer" },
-    { name = "typer-slim", extras = ["standard"] },
+    { name = "typer-slim" },
     { name = "versioningit", marker = "extra == 'dev'" },
     { name = "watchfiles", marker = "extra == 'memory'", specifier = ">=0.21.0" },
     { name = "watchfiles", marker = "extra == 'rag'", specifier = ">=0.21.0" },
@@ -5355,12 +5355,6 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/17/d4/064570dec6358aa9049d4708e4a10407d74c99258f8b2136bb8702303f1a/typer_slim-0.21.1.tar.gz", hash = "sha256:73495dd08c2d0940d611c5a8c04e91c2a0a98600cbd4ee19192255a233b6dbfd", size = 110478, upload-time = "2026-01-06T11:21:11.176Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/c8/0a/4aca634faf693e33004796b6cee0ae2e1dba375a800c16ab8d3eff4bb800/typer_slim-0.21.1-py3-none-any.whl", hash = "sha256:6e6c31047f171ac93cc5a973c9e617dbc5ab2bddc4d0a3135dc161b4e2020e0d", size = 47444, upload-time = "2026-01-06T11:21:12.441Z" },
-]
-
-[package.optional-dependencies]
-standard = [
-    { name = "rich" },
-    { name = "shellingham" },
 ]
 
 [[package]]

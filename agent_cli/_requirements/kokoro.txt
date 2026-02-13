@@ -291,7 +291,6 @@ rich==14.2.0
     #   agent-cli
     #   rich-toolkit
     #   typer
-    #   typer-slim
 rich-toolkit==0.17.1
     # via
     #   fastapi-cli
@@ -316,9 +315,7 @@ setuptools==80.9.0
     #   thinc
     #   torch
 shellingham==1.5.4
-    # via
-    #   typer
-    #   typer-slim
+    # via typer
 six==1.17.0
     # via python-dateutil
 smart-open==7.5.0
