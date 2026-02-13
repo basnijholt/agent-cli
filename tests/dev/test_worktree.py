@@ -496,8 +496,8 @@ class TestCreateWorktreeFromRefWarning:
             assert result.warning is not None
             assert "already exists" in result.warning
 
-    def test_no_warning_when_from_not_specified(self) -> None:
-        """No warning when --from is not specified (uses default)."""
+    def test_warning_when_from_not_specified_but_branch_exists(self) -> None:
+        """Warning shown when branch exists even without explicit --from."""
         with (
             patch("agent_cli.dev.worktree.get_main_repo_root", return_value=Path("/repo")),
             patch(
@@ -523,7 +523,9 @@ class TestCreateWorktreeFromRefWarning:
             )
 
             assert result.success is True
-            assert result.warning is None  # No warning since --from wasn't explicit
+            assert result.warning is not None
+            assert "already exists" in result.warning
+            assert "use a different name" in result.warning.lower()
 
     def test_no_warning_when_branch_is_new(self) -> None:
         """No warning when branch doesn't exist (will be created from --from)."""

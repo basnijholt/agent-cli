@@ -662,13 +662,19 @@ def create_worktree(
     # Check if branch exists remotely or locally
     remote_exists, local_exists = check_branch_exists(branch_name, repo_root)
 
-    # Generate warning if --from was specified but will be ignored
+    # Generate warning when the branch already exists
     warning: str | None = None
-    if from_ref_explicit and (local_exists or remote_exists):
-        warning = (
-            f"Branch '{branch_name}' already exists. "
-            f"Using existing branch instead of creating from '{from_ref}'."
-        )
+    if local_exists or remote_exists:
+        if from_ref_explicit:
+            warning = (
+                f"Branch '{branch_name}' already exists. "
+                f"Using existing branch instead of creating from '{from_ref}'."
+            )
+        else:
+            warning = (
+                f"Branch '{branch_name}' already exists. "
+                f"Using existing branch (use a different name to start fresh)."
+            )
 
     try:
         _add_worktree(
