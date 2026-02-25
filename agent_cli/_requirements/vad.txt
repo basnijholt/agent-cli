@@ -42,9 +42,9 @@ numpy==2.3.5
     # via onnxruntime
 onnxruntime==1.20.1
     # via agent-cli
-packaging==25.0
+packaging==24.2
     # via onnxruntime
-protobuf==6.33.4
+protobuf==5.29.6
     # via onnxruntime
 psutil==7.2.1 ; sys_platform == 'win32'
     # via agent-cli
