@@ -426,6 +426,7 @@ agent-cli install-extras rag memory vad
   • llm - LLM framework (pydantic-ai)
   • memory - Long-term memory proxy
   • mlx-whisper - Whisper ASR for Apple Silicon
+  • nemo-whisper - Whisper-compatible ASR via NVIDIA NeMo (Parakeet)
   • piper - Piper TTS (CPU)
   • rag - RAG proxy (ChromaDB, embeddings)
   • server - FastAPI server components
@@ -446,8 +447,8 @@ agent-cli install-extras rag memory vad
 
 ╭─ Arguments ────────────────────────────────────────────────────────────────────────────╮
 │   extras      [EXTRAS]...  Extras to install: audio, faster-whisper, kokoro, llm,      │
-│                            memory, mlx-whisper, piper, rag, server, speed, vad,        │
-│                            vectordb, whisper-transformers, wyoming                     │
+│                            memory, mlx-whisper, nemo-whisper, piper, rag, server,      │
+│                            speed, vad, vectordb, whisper-transformers, wyoming         │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Options ──────────────────────────────────────────────────────────────────────────────╮
 │ --list  -l        Show available extras with descriptions (what each one enables)      │
