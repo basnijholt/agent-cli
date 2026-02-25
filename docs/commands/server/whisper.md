@@ -248,7 +248,7 @@ This uses HuggingFace's `transformers` library, which supports loading `.safeten
 For NeMo models like `nvidia/parakeet-tdt-0.6b-v2`:
 
 ```bash
-pip install "agent-cli[server,wyoming]" "nemo_toolkit[asr]"
+pip install "agent-cli[nemo-whisper,wyoming]"
 agent-cli server whisper --backend nemo --model parakeet-tdt-0.6b-v2
 ```
 

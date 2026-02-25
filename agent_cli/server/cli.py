@@ -188,7 +188,8 @@ def _check_whisper_deps(backend: str, *, download_only: bool = False) -> None:
         if not _has("nemo"):
             err_console.print(
                 "[bold red]Error:[/bold red] NeMo backend requires nemo_toolkit[asr]. "
-                "Run: [cyan]pip install 'nemo_toolkit[asr]'[/cyan]",
+                "Run: [cyan]pip install agent-cli\\[nemo-whisper][/cyan] "
+                "or [cyan]uv sync --extra nemo-whisper[/cyan]",
             )
             raise typer.Exit(1)
         return
@@ -216,7 +217,9 @@ def _is_parakeet_model(model_name: str) -> bool:
 
 
 @app.command("whisper")
-@requires_extras("server", "wyoming")
+@requires_extras(
+    "server", "faster-whisper|mlx-whisper|whisper-transformers|nemo-whisper", "wyoming"
+)
 def whisper_cmd(  # noqa: C901, PLR0912, PLR0915
     model: Annotated[
         list[str] | None,

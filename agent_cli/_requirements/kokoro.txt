@@ -93,7 +93,7 @@ filelock==3.20.3
     #   huggingface-hub
     #   torch
     #   transformers
-fsspec==2026.1.0
+fsspec==2024.12.0
     # via
     #   huggingface-hub
     #   torch
@@ -209,7 +209,7 @@ nvidia-nvshmem-cu12==3.3.20 ; platform_machine == 'x86_64' and sys_platform == '
     # via torch
 nvidia-nvtx-cu12==12.8.90 ; platform_machine == 'x86_64' and sys_platform == 'linux'
     # via torch
-packaging==25.0
+packaging==24.2
     # via
     #   huggingface-hub
     #   spacy
@@ -344,7 +344,7 @@ termcolor==3.3.0
     # via csvw
 thinc==8.3.10
     # via spacy
-tokenizers==0.22.2
+tokenizers==0.21.4
     # via transformers
 torch==2.9.1
     # via
@@ -356,7 +356,7 @@ tqdm==4.67.1
     #   huggingface-hub
     #   spacy
     #   transformers
-transformers==4.57.5
+transformers==4.53.3
     # via
     #   agent-cli
     #   kokoro
