@@ -91,7 +91,7 @@ agent-cli server whisper --preload
 | `--wyoming-port` | `10300` | Port for Wyoming protocol (Home Assistant integration) |
 | `--no-wyoming` | `false` | Disable Wyoming protocol server (only run HTTP API) |
 | `--download-only` | `false` | Download model(s) to cache and exit. Useful for Docker builds |
-| `--backend, -b` | `auto` | Inference backend: `auto` (faster-whisper on CUDA/CPU, MLX on Apple Silicon), `faster-whisper`, `mlx`, `transformers` (HuggingFace, supports safetensors), `nemo` (NVIDIA NeMo, supports Parakeet) |
+| `--backend, -b` | `auto` | Inference backend: `auto` (faster-whisper on CUDA/CPU, MLX on Apple Silicon), `faster-whisper`, `mlx`, `transformers` (HuggingFace, supports safetensors), `nemo` (NVIDIA NeMo, supports Parakeet models) |
 
 ### General Options
 
