@@ -28,9 +28,14 @@ _MODEL_MAP: dict[str, str] = {
 
 def _resolve_model_name(model_name: str) -> str:
     """Resolve a model name to a NeMo Hub identifier."""
-    if "/" in model_name:
-        return model_name
-    return _MODEL_MAP.get(model_name, model_name)
+    normalized = model_name.strip()
+    lowered = normalized.lower()
+
+    if "/" in normalized:
+        if lowered.startswith("nvidia/parakeet-"):
+            return lowered
+        return normalized
+    return _MODEL_MAP.get(lowered, normalized)
 
 
 def download_model(model_name: str) -> str:
@@ -97,8 +102,8 @@ def _extract_segments(hypothesis: Any, *, word_timestamps: bool) -> list[dict[st
     if not isinstance(timestamp, dict):
         return []
 
-    key = "word" if word_timestamps else "segment"
-    entries = timestamp.get(key)
+    list_key, text_key = ("word", "word") if word_timestamps else ("segment", "segment")
+    entries = timestamp.get(list_key)
     if not isinstance(entries, list):
         return []
 
@@ -108,7 +113,7 @@ def _extract_segments(hypothesis: Any, *, word_timestamps: bool) -> list[dict[st
             continue
         start = float(entry.get("start", 0.0) or 0.0)
         end = float(entry.get("end", start) or start)
-        text = str(entry.get(key, "")).strip()
+        text = str(entry.get(text_key, "")).strip()
         segments.append(
             {
                 "id": idx,
@@ -273,7 +278,7 @@ class NemoWhisperBackend:
         *,
         source_filename: str | None = None,  # noqa: ARG002
         language: str | None = None,
-        task: Literal["transcribe", "translate"] = "transcribe",
+        task: Literal["transcribe", "translate"] = "transcribe",  # noqa: ARG002
         initial_prompt: str | None = None,  # noqa: ARG002
         temperature: float = 0.0,  # noqa: ARG002
         vad_filter: bool = True,  # noqa: ARG002
@@ -283,11 +288,6 @@ class NemoWhisperBackend:
         if self._executor is None:
             msg = "Model not loaded. Call load() first."
             raise RuntimeError(msg)
-
-        if task == "translate":
-            logger.warning(
-                "Task=translate requested for NeMo backend; using transcription output as-is",
-            )
 
         kwargs: dict[str, Any] = {
             "language": language,
