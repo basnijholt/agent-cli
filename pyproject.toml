@@ -121,6 +121,11 @@ agent-cli = "agent_cli.cli:app"
 agent = "agent_cli.cli:app"
 ag = "agent_cli.cli:app"
 
+[tool.uv]
+required-environments = [
+    "sys_platform == 'darwin' and platform_machine == 'arm64' and python_full_version == '3.13.*'",
+]
+
 [tool.hatch.version]
 source = "versioningit"
 

@@ -206,7 +206,9 @@ joblib==1.5.3
     #   scikit-learn
 kaldi-python-io==1.2.2
     # via nemo-toolkit
-kaldialign==0.9.1
+kaldialign==0.8.0 ; python_full_version >= '3.13' and platform_machine == 'arm64' and sys_platform == 'darwin'
+    # via nemo-toolkit
+kaldialign==0.9.1 ; python_full_version < '3.13' or platform_machine != 'arm64' or sys_platform != 'darwin'
     # via nemo-toolkit
 kiwisolver==1.4.9
     # via matplotlib
