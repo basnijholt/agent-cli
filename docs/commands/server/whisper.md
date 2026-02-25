@@ -252,6 +252,9 @@ pip install "agent-cli[nemo-whisper,wyoming]"
 agent-cli server whisper --backend nemo --model parakeet-tdt-0.6b-v2
 ```
 
+NeMo models are currently transcription-only in this server. Requests to
+`/v1/audio/translations` return `400` for `--backend nemo`.
+
 ### Docker
 
 Pre-built images are available from GitHub Container Registry:
