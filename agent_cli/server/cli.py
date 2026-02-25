@@ -196,7 +196,8 @@ def _check_whisper_deps(backend: str, *, download_only: bool = False) -> None:
         if not _has("nemo"):
             err_console.print(
                 "[bold red]Error:[/bold red] NeMo backend requires nemo_toolkit[asr]. "
-                "Run: [cyan]pip install 'nemo_toolkit[asr]'[/cyan]",
+                "Run: [cyan]pip install agent-cli\\[nemo-whisper][/cyan] "
+                "or [cyan]uv sync --extra nemo-whisper[/cyan]",
             )
             raise typer.Exit(1)
         return
@@ -250,21 +251,29 @@ def _check_transformers_audio_model_deps(models: list[str]) -> None:
     raise typer.Exit(1)
 
 
+def _is_parakeet_model(model_name: str) -> bool:
+    """Return True when a model name targets NVIDIA Parakeet."""
+    normalized = model_name.strip().lower()
+    return normalized == "parakeet-tdt-0.6b-v2" or normalized.startswith("nvidia/parakeet-")
+
+
 def _resolve_whisper_required_extras(kwargs: dict[str, object]) -> tuple[str, ...]:
     """Choose the Whisper backend extra after Typer has parsed --backend."""
     backend_extras = {
         "faster-whisper": "faster-whisper",
         "mlx": "mlx-whisper",
         "transformers": "whisper-transformers",
-        "nemo": "",
+        "nemo": "nemo-whisper",
     }
-    backend = kwargs.get("backend")
+    backend = str(kwargs.get("backend") or "auto")
+    models = kwargs.get("model")
+    if backend == "auto" and isinstance(models, list):
+        if any(_is_parakeet_model(str(model_name)) for model_name in models):
+            backend = "nemo"
     backend_extra = backend_extras.get(
-        str(backend),
+        backend,
         "faster-whisper|mlx-whisper|whisper-transformers",
     )
-    if not backend_extra:
-        return ("server", "wyoming")
     return ("server", backend_extra, "wyoming")
 
 
@@ -283,16 +292,10 @@ def _print_optional_whisper_config(
             console.print(f"  {label}: [cyan]{value}[/cyan]")
 
 
-def _is_parakeet_model(model_name: str) -> bool:
-    """Return True when a model name targets NVIDIA Parakeet."""
-    normalized = model_name.strip().lower()
-    return normalized == "parakeet-tdt-0.6b-v2" or normalized.startswith("nvidia/parakeet-")
-
-
 @app.command("whisper")
 @requires_extras(
     "server",
-    "faster-whisper|mlx-whisper|whisper-transformers",
+    "faster-whisper|mlx-whisper|whisper-transformers|nemo-whisper",
     "wyoming",
     resolve_extras=_resolve_whisper_required_extras,
 )
