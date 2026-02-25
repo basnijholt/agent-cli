@@ -68,11 +68,23 @@ def test_download_model_resolves_parakeet_alias(
 def test_download_model_preserves_repo_id(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Ensure explicit model IDs are passed through unchanged."""
+    """Ensure non-Parakeet model IDs are passed through unchanged."""
     calls: dict[str, object] = {}
     _install_mock_nemo(monkeypatch, calls)
 
-    resolved = backend.download_model("nvidia/parakeet-tdt-0.6b-v2")
+    resolved = backend.download_model("Org/Custom-ASR")
+    assert resolved == "Org/Custom-ASR"
+    assert calls["model_name"] == "Org/Custom-ASR"
+
+
+def test_download_model_normalizes_parakeet_repo_id_case(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Ensure Parakeet repo IDs are normalized to a known canonical form."""
+    calls: dict[str, object] = {}
+    _install_mock_nemo(monkeypatch, calls)
+
+    resolved = backend.download_model("NVIDIA/Parakeet-TDT-0.6b-v2")
     assert resolved == "nvidia/parakeet-tdt-0.6b-v2"
     assert calls["model_name"] == "nvidia/parakeet-tdt-0.6b-v2"
 
@@ -204,5 +216,6 @@ def test_is_parakeet_model_matches_only_supported_identifiers() -> None:
     assert _is_parakeet_model("parakeet-tdt-0.6b-v2")
     assert _is_parakeet_model("nvidia/parakeet-tdt-0.6b-v2")
     assert _is_parakeet_model("nvidia/parakeet-custom")
-    assert not _is_parakeet_model("Parakeet-TDT-0.6b-v2")
+    assert _is_parakeet_model("Parakeet-TDT-0.6b-v2")
+    assert _is_parakeet_model(" NVIDIA/Parakeet-TDT-0.6b-v2 ")
     assert not _is_parakeet_model("large-v3")

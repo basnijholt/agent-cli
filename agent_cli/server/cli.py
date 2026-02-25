@@ -212,7 +212,8 @@ def _check_whisper_deps(backend: str, *, download_only: bool = False) -> None:
 
 def _is_parakeet_model(model_name: str) -> bool:
     """Return True when a model name targets NVIDIA Parakeet."""
-    return model_name == "parakeet-tdt-0.6b-v2" or model_name.startswith("nvidia/parakeet-")
+    normalized = model_name.strip().lower()
+    return normalized == "parakeet-tdt-0.6b-v2" or normalized.startswith("nvidia/parakeet-")
 
 
 @app.command("whisper")
