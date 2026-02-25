@@ -36,6 +36,7 @@ Available extras:
 | `kokoro` | Kokoro neural TTS (GPU) |
 | `llm` | LLM framework (pydantic-ai) |
 | `memory` | Long-term memory proxy |
+| `nemo-whisper` | Whisper-compatible ASR via NVIDIA NeMo (Parakeet) |
 | `mlx-whisper` | Whisper ASR for Apple Silicon |
 | `piper` | Piper TTS (CPU) |
 | `rag` | RAG proxy (ChromaDB, embeddings) |
