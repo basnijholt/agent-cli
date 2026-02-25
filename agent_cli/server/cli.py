@@ -253,8 +253,7 @@ def _check_transformers_audio_model_deps(models: list[str]) -> None:
 
 def _is_parakeet_model(model_name: str) -> bool:
     """Return True when a model name targets NVIDIA Parakeet."""
-    normalized = model_name.strip().lower()
-    return normalized == "parakeet-tdt-0.6b-v2" or normalized.startswith("nvidia/parakeet-")
+    return model_name == "parakeet-tdt-0.6b-v2" or model_name.startswith("nvidia/parakeet-")
 
 
 def _resolve_whisper_required_extras(kwargs: dict[str, object]) -> tuple[str, ...]:

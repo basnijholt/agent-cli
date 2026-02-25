@@ -42,6 +42,13 @@ def download_model(model_name: str) -> str:
     return resolved_model
 
 
+# --- Subprocess state (only used within subprocess worker) ---
+# This state persists across function calls within the subprocess because:
+# 1. Model loading is expensive and must be reused across transcription calls
+# 2. NeMo models cannot be pickled/passed through IPC queues
+# 3. The subprocess is long-lived (ProcessPoolExecutor reuses workers)
+
+
 @dataclass
 class _SubprocessState:
     """Container for subprocess-local state. Not shared with main process."""
@@ -79,7 +86,10 @@ def _extract_text(hypothesis: Any) -> str:
 
 
 def _extract_segments(hypothesis: Any, *, word_timestamps: bool) -> list[dict[str, Any]]:
-    """Extract segment metadata from NeMo timestamp output when available."""
+    """Extract segment metadata from NeMo timestamp output.
+
+    Parakeet hypotheses expose timestamp["segment"] and timestamp["word"] lists.
+    """
     timestamp = getattr(hypothesis, "timestamp", None)
     if timestamp is None and isinstance(hypothesis, dict):
         timestamp = hypothesis.get("timestamp")
@@ -87,49 +97,43 @@ def _extract_segments(hypothesis: Any, *, word_timestamps: bool) -> list[dict[st
     if not isinstance(timestamp, dict):
         return []
 
-    key_order = ["segment", "word"] if word_timestamps else ["segment"]
-    for key in key_order:
-        entries = timestamp.get(key)
-        if not isinstance(entries, list):
+    key = "word" if word_timestamps else "segment"
+    entries = timestamp.get(key)
+    if not isinstance(entries, list):
+        return []
+
+    segments: list[dict[str, Any]] = []
+    for idx, entry in enumerate(entries):
+        if not isinstance(entry, dict):
             continue
+        start = float(entry.get("start", 0.0) or 0.0)
+        end = float(entry.get("end", start) or start)
+        text = str(entry.get(key, "")).strip()
+        segments.append(
+            {
+                "id": idx,
+                "start": start,
+                "end": end,
+                "text": text,
+                "tokens": [],
+                "avg_logprob": 0.0,
+                "no_speech_prob": 0.0,
+            },
+        )
 
-        segments: list[dict[str, Any]] = []
-        for idx, entry in enumerate(entries):
-            if not isinstance(entry, dict):
-                continue
-            start = float(entry.get("start", 0.0) or 0.0)
-            end = float(entry.get("end", start) or start)
-            text = str(
-                entry.get("segment")
-                or entry.get("word")
-                or entry.get("char")
-                or entry.get("text")
-                or "",
-            ).strip()
-            segments.append(
-                {
-                    "id": idx,
-                    "start": start,
-                    "end": end,
-                    "text": text,
-                    "tokens": [],
-                    "avg_logprob": 0.0,
-                    "no_speech_prob": 0.0,
-                },
-            )
-        if segments:
-            return segments
-
-    return []
+    return segments
 
 
 def _audio_duration_seconds(wav_path: str) -> float:
     """Read WAV duration in seconds."""
-    with wave.open(wav_path, "rb") as wav_file:
-        sample_rate = wav_file.getframerate()
-        if sample_rate <= 0:
-            return 0.0
-        return wav_file.getnframes() / sample_rate
+    try:
+        with wave.open(wav_path, "rb") as wav_file:
+            sample_rate = wav_file.getframerate()
+            if sample_rate <= 0:
+                return 0.0
+            return wav_file.getnframes() / sample_rate
+    except (wave.Error, EOFError):
+        return 0.0
 
 
 def _load_model_in_subprocess(model_name: str, device: str) -> str:
