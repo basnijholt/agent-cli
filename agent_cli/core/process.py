@@ -15,6 +15,8 @@ if TYPE_CHECKING:
 
 # Default location for PID files
 PID_DIR = Path.home() / ".cache" / "agent-cli"
+_FORCE_KILL_AFTER_SECONDS_DEFAULT = 20
+_FORCE_KILL_AFTER_SECONDS_ENV = "AGENT_CLI_FORCE_KILL_AFTER_SECONDS"
 
 # Store the original process title before any modifications
 _original_proctitle: str | None = None
@@ -61,6 +63,50 @@ def _get_stop_file(process_name: str) -> Path:
     """Get the path to the stop file for a given process name."""
     PID_DIR.mkdir(parents=True, exist_ok=True)
     return PID_DIR / f"{process_name}.stop"
+
+
+def _get_force_stop_state_file(process_name: str) -> Path:
+    """Get the force-stop state file path for a process."""
+    PID_DIR.mkdir(parents=True, exist_ok=True)
+    return PID_DIR / f"{process_name}.stopstate"
+
+
+def _read_force_stop_state(process_name: str) -> tuple[int, float] | None:
+    """Read the last graceful-stop request metadata."""
+    state_file = _get_force_stop_state_file(process_name)
+    if not state_file.exists():
+        return None
+
+    try:
+        raw = state_file.read_text(encoding="utf-8").strip()
+        pid_str, ts_str = raw.split(maxsplit=1)
+        return int(pid_str), float(ts_str)
+    except (OSError, ValueError):
+        state_file.unlink(missing_ok=True)
+        return None
+
+
+def _write_force_stop_state(process_name: str, *, pid: int, timestamp: float) -> None:
+    """Persist graceful-stop request metadata for escalation checks."""
+    state_file = _get_force_stop_state_file(process_name)
+    state_file.write_text(f"{pid} {timestamp}", encoding="utf-8")
+
+
+def _clear_force_stop_state(process_name: str) -> None:
+    """Remove force-stop request metadata."""
+    _get_force_stop_state_file(process_name).unlink(missing_ok=True)
+
+
+def _force_kill_after_seconds() -> int:
+    """Get SIGKILL escalation timeout from environment with sane defaults."""
+    raw_value = os.getenv(_FORCE_KILL_AFTER_SECONDS_ENV)
+    if raw_value is None:
+        return _FORCE_KILL_AFTER_SECONDS_DEFAULT
+    try:
+        value = int(raw_value)
+    except ValueError:
+        return _FORCE_KILL_AFTER_SECONDS_DEFAULT
+    return max(value, 0)
 
 
 def check_stop_file(process_name: str) -> bool:
@@ -110,6 +156,7 @@ def _get_running_pid(process_name: str) -> int | None:
     # Clean up stale/invalid PID file
     if pid_file.exists():
         pid_file.unlink()
+    _clear_force_stop_state(process_name)
     return None
 
 
@@ -133,6 +180,7 @@ def kill_process(process_name: str) -> bool:
 
     # If no PID file exists at all, nothing to do
     if not pid_file.exists():
+        _clear_force_stop_state(process_name)
         return False
 
     # Check if we have a running process
@@ -140,28 +188,50 @@ def kill_process(process_name: str) -> bool:
 
     # If _get_running_pid returned None but file existed, it cleaned up a stale file
     if pid is None:
+        _clear_force_stop_state(process_name)
         return True
+
+    force_after_seconds = _force_kill_after_seconds()
+    stop_state = _read_force_stop_state(process_name)
+    now = time.time()
+    should_force_kill = (
+        stop_state is not None
+        and stop_state[0] == pid
+        and force_after_seconds > 0
+        and now - stop_state[1] >= force_after_seconds
+        and sys.platform != "win32"
+    )
 
     # On Windows, create stop file to signal graceful shutdown
     if sys.platform == "win32":
         _get_stop_file(process_name).touch()
 
-    # Send SIGINT for graceful shutdown
+    # Send SIGINT first; escalate to SIGKILL only when the same PID survives
+    # repeated stop attempts beyond the configured timeout.
+    stop_signal = signal.SIGKILL if should_force_kill else signal.SIGINT
+    process_stopped = False
     try:
-        os.kill(pid, signal.SIGINT)
+        os.kill(pid, stop_signal)
         # Wait for process to terminate
         for _ in range(10):  # 1 second max
-            if not is_process_running(process_name):
+            if not _is_pid_running(pid):
+                process_stopped = True
                 break
             time.sleep(0.1)
     except (ProcessLookupError, PermissionError):
-        pass  # Process dead or no permission - we'll clean up regardless
+        process_stopped = not _is_pid_running(pid)
 
     # Clean up
     if sys.platform == "win32":
         clear_stop_file(process_name)
-    if pid_file.exists():
-        pid_file.unlink()
+    # Keep PID file if process is still alive so subsequent --status/--toggle
+    # calls continue targeting the same process.
+    if process_stopped:
+        _clear_force_stop_state(process_name)
+        if pid_file.exists():
+            pid_file.unlink()
+    elif not should_force_kill and (stop_state is None or stop_state[0] != pid):
+        _write_force_stop_state(process_name, pid=pid, timestamp=now)
 
     return True
 
@@ -181,6 +251,7 @@ def pid_file_context(process_name: str) -> Generator[Path, None, None]:
     # Clear any stale stop file from previous run (Windows only)
     if sys.platform == "win32":
         clear_stop_file(process_name)
+    _clear_force_stop_state(process_name)
 
     pid_file = _get_pid_file(process_name)
     with pid_file.open("w") as f:
@@ -193,3 +264,4 @@ def pid_file_context(process_name: str) -> Generator[Path, None, None]:
             pid_file.unlink()
         if sys.platform == "win32":
             clear_stop_file(process_name)
+        _clear_force_stop_state(process_name)

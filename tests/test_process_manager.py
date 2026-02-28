@@ -95,11 +95,11 @@ def test_read_pid_file_current_process() -> None:
 
 
 @pytest.mark.skipif(sys.platform == "win32", reason="os.kill(pid, 0) not used on Windows")
-@patch("agent_cli.core.process.is_process_running")
+@patch("agent_cli.core.process._is_pid_running", side_effect=[True, False])
 @patch("os.kill")
 def test_kill_process_success(
     mock_os_kill: MagicMock,
-    mock_is_running: MagicMock,
+    mock_is_pid_running: MagicMock,
 ) -> None:
     """Test successfully killing a process."""
     process_name = "test-process"
@@ -109,20 +109,81 @@ def test_kill_process_success(
     current_pid = os.getpid()
     pid_file.write_text(str(current_pid))
 
-    # First call checks if running (for _get_running_pid), rest are for wait loop
-    mock_is_running.side_effect = [False]  # Process exits immediately after SIGINT
-
     result = process.kill_process(process_name)
     assert result is True
-    mock_os_kill.assert_any_call(current_pid, 0)
     mock_os_kill.assert_any_call(current_pid, signal.SIGINT)
+    assert mock_is_pid_running.call_count >= 2
     assert not pid_file.exists()
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="os.kill(pid, 0) not used on Windows")
+@patch("time.sleep", return_value=None)
+@patch("agent_cli.core.process._is_pid_running", return_value=True)
+@patch("os.kill")
+def test_kill_process_keeps_pid_file_while_process_is_still_running(
+    mock_os_kill: MagicMock,
+    mock_is_pid_running: MagicMock,
+    mock_sleep: MagicMock,  # noqa: ARG001
+) -> None:
+    """PID file should remain if the process does not stop after SIGINT."""
+    process_name = "test-process"
+    pid_file = process._get_pid_file(process_name)
+    current_pid = os.getpid()
+    pid_file.write_text(str(current_pid))
+
+    result = process.kill_process(process_name)
+
+    assert result is True
+    mock_os_kill.assert_any_call(current_pid, signal.SIGINT)
+    assert mock_is_pid_running.call_count >= 1
+    assert pid_file.exists()
+    stop_state_file = process._get_force_stop_state_file(process_name)
+    assert stop_state_file.exists()
 
 
 def test_kill_process_not_running() -> None:
     """Test killing a process that is not running."""
     result = process.kill_process("nonexistent-process")
     assert result is False
+
+
+def test_kill_process_not_running_clears_force_stop_state(temp_pid_dir: Path) -> None:
+    """Stop-state metadata should be removed when no process is running."""
+    process_name = "test-process"
+    stop_state_file = temp_pid_dir / f"{process_name}.stopstate"
+    stop_state_file.write_text("123 100.0")
+
+    result = process.kill_process(process_name)
+
+    assert result is False
+    assert not stop_state_file.exists()
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="SIGKILL escalation is Unix-only")
+@patch.dict(os.environ, {process._FORCE_KILL_AFTER_SECONDS_ENV: "1"}, clear=False)
+@patch("time.sleep", return_value=None)
+@patch("time.time", return_value=100.0)
+@patch("agent_cli.core.process._is_pid_running", side_effect=[True, False])
+@patch("os.kill")
+def test_kill_process_escalates_to_sigkill_after_timeout(
+    mock_os_kill: MagicMock,
+    mock_is_pid_running: MagicMock,  # noqa: ARG001
+    mock_time: MagicMock,  # noqa: ARG001
+    mock_sleep: MagicMock,  # noqa: ARG001
+) -> None:
+    """Repeated stop attempts after timeout should escalate to SIGKILL."""
+    process_name = "test-process"
+    pid_file = process._get_pid_file(process_name)
+    current_pid = os.getpid()
+    pid_file.write_text(str(current_pid))
+    process._write_force_stop_state(process_name, pid=current_pid, timestamp=0.0)
+
+    result = process.kill_process(process_name)
+
+    assert result is True
+    mock_os_kill.assert_any_call(current_pid, signal.SIGKILL)
+    assert not pid_file.exists()
+    assert not process._get_force_stop_state_file(process_name).exists()
 
 
 @patch("os.kill", side_effect=ProcessLookupError)
@@ -236,8 +297,7 @@ def test_kill_process_creates_stop_file_on_windows(
     # Mock sys.platform, _is_pid_running (to avoid ctypes.windll), is_process_running, and os.kill
     monkeypatch.setattr(process.sys, "platform", "win32")
     with (
-        patch.object(process, "_is_pid_running", return_value=True),
-        patch.object(process, "is_process_running", return_value=False),
+        patch.object(process, "_is_pid_running", side_effect=[True, False]),
         patch.object(Path, "touch", tracking_touch),
         patch("os.kill"),
     ):

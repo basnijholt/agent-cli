@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import functools
 import logging
+import threading
 from contextlib import asynccontextmanager, contextmanager
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Literal
@@ -26,6 +27,9 @@ if TYPE_CHECKING:
     from rich.live import Live
 
     from agent_cli import config
+
+LOGGER = logging.getLogger(__name__)
+_AUDIO_SHUTDOWN_TIMEOUT_SECONDS = 0.5
 
 
 @dataclass
@@ -178,8 +182,55 @@ def open_audio_stream(
     try:
         yield stream
     finally:
-        stream.stop()
-        stream.close()
+        stopped = _call_stream_method_with_timeout(stream, "stop")
+        if not stopped:
+            _call_stream_method_with_timeout(stream, "abort")
+        _call_stream_method_with_timeout(stream, "close")
+
+
+def _call_stream_method_with_timeout(
+    stream: sd.Stream,
+    method_name: str,
+    *,
+    timeout_seconds: float = _AUDIO_SHUTDOWN_TIMEOUT_SECONDS,
+) -> bool:
+    """Invoke a stream method with timeout to avoid indefinite CoreAudio hangs."""
+    method = getattr(stream, method_name, None)
+    if method is None:
+        return True
+
+    done = threading.Event()
+    error: Exception | None = None
+
+    def _invoke() -> None:
+        nonlocal error
+        try:
+            method(ignore_errors=True)
+        except Exception as exc:  # pragma: no cover - defensive logging path
+            error = exc
+        finally:
+            done.set()
+
+    thread = threading.Thread(
+        target=_invoke,
+        name=f"agent-cli-audio-{method_name}",
+        daemon=True,
+    )
+    thread.start()
+
+    if not done.wait(timeout_seconds):
+        LOGGER.warning(
+            "Timed out after %.2fs waiting for audio stream.%s(); continuing.",
+            timeout_seconds,
+            method_name,
+        )
+        return False
+
+    if error is not None:
+        LOGGER.warning("audio stream.%s() failed: %s", method_name, error)
+        return False
+
+    return True
 
 
 async def read_audio_stream(
