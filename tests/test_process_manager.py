@@ -137,8 +137,8 @@ def test_kill_process_keeps_pid_file_while_process_is_still_running(
     mock_os_kill.assert_any_call(current_pid, signal.SIGINT)
     assert mock_is_pid_running.call_count >= 1
     assert pid_file.exists()
-    stop_state_file = process._get_force_stop_state_file(process_name)
-    assert stop_state_file.exists()
+    stop_file = process._get_stop_file(process_name)
+    assert stop_file.exists()
 
 
 def test_kill_process_not_running() -> None:
@@ -147,43 +147,40 @@ def test_kill_process_not_running() -> None:
     assert result is False
 
 
-def test_kill_process_not_running_clears_force_stop_state(temp_pid_dir: Path) -> None:
-    """Stop-state metadata should be removed when no process is running."""
+def test_kill_process_not_running_clears_stop_file(temp_pid_dir: Path) -> None:
+    """Stop marker should be removed when no process is running."""
     process_name = "test-process"
-    stop_state_file = temp_pid_dir / f"{process_name}.stopstate"
-    stop_state_file.write_text("123 100.0")
+    stop_file = temp_pid_dir / f"{process_name}.stop"
+    stop_file.write_text("1")
 
     result = process.kill_process(process_name)
 
     assert result is False
-    assert not stop_state_file.exists()
+    assert not stop_file.exists()
 
 
 @pytest.mark.skipif(sys.platform == "win32", reason="SIGKILL escalation is Unix-only")
-@patch.dict(os.environ, {process._FORCE_KILL_AFTER_SECONDS_ENV: "1"}, clear=False)
 @patch("time.sleep", return_value=None)
-@patch("time.time", return_value=100.0)
 @patch("agent_cli.core.process._is_pid_running", side_effect=[True, False])
 @patch("os.kill")
-def test_kill_process_escalates_to_sigkill_after_timeout(
+def test_kill_process_escalates_to_sigkill_on_second_stop_request(
     mock_os_kill: MagicMock,
     mock_is_pid_running: MagicMock,  # noqa: ARG001
-    mock_time: MagicMock,  # noqa: ARG001
     mock_sleep: MagicMock,  # noqa: ARG001
 ) -> None:
-    """Repeated stop attempts after timeout should escalate to SIGKILL."""
+    """If stop marker exists, kill_process should escalate to SIGKILL."""
     process_name = "test-process"
     pid_file = process._get_pid_file(process_name)
     current_pid = os.getpid()
     pid_file.write_text(str(current_pid))
-    process._write_force_stop_state(process_name, pid=current_pid, timestamp=0.0)
+    process._get_stop_file(process_name).write_text("1")
 
     result = process.kill_process(process_name)
 
     assert result is True
     mock_os_kill.assert_any_call(current_pid, signal.SIGKILL)
     assert not pid_file.exists()
-    assert not process._get_force_stop_state_file(process_name).exists()
+    assert not process._get_stop_file(process_name).exists()
 
 
 @patch("os.kill", side_effect=ProcessLookupError)
