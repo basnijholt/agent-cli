@@ -26,7 +26,9 @@ def ensure_model_cached() -> None:
         SILERO_VAD_CACHE.parent.mkdir(parents=True, exist_ok=True)
         try:
             with (
-                urllib.request.urlopen(SILERO_VAD_URL, timeout=30) as response,  # noqa: S310
+                # Keep this below the global pytest-timeout (10s) so transient
+                # network slowness results in a clean skip instead of a timeout failure.
+                urllib.request.urlopen(SILERO_VAD_URL, timeout=5) as response,  # noqa: S310
                 SILERO_VAD_CACHE.open("wb") as f,
             ):
                 shutil.copyfileobj(response, f)

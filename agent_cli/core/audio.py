@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import functools
 import logging
+import threading
 from contextlib import asynccontextmanager, contextmanager
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Literal
@@ -26,6 +27,9 @@ if TYPE_CHECKING:
     from rich.live import Live
 
     from agent_cli import config
+
+LOGGER = logging.getLogger(__name__)
+_AUDIO_SHUTDOWN_TIMEOUT_SECONDS = 0.5
 
 
 @dataclass
@@ -178,8 +182,55 @@ def open_audio_stream(
     try:
         yield stream
     finally:
-        stream.stop()
-        stream.close()
+        # Use abort for teardown to avoid PortAudio/CoreAudio stop deadlocks.
+        _run_with_timeout(
+            lambda: stream.abort(ignore_errors=True),
+            action="audio stream.abort()",
+        )
+        _run_with_timeout(
+            lambda: stream.close(ignore_errors=True),
+            action="audio stream.close()",
+        )
+
+
+def _run_with_timeout(
+    operation: Callable[[], None],
+    *,
+    action: str,
+    timeout_seconds: float = _AUDIO_SHUTDOWN_TIMEOUT_SECONDS,
+) -> bool:
+    """Run a blocking operation in a daemon thread with a timeout guard."""
+    done = threading.Event()
+    errors: list[Exception] = []
+
+    def _invoke() -> None:
+        try:
+            operation()
+        except Exception as exc:  # pragma: no cover - defensive logging path
+            errors.append(exc)
+        finally:
+            done.set()
+
+    thread = threading.Thread(
+        target=_invoke,
+        name="agent-cli-audio-shutdown",
+        daemon=True,
+    )
+    thread.start()
+
+    if not done.wait(timeout_seconds):
+        LOGGER.warning(
+            "Timed out after %.2fs waiting for %s; continuing.",
+            timeout_seconds,
+            action,
+        )
+        return False
+
+    if errors:
+        LOGGER.warning("%s failed: %s", action, errors[0])
+        return False
+
+    return True
 
 
 async def read_audio_stream(

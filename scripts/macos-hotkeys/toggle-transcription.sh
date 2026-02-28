@@ -3,6 +3,8 @@
 # Toggle script for agent-cli transcription on macOS
 
 NOTIFIER=${NOTIFIER:-/opt/homebrew/bin/terminal-notifier}
+AGENT_CLI=${AGENT_CLI:-"$HOME/.local/bin/agent-cli"}
+PID_FILE=${PID_FILE:-"$HOME/.cache/agent-cli/transcribe.pid"}
 RECORDING_GROUP="agent-cli-transcribe-recording"
 TEMP_PREFIX="agent-cli-transcribe-temp"
 
@@ -19,14 +21,22 @@ notify_temp() {
     ) &
 }
 
-if pgrep -f "agent-cli transcribe( |$)" > /dev/null; then
-    pkill -INT -f "agent-cli transcribe( |$)"
+is_transcribe_running() {
+    [ -f "$PID_FILE" ] || return 1
+    local pid
+    pid=$(cat "$PID_FILE" 2>/dev/null || true)
+    [ -n "$pid" ] && kill -0 "$pid" >/dev/null 2>&1
+}
+
+if is_transcribe_running; then
+    "$AGENT_CLI" transcribe --toggle --quiet >/dev/null 2>&1 || true
+
     "$NOTIFIER" -remove "$RECORDING_GROUP" >/dev/null 2>&1 || true
     notify_temp "🛑 Stopped" "Processing results..."
 else
     "$NOTIFIER" -title "🎙️ Started" -message "Listening..." -group "$RECORDING_GROUP"
     (
-        OUTPUT=$("$HOME/.local/bin/agent-cli" transcribe --llm --quiet 2>/dev/null)
+        OUTPUT=$("$AGENT_CLI" transcribe --toggle --llm --quiet 2>/dev/null)
         "$NOTIFIER" -remove "$RECORDING_GROUP" >/dev/null 2>&1 || true
         if [ -n "$OUTPUT" ]; then
             notify_temp "📄 Result" "$OUTPUT"
