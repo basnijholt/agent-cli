@@ -182,52 +182,52 @@ def open_audio_stream(
     try:
         yield stream
     finally:
-        stopped = _call_stream_method_with_timeout(stream, "stop")
-        if not stopped:
-            _call_stream_method_with_timeout(stream, "abort")
-        _call_stream_method_with_timeout(stream, "close")
+        # Use abort for teardown to avoid PortAudio/CoreAudio stop deadlocks.
+        _run_with_timeout(
+            lambda: stream.abort(ignore_errors=True),
+            action="audio stream.abort()",
+        )
+        _run_with_timeout(
+            lambda: stream.close(ignore_errors=True),
+            action="audio stream.close()",
+        )
 
 
-def _call_stream_method_with_timeout(
-    stream: sd.Stream,
-    method_name: str,
+def _run_with_timeout(
+    operation: Callable[[], None],
     *,
+    action: str,
     timeout_seconds: float = _AUDIO_SHUTDOWN_TIMEOUT_SECONDS,
 ) -> bool:
-    """Invoke a stream method with timeout to avoid indefinite CoreAudio hangs."""
-    method = getattr(stream, method_name, None)
-    if method is None:
-        return True
-
+    """Run a blocking operation in a daemon thread with a timeout guard."""
     done = threading.Event()
-    error: Exception | None = None
+    errors: list[Exception] = []
 
     def _invoke() -> None:
-        nonlocal error
         try:
-            method(ignore_errors=True)
+            operation()
         except Exception as exc:  # pragma: no cover - defensive logging path
-            error = exc
+            errors.append(exc)
         finally:
             done.set()
 
     thread = threading.Thread(
         target=_invoke,
-        name=f"agent-cli-audio-{method_name}",
+        name="agent-cli-audio-shutdown",
         daemon=True,
     )
     thread.start()
 
     if not done.wait(timeout_seconds):
         LOGGER.warning(
-            "Timed out after %.2fs waiting for audio stream.%s(); continuing.",
+            "Timed out after %.2fs waiting for %s; continuing.",
             timeout_seconds,
-            method_name,
+            action,
         )
         return False
 
-    if error is not None:
-        LOGGER.warning("audio stream.%s() failed: %s", method_name, error)
+    if errors:
+        LOGGER.warning("%s failed: %s", action, errors[0])
         return False
 
     return True

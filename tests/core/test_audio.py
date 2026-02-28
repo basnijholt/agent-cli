@@ -28,7 +28,7 @@ class _FakeStream:
 
 
 def test_open_audio_stream_stops_and_closes() -> None:
-    """open_audio_stream should start, then stop and close the stream."""
+    """open_audio_stream should start, then abort and close the stream."""
     stream = _FakeStream()
     config = MagicMock()
     config.to_stream.return_value = stream
@@ -36,49 +36,49 @@ def test_open_audio_stream_stops_and_closes() -> None:
     with audio.open_audio_stream(config):
         assert stream.calls == ["start"]
 
-    assert stream.calls == ["start", "stop", "close"]
+    assert stream.calls == ["start", "abort", "close"]
 
 
-def test_open_audio_stream_uses_abort_when_stop_times_out(
+def test_open_audio_stream_runs_abort_then_close(
     monkeypatch: Any,
 ) -> None:
-    """open_audio_stream should fallback to abort when stop hangs."""
+    """open_audio_stream should invoke abort before close."""
     stream = _FakeStream()
     config = MagicMock()
     config.to_stream.return_value = stream
-    methods_called: list[str] = []
+    actions: list[str] = []
 
     def fake_call(
-        _stream: object,
-        method_name: str,
+        operation: Any,
         *,
+        action: str,
         timeout_seconds: float = audio._AUDIO_SHUTDOWN_TIMEOUT_SECONDS,
     ) -> bool:
+        _ = operation
         _ = timeout_seconds
-        methods_called.append(method_name)
-        return method_name != "stop"
+        actions.append(action)
+        return True
 
-    monkeypatch.setattr(audio, "_call_stream_method_with_timeout", fake_call)
+    monkeypatch.setattr(audio, "_run_with_timeout", fake_call)
 
     with audio.open_audio_stream(config):
         pass
 
-    assert methods_called == ["stop", "abort", "close"]
+    assert actions == ["audio stream.abort()", "audio stream.close()"]
 
 
-def test_call_stream_method_with_timeout_timeout_logs_warning(
+def test_run_with_timeout_timeout_logs_warning(
     caplog: Any,
 ) -> None:
     """Timeout path should log a warning and return False."""
 
-    class _HangingStream:
-        def stop(self, ignore_errors: bool = True) -> None:  # noqa: ARG002
-            time.sleep(0.2)
+    def hang() -> None:
+        time.sleep(0.2)
 
     with caplog.at_level(logging.WARNING):
-        result = audio._call_stream_method_with_timeout(
-            _HangingStream(),
-            "stop",
+        result = audio._run_with_timeout(
+            hang,
+            action="audio stream.close()",
             timeout_seconds=0.01,
         )
 
@@ -86,18 +86,17 @@ def test_call_stream_method_with_timeout_timeout_logs_warning(
     assert "Timed out after" in caplog.text
 
 
-def test_call_stream_method_with_timeout_exception_logs_warning(
+def test_run_with_timeout_exception_logs_warning(
     caplog: Any,
 ) -> None:
     """Exceptions from stream methods should be logged and reported as failure."""
 
-    class _BrokenStream:
-        def close(self, ignore_errors: bool = True) -> None:  # noqa: ARG002
-            msg = "boom"
-            raise RuntimeError(msg)
+    def explode() -> None:
+        msg = "boom"
+        raise RuntimeError(msg)
 
     with caplog.at_level(logging.WARNING):
-        result = audio._call_stream_method_with_timeout(_BrokenStream(), "close")
+        result = audio._run_with_timeout(explode, action="audio stream.close()")
 
     assert result is False
     assert "audio stream.close() failed" in caplog.text
