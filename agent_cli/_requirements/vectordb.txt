@@ -76,7 +76,7 @@ filelock==3.20.3
     #   transformers
 flatbuffers==25.12.19
     # via onnxruntime
-fsspec==2026.1.0
+fsspec==2024.12.0
     # via huggingface-hub
 genai-prices==0.0.51
     # via pydantic-ai-slim
@@ -194,7 +194,7 @@ orjson==3.11.5
     # via chromadb
 overrides==7.7.0
     # via chromadb
-packaging==25.0
+packaging==24.2
     # via
     #   build
     #   huggingface-hub
@@ -202,7 +202,7 @@ packaging==25.0
     #   transformers
 posthog==5.4.0
     # via chromadb
-protobuf==6.33.4
+protobuf==5.29.6
     # via
     #   googleapis-common-protos
     #   onnxruntime
@@ -333,7 +333,7 @@ tenacity==9.1.2
     #   google-genai
 tiktoken==0.12.0
     # via pydantic-ai-slim
-tokenizers==0.22.2
+tokenizers==0.21.4
     # via
     #   chromadb
     #   transformers
@@ -343,7 +343,7 @@ tqdm==4.67.1
     #   huggingface-hub
     #   openai
     #   transformers
-transformers==4.57.5
+transformers==4.53.3
     # via agent-cli
 typer==0.21.1
     # via

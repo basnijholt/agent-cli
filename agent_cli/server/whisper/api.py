@@ -264,6 +264,12 @@ def create_app(  # noqa: C901, PLR0915
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e)) from e
 
+        if task == "translate" and manager.config.backend_type == "nemo":
+            raise HTTPException(
+                status_code=400,
+                detail="Translation is not supported for NeMo models. Use transcription instead.",
+            )
+
         # Read audio data
         audio_data = await file.read()
 
