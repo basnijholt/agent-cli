@@ -311,8 +311,12 @@ def _try_auto_install(missing_display: list[str], extras_to_install: list[str]) 
 
 def _maybe_reexec_after_install() -> None:
     """Re-execute after auto-install so new packages are visible."""
-    executable = shutil.which("agent-cli") or sys.executable
-    _maybe_exec_with_marker([executable, *sys.argv[1:]], "Re-running with installed extras...")
+    argv0 = sys.argv[0] if sys.argv else ""
+    if argv0:
+        cmd = [argv0, *sys.argv[1:]]
+    else:
+        cmd = [sys.executable, "-m", "agent_cli.cli", *sys.argv[1:]]
+    _maybe_exec_with_marker(cmd, "Re-running with installed extras...")
 
 
 # -- Main Orchestration --
@@ -362,7 +366,26 @@ def _check_and_install_extras(extras: tuple[str, ...]) -> list[str]:
 # -- Decorator --
 
 
-def requires_extras(*extras: str) -> Callable[[F], F]:
+def _should_skip_extra_check_for_process_control(
+    kwargs: dict[str, object],
+    process_name: str | None,
+) -> bool:
+    """Skip dependency checks when the command only needs process control."""
+    if not process_name:
+        return False
+
+    if bool(kwargs.get("stop")) or bool(kwargs.get("status")):
+        return True
+
+    if not bool(kwargs.get("toggle")):
+        return False
+
+    from agent_cli.core import process  # noqa: PLC0415
+
+    return process.is_process_running(process_name)
+
+
+def requires_extras(*extras: str, process_name: str | None = None) -> Callable[[F], F]:
     """Decorator to declare required extras for a command.
 
     Auto-installs missing extras by default. Disable via AGENT_CLI_NO_AUTO_INSTALL=1
@@ -374,11 +397,14 @@ def requires_extras(*extras: str) -> Callable[[F], F]:
 
         @functools.wraps(func)
         def wrapper(*args: object, **kwargs: object) -> object:
+            if _should_skip_extra_check_for_process_control(kwargs, process_name):
+                return func(*args, **kwargs)
             if _check_and_install_extras(extras):
                 raise typer.Exit(1)
             return func(*args, **kwargs)
 
         wrapper._required_extras = extras  # type: ignore[attr-defined]
+        wrapper._required_process_name = process_name  # type: ignore[attr-defined]
         return wrapper  # type: ignore[return-value]
 
     return decorator
