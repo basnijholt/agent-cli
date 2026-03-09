@@ -34,7 +34,7 @@ if is_transcribe_running; then
     "$NOTIFIER" -remove "$RECORDING_GROUP" >/dev/null 2>&1 || true
     notify_temp "🛑 Stopped" "Processing results..."
 else
-    "$NOTIFIER" -title "🎙️ Started" -message "Listening..." -group "$RECORDING_GROUP"
+    "$NOTIFIER" -title "🎙️ Starting" -message "Preparing transcription..." -group "$RECORDING_GROUP"
     (
         OUTPUT=$("$AGENT_CLI" transcribe --toggle --llm --quiet 2>/dev/null)
         "$NOTIFIER" -remove "$RECORDING_GROUP" >/dev/null 2>&1 || true

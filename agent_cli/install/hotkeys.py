@@ -4,8 +4,11 @@ from __future__ import annotations
 
 import platform
 
+import typer
+
 from agent_cli.cli import app
-from agent_cli.core.utils import print_with_style
+from agent_cli.core.deps import _check_extra_installed, install_extras_impl
+from agent_cli.core.utils import print_error_message, print_with_style
 from agent_cli.install.common import execute_installation_script, get_platform_script
 
 
@@ -39,6 +42,19 @@ def install_hotkeys() -> None:
     **Customizing hotkeys** (macOS): Edit `~/.config/skhd/skhdrc` and restart skhd:
     `skhd --restart-service`
     """
+    required_extras = ["audio", "llm"]
+    missing_extras = [extra for extra in required_extras if not _check_extra_installed(extra)]
+    if missing_extras:
+        print_with_style(
+            f"Installing required extras for hotkeys: {', '.join(missing_extras)}",
+            "cyan",
+        )
+        if not install_extras_impl(missing_extras):
+            print_error_message(
+                "Failed to install required extras for hotkeys: " + ", ".join(missing_extras),
+            )
+            raise typer.Exit(1)
+
     script_name = get_platform_script("setup-macos-hotkeys.sh", "setup-linux-hotkeys.sh")
     system = platform.system().lower()
 

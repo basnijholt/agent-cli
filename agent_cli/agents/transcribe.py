@@ -465,7 +465,7 @@ async def _async_main(  # noqa: PLR0912, PLR0915, C901
 
 
 @app.command("transcribe", rich_help_panel="Voice Commands")
-@requires_extras("audio", "llm")
+@requires_extras("audio", "llm", process_name="transcribe")
 def transcribe(  # noqa: PLR0912
     *,
     extra_instructions: str | None = typer.Option(
