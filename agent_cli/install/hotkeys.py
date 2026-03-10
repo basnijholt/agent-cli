@@ -16,6 +16,9 @@ from agent_cli.install.common import execute_installation_script, get_platform_s
 def install_hotkeys() -> None:
     """Install system-wide hotkeys for agent-cli commands.
 
+    Installs missing `audio` and `llm` Python extras first so the generated
+    hotkeys can launch transcription and voice-edit flows on a fresh install.
+
     Sets up three global hotkeys:
 
     | Hotkey (macOS / Linux)  | Action                                          |

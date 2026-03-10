@@ -108,6 +108,8 @@ agent-cli install-hotkeys
 agent-cli autocorrect "this has an eror"
 ```
 
+`install-hotkeys` also installs the required `audio` and `llm` extras if they are missing.
+
 The setup automatically installs:
 
 - ✅ Package managers (Homebrew/uv) if needed

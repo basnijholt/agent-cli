@@ -38,6 +38,9 @@ agent-cli config show --raw
 agent-cli config edit
 ```
 
+The generated template also includes commented `[dev]` and `[dev.agent_args]` sections
+for `agent-cli dev`; see [`dev`](commands/dev.md) for the supported keys and examples.
+
 ## Related
 
 - [Commands Reference](commands/index.md) - Command-specific flags and usage

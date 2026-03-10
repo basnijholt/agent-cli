@@ -18,7 +18,7 @@ Agent CLI is designed to work with system-wide hotkeys, allowing you to trigger 
 agent-cli install-hotkeys
 ```
 
-This automatically installs all dependencies (skhd, terminal-notifier) and creates a default configuration with common hotkeys. See [`install-hotkeys`](commands/install-hotkeys.md) for all options.
+This automatically installs missing `audio` and `llm` extras, then sets up the platform-specific dependencies (`skhd` and `terminal-notifier` on macOS, notification support on Linux) and creates a default configuration with common hotkeys. See [`install-hotkeys`](commands/install-hotkeys.md) for all options.
 
 > [!NOTE]
 > **Accessibility Permission Required**
@@ -54,7 +54,7 @@ skhd --reload
 
 ### Notifications
 
-The `install-hotkeys` command automatically installs terminal-notifier for visual feedback.
+The `install-hotkeys` command automatically installs terminal-notifier for visual feedback and keeps the active recording-status notification pinned while transient status/result toasts auto-dismiss.
 
 Configure notifications in System Settings:
 1. Settings → Notifications → terminal-notifier

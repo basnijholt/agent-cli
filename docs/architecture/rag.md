@@ -153,7 +153,7 @@ The RAG proxy is an **OpenAI-compatible middleware** that intercepts chat reques
 **Rationale:**
 
 - **Simplicity:** Users manage documents with familiar tools (file explorer, git, rsync).
-- **Transparency:** No hidden database state—what's on disk is what's indexed.
+- **Transparency:** No hidden database state—what's on disk, minus ignored paths, is what's indexed.
 - **Portability:** Copy the folder to move your knowledge base.
 - **Version control friendly:** Documents can be tracked in git.
 
@@ -166,6 +166,11 @@ The RAG proxy is an **OpenAI-compatible middleware** that intercepts chat reques
   - Common development directories (`__pycache__`, `node_modules`, `venv`, `build`, `dist`, etc.)
   - Package metadata (`.egg-info` directories)
   - OS metadata files (`.DS_Store`, `Thumbs.db`)
+  - Paths matched by `.gitignore` files in `--docs-folder` and its parent directories up to the git repo root
+
+This lets you keep generated artifacts, vendored content, or private notes out of the
+index with normal `.gitignore` rules. Use negation patterns like `!keep.md` if you need
+to re-include specific files.
 
 ### 2.3 OS-Level File Watching
 
