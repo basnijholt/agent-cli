@@ -119,6 +119,19 @@ class TestConfigInit:
         result = runner.invoke(app, ["config", "init", "--path", str(config_path)])
         assert "Config file created at:" in result.stdout
 
+    def test_init_includes_dev_defaults(self, tmp_path: Path) -> None:
+        """Test that init includes the default dev configuration snippet."""
+        config_path = tmp_path / "config.toml"
+        result = runner.invoke(app, ["config", "init", "--path", str(config_path)])
+
+        assert result.exit_code == 0
+        content = config_path.read_text(encoding="utf-8")
+        assert "[dev]" in content
+        assert '# branch_name_mode = "ai"' in content
+        assert "[dev.agent_args]" in content
+        assert '# claude = ["--dangerously-skip-permissions"]' in content
+        assert '# codex = ["--dangerously-bypass-approvals-and-sandbox"]' in content
+
     def test_init_expands_user_path(self, tmp_path: Path) -> None:
         """Test that init expands '~' in provided path."""
         home = tmp_path / "home"
