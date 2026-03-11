@@ -61,6 +61,7 @@ examples/piper-data/
 examples/whisper-data/
 examples/ollama/id_ed25519*
 scripts/.runtime/
+scripts/macos-hotkeys/menubar-icon
 *.onnx
 *.onnx.json
 *.bin
