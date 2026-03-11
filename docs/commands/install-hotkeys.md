@@ -22,9 +22,9 @@ Sets up hotkeys for common workflows:
 
 **macOS:**
 
-- Cmd+Shift+R: Toggle voice transcription
-- Cmd+Shift+A: Autocorrect clipboard text
-- Cmd+Shift+V: Voice edit clipboard text
+- Cmd+Shift+1: Toggle voice transcription
+- Cmd+Shift+2: Autocorrect clipboard text
+- Cmd+Shift+`: Voice edit clipboard text
 
 **Linux:**
 

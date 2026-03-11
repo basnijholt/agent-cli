@@ -179,8 +179,8 @@ agent-cli voice-edit --stop
 ### macOS (skhd)
 
 ```
-# Toggle voice-edit with Cmd+Shift+V
-cmd + shift + v : /path/to/agent-cli voice-edit --toggle --input-device-index 1
+# Toggle voice-edit with Cmd+Shift+`
+cmd + shift - ` : /path/to/agent-cli voice-edit --toggle --input-device-index 1
 ```
 
 ### Linux (Hyprland)

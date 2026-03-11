@@ -10,9 +10,9 @@ System-wide hotkeys for agent-cli voice AI features on macOS.
 
 ## Usage
 
-- **`Cmd+Shift+R`** → Toggle voice transcription (start/stop with result)
-- **`Cmd+Shift+A`** → Autocorrect clipboard text
-- **`Cmd+Shift+V`** → Toggle voice edit mode for clipboard
+- **`Cmd+Shift+1`** → Toggle voice transcription (start/stop with result)
+- **`Cmd+Shift+2`** → Autocorrect clipboard text
+- **`Cmd+Shift+\``** → Toggle voice edit mode for clipboard
 
 Results appear in notifications and clipboard.
 

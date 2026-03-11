@@ -12,7 +12,7 @@ WORKFLOW:
 KEYBOARD MAESTRO INTEGRATION:
 To create a hotkey toggle for this script, set up a Keyboard Maestro macro with:
 
-1. Trigger: Hot Key (e.g., Cmd+Shift+A for "Assistant")
+1. Trigger: Hot Key (e.g., Cmd+Shift+` for "Voice Edit")
 
 2. If/Then/Else Action:
    - Condition: Shell script returns success

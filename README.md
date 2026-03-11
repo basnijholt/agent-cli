@@ -22,7 +22,7 @@ I got tired of typing long prompts to LLMs. Speaking is faster, so I built this 
 
 **What it does:**
 
-- Voice transcription to clipboard with system-wide hotkeys (Cmd+Shift+R on macOS)
+- Voice transcription to clipboard with system-wide hotkeys (Cmd+Shift+1 on macOS)
 - Autocorrect any text from your clipboard
 - Edit clipboard content with voice commands ("make this more formal")
 - Runs locally - no internet required, your audio stays on your machine
@@ -267,9 +267,9 @@ This script automatically:
 - ✅ Installs Homebrew if not present
 - ✅ Installs skhd (hotkey daemon) and terminal-notifier
 - ✅ Configures these system-wide hotkeys:
-  - **`Cmd+Shift+R`** - Toggle voice transcription
-  - **`Cmd+Shift+A`** - Autocorrect clipboard text
-  - **`Cmd+Shift+V`** - Voice edit clipboard text
+  - **`Cmd+Shift+1`** - Toggle voice transcription
+  - **`Cmd+Shift+2`** - Autocorrect clipboard text
+  - **`Cmd+Shift+\``** - Voice edit clipboard text
 
 > [!NOTE]
 > After setup, you may need to grant Accessibility permissions to skhd in System Settings → Privacy & Security → Accessibility

@@ -149,7 +149,7 @@ For detailed installation instructions, see the platform-specific guides:
 Here's a typical workflow for using voice transcription:
 
 1. **Copy some text** you want to respond to (e.g., an email)
-2. **Press your hotkey** (Cmd+Shift+R on macOS) to start recording
+2. **Press your hotkey** (Cmd+Shift+1 on macOS) to start recording
 3. **Speak your response** naturally
 4. **Press the hotkey again** to stop recording
 5. **Paste** the transcribed text wherever you need it
