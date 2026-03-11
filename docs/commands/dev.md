@@ -556,8 +556,9 @@ agent-cli dev terminals [OPTIONS]
 ## Configuration
 
 Add defaults to your `~/.config/agent-cli/config.toml`.
-If you use `agent-cli config init`, the generated template already includes commented
-`[dev]` and `[dev.agent_args]` sections like these:
+If you use `agent-cli config init`, the generated template already includes a
+commented-out starter block for `[dev]`, `[dev.agent_args]`, and
+`[dev.agent_env.<agent>]` settings like these:
 
 ```toml
 [dev]
@@ -591,7 +592,7 @@ CLAUDE_CODE_USE_VERTEX = "1"
 ANTHROPIC_MODEL = "claude-opus-4-5"
 ```
 
-Or per-project in `.agent-cli.toml`:
+Or per-project in `agent-cli-config.toml`:
 
 ```toml
 [dev]

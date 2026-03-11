@@ -1877,14 +1877,14 @@ uv tool install "agent-cli[vad]" -p 3.13
 **Workflow:**
 
 1.  Start the server, pointing it to your documents folder and your local LLM (e.g., Ollama or llama.cpp) or OpenAI.
-2.  The server watches the folder and automatically indexes any text/markdown/PDF files into a local ChromaDB vector store, skipping paths matched by `.gitignore` files in the docs folder or its parents.
+2.  The server watches the folder and automatically indexes any text/markdown/PDF files into a local ChromaDB vector store, skipping paths matched by `.gitignore` files in the docs folder and, when inside a git repo, its parent directories up to the repo root.
 3.  Point any OpenAI-compatible client (including `agent-cli chat`) to this server's URL.
 4.  When you ask a question, the server retrieves relevant document chunks, adds them to the prompt, and forwards it to the LLM.
 
 **How to Use It:**
 
 - **Install RAG deps first**: `pip install "agent-cli[rag]"` (or, from the repo, `uv sync --extra rag`)
-- **Note on ignored files**: `.gitignore` rules in your docs folder or its parent directories are respected during indexing; use `!pattern` entries to re-include files when needed
+- **Note on ignored files**: `.gitignore` rules in your docs folder are respected during indexing; if the docs folder is inside a git repo, parent `.gitignore` files up to the repo root are also applied. Use `!pattern` entries to re-include paths when needed
 - **Start Server (Local LLM)**: `agent-cli rag-proxy --docs-folder ~/Documents/Notes --openai-base-url http://localhost:11434/v1 --port 8000`
 - **Start Server (OpenAI)**: `agent-cli rag-proxy --docs-folder ~/Documents/Notes --openai-api-key sk-...`
 - **Use with Agent-CLI**: `agent-cli chat --openai-base-url http://localhost:8000/v1 --llm-provider openai`
@@ -1922,7 +1922,8 @@ uv tool install "agent-cli[vad]" -p 3.13
  How it works:
 
   1 Documents in --docs-folder are chunked, embedded, and stored in ChromaDB
-  2 Paths matched by .gitignore files in the docs folder or its parents are skipped
+  2 Paths matched by .gitignore files in the docs folder and, when inside a git repo, its
+    parents up to the repo root are skipped
   3 A file watcher auto-reindexes when files change
   4 Chat requests trigger a semantic search for relevant chunks
   5 Retrieved context is injected into the prompt before forwarding to the LLM
@@ -1953,7 +1954,8 @@ uv tool install "agent-cli[vad]" -p 3.13
 │ --docs-folder                      PATH     Folder to watch for documents. Files are   │
 │                                             auto-indexed on startup and when changed.  │
 │                                             Paths matching .gitignore files in this    │
-│                                             folder or its parent directories are       │
+│                                             folder and, when inside a git repo, its    │
+│                                             parent directories up to the repo root are │
 │                                             skipped. Must not overlap with             │
 │                                             --chroma-path.                             │
 │                                             [default: ./rag_docs]                      │
