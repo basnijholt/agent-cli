@@ -33,7 +33,7 @@ cat > ~/.config/skhd/skhdrc << EOF
 # Agent-CLI Hotkeys
 cmd + shift - 1 : "$TRANSCRIBE_SCRIPT"
 cmd + shift - 2 : "$AUTOCORRECT_SCRIPT"
-cmd + shift - \` : "$VOICE_EDIT_SCRIPT"
+cmd + shift - 0x32 : "$VOICE_EDIT_SCRIPT"
 EOF
 
 # Start service
