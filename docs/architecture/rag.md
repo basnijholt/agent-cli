@@ -169,7 +169,8 @@ The RAG proxy is an **OpenAI-compatible middleware** that intercepts chat reques
   - Paths matched by `.gitignore` files in `--docs-folder` and its parent directories up to the git repo root
 
 This lets you keep generated artifacts, vendored content, or private notes out of the
-index with normal `.gitignore` rules. Use negation patterns like `!keep.md` if you need
+index with normal `.gitignore` rules. Outside a git repo, only
+`--docs-folder/.gitignore` is used. Use negation patterns like `!keep.md` if you need
 to re-include specific files.
 
 ### 2.3 OS-Level File Watching

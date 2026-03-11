@@ -189,8 +189,22 @@ enable_tts = true
 
 [dev]
 # Defaults for `agent-cli dev new`
+# editor = true
+# agent = true
+# direnv = true
+# setup = true
+# copy_env = true
+# fetch = true
 branch_name_mode = "ai"
+# branch_name_agent = "claude"
+# branch_name_timeout = 20.0
+# default_editor = "cursor"
+# default_agent = "claude"
 
 [dev.agent_args]
 claude = ["--dangerously-skip-permissions"]
 codex = ["--dangerously-bypass-approvals-and-sandbox"]
+
+[dev.agent_env.claude]
+# CLAUDE_CODE_USE_VERTEX = "1"
+# ANTHROPIC_MODEL = "claude-opus-4-5"

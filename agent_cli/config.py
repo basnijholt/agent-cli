@@ -262,6 +262,9 @@ class History(BaseModel):
 class Dev(BaseModel):
     """Configuration for parallel development environments (git worktrees)."""
 
+    editor: bool = False
+    agent: bool = False
+    direnv: bool | None = None
     default_agent: str | None = None
     default_editor: str | None = None
     branch_name_mode: Literal["random", "auto", "ai"] = "random"
@@ -270,6 +273,7 @@ class Dev(BaseModel):
     agent_args: dict[str, list[str]] | None = (
         None  # Per-agent args, e.g. {"claude": ["--dangerously-skip-permissions"]}
     )
+    agent_env: dict[str, dict[str, str]] | None = None
     setup: bool = True  # Run project setup (npm install, etc.)
     copy_env: bool = True  # Copy .env files from main repo
     fetch: bool = True  # Git fetch before creating worktree
