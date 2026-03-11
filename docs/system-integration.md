@@ -32,13 +32,13 @@ Create or edit `~/.config/skhd/skhdrc`:
 
 ```bash
 # Transcribe to clipboard (toggle recording)
-cmd + shift + r : /path/to/agent-cli transcribe --toggle --input-device-index 1
+cmd + shift - 1 : /path/to/agent-cli transcribe --toggle --input-device-index 1
 
 # Autocorrect clipboard
-cmd + shift + a : /path/to/agent-cli autocorrect
+cmd + shift - 2 : /path/to/agent-cli autocorrect
 
 # Voice edit clipboard
-cmd + shift + v : /path/to/agent-cli voice-edit --toggle --input-device-index 1
+cmd + shift - ` : /path/to/agent-cli voice-edit --toggle --input-device-index 1
 
 # Speak clipboard
 cmd + shift + s : /path/to/agent-cli speak

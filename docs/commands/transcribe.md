@@ -182,7 +182,7 @@ agent-cli transcribe --toggle
 ### macOS Hotkey (skhd)
 
 ```
-cmd + shift + r : /path/to/agent-cli transcribe --toggle --input-device-index 1
+cmd + shift - 1 : /path/to/agent-cli transcribe --toggle --input-device-index 1
 ```
 
 ### Transcription Log

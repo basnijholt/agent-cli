@@ -91,7 +91,7 @@ Set up a hotkey to run autocorrect on your clipboard:
 === "macOS (skhd)"
 
     ```
-    cmd + shift + a : /path/to/agent-cli autocorrect
+    cmd + shift - 2 : /path/to/agent-cli autocorrect
     ```
 
 === "Linux (Hyprland)"
@@ -103,5 +103,5 @@ Set up a hotkey to run autocorrect on your clipboard:
 ### Typical Usage
 
 1. Select and copy text with errors
-2. Press your hotkey (e.g., Cmd+Shift+A)
+2. Press your hotkey (e.g., Cmd+Shift+2)
 3. Paste the corrected text

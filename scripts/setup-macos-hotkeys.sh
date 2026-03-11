@@ -31,9 +31,9 @@ VOICE_EDIT_SCRIPT="$SCRIPT_DIR/macos-hotkeys/toggle-voice-edit.sh"
 
 cat > ~/.config/skhd/skhdrc << EOF
 # Agent-CLI Hotkeys
-cmd + shift - r : "$TRANSCRIBE_SCRIPT"
-cmd + shift - a : "$AUTOCORRECT_SCRIPT"
-cmd + shift - v : "$VOICE_EDIT_SCRIPT"
+cmd + shift - 1 : "$TRANSCRIBE_SCRIPT"
+cmd + shift - 2 : "$AUTOCORRECT_SCRIPT"
+cmd + shift - \` : "$VOICE_EDIT_SCRIPT"
 EOF
 
 # Start service
@@ -46,9 +46,9 @@ terminal-notifier -title "⌨️ Setup Complete" -message "Agent-CLI hotkeys rea
 
 echo ""
 echo "✅ Done! Hotkeys:"
-echo "  Cmd+Shift+R - Transcribe voice"
-echo "  Cmd+Shift+A - Autocorrect clipboard"
-echo "  Cmd+Shift+V - Voice edit clipboard"
+echo "  Cmd+Shift+1 - Transcribe voice"
+echo "  Cmd+Shift+2 - Autocorrect clipboard"
+echo "  Cmd+Shift+\` - Voice edit clipboard"
 echo ""
 echo "If the hotkey doesn't work:"
 echo "1. Open System Settings → Privacy & Security → Accessibility"

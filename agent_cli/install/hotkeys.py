@@ -17,9 +17,9 @@ def install_hotkeys() -> None:
 
     | Hotkey (macOS / Linux)  | Action                                          |
     |-------------------------|-------------------------------------------------|
-    | Cmd/Super + Shift + R   | Toggle voice transcription (start/stop)         |
-    | Cmd/Super + Shift + A   | Autocorrect clipboard text (grammar/spelling)   |
-    | Cmd/Super + Shift + V   | Voice edit clipboard text (voice commands)      |
+    | Cmd/Super + Shift + 1   | Toggle voice transcription (start/stop)         |
+    | Cmd/Super + Shift + 2   | Autocorrect clipboard text (grammar/spelling)   |
+    | Cmd/Super + Shift + `   | Voice edit clipboard text (voice commands)      |
 
     **macOS** (fully automatic):
 

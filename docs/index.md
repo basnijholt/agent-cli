@@ -37,7 +37,7 @@ I got tired of typing long prompts to LLMs. Speaking is faster, so I built this 
 
 **What it does:**
 
-- Voice transcription to clipboard with system-wide hotkeys (Cmd+Shift+R on macOS)
+- Voice transcription to clipboard with system-wide hotkeys (Cmd+Shift+1 on macOS)
 - Autocorrect any text from your clipboard
 - Edit clipboard content with voice commands ("make this more formal")
 - Runs locally - no internet required, your audio stays on your machine
