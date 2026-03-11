@@ -23,7 +23,7 @@ from agent_cli.core.utils import (
 def rag_proxy(
     docs_folder: Path = typer.Option(  # noqa: B008
         "./rag_docs",
-        help="Folder to watch for documents. Files are auto-indexed on startup and when changed. Must not overlap with `--chroma-path`.",
+        help="Folder to watch for documents. Files are auto-indexed on startup and when changed. Paths matching `.gitignore` files in this folder or its parent directories are skipped. Must not overlap with `--chroma-path`.",
         rich_help_panel="RAG Configuration",
     ),
     chroma_path: Path = typer.Option(  # noqa: B008
@@ -71,10 +71,11 @@ def rag_proxy(
     **How it works:**
 
     1. Documents in `--docs-folder` are chunked, embedded, and stored in ChromaDB
-    2. A file watcher auto-reindexes when files change
-    3. Chat requests trigger a semantic search for relevant chunks
-    4. Retrieved context is injected into the prompt before forwarding to the LLM
-    5. Responses include a `rag_sources` field listing which documents were used
+    2. Paths matched by `.gitignore` files in the docs folder or its parents are skipped
+    3. A file watcher auto-reindexes when files change
+    4. Chat requests trigger a semantic search for relevant chunks
+    5. Retrieved context is injected into the prompt before forwarding to the LLM
+    6. Responses include a `rag_sources` field listing which documents were used
 
     **Supported file formats:**
 

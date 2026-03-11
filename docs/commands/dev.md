@@ -555,7 +555,9 @@ agent-cli dev terminals [OPTIONS]
 
 ## Configuration
 
-Add defaults to your `~/.config/agent-cli/config.toml`:
+Add defaults to your `~/.config/agent-cli/config.toml`.
+If you use `agent-cli config init`, the generated template already includes commented
+`[dev]` and `[dev.agent_args]` sections like these:
 
 ```toml
 [dev]
@@ -570,7 +572,7 @@ copy_env = true        # Copy .env files from main repo
 fetch = true           # Git fetch before creating
 
 # Branch naming behavior when BRANCH argument is omitted
-branch_name_mode = "random"    # random | auto | ai
+branch_name_mode = "ai"        # random | auto | ai
 branch_name_agent = "claude"   # claude | codex | gemini (optional)
 branch_name_timeout = 20.0     # seconds
 
@@ -581,7 +583,7 @@ default_agent = "claude"
 # Per-agent arguments (applied automatically when launching agents)
 [dev.agent_args]
 claude = ["--dangerously-skip-permissions"]
-aider = ["--model", "gpt-4o"]
+codex = ["--dangerously-bypass-approvals-and-sandbox"]
 
 # Per-agent environment variables (applied when launching agents)
 [dev.agent_env.claude]

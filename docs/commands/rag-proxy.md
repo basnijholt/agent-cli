@@ -17,7 +17,7 @@ agent-cli rag-proxy [OPTIONS]
 Enables "Chat with your Data" by running a local proxy server:
 
 1. Start the server, pointing to your documents folder and LLM
-2. The server watches the folder and indexes documents into a ChromaDB vector store
+2. The server watches the folder and indexes documents into a ChromaDB vector store, skipping paths matched by `.gitignore`
 3. Point any OpenAI-compatible client to this server's URL
 4. When you ask a question, the server retrieves relevant chunks and adds them to the prompt
 
@@ -62,7 +62,7 @@ agent-cli chat --openai-base-url http://localhost:8000/v1 --llm-provider openai
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--docs-folder` | `./rag_docs` | Folder to watch for documents. Files are auto-indexed on startup and when changed. Must not overlap with `--chroma-path`. |
+| `--docs-folder` | `./rag_docs` | Folder to watch for documents. Files are auto-indexed on startup and when changed. Paths matching `.gitignore` files in this folder or its parent directories are skipped. Must not overlap with `--chroma-path`. |
 | `--chroma-path` | `./rag_db` | ChromaDB storage directory for vector embeddings. Must be separate from `--docs-folder` to avoid indexing database files. |
 | `--limit` | `3` | Number of document chunks to retrieve per query. Higher values provide more context but use more tokens. Can be overridden per-request via `rag_top_k` in the JSON body. |
 | `--rag-tools/--no-rag-tools` | `true` | Enable `read_full_document()` tool so the LLM can request full document content when retrieved snippets are insufficient. Can be overridden per-request via `rag_enable_tools` in the JSON body. |
@@ -158,5 +158,6 @@ response = client.chat.completions.create(
 ## Tips
 
 - The server automatically re-indexes when files change
+- Paths matched by `.gitignore` files in the docs folder or its parent directories are skipped from indexing; use `!pattern` rules to re-include paths when needed
 - Use `--limit` to control how many document chunks are retrieved
 - Enable `--rag-tools` for the agent to request full documents when snippets aren't enough
