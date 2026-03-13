@@ -209,7 +209,7 @@ def _setup_worktree_env(
             warn("direnv not installed, skipping .envrc setup")
 
 
-@app.command("new")
+@app.command("new", rich_help_panel="Environments")
 def new(
     branch: Annotated[
         str | None,
@@ -452,7 +452,7 @@ def new(
     console.print(f'[dim]To enter the worktree:[/dim] cd "$(ag dev path {branch})"')
 
 
-@app.command("list")
+@app.command("list", rich_help_panel="Environments")
 def list_envs(
     json_output: Annotated[
         bool,
@@ -562,7 +562,7 @@ def _is_stale(status: worktree.WorktreeStatus, stale_days: int) -> bool:
     return days_since >= stale_days
 
 
-@app.command("status")
+@app.command("status", rich_help_panel="Environments")
 def status_cmd(  # noqa: PLR0915
     stale_days: Annotated[
         int,
@@ -673,7 +673,7 @@ def status_cmd(  # noqa: PLR0915
     console.print("\n" + " · ".join(summary_parts))
 
 
-@app.command("rm")
+@app.command("rm", rich_help_panel="Environments")
 def remove(
     name: Annotated[
         str,
@@ -737,7 +737,7 @@ def remove(
         error(remove_err or "Failed to remove worktree")
 
 
-@app.command("path")
+@app.command("path", rich_help_panel="Environments")
 def path_cmd(
     name: Annotated[
         str,
@@ -759,7 +759,7 @@ def path_cmd(
     print(wt.path.as_posix())
 
 
-@app.command("editor")
+@app.command("editor", rich_help_panel="Launch")
 def open_editor(
     name: Annotated[
         str,
@@ -807,7 +807,7 @@ def open_editor(
         error(f"Failed to open editor: {e}")
 
 
-@app.command("agent")
+@app.command("agent", rich_help_panel="Launch")
 def start_agent(
     name: Annotated[
         str,
@@ -848,16 +848,34 @@ def start_agent(
             readable=True,
         ),
     ] = None,
+    tab: Annotated[
+        bool,
+        typer.Option(
+            "--tab",
+            help="Launch in a new tmux tab (tracked) instead of the current terminal",
+        ),
+    ] = False,
+    tracked_name: Annotated[
+        str | None,
+        typer.Option(
+            "--name",
+            help="Explicit name for tracking (used with --tab). Auto-generated if omitted",
+        ),
+    ] = None,
 ) -> None:
     """Start an AI coding agent in an existing dev environment.
 
-    Launches the agent directly in your current terminal.
+    By default, launches the agent directly in your current terminal.
+    With ``--tab``, launches in a new tmux tab with orchestration tracking
+    (can then use ``dev poll``, ``dev output``, ``dev send``, ``dev wait``).
 
     **Examples:**
 
     - `dev agent my-feature` — Start agent in current terminal
     - `dev agent my-feature -a claude` — Start Claude specifically
     - `dev agent my-feature -p "Continue the auth refactor"` — Start with a task
+    - `dev agent my-feature --tab` — Start in new tracked tmux tab
+    - `dev agent my-feature --tab --name reviewer -p "Review the changes"` — Named tracked agent
     """
     # Handle prompt-file option (takes precedence over --prompt)
     if prompt_file is not None:
@@ -893,6 +911,24 @@ def start_agent(
     merged_args = merge_agent_args(agent, agent_args)
     agent_env = get_agent_env(agent)
 
+    if tab:
+        # Launch in a new tmux tab with tracking — require being *inside* a tmux
+        # session (TMUX env var), not just having a reachable tmux server, so the
+        # new window is visible in the user's current session.
+        if not os.environ.get("TMUX"):
+            error("--tab requires running inside a tmux session. Start tmux first.")
+        launch_agent(
+            wt.path,
+            agent,
+            merged_args,
+            prompt,
+            task_file,
+            agent_env,
+            track=True,
+            agent_name=tracked_name,
+        )
+        return
+
     info(f"Starting {agent.name} in {wt.path}...")
     try:
         os.chdir(wt.path)
@@ -908,7 +944,7 @@ def start_agent(
         error(f"Failed to start agent: {e}")
 
 
-@app.command("agents")
+@app.command("agents", rich_help_panel="Info")
 def list_agents(
     json_output: Annotated[
         bool,
@@ -960,7 +996,7 @@ def list_agents(
     console.print(table)
 
 
-@app.command("editors")
+@app.command("editors", rich_help_panel="Info")
 def list_editors_cmd(
     json_output: Annotated[
         bool,
@@ -1012,7 +1048,7 @@ def list_editors_cmd(
     console.print(table)
 
 
-@app.command("terminals")
+@app.command("terminals", rich_help_panel="Info")
 def list_terminals_cmd(
     json_output: Annotated[
         bool,
@@ -1087,7 +1123,7 @@ def _doctor_check_git() -> None:
         console.print("  [yellow]○[/yellow] Not in a git repository")
 
 
-@app.command("run")
+@app.command("run", rich_help_panel="Launch")
 def run_cmd(
     name: Annotated[
         str,
@@ -1197,7 +1233,7 @@ def _clean_no_commits_worktrees(
                 warn(f"Failed to remove {branch}: {remove_err}")
 
 
-@app.command("clean")
+@app.command("clean", rich_help_panel="Environments")
 def clean(
     merged: Annotated[
         bool,
@@ -1292,7 +1328,7 @@ def clean(
         _clean_no_commits_worktrees(repo_root, dry_run, yes, force=force)
 
 
-@app.command("doctor")
+@app.command("doctor", rich_help_panel="Info")
 def doctor(
     json_output: Annotated[
         bool,
@@ -1394,7 +1430,7 @@ def _get_current_repo_root() -> Path | None:
     return None
 
 
-@app.command("install-skill")
+@app.command("install-skill", rich_help_panel="Setup")
 def install_skill(
     force: Annotated[
         bool,
@@ -1454,3 +1490,7 @@ def install_skill(
     console.print("[dim]Skill files:[/dim]")
     for f in sorted(skill_dest.iterdir()):
         console.print(f"  • {f.name}")
+
+
+# Register orchestration commands (poll, output, send, wait)
+from . import orchestration  # noqa: E402, F401
