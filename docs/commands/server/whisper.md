@@ -9,6 +9,7 @@ Run a local Whisper ASR server with automatic backend selection based on your pl
 - **macOS Apple Silicon** → [mlx-whisper](https://github.com/ml-explore/mlx-examples/tree/main/whisper) (Metal acceleration)
 - **Linux/CUDA** → [faster-whisper](https://github.com/SYSTRAN/faster-whisper) (CTranslate2)
 - **HuggingFace** → [transformers](https://huggingface.co/docs/transformers/model_doc/whisper) (supports safetensors models)
+- **NVIDIA Parakeet** → [NeMo](https://github.com/NVIDIA/NeMo) (e.g., `parakeet-tdt-0.6b-v2`)
 
 > [!NOTE]
 > **Quick Start** - Get transcription working in 30 seconds:
@@ -33,7 +34,7 @@ Run a local Whisper ASR server with automatic backend selection based on your pl
 - **TTL-based memory management** - models unload after idle period, freeing RAM/VRAM
 - **Multiple models** - run different model sizes with independent TTLs
 - **Background preloading** - downloads start at startup without blocking; use `--preload` to wait
-- **Multi-platform support** - automatically uses the optimal backend for your hardware
+- **Multi-platform support** - automatically uses the optimal backend for your hardware (`auto` switches to `nemo` for Parakeet models)
 
 ## Usage
 
@@ -59,6 +60,9 @@ agent-cli server whisper --device cpu
 # Download model without starting server (requires faster-whisper)
 agent-cli server whisper --model large-v3 --download-only
 
+# Run NVIDIA Parakeet via NeMo
+agent-cli server whisper --backend nemo --model parakeet-tdt-0.6b-v2
+
 # Preload model at startup and wait until ready
 agent-cli server whisper --preload
 ```
@@ -75,7 +79,7 @@ agent-cli server whisper --preload
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--model, -m` | - | Whisper model(s) to load. Common models: `tiny`, `base`, `small`, `medium`, `large-v3`, `distil-large-v3`. Can specify multiple for different accuracy/speed tradeoffs. Default: `large-v3` |
+| `--model, -m` | - | Whisper model(s) to load. Common models: `tiny`, `base`, `small`, `medium`, `large-v3`, `distil-large-v3`, `parakeet-tdt-0.6b-v2` (NeMo backend). Can specify multiple for different accuracy/speed tradeoffs. Default: `large-v3` |
 | `--default-model` | - | Model to use when client doesn't specify one. Must be in the `--model` list |
 | `--device, -d` | `auto` | Compute device: `auto` (detect GPU), `cuda`, `cuda:0`, `cpu`. MLX backend always uses Apple Silicon |
 | `--compute-type` | `auto` | Precision for faster-whisper: `auto`, `float16`, `int8`, `int8_float16`. Lower precision = faster + less VRAM |
@@ -87,7 +91,7 @@ agent-cli server whisper --preload
 | `--wyoming-port` | `10300` | Port for Wyoming protocol (Home Assistant integration) |
 | `--no-wyoming` | `false` | Disable Wyoming protocol server (only run HTTP API) |
 | `--download-only` | `false` | Download model(s) to cache and exit. Useful for Docker builds |
-| `--backend, -b` | `auto` | Inference backend: `auto` (faster-whisper on CUDA/CPU, MLX on Apple Silicon), `faster-whisper`, `mlx`, `transformers` (HuggingFace, supports safetensors) |
+| `--backend, -b` | `auto` | Inference backend: `auto` (faster-whisper on CUDA/CPU, MLX on Apple Silicon), `faster-whisper`, `mlx`, `transformers` (HuggingFace, supports safetensors), `nemo` (NVIDIA NeMo, supports Parakeet models) |
 
 ### General Options
 
@@ -238,6 +242,18 @@ agent-cli server whisper --backend transformers
 ```
 
 This uses HuggingFace's `transformers` library, which supports loading `.safetensors` models directly from the Hub.
+
+### NVIDIA NeMo (Parakeet)
+
+For NeMo models like `nvidia/parakeet-tdt-0.6b-v2`:
+
+```bash
+pip install "agent-cli[nemo-whisper,wyoming]"
+agent-cli server whisper --backend nemo --model parakeet-tdt-0.6b-v2
+```
+
+NeMo models are currently transcription-only in this server. Requests to
+`/v1/audio/translations` return `400` for `--backend nemo`.
 
 ### Docker
 

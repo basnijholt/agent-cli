@@ -129,6 +129,7 @@ def test_server_whisper_command_in_cli() -> None:
     assert "--model" in clean_output
     assert "--ttl" in clean_output
     assert "--wyoming-port" in clean_output
+    assert "nemo" in clean_output
 
 
 @patch("uvicorn.run")

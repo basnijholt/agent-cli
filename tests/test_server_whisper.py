@@ -563,6 +563,29 @@ class TestWhisperAPI:
             call_args = mock_transcribe.call_args
             assert call_args.kwargs["task"] == "translate"
 
+    def test_translate_endpoint_rejects_nemo_backend(self) -> None:
+        """Test translation endpoint returns 400 for NeMo models."""
+        from agent_cli.server.whisper.api import create_app  # noqa: PLC0415
+
+        registry = create_whisper_registry()
+        registry.register(
+            ModelConfig(model_name="parakeet-tdt-0.6b-v2", ttl_seconds=300, backend_type="nemo"),
+        )
+        manager = registry.get_manager()
+        app = create_app(registry, enable_wyoming=False)
+        client = TestClient(app)
+
+        with patch.object(manager, "transcribe", new_callable=AsyncMock) as mock_transcribe:
+            response = client.post(
+                "/v1/audio/translations",
+                files={"file": ("audio.wav", _create_test_wav(), "audio/wav")},
+                data={"model": "parakeet-tdt-0.6b-v2"},
+            )
+
+        assert response.status_code == 400
+        assert "Translation is not supported for NeMo models" in response.json()["detail"]
+        mock_transcribe.assert_not_called()
+
     def test_unload_model_success(
         self,
         client: TestClient,
