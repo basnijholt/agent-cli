@@ -634,6 +634,30 @@ direnv = false
         assert "Success" not in result.output
         mock_create.assert_not_called()
 
+    def test_new_rejects_empty_prompt(self) -> None:
+        """Explicit empty prompts should error instead of silently becoming no-op."""
+        with patch("agent_cli.dev.cli._ensure_git_repo") as mock_ensure_repo:
+            result = runner.invoke(app, ["dev", "new", "my-feature", "--prompt", "   "])
+
+        assert result.exit_code == 1
+        assert "--prompt cannot be empty" in result.output
+        mock_ensure_repo.assert_not_called()
+
+    def test_new_rejects_empty_prompt_file(self, tmp_path: Path) -> None:
+        """Empty prompt files should fail before any worktree setup starts."""
+        prompt_file = tmp_path / "empty.md"
+        prompt_file.write_text(" \n")
+
+        with patch("agent_cli.dev.cli._ensure_git_repo") as mock_ensure_repo:
+            result = runner.invoke(
+                app,
+                ["dev", "new", "my-feature", "--prompt-file", str(prompt_file)],
+            )
+
+        assert result.exit_code == 1
+        assert f"Prompt file is empty: {prompt_file}" in result.output
+        mock_ensure_repo.assert_not_called()
+
 
 class TestDevHelp:
     """Tests for dev command help."""
@@ -713,6 +737,21 @@ class TestDevAgent:
 
         assert result.exit_code == 0
         assert "tmux attach -t 'my session'" in result.output
+
+    def test_agent_rejects_empty_prompt_file(self, tmp_path: Path) -> None:
+        """Empty prompt files should fail before repo/worktree resolution."""
+        prompt_file = tmp_path / "empty.md"
+        prompt_file.write_text("\n")
+
+        with patch("agent_cli.dev.cli._ensure_git_repo") as mock_ensure_repo:
+            result = runner.invoke(
+                app,
+                ["dev", "agent", "feature", "--prompt-file", str(prompt_file)],
+            )
+
+        assert result.exit_code == 1
+        assert f"Prompt file is empty: {prompt_file}" in result.output
+        mock_ensure_repo.assert_not_called()
 
 
 class TestDevAgents:

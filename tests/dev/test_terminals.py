@@ -65,11 +65,14 @@ class TestTmux:
     def test_open_in_session_creates_detached_session_when_missing(self) -> None:
         """Outside tmux, a named session is created in detached mode if absent."""
         terminal = Tmux()
-        mock_run = MagicMock(return_value=MagicMock(stdout="%42\n"))
         with (
-            patch("subprocess.run", mock_run),
-            patch.object(terminal, "session_exists", return_value=False),
-            patch("shutil.which", return_value="/usr/bin/tmux"),
+            patch.object(terminal, "is_available", return_value=True),
+            patch.object(terminal, "_open_window", return_value=None) as mock_open,
+            patch.object(
+                terminal,
+                "_create_session",
+                return_value=MagicMock(handle="%42", session_name="repo-session"),
+            ) as mock_create,
         ):
             handle = terminal.open_in_session(
                 Path("/some/path"),
@@ -81,23 +84,30 @@ class TestTmux:
         assert handle is not None
         assert handle.handle == "%42"
         assert handle.session_name == "repo-session"
-        cmd = mock_run.call_args[0][0]
-        assert "new-session" in cmd
-        assert "-d" in cmd
-        assert "-P" in cmd
-        assert "-F" in cmd
-        assert "#{pane_id}" in cmd
-        assert "-s" in cmd
-        assert "repo-session" in cmd
+        mock_open.assert_called_once_with(
+            Path("/some/path"),
+            "echo hello",
+            "test",
+            session_name="repo-session",
+        )
+        mock_create.assert_called_once_with(
+            Path("/some/path"),
+            "echo hello",
+            "test",
+            session_name="repo-session",
+        )
 
     def test_open_in_session_reuses_existing_session(self) -> None:
         """Outside tmux, a named session gets a new window when it already exists."""
         terminal = Tmux()
-        mock_run = MagicMock(return_value=MagicMock(stdout="%5\n"))
         with (
-            patch("subprocess.run", mock_run),
-            patch.object(terminal, "session_exists", return_value=True),
-            patch("shutil.which", return_value="/usr/bin/tmux"),
+            patch.object(terminal, "is_available", return_value=True),
+            patch.object(
+                terminal,
+                "_open_window",
+                return_value=MagicMock(handle="%5", session_name="repo-session"),
+            ) as mock_open,
+            patch.object(terminal, "_create_session") as mock_create,
         ):
             handle = terminal.open_in_session(
                 Path("/some/path"),
@@ -109,10 +119,46 @@ class TestTmux:
         assert handle is not None
         assert handle.handle == "%5"
         assert handle.session_name == "repo-session"
-        cmd = mock_run.call_args[0][0]
-        assert "new-window" in cmd
-        assert "-t" in cmd
-        assert "repo-session" in cmd
+        mock_open.assert_called_once_with(
+            Path("/some/path"),
+            "echo hello",
+            "test",
+            session_name="repo-session",
+        )
+        mock_create.assert_not_called()
+
+    def test_open_in_session_retries_when_session_appears_during_race(self) -> None:
+        """Concurrent creators should fall back to opening a new window."""
+        terminal = Tmux()
+        with (
+            patch.object(terminal, "is_available", return_value=True),
+            patch.object(
+                terminal,
+                "_open_window",
+                side_effect=[
+                    None,
+                    MagicMock(handle="%7", session_name="repo-session"),
+                ],
+            ) as mock_open,
+            patch.object(terminal, "_create_session", return_value=None) as mock_create,
+        ):
+            handle = terminal.open_in_session(
+                Path("/some/path"),
+                "echo hello",
+                tab_name="test",
+                session_name="repo-session",
+            )
+
+        assert handle is not None
+        assert handle.handle == "%7"
+        assert handle.session_name == "repo-session"
+        assert mock_open.call_count == 2
+        mock_create.assert_called_once_with(
+            Path("/some/path"),
+            "echo hello",
+            "test",
+            session_name="repo-session",
+        )
 
 
 class TestZellij:
