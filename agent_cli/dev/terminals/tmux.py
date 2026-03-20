@@ -49,19 +49,6 @@ class Tmux(Terminal):
         session_name = result.stdout.strip()
         return session_name or None
 
-    def session_exists(self, session_name: str) -> bool:
-        """Check if a tmux session exists."""
-        try:
-            subprocess.run(
-                ["tmux", "has-session", "-t", session_name],  # noqa: S607
-                check=True,
-                capture_output=True,
-                text=True,
-            )
-            return True
-        except subprocess.CalledProcessError:
-            return False
-
     def open_in_session(
         self,
         path: Path,
@@ -84,9 +71,18 @@ class Tmux(Terminal):
                 return None
             return self._open_window(path, command, tab_name, session_name=session_name)
 
-        if self.session_exists(session_name):
-            return self._open_window(path, command, tab_name, session_name=session_name)
-        return self._create_session(path, command, tab_name, session_name=session_name)
+        # Avoid a has-session/new-session race when several launches try to create the
+        # same repo-scoped session concurrently: try new-window first, then create,
+        # then retry new-window in case another launcher created the session first.
+        handle = self._open_window(path, command, tab_name, session_name=session_name)
+        if handle is not None:
+            return handle
+
+        handle = self._create_session(path, command, tab_name, session_name=session_name)
+        if handle is not None:
+            return handle
+
+        return self._open_window(path, command, tab_name, session_name=session_name)
 
     def open_new_tab(
         self,

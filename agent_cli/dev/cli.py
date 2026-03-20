@@ -134,6 +134,24 @@ def _require_available_agent(
     return agent
 
 
+def _resolve_prompt_text(
+    prompt: str | None,
+    *,
+    prompt_file: Path | None = None,
+) -> str | None:
+    """Resolve prompt text from CLI input and reject empty explicit prompts."""
+    if prompt_file is not None:
+        prompt = prompt_file.read_text().strip()
+        if not prompt:
+            error(f"Prompt file is empty: {prompt_file}")
+        return prompt
+
+    if prompt is not None and not prompt.strip():
+        error("--prompt cannot be empty")
+
+    return prompt
+
+
 def _resolve_branch_name(
     branch: str | None,
     branch_name_mode: str,
@@ -406,9 +424,7 @@ def new(
     - `dev new feature-x --from origin/develop` — Branch from develop instead
     - `dev new feature-x --with-agent aider --with-editor cursor` — Specific tools
     """
-    # Handle prompt-file option (takes precedence over --prompt)
-    if prompt_file is not None:
-        prompt = prompt_file.read_text().strip()
+    prompt = _resolve_prompt_text(prompt, prompt_file=prompt_file)
 
     # If a prompt is provided, automatically enable agent mode
     if prompt:
@@ -928,9 +944,7 @@ def start_agent(
     - `dev agent my-feature -a claude` — Start Claude specifically
     - `dev agent my-feature -p "Continue the auth refactor"` — Start with a task
     """
-    # Handle prompt-file option (takes precedence over --prompt)
-    if prompt_file is not None:
-        prompt = prompt_file.read_text().strip()
+    prompt = _resolve_prompt_text(prompt, prompt_file=prompt_file)
 
     repo_root = _ensure_git_repo()
 
