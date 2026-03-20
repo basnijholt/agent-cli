@@ -301,8 +301,13 @@ class TestDevNewBranchNaming:
                 return_value=wt_path / ".claude/TASK.md",
             ),
             patch("agent_cli.dev.cli.resolve_editor", return_value=None),
-            patch("agent_cli.dev.cli.resolve_agent", return_value=None),
+            patch("agent_cli.dev.cli.resolve_agent") as mock_resolve_agent,
+            patch("agent_cli.dev.cli.merge_agent_args", return_value=None),
+            patch("agent_cli.dev.cli.get_agent_env", return_value={}),
+            patch("agent_cli.dev.cli.launch_agent", return_value=None),
         ):
+            mock_agent = mock_resolve_agent.return_value
+            mock_agent.is_available.return_value = True
             result = runner.invoke(
                 app,
                 [
@@ -559,6 +564,75 @@ direnv = false
         assert "Agent Handle:" in result.output
         assert "%42" in result.output
         assert "tmux attach -t agent-cli-repo-1234" in result.output
+
+    def test_new_fails_before_creating_worktree_when_no_agent_is_available(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Explicit agent launches should fail fast before creating side effects."""
+        prompt_file = tmp_path / "task.md"
+        prompt_file.write_text("Fix login retries")
+
+        with (
+            patch("agent_cli.dev.cli._ensure_git_repo", return_value=Path("/repo")),
+            patch("agent_cli.dev.cli.resolve_agent", return_value=None),
+            patch("agent_cli.dev.worktree.create_worktree") as mock_create,
+        ):
+            result = runner.invoke(
+                app,
+                [
+                    "dev",
+                    "new",
+                    "my-feature",
+                    "--agent",
+                    "--multiplexer",
+                    "tmux",
+                    "--prompt-file",
+                    str(prompt_file),
+                    "--no-setup",
+                    "--no-copy-env",
+                    "--no-fetch",
+                    "--no-direnv",
+                ],
+            )
+
+        assert result.exit_code == 1
+        assert "No AI coding agents found" in result.output
+        assert "Success" not in result.output
+        mock_create.assert_not_called()
+
+    def test_new_fails_before_creating_worktree_when_requested_agent_is_unavailable(self) -> None:
+        """Unavailable explicit agents should abort before worktree creation."""
+        with (
+            patch("agent_cli.dev.cli._ensure_git_repo", return_value=Path("/repo")),
+            patch("agent_cli.dev.cli.resolve_agent") as mock_resolve_agent,
+            patch("agent_cli.dev.worktree.create_worktree") as mock_create,
+        ):
+            mock_agent = mock_resolve_agent.return_value
+            mock_agent.name = "codex"
+            mock_agent.install_url = "https://example.com/codex"
+            mock_agent.is_available.return_value = False
+
+            result = runner.invoke(
+                app,
+                [
+                    "dev",
+                    "new",
+                    "my-feature",
+                    "--agent",
+                    "--with-agent",
+                    "codex",
+                    "--no-setup",
+                    "--no-copy-env",
+                    "--no-fetch",
+                    "--no-direnv",
+                ],
+            )
+
+        assert result.exit_code == 1
+        assert "codex is not installed. Install from: https://example.com/codex" in result.output
+        assert "Success" not in result.output
+        mock_create.assert_not_called()
 
 
 class TestDevHelp:
