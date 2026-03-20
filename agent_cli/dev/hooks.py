@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from ._config import get_runtime_config
+from ._config import get_dev_child_table, get_dev_config, get_dev_table
 from ._output import info
 
 if TYPE_CHECKING:
@@ -47,28 +47,9 @@ def _normalize_hook_commands(value: Any, *, config_key: str) -> list[str]:
 
 def _load_dev_hook_settings(agent_name: str) -> tuple[bool, list[str]]:
     """Load auto-trust and pre-launch hook settings for an agent."""
-    config = get_runtime_config()
-    auto_trust = True
-    global_hooks: dict[str, Any] = {}
-    agent_hooks: dict[str, Any] = {}
-
-    dev_config = config.get("dev", {})
-    if isinstance(dev_config, dict):
-        auto_trust = bool(dev_config.get("auto_trust", True))
-        nested_hooks = dev_config.get("hooks")
-        if isinstance(nested_hooks, dict):
-            global_hooks = {k: v for k, v in nested_hooks.items() if not isinstance(v, dict)}
-            nested_agent_hooks = nested_hooks.get(agent_name)
-            if isinstance(nested_agent_hooks, dict):
-                agent_hooks = nested_agent_hooks
-
-    flat_global_hooks = config.get("dev.hooks")
-    if isinstance(flat_global_hooks, dict):
-        global_hooks = {**global_hooks, **flat_global_hooks}
-
-    flat_agent_hooks = config.get(f"dev.hooks.{agent_name}")
-    if isinstance(flat_agent_hooks, dict):
-        agent_hooks = {**agent_hooks, **flat_agent_hooks}
+    auto_trust = bool(get_dev_config().get("auto_trust", True))
+    global_hooks = get_dev_table("hooks")
+    agent_hooks = get_dev_child_table("hooks", agent_name)
 
     pre_launch_hooks = _normalize_hook_commands(
         global_hooks.get("pre_launch"),

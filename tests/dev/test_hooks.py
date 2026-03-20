@@ -43,7 +43,7 @@ class TestPrepareAgentLaunch:
         mock_prepare = cast("Any", context.agent.prepare_launch)
 
         with (
-            patch("agent_cli.dev.hooks.get_runtime_config") as mock_get_runtime_config,
+            patch("agent_cli.dev._config.get_runtime_config") as mock_get_runtime_config,
             patch("agent_cli.dev.hooks.subprocess.run") as mock_run,
         ):
             prepare_agent_launch(context, hooks_enabled=False)
@@ -63,7 +63,7 @@ class TestPrepareAgentLaunch:
         hook_path.write_text("#!/bin/sh\nexit 0\n")
 
         with (
-            patch("agent_cli.dev.hooks.get_runtime_config") as mock_get_runtime_config,
+            patch("agent_cli.dev._config.get_runtime_config") as mock_get_runtime_config,
             patch(
                 "agent_cli.dev.hooks.subprocess.run",
                 return_value=subprocess.CompletedProcess([], 0, "", ""),
@@ -103,7 +103,7 @@ class TestPrepareAgentLaunch:
 
         with (
             patch(
-                "agent_cli.dev.hooks.get_runtime_config",
+                "agent_cli.dev._config.get_runtime_config",
                 return_value={
                     "dev": {"auto_trust": False},
                     "dev.hooks": {"pre_launch": ["hook"]},
@@ -125,7 +125,7 @@ class TestPrepareAgentLaunch:
 
         with (
             patch(
-                "agent_cli.dev.hooks.get_runtime_config",
+                "agent_cli.dev._config.get_runtime_config",
                 return_value={"dev.hooks": {"pre_launch": ["broken-hook"]}},
             ),
             patch(
@@ -142,7 +142,7 @@ class TestPrepareAgentLaunch:
 
         with (
             patch(
-                "agent_cli.dev.hooks.get_runtime_config",
+                "agent_cli.dev._config.get_runtime_config",
                 return_value={"dev.hooks": {"pre_launch": {"not": "valid"}}},
             ),
             pytest.raises(RuntimeError, match=r"\[dev\.hooks\]\.pre_launch"),
