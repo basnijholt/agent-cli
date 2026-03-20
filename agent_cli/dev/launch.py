@@ -9,10 +9,10 @@ import tempfile
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from agent_cli.config import load_config
 from agent_cli.core.utils import console
 
 from . import coding_agents, editors, terminals, worktree
+from ._config import get_dev_child_tables, get_dev_table
 from ._output import success, warn
 
 if TYPE_CHECKING:
@@ -95,15 +95,8 @@ def get_config_agent_args() -> dict[str, list[str]] | None:
     Note: The config loader may flatten section names, so we check both
     nested structure and flattened 'dev.agent_args' key.
     """
-    config = load_config(None)
-
-    # First try the simple nested structure (for testing/mocks)
-    dev_config = config.get("dev", {})
-    if isinstance(dev_config, dict) and "agent_args" in dev_config:
-        return dev_config["agent_args"]
-
-    # Handle flattened key "dev.agent_args"
-    return config.get("dev.agent_args")
+    agent_args = get_dev_table("agent_args")
+    return agent_args or None
 
 
 def get_config_agent_env() -> dict[str, dict[str, str]] | None:
@@ -117,22 +110,8 @@ def get_config_agent_env() -> dict[str, dict[str, str]] | None:
     'dev.agent_env.claude' become top-level. We reconstruct the
     agent_env dict from these flattened keys.
     """
-    config = load_config(None)
-
-    # First try the simple nested structure (for testing/mocks)
-    dev_config = config.get("dev", {})
-    if isinstance(dev_config, dict) and "agent_env" in dev_config:
-        return dev_config["agent_env"]
-
-    # Handle flattened keys like "dev.agent_env.claude"
-    prefix = "dev.agent_env."
-    result: dict[str, dict[str, str]] = {}
-    for key, value in config.items():
-        if key.startswith(prefix) and isinstance(value, dict):
-            agent_name = key[len(prefix) :]
-            result[agent_name] = value
-
-    return result or None
+    agent_env = get_dev_child_tables("agent_env")
+    return agent_env or None
 
 
 def get_agent_env(agent: CodingAgent) -> dict[str, str]:

@@ -191,6 +191,7 @@ enable_tts = true
 # Defaults for `agent-cli dev new`
 # editor = true
 # agent = true
+# auto_trust = true
 # direnv = true
 # setup = true
 # copy_env = true
@@ -208,3 +209,9 @@ codex = ["--dangerously-bypass-approvals-and-sandbox"]
 [dev.agent_env.claude]
 # CLAUDE_CODE_USE_VERTEX = "1"
 # ANTHROPIC_MODEL = "claude-opus-4-5"
+
+[dev.hooks]
+# pre_launch = ["~/.config/agent-cli/hooks/pre-launch.sh"]
+
+[dev.hooks.codex]
+# pre_launch = ["~/.config/agent-cli/hooks/codex-setup.sh"]

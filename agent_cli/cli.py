@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Any
 
 import typer
 from rich.table import Table
@@ -93,7 +93,7 @@ def main(
     set_process_title(ctx.invoked_subcommand)
 
 
-def set_config_defaults(ctx: typer.Context, config_file: str | None) -> None:
+def set_config_defaults(ctx: typer.Context, config_file: str | None) -> dict[str, Any]:
     """Set the default values for the CLI based on the config file."""
     config = load_config(config_file)
     wildcard_config = normalize_provider_defaults(config.get("defaults", {}))
@@ -101,7 +101,7 @@ def set_config_defaults(ctx: typer.Context, config_file: str | None) -> None:
     command_key = ctx.command.name or ""
     if not command_key:
         ctx.default_map = wildcard_config
-        return
+        return config
 
     # For nested subcommands (e.g., "memory proxy"), build "memory.proxy"
     if ctx.parent and ctx.parent.command.name and ctx.parent.command.name != "agent-cli":
@@ -109,6 +109,7 @@ def set_config_defaults(ctx: typer.Context, config_file: str | None) -> None:
 
     command_config = normalize_provider_defaults(config.get(command_key, {}))
     ctx.default_map = {**wildcard_config, **command_config}
+    return config
 
 
 # Import commands from other modules to register them

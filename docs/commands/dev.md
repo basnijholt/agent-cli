@@ -87,6 +87,7 @@ agent-cli dev new [BRANCH] [OPTIONS]
 | `--prompt, -p` | - | Initial task for the AI agent. Saved to .claude/TASK.md. Implies --agent. Example: --prompt='Fix the login bug' |
 | `--prompt-file, -P` | - | Read the agent prompt from a file. Useful for long prompts to avoid shell quoting. Implies --agent |
 | `--multiplexer, -m` | - | Launch the agent in a specific multiplexer. Currently supported: tmux. When started outside tmux, creates or reuses a detached session and reports the pane handle |
+| `--hooks/--no-hooks` | `true` | Run built-in agent preparation (like Codex auto-trust) and configured pre-launch hooks before starting the agent |
 | `--verbose, -v` | `false` | Stream output from setup commands instead of hiding it |
 
 
@@ -295,6 +296,7 @@ agent-cli dev agent NAME [--agent/-a AGENT] [--agent-args ARGS] [--prompt/-p PRO
 | `--prompt, -p` | - | Initial task for the agent. Saved to .claude/TASK.md. Example: --prompt='Add unit tests for auth' |
 | `--prompt-file, -P` | - | Read the agent prompt from a file instead of command line |
 | `--multiplexer, -m` | - | Launch the agent in a specific multiplexer instead of the current terminal. Currently supported: tmux |
+| `--hooks/--no-hooks` | `true` | Run built-in agent preparation (like Codex auto-trust) and configured pre-launch hooks before starting the agent |
 
 
 <!-- OUTPUT:END -->
@@ -580,6 +582,7 @@ commented-out starter block for `[dev]`, `[dev.agent_args]`, and
 # Default flags for 'dev new' command
 editor = true          # Always open editor (-e)
 agent = true           # Always start agent (-a)
+auto_trust = true      # Auto-trust supported agents before launch
 direnv = true          # Always generate .envrc (--direnv)
 
 # Worktree creation behavior
@@ -605,6 +608,14 @@ codex = ["--dangerously-bypass-approvals-and-sandbox"]
 [dev.agent_env.claude]
 CLAUDE_CODE_USE_VERTEX = "1"
 ANTHROPIC_MODEL = "claude-opus-4-5"
+
+# Optional pre-launch hooks (run from the worktree directory)
+[dev.hooks]
+pre_launch = ["~/.config/agent-cli/hooks/pre-launch.sh"]
+
+# Optional per-agent pre-launch hooks
+[dev.hooks.codex]
+pre_launch = ["~/.config/agent-cli/hooks/codex-setup.sh"]
 ```
 
 Or per-project in `agent-cli-config.toml`:
@@ -622,6 +633,9 @@ claude = ["--dangerously-skip-permissions", "--model", "opus"]
 
 [dev.agent_env.claude]
 ANTHROPIC_MODEL = "claude-sonnet-4-20250514"
+
+[dev.hooks]
+pre_launch = ["./scripts/prepare-worktree.sh"]
 ```
 
 With this configuration, running `agent-cli dev new` will automatically open the editor, start the agent, and set up direnv.
@@ -714,6 +728,22 @@ When launching an AI agent, the dev command automatically:
 3. Returns the tmux pane handle and an attach command for explicit tmux launches
 4. Falls back to supported terminals (kitty, iTerm2)
 5. Prints instructions if no terminal is detected
+
+Before launching an agent, `agent-cli dev` can also run launch preparation:
+
+- Built-in preparation for supported agents. Currently this means Codex auto-trust: when `[dev].auto_trust = true` (the default), `agent-cli` ensures the repository root is trusted in `~/.codex/config.toml` before launch.
+- User-defined `pre_launch` hooks from `[dev.hooks]` and `[dev.hooks.<agent>]`. Global hooks run first, then agent-specific hooks.
+- Hook config follows the same config source as the rest of `dev`, including `agent-cli dev --config path/to/config.toml ...`.
+- Hooks run synchronously in the worktree directory and receive:
+  - `AGENT_CLI_AGENT`
+  - `AGENT_CLI_WORKTREE`
+  - `AGENT_CLI_REPO_ROOT`
+  - `AGENT_CLI_BRANCH`
+  - `AGENT_CLI_NAME`
+  - `AGENT_CLI_TASK_FILE`
+  - `AGENT_CLI_PROMPT_FILE` (alias of `AGENT_CLI_TASK_FILE`)
+- Hook commands are executed directly, not through a shell. For pipelines or more complex setup, point `pre_launch` at a script.
+- Use `--no-hooks` to bypass both built-in preparation and configured pre-launch hooks for a single launch.
 
 ### Multi-agent Workflows
 

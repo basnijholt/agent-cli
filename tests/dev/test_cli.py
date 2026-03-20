@@ -302,6 +302,7 @@ class TestDevNewBranchNaming:
             ),
             patch("agent_cli.dev.cli.resolve_editor", return_value=None),
             patch("agent_cli.dev.cli.resolve_agent") as mock_resolve_agent,
+            patch("agent_cli.dev.cli.prepare_agent_launch"),
             patch("agent_cli.dev.cli.merge_agent_args", return_value=None),
             patch("agent_cli.dev.cli.get_agent_env", return_value={}),
             patch("agent_cli.dev.cli.launch_agent", return_value=None),
@@ -534,6 +535,7 @@ direnv = false
             ),
             patch("agent_cli.dev.cli.resolve_editor", return_value=None),
             patch("agent_cli.dev.cli.resolve_agent") as mock_resolve_agent,
+            patch("agent_cli.dev.cli.prepare_agent_launch"),
             patch("agent_cli.dev.cli.merge_agent_args", return_value=None),
             patch("agent_cli.dev.cli.get_agent_env", return_value={}),
             patch(
@@ -658,6 +660,103 @@ direnv = false
         assert f"Prompt file is empty: {prompt_file}" in result.output
         mock_ensure_repo.assert_not_called()
 
+    def test_new_skips_launch_preparation_when_hooks_are_disabled(self, tmp_path: Path) -> None:
+        """`--no-hooks` should bypass built-in preparation and configured hooks."""
+        wt_path = tmp_path / "repo-worktrees" / "feature"
+        wt_path.mkdir(parents=True)
+
+        with (
+            patch("agent_cli.dev.cli._ensure_git_repo", return_value=Path("/repo")),
+            patch(
+                "agent_cli.dev.worktree.create_worktree",
+                return_value=CreateWorktreeResult(
+                    success=True,
+                    path=wt_path,
+                    branch="feature",
+                ),
+            ),
+            patch("agent_cli.dev.cli.resolve_editor", return_value=None),
+            patch("agent_cli.dev.cli.resolve_agent") as mock_resolve_agent,
+            patch("agent_cli.dev.cli.prepare_agent_launch") as mock_prepare,
+            patch("agent_cli.dev.cli.merge_agent_args", return_value=None),
+            patch("agent_cli.dev.cli.get_agent_env", return_value={}),
+            patch("agent_cli.dev.cli.launch_agent", return_value=None),
+        ):
+            mock_agent = mock_resolve_agent.return_value
+            mock_agent.is_available.return_value = True
+            result = runner.invoke(
+                app,
+                [
+                    "dev",
+                    "new",
+                    "feature",
+                    "--agent",
+                    "--no-hooks",
+                    "--no-setup",
+                    "--no-copy-env",
+                    "--no-fetch",
+                    "--no-direnv",
+                ],
+            )
+
+        assert result.exit_code == 0
+        assert mock_prepare.call_count == 1
+        assert mock_prepare.call_args.kwargs["hooks_enabled"] is False
+
+    def test_new_uses_hooks_from_explicit_config_file(self, tmp_path: Path) -> None:
+        """`dev --config ... new` should apply hook config from that file."""
+        wt_path = tmp_path / "repo-worktrees" / "feature"
+        wt_path.mkdir(parents=True)
+        config_path = tmp_path / "agent-cli-config.toml"
+        hook_path = tmp_path / "pre-launch.sh"
+        hook_path.write_text("#!/bin/sh\nexit 0\n")
+        config_path.write_text(f'[dev.hooks]\npre_launch = ["{hook_path.as_posix()}"]\n')
+
+        with (
+            patch("agent_cli.dev.cli._ensure_git_repo", return_value=Path("/repo")),
+            patch(
+                "agent_cli.dev.worktree.create_worktree",
+                return_value=CreateWorktreeResult(
+                    success=True,
+                    path=wt_path,
+                    branch="feature",
+                ),
+            ),
+            patch("agent_cli.dev.cli.resolve_editor", return_value=None),
+            patch("agent_cli.dev.cli.resolve_agent") as mock_resolve_agent,
+            patch("agent_cli.dev.cli.merge_agent_args", return_value=None),
+            patch("agent_cli.dev.cli.get_agent_env", return_value={}),
+            patch("agent_cli.dev.cli.launch_agent", return_value=None),
+            patch(
+                "agent_cli.dev.hooks.subprocess.run",
+                return_value=subprocess.CompletedProcess([], 0, "", ""),
+            ) as mock_run,
+        ):
+            mock_agent = mock_resolve_agent.return_value
+            mock_agent.name = "codex"
+            mock_agent.is_available.return_value = True
+            mock_agent.prepare_launch.return_value = None
+            result = runner.invoke(
+                app,
+                [
+                    "dev",
+                    "--config",
+                    str(config_path),
+                    "new",
+                    "feature",
+                    "--agent",
+                    "--no-setup",
+                    "--no-copy-env",
+                    "--no-fetch",
+                    "--no-direnv",
+                ],
+            )
+
+        assert result.exit_code == 0
+        assert mock_run.call_count == 1
+        assert mock_run.call_args.args[0] == [str(hook_path)]
+        assert mock_run.call_args.kwargs["cwd"] == wt_path
+
 
 class TestDevHelp:
     """Tests for dev command help."""
@@ -691,6 +790,7 @@ class TestDevAgent:
             patch("agent_cli.dev.cli._ensure_git_repo", return_value=Path("/repo")),
             patch("agent_cli.dev.worktree.find_worktree_by_name", return_value=wt),
             patch("agent_cli.dev.cli.coding_agents.detect_current_agent") as mock_detect_current,
+            patch("agent_cli.dev.cli.prepare_agent_launch"),
             patch("agent_cli.dev.cli.merge_agent_args", return_value=None),
             patch("agent_cli.dev.cli.get_agent_env", return_value={}),
             patch(
@@ -723,6 +823,7 @@ class TestDevAgent:
             patch("agent_cli.dev.cli._ensure_git_repo", return_value=Path("/repo")),
             patch("agent_cli.dev.worktree.find_worktree_by_name", return_value=wt),
             patch("agent_cli.dev.cli.coding_agents.detect_current_agent") as mock_detect_current,
+            patch("agent_cli.dev.cli.prepare_agent_launch"),
             patch("agent_cli.dev.cli.merge_agent_args", return_value=None),
             patch("agent_cli.dev.cli.get_agent_env", return_value={}),
             patch(
@@ -1007,7 +1108,7 @@ class TestGetConfigAgentArgs:
 
     def test_returns_none_when_no_config(self) -> None:
         """Returns None when no agent_args in config."""
-        with patch("agent_cli.dev.launch.load_config", return_value={}):
+        with patch("agent_cli.dev._config.get_runtime_config", return_value={}):
             result = get_config_agent_args()
             assert result is None
 
@@ -1020,7 +1121,7 @@ class TestGetConfigAgentArgs:
                 },
             },
         }
-        with patch("agent_cli.dev.launch.load_config", return_value=config):
+        with patch("agent_cli.dev._config.get_runtime_config", return_value=config):
             result = get_config_agent_args()
             assert result == {"claude": ["--dangerously-skip-permissions"]}
 
@@ -1032,7 +1133,7 @@ class TestGetConfigAgentArgs:
                 "aider": ["--model", "gpt-4o"],
             },
         }
-        with patch("agent_cli.dev.launch.load_config", return_value=config):
+        with patch("agent_cli.dev._config.get_runtime_config", return_value=config):
             result = get_config_agent_args()
             assert result == {
                 "claude": ["--dangerously-skip-permissions"],
@@ -1045,13 +1146,13 @@ class TestGetConfigAgentEnv:
 
     def test_returns_none_when_no_config(self) -> None:
         """Returns None when no agent_env in config."""
-        with patch("agent_cli.dev.launch.load_config", return_value={}):
+        with patch("agent_cli.dev._config.get_runtime_config", return_value={}):
             result = get_config_agent_env()
             assert result is None
 
     def test_returns_none_when_no_dev_section(self) -> None:
         """Returns None when no dev section in config."""
-        with patch("agent_cli.dev.launch.load_config", return_value={"other": {}}):
+        with patch("agent_cli.dev._config.get_runtime_config", return_value={"other": {}}):
             result = get_config_agent_env()
             assert result is None
 
@@ -1064,7 +1165,7 @@ class TestGetConfigAgentEnv:
                 },
             },
         }
-        with patch("agent_cli.dev.launch.load_config", return_value=config):
+        with patch("agent_cli.dev._config.get_runtime_config", return_value=config):
             result = get_config_agent_env()
             assert result == {"claude": {"CLAUDE_CODE_USE_VERTEX": "1", "ANTHROPIC_MODEL": "opus"}}
 
@@ -1075,7 +1176,7 @@ class TestGetConfigAgentEnv:
             "dev.agent_env.claude": {"CLAUDE_CODE_USE_VERTEX": "1", "ANTHROPIC_MODEL": "opus"},
             "dev.agent_env.aider": {"OPENAI_API_KEY": "sk-xxx"},
         }
-        with patch("agent_cli.dev.launch.load_config", return_value=config):
+        with patch("agent_cli.dev._config.get_runtime_config", return_value=config):
             result = get_config_agent_env()
             assert result == {
                 "claude": {"CLAUDE_CODE_USE_VERTEX": "1", "ANTHROPIC_MODEL": "opus"},

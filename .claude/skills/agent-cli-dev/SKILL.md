@@ -174,7 +174,7 @@ agent-cli dev new validation-a --from HEAD --agent --with-agent codex -m tmux \
   --prompt-file .claude/validation-a.md
 ```
 
-This works without an attached terminal. `agent-cli` creates or reuses a detached tmux session and returns a pane handle plus attach command.
+This works without an attached terminal. `agent-cli` creates or reuses a detached tmux session and returns a pane handle plus attach command. Launches may also run pre-launch preparation by default; use `--no-hooks` only when you explicitly need to bypass that behavior.
 
 ## Example: Multi-feature implementation
 
