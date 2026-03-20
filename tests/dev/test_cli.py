@@ -19,6 +19,7 @@ from agent_cli.dev._branch_name import (
     generate_random_branch_name,
 )
 from agent_cli.dev.cli import _clean_no_commits_worktrees
+from agent_cli.dev.cli import app as dev_app
 from agent_cli.dev.coding_agents.base import CodingAgent
 from agent_cli.dev.launch import (
     _format_env_prefix,
@@ -645,7 +646,7 @@ class TestDevAgents:
 
     def test_list_agents(self) -> None:
         """List all agents."""
-        result = runner.invoke(app, ["dev", "agents"])
+        result = runner.invoke(dev_app, ["agents"])
         assert result.exit_code == 0
         assert "claude" in result.output.lower()
         assert "aider" in result.output.lower()
@@ -656,7 +657,7 @@ class TestDevEditors:
 
     def test_list_editors(self) -> None:
         """List all editors."""
-        result = runner.invoke(app, ["dev", "editors"])
+        result = runner.invoke(dev_app, ["editors"])
         assert result.exit_code == 0
         assert "vscode" in result.output.lower()
         assert "neovim" in result.output.lower()
@@ -667,7 +668,7 @@ class TestDevTerminals:
 
     def test_list_terminals(self) -> None:
         """List all terminals."""
-        result = runner.invoke(app, ["dev", "terminals"])
+        result = runner.invoke(dev_app, ["terminals"])
         assert result.exit_code == 0
         assert "tmux" in result.output.lower()
         assert "zellij" in result.output.lower()
