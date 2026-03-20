@@ -111,6 +111,29 @@ def _ensure_git_repo() -> Path:
     return repo_root
 
 
+def _require_available_agent(
+    agent: coding_agents.CodingAgent | None,
+    *,
+    requested_name: str | None = None,
+) -> coding_agents.CodingAgent:
+    """Fail fast when an explicit agent launch was requested but cannot happen."""
+    if agent is None:
+        if requested_name:
+            error(f"Agent not found: {requested_name}")
+        available_names = ", ".join(candidate.name for candidate in coding_agents.get_all_agents())
+        if available_names:
+            error(f"No AI coding agents found. Install one of: {available_names}")
+        error("No AI coding agents found")
+
+    if not agent.is_available():
+        msg = f"{agent.name} is not installed"
+        if agent.install_url:
+            msg += f". Install from: {agent.install_url}"
+        error(msg)
+
+    return agent
+
+
 def _resolve_branch_name(
     branch: str | None,
     branch_name_mode: str,
@@ -404,6 +427,10 @@ def new(
         from_ref,
     )
 
+    resolved_agent = resolve_agent(agent, agent_name, default_agent)
+    if agent:
+        resolved_agent = _require_available_agent(resolved_agent, requested_name=agent_name)
+
     # Create the worktree
     info(f"Creating worktree for branch '{branch}'...")
     result = worktree.create_worktree(
@@ -440,7 +467,6 @@ def new(
 
     # Resolve and launch editor/agent
     resolved_editor = resolve_editor(editor, editor_name, default_editor)
-    resolved_agent = resolve_agent(agent, agent_name, default_agent)
 
     if resolved_editor and resolved_editor.is_available():
         launch_editor(result.path, resolved_editor)
@@ -914,18 +940,13 @@ def start_agent(
 
     if agent_name:
         agent = coding_agents.get_agent(agent_name)
-        if agent is None:
-            error(f"Agent not found: {agent_name}")
     else:
         agent = coding_agents.detect_current_agent()
         if agent is None:
             available = coding_agents.get_available_agents()
-            if not available:
-                error("No AI coding agents available")
-            agent = available[0]
+            agent = available[0] if available else None
 
-    if not agent.is_available():
-        error(f"{agent.name} is not installed. Install from: {agent.install_url}")
+    agent = _require_available_agent(agent, requested_name=agent_name)
 
     # Write prompt to worktree (makes task available to the agent)
     task_file = None
