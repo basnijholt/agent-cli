@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import shlex
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -88,7 +89,7 @@ class TestLaunchAgent:
         assert result == handle
         mock_open.assert_called_once_with(
             tmp_path,
-            f"bash {wrapper_script}",
+            f"bash {shlex.quote(str(wrapper_script))}",
             tab_name="repo@feature",
             session_name="agent-cli-repo-1234",
         )
