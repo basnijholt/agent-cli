@@ -333,10 +333,10 @@ def _launch_in_terminal(
     tab_name: str,
     repo_root: Path | None,
     multiplexer_name: str | None,
-) -> TerminalHandle | None:
+) -> tuple[bool, TerminalHandle | None]:
     """Launch an agent in the resolved terminal."""
     if terminal.name == "tmux":
-        return _launch_in_tmux(
+        handle = _launch_in_tmux(
             path,
             agent,
             terminal,
@@ -345,13 +345,14 @@ def _launch_in_terminal(
             repo_root,
             multiplexer_name,
         )
+        return handle is not None, handle
 
     if terminal.open_new_tab(path, full_cmd, tab_name=tab_name):
         success(f"Started {agent.name} in new {terminal.name} tab")
-        return None
+        return True, None
 
     warn(f"Could not open new tab in {terminal.name}")
-    return None
+    return False, None
 
 
 def launch_agent(
@@ -375,7 +376,7 @@ def launch_agent(
 
     if terminal is not None:
         repo_root, tab_name = _tab_name_for_path(path)
-        if handle := _launch_in_terminal(
+        launched, handle = _launch_in_terminal(
             path,
             agent,
             terminal,
@@ -383,7 +384,8 @@ def launch_agent(
             tab_name,
             repo_root,
             multiplexer_name,
-        ):
+        )
+        if launched:
             return handle
 
     # No terminal detected or failed - print instructions

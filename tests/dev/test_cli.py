@@ -608,6 +608,37 @@ class TestDevAgent:
         assert mock_launch.call_args.kwargs["multiplexer_name"] == "tmux"
         assert "tmux handle: %42" in result.output
 
+    def test_agent_quotes_tmux_attach_hint(self) -> None:
+        """Attach hint should quote session names that contain spaces."""
+        wt = WorktreeInfo(
+            path=Path("/repo-worktrees/feature"),
+            branch="feature",
+            commit="abc",
+            is_main=False,
+            is_detached=False,
+            is_locked=False,
+            is_prunable=False,
+        )
+
+        with (
+            patch("agent_cli.dev.cli._ensure_git_repo", return_value=Path("/repo")),
+            patch("agent_cli.dev.worktree.find_worktree_by_name", return_value=wt),
+            patch("agent_cli.dev.cli.coding_agents.detect_current_agent") as mock_detect_current,
+            patch("agent_cli.dev.cli.merge_agent_args", return_value=None),
+            patch("agent_cli.dev.cli.get_agent_env", return_value={}),
+            patch(
+                "agent_cli.dev.cli.launch_agent",
+                return_value=TerminalHandle("tmux", "%42", "my session"),
+            ),
+        ):
+            current_agent = mock_detect_current.return_value
+            current_agent.name = "codex"
+            current_agent.is_available.return_value = True
+            result = runner.invoke(app, ["dev", "agent", "feature", "-m", "tmux"])
+
+        assert result.exit_code == 0
+        assert "tmux attach -t 'my session'" in result.output
+
 
 class TestDevAgents:
     """Tests for dev agents command."""

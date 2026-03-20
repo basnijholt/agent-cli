@@ -950,7 +950,7 @@ def start_agent(
             info(
                 f"{handle.terminal_name} handle: {handle.handle}"
                 + (
-                    f" (attach with: tmux attach -t {handle.session_name})"
+                    f" (attach with: tmux attach -t {shlex.quote(handle.session_name)})"
                     if handle.session_name
                     else ""
                 ),
