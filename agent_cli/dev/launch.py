@@ -18,6 +18,7 @@ from ._output import success, warn
 if TYPE_CHECKING:
     from .coding_agents.base import CodingAgent
     from .editors.base import Editor
+    from .terminals import TerminalHandle
 
 
 def resolve_editor(
@@ -247,6 +248,112 @@ def _create_prompt_wrapper_script(
     return script_path
 
 
+def _resolve_launch_terminal(multiplexer_name: str | None) -> terminals.Terminal | None:
+    """Resolve the terminal or multiplexer to use for launching."""
+    terminal = terminals.get_terminal(multiplexer_name) if multiplexer_name else None
+    if terminal is not None and not terminal.is_available():
+        warn(f"{terminal.name} is not installed")
+        return None
+    return terminal or terminals.detect_current_terminal()
+
+
+def _build_agent_launch_command(
+    path: Path,
+    agent: CodingAgent,
+    extra_args: list[str] | None,
+    prompt: str | None,
+    task_file: Path | None,
+    env: dict[str, str] | None,
+    terminal: terminals.Terminal | None,
+) -> str:
+    """Build the command string used to launch an agent in a terminal."""
+    if task_file and terminal is not None:
+        script_path = _create_prompt_wrapper_script(path, agent, task_file, extra_args, env)
+        return f"bash {shlex.quote(str(script_path))}"
+
+    agent_cmd = shlex.join(agent.launch_command(path, extra_args, prompt))
+    env_prefix = _format_env_prefix(env or {})
+    return env_prefix + agent_cmd
+
+
+def _tab_name_for_path(path: Path) -> tuple[Path | None, str]:
+    """Build the terminal tab name for a worktree path."""
+    repo_root = worktree.get_main_repo_root(path)
+    branch = worktree.get_current_branch(path)
+    repo_name = repo_root.name if repo_root else path.name
+    tab_name = f"{repo_name}@{branch}" if branch else repo_name
+    return repo_root, tab_name
+
+
+def _launch_in_tmux(
+    path: Path,
+    agent: CodingAgent,
+    terminal: terminals.Terminal,
+    full_cmd: str,
+    tab_name: str,
+    repo_root: Path | None,
+    multiplexer_name: str | None,
+) -> TerminalHandle | None:
+    """Launch an agent via tmux and return its pane handle."""
+    from .terminals.tmux import Tmux  # noqa: PLC0415
+
+    if not isinstance(terminal, Tmux):
+        warn("Could not open new tab in tmux")
+        return None
+
+    requested_tmux = multiplexer_name == "tmux"
+    session_name = None
+    if requested_tmux and not terminal.detect():
+        session_name = terminal.session_name_for_repo(repo_root or path)
+
+    handle = terminal.open_in_session(
+        path,
+        full_cmd,
+        tab_name=tab_name,
+        session_name=session_name,
+    )
+    if handle is None:
+        warn("Could not open new tab in tmux")
+        return None
+
+    session_label = (
+        f" in tmux session {handle.session_name}"
+        if requested_tmux and handle.session_name
+        else " in new tmux tab"
+    )
+    success(f"Started {agent.name}{session_label}")
+    return handle
+
+
+def _launch_in_terminal(
+    path: Path,
+    agent: CodingAgent,
+    terminal: terminals.Terminal,
+    full_cmd: str,
+    tab_name: str,
+    repo_root: Path | None,
+    multiplexer_name: str | None,
+) -> TerminalHandle | None:
+    """Launch an agent in the resolved terminal."""
+    if terminal.name == "tmux":
+        return _launch_in_tmux(
+            path,
+            agent,
+            terminal,
+            full_cmd,
+            tab_name,
+            repo_root,
+            multiplexer_name,
+        )
+
+    if terminal.open_new_tab(path, full_cmd, tab_name=tab_name):
+        success(f"Started {agent.name} in new {terminal.name} tab")
+        return None
+
+    warn(f"Could not open new tab in {terminal.name}")
+    return None
+
+
 def launch_agent(
     path: Path,
     agent: CodingAgent,
@@ -254,36 +361,30 @@ def launch_agent(
     prompt: str | None = None,
     task_file: Path | None = None,
     env: dict[str, str] | None = None,
-) -> None:
+    multiplexer_name: str | None = None,
+) -> TerminalHandle | None:
     """Launch agent in a new terminal tab.
 
     Agents are interactive TUIs that need a proper terminal.
     Priority: tmux/zellij tab > terminal tab > print instructions.
     """
-    terminal = terminals.detect_current_terminal()
+    terminal = _resolve_launch_terminal(multiplexer_name)
+    full_cmd = _build_agent_launch_command(
+        path, agent, extra_args, prompt, task_file, env, terminal
+    )
 
-    # Use wrapper script when opening in a terminal tab - all terminals pass commands
-    # through a shell, so special characters get interpreted. Reading from file avoids this.
-    if task_file and terminal is not None:
-        script_path = _create_prompt_wrapper_script(path, agent, task_file, extra_args, env)
-        full_cmd = f"bash {shlex.quote(str(script_path))}"
-    else:
-        agent_cmd = shlex.join(agent.launch_command(path, extra_args, prompt))
-        env_prefix = _format_env_prefix(env or {})
-        full_cmd = env_prefix + agent_cmd
-
-    if terminal:
-        # We're in a multiplexer (tmux/zellij) or supported terminal (kitty/iTerm2)
-        # Tab name format: repo@branch
-        repo_root = worktree.get_main_repo_root(path)
-        branch = worktree.get_current_branch(path)
-        repo_name = repo_root.name if repo_root else path.name
-        tab_name = f"{repo_name}@{branch}" if branch else repo_name
-
-        if terminal.open_new_tab(path, full_cmd, tab_name=tab_name):
-            success(f"Started {agent.name} in new {terminal.name} tab")
-            return
-        warn(f"Could not open new tab in {terminal.name}")
+    if terminal is not None:
+        repo_root, tab_name = _tab_name_for_path(path)
+        if handle := _launch_in_terminal(
+            path,
+            agent,
+            terminal,
+            full_cmd,
+            tab_name,
+            repo_root,
+            multiplexer_name,
+        ):
+            return handle
 
     # No terminal detected or failed - print instructions
     if _is_ssh_session():
@@ -293,3 +394,4 @@ def launch_agent(
         console.print(f"\n[bold]To start {agent.name}:[/bold]")
     console.print(f"  cd {path}")
     console.print(f"  {full_cmd}")
+    return None

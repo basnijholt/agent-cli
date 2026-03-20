@@ -46,6 +46,7 @@ class TestTmux:
         mock_run = MagicMock(return_value=MagicMock(returncode=0))
         with (
             patch("subprocess.run", mock_run),
+            patch.object(terminal, "current_session_name", return_value="current-session"),
             patch("shutil.which", return_value="/usr/bin/tmux"),
         ):
             result = terminal.open_new_tab(Path("/some/path"), "echo hello", tab_name="test")
@@ -54,6 +55,64 @@ class TestTmux:
         # Check that tmux new-window was called
         call_args = mock_run.call_args
         assert "new-window" in call_args[0][0]
+
+    def test_session_name_for_repo(self) -> None:
+        """Repo session names are deterministic and shell-safe."""
+        terminal = Tmux()
+        session_name = terminal.session_name_for_repo(Path("/workspace/my repo"))
+        assert session_name.startswith("agent-cli-my-repo-")
+
+    def test_open_in_session_creates_detached_session_when_missing(self) -> None:
+        """Outside tmux, a named session is created in detached mode if absent."""
+        terminal = Tmux()
+        mock_run = MagicMock(return_value=MagicMock(stdout="%42\n"))
+        with (
+            patch("subprocess.run", mock_run),
+            patch.object(terminal, "session_exists", return_value=False),
+            patch("shutil.which", return_value="/usr/bin/tmux"),
+        ):
+            handle = terminal.open_in_session(
+                Path("/some/path"),
+                "echo hello",
+                tab_name="test",
+                session_name="repo-session",
+            )
+
+        assert handle is not None
+        assert handle.handle == "%42"
+        assert handle.session_name == "repo-session"
+        cmd = mock_run.call_args[0][0]
+        assert "new-session" in cmd
+        assert "-d" in cmd
+        assert "-P" in cmd
+        assert "-F" in cmd
+        assert "#{pane_id}" in cmd
+        assert "-s" in cmd
+        assert "repo-session" in cmd
+
+    def test_open_in_session_reuses_existing_session(self) -> None:
+        """Outside tmux, a named session gets a new window when it already exists."""
+        terminal = Tmux()
+        mock_run = MagicMock(return_value=MagicMock(stdout="%5\n"))
+        with (
+            patch("subprocess.run", mock_run),
+            patch.object(terminal, "session_exists", return_value=True),
+            patch("shutil.which", return_value="/usr/bin/tmux"),
+        ):
+            handle = terminal.open_in_session(
+                Path("/some/path"),
+                "echo hello",
+                tab_name="test",
+                session_name="repo-session",
+            )
+
+        assert handle is not None
+        assert handle.handle == "%5"
+        assert handle.session_name == "repo-session"
+        cmd = mock_run.call_args[0][0]
+        assert "new-window" in cmd
+        assert "-t" in cmd
+        assert "repo-session" in cmd
 
 
 class TestZellij:

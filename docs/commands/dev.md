@@ -31,6 +31,9 @@ agent-cli dev new my-feature
 # Create a dev environment and open in editor + start AI agent
 agent-cli dev new my-feature -e -a
 
+# Create a dev environment and launch the agent in a detached tmux session
+agent-cli dev new my-feature -a -m tmux
+
 # List all dev environments
 agent-cli dev list
 
@@ -83,6 +86,7 @@ agent-cli dev new [BRANCH] [OPTIONS]
 | `--agent-args` | - | Extra CLI args for the agent. Can be repeated. Example: --agent-args='--dangerously-skip-permissions' |
 | `--prompt, -p` | - | Initial task for the AI agent. Saved to .claude/TASK.md. Implies --agent. Example: --prompt='Fix the login bug' |
 | `--prompt-file, -P` | - | Read the agent prompt from a file. Useful for long prompts to avoid shell quoting. Implies --agent |
+| `--multiplexer, -m` | - | Launch the agent in a specific multiplexer. Currently supported: tmux. When started outside tmux, creates or reuses a detached session and reports the pane handle |
 | `--verbose, -v` | `false` | Stream output from setup commands instead of hiding it |
 
 
@@ -105,6 +109,9 @@ agent-cli dev new fix-bug -a --prompt "Fix the login validation bug in auth.py"
 
 # Use --prompt-file for long prompts (avoids shell quoting issues)
 agent-cli dev new refactor -a --prompt-file task.md
+
+# Launch the agent in tmux even when you're not already inside tmux
+agent-cli dev new feature -a -m tmux
 ```
 
 ### `dev list`
@@ -266,7 +273,7 @@ agent-cli dev editor NAME [--editor/-e EDITOR]
 Start an AI coding agent in a dev environment.
 
 ```bash
-agent-cli dev agent NAME [--agent/-a AGENT] [--agent-args ARGS] [--prompt/-p PROMPT]
+agent-cli dev agent NAME [--agent/-a AGENT] [--agent-args ARGS] [--prompt/-p PROMPT] [--multiplexer/-m tmux]
 ```
 
 **Options:**
@@ -285,6 +292,7 @@ agent-cli dev agent NAME [--agent/-a AGENT] [--agent-args ARGS] [--prompt/-p PRO
 | `--agent-args` | - | Extra CLI args for the agent. Example: --agent-args='--dangerously-skip-permissions' |
 | `--prompt, -p` | - | Initial task for the agent. Saved to .claude/TASK.md. Example: --prompt='Add unit tests for auth' |
 | `--prompt-file, -P` | - | Read the agent prompt from a file instead of command line |
+| `--multiplexer, -m` | - | Launch the agent in a specific multiplexer instead of the current terminal. Currently supported: tmux |
 
 
 <!-- OUTPUT:END -->
@@ -297,6 +305,9 @@ agent-cli dev agent my-feature --prompt "Continue implementing the user settings
 
 # Start aider with a specific task
 agent-cli dev agent my-feature -a aider --prompt "Add unit tests for the auth module"
+
+# Start an agent in a detached tmux session and get its pane handle
+agent-cli dev agent my-feature -a codex -m tmux
 ```
 
 ### `dev run`
@@ -695,8 +706,10 @@ The generated `.envrc` is automatically trusted with `direnv allow`.
 When launching an AI agent, the dev command automatically:
 
 1. Detects if you're in tmux/zellij and opens a new tab there
-2. Falls back to supported terminals (kitty, iTerm2)
-3. Prints instructions if no terminal is detected
+2. With `-m tmux`, creates or reuses a detached tmux session even when you're not already inside tmux
+3. Returns the tmux pane handle and an attach command for explicit tmux launches
+4. Falls back to supported terminals (kitty, iTerm2)
+5. Prints instructions if no terminal is detected
 
 ## Shell Integration
 

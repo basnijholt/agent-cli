@@ -26,6 +26,7 @@ from agent_cli.dev.launch import (
     get_config_agent_args,
     get_config_agent_env,
 )
+from agent_cli.dev.terminals import TerminalHandle
 from agent_cli.dev.worktree import CreateWorktreeResult, WorktreeInfo
 
 runner = CliRunner(env={"NO_COLOR": "1", "TERM": "dumb"})
@@ -510,6 +511,54 @@ direnv = false
         )
         assert mock_create.call_args.kwargs["fetch"] is False
 
+    def test_new_shows_tmux_handle_when_requested(self, tmp_path: Path) -> None:
+        """`dev new -m tmux` shows the returned tmux handle in the summary."""
+        wt_path = tmp_path / "repo-worktrees" / "feature"
+        wt_path.mkdir(parents=True)
+
+        with (
+            patch("agent_cli.dev.cli._ensure_git_repo", return_value=Path("/repo")),
+            patch(
+                "agent_cli.dev.worktree.create_worktree",
+                return_value=CreateWorktreeResult(
+                    success=True,
+                    path=wt_path,
+                    branch="feature",
+                ),
+            ),
+            patch("agent_cli.dev.cli.resolve_editor", return_value=None),
+            patch("agent_cli.dev.cli.resolve_agent") as mock_resolve_agent,
+            patch("agent_cli.dev.cli.merge_agent_args", return_value=None),
+            patch("agent_cli.dev.cli.get_agent_env", return_value={}),
+            patch(
+                "agent_cli.dev.cli.launch_agent",
+                return_value=TerminalHandle("tmux", "%42", "agent-cli-repo-1234"),
+            ) as mock_launch,
+        ):
+            mock_agent = mock_resolve_agent.return_value
+            mock_agent.is_available.return_value = True
+            result = runner.invoke(
+                app,
+                [
+                    "dev",
+                    "new",
+                    "feature",
+                    "-a",
+                    "-m",
+                    "tmux",
+                    "--no-setup",
+                    "--no-copy-env",
+                    "--no-fetch",
+                    "--no-direnv",
+                ],
+            )
+
+        assert result.exit_code == 0
+        assert mock_launch.call_args.kwargs["multiplexer_name"] == "tmux"
+        assert "Agent Handle:" in result.output
+        assert "%42" in result.output
+        assert "tmux attach -t agent-cli-repo-1234" in result.output
+
 
 class TestDevHelp:
     """Tests for dev command help."""
@@ -522,6 +571,42 @@ class TestDevHelp:
         assert "new" in result.output
         assert "list" in result.output
         assert "rm" in result.output
+
+
+class TestDevAgent:
+    """Tests for `dev agent`."""
+
+    def test_agent_can_launch_in_requested_tmux(self) -> None:
+        """`dev agent -m tmux` delegates to the tmux launch path and shows the handle."""
+        wt = WorktreeInfo(
+            path=Path("/repo-worktrees/feature"),
+            branch="feature",
+            commit="abc",
+            is_main=False,
+            is_detached=False,
+            is_locked=False,
+            is_prunable=False,
+        )
+
+        with (
+            patch("agent_cli.dev.cli._ensure_git_repo", return_value=Path("/repo")),
+            patch("agent_cli.dev.worktree.find_worktree_by_name", return_value=wt),
+            patch("agent_cli.dev.cli.coding_agents.detect_current_agent") as mock_detect_current,
+            patch("agent_cli.dev.cli.merge_agent_args", return_value=None),
+            patch("agent_cli.dev.cli.get_agent_env", return_value={}),
+            patch(
+                "agent_cli.dev.cli.launch_agent",
+                return_value=TerminalHandle("tmux", "%42", "agent-cli-repo-1234"),
+            ) as mock_launch,
+        ):
+            current_agent = mock_detect_current.return_value
+            current_agent.name = "codex"
+            current_agent.is_available.return_value = True
+            result = runner.invoke(app, ["dev", "agent", "feature", "-m", "tmux"])
+
+        assert result.exit_code == 0
+        assert mock_launch.call_args.kwargs["multiplexer_name"] == "tmux"
+        assert "tmux handle: %42" in result.output
 
 
 class TestDevAgents:

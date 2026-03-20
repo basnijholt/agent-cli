@@ -4,10 +4,20 @@ from __future__ import annotations
 
 import os
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from pathlib import Path
+
+
+@dataclass(frozen=True)
+class TerminalHandle:
+    """Handle for a launched terminal target."""
+
+    terminal_name: str
+    handle: str
+    session_name: str | None = None
 
 
 class Terminal(ABC):

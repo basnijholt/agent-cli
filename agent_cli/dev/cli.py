@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import shlex
 import shutil
 import subprocess
 from pathlib import Path
@@ -339,6 +340,15 @@ def new(
             readable=True,
         ),
     ] = None,
+    multiplexer: Annotated[
+        Literal["tmux"] | None,
+        typer.Option(
+            "--multiplexer",
+            "-m",
+            case_sensitive=False,
+            help="Launch the agent in a specific multiplexer. Currently supported: tmux. When started outside tmux, creates or reuses a detached session and reports the pane handle",
+        ),
+    ] = None,
     verbose: Annotated[
         bool,
         typer.Option(
@@ -435,16 +445,39 @@ def new(
     if resolved_editor and resolved_editor.is_available():
         launch_editor(result.path, resolved_editor)
 
+    agent_handle = None
     if resolved_agent and resolved_agent.is_available():
         merged_args = merge_agent_args(resolved_agent, agent_args)
         agent_env = get_agent_env(resolved_agent)
-        launch_agent(result.path, resolved_agent, merged_args, prompt, task_file, agent_env)
+        agent_handle = launch_agent(
+            result.path,
+            resolved_agent,
+            merged_args,
+            prompt,
+            task_file,
+            agent_env,
+            multiplexer_name=multiplexer,
+        )
 
     # Print summary
+    summary_lines = [
+        f"[bold]Dev environment created:[/bold] {result.path}",
+        f"[bold]Branch:[/bold] {result.branch}",
+    ]
+    if agent_handle:
+        summary_lines.append(
+            f"[bold]Agent Handle:[/bold] {agent_handle.handle} ({agent_handle.terminal_name})",
+        )
+        if agent_handle.session_name:
+            summary_lines.append(f"[bold]tmux Session:[/bold] {agent_handle.session_name}")
+            summary_lines.append(
+                f"[bold]Attach:[/bold] tmux attach -t {shlex.quote(agent_handle.session_name)}",
+            )
+
     console.print()
     console.print(
         Panel(
-            f"[bold]Dev environment created:[/bold] {result.path}\n[bold]Branch:[/bold] {result.branch}",
+            "\n".join(summary_lines),
             title="[green]Success[/green]",
             border_style="green",
         ),
@@ -848,10 +881,20 @@ def start_agent(
             readable=True,
         ),
     ] = None,
+    multiplexer: Annotated[
+        Literal["tmux"] | None,
+        typer.Option(
+            "--multiplexer",
+            "-m",
+            case_sensitive=False,
+            help="Launch the agent in a specific multiplexer instead of the current terminal. Currently supported: tmux",
+        ),
+    ] = None,
 ) -> None:
     """Start an AI coding agent in an existing dev environment.
 
-    Launches the agent directly in your current terminal.
+    Launches the agent directly in your current terminal unless
+    ``--multiplexer`` is used.
 
     **Examples:**
 
@@ -892,6 +935,27 @@ def start_agent(
 
     merged_args = merge_agent_args(agent, agent_args)
     agent_env = get_agent_env(agent)
+
+    if multiplexer:
+        handle = launch_agent(
+            wt.path,
+            agent,
+            merged_args,
+            prompt,
+            task_file,
+            agent_env,
+            multiplexer_name=multiplexer,
+        )
+        if handle:
+            info(
+                f"{handle.terminal_name} handle: {handle.handle}"
+                + (
+                    f" (attach with: tmux attach -t {handle.session_name})"
+                    if handle.session_name
+                    else ""
+                ),
+            )
+        return
 
     info(f"Starting {agent.name} in {wt.path}...")
     try:
