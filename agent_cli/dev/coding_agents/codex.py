@@ -86,7 +86,7 @@ class Codex(CodingAgent):
         return [prompt]
 
     def prepare_launch(self, worktree_path: Path, repo_root: Path) -> str | None:  # noqa: ARG002
-        """Ensure Codex trusts the launched worktree before launch."""
-        if _ensure_project_trusted(worktree_path, CODEX_CONFIG_PATH):
-            return f"Trusted {worktree_path.resolve()} in Codex config"
+        """Ensure Codex trusts the repository root before launch."""
+        if _ensure_project_trusted(repo_root, CODEX_CONFIG_PATH):
+            return f"Trusted {repo_root.resolve()} in Codex config"
         return None

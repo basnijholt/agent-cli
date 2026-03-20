@@ -210,7 +210,8 @@ class TestCodexTrustPreparation:
             agent = Codex()
             message = agent.prepare_launch(worktree_path, repo_root)
 
-        assert message == f"Trusted {worktree_path.resolve()} in Codex config"
+        assert message == f"Trusted {repo_root.resolve()} in Codex config"
+        assert f'[projects."{repo_root.resolve()}"]' in config_path.read_text()
 
 
 class TestRegistry:

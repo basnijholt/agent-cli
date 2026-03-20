@@ -86,7 +86,7 @@ Write your review to .claude/REPORT.md:
 
 ## Launch preparation note
 
-For headless Codex launches, the default `[dev].auto_trust = true` setting seeds trust for the launched worktree automatically. If you need extra setup before every launch, use config hooks such as:
+For headless Codex launches, the default `[dev].auto_trust = true` setting seeds trust for the repository root automatically. If you need extra setup before every launch, use config hooks such as:
 
 ```toml
 [dev.hooks]

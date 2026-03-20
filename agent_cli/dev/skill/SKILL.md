@@ -180,7 +180,7 @@ This works without an attached terminal. `agent-cli` creates or reuses a detache
 
 Before an agent starts, `agent-cli dev` can run built-in preparation plus configured `pre_launch` hooks.
 
-- Codex uses built-in preparation to trust the launched worktree path in `~/.codex/config.toml` when `[dev].auto_trust = true` (the default)
+- Codex uses built-in preparation to trust the repository root in `~/.codex/config.toml` when `[dev].auto_trust = true` (the default)
 - Global hooks live under `[dev.hooks]`
 - Per-agent hooks live under `[dev.hooks.<agent>]`
 - Hooks run from the worktree directory with `AGENT_CLI_WORKTREE`, `AGENT_CLI_REPO_ROOT`, `AGENT_CLI_BRANCH`, `AGENT_CLI_TASK_FILE`, and related context env vars

@@ -731,7 +731,7 @@ When launching an AI agent, the dev command automatically:
 
 Before launching an agent, `agent-cli dev` can also run launch preparation:
 
-- Built-in preparation for supported agents. Currently this means Codex auto-trust: when `[dev].auto_trust = true` (the default), `agent-cli` ensures the launched worktree path is trusted in `~/.codex/config.toml` before launch.
+- Built-in preparation for supported agents. Currently this means Codex auto-trust: when `[dev].auto_trust = true` (the default), `agent-cli` ensures the repository root is trusted in `~/.codex/config.toml` before launch.
 - User-defined `pre_launch` hooks from `[dev.hooks]` and `[dev.hooks.<agent>]`. Global hooks run first, then agent-specific hooks.
 - Hook config follows the same config source as the rest of `dev`, including `agent-cli dev --config path/to/config.toml ...`.
 - Hooks run synchronously in the worktree directory and receive:
