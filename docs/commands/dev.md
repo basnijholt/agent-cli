@@ -31,6 +31,9 @@ agent-cli dev new my-feature
 # Create a dev environment and open in editor + start AI agent
 agent-cli dev new my-feature -e -a
 
+# Create a dev environment and launch the agent in a detached tmux session
+agent-cli dev new my-feature -a -m tmux
+
 # List all dev environments
 agent-cli dev list
 
@@ -83,6 +86,7 @@ agent-cli dev new [BRANCH] [OPTIONS]
 | `--agent-args` | - | Extra CLI args for the agent. Can be repeated. Example: --agent-args='--dangerously-skip-permissions' |
 | `--prompt, -p` | - | Initial task for the AI agent. Saved to .claude/TASK.md. Implies --agent. Example: --prompt='Fix the login bug' |
 | `--prompt-file, -P` | - | Read the agent prompt from a file. Useful for long prompts to avoid shell quoting. Implies --agent |
+| `--multiplexer, -m` | - | Launch the agent in a specific multiplexer. Currently supported: tmux. When started outside tmux, creates or reuses a detached session and reports the pane handle |
 | `--verbose, -v` | `false` | Stream output from setup commands instead of hiding it |
 
 
@@ -94,10 +98,10 @@ agent-cli dev new [BRANCH] [OPTIONS]
 # Create dev environment from a specific commit
 agent-cli dev new hotfix --from v1.2.3
 
-# Create dev environment with Cursor and Claude
+# Create an interactive dev environment with Cursor and Claude
 agent-cli dev new feature --with-editor cursor --with-agent claude
 
-# Quick dev environment with defaults from config
+# Quick interactive dev environment with defaults from config
 agent-cli dev new -e -a
 
 # Create dev environment with an initial prompt for the agent
@@ -105,7 +109,12 @@ agent-cli dev new fix-bug -a --prompt "Fix the login validation bug in auth.py"
 
 # Use --prompt-file for long prompts (avoids shell quoting issues)
 agent-cli dev new refactor -a --prompt-file task.md
+
+# Launch the agent in tmux even when you're not already inside tmux
+agent-cli dev new feature -a -m tmux --prompt-file task.md
 ```
+
+For automated or headless use, pass `--prompt` or `--prompt-file` so the agent starts working immediately. A bare `-a` or `-m tmux` launch is mainly useful when a human plans to attach and drive the session interactively.
 
 ### `dev list`
 
@@ -266,7 +275,7 @@ agent-cli dev editor NAME [--editor/-e EDITOR]
 Start an AI coding agent in a dev environment.
 
 ```bash
-agent-cli dev agent NAME [--agent/-a AGENT] [--agent-args ARGS] [--prompt/-p PROMPT]
+agent-cli dev agent NAME [--agent/-a AGENT] [--agent-args ARGS] [--prompt/-p PROMPT] [--multiplexer/-m tmux]
 ```
 
 **Options:**
@@ -285,6 +294,7 @@ agent-cli dev agent NAME [--agent/-a AGENT] [--agent-args ARGS] [--prompt/-p PRO
 | `--agent-args` | - | Extra CLI args for the agent. Example: --agent-args='--dangerously-skip-permissions' |
 | `--prompt, -p` | - | Initial task for the agent. Saved to .claude/TASK.md. Example: --prompt='Add unit tests for auth' |
 | `--prompt-file, -P` | - | Read the agent prompt from a file instead of command line |
+| `--multiplexer, -m` | - | Launch the agent in a specific multiplexer instead of the current terminal. Currently supported: tmux |
 
 
 <!-- OUTPUT:END -->
@@ -297,7 +307,12 @@ agent-cli dev agent my-feature --prompt "Continue implementing the user settings
 
 # Start aider with a specific task
 agent-cli dev agent my-feature -a aider --prompt "Add unit tests for the auth module"
+
+# Start an agent in a detached tmux session and get its pane handle
+agent-cli dev agent my-feature -a codex -m tmux --prompt-file continue-task.md
 ```
+
+For automated use, prefer `--prompt-file` or `--prompt`. Without either, the agent starts interactively and may wait for input.
 
 ### `dev run`
 
@@ -695,8 +710,42 @@ The generated `.envrc` is automatically trusted with `direnv allow`.
 When launching an AI agent, the dev command automatically:
 
 1. Detects if you're in tmux/zellij and opens a new tab there
-2. Falls back to supported terminals (kitty, iTerm2)
-3. Prints instructions if no terminal is detected
+2. With `-m tmux`, creates or reuses a detached tmux session even when you're not already inside tmux
+3. Returns the tmux pane handle and an attach command for explicit tmux launches
+4. Falls back to supported terminals (kitty, iTerm2)
+5. Prints instructions if no terminal is detected
+
+### Multi-agent Workflows
+
+Use `dev agent -m tmux` when you want multiple agents on the same worktree instead of multiple worktrees:
+
+```bash
+# Create the worktree once. This is setup only; no agent starts yet.
+agent-cli dev new review-auth --from HEAD
+
+# Launch multiple reviewers into the same worktree
+agent-cli dev agent review-auth -m tmux --prompt-file .claude/review-security.md
+agent-cli dev agent review-auth -m tmux --prompt-file .claude/review-performance.md
+agent-cli dev agent review-auth -m tmux --prompt-file .claude/review-tests.md
+```
+
+This is useful for:
+- Multiple reviewers on the same branch
+- Parallel validation agents working on one codebase
+- Headless orchestration from scripts or other assistants
+
+All explicit tmux launches for the same repository are grouped into the same deterministic tmux session (`agent-cli-<repo>-<hash>`), which keeps related windows together even when the command is run outside tmux.
+
+For fully headless orchestration, combine `--prompt-file` with `-m tmux`:
+
+```bash
+for section in 1 2 3 4; do
+  agent-cli dev new "validate-$section" --from HEAD --agent --with-agent codex -m tmux \
+    --prompt-file ".claude/validate-$section.md"
+done
+```
+
+If multiple agents share one worktree, do not have them all write to `.claude/REPORT.md` because they will overwrite each other. Instead, assign unique report paths such as `.claude/REPORT-security-<run-id>.md` and `.claude/REPORT-tests-<run-id>.md`. If you rerun the same prompt repeatedly, use a timestamp or other run id so later runs do not replace earlier results. The same applies to `.claude/TASK.md`: it reflects the most recent launch, not stable per-agent state.
 
 ## Shell Integration
 
