@@ -3,15 +3,13 @@
 from __future__ import annotations
 
 import subprocess
-from typing import TYPE_CHECKING, Any, cast
+from pathlib import Path
+from typing import Any, cast
 from unittest.mock import MagicMock, patch
 
 import pytest
 
 from agent_cli.dev.hooks import LaunchContext, prepare_agent_launch
-
-if TYPE_CHECKING:
-    from pathlib import Path
 
 
 def _context(tmp_path: Path) -> LaunchContext:
@@ -61,6 +59,7 @@ class TestPrepareAgentLaunch:
         home.mkdir()
         hook_path = home / "pre-launch.sh"
         hook_path.write_text("#!/bin/sh\nexit 0\n")
+        expected_hook = hook_path
 
         with (
             patch("agent_cli.dev._config.get_runtime_config") as mock_get_runtime_config,
@@ -69,13 +68,18 @@ class TestPrepareAgentLaunch:
                 return_value=subprocess.CompletedProcess([], 0, "", ""),
             ) as mock_run,
             patch("agent_cli.dev.hooks.info"),
-            patch.dict("os.environ", {"HOME": str(home)}, clear=False),
+            patch.dict(
+                "os.environ",
+                {"HOME": str(home), "USERPROFILE": str(home)},
+                clear=False,
+            ),
         ):
             mock_get_runtime_config.return_value = {
                 "dev": {"auto_trust": True},
                 "dev.hooks": {"pre_launch": ["~/pre-launch.sh"]},
                 "dev.hooks.codex": {"pre_launch": ["codex-hook --flag"]},
             }
+            expected_hook = Path("~/pre-launch.sh").expanduser()
             prepare_agent_launch(context)
 
         mock_prepare.assert_called_once_with(
@@ -85,7 +89,7 @@ class TestPrepareAgentLaunch:
         assert mock_run.call_count == 2
 
         first_call = mock_run.call_args_list[0]
-        assert first_call.args[0] == [str(hook_path)]
+        assert first_call.args[0] == [str(expected_hook)]
         assert first_call.kwargs["cwd"] == context.worktree_path
         assert first_call.kwargs["env"]["AGENT_CLI_AGENT"] == "codex"
         assert first_call.kwargs["env"]["AGENT_CLI_REPO_ROOT"] == str(context.repo_root)

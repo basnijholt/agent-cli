@@ -710,7 +710,7 @@ direnv = false
         config_path = tmp_path / "agent-cli-config.toml"
         hook_path = tmp_path / "pre-launch.sh"
         hook_path.write_text("#!/bin/sh\nexit 0\n")
-        config_path.write_text(f'[dev.hooks]\npre_launch = ["{hook_path}"]\n')
+        config_path.write_text(f'[dev.hooks]\npre_launch = ["{hook_path.as_posix()}"]\n')
 
         with (
             patch("agent_cli.dev.cli._ensure_git_repo", return_value=Path("/repo")),

@@ -16,7 +16,11 @@ from agent_cli.dev.coding_agents import (
 )
 from agent_cli.dev.coding_agents.aider import Aider
 from agent_cli.dev.coding_agents.claude import ClaudeCode
-from agent_cli.dev.coding_agents.codex import Codex, _ensure_project_trusted
+from agent_cli.dev.coding_agents.codex import (
+    Codex,
+    _ensure_project_trusted,
+    _project_section_header,
+)
 from agent_cli.dev.coding_agents.cursor_agent import CursorAgent
 
 
@@ -173,7 +177,7 @@ class TestCodexTrustPreparation:
 
         assert changed is True
         content = config_path.read_text()
-        assert f'[projects."{project_path}"]' in content
+        assert _project_section_header(project_path.resolve()) in content
         assert 'trust_level = "trusted"' in content
 
     def test_ensure_project_trusted_is_noop_when_already_trusted(self, tmp_path: Path) -> None:
@@ -181,7 +185,7 @@ class TestCodexTrustPreparation:
         project_path = tmp_path / "repo-worktrees" / "feature"
         config_path = tmp_path / ".codex" / "config.toml"
         config_path.parent.mkdir(parents=True)
-        original = f'[projects."{project_path}"]\ntrust_level = "trusted"\n'
+        original = f'{_project_section_header(project_path.resolve())}\ntrust_level = "trusted"\n'
         config_path.write_text(original)
 
         changed = _ensure_project_trusted(project_path, config_path=config_path)
@@ -194,7 +198,9 @@ class TestCodexTrustPreparation:
         project_path = tmp_path / "repo-worktrees" / "feature"
         config_path = tmp_path / ".codex" / "config.toml"
         config_path.parent.mkdir(parents=True)
-        config_path.write_text(f'[projects."{project_path}"]\ntrust_level = "untrusted"\n')
+        config_path.write_text(
+            f'{_project_section_header(project_path.resolve())}\ntrust_level = "untrusted"\n',
+        )
 
         with pytest.raises(RuntimeError, match="disable \\[dev\\]\\.auto_trust"):
             _ensure_project_trusted(project_path, config_path=config_path)
@@ -211,7 +217,7 @@ class TestCodexTrustPreparation:
             message = agent.prepare_launch(worktree_path, repo_root)
 
         assert message == f"Trusted {repo_root.resolve()} in Codex config"
-        assert f'[projects."{repo_root.resolve()}"]' in config_path.read_text()
+        assert _project_section_header(repo_root.resolve()) in config_path.read_text()
 
 
 class TestRegistry:
