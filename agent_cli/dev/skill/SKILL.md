@@ -1,6 +1,6 @@
 ---
 name: agent-cli-dev
-description: Spawns AI coding agents in isolated git worktrees. Use when the user asks to spawn or launch an agent, delegate a task to a separate agent, work in a separate worktree, or parallelize development across features.
+description: Spawns AI coding agents in isolated git worktrees. Use when the user asks to spawn or launch an agent, delegate a task to a separate agent, or parallelize development across features. Only create a worktree without starting an agent if the user explicitly wants setup only.
 ---
 
 # Parallel Development with agent-cli dev
@@ -62,6 +62,16 @@ This creates:
 
 **Important**: Use `--prompt-file` for prompts longer than a single line. The `--prompt` option passes text through the shell, which can cause issues with special characters (exclamation marks, dollar signs, backticks, quotes) in ZSH and other shells. Using `--prompt-file` avoids all shell quoting issues.
 
+## Automation rule
+
+When an assistant is executing this workflow on the user's behalf, the spawn is not complete unless the agent receives a prompt at launch time.
+
+- Prefer `--prompt-file`; create the prompt file first, then launch the agent
+- Use `dev new ... --agent --prompt-file ...` for a new delegated task
+- Use `dev agent ... --prompt-file ...` for another agent in an existing worktree
+- Do not stop after `dev new ...` alone if the user's intent was to delegate work immediately
+- Do not run `dev new ... --agent` or `dev agent ... -m tmux` without `--prompt` or `--prompt-file` unless the user explicitly wants an interactive session that they will drive manually
+
 ## Writing effective prompts for spawned agents
 
 Spawned agents work in isolation, so prompts must be **self-contained**. Include:
@@ -80,7 +90,7 @@ For any prompt longer than a single sentence:
 
 Example workflow:
 ```bash
-# 1. Write prompt to file (Claude does this with the Write tool)
+# 1. Write prompt to file
 # 2. Spawn agent with the file
 agent-cli dev new my-feature --agent --prompt-file .claude/spawn-prompt.md
 # 3. Optionally clean up
@@ -123,10 +133,10 @@ agent-cli dev editor <branch-name>
 Use this when several agents should inspect or validate the same code at once without separate worktrees.
 
 ```bash
-# Create the worktree once
+# Create the worktree once. This step only prepares the shared workspace.
 agent-cli dev new review-auth --from HEAD
 
-# Spawn multiple agents into the same worktree
+# Then launch the actual agents with prompts.
 agent-cli dev agent review-auth -m tmux --prompt-file .claude/review-security.md
 agent-cli dev agent review-auth -m tmux --prompt-file .claude/review-performance.md
 agent-cli dev agent review-auth -m tmux --prompt-file .claude/review-tests.md

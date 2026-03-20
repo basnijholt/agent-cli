@@ -98,10 +98,10 @@ agent-cli dev new [BRANCH] [OPTIONS]
 # Create dev environment from a specific commit
 agent-cli dev new hotfix --from v1.2.3
 
-# Create dev environment with Cursor and Claude
+# Create an interactive dev environment with Cursor and Claude
 agent-cli dev new feature --with-editor cursor --with-agent claude
 
-# Quick dev environment with defaults from config
+# Quick interactive dev environment with defaults from config
 agent-cli dev new -e -a
 
 # Create dev environment with an initial prompt for the agent
@@ -111,8 +111,10 @@ agent-cli dev new fix-bug -a --prompt "Fix the login validation bug in auth.py"
 agent-cli dev new refactor -a --prompt-file task.md
 
 # Launch the agent in tmux even when you're not already inside tmux
-agent-cli dev new feature -a -m tmux
+agent-cli dev new feature -a -m tmux --prompt-file task.md
 ```
+
+For automated or headless use, pass `--prompt` or `--prompt-file` so the agent starts working immediately. A bare `-a` or `-m tmux` launch is mainly useful when a human plans to attach and drive the session interactively.
 
 ### `dev list`
 
@@ -307,8 +309,10 @@ agent-cli dev agent my-feature --prompt "Continue implementing the user settings
 agent-cli dev agent my-feature -a aider --prompt "Add unit tests for the auth module"
 
 # Start an agent in a detached tmux session and get its pane handle
-agent-cli dev agent my-feature -a codex -m tmux
+agent-cli dev agent my-feature -a codex -m tmux --prompt-file continue-task.md
 ```
+
+For automated use, prefer `--prompt-file` or `--prompt`. Without either, the agent starts interactively and may wait for input.
 
 ### `dev run`
 
@@ -716,7 +720,7 @@ When launching an AI agent, the dev command automatically:
 Use `dev agent -m tmux` when you want multiple agents on the same worktree instead of multiple worktrees:
 
 ```bash
-# Create the worktree once
+# Create the worktree once. This is setup only; no agent starts yet.
 agent-cli dev new review-auth --from HEAD
 
 # Launch multiple reviewers into the same worktree

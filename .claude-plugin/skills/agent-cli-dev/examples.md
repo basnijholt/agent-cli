@@ -8,6 +8,8 @@ Real-world scenarios for spawning parallel AI coding agents, optimized for Claud
 > # Write prompt to file, then spawn
 > agent-cli dev new my-feature --agent --prompt-file .claude/spawn-prompt.md
 > ```
+>
+> When an assistant is executing these commands, do not launch `dev new` or `dev agent` without `--prompt` or `--prompt-file` unless the user explicitly wants a manual interactive session.
 
 ## Prompt structure guidelines
 
@@ -19,6 +21,7 @@ Each prompt for a spawned agent should follow this structure:
 4. **Context with motivation** - Explain why patterns matter
 5. **Focused scope** - Keep solutions minimal, implement only what's requested
 6. **Structured report** - Write conclusions to `.claude/REPORT.md`
+7. **No interactive gap** - The launch command itself should include `--prompt` or `--prompt-file` so the agent starts working immediately
 
 ## Scenario 1: Code review of current branch
 
@@ -533,7 +536,7 @@ When complete, write to .claude/REPORT.md:
 ```bash
 run_id="$(python -c 'import time; print(int(time.time() * 1000))')"
 
-# Create the shared review worktree once
+# Create the shared review worktree once. This does not start an agent yet.
 agent-cli dev new review-auth --from HEAD
 
 # Launch three reviewers into the same worktree/session
