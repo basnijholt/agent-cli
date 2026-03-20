@@ -174,31 +174,7 @@ agent-cli dev new validation-a --from HEAD --agent --with-agent codex -m tmux \
   --prompt-file .claude/validation-a.md
 ```
 
-This works without an attached terminal. `agent-cli` creates or reuses a detached tmux session and returns a pane handle plus attach command.
-
-## Launch preparation hooks
-
-Before an agent starts, `agent-cli dev` can run built-in preparation plus configured `pre_launch` hooks.
-
-- Codex uses built-in preparation to trust the repository root in `~/.codex/config.toml` when `[dev].auto_trust = true` (the default)
-- Global hooks live under `[dev.hooks]`
-- Per-agent hooks live under `[dev.hooks.<agent>]`
-- Hooks run from the worktree directory with `AGENT_CLI_WORKTREE`, `AGENT_CLI_REPO_ROOT`, `AGENT_CLI_BRANCH`, `AGENT_CLI_TASK_FILE`, and related context env vars
-- Hook commands are executed directly, not through a shell; for anything non-trivial, point the hook at a script
-- Use `--no-hooks` when you explicitly want to skip both built-in preparation and configured hooks for one launch
-
-Example config:
-
-```toml
-[dev]
-auto_trust = true
-
-[dev.hooks]
-pre_launch = ["~/.config/agent-cli/hooks/pre-launch.sh"]
-
-[dev.hooks.codex]
-pre_launch = ["~/.config/agent-cli/hooks/codex-setup.sh"]
-```
+This works without an attached terminal. `agent-cli` creates or reuses a detached tmux session and returns a pane handle plus attach command. Launches may also run pre-launch preparation by default; use `--no-hooks` only when you explicitly need to bypass that behavior.
 
 ## Example: Multi-feature implementation
 
