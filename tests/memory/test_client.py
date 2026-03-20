@@ -54,6 +54,9 @@ def client(tmp_path: Path) -> MemoryClient:
     """Create a memory client with stubs."""
     with ExitStack() as stack:
         stack.enter_context(
+            patch("agent_cli.memory.client.init_repo"),
+        )
+        stack.enter_context(
             patch("agent_cli.memory.client.watch_memory_store"),
         )
         stack.enter_context(
@@ -150,6 +153,9 @@ async def test_client_startup_manual(tmp_path: Path) -> None:
             pass
 
     with ExitStack() as stack:
+        stack.enter_context(
+            patch("agent_cli.memory.client.init_repo"),
+        )
         mock_watch = stack.enter_context(patch("agent_cli.memory.client.watch_memory_store"))
         mock_watch.side_effect = _fake_watch
 
@@ -195,6 +201,9 @@ async def test_client_context_manager(tmp_path: Path) -> None:
             pass
 
     with ExitStack() as stack:
+        stack.enter_context(
+            patch("agent_cli.memory.client.init_repo"),
+        )
         mock_watch = stack.enter_context(patch("agent_cli.memory.client.watch_memory_store"))
         mock_watch.side_effect = _fake_watch
 
