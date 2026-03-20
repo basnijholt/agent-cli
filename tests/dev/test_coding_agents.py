@@ -16,6 +16,7 @@ from agent_cli.dev.coding_agents import (
 )
 from agent_cli.dev.coding_agents.aider import Aider
 from agent_cli.dev.coding_agents.claude import ClaudeCode
+from agent_cli.dev.coding_agents.codex import Codex, _ensure_project_trusted
 from agent_cli.dev.coding_agents.cursor_agent import CursorAgent
 
 
@@ -158,6 +159,58 @@ class TestClaudeCodeExecutable:
         with patch("shutil.which", return_value="/usr/bin/claude"):
             exe = agent.get_executable()
         assert exe == "/usr/bin/claude"
+
+
+class TestCodexTrustPreparation:
+    """Tests for Codex trust preparation."""
+
+    def test_ensure_project_trusted_appends_section_when_missing(self, tmp_path: Path) -> None:
+        """Missing project sections should be added to config.toml."""
+        project_path = tmp_path / "repo-worktrees" / "feature"
+        config_path = tmp_path / ".codex" / "config.toml"
+
+        changed = _ensure_project_trusted(project_path, config_path=config_path)
+
+        assert changed is True
+        content = config_path.read_text()
+        assert f'[projects."{project_path}"]' in content
+        assert 'trust_level = "trusted"' in content
+
+    def test_ensure_project_trusted_is_noop_when_already_trusted(self, tmp_path: Path) -> None:
+        """Existing trusted projects should not be rewritten."""
+        project_path = tmp_path / "repo-worktrees" / "feature"
+        config_path = tmp_path / ".codex" / "config.toml"
+        config_path.parent.mkdir(parents=True)
+        original = f'[projects."{project_path}"]\ntrust_level = "trusted"\n'
+        config_path.write_text(original)
+
+        changed = _ensure_project_trusted(project_path, config_path=config_path)
+
+        assert changed is False
+        assert config_path.read_text() == original
+
+    def test_ensure_project_trusted_rejects_conflicting_setting(self, tmp_path: Path) -> None:
+        """Existing non-trusted entries should fail loudly."""
+        project_path = tmp_path / "repo-worktrees" / "feature"
+        config_path = tmp_path / ".codex" / "config.toml"
+        config_path.parent.mkdir(parents=True)
+        config_path.write_text(f'[projects."{project_path}"]\ntrust_level = "untrusted"\n')
+
+        with pytest.raises(RuntimeError, match="disable \\[dev\\]\\.auto_trust"):
+            _ensure_project_trusted(project_path, config_path=config_path)
+
+    def test_prepare_launch_returns_message_when_trust_added(self, tmp_path: Path) -> None:
+        """prepare_launch should report when it updated trust config."""
+        repo_root = tmp_path / "repo"
+        worktree_path = tmp_path / "repo-worktrees" / "feature"
+        config_path = tmp_path / ".codex" / "config.toml"
+        config_path.parent.mkdir(parents=True)
+
+        with patch("agent_cli.dev.coding_agents.codex.CODEX_CONFIG_PATH", config_path):
+            agent = Codex()
+            message = agent.prepare_launch(worktree_path, repo_root)
+
+        assert message == f"Trusted {worktree_path.resolve()} in Codex config"
 
 
 class TestRegistry:

@@ -23,6 +23,7 @@ from . import cleanup, coding_agents, editors, terminals, worktree
 from ._branch_name import AGENTS as BRANCH_NAME_AGENTS
 from ._branch_name import generate_ai_branch_name, generate_random_branch_name
 from ._output import error, info, success, warn
+from .hooks import LaunchContext, prepare_agent_launch
 from .launch import (
     get_agent_env,
     launch_agent,
@@ -83,7 +84,11 @@ def dev_callback(
     Creates isolated working directories for each feature branch. Each worktree
     has its own branch, allowing parallel development without stashing changes.
     """
-    set_config_defaults(ctx, config_file)
+    config = set_config_defaults(ctx, config_file)
+    if isinstance(ctx.obj, dict):
+        ctx.obj["config"] = config
+    else:
+        ctx.obj = {"config": config}
 
     # The [dev] section config is intended for `dev new` options.
     # Click expects subcommand defaults under ctx.default_map["new"].
@@ -390,6 +395,13 @@ def new(
             help="Launch the agent in a specific multiplexer. Currently supported: tmux. When started outside tmux, creates or reuses a detached session and reports the pane handle",
         ),
     ] = None,
+    hooks: Annotated[
+        bool,
+        typer.Option(
+            "--hooks/--no-hooks",
+            help="Run built-in agent preparation (like Codex auto-trust) and configured pre-launch hooks before starting the agent",
+        ),
+    ] = True,
     verbose: Annotated[
         bool,
         typer.Option(
@@ -491,6 +503,18 @@ def new(
     if resolved_agent and resolved_agent.is_available():
         merged_args = merge_agent_args(resolved_agent, agent_args)
         agent_env = get_agent_env(resolved_agent)
+        prepare_agent_launch(
+            LaunchContext(
+                agent=resolved_agent,
+                worktree_path=result.path,
+                repo_root=repo_root,
+                branch=result.branch,
+                worktree_name=result.path.name,
+                task_file=task_file,
+                agent_env=agent_env,
+            ),
+            hooks_enabled=hooks,
+        )
         agent_handle = launch_agent(
             result.path,
             resolved_agent,
@@ -932,6 +956,13 @@ def start_agent(
             help="Launch the agent in a specific multiplexer instead of the current terminal. Currently supported: tmux",
         ),
     ] = None,
+    hooks: Annotated[
+        bool,
+        typer.Option(
+            "--hooks/--no-hooks",
+            help="Run built-in agent preparation (like Codex auto-trust) and configured pre-launch hooks before starting the agent",
+        ),
+    ] = True,
 ) -> None:
     """Start an AI coding agent in an existing dev environment.
 
@@ -970,6 +1001,18 @@ def start_agent(
 
     merged_args = merge_agent_args(agent, agent_args)
     agent_env = get_agent_env(agent)
+    prepare_agent_launch(
+        LaunchContext(
+            agent=agent,
+            worktree_path=wt.path,
+            repo_root=repo_root,
+            branch=wt.branch,
+            worktree_name=wt.name,
+            task_file=task_file,
+            agent_env=agent_env,
+        ),
+        hooks_enabled=hooks,
+    )
 
     if multiplexer:
         handle = launch_agent(

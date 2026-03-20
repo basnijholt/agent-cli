@@ -84,6 +84,20 @@ Write your review to .claude/REPORT.md:
 
 **Common mistake**: Forgetting `--from HEAD` means the agent starts from `origin/main` and won't see any of the branch changes!
 
+## Launch preparation note
+
+For headless Codex launches, the default `[dev].auto_trust = true` setting seeds trust for the launched worktree automatically. If you need extra setup before every launch, use config hooks such as:
+
+```toml
+[dev.hooks]
+pre_launch = ["~/.config/agent-cli/hooks/pre-launch.sh"]
+
+[dev.hooks.codex]
+pre_launch = ["~/.config/agent-cli/hooks/codex-setup.sh"]
+```
+
+Hook commands run directly from the worktree directory. If you need shell features like pipes or multiple steps, call a script from `pre_launch` instead of trying to inline them in TOML.
+
 ## Scenario 2: Multi-feature implementation
 
 **User request**: "Implement user auth, payment processing, and email notifications"

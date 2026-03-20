@@ -264,6 +264,7 @@ class Dev(BaseModel):
 
     editor: bool = False
     agent: bool = False
+    auto_trust: bool = True
     direnv: bool | None = None
     default_agent: str | None = None
     default_editor: str | None = None

@@ -9,10 +9,10 @@ import tempfile
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from agent_cli.config import load_config
 from agent_cli.core.utils import console
 
 from . import coding_agents, editors, terminals, worktree
+from ._config import get_runtime_config
 from ._output import success, warn
 
 if TYPE_CHECKING:
@@ -95,7 +95,7 @@ def get_config_agent_args() -> dict[str, list[str]] | None:
     Note: The config loader may flatten section names, so we check both
     nested structure and flattened 'dev.agent_args' key.
     """
-    config = load_config(None)
+    config = get_runtime_config()
 
     # First try the simple nested structure (for testing/mocks)
     dev_config = config.get("dev", {})
@@ -117,7 +117,7 @@ def get_config_agent_env() -> dict[str, dict[str, str]] | None:
     'dev.agent_env.claude' become top-level. We reconstruct the
     agent_env dict from these flattened keys.
     """
-    config = load_config(None)
+    config = get_runtime_config()
 
     # First try the simple nested structure (for testing/mocks)
     dev_config = config.get("dev", {})
