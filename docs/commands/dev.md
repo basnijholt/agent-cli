@@ -711,6 +711,38 @@ When launching an AI agent, the dev command automatically:
 4. Falls back to supported terminals (kitty, iTerm2)
 5. Prints instructions if no terminal is detected
 
+### Multi-agent Workflows
+
+Use `dev agent -m tmux` when you want multiple agents on the same worktree instead of multiple worktrees:
+
+```bash
+# Create the worktree once
+agent-cli dev new review-auth --from HEAD
+
+# Launch multiple reviewers into the same worktree
+agent-cli dev agent review-auth -m tmux --prompt-file .claude/review-security.md
+agent-cli dev agent review-auth -m tmux --prompt-file .claude/review-performance.md
+agent-cli dev agent review-auth -m tmux --prompt-file .claude/review-tests.md
+```
+
+This is useful for:
+- Multiple reviewers on the same branch
+- Parallel validation agents working on one codebase
+- Headless orchestration from scripts or other assistants
+
+All explicit tmux launches for the same repository are grouped into the same deterministic tmux session (`agent-cli-<repo>-<hash>`), which keeps related windows together even when the command is run outside tmux.
+
+For fully headless orchestration, combine `--prompt-file` with `-m tmux`:
+
+```bash
+for section in 1 2 3 4; do
+  agent-cli dev new "validate-$section" --from HEAD --agent --with-agent codex -m tmux \
+    --prompt-file ".claude/validate-$section.md"
+done
+```
+
+If multiple agents share one worktree, do not have them all write to `.claude/REPORT.md` because they will overwrite each other. Instead, assign unique report paths such as `.claude/REPORT-security-<run-id>.md` and `.claude/REPORT-tests-<run-id>.md`. If you rerun the same prompt repeatedly, use a timestamp or other run id so later runs do not replace earlier results. The same applies to `.claude/TASK.md`: it reflects the most recent launch, not stable per-agent state.
+
 ## Shell Integration
 
 Add a function to quickly navigate to dev environments:

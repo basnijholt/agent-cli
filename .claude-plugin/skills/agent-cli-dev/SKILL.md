@@ -7,6 +7,10 @@ description: Spawns AI coding agents in isolated git worktrees. Use when the use
 
 This skill teaches you how to spawn parallel AI coding agents in isolated git worktrees using the `agent-cli dev` command.
 
+`agent-cli dev` supports two complementary patterns:
+- Separate worktrees for isolated implementation/review tasks
+- Multiple agents on the same worktree using `dev agent -m tmux`
+
 ## Installation
 
 If `agent-cli` is not available, install it first:
@@ -113,6 +117,54 @@ agent-cli dev run <branch-name> cat .claude/REPORT.md
 # Open the worktree in your editor
 agent-cli dev editor <branch-name>
 ```
+
+## Same-branch multi-agent workflow
+
+Use this when several agents should inspect or validate the same code at once without separate worktrees.
+
+```bash
+# Create the worktree once
+agent-cli dev new review-auth --from HEAD
+
+# Spawn multiple agents into the same worktree
+agent-cli dev agent review-auth -m tmux --prompt-file .claude/review-security.md
+agent-cli dev agent review-auth -m tmux --prompt-file .claude/review-performance.md
+agent-cli dev agent review-auth -m tmux --prompt-file .claude/review-tests.md
+```
+
+Key rules for same-worktree launches:
+- Use `dev agent`, not `dev new`, after the worktree already exists
+- Use `-m tmux` for headless or scripted launching; it works even when not already inside tmux
+- Each launch joins the same deterministic repo-scoped tmux session, so related agents stay grouped together
+- Ask each agent to write to a unique report path such as `.claude/REPORT-security-<run-id>.md` or `.claude/REPORT-tests-<run-id>.md`
+- If you rerun the same prompt repeatedly, include a timestamp or other run id in the report filename so later runs do not overwrite earlier ones
+- Do not rely on `.claude/TASK.md` as per-agent state in shared worktrees; later launches overwrite it
+
+### Prompt guidance for shared worktrees
+
+When multiple agents share a worktree, explicitly assign both a focus area and a unique report file. If you rerun the same review prompt often, prefer a timestamped filename such as `.claude/REPORT-security-20260319-153045-123.md`.
+
+Prompt pattern:
+
+```text
+Review the auth module for security issues only.
+
+When complete, write findings to .claude/REPORT-security-20260319-153045-123.md including:
+- Summary
+- Issues found with file/line references
+- Suggested fixes
+```
+
+## Headless/scripted orchestration
+
+For non-interactive contexts (scripts, cron jobs, other assistants), combine `--prompt-file` with `-m tmux`:
+
+```bash
+agent-cli dev new validation-a --from HEAD --agent --with-agent codex -m tmux \
+  --prompt-file .claude/validation-a.md
+```
+
+This works without an attached terminal. `agent-cli` creates or reuses a detached tmux session and returns a pane handle plus attach command.
 
 ## Example: Multi-feature implementation
 

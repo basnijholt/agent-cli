@@ -109,31 +109,11 @@ class Tmux(Terminal):
         session_name: str,
     ) -> TerminalHandle | None:
         """Open a new window in an existing tmux session."""
-        cmd = [
-            "tmux",
-            "new-window",
-            "-P",
-            "-F",
-            "#{pane_id}",
-            "-c",
-            str(path),
-            "-t",
-            session_name,
-        ]
-        if tab_name:
-            cmd.extend(["-n", tab_name])
-        if command:
-            cmd.append(command)
-        try:
-            result = subprocess.run(cmd, check=True, capture_output=True, text=True)
-        except subprocess.CalledProcessError:
-            return None
-        pane_id = result.stdout.strip()
-        if not pane_id:
-            return None
-        return TerminalHandle(
-            terminal_name=self.name,
-            handle=pane_id,
+        return self._spawn_target(
+            ["tmux", "new-window", "-t", session_name],
+            path=path,
+            command=command,
+            tab_name=tab_name,
             session_name=session_name,
         )
 
@@ -146,18 +126,25 @@ class Tmux(Terminal):
         session_name: str,
     ) -> TerminalHandle | None:
         """Create a detached tmux session and return its initial pane handle."""
-        cmd = [
-            "tmux",
-            "new-session",
-            "-d",
-            "-P",
-            "-F",
-            "#{pane_id}",
-            "-s",
-            session_name,
-            "-c",
-            str(path),
-        ]
+        return self._spawn_target(
+            ["tmux", "new-session", "-d", "-s", session_name],
+            path=path,
+            command=command,
+            tab_name=tab_name,
+            session_name=session_name,
+        )
+
+    def _spawn_target(
+        self,
+        base_cmd: list[str],
+        *,
+        path: Path,
+        command: str | None,
+        tab_name: str | None,
+        session_name: str,
+    ) -> TerminalHandle | None:
+        """Run a tmux new-window/new-session command and capture its pane handle."""
+        cmd = [*base_cmd, "-P", "-F", "#{pane_id}", "-c", str(path)]
         if tab_name:
             cmd.extend(["-n", tab_name])
         if command:

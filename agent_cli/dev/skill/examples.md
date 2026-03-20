@@ -524,6 +524,96 @@ When complete, write to .claude/REPORT.md:
 </report>"
 ```
 
+## Scenario 6: Multi-reviewer on the same branch
+
+**User request**: "Get 3 agents to review this code" or "Run multiple reviewers on this branch"
+
+**Strategy**: Create one review worktree from the current branch, then launch several agents into that same worktree with different focus areas.
+
+```bash
+run_id="$(python -c 'import time; print(int(time.time() * 1000))')"
+
+# Create the shared review worktree once
+agent-cli dev new review-auth --from HEAD
+
+# Launch three reviewers into the same worktree/session
+agent-cli dev agent review-auth -m tmux --prompt "Review the auth module for security issues only.
+
+<scope>
+Do not fix code. Review only.
+</scope>
+
+<report>
+Write findings to .claude/REPORT-security-$run_id.md:
+- Summary
+- Issues with file:line references
+- Suggested fixes
+</report>"
+
+agent-cli dev agent review-auth -m tmux --prompt "Review the auth module for performance issues only.
+
+<scope>
+Review only. Focus on query patterns, repeated work, and unnecessary allocations.
+</scope>
+
+<report>
+Write findings to .claude/REPORT-performance-$run_id.md:
+- Summary
+- Issues with file:line references
+- Suggested fixes
+</report>"
+
+agent-cli dev agent review-auth -m tmux --prompt "Review the auth module for test coverage gaps only.
+
+<scope>
+Review only. Identify missing or weak tests.
+</scope>
+
+<report>
+Write findings to .claude/REPORT-tests-$run_id.md:
+- Summary
+- Missing test cases
+- Suggested follow-up tests
+</report>"
+```
+
+**Important**:
+- Same-worktree launches should use unique report files, not `.claude/REPORT.md`
+- If you rerun the same prompt often, include a timestamp or run id in the filename so reports do not get replaced
+- `-m tmux` works even when the caller is not already inside tmux
+- All three agents land in the same deterministic tmux session for that repo
+- `.claude/TASK.md` is shared state and may be overwritten by later launches, so keep prompt files outside that convention
+
+## Scenario 7: Parallel test validation
+
+**User request**: "Run the test checklist across 8 sections in parallel"
+
+**Strategy**: Create one worktree per section, then launch each validation agent headlessly in tmux so the workflow works from scripts or non-terminal orchestrators.
+
+```bash
+for section in 1 2 3 4 5 6 7 8; do
+  agent-cli dev new "test-section-$section" --from HEAD --agent --with-agent codex -m tmux \
+    --prompt-file ".claude/test-section-$section.md"
+done
+```
+
+Monitor and collect results:
+
+```bash
+# Track the worktrees
+agent-cli dev status
+
+# Read each report after completion
+for section in 1 2 3 4 5 6 7 8; do
+  agent-cli dev run "test-section-$section" cat .claude/REPORT.md
+done
+```
+
+**When writing the per-section prompts**:
+- Assign one checklist section per agent
+- Require real test execution where possible
+- Require a structured `.claude/REPORT.md` with pass/fail status, evidence, and follow-up actions
+
 ## Reviewing results
 
 After agents complete their work:
@@ -569,3 +659,8 @@ Any items that need human review or clarification
 ```
 
 This consistent format makes it easy to review work from multiple agents.
+
+For shared-worktree runs, keep the same structure but use unique filenames such as:
+- `.claude/REPORT-security.md`
+- `.claude/REPORT-performance.md`
+- `.claude/REPORT-tests.md`
