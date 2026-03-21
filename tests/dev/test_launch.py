@@ -6,7 +6,11 @@ import shlex
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-from agent_cli.dev.launch import launch_agent
+from agent_cli.dev.launch import (
+    _create_prompt_wrapper_script,
+    launch_agent,
+    write_prompt_to_worktree,
+)
 from agent_cli.dev.terminals import TerminalHandle
 from agent_cli.dev.terminals.tmux import Tmux
 
@@ -147,3 +151,81 @@ class TestLaunchAgent:
         printed = "\n".join(call.args[0] for call in mock_print.call_args_list if call.args)
         assert "To start codex:" in printed
         assert f"cd {tmp_path}" in printed
+
+
+class TestCreatePromptWrapperScript:
+    """Tests for _create_prompt_wrapper_script unique path generation."""
+
+    def test_concurrent_launches_produce_unique_scripts(self, tmp_path: Path) -> None:
+        """Two calls for the same worktree produce different script paths.
+
+        This is a regression test for a race condition where concurrent launches
+        overwrote each other's wrapper script because the path was deterministic
+        (based only on worktree name).
+        """
+        task_file_a = tmp_path / ".claude" / "TASK-111-aaaa.md"
+        task_file_b = tmp_path / ".claude" / "TASK-222-bbbb.md"
+        task_file_a.parent.mkdir(parents=True)
+        task_file_a.write_text("task A\n")
+        task_file_b.write_text("task B\n")
+
+        agent = MagicMock()
+        agent.name = "claude"
+        agent.get_executable.return_value = "/usr/bin/claude"
+
+        path_a = _create_prompt_wrapper_script(tmp_path, agent, task_file_a)
+        path_b = _create_prompt_wrapper_script(tmp_path, agent, task_file_b)
+
+        assert path_a != path_b
+        assert "TASK-111-aaaa.md" in path_a.read_text()
+        assert "TASK-222-bbbb.md" in path_b.read_text()
+
+    def test_script_is_executable(self, tmp_path: Path) -> None:
+        """Generated wrapper script has execute permission."""
+        task_file = tmp_path / ".claude" / "TASK-111-aaaa.md"
+        task_file.parent.mkdir(parents=True)
+        task_file.write_text("task\n")
+
+        agent = MagicMock()
+        agent.name = "claude"
+        agent.get_executable.return_value = "/usr/bin/claude"
+
+        path = _create_prompt_wrapper_script(tmp_path, agent, task_file)
+        assert path.stat().st_mode & 0o755
+
+
+class TestWritePromptToWorktree:
+    """Tests for write_prompt_to_worktree unique filename generation."""
+
+    def test_unique_task_filenames(self, tmp_path: Path) -> None:
+        """Two calls produce different filenames to avoid parallel overwrites."""
+        path1 = write_prompt_to_worktree(tmp_path, "task A")
+        path2 = write_prompt_to_worktree(tmp_path, "task B")
+        assert path1 != path2
+        assert path1.read_text() == "task A\n"
+        assert path2.read_text() == "task B\n"
+
+    def test_task_file_in_claude_dir(self, tmp_path: Path) -> None:
+        """File is created inside the .claude/ directory."""
+        path = write_prompt_to_worktree(tmp_path, "hello")
+        assert path.parent == tmp_path / ".claude"
+
+    def test_task_filename_pattern(self, tmp_path: Path) -> None:
+        """Filename matches TASK-{timestamp}-{hex}.md pattern."""
+        import re  # noqa: PLC0415
+
+        path = write_prompt_to_worktree(tmp_path, "hello")
+        assert re.match(r"TASK-\d+-[0-9a-f]{4}\.md$", path.name)
+
+    def test_task_file_contains_prompt(self, tmp_path: Path) -> None:
+        """Written file contains the prompt text with trailing newline."""
+        path = write_prompt_to_worktree(tmp_path, "Fix the login bug")
+        assert path.read_text() == "Fix the login bug\n"
+
+    def test_creates_claude_dir_if_missing(self, tmp_path: Path) -> None:
+        """Creates .claude/ directory if it doesn't exist."""
+        worktree = tmp_path / "fresh-worktree"
+        worktree.mkdir()
+        path = write_prompt_to_worktree(worktree, "task")
+        assert path.exists()
+        assert (worktree / ".claude").is_dir()

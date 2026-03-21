@@ -168,14 +168,18 @@ def launch_editor(path: Path, editor: Editor) -> None:
 
 
 def write_prompt_to_worktree(worktree_path: Path, prompt: str) -> Path:
-    """Write the prompt to .claude/TASK.md in the worktree.
+    """Write the prompt to a unique file in .claude/ in the worktree.
 
-    This makes the task description available to the spawned agent
-    and provides a record of what was requested.
+    Uses a timestamp and random suffix to avoid overwrites when multiple
+    agents are launched in parallel on the same worktree.
     """
+    import time  # noqa: PLC0415
+
     claude_dir = worktree_path / ".claude"
     claude_dir.mkdir(parents=True, exist_ok=True)
-    task_file = claude_dir / "TASK.md"
+    timestamp = int(time.time())
+    suffix = os.urandom(2).hex()
+    task_file = claude_dir / f"TASK-{timestamp}-{suffix}.md"
     task_file.write_text(prompt + "\n")
     return task_file
 
@@ -201,8 +205,6 @@ def _create_prompt_wrapper_script(
     env: dict[str, str] | None = None,
 ) -> Path:
     """Create a wrapper script that reads prompt from file to avoid shell quoting issues."""
-    script_path = Path(tempfile.gettempdir()) / f"agent-cli-{worktree_path.name}.sh"
-
     # Build the agent command without the prompt
     exe = agent.get_executable()
     if exe is None:
@@ -222,7 +224,13 @@ def _create_prompt_wrapper_script(
 # Reads prompt from file to avoid shell parsing issues with special characters
 {env_prefix}exec {agent_cmd} "$(cat {shlex.quote(str(task_file_rel))})"
 """
-    script_path.write_text(script_content)
+    fd, script_path_str = tempfile.mkstemp(
+        prefix=f"agent-cli-{worktree_path.name}-",
+        suffix=".sh",
+    )
+    os.write(fd, script_content.encode())
+    os.close(fd)
+    script_path = Path(script_path_str)
     script_path.chmod(0o755)
     return script_path
 

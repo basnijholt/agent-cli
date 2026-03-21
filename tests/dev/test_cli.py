@@ -854,6 +854,141 @@ class TestDevAgent:
         assert f"Prompt file is empty: {prompt_file}" in result.output
         mock_ensure_repo.assert_not_called()
 
+    def test_agent_with_agent_flag(self) -> None:
+        """`dev agent foo -a claude` selects the named agent."""
+        wt = WorktreeInfo(
+            path=Path("/repo-worktrees/feature"),
+            branch="feature",
+            commit="abc",
+            is_main=False,
+            is_detached=False,
+            is_locked=False,
+            is_prunable=False,
+        )
+
+        with (
+            patch("agent_cli.dev.cli._ensure_git_repo", return_value=Path("/repo")),
+            patch("agent_cli.dev.worktree.find_worktree_by_name", return_value=wt),
+            patch("agent_cli.dev.cli.coding_agents.get_agent") as mock_get_agent,
+            patch("agent_cli.dev.cli.prepare_agent_launch"),
+            patch("agent_cli.dev.cli.merge_agent_args", return_value=None),
+            patch("agent_cli.dev.cli.get_agent_env", return_value={}),
+            patch("agent_cli.dev.cli.os.chdir"),
+            patch("agent_cli.dev.cli.subprocess.run"),
+        ):
+            mock_agent = mock_get_agent.return_value
+            mock_agent.name = "claude"
+            mock_agent.is_available.return_value = True
+            mock_agent.launch_command.return_value = ["claude"]
+            result = runner.invoke(
+                app,
+                ["dev", "agent", "feature", "-a", "claude"],
+            )
+
+        assert result.exit_code == 0
+        mock_get_agent.assert_called_once_with("claude")
+
+    def test_agent_deprecated_flag_warns(self) -> None:
+        """`dev agent foo --with-agent claude` works but prints a deprecation warning."""
+        wt = WorktreeInfo(
+            path=Path("/repo-worktrees/feature"),
+            branch="feature",
+            commit="abc",
+            is_main=False,
+            is_detached=False,
+            is_locked=False,
+            is_prunable=False,
+        )
+
+        with (
+            patch("agent_cli.dev.cli._ensure_git_repo", return_value=Path("/repo")),
+            patch("agent_cli.dev.worktree.find_worktree_by_name", return_value=wt),
+            patch("agent_cli.dev.cli.coding_agents.get_agent") as mock_get_agent,
+            patch("agent_cli.dev.cli.prepare_agent_launch"),
+            patch("agent_cli.dev.cli.merge_agent_args", return_value=None),
+            patch("agent_cli.dev.cli.get_agent_env", return_value={}),
+            patch("agent_cli.dev.cli.os.chdir"),
+            patch("agent_cli.dev.cli.subprocess.run"),
+        ):
+            mock_agent = mock_get_agent.return_value
+            mock_agent.name = "claude"
+            mock_agent.is_available.return_value = True
+            mock_agent.launch_command.return_value = ["claude"]
+            result = runner.invoke(
+                app,
+                ["dev", "agent", "feature", "--with-agent", "claude"],
+            )
+
+        assert result.exit_code == 0
+        assert "deprecated" in result.output.lower()
+        mock_get_agent.assert_called_once_with("claude")
+
+    def test_agent_dot_resolves_current_worktree(self) -> None:
+        """`dev agent .` resolves '.' to the current worktree via find_worktree_by_name."""
+        wt = WorktreeInfo(
+            path=Path("/repo-worktrees/feature"),
+            branch="feature",
+            commit="abc",
+            is_main=False,
+            is_detached=False,
+            is_locked=False,
+            is_prunable=False,
+        )
+
+        with (
+            patch("agent_cli.dev.cli._ensure_git_repo", return_value=Path("/repo")),
+            patch("agent_cli.dev.worktree.find_worktree_by_name", return_value=wt) as mock_find,
+            patch("agent_cli.dev.cli.coding_agents.detect_current_agent") as mock_detect_current,
+            patch("agent_cli.dev.cli.prepare_agent_launch"),
+            patch("agent_cli.dev.cli.merge_agent_args", return_value=None),
+            patch("agent_cli.dev.cli.get_agent_env", return_value={}),
+            patch("agent_cli.dev.cli.os.chdir"),
+            patch("agent_cli.dev.cli.subprocess.run"),
+        ):
+            current_agent = mock_detect_current.return_value
+            current_agent.name = "claude"
+            current_agent.is_available.return_value = True
+            current_agent.launch_command.return_value = ["claude"]
+            result = runner.invoke(app, ["dev", "agent", "."])
+
+        assert result.exit_code == 0
+        mock_find.assert_called_once_with(".", Path("/repo"))
+
+    def test_agent_primary_flag_overrides_deprecated_alias(self) -> None:
+        """Primary -a/--agent takes precedence over deprecated --with-agent."""
+        wt = WorktreeInfo(
+            path=Path("/repo-worktrees/feature"),
+            branch="feature",
+            commit="abc",
+            is_main=False,
+            is_detached=False,
+            is_locked=False,
+            is_prunable=False,
+        )
+
+        with (
+            patch("agent_cli.dev.cli._ensure_git_repo", return_value=Path("/repo")),
+            patch("agent_cli.dev.worktree.find_worktree_by_name", return_value=wt),
+            patch("agent_cli.dev.cli.coding_agents.get_agent") as mock_get_agent,
+            patch("agent_cli.dev.cli.prepare_agent_launch"),
+            patch("agent_cli.dev.cli.merge_agent_args", return_value=None),
+            patch("agent_cli.dev.cli.get_agent_env", return_value={}),
+            patch("agent_cli.dev.cli.os.chdir"),
+            patch("agent_cli.dev.cli.subprocess.run"),
+        ):
+            mock_agent = mock_get_agent.return_value
+            mock_agent.name = "claude"
+            mock_agent.is_available.return_value = True
+            mock_agent.launch_command.return_value = ["claude"]
+            result = runner.invoke(
+                app,
+                ["dev", "agent", "feature", "--with-agent", "claude", "-a", "codex"],
+            )
+
+        assert result.exit_code == 0
+        assert "deprecated" in result.output.lower()
+        mock_get_agent.assert_called_once_with("codex")
+
 
 class TestDevAgents:
     """Tests for dev agents command."""
