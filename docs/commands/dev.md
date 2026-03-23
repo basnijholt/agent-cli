@@ -84,7 +84,7 @@ agent-cli dev new [BRANCH] [OPTIONS]
 | `--branch-name-timeout` | `20.0` | Timeout in seconds for AI branch naming command |
 | `--direnv/--no-direnv` | - | Generate .envrc based on project type and run 'direnv allow'. Auto-enabled if direnv is installed |
 | `--agent-args` | - | Extra CLI args for the agent. Can be repeated. Example: --agent-args='--dangerously-skip-permissions' |
-| `--prompt, -p` | - | Initial task for the AI agent. Saved to .claude/TASK.md. Implies --agent. Example: --prompt='Fix the login bug' |
+| `--prompt, -p` | - | Initial task for the AI agent. Saved to a unique file in .claude/ to avoid conflicts. Implies --agent. Example: --prompt='Fix the login bug' |
 | `--prompt-file, -P` | - | Read the agent prompt from a file. Useful for long prompts to avoid shell quoting. Implies --agent |
 | `--multiplexer, -m` | - | Launch the agent in a specific multiplexer. Currently supported: tmux. When started outside tmux, creates or reuses a detached session and reports the pane handle |
 | `--hooks/--no-hooks` | `true` | Run built-in agent preparation (like Codex auto-trust) and configured pre-launch hooks before starting the agent |
@@ -293,7 +293,7 @@ agent-cli dev agent NAME [--agent/-a AGENT] [--agent-args ARGS] [--prompt/-p PRO
 |--------|---------|-------------|
 | `--agent, -a` | - | Which agent: claude, codex, gemini, aider, copilot, cn, opencode, cursor-agent. Auto-detects if omitted |
 | `--agent-args` | - | Extra CLI args for the agent. Example: --agent-args='--dangerously-skip-permissions' |
-| `--prompt, -p` | - | Initial task for the agent. Saved to .claude/TASK.md. Example: --prompt='Add unit tests for auth' |
+| `--prompt, -p` | - | Initial task for the agent. Saved to a unique file in .claude/ to avoid conflicts. Example: --prompt='Add unit tests for auth' |
 | `--prompt-file, -P` | - | Read the agent prompt from a file instead of command line |
 | `--multiplexer, -m` | - | Launch the agent in a specific multiplexer instead of the current terminal. Currently supported: tmux |
 | `--hooks/--no-hooks` | `true` | Run built-in agent preparation (like Codex auto-trust) and configured pre-launch hooks before starting the agent |
@@ -775,7 +775,7 @@ for section in 1 2 3 4; do
 done
 ```
 
-If multiple agents share one worktree, do not have them all write to `.claude/REPORT.md` because they will overwrite each other. Instead, assign unique report paths such as `.claude/REPORT-security-<run-id>.md` and `.claude/REPORT-tests-<run-id>.md`. If you rerun the same prompt repeatedly, use a timestamp or other run id so later runs do not replace earlier results. The same applies to `.claude/TASK.md`: it reflects the most recent launch, not stable per-agent state.
+If multiple agents share one worktree, do not have them all write to `.claude/REPORT.md` because they will overwrite each other. Instead, assign unique report paths such as `.claude/REPORT-security-<run-id>.md` and `.claude/REPORT-tests-<run-id>.md`. If you rerun the same prompt repeatedly, use a timestamp or other run id so later runs do not replace earlier results. Each agent launch also gets its own `.claude/TASK-{timestamp}-{hex}.md` file, so prompt files no longer overwrite each other.
 
 ## Shell Integration
 

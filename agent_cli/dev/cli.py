@@ -373,7 +373,7 @@ def new(
         typer.Option(
             "--prompt",
             "-p",
-            help="Initial task for the AI agent. Saved to .claude/TASK.md. Implies --agent. Example: --prompt='Fix the login bug'",
+            help="Initial task for the AI agent. Saved to a unique file in .claude/ to avoid conflicts. Implies --agent. Example: --prompt='Fix the login bug'",
         ),
     ] = None,
     prompt_file: Annotated[
@@ -776,7 +776,9 @@ def status_cmd(  # noqa: PLR0915
 def remove(
     name: Annotated[
         str,
-        typer.Argument(help="Worktree to remove. Can be branch name or directory name"),
+        typer.Argument(
+            help="Worktree to remove. Can be branch name, directory name, or '.' for current"
+        ),
     ],
     force: Annotated[
         bool,
@@ -840,7 +842,9 @@ def remove(
 def path_cmd(
     name: Annotated[
         str,
-        typer.Argument(help="Worktree to get path for. Can be branch name or directory name"),
+        typer.Argument(
+            help="Worktree to get path for. Can be branch name, directory name, or '.' for current"
+        ),
     ],
 ) -> None:
     """Print the absolute path to a dev environment.
@@ -862,7 +866,9 @@ def path_cmd(
 def open_editor(
     name: Annotated[
         str,
-        typer.Argument(help="Worktree to open. Can be branch name or directory name"),
+        typer.Argument(
+            help="Worktree to open. Can be branch name, directory name, or '.' for current"
+        ),
     ],
     editor_name: Annotated[
         str | None,
@@ -911,7 +917,7 @@ def start_agent(
     name: Annotated[
         str,
         typer.Argument(
-            help="Worktree to start the agent in. Can be branch name or directory name",
+            help="Worktree to start the agent in. Can be branch name, directory name, or '.' for current",
         ),
     ],
     agent_name: Annotated[
@@ -920,6 +926,14 @@ def start_agent(
             "--agent",
             "-a",
             help="Which agent: claude, codex, gemini, aider, copilot, cn, opencode, cursor-agent. Auto-detects if omitted",
+        ),
+    ] = None,
+    agent_name_deprecated: Annotated[
+        str | None,
+        typer.Option(
+            "--with-agent",
+            hidden=True,
+            help="[Deprecated: use --agent/-a] Which agent to start",
         ),
     ] = None,
     agent_args: Annotated[
@@ -934,7 +948,7 @@ def start_agent(
         typer.Option(
             "--prompt",
             "-p",
-            help="Initial task for the agent. Saved to .claude/TASK.md. Example: --prompt='Add unit tests for auth'",
+            help="Initial task for the agent. Saved to a unique file in .claude/ to avoid conflicts. Example: --prompt='Add unit tests for auth'",
         ),
     ] = None,
     prompt_file: Annotated[
@@ -975,6 +989,11 @@ def start_agent(
     - `dev agent my-feature -a claude` — Start Claude specifically
     - `dev agent my-feature -p "Continue the auth refactor"` — Start with a task
     """
+    # Handle deprecated --with-agent alias
+    if agent_name_deprecated is not None:
+        warn("--with-agent is deprecated for 'dev agent', use --agent/-a instead")
+        agent_name = agent_name or agent_name_deprecated
+
     prompt = _resolve_prompt_text(prompt, prompt_file=prompt_file)
 
     repo_root = _ensure_git_repo()
@@ -1233,7 +1252,9 @@ def _doctor_check_git() -> None:
 def run_cmd(
     name: Annotated[
         str,
-        typer.Argument(help="Worktree to run command in. Can be branch name or directory name"),
+        typer.Argument(
+            help="Worktree to run command in. Can be branch name, directory name, or '.' for current"
+        ),
     ],
     command: Annotated[
         list[str],

@@ -285,12 +285,39 @@ def resolve_worktree_base_dir(repo_root: Path) -> Path:
     return repo_root.parent / f"{repo_root.name}-worktrees"
 
 
+def _find_worktree_for_cwd(worktrees: list[WorktreeInfo]) -> WorktreeInfo | None:
+    """Find the worktree containing the current working directory."""
+    cwd = Path.cwd().resolve()
+    # Prefer the deepest matching path so nested layouts like .worktrees/<name>
+    # resolve to the actual worktree instead of the main repo.
+    for wt in sorted(
+        worktrees,
+        key=lambda worktree: len(worktree.path.resolve().parts),
+        reverse=True,
+    ):
+        try:
+            cwd.relative_to(wt.path.resolve())
+            return wt
+        except ValueError:
+            continue
+    # Fallback: return main worktree
+    return next((wt for wt in worktrees if wt.is_main), None)
+
+
 def find_worktree_by_name(
     name: str,
     repo_path: Path | None = None,
 ) -> WorktreeInfo | None:
-    """Find a worktree by branch name or directory name."""
+    """Find a worktree by branch name or directory name.
+
+    Use '.' to match the worktree containing the current working directory,
+    or the main worktree if the CWD is not inside any worktree.
+    """
     worktrees = list_worktrees(repo_path)
+
+    if name == ".":
+        return _find_worktree_for_cwd(worktrees)
+
     sanitized = sanitize_branch_name(name)
 
     for wt in worktrees:

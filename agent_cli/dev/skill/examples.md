@@ -585,7 +585,7 @@ Write findings to .claude/REPORT-tests-$run_id.md:
 - If you rerun the same prompt often, include a timestamp or run id in the filename so reports do not get replaced
 - `-m tmux` works even when the caller is not already inside tmux
 - All three agents land in the same deterministic tmux session for that repo
-- `.claude/TASK.md` is shared state and may be overwritten by later launches, so keep prompt files outside that convention
+- Each agent launch gets its own unique task file in `.claude/`, so parallel launches do not conflict
 
 ## Scenario 7: Parallel test validation
 

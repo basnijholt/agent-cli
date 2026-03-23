@@ -56,7 +56,7 @@ agent-cli dev new <branch-name> --from HEAD --agent --prompt-file path/to/prompt
 This creates:
 1. A new git worktree with its own branch
 2. Runs project setup (installs dependencies)
-3. Saves your prompt to `.claude/TASK.md` in the worktree (for reference)
+3. Saves your prompt to a unique task file in `.claude/` in the worktree (for reference)
 4. Opens a new terminal tab with an AI coding agent
 5. Passes your prompt to the agent
 
@@ -144,11 +144,12 @@ agent-cli dev agent review-auth -m tmux --prompt-file .claude/review-tests.md
 
 Key rules for same-worktree launches:
 - Use `dev agent`, not `dev new`, after the worktree already exists
+- Use `dev agent -a <agent>` to select a specific agent for an existing worktree; `--with-agent` remains a deprecated alias on this subcommand
 - Use `-m tmux` for headless or scripted launching; it works even when not already inside tmux
 - Each launch joins the same deterministic repo-scoped tmux session, so related agents stay grouped together
 - Ask each agent to write to a unique report path such as `.claude/REPORT-security-<run-id>.md` or `.claude/REPORT-tests-<run-id>.md`
 - If you rerun the same prompt repeatedly, include a timestamp or other run id in the report filename so later runs do not overwrite earlier ones
-- Do not rely on `.claude/TASK.md` as per-agent state in shared worktrees; later launches overwrite it
+- Each agent launch gets its own unique task file in `.claude/` (e.g., `TASK-{timestamp}-{hex}.md`), so parallel launches do not overwrite each other
 
 ### Prompt guidance for shared worktrees
 
