@@ -147,9 +147,9 @@ Key rules for same-worktree launches:
 - Use `dev agent -a <agent>` to select a specific agent for an existing worktree; `--with-agent` remains a deprecated alias on this subcommand
 - Use `-m tmux` for headless or scripted launching; it works even when not already inside tmux
 - Each launch joins the same deterministic repo-scoped tmux session, so related agents stay grouped together
-- Ask each agent to write to a unique report path such as `.claude/REPORT-security-<run-id>.md` or `.claude/REPORT-tests-<run-id>.md`
+- Ask each agent to write to a unique report path such as `.claude/REPORT-security-20260319-153045-123.md` or `.claude/REPORT-tests-20260319-153045-123.md`
 - If you rerun the same prompt repeatedly, include a timestamp or other run id in the report filename so later runs do not overwrite earlier ones
-- Each agent launch gets its own unique task file in `.claude/` (e.g., `TASK-{timestamp}-{hex}.md`), so parallel launches do not overwrite each other
+- Each agent launch gets its own unique task file in `.claude/` (for example `.claude/TASK-1773934245-abcd.md`), so parallel launches do not overwrite each other
 
 ### Prompt guidance for shared worktrees
 

@@ -547,7 +547,7 @@ Do not fix code. Review only.
 </scope>
 
 <report>
-Write findings to .claude/REPORT-security-$run_id.md:
+Write findings to .claude/REPORT-security-20260319-153045-123.md:
 - Summary
 - Issues with file:line references
 - Suggested fixes
@@ -560,7 +560,7 @@ Review only. Focus on query patterns, repeated work, and unnecessary allocations
 </scope>
 
 <report>
-Write findings to .claude/REPORT-performance-$run_id.md:
+Write findings to .claude/REPORT-performance-20260319-153045-123.md:
 - Summary
 - Issues with file:line references
 - Suggested fixes
@@ -573,7 +573,7 @@ Review only. Identify missing or weak tests.
 </scope>
 
 <report>
-Write findings to .claude/REPORT-tests-$run_id.md:
+Write findings to .claude/REPORT-tests-20260319-153045-123.md:
 - Summary
 - Missing test cases
 - Suggested follow-up tests
@@ -585,7 +585,7 @@ Write findings to .claude/REPORT-tests-$run_id.md:
 - If you rerun the same prompt often, include a timestamp or run id in the filename so reports do not get replaced
 - `-m tmux` works even when the caller is not already inside tmux
 - All three agents land in the same deterministic tmux session for that repo
-- Each agent launch gets its own unique task file in `.claude/`, so parallel launches do not conflict
+- Each agent launch gets its own unique task file in `.claude/` (for example `.claude/TASK-1773934245-abcd.md`), so parallel launches do not conflict
 
 ## Scenario 7: Parallel test validation
 
