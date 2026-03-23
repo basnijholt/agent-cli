@@ -292,6 +292,7 @@ agent-cli dev agent NAME [--agent/-a AGENT] [--agent-args ARGS] [--prompt/-p PRO
 | Option | Default | Description |
 |--------|---------|-------------|
 | `--agent, -a` | - | Which agent: claude, codex, gemini, aider, copilot, cn, opencode, cursor-agent. Auto-detects if omitted |
+| `--with-agent` | - | [Deprecated: use --agent/-a] Which agent to start |
 | `--agent-args` | - | Extra CLI args for the agent. Example: --agent-args='--dangerously-skip-permissions' |
 | `--prompt, -p` | - | Initial task for the agent. Saved to a unique file in .claude/ to avoid conflicts. Example: --prompt='Add unit tests for auth' |
 | `--prompt-file, -P` | - | Read the agent prompt from a file instead of command line |
