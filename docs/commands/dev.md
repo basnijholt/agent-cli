@@ -775,7 +775,7 @@ for section in 1 2 3 4; do
 done
 ```
 
-If multiple agents share one worktree, do not have them all write to `.claude/REPORT.md` because they will overwrite each other. Instead, assign unique report paths such as `.claude/REPORT-security-<run-id>.md` and `.claude/REPORT-tests-<run-id>.md`. If you rerun the same prompt repeatedly, use a timestamp or other run id so later runs do not replace earlier results. The same applies to `.claude/TASK.md`: it reflects the most recent launch, not stable per-agent state.
+If multiple agents share one worktree, do not have them all write to `.claude/REPORT.md` because they will overwrite each other. Instead, assign unique report paths such as `.claude/REPORT-security-<run-id>.md` and `.claude/REPORT-tests-<run-id>.md`. If you rerun the same prompt repeatedly, use a timestamp or other run id so later runs do not replace earlier results. Each agent launch also gets its own `.claude/TASK-{timestamp}-{hex}.md` file, so prompt files no longer overwrite each other.
 
 ## Shell Integration
 

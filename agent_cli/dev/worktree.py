@@ -288,7 +288,13 @@ def resolve_worktree_base_dir(repo_root: Path) -> Path:
 def _find_worktree_for_cwd(worktrees: list[WorktreeInfo]) -> WorktreeInfo | None:
     """Find the worktree containing the current working directory."""
     cwd = Path.cwd().resolve()
-    for wt in worktrees:
+    # Prefer the deepest matching path so nested layouts like .worktrees/<name>
+    # resolve to the actual worktree instead of the main repo.
+    for wt in sorted(
+        worktrees,
+        key=lambda worktree: len(worktree.path.resolve().parts),
+        reverse=True,
+    ):
         try:
             cwd.relative_to(wt.path.resolve())
             return wt
