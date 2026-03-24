@@ -97,6 +97,34 @@ class TestTmux:
             session_name="repo-session",
         )
 
+    def test_create_session_disables_renumber_windows(self) -> None:
+        """New tmux sessions disable window renumbering."""
+        terminal = Tmux()
+        mock_handle = MagicMock(handle="%42", session_name="repo-session")
+        with (
+            patch.object(terminal, "_spawn_target", return_value=mock_handle) as mock_spawn,
+            patch("subprocess.run") as mock_run,
+        ):
+            handle = terminal._create_session(
+                Path("/some/path"),
+                "echo hello",
+                "test",
+                session_name="repo-session",
+            )
+
+        assert handle is mock_handle
+        mock_spawn.assert_called_once_with(
+            ["tmux", "new-session", "-d", "-s", "repo-session"],
+            path=Path("/some/path"),
+            command="echo hello",
+            tab_name="test",
+            session_name="repo-session",
+        )
+        mock_run.assert_called_once_with(
+            ["tmux", "set-option", "-t", "repo-session", "renumber-windows", "off"],
+            capture_output=True,
+        )
+
     def test_open_in_session_reuses_existing_session(self) -> None:
         """Outside tmux, a named session gets a new window when it already exists."""
         terminal = Tmux()
