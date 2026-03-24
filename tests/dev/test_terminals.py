@@ -123,6 +123,7 @@ class TestTmux:
         mock_run.assert_called_once_with(
             ["tmux", "set-option", "-t", "repo-session", "renumber-windows", "off"],
             capture_output=True,
+            check=False,
         )
 
     def test_open_in_session_reuses_existing_session(self) -> None:
