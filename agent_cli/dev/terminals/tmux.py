@@ -131,7 +131,7 @@ class Tmux(Terminal):
         )
         if handle is None:
             return None
-        subprocess.run(  # noqa: S607
+        subprocess.run(
             ["tmux", "set-option", "-t", session_name, "renumber-windows", "off"],
             capture_output=True,
         )
