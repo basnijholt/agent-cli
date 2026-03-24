@@ -122,13 +122,21 @@ class Tmux(Terminal):
         session_name: str,
     ) -> TerminalHandle | None:
         """Create a detached tmux session and return its initial pane handle."""
-        return self._spawn_target(
+        handle = self._spawn_target(
             ["tmux", "new-session", "-d", "-s", session_name],
             path=path,
             command=command,
             tab_name=tab_name,
             session_name=session_name,
         )
+        if handle is None:
+            return None
+        subprocess.run(
+            ["tmux", "set-option", "-t", session_name, "renumber-windows", "off"],  # noqa: S607
+            capture_output=True,
+            check=False,
+        )
+        return handle
 
     def _spawn_target(
         self,
