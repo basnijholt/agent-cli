@@ -70,7 +70,7 @@ When an assistant is executing this workflow on the user's behalf, the spawn is 
 - Use `dev new ... --prompt-file ...` for a new delegated task
 - Use `dev agent ... --prompt-file ...` for another agent in an existing worktree
 - Do not stop after `dev new ...` alone if the user's intent was to delegate work immediately
-- Do not run `dev new ... -a`, `dev new ... --agent <name>`, or `dev agent ... -m tmux` without `--prompt` or `--prompt-file` unless the user explicitly wants an interactive session that they will drive manually
+- Do not run `dev new ... --start-agent`, `dev new ... --agent <name>`, or `dev agent ... -m tmux` without `--prompt` or `--prompt-file` unless the user explicitly wants an interactive session that they will drive manually
 
 ## Writing effective prompts for spawned agents
 
@@ -194,11 +194,11 @@ Each agent works independently in its own branch. Results can be reviewed and me
 
 | Option | Description |
 |--------|-------------|
-| `-a` | Start AI coding agent after creation |
+| `--start-agent` | Start the default/auto-detected agent without an initial prompt |
 | `--prompt` / `-p` | Initial prompt for the agent (short prompts only) |
 | `--prompt-file` / `-P` | Read prompt from file (recommended for longer prompts) |
 | `--from` / `-f` | Base ref (default: origin/main). **Use `--from HEAD` when reviewing/testing current branch!** |
-| `--agent` | Specific agent: claude, aider, codex, gemini |
+| `--agent` | Specific agent (or `auto`): claude, aider, codex, gemini |
 | `--agent-args` | Extra arguments for the agent |
 
 @examples.md

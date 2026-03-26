@@ -75,12 +75,13 @@ def test_get_command_options_subcommand() -> None:
     assert len(options) > 0
 
 
-def test_get_command_options_dev_new_uses_agent_flag_name() -> None:
-    """dev.new should expose -a for start and --agent for selecting the agent."""
+def test_get_command_options_dev_new_uses_start_agent_and_agent_name() -> None:
+    """dev.new should expose --start-agent and --agent, but hide deprecated aliases."""
     options = _get_command_options("dev.new")
     names = {opt["name"] for opt in options}
-    assert "-a" in names
+    assert "--start-agent" in names
     assert "--agent" in names
+    assert "-a" not in names
     assert "--with-agent" not in names
 
 

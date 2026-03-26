@@ -29,10 +29,10 @@ agent-cli dev new --branch-name-mode ai --prompt "Refactor auth flow"
 agent-cli dev new my-feature
 
 # Create a dev environment and open in editor + start AI agent
-agent-cli dev new my-feature -e -a
+agent-cli dev new my-feature -e --start-agent
 
 # Create a dev environment and launch the agent in a detached tmux session
-agent-cli dev new my-feature -a -m tmux
+agent-cli dev new my-feature --start-agent -m tmux
 
 # List all dev environments
 agent-cli dev list
@@ -71,8 +71,8 @@ agent-cli dev new [BRANCH] [OPTIONS]
 |--------|---------|-------------|
 | `--from, -f` | - | Git ref (branch/tag/commit) to branch from. Defaults to origin/main or origin/master |
 | `--editor, -e` | `false` | Open the worktree in an editor. Uses --with-editor, config default, or auto-detects |
-| `-a` | `false` | Start an AI coding agent in a new terminal tab. Uses --agent, config default, or auto-detects. Implied by --prompt |
-| `--agent` | - | Which AI agent to start: claude, codex, gemini, aider, copilot, cn (Continue), opencode, cursor-agent. Implies starting the agent |
+| `--start-agent` | `false` | Start an AI coding agent in a new terminal tab without providing an initial prompt. Uses config default or auto-detects |
+| `--agent` | - | Which AI agent to start: claude, codex, gemini, aider, copilot, cn (Continue), opencode, cursor-agent, or auto. Implies starting the agent |
 | `--with-editor` | - | Which editor to open: cursor, vscode, zed, nvim, vim, emacs, sublime, idea, pycharm, etc. |
 | `--setup/--no-setup` | `true` | Run project setup after creation: npm/pnpm/yarn install, poetry/uv sync, cargo build, etc. Auto-detects project type |
 | `--copy-env/--no-copy-env` | `true` | Copy .env, .env.local, .env.example from main repo to worktree |
@@ -101,7 +101,7 @@ agent-cli dev new hotfix --from v1.2.3
 agent-cli dev new feature --with-editor cursor --agent claude
 
 # Quick interactive dev environment with defaults from config
-agent-cli dev new -e -a
+agent-cli dev new -e --start-agent
 
 # Create dev environment with an initial prompt for the agent
 agent-cli dev new fix-bug --prompt "Fix the login validation bug in auth.py"
@@ -109,11 +109,14 @@ agent-cli dev new fix-bug --prompt "Fix the login validation bug in auth.py"
 # Use --prompt-file for long prompts (avoids shell quoting issues)
 agent-cli dev new refactor --prompt-file task.md
 
-# Launch the agent in tmux even when you're not already inside tmux
-agent-cli dev new feature -a -m tmux --prompt-file task.md
+# Launch the default agent interactively in tmux
+agent-cli dev new feature --start-agent -m tmux
+
+# Launch a specific agent in tmux with an initial task
+agent-cli dev new feature --agent codex -m tmux --prompt-file task.md
 ```
 
-For automated or headless use, pass `--prompt` or `--prompt-file` so the agent starts working immediately. A bare `-a` or `-m tmux` launch is mainly useful when a human plans to attach and drive the session interactively.
+For automated or headless use, pass `--prompt` or `--prompt-file` so the agent starts working immediately. `--start-agent` is mainly useful when a human plans to attach and drive the session interactively.
 
 ### `dev list`
 
@@ -579,7 +582,7 @@ commented-out starter block for `[dev]`, `[dev.agent_args]`, and
 [dev]
 # Default flags for 'dev new' command
 editor = true          # Always open editor (-e)
-agent = true           # Always start agent (-a)
+start_agent = true     # Always start agent (--start-agent)
 auto_trust = true      # Auto-trust supported agents before launch
 direnv = true          # Always generate .envrc (--direnv)
 
@@ -621,7 +624,7 @@ Or per-project in `agent-cli-config.toml`:
 ```toml
 [dev]
 editor = true
-agent = true
+start_agent = true
 direnv = true
 default_editor = "zed"
 default_agent = "aider"
@@ -792,5 +795,5 @@ dcd() {
 
 - Use `agent-cli dev new` without arguments for quick experimentation
 - Run `agent-cli dev doctor` to verify your setup
-- Combine `-e -a` flags to immediately start coding with AI assistance
+- Combine `-e --start-agent` to immediately start coding with AI assistance
 - Use `--from` to branch from a specific tag or commit

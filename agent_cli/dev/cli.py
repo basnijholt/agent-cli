@@ -51,9 +51,9 @@ has its own branch and working directory.
 
 **Common workflows:**
 
-- `dev new feature-x -a` — Create worktree + start AI agent in new terminal tab
-- `dev new feature-x -e -a` — Create worktree + open editor + start agent
-- `dev new -a -p "Fix the auth bug"` — Create worktree + start agent with prompt
+- `dev new feature-x --start-agent` — Create worktree + start AI agent in new terminal tab
+- `dev new feature-x -e --start-agent` — Create worktree + open editor + start agent
+- `dev new --prompt "Fix the auth bug"` — Create worktree + start agent with prompt
 - `dev status` — See all worktrees with uncommitted changes
 - `dev clean --merged` — Remove worktrees whose PRs are merged
 
@@ -155,6 +155,36 @@ def _resolve_prompt_text(
         error("--prompt cannot be empty")
 
     return prompt
+
+
+def _resolve_dev_new_agent_request(
+    *,
+    start_agent: bool,
+    start_agent_deprecated: bool,
+    agent_name: str | None,
+    agent_name_deprecated: str | None,
+    prompt: str | None,
+) -> tuple[bool, str | None]:
+    """Normalize launch-related flags for `dev new`."""
+    if start_agent_deprecated:
+        warn("-a is deprecated for 'dev new', use --start-agent instead")
+        start_agent = True
+
+    explicit_agent_requested = agent_name is not None or agent_name_deprecated is not None
+    if agent_name_deprecated is not None:
+        warn("--with-agent is deprecated for 'dev new', use --agent instead")
+        agent_name = agent_name or agent_name_deprecated
+
+    if agent_name is not None:
+        normalized_agent = agent_name.strip().lower()
+        if not normalized_agent:
+            error("--agent cannot be empty")
+        agent_name = None if normalized_agent == "auto" else normalized_agent
+
+    if prompt or explicit_agent_requested:
+        start_agent = True
+
+    return start_agent, agent_name
 
 
 def _resolve_branch_name(
@@ -283,15 +313,23 @@ def new(
     start_agent: Annotated[
         bool,
         typer.Option(
+            "--start-agent",
+            help="Start an AI coding agent in a new terminal tab without providing an initial prompt. Uses config default or auto-detects.",
+        ),
+    ] = False,
+    start_agent_deprecated: Annotated[
+        bool,
+        typer.Option(
             "-a",
-            help="Start an AI coding agent in a new terminal tab. Uses --agent, config default, or auto-detects. Implied by --prompt",
+            hidden=True,
+            help="[Deprecated: use --start-agent] Start an AI coding agent in a new terminal tab",
         ),
     ] = False,
     agent_name: Annotated[
         str | None,
         typer.Option(
             "--agent",
-            help="Which AI agent to start: claude, codex, gemini, aider, copilot, cn (Continue), opencode, cursor-agent. Implies starting the agent",
+            help="Which AI agent to start: claude, codex, gemini, aider, copilot, cn (Continue), opencode, cursor-agent, or auto. Implies starting the agent",
         ),
     ] = None,
     agent_name_deprecated: Annotated[
@@ -430,13 +468,13 @@ def new(
     3. Runs project setup: npm install, uv sync, etc. (--setup)
     4. Sets up direnv if installed (--direnv)
     5. Opens editor if requested (-e/--editor)
-    6. Starts AI agent in new terminal tab if requested (-a, --agent, --prompt, or --prompt-file)
+    6. Starts AI agent in new terminal tab if requested (--start-agent, --agent, --prompt, or --prompt-file)
 
     **Examples:**
 
     - `dev new feature-x` — Create worktree, branching from origin/main (default)
-    - `dev new feature-x -a` — Create + start Claude/detected agent
-    - `dev new feature-x -e -a` — Create + open editor + start agent
+    - `dev new feature-x --start-agent` — Create + start Claude/detected agent
+    - `dev new feature-x -e --start-agent` — Create + open editor + start agent
     - `dev new --prompt "Fix auth bug"` — Auto-named branch + agent with task
     - `dev new --branch-name-mode ai --prompt "Refactor auth flow"` — AI-generated branch name
     - `dev new hotfix --from v1.2.3` — Branch from a tag instead of main
@@ -444,17 +482,13 @@ def new(
     - `dev new feature-x --agent aider --with-editor cursor` — Specific tools
     """
     prompt = _resolve_prompt_text(prompt, prompt_file=prompt_file)
-
-    # Handle deprecated --with-agent alias
-    if agent_name_deprecated is not None:
-        warn("--with-agent is deprecated for 'dev new', use --agent instead")
-        agent_name = agent_name or agent_name_deprecated
-
-    # If a prompt is provided, automatically enable agent mode
-    if prompt:
-        start_agent = True
-    if agent_name:
-        start_agent = True
+    start_agent, agent_name = _resolve_dev_new_agent_request(
+        start_agent=start_agent,
+        start_agent_deprecated=start_agent_deprecated,
+        agent_name=agent_name,
+        agent_name_deprecated=agent_name_deprecated,
+        prompt=prompt,
+    )
 
     repo_root = _ensure_git_repo()
 
@@ -1199,7 +1233,7 @@ def list_terminals_cmd(
     Shows supported terminals: tmux, zellij, kitty, iTerm2, Terminal.app,
     Warp, GNOME Terminal.
 
-    These are used to open new tabs when launching AI agents with `dev new -a`.
+    These are used to open new tabs when launching AI agents with `dev new --start-agent`.
     The current terminal (if detectable) is marked.
     """
     current = terminals.detect_current_terminal()
