@@ -75,6 +75,15 @@ def test_get_command_options_subcommand() -> None:
     assert len(options) > 0
 
 
+def test_get_command_options_dev_new_uses_agent_flag_name() -> None:
+    """dev.new should expose -a for start and --agent for selecting the agent."""
+    options = _get_command_options("dev.new")
+    names = {opt["name"] for opt in options}
+    assert "-a" in names
+    assert "--agent" in names
+    assert "--with-agent" not in names
+
+
 # --- Tests for _options_table ---
 
 

@@ -20,7 +20,7 @@ If `agent-cli` is not available, install it first:
 uv tool install agent-cli -p 3.13
 
 # Or run directly without installing
-uvx --python 3.13 agent-cli dev new <branch-name> --agent --prompt "..."
+uvx --python 3.13 agent-cli dev new <branch-name> --prompt "..."
 ```
 
 ## When to spawn parallel agents
@@ -40,17 +40,17 @@ Do NOT spawn when:
 
 For new features (starts from origin/main):
 ```bash
-agent-cli dev new <branch-name> --agent --prompt "Implement the new feature..."
+agent-cli dev new <branch-name> --prompt "Implement the new feature..."
 ```
 
 For work on current branch (review, test, fix) - use `--from HEAD`:
 ```bash
-agent-cli dev new <branch-name> --from HEAD --agent --prompt "Review/test/fix..."
+agent-cli dev new <branch-name> --from HEAD --prompt "Review/test/fix..."
 ```
 
 For longer prompts (recommended for multi-line or complex instructions):
 ```bash
-agent-cli dev new <branch-name> --from HEAD --agent --prompt-file path/to/prompt.md
+agent-cli dev new <branch-name> --from HEAD --prompt-file path/to/prompt.md
 ```
 
 This creates:
@@ -67,10 +67,10 @@ This creates:
 When an assistant is executing this workflow on the user's behalf, the spawn is not complete unless the agent receives a prompt at launch time.
 
 - Prefer `--prompt-file`; create the prompt file first, then launch the agent
-- Use `dev new ... --agent --prompt-file ...` for a new delegated task
+- Use `dev new ... --prompt-file ...` for a new delegated task
 - Use `dev agent ... --prompt-file ...` for another agent in an existing worktree
 - Do not stop after `dev new ...` alone if the user's intent was to delegate work immediately
-- Do not run `dev new ... --agent` or `dev agent ... -m tmux` without `--prompt` or `--prompt-file` unless the user explicitly wants an interactive session that they will drive manually
+- Do not run `dev new ... -a`, `dev new ... --agent <name>`, or `dev agent ... -m tmux` without `--prompt` or `--prompt-file` unless the user explicitly wants an interactive session that they will drive manually
 
 ## Writing effective prompts for spawned agents
 
@@ -92,7 +92,7 @@ Example workflow:
 ```bash
 # 1. Write prompt to file
 # 2. Spawn agent with the file
-agent-cli dev new my-feature --agent --prompt-file .claude/spawn-prompt.md
+agent-cli dev new my-feature --prompt-file .claude/spawn-prompt.md
 # 3. Optionally clean up
 rm .claude/spawn-prompt.md
 ```
@@ -144,7 +144,7 @@ agent-cli dev agent review-auth -m tmux --prompt-file .claude/review-tests.md
 
 Key rules for same-worktree launches:
 - Use `dev agent`, not `dev new`, after the worktree already exists
-- Use `dev agent -a <agent>` to select a specific agent for an existing worktree; `--with-agent` remains a deprecated alias on this subcommand
+- Use `dev agent --agent <agent>` to select a specific agent for an existing worktree; `--with-agent` remains a deprecated alias on this subcommand
 - Use `-m tmux` for headless or scripted launching; it works even when not already inside tmux
 - Each launch joins the same deterministic repo-scoped tmux session, so related agents stay grouped together
 - Ask each agent to write to a unique report path such as `.claude/REPORT-security-<run-id>.md` or `.claude/REPORT-tests-<run-id>.md`
@@ -171,7 +171,7 @@ When complete, write findings to .claude/REPORT-security-20260319-153045-123.md 
 For non-interactive contexts (scripts, cron jobs, other assistants), combine `--prompt-file` with `-m tmux`:
 
 ```bash
-agent-cli dev new validation-a --from HEAD --agent --with-agent codex -m tmux \
+agent-cli dev new validation-a --from HEAD --agent codex -m tmux \
   --prompt-file .claude/validation-a.md
 ```
 
@@ -183,9 +183,9 @@ If asked to implement auth, payments, and notifications:
 
 ```bash
 # Spawn three parallel agents
-agent-cli dev new auth-feature --agent --prompt "Implement JWT authentication..."
-agent-cli dev new payment-integration --agent --prompt "Add Stripe payment processing..."
-agent-cli dev new email-notifications --agent --prompt "Implement email notification system..."
+agent-cli dev new auth-feature --prompt "Implement JWT authentication..."
+agent-cli dev new payment-integration --prompt "Add Stripe payment processing..."
+agent-cli dev new email-notifications --prompt "Implement email notification system..."
 ```
 
 Each agent works independently in its own branch. Results can be reviewed and merged separately.
@@ -194,11 +194,11 @@ Each agent works independently in its own branch. Results can be reviewed and me
 
 | Option | Description |
 |--------|-------------|
-| `--agent` / `-a` | Start AI coding agent after creation |
+| `-a` | Start AI coding agent after creation |
 | `--prompt` / `-p` | Initial prompt for the agent (short prompts only) |
 | `--prompt-file` / `-P` | Read prompt from file (recommended for longer prompts) |
 | `--from` / `-f` | Base ref (default: origin/main). **Use `--from HEAD` when reviewing/testing current branch!** |
-| `--with-agent` | Specific agent: claude, aider, codex, gemini |
+| `--agent` | Specific agent: claude, aider, codex, gemini |
 | `--agent-args` | Extra arguments for the agent |
 
 @examples.md

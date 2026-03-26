@@ -280,19 +280,26 @@ def new(
             help="Open the worktree in an editor. Uses --with-editor, config default, or auto-detects",
         ),
     ] = False,
-    agent: Annotated[
+    start_agent: Annotated[
         bool,
         typer.Option(
-            "--agent",
             "-a",
-            help="Start an AI coding agent in a new terminal tab. Uses --with-agent, config default, or auto-detects. Implied by --prompt",
+            help="Start an AI coding agent in a new terminal tab. Uses --agent, config default, or auto-detects. Implied by --prompt",
         ),
     ] = False,
     agent_name: Annotated[
         str | None,
         typer.Option(
+            "--agent",
+            help="Which AI agent to start: claude, codex, gemini, aider, copilot, cn (Continue), opencode, cursor-agent. Implies starting the agent",
+        ),
+    ] = None,
+    agent_name_deprecated: Annotated[
+        str | None,
+        typer.Option(
             "--with-agent",
-            help="Which AI agent to start: claude, codex, gemini, aider, copilot, cn (Continue), opencode, cursor-agent",
+            hidden=True,
+            help="[Deprecated: use --agent] Which AI agent to start",
         ),
     ] = None,
     editor_name: Annotated[
@@ -343,7 +350,7 @@ def new(
         str | None,
         typer.Option(
             "--branch-name-agent",
-            help="Headless agent for AI branch naming: claude, codex, or gemini. If omitted, uses --with-agent when supported, otherwise tries available agents in that order",
+            help="Headless agent for AI branch naming: claude, codex, or gemini. If omitted, uses --agent when supported, otherwise tries available agents in that order",
         ),
     ] = None,
     branch_name_timeout: Annotated[
@@ -373,7 +380,7 @@ def new(
         typer.Option(
             "--prompt",
             "-p",
-            help="Initial task for the AI agent. Saved to a unique file in .claude/ to avoid conflicts. Implies --agent. Example: --prompt='Fix the login bug'",
+            help="Initial task for the AI agent. Saved to a unique file in .claude/ to avoid conflicts. Implies starting the agent. Example: --prompt='Fix the login bug'",
         ),
     ] = None,
     prompt_file: Annotated[
@@ -381,7 +388,7 @@ def new(
         typer.Option(
             "--prompt-file",
             "-P",
-            help="Read the agent prompt from a file. Useful for long prompts to avoid shell quoting. Implies --agent",
+            help="Read the agent prompt from a file. Useful for long prompts to avoid shell quoting. Implies starting the agent",
             exists=True,
             readable=True,
         ),
@@ -423,24 +430,31 @@ def new(
     3. Runs project setup: npm install, uv sync, etc. (--setup)
     4. Sets up direnv if installed (--direnv)
     5. Opens editor if requested (-e/--editor)
-    6. Starts AI agent in new terminal tab if requested (-a/--agent or --prompt)
+    6. Starts AI agent in new terminal tab if requested (-a, --agent, --prompt, or --prompt-file)
 
     **Examples:**
 
     - `dev new feature-x` — Create worktree, branching from origin/main (default)
     - `dev new feature-x -a` — Create + start Claude/detected agent
     - `dev new feature-x -e -a` — Create + open editor + start agent
-    - `dev new -a --prompt "Fix auth bug"` — Auto-named branch + agent with task
-    - `dev new --branch-name-mode ai -a --prompt "Refactor auth flow"` — AI-generated branch name
+    - `dev new --prompt "Fix auth bug"` — Auto-named branch + agent with task
+    - `dev new --branch-name-mode ai --prompt "Refactor auth flow"` — AI-generated branch name
     - `dev new hotfix --from v1.2.3` — Branch from a tag instead of main
     - `dev new feature-x --from origin/develop` — Branch from develop instead
-    - `dev new feature-x --with-agent aider --with-editor cursor` — Specific tools
+    - `dev new feature-x --agent aider --with-editor cursor` — Specific tools
     """
     prompt = _resolve_prompt_text(prompt, prompt_file=prompt_file)
 
+    # Handle deprecated --with-agent alias
+    if agent_name_deprecated is not None:
+        warn("--with-agent is deprecated for 'dev new', use --agent instead")
+        agent_name = agent_name or agent_name_deprecated
+
     # If a prompt is provided, automatically enable agent mode
     if prompt:
-        agent = True
+        start_agent = True
+    if agent_name:
+        start_agent = True
 
     repo_root = _ensure_git_repo()
 
@@ -455,8 +469,8 @@ def new(
         from_ref,
     )
 
-    resolved_agent = resolve_agent(agent, agent_name, default_agent)
-    if agent:
+    resolved_agent = resolve_agent(start_agent, agent_name, default_agent)
+    if start_agent:
         resolved_agent = _require_available_agent(resolved_agent, requested_name=agent_name)
 
     # Create the worktree
