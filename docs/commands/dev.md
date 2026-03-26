@@ -23,7 +23,7 @@ Like [git-worktree-runner (gtr)](https://github.com/CodeRabbitAI/git-worktree-ru
 agent-cli dev new
 
 # Create a new dev environment with AI-generated branch name from the prompt
-agent-cli dev new --branch-name-mode ai -a --prompt "Refactor auth flow"
+agent-cli dev new --branch-name-mode ai --prompt "Refactor auth flow"
 
 # Create a dev environment with a specific branch name
 agent-cli dev new my-feature
@@ -71,8 +71,8 @@ agent-cli dev new [BRANCH] [OPTIONS]
 |--------|---------|-------------|
 | `--from, -f` | - | Git ref (branch/tag/commit) to branch from. Defaults to origin/main or origin/master |
 | `--editor, -e` | `false` | Open the worktree in an editor. Uses --with-editor, config default, or auto-detects |
-| `--agent, -a` | `false` | Start an AI coding agent in a new terminal tab. Uses --with-agent, config default, or auto-detects. Implied by --prompt |
-| `--with-agent` | - | Which AI agent to start: claude, codex, gemini, aider, copilot, cn (Continue), opencode, cursor-agent |
+| `-a` | `false` | Start an AI coding agent in a new terminal tab. Uses --agent, config default, or auto-detects. Implied by --prompt |
+| `--agent` | - | Which AI agent to start: claude, codex, gemini, aider, copilot, cn (Continue), opencode, cursor-agent. Implies starting the agent |
 | `--with-editor` | - | Which editor to open: cursor, vscode, zed, nvim, vim, emacs, sublime, idea, pycharm, etc. |
 | `--default-agent` | - | Default agent from config |
 | `--default-editor` | - | Default editor from config |
@@ -80,12 +80,12 @@ agent-cli dev new [BRANCH] [OPTIONS]
 | `--copy-env/--no-copy-env` | `true` | Copy .env, .env.local, .env.example from main repo to worktree |
 | `--fetch/--no-fetch` | `true` | Run 'git fetch' before creating the worktree to ensure refs are up-to-date |
 | `--branch-name-mode` | `random` | How to auto-name branches when BRANCH is omitted: random (default), auto (AI only when --prompt/--prompt-file is set), or ai (always try AI first) |
-| `--branch-name-agent` | - | Headless agent for AI branch naming: claude, codex, or gemini. If omitted, uses --with-agent when supported, otherwise tries available agents in that order |
+| `--branch-name-agent` | - | Headless agent for AI branch naming: claude, codex, or gemini. If omitted, uses --agent when supported, otherwise tries available agents in that order |
 | `--branch-name-timeout` | `20.0` | Timeout in seconds for AI branch naming command |
 | `--direnv/--no-direnv` | - | Generate .envrc based on project type and run 'direnv allow'. Auto-enabled if direnv is installed |
 | `--agent-args` | - | Extra CLI args for the agent. Can be repeated. Example: --agent-args='--dangerously-skip-permissions' |
-| `--prompt, -p` | - | Initial task for the AI agent. Saved to a unique file in .claude/ to avoid conflicts. Implies --agent. Example: --prompt='Fix the login bug' |
-| `--prompt-file, -P` | - | Read the agent prompt from a file. Useful for long prompts to avoid shell quoting. Implies --agent |
+| `--prompt, -p` | - | Initial task for the AI agent. Saved to a unique file in .claude/ to avoid conflicts. Implies starting the agent. Example: --prompt='Fix the login bug' |
+| `--prompt-file, -P` | - | Read the agent prompt from a file. Useful for long prompts to avoid shell quoting. Implies starting the agent |
 | `--multiplexer, -m` | - | Launch the agent in a specific multiplexer. Currently supported: tmux. When started outside tmux, creates or reuses a detached session and reports the pane handle |
 | `--hooks/--no-hooks` | `true` | Run built-in agent preparation (like Codex auto-trust) and configured pre-launch hooks before starting the agent |
 | `--verbose, -v` | `false` | Stream output from setup commands instead of hiding it |
@@ -100,16 +100,16 @@ agent-cli dev new [BRANCH] [OPTIONS]
 agent-cli dev new hotfix --from v1.2.3
 
 # Create an interactive dev environment with Cursor and Claude
-agent-cli dev new feature --with-editor cursor --with-agent claude
+agent-cli dev new feature --with-editor cursor --agent claude
 
 # Quick interactive dev environment with defaults from config
 agent-cli dev new -e -a
 
 # Create dev environment with an initial prompt for the agent
-agent-cli dev new fix-bug -a --prompt "Fix the login validation bug in auth.py"
+agent-cli dev new fix-bug --prompt "Fix the login validation bug in auth.py"
 
 # Use --prompt-file for long prompts (avoids shell quoting issues)
-agent-cli dev new refactor -a --prompt-file task.md
+agent-cli dev new refactor --prompt-file task.md
 
 # Launch the agent in tmux even when you're not already inside tmux
 agent-cli dev new feature -a -m tmux --prompt-file task.md
@@ -292,7 +292,6 @@ agent-cli dev agent NAME [--agent/-a AGENT] [--agent-args ARGS] [--prompt/-p PRO
 | Option | Default | Description |
 |--------|---------|-------------|
 | `--agent, -a` | - | Which agent: claude, codex, gemini, aider, copilot, cn, opencode, cursor-agent. Auto-detects if omitted |
-| `--with-agent` | - | [Deprecated: use --agent/-a] Which agent to start |
 | `--agent-args` | - | Extra CLI args for the agent. Example: --agent-args='--dangerously-skip-permissions' |
 | `--prompt, -p` | - | Initial task for the agent. Saved to a unique file in .claude/ to avoid conflicts. Example: --prompt='Add unit tests for auth' |
 | `--prompt-file, -P` | - | Read the agent prompt from a file instead of command line |
@@ -771,7 +770,7 @@ For fully headless orchestration, combine `--prompt-file` with `-m tmux`:
 
 ```bash
 for section in 1 2 3 4; do
-  agent-cli dev new "validate-$section" --from HEAD --agent --with-agent codex -m tmux \
+  agent-cli dev new "validate-$section" --from HEAD --agent codex -m tmux \
     --prompt-file ".claude/validate-$section.md"
 done
 ```
