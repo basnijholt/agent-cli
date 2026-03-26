@@ -74,8 +74,6 @@ agent-cli dev new [BRANCH] [OPTIONS]
 | `-a` | `false` | Start an AI coding agent in a new terminal tab. Uses --agent, config default, or auto-detects. Implied by --prompt |
 | `--agent` | - | Which AI agent to start: claude, codex, gemini, aider, copilot, cn (Continue), opencode, cursor-agent. Implies starting the agent |
 | `--with-editor` | - | Which editor to open: cursor, vscode, zed, nvim, vim, emacs, sublime, idea, pycharm, etc. |
-| `--default-agent` | - | Default agent from config |
-| `--default-editor` | - | Default editor from config |
 | `--setup/--no-setup` | `true` | Run project setup after creation: npm/pnpm/yarn install, poetry/uv sync, cargo build, etc. Auto-detects project type |
 | `--copy-env/--no-copy-env` | `true` | Copy .env, .env.local, .env.example from main repo to worktree |
 | `--fetch/--no-fetch` | `true` | Run 'git fetch' before creating the worktree to ensure refs are up-to-date |
