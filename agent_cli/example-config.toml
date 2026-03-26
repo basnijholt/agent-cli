@@ -190,7 +190,7 @@ enable_tts = true
 [dev]
 # Defaults for `agent-cli dev new`
 # editor = true
-# agent = true
+# start_agent = true
 # auto_trust = true
 # direnv = true
 # setup = true

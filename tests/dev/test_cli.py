@@ -330,8 +330,8 @@ class TestDevNewBranchNaming:
         mock_ai.assert_called_once()
         mock_random.assert_not_called()
 
-    def test_new_uses_with_agent_for_branch_naming_when_supported(self, tmp_path: Path) -> None:
-        """When --branch-name-agent is omitted, --with-agent is used if supported."""
+    def test_new_uses_agent_for_branch_naming_when_supported(self, tmp_path: Path) -> None:
+        """When --branch-name-agent is omitted, --agent is used if supported."""
         wt_path = tmp_path / "repo-worktrees" / "feat-login-retry"
         wt_path.mkdir(parents=True)
 
@@ -355,8 +355,74 @@ class TestDevNewBranchNaming:
                 ),
             ),
             patch("agent_cli.dev.cli.resolve_editor", return_value=None),
-            patch("agent_cli.dev.cli.resolve_agent", return_value=None),
+            patch("agent_cli.dev.cli.resolve_agent") as mock_resolve_agent,
+            patch("agent_cli.dev.cli.prepare_agent_launch"),
+            patch("agent_cli.dev.cli.merge_agent_args", return_value=None),
+            patch("agent_cli.dev.cli.get_agent_env", return_value={}),
+            patch("agent_cli.dev.cli.launch_agent", return_value=None),
         ):
+            mock_agent = mock_resolve_agent.return_value
+            mock_agent.is_available.return_value = True
+            result = runner.invoke(
+                app,
+                [
+                    "dev",
+                    "new",
+                    "--branch-name-mode",
+                    "ai",
+                    "--agent",
+                    "codex",
+                    "--no-setup",
+                    "--no-copy-env",
+                    "--no-fetch",
+                    "--no-direnv",
+                ],
+            )
+
+        assert result.exit_code == 0
+        mock_random.assert_not_called()
+        mock_ai.assert_called_once_with(
+            Path("/repo"),
+            set(),
+            None,
+            None,
+            "codex",
+            20.0,
+        )
+
+    def test_new_with_agent_alias_warns_and_uses_agent(self, tmp_path: Path) -> None:
+        """Deprecated --with-agent should still work for now."""
+        wt_path = tmp_path / "repo-worktrees" / "feat-login-retry"
+        wt_path.mkdir(parents=True)
+
+        with (
+            patch("agent_cli.dev.cli._ensure_git_repo", return_value=Path("/repo")),
+            patch("agent_cli.dev.worktree.list_worktrees", return_value=[]),
+            patch(
+                "agent_cli.dev.cli.generate_ai_branch_name",
+                return_value="feat/login-retry",
+            ) as mock_ai,
+            patch(
+                "agent_cli.dev.cli.generate_random_branch_name",
+                return_value="happy-fox",
+            ) as mock_random,
+            patch(
+                "agent_cli.dev.worktree.create_worktree",
+                return_value=CreateWorktreeResult(
+                    success=True,
+                    path=wt_path,
+                    branch="feat/login-retry",
+                ),
+            ),
+            patch("agent_cli.dev.cli.resolve_editor", return_value=None),
+            patch("agent_cli.dev.cli.resolve_agent") as mock_resolve_agent,
+            patch("agent_cli.dev.cli.prepare_agent_launch"),
+            patch("agent_cli.dev.cli.merge_agent_args", return_value=None),
+            patch("agent_cli.dev.cli.get_agent_env", return_value={}),
+            patch("agent_cli.dev.cli.launch_agent", return_value=None),
+        ):
+            mock_agent = mock_resolve_agent.return_value
+            mock_agent.is_available.return_value = True
             result = runner.invoke(
                 app,
                 [
@@ -374,6 +440,7 @@ class TestDevNewBranchNaming:
             )
 
         assert result.exit_code == 0
+        assert "deprecated" in result.output.lower()
         mock_random.assert_not_called()
         mock_ai.assert_called_once_with(
             Path("/repo"),
@@ -518,8 +585,47 @@ direnv = false
         )
         assert mock_create.call_args.kwargs["fetch"] is False
 
+    def test_new_uses_start_agent_from_dev_config(self, tmp_path: Path) -> None:
+        """[dev].start_agent should trigger an interactive launch by default."""
+        config_path = tmp_path / "config.toml"
+        config_path.write_text(
+            """[dev]
+start_agent = true
+setup = false
+copy_env = false
+fetch = false
+direnv = false
+""",
+        )
+        wt_path = tmp_path / "repo-worktrees" / "feature"
+        wt_path.mkdir(parents=True)
+
+        with (
+            patch("agent_cli.dev.cli._ensure_git_repo", return_value=Path("/repo")),
+            patch(
+                "agent_cli.dev.worktree.create_worktree",
+                return_value=CreateWorktreeResult(
+                    success=True,
+                    path=wt_path,
+                    branch="feature",
+                ),
+            ),
+            patch("agent_cli.dev.cli.resolve_editor", return_value=None),
+            patch("agent_cli.dev.cli.resolve_agent") as mock_resolve_agent,
+            patch("agent_cli.dev.cli.prepare_agent_launch"),
+            patch("agent_cli.dev.cli.merge_agent_args", return_value=None),
+            patch("agent_cli.dev.cli.get_agent_env", return_value={}),
+            patch("agent_cli.dev.cli.launch_agent", return_value=None),
+        ):
+            mock_agent = mock_resolve_agent.return_value
+            mock_agent.is_available.return_value = True
+            result = runner.invoke(app, ["dev", "--config", str(config_path), "new", "feature"])
+
+        assert result.exit_code == 0
+        assert mock_resolve_agent.call_args.args == (True, None, None)
+
     def test_new_shows_tmux_handle_when_requested(self, tmp_path: Path) -> None:
-        """`dev new -m tmux` shows the returned tmux handle in the summary."""
+        """`dev new --start-agent -m tmux` shows the returned tmux handle."""
         wt_path = tmp_path / "repo-worktrees" / "feature"
         wt_path.mkdir(parents=True)
 
@@ -551,7 +657,7 @@ direnv = false
                     "dev",
                     "new",
                     "feature",
-                    "-a",
+                    "--start-agent",
                     "-m",
                     "tmux",
                     "--no-setup",
@@ -566,6 +672,47 @@ direnv = false
         assert "Agent Handle:" in result.output
         assert "%42" in result.output
         assert "tmux attach -t agent-cli-repo-1234" in result.output
+
+    def test_new_short_start_agent_alias_warns(self, tmp_path: Path) -> None:
+        """Legacy `-a` should still work but warn to use --start-agent."""
+        wt_path = tmp_path / "repo-worktrees" / "feature"
+        wt_path.mkdir(parents=True)
+
+        with (
+            patch("agent_cli.dev.cli._ensure_git_repo", return_value=Path("/repo")),
+            patch(
+                "agent_cli.dev.worktree.create_worktree",
+                return_value=CreateWorktreeResult(
+                    success=True,
+                    path=wt_path,
+                    branch="feature",
+                ),
+            ),
+            patch("agent_cli.dev.cli.resolve_editor", return_value=None),
+            patch("agent_cli.dev.cli.resolve_agent") as mock_resolve_agent,
+            patch("agent_cli.dev.cli.prepare_agent_launch"),
+            patch("agent_cli.dev.cli.merge_agent_args", return_value=None),
+            patch("agent_cli.dev.cli.get_agent_env", return_value={}),
+            patch("agent_cli.dev.cli.launch_agent", return_value=None),
+        ):
+            mock_agent = mock_resolve_agent.return_value
+            mock_agent.is_available.return_value = True
+            result = runner.invoke(
+                app,
+                [
+                    "dev",
+                    "new",
+                    "feature",
+                    "-a",
+                    "--no-setup",
+                    "--no-copy-env",
+                    "--no-fetch",
+                    "--no-direnv",
+                ],
+            )
+
+        assert result.exit_code == 0
+        assert "deprecated" in result.output.lower()
 
     def test_new_fails_before_creating_worktree_when_no_agent_is_available(
         self,
@@ -586,7 +733,6 @@ direnv = false
                     "dev",
                     "new",
                     "my-feature",
-                    "--agent",
                     "--multiplexer",
                     "tmux",
                     "--prompt-file",
@@ -602,6 +748,48 @@ direnv = false
         assert "No AI coding agents found" in result.output
         assert "Success" not in result.output
         mock_create.assert_not_called()
+
+    def test_new_agent_auto_uses_auto_resolution(self, tmp_path: Path) -> None:
+        """`--agent auto` should launch with default/auto-detected resolution."""
+        wt_path = tmp_path / "repo-worktrees" / "feature"
+        wt_path.mkdir(parents=True)
+
+        with (
+            patch("agent_cli.dev.cli._ensure_git_repo", return_value=Path("/repo")),
+            patch(
+                "agent_cli.dev.worktree.create_worktree",
+                return_value=CreateWorktreeResult(
+                    success=True,
+                    path=wt_path,
+                    branch="feature",
+                ),
+            ),
+            patch("agent_cli.dev.cli.resolve_editor", return_value=None),
+            patch("agent_cli.dev.cli.resolve_agent") as mock_resolve_agent,
+            patch("agent_cli.dev.cli.prepare_agent_launch"),
+            patch("agent_cli.dev.cli.merge_agent_args", return_value=None),
+            patch("agent_cli.dev.cli.get_agent_env", return_value={}),
+            patch("agent_cli.dev.cli.launch_agent", return_value=None),
+        ):
+            mock_agent = mock_resolve_agent.return_value
+            mock_agent.is_available.return_value = True
+            result = runner.invoke(
+                app,
+                [
+                    "dev",
+                    "new",
+                    "feature",
+                    "--agent",
+                    "auto",
+                    "--no-setup",
+                    "--no-copy-env",
+                    "--no-fetch",
+                    "--no-direnv",
+                ],
+            )
+
+        assert result.exit_code == 0
+        assert mock_resolve_agent.call_args.args == (True, None, None)
 
     def test_new_fails_before_creating_worktree_when_requested_agent_is_unavailable(self) -> None:
         """Unavailable explicit agents should abort before worktree creation."""
@@ -622,7 +810,6 @@ direnv = false
                     "new",
                     "my-feature",
                     "--agent",
-                    "--with-agent",
                     "codex",
                     "--no-setup",
                     "--no-copy-env",
@@ -690,7 +877,7 @@ direnv = false
                     "dev",
                     "new",
                     "feature",
-                    "--agent",
+                    "--start-agent",
                     "--no-hooks",
                     "--no-setup",
                     "--no-copy-env",
@@ -744,7 +931,7 @@ direnv = false
                     str(config_path),
                     "new",
                     "feature",
-                    "--agent",
+                    "--start-agent",
                     "--no-setup",
                     "--no-copy-env",
                     "--no-fetch",
