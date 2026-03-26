@@ -71,7 +71,7 @@ agent-cli dev new [BRANCH] [OPTIONS]
 |--------|---------|-------------|
 | `--from, -f` | - | Git ref (branch/tag/commit) to branch from. Defaults to origin/main or origin/master |
 | `--editor, -e` | `false` | Open the worktree in an editor. Uses --with-editor, config default, or auto-detects |
-| `--start-agent` | `false` | Start an AI coding agent in a new terminal tab without providing an initial prompt. Uses config default or auto-detects |
+| `--start-agent` | `false` | Start an AI coding agent in a new terminal tab without providing an initial prompt. Uses config default or auto-detects. |
 | `--agent` | - | Which AI agent to start: claude, codex, gemini, aider, copilot, cn (Continue), opencode, cursor-agent, or auto. Implies starting the agent |
 | `--with-editor` | - | Which editor to open: cursor, vscode, zed, nvim, vim, emacs, sublime, idea, pycharm, etc. |
 | `--setup/--no-setup` | `true` | Run project setup after creation: npm/pnpm/yarn install, poetry/uv sync, cargo build, etc. Auto-detects project type |
