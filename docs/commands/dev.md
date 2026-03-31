@@ -85,6 +85,7 @@ agent-cli dev new [BRANCH] [OPTIONS]
 | `--prompt, -p` | - | Initial task for the AI agent. Saved to a unique file in .claude/ to avoid conflicts. Implies starting the agent. Example: --prompt='Fix the login bug' |
 | `--prompt-file, -P` | - | Read the agent prompt from a file. Useful for long prompts to avoid shell quoting. Implies starting the agent |
 | `--multiplexer, -m` | - | Launch the agent in a specific multiplexer. Currently supported: tmux. When started outside tmux, creates or reuses a detached session and reports the pane handle |
+| `--tmux-session` | - | Reuse or create a specific tmux session for the agent. Implies --multiplexer tmux |
 | `--hooks/--no-hooks` | `true` | Run built-in agent preparation (like Codex auto-trust) and configured pre-launch hooks before starting the agent |
 | `--verbose, -v` | `false` | Stream output from setup commands instead of hiding it |
 
@@ -297,6 +298,7 @@ agent-cli dev agent NAME [--agent/-a AGENT] [--agent-args ARGS] [--prompt/-p PRO
 | `--prompt, -p` | - | Initial task for the agent. Saved to a unique file in .claude/ to avoid conflicts. Example: --prompt='Add unit tests for auth' |
 | `--prompt-file, -P` | - | Read the agent prompt from a file instead of command line |
 | `--multiplexer, -m` | - | Launch the agent in a specific multiplexer instead of the current terminal. Currently supported: tmux |
+| `--tmux-session` | - | Reuse or create a specific tmux session for the agent. Implies --multiplexer tmux |
 | `--hooks/--no-hooks` | `true` | Run built-in agent preparation (like Codex auto-trust) and configured pre-launch hooks before starting the agent |
 
 
