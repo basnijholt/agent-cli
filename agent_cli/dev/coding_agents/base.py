@@ -143,7 +143,7 @@ def _get_parent_process_names() -> list[str]:
     - CLI tools that set process.title (like Claude) show their name directly
     """
     try:
-        import psutil  # noqa: PLC0415
+        import psutil  # type: ignore[import-untyped]  # noqa: PLC0415
 
         process = psutil.Process(os.getpid())
         names = []

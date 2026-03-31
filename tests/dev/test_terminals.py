@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import subprocess
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -15,7 +16,7 @@ from agent_cli.dev.terminals import (
     get_terminal,
 )
 from agent_cli.dev.terminals.kitty import Kitty
-from agent_cli.dev.terminals.tmux import Tmux
+from agent_cli.dev.terminals.tmux import Tmux, TmuxInventory, TmuxWindow
 from agent_cli.dev.terminals.zellij import Zellij
 
 
@@ -53,8 +54,41 @@ class TestTmux:
 
         assert result is True
         # Check that tmux new-window was called
-        call_args = mock_run.call_args
+        call_args = mock_run.call_args_list[0]
         assert "new-window" in call_args[0][0]
+
+    def test_spawn_target_tags_window_with_worktree_path(self) -> None:
+        """Spawned tmux windows are tagged with the owning worktree path."""
+        terminal = Tmux()
+        with (
+            patch("shutil.which", return_value="/usr/bin/tmux"),
+            patch(
+                "subprocess.run",
+                side_effect=[
+                    MagicMock(stdout="%42\n"),
+                    MagicMock(returncode=0),
+                ],
+            ) as mock_run,
+        ):
+            handle = terminal._spawn_target(
+                ["tmux", "new-window", "-t", "repo-session"],
+                path=Path("/some/path"),
+                command="echo hello",
+                tab_name="test",
+                session_name="repo-session",
+            )
+
+        assert handle is not None
+        assert handle.handle == "%42"
+        assert mock_run.call_args_list[1].args[0] == [
+            "/usr/bin/tmux",
+            "set-option",
+            "-w",
+            "-t",
+            "%42",
+            "@agent_cli_worktree",
+            str(Path("/some/path").resolve()),
+        ]
 
     def test_session_name_for_repo(self) -> None:
         """Repo session names are deterministic and shell-safe."""
@@ -188,6 +222,71 @@ class TestTmux:
             "test",
             session_name="repo-session",
         )
+
+    def test_list_windows_for_worktree_searches_all_sessions(self) -> None:
+        """Cross-session inventory should filter tagged windows by worktree path."""
+        terminal = Tmux()
+        stdout = (
+            "@1\tsession-a\teditor\t/other/path\n"
+            "@2\tsession-a\tagent-one\t/some/path\n"
+            "@3\tsession-b\tagent-two\t/some/path"
+        )
+        with (
+            patch.object(terminal, "is_available", return_value=True),
+            patch("subprocess.run", return_value=MagicMock(stdout=stdout)) as mock_run,
+        ):
+            inventory = terminal.list_windows_for_worktree(Path("/some/path"))
+
+        assert inventory.error is None
+        assert inventory.windows == (
+            TmuxWindow(window_id="@2", session_name="session-a", window_name="agent-one"),
+            TmuxWindow(window_id="@3", session_name="session-b", window_name="agent-two"),
+        )
+        assert mock_run.call_args.args[0] == [
+            "tmux",
+            "list-windows",
+            "-a",
+            "-F",
+            "#{window_id}\t#{session_name}\t#{window_name}\t#{@agent_cli_worktree}",
+        ]
+
+    def test_list_windows_for_worktree_returns_empty_when_no_server_running(self) -> None:
+        """No running tmux server should be treated as an empty inventory."""
+        terminal = Tmux()
+        error = subprocess.CalledProcessError(
+            1,
+            ["tmux", "list-windows", "-a", "-F", "#{window_id}"],
+            stderr="no server running on /tmp/tmux-1000/default\n",
+        )
+        with (
+            patch.object(terminal, "is_available", return_value=True),
+            patch("subprocess.run", side_effect=error),
+        ):
+            inventory = terminal.list_windows_for_worktree(Path("/some/path"))
+
+        assert inventory == TmuxInventory()
+
+    def test_kill_windows_for_worktree_uses_inventory_window_ids(self) -> None:
+        """Tagged windows are killed by window id across sessions."""
+        terminal = Tmux()
+        inventory = TmuxInventory(
+            windows=(
+                TmuxWindow(window_id="@2", session_name="session-a", window_name="agent-one"),
+                TmuxWindow(window_id="@3", session_name="session-b", window_name="agent-two"),
+            ),
+        )
+        with (
+            patch.object(terminal, "list_windows_for_worktree", return_value=inventory),
+            patch("subprocess.run", return_value=MagicMock(returncode=0)) as mock_run,
+        ):
+            cleanup = terminal.kill_windows_for_worktree(Path("/some/path"))
+
+        assert cleanup.errors == ()
+        assert cleanup.killed_windows == inventory.windows
+        assert [call.args[0] for call in mock_run.call_args_list] == [
+            ["tmux", "kill-window", "-t", "@2"],
+            ["tmux", "kill-window", "-t", "@3"],
+        ]
 
 
 class TestZellij:
