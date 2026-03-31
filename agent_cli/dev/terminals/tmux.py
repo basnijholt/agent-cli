@@ -127,6 +127,8 @@ class Tmux(Terminal):
                 text=True,
             )
         except subprocess.CalledProcessError as e:
+            if self._is_server_unavailable_error(e):
+                return TmuxInventory()
             return TmuxInventory(
                 error=f"Failed to inspect tmux windows for {normalized_path}: {self._error_text(e)}",
             )
@@ -274,6 +276,12 @@ class Tmux(Terminal):
         stderr = exc.stderr.strip() if exc.stderr else ""
         stdout = exc.stdout.strip() if exc.stdout else ""
         return stderr or stdout or str(exc)
+
+    @staticmethod
+    def _is_server_unavailable_error(exc: subprocess.CalledProcessError) -> bool:
+        """Detect tmux errors that mean there is no server/client to inspect."""
+        stderr = exc.stderr.lower() if exc.stderr else ""
+        return "no server running" in stderr or "no current client" in stderr
 
     def _tag_window_for_worktree(self, pane_id: str, worktree_path: Path) -> None:
         """Tag a tmux window with the owning worktree path for later cleanup."""

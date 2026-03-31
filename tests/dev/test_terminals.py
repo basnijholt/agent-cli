@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import subprocess
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -248,6 +249,22 @@ class TestTmux:
             "-F",
             "#{window_id}\t#{session_name}\t#{window_name}\t#{@agent_cli_worktree}",
         ]
+
+    def test_list_windows_for_worktree_returns_empty_when_no_server_running(self) -> None:
+        """No running tmux server should be treated as an empty inventory."""
+        terminal = Tmux()
+        error = subprocess.CalledProcessError(
+            1,
+            ["tmux", "list-windows", "-a", "-F", "#{window_id}"],
+            stderr="no server running on /tmp/tmux-1000/default\n",
+        )
+        with (
+            patch.object(terminal, "is_available", return_value=True),
+            patch("subprocess.run", side_effect=error),
+        ):
+            inventory = terminal.list_windows_for_worktree(Path("/some/path"))
+
+        assert inventory == TmuxInventory()
 
     def test_kill_windows_for_worktree_uses_inventory_window_ids(self) -> None:
         """Tagged windows are killed by window id across sessions."""
