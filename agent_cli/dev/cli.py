@@ -168,8 +168,8 @@ def _normalize_tmux_session(
     normalized_session = tmux_session.strip()
     if not normalized_session:
         error("--tmux-session cannot be empty")
-    if "." in normalized_session or ":" in normalized_session:
-        error("tmux session names cannot contain '.' or ':'")
+    if ":" in normalized_session:
+        error("tmux session names cannot contain ':'")
 
     return normalized_session, "tmux"
 

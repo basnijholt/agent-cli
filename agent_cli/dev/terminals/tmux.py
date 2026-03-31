@@ -78,6 +78,27 @@ class Tmux(Terminal):
         session_name = result.stdout.strip()
         return session_name or None
 
+    def current_window_id(self) -> str | None:
+        """Get the tmux window id for the current pane, when available."""
+        cmd = ["tmux", "display-message", "-p"]
+        pane_id = os.environ.get("TMUX_PANE")
+        if pane_id:
+            cmd.extend(["-t", pane_id])
+        cmd.append("#{window_id}")
+        try:
+            result = subprocess.run(
+                cmd,
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+        except subprocess.CalledProcessError as e:
+            if self._is_server_unavailable_error(e):
+                return None
+            return None
+        window_id = result.stdout.strip()
+        return window_id or None
+
     def open_in_session(
         self,
         path: Path,
@@ -161,7 +182,15 @@ class Tmux(Terminal):
 
         killed_windows: list[TmuxWindow] = []
         errors: list[str] = []
+        current_window_id = self.current_window_id() if inventory.windows else None
         for window in inventory.windows:
+            if current_window_id is not None and window.window_id == current_window_id:
+                errors.append(
+                    "Skipped tmux window "
+                    f"{window.window_id} in session {window.session_name} "
+                    "because it is the current window",
+                )
+                continue
             try:
                 subprocess.run(
                     ["tmux", "kill-window", "-t", window.window_id],  # noqa: S607

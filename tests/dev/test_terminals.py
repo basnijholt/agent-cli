@@ -277,6 +277,7 @@ class TestTmux:
         )
         with (
             patch.object(terminal, "list_windows_for_worktree", return_value=inventory),
+            patch.object(terminal, "current_window_id", return_value=None),
             patch("subprocess.run", return_value=MagicMock(returncode=0)) as mock_run,
         ):
             cleanup = terminal.kill_windows_for_worktree(Path("/some/path"))
@@ -285,6 +286,30 @@ class TestTmux:
         assert cleanup.killed_windows == inventory.windows
         assert [call.args[0] for call in mock_run.call_args_list] == [
             ["tmux", "kill-window", "-t", "@2"],
+            ["tmux", "kill-window", "-t", "@3"],
+        ]
+
+    def test_kill_windows_for_worktree_skips_current_window(self) -> None:
+        """Cleanup should not kill the tmux window running the command."""
+        terminal = Tmux()
+        inventory = TmuxInventory(
+            windows=(
+                TmuxWindow(window_id="@2", session_name="session-a", window_name="agent-one"),
+                TmuxWindow(window_id="@3", session_name="session-b", window_name="agent-two"),
+            ),
+        )
+        with (
+            patch.object(terminal, "list_windows_for_worktree", return_value=inventory),
+            patch.object(terminal, "current_window_id", return_value="@2"),
+            patch("subprocess.run", return_value=MagicMock(returncode=0)) as mock_run,
+        ):
+            cleanup = terminal.kill_windows_for_worktree(Path("/some/path"))
+
+        assert cleanup.errors == (
+            "Skipped tmux window @2 in session session-a because it is the current window",
+        )
+        assert cleanup.killed_windows == (inventory.windows[1],)
+        assert [call.args[0] for call in mock_run.call_args_list] == [
             ["tmux", "kill-window", "-t", "@3"],
         ]
 
