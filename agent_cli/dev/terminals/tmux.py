@@ -7,12 +7,41 @@ import os
 import re
 import shutil
 import subprocess
+from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from .base import Terminal, TerminalHandle
 
 if TYPE_CHECKING:
     from pathlib import Path
+
+WORKTREE_OPTION = "@agent_cli_worktree"
+WINDOW_LIST_FORMAT = "#{window_id}\t#{session_name}\t#{window_name}\t#{@agent_cli_worktree}"
+
+
+@dataclass(frozen=True)
+class TmuxWindow:
+    """A tmux window discovered via cross-session inventory."""
+
+    window_id: str
+    session_name: str
+    window_name: str
+
+
+@dataclass(frozen=True)
+class TmuxInventory:
+    """Tagged tmux windows for a worktree, plus any lookup error."""
+
+    windows: tuple[TmuxWindow, ...] = ()
+    error: str | None = None
+
+
+@dataclass(frozen=True)
+class TmuxCleanupResult:
+    """Result of killing tagged tmux windows for a worktree."""
+
+    killed_windows: tuple[TmuxWindow, ...] = ()
+    errors: tuple[str, ...] = ()
 
 
 class Tmux(Terminal):
@@ -83,6 +112,73 @@ class Tmux(Terminal):
             return handle
 
         return self._open_window(path, command, tab_name, session_name=session_name)
+
+    def list_windows_for_worktree(self, worktree_path: Path) -> TmuxInventory:
+        """List tagged tmux windows for a worktree across all sessions."""
+        if not self.is_available():
+            return TmuxInventory()
+
+        normalized_path = self._normalize_worktree_path(worktree_path)
+        try:
+            result = subprocess.run(
+                ["tmux", "list-windows", "-a", "-F", WINDOW_LIST_FORMAT],  # noqa: S607
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+        except subprocess.CalledProcessError as e:
+            return TmuxInventory(
+                error=f"Failed to inspect tmux windows for {normalized_path}: {self._error_text(e)}",
+            )
+
+        windows: list[TmuxWindow] = []
+        for line in result.stdout.splitlines():
+            if not line:
+                continue
+            parts = line.split("\t", maxsplit=3)
+            if len(parts) != 4:  # noqa: PLR2004
+                continue
+            window_id, session_name, window_name, tagged_path = parts
+            if tagged_path != normalized_path:
+                continue
+            windows.append(
+                TmuxWindow(
+                    window_id=window_id,
+                    session_name=session_name,
+                    window_name=window_name,
+                ),
+            )
+
+        return TmuxInventory(windows=tuple(windows))
+
+    def kill_windows_for_worktree(self, worktree_path: Path) -> TmuxCleanupResult:
+        """Kill tagged tmux windows for a worktree across all sessions."""
+        inventory = self.list_windows_for_worktree(worktree_path)
+        if inventory.error is not None:
+            return TmuxCleanupResult(errors=(inventory.error,))
+
+        killed_windows: list[TmuxWindow] = []
+        errors: list[str] = []
+        for window in inventory.windows:
+            try:
+                subprocess.run(
+                    ["tmux", "kill-window", "-t", window.window_id],  # noqa: S607
+                    check=True,
+                    capture_output=True,
+                    text=True,
+                )
+            except subprocess.CalledProcessError as e:
+                errors.append(
+                    "Failed to kill tmux window "
+                    f"{window.window_id} in session {window.session_name}: {self._error_text(e)}",
+                )
+                continue
+            killed_windows.append(window)
+
+        return TmuxCleanupResult(
+            killed_windows=tuple(killed_windows),
+            errors=tuple(errors),
+        )
 
     def open_new_tab(
         self,
@@ -160,8 +256,41 @@ class Tmux(Terminal):
         pane_id = result.stdout.strip()
         if not pane_id:
             return None
+        self._tag_window_for_worktree(pane_id, path)
         return TerminalHandle(
             terminal_name=self.name,
             handle=pane_id,
             session_name=session_name,
+        )
+
+    @staticmethod
+    def _normalize_worktree_path(path: Path) -> str:
+        """Normalize a worktree path for tmux window tagging and lookup."""
+        return str(path.resolve(strict=False))
+
+    @staticmethod
+    def _error_text(exc: subprocess.CalledProcessError) -> str:
+        """Extract a useful stderr/stdout payload from a tmux subprocess error."""
+        stderr = exc.stderr.strip() if exc.stderr else ""
+        stdout = exc.stdout.strip() if exc.stdout else ""
+        return stderr or stdout or str(exc)
+
+    def _tag_window_for_worktree(self, pane_id: str, worktree_path: Path) -> None:
+        """Tag a tmux window with the owning worktree path for later cleanup."""
+        tmux_executable = shutil.which("tmux")
+        if tmux_executable is None:
+            return
+
+        subprocess.run(
+            [
+                tmux_executable,
+                "set-option",
+                "-w",
+                "-t",
+                pane_id,
+                WORKTREE_OPTION,
+                self._normalize_worktree_path(worktree_path),
+            ],
+            capture_output=True,
+            check=False,
         )

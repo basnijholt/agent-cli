@@ -157,6 +157,21 @@ def _resolve_prompt_text(
     return prompt
 
 
+def _normalize_tmux_session(
+    tmux_session: str | None,
+    multiplexer: Literal["tmux"] | None,
+) -> tuple[str | None, Literal["tmux"] | None]:
+    """Normalize `--tmux-session` and make it imply tmux launches."""
+    if tmux_session is None:
+        return None, multiplexer
+
+    normalized_session = tmux_session.strip()
+    if not normalized_session:
+        error("--tmux-session cannot be empty")
+
+    return normalized_session, "tmux"
+
+
 def _resolve_dev_new_agent_request(
     *,
     start_agent: bool,
@@ -440,6 +455,13 @@ def new(
             help="Launch the agent in a specific multiplexer. Currently supported: tmux. When started outside tmux, creates or reuses a detached session and reports the pane handle",
         ),
     ] = None,
+    tmux_session: Annotated[
+        str | None,
+        typer.Option(
+            "--tmux-session",
+            help="Reuse or create a specific tmux session for the agent. Implies --multiplexer tmux",
+        ),
+    ] = None,
     hooks: Annotated[
         bool,
         typer.Option(
@@ -489,6 +511,7 @@ def new(
         agent_name_deprecated=agent_name_deprecated,
         prompt=prompt,
     )
+    tmux_session, multiplexer = _normalize_tmux_session(tmux_session, multiplexer)
 
     repo_root = _ensure_git_repo()
 
@@ -571,6 +594,7 @@ def new(
             task_file,
             agent_env,
             multiplexer_name=multiplexer,
+            tmux_session=tmux_session,
         )
 
     # Print summary
@@ -873,17 +897,19 @@ def remove(
         if not typer.confirm("Continue?"):
             raise typer.Abort
 
-    removed, remove_err = worktree.remove_worktree(
-        wt.path,
+    result = cleanup.remove_worktree(
+        wt,
+        repo_root,
         force=force,
         delete_branch=delete_branch,
-        repo_path=repo_root,
     )
 
-    if removed:
+    if result.success:
         success(f"Removed worktree: {wt.path}")
+        for cleanup_warning in result.warnings:
+            warn(cleanup_warning)
     else:
-        error(remove_err or "Failed to remove worktree")
+        error(result.error or "Failed to remove worktree")
 
 
 @app.command("path")
@@ -1018,6 +1044,13 @@ def start_agent(
             help="Launch the agent in a specific multiplexer instead of the current terminal. Currently supported: tmux",
         ),
     ] = None,
+    tmux_session: Annotated[
+        str | None,
+        typer.Option(
+            "--tmux-session",
+            help="Reuse or create a specific tmux session for the agent. Implies --multiplexer tmux",
+        ),
+    ] = None,
     hooks: Annotated[
         bool,
         typer.Option(
@@ -1043,6 +1076,7 @@ def start_agent(
         agent_name = agent_name or agent_name_deprecated
 
     prompt = _resolve_prompt_text(prompt, prompt_file=prompt_file)
+    tmux_session, multiplexer = _normalize_tmux_session(tmux_session, multiplexer)
 
     repo_root = _ensure_git_repo()
 
@@ -1090,6 +1124,7 @@ def start_agent(
             task_file,
             agent_env,
             multiplexer_name=multiplexer,
+            tmux_session=tmux_session,
         )
         if handle:
             info(
@@ -1367,11 +1402,13 @@ def _clean_merged_worktrees(
         info("[dry-run] Would remove the above worktrees")
     elif yes or typer.confirm("\nRemove these worktrees?"):
         results = cleanup.remove_worktrees([wt for wt, _ in to_remove], repo_root, force=force)
-        for branch, ok, remove_err in results:
-            if ok:
-                success(f"Removed {branch}")
+        for result in results:
+            if result.success:
+                success(f"Removed {result.name}")
+                for cleanup_warning in result.warnings:
+                    warn(cleanup_warning)
             else:
-                warn(f"Failed to remove {branch}: {remove_err}")
+                warn(f"Failed to remove {result.name}: {result.error}")
 
 
 def _clean_no_commits_worktrees(
@@ -1401,11 +1438,13 @@ def _clean_no_commits_worktrees(
         info("[dry-run] Would remove the above worktrees")
     elif yes or typer.confirm("\nRemove these worktrees?"):
         results = cleanup.remove_worktrees(to_remove, repo_root, force=force)
-        for branch, ok, remove_err in results:
-            if ok:
-                success(f"Removed {branch}")
+        for result in results:
+            if result.success:
+                success(f"Removed {result.name}")
+                for cleanup_warning in result.warnings:
+                    warn(cleanup_warning)
             else:
-                warn(f"Failed to remove {branch}: {remove_err}")
+                warn(f"Failed to remove {result.name}: {result.error}")
 
 
 @app.command("clean")
