@@ -202,7 +202,9 @@ class TestTerminalCommands:
                 tab_name="test-tab",
             )
         # Verify correct flags were used
-        call_args = next(args[0] for args, _kwargs in mock_run.call_args_list if "new-window" in args[0])
+        call_args = next(
+            args[0] for args, _kwargs in mock_run.call_args_list if "new-window" in args[0]
+        )
         assert "-c" in call_args
         assert "-n" in call_args
         assert "test-tab" in call_args

@@ -948,7 +948,9 @@ direnv = false
     def test_new_rejects_tmux_session_with_illegal_characters(self, tmux_session: str) -> None:
         """Tmux session names with tmux-illegal characters should fail early."""
         with patch("agent_cli.dev.cli._ensure_git_repo") as mock_ensure_repo:
-            result = runner.invoke(app, ["dev", "new", "my-feature", "--tmux-session", tmux_session])
+            result = runner.invoke(
+                app, ["dev", "new", "my-feature", "--tmux-session", tmux_session]
+            )
 
         assert result.exit_code == 1
         assert "tmux session names cannot contain '.' or ':'" in result.output
