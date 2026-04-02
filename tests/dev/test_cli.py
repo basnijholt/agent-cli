@@ -6,6 +6,7 @@ import subprocess
 from pathlib import Path
 from unittest.mock import patch
 
+import pytest
 from typer.testing import CliRunner
 
 from agent_cli.cli import app
@@ -18,6 +19,7 @@ from agent_cli.dev._branch_name import (
     generate_ai_branch_name,
     generate_random_branch_name,
 )
+from agent_cli.dev.cleanup import RemoveWorktreeResult
 from agent_cli.dev.cli import _clean_no_commits_worktrees
 from agent_cli.dev.cli import app as dev_app
 from agent_cli.dev.coding_agents.base import CodingAgent
@@ -256,7 +258,7 @@ class TestDevClean:
             patch("agent_cli.dev.cleanup.find_worktrees_with_no_commits", return_value=[wt]),
             patch(
                 "agent_cli.dev.cleanup.remove_worktrees",
-                return_value=[("feature", True, None)],
+                return_value=[RemoveWorktreeResult(name="feature", success=True)],
             ) as mock_remove,
         ):
             _clean_no_commits_worktrees(
@@ -673,6 +675,92 @@ direnv = false
         assert "%42" in result.output
         assert "tmux attach -t agent-cli-repo-1234" in result.output
 
+    def test_new_tmux_session_implies_tmux_and_normalizes(self, tmp_path: Path) -> None:
+        """`--tmux-session` trims whitespace and forces tmux."""
+        wt_path = tmp_path / "repo-worktrees" / "feature"
+        wt_path.mkdir(parents=True)
+
+        with (
+            patch("agent_cli.dev.cli._ensure_git_repo", return_value=Path("/repo")),
+            patch(
+                "agent_cli.dev.worktree.create_worktree",
+                return_value=CreateWorktreeResult(
+                    success=True,
+                    path=wt_path,
+                    branch="feature",
+                ),
+            ),
+            patch("agent_cli.dev.cli.resolve_editor", return_value=None),
+            patch("agent_cli.dev.cli.resolve_agent") as mock_resolve_agent,
+            patch("agent_cli.dev.cli.prepare_agent_launch"),
+            patch("agent_cli.dev.cli.merge_agent_args", return_value=None),
+            patch("agent_cli.dev.cli.get_agent_env", return_value={}),
+            patch(
+                "agent_cli.dev.cli.launch_agent",
+                return_value=TerminalHandle("tmux", "%42", "my_session name"),
+            ) as mock_launch,
+        ):
+            mock_agent = mock_resolve_agent.return_value
+            mock_agent.is_available.return_value = True
+            result = runner.invoke(
+                app,
+                [
+                    "dev",
+                    "new",
+                    "feature",
+                    "--start-agent",
+                    "--tmux-session",
+                    "  my_session name  ",
+                    "--no-setup",
+                    "--no-copy-env",
+                    "--no-fetch",
+                    "--no-direnv",
+                ],
+            )
+
+        assert result.exit_code == 0
+        assert mock_launch.call_args.kwargs["multiplexer_name"] == "tmux"
+        assert mock_launch.call_args.kwargs["tmux_session"] == "my_session name"
+        assert "tmux attach -t 'my_session name'" in result.output
+
+    def test_new_tmux_session_does_not_imply_start_agent(self, tmp_path: Path) -> None:
+        """`--tmux-session` is only a placement flag for `dev new`."""
+        wt_path = tmp_path / "repo-worktrees" / "feature"
+        wt_path.mkdir(parents=True)
+
+        with (
+            patch("agent_cli.dev.cli._ensure_git_repo", return_value=Path("/repo")),
+            patch(
+                "agent_cli.dev.worktree.create_worktree",
+                return_value=CreateWorktreeResult(
+                    success=True,
+                    path=wt_path,
+                    branch="feature",
+                ),
+            ),
+            patch("agent_cli.dev.cli.resolve_editor", return_value=None),
+            patch("agent_cli.dev.cli.resolve_agent", return_value=None) as mock_resolve_agent,
+            patch("agent_cli.dev.cli.launch_agent") as mock_launch,
+        ):
+            result = runner.invoke(
+                app,
+                [
+                    "dev",
+                    "new",
+                    "feature",
+                    "--tmux-session",
+                    "shared-session",
+                    "--no-setup",
+                    "--no-copy-env",
+                    "--no-fetch",
+                    "--no-direnv",
+                ],
+            )
+
+        assert result.exit_code == 0
+        assert mock_resolve_agent.call_args.args == (False, None, None)
+        mock_launch.assert_not_called()
+
     def test_new_short_start_agent_alias_warns(self, tmp_path: Path) -> None:
         """Legacy `-a` should still work but warn to use --start-agent."""
         wt_path = tmp_path / "repo-worktrees" / "feature"
@@ -847,6 +935,27 @@ direnv = false
         assert f"Prompt file is empty: {prompt_file}" in result.output
         mock_ensure_repo.assert_not_called()
 
+    def test_new_rejects_empty_tmux_session(self) -> None:
+        """Empty tmux session names should fail before repo/worktree work starts."""
+        with patch("agent_cli.dev.cli._ensure_git_repo") as mock_ensure_repo:
+            result = runner.invoke(app, ["dev", "new", "my-feature", "--tmux-session", "  "])
+
+        assert result.exit_code == 1
+        assert "--tmux-session cannot be empty" in result.output
+        mock_ensure_repo.assert_not_called()
+
+    @pytest.mark.parametrize("tmux_session", ["batch.1", "batch:1"])
+    def test_new_rejects_tmux_session_with_illegal_characters(self, tmux_session: str) -> None:
+        """Tmux session names with tmux-illegal characters should fail early."""
+        with patch("agent_cli.dev.cli._ensure_git_repo") as mock_ensure_repo:
+            result = runner.invoke(
+                app, ["dev", "new", "my-feature", "--tmux-session", tmux_session]
+            )
+
+        assert result.exit_code == 1
+        assert "tmux session names cannot contain '.' or ':'" in result.output
+        mock_ensure_repo.assert_not_called()
+
     def test_new_skips_launch_preparation_when_hooks_are_disabled(self, tmp_path: Path) -> None:
         """`--no-hooks` should bypass built-in preparation and configured hooks."""
         wt_path = tmp_path / "repo-worktrees" / "feature"
@@ -994,6 +1103,43 @@ class TestDevAgent:
         assert mock_launch.call_args.kwargs["multiplexer_name"] == "tmux"
         assert "tmux handle: %42" in result.output
 
+    def test_agent_tmux_session_implies_tmux_and_normalizes(self) -> None:
+        """`dev agent --tmux-session` trims whitespace and forces tmux."""
+        wt = WorktreeInfo(
+            path=Path("/repo-worktrees/feature"),
+            branch="feature",
+            commit="abc",
+            is_main=False,
+            is_detached=False,
+            is_locked=False,
+            is_prunable=False,
+        )
+
+        with (
+            patch("agent_cli.dev.cli._ensure_git_repo", return_value=Path("/repo")),
+            patch("agent_cli.dev.worktree.find_worktree_by_name", return_value=wt),
+            patch("agent_cli.dev.cli.coding_agents.detect_current_agent") as mock_detect_current,
+            patch("agent_cli.dev.cli.prepare_agent_launch"),
+            patch("agent_cli.dev.cli.merge_agent_args", return_value=None),
+            patch("agent_cli.dev.cli.get_agent_env", return_value={}),
+            patch(
+                "agent_cli.dev.cli.launch_agent",
+                return_value=TerminalHandle("tmux", "%42", "my_session name"),
+            ) as mock_launch,
+        ):
+            current_agent = mock_detect_current.return_value
+            current_agent.name = "codex"
+            current_agent.is_available.return_value = True
+            result = runner.invoke(
+                app,
+                ["dev", "agent", "feature", "--tmux-session", "  my_session name  "],
+            )
+
+        assert result.exit_code == 0
+        assert mock_launch.call_args.kwargs["multiplexer_name"] == "tmux"
+        assert mock_launch.call_args.kwargs["tmux_session"] == "my_session name"
+        assert "tmux attach -t 'my_session name'" in result.output
+
     def test_agent_quotes_tmux_attach_hint(self) -> None:
         """Attach hint should quote session names that contain spaces."""
         wt = WorktreeInfo(
@@ -1025,6 +1171,28 @@ class TestDevAgent:
 
         assert result.exit_code == 0
         assert "tmux attach -t 'my session'" in result.output
+
+    def test_agent_rejects_empty_tmux_session(self) -> None:
+        """Empty tmux session names should fail before repo/worktree resolution."""
+        with patch("agent_cli.dev.cli._ensure_git_repo") as mock_ensure_repo:
+            result = runner.invoke(app, ["dev", "agent", "feature", "--tmux-session", "  "])
+
+        assert result.exit_code == 1
+        assert "--tmux-session cannot be empty" in result.output
+        mock_ensure_repo.assert_not_called()
+
+    @pytest.mark.parametrize("tmux_session", ["batch.1", "batch:1"])
+    def test_agent_rejects_tmux_session_with_illegal_characters(self, tmux_session: str) -> None:
+        """Tmux session names with tmux-illegal characters should fail early."""
+        with patch("agent_cli.dev.cli._ensure_git_repo") as mock_ensure_repo:
+            result = runner.invoke(
+                app,
+                ["dev", "agent", "feature", "--tmux-session", tmux_session],
+            )
+
+        assert result.exit_code == 1
+        assert "tmux session names cannot contain '.' or ':'" in result.output
+        mock_ensure_repo.assert_not_called()
 
     def test_agent_rejects_empty_prompt_file(self, tmp_path: Path) -> None:
         """Empty prompt files should fail before repo/worktree resolution."""
@@ -1330,15 +1498,15 @@ class TestDevRm:
             patch("agent_cli.dev.worktree.git_available", return_value=True),
             patch("agent_cli.dev.worktree.find_worktree_by_name", return_value=mock_wt),
             patch(
-                "agent_cli.dev.worktree.remove_worktree",
-                return_value=(True, None),
+                "agent_cli.dev.cleanup.remove_worktree",
+                return_value=RemoveWorktreeResult(name="feature", success=True),
             ) as mock_remove,
         ):
             # With --force, should NOT prompt and should succeed
             result = runner.invoke(app, ["dev", "rm", "feature", "--force"])
             assert result.exit_code == 0
             assert "Removed worktree" in result.output
-            # Verify remove_worktree was called with force=True
+            # Verify cleanup.remove_worktree was called with force=True
             mock_remove.assert_called_once()
             assert mock_remove.call_args[1]["force"] is True
 
@@ -1359,8 +1527,8 @@ class TestDevRm:
             patch("agent_cli.dev.worktree.git_available", return_value=True),
             patch("agent_cli.dev.worktree.find_worktree_by_name", return_value=mock_wt),
             patch(
-                "agent_cli.dev.worktree.remove_worktree",
-                return_value=(True, None),
+                "agent_cli.dev.cleanup.remove_worktree",
+                return_value=RemoveWorktreeResult(name="feature", success=True),
             ) as mock_remove,
         ):
             # With --yes, should NOT prompt and should succeed
@@ -1386,8 +1554,8 @@ class TestDevRm:
             patch("agent_cli.dev.worktree.git_available", return_value=True),
             patch("agent_cli.dev.worktree.find_worktree_by_name", return_value=mock_wt),
             patch(
-                "agent_cli.dev.worktree.remove_worktree",
-                return_value=(True, None),
+                "agent_cli.dev.cleanup.remove_worktree",
+                return_value=RemoveWorktreeResult(name="feature", success=True),
             ) as mock_remove,
         ):
             # Without --force or --yes, should prompt (and abort on 'n')
@@ -1395,6 +1563,37 @@ class TestDevRm:
             assert result.exit_code != 0 or "Aborted" in result.output
             # remove_worktree should NOT have been called since user said no
             mock_remove.assert_not_called()
+
+    def test_rm_surfaces_tmux_cleanup_warnings(self) -> None:
+        """Tmux cleanup failures should warn without failing the removal."""
+        mock_wt = WorktreeInfo(
+            path=Path("/repo-worktrees/feature"),
+            branch="feature",
+            commit="abc",
+            is_main=False,
+            is_detached=False,
+            is_locked=False,
+            is_prunable=False,
+        )
+
+        with (
+            patch("agent_cli.dev.worktree.get_main_repo_root", return_value=Path("/repo")),
+            patch("agent_cli.dev.worktree.git_available", return_value=True),
+            patch("agent_cli.dev.worktree.find_worktree_by_name", return_value=mock_wt),
+            patch(
+                "agent_cli.dev.cleanup.remove_worktree",
+                return_value=RemoveWorktreeResult(
+                    name="feature",
+                    success=True,
+                    warnings=["Failed to inspect tmux windows for /repo-worktrees/feature: boom"],
+                ),
+            ),
+        ):
+            result = runner.invoke(app, ["dev", "rm", "feature", "--yes"])
+
+        assert result.exit_code == 0
+        assert "Removed worktree" in result.output
+        assert "Failed to inspect tmux windows" in result.output
 
 
 class TestFormatEnvPrefix:

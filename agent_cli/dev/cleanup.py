@@ -4,12 +4,24 @@ from __future__ import annotations
 
 import json
 import subprocess
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 from . import worktree
+from .terminals.tmux import Tmux
 
 if TYPE_CHECKING:
     from pathlib import Path
+
+
+@dataclass
+class RemoveWorktreeResult:
+    """Outcome of removing a worktree and any tagged tmux windows."""
+
+    name: str
+    success: bool
+    error: str | None = None
+    warnings: list[str] = field(default_factory=list)
 
 
 def find_worktrees_with_no_commits(repo_root: Path) -> list[worktree.WorktreeInfo]:
@@ -95,18 +107,45 @@ def remove_worktrees(
     repo_root: Path,
     *,
     force: bool = False,
-) -> list[tuple[str, bool, str | None]]:
+) -> list[RemoveWorktreeResult]:
     """Remove a list of worktrees.
 
-    Returns list of (branch_name, success, error_message) tuples.
+    Returns a result for each worktree removal attempt.
     """
-    results: list[tuple[str, bool, str | None]] = []
-    for wt in worktrees_to_remove:
-        success, error = worktree.remove_worktree(
-            wt.path,
+    return [
+        remove_worktree(
+            wt,
+            repo_root,
             force=force,
             delete_branch=True,
-            repo_path=repo_root,
         )
-        results.append((wt.branch or wt.path.name, success, error))
-    return results
+        for wt in worktrees_to_remove
+    ]
+
+
+def remove_worktree(
+    wt: worktree.WorktreeInfo,
+    repo_root: Path,
+    *,
+    force: bool = False,
+    delete_branch: bool = False,
+) -> RemoveWorktreeResult:
+    """Remove one worktree and then clean up any tagged tmux windows."""
+    removed, error = worktree.remove_worktree(
+        wt.path,
+        force=force,
+        delete_branch=delete_branch,
+        repo_path=repo_root,
+    )
+    result = RemoveWorktreeResult(
+        name=wt.branch or wt.path.name,
+        success=removed,
+        error=error,
+    )
+    if not removed:
+        return result
+
+    tmux = Tmux()
+    tmux_cleanup = tmux.kill_windows_for_worktree(wt.path)
+    result.warnings.extend(tmux_cleanup.errors)
+    return result

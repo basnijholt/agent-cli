@@ -31,8 +31,11 @@ agent-cli dev new my-feature
 # Create a dev environment and open in editor + start AI agent
 agent-cli dev new my-feature -e --start-agent
 
-# Create a dev environment and launch the agent in a detached tmux session
+# Create a dev environment and launch the agent in a detached repo-scoped tmux session
 agent-cli dev new my-feature --start-agent -m tmux
+
+# Launch into a specific tmux session instead of the default repo-scoped one
+agent-cli dev new my-feature --agent codex --tmux-session review-batch --prompt-file task.md
 
 # List all dev environments
 agent-cli dev list
@@ -85,6 +88,7 @@ agent-cli dev new [BRANCH] [OPTIONS]
 | `--prompt, -p` | - | Initial task for the AI agent. Saved to a unique file in .claude/ to avoid conflicts. Implies starting the agent. Example: --prompt='Fix the login bug' |
 | `--prompt-file, -P` | - | Read the agent prompt from a file. Useful for long prompts to avoid shell quoting. Implies starting the agent |
 | `--multiplexer, -m` | - | Launch the agent in a specific multiplexer. Currently supported: tmux. When started outside tmux, creates or reuses a detached session and reports the pane handle |
+| `--tmux-session` | - | Reuse or create a specific tmux session for the agent. Implies --multiplexer tmux |
 | `--hooks/--no-hooks` | `true` | Run built-in agent preparation (like Codex auto-trust) and configured pre-launch hooks before starting the agent |
 | `--verbose, -v` | `false` | Stream output from setup commands instead of hiding it |
 
@@ -114,9 +118,12 @@ agent-cli dev new feature --start-agent -m tmux
 
 # Launch a specific agent in tmux with an initial task
 agent-cli dev new feature --agent codex -m tmux --prompt-file task.md
+
+# Override the default repo-scoped tmux session
+agent-cli dev new feature --agent codex --tmux-session review-batch --prompt-file task.md
 ```
 
-For automated or headless use, pass `--prompt` or `--prompt-file` so the agent starts working immediately. `--start-agent` is mainly useful when a human plans to attach and drive the session interactively.
+For automated or headless use, pass `--prompt` or `--prompt-file` so the agent starts working immediately. `--start-agent` is mainly useful when a human plans to attach and drive the session interactively. `--tmux-session` implies `-m tmux` and overrides the default repo-scoped tmux session name.
 
 ### `dev list`
 
@@ -234,6 +241,8 @@ agent-cli dev rm NAME [OPTIONS]
 
 <!-- OUTPUT:END -->
 
+When a worktree was launched in tmux through `agent-cli`, `dev rm` also cleans up any tagged tmux windows for that worktree. If git removal succeeds but tmux cleanup is partial, the command warns and still removes the worktree.
+
 ### `dev path`
 
 Print the path to a dev environment (for shell integration).
@@ -277,7 +286,7 @@ agent-cli dev editor NAME [--editor/-e EDITOR]
 Start an AI coding agent in a dev environment.
 
 ```bash
-agent-cli dev agent NAME [--agent/-a AGENT] [--agent-args ARGS] [--prompt/-p PROMPT] [--multiplexer/-m tmux]
+agent-cli dev agent NAME [--agent/-a AGENT] [--agent-args ARGS] [--prompt/-p PROMPT] [--multiplexer/-m tmux] [--tmux-session SESSION]
 ```
 
 **Options:**
@@ -297,6 +306,7 @@ agent-cli dev agent NAME [--agent/-a AGENT] [--agent-args ARGS] [--prompt/-p PRO
 | `--prompt, -p` | - | Initial task for the agent. Saved to a unique file in .claude/ to avoid conflicts. Example: --prompt='Add unit tests for auth' |
 | `--prompt-file, -P` | - | Read the agent prompt from a file instead of command line |
 | `--multiplexer, -m` | - | Launch the agent in a specific multiplexer instead of the current terminal. Currently supported: tmux |
+| `--tmux-session` | - | Reuse or create a specific tmux session for the agent. Implies --multiplexer tmux |
 | `--hooks/--no-hooks` | `true` | Run built-in agent preparation (like Codex auto-trust) and configured pre-launch hooks before starting the agent |
 
 
@@ -313,9 +323,12 @@ agent-cli dev agent my-feature -a aider --prompt "Add unit tests for the auth mo
 
 # Start an agent in a detached tmux session and get its pane handle
 agent-cli dev agent my-feature -a codex -m tmux --prompt-file continue-task.md
+
+# Reuse or create a specific tmux session for a shared review batch
+agent-cli dev agent my-feature -a codex --tmux-session review-batch --prompt-file continue-task.md
 ```
 
-For automated use, prefer `--prompt-file` or `--prompt`. Without either, the agent starts interactively and may wait for input.
+For automated use, prefer `--prompt-file` or `--prompt`. Without either, the agent starts interactively and may wait for input. `--tmux-session` implies `-m tmux`, and tmux session names cannot contain `.` or `:`.
 
 ### `dev run`
 
@@ -377,6 +390,8 @@ agent-cli dev clean --no-commits
 # Preview what would be cleaned
 agent-cli dev clean --merged --dry-run
 ```
+
+Like `dev rm`, `dev clean` also removes tagged tmux windows for worktrees it deletes and warns if tmux cleanup is only partial.
 
 ### `dev doctor`
 
@@ -726,9 +741,11 @@ When launching an AI agent, the dev command automatically:
 
 1. Detects if you're in tmux/zellij and opens a new tab there
 2. With `-m tmux`, creates or reuses a detached tmux session even when you're not already inside tmux
-3. Returns the tmux pane handle and an attach command for explicit tmux launches
-4. Falls back to supported terminals (kitty, iTerm2)
-5. Prints instructions if no terminal is detected
+3. Outside tmux, uses a deterministic repo-scoped tmux session by default for explicit tmux launches
+4. Inside tmux, opens a new window in the current tmux session unless `--tmux-session <name>` is provided
+5. Returns the tmux pane handle and an attach command for explicit tmux launches
+6. Falls back to supported terminals (kitty, iTerm2)
+7. Prints instructions if no terminal is detected
 
 Before launching an agent, `agent-cli dev` can also run launch preparation:
 
@@ -765,7 +782,9 @@ This is useful for:
 - Parallel validation agents working on one codebase
 - Headless orchestration from scripts or other assistants
 
-All explicit tmux launches for the same repository are grouped into the same deterministic tmux session (`agent-cli-<repo>-<hash>`), which keeps related windows together even when the command is run outside tmux.
+Outside tmux, explicit tmux launches for the same repository are grouped into the same deterministic tmux session (`agent-cli-<repo>-<hash>`), which keeps related windows together across headless or scripted launches.
+
+When already inside tmux, `-m tmux` opens a new window in the current session unless you pass `--tmux-session <name>`. That flag reuses or creates a specific tmux session instead. tmux session names cannot contain `.` or `:`.
 
 For fully headless orchestration, combine `--prompt-file` with `-m tmux`:
 
