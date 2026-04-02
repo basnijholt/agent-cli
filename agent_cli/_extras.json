@@ -31,6 +31,12 @@
       "pydantic_ai"
     ]
   ],
+  "nemo-whisper": [
+    "Whisper-compatible ASR via NVIDIA NeMo (Parakeet)",
+    [
+      "nemo"
+    ]
+  ],
   "mlx-whisper": [
     "Whisper ASR for Apple Silicon",
     [
