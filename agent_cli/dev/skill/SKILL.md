@@ -9,7 +9,7 @@ This skill teaches you how to spawn parallel AI coding agents in isolated git wo
 
 `agent-cli dev` supports two complementary patterns:
 - Separate worktrees for isolated implementation/review tasks
-- Multiple agents on the same worktree using `dev agent -m tmux` or `--tmux-session`
+- Multiple agents on the same worktree using `dev agent --tmux-session <unique-name>` for autonomous launches, or `-m tmux` when a human explicitly wants shared tmux windows
 
 ## Installation
 
@@ -136,18 +136,25 @@ Use this when several agents should inspect or validate the same code at once wi
 # Create the worktree once. This step only prepares the shared workspace.
 agent-cli dev new review-auth --from HEAD
 
-# Then launch the actual agents with prompts.
-agent-cli dev agent review-auth -m tmux --prompt-file .claude/review-security.md
-agent-cli dev agent review-auth -m tmux --prompt-file .claude/review-performance.md
-agent-cli dev agent review-auth -m tmux --prompt-file .claude/review-tests.md
+# Then launch the actual agents with prompts. Give each agent its own tmux session.
+agent-cli dev agent review-auth \
+  --tmux-session review-auth-security-20260402-1530 \
+  --prompt-file .claude/review-security.md
+agent-cli dev agent review-auth \
+  --tmux-session review-auth-performance-20260402-1530 \
+  --prompt-file .claude/review-performance.md
+agent-cli dev agent review-auth \
+  --tmux-session review-auth-tests-20260402-1530 \
+  --prompt-file .claude/review-tests.md
 ```
 
 Key rules for same-worktree launches:
 - Use `dev agent`, not `dev new`, after the worktree already exists
 - Use `dev agent --agent <agent>` to select a specific agent for an existing worktree; `--with-agent` remains a deprecated alias on this subcommand
-- Use `-m tmux` for headless or scripted launching; it works even when not already inside tmux
-- Outside tmux, each explicit tmux launch joins the same deterministic repo-scoped tmux session, so related agents stay grouped together across headless launches
-- Inside tmux, `-m tmux` opens a new window in the current session unless you pass `--tmux-session <name>`, which reuses or creates a specific tmux session and also implies `-m tmux`
+- For autonomous agents, prefer `--tmux-session <unique-name>` and use a different session name for each launch
+- Reserve bare `-m tmux` for human-driven grouped windows or when the user explicitly wants agents to share one tmux session
+- Outside tmux, bare `-m tmux` joins the deterministic repo-scoped tmux session
+- Inside tmux, bare `-m tmux` opens a new window in the current session unless you pass `--tmux-session <name>`, which reuses or creates a specific tmux session and also implies `-m tmux`
 - tmux session names cannot contain `.` or `:`
 - Ask each agent to write to a unique report path such as `.claude/REPORT-security-<run-id>.md` or `.claude/REPORT-tests-<run-id>.md`
 - If you rerun the same prompt repeatedly, include a timestamp or other run id in the report filename so later runs do not overwrite earlier ones
@@ -170,19 +177,21 @@ When complete, write findings to .claude/REPORT-security-20260319-153045-123.md 
 
 ## Headless/scripted orchestration
 
-For non-interactive contexts (scripts, cron jobs, other assistants), combine `--prompt-file` with `-m tmux`:
+For non-interactive contexts (scripts, cron jobs, other assistants), combine `--prompt-file` with `--tmux-session`:
 
 ```bash
-agent-cli dev new validation-a --from HEAD --agent codex -m tmux \
+agent-cli dev new validation-a --from HEAD --agent codex \
+  --tmux-session validation-a-20260402-1530 \
   --prompt-file .claude/validation-a.md
 ```
 
-This works without an attached terminal. In that case, `agent-cli` creates or reuses the repo-scoped tmux session and returns a pane handle plus attach command. Add `--tmux-session validation-batch` if you need a specific shared session name. Launches may also run pre-launch preparation by default; use `--no-hooks` only when you explicitly need to bypass that behavior.
+This works without an attached terminal. For autonomous or scripted launches, prefer a unique `--tmux-session` per agent so separate runs do not trample each other by sharing one tmux session. Use bare `-m tmux` only when you explicitly want shared tmux grouping. Launches may also run pre-launch preparation by default; use `--no-hooks` only when you explicitly need to bypass that behavior.
 
 ## Cleanup behavior
 
 - `dev rm` and `dev clean` also clean up tmux windows that `agent-cli` tagged for the worktree
 - If git worktree removal succeeds but tmux cleanup is partial, the command warns and still removes the worktree
+- Session isolation prevents agents from interfering with each other's tmux windows during execution, but cleanup still applies to all tagged windows for the worktree
 
 ## Example: Multi-feature implementation
 
@@ -207,6 +216,6 @@ Each agent works independently in its own branch. Results can be reviewed and me
 | `--from` / `-f` | Base ref (default: origin/main). **Use `--from HEAD` when reviewing/testing current branch!** |
 | `--agent` | Specific agent (or `auto`): claude, aider, codex, gemini |
 | `--agent-args` | Extra arguments for the agent |
-| `--tmux-session` | Reuse or create a specific tmux session. Implies tmux launching and overrides the default repo-scoped session |
+| `--tmux-session` | Reuse or create a specific tmux session. For autonomous agents, prefer a unique name per launch |
 
 @examples.md
