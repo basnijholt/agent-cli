@@ -676,7 +676,7 @@ direnv = false
         assert "tmux attach -t agent-cli-repo-1234" in result.output
 
     def test_new_tmux_session_implies_tmux_and_normalizes(self, tmp_path: Path) -> None:
-        """`--tmux-session` trims whitespace, preserves dots, and forces tmux."""
+        """`--tmux-session` trims whitespace and forces tmux."""
         wt_path = tmp_path / "repo-worktrees" / "feature"
         wt_path.mkdir(parents=True)
 
@@ -697,7 +697,7 @@ direnv = false
             patch("agent_cli.dev.cli.get_agent_env", return_value={}),
             patch(
                 "agent_cli.dev.cli.launch_agent",
-                return_value=TerminalHandle("tmux", "%42", "my.session name"),
+                return_value=TerminalHandle("tmux", "%42", "my_session name"),
             ) as mock_launch,
         ):
             mock_agent = mock_resolve_agent.return_value
@@ -710,7 +710,7 @@ direnv = false
                     "feature",
                     "--start-agent",
                     "--tmux-session",
-                    "  my.session name  ",
+                    "  my_session name  ",
                     "--no-setup",
                     "--no-copy-env",
                     "--no-fetch",
@@ -720,8 +720,8 @@ direnv = false
 
         assert result.exit_code == 0
         assert mock_launch.call_args.kwargs["multiplexer_name"] == "tmux"
-        assert mock_launch.call_args.kwargs["tmux_session"] == "my.session name"
-        assert "tmux attach -t 'my.session name'" in result.output
+        assert mock_launch.call_args.kwargs["tmux_session"] == "my_session name"
+        assert "tmux attach -t 'my_session name'" in result.output
 
     def test_new_tmux_session_does_not_imply_start_agent(self, tmp_path: Path) -> None:
         """`--tmux-session` is only a placement flag for `dev new`."""
@@ -944,7 +944,7 @@ direnv = false
         assert "--tmux-session cannot be empty" in result.output
         mock_ensure_repo.assert_not_called()
 
-    @pytest.mark.parametrize("tmux_session", ["batch:1"])
+    @pytest.mark.parametrize("tmux_session", ["batch.1", "batch:1"])
     def test_new_rejects_tmux_session_with_illegal_characters(self, tmux_session: str) -> None:
         """Tmux session names with tmux-illegal characters should fail early."""
         with patch("agent_cli.dev.cli._ensure_git_repo") as mock_ensure_repo:
@@ -953,7 +953,7 @@ direnv = false
             )
 
         assert result.exit_code == 1
-        assert "tmux session names cannot contain ':'" in result.output
+        assert "tmux session names cannot contain '.' or ':'" in result.output
         mock_ensure_repo.assert_not_called()
 
     def test_new_skips_launch_preparation_when_hooks_are_disabled(self, tmp_path: Path) -> None:
@@ -1104,7 +1104,7 @@ class TestDevAgent:
         assert "tmux handle: %42" in result.output
 
     def test_agent_tmux_session_implies_tmux_and_normalizes(self) -> None:
-        """`dev agent --tmux-session` trims whitespace, preserves dots, and forces tmux."""
+        """`dev agent --tmux-session` trims whitespace and forces tmux."""
         wt = WorktreeInfo(
             path=Path("/repo-worktrees/feature"),
             branch="feature",
@@ -1124,7 +1124,7 @@ class TestDevAgent:
             patch("agent_cli.dev.cli.get_agent_env", return_value={}),
             patch(
                 "agent_cli.dev.cli.launch_agent",
-                return_value=TerminalHandle("tmux", "%42", "my.session name"),
+                return_value=TerminalHandle("tmux", "%42", "my_session name"),
             ) as mock_launch,
         ):
             current_agent = mock_detect_current.return_value
@@ -1132,13 +1132,13 @@ class TestDevAgent:
             current_agent.is_available.return_value = True
             result = runner.invoke(
                 app,
-                ["dev", "agent", "feature", "--tmux-session", "  my.session name  "],
+                ["dev", "agent", "feature", "--tmux-session", "  my_session name  "],
             )
 
         assert result.exit_code == 0
         assert mock_launch.call_args.kwargs["multiplexer_name"] == "tmux"
-        assert mock_launch.call_args.kwargs["tmux_session"] == "my.session name"
-        assert "tmux attach -t 'my.session name'" in result.output
+        assert mock_launch.call_args.kwargs["tmux_session"] == "my_session name"
+        assert "tmux attach -t 'my_session name'" in result.output
 
     def test_agent_quotes_tmux_attach_hint(self) -> None:
         """Attach hint should quote session names that contain spaces."""
@@ -1181,7 +1181,7 @@ class TestDevAgent:
         assert "--tmux-session cannot be empty" in result.output
         mock_ensure_repo.assert_not_called()
 
-    @pytest.mark.parametrize("tmux_session", ["batch:1"])
+    @pytest.mark.parametrize("tmux_session", ["batch.1", "batch:1"])
     def test_agent_rejects_tmux_session_with_illegal_characters(self, tmux_session: str) -> None:
         """Tmux session names with tmux-illegal characters should fail early."""
         with patch("agent_cli.dev.cli._ensure_git_repo") as mock_ensure_repo:
@@ -1191,7 +1191,7 @@ class TestDevAgent:
             )
 
         assert result.exit_code == 1
-        assert "tmux session names cannot contain ':'" in result.output
+        assert "tmux session names cannot contain '.' or ':'" in result.output
         mock_ensure_repo.assert_not_called()
 
     def test_agent_rejects_empty_prompt_file(self, tmp_path: Path) -> None:

@@ -96,6 +96,14 @@ class TestTmux:
         session_name = terminal.session_name_for_repo(Path("/workspace/my repo"))
         assert session_name.startswith("agent-cli-my-repo-")
 
+    def test_session_name_for_repo_replaces_tmux_target_separators(self) -> None:
+        """Repo-derived tmux session names should avoid target separator characters."""
+        terminal = Tmux()
+        session_name = terminal.session_name_for_repo(Path("/workspace/demo.repo"))
+        assert session_name.startswith("agent-cli-demo-repo-")
+        assert "." not in session_name
+        assert ":" not in session_name
+
     def test_open_in_session_creates_detached_session_when_missing(self) -> None:
         """Outside tmux, a named session is created in detached mode if absent."""
         terminal = Tmux()

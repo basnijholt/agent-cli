@@ -52,6 +52,40 @@ class TestLaunchAgent:
             session_name="agent-cli-repo-1234",
         )
 
+    def test_uses_tmux_safe_repo_session_for_dotted_repo_names(self, tmp_path: Path) -> None:
+        """Repo-scoped tmux sessions should avoid target separator characters."""
+        agent = MagicMock()
+        agent.name = "codex"
+        agent.launch_command.return_value = ["codex"]
+
+        tmux_terminal = Tmux()
+        expected_session = tmux_terminal.session_name_for_repo(Path("/repo.name"))
+        handle = TerminalHandle("tmux", "%42", expected_session)
+
+        with (
+            patch("agent_cli.dev.launch.terminals.get_terminal", return_value=tmux_terminal),
+            patch("agent_cli.dev.launch.terminals.detect_current_terminal", return_value=None),
+            patch.object(tmux_terminal, "is_available", return_value=True),
+            patch.object(tmux_terminal, "detect", return_value=False),
+            patch.object(tmux_terminal, "open_in_session", return_value=handle) as mock_open,
+            patch(
+                "agent_cli.dev.launch.worktree.get_main_repo_root", return_value=Path("/repo.name")
+            ),
+            patch("agent_cli.dev.launch.worktree.get_current_branch", return_value="feature"),
+        ):
+            result = launch_agent(tmp_path, agent, multiplexer_name="tmux")
+
+        assert result == handle
+        assert expected_session.startswith("agent-cli-repo-name-")
+        assert "." not in expected_session
+        assert ":" not in expected_session
+        mock_open.assert_called_once_with(
+            tmp_path,
+            "codex",
+            tab_name="repo.name@feature",
+            session_name=expected_session,
+        )
+
     def test_explicit_tmux_session_takes_precedence_outside_tmux(self, tmp_path: Path) -> None:
         """`tmux_session` overrides the repo-derived detached session."""
         agent = MagicMock()

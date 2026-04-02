@@ -59,8 +59,8 @@ class Tmux(Terminal):
         return shutil.which("tmux") is not None
 
     def session_name_for_repo(self, repo_root: Path) -> str:
-        """Build a deterministic tmux session name for a repo."""
-        repo_slug = re.sub(r"[^A-Za-z0-9_.-]+", "-", repo_root.name).strip("-") or "repo"
+        """Build a deterministic tmux-safe session name for a repo."""
+        repo_slug = re.sub(r"[^A-Za-z0-9_-]+", "-", repo_root.name).strip("-") or "repo"
         repo_hash = hashlib.sha256(str(repo_root).encode()).hexdigest()[:8]
         return f"agent-cli-{repo_slug[:24]}-{repo_hash}"
 
