@@ -234,10 +234,12 @@ class TestTmux:
     def test_list_windows_for_worktree_searches_all_sessions(self) -> None:
         """Cross-session inventory should filter tagged windows by worktree path."""
         terminal = Tmux()
+        some_path = terminal._normalize_worktree_path(Path("/some/path"))
+        other_path = terminal._normalize_worktree_path(Path("/other/path"))
         stdout = (
-            "@1\tsession-a\teditor\t/other/path\n"
-            "@2\tsession-a\tagent-one\t/some/path\n"
-            "@3\tsession-b\tagent-two\t/some/path"
+            f"@1\tsession-a\teditor\t{other_path}\n"
+            f"@2\tsession-a\tagent-one\t{some_path}\n"
+            f"@3\tsession-b\tagent-two\t{some_path}"
         )
         with (
             patch.object(terminal, "is_available", return_value=True),
