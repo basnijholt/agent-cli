@@ -741,8 +741,8 @@ When launching an AI agent, the dev command automatically:
 
 1. Detects if you're in tmux/zellij and opens a new tab there
 2. With `-m tmux`, creates or reuses a detached tmux session even when you're not already inside tmux
-3. Uses a deterministic repo-scoped tmux session by default for explicit tmux launches
-4. Lets `--tmux-session <name>` override that default session, including when the command is run from inside tmux
+3. Outside tmux, uses a deterministic repo-scoped tmux session by default for explicit tmux launches
+4. Inside tmux, opens a new window in the current tmux session unless `--tmux-session <name>` is provided
 5. Returns the tmux pane handle and an attach command for explicit tmux launches
 6. Falls back to supported terminals (kitty, iTerm2)
 7. Prints instructions if no terminal is detected
@@ -782,9 +782,9 @@ This is useful for:
 - Parallel validation agents working on one codebase
 - Headless orchestration from scripts or other assistants
 
-By default, explicit tmux launches for the same repository are grouped into the same deterministic tmux session (`agent-cli-<repo>-<hash>`), which keeps related windows together even when the command is run outside tmux.
+Outside tmux, explicit tmux launches for the same repository are grouped into the same deterministic tmux session (`agent-cli-<repo>-<hash>`), which keeps related windows together across headless or scripted launches.
 
-If you need a different grouping strategy, pass `--tmux-session <name>` to reuse or create a specific tmux session instead. This overrides the repo-scoped default even when the command is run from inside tmux. tmux session names cannot contain `.` or `:`.
+When already inside tmux, `-m tmux` opens a new window in the current session unless you pass `--tmux-session <name>`. That flag reuses or creates a specific tmux session instead. tmux session names cannot contain `.` or `:`.
 
 For fully headless orchestration, combine `--prompt-file` with `-m tmux`:
 

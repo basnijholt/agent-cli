@@ -146,8 +146,8 @@ Key rules for same-worktree launches:
 - Use `dev agent`, not `dev new`, after the worktree already exists
 - Use `dev agent --agent <agent>` to select a specific agent for an existing worktree; `--with-agent` remains a deprecated alias on this subcommand
 - Use `-m tmux` for headless or scripted launching; it works even when not already inside tmux
-- By default, each explicit tmux launch joins the same deterministic repo-scoped tmux session, so related agents stay grouped together
-- Use `--tmux-session <name>` to reuse or create a specific tmux session when you want custom grouping; this also works when already inside tmux and implies `-m tmux`
+- Outside tmux, each explicit tmux launch joins the same deterministic repo-scoped tmux session, so related agents stay grouped together across headless launches
+- Inside tmux, `-m tmux` opens a new window in the current session unless you pass `--tmux-session <name>`, which reuses or creates a specific tmux session and also implies `-m tmux`
 - tmux session names cannot contain `.` or `:`
 - Ask each agent to write to a unique report path such as `.claude/REPORT-security-<run-id>.md` or `.claude/REPORT-tests-<run-id>.md`
 - If you rerun the same prompt repeatedly, include a timestamp or other run id in the report filename so later runs do not overwrite earlier ones
@@ -177,7 +177,7 @@ agent-cli dev new validation-a --from HEAD --agent codex -m tmux \
   --prompt-file .claude/validation-a.md
 ```
 
-This works without an attached terminal. By default, `agent-cli` creates or reuses the repo-scoped tmux session and returns a pane handle plus attach command. Add `--tmux-session validation-batch` if you need a specific shared session name. Launches may also run pre-launch preparation by default; use `--no-hooks` only when you explicitly need to bypass that behavior.
+This works without an attached terminal. In that case, `agent-cli` creates or reuses the repo-scoped tmux session and returns a pane handle plus attach command. Add `--tmux-session validation-batch` if you need a specific shared session name. Launches may also run pre-launch preparation by default; use `--no-hooks` only when you explicitly need to bypass that behavior.
 
 ## Cleanup behavior
 
