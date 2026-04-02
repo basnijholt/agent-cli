@@ -9,7 +9,7 @@ This skill teaches you how to spawn parallel AI coding agents in isolated git wo
 
 `agent-cli dev` supports two complementary patterns:
 - Separate worktrees for isolated implementation/review tasks
-- Multiple agents on the same worktree using `dev agent -m tmux`
+- Multiple agents on the same worktree using `dev agent -m tmux` or `--tmux-session`
 
 ## Installation
 
@@ -146,7 +146,9 @@ Key rules for same-worktree launches:
 - Use `dev agent`, not `dev new`, after the worktree already exists
 - Use `dev agent --agent <agent>` to select a specific agent for an existing worktree; `--with-agent` remains a deprecated alias on this subcommand
 - Use `-m tmux` for headless or scripted launching; it works even when not already inside tmux
-- Each launch joins the same deterministic repo-scoped tmux session, so related agents stay grouped together
+- By default, each explicit tmux launch joins the same deterministic repo-scoped tmux session, so related agents stay grouped together
+- Use `--tmux-session <name>` to reuse or create a specific tmux session when you want custom grouping; this also works when already inside tmux and implies `-m tmux`
+- tmux session names cannot contain `.` or `:`
 - Ask each agent to write to a unique report path such as `.claude/REPORT-security-<run-id>.md` or `.claude/REPORT-tests-<run-id>.md`
 - If you rerun the same prompt repeatedly, include a timestamp or other run id in the report filename so later runs do not overwrite earlier ones
 - Each agent launch gets its own unique task file in `.claude/` (e.g., `TASK-{timestamp}-{hex}.md`), so parallel launches do not overwrite each other
@@ -175,7 +177,12 @@ agent-cli dev new validation-a --from HEAD --agent codex -m tmux \
   --prompt-file .claude/validation-a.md
 ```
 
-This works without an attached terminal. `agent-cli` creates or reuses a detached tmux session and returns a pane handle plus attach command. Launches may also run pre-launch preparation by default; use `--no-hooks` only when you explicitly need to bypass that behavior.
+This works without an attached terminal. By default, `agent-cli` creates or reuses the repo-scoped tmux session and returns a pane handle plus attach command. Add `--tmux-session validation-batch` if you need a specific shared session name. Launches may also run pre-launch preparation by default; use `--no-hooks` only when you explicitly need to bypass that behavior.
+
+## Cleanup behavior
+
+- `dev rm` and `dev clean` also clean up tmux windows that `agent-cli` tagged for the worktree
+- If git worktree removal succeeds but tmux cleanup is partial, the command warns and still removes the worktree
 
 ## Example: Multi-feature implementation
 
@@ -200,5 +207,6 @@ Each agent works independently in its own branch. Results can be reviewed and me
 | `--from` / `-f` | Base ref (default: origin/main). **Use `--from HEAD` when reviewing/testing current branch!** |
 | `--agent` | Specific agent (or `auto`): claude, aider, codex, gemini |
 | `--agent-args` | Extra arguments for the agent |
+| `--tmux-session` | Reuse or create a specific tmux session. Implies tmux launching and overrides the default repo-scoped session |
 
 @examples.md
