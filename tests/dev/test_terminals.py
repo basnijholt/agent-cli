@@ -297,7 +297,39 @@ class TestTmux:
             ["tmux", "kill-window", "-t", "@3"],
         ]
 
-    def test_kill_windows_for_worktree_skips_current_window(self) -> None:
+    def test_kill_windows_for_worktree_uses_inventory_window_ids_outside_tmux(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Outside tmux, cleanup should not treat the server's active window as current."""
+        terminal = Tmux()
+        inventory = TmuxInventory(
+            windows=(
+                TmuxWindow(window_id="@2", session_name="session-a", window_name="agent-one"),
+                TmuxWindow(window_id="@3", session_name="session-b", window_name="agent-two"),
+            ),
+        )
+        monkeypatch.delenv("TMUX", raising=False)
+        monkeypatch.delenv("TMUX_PANE", raising=False)
+        with (
+            patch.object(terminal, "list_windows_for_worktree", return_value=inventory),
+            patch.object(terminal, "current_window_id", return_value="@2") as mock_current_window,
+            patch("subprocess.run", return_value=MagicMock(returncode=0)) as mock_run,
+        ):
+            cleanup = terminal.kill_windows_for_worktree(Path("/some/path"))
+
+        mock_current_window.assert_not_called()
+        assert cleanup.errors == ()
+        assert cleanup.killed_windows == inventory.windows
+        assert [call.args[0] for call in mock_run.call_args_list] == [
+            ["tmux", "kill-window", "-t", "@2"],
+            ["tmux", "kill-window", "-t", "@3"],
+        ]
+
+    def test_kill_windows_for_worktree_skips_current_window(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
         """Cleanup should not kill the tmux window running the command."""
         terminal = Tmux()
         inventory = TmuxInventory(
@@ -306,6 +338,7 @@ class TestTmux:
                 TmuxWindow(window_id="@3", session_name="session-b", window_name="agent-two"),
             ),
         )
+        monkeypatch.setenv("TMUX", "/run/user/1000/tmux-1000/default,12345,0")
         with (
             patch.object(terminal, "list_windows_for_worktree", return_value=inventory),
             patch.object(terminal, "current_window_id", return_value="@2"),

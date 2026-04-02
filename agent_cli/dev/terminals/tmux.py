@@ -99,6 +99,11 @@ class Tmux(Terminal):
         window_id = result.stdout.strip()
         return window_id or None
 
+    @staticmethod
+    def _in_tmux_client() -> bool:
+        """Whether this process is currently running inside a tmux client."""
+        return os.environ.get("TMUX") is not None or os.environ.get("TMUX_PANE") is not None
+
     def open_in_session(
         self,
         path: Path,
@@ -182,7 +187,9 @@ class Tmux(Terminal):
 
         killed_windows: list[TmuxWindow] = []
         errors: list[str] = []
-        current_window_id = self.current_window_id() if inventory.windows else None
+        current_window_id = (
+            self.current_window_id() if inventory.windows and self._in_tmux_client() else None
+        )
         for window in inventory.windows:
             if current_window_id is not None and window.window_id == current_window_id:
                 errors.append(
