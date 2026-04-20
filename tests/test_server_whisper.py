@@ -620,7 +620,7 @@ class TestWhisperAPI:
                 return_value=mock_result,
             ),
             client.websocket_connect(
-                "/v1/audio/transcriptions/stream?model=whisper-1",
+                "/v1/audio/transcriptions/stream?model=whisper-1&use_vad=false",
             ) as websocket,
         ):
             for chunk in chunks:
@@ -657,7 +657,7 @@ class TestWhisperAPI:
                 side_effect=RuntimeError("boom"),
             ),
             client.websocket_connect(
-                "/v1/audio/transcriptions/stream?model=whisper-1",
+                "/v1/audio/transcriptions/stream?model=whisper-1&use_vad=false",
             ) as websocket,
         ):
             websocket.send_bytes(b"\x00\x00" * 160)
@@ -666,3 +666,149 @@ class TestWhisperAPI:
 
         assert data["type"] == "error"
         assert data["message"] == "boom"
+
+    def test_websocket_vad_mode_single_segment(
+        self,
+        client: TestClient,
+        mock_registry: WhisperModelRegistry,
+    ) -> None:
+        """Test VAD mode sends partial then final for a single segment."""
+        mock_result = TranscriptionResult(
+            text="Hello world",
+            language="en",
+            language_probability=0.95,
+            duration=1.5,
+            segments=[],
+        )
+
+        # Create a mock VAD that returns one segment on flush
+        mock_vad = type(
+            "MockVAD",
+            (),
+            {
+                "process_chunk": lambda _self, _chunk: (False, None),
+                "flush": lambda _self: b"audio_data",
+            },
+        )()
+
+        manager = mock_registry.get_manager()
+        with (
+            patch.object(
+                manager,
+                "transcribe",
+                new_callable=AsyncMock,
+                return_value=mock_result,
+            ),
+            patch(
+                "agent_cli.server.whisper.api._create_vad",
+                return_value=mock_vad,
+            ),
+            client.websocket_connect(
+                "/v1/audio/transcriptions/stream?model=whisper-1&use_vad=true",
+            ) as websocket,
+        ):
+            websocket.send_bytes(b"\x00\x00" * 160)
+            websocket.send_bytes(b"EOS")
+
+            # Should receive partial then final
+            partial = websocket.receive_json()
+            final = websocket.receive_json()
+
+        assert partial["type"] == "partial"
+        assert partial["text"] == "Hello world"
+        assert partial["is_final"] is False
+
+        assert final["type"] == "final"
+        assert final["text"] == "Hello world"
+        assert final["is_final"] is True
+        assert final["duration"] == 1.5
+
+    def test_websocket_vad_mode_multiple_segments(
+        self,
+        client: TestClient,
+        mock_registry: WhisperModelRegistry,
+    ) -> None:
+        """Test VAD mode sends multiple partials for multiple segments."""
+        results = [
+            TranscriptionResult(
+                text="First segment",
+                language="en",
+                language_probability=0.95,
+                duration=1.0,
+                segments=[],
+            ),
+            TranscriptionResult(
+                text="Second segment",
+                language="en",
+                language_probability=0.95,
+                duration=0.8,
+                segments=[],
+            ),
+        ]
+
+        # Mock VAD that returns segment on first chunk, another on flush
+        call_count = [0]
+
+        def mock_process_chunk(_self: object, _chunk: bytes) -> tuple[bool, bytes | None]:
+            call_count[0] += 1
+            if call_count[0] == 1:
+                return (False, b"segment1")
+            return (False, None)
+
+        mock_vad = type(
+            "MockVAD",
+            (),
+            {
+                "process_chunk": mock_process_chunk,
+                "flush": lambda _self: b"segment2",
+            },
+        )()
+
+        manager = mock_registry.get_manager()
+        transcribe_mock = AsyncMock(side_effect=results)
+
+        with (
+            patch.object(manager, "transcribe", transcribe_mock),
+            patch(
+                "agent_cli.server.whisper.api._create_vad",
+                return_value=mock_vad,
+            ),
+            client.websocket_connect(
+                "/v1/audio/transcriptions/stream?model=whisper-1&use_vad=true",
+            ) as websocket,
+        ):
+            websocket.send_bytes(b"\x00\x00" * 160)
+            websocket.send_bytes(b"EOS")
+
+            partial1 = websocket.receive_json()
+            partial2 = websocket.receive_json()
+            final = websocket.receive_json()
+
+        assert partial1["type"] == "partial"
+        assert partial1["text"] == "First segment"
+
+        assert partial2["type"] == "partial"
+        assert partial2["text"] == "Second segment"
+
+        assert final["type"] == "final"
+        assert final["text"] == "First segment Second segment"
+        assert final["duration"] == pytest.approx(1.8)
+
+    def test_websocket_vad_not_available(
+        self,
+        client: TestClient,
+    ) -> None:
+        """Test error message when VAD is requested but not available."""
+        with (
+            patch(
+                "agent_cli.server.whisper.api._create_vad",
+                side_effect=ImportError("VAD not available"),
+            ),
+            client.websocket_connect(
+                "/v1/audio/transcriptions/stream?model=whisper-1&use_vad=true",
+            ) as websocket,
+        ):
+            data = websocket.receive_json()
+
+        assert data["type"] == "error"
+        assert "VAD not available" in data["message"]
