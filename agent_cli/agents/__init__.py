@@ -7,6 +7,7 @@ from . import (
     memory,
     rag_proxy,
     speak,
+    summarize,
     transcribe,
     voice_edit,
 )
@@ -18,6 +19,7 @@ __all__ = [
     "memory",
     "rag_proxy",
     "speak",
+    "summarize",
     "transcribe",
     "voice_edit",
 ]

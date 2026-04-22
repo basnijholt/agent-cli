@@ -14,6 +14,7 @@ import pytest
 from agent_cli.memory import _ingest
 from agent_cli.memory.client import MemoryClient
 from agent_cli.memory.entities import Fact
+from agent_cli.summarizer import SummaryResult
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -63,12 +64,17 @@ async def test_memory_client_git_versioning(
         ]
         return entries, [], {}
 
-    async def fake_update_summary(*_args: Any, **_kwargs: Any) -> str:
-        return "User likes testing."
+    async def fake_summarize_content(**_kwargs: Any) -> SummaryResult:
+        return SummaryResult(
+            summary="User likes testing.",
+            input_tokens=100,
+            output_tokens=20,
+            compression_ratio=0.2,
+        )
 
     monkeypatch.setattr(_ingest, "extract_salient_facts", fake_extract)
     monkeypatch.setattr(_ingest, "reconcile_facts", fake_reconcile)
-    monkeypatch.setattr(_ingest, "update_summary", fake_update_summary)
+    monkeypatch.setattr(_ingest, "summarize_content", fake_summarize_content)
 
     # Patch Reranker to avoid loading ONNX model
     monkeypatch.setattr("agent_cli.memory.client.get_reranker_model", MagicMock())

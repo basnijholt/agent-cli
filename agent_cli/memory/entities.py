@@ -32,12 +32,3 @@ class Fact(BaseModel):
     source_id: str = Field(..., description="UUID of the Turn this fact was extracted from")
     created_at: datetime
     # Facts are always role="memory" implicitly in the storage layer
-
-
-class Summary(BaseModel):
-    """The rolling summary of a conversation."""
-
-    conversation_id: str
-    content: str
-    created_at: datetime
-    # Summaries are role="summary" implicitly

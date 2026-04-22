@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import logging
+import shutil
 from typing import TYPE_CHECKING
 
 from agent_cli.memory._files import (
     _DELETED_DIRNAME,
+    _slugify,
     ensure_store_dirs,
     load_snapshot,
     read_memory_file,
@@ -14,15 +16,22 @@ from agent_cli.memory._files import (
     write_memory_file,
     write_snapshot,
 )
-from agent_cli.memory._store import delete_entries, list_conversation_entries, upsert_memories
-from agent_cli.memory.entities import Fact, Summary, Turn
+from agent_cli.memory._store import (
+    delete_entries,
+    delete_summaries,
+    list_conversation_entries,
+    upsert_memories,
+    upsert_summary_entries,
+)
+from agent_cli.memory.entities import Fact, Turn
+from agent_cli.memory.models import MemoryMetadata
 
 if TYPE_CHECKING:
     from pathlib import Path
 
     from chromadb import Collection
 
-    from agent_cli.memory.models import MemoryMetadata
+    from agent_cli.summarizer import SummaryResult
 
 LOGGER = logging.getLogger(__name__)
 
@@ -77,31 +86,6 @@ def persist_entries(
 
     if ids:
         upsert_memories(collection, ids=ids, contents=contents, metadatas=metadatas)
-
-
-def persist_summary(
-    collection: Collection,
-    *,
-    memory_root: Path,
-    summary: Summary,
-) -> None:
-    """Persist a summary to disk and Chroma."""
-    doc_id = _safe_identifier(f"{summary.conversation_id}{_SUMMARY_DOC_ID_SUFFIX}-summary")
-    record = write_memory_file(
-        memory_root,
-        conversation_id=summary.conversation_id,
-        role="summary",
-        created_at=summary.created_at.isoformat(),
-        content=summary.content,
-        summary_kind="summary",
-        doc_id=doc_id,
-    )
-    upsert_memories(
-        collection,
-        ids=[record.id],
-        contents=[record.content],
-        metadatas=[record.metadata],
-    )
 
 
 def delete_memory_files(
@@ -180,3 +164,85 @@ def evict_if_needed(
     ids_to_remove = [e.id for e in overflow]
     delete_entries(collection, ids_to_remove)
     delete_memory_files(memory_root, conversation_id, ids_to_remove)
+
+
+def persist_summary(
+    collection: Collection,
+    *,
+    memory_root: Path,
+    conversation_id: str,
+    summary_result: SummaryResult,
+) -> list[str]:
+    """Persist a summary to disk and ChromaDB.
+
+    This function:
+    1. Deletes existing summaries (files and ChromaDB entries)
+    2. Writes new summary file to disk
+    3. Stores entry in ChromaDB
+
+    Args:
+        collection: ChromaDB collection.
+        memory_root: Root path for memory files.
+        conversation_id: The conversation this summary belongs to.
+        summary_result: The result from summarize().
+
+    Returns:
+        List of IDs that were stored.
+
+    """
+    # Skip if no summary was generated
+    if not summary_result.summary:
+        return []
+
+    # Delete existing summary files
+    _delete_summary_files(memory_root, conversation_id)
+
+    # Delete existing ChromaDB entries
+    delete_summaries(collection, conversation_id)
+
+    # Get storage metadata from SummaryResult
+    entries = summary_result.to_storage_metadata(conversation_id)
+    if not entries:
+        return []
+
+    stored_ids: list[str] = []
+
+    for entry in entries:
+        metadata = MemoryMetadata(**entry["metadata"])
+        record = write_memory_file(
+            memory_root,
+            content=entry["content"],
+            doc_id=entry["id"],
+            metadata=metadata,
+        )
+        LOGGER.info(
+            "Persisted summary file: %s (level=%s)",
+            record.path,
+            metadata.level,
+        )
+        stored_ids.append(record.id)
+
+    # Store in ChromaDB (reuse the entries we already built)
+    upsert_summary_entries(collection, entries)
+
+    return stored_ids
+
+
+def _delete_summary_files(memory_root: Path, conversation_id: str) -> None:
+    """Delete all summary files for a conversation."""
+    entries_dir, _ = ensure_store_dirs(memory_root)
+    safe_conversation = _slugify(conversation_id)
+    summaries_dir = entries_dir / safe_conversation / "summaries"
+
+    if summaries_dir.exists():
+        # Move to deleted folder instead of hard delete
+        deleted_dir = entries_dir / _DELETED_DIRNAME / safe_conversation / "summaries"
+        deleted_dir.parent.mkdir(parents=True, exist_ok=True)
+
+        # If deleted summaries already exist, remove them first
+        if deleted_dir.exists():
+            shutil.rmtree(deleted_dir)
+
+        # Move current summaries to deleted
+        shutil.move(str(summaries_dir), str(deleted_dir))
+        LOGGER.info("Moved old summaries to deleted: %s", deleted_dir)

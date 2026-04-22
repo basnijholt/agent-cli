@@ -111,31 +111,6 @@ def query_memories(
     return records
 
 
-def get_summary_entry(
-    collection: Collection,
-    conversation_id: str,
-    *,
-    role: str = "summary",
-) -> StoredMemory | None:
-    """Return the latest summary entry for a conversation, if present."""
-    result = collection.get(
-        where={"$and": [{"conversation_id": conversation_id}, {"role": role}]},
-    )
-    docs = result.get("documents") or []
-    metas = result.get("metadatas") or []
-    ids = result.get("ids") or []
-
-    if not docs or not metas or not ids:
-        return None
-
-    return StoredMemory(
-        id=ids[0],
-        content=docs[0],
-        metadata=MemoryMetadata(**dict(metas[0])),
-        distance=None,
-    )
-
-
 def list_conversation_entries(
     collection: Collection,
     conversation_id: str,
@@ -167,3 +142,124 @@ def list_conversation_entries(
 def delete_entries(collection: Collection, ids: list[str]) -> None:
     """Delete entries by ID."""
     delete_docs(collection, ids)
+
+
+def upsert_summary_entries(
+    collection: Collection,
+    entries: list[dict[str, Any]],
+) -> list[str]:
+    """Store pre-built summary entries (from to_storage_metadata) to ChromaDB."""
+    if not entries:
+        return []
+
+    ids: list[str] = []
+    contents: list[str] = []
+    metadatas: list[MemoryMetadata] = []
+
+    for entry in entries:
+        ids.append(entry["id"])
+        contents.append(entry["content"])
+        # Convert the raw metadata dict to MemoryMetadata
+        meta_dict = entry["metadata"]
+        metadatas.append(MemoryMetadata(**meta_dict))
+
+    upsert_memories(collection, ids=ids, contents=contents, metadatas=metadatas)
+    return ids
+
+
+def get_summary_at_level(
+    collection: Collection,
+    conversation_id: str,
+    level: int,
+) -> list[StoredMemory]:
+    """Retrieve summaries at a specific level for a conversation.
+
+    Args:
+        collection: ChromaDB collection.
+        conversation_id: The conversation to retrieve summaries for.
+        level: Summary level (1=chunk, 2=group, 3=final).
+
+    Returns:
+        List of StoredMemory entries at the requested level.
+
+    """
+    filters: list[dict[str, Any]] = [
+        {"conversation_id": conversation_id},
+        {"role": "summary"},
+        {"level": level},
+    ]
+    result = collection.get(where={"$and": filters})
+    docs = result.get("documents") or []
+    metas = result.get("metadatas") or []
+    ids = result.get("ids") or []
+
+    records: list[StoredMemory] = []
+    for doc, meta, entry_id in zip(docs, metas, ids, strict=False):
+        records.append(
+            StoredMemory(
+                id=entry_id,
+                content=doc,
+                metadata=MemoryMetadata(**dict(meta)),
+                distance=None,
+            ),
+        )
+    return records
+
+
+def get_final_summary(
+    collection: Collection,
+    conversation_id: str,
+) -> StoredMemory | None:
+    """Get the L3 (final) summary for a conversation.
+
+    This is a convenience wrapper around get_summary_at_level for the
+    most common use case of retrieving the top-level summary.
+
+    Args:
+        collection: ChromaDB collection.
+        conversation_id: The conversation to retrieve the summary for.
+
+    Returns:
+        The final summary entry, or None if not found.
+
+    """
+    summaries = get_summary_at_level(collection, conversation_id, level=3)
+    # Return the one marked as final, or the first if none marked
+    for summary in summaries:
+        if summary.metadata.is_final:
+            return summary
+    return summaries[0] if summaries else None
+
+
+def delete_summaries(
+    collection: Collection,
+    conversation_id: str,
+    *,
+    levels: list[int] | None = None,
+) -> int:
+    """Delete summary entries for a conversation.
+
+    Args:
+        collection: ChromaDB collection.
+        conversation_id: The conversation to delete summaries from.
+        levels: Optional list of levels to delete. If None, deletes all levels.
+
+    Returns:
+        Number of entries deleted.
+
+    """
+    filters: list[dict[str, Any]] = [
+        {"conversation_id": conversation_id},
+        {"role": "summary"},
+    ]
+    if levels:
+        filters.append({"level": {"$in": levels}})
+
+    # First get the IDs to count them
+    result = collection.get(where={"$and": filters})
+    ids = result.get("ids") or []
+
+    if ids:
+        delete_docs(collection, list(ids))
+
+    return len(ids)
