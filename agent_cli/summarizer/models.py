@@ -88,6 +88,8 @@ class SummaryResult(BaseModel):
                 "metadata": {
                     "conversation_id": conversation_id,
                     "role": "summary",
+                    "summary_kind": "summary",
+                    "level": 3,
                     "is_final": True,
                     "input_tokens": self.input_tokens,
                     "output_tokens": self.output_tokens,

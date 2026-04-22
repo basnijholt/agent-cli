@@ -65,6 +65,20 @@ class TestSummaryResult:
         assert entry["metadata"]["role"] == "summary"
         assert entry["metadata"]["is_final"] is True
 
+    def test_to_storage_metadata_marks_final_summary_for_memory_layer(self) -> None:
+        """Test storage metadata includes the fields memory retrieval expects."""
+        result = SummaryResult(
+            summary="A brief summary.",
+            input_tokens=200,
+            output_tokens=10,
+            compression_ratio=0.05,
+        )
+        entries = result.to_storage_metadata("conv-456")
+
+        entry = entries[0]
+        assert entry["metadata"]["summary_kind"] == "summary"
+        assert entry["metadata"]["level"] == 3
+
     def test_to_storage_metadata_with_collapse_depth(self) -> None:
         """Test storage metadata includes collapse depth."""
         result = SummaryResult(

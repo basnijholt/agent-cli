@@ -53,6 +53,7 @@ dev = [
     { name = "pytest-mock" },
     { name = "pytest-timeout" },
     { name = "ruff" },
+    { name = "tiktoken" },
     { name = "versioningit" },
     { name = "zensical" },
 ]
@@ -79,6 +80,7 @@ memory = [
     { name = "openai" },
     { name = "pydantic-ai-slim", extra = ["google", "openai"] },
     { name = "pyyaml" },
+    { name = "tiktoken" },
     { name = "transformers" },
     { name = "watchfiles" },
 ]
@@ -113,6 +115,7 @@ test = [
     { name = "pytest-cov" },
     { name = "pytest-mock" },
     { name = "pytest-timeout" },
+    { name = "tiktoken" },
 ]
 vad = [
     { name = "onnxruntime" },
@@ -150,6 +153,7 @@ dev = [
     { name = "pytest-mock" },
     { name = "pytest-timeout" },
     { name = "ruff" },
+    { name = "tiktoken" },
     { name = "versioningit" },
     { name = "zensical" },
 ]
@@ -218,6 +222,9 @@ requires-dist = [
     { name = "setproctitle" },
     { name = "sounddevice", marker = "extra == 'audio'", specifier = ">=0.4.6" },
     { name = "soundfile", marker = "extra == 'kokoro'", specifier = ">=0.12.0" },
+    { name = "tiktoken", marker = "extra == 'dev'", specifier = ">=0.5.0" },
+    { name = "tiktoken", marker = "extra == 'memory'", specifier = ">=0.5.0" },
+    { name = "tiktoken", marker = "extra == 'test'", specifier = ">=0.5.0" },
     { name = "torch", marker = "extra == 'whisper-transformers'", specifier = ">=2.0.0" },
     { name = "transformers", marker = "extra == 'kokoro'", specifier = ">=4.40.0" },
     { name = "transformers", marker = "extra == 'memory'", specifier = ">=4.30.0" },
@@ -250,6 +257,7 @@ dev = [
     { name = "pytest-mock" },
     { name = "pytest-timeout" },
     { name = "ruff" },
+    { name = "tiktoken", specifier = ">=0.5.0" },
     { name = "versioningit" },
     { name = "zensical" },
 ]

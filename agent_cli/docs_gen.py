@@ -16,6 +16,7 @@ Example usage in Markdown files:
 
 from __future__ import annotations
 
+from functools import cache
 from typing import Any, get_origin
 
 import click
@@ -59,10 +60,16 @@ def _format_default(default: Any) -> str:
     return str(default)
 
 
+@cache
+def _get_root_click_app() -> click.Command:
+    """Build the Click app once for documentation introspection."""
+    return get_command(app)
+
+
 def _get_click_command(command_path: str) -> click.Command | None:
     """Get a Click command from a path like 'transcribe' or 'memory.proxy'."""
     parts = command_path.split(".")
-    click_app = get_command(app)
+    click_app = _get_root_click_app()
 
     cmd: click.Command | click.Group = click_app
     for part in parts:
@@ -209,7 +216,7 @@ def _options_by_panel(
 
 def _list_commands() -> list[str]:
     """List all available commands including subcommands."""
-    click_app = get_command(app)
+    click_app = _get_root_click_app()
     commands = []
 
     def _walk(cmd: click.Command | click.Group, prefix: str = "") -> None:

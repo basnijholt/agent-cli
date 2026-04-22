@@ -51,7 +51,7 @@ class MemoryMetadata(BaseModel):
 
     # Summary fields (only used when role="summary")
     level: int | None = None
-    """Summary level (deprecated, kept for file structure compatibility)."""
+    """Summary level used for hierarchical summary retrieval and file layout."""
     is_final: bool | None = None
     """Whether this is the final summary."""
     chunk_index: int | None = None

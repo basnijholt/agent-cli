@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import logging
 import shutil
-from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 from agent_cli.memory._files import (
@@ -207,23 +206,9 @@ def persist_summary(
         return []
 
     stored_ids: list[str] = []
-    created_at = datetime.now(UTC).isoformat()
 
     for entry in entries:
-        meta_dict = entry["metadata"]
-        # Build MemoryMetadata from the summary result's metadata dict
-        metadata = MemoryMetadata(
-            conversation_id=meta_dict["conversation_id"],
-            role=meta_dict["role"],
-            created_at=meta_dict.get("created_at", created_at),
-            summary_kind="summary",
-            is_final=meta_dict.get("is_final"),
-            input_tokens=meta_dict.get("input_tokens"),
-            output_tokens=meta_dict.get("output_tokens"),
-            compression_ratio=meta_dict.get("compression_ratio"),
-            summary_level=meta_dict.get("summary_level"),
-            collapse_depth=meta_dict.get("collapse_depth"),
-        )
+        metadata = MemoryMetadata(**entry["metadata"])
         record = write_memory_file(
             memory_root,
             content=entry["content"],
@@ -233,7 +218,7 @@ def persist_summary(
         LOGGER.info(
             "Persisted summary file: %s (level=%s)",
             record.path,
-            meta_dict.get("summary_level"),
+            metadata.level,
         )
         stored_ids.append(record.id)
 

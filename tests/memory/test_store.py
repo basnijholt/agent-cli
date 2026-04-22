@@ -17,12 +17,14 @@ class _FakeCollection:
         self.query_result = query_result or {}
         self.get_result = get_result or {}
         self.deleted: list[list[str]] = []
+        self.get_calls: list[dict[str, Any]] = []
         self.upserts: list[tuple[list[str], list[str], list[dict[str, Any]]]] = []
 
     def query(self, **_kwargs: Any) -> dict[str, Any]:
         return self.query_result
 
-    def get(self, **_kwargs: Any) -> dict[str, Any]:
+    def get(self, **kwargs: Any) -> dict[str, Any]:
+        self.get_calls.append(kwargs)
         return self.get_result
 
     def delete(self, ids: list[str]) -> None:
@@ -146,6 +148,8 @@ def test_upsert_summary_entries_simple() -> None:
             "metadata": {
                 "conversation_id": "conv-123",
                 "role": "summary",
+                "summary_kind": "summary",
+                "level": 3,
                 "is_final": True,
                 "summary_level": "MAP_REDUCE",
                 "input_tokens": 1000,
@@ -164,6 +168,8 @@ def test_upsert_summary_entries_simple() -> None:
     upserted_ids, upserted_docs, upserted_metas = fake.upserts[0]
     assert upserted_ids == ["conv-123:summary"]
     assert upserted_docs == ["A paragraph summary."]
+    assert upserted_metas[0]["summary_kind"] == "summary"
+    assert upserted_metas[0]["level"] == 3
     assert upserted_metas[0]["is_final"] is True
 
 
@@ -177,6 +183,8 @@ def test_upsert_summary_entries_with_collapse_depth() -> None:
             "metadata": {
                 "conversation_id": "conv-456",
                 "role": "summary",
+                "summary_kind": "summary",
+                "level": 3,
                 "is_final": True,
                 "summary_level": "MAP_REDUCE",
                 "input_tokens": 5000,
@@ -214,6 +222,8 @@ def test_get_final_summary_returns_summary() -> None:
                 {
                     "conversation_id": "c1",
                     "role": "summary",
+                    "summary_kind": "summary",
+                    "level": 3,
                     "is_final": True,
                     "summary_level": "MAP_REDUCE",
                     "collapse_depth": 1,
@@ -228,6 +238,11 @@ def test_get_final_summary_returns_summary() -> None:
 
     assert result is not None
     assert result.content == "The final summary"
+    assert fake.get_calls[0]["where"]["$and"] == [
+        {"conversation_id": "c1"},
+        {"role": "summary"},
+        {"level": 3},
+    ]
     assert result.metadata.is_final is True
 
 

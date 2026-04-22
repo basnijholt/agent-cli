@@ -160,10 +160,15 @@ def test_api_configuration_handling(monkeypatch: MonkeyPatch) -> None:
         assert True  # Config is created during request
 
 
-def test_temp_file_cleanup(client: TestClient) -> None:
+def test_temp_file_cleanup(
+    client: TestClient,
+    monkeypatch: MonkeyPatch,
+    tmp_path: Path,
+) -> None:
     """Test that temporary files are cleaned up after processing."""
+    monkeypatch.setattr(tempfile, "tempdir", str(tmp_path), raising=False)
     temp_dir = Path(tempfile.gettempdir())
-    temp_files_before = set(temp_dir.iterdir())
+    wav_files_before = set(temp_dir.glob("*.wav"))
 
     with patch("agent_cli.server.proxy.api._transcribe_with_provider") as mock_transcribe:
         mock_transcribe.return_value = "test"
@@ -183,12 +188,8 @@ def test_temp_file_cleanup(client: TestClient) -> None:
     # Give a moment for cleanup
     time.sleep(0.1)
 
-    temp_files_after = set(temp_dir.iterdir())
-    new_files = temp_files_after - temp_files_before
-
-    # No new WAV files should remain
-    wav_files = [f for f in new_files if f.name.endswith(".wav")]
-    assert len(wav_files) == 0
+    wav_files_after = set(temp_dir.glob("*.wav"))
+    assert wav_files_after - wav_files_before == set()
 
 
 @pytest.mark.asyncio

@@ -25,6 +25,8 @@ class TestSummaryResultStorage:
         assert entry["content"] == "A comprehensive summary."
         assert entry["metadata"]["conversation_id"] == "test-conversation"
         assert entry["metadata"]["role"] == "summary"
+        assert entry["metadata"]["summary_kind"] == "summary"
+        assert entry["metadata"]["level"] == 3
         assert entry["metadata"]["is_final"] is True
         assert entry["metadata"]["collapse_depth"] == 1
 
