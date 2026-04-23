@@ -2,14 +2,14 @@
 
 import copy
 from pathlib import Path
-from typing import Literal
+from typing import Literal, TypeAlias
 
 import typer
 from typer.models import OptionInfo
 
 from agent_cli.constants import DEFAULT_OPENAI_EMBEDDING_MODEL, DEFAULT_OPENAI_MODEL
 
-LogLevel = Literal["debug", "info", "warning", "error"]
+LogLevel: TypeAlias = Literal["debug", "info", "warning", "error"]
 
 
 def with_default(option: OptionInfo, default: str) -> OptionInfo:
@@ -48,7 +48,8 @@ LLM: bool = typer.Option(
     False,  # noqa: FBT003
     "--llm/--no-llm",
     help="Clean up transcript with LLM: fix errors, add punctuation, remove filler words. "
-    "Uses `--extra-instructions` if set (via CLI or config file).",
+    "Uses `--extra-instructions` if set (via CLI or config file). "
+    "Not compatible with --diarize.",
     rich_help_panel="LLM Configuration",
 )
 # Ollama (local service)
@@ -442,4 +443,55 @@ SAVE_RECORDING: bool = typer.Option(
     "--save-recording/--no-save-recording",
     help="Save recordings to ~/.cache/agent-cli/ for `--last-recording` recovery.",
     rich_help_panel="Audio Recovery",
+)
+
+# --- Diarization Options ---
+DIARIZE: bool = typer.Option(
+    False,  # noqa: FBT003
+    "--diarize/--no-diarize",
+    help="Enable speaker diarization (requires pyannote-audio). Install with: pip install agent-cli[diarization]",
+    rich_help_panel="Diarization",
+)
+DiarizeFormat: TypeAlias = Literal["inline", "json"]
+DIARIZE_FORMAT: DiarizeFormat = typer.Option(
+    "inline",
+    "--diarize-format",
+    help="Output format for diarization ('inline' for [Speaker N]: text, 'json' for structured output).",
+    rich_help_panel="Diarization",
+)
+HF_TOKEN: str | None = typer.Option(
+    None,
+    "--hf-token",
+    help=(
+        "HuggingFace token for pyannote models. Required for diarization. "
+        "Token must have 'Read access to contents of all public gated repos you can access' permission. "
+        "Accept licenses at: https://hf.co/pyannote/speaker-diarization-3.1, "
+        "https://hf.co/pyannote/segmentation-3.0, https://hf.co/pyannote/wespeaker-voxceleb-resnet34-LM"
+    ),
+    envvar="HF_TOKEN",
+    rich_help_panel="Diarization",
+)
+MIN_SPEAKERS: int | None = typer.Option(
+    None,
+    "--min-speakers",
+    help="Minimum number of speakers (optional hint for diarization).",
+    rich_help_panel="Diarization",
+)
+MAX_SPEAKERS: int | None = typer.Option(
+    None,
+    "--max-speakers",
+    help="Maximum number of speakers (optional hint for diarization).",
+    rich_help_panel="Diarization",
+)
+ALIGN_WORDS: bool = typer.Option(
+    False,  # noqa: FBT003
+    "--align-words/--no-align-words",
+    help="Use wav2vec2 forced alignment for word-level speaker assignment (more accurate but slower).",
+    rich_help_panel="Diarization",
+)
+ALIGN_LANGUAGE: str = typer.Option(
+    "en",
+    "--align-language",
+    help="Language code for word alignment model (e.g., 'en', 'fr', 'de', 'es', 'it').",
+    rich_help_panel="Diarization",
 )

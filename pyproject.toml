@@ -55,6 +55,7 @@ memory = ["agent-cli[vectordb]", "pyyaml>=6.0.0"]
 # Feature extras
 vad = ["onnxruntime>=1.16.0"]
 speed = ["audiostretchy>=1.3.0"]
+diarization = ["pyannote-audio>=3.3"]
 
 # ASR backends
 faster-whisper = ["agent-cli[server]", "faster-whisper>=1.0.0"]

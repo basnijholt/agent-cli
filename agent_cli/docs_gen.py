@@ -287,6 +287,11 @@ def commands_table(
     command_info = {
         "transcribe": ("Speech-to-text", "Record voice → text in clipboard", "voice"),
         "transcribe-live": ("Continuous transcription", "Live VAD-based transcription", "voice"),
+        "diarize-live-session": (
+            "Retroactive diarization",
+            "Label speakers in saved transcribe-live sessions",
+            "voice",
+        ),
         "speak": ("Text-to-speech", "Read text aloud", "voice"),
         "voice-edit": ("Voice-powered editor", "Edit clipboard with voice", "voice"),
         "assistant": ("Wake word assistant", "Hands-free voice interaction", "voice"),

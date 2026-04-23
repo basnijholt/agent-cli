@@ -290,6 +290,7 @@ command name, and subcommands use dot notation:
 - `[transcribe]` - for [`agent-cli transcribe`](commands/transcribe.md)
 - `[voice-edit]` - for [`agent-cli voice-edit`](commands/voice-edit.md)
 - `[transcribe-live]` - for [`agent-cli transcribe-live`](commands/transcribe-live.md)
+- `[diarize-live-session]` - for [`agent-cli diarize-live-session`](commands/diarize-live-session.md)
 - `[memory.proxy]` - for [`agent-cli memory proxy`](commands/memory.md)
 
 Use `agent-cli <command> --help` to see all available options for each command, or browse the [Commands Reference](commands/index.md).

@@ -72,8 +72,8 @@ def test_load_document_text_unsupported(tmp_path: Path) -> None:
 
 def test_load_document_text_markitdown(tmp_path: Path, mocker: Any) -> None:
     """Test loading document using MarkItDown (mocked)."""
-    # Mock MarkItDown class
-    mock_cls = mocker.patch("markitdown.MarkItDown")
+    mock_cls = mocker.Mock()
+    mocker.patch("agent_cli.rag._utils._markitdown_class", return_value=mock_cls)
     mock_instance = mock_cls.return_value
     mock_result = mock_instance.convert.return_value
     mock_result.text_content = "mocked content"

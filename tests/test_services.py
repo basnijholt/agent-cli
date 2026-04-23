@@ -330,14 +330,14 @@ async def test_synthesize_speech_kokoro_delegates_to_openai(
 
 
 @pytest.mark.asyncio
-@patch("google.genai.Client")
-async def test_synthesize_speech_gemini(mock_genai_client: MagicMock) -> None:
+@patch("agent_cli.services._get_gemini_client")
+async def test_synthesize_speech_gemini(mock_get_gemini_client: MagicMock) -> None:
     """Test the synthesize_speech_gemini function."""
     mock_text = "test text"
     mock_logger = MagicMock()
 
     # Mock the Gemini client and response structure
-    mock_client_instance = mock_genai_client.return_value
+    mock_client_instance = mock_get_gemini_client.return_value
 
     # Gemini returns raw PCM data (24kHz, 16-bit, mono)
     mock_pcm_data = b"\x00\x00" * 100  # 100 samples of silence
@@ -358,11 +358,12 @@ async def test_synthesize_speech_gemini(mock_genai_client: MagicMock) -> None:
         gemini_api_key="test_api_key",
     )
 
-    result = await synthesize_speech_gemini(mock_text, gemini_tts_cfg, mock_logger)
+    with patch("agent_cli.services._gemini_types_module"):
+        result = await synthesize_speech_gemini(mock_text, gemini_tts_cfg, mock_logger)
 
     # Result should be WAV data (converted from PCM)
     assert result[:4] == b"RIFF"  # WAV header
-    mock_genai_client.assert_called_once_with(api_key="test_api_key")
+    mock_get_gemini_client.assert_called_once_with("test_api_key")
     mock_client_instance.aio.models.generate_content.assert_called_once()
 
     # Verify the call arguments

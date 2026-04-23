@@ -33,7 +33,7 @@ jobs:
         run: uv run --all-extras pytest -vvv
       - name: Run pytest (non-macOS - exclude mlx-whisper)
         if: matrix.os != 'macos-latest'
-        run: uv run --extra audio --extra llm --extra rag --extra memory --extra vad --extra faster-whisper --extra piper --extra kokoro --extra server --extra speed --extra test pytest -vvv
+        run: uv run --extra audio --extra diarization --extra llm --extra rag --extra memory --extra vad --extra faster-whisper --extra piper --extra kokoro --extra server --extra speed --extra test pytest -vvv
       - name: Upload coverage reports to Codecov
         if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.13'
         uses: codecov/codecov-action@v5
