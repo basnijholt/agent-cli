@@ -12,7 +12,7 @@ from agent_cli.agents.diarize_live_session import (
     LiveSegment,
     align_logged_segments_with_speakers,
     build_logged_transcript,
-    build_transcribe_command,
+    build_retranscribe_request,
     parse_args,
     parse_clock_time,
     select_segments_in_range,
@@ -99,7 +99,7 @@ def test_build_logged_transcript_concatenates_non_empty_segment_text() -> None:
     assert build_logged_transcript(segments) == "Hello there. General Kenobi!"
 
 
-def test_build_transcribe_command_uses_json_output_and_speaker_hints() -> None:
+def test_build_retranscribe_request_uses_speaker_hints() -> None:
     args = parse_args(
         [
             "--start",
@@ -116,29 +116,17 @@ def test_build_transcribe_command_uses_json_output_and_speaker_hints() -> None:
         ],
     )
 
-    cmd = build_transcribe_command(args, Path("meeting.wav"))
+    request = build_retranscribe_request(args, Path("meeting.wav"))
 
-    assert cmd[0].endswith("python")
-    assert cmd[1:] == [
-        "-m",
-        "agent_cli",
-        "transcribe",
-        "--from-file",
-        "meeting.wav",
-        "--diarize",
-        "--diarize-format",
-        "json",
-        "--json",
-        "--min-speakers",
-        "3",
-        "--max-speakers",
-        "3",
-        "--align-words",
-        "--align-language",
-        "en",
-        "--hf-token",
-        "token",
-    ]
+    assert request == {
+        "audio_file": "meeting.wav",
+        "diarize_format": "json",
+        "min_speakers": 3,
+        "max_speakers": 3,
+        "align_words": True,
+        "align_language": "en",
+        "hf_token": True,
+    }
 
 
 def test_transcript_suffix_matches_diarize_format() -> None:

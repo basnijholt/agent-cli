@@ -239,6 +239,7 @@ async def test_record_audio_with_manual_stop_saves_recording(
     # Create a stop event
     stop_event = MagicMock()
     logger = MagicMock()
+    saved_paths: list[Path] = []
 
     # Record audio with saving enabled
     audio_data = await asr.record_audio_with_manual_stop(
@@ -248,6 +249,7 @@ async def test_record_audio_with_manual_stop_saves_recording(
         quiet=True,
         live=None,
         save_recording=True,
+        recording_path_callback=saved_paths.append,
     )
 
     # Verify audio was recorded
@@ -256,6 +258,7 @@ async def test_record_audio_with_manual_stop_saves_recording(
     # Verify a recording file was saved
     recordings = list(tmp_path.glob("recording_*.wav"))  # noqa: ASYNC240
     assert len(recordings) == 1
+    assert saved_paths == recordings
 
 
 @pytest.mark.asyncio
@@ -329,6 +332,7 @@ async def test_send_audio_with_save_recording(
 
     stop_event = MagicMock()
     logger = MagicMock()
+    saved_paths: list[Path] = []
 
     # Send audio with saving enabled
     await asr._send_audio(
@@ -339,6 +343,7 @@ async def test_send_audio_with_save_recording(
         live=MagicMock(),
         quiet=False,
         save_recording=True,
+        recording_path_callback=saved_paths.append,
     )
 
     # Verify events were sent
@@ -352,6 +357,7 @@ async def test_send_audio_with_save_recording(
     # Verify a recording file was saved
     recordings = list(tmp_path.glob("recording_*.wav"))  # noqa: ASYNC240
     assert len(recordings) == 1
+    assert saved_paths == recordings
 
 
 @pytest.mark.asyncio

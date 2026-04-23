@@ -3,12 +3,11 @@
 from __future__ import annotations
 
 import argparse
+import asyncio
 import json
 import os
-import shlex
 import shutil
 import subprocess
-import sys
 from dataclasses import dataclass
 from datetime import date, datetime, time
 from pathlib import Path
@@ -16,6 +15,7 @@ from typing import Any
 
 import typer
 
+from agent_cli import config as agent_config
 from agent_cli import opts
 from agent_cli.cli import app
 from agent_cli.core.alignment import AlignedWord, align
@@ -280,32 +280,23 @@ def combine_segments(manifest_path: Path, output_wav: Path) -> None:
     subprocess.run(cmd, check=True)
 
 
-def build_transcribe_command(args: argparse.Namespace, combined_audio: Path) -> list[str]:
-    """Build the `agent-cli transcribe` command."""
-    cmd = [
-        sys.executable,
-        "-m",
-        "agent_cli",
-        "transcribe",
-        "--from-file",
-        str(combined_audio),
-        "--diarize",
-        "--diarize-format",
-        args.diarize_format,
-        "--json",
-    ]
+def build_retranscribe_request(args: argparse.Namespace, combined_audio: Path) -> dict[str, Any]:
+    """Build metadata describing the internal retranscribe request."""
     if args.speakers is not None:
-        cmd.extend(["--min-speakers", str(args.speakers), "--max-speakers", str(args.speakers)])
+        min_speakers = args.speakers
+        max_speakers = args.speakers
     else:
-        if args.min_speakers is not None:
-            cmd.extend(["--min-speakers", str(args.min_speakers)])
-        if args.max_speakers is not None:
-            cmd.extend(["--max-speakers", str(args.max_speakers)])
-    if args.align_words:
-        cmd.extend(["--align-words", "--align-language", args.align_language])
-    if args.hf_token:
-        cmd.extend(["--hf-token", args.hf_token])
-    return cmd
+        min_speakers = args.min_speakers
+        max_speakers = args.max_speakers
+    return {
+        "audio_file": str(combined_audio),
+        "diarize_format": args.diarize_format,
+        "min_speakers": min_speakers,
+        "max_speakers": max_speakers,
+        "align_words": args.align_words,
+        "align_language": args.align_language,
+        "hf_token": bool(args.hf_token or os.environ.get("HF_TOKEN")),
+    }
 
 
 def transcript_suffix(diarize_format: str) -> str:
@@ -393,7 +384,7 @@ def save_metadata(
     combined_audio: Path,
     transcript_path: Path,
     mode: str,
-    transcribe_cmd: list[str] | None,
+    retranscribe_request: dict[str, Any] | None,
 ) -> None:
     """Persist the selected session metadata for debugging and replay."""
     payload: dict[str, Any] = {
@@ -404,7 +395,7 @@ def save_metadata(
         "segment_files": [str(segment.audio_file) for segment in segments],
         "timestamps": [segment.timestamp.isoformat() for segment in segments],
         "logged_transcript_length": len(build_logged_transcript(segments)),
-        "transcribe_command": transcribe_cmd,
+        "retranscribe_request": retranscribe_request,
     }
     metadata_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
 
@@ -455,16 +446,110 @@ def run_logged_diarization(
     transcript_path.write_text(formatted.rstrip() + "\n", encoding="utf-8")
 
 
-def run_transcribe(cmd: list[str], transcript_path: Path) -> None:
-    """Run diarization and save the transcript to disk."""
-    completed = subprocess.run(cmd, check=True, capture_output=True, text=True)
-    try:
-        payload = json.loads(completed.stdout)
-    except json.JSONDecodeError as exc:
-        msg = f"Unexpected transcribe output, expected JSON: {completed.stdout}"
-        raise RuntimeError(msg) from exc
+def _option_default(option: Any) -> Any:
+    """Extract a Typer option's default value."""
+    return getattr(option, "default", option)
 
-    transcript = payload.get("transcript")
+
+def _option_env_value(option: Any) -> str | None:
+    """Read the first configured env var value for a Typer option, if any."""
+    envvar = getattr(option, "envvar", None)
+    if isinstance(envvar, str):
+        return os.environ.get(envvar)
+    if isinstance(envvar, (list, tuple)):
+        for name in envvar:
+            value = os.environ.get(name)
+            if value is not None:
+                return value
+    return None
+
+
+def _resolve_option(option: Any) -> Any:
+    """Resolve a Typer option from environment or fallback default."""
+    env_value = _option_env_value(option)
+    if env_value is None:
+        return _option_default(option)
+    default = _option_default(option)
+    if isinstance(default, int):
+        return int(env_value)
+    return env_value
+
+
+def run_retranscribe(
+    args: argparse.Namespace,
+    combined_audio: Path,
+    transcript_path: Path,
+) -> None:
+    """Run the file-transcription pipeline internally and save the transcript to disk."""
+    from agent_cli.agents.transcribe import _async_main  # noqa: PLC0415
+
+    provider_cfg = agent_config.ProviderSelection(
+        asr_provider=_resolve_option(opts.ASR_PROVIDER),
+        llm_provider=_resolve_option(opts.LLM_PROVIDER),
+        tts_provider="wyoming",
+    )
+    general_cfg = agent_config.General(
+        log_level="warning",
+        log_file=None,
+        quiet=True,
+        list_devices=False,
+        clipboard=False,
+    )
+    wyoming_asr_cfg = agent_config.WyomingASR(
+        asr_wyoming_ip=_resolve_option(opts.ASR_WYOMING_IP),
+        asr_wyoming_port=_resolve_option(opts.ASR_WYOMING_PORT),
+    )
+    openai_base_url = _resolve_option(opts.OPENAI_BASE_URL)
+    openai_asr_cfg = agent_config.OpenAIASR(
+        asr_openai_model=_resolve_option(opts.ASR_OPENAI_MODEL),
+        openai_api_key=_resolve_option(opts.OPENAI_API_KEY),
+        openai_base_url=_resolve_option(opts.ASR_OPENAI_BASE_URL) or openai_base_url,
+        asr_openai_prompt=_resolve_option(opts.ASR_OPENAI_PROMPT),
+    )
+    gemini_asr_cfg = agent_config.GeminiASR(
+        asr_gemini_model=_resolve_option(opts.ASR_GEMINI_MODEL),
+        gemini_api_key=_resolve_option(opts.GEMINI_API_KEY),
+    )
+    diarization_cfg = agent_config.Diarization(
+        diarize=True,
+        diarize_format=args.diarize_format,
+        hf_token=args.hf_token or os.environ.get("HF_TOKEN"),
+        min_speakers=args.speakers if args.speakers is not None else args.min_speakers,
+        max_speakers=args.speakers if args.speakers is not None else args.max_speakers,
+        align_words=args.align_words,
+        align_language=args.align_language,
+    )
+    result = asyncio.run(
+        _async_main(
+            audio_file_path=combined_audio,
+            extra_instructions=None,
+            provider_cfg=provider_cfg,
+            general_cfg=general_cfg,
+            wyoming_asr_cfg=wyoming_asr_cfg,
+            openai_asr_cfg=openai_asr_cfg,
+            gemini_asr_cfg=gemini_asr_cfg,
+            ollama_cfg=agent_config.Ollama(
+                llm_ollama_model=_resolve_option(opts.LLM_OLLAMA_MODEL),
+                llm_ollama_host=_resolve_option(opts.LLM_OLLAMA_HOST),
+            ),
+            openai_llm_cfg=agent_config.OpenAILLM(
+                llm_openai_model=_resolve_option(opts.LLM_OPENAI_MODEL),
+                openai_api_key=_resolve_option(opts.OPENAI_API_KEY),
+                openai_base_url=openai_base_url,
+            ),
+            gemini_llm_cfg=agent_config.GeminiLLM(
+                llm_gemini_model=_resolve_option(opts.LLM_GEMINI_MODEL),
+                gemini_api_key=_resolve_option(opts.GEMINI_API_KEY),
+            ),
+            llm_enabled=False,
+            transcription_log=None,
+            diarization_cfg=diarization_cfg,
+            emit_output=False,
+            raise_diarization_errors=True,
+        ),
+    )
+
+    transcript = result.get("transcript")
     if not isinstance(transcript, str) or not transcript:
         msg = "Transcribe returned no transcript."
         raise RuntimeError(msg)
@@ -473,9 +558,6 @@ def run_transcribe(cmd: list[str], transcript_path: Path) -> None:
         transcript_path.write_text(transcript + "\n", encoding="utf-8")
     else:
         transcript_path.write_text(transcript.rstrip() + "\n", encoding="utf-8")
-
-    if completed.stderr.strip():
-        print(completed.stderr.strip(), file=sys.stderr)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -519,28 +601,27 @@ def main(argv: list[str] | None = None) -> int:
     write_ffconcat_manifest(selected, manifest_path)
     combine_segments(manifest_path, combined_audio)
 
-    transcribe_cmd = build_transcribe_command(args, combined_audio)
+    retranscribe_request = build_retranscribe_request(args, combined_audio)
     save_metadata(
         metadata_path=metadata_path,
         segments=selected,
         combined_audio=combined_audio,
         transcript_path=transcript_path,
         mode="retranscribe" if args.retranscribe else "log_transcript",
-        transcribe_cmd=transcribe_cmd if args.retranscribe else None,
+        retranscribe_request=retranscribe_request if args.retranscribe else None,
     )
 
     print(f"Combined {len(selected)} segment(s) into {combined_audio}")
     if args.prepare_only:
         if args.retranscribe:
-            print("Prepared diarization command:")
-            print(shlex.join(transcribe_cmd))
+            print("Prepared combined audio and metadata for internal re-transcription.")
         else:
             print("Prepared combined audio and metadata for logged-transcript diarization.")
         print(f"Metadata saved to {metadata_path}")
         return 0
 
     if args.retranscribe:
-        run_transcribe(transcribe_cmd, transcript_path)
+        run_retranscribe(args, combined_audio, transcript_path)
     else:
         run_logged_diarization(
             args=args,
