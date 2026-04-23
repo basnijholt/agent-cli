@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from datetime import date, datetime
 from pathlib import Path
 from unittest.mock import AsyncMock, patch
@@ -152,12 +153,15 @@ def test_main_passes_config_file_to_retranscribe(tmp_path: Path) -> None:
     segment_audio.write_bytes(b"mp3")
     log_path = tmp_path / "transcriptions.jsonl"
     log_path.write_text(
-        (
-            '{"timestamp":"2026-04-23T11:32:02-07:00",'
-            f'"audio_file":"{segment_audio}",'
-            '"duration_seconds":5.0,'
-            '"raw_output":"hello"}\n'
-        ),
+        json.dumps(
+            {
+                "timestamp": "2026-04-23T11:32:02-07:00",
+                "audio_file": str(segment_audio),
+                "duration_seconds": 5.0,
+                "raw_output": "hello",
+            },
+        )
+        + "\n",
         encoding="utf-8",
     )
     output_dir = tmp_path / "out"

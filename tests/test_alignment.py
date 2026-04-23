@@ -414,7 +414,12 @@ class TestAlign:
             words = align(audio_file, "hi there", language="en", device="mps")
 
         assert isinstance(words, list)
-        assert call_devices == ["mps", "cpu"]
+        expected_devices = (
+            ["mps", "cpu"]
+            if hasattr(torch.backends, "mps") and torch.backends.mps.is_available()
+            else ["cpu"]
+        )
+        assert call_devices == expected_devices
 
     def test_handles_punctuation_via_wildcards(self, tmp_path: Path) -> None:
         """Test that punctuation doesn't break alignment due to wildcard handling."""
