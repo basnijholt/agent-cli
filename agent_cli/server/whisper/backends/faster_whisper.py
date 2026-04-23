@@ -6,6 +6,7 @@ import asyncio
 import logging
 import tempfile
 from concurrent.futures import ProcessPoolExecutor
+from concurrent.futures.process import BrokenProcessPool
 from dataclasses import dataclass
 from multiprocessing import get_context
 from pathlib import Path
@@ -209,12 +210,27 @@ class FasterWhisperBackend:
         }
 
         loop = asyncio.get_running_loop()
-        result = await loop.run_in_executor(
-            self._executor,
-            _transcribe_in_subprocess,
-            audio,
-            kwargs,
-        )
+        try:
+            result = await loop.run_in_executor(
+                self._executor,
+                _transcribe_in_subprocess,
+                audio,
+                kwargs,
+            )
+        except BrokenProcessPool:
+            logger.warning(
+                "faster-whisper process pool died during transcription; "
+                "reloading model %s and retrying once",
+                self._config.model_name,
+            )
+            await self.unload()
+            await self.load()
+            result = await loop.run_in_executor(
+                self._executor,
+                _transcribe_in_subprocess,
+                audio,
+                kwargs,
+            )
 
         return TranscriptionResult(
             text=result["text"],
