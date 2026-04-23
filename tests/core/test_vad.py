@@ -14,26 +14,26 @@ if TYPE_CHECKING:
     from typing import Any
 
 
-@pytest.fixture(scope="module", autouse=True)
-def ensure_model_cached() -> None:
-    """Ensure Silero VAD model is cached before running tests."""
-    import shutil  # noqa: PLC0415
-    import urllib.request  # noqa: PLC0415
+class _FakeSileroVADOnnx:
+    """Small model double for VAD unit tests."""
 
-    from agent_cli.core.vad import SILERO_VAD_CACHE, SILERO_VAD_URL  # noqa: PLC0415
+    def __init__(self, *, force_cpu: bool = True) -> None:
+        self.force_cpu = force_cpu
 
-    if not SILERO_VAD_CACHE.exists():
-        SILERO_VAD_CACHE.parent.mkdir(parents=True, exist_ok=True)
-        try:
-            with (
-                # Keep this below the global pytest-timeout (10s) so transient
-                # network slowness results in a clean skip instead of a timeout failure.
-                urllib.request.urlopen(SILERO_VAD_URL, timeout=5) as response,  # noqa: S310
-                SILERO_VAD_CACHE.open("wb") as f,
-            ):
-                shutil.copyfileobj(response, f)
-        except Exception as e:
-            pytest.skip(f"Failed to download VAD model: {e}")
+    def __call__(self, audio: object, sample_rate: int) -> float:
+        del audio, sample_rate
+        return 0.0
+
+    def reset_states(self) -> None:
+        pass
+
+
+@pytest.fixture(autouse=True)
+def fake_silero_model(monkeypatch: pytest.MonkeyPatch, request: pytest.FixtureRequest) -> None:
+    """Avoid network/model downloads in tests that only need VAD state behavior."""
+    if request.node.name == "test_import_error_without_onnxruntime":
+        return
+    monkeypatch.setattr("agent_cli.core.vad._SileroVADOnnx", _FakeSileroVADOnnx)
 
 
 def test_import_error_without_onnxruntime() -> None:
