@@ -193,3 +193,30 @@ agent-cli transcribe-live --role notes --llm
 ```bash
 agent-cli transcribe-live --no-clipboard &
 ```
+
+## Retroactive Speaker Diarization
+
+`transcribe-live` saves one MP3 per VAD segment. If you want speaker labels after the fact, use [`agent-cli diarize-live-session`](diarize-live-session.md).
+
+```bash
+# Build the combined WAV and run diarization
+agent-cli diarize-live-session \
+  --date 2026-04-23 \
+  --start 11:32 \
+  --end 12:29 \
+  --speakers 3
+
+# Only prepare the combined WAV and metadata
+agent-cli diarize-live-session \
+  --date 2026-04-23 \
+  --start 11:32 \
+  --end 12:29 \
+  --speakers 3 \
+  --prepare-only
+```
+
+By default, the command reuses the `raw_output` text already logged by `transcribe-live`,
+aligns each saved chunk separately, and saves the labeled transcript under
+`~/.cache/agent-cli/live-diarization/`.
+
+If you explicitly want to re-run ASR on the combined audio first, add `--retranscribe`.

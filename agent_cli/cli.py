@@ -118,6 +118,7 @@ from .agents import (  # noqa: E402, F401
     assistant,
     autocorrect,
     chat,
+    diarize_live_session,
     memory,
     rag_proxy,
     speak,

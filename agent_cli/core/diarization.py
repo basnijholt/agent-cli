@@ -29,6 +29,17 @@ def _check_pyannote_installed() -> None:
         raise ImportError(msg) from e
 
 
+def _get_torch_device() -> str:
+    """Detect the best available torch device for diarization."""
+    import torch  # noqa: PLC0415
+
+    if torch.cuda.is_available():
+        return "cuda"
+    if hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
+        return "mps"
+    return "cpu"
+
+
 def _load_audio_for_diarization(audio_path: Path) -> tuple[torch.Tensor, int]:
     """Load audio for diarization, falling back to FFmpeg conversion when needed."""
     import torch  # noqa: PLC0415
@@ -115,6 +126,7 @@ class SpeakerDiarizer:
         hf_token: str,
         min_speakers: int | None = None,
         max_speakers: int | None = None,
+        device: str | None = None,
     ) -> None:
         """Initialize the diarization pipeline.
 
@@ -122,8 +134,11 @@ class SpeakerDiarizer:
             hf_token: HuggingFace token for accessing pyannote models.
             min_speakers: Minimum number of speakers (optional hint).
             max_speakers: Maximum number of speakers (optional hint).
+            device: Torch device to use. Auto-detected when omitted.
 
         """
+        import torch  # noqa: PLC0415
+
         _check_pyannote_installed()
         from pyannote.audio import Pipeline  # noqa: PLC0415
 
@@ -131,6 +146,8 @@ class SpeakerDiarizer:
             "pyannote/speaker-diarization-3.1",
             token=hf_token,
         )
+        self.device = device or _get_torch_device()
+        self.pipeline.to(torch.device(self.device))
         self.min_speakers = min_speakers
         self.max_speakers = max_speakers
 
@@ -425,6 +442,7 @@ def align_transcript_with_words(
     segments: list[DiarizedSegment],
     audio_path: Path,
     language: str = "en",
+    device: str | None = None,
 ) -> list[DiarizedSegment]:
     """Align transcript using wav2vec2 forced alignment for word-level precision.
 
@@ -433,6 +451,7 @@ def align_transcript_with_words(
         segments: List of speaker segments from diarization.
         audio_path: Path to the audio file for alignment.
         language: Language code for alignment model.
+        device: Torch device to use. Auto-detected when omitted.
 
     Returns:
         List of DiarizedSegment with precise word-level speaker assignment.
@@ -441,7 +460,7 @@ def align_transcript_with_words(
     if not segments or not transcript.strip():
         return segments
 
-    words = align(audio_path, transcript, language)
+    words = align(audio_path, transcript, language, device=device or _get_torch_device())
     if not words:
         return align_transcript_with_speakers(transcript, segments)
     return align_words_to_speakers(words, segments)

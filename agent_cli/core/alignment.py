@@ -6,7 +6,9 @@ Based on whisperx's alignment approach with beam search backtracking.
 from __future__ import annotations
 
 import math
+import warnings
 from dataclasses import dataclass
+from functools import lru_cache
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -27,6 +29,23 @@ ALIGN_MODELS: dict[str, str] = {
     "es": "VOXPOPULI_ASR_BASE_10K_ES",
     "it": "VOXPOPULI_ASR_BASE_10K_IT",
 }
+
+
+@lru_cache(maxsize=8)
+def _get_alignment_bundle(language: str):  # noqa: ANN202
+    import torchaudio  # noqa: PLC0415
+
+    return torchaudio.pipelines.__dict__[ALIGN_MODELS[language]]
+
+
+@lru_cache(maxsize=8)
+def _get_alignment_model(language: str, device: str):  # noqa: ANN202
+    return _get_alignment_bundle(language).get_model().to(device)
+
+
+@lru_cache(maxsize=8)
+def _get_alignment_labels(language: str) -> tuple[str, ...]:
+    return tuple(_get_alignment_bundle(language).get_labels())
 
 
 @dataclass
@@ -63,10 +82,7 @@ def align(
         msg = f"No alignment model for language: {language}. Supported: {list(ALIGN_MODELS.keys())}"
         raise ValueError(msg)
 
-    # Load model
-    bundle = torchaudio.pipelines.__dict__[ALIGN_MODELS[language]]
-    model = bundle.get_model().to(device)
-    labels = bundle.get_labels()
+    labels = _get_alignment_labels(language)
     dictionary = {c.lower(): i for i, c in enumerate(labels)}
 
     # Load audio
@@ -86,10 +102,24 @@ def align(
             (0, MIN_WAV2VEC2_SAMPLES - waveform.shape[-1]),
         )
 
-    # Get emissions
-    with torch.inference_mode():
-        emissions, _ = model(waveform.to(device), lengths=lengths)
-        emissions = torch.log_softmax(emissions, dim=-1).cpu()
+    def compute_emissions(target_device: str) -> torch.Tensor:
+        model_on_device = _get_alignment_model(language, target_device)
+        waveform_on_device = waveform.to(target_device)
+        lengths_on_device = lengths.to(target_device) if lengths is not None else None
+        with torch.inference_mode():
+            emissions, _ = model_on_device(waveform_on_device, lengths=lengths_on_device)
+            return torch.log_softmax(emissions, dim=-1).cpu()
+
+    try:
+        emissions = compute_emissions(device)
+    except (NotImplementedError, RuntimeError):
+        if device != "mps":
+            raise
+        warnings.warn(
+            "wav2vec2 alignment is not supported on MPS in this build; falling back to CPU.",
+            stacklevel=2,
+        )
+        emissions = compute_emissions("cpu")
 
     emission = emissions[0]
     words = transcript.split()

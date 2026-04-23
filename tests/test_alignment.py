@@ -15,6 +15,9 @@ from agent_cli.core.alignment import (
     _build_alignment_tokens,
     _fallback_word_alignment,
     _fill_missing_word_bounds,
+    _get_alignment_bundle,
+    _get_alignment_labels,
+    _get_alignment_model,
     _get_blank_id,
     _get_trellis,
     _get_wildcard_emission,
@@ -25,6 +28,13 @@ from agent_cli.core.alignment import (
 
 if TYPE_CHECKING:
     from pathlib import Path
+
+
+@pytest.fixture(autouse=True)
+def clear_alignment_caches() -> None:
+    _get_alignment_bundle.cache_clear()
+    _get_alignment_labels.cache_clear()
+    _get_alignment_model.cache_clear()
 
 
 def _mock_dictionary() -> dict[str, int]:
@@ -360,6 +370,51 @@ class TestAlign:
             assert isinstance(words, list)
             for word in words:
                 assert isinstance(word, AlignedWord)
+
+    def test_align_falls_back_from_mps_to_cpu(self, tmp_path: Path) -> None:
+        """Test that MPS alignment falls back to CPU when unsupported."""
+        audio_file = tmp_path / "test.wav"
+        audio_file.touch()
+
+        mock_waveform = torch.zeros(1, 16000)
+        mock_emissions = torch.randn(1, 100, 29)
+
+        call_devices: list[str] = []
+
+        class MockModel:
+            def __init__(self) -> None:
+                self.device = "cpu"
+
+            def to(self, device: str) -> MockModel:
+                self.device = device
+                return self
+
+            def __call__(
+                self, waveform: torch.Tensor, lengths: torch.Tensor | None = None
+            ) -> tuple[torch.Tensor, None]:
+                del waveform
+                del lengths
+                call_devices.append(self.device)
+                if self.device == "mps":
+                    msg = "convolution_overrideable not implemented"
+                    raise NotImplementedError(msg)
+                return mock_emissions, None
+
+        mock_bundle = MagicMock()
+        mock_bundle.get_model.return_value = MockModel()
+        mock_bundle.get_labels.return_value = list("abcdefghijklmnopqrstuvwxyz|' ")
+
+        mock_pipelines = MagicMock()
+        mock_pipelines.__dict__ = {"WAV2VEC2_ASR_BASE_960H": mock_bundle}
+
+        with (
+            patch("torchaudio.load", return_value=(mock_waveform, 16000)),
+            patch("torchaudio.pipelines", mock_pipelines),
+        ):
+            words = align(audio_file, "hi there", language="en", device="mps")
+
+        assert isinstance(words, list)
+        assert call_devices == ["mps", "cpu"]
 
     def test_handles_punctuation_via_wildcards(self, tmp_path: Path) -> None:
         """Test that punctuation doesn't break alignment due to wildcard handling."""

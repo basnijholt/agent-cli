@@ -246,6 +246,7 @@ class TestSpeakerDiarizer:
             patch(
                 "agent_cli.core.diarization._check_pyannote_installed",
             ),
+            patch("agent_cli.core.diarization._get_torch_device", return_value="mps"),
             patch.dict(
                 "sys.modules",
                 {"pyannote.audio": MagicMock(Pipeline=mock_pipeline_class)},
@@ -262,6 +263,10 @@ class TestSpeakerDiarizer:
                 "pyannote/speaker-diarization-3.1",
                 token="test_token",  # noqa: S106
             )
+            assert diarizer.device == "mps"
+            mock_pipeline.to.assert_called_once()
+            called_device = mock_pipeline.to.call_args[0][0]
+            assert str(called_device) == "mps"
 
     def test_diarizer_diarize(self, tmp_path: Path):
         """Test diarization with mocked pipeline."""
@@ -299,6 +304,7 @@ class TestSpeakerDiarizer:
 
         with (
             patch("agent_cli.core.diarization._check_pyannote_installed"),
+            patch("agent_cli.core.diarization._get_torch_device", return_value="cpu"),
             patch.dict(
                 "sys.modules",
                 {"pyannote.audio": MagicMock(Pipeline=mock_pipeline_class)},
@@ -349,6 +355,7 @@ class TestSpeakerDiarizer:
 
         with (
             patch("agent_cli.core.diarization._check_pyannote_installed"),
+            patch("agent_cli.core.diarization._get_torch_device", return_value="cpu"),
             patch.dict(
                 "sys.modules",
                 {"pyannote.audio": MagicMock(Pipeline=mock_pipeline_class)},
@@ -568,11 +575,13 @@ class TestAlignTranscriptWithWords:
                 segments,
                 audio_path=audio_file,
                 language="fr",
+                device="mps",
             )
 
             mock_align.assert_called_once()
             call_args = mock_align.call_args
             assert call_args[0][2] == "fr"  # language argument
+            assert call_args[1]["device"] == "mps"
 
     def test_falls_back_to_sentence_alignment(self, tmp_path: Path):
         """Test that empty alignment result falls back to sentence-based assignment.
