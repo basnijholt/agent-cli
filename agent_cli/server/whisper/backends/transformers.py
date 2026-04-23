@@ -1,4 +1,4 @@
-"""Transformers Whisper backend for HuggingFace models with safetensors support."""
+"""Transformers ASR backend for HuggingFace models with safetensors support."""
 
 from __future__ import annotations
 
@@ -17,6 +17,7 @@ from agent_cli.core.process import set_process_title
 from agent_cli.server.whisper.backends.base import (
     BackendConfig,
     TranscriptionResult,
+    UnsupportedRequestError,
 )
 
 logger = logging.getLogger(__name__)
@@ -43,12 +44,25 @@ _MODEL_MAP: dict[str, str] = {
     "distil-small.en": "distil-whisper/distil-small.en",
 }
 
+_REMOTE_CODE_MODEL_PREFIXES = ("CohereLabs/cohere-transcribe",)
+
 
 def _resolve_model_name(model_name: str) -> str:
     """Resolve a model name to a HuggingFace repo."""
     if "/" in model_name:
         return model_name
     return _MODEL_MAP.get(model_name, f"openai/whisper-{model_name}")
+
+
+def requires_remote_code(model_name: str) -> bool:
+    """Return True for transformers ASR models this backend trusts by default."""
+    resolved_model = _resolve_model_name(model_name)
+    return resolved_model.startswith(_REMOTE_CODE_MODEL_PREFIXES)
+
+
+def _is_cohere_asr_model() -> bool:
+    """Return True when the loaded model is Cohere ASR."""
+    return _state.is_cohere_asr
 
 
 def download_model(model_name: str, cache_dir: Path | None = None) -> str:
@@ -75,7 +89,11 @@ class _SubprocessState:
 
     model: Any = None
     processor: Any = None
+    model_name: str | None = None
+    dtype: Any = None
     device: str | None = None
+    is_cohere_asr: bool = False
+    has_transcribe_helper: bool = False
 
 
 _state = _SubprocessState()
@@ -88,6 +106,7 @@ def _load_model_in_subprocess(
     model_name: str,
     device: str,
     download_root: str | None,
+    trust_remote_code: bool,
 ) -> str:
     """Load model in subprocess. Returns actual device string."""
     import torch  # noqa: PLC0415
@@ -104,9 +123,12 @@ def _load_model_in_subprocess(
         else:
             device = "cpu"
 
+    allow_remote_code = trust_remote_code or requires_remote_code(model_name)
+
     _state.processor = AutoProcessor.from_pretrained(
         model_name,
         cache_dir=download_root,
+        trust_remote_code=allow_remote_code,
     )
     dtype = torch.float16 if device != "cpu" else torch.float32
     _state.model = AutoModelForSpeechSeq2Seq.from_pretrained(
@@ -114,35 +136,151 @@ def _load_model_in_subprocess(
         cache_dir=download_root,
         torch_dtype=dtype,
         low_cpu_mem_usage=True,
+        trust_remote_code=allow_remote_code,
     )
     _state.model.to(device)
     _state.model.eval()
+    _state.model_name = model_name
+    _state.dtype = dtype
     _state.device = device
+    _state.is_cohere_asr = requires_remote_code(model_name)
+    _state.has_transcribe_helper = hasattr(_state.model, "transcribe")
 
     return device
 
 
-def _transcribe_in_subprocess(kwargs: dict[str, Any]) -> dict[str, Any]:
-    """Run transcription in subprocess. Reuses model from _state."""
-    import torch  # noqa: PLC0415
+def _read_wav_audio(wav_path: str) -> tuple[Any, int, float]:
+    """Read a WAV file into a float32 numpy array."""
+    import numpy as np  # noqa: PLC0415
 
-    if _state.model is None or _state.processor is None:
-        msg = "Model not loaded in subprocess. Call _load_model_in_subprocess first."
-        raise RuntimeError(msg)
-
-    # Parse WAV and extract audio
-    with wave.open(kwargs.pop("wav_path"), "rb") as wav_file:
+    with wave.open(wav_path, "rb") as wav_file:
         sample_rate = wav_file.getframerate()
         audio_bytes = wav_file.readframes(wav_file.getnframes())
         duration = wav_file.getnframes() / sample_rate
 
-    # Convert to float tensor (copy buffer to avoid non-writable tensor warning)
-    import numpy as np  # noqa: PLC0415
-
     audio_array = np.frombuffer(audio_bytes, dtype=np.int16).astype(np.float32) / 32768.0
-    audio_tensor = torch.from_numpy(audio_array)
+    return audio_array, sample_rate, duration
 
-    # Process audio
+
+def _make_result(
+    *,
+    text: str,
+    language: str,
+    language_probability: float,
+    duration: float,
+    supports_segments: bool = False,
+) -> dict[str, Any]:
+    """Build the serialized transcription result returned from the subprocess."""
+    return {
+        "text": text.strip(),
+        "language": language,
+        "language_probability": language_probability,
+        "duration": duration,
+        "segments": [],
+        "supports_segments": supports_segments,
+    }
+
+
+def _move_inputs_to_device(inputs: Any) -> Any:
+    """Move processor inputs to the loaded model device."""
+    if hasattr(inputs, "to"):
+        if _state.dtype is None:
+            return inputs.to(_state.device)
+        return inputs.to(_state.device, dtype=_state.dtype)
+    return {k: v.to(_state.device) if hasattr(v, "to") else v for k, v in inputs.items()}
+
+
+def _transcribe_cohere_asr(
+    *,
+    audio_array: Any,
+    sample_rate: int,
+    effective_language: str | None,
+    task: str,
+    duration: float,
+) -> dict[str, Any]:
+    """Transcribe with Cohere ASR's documented processor/generate/decode flow."""
+    if not effective_language:
+        msg = (
+            "This model requires a language code. Pass `language` in the request "
+            "or start the server with `--default-language`."
+        )
+        raise UnsupportedRequestError(msg)
+    if task != "transcribe":
+        msg = "Translation is not supported by this model."
+        raise UnsupportedRequestError(msg)
+
+    import torch  # noqa: PLC0415
+
+    inputs = _state.processor(
+        audio=audio_array,
+        sampling_rate=sample_rate,
+        return_tensors="pt",
+        language=effective_language,
+    )
+    audio_chunk_index = inputs.get("audio_chunk_index")
+    inputs = _move_inputs_to_device(inputs)
+
+    with torch.no_grad():
+        generated_ids = _state.model.generate(**inputs, max_new_tokens=256)
+        text = _state.processor.decode(
+            generated_ids,
+            skip_special_tokens=True,
+            audio_chunk_index=audio_chunk_index,
+            language=effective_language,
+        )
+    if isinstance(text, list):
+        text = text[0] if text else ""
+
+    return _make_result(
+        text=text,
+        language=effective_language,
+        language_probability=1.0,
+        duration=duration,
+    )
+
+
+def _transcribe_with_model_helper(
+    *,
+    audio_array: Any,
+    sample_rate: int,
+    effective_language: str | None,
+    task: str,
+    duration: float,
+) -> dict[str, Any]:
+    """Transcribe with a custom model-level transcribe helper."""
+    if task != "transcribe":
+        msg = "Translation is not supported by this model."
+        raise UnsupportedRequestError(msg)
+
+    texts = _state.model.transcribe(
+        processor=_state.processor,
+        audio_arrays=[audio_array],
+        sample_rates=[sample_rate],
+        language=effective_language,
+    )
+    text = texts[0] if texts else ""
+    return _make_result(
+        text=text,
+        language=effective_language or "unknown",
+        language_probability=1.0 if effective_language else 0.0,
+        duration=duration,
+    )
+
+
+def _transcribe_with_generate(
+    *,
+    audio_array: Any,
+    sample_rate: int,
+    effective_language: str | None,
+    task: str,
+    initial_prompt: str | None,
+    beam_size: int,
+    duration: float,
+) -> dict[str, Any]:
+    """Transcribe with the standard Whisper generate path."""
+    import torch  # noqa: PLC0415
+
+    audio_tensor = torch.from_numpy(audio_array)
     inputs = _state.processor(
         audio_tensor,
         sampling_rate=sample_rate,
@@ -150,27 +288,21 @@ def _transcribe_in_subprocess(kwargs: dict[str, Any]) -> dict[str, Any]:
     )
     inputs = {k: v.to(_state.device) for k, v in inputs.items()}
 
-    language = kwargs.get("language")
-    task = kwargs.get("task", "transcribe")
-    initial_prompt = kwargs.get("initial_prompt")
-
-    # Build generate arguments - use language/task directly instead of deprecated forced_decoder_ids
     generate_args: dict[str, Any] = {
         **inputs,
-        "num_beams": kwargs.get("beam_size", 5),
+        "num_beams": beam_size,
         "task": task,
         "return_timestamps": False,
     }
 
-    # Add attention_mask if available (avoids warning about pad token)
     if "attention_mask" not in generate_args:
         generate_args["attention_mask"] = inputs.get(
             "attention_mask",
             torch.ones_like(inputs["input_features"][:, 0, :]),
         )
 
-    if language:
-        generate_args["language"] = language
+    if effective_language:
+        generate_args["language"] = effective_language
 
     if initial_prompt:
         prompt_ids = (
@@ -188,19 +320,57 @@ def _transcribe_in_subprocess(kwargs: dict[str, Any]) -> dict[str, Any]:
         generated_ids = _state.model.generate(**generate_args)
         text = _state.processor.batch_decode(generated_ids, skip_special_tokens=True)[0]
 
-    return {
-        "text": text.strip(),
-        "language": language or "en",
-        "language_probability": 1.0 if language else 0.95,
-        "duration": duration,
-        "segments": [],
-    }
+    return _make_result(
+        text=text,
+        language=effective_language or "en",
+        language_probability=1.0 if effective_language else 0.95,
+        duration=duration,
+    )
+
+
+def _transcribe_in_subprocess(kwargs: dict[str, Any]) -> dict[str, Any]:
+    """Run transcription in subprocess. Reuses model from _state."""
+    if _state.model is None or _state.processor is None:
+        msg = "Model not loaded in subprocess. Call _load_model_in_subprocess first."
+        raise RuntimeError(msg)
+
+    audio_array, sample_rate, duration = _read_wav_audio(kwargs.pop("wav_path"))
+    effective_language = kwargs.get("language") or kwargs.get("default_language")
+    task = kwargs.get("task", "transcribe")
+
+    if _is_cohere_asr_model():
+        return _transcribe_cohere_asr(
+            audio_array=audio_array,
+            sample_rate=sample_rate,
+            effective_language=effective_language,
+            task=task,
+            duration=duration,
+        )
+
+    if _state.has_transcribe_helper:
+        return _transcribe_with_model_helper(
+            audio_array=audio_array,
+            sample_rate=sample_rate,
+            effective_language=effective_language,
+            task=task,
+            duration=duration,
+        )
+
+    return _transcribe_with_generate(
+        audio_array=audio_array,
+        sample_rate=sample_rate,
+        effective_language=effective_language,
+        task=task,
+        initial_prompt=kwargs.get("initial_prompt"),
+        beam_size=kwargs.get("beam_size", 5),
+        duration=duration,
+    )
 
 
 class TransformersWhisperBackend:
-    """Whisper backend using HuggingFace transformers.
+    """ASR backend using HuggingFace transformers.
 
-    Supports loading models from safetensors format.
+    Supports loading Whisper checkpoints and remote-code ASR models.
     Uses subprocess isolation for memory management.
     """
 
@@ -243,6 +413,7 @@ class TransformersWhisperBackend:
             self._resolved_model,
             self._config.device,
             download_root,
+            self._config.trust_remote_code,
         )
 
         load_duration = time.time() - start_time
@@ -292,6 +463,7 @@ class TransformersWhisperBackend:
         kwargs: dict[str, Any] = {
             "wav_path": tmp_path,
             "language": language,
+            "default_language": self._config.default_language,
             "task": task,
             "initial_prompt": initial_prompt,
         }
@@ -304,7 +476,7 @@ class TransformersWhisperBackend:
                 kwargs,
             )
         finally:
-            Path(tmp_path).unlink(missing_ok=True)  # noqa: ASYNC240
+            await asyncio.to_thread(Path(tmp_path).unlink, missing_ok=True)
 
         return TranscriptionResult(
             text=result["text"],
@@ -312,4 +484,5 @@ class TransformersWhisperBackend:
             language_probability=result["language_probability"],
             duration=result["duration"],
             segments=result["segments"],
+            supports_segments=result["supports_segments"],
         )

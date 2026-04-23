@@ -4,11 +4,11 @@ icon: lucide/mic
 
 # whisper
 
-Run a local Whisper ASR server with automatic backend selection based on your platform:
+Run a local ASR server with automatic backend selection based on your platform:
 
 - **macOS Apple Silicon** → [mlx-whisper](https://github.com/ml-explore/mlx-examples/tree/main/whisper) (Metal acceleration)
 - **Linux/CUDA** → [faster-whisper](https://github.com/SYSTRAN/faster-whisper) (CTranslate2)
-- **HuggingFace** → [transformers](https://huggingface.co/docs/transformers/model_doc/whisper) (supports safetensors models)
+- **HuggingFace** → [transformers](https://huggingface.co/docs/transformers/model_doc/whisper) (supports safetensors models and known remote-code ASR models such as Cohere Transcribe)
 
 > [!NOTE]
 > **Quick Start** - Get transcription working in 30 seconds:
@@ -24,6 +24,15 @@ Run a local Whisper ASR server with automatic backend selection based on your pl
 > agent-cli server whisper --backend mlx
 > ```
 >
+> Cohere Transcribe via HuggingFace transformers:
+> ```bash
+> pip install "agent-cli[whisper-transformers]" librosa soundfile sentencepiece protobuf
+> agent-cli server whisper \
+>   --backend transformers \
+>   --model CohereLabs/cohere-transcribe-03-2026 \
+>   --default-language en
+> ```
+>
 > Use it with any OpenAI-compatible client, or configure agent-cli to use it - see [Configuration](../../configuration.md#using-local-whisper-server).
 
 ## Features
@@ -34,6 +43,10 @@ Run a local Whisper ASR server with automatic backend selection based on your pl
 - **Multiple models** - run different model sizes with independent TTLs
 - **Background preloading** - downloads start at startup without blocking; use `--preload` to wait
 - **Multi-platform support** - automatically uses the optimal backend for your hardware
+
+> [!IMPORTANT]
+> Some backend/model combinations support fewer features than Whisper.
+> For example, Cohere Transcribe currently requires an explicit language and does not provide translation or timestamped subtitle output.
 
 ## Usage
 
@@ -61,6 +74,12 @@ agent-cli server whisper --model large-v3 --download-only
 
 # Preload model at startup and wait until ready
 agent-cli server whisper --preload
+
+# Run Cohere Transcribe through the transformers backend
+agent-cli server whisper \
+  --backend transformers \
+  --model CohereLabs/cohere-transcribe-03-2026 \
+  --default-language en
 ```
 
 ## Options
@@ -80,6 +99,8 @@ agent-cli server whisper --preload
 | `--device, -d` | `auto` | Compute device: `auto` (detect GPU), `cuda`, `cuda:0`, `cpu`. MLX backend always uses Apple Silicon |
 | `--compute-type` | `auto` | Precision for faster-whisper: `auto`, `float16`, `int8`, `int8_float16`. Lower precision = faster + less VRAM |
 | `--cache-dir` | - | Custom directory for downloaded models (default: HuggingFace cache) |
+| `--default-language` | - | Fallback language code for requests that omit `language`. Required for models that do not support language auto-detection (for example Cohere Transcribe). |
+| `--trust-remote-code` | `false` | Allow Hugging Face model repositories to execute custom Python code. Known supported remote-code ASR models are trusted automatically. |
 | `--ttl` | `300` | Seconds of inactivity before unloading model from memory. Set to 0 to keep loaded indefinitely |
 | `--preload` | `false` | Load model(s) immediately at startup instead of on first request. Useful for reducing first-request latency |
 | `--host` | `0.0.0.0` | Network interface to bind. Use `0.0.0.0` for all interfaces |
@@ -87,7 +108,7 @@ agent-cli server whisper --preload
 | `--wyoming-port` | `10300` | Port for Wyoming protocol (Home Assistant integration) |
 | `--no-wyoming` | `false` | Disable Wyoming protocol server (only run HTTP API) |
 | `--download-only` | `false` | Download model(s) to cache and exit. Useful for Docker builds |
-| `--backend, -b` | `auto` | Inference backend: `auto` (faster-whisper on CUDA/CPU, MLX on Apple Silicon), `faster-whisper`, `mlx`, `transformers` (HuggingFace, supports safetensors) |
+| `--backend, -b` | `auto` | Inference backend: `auto` (faster-whisper on CUDA/CPU, MLX on Apple Silicon), `faster-whisper`, `mlx`, `transformers` (HuggingFace, supports safetensors and known remote-code ASR models) |
 
 ### General Options
 
@@ -110,6 +131,10 @@ Once running, the server exposes:
 | `/v1/model/unload` | POST | Manually unload a model from memory |
 | `/health` | GET | Health check with model status |
 | `/docs` | GET | Interactive API documentation |
+
+> [!NOTE]
+> `/v1/audio/translations`, `srt`, and `vtt` output depend on the selected backend/model.
+> Whisper models with timestamp-capable backends support them; Cohere Transcribe and the generic transformers backend do not provide timestamped subtitle output.
 
 ## Using the API
 
@@ -238,6 +263,23 @@ agent-cli server whisper --backend transformers
 ```
 
 This uses HuggingFace's `transformers` library, which supports loading `.safetensors` models directly from the Hub.
+
+For Cohere Transcribe specifically:
+
+```bash
+pip install "agent-cli[whisper-transformers]" librosa soundfile sentencepiece protobuf
+agent-cli server whisper \
+  --backend transformers \
+  --model CohereLabs/cohere-transcribe-03-2026 \
+  --default-language en
+```
+
+Notes for Cohere Transcribe:
+
+- The HuggingFace repo is gated; you must accept the model terms on Hugging Face first.
+- Set `--default-language` unless every client request will pass `language`.
+- `translate`, `srt`, and `vtt` are not available for this model because it does not return timestamped segments or translation output.
+- Use `--trust-remote-code` only for additional custom Hugging Face models that require repository Python code and are not recognized automatically.
 
 ### Docker
 

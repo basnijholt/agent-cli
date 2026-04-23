@@ -18,6 +18,7 @@ class TranscriptionResult:
     language_probability: float
     duration: float
     segments: list[dict[str, Any]] = field(default_factory=list)
+    supports_segments: bool = True
 
 
 @dataclass
@@ -29,10 +30,16 @@ class BackendConfig:
     compute_type: str = "auto"
     cpu_threads: int = 4
     cache_dir: Path | None = None
+    default_language: str | None = None
+    trust_remote_code: bool = False
 
 
 class InvalidAudioError(ValueError):
     """Raised when the input audio is invalid or unsupported."""
+
+
+class UnsupportedRequestError(ValueError):
+    """Raised when the backend cannot satisfy the requested transcription behavior."""
 
 
 @runtime_checkable

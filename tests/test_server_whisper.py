@@ -13,6 +13,7 @@ from fastapi.testclient import TestClient
 
 from agent_cli.server.model_manager import ModelStats
 from agent_cli.server.whisper.backends import TranscriptionResult
+from agent_cli.server.whisper.backends.base import UnsupportedRequestError
 from agent_cli.server.whisper.model_manager import (
     WhisperModelConfig as ModelConfig,
 )
@@ -42,6 +43,8 @@ class TestModelConfig:
         assert config.cache_dir is None
         assert config.cpu_threads == 4
         assert config.backend_type == "auto"
+        assert config.default_language is None
+        assert config.trust_remote_code is False
 
     def test_custom_values(self) -> None:
         """Test custom configuration values."""
@@ -52,6 +55,8 @@ class TestModelConfig:
             ttl_seconds=600,
             cache_dir=Path("/tmp/whisper"),  # noqa: S108
             cpu_threads=8,
+            default_language="en",
+            trust_remote_code=True,
         )
         assert config.model_name == "small"
         assert config.device == "cuda:0"
@@ -59,6 +64,8 @@ class TestModelConfig:
         assert config.ttl_seconds == 600
         assert config.cache_dir == Path("/tmp/whisper")  # noqa: S108
         assert config.cpu_threads == 8
+        assert config.default_language == "en"
+        assert config.trust_remote_code is True
 
 
 class TestModelStats:
@@ -351,6 +358,7 @@ class TestTranscriptionResult:
         assert result.language_probability == 0.95
         assert result.duration == 1.5
         assert result.segments == []
+        assert result.supports_segments is True
 
     def test_result_with_segments(self) -> None:
         """Test transcription result with segments."""
@@ -367,6 +375,19 @@ class TestTranscriptionResult:
         )
         assert len(result.segments) == 2
         assert result.segments[0]["text"] == "Hello"
+
+
+class TestTransformersBackendHelpers:
+    """Tests for lightweight transformers backend helpers."""
+
+    def test_known_remote_code_model_requires_remote_code(self) -> None:
+        """Test known Cohere ASR models are recognized as remote-code models."""
+        from agent_cli.server.whisper.backends.transformers import (  # noqa: PLC0415
+            requires_remote_code,
+        )
+
+        assert requires_remote_code("CohereLabs/cohere-transcribe-03-2026") is True
+        assert requires_remote_code("large-v3") is False
 
 
 def _create_test_wav() -> bytes:
@@ -562,6 +583,90 @@ class TestWhisperAPI:
             # Verify translate task was passed
             call_args = mock_transcribe.call_args
             assert call_args.kwargs["task"] == "translate"
+
+    def test_translate_endpoint_returns_400_for_unsupported_backend(
+        self,
+        client: TestClient,
+        mock_registry: WhisperModelRegistry,
+    ) -> None:
+        """Test translation endpoint returns 400 when backend rejects translation."""
+        manager = mock_registry.get_manager()
+        with patch.object(
+            manager,
+            "transcribe",
+            new_callable=AsyncMock,
+            side_effect=UnsupportedRequestError("Translation is not supported by this model."),
+        ):
+            response = client.post(
+                "/v1/audio/translations",
+                files={"file": ("audio.wav", _create_test_wav(), "audio/wav")},
+                data={"model": "whisper-1"},
+            )
+
+        assert response.status_code == 400
+        assert "Translation is not supported" in response.json()["detail"]
+
+    def test_transcribe_srt_requires_segments(
+        self,
+        client: TestClient,
+        mock_registry: WhisperModelRegistry,
+    ) -> None:
+        """Test SRT output returns 400 when backend does not provide timestamps."""
+        mock_result = TranscriptionResult(
+            text="Hello world",
+            language="en",
+            language_probability=1.0,
+            duration=1.5,
+            segments=[],
+            supports_segments=False,
+        )
+
+        manager = mock_registry.get_manager()
+        with patch.object(
+            manager,
+            "transcribe",
+            new_callable=AsyncMock,
+            return_value=mock_result,
+        ):
+            response = client.post(
+                "/v1/audio/transcriptions",
+                files={"file": ("audio.wav", _create_test_wav(), "audio/wav")},
+                data={"model": "whisper-1", "response_format": "srt"},
+            )
+
+        assert response.status_code == 400
+        assert "timestamped segments" in response.json()["detail"]
+
+    def test_transcribe_srt_allows_empty_segments_for_silence(
+        self,
+        client: TestClient,
+        mock_registry: WhisperModelRegistry,
+    ) -> None:
+        """Test SRT output can be empty when a timestamp-capable backend heard no speech."""
+        mock_result = TranscriptionResult(
+            text="",
+            language="en",
+            language_probability=1.0,
+            duration=1.5,
+            segments=[],
+            supports_segments=True,
+        )
+
+        manager = mock_registry.get_manager()
+        with patch.object(
+            manager,
+            "transcribe",
+            new_callable=AsyncMock,
+            return_value=mock_result,
+        ):
+            response = client.post(
+                "/v1/audio/transcriptions",
+                files={"file": ("audio.wav", _create_test_wav(), "audio/wav")},
+                data={"model": "whisper-1", "response_format": "srt"},
+            )
+
+        assert response.status_code == 200
+        assert response.text == ""
 
     def test_unload_model_success(
         self,

@@ -28,6 +28,8 @@ class WhisperModelConfig(ModelConfig):
     compute_type: str = "auto"
     cpu_threads: int = 4
     backend_type: BackendType = "auto"
+    default_language: str | None = None
+    trust_remote_code: bool = False
 
 
 class WhisperModelManager:
@@ -46,6 +48,8 @@ class WhisperModelManager:
                 compute_type=config.compute_type,
                 cpu_threads=config.cpu_threads,
                 cache_dir=config.cache_dir,
+                default_language=config.default_language,
+                trust_remote_code=config.trust_remote_code,
             ),
             backend_type=config.backend_type,
         )

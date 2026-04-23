@@ -200,6 +200,54 @@ def _check_whisper_deps(backend: str, *, download_only: bool = False) -> None:
         raise typer.Exit(1)
 
 
+def _is_remote_code_asr_model(model_name: str) -> bool:
+    """Return True for known transformers ASR models that rely on remote code."""
+    from agent_cli.server.whisper.backends.transformers import (  # noqa: PLC0415
+        requires_remote_code,
+    )
+
+    return requires_remote_code(model_name)
+
+
+def _check_transformers_audio_model_deps(models: list[str]) -> None:
+    """Check optional dependencies needed by remote-code transformers ASR models."""
+    if not any(_is_remote_code_asr_model(model_name) for model_name in models):
+        return
+
+    required_modules = {
+        "librosa": "librosa",
+        "soundfile": "soundfile",
+        "sentencepiece": "sentencepiece",
+        "protobuf": "google.protobuf",
+    }
+    missing = [package for package, module in required_modules.items() if not _has(module)]
+    if not missing:
+        return
+
+    missing_str = ", ".join(missing)
+    err_console.print(
+        "[bold red]Error:[/bold red] Cohere Transcribe support via the transformers backend "
+        f"also requires: [cyan]{missing_str}[/cyan]. "
+        "Run: [cyan]pip install librosa soundfile sentencepiece protobuf[/cyan]",
+    )
+    raise typer.Exit(1)
+
+
+def _print_optional_whisper_config(
+    *,
+    default_language: str | None,
+    trust_remote_code: bool,
+) -> None:
+    """Print optional Whisper server configuration lines."""
+    optional_config = (
+        ("Default language", default_language),
+        ("Trust remote code", "enabled" if trust_remote_code else None),
+    )
+    for label, value in optional_config:
+        if value:
+            console.print(f"  {label}: [cyan]{value}[/cyan]")
+
+
 @app.command("whisper")
 @requires_extras("server", "faster-whisper|mlx-whisper|whisper-transformers", "wyoming")
 def whisper_cmd(  # noqa: PLR0912, PLR0915
@@ -250,6 +298,27 @@ def whisper_cmd(  # noqa: PLR0912, PLR0915
             help="Custom directory for downloaded models (default: HuggingFace cache)",
         ),
     ] = None,
+    default_language: Annotated[
+        str | None,
+        typer.Option(
+            "--default-language",
+            help=(
+                "Fallback language code for requests that omit `language`. "
+                "Required for models that do not support language auto-detection "
+                "(for example Cohere Transcribe)."
+            ),
+        ),
+    ] = None,
+    trust_remote_code: Annotated[
+        bool,
+        typer.Option(
+            "--trust-remote-code",
+            help=(
+                "Allow Hugging Face model repositories to execute custom Python code. "
+                "Known supported remote-code ASR models are trusted automatically."
+            ),
+        ),
+    ] = False,
     ttl: Annotated[
         int,
         typer.Option(
@@ -314,7 +383,8 @@ def whisper_cmd(  # noqa: PLR0912, PLR0915
             "-b",
             help=(
                 "Inference backend: `auto` (faster-whisper on CUDA/CPU, MLX on Apple Silicon), "
-                "`faster-whisper`, `mlx`, `transformers` (HuggingFace, supports safetensors)"
+                "`faster-whisper`, `mlx`, `transformers` (HuggingFace, supports safetensors "
+                "and known remote-code ASR models)"
             ),
         ),
     ] = "auto",
@@ -371,6 +441,9 @@ def whisper_cmd(  # noqa: PLR0912, PLR0915
     if model is None:
         model = ["large-v3"]
 
+    if resolved_backend == "transformers" and not download_only:
+        _check_transformers_audio_model_deps(model)
+
     # Validate default model against model list
     if default_model is not None and default_model not in model:
         err_console.print(
@@ -420,6 +493,8 @@ def whisper_cmd(  # noqa: PLR0912, PLR0915
             model_name=model_name,
             device=device,
             compute_type=compute_type,
+            default_language=default_language,
+            trust_remote_code=trust_remote_code,
             ttl_seconds=ttl,
             cache_dir=cache_dir,
             backend_type=resolved_backend,  # type: ignore[arg-type]
@@ -443,6 +518,10 @@ def whisper_cmd(  # noqa: PLR0912, PLR0915
     console.print("[dim]Configuration:[/dim]")
     console.print(f"  Backend: [cyan]{actual_backend}[/cyan]")
     console.print(f"  Log level: [cyan]{log_level}[/cyan]")
+    _print_optional_whisper_config(
+        default_language=default_language,
+        trust_remote_code=trust_remote_code,
+    )
     console.print()
     console.print("[dim]Endpoints:[/dim]")
     console.print(f"  HTTP API: [cyan]http://{host}:{port}[/cyan]")

@@ -13,7 +13,7 @@ from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel
 
 from agent_cli.server.common import configure_app, create_lifespan, setup_wav_file
-from agent_cli.server.whisper.backends.base import InvalidAudioError
+from agent_cli.server.whisper.backends.base import InvalidAudioError, UnsupportedRequestError
 
 if TYPE_CHECKING:
     from agent_cli.server.whisper.model_registry import WhisperModelRegistry
@@ -281,6 +281,8 @@ def create_app(  # noqa: C901, PLR0915
             )
         except InvalidAudioError as e:
             raise HTTPException(status_code=400, detail=str(e)) from e
+        except UnsupportedRequestError as e:
+            raise HTTPException(status_code=400, detail=str(e)) from e
         except Exception as e:
             logger.exception("Transcription failed")
             raise HTTPException(status_code=500, detail=str(e)) from e
@@ -290,10 +292,16 @@ def create_app(  # noqa: C901, PLR0915
             return PlainTextResponse(content=result.text)
 
         if response_format == "srt":
+            if not result.supports_segments:
+                msg = "Selected model does not provide timestamped segments required for SRT."
+                raise HTTPException(status_code=400, detail=msg)
             srt_content = _format_srt(result.segments)
             return PlainTextResponse(content=srt_content, media_type="text/plain")
 
         if response_format == "vtt":
+            if not result.supports_segments:
+                msg = "Selected model does not provide timestamped segments required for VTT."
+                raise HTTPException(status_code=400, detail=msg)
             vtt_content = _format_vtt(result.segments)
             return PlainTextResponse(content=vtt_content, media_type="text/vtt")
 
