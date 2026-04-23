@@ -90,8 +90,8 @@ agent-cli diarize-live-session \
 | `--date` | - | Date of the live session in YYYY-MM-DD format. Defaults to today. |
 | `--start` | - | Start time of the session in HH:MM or HH:MM:SS. |
 | `--end` | - | End time of the session in HH:MM or HH:MM:SS. |
-| `--transcription-log` | `/Users/bas.nijholt/.config/agent-cli/transcriptions.jsonl` | Path to the transcribe-live JSONL log file. |
-| `--output-dir` | `/Users/bas.nijholt/.cache/agent-cli/live-diarization` | Directory where the combined audio and diarized transcript will be saved. |
+| `--transcription-log` | `/home/runner/.config/agent-cli/transcriptions.jsonl` | Path to the transcribe-live JSONL log file. |
+| `--output-dir` | `/home/runner/.cache/agent-cli/live-diarization` | Directory where the combined audio and diarized transcript will be saved. |
 | `--prepare-only` | `false` | Only create the combined audio file and metadata without running diarization. |
 | `--retranscribe` | `false` | Re-run ASR on the combined audio instead of using the logged transcribe-live text. |
 
@@ -113,4 +113,6 @@ agent-cli diarize-live-session \
 |--------|---------|-------------|
 | `--config` | - | Path to a TOML configuration file. |
 | `--print-args` | `false` | Print the command line arguments, including variables taken from the configuration file. |
+
+
 <!-- OUTPUT:END -->
