@@ -215,8 +215,6 @@ agent-cli diarize-live-session \
   --prepare-only
 ```
 
-By default, the command reuses the `raw_output` text already logged by `transcribe-live`,
-aligns each saved chunk separately, and saves the labeled transcript under
-`~/.cache/agent-cli/live-diarization/`.
+By default, the command reuses the `raw_output` text already logged by `transcribe-live`, aligns each saved chunk separately, and saves the labeled transcript under `~/.cache/agent-cli/live-diarization/`.
 
 If you explicitly want to re-run ASR on the combined audio first, add `--retranscribe`.

@@ -9,7 +9,7 @@ import os
 import shutil
 import subprocess
 from dataclasses import dataclass
-from datetime import date, datetime, time
+from datetime import date, datetime, time, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -226,16 +226,15 @@ def select_segments_in_range(
     start_time: time,
     end_time: time,
 ) -> list[LiveSegment]:
-    """Select segments whose timestamps fall within the requested local time window."""
+    """Select segments whose audio overlaps the requested local time window."""
     selected: list[LiveSegment] = []
     for segment in segments:
-        segment_date = segment.timestamp.date()
-        segment_time = time(
-            hour=segment.timestamp.hour,
-            minute=segment.timestamp.minute,
-            second=segment.timestamp.second,
-        )
-        if segment_date == target_date and start_time <= segment_time <= end_time:
+        tzinfo = segment.timestamp.tzinfo
+        window_start = datetime.combine(target_date, start_time, tzinfo=tzinfo)
+        window_end = datetime.combine(target_date, end_time, tzinfo=tzinfo)
+        segment_end = segment.timestamp
+        segment_start = segment_end - timedelta(seconds=max(segment.duration_seconds, 0.0))
+        if segment_end >= window_start and segment_start <= window_end:
             selected.append(segment)
     return selected
 
@@ -475,17 +474,65 @@ def _resolve_option(option: Any) -> Any:
     return env_value
 
 
+def _coerce_option_value(option: Any, value: Any) -> Any:
+    """Coerce config/env values to the target option's runtime type."""
+    default = _option_default(option)
+    if isinstance(default, bool):
+        if isinstance(value, str):
+            return value.lower() in {"1", "true", "yes", "on"}
+        return bool(value)
+    if isinstance(default, int) and not isinstance(default, bool):
+        return int(value)
+    if isinstance(default, float):
+        return float(value)
+    return value
+
+
+def _load_transcribe_config_defaults(config_file: str | None) -> dict[str, Any]:
+    """Load `[defaults]` and `[transcribe]` config values for retranscription."""
+    loaded = agent_config.load_config(config_file)
+    defaults = agent_config.normalize_provider_defaults(loaded.get("defaults", {}))
+    transcribe_defaults = agent_config.normalize_provider_defaults(loaded.get("transcribe", {}))
+    return {**defaults, **transcribe_defaults}
+
+
+def _resolve_transcribe_option(
+    name: str,
+    option: Any,
+    config_defaults: dict[str, Any],
+) -> Any:
+    """Resolve retranscribe settings with CLI-equivalent precedence."""
+    env_value = _option_env_value(option)
+    if env_value is not None:
+        return _coerce_option_value(option, env_value)
+    if name in config_defaults:
+        return _coerce_option_value(option, config_defaults[name])
+    return _option_default(option)
+
+
 def run_retranscribe(
     args: argparse.Namespace,
     combined_audio: Path,
     transcript_path: Path,
+    *,
+    config_file: str | None = None,
 ) -> None:
     """Run the file-transcription pipeline internally and save the transcript to disk."""
     from agent_cli.agents.transcribe import _async_main  # noqa: PLC0415
 
+    config_defaults = _load_transcribe_config_defaults(config_file)
+
     provider_cfg = agent_config.ProviderSelection(
-        asr_provider=_resolve_option(opts.ASR_PROVIDER),
-        llm_provider=_resolve_option(opts.LLM_PROVIDER),
+        asr_provider=_resolve_transcribe_option(
+            "asr_provider",
+            opts.ASR_PROVIDER,
+            config_defaults,
+        ),
+        llm_provider=_resolve_transcribe_option(
+            "llm_provider",
+            opts.LLM_PROVIDER,
+            config_defaults,
+        ),
         tts_provider="wyoming",
     )
     general_cfg = agent_config.General(
@@ -496,19 +543,56 @@ def run_retranscribe(
         clipboard=False,
     )
     wyoming_asr_cfg = agent_config.WyomingASR(
-        asr_wyoming_ip=_resolve_option(opts.ASR_WYOMING_IP),
-        asr_wyoming_port=_resolve_option(opts.ASR_WYOMING_PORT),
+        asr_wyoming_ip=_resolve_transcribe_option(
+            "asr_wyoming_ip",
+            opts.ASR_WYOMING_IP,
+            config_defaults,
+        ),
+        asr_wyoming_port=_resolve_transcribe_option(
+            "asr_wyoming_port",
+            opts.ASR_WYOMING_PORT,
+            config_defaults,
+        ),
     )
-    openai_base_url = _resolve_option(opts.OPENAI_BASE_URL)
+    openai_base_url = _resolve_transcribe_option(
+        "openai_base_url",
+        opts.OPENAI_BASE_URL,
+        config_defaults,
+    )
     openai_asr_cfg = agent_config.OpenAIASR(
-        asr_openai_model=_resolve_option(opts.ASR_OPENAI_MODEL),
-        openai_api_key=_resolve_option(opts.OPENAI_API_KEY),
-        openai_base_url=_resolve_option(opts.ASR_OPENAI_BASE_URL) or openai_base_url,
-        asr_openai_prompt=_resolve_option(opts.ASR_OPENAI_PROMPT),
+        asr_openai_model=_resolve_transcribe_option(
+            "asr_openai_model",
+            opts.ASR_OPENAI_MODEL,
+            config_defaults,
+        ),
+        openai_api_key=_resolve_transcribe_option(
+            "openai_api_key",
+            opts.OPENAI_API_KEY,
+            config_defaults,
+        ),
+        openai_base_url=_resolve_transcribe_option(
+            "asr_openai_base_url",
+            opts.ASR_OPENAI_BASE_URL,
+            config_defaults,
+        )
+        or openai_base_url,
+        asr_openai_prompt=_resolve_transcribe_option(
+            "asr_openai_prompt",
+            opts.ASR_OPENAI_PROMPT,
+            config_defaults,
+        ),
     )
     gemini_asr_cfg = agent_config.GeminiASR(
-        asr_gemini_model=_resolve_option(opts.ASR_GEMINI_MODEL),
-        gemini_api_key=_resolve_option(opts.GEMINI_API_KEY),
+        asr_gemini_model=_resolve_transcribe_option(
+            "asr_gemini_model",
+            opts.ASR_GEMINI_MODEL,
+            config_defaults,
+        ),
+        gemini_api_key=_resolve_transcribe_option(
+            "gemini_api_key",
+            opts.GEMINI_API_KEY,
+            config_defaults,
+        ),
     )
     diarization_cfg = agent_config.Diarization(
         diarize=True,
@@ -529,17 +613,41 @@ def run_retranscribe(
             openai_asr_cfg=openai_asr_cfg,
             gemini_asr_cfg=gemini_asr_cfg,
             ollama_cfg=agent_config.Ollama(
-                llm_ollama_model=_resolve_option(opts.LLM_OLLAMA_MODEL),
-                llm_ollama_host=_resolve_option(opts.LLM_OLLAMA_HOST),
+                llm_ollama_model=_resolve_transcribe_option(
+                    "llm_ollama_model",
+                    opts.LLM_OLLAMA_MODEL,
+                    config_defaults,
+                ),
+                llm_ollama_host=_resolve_transcribe_option(
+                    "llm_ollama_host",
+                    opts.LLM_OLLAMA_HOST,
+                    config_defaults,
+                ),
             ),
             openai_llm_cfg=agent_config.OpenAILLM(
-                llm_openai_model=_resolve_option(opts.LLM_OPENAI_MODEL),
-                openai_api_key=_resolve_option(opts.OPENAI_API_KEY),
+                llm_openai_model=_resolve_transcribe_option(
+                    "llm_openai_model",
+                    opts.LLM_OPENAI_MODEL,
+                    config_defaults,
+                ),
+                openai_api_key=_resolve_transcribe_option(
+                    "openai_api_key",
+                    opts.OPENAI_API_KEY,
+                    config_defaults,
+                ),
                 openai_base_url=openai_base_url,
             ),
             gemini_llm_cfg=agent_config.GeminiLLM(
-                llm_gemini_model=_resolve_option(opts.LLM_GEMINI_MODEL),
-                gemini_api_key=_resolve_option(opts.GEMINI_API_KEY),
+                llm_gemini_model=_resolve_transcribe_option(
+                    "llm_gemini_model",
+                    opts.LLM_GEMINI_MODEL,
+                    config_defaults,
+                ),
+                gemini_api_key=_resolve_transcribe_option(
+                    "gemini_api_key",
+                    opts.GEMINI_API_KEY,
+                    config_defaults,
+                ),
             ),
             llm_enabled=False,
             transcription_log=None,
@@ -560,7 +668,7 @@ def run_retranscribe(
         transcript_path.write_text(transcript.rstrip() + "\n", encoding="utf-8")
 
 
-def main(argv: list[str] | None = None) -> int:
+def main(argv: list[str] | None = None, *, config_file: str | None = None) -> int:
     """Argparse entry point used by the Typer command and tests."""
     args = parse_args(argv)
     log_path = args.transcription_log.expanduser()
@@ -621,7 +729,12 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     if args.retranscribe:
-        run_retranscribe(args, combined_audio, transcript_path)
+        run_retranscribe(
+            args,
+            combined_audio,
+            transcript_path,
+            config_file=config_file,
+        )
     else:
         run_logged_diarization(
             args=args,
@@ -755,7 +868,7 @@ def diarize_live_session(
         retranscribe=retranscribe,
     )
     try:
-        exit_code = main(argv)
+        exit_code = main(argv, config_file=config_file)
     except (FileNotFoundError, RuntimeError, subprocess.CalledProcessError) as exc:
         print_with_style(f"❌ {exc}", style="red")
         raise typer.Exit(1) from None

@@ -14,9 +14,7 @@ agent-cli diarize-live-session [OPTIONS]
 
 ## Description
 
-This command reads `transcribe-live` entries from your JSONL log, selects a time
-window, combines the saved MP3 chunks into a single WAV, and produces a
-speaker-labeled transcript.
+This command reads `transcribe-live` entries from your JSONL log, selects a time window, combines the saved MP3 chunks into a single WAV, and produces a speaker-labeled transcript.
 
 By default it:
 
@@ -26,8 +24,7 @@ By default it:
 4. Maps the aligned words back onto the combined speaker timeline
 5. Writes the transcript and metadata under `~/.cache/agent-cli/live-diarization/`
 
-Use `--retranscribe` if you want to re-run ASR on the combined audio instead of
-using the logged `transcribe-live` text.
+Use `--retranscribe` if you want to re-run ASR on the combined audio instead of using the logged `transcribe-live` text.
 
 ## Installation
 
@@ -68,12 +65,9 @@ agent-cli diarize-live-session \
 
 ## Notes
 
-- `transcribe-live` chunks are split on silence, not on speaker changes, so one
-  saved MP3 can still contain multiple speakers.
-- On Apple Silicon, pyannote diarization can run on `mps`, but wav2vec2 forced
-  alignment falls back to CPU automatically when MPS is unsupported.
-- If you do not pass `--hf-token`, the command uses `HF_TOKEN` from the
-  environment.
+- `transcribe-live` chunks are split on silence, not on speaker changes, so one saved MP3 can still contain multiple speakers.
+- On Apple Silicon, pyannote diarization can run on `mps`, but wav2vec2 forced alignment falls back to CPU automatically when MPS is unsupported.
+- If you do not pass `--hf-token`, the command uses `HF_TOKEN` from the environment.
 
 ## Options
 
