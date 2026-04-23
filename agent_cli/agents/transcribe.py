@@ -19,6 +19,12 @@ from agent_cli.cli import app
 from agent_cli.core import process
 from agent_cli.core.audio import setup_devices
 from agent_cli.core.deps import requires_extras
+from agent_cli.core.diarization import (
+    SpeakerDiarizer,
+    align_transcript_with_speakers,
+    align_transcript_with_words,
+    format_diarized_output,
+)
 from agent_cli.core.utils import (
     enable_json_mode,
     format_short_timedelta,
@@ -53,6 +59,7 @@ class TranscriptResult(TypedDict, total=False):
 
     raw_transcript: str | None
     transcript: str | None
+    saved_recording_path: Path | None
     llm_enabled: bool
 
 
@@ -248,6 +255,71 @@ def log_transcription(
         f.write(json.dumps(log_entry) + "\n")
 
 
+def _apply_diarization(
+    transcript: str,
+    audio_path: Path,
+    diarization_cfg: config.Diarization,
+    quiet: bool,
+) -> str:
+    """Apply speaker diarization to transcript."""
+    if not quiet:
+        print_with_style("🎙️ Running speaker diarization...", style="blue")
+
+    assert diarization_cfg.hf_token is not None
+    diarizer = SpeakerDiarizer(
+        hf_token=diarization_cfg.hf_token,
+        min_speakers=diarization_cfg.min_speakers,
+        max_speakers=diarization_cfg.max_speakers,
+    )
+    segments = diarizer.diarize(audio_path)
+
+    if not segments:
+        LOGGER.warning("Diarization returned no segments")
+        return transcript
+
+    # Align transcript with speaker segments
+    if diarization_cfg.align_words:
+        if not quiet:
+            print_with_style("🔤 Running word-level alignment...", style="blue")
+        segments = align_transcript_with_words(
+            transcript,
+            segments,
+            audio_path=audio_path,
+            language=diarization_cfg.align_language,
+        )
+    else:
+        segments = align_transcript_with_speakers(transcript, segments)
+
+    # Format output
+    result = format_diarized_output(
+        segments,
+        output_format=diarization_cfg.diarize_format,
+    )
+    if not quiet:
+        num_speakers = len({s.speaker for s in segments})
+        print_with_style(f"✅ Identified {num_speakers} speaker(s)", style="green")
+
+    return result
+
+
+def _print_diarization_error(exc: Exception) -> None:
+    """Render a user-facing diarization error message."""
+    error_msg = str(exc)
+    if "403" in error_msg or "gated" in error_msg.lower():
+        print_with_style(
+            "❌ Diarization failed: HuggingFace model access denied.\n"
+            "Accept licenses for ALL required models:\n"
+            "  • https://hf.co/pyannote/speaker-diarization-3.1\n"
+            "  • https://hf.co/pyannote/segmentation-3.0\n"
+            "  • https://hf.co/pyannote/wespeaker-voxceleb-resnet34-LM\n"
+            "  • https://hf.co/pyannote/speaker-diarization-community-1\n"
+            "Token must have 'Read access to public gated repos' permission.",
+            style="red",
+        )
+        return
+    print_with_style(f"❌ Diarization error: {exc}", style="red")
+
+
 async def _async_main(  # noqa: PLR0912, PLR0915, C901
     *,
     extra_instructions: str | None,
@@ -266,10 +338,14 @@ async def _async_main(  # noqa: PLR0912, PLR0915, C901
     audio_file_path: Path | None = None,
     save_recording: bool = True,
     process_name: str | None = None,
+    diarization_cfg: config.Diarization | None = None,
+    emit_output: bool = True,
+    raise_diarization_errors: bool = False,
 ) -> TranscriptResult:
     """Unified async entry point for both live and file-based transcription."""
     start_time = time.monotonic()
     transcript: str | None
+    saved_recording_path: Path | None = None
 
     with maybe_live(not general_cfg.quiet) as live:
         if audio_file_path:
@@ -335,6 +411,10 @@ async def _async_main(  # noqa: PLR0912, PLR0915, C901
                 msg = "Missing audio configuration for live recording"
                 raise ValueError(msg)
 
+            def _set_saved_recording_path(path: Path) -> None:
+                nonlocal saved_recording_path
+                saved_recording_path = path
+
             with signal_handling_context(LOGGER, general_cfg.quiet, process_name) as stop_event:
                 live_transcriber = asr.create_transcriber(
                     provider_cfg,
@@ -350,9 +430,35 @@ async def _async_main(  # noqa: PLR0912, PLR0915, C901
                     live=live,
                     save_recording=save_recording,
                     extra_instructions=extra_instructions,
+                    recording_path_callback=_set_saved_recording_path,
                 )
 
         elapsed = time.monotonic() - start_time
+
+        # Apply diarization if enabled
+        if diarization_cfg and diarization_cfg.diarize and transcript:
+            # Determine audio file path for diarization
+            diarize_audio_path = audio_file_path or saved_recording_path
+
+            if diarize_audio_path and diarize_audio_path.exists():
+                try:
+                    transcript = _apply_diarization(
+                        transcript,
+                        diarize_audio_path,
+                        diarization_cfg,
+                        quiet=general_cfg.quiet,
+                    )
+                except ImportError as e:
+                    if raise_diarization_errors:
+                        raise
+                    print_with_style(f"❌ Diarization failed: {e}", style="red")
+                except Exception as e:
+                    if raise_diarization_errors:
+                        raise
+                    LOGGER.exception("Diarization failed")
+                    _print_diarization_error(e)
+            else:
+                LOGGER.warning("No audio file available for diarization")
 
         if llm_enabled and transcript:
             if not general_cfg.quiet:
@@ -422,15 +528,16 @@ async def _async_main(  # noqa: PLR0912, PLR0915, C901
 
     # When not using LLM, show transcript in output panel for consistency
     if transcript:
-        if general_cfg.quiet:
-            # Quiet mode: print result to stdout for Keyboard Maestro to capture
-            print(transcript)
-        else:
-            print_output_panel(
-                transcript,
-                title="📝 Transcript",
-                subtitle="[dim]Copied to clipboard[/dim]" if general_cfg.clipboard else "",
-            )
+        if emit_output:
+            if general_cfg.quiet:
+                # Quiet mode: print result to stdout for Keyboard Maestro to capture
+                print(transcript)
+            else:
+                print_output_panel(
+                    transcript,
+                    title="📝 Transcript",
+                    subtitle="[dim]Copied to clipboard[/dim]" if general_cfg.clipboard else "",
+                )
 
         # Log transcription if requested (raw only)
         if transcription_log:
@@ -445,7 +552,7 @@ async def _async_main(  # noqa: PLR0912, PLR0915, C901
                 model_info=asr_model_info,
             )
 
-        if general_cfg.clipboard:
+        if emit_output and general_cfg.clipboard:
             import pyperclip  # noqa: PLC0415
 
             pyperclip.copy(transcript)
@@ -466,7 +573,7 @@ async def _async_main(  # noqa: PLR0912, PLR0915, C901
 
 @app.command("transcribe", rich_help_panel="Voice Commands")
 @requires_extras("audio", "llm", process_name="transcribe")
-def transcribe(  # noqa: PLR0912
+def transcribe(  # noqa: PLR0912, PLR0911, PLR0915, C901
     *,
     extra_instructions: str | None = typer.Option(
         None,
@@ -512,6 +619,14 @@ def transcribe(  # noqa: PLR0912
     config_file: str | None = opts.CONFIG_FILE,
     print_args: bool = opts.PRINT_ARGS,
     transcription_log: Path | None = opts.TRANSCRIPTION_LOG,
+    # --- Diarization Options ---
+    diarize: bool = opts.DIARIZE,
+    diarize_format: opts.DiarizeFormat = opts.DIARIZE_FORMAT,
+    hf_token: str | None = opts.HF_TOKEN,
+    min_speakers: int | None = opts.MIN_SPEAKERS,
+    max_speakers: int | None = opts.MAX_SPEAKERS,
+    align_words: bool = opts.ALIGN_WORDS,
+    align_language: str = opts.ALIGN_LANGUAGE,
 ) -> None:
     """Record audio from microphone and transcribe to text.
 
@@ -545,6 +660,42 @@ def transcribe(  # noqa: PLR0912
     # Expand user path for transcription log
     if transcription_log:
         transcription_log = transcription_log.expanduser()
+
+    # Validate diarization options
+    if diarize:
+        if llm:
+            print_with_style(
+                "❌ --llm cannot be used with --diarize. Speaker labels must remain unchanged.",
+                style="red",
+            )
+            return
+        if not hf_token:
+            print_with_style(
+                "❌ --hf-token required for diarization. "
+                "Set HF_TOKEN env var or pass --hf-token. "
+                "Token must have 'Read access to contents of all public gated repos you can access' permission. "
+                "Accept licenses at: https://hf.co/pyannote/speaker-diarization-3.1, "
+                "https://hf.co/pyannote/segmentation-3.0, https://hf.co/pyannote/wespeaker-voxceleb-resnet34-LM",
+                style="red",
+            )
+            return
+        if not save_recording and not from_file and last_recording == 0:
+            print_with_style(
+                "❌ Diarization requires audio file. Use --save-recording (default) "
+                "or --from-file/--last-recording.",
+                style="red",
+            )
+            return
+
+    diarization_cfg = config.Diarization(
+        diarize=diarize,
+        diarize_format=diarize_format,
+        hf_token=hf_token,
+        min_speakers=min_speakers,
+        max_speakers=max_speakers,
+        align_words=align_words,
+        align_language=align_language,
+    )
 
     # Handle recovery options
     if last_recording and from_file:
@@ -621,22 +772,37 @@ def transcribe(  # noqa: PLR0912
     # Handle recovery mode (transcribing from file)
     if audio_file_path:
         # We're transcribing from a saved file
-        result = asyncio.run(
-            _async_main(
-                audio_file_path=audio_file_path,
-                extra_instructions=extra_instructions,
-                provider_cfg=provider_cfg,
-                general_cfg=general_cfg,
-                wyoming_asr_cfg=wyoming_asr_cfg,
-                openai_asr_cfg=openai_asr_cfg,
-                gemini_asr_cfg=gemini_asr_cfg,
-                ollama_cfg=ollama_cfg,
-                openai_llm_cfg=openai_llm_cfg,
-                gemini_llm_cfg=gemini_llm_cfg,
-                llm_enabled=llm,
-                transcription_log=transcription_log,
-            ),
-        )
+        try:
+            result = asyncio.run(
+                _async_main(
+                    audio_file_path=audio_file_path,
+                    extra_instructions=extra_instructions,
+                    provider_cfg=provider_cfg,
+                    general_cfg=general_cfg,
+                    wyoming_asr_cfg=wyoming_asr_cfg,
+                    openai_asr_cfg=openai_asr_cfg,
+                    gemini_asr_cfg=gemini_asr_cfg,
+                    ollama_cfg=ollama_cfg,
+                    openai_llm_cfg=openai_llm_cfg,
+                    gemini_llm_cfg=gemini_llm_cfg,
+                    llm_enabled=llm,
+                    transcription_log=transcription_log,
+                    diarization_cfg=diarization_cfg,
+                    emit_output=not json_output,
+                    raise_diarization_errors=diarize,
+                ),
+            )
+        except ImportError as exc:
+            if not diarize:
+                raise
+            print_with_style(f"❌ Diarization failed: {exc}", style="red")
+            raise typer.Exit(1) from None
+        except Exception as exc:
+            if not diarize:
+                raise
+            LOGGER.exception("Diarization failed")
+            _print_diarization_error(exc)
+            raise typer.Exit(1) from None
         if json_output:
             print(json.dumps(result))
         return
@@ -666,24 +832,39 @@ def transcribe(  # noqa: PLR0912
     audio_in_cfg.input_device_index = input_device_index
 
     # Use context manager for PID file management
-    with process.pid_file_context(process_name), suppress(KeyboardInterrupt):
-        result = asyncio.run(
-            _async_main(
-                extra_instructions=extra_instructions,
-                provider_cfg=provider_cfg,
-                general_cfg=general_cfg,
-                audio_in_cfg=audio_in_cfg,
-                wyoming_asr_cfg=wyoming_asr_cfg,
-                openai_asr_cfg=openai_asr_cfg,
-                gemini_asr_cfg=gemini_asr_cfg,
-                ollama_cfg=ollama_cfg,
-                openai_llm_cfg=openai_llm_cfg,
-                gemini_llm_cfg=gemini_llm_cfg,
-                llm_enabled=llm,
-                transcription_log=transcription_log,
-                save_recording=save_recording,
-                process_name=process_name,
-            ),
-        )
+    try:
+        with process.pid_file_context(process_name), suppress(KeyboardInterrupt):
+            result = asyncio.run(
+                _async_main(
+                    extra_instructions=extra_instructions,
+                    provider_cfg=provider_cfg,
+                    general_cfg=general_cfg,
+                    audio_in_cfg=audio_in_cfg,
+                    wyoming_asr_cfg=wyoming_asr_cfg,
+                    openai_asr_cfg=openai_asr_cfg,
+                    gemini_asr_cfg=gemini_asr_cfg,
+                    ollama_cfg=ollama_cfg,
+                    openai_llm_cfg=openai_llm_cfg,
+                    gemini_llm_cfg=gemini_llm_cfg,
+                    llm_enabled=llm,
+                    transcription_log=transcription_log,
+                    save_recording=save_recording,
+                    process_name=process_name,
+                    diarization_cfg=diarization_cfg,
+                    emit_output=not json_output,
+                    raise_diarization_errors=diarize,
+                ),
+            )
+    except ImportError as exc:
+        if not diarize:
+            raise
+        print_with_style(f"❌ Diarization failed: {exc}", style="red")
+        raise typer.Exit(1) from None
+    except Exception as exc:
+        if not diarize:
+            raise
+        LOGGER.exception("Diarization failed")
+        _print_diarization_error(exc)
+        raise typer.Exit(1) from None
     if json_output:
         print(json.dumps(result))

@@ -5,6 +5,12 @@
       "sounddevice"
     ]
   ],
+  "diarization": [
+    "Speaker diarization (pyannote.audio)",
+    [
+      "pyannote.audio"
+    ]
+  ],
   "faster-whisper": [
     "Whisper ASR via CTranslate2",
     [

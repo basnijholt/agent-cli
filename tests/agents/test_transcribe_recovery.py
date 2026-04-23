@@ -260,12 +260,14 @@ async def test_async_main_from_file_with_logging(tmp_path: Path):
 @pytest.mark.asyncio
 async def test_async_main_from_file_error_handling(
     tmp_path: Path,
-    capsys: pytest.CaptureFixture[str],
 ) -> None:
     """Test error handling when audio file cannot be loaded."""
     test_file = tmp_path / "nonexistent.wav"
 
-    with patch("agent_cli.agents.transcribe.load_audio_from_file") as mock_load:
+    with (
+        patch("agent_cli.agents.transcribe.load_audio_from_file") as mock_load,
+        patch("agent_cli.agents.transcribe.print_with_style") as mock_print,
+    ):
         # Make loading fail
         mock_load.return_value = None
 
@@ -319,9 +321,9 @@ async def test_async_main_from_file_error_handling(
             transcription_log=None,
         )
 
-        # Check that error message was printed
-        captured = capsys.readouterr()
-        assert "Failed to load audio" in captured.out
+        # Check that error message was emitted
+        mock_print.assert_called_once()
+        assert "Failed to load audio" in mock_print.call_args[0][0]
 
 
 @pytest.mark.asyncio
@@ -418,6 +420,104 @@ async def test_async_main_save_recording_enabled(
         # The save_recording parameter should be passed to the transcriber.
 
 
+@pytest.mark.asyncio
+async def test_async_main_live_diarization_uses_exact_saved_recording_path(
+    tmp_path: Path,
+) -> None:
+    """Live diarization should use the recording path from the current invocation."""
+    exact_recording = tmp_path / "recording_exact.wav"
+    exact_recording.touch()
+    wrong_recording = tmp_path / "recording_wrong.wav"
+    wrong_recording.touch()
+
+    async def fake_live_transcriber(**kwargs: object) -> str:
+        callback = kwargs["recording_path_callback"]
+        assert callable(callback)
+        callback(exact_recording)
+        return "Test transcript"
+
+    with (
+        patch("agent_cli.agents.transcribe.signal_handling_context") as mock_signal,
+        patch(
+            "agent_cli.agents.transcribe.asr.create_transcriber", return_value=fake_live_transcriber
+        ),
+        patch(
+            "agent_cli.agents.transcribe._apply_diarization",
+            return_value="[SPEAKER_00]: Test transcript",
+        ) as mock_apply,
+        patch(
+            "agent_cli.agents.transcribe.get_last_recording", return_value=wrong_recording
+        ) as mock_get_last,
+    ):
+        stop_event = MagicMock()
+        mock_signal.return_value.__enter__.return_value = stop_event
+
+        provider_cfg = config.ProviderSelection(
+            asr_provider="wyoming",
+            llm_provider="ollama",
+            tts_provider="wyoming",
+        )
+        general_cfg = config.General(
+            log_level="INFO",
+            log_file=None,
+            quiet=True,
+            list_devices=False,
+            clipboard=False,
+        )
+        audio_in_cfg = config.AudioInput()
+        wyoming_asr_cfg = config.WyomingASR(
+            asr_wyoming_ip="localhost",
+            asr_wyoming_port=10300,
+        )
+        openai_asr_cfg = config.OpenAIASR(
+            asr_openai_model="whisper-1",
+        )
+        gemini_asr_cfg = config.GeminiASR(
+            asr_gemini_model="gemini-2.0-flash",
+        )
+        ollama_cfg = config.Ollama(
+            llm_ollama_model="gemma3:4b",
+            llm_ollama_host="http://localhost:11434",
+        )
+        openai_llm_cfg = config.OpenAILLM(
+            llm_openai_model=DEFAULT_OPENAI_MODEL,
+        )
+        gemini_llm_cfg = config.GeminiLLM(
+            llm_gemini_model="gemini-3-flash-preview",
+        )
+        diarization_cfg = config.Diarization(
+            diarize=True,
+            diarize_format="inline",
+            hf_token=exact_recording.name,
+        )
+
+        result = await transcribe._async_main(
+            extra_instructions=None,
+            provider_cfg=provider_cfg,
+            general_cfg=general_cfg,
+            audio_in_cfg=audio_in_cfg,
+            wyoming_asr_cfg=wyoming_asr_cfg,
+            openai_asr_cfg=openai_asr_cfg,
+            gemini_asr_cfg=gemini_asr_cfg,
+            ollama_cfg=ollama_cfg,
+            openai_llm_cfg=openai_llm_cfg,
+            gemini_llm_cfg=gemini_llm_cfg,
+            llm_enabled=False,
+            transcription_log=None,
+            save_recording=True,
+            diarization_cfg=diarization_cfg,
+        )
+
+        mock_apply.assert_called_once_with(
+            "Test transcript",
+            exact_recording,
+            diarization_cfg,
+            quiet=True,
+        )
+        mock_get_last.assert_not_called()
+        assert result["transcript"] == "[SPEAKER_00]: Test transcript"
+
+
 def test_transcribe_command_last_recording_option(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -473,6 +573,13 @@ def test_transcribe_command_last_recording_option(
             config_file=None,
             print_args=False,
             transcription_log=None,
+            diarize=False,
+            diarize_format="inline",
+            hf_token=None,
+            min_speakers=None,
+            max_speakers=None,
+            align_words=False,
+            align_language="en",
         )
 
         # Verify _async_main_from_file was called
@@ -530,6 +637,13 @@ def test_transcribe_command_from_file_option(tmp_path: Path):
             config_file=None,
             print_args=False,
             transcription_log=None,
+            diarize=False,
+            diarize_format="inline",
+            hf_token=None,
+            min_speakers=None,
+            max_speakers=None,
+            align_words=False,
+            align_language="en",
         )
 
         # Verify _async_main_from_file was called with the right file
@@ -599,6 +713,13 @@ def test_transcribe_command_last_recording_with_index(
             config_file=None,
             print_args=False,
             transcription_log=None,
+            diarize=False,
+            diarize_format="inline",
+            hf_token=None,
+            min_speakers=None,
+            max_speakers=None,
+            align_words=False,
+            align_language="en",
         )
 
         # Verify _async_main_from_file was called
@@ -666,6 +787,13 @@ def test_transcribe_command_last_recording_disabled(
             config_file=None,
             print_args=False,
             transcription_log=None,
+            diarize=False,
+            diarize_format="inline",
+            hf_token=None,
+            min_speakers=None,
+            max_speakers=None,
+            align_words=False,
+            align_language="en",
         )
 
         # Verify _async_main was called for normal recording (not from file)
@@ -716,6 +844,13 @@ def test_transcribe_command_conflicting_options() -> None:
             config_file=None,
             print_args=False,
             transcription_log=None,
+            diarize=False,
+            diarize_format="inline",
+            hf_token=None,
+            min_speakers=None,
+            max_speakers=None,
+            align_words=False,
+            align_language="en",
         )
 
         # Verify error message

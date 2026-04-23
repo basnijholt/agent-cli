@@ -8,7 +8,7 @@ import logging
 import re
 from dataclasses import dataclass
 from functools import lru_cache
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -347,6 +347,13 @@ MARKITDOWN_EXTENSIONS = {
 SUPPORTED_EXTENSIONS = TEXT_EXTENSIONS | MARKITDOWN_EXTENSIONS
 
 
+def _markitdown_class() -> Any:
+    """Import and return the MarkItDown converter class lazily."""
+    from markitdown import MarkItDown  # noqa: PLC0415
+
+    return MarkItDown
+
+
 def load_document_text(file_path: Path) -> str | None:
     """Load text from a file path."""
     suffix = file_path.suffix.lower()
@@ -356,9 +363,7 @@ def load_document_text(file_path: Path) -> str | None:
             return file_path.read_text(errors="ignore")
 
         if suffix in MARKITDOWN_EXTENSIONS:
-            from markitdown import MarkItDown  # noqa: PLC0415
-
-            md = MarkItDown()
+            md = _markitdown_class()()
             result = md.convert(str(file_path))
             return result.text_content
 

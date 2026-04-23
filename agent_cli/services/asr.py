@@ -220,6 +220,7 @@ async def _send_audio(
     quiet: bool = False,
     save_recording: bool = True,
     initial_prompt: str | None = None,
+    recording_path_callback: Callable[[Path], None] | None = None,
 ) -> None:
     """Read from mic and send to Wyoming server."""
     from wyoming.asr import Transcribe  # noqa: PLC0415
@@ -258,7 +259,9 @@ async def _send_audio(
         if save_recording and audio_buffer:
             audio_data = audio_buffer.getvalue()
             if audio_data:
-                _save_audio_to_file(audio_data, logger)
+                saved_path = _save_audio_to_file(audio_data, logger)
+                if saved_path and recording_path_callback:
+                    recording_path_callback(saved_path)
 
 
 async def record_audio_to_buffer(queue: asyncio.Queue, logger: logging.Logger) -> bytes:
@@ -324,6 +327,7 @@ async def record_audio_with_manual_stop(
     quiet: bool = False,
     live: Live | None = None,
     save_recording: bool = True,
+    recording_path_callback: Callable[[Path], None] | None = None,
 ) -> bytes:
     """Record audio to a buffer using a manual stop signal.
 
@@ -334,6 +338,7 @@ async def record_audio_with_manual_stop(
         quiet: If True, suppress console output
         live: Rich Live display for progress
         save_recording: If True, save the recording to disk
+        recording_path_callback: Optional callback invoked with the saved WAV path.
 
     Returns:
         The recorded audio data as bytes
@@ -362,7 +367,9 @@ async def record_audio_with_manual_stop(
 
     # Save the recording to disk if requested
     if save_recording and audio_data:
-        _save_audio_to_file(audio_data, logger)
+        saved_path = _save_audio_to_file(audio_data, logger)
+        if saved_path and recording_path_callback:
+            recording_path_callback(saved_path)
 
     return audio_data
 
@@ -423,6 +430,7 @@ async def _transcribe_live_audio_wyoming(
     chunk_callback: Callable[[str], None] | None = None,
     final_callback: Callable[[str], None] | None = None,
     extra_instructions: str | None = None,
+    recording_path_callback: Callable[[Path], None] | None = None,
     **_kwargs: object,
 ) -> str | None:
     """Unified ASR transcription function."""
@@ -451,6 +459,7 @@ async def _transcribe_live_audio_wyoming(
                         quiet=quiet,
                         save_recording=save_recording,
                         initial_prompt=effective_prompt,
+                        recording_path_callback=recording_path_callback,
                     ),
                     _receive_transcript(
                         client,
@@ -478,6 +487,7 @@ async def _transcribe_live_audio_buffered(
     quiet: bool = False,
     save_recording: bool = True,
     extra_instructions: str | None = None,
+    recording_path_callback: Callable[[Path], None] | None = None,
     **_kwargs: object,
 ) -> str | None:
     """Record audio to buffer, then transcribe.
@@ -491,6 +501,7 @@ async def _transcribe_live_audio_buffered(
         quiet=quiet,
         live=live,
         save_recording=save_recording,
+        recording_path_callback=recording_path_callback,
     )
     if not audio_data:
         return None

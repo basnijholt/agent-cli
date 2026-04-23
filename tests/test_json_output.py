@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import wave
 from pathlib import Path
 from typing import TYPE_CHECKING
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -157,6 +158,42 @@ class TestTranscribeJsonOutput:
         assert "raw_transcript" in result
         assert "transcript" in result
         assert "llm_enabled" in result
+
+    @patch("agent_cli.agents.transcribe.create_recorded_audio_transcriber")
+    @patch("agent_cli.agents.transcribe.load_audio_from_file", return_value=b"audio")
+    @patch("pyperclip.copy")
+    def test_transcribe_json_output_is_machine_readable(
+        self,
+        mock_copy: MagicMock,
+        mock_load_audio: MagicMock,
+        mock_create_transcriber: MagicMock,
+        tmp_path: Path,
+    ) -> None:
+        """`transcribe --json` should not prepend the plain transcript to stdout."""
+        audio_path = tmp_path / "recording.wav"
+        with wave.open(str(audio_path), "wb") as wav_file:
+            wav_file.setnchannels(1)
+            wav_file.setsampwidth(2)
+            wav_file.setframerate(16000)
+            wav_file.writeframes(b"\x00\x00" * 160)
+
+        mock_create_transcriber.return_value = AsyncMock(return_value="RAW TRANSCRIPT")
+
+        result = runner.invoke(
+            app,
+            ["transcribe", "--from-file", str(audio_path), "--json"],
+            catch_exceptions=False,
+        )
+
+        assert mock_copy.called is False
+        assert mock_load_audio.called
+        assert result.exit_code == 0
+        parsed = json.loads(result.stdout.strip())
+        assert parsed == {
+            "raw_transcript": "RAW TRANSCRIPT",
+            "transcript": "RAW TRANSCRIPT",
+            "llm_enabled": False,
+        }
 
 
 class TestVoiceEditJsonOutput:

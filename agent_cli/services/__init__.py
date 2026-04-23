@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import io
 import wave
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from agent_cli import constants
 
@@ -79,6 +79,20 @@ _GEMINI_TRANSCRIPTION_PROMPT = (
 )
 
 
+def _get_gemini_client(api_key: str) -> Any:
+    """Create a Gemini client lazily to avoid importing the SDK at module import time."""
+    from google import genai  # noqa: PLC0415
+
+    return genai.Client(api_key=api_key)
+
+
+def _gemini_types_module() -> Any:
+    """Import and return the Gemini ``types`` module lazily."""
+    from google.genai import types  # noqa: PLC0415
+
+    return types
+
+
 async def transcribe_audio_gemini(
     audio_data: bytes,
     gemini_asr_cfg: config.GeminiASR,
@@ -101,9 +115,6 @@ async def transcribe_audio_gemini(
         extra_instructions: Additional context/instructions to improve transcription
 
     """
-    from google import genai  # noqa: PLC0415
-    from google.genai import types  # noqa: PLC0415
-
     if not gemini_asr_cfg.gemini_api_key:
         msg = "Gemini API key is not set."
         raise ValueError(msg)
@@ -141,7 +152,8 @@ async def transcribe_audio_gemini(
     else:
         prompt = _GEMINI_TRANSCRIPTION_PROMPT
 
-    client = genai.Client(api_key=gemini_asr_cfg.gemini_api_key)
+    client = _get_gemini_client(gemini_asr_cfg.gemini_api_key)
+    types = _gemini_types_module()
 
     response = await client.aio.models.generate_content(
         model=gemini_asr_cfg.asr_gemini_model,
@@ -308,9 +320,6 @@ async def synthesize_speech_gemini(
 
     Returns WAV audio data (converted from Gemini's raw PCM output).
     """
-    from google import genai  # noqa: PLC0415
-    from google.genai import types  # noqa: PLC0415
-
     if not gemini_tts_cfg.gemini_api_key:
         msg = "Gemini API key is not set."
         raise ValueError(msg)
@@ -321,7 +330,8 @@ async def synthesize_speech_gemini(
         gemini_tts_cfg.tts_gemini_voice,
     )
 
-    client = genai.Client(api_key=gemini_tts_cfg.gemini_api_key)
+    client = _get_gemini_client(gemini_tts_cfg.gemini_api_key)
+    types = _gemini_types_module()
 
     response = await client.aio.models.generate_content(
         model=gemini_tts_cfg.tts_gemini_model,
