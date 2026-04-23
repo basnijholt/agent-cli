@@ -10,6 +10,7 @@ import shutil
 import subprocess
 from dataclasses import dataclass
 from datetime import date, datetime, time, timedelta
+from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
@@ -69,6 +70,23 @@ class LiveSegment:
     audio_file: Path
     duration_seconds: float
     raw_output: str | None = None
+
+
+@lru_cache(maxsize=2048)
+def _saved_audio_duration_seconds(audio_path: Path) -> float:
+    """Return the decoded duration of a saved audio chunk."""
+    import torchaudio  # noqa: PLC0415
+
+    info_fn = getattr(torchaudio, "info", None)
+    try:
+        metadata = info_fn(str(audio_path)) if callable(info_fn) else None
+    except (OSError, RuntimeError, ValueError):
+        metadata = None
+
+    if metadata is None or metadata.sample_rate <= 0 or metadata.num_frames <= 0:
+        waveform, sample_rate = torchaudio.load(str(audio_path))
+        return waveform.shape[-1] / sample_rate
+    return metadata.num_frames / metadata.sample_rate
 
 
 def parse_clock_time(value: str) -> time:
@@ -233,7 +251,10 @@ def select_segments_in_range(
         window_start = datetime.combine(target_date, start_time, tzinfo=tzinfo)
         window_end = datetime.combine(target_date, end_time, tzinfo=tzinfo)
         segment_end = segment.timestamp
-        segment_start = segment_end - timedelta(seconds=max(segment.duration_seconds, 0.0))
+        duration_seconds = max(segment.duration_seconds, 0.0)
+        if segment.audio_file.exists():
+            duration_seconds = _saved_audio_duration_seconds(segment.audio_file)
+        segment_start = segment_end - timedelta(seconds=duration_seconds)
         if segment_end >= window_start and segment_start <= window_end:
             selected.append(segment)
     return selected
@@ -358,7 +379,7 @@ def align_logged_segments_with_speakers(
                 device=alignment_device,
             )
             all_words.extend(_shift_words(words, offset_seconds))
-        offset_seconds += max(segment.duration_seconds, 0.0)
+        offset_seconds += _saved_audio_duration_seconds(segment.audio_file)
 
     if not all_words:
         msg = "Forced alignment returned no words for the selected transcribe-live segments."

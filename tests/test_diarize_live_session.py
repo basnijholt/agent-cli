@@ -67,6 +67,33 @@ def test_select_segments_in_range_filters_by_date_and_time() -> None:
     ]
 
 
+def test_select_segments_in_range_uses_saved_audio_duration_when_available(
+    tmp_path: Path,
+) -> None:
+    saved = tmp_path / "saved.mp3"
+    saved.write_bytes(b"mp3")
+    segments = [
+        LiveSegment(
+            timestamp=datetime.fromisoformat("2026-04-23T11:32:01-07:00"),
+            audio_file=saved,
+            duration_seconds=0.2,
+        ),
+    ]
+
+    with patch(
+        "agent_cli.agents.diarize_live_session._saved_audio_duration_seconds",
+        return_value=2.0,
+    ):
+        selected = select_segments_in_range(
+            segments,
+            target_date=date.fromisoformat("2026-04-23"),
+            start_time=parse_clock_time("11:31:59"),
+            end_time=parse_clock_time("11:32:00"),
+        )
+
+    assert [segment.audio_file.name for segment in selected] == ["saved.mp3"]
+
+
 def test_run_retranscribe_uses_transcribe_config_defaults(tmp_path: Path) -> None:
     args = parse_args(
         [
@@ -139,6 +166,9 @@ def test_main_passes_config_file_to_retranscribe(tmp_path: Path) -> None:
         patch("agent_cli.agents.diarize_live_session.write_ffconcat_manifest"),
         patch("agent_cli.agents.diarize_live_session.combine_segments"),
         patch("agent_cli.agents.diarize_live_session.save_metadata"),
+        patch(
+            "agent_cli.agents.diarize_live_session._saved_audio_duration_seconds", return_value=5.0
+        ),
         patch("agent_cli.agents.diarize_live_session.run_retranscribe") as mock_run,
     ):
         exit_code = main(
@@ -253,18 +283,24 @@ def test_align_logged_segments_with_speakers_offsets_words_per_chunk() -> None:
         DiarizedSegment(speaker="SPEAKER_01", start=2.5, end=5.5),
     ]
 
-    with patch(
-        "agent_cli.agents.diarize_live_session.align",
-        side_effect=[
-            [
-                AlignedWord(word="hello", start=0.0, end=0.4),
-                AlignedWord(word="there", start=0.4, end=0.8),
+    with (
+        patch(
+            "agent_cli.agents.diarize_live_session.align",
+            side_effect=[
+                [
+                    AlignedWord(word="hello", start=0.0, end=0.4),
+                    AlignedWord(word="there", start=0.4, end=0.8),
+                ],
+                [
+                    AlignedWord(word="general", start=0.0, end=0.5),
+                    AlignedWord(word="kenobi", start=0.5, end=0.9),
+                ],
             ],
-            [
-                AlignedWord(word="general", start=0.0, end=0.5),
-                AlignedWord(word="kenobi", start=0.5, end=0.9),
-            ],
-        ],
+        ),
+        patch(
+            "agent_cli.agents.diarize_live_session._saved_audio_duration_seconds",
+            side_effect=[2.0, 3.0],
+        ),
     ):
         result = align_logged_segments_with_speakers(
             segments=segments,
@@ -274,3 +310,49 @@ def test_align_logged_segments_with_speakers_offsets_words_per_chunk() -> None:
     assert [segment.speaker for segment in result] == ["SPEAKER_00", "SPEAKER_01"]
     assert result[0].text == "hello there general"
     assert result[1].text == "kenobi"
+
+
+def test_align_logged_segments_with_speakers_uses_saved_audio_duration_offsets() -> None:
+    segments = [
+        LiveSegment(
+            timestamp=datetime.fromisoformat("2026-04-23T11:32:00-07:00"),
+            audio_file=Path("one.mp3"),
+            duration_seconds=2.0,
+            raw_output="hello",
+        ),
+        LiveSegment(
+            timestamp=datetime.fromisoformat("2026-04-23T11:32:05-07:00"),
+            audio_file=Path("two.mp3"),
+            duration_seconds=2.0,
+            raw_output="general kenobi",
+        ),
+    ]
+    speaker_segments = [
+        DiarizedSegment(speaker="SPEAKER_00", start=0.0, end=2.5),
+        DiarizedSegment(speaker="SPEAKER_01", start=2.5, end=5.5),
+    ]
+
+    with (
+        patch(
+            "agent_cli.agents.diarize_live_session.align",
+            side_effect=[
+                [AlignedWord(word="hello", start=0.0, end=0.4)],
+                [
+                    AlignedWord(word="general", start=0.0, end=0.2),
+                    AlignedWord(word="kenobi", start=0.2, end=0.4),
+                ],
+            ],
+        ),
+        patch(
+            "agent_cli.agents.diarize_live_session._saved_audio_duration_seconds",
+            side_effect=[2.6, 2.0],
+        ),
+    ):
+        result = align_logged_segments_with_speakers(
+            segments=segments,
+            speaker_segments=speaker_segments,
+        )
+
+    assert [segment.speaker for segment in result] == ["SPEAKER_00", "SPEAKER_01"]
+    assert result[0].text == "hello"
+    assert result[1].text == "general kenobi"
