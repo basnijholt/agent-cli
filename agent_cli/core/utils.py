@@ -197,7 +197,10 @@ def print_input_panel(
     style: str = "bold blue",
 ) -> None:
     """Prints a panel with the input text."""
-    console.print(Panel(text, title=title, subtitle=subtitle, border_style=style))
+    console.print(
+        Panel(text, title=title, subtitle=subtitle, border_style=style),
+        soft_wrap=False,
+    )
 
 
 def print_output_panel(
@@ -207,7 +210,10 @@ def print_output_panel(
     style: str = "bold green",
 ) -> None:
     """Prints a panel with the output text."""
-    console.print(Panel(text, title=title, subtitle=subtitle, border_style=style))
+    console.print(
+        Panel(text, title=title, subtitle=subtitle, border_style=style),
+        soft_wrap=False,
+    )
 
 
 def print_error_message(message: str, suggestion: str | None = None) -> None:
@@ -216,7 +222,10 @@ def print_error_message(message: str, suggestion: str | None = None) -> None:
     if suggestion:
         error_text.append("\n\n")
         error_text.append(suggestion)
-    console.print(Panel(error_text, title="Error", border_style="bold red"))
+    console.print(
+        Panel(error_text, title="Error", border_style="bold red"),
+        soft_wrap=False,
+    )
 
 
 def print_with_style(message: str, style: str = "bold green") -> None:

@@ -6,8 +6,10 @@ Real-world scenarios for spawning parallel AI coding agents, optimized for Claud
 >
 > ```bash
 > # Write prompt to file, then spawn
-> agent-cli dev new my-feature --agent --prompt-file .claude/spawn-prompt.md
+> agent-cli dev new my-feature --prompt-file .claude/spawn-prompt.md
 > ```
+>
+> When an assistant is executing these commands, do not launch `dev new` or `dev agent` without `--prompt` or `--prompt-file` unless the user explicitly wants a manual interactive session.
 
 ## Prompt structure guidelines
 
@@ -19,6 +21,7 @@ Each prompt for a spawned agent should follow this structure:
 4. **Context with motivation** - Explain why patterns matter
 5. **Focused scope** - Keep solutions minimal, implement only what's requested
 6. **Structured report** - Write conclusions to `.claude/REPORT.md`
+7. **No interactive gap** - The launch command itself should include `--prompt` or `--prompt-file` so the agent starts working immediately
 
 ## Scenario 1: Code review of current branch
 
@@ -28,7 +31,7 @@ Each prompt for a spawned agent should follow this structure:
 
 ```bash
 # Review the current branch - MUST use --from HEAD
-agent-cli dev new review-changes --from HEAD --agent --prompt "Review the code changes on this branch.
+agent-cli dev new review-changes --from HEAD --prompt "Review the code changes on this branch.
 
 <workflow>
 - Run git diff origin/main...HEAD to identify all changes
@@ -88,7 +91,7 @@ Write your review to .claude/REPORT.md:
 **Strategy**: Three independent features → spawn three agents.
 
 ```bash
-agent-cli dev new auth-feature --agent --prompt "Implement JWT-based user authentication.
+agent-cli dev new auth-feature --prompt "Implement JWT-based user authentication.
 
 <workflow>
 - Read multiple files in parallel when exploring the codebase
@@ -141,7 +144,7 @@ How to verify the implementation works
 Any items needing review
 </report>"
 
-agent-cli dev new payment-integration --agent --prompt "Integrate Stripe payment processing.
+agent-cli dev new payment-integration --prompt "Integrate Stripe payment processing.
 
 <workflow>
 - Read multiple files in parallel when exploring the codebase
@@ -192,7 +195,7 @@ After verifying tests pass, write to .claude/REPORT.md:
 [Any items for review]
 </report>"
 
-agent-cli dev new email-notifications --agent --prompt "Implement email notification system.
+agent-cli dev new email-notifications --prompt "Implement email notification system.
 
 <workflow>
 - Read multiple files in parallel when exploring the codebase
@@ -237,7 +240,7 @@ After verifying tests pass, write to .claude/REPORT.md with summary, files chang
 **Strategy**: One agent writes tests first, another implements.
 
 ```bash
-agent-cli dev new cache-tests --agent --prompt "Write comprehensive tests for a caching layer.
+agent-cli dev new cache-tests --prompt "Write comprehensive tests for a caching layer.
 
 <task>
 Create a complete test suite that drives the implementation of a caching system. The tests define the interface - write them as if the implementation already exists.
@@ -303,7 +306,7 @@ When complete, write to .claude/REPORT.md:
 After reviewing the tests:
 
 ```bash
-agent-cli dev new cache-impl --from cache-tests --agent --prompt "Implement the caching layer to pass existing tests.
+agent-cli dev new cache-impl --from cache-tests --prompt "Implement the caching layer to pass existing tests.
 
 <workflow>
 - Read all test files first to understand the complete interface
@@ -357,7 +360,7 @@ After ALL tests pass, write to .claude/REPORT.md:
 **Strategy**: Split by module, each agent handles one area.
 
 ```bash
-agent-cli dev new refactor-users-errors --agent --prompt "Refactor error handling in the users module.
+agent-cli dev new refactor-users-errors --prompt "Refactor error handling in the users module.
 
 <workflow>
 - Read all relevant files in parallel before making any changes
@@ -425,7 +428,7 @@ After tests pass and linting is clean, write to .claude/REPORT.md:
 **Strategy**: One agent implements, another writes docs simultaneously.
 
 ```bash
-agent-cli dev new plugin-system --agent --prompt "Implement a plugin system.
+agent-cli dev new plugin-system --prompt "Implement a plugin system.
 
 <workflow>
 - Read existing codebase structure in parallel before designing
@@ -480,7 +483,7 @@ class Plugin:
 [How to create and register a plugin]
 </report>"
 
-agent-cli dev new plugin-docs --agent --prompt "Write documentation for the plugin system.
+agent-cli dev new plugin-docs --prompt "Write documentation for the plugin system.
 
 <context>
 Implementation is happening in parallel in another branch. Write documentation based on a standard plugin system design. The implementation agent will adapt if needed, or you can update docs after reviewing their work.
@@ -523,6 +526,96 @@ When complete, write to .claude/REPORT.md:
 [Things that need clarification from the implementation]
 </report>"
 ```
+
+## Scenario 6: Multi-reviewer on the same branch
+
+**User request**: "Get 3 agents to review this code" or "Run multiple reviewers on this branch"
+
+**Strategy**: Create one review worktree from the current branch, then launch several agents into that same worktree with different focus areas.
+
+```bash
+run_id="$(python -c 'import time; print(int(time.time() * 1000))')"
+
+# Create the shared review worktree once. This does not start an agent yet.
+agent-cli dev new review-auth --from HEAD
+
+# Launch three reviewers into the same worktree/session
+agent-cli dev agent review-auth -m tmux --prompt "Review the auth module for security issues only.
+
+<scope>
+Do not fix code. Review only.
+</scope>
+
+<report>
+Write findings to .claude/REPORT-security-$run_id.md:
+- Summary
+- Issues with file:line references
+- Suggested fixes
+</report>"
+
+agent-cli dev agent review-auth -m tmux --prompt "Review the auth module for performance issues only.
+
+<scope>
+Review only. Focus on query patterns, repeated work, and unnecessary allocations.
+</scope>
+
+<report>
+Write findings to .claude/REPORT-performance-$run_id.md:
+- Summary
+- Issues with file:line references
+- Suggested fixes
+</report>"
+
+agent-cli dev agent review-auth -m tmux --prompt "Review the auth module for test coverage gaps only.
+
+<scope>
+Review only. Identify missing or weak tests.
+</scope>
+
+<report>
+Write findings to .claude/REPORT-tests-$run_id.md:
+- Summary
+- Missing test cases
+- Suggested follow-up tests
+</report>"
+```
+
+**Important**:
+- Same-worktree launches should use unique report files, not `.claude/REPORT.md`
+- If you rerun the same prompt often, include a timestamp or run id in the filename so reports do not get replaced
+- `-m tmux` works even when the caller is not already inside tmux
+- All three agents land in the same deterministic tmux session for that repo
+- Each agent launch gets its own unique task file in `.claude/`, so parallel launches do not conflict
+
+## Scenario 7: Parallel test validation
+
+**User request**: "Run the test checklist across 8 sections in parallel"
+
+**Strategy**: Create one worktree per section, then launch each validation agent headlessly in tmux so the workflow works from scripts or non-terminal orchestrators.
+
+```bash
+for section in 1 2 3 4 5 6 7 8; do
+  agent-cli dev new "test-section-$section" --from HEAD --agent codex -m tmux \
+    --prompt-file ".claude/test-section-$section.md"
+done
+```
+
+Monitor and collect results:
+
+```bash
+# Track the worktrees
+agent-cli dev status
+
+# Read each report after completion
+for section in 1 2 3 4 5 6 7 8; do
+  agent-cli dev run "test-section-$section" cat .claude/REPORT.md
+done
+```
+
+**When writing the per-section prompts**:
+- Assign one checklist section per agent
+- Require real test execution where possible
+- Require a structured `.claude/REPORT.md` with pass/fail status, evidence, and follow-up actions
 
 ## Reviewing results
 
@@ -569,3 +662,8 @@ Any items that need human review or clarification
 ```
 
 This consistent format makes it easy to review work from multiple agents.
+
+For shared-worktree runs, keep the same structure but use unique filenames such as:
+- `.claude/REPORT-security.md`
+- `.claude/REPORT-performance.md`
+- `.claude/REPORT-tests.md`

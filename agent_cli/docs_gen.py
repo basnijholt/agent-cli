@@ -80,6 +80,9 @@ def _extract_options_from_click(cmd: click.Command) -> list[dict[str, Any]]:
     options = []
     for param in cmd.params:
         if isinstance(param, click.Option):
+            if getattr(param, "hidden", False):
+                continue
+
             # Get long and short option names
             long_opts = [n for n in param.opts if n.startswith("--")]
             short_opts = [n for n in param.opts if n.startswith("-") and not n.startswith("--")]
@@ -356,7 +359,7 @@ def config_example(command_path: str | None = None) -> str:
 
     for opt in options:
         # Skip process management and meta options
-        if opt["panel"] in ("Process Management Options",):
+        if opt["panel"] == "Process Management Options":
             continue
 
         # Convert flag name to config key

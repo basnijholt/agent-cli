@@ -188,7 +188,7 @@ async def _process_segment(  # noqa: PLR0912
     if cfg.clipboard:
         import pyperclip  # noqa: PLC0415
 
-        text_to_copy = processed if processed else transcript
+        text_to_copy = processed or transcript
         pyperclip.copy(text_to_copy)
 
     # Log
@@ -288,7 +288,7 @@ async def _daemon_loop(cfg: DaemonConfig) -> None:  # noqa: PLR0912, PLR0915
 
 
 @app.command("transcribe-live", rich_help_panel="Voice Commands")
-@requires_extras("audio", "vad", "llm")
+@requires_extras("audio", "vad", "llm", process_name="transcribe-live")
 def transcribe_live(  # noqa: PLR0912
     *,
     # Daemon-specific options

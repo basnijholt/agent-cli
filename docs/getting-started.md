@@ -66,6 +66,8 @@ For a complete local setup with all AI services:
     agent-cli install-hotkeys
     ```
 
+    `install-hotkeys` also installs the required `audio` and `llm` extras if they are missing.
+
     See: [`install-services`](commands/install-services.md) | [`start-services`](commands/start-services.md) | [`install-hotkeys`](commands/install-hotkeys.md)
 
 === "Using Shell Scripts"

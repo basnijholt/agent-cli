@@ -1,11 +1,15 @@
 ---
 name: agent-cli-dev
-description: Spawns AI coding agents in isolated git worktrees. Use when the user asks to spawn or launch an agent, delegate a task to a separate agent, work in a separate worktree, or parallelize development across features.
+description: Spawns AI coding agents in isolated git worktrees. Use when the user asks to spawn or launch an agent, delegate a task to a separate agent, or parallelize development across features. Only create a worktree without starting an agent if the user explicitly wants setup only.
 ---
 
 # Parallel Development with agent-cli dev
 
 This skill teaches you how to spawn parallel AI coding agents in isolated git worktrees using the `agent-cli dev` command.
+
+`agent-cli dev` supports two complementary patterns:
+- Separate worktrees for isolated implementation/review tasks
+- Multiple agents on the same worktree using `dev agent --tmux-session <unique-name>` for autonomous launches, or `-m tmux` when a human explicitly wants shared tmux windows
 
 ## Installation
 
@@ -16,7 +20,7 @@ If `agent-cli` is not available, install it first:
 uv tool install agent-cli -p 3.13
 
 # Or run directly without installing
-uvx --python 3.13 agent-cli dev new <branch-name> --agent --prompt "..."
+uvx --python 3.13 agent-cli dev new <branch-name> --prompt "..."
 ```
 
 ## When to spawn parallel agents
@@ -36,27 +40,37 @@ Do NOT spawn when:
 
 For new features (starts from origin/main):
 ```bash
-agent-cli dev new <branch-name> --agent --prompt "Implement the new feature..."
+agent-cli dev new <branch-name> --prompt "Implement the new feature..."
 ```
 
 For work on current branch (review, test, fix) - use `--from HEAD`:
 ```bash
-agent-cli dev new <branch-name> --from HEAD --agent --prompt "Review/test/fix..."
+agent-cli dev new <branch-name> --from HEAD --prompt "Review/test/fix..."
 ```
 
 For longer prompts (recommended for multi-line or complex instructions):
 ```bash
-agent-cli dev new <branch-name> --from HEAD --agent --prompt-file path/to/prompt.md
+agent-cli dev new <branch-name> --from HEAD --prompt-file path/to/prompt.md
 ```
 
 This creates:
 1. A new git worktree with its own branch
 2. Runs project setup (installs dependencies)
-3. Saves your prompt to `.claude/TASK.md` in the worktree (for reference)
+3. Saves your prompt to a unique task file in `.claude/` in the worktree (for reference)
 4. Opens a new terminal tab with an AI coding agent
 5. Passes your prompt to the agent
 
 **Important**: Use `--prompt-file` for prompts longer than a single line. The `--prompt` option passes text through the shell, which can cause issues with special characters (exclamation marks, dollar signs, backticks, quotes) in ZSH and other shells. Using `--prompt-file` avoids all shell quoting issues.
+
+## Automation rule
+
+When an assistant is executing this workflow on the user's behalf, the spawn is not complete unless the agent receives a prompt at launch time.
+
+- Prefer `--prompt-file`; create the prompt file first, then launch the agent
+- Use `dev new ... --prompt-file ...` for a new delegated task
+- Use `dev agent ... --prompt-file ...` for another agent in an existing worktree
+- Do not stop after `dev new ...` alone if the user's intent was to delegate work immediately
+- Do not run `dev new ... --start-agent`, `dev new ... --agent <name>`, or `dev agent ... -m tmux` without `--prompt` or `--prompt-file` unless the user explicitly wants an interactive session that they will drive manually
 
 ## Writing effective prompts for spawned agents
 
@@ -76,9 +90,9 @@ For any prompt longer than a single sentence:
 
 Example workflow:
 ```bash
-# 1. Write prompt to file (Claude does this with the Write tool)
+# 1. Write prompt to file
 # 2. Spawn agent with the file
-agent-cli dev new my-feature --agent --prompt-file .claude/spawn-prompt.md
+agent-cli dev new my-feature --prompt-file .claude/spawn-prompt.md
 # 3. Optionally clean up
 rm .claude/spawn-prompt.md
 ```
@@ -114,15 +128,80 @@ agent-cli dev run <branch-name> cat .claude/REPORT.md
 agent-cli dev editor <branch-name>
 ```
 
+## Same-branch multi-agent workflow
+
+Use this when several agents should inspect or validate the same code at once without separate worktrees.
+
+```bash
+# Create the worktree once. This step only prepares the shared workspace.
+agent-cli dev new review-auth --from HEAD
+
+# Then launch the actual agents with prompts. Give each agent its own tmux session.
+agent-cli dev agent review-auth \
+  --tmux-session review-auth-security-20260402-1530 \
+  --prompt-file .claude/review-security.md
+agent-cli dev agent review-auth \
+  --tmux-session review-auth-performance-20260402-1530 \
+  --prompt-file .claude/review-performance.md
+agent-cli dev agent review-auth \
+  --tmux-session review-auth-tests-20260402-1530 \
+  --prompt-file .claude/review-tests.md
+```
+
+Key rules for same-worktree launches:
+- Use `dev agent`, not `dev new`, after the worktree already exists
+- Use `dev agent --agent <agent>` to select a specific agent for an existing worktree; `--with-agent` remains a deprecated alias on this subcommand
+- For autonomous agents, prefer `--tmux-session <unique-name>` and use a different session name for each launch
+- Reserve bare `-m tmux` for human-driven grouped windows or when the user explicitly wants agents to share one tmux session
+- Outside tmux, bare `-m tmux` joins the deterministic repo-scoped tmux session
+- Inside tmux, bare `-m tmux` opens a new window in the current session unless you pass `--tmux-session <name>`, which reuses or creates a specific tmux session and also implies `-m tmux`
+- tmux session names cannot contain `.` or `:`
+- Ask each agent to write to a unique report path such as `.claude/REPORT-security-<run-id>.md` or `.claude/REPORT-tests-<run-id>.md`
+- If you rerun the same prompt repeatedly, include a timestamp or other run id in the report filename so later runs do not overwrite earlier ones
+- Each agent launch gets its own unique task file in `.claude/` (e.g., `TASK-{timestamp}-{hex}.md`), so parallel launches do not overwrite each other
+
+### Prompt guidance for shared worktrees
+
+When multiple agents share a worktree, explicitly assign both a focus area and a unique report file. If you rerun the same review prompt often, prefer a timestamped filename such as `.claude/REPORT-security-20260319-153045-123.md`.
+
+Prompt pattern:
+
+```text
+Review the auth module for security issues only.
+
+When complete, write findings to .claude/REPORT-security-20260319-153045-123.md including:
+- Summary
+- Issues found with file/line references
+- Suggested fixes
+```
+
+## Headless/scripted orchestration
+
+For non-interactive contexts (scripts, cron jobs, other assistants), combine `--prompt-file` with `--tmux-session`:
+
+```bash
+agent-cli dev new validation-a --from HEAD --agent codex \
+  --tmux-session validation-a-20260402-1530 \
+  --prompt-file .claude/validation-a.md
+```
+
+This works without an attached terminal. For autonomous or scripted launches, prefer a unique `--tmux-session` per agent so separate runs do not trample each other by sharing one tmux session. Use bare `-m tmux` only when you explicitly want shared tmux grouping. Launches may also run pre-launch preparation by default; use `--no-hooks` only when you explicitly need to bypass that behavior.
+
+## Cleanup behavior
+
+- `dev rm` and `dev clean` also clean up tmux windows that `agent-cli` tagged for the worktree
+- If git worktree removal succeeds but tmux cleanup is partial, the command warns and still removes the worktree
+- Session isolation prevents agents from interfering with each other's tmux windows during execution, but cleanup still applies to all tagged windows for the worktree
+
 ## Example: Multi-feature implementation
 
 If asked to implement auth, payments, and notifications:
 
 ```bash
 # Spawn three parallel agents
-agent-cli dev new auth-feature --agent --prompt "Implement JWT authentication..."
-agent-cli dev new payment-integration --agent --prompt "Add Stripe payment processing..."
-agent-cli dev new email-notifications --agent --prompt "Implement email notification system..."
+agent-cli dev new auth-feature --prompt "Implement JWT authentication..."
+agent-cli dev new payment-integration --prompt "Add Stripe payment processing..."
+agent-cli dev new email-notifications --prompt "Implement email notification system..."
 ```
 
 Each agent works independently in its own branch. Results can be reviewed and merged separately.
@@ -131,11 +210,12 @@ Each agent works independently in its own branch. Results can be reviewed and me
 
 | Option | Description |
 |--------|-------------|
-| `--agent` / `-a` | Start AI coding agent after creation |
+| `--start-agent` | Start the default/auto-detected agent without an initial prompt |
 | `--prompt` / `-p` | Initial prompt for the agent (short prompts only) |
 | `--prompt-file` / `-P` | Read prompt from file (recommended for longer prompts) |
 | `--from` / `-f` | Base ref (default: origin/main). **Use `--from HEAD` when reviewing/testing current branch!** |
-| `--with-agent` | Specific agent: claude, aider, codex, gemini |
+| `--agent` | Specific agent (or `auto`): claude, aider, codex, gemini |
 | `--agent-args` | Extra arguments for the agent |
+| `--tmux-session` | Reuse or create a specific tmux session. For autonomous agents, prefer a unique name per launch |
 
 @examples.md

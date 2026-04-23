@@ -13,7 +13,9 @@ from agent_cli.core.deps import (
     _check_and_install_extras,
     _get_auto_install_setting,
     _get_install_hint,
+    _maybe_reexec_after_install,
     _resolve_extras_for_install,
+    _should_skip_extra_check_for_process_control,
     requires_extras,
 )
 
@@ -217,6 +219,77 @@ class TestCheckAndInstallExtras:
             assert result == ["fake-extra"]
             mock_error.assert_called_once()
             assert "not visible" in mock_error.call_args[0][0]
+
+
+class TestReexecBehavior:
+    """Test re-exec behavior after auto-install."""
+
+    def test_reexec_uses_original_argv0(self) -> None:
+        """Re-exec should preserve the command path that launched agent-cli."""
+        with (
+            patch("agent_cli.core.deps._maybe_exec_with_marker") as mock_reexec,
+            patch("sys.argv", ["/custom/bin/agent-cli", "transcribe", "--toggle"]),
+        ):
+            _maybe_reexec_after_install()
+
+        mock_reexec.assert_called_once_with(
+            ["/custom/bin/agent-cli", "transcribe", "--toggle"],
+            "Re-running with installed extras...",
+        )
+
+    def test_reexec_falls_back_to_python_module_when_argv0_missing(self) -> None:
+        """Re-exec should still work if argv[0] is unavailable."""
+        with (
+            patch("agent_cli.core.deps._maybe_exec_with_marker") as mock_reexec,
+            patch("sys.argv", ["", "transcribe", "--toggle"]),
+            patch("sys.executable", "/usr/bin/python3"),
+        ):
+            _maybe_reexec_after_install()
+
+        mock_reexec.assert_called_once_with(
+            ["/usr/bin/python3", "-m", "agent_cli.cli", "transcribe", "--toggle"],
+            "Re-running with installed extras...",
+        )
+
+
+class TestProcessControlBypass:
+    """Test process-control bypasses for dependency checks."""
+
+    def test_skip_for_stop_and_status(self) -> None:
+        """Stop/status commands should not trigger extra checks."""
+        assert _should_skip_extra_check_for_process_control({"stop": True}, "transcribe") is True
+        assert _should_skip_extra_check_for_process_control({"status": True}, "transcribe") is True
+
+    def test_skip_for_toggle_when_process_running(self) -> None:
+        """Toggle should bypass extra checks when it is acting as stop."""
+        with patch("agent_cli.core.process.is_process_running", return_value=True):
+            assert (
+                _should_skip_extra_check_for_process_control({"toggle": True}, "transcribe") is True
+            )
+
+    def test_no_skip_for_toggle_when_process_not_running(self) -> None:
+        """Toggle start still needs dependency checks."""
+        with patch("agent_cli.core.process.is_process_running", return_value=False):
+            assert (
+                _should_skip_extra_check_for_process_control({"toggle": True}, "transcribe")
+                is False
+            )
+
+    def test_decorator_skips_extra_checks_for_toggle_stop(self) -> None:
+        """Decorated commands should stop an existing process without installing extras."""
+        with (
+            patch("agent_cli.core.process.is_process_running", return_value=True),
+            patch("agent_cli.core.deps._check_and_install_extras") as mock_check,
+        ):
+
+            @requires_extras("audio", process_name="transcribe")
+            def my_command(**kwargs: object) -> str:
+                assert kwargs["toggle"] is True
+                return "stopped"
+
+            assert my_command(toggle=True) == "stopped"
+
+        mock_check.assert_not_called()
 
 
 class TestDecoratorIntegration:

@@ -117,6 +117,17 @@ class CodingAgent(ABC):
         """Get any additional environment variables needed."""
         return {}
 
+    def prepare_launch(
+        self,
+        worktree_path: Path,  # noqa: ARG002
+        repo_root: Path,  # noqa: ARG002
+    ) -> str | None:
+        """Perform any agent-specific preparation before launch.
+
+        Returns an optional human-readable message describing a change that was made.
+        """
+        return None
+
     def __repr__(self) -> str:  # noqa: D105
         status = "available" if self.is_available() else "not installed"
         return f"<{self.__class__.__name__} {self.name!r} ({status})>"
@@ -132,7 +143,7 @@ def _get_parent_process_names() -> list[str]:
     - CLI tools that set process.title (like Claude) show their name directly
     """
     try:
-        import psutil  # noqa: PLC0415
+        import psutil  # type: ignore[import-untyped]  # noqa: PLC0415
 
         process = psutil.Process(os.getpid())
         names = []

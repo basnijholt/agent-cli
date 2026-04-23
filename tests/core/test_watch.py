@@ -30,7 +30,7 @@ async def test_watch_directory_skips_hidden(tmp_path: Path) -> None:
     def handler(change: Change, path: Path) -> None:
         called.append((change, path))
 
-    tmp_path.mkdir(parents=True, exist_ok=True)
+    tmp_path.mkdir(parents=True, exist_ok=True)  # noqa: ASYNC240
     (tmp_path / "visible.txt").touch()
     (tmp_path / "gone.txt").touch()
     (tmp_path / "sub").mkdir()

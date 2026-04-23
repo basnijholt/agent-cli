@@ -87,7 +87,7 @@ async def test_full_transcription_workflow() -> None:
             assert result.error is None
 
         finally:
-            tmp_path.unlink(missing_ok=True)
+            tmp_path.unlink(missing_ok=True)  # noqa: ASYNC240
 
 
 def test_server_command_in_cli() -> None:

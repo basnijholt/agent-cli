@@ -20,7 +20,7 @@ import tempfile
 import traceback
 from contextlib import asynccontextmanager, suppress
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, Any
 
@@ -41,7 +41,7 @@ if TYPE_CHECKING:
         words: list[dict[str, Any]]
 
 
-class ModelType(str, Enum):
+class ModelType(StrEnum):
     """Supported ASR models."""
 
     CANARY = "canary-qwen-2.5b"

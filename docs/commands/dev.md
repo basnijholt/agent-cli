@@ -19,14 +19,23 @@ Like [git-worktree-runner (gtr)](https://github.com/CodeRabbitAI/git-worktree-ru
 ## Quick Start
 
 ```bash
-# Create a new dev environment (auto-generates branch name like "clever-fox")
+# Create a new dev environment (auto-generates a random branch name like "clever-fox")
 agent-cli dev new
+
+# Create a new dev environment with AI-generated branch name from the prompt
+agent-cli dev new --branch-name-mode ai --prompt "Refactor auth flow"
 
 # Create a dev environment with a specific branch name
 agent-cli dev new my-feature
 
 # Create a dev environment and open in editor + start AI agent
-agent-cli dev new my-feature -e -a
+agent-cli dev new my-feature -e --start-agent
+
+# Create a dev environment and launch the agent in a detached repo-scoped tmux session
+agent-cli dev new my-feature --start-agent -m tmux
+
+# Launch into a specific tmux session instead of the default repo-scoped one
+agent-cli dev new my-feature --agent codex --tmux-session review-batch --prompt-file task.md
 
 # List all dev environments
 agent-cli dev list
@@ -65,18 +74,22 @@ agent-cli dev new [BRANCH] [OPTIONS]
 |--------|---------|-------------|
 | `--from, -f` | - | Git ref (branch/tag/commit) to branch from. Defaults to origin/main or origin/master |
 | `--editor, -e` | `false` | Open the worktree in an editor. Uses --with-editor, config default, or auto-detects |
-| `--agent, -a` | `false` | Start an AI coding agent in a new terminal tab. Uses --with-agent, config default, or auto-detects. Implied by --prompt |
-| `--with-agent` | - | Which AI agent to start: claude, codex, gemini, aider, copilot, cn (Continue), opencode, cursor-agent |
+| `--start-agent` | `false` | Start an AI coding agent in a new terminal tab without providing an initial prompt. Uses config default or auto-detects. |
+| `--agent` | - | Which AI agent to start: claude, codex, gemini, aider, copilot, cn (Continue), opencode, cursor-agent, or auto. Implies starting the agent |
 | `--with-editor` | - | Which editor to open: cursor, vscode, zed, nvim, vim, emacs, sublime, idea, pycharm, etc. |
-| `--default-agent` | - | Default agent from config |
-| `--default-editor` | - | Default editor from config |
 | `--setup/--no-setup` | `true` | Run project setup after creation: npm/pnpm/yarn install, poetry/uv sync, cargo build, etc. Auto-detects project type |
 | `--copy-env/--no-copy-env` | `true` | Copy .env, .env.local, .env.example from main repo to worktree |
 | `--fetch/--no-fetch` | `true` | Run 'git fetch' before creating the worktree to ensure refs are up-to-date |
+| `--branch-name-mode` | `random` | How to auto-name branches when BRANCH is omitted: random (default), auto (AI only when --prompt/--prompt-file is set), or ai (always try AI first) |
+| `--branch-name-agent` | - | Headless agent for AI branch naming: claude, codex, or gemini. If omitted, uses --agent when supported, otherwise tries available agents in that order |
+| `--branch-name-timeout` | `20.0` | Timeout in seconds for AI branch naming command |
 | `--direnv/--no-direnv` | - | Generate .envrc based on project type and run 'direnv allow'. Auto-enabled if direnv is installed |
 | `--agent-args` | - | Extra CLI args for the agent. Can be repeated. Example: --agent-args='--dangerously-skip-permissions' |
-| `--prompt, -p` | - | Initial task for the AI agent. Saved to .claude/TASK.md. Implies --agent. Example: --prompt='Fix the login bug' |
-| `--prompt-file, -P` | - | Read the agent prompt from a file. Useful for long prompts to avoid shell quoting. Implies --agent |
+| `--prompt, -p` | - | Initial task for the AI agent. Saved to a unique file in .claude/ to avoid conflicts. Implies starting the agent. Example: --prompt='Fix the login bug' |
+| `--prompt-file, -P` | - | Read the agent prompt from a file. Useful for long prompts to avoid shell quoting. Implies starting the agent |
+| `--multiplexer, -m` | - | Launch the agent in a specific multiplexer. Currently supported: tmux. When started outside tmux, creates or reuses a detached session and reports the pane handle |
+| `--tmux-session` | - | Reuse or create a specific tmux session for the agent. Implies --multiplexer tmux |
+| `--hooks/--no-hooks` | `true` | Run built-in agent preparation (like Codex auto-trust) and configured pre-launch hooks before starting the agent |
 | `--verbose, -v` | `false` | Stream output from setup commands instead of hiding it |
 
 
@@ -88,18 +101,29 @@ agent-cli dev new [BRANCH] [OPTIONS]
 # Create dev environment from a specific commit
 agent-cli dev new hotfix --from v1.2.3
 
-# Create dev environment with Cursor and Claude
-agent-cli dev new feature --with-editor cursor --with-agent claude
+# Create an interactive dev environment with Cursor and Claude
+agent-cli dev new feature --with-editor cursor --agent claude
 
-# Quick dev environment with defaults from config
-agent-cli dev new -e -a
+# Quick interactive dev environment with defaults from config
+agent-cli dev new -e --start-agent
 
 # Create dev environment with an initial prompt for the agent
-agent-cli dev new fix-bug -a --prompt "Fix the login validation bug in auth.py"
+agent-cli dev new fix-bug --prompt "Fix the login validation bug in auth.py"
 
 # Use --prompt-file for long prompts (avoids shell quoting issues)
-agent-cli dev new refactor -a --prompt-file task.md
+agent-cli dev new refactor --prompt-file task.md
+
+# Launch the default agent interactively in tmux
+agent-cli dev new feature --start-agent -m tmux
+
+# Launch a specific agent in tmux with an initial task
+agent-cli dev new feature --agent codex -m tmux --prompt-file task.md
+
+# Override the default repo-scoped tmux session
+agent-cli dev new feature --agent codex --tmux-session review-batch --prompt-file task.md
 ```
+
+For automated or headless use, pass `--prompt` or `--prompt-file` so the agent starts working immediately. `--start-agent` is mainly useful when a human plans to attach and drive the session interactively. `--tmux-session` implies `-m tmux` and overrides the default repo-scoped tmux session name.
 
 ### `dev list`
 
@@ -217,6 +241,8 @@ agent-cli dev rm NAME [OPTIONS]
 
 <!-- OUTPUT:END -->
 
+When a worktree was launched in tmux through `agent-cli`, `dev rm` also cleans up any tagged tmux windows for that worktree. If git removal succeeds but tmux cleanup is partial, the command warns and still removes the worktree.
+
 ### `dev path`
 
 Print the path to a dev environment (for shell integration).
@@ -260,7 +286,7 @@ agent-cli dev editor NAME [--editor/-e EDITOR]
 Start an AI coding agent in a dev environment.
 
 ```bash
-agent-cli dev agent NAME [--agent/-a AGENT] [--agent-args ARGS] [--prompt/-p PROMPT]
+agent-cli dev agent NAME [--agent/-a AGENT] [--agent-args ARGS] [--prompt/-p PROMPT] [--multiplexer/-m tmux] [--tmux-session SESSION]
 ```
 
 **Options:**
@@ -277,8 +303,11 @@ agent-cli dev agent NAME [--agent/-a AGENT] [--agent-args ARGS] [--prompt/-p PRO
 |--------|---------|-------------|
 | `--agent, -a` | - | Which agent: claude, codex, gemini, aider, copilot, cn, opencode, cursor-agent. Auto-detects if omitted |
 | `--agent-args` | - | Extra CLI args for the agent. Example: --agent-args='--dangerously-skip-permissions' |
-| `--prompt, -p` | - | Initial task for the agent. Saved to .claude/TASK.md. Example: --prompt='Add unit tests for auth' |
+| `--prompt, -p` | - | Initial task for the agent. Saved to a unique file in .claude/ to avoid conflicts. Example: --prompt='Add unit tests for auth' |
 | `--prompt-file, -P` | - | Read the agent prompt from a file instead of command line |
+| `--multiplexer, -m` | - | Launch the agent in a specific multiplexer instead of the current terminal. Currently supported: tmux |
+| `--tmux-session` | - | Reuse or create a specific tmux session for the agent. Implies --multiplexer tmux |
+| `--hooks/--no-hooks` | `true` | Run built-in agent preparation (like Codex auto-trust) and configured pre-launch hooks before starting the agent |
 
 
 <!-- OUTPUT:END -->
@@ -291,7 +320,15 @@ agent-cli dev agent my-feature --prompt "Continue implementing the user settings
 
 # Start aider with a specific task
 agent-cli dev agent my-feature -a aider --prompt "Add unit tests for the auth module"
+
+# Start an agent in a detached tmux session and get its pane handle
+agent-cli dev agent my-feature -a codex -m tmux --prompt-file continue-task.md
+
+# Reuse or create a specific tmux session for a shared review batch
+agent-cli dev agent my-feature -a codex --tmux-session review-batch --prompt-file continue-task.md
 ```
+
+For automated use, prefer `--prompt-file` or `--prompt`. Without either, the agent starts interactively and may wait for input. `--tmux-session` implies `-m tmux`, and tmux session names cannot contain `.` or `:`.
 
 ### `dev run`
 
@@ -353,6 +390,8 @@ agent-cli dev clean --no-commits
 # Preview what would be cleaned
 agent-cli dev clean --merged --dry-run
 ```
+
+Like `dev rm`, `dev clean` also removes tagged tmux windows for worktrees it deletes and warns if tmux cleanup is only partial.
 
 ### `dev doctor`
 
@@ -549,19 +588,28 @@ agent-cli dev terminals [OPTIONS]
 
 ## Configuration
 
-Add defaults to your `~/.config/agent-cli/config.toml`:
+Add defaults to your `~/.config/agent-cli/config.toml`.
+If you use `agent-cli config init`, the generated template already includes a
+commented-out starter block for `[dev]`, `[dev.agent_args]`, and
+`[dev.agent_env.<agent>]` settings like these:
 
 ```toml
 [dev]
 # Default flags for 'dev new' command
 editor = true          # Always open editor (-e)
-agent = true           # Always start agent (-a)
+start_agent = true     # Always start agent (--start-agent)
+auto_trust = true      # Auto-trust supported agents before launch
 direnv = true          # Always generate .envrc (--direnv)
 
 # Worktree creation behavior
 setup = true           # Run project setup (npm install, etc.)
 copy_env = true        # Copy .env files from main repo
 fetch = true           # Git fetch before creating
+
+# Branch naming behavior when BRANCH argument is omitted
+branch_name_mode = "ai"        # random | auto | ai
+branch_name_agent = "claude"   # claude | codex | gemini (optional)
+branch_name_timeout = 20.0     # seconds
 
 # Which editor/agent to use when flags are enabled
 default_editor = "cursor"
@@ -570,20 +618,28 @@ default_agent = "claude"
 # Per-agent arguments (applied automatically when launching agents)
 [dev.agent_args]
 claude = ["--dangerously-skip-permissions"]
-aider = ["--model", "gpt-4o"]
+codex = ["--dangerously-bypass-approvals-and-sandbox"]
 
 # Per-agent environment variables (applied when launching agents)
 [dev.agent_env.claude]
 CLAUDE_CODE_USE_VERTEX = "1"
 ANTHROPIC_MODEL = "claude-opus-4-5"
+
+# Optional pre-launch hooks (run from the worktree directory)
+[dev.hooks]
+pre_launch = ["~/.config/agent-cli/hooks/pre-launch.sh"]
+
+# Optional per-agent pre-launch hooks
+[dev.hooks.codex]
+pre_launch = ["~/.config/agent-cli/hooks/codex-setup.sh"]
 ```
 
-Or per-project in `.agent-cli.toml`:
+Or per-project in `agent-cli-config.toml`:
 
 ```toml
 [dev]
 editor = true
-agent = true
+start_agent = true
 direnv = true
 default_editor = "zed"
 default_agent = "aider"
@@ -593,6 +649,9 @@ claude = ["--dangerously-skip-permissions", "--model", "opus"]
 
 [dev.agent_env.claude]
 ANTHROPIC_MODEL = "claude-sonnet-4-20250514"
+
+[dev.hooks]
+pre_launch = ["./scripts/prepare-worktree.sh"]
 ```
 
 With this configuration, running `agent-cli dev new` will automatically open the editor, start the agent, and set up direnv.
@@ -681,8 +740,62 @@ The generated `.envrc` is automatically trusted with `direnv allow`.
 When launching an AI agent, the dev command automatically:
 
 1. Detects if you're in tmux/zellij and opens a new tab there
-2. Falls back to supported terminals (kitty, iTerm2)
-3. Prints instructions if no terminal is detected
+2. With `-m tmux`, creates or reuses a detached tmux session even when you're not already inside tmux
+3. Outside tmux, uses a deterministic repo-scoped tmux session by default for explicit tmux launches
+4. Inside tmux, opens a new window in the current tmux session unless `--tmux-session <name>` is provided
+5. Returns the tmux pane handle and an attach command for explicit tmux launches
+6. Falls back to supported terminals (kitty, iTerm2)
+7. Prints instructions if no terminal is detected
+
+Before launching an agent, `agent-cli dev` can also run launch preparation:
+
+- Built-in preparation for supported agents. Currently this means Codex auto-trust: when `[dev].auto_trust = true` (the default), `agent-cli` ensures the repository root is trusted in `~/.codex/config.toml` before launch.
+- User-defined `pre_launch` hooks from `[dev.hooks]` and `[dev.hooks.<agent>]`. Global hooks run first, then agent-specific hooks.
+- Hook config follows the same config source as the rest of `dev`, including `agent-cli dev --config path/to/config.toml ...`.
+- Hooks run synchronously in the worktree directory and receive:
+  - `AGENT_CLI_AGENT`
+  - `AGENT_CLI_WORKTREE`
+  - `AGENT_CLI_REPO_ROOT`
+  - `AGENT_CLI_BRANCH`
+  - `AGENT_CLI_NAME`
+  - `AGENT_CLI_TASK_FILE`
+  - `AGENT_CLI_PROMPT_FILE` (alias of `AGENT_CLI_TASK_FILE`)
+- Hook commands are executed directly, not through a shell. For pipelines or more complex setup, point `pre_launch` at a script.
+- Use `--no-hooks` to bypass both built-in preparation and configured pre-launch hooks for a single launch.
+
+### Multi-agent Workflows
+
+Use `dev agent -m tmux` when you want multiple agents on the same worktree instead of multiple worktrees:
+
+```bash
+# Create the worktree once. This is setup only; no agent starts yet.
+agent-cli dev new review-auth --from HEAD
+
+# Launch multiple reviewers into the same worktree
+agent-cli dev agent review-auth -m tmux --prompt-file .claude/review-security.md
+agent-cli dev agent review-auth -m tmux --prompt-file .claude/review-performance.md
+agent-cli dev agent review-auth -m tmux --prompt-file .claude/review-tests.md
+```
+
+This is useful for:
+- Multiple reviewers on the same branch
+- Parallel validation agents working on one codebase
+- Headless orchestration from scripts or other assistants
+
+Outside tmux, explicit tmux launches for the same repository are grouped into the same deterministic tmux session (`agent-cli-<repo>-<hash>`), which keeps related windows together across headless or scripted launches.
+
+When already inside tmux, `-m tmux` opens a new window in the current session unless you pass `--tmux-session <name>`. That flag reuses or creates a specific tmux session instead. tmux session names cannot contain `.` or `:`.
+
+For fully headless orchestration, combine `--prompt-file` with `-m tmux`:
+
+```bash
+for section in 1 2 3 4; do
+  agent-cli dev new "validate-$section" --from HEAD --agent codex -m tmux \
+    --prompt-file ".claude/validate-$section.md"
+done
+```
+
+If multiple agents share one worktree, do not have them all write to `.claude/REPORT.md` because they will overwrite each other. Instead, assign unique report paths such as `.claude/REPORT-security-<run-id>.md` and `.claude/REPORT-tests-<run-id>.md`. If you rerun the same prompt repeatedly, use a timestamp or other run id so later runs do not replace earlier results. Each agent launch also gets its own `.claude/TASK-{timestamp}-{hex}.md` file, so prompt files no longer overwrite each other.
 
 ## Shell Integration
 
@@ -701,5 +814,5 @@ dcd() {
 
 - Use `agent-cli dev new` without arguments for quick experimentation
 - Run `agent-cli dev doctor` to verify your setup
-- Combine `-e -a` flags to immediately start coding with AI assistance
+- Combine `-e --start-agent` to immediately start coding with AI assistance
 - Use `--from` to branch from a specific tag or commit

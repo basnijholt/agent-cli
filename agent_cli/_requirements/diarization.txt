@@ -292,7 +292,6 @@ rich==14.2.0
     #   agent-cli
     #   pyannote-audio
     #   typer
-    #   typer-slim
 safetensors==0.7.0
     # via pyannote-audio
 scikit-learn==1.8.0
@@ -311,9 +310,7 @@ setuptools==80.9.0
     #   torch
     #   triton
 shellingham==1.5.4
-    # via
-    #   typer
-    #   typer-slim
+    # via typer
 six==1.17.0
     # via python-dateutil
 sortedcontainers==2.4.0

@@ -254,7 +254,7 @@ async def test_record_audio_with_manual_stop_saves_recording(
     assert audio_data == b"audio_chunk" * 100
 
     # Verify a recording file was saved
-    recordings = list(tmp_path.glob("recording_*.wav"))
+    recordings = list(tmp_path.glob("recording_*.wav"))  # noqa: ASYNC240
     assert len(recordings) == 1
 
 
@@ -302,7 +302,7 @@ async def test_record_audio_with_manual_stop_no_save(
     assert audio_data == b"audio_chunk" * 100
 
     # Verify no recording file was saved
-    recordings = list(tmp_path.glob("recording_*.wav"))
+    recordings = list(tmp_path.glob("recording_*.wav"))  # noqa: ASYNC240
     assert len(recordings) == 0
 
 
@@ -350,7 +350,7 @@ async def test_send_audio_with_save_recording(
     assert client.write_event.call_count >= 4
 
     # Verify a recording file was saved
-    recordings = list(tmp_path.glob("recording_*.wav"))
+    recordings = list(tmp_path.glob("recording_*.wav"))  # noqa: ASYNC240
     assert len(recordings) == 1
 
 

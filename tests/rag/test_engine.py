@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from agent_cli.rag import engine
-from agent_cli.rag.engine import _is_path_safe, truncate_context
+from agent_cli.rag.engine import _convert_messages, _is_path_safe, truncate_context
 from agent_cli.rag.models import ChatRequest, Message
 
 
@@ -82,6 +82,35 @@ def test_is_path_safe_symlink_escape(tmp_path: Path) -> None:
         pass
 
 
+def test_convert_messages_skips_empty_system() -> None:
+    """Test that empty system messages are filtered out."""
+    messages = [
+        Message(role="system", content=""),
+        Message(role="user", content="Hello"),
+        Message(role="user", content="Question"),
+    ]
+
+    history, user_prompt = _convert_messages(messages)
+
+    # Empty system message should be skipped
+    assert user_prompt == "Question"
+    # Only the first user message should be in history (system was skipped)
+    assert len(history) == 1
+
+
+def test_convert_messages_keeps_nonempty_system() -> None:
+    """Test that non-empty system messages are preserved."""
+    messages = [
+        Message(role="system", content="You are helpful."),
+        Message(role="user", content="Question"),
+    ]
+
+    history, user_prompt = _convert_messages(messages)
+
+    assert user_prompt == "Question"
+    assert len(history) == 1
+
+
 def test_retrieve_context_direct() -> None:
     """Test direct usage of _retrieve_context without async/HTTP."""
     mock_collection = MagicMock()
@@ -132,6 +161,7 @@ async def test_process_chat_request_no_rag(tmp_path: Path) -> None:
     with (
         patch("pydantic_ai.Agent.run", new_callable=AsyncMock) as mock_run,
         patch("agent_cli.rag.engine.search_context") as mock_search,
+        patch("pydantic_ai.Agent.__init__", return_value=None) as mock_agent_init,
     ):
         mock_run.return_value = mock_run_result
         # Mock retrieval to return empty
@@ -151,10 +181,13 @@ async def test_process_chat_request_no_rag(tmp_path: Path) -> None:
         )
 
         assert resp["choices"][0]["message"]["content"] == "Response"
-        # Should check if search was called
         mock_search.assert_called_once()
-        # Verify Agent.run was called
         mock_run.assert_called_once()
+
+        # Verify system_prompt is an empty tuple, not an empty string
+        # (empty strings cause errors on providers like Vertex AI)
+        init_kwargs = mock_agent_init.call_args
+        assert init_kwargs.kwargs["system_prompt"] == ()
 
 
 @pytest.mark.asyncio

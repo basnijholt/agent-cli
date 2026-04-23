@@ -157,12 +157,12 @@ async def test_transcribe_recorded_audio_wyoming_connection_error(
 
 
 @pytest.mark.asyncio
-@patch("google.genai.Client")
-async def test_transcribe_audio_gemini_success(mock_client_class: MagicMock):
+@patch("agent_cli.services._get_gemini_client")
+async def test_transcribe_audio_gemini_success(mock_get_gemini_client: MagicMock):
     """Test that transcribe_audio_gemini calls the Gemini API correctly."""
     # Setup mock client and response
     mock_client = MagicMock()
-    mock_client_class.return_value = mock_client
+    mock_get_gemini_client.return_value = mock_client
 
     mock_response = MagicMock()
     mock_response.text = "  hello world  "  # With whitespace to test strip()
@@ -175,7 +175,7 @@ async def test_transcribe_audio_gemini_success(mock_client_class: MagicMock):
 
     # Test with WAV data (starts with RIFF header)
     wav_data = b"RIFF\x00\x00\x00\x00WAVEfmt test audio data"
-    with patch("google.genai.types.Part"):
+    with patch("agent_cli.services._gemini_types_module") as mock_get_types:
         result = await transcribe_audio_gemini(
             audio_data=wav_data,
             gemini_asr_cfg=gemini_asr_cfg,
@@ -183,8 +183,9 @@ async def test_transcribe_audio_gemini_success(mock_client_class: MagicMock):
         )
 
     assert result == "hello world"  # Should be stripped
-    mock_client_class.assert_called_once_with(api_key="test-key")
+    mock_get_gemini_client.assert_called_once_with("test-key")
     mock_client.aio.models.generate_content.assert_called_once()
+    mock_get_types.return_value.Part.from_bytes.assert_called_once()
 
     # Verify the model parameter
     call_args = mock_client.aio.models.generate_content.call_args
@@ -192,15 +193,13 @@ async def test_transcribe_audio_gemini_success(mock_client_class: MagicMock):
 
 
 @pytest.mark.asyncio
-@patch("google.genai.Client")
-@patch("google.genai.types.Part")
+@patch("agent_cli.services._get_gemini_client")
 async def test_transcribe_audio_gemini_converts_pcm_to_wav(
-    mock_part: MagicMock,
-    mock_client_class: MagicMock,
+    mock_get_gemini_client: MagicMock,
 ):
     """Test that transcribe_audio_gemini auto-converts PCM to WAV."""
     mock_client = MagicMock()
-    mock_client_class.return_value = mock_client
+    mock_get_gemini_client.return_value = mock_client
 
     mock_response = MagicMock()
     mock_response.text = "transcribed text"
@@ -213,16 +212,17 @@ async def test_transcribe_audio_gemini_converts_pcm_to_wav(
 
     # Test with raw PCM data (no RIFF header)
     pcm_data = b"\x00\x00\x01\x00" * 100
-    result = await transcribe_audio_gemini(
-        audio_data=pcm_data,
-        gemini_asr_cfg=gemini_asr_cfg,
-        logger=MagicMock(),
-    )
+    with patch("agent_cli.services._gemini_types_module") as mock_get_types:
+        result = await transcribe_audio_gemini(
+            audio_data=pcm_data,
+            gemini_asr_cfg=gemini_asr_cfg,
+            logger=MagicMock(),
+        )
 
     assert result == "transcribed text"
 
     # Verify the audio was converted to WAV (check the Part.from_bytes call)
-    audio_part_call = mock_part.from_bytes.call_args
+    audio_part_call = mock_get_types.return_value.Part.from_bytes.call_args
     assert audio_part_call.kwargs["mime_type"] == "audio/wav"
     # The data should now be WAV format (starts with RIFF)
     assert audio_part_call.kwargs["data"][:4] == b"RIFF"

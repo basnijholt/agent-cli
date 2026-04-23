@@ -304,6 +304,123 @@ class TestFindWorktreeByName:
 
         assert result is None
 
+    def test_dot_returns_worktree_containing_cwd(self, tmp_path: Path) -> None:
+        """'.' returns the worktree whose path contains the current working directory."""
+        wt_path = tmp_path / "worktrees" / "feature"
+        wt_path.mkdir(parents=True)
+        worktrees = [
+            WorktreeInfo(
+                path=tmp_path / "main-repo",
+                branch="main",
+                commit="abc",
+                is_main=True,
+                is_detached=False,
+                is_locked=False,
+                is_prunable=False,
+            ),
+            WorktreeInfo(
+                path=wt_path,
+                branch="feature",
+                commit="def",
+                is_main=False,
+                is_detached=False,
+                is_locked=False,
+                is_prunable=False,
+            ),
+        ]
+
+        with (
+            patch("agent_cli.dev.worktree.list_worktrees", return_value=worktrees),
+            patch("pathlib.Path.cwd", return_value=wt_path / "src"),
+        ):
+            result = find_worktree_by_name(".", Path("/repo"))
+
+        assert result is not None
+        assert result.branch == "feature"
+
+    def test_dot_prefers_nested_worktree_over_main_repo(self, tmp_path: Path) -> None:
+        """'.' prefers the most specific matching worktree path."""
+        repo_root = tmp_path / "repo"
+        wt_path = repo_root / ".worktrees" / "feature"
+        wt_path.mkdir(parents=True)
+        worktrees = [
+            WorktreeInfo(
+                path=repo_root,
+                branch="main",
+                commit="abc",
+                is_main=True,
+                is_detached=False,
+                is_locked=False,
+                is_prunable=False,
+            ),
+            WorktreeInfo(
+                path=wt_path,
+                branch="feature",
+                commit="def",
+                is_main=False,
+                is_detached=False,
+                is_locked=False,
+                is_prunable=False,
+            ),
+        ]
+
+        with (
+            patch("agent_cli.dev.worktree.list_worktrees", return_value=worktrees),
+            patch("pathlib.Path.cwd", return_value=wt_path / "src"),
+        ):
+            result = find_worktree_by_name(".", repo_root)
+
+        assert result is not None
+        assert result.branch == "feature"
+
+    def test_dot_returns_main_when_in_main_repo(self, tmp_path: Path) -> None:
+        """'.' returns the main worktree when CWD is inside the main repo."""
+        main_path = tmp_path / "main-repo"
+        main_path.mkdir(parents=True)
+        worktrees = [
+            WorktreeInfo(
+                path=main_path,
+                branch="main",
+                commit="abc",
+                is_main=True,
+                is_detached=False,
+                is_locked=False,
+                is_prunable=False,
+            ),
+        ]
+
+        with (
+            patch("agent_cli.dev.worktree.list_worktrees", return_value=worktrees),
+            patch("pathlib.Path.cwd", return_value=main_path),
+        ):
+            result = find_worktree_by_name(".", Path("/repo"))
+
+        assert result is not None
+        assert result.is_main is True
+
+    def test_dot_falls_back_to_main_when_outside_worktrees(self) -> None:
+        """'.' returns the main worktree when CWD doesn't match any worktree."""
+        worktrees = [
+            WorktreeInfo(
+                path=Path("/some/repo"),
+                branch="main",
+                commit="abc",
+                is_main=True,
+                is_detached=False,
+                is_locked=False,
+                is_prunable=False,
+            ),
+        ]
+
+        with (
+            patch("agent_cli.dev.worktree.list_worktrees", return_value=worktrees),
+            patch("pathlib.Path.cwd", return_value=Path("/completely/elsewhere")),
+        ):
+            result = find_worktree_by_name(".", Path("/repo"))
+
+        assert result is not None
+        assert result.is_main is True
+
 
 class TestWorktreeInfo:
     """Tests for WorktreeInfo dataclass."""
@@ -443,7 +560,7 @@ class TestCreateWorktreeFromRefWarning:
                 return_value=Path("/worktrees"),
             ),
             patch("agent_cli.dev.worktree._run_git") as mock_run,
-            patch("agent_cli.dev.worktree._check_branch_exists", return_value=(False, True)),
+            patch("agent_cli.dev.worktree.check_branch_exists", return_value=(False, True)),
             patch("agent_cli.dev.worktree._add_worktree"),
             patch("agent_cli.dev.worktree._init_submodules"),
             patch("agent_cli.dev.worktree._pull_lfs"),
@@ -475,7 +592,7 @@ class TestCreateWorktreeFromRefWarning:
                 return_value=Path("/worktrees"),
             ),
             patch("agent_cli.dev.worktree._run_git") as mock_run,
-            patch("agent_cli.dev.worktree._check_branch_exists", return_value=(True, False)),
+            patch("agent_cli.dev.worktree.check_branch_exists", return_value=(True, False)),
             patch("agent_cli.dev.worktree._add_worktree"),
             patch("agent_cli.dev.worktree._init_submodules"),
             patch("agent_cli.dev.worktree._pull_lfs"),
@@ -505,7 +622,7 @@ class TestCreateWorktreeFromRefWarning:
                 return_value=Path("/worktrees"),
             ),
             patch("agent_cli.dev.worktree._run_git") as mock_run,
-            patch("agent_cli.dev.worktree._check_branch_exists", return_value=(False, True)),
+            patch("agent_cli.dev.worktree.check_branch_exists", return_value=(False, True)),
             patch("agent_cli.dev.worktree._add_worktree"),
             patch("agent_cli.dev.worktree._init_submodules"),
             patch("agent_cli.dev.worktree.get_default_branch", return_value="main"),
@@ -534,7 +651,7 @@ class TestCreateWorktreeFromRefWarning:
                 return_value=Path("/worktrees"),
             ),
             patch("agent_cli.dev.worktree._run_git") as mock_run,
-            patch("agent_cli.dev.worktree._check_branch_exists", return_value=(False, False)),
+            patch("agent_cli.dev.worktree.check_branch_exists", return_value=(False, False)),
             patch("agent_cli.dev.worktree._add_worktree"),
             patch("agent_cli.dev.worktree._init_submodules"),
             patch("agent_cli.dev.worktree._pull_lfs"),
@@ -665,7 +782,7 @@ class TestCreateWorktreeNoOrigin:
                 return_value=Path("/worktrees"),
             ),
             patch("agent_cli.dev.worktree._run_git") as mock_run,
-            patch("agent_cli.dev.worktree._check_branch_exists", return_value=(False, False)),
+            patch("agent_cli.dev.worktree.check_branch_exists", return_value=(False, False)),
             patch("agent_cli.dev.worktree._add_worktree") as mock_add_worktree,
             patch("agent_cli.dev.worktree._init_submodules"),
             patch("agent_cli.dev.worktree.get_default_branch", return_value="main"),
@@ -710,7 +827,7 @@ class TestCreateWorktreeNoOrigin:
                 return_value=Path("/worktrees"),
             ),
             patch("agent_cli.dev.worktree._run_git", side_effect=mock_run_git),
-            patch("agent_cli.dev.worktree._check_branch_exists", return_value=(False, False)),
+            patch("agent_cli.dev.worktree.check_branch_exists", return_value=(False, False)),
             patch("agent_cli.dev.worktree._add_worktree"),
             patch("agent_cli.dev.worktree._init_submodules"),
             patch("agent_cli.dev.worktree.get_default_branch", return_value="main"),
@@ -737,7 +854,7 @@ class TestCreateWorktreeNoOrigin:
                 return_value=Path("/worktrees"),
             ),
             patch("agent_cli.dev.worktree._run_git") as mock_run,
-            patch("agent_cli.dev.worktree._check_branch_exists", return_value=(False, False)),
+            patch("agent_cli.dev.worktree.check_branch_exists", return_value=(False, False)),
             patch("agent_cli.dev.worktree._add_worktree") as mock_add_worktree,
             patch("agent_cli.dev.worktree._init_submodules"),
             patch("agent_cli.dev.worktree.get_default_branch", return_value="main"),

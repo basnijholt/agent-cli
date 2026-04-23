@@ -122,6 +122,8 @@ agent-cli install-hotkeys
 agent-cli autocorrect "this has an eror"
 ```
 
+`install-hotkeys` also installs the required `audio` and `llm` extras if they are missing.
+
 The setup scripts automatically install:
 - ✅ Package managers (Homebrew/uv) if needed
 - ✅ All AI services (Ollama, Whisper, TTS, etc.)
@@ -273,7 +275,7 @@ This script automatically:
 > After setup, you may need to grant Accessibility permissions to skhd in System Settings → Privacy & Security → Accessibility
 
 > [!TIP]
-> To keep the “Listening…” indicator visible for the whole recording, open System Settings → Notifications → *terminal-notifier* and set the Alert style to **Persistent** (or choose **Alerts** on older macOS versions).
+> To keep the recording-status notification visible for the whole flow, open System Settings → Notifications → *terminal-notifier* and set the Alert style to **Persistent** (or choose **Alerts** on older macOS versions).
 > Also enable "Allow notification when mirroring or sharing the display".
 > The hotkey scripts keep only the recording notification pinned; status and result toasts auto-dismiss.
 
@@ -432,6 +434,7 @@ agent-cli install-extras rag memory vad
   • server - FastAPI server components
   • speed - Audio speed adjustment (audiostretchy)
   • vad - Voice Activity Detection (Silero VAD via ONNX)
+  • vectordb - Vector database with embeddings (ChromaDB)
   • whisper-transformers - Whisper ASR via HuggingFace transformers
   • wyoming - Wyoming protocol support
 
@@ -447,7 +450,7 @@ agent-cli install-extras rag memory vad
 ╭─ Arguments ────────────────────────────────────────────────────────────────────────────╮
 │   extras      [EXTRAS]...  Extras to install: audio, diarization, faster-whisper,      │
 │                            kokoro, llm, memory, mlx-whisper, piper, rag, server,       │
-│                            speed, vad, whisper-transformers, wyoming                   │
+│                            speed, vad, vectordb, whisper-transformers, wyoming         │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Options ──────────────────────────────────────────────────────────────────────────────╮
 │ --list  -l        Show available extras with descriptions (what each one enables)      │
@@ -1913,13 +1916,14 @@ uv tool install "agent-cli[vad]" -p 3.13
 **Workflow:**
 
 1.  Start the server, pointing it to your documents folder and your local LLM (e.g., Ollama or llama.cpp) or OpenAI.
-2.  The server watches the folder and automatically indexes any text/markdown/PDF files into a local ChromaDB vector store.
+2.  The server watches the folder and automatically indexes any text/markdown/PDF files into a local ChromaDB vector store, skipping paths matched by `.gitignore` files in the docs folder and, when inside a git repo, its parent directories up to the repo root.
 3.  Point any OpenAI-compatible client (including `agent-cli chat`) to this server's URL.
 4.  When you ask a question, the server retrieves relevant document chunks, adds them to the prompt, and forwards it to the LLM.
 
 **How to Use It:**
 
 - **Install RAG deps first**: `pip install "agent-cli[rag]"` (or, from the repo, `uv sync --extra rag`)
+- **Note on ignored files**: `.gitignore` rules in your docs folder are respected during indexing; if the docs folder is inside a git repo, parent `.gitignore` files up to the repo root are also applied. Use `!pattern` entries to re-include paths when needed
 - **Start Server (Local LLM)**: `agent-cli rag-proxy --docs-folder ~/Documents/Notes --openai-base-url http://localhost:11434/v1 --port 8000`
 - **Start Server (OpenAI)**: `agent-cli rag-proxy --docs-folder ~/Documents/Notes --openai-api-key sk-...`
 - **Use with Agent-CLI**: `agent-cli chat --openai-base-url http://localhost:8000/v1 --llm-provider openai`
@@ -1957,10 +1961,12 @@ uv tool install "agent-cli[vad]" -p 3.13
  How it works:
 
   1 Documents in --docs-folder are chunked, embedded, and stored in ChromaDB
-  2 A file watcher auto-reindexes when files change
-  3 Chat requests trigger a semantic search for relevant chunks
-  4 Retrieved context is injected into the prompt before forwarding to the LLM
-  5 Responses include a rag_sources field listing which documents were used
+  2 Paths matched by .gitignore files in the docs folder and, when inside a git repo, its
+    parents up to the repo root are skipped
+  3 A file watcher auto-reindexes when files change
+  4 Chat requests trigger a semantic search for relevant chunks
+  5 Retrieved context is injected into the prompt before forwarding to the LLM
+  6 Responses include a rag_sources field listing which documents were used
 
  Supported file formats:
 
@@ -1986,7 +1992,11 @@ uv tool install "agent-cli[vad]" -p 3.13
 ╭─ RAG Configuration ────────────────────────────────────────────────────────────────────╮
 │ --docs-folder                      PATH     Folder to watch for documents. Files are   │
 │                                             auto-indexed on startup and when changed.  │
-│                                             Must not overlap with --chroma-path.       │
+│                                             Paths matching .gitignore files in this    │
+│                                             folder and, when inside a git repo, its    │
+│                                             parent directories up to the repo root are │
+│                                             skipped. Must not overlap with             │
+│                                             --chroma-path.                             │
 │                                             [default: ./rag_docs]                      │
 │ --chroma-path                      PATH     ChromaDB storage directory for vector      │
 │                                             embeddings. Must be separate from          │

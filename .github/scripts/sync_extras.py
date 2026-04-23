@@ -34,6 +34,7 @@ EXTRA_METADATA: dict[str, tuple[str, list[str]]] = {
     "gemini": ("Google Gemini provider", ["google.genai"]),
     "llm": ("LLM framework (pydantic-ai)", ["pydantic_ai"]),
     # Feature extras
+    "vectordb": ("Vector database with embeddings (ChromaDB)", ["chromadb", "pydantic_ai"]),
     "rag": ("RAG proxy (ChromaDB, embeddings)", ["chromadb", "pydantic_ai"]),
     "memory": ("Long-term memory proxy", ["chromadb", "yaml", "pydantic_ai"]),
     "vad": ("Voice Activity Detection (Silero VAD via ONNX)", ["onnxruntime"]),

@@ -4,13 +4,11 @@ from __future__ import annotations
 
 import json
 import os
-import random
 import shlex
 import shutil
 import subprocess
-import tempfile
 from pathlib import Path
-from typing import TYPE_CHECKING, Annotated, NoReturn
+from typing import Annotated, Literal
 
 import typer
 from rich.panel import Panel
@@ -18,99 +16,30 @@ from rich.table import Table
 
 from agent_cli.cli import app as main_app
 from agent_cli.cli import set_config_defaults
-from agent_cli.config import load_config
 from agent_cli.core.process import set_process_title
-from agent_cli.core.utils import console, err_console
+from agent_cli.core.utils import console
 
-# Word lists for generating random branch names (like Docker container names)
-_ADJECTIVES = [
-    "happy",
-    "clever",
-    "swift",
-    "bright",
-    "calm",
-    "eager",
-    "fancy",
-    "gentle",
-    "jolly",
-    "keen",
-    "lively",
-    "merry",
-    "nice",
-    "proud",
-    "quick",
-    "sharp",
-    "smart",
-    "sunny",
-    "witty",
-    "zesty",
-    "bold",
-    "cool",
-    "fresh",
-    "grand",
-]
-_NOUNS = [
-    "fox",
-    "owl",
-    "bear",
-    "wolf",
-    "hawk",
-    "lion",
-    "tiger",
-    "eagle",
-    "falcon",
-    "otter",
-    "panda",
-    "raven",
-    "shark",
-    "whale",
-    "zebra",
-    "bison",
-    "crane",
-    "dolphin",
-    "gecko",
-    "heron",
-    "koala",
-    "lemur",
-    "moose",
-    "newt",
-    "oriole",
-]
-
-
-def _generate_branch_name(existing_branches: set[str] | None = None) -> str:
-    """Generate a unique random branch name like 'clever-fox'.
-
-    If the name already exists, adds a numeric suffix (clever-fox-2).
-    """
-    existing = existing_branches or set()
-    base = f"{random.choice(_ADJECTIVES)}-{random.choice(_NOUNS)}"  # noqa: S311
-
-    if base not in existing:
-        return base
-
-    # Add numeric suffix to avoid collision
-    for i in range(2, 100):
-        candidate = f"{base}-{i}"
-        if candidate not in existing:
-            return candidate
-
-    # Fallback: add random digits
-    return f"{base}-{random.randint(100, 999)}"  # noqa: S311
-
-
-from . import coding_agents, editors, terminals, worktree  # noqa: E402
-from .project import (  # noqa: E402
+from . import cleanup, coding_agents, editors, terminals, worktree
+from ._branch_name import AGENTS as BRANCH_NAME_AGENTS
+from ._branch_name import generate_ai_branch_name, generate_random_branch_name
+from ._output import error, info, success, warn
+from .hooks import LaunchContext, prepare_agent_launch
+from .launch import (
+    get_agent_env,
+    launch_agent,
+    launch_editor,
+    merge_agent_args,
+    resolve_agent,
+    resolve_editor,
+    write_prompt_to_worktree,
+)
+from .project import (
     copy_env_files,
     detect_project_type,
     is_direnv_available,
     run_setup,
     setup_direnv,
 )
-
-if TYPE_CHECKING:
-    from .coding_agents.base import CodingAgent
-    from .editors.base import Editor
 
 app = typer.Typer(
     name="dev",
@@ -122,9 +51,9 @@ has its own branch and working directory.
 
 **Common workflows:**
 
-- `dev new feature-x -a` — Create worktree + start AI agent in new terminal tab
-- `dev new feature-x -e -a` — Create worktree + open editor + start agent
-- `dev new -a -p "Fix the auth bug"` — Create worktree + start agent with prompt
+- `dev new feature-x --start-agent` — Create worktree + start AI agent in new terminal tab
+- `dev new feature-x -e --start-agent` — Create worktree + open editor + start agent
+- `dev new --prompt "Fix the auth bug"` — Create worktree + start agent with prompt
 - `dev status` — See all worktrees with uncommitted changes
 - `dev clean --merged` — Remove worktrees whose PRs are merged
 
@@ -155,340 +84,231 @@ def dev_callback(
     Creates isolated working directories for each feature branch. Each worktree
     has its own branch, allowing parallel development without stashing changes.
     """
-    set_config_defaults(ctx, config_file)
+    config = set_config_defaults(ctx, config_file)
+    if isinstance(ctx.obj, dict):
+        ctx.obj["config"] = config
+    else:
+        ctx.obj = {"config": config}
+
+    # The [dev] section config is intended for `dev new` options.
+    # Click expects subcommand defaults under ctx.default_map["new"].
+    if isinstance(ctx.default_map, dict):
+        flat_defaults = {k: v for k, v in ctx.default_map.items() if not isinstance(v, dict)}
+        nested_defaults = {k: dict(v) for k, v in ctx.default_map.items() if isinstance(v, dict)}
+
+        if flat_defaults:
+            nested_defaults["new"] = {**flat_defaults, **nested_defaults.get("new", {})}
+            ctx.default_map = nested_defaults
+
     if ctx.invoked_subcommand is not None:
         set_process_title(f"dev-{ctx.invoked_subcommand}")
-
-
-def _error(msg: str) -> NoReturn:
-    """Print an error message and exit."""
-    err_console.print(f"[bold red]Error:[/bold red] {msg}")
-    raise typer.Exit(1)
-
-
-def _success(msg: str) -> None:
-    """Print a success message."""
-    console.print(f"[bold green]✓[/bold green] {msg}")
-
-
-def _info(msg: str) -> None:
-    """Print an info message, with special styling for commands."""
-    # Style commands (messages starting with "Running: ")
-    if msg.startswith("Running: "):
-        cmd = msg[9:]  # Remove "Running: " prefix
-        # Escape brackets to prevent Rich from interpreting them as markup
-        cmd = cmd.replace("[", r"\[")
-        console.print(f"[dim]→[/dim] Running: [bold cyan]{cmd}[/bold cyan]")
-    else:
-        console.print(f"[dim]→[/dim] {msg}")
-
-
-def _warn(msg: str) -> None:
-    """Print a warning message."""
-    console.print(f"[yellow]Warning:[/yellow] {msg}")
 
 
 def _ensure_git_repo() -> Path:
     """Ensure we're in a git repository and return the repo root."""
     if not worktree.git_available():
-        _error("Git is not installed or not in PATH")
+        error("Git is not installed or not in PATH")
 
     repo_root = worktree.get_main_repo_root()
     if repo_root is None:
-        _error("Not in a git repository")
+        error("Not in a git repository")
 
     return repo_root
 
 
-def _resolve_editor(
-    use_editor: bool,
-    editor_name: str | None,
-    default_editor: str | None = None,
-) -> Editor | None:
-    """Resolve which editor to use based on flags and config defaults."""
-    # Use explicit name if provided
-    if editor_name:
-        editor = editors.get_editor(editor_name)
-        if editor is None:
-            _warn(f"Editor '{editor_name}' not found")
-        return editor
-
-    # If no flag and no default, don't use an editor
-    if not use_editor and not default_editor:
-        return None
-
-    # If default is set in config, use it
-    if default_editor:
-        editor = editors.get_editor(default_editor)
-        if editor is not None:
-            return editor
-        _warn(f"Default editor '{default_editor}' from config not found")
-
-    # Auto-detect current or first available
-    editor = editors.detect_current_editor()
-    if editor is None:
-        available = editors.get_available_editors()
-        return available[0] if available else None
-    return editor
-
-
-def _resolve_agent(
-    use_agent: bool,
-    agent_name: str | None,
-    default_agent: str | None = None,
-) -> CodingAgent | None:
-    """Resolve which coding agent to use based on flags and config defaults."""
-    # Use explicit name if provided
-    if agent_name:
-        agent = coding_agents.get_agent(agent_name)
-        if agent is None:
-            _warn(f"Agent '{agent_name}' not found")
-        return agent
-
-    # If no flag and no default, don't use an agent
-    if not use_agent and not default_agent:
-        return None
-
-    # If default is set in config, use it
-    if default_agent:
-        agent = coding_agents.get_agent(default_agent)
-        if agent is not None:
-            return agent
-        _warn(f"Default agent '{default_agent}' from config not found")
-
-    # Auto-detect current or first available
-    agent = coding_agents.detect_current_agent()
+def _require_available_agent(
+    agent: coding_agents.CodingAgent | None,
+    *,
+    requested_name: str | None = None,
+) -> coding_agents.CodingAgent:
+    """Fail fast when an explicit agent launch was requested but cannot happen."""
     if agent is None:
-        available = coding_agents.get_available_agents()
-        return available[0] if available else None
+        if requested_name:
+            error(f"Agent not found: {requested_name}")
+        available_names = ", ".join(candidate.name for candidate in coding_agents.get_all_agents())
+        if available_names:
+            error(f"No AI coding agents found. Install one of: {available_names}")
+        error("No AI coding agents found")
+
+    if not agent.is_available():
+        msg = f"{agent.name} is not installed"
+        if agent.install_url:
+            msg += f". Install from: {agent.install_url}"
+        error(msg)
+
     return agent
 
 
-def _get_config_agent_args() -> dict[str, list[str]] | None:
-    """Load agent_args from config file.
+def _resolve_prompt_text(
+    prompt: str | None,
+    *,
+    prompt_file: Path | None = None,
+) -> str | None:
+    """Resolve prompt text from CLI input and reject empty explicit prompts."""
+    if prompt_file is not None:
+        prompt = prompt_file.read_text().strip()
+        if not prompt:
+            error(f"Prompt file is empty: {prompt_file}")
+        return prompt
 
-    Config format:
-        [dev.agent_args]
-        claude = ["--dangerously-skip-permissions"]
+    if prompt is not None and not prompt.strip():
+        error("--prompt cannot be empty")
 
-    Note: The config loader may flatten section names, so we check both
-    nested structure and flattened 'dev.agent_args' key.
-    """
-    config = load_config(None)
-
-    # First try the simple nested structure (for testing/mocks)
-    dev_config = config.get("dev", {})
-    if isinstance(dev_config, dict) and "agent_args" in dev_config:
-        return dev_config["agent_args"]
-
-    # Handle flattened key "dev.agent_args"
-    return config.get("dev.agent_args")
+    return prompt
 
 
-def _get_config_agent_env() -> dict[str, dict[str, str]] | None:
-    """Load agent_env from config file.
+def _normalize_tmux_session(
+    tmux_session: str | None,
+    multiplexer: Literal["tmux"] | None,
+) -> tuple[str | None, Literal["tmux"] | None]:
+    """Normalize `--tmux-session` and make it imply tmux launches."""
+    if tmux_session is None:
+        return None, multiplexer
 
-    Config format:
-        [dev.agent_env]
-        claude = { CLAUDE_CODE_USE_VERTEX = "1", ANTHROPIC_MODEL = "opus" }
+    normalized_session = tmux_session.strip()
+    if not normalized_session:
+        error("--tmux-session cannot be empty")
+    if "." in normalized_session or ":" in normalized_session:
+        error("tmux session names cannot contain '.' or ':'")
 
-    Note: The config loader flattens nested dicts, so keys like
-    'dev.agent_env.claude' become top-level. We reconstruct the
-    agent_env dict from these flattened keys.
-    """
-    config = load_config(None)
-
-    # First try the simple nested structure (for testing/mocks)
-    dev_config = config.get("dev", {})
-    if isinstance(dev_config, dict) and "agent_env" in dev_config:
-        return dev_config["agent_env"]
-
-    # Handle flattened keys like "dev.agent_env.claude"
-    prefix = "dev.agent_env."
-    result: dict[str, dict[str, str]] = {}
-    for key, value in config.items():
-        if key.startswith(prefix) and isinstance(value, dict):
-            agent_name = key[len(prefix) :]
-            result[agent_name] = value
-
-    return result if result else None
+    return normalized_session, "tmux"
 
 
-def _get_agent_env(agent: CodingAgent) -> dict[str, str]:
-    """Get environment variables for an agent.
+def _resolve_dev_new_agent_request(
+    *,
+    start_agent: bool,
+    start_agent_deprecated: bool,
+    agent_name: str | None,
+    agent_name_deprecated: str | None,
+    prompt: str | None,
+) -> tuple[bool, str | None]:
+    """Normalize launch-related flags for `dev new`."""
+    if start_agent_deprecated:
+        warn("-a is deprecated for 'dev new', use --start-agent instead")
+        start_agent = True
 
-    Merges config env vars with agent's built-in env vars.
-    Config env vars take precedence.
-    """
-    # Start with agent's built-in env vars
-    env = agent.get_env().copy()
+    explicit_agent_requested = agent_name is not None or agent_name_deprecated is not None
+    if agent_name_deprecated is not None:
+        warn("--with-agent is deprecated for 'dev new', use --agent instead")
+        agent_name = agent_name or agent_name_deprecated
 
-    # Add config env vars (these override built-in ones)
-    config_env = _get_config_agent_env()
-    if config_env and agent.name in config_env:
-        env.update(config_env[agent.name])
+    if agent_name is not None:
+        normalized_agent = agent_name.strip().lower()
+        if not normalized_agent:
+            error("--agent cannot be empty")
+        agent_name = None if normalized_agent == "auto" else normalized_agent
 
-    return env
+    if prompt or explicit_agent_requested:
+        start_agent = True
 
-
-def _merge_agent_args(
-    agent: CodingAgent,
-    cli_args: list[str] | None,
-) -> list[str] | None:
-    """Merge CLI args with config args for an agent.
-
-    Config args are applied first, CLI args are appended (and can override).
-    """
-    config_args = _get_config_agent_args()
-    result: list[str] = []
-
-    # Add config args for this agent
-    if config_args and agent.name in config_args:
-        result.extend(config_args[agent.name])
-
-    # Add CLI args (these override/extend config args)
-    if cli_args:
-        result.extend(cli_args)
-
-    return result if result else None
+    return start_agent, agent_name
 
 
-def _is_ssh_session() -> bool:
-    """Check if we're in an SSH session."""
-    return bool(os.environ.get("SSH_CONNECTION") or os.environ.get("SSH_CLIENT"))
+def _resolve_branch_name(
+    branch: str | None,
+    branch_name_mode: str,
+    prompt: str | None,
+    agent_name: str | None,
+    branch_name_agent: str | None,
+    branch_name_timeout: float,
+    repo_root: Path,
+    from_ref: str | None,
+) -> str:
+    """Generate or validate the branch name for a new worktree."""
+    if branch is not None:
+        return branch
+
+    existing = {wt.branch for wt in worktree.list_worktrees() if wt.branch}
+
+    # In auto mode, only use AI naming when we have task context.
+    use_ai = branch_name_mode != "random" and (branch_name_mode != "auto" or bool(prompt))
+
+    if not use_ai:
+        branch = generate_random_branch_name(existing, repo_root=repo_root)
+        info(f"Generated branch name: {branch}")
+        return branch
+
+    effective_agent = branch_name_agent
+    if effective_agent is None and agent_name:
+        candidate = agent_name.lower().strip()
+        if candidate in BRANCH_NAME_AGENTS:
+            effective_agent = candidate
+
+    branch = generate_ai_branch_name(
+        repo_root,
+        existing,
+        prompt,
+        from_ref,
+        effective_agent,
+        branch_name_timeout,
+    )
+    if branch:
+        info(f"AI-generated branch name: {branch}")
+        return branch
+
+    warn("Could not generate branch name with AI. Falling back to random naming.")
+    branch = generate_random_branch_name(existing, repo_root=repo_root)
+    info(f"Generated branch name: {branch}")
+    return branch
 
 
-def _launch_editor(path: Path, editor: Editor) -> None:
-    """Launch editor via subprocess (editors are GUI apps that detach)."""
-    try:
-        subprocess.Popen(editor.open_command(path))
-        _success(f"Opened {editor.name}")
-    except Exception as e:
-        _warn(f"Could not open editor: {e}")
-
-
-def _write_prompt_to_worktree(worktree_path: Path, prompt: str) -> Path:
-    """Write the prompt to .claude/TASK.md in the worktree.
-
-    This makes the task description available to the spawned agent
-    and provides a record of what was requested.
-    """
-    claude_dir = worktree_path / ".claude"
-    claude_dir.mkdir(parents=True, exist_ok=True)
-    task_file = claude_dir / "TASK.md"
-    task_file.write_text(prompt + "\n")
-    return task_file
-
-
-def _format_env_prefix(env: dict[str, str]) -> str:
-    """Format environment variables as shell prefix.
-
-    Returns a string like 'VAR1=value1 VAR2=value2 ' that can be
-    prepended to a command.
-    """
-    if not env:
-        return ""
-    # Quote values that contain spaces or special characters
-    parts = [f"{k}={shlex.quote(v)}" for k, v in sorted(env.items())]
-    return " ".join(parts) + " "
-
-
-def _create_prompt_wrapper_script(
+def _setup_worktree_env(
     worktree_path: Path,
-    agent: CodingAgent,
-    task_file: Path,
-    extra_args: list[str] | None = None,
-    env: dict[str, str] | None = None,
-) -> Path:
-    """Create a wrapper script that reads prompt from file to avoid shell quoting issues."""
-    script_path = Path(tempfile.gettempdir()) / f"agent-cli-{worktree_path.name}.sh"
-
-    # Build the agent command without the prompt
-    exe = agent.get_executable()
-    if exe is None:
-        msg = f"{agent.name} is not installed"
-        raise RuntimeError(msg)
-
-    cmd_parts = [shlex.quote(exe)]
-    if extra_args:
-        cmd_parts.extend(shlex.quote(arg) for arg in extra_args)
-
-    agent_cmd = " ".join(cmd_parts)
-    env_prefix = _format_env_prefix(env or {})
-
-    task_file_rel = task_file.relative_to(worktree_path)
-    script_content = f"""#!/usr/bin/env bash
-# Auto-generated script to launch agent with prompt
-# Reads prompt from file to avoid shell parsing issues with special characters
-{env_prefix}exec {agent_cmd} "$(cat {shlex.quote(str(task_file_rel))})"
-"""
-    script_path.write_text(script_content)
-    script_path.chmod(0o755)
-    return script_path
-
-
-def _launch_agent(
-    path: Path,
-    agent: CodingAgent,
-    extra_args: list[str] | None = None,
-    prompt: str | None = None,
-    task_file: Path | None = None,
-    env: dict[str, str] | None = None,
+    repo_root: Path,
+    *,
+    copy_env: bool,
+    setup: bool,
+    direnv: bool | None,
+    verbose: bool,
 ) -> None:
-    """Launch agent in a new terminal tab.
+    """Copy env files, run project setup, and configure direnv."""
+    if copy_env:
+        copied = copy_env_files(repo_root, worktree_path)
+        if copied:
+            names = ", ".join(f.name for f in copied)
+            success(f"Copied env file(s): {names}")
 
-    Agents are interactive TUIs that need a proper terminal.
-    Priority: tmux/zellij tab > terminal tab > print instructions.
+    project = None
+    if setup:
+        project = detect_project_type(worktree_path)
+        if project:
+            info(f"Detected {project.description}")
+            setup_ok, output = run_setup(
+                worktree_path,
+                project,
+                on_log=info,
+                capture_output=not verbose,
+            )
+            if setup_ok:
+                success("Project setup complete")
+            else:
+                warn(f"Setup failed: {output}")
 
-    Args:
-        path: Directory to launch the agent in
-        agent: The coding agent to launch
-        extra_args: Additional CLI arguments for the agent
-        prompt: Optional initial prompt (used when task_file is not available)
-        task_file: Path to file containing the prompt (preferred, avoids shell quoting issues)
-        env: Environment variables to set for the agent
-
-    """
-    terminal = terminals.detect_current_terminal()
-
-    # Use wrapper script when opening in a terminal tab - all terminals pass commands
-    # through a shell, so special characters get interpreted. Reading from file avoids this.
-    if task_file and terminal is not None:
-        script_path = _create_prompt_wrapper_script(path, agent, task_file, extra_args, env)
-        full_cmd = f"bash {shlex.quote(str(script_path))}"
-    else:
-        agent_cmd = shlex.join(agent.launch_command(path, extra_args, prompt))
-        env_prefix = _format_env_prefix(env or {})
-        full_cmd = env_prefix + agent_cmd
-
-    if terminal:
-        # We're in a multiplexer (tmux/zellij) or supported terminal (kitty/iTerm2)
-        # Tab name format: repo@branch
-        repo_root = worktree.get_main_repo_root(path)
-        branch = worktree.get_current_branch(path)
-        repo_name = repo_root.name if repo_root else path.name
-        tab_name = f"{repo_name}@{branch}" if branch else repo_name
-        if terminal.open_new_tab(path, full_cmd, tab_name=tab_name):
-            _success(f"Started {agent.name} in new {terminal.name} tab")
-            return
-        _warn(f"Could not open new tab in {terminal.name}")
-
-    # No terminal detected or failed - print instructions
-    if _is_ssh_session():
-        console.print("\n[yellow]SSH session without terminal multiplexer.[/yellow]")
-        console.print("[bold]Start a multiplexer first, then run:[/bold]")
-    else:
-        console.print(f"\n[bold]To start {agent.name}:[/bold]")
-    console.print(f"  cd {path}")
-    console.print(f"  {full_cmd}")
+    use_direnv = direnv if direnv is not None else is_direnv_available()
+    if use_direnv:
+        if is_direnv_available():
+            direnv_ok, msg = setup_direnv(
+                worktree_path,
+                project,
+                on_log=info,
+                capture_output=not verbose,
+            )
+            if direnv_ok and ("created" in msg or "allowed" in msg):
+                success(msg)
+            elif direnv_ok:
+                info(msg)
+            else:
+                warn(msg)
+        elif direnv is True:
+            warn("direnv not installed, skipping .envrc setup")
 
 
 @app.command("new")
-def new(  # noqa: C901, PLR0912, PLR0915
+def new(
     branch: Annotated[
         str | None,
         typer.Argument(
-            help="Branch name for the worktree. If omitted, generates a random name like 'clever-fox'",
+            help="Branch name for the worktree. If omitted, auto-generates one (random by default, AI with --branch-name-mode)",
         ),
     ] = None,
     from_ref: Annotated[
@@ -507,19 +327,34 @@ def new(  # noqa: C901, PLR0912, PLR0915
             help="Open the worktree in an editor. Uses --with-editor, config default, or auto-detects",
         ),
     ] = False,
-    agent: Annotated[
+    start_agent: Annotated[
         bool,
         typer.Option(
-            "--agent",
+            "--start-agent",
+            help="Start an AI coding agent in a new terminal tab without providing an initial prompt. Uses config default or auto-detects.",
+        ),
+    ] = False,
+    start_agent_deprecated: Annotated[
+        bool,
+        typer.Option(
             "-a",
-            help="Start an AI coding agent in a new terminal tab. Uses --with-agent, config default, or auto-detects. Implied by --prompt",
+            hidden=True,
+            help="[Deprecated: use --start-agent] Start an AI coding agent in a new terminal tab",
         ),
     ] = False,
     agent_name: Annotated[
         str | None,
         typer.Option(
+            "--agent",
+            help="Which AI agent to start: claude, codex, gemini, aider, copilot, cn (Continue), opencode, cursor-agent, or auto. Implies starting the agent",
+        ),
+    ] = None,
+    agent_name_deprecated: Annotated[
+        str | None,
+        typer.Option(
             "--with-agent",
-            help="Which AI agent to start: claude, codex, gemini, aider, copilot, cn (Continue), opencode, cursor-agent",
+            hidden=True,
+            help="[Deprecated: use --agent] Which AI agent to start",
         ),
     ] = None,
     editor_name: Annotated[
@@ -558,6 +393,29 @@ def new(  # noqa: C901, PLR0912, PLR0915
             help="Run 'git fetch' before creating the worktree to ensure refs are up-to-date",
         ),
     ] = True,
+    branch_name_mode: Annotated[
+        Literal["random", "auto", "ai"],
+        typer.Option(
+            "--branch-name-mode",
+            case_sensitive=False,
+            help="How to auto-name branches when BRANCH is omitted: random (default), auto (AI only when --prompt/--prompt-file is set), or ai (always try AI first)",
+        ),
+    ] = "random",
+    branch_name_agent: Annotated[
+        str | None,
+        typer.Option(
+            "--branch-name-agent",
+            help="Headless agent for AI branch naming: claude, codex, or gemini. If omitted, uses --agent when supported, otherwise tries available agents in that order",
+        ),
+    ] = None,
+    branch_name_timeout: Annotated[
+        float,
+        typer.Option(
+            "--branch-name-timeout",
+            min=1.0,
+            help="Timeout in seconds for AI branch naming command",
+        ),
+    ] = 20.0,
     direnv: Annotated[
         bool | None,
         typer.Option(
@@ -577,7 +435,7 @@ def new(  # noqa: C901, PLR0912, PLR0915
         typer.Option(
             "--prompt",
             "-p",
-            help="Initial task for the AI agent. Saved to .claude/TASK.md. Implies --agent. Example: --prompt='Fix the login bug'",
+            help="Initial task for the AI agent. Saved to a unique file in .claude/ to avoid conflicts. Implies starting the agent. Example: --prompt='Fix the login bug'",
         ),
     ] = None,
     prompt_file: Annotated[
@@ -585,11 +443,34 @@ def new(  # noqa: C901, PLR0912, PLR0915
         typer.Option(
             "--prompt-file",
             "-P",
-            help="Read the agent prompt from a file. Useful for long prompts to avoid shell quoting. Implies --agent",
+            help="Read the agent prompt from a file. Useful for long prompts to avoid shell quoting. Implies starting the agent",
             exists=True,
             readable=True,
         ),
     ] = None,
+    multiplexer: Annotated[
+        Literal["tmux"] | None,
+        typer.Option(
+            "--multiplexer",
+            "-m",
+            case_sensitive=False,
+            help="Launch the agent in a specific multiplexer. Currently supported: tmux. When started outside tmux, creates or reuses a detached session and reports the pane handle",
+        ),
+    ] = None,
+    tmux_session: Annotated[
+        str | None,
+        typer.Option(
+            "--tmux-session",
+            help="Reuse or create a specific tmux session for the agent. Implies --multiplexer tmux",
+        ),
+    ] = None,
+    hooks: Annotated[
+        bool,
+        typer.Option(
+            "--hooks/--no-hooks",
+            help="Run built-in agent preparation (like Codex auto-trust) and configured pre-launch hooks before starting the agent",
+        ),
+    ] = True,
     verbose: Annotated[
         bool,
         typer.Option(
@@ -611,126 +492,132 @@ def new(  # noqa: C901, PLR0912, PLR0915
     3. Runs project setup: npm install, uv sync, etc. (--setup)
     4. Sets up direnv if installed (--direnv)
     5. Opens editor if requested (-e/--editor)
-    6. Starts AI agent in new terminal tab if requested (-a/--agent or --prompt)
+    6. Starts AI agent in new terminal tab if requested (--start-agent, --agent, --prompt, or --prompt-file)
 
     **Examples:**
 
     - `dev new feature-x` — Create worktree, branching from origin/main (default)
-    - `dev new feature-x -a` — Create + start Claude/detected agent
-    - `dev new feature-x -e -a` — Create + open editor + start agent
-    - `dev new -a --prompt "Fix auth bug"` — Auto-named branch + agent with task
+    - `dev new feature-x --start-agent` — Create + start Claude/detected agent
+    - `dev new feature-x -e --start-agent` — Create + open editor + start agent
+    - `dev new --prompt "Fix auth bug"` — Auto-named branch + agent with task
+    - `dev new --branch-name-mode ai --prompt "Refactor auth flow"` — AI-generated branch name
     - `dev new hotfix --from v1.2.3` — Branch from a tag instead of main
     - `dev new feature-x --from origin/develop` — Branch from develop instead
-    - `dev new feature-x --with-agent aider --with-editor cursor` — Specific tools
+    - `dev new feature-x --agent aider --with-editor cursor` — Specific tools
     """
-    # Handle prompt-file option (takes precedence over --prompt)
-    if prompt_file is not None:
-        prompt = prompt_file.read_text().strip()
-
-    # If a prompt is provided, automatically enable agent mode
-    if prompt:
-        agent = True
+    prompt = _resolve_prompt_text(prompt, prompt_file=prompt_file)
+    start_agent, agent_name = _resolve_dev_new_agent_request(
+        start_agent=start_agent,
+        start_agent_deprecated=start_agent_deprecated,
+        agent_name=agent_name,
+        agent_name_deprecated=agent_name_deprecated,
+        prompt=prompt,
+    )
+    tmux_session, multiplexer = _normalize_tmux_session(tmux_session, multiplexer)
 
     repo_root = _ensure_git_repo()
 
-    # Generate branch name if not provided
-    if branch is None:
-        # Get existing branches to avoid collisions
-        existing = {wt.branch for wt in worktree.list_worktrees() if wt.branch}
-        branch = _generate_branch_name(existing)
-        _info(f"Generated branch name: {branch}")
+    branch = _resolve_branch_name(
+        branch,
+        branch_name_mode,
+        prompt,
+        agent_name,
+        branch_name_agent,
+        branch_name_timeout,
+        repo_root,
+        from_ref,
+    )
+
+    resolved_agent = resolve_agent(start_agent, agent_name, default_agent)
+    if start_agent:
+        resolved_agent = _require_available_agent(resolved_agent, requested_name=agent_name)
 
     # Create the worktree
-    _info(f"Creating worktree for branch '{branch}'...")
+    info(f"Creating worktree for branch '{branch}'...")
     result = worktree.create_worktree(
         branch,
         repo_path=repo_root,
         from_ref=from_ref,
         fetch=fetch,
-        on_log=_info,
+        on_log=info,
         capture_output=not verbose,
     )
-
     if not result.success:
-        _error(result.error or "Failed to create worktree")
+        error(result.error or "Failed to create worktree")
 
     assert result.path is not None
-    _success(f"Created worktree at {result.path}")
-
-    # Show warning if --from was ignored
+    success(f"Created worktree at {result.path}")
     if result.warning:
-        _warn(result.warning)
+        warn(result.warning)
 
-    # Copy env files
-    if copy_env:
-        copied = copy_env_files(repo_root, result.path)
-        if copied:
-            names = ", ".join(f.name for f in copied)
-            _success(f"Copied env file(s): {names}")
-
-    # Detect and run project setup
-    project = None
-    if setup:
-        project = detect_project_type(result.path)
-        if project:
-            _info(f"Detected {project.description}")
-            success, output = run_setup(
-                result.path,
-                project,
-                on_log=_info,
-                capture_output=not verbose,
-            )
-            if success:
-                _success("Project setup complete")
-            else:
-                _warn(f"Setup failed: {output}")
-
-    # Set up direnv (default: enabled if direnv is installed)
-    use_direnv = direnv if direnv is not None else is_direnv_available()
-    if use_direnv:
-        if is_direnv_available():
-            success, msg = setup_direnv(
-                result.path,
-                project,
-                on_log=_info,
-                capture_output=not verbose,
-            )
-            # Show success for meaningful actions (created or allowed)
-            if success and ("created" in msg or "allowed" in msg):
-                _success(msg)
-            elif success:
-                _info(msg)
-            else:
-                _warn(msg)
-        elif direnv is True:
-            # Only warn if user explicitly requested direnv
-            _warn("direnv not installed, skipping .envrc setup")
+    # Environment setup (env files, project setup, direnv)
+    _setup_worktree_env(
+        result.path,
+        repo_root,
+        copy_env=copy_env,
+        setup=setup,
+        direnv=direnv,
+        verbose=verbose,
+    )
 
     # Write prompt to worktree (makes task available to the spawned agent)
     task_file = None
     if prompt:
-        task_file = _write_prompt_to_worktree(result.path, prompt)
-        _success(f"Wrote task to {task_file.relative_to(result.path)}")
+        task_file = write_prompt_to_worktree(result.path, prompt)
+        success(f"Wrote task to {task_file.relative_to(result.path)}")
 
-    # Resolve editor and agent
-    resolved_editor = _resolve_editor(editor, editor_name, default_editor)
-    resolved_agent = _resolve_agent(agent, agent_name, default_agent)
+    # Resolve and launch editor/agent
+    resolved_editor = resolve_editor(editor, editor_name, default_editor)
 
-    # Launch editor (GUI app - subprocess works)
     if resolved_editor and resolved_editor.is_available():
-        _launch_editor(result.path, resolved_editor)
+        launch_editor(result.path, resolved_editor)
 
-    # Launch agent (interactive TUI - needs terminal tab)
+    agent_handle = None
     if resolved_agent and resolved_agent.is_available():
-        merged_args = _merge_agent_args(resolved_agent, agent_args)
-        agent_env = _get_agent_env(resolved_agent)
-        _launch_agent(result.path, resolved_agent, merged_args, prompt, task_file, agent_env)
+        merged_args = merge_agent_args(resolved_agent, agent_args)
+        agent_env = get_agent_env(resolved_agent)
+        prepare_agent_launch(
+            LaunchContext(
+                agent=resolved_agent,
+                worktree_path=result.path,
+                repo_root=repo_root,
+                branch=result.branch,
+                worktree_name=result.path.name,
+                task_file=task_file,
+                agent_env=agent_env,
+            ),
+            hooks_enabled=hooks,
+        )
+        agent_handle = launch_agent(
+            result.path,
+            resolved_agent,
+            merged_args,
+            prompt,
+            task_file,
+            agent_env,
+            multiplexer_name=multiplexer,
+            tmux_session=tmux_session,
+        )
 
     # Print summary
+    summary_lines = [
+        f"[bold]Dev environment created:[/bold] {result.path}",
+        f"[bold]Branch:[/bold] {result.branch}",
+    ]
+    if agent_handle:
+        summary_lines.append(
+            f"[bold]Agent Handle:[/bold] {agent_handle.handle} ({agent_handle.terminal_name})",
+        )
+        if agent_handle.session_name:
+            summary_lines.append(f"[bold]tmux Session:[/bold] {agent_handle.session_name}")
+            summary_lines.append(
+                f"[bold]Attach:[/bold] tmux attach -t {shlex.quote(agent_handle.session_name)}",
+            )
+
     console.print()
     console.print(
         Panel(
-            f"[bold]Dev environment created:[/bold] {result.path}\n[bold]Branch:[/bold] {result.branch}",
+            "\n".join(summary_lines),
             title="[green]Success[/green]",
             border_style="green",
         ),
@@ -963,7 +850,9 @@ def status_cmd(  # noqa: PLR0915
 def remove(
     name: Annotated[
         str,
-        typer.Argument(help="Worktree to remove. Can be branch name or directory name"),
+        typer.Argument(
+            help="Worktree to remove. Can be branch name, directory name, or '.' for current"
+        ),
     ],
     force: Annotated[
         bool,
@@ -998,10 +887,10 @@ def remove(
 
     wt = worktree.find_worktree_by_name(name, repo_root)
     if wt is None:
-        _error(f"Worktree not found: {name}")
+        error(f"Worktree not found: {name}")
 
     if wt.is_main:
-        _error("Cannot remove the main worktree")
+        error("Cannot remove the main worktree")
 
     if not yes and not force:
         console.print(f"[bold]Will remove:[/bold] {wt.path}")
@@ -1010,24 +899,28 @@ def remove(
         if not typer.confirm("Continue?"):
             raise typer.Abort
 
-    success, error = worktree.remove_worktree(
-        wt.path,
+    result = cleanup.remove_worktree(
+        wt,
+        repo_root,
         force=force,
         delete_branch=delete_branch,
-        repo_path=repo_root,
     )
 
-    if success:
-        _success(f"Removed worktree: {wt.path}")
+    if result.success:
+        success(f"Removed worktree: {wt.path}")
+        for cleanup_warning in result.warnings:
+            warn(cleanup_warning)
     else:
-        _error(error or "Failed to remove worktree")
+        error(result.error or "Failed to remove worktree")
 
 
 @app.command("path")
 def path_cmd(
     name: Annotated[
         str,
-        typer.Argument(help="Worktree to get path for. Can be branch name or directory name"),
+        typer.Argument(
+            help="Worktree to get path for. Can be branch name, directory name, or '.' for current"
+        ),
     ],
 ) -> None:
     """Print the absolute path to a dev environment.
@@ -1040,7 +933,7 @@ def path_cmd(
 
     wt = worktree.find_worktree_by_name(name, repo_root)
     if wt is None:
-        _error(f"Worktree not found: {name}")
+        error(f"Worktree not found: {name}")
 
     print(wt.path.as_posix())
 
@@ -1049,7 +942,9 @@ def path_cmd(
 def open_editor(
     name: Annotated[
         str,
-        typer.Argument(help="Worktree to open. Can be branch name or directory name"),
+        typer.Argument(
+            help="Worktree to open. Can be branch name, directory name, or '.' for current"
+        ),
     ],
     editor_name: Annotated[
         str | None,
@@ -1069,28 +964,28 @@ def open_editor(
 
     wt = worktree.find_worktree_by_name(name, repo_root)
     if wt is None:
-        _error(f"Worktree not found: {name}")
+        error(f"Worktree not found: {name}")
 
     if editor_name:
         editor = editors.get_editor(editor_name)
         if editor is None:
-            _error(f"Editor not found: {editor_name}")
+            error(f"Editor not found: {editor_name}")
     else:
         editor = editors.detect_current_editor()
         if editor is None:
             available = editors.get_available_editors()
             if not available:
-                _error("No editors available")
+                error("No editors available")
             editor = available[0]
 
     if not editor.is_available():
-        _error(f"{editor.name} is not installed")
+        error(f"{editor.name} is not installed")
 
     try:
         subprocess.Popen(editor.open_command(wt.path))
-        _success(f"Opened {wt.path} in {editor.name}")
+        success(f"Opened {wt.path} in {editor.name}")
     except Exception as e:
-        _error(f"Failed to open editor: {e}")
+        error(f"Failed to open editor: {e}")
 
 
 @app.command("agent")
@@ -1098,7 +993,7 @@ def start_agent(
     name: Annotated[
         str,
         typer.Argument(
-            help="Worktree to start the agent in. Can be branch name or directory name",
+            help="Worktree to start the agent in. Can be branch name, directory name, or '.' for current",
         ),
     ],
     agent_name: Annotated[
@@ -1107,6 +1002,14 @@ def start_agent(
             "--agent",
             "-a",
             help="Which agent: claude, codex, gemini, aider, copilot, cn, opencode, cursor-agent. Auto-detects if omitted",
+        ),
+    ] = None,
+    agent_name_deprecated: Annotated[
+        str | None,
+        typer.Option(
+            "--with-agent",
+            hidden=True,
+            help="[Deprecated: use --agent/-a] Which agent to start",
         ),
     ] = None,
     agent_args: Annotated[
@@ -1121,7 +1024,7 @@ def start_agent(
         typer.Option(
             "--prompt",
             "-p",
-            help="Initial task for the agent. Saved to .claude/TASK.md. Example: --prompt='Add unit tests for auth'",
+            help="Initial task for the agent. Saved to a unique file in .claude/ to avoid conflicts. Example: --prompt='Add unit tests for auth'",
         ),
     ] = None,
     prompt_file: Annotated[
@@ -1134,51 +1037,109 @@ def start_agent(
             readable=True,
         ),
     ] = None,
+    multiplexer: Annotated[
+        Literal["tmux"] | None,
+        typer.Option(
+            "--multiplexer",
+            "-m",
+            case_sensitive=False,
+            help="Launch the agent in a specific multiplexer instead of the current terminal. Currently supported: tmux",
+        ),
+    ] = None,
+    tmux_session: Annotated[
+        str | None,
+        typer.Option(
+            "--tmux-session",
+            help="Reuse or create a specific tmux session for the agent. Implies --multiplexer tmux",
+        ),
+    ] = None,
+    hooks: Annotated[
+        bool,
+        typer.Option(
+            "--hooks/--no-hooks",
+            help="Run built-in agent preparation (like Codex auto-trust) and configured pre-launch hooks before starting the agent",
+        ),
+    ] = True,
 ) -> None:
     """Start an AI coding agent in an existing dev environment.
 
-    Launches the agent directly in your current terminal (not a new tab).
-    Use this when the worktree already exists and you want to start/resume work.
+    Launches the agent directly in your current terminal unless
+    ``--multiplexer`` is used.
 
     **Examples:**
 
-    - `dev agent my-feature` — Start auto-detected agent in worktree
+    - `dev agent my-feature` — Start agent in current terminal
     - `dev agent my-feature -a claude` — Start Claude specifically
     - `dev agent my-feature -p "Continue the auth refactor"` — Start with a task
     """
-    # Handle prompt-file option (takes precedence over --prompt)
-    if prompt_file is not None:
-        prompt = prompt_file.read_text().strip()
+    # Handle deprecated --with-agent alias
+    if agent_name_deprecated is not None:
+        warn("--with-agent is deprecated for 'dev agent', use --agent/-a instead")
+        agent_name = agent_name or agent_name_deprecated
+
+    prompt = _resolve_prompt_text(prompt, prompt_file=prompt_file)
+    tmux_session, multiplexer = _normalize_tmux_session(tmux_session, multiplexer)
 
     repo_root = _ensure_git_repo()
 
     wt = worktree.find_worktree_by_name(name, repo_root)
     if wt is None:
-        _error(f"Worktree not found: {name}")
+        error(f"Worktree not found: {name}")
 
     if agent_name:
         agent = coding_agents.get_agent(agent_name)
-        if agent is None:
-            _error(f"Agent not found: {agent_name}")
     else:
         agent = coding_agents.detect_current_agent()
         if agent is None:
             available = coding_agents.get_available_agents()
-            if not available:
-                _error("No AI coding agents available")
-            agent = available[0]
+            agent = available[0] if available else None
 
-    if not agent.is_available():
-        _error(f"{agent.name} is not installed. Install from: {agent.install_url}")
+    agent = _require_available_agent(agent, requested_name=agent_name)
 
     # Write prompt to worktree (makes task available to the agent)
+    task_file = None
     if prompt:
-        task_file = _write_prompt_to_worktree(wt.path, prompt)
-        _success(f"Wrote task to {task_file.relative_to(wt.path)}")
+        task_file = write_prompt_to_worktree(wt.path, prompt)
+        success(f"Wrote task to {task_file.relative_to(wt.path)}")
 
-    merged_args = _merge_agent_args(agent, agent_args)
-    agent_env = _get_agent_env(agent)
-    _info(f"Starting {agent.name} in {wt.path}...")
+    merged_args = merge_agent_args(agent, agent_args)
+    agent_env = get_agent_env(agent)
+    prepare_agent_launch(
+        LaunchContext(
+            agent=agent,
+            worktree_path=wt.path,
+            repo_root=repo_root,
+            branch=wt.branch,
+            worktree_name=wt.name,
+            task_file=task_file,
+            agent_env=agent_env,
+        ),
+        hooks_enabled=hooks,
+    )
+
+    if multiplexer:
+        handle = launch_agent(
+            wt.path,
+            agent,
+            merged_args,
+            prompt,
+            task_file,
+            agent_env,
+            multiplexer_name=multiplexer,
+            tmux_session=tmux_session,
+        )
+        if handle:
+            info(
+                f"{handle.terminal_name} handle: {handle.handle}"
+                + (
+                    f" (attach with: tmux attach -t {shlex.quote(handle.session_name)})"
+                    if handle.session_name
+                    else ""
+                ),
+            )
+        return
+
+    info(f"Starting {agent.name} in {wt.path}...")
     try:
         os.chdir(wt.path)
         # Merge agent env with current environment
@@ -1190,7 +1151,7 @@ def start_agent(
             env=run_env,
         )
     except Exception as e:
-        _error(f"Failed to start agent: {e}")
+        error(f"Failed to start agent: {e}")
 
 
 @app.command("agents")
@@ -1309,7 +1270,7 @@ def list_terminals_cmd(
     Shows supported terminals: tmux, zellij, kitty, iTerm2, Terminal.app,
     Warp, GNOME Terminal.
 
-    These are used to open new tabs when launching AI agents with `dev new -a`.
+    These are used to open new tabs when launching AI agents with `dev new --start-agent`.
     The current terminal (if detectable) is marked.
     """
     current = terminals.detect_current_terminal()
@@ -1352,7 +1313,7 @@ def _print_item_status(
     """Print status of an item (editor, agent, terminal)."""
     if available:
         note = " [yellow](current)[/yellow]" if is_current else ""
-        _success(f"{name}{note}")
+        success(f"{name}{note}")
     else:
         console.print(f"  [dim]○[/dim] {name} ({not_available_msg})")
 
@@ -1361,13 +1322,13 @@ def _doctor_check_git() -> None:
     """Check git status for doctor command."""
     console.print("[bold]Git:[/bold]")
     if worktree.git_available():
-        _success("Git is available")
+        success("Git is available")
     else:
         console.print("  [red]✗[/red] Git is not installed")
 
     repo_root = worktree.get_main_repo_root()
     if repo_root:
-        _success(f"In git repository: {repo_root}")
+        success(f"In git repository: {repo_root}")
     else:
         console.print("  [yellow]○[/yellow] Not in a git repository")
 
@@ -1376,7 +1337,9 @@ def _doctor_check_git() -> None:
 def run_cmd(
     name: Annotated[
         str,
-        typer.Argument(help="Worktree to run command in. Can be branch name or directory name"),
+        typer.Argument(
+            help="Worktree to run command in. Can be branch name, directory name, or '.' for current"
+        ),
     ],
     command: Annotated[
         list[str],
@@ -1398,71 +1361,17 @@ def run_cmd(
 
     wt = worktree.find_worktree_by_name(name, repo_root)
     if wt is None:
-        _error(f"Worktree not found: {name}")
+        error(f"Worktree not found: {name}")
 
     if not command:
-        _error("No command specified")
+        error("No command specified")
 
-    _info(f"Running in {wt.path}: {' '.join(command)}")
+    info(f"Running in {wt.path}: {' '.join(command)}")
     try:
         result = subprocess.run(command, cwd=wt.path, check=False)
         raise typer.Exit(result.returncode)
     except FileNotFoundError:
-        _error(f"Command not found: {command[0]}")
-
-
-def _find_worktrees_with_no_commits(repo_root: Path) -> list[worktree.WorktreeInfo]:
-    """Find worktrees whose branches have no commits ahead of the default branch."""
-    worktrees_list = worktree.list_worktrees()
-    default_branch = worktree.get_default_branch(repo_root)
-    to_remove: list[worktree.WorktreeInfo] = []
-
-    for wt in worktrees_list:
-        if wt.is_main or not wt.branch:
-            continue
-
-        # Check if branch has any commits ahead of default branch
-        result = subprocess.run(
-            ["git", "rev-list", f"{default_branch}..{wt.branch}", "--count"],  # noqa: S607
-            capture_output=True,
-            text=True,
-            cwd=repo_root,
-            check=False,
-        )
-        if result.returncode == 0 and result.stdout.strip() == "0":
-            to_remove.append(wt)
-
-    return to_remove
-
-
-def _find_worktrees_with_merged_prs(
-    repo_root: Path,
-) -> list[tuple[worktree.WorktreeInfo, str]]:
-    """Find worktrees whose PRs have been merged on GitHub.
-
-    Returns a list of tuples containing (worktree_info, pr_url).
-    """
-    worktrees_list = worktree.list_worktrees()
-    to_remove: list[tuple[worktree.WorktreeInfo, str]] = []
-
-    for wt in worktrees_list:
-        if wt.is_main or not wt.branch:
-            continue
-
-        # Check if PR for this branch is merged
-        result = subprocess.run(
-            ["gh", "pr", "list", "--head", wt.branch, "--state", "merged", "--json", "number,url"],  # noqa: S607
-            capture_output=True,
-            text=True,
-            cwd=repo_root,
-            check=False,
-        )
-        if result.returncode == 0 and result.stdout.strip() not in ("", "[]"):
-            prs = json.loads(result.stdout)
-            pr_url = prs[0]["url"] if prs else ""
-            to_remove.append((wt, pr_url))
-
-    return to_remove
+        error(f"Command not found: {command[0]}")
 
 
 def _clean_merged_worktrees(
@@ -1473,30 +1382,16 @@ def _clean_merged_worktrees(
     force: bool = False,
 ) -> None:
     """Remove worktrees with merged PRs (requires gh CLI)."""
-    _info("Checking for worktrees with merged PRs...")
+    info("Checking for worktrees with merged PRs...")
 
-    # Check if gh CLI is available
-    gh_version = subprocess.run(
-        ["gh", "--version"],  # noqa: S607
-        capture_output=True,
-        check=False,
-    )
-    if gh_version.returncode != 0:
-        _error("GitHub CLI (gh) not found. Install from: https://cli.github.com/")
+    ok, error_msg = cleanup.check_gh_available()
+    if not ok:
+        error(error_msg)
 
-    # Check if gh is authenticated
-    gh_auth = subprocess.run(
-        ["gh", "auth", "status"],  # noqa: S607
-        capture_output=True,
-        check=False,
-    )
-    if gh_auth.returncode != 0:
-        _error("Not authenticated with GitHub. Run: gh auth login")
-
-    to_remove = _find_worktrees_with_merged_prs(repo_root)
+    to_remove = cleanup.find_worktrees_with_merged_prs(repo_root)
 
     if not to_remove:
-        _info("No worktrees with merged PRs found")
+        info("No worktrees with merged PRs found")
         return
 
     console.print(f"\n[bold]Found {len(to_remove)} worktree(s) with merged PRs:[/bold]")
@@ -1506,19 +1401,16 @@ def _clean_merged_worktrees(
             console.print(f"    PR: [link={pr_url}]{pr_url}[/link]")
 
     if dry_run:
-        _info("[dry-run] Would remove the above worktrees")
+        info("[dry-run] Would remove the above worktrees")
     elif yes or typer.confirm("\nRemove these worktrees?"):
-        for wt, _pr_url in to_remove:
-            success, error = worktree.remove_worktree(
-                wt.path,
-                force=force,
-                delete_branch=True,
-                repo_path=repo_root,
-            )
-            if success:
-                _success(f"Removed {wt.branch}")
+        results = cleanup.remove_worktrees([wt for wt, _ in to_remove], repo_root, force=force)
+        for result in results:
+            if result.success:
+                success(f"Removed {result.name}")
+                for cleanup_warning in result.warnings:
+                    warn(cleanup_warning)
             else:
-                _warn(f"Failed to remove {wt.branch}: {error}")
+                warn(f"Failed to remove {result.name}: {result.error}")
 
 
 def _clean_no_commits_worktrees(
@@ -1529,12 +1421,12 @@ def _clean_no_commits_worktrees(
     force: bool = False,
 ) -> None:
     """Remove worktrees with no commits ahead of the default branch."""
-    _info("Checking for worktrees with no commits...")
+    info("Checking for worktrees with no commits...")
 
-    to_remove = _find_worktrees_with_no_commits(repo_root)
+    to_remove = cleanup.find_worktrees_with_no_commits(repo_root)
 
     if not to_remove:
-        _info("No worktrees with zero commits found")
+        info("No worktrees with zero commits found")
         return
 
     default_branch = worktree.get_default_branch(repo_root)
@@ -1545,19 +1437,16 @@ def _clean_no_commits_worktrees(
         console.print(f"  • {wt.branch} ({wt.path})")
 
     if dry_run:
-        _info("[dry-run] Would remove the above worktrees")
+        info("[dry-run] Would remove the above worktrees")
     elif yes or typer.confirm("\nRemove these worktrees?"):
-        for wt in to_remove:
-            success, error = worktree.remove_worktree(
-                wt.path,
-                force=force,
-                delete_branch=True,
-                repo_path=repo_root,
-            )
-            if success:
-                _success(f"Removed {wt.branch}")
+        results = cleanup.remove_worktrees(to_remove, repo_root, force=force)
+        for result in results:
+            if result.success:
+                success(f"Removed {result.name}")
+                for cleanup_warning in result.warnings:
+                    warn(cleanup_warning)
             else:
-                _warn(f"Failed to remove {wt.branch}: {error}")
+                warn(f"Failed to remove {result.name}: {result.error}")
 
 
 @app.command("clean")
@@ -1618,7 +1507,7 @@ def clean(
     repo_root = _ensure_git_repo()
 
     # Run git worktree prune
-    _info("Pruning stale worktree references...")
+    info("Pruning stale worktree references...")
     result = subprocess.run(
         ["git", "worktree", "prune"],  # noqa: S607
         cwd=repo_root,
@@ -1627,9 +1516,9 @@ def clean(
         check=False,
     )
     if result.returncode == 0:
-        _success("Pruned stale worktree administrative files")
+        success("Pruned stale worktree administrative files")
     else:
-        _warn(f"Prune failed: {result.stderr}")
+        warn(f"Prune failed: {result.stderr}")
 
     # Find and remove empty directories in worktrees base dir
     base_dir = worktree.resolve_worktree_base_dir(repo_root)
@@ -1638,13 +1527,13 @@ def clean(
         for item in base_dir.iterdir():
             if item.is_dir() and not any(item.iterdir()):
                 if dry_run:
-                    _info(f"[dry-run] Would remove empty directory: {item.name}")
+                    info(f"[dry-run] Would remove empty directory: {item.name}")
                 else:
                     item.rmdir()
-                    _info(f"Removed empty directory: {item.name}")
+                    info(f"Removed empty directory: {item.name}")
                 cleaned += 1
         if cleaned > 0:
-            _success(f"Cleaned {cleaned} empty director{'y' if cleaned == 1 else 'ies'}")
+            success(f"Cleaned {cleaned} empty director{'y' if cleaned == 1 else 'ies'}")
 
     # --merged mode: remove worktrees with merged PRs
     if merged:
@@ -1783,18 +1672,18 @@ def install_skill(
     # Use current repo root (works in worktrees too)
     repo_root = _get_current_repo_root()
     if repo_root is None:
-        _error("Not in a git repository")
+        error("Not in a git repository")
 
     skill_source = _get_skill_source_dir()
     skill_dest = repo_root / ".claude" / "skills" / "agent-cli-dev"
 
     # Check if skill source exists
     if not skill_source.exists():
-        _error(f"Skill source not found: {skill_source}")
+        error(f"Skill source not found: {skill_source}")
 
     # Check if already installed
     if skill_dest.exists() and not force:
-        _warn(f"Skill already installed at {skill_dest}")
+        warn(f"Skill already installed at {skill_dest}")
         console.print("[dim]Use --force to overwrite[/dim]")
         raise typer.Exit(0)
 
@@ -1807,7 +1696,7 @@ def install_skill(
 
     shutil.copytree(skill_source, skill_dest)
 
-    _success(f"Installed skill to {skill_dest}")
+    success(f"Installed skill to {skill_dest}")
     console.print()
     console.print("[bold]What's next?[/bold]")
     console.print("  • Claude Code will automatically use this skill when relevant")

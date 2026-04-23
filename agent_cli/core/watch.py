@@ -53,7 +53,7 @@ async def watch_directory(
     async for changes in awatch(root):
         for change_type, file_path_str in changes:
             path = Path(file_path_str)
-            if path.is_dir():
+            if path.is_dir():  # noqa: ASYNC240
                 continue
 
             if should_skip is not None and should_skip(path, root):

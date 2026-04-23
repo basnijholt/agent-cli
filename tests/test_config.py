@@ -159,6 +159,59 @@ git-versioning = false
     assert config["defaults"]["log_level"] == "INFO"
 
 
+def test_config_preserves_scalar_options_when_section_has_nested_subsections(
+    tmp_path: Path,
+) -> None:
+    """Mixed scalar + nested sections should keep both available."""
+    config_content = """
+[dev]
+branch-name-mode = "ai"
+setup = false
+
+[dev.agent_args]
+claude = ["--dangerously-skip-permissions"]
+"""
+    config_path = tmp_path / "config.toml"
+    config_path.write_text(config_content)
+
+    config = load_config(str(config_path))
+
+    assert config["dev"]["branch_name_mode"] == "ai"
+    assert config["dev"]["setup"] is False
+    assert config["dev.agent_args"]["claude"] == ["--dangerously-skip-permissions"]
+    # Scalars must NOT be duplicated as top-level dot-notation keys
+    assert "dev.branch_name_mode" not in config
+    assert "dev.setup" not in config
+
+
+def test_config_deeply_nested_sections_with_scalars(tmp_path: Path) -> None:
+    """Deeply nested sections (agent_env.claude) must not produce scalar duplicates."""
+    config_content = """
+[dev]
+branch_name_mode = "ai"
+
+[dev.agent_args]
+claude = ["--dangerously-skip-permissions"]
+codex = ["--dangerously-bypass-approvals-and-sandbox"]
+
+[dev.agent_env.claude]
+CLAUDE_CODE_USE_VERTEX = "1"
+ANTHROPIC_MODEL = "claude-opus-4-6"
+"""
+    config_path = tmp_path / "config.toml"
+    config_path.write_text(config_content)
+
+    config = load_config(str(config_path))
+
+    assert config["dev"]["branch_name_mode"] == "ai"
+    assert config["dev.agent_args"]["claude"] == ["--dangerously-skip-permissions"]
+    assert config["dev.agent_args"]["codex"] == ["--dangerously-bypass-approvals-and-sandbox"]
+    assert config["dev.agent_env.claude"]["CLAUDE_CODE_USE_VERTEX"] == "1"
+    assert config["dev.agent_env.claude"]["ANTHROPIC_MODEL"] == "claude-opus-4-6"
+    # No scalar duplication at top level
+    assert "dev.branch_name_mode" not in config
+
+
 def test_provider_alias_normalization(config_file: Path) -> None:
     """Ensure deprecated provider names are normalized."""
     config = load_config(str(config_file))
