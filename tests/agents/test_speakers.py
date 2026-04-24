@@ -173,6 +173,27 @@ def test_speakers_rename_missing_profile_exits_nonzero(tmp_path: Path) -> None:
     assert "No speaker profile matching" in result.stdout
 
 
+def test_speakers_rename_duplicate_name_suggests_merge(tmp_path: Path) -> None:
+    profiles_file = tmp_path / "speaker-profiles.json"
+    _write_duplicate_profile_store(profiles_file)
+
+    result = runner.invoke(
+        app,
+        [
+            "speakers",
+            "rename",
+            "UNKNOWN_002",
+            "John",
+            "--speaker-profiles-file",
+            str(profiles_file),
+        ],
+    )
+
+    assert result.exit_code == 1
+    assert "Another speaker profile already uses 'John'." in result.stdout
+    assert "speakers merge UNKNOWN_002 John" in result.stdout
+
+
 def test_speakers_merge_moves_embeddings_and_removes_duplicate(tmp_path: Path) -> None:
     profiles_file = tmp_path / "speaker-profiles.json"
     _write_duplicate_profile_store(profiles_file)
