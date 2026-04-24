@@ -13,7 +13,9 @@ from agent_cli.core.speaker_identity import (
     DEFAULT_SPEAKER_MATCH_THRESHOLD,
     SpeakerMatch,
     _normalize_embedding,
+    add_speaker_embedding_to_profile,
     apply_speaker_label_map,
+    create_speaker_profile_from_embedding,
     load_speaker_profile_store,
     match_speaker_profiles,
     merge_speaker_profiles,
@@ -323,6 +325,40 @@ def test_merge_speaker_profiles_rejects_self_merge() -> None:
 
     with pytest.raises(ValueError, match="itself"):
         merge_speaker_profiles(store, "john", "John")
+
+
+def test_add_speaker_embedding_to_profile_appends_embedding() -> None:
+    store = {
+        "profiles": [
+            {
+                "id": "john",
+                "name": "John",
+                "anonymous": False,
+                "embeddings": [[1.0, 0.0]],
+            },
+        ],
+    }
+
+    profile = add_speaker_embedding_to_profile(store, "John", [0.99, 0.01])
+
+    assert profile["id"] == "john"
+    assert profile["embeddings"] == [[1.0, 0.0], [0.99, 0.01]]
+
+
+def test_create_speaker_profile_from_embedding_rejects_duplicate_name() -> None:
+    store = {
+        "profiles": [
+            {
+                "id": "john",
+                "name": "John",
+                "anonymous": False,
+                "embeddings": [[1.0, 0.0]],
+            },
+        ],
+    }
+
+    with pytest.raises(ValueError, match="already uses"):
+        create_speaker_profile_from_embedding(store, "John", [0.99, 0.01])
 
 
 def test_summarize_speaker_profiles_hides_embedding_vectors() -> None:

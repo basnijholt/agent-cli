@@ -389,6 +389,37 @@ def merge_speaker_profiles(
     return target
 
 
+def add_speaker_embedding_to_profile(
+    store: dict[str, Any],
+    identifier: str,
+    embedding: list[float],
+) -> dict[str, Any]:
+    """Append one embedding to an existing speaker profile."""
+    profile = _find_profile(store, identifier)
+    if profile is None:
+        msg = f"No speaker profile matching {identifier!r} was found."
+        raise ValueError(msg)
+    _append_embedding(profile, embedding)
+    return profile
+
+
+def create_speaker_profile_from_embedding(
+    store: dict[str, Any],
+    name: str,
+    embedding: list[float],
+) -> dict[str, Any]:
+    """Create a named speaker profile from one embedding."""
+    clean_name = name.strip()
+    if not clean_name:
+        msg = "Speaker name cannot be empty."
+        raise ValueError(msg)
+    duplicate = _find_profile(store, clean_name)
+    if duplicate is not None:
+        msg = f"Another speaker profile already uses {clean_name!r}."
+        raise ValueError(msg)
+    return _add_named_embedding(store, clean_name, embedding)
+
+
 def _speaker_waveforms(
     audio_path: Path,
     segments: list[DiarizedSegment],
