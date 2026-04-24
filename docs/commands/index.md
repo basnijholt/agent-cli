@@ -13,6 +13,7 @@ Agent CLI provides multiple commands, each designed for a specific purpose.
 | [`transcribe`](transcribe.md) | Speech-to-text | Record voice → get text in clipboard |
 | [`transcribe-live`](transcribe-live.md) | Continuous transcription | Background service with VAD |
 | [`diarize-live-session`](diarize-live-session.md) | Retroactive diarization | Label speakers in saved `transcribe-live` sessions |
+| [`speakers`](speakers.md) | Speaker profiles | List and rename persistent diarization identities |
 | [`speak`](speak.md) | Text-to-speech | Read text aloud |
 | [`voice-edit`](voice-edit.md) | Voice-powered editor | Edit clipboard text with voice commands |
 | [`assistant`](assistant.md) | Wake word assistant | Hands-free voice interaction |

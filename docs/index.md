@@ -57,6 +57,7 @@ Since then I have expanded the tool with many more features, all focused on loca
 | [`transcribe`](commands/transcribe.md) | Transcribe audio from your microphone to clipboard |
 | [`transcribe-live`](commands/transcribe-live.md) | Continuous background transcription with VAD |
 | [`diarize-live-session`](commands/diarize-live-session.md) | Retroactively label speakers in saved `transcribe-live` sessions |
+| [`speakers`](commands/speakers.md) | List and rename persistent diarization speaker identities |
 | [`speak`](commands/speak.md) | Convert text to speech using a local TTS engine |
 | [`voice-edit`](commands/voice-edit.md) | Edit clipboard text with voice commands |
 | [`assistant`](commands/assistant.md) | Wake word-based voice assistant |

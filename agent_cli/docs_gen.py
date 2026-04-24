@@ -292,6 +292,11 @@ def commands_table(
             "Label speakers in saved transcribe-live sessions",
             "voice",
         ),
+        "speakers": (
+            "Speaker profiles",
+            "List and rename persistent diarization identities",
+            "voice",
+        ),
         "speak": ("Text-to-speech", "Read text aloud", "voice"),
         "voice-edit": ("Voice-powered editor", "Edit clipboard with voice", "voice"),
         "assistant": ("Wake word assistant", "Hands-free voice interaction", "voice"),
