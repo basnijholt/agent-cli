@@ -52,6 +52,12 @@ agent-cli transcribe --diarize --hf-token YOUR_HF_TOKEN
 # Diarization with JSON output format
 agent-cli transcribe --diarize --diarize-format json --hf-token YOUR_HF_TOKEN
 
+# Enroll speaker voices and reuse those identities in future diarization runs
+agent-cli transcribe --diarize --enroll-speakers SPEAKER_00=Alice,SPEAKER_01=Bob --hf-token YOUR_HF_TOKEN
+
+# Persist unmatched voices as stable UNKNOWN_### profiles
+agent-cli transcribe --diarize --remember-unknown-speakers --hf-token YOUR_HF_TOKEN
+
 # Diarize a file with known number of speakers
 agent-cli transcribe --from-file meeting.wav --diarize --min-speakers 2 --max-speakers 4 --hf-token YOUR_HF_TOKEN
 
@@ -185,6 +191,11 @@ The `--from-file` option supports multiple audio formats:
 | `--max-speakers` | - | Maximum number of speakers (optional hint for diarization). |
 | `--align-words/--no-align-words` | `false` | Use wav2vec2 forced alignment for word-level speaker assignment (more accurate but slower). |
 | `--align-language` | `en` | Language code for word alignment model (e.g., 'en', 'fr', 'de', 'es', 'it'). |
+| `--enroll-speakers` | - | Enroll diarized speaker labels into persistent voice profiles, e.g. SPEAKER_00=Alice,SPEAKER_01=Bob. |
+| `--identify-speakers/--no-identify-speakers` | `true` | Match diarized speakers against persistent voice profiles when profiles exist. |
+| `--remember-unknown-speakers/--no-remember-unknown-speakers` | `false` | Persist unmatched speaker embeddings as stable UNKNOWN_### voice profiles. |
+| `--speaker-profiles-file` | `/Users/basnijholt/.config/agent-cli/speaker-profiles.json` | JSON file storing persistent speaker voice embeddings. |
+| `--speaker-match-threshold` | `0.72` | Cosine-similarity threshold for matching diarized speakers to stored profiles. |
 
 
 <!-- OUTPUT:END -->
