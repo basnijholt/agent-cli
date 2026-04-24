@@ -58,6 +58,7 @@ agent-cli transcribe --diarize --remember-unknown-speakers --hf-token YOUR_HF_TO
 # Inspect and name remembered speaker profiles
 agent-cli speakers list
 agent-cli speakers rename UNKNOWN_001 Alice
+agent-cli speakers merge UNKNOWN_002 Alice
 
 # Enroll current diarization labels directly when you already know who is who
 agent-cli transcribe --last-recording 1 --diarize --enroll-speakers SPEAKER_00=Alice --hf-token YOUR_HF_TOKEN
@@ -198,7 +199,7 @@ The `--from-file` option supports multiple audio formats:
 | `--enroll-speakers` | - | Enroll current speaker labels or remembered profile IDs into persistent voice profiles, e.g. SPEAKER_00=Alice or UNKNOWN_001=Alice. For simple renames, use `agent-cli speakers rename`. |
 | `--identify-speakers/--no-identify-speakers` | `true` | Match diarized speakers against persistent voice profiles when profiles exist. |
 | `--remember-unknown-speakers/--no-remember-unknown-speakers` | `false` | Persist unmatched speaker embeddings as stable UNKNOWN_### voice profiles. |
-| `--speaker-profiles-file` | `/home/runner/.config/agent-cli/speaker-profiles.json` | JSON file storing persistent speaker voice embeddings. |
+| `--speaker-profiles-file` | `/Users/basnijholt/.config/agent-cli/speaker-profiles.json` | JSON file storing persistent speaker voice embeddings. |
 | `--speaker-match-threshold` | `0.72` | Cosine-similarity threshold for matching diarized speakers to stored profiles. |
 
 

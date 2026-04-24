@@ -40,6 +40,38 @@ def _write_profile_store(path: Path) -> None:
     )
 
 
+def _write_duplicate_profile_store(path: Path) -> None:
+    path.write_text(
+        json.dumps(
+            {
+                "version": 1,
+                "embedding_model": DEFAULT_SPEAKER_EMBEDDING_MODEL,
+                "next_unknown_id": 3,
+                "profiles": [
+                    {
+                        "id": "john",
+                        "name": "John",
+                        "anonymous": False,
+                        "embeddings": [[1.0, 0.0]],
+                        "created_at": "2026-04-24T16:00:00+00:00",
+                        "updated_at": "2026-04-24T16:00:00+00:00",
+                    },
+                    {
+                        "id": "UNKNOWN_002",
+                        "name": None,
+                        "anonymous": True,
+                        "embeddings": [[0.99, 0.01]],
+                        "created_at": "2026-04-24T17:00:00+00:00",
+                        "updated_at": "2026-04-24T17:00:00+00:00",
+                    },
+                ],
+            },
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+
 def test_speakers_list_outputs_profiles(tmp_path: Path) -> None:
     profiles_file = tmp_path / "speaker-profiles.json"
     _write_profile_store(profiles_file)
@@ -139,3 +171,71 @@ def test_speakers_rename_missing_profile_exits_nonzero(tmp_path: Path) -> None:
 
     assert result.exit_code == 1
     assert "No speaker profile matching" in result.stdout
+
+
+def test_speakers_merge_moves_embeddings_and_removes_duplicate(tmp_path: Path) -> None:
+    profiles_file = tmp_path / "speaker-profiles.json"
+    _write_duplicate_profile_store(profiles_file)
+
+    result = runner.invoke(
+        app,
+        [
+            "speakers",
+            "merge",
+            "UNKNOWN_002",
+            "John",
+            "--speaker-profiles-file",
+            str(profiles_file),
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert "UNKNOWN_002" in result.stdout
+    store = json.loads(profiles_file.read_text(encoding="utf-8"))
+    assert [profile["id"] for profile in store["profiles"]] == ["john"]
+    assert store["profiles"][0]["embeddings"] == [[1.0, 0.0], [0.99, 0.01]]
+
+
+def test_speakers_merge_json_outputs_target_profile(tmp_path: Path) -> None:
+    profiles_file = tmp_path / "speaker-profiles.json"
+    _write_duplicate_profile_store(profiles_file)
+
+    result = runner.invoke(
+        app,
+        [
+            "speakers",
+            "merge",
+            "UNKNOWN_002",
+            "John",
+            "--speaker-profiles-file",
+            str(profiles_file),
+            "--json",
+        ],
+    )
+
+    assert result.exit_code == 0
+    data = json.loads(result.stdout)
+    assert data["merged_source"] == "UNKNOWN_002"
+    assert data["profile"]["id"] == "john"
+    assert data["profile"]["name"] == "John"
+    assert data["profile"]["embedding_count"] == 2
+
+
+def test_speakers_merge_self_exits_nonzero(tmp_path: Path) -> None:
+    profiles_file = tmp_path / "speaker-profiles.json"
+    _write_duplicate_profile_store(profiles_file)
+
+    result = runner.invoke(
+        app,
+        [
+            "speakers",
+            "merge",
+            "John",
+            "john",
+            "--speaker-profiles-file",
+            str(profiles_file),
+        ],
+    )
+
+    assert result.exit_code == 1
+    assert "itself" in result.stdout

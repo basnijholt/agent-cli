@@ -294,7 +294,7 @@ def commands_table(
         ),
         "speakers": (
             "Speaker profiles",
-            "List and rename persistent diarization identities",
+            "List, rename, and merge persistent diarization identities",
             "voice",
         ),
         "speak": ("Text-to-speech", "Read text aloud", "voice"),

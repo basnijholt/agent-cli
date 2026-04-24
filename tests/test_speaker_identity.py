@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 from unittest.mock import patch
 
 import pytest
@@ -15,6 +15,7 @@ from agent_cli.core.speaker_identity import (
     apply_speaker_label_map,
     load_speaker_profile_store,
     match_speaker_profiles,
+    merge_speaker_profiles,
     parse_speaker_assignments,
     rename_speaker_profile,
     resolve_speaker_identities,
@@ -184,6 +185,43 @@ def test_rename_speaker_profile_rejects_duplicate_names() -> None:
 
     with pytest.raises(ValueError, match="already uses"):
         rename_speaker_profile(store, "UNKNOWN_001", "John")
+
+
+def test_merge_speaker_profiles_moves_embeddings_and_removes_source() -> None:
+    store: dict[str, Any] = {
+        "profiles": [
+            {
+                "id": "john",
+                "name": "John",
+                "anonymous": False,
+                "embeddings": [[1.0, 0.0]],
+            },
+            {
+                "id": "UNKNOWN_002",
+                "name": None,
+                "anonymous": True,
+                "embeddings": [[0.99, 0.01]],
+            },
+        ],
+    }
+
+    profile = merge_speaker_profiles(store, "UNKNOWN_002", "John")
+
+    assert profile["id"] == "john"
+    assert profile["name"] == "John"
+    assert profile["embeddings"] == [[1.0, 0.0], [0.99, 0.01]]
+    assert [stored_profile["id"] for stored_profile in store["profiles"]] == ["john"]
+
+
+def test_merge_speaker_profiles_rejects_self_merge() -> None:
+    store = {
+        "profiles": [
+            {"id": "john", "name": "John", "embeddings": [[1.0, 0.0]]},
+        ],
+    }
+
+    with pytest.raises(ValueError, match="itself"):
+        merge_speaker_profiles(store, "john", "John")
 
 
 def test_summarize_speaker_profiles_hides_embedding_vectors() -> None:
