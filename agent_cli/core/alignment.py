@@ -75,12 +75,12 @@ def align(
         List of words with timestamps.
 
     """
-    import torch  # noqa: PLC0415
-    import torchaudio  # noqa: PLC0415
-
     if language not in ALIGN_MODELS:
         msg = f"No alignment model for language: {language}. Supported: {list(ALIGN_MODELS.keys())}"
         raise ValueError(msg)
+
+    import torch  # noqa: PLC0415
+    import torchaudio  # noqa: PLC0415
 
     labels = _get_alignment_labels(language)
     dictionary = {c.lower(): i for i, c in enumerate(labels)}

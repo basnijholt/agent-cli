@@ -25,6 +25,7 @@ from agent_cli.core.diarization import (
     align_transcript_with_words,
     format_diarized_output,
 )
+from agent_cli.core.speaker_identity import apply_speaker_label_map, resolve_speaker_identities
 from agent_cli.core.utils import (
     enable_json_mode,
     format_short_timedelta,
@@ -277,6 +278,19 @@ def _apply_diarization(
         LOGGER.warning("Diarization returned no segments")
         return transcript
 
+    label_map = resolve_speaker_identities(
+        audio_path=audio_path,
+        segments=segments,
+        hf_token=diarization_cfg.hf_token,
+        profiles_file=diarization_cfg.speaker_profiles_file,
+        enroll_speakers=diarization_cfg.enroll_speakers,
+        identify_speakers=diarization_cfg.identify_speakers,
+        remember_unknown_speakers=diarization_cfg.remember_unknown_speakers,
+        threshold=diarization_cfg.speaker_match_threshold,
+        device=diarizer.device,
+    )
+    segments = apply_speaker_label_map(segments, label_map)
+
     # Align transcript with speaker segments
     if diarization_cfg.align_words:
         if not quiet:
@@ -318,6 +332,11 @@ def _print_diarization_error(exc: Exception) -> None:
         )
         return
     print_with_style(f"❌ Diarization error: {exc}", style="red")
+
+
+def _option_default(value: Any) -> Any:
+    """Extract a Typer option default when tests call command functions directly."""
+    return getattr(value, "default", value)
 
 
 async def _async_main(  # noqa: PLR0912, PLR0915, C901
@@ -627,6 +646,11 @@ def transcribe(  # noqa: PLR0912, PLR0911, PLR0915, C901
     max_speakers: int | None = opts.MAX_SPEAKERS,
     align_words: bool = opts.ALIGN_WORDS,
     align_language: str = opts.ALIGN_LANGUAGE,
+    enroll_speakers: str | None = opts.ENROLL_SPEAKERS,
+    identify_speakers: bool = opts.IDENTIFY_SPEAKERS,
+    remember_unknown_speakers: bool = opts.REMEMBER_UNKNOWN_SPEAKERS,
+    speaker_profiles_file: Path = opts.SPEAKER_PROFILES_FILE,
+    speaker_match_threshold: float = opts.SPEAKER_MATCH_THRESHOLD,
 ) -> None:
     """Record audio from microphone and transcribe to text.
 
@@ -646,6 +670,8 @@ def transcribe(  # noqa: PLR0912, PLR0911, PLR0915, C901
     - With LLM cleanup: `agent-cli transcribe --llm`
 
     - Re-transcribe last recording: `agent-cli transcribe --last-recording 1`
+
+    - Enroll a diarized voice profile: `agent-cli transcribe --last-recording 1 --diarize --enroll-speakers SPEAKER_00=Alice`
     """
     if print_args:
         print_command_line_args(locals())
@@ -661,7 +687,19 @@ def transcribe(  # noqa: PLR0912, PLR0911, PLR0915, C901
     if transcription_log:
         transcription_log = transcription_log.expanduser()
 
+    enroll_speakers = _option_default(enroll_speakers)
+    identify_speakers = _option_default(identify_speakers)
+    remember_unknown_speakers = _option_default(remember_unknown_speakers)
+    speaker_profiles_file = _option_default(speaker_profiles_file)
+    speaker_match_threshold = _option_default(speaker_match_threshold)
+
     # Validate diarization options
+    if not diarize and (enroll_speakers or remember_unknown_speakers):
+        print_with_style(
+            "❌ Speaker identity options require --diarize.",
+            style="red",
+        )
+        return
     if diarize:
         if llm:
             print_with_style(
@@ -695,6 +733,11 @@ def transcribe(  # noqa: PLR0912, PLR0911, PLR0915, C901
         max_speakers=max_speakers,
         align_words=align_words,
         align_language=align_language,
+        enroll_speakers=enroll_speakers,
+        identify_speakers=identify_speakers,
+        remember_unknown_speakers=remember_unknown_speakers,
+        speaker_profiles_file=speaker_profiles_file,
+        speaker_match_threshold=speaker_match_threshold,
     )
 
     # Handle recovery options

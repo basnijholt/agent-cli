@@ -14,7 +14,7 @@ agent-cli diarize-live-session [OPTIONS]
 
 ## Description
 
-This command reads `transcribe-live` entries from your JSONL log, selects a time window, combines the saved MP3 chunks into a single WAV, and produces a speaker-labeled transcript.
+This command reads `transcribe-live` entries from your JSONL log, selects a time window or inferred recent recording session, combines the saved MP3 chunks into a single WAV, and produces a speaker-labeled transcript.
 
 By default it:
 
@@ -54,6 +54,22 @@ agent-cli diarize-live-session \
   --speakers 3 \
   --prepare-only
 
+# Diarize the most recent inferred recording session
+agent-cli diarize-live-session \
+  --last-recording 1 \
+  --speakers 3
+
+# Enroll speaker voices and reuse those identities in later diarization runs
+agent-cli diarize-live-session \
+  --last-recording 1 \
+  --enroll-speakers SPEAKER_00=Alice,SPEAKER_01=Bob \
+  --speakers 2
+
+# Persist unmatched voices as stable UNKNOWN_### profiles
+agent-cli diarize-live-session \
+  --last-recording 1 \
+  --remember-unknown-speakers
+
 # Write structured JSON output
 agent-cli diarize-live-session \
   --date 2026-04-22 \
@@ -66,6 +82,9 @@ agent-cli diarize-live-session \
 ## Notes
 
 - `transcribe-live` chunks are split on silence, not on speaker changes, so one saved MP3 can still contain multiple speakers.
+- `--last-recording` groups nearby saved chunks into sessions. Use `--session-gap` if a long pause should or should not split a session.
+- `--enroll-speakers` stores voice embeddings in `~/.config/agent-cli/speaker-profiles.json`; later diarization runs match new speaker clusters to those profiles.
+- `--remember-unknown-speakers` gives unmatched voices stable `UNKNOWN_###` profiles so repeated unknown speakers can be recognized across recordings.
 - On Apple Silicon, pyannote diarization can run on `mps`, but wav2vec2 forced alignment falls back to CPU automatically when MPS is unsupported.
 - If you do not pass `--hf-token`, the command uses `HF_TOKEN` from the environment.
 
@@ -82,10 +101,12 @@ agent-cli diarize-live-session \
 | Option | Default | Description |
 |--------|---------|-------------|
 | `--date` | - | Date of the live session in YYYY-MM-DD format. Defaults to today. |
-| `--start` | - | Start time of the session in HH:MM or HH:MM:SS. |
-| `--end` | - | End time of the session in HH:MM or HH:MM:SS. |
-| `--transcription-log` | `/home/runner/.config/agent-cli/transcriptions.jsonl` | Path to the transcribe-live JSONL log file. |
-| `--output-dir` | `/home/runner/.cache/agent-cli/live-diarization` | Directory where the combined audio and diarized transcript will be saved. |
+| `--start` | - | Start time of the session in HH:MM or HH:MM:SS. Required unless --last-session is used. |
+| `--end` | - | End time of the session in HH:MM or HH:MM:SS. Required unless --last-session is used. |
+| `--last-recording` | - | Select the Nth most recent inferred transcribe-live recording session (1=most recent, 2=second-to-last). |
+| `--session-gap` | `300.0` | Maximum seconds between saved chunks before they are treated as separate sessions. |
+| `--transcription-log` | `/Users/basnijholt/.config/agent-cli/transcriptions.jsonl` | Path to the transcribe-live JSONL log file. |
+| `--output-dir` | `/Users/basnijholt/.cache/agent-cli/live-diarization` | Directory where the combined audio and diarized transcript will be saved. |
 | `--prepare-only` | `false` | Only create the combined audio file and metadata without running diarization. |
 | `--retranscribe` | `false` | Re-run ASR on the combined audio instead of using the logged transcribe-live text. |
 
@@ -100,6 +121,11 @@ agent-cli diarize-live-session \
 | `--align-words/--no-align-words` | `false` | Enable word-level alignment when re-transcribing combined audio. Logged-transcript mode already uses word-level alignment by default. |
 | `--align-language` | `en` | Language code for word alignment model (e.g., 'en', 'fr', 'de', 'es', 'it'). |
 | `--hf-token` | - | HuggingFace token for pyannote models. Required for diarization. Token must have 'Read access to contents of all public gated repos you can access' permission. Accept licenses at: https://hf.co/pyannote/speaker-diarization-3.1, https://hf.co/pyannote/segmentation-3.0, https://hf.co/pyannote/wespeaker-voxceleb-resnet34-LM |
+| `--enroll-speakers` | - | Enroll diarized speaker labels into persistent voice profiles, e.g. SPEAKER_00=Alice,SPEAKER_01=Bob. |
+| `--identify-speakers/--no-identify-speakers` | `true` | Match diarized speakers against persistent voice profiles when profiles exist. |
+| `--remember-unknown-speakers/--no-remember-unknown-speakers` | `false` | Persist unmatched speaker embeddings as stable UNKNOWN_### voice profiles. |
+| `--speaker-profiles-file` | `/Users/basnijholt/.config/agent-cli/speaker-profiles.json` | JSON file storing persistent speaker voice embeddings. |
+| `--speaker-match-threshold` | `0.72` | Cosine-similarity threshold for matching diarized speakers to stored profiles. |
 
 ### General Options
 
