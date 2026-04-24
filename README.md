@@ -724,6 +724,8 @@ the `[defaults]` section of your configuration file.
   • Record and transcribe: agent-cli transcribe
   • With LLM cleanup: agent-cli transcribe --llm
   • Re-transcribe last recording: agent-cli transcribe --last-recording 1
+  • Remember unknown voices: agent-cli transcribe --diarize --remember-unknown-speakers
+  • Name a remembered voice profile: agent-cli speakers rename UNKNOWN_001 Alice
 
 ╭─ Options ──────────────────────────────────────────────────────────────────────────────╮
 │ --help  -h        Show this message and exit.                                          │
@@ -857,42 +859,95 @@ the `[defaults]` section of your configuration file.
 │                                                                  LLM cleanup.          │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Diarization ──────────────────────────────────────────────────────────────────────────╮
-│ --diarize           --no-diarize                       Enable speaker diarization      │
-│                                                        (requires pyannote-audio).      │
-│                                                        Install with: pip install       │
-│                                                        agent-cli[diarization]          │
-│                                                        [default: no-diarize]           │
-│ --diarize-format                        [inline|json]  Output format for diarization   │
-│                                                        ('inline' for [Speaker N]:      │
-│                                                        text, 'json' for structured     │
-│                                                        output).                        │
-│                                                        [default: inline]               │
-│ --hf-token                              TEXT           HuggingFace token for pyannote  │
-│                                                        models. Required for            │
-│                                                        diarization. Token must have    │
-│                                                        'Read access to contents of all │
-│                                                        public gated repos you can      │
-│                                                        access' permission. Accept      │
-│                                                        licenses at:                    │
-│                                                        https://hf.co/pyannote/speaker… │
-│                                                        https://hf.co/pyannote/segment… │
-│                                                        https://hf.co/pyannote/wespeak… │
-│                                                        [env var: HF_TOKEN]             │
-│ --min-speakers                          INTEGER        Minimum number of speakers      │
-│                                                        (optional hint for              │
-│                                                        diarization).                   │
-│ --max-speakers                          INTEGER        Maximum number of speakers      │
-│                                                        (optional hint for              │
-│                                                        diarization).                   │
-│ --align-words       --no-align-words                   Use wav2vec2 forced alignment   │
-│                                                        for word-level speaker          │
-│                                                        assignment (more accurate but   │
-│                                                        slower).                        │
-│                                                        [default: no-align-words]       │
-│ --align-language                        TEXT           Language code for word          │
-│                                                        alignment model (e.g., 'en',    │
-│                                                        'fr', 'de', 'es', 'it').        │
-│                                                        [default: en]                   │
+│ --diarize               --no-diarize                               Enable speaker      │
+│                                                                    diarization         │
+│                                                                    (requires           │
+│                                                                    pyannote-audio).    │
+│                                                                    Install with: pip   │
+│                                                                    install             │
+│                                                                    agent-cli[diarizat… │
+│                                                                    [default:           │
+│                                                                    no-diarize]         │
+│ --diarize-format                              [inline|json]        Output format for   │
+│                                                                    diarization         │
+│                                                                    ('inline' for       │
+│                                                                    [Speaker N]: text,  │
+│                                                                    'json' for          │
+│                                                                    structured output). │
+│                                                                    [default: inline]   │
+│ --hf-token                                    TEXT                 HuggingFace token   │
+│                                                                    for pyannote        │
+│                                                                    models. Required    │
+│                                                                    for diarization.    │
+│                                                                    Token must have     │
+│                                                                    'Read access to     │
+│                                                                    contents of all     │
+│                                                                    public gated repos  │
+│                                                                    you can access'     │
+│                                                                    permission. Accept  │
+│                                                                    licenses at:        │
+│                                                                    https://hf.co/pyan… │
+│                                                                    https://hf.co/pyan… │
+│                                                                    https://hf.co/pyan… │
+│                                                                    [env var: HF_TOKEN] │
+│ --min-speakers                                INTEGER              Minimum number of   │
+│                                                                    speakers (optional  │
+│                                                                    hint for            │
+│                                                                    diarization).       │
+│ --max-speakers                                INTEGER              Maximum number of   │
+│                                                                    speakers (optional  │
+│                                                                    hint for            │
+│                                                                    diarization).       │
+│ --align-words           --no-align-words                           Use wav2vec2 forced │
+│                                                                    alignment for       │
+│                                                                    word-level speaker  │
+│                                                                    assignment (more    │
+│                                                                    accurate but        │
+│                                                                    slower).            │
+│                                                                    [default:           │
+│                                                                    no-align-words]     │
+│ --align-language                              TEXT                 Language code for   │
+│                                                                    word alignment      │
+│                                                                    model (e.g., 'en',  │
+│                                                                    'fr', 'de', 'es',   │
+│                                                                    'it').              │
+│                                                                    [default: en]       │
+│ --enroll-speakers                             TEXT                 Enroll current      │
+│                                                                    speaker labels or   │
+│                                                                    remembered profile  │
+│                                                                    IDs into persistent │
+│                                                                    voice profiles,     │
+│                                                                    e.g.                │
+│                                                                    SPEAKER_00=Alice or │
+│                                                                    UNKNOWN_001=Alice.  │
+│                                                                    For simple renames, │
+│                                                                    use agent-cli       │
+│                                                                    speakers rename.    │
+│ --identify-speakers     --no-identify-spe…                         Match diarized      │
+│                                                                    speakers against    │
+│                                                                    persistent voice    │
+│                                                                    profiles when       │
+│                                                                    profiles exist.     │
+│                                                                    [default:           │
+│                                                                    identify-speakers]  │
+│ --remember-unknown-…    --no-remember-unk…                         Persist unmatched   │
+│                                                                    speaker embeddings  │
+│                                                                    as stable           │
+│                                                                    UNKNOWN_### voice   │
+│                                                                    profiles.           │
+│                                                                    [default:           │
+│                                                                    no-remember-unknow… │
+│ --speaker-profiles-…                          PATH                 JSON file storing   │
+│                                                                    persistent speaker  │
+│                                                                    voice embeddings.   │
+│                                                                    [default:           │
+│                                                                    /home/runner/.conf… │
+│ --speaker-match-thr…                          FLOAT RANGE          Cosine-similarity   │
+│                                               [0.0<=x<=1.0]        threshold for       │
+│                                                                    matching diarized   │
+│                                                                    speakers to stored  │
+│                                                                    profiles.           │
+│                                                                    [default: 0.7]      │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 
 ```

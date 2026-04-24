@@ -269,6 +269,11 @@ class Diarization(BaseModel):
     max_speakers: int | None = None
     align_words: bool = False
     align_language: str = "en"
+    enroll_speakers: str | None = None
+    identify_speakers: bool = True
+    remember_unknown_speakers: bool = False
+    speaker_profiles_file: Path | None = None
+    speaker_match_threshold: float = 0.70
 
 
 # --- Panel: Dev (Parallel Development) Options ---
