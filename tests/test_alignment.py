@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import math
+import sys
+from types import SimpleNamespace
 from typing import TYPE_CHECKING
 from unittest.mock import MagicMock, patch
 
@@ -35,6 +37,16 @@ def clear_alignment_caches() -> None:
     _get_alignment_bundle.cache_clear()
     _get_alignment_labels.cache_clear()
     _get_alignment_model.cache_clear()
+
+
+@pytest.fixture(autouse=True)
+def fake_torchaudio_module(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Provide a mocked torchaudio module for alignment unit tests."""
+    torchaudio = MagicMock()
+    torchaudio.load = MagicMock()
+    torchaudio.functional.resample = MagicMock(side_effect=lambda waveform, *_args: waveform)
+    torchaudio.pipelines = MagicMock()
+    monkeypatch.setitem(sys.modules, "torchaudio", torchaudio)
 
 
 def _mock_dictionary() -> dict[str, int]:
@@ -357,9 +369,7 @@ class TestAlign:
         mock_bundle.get_model.return_value = mock_model
         mock_bundle.get_labels.return_value = list("abcdefghijklmnopqrstuvwxyz|' ")
 
-        # Create a mock pipelines module
-        mock_pipelines = MagicMock()
-        mock_pipelines.__dict__ = {"WAV2VEC2_ASR_BASE_960H": mock_bundle}
+        mock_pipelines = SimpleNamespace(WAV2VEC2_ASR_BASE_960H=mock_bundle)
 
         with (
             patch("torchaudio.load", return_value=(mock_waveform, 16000)),
@@ -404,8 +414,7 @@ class TestAlign:
         mock_bundle.get_model.return_value = MockModel()
         mock_bundle.get_labels.return_value = list("abcdefghijklmnopqrstuvwxyz|' ")
 
-        mock_pipelines = MagicMock()
-        mock_pipelines.__dict__ = {"WAV2VEC2_ASR_BASE_960H": mock_bundle}
+        mock_pipelines = SimpleNamespace(WAV2VEC2_ASR_BASE_960H=mock_bundle)
 
         with (
             patch("torchaudio.load", return_value=(mock_waveform, 16000)),
@@ -437,9 +446,7 @@ class TestAlign:
         mock_bundle.get_model.return_value = mock_model
         mock_bundle.get_labels.return_value = list("abcdefghijklmnopqrstuvwxyz|' ")
 
-        # Create a mock pipelines module
-        mock_pipelines = MagicMock()
-        mock_pipelines.__dict__ = {"WAV2VEC2_ASR_BASE_960H": mock_bundle}
+        mock_pipelines = SimpleNamespace(WAV2VEC2_ASR_BASE_960H=mock_bundle)
 
         with (
             patch("torchaudio.load", return_value=(mock_waveform, 16000)),
@@ -474,8 +481,7 @@ class TestAlign:
         mock_bundle.get_model.return_value = mock_model
         mock_bundle.get_labels.return_value = list("abcdefghijklmnopqrstuvwxyz|' ")
 
-        mock_pipelines = MagicMock()
-        mock_pipelines.__dict__ = {"WAV2VEC2_ASR_BASE_960H": mock_bundle}
+        mock_pipelines = SimpleNamespace(WAV2VEC2_ASR_BASE_960H=mock_bundle)
 
         with (
             patch("torchaudio.load", return_value=(mock_waveform, 16000)),
@@ -755,8 +761,7 @@ class TestAlignPaddingBranch:
         mock_bundle.get_model.return_value = mock_model
         mock_bundle.get_labels.return_value = list("abcdefghijklmnopqrstuvwxyz|' ")
 
-        mock_pipelines = MagicMock()
-        mock_pipelines.__dict__ = {"WAV2VEC2_ASR_BASE_960H": mock_bundle}
+        mock_pipelines = SimpleNamespace(WAV2VEC2_ASR_BASE_960H=mock_bundle)
 
         with (
             patch("torchaudio.load", return_value=(mock_waveform, 16000)),

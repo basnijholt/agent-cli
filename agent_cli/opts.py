@@ -8,6 +8,10 @@ import typer
 from typer.models import OptionInfo
 
 from agent_cli.constants import DEFAULT_OPENAI_EMBEDDING_MODEL, DEFAULT_OPENAI_MODEL
+from agent_cli.core.speaker_identity import (
+    DEFAULT_SPEAKER_MATCH_THRESHOLD,
+    DEFAULT_SPEAKER_PROFILES_FILE,
+)
 
 LogLevel: TypeAlias = Literal["debug", "info", "warning", "error"]
 
@@ -493,5 +497,41 @@ ALIGN_LANGUAGE: str = typer.Option(
     "en",
     "--align-language",
     help="Language code for word alignment model (e.g., 'en', 'fr', 'de', 'es', 'it').",
+    rich_help_panel="Diarization",
+)
+ENROLL_SPEAKERS: str | None = typer.Option(
+    None,
+    "--enroll-speakers",
+    help=(
+        "Enroll current speaker labels or remembered profile IDs into persistent voice "
+        "profiles, e.g. SPEAKER_00=Alice or UNKNOWN_001=Alice. For simple renames, "
+        "use `agent-cli speakers rename`."
+    ),
+    rich_help_panel="Diarization",
+)
+IDENTIFY_SPEAKERS: bool = typer.Option(
+    True,  # noqa: FBT003
+    "--identify-speakers/--no-identify-speakers",
+    help="Match diarized speakers against persistent voice profiles when profiles exist.",
+    rich_help_panel="Diarization",
+)
+REMEMBER_UNKNOWN_SPEAKERS: bool = typer.Option(
+    False,  # noqa: FBT003
+    "--remember-unknown-speakers/--no-remember-unknown-speakers",
+    help="Persist unmatched speaker embeddings as stable UNKNOWN_### voice profiles.",
+    rich_help_panel="Diarization",
+)
+SPEAKER_PROFILES_FILE: Path = typer.Option(
+    DEFAULT_SPEAKER_PROFILES_FILE,
+    "--speaker-profiles-file",
+    help="JSON file storing persistent speaker voice embeddings.",
+    rich_help_panel="Diarization",
+)
+SPEAKER_MATCH_THRESHOLD: float = typer.Option(
+    DEFAULT_SPEAKER_MATCH_THRESHOLD,
+    "--speaker-match-threshold",
+    min=0.0,
+    max=1.0,
+    help="Cosine-similarity threshold for matching diarized speakers to stored profiles.",
     rich_help_panel="Diarization",
 )
