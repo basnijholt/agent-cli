@@ -254,22 +254,57 @@ def _write_speaker_snippet(
 
 def _audio_player_command(player: str | None, audio_path: Path) -> list[str]:
     if player:
-        return [*shlex.split(player), str(audio_path)]
-    if sys.platform == "darwin" and shutil.which("afplay"):
-        return ["afplay", str(audio_path)]
-    if shutil.which("ffplay"):
-        return ["ffplay", "-autoexit", "-nodisp", "-loglevel", "error", str(audio_path)]
-    if shutil.which("aplay"):
-        return ["aplay", str(audio_path)]
-    if shutil.which("paplay"):
-        return ["paplay", str(audio_path)]
+        parts = shlex.split(player)
+        if not parts:
+            msg = "--player cannot be empty."
+            raise RuntimeError(msg)
+        executable = parts[0] if Path(parts[0]).is_absolute() else shutil.which(parts[0])
+        if executable is None:
+            msg = f"Audio player not found: {parts[0]}"
+            raise RuntimeError(msg)
+        return [executable, *parts[1:], str(audio_path)]
+    if sys.platform == "darwin" and (afplay := shutil.which("afplay")):
+        return [afplay, str(audio_path)]
+    if ffplay := shutil.which("ffplay"):
+        return [ffplay, "-autoexit", "-nodisp", "-loglevel", "error", str(audio_path)]
+    if aplay := shutil.which("aplay"):
+        return [aplay, str(audio_path)]
+    if paplay := shutil.which("paplay"):
+        return [paplay, str(audio_path)]
     msg = "No audio player found. Install ffmpeg/ffplay or pass --player."
     raise RuntimeError(msg)
 
 
-def _play_audio_file(audio_path: Path, *, player: str | None = None) -> None:
-    """Play an audio file with a local command-line player."""
-    subprocess.run(_audio_player_command(player, audio_path), check=True)
+def _start_audio_playback(
+    audio_path: Path,
+    *,
+    player: str | None = None,
+) -> subprocess.Popen[bytes]:
+    """Start playing an audio file with a local command-line player."""
+    return subprocess.Popen(
+        _audio_player_command(player, audio_path),
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+
+
+def _stop_audio_playback(
+    process: subprocess.Popen[bytes] | None,
+    *,
+    timeout: float = 1.0,
+) -> None:
+    """Stop a playback process if it is still running."""
+    if process is None or process.poll() is not None:
+        return
+    try:
+        process.terminate()
+        process.wait(timeout=timeout)
+    except (OSError, subprocess.TimeoutExpired):
+        try:
+            process.kill()
+            process.wait(timeout=timeout)
+        except OSError:
+            return
 
 
 def _review_choice_prompt() -> str:
@@ -302,11 +337,16 @@ def _print_review_speaker_intro(
         )
 
 
-def _play_review_snippet(snippet_path: Path, *, player: str | None) -> None:
+def _start_review_snippet(
+    snippet_path: Path,
+    *,
+    player: str | None,
+) -> subprocess.Popen[bytes] | None:
     try:
-        _play_audio_file(snippet_path, player=player)
-    except (OSError, RuntimeError, subprocess.CalledProcessError) as exc:
+        return _start_audio_playback(snippet_path, player=player)
+    except (OSError, RuntimeError) as exc:
         console.print(f"[yellow]Could not play snippet: {exc}[/yellow]")
+        return None
 
 
 def _merge_review_speaker(
@@ -361,9 +401,12 @@ def _review_speaker(
     changed = False
     while True:
         _print_review_speaker_intro(label=label, embedding=embedding, match=match)
-        _play_review_snippet(snippet_path, player=player)
+        playback_process = _start_review_snippet(snippet_path, player=player)
 
-        choice = _review_choice_prompt()
+        try:
+            choice = _review_choice_prompt()
+        finally:
+            _stop_audio_playback(playback_process)
         if choice in {"p", "play", "replay"}:
             continue
         if choice in {"s", "skip", ""}:

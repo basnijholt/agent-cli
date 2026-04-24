@@ -8,6 +8,7 @@ from unittest.mock import MagicMock, patch
 
 from typer.testing import CliRunner
 
+from agent_cli.agents import speakers as speakers_module
 from agent_cli.cli import app
 from agent_cli.core.diarization import DiarizedSegment
 from agent_cli.core.speaker_identity import DEFAULT_SPEAKER_EMBEDDING_MODEL
@@ -300,7 +301,7 @@ def test_speakers_review_merges_current_speaker_into_existing_profile(tmp_path: 
             return_value={"SPEAKER_00": [0.99, 0.01]},
         ),
         patch("agent_cli.agents.speakers._write_speaker_snippet", return_value=snippet_file),
-        patch("agent_cli.agents.speakers._play_audio_file"),
+        patch("agent_cli.agents.speakers._start_audio_playback"),
     ):
         result = runner.invoke(
             app,
@@ -352,7 +353,7 @@ def test_speakers_review_creates_new_named_profile(tmp_path: Path) -> None:
             return_value={"SPEAKER_00": [1.0, 0.0]},
         ),
         patch("agent_cli.agents.speakers._write_speaker_snippet", return_value=snippet_file),
-        patch("agent_cli.agents.speakers._play_audio_file"),
+        patch("agent_cli.agents.speakers._start_audio_playback"),
     ):
         result = runner.invoke(
             app,
@@ -374,3 +375,37 @@ def test_speakers_review_creates_new_named_profile(tmp_path: Path) -> None:
     store = json.loads(profiles_file.read_text(encoding="utf-8"))
     assert store["profiles"][0]["name"] == "Alice"
     assert store["profiles"][0]["embeddings"] == [[1.0, 0.0]]
+
+
+def test_review_speaker_prompts_while_snippet_is_playing(tmp_path: Path) -> None:
+    snippet_file = tmp_path / "snippet.wav"
+    snippet_file.write_bytes(b"snippet")
+    playback_process = MagicMock()
+    playback_process.poll.return_value = None
+    events: list[str] = []
+
+    def start_playback(*_args: object, **_kwargs: object) -> MagicMock:
+        events.append("start")
+        return playback_process
+
+    def prompt_choice() -> str:
+        events.append("prompt")
+        return "s"
+
+    with (
+        patch("agent_cli.agents.speakers._start_audio_playback", side_effect=start_playback),
+        patch("agent_cli.agents.speakers._review_choice_prompt", side_effect=prompt_choice),
+    ):
+        changed = speakers_module._review_speaker(
+            label="SPEAKER_00",
+            snippet_path=snippet_file,
+            embedding=[1.0, 0.0],
+            match=None,
+            store={"profiles": []},
+            player=None,
+        )
+
+    assert changed is False
+    assert events == ["start", "prompt"]
+    playback_process.terminate.assert_called_once_with()
+    playback_process.wait.assert_called_once_with(timeout=1.0)
