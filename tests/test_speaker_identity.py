@@ -10,6 +10,7 @@ import pytest
 
 from agent_cli.core.diarization import DiarizedSegment
 from agent_cli.core.speaker_identity import (
+    DEFAULT_SPEAKER_MATCH_THRESHOLD,
     SpeakerMatch,
     _normalize_embedding,
     apply_speaker_label_map,
@@ -68,6 +69,36 @@ def test_match_speaker_profiles_uses_similarity_threshold() -> None:
     }
 
 
+def test_match_speaker_profiles_uses_profile_centroid() -> None:
+    store = {
+        "profiles": [
+            {
+                "id": "alice",
+                "name": "Alice",
+                "embeddings": [[1.0, 0.0], [0.0, 1.0]],
+            },
+        ],
+    }
+
+    matches = match_speaker_profiles(
+        {"SPEAKER_00": [0.70710678, 0.70710678]},
+        store,
+        threshold=0.9,
+    )
+
+    assert matches == {
+        "SPEAKER_00": SpeakerMatch(
+            profile_id="alice",
+            display_name="Alice",
+            similarity=pytest.approx(1.0),
+        ),
+    }
+
+
+def test_default_speaker_match_threshold_allows_repeat_recording_variance() -> None:
+    assert DEFAULT_SPEAKER_MATCH_THRESHOLD <= 0.7
+
+
 def test_normalize_embedding_rejects_non_finite_values() -> None:
     with pytest.raises(RuntimeError, match="non-finite"):
         _normalize_embedding([float("nan"), 1.0])
@@ -93,6 +124,32 @@ def test_resolve_speaker_identities_enrolls_named_profile(tmp_path: Path) -> Non
     store = load_speaker_profile_store(profiles_file)
     assert store["profiles"][0]["name"] == "Alice"
     assert store["profiles"][0]["embeddings"] == [[1.0, 0.0]]
+
+
+def test_resolve_speaker_identities_enrolls_before_remembering_unknowns(
+    tmp_path: Path,
+) -> None:
+    profiles_file = tmp_path / "speaker-profiles.json"
+    segments = [DiarizedSegment(speaker="SPEAKER_00", start=0.0, end=2.0)]
+
+    with patch(
+        "agent_cli.core.speaker_identity.extract_speaker_embeddings",
+        return_value={"SPEAKER_00": [1.0, 0.0]},
+    ):
+        label_map = resolve_speaker_identities(
+            audio_path=tmp_path / "audio.wav",
+            segments=segments,
+            hf_token="token",  # noqa: S106
+            profiles_file=profiles_file,
+            enroll_speakers="SPEAKER_00=Alice",
+            remember_unknown_speakers=True,
+        )
+
+    assert label_map == {"SPEAKER_00": "Alice"}
+    store = load_speaker_profile_store(profiles_file)
+    assert len(store["profiles"]) == 1
+    assert store["profiles"][0]["name"] == "Alice"
+    assert store["profiles"][0]["anonymous"] is False
 
 
 def test_resolve_speaker_identities_matches_existing_profile(tmp_path: Path) -> None:
@@ -131,6 +188,50 @@ def test_resolve_speaker_identities_matches_existing_profile(tmp_path: Path) -> 
         )
 
     assert label_map == {"SPEAKER_00": "Alice"}
+
+
+def test_resolve_speaker_identities_refreshes_matched_profile_when_remembering(
+    tmp_path: Path,
+) -> None:
+    profiles_file = tmp_path / "speaker-profiles.json"
+    profiles_file.write_text(
+        json.dumps(
+            {
+                "version": 1,
+                "embedding_model": "pyannote/wespeaker-voxceleb-resnet34-LM",
+                "next_unknown_id": 1,
+                "profiles": [
+                    {
+                        "id": "alice",
+                        "name": "Alice",
+                        "anonymous": False,
+                        "embeddings": [[1.0, 0.0]],
+                    },
+                ],
+            },
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    segments = [DiarizedSegment(speaker="SPEAKER_00", start=0.0, end=2.0)]
+
+    with patch(
+        "agent_cli.core.speaker_identity.extract_speaker_embeddings",
+        return_value={"SPEAKER_00": [0.99, 0.01]},
+    ):
+        label_map = resolve_speaker_identities(
+            audio_path=tmp_path / "audio.wav",
+            segments=segments,
+            hf_token="token",  # noqa: S106
+            profiles_file=profiles_file,
+            remember_unknown_speakers=True,
+            threshold=0.9,
+        )
+
+    assert label_map == {"SPEAKER_00": "Alice"}
+    store = load_speaker_profile_store(profiles_file)
+    assert len(store["profiles"]) == 1
+    assert store["profiles"][0]["embeddings"] == [[1.0, 0.0], [0.99, 0.01]]
 
 
 def test_resolve_speaker_identities_remembers_unknown_profile(tmp_path: Path) -> None:

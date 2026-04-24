@@ -200,7 +200,7 @@ The `--from-file` option supports multiple audio formats:
 | `--identify-speakers/--no-identify-speakers` | `true` | Match diarized speakers against persistent voice profiles when profiles exist. |
 | `--remember-unknown-speakers/--no-remember-unknown-speakers` | `false` | Persist unmatched speaker embeddings as stable UNKNOWN_### voice profiles. |
 | `--speaker-profiles-file` | `/home/runner/.config/agent-cli/speaker-profiles.json` | JSON file storing persistent speaker voice embeddings. |
-| `--speaker-match-threshold` | `0.72` | Cosine-similarity threshold for matching diarized speakers to stored profiles. |
+| `--speaker-match-threshold` | `0.7` | Cosine-similarity threshold for matching diarized speakers to stored profiles. |
 
 
 <!-- OUTPUT:END -->

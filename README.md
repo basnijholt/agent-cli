@@ -947,7 +947,7 @@ the `[defaults]` section of your configuration file.
 │                                                                    matching diarized   │
 │                                                                    speakers to stored  │
 │                                                                    profiles.           │
-│                                                                    [default: 0.72]     │
+│                                                                    [default: 0.7]      │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 
 ```
