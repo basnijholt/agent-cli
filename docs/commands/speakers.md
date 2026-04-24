@@ -63,7 +63,7 @@ agent-cli speakers list --json
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--speaker-profiles-file` | `/Users/basnijholt/.config/agent-cli/speaker-profiles.json` | JSON file storing persistent speaker voice embeddings. |
+| `--speaker-profiles-file` | `/home/runner/.config/agent-cli/speaker-profiles.json` | JSON file storing persistent speaker voice embeddings. |
 | `--json` | `false` | Output profile metadata as JSON without embedding vectors. |
 
 
@@ -81,7 +81,7 @@ agent-cli speakers list --json
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--speaker-profiles-file` | `/Users/basnijholt/.config/agent-cli/speaker-profiles.json` | JSON file storing persistent speaker voice embeddings. |
+| `--speaker-profiles-file` | `/home/runner/.config/agent-cli/speaker-profiles.json` | JSON file storing persistent speaker voice embeddings. |
 | `--json` | `false` | Output the renamed profile metadata as JSON. |
 
 
