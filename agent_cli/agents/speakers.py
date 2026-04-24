@@ -14,6 +14,7 @@ from agent_cli.core.process import set_process_title
 from agent_cli.core.speaker_identity import (
     DEFAULT_SPEAKER_PROFILES_FILE,
     load_speaker_profile_store,
+    merge_speaker_profiles,
     rename_speaker_profile,
     save_speaker_profile_store,
     summarize_speaker_profile,
@@ -26,8 +27,9 @@ speakers_app = typer.Typer(
     help="""Manage persistent diarization speaker identities.
 
 Speaker profiles are created by diarization with `--remember-unknown-speakers`
-or `--enroll-speakers`. Use this command to inspect those profiles and rename
-stable `UNKNOWN_###` identities without re-running diarization.
+or `--enroll-speakers`. Use this command to inspect those profiles, rename
+stable `UNKNOWN_###` identities, or merge duplicate profiles without re-running
+diarization.
 """,
     add_completion=True,
     rich_markup_mode="markdown",
@@ -154,4 +156,54 @@ def rename_speaker(
     console.print(
         f"[green]Renamed speaker[/green] [cyan]{summary['id']}[/cyan] "
         f"to [bold]{summary['display_name']}[/bold].",
+    )
+
+
+@speakers_app.command("merge")
+def merge_speakers(
+    source: Annotated[
+        str,
+        typer.Argument(help="Duplicate profile id or name to remove, e.g. UNKNOWN_002."),
+    ],
+    target: Annotated[
+        str,
+        typer.Argument(help="Profile id or name to keep, e.g. John or UNKNOWN_001."),
+    ],
+    speaker_profiles_file: Path = SPEAKER_PROFILES_FILE_OPTION,
+    json_output: Annotated[
+        bool,
+        typer.Option(
+            "--json",
+            help="Output the merged target profile metadata as JSON.",
+        ),
+    ] = False,
+) -> None:
+    """Merge a duplicate speaker profile into the profile to keep."""
+    path = speaker_profiles_file.expanduser()
+    store = _load_store_or_exit(path)
+
+    try:
+        profile = merge_speaker_profiles(store, source, target)
+    except ValueError as exc:
+        console.print(f"[red]{exc}[/red]")
+        raise typer.Exit(1) from exc
+
+    save_speaker_profile_store(path, store)
+    summary = summarize_speaker_profile(profile)
+
+    if json_output:
+        print(
+            json.dumps(
+                {
+                    "speaker_profiles_file": str(path),
+                    "merged_source": source,
+                    "profile": summary,
+                },
+            ),
+        )
+        return
+
+    console.print(
+        f"[green]Merged speaker[/green] [cyan]{source}[/cyan] into "
+        f"[bold]{summary['display_name']}[/bold] ([cyan]{summary['id']}[/cyan]).",
     )

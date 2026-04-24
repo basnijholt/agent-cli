@@ -339,6 +339,41 @@ def rename_speaker_profile(
     return profile
 
 
+def merge_speaker_profiles(
+    store: dict[str, Any],
+    source_identifier: str,
+    target_identifier: str,
+) -> dict[str, Any]:
+    """Merge one stored speaker profile into another profile."""
+    source = _find_profile(store, source_identifier)
+    if source is None:
+        msg = f"No source speaker profile matching {source_identifier!r} was found."
+        raise ValueError(msg)
+
+    target = _find_profile(store, target_identifier)
+    if target is None:
+        msg = f"No target speaker profile matching {target_identifier!r} was found."
+        raise ValueError(msg)
+
+    if source is target:
+        msg = "Cannot merge a speaker profile into itself."
+        raise ValueError(msg)
+
+    source_embeddings = source.get("embeddings", [])
+    if isinstance(source_embeddings, list):
+        for embedding in source_embeddings:
+            if isinstance(embedding, list):
+                _append_embedding(target, embedding)
+    else:
+        target["updated_at"] = _now()
+
+    profiles = store.get("profiles", [])
+    if isinstance(profiles, list):
+        profiles.remove(source)
+
+    return target
+
+
 def _speaker_waveforms(
     audio_path: Path,
     segments: list[DiarizedSegment],
