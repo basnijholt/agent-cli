@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import argparse
 import asyncio
 import json
 import os
@@ -12,7 +11,7 @@ from dataclasses import dataclass
 from datetime import date, datetime, time, timedelta
 from functools import lru_cache
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any, cast
 
 import typer
 
@@ -61,6 +60,9 @@ RETRANSCRIBE_OPTION: bool = typer.Option(
     help="Re-run ASR on the combined audio instead of using the logged transcribe-live text.",
 )
 
+if TYPE_CHECKING:
+    from typer.models import OptionInfo
+
 
 @dataclass(frozen=True)
 class LiveSegment:
@@ -72,14 +74,47 @@ class LiveSegment:
     raw_output: str | None = None
 
 
+@dataclass(frozen=True)
+class DiarizeLiveSessionOptions:
+    """Options for retroactive live-session diarization."""
+
+    date: date
+    start: time
+    end: time
+    transcription_log: Path = DEFAULT_TRANSCRIPTION_LOG
+    output_dir: Path = DEFAULT_OUTPUT_DIR
+    diarize_format: opts.DiarizeFormat = "inline"
+    speakers: int | None = None
+    min_speakers: int | None = None
+    max_speakers: int | None = None
+    align_words: bool = False
+    align_language: str = "en"
+    hf_token: str | None = None
+    prepare_only: bool = False
+    retranscribe: bool = False
+
+    def __post_init__(self) -> None:
+        """Validate option combinations."""
+        if self.end <= self.start:
+            msg = "--end must be later than --start on the same day."
+            raise ValueError(msg)
+        if self.speakers is not None and (
+            self.min_speakers is not None or self.max_speakers is not None
+        ):
+            msg = "Use either --speakers or --min-speakers/--max-speakers, not both."
+            raise ValueError(msg)
+        if self.diarize_format not in {"inline", "json"}:
+            msg = "diarize_format must be 'inline' or 'json'."
+            raise ValueError(msg)
+
+
 @lru_cache(maxsize=2048)
 def _saved_audio_duration_seconds(audio_path: Path) -> float:
     """Return the decoded duration of a saved audio chunk."""
     import torchaudio  # noqa: PLC0415
 
-    info_fn = getattr(torchaudio, "info", None)
     try:
-        metadata = info_fn(str(audio_path)) if callable(info_fn) else None
+        metadata = torchaudio.info(str(audio_path))
     except (OSError, RuntimeError, ValueError):
         metadata = None
 
@@ -95,109 +130,7 @@ def parse_clock_time(value: str) -> time:
         return time.fromisoformat(value)
     except ValueError as exc:
         msg = f"Invalid time value: {value!r}. Use HH:MM or HH:MM:SS."
-        raise argparse.ArgumentTypeError(msg) from exc
-
-
-def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
-    """Parse command-line arguments."""
-    parser = argparse.ArgumentParser(
-        description=(
-            "Create a single WAV from transcribe-live MP3 chunks in a time window and "
-            "diarize the resulting session."
-        ),
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-    )
-    parser.add_argument(
-        "--date",
-        type=date.fromisoformat,
-        default=datetime.now().astimezone().date(),
-        help="Date of the live session in YYYY-MM-DD format.",
-    )
-    parser.add_argument(
-        "--start",
-        type=parse_clock_time,
-        required=True,
-        help="Start time of the session in HH:MM or HH:MM:SS.",
-    )
-    parser.add_argument(
-        "--end",
-        type=parse_clock_time,
-        required=True,
-        help="End time of the session in HH:MM or HH:MM:SS.",
-    )
-    parser.add_argument(
-        "--transcription-log",
-        type=Path,
-        default=DEFAULT_TRANSCRIPTION_LOG,
-        help="Path to the transcribe-live JSONL log file.",
-    )
-    parser.add_argument(
-        "--output-dir",
-        type=Path,
-        default=DEFAULT_OUTPUT_DIR,
-        help="Directory where the combined audio and diarized transcript will be saved.",
-    )
-    parser.add_argument(
-        "--diarize-format",
-        choices=("inline", "json"),
-        default="inline",
-        help="Speaker diarization output format.",
-    )
-    parser.add_argument(
-        "--speakers",
-        type=int,
-        default=None,
-        help="Known number of speakers. Sets both --min-speakers and --max-speakers.",
-    )
-    parser.add_argument(
-        "--min-speakers",
-        type=int,
-        default=None,
-        help="Minimum speaker count hint for diarization.",
-    )
-    parser.add_argument(
-        "--max-speakers",
-        type=int,
-        default=None,
-        help="Maximum speaker count hint for diarization.",
-    )
-    parser.add_argument(
-        "--align-words",
-        action="store_true",
-        help=(
-            "Enable word-level alignment when re-transcribing combined audio. "
-            "Logged-transcript mode already uses word-level alignment by default."
-        ),
-    )
-    parser.add_argument(
-        "--align-language",
-        default="en",
-        help="Language code for forced alignment (e.g. en, fr, de, es, it).",
-    )
-    parser.add_argument(
-        "--hf-token",
-        default=None,
-        help="HuggingFace token. If omitted, HF_TOKEN from the environment is used.",
-    )
-    parser.add_argument(
-        "--prepare-only",
-        action="store_true",
-        help="Only create the combined audio file and metadata without running diarization.",
-    )
-    parser.add_argument(
-        "--retranscribe",
-        action="store_true",
-        help="Re-run ASR on the combined audio instead of using the logged transcribe-live text.",
-    )
-    args = parser.parse_args(argv)
-
-    if args.end <= args.start:
-        parser.error("--end must be later than --start on the same day.")
-    if args.speakers is not None and (
-        args.min_speakers is not None or args.max_speakers is not None
-    ):
-        parser.error("Use either --speakers or --min-speakers/--max-speakers, not both.")
-    return args
+        raise ValueError(msg) from exc
 
 
 def load_segments(log_path: Path) -> list[LiveSegment]:
@@ -300,22 +233,27 @@ def combine_segments(manifest_path: Path, output_wav: Path) -> None:
     subprocess.run(cmd, check=True)
 
 
-def build_retranscribe_request(args: argparse.Namespace, combined_audio: Path) -> dict[str, Any]:
+def build_retranscribe_request(
+    options: DiarizeLiveSessionOptions,
+    combined_audio: Path,
+) -> dict[str, Any]:
     """Build metadata describing the internal retranscribe request."""
-    if args.speakers is not None:
-        min_speakers = args.speakers
-        max_speakers = args.speakers
+    min_speakers: int | None
+    max_speakers: int | None
+    if options.speakers is not None:
+        min_speakers = options.speakers
+        max_speakers = options.speakers
     else:
-        min_speakers = args.min_speakers
-        max_speakers = args.max_speakers
+        min_speakers = options.min_speakers
+        max_speakers = options.max_speakers
     return {
         "audio_file": str(combined_audio),
-        "diarize_format": args.diarize_format,
+        "diarize_format": options.diarize_format,
         "min_speakers": min_speakers,
         "max_speakers": max_speakers,
-        "align_words": args.align_words,
-        "align_language": args.align_language,
-        "hf_token": bool(args.hf_token or os.environ.get("HF_TOKEN")),
+        "align_words": options.align_words,
+        "align_language": options.align_language,
+        "hf_token": bool(options.hf_token or os.environ.get("HF_TOKEN")),
     }
 
 
@@ -387,11 +325,11 @@ def align_logged_segments_with_speakers(
     return align_words_to_speakers(all_words, speaker_segments)
 
 
-def ensure_hf_token(args: argparse.Namespace) -> None:
+def ensure_hf_token(options: DiarizeLiveSessionOptions) -> None:
     """Validate that a HuggingFace token is available when not in prepare-only mode."""
-    if args.prepare_only:
+    if options.prepare_only:
         return
-    if args.hf_token or os.environ.get("HF_TOKEN"):
+    if options.hf_token or os.environ.get("HF_TOKEN"):
         return
     msg = "HF_TOKEN is required. Set HF_TOKEN in the environment or pass --hf-token."
     raise RuntimeError(msg)
@@ -422,7 +360,7 @@ def save_metadata(
 
 def run_logged_diarization(
     *,
-    args: argparse.Namespace,
+    options: DiarizeLiveSessionOptions,
     segments: list[LiveSegment],
     combined_audio: Path,
     transcript_path: Path,
@@ -439,13 +377,13 @@ def run_logged_diarization(
         msg = "No raw_output text found in the selected transcribe-live log entries."
         raise RuntimeError(msg)
 
-    hf_token = args.hf_token or os.environ.get("HF_TOKEN")
+    hf_token = options.hf_token or os.environ.get("HF_TOKEN")
     assert hf_token is not None
 
     diarizer = SpeakerDiarizer(
         hf_token=hf_token,
-        min_speakers=args.speakers if args.speakers is not None else args.min_speakers,
-        max_speakers=args.speakers if args.speakers is not None else args.max_speakers,
+        min_speakers=options.speakers if options.speakers is not None else options.min_speakers,
+        max_speakers=options.speakers if options.speakers is not None else options.max_speakers,
     )
     print(f"Running diarization on device: {diarizer.device}")
     speaker_segments = diarizer.diarize(combined_audio)
@@ -456,24 +394,24 @@ def run_logged_diarization(
     speaker_segments = align_logged_segments_with_speakers(
         segments=segments,
         speaker_segments=speaker_segments,
-        language=args.align_language,
+        language=options.align_language,
     )
 
     formatted = format_diarized_output(
         speaker_segments,
-        output_format=args.diarize_format,
+        output_format=options.diarize_format,
     )
     transcript_path.write_text(formatted.rstrip() + "\n", encoding="utf-8")
 
 
 def _option_default(option: Any) -> Any:
     """Extract a Typer option's default value."""
-    return getattr(option, "default", option)
+    return cast("OptionInfo", option).default
 
 
 def _option_env_value(option: Any) -> str | None:
     """Read the first configured env var value for a Typer option, if any."""
-    envvar = getattr(option, "envvar", None)
+    envvar = cast("OptionInfo", option).envvar
     if isinstance(envvar, str):
         return os.environ.get(envvar)
     if isinstance(envvar, (list, tuple)):
@@ -482,17 +420,6 @@ def _option_env_value(option: Any) -> str | None:
             if value is not None:
                 return value
     return None
-
-
-def _resolve_option(option: Any) -> Any:
-    """Resolve a Typer option from environment or fallback default."""
-    env_value = _option_env_value(option)
-    if env_value is None:
-        return _option_default(option)
-    default = _option_default(option)
-    if isinstance(default, int):
-        return int(env_value)
-    return env_value
 
 
 def _coerce_option_value(option: Any, value: Any) -> Any:
@@ -532,7 +459,7 @@ def _resolve_transcribe_option(
 
 
 def run_retranscribe(
-    args: argparse.Namespace,
+    options: DiarizeLiveSessionOptions,
     combined_audio: Path,
     transcript_path: Path,
     *,
@@ -617,12 +544,12 @@ def run_retranscribe(
     )
     diarization_cfg = agent_config.Diarization(
         diarize=True,
-        diarize_format=args.diarize_format,
-        hf_token=args.hf_token or os.environ.get("HF_TOKEN"),
-        min_speakers=args.speakers if args.speakers is not None else args.min_speakers,
-        max_speakers=args.speakers if args.speakers is not None else args.max_speakers,
-        align_words=args.align_words,
-        align_language=args.align_language,
+        diarize_format=options.diarize_format,
+        hf_token=options.hf_token or os.environ.get("HF_TOKEN"),
+        min_speakers=options.speakers if options.speakers is not None else options.min_speakers,
+        max_speakers=options.speakers if options.speakers is not None else options.max_speakers,
+        align_words=options.align_words,
+        align_language=options.align_language,
     )
     result = asyncio.run(
         _async_main(
@@ -689,10 +616,9 @@ def run_retranscribe(
         transcript_path.write_text(transcript.rstrip() + "\n", encoding="utf-8")
 
 
-def main(argv: list[str] | None = None, *, config_file: str | None = None) -> int:
-    """Argparse entry point used by the Typer command and tests."""
-    args = parse_args(argv)
-    log_path = args.transcription_log.expanduser()
+def run_session(options: DiarizeLiveSessionOptions, *, config_file: str | None = None) -> int:
+    """Diarize a selected live session window."""
+    log_path = options.transcription_log.expanduser()
     if not log_path.exists():
         msg = f"Transcription log not found: {log_path}"
         raise FileNotFoundError(msg)
@@ -700,14 +626,14 @@ def main(argv: list[str] | None = None, *, config_file: str | None = None) -> in
     segments = load_segments(log_path)
     selected = select_segments_in_range(
         segments,
-        target_date=args.date,
-        start_time=args.start,
-        end_time=args.end,
+        target_date=options.date,
+        start_time=options.start,
+        end_time=options.end,
     )
     if not selected:
         msg = (
             f"No audio segments found in {log_path} for "
-            f"{args.date.isoformat()} {args.start} to {args.end}."
+            f"{options.date.isoformat()} {options.start} to {options.end}."
         )
         raise RuntimeError(msg)
 
@@ -717,48 +643,48 @@ def main(argv: list[str] | None = None, *, config_file: str | None = None) -> in
         msg = f"Selected audio files are missing:\n{missing_list}"
         raise FileNotFoundError(msg)
 
-    ensure_hf_token(args)
+    ensure_hf_token(options)
 
     basename = session_basename(selected)
-    output_dir = args.output_dir.expanduser() / args.date.strftime("%Y/%m/%d")
+    output_dir = options.output_dir.expanduser() / options.date.strftime("%Y/%m/%d")
     output_dir.mkdir(parents=True, exist_ok=True)
     manifest_path = output_dir / f"{basename}.ffconcat"
     combined_audio = output_dir / f"{basename}.wav"
-    transcript_path = output_dir / f"{basename}{transcript_suffix(args.diarize_format)}"
+    transcript_path = output_dir / f"{basename}{transcript_suffix(options.diarize_format)}"
     metadata_path = output_dir / f"{basename}.metadata.json"
 
     write_ffconcat_manifest(selected, manifest_path)
     combine_segments(manifest_path, combined_audio)
 
-    retranscribe_request = build_retranscribe_request(args, combined_audio)
+    retranscribe_request = build_retranscribe_request(options, combined_audio)
     save_metadata(
         metadata_path=metadata_path,
         segments=selected,
         combined_audio=combined_audio,
         transcript_path=transcript_path,
-        mode="retranscribe" if args.retranscribe else "log_transcript",
-        retranscribe_request=retranscribe_request if args.retranscribe else None,
+        mode="retranscribe" if options.retranscribe else "log_transcript",
+        retranscribe_request=retranscribe_request if options.retranscribe else None,
     )
 
     print(f"Combined {len(selected)} segment(s) into {combined_audio}")
-    if args.prepare_only:
-        if args.retranscribe:
+    if options.prepare_only:
+        if options.retranscribe:
             print("Prepared combined audio and metadata for internal re-transcription.")
         else:
             print("Prepared combined audio and metadata for logged-transcript diarization.")
         print(f"Metadata saved to {metadata_path}")
         return 0
 
-    if args.retranscribe:
+    if options.retranscribe:
         run_retranscribe(
-            args,
+            options,
             combined_audio,
             transcript_path,
             config_file=config_file,
         )
     else:
         run_logged_diarization(
-            args=args,
+            options=options,
             segments=selected,
             combined_audio=combined_audio,
             transcript_path=transcript_path,
@@ -766,57 +692,6 @@ def main(argv: list[str] | None = None, *, config_file: str | None = None) -> in
     print(f"Saved diarized transcript to {transcript_path}")
     print(f"Metadata saved to {metadata_path}")
     return 0
-
-
-def _build_cli_argv(
-    *,
-    date_value: str | None,
-    start: str,
-    end: str,
-    transcription_log: Path,
-    output_dir: Path,
-    diarize_format: str,
-    speakers: int | None,
-    min_speakers: int | None,
-    max_speakers: int | None,
-    align_words: bool,
-    align_language: str,
-    hf_token: str | None,
-    prepare_only: bool,
-    retranscribe: bool,
-) -> list[str]:
-    """Translate Typer options into the shared argparse argv."""
-    argv = [
-        "--date",
-        date_value or datetime.now().astimezone().date().isoformat(),
-        "--start",
-        start,
-        "--end",
-        end,
-        "--transcription-log",
-        str(transcription_log),
-        "--output-dir",
-        str(output_dir),
-        "--diarize-format",
-        diarize_format,
-        "--align-language",
-        align_language,
-    ]
-    if speakers is not None:
-        argv.extend(["--speakers", str(speakers)])
-    if min_speakers is not None:
-        argv.extend(["--min-speakers", str(min_speakers)])
-    if max_speakers is not None:
-        argv.extend(["--max-speakers", str(max_speakers)])
-    if align_words:
-        argv.append("--align-words")
-    if hf_token:
-        argv.extend(["--hf-token", hf_token])
-    if prepare_only:
-        argv.append("--prepare-only")
-    if retranscribe:
-        argv.append("--retranscribe")
-    return argv
 
 
 @app.command("diarize-live-session", rich_help_panel="Voice Commands")
@@ -872,25 +747,32 @@ def diarize_live_session(
     if print_args:
         print_command_line_args(locals())
 
-    argv = _build_cli_argv(
-        date_value=date_value,
-        start=start,
-        end=end,
-        transcription_log=transcription_log,
-        output_dir=output_dir,
-        diarize_format=diarize_format,
-        speakers=speakers,
-        min_speakers=min_speakers,
-        max_speakers=max_speakers,
-        align_words=align_words,
-        align_language=align_language,
-        hf_token=hf_token,
-        prepare_only=prepare_only,
-        retranscribe=retranscribe,
-    )
     try:
-        exit_code = main(argv, config_file=config_file)
-    except (FileNotFoundError, RuntimeError, subprocess.CalledProcessError) as exc:
+        options = DiarizeLiveSessionOptions(
+            date=date.fromisoformat(date_value)
+            if date_value
+            else datetime.now().astimezone().date(),
+            start=parse_clock_time(start),
+            end=parse_clock_time(end),
+            transcription_log=transcription_log,
+            output_dir=output_dir,
+            diarize_format=diarize_format,
+            speakers=speakers,
+            min_speakers=min_speakers,
+            max_speakers=max_speakers,
+            align_words=align_words,
+            align_language=align_language,
+            hf_token=hf_token,
+            prepare_only=prepare_only,
+            retranscribe=retranscribe,
+        )
+        exit_code = run_session(options, config_file=config_file)
+    except (
+        FileNotFoundError,
+        RuntimeError,
+        ValueError,
+        subprocess.CalledProcessError,
+    ) as exc:
         print_with_style(f"❌ {exc}", style="red")
         raise typer.Exit(1) from None
     if exit_code:
