@@ -935,7 +935,7 @@ the `[defaults]` section of your configuration file.
 │                                                                    persistent speaker  │
 │                                                                    voice embeddings.   │
 │                                                                    [default:           │
-│                                                                    /Users/basnijholt/… │
+│                                                                    /home/runner/.conf… │
 │ --speaker-match-thr…                          FLOAT RANGE          Cosine-similarity   │
 │                                               [0.0<=x<=1.0]        threshold for       │
 │                                                                    matching diarized   │
