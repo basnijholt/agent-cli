@@ -133,6 +133,29 @@ def _profile_display_name(profile: Mapping[str, Any]) -> str:
     return str(profile_id)
 
 
+def summarize_speaker_profile(profile: Mapping[str, Any]) -> dict[str, Any]:
+    """Return safe display metadata for a speaker profile."""
+    embeddings = profile.get("embeddings", [])
+    name = profile.get("name")
+    return {
+        "id": str(profile.get("id", "")),
+        "name": name.strip() if isinstance(name, str) and name.strip() else None,
+        "display_name": _profile_display_name(profile),
+        "anonymous": bool(profile.get("anonymous")),
+        "embedding_count": len(embeddings) if isinstance(embeddings, list) else 0,
+        "created_at": profile.get("created_at"),
+        "updated_at": profile.get("updated_at"),
+    }
+
+
+def summarize_speaker_profiles(store: Mapping[str, Any]) -> list[dict[str, Any]]:
+    """Return safe display metadata for every speaker profile."""
+    profiles = store.get("profiles", [])
+    if not isinstance(profiles, list):
+        return []
+    return [summarize_speaker_profile(profile) for profile in profiles if isinstance(profile, dict)]
+
+
 def _profile_matches_identifier(profile: Mapping[str, Any], identifier: str) -> bool:
     identifier_lower = identifier.casefold()
     return any(
@@ -286,6 +309,33 @@ def _add_unknown_embedding(store: dict[str, Any], embedding: list[float]) -> dic
     }
     store.setdefault("profiles", []).append(profile)
     _append_embedding(profile, embedding)
+    return profile
+
+
+def rename_speaker_profile(
+    store: dict[str, Any],
+    identifier: str,
+    name: str,
+) -> dict[str, Any]:
+    """Rename a stored speaker profile while preserving its embeddings."""
+    clean_name = name.strip()
+    if not clean_name:
+        msg = "Speaker name cannot be empty."
+        raise ValueError(msg)
+
+    profile = _find_profile(store, identifier)
+    if profile is None:
+        msg = f"No speaker profile matching {identifier!r} was found."
+        raise ValueError(msg)
+
+    duplicate = _find_profile(store, clean_name)
+    if duplicate is not None and duplicate is not profile:
+        msg = f"Another speaker profile already uses {clean_name!r}."
+        raise ValueError(msg)
+
+    profile["name"] = clean_name
+    profile["anonymous"] = False
+    profile["updated_at"] = _now()
     return profile
 
 
