@@ -16,7 +16,9 @@ from agent_cli.core.speaker_identity import (
     load_speaker_profile_store,
     match_speaker_profiles,
     parse_speaker_assignments,
+    rename_speaker_profile,
     resolve_speaker_identities,
+    summarize_speaker_profiles,
 )
 
 if TYPE_CHECKING:
@@ -150,6 +152,63 @@ def test_resolve_speaker_identities_remembers_unknown_profile(tmp_path: Path) ->
     store = load_speaker_profile_store(profiles_file)
     assert store["profiles"][0]["id"] == "UNKNOWN_001"
     assert store["profiles"][0]["anonymous"] is True
+
+
+def test_rename_speaker_profile_preserves_unknown_profile_id() -> None:
+    store = {
+        "profiles": [
+            {
+                "id": "UNKNOWN_001",
+                "name": None,
+                "anonymous": True,
+                "embeddings": [[0.0, 1.0]],
+            },
+        ],
+    }
+
+    profile = rename_speaker_profile(store, "UNKNOWN_001", "John")
+
+    assert profile["id"] == "UNKNOWN_001"
+    assert profile["name"] == "John"
+    assert profile["anonymous"] is False
+    assert profile["embeddings"] == [[0.0, 1.0]]
+
+
+def test_rename_speaker_profile_rejects_duplicate_names() -> None:
+    store = {
+        "profiles": [
+            {"id": "UNKNOWN_001", "name": None, "embeddings": [[1.0, 0.0]]},
+            {"id": "john", "name": "John", "embeddings": [[0.0, 1.0]]},
+        ],
+    }
+
+    with pytest.raises(ValueError, match="already uses"):
+        rename_speaker_profile(store, "UNKNOWN_001", "John")
+
+
+def test_summarize_speaker_profiles_hides_embedding_vectors() -> None:
+    store = {
+        "profiles": [
+            {
+                "id": "UNKNOWN_001",
+                "name": None,
+                "anonymous": True,
+                "embeddings": [[0.0, 1.0], [0.1, 0.9]],
+            },
+        ],
+    }
+
+    assert summarize_speaker_profiles(store) == [
+        {
+            "id": "UNKNOWN_001",
+            "name": None,
+            "display_name": "UNKNOWN_001",
+            "anonymous": True,
+            "embedding_count": 2,
+            "created_at": None,
+            "updated_at": None,
+        },
+    ]
 
 
 def test_apply_speaker_label_map_merges_adjacent_matching_labels() -> None:

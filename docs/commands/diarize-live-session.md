@@ -59,16 +59,20 @@ agent-cli diarize-live-session \
   --last-recording 1 \
   --speakers 3
 
-# Enroll speaker voices and reuse those identities in later diarization runs
-agent-cli diarize-live-session \
-  --last-recording 1 \
-  --enroll-speakers SPEAKER_00=Alice,SPEAKER_01=Bob \
-  --speakers 2
-
 # Persist unmatched voices as stable UNKNOWN_### profiles
 agent-cli diarize-live-session \
   --last-recording 1 \
   --remember-unknown-speakers
+
+# Inspect and name remembered speaker profiles
+agent-cli speakers list
+agent-cli speakers rename UNKNOWN_001 Alice
+
+# Enroll current diarization labels directly when you already know who is who
+agent-cli diarize-live-session \
+  --last-recording 1 \
+  --enroll-speakers SPEAKER_00=Alice \
+  --speakers 2
 
 # Write structured JSON output
 agent-cli diarize-live-session \
@@ -85,6 +89,7 @@ agent-cli diarize-live-session \
 - `--last-recording` groups nearby saved chunks into sessions. Use `--session-gap` if a long pause should or should not split a session.
 - `--enroll-speakers` stores voice embeddings in `~/.config/agent-cli/speaker-profiles.json`; later diarization runs match new speaker clusters to those profiles.
 - `--remember-unknown-speakers` gives unmatched voices stable `UNKNOWN_###` profiles so repeated unknown speakers can be recognized across recordings.
+- Use `agent-cli speakers rename UNKNOWN_001 Alice` to name a remembered profile without re-running diarization.
 - On Apple Silicon, pyannote diarization can run on `mps`, but wav2vec2 forced alignment falls back to CPU automatically when MPS is unsupported.
 - If you do not pass `--hf-token`, the command uses `HF_TOKEN` from the environment.
 
@@ -121,7 +126,7 @@ agent-cli diarize-live-session \
 | `--align-words/--no-align-words` | `false` | Enable word-level alignment when re-transcribing combined audio. Logged-transcript mode already uses word-level alignment by default. |
 | `--align-language` | `en` | Language code for word alignment model (e.g., 'en', 'fr', 'de', 'es', 'it'). |
 | `--hf-token` | - | HuggingFace token for pyannote models. Required for diarization. Token must have 'Read access to contents of all public gated repos you can access' permission. Accept licenses at: https://hf.co/pyannote/speaker-diarization-3.1, https://hf.co/pyannote/segmentation-3.0, https://hf.co/pyannote/wespeaker-voxceleb-resnet34-LM |
-| `--enroll-speakers` | - | Enroll diarized speaker labels into persistent voice profiles, e.g. SPEAKER_00=Alice,SPEAKER_01=Bob. |
+| `--enroll-speakers` | - | Enroll current speaker labels or remembered profile IDs into persistent voice profiles, e.g. SPEAKER_00=Alice or UNKNOWN_001=Alice. For simple renames, use `agent-cli speakers rename`. |
 | `--identify-speakers/--no-identify-speakers` | `true` | Match diarized speakers against persistent voice profiles when profiles exist. |
 | `--remember-unknown-speakers/--no-remember-unknown-speakers` | `false` | Persist unmatched speaker embeddings as stable UNKNOWN_### voice profiles. |
 | `--speaker-profiles-file` | `/home/runner/.config/agent-cli/speaker-profiles.json` | JSON file storing persistent speaker voice embeddings. |

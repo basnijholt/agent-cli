@@ -503,8 +503,9 @@ ENROLL_SPEAKERS: str | None = typer.Option(
     None,
     "--enroll-speakers",
     help=(
-        "Enroll diarized speaker labels into persistent voice profiles, "
-        "e.g. SPEAKER_00=Alice,SPEAKER_01=Bob."
+        "Enroll current speaker labels or remembered profile IDs into persistent voice "
+        "profiles, e.g. SPEAKER_00=Alice or UNKNOWN_001=Alice. For simple renames, "
+        "use `agent-cli speakers rename`."
     ),
     rich_help_panel="Diarization",
 )

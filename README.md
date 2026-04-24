@@ -724,8 +724,8 @@ the `[defaults]` section of your configuration file.
   • Record and transcribe: agent-cli transcribe
   • With LLM cleanup: agent-cli transcribe --llm
   • Re-transcribe last recording: agent-cli transcribe --last-recording 1
-  • Enroll a diarized voice profile: agent-cli transcribe --last-recording 1 --diarize
-    --enroll-speakers SPEAKER_00=Alice
+  • Remember unknown voices: agent-cli transcribe --diarize --remember-unknown-speakers
+  • Name a remembered voice profile: agent-cli speakers rename UNKNOWN_001 Alice
 
 ╭─ Options ──────────────────────────────────────────────────────────────────────────────╮
 │ --help  -h        Show this message and exit.                                          │
@@ -912,11 +912,17 @@ the `[defaults]` section of your configuration file.
 │                                                                    'fr', 'de', 'es',   │
 │                                                                    'it').              │
 │                                                                    [default: en]       │
-│ --enroll-speakers                             TEXT                 Enroll diarized     │
-│                                                                    speaker labels into │
-│                                                                    persistent voice    │
-│                                                                    profiles, e.g.      │
-│                                                                    SPEAKER_00=Alice,S… │
+│ --enroll-speakers                             TEXT                 Enroll current      │
+│                                                                    speaker labels or   │
+│                                                                    remembered profile  │
+│                                                                    IDs into persistent │
+│                                                                    voice profiles,     │
+│                                                                    e.g.                │
+│                                                                    SPEAKER_00=Alice or │
+│                                                                    UNKNOWN_001=Alice.  │
+│                                                                    For simple renames, │
+│                                                                    use agent-cli       │
+│                                                                    speakers rename.    │
 │ --identify-speakers     --no-identify-spe…                         Match diarized      │
 │                                                                    speakers against    │
 │                                                                    persistent voice    │

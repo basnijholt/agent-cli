@@ -1089,7 +1089,8 @@ def diarize_live_session(
     Examples:
     - `agent-cli diarize-live-session --date 2026-04-22 --start 11:32 --end 12:29 --speakers 3`
     - `agent-cli diarize-live-session --last-session 1 --speakers 3`
-    - `agent-cli diarize-live-session --last-session 1 --enroll-speakers SPEAKER_00=Alice`
+    - `agent-cli diarize-live-session --last-session 1 --remember-unknown-speakers`
+    - `agent-cli speakers rename UNKNOWN_001 Alice`
     - `agent-cli diarize-live-session --start 09:00 --end 09:30 --prepare-only`
     - `agent-cli diarize-live-session --date 2026-04-22 --start 11:32 --end 12:29 --diarize-format json`
 

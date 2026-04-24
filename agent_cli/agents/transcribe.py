@@ -671,7 +671,9 @@ def transcribe(  # noqa: PLR0912, PLR0911, PLR0915, C901
 
     - Re-transcribe last recording: `agent-cli transcribe --last-recording 1`
 
-    - Enroll a diarized voice profile: `agent-cli transcribe --last-recording 1 --diarize --enroll-speakers SPEAKER_00=Alice`
+    - Remember unknown voices: `agent-cli transcribe --diarize --remember-unknown-speakers`
+
+    - Name a remembered voice profile: `agent-cli speakers rename UNKNOWN_001 Alice`
     """
     if print_args:
         print_command_line_args(locals())
