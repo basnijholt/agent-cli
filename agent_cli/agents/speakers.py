@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import json
+import shlex
 from pathlib import Path  # noqa: TC003
 from typing import Annotated, Any
 
 import typer
+from rich.markup import escape
 from rich.table import Table
 
 from agent_cli.cli import app
@@ -58,6 +60,10 @@ def _load_store_or_exit(path: Path) -> dict[str, Any]:
     except (TypeError, ValueError) as exc:
         console.print(f"[red]{exc}[/red]")
         raise typer.Exit(1) from exc
+
+
+def _merge_command_hint(source: str, target: str) -> str:
+    return f"speakers merge {shlex.quote(source)} {shlex.quote(target)}"
 
 
 @speakers_app.command("list")
@@ -137,6 +143,13 @@ def rename_speaker(
         profile = rename_speaker_profile(store, identifier, name)
     except ValueError as exc:
         console.print(f"[red]{exc}[/red]")
+        if str(exc) == f"Another speaker profile already uses {name.strip()!r}.":
+            command = _merge_command_hint(identifier, name.strip())
+            console.print(
+                "[yellow]That name is already a speaker profile. "
+                "Merge embeddings instead with:[/yellow] "
+                f"[bold]{escape(command)}[/bold]",
+            )
         raise typer.Exit(1) from exc
 
     save_speaker_profile_store(path, store)
