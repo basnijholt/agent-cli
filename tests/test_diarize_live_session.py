@@ -10,14 +10,14 @@ from unittest.mock import AsyncMock, patch
 import pytest
 
 from agent_cli.agents.diarize_live_session import (
+    DiarizeLiveSessionOptions,
     LiveSegment,
     align_logged_segments_with_speakers,
     build_logged_transcript,
     build_retranscribe_request,
-    main,
-    parse_args,
     parse_clock_time,
     run_retranscribe,
+    run_session,
     select_segments_in_range,
     session_basename,
     transcript_suffix,
@@ -39,9 +39,15 @@ def test_parse_clock_time_accepts_minute_and_second_precision() -> None:
     assert parse_clock_time("11:32:45").isoformat() == "11:32:45"
 
 
-def test_parse_args_rejects_conflicting_speaker_hints() -> None:
-    with pytest.raises(SystemExit):
-        parse_args(["--start", "11:32", "--end", "12:29", "--speakers", "3", "--min-speakers", "2"])
+def test_options_reject_conflicting_speaker_hints() -> None:
+    with pytest.raises(ValueError, match="Use either"):
+        DiarizeLiveSessionOptions(
+            date=date.fromisoformat("2026-04-23"),
+            start=parse_clock_time("11:32"),
+            end=parse_clock_time("12:29"),
+            speakers=3,
+            min_speakers=2,
+        )
 
 
 def test_select_segments_in_range_filters_by_date_and_time() -> None:
@@ -96,18 +102,13 @@ def test_select_segments_in_range_uses_saved_audio_duration_when_available(
 
 
 def test_run_retranscribe_uses_transcribe_config_defaults(tmp_path: Path) -> None:
-    args = parse_args(
-        [
-            "--start",
-            "11:32",
-            "--end",
-            "12:29",
-            "--retranscribe",
-            "--diarize-format",
-            "json",
-            "--hf-token",
-            "token",
-        ],
+    options = DiarizeLiveSessionOptions(
+        date=date.fromisoformat("2026-04-23"),
+        start=parse_clock_time("11:32"),
+        end=parse_clock_time("12:29"),
+        retranscribe=True,
+        diarize_format="json",
+        hf_token="token",  # noqa: S106
     )
     combined_audio = tmp_path / "meeting.wav"
     combined_audio.write_bytes(b"wav")
@@ -131,7 +132,7 @@ def test_run_retranscribe_uses_transcribe_config_defaults(tmp_path: Path) -> Non
         patch("agent_cli.agents.transcribe._async_main", mock_async_main),
     ):
         run_retranscribe(
-            args,
+            options,
             combined_audio,
             transcript_path,
             config_file="custom.toml",
@@ -148,7 +149,7 @@ def test_run_retranscribe_uses_transcribe_config_defaults(tmp_path: Path) -> Non
     assert kwargs["openai_llm_cfg"].llm_openai_model == "gpt-5-mini"
 
 
-def test_main_passes_config_file_to_retranscribe(tmp_path: Path) -> None:
+def test_run_session_passes_config_file_to_retranscribe(tmp_path: Path) -> None:
     segment_audio = tmp_path / "segment.mp3"
     segment_audio.write_bytes(b"mp3")
     log_path = tmp_path / "transcriptions.jsonl"
@@ -175,22 +176,17 @@ def test_main_passes_config_file_to_retranscribe(tmp_path: Path) -> None:
         ),
         patch("agent_cli.agents.diarize_live_session.run_retranscribe") as mock_run,
     ):
-        exit_code = main(
-            [
-                "--date",
-                "2026-04-23",
-                "--start",
-                "11:32",
-                "--end",
-                "12:29",
-                "--transcription-log",
-                str(log_path),
-                "--output-dir",
-                str(output_dir),
-                "--retranscribe",
-                "--hf-token",
-                "token",
-            ],
+        options = DiarizeLiveSessionOptions(
+            date=date.fromisoformat("2026-04-23"),
+            start=parse_clock_time("11:32"),
+            end=parse_clock_time("12:29"),
+            transcription_log=log_path,
+            output_dir=output_dir,
+            retranscribe=True,
+            hf_token="token",  # noqa: S106
+        )
+        exit_code = run_session(
+            options,
             config_file="custom.toml",
         )
 
@@ -233,23 +229,17 @@ def test_build_logged_transcript_concatenates_non_empty_segment_text() -> None:
 
 
 def test_build_retranscribe_request_uses_speaker_hints() -> None:
-    args = parse_args(
-        [
-            "--start",
-            "11:32",
-            "--end",
-            "12:29",
-            "--speakers",
-            "3",
-            "--align-words",
-            "--diarize-format",
-            "json",
-            "--hf-token",
-            "token",
-        ],
+    options = DiarizeLiveSessionOptions(
+        date=date.fromisoformat("2026-04-23"),
+        start=parse_clock_time("11:32"),
+        end=parse_clock_time("12:29"),
+        speakers=3,
+        align_words=True,
+        diarize_format="json",
+        hf_token="token",  # noqa: S106
     )
 
-    request = build_retranscribe_request(args, Path("meeting.wav"))
+    request = build_retranscribe_request(options, Path("meeting.wav"))
 
     assert request == {
         "audio_file": "meeting.wav",
