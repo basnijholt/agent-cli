@@ -4,10 +4,12 @@ from __future__ import annotations
 
 import json
 from typing import TYPE_CHECKING
+from unittest.mock import MagicMock, patch
 
 from typer.testing import CliRunner
 
 from agent_cli.cli import app
+from agent_cli.core.diarization import DiarizedSegment
 from agent_cli.core.speaker_identity import DEFAULT_SPEAKER_EMBEDDING_MODEL
 
 if TYPE_CHECKING:
@@ -260,3 +262,115 @@ def test_speakers_merge_self_exits_nonzero(tmp_path: Path) -> None:
 
     assert result.exit_code == 1
     assert "itself" in result.stdout
+
+
+def test_speakers_review_merges_current_speaker_into_existing_profile(tmp_path: Path) -> None:
+    profiles_file = tmp_path / "speaker-profiles.json"
+    audio_file = tmp_path / "recording.wav"
+    snippet_file = tmp_path / "snippet.wav"
+    audio_file.write_bytes(b"audio")
+    snippet_file.write_bytes(b"snippet")
+    profiles_file.write_text(
+        json.dumps(
+            {
+                "version": 1,
+                "embedding_model": DEFAULT_SPEAKER_EMBEDDING_MODEL,
+                "next_unknown_id": 1,
+                "profiles": [
+                    {
+                        "id": "john",
+                        "name": "John",
+                        "anonymous": False,
+                        "embeddings": [[1.0, 0.0]],
+                    },
+                ],
+            },
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    diarizer = MagicMock()
+    diarizer.device = "cpu"
+    diarizer.diarize.return_value = [DiarizedSegment("SPEAKER_00", 0.0, 2.0)]
+
+    with (
+        patch("agent_cli.agents.speakers.SpeakerDiarizer", return_value=diarizer),
+        patch(
+            "agent_cli.agents.speakers.extract_speaker_embeddings",
+            return_value={"SPEAKER_00": [0.99, 0.01]},
+        ),
+        patch("agent_cli.agents.speakers._write_speaker_snippet", return_value=snippet_file),
+        patch("agent_cli.agents.speakers._play_audio_file"),
+    ):
+        result = runner.invoke(
+            app,
+            [
+                "speakers",
+                "review",
+                "--from-file",
+                str(audio_file),
+                "--speaker-profiles-file",
+                str(profiles_file),
+                "--hf-token",
+                "token",
+            ],
+            input="m\n\n",
+        )
+
+    assert result.exit_code == 0
+    assert "Merged current speaker SPEAKER_00 into John" in result.stdout
+    store = json.loads(profiles_file.read_text(encoding="utf-8"))
+    assert store["profiles"][0]["embeddings"] == [[1.0, 0.0], [0.99, 0.01]]
+
+
+def test_speakers_review_creates_new_named_profile(tmp_path: Path) -> None:
+    profiles_file = tmp_path / "speaker-profiles.json"
+    audio_file = tmp_path / "recording.wav"
+    snippet_file = tmp_path / "snippet.wav"
+    audio_file.write_bytes(b"audio")
+    snippet_file.write_bytes(b"snippet")
+    profiles_file.write_text(
+        json.dumps(
+            {
+                "version": 1,
+                "embedding_model": DEFAULT_SPEAKER_EMBEDDING_MODEL,
+                "next_unknown_id": 1,
+                "profiles": [],
+            },
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    diarizer = MagicMock()
+    diarizer.device = "cpu"
+    diarizer.diarize.return_value = [DiarizedSegment("SPEAKER_00", 0.0, 2.0)]
+
+    with (
+        patch("agent_cli.agents.speakers.SpeakerDiarizer", return_value=diarizer),
+        patch(
+            "agent_cli.agents.speakers.extract_speaker_embeddings",
+            return_value={"SPEAKER_00": [1.0, 0.0]},
+        ),
+        patch("agent_cli.agents.speakers._write_speaker_snippet", return_value=snippet_file),
+        patch("agent_cli.agents.speakers._play_audio_file"),
+    ):
+        result = runner.invoke(
+            app,
+            [
+                "speakers",
+                "review",
+                "--from-file",
+                str(audio_file),
+                "--speaker-profiles-file",
+                str(profiles_file),
+                "--hf-token",
+                "token",
+            ],
+            input="n\nAlice\n",
+        )
+
+    assert result.exit_code == 0
+    assert "Created speaker profile Alice" in result.stdout
+    store = json.loads(profiles_file.read_text(encoding="utf-8"))
+    assert store["profiles"][0]["name"] == "Alice"
+    assert store["profiles"][0]["embeddings"] == [[1.0, 0.0]]
