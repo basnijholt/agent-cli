@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import math
 import re
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -22,7 +23,7 @@ if TYPE_CHECKING:
 
 DEFAULT_SPEAKER_PROFILES_FILE = Path.home() / ".config" / "agent-cli" / "speaker-profiles.json"
 DEFAULT_SPEAKER_EMBEDDING_MODEL = "pyannote/wespeaker-voxceleb-resnet34-LM"
-DEFAULT_SPEAKER_MATCH_THRESHOLD = 0.72
+DEFAULT_SPEAKER_MATCH_THRESHOLD = 0.70
 MAX_PROFILE_EMBEDDINGS = 20
 MIN_SPEAKER_EMBEDDING_SECONDS = 1.0
 MAX_SPEAKER_EMBEDDING_SECONDS = 120.0
@@ -226,11 +227,25 @@ def _profile_similarity(embedding: list[float], profile: Mapping[str, Any]) -> f
     stored_embeddings = profile.get("embeddings", [])
     if not isinstance(stored_embeddings, list):
         return -1.0
-    similarities = [
-        _cosine_similarity(embedding, stored)
+    compatible_embeddings = [
+        stored
         for stored in stored_embeddings
-        if isinstance(stored, list)
+        if isinstance(stored, list) and len(stored) == len(embedding)
     ]
+    similarities = [_cosine_similarity(embedding, stored) for stored in compatible_embeddings]
+    if len(compatible_embeddings) > 1:
+        centroid = [
+            sum(stored[index] for stored in compatible_embeddings) / len(compatible_embeddings)
+            for index in range(len(embedding))
+        ]
+        norm = math.sqrt(sum(value * value for value in centroid))
+        if norm > 0:
+            similarities.append(
+                _cosine_similarity(
+                    embedding,
+                    [value / norm for value in centroid],
+                ),
+            )
     return max(similarities, default=-1.0)
 
 
@@ -492,6 +507,28 @@ def _remember_unknown_profiles(
     return changed
 
 
+def _refresh_matched_profiles(
+    store: dict[str, Any],
+    embeddings: Mapping[str, list[float]],
+    matches: Mapping[str, SpeakerMatch],
+    *,
+    skip_labels: set[str] | None = None,
+) -> bool:
+    """Append current embeddings to profiles that were confidently matched."""
+    changed = False
+    skip_labels = skip_labels or set()
+    for label, match in matches.items():
+        if label in skip_labels:
+            continue
+        profile = _find_profile(store, match.profile_id)
+        embedding = embeddings.get(label)
+        if profile is None or embedding is None:
+            continue
+        _append_embedding(profile, embedding)
+        changed = True
+    return changed
+
+
 def _matches_assignment(
     *,
     label: str,
@@ -557,6 +594,19 @@ def _enroll_assignment(
         label_map[label] = name
 
 
+def _labels_for_assignments(
+    assignments: Mapping[str, str],
+    embeddings: Mapping[str, list[float]],
+    label_map: Mapping[str, str],
+    matches: Mapping[str, SpeakerMatch],
+) -> set[str]:
+    """Return current diarized labels that explicit assignments will handle."""
+    labels: set[str] = set()
+    for source_label in assignments:
+        labels.update(_labels_for_assignment(source_label, embeddings, label_map, matches))
+    return labels
+
+
 def resolve_speaker_identities(
     *,
     audio_path: Path,
@@ -602,8 +652,7 @@ def resolve_speaker_identities(
         matches = match_speaker_profiles(embeddings, store, threshold=threshold)
         label_map.update({label: match.display_name for label, match in matches.items()})
 
-    if remember_unknown_speakers:
-        changed = _remember_unknown_profiles(store, embeddings, label_map)
+    assigned_labels = _labels_for_assignments(assignments, embeddings, label_map, matches)
 
     for source_label, name in assignments.items():
         _enroll_assignment(
@@ -615,6 +664,18 @@ def resolve_speaker_identities(
             name=name,
         )
         changed = True
+
+    if remember_unknown_speakers:
+        changed = (
+            _refresh_matched_profiles(
+                store,
+                embeddings,
+                matches,
+                skip_labels=assigned_labels,
+            )
+            or changed
+        )
+        changed = _remember_unknown_profiles(store, embeddings, label_map) or changed
 
     if changed:
         save_speaker_profile_store(path, store)
