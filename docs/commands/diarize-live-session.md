@@ -112,8 +112,8 @@ agent-cli diarize-live-session \
 | `--end` | - | End time of the session in HH:MM or HH:MM:SS. Required unless --last-session is used. |
 | `--last-recording` | - | Select the Nth most recent inferred transcribe-live recording session (1=most recent, 2=second-to-last). |
 | `--session-gap` | `300.0` | Maximum seconds between saved chunks before they are treated as separate sessions. |
-| `--transcription-log` | `/Users/basnijholt/.config/agent-cli/transcriptions.jsonl` | Path to the transcribe-live JSONL log file. |
-| `--output-dir` | `/Users/basnijholt/.cache/agent-cli/live-diarization` | Directory where the combined audio and diarized transcript will be saved. |
+| `--transcription-log` | `/home/runner/.config/agent-cli/transcriptions.jsonl` | Path to the transcribe-live JSONL log file. |
+| `--output-dir` | `/home/runner/.cache/agent-cli/live-diarization` | Directory where the combined audio and diarized transcript will be saved. |
 | `--prepare-only` | `false` | Only create the combined audio file and metadata without running diarization. |
 | `--retranscribe` | `false` | Re-run ASR on the combined audio instead of using the logged transcribe-live text. |
 
@@ -131,7 +131,7 @@ agent-cli diarize-live-session \
 | `--enroll-speakers` | - | Enroll current speaker labels or remembered profile IDs into persistent voice profiles, e.g. SPEAKER_00=Alice or UNKNOWN_001=Alice. For simple renames, use `agent-cli speakers rename`. |
 | `--identify-speakers/--no-identify-speakers` | `true` | Match diarized speakers against persistent voice profiles when profiles exist. |
 | `--remember-unknown-speakers/--no-remember-unknown-speakers` | `false` | Persist unmatched speaker embeddings as stable UNKNOWN_### voice profiles. |
-| `--speaker-profiles-file` | `/Users/basnijholt/.config/agent-cli/speaker-profiles.json` | JSON file storing persistent speaker voice embeddings. |
+| `--speaker-profiles-file` | `/home/runner/.config/agent-cli/speaker-profiles.json` | JSON file storing persistent speaker voice embeddings. |
 | `--speaker-match-threshold` | `0.72` | Cosine-similarity threshold for matching diarized speakers to stored profiles. |
 
 ### General Options

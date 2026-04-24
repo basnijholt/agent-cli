@@ -111,7 +111,7 @@ agent-cli speakers list --json
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--speaker-profiles-file` | `/Users/basnijholt/.config/agent-cli/speaker-profiles.json` | JSON file storing persistent speaker voice embeddings. |
+| `--speaker-profiles-file` | `/home/runner/.config/agent-cli/speaker-profiles.json` | JSON file storing persistent speaker voice embeddings. |
 | `--json` | `false` | Output the merged target profile metadata as JSON. |
 
 
