@@ -29,10 +29,15 @@ Config files are TOML format and searched in order:
 3. `$XDG_CONFIG_HOME/agent-cli/config.toml` (if set)
 4. `~/.config/agent-cli/config.toml` (user default)
 
-Settings in `[defaults]` apply to all commands. Override per-command
-with sections like `[chat]` or `[transcribe]`. CLI arguments override
-config file settings. Set `$AGENT_CLI_CONFIG_HOME` or `$XDG_CONFIG_HOME`
-before startup to change the user-level config path.
+Settings in `[defaults]` apply globally.
+
+Use `[chat]` or `[transcribe]` for command-specific overrides.
+
+CLI arguments override config file settings.
+
+Set env vars before startup.
+
+Use `$AGENT_CLI_CONFIG_HOME` or `$XDG_CONFIG_HOME` to change config path.
 """,
     add_completion=True,
     rich_markup_mode="markdown",

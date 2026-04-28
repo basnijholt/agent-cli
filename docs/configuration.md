@@ -4,7 +4,8 @@ icon: lucide/settings
 
 # Configuration
 
-All `agent-cli` commands can be configured using a TOML file. The configuration file is searched for in the following locations, in order:
+All `agent-cli` commands can be configured using a TOML file.
+The configuration file is searched for in the following locations, in order:
 
 1. CLI flag (`--config` on agent commands, `--path` on `agent-cli config ...`)
 2. `$AGENT_CLI_CONFIG_HOME/config.toml` if set
@@ -19,8 +20,7 @@ agent-cli transcribe --config /path/to/your/config.toml
 
 Command-line options always take precedence over settings in the configuration file.
 
-Option keys can be written with dashes (matching CLI flags) or underscores; both
-are accepted.
+Option keys can be written with dashes (matching CLI flags) or underscores; both are accepted.
 
 ## Environment variable overrides
 

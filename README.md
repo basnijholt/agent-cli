@@ -467,7 +467,8 @@ agent-cli install-extras rag memory vad
 
 ### Configuration
 
-All `agent-cli` commands can be configured using a TOML file. The configuration file is searched for in the following locations, in order:
+All `agent-cli` commands can be configured using a TOML file.
+The configuration file is searched for in the following locations, in order:
 
 1.  CLI flag (`--config` on agent commands, `--path` on `agent-cli config ...`)
 2.  `$AGENT_CLI_CONFIG_HOME/config.toml` if set
@@ -541,10 +542,15 @@ agent-cli config edit
   3 $XDG_CONFIG_HOME/agent-cli/config.toml (if set)
   4 ~/.config/agent-cli/config.toml (user default)
 
- Settings in [defaults] apply to all commands. Override per-command with sections like
- [chat] or [transcribe]. CLI arguments override config file settings. Set
- $AGENT_CLI_CONFIG_HOME or $XDG_CONFIG_HOME before startup to change the user-level
- config path.
+ Settings in [defaults] apply globally.
+
+ Use [chat] or [transcribe] for command-specific overrides.
+
+ CLI arguments override config file settings.
+
+ Set env vars before startup.
+
+ Use $AGENT_CLI_CONFIG_HOME or $XDG_CONFIG_HOME to change config path.
 
 ╭─ Options ──────────────────────────────────────────────────────────────────────────────╮
 │ --help  -h        Show this message and exit.                                          │

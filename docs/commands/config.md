@@ -15,8 +15,7 @@ agent-cli config [OPTIONS] COMMAND [ARGS]...
 ## Description
 
 The `config` command helps you create, edit, and inspect your configuration file.
-Set `AGENT_CLI_CONFIG_HOME` or `XDG_CONFIG_HOME` before startup to change the
-user-level config path.
+Set `AGENT_CLI_CONFIG_HOME` or `XDG_CONFIG_HOME` before startup to change the user-level config path.
 
 ## Commands
 
