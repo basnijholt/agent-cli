@@ -105,7 +105,7 @@ Configuration is loaded from multiple sources with the following precedence:
 
 1. **Command-line arguments** (highest priority)
 2. **Environment variables** (`OPENAI_API_KEY`, etc.)
-3. **Config file** (`./agent-cli-config.toml` or `~/.config/agent-cli/config.toml`)
+3. **Config file** (`--config`/`--path`, `$AGENT_CLI_CONFIG_HOME/config.toml`, `./agent-cli-config.toml`, `$XDG_CONFIG_HOME/agent-cli/config.toml`, or `~/.config/agent-cli/config.toml`)
 4. **Default values** (lowest priority)
 
 ## Process Management
