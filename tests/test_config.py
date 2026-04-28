@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+import os
 import re
-from typing import TYPE_CHECKING
+import subprocess
+import sys
+from pathlib import Path
 from unittest.mock import MagicMock
 
 import pytest
@@ -11,6 +14,7 @@ from click import Command
 from typer import Context
 from typer.testing import CliRunner
 
+import agent_cli.config as config_module
 from agent_cli.cli import app, set_config_defaults
 from agent_cli.config import (
     GeminiASR,
@@ -20,9 +24,6 @@ from agent_cli.config import (
     load_config,
     normalize_provider_defaults,
 )
-
-if TYPE_CHECKING:
-    from pathlib import Path
 
 runner = CliRunner(env={"NO_COLOR": "1", "TERM": "dumb"})
 
@@ -210,6 +211,108 @@ ANTHROPIC_MODEL = "claude-opus-4-6"
     assert config["dev.agent_env.claude"]["ANTHROPIC_MODEL"] == "claude-opus-4-6"
     # No scalar duplication at top level
     assert "dev.branch_name_mode" not in config
+
+
+def test_user_config_path_defaults_to_home_config(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    """Unset env vars use ~/.config/agent-cli/config.toml."""
+    home = tmp_path / "home"
+    monkeypatch.setenv("HOME", str(home))
+    monkeypatch.setenv("USERPROFILE", str(home))
+    monkeypatch.delenv("AGENT_CLI_CONFIG_HOME", raising=False)
+    monkeypatch.delenv("XDG_CONFIG_HOME", raising=False)
+
+    assert config_module._user_config_path() == home / ".config" / "agent-cli" / "config.toml"
+
+
+def test_user_config_path_uses_xdg_config_home(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    """XDG_CONFIG_HOME redirects the user config below agent-cli/."""
+    xdg_home = tmp_path / "xdg"
+    monkeypatch.delenv("AGENT_CLI_CONFIG_HOME", raising=False)
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(xdg_home))
+
+    assert config_module._user_config_path() == xdg_home / "agent-cli" / "config.toml"
+
+
+def test_user_config_path_agent_cli_config_home_wins(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    """AGENT_CLI_CONFIG_HOME takes precedence and is treated as a directory."""
+    agent_config_home = tmp_path / "agent-home"
+    monkeypatch.setenv("AGENT_CLI_CONFIG_HOME", str(agent_config_home))
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "xdg"))
+
+    assert config_module._user_config_path() == agent_config_home / "config.toml"
+
+
+def test_user_config_path_empty_xdg_falls_back_to_home(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    """Empty XDG_CONFIG_HOME is treated the same as being unset."""
+    home = tmp_path / "home"
+    monkeypatch.setenv("HOME", str(home))
+    monkeypatch.setenv("USERPROFILE", str(home))
+    monkeypatch.delenv("AGENT_CLI_CONFIG_HOME", raising=False)
+    monkeypatch.setenv("XDG_CONFIG_HOME", "")
+
+    assert config_module._user_config_path() == home / ".config" / "agent-cli" / "config.toml"
+
+
+def test_explicit_config_path_wins_over_env_vars(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    """An explicit CLI config path still wins over env-var config homes."""
+    explicit = tmp_path / "explicit.toml"
+    monkeypatch.setenv("AGENT_CLI_CONFIG_HOME", str(tmp_path / "agent-home"))
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "xdg"))
+
+    assert config_module._config_path(str(explicit)) == explicit.resolve()
+
+
+def test_config_init_writes_to_agent_cli_config_home(tmp_path: Path) -> None:
+    """Config init writes to USER_CONFIG_PATH resolved once at import time."""
+    repo_root = Path(__file__).resolve().parents[1]
+    config_home = tmp_path / "agent-home"
+    env = os.environ.copy()
+    env["AGENT_CLI_CONFIG_HOME"] = str(config_home)
+    env.pop("XDG_CONFIG_HOME", None)
+    env["PYTHONPATH"] = (
+        f"{repo_root}{os.pathsep}{env['PYTHONPATH']}" if env.get("PYTHONPATH") else str(repo_root)
+    )
+
+    script = """
+from typer.testing import CliRunner
+from agent_cli.cli import app
+
+runner = CliRunner(env={"NO_COLOR": "1", "TERM": "dumb"})
+result = runner.invoke(app, ["config", "init", "--force"])
+print(result.stdout, end="")
+if result.exception:
+    raise result.exception
+raise SystemExit(result.exit_code)
+"""
+    result = subprocess.run(
+        [sys.executable, "-c", script],
+        cwd=tmp_path,
+        env=env,
+        text=True,
+        capture_output=True,
+        timeout=10,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    config_path = config_home / "config.toml"
+    assert config_path.exists()
+    assert "[defaults]" in config_path.read_text(encoding="utf-8")
 
 
 def test_provider_alias_normalization(config_file: Path) -> None:

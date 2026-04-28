@@ -24,12 +24,15 @@ config_app = typer.Typer(
 
 Config files are TOML format and searched in order:
 
-1. `./agent-cli-config.toml` (project-local)
-2. `~/.config/agent-cli/config.toml` (user default)
+1. `$AGENT_CLI_CONFIG_HOME/config.toml` (if set)
+2. `./agent-cli-config.toml` (project-local)
+3. `$XDG_CONFIG_HOME/agent-cli/config.toml` (if set)
+4. `~/.config/agent-cli/config.toml` (user default)
 
 Settings in `[defaults]` apply to all commands. Override per-command
 with sections like `[chat]` or `[transcribe]`. CLI arguments override
-config file settings.
+config file settings. Set `$AGENT_CLI_CONFIG_HOME` or `$XDG_CONFIG_HOME`
+before startup to change the user-level config path.
 """,
     add_completion=True,
     rich_markup_mode="markdown",
@@ -56,7 +59,7 @@ CONFIG_PATH_INIT_OPTION: Path | None = typer.Option(
     None,
     "--path",
     "-p",
-    help="Where to create the config file (default: `~/.config/agent-cli/config.toml`).",
+    help="Where to create the config file (default: resolved user config path).",
 )
 FORCE_OPTION: bool = typer.Option(
     False,  # noqa: FBT003

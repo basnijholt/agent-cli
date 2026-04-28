@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import tomllib
 from pathlib import Path
 from typing import Any, Literal
@@ -10,12 +11,31 @@ from pydantic import BaseModel, field_validator
 
 from agent_cli.core.utils import console
 
-USER_CONFIG_PATH = Path.home() / ".config" / "agent-cli" / "config.toml"
+PROJECT_CONFIG_PATH = Path("agent-cli-config.toml")
 
-CONFIG_PATHS = [
-    Path("agent-cli-config.toml"),
-    USER_CONFIG_PATH,
-]
+
+def _user_config_path() -> Path:
+    """Resolve the user-level config path with env-var overrides.
+
+    Precedence: AGENT_CLI_CONFIG_HOME > XDG_CONFIG_HOME > ~/.config.
+    Resolved once at import; set env vars before importing agent_cli.config.
+    """
+    home = os.environ.get("AGENT_CLI_CONFIG_HOME")
+    if home:
+        return Path(home).expanduser() / "config.toml"
+    xdg = os.environ.get("XDG_CONFIG_HOME")
+    if xdg:
+        return Path(xdg).expanduser() / "agent-cli" / "config.toml"
+    return Path.home() / ".config" / "agent-cli" / "config.toml"
+
+
+USER_CONFIG_PATH = _user_config_path()
+
+CONFIG_PATHS = (
+    [USER_CONFIG_PATH, PROJECT_CONFIG_PATH]
+    if os.environ.get("AGENT_CLI_CONFIG_HOME")
+    else [PROJECT_CONFIG_PATH, USER_CONFIG_PATH]
+)
 
 
 def _normalize_provider_value(field: str, value: str) -> str:

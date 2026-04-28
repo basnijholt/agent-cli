@@ -15,6 +15,8 @@ agent-cli config [OPTIONS] COMMAND [ARGS]...
 ## Description
 
 The `config` command helps you create, edit, and inspect your configuration file.
+Set `AGENT_CLI_CONFIG_HOME` or `XDG_CONFIG_HOME` before startup to change the
+user-level config path.
 
 ## Commands
 
@@ -44,7 +46,7 @@ agent-cli config init [OPTIONS]
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--path, -p` | - | Where to create the config file (default: `~/.config/agent-cli/config.toml`). |
+| `--path, -p` | - | Where to create the config file (default: resolved user config path). |
 | `--force, -f` | `false` | Overwrite existing config without prompting for confirmation. |
 
 

@@ -468,12 +468,32 @@ agent-cli install-extras rag memory vad
 
 All `agent-cli` commands can be configured using a TOML file. The configuration file is searched for in the following locations, in order:
 
-1.  `./agent-cli-config.toml` (in the current directory)
-2.  `~/.config/agent-cli/config.toml`
+1.  CLI flag (`--config` on agent commands, `--path` on `agent-cli config ...`)
+2.  `$AGENT_CLI_CONFIG_HOME/config.toml` if set
+3.  `./agent-cli-config.toml` (in the current directory)
+4.  `$XDG_CONFIG_HOME/agent-cli/config.toml` if `XDG_CONFIG_HOME` is set and non-empty, otherwise `~/.config/agent-cli/config.toml`
 
 You can also specify a path to a configuration file using the `--config` option, e.g., `agent-cli transcribe --config /path/to/your/config.toml`.
 
 Command-line options always take precedence over settings in the configuration file.
+
+#### Environment variable overrides
+
+Use `AGENT_CLI_CONFIG_HOME` to redirect the user-level config to a directory of your choice:
+
+```bash
+# use a project-scoped config
+AGENT_CLI_CONFIG_HOME=./.agent-cli agent-cli chat ...
+```
+
+Use `XDG_CONFIG_HOME` to follow XDG-style config placement when no `AGENT_CLI_CONFIG_HOME` is set:
+
+```bash
+# follow XDG (e.g. inside a sandbox or container)
+XDG_CONFIG_HOME=/workspace/.config agent-cli chat ...
+```
+
+Config paths are resolved when `agent-cli` starts, so set these variables before invoking the command.
 
 #### Managing Configuration
 
@@ -515,11 +535,15 @@ agent-cli config edit
 
  Config files are TOML format and searched in order:
 
-  1 ./agent-cli-config.toml (project-local)
-  2 ~/.config/agent-cli/config.toml (user default)
+  1 $AGENT_CLI_CONFIG_HOME/config.toml (if set)
+  2 ./agent-cli-config.toml (project-local)
+  3 $XDG_CONFIG_HOME/agent-cli/config.toml (if set)
+  4 ~/.config/agent-cli/config.toml (user default)
 
  Settings in [defaults] apply to all commands. Override per-command with sections like
- [chat] or [transcribe]. CLI arguments override config file settings.
+ [chat] or [transcribe]. CLI arguments override config file settings. Set
+ $AGENT_CLI_CONFIG_HOME or $XDG_CONFIG_HOME before startup to change the user-level
+ config path.
 
 ╭─ Options ──────────────────────────────────────────────────────────────────────────────╮
 │ --help  -h        Show this message and exit.                                          │
