@@ -158,6 +158,7 @@ The setup scripts automatically install:
   - [Installation Commands](#installation-commands)
     - [Installing Optional Extras](#installing-optional-extras)
   - [Configuration](#configuration)
+    - [Environment variable overrides](#environment-variable-overrides)
     - [Managing Configuration](#managing-configuration)
     - [Provider Defaults](#provider-defaults)
   - [`autocorrect`](#autocorrect)
