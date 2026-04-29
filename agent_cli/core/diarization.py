@@ -137,9 +137,8 @@ class SpeakerDiarizer:
             device: Torch device to use. Auto-detected when omitted.
 
         """
-        import torch  # noqa: PLC0415
-
         _check_pyannote_installed()
+        import torch  # noqa: PLC0415
         from pyannote.audio import Pipeline  # noqa: PLC0415
 
         self.pipeline = Pipeline.from_pretrained(
