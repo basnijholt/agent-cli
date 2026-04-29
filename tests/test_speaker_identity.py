@@ -128,6 +128,76 @@ def test_resolve_speaker_identities_enrolls_named_profile(tmp_path: Path) -> Non
     assert store["profiles"][0]["embeddings"] == [[1.0, 0.0]]
 
 
+def test_resolve_speaker_identities_disabled_skips_invalid_profile_file(
+    tmp_path: Path,
+) -> None:
+    profiles_file = tmp_path / "speaker-profiles.json"
+    profiles_file.write_text("{not valid json", encoding="utf-8")
+    segments = [DiarizedSegment(speaker="SPEAKER_00", start=0.0, end=2.0)]
+
+    with patch("agent_cli.core.speaker_identity.extract_speaker_embeddings") as mock_extract:
+        label_map = resolve_speaker_identities(
+            audio_path=tmp_path / "audio.wav",
+            segments=segments,
+            hf_token="token",  # noqa: S106
+            profiles_file=profiles_file,
+            identify_speakers=False,
+        )
+
+    assert label_map == {}
+    mock_extract.assert_not_called()
+
+
+def test_resolve_speaker_identities_merges_unknown_enrollment_into_existing_name(
+    tmp_path: Path,
+) -> None:
+    profiles_file = tmp_path / "speaker-profiles.json"
+    profiles_file.write_text(
+        json.dumps(
+            {
+                "version": 1,
+                "embedding_model": "pyannote/wespeaker-voxceleb-resnet34-LM",
+                "next_unknown_id": 2,
+                "profiles": [
+                    {
+                        "id": "alice",
+                        "name": "Alice",
+                        "anonymous": False,
+                        "embeddings": [[1.0, 0.0]],
+                    },
+                    {
+                        "id": "UNKNOWN_001",
+                        "name": None,
+                        "anonymous": True,
+                        "embeddings": [[0.0, 1.0]],
+                    },
+                ],
+            },
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    segments = [DiarizedSegment(speaker="SPEAKER_00", start=0.0, end=2.0)]
+
+    with patch(
+        "agent_cli.core.speaker_identity.extract_speaker_embeddings",
+        return_value={"SPEAKER_00": [0.0, 1.0]},
+    ):
+        label_map = resolve_speaker_identities(
+            audio_path=tmp_path / "audio.wav",
+            segments=segments,
+            hf_token="token",  # noqa: S106
+            profiles_file=profiles_file,
+            enroll_speakers="UNKNOWN_001=Alice",
+        )
+
+    assert label_map == {"SPEAKER_00": "Alice"}
+    store = load_speaker_profile_store(profiles_file)
+    assert [profile["name"] for profile in store["profiles"]] == ["Alice"]
+    assert store["profiles"][0]["id"] == "alice"
+    assert store["profiles"][0]["embeddings"] == [[1.0, 0.0], [0.0, 1.0], [0.0, 1.0]]
+
+
 def test_resolve_speaker_identities_enrolls_before_remembering_unknowns(
     tmp_path: Path,
 ) -> None:
