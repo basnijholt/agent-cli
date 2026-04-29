@@ -179,7 +179,7 @@ def _resolve_review_audio_source(
             session_gap=session_gap,
         )
 
-    recording_index = last_recording or 1
+    recording_index = 1 if last_recording is None else last_recording
     if recording_index < 1:
         msg = "--last-recording must be 1 or greater."
         raise ValueError(msg)
@@ -442,6 +442,7 @@ def list_speakers(
             help="Output profile metadata as JSON without embedding vectors.",
         ),
     ] = False,
+    _config_file: str | None = opts.CONFIG_FILE,
 ) -> None:
     """List stored diarization speaker profiles."""
     path = speaker_profiles_file.expanduser()
@@ -500,6 +501,7 @@ def rename_speaker(
             help="Output the renamed profile metadata as JSON.",
         ),
     ] = False,
+    _config_file: str | None = opts.CONFIG_FILE,
 ) -> None:
     """Rename a stored speaker profile without changing its embeddings."""
     path = speaker_profiles_file.expanduser()
@@ -556,6 +558,7 @@ def merge_speakers(
             help="Output the merged target profile metadata as JSON.",
         ),
     ] = False,
+    _config_file: str | None = opts.CONFIG_FILE,
 ) -> None:
     """Merge a duplicate speaker profile into the profile to keep."""
     path = speaker_profiles_file.expanduser()
@@ -648,6 +651,7 @@ def review_speakers(
             help="Audio player command to use for snippets (default: afplay, ffplay, aplay, or paplay).",
         ),
     ] = None,
+    _config_file: str | None = opts.CONFIG_FILE,
 ) -> None:
     """Interactively review diarized speakers by listening to snippets."""
     if speakers is not None and (min_speakers is not None or max_speakers is not None):
@@ -703,33 +707,39 @@ def review_speakers(
     )
 
     changed = False
-    with TemporaryDirectory(prefix="agent-cli-speakers-") as temp_dir:
-        snippet_dir = Path(temp_dir)
-        for label in _speaker_labels_by_first_turn(segments):
-            segment = _best_segment_for_speaker(segments, label)
-            if segment is None:
-                continue
-            try:
-                snippet_path = _write_speaker_snippet(
-                    audio_path=audio_path,
-                    segment=segment,
-                    output_dir=snippet_dir,
-                    seconds=snippet_seconds,
+    try:
+        with TemporaryDirectory(prefix="agent-cli-speakers-") as temp_dir:
+            snippet_dir = Path(temp_dir)
+            for label in _speaker_labels_by_first_turn(segments):
+                segment = _best_segment_for_speaker(segments, label)
+                if segment is None:
+                    continue
+                try:
+                    snippet_path = _write_speaker_snippet(
+                        audio_path=audio_path,
+                        segment=segment,
+                        output_dir=snippet_dir,
+                        seconds=snippet_seconds,
+                    )
+                except (OSError, RuntimeError, subprocess.CalledProcessError) as exc:
+                    console.print(f"[yellow]Could not create snippet for {label}: {exc}[/yellow]")
+                    continue
+                changed = (
+                    _review_speaker(
+                        label=label,
+                        snippet_path=snippet_path,
+                        embedding=embeddings.get(label),
+                        match=matches.get(label),
+                        store=store,
+                        player=player,
+                    )
+                    or changed
                 )
-            except (OSError, RuntimeError, subprocess.CalledProcessError) as exc:
-                console.print(f"[yellow]Could not create snippet for {label}: {exc}[/yellow]")
-                continue
-            changed = (
-                _review_speaker(
-                    label=label,
-                    snippet_path=snippet_path,
-                    embedding=embeddings.get(label),
-                    match=matches.get(label),
-                    store=store,
-                    player=player,
-                )
-                or changed
-            )
+    except typer.Exit:
+        if changed:
+            save_speaker_profile_store(profiles_path, store)
+            console.print(f"[green]Saved speaker profiles to {profiles_path}.[/green]")
+        raise
 
     if changed:
         save_speaker_profile_store(profiles_path, store)

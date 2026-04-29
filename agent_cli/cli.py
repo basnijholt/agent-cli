@@ -103,12 +103,17 @@ def set_config_defaults(ctx: typer.Context, config_file: str | None) -> dict[str
         ctx.default_map = wildcard_config
         return config
 
+    parent_config: dict[str, Any] = {}
+
     # For nested subcommands (e.g., "memory proxy"), build "memory.proxy"
+    # and apply the parent section as shared defaults for its subcommands.
     if ctx.parent and ctx.parent.command.name and ctx.parent.command.name != "agent-cli":
-        command_key = f"{ctx.parent.command.name}.{command_key}"
+        parent_key = ctx.parent.command.name
+        command_key = f"{parent_key}.{command_key}"
+        parent_config = normalize_provider_defaults(config.get(parent_key, {}))
 
     command_config = normalize_provider_defaults(config.get(command_key, {}))
-    ctx.default_map = {**wildcard_config, **command_config}
+    ctx.default_map = {**wildcard_config, **parent_config, **command_config}
     return config
 
 
