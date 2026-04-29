@@ -26,6 +26,12 @@ from agent_cli.core.diarization import (
     align_words_to_speakers,
     format_diarized_output,
 )
+from agent_cli.core.speaker_identity import (
+    DEFAULT_SPEAKER_MATCH_THRESHOLD,
+    DEFAULT_SPEAKER_PROFILES_FILE,
+    apply_speaker_label_map,
+    resolve_speaker_identities,
+)
 from agent_cli.core.utils import print_command_line_args, print_with_style
 
 DEFAULT_TRANSCRIPTION_LOG = Path.home() / ".config" / "agent-cli" / "transcriptions.jsonl"
@@ -59,6 +65,20 @@ RETRANSCRIBE_OPTION: bool = typer.Option(
     "--retranscribe",
     help="Re-run ASR on the combined audio instead of using the logged transcribe-live text.",
 )
+LAST_SESSION_OPTION: int | None = typer.Option(
+    None,
+    "--last-session",
+    "--last-recording",
+    help=(
+        "Select the Nth most recent inferred transcribe-live recording session "
+        "(1=most recent, 2=second-to-last)."
+    ),
+)
+SESSION_GAP_OPTION: float = typer.Option(
+    300.0,
+    "--session-gap",
+    help="Maximum seconds between saved chunks before they are treated as separate sessions.",
+)
 
 if TYPE_CHECKING:
     from typer.models import OptionInfo
@@ -78,9 +98,11 @@ class LiveSegment:
 class DiarizeLiveSessionOptions:
     """Options for retroactive live-session diarization."""
 
-    date: date
-    start: time
-    end: time
+    date: date | None = None
+    start: time | None = None
+    end: time | None = None
+    last_session: int | None = None
+    session_gap: float = 300.0
     transcription_log: Path = DEFAULT_TRANSCRIPTION_LOG
     output_dir: Path = DEFAULT_OUTPUT_DIR
     diarize_format: opts.DiarizeFormat = "inline"
@@ -90,13 +112,41 @@ class DiarizeLiveSessionOptions:
     align_words: bool = False
     align_language: str = "en"
     hf_token: str | None = None
+    enroll_speakers: str | None = None
+    identify_speakers: bool = True
+    remember_unknown_speakers: bool = False
+    speaker_profiles_file: Path | None = DEFAULT_SPEAKER_PROFILES_FILE
+    speaker_match_threshold: float = DEFAULT_SPEAKER_MATCH_THRESHOLD
     prepare_only: bool = False
     retranscribe: bool = False
 
     def __post_init__(self) -> None:
         """Validate option combinations."""
-        if self.end <= self.start:
-            msg = "--end must be later than --start on the same day."
+        if self.last_session is not None:
+            if self.last_session < 1:
+                msg = "--last-session must be 1 or greater."
+                raise ValueError(msg)
+            if self.start is not None or self.end is not None:
+                msg = "Use either --last-session or --start/--end, not both."
+                raise ValueError(msg)
+        else:
+            if self.start is None or self.end is None:
+                msg = "--start and --end are required unless --last-session is used."
+                raise ValueError(msg)
+            if self.date is None:
+                msg = "--date is required when constructing time-window options."
+                raise ValueError(msg)
+            if self.end <= self.start:
+                msg = "--end must be later than --start on the same day."
+                raise ValueError(msg)
+        if self.session_gap < 0:
+            msg = "--session-gap must be zero or greater."
+            raise ValueError(msg)
+        if not 0 <= self.speaker_match_threshold <= 1:
+            msg = "--speaker-match-threshold must be between 0 and 1."
+            raise ValueError(msg)
+        if self.prepare_only and (self.enroll_speakers or self.remember_unknown_speakers):
+            msg = "Speaker identity enrollment requires diarization; remove --prepare-only."
             raise ValueError(msg)
         if self.speakers is not None and (
             self.min_speakers is not None or self.max_speakers is not None
@@ -113,8 +163,9 @@ def _saved_audio_duration_seconds(audio_path: Path) -> float:
     """Return the decoded duration of a saved audio chunk."""
     import torchaudio  # noqa: PLC0415
 
+    info_fn = getattr(torchaudio, "info", None)
     try:
-        metadata = torchaudio.info(str(audio_path))
+        metadata = info_fn(str(audio_path)) if callable(info_fn) else None
     except (OSError, RuntimeError, ValueError):
         metadata = None
 
@@ -170,6 +221,16 @@ def _dedupe_segments(segments: list[LiveSegment]) -> list[LiveSegment]:
     return deduped
 
 
+def segment_time_range(segment: LiveSegment) -> tuple[datetime, datetime]:
+    """Return the approximate start and end timestamp for a saved live segment."""
+    duration_seconds = max(segment.duration_seconds, 0.0)
+    if segment.audio_file.exists():
+        duration_seconds = _saved_audio_duration_seconds(segment.audio_file)
+    segment_end = segment.timestamp
+    segment_start = segment_end - timedelta(seconds=duration_seconds)
+    return segment_start, segment_end
+
+
 def select_segments_in_range(
     segments: list[LiveSegment],
     *,
@@ -183,14 +244,78 @@ def select_segments_in_range(
         tzinfo = segment.timestamp.tzinfo
         window_start = datetime.combine(target_date, start_time, tzinfo=tzinfo)
         window_end = datetime.combine(target_date, end_time, tzinfo=tzinfo)
-        segment_end = segment.timestamp
-        duration_seconds = max(segment.duration_seconds, 0.0)
-        if segment.audio_file.exists():
-            duration_seconds = _saved_audio_duration_seconds(segment.audio_file)
-        segment_start = segment_end - timedelta(seconds=duration_seconds)
+        segment_start, segment_end = segment_time_range(segment)
         if segment_end >= window_start and segment_start <= window_end:
             selected.append(segment)
     return selected
+
+
+def infer_recording_sessions(
+    segments: list[LiveSegment],
+    *,
+    max_gap_seconds: float = 300.0,
+) -> list[list[LiveSegment]]:
+    """Group adjacent saved live chunks into inferred recording sessions."""
+    if not segments:
+        return []
+
+    timed_segments = [
+        (segment, *segment_time_range(segment))
+        for segment in sorted(segments, key=lambda item: item.timestamp)
+    ]
+    sessions: list[list[LiveSegment]] = []
+    current: list[LiveSegment] = []
+    current_end: datetime | None = None
+
+    for segment, segment_start, segment_end in timed_segments:
+        if current_end is None:
+            current = [segment]
+            current_end = segment_end
+            continue
+
+        gap_seconds = (segment_start - current_end).total_seconds()
+        if gap_seconds <= max_gap_seconds:
+            current.append(segment)
+            current_end = max(current_end, segment_end)
+            continue
+
+        sessions.append(current)
+        current = [segment]
+        current_end = segment_end
+
+    if current:
+        sessions.append(current)
+    return sessions
+
+
+def session_time_range(segments: list[LiveSegment]) -> tuple[datetime, datetime]:
+    """Return the approximate start and end timestamp for a selected live session."""
+    ranges = [segment_time_range(segment) for segment in segments]
+    return min(start for start, _ in ranges), max(end for _, end in ranges)
+
+
+def session_overlaps_date(segments: list[LiveSegment], target_date: date) -> bool:
+    """Return whether an inferred session overlaps a local calendar date."""
+    session_start, session_end = session_time_range(segments)
+    return session_start.date() <= target_date <= session_end.date()
+
+
+def select_recent_session(
+    segments: list[LiveSegment],
+    *,
+    index: int,
+    max_gap_seconds: float,
+    target_date: date | None = None,
+) -> list[LiveSegment]:
+    """Select the Nth most recent inferred live recording session."""
+    sessions = infer_recording_sessions(segments, max_gap_seconds=max_gap_seconds)
+    if target_date is not None:
+        sessions = [session for session in sessions if session_overlaps_date(session, target_date)]
+    if len(sessions) < index:
+        suffix = f" on {target_date.isoformat()}" if target_date else ""
+        msg = f"Recording session #{index} not found{suffix}."
+        raise RuntimeError(msg)
+    return sessions[-index]
 
 
 def session_basename(segments: list[LiveSegment]) -> str:
@@ -345,11 +470,14 @@ def save_metadata(
     retranscribe_request: dict[str, Any] | None,
 ) -> None:
     """Persist the selected session metadata for debugging and replay."""
+    session_start, session_end = session_time_range(segments)
     payload: dict[str, Any] = {
         "mode": mode,
         "combined_audio": str(combined_audio),
         "transcript_path": str(transcript_path),
         "segment_count": len(segments),
+        "session_start": session_start.isoformat(),
+        "session_end": session_end.isoformat(),
         "segment_files": [str(segment.audio_file) for segment in segments],
         "timestamps": [segment.timestamp.isoformat() for segment in segments],
         "logged_transcript_length": len(build_logged_transcript(segments)),
@@ -390,6 +518,19 @@ def run_logged_diarization(
     if not speaker_segments:
         msg = "Diarization returned no speaker segments."
         raise RuntimeError(msg)
+
+    label_map = resolve_speaker_identities(
+        audio_path=combined_audio,
+        segments=speaker_segments,
+        hf_token=hf_token,
+        profiles_file=options.speaker_profiles_file,
+        enroll_speakers=options.enroll_speakers,
+        identify_speakers=options.identify_speakers,
+        remember_unknown_speakers=options.remember_unknown_speakers,
+        threshold=options.speaker_match_threshold,
+        device=diarizer.device,
+    )
+    speaker_segments = apply_speaker_label_map(speaker_segments, label_map)
 
     speaker_segments = align_logged_segments_with_speakers(
         segments=segments,
@@ -550,6 +691,11 @@ def run_retranscribe(
         max_speakers=options.speakers if options.speakers is not None else options.max_speakers,
         align_words=options.align_words,
         align_language=options.align_language,
+        enroll_speakers=options.enroll_speakers,
+        identify_speakers=options.identify_speakers,
+        remember_unknown_speakers=options.remember_unknown_speakers,
+        speaker_profiles_file=options.speaker_profiles_file,
+        speaker_match_threshold=options.speaker_match_threshold,
     )
     result = asyncio.run(
         _async_main(
@@ -616,14 +762,30 @@ def run_retranscribe(
         transcript_path.write_text(transcript.rstrip() + "\n", encoding="utf-8")
 
 
-def run_session(options: DiarizeLiveSessionOptions, *, config_file: str | None = None) -> int:
-    """Diarize a selected live session window."""
-    log_path = options.transcription_log.expanduser()
-    if not log_path.exists():
-        msg = f"Transcription log not found: {log_path}"
-        raise FileNotFoundError(msg)
+def _select_session_segments(
+    options: DiarizeLiveSessionOptions,
+    segments: list[LiveSegment],
+    log_path: Path,
+) -> list[LiveSegment]:
+    """Select the requested live-session segments."""
+    if options.last_session is not None:
+        selected = select_recent_session(
+            segments,
+            index=options.last_session,
+            max_gap_seconds=options.session_gap,
+            target_date=options.date,
+        )
+        session_start, session_end = session_time_range(selected)
+        print(
+            "Selected inferred recording session "
+            f"#{options.last_session}: {session_start.isoformat()} to "
+            f"{session_end.isoformat()} ({len(selected)} segment(s))",
+        )
+        return selected
 
-    segments = load_segments(log_path)
+    assert options.date is not None
+    assert options.start is not None
+    assert options.end is not None
     selected = select_segments_in_range(
         segments,
         target_date=options.date,
@@ -636,6 +798,18 @@ def run_session(options: DiarizeLiveSessionOptions, *, config_file: str | None =
             f"{options.date.isoformat()} {options.start} to {options.end}."
         )
         raise RuntimeError(msg)
+    return selected
+
+
+def run_session(options: DiarizeLiveSessionOptions, *, config_file: str | None = None) -> int:
+    """Diarize a selected live session window."""
+    log_path = options.transcription_log.expanduser()
+    if not log_path.exists():
+        msg = f"Transcription log not found: {log_path}"
+        raise FileNotFoundError(msg)
+
+    segments = load_segments(log_path)
+    selected = _select_session_segments(options, segments, log_path)
 
     missing = [segment.audio_file for segment in selected if not segment.audio_file.exists()]
     if missing:
@@ -646,7 +820,8 @@ def run_session(options: DiarizeLiveSessionOptions, *, config_file: str | None =
     ensure_hf_token(options)
 
     basename = session_basename(selected)
-    output_dir = options.output_dir.expanduser() / options.date.strftime("%Y/%m/%d")
+    output_date = options.date or selected[-1].timestamp.date()
+    output_dir = options.output_dir.expanduser() / output_date.strftime("%Y/%m/%d")
     output_dir.mkdir(parents=True, exist_ok=True)
     manifest_path = output_dir / f"{basename}.ffconcat"
     combined_audio = output_dir / f"{basename}.wav"
@@ -703,16 +878,18 @@ def diarize_live_session(
         "--date",
         help="Date of the live session in YYYY-MM-DD format. Defaults to today.",
     ),
-    start: str = typer.Option(
-        ...,
+    start: str | None = typer.Option(
+        None,
         "--start",
-        help="Start time of the session in HH:MM or HH:MM:SS.",
+        help="Start time of the session in HH:MM or HH:MM:SS. Required unless --last-session is used.",
     ),
-    end: str = typer.Option(
-        ...,
+    end: str | None = typer.Option(
+        None,
         "--end",
-        help="End time of the session in HH:MM or HH:MM:SS.",
+        help="End time of the session in HH:MM or HH:MM:SS. Required unless --last-session is used.",
     ),
+    last_session: int | None = LAST_SESSION_OPTION,
+    session_gap: float = SESSION_GAP_OPTION,
     transcription_log: Path = TRANSCRIPTION_LOG_OPTION,
     output_dir: Path = OUTPUT_DIR_OPTION,
     diarize_format: opts.DiarizeFormat = opts.DIARIZE_FORMAT,
@@ -727,6 +904,11 @@ def diarize_live_session(
     align_words: bool = ALIGN_WORDS_OPTION,
     align_language: str = opts.ALIGN_LANGUAGE,
     hf_token: str | None = opts.HF_TOKEN,
+    enroll_speakers: str | None = opts.ENROLL_SPEAKERS,
+    identify_speakers: bool = opts.IDENTIFY_SPEAKERS,
+    remember_unknown_speakers: bool = opts.REMEMBER_UNKNOWN_SPEAKERS,
+    speaker_profiles_file: Path = opts.SPEAKER_PROFILES_FILE,
+    speaker_match_threshold: float = opts.SPEAKER_MATCH_THRESHOLD,
     prepare_only: bool = PREPARE_ONLY_OPTION,
     retranscribe: bool = RETRANSCRIBE_OPTION,
     config_file: str | None = opts.CONFIG_FILE,
@@ -740,6 +922,9 @@ def diarize_live_session(
 
     Examples:
     - `agent-cli diarize-live-session --date 2026-04-22 --start 11:32 --end 12:29 --speakers 3`
+    - `agent-cli diarize-live-session --last-session 1 --speakers 3`
+    - `agent-cli diarize-live-session --last-session 1 --remember-unknown-speakers`
+    - `agent-cli speakers rename UNKNOWN_001 Alice`
     - `agent-cli diarize-live-session --start 09:00 --end 09:30 --prepare-only`
     - `agent-cli diarize-live-session --date 2026-04-22 --start 11:32 --end 12:29 --diarize-format json`
 
@@ -748,12 +933,15 @@ def diarize_live_session(
         print_command_line_args(locals())
 
     try:
+        session_date = date.fromisoformat(date_value) if date_value else None
+        if last_session is None and session_date is None:
+            session_date = datetime.now().astimezone().date()
         options = DiarizeLiveSessionOptions(
-            date=date.fromisoformat(date_value)
-            if date_value
-            else datetime.now().astimezone().date(),
-            start=parse_clock_time(start),
-            end=parse_clock_time(end),
+            date=session_date,
+            start=parse_clock_time(start) if start is not None else None,
+            end=parse_clock_time(end) if end is not None else None,
+            last_session=last_session,
+            session_gap=session_gap,
             transcription_log=transcription_log,
             output_dir=output_dir,
             diarize_format=diarize_format,
@@ -763,6 +951,11 @@ def diarize_live_session(
             align_words=align_words,
             align_language=align_language,
             hf_token=hf_token,
+            enroll_speakers=enroll_speakers,
+            identify_speakers=identify_speakers,
+            remember_unknown_speakers=remember_unknown_speakers,
+            speaker_profiles_file=speaker_profiles_file,
+            speaker_match_threshold=speaker_match_threshold,
             prepare_only=prepare_only,
             retranscribe=retranscribe,
         )

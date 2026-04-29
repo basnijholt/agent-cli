@@ -15,9 +15,11 @@ from agent_cli.agents.diarize_live_session import (
     align_logged_segments_with_speakers,
     build_logged_transcript,
     build_retranscribe_request,
+    infer_recording_sessions,
     parse_clock_time,
     run_retranscribe,
     run_session,
+    select_recent_session,
     select_segments_in_range,
     session_basename,
     transcript_suffix,
@@ -47,6 +49,23 @@ def test_options_reject_conflicting_speaker_hints() -> None:
             end=parse_clock_time("12:29"),
             speakers=3,
             min_speakers=2,
+        )
+
+
+def test_options_accept_last_session_without_times() -> None:
+    options = DiarizeLiveSessionOptions(last_session=2, prepare_only=True)
+
+    assert options.last_session == 2
+    assert options.start is None
+    assert options.end is None
+
+
+def test_options_reject_enrollment_with_prepare_only() -> None:
+    with pytest.raises(ValueError, match="Speaker identity enrollment"):
+        DiarizeLiveSessionOptions(
+            last_session=1,
+            prepare_only=True,
+            enroll_speakers="SPEAKER_00=Alice",
         )
 
 
@@ -101,6 +120,33 @@ def test_select_segments_in_range_uses_saved_audio_duration_when_available(
     assert [segment.audio_file.name for segment in selected] == ["saved.mp3"]
 
 
+def test_infer_recording_sessions_groups_adjacent_chunks_by_gap() -> None:
+    segments = [
+        _segment("2026-04-23T10:00:10-07:00", "one.mp3", duration_seconds=10.0),
+        _segment("2026-04-23T10:00:30-07:00", "two.mp3", duration_seconds=5.0),
+        _segment("2026-04-23T10:20:00-07:00", "three.mp3", duration_seconds=5.0),
+    ]
+
+    sessions = infer_recording_sessions(segments, max_gap_seconds=60.0)
+
+    assert [[segment.audio_file.name for segment in session] for session in sessions] == [
+        ["one.mp3", "two.mp3"],
+        ["three.mp3"],
+    ]
+
+
+def test_select_recent_session_picks_nth_most_recent_session() -> None:
+    segments = [
+        _segment("2026-04-23T10:00:10-07:00", "first-one.mp3", duration_seconds=10.0),
+        _segment("2026-04-23T10:00:30-07:00", "first-two.mp3", duration_seconds=5.0),
+        _segment("2026-04-23T11:00:00-07:00", "second.mp3", duration_seconds=5.0),
+    ]
+
+    selected = select_recent_session(segments, index=2, max_gap_seconds=60.0)
+
+    assert [segment.audio_file.name for segment in selected] == ["first-one.mp3", "first-two.mp3"]
+
+
 def test_run_retranscribe_uses_transcribe_config_defaults(tmp_path: Path) -> None:
     options = DiarizeLiveSessionOptions(
         date=date.fromisoformat("2026-04-23"),
@@ -149,6 +195,38 @@ def test_run_retranscribe_uses_transcribe_config_defaults(tmp_path: Path) -> Non
     assert kwargs["openai_llm_cfg"].llm_openai_model == "gpt-5-mini"
 
 
+def test_run_retranscribe_passes_speaker_identity_options(tmp_path: Path) -> None:
+    speaker_profiles_file = tmp_path / "speaker-profiles.json"
+    options = DiarizeLiveSessionOptions(
+        date=date.fromisoformat("2026-04-23"),
+        start=parse_clock_time("11:32"),
+        end=parse_clock_time("12:29"),
+        retranscribe=True,
+        hf_token="token",  # noqa: S106
+        enroll_speakers="SPEAKER_00=Alice",
+        speaker_profiles_file=speaker_profiles_file,
+        speaker_match_threshold=0.8,
+        remember_unknown_speakers=True,
+    )
+    combined_audio = tmp_path / "meeting.wav"
+    combined_audio.write_bytes(b"wav")
+    transcript_path = tmp_path / "meeting.txt"
+    mock_async_main = AsyncMock(return_value={"transcript": "[Alice]: hello"})
+
+    with (
+        patch("agent_cli.agents.diarize_live_session.agent_config.load_config", return_value={}),
+        patch("agent_cli.agents.transcribe._async_main", mock_async_main),
+    ):
+        run_retranscribe(options, combined_audio, transcript_path)
+
+    assert mock_async_main.await_args is not None
+    diarization_cfg = mock_async_main.await_args.kwargs["diarization_cfg"]
+    assert diarization_cfg.enroll_speakers == "SPEAKER_00=Alice"
+    assert diarization_cfg.speaker_profiles_file == speaker_profiles_file
+    assert diarization_cfg.speaker_match_threshold == 0.8
+    assert diarization_cfg.remember_unknown_speakers is True
+
+
 def test_run_session_passes_config_file_to_retranscribe(tmp_path: Path) -> None:
     segment_audio = tmp_path / "segment.mp3"
     segment_audio.write_bytes(b"mp3")
@@ -184,6 +262,7 @@ def test_run_session_passes_config_file_to_retranscribe(tmp_path: Path) -> None:
             output_dir=output_dir,
             retranscribe=True,
             hf_token="token",  # noqa: S106
+            speaker_profiles_file=tmp_path / "speaker-profiles.json",
         )
         exit_code = run_session(
             options,
@@ -192,6 +271,62 @@ def test_run_session_passes_config_file_to_retranscribe(tmp_path: Path) -> None:
 
     assert exit_code == 0
     assert mock_run.call_args.kwargs["config_file"] == "custom.toml"
+
+
+def test_run_session_selects_last_inferred_session(tmp_path: Path) -> None:
+    audio_files = [tmp_path / f"{name}.mp3" for name in ("first-one", "first-two", "second")]
+    for audio_file in audio_files:
+        audio_file.write_bytes(b"mp3")
+    log_path = tmp_path / "transcriptions.jsonl"
+    entries = [
+        {
+            "timestamp": "2026-04-23T10:00:10-07:00",
+            "audio_file": str(audio_files[0]),
+            "duration_seconds": 10.0,
+            "raw_output": "first",
+        },
+        {
+            "timestamp": "2026-04-23T10:00:30-07:00",
+            "audio_file": str(audio_files[1]),
+            "duration_seconds": 5.0,
+            "raw_output": "session",
+        },
+        {
+            "timestamp": "2026-04-23T11:00:00-07:00",
+            "audio_file": str(audio_files[2]),
+            "duration_seconds": 5.0,
+            "raw_output": "second",
+        },
+    ]
+    log_path.write_text(
+        "\n".join(json.dumps(entry) for entry in entries) + "\n",
+        encoding="utf-8",
+    )
+
+    with (
+        patch("agent_cli.agents.diarize_live_session.write_ffconcat_manifest"),
+        patch("agent_cli.agents.diarize_live_session.combine_segments"),
+        patch("agent_cli.agents.diarize_live_session.save_metadata") as mock_save_metadata,
+        patch(
+            "agent_cli.agents.diarize_live_session._saved_audio_duration_seconds",
+            return_value=1.0,
+        ),
+    ):
+        options = DiarizeLiveSessionOptions(
+            last_session=2,
+            session_gap=60,
+            transcription_log=log_path,
+            output_dir=tmp_path / "out",
+            speaker_profiles_file=tmp_path / "speaker-profiles.json",
+            prepare_only=True,
+        )
+        exit_code = run_session(
+            options,
+        )
+
+    assert exit_code == 0
+    selected = mock_save_metadata.call_args.kwargs["segments"]
+    assert [segment.audio_file.name for segment in selected] == ["first-one.mp3", "first-two.mp3"]
 
 
 def test_session_basename_uses_selected_time_range() -> None:
@@ -295,6 +430,7 @@ def test_align_logged_segments_with_speakers_offsets_words_per_chunk() -> None:
             "agent_cli.agents.diarize_live_session._saved_audio_duration_seconds",
             side_effect=[2.0, 3.0],
         ),
+        patch("agent_cli.agents.diarize_live_session._logged_alignment_device", return_value="cpu"),
     ):
         result = align_logged_segments_with_speakers(
             segments=segments,
@@ -341,6 +477,7 @@ def test_align_logged_segments_with_speakers_uses_saved_audio_duration_offsets()
             "agent_cli.agents.diarize_live_session._saved_audio_duration_seconds",
             side_effect=[2.6, 2.0],
         ),
+        patch("agent_cli.agents.diarize_live_session._logged_alignment_device", return_value="cpu"),
     ):
         result = align_logged_segments_with_speakers(
             segments=segments,

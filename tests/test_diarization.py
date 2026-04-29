@@ -241,6 +241,8 @@ class TestSpeakerDiarizer:
         mock_pipeline = MagicMock()
         mock_pipeline_class = MagicMock()
         mock_pipeline_class.from_pretrained.return_value = mock_pipeline
+        mock_torch = MagicMock()
+        mock_torch.device.side_effect = lambda value: value
 
         with (
             patch(
@@ -249,7 +251,10 @@ class TestSpeakerDiarizer:
             patch("agent_cli.core.diarization._get_torch_device", return_value="mps"),
             patch.dict(
                 "sys.modules",
-                {"pyannote.audio": MagicMock(Pipeline=mock_pipeline_class)},
+                {
+                    "pyannote.audio": MagicMock(Pipeline=mock_pipeline_class),
+                    "torch": mock_torch,
+                },
             ),
         ):
             diarizer = SpeakerDiarizer(
@@ -270,8 +275,6 @@ class TestSpeakerDiarizer:
 
     def test_diarizer_diarize(self, tmp_path: Path):
         """Test diarization with mocked pipeline."""
-        import torch  # noqa: PLC0415
-
         from agent_cli.core.diarization import SpeakerDiarizer  # noqa: PLC0415
 
         # Create a mock diarization result
@@ -298,8 +301,9 @@ class TestSpeakerDiarizer:
         mock_pipeline_class = MagicMock()
         mock_pipeline_class.from_pretrained.return_value = mock_pipeline
 
-        # Mock torchaudio.load
-        mock_waveform = torch.zeros(1, 16000)
+        mock_torch = MagicMock()
+        mock_torch.device.side_effect = lambda value: value
+        mock_waveform = MagicMock()
         mock_sample_rate = 16000
 
         with (
@@ -307,9 +311,15 @@ class TestSpeakerDiarizer:
             patch("agent_cli.core.diarization._get_torch_device", return_value="cpu"),
             patch.dict(
                 "sys.modules",
-                {"pyannote.audio": MagicMock(Pipeline=mock_pipeline_class)},
+                {
+                    "pyannote.audio": MagicMock(Pipeline=mock_pipeline_class),
+                    "torch": mock_torch,
+                },
             ),
-            patch("torchaudio.load", return_value=(mock_waveform, mock_sample_rate)),
+            patch(
+                "agent_cli.core.diarization._load_audio_for_diarization",
+                return_value=(mock_waveform, mock_sample_rate),
+            ),
         ):
             diarizer = SpeakerDiarizer(hf_token="test_token")  # noqa: S106
             audio_file = tmp_path / "test.wav"
@@ -332,8 +342,6 @@ class TestSpeakerDiarizer:
 
     def test_diarizer_diarize_with_speaker_hints(self, tmp_path: Path):
         """Test diarization passes speaker hints to pipeline."""
-        import torch  # noqa: PLC0415
-
         from agent_cli.core.diarization import SpeakerDiarizer  # noqa: PLC0415
 
         mock_annotation = MagicMock()
@@ -349,8 +357,9 @@ class TestSpeakerDiarizer:
         mock_pipeline_class = MagicMock()
         mock_pipeline_class.from_pretrained.return_value = mock_pipeline
 
-        # Mock torchaudio.load
-        mock_waveform = torch.zeros(1, 16000)
+        mock_torch = MagicMock()
+        mock_torch.device.side_effect = lambda value: value
+        mock_waveform = MagicMock()
         mock_sample_rate = 16000
 
         with (
@@ -358,9 +367,15 @@ class TestSpeakerDiarizer:
             patch("agent_cli.core.diarization._get_torch_device", return_value="cpu"),
             patch.dict(
                 "sys.modules",
-                {"pyannote.audio": MagicMock(Pipeline=mock_pipeline_class)},
+                {
+                    "pyannote.audio": MagicMock(Pipeline=mock_pipeline_class),
+                    "torch": mock_torch,
+                },
             ),
-            patch("torchaudio.load", return_value=(mock_waveform, mock_sample_rate)),
+            patch(
+                "agent_cli.core.diarization._load_audio_for_diarization",
+                return_value=(mock_waveform, mock_sample_rate),
+            ),
         ):
             diarizer = SpeakerDiarizer(
                 hf_token="test_token",  # noqa: S106
@@ -546,7 +561,10 @@ class TestAlignTranscriptWithWords:
             AlignedWord(word="world", start=1.0, end=1.5),
         ]
 
-        with patch("agent_cli.core.diarization.align", return_value=mock_words):
+        with (
+            patch("agent_cli.core.diarization.align", return_value=mock_words),
+            patch("agent_cli.core.diarization._get_torch_device", return_value="cpu"),
+        ):
             result = align_transcript_with_words(
                 "hello world",
                 segments,
@@ -598,7 +616,10 @@ class TestAlignTranscriptWithWords:
             DiarizedSegment(speaker="SPEAKER_01", start=2.0, end=4.0),
         ]
 
-        with patch("agent_cli.core.diarization.align", return_value=[]):
+        with (
+            patch("agent_cli.core.diarization.align", return_value=[]),
+            patch("agent_cli.core.diarization._get_torch_device", return_value="cpu"),
+        ):
             result = align_transcript_with_words(
                 "Hello there. How are you?",
                 segments,
