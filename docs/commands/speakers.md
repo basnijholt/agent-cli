@@ -87,6 +87,12 @@ agent-cli speakers list --json
 | `--speaker-profiles-file` | `/home/runner/.config/agent-cli/speaker-profiles.json` | JSON file storing persistent speaker voice embeddings. |
 | `--json` | `false` | Output profile metadata as JSON without embedding vectors. |
 
+### General Options
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--config` | - | Path to a TOML configuration file. |
+
 
 <!-- OUTPUT:END -->
 
@@ -105,6 +111,12 @@ agent-cli speakers list --json
 | `--speaker-profiles-file` | `/home/runner/.config/agent-cli/speaker-profiles.json` | JSON file storing persistent speaker voice embeddings. |
 | `--json` | `false` | Output the renamed profile metadata as JSON. |
 
+### General Options
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--config` | - | Path to a TOML configuration file. |
+
 
 <!-- OUTPUT:END -->
 
@@ -122,6 +134,12 @@ agent-cli speakers list --json
 |--------|---------|-------------|
 | `--speaker-profiles-file` | `/home/runner/.config/agent-cli/speaker-profiles.json` | JSON file storing persistent speaker voice embeddings. |
 | `--json` | `false` | Output the merged target profile metadata as JSON. |
+
+### General Options
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--config` | - | Path to a TOML configuration file. |
 
 
 <!-- OUTPUT:END -->
@@ -157,6 +175,12 @@ agent-cli speakers list --json
 | `--min-speakers` | - | Minimum number of speakers (optional hint for diarization). |
 | `--max-speakers` | - | Maximum number of speakers (optional hint for diarization). |
 | `--speaker-match-threshold` | `0.7` | Cosine-similarity threshold for matching diarized speakers to stored profiles. |
+
+### General Options
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--config` | - | Path to a TOML configuration file. |
 
 
 <!-- OUTPUT:END -->
