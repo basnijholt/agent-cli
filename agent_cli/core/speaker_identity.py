@@ -611,14 +611,24 @@ def _enroll_assignment(
         raise ValueError(msg)
 
     source_profile = _find_profile(store, source_label)
-    should_rename_source = source_profile is not None and source_profile.get("anonymous")
+    renamed_source_profile = (
+        source_profile if source_profile is not None and source_profile.get("anonymous") else None
+    )
+    if renamed_source_profile is not None:
+        target_profile = _find_profile(store, name)
+        if target_profile is not None and target_profile is not renamed_source_profile:
+            renamed_source_profile = merge_speaker_profiles(
+                store,
+                str(renamed_source_profile["id"]),
+                name,
+            )
     for label in labels:
-        if should_rename_source:
+        if renamed_source_profile is not None:
             _add_named_embedding(
                 store,
                 name,
                 embeddings[label],
-                source_profile=source_profile,
+                source_profile=renamed_source_profile,
             )
         else:
             _add_named_embedding(store, name, embeddings[label])
@@ -653,6 +663,9 @@ def resolve_speaker_identities(
 ) -> dict[str, str]:
     """Resolve current diarization labels to persistent speaker names."""
     assignments = parse_speaker_assignments(enroll_speakers)
+    if not assignments and not identify_speakers and not remember_unknown_speakers:
+        return {}
+
     path = (profiles_file or DEFAULT_SPEAKER_PROFILES_FILE).expanduser()
     store = load_speaker_profile_store(path, embedding_model=embedding_model)
     if not _speaker_identities_need_embeddings(

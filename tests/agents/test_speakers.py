@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import tomllib
 from typing import TYPE_CHECKING
 from unittest.mock import MagicMock, patch
 
@@ -19,6 +20,18 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 runner = CliRunner(env={"NO_COLOR": "1", "TERM": "dumb"})
+
+
+def _toml_path(path: str | Path) -> str:
+    return json.dumps(str(path))
+
+
+def test_toml_path_escapes_windows_backslashes() -> None:
+    windows_path = r"C:\Users\Bas\AppData\Local\agent-cli\speaker-profiles.json"
+
+    data = tomllib.loads(f"speaker-profiles-file = {_toml_path(windows_path)}")
+
+    assert data["speaker-profiles-file"] == windows_path
 
 
 def _write_profile_store(path: Path) -> None:
@@ -116,10 +129,10 @@ def test_speakers_list_uses_configured_profile_file(tmp_path: Path) -> None:
     config_file.write_text(
         f"""
 [defaults]
-speaker-profiles-file = "{default_profiles_file}"
+speaker-profiles-file = {_toml_path(default_profiles_file)}
 
 [speakers]
-speaker-profiles-file = "{profiles_file}"
+speaker-profiles-file = {_toml_path(profiles_file)}
 """,
         encoding="utf-8",
     )
@@ -145,7 +158,7 @@ def test_speakers_list_auto_loads_configured_profile_file(
     config_file.write_text(
         f"""
 [defaults]
-speaker-profiles-file = "{profiles_file}"
+speaker-profiles-file = {_toml_path(profiles_file)}
 """,
         encoding="utf-8",
     )
