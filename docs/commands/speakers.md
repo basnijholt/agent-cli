@@ -163,7 +163,7 @@ agent-cli speakers list --json
 |--------|---------|-------------|
 | `--from-file` | - | Review speakers from an existing audio file. |
 | `--last-recording` | - | Review the Nth most recent saved transcribe recording. |
-| `--last-session`, `--last-live-session` | - | Review the Nth most recent inferred transcribe-live session (default source when available). |
+| `--last-live-session` | - | Review the Nth most recent inferred transcribe-live session (default source when available). |
 | `--session-gap` | `300.0` | Maximum seconds between transcribe-live chunks in one session. |
 | `--transcription-log` | `/home/runner/.config/agent-cli/transcriptions.jsonl` | Path to the transcribe-live JSONL log for --last-session. |
 | `--output-dir` | `/home/runner/.cache/agent-cli/speaker-review` | Directory for combined live-session audio and temporary snippets. |
