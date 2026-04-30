@@ -68,7 +68,6 @@ SPEAKER_PROFILES_FILE_OPTION: Path = typer.Option(
     "--speaker-profiles-file",
     help="JSON file storing persistent speaker voice embeddings.",
 )
-REVIEW_OUTPUT_DIR = Path.home() / ".cache" / "agent-cli" / "speaker-review"
 DEFAULT_REVIEW_TRANSCRIPTION_LOG = Path.home() / ".config" / "agent-cli" / "transcriptions.jsonl"
 DEFAULT_REVIEW_STATE_FILE = Path.home() / ".config" / "agent-cli" / "speaker-review-state.json"
 REVIEW_SKIPPED_EMBEDDING_NEAR_DUPLICATE_THRESHOLD = 0.98
@@ -78,11 +77,6 @@ REVIEW_TRANSCRIPTION_LOG_OPTION: Path = typer.Option(
     DEFAULT_REVIEW_TRANSCRIPTION_LOG,
     "--transcription-log",
     help="Path to the transcribe-live JSONL log for --last-session.",
-)
-REVIEW_OUTPUT_DIR_OPTION: Path = typer.Option(
-    REVIEW_OUTPUT_DIR,
-    "--output-dir",
-    help="Directory for combined live-session audio and temporary snippets.",
 )
 REVIEW_STATE_FILE_OPTION: Path = typer.Option(
     DEFAULT_REVIEW_STATE_FILE,
@@ -205,58 +199,15 @@ def _all_live_review_audio_targets(
     return [segment.audio_file for segment in reversed(segments) if segment.audio_file.exists()]
 
 
-def _combine_live_review_session(
-    *,
-    last_session: int,
-    transcription_log: Path,
-    output_dir: Path,
-    session_gap: float,
-) -> Path:
-    """Combine a transcribe-live session into one reviewable WAV file."""
-    from agent_cli.agents.diarize_live_session import (  # noqa: PLC0415
-        combine_segments,
-        load_segments,
-        select_recent_session,
-        session_basename,
-        write_ffconcat_manifest,
-    )
-
-    log_path = transcription_log.expanduser()
-    if not log_path.exists():
-        msg = f"Transcription log not found: {log_path}"
-        raise FileNotFoundError(msg)
-    selected = select_recent_session(
-        load_segments(log_path),
-        index=last_session,
-        max_gap_seconds=session_gap,
-    )
-    missing = [segment.audio_file for segment in selected if not segment.audio_file.exists()]
-    if missing:
-        missing_list = "\n".join(str(path) for path in missing)
-        msg = f"Selected audio files are missing:\n{missing_list}"
-        raise FileNotFoundError(msg)
-
-    output_dir = output_dir.expanduser()
-    output_dir.mkdir(parents=True, exist_ok=True)
-    basename = session_basename(selected)
-    manifest_path = output_dir / f"{basename}.ffconcat"
-    combined_audio = output_dir / f"{basename}.wav"
-    write_ffconcat_manifest(selected, manifest_path)
-    combine_segments(manifest_path, combined_audio)
-    return combined_audio
-
-
 def _resolve_review_audio_targets(
     *,
     from_file: Path | None,
     last_recording: int | None,
     last_session: int | None,
     transcription_log: Path,
-    output_dir: Path,
     session_gap: float,
 ) -> list[Path]:
     """Resolve the audio files that should be reviewed, newest first."""
-    del output_dir
     _validate_single_review_source(
         from_file=from_file,
         last_recording=last_recording,
@@ -296,27 +247,6 @@ def _resolve_review_audio_targets(
         msg = "Recording #1 not found."
         raise FileNotFoundError(msg)
     return [recording]
-
-
-def _resolve_review_audio_source(
-    *,
-    from_file: Path | None,
-    last_recording: int | None,
-    last_session: int | None,
-    transcription_log: Path,
-    output_dir: Path,
-    session_gap: float,
-) -> Path:
-    """Resolve the audio file that should be reviewed."""
-    targets = _resolve_review_audio_targets(
-        from_file=from_file,
-        last_recording=last_recording,
-        last_session=last_session,
-        transcription_log=transcription_log,
-        output_dir=output_dir,
-        session_gap=session_gap,
-    )
-    return targets[0]
 
 
 def _new_review_state() -> dict[str, Any]:
@@ -1375,7 +1305,6 @@ def review_speakers(
         ),
     ] = 300.0,
     transcription_log: Path = REVIEW_TRANSCRIPTION_LOG_OPTION,
-    output_dir: Path = REVIEW_OUTPUT_DIR_OPTION,
     hf_token: str | None = opts.HF_TOKEN,
     speakers: Annotated[
         int | None,
@@ -1434,7 +1363,6 @@ def review_speakers(
             last_recording=last_recording,
             last_session=last_session,
             transcription_log=transcription_log,
-            output_dir=output_dir,
             session_gap=session_gap,
         )
     except (FileNotFoundError, RuntimeError, ValueError) as exc:

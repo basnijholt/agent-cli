@@ -742,24 +742,23 @@ def test_speakers_review_merges_anonymous_profile_into_named_profile(tmp_path: P
     assert store["profiles"][0]["embeddings"] == [[1.0, 0.0], [0.0, 1.0]]
 
 
-def test_resolve_review_audio_source_rejects_last_recording_zero(tmp_path: Path) -> None:
+def test_resolve_review_audio_targets_rejects_last_recording_zero(tmp_path: Path) -> None:
     with (
         patch("agent_cli.agents.speakers.get_last_recording") as get_last_recording,
         pytest.raises(ValueError, match="--last-recording must be 1 or greater"),
     ):
-        speakers_module._resolve_review_audio_source(
+        speakers_module._resolve_review_audio_targets(
             from_file=None,
             last_recording=0,
             last_session=None,
             transcription_log=tmp_path / "transcriptions.jsonl",
-            output_dir=tmp_path,
             session_gap=300.0,
         )
 
     get_last_recording.assert_not_called()
 
 
-def test_resolve_review_audio_source_defaults_to_last_live_session(tmp_path: Path) -> None:
+def test_resolve_review_audio_targets_defaults_to_last_live_session(tmp_path: Path) -> None:
     transcription_log = tmp_path / "transcriptions.jsonl"
     audio_file = tmp_path / "live.wav"
     audio_file.write_bytes(b"audio")
@@ -776,16 +775,15 @@ def test_resolve_review_audio_source_defaults_to_last_live_session(tmp_path: Pat
     )
 
     with patch("agent_cli.agents.speakers.get_last_recording") as get_last_recording:
-        result = speakers_module._resolve_review_audio_source(
+        targets = speakers_module._resolve_review_audio_targets(
             from_file=None,
             last_recording=None,
             last_session=None,
             transcription_log=transcription_log,
-            output_dir=tmp_path,
             session_gap=300.0,
         )
 
-    assert result == audio_file
+    assert targets == [audio_file]
     get_last_recording.assert_not_called()
 
 
@@ -817,7 +815,6 @@ def test_resolve_review_audio_targets_walks_live_files_newest_first(tmp_path: Pa
         last_recording=None,
         last_session=None,
         transcription_log=transcription_log,
-        output_dir=tmp_path,
         session_gap=300.0,
     )
 
