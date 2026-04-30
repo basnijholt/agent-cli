@@ -20,9 +20,9 @@ Speaker profiles are stored voice embeddings created by `transcribe --diarize` o
 
 Use `speakers list` to see the stable profile IDs, `speakers rename` to give an
 unknown profile a human name, `speakers merge` to fold duplicate profiles for
-the same person together, and `speakers review` to listen to diarized snippets
-and decide interactively whether each voice should be merged into an existing
-profile or saved as a new named profile.
+the same person together, and `speakers review` to listen to snippets for
+unknown voices and decide interactively whether each one should be merged into
+an existing profile or named.
 
 ## Examples
 
@@ -39,11 +39,14 @@ agent-cli speakers rename UNKNOWN_001 Alice
 # Merge a duplicate unknown profile into Alice
 agent-cli speakers merge UNKNOWN_002 Alice
 
-# Listen to snippets from the last saved recording and update profiles
-agent-cli speakers review --last-recording 1
+# Walk backward through unreviewed transcribe-live audio files and update profiles
+agent-cli speakers review
 
-# Review a continuous transcribe-live session
-agent-cli speakers review --last-session 2
+# Review a specific transcribe-live session
+agent-cli speakers review --last-live-session 2
+
+# Review a saved transcribe recording instead
+agent-cli speakers review --last-recording 1
 
 # JSON output for scripts
 agent-cli speakers list --json
@@ -55,7 +58,9 @@ agent-cli speakers list --json
 - Stored profile IDs such as `UNKNOWN_001` are stable across runs.
 - Renaming a profile preserves its embeddings and changes the display name used by future diarization matches.
 - Merging moves embeddings from the source profile into the target profile and removes the source profile.
-- Review appends the current recording's speaker embedding to an existing profile when you choose merge.
+- Review skips already named speaker matches and resolves unknown profiles by naming or merging them.
+- Review keeps a separate `speaker-review-state.json` cache so already reviewed audio files are skipped on later runs. Use `--force-review` to bypass it.
+- Speaker profiles keep a bounded, diverse set of embeddings and skip near-duplicate observations.
 - `speakers list --json` shows profile metadata only; it does not print embedding vectors.
 
 ## Rename Arguments
@@ -157,8 +162,8 @@ agent-cli speakers list --json
 | Option | Default | Description |
 |--------|---------|-------------|
 | `--from-file` | - | Review speakers from an existing audio file. |
-| `--last-recording` | - | Review the Nth most recent saved transcribe recording (default: 1). |
-| `--last-session` | - | Review the Nth most recent inferred transcribe-live session. |
+| `--last-recording` | - | Review the Nth most recent saved transcribe recording. |
+| `--last-session`, `--last-live-session` | - | Review the Nth most recent inferred transcribe-live session (default source when available). |
 | `--session-gap` | `300.0` | Maximum seconds between transcribe-live chunks in one session. |
 | `--transcription-log` | `/home/runner/.config/agent-cli/transcriptions.jsonl` | Path to the transcribe-live JSONL log for --last-session. |
 | `--output-dir` | `/home/runner/.cache/agent-cli/speaker-review` | Directory for combined live-session audio and temporary snippets. |
@@ -166,6 +171,8 @@ agent-cli speakers list --json
 | `--speaker-profiles-file` | `/home/runner/.config/agent-cli/speaker-profiles.json` | JSON file storing persistent speaker voice embeddings. |
 | `--snippet-seconds` | `6.0` | Maximum seconds to play for each speaker snippet. |
 | `--player` | - | Audio player command to use for snippets (default: afplay, ffplay, aplay, or paplay). |
+| `--review-state-file` | `/home/runner/.config/agent-cli/speaker-review-state.json` | JSON cache tracking which audio files have already been speaker-reviewed. |
+| `--force-review` | `false` | Review audio even if it is already present in the speaker review cache. |
 
 ### Diarization
 

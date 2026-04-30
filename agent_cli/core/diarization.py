@@ -72,11 +72,11 @@ def _load_audio_for_diarization(audio_path: Path) -> tuple[torch.Tensor, int]:
 
     pcm_data = convert_audio_to_wyoming_format(audio_path.read_bytes(), audio_path.name)
     try:
-        pcm_tensor = torch.frombuffer(pcm_data, dtype=torch.int16)
+        pcm_tensor = torch.frombuffer(bytearray(pcm_data), dtype=torch.int16)
     except (AttributeError, TypeError):
         import numpy as np  # noqa: PLC0415
 
-        pcm_tensor = torch.from_numpy(np.frombuffer(pcm_data, dtype=np.int16))
+        pcm_tensor = torch.from_numpy(np.frombuffer(pcm_data, dtype=np.int16).copy())
     waveform = pcm_tensor.float().div(32768.0).unsqueeze(0)
     return normalize_waveform(waveform, constants.AUDIO_RATE)
 
@@ -112,6 +112,7 @@ _ABBREVIATIONS = {
 }
 _INITIALISM_RE = re.compile(r"(?:[A-Za-z]\.){2,}$")
 _SINGLE_INITIAL_LEN = 2
+DEFAULT_CLEAN_SPEAKER_NEIGHBOR_GAP_SECONDS = 0.35
 
 
 class SpeakerDiarizer:
@@ -188,6 +189,132 @@ class SpeakerDiarizer:
         segments.sort(key=lambda segment: (segment.start, segment.end))
 
         return segments
+
+
+def speaker_segment_neighbor_gap(
+    segment: DiarizedSegment,
+    segments: list[DiarizedSegment],
+) -> float:
+    """Return the nearest gap to another speaker, or -1 for overlap."""
+    nearest_gap = float("inf")
+    for other in segments:
+        if other is segment or other.speaker == segment.speaker:
+            continue
+        if other.end <= segment.start:
+            nearest_gap = min(nearest_gap, segment.start - other.end)
+        elif other.start >= segment.end:
+            nearest_gap = min(nearest_gap, other.start - segment.end)
+        else:
+            return -1.0
+    return nearest_gap
+
+
+def _speaker_segment_clean_score(
+    segment: DiarizedSegment,
+    segments: list[DiarizedSegment],
+    *,
+    neighbor_gap_seconds: float,
+) -> tuple[int, float, float]:
+    duration = segment.end - segment.start
+    neighbor_gap = speaker_segment_neighbor_gap(segment, segments)
+    clean = int(neighbor_gap >= neighbor_gap_seconds)
+    return clean, min(neighbor_gap, neighbor_gap_seconds), duration
+
+
+def select_clean_speaker_segments(
+    segments: list[DiarizedSegment],
+    speaker: str,
+    *,
+    min_duration_seconds: float = 0.0,
+    max_total_seconds: float | None = None,
+    neighbor_gap_seconds: float = DEFAULT_CLEAN_SPEAKER_NEIGHBOR_GAP_SECONDS,
+    fallback_to_unclean: bool = True,
+) -> list[DiarizedSegment]:
+    """Select representative single-speaker regions for review or embeddings.
+
+    Prefer turns with no overlap and at least ``neighbor_gap_seconds`` of separation
+    from other speakers. When requested, fall back to unclean turns only when no
+    clean turns exist.
+    """
+    candidates = [
+        segment
+        for segment in segments
+        if segment.speaker == speaker
+        and segment.end > segment.start
+        and segment.end - segment.start >= min_duration_seconds
+    ]
+    if not candidates:
+        return []
+
+    clean_candidates = [
+        segment
+        for segment in candidates
+        if speaker_segment_neighbor_gap(segment, segments) >= neighbor_gap_seconds
+    ]
+    pool = clean_candidates or (candidates if fallback_to_unclean else [])
+    if not pool:
+        return []
+
+    selected: list[DiarizedSegment] = []
+    total_seconds = 0.0
+    for segment in sorted(
+        pool,
+        key=lambda item: _speaker_segment_clean_score(
+            item,
+            segments,
+            neighbor_gap_seconds=neighbor_gap_seconds,
+        ),
+        reverse=True,
+    ):
+        duration = segment.end - segment.start
+        if max_total_seconds is not None and total_seconds >= max_total_seconds:
+            break
+        if max_total_seconds is not None and total_seconds + duration > max_total_seconds:
+            remaining = max_total_seconds - total_seconds
+            if remaining < min_duration_seconds:
+                continue
+            clipped_segment = DiarizedSegment(
+                speaker=segment.speaker,
+                start=segment.start,
+                end=segment.start + remaining,
+                text=segment.text,
+            )
+            duration = remaining
+            selected.append(clipped_segment)
+        else:
+            selected.append(segment)
+        total_seconds += duration
+
+    return sorted(selected, key=lambda segment: (segment.start, segment.end))
+
+
+def best_clean_speaker_segment(
+    segments: list[DiarizedSegment],
+    speaker: str,
+    *,
+    min_duration_seconds: float = 0.0,
+    neighbor_gap_seconds: float = DEFAULT_CLEAN_SPEAKER_NEIGHBOR_GAP_SECONDS,
+    fallback_to_unclean: bool = True,
+) -> DiarizedSegment | None:
+    """Return the best representative segment for one speaker."""
+    selected = select_clean_speaker_segments(
+        segments,
+        speaker,
+        min_duration_seconds=min_duration_seconds,
+        max_total_seconds=None,
+        neighbor_gap_seconds=neighbor_gap_seconds,
+        fallback_to_unclean=fallback_to_unclean,
+    )
+    if not selected:
+        return None
+    return max(
+        selected,
+        key=lambda item: _speaker_segment_clean_score(
+            item,
+            segments,
+            neighbor_gap_seconds=neighbor_gap_seconds,
+        ),
+    )
 
 
 def _split_into_sentences(text: str) -> list[str]:
