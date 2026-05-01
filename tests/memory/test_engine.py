@@ -562,19 +562,10 @@ async def test_streaming_with_summarization_persists_facts_and_summaries(
         for line in body:
             yield line
 
-    async def fake_agent_run(_agent: Any, prompt_text: str, *_args: Any, **_kwargs: Any) -> Any:
-        class _Result:
-            def __init__(self, output: Any) -> None:
-                self.output = output
-
-        prompt_str = str(prompt_text)
-        if "New facts:" in prompt_str:
-            return _Result(SummaryOutput(summary="summary text"))
-        if "My cat is Luna" in prompt_str:
-            return _Result(["User has a cat named Luna."])
-        return _Result(SummaryOutput(summary="noop"))
-
     monkeypatch.setattr(engine._streaming, "stream_chat_sse", fake_stream_chat_sse)
+
+    async def fake_extract_salient_facts(*_args: Any, **_kwargs: Any) -> list[str]:
+        return ["User has a cat named Luna."]
 
     async def fake_reconcile(
         _collection: Any,
@@ -594,10 +585,12 @@ async def test_streaming_with_summarization_persists_facts_and_summaries(
         ]
         return entries, [], {}
 
-    monkeypatch.setattr(_ingest, "reconcile_facts", fake_reconcile)
-    import pydantic_ai  # noqa: PLC0415
+    async def fake_update_summary(*_args: Any, **_kwargs: Any) -> str:
+        return "summary text"
 
-    monkeypatch.setattr(pydantic_ai.Agent, "run", fake_agent_run)
+    monkeypatch.setattr(_ingest, "extract_salient_facts", fake_extract_salient_facts)
+    monkeypatch.setattr(_ingest, "reconcile_facts", fake_reconcile)
+    monkeypatch.setattr(_ingest, "update_summary", fake_update_summary)
 
     response = await engine.process_chat_request(
         request,
