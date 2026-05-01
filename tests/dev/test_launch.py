@@ -48,7 +48,7 @@ class TestLaunchAgent:
         mock_open.assert_called_once_with(
             tmp_path,
             "codex",
-            tab_name="repo@feature",
+            tab_name="feature",
             session_name="agent-cli-repo-1234",
         )
 
@@ -82,7 +82,7 @@ class TestLaunchAgent:
         mock_open.assert_called_once_with(
             tmp_path,
             "codex",
-            tab_name="repo.name@feature",
+            tab_name="feature",
             session_name=expected_session,
         )
 
@@ -114,7 +114,7 @@ class TestLaunchAgent:
         mock_open.assert_called_once_with(
             tmp_path,
             "codex",
-            tab_name="repo@feature",
+            tab_name="feature",
             session_name="shared-session",
         )
 
@@ -144,7 +144,7 @@ class TestLaunchAgent:
         mock_open.assert_called_once_with(
             tmp_path,
             "codex",
-            tab_name="repo@feature",
+            tab_name="feature",
             session_name="shared-session",
         )
 
@@ -190,7 +190,7 @@ class TestLaunchAgent:
         mock_open.assert_called_once_with(
             tmp_path,
             f"bash {shlex.quote(str(wrapper_script))}",
-            tab_name="repo@feature",
+            tab_name="feature",
             session_name="agent-cli-repo-1234",
         )
 
@@ -218,7 +218,7 @@ class TestLaunchAgent:
             result = launch_agent(tmp_path, agent, multiplexer_name="kitty")
 
         assert result is None
-        terminal.open_new_tab.assert_called_once_with(tmp_path, "codex", tab_name="repo@feature")
+        terminal.open_new_tab.assert_called_once_with(tmp_path, "codex", tab_name="feature")
         printed = "\n".join(call.args[0] for call in mock_print.call_args_list if call.args)
         assert "Started codex in new kitty tab" in printed
         assert "To start codex:" not in printed

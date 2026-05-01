@@ -268,7 +268,7 @@ def _tab_name_for_path(path: Path) -> tuple[Path | None, str]:
     repo_root = worktree.get_main_repo_root(path)
     branch = worktree.get_current_branch(path)
     repo_name = repo_root.name if repo_root else path.name
-    tab_name = f"{repo_name}@{branch}" if branch else repo_name
+    tab_name = branch or repo_name
     return repo_root, tab_name
 
 
