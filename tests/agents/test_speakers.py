@@ -971,6 +971,48 @@ def test_review_audio_targets_auto_skips_short_fragments(tmp_path: Path) -> None
     assert saved_state["audio_files"][audio_key]["speakers"][0]["action"] == "skipped_short"
 
 
+def test_review_audio_targets_auto_skips_speakers_without_embeddings(
+    tmp_path: Path,
+) -> None:
+    audio_file = tmp_path / "recording.wav"
+    state_file = tmp_path / "speaker-review-state.json"
+    audio_file.write_bytes(b"audio")
+    review_state: dict[str, object] = {"version": 1, "audio_files": {}, "skipped_speakers": []}
+    diarizer = MagicMock()
+    diarizer.device = "cpu"
+    diarizer.diarize.return_value = [DiarizedSegment("SPEAKER_00", 0.0, 3.0)]
+
+    with (
+        patch("agent_cli.agents.speakers.extract_speaker_embeddings", return_value={}),
+        patch("agent_cli.agents.speakers._write_speaker_snippet") as write_snippet,
+        patch("agent_cli.agents.speakers._review_choice_prompt") as prompt,
+    ):
+        changed, reviewed_count, skipped_count, interrupted = speakers_module._review_audio_targets(
+            audio_targets=[audio_file],
+            review_state=review_state,
+            store={"profiles": []},
+            diarizer=diarizer,
+            hf_token="token",  # noqa: S106
+            speaker_match_threshold=0.7,
+            snippet_seconds=6.0,
+            player=None,
+            force_review=False,
+            review_state_path=state_file,
+        )
+
+    assert changed is False
+    assert reviewed_count == 1
+    assert skipped_count == 0
+    assert interrupted is False
+    write_snippet.assert_not_called()
+    prompt.assert_not_called()
+    saved_state = json.loads(state_file.read_text(encoding="utf-8"))
+    audio_key = speakers_module._audio_review_key(audio_file)
+    assert saved_state["audio_files"][audio_key]["speakers"][0]["action"] == (
+        "skipped_no_embedding"
+    )
+
+
 def test_review_speaker_prompts_while_snippet_is_playing(tmp_path: Path) -> None:
     snippet_file = tmp_path / "snippet.wav"
     snippet_file.write_bytes(b"snippet")

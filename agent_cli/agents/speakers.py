@@ -558,6 +558,7 @@ def _print_review_speaker_intro(
     match: SpeakerMatch | None,
     source_profile_id: str | None,
 ) -> None:
+    can_update_profile = embedding is not None or source_profile_id is not None
     console.print(f"\n[bold]Speaker:[/bold] [cyan]{label}[/cyan]")
     if match is not None:
         console.print(
@@ -567,7 +568,7 @@ def _print_review_speaker_intro(
         )
     else:
         console.print("[dim]Closest profile:[/dim] none")
-    if embedding is None:
+    if not can_update_profile:
         console.print(
             "[yellow]No embedding was available for this speaker; only skip/replay works.[/yellow]"
         )
@@ -720,7 +721,7 @@ def _prompt_merge_target(
 def _merge_review_speaker(
     *,
     label: str,
-    embedding: list[float],
+    embedding: list[float] | None,
     source_profile_id: str | None,
     store: dict[str, Any],
 ) -> dict[str, Any] | None:
@@ -731,6 +732,9 @@ def _merge_review_speaker(
         if source_profile_id is not None:
             profile = merge_speaker_profiles(store, source_profile_id, target)
         else:
+            if embedding is None:
+                console.print("[yellow]Cannot merge this speaker without an embedding.[/yellow]")
+                return None
             profile = add_speaker_embedding_to_profile(store, target, embedding)
     except ValueError as exc:
         console.print(f"[yellow]{exc}[/yellow]")
@@ -745,7 +749,7 @@ def _merge_review_speaker(
 def _create_review_speaker(
     *,
     label: str,
-    embedding: list[float],
+    embedding: list[float] | None,
     source_profile_id: str | None,
     store: dict[str, Any],
 ) -> dict[str, Any] | None:
@@ -755,6 +759,11 @@ def _create_review_speaker(
         if source_profile_id is not None:
             profile = rename_speaker_profile(store, source_profile_id, name)
         else:
+            if embedding is None:
+                console.print(
+                    "[yellow]Cannot create a speaker profile without an embedding.[/yellow]"
+                )
+                return None
             profile = create_speaker_profile_from_embedding(store, name, embedding)
     except ValueError as exc:
         console.print(f"[yellow]{exc}[/yellow]")
@@ -787,6 +796,7 @@ def _review_speaker(
     )
     play_requested = True
     while True:
+        can_update_profile = embedding is not None or source_profile_id is not None
         _print_review_speaker_intro(
             label=label,
             embedding=embedding,
@@ -810,7 +820,7 @@ def _review_speaker(
             return _SpeakerReviewResult(changed=False, action="skipped")
         if choice in {"q", "quit"}:
             raise typer.Exit(0)
-        if embedding is None:
+        if not can_update_profile:
             console.print("[yellow]Choose p, s, or q; this speaker has no embedding.[/yellow]")
             continue
         if choice in {"m", "merge"}:
@@ -843,7 +853,7 @@ def _review_speaker(
                     target_display_name=str(summary["display_name"]),
                 )
             continue
-        if embedding is None:
+        if not can_update_profile:
             console.print("[yellow]Unknown choice. Use p, s, or q.[/yellow]")
         else:
             console.print("[yellow]Unknown choice. Use p, m, n, s, or q.[/yellow]")
@@ -905,13 +915,30 @@ def _append_short_skip_record(
     )
 
 
+def _append_no_embedding_skip_record(
+    records: list[dict[str, Any]],
+    *,
+    diarized_label: str,
+    review_label: str,
+    match: SpeakerMatch | None,
+) -> None:
+    _append_review_record(
+        records,
+        diarized_label=diarized_label,
+        review_label=review_label,
+        match=match,
+        result=_SpeakerReviewResult(changed=False, action="skipped_no_embedding"),
+    )
+
+
 def _print_no_review_summary(
     *,
     skipped_named: list[tuple[str, SpeakerMatch]],
     skipped_prior: list[str],
     skipped_short: list[str],
+    skipped_no_embedding: list[str],
 ) -> None:
-    console.print("[dim]No unknown speakers found in this audio.[/dim]")
+    console.print("[dim]No reviewable unknown speakers found in this audio.[/dim]")
     if skipped_named:
         console.print("[dim]Skipped named speaker matches:[/dim]")
         for label, match in skipped_named:
@@ -927,6 +954,10 @@ def _print_no_review_summary(
         console.print("[dim]Skipped short speaker fragments:[/dim]")
         for label in skipped_short:
             console.print(f"[dim]  {label} (<{REVIEW_MIN_PROMPT_SEGMENT_SECONDS:.0f}s)[/dim]")
+    if skipped_no_embedding:
+        console.print("[dim]Skipped speakers without embeddings:[/dim]")
+        for label in skipped_no_embedding:
+            console.print(f"[dim]  {label}[/dim]")
 
 
 def _review_unknown_speakers(
@@ -949,6 +980,7 @@ def _review_unknown_speakers(
         skipped_named: list[tuple[str, SpeakerMatch]] = []
         skipped_prior: list[str] = []
         skipped_short: list[str] = []
+        skipped_no_embedding: list[str] = []
         for label in _speaker_labels_by_first_turn(segments):
             match = matches.get(label)
             if _is_named_review_match(store=store, match=match):
@@ -984,6 +1016,15 @@ def _review_unknown_speakers(
             if segment.end - segment.start < REVIEW_MIN_PROMPT_SEGMENT_SECONDS:
                 skipped_short.append(review_label)
                 _append_short_skip_record(
+                    records,
+                    diarized_label=label,
+                    review_label=review_label,
+                    match=match,
+                )
+                continue
+            if embedding is None and source_profile_id is None:
+                skipped_no_embedding.append(review_label)
+                _append_no_embedding_skip_record(
                     records,
                     diarized_label=label,
                     review_label=review_label,
@@ -1032,6 +1073,7 @@ def _review_unknown_speakers(
                 skipped_named=skipped_named,
                 skipped_prior=skipped_prior,
                 skipped_short=skipped_short,
+                skipped_no_embedding=skipped_no_embedding,
             )
     return changed, records
 
