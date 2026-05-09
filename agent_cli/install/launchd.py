@@ -20,8 +20,26 @@ from agent_cli.install.service_config import (
     install_uv,
 )
 
+_MACOS_HOMEBREW_BIN = "/opt/homebrew/bin"
+
 # macOS-specific paths for uv (Homebrew)
-_MACOS_UV_PATHS = [Path("/opt/homebrew/bin/uv")]
+_MACOS_UV_PATHS = [Path(_MACOS_HOMEBREW_BIN) / "uv"]
+
+# Default PATH for launchd-spawned daemons. The system default
+# (`/usr/bin:/bin:/usr/sbin:/sbin`) does not include Homebrew, and
+# `path_helper` does not run for launchd processes, so daemons that
+# shell out to ffmpeg/uv/etc. fail with "command not found" unless
+# we set PATH explicitly here.
+_MACOS_DAEMON_PATH = (
+    f"{_MACOS_HOMEBREW_BIN}:"
+    "/opt/homebrew/sbin:"
+    "/usr/local/bin:"
+    "/usr/local/sbin:"
+    "/usr/bin:"
+    "/bin:"
+    "/usr/sbin:"
+    "/sbin"
+)
 
 
 def _get_label(service_name: str) -> str:
@@ -83,6 +101,7 @@ def _generate_plist(
         "RunAtLoad": True,
         "KeepAlive": True,
         "WorkingDirectory": str(home_dir),
+        "EnvironmentVariables": {"PATH": _MACOS_DAEMON_PATH},
         "StandardOutPath": str(log_dir / "stdout.log"),
         "StandardErrorPath": str(log_dir / "stderr.log"),
     }
