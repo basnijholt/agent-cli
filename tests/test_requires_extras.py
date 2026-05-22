@@ -33,6 +33,32 @@ class TestRequiresExtrasDecorator:
         assert hasattr(sample_command, "_required_extras")
         assert sample_command._required_extras == ("audio", "llm")
 
+    def test_decorator_uses_runtime_extras_resolver(self) -> None:
+        """Commands can choose concrete extras after Typer parses options."""
+
+        def resolve_extras(kwargs: dict[str, object]) -> tuple[str, ...]:
+            backend = kwargs["backend"]
+            return ("server", str(backend), "wyoming")
+
+        @requires_extras(
+            "server",
+            "piper|kokoro",
+            "wyoming",
+            resolve_extras=resolve_extras,
+        )
+        def sample_command(*, backend: str) -> str:
+            return f"success:{backend}"
+
+        with patch("agent_cli.core.deps._check_and_install_extras", return_value=[]) as mock_check:
+            assert sample_command(backend="kokoro") == "success:kokoro"
+
+        mock_check.assert_called_once_with(("server", "kokoro", "wyoming"))
+        assert getattr(sample_command, "_required_extras") == (  # noqa: B009
+            "server",
+            "piper|kokoro",
+            "wyoming",
+        )
+
     def test__get_install_hint_with_pipe_syntax(self) -> None:
         """Pipe syntax shows all alternatives in the hint."""
         hint = _get_install_hint("piper|kokoro")

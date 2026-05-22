@@ -9,8 +9,10 @@ from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
 import pytest
+import typer
 from fastapi.testclient import TestClient
 
+from agent_cli.server.cli import _check_whisper_deps, _resolve_whisper_required_extras
 from agent_cli.server.model_manager import ModelStats
 from agent_cli.server.whisper.backends import TranscriptionResult
 from agent_cli.server.whisper.backends.base import UnsupportedRequestError
@@ -66,6 +68,64 @@ class TestModelConfig:
         assert config.cpu_threads == 8
         assert config.default_language == "en"
         assert config.trust_remote_code is True
+
+
+class TestWhisperDependencyChecks:
+    """Tests for server Whisper optional dependency handling."""
+
+    def test_resolve_whisper_required_extras_uses_explicit_backend(self) -> None:
+        """Explicit Whisper backends should install their matching extra."""
+        assert _resolve_whisper_required_extras({"backend": "faster-whisper"}) == (
+            "server",
+            "faster-whisper",
+            "wyoming",
+        )
+        assert _resolve_whisper_required_extras({"backend": "mlx"}) == (
+            "server",
+            "mlx-whisper",
+            "wyoming",
+        )
+        assert _resolve_whisper_required_extras({"backend": "transformers"}) == (
+            "server",
+            "whisper-transformers",
+            "wyoming",
+        )
+
+    def test_resolve_whisper_required_extras_keeps_auto_backend_alternatives(self) -> None:
+        """Auto backend should keep the existing Whisper backend fallback."""
+        assert _resolve_whisper_required_extras({"backend": "auto"}) == (
+            "server",
+            "faster-whisper|mlx-whisper|whisper-transformers",
+            "wyoming",
+        )
+
+    @pytest.mark.parametrize(
+        ("backend", "expected_extra"),
+        [
+            ("faster-whisper", "faster-whisper"),
+            ("mlx", "mlx-whisper"),
+            ("transformers", "whisper-transformers"),
+        ],
+    )
+    def test_backend_dependency_hint_uses_existing_extra(
+        self,
+        backend: str,
+        expected_extra: str,
+    ) -> None:
+        """Missing backend deps should point at existing extras."""
+        with (
+            patch(
+                "agent_cli.server.cli._has",
+                side_effect=lambda package: package in {"uvicorn", "fastapi"},
+            ),
+            patch("agent_cli.server.cli.err_console.print") as mock_print,
+            pytest.raises(typer.Exit),
+        ):
+            _check_whisper_deps(backend)
+
+        message = mock_print.call_args[0][0]
+        assert f"agent-cli\\[{expected_extra}]" in message
+        assert f"uv sync --extra {expected_extra}" in message
 
 
 class TestModelStats:
