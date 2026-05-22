@@ -14,6 +14,7 @@ from agent_cli.dev.worktree import (
     _pull_lfs,
     create_worktree,
     find_worktree_by_name,
+    get_common_dir,
     get_main_repo_root,
     has_origin_remote,
     list_worktrees,
@@ -113,6 +114,21 @@ class TestResolveWorktreeBaseDir:
         assert result == tmp_path / "agent"
 
 
+class TestGetCommonDir:
+    """Tests for get_common_dir function."""
+
+    def test_relative_common_dir_resolves_against_git_cwd(self, tmp_path: Path) -> None:
+        """Relative git-common-dir output is anchored to the Git command cwd."""
+        module_dir = tmp_path / "parent" / ".git" / "modules" / "my-submodule"
+        module_dir.mkdir(parents=True)
+        mock_run = MagicMock(return_value=MagicMock(stdout=".\n"))
+
+        with patch("agent_cli.dev.worktree._run_git", mock_run):
+            result = get_common_dir(module_dir)
+
+        assert result == module_dir
+
+
 class TestGetMainRepoRoot:
     """Tests for get_main_repo_root function."""
 
@@ -153,6 +169,33 @@ class TestGetMainRepoRoot:
         mock_repo_root.assert_called_once()
         assert result == submodule_toplevel
         assert ".git/modules" not in str(result)
+
+    def test_linked_submodule_worktree_uses_configured_main_worktree(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Linked worktrees of submodules resolve to the submodule checkout.
+
+        In this layout, git rev-parse --show-toplevel can return the internal
+        .git/modules/<name> directory. The main checkout is stored as
+        core.worktree in the module config.
+        """
+        parent = tmp_path / "parent"
+        submodule_common_dir = parent / ".git" / "modules" / "my-submodule"
+        submodule_common_dir.mkdir(parents=True)
+        (submodule_common_dir / "config").write_text(
+            "[core]\n\tworktree = ../../../my-submodule\n",
+        )
+        submodule_toplevel = parent / "my-submodule"
+        linked_worktree = parent / "my-submodule-worktrees" / "feature"
+
+        with (
+            patch("agent_cli.dev.worktree.get_common_dir", return_value=submodule_common_dir),
+            patch("agent_cli.dev.worktree.get_repo_root", return_value=submodule_common_dir),
+        ):
+            result = get_main_repo_root(linked_worktree)
+
+        assert result == submodule_toplevel
 
 
 class TestListWorktrees:
