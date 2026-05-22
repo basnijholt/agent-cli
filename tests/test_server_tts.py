@@ -6,8 +6,10 @@ from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
 
 import pytest
+import typer
 from fastapi.testclient import TestClient
 
+from agent_cli.server.cli import _check_tts_deps, _resolve_tts_required_extras
 from agent_cli.server.model_manager import ModelStats
 from agent_cli.server.tts.backends import SynthesisResult
 from agent_cli.server.tts.model_manager import TTSModelConfig, TTSModelManager
@@ -53,6 +55,78 @@ class TestTTSModelConfig:
         assert config.model_name == "/path/to/kokoro-v1_0.pth"
         assert config.device == "cuda"
         assert config.backend_type == "kokoro"
+
+
+class TestTTSDependencyChecks:
+    """Tests for server TTS optional dependency handling."""
+
+    def test_resolve_tts_required_extras_uses_explicit_backend(self) -> None:
+        """Explicit TTS backends should install their matching extra."""
+        assert _resolve_tts_required_extras({"backend": "kokoro"}) == (
+            "server",
+            "kokoro",
+            "wyoming",
+        )
+        assert _resolve_tts_required_extras({"backend": "piper"}) == (
+            "server",
+            "piper",
+            "wyoming",
+        )
+
+    def test_resolve_tts_required_extras_keeps_auto_backend_alternatives(self) -> None:
+        """Auto backend should keep the existing Piper-or-Kokoro fallback."""
+        assert _resolve_tts_required_extras({"backend": "auto"}) == (
+            "server",
+            "piper|kokoro",
+            "wyoming",
+        )
+
+    @pytest.mark.parametrize(
+        ("backend", "expected_extra", "unexpected"),
+        [
+            ("kokoro", "kokoro", "tts-kokoro"),
+            ("piper", "piper", "agent-cli\\[tts]"),
+        ],
+    )
+    def test_backend_dependency_hint_uses_existing_extra(
+        self,
+        backend: str,
+        expected_extra: str,
+        unexpected: str,
+    ) -> None:
+        """Missing backend deps should point at existing extras."""
+        with (
+            patch(
+                "agent_cli.server.cli._has",
+                side_effect=lambda package: package in {"uvicorn", "fastapi"},
+            ),
+            patch("agent_cli.server.cli.err_console.print") as mock_print,
+            pytest.raises(typer.Exit),
+        ):
+            _check_tts_deps(backend)
+
+        message = mock_print.call_args[0][0]
+        assert f"agent-cli\\[{expected_extra}]" in message
+        assert f"uv sync --extra {expected_extra}" in message
+        assert unexpected not in message
+
+    def test_auto_dependency_hint_uses_backend_extras(self) -> None:
+        """Missing auto backend deps should list installable backend extras."""
+        with (
+            patch(
+                "agent_cli.server.cli._has",
+                side_effect=lambda package: package in {"uvicorn", "fastapi"},
+            ),
+            patch("agent_cli.server.cli.err_console.print") as mock_print,
+            pytest.raises(typer.Exit),
+        ):
+            _check_tts_deps("auto")
+
+        message = mock_print.call_args[0][0]
+        assert "agent-cli\\[piper]" in message
+        assert "agent-cli\\[kokoro]" in message
+        assert "agent-cli\\[tts]" not in message
+        assert "tts-kokoro" not in message
 
 
 class TestModelStats:

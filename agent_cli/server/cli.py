@@ -87,6 +87,13 @@ def _check_server_deps() -> None:
         raise typer.Exit(1)
 
 
+def _resolve_tts_required_extras(kwargs: dict[str, object]) -> tuple[str, ...]:
+    """Choose the TTS backend extra after Typer has parsed --backend."""
+    backend = kwargs.get("backend")
+    backend_extra = backend if backend in ("piper", "kokoro") else "piper|kokoro"
+    return ("server", str(backend_extra), "wyoming")
+
+
 def _check_tts_deps(backend: str = "auto") -> None:
     """Check that TTS dependencies are available."""
     _check_server_deps()
@@ -95,8 +102,8 @@ def _check_tts_deps(backend: str = "auto") -> None:
         if not _has("kokoro"):
             err_console.print(
                 "[bold red]Error:[/bold red] Kokoro backend requires kokoro. "
-                "Run: [cyan]pip install agent-cli\\[tts-kokoro][/cyan] "
-                "or [cyan]uv sync --extra tts-kokoro[/cyan]",
+                "Run: [cyan]pip install agent-cli\\[kokoro][/cyan] "
+                "or [cyan]uv sync --extra kokoro[/cyan]",
             )
             raise typer.Exit(1)
         return
@@ -105,8 +112,8 @@ def _check_tts_deps(backend: str = "auto") -> None:
         if not _has("piper"):
             err_console.print(
                 "[bold red]Error:[/bold red] Piper backend requires piper-tts. "
-                "Run: [cyan]pip install agent-cli\\[tts][/cyan] "
-                "or [cyan]uv sync --extra tts[/cyan]",
+                "Run: [cyan]pip install agent-cli\\[piper][/cyan] "
+                "or [cyan]uv sync --extra piper[/cyan]",
             )
             raise typer.Exit(1)
         return
@@ -115,8 +122,8 @@ def _check_tts_deps(backend: str = "auto") -> None:
     if not _has("piper") and not _has("kokoro"):
         err_console.print(
             "[bold red]Error:[/bold red] No TTS backend available. "
-            "Run: [cyan]pip install agent-cli\\[tts][/cyan] for Piper "
-            "or [cyan]pip install agent-cli\\[tts-kokoro][/cyan] for Kokoro",
+            "Run: [cyan]pip install agent-cli\\[piper][/cyan] for Piper "
+            "or [cyan]pip install agent-cli\\[kokoro][/cyan] for Kokoro",
         )
         raise typer.Exit(1)
 
@@ -169,7 +176,8 @@ def _check_whisper_deps(backend: str, *, download_only: bool = False) -> None:
         if not _has("mlx_whisper"):
             err_console.print(
                 "[bold red]Error:[/bold red] MLX Whisper backend requires mlx-whisper. "
-                "Run: [cyan]pip install mlx-whisper[/cyan]",
+                "Run: [cyan]pip install agent-cli\\[mlx-whisper][/cyan] "
+                "or [cyan]uv sync --extra mlx-whisper[/cyan]",
             )
             raise typer.Exit(1)
         return
@@ -233,6 +241,21 @@ def _check_transformers_audio_model_deps(models: list[str]) -> None:
     raise typer.Exit(1)
 
 
+def _resolve_whisper_required_extras(kwargs: dict[str, object]) -> tuple[str, ...]:
+    """Choose the Whisper backend extra after Typer has parsed --backend."""
+    backend_extras = {
+        "faster-whisper": "faster-whisper",
+        "mlx": "mlx-whisper",
+        "transformers": "whisper-transformers",
+    }
+    backend = kwargs.get("backend")
+    backend_extra = backend_extras.get(
+        str(backend),
+        "faster-whisper|mlx-whisper|whisper-transformers",
+    )
+    return ("server", backend_extra, "wyoming")
+
+
 def _print_optional_whisper_config(
     *,
     default_language: str | None,
@@ -249,7 +272,12 @@ def _print_optional_whisper_config(
 
 
 @app.command("whisper")
-@requires_extras("server", "faster-whisper|mlx-whisper|whisper-transformers", "wyoming")
+@requires_extras(
+    "server",
+    "faster-whisper|mlx-whisper|whisper-transformers",
+    "wyoming",
+    resolve_extras=_resolve_whisper_required_extras,
+)
 def whisper_cmd(  # noqa: PLR0912, PLR0915
     model: Annotated[
         list[str] | None,
@@ -639,7 +667,7 @@ def transcribe_proxy_cmd(
 
 
 @app.command("tts")
-@requires_extras("server", "piper|kokoro", "wyoming")
+@requires_extras("server", "piper|kokoro", "wyoming", resolve_extras=_resolve_tts_required_extras)
 def tts_cmd(  # noqa: PLR0915
     model: Annotated[
         list[str] | None,

@@ -385,7 +385,11 @@ def _should_skip_extra_check_for_process_control(
     return process.is_process_running(process_name)
 
 
-def requires_extras(*extras: str, process_name: str | None = None) -> Callable[[F], F]:
+def requires_extras(
+    *extras: str,
+    process_name: str | None = None,
+    resolve_extras: Callable[[dict[str, object]], tuple[str, ...]] | None = None,
+) -> Callable[[F], F]:
     """Decorator to declare required extras for a command.
 
     Auto-installs missing extras by default. Disable via AGENT_CLI_NO_AUTO_INSTALL=1
@@ -399,7 +403,8 @@ def requires_extras(*extras: str, process_name: str | None = None) -> Callable[[
         def wrapper(*args: object, **kwargs: object) -> object:
             if _should_skip_extra_check_for_process_control(kwargs, process_name):
                 return func(*args, **kwargs)
-            if _check_and_install_extras(extras):
+            required_extras = resolve_extras(kwargs) if resolve_extras is not None else extras
+            if _check_and_install_extras(required_extras):
                 raise typer.Exit(1)
             return func(*args, **kwargs)
 

@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import ast
 import os
+from pathlib import Path
 from unittest.mock import patch
 
 import pytest
@@ -33,6 +35,32 @@ class TestRequiresExtrasDecorator:
         assert hasattr(sample_command, "_required_extras")
         assert sample_command._required_extras == ("audio", "llm")
 
+    def test_decorator_uses_runtime_extras_resolver(self) -> None:
+        """Commands can choose concrete extras after Typer parses options."""
+
+        def resolve_extras(kwargs: dict[str, object]) -> tuple[str, ...]:
+            backend = kwargs["backend"]
+            return ("server", str(backend), "wyoming")
+
+        @requires_extras(
+            "server",
+            "piper|kokoro",
+            "wyoming",
+            resolve_extras=resolve_extras,
+        )
+        def sample_command(*, backend: str) -> str:
+            return f"success:{backend}"
+
+        with patch("agent_cli.core.deps._check_and_install_extras", return_value=[]) as mock_check:
+            assert sample_command(backend="kokoro") == "success:kokoro"
+
+        mock_check.assert_called_once_with(("server", "kokoro", "wyoming"))
+        assert getattr(sample_command, "_required_extras") == (  # noqa: B009
+            "server",
+            "piper|kokoro",
+            "wyoming",
+        )
+
     def test__get_install_hint_with_pipe_syntax(self) -> None:
         """Pipe syntax shows all alternatives in the hint."""
         hint = _get_install_hint("piper|kokoro")
@@ -42,6 +70,44 @@ class TestRequiresExtrasDecorator:
         # Brackets are escaped for rich markup (\\[)
         assert "agent-cli\\[piper]" in hint
         assert "agent-cli\\[kokoro]" in hint
+
+    def test_commands_with_alternative_extras_have_runtime_resolver(self) -> None:
+        """Alternative extras on commands need a resolver for explicit backend options."""
+        repo_root = Path(__file__).resolve().parents[1]
+        violations: list[str] = []
+
+        for path in (repo_root / "agent_cli").rglob("*.py"):
+            tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+            for node in ast.walk(tree):
+                if not isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef):
+                    continue
+
+                for decorator in node.decorator_list:
+                    if not isinstance(decorator, ast.Call):
+                        continue
+
+                    func = decorator.func
+                    if not isinstance(func, ast.Name) or func.id != "requires_extras":
+                        continue
+
+                    extras = [
+                        arg.value
+                        for arg in decorator.args
+                        if isinstance(arg, ast.Constant) and isinstance(arg.value, str)
+                    ]
+                    if not any("|" in extra for extra in extras):
+                        continue
+
+                    has_resolver = any(
+                        keyword.arg == "resolve_extras" for keyword in decorator.keywords
+                    )
+                    if not has_resolver:
+                        violations.append(f"{path.relative_to(repo_root)}:{node.lineno}")
+
+        assert not violations, (
+            "requires_extras alternatives choose a default extra during auto-install. "
+            "Pass resolve_extras for commands with alternative extras: " + ", ".join(violations)
+        )
 
 
 class TestExtrasMetadata:
