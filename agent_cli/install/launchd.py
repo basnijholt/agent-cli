@@ -41,6 +41,21 @@ _MACOS_DAEMON_PATH = (
     "/sbin"
 )
 
+_PRESERVED_APP_ENV_KEYS = (
+    "AGENTCLI_APP_SUPPORT_DIR",
+    "AGENTCLI_BUNDLED_UV",
+    "AGENTCLI_PACKAGE_SOURCE",
+    "AGENT_CLI_CONFIG_HOME",
+    "UV_CACHE_DIR",
+    "UV_PYTHON_INSTALL_DIR",
+    "UV_PYTHON_BIN_DIR",
+    "UV_TOOL_DIR",
+    "UV_TOOL_BIN_DIR",
+    "UV_NO_PROGRESS",
+    "NO_COLOR",
+    "TERM",
+)
+
 
 def _get_label(service_name: str) -> str:
     """Get launchd label for a service."""
@@ -95,13 +110,19 @@ def _generate_plist(
     log_dir: Path,
 ) -> dict:
     """Generate plist dictionary for a launchd service."""
+    environment = {"PATH": _MACOS_DAEMON_PATH}
+    for key in _PRESERVED_APP_ENV_KEYS:
+        value = os.environ.get(key)
+        if value:
+            environment[key] = value
+
     return {
         "Label": _get_label(service.name),
         "ProgramArguments": build_service_command(service, uv_path, use_macos_extra=True),
         "RunAtLoad": True,
         "KeepAlive": True,
         "WorkingDirectory": str(home_dir),
-        "EnvironmentVariables": {"PATH": _MACOS_DAEMON_PATH},
+        "EnvironmentVariables": environment,
         "StandardOutPath": str(log_dir / "stdout.log"),
         "StandardErrorPath": str(log_dir / "stderr.log"),
     }
