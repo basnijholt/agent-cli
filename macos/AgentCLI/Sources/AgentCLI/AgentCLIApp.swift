@@ -121,6 +121,12 @@ struct AgentCLIApp: App {
                 Label("Open Notification Settings", systemImage: "bell.badge")
             }
 
+            Button {
+                runner.openAccessibilitySettings()
+            } label: {
+                Label("Open Accessibility Settings", systemImage: "figure.wave")
+            }
+
             Divider()
 
             Button {
@@ -223,7 +229,7 @@ struct VoiceLevelOverlayView: View {
                         )
                     )
                     .frame(width: 3.5, height: max(5, 25 * amplitude))
-                    .animation(.easeOut(duration: 0.08), value: amplitude)
+                    .animation(.easeOut(duration: 0.18), value: amplitude)
             }
         }
         .frame(width: 147, height: 38)
@@ -299,6 +305,7 @@ final class VoiceLevelMeter: NSObject, ObservableObject {
     private var recorder: AVAudioRecorder?
     private var timer: Timer?
     private var phase = 0.0
+    private var smoothedLevel = CGFloat(0.16)
 
     private override init() {}
 
@@ -328,10 +335,12 @@ final class VoiceLevelMeter: NSObject, ObservableObject {
         timer = nil
         recorder?.stop()
         recorder = nil
+        smoothedLevel = 0.16
         amplitudes = Self.idleAmplitudes
     }
 
     private func startMetering() {
+        smoothedLevel = 0.16
         let url = URL(fileURLWithPath: "/dev/null")
         let settings: [String: Any] = [
             AVFormatIDKey: Int(kAudioFormatAppleLossless),
@@ -348,7 +357,7 @@ final class VoiceLevelMeter: NSObject, ObservableObject {
                 return
             }
             self.recorder = recorder
-            timer = Timer.scheduledTimer(withTimeInterval: 0.05, repeats: true) { [weak self] _ in
+            timer = Timer.scheduledTimer(withTimeInterval: 0.09, repeats: true) { [weak self] _ in
                 self?.updateMeter()
             }
         } catch {
@@ -362,11 +371,13 @@ final class VoiceLevelMeter: NSObject, ObservableObject {
 
         let power = recorder.averagePower(forChannel: 0)
         let normalized = Self.normalizedPower(power, minimumPower: minimumPower)
-        phase += 0.32
+        phase += 0.12
+        smoothedLevel = (smoothedLevel * 0.78) + (normalized * 0.22)
+        let displayLevel = smoothedLevel
 
         amplitudes = (0..<Self.barCount).map { index in
-            let wave = 0.72 + 0.28 * sin(phase + Double(index) * 0.85)
-            return max(0.12, min(1, normalized * CGFloat(wave)))
+            let wave = 0.78 + 0.22 * sin(phase + Double(index) * 0.62)
+            return max(0.12, min(1, displayLevel * CGFloat(wave)))
         }
     }
 
@@ -823,6 +834,7 @@ struct AgentRuntime {
     let binURL: URL
     let agentCLIURL: URL
     let whisperDaemonMarkerURL: URL
+    let accessibilityPromptMarkerURL: URL
     let notificationLogoURL: URL?
     let lastErrorURL: URL
     let logsURL: URL
@@ -848,6 +860,7 @@ struct AgentRuntime {
         binURL = appSupportURL.appendingPathComponent("bin", isDirectory: true)
         agentCLIURL = binURL.appendingPathComponent("agent-cli")
         whisperDaemonMarkerURL = appSupportURL.appendingPathComponent(".whisper-daemon-installed")
+        accessibilityPromptMarkerURL = appSupportURL.appendingPathComponent(".accessibility-prompted")
         notificationLogoURL = bundle.url(forResource: "logo-avatar", withExtension: "png")
         lastErrorURL = appSupportURL.appendingPathComponent("last-error.txt")
         logsURL = FileManager.default.urls(for: .libraryDirectory, in: .userDomainMask)[0]
@@ -1122,7 +1135,6 @@ final class AgentCommandRunner: ObservableObject {
     private var holdStopRequestActive = false
     private var holdToTranscribePasteTarget: FocusedTextTarget?
     private var pasteAfterRecordingCommands: Set<String> = []
-    private var didRequestAccessibilityPermission = false
 
     var isRunning: Bool {
         activeCommandCount > 0
@@ -1135,6 +1147,10 @@ final class AgentCommandRunner: ObservableObject {
     private static let notificationSettingsURLs: [URL] = [
         URL(string: "x-apple.systempreferences:com.apple.Notifications-Settings.extension")!,
         URL(string: "x-apple.systempreferences:com.apple.preference.notifications")!
+    ]
+    private static let accessibilitySettingsURLs: [URL] = [
+        URL(string: "x-apple.systempreferences:com.apple.Security-Privacy.extension?Privacy_Accessibility")!,
+        URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")!
     ]
     private static let holdStopShell = #"for attempt in {1..3000}; do if [ -s "$HOME/.cache/agent-cli/transcribe.pid" ]; then "$AGENTCLI_AGENT_CLI" transcribe --stop --quiet; exit $?; fi; sleep 0.1; done; "$AGENTCLI_AGENT_CLI" transcribe --stop --quiet"#
 
@@ -1367,6 +1383,36 @@ final class AgentCommandRunner: ObservableObject {
         }
     }
 
+    private var accessibilityPromptMarkerContents: String {
+        let executableURL = Bundle.main.executableURL ?? Bundle.main.bundleURL
+        let executableValues = try? executableURL.resourceValues(forKeys: [.contentModificationDateKey])
+        let executableModified = executableValues?.contentModificationDate?.timeIntervalSince1970 ?? 0
+        return [
+            "packageSource=\(AgentRuntime.shared.agentCLIPackageSource)",
+            "executable=\(executableURL.path)",
+            "executableModified=\(executableModified)"
+        ].joined(separator: "\n") + "\n"
+    }
+
+    private func requestAccessibilityPermissionIfNeeded() {
+        let accessibilityPromptMarkerContents = self.accessibilityPromptMarkerContents
+        guard (try? String(contentsOf: AgentRuntime.shared.accessibilityPromptMarkerURL)) != accessibilityPromptMarkerContents else {
+            return
+        }
+
+        try? FileManager.default.createDirectory(at: AgentRuntime.shared.appSupportURL, withIntermediateDirectories: true)
+        try? accessibilityPromptMarkerContents.write(
+            to: AgentRuntime.shared.accessibilityPromptMarkerURL,
+            atomically: true,
+            encoding: .utf8
+        )
+
+        // Equivalent to kAXTrustedCheckOptionPrompt as String, but Swift exposes it unmanaged.
+        let promptOption = kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String
+        let options = [promptOption: true] as CFDictionary
+        _ = AXIsProcessTrustedWithOptions(options)
+    }
+
     private func postPasteShortcut(to pid: pid_t?) {
         let source = CGEventSource(stateID: .hidSystemState)
         let commandDown = CGEvent(keyboardEventSource: source, virtualKey: CGKeyCode(kVK_Command), keyDown: true)
@@ -1388,18 +1434,6 @@ final class AgentCommandRunner: ObservableObject {
             keyUp?.post(tap: .cghidEventTap)
             commandUp?.post(tap: .cghidEventTap)
         }
-    }
-
-    private func requestAccessibilityPermissionIfNeeded() {
-        guard !didRequestAccessibilityPermission else {
-            return
-        }
-        didRequestAccessibilityPermission = true
-
-        // Equivalent to kAXTrustedCheckOptionPrompt as String, but Swift exposes it unmanaged.
-        let promptOption = kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String
-        let options = [promptOption: true] as CFDictionary
-        AXIsProcessTrustedWithOptions(options)
     }
 
     func copyLastOutput() {
@@ -1472,6 +1506,14 @@ final class AgentCommandRunner: ObservableObject {
             return
         }
         statusMessage = "Could not open Notification Settings"
+    }
+
+    func openAccessibilitySettings() {
+        for url in Self.accessibilitySettingsURLs where NSWorkspace.shared.open(url) {
+            statusMessage = "Opened Accessibility Settings. Accessibility permission controls auto-inserting transcripts."
+            return
+        }
+        statusMessage = "Could not open Accessibility Settings"
     }
 
     private static func execute(_ shell: String) -> CommandResult {

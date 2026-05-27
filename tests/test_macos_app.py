@@ -170,6 +170,18 @@ def test_macos_app_voice_level_meter_uses_live_microphone_power_without_saving_a
     assert "recorder?.stop()" in source
 
 
+def test_macos_app_voice_level_meter_smooths_fast_meter_changes() -> None:
+    """The voice overlay should respond to loudness without jittering too quickly."""
+    source = (MACOS_APP / "Sources" / "AgentCLI" / "AgentCLIApp.swift").read_text()
+
+    assert ".animation(.easeOut(duration: 0.18), value: amplitude)" in source
+    assert "private var smoothedLevel = CGFloat(0.16)" in source
+    assert "withTimeInterval: 0.09" in source
+    assert "phase += 0.12" in source
+    assert "smoothedLevel = (smoothedLevel * 0.78) + (normalized * 0.22)" in source
+    assert "let displayLevel = smoothedLevel" in source
+
+
 def test_macos_app_supports_configurable_hold_to_transcribe_shortcut() -> None:
     """A hold shortcut should start on key-down and stop on key-up."""
     source = (MACOS_APP / "Sources" / "AgentCLI" / "AgentCLIApp.swift").read_text()
@@ -235,6 +247,7 @@ def test_macos_app_pastes_hold_transcription_into_focused_field() -> None:
     assert "NSPasteboard.general.clearContents()" in source
     assert "NSPasteboard.general.setString(transcript, forType: .string)" in source
     assert "AXIsProcessTrusted()" in source
+    assert "requestAccessibilityPermissionIfNeeded()" in source
     assert "AXIsProcessTrustedWithOptions(options)" in source
     assert "kAXTrustedCheckOptionPrompt as String" in source
     assert (
@@ -279,14 +292,21 @@ def test_macos_app_targets_original_focused_field_for_hold_to_type() -> None:
     assert "keyDown?.postToPid(pid)" in source
 
 
-def test_macos_app_does_not_reopen_accessibility_settings_on_every_paste() -> None:
-    """An untrusted paste should prompt once per app launch instead of every recording."""
+def test_macos_app_throttles_accessibility_prompt_per_installed_build() -> None:
+    """An untrusted paste should prompt when needed but not repeatedly for one build."""
     source = (MACOS_APP / "Sources" / "AgentCLI" / "AgentCLIApp.swift").read_text()
 
-    assert "private var didRequestAccessibilityPermission = false" in source
-    assert "requestAccessibilityPermissionIfNeeded()" in source
-    assert "guard !didRequestAccessibilityPermission else" in source
-    assert "didRequestAccessibilityPermission = true" in source
+    assert "accessibilityPromptMarkerURL" in source
+    assert 'appendingPathComponent(".accessibility-prompted")' in source
+    assert "accessibilityPromptMarkerContents" in source
+    assert "Bundle.main.executableURL ?? Bundle.main.bundleURL" in source
+    assert "contentModificationDateKey" in source
+    assert "packageSource=\\(AgentRuntime.shared.agentCLIPackageSource)" in source
+    assert (
+        "guard (try? String(contentsOf: AgentRuntime.shared.accessibilityPromptMarkerURL))"
+        in source
+    )
+    assert "try? accessibilityPromptMarkerContents.write(" in source
     assert "AXIsProcessTrustedWithOptions(options)" in source
     assert (
         'statusMessage = "Transcript copied. Allow Accessibility permission to auto-insert text."'
@@ -370,6 +390,17 @@ def test_macos_app_can_open_notification_settings() -> None:
     assert "x-apple.systempreferences:com.apple.Notifications-Settings.extension" in source
     assert "x-apple.systempreferences:com.apple.preference.notifications" in source
     assert "Notifications are disabled" in source
+
+
+def test_macos_app_can_open_accessibility_settings() -> None:
+    """Users should get an explicit path to grant paste insertion permission."""
+    source = (MACOS_APP / "Sources" / "AgentCLI" / "AgentCLIApp.swift").read_text()
+
+    assert 'Label("Open Accessibility Settings", systemImage: "figure.wave")' in source
+    assert "openAccessibilitySettings()" in source
+    assert "accessibilitySettingsURLs" in source
+    assert "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility" in source
+    assert "Accessibility permission controls auto-inserting transcripts" in source
 
 
 def test_macos_app_makes_command_errors_discoverable() -> None:
