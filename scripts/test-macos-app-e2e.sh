@@ -57,8 +57,31 @@ printf 'agent-cli' >>"$AGENTCLI_TEST_COMMAND_LOG"
 printf ' %q' "$@" >>"$AGENTCLI_TEST_COMMAND_LOG"
 printf '\n' >>"$AGENTCLI_TEST_COMMAND_LOG"
 
+start_fake_whisper_listener() {
+    python3 - <<'PY' >/dev/null 2>&1 &
+import socket
+
+sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+try:
+    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    sock.bind(("127.0.0.1", 10300))
+    sock.listen(1)
+    sock.settimeout(30)
+    try:
+        conn, _ = sock.accept()
+        conn.close()
+    except TimeoutError:
+        pass
+except OSError:
+    pass
+finally:
+    sock.close()
+PY
+}
+
 case "$*" in
     "daemon install whisper -y")
+        start_fake_whisper_listener
         printf 'Installed and started whisper\n'
         ;;
     "daemon status"|"daemon status whisper"|"daemon status whisper --logs 0")

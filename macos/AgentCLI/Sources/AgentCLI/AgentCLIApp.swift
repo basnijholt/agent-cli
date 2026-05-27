@@ -2,6 +2,7 @@ import AppKit
 import ApplicationServices
 import AVFoundation
 import Carbon.HIToolbox
+import Darwin
 import Foundation
 import KeyboardShortcuts
 import SwiftUI
@@ -964,7 +965,7 @@ struct AgentRuntime {
     private func ensureWhisperDaemon(force: Bool = false) -> CommandResult {
         let whisperDaemonMarkerContents = "packageSource=\(agentCLIPackageSource)\n"
         if !force, (try? String(contentsOf: whisperDaemonMarkerURL)) == whisperDaemonMarkerContents {
-            return CommandResult(exitCode: 0, output: "")
+            return waitForWhisperDaemonReady()
         }
 
         let result = runShell(#""$AGENTCLI_AGENT_CLI" daemon install whisper -y"#)
@@ -977,7 +978,47 @@ struct AgentRuntime {
             atomically: true,
             encoding: .utf8
         )
-        return result
+        return waitForWhisperDaemonReady()
+    }
+
+    private func waitForWhisperDaemonReady(timeout: TimeInterval = 180) -> CommandResult {
+        let deadline = Date().addingTimeInterval(timeout)
+        while Date() < deadline {
+            if Self.canConnectToLocalhost(port: 10300) {
+                return CommandResult(exitCode: 0, output: "")
+            }
+            Thread.sleep(forTimeInterval: 0.5)
+        }
+
+        let status = runShell(#""$AGENTCLI_AGENT_CLI" daemon status whisper --logs 80"#)
+        let statusOutput = status.output.trimmingCharacters(in: .whitespacesAndNewlines)
+        let output = statusOutput.isEmpty
+            ? "Whisper ASR service did not become ready at localhost:10300."
+            : "Whisper ASR service did not become ready at localhost:10300.\n\n\(statusOutput)"
+        return CommandResult(exitCode: 1, output: output)
+    }
+
+    private static func canConnectToLocalhost(port: UInt16) -> Bool {
+        let socketFD = socket(AF_INET, SOCK_STREAM, 0)
+        guard socketFD >= 0 else {
+            return false
+        }
+        defer { close(socketFD) }
+
+        var address = sockaddr_in()
+        address.sin_len = UInt8(MemoryLayout<sockaddr_in>.size)
+        address.sin_family = sa_family_t(AF_INET)
+        address.sin_port = port.bigEndian
+
+        guard inet_pton(AF_INET, "127.0.0.1", &address.sin_addr) == 1 else {
+            return false
+        }
+
+        return withUnsafePointer(to: &address) { pointer in
+            pointer.withMemoryRebound(to: sockaddr.self, capacity: 1) { socketAddress in
+                connect(socketFD, socketAddress, socklen_t(MemoryLayout<sockaddr_in>.size)) == 0
+            }
+        }
     }
 
     func commandEnvironment() -> [String: String] {

@@ -489,6 +489,20 @@ def test_macos_app_bootstraps_private_uv_runtime() -> None:
     assert "--agentcli-bootstrap-self-test" in source
 
 
+def test_macos_app_waits_for_whisper_daemon_readiness() -> None:
+    """Transcription should not start before the local Wyoming port is listening."""
+    source = (MACOS_APP / "Sources" / "AgentCLI" / "AgentCLIApp.swift").read_text()
+
+    assert "waitForWhisperDaemonReady()" in source
+    assert "return waitForWhisperDaemonReady()" in source
+    assert "canConnectToLocalhost(port: 10300)" in source
+    assert "Thread.sleep(forTimeInterval: 0.5)" in source
+    assert "socket(AF_INET, SOCK_STREAM, 0)" in source
+    assert "connect(socketFD" in source
+    assert '"$AGENTCLI_AGENT_CLI" daemon status whisper --logs 80' in source
+    assert "Whisper ASR service did not become ready at localhost:10300" in source
+
+
 def test_macos_app_has_end_to_end_packaging_test() -> None:
     """The installable artifact should have a repeatable local E2E gate."""
     mode = E2E_SCRIPT.stat().st_mode
