@@ -20,15 +20,34 @@ extension KeyboardShortcuts.Name {
     )
 }
 
-enum AppShortcutDefaults {
-    static let toggleTranscription = ShortcutStorage.shortcut(
+enum ToggleTranscriptionDefault {
+    static let shortcut = FunctionShortcutPersistence.rawShortcut(
         carbonKeyCode: kVK_Space,
         carbonModifiers: kEventKeyModifierFnMask
     )
+
+    static func set() {
+        FunctionShortcutPersistence.set(shortcut, for: .toggleTranscription)
+    }
+
+    static func seedIfNeeded() {
+        guard !userDefaultsContainsShortcut else {
+            return
+        }
+        set()
+    }
+
+    private static var userDefaultsContainsShortcut: Bool {
+        UserDefaults.standard.object(forKey: userDefaultsKey) != nil
+    }
+
+    private static var userDefaultsKey: String {
+        "KeyboardShortcuts_\(KeyboardShortcuts.Name.toggleTranscription.rawValue)"
+    }
 }
 
-enum ShortcutStorage {
-    static func shortcut(carbonKeyCode: Int, carbonModifiers: Int = 0) -> KeyboardShortcuts.Shortcut {
+enum FunctionShortcutPersistence {
+    static func rawShortcut(carbonKeyCode: Int, carbonModifiers: Int) -> KeyboardShortcuts.Shortcut {
         // KeyboardShortcuts' public initializer normalizes away Fn, but Codable preserves raw Carbon modifiers.
         let shortcutJSON = """
         {"carbonKeyCode":\(carbonKeyCode),"carbonModifiers":\(carbonModifiers)}
@@ -43,42 +62,23 @@ enum ShortcutStorage {
         return shortcut
     }
 
-    static func setShortcut(_ shortcut: KeyboardShortcuts.Shortcut?, for name: KeyboardShortcuts.Name) {
-        guard let shortcut else {
-            KeyboardShortcuts.setShortcut(nil, for: name)
-            UserDefaults.standard.set(false, forKey: userDefaultsKey(for: name))
-            postShortcutChange(for: name)
-            return
-        }
-
-        guard shortcut.carbonModifiers & kEventKeyModifierFnMask != 0 else {
-            KeyboardShortcuts.setShortcut(shortcut, for: name)
-            return
-        }
-
+    static func set(_ shortcut: KeyboardShortcuts.Shortcut, for name: KeyboardShortcuts.Name) {
         KeyboardShortcuts.setShortcut(nil, for: name)
         guard let encoded = try? JSONEncoder().encode(shortcut),
               let encodedString = String(data: encoded, encoding: .utf8) else {
             return
         }
         UserDefaults.standard.set(encodedString, forKey: userDefaultsKey(for: name))
-        postShortcutChange(for: name)
-    }
-
-    static func userDefaultsContains(name: KeyboardShortcuts.Name) -> Bool {
-        UserDefaults.standard.object(forKey: userDefaultsKey(for: name)) != nil
     }
 
     private static func userDefaultsKey(for name: KeyboardShortcuts.Name) -> String {
         "KeyboardShortcuts_\(name.rawValue)"
     }
+}
 
-    private static func postShortcutChange(for name: KeyboardShortcuts.Name) {
-        NotificationCenter.default.post(
-            name: Notification.Name("KeyboardShortcuts_shortcutByNameDidChange"),
-            object: nil,
-            userInfo: ["name": name]
-        )
+private extension KeyboardShortcuts.Shortcut {
+    var usesFunctionModifier: Bool {
+        carbonModifiers & kEventKeyModifierFnMask != 0
     }
 }
 
@@ -123,7 +123,7 @@ final class ShortcutSummaryState: ObservableObject {
     }
 
     func resetDefaults() {
-        ShortcutStorage.setShortcut(AppShortcutDefaults.toggleTranscription, for: .toggleTranscription)
+        ToggleTranscriptionDefault.set()
         KeyboardShortcuts.reset(
             .holdToTranscribe,
             .autocorrect,
@@ -177,7 +177,15 @@ private enum ShortcutDisplay {
         if event.modifierFlags.contains(.function) {
             carbonModifiers |= kEventKeyModifierFnMask
         }
-        return ShortcutStorage.shortcut(
+
+        guard carbonModifiers & kEventKeyModifierFnMask != 0 else {
+            return KeyboardShortcuts.Shortcut(
+                carbonKeyCode: shortcut.carbonKeyCode,
+                carbonModifiers: carbonModifiers
+            )
+        }
+
+        return FunctionShortcutPersistence.rawShortcut(
             carbonKeyCode: shortcut.carbonKeyCode,
             carbonModifiers: carbonModifiers
         )
@@ -213,19 +221,19 @@ enum ShortcutDefaultsMigrator {
         migrateDefault(
             name: .toggleTranscription,
             from: KeyboardShortcuts.Shortcut(.r, modifiers: [.command, .shift]),
-            to: AppShortcutDefaults.toggleTranscription
+            to: ToggleTranscriptionDefault.shortcut
         )
         migrateDefault(
             name: .toggleTranscription,
             from: KeyboardShortcuts.Shortcut(.space),
-            to: AppShortcutDefaults.toggleTranscription
+            to: ToggleTranscriptionDefault.shortcut
         )
         migrateDefault(
             name: .holdToTranscribe,
             from: KeyboardShortcuts.Shortcut(.space, modifiers: [.control, .option]),
             to: KeyboardShortcuts.Shortcut(.function)
         )
-        seedDefault(name: .toggleTranscription, shortcut: AppShortcutDefaults.toggleTranscription)
+        ToggleTranscriptionDefault.seedIfNeeded()
     }
 
     private static func migrateDefault(
@@ -236,17 +244,19 @@ enum ShortcutDefaultsMigrator {
         guard KeyboardShortcuts.getShortcut(for: name) == oldShortcut else {
             return
         }
-        ShortcutStorage.setShortcut(newShortcut, for: name)
+        setShortcut(newShortcut, for: name)
     }
 
-    private static func seedDefault(
-        name: KeyboardShortcuts.Name,
-        shortcut: KeyboardShortcuts.Shortcut
+    private static func setShortcut(
+        _ shortcut: KeyboardShortcuts.Shortcut,
+        for name: KeyboardShortcuts.Name
     ) {
-        guard !ShortcutStorage.userDefaultsContains(name: name) else {
+        guard name == .toggleTranscription,
+              shortcut == ToggleTranscriptionDefault.shortcut else {
+            KeyboardShortcuts.setShortcut(shortcut, for: name)
             return
         }
-        ShortcutStorage.setShortcut(shortcut, for: name)
+        ToggleTranscriptionDefault.set()
     }
 }
 
@@ -436,7 +446,7 @@ final class ShortcutRecorderButton: NSButton {
             stopRecording()
         case kVK_Delete, kVK_ForwardDelete:
             pendingFunctionShortcut = false
-            ShortcutStorage.setShortcut(nil, for: shortcutName)
+            KeyboardShortcuts.setShortcut(nil, for: shortcutName)
             stopRecording()
         case kVK_Function:
             handleFunctionKeyChange(event)
@@ -446,7 +456,15 @@ final class ShortcutRecorderButton: NSButton {
                 NSSound.beep()
                 return
             }
-            ShortcutStorage.setShortcut(shortcut, for: shortcutName)
+            if shortcut.usesFunctionModifier {
+                guard supportsFunctionChord(shortcutName) else {
+                    NSSound.beep()
+                    return
+                }
+                FunctionShortcutPersistence.set(shortcut, for: shortcutName)
+            } else {
+                KeyboardShortcuts.setShortcut(shortcut, for: shortcutName)
+            }
             stopRecording()
         }
     }
@@ -468,8 +486,12 @@ final class ShortcutRecorderButton: NSButton {
 
     private func captureBareFunctionShortcut() {
         pendingFunctionShortcut = false
-        ShortcutStorage.setShortcut(KeyboardShortcuts.Shortcut(.function), for: shortcutName)
+        KeyboardShortcuts.setShortcut(KeyboardShortcuts.Shortcut(.function), for: shortcutName)
         stopRecording()
+    }
+
+    private func supportsFunctionChord(_ name: KeyboardShortcuts.Name) -> Bool {
+        name == .toggleTranscription || name == .holdToTranscribe
     }
 
     private func stopRecording() {
