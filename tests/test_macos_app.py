@@ -947,6 +947,16 @@ def test_macos_app_records_fn_chords_before_bare_fn() -> None:
     assert "KeyboardShortcuts.setShortcut(shortcut, for: shortcutName)" in source
 
 
+def test_macos_app_does_not_record_function_row_keys_as_fn_chords() -> None:
+    """F1/F2 key events can carry .function in modifierFlags but should remain plain keys."""
+    source = swift_source()
+
+    assert "shouldTreatFunctionFlagAsModifier(for: shortcut.carbonKeyCode)" in source
+    assert "isFunctionRowKey(" in source
+    assert "case kVK_F1...kVK_F20:" in source
+    assert "!isFunctionRowKey(carbonKeyCode)" in source
+
+
 def test_macos_app_shows_actual_persisted_shortcuts_and_can_reset_them() -> None:
     """The menu should reflect stored shortcuts instead of claiming static defaults."""
     source = swift_source()

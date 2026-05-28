@@ -174,7 +174,8 @@ private enum ShortcutDisplay {
         }
 
         var carbonModifiers = shortcut.carbonModifiers
-        if event.modifierFlags.contains(.function) {
+        if event.modifierFlags.contains(.function),
+           shouldTreatFunctionFlagAsModifier(for: shortcut.carbonKeyCode) {
             carbonModifiers |= kEventKeyModifierFnMask
         }
 
@@ -189,6 +190,19 @@ private enum ShortcutDisplay {
             carbonKeyCode: shortcut.carbonKeyCode,
             carbonModifiers: carbonModifiers
         )
+    }
+
+    private static func shouldTreatFunctionFlagAsModifier(for carbonKeyCode: Int) -> Bool {
+        !isFunctionRowKey(carbonKeyCode)
+    }
+
+    private static func isFunctionRowKey(_ carbonKeyCode: Int) -> Bool {
+        switch carbonKeyCode {
+        case kVK_F1...kVK_F20:
+            return true
+        default:
+            return false
+        }
     }
 
     private static func label(for shortcut: KeyboardShortcuts.Shortcut, fallback: String) -> String {
