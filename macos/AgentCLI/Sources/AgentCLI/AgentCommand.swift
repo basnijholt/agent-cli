@@ -49,6 +49,13 @@ struct AgentCommand {
         finishNotificationTitle: "Transcription Finished"
     )
 
+    static let stopTranscription = AgentCommand(
+        identifier: "transcribe-stop",
+        title: "Stop Transcription",
+        arguments: ["transcribe", "--stop", "--quiet", "--wait-for-start"],
+        bootstrapRequirement: .transcription
+    )
+
     static let voiceEdit = AgentCommand(
         identifier: "voice-edit",
         title: "Voice Edit Clipboard",

@@ -108,7 +108,9 @@ def test_macos_app_source_exposes_expected_agent_cli_actions() -> None:
     source = swift_source()
 
     assert "MenuBarExtra" in source
-    assert '"$AGENTCLI_AGENT_CLI" transcribe --stop --quiet' in source
+    assert 'arguments: ["transcribe", "--stop", "--quiet", "--wait-for-start"]' in source
+    assert "holdStopShell" not in source
+    assert "runShell(Self.holdStopShell)" not in source
     assert "transcribe.pid" not in source
     assert 'arguments: ["transcribe", "--toggle", "--quiet"]' in source
     assert "transcribe --toggle --llm --quiet" not in source
@@ -325,18 +327,15 @@ def test_macos_app_hides_hold_recording_ui_immediately_on_key_release() -> None:
     assert (
         "let wasRecording = recordingIndicator.isRecordingCommand(.toggleTranscription)" in source
     )
-    assert "holdTranscriptionState = .awaitingPid" in source
+    assert "holdTranscriptionState = .stopping" in source
+    assert "case awaitingPid" not in source
     assert (
         "if wasRecording {\n"
         "            endRecordingIndicator(for: .toggleTranscription)\n"
-        '            statusMessage = "Transcribing..."\n'
-        "            stopHeldTranscriptionWhenReady()" in source
+        '            statusMessage = "Transcribing..."' in source
     )
-    assert (
-        "holdTranscriptionState == .awaitingPid {\n"
-        "            endRecordingIndicator(for: command)\n"
-        "            stopHeldTranscriptionWhenReady()" in source
-    )
+    assert "stopHeldTranscriptionWhenReady()" in source
+    assert "holdTranscriptionState == .awaitingPid" not in source
     assert (
         "if shouldStartRecording {\n"
         "                    self.clearHoldTranscriptionState(for: command)" in source
@@ -376,7 +375,6 @@ def test_macos_app_models_hold_to_transcribe_as_explicit_state() -> None:
     assert "private enum HoldTranscriptionState" in source
     assert "case idle" in source
     assert "case recording" in source
-    assert "case awaitingPid" in source
     assert "case stopping" in source
     assert "private var holdTranscriptionState: HoldTranscriptionState = .idle" in source
     assert "holdTranscriptionState.isFinishing" in source
@@ -398,9 +396,15 @@ def test_macos_app_uses_cli_owned_hold_to_transcribe_stop() -> None:
         in source
     )
     assert (
-        'private static let holdStopShell = #""$AGENTCLI_AGENT_CLI" transcribe --stop --quiet --wait-for-start"#'
-        in source
+        "static let stopTranscription = AgentCommand(\n"
+        '        identifier: "transcribe-stop",\n'
+        '        title: "Stop Transcription",\n'
+        '        arguments: ["transcribe", "--stop", "--quiet", "--wait-for-start"]' in source
     )
+    assert "let bootstrap = AgentRuntime.shared.ensureReady(" in source
+    assert "for: AgentCommand.stopTranscription.bootstrapRequirement" in source
+    assert "holdStopShell" not in source
+    assert "runShell(Self.holdStopShell)" not in source
     assert "transcribe.pid" not in source
     assert '"$HOME/.cache/agent-cli/transcribe.pid"' not in source
     assert '"AGENTCLI_RUNTIME_DIR"' in launchd
