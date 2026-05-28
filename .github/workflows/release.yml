@@ -64,3 +64,28 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           TAG_NAME: ${{ github.event.release.tag_name }}
         run: gh release upload "$TAG_NAME" dist/macos/AgentCLI.dmg --clobber
+      - name: Update Homebrew cask
+        env:
+          TAG_NAME: ${{ github.event.release.tag_name }}
+        run: |
+          VERSION="${TAG_NAME#v}"
+          SHA256=$(shasum -a 256 dist/macos/AgentCLI.dmg | awk '{ print $1 }')
+
+          git fetch origin main
+          git switch --force-create cask-update origin/main
+
+          python3 .github/scripts/update_cask.py \
+            --version "$VERSION" \
+            --sha256 "$SHA256"
+
+          if git diff --quiet -- Casks/agent-cli.rb; then
+            echo "Casks/agent-cli.rb is already up to date."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Casks/agent-cli.rb
+          git commit -m "Update AgentCLI cask to ${TAG_NAME}"
+          git pull --rebase origin main
+          git push origin HEAD:main
