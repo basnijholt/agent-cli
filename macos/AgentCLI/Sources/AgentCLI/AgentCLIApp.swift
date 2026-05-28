@@ -6,6 +6,7 @@ struct AgentCLIApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @Environment(\.openWindow) private var openWindow
     @StateObject private var runner = AgentCommandRunner.shared
+    @StateObject private var loginItemController = LoginItemController.shared
     @StateObject private var shortcutSummary = ShortcutSummaryState.shared
 
     var body: some Scene {
@@ -39,10 +40,20 @@ struct AgentCLIApp: App {
             Divider()
 
             Button {
+                loginItemController.toggle()
+            } label: {
+                Label(
+                    loginItemController.presentation.menuTitle,
+                    systemImage: loginItemController.presentation.isEnabled ? "checkmark.circle" : "circle"
+                )
+            }
+            .disabled(!loginItemController.presentation.canToggle)
+
+            Button {
                 openWindow(id: "settings")
                 NSApp.activate(ignoringOtherApps: true)
             } label: {
-                Label("Keyboard Shortcuts...", systemImage: "command")
+                Label("Settings...", systemImage: "gearshape")
             }
 
             Menu {

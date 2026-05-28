@@ -14,6 +14,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         UNUserNotificationCenter.current().delegate = self
         configureNotifications()
         ShortcutDefaultsMigrator.migrate()
+        LoginItemController.shared.refresh()
         ConfigurableHotkeyController.shared.registerDefaultHotkeys(runner: AgentCommandRunner.shared)
         ShortcutSummaryState.shared.refresh()
     }
