@@ -21,9 +21,9 @@ struct LoginItemPresentation: Equatable {
 
     var canToggle: Bool {
         switch status {
-        case .notFound, .unavailable:
+        case .unavailable:
             return false
-        case .notRegistered, .enabled, .requiresApproval:
+        case .notRegistered, .enabled, .requiresApproval, .notFound:
             return true
         }
     }
@@ -37,7 +37,7 @@ struct LoginItemPresentation: Equatable {
         case .requiresApproval:
             return "Approve Agent CLI in System Settings > General > Login Items."
         case .notFound:
-            return "Start at login is only available when Agent CLI is running from an app bundle."
+            return "macOS could not find Agent CLI's login item registration. Remove old copies, keep Agent CLI in /Applications, then toggle Start at Login again."
         case .unavailable:
             return "Start at login is unavailable on this macOS version."
         case .notRegistered, .enabled:

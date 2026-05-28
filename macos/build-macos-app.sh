@@ -20,6 +20,10 @@ Options:
 
 Environment:
   CODESIGN_IDENTITY  Codesign identity to use. Defaults to ad-hoc signing (-).
+  APP_VERSION        CFBundleShortVersionString to stamp into the app.
+                     Defaults to the built wheel version.
+  BUILD_VERSION      CFBundleVersion to stamp into the app. Defaults to
+                     GITHUB_RUN_NUMBER, then the git commit count.
   UV_BINARY          uv binary to bundle. Defaults to the uv found on PATH.
   INSTALL_DIR        Install destination. Defaults to /Applications.
   AGENTCLI_SKIP_OPEN Set to 1 to skip opening the app after --install.
@@ -74,6 +78,8 @@ ICON_SOURCE_PNG="$DIST_DIR/logo-avatar-source.png"
 NOTIFICATION_LOGO_PNG="$DIST_DIR/logo-avatar.png"
 APP_ICON_ICNS="$DIST_DIR/AgentCLI.icns"
 CODESIGN_IDENTITY=${CODESIGN_IDENTITY:--}
+APP_VERSION=${APP_VERSION:-}
+BUILD_VERSION=${BUILD_VERSION:-${GITHUB_RUN_NUMBER:-}}
 UV_BINARY=${UV_BINARY:-$(command -v uv || true)}
 INSTALL_DIR=${INSTALL_DIR:-/Applications}
 NOTARIZE=${NOTARIZE:-0}
@@ -160,6 +166,64 @@ sign_dmg_if_needed() {
     fi
 
     codesign --force --sign "$CODESIGN_IDENTITY" --timestamp "$dmg_path"
+}
+
+resolve_app_version() {
+    local wheel_filename="$1"
+    local raw_version="$APP_VERSION"
+    local major
+    local minor
+    local patch
+
+    if [[ -z "$raw_version" ]]; then
+        raw_version="${wheel_filename#agent_cli-}"
+        raw_version="${raw_version%%-*}"
+    fi
+
+    if [[ "$raw_version" =~ ^v?([0-9]+)(\.([0-9]+))?(\.([0-9]+))? ]]; then
+        major="${BASH_REMATCH[1]}"
+        minor="${BASH_REMATCH[3]:-0}"
+        patch="${BASH_REMATCH[5]:-0}"
+        printf '%s.%s.%s\n' "$major" "$minor" "$patch"
+        return
+    fi
+
+    echo "Could not derive a macOS app version from: $raw_version" >&2
+    exit 1
+}
+
+resolve_build_version() {
+    local build_version="$BUILD_VERSION"
+
+    if [[ -z "$build_version" ]]; then
+        build_version=$(git -C "$ROOT_DIR" rev-list --count HEAD 2>/dev/null || true)
+    fi
+    if [[ -z "$build_version" ]]; then
+        build_version=$(date +%Y%m%d%H%M%S)
+    fi
+
+    build_version=$(printf '%s' "$build_version" | tr -cd '0-9.')
+    if [[ -z "$build_version" || ! "$build_version" =~ ^[0-9]+([.][0-9]+)*$ ]]; then
+        echo "Could not derive a numeric macOS app build version from: ${BUILD_VERSION:-unset}" >&2
+        exit 1
+    fi
+
+    printf '%s\n' "$build_version"
+}
+
+stamp_info_plist() {
+    local wheel_filename="$1"
+    local app_version
+    local build_version
+
+    app_version=$(resolve_app_version "$wheel_filename")
+    build_version=$(resolve_build_version)
+
+    /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $app_version" \
+        "$APP_DIR/Contents/Info.plist"
+    /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $build_version" \
+        "$APP_DIR/Contents/Info.plist"
+    echo "Stamped app bundle version $app_version ($build_version)"
 }
 
 require_notarization_env() {
@@ -475,6 +539,7 @@ test -f "$APP_DIR/Contents/Resources/AgentCLI.icns" || {
     exit 1
 }
 
+stamp_info_plist "$(basename "$WHEEL_PATH")"
 sign_bundled_executables
 sign_app "$APP_DIR"
 

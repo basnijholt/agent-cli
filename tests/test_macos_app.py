@@ -812,6 +812,24 @@ def test_macos_build_script_creates_signed_app_bundle() -> None:
     assert "hdiutil create" in script
 
 
+def test_macos_build_script_stamps_release_version_into_app_bundle() -> None:
+    """Released app bundles should not keep the static template plist version."""
+    script = BUILD_SCRIPT.read_text()
+
+    assert "APP_VERSION" in script
+    assert "BUILD_VERSION" in script
+    assert "resolve_app_version" in script
+    assert "resolve_build_version" in script
+    assert "stamp_info_plist" in script
+    assert "/usr/libexec/PlistBuddy" in script
+    assert "CFBundleShortVersionString" in script
+    assert "CFBundleVersion" in script
+    assert 'stamp_info_plist "$(basename "$WHEEL_PATH")"' in script
+    assert script.index('stamp_info_plist "$(basename "$WHEEL_PATH")"') < script.index(
+        'sign_app "$APP_DIR"',
+    )
+
+
 def test_macos_build_script_can_notarize_release_dmg() -> None:
     """Release builds should notarize and staple a Developer ID-signed DMG."""
     script = BUILD_SCRIPT.read_text()
@@ -895,6 +913,8 @@ def test_release_workflow_publishes_macos_app_asset() -> None:
     assert "APPLE_ID" in workflow
     assert "APPLE_APP_SPECIFIC_PASSWORD" in workflow
     assert "APPLE_TEAM_ID" in workflow
+    assert "APP_VERSION: ${{ github.event.release.tag_name }}" in workflow
+    assert "BUILD_VERSION: ${{ github.run_number }}" in workflow
     assert "apple-actions/import-codesign-certs@v7" in workflow
     assert "p12-file-base64: ${{ secrets.MACOS_CODESIGN_CERTIFICATE_BASE64 }}" in workflow
     assert "p12-password: ${{ secrets.MACOS_CODESIGN_CERTIFICATE_PASSWORD }}" in workflow
