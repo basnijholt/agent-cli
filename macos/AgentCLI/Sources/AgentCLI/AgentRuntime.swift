@@ -8,6 +8,7 @@ struct AgentRuntime {
     private static let bundledWheelsRelativePath = "Contents/Resources/wheels"
     private static let appSupportDisplayName = "Application Support"
     private static let fallbackPackageSource = "agent-cli"
+    private static let bootstrapQueue = DispatchQueue(label: "lt.nijho.agent-cli.bootstrap")
     private let fileManager = FileManager.default
     let appSupportURL: URL
     let bundledUVURL: URL
@@ -168,6 +169,12 @@ struct AgentRuntime {
     }
 
     func ensureReady(for requirement: AgentBootstrapRequirement, force: Bool = false) -> CommandResult {
+        Self.bootstrapQueue.sync {
+            ensureReadyUnsynchronized(for: requirement, force: force)
+        }
+    }
+
+    private func ensureReadyUnsynchronized(for requirement: AgentBootstrapRequirement, force: Bool = false) -> CommandResult {
         switch requirement {
         case .cliRuntime:
             return ensureInstalled(force: force)

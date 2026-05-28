@@ -18,6 +18,8 @@ private enum HoldTranscriptionState {
     }
 }
 
+typealias AgentBootstrap = @Sendable (AgentBootstrapRequirement, Bool) -> CommandResult
+
 @MainActor
 final class AgentCommandRunner: ObservableObject {
     static let shared = AgentCommandRunner()
@@ -29,10 +31,12 @@ final class AgentCommandRunner: ObservableObject {
     @Published private var activeCommandCount = 0
     private var recordingIndicator = RecordingIndicatorController()
     private let pasteController: TranscriptPasteController
+    private let bootstrap: AgentBootstrap
     private var pendingStopRecordingCommands: Set<String> = []
     private var holdTranscriptionState: HoldTranscriptionState = .idle
     private var holdToTranscribePasteTarget: FocusedTextTarget?
     private var pasteAfterRecordingCommands: Set<String> = []
+    private var hasStartedTranscriptionWarmUp = false
 
     var isRunning: Bool {
         activeCommandCount > 0
@@ -51,10 +55,14 @@ final class AgentCommandRunner: ObservableObject {
         return Self.compactMenuStatus(statusMessage)
     }
 
-    private init(
-        pasteController: TranscriptPasteController = TranscriptPasteController()
+    init(
+        pasteController: TranscriptPasteController = TranscriptPasteController(),
+        bootstrap: @escaping AgentBootstrap = { requirement, force in
+            AgentRuntime.shared.ensureReady(for: requirement, force: force)
+        }
     ) {
         self.pasteController = pasteController
+        self.bootstrap = bootstrap
         hasLastError = FileManager.default.fileExists(atPath: AgentRuntime.shared.lastErrorURL.path)
     }
 
@@ -67,6 +75,40 @@ final class AgentCommandRunner: ObservableObject {
         URL(string: "x-apple.systempreferences:com.apple.Security-Privacy.extension?Privacy_Accessibility")!,
         URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")!
     ]
+
+    func warmUpTranscription() {
+        guard !hasStartedTranscriptionWarmUp else { return }
+        hasStartedTranscriptionWarmUp = true
+
+        activeCommandCount += 1
+        if statusMessage == "Ready" {
+            statusMessage = "Preparing voice service..."
+        }
+
+        let bootstrap = self.bootstrap
+        DispatchQueue.global(qos: .utility).async {
+            let result = bootstrap(.transcription, false)
+
+            Task { @MainActor in
+                self.activeCommandCount = max(0, self.activeCommandCount - 1)
+                if !result.output.isEmpty {
+                    self.lastOutput = result.output
+                }
+
+                if result.exitCode == 0 {
+                    if self.statusMessage == "Preparing voice service..." {
+                        self.statusMessage = "Ready"
+                    }
+                    return
+                }
+
+                self.recordFailure(title: "Startup Voice Service Warm-Up", result: result)
+                self.statusMessage = result.output.isEmpty
+                    ? "Voice service warm-up failed with exit code \(result.exitCode)"
+                    : "Voice service warm-up failed: \(Self.summarize(result.output))"
+            }
+        }
+    }
 
     func beginHoldToTranscribe() {
         guard holdTranscriptionState == .idle else {
@@ -118,12 +160,13 @@ final class AgentCommandRunner: ObservableObject {
             ? "Stopping \(command.title)..."
             : "Running \(command.title)..."
 
+        let bootstrap = self.bootstrap
         DispatchQueue.global(qos: .userInitiated).async {
-            let bootstrap = AgentRuntime.shared.ensureReady(for: command.bootstrapRequirement, force: command.forceBootstrap)
-            guard bootstrap.exitCode == 0 else {
-                let message = Self.statusMessage(for: command, result: bootstrap)
-                let notificationTitle = Self.notificationTitle(for: command, result: bootstrap)
-                let notificationBody = Self.notificationBody(for: command, result: bootstrap, statusMessage: message)
+            let bootstrapResult = bootstrap(command.bootstrapRequirement, command.forceBootstrap)
+            guard bootstrapResult.exitCode == 0 else {
+                let message = Self.statusMessage(for: command, result: bootstrapResult)
+                let notificationTitle = Self.notificationTitle(for: command, result: bootstrapResult)
+                let notificationBody = Self.notificationBody(for: command, result: bootstrapResult, statusMessage: message)
                 Task { @MainActor in
                     if isStopRequest {
                         self.clearStopRequested(for: command)
@@ -133,8 +176,8 @@ final class AgentCommandRunner: ObservableObject {
                     }
                     self.clearHoldTranscriptionState(for: command)
                     self.activeCommandCount = max(0, self.activeCommandCount - 1)
-                    self.lastOutput = bootstrap.output
-                    self.recordFailure(command: command, result: bootstrap)
+                    self.lastOutput = bootstrapResult.output
+                    self.recordFailure(command: command, result: bootstrapResult)
                     self.statusMessage = message
                     self.notify(title: notificationTitle, body: notificationBody)
                 }
@@ -201,17 +244,18 @@ final class AgentCommandRunner: ObservableObject {
 
         statusMessage = "Stopping Toggle Transcription..."
 
+        let bootstrap = self.bootstrap
         DispatchQueue.global(qos: .userInitiated).async {
-            let bootstrap = AgentRuntime.shared.ensureReady(
-                for: AgentCommand.stopTranscription.bootstrapRequirement,
-                force: AgentCommand.stopTranscription.forceBootstrap
+            let bootstrapResult = bootstrap(
+                AgentCommand.stopTranscription.bootstrapRequirement,
+                AgentCommand.stopTranscription.forceBootstrap
             )
-            guard bootstrap.exitCode == 0 else {
-                let message = Self.statusMessage(for: AgentCommand.stopTranscription, result: bootstrap)
+            guard bootstrapResult.exitCode == 0 else {
+                let message = Self.statusMessage(for: AgentCommand.stopTranscription, result: bootstrapResult)
                 Task { @MainActor in
                     self.holdTranscriptionState = .idle
-                    self.lastOutput = bootstrap.output
-                    self.recordFailure(command: AgentCommand.stopTranscription, result: bootstrap)
+                    self.lastOutput = bootstrapResult.output
+                    self.recordFailure(command: AgentCommand.stopTranscription, result: bootstrapResult)
                     self.statusMessage = message
                     self.notify(
                         title: "Toggle Transcription Failed",
