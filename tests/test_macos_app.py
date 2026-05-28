@@ -50,6 +50,7 @@ def test_macos_app_package_files_exist() -> None:
         "AgentCommandRunner.swift",
         "AgentRuntime.swift",
         "AppDelegate.swift",
+        "BootstrapState.swift",
         "CommandResult.swift",
         "ConfigurableHotkeyController.swift",
         "FocusedTextTarget.swift",

@@ -19,9 +19,6 @@ private enum HoldTranscriptionState {
     }
 }
 
-typealias AgentBootstrapProgress = (BootstrapPhase) -> Void
-typealias AgentBootstrap = (AgentBootstrapRequirement, Bool, @escaping AgentBootstrapProgress) -> CommandResult
-
 @MainActor
 final class AgentCommandRunner: ObservableObject {
     static let shared = AgentCommandRunner()
