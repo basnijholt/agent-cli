@@ -172,6 +172,7 @@ The `--from-file` option supports multiple audio formats:
 | `--stop` | `false` | Stop any running instance of this command. |
 | `--status` | `false` | Check if an instance is currently running. |
 | `--toggle` | `false` | Start if not running, stop if running. Ideal for hotkey binding. |
+| `--wait-for-start` | `false` | When stopping, wait briefly for a just-launched process to write its PID. |
 
 ### General Options
 
