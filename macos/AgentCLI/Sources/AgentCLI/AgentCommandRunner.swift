@@ -29,9 +29,13 @@ final class AgentCommandRunner: ObservableObject {
     @Published private(set) var isRecording = false
     @Published private(set) var bootstrapPhase: BootstrapPhase = .idle
     @Published private var activeCommandCount = 0
+    @Published private var bootstrapAnimationTick = 0
+    @Published private var bootstrapElapsedSeconds = 0
     private var recordingIndicator = RecordingIndicatorController()
     private let pasteController: TranscriptPasteController
     private let bootstrap: AgentBootstrap
+    private var bootstrapAnimationTimer: Timer?
+    private var bootstrapPhaseStartedAt: Date?
     private var pendingStopRecordingCommands: Set<String> = []
     private var holdTranscriptionState: HoldTranscriptionState = .idle
     private var holdToTranscribePasteTarget: FocusedTextTarget?
@@ -47,7 +51,10 @@ final class AgentCommandRunner: ObservableObject {
             return "Recording"
         }
         if bootstrapPhase.isPreparing {
-            return bootstrapPhase.statusMessage
+            return bootstrapPhase.statusMessage(
+                animationTick: bootstrapAnimationTick,
+                elapsedSeconds: bootstrapElapsedSeconds
+            )
         }
         if holdTranscriptionState.isFinishing {
             return "Transcribing..."
@@ -122,7 +129,19 @@ final class AgentCommandRunner: ObservableObject {
     }
 
     private func reportBootstrapPhase(_ phase: BootstrapPhase) {
+        let wasPreparing = bootstrapPhase.isPreparing
+        let phaseChanged = bootstrapPhase != phase
         bootstrapPhase = phase
+        if phase.isPreparing {
+            if !wasPreparing || phaseChanged {
+                bootstrapAnimationTick = 0
+                bootstrapElapsedSeconds = 0
+                bootstrapPhaseStartedAt = Date()
+            }
+            startBootstrapAnimationTimer()
+        } else {
+            stopBootstrapAnimationTimer()
+        }
     }
 
     private func makeBootstrapProgressReporter() -> AgentBootstrapProgress {
@@ -131,6 +150,33 @@ final class AgentCommandRunner: ObservableObject {
                 self?.reportBootstrapPhase(phase)
             }
         }
+    }
+
+    private func startBootstrapAnimationTimer() {
+        guard bootstrapAnimationTimer == nil else { return }
+        let timer = Timer(timeInterval: 0.8, repeats: true) { [weak self] _ in
+            Task { @MainActor in
+                guard let self else { return }
+                guard self.bootstrapPhase.isPreparing else {
+                    self.stopBootstrapAnimationTimer()
+                    return
+                }
+                self.bootstrapAnimationTick = (self.bootstrapAnimationTick + 1) % 3
+                if let startedAt = self.bootstrapPhaseStartedAt {
+                    self.bootstrapElapsedSeconds = max(0, Int(Date().timeIntervalSince(startedAt)))
+                }
+            }
+        }
+        RunLoop.main.add(timer, forMode: .common)
+        bootstrapAnimationTimer = timer
+    }
+
+    private func stopBootstrapAnimationTimer() {
+        bootstrapAnimationTimer?.invalidate()
+        bootstrapAnimationTimer = nil
+        bootstrapAnimationTick = 0
+        bootstrapElapsedSeconds = 0
+        bootstrapPhaseStartedAt = nil
     }
 
     @discardableResult
