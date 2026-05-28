@@ -84,6 +84,27 @@ def test_is_process_running_dead_process() -> None:
     assert not pid_file.exists()
 
 
+@patch("agent_cli.core.process._is_pid_running", return_value=False)
+def test_get_process_status_cleans_stale_pid(
+    mock_is_pid_running: MagicMock,  # noqa: ARG001
+) -> None:
+    """Status should deterministically remove a stale PID and report stopped."""
+    process_name = "test-process"
+    pid_file = process._get_pid_file(process_name)
+    stop_file = process._get_stop_file(process_name)
+    pid_file.write_text("999999")
+    stop_file.write_text("1")
+
+    status = process.get_process_status(process_name)
+
+    assert status.process_name == process_name
+    assert status.running is False
+    assert status.pid is None
+    assert status.stale_cleaned is True
+    assert not pid_file.exists()
+    assert not stop_file.exists()
+
+
 def test_is_process_running_current_process() -> None:
     """Test checking if a process is running with current process PID."""
     process_name = "test-process"
@@ -216,6 +237,66 @@ def test_kill_process_not_running_clears_stop_file(temp_pid_dir: Path) -> None:
 
     assert result is False
     assert not stop_file.exists()
+
+
+def test_stop_process_is_idempotent_when_missing() -> None:
+    """Stopping with no PID file should be a no-op stopped result."""
+    result = process.stop_process("test-process")
+
+    assert result.process_name == "test-process"
+    assert result.was_running is False
+    assert result.status.running is False
+    assert result.status.pid is None
+    assert result.stale_cleaned is False
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="os.kill(pid, 0) not used on Windows")
+@patch("agent_cli.core.process._is_pid_running", side_effect=[True, False])
+@patch("os.kill")
+def test_stop_process_waits_for_starting_pid(
+    mock_os_kill: MagicMock,
+    mock_is_pid_running: MagicMock,  # noqa: ARG001
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Stop can wait for a just-launched process to write its PID."""
+    process_name = "test-process"
+    pid_file = process._get_pid_file(process_name)
+    current_pid = os.getpid()
+
+    def write_pid(_seconds: float) -> None:
+        pid_file.write_text(str(current_pid))
+
+    monkeypatch.setattr(process.time, "sleep", write_pid)
+
+    result = process.stop_process(
+        process_name,
+        wait_for_start_seconds=1.0,
+        poll_interval=0.1,
+    )
+
+    assert result.was_running is True
+    assert result.status.running is False
+    assert result.status.pid is None
+    mock_os_kill.assert_any_call(current_pid, signal.SIGINT)
+    assert not pid_file.exists()
+
+
+@patch("agent_cli.core.process._is_pid_running", return_value=False)
+def test_stop_process_cleans_stale_pid_and_reports_stopped(
+    mock_is_pid_running: MagicMock,  # noqa: ARG001
+) -> None:
+    """Stopping a stale PID should clean it and still report stopped."""
+    process_name = "test-process"
+    pid_file = process._get_pid_file(process_name)
+    pid_file.write_text("999999")
+
+    result = process.stop_process(process_name)
+
+    assert result.was_running is False
+    assert result.status.running is False
+    assert result.status.pid is None
+    assert result.stale_cleaned is True
+    assert not pid_file.exists()
 
 
 @pytest.mark.skipif(sys.platform == "win32", reason="SIGKILL escalation is Unix-only")

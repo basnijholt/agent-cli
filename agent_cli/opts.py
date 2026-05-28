@@ -326,6 +326,12 @@ TTS_GEMINI_VOICE: str = typer.Option(
 
 
 # --- Process Management Options ---
+START: bool = typer.Option(
+    False,  # noqa: FBT003
+    "--start",
+    help="Start this command if it is not already running.",
+    rich_help_panel="Process Management",
+)
 STOP: bool = typer.Option(
     False,  # noqa: FBT003
     "--stop",
@@ -342,6 +348,12 @@ TOGGLE: bool = typer.Option(
     False,  # noqa: FBT003
     "--toggle",
     help="Start if not running, stop if running. Ideal for hotkey binding.",
+    rich_help_panel="Process Management",
+)
+WAIT_FOR_START: bool = typer.Option(
+    False,  # noqa: FBT003
+    "--wait-for-start",
+    help="When stopping, wait briefly for a just-launched process to write its PID.",
     rich_help_panel="Process Management",
 )
 

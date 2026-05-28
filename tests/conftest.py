@@ -12,7 +12,7 @@ from unittest.mock import MagicMock
 import pytest
 from rich.console import Console
 
-from agent_cli.core import deps
+from agent_cli.core import deps, utils
 
 
 def _mock__check_extra_installed(extra: str) -> bool:  # noqa: ARG001
@@ -53,6 +53,13 @@ def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
 def mock_console() -> Console:
     """Provide a console that writes to a StringIO for testing."""
     return Console(file=io.StringIO(), width=80, force_terminal=True)
+
+
+@pytest.fixture(autouse=True)
+def reset_rich_console_quiet() -> None:
+    """Prevent JSON-mode CLI tests from silencing later command output."""
+    utils.console.quiet = False
+    utils.err_console.quiet = False
 
 
 @pytest.fixture
