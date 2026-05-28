@@ -1,4 +1,4 @@
-name: Upload Python Package
+name: Publish Release
 
 on:
   release:
@@ -6,6 +6,7 @@ on:
 
 jobs:
   deploy:
+    name: Publish Python package
     runs-on: ubuntu-latest
     environment:
       name: pypi
@@ -22,6 +23,7 @@ jobs:
         uses: pypa/gh-action-pypi-publish@release/v1
 
   build_macos_app:
+    name: Build and publish macOS app
     runs-on: macos-latest
     permissions:
       contents: write

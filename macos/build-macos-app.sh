@@ -102,10 +102,24 @@ if [[ "$NOTARIZE" == "1" && "$CREATE_DMG" != true ]]; then
 fi
 
 codesign_args() {
-    printf '%s\0' --force --deep --sign "$CODESIGN_IDENTITY"
+    printf '%s\0' --force --sign "$CODESIGN_IDENTITY"
     if [[ "$CODESIGN_IDENTITY" != "-" ]]; then
         printf '%s\0' --timestamp --options runtime
     fi
+}
+
+sign_executable() {
+    local target="$1"
+    local args=()
+    while IFS= read -r -d '' arg; do
+        args+=("$arg")
+    done < <(codesign_args)
+
+    codesign "${args[@]}" "$target"
+}
+
+sign_bundled_executables() {
+    sign_executable "$APP_DIR/Contents/Resources/bin/uv"
 }
 
 sign_app() {
@@ -115,7 +129,7 @@ sign_app() {
         args+=("$arg")
     done < <(codesign_args)
 
-    codesign "${args[@]}" "$target"
+    codesign --deep "${args[@]}" "$target"
 }
 
 sign_dmg_if_needed() {
@@ -143,14 +157,35 @@ require_notarization_env() {
 
 notarize_dmg() {
     local dmg_path="$1"
+    local notary_result="$DIST_DIR/notary-submit.json"
+    local submission_id
+    local status
 
     require_notarization_env
     echo "Submitting $dmg_path for Apple notarization..."
-    xcrun notarytool submit "$dmg_path" \
+    if ! xcrun notarytool submit "$dmg_path" \
         --apple-id "$APPLE_ID" \
         --password "$APPLE_APP_SPECIFIC_PASSWORD" \
         --team-id "$APPLE_TEAM_ID" \
-        --wait
+        --wait \
+        --output-format json | tee "$notary_result"; then
+        echo "Apple notarization submission failed." >&2
+        exit 1
+    fi
+
+    submission_id=$(python3 -c 'import json, sys; print(json.load(open(sys.argv[1])).get("id", ""))' "$notary_result")
+    status=$(python3 -c 'import json, sys; print(json.load(open(sys.argv[1])).get("status", ""))' "$notary_result")
+    if [[ "$status" != "Accepted" ]]; then
+        echo "Apple notarization failed with status: ${status:-unknown}." >&2
+        if [[ -n "$submission_id" ]]; then
+            xcrun notarytool log "$submission_id" \
+                --apple-id "$APPLE_ID" \
+                --password "$APPLE_APP_SPECIFIC_PASSWORD" \
+                --team-id "$APPLE_TEAM_ID" >&2 || true
+        fi
+        exit 1
+    fi
+
     xcrun stapler staple "$dmg_path"
     xcrun stapler validate "$dmg_path"
     echo "Notarized and stapled $dmg_path"
@@ -284,6 +319,7 @@ test -f "$APP_DIR/Contents/Resources/AgentCLI.icns" || {
     exit 1
 }
 
+sign_bundled_executables
 sign_app "$APP_DIR"
 
 echo "Built $APP_DIR"
