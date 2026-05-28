@@ -856,6 +856,7 @@ the `[defaults]` section of your configuration file.
 │                                 [env var: GEMINI_API_KEY]                              │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Process Management ───────────────────────────────────────────────────────────────────╮
+│ --start           Start this command if it is not already running.                     │
 │ --stop            Stop any running instance of this command.                           │
 │ --status          Check if an instance is currently running.                           │
 │ --toggle          Start if not running, stop if running. Ideal for hotkey binding.     │

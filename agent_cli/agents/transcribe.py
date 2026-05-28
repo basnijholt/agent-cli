@@ -625,9 +625,11 @@ def transcribe(  # noqa: PLR0912, PLR0911, PLR0915, C901
     gemini_api_key: str | None = opts.GEMINI_API_KEY,
     llm: bool = opts.LLM,
     # --- Process Management ---
+    start: bool = opts.START,
     stop: bool = opts.STOP,
     status: bool = opts.STATUS,
     toggle: bool = opts.TOGGLE,
+    wait_for_start: bool = opts.WAIT_FOR_START,
     # --- General Options ---
     clipboard: bool = opts.CLIPBOARD,
     log_level: opts.LogLevel = opts.LOG_LEVEL,
@@ -854,6 +856,29 @@ def transcribe(  # noqa: PLR0912, PLR0911, PLR0915, C901
 
     # Normal recording mode
     process_name = "transcribe"
+    if start:
+        process_status = process.get_process_status(process_name)
+        if process_status.running:
+            if json_output:
+                print(
+                    json.dumps(
+                        {
+                            "action": "start",
+                            "process": process_name,
+                            "running": True,
+                            "status": "running",
+                            "pid": process_status.pid,
+                            "stale_cleaned": process_status.stale_cleaned,
+                        },
+                    ),
+                )
+            elif not general_cfg.quiet:
+                print_with_style(
+                    f"✅ Transcribe is already running (PID: {process_status.pid}).",
+                    style="green",
+                )
+            return
+
     if stop_or_status_or_toggle(
         process_name,
         "transcribe",
@@ -861,24 +886,26 @@ def transcribe(  # noqa: PLR0912, PLR0911, PLR0915, C901
         status,
         toggle,
         quiet=general_cfg.quiet,
+        json_output=json_output,
+        wait_for_start_seconds=300.0 if wait_for_start else 0.0,
     ):
         return
 
-    audio_in_cfg = config.AudioInput(
-        input_device_index=input_device_index,
-        input_device_name=input_device_name,
-    )
-
-    # We only use setup_devices for its input device handling
-    device_info = setup_devices(general_cfg, audio_in_cfg, None)
-    if device_info is None:
-        return
-    input_device_index, _, _ = device_info
-    audio_in_cfg.input_device_index = input_device_index
-
-    # Use context manager for PID file management
+    # Use context manager before audio setup so --stop can target startup reliably.
     try:
         with process.pid_file_context(process_name), suppress(KeyboardInterrupt):
+            audio_in_cfg = config.AudioInput(
+                input_device_index=input_device_index,
+                input_device_name=input_device_name,
+            )
+
+            # We only use setup_devices for its input device handling
+            device_info = setup_devices(general_cfg, audio_in_cfg, None)
+            if device_info is None:
+                return
+            input_device_index, _, _ = device_info
+            audio_in_cfg.input_device_index = input_device_index
+
             result = asyncio.run(
                 _async_main(
                     extra_instructions=extra_instructions,

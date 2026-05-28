@@ -168,6 +168,7 @@ The `--from-file` option supports multiple audio formats:
 
 | Option | Default | Description |
 |--------|---------|-------------|
+| `--start` | `false` | Start this command if it is not already running. |
 | `--stop` | `false` | Stop any running instance of this command. |
 | `--status` | `false` | Check if an instance is currently running. |
 | `--toggle` | `false` | Start if not running, stop if running. Ideal for hotkey binding. |
