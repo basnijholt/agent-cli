@@ -156,6 +156,7 @@ grep -F "agent-cli daemon install whisper -y" "$COMMAND_LOG"
 grep -F "agent-cli transcribe --toggle --quiet" "$COMMAND_LOG"
 
 AGENTCLI_TEST_COMMAND_LOG="$COMMAND_LOG" \
+    AGENTCLI_INSTANCE_LOCK_PATH="$TMP_DIR/agentcli.lock" \
     AGENTCLI_APP_SUPPORT_DIR="$SUPPORT_DIR" \
     "$APP/Contents/MacOS/AgentCLI" &
 APP_PID=$!

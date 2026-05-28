@@ -412,8 +412,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
     }
 
     private func terminateIfAnotherInstanceIsRunning() -> Bool {
-        let lockURL = FileManager.default.temporaryDirectory
-            .appendingPathComponent("lt.nijho.agent-cli.menubar.lock")
+        let lockURL = Self.instanceLockURL()
         instanceLockFD = Darwin.open(lockURL.path, O_CREAT | O_RDWR, S_IRUSR | S_IWUSR)
         guard instanceLockFD >= 0 else { return false }
         if flock(instanceLockFD, LOCK_EX | LOCK_NB) == 0 {
@@ -424,6 +423,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         AgentCommandRunner.shared.statusMessage = "Agent CLI is already running"
         NSApp.terminate(nil)
         return true
+    }
+
+    private static func instanceLockURL() -> URL {
+        if let override = ProcessInfo.processInfo.environment["AGENTCLI_INSTANCE_LOCK_PATH"],
+           !override.isEmpty {
+            return URL(fileURLWithPath: override)
+        }
+        return FileManager.default.temporaryDirectory
+            .appendingPathComponent("lt.nijho.agent-cli.menubar.lock")
     }
 
     private func releaseInstanceLock() {
@@ -863,7 +871,9 @@ struct AgentRuntime {
     let agentCLIPackageSource: String
     let agentCLIInstallRequirement: String
     let binURL: URL
+    let runtimeURL: URL
     let agentCLIURL: URL
+    let agentCLIInstallMarkerURL: URL
     let whisperDaemonMarkerURL: URL
     let accessibilityPromptMarkerURL: URL
     let notificationLogoURL: URL?
@@ -889,7 +899,9 @@ struct AgentRuntime {
         agentCLIPackageSource = Self.resolveBundledWheel(in: bundledWheelsURL) ?? Self.fallbackPackageSource
         agentCLIInstallRequirement = "\(agentCLIPackageSource)[audio,llm]"
         binURL = appSupportURL.appendingPathComponent("bin", isDirectory: true)
+        runtimeURL = appSupportURL.appendingPathComponent("runtime", isDirectory: true)
         agentCLIURL = binURL.appendingPathComponent("agent-cli")
+        agentCLIInstallMarkerURL = appSupportURL.appendingPathComponent(".agent-cli-installed")
         whisperDaemonMarkerURL = appSupportURL.appendingPathComponent(".whisper-daemon-installed")
         accessibilityPromptMarkerURL = appSupportURL.appendingPathComponent(".accessibility-prompted")
         notificationLogoURL = bundle.url(forResource: "logo-avatar", withExtension: "png")
@@ -967,7 +979,9 @@ struct AgentRuntime {
             return CommandResult(exitCode: 1, output: "Could not create app support directories: \(error.localizedDescription)")
         }
 
-        if !force, fileManager.isExecutableFile(atPath: agentCLIURL.path) {
+        if !force,
+           fileManager.isExecutableFile(atPath: agentCLIURL.path),
+           (try? String(contentsOf: agentCLIInstallMarkerURL)) == agentCLIInstallMarkerContents {
             return CommandResult(exitCode: 0, output: "")
         }
 
@@ -995,7 +1009,18 @@ struct AgentRuntime {
         if result.exitCode != 0, result.output.isEmpty {
             return CommandResult(exitCode: result.exitCode, output: "\(installDescription) failed")
         }
+        if result.exitCode == 0 {
+            try? agentCLIInstallMarkerContents.write(
+                to: agentCLIInstallMarkerURL,
+                atomically: true,
+                encoding: .utf8
+            )
+        }
         return result
+    }
+
+    private var agentCLIInstallMarkerContents: String {
+        "packageSource=\(agentCLIPackageSource)\ninstallRequirement=\(agentCLIInstallRequirement)\n"
     }
 
     func ensureTranscriptionReady(force: Bool = false) -> CommandResult {
@@ -1069,6 +1094,7 @@ struct AgentRuntime {
         var environment = ProcessInfo.processInfo.environment
         environment["AGENTCLI_APP_SUPPORT_DIR"] = appSupportURL.path
         environment["AGENTCLI_AGENT_CLI"] = agentCLIURL.path
+        environment["AGENTCLI_RUNTIME_DIR"] = runtimeURL.path
         environment["AGENTCLI_BUNDLED_UV"] = bundledUVURL.path
         environment["AGENTCLI_PACKAGE_SOURCE"] = agentCLIPackageSource
         environment["AGENT_CLI_CONFIG_HOME"] = appSupportURL.appendingPathComponent("config", isDirectory: true).path
@@ -1096,6 +1122,7 @@ struct AgentRuntime {
 
     private func prepareDirectories() throws {
         try fileManager.createDirectory(at: binURL, withIntermediateDirectories: true)
+        try fileManager.createDirectory(at: runtimeURL, withIntermediateDirectories: true)
         try fileManager.createDirectory(
             at: appSupportURL.appendingPathComponent("cache/uv", isDirectory: true),
             withIntermediateDirectories: true
@@ -1197,7 +1224,7 @@ final class AgentCommandRunner: ObservableObject {
         URL(string: "x-apple.systempreferences:com.apple.Security-Privacy.extension?Privacy_Accessibility")!,
         URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")!
     ]
-    private static let holdStopShell = #"for attempt in {1..3000}; do if [ -s "$HOME/.cache/agent-cli/transcribe.pid" ]; then "$AGENTCLI_AGENT_CLI" transcribe --stop --quiet; exit $?; fi; sleep 0.1; done; "$AGENTCLI_AGENT_CLI" transcribe --stop --quiet"#
+    private static let holdStopShell = #"for attempt in {1..3000}; do if [ -s "$AGENTCLI_RUNTIME_DIR/transcribe.pid" ]; then "$AGENTCLI_AGENT_CLI" transcribe --stop --quiet; exit $?; fi; sleep 0.1; done; "$AGENTCLI_AGENT_CLI" transcribe --stop --quiet"#
 
     func beginHoldToTranscribe() {
         guard !holdToTranscribeActive else { return }
@@ -1730,6 +1757,9 @@ struct FocusedTextTarget {
             return nil
         }
 
+        guard CFGetTypeID(focusedValue) == AXUIElementGetTypeID() else {
+            return nil
+        }
         let element = focusedValue as! AXUIElement
         var pid = pid_t(0)
         guard AXUIElementGetPid(element, &pid) == .success else {

@@ -172,6 +172,8 @@ def test_macos_app_exits_duplicate_menu_bar_instances() -> None:
     )
     assert "private var instanceLockFD: Int32 = -1" in source
     assert "terminateIfAnotherInstanceIsRunning()" in source
+    assert "AGENTCLI_INSTANCE_LOCK_PATH" in source
+    assert "private static func instanceLockURL() -> URL" in source
     assert 'appendingPathComponent("lt.nijho.agent-cli.menubar.lock")' in source
     assert "Darwin.open(lockURL.path, O_CREAT | O_RDWR, S_IRUSR | S_IWUSR)" in source
     assert "flock(instanceLockFD, LOCK_EX | LOCK_NB) == 0" in source
@@ -283,6 +285,23 @@ def test_macos_app_hides_hold_recording_ui_immediately_on_key_release() -> None:
     )
 
 
+def test_macos_app_uses_private_runtime_dir_for_hold_to_transcribe_stop() -> None:
+    """Hold-to-type stop should watch the same PID dir that the app passes to agent-cli."""
+    source = (MACOS_APP / "Sources" / "AgentCLI" / "AgentCLIApp.swift").read_text()
+    launchd = (ROOT / "agent_cli" / "install" / "launchd.py").read_text()
+
+    assert "let runtimeURL: URL" in source
+    assert 'appendingPathComponent("runtime", isDirectory: true)' in source
+    assert 'environment["AGENTCLI_RUNTIME_DIR"] = runtimeURL.path' in source
+    assert (
+        "try fileManager.createDirectory(at: runtimeURL, withIntermediateDirectories: true)"
+        in source
+    )
+    assert '"$AGENTCLI_RUNTIME_DIR/transcribe.pid"' in source
+    assert '"$HOME/.cache/agent-cli/transcribe.pid"' not in source
+    assert '"AGENTCLI_RUNTIME_DIR"' in launchd
+
+
 def test_macos_app_defaults_clipboard_transcription_to_fn_space() -> None:
     """The regular clipboard transcription toggle should default to Fn+Space."""
     source = (MACOS_APP / "Sources" / "AgentCLI" / "AgentCLIApp.swift").read_text()
@@ -367,6 +386,7 @@ def test_macos_app_refocuses_original_app_for_hold_to_type() -> None:
     assert "struct FocusedTextTarget" in source
     assert "AXUIElementCreateSystemWide()" in source
     assert "kAXFocusedUIElementAttribute as CFString" in source
+    assert "CFGetTypeID(focusedValue) == AXUIElementGetTypeID()" in source
     assert "AXUIElementGetPid(element, &pid)" in source
     assert "func refocus()" in source
     assert (
@@ -540,6 +560,7 @@ def test_macos_app_registers_configurable_native_global_hotkeys() -> None:
 def test_macos_app_shows_actual_persisted_shortcuts_and_can_reset_them() -> None:
     """The menu should reflect stored shortcuts instead of claiming static defaults."""
     source = (MACOS_APP / "Sources" / "AgentCLI" / "AgentCLIApp.swift").read_text()
+    readme = (MACOS_APP / "README.md").read_text()
 
     assert "ShortcutSummaryState" in source
     assert "@StateObject private var shortcutSummary = ShortcutSummaryState.shared" in source
@@ -550,6 +571,9 @@ def test_macos_app_shows_actual_persisted_shortcuts_and_can_reset_them() -> None
     assert 'statusMessage = "Reset keyboard shortcuts to defaults"' in source
     assert "ShortcutSummaryState.shared.refresh()" in source
     assert 'Text("Hotkeys: Cmd+Shift+R / Cmd+Shift+A / Cmd+Shift+V")' not in source
+    assert "`Fn+Space` toggles transcription" in readme
+    assert "`Fn` records while held" in readme
+    assert "`Cmd+Shift+R` toggles transcription" not in readme
 
 
 def test_macos_build_script_creates_signed_app_bundle() -> None:
@@ -601,6 +625,15 @@ def test_macos_app_bootstraps_private_uv_runtime() -> None:
     assert "AGENT_CLI_CONFIG_HOME" in source
     assert 'appSupportURL.appendingPathComponent("config"' in source
     assert 'appendingPathComponent(".config")' not in source
+    assert "agentCLIInstallMarkerURL" in source
+    assert 'appendingPathComponent(".agent-cli-installed")' in source
+    assert "agentCLIInstallMarkerContents" in source
+    assert "fileManager.isExecutableFile(atPath: agentCLIURL.path)" in source
+    assert (
+        "(try? String(contentsOf: agentCLIInstallMarkerURL)) == agentCLIInstallMarkerContents"
+        in source
+    )
+    assert "try? agentCLIInstallMarkerContents.write(" in source
     assert "uv tool install" in source
     assert "agent-cli[audio,llm]" in source
     assert "agentCLIInstallRequirement" in source
@@ -642,6 +675,7 @@ def test_macos_app_has_end_to_end_packaging_test() -> None:
     assert "Contents/Resources/AgentCLI.icns" in script
     assert "Contents/Resources/logo-avatar.png" in script
     assert "AGENTCLI_TEST_COMMAND_LOG" in script
+    assert "AGENTCLI_INSTANCE_LOCK_PATH" in script
     assert "UV_BINARY=" in script
     assert "uv build --wheel" in script
     assert "--agentcli-bootstrap-self-test" in script

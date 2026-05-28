@@ -40,6 +40,9 @@ def test_generate_plist_preserves_app_private_uv_environment(
         "AGENTCLI_PACKAGE_SOURCE",
         "/Applications/AgentCLI.app/Contents/Resources/wheels/agent_cli-0.0.0-py3-none-any.whl",
     )
+    monkeypatch.setenv(
+        "AGENTCLI_RUNTIME_DIR", "/Users/test/Library/Application Support/AgentCLI/runtime"
+    )
     monkeypatch.setenv("UV_CACHE_DIR", "/Users/test/Library/Application Support/AgentCLI/cache/uv")
     monkeypatch.setenv(
         "UV_PYTHON_INSTALL_DIR", "/Users/test/Library/Application Support/AgentCLI/uv/python"
@@ -66,6 +69,10 @@ def test_generate_plist_preserves_app_private_uv_environment(
     assert (
         environment["AGENTCLI_PACKAGE_SOURCE"]
         == "/Applications/AgentCLI.app/Contents/Resources/wheels/agent_cli-0.0.0-py3-none-any.whl"
+    )
+    assert (
+        environment["AGENTCLI_RUNTIME_DIR"]
+        == "/Users/test/Library/Application Support/AgentCLI/runtime"
     )
     assert (
         environment["UV_CACHE_DIR"] == "/Users/test/Library/Application Support/AgentCLI/cache/uv"

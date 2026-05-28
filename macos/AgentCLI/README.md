@@ -13,7 +13,8 @@ required.
 
 The packaged app registers native macOS global hotkeys itself:
 
-- `Cmd+Shift+R` toggles transcription
+- `Fn+Space` toggles transcription
+- `Fn` records while held and inserts the transcript
 - `Cmd+Shift+A` autocorrects clipboard text
 - `Cmd+Shift+V` starts voice edit
 
