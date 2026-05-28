@@ -20,3 +20,42 @@ jobs:
         run: uv build
       - name: Publish package distributions to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
+
+  build_macos_app:
+    runs-on: macos-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+      - name: Install uv
+        uses: astral-sh/setup-uv@v8.1.0
+      - name: Import Developer ID certificate
+        uses: apple-actions/import-codesign-certs@v7
+        with:
+          p12-file-base64: ${{ secrets.MACOS_CODESIGN_CERTIFICATE_BASE64 }}
+          p12-password: ${{ secrets.MACOS_CODESIGN_CERTIFICATE_PASSWORD }}
+          keychain-password: ${{ secrets.MACOS_KEYCHAIN_PASSWORD }}
+      - name: Resolve Developer ID identity
+        id: codesign
+        run: |
+          IDENTITY=$(
+            security find-identity -v -p codesigning |
+              awk -F '"' '/Developer ID Application/ { print $2; exit }'
+          )
+          if [[ -z "$IDENTITY" ]]; then
+            echo "Developer ID Application signing identity not found." >&2
+            exit 1
+          fi
+          echo "identity=$IDENTITY" >> "$GITHUB_OUTPUT"
+      - name: Build notarized macOS DMG
+        env:
+          CODESIGN_IDENTITY: ${{ steps.codesign.outputs.identity }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: NOTARIZE=1 macos/build-macos-app.sh --dmg
+      - name: Upload macOS app to GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG_NAME: ${{ github.event.release.tag_name }}
+        run: gh release upload "$TAG_NAME" dist/macos/AgentCLI.dmg --clobber
