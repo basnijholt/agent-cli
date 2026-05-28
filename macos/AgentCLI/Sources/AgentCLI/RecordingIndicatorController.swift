@@ -4,14 +4,14 @@ final class RecordingIndicatorController {
     private var recordingCommandCount = 0
     private var activeRecordingCommands: [String: Int] = [:]
     private let defaults: UserDefaults
-    private let soundPlayer: RecordingSoundPlaying
+    private let audioCuePlayer: RecordingCuePlaying
 
     init(
         defaults: UserDefaults = .standard,
-        soundPlayer: RecordingSoundPlaying = NativeRecordingSoundPlayer.shared
+        audioCuePlayer: RecordingCuePlaying = NativeRecordingCuePlayer.shared
     ) {
         self.defaults = defaults
-        self.soundPlayer = soundPlayer
+        self.audioCuePlayer = audioCuePlayer
     }
 
     var isRecording: Bool {
@@ -49,6 +49,6 @@ final class RecordingIndicatorController {
 
     private func play(_ event: RecordingSoundEvent) {
         guard RecordingSoundSettings.isEnabled(defaults: defaults) else { return }
-        soundPlayer.play(event)
+        audioCuePlayer.play(event)
     }
 }

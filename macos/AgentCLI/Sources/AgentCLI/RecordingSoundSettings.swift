@@ -13,7 +13,7 @@ enum RecordingSoundEvent: Hashable {
     case startedRecording
     case finishedRecording
 
-    var soundName: NSSound.Name {
+    var cueName: NSSound.Name {
         switch self {
         case .startedRecording:
             return NSSound.Name("Frog")
@@ -23,12 +23,12 @@ enum RecordingSoundEvent: Hashable {
     }
 }
 
-protocol RecordingSoundPlaying: AnyObject {
+protocol RecordingCuePlaying: AnyObject {
     func play(_ event: RecordingSoundEvent)
 }
 
-final class NativeRecordingSoundPlayer: RecordingSoundPlaying {
-    static let shared = NativeRecordingSoundPlayer()
+final class NativeRecordingCuePlayer: RecordingCuePlaying {
+    static let shared = NativeRecordingCuePlayer()
 
     private var sounds: [RecordingSoundEvent: NSSound] = [:]
 
@@ -45,7 +45,7 @@ final class NativeRecordingSoundPlayer: RecordingSoundPlaying {
         if let sound = sounds[event] {
             return sound
         }
-        guard let sound = NSSound(named: event.soundName) else {
+        guard let sound = NSSound(named: event.cueName) else {
             return nil
         }
         sounds[event] = sound

@@ -8,8 +8,8 @@ struct RecordingIndicatorControllerTests {
     func recordingSoundsAreDisabledByDefault() {
         let defaults = UserDefaults(suiteName: "AgentCLITests.recording-sounds-default")!
         defaults.removePersistentDomain(forName: "AgentCLITests.recording-sounds-default")
-        let player = RecordingSoundPlayerSpy()
-        let controller = RecordingIndicatorController(defaults: defaults, soundPlayer: player)
+        let player = RecordingCuePlayerSpy()
+        let controller = RecordingIndicatorController(defaults: defaults, audioCuePlayer: player)
 
         controller.begin(for: .toggleTranscription)
         controller.end(for: .toggleTranscription)
@@ -22,8 +22,8 @@ struct RecordingIndicatorControllerTests {
         let defaults = UserDefaults(suiteName: "AgentCLITests.recording-sounds-enabled")!
         defaults.removePersistentDomain(forName: "AgentCLITests.recording-sounds-enabled")
         defaults.set(true, forKey: RecordingSoundSettings.enabledKey)
-        let player = RecordingSoundPlayerSpy()
-        let controller = RecordingIndicatorController(defaults: defaults, soundPlayer: player)
+        let player = RecordingCuePlayerSpy()
+        let controller = RecordingIndicatorController(defaults: defaults, audioCuePlayer: player)
 
         controller.begin(for: .toggleTranscription)
         controller.end(for: .toggleTranscription)
@@ -36,8 +36,8 @@ struct RecordingIndicatorControllerTests {
         let defaults = UserDefaults(suiteName: "AgentCLITests.recording-sounds-nested")!
         defaults.removePersistentDomain(forName: "AgentCLITests.recording-sounds-nested")
         defaults.set(true, forKey: RecordingSoundSettings.enabledKey)
-        let player = RecordingSoundPlayerSpy()
-        let controller = RecordingIndicatorController(defaults: defaults, soundPlayer: player)
+        let player = RecordingCuePlayerSpy()
+        let controller = RecordingIndicatorController(defaults: defaults, audioCuePlayer: player)
 
         controller.begin(for: .toggleTranscription)
         controller.begin(for: .voiceEdit)
@@ -49,7 +49,7 @@ struct RecordingIndicatorControllerTests {
     }
 }
 
-private final class RecordingSoundPlayerSpy: RecordingSoundPlaying {
+private final class RecordingCuePlayerSpy: RecordingCuePlaying {
     private(set) var events: [RecordingSoundEvent] = []
 
     func play(_ event: RecordingSoundEvent) {
