@@ -62,9 +62,13 @@ PACKAGE_DIR="$ROOT_DIR/macos/$APP_NAME"
 DIST_DIR="$ROOT_DIR/dist/macos"
 APP_DIR="$DIST_DIR/$APP_NAME.app"
 WHEEL_BUILD_DIR="$DIST_DIR/wheels-build"
+DMG_STAGING_DIR="$DIST_DIR/dmg-staging"
+DMG_RW_PATH="$DIST_DIR/$APP_NAME-rw.dmg"
 INFO_PLIST="$PACKAGE_DIR/Resources/Info.plist"
 ENTITLEMENTS_PLIST="$PACKAGE_DIR/Resources/AgentCLI.entitlements"
 MENU_BAR_LOGO_SVG="$ROOT_DIR/docs/logo-avatar.svg"
+DMG_BACKGROUND_SVG="$PACKAGE_DIR/Resources/dmg-background.svg"
+DMG_BACKGROUND_PNG="$DIST_DIR/dmg-background.png"
 ICONSET_DIR="$DIST_DIR/AgentCLI.iconset"
 ICON_SOURCE_PNG="$DIST_DIR/logo-avatar-source.png"
 NOTIFICATION_LOGO_PNG="$DIST_DIR/logo-avatar.png"
@@ -105,6 +109,11 @@ fi
 
 if [[ ! -f "$ENTITLEMENTS_PLIST" ]]; then
     echo "AgentCLI entitlements plist is missing: $ENTITLEMENTS_PLIST" >&2
+    exit 1
+fi
+
+if [[ "$CREATE_DMG" == true && ! -f "$DMG_BACKGROUND_SVG" ]]; then
+    echo "AgentCLI DMG background SVG is missing: $DMG_BACKGROUND_SVG" >&2
     exit 1
 fi
 
@@ -293,6 +302,90 @@ build_app_icon() {
     rm -rf "$ICONSET_DIR"
 }
 
+render_dmg_background() {
+    local render_dir="$DIST_DIR/dmg-background-render"
+    local rendered="$render_dir/$(basename "$DMG_BACKGROUND_SVG").png"
+
+    rm -rf "$render_dir" "$DMG_BACKGROUND_PNG"
+    mkdir -p "$render_dir"
+    qlmanage -t -s 600 -o "$render_dir" "$DMG_BACKGROUND_SVG" >/dev/null 2>&1
+    if [[ ! -f "$rendered" ]]; then
+        echo "Failed to render AgentCLI DMG background PNG: $rendered" >&2
+        exit 1
+    fi
+    cp "$rendered" "$DMG_BACKGROUND_PNG"
+    rm -rf "$render_dir"
+}
+
+set_dmg_finder_layout() {
+    local volume_path="$1"
+
+    osascript <<APPLESCRIPT
+tell application "Finder"
+    tell disk "$DISPLAY_NAME"
+        open
+        set current view of container window to icon view
+        set toolbar visible of container window to false
+        set statusbar visible of container window to false
+        set bounds of container window to {100, 100, 700, 460}
+        set theViewOptions to icon view options of container window
+        set arrangement of theViewOptions to not arranged
+        set icon size of theViewOptions to 96
+        set background picture of theViewOptions to file ".background:dmg-background.png"
+        set position of item "AgentCLI.app" of container window to {150, 180}
+        set position of item "Applications" of container window to {450, 180}
+        close
+        open
+        update without registering applications
+        delay 1
+    end tell
+end tell
+APPLESCRIPT
+
+    sync
+    touch "$volume_path/.metadata_never_index"
+}
+
+create_drag_install_dmg() {
+    local dmg_path="$1"
+    local attach_output
+    local volume_path
+
+    hdiutil detach "/Volumes/$DISPLAY_NAME" >/dev/null 2>&1 || true
+    rm -rf "$DMG_STAGING_DIR" "$DMG_RW_PATH" "$dmg_path" || return
+    mkdir -p "$DMG_STAGING_DIR/.background" || return
+
+    ditto "$APP_DIR" "$DMG_STAGING_DIR/$APP_NAME.app" || return
+    ln -s /Applications "$DMG_STAGING_DIR/Applications" || return
+    render_dmg_background || return
+    cp "$DMG_BACKGROUND_PNG" "$DMG_STAGING_DIR/.background/dmg-background.png" || return
+
+    hdiutil create "$DMG_RW_PATH" \
+        -volname "$DISPLAY_NAME" \
+        -srcfolder "$DMG_STAGING_DIR" \
+        -ov \
+        -format UDRW || return
+    attach_output=$(hdiutil attach "$DMG_RW_PATH" \
+        -nobrowse \
+        -noautoopen) || return
+    volume_path=$(printf '%s\n' "$attach_output" | awk -F '\t' '/\/Volumes\// { mount=$NF } END { if (mount) print mount; else exit 1 }')
+    if [[ -z "$volume_path" ]]; then
+        echo "Failed to resolve mounted DMG volume from hdiutil attach output." >&2
+        printf '%s\n' "$attach_output" >&2
+        return 1
+    fi
+    if ! set_dmg_finder_layout "$volume_path"; then
+        hdiutil detach "$volume_path" >/dev/null 2>&1 || true
+        return 1
+    fi
+    hdiutil detach "$volume_path" >/dev/null || return
+    hdiutil convert "$DMG_RW_PATH" \
+        -format UDZO \
+        -imagekey zlib-level=9 \
+        -o "$dmg_path" || return
+    rm -rf "$DMG_STAGING_DIR" "$DMG_RW_PATH" || return
+}
+
 quit_running_app() {
     if ! pgrep -x "$APP_NAME" >/dev/null 2>&1; then
         return
@@ -390,13 +483,7 @@ echo "Built $APP_DIR"
 if [[ "$CREATE_DMG" == true ]]; then
     DMG_PATH="$DIST_DIR/$APP_NAME.dmg"
     for attempt in 1 2 3; do
-        rm -f "$DMG_PATH"
-        if hdiutil create \
-            -volname "$DISPLAY_NAME" \
-            -srcfolder "$APP_DIR" \
-            -ov \
-            -format UDZO \
-            "$DMG_PATH"; then
+        if create_drag_install_dmg "$DMG_PATH"; then
             break
         fi
         if [[ "$attempt" == 3 ]]; then
