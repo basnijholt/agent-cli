@@ -112,6 +112,21 @@ def test_transcribe_stop(mock_stop_process: MagicMock) -> None:
 
 
 @patch("agent_cli.agents.transcribe.process.stop_process")
+def test_transcribe_stop_waits_for_start(mock_stop_process: MagicMock) -> None:
+    """Test --stop --wait-for-start delegates startup waiting to process control."""
+    mock_stop_process.return_value = process.StopProcessResult(
+        process_name="transcribe",
+        was_running=True,
+        status=process.ProcessStatus("transcribe", running=False, pid=None),
+        stale_cleaned=False,
+    )
+    result = runner.invoke(app, ["transcribe", "--stop", "--wait-for-start"])
+    assert result.exit_code == 0
+    assert "Transcribe stopped" in result.stdout
+    mock_stop_process.assert_called_once_with("transcribe", wait_for_start_seconds=300.0)
+
+
+@patch("agent_cli.agents.transcribe.process.stop_process")
 def test_transcribe_stop_not_running(mock_stop_process: MagicMock) -> None:
     """Test the --stop flag when the process is not running."""
     mock_stop_process.return_value = process.StopProcessResult(

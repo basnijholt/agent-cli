@@ -6,12 +6,11 @@ import UserNotifications
 private enum HoldTranscriptionState {
     case idle
     case recording
-    case awaitingPid
     case stopping
 
     var isFinishing: Bool {
         switch self {
-        case .awaitingPid, .stopping:
+        case .stopping:
             return true
         case .idle, .recording:
             return false
@@ -68,7 +67,6 @@ final class AgentCommandRunner: ObservableObject {
         URL(string: "x-apple.systempreferences:com.apple.Security-Privacy.extension?Privacy_Accessibility")!,
         URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")!
     ]
-    nonisolated private static let holdStopShell = #""$AGENTCLI_AGENT_CLI" transcribe --stop --quiet --wait-for-start"#
 
     func beginHoldToTranscribe() {
         guard holdTranscriptionState == .idle else {
@@ -90,16 +88,16 @@ final class AgentCommandRunner: ObservableObject {
 
     func endHoldToTranscribe() {
         guard holdTranscriptionState == .recording else { return }
-        holdTranscriptionState = .awaitingPid
+        holdTranscriptionState = .stopping
 
         let wasRecording = recordingIndicator.isRecordingCommand(.toggleTranscription)
         if wasRecording {
             endRecordingIndicator(for: .toggleTranscription)
             statusMessage = "Transcribing..."
-            stopHeldTranscriptionWhenReady()
         } else {
             statusMessage = "Stopping transcription as soon as it starts..."
         }
+        stopHeldTranscriptionWhenReady()
     }
 
     func run(_ command: AgentCommand) {
@@ -145,8 +143,9 @@ final class AgentCommandRunner: ObservableObject {
 
             if shouldStartRecording {
                 Task { @MainActor in
-                    self.beginRecordingIndicator(for: command)
-                    self.notifyStart(for: command)
+                    if self.beginRecordingIndicator(for: command) {
+                        self.notifyStart(for: command)
+                    }
                 }
             }
 
@@ -198,13 +197,31 @@ final class AgentCommandRunner: ObservableObject {
     }
 
     private func stopHeldTranscriptionWhenReady() {
-        guard holdTranscriptionState == .awaitingPid else { return }
+        guard holdTranscriptionState == .stopping else { return }
 
-        holdTranscriptionState = .stopping
         statusMessage = "Stopping Toggle Transcription..."
 
         DispatchQueue.global(qos: .userInitiated).async {
-            let result = AgentRuntime.shared.runShell(Self.holdStopShell)
+            let bootstrap = AgentRuntime.shared.ensureReady(
+                for: AgentCommand.stopTranscription.bootstrapRequirement,
+                force: AgentCommand.stopTranscription.forceBootstrap
+            )
+            guard bootstrap.exitCode == 0 else {
+                let message = Self.statusMessage(for: AgentCommand.stopTranscription, result: bootstrap)
+                Task { @MainActor in
+                    self.holdTranscriptionState = .idle
+                    self.lastOutput = bootstrap.output
+                    self.recordFailure(command: AgentCommand.stopTranscription, result: bootstrap)
+                    self.statusMessage = message
+                    self.notify(
+                        title: "Toggle Transcription Failed",
+                        body: Self.errorNotificationBody(message)
+                    )
+                }
+                return
+            }
+
+            let result = AgentRuntime.shared.runAgentCLI(arguments: AgentCommand.stopTranscription.arguments)
 
             Task { @MainActor in
                 if result.exitCode == 0 {
@@ -254,14 +271,15 @@ final class AgentCommandRunner: ObservableObject {
         holdTranscriptionState = .idle
     }
 
-    private func beginRecordingIndicator(for command: AgentCommand) {
+    private func beginRecordingIndicator(for command: AgentCommand) -> Bool {
+        if command.identifier == AgentCommand.toggleTranscription.identifier,
+           holdTranscriptionState == .stopping {
+            return false
+        }
+
         recordingIndicator.begin(for: command)
         isRecording = recordingIndicator.isRecording
-        if command.identifier == AgentCommand.toggleTranscription.identifier,
-           holdTranscriptionState == .awaitingPid {
-            endRecordingIndicator(for: command)
-            stopHeldTranscriptionWhenReady()
-        }
+        return true
     }
 
     private func endRecordingIndicator(for command: AgentCommand) {
