@@ -17,6 +17,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         LoginItemController.shared.refresh()
         ConfigurableHotkeyController.shared.registerDefaultHotkeys(runner: AgentCommandRunner.shared)
         ShortcutSummaryState.shared.refresh()
+        AgentCommandRunner.shared.warmUpTranscription()
     }
 
     func applicationWillTerminate(_ notification: Notification) {

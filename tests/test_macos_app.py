@@ -415,8 +415,9 @@ def test_macos_app_uses_cli_owned_hold_to_transcribe_stop() -> None:
         '        title: "Stop Transcription",\n'
         '        arguments: ["transcribe", "--stop", "--quiet", "--wait-for-start"]' in source
     )
-    assert "let bootstrap = AgentRuntime.shared.ensureReady(" in source
-    assert "for: AgentCommand.stopTranscription.bootstrapRequirement" in source
+    assert "let bootstrap = self.bootstrap" in source
+    assert "let bootstrapResult = bootstrap(" in source
+    assert "AgentCommand.stopTranscription.bootstrapRequirement" in source
     assert "holdStopShell" not in source
     assert "runShell(Self.holdStopShell)" not in source
     assert "transcribe.pid" not in source
@@ -432,8 +433,21 @@ def test_macos_app_uses_bootstrap_requirement_model() -> None:
     assert "case cliRuntime" in source
     assert "case transcription" in source
     assert "let bootstrapRequirement: AgentBootstrapRequirement" in source
-    assert "ensureReady(for: command.bootstrapRequirement" in source
+    assert "AgentRuntime.shared.ensureReady(for: requirement, force: force)" in source
+    assert "bootstrap(command.bootstrapRequirement, command.forceBootstrap)" in source
     assert "requiresWhisperDaemon" not in source
+
+
+def test_macos_app_warms_transcription_on_launch() -> None:
+    """Startup should eagerly prepare the CLI and voice service before first hotkey use."""
+    source = swift_source()
+
+    assert "AgentCommandRunner.shared.warmUpTranscription()" in source
+    assert "private var hasStartedTranscriptionWarmUp = false" in source
+    assert 'statusMessage = "Preparing voice service..."' in source
+    assert "let result = bootstrap(.transcription, false)" in source
+    assert 'recordFailure(title: "Startup Voice Service Warm-Up", result: result)' in source
+    assert 'DispatchQueue(label: "lt.nijho.agent-cli.bootstrap")' in source
 
 
 def test_macos_app_defaults_clipboard_transcription_to_fn_space() -> None:
@@ -674,7 +688,7 @@ def test_macos_app_makes_command_errors_discoverable() -> None:
     assert "logsURL" in source
     assert 'appendingPathComponent("Logs"' in source
     assert "recordFailure(command: command, result: result)" in source
-    assert "recordFailure(command: command, result: bootstrap)" in source
+    assert "recordFailure(command: command, result: bootstrapResult)" in source
     assert 'recordFailure(title: "Toggle Transcription Stop", result: result)' in source
     assert "try details.write(to: AgentRuntime.shared.lastErrorURL" in source
     assert "openLastError()" in source
