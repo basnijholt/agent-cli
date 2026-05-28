@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import plistlib
+import shutil
 import stat
+import subprocess
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -12,6 +14,23 @@ BUILD_SCRIPT = ROOT / "macos" / "build-macos-app.sh"
 E2E_SCRIPT = ROOT / "macos" / "test-macos-app-e2e.sh"
 LOGO_SVG = ROOT / "docs" / "logo-clean.svg"
 MENU_BAR_LOGO_SVG = ROOT / "docs" / "logo-avatar.svg"
+
+
+def assert_script_executable(path: Path) -> None:
+    """Assert shell scripts are executable, allowing Windows checkout mode loss."""
+    if path.stat().st_mode & stat.S_IXUSR:
+        return
+
+    git = shutil.which("git")
+    assert git is not None
+    result = subprocess.run(
+        [git, "ls-files", "-s", "--", path.relative_to(ROOT).as_posix()],
+        cwd=ROOT,
+        capture_output=True,
+        check=True,
+        text=True,
+    )
+    assert result.stdout.startswith("100755 ")
 
 
 def test_macos_app_package_files_exist() -> None:
@@ -602,10 +621,9 @@ def test_macos_app_shows_actual_persisted_shortcuts_and_can_reset_them() -> None
 
 def test_macos_build_script_creates_signed_app_bundle() -> None:
     """The build script should produce a Finder-installable .app bundle."""
-    mode = BUILD_SCRIPT.stat().st_mode
     script = BUILD_SCRIPT.read_text()
 
-    assert mode & stat.S_IXUSR
+    assert_script_executable(BUILD_SCRIPT)
     assert "swift build" in script
     assert "Contents/MacOS" in script
     assert "Contents/Info.plist" in script
@@ -688,10 +706,9 @@ def test_macos_app_waits_for_whisper_daemon_readiness() -> None:
 
 def test_macos_app_has_end_to_end_packaging_test() -> None:
     """The installable artifact should have a repeatable local E2E gate."""
-    mode = E2E_SCRIPT.stat().st_mode
     script = E2E_SCRIPT.read_text()
 
-    assert mode & stat.S_IXUSR
+    assert_script_executable(E2E_SCRIPT)
     assert "build-macos-app.sh --dmg" in script
     assert "INSTALL_DIR=" in script
     assert "AGENTCLI_SKIP_OPEN=1" in script
