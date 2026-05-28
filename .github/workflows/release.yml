@@ -25,6 +25,7 @@ jobs:
   build_macos_app:
     name: Build and publish macOS app
     runs-on: macos-latest
+    timeout-minutes: 45
     permissions:
       contents: write
     steps:
