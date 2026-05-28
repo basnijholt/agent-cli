@@ -187,7 +187,6 @@ def install_uv() -> tuple[bool, str]:
             ["sh"],  # noqa: S607
             input=result.stdout,
             capture_output=True,
-            text=True,
             check=True,
         )
         return True, "uv installed successfully"
