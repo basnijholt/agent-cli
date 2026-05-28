@@ -160,6 +160,8 @@ def test_macos_app_settings_pass_extra_instructions_to_transcription() -> None:
         in source
     )
     assert "appliesTranscriptionExtraInstructions: true" in source
+    assert "isVisiblyBlank" in source
+    assert "scalar.properties.generalCategory == .format" in source
 
 
 def test_macos_app_can_use_user_installed_agent_cli() -> None:

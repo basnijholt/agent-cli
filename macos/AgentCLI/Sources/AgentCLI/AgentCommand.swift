@@ -1,5 +1,15 @@
 import Foundation
 
+private extension String {
+    var isVisiblyBlank: Bool {
+        unicodeScalars.allSatisfy { scalar in
+            CharacterSet.whitespacesAndNewlines.contains(scalar)
+                || scalar.properties.generalCategory == .format
+                || scalar.properties.generalCategory == .control
+        }
+    }
+}
+
 struct AgentCommand {
     let identifier: String
     let title: String
@@ -40,7 +50,7 @@ struct AgentCommand {
         guard appliesTranscriptionExtraInstructions else { return arguments }
 
         let trimmedInstructions = extraInstructions?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        guard !trimmedInstructions.isEmpty else { return arguments }
+        guard !trimmedInstructions.isVisiblyBlank else { return arguments }
 
         return arguments + ["--extra-instructions", trimmedInstructions]
     }
