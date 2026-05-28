@@ -834,6 +834,28 @@ def test_macos_app_registers_configurable_native_global_hotkeys() -> None:
     assert ".voiceEdit" in source
 
 
+def test_macos_app_pauses_global_hotkeys_while_recording_shortcuts() -> None:
+    """Recording a shortcut should not dispatch any already-configured shortcuts."""
+    source = swift_source()
+
+    assert "ShortcutRecordingState.shared.beginRecording()" in source
+    assert "ShortcutRecordingState.shared.endRecording()" in source
+    assert "guard !ShortcutRecordingState.shared.isRecording else" in source
+    assert "if ShortcutRecordingState.shared.isRecording" in source
+    assert "cancelPendingHoldToTranscribe()" in source
+
+
+def test_macos_app_records_fn_chords_before_bare_fn() -> None:
+    """Fn should not be saved as a shortcut until the recorder knows no chord follows."""
+    source = swift_source()
+
+    assert "pendingFunctionShortcut = true" in source
+    assert "pendingFunctionShortcut = false" in source
+    assert "captureBareFunctionShortcut()" in source
+    assert "event.modifierFlags.contains(.function)" in source
+    assert "case kVK_Function:" in source
+
+
 def test_macos_app_shows_actual_persisted_shortcuts_and_can_reset_them() -> None:
     """The menu should reflect stored shortcuts instead of claiming static defaults."""
     source = swift_source()

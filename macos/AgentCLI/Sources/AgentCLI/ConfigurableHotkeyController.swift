@@ -25,9 +25,11 @@ final class ConfigurableHotkeyController {
         registerFunctionAwareTranscriptionHotkeys(runner: runner)
 
         KeyboardShortcuts.onKeyUp(for: .autocorrect) {
+            guard !ShortcutRecordingState.shared.isRecording else { return }
             Task { @MainActor in runner.run(.autocorrect) }
         }
         KeyboardShortcuts.onKeyUp(for: .voiceEdit) {
+            guard !ShortcutRecordingState.shared.isRecording else { return }
             Task { @MainActor in runner.run(.voiceEdit) }
         }
 
@@ -82,6 +84,11 @@ final class ConfigurableHotkeyController {
             return Unmanaged.passUnretained(event)
         default:
             break
+        }
+
+        if ShortcutRecordingState.shared.isRecording {
+            cancelPendingHoldToTranscribe()
+            return Unmanaged.passUnretained(event)
         }
 
         if handleToggleTranscriptionShortcut(type: type, event: event) {

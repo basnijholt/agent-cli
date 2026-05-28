@@ -23,6 +23,33 @@ extension KeyboardShortcuts.Name {
     )
 }
 
+final class ShortcutRecordingState {
+    static let shared = ShortcutRecordingState()
+
+    private let lock = NSLock()
+    private var activeRecorderCount = 0
+
+    var isRecording: Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        return activeRecorderCount > 0
+    }
+
+    private init() {}
+
+    func beginRecording() {
+        lock.lock()
+        activeRecorderCount += 1
+        lock.unlock()
+    }
+
+    func endRecording() {
+        lock.lock()
+        activeRecorderCount = max(0, activeRecorderCount - 1)
+        lock.unlock()
+    }
+}
+
 final class ShortcutSummaryState: ObservableObject {
     static let shared = ShortcutSummaryState()
 
@@ -271,6 +298,7 @@ final class ShortcutRecorderButton: NSButton {
 
     private var isRecording = false
     private var eventMonitor: Any?
+    private var pendingFunctionShortcut = false
 
     init(name: KeyboardShortcuts.Name) {
         self.shortcutName = name
@@ -310,6 +338,7 @@ final class ShortcutRecorderButton: NSButton {
         }
 
         isRecording = true
+        ShortcutRecordingState.shared.beginRecording()
         title = "Press shortcut"
         window?.makeFirstResponder(self)
 
@@ -325,11 +354,16 @@ final class ShortcutRecorderButton: NSButton {
     private func capture(_ event: NSEvent) {
         switch Int(event.keyCode) {
         case kVK_Escape:
+            pendingFunctionShortcut = false
             stopRecording()
         case kVK_Delete, kVK_ForwardDelete:
+            pendingFunctionShortcut = false
             KeyboardShortcuts.setShortcut(nil, for: shortcutName)
             stopRecording()
+        case kVK_Function:
+            handleFunctionKeyChange(event)
         default:
+            pendingFunctionShortcut = false
             guard let shortcut = ShortcutDisplay.shortcut(from: event) else {
                 NSSound.beep()
                 return
@@ -339,12 +373,38 @@ final class ShortcutRecorderButton: NSButton {
         }
     }
 
+    private func handleFunctionKeyChange(_ event: NSEvent) {
+        guard event.type == .flagsChanged else {
+            return
+        }
+
+        if event.modifierFlags.contains(.function) {
+            pendingFunctionShortcut = true
+            return
+        }
+
+        if pendingFunctionShortcut {
+            captureBareFunctionShortcut()
+        }
+    }
+
+    private func captureBareFunctionShortcut() {
+        pendingFunctionShortcut = false
+        KeyboardShortcuts.setShortcut(KeyboardShortcuts.Shortcut(.function), for: shortcutName)
+        stopRecording()
+    }
+
     private func stopRecording() {
         if let eventMonitor {
             NSEvent.removeMonitor(eventMonitor)
             self.eventMonitor = nil
         }
+        pendingFunctionShortcut = false
+        let wasRecording = isRecording
         isRecording = false
+        if wasRecording {
+            ShortcutRecordingState.shared.endRecording()
+        }
         updateTitle()
         ShortcutSummaryState.shared.refresh()
     }
