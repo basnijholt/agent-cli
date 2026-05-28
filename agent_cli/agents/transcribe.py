@@ -252,6 +252,7 @@ def log_transcription(
     }
 
     # Append to log file
+    log_file.parent.mkdir(parents=True, exist_ok=True)
     with log_file.open("a", encoding="utf-8") as f:
         f.write(json.dumps(log_entry) + "\n")
 
