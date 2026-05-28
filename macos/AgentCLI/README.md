@@ -26,7 +26,7 @@ shortcut parsing, `UserDefaults` storage, and global key-up handlers.
 From the repository root:
 
 ```bash
-./scripts/build-macos-app.sh
+./macos/build-macos-app.sh
 ```
 
 The app bundle is written to `dist/macos/AgentCLI.app`.
@@ -34,7 +34,7 @@ The app bundle is written to `dist/macos/AgentCLI.app`.
 ## Install locally
 
 ```bash
-./scripts/build-macos-app.sh --install
+./macos/build-macos-app.sh --install
 ```
 
 This builds the app, copies it to `/Applications/AgentCLI.app`, and opens it.
@@ -42,7 +42,7 @@ This builds the app, copies it to `/Applications/AgentCLI.app`, and opens it.
 ## Build a DMG
 
 ```bash
-./scripts/build-macos-app.sh --dmg
+./macos/build-macos-app.sh --dmg
 ```
 
 The DMG is written to `dist/macos/AgentCLI.dmg`.
@@ -50,7 +50,7 @@ The DMG is written to `dist/macos/AgentCLI.dmg`.
 ## End-to-end packaging check
 
 ```bash
-./scripts/test-macos-app-e2e.sh
+./macos/test-macos-app-e2e.sh
 ```
 
 The E2E test builds the app and DMG, verifies code signing and the image, then
@@ -65,5 +65,5 @@ distribution, pass a Developer ID identity and then notarize the resulting app
 or DMG:
 
 ```bash
-CODESIGN_IDENTITY="Developer ID Application: Your Name (TEAMID)" ./scripts/build-macos-app.sh --dmg
+CODESIGN_IDENTITY="Developer ID Application: Your Name (TEAMID)" ./macos/build-macos-app.sh --dmg
 ```

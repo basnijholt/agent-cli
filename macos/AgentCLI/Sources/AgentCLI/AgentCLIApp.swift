@@ -229,7 +229,7 @@ struct VoiceLevelOverlayView: View {
                         )
                     )
                     .frame(width: 3.5, height: max(5, 25 * amplitude))
-                    .animation(.easeOut(duration: 0.18), value: amplitude)
+                    .animation(.easeOut(duration: 0.11), value: amplitude)
             }
         }
         .frame(width: 147, height: 38)
@@ -357,7 +357,7 @@ final class VoiceLevelMeter: NSObject, ObservableObject {
                 return
             }
             self.recorder = recorder
-            timer = Timer.scheduledTimer(withTimeInterval: 0.09, repeats: true) { [weak self] _ in
+            timer = Timer.scheduledTimer(withTimeInterval: 0.06, repeats: true) { [weak self] _ in
                 self?.updateMeter()
             }
         } catch {
@@ -371,12 +371,12 @@ final class VoiceLevelMeter: NSObject, ObservableObject {
 
         let power = recorder.averagePower(forChannel: 0)
         let normalized = Self.normalizedPower(power, minimumPower: minimumPower)
-        phase += 0.12
-        smoothedLevel = (smoothedLevel * 0.78) + (normalized * 0.22)
+        phase += 0.22
+        smoothedLevel = (smoothedLevel * 0.55) + (normalized * 0.45)
         let displayLevel = smoothedLevel
 
         amplitudes = (0..<Self.barCount).map { index in
-            let wave = 0.78 + 0.22 * sin(phase + Double(index) * 0.62)
+            let wave = 0.74 + 0.26 * sin(phase + Double(index) * 0.74)
             return max(0.12, min(1, displayLevel * CGFloat(wave)))
         }
     }
@@ -388,8 +388,12 @@ final class VoiceLevelMeter: NSObject, ObservableObject {
 }
 
 final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCenterDelegate {
+    private var instanceLockFD: Int32 = -1
+
     func applicationDidFinishLaunching(_ notification: Notification) {
         AgentRuntime.shared.runSelfTestIfRequested()
+        guard !terminateIfAnotherInstanceIsRunning() else { return }
+
         NSApp.setActivationPolicy(.accessory)
         UNUserNotificationCenter.current().delegate = self
         configureNotifications()
@@ -400,6 +404,29 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
 
     func applicationWillTerminate(_ notification: Notification) {
         VoiceLevelOverlayController.shared.hide()
+        releaseInstanceLock()
+    }
+
+    private func terminateIfAnotherInstanceIsRunning() -> Bool {
+        let lockURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("lt.nijho.agent-cli.menubar.lock")
+        instanceLockFD = Darwin.open(lockURL.path, O_CREAT | O_RDWR, S_IRUSR | S_IWUSR)
+        guard instanceLockFD >= 0 else { return false }
+        if flock(instanceLockFD, LOCK_EX | LOCK_NB) == 0 {
+            return false
+        }
+
+        releaseInstanceLock()
+        AgentCommandRunner.shared.statusMessage = "Agent CLI is already running"
+        NSApp.terminate(nil)
+        return true
+    }
+
+    private func releaseInstanceLock() {
+        guard instanceLockFD >= 0 else { return }
+        flock(instanceLockFD, LOCK_UN)
+        close(instanceLockFD)
+        instanceLockFD = -1
     }
 
     private func configureNotifications() {
@@ -1176,7 +1203,10 @@ final class AgentCommandRunner: ObservableObject {
         holdToTranscribeActive = false
         pendingHoldToTranscribeStop = true
 
-        if isRecordingCommand(.toggleTranscription) {
+        let wasRecording = isRecordingCommand(.toggleTranscription)
+        if wasRecording {
+            endRecordingIndicator(for: .toggleTranscription)
+            statusMessage = "Transcribing..."
             stopHeldTranscriptionWhenReady()
         } else {
             statusMessage = "Stopping transcription as soon as it starts..."
@@ -1241,6 +1271,7 @@ final class AgentCommandRunner: ObservableObject {
 
             DispatchQueue.main.async {
                 if shouldStartRecording {
+                    self.pendingHoldToTranscribeStop = false
                     let shouldPaste = self.shouldPasteAfterRecording(for: command) && result.exitCode == 0
                     let pasteTarget = self.holdToTranscribePasteTarget
                     self.endRecordingIndicator(for: command)
@@ -1288,14 +1319,14 @@ final class AgentCommandRunner: ObservableObject {
             let result = Self.execute(Self.holdStopShell)
 
             DispatchQueue.main.async {
-                self.pendingHoldToTranscribeStop = false
-                self.holdStopRequestActive = false
-
                 if result.exitCode == 0 {
-                    self.statusMessage = "Stop requested for Toggle Transcription"
+                    self.holdStopRequestActive = false
+                    self.statusMessage = "Transcribing..."
                     return
                 }
 
+                self.pendingHoldToTranscribeStop = false
+                self.holdStopRequestActive = false
                 let message = result.output.isEmpty
                     ? "Toggle Transcription stop failed with exit code \(result.exitCode)"
                     : "Toggle Transcription stop failed: \(result.output)"
@@ -1340,6 +1371,9 @@ final class AgentCommandRunner: ObservableObject {
         isRecording = true
         VoiceLevelOverlayController.shared.show()
         if command.identifier == AgentCommand.toggleTranscription.identifier {
+            if pendingHoldToTranscribeStop {
+                endRecordingIndicator(for: command)
+            }
             stopHeldTranscriptionWhenReady()
         }
     }
@@ -1374,12 +1408,10 @@ final class AgentCommandRunner: ObservableObject {
             return
         }
 
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
-            if target?.insertText(transcript) == true {
-                self.statusMessage = "Inserted transcript"
-                return
-            }
-            self.postPasteShortcut(to: target?.pid)
+        target?.refocus()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.20) {
+            self.postPasteShortcut()
+            self.statusMessage = "Inserted transcript"
         }
     }
 
@@ -1413,7 +1445,7 @@ final class AgentCommandRunner: ObservableObject {
         _ = AXIsProcessTrustedWithOptions(options)
     }
 
-    private func postPasteShortcut(to pid: pid_t?) {
+    private func postPasteShortcut() {
         let source = CGEventSource(stateID: .hidSystemState)
         let commandDown = CGEvent(keyboardEventSource: source, virtualKey: CGKeyCode(kVK_Command), keyDown: true)
         let commandUp = CGEvent(keyboardEventSource: source, virtualKey: CGKeyCode(kVK_Command), keyDown: false)
@@ -1423,17 +1455,10 @@ final class AgentCommandRunner: ObservableObject {
         keyDown?.flags = .maskCommand
         keyUp?.flags = .maskCommand
 
-        if let pid, pid > 0 {
-            commandDown?.postToPid(pid)
-            keyDown?.postToPid(pid)
-            keyUp?.postToPid(pid)
-            commandUp?.postToPid(pid)
-        } else {
-            commandDown?.post(tap: .cghidEventTap)
-            keyDown?.post(tap: .cghidEventTap)
-            keyUp?.post(tap: .cghidEventTap)
-            commandUp?.post(tap: .cghidEventTap)
-        }
+        commandDown?.post(tap: .cghidEventTap)
+        keyDown?.post(tap: .cghidEventTap)
+        keyUp?.post(tap: .cghidEventTap)
+        commandUp?.post(tap: .cghidEventTap)
     }
 
     func copyLastOutput() {
@@ -1656,12 +1681,9 @@ struct FocusedTextTarget {
         return FocusedTextTarget(element: element, pid: pid)
     }
 
-    func insertText(_ text: String) -> Bool {
-        AXUIElementSetAttributeValue(
-            element,
-            kAXSelectedTextAttribute as CFString,
-            text as CFString
-        ) == .success
+    func refocus() {
+        NSRunningApplication(processIdentifier: pid)?.activate(options: [.activateIgnoringOtherApps])
+        _ = AXUIElementSetAttributeValue(element, kAXFocusedAttribute as CFString, kCFBooleanTrue)
     }
 }
 

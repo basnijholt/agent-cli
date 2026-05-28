@@ -9,7 +9,7 @@ CREATE_DMG=false
 
 usage() {
     cat <<'EOF'
-Usage: scripts/build-macos-app.sh [--install] [--dmg]
+Usage: macos/build-macos-app.sh [--install] [--dmg]
 
 Build the native macOS menu bar app for agent-cli.
 

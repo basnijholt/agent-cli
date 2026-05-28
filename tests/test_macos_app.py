@@ -8,8 +8,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 MACOS_APP = ROOT / "macos" / "AgentCLI"
-BUILD_SCRIPT = ROOT / "scripts" / "build-macos-app.sh"
-E2E_SCRIPT = ROOT / "scripts" / "test-macos-app-e2e.sh"
+BUILD_SCRIPT = ROOT / "macos" / "build-macos-app.sh"
+E2E_SCRIPT = ROOT / "macos" / "test-macos-app-e2e.sh"
 LOGO_SVG = ROOT / "docs" / "logo-clean.svg"
 MENU_BAR_LOGO_SVG = ROOT / "docs" / "logo-avatar.svg"
 
@@ -128,6 +128,25 @@ def test_macos_app_menu_bar_icon_changes_while_transcribing() -> None:
     assert "showsRecordingIndicator: true" in source
 
 
+def test_macos_app_exits_duplicate_menu_bar_instances() -> None:
+    """Only one menu bar process should own the icon and voice level overlay."""
+    source = (MACOS_APP / "Sources" / "AgentCLI" / "AgentCLIApp.swift").read_text()
+
+    assert (
+        "AgentRuntime.shared.runSelfTestIfRequested()\n"
+        "        guard !terminateIfAnotherInstanceIsRunning() else { return }" in source
+    )
+    assert "private var instanceLockFD: Int32 = -1" in source
+    assert "terminateIfAnotherInstanceIsRunning()" in source
+    assert 'appendingPathComponent("lt.nijho.agent-cli.menubar.lock")' in source
+    assert "Darwin.open(lockURL.path, O_CREAT | O_RDWR, S_IRUSR | S_IWUSR)" in source
+    assert "flock(instanceLockFD, LOCK_EX | LOCK_NB) == 0" in source
+    assert 'AgentCommandRunner.shared.statusMessage = "Agent CLI is already running"' in source
+    assert "flock(instanceLockFD, LOCK_UN)" in source
+    assert "close(instanceLockFD)" in source
+    assert "NSApp.terminate(nil)" in source
+
+
 def test_macos_app_shows_bottom_voice_level_overlay_while_recording() -> None:
     """Recording should show a small non-activating loudness meter overlay."""
     source = (MACOS_APP / "Sources" / "AgentCLI" / "AgentCLIApp.swift").read_text()
@@ -174,11 +193,11 @@ def test_macos_app_voice_level_meter_smooths_fast_meter_changes() -> None:
     """The voice overlay should respond to loudness without jittering too quickly."""
     source = (MACOS_APP / "Sources" / "AgentCLI" / "AgentCLIApp.swift").read_text()
 
-    assert ".animation(.easeOut(duration: 0.18), value: amplitude)" in source
+    assert ".animation(.easeOut(duration: 0.11), value: amplitude)" in source
     assert "private var smoothedLevel = CGFloat(0.16)" in source
-    assert "withTimeInterval: 0.09" in source
-    assert "phase += 0.12" in source
-    assert "smoothedLevel = (smoothedLevel * 0.78) + (normalized * 0.22)" in source
+    assert "withTimeInterval: 0.06" in source
+    assert "phase += 0.22" in source
+    assert "smoothedLevel = (smoothedLevel * 0.55) + (normalized * 0.45)" in source
     assert "let displayLevel = smoothedLevel" in source
 
 
@@ -200,6 +219,34 @@ def test_macos_app_supports_configurable_hold_to_transcribe_shortcut() -> None:
     assert "func endHoldToTranscribe()" in source
     assert "private var holdToTranscribeActive = false" in source
     assert "private var pasteAfterRecordingCommands: Set<String> = []" in source
+
+
+def test_macos_app_hides_hold_recording_ui_immediately_on_key_release() -> None:
+    """Hold-to-type should stop looking like it is recording as soon as the key is released."""
+    source = (MACOS_APP / "Sources" / "AgentCLI" / "AgentCLIApp.swift").read_text()
+
+    assert "let wasRecording = isRecordingCommand(.toggleTranscription)" in source
+    assert (
+        "if wasRecording {\n"
+        "            endRecordingIndicator(for: .toggleTranscription)\n"
+        '            statusMessage = "Transcribing..."\n'
+        "            stopHeldTranscriptionWhenReady()" in source
+    )
+    assert (
+        "if pendingHoldToTranscribeStop {\n"
+        "                endRecordingIndicator(for: command)\n"
+        "            }\n"
+        "            stopHeldTranscriptionWhenReady()" in source
+    )
+    assert (
+        "if shouldStartRecording {\n"
+        "                    self.pendingHoldToTranscribeStop = false" in source
+    )
+    assert (
+        "if result.exitCode == 0 {\n"
+        "                    self.holdStopRequestActive = false\n"
+        '                    self.statusMessage = "Transcribing..."' in source
+    )
 
 
 def test_macos_app_defaults_clipboard_transcription_to_fn_space() -> None:
@@ -254,7 +301,8 @@ def test_macos_app_pastes_hold_transcription_into_focused_field() -> None:
         'statusMessage = "Transcript copied. Allow Accessibility permission to auto-insert text."'
         in source
     )
-    assert "DispatchQueue.main.asyncAfter(deadline: .now() + 0.15)" in source
+    assert "DispatchQueue.main.asyncAfter(deadline: .now() + 0.20)" in source
+    assert "target?.refocus()" in source
     assert "CGEventSource(stateID: .hidSystemState)" in source
     assert (
         "CGEvent(keyboardEventSource: source, virtualKey: CGKeyCode(kVK_Command), keyDown: true)"
@@ -267,10 +315,11 @@ def test_macos_app_pastes_hold_transcription_into_focused_field() -> None:
     assert "keyDown?.flags = .maskCommand" in source
     assert "keyDown?.post(tap: .cghidEventTap)" in source
     assert "keyUp?.post(tap: .cghidEventTap)" in source
+    assert "postToPid" not in source
 
 
-def test_macos_app_targets_original_focused_field_for_hold_to_type() -> None:
-    """Hold-to-type should insert into the field that was focused when recording started."""
+def test_macos_app_refocuses_original_app_for_hold_to_type() -> None:
+    """Hold-to-type should restore the original focused app before pasting."""
     source = (MACOS_APP / "Sources" / "AgentCLI" / "AgentCLIApp.swift").read_text()
 
     assert "private var holdToTranscribePasteTarget: FocusedTextTarget?" in source
@@ -285,11 +334,18 @@ def test_macos_app_targets_original_focused_field_for_hold_to_type() -> None:
     assert "AXUIElementCreateSystemWide()" in source
     assert "kAXFocusedUIElementAttribute as CFString" in source
     assert "AXUIElementGetPid(element, &pid)" in source
-    assert "AXUIElementSetAttributeValue(" in source
-    assert "kAXSelectedTextAttribute as CFString" in source
-    assert "insertText(transcript)" in source
-    assert "postPasteShortcut(to: target?.pid)" in source
-    assert "keyDown?.postToPid(pid)" in source
+    assert "func refocus()" in source
+    assert (
+        "NSRunningApplication(processIdentifier: pid)?.activate(options: [.activateIgnoringOtherApps])"
+        in source
+    )
+    assert (
+        "AXUIElementSetAttributeValue(element, kAXFocusedAttribute as CFString, kCFBooleanTrue)"
+        in source
+    )
+    assert "self.postPasteShortcut()" in source
+    assert "kAXSelectedTextAttribute as CFString" not in source
+    assert "func insertText(_ text: String)" not in source
 
 
 def test_macos_app_throttles_accessibility_prompt_per_installed_build() -> None:

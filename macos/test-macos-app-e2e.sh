@@ -110,7 +110,7 @@ chmod 755 "$FAKE_UV"
 
 # Exercise build-macos-app.sh --dmg through the install flow.
 UV_BINARY="$FAKE_UV" INSTALL_DIR="$INSTALL_DIR" AGENTCLI_SKIP_OPEN=1 \
-    "$ROOT_DIR/scripts/build-macos-app.sh" --install --dmg
+    "$ROOT_DIR/macos/build-macos-app.sh" --install --dmg
 
 test -x "$APP/Contents/MacOS/AgentCLI"
 test -x "$APP/Contents/Resources/bin/uv"
