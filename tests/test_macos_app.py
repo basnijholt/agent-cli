@@ -10,10 +10,16 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 MACOS_APP = ROOT / "macos" / "AgentCLI"
+SWIFT_SOURCE_DIR = MACOS_APP / "Sources" / "AgentCLI"
 BUILD_SCRIPT = ROOT / "macos" / "build-macos-app.sh"
 E2E_SCRIPT = ROOT / "macos" / "test-macos-app-e2e.sh"
 LOGO_SVG = ROOT / "docs" / "logo-clean.svg"
 MENU_BAR_LOGO_SVG = ROOT / "docs" / "logo-avatar.svg"
+
+
+def swift_source() -> str:
+    """Return all AgentCLI Swift source for source-shape assertions."""
+    return "\n".join(path.read_text() for path in sorted(SWIFT_SOURCE_DIR.glob("*.swift")))
 
 
 def assert_script_executable(path: Path) -> None:
@@ -36,7 +42,20 @@ def assert_script_executable(path: Path) -> None:
 def test_macos_app_package_files_exist() -> None:
     """The menu bar wrapper should live in a self-contained Swift package."""
     assert (MACOS_APP / "Package.swift").is_file()
-    assert (MACOS_APP / "Sources" / "AgentCLI" / "AgentCLIApp.swift").is_file()
+    for filename in (
+        "AgentCLIApp.swift",
+        "AgentCommand.swift",
+        "AgentCommandRunner.swift",
+        "AgentRuntime.swift",
+        "AppDelegate.swift",
+        "CommandResult.swift",
+        "ConfigurableHotkeyController.swift",
+        "FocusedTextTarget.swift",
+        "MenuBarIcon.swift",
+        "Shortcuts.swift",
+        "VoiceLevelOverlay.swift",
+    ):
+        assert (SWIFT_SOURCE_DIR / filename).is_file()
     assert (MACOS_APP / "Resources" / "Info.plist").is_file()
     assert (MACOS_APP / "README.md").is_file()
     assert LOGO_SVG.is_file()
@@ -67,7 +86,7 @@ def test_macos_info_plist_declares_menu_bar_agent_app() -> None:
 
 def test_macos_app_source_exposes_expected_agent_cli_actions() -> None:
     """The wrapper should invoke the existing CLI surface through its private runtime."""
-    source = (MACOS_APP / "Sources" / "AgentCLI" / "AgentCLIApp.swift").read_text()
+    source = swift_source()
 
     assert "MenuBarExtra" in source
     assert '"$AGENTCLI_AGENT_CLI" transcribe --toggle --quiet' in source
@@ -87,7 +106,7 @@ def test_macos_app_source_exposes_expected_agent_cli_actions() -> None:
 
 def test_macos_app_menu_prioritizes_daily_voice_actions() -> None:
     """Daily actions should stay top-level; diagnostics belong in troubleshooting."""
-    source = (MACOS_APP / "Sources" / "AgentCLI" / "AgentCLIApp.swift").read_text()
+    source = swift_source()
 
     record_index = source.index('Label("Record to Clipboard", systemImage: "waveform")')
     voice_edit_index = source.index('Label("Voice Edit Clipboard", systemImage: "mic")')
@@ -123,7 +142,7 @@ def test_macos_app_menu_prioritizes_daily_voice_actions() -> None:
 
 def test_macos_app_formats_voice_service_status_for_notifications() -> None:
     """Voice status notifications should be app copy, not raw CLI terminal output."""
-    source = (MACOS_APP / "Sources" / "AgentCLI" / "AgentCLIApp.swift").read_text()
+    source = swift_source()
 
     assert "voiceServiceStatusMessage" in source
     assert 'command.identifier == "voice-service-status"' in source
@@ -136,7 +155,7 @@ def test_macos_app_formats_voice_service_status_for_notifications() -> None:
 
 def test_macos_app_uses_avatar_svg_as_menu_bar_icon() -> None:
     """The menu bar icon should use the checked-in avatar-only AgentCLI SVG."""
-    source = (MACOS_APP / "Sources" / "AgentCLI" / "AgentCLIApp.swift").read_text()
+    source = swift_source()
     build_script = BUILD_SCRIPT.read_text()
     e2e_script = E2E_SCRIPT.read_text()
     assert MENU_BAR_LOGO_SVG.is_file()
@@ -166,7 +185,7 @@ def test_macos_app_uses_avatar_svg_as_menu_bar_icon() -> None:
 
 def test_macos_app_menu_bar_icon_changes_while_transcribing() -> None:
     """Only recording-style commands should hold the red recording indicator."""
-    source = (MACOS_APP / "Sources" / "AgentCLI" / "AgentCLIApp.swift").read_text()
+    source = swift_source()
 
     assert "let showsRecordingIndicator: Bool" in source
     assert "@Published private(set) var isRecording = false" in source
@@ -183,7 +202,7 @@ def test_macos_app_menu_bar_icon_changes_while_transcribing() -> None:
 
 def test_macos_app_exits_duplicate_menu_bar_instances() -> None:
     """Only one menu bar process should own the icon and voice level overlay."""
-    source = (MACOS_APP / "Sources" / "AgentCLI" / "AgentCLIApp.swift").read_text()
+    source = swift_source()
 
     assert (
         "AgentRuntime.shared.runSelfTestIfRequested()\n"
@@ -204,7 +223,7 @@ def test_macos_app_exits_duplicate_menu_bar_instances() -> None:
 
 def test_macos_app_shows_bottom_voice_level_overlay_while_recording() -> None:
     """Recording should show a small non-activating loudness meter overlay."""
-    source = (MACOS_APP / "Sources" / "AgentCLI" / "AgentCLIApp.swift").read_text()
+    source = swift_source()
 
     assert "import AVFoundation" in source
     assert "VoiceLevelOverlayController.shared.show()" in source
@@ -227,7 +246,7 @@ def test_macos_app_shows_bottom_voice_level_overlay_while_recording() -> None:
 
 def test_macos_app_voice_level_meter_uses_live_microphone_power_without_saving_audio() -> None:
     """The overlay bars should come from live mic metering and release capture afterward."""
-    source = (MACOS_APP / "Sources" / "AgentCLI" / "AgentCLIApp.swift").read_text()
+    source = swift_source()
 
     assert "final class VoiceLevelMeter" in source
     assert "@Published private(set) var amplitudes" in source
@@ -246,7 +265,7 @@ def test_macos_app_voice_level_meter_uses_live_microphone_power_without_saving_a
 
 def test_macos_app_voice_level_meter_smooths_fast_meter_changes() -> None:
     """The voice overlay should respond to loudness without jittering too quickly."""
-    source = (MACOS_APP / "Sources" / "AgentCLI" / "AgentCLIApp.swift").read_text()
+    source = swift_source()
 
     assert ".animation(.easeOut(duration: 0.11), value: amplitude)" in source
     assert "private var smoothedLevel = CGFloat(0.16)" in source
@@ -258,7 +277,7 @@ def test_macos_app_voice_level_meter_smooths_fast_meter_changes() -> None:
 
 def test_macos_app_supports_configurable_hold_to_transcribe_shortcut() -> None:
     """A hold shortcut should start on key-down and stop on key-up."""
-    source = (MACOS_APP / "Sources" / "AgentCLI" / "AgentCLIApp.swift").read_text()
+    source = swift_source()
 
     assert "static let holdToTranscribe" in source
     assert '"holdToTranscribe"' in source
@@ -278,7 +297,7 @@ def test_macos_app_supports_configurable_hold_to_transcribe_shortcut() -> None:
 
 def test_macos_app_hides_hold_recording_ui_immediately_on_key_release() -> None:
     """Hold-to-type should stop looking like it is recording as soon as the key is released."""
-    source = (MACOS_APP / "Sources" / "AgentCLI" / "AgentCLIApp.swift").read_text()
+    source = swift_source()
 
     assert "let wasRecording = isRecordingCommand(.toggleTranscription)" in source
     assert (
@@ -307,7 +326,7 @@ def test_macos_app_hides_hold_recording_ui_immediately_on_key_release() -> None:
 
 def test_macos_app_clears_hold_stop_state_before_showing_finished_transcript() -> None:
     """Hold-to-type should not leave the menu stuck on Transcribing after output is ready."""
-    source = (MACOS_APP / "Sources" / "AgentCLI" / "AgentCLIApp.swift").read_text()
+    source = swift_source()
 
     assert "private func clearHoldToTranscribeStopState(for command: AgentCommand)" in source
     assert (
@@ -330,7 +349,7 @@ def test_macos_app_clears_hold_stop_state_before_showing_finished_transcript() -
 
 def test_macos_app_uses_private_runtime_dir_for_hold_to_transcribe_stop() -> None:
     """Hold-to-type stop should watch the same PID dir that the app passes to agent-cli."""
-    source = (MACOS_APP / "Sources" / "AgentCLI" / "AgentCLIApp.swift").read_text()
+    source = swift_source()
     launchd = (ROOT / "agent_cli" / "install" / "launchd.py").read_text()
 
     assert "let runtimeURL: URL" in source
@@ -347,7 +366,7 @@ def test_macos_app_uses_private_runtime_dir_for_hold_to_transcribe_stop() -> Non
 
 def test_macos_app_defaults_clipboard_transcription_to_fn_space() -> None:
     """The regular clipboard transcription toggle should default to Fn+Space."""
-    source = (MACOS_APP / "Sources" / "AgentCLI" / "AgentCLIApp.swift").read_text()
+    source = swift_source()
 
     assert "kEventKeyModifierFnMask" in source
     assert (
@@ -362,7 +381,7 @@ def test_macos_app_defaults_clipboard_transcription_to_fn_space() -> None:
 
 def test_macos_app_migrates_old_default_shortcuts_to_fn_defaults() -> None:
     """Existing installs with old built-in defaults should get the new defaults."""
-    source = (MACOS_APP / "Sources" / "AgentCLI" / "AgentCLIApp.swift").read_text()
+    source = swift_source()
 
     assert "ShortcutDefaultsMigrator.migrate()" in source
     assert "migrateDefault(" in source
@@ -379,7 +398,7 @@ def test_macos_app_migrates_old_default_shortcuts_to_fn_defaults() -> None:
 
 def test_macos_app_pastes_hold_transcription_into_focused_field() -> None:
     """Push-to-talk should paste the completed transcript when macOS allows it."""
-    source = (MACOS_APP / "Sources" / "AgentCLI" / "AgentCLIApp.swift").read_text()
+    source = swift_source()
 
     assert "import ApplicationServices" in source
     assert "shouldPasteAfterRecording(for: command) && result.exitCode == 0" in source
@@ -416,7 +435,7 @@ def test_macos_app_pastes_hold_transcription_into_focused_field() -> None:
 
 def test_macos_app_refocuses_original_app_for_hold_to_type() -> None:
     """Hold-to-type should restore the original focused app before pasting."""
-    source = (MACOS_APP / "Sources" / "AgentCLI" / "AgentCLIApp.swift").read_text()
+    source = swift_source()
 
     assert "private var holdToTranscribePasteTarget: FocusedTextTarget?" in source
     assert "holdToTranscribePasteTarget = FocusedTextTarget.capture()" in source
@@ -447,7 +466,7 @@ def test_macos_app_refocuses_original_app_for_hold_to_type() -> None:
 
 def test_macos_app_throttles_accessibility_prompt_per_installed_build() -> None:
     """An untrusted paste should prompt when needed but not repeatedly for one build."""
-    source = (MACOS_APP / "Sources" / "AgentCLI" / "AgentCLIApp.swift").read_text()
+    source = swift_source()
 
     assert "accessibilityPromptMarkerURL" in source
     assert 'appendingPathComponent(".accessibility-prompted")' in source
@@ -469,7 +488,7 @@ def test_macos_app_throttles_accessibility_prompt_per_installed_build() -> None:
 
 def test_macos_app_suppresses_start_notification_for_recording_stop_toggle() -> None:
     """The second toggle should request stop, not announce a fresh recording start."""
-    source = (MACOS_APP / "Sources" / "AgentCLI" / "AgentCLIApp.swift").read_text()
+    source = swift_source()
 
     assert (
         "let isStopRequest = command.showsRecordingIndicator && isRecordingCommand(command)"
@@ -494,7 +513,7 @@ def test_macos_app_suppresses_start_notification_for_recording_stop_toggle() -> 
 
 def test_macos_app_makes_recording_stop_requests_idempotent() -> None:
     """Repeated stop shortcut presses should not escalate the CLI process to SIGKILL."""
-    source = (MACOS_APP / "Sources" / "AgentCLI" / "AgentCLIApp.swift").read_text()
+    source = swift_source()
 
     assert "private var pendingStopRecordingCommands: Set<String> = []" in source
     assert "if isStopRequest && isStopPending(for: command)" in source
@@ -508,7 +527,7 @@ def test_macos_app_makes_recording_stop_requests_idempotent() -> None:
 
 def test_macos_app_sends_visible_transcription_notifications() -> None:
     """Transcription should notify on start and finish, with the transcript in the body."""
-    source = (MACOS_APP / "Sources" / "AgentCLI" / "AgentCLIApp.swift").read_text()
+    source = swift_source()
 
     assert "UNUserNotificationCenter.current().delegate = self" in source
     assert "configureNotifications()" in source
@@ -535,7 +554,7 @@ def test_macos_app_sends_visible_transcription_notifications() -> None:
 
 def test_macos_app_can_open_notification_settings() -> None:
     """Users should get an in-app path to fix previously denied notification permission."""
-    source = (MACOS_APP / "Sources" / "AgentCLI" / "AgentCLIApp.swift").read_text()
+    source = swift_source()
 
     assert 'Label("Open Notification Settings", systemImage: "bell.badge")' in source
     assert "openNotificationSettings()" in source
@@ -547,7 +566,7 @@ def test_macos_app_can_open_notification_settings() -> None:
 
 def test_macos_app_can_open_accessibility_settings() -> None:
     """Users should get an explicit path to grant paste insertion permission."""
-    source = (MACOS_APP / "Sources" / "AgentCLI" / "AgentCLIApp.swift").read_text()
+    source = swift_source()
 
     assert 'Label("Open Accessibility Settings", systemImage: "figure.wave")' in source
     assert "openAccessibilitySettings()" in source
@@ -558,7 +577,7 @@ def test_macos_app_can_open_accessibility_settings() -> None:
 
 def test_macos_app_makes_command_errors_discoverable() -> None:
     """Failures should persist full details and expose obvious menu actions."""
-    source = (MACOS_APP / "Sources" / "AgentCLI" / "AgentCLIApp.swift").read_text()
+    source = swift_source()
 
     assert "@Published private(set) var hasLastError = false" in source
     assert 'Label("Open Last Error", systemImage: "exclamationmark.triangle")' in source
@@ -580,7 +599,7 @@ def test_macos_app_makes_command_errors_discoverable() -> None:
 
 def test_macos_app_registers_configurable_native_global_hotkeys() -> None:
     """KeyboardShortcuts source documents setShortcut/getShortcut and onKeyUp handlers."""
-    source = (MACOS_APP / "Sources" / "AgentCLI" / "AgentCLIApp.swift").read_text()
+    source = swift_source()
 
     assert "import KeyboardShortcuts" in source
     assert "KeyboardShortcuts.Name" in source
@@ -602,7 +621,7 @@ def test_macos_app_registers_configurable_native_global_hotkeys() -> None:
 
 def test_macos_app_shows_actual_persisted_shortcuts_and_can_reset_them() -> None:
     """The menu should reflect stored shortcuts instead of claiming static defaults."""
-    source = (MACOS_APP / "Sources" / "AgentCLI" / "AgentCLIApp.swift").read_text()
+    source = swift_source()
     readme = (MACOS_APP / "README.md").read_text()
 
     assert "ShortcutSummaryState" in source
@@ -654,7 +673,7 @@ def test_macos_build_script_creates_signed_app_bundle() -> None:
 
 def test_macos_app_bootstraps_private_uv_runtime() -> None:
     """Drag-and-drop app installs Python dependencies into user app support."""
-    source = (MACOS_APP / "Sources" / "AgentCLI" / "AgentCLIApp.swift").read_text()
+    source = swift_source()
 
     assert "AgentRuntime" in source
     assert "Application Support" in source
@@ -692,7 +711,7 @@ def test_macos_app_bootstraps_private_uv_runtime() -> None:
 
 def test_macos_app_waits_for_whisper_daemon_readiness() -> None:
     """Transcription should not start before the local Wyoming port is listening."""
-    source = (MACOS_APP / "Sources" / "AgentCLI" / "AgentCLIApp.swift").read_text()
+    source = swift_source()
 
     assert "waitForWhisperDaemonReady()" in source
     assert "return waitForWhisperDaemonReady()" in source
