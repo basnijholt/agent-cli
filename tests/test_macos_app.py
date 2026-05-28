@@ -586,7 +586,8 @@ def test_macos_app_defaults_clipboard_transcription_to_fn_space() -> None:
     source = swift_source()
 
     assert "kEventKeyModifierFnMask" in source
-    assert "static let toggleTranscription = ShortcutStorage.shortcut(" in source
+    assert "enum ToggleTranscriptionDefault" in source
+    assert "static let shortcut = FunctionShortcutPersistence.rawShortcut(" in source
     assert "carbonKeyCode: kVK_Space" in source
     assert "carbonModifiers: kEventKeyModifierFnMask" in source
     assert "event.modifierFlags.contains(.function)" in source
@@ -596,15 +597,17 @@ def test_macos_app_defaults_clipboard_transcription_to_fn_space() -> None:
 
 
 def test_macos_app_persists_fn_space_without_keyboardshortcuts_normalization() -> None:
-    """KeyboardShortcuts' public Shortcut initializer drops Fn, so app storage must preserve it."""
+    """Fn shortcuts should bypass KeyboardShortcuts normalization only where the app can dispatch them."""
     source = swift_source()
 
-    assert "enum ShortcutStorage" in source
+    assert "enum ToggleTranscriptionDefault" in source
+    assert "enum ShortcutStorage" not in source
     assert "JSONEncoder().encode(shortcut)" in source
     assert "JSONDecoder().decode(KeyboardShortcuts.Shortcut.self" in source
     assert '"KeyboardShortcuts_\\(name.rawValue)"' in source
-    assert "ShortcutStorage.setShortcut(AppShortcutDefaults.toggleTranscription" in source
-    assert "static let toggleTranscription = ShortcutStorage.shortcut(" in source
+    assert "ToggleTranscriptionDefault.set()" in source
+    assert "FunctionShortcutPersistence.set(shortcut, for: shortcutName)" in source
+    assert "ShortcutStorage.setShortcut(" not in source
 
 
 def test_macos_app_uses_fn_aware_event_tap_for_transcription_shortcuts() -> None:
@@ -667,15 +670,12 @@ def test_macos_app_migrates_old_default_shortcuts_to_fn_defaults() -> None:
     assert "migrateDefault(" in source
     assert "from: KeyboardShortcuts.Shortcut(.r, modifiers: [.command, .shift])" in source
     assert "from: KeyboardShortcuts.Shortcut(.space)" in source
-    assert "to: AppShortcutDefaults.toggleTranscription" in source
-    assert (
-        "seedDefault(name: .toggleTranscription, shortcut: AppShortcutDefaults.toggleTranscription)"
-        in source
-    )
+    assert "to: ToggleTranscriptionDefault.shortcut" in source
+    assert "ToggleTranscriptionDefault.seedIfNeeded()" in source
     assert "from: KeyboardShortcuts.Shortcut(.space, modifiers: [.control, .option])" in source
     assert "to: KeyboardShortcuts.Shortcut(.function)" in source
     assert "KeyboardShortcuts.getShortcut(for: name) == oldShortcut" in source
-    assert "ShortcutStorage.setShortcut(newShortcut, for: name)" in source
+    assert "setShortcut(newShortcut, for: name)" in source
 
 
 def test_macos_app_pastes_hold_transcription_into_focused_field() -> None:
@@ -941,6 +941,10 @@ def test_macos_app_records_fn_chords_before_bare_fn() -> None:
     assert "captureBareFunctionShortcut()" in source
     assert "event.modifierFlags.contains(.function)" in source
     assert "case kVK_Function:" in source
+    assert "shortcut.usesFunctionModifier" in source
+    assert "supportsFunctionChord(shortcutName)" in source
+    assert "FunctionShortcutPersistence.set(shortcut, for: shortcutName)" in source
+    assert "KeyboardShortcuts.setShortcut(shortcut, for: shortcutName)" in source
 
 
 def test_macos_app_shows_actual_persisted_shortcuts_and_can_reset_them() -> None:
