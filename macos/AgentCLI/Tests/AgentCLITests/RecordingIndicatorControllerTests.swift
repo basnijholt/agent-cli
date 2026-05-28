@@ -1,11 +1,9 @@
-#if canImport(Testing)
-import Testing
+#if canImport(XCTest)
+import XCTest
 @testable import AgentCLI
 
-@Suite
-struct RecordingIndicatorControllerTests {
-    @Test
-    func recordingSoundsAreDisabledByDefault() {
+final class RecordingIndicatorControllerTests: XCTestCase {
+    func testRecordingSoundsAreDisabledByDefault() {
         let defaults = UserDefaults(suiteName: "AgentCLITests.recording-sounds-default")!
         defaults.removePersistentDomain(forName: "AgentCLITests.recording-sounds-default")
         let player = RecordingCuePlayerSpy()
@@ -14,11 +12,10 @@ struct RecordingIndicatorControllerTests {
         controller.begin(for: .toggleTranscription)
         controller.end(for: .toggleTranscription)
 
-        #expect(player.events == [])
+        XCTAssertEqual(player.events, [])
     }
 
-    @Test
-    func recordingSoundsPlayStartAndFinishWhenEnabled() {
+    func testRecordingSoundsPlayStartAndFinishWhenEnabled() {
         let defaults = UserDefaults(suiteName: "AgentCLITests.recording-sounds-enabled")!
         defaults.removePersistentDomain(forName: "AgentCLITests.recording-sounds-enabled")
         defaults.set(true, forKey: RecordingSoundSettings.enabledKey)
@@ -28,11 +25,10 @@ struct RecordingIndicatorControllerTests {
         controller.begin(for: .toggleTranscription)
         controller.end(for: .toggleTranscription)
 
-        #expect(player.events == [.startedRecording, .finishedRecording])
+        XCTAssertEqual(player.events, [.startedRecording, .finishedRecording])
     }
 
-    @Test
-    func finishSoundPlaysOnlyWhenAllRecordingCommandsHaveEnded() {
+    func testFinishSoundPlaysOnlyWhenAllRecordingCommandsHaveEnded() {
         let defaults = UserDefaults(suiteName: "AgentCLITests.recording-sounds-nested")!
         defaults.removePersistentDomain(forName: "AgentCLITests.recording-sounds-nested")
         defaults.set(true, forKey: RecordingSoundSettings.enabledKey)
@@ -42,10 +38,10 @@ struct RecordingIndicatorControllerTests {
         controller.begin(for: .toggleTranscription)
         controller.begin(for: .voiceEdit)
         controller.end(for: .toggleTranscription)
-        #expect(player.events == [.startedRecording])
+        XCTAssertEqual(player.events, [.startedRecording])
 
         controller.end(for: .voiceEdit)
-        #expect(player.events == [.startedRecording, .finishedRecording])
+        XCTAssertEqual(player.events, [.startedRecording, .finishedRecording])
     }
 }
 
