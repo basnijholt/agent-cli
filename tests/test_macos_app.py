@@ -73,6 +73,7 @@ def test_macos_app_package_files_exist() -> None:
         "RecordingIndicatorController.swift",
         "Shortcuts.swift",
         "TranscriptPasteController.swift",
+        "VoiceStatusMenuItem.swift",
         "VoiceLevelOverlay.swift",
     ):
         assert (SWIFT_SOURCE_DIR / filename).is_file()
@@ -230,7 +231,7 @@ def test_macos_app_menu_prioritizes_daily_voice_actions() -> None:
     assert record_index < voice_edit_index < autocorrect_index < troubleshooting_menu_index
     assert troubleshooting_menu_index < copy_output_index < troubleshooting_label_index
     assert 'Menu("Setup")' not in source
-    assert 'Text("Voice: \\(runner.menuStatusMessage)")' in source
+    assert "VoiceStatusMenuItem(runner: runner)" in source
     assert "var menuBarIconState: MenuBarIconState" in source
     assert "AgentCLIMenuBarIcon(state: runner.menuBarIconState)" in source
     assert "var menuStatusMessage: String" in source
@@ -568,6 +569,21 @@ def test_macos_app_animates_all_preparing_statuses_with_fixed_width_timer() -> N
     assert "bootstrapPhase.statusMessage(" in source
     assert "animationTick: bootstrapAnimationTick" in source
     assert "elapsedSeconds: bootstrapElapsedSeconds" in source
+
+
+def test_macos_app_updates_bootstrap_status_without_rebuilding_menu_tree() -> None:
+    """Bootstrap animation should keep updating without refreshing the whole menu."""
+    source = swift_source()
+
+    assert "VoiceStatusMenuItem(runner: runner)" in source
+    assert 'Text("Voice: \\(runner.menuStatusMessage)")' not in source
+    assert "struct VoiceStatusMenuItem: View" in source
+    assert 'Text("Voice: \\(statusMessage)")' in source
+    assert ".onReceive(statusRefreshTimer)" in source
+    assert "@Published private var bootstrapAnimationTick" not in source
+    assert "@Published private var bootstrapElapsedSeconds" not in source
+    assert "private var bootstrapAnimationTick = 0" in source
+    assert "private var bootstrapElapsedSeconds = 0" in source
 
 
 def test_macos_app_shows_preparing_menu_bar_icon_state() -> None:
