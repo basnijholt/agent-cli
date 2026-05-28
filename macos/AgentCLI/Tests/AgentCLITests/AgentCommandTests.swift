@@ -53,6 +53,51 @@ final class AgentCommandTests: XCTestCase {
         XCTAssertEqual(AgentCommand.autocorrect.bootstrapRequirement, .cliRuntime)
     }
 
+    func testRuntimeUsesBundledCLIByDefault() {
+        let defaults = UserDefaults(suiteName: "AgentCLITests.default-runtime")!
+        defaults.removePersistentDomain(forName: "AgentCLITests.default-runtime")
+        let runtime = AgentRuntime(
+            environment: ["AGENTCLI_APP_SUPPORT_DIR": "/tmp/agentcli-test-support"],
+            userDefaults: defaults
+        )
+
+        XCTAssertFalse(runtime.usesUserInstalledAgentCLI)
+        XCTAssertEqual(runtime.agentCLIExecutableURL.path, "/tmp/agentcli-test-support/bin/agent-cli")
+        XCTAssertEqual(runtime.agentCLIProcessArguments(["--version"]), ["--version"])
+        XCTAssertEqual(runtime.commandEnvironment()["AGENT_CLI_CONFIG_HOME"], "/tmp/agentcli-test-support/config")
+        XCTAssertEqual(runtime.commandEnvironment()["UV_TOOL_BIN_DIR"], "/tmp/agentcli-test-support/bin")
+    }
+
+    func testRuntimeCanUseUserInstalledCLIWithoutPrivateConfig() {
+        let defaults = UserDefaults(suiteName: "AgentCLITests.user-runtime")!
+        defaults.removePersistentDomain(forName: "AgentCLITests.user-runtime")
+        defaults.set(true, forKey: RuntimeSettings.useUserInstalledAgentCLIKey)
+        let runtime = AgentRuntime(
+            environment: [
+                "AGENTCLI_APP_SUPPORT_DIR": "/tmp/agentcli-test-support",
+                "AGENTCLI_RUNTIME_DIR": "/tmp/agentcli-test-support/runtime",
+                "AGENTCLI_BUNDLED_UV": "/tmp/agentcli-test-support/bin/uv",
+                "AGENTCLI_PACKAGE_SOURCE": "agent-cli",
+                "AGENTCLI_AGENT_CLI": "/tmp/agentcli-test-support/bin/agent-cli",
+                "AGENT_CLI_CONFIG_HOME": "/tmp/agentcli-test-support/config",
+                "UV_TOOL_BIN_DIR": "/tmp/agentcli-test-support/bin",
+                "PATH": "/custom/bin",
+            ],
+            userDefaults: defaults
+        )
+
+        XCTAssertTrue(runtime.usesUserInstalledAgentCLI)
+        XCTAssertEqual(runtime.agentCLIExecutableURL.path, "/usr/bin/env")
+        XCTAssertEqual(runtime.agentCLIProcessArguments(["--version"]), ["agent-cli", "--version"])
+        XCTAssertNil(runtime.commandEnvironment()["AGENTCLI_APP_SUPPORT_DIR"])
+        XCTAssertNil(runtime.commandEnvironment()["AGENTCLI_RUNTIME_DIR"])
+        XCTAssertNil(runtime.commandEnvironment()["AGENTCLI_BUNDLED_UV"])
+        XCTAssertNil(runtime.commandEnvironment()["AGENTCLI_PACKAGE_SOURCE"])
+        XCTAssertNil(runtime.commandEnvironment()["AGENT_CLI_CONFIG_HOME"])
+        XCTAssertNil(runtime.commandEnvironment()["UV_TOOL_BIN_DIR"])
+        XCTAssertTrue(runtime.commandEnvironment()["PATH"]?.contains("/custom/bin") == true)
+    }
+
     @MainActor
     func testStartupWarmUpBootstrapsTranscriptionOnce() {
         let recorder = BootstrapRecorder()

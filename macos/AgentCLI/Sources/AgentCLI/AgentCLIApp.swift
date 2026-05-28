@@ -8,6 +8,8 @@ struct AgentCLIApp: App {
     @StateObject private var runner = AgentCommandRunner.shared
     @StateObject private var loginItemController = LoginItemController.shared
     @StateObject private var shortcutSummary = ShortcutSummaryState.shared
+    @AppStorage(RuntimeSettings.useUserInstalledAgentCLIKey)
+    private var useUserInstalledAgentCLI = false
 
     var body: some Scene {
         MenuBarExtra {
@@ -85,7 +87,10 @@ struct AgentCLIApp: App {
                 Button {
                     runner.run(.installOrUpdateCLI)
                 } label: {
-                    Label("Update CLI Runtime", systemImage: "arrow.down.circle")
+                    Label(
+                        useUserInstalledAgentCLI ? "Check User CLI" : "Update CLI Runtime",
+                        systemImage: useUserInstalledAgentCLI ? "checkmark.circle" : "arrow.down.circle"
+                    )
                 }
 
                 Button {

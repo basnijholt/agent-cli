@@ -150,6 +150,8 @@ enum ShortcutDefaultsMigrator {
 
 struct SettingsView: View {
     @ObservedObject private var loginItemController = LoginItemController.shared
+    @AppStorage(RuntimeSettings.useUserInstalledAgentCLIKey)
+    private var useUserInstalledAgentCLI = false
     @AppStorage(TranscriptionSettings.transcriptionExtraInstructionsKey)
     private var transcriptionExtraInstructions = ""
     @State private var shortcutRevision = 0
@@ -171,8 +173,12 @@ struct SettingsView: View {
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
+
+                Toggle("Use User-Installed agent-cli", isOn: $useUserInstalledAgentCLI)
             } header: {
                 Text("General")
+            } footer: {
+                Text("Runs the agent-cli found on PATH with your normal config instead of the app's private bundled-uv runtime.")
             }
 
             Section {

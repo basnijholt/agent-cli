@@ -1,6 +1,17 @@
 import Darwin
 import Foundation
 
+private enum AgentCLIRuntimeMode: Equatable {
+    case bundled
+    case userInstalled
+
+    init(userDefaults: UserDefaults) {
+        self = userDefaults.bool(forKey: RuntimeSettings.useUserInstalledAgentCLIKey)
+            ? .userInstalled
+            : .bundled
+    }
+}
+
 struct AgentRuntime {
     static let shared = AgentRuntime()
 
@@ -9,7 +20,23 @@ struct AgentRuntime {
     private static let appSupportDisplayName = "Application Support"
     private static let fallbackPackageSource = "agent-cli"
     private static let bootstrapQueue = DispatchQueue(label: "lt.nijho.agent-cli.bootstrap")
+    private static let appPrivateEnvironmentKeys = [
+        "AGENTCLI_APP_SUPPORT_DIR",
+        "AGENTCLI_RUNTIME_DIR",
+        "AGENTCLI_BUNDLED_UV",
+        "AGENTCLI_PACKAGE_SOURCE",
+        "AGENTCLI_AGENT_CLI",
+        "AGENT_CLI_CONFIG_HOME",
+        "UV_CACHE_DIR",
+        "UV_PYTHON_INSTALL_DIR",
+        "UV_PYTHON_BIN_DIR",
+        "UV_TOOL_DIR",
+        "UV_TOOL_BIN_DIR",
+        "UV_NO_PROGRESS",
+    ]
     private let fileManager = FileManager.default
+    private let baseEnvironment: [String: String]
+    private let userDefaults: UserDefaults
     let appSupportURL: URL
     let bundledUVURL: URL
     let bundledWheelsURL: URL
@@ -28,8 +55,12 @@ struct AgentRuntime {
 
     init(
         environment: [String: String] = ProcessInfo.processInfo.environment,
-        bundle: Bundle = .main
+        bundle: Bundle = .main,
+        userDefaults: UserDefaults = .standard
     ) {
+        self.baseEnvironment = environment
+        self.userDefaults = userDefaults
+
         if let override = environment["AGENTCLI_APP_SUPPORT_DIR"], !override.isEmpty {
             appSupportURL = URL(fileURLWithPath: override, isDirectory: true)
         } else {
@@ -55,6 +86,26 @@ struct AgentRuntime {
         lastErrorURL = appSupportURL.appendingPathComponent("last-error.txt")
         logsURL = FileManager.default.urls(for: .libraryDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("Logs", isDirectory: true)
+    }
+
+    var usesUserInstalledAgentCLI: Bool {
+        runtimeMode == .userInstalled
+    }
+
+    private var runtimeMode: AgentCLIRuntimeMode {
+        AgentCLIRuntimeMode(userDefaults: userDefaults)
+    }
+
+    var agentCLIExecutableURL: URL {
+        usesUserInstalledAgentCLI
+            ? URL(fileURLWithPath: "/usr/bin/env")
+            : agentCLIURL
+    }
+
+    func agentCLIProcessArguments(_ arguments: [String]) -> [String] {
+        usesUserInstalledAgentCLI
+            ? ["agent-cli"] + arguments
+            : arguments
     }
 
     private static func resolveBundledWheel(in wheelsURL: URL) -> String? {
@@ -120,10 +171,15 @@ struct AgentRuntime {
     }
 
     func ensureInstalled(force: Bool = false) -> CommandResult {
+        let mode = runtimeMode
         do {
-            try prepareDirectories()
+            try prepareDirectories(for: mode)
         } catch {
             return CommandResult(exitCode: 1, output: "Could not create app support directories: \(error.localizedDescription)")
+        }
+
+        if mode == .userInstalled {
+            return ensureUserInstalledCLIAvailable()
         }
 
         if !force,
@@ -166,6 +222,23 @@ struct AgentRuntime {
         return result
     }
 
+    private func ensureUserInstalledCLIAvailable() -> CommandResult {
+        let result = Self.runProcess(
+            executableURL: agentCLIExecutableURL,
+            arguments: agentCLIProcessArguments(["--version"]),
+            environment: commandEnvironment()
+        )
+        guard result.exitCode != 127 else {
+            return CommandResult(
+                exitCode: 127,
+                output: "User-installed agent-cli was not found on PATH. Install it with uv, or disable Use User-Installed agent-cli in Settings."
+            )
+        }
+        return result.exitCode == 0
+            ? CommandResult(exitCode: 0, output: "")
+            : result
+    }
+
     private var agentCLIInstallMarkerContents: String {
         "packageSource=\(agentCLIPackageSource)\ninstallRequirement=\(agentCLIInstallRequirement)\n"
     }
@@ -196,7 +269,6 @@ struct AgentRuntime {
     }
 
     private func ensureWhisperDaemon(force: Bool = false) -> CommandResult {
-        let whisperDaemonMarkerContents = "packageSource=\(agentCLIPackageSource)\n"
         if !force, (try? String(contentsOf: whisperDaemonMarkerURL)) == whisperDaemonMarkerContents {
             return waitForWhisperDaemonReady()
         }
@@ -212,6 +284,11 @@ struct AgentRuntime {
             encoding: .utf8
         )
         return waitForWhisperDaemonReady()
+    }
+
+    private var whisperDaemonMarkerContents: String {
+        let modeName = runtimeMode == .userInstalled ? "user-installed" : "bundled"
+        return "runtimeMode=\(modeName)\npackageSource=\(agentCLIPackageSource)\n"
     }
 
     private func warmUpWhisperModel() -> CommandResult {
@@ -335,12 +412,32 @@ struct AgentRuntime {
     }
 
     func commandEnvironment() -> [String: String] {
-        var environment = ProcessInfo.processInfo.environment
+        switch runtimeMode {
+        case .userInstalled:
+            return userInstalledCLIEnvironment()
+        case .bundled:
+            return bundledCLIEnvironment()
+        }
+    }
+
+    private func userInstalledCLIEnvironment() -> [String: String] {
+        var environment = baseEnvironment
+        for key in Self.appPrivateEnvironmentKeys {
+            environment.removeValue(forKey: key)
+        }
+        let existingPATH = environment["PATH"] ?? "/usr/bin:/bin:/usr/sbin:/sbin"
+        environment["PATH"] = userInstalledCLIPath(existingPATH: existingPATH)
+        return environment
+    }
+
+    private func bundledCLIEnvironment() -> [String: String] {
+        var environment = baseEnvironment
+        let existingPATH = environment["PATH"] ?? "/usr/bin:/bin:/usr/sbin:/sbin"
         environment["AGENTCLI_APP_SUPPORT_DIR"] = appSupportURL.path
-        environment["AGENTCLI_AGENT_CLI"] = agentCLIURL.path
         environment["AGENTCLI_RUNTIME_DIR"] = runtimeURL.path
         environment["AGENTCLI_BUNDLED_UV"] = bundledUVURL.path
         environment["AGENTCLI_PACKAGE_SOURCE"] = agentCLIPackageSource
+        environment["AGENTCLI_AGENT_CLI"] = agentCLIURL.path
         environment["AGENT_CLI_CONFIG_HOME"] = appSupportURL.appendingPathComponent("config", isDirectory: true).path
         environment["UV_CACHE_DIR"] = appSupportURL.appendingPathComponent("cache/uv", isDirectory: true).path
         environment["UV_PYTHON_INSTALL_DIR"] = appSupportURL.appendingPathComponent("uv/python", isDirectory: true).path
@@ -352,7 +449,6 @@ struct AgentRuntime {
         environment["TERM"] = "dumb"
 
         let resourceBinURL = bundledUVURL.deletingLastPathComponent()
-        let existingPATH = environment["PATH"] ?? "/usr/bin:/bin:/usr/sbin:/sbin"
         environment["PATH"] = [
             binURL.path,
             resourceBinURL.path,
@@ -364,9 +460,22 @@ struct AgentRuntime {
         return environment
     }
 
-    private func prepareDirectories() throws {
-        try fileManager.createDirectory(at: binURL, withIntermediateDirectories: true)
+    private func userInstalledCLIPath(existingPATH: String) -> String {
+        [
+            FileManager.default.homeDirectoryForCurrentUser
+                .appendingPathComponent(".local/bin", isDirectory: true)
+                .path,
+            "/opt/homebrew/bin",
+            "/usr/local/bin",
+            existingPATH
+        ].joined(separator: ":")
+    }
+
+    private func prepareDirectories(for mode: AgentCLIRuntimeMode = .bundled) throws {
         try fileManager.createDirectory(at: runtimeURL, withIntermediateDirectories: true)
+        guard mode == .bundled else { return }
+
+        try fileManager.createDirectory(at: binURL, withIntermediateDirectories: true)
         try fileManager.createDirectory(
             at: appSupportURL.appendingPathComponent("cache/uv", isDirectory: true),
             withIntermediateDirectories: true
@@ -395,8 +504,8 @@ struct AgentRuntime {
 
     func runAgentCLI(arguments: [String]) -> CommandResult {
         Self.runProcess(
-            executableURL: agentCLIURL,
-            arguments: arguments,
+            executableURL: agentCLIExecutableURL,
+            arguments: agentCLIProcessArguments(arguments),
             environment: commandEnvironment()
         )
     }

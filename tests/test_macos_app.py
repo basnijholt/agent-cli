@@ -126,7 +126,8 @@ def test_macos_app_source_exposes_expected_agent_cli_actions() -> None:
     assert "holdStopShell" not in source
     assert "runShell(Self.holdStopShell)" not in source
     assert "transcribe.pid" not in source
-    assert 'arguments: ["transcribe", "--toggle", "--quiet"]' in source
+    assert '"transcribe",\n            "--toggle",\n            "--quiet",' in source
+    assert '"--transcription-log",\n            RecentTranscriptionReader.defaultLogPath' in source
     assert "transcribe --toggle --llm --quiet" not in source
     assert 'arguments: ["voice-edit", "--toggle", "--quiet"]' in source
     assert 'arguments: ["autocorrect", "--quiet"]' in source
@@ -160,6 +161,34 @@ def test_macos_app_settings_pass_extra_instructions_to_transcription() -> None:
     assert "appliesTranscriptionExtraInstructions: true" in source
 
 
+def test_macos_app_can_use_user_installed_agent_cli() -> None:
+    """Settings should let configured users bypass the bundled uv runtime."""
+    source = swift_source()
+
+    assert 'static let useUserInstalledAgentCLIKey = "useUserInstalledAgentCLI"' in source
+    assert "Use User-Installed agent-cli" in source
+    assert "@AppStorage(RuntimeSettings.useUserInstalledAgentCLIKey)" in source
+    assert "var usesUserInstalledAgentCLI: Bool" in source
+    assert '? URL(fileURLWithPath: "/usr/bin/env")' in source
+    assert '? ["agent-cli"] + arguments' in source
+    assert "ensureUserInstalledCLIAvailable()" in source
+    assert "private enum AgentCLIRuntimeMode: Equatable" in source
+    assert (
+        "switch runtimeMode {\n"
+        "        case .userInstalled:\n"
+        "            return userInstalledCLIEnvironment()\n"
+        "        case .bundled:\n"
+        "            return bundledCLIEnvironment()\n"
+        "        }" in source
+    )
+    assert "private func userInstalledCLIEnvironment() -> [String: String]" in source
+    assert "private static let appPrivateEnvironmentKeys" in source
+    assert "environment.removeValue(forKey: key)" in source
+    assert "private func bundledCLIEnvironment() -> [String: String]" in source
+    assert "AGENT_CLI_CONFIG_HOME" in source
+    assert "UV_TOOL_BIN_DIR" in source
+
+
 def test_macos_app_menu_prioritizes_daily_voice_actions() -> None:
     """Daily actions should stay top-level; diagnostics belong in troubleshooting."""
     source = swift_source()
@@ -184,7 +213,10 @@ def test_macos_app_menu_prioritizes_daily_voice_actions() -> None:
     assert "Text(runner.statusMessage)" not in source
     assert "if !runner.lastOutput.isEmpty" in source
     assert "if runner.hasLastError" in source
-    assert 'Label("Update CLI Runtime", systemImage: "arrow.down.circle")' in source
+    assert 'useUserInstalledAgentCLI ? "Check User CLI" : "Update CLI Runtime"' in source
+    assert (
+        'systemImage: useUserInstalledAgentCLI ? "checkmark.circle" : "arrow.down.circle"' in source
+    )
     assert 'Label("Reinstall Voice Service", systemImage: "waveform.badge.plus")' in source
     assert 'Label("Voice Service Status", systemImage: "waveform.path.ecg")' in source
     assert 'identifier: "voice-service-status"' in source
