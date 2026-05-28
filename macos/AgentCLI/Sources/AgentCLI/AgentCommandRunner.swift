@@ -19,7 +19,8 @@ private enum HoldTranscriptionState {
     }
 }
 
-typealias AgentBootstrap = @Sendable (AgentBootstrapRequirement, Bool) -> CommandResult
+typealias AgentBootstrapProgress = (BootstrapPhase) -> Void
+typealias AgentBootstrap = (AgentBootstrapRequirement, Bool, @escaping AgentBootstrapProgress) -> CommandResult
 
 @MainActor
 final class AgentCommandRunner: ObservableObject {
@@ -29,6 +30,7 @@ final class AgentCommandRunner: ObservableObject {
     @Published var lastOutput = ""
     @Published private(set) var hasLastError = false
     @Published private(set) var isRecording = false
+    @Published private(set) var bootstrapPhase: BootstrapPhase = .idle
     @Published private var activeCommandCount = 0
     private var recordingIndicator = RecordingIndicatorController()
     private let pasteController: TranscriptPasteController
@@ -47,6 +49,9 @@ final class AgentCommandRunner: ObservableObject {
         if isRecording {
             return "Recording"
         }
+        if bootstrapPhase.isPreparing {
+            return bootstrapPhase.statusMessage
+        }
         if holdTranscriptionState.isFinishing {
             return "Transcribing..."
         }
@@ -56,10 +61,20 @@ final class AgentCommandRunner: ObservableObject {
         return Self.compactMenuStatus(statusMessage)
     }
 
+    var menuBarIconState: MenuBarIconState {
+        if isRecording {
+            return .recording
+        }
+        if bootstrapPhase.isPreparing {
+            return .preparing
+        }
+        return .idle
+    }
+
     init(
         pasteController: TranscriptPasteController = TranscriptPasteController(),
-        bootstrap: @escaping AgentBootstrap = { requirement, force in
-            AgentRuntime.shared.ensureReady(for: requirement, force: force)
+        bootstrap: @escaping AgentBootstrap = { requirement, force, progress in
+            AgentRuntime.shared.ensureReady(for: requirement, force: force, progress: progress)
         }
     ) {
         self.pasteController = pasteController
@@ -82,13 +97,12 @@ final class AgentCommandRunner: ObservableObject {
         hasStartedTranscriptionWarmUp = true
 
         activeCommandCount += 1
-        if statusMessage == "Ready" {
-            statusMessage = "Preparing voice service..."
-        }
+        reportBootstrapPhase(.checkingRuntime)
 
         let bootstrap = self.bootstrap
+        let reportBootstrapPhase = makeBootstrapProgressReporter()
         DispatchQueue.global(qos: .utility).async {
-            let result = bootstrap(.transcriptionModel, false)
+            let result = bootstrap(.transcriptionModel, false, reportBootstrapPhase)
 
             Task { @MainActor in
                 self.activeCommandCount = max(0, self.activeCommandCount - 1)
@@ -97,16 +111,27 @@ final class AgentCommandRunner: ObservableObject {
                 }
 
                 if result.exitCode == 0 {
-                    if self.statusMessage == "Preparing voice service..." {
-                        self.statusMessage = "Ready"
-                    }
+                    self.reportBootstrapPhase(.idle)
                     return
                 }
 
+                self.reportBootstrapPhase(.failed)
                 self.recordFailure(title: "Startup Voice Service Warm-Up", result: result)
                 self.statusMessage = result.output.isEmpty
                     ? "Voice service warm-up failed with exit code \(result.exitCode)"
                     : "Voice service warm-up failed: \(Self.summarize(result.output))"
+            }
+        }
+    }
+
+    private func reportBootstrapPhase(_ phase: BootstrapPhase) {
+        bootstrapPhase = phase
+    }
+
+    private func makeBootstrapProgressReporter() -> AgentBootstrapProgress {
+        { [weak self] phase in
+            Task { @MainActor in
+                self?.reportBootstrapPhase(phase)
             }
         }
     }
@@ -171,19 +196,23 @@ final class AgentCommandRunner: ObservableObject {
         }
 
         activeCommandCount += 1
-        statusMessage = isStopRequest
-            ? "Stopping \(command.title)..."
-            : "Running \(command.title)..."
+        if !self.bootstrapPhase.isPreparing {
+            statusMessage = isStopRequest
+                ? "Stopping \(command.title)..."
+                : "Running \(command.title)..."
+        }
 
         let bootstrap = self.bootstrap
+        let reportBootstrapPhase = makeBootstrapProgressReporter()
         let commandArguments = command.resolvedArguments(extraInstructions: TranscriptionSettings.extraInstructions)
         DispatchQueue.global(qos: .userInitiated).async {
-            let bootstrapResult = bootstrap(command.bootstrapRequirement, command.forceBootstrap)
+            let bootstrapResult = bootstrap(command.bootstrapRequirement, command.forceBootstrap, reportBootstrapPhase)
             guard bootstrapResult.exitCode == 0 else {
                 let message = Self.statusMessage(for: command, result: bootstrapResult)
                 let notificationTitle = Self.notificationTitle(for: command, result: bootstrapResult)
                 let notificationBody = Self.notificationBody(for: command, result: bootstrapResult, statusMessage: message)
                 Task { @MainActor in
+                    self.reportBootstrapPhase(.failed)
                     if isStopRequest {
                         self.clearStopRequested(for: command)
                     }
@@ -198,6 +227,10 @@ final class AgentCommandRunner: ObservableObject {
                     self.notify(title: notificationTitle, body: notificationBody)
                 }
                 return
+            }
+
+            Task { @MainActor in
+                self.reportBootstrapPhase(.idle)
             }
 
             if shouldStartRecording {
@@ -261,14 +294,17 @@ final class AgentCommandRunner: ObservableObject {
         statusMessage = "Stopping Toggle Transcription..."
 
         let bootstrap = self.bootstrap
+        let reportBootstrapPhase = makeBootstrapProgressReporter()
         DispatchQueue.global(qos: .userInitiated).async {
             let bootstrapResult = bootstrap(
                 AgentCommand.stopTranscription.bootstrapRequirement,
-                AgentCommand.stopTranscription.forceBootstrap
+                AgentCommand.stopTranscription.forceBootstrap,
+                reportBootstrapPhase
             )
             guard bootstrapResult.exitCode == 0 else {
                 let message = Self.statusMessage(for: AgentCommand.stopTranscription, result: bootstrapResult)
                 Task { @MainActor in
+                    self.reportBootstrapPhase(.failed)
                     self.holdTranscriptionState = .idle
                     self.lastOutput = bootstrapResult.output
                     self.recordFailure(command: AgentCommand.stopTranscription, result: bootstrapResult)
@@ -279,6 +315,10 @@ final class AgentCommandRunner: ObservableObject {
                     )
                 }
                 return
+            }
+
+            Task { @MainActor in
+                self.reportBootstrapPhase(.idle)
             }
 
             let result = AgentRuntime.shared.runAgentCLI(arguments: AgentCommand.stopTranscription.arguments)

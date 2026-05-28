@@ -167,7 +167,7 @@ struct AgentCLIApp: App {
                 Label("Quit", systemImage: "power")
             }
         } label: {
-            AgentCLIMenuBarIcon(isRecording: runner.isRecording)
+            AgentCLIMenuBarIcon(state: runner.menuBarIconState)
         }
         .menuBarExtraStyle(.menu)
 

@@ -211,6 +211,8 @@ def test_macos_app_menu_prioritizes_daily_voice_actions() -> None:
     assert troubleshooting_menu_index < copy_output_index < troubleshooting_label_index
     assert 'Menu("Setup")' not in source
     assert 'Text("Voice: \\(runner.menuStatusMessage)")' in source
+    assert "var menuBarIconState: MenuBarIconState" in source
+    assert "AgentCLIMenuBarIcon(state: runner.menuBarIconState)" in source
     assert "var menuStatusMessage: String" in source
     assert "menuStatusMaxLength" in source
     assert "Text(runner.statusMessage)" not in source
@@ -252,18 +254,18 @@ def test_macos_app_uses_avatar_svg_as_menu_bar_icon() -> None:
     assert MENU_BAR_LOGO_SVG.is_file()
     avatar_svg = MENU_BAR_LOGO_SVG.read_text()
 
-    assert "AgentCLIMenuBarIcon(isRecording: runner.isRecording)" in source
-    assert "Self.logoImage(isRecording: isRecording)" in source
+    assert "AgentCLIMenuBarIcon(state: runner.menuBarIconState)" in source
+    assert "Self.logoImage(state: state)" in source
     assert "Image(nsImage: image)" in source
-    assert ".id(isRecording)" in source
-    assert "private static func logoImage(isRecording: Bool) -> NSImage?" in source
+    assert ".id(state)" in source
+    assert "private static func logoImage(state: MenuBarIconState) -> NSImage?" in source
     assert "private static let idleLogoImage" in source
     assert "private static let recordingLogoImage" in source
     assert "makeRecordingLogoImage" in source
     assert 'forResource: "logo-avatar", withExtension: "svg"' in source
     assert "NSImage(contentsOf:" in source
     assert "image.isTemplate = true" in source
-    assert "NSColor.systemRed.setFill()" in source
+    assert "badgeColor: .systemRed" in source
     assert 'MENU_BAR_LOGO_SVG="$ROOT_DIR/docs/logo-avatar.svg"' in build_script
     assert "Contents/Resources/logo-avatar.svg" in build_script
     assert 'test -f "$APP/Contents/Resources/logo-avatar.svg"' in e2e_script
@@ -485,8 +487,14 @@ def test_macos_app_uses_bootstrap_requirement_model() -> None:
     assert "case transcription" in source
     assert "case transcriptionModel" in source
     assert "let bootstrapRequirement: AgentBootstrapRequirement" in source
-    assert "AgentRuntime.shared.ensureReady(for: requirement, force: force)" in source
-    assert "bootstrap(command.bootstrapRequirement, command.forceBootstrap)" in source
+    assert (
+        "AgentRuntime.shared.ensureReady(for: requirement, force: force, progress: progress)"
+        in source
+    )
+    assert (
+        "bootstrap(command.bootstrapRequirement, command.forceBootstrap, reportBootstrapPhase)"
+        in source
+    )
     assert "requiresWhisperDaemon" not in source
 
 
@@ -496,10 +504,40 @@ def test_macos_app_warms_transcription_on_launch() -> None:
 
     assert "AgentCommandRunner.shared.warmUpTranscription()" in source
     assert "private var hasStartedTranscriptionWarmUp = false" in source
-    assert 'statusMessage = "Preparing voice service..."' in source
-    assert "let result = bootstrap(.transcriptionModel, false)" in source
+    assert "@Published private(set) var bootstrapPhase: BootstrapPhase = .idle" in source
+    assert "let result = bootstrap(.transcriptionModel, false, reportBootstrapPhase)" in source
     assert 'recordFailure(title: "Startup Voice Service Warm-Up", result: result)' in source
     assert 'DispatchQueue(label: "lt.nijho.agent-cli.bootstrap")' in source
+
+
+def test_macos_app_keeps_preparing_status_visible_during_command_bootstrap() -> None:
+    """A command started during launch warm-up should not hide preparation progress."""
+    source = swift_source()
+
+    assert "enum BootstrapPhase: Equatable" in source
+    assert "var isPreparing: Bool" in source
+    assert "var statusMessage: String" in source
+    assert (
+        "if bootstrapPhase.isPreparing {\n            return bootstrapPhase.statusMessage" in source
+    )
+    assert (
+        "if !self.bootstrapPhase.isPreparing {\n            statusMessage = isStopRequest" in source
+    )
+    assert "self.reportBootstrapPhase(.idle)" in source
+    assert 'statusMessage == "Preparing voice service..."' not in source
+
+
+def test_macos_app_shows_preparing_menu_bar_icon_state() -> None:
+    """Initial setup should be visible in the menu bar without opening the menu."""
+    source = swift_source()
+
+    assert "enum MenuBarIconState: Equatable" in source
+    assert "case preparing" in source
+    assert "if bootstrapPhase.isPreparing {\n            return .preparing" in source
+    assert "private static let preparingLogoImage" in source
+    assert "makePreparingLogoImage()" in source
+    assert "badgeColor: .controlAccentColor" in source
+    assert 'return Text("Agent CLI preparing")' in source
 
 
 def test_macos_app_warms_whisper_model_on_launch() -> None:
@@ -507,7 +545,7 @@ def test_macos_app_warms_whisper_model_on_launch() -> None:
     source = swift_source()
 
     assert "case transcriptionModel" in source
-    assert "let result = bootstrap(.transcriptionModel, false)" in source
+    assert "let result = bootstrap(.transcriptionModel, false, reportBootstrapPhase)" in source
     assert "warmUpWhisperModel()" in source
     assert "writeWhisperWarmUpAudio()" in source
     assert 'appendingPathComponent("whisper-model-warmup.wav")' in source
