@@ -2,22 +2,47 @@
 
 from __future__ import annotations
 
+import json
 import os
 import signal
 import sys
+import tempfile
 import time
 from contextlib import contextmanager
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, NamedTuple
 
 if TYPE_CHECKING:
     from collections.abc import Generator
 
-# Default location for PID files
-PID_DIR = Path.home() / ".cache" / "agent-cli"
-
 # Store the original process title before any modifications
 _original_proctitle: str | None = None
+
+
+class _PidInfo(NamedTuple):
+    pid: int
+    uses_lock: bool
+
+
+def _default_pid_dir() -> Path:
+    """Return local runtime dir for process control files."""
+    if runtime_dir := os.environ.get("AGENTCLI_RUNTIME_DIR"):
+        return Path(runtime_dir)
+
+    if xdg_runtime_dir := os.environ.get("XDG_RUNTIME_DIR"):
+        return Path(xdg_runtime_dir) / "agent-cli"
+
+    if os.name == "posix":
+        return Path(tempfile.gettempdir()) / f"agent-cli-{os.getuid()}"
+
+    if local_app_data := os.environ.get("LOCALAPPDATA"):
+        return Path(local_app_data) / "agent-cli" / "runtime"
+
+    return Path(tempfile.gettempdir()) / "agent-cli-runtime"
+
+
+# Default location for PID files and process locks.
+PID_DIR = _default_pid_dir()
 
 
 def set_process_title(process_name: str) -> None:
@@ -57,6 +82,12 @@ def _get_pid_file(process_name: str) -> Path:
     return PID_DIR / f"{process_name}.pid"
 
 
+def _get_lock_file(process_name: str) -> Path:
+    """Get the path to the process lock file for a given process name."""
+    PID_DIR.mkdir(parents=True, exist_ok=True)
+    return PID_DIR / f"{process_name}.lock"
+
+
 def _get_stop_file(process_name: str) -> Path:
     """Get the path to the stop file for a given process name."""
     PID_DIR.mkdir(parents=True, exist_ok=True)
@@ -89,28 +120,137 @@ def _is_pid_running(pid: int) -> bool:
         return False
 
 
-def _get_running_pid(process_name: str) -> int | None:
-    """Get PID if process is running, None otherwise. Cleans up stale files."""
-    pid_file = _get_pid_file(process_name)
+def _supports_process_locks() -> bool:
+    """Return whether this platform supports POSIX advisory locks."""
+    return sys.platform != "win32"
 
-    if not pid_file.exists():
+
+def _acquire_process_lock(process_name: str) -> int | None:
+    """Try to acquire the per-process lock. Return fd when held."""
+    if not _supports_process_locks():
+        return None
+
+    import fcntl  # noqa: PLC0415
+
+    lock_file = _get_lock_file(process_name)
+    fd = os.open(lock_file, os.O_CREAT | os.O_RDWR, 0o600)
+    try:
+        fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError:
+        os.close(fd)
+        return None
+    except OSError:
+        os.close(fd)
+        raise
+    return fd
+
+
+def _release_process_lock(lock_fd: int | None) -> None:
+    """Release a lock fd returned by _acquire_process_lock."""
+    if lock_fd is None:
+        return
+
+    import fcntl  # noqa: PLC0415
+
+    fcntl.flock(lock_fd, fcntl.LOCK_UN)
+    os.close(lock_fd)
+
+
+def _is_process_lock_held(process_name: str) -> bool:
+    """Return True when another process still owns the lock."""
+    if not _supports_process_locks():
+        return True
+
+    lock_fd = _acquire_process_lock(process_name)
+    if lock_fd is None:
+        return True
+
+    _release_process_lock(lock_fd)
+    return False
+
+
+def _legacy_pid_info(raw: str) -> _PidInfo | None:
+    """Parse a legacy numeric PID file."""
+    try:
+        return _PidInfo(pid=int(raw), uses_lock=False)
+    except ValueError:
+        return None
+
+
+def _pid_info_from_payload(process_name: str, payload: object) -> _PidInfo | None:
+    """Parse JSON PID metadata."""
+    if isinstance(payload, int):
+        return _PidInfo(pid=payload, uses_lock=False)
+
+    if (
+        not isinstance(payload, dict)
+        or payload.get("version") != 1
+        or payload.get("process_name") != process_name
+    ):
         return None
 
     try:
-        with pid_file.open() as f:
-            pid = int(f.read().strip())
+        pid = int(payload["pid"])
+    except (KeyError, TypeError, ValueError):
+        return None
 
-        # Check if process is actually running
-        if _is_pid_running(pid):
-            return pid
+    return _PidInfo(pid=pid, uses_lock=True)
 
-    except (FileNotFoundError, ValueError):
-        pass
 
-    # Clean up stale/invalid PID file
+def _read_pid_info(process_name: str) -> _PidInfo | None:
+    """Read either current JSON PID metadata or a legacy numeric PID file."""
+    pid_file = _get_pid_file(process_name)
+    try:
+        raw = pid_file.read_text().strip()
+    except FileNotFoundError:
+        return None
+
+    try:
+        payload = json.loads(raw)
+    except json.JSONDecodeError:
+        return _legacy_pid_info(raw)
+
+    return _pid_info_from_payload(process_name, payload)
+
+
+def _write_pid_info(process_name: str) -> None:
+    """Write PID metadata for the current process."""
+    pid_file = _get_pid_file(process_name)
+    payload = {
+        "version": 1,
+        "process_name": process_name,
+        "pid": os.getpid(),
+        "created_at": time.time(),
+    }
+    pid_file.write_text(json.dumps(payload, sort_keys=True))
+
+
+def _cleanup_process_files(process_name: str) -> None:
+    """Remove stale process control files."""
+    pid_file = _get_pid_file(process_name)
     if pid_file.exists():
         pid_file.unlink()
     clear_stop_file(process_name)
+
+
+def _get_running_pid(process_name: str) -> int | None:
+    """Get PID if process is running, None otherwise. Cleans up stale files."""
+    if not _get_pid_file(process_name).exists():
+        return None
+
+    pid_info = _read_pid_info(process_name)
+    if pid_info is None:
+        _cleanup_process_files(process_name)
+        return None
+
+    if pid_info.uses_lock and _supports_process_locks() and not _is_process_lock_held(process_name):
+        _cleanup_process_files(process_name)
+        return None
+
+    if _is_pid_running(pid_info.pid):
+        return pid_info.pid
+
+    _cleanup_process_files(process_name)
     return None
 
 
@@ -173,9 +313,7 @@ def kill_process(process_name: str) -> bool:
     # Keep PID file if process is still alive so subsequent --status/--toggle
     # calls continue targeting the same process.
     if process_stopped:
-        clear_stop_file(process_name)
-        if pid_file.exists():
-            pid_file.unlink()
+        _cleanup_process_files(process_name)
     elif not should_force_kill:
         stop_file.touch()
 
@@ -189,21 +327,33 @@ def pid_file_context(process_name: str) -> Generator[Path, None, None]:
     Creates PID file on entry, cleans up on exit.
     Exits with error if process already running.
     """
-    if is_process_running(process_name):
+    lock_fd = _acquire_process_lock(process_name)
+    if _supports_process_locks() and lock_fd is None:
         existing_pid = _get_running_pid(process_name)
         print(f"Process {process_name} is already running (PID: {existing_pid})")
         sys.exit(1)
+
+    if not _supports_process_locks() and is_process_running(process_name):
+        existing_pid = _get_running_pid(process_name)
+        print(f"Process {process_name} is already running (PID: {existing_pid})")
+        sys.exit(1)
+
+    if _supports_process_locks():
+        pid_info = _read_pid_info(process_name)
+        if pid_info and not pid_info.uses_lock and _is_pid_running(pid_info.pid):
+            _release_process_lock(lock_fd)
+            print(f"Process {process_name} is already running (PID: {pid_info.pid})")
+            sys.exit(1)
+        _cleanup_process_files(process_name)
 
     # Clear stale stop markers from previous runs.
     clear_stop_file(process_name)
 
     pid_file = _get_pid_file(process_name)
-    with pid_file.open("w") as f:
-        f.write(str(os.getpid()))
+    _write_pid_info(process_name)
 
     try:
         yield pid_file
     finally:
-        if pid_file.exists():
-            pid_file.unlink()
-        clear_stop_file(process_name)
+        _cleanup_process_files(process_name)
+        _release_process_lock(lock_fd)
