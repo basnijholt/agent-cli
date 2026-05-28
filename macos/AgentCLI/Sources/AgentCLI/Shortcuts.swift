@@ -149,10 +149,30 @@ enum ShortcutDefaultsMigrator {
 }
 
 struct SettingsView: View {
+    @ObservedObject private var loginItemController = LoginItemController.shared
     @State private var shortcutRevision = 0
 
     var body: some View {
         Form {
+            Section {
+                Toggle(
+                    "Start at Login",
+                    isOn: Binding(
+                        get: { loginItemController.presentation.isEnabled },
+                        set: { loginItemController.setEnabled($0) }
+                    )
+                )
+                .disabled(!loginItemController.presentation.canToggle)
+
+                if !loginItemController.detailText.isEmpty {
+                    Text(loginItemController.detailText)
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+            } header: {
+                Text("General")
+            }
+
             Section {
                 ShortcutRecorderRow(
                     title: "Toggle Transcription",
@@ -187,6 +207,9 @@ struct SettingsView: View {
         }
         .formStyle(.grouped)
         .padding()
+        .onAppear {
+            loginItemController.refresh()
+        }
     }
 }
 

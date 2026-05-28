@@ -18,9 +18,11 @@ The packaged app registers native macOS global hotkeys itself:
 - `Cmd+Shift+A` autocorrects clipboard text
 - `Cmd+Shift+V` starts voice edit
 
-Choose **Keyboard Shortcuts...** from the menu bar app to change these
-shortcuts. The settings UI uses the `KeyboardShortcuts` Swift package for
-shortcut parsing, `UserDefaults` storage, and global key-up handlers.
+Choose **Settings...** from the menu bar app to change these shortcuts or enable
+**Start at Login**. The settings UI uses the `KeyboardShortcuts` Swift package
+for shortcut parsing, `UserDefaults` storage, and global key-up handlers. The
+login option uses Apple's login item API for the main app bundle, so macOS may
+require approval in System Settings → General → Login Items.
 
 ## Build
 
