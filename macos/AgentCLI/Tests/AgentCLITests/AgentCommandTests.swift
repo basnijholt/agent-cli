@@ -140,6 +140,25 @@ final class AgentCommandTests: XCTestCase {
 
         XCTAssertEqual(recorder.calls, [.init(requirement: .transcriptionModel, force: false)])
     }
+
+    func testWaitingForVoiceServiceStatusAnimatesEllipsis() {
+        XCTAssertEqual(
+            BootstrapPhase.waitingForVoiceService.statusMessage(animationTick: 0, elapsedSeconds: 0),
+            "Waiting for voice service. (0s)"
+        )
+        XCTAssertEqual(
+            BootstrapPhase.waitingForVoiceService.statusMessage(animationTick: 1, elapsedSeconds: 12),
+            "Waiting for voice service.. (12s)"
+        )
+        XCTAssertEqual(
+            BootstrapPhase.waitingForVoiceService.statusMessage(animationTick: 2, elapsedSeconds: 123),
+            "Waiting for voice service... (123s)"
+        )
+        XCTAssertEqual(
+            BootstrapPhase.waitingForVoiceService.statusMessage(animationTick: 3, elapsedSeconds: 4),
+            "Waiting for voice service. (4s)"
+        )
+    }
 }
 
 private struct BootstrapCall: Equatable {

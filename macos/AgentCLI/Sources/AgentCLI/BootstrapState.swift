@@ -42,6 +42,16 @@ enum BootstrapPhase: Equatable {
             return "Voice service warm-up failed"
         }
     }
+
+    func statusMessage(animationTick: Int, elapsedSeconds: Int) -> String {
+        switch self {
+        case .waitingForVoiceService:
+            let periodCount = (animationTick % 3) + 1
+            return "Waiting for voice service\(String(repeating: ".", count: periodCount)) (\(elapsedSeconds)s)"
+        case .idle, .checkingRuntime, .installingRuntime, .installingVoiceService, .warmingWhisperModel, .failed:
+            return statusMessage
+        }
+    }
 }
 
 typealias AgentBootstrapProgress = (BootstrapPhase) -> Void
