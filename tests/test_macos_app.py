@@ -276,12 +276,36 @@ def test_macos_app_hides_hold_recording_ui_immediately_on_key_release() -> None:
     )
     assert (
         "if shouldStartRecording {\n"
-        "                    self.pendingHoldToTranscribeStop = false" in source
+        "                    self.clearHoldToTranscribeStopState(for: command)" in source
     )
     assert (
         "if result.exitCode == 0 {\n"
         "                    self.holdStopRequestActive = false\n"
-        '                    self.statusMessage = "Transcribing..."' in source
+        "                    if self.pendingHoldToTranscribeStop {\n"
+        '                        self.statusMessage = "Transcribing..."' in source
+    )
+
+
+def test_macos_app_clears_hold_stop_state_before_showing_finished_transcript() -> None:
+    """Hold-to-type should not leave the menu stuck on Transcribing after output is ready."""
+    source = (MACOS_APP / "Sources" / "AgentCLI" / "AgentCLIApp.swift").read_text()
+
+    assert "private func clearHoldToTranscribeStopState(for command: AgentCommand)" in source
+    assert (
+        "private func clearHoldToTranscribeStopState(for command: AgentCommand) {\n"
+        "        guard command.identifier == AgentCommand.toggleTranscription.identifier else { return }\n"
+        "        pendingHoldToTranscribeStop = false\n"
+        "        holdStopRequestActive = false\n"
+        "    }" in source
+    )
+    assert "self.clearHoldToTranscribeStopState(for: command)" in source
+    assert (
+        "if result.exitCode == 0 {\n"
+        "                    self.holdStopRequestActive = false\n"
+        "                    if self.pendingHoldToTranscribeStop {\n"
+        '                        self.statusMessage = "Transcribing..."\n'
+        "                    }\n"
+        "                    return" in source
     )
 
 
@@ -598,6 +622,9 @@ def test_macos_build_script_creates_signed_app_bundle() -> None:
     assert "command -v uv" in script
     assert "INSTALL_DIR" in script
     assert "AGENTCLI_SKIP_OPEN" in script
+    assert "quit_running_app" in script
+    assert 'pgrep -x "$APP_NAME"' in script
+    assert 'osascript -e "quit app \\"$APP_NAME\\""' in script
     assert 'ditto "$APP_DIR" "$INSTALL_PATH"' in script
     assert "Installed AgentCLI notification logo is missing" in script
     assert "codesign" in script

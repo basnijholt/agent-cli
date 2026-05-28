@@ -129,6 +129,31 @@ build_app_icon() {
     rm -rf "$ICONSET_DIR"
 }
 
+quit_running_app() {
+    if ! pgrep -x "$APP_NAME" >/dev/null 2>&1; then
+        return
+    fi
+
+    osascript -e "quit app \"$APP_NAME\"" >/dev/null 2>&1 || true
+    for _ in {1..20}; do
+        if ! pgrep -x "$APP_NAME" >/dev/null 2>&1; then
+            return
+        fi
+        sleep 0.2
+    done
+
+    pkill -x "$APP_NAME" >/dev/null 2>&1 || true
+    for _ in {1..20}; do
+        if ! pgrep -x "$APP_NAME" >/dev/null 2>&1; then
+            return
+        fi
+        sleep 0.2
+    done
+
+    echo "Timed out waiting for $APP_NAME to quit before install." >&2
+    exit 1
+}
+
 echo "Building $DISPLAY_NAME..."
 swift build -c release --package-path "$PACKAGE_DIR"
 BIN_DIR=$(swift build -c release --package-path "$PACKAGE_DIR" --show-bin-path)
@@ -221,6 +246,7 @@ fi
 if [[ "$INSTALL" == true ]]; then
     INSTALL_PATH="$INSTALL_DIR/$APP_NAME.app"
     mkdir -p "$INSTALL_DIR"
+    quit_running_app
     rm -rf "$INSTALL_PATH"
     ditto "$APP_DIR" "$INSTALL_PATH"
     test -f "$INSTALL_PATH/Contents/Resources/logo-avatar.png" || {

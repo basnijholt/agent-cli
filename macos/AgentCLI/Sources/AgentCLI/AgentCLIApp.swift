@@ -1291,8 +1291,7 @@ final class AgentCommandRunner: ObservableObject {
                     if shouldStartRecording {
                         self.clearPasteAfterRecording(for: command)
                     }
-                    self.pendingHoldToTranscribeStop = false
-                    self.holdStopRequestActive = false
+                    self.clearHoldToTranscribeStopState(for: command)
                     self.activeCommandCount = max(0, self.activeCommandCount - 1)
                     self.lastOutput = bootstrap.output
                     self.recordFailure(command: command, result: bootstrap)
@@ -1316,7 +1315,7 @@ final class AgentCommandRunner: ObservableObject {
 
             DispatchQueue.main.async {
                 if shouldStartRecording {
-                    self.pendingHoldToTranscribeStop = false
+                    self.clearHoldToTranscribeStopState(for: command)
                     let shouldPaste = self.shouldPasteAfterRecording(for: command) && result.exitCode == 0
                     let pasteTarget = self.holdToTranscribePasteTarget
                     self.endRecordingIndicator(for: command)
@@ -1366,7 +1365,9 @@ final class AgentCommandRunner: ObservableObject {
             DispatchQueue.main.async {
                 if result.exitCode == 0 {
                     self.holdStopRequestActive = false
-                    self.statusMessage = "Transcribing..."
+                    if self.pendingHoldToTranscribeStop {
+                        self.statusMessage = "Transcribing..."
+                    }
                     return
                 }
 
@@ -1408,6 +1409,12 @@ final class AgentCommandRunner: ObservableObject {
         if command.identifier == AgentCommand.toggleTranscription.identifier {
             holdToTranscribePasteTarget = nil
         }
+    }
+
+    private func clearHoldToTranscribeStopState(for command: AgentCommand) {
+        guard command.identifier == AgentCommand.toggleTranscription.identifier else { return }
+        pendingHoldToTranscribeStop = false
+        holdStopRequestActive = false
     }
 
     private func beginRecordingIndicator(for command: AgentCommand) {
