@@ -103,6 +103,20 @@ def test_macos_info_plist_declares_menu_bar_agent_app() -> None:
     assert "microphone" in plist["NSMicrophoneUsageDescription"].lower()
 
 
+def test_macos_app_signing_declares_audio_input_entitlement() -> None:
+    """Developer ID hardened runtime builds need audio-input entitlement for mic capture."""
+    entitlements_path = MACOS_APP / "Resources" / "AgentCLI.entitlements"
+    with entitlements_path.open("rb") as f:
+        entitlements = plistlib.load(f)
+    script = BUILD_SCRIPT.read_text()
+
+    assert entitlements["com.apple.security.device.audio-input"] is True
+    assert 'ENTITLEMENTS_PLIST="$PACKAGE_DIR/Resources/AgentCLI.entitlements"' in script
+    assert "--entitlements" in script
+    assert '"$ENTITLEMENTS_PLIST"' in script
+    assert '[[ ! -f "$ENTITLEMENTS_PLIST" ]]' in script
+
+
 def test_macos_app_source_exposes_expected_agent_cli_actions() -> None:
     """The wrapper should invoke the existing CLI surface through its private runtime."""
     source = swift_source()

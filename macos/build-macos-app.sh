@@ -63,6 +63,7 @@ DIST_DIR="$ROOT_DIR/dist/macos"
 APP_DIR="$DIST_DIR/$APP_NAME.app"
 WHEEL_BUILD_DIR="$DIST_DIR/wheels-build"
 INFO_PLIST="$PACKAGE_DIR/Resources/Info.plist"
+ENTITLEMENTS_PLIST="$PACKAGE_DIR/Resources/AgentCLI.entitlements"
 MENU_BAR_LOGO_SVG="$ROOT_DIR/docs/logo-avatar.svg"
 ICONSET_DIR="$DIST_DIR/AgentCLI.iconset"
 ICON_SOURCE_PNG="$DIST_DIR/logo-avatar-source.png"
@@ -102,6 +103,11 @@ if [[ ! -f "$MENU_BAR_LOGO_SVG" ]]; then
     exit 1
 fi
 
+if [[ ! -f "$ENTITLEMENTS_PLIST" ]]; then
+    echo "AgentCLI entitlements plist is missing: $ENTITLEMENTS_PLIST" >&2
+    exit 1
+fi
+
 if [[ "$NOTARIZE" == "1" && "$CREATE_DMG" != true ]]; then
     echo "NOTARIZE=1 requires --dmg so there is a distributable artifact to notarize." >&2
     exit 1
@@ -135,7 +141,7 @@ sign_app() {
         args+=("$arg")
     done < <(codesign_args)
 
-    codesign --deep "${args[@]}" "$target"
+    codesign --deep --entitlements "$ENTITLEMENTS_PLIST" "${args[@]}" "$target"
 }
 
 sign_dmg_if_needed() {
