@@ -377,7 +377,7 @@ def test_macos_app_uses_cli_owned_hold_to_transcribe_stop() -> None:
         in source
     )
     assert (
-        'private static let holdStopShell = #""$AGENTCLI_AGENT_CLI" transcribe --stop --quiet"#'
+        'private static let holdStopShell = #""$AGENTCLI_AGENT_CLI" transcribe --stop --quiet --wait-for-start"#'
         in source
     )
     assert "transcribe.pid" not in source

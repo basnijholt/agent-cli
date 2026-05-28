@@ -305,6 +305,21 @@ def read_pid_file(process_name: str) -> int | None:
     return _get_running_pid(process_name)
 
 
+def _wait_for_process_start(
+    process_name: str,
+    *,
+    wait_for_start_seconds: float,
+    poll_interval: float,
+) -> ProcessStatus:
+    """Wait briefly for a just-launched process to write its PID file."""
+    deadline = time.monotonic() + wait_for_start_seconds
+    status = get_process_status(process_name)
+    while not status.running and time.monotonic() < deadline:
+        time.sleep(poll_interval)
+        status = get_process_status(process_name)
+    return status
+
+
 def _signal_running_process(process_name: str, pid: int) -> None:
     """Signal a known-running process and clean control files if it exits."""
     stop_file = _get_stop_file(process_name)
@@ -340,9 +355,21 @@ def _signal_running_process(process_name: str, pid: int) -> None:
         stop_file.touch()
 
 
-def stop_process(process_name: str) -> StopProcessResult:
+def stop_process(
+    process_name: str,
+    *,
+    wait_for_start_seconds: float = 0.0,
+    poll_interval: float = 0.1,
+) -> StopProcessResult:
     """Stop a process by name and return the resulting process state."""
     initial_status = get_process_status(process_name)
+    if not initial_status.running and wait_for_start_seconds > 0:
+        initial_status = _wait_for_process_start(
+            process_name,
+            wait_for_start_seconds=wait_for_start_seconds,
+            poll_interval=poll_interval,
+        )
+
     if not initial_status.running or initial_status.pid is None:
         clear_stop_file(process_name)
         return StopProcessResult(

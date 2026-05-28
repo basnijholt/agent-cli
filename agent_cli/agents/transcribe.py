@@ -629,6 +629,7 @@ def transcribe(  # noqa: PLR0912, PLR0911, PLR0915, C901
     stop: bool = opts.STOP,
     status: bool = opts.STATUS,
     toggle: bool = opts.TOGGLE,
+    wait_for_start: bool = opts.WAIT_FOR_START,
     # --- General Options ---
     clipboard: bool = opts.CLIPBOARD,
     log_level: opts.LogLevel = opts.LOG_LEVEL,
@@ -886,6 +887,7 @@ def transcribe(  # noqa: PLR0912, PLR0911, PLR0915, C901
         toggle,
         quiet=general_cfg.quiet,
         json_output=json_output,
+        wait_for_start_seconds=300.0 if wait_for_start else 0.0,
     ):
         return
 

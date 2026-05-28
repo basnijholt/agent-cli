@@ -250,6 +250,37 @@ def test_stop_process_is_idempotent_when_missing() -> None:
     assert result.stale_cleaned is False
 
 
+@pytest.mark.skipif(sys.platform == "win32", reason="os.kill(pid, 0) not used on Windows")
+@patch("agent_cli.core.process._is_pid_running", side_effect=[True, False])
+@patch("os.kill")
+def test_stop_process_waits_for_starting_pid(
+    mock_os_kill: MagicMock,
+    mock_is_pid_running: MagicMock,  # noqa: ARG001
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Stop can wait for a just-launched process to write its PID."""
+    process_name = "test-process"
+    pid_file = process._get_pid_file(process_name)
+    current_pid = os.getpid()
+
+    def write_pid(_seconds: float) -> None:
+        pid_file.write_text(str(current_pid))
+
+    monkeypatch.setattr(process.time, "sleep", write_pid)
+
+    result = process.stop_process(
+        process_name,
+        wait_for_start_seconds=1.0,
+        poll_interval=0.1,
+    )
+
+    assert result.was_running is True
+    assert result.status.running is False
+    assert result.status.pid is None
+    mock_os_kill.assert_any_call(current_pid, signal.SIGINT)
+    assert not pid_file.exists()
+
+
 @patch("agent_cli.core.process._is_pid_running", return_value=False)
 def test_stop_process_cleans_stale_pid_and_reports_stopped(
     mock_is_pid_running: MagicMock,  # noqa: ARG001

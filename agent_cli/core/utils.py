@@ -354,10 +354,14 @@ def _handle_process_stop(
     *,
     quiet: bool,
     json_output: bool,
+    wait_for_start_seconds: float,
 ) -> bool:
     """Handle a process stop request."""
     if json_output:
-        result = process.stop_process(process_name)
+        result = process.stop_process(
+            process_name,
+            wait_for_start_seconds=wait_for_start_seconds,
+        )
         print(
             json.dumps(
                 _process_status_payload(
@@ -371,7 +375,16 @@ def _handle_process_stop(
         )
         return True
 
-    if process.kill_process(process_name):
+    if wait_for_start_seconds > 0:
+        result = process.stop_process(
+            process_name,
+            wait_for_start_seconds=wait_for_start_seconds,
+        )
+        stopped = result.was_running or result.stale_cleaned
+    else:
+        stopped = process.kill_process(process_name)
+
+    if stopped:
         if not quiet:
             print_with_style(f"✅ {which.capitalize()} stopped.")
     elif not quiet:
@@ -418,6 +431,7 @@ def stop_or_status_or_toggle(
     *,
     quiet: bool = False,
     json_output: bool = False,
+    wait_for_start_seconds: float = 0.0,
 ) -> bool:
     """Handle process control for a given process name."""
     if stop:
@@ -426,6 +440,7 @@ def stop_or_status_or_toggle(
             which,
             quiet=quiet,
             json_output=json_output,
+            wait_for_start_seconds=wait_for_start_seconds,
         )
 
     if status:

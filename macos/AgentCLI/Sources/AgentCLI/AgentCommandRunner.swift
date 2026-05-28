@@ -66,7 +66,7 @@ final class AgentCommandRunner: ObservableObject {
         URL(string: "x-apple.systempreferences:com.apple.Security-Privacy.extension?Privacy_Accessibility")!,
         URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")!
     ]
-    private static let holdStopShell = #""$AGENTCLI_AGENT_CLI" transcribe --stop --quiet"#
+    private static let holdStopShell = #""$AGENTCLI_AGENT_CLI" transcribe --stop --quiet --wait-for-start"#
 
     func beginHoldToTranscribe() {
         guard holdTranscriptionState == .idle else {

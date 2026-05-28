@@ -350,6 +350,12 @@ TOGGLE: bool = typer.Option(
     help="Start if not running, stop if running. Ideal for hotkey binding.",
     rich_help_panel="Process Management",
 )
+WAIT_FOR_START: bool = typer.Option(
+    False,  # noqa: FBT003
+    "--wait-for-start",
+    help="When stopping, wait briefly for a just-launched process to write its PID.",
+    rich_help_panel="Process Management",
+)
 
 # --- General Options ---
 
