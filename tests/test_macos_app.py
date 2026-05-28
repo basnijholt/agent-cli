@@ -102,6 +102,19 @@ def test_macos_app_menu_prioritizes_daily_voice_actions() -> None:
     assert 'identifier: "start-services"' not in source
 
 
+def test_macos_app_formats_voice_service_status_for_notifications() -> None:
+    """Voice status notifications should be app copy, not raw CLI terminal output."""
+    source = (MACOS_APP / "Sources" / "AgentCLI" / "AgentCLIApp.swift").read_text()
+
+    assert "voiceServiceStatusMessage" in source
+    assert 'command.identifier == "voice-service-status"' in source
+    assert "Whisper is running" in source
+    assert "Whisper is not installed" in source
+    assert "Whisper is installed but not running" in source
+    assert '"~/Library/Logs/agent-cli-whisper/"' in source
+    assert 'return "Service Status' not in source
+
+
 def test_macos_app_uses_avatar_svg_as_menu_bar_icon() -> None:
     """The menu bar icon should use the checked-in avatar-only AgentCLI SVG."""
     source = (MACOS_APP / "Sources" / "AgentCLI" / "AgentCLIApp.swift").read_text()

@@ -1597,13 +1597,42 @@ final class AgentCommandRunner: ObservableObject {
     }
 
     private static func statusMessage(for command: AgentCommand, result: CommandResult) -> String {
-        let summary = summarize(result.output)
+        let summary = command.identifier == "voice-service-status"
+            ? voiceServiceStatusMessage(result.output)
+            : summarize(result.output)
         if result.exitCode == 0 {
             return summary.isEmpty ? "\(command.title) finished" : summary
         }
         return summary.isEmpty
             ? "\(command.title) failed with exit code \(result.exitCode)"
             : "\(command.title) failed: \(summary)"
+    }
+
+    private static let voiceServiceLogPath = "~/Library/Logs/agent-cli-whisper/"
+
+    private static func voiceServiceStatusMessage(_ output: String) -> String {
+        let lines = output
+            .components(separatedBy: .newlines)
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+
+        guard let statusLine = lines.first(where: { $0.localizedCaseInsensitiveContains("whisper:") }) else {
+            return summarize(output)
+        }
+
+        let lowerStatus = statusLine.lowercased()
+        if lowerStatus.contains("installed but not running") {
+            return "Whisper is installed but not running.\nLogs: \(voiceServiceLogPath)"
+        }
+        if lowerStatus.contains("not installed") {
+            return "Whisper is not installed. Use Troubleshooting > Reinstall Voice Service."
+        }
+        if lowerStatus.contains("running") {
+            let pidSuffix = statusLine.range(of: "(pid ").map { " " + statusLine[$0.lowerBound...] } ?? ""
+            return "Whisper is running\(pidSuffix)\nLogs: \(voiceServiceLogPath)"
+        }
+
+        return summarize(output)
     }
 
     private static func notificationTitle(for command: AgentCommand, result: CommandResult) -> String {

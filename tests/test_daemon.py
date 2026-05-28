@@ -316,6 +316,28 @@ class TestDaemonCLI:
         assert "12345" in result.stdout
 
     @patch("agent_cli.daemon.cli.get_service_manager")
+    def test_daemon_status_specific_service_shows_specific_log_path(
+        self,
+        mock_get_manager: MagicMock,
+    ) -> None:
+        """Specific service status should not print placeholder log paths."""
+        mock_manager = MagicMock(spec=ServiceManager)
+        mock_manager.get_service_status.return_value = ServiceStatus(
+            name="whisper",
+            installed=True,
+            running=True,
+            pid=12345,
+        )
+        mock_get_manager.return_value = mock_manager
+
+        with patch("agent_cli.daemon.cli.platform.system", return_value="Darwin"):
+            result = runner.invoke(app, ["daemon", "status", "whisper", "--logs", "0"])
+
+        assert result.exit_code == 0
+        assert "~/Library/Logs/agent-cli-whisper/" in result.stdout
+        assert "agent-cli-<service>" not in result.stdout
+
+    @patch("agent_cli.daemon.cli.get_service_manager")
     def test_daemon_status_unknown_service(self, mock_get_manager: MagicMock) -> None:
         """Test daemon status with unknown service."""
         mock_manager = MagicMock(spec=ServiceManager)
