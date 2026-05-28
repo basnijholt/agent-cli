@@ -32,7 +32,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         }
 
         releaseInstanceLock()
-        AgentCommandRunner.shared.statusMessage = "Agent CLI is already running"
+        Task { @MainActor in
+            AgentCommandRunner.shared.statusMessage = "Agent CLI is already running"
+        }
         NSApp.terminate(nil)
         return true
     }

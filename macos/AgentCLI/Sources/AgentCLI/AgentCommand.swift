@@ -1,11 +1,16 @@
 import Foundation
 
+enum AgentBootstrapRequirement: Equatable {
+    case cliRuntime
+    case transcription
+}
+
 struct AgentCommand {
     let identifier: String
     let title: String
-    let shell: String
+    let arguments: [String]
     let forceBootstrap: Bool
-    let requiresWhisperDaemon: Bool
+    let bootstrapRequirement: AgentBootstrapRequirement
     let showsRecordingIndicator: Bool
     let startNotificationTitle: String?
     let startNotificationBody: String?
@@ -14,9 +19,9 @@ struct AgentCommand {
     init(
         identifier: String,
         title: String,
-        shell: String,
+        arguments: [String],
         forceBootstrap: Bool = false,
-        requiresWhisperDaemon: Bool = false,
+        bootstrapRequirement: AgentBootstrapRequirement = .cliRuntime,
         showsRecordingIndicator: Bool = false,
         startNotificationTitle: String? = nil,
         startNotificationBody: String? = nil,
@@ -24,9 +29,9 @@ struct AgentCommand {
     ) {
         self.identifier = identifier
         self.title = title
-        self.shell = shell
+        self.arguments = arguments
         self.forceBootstrap = forceBootstrap
-        self.requiresWhisperDaemon = requiresWhisperDaemon
+        self.bootstrapRequirement = bootstrapRequirement
         self.showsRecordingIndicator = showsRecordingIndicator
         self.startNotificationTitle = startNotificationTitle
         self.startNotificationBody = startNotificationBody
@@ -36,8 +41,8 @@ struct AgentCommand {
     static let toggleTranscription = AgentCommand(
         identifier: "transcribe",
         title: "Toggle Transcription",
-        shell: #""$AGENTCLI_AGENT_CLI" transcribe --toggle --quiet"#,
-        requiresWhisperDaemon: true,
+        arguments: ["transcribe", "--toggle", "--quiet"],
+        bootstrapRequirement: .transcription,
         showsRecordingIndicator: true,
         startNotificationTitle: "Transcription Started",
         startNotificationBody: "Recording audio. Toggle transcription again to stop and transcribe.",
@@ -47,8 +52,8 @@ struct AgentCommand {
     static let voiceEdit = AgentCommand(
         identifier: "voice-edit",
         title: "Voice Edit Clipboard",
-        shell: #""$AGENTCLI_AGENT_CLI" voice-edit --toggle --quiet"#,
-        requiresWhisperDaemon: true,
+        arguments: ["voice-edit", "--toggle", "--quiet"],
+        bootstrapRequirement: .transcription,
         showsRecordingIndicator: true,
         startNotificationTitle: "Voice Edit Started",
         startNotificationBody: "Recording audio. Toggle voice edit again to stop.",
@@ -58,25 +63,25 @@ struct AgentCommand {
     static let autocorrect = AgentCommand(
         identifier: "autocorrect",
         title: "Autocorrect Clipboard",
-        shell: #""$AGENTCLI_AGENT_CLI" autocorrect --quiet"#
+        arguments: ["autocorrect", "--quiet"]
     )
 
     static let voiceServiceStatus = AgentCommand(
         identifier: "voice-service-status",
         title: "Voice Service Status",
-        shell: #""$AGENTCLI_AGENT_CLI" daemon status whisper --logs 0"#
+        arguments: ["daemon", "status", "whisper", "--logs", "0"]
     )
 
     static let installVoiceService = AgentCommand(
         identifier: "install-voice-service",
         title: "Install Voice Service",
-        shell: #""$AGENTCLI_AGENT_CLI" daemon install whisper -y"#
+        arguments: ["daemon", "install", "whisper", "-y"]
     )
 
     static let installOrUpdateCLI = AgentCommand(
         identifier: "install-or-update-cli",
         title: "Install or Update CLI",
-        shell: #""$AGENTCLI_AGENT_CLI" --version"#,
+        arguments: ["--version"],
         forceBootstrap: true
     )
 }

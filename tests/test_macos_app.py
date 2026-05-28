@@ -54,7 +54,9 @@ def test_macos_app_package_files_exist() -> None:
         "ConfigurableHotkeyController.swift",
         "FocusedTextTarget.swift",
         "MenuBarIcon.swift",
+        "RecordingIndicatorController.swift",
         "Shortcuts.swift",
+        "TranscriptPasteController.swift",
         "VoiceLevelOverlay.swift",
     ):
         assert (SWIFT_SOURCE_DIR / filename).is_file()
@@ -71,6 +73,21 @@ def test_macos_app_depends_on_keyboardshortcuts_package() -> None:
     assert "https://github.com/sindresorhus/KeyboardShortcuts" in package
     assert 'exact: "1.10.0"' in package
     assert '.product(name: "KeyboardShortcuts", package: "KeyboardShortcuts")' in package
+
+
+def test_macos_app_has_swift_unit_test_target() -> None:
+    """Pure macOS app behavior should have an XCTest target, not only source-shape tests."""
+    package = (MACOS_APP / "Package.swift").read_text()
+    tests = (MACOS_APP / "Tests" / "AgentCLITests" / "AgentCommandTests.swift").read_text()
+    workflow = (ROOT / ".github" / "workflows" / "pytest.yml").read_text()
+
+    assert ".testTarget(" in package
+    assert 'name: "AgentCLITests"' in package
+    assert 'dependencies: ["AgentCLI"]' in package
+    assert (MACOS_APP / "Tests" / "AgentCLITests" / "AgentCommandTests.swift").is_file()
+    assert "final class AgentCommandTests: XCTestCase" in tests
+    assert "testToggleTranscriptionUsesTypedArgumentsAndTranscriptionBootstrap" in tests
+    assert "swift test --package-path macos/AgentCLI --enable-xctest" in workflow
 
 
 def test_macos_info_plist_declares_menu_bar_agent_app() -> None:
@@ -91,14 +108,16 @@ def test_macos_app_source_exposes_expected_agent_cli_actions() -> None:
     source = swift_source()
 
     assert "MenuBarExtra" in source
-    assert '"$AGENTCLI_AGENT_CLI" transcribe --toggle --quiet' in source
     assert '"$AGENTCLI_AGENT_CLI" transcribe --stop --quiet' in source
     assert "transcribe.pid" not in source
+    assert 'arguments: ["transcribe", "--toggle", "--quiet"]' in source
     assert "transcribe --toggle --llm --quiet" not in source
-    assert '"$AGENTCLI_AGENT_CLI" voice-edit --toggle --quiet' in source
-    assert '"$AGENTCLI_AGENT_CLI" autocorrect --quiet' in source
-    assert '"$AGENTCLI_AGENT_CLI" daemon status whisper --logs 0' in source
-    assert '"$AGENTCLI_AGENT_CLI" daemon install whisper -y' in source
+    assert 'arguments: ["voice-edit", "--toggle", "--quiet"]' in source
+    assert 'arguments: ["autocorrect", "--quiet"]' in source
+    assert 'arguments: ["daemon", "status", "whisper", "--logs", "0"]' in source
+    assert 'arguments: ["daemon", "install", "whisper", "-y"]' in source
+    assert "let shell: String" not in source
+    assert "command.shell" not in source
     assert "install-hotkeys" not in source
     assert "Install skhd Hotkeys" not in source
     assert '"$AGENTCLI_AGENT_CLI" install-services' not in source
@@ -199,7 +218,7 @@ def test_macos_app_menu_bar_icon_changes_while_transcribing() -> None:
     assert "let shouldStartRecording = command.showsRecordingIndicator && !isStopRequest" in source
     assert "beginRecordingIndicator(for: command)" in source
     assert "endRecordingIndicator(for: command)" in source
-    assert "isRecording = recordingCommandCount > 0" in source
+    assert "isRecording = recordingIndicator.isRecording" in source
     assert 'title: "Toggle Transcription"' in source
     assert "showsRecordingIndicator: true" in source
 
@@ -303,7 +322,9 @@ def test_macos_app_hides_hold_recording_ui_immediately_on_key_release() -> None:
     """Hold-to-type should stop looking like it is recording as soon as the key is released."""
     source = swift_source()
 
-    assert "let wasRecording = isRecordingCommand(.toggleTranscription)" in source
+    assert (
+        "let wasRecording = recordingIndicator.isRecordingCommand(.toggleTranscription)" in source
+    )
     assert "holdTranscriptionState = .awaitingPid" in source
     assert (
         "if wasRecording {\n"
@@ -385,6 +406,18 @@ def test_macos_app_uses_cli_owned_hold_to_transcribe_stop() -> None:
     assert '"AGENTCLI_RUNTIME_DIR"' in launchd
 
 
+def test_macos_app_uses_bootstrap_requirement_model() -> None:
+    """Commands should declare bootstrap needs through a requirement enum."""
+    source = swift_source()
+
+    assert "enum AgentBootstrapRequirement" in source
+    assert "case cliRuntime" in source
+    assert "case transcription" in source
+    assert "let bootstrapRequirement: AgentBootstrapRequirement" in source
+    assert "ensureReady(for: command.bootstrapRequirement" in source
+    assert "requiresWhisperDaemon" not in source
+
+
 def test_macos_app_defaults_clipboard_transcription_to_fn_space() -> None:
     """The regular clipboard transcription toggle should default to Fn+Space."""
     source = swift_source()
@@ -424,7 +457,7 @@ def test_macos_app_pastes_hold_transcription_into_focused_field() -> None:
     assert "import ApplicationServices" in source
     assert "shouldPasteAfterRecording(for: command) && result.exitCode == 0" in source
     assert (
-        "pasteTranscriptIntoFocusedField(result.output, for: command, target: pasteTarget)"
+        "pasteController.pasteTranscriptIntoFocusedField(result.output, target: pasteTarget)"
         in source
     )
     assert "NSPasteboard.general.clearContents()" in source
@@ -434,7 +467,7 @@ def test_macos_app_pastes_hold_transcription_into_focused_field() -> None:
     assert "AXIsProcessTrustedWithOptions(options)" in source
     assert "kAXTrustedCheckOptionPrompt as String" in source
     assert (
-        'statusMessage = "Transcript copied. Allow Accessibility permission to auto-insert text."'
+        'onStatus("Transcript copied. Allow Accessibility permission to auto-insert text.")'
         in source
     )
     assert "DispatchQueue.main.asyncAfter(deadline: .now() + 0.20)" in source
@@ -462,7 +495,7 @@ def test_macos_app_refocuses_original_app_for_hold_to_type() -> None:
     assert "holdToTranscribePasteTarget = FocusedTextTarget.capture()" in source
     assert "let pasteTarget = self.holdToTranscribePasteTarget" in source
     assert (
-        "pasteTranscriptIntoFocusedField(result.output, for: command, target: pasteTarget)"
+        "pasteController.pasteTranscriptIntoFocusedField(result.output, target: pasteTarget)"
         in source
     )
     assert "holdToTranscribePasteTarget = nil" in source
@@ -480,7 +513,7 @@ def test_macos_app_refocuses_original_app_for_hold_to_type() -> None:
         "AXUIElementSetAttributeValue(element, kAXFocusedAttribute as CFString, kCFBooleanTrue)"
         in source
     )
-    assert "self.postPasteShortcut()" in source
+    assert "postPasteShortcut()" in source
     assert "kAXSelectedTextAttribute as CFString" not in source
     assert "func insertText(_ text: String)" not in source
 
@@ -502,7 +535,7 @@ def test_macos_app_throttles_accessibility_prompt_per_installed_build() -> None:
     assert "try? accessibilityPromptMarkerContents.write(" in source
     assert "AXIsProcessTrustedWithOptions(options)" in source
     assert (
-        'statusMessage = "Transcript copied. Allow Accessibility permission to auto-insert text."'
+        'onStatus("Transcript copied. Allow Accessibility permission to auto-insert text.")'
         in source
     )
 
@@ -512,7 +545,7 @@ def test_macos_app_suppresses_start_notification_for_recording_stop_toggle() -> 
     source = swift_source()
 
     assert (
-        "let isStopRequest = command.showsRecordingIndicator && isRecordingCommand(command)"
+        "let isStopRequest = command.showsRecordingIndicator && recordingIndicator.isRecordingCommand(command)"
         in source
     )
     assert "let shouldStartRecording = command.showsRecordingIndicator && !isStopRequest" in source
@@ -520,7 +553,7 @@ def test_macos_app_suppresses_start_notification_for_recording_stop_toggle() -> 
     assert "self.notifyStart(for: command)" in source
     assert "if isStopRequest && result.exitCode == 0" in source
     assert 'self.statusMessage = "Stop requested for \\(command.title)"' in source
-    assert "private func isRecordingCommand(_ command: AgentCommand) -> Bool" in source
+    assert "func isRecordingCommand(_ command: AgentCommand) -> Bool" in source
     assert 'identifier: "transcribe"' in source
     assert 'identifier: "voice-edit"' in source
     assert "self.notify(title: notificationTitle, body: notificationBody)" in source
@@ -544,6 +577,20 @@ def test_macos_app_makes_recording_stop_requests_idempotent() -> None:
     assert "private func isStopPending(for command: AgentCommand) -> Bool" in source
     assert "private func markStopRequested(for command: AgentCommand)" in source
     assert "private func clearStopRequested(for command: AgentCommand)" in source
+
+
+def test_macos_app_splits_runner_collaborators_and_uses_main_actor() -> None:
+    """Runner should coordinate focused collaborators instead of owning every concern."""
+    source = swift_source()
+
+    assert "@MainActor\nfinal class AgentCommandRunner" in source
+    assert "final class RecordingIndicatorController" in source
+    assert "struct TranscriptPasteController" in source
+    assert "private var recordingIndicator = RecordingIndicatorController()" in source
+    assert "private let pasteController: TranscriptPasteController" in source
+    assert "AgentCommandExecutor" not in source
+    assert "AgentNotificationPresenter" not in source
+    assert "AgentErrorStore" not in source
 
 
 def test_macos_app_sends_visible_transcription_notifications() -> None:
@@ -783,11 +830,11 @@ def test_macos_app_bootstraps_private_uv_runtime() -> None:
     assert "uv tool install" in source
     assert "agent-cli[audio,llm]" in source
     assert "agentCLIInstallRequirement" in source
-    assert "ensureTranscriptionReady" in source
+    assert "ensureReady(for: .transcription" in source
     assert "whisperDaemonMarkerURL" in source
     assert "whisperDaemonMarkerContents" in source
     assert "packageSource=" in source
-    assert '"$AGENTCLI_AGENT_CLI" daemon install whisper -y' in source
+    assert 'runAgentCLI(arguments: ["daemon", "install", "whisper", "-y"])' in source
     assert "--agentcli-bootstrap-self-test" in source
 
 
@@ -801,7 +848,7 @@ def test_macos_app_waits_for_whisper_daemon_readiness() -> None:
     assert "Thread.sleep(forTimeInterval: 0.5)" in source
     assert "socket(AF_INET, SOCK_STREAM, 0)" in source
     assert "connect(socketFD" in source
-    assert '"$AGENTCLI_AGENT_CLI" daemon status whisper --logs 80' in source
+    assert 'runAgentCLI(arguments: ["daemon", "status", "whisper", "--logs", "80"])' in source
     assert "Whisper ASR service did not become ready at localhost:10300" in source
 
 
