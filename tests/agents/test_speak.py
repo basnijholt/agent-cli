@@ -10,6 +10,7 @@ from typer.testing import CliRunner
 from agent_cli import config
 from agent_cli.agents.speak import _async_main
 from agent_cli.cli import app
+from agent_cli.core import process
 
 runner = CliRunner(env={"NO_COLOR": "1", "TERM": "dumb"})
 
@@ -103,39 +104,48 @@ def test_speak_agent(mock_async_main: AsyncMock) -> None:
     mock_async_main.assert_called_once()
 
 
-@patch("agent_cli.agents.speak.process.kill_process")
-def test_speak_stop(mock_kill_process: MagicMock) -> None:
+@patch("agent_cli.agents.speak.process.stop_process")
+def test_speak_stop(mock_stop_process: MagicMock) -> None:
     """Test the --stop flag."""
-    mock_kill_process.return_value = True
+    mock_stop_process.return_value = process.StopProcessResult(
+        process_name="speak",
+        was_running=True,
+        status=process.ProcessStatus("speak", running=False, pid=None),
+        stale_cleaned=False,
+    )
     result = runner.invoke(app, ["speak", "--stop"])
     assert result.exit_code == 0
     assert "Speak process stopped" in result.stdout
-    mock_kill_process.assert_called_once_with("speak")
+    mock_stop_process.assert_called_once_with("speak", wait_for_start_seconds=0.0)
 
 
-@patch("agent_cli.agents.speak.process.kill_process")
-def test_speak_stop_not_running(mock_kill_process: MagicMock) -> None:
+@patch("agent_cli.agents.speak.process.stop_process")
+def test_speak_stop_not_running(mock_stop_process: MagicMock) -> None:
     """Test the --stop flag when the process is not running."""
-    mock_kill_process.return_value = False
+    mock_stop_process.return_value = process.StopProcessResult(
+        process_name="speak",
+        was_running=False,
+        status=process.ProcessStatus("speak", running=False, pid=None),
+        stale_cleaned=False,
+    )
     result = runner.invoke(app, ["speak", "--stop"])
     assert result.exit_code == 0
     assert "No speak process is running" in result.stdout
 
 
-@patch("agent_cli.agents.speak.process.is_process_running")
-def test_speak_status_running(mock_is_process_running: MagicMock) -> None:
+@patch("agent_cli.agents.speak.process.get_process_status")
+def test_speak_status_running(mock_get_process_status: MagicMock) -> None:
     """Test the --status flag when the process is running."""
-    mock_is_process_running.return_value = True
-    with patch("agent_cli.agents.speak.process.read_pid_file", return_value=123):
-        result = runner.invoke(app, ["speak", "--status"])
+    mock_get_process_status.return_value = process.ProcessStatus("speak", running=True, pid=123)
+    result = runner.invoke(app, ["speak", "--status"])
     assert result.exit_code == 0
     assert "Speak process is running" in result.stdout
 
 
-@patch("agent_cli.agents.speak.process.is_process_running")
-def test_speak_status_not_running(mock_is_process_running: MagicMock) -> None:
+@patch("agent_cli.agents.speak.process.get_process_status")
+def test_speak_status_not_running(mock_get_process_status: MagicMock) -> None:
     """Test the --status flag when the process is not running."""
-    mock_is_process_running.return_value = False
+    mock_get_process_status.return_value = process.ProcessStatus("speak", running=False, pid=None)
     result = runner.invoke(app, ["speak", "--status"])
     assert result.exit_code == 0
     assert "Speak process is not running" in result.stdout

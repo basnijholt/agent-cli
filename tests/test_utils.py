@@ -8,7 +8,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from agent_cli.core import utils
+from agent_cli.core import process, utils
 
 
 @pytest.mark.parametrize(
@@ -136,33 +136,37 @@ def test_interactive_stop_event_checks_stop_file(mock_check_stop_file: Mock) -> 
     mock_check_stop_file.assert_not_called()  # Event already set, no need to check file
 
 
-@patch("agent_cli.core.process.kill_process")
-@patch("agent_cli.core.process.is_process_running")
+@patch("agent_cli.core.process.stop_process")
+@patch("agent_cli.core.process.get_process_status")
 def test_stop_or_status_or_toggle(
-    mock_is_process_running: Mock,
-    mock_kill_process: Mock,
+    mock_get_process_status: Mock,
+    mock_stop_process: Mock,
 ) -> None:
     """Test the stop_or_status_or_toggle function."""
     # Test stop
-    mock_is_process_running.return_value = True
-    mock_kill_process.return_value = True
+    stopped_status = process.ProcessStatus("test", running=False, pid=None)
+    mock_stop_process.return_value = process.StopProcessResult(
+        process_name="test",
+        was_running=True,
+        status=stopped_status,
+        stale_cleaned=False,
+    )
     assert utils.stop_or_status_or_toggle("test", "test", True, False, False, quiet=True)
-    mock_kill_process.assert_called_with("test")
+    mock_stop_process.assert_called_with("test", wait_for_start_seconds=0.0)
 
     # Test status
-    mock_is_process_running.return_value = True
-    with patch("agent_cli.core.process.read_pid_file", return_value=123):
-        assert utils.stop_or_status_or_toggle(
-            "test",
-            "test",
-            False,
-            True,
-            False,
-            quiet=True,
-        )
+    mock_get_process_status.return_value = process.ProcessStatus("test", running=True, pid=123)
+    assert utils.stop_or_status_or_toggle(
+        "test",
+        "test",
+        False,
+        True,
+        False,
+        quiet=True,
+    )
 
     # Test toggle on
-    mock_is_process_running.return_value = False
+    mock_get_process_status.return_value = process.ProcessStatus("test", running=False, pid=None)
     assert not utils.stop_or_status_or_toggle(
         "test",
         "test",
@@ -173,10 +177,15 @@ def test_stop_or_status_or_toggle(
     )
 
     # Test toggle off
-    mock_is_process_running.return_value = True
-    mock_kill_process.return_value = True
+    mock_get_process_status.return_value = process.ProcessStatus("test", running=True, pid=123)
+    mock_stop_process.return_value = process.StopProcessResult(
+        process_name="test",
+        was_running=True,
+        status=stopped_status,
+        stale_cleaned=False,
+    )
     assert utils.stop_or_status_or_toggle("test", "test", False, False, True, quiet=True)
-    mock_kill_process.assert_called_with("test")
+    mock_stop_process.assert_called_with("test")
 
 
 @pytest.mark.asyncio

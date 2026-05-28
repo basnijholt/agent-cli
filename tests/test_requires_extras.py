@@ -10,6 +10,7 @@ from unittest.mock import patch
 import pytest
 import typer
 
+from agent_cli.core import process
 from agent_cli.core.deps import (
     EXTRAS,
     _check_and_install_extras,
@@ -328,14 +329,20 @@ class TestProcessControlBypass:
 
     def test_skip_for_toggle_when_process_running(self) -> None:
         """Toggle should bypass extra checks when it is acting as stop."""
-        with patch("agent_cli.core.process.is_process_running", return_value=True):
+        with patch(
+            "agent_cli.core.process.get_process_status",
+            return_value=process.ProcessStatus("transcribe", running=True, pid=123),
+        ):
             assert (
                 _should_skip_extra_check_for_process_control({"toggle": True}, "transcribe") is True
             )
 
     def test_no_skip_for_toggle_when_process_not_running(self) -> None:
         """Toggle start still needs dependency checks."""
-        with patch("agent_cli.core.process.is_process_running", return_value=False):
+        with patch(
+            "agent_cli.core.process.get_process_status",
+            return_value=process.ProcessStatus("transcribe", running=False, pid=None),
+        ):
             assert (
                 _should_skip_extra_check_for_process_control({"toggle": True}, "transcribe")
                 is False
@@ -344,7 +351,10 @@ class TestProcessControlBypass:
     def test_decorator_skips_extra_checks_for_toggle_stop(self) -> None:
         """Decorated commands should stop an existing process without installing extras."""
         with (
-            patch("agent_cli.core.process.is_process_running", return_value=True),
+            patch(
+                "agent_cli.core.process.get_process_status",
+                return_value=process.ProcessStatus("transcribe", running=True, pid=123),
+            ),
             patch("agent_cli.core.deps._check_and_install_extras") as mock_check,
         ):
 

@@ -382,7 +382,7 @@ def _should_skip_extra_check_for_process_control(
 
     from agent_cli.core import process  # noqa: PLC0415
 
-    return process.is_process_running(process_name)
+    return process.get_process_status(process_name).running
 
 
 def requires_extras(

@@ -289,22 +289,6 @@ def get_process_status(process_name: str) -> ProcessStatus:
     )
 
 
-def _get_running_pid(process_name: str) -> int | None:
-    """Get PID if process is running, None otherwise. Cleans up stale files."""
-    status = get_process_status(process_name)
-    return status.pid if status.running else None
-
-
-def is_process_running(process_name: str) -> bool:
-    """Check if a process is currently running."""
-    return _get_running_pid(process_name) is not None
-
-
-def read_pid_file(process_name: str) -> int | None:
-    """Read PID from file if process is running."""
-    return _get_running_pid(process_name)
-
-
 def _wait_for_process_start(
     process_name: str,
     *,
@@ -389,23 +373,6 @@ def stop_process(
     )
 
 
-def kill_process(process_name: str) -> bool:
-    """Kill a process by name.
-
-    Returns True if killed or cleaned up, False if not found.
-    On Windows, creates a stop file first to allow graceful shutdown.
-    """
-    pid_file = _get_pid_file(process_name)
-
-    # If no PID file exists at all, nothing to do
-    if not pid_file.exists():
-        clear_stop_file(process_name)
-        return False
-
-    result = stop_process(process_name)
-    return result.was_running or result.stale_cleaned
-
-
 @contextmanager
 def pid_file_context(process_name: str) -> Generator[Path, None, None]:
     """Context manager for PID file lifecycle.
@@ -415,14 +382,15 @@ def pid_file_context(process_name: str) -> Generator[Path, None, None]:
     """
     lock_fd = _acquire_process_lock(process_name)
     if _supports_process_locks() and lock_fd is None:
-        existing_pid = _get_running_pid(process_name)
-        print(f"Process {process_name} is already running (PID: {existing_pid})")
+        existing_status = get_process_status(process_name)
+        print(f"Process {process_name} is already running (PID: {existing_status.pid})")
         sys.exit(1)
 
-    if not _supports_process_locks() and is_process_running(process_name):
-        existing_pid = _get_running_pid(process_name)
-        print(f"Process {process_name} is already running (PID: {existing_pid})")
-        sys.exit(1)
+    if not _supports_process_locks():
+        existing_status = get_process_status(process_name)
+        if existing_status.running:
+            print(f"Process {process_name} is already running (PID: {existing_status.pid})")
+            sys.exit(1)
 
     if _supports_process_locks():
         pid_info = _read_pid_info(process_name)
