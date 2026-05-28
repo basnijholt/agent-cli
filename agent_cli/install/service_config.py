@@ -126,6 +126,7 @@ def build_service_command(
 ) -> list[str]:
     """Build the command args for running a service via uv tool run."""
     extra = (service.macos_extra or service.extra) if use_macos_extra else service.extra
+    package_source = os.environ.get("AGENTCLI_PACKAGE_SOURCE", "agent-cli")
 
     args = [str(uv_path), "tool", "run"]
 
@@ -140,7 +141,7 @@ def build_service_command(
     args.extend(
         [
             "--from",
-            f"agent-cli[{extra}]",
+            f"{package_source}[{extra}]",
             "agent-cli",
             *cmd_path,
             *service.command_args,
@@ -151,6 +152,12 @@ def build_service_command(
 
 def find_uv(extra_paths: list[Path] | None = None) -> Path | None:
     """Find uv executable, preferring system paths over virtualenv."""
+    bundled_uv = os.environ.get("AGENTCLI_BUNDLED_UV")
+    if bundled_uv:
+        bundled_uv_path = Path(bundled_uv).expanduser()
+        if bundled_uv_path.is_file() and os.access(bundled_uv_path, os.X_OK):
+            return bundled_uv_path
+
     paths = [
         Path.home() / ".local" / "bin" / "uv",
         Path.home() / ".cargo" / "bin" / "uv",

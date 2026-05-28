@@ -114,6 +114,33 @@ class TestServiceConfig:
         cmd = build_service_command(service, uv_path, use_macos_extra=True)
         assert "agent-cli[server,macos-dep]" in cmd
 
+    def test_build_service_command_uses_app_package_source(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """The macOS app can point daemon uv runs at its bundled wheel."""
+        uv_path = tmp_path / "uv"
+        uv_path.touch()
+        wheel_path = (
+            tmp_path
+            / "AgentCLI.app"
+            / "Contents"
+            / "Resources"
+            / "wheels"
+            / "agent_cli-0.0.0-py3-none-any.whl"
+        )
+        monkeypatch.setenv("AGENTCLI_PACKAGE_SOURCE", str(wheel_path))
+        service = ServiceConfig(
+            name="test",
+            display_name="Test",
+            description="Test",
+            extra="server",
+            command_args=[],
+        )
+
+        cmd = build_service_command(service, uv_path)
+
+        assert f"{wheel_path}[server]" in cmd
+
     def test_build_service_command_custom_command(self, tmp_path: Path) -> None:
         """Test building service command with custom command path."""
         uv_path = tmp_path / "uv"
@@ -161,6 +188,26 @@ class TestServiceConfig:
         uv_path.chmod(0o755)
         result = find_uv(extra_paths=[uv_path])
         assert result == uv_path
+
+    def test_find_uv_prefers_app_bundled_uv(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """The macOS app advertises its bundled uv through AGENTCLI_BUNDLED_UV."""
+        bundled_uv = tmp_path / "AgentCLI.app" / "Contents" / "Resources" / "bin" / "uv"
+        bundled_uv.parent.mkdir(parents=True)
+        bundled_uv.touch()
+        bundled_uv.chmod(0o755)
+
+        other_uv = tmp_path / "other" / "uv"
+        other_uv.parent.mkdir()
+        other_uv.touch()
+        other_uv.chmod(0o755)
+
+        monkeypatch.setenv("AGENTCLI_BUNDLED_UV", str(bundled_uv))
+
+        result = find_uv(extra_paths=[other_uv])
+
+        assert result == bundled_uv
 
     def test_find_uv_not_found(self) -> None:
         """Test find_uv returns None when uv is not found."""
@@ -267,6 +314,28 @@ class TestDaemonCLI:
         assert result.exit_code == 0
         assert "running" in result.stdout
         assert "12345" in result.stdout
+
+    @patch("agent_cli.daemon.cli.get_service_manager")
+    def test_daemon_status_specific_service_shows_specific_log_path(
+        self,
+        mock_get_manager: MagicMock,
+    ) -> None:
+        """Specific service status should not print placeholder log paths."""
+        mock_manager = MagicMock(spec=ServiceManager)
+        mock_manager.get_service_status.return_value = ServiceStatus(
+            name="whisper",
+            installed=True,
+            running=True,
+            pid=12345,
+        )
+        mock_get_manager.return_value = mock_manager
+
+        with patch("agent_cli.daemon.cli.platform.system", return_value="Darwin"):
+            result = runner.invoke(app, ["daemon", "status", "whisper", "--logs", "0"])
+
+        assert result.exit_code == 0
+        assert "~/Library/Logs/agent-cli-whisper/" in result.stdout
+        assert "agent-cli-<service>" not in result.stdout
 
     @patch("agent_cli.daemon.cli.get_service_manager")
     def test_daemon_status_unknown_service(self, mock_get_manager: MagicMock) -> None:

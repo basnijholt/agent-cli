@@ -146,9 +146,11 @@ def status_cmd(
     console.print()
     system = platform.system()
     if system == "Darwin":
-        console.print("[dim]Full logs: ~/Library/Logs/agent-cli-<service>/[/dim]")
+        log_service = service or "<service>"
+        console.print(f"[dim]Full logs: ~/Library/Logs/agent-cli-{log_service}/[/dim]")
     else:
-        console.print("[dim]Full logs: journalctl --user -u agent-cli-<service> -f[/dim]")
+        log_service = service or "<service>"
+        console.print(f"[dim]Full logs: journalctl --user -u agent-cli-{log_service} -f[/dim]")
 
 
 def _confirm_action(message: str) -> bool:
