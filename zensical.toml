@@ -119,7 +119,7 @@ text = "Inter"
 code = "JetBrains Mono"
 
 [project.theme.icon]
-repo = "lucide/github"
+repo = "octicons/mark-github-24"
 
 [project.extra]
 generator = false

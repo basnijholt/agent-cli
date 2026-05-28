@@ -31,7 +31,7 @@ Use `--retranscribe` if you want to re-run ASR on the combined audio instead of 
 Requires the `diarization` extra:
 
 ```bash
-uv tool install "agent-cli[diarization]" -p 3.13
+uv tool install "agent-cli[diarization]"
 # or
 pip install "agent-cli[diarization]"
 ```
