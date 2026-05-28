@@ -184,6 +184,9 @@ def test_macos_app_can_use_user_installed_agent_cli() -> None:
     assert "private func userInstalledCLIEnvironment() -> [String: String]" in source
     assert "private static let appPrivateEnvironmentKeys" in source
     assert "environment.removeValue(forKey: key)" in source
+    assert "AGENTCLI_UV_PATH" in source
+    assert "loginShellPATH" in source
+    assert 'appendingPathComponent(".cargo/bin"' in source
     assert "private func bundledCLIEnvironment() -> [String: String]" in source
     assert "AGENT_CLI_CONFIG_HOME" in source
     assert "UV_TOOL_BIN_DIR" in source

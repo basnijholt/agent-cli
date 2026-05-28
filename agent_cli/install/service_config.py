@@ -152,6 +152,12 @@ def build_service_command(
 
 def find_uv(extra_paths: list[Path] | None = None) -> Path | None:
     """Find uv executable, preferring system paths over virtualenv."""
+    explicit_uv = os.environ.get("AGENTCLI_UV_PATH")
+    if explicit_uv:
+        explicit_uv_path = Path(explicit_uv).expanduser()
+        if explicit_uv_path.is_file() and os.access(explicit_uv_path, os.X_OK):
+            return explicit_uv_path
+
     bundled_uv = os.environ.get("AGENTCLI_BUNDLED_UV")
     if bundled_uv:
         bundled_uv_path = Path(bundled_uv).expanduser()

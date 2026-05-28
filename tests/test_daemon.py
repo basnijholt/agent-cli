@@ -209,6 +209,27 @@ class TestServiceConfig:
 
         assert result == bundled_uv
 
+    def test_find_uv_prefers_explicit_uv_path(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Users can override uv discovery with AGENTCLI_UV_PATH."""
+        explicit_uv = tmp_path / "explicit" / "uv"
+        explicit_uv.parent.mkdir()
+        explicit_uv.touch()
+        explicit_uv.chmod(0o755)
+
+        bundled_uv = tmp_path / "bundled" / "uv"
+        bundled_uv.parent.mkdir()
+        bundled_uv.touch()
+        bundled_uv.chmod(0o755)
+
+        monkeypatch.setenv("AGENTCLI_UV_PATH", str(explicit_uv))
+        monkeypatch.setenv("AGENTCLI_BUNDLED_UV", str(bundled_uv))
+
+        result = find_uv()
+
+        assert result == explicit_uv
+
     def test_find_uv_not_found(self) -> None:
         """Test find_uv returns None when uv is not found."""
         # Use paths that definitely don't exist
