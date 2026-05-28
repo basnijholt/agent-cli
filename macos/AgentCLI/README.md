@@ -1,9 +1,12 @@
 # Agent CLI macOS app
 
 This directory contains a native SwiftUI menu bar wrapper for `agent-cli`.
-The app does not reimplement any agent behavior. It bundles `uv`, installs a
-private `agent-cli[audio,llm]` tool into the user's Application Support
-directory on first use, and shells out to that private executable.
+The app does not reimplement any agent behavior. By default, it bundles `uv`,
+installs a private `agent-cli[audio,llm]` tool into the user's Application
+Support directory on first use, and shells out to that private executable.
+Users who already manage their own `agent-cli` install can enable
+**Use User-Installed agent-cli** in Settings to run the `agent-cli` found on
+PATH with their normal config instead.
 
 Transcription is the default zero-config path. The first transcription action
 installs and starts the local Whisper launchd daemon with
@@ -18,13 +21,14 @@ The packaged app registers native macOS global hotkeys itself:
 - `Cmd+Shift+A` autocorrects clipboard text
 - `Cmd+Shift+V` starts voice edit
 
-Choose **Settings...** from the menu bar app to change these shortcuts or enable
-**Start at Login**. The settings UI uses the `KeyboardShortcuts` Swift package
-for shortcut parsing and `UserDefaults` storage. Transcription shortcuts are
-handled by a small CGEvent tap so `Fn`, `Fn+Space`, and plain Space remain
-distinct; the clipboard utility shortcuts still use `KeyboardShortcuts` global
-handlers. The login option uses Apple's login item API for the main app bundle,
-so macOS may require approval in System Settings → General → Login Items.
+Choose **Settings...** from the menu bar app to change these shortcuts, enable
+**Start at Login**, or switch between the bundled runtime and a user-installed
+`agent-cli`. The settings UI uses the `KeyboardShortcuts` Swift package for
+shortcut parsing and `UserDefaults` storage. Transcription shortcuts are handled
+by a small CGEvent tap so `Fn`, `Fn+Space`, and plain Space remain distinct; the
+clipboard utility shortcuts still use `KeyboardShortcuts` global handlers. The
+login option uses Apple's login item API for the main app bundle, so macOS may
+require approval in System Settings → General → Login Items.
 
 ## Build
 
