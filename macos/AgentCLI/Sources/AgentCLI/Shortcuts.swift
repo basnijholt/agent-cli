@@ -150,6 +150,8 @@ enum ShortcutDefaultsMigrator {
 
 struct SettingsView: View {
     @ObservedObject private var loginItemController = LoginItemController.shared
+    @AppStorage(TranscriptionSettings.transcriptionExtraInstructionsKey)
+    private var transcriptionExtraInstructions = ""
     @State private var shortcutRevision = 0
 
     var body: some View {
@@ -171,6 +173,17 @@ struct SettingsView: View {
                 }
             } header: {
                 Text("General")
+            }
+
+            Section {
+                TextEditor(text: $transcriptionExtraInstructions)
+                    .font(.body)
+                    .frame(minHeight: 96)
+                    .scrollContentBackground(.hidden)
+            } header: {
+                Text("Transcription Instructions")
+            } footer: {
+                Text("Names, vocabulary, and guidance to pass as initial transcription context.")
             }
 
             Section {

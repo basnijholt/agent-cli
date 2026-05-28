@@ -161,6 +161,7 @@ final class AgentCommandRunner: ObservableObject {
             : "Running \(command.title)..."
 
         let bootstrap = self.bootstrap
+        let commandArguments = command.resolvedArguments(extraInstructions: TranscriptionSettings.extraInstructions)
         DispatchQueue.global(qos: .userInitiated).async {
             let bootstrapResult = bootstrap(command.bootstrapRequirement, command.forceBootstrap)
             guard bootstrapResult.exitCode == 0 else {
@@ -192,7 +193,7 @@ final class AgentCommandRunner: ObservableObject {
                 }
             }
 
-            let result = AgentRuntime.shared.runAgentCLI(arguments: command.arguments)
+            let result = AgentRuntime.shared.runAgentCLI(arguments: commandArguments)
             let message = Self.statusMessage(for: command, result: result)
             let notificationTitle = Self.notificationTitle(for: command, result: result)
             let notificationBody = Self.notificationBody(for: command, result: result, statusMessage: message)

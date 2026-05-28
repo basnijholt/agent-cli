@@ -143,6 +143,23 @@ def test_macos_app_source_exposes_expected_agent_cli_actions() -> None:
     assert "daemon install rag" not in source
 
 
+def test_macos_app_settings_pass_extra_instructions_to_transcription() -> None:
+    """Settings should persist transcription context and pass it to the ASR prompt."""
+    source = swift_source()
+
+    assert (
+        'static let transcriptionExtraInstructionsKey = "transcriptionExtraInstructions"' in source
+    )
+    assert "Transcription Instructions" in source
+    assert "@AppStorage(TranscriptionSettings.transcriptionExtraInstructionsKey)" in source
+    assert '"--extra-instructions"' in source
+    assert (
+        "command.resolvedArguments(extraInstructions: TranscriptionSettings.extraInstructions)"
+        in source
+    )
+    assert "appliesTranscriptionExtraInstructions: true" in source
+
+
 def test_macos_app_menu_prioritizes_daily_voice_actions() -> None:
     """Daily actions should stay top-level; diagnostics belong in troubleshooting."""
     source = swift_source()

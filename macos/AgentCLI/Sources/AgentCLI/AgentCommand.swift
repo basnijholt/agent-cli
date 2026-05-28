@@ -9,6 +9,7 @@ struct AgentCommand {
     let identifier: String
     let title: String
     let arguments: [String]
+    let appliesTranscriptionExtraInstructions: Bool
     let forceBootstrap: Bool
     let bootstrapRequirement: AgentBootstrapRequirement
     let showsRecordingIndicator: Bool
@@ -20,6 +21,7 @@ struct AgentCommand {
         identifier: String,
         title: String,
         arguments: [String],
+        appliesTranscriptionExtraInstructions: Bool = false,
         forceBootstrap: Bool = false,
         bootstrapRequirement: AgentBootstrapRequirement = .cliRuntime,
         showsRecordingIndicator: Bool = false,
@@ -30,6 +32,7 @@ struct AgentCommand {
         self.identifier = identifier
         self.title = title
         self.arguments = arguments
+        self.appliesTranscriptionExtraInstructions = appliesTranscriptionExtraInstructions
         self.forceBootstrap = forceBootstrap
         self.bootstrapRequirement = bootstrapRequirement
         self.showsRecordingIndicator = showsRecordingIndicator
@@ -38,10 +41,20 @@ struct AgentCommand {
         self.finishNotificationTitle = finishNotificationTitle
     }
 
+    func resolvedArguments(extraInstructions: String?) -> [String] {
+        guard appliesTranscriptionExtraInstructions else { return arguments }
+
+        let trimmedInstructions = extraInstructions?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        guard !trimmedInstructions.isEmpty else { return arguments }
+
+        return arguments + ["--extra-instructions", trimmedInstructions]
+    }
+
     static let toggleTranscription = AgentCommand(
         identifier: "transcribe",
         title: "Toggle Transcription",
         arguments: ["transcribe", "--toggle", "--quiet"],
+        appliesTranscriptionExtraInstructions: true,
         bootstrapRequirement: .transcription,
         showsRecordingIndicator: true,
         startNotificationTitle: "Transcription Started",
