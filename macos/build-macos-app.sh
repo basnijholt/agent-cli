@@ -23,6 +23,11 @@ Environment:
   UV_BINARY          uv binary to bundle. Defaults to the uv found on PATH.
   INSTALL_DIR        Install destination. Defaults to /Applications.
   AGENTCLI_SKIP_OPEN Set to 1 to skip opening the app after --install.
+  NOTARIZE           Set to 1 to notarize and staple the DMG. Requires --dmg.
+  APPLE_ID           Apple ID email used for notarization.
+  APPLE_APP_SPECIFIC_PASSWORD
+                     App-specific password used by xcrun notarytool.
+  APPLE_TEAM_ID      Apple Developer Team ID used for notarization.
 EOF
 }
 
@@ -62,6 +67,7 @@ APP_ICON_ICNS="$DIST_DIR/AgentCLI.icns"
 CODESIGN_IDENTITY=${CODESIGN_IDENTITY:--}
 UV_BINARY=${UV_BINARY:-$(command -v uv || true)}
 INSTALL_DIR=${INSTALL_DIR:-/Applications}
+NOTARIZE=${NOTARIZE:-0}
 
 if [[ "$(uname -s)" != "Darwin" ]]; then
     echo "This script builds a macOS .app bundle and must run on macOS." >&2
@@ -89,6 +95,66 @@ if [[ ! -f "$MENU_BAR_LOGO_SVG" ]]; then
     echo "AgentCLI menu bar logo SVG is missing: $MENU_BAR_LOGO_SVG" >&2
     exit 1
 fi
+
+if [[ "$NOTARIZE" == "1" && "$CREATE_DMG" != true ]]; then
+    echo "NOTARIZE=1 requires --dmg so there is a distributable artifact to notarize." >&2
+    exit 1
+fi
+
+codesign_args() {
+    printf '%s\0' --force --deep --sign "$CODESIGN_IDENTITY"
+    if [[ "$CODESIGN_IDENTITY" != "-" ]]; then
+        printf '%s\0' --timestamp --options runtime
+    fi
+}
+
+sign_app() {
+    local target="$1"
+    local args=()
+    while IFS= read -r -d '' arg; do
+        args+=("$arg")
+    done < <(codesign_args)
+
+    codesign "${args[@]}" "$target"
+}
+
+sign_dmg_if_needed() {
+    local dmg_path="$1"
+    if [[ "$CODESIGN_IDENTITY" == "-" ]]; then
+        return
+    fi
+
+    codesign --force --sign "$CODESIGN_IDENTITY" --timestamp "$dmg_path"
+}
+
+require_notarization_env() {
+    if [[ "$CODESIGN_IDENTITY" == "-" ]]; then
+        echo "A Developer ID signing identity is required when NOTARIZE=1." >&2
+        exit 1
+    fi
+
+    for variable in APPLE_ID APPLE_APP_SPECIFIC_PASSWORD APPLE_TEAM_ID; do
+        if [[ -z "${!variable:-}" ]]; then
+            echo "$variable is required when NOTARIZE=1." >&2
+            exit 1
+        fi
+    done
+}
+
+notarize_dmg() {
+    local dmg_path="$1"
+
+    require_notarization_env
+    echo "Submitting $dmg_path for Apple notarization..."
+    xcrun notarytool submit "$dmg_path" \
+        --apple-id "$APPLE_ID" \
+        --password "$APPLE_APP_SPECIFIC_PASSWORD" \
+        --team-id "$APPLE_TEAM_ID" \
+        --wait
+    xcrun stapler staple "$dmg_path"
+    xcrun stapler validate "$dmg_path"
+    echo "Notarized and stapled $dmg_path"
+}
 
 render_logo_png() {
     local size="$1"
@@ -218,7 +284,7 @@ test -f "$APP_DIR/Contents/Resources/AgentCLI.icns" || {
     exit 1
 }
 
-codesign --force --deep --sign "$CODESIGN_IDENTITY" "$APP_DIR"
+sign_app "$APP_DIR"
 
 echo "Built $APP_DIR"
 
@@ -240,6 +306,10 @@ if [[ "$CREATE_DMG" == true ]]; then
         fi
         sleep 2
     done
+    sign_dmg_if_needed "$DMG_PATH"
+    if [[ "$NOTARIZE" == "1" ]]; then
+        notarize_dmg "$DMG_PATH"
+    fi
     echo "Built $DMG_PATH"
 fi
 

@@ -68,3 +68,30 @@ or DMG:
 ```bash
 CODESIGN_IDENTITY="Developer ID Application: Your Name (TEAMID)" ./macos/build-macos-app.sh --dmg
 ```
+
+To notarize during the build, set `NOTARIZE=1` and provide Apple notary
+credentials:
+
+```bash
+CODESIGN_IDENTITY="Developer ID Application: Your Name (TEAMID)" \
+NOTARIZE=1 \
+APPLE_ID="you@example.com" \
+APPLE_APP_SPECIFIC_PASSWORD="xxxx-xxxx-xxxx-xxxx" \
+APPLE_TEAM_ID="TEAMID" \
+./macos/build-macos-app.sh --dmg
+```
+
+## Release CI
+
+Publishing a GitHub release runs `.github/workflows/release.yml`, which imports
+the Developer ID certificate with `apple-actions/import-codesign-certs`, builds,
+notarizes, staples, and uploads `dist/macos/AgentCLI.dmg` to the release. The
+workflow expects these repository secrets:
+
+- `MACOS_CODESIGN_CERTIFICATE_BASE64`: base64-encoded Developer ID Application
+  `.p12` certificate export
+- `MACOS_CODESIGN_CERTIFICATE_PASSWORD`: password for that `.p12`
+- `MACOS_KEYCHAIN_PASSWORD`: temporary CI keychain password
+- `APPLE_ID`: Apple ID email for notarization
+- `APPLE_APP_SPECIFIC_PASSWORD`: app-specific password for `notarytool`
+- `APPLE_TEAM_ID`: Apple Developer Team ID

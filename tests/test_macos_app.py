@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 import plistlib
+import re
 import shutil
 import stat
 import subprocess
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+RELEASE_WORKFLOW = ROOT / ".github" / "workflows" / "release.yml"
 MACOS_APP = ROOT / "macos" / "AgentCLI"
 SWIFT_SOURCE_DIR = MACOS_APP / "Sources" / "AgentCLI"
 BUILD_SCRIPT = ROOT / "macos" / "build-macos-app.sh"
@@ -669,6 +671,47 @@ def test_macos_build_script_creates_signed_app_bundle() -> None:
     assert "--install" in script
     assert "--dmg" in script
     assert "hdiutil create" in script
+
+
+def test_macos_build_script_can_notarize_release_dmg() -> None:
+    """Release builds should notarize and staple a Developer ID-signed DMG."""
+    script = BUILD_SCRIPT.read_text()
+
+    assert "NOTARIZE" in script
+    assert "APPLE_ID" in script
+    assert "APPLE_APP_SPECIFIC_PASSWORD" in script
+    assert "APPLE_TEAM_ID" in script
+    assert "xcrun notarytool submit" in script
+    assert "--wait" in script
+    assert "xcrun stapler staple" in script
+    assert "xcrun stapler validate" in script
+    assert "--timestamp" in script
+    assert "--options runtime" in script
+    assert "Developer ID signing identity" in script
+
+
+def test_release_workflow_publishes_macos_app_asset() -> None:
+    """Publishing a GitHub release should attach the notarized macOS DMG."""
+    workflow = RELEASE_WORKFLOW.read_text()
+
+    assert "build_macos_app" in workflow
+    assert re.search(r"build_macos_app:\n\s+runs-on: macos-latest", workflow)
+    assert "contents: write" in workflow
+    assert "MACOS_CODESIGN_CERTIFICATE_BASE64" in workflow
+    assert "MACOS_CODESIGN_CERTIFICATE_PASSWORD" in workflow
+    assert "MACOS_KEYCHAIN_PASSWORD" in workflow
+    assert "APPLE_ID" in workflow
+    assert "APPLE_APP_SPECIFIC_PASSWORD" in workflow
+    assert "APPLE_TEAM_ID" in workflow
+    assert "apple-actions/import-codesign-certs@v7" in workflow
+    assert "p12-file-base64: ${{ secrets.MACOS_CODESIGN_CERTIFICATE_BASE64 }}" in workflow
+    assert "p12-password: ${{ secrets.MACOS_CODESIGN_CERTIFICATE_PASSWORD }}" in workflow
+    assert "security create-keychain" not in workflow
+    assert "security import" not in workflow
+    assert "macos/build-macos-app.sh --dmg" in workflow
+    assert "NOTARIZE=1" in workflow
+    assert "gh release upload" in workflow
+    assert "dist/macos/AgentCLI.dmg" in workflow
 
 
 def test_macos_app_bootstraps_private_uv_runtime() -> None:
