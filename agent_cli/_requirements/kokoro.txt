@@ -3,7 +3,9 @@
 addict==2.4.0
     # via misaki
 annotated-doc==0.0.4
-    # via fastapi
+    # via
+    #   fastapi
+    #   typer
 annotated-types==0.7.0
     # via pydantic
 anyio==4.12.1
@@ -39,8 +41,6 @@ charset-normalizer==3.4.4
 click==8.3.1
     # via
     #   rich-toolkit
-    #   typer
-    #   typer-slim
     #   uvicorn
 cloudpathlib==0.23.0
     # via weasel
@@ -49,6 +49,7 @@ colorama==0.4.6 ; sys_platform == 'win32'
     #   click
     #   loguru
     #   tqdm
+    #   typer
     #   uvicorn
     #   wasabi
 confection==0.1.5
@@ -361,14 +362,14 @@ transformers==4.57.5
     #   kokoro
 triton==3.4.0 ; platform_machine == 'x86_64' and sys_platform == 'linux'
     # via torch
-typer==0.21.1
+typer==0.26.2
     # via
     #   agent-cli
     #   fastapi-cli
     #   fastapi-cloud-cli
-typer-slim==0.21.1
+    #   typer-slim
+typer-slim==0.24.0
     # via
-    #   agent-cli
     #   spacy
     #   weasel
 typing-extensions==4.15.0
@@ -384,8 +385,6 @@ typing-extensions==4.15.0
     #   rich-toolkit
     #   starlette
     #   torch
-    #   typer
-    #   typer-slim
     #   typing-inspection
 typing-inspection==0.4.2
     # via

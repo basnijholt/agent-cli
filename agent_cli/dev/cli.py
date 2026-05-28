@@ -8,7 +8,7 @@ import shlex
 import shutil
 import subprocess
 from pathlib import Path
-from typing import Annotated, Literal
+from typing import Annotated, Any, Literal
 
 import typer
 from rich.panel import Panel
@@ -69,6 +69,13 @@ has its own branch and working directory.
     no_args_is_help=True,
 )
 main_app.add_typer(app, name="dev", rich_help_panel="Development")
+
+
+def _runtime_config_from_ctx(ctx: typer.Context) -> dict[str, Any]:
+    """Return the config stored by the dev callback."""
+    if isinstance(ctx.obj, dict) and isinstance(ctx.obj.get("config"), dict):
+        return ctx.obj["config"]
+    return {}
 
 
 @app.callback()
@@ -305,6 +312,7 @@ def _setup_worktree_env(
 
 @app.command("new")
 def new(
+    ctx: typer.Context,
     branch: Annotated[
         str | None,
         typer.Argument(
@@ -516,6 +524,7 @@ def new(
     tmux_session, multiplexer = _normalize_tmux_session(tmux_session, multiplexer)
 
     repo_root = _ensure_git_repo()
+    runtime_config = _runtime_config_from_ctx(ctx)
 
     branch = _resolve_branch_name(
         branch,
@@ -574,8 +583,8 @@ def new(
 
     agent_handle = None
     if resolved_agent and resolved_agent.is_available():
-        merged_args = merge_agent_args(resolved_agent, agent_args)
-        agent_env = get_agent_env(resolved_agent)
+        merged_args = merge_agent_args(resolved_agent, agent_args, runtime_config)
+        agent_env = get_agent_env(resolved_agent, runtime_config)
         prepare_agent_launch(
             LaunchContext(
                 agent=resolved_agent,
@@ -587,6 +596,7 @@ def new(
                 agent_env=agent_env,
             ),
             hooks_enabled=hooks,
+            runtime_config=runtime_config,
         )
         agent_handle = launch_agent(
             result.path,
@@ -990,6 +1000,7 @@ def open_editor(
 
 @app.command("agent")
 def start_agent(
+    ctx: typer.Context,
     name: Annotated[
         str,
         typer.Argument(
@@ -1081,6 +1092,7 @@ def start_agent(
     tmux_session, multiplexer = _normalize_tmux_session(tmux_session, multiplexer)
 
     repo_root = _ensure_git_repo()
+    runtime_config = _runtime_config_from_ctx(ctx)
 
     wt = worktree.find_worktree_by_name(name, repo_root)
     if wt is None:
@@ -1102,8 +1114,8 @@ def start_agent(
         task_file = write_prompt_to_worktree(wt.path, prompt)
         success(f"Wrote task to {task_file.relative_to(wt.path)}")
 
-    merged_args = merge_agent_args(agent, agent_args)
-    agent_env = get_agent_env(agent)
+    merged_args = merge_agent_args(agent, agent_args, runtime_config)
+    agent_env = get_agent_env(agent, runtime_config)
     prepare_agent_launch(
         LaunchContext(
             agent=agent,
@@ -1115,6 +1127,7 @@ def start_agent(
             agent_env=agent_env,
         ),
         hooks_enabled=hooks,
+        runtime_config=runtime_config,
     )
 
     if multiplexer:

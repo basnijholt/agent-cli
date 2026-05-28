@@ -7,7 +7,7 @@ import shlex
 import subprocess
 import tempfile
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from agent_cli.core.utils import console
 
@@ -85,7 +85,9 @@ def resolve_agent(
     return agent
 
 
-def get_config_agent_args() -> dict[str, list[str]] | None:
+def get_config_agent_args(
+    runtime_config: dict[str, Any] | None = None,
+) -> dict[str, list[str]] | None:
     """Load agent_args from config file.
 
     Config format:
@@ -95,11 +97,13 @@ def get_config_agent_args() -> dict[str, list[str]] | None:
     Note: The config loader may flatten section names, so we check both
     nested structure and flattened 'dev.agent_args' key.
     """
-    agent_args = get_dev_table("agent_args")
+    agent_args = get_dev_table("agent_args", runtime_config)
     return agent_args or None
 
 
-def get_config_agent_env() -> dict[str, dict[str, str]] | None:
+def get_config_agent_env(
+    runtime_config: dict[str, Any] | None = None,
+) -> dict[str, dict[str, str]] | None:
     """Load agent_env from config file.
 
     Config format:
@@ -110,11 +114,14 @@ def get_config_agent_env() -> dict[str, dict[str, str]] | None:
     'dev.agent_env.claude' become top-level. We reconstruct the
     agent_env dict from these flattened keys.
     """
-    agent_env = get_dev_child_tables("agent_env")
+    agent_env = get_dev_child_tables("agent_env", runtime_config)
     return agent_env or None
 
 
-def get_agent_env(agent: CodingAgent) -> dict[str, str]:
+def get_agent_env(
+    agent: CodingAgent,
+    runtime_config: dict[str, Any] | None = None,
+) -> dict[str, str]:
     """Get environment variables for an agent.
 
     Merges config env vars with agent's built-in env vars.
@@ -124,7 +131,7 @@ def get_agent_env(agent: CodingAgent) -> dict[str, str]:
     env = agent.get_env().copy()
 
     # Add config env vars (these override built-in ones)
-    config_env = get_config_agent_env()
+    config_env = get_config_agent_env(runtime_config)
     if config_env and agent.name in config_env:
         env.update(config_env[agent.name])
 
@@ -134,12 +141,13 @@ def get_agent_env(agent: CodingAgent) -> dict[str, str]:
 def merge_agent_args(
     agent: CodingAgent,
     cli_args: list[str] | None,
+    runtime_config: dict[str, Any] | None = None,
 ) -> list[str] | None:
     """Merge CLI args with config args for an agent.
 
     Config args are applied first, CLI args are appended (and can override).
     """
-    config_args = get_config_agent_args()
+    config_args = get_config_agent_args(runtime_config)
     result: list[str] = []
 
     # Add config args for this agent

@@ -3,12 +3,16 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import TYPE_CHECKING
 from unittest.mock import MagicMock, patch
 
 from typer.testing import CliRunner
 
 from agent_cli.cli import app
 from agent_cli.core import process
+
+if TYPE_CHECKING:
+    import pytest
 
 runner = CliRunner(env={"NO_COLOR": "1", "TERM": "dumb"})
 
@@ -20,28 +24,30 @@ def test_voice_edit_agent(
     mock_pid_ctx: MagicMock,
     mock_run: MagicMock,
     mock_async_main: MagicMock,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
 ) -> None:
     """Test the voice assistant agent."""
     mock_pid_ctx.return_value.__enter__.return_value = None
-    with runner.isolated_filesystem():
-        # Provide a real config file to satisfy CLI preflight.
-        Path("config.toml").write_text("", encoding="utf-8")
-        result = runner.invoke(
-            app,
-            [
-                "voice-edit",
-                "--config",
-                "config.toml",
-                "--llm-provider",
-                "ollama",
-                "--asr-provider",
-                "wyoming",
-                "--tts-provider",
-                "wyoming",
-                "--openai-api-key",
-                "test",
-            ],
-        )
+    monkeypatch.chdir(tmp_path)
+    # Provide a real config file to satisfy CLI preflight.
+    Path("config.toml").write_text("", encoding="utf-8")
+    result = runner.invoke(
+        app,
+        [
+            "voice-edit",
+            "--config",
+            "config.toml",
+            "--llm-provider",
+            "ollama",
+            "--asr-provider",
+            "wyoming",
+            "--tts-provider",
+            "wyoming",
+            "--openai-api-key",
+            "test",
+        ],
+    )
     assert result.exit_code == 0, result.output
     mock_run.assert_called_once()
     mock_async_main.assert_called_once()

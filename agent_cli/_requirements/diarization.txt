@@ -8,6 +8,8 @@ aiosignal==1.4.0
     # via aiohttp
 alembic==1.18.3
     # via optuna
+annotated-doc==0.0.4
+    # via typer
 annotated-types==0.7.0
     # via pydantic
 anyio==4.12.1
@@ -25,15 +27,11 @@ cffi==2.0.0
     # via soundfile
 charset-normalizer==3.4.4
     # via requests
-click==8.3.1
-    # via
-    #   typer
-    #   typer-slim
 colorama==0.4.6 ; sys_platform == 'win32'
     # via
-    #   click
     #   colorlog
     #   tqdm
+    #   typer
 colorlog==6.10.1
     # via optuna
 contourpy==1.3.3
@@ -363,9 +361,7 @@ tqdm==4.67.1
     #   pytorch-metric-learning
 triton==3.4.0 ; platform_machine == 'x86_64' and sys_platform == 'linux'
     # via torch
-typer==0.21.1
-    # via agent-cli
-typer-slim==0.21.1
+typer==0.26.2
     # via agent-cli
 typing-extensions==4.15.0
     # via
@@ -387,8 +383,6 @@ typing-extensions==4.15.0
     #   pytorch-lightning
     #   sqlalchemy
     #   torch
-    #   typer
-    #   typer-slim
     #   typing-inspection
 typing-inspection==0.4.2
     # via pydantic
