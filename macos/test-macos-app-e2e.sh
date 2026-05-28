@@ -121,6 +121,15 @@ test -f "$APP/Contents/Resources/wheels/agent_cli-0.0.0-py3-none-any.whl"
 codesign --verify --verbose=2 "$APP"
 hdiutil verify "$DMG"
 
+DMG_MOUNT="$TMP_DIR/dmg-mount"
+mkdir -p "$DMG_MOUNT"
+hdiutil attach "$DMG" -mountpoint "$DMG_MOUNT" -nobrowse -noautoopen >/dev/null
+test -d "$DMG_MOUNT/AgentCLI.app"
+test -L "$DMG_MOUNT/Applications"
+test "$(readlink "$DMG_MOUNT/Applications")" = "/Applications"
+test -f "$DMG_MOUNT/.background/dmg-background.png"
+hdiutil detach "$DMG_MOUNT" >/dev/null
+
 SUPPORT_DIR="$TMP_DIR/Application Support/AgentCLI"
 SELF_TEST_OUTPUT=$(
     AGENTCLI_APP_SUPPORT_DIR="$SUPPORT_DIR" \

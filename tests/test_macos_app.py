@@ -791,6 +791,31 @@ def test_macos_build_script_signs_bundled_executables_before_notarization() -> N
     )
 
 
+def test_macos_build_script_creates_drag_install_dmg() -> None:
+    """The release DMG should open as a drag-to-Applications installer window."""
+    script = BUILD_SCRIPT.read_text()
+
+    assert 'DMG_STAGING_DIR="$DIST_DIR/dmg-staging"' in script
+    assert 'DMG_RW_PATH="$DIST_DIR/$APP_NAME-rw.dmg"' in script
+    assert 'DMG_BACKGROUND_SVG="$PACKAGE_DIR/Resources/dmg-background.svg"' in script
+    assert 'DMG_BACKGROUND_PNG="$DIST_DIR/dmg-background.png"' in script
+    assert 'ln -s /Applications "$DMG_STAGING_DIR/Applications"' in script
+    assert '"$DMG_STAGING_DIR/$APP_NAME.app"' in script
+    assert 'hdiutil create "$DMG_RW_PATH"' in script
+    assert "-format UDRW" in script
+    assert "hdiutil attach" in script
+    assert "-mountpoint" not in script
+    assert 'volume_path=$(printf' in script
+    assert 'set background picture of theViewOptions to file ".background:dmg-background.png"' in script
+    assert 'set position of item "AgentCLI.app" of container window to {150, 180}' in script
+    assert 'set position of item "Applications" of container window to {450, 180}' in script
+    assert 'if ! set_dmg_finder_layout "$volume_path"; then' in script
+    assert "hdiutil convert" in script
+    assert "-format UDZO" in script
+    assert "sign_dmg_if_needed" in script
+    assert (MACOS_APP / "Resources" / "dmg-background.svg").is_file()
+
+
 def test_release_workflow_publishes_macos_app_asset() -> None:
     """Publishing a GitHub release should attach the notarized macOS DMG."""
     workflow = RELEASE_WORKFLOW.read_text()
@@ -893,6 +918,10 @@ def test_macos_app_has_end_to_end_packaging_test() -> None:
     assert "AGENTCLI_INSTANCE_LOCK_PATH" in script
     assert "UV_BINARY=" in script
     assert "uv build --wheel" in script
+    assert 'test -d "$DMG_MOUNT/AgentCLI.app"' in script
+    assert 'test -L "$DMG_MOUNT/Applications"' in script
+    assert 'readlink "$DMG_MOUNT/Applications"' in script
+    assert 'test -f "$DMG_MOUNT/.background/dmg-background.png"' in script
     assert "--agentcli-bootstrap-self-test" in script
     assert "daemon install whisper -y" in script
     assert "transcribe --toggle --quiet" in script
