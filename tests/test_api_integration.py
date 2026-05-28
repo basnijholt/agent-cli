@@ -160,9 +160,10 @@ def test_api_configuration_handling(monkeypatch: MonkeyPatch) -> None:
         assert True  # Config is created during request
 
 
-def test_temp_file_cleanup(client: TestClient) -> None:
+def test_temp_file_cleanup(client: TestClient, monkeypatch: MonkeyPatch, tmp_path: Path) -> None:
     """Test that temporary files are cleaned up after processing."""
-    temp_dir = Path(tempfile.gettempdir())
+    monkeypatch.setattr(tempfile, "tempdir", str(tmp_path))
+    temp_dir = tmp_path
     temp_files_before = set(temp_dir.iterdir())
 
     with patch("agent_cli.server.proxy.api._transcribe_with_provider") as mock_transcribe:

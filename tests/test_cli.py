@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import tomllib
+from pathlib import Path
 from typing import TYPE_CHECKING
 from unittest.mock import patch
 
@@ -13,6 +15,15 @@ if TYPE_CHECKING:
     import pytest
 
 runner = CliRunner(env={"NO_COLOR": "1", "TERM": "dumb"})
+
+
+def test_project_uses_recent_typer_without_click_dependency() -> None:
+    """Typer vendors Click in recent versions, so runtime code should not require Click."""
+    pyproject = tomllib.loads(Path("pyproject.toml").read_text())
+    dependencies = pyproject["project"]["dependencies"]
+    assert "click" not in dependencies
+    assert "typer-slim" not in dependencies
+    assert "typer>=0.26" in dependencies
 
 
 def test_main_no_args() -> None:

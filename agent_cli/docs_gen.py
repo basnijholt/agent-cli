@@ -18,7 +18,7 @@ from __future__ import annotations
 
 from typing import Any, get_origin
 
-import click
+from typer.core import TyperCommand, TyperGroup, TyperOption
 from typer.main import get_command
 
 from agent_cli import opts
@@ -59,14 +59,14 @@ def _format_default(default: Any) -> str:
     return str(default)
 
 
-def _get_click_command(command_path: str) -> click.Command | None:
+def _get_click_command(command_path: str) -> TyperCommand | TyperGroup | None:
     """Get a Click command from a path like 'transcribe' or 'memory.proxy'."""
     parts = command_path.split(".")
     click_app = get_command(app)
 
-    cmd: click.Command | click.Group = click_app
+    cmd = click_app
     for part in parts:
-        if isinstance(cmd, click.Group):
+        if isinstance(cmd, TyperGroup):
             cmd = cmd.commands.get(part)  # type: ignore[assignment]
             if cmd is None:
                 return None
@@ -75,12 +75,12 @@ def _get_click_command(command_path: str) -> click.Command | None:
     return cmd
 
 
-def _extract_options_from_click(cmd: click.Command) -> list[dict[str, Any]]:
+def _extract_options_from_click(cmd: TyperCommand | TyperGroup) -> list[dict[str, Any]]:
     """Extract options from a Click command."""
     options = []
     for param in cmd.params:
-        if isinstance(param, click.Option):
-            if getattr(param, "hidden", False):
+        if isinstance(param, TyperOption):
+            if param.hidden:
                 continue
 
             # Get long and short option names
@@ -105,7 +105,7 @@ def _extract_options_from_click(cmd: click.Command) -> list[dict[str, Any]]:
                 primary_name = f"{base_opt}/{param.secondary_opts[0]}"
 
             # Get panel from rich_help_panel or use default
-            panel = getattr(param, "rich_help_panel", None) or "Options"
+            panel = param.rich_help_panel or "Options"
 
             options.append(
                 {
@@ -212,11 +212,11 @@ def _list_commands() -> list[str]:
     click_app = get_command(app)
     commands = []
 
-    def _walk(cmd: click.Command | click.Group, prefix: str = "") -> None:
-        if isinstance(cmd, click.Group):
+    def _walk(cmd: TyperCommand | TyperGroup, prefix: str = "") -> None:
+        if isinstance(cmd, TyperGroup):
             for name, subcmd in cmd.commands.items():
                 path = f"{prefix}.{name}" if prefix else name
-                if isinstance(subcmd, click.Group):
+                if isinstance(subcmd, TyperGroup):
                     _walk(subcmd, path)
                 else:
                     commands.append(path)
