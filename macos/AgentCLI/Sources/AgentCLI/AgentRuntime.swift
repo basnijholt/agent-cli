@@ -425,8 +425,12 @@ struct AgentRuntime {
         for key in Self.appPrivateEnvironmentKeys {
             environment.removeValue(forKey: key)
         }
+        // Preserve AGENTCLI_UV_PATH so GUI launches can point at a user-managed uv.
         let existingPATH = environment["PATH"] ?? "/usr/bin:/bin:/usr/sbin:/sbin"
-        environment["PATH"] = userInstalledCLIPath(existingPATH: existingPATH)
+        environment["PATH"] = userInstalledCLIPath(
+            existingPATH: existingPATH,
+            loginShellPATH: Self.loginShellPATH(environment: baseEnvironment)
+        )
         return environment
     }
 
@@ -460,15 +464,47 @@ struct AgentRuntime {
         return environment
     }
 
-    private func userInstalledCLIPath(existingPATH: String) -> String {
-        [
-            FileManager.default.homeDirectoryForCurrentUser
+    func userInstalledCLIPath(existingPATH: String, loginShellPATH: String? = nil) -> String {
+        let homeURL = FileManager.default.homeDirectoryForCurrentUser
+        var pathValues: [String] = []
+        if let loginShellPATH {
+            pathValues.append(loginShellPATH)
+        }
+        pathValues.append(contentsOf: [
+            homeURL
                 .appendingPathComponent(".local/bin", isDirectory: true)
+                .path,
+            homeURL
+                .appendingPathComponent(".cargo/bin", isDirectory: true)
                 .path,
             "/opt/homebrew/bin",
             "/usr/local/bin",
             existingPATH
-        ].joined(separator: ":")
+        ])
+
+        var seen = Set<String>()
+        return pathValues
+            .flatMap { $0.split(separator: ":").map(String.init) }
+            .filter { !$0.isEmpty }
+            .filter { seen.insert($0).inserted }
+            .joined(separator: ":")
+    }
+
+    private static func loginShellPATH(environment: [String: String]) -> String? {
+        let shellPath = environment["SHELL"].flatMap { $0.isEmpty ? nil : $0 } ?? "/bin/zsh"
+        guard FileManager.default.isExecutableFile(atPath: shellPath) else { return nil }
+
+        let result = runProcess(
+            executableURL: URL(fileURLWithPath: shellPath),
+            arguments: ["-lic", "printf '%s\\n' \"$PATH\""],
+            environment: environment
+        )
+        guard result.exitCode == 0 else { return nil }
+
+        return result.output
+            .split(separator: "\n")
+            .last
+            .map(String.init)
     }
 
     private func prepareDirectories(for mode: AgentCLIRuntimeMode = .bundled) throws {

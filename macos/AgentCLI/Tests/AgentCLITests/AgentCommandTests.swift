@@ -80,8 +80,10 @@ final class AgentCommandTests: XCTestCase {
                 "AGENTCLI_PACKAGE_SOURCE": "agent-cli",
                 "AGENTCLI_AGENT_CLI": "/tmp/agentcli-test-support/bin/agent-cli",
                 "AGENT_CLI_CONFIG_HOME": "/tmp/agentcli-test-support/config",
+                "AGENTCLI_UV_PATH": "/custom/uv",
                 "UV_TOOL_BIN_DIR": "/tmp/agentcli-test-support/bin",
                 "PATH": "/custom/bin",
+                "SHELL": "/no/such/shell",
             ],
             userDefaults: defaults
         )
@@ -95,7 +97,35 @@ final class AgentCommandTests: XCTestCase {
         XCTAssertNil(runtime.commandEnvironment()["AGENTCLI_PACKAGE_SOURCE"])
         XCTAssertNil(runtime.commandEnvironment()["AGENT_CLI_CONFIG_HOME"])
         XCTAssertNil(runtime.commandEnvironment()["UV_TOOL_BIN_DIR"])
+        XCTAssertEqual(runtime.commandEnvironment()["AGENTCLI_UV_PATH"], "/custom/uv")
         XCTAssertTrue(runtime.commandEnvironment()["PATH"]?.contains("/custom/bin") == true)
+    }
+
+    func testUserInstalledCLIPathUsesLoginShellPathAndCommonUvBins() {
+        let defaults = UserDefaults(suiteName: "AgentCLITests.user-runtime-path")!
+        defaults.removePersistentDomain(forName: "AgentCLITests.user-runtime-path")
+        defaults.set(true, forKey: RuntimeSettings.useUserInstalledAgentCLIKey)
+        let runtime = AgentRuntime(
+            environment: [
+                "AGENTCLI_APP_SUPPORT_DIR": "/tmp/agentcli-test-support",
+                "PATH": "/usr/bin:/bin",
+                "SHELL": "/no/such/shell",
+            ],
+            userDefaults: defaults
+        )
+
+        let shellPath = "/Users/example/.dotbins/macos/arm64/bin:/usr/bin"
+        let path = runtime.userInstalledCLIPath(
+            existingPATH: "/usr/bin:/bin",
+            loginShellPATH: shellPath
+        )
+        let components = path.split(separator: ":").map(String.init)
+        let home = FileManager.default.homeDirectoryForCurrentUser.path
+
+        XCTAssertEqual(components.first, "/Users/example/.dotbins/macos/arm64/bin")
+        XCTAssertTrue(components.contains("\(home)/.local/bin"))
+        XCTAssertTrue(components.contains("\(home)/.cargo/bin"))
+        XCTAssertEqual(components.filter { $0 == "/usr/bin" }.count, 1)
     }
 
     @MainActor
