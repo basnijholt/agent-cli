@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 import signal
 import sys
@@ -18,13 +19,30 @@ import pytest
 from agent_cli.core import process
 
 
-@pytest.fixture
+@pytest.fixture(autouse=True)
 def temp_pid_dir(monkeypatch: pytest.MonkeyPatch) -> Generator[Path, None, None]:
     """Create a temporary directory for PID files during testing."""
     with tempfile.TemporaryDirectory() as tmpdir:
         temp_path = Path(tmpdir)
         monkeypatch.setattr(process, "PID_DIR", temp_path)
         yield temp_path
+
+
+def test_default_pid_dir_prefers_explicit_runtime_dir(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Runtime control files should allow an explicit local directory override."""
+    runtime_dir = Path(tempfile.gettempdir()) / "agent-cli-runtime-test"
+    monkeypatch.setenv("AGENTCLI_RUNTIME_DIR", str(runtime_dir))
+
+    assert process._default_pid_dir() == runtime_dir
+
+
+@pytest.mark.skipif(os.name != "posix", reason="POSIX fallback uses /tmp and uid")
+def test_default_pid_dir_uses_local_tmp_fallback(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Runtime control files should not default to a possibly networked home dir."""
+    monkeypatch.delenv("AGENTCLI_RUNTIME_DIR", raising=False)
+    monkeypatch.delenv("XDG_RUNTIME_DIR", raising=False)
+
+    assert process._default_pid_dir() == Path(tempfile.gettempdir()) / f"agent-cli-{os.getuid()}"
 
 
 def test_get_pid_file(temp_pid_dir: Path) -> None:
@@ -92,6 +110,47 @@ def test_read_pid_file_current_process() -> None:
     pid_file.write_text(str(current_pid))
 
     assert process.read_pid_file(process_name) == current_pid
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="POSIX lock files are Unix-only")
+def test_pid_file_context_writes_metadata_and_holds_lock() -> None:
+    """New PID files should carry process metadata and be backed by a live lock."""
+    process_name = "test-process"
+    pid_file = process._get_pid_file(process_name)
+
+    with process.pid_file_context(process_name):
+        metadata = json.loads(pid_file.read_text())
+
+        assert metadata["version"] == 1
+        assert metadata["process_name"] == process_name
+        assert metadata["pid"] == os.getpid()
+        assert process.is_process_running(process_name)
+        assert process.read_pid_file(process_name) == os.getpid()
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="POSIX lock files are Unix-only")
+@patch("agent_cli.core.process._is_pid_running", return_value=True)
+def test_is_process_running_cleans_unlocked_metadata_pid_file(
+    mock_is_pid_running: MagicMock,  # noqa: ARG001
+) -> None:
+    """A new-format PID file without a held lock is stale even if the PID exists."""
+    process_name = "test-process"
+    pid_file = process._get_pid_file(process_name)
+    stop_file = process._get_stop_file(process_name)
+    pid_file.write_text(
+        json.dumps(
+            {
+                "version": 1,
+                "process_name": process_name,
+                "pid": os.getpid(),
+            },
+        ),
+    )
+    stop_file.write_text("1")
+
+    assert not process.is_process_running(process_name)
+    assert not pid_file.exists()
+    assert not stop_file.exists()
 
 
 @pytest.mark.skipif(sys.platform == "win32", reason="os.kill(pid, 0) not used on Windows")
@@ -215,9 +274,9 @@ def test_pid_file_context_success() -> None:
         assert returned_pid_file == pid_file
 
         # PID file should contain current process ID
-        with pid_file.open() as f:
-            stored_pid = int(f.read().strip())
-        assert stored_pid == os.getpid()
+        metadata = json.loads(pid_file.read_text())
+        assert metadata["pid"] == os.getpid()
+        assert metadata["process_name"] == process_name
 
     # PID file should be cleaned up after context
     assert not pid_file.exists()
