@@ -8,6 +8,35 @@ final class AgentCommandTests: XCTestCase {
         XCTAssertEqual(AgentCommand.toggleTranscription.bootstrapRequirement, .transcription)
     }
 
+    func testToggleTranscriptionAppendsConfiguredExtraInstructions() {
+        XCTAssertEqual(
+            AgentCommand.toggleTranscription.resolvedArguments(
+                extraInstructions: "  Remember Bas and Henk.\nPrefer project names.  "
+            ),
+            [
+                "transcribe",
+                "--toggle",
+                "--quiet",
+                "--extra-instructions",
+                "Remember Bas and Henk.\nPrefer project names.",
+            ]
+        )
+    }
+
+    func testBlankExtraInstructionsAreIgnored() {
+        XCTAssertEqual(
+            AgentCommand.toggleTranscription.resolvedArguments(extraInstructions: "  \n\t  "),
+            AgentCommand.toggleTranscription.arguments
+        )
+    }
+
+    func testExtraInstructionsOnlyApplyToTranscription() {
+        XCTAssertEqual(
+            AgentCommand.autocorrect.resolvedArguments(extraInstructions: "Remember Bas."),
+            AgentCommand.autocorrect.arguments
+        )
+    }
+
     func testAutocorrectOnlyRequiresCliRuntime() {
         XCTAssertEqual(AgentCommand.autocorrect.arguments, ["autocorrect", "--quiet"])
         XCTAssertEqual(AgentCommand.autocorrect.bootstrapRequirement, .cliRuntime)
